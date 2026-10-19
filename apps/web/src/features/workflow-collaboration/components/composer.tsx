@@ -1,9 +1,17 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import type {
   WorkflowComment,
   WorkflowCommentCommandResult,
 } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
+import { LabelledField } from '@/components/ui/field';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Notice } from '@/components/ui/notice';
 import type { CollaborationScope } from '../data/collaboration.api';
 import { CommentForm } from '../forms/comment';
@@ -43,6 +51,11 @@ function NewDiscussionComposer({
   ...props
 }: Omit<ComposerProps, 'target'> & { target: NewThread }) {
   const [stepId, setStepId] = useState(target.stepId ?? '');
+  const aboutId = useId();
+  const choices = [
+    { value: '', label: 'The workflow' },
+    ...target.steps.map((step) => ({ value: step.id, label: step.label })),
+  ];
   return (
     <CommentForm
       {...props}
@@ -53,25 +66,29 @@ function NewDiscussionComposer({
       })}
     >
       {(locked) => (
-        <label className="block text-sm">
-          About{' '}
-          <select
-            aria-label="Discussion step"
-            className="mt-1 block w-full rounded border border-border bg-background p-2"
-            value={stepId}
-            disabled={locked}
-            onChange={(event) => {
-              setStepId(event.target.value);
-            }}
-          >
-            <option value="">The workflow</option>
-            {target.steps.map((step) => (
-              <option key={step.id} value={step.id}>
-                {step.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <LabelledField id={`${aboutId}-about`} label="About">
+          {(control) => (
+            <Select
+              items={choices}
+              value={stepId}
+              disabled={locked}
+              onValueChange={(value: string | null) => {
+                setStepId(value ?? '');
+              }}
+            >
+              <SelectTrigger {...control} aria-label="Discussion step">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {choices.map((choice) => (
+                  <SelectItem key={choice.value} value={choice.value}>
+                    {choice.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </LabelledField>
       )}
     </CommentForm>
   );

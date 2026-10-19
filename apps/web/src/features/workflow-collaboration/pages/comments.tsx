@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { CollaborationScope } from '../data/collaboration.api';
 import { CommentComposer } from '../components/composer';
 import { WorkflowDiscussion } from '../components/discussion';
@@ -64,21 +65,19 @@ function ThreadOverview({ scope, steps, search, onNavigate }: PageProps) {
             New discussion
           </Button>
         )}
-        <label className="text-sm">
-          Show{' '}
-          <select
-            aria-label="Discussion status"
-            className="ml-2 rounded border border-border bg-background p-2"
-            value={status}
-            onChange={(event) => {
-              setStatus(event.target.value as typeof status);
-            }}
-          >
-            <option value="open">Open</option>
-            <option value="resolved">Resolved</option>
-            <option value="all">All discussions</option>
-          </select>
-        </label>
+        <ToggleGroup
+          aria-label="Discussion status"
+          value={[status]}
+          onValueChange={(values) => {
+            const next: unknown = values[0];
+            if (next === 'open' || next === 'resolved' || next === 'all')
+              setStatus(next);
+          }}
+        >
+          <ToggleGroupItem value="open">Open</ToggleGroupItem>
+          <ToggleGroupItem value="resolved">Resolved</ToggleGroupItem>
+          <ToggleGroupItem value="all">All</ToggleGroupItem>
+        </ToggleGroup>
       </div>
       {search.step === undefined ? null : (
         <p className="text-sm">
