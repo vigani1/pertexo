@@ -79,7 +79,7 @@ export function WorkflowListHeader({
               <>
                 <span>
                   <b className="font-semibold text-foreground">
-                    {String(total)}
+                    {total.toLocaleString()}
                     {more}
                   </b>{' '}
                   {total === 1 && more === '' ? 'workflow' : 'workflows'}
@@ -91,7 +91,7 @@ export function WorkflowListHeader({
                     className="font-mono text-xs font-normal"
                   >
                     <b className="font-semibold">
-                      {String(state.count)}
+                      {state.count.toLocaleString()}
                       {more}
                     </b>{' '}
                     {state.label}

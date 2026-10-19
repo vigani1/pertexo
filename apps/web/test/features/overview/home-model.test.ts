@@ -121,7 +121,7 @@ describe('loom', () => {
       '1 run in the last 24 hours.',
     );
     expect(loomCaption({ phrase, capped: true, total: 1234 })).toBe(
-      '1234 runs in the last 24 hours. The Loom draws the latest 300; narrow the window to see every run.',
+      '1,234 runs in the last 24 hours. The Loom draws the latest 300; narrow the window to see every run.',
     );
     expect(loomCaption({ phrase, capped: true, total: undefined })).toBe(
       'Showing the latest 300 runs in the last 24 hours. Narrow the window to see every run.',

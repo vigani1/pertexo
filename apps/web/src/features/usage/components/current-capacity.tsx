@@ -48,13 +48,19 @@ export function CurrentCapacity({
         <dl>
           <CapacityRow
             label="In progress"
-            used={execution.activeCapacityConsumed}
-            limit={execution.policy.activeRunLimit ?? 'limit unavailable'}
+            used={execution.activeCapacityConsumed.toLocaleString()}
+            limit={
+              execution.policy.activeRunLimit?.toLocaleString() ??
+              'limit unavailable'
+            }
           />
           <CapacityRow
             label="Queued runs"
-            used={execution.queuedRuns}
-            limit={execution.policy.queuedRunLimit ?? 'limit unavailable'}
+            used={execution.queuedRuns.toLocaleString()}
+            limit={
+              execution.policy.queuedRunLimit?.toLocaleString() ??
+              'limit unavailable'
+            }
           />
         </dl>
         <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
@@ -93,8 +99,8 @@ export function CurrentCapacity({
           />
           <CapacityRow
             label="Files"
-            used={artifacts.chargedCount}
-            limit={artifacts.artifactCountLimit}
+            used={artifacts.chargedCount.toLocaleString()}
+            limit={artifacts.artifactCountLimit.toLocaleString()}
           />
         </dl>
         <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
