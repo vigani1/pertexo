@@ -16,8 +16,8 @@ portable workflows/templates and reusable subworkflows. File inputs are useful
 early, but only after a real consuming-node contract exists. Expand provider
 integrations after the core workflow product is comfortable to use.
 
-This roadmap contains **26 individually tracked plans: one release/evidence gate
-and 25 feature or product-improvement plans**. It is not a promise to build every
+This roadmap contains **45 individually tracked items: one release/evidence gate
+and 44 feature or product-improvement items**. It is not a promise to build every
 optional feature, a fixed quota, or an exhaustive catalogue of everything any
 competitor has ever offered. Later items are decision-gated options.
 
@@ -84,8 +84,8 @@ user-delivered because a table or executor exists.
 
 ## Competitor comparison: capability benchmarks, not a scorecard
 
-Official documentation was checked on 2026-09-28, and for the F26–F30 rows on
-2026-09-29. “Not assessed” is not “absent”.
+Official documentation was checked on 2026-09-28, for the F26–F30 rows on
+2026-09-29, and for the F31–F38 rows on 2026-10-19. “Not assessed” is not “absent”.
 No prices, connector counts, blanket parity percentages or unsupported
 performance/reliability rankings are asserted. Editions differ.
 
@@ -110,6 +110,14 @@ performance/reliability rankings are asserted. Editions differ.
 | Organize workflows | [Make scenario capabilities](https://help.make.com/scenarios) documents folders/labels | Existing search; proposed metadata F07 |
 | User code as a workflow step | [n8n Code node](https://docs.n8n.io/build/code-in-n8n/using-the-code-node) supports JavaScript/Python | F20: JavaScript in an isolated runner container; Python later |
 | Transform, review and AI breadth | [n8n current documentation index](https://docs.n8n.io/sitemap.md) lists transform nodes, reviews and AI features | Demand-driven F24, F18 and F22; not early parity blockers |
+| Sign in with a second factor | [n8n two-factor authentication](https://docs.n8n.io/user-management/two-factor-auth/) uses an authenticator app and recovery codes | Password sign-in has no second factor; organization SSO exists (F28). F31 |
+| Fetch every page of an API result | [n8n HTTP Request pagination](https://docs.n8n.io/build/code-in-n8n/cookbook/http-request-node/pagination) follows a next-page URL or a page counter | HTTP Request returns one response; F32 |
+| Choose how a step retries | [n8n Retry On Fail](https://docs.n8n.io/integrations/builtin/handle-rate-limits) sets the tries and the wait between them | Retries are fixed per step type; F33 |
+| Produce a file from data | [n8n Convert to File](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.converttofile) writes CSV, JSON, text and spreadsheets | Read file exists (F04); writing files F34 |
+| Build with a real incoming event | [n8n test webhook URL](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/workflow-development) shows the received request in the editor | Pinned samples and input cases exist (F02); capturing a real webhook request F35 |
+| Light and dark appearance | [n8n release notes](https://docs.n8n.io/changelog/release-notes) describe the editor in light and dark mode | Dark only; F36 |
+| Explain a workflow on its canvas | [n8n sticky notes](https://docs.n8n.io/build/understand-workflows/workflow-components/add-notes-and-documentation) | Comments exist (F19); notes on the canvas F37 |
+| Format and convert values without code | [Zapier Formatter](https://help.zapier.com/hc/en-us/articles/8496212590093-Get-started-with-Formatter) covers text, numbers, dates and utilities; [n8n XML](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.xml) converts XML | Transforms (F24) and the Code step (F20) cover part; utility steps F38 |
 
 The priority ordering below is a Pertexo product recommendation inferred from
 our existing investment, user preference and dependencies—not a claim from the
@@ -153,6 +161,12 @@ the then-current code. Do not spend weeks finalizing far-future schemas.
 
 Owner update 2026-10-14: implement and verify F24 next, then separately plan,
 review and implement F16.
+
+Owner update 2026-10-19: after the whole-app QA pass, F31–F44 were added from a
+comparison with n8n, Zapier and Make. F31 two-factor sign-in comes before the
+hosted beta. F32 pagination, F33 retry settings and F35 webhook test events come
+before or alongside F21, because providers rely on them; F34 file output fits
+anywhere before it. F36–F38 follow when there is room. F39–F44 wait for demand.
 
 Waves express priority, not a requirement to finish every optional row before
 moving on. The first complete core path is F00/F01 → F03 → F26/F12 → F02 →
@@ -218,6 +232,20 @@ only after its gate is resolved.
 | [F28](feature-plans/28-single-sign-on-and-provisioning.md) | Single sign-on (SAML/OIDC) and SCIM user provisioning | Extends the session authority for organizations | L–XL | Complete: social/OIDC/SAML/SCIM merged (#344–#347), with managed roles and immediate removal |
 | [F29](feature-plans/29-workflow-concurrency-controls.md) | Per-workflow concurrency limits with queue or skip | Extends run admission | M–L | Queue and Skip implemented and locally qualified; ADR 058; implementation PR carries CI and merge evidence |
 | [F30](feature-plans/30-connection-health.md) | Connection health from real failures, used-by and reconnection | Extends existing connections | M–L | First Slack slice independently reviewed, merged through PR139/140 and qualified on natural main; production mode off |
+| F31 | Two-factor sign-in: authenticator app and recovery codes for password accounts; passkeys later | Extends account security; SSO sign-in unaffected | M | Proposed |
+| F32 | HTTP Request pagination: follow next-page links or page counters, within bounds | Extends the HTTP Request step | M | Proposed |
+| F33 | Retry settings per step: how many tries and the wait between them | Extends step execution within existing safety rules: no automatic retry after `outcome_unknown` | M–L | Proposed |
+| F34 | Create a file: CSV, JSON or text from step data, kept as a run file | Extends F04 files | M | Proposed |
+| F35 | Webhook test events: listen in the editor and keep a real request as sample data | Extends webhook triggers and F02 samples | M | Proposed |
+| F36 | Light theme alongside the dark one | Frontend design tokens and a personal setting | M | Proposed |
+| F37 | Notes on the workflow canvas | Editor and graph metadata, separate from F19 comments | M | Proposed |
+| F38 | Utility steps: XML/HTML parsing, hashes, signatures and IDs, text and number formatting | Extends F24 transforms | M–L | Proposed |
+| F39 | Python in the Code step | Extends the F20 runner | L | Proposed (later, by demand) |
+| F40 | Community-built steps through a public step SDK | Opens the node SDK and catalog | XL | Proposed (later, by demand) |
+| F41 | External secret stores for connection credentials | Extends connections | L | Proposed (later, by demand) |
+| F42 | Log streaming to external monitoring | Extends observability and audit | M–L | Proposed (later, by demand) |
+| F43 | Interface languages | Frontend localization | L | Proposed (later, by demand) |
+| F44 | Mobile apps | New client over the existing API | XL | Proposed (later, by demand) |
 
 ## Shared implementation rules
 
