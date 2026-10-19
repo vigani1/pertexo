@@ -3556,9 +3556,51 @@
                             "textarea",
                             "email",
                             "number",
-                            "boolean",
                             "date"
                           ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "label",
+                        "help",
+                        "required",
+                        "type"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+                        },
+                        "name": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                        },
+                        "label": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 160
+                        },
+                        "help": {
+                          "default": "",
+                          "type": "string",
+                          "maxLength": 500
+                        },
+                        "required": {
+                          "default": true,
+                          "type": "boolean"
+                        },
+                        "type": {
+                          "type": "string",
+                          "const": "boolean"
+                        },
+                        "mustBeTicked": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -4355,9 +4397,51 @@
                                 "textarea",
                                 "email",
                                 "number",
-                                "boolean",
                                 "date"
                               ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "label",
+                            "help",
+                            "required",
+                            "type"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+                            },
+                            "name": {
+                              "type": "string",
+                              "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                            },
+                            "label": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 160
+                            },
+                            "help": {
+                              "default": "",
+                              "type": "string",
+                              "maxLength": 500
+                            },
+                            "required": {
+                              "default": true,
+                              "type": "boolean"
+                            },
+                            "type": {
+                              "type": "string",
+                              "const": "boolean"
+                            },
+                            "mustBeTicked": {
+                              "type": "boolean"
                             }
                           },
                           "required": [
@@ -5406,9 +5490,51 @@
                                 "textarea",
                                 "email",
                                 "number",
-                                "boolean",
                                 "date"
                               ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "label",
+                            "help",
+                            "required",
+                            "type"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+                            },
+                            "name": {
+                              "type": "string",
+                              "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                            },
+                            "label": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 160
+                            },
+                            "help": {
+                              "default": "",
+                              "type": "string",
+                              "maxLength": 500
+                            },
+                            "required": {
+                              "default": true,
+                              "type": "boolean"
+                            },
+                            "type": {
+                              "type": "string",
+                              "const": "boolean"
+                            },
+                            "mustBeTicked": {
+                              "type": "boolean"
                             }
                           },
                           "required": [
@@ -6052,9 +6178,51 @@
                             "textarea",
                             "email",
                             "number",
-                            "boolean",
                             "date"
                           ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "label",
+                        "help",
+                        "required",
+                        "type"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+                        },
+                        "name": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                        },
+                        "label": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 160
+                        },
+                        "help": {
+                          "default": "",
+                          "type": "string",
+                          "maxLength": 500
+                        },
+                        "required": {
+                          "default": true,
+                          "type": "boolean"
+                        },
+                        "type": {
+                          "type": "string",
+                          "const": "boolean"
+                        },
+                        "mustBeTicked": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
