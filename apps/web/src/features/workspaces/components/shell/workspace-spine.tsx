@@ -2,7 +2,7 @@ import type { ReactNode, Ref } from 'react';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import { SearchIcon } from 'lucide-react';
-import { CoreOrb } from '@/components/patterns/core/orb';
+import { CORE_IDLE_ENERGY, CoreOrb } from '@/components/patterns/core/orb';
 import { Kbd } from '@/components/ui/kbd';
 import {
   Tooltip,
@@ -89,8 +89,11 @@ function HomeCore({
       >
         <CoreOrb
           state={liveRunCount === 0 ? 'idle' : 'live'}
-          energy={0.7 + Math.min(liveRunCount ?? 0, 6) * 0.08}
-          still={!liveRunCount}
+          energy={
+            liveRunCount
+              ? 0.7 + Math.min(liveRunCount, 6) * 0.08
+              : CORE_IDLE_ENERGY
+          }
           className="size-11"
         />
       </TooltipTrigger>

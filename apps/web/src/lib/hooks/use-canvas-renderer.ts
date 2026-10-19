@@ -5,7 +5,6 @@ import {
   useRef,
   type RefObject,
 } from 'react';
-import { useMediaQuery } from './use-media-query';
 import { usePrefersReducedMotion } from './use-prefers-reduced-motion';
 
 export interface CanvasRenderer {
@@ -24,14 +23,12 @@ const FRAME_INTERVAL_MS = 1000 / 30;
 const FRAME_SLACK_MS = 2;
 
 /**
- * Whether decorative drawings hold still on this device: the person asked to
- * minimise motion, or the device is touch-first, where heat and battery
- * matter more than motion.
+ * Whether decorative drawings hold still: only when the person asked to
+ * minimise motion. A frozen orb reads as a stalled app, so phones animate too;
+ * the loop below already stops for canvases no one can see.
  */
 export function useStillCanvases(): boolean {
-  const reducedMotion = usePrefersReducedMotion();
-  const touchFirst = useMediaQuery('(pointer: coarse)');
-  return reducedMotion || touchFirst;
+  return usePrefersReducedMotion();
 }
 
 export type CanvasHandle<Renderer> = Readonly<{
@@ -46,9 +43,10 @@ export type CanvasHandle<Renderer> = Readonly<{
 /**
  * Drives a canvas renderer for decorative animation: keeps the backing store
  * matched to the element's size and pixel density, and animates at 30 frames
- * a second only while `animate` holds, the canvas is on screen, its window
- * has focus and the device isn't one that holds drawings still. Otherwise
- * the canvas keeps its last frame. The renderer is created once per mount.
+ * a second only while `animate` holds, the canvas is on screen, its tab is
+ * visible and motion isn't reduced. Otherwise the canvas keeps its last
+ * frame. Window focus doesn't matter: a page beside the window in use (the
+ * in-app browser next to its chat) is still being looked at. The renderer is created once per mount.
  */
 export function useCanvasRenderer<Renderer extends CanvasRenderer>(
   canvasRef: RefObject<HTMLCanvasElement | null>,
@@ -77,13 +75,12 @@ export function useCanvasRenderer<Renderer extends CanvasRenderer>(
     rendererRef.current = renderer;
 
     let visible = true;
-    let focused = document.hasFocus();
     let frame = 0;
     let previous = 0;
     // The moment on screen, so a canvas that stops can redraw the same frame.
     let shown = STILL_FRAME_SECONDS;
 
-    const moving = () => !isStill() && visible && focused && !document.hidden;
+    const moving = () => !isStill() && visible && !document.hidden;
     const draw = (timeSeconds: number, deltaSeconds: number) => {
       renderer.render(timeSeconds, deltaSeconds);
       shown = timeSeconds;
@@ -120,14 +117,6 @@ export function useCanvasRenderer<Renderer extends CanvasRenderer>(
       // Resizing clears the canvas; a moving one redraws on its next frame.
       refresh();
     };
-    const focus = () => {
-      focused = true;
-      update();
-    };
-    const blur = () => {
-      focused = false;
-      update();
-    };
     loopRef.current = { update, refresh };
 
     resize();
@@ -145,16 +134,12 @@ export function useCanvasRenderer<Renderer extends CanvasRenderer>(
         : null;
     intersectionObserver?.observe(canvas);
     document.addEventListener('visibilitychange', update);
-    window.addEventListener('focus', focus);
-    window.addEventListener('blur', blur);
 
     return () => {
       if (frame !== 0) window.cancelAnimationFrame(frame);
       resizeObserver?.disconnect();
       intersectionObserver?.disconnect();
       document.removeEventListener('visibilitychange', update);
-      window.removeEventListener('focus', focus);
-      window.removeEventListener('blur', blur);
       rendererRef.current = null;
       loopRef.current = null;
     };
