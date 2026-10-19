@@ -28,18 +28,22 @@ export function WorkspaceVariablesPage({
   return (
     <div className="flex min-w-0 max-w-5xl flex-col gap-6">
       <PageHeader>
-        <PageHeaderTitle>Variables</PageHeaderTitle>
+        <div className="flex flex-col gap-3">
+          <PageHeaderTitle>Variables</PageHeaderTitle>
+          {/* How values reach runs, read under the title; the section
+              below draws the page's one divider. */}
+          <div className="flex flex-col gap-1.5 text-sm text-muted-foreground sm:flex-row sm:gap-6">
+            <p className="flex items-center gap-2">
+              <StatusGlyph tone="live" />
+              New runs take the current values.
+            </p>
+            <p className="flex items-center gap-2">
+              <StatusGlyph tone="success" />
+              Existing runs keep their captured set.
+            </p>
+          </div>
+        </div>
       </PageHeader>
-      <div className="flex flex-col gap-3 border-y border-border py-4 text-sm sm:flex-row sm:gap-8">
-        <p className="flex gap-2">
-          <StatusGlyph tone="live" />
-          New runs take the current values.
-        </p>
-        <p className="flex gap-2">
-          <StatusGlyph tone="success" />
-          Existing runs keep their captured set.
-        </p>
-      </div>
       <SettingsSection
         title="Shared configuration"
         description="Text, numbers and true/false that every member can read. Secrets belong in Connections."

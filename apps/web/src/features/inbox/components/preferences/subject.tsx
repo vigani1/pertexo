@@ -1,3 +1,4 @@
+import { BellIcon } from 'lucide-react';
 import { useId, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
@@ -203,13 +204,16 @@ export function NoticeSubjectActions({
   const [open, setOpen] = useState(false);
   return (
     <>
+      {/* Sized to its words: in a column it would stretch into a bar. */}
       <Button
         type="button"
         variant="outline"
+        className="w-fit"
         onClick={() => {
           setOpen(true);
         }}
       >
+        <BellIcon aria-hidden="true" data-icon="inline-start" />
         Personal notifications…
       </Button>
       <Sheet open={open} onOpenChange={setOpen}>
