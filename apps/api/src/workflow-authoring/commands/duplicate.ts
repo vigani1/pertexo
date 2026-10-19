@@ -17,6 +17,7 @@ import {
   WORKFLOW_AUTHORING_OPERATION,
   type WorkflowAuthoringTelemetry,
 } from '../telemetry.js';
+import { parseRequestBody } from '../../platform/http/index.js';
 
 export type DuplicateWorkflowInput = WorkflowApplicationInput &
   Readonly<{
@@ -67,7 +68,8 @@ export class DuplicateWorkflowUseCase {
             ? { authorizedWorkspace: input.authorizedWorkspace }
             : {}),
         });
-        const { name, source } = workflowDuplicateRequestSchema.parse(
+        const { name, source } = parseRequestBody(
+          workflowDuplicateRequestSchema,
           input.request,
         );
         const representationTag =

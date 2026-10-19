@@ -36,6 +36,7 @@ import {
   RequestContextStore,
   setResponseHeader,
 } from './request-context.js';
+import { isRequestBodyError } from './request-body.js';
 import { firstRequestHeader } from './request-headers.js';
 import { normalizeWorkflowMetadataConflict } from './problems/workflow-metadata-conflict.js';
 import {
@@ -202,7 +203,9 @@ function fromApplicationError(error: ApplicationError): NormalizedProblem {
   const issues =
     error.code === 'workflow.invalid' || error.code === 'form.invalid'
       ? safeApplicationIssues(error.details?.issues)
-      : undefined;
+      : error.code === 'request.invalid' && isRequestBodyError(error.cause)
+        ? zodIssues(error.cause)
+        : undefined;
   const base = {
     code: error.code,
     status: entry.status,

@@ -9,6 +9,7 @@ import {
   type WorkspaceAuthorizationSource,
 } from '../../authorization/index.js';
 import type { WorkflowApplicationInput } from '../ports.js';
+import { parseRequestBody } from '../../platform/http/index.js';
 
 type ReadInput = WorkflowApplicationInput &
   Readonly<{ workflowId: string; signal?: AbortSignal }>;
@@ -33,7 +34,8 @@ export class WorkflowConcurrencyUseCase {
     input.signal?.throwIfAborted();
     await this.authorize(input, 'workflow:update');
     input.signal?.throwIfAborted();
-    const request = workflowConcurrencySettingsRequestSchema.parse(
+    const request = parseRequestBody(
+      workflowConcurrencySettingsRequestSchema,
       input.request,
     );
     return workflowConcurrencyCommandResponseSchema.parse(

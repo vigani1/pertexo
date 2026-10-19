@@ -21,6 +21,7 @@ import {
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 import {
   applicationError,
+  parseRequestBody,
   requestIdempotencyKey,
 } from '../../platform/http/index.js';
 import {
@@ -223,7 +224,7 @@ export class WorkflowAuthoringController {
     @Res({ passthrough: true }) response: WorkflowResponse,
   ) {
     const route = workflowParams(params);
-    const input = workflowDraftSaveRequestSchema.parse(body);
+    const input = parseRequestBody(workflowDraftSaveRequestSchema, body);
     const context = requestContext(request, route.workspaceId);
     const result = await this.saveDraft.execute({
       ...context,
@@ -391,7 +392,7 @@ export class WorkflowAuthoringController {
     @Res({ passthrough: true }) response: WorkflowResponse,
   ) {
     const route = workflowParams(params);
-    const input = workflowDuplicateRequestSchema.parse(body);
+    const input = parseRequestBody(workflowDuplicateRequestSchema, body);
     const representationTag =
       input.source.kind === 'draft'
         ? parseStrongIfMatch(requestHeaderValue(request.headers, 'if-match'))

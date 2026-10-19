@@ -22,6 +22,7 @@ import {
   type WorkspaceAuthorizationSource,
 } from '../../authorization/index.js';
 import type { WorkflowApplicationInput } from '../ports.js';
+import { parseRequestBody } from '../../platform/http/index.js';
 type Scope = WorkflowApplicationInput & {
   workflowId: string;
   signal?: AbortSignal;
@@ -65,7 +66,7 @@ export class WorkflowCollaborationUseCase {
     return workflowCommentCommandResultSchema.parse(
       await this.store.create({
         ...(await this.scope(input)),
-        ...workflowCommentCreateSchema.parse(input.request),
+        ...parseRequestBody(workflowCommentCreateSchema, input.request),
         idempotencyKey: input.idempotencyKey,
       }),
     );
@@ -75,7 +76,7 @@ export class WorkflowCollaborationUseCase {
       await this.store.reply({
         ...(await this.scope(input)),
         threadId: input.threadId,
-        ...workflowCommentBodySchema.parse(input.request),
+        ...parseRequestBody(workflowCommentBodySchema, input.request),
         idempotencyKey: input.idempotencyKey,
       }),
     );
@@ -86,7 +87,7 @@ export class WorkflowCollaborationUseCase {
         ...(await this.scope(input)),
         threadId: input.threadId,
         commentId: input.commentId,
-        ...workflowCommentEditSchema.parse(input.request),
+        ...parseRequestBody(workflowCommentEditSchema, input.request),
         idempotencyKey: input.idempotencyKey,
       }),
     );
@@ -97,7 +98,7 @@ export class WorkflowCollaborationUseCase {
         ...(await this.scope(input)),
         threadId: input.threadId,
         commentId: input.commentId,
-        ...workflowCommentDeleteSchema.parse(input.request),
+        ...parseRequestBody(workflowCommentDeleteSchema, input.request),
         idempotencyKey: input.idempotencyKey,
       }),
     );
@@ -107,7 +108,7 @@ export class WorkflowCollaborationUseCase {
       await this.store.setStatus({
         ...(await this.scope(input)),
         threadId: input.threadId,
-        ...workflowCommentStatusSchema.parse(input.request),
+        ...parseRequestBody(workflowCommentStatusSchema, input.request),
         idempotencyKey: input.idempotencyKey,
       }),
     );
@@ -125,7 +126,7 @@ export class WorkflowCollaborationUseCase {
       await this.store.heartbeat({
         ...(await this.scope(input)),
         tabId: input.tabId,
-        ...workflowPresenceHeartbeatSchema.parse(input.request),
+        ...parseRequestBody(workflowPresenceHeartbeatSchema, input.request),
       }),
     );
   }
