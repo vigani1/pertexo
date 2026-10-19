@@ -90,6 +90,49 @@ describe('workflow draft persistence', () => {
     ).rejects.toBeInstanceOf(WorkflowNotFoundError);
   });
 
+  it("keeps a step's fields in the order they were written", async () => {
+    const created = await authoring.createWorkflow({
+      actorId,
+      emptyGraph,
+      idempotencyKey: 'create-field-order',
+      name: 'Field order',
+      workspaceId,
+    });
+    const inputMappings = {
+      zeta: { kind: 'literal', value: 1 },
+      name: { kind: 'run_input', path: '$.name' },
+      alpha: { kind: 'literal', value: { second: 2, first: 1 } },
+    };
+    await saveCurrentDraft(authoring, {
+      actorId,
+      expectedRevision: 1,
+      graphJson: {
+        ...emptyGraph,
+        nodes: [
+          {
+            id: 'shape',
+            definition: { key: 'core.set', version: 1 },
+            position: { x: 0, y: 0 },
+            configVersion: 1,
+            config: {},
+            inputMappings,
+            connectionRefs: {},
+          },
+        ],
+      },
+      workflowId: created.workflowId,
+      workspaceId,
+    });
+    const draft = await authoring.getDraft(
+      workspaceId,
+      created.workflowId,
+      actorId,
+    );
+    expect(JSON.stringify(draft?.graphJson.nodes[0]?.inputMappings)).toBe(
+      JSON.stringify(inputMappings),
+    );
+  });
+
   it('atomically creates a workflow with exactly one revision-1 draft', async () => {
     let workflowId = '';
     const createInput = {

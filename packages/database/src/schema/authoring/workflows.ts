@@ -1,15 +1,16 @@
 import { users, workspaces } from '../foundation.js';
 import {
-  type PgTableExtraConfigValue,
   bigint,
   boolean,
   check,
   foreignKey,
   index,
   integer,
+  json,
   jsonb,
   smallint,
   timestamp,
+  type PgTableExtraConfigValue,
   unique,
   uuid,
   varchar,
@@ -140,7 +141,7 @@ export const workflowDrafts = appSchema.table(
     workflowId: uuid('workflow_id').primaryKey(),
     workspaceId: uuid('workspace_id').notNull(),
     revision: integer('revision').default(1).notNull(),
-    graphJson: jsonb('graph_json').notNull(),
+    graphJson: json('graph_json').notNull(),
     updatedBy: uuid('updated_by').notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
@@ -153,7 +154,7 @@ export const workflowDrafts = appSchema.table(
     ),
     check(
       'workflow_drafts_graph_object',
-      sql`(jsonb_typeof(graph_json) = 'object'::text)`,
+      sql`(json_typeof(graph_json) = 'object'::text)`,
     ),
     check('workflow_drafts_revision_positive', sql`(revision > 0)`),
     foreignKey({
@@ -179,9 +180,9 @@ export const workflowVersions = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     workflowId: uuid('workflow_id').notNull(),
     versionNumber: integer('version_number').notNull(),
-    graphJson: jsonb('graph_json').notNull(),
+    graphJson: json('graph_json').notNull(),
     checksum: varchar('checksum', { length: 74 }).notNull(),
-    executableJson: jsonb('executable_json').notNull(),
+    executableJson: json('executable_json').notNull(),
     publishedBy: uuid('published_by').notNull(),
     publishedAt: timestamp('published_at', {
       withTimezone: true,
@@ -197,7 +198,7 @@ export const workflowVersions = appSchema.table(
     ),
     check(
       'workflow_versions_executable_object',
-      sql`((jsonb_typeof(executable_json) = 'object'::text) AND (octet_length((executable_json)::text) <= 1048576))`,
+      sql`((json_typeof(executable_json) = 'object'::text) AND (octet_length((executable_json)::text) <= 1048576))`,
     ),
     check(
       'workflow_versions_graph_bounded',
@@ -205,7 +206,7 @@ export const workflowVersions = appSchema.table(
     ),
     check(
       'workflow_versions_graph_object',
-      sql`(jsonb_typeof(graph_json) = 'object'::text)`,
+      sql`(json_typeof(graph_json) = 'object'::text)`,
     ),
     check('workflow_versions_number_positive', sql`(version_number > 0)`),
     unique('workflow_versions_checksum_unique').on(

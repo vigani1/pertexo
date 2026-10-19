@@ -23,6 +23,7 @@ function normalize(
   path: string,
   ancestors: Set<object>,
   depth: number,
+  sortKeys: boolean,
 ): JsonValue {
   if (depth > CANONICAL_JSON_MAX_DEPTH)
     throw new InvalidJsonValueError(path, 'JSON depth exceeds canonical limit');
@@ -69,6 +70,7 @@ function normalize(
             `${path}[${String(index)}]`,
             ancestors,
             depth + 1,
+            sortKeys,
           ),
         );
       }
@@ -83,7 +85,8 @@ function normalize(
       string,
       JsonValue
     >;
-    for (const key of Object.keys(value).sort()) {
+    const keys = Object.keys(value);
+    for (const key of sortKeys ? keys.sort() : keys) {
       const descriptor = Object.getOwnPropertyDescriptor(value, key);
       if (!descriptor || !('value' in descriptor))
         throw new InvalidJsonValueError(
@@ -95,6 +98,7 @@ function normalize(
         `${path}.${key}`,
         ancestors,
         depth + 1,
+        sortKeys,
       );
     }
     return result;
@@ -103,8 +107,14 @@ function normalize(
   }
 }
 
+/** Validated JSON with sorted keys, for comparing and hashing. */
 export function canonicalizeJson(value: unknown): JsonValue {
-  return normalize(value, '$', new Set(), 0);
+  return normalize(value, '$', new Set(), 0, true);
+}
+
+/** Validated JSON that keeps its key order, for data people read. */
+export function normalizeJson(value: unknown): JsonValue {
+  return normalize(value, '$', new Set(), 0, false);
 }
 // Normalized objects have no prototype; normalized arrays still inherit toJSON.
 // Serialize containers ourselves so neither checksum nor byte inspection runs it.
@@ -123,6 +133,11 @@ function serializeNormalizedJson(value: JsonValue): string {
 
 export function canonicalJson(value: unknown): string {
   return serializeNormalizedJson(canonicalizeJson(value));
+}
+
+/** normalizeJson's text, with keys in the order they were written. */
+export function normalizedJson(value: unknown): string {
+  return serializeNormalizedJson(normalizeJson(value));
 }
 
 export function inspectJsonValue(value: unknown): JsonInspection {

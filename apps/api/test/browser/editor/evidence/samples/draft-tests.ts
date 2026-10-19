@@ -45,7 +45,7 @@ export async function verifyDraftTestEvidence(database: Pool) {
     code_diagnostics: unknown;
     dispatch_marked_at: Date | null;
   }>(
-    `select node.workflow_run_id,node.output_ref,attempt.code_diagnostics,attempt.dispatch_marked_at from app.node_runs node join app.node_attempts attempt on attempt.node_run_id=node.id join app.workflow_test_snapshots snapshot on snapshot.id=node.workflow_run_id join lateral jsonb_array_elements(snapshot.graph_json->'nodes') step on step->>'id'=node.node_id where node.workflow_run_id=any($1::uuid[]) and step#>>'{definition,key}'='core.code' order by node.created_at,node.id`,
+    `select node.workflow_run_id,node.output_ref,attempt.code_diagnostics,attempt.dispatch_marked_at from app.node_runs node join app.node_attempts attempt on attempt.node_run_id=node.id join app.workflow_test_snapshots snapshot on snapshot.id=node.workflow_run_id join lateral json_array_elements(snapshot.graph_json->'nodes') step on step->>'id'=node.node_id where node.workflow_run_id=any($1::uuid[]) and step#>>'{definition,key}'='core.code' order by node.created_at,node.id`,
     [testIds],
   );
   expect(code.rows).toHaveLength(3);
@@ -66,7 +66,7 @@ export async function verifyDraftTestEvidence(database: Pool) {
     dispatch_marked_at: null,
   });
   const waits = await database.query(
-    `select node.resume_at from app.node_runs node join app.workflow_test_snapshots snapshot on snapshot.id=node.workflow_run_id join lateral jsonb_array_elements(snapshot.graph_json->'nodes') step on step->>'id'=node.node_id where node.workflow_run_id=any($1::uuid[]) and step#>>'{definition,key}'='core.wait'`,
+    `select node.resume_at from app.node_runs node join app.workflow_test_snapshots snapshot on snapshot.id=node.workflow_run_id join lateral json_array_elements(snapshot.graph_json->'nodes') step on step->>'id'=node.node_id where node.workflow_run_id=any($1::uuid[]) and step#>>'{definition,key}'='core.wait'`,
     [testIds],
   );
   expect(waits.rows).toEqual([

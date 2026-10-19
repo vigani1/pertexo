@@ -8,7 +8,7 @@ import {
   JsonataEvaluator,
   resolveEventCoordinationKey,
 } from '@pertexo/workflow-model/server';
-import { serializeStoredExecutionJsonValue } from '../../platform/stored-execution-value.js';
+import { serializeWrittenJsonValue } from '../../platform/stored-execution-value.js';
 import {
   EventCoordinationUnavailableError,
   type PreparedEventCoordination,
@@ -24,7 +24,7 @@ export function createEventCoordinationPreparation() {
       signal?: AbortSignal,
     ): Promise<PreparedEventCoordination | undefined> {
       if (policy === undefined) return undefined;
-      const inputJson = serializeStoredExecutionJsonValue(input);
+      const inputJson = serializeWrittenJsonValue(input);
       const key = await resolveEventCoordinationKey(
         policy,
         JSON.parse(inputJson) as JsonValue,

@@ -1,7 +1,7 @@
 /** Follow only declared graph structure; configuration and mapping values are data. */
 export function workflowGraphStepSql(graph: string, nodeId: string): string {
   return `with recursive graph_nodes(value) as (
-    select value from jsonb_array_elements(${graph}->'nodes') entry(value)
+    select value from jsonb_array_elements((${graph})::jsonb->'nodes') entry(value)
     union all
     select child.value from graph_nodes parent
       cross join lateral jsonb_array_elements(parent.value#>'{structured,body,nodes}') child(value)

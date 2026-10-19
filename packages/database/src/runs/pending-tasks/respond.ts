@@ -93,7 +93,7 @@ export async function respondToTask(
           submittedAt: now.toISOString(),
         });
   const changed = await client.query(
-    `update app.pending_run_tasks set status=$3,output_ref=$4::jsonb,decided_by=$5,completed_at=$6 where workspace_id=$1 and id=$2 and status='pending' and expires_at>clock_timestamp()`,
+    `update app.pending_run_tasks set status=$3,output_ref=$4::json,decided_by=$5,completed_at=$6 where workspace_id=$1 and id=$2 and status='pending' and expires_at>clock_timestamp()`,
     [
       input.workspaceId,
       input.taskId,

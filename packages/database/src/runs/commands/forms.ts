@@ -20,7 +20,7 @@ export async function requireFormAdmission(
 ): Promise<void> {
   if (!['manual', 'api', 'replay'].includes(input.triggerType)) return;
   const definitions = await transaction.db.execute<{ definition: unknown }>(
-    sql`select node->'definition' definition from app.workflow_versions version cross join lateral jsonb_array_elements(version.graph_json->'nodes') node where version.workspace_id=${transaction.workspaceId} and version.workflow_id=${input.workflowId} and version.id=${input.workflowVersionId}`,
+    sql`select node->'definition' definition from app.workflow_versions version cross join lateral json_array_elements(version.graph_json->'nodes') node where version.workspace_id=${transaction.workspaceId} and version.workflow_id=${input.workflowId} and version.id=${input.workflowVersionId}`,
   );
   const entries = z
     .array(z.object({ key: z.string(), version: z.number().int() }).strict())

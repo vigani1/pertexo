@@ -155,9 +155,9 @@ describe('preview worker attempt lifecycle', () => {
       completed_at: Date | null;
     }>(
       `select run.status,run.output_ref,run.safe_error_code,run.completed_at,
-              jsonb_typeof(run.output_ref) as output_type,
+              json_typeof(run.output_ref) as output_type,
               attempt.output_ref as attempt_output_ref,
-              jsonb_typeof(attempt.output_ref) as attempt_output_type
+              json_typeof(attempt.output_ref) as attempt_output_type
        from app.preview_runs run
        join app.preview_attempts attempt
          on attempt.workspace_id=run.workspace_id

@@ -265,8 +265,8 @@ async function persistVersion(
       `insert into app.workflow_versions (
          id,workspace_id,workflow_id,version_number,graph_json,
          checksum,executable_json,published_by)
-       select $1,$2,$3,coalesce(max(version_number),0)+1,$4::jsonb,$5,
-         $6::jsonb,$7 from app.workflow_versions
+       select $1,$2,$3,coalesce(max(version_number),0)+1,$4::json,$5,
+         $6::json,$7 from app.workflow_versions
        where workspace_id=$2 and workflow_id=$3
        returning ${workflowVersionRowSelection}`,
       [
