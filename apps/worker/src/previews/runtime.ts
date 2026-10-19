@@ -11,7 +11,13 @@ import { isWorkflowCallDefinition } from '@pertexo/workflow-model';
 import { JsonataEvaluator } from '@pertexo/workflow-model/server';
 import type { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import { unrecoverableQueueError } from '@pertexo/queue';
-import { NodeExecutorFailure, NodeCodeFailure } from '@pertexo/node-sdk/server';
+import {
+  describeNodeRefusal,
+  NodeCodeFailure,
+  NodeConfigValidationError,
+  NodeExecutorFailure,
+  NodeInputValidationError,
+} from '@pertexo/node-sdk/server';
 import { z } from 'zod';
 
 import type {
@@ -41,9 +47,13 @@ export function createPlatformPreviewNodeInvoker(
     registry: ReturnType<typeof createPlatformNodeRegistry>;
   }>,
 ): PreviewNodeInvoker {
-  const failedWith = (safeErrorCode: string): PreviewInvocationOutcome =>
+  const failedWith = (
+    safeErrorCode: string,
+    errorSummary?: string,
+  ): PreviewInvocationOutcome =>
     Object.freeze({
       safeErrorCode,
+      ...(errorSummary === undefined ? {} : { errorSummary }),
       status: 'failed',
     });
   const unknownWith = (): PreviewInvocationOutcome =>
@@ -123,6 +133,17 @@ export function createPlatformPreviewNodeInvoker(
         )
           return failedWith(`execution.table_${error.code}`);
         if (error instanceof NodeCodeFailure) return failedWith(error.code);
+        // The step refused its input or setup and said why.
+        if (error instanceof NodeInputValidationError)
+          return failedWith(
+            'preview.input_invalid',
+            describeNodeRefusal(error),
+          );
+        if (error instanceof NodeConfigValidationError)
+          return failedWith(
+            'preview.config_invalid',
+            describeNodeRefusal(error),
+          );
         if (error instanceof z.ZodError)
           return failedWith('preview.executable_invalid');
         if (
