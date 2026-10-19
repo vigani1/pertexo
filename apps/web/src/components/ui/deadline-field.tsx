@@ -16,6 +16,7 @@ import {
   localDateOf,
   normalizeClock,
   splitDateTime,
+  typedDate,
 } from './date-time-parts';
 import { Field, FieldControl, FieldDescription, FieldError } from './field';
 import { Input } from './input';
@@ -132,7 +133,7 @@ export function DeadlineField({
             disabled={disabled}
             value={date}
             onChange={(event) => {
-              changePart(event.currentTarget.value, time);
+              changePart(typedDate(event.currentTarget.value), time);
             }}
           />
           <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>

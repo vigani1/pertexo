@@ -21,7 +21,8 @@ export function DecisionForm({
   const disabled = command.pending || command.uncertain || !task.canRespond;
   return (
     <div className="flex flex-col gap-4">
-      {!task.canRespond ? (
+      {/* A recorded decision already says how the task ended. */}
+      {!task.canRespond && task.output === null ? (
         <Notice>{blockedSentence(task.blockedReason)}</Notice>
       ) : null}
       {task.status === 'pending' ? (

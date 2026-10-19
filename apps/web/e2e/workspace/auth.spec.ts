@@ -528,9 +528,23 @@ test('keeps the mobile workspace bar and More sheet bounded and keyboard accessi
   await expect(drawer).toBeHidden();
   await expect(trigger).toBeFocused();
 
+  // With a phone keyboard up, the bar steps out of the way of the page.
+  // By CSS, not role: a hidden bar leaves the accessibility tree.
+  const barBox = page
+    .locator('nav[aria-label="Workspace"]')
+    .filter({ hasText: 'More' });
+  await page.getByRole('button', { name: 'Search', exact: true }).click();
+  await expect(
+    page.getByRole('combobox', { name: 'Search pages, workflows and actions' }),
+  ).toBeFocused();
+  await expect(barBox).toHaveCSS('visibility', 'hidden');
+  await page.keyboard.press('Escape');
+  await expect(barBox).toHaveCSS('visibility', 'visible');
+
+  // A link that stays in the workspace closes More too.
   await trigger.press('Enter');
-  await drawer.getByRole('link', { name: 'All workspaces' }).click();
-  await expect(page).toHaveURL(/\/workspaces$/u);
+  await drawer.getByRole('link', { name: 'Account & security' }).click();
+  await expect(page).toHaveURL(new RegExp(`/w/${workspaceId}/account$`, 'u'));
   await expect(drawer).toBeHidden();
 });
 

@@ -239,7 +239,16 @@ function ConfigNumberField(props: LiveFieldProps) {
             id={id}
             name={`config.${field.key}`}
             autoComplete="off"
-            inputMode="decimal"
+            // The digit pad has no minus or "." key on every phone, so only
+            // whole counts from 0 in their own unit get it.
+            inputMode={
+              field.kind === 'integer' &&
+              field.unit === undefined &&
+              field.minimum !== undefined &&
+              field.minimum >= 0
+                ? 'numeric'
+                : undefined
+            }
             className={cn(
               'font-mono',
               unit === undefined

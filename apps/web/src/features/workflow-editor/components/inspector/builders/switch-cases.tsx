@@ -248,7 +248,6 @@ function CaseValue({
         form={form}
         scratchKey={scratchKey}
         mono
-        inputMode="decimal"
         onCommit={onCommit}
       />
     );

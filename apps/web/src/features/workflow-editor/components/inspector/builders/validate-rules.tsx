@@ -247,7 +247,7 @@ function RuleCard({
               form={form}
               scratchKey={`rules.${rule.id}.${key}`}
               mono
-              inputMode="decimal"
+              inputMode={type === 'number' ? undefined : 'numeric'}
               placeholder="No limit"
               onCommit={(value) => {
                 setOptional(key, value);
