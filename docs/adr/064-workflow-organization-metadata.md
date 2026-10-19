@@ -112,3 +112,13 @@ marker; visible admitted rows must belong to a different top-level transaction.
 parent admission never promises atomic completion. Release-owner global allocation
 and exact integration-base audit reserve additive migration 0135 exclusively for
 this follow-on; the qualified 0134 migration and inventory remain immutable.
+
+## Search amendment — 2026-10-19
+
+Workflow name search folds ASCII letters (`lower()` under `COLLATE "C"`), as
+tag keys already do, and otherwise stays literal. `%`, `_` and `\` are matched
+as typed, non-ASCII letters are not folded, and U+0020 trimming and the UTF-8
+bound are unchanged. "refund" now finds "Refund". This follows n8n, Zapier and
+Make, which all ignore case, and the run list's name filter, which already
+folded it. The owner approved the change with the
+[step capability upgrades](../feature-plans/step-capability-upgrades.md).
