@@ -81,6 +81,8 @@ for (const width of [1280, 375])
     );
     await page.goto(`/w/${workspaceId}/settings/variables`);
     const row = page.getByRole('region', { name: 'RATE', exact: true });
+    const edit = row.getByRole('button', { name: 'Edit RATE', exact: true });
+    await edit.click();
     await expect(
       row.getByLabel('Description (optional)', { exact: true }),
     ).toHaveValue('Rate applied to invoices.');
@@ -104,6 +106,9 @@ for (const width of [1280, 375])
       values: { RATE: 20 },
       descriptions: { RATE: 'Rate for new invoices.' },
     });
+    // A saved row closes back to its summary.
+    await expect(row.getByLabel('Value', { exact: true })).toHaveCount(0);
+    await edit.click();
     await row.getByLabel('Value', { exact: true }).fill('40');
     await page
       .getByRole('button', { name: 'Save variables', exact: true })
