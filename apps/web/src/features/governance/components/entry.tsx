@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';
 import { formatDateTime } from '@/lib/format/time';
 import { DETAIL_LABELS, describeAuditEvent } from '../model/ledger';
+import { Disclosure } from '@/components/ui/disclosure';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 
@@ -117,10 +118,11 @@ export function AuditEntry({
       action={
         <div className="mt-1 flex flex-wrap items-start gap-x-3 gap-y-1">
           <TargetLink workspaceId={workspaceId} event={event} />
-          <details className="group text-xs text-muted-foreground">
-            <summary className="cursor-pointer rounded-sm py-0.5 outline-none focus-ring hover:text-foreground">
-              Details
-            </summary>
+          <Disclosure
+            summary="Details"
+            size="xs"
+            className="text-xs text-muted-foreground"
+          >
             <dl className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5">
               <dt>When</dt>
               <dd className="font-mono text-[0.72rem]">
@@ -168,7 +170,7 @@ export function AuditEntry({
                 </Button>
               )}
             </div>
-          </details>
+          </Disclosure>
         </div>
       }
     />

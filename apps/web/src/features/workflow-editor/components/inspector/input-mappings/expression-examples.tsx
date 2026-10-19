@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { expressionExamples } from '../../../model/inspector/transforms/examples';
+import { Disclosure } from '@/components/ui/disclosure';
 
 export function ExpressionExamples({
   disabled,
@@ -9,10 +10,7 @@ export function ExpressionExamples({
   onChoose: (expression: string) => void;
 }>) {
   return (
-    <details className="text-xs">
-      <summary className="cursor-pointer rounded-sm py-2 text-muted-foreground outline-offset-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring">
-        Expression examples
-      </summary>
+    <Disclosure summary="Expression examples" size="xs" className="text-xs">
       <p className="mb-3 text-muted-foreground">
         Choosing an example replaces this expression. Review the{' '}
         <code translate="no">runInput</code> path for your data, then use Test
@@ -53,6 +51,6 @@ export function ExpressionExamples({
           </li>
         ))}
       </ul>
-    </details>
+    </Disclosure>
   );
 }

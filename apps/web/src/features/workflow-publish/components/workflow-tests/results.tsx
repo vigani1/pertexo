@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Disclosure } from '@/components/ui/disclosure';
 import { Status } from '@/components/ui/status';
 import { JsonTree } from '@/components/patterns/code/json-tree';
 import { describeNodeStatus } from '@/features/workflow-runs/run-labels.public';
@@ -81,52 +82,48 @@ export function WorkflowTestResults({
     </>
   );
 }
-function TestOutput({
-  tests,
-  runId,
-  nodeRunId,
-  status,
-}: Readonly<{
+function TestOutput(props: Readonly<TestOutputProps>) {
+  return (
+    <Disclosure summary="View output" lazy>
+      <TestOutputValue {...props} />
+    </Disclosure>
+  );
+}
+type TestOutputProps = {
   tests: WorkflowTests;
   runId: string;
   nodeRunId: string;
   status: string;
-}>) {
-  const [open, setOpen] = useState(false);
-  const output = useQuery({
-    ...nodeRunOutputQueryOptions(
+};
+/** Read only once the fold opens: an output can be large. */
+function TestOutputValue({
+  tests,
+  runId,
+  nodeRunId,
+  status,
+}: Readonly<TestOutputProps>) {
+  const output = useQuery(
+    nodeRunOutputQueryOptions(
       tests.scope.apiClient,
       tests.scope.userId,
       tests.scope.workspaceId,
       runId,
       { nodeRunId, status },
     ),
-    enabled: open,
-  });
+  );
+  if (output.isError) return <p role="alert">Output couldn’t be loaded.</p>;
+  if (output.data?.kind === 'inline')
+    return (
+      <JsonTree
+        value={output.data.value}
+        label="Test step output"
+        className="max-h-56"
+      />
+    );
+  if (output.isPending) return <p>Loading output…</p>;
   return (
-    <details
-      onToggle={(event) => {
-        setOpen(event.currentTarget.open);
-      }}
-    >
-      <summary className="cursor-pointer text-sm text-muted-foreground">
-        View output
-      </summary>
-      {output.isError ? (
-        <p role="alert">Output couldn’t be loaded.</p>
-      ) : output.data?.kind === 'inline' ? (
-        <JsonTree
-          value={output.data.value}
-          label="Test step output"
-          className="max-h-56"
-        />
-      ) : output.isPending ? (
-        <p>Loading output…</p>
-      ) : (
-        <p className="text-sm text-muted-foreground">
-          This output is stored as a file or is no longer available.
-        </p>
-      )}
-    </details>
+    <p className="text-sm text-muted-foreground">
+      This output is stored as a file or is no longer available.
+    </p>
   );
 }
