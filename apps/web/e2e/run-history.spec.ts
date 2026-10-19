@@ -753,26 +753,26 @@ for (const width of [1280, 375])
     );
     await page.goto(`/w/${workspaceId}/runs/${firstRunId}`);
     const steps = page.getByRole('navigation', { name: 'Step history pages' });
-    await expect(steps).toHaveText(/2501–2501 of 2501/u);
+    await expect(steps).toHaveText(/2,501–2,501 of 2,501/u);
     await expect(page.getByRole('button', { name: /^item/u })).toHaveCount(1);
     await steps.getByRole('button', { name: 'Previous' }).click();
-    await expect(steps).toHaveText(/2451–2500 of 2501/u);
+    await expect(steps).toHaveText(/2,451–2,500 of 2,501/u);
     await expect(page.getByRole('button', { name: /^item/u })).toHaveCount(50);
     const calls = page.getByRole('navigation', {
       name: 'Called workflow pages',
     });
-    await expect(calls).toHaveText(/1–50 of 2499/u);
+    await expect(calls).toHaveText(/1–50 of 2,499/u);
     await expect(
       page.getByRole('link', { name: 'Open child run' }),
     ).toHaveCount(50);
     await calls.getByRole('button', { name: 'Next' }).click();
     await expect(page.getByText('Call 51', { exact: true })).toBeVisible();
-    await expect(calls).toHaveText(/51–100 of 2499/u);
+    await expect(calls).toHaveText(/51–100 of 2,499/u);
     await page.getByRole('tab', { name: 'Input & output' }).click();
     const results = page.getByRole('navigation', { name: 'Step result pages' });
-    await expect(results).toHaveText(/2501–2501 of 2501/u);
+    await expect(results).toHaveText(/2,501–2,501 of 2,501/u);
     await results.getByRole('button', { name: 'Previous' }).click();
-    await expect(results).toHaveText(/2451–2500 of 2501/u);
+    await expect(results).toHaveText(/2,451–2,500 of 2,501/u);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth,
