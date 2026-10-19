@@ -28,13 +28,25 @@ export type SchemaFieldSpec = Readonly<{
   format?: 'json-path';
 }>;
 
-/** How many settings a catalog JSON Schema declares at its top level. */
+/**
+ * How many settings a catalog JSON Schema declares, including each shape a
+ * step's setup can take (Date and Read file choose an operation or format).
+ */
 export function schemaPropertyCount(schema: unknown): number {
   if (typeof schema !== 'object' || schema === null) return 0;
   const properties: unknown = Reflect.get(schema, 'properties');
-  return typeof properties === 'object' && properties !== null
-    ? Object.keys(properties).length
-    : 0;
+  const own =
+    typeof properties === 'object' && properties !== null
+      ? Object.keys(properties).length
+      : 0;
+  const shapes = ['oneOf', 'anyOf'].flatMap((key) => {
+    const value: unknown = Reflect.get(schema, key);
+    return Array.isArray(value) ? (value as unknown[]) : [];
+  });
+  return shapes.reduce<number>(
+    (count, shape) => count + schemaPropertyCount(shape),
+    own,
+  );
 }
 
 /** A typed value ready for the graph, or a sentence saying what's wrong. */

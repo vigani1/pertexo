@@ -7,6 +7,7 @@ import {
 import {
   parseNumberField,
   schemaFields,
+  schemaPropertyCount,
 } from '@/features/workflow-editor/model/inspector/draft';
 
 describe('step setup fields', () => {
@@ -117,4 +118,21 @@ describe('step setup fields', () => {
       error: 'Size must be at least 1 B.',
     });
   });
+});
+
+it('counts the settings of a setup that takes one of several shapes', () => {
+  expect(schemaPropertyCount({ type: 'object', properties: { a: {} } })).toBe(
+    1,
+  );
+  // Date chooses an operation; each choice brings its own settings.
+  expect(
+    schemaPropertyCount({
+      oneOf: [
+        { type: 'object', properties: { operation: {} } },
+        { type: 'object', properties: { operation: {}, timeZone: {} } },
+      ],
+    }),
+  ).toBe(3);
+  expect(schemaPropertyCount({ type: 'object' })).toBe(0);
+  expect(schemaPropertyCount(null)).toBe(0);
 });
