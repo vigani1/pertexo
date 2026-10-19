@@ -10,13 +10,13 @@ import {
   VALIDATE_BOUNDS,
   VALIDATE_MAX_RULES,
   VALIDATE_TYPES,
-  validatePathProblem,
   withRuleType,
   withValidateRules,
   type ValidateRule,
   type ValidateType,
   moved,
 } from '../../../model/inspector/setup-builders';
+import { parseItemPath } from '../../../model/inspector/item-path';
 import {
   fieldControlId,
   type NodeFormApi,
@@ -183,15 +183,10 @@ function RuleCard({
       <LiveTextField<string>
         id={`${baseId}-path`}
         label="Path"
-        hint="Where the value sits in the input, like $.email or $.items[0].id."
+        hint="The field to check, like email or items[0].id."
         value={rule.path}
         format={(value) => value}
-        parse={(text) => {
-          const problem = validatePathProblem(text);
-          return problem === undefined
-            ? { ok: true, value: text }
-            : { ok: false, error: problem };
-        }}
+        parse={parseItemPath}
         form={form}
         scratchKey={`rules.${rule.id}.path`}
         mono
