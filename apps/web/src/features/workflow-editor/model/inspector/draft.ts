@@ -24,6 +24,8 @@ export type SchemaFieldSpec = Readonly<{
   maximum?: number;
   /** A number stored in this unit, which the field shows in people's terms. */
   unit?: FieldUnit;
+  /** Text stored as an item path, typed as a field name. */
+  format?: 'json-path';
 }>;
 
 /** A typed value ready for the graph, or a sentence saying what's wrong. */
@@ -61,6 +63,7 @@ export function schemaFields(schema: unknown): readonly SchemaFieldSpec[] {
     const optionValue = Reflect.get(candidate, 'enum');
     const minimum = Reflect.get(candidate, 'minimum');
     const maximum = Reflect.get(candidate, 'maximum');
+    const format = Reflect.get(candidate, 'format');
     const unit =
       type === 'string' || type === 'boolean' ? undefined : fieldUnit(key);
     const options =
@@ -80,6 +83,9 @@ export function schemaFields(schema: unknown): readonly SchemaFieldSpec[] {
         ...(typeof minimum === 'number' ? { minimum } : {}),
         ...(typeof maximum === 'number' ? { maximum } : {}),
         ...(unit === undefined ? {} : { unit }),
+        ...(type === 'string' && format === 'json-path'
+          ? { format: 'json-path' as const }
+          : {}),
       } satisfies SchemaFieldSpec,
     ];
   });

@@ -67,6 +67,7 @@ import {
   WebhookIngressRateLimitExceededError,
   WebhookTriggerIdempotencyConflictError,
   WebhookTriggerNotFoundError,
+  WebhookTriggerStateError,
   WebhookWorkflowPausedError,
 } from './errors.js';
 import {
@@ -179,6 +180,7 @@ export interface WebhookTriggerDatabase extends WebhookDeliveryLog {
 }
 
 export {
+  WebhookTriggerStateError,
   WebhookDeliveryIneligibleError,
   WebhookDeliveryReplayMismatchError,
   WebhookIngressRateLimitExceededError,
@@ -433,13 +435,23 @@ export function createWebhookTriggerDatabase(
         const operation = 'webhook.trigger.provision';
         if (await claimWebhookCommand(client, input, operation))
           return oneHealth(client, input.workspaceId, input.triggerId);
-        const trigger = await client.query<{ workflow_id: string }>(
-          `select workflow_id from app.workflow_triggers where workspace_id=$1 and id=$2
-             and kind='webhook' and status='configuration_required' for update`,
+        const trigger = await client.query<{
+          workflow_id: string;
+          status: string;
+        }>(
+          `select workflow_id,status from app.workflow_triggers where workspace_id=$1 and id=$2
+             and kind='webhook' for update`,
           [input.workspaceId, uuidSchema.parse(input.triggerId)],
         );
-        if (trigger.rows[0] === undefined)
-          throw new WebhookTriggerNotFoundError();
+        const row = trigger.rows[0];
+        if (row === undefined) throw new WebhookTriggerNotFoundError();
+        const status = row.status;
+        if (status === 'desired' || status === 'pending')
+          throw new WebhookTriggerStateError('setting_up');
+        if (status === 'active' || status === 'degraded')
+          throw new WebhookTriggerStateError('provisioned');
+        if (status !== 'configuration_required')
+          throw new WebhookTriggerStateError('unavailable');
         const secret = await insertSecret(client, input, input.secret);
         await client.query(
           `insert into app.webhook_trigger_endpoints
@@ -462,7 +474,7 @@ export function createWebhookTriggerDatabase(
         await refreshWorkflowActivation(
           client,
           input.workspaceId,
-          trigger.rows[0].workflow_id,
+          row.workflow_id,
         );
         await completeWebhookCommand(client, input, operation);
         return oneHealth(client, input.workspaceId, input.triggerId);

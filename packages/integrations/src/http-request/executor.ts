@@ -419,7 +419,12 @@ async function executeHttpRequest(
       sideEffect,
       false,
     );
-    if (decision.kind !== 'succeeded')
+    // Like n8n's "Never error": the service answered, and the person asked
+    // to branch on its answer rather than fail.
+    if (
+      decision.kind !== 'succeeded' &&
+      !(config.returnErrorResponses === true && response.status >= 300)
+    )
       throw new HttpRequestExecutorError(decision, !repeatable);
     return httpRequestOutputSchema.parse({
       status: response.status,

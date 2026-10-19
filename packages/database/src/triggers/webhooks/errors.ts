@@ -1,6 +1,15 @@
 export class WebhookTriggerNotFoundError extends Error {
   public override readonly name = 'WebhookTriggerNotFoundError';
 }
+/** The trigger exists but can't take an endpoint in its current state. */
+export class WebhookTriggerStateError extends Error {
+  public override readonly name = 'WebhookTriggerStateError';
+  public constructor(
+    public readonly reason: 'setting_up' | 'provisioned' | 'unavailable',
+  ) {
+    super(`webhook.trigger_${reason}`);
+  }
+}
 export class WebhookTriggerIdempotencyConflictError extends Error {
   public override readonly name = 'WebhookTriggerIdempotencyConflictError';
 }

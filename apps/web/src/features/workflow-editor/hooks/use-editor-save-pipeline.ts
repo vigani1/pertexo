@@ -53,6 +53,10 @@ export function useEditorSavePipeline({
       isUncertain: (error) =>
         isApiError(error) &&
         ['network', 'protocol', 'timeout'].includes(error.kind),
+      retryAfterMs: (error) =>
+        isApiError(error) && error.status === 429
+          ? (error.retryAfterMs ?? RATE_LIMITED_WAIT_MS)
+          : undefined,
       message: editorSaveErrorMessage,
     }),
     [apiClient, verifyOwner, workflowId, workspaceId],
@@ -87,6 +91,9 @@ export function useEditorSavePipeline({
 
   return { flushSave, ensureSaved } as const;
 }
+
+/** When a 429 carries no Retry-After, the wait before saving again. */
+const RATE_LIMITED_WAIT_MS = 5_000;
 
 function editorSaveErrorMessage(error: unknown): string {
   if (!isApiError(error)) return 'Your changes couldn’t be saved.';

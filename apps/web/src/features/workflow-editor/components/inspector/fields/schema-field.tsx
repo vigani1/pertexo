@@ -22,6 +22,7 @@ import {
   type NodeConfig,
   type SchemaFieldSpec,
 } from '../../../model/inspector/draft';
+import { parseItemPath } from '../../../model/inspector/item-path';
 import { useInspectorDraftField } from '../use-draft-field';
 import { ChoiceSelect } from './choice-select';
 import {
@@ -138,32 +139,47 @@ function useConfigText(
 
 function ConfigTextField(props: LiveFieldProps) {
   const { field, id, form } = props;
+  const path = field.format === 'json-path';
   const live = useConfigText(
     props,
     (current) =>
       typeof current === 'string' || typeof current === 'number'
         ? String(current)
         : '',
-    (text) => ({
-      ok: true,
-      value: text === '' && !field.required ? undefined : text,
-    }),
+    (text): FieldParseResult<ConfigValue> => {
+      if (!path)
+        return {
+          ok: true,
+          value: text === '' && !field.required ? undefined : text,
+        };
+      if (text.trim() === '' && !field.required)
+        return { ok: true, value: undefined };
+      return parseItemPath(text);
+    },
   );
+  const errorId = `${id}-error`;
   return (
-    <Field>
+    <Field data-invalid={live.error !== undefined}>
       <FieldLabel htmlFor={id}>{field.label}</FieldLabel>
       <Input
         id={id}
         name={`config.${field.key}`}
         autoComplete="off"
+        className={cn(path && 'font-mono')}
         value={live.text}
         disabled={!form.editable}
+        aria-invalid={live.error !== undefined}
+        aria-describedby={live.error === undefined ? undefined : errorId}
         onChange={(event) => {
           live.change(event.currentTarget.value);
         }}
+        onBlur={live.blur}
       />
       {field.description === undefined ? null : (
         <FieldDescription>{field.description}</FieldDescription>
+      )}
+      {live.error === undefined ? null : (
+        <FieldError id={errorId}>{live.error}</FieldError>
       )}
     </Field>
   );
