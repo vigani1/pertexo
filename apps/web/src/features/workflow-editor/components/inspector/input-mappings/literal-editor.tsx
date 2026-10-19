@@ -54,7 +54,6 @@ export function LiteralEditor({
             {...control}
             name={`inputMapping.${row.id}.value`}
             autoComplete="off"
-            inputMode={mode === 'number' ? 'decimal' : undefined}
             className={mode === 'number' ? 'font-mono' : undefined}
             value={literalText(mode, parsed, row.literalJson)}
             disabled={disabled}
