@@ -125,6 +125,7 @@ export function executionStore(
     markDispatched: vi
       .fn<NodeAttemptRunStore['markDispatched']>()
       .mockResolvedValue({ dispatchedAt: new Date() }),
+    readAttemptOutputs: vi.fn().mockResolvedValue([]),
     readLoopDeclaration: vi.fn(),
     ...overrides,
   };
