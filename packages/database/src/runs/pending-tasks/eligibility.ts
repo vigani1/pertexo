@@ -1,10 +1,14 @@
-/** Captured role-or-member selection is shared by tasks and prospective authoring checks. */
+/**
+ * Captured role-or-member selection is shared by tasks and prospective
+ * authoring checks. A missing audience selects nobody: comparing against it
+ * yields null, which would otherwise let "not in the audience" pass.
+ */
 export function taskAudienceSelectionSql(
   audienceExpression: string,
   actorExpression: string,
   roleExpression: string,
 ): string {
-  return `(((${audienceExpression})->'roles') ? (${roleExpression})::text OR ((${audienceExpression})->'memberIds') ? (${actorExpression})::text)`;
+  return `coalesce(((${audienceExpression})->'roles') ? (${roleExpression})::text OR ((${audienceExpression})->'memberIds') ? (${actorExpression})::text, false)`;
 }
 function starterExcludedSql(actorExpression: string): string {
   return `task.kind='approval' and task.config->'allowStarterToDecide' is distinct from 'true'::jsonb and run.started_by is not distinct from (${actorExpression})::uuid`;

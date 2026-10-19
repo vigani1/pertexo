@@ -276,6 +276,24 @@ it('allows the starter only by captured opt-in and still enforces the audience',
     }),
   ).rejects.toMatchObject({ reason: 'audience' });
 });
+it('refuses everyone when a task has no captured audience', async () => {
+  const f = await taskFixture();
+  // Tasks opened before their setup was captured with defaults can lack one;
+  // a missing audience must not read as "everyone".
+  await admin.query(
+    `update app.pending_run_tasks set config=config-'audience' where id=$1`,
+    [f.taskId],
+  );
+  const command = {
+    ...f.scope,
+    decision: 'approved' as const,
+    idempotencyKey: 'no-audience',
+  };
+  expect((await store.read(command)).blockedReason).toBe('audience');
+  await expect(store.decide(command)).rejects.toMatchObject({
+    reason: 'audience',
+  });
+});
 it('keeps the decision name through profile edits and command replay; reads legacy outputs', async () => {
   const f = await taskFixture();
   const command = {
