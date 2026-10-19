@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM node:24.18.1-bookworm-slim@sha256:235600a8101ab264e117b1768e925532262668dc9b581ef1dd7d96ced463b8e7 AS build
+FROM node:24.22.0-bookworm-slim@sha256:a5f4366e834695d5f363b920c104953a535d3a9864d1bdf74566a0ebe01daee5 AS build
 WORKDIR /workspace
 RUN corepack enable && corepack prepare pnpm@11.22.0 --activate
 COPY . .
@@ -20,7 +20,7 @@ COPY --from=build --chown=101:101 /workspace/apps/web/dist /usr/share/nginx/html
 COPY --chown=101:101 apps/web/deployment/nginx.conf.template /etc/nginx/templates/default.conf.template
 EXPOSE 8080
 
-FROM node:24.18.1-bookworm-slim@sha256:235600a8101ab264e117b1768e925532262668dc9b581ef1dd7d96ced463b8e7 AS production-dependencies
+FROM node:24.22.0-bookworm-slim@sha256:a5f4366e834695d5f363b920c104953a535d3a9864d1bdf74566a0ebe01daee5 AS production-dependencies
 WORKDIR /workspace
 RUN corepack enable && corepack prepare pnpm@11.22.0 --activate
 COPY . .
@@ -35,7 +35,7 @@ ADD --checksum=sha256:8498d2c0bd6747dfc2fc6eec62774a86967079555f7043d5a7b78ee4ef
 ADD --checksum=sha256:d7d1943aec9597629bf73075efcc5ef6dc9bda96d78e80d843156ecd448478b8 https://deb.debian.org/debian-security/pool/updates/main/p/perl/perl-base_5.36.0-7+deb12u4_amd64.deb /perl-amd64.deb
 ADD --checksum=sha256:03d979b849a1a0a8955eee28b988dbc25a407fd3a0581df5c94e6ae7bcc01ddf https://deb.debian.org/debian-security/pool/updates/main/p/perl/perl-base_5.36.0-7+deb12u4_arm64.deb /perl-arm64.deb
 
-FROM node:24.18.1-bookworm-slim@sha256:235600a8101ab264e117b1768e925532262668dc9b581ef1dd7d96ced463b8e7 AS runtime
+FROM node:24.22.0-bookworm-slim@sha256:a5f4366e834695d5f363b920c104953a535d3a9864d1bdf74566a0ebe01daee5 AS runtime
 ARG SOURCE_COMMIT=unknown
 LABEL org.opencontainers.image.source="https://github.com/vigani1/pertexo" \
   org.opencontainers.image.revision=$SOURCE_COMMIT
