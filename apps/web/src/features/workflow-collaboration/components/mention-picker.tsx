@@ -11,19 +11,26 @@ export function MentionPicker({
   selected,
   onChange,
   disabled,
+  typed,
+  onPicked,
 }: {
   scope: CollaborationScope;
   selected: readonly MentionPerson[];
   onChange: (people: MentionPerson[]) => void;
   disabled: boolean;
+  /** The name typed after "@" in the comment, which opens the list. */
+  typed?: string | undefined;
+  onPicked?: ((person: MentionPerson) => void) | undefined;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const deferred = useDeferredValue(search);
+  const inline = typed !== undefined;
+  const shown = open || inline;
+  const deferred = useDeferredValue(inline ? typed : search);
   const id = useId();
   const people = useInfiniteQuery({
     ...peopleQuery(scope, deferred),
-    enabled: open,
+    enabled: shown,
   });
   return (
     <div className="space-y-2">
@@ -59,20 +66,24 @@ export function MentionPicker({
           </Button>
         ))}
       </div>
-      {open ? (
+      {shown ? (
         <div id={id} className="space-y-2 rounded-md border border-border p-3">
-          <label className="block text-sm" htmlFor={id + '-search'}>
-            Find a member
-          </label>
-          <Input
-            id={id + '-search'}
-            maxLength={100}
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-            }}
-            disabled={disabled}
-          />
+          {inline ? null : (
+            <>
+              <label className="block text-sm" htmlFor={id + '-search'}>
+                Find a member
+              </label>
+              <Input
+                id={id + '-search'}
+                maxLength={100}
+                value={search}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                }}
+                disabled={disabled}
+              />
+            </>
+          )}
           {people.isError ? (
             <p role="alert" className="text-sm">
               Members could not be loaded. Try again.
@@ -96,13 +107,12 @@ export function MentionPicker({
                       selected.some((item) => item.userId === person.userId)
                     }
                     onClick={() => {
-                      onChange([
-                        ...selected,
-                        {
-                          userId: person.userId,
-                          displayName: person.displayName,
-                        },
-                      ]);
+                      const picked = {
+                        userId: person.userId,
+                        displayName: person.displayName,
+                      };
+                      onChange([...selected, picked]);
+                      onPicked?.(picked);
                       setOpen(false);
                     }}
                   >
