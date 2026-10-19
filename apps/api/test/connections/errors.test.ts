@@ -34,22 +34,22 @@ describe('connection error mapping', () => {
       'The idempotency key was already used for another request.',
     ],
     [
-      'connection state conflict',
+      'connection name taken',
       new ConnectionConflictError(),
       'connection.conflict',
-      'The connection conflicts with current state.',
+      'A connection with this name already exists for this service. Choose another name.',
     ],
     [
       'secret version conflict',
       new ConnectionSecretVersionConflictError(),
       'connection.conflict',
-      'The connection conflicts with current state.',
+      'The connection’s secret changed since you opened it. Reload, then try again.',
     ],
     [
       'test already in progress',
       new ConnectionTestInProgressError(),
       'connection.conflict',
-      'The connection conflicts with current state.',
+      'A test of this connection is already running. Wait for it to finish.',
     ],
     [
       'revoked connection',
