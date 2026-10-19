@@ -15,6 +15,7 @@ export function WorkflowImportSourceFields({
   userId,
   template,
   manifest,
+  optionalSlots,
   setupValues,
   name,
   fileGeneration,
@@ -32,6 +33,7 @@ export function WorkflowImportSourceFields({
   userId: string;
   template: CuratedTemplate | undefined;
   manifest: WorkflowPortableManifest | undefined;
+  optionalSlots: ReadonlySet<string>;
   setupValues: readonly string[];
   name: string;
   fileGeneration: number;
@@ -57,6 +59,7 @@ export function WorkflowImportSourceFields({
           locked={locked}
           reading={reading}
           manifest={manifest}
+          optionalSlots={optionalSlots}
           onChoose={onChooseFile}
         />
       ) : (

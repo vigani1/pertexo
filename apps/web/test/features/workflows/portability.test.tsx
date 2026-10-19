@@ -18,6 +18,8 @@ import { WorkflowImportDialog } from '@/features/workflows/components/portabilit
 import { createApiClient } from '@/lib/api/client';
 import { ApiError } from '@/lib/api/error';
 import {
+  connectionSlotKey,
+  optionalConnectionSlots,
   readPortableWorkflowFile,
   downloadPortableWorkflow,
 } from '@/features/workflows/model/portability';
@@ -608,7 +610,7 @@ describe('Portable workflow review and import', () => {
     ]);
     await expect(
       readPortableWorkflowFile(new File([bytes], 'malformed.json')),
-    ).rejects.toThrow('This is not a valid portable workflow file');
+    ).rejects.toThrow('This file isn’t valid JSON.');
   });
 
   it('rejects local oversized bytes, duplicate keys and excessive raw nesting before schema admission', async () => {
@@ -621,6 +623,79 @@ describe('Portable workflow review and import', () => {
         readPortableWorkflowFile(new File([content], 'workflow.json')),
       ).rejects.toThrow();
     }
+  });
+
+  it('says why a file can’t be imported, naming the tool it came from', async () => {
+    const reason = (content: string) =>
+      readPortableWorkflowFile(new File([content], 'workflow.json')).then(
+        () => 'imported',
+        (error: unknown) => (error instanceof Error ? error.message : ''),
+      );
+    expect(await reason('{"format": "pertexo.workflow", "graph": {')).toBe(
+      'This file isn’t valid JSON. Choose a workflow file exported from Pertexo.',
+    );
+    expect(
+      await reason(
+        JSON.stringify({ name: 'Flow', nodes: [], connections: {} }),
+      ),
+    ).toMatch(/^This looks like an n8n workflow\./u);
+    expect(await reason(JSON.stringify({ flow: [], metadata: {} }))).toMatch(
+      /^This looks like a Make scenario\./u,
+    );
+    expect(await reason(JSON.stringify({ hello: 'world' }))).toBe(
+      'This isn’t a Pertexo workflow file. Choose one made with Export… on a workflow.',
+    );
+    expect(
+      await reason(JSON.stringify({ format: 'pertexo.workflow', graph: 1 })),
+    ).toMatch(/^This Pertexo workflow file is damaged/u);
+    expect(await reason(' '.repeat(2_097_153))).toBe(
+      'This file is larger than 2 MB, the most a workflow file can be.',
+    );
+  });
+
+  it('asks only for the connections a file’s steps need', () => {
+    const portable = workflowPortableManifestSchema.parse({
+      format: 'pertexo.workflow',
+      graph: {
+        nodes: [
+          {
+            id: 'call',
+            definition: { key: 'http.request', version: 1 },
+            configVersion: 1,
+            config: {},
+            inputMappings: {},
+            connectionRefs: {},
+            position: { x: 0, y: 0 },
+          },
+        ],
+        edges: [],
+        settings: {},
+      },
+      requirements: {
+        definitions: [{ key: 'http.request', version: 1, configVersion: 1 }],
+      },
+      connectionSlots: [
+        {
+          nodeId: 'call',
+          slot: 'http_headers',
+          providerKey: 'http',
+          authType: 'http_headers',
+        },
+      ],
+    });
+    expect([
+      ...optionalConnectionSlots(portable, [
+        {
+          definition: { key: 'http.request', version: 1 },
+          optionalConnections: ['http_headers'],
+        },
+      ]),
+    ]).toEqual([connectionSlotKey('call', 'http_headers')]);
+    expect(
+      optionalConnectionSlots(portable, [
+        { definition: { key: 'http.request', version: 1 } },
+      ]).size,
+    ).toBe(0);
   });
 
   it('keeps downloads compact so pretty-print expansion cannot make a valid file unimportable', async () => {
