@@ -404,6 +404,62 @@ describe('Better Auth Fastify bridge', () => {
     ]);
   });
 
+  it.each(['verify-totp', 'verify-backup-code'])(
+    'keeps %s token-free and in the distributed sign-in rate limit',
+    async (path) => {
+      const application = Fastify();
+      applications.push(application);
+      const handler = vi.fn(() =>
+        Promise.resolve(
+          Response.json(
+            { token: 'private-token', user: { id: 'user' } },
+            {
+              headers: {
+                'set-cookie':
+                  'pertexo_session=signed-session; HttpOnly; Path=/',
+              },
+            },
+          ),
+        ),
+      );
+      const consume = vi
+        .fn()
+        .mockResolvedValueOnce({ allowed: true })
+        .mockResolvedValue({
+          allowed: false,
+          limitedDimension: 'client_address',
+          retryAfterSeconds: 5,
+        });
+      registerBetterAuthHandler(application, {
+        handler,
+        publicOrigin: 'https://pertexo.test',
+        rateLimitConsumer: { consume },
+        sessionCookie: { secure: true, sameSite: 'lax', maxAgeSeconds: 3600 },
+      });
+      const request = {
+        method: 'POST' as const,
+        url: `/v1/auth/two-factor/${path}`,
+        headers: { origin: 'https://pertexo.test' },
+        payload: { code: '123456' },
+      };
+      const accepted = await application.inject(request);
+      expect(accepted.json()).toEqual({ user: { id: 'user' } });
+      expect(accepted.headers['set-cookie']).toEqual(
+        expect.arrayContaining([
+          expect.stringMatching(/^pertexo_session=/u),
+          expect.stringMatching(/^pertexo_csrf=/u),
+        ]),
+      );
+      const refused = await application.inject(request);
+      expect(refused.statusCode).toBe(429);
+      expect(consume.mock.calls[1]?.[0]).toMatchObject({
+        endpointClass: 'identity_start',
+        failureMode: 'closed',
+      });
+      expect(handler).toHaveBeenCalledTimes(1);
+    },
+  );
+
   it('applies distributed admission to native writes and callbacks before dispatch', async () => {
     const application = Fastify();
     applications.push(application);

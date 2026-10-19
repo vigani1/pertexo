@@ -81,8 +81,7 @@ in. This matches [n8n's two-factor sign-in](https://docs.n8n.io/user-management/
    all old ones, needs a fresh session and the password, and shows the new
    set once. The section shows how many unused codes remain, and warns when
    two or fewer are left.
-8. **Turning it off** needs the password. Other sessions stay signed in, the
-   same as a password change today.
+8. **Turning it off** needs the password. Other sessions stay signed in.
 9. **A password reset doesn't remove two-factor.** The next sign-in still asks
    for a code.
 10. **Lost device and lost recovery codes.** Operators get one privileged
@@ -95,7 +94,7 @@ in. This matches [n8n's two-factor sign-in](https://docs.n8n.io/user-management/
     contains codes.
 12. **Read model.** `accountSecurityResponseSchema` gains
     `twoFactor: { enabled: boolean; recoveryCodesRemaining: number | null }`.
-    It is `null` when off.
+    `recoveryCodesRemaining` is `null` when off.
 13. **Fresh-session rules** stay as they are. A session created after the code
     step is fresh like any new session, so `signInEvidence` keeps working.
 
@@ -104,7 +103,9 @@ in. This matches [n8n's two-factor sign-in](https://docs.n8n.io/user-management/
 - Migration:
   - `users.two_factor_enabled boolean not null default false`
   - table `app.auth_two_factors`: id, `user_id` unique with a foreign key to
-    users on delete cascade, `secret`, `backup_codes`, `verified`, timestamps
+    users on delete cascade, `secret`, `backup_codes`, `verified`, timestamps,
+    `failed_verification_count integer not null default 0`, nullable
+    `locked_until timestamptz`
 
   Map the names through the plugin's `schema` option, like the other auth
   tables (snake_case, `auth_` prefix). Copy the grants and row-security
@@ -148,12 +149,12 @@ visible behavior until slice 2 adds the controls.
 
 - [ ] A person turns two-factor on with a real authenticator app, signs out,
       and can't sign in without a code.
-- [ ] A recovery code works once and is then refused; the remaining count
+- [x] A recovery code works once and is then refused; the remaining count
       drops.
-- [ ] Wrong codes are rate-limited like wrong passwords.
-- [ ] Turning off and getting new codes both need the password and a fresh
+- [x] Wrong codes are rate-limited like wrong passwords.
+- [x] Turning off and getting new codes both need the password and a fresh
       session.
-- [ ] SSO and social sign-in never ask for a code.
+- [x] SSO and social sign-in never ask for a code.
 - [ ] The secret and codes never appear in logs, URLs or error messages.
 - [ ] The phone layout works, and the code field opens the numeric keyboard
       on iPhone.
@@ -172,25 +173,24 @@ visible behavior until slice 2 adds the controls.
 
 | Slice | Status | PR |
 | --- | --- | --- |
-| 1 Backend | Blocked: plugin schema mismatch; owner review needed | — |
+| 1 Backend | Implemented; awaiting PR review | [#422](https://github.com/vigani1/pertexo/pull/422) |
 | 2 Web | Approved | — |
 | 3 Support and safety | Approved | — |
 
-### Backend prerequisite found on 2026-10-19
+### Backend alignment (owner-approved 2026-10-19)
 
-Implementation inspection against main `faef86f13` found that the pinned Better
-Auth 1.7.7 plugin's `dist/plugins/two-factor/schema.mjs` also defines
-`failedVerificationCount` and `lockedUntil`. The Data section above omits both.
-The plugin's `verify-two-factor.mjs` reads and writes these fields for its
-built-in account lockout, enabled by default: ten consecutive failed code
-verifications lock the account for fifteen minutes. Leaving these columns out
-does not implement the plugin's current storage contract.
+The pinned Better Auth 1.7.7 plugin also requires `failedVerificationCount`
+and `lockedUntil` for its built-in account lockout. Include the columns above,
+map their names, and retain its defaults: ten consecutive failed verifications
+lock the account for fifteen minutes. Test lockout and reset on successful
+verification. No separate lockout mechanism is added.
 
-Recommended adjustment, pending owner review: add
-`failed_verification_count integer not null default 0` and nullable
-`locked_until timestamptz` to `app.auth_two_factors`, map their plugin field
-names, and retain the plugin's default lockout behavior. Cover locking and
-successful-verification counter reset in the backend integration tests. This
-uses the existing plugin, table and migration; it adds no separate lockout
-implementation. No authentication code or migration has been changed. Resume
-slice 1 only after the plan's Data section and this prerequisite are resolved.
+The Fastify bridge already puts all native POST routes in the distributed
+`identity_start` class, including both code-verification routes; preserve that
+owner and prove it in tests. Strip session tokens from their JSON responses,
+just as for password sign-in. Reject `trustDevice: true` at the server boundary,
+since remembered devices are outside this feature. Native management routes
+reuse the authoritative session, double-submit CSRF and five-minute freshness
+rules. Keep the credential-session issuance policy check as well as the
+post-issuance check; a policy refusal at the code step is
+`AUTHENTICATION_CHANGED` in either case.

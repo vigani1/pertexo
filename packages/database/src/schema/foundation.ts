@@ -28,6 +28,7 @@ export const users = appSchema.table(
     email: varchar('email', { length: 320 }).notNull(),
     displayName: varchar('display_name', { length: 256 }).notNull(),
     emailVerified: boolean('email_verified').default(false).notNull(),
+    twoFactorEnabled: boolean('two_factor_enabled').default(false).notNull(),
     image: text('image'),
     status: varchar('status', { length: 32 })
       .notNull()

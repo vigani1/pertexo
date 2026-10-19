@@ -59,6 +59,7 @@ import { runErrorWorkflowIntents } from './schema/runs/completion/error-workflow
 import { apiTokens } from './schema/identity/api-tokens.js';
 import {
   authAccounts,
+  authTwoFactors,
   authSessions,
   authVerifications,
   userProfileCommandReceipts,
@@ -315,6 +316,7 @@ export const databaseSchema = {
   workspaceArtifactCapacity,
   auditEvents,
   authAccounts,
+  authTwoFactors,
   authSessions,
   authVerifications,
   connectionEvents,

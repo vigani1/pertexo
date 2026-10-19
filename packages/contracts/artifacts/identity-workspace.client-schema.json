@@ -2621,6 +2621,31 @@
             ]
           }
         },
+        "twoFactor": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "recoveryCodesRemaining": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 10
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "enabled",
+            "recoveryCodesRemaining"
+          ],
+          "additionalProperties": false
+        },
         "methods": {
           "maxItems": 16,
           "type": "array",
@@ -2671,6 +2696,7 @@
         "email",
         "emailVerified",
         "availableProviders",
+        "twoFactor",
         "methods"
       ],
       "additionalProperties": false
