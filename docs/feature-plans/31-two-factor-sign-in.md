@@ -73,9 +73,14 @@ in. This matches [n8n's two-factor sign-in](https://docs.n8n.io/user-management/
    `AUTHENTICATION_CHANGED` refusal also apply when the session is created by
    the code step. Make sure the plugins' hooks run in the right order:
    two-factor creates the session, then the policy check sees it.
-6. **Rate limits.** Code verification counts against the existing sign-in
-   rate-limit class. Add the two verify routes to the same endpoint class as
-   `/sign-in/email`, so guessing codes is limited like guessing passwords.
+6. **Rate limits and lockout.** Code verification counts against the existing
+   sign-in rate-limit class. Add the two verify routes to the same endpoint
+   class as `/sign-in/email`, so guessing codes is limited like guessing
+   passwords. Keep the plugin's own account lockout at its defaults as well:
+   ten wrong codes in a row lock that person's code step for fifteen minutes,
+   whichever addresses the guesses come from, and a right code resets the
+   count. The rate limit slows one address; the lockout stops guessing spread
+   over many.
 7. **Recovery codes** are single use and stored the way the plugin stores
    them, encrypted with the auth secret. "Get new recovery codes" replaces
    all old ones, needs a fresh session and the password, and shows the new
@@ -104,7 +109,11 @@ in. This matches [n8n's two-factor sign-in](https://docs.n8n.io/user-management/
 - Migration:
   - `users.two_factor_enabled boolean not null default false`
   - table `app.auth_two_factors`: id, `user_id` unique with a foreign key to
-    users on delete cascade, `secret`, `backup_codes`, `verified`, timestamps
+    users on delete cascade, `secret`, `backup_codes`, `verified`,
+    `failed_verification_count integer not null default 0`, nullable
+    `locked_until timestamptz`, timestamps. The last two are the plugin's
+    `failedVerificationCount` and `lockedUntil`, which Better Auth 1.7.7 reads
+    and writes for its lockout (found in implementation review, #422).
 
   Map the names through the plugin's `schema` option, like the other auth
   tables (snake_case, `auth_` prefix). Copy the grants and row-security
@@ -130,10 +139,14 @@ in. This matches [n8n's two-factor sign-in](https://docs.n8n.io/user-management/
      - an organization policy change between the password and the code gives
        `AUTHENTICATION_CHANGED`
      - the rate limit applies to codes
+     - ten wrong codes lock the code step, a right code after the lock ends
+       works and resets the count
 2. **Web.**
    - the "Two-factor sign-in" section: turn on with QR, key text, first-code
      check and recovery codes; turn off; new recovery codes; remaining count
-   - the code step on the sign-in page, with the recovery-code alternative
+   - the code step on the sign-in page, with the recovery-code alternative,
+     and a plain message when the lockout is on ("Too many wrong codes. Try
+     again in 15 minutes.")
    - loading, error and phone states, keyboard use, and `inputmode="numeric"`
      with `autocomplete="one-time-code"` on the code field
    - mocked browser tests, plus a live journey that generates real TOTP codes
@@ -150,7 +163,8 @@ visible behavior until slice 2 adds the controls.
       and can't sign in without a code.
 - [ ] A recovery code works once and is then refused; the remaining count
       drops.
-- [ ] Wrong codes are rate-limited like wrong passwords.
+- [ ] Wrong codes are rate-limited like wrong passwords, and ten in a row
+      lock the code step for fifteen minutes.
 - [ ] Turning off and getting new codes both need the password and a fresh
       session.
 - [ ] SSO and social sign-in never ask for a code.
