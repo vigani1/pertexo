@@ -286,7 +286,7 @@ test('published member and public forms start real runs; captured member input c
         .click();
       await expect(
         responder
-          .getByText('Enter a valid value for this field.', { exact: true })
+          .getByText('This field is required.', { exact: true })
           .first(),
       ).toBeVisible();
       await responder

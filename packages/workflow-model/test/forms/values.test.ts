@@ -50,6 +50,33 @@ it.each([
     FormValuesInvalidError,
   );
 });
+it.each([
+  [{ name: undefined }, 'name', 'This field is required.'],
+  [{ amount: '12' }, 'amount', 'Enter a number.'],
+  [{ currency: 'GBP' }, 'currency', 'Choose an available option.'],
+  [{ date: '19/10/2026' }, 'date', 'Enter a date like 2026-10-19.'],
+  [{ name: ' ' }, 'name', 'Enter a value.'],
+  [{ name: 'x'.repeat(10001) }, 'name', 'Keep this to 10000 characters.'],
+] as const)(
+  'says what is wrong with each field (%j)',
+  (override, name, message) => {
+    let error: unknown;
+    try {
+      // As sent over HTTP: a missing field is absent.
+      parseFormValues(
+        fields,
+        JSON.parse(JSON.stringify({ ...values, ...override })),
+      );
+    } catch (caught) {
+      error = caught;
+    }
+    expect(error).toBeInstanceOf(FormValuesInvalidError);
+    expect((error as FormValuesInvalidError).fields).toContainEqual({
+      name,
+      message,
+    });
+  },
+);
 it('bounds text and the total normalized response', () => {
   expect(() =>
     parseFormValues(fields, { ...values, name: 'x'.repeat(10001) }),
@@ -67,7 +94,7 @@ it('bounds text and the total normalized response', () => {
       many,
       Object.fromEntries(many.map(({ name }) => [name, 'x'.repeat(4000)])),
     ),
-  ).toThrow(/form fields/u);
+  ).toThrow('Keep the form response within 64 KB.');
 });
 it('rejects duplicate and unsafe field names and options', () => {
   for (const name of [
@@ -242,7 +269,7 @@ it('retains the response budget with multiple choices and otherwise valid text',
         ]),
       ),
     }),
-  ).toThrow('Check the form fields');
+  ).toThrow('Keep the form response within 64 KB.');
 });
 
 it('enforces per-field selection bounds while allowing partial requested prefills', () => {

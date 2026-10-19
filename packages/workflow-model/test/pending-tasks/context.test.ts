@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest';
 import {
+  FormValuesInvalidError,
   formFieldsSchema,
   parseTaskPrefill,
   taskDetailsSchema,
@@ -50,7 +51,7 @@ it('validates partial typed prefills without requiring a complete response', () 
     { foreign: 1 },
   ])
     expect(() => parseTaskPrefill(fields, prefill)).toThrow(
-      'Check the form fields',
+      FormValuesInvalidError,
     );
 });
 
