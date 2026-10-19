@@ -14,7 +14,7 @@ import { workspaceVariableNameSchema } from '@pertexo/workflow-model';
 import { valuePreview, VARIABLE_TYPE_LABELS } from '../model/draft';
 import type { VariableRow as Row } from '../model/draft';
 const selectClass =
-  'recessed-control h-9 w-full rounded-md border px-3 text-sm outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring';
+  'recessed-control h-9 w-full rounded-md border px-3 text-base outline-offset-2 md:text-sm focus-visible:outline-2 focus-visible:outline-ring';
 
 type RowActions = Readonly<{
   onChange: (row: Row) => void;
