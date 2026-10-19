@@ -31,7 +31,7 @@ import { z } from 'zod';
 import {
   applicationError,
   isApplicationError,
-  isRequestBodyError,
+  requestBodyCause,
   throwApplicationError,
   type ApplicationError,
 } from '../platform/http/index.js';
@@ -245,11 +245,6 @@ export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
       ...requestBodyCause(error),
     });
   return applicationError('internal.unexpected', { cause: error });
-}
-
-/** A body's own issues go back to its caller; other parse failures stay private. */
-function requestBodyCause(error: unknown): Readonly<{ cause?: unknown }> {
-  return isRequestBodyError(error) ? { cause: error } : {};
 }
 
 /** Folders, tags, triggers and settings share these routes; only a graph is a graph. */
