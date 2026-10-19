@@ -1,16 +1,17 @@
 import {
-  type PgTableExtraConfigValue,
-  uuid,
-  varchar,
   char,
-  integer,
-  jsonb,
-  timestamp,
   check,
-  unique,
   foreignKey,
   index,
+  integer,
+  json,
+  jsonb,
+  timestamp,
+  type PgTableExtraConfigValue,
+  unique,
   uniqueIndex,
+  uuid,
+  varchar,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { appSchema } from '../namespace.js';
@@ -92,7 +93,7 @@ export const triggerCoordinatedEvents = appSchema.table(
     workflowVersionId: uuid('workflow_version_id'),
     endpointId: uuid('endpoint_id'),
     policy: jsonb('policy').$type<EventCoordinationPolicy>(),
-    inputRef: jsonb('input_ref'),
+    inputRef: json('input_ref'),
     inputBytes: integer('input_bytes').default(0).notNull(),
     dueAt: timestamp('due_at', { withTimezone: true, mode: 'date' }),
     deadlineAt: timestamp('deadline_at', { withTimezone: true, mode: 'date' }),

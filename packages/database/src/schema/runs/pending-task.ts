@@ -3,6 +3,7 @@ import {
   check,
   foreignKey,
   index,
+  json,
   jsonb,
   timestamp,
   unique,
@@ -28,7 +29,7 @@ export const pendingRunTasks = appSchema.table(
       .notNull()
       .default(sql`'{}'::jsonb`),
     status: varchar({ length: 16 }).notNull().default('pending'),
-    outputRef: jsonb('output_ref'),
+    outputRef: json('output_ref'),
     decidedBy: uuid('decided_by'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .notNull()

@@ -162,7 +162,7 @@ describe('whole-draft test admission', () => {
     });
     expect(rows[0]?.execution_entitlement_version).not.toBeNull();
     await execute(
-      "update app.workflow_drafts set graph_json=jsonb_set(graph_json,'{nodes,1,label}','\"Changed later\"'),revision=revision+1 where workflow_id=$1",
+      "update app.workflow_drafts set graph_json=jsonb_set(graph_json::jsonb,'{nodes,1,label}','\"Changed later\"')::json,revision=revision+1 where workflow_id=$1",
       [f.scope.workflowId],
     );
     expect(
