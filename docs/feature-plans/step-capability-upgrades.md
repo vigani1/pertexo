@@ -95,7 +95,7 @@ the way those products do.
   capital letters (with the ADR 064 amendment).
 - [ ] 2. HTTP request: JSON responses, optional connection, safe GET/HEAD,
   URL placeholders with query and headers, private-network allowlist.
-- [ ] 3. Failure links catch step errors (ADR 073 amendment).
+- [x] 3. Failure links catch step errors (ADR 073 amendment).
 - [ ] 4. Merge passes its branches' data.
 - [ ] 5. For each returns its results (ADR 020 amendment).
 - [x] 6. Webhook request details, form posts and GET.

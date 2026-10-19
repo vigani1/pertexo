@@ -1,13 +1,37 @@
 import { z } from 'zod';
 
-const routableKinds = [
-  'authentication',
-  'network',
-  'provider',
-  'rate_limit',
-  'timeout',
-] as const;
-export type RoutableFailureKind = (typeof routableKinds)[number];
+// The writer's fixed codes per kind: a provider failure (ADR 073), or the
+// step's own definite failure — its input or setup, a table refusal, a file it
+// can't read, or an error in its code (2026-10-19 amendment). Cancellation,
+// unknown outcomes, deadlines and platform limits never route.
+const routableCodes = {
+  authentication: ['execution.authentication'],
+  network: ['execution.network'],
+  provider: ['execution.provider'],
+  rate_limit: ['execution.rate_limit'],
+  timeout: ['execution.timeout', 'code.timeout'],
+  configuration: [
+    'execution.configuration',
+    'execution.attempt_invalid',
+    'execution.variable_missing',
+    'execution.file_input',
+    'execution.table_not_found',
+    'execution.table_invalid_values',
+    'execution.table_quota_exceeded',
+    'execution.table_conflict',
+    'execution.table_key_conflict',
+    'execution.table_result_too_large',
+    'execution.table_unsafe_filter',
+    'code.syntax_error',
+    'code.output_invalid',
+    'code.module_refused',
+  ],
+  internal: ['code.runtime_error', 'code.memory_limit'],
+} as const satisfies Record<string, readonly string[]>;
+const routableKinds = Object.keys(
+  routableCodes,
+) as (keyof typeof routableCodes)[];
+export type RoutableFailureKind = keyof typeof routableCodes;
 const pendingTaskFailureCodes = [
   'pending_task.expired',
   'pending_task.capacity_exceeded',
@@ -21,12 +45,22 @@ export function isRoutableExecutorFailure(
 }> {
   return routableKinds.some(
     (kind) =>
-      value.errorKind === kind && value.safeErrorCode === `execution.${kind}`,
+      value.errorKind === kind &&
+      (routableCodes[kind] as readonly string[]).includes(value.safeErrorCode),
   );
 }
 export const workflowFailureClassificationSchema = z
   .object({
-    errorKind: z.enum([...routableKinds, 'human_task']),
+    errorKind: z.enum([
+      'authentication',
+      'network',
+      'provider',
+      'rate_limit',
+      'timeout',
+      'configuration',
+      'internal',
+      'human_task',
+    ]),
     safeErrorCode: z.string(),
   })
   .strict()

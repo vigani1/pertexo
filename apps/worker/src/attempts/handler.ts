@@ -283,12 +283,18 @@ async function executePreparedNodeAttempt(
       error instanceof WorkflowEngineError &&
       (error.code === 'attempt_invalid' || error.code === 'variable_missing')
     ) {
+      // The step's input or setup can't work: a definite failure of the step
+      // itself, so the coordinator decides it like any other and its failure
+      // link can take it.
       const completed = await dependencies.runStore.complete({
         ...connectionHealthCompletionFields(environment),
         ...codeCompletionFields(environment),
         lease,
         outcome: {
-          status: 'failed',
+          status: 'executor_failure',
+          failureKind: 'failed',
+          errorKind: 'configuration',
+          possiblyDispatched: false,
           safeErrorCode: `execution.${error.code}`,
         },
         ...traceContext,

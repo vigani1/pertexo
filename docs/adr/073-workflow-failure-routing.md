@@ -140,3 +140,26 @@ The shared trigger tuple also owns browser recognition, including version checks
 `shape.ts` and `nodeUsesRunInputDirectly` use `isWorkflowTriggerDefinition`. The
 workflow-list label/icon map is presentation only, not another membership list.
 Matching run-summary readers must precede writers of unpublished-target refusals.
+
+## Step failures amendment — 2026-10-19
+
+A failure link also takes the step's own definite failures. Besides the five
+provider classifications, the routable codes are:
+
+- invalid input or setup (`execution.attempt_invalid`,
+  `execution.variable_missing`, `execution.configuration`);
+- a file the step can't read (`execution.file_input`);
+- a table refusal (`execution.table_*` for not found, invalid values, quota,
+  conflict, key conflict, result too large, unsafe filter);
+- an error in the step's code (`code.syntax_error`, `code.runtime_error`,
+  `code.timeout`, `code.memory_limit`, `code.output_invalid`,
+  `code.module_refused`).
+
+Each kind still matches only its writer's fixed codes. Cancellation, unknown
+outcomes, run deadlines, retries in backoff, `code.disabled`,
+`code.runner_unavailable` and table lease expiry stay unhandled. The worker
+records invalid input as an executor failure of kind `configuration`, so the
+coordinator decides it on the same path as every other step failure, and error
+workflows classify these failures too. The change follows n8n's error output and
+Zapier's error paths, which catch any step error, and was approved with the
+[step capability upgrades](../feature-plans/step-capability-upgrades.md).

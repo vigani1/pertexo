@@ -24,8 +24,32 @@ describe('safe selected failure fields', () => {
     },
   );
   it.each([
+    ['configuration', 'execution.attempt_invalid'],
+    ['configuration', 'execution.variable_missing'],
+    ['configuration', 'execution.table_key_conflict'],
+    ['configuration', 'execution.file_input'],
+    ['configuration', 'code.output_invalid'],
+    ['internal', 'code.runtime_error'],
+    ['timeout', 'code.timeout'],
+  ])('accepts the step’s own %s failure %s', (errorKind, safeErrorCode) => {
+    expect(
+      workflowNodeFailureValueSchema.parse({
+        ...value,
+        errorKind,
+        safeErrorCode,
+      }),
+    ).toMatchObject({ errorKind, safeErrorCode });
+  });
+  it.each([
     { ...value, message: 'provider secret' },
     { ...value, errorKind: 'internal', safeErrorCode: 'execution.internal' },
+    { ...value, errorKind: 'configuration', safeErrorCode: 'code.disabled' },
+    {
+      ...value,
+      errorKind: 'configuration',
+      safeErrorCode: 'execution.table_attempt_expired',
+    },
+    { ...value, errorKind: 'internal', safeErrorCode: 'code.output_invalid' },
     { ...value, safeErrorCode: 'provider.private_token' },
     { ...value, safeErrorCode: 'execution.network' },
     { ...value, attemptNumber: 0 },
