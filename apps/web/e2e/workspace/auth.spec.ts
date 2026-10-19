@@ -537,9 +537,9 @@ test('keeps the mobile workspace bar and More sheet bounded and keyboard accessi
   await expect(
     page.getByRole('combobox', { name: 'Search pages, workflows and actions' }),
   ).toBeFocused();
-  await expect(barBox).toHaveCSS('display', 'none');
+  await expect(barBox).toHaveCSS('visibility', 'hidden');
   await page.keyboard.press('Escape');
-  await expect(barBox).toHaveCSS('display', 'flex');
+  await expect(barBox).toHaveCSS('visibility', 'visible');
 
   // A link that stays in the workspace closes More too.
   await trigger.press('Enter');
