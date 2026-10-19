@@ -39,7 +39,10 @@ export function NoticeKindFilter({
         }
       }}
     >
-      <SelectTrigger aria-label="Show notices about" className="h-8 w-52">
+      <SelectTrigger
+        aria-label="Show notices about"
+        className="h-8 w-40 sm:w-52"
+      >
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
