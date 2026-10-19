@@ -16,8 +16,8 @@ portable workflows/templates and reusable subworkflows. File inputs are useful
 early, but only after a real consuming-node contract exists. Expand provider
 integrations after the core workflow product is comfortable to use.
 
-This roadmap contains **45 individually tracked items: one release/evidence gate
-and 44 feature or product-improvement items**. It is not a promise to build every
+This roadmap contains **50 individually tracked items: one release/evidence gate
+and 49 feature or product-improvement items**. It is not a promise to build every
 optional feature, a fixed quota, or an exhaustive catalogue of everything any
 competitor has ever offered. Later items are decision-gated options.
 
@@ -85,7 +85,7 @@ user-delivered because a table or executor exists.
 ## Competitor comparison: capability benchmarks, not a scorecard
 
 Official documentation was checked on 2026-09-28, for the F26–F30 rows on
-2026-09-29, and for the F31–F38 rows on 2026-10-19. “Not assessed” is not “absent”.
+2026-09-29, and for the F31–F38 and F45–F49 rows on 2026-10-19. “Not assessed” is not “absent”.
 No prices, connector counts, blanket parity percentages or unsupported
 performance/reliability rankings are asserted. Editions differ.
 
@@ -118,6 +118,11 @@ performance/reliability rankings are asserted. Editions differ.
 | Light and dark appearance | [n8n release notes](https://docs.n8n.io/changelog/release-notes) describe the editor in light and dark mode | Dark only; F36 |
 | Explain a workflow on its canvas | [n8n sticky notes](https://docs.n8n.io/build/understand-workflows/workflow-components/add-notes-and-documentation) | Comments exist (F19); notes on the canvas F37 |
 | Format and convert values without code | [Zapier Formatter](https://help.zapier.com/hc/en-us/articles/8496212590093-Get-started-with-Formatter) covers text, numbers, dates and utilities; [n8n XML](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.xml) converts XML | Transforms (F24) and the Code step (F20) cover part; utility steps F38 |
+| Work with large files | [n8n external storage](https://docs.n8n.io/deploy/host-n8n/configure-n8n/scaling/use-external-storage) keeps execution files on disk or S3 instead of in memory | Files and step values stop at 1 MiB (F04); bigger files F45 |
+| Resume when another system calls back | [n8n Wait](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait) can resume on a per-run webhook URL | Timed Wait and human approvals/input exist (F10, F11); callback resume F46 |
+| Find a run by its business data | [n8n custom executions data](https://docs.n8n.io/build/understand-workflows/understand-executions/customize-executions-data) saves values on a run and filters the list by them | Runs filter by workflow, status and time; F47 |
+| Give access to only some workflows or connections | [n8n projects](https://docs.n8n.io/user-management/rbac/projects/) and [credential sharing](https://docs.n8n.io/administer/manage-credentials/share-credentials-securely); [Zapier shared folders](https://help.zapier.com/hc/en-us/articles/8496277647629-Share-Zaps-and-folders-with-members-of-your-Team-or-Enterprise-account) | Access is per workspace; finer sharing F48 |
+| Keep workflows in Git | [n8n source control and environments](https://docs.n8n.io/administer/use-source-control-and-environments) | Versions and promotion exist (F17); Git sync F49 |
 
 The priority ordering below is a Pertexo product recommendation inferred from
 our existing investment, user preference and dependencies—not a claim from the
@@ -167,6 +172,9 @@ comparison with n8n, Zapier and Make. F31 two-factor sign-in comes before the
 hosted beta. F32 pagination, F33 retry settings and F35 webhook test events come
 before or alongside F21, because providers rely on them; F34 file output fits
 anywhere before it. F36–F38 follow when there is room. F39–F44 wait for demand.
+F45–F49 were added the same day: F45 bigger files also comes before or alongside
+F21, since provider files rarely fit in 1 MiB; F46–F48 follow when there is room;
+F49 waits for demand.
 
 Waves express priority, not a requirement to finish every optional row before
 moving on. The first complete core path is F00/F01 → F03 → F26/F12 → F02 →
@@ -205,7 +213,7 @@ only after its gate is resolved.
 | F01 | Complete and qualify the existing editor surface | Frontend-led parity, not a rebuild | M | PR verified/merged: bounded local gates closed; external qualification open |
 | [F02](feature-plans/02-workflow-test-workspace.md) | Saved test cases, pinned samples and workflow regression runs | New product over existing previews | L | ADR061 first slice released with F05 through PR145 on natural main `c8a59b09`; natural CI36949789113 and CodeQL36949789141 pass; historical combined database evidence retained; slice 2 shared bounded pins implemented (2026-10-16), with stale-setting fences, pinned preview history and no published-run overrides; whole-draft test execution and editor history implemented; slice 3 serial suites with up to 50 cases, bounded JSON-path expectations, private reports and advisory publish freshness implemented (2026-10-17) |
 | [F03](feature-plans/03-workspace-notifications.md) | Durable in-app notifications and live inbox | New frontend + backend product | L | Delivered: ADR055 database (PR118), worker (PR119), API (PR120) and web (PR123) slices merged; local acceptance recorded; producer on |
-| [F04](feature-plans/04-artifact-inputs-and-files.md) | File inputs, parsing and artifact lifecycle | Read JSON/CSV, raw and multipart HTTP, input-local uploads and retained references | L | Delivered (2026-10-15): first release #291–#294; default-on CSV/JSON Read file #296 and bounded multipart forms #297, both merged green. The closing guide PR records CI/merge and final natural-main/ARM evidence. Files stay bounded to 1 MiB with rough row limits and split-file advice; F09 restrictions unchanged. Next file improvement: bigger files via streaming or paging |
+| [F04](feature-plans/04-artifact-inputs-and-files.md) | File inputs, parsing and artifact lifecycle | Read JSON/CSV, raw and multipart HTTP, input-local uploads and retained references | L | Delivered (2026-10-15): first release #291–#294; default-on CSV/JSON Read file #296 and bounded multipart forms #297, both merged green. The closing guide PR records CI/merge and final natural-main/ARM evidence. Files stay bounded to 1 MiB with rough row limits and split-file advice; F09 restrictions unchanged. Next file improvement: bigger files, tracked as F45 |
 | F05 | Workflow duplicate, safe import and export | New cross-stack authoring slice | M–L | Duplicate released through PR142 on natural main `5f78e155`; ADR062 import/export released with F02 through PR145 on natural main `c8a59b09`; natural CI36949789113 and CodeQL36949789141 pass; historical qualification/repair evidence retained; production activation unauthorized |
 | F06 | Curated workflow templates and guided setup | Frontend-led over portable authoring | M | Released on main: turned on in the web app with F07 (`433edad9`, 2026-10-10); examples open from New workflow and Import. External qualification open |
 | F07 | Folders, tags, favorites and workspace discovery | Metadata backend + frontend | M | Released on main: folders, tags, favorites and bulk organize, turned on in the web app (`433edad9`, 2026-10-10) |
@@ -246,6 +254,11 @@ only after its gate is resolved.
 | F42 | Log streaming to external monitoring | Extends observability and audit | M–L | Proposed (later, by demand) |
 | F43 | Interface languages | Frontend localization | L | Proposed (later, by demand) |
 | F44 | Mobile apps | New client over the existing API | XL | Proposed (later, by demand) |
+| F45 | Bigger files and step data beyond 1 MiB, by streaming or paging | Extends F04 files and the artifact store | L–XL | Proposed |
+| F46 | Resume a waiting run when another system calls a per-run URL | Extends durable waits and webhook authentication | L | Proposed |
+| F47 | Save a few business values on a run and find runs by them | Extends run history | M–L | Proposed |
+| F48 | Finer sharing: access to chosen folders or workflows, and connections shared with chosen people | Extends roles, F07 folders and F18 governance | XL | Proposed |
+| F49 | Git sync for workflows | Extends versions and F17 promotion | XL | Proposed (later, by demand) |
 
 ## Shared implementation rules
 
