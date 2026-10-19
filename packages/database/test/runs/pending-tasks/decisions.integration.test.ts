@@ -276,6 +276,22 @@ it('allows the starter only by captured opt-in and still enforces the audience',
     }),
   ).rejects.toMatchObject({ reason: 'audience' });
 });
+it('says a canceled task closed with its run, not that someone resolved it', async () => {
+  const f = await taskFixture();
+  await admin.query(
+    `update app.pending_run_tasks set status='canceled',completed_at=clock_timestamp() where id=$1`,
+    [f.taskId],
+  );
+  const command = {
+    ...f.scope,
+    decision: 'approved' as const,
+    idempotencyKey: 'after-cancel',
+  };
+  expect((await store.read(command)).blockedReason).toBe('run_closed');
+  await expect(store.decide(command)).rejects.toMatchObject({
+    reason: 'run_closed',
+  });
+});
 it('refuses everyone when a task has no captured audience', async () => {
   const f = await taskFixture();
   // Tasks opened before their setup was captured with defaults can lack one;
