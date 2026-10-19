@@ -11,6 +11,7 @@ import { openWebhookResponse } from './responses/admission.js';
 export async function coordinateVerifiedWebhook(
   transaction: WorkspaceTransaction,
   input: AcceptVerifiedWebhookDeliveryInput,
+  runInput: unknown,
   prepared: PreparedEventCoordination,
   projection: PublishedWorkflow,
   deliveryId: string,
@@ -42,7 +43,7 @@ export async function coordinateVerifiedWebhook(
         triggerType: 'webhook',
         workflowId: verification.workflowId,
         workflowVersionId: verification.workflowVersionId,
-        runInput: input.payload,
+        runInput,
         ...(input.traceparent === undefined
           ? {}
           : { traceparent: input.traceparent }),

@@ -226,6 +226,7 @@
               "webhook.payload_too_large",
               "webhook.unsupported_media_type",
               "webhook.invalid_json",
+              "webhook.method_not_allowed",
               "webhook.idempotency_conflict",
               "webhook.rate_limited",
               "webhook.workflow_paused",
@@ -1884,7 +1885,10 @@
             "required": true,
             "schema": {
               "type": "string",
-              "const": "POST"
+              "enum": [
+                "GET",
+                "POST"
+              ]
             }
           },
           {
@@ -1910,6 +1914,282 @@
           }
         }
       },
+      "get": {
+        "operationId": "acceptWebhookGet",
+        "description": "Starts a run from the query string. Signed endpoints refuse GET with 405, because the signature covers the body.",
+        "parameters": [
+          {
+            "name": "endpointKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{43}$"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Immediate mode, timeout or wait overflow returns {runId,replayed}; an opt-in workflow may also choose status 202 with its configured JSON/text body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/WebhookIngressResponse"
+                    },
+                    {}
+                  ]
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request before admission, or the configured workflow response.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Webhook authentication failed, or the configured workflow response.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Signed endpoint, which accepts POST only.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict, or the configured workflow response.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Ingress rate limit, or the configured workflow response.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failure before a workflow response returns only {code:\"webhook.workflow_failed\"}; a workflow may instead choose its own status 500 JSON/text body.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable before acceptance, or the configured workflow response.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Opt-in Respond to webhook result (200–599), with JSON or plain text up to 1 MiB, no-store, nosniff and only the safe header allowlist. Work continues after responding.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "operationId": "acceptWebhook",
         "parameters": [
@@ -1925,11 +2205,12 @@
           {
             "name": "Content-Type",
             "in": "header",
-            "required": true,
+            "description": "Required when the request has a body.",
+            "required": false,
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "pattern": "^[aA][pP][pP][lL][iI][cC][aA][tT][iI][oO][nN]\\/[jJ][sS][oO][nN](?:\\s*;\\s*[cC][hH][aA][rR][sS][eE][tT]=[uU][tT][fF]-8)?$"
+              "pattern": "^(?:[aA][pP][pP][lL][iI][cC][aA][tT][iI][oO][nN]\\/(?:[A-Za-z0-9.-]+\\+)?[jJ][sS][oO][nN]|[aA][pP][pP][lL][iI][cC][aA][tT][iI][oO][nN]\\/[xX]-[wW][wW][wW]-[fF][oO][rR][mM]-[uU][rR][lL][eE][nN][cC][oO][dD][eE][dD]|[tT][eE][xX][tT]\\/[pP][lL][aA][iI][nN])(?:\\s*;\\s*[cC][hH][aA][rR][sS][eE][tT]=(?:[uU][tT][fF]-8|\"[uU][tT][fF]-8\"))?$"
             }
           },
           {
@@ -1954,10 +2235,23 @@
           }
         ],
         "requestBody": {
-          "required": true,
+          "required": false,
           "content": {
             "application/json": {
               "schema": {}
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
+            },
+            "text/plain": {
+              "schema": {
+                "type": "string"
+              }
             }
           }
         },

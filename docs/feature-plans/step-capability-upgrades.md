@@ -98,7 +98,7 @@ the way those products do.
 - [x] 3. Failure links catch step errors (ADR 073 amendment).
 - [x] 4. Merge passes its branches' data.
 - [ ] 5. For each returns its results (ADR 020 amendment).
-- [ ] 6. Webhook request details, form posts and GET.
+- [x] 6. Webhook request details, form posts and GET.
 - [ ] 7. Order-keeping storage for inputs, outputs and results (new ADR).
 
 Each step ships as its own PR with tests that fail without it, and is checked

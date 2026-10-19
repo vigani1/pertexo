@@ -1469,6 +1469,7 @@
               "webhook.payload_too_large",
               "webhook.unsupported_media_type",
               "webhook.invalid_json",
+              "webhook.method_not_allowed",
               "webhook.idempotency_conflict",
               "webhook.rate_limited",
               "webhook.workflow_paused",
