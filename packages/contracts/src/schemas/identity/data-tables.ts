@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import {
   DATA_TABLE_LIMITS,
-  dataTableNameSchema,
+  dataTableIdentifierSchema,
   dataTableColumnsSchema,
   dataTableNewColumnsSchema,
   dataTableNewColumnSchema,
@@ -12,9 +12,9 @@ import {
 } from '@pertexo/node-sdk';
 export const dataTableCreateSchema = z
   .object({
-    name: dataTableNameSchema,
+    name: dataTableIdentifierSchema,
     columns: dataTableNewColumnsSchema,
-    keyColumn: dataTableNameSchema.nullable().optional(),
+    keyColumn: dataTableIdentifierSchema.nullable().optional(),
   })
   .strict();
 export const dataTableDefinitionSchema = dataTableCreateSchema
@@ -22,7 +22,7 @@ export const dataTableDefinitionSchema = dataTableCreateSchema
     id: z.uuid(),
     columns: dataTableColumnsSchema,
     hasRemovedColumns: z.boolean(),
-    keyColumn: dataTableNameSchema.nullable(),
+    keyColumn: dataTableIdentifierSchema.nullable(),
     rowCount: z.number().int().nonnegative(),
     storedBytes: z.number().int().nonnegative(),
     revision: z.number().int().positive(),
@@ -105,21 +105,21 @@ export const dataTableSchemaChangeSchema = z.discriminatedUnion('operation', [
   z
     .object({
       operation: z.literal('rename_column'),
-      columnId: dataTableNameSchema,
-      name: dataTableNameSchema,
+      columnId: dataTableIdentifierSchema,
+      name: dataTableIdentifierSchema,
     })
     .strict(),
   z
     .object({
       operation: z.literal('remove_column'),
-      columnId: dataTableNameSchema,
+      columnId: dataTableIdentifierSchema,
       confirm: z.literal(true),
     })
     .strict(),
   z
     .object({
       operation: z.literal('set_key'),
-      columnId: dataTableNameSchema.nullable(),
+      columnId: dataTableIdentifierSchema.nullable(),
     })
     .strict(),
 ]);
