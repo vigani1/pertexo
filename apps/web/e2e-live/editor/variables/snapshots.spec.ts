@@ -207,12 +207,16 @@ test('real variables save once after a lost acknowledgement and retain old run v
     expect(snapshot.snapshot?.values).toEqual({ RATE: expected });
     await page.goto(`/w/${workspaceId}/runs/${runId}`);
     await page
-      .getByText('Workspace variables for this run', { exact: true })
+      .getByText('Workspace variables this run used', { exact: true })
       .click();
     await expect(
-      page.getByText(`Captured revision ${String(expected === 10 ? 1 : 2)}.`, {
-        exact: false,
-      }),
+      page.getByText(
+        `Captured at revision ${String(expected === 10 ? 1 : 2)} when the run started.`,
+        { exact: false },
+      ),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Copy RATE', exact: true }),
     ).toBeVisible();
     await page.screenshot({
       path: `/tmp/pertexo-variable-screenshots/run-${String(expected)}-${runId === source ? 'original' : 'next'}.png`,
