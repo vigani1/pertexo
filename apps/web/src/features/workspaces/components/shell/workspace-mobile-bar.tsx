@@ -77,11 +77,11 @@ export function WorkspaceMobileBar({
           through the gap below it. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none fixed inset-x-0 bottom-0 z-20 h-24 bg-linear-to-t from-background via-background/85 to-transparent md:hidden"
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-20 h-24 bg-linear-to-t from-background via-background/85 to-transparent typing:hidden md:hidden"
       />
       <nav
         aria-label="Workspace"
-        className="lens fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 flex items-center rounded-2xl px-2 py-1 md:hidden"
+        className="lens fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 flex items-center rounded-2xl px-2 py-1 typing:hidden md:hidden"
       >
         <Link
           to="/w/$workspaceId"
