@@ -39,7 +39,7 @@ export async function recordNodeAttemptInput(
       async (client) => {
         const result = await client.query(
           `update app.node_runs node
-           set input_ref=$11::jsonb,updated_at=clock_timestamp()
+           set input_ref=$11::json,updated_at=clock_timestamp()
            from app.node_attempts attempt,app.workflow_runs run
            where node.workspace_id=$1 and node.id=$3
              and node.current_attempt_id=$2

@@ -10,7 +10,7 @@ import { isRecord } from '../json/object.js';
 import { availableParallelism } from 'node:os';
 import type { Worker, WorkerOptions } from 'node:worker_threads';
 import jsonata from 'jsonata';
-import { canonicalizeJson, type JsonValue } from '../json/canonical.js';
+import { normalizeJson, type JsonValue } from '../json/canonical.js';
 
 export const EXPRESSION_POLICY = Object.freeze({
   expressionBytes: 16_384,
@@ -344,7 +344,7 @@ export function projectExpressionContext(
     if (variablesDescriptor !== undefined && !('value' in variablesDescriptor))
       throw new TypeError();
     const variablesValue: unknown = variablesDescriptor?.value;
-    const canonical = canonicalizeJson({
+    const canonical = normalizeJson({
       runInput: runInputValue,
       nodeOutputs: nodeOutputsValue,
       ...(variablesValue === undefined ? {} : { variables: variablesValue }),

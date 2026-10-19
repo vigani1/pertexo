@@ -28,7 +28,7 @@ async function preparedInput(
        and attempt.id=node.current_attempt_id and attempt.attempt_number=node.current_attempt_number
      where node.workspace_id=$1 and node.workflow_run_id=$2 and node.invocation_key=$3
        and node.status='succeeded' and attempt.status='succeeded'
-       and node.output_ref=attempt.output_ref`,
+       and node.output_ref::jsonb=attempt.output_ref::jsonb`,
     [workspaceId, runId, intent.invocationKey],
   );
   const row = result.rows[0];
@@ -77,7 +77,7 @@ export async function persistCallIntents(
       `insert into app.workflow_calls
        (id,workspace_id,parent_run_id,invocation_key,target_workflow_id,target_version_id,
         target_checksum,input_ref,input_checksum,deadline_at,status,safe_error_code,completed_at)
-       select $1,$2,$3,$4,$5,$6,$7::varchar,$8::jsonb,$9,
+       select $1,$2,$3,$4,$5,$6,$7::varchar,$8::json,$9,
          least(run.deadline_at,clock_timestamp() +
            (version.executable_json #>> '{graph,settings,maxRunDurationMs}')::integer * interval '1 millisecond'),
          $10,$11,case when $11::varchar is null then null else clock_timestamp() end
@@ -135,7 +135,7 @@ export async function persistCallCompletion(
     ({ name }) => name === `run.${input.plan.checkpoint.runStatus}`,
   )?.reasonCode;
   const rows = await client.query<{ parent_run_id: string }>(
-    `update app.workflow_calls set status=$3,result_ref=$4::jsonb,safe_error_code=$5,completed_at=clock_timestamp()
+    `update app.workflow_calls set status=$3,result_ref=$4::json,safe_error_code=$5,completed_at=clock_timestamp()
      where workspace_id=$1 and child_run_id=$2 and status='accepted'
      returning parent_run_id`,
     [

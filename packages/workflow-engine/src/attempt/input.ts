@@ -16,7 +16,7 @@ import type {
   WorkflowExecutableGraph,
   WorkflowExecutableNode,
 } from '../compilation/foundation.js';
-import { normalizeBoundedEngineJson } from '../compilation/validation.js';
+import { normalizeBoundedEngineValue } from '../compilation/validation.js';
 import { exactKeys, operationError, record } from '../operation-values.js';
 import type { ExecuteNodeAttemptInput } from './contract.js';
 import { invocationKey as createInvocationKey } from '../transition/scheduling/loops.js';
@@ -172,7 +172,7 @@ function parseStructuredInputs(
   }
   let collection: JsonValue;
   try {
-    collection = normalizeBoundedEngineJson(proof.collection);
+    collection = normalizeBoundedEngineValue(proof.collection);
   } catch {
     operationError('attempt_invalid', 'structured collection is invalid');
   }
@@ -208,9 +208,9 @@ export function prepareNodeAttemptInput(
   let variables: WorkspaceVariableValues;
   let completed: JsonValue;
   try {
-    runInput = normalizeBoundedEngineJson(input.runInput);
+    runInput = normalizeBoundedEngineValue(input.runInput);
     variables = workspaceVariableValuesSchema.parse(input.variables ?? {});
-    completed = normalizeBoundedEngineJson(input.completedNodeOutputs);
+    completed = normalizeBoundedEngineValue(input.completedNodeOutputs);
   } catch (error) {
     operationError(
       'attempt_invalid',

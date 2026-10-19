@@ -2,7 +2,7 @@ import { workflowTestStepChoices } from '@pertexo/workflow-model';
 import type { FrozenWorkflowTestPins } from '../../schema/runs/tests.js';
 import { sampleDraft } from '../../authoring/step-samples/records.js';
 import type { PoolClient } from 'pg';
-import { canonicalJson } from '@pertexo/workflow-model';
+import { canonicalJson, normalizedJson } from '@pertexo/workflow-model';
 import type { WorkflowTestPins } from '@pertexo/workflow-engine';
 import type { AuthoringCatalogs } from '../../authoring/workflows/catalogs.js';
 import type { SampleScope } from '../../authoring/step-samples/contract.js';
@@ -96,15 +96,15 @@ export async function saveTestSnapshot(
 ): Promise<void> {
   await client.query(
     `insert into app.workflow_test_snapshots(id,workspace_id,workflow_id,draft_revision,graph_json,executable_json,pins,expires_at,checksum,dispositions)
-  values($1,$2,$3,$4,$5::jsonb,$6::jsonb,$7::jsonb,$8,$9,$10::jsonb)`,
+  values($1,$2,$3,$4,$5::json,$6::json,$7::json,$8,$9,$10::jsonb)`,
     [
       id,
       input.workspaceId,
       input.workflowId,
       snapshot.preparation.draftRevision,
-      canonicalJson(snapshot.graph),
-      canonicalJson(snapshot.compiled.executableJson),
-      canonicalJson(snapshot.frozenPins),
+      normalizedJson(snapshot.graph),
+      normalizedJson(snapshot.compiled.executableJson),
+      normalizedJson(snapshot.frozenPins),
       expiresAt,
       snapshot.compiled.checksum,
       JSON.stringify(snapshot.compiled.dispositions),

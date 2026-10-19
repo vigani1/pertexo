@@ -4,7 +4,11 @@ import type {
   NodeManifest,
   PolicyReference,
 } from '@pertexo/node-sdk';
-import { canonicalJson, type JsonValue } from '@pertexo/workflow-model';
+import {
+  canonicalJson,
+  normalizedJson,
+  type JsonValue,
+} from '@pertexo/workflow-model';
 import type { SideEffectClass } from '../types.js';
 import {
   type ExecutableRuntimePolicies,
@@ -160,9 +164,16 @@ function assertSafeExecutableJson(value: unknown): void {
   }
 }
 
+/** Engine structures, with sorted keys so they compare by their text. */
 export function normalizeBoundedEngineJson(value: unknown): JsonValue {
   assertSafeExecutableJson(value);
   return JSON.parse(canonicalJson(value)) as JsonValue;
+}
+
+/** Data a step reads or returns, keeping the key order it was written in. */
+export function normalizeBoundedEngineValue(value: unknown): JsonValue {
+  assertSafeExecutableJson(value);
+  return JSON.parse(normalizedJson(value)) as JsonValue;
 }
 
 export function parseIdentity(

@@ -17,7 +17,7 @@ export async function persistFailureHandling(
     if (source?.failureHandling?.disposition !== 'pending')
       throw new CoordinatorRunStateCorruptError();
     const written = await client.query(
-      `update app.node_runs set failure_ref=$4::jsonb,
+      `update app.node_runs set failure_ref=$4::json,
        failure_handler_entry_key=$5,failure_handler_sink_key=$6,
        failure_handling='pending',updated_at=clock_timestamp()
        where workspace_id=$1 and workflow_run_id=$2 and invocation_key=$3

@@ -1412,7 +1412,7 @@ describe('Coordinator node-attempt persistence invariants', () => {
         `select
              attempt.status attempt_status,node.status node_status,
              node.provider_dispatch_binding,
-             attempt.output_ref=node.output_ref output_matches,
+             attempt.output_ref::jsonb=node.output_ref::jsonb output_matches,
              (select count(*)::int from app.run_events
                where workflow_run_id=$1 and type='node.succeeded') terminal_events,
              (select count(*)::int from app.outbox_events

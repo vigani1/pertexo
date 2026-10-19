@@ -227,6 +227,52 @@ describe('input resolution production operations', () => {
     });
   });
 
+  it('keeps the key order of the data a step reads', async () => {
+    const orderedGraph = structuredClone(graph());
+    Object.assign(orderedGraph.nodes[1], {
+      inputMappings: {
+        row: { kind: 'run_input', path: '$' },
+        upstream: { kind: 'node_output', nodeId: 'manual', path: '$' },
+        literal: { kind: 'literal', value: { zeta: 1, alpha: 2 } },
+      },
+    });
+    const executable = buildWorkflowExecutable({
+      graph: orderedGraph,
+      catalog: composeExecutableCatalog(nodeCatalog()),
+    });
+    let received: unknown;
+    await executeNodeAttempt({
+      runId: 'run-1',
+      nodeRunId: 'node-run-1',
+      attemptId: 'attempt-1',
+      executable,
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
+      invocationKey: invocationKey({
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
+        nodeId: 'set',
+      }),
+      nodeId: 'set',
+      runInput: { name: 'Ada', qty: 2, city: 'Berlin' },
+      completedNodeOutputs: completedOutputs({
+        manual: { total: 9, base: 3 },
+      }),
+      expressionEvaluator,
+      registry: {
+        execute: (request: { readonly input: unknown }) => {
+          received = request.input;
+          return Promise.resolve({
+            kind: 'succeeded' as const,
+            output: request.input as never,
+          });
+        },
+      },
+      signal: new AbortController().signal,
+    });
+    expect(JSON.stringify(received)).toBe(
+      '{"row":{"name":"Ada","qty":2,"city":"Berlin"},"upstream":{"total":9,"base":3},"literal":{"zeta":1,"alpha":2}}',
+    );
+  });
+
   it('maps a manual predecessor, run input and literal into core.set while omitting a missing path', async () => {
     const mappedGraph = structuredClone(graph());
     const specialLiteral = JSON.parse(

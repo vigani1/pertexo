@@ -3,6 +3,7 @@ import {
   check,
   foreignKey,
   integer,
+  json,
   jsonb,
   timestamp,
   unique,
@@ -25,13 +26,13 @@ export const workflowTestSnapshots = appSchema.table(
     workflowId: uuid('workflow_id').notNull(),
     workspaceId: uuid('workspace_id').notNull(),
     draftRevision: integer('draft_revision').notNull(),
-    graphJson: jsonb('graph_json').notNull(),
+    graphJson: json('graph_json').notNull(),
     checksum: varchar('checksum', { length: 74 }).notNull(),
-    executableJson: jsonb('executable_json').notNull(),
+    executableJson: json('executable_json').notNull(),
     dispositions: jsonb('dispositions')
       .$type<WorkflowTestCompilation['dispositions']>()
       .notNull(),
-    pins: jsonb('pins').$type<FrozenWorkflowTestPins>().notNull(),
+    pins: json('pins').$type<FrozenWorkflowTestPins>().notNull(),
     expiresAt: timestamp('expires_at', {
       withTimezone: true,
       mode: 'date',
@@ -54,15 +55,15 @@ export const workflowTestSnapshots = appSchema.table(
     check('workflow_test_snapshots_revision_positive', sql`draft_revision > 0`),
     check(
       'workflow_test_snapshots_graph_bound',
-      sql`jsonb_typeof(graph_json)='object' AND octet_length(graph_json::text)<=2097152`,
+      sql`json_typeof(graph_json)='object' AND octet_length(graph_json::text)<=2097152`,
     ),
     check(
       'workflow_test_snapshots_executable_bound',
-      sql`jsonb_typeof(executable_json)='object' AND octet_length(executable_json::text)<=2097152`,
+      sql`json_typeof(executable_json)='object' AND octet_length(executable_json::text)<=2097152`,
     ),
     check(
       'workflow_test_snapshots_pins_bound',
-      sql`jsonb_typeof(pins)='object' AND octet_length(pins::text)<=67108864`,
+      sql`json_typeof(pins)='object' AND octet_length(pins::text)<=67108864`,
     ),
   ],
 );

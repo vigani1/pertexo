@@ -192,7 +192,7 @@ export function createWorkflowDuplicationStore(
           await client.query(
             `insert into app.workflow_drafts
                (workflow_id, workspace_id, revision, graph_json, updated_by)
-             values ($1, $2, 1, $3::jsonb, $4)`,
+             values ($1, $2, 1, $3::json, $4)`,
             [
               destinationId,
               input.workspaceId,

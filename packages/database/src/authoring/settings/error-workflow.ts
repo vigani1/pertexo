@@ -101,7 +101,7 @@ export function createWorkflowErrorStore(
             `select workflow.id,workflow.name,version.executable_json->'graph' graph from app.workflows workflow join app.workflow_versions version on version.workspace_id=workflow.workspace_id and version.id=workflow.published_version_id
         where workflow.workspace_id=$1 and workflow.id<>$2 and workflow.lifecycle_status='active'
         and ($3::uuid is null or workflow.id>$3)
-        and version.executable_json @> '{"graph":{"nodes":[{"definition":{"key":"core.workflow_error","version":1}}]}}'::jsonb
+        and version.executable_json::jsonb @> '{"graph":{"nodes":[{"definition":{"key":"core.workflow_error","version":1}}]}}'::jsonb
         order by workflow.id limit 51`,
             [input.workspaceId, input.workflowId, input.after ?? null],
           );
