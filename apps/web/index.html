@@ -23,7 +23,29 @@
     <title>Pertexo</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Painted before any script arrives: the boot screen (Boot in
+           src/routes/root/status/pages.tsx) laid out the same way, with room
+           for its Core, so the app's first frame replaces it without a jump. -->
+      <div
+        class="relative grid min-h-svh place-items-center overflow-hidden bg-background px-5"
+      >
+        <div class="ambient" aria-hidden="true"></div>
+        <div class="relative z-10 w-full">
+          <div class="mx-auto flex flex-col items-center gap-4 text-center">
+            <div class="size-60 sm:size-72"></div>
+            <p
+              class="font-display text-2xl [--display-optical-size:24] [--display-width:80%]"
+            >
+              Pertexo<span class="text-secondary">.</span>
+            </p>
+            <p class="font-mono text-xs text-subtle-foreground">
+              Opening Pertexo…
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
