@@ -1,3 +1,4 @@
+import { useEffect, useEffectEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
 import { Button } from '@/components/ui/button';
@@ -12,25 +13,48 @@ import { PatternGlyph } from '../pattern-glyph';
 
 /**
  * Ready-made workflows, each drawn as its own thread: one line on what it
- * does, and what it takes and touches folded under Details.
+ * does, and what it takes and touches folded under Details. `initialId` is
+ * chosen once this workspace's catalog shows it can be built; otherwise its
+ * reasons show and nothing is chosen.
  */
 export function CuratedTemplateChoice({
   apiClient,
   userId,
   disabled,
   selectedId,
+  initialId,
   onChoose,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
   disabled: boolean;
   selectedId: string | undefined;
+  initialId?: string | undefined;
   onChoose: (template: CuratedTemplate) => void;
 }>) {
   const catalog = useQuery({
     ...authoringCatalogQueryOptions(apiClient, userId),
     staleTime: 0,
   });
+  const chooseInitial = useEffectEvent((template: CuratedTemplate) => {
+    onChoose(template);
+  });
+  const definitions =
+    catalog.isFetching || catalog.isError
+      ? undefined
+      : catalog.data?.definitions;
+  useEffect(() => {
+    if (initialId === undefined || definitions === undefined || disabled)
+      return;
+    const initial = CURATED_WORKFLOW_TEMPLATES.find(
+      (template) => template.templateId === initialId,
+    );
+    if (
+      initial !== undefined &&
+      templateUnavailableReasons(initial, definitions).length === 0
+    )
+      chooseInitial(initial);
+  }, [definitions, disabled, initialId]);
   return (
     <section
       aria-label="Curated workflow examples"
@@ -61,7 +85,7 @@ export function CuratedTemplateChoice({
             key={template.templateId}
             aria-label={template.title}
             className={cn(
-              'grid grid-cols-[8.25rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 rounded-lg border p-2.5 transition-colors motion-reduce:transition-none',
+              'grid grid-cols-1 items-center gap-x-3 gap-y-2 rounded-lg border p-2.5 transition-colors motion-reduce:transition-none sm:grid-cols-[8.25rem_minmax(0,1fr)]',
               selected
                 ? 'border-primary/45 bg-primary/[0.06]'
                 : 'border-border bg-white/[0.02] hover:border-border-strong',
@@ -69,7 +93,7 @@ export function CuratedTemplateChoice({
           >
             <span
               aria-hidden="true"
-              className="row-span-2 grid place-items-center self-start rounded-md bg-black/25 py-2"
+              className="grid place-items-center self-start rounded-md bg-black/25 py-2 sm:row-span-2"
             >
               <PatternGlyph graph={template.manifest.graph} />
             </span>
@@ -96,7 +120,7 @@ export function CuratedTemplateChoice({
                 {selected ? 'Chosen' : 'Use'}
               </Button>
             </div>
-            <div className="col-start-2 flex min-w-0 flex-col gap-1">
+            <div className="flex min-w-0 flex-col gap-1 sm:col-start-2">
               {reasons.map((reason) => (
                 <p key={reason} className="text-xs text-warning">
                   {reason}

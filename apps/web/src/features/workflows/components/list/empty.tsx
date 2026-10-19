@@ -8,25 +8,20 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
-import {
-  starterPreviewGraph,
-  type AvailableStarter,
-} from '../../model/templates/starters';
-import { PatternGlyph } from '../pattern-glyph';
-import type { StartChoice } from '../creation/starter-choice';
+import { ExampleCards } from '../templates/example-cards';
 
 /**
  * An empty workspace: the Core and an invitation to weave the first
- * workflow, with starters as large cards when they can be built here.
+ * workflow, blank or from one of the ready-made examples.
  */
 export function WorkflowListEmpty({
   canCreate,
-  starters,
-  onStart,
+  onStartBlank,
+  onChooseExample,
 }: Readonly<{
   canCreate: boolean;
-  starters: readonly AvailableStarter[];
-  onStart: (choice: StartChoice) => void;
+  onStartBlank: () => void;
+  onChooseExample: (templateId: string) => void;
 }>) {
   if (!canCreate)
     return (
@@ -52,45 +47,13 @@ export function WorkflowListEmpty({
         </EmptyTitle>
         <EmptyDescription>
           A workflow starts from a trigger — a webhook, a schedule or a click —
-          and runs its steps in order. Start blank, or from a pattern.
+          and runs its steps in order. Start blank, or from an example.
         </EmptyDescription>
-        {starters.length > 0 ? (
-          <ul className="mt-3 grid gap-3 sm:grid-cols-3">
-            {starters.map((starter) => (
-              <li key={starter.id}>
-                <button
-                  type="button"
-                  className="group/starter flex h-full w-full flex-col items-start gap-3 rounded-lg border border-border bg-white/[0.02] p-3 text-left transition-colors duration-150 outline-none hover:border-primary/35 hover:bg-primary/[0.04] focus-ring motion-reduce:transition-none"
-                  onClick={() => {
-                    onStart(starter.id);
-                  }}
-                >
-                  <span className="grid w-full place-items-center rounded-md bg-black/25 py-2">
-                    <PatternGlyph
-                      graph={starterPreviewGraph(starter)}
-                      size="card"
-                      flow="hover"
-                    />
-                  </span>
-                  <span className="text-sm font-semibold text-foreground">
-                    {starter.title}
-                  </span>
-                  <span className="text-xs leading-relaxed text-muted-foreground">
-                    {starter.description}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
+        <div className="mt-3">
+          <ExampleCards layout="cards" onChoose={onChooseExample} />
+        </div>
         <EmptyActions>
-          <Button
-            type="button"
-            variant="primary"
-            onClick={() => {
-              onStart('blank');
-            }}
-          >
+          <Button type="button" variant="primary" onClick={onStartBlank}>
             <PlusIcon aria-hidden="true" data-icon="inline-start" />
             New workflow
           </Button>

@@ -15,7 +15,7 @@ const FLOW_CLASS = {
   on: 'motion-loop:opacity-100 motion-loop:animate-thread-flow',
   // The flow runs only while it shows, not unseen under every card.
   hover:
-    'motion-loop:group-hover/starter:opacity-100 motion-loop:group-hover/starter:animate-thread-flow motion-loop:group-focus-visible/starter:opacity-100 motion-loop:group-focus-visible/starter:animate-thread-flow motion-loop:group-has-focus-visible/starter:opacity-100 motion-loop:group-has-focus-visible/starter:animate-thread-flow',
+    'motion-loop:group-hover/pattern:opacity-100 motion-loop:group-hover/pattern:animate-thread-flow motion-loop:group-focus-visible/pattern:opacity-100 motion-loop:group-focus-visible/pattern:animate-thread-flow motion-loop:group-has-focus-visible/pattern:opacity-100 motion-loop:group-has-focus-visible/pattern:animate-thread-flow',
 } as const;
 
 /**

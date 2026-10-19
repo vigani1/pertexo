@@ -1,29 +1,17 @@
-import { useState } from 'react';
 import { HttpResponse, http } from 'msw';
-import { QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
-import { createQueryClient } from '@/app/query-client';
-import { NotificationsProvider } from '@/components/ui/toast';
-import { NewWorkflowSheet } from '@/features/workflows/components/creation/new-workflow-sheet';
-import type { StartChoice } from '@/features/workflows/components/creation/starter-choice';
-import { availableStarters } from '@/features/workflows/model/templates/starters';
-import type { StarterDraftWriter } from '@/features/workflows/list.public';
-import { ApiError } from '@/lib/api/error';
-import { createApiClient } from '@/lib/api/client';
+import { describe, expect, it } from 'vitest';
+import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
 import { mockServer } from '../../../support/mock-server';
-import { renderApp, testFetch } from '../../../support/render-app';
+import { renderApp } from '../../../support/render-app';
 import {
   api,
-  catalogDefinition,
-  catalogOf,
   createdResponse,
+  curatedCatalog,
   discoveryHandlers,
   draftHandler,
-  etag,
   summary,
-  userId,
   workflowId,
   workspaceId,
   organizedPage,
@@ -180,111 +168,80 @@ describe('new workflow lens', () => {
   });
 });
 
-const catalog = catalogOf([
-  catalogDefinition('core.webhook', 'trigger'),
-  catalogDefinition('http.request', 'action'),
-  catalogDefinition('slack.send_message', 'action'),
-]);
-
-function StarterHarness({
-  writer,
-  onCreated,
-}: Readonly<{
-  writer: StarterDraftWriter;
-  onCreated: (workflowId: string) => void;
-}>) {
-  const [choice, setChoice] = useState<StartChoice>('blank');
-  const apiClient = createApiClient({
-    fetch: testFetch,
-    readCsrfToken: () => 'csrf-token-for-component-tests-12345678901234567890',
-  });
-  return (
-    <NewWorkflowSheet
-      apiClient={apiClient}
-      userId={userId}
-      workspaceId={workspaceId}
-      open
-      starters={availableStarters(catalog)}
-      choice={choice}
-      writer={writer}
-      onChoiceChange={setChoice}
-      onOpenChange={() => undefined}
-      onCreated={onCreated}
-    />
+function exampleHandlers() {
+  return http.get('http://pertexo.test/v1/node-definitions', () =>
+    HttpResponse.json(curatedCatalog()),
   );
 }
 
-function renderStarterLens(writer: StarterDraftWriter) {
-  const onCreated = vi.fn<(workflowId: string) => void>();
-  mockServer.use(
-    http.post(`${api}/workflows`, () =>
-      createdResponse(workflowId, 'Lead enrichment'),
-    ),
-  );
-  render(
-    <QueryClientProvider client={createQueryClient()}>
-      <NotificationsProvider>
-        <StarterHarness writer={writer} onCreated={onCreated} />
-      </NotificationsProvider>
-    </QueryClientProvider>,
-  );
-  return onCreated;
-}
+const [first, , controlled] = CURATED_WORKFLOW_TEMPLATES;
+if (first === undefined || controlled === undefined)
+  throw new Error('Missing curated examples');
 
-describe('starter patterns', () => {
-  it('offers only starters the catalog can build and saves the chosen graph with the create ETag', async () => {
-    const writer = vi.fn<StarterDraftWriter>(() => Promise.resolve());
-    const onCreated = renderStarterLens(writer);
-    const event = userEvent.setup();
-    expect(screen.getByRole('radio', { name: /^Blank/u })).toBeChecked();
-    expect(
-      screen.queryByRole('radio', { name: /Schedule → HTTP/u }),
-    ).not.toBeInTheDocument();
-    await event.click(
-      screen.getByRole('radio', { name: /Webhook → HTTP → Slack/u }),
+describe('ready-made examples', () => {
+  it('lists every example under the name and opens the chosen one set up, closing New workflow', async () => {
+    mockServer.use(
+      ...discoveryHandlers(),
+      draftHandler(),
+      http.get(`${api}/workflows`, () =>
+        HttpResponse.json(
+          organizedPage({
+            items: [summary(workflowId, 'Daily intake')],
+            nextCursor: null,
+          }),
+        ),
+      ),
     );
-    await event.type(screen.getByLabelText('Workflow name'), 'Lead enrichment');
-    await event.click(screen.getByRole('button', { name: 'Create workflow' }));
-
-    await waitFor(() => {
-      expect(onCreated).toHaveBeenCalledWith(workflowId);
+    // After the discovery handlers, so the curated catalog answers first.
+    mockServer.use(exampleHandlers());
+    const { router } = renderApp(`/w/${workspaceId}/workflows?create=true`);
+    const event = userEvent.setup();
+    const sheet = await screen.findByRole('dialog', { name: 'New workflow' });
+    for (const template of CURATED_WORKFLOW_TEMPLATES)
+      expect(
+        within(sheet).getByRole('button', {
+          name: new RegExp(`^${template.title}`, 'u'),
+        }),
+      ).toBeVisible();
+    await event.click(
+      within(sheet).getByRole('button', {
+        name: new RegExp(`^${controlled.title}`, 'u'),
+      }),
+    );
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Start from an example',
     });
-    const [, workspace, workflow, input] = writer.mock.calls[0] ?? [];
-    expect(workspace).toBe(workspaceId);
-    expect(workflow).toBe(workflowId);
-    expect(input?.etag).toBe(etag);
-    expect(input?.graph.nodes.map((node) => node.definition.key)).toEqual([
-      'core.webhook',
-      'http.request',
-      'slack.send_message',
-    ]);
-    expect(input?.graph.edges).toHaveLength(2);
-    expect(
-      await screen.findByText('Lead enrichment · starter steps added'),
-    ).toBeVisible();
+    await waitFor(() => {
+      expect(within(dialog).getByLabelText('New workflow name')).toHaveValue(
+        controlled.title,
+      );
+    });
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({});
+    });
   });
 
-  it('still opens the new workflow when its starter steps fail to save', async () => {
-    const writer = vi.fn<StarterDraftWriter>(() =>
-      Promise.reject(new ApiError({ kind: 'network', message: 'offline' })),
-    );
-    const onCreated = renderStarterLens(writer);
+  it('offers the same examples beside Start blank on an empty list', async () => {
+    mockServer.use(...discoveryHandlers(), emptyList());
+    mockServer.use(exampleHandlers());
+    renderApp(`/w/${workspaceId}/workflows`);
     const event = userEvent.setup();
-    await event.click(
-      screen.getByRole('radio', { name: /Webhook → HTTP → Slack/u }),
-    );
-    await event.type(screen.getByLabelText('Workflow name'), 'Lead enrichment');
-    await event.click(screen.getByRole('button', { name: 'Create workflow' }));
-    await waitFor(() => {
-      expect(onCreated).toHaveBeenCalledWith(workflowId);
+    const empty = await screen.findByRole('region', {
+      name: 'Weave your first workflow',
     });
-    // Errors are announced assertively, so the title can appear twice.
+    for (const template of CURATED_WORKFLOW_TEMPLATES)
+      expect(
+        within(empty).getByRole('button', {
+          name: new RegExp(`^${template.title}`, 'u'),
+        }),
+      ).toBeVisible();
+    await event.click(
+      within(empty).getByRole('button', {
+        name: new RegExp(`^${first.title}`, 'u'),
+      }),
+    );
     expect(
-      (
-        await screen.findAllByText(
-          'We couldn’t confirm whether the starter steps were added',
-        )
-      )[0],
+      await screen.findByRole('dialog', { name: 'Start from an example' }),
     ).toBeVisible();
   });
 });

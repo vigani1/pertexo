@@ -4,12 +4,9 @@ import type {
   UserProfileResponse,
   WorkflowSummary,
 } from '@pertexo/contracts';
-import { useQuery } from '@tanstack/react-query';
 import { SkeletonThread } from '@/components/ui/skeleton';
-import { authoringCatalogQueryOptions } from '@/features/catalog/queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { NewWorkflowSheet } from '../components/creation/new-workflow-sheet';
-import type { StartChoice } from '../components/creation/starter-choice';
 import { WorkflowLifecycleDialog } from '../components/workflow-lifecycle-dialog';
 import {
   NewWorkflowButton,
@@ -32,10 +29,8 @@ import {
   type WorkflowListSearch,
   type WorkflowListSearchUpdate,
 } from '../model/list-view';
-import { availableStarters } from '../model/templates/starters';
 import { useListShortcuts } from '../hooks/use-list-shortcuts';
 import { useRunWorkflow } from '../hooks/use-run-workflow';
-import type { StarterDraftWriter } from '../data/workflows.mutations';
 import { useOrganizationList } from '../hooks/use-organization-list';
 import { WorkflowOrganizationFilters } from '../components/organization/filters';
 import { WorkflowOrganizedResults } from '../components/organization/workflow-organized-results';
@@ -67,14 +62,6 @@ function listState(
   return empty ? 'empty' : 'results';
 }
 
-function startersFrom(
-  catalog:
-    | Readonly<{ definitions: Parameters<typeof availableStarters>[0] }>
-    | undefined,
-) {
-  return catalog === undefined ? [] : availableStarters(catalog.definitions);
-}
-
 type ListScope = Readonly<{
   apiClient: ApiClient;
   userId: string;
@@ -82,34 +69,26 @@ type ListScope = Readonly<{
 }>;
 
 /**
- * The list's pages in the chosen order, the starters the catalog can build,
- * and which of the list's states is on screen. Changing the sort keeps the
- * current rows until the re-sorted pages land.
+ * The list's pages in the chosen order and which of the list's states is on
+ * screen. Changing the sort keeps the current rows until the re-sorted pages
+ * land.
  */
 function useWorkflowList(
   { apiClient, userId, workspace }: ListScope,
   search: WorkflowListSearch,
-  starterDraftWriter: StarterDraftWriter | undefined,
 ) {
-  const canCreate = workspace.capabilities.includes('workflow:create');
   const workflows = useOrganizationList(
     apiClient,
     userId,
     workspace.id,
     search,
   );
-  const catalog = useQuery({
-    ...authoringCatalogQueryOptions(apiClient, userId),
-    enabled: canCreate && starterDraftWriter !== undefined,
-  });
   const items = workflows.data?.pages.flatMap((page) => page.items) ?? [];
   const empty = workflows.data !== undefined && items.length === 0;
   return {
     workflows,
     items,
     empty,
-    starters:
-      starterDraftWriter === undefined ? [] : startersFrom(catalog.data),
     shown: listState(workflows.isPending, workflows.data !== undefined, empty),
     organizations:
       workflows.data?.pages.flatMap((page) => page.organizations) ?? [],
@@ -167,7 +146,6 @@ function WorkflowListContent({
   user,
   workspace,
   search,
-  starterDraftWriter,
   onSearchChange,
   onCreated,
   onRunStarted,
@@ -176,8 +154,6 @@ function WorkflowListContent({
   user: UserProfileResponse;
   workspace: AccessibleWorkspace;
   search: WorkflowListSearch;
-  /** Saves starter steps; without it the lens offers Blank only. */
-  starterDraftWriter?: StarterDraftWriter | undefined;
   onSearchChange: (search: WorkflowListSearchUpdate) => void | Promise<void>;
   onCreated: (workflowId: string) => void;
   /** Opens a run started from a row. */
@@ -185,18 +161,18 @@ function WorkflowListContent({
 }>) {
   const canCreate = workspace.capabilities.includes('workflow:create');
   const scope = { apiClient, userId: user.id, workspace };
-  const list = useWorkflowList(scope, search, starterDraftWriter);
+  const list = useWorkflowList(scope, search);
   const { workflows } = list;
   // An empty workspace with no filter shows the first-workflow onboarding.
   const onboarding = list.shown === 'empty' && isUnfilteredWorkflowList(search);
   const filterRef = useRef<HTMLInputElement>(null);
-  const [startChoice, setStartChoice] = useState<StartChoice>('blank');
   const [lifecycle, setLifecycle] = useState<LifecycleTarget>();
   const [renaming, setRenaming] = useState<WorkflowSummary>();
   const [duplicating, setDuplicating] = useState<WorkflowSummary>();
   const [exporting, setExporting] = useState<WorkflowSummary>();
   const [importing, setImporting] = useState(false);
-  const [importExamples, setImportExamples] = useState(false);
+  // The example a start-from-example dialog opened on; none imports a file.
+  const [example, setExample] = useState<string>();
   const runner = useRunWorkflow({
     apiClient,
     userId: user.id,
@@ -204,20 +180,26 @@ function WorkflowListContent({
     onRunStarted,
   });
 
-  function openCreate(choice: StartChoice) {
-    setStartChoice(choice);
+  function openCreate() {
     void onSearchChange(updateWorkflowListSearch(search, { create: true }));
+  }
+
+  function openImport(nextExample?: string) {
+    setExample(nextExample);
+    setImporting(true);
+  }
+
+  function chooseExample(templateId: string) {
+    if (search.create === true)
+      void onSearchChange(updateWorkflowListSearch(search, { create: false }));
+    openImport(templateId);
   }
 
   useListShortcuts({
     onFocusFilter: () => {
       filterRef.current?.focus();
     },
-    onCreate: canCreate
-      ? () => {
-          openCreate('blank');
-        }
-      : undefined,
+    onCreate: canCreate ? openCreate : undefined,
   });
 
   return (
@@ -232,18 +214,12 @@ function WorkflowListContent({
               <Button
                 variant="outline"
                 onClick={() => {
-                  setImporting(true);
+                  openImport();
                 }}
               >
                 Import workflow…
               </Button>
-              {onboarding ? null : (
-                <NewWorkflowButton
-                  onClick={() => {
-                    openCreate('blank');
-                  }}
-                />
-              )}
+              {onboarding ? null : <NewWorkflowButton onClick={openCreate} />}
             </div>
           ) : undefined
         }
@@ -278,8 +254,8 @@ function WorkflowListContent({
       {onboarding ? (
         <WorkflowListEmpty
           canCreate={canCreate}
-          starters={list.starters}
-          onStart={openCreate}
+          onStartBlank={openCreate}
+          onChooseExample={chooseExample}
         />
       ) : null}
       {list.shown === 'results' || (list.shown === 'empty' && !onboarding) ? (
@@ -308,23 +284,13 @@ function WorkflowListContent({
           userId={user.id}
           workspaceId={workspace.id}
           open={search.create === true}
-          starters={list.starters}
-          choice={startChoice}
-          writer={starterDraftWriter}
-          onChoiceChange={setStartChoice}
           onOpenChange={(open) => {
             void onSearchChange(
               updateWorkflowListSearch(search, { create: open }),
             );
           }}
           onCreated={onCreated}
-          onChooseTemplate={() => {
-            void onSearchChange(
-              updateWorkflowListSearch(search, { create: false }),
-            );
-            setImportExamples(true);
-            setImporting(true);
-          }}
+          onChooseExample={chooseExample}
         />
       ) : null}
       <WorkflowDialogs
@@ -370,19 +336,20 @@ function WorkflowListContent({
           }}
         />
       )}
+      {/* A file import and each example keep their own session, so a
+          retained file import isn't mixed with an example's setup. */}
       <WorkflowImportDialog
-        key={`${user.id}:${workspace.id}`}
+        key={`${user.id}:${workspace.id}:${example ?? 'file'}`}
         apiClient={apiClient}
         userId={user.id}
         workspace={workspace}
         open={importing}
-        examplesFirst={importExamples}
+        example={example}
         onReopen={() => {
           setImporting(true);
         }}
         onClose={() => {
           setImporting(false);
-          setImportExamples(false);
         }}
         onCreated={(id) => {
           setImporting(false);
