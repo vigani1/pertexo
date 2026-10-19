@@ -1,11 +1,13 @@
 import { formatShortTime } from '@/lib/format/time';
+import { useOnlineStatus } from '@/lib/hooks/use-online-status';
 import { cn } from '@/lib/utils';
 import type { EditorState } from '../../model/state/store';
 import { useEditorStore } from '../../model/state/context';
 
 /**
  * The save state as a sentence under the workflow name: Saved 14:31,
- * Saving…, Unsaved, Couldn't save · Retry, Changed elsewhere · Review.
+ * Saving…, Unsaved, Couldn't save · Retry, Changed elsewhere · Review, and
+ * Offline · changes kept while unsaved work waits for the connection.
  * Reserve room for recovery actions so changing the sentence cannot move
  * the header. Failures read as destructive and conflicts as a warning.
  */
@@ -17,6 +19,7 @@ export function SaveState({
   const savedAt = useEditorStore((state) => state.savedAt);
   const scratch = useEditorStore((state) => state.inspectorScratch);
   const saveError = useEditorStore((state) => state.saveError);
+  const online = useOnlineStatus();
   return (
     <span
       role="status"
@@ -26,6 +29,7 @@ export function SaveState({
       <span aria-hidden="true">·</span>
       <Sentence
         status={scratch && saveStatus === 'clean' ? 'dirty' : saveStatus}
+        online={online}
         savedAt={savedAt}
         error={saveError}
         onRetry={onRetry}
@@ -37,17 +41,29 @@ export function SaveState({
 
 function Sentence({
   status,
+  online,
   savedAt,
   error,
   onRetry,
   onReview,
 }: Readonly<{
   status: EditorState['saveStatus'];
+  online: boolean;
   savedAt: string | null;
   error: string | null;
   onRetry: () => void;
   onReview: () => void;
 }>) {
+  // Retry can't help without a connection; saving resumes on reconnect.
+  if (!online && status !== 'clean' && status !== 'conflict')
+    return (
+      <span
+        className="text-warning"
+        title="Your changes save when the connection returns."
+      >
+        Offline · changes kept
+      </span>
+    );
   switch (status) {
     case 'clean':
       return savedAt === null ? (
