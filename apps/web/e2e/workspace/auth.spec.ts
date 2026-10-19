@@ -766,7 +766,7 @@ test('login remains keyboard-visible, motion-safe, and narrow-screen bounded', a
 for (const [width, height] of [
   [390, 844],
   [375, 667],
-])
+] as const)
   test(`sign-in fits a ${String(width)}×${String(height)} phone without scrolling`, async ({
     page,
   }) => {
