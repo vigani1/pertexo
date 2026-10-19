@@ -26,8 +26,18 @@ type OverviewTarget =
   | '/w/$workspaceId/connections'
   | '/w/$workspaceId/settings/alerts';
 
-function counted(count: number, one: string, many: string): string {
-  return `${String(count)} ${count === 1 ? one : many}`;
+/** Counts read from the first page only are floors, written "24+". */
+function figure(count: number, more: boolean): string {
+  return `${String(count)}${more ? '+' : ''}`;
+}
+
+function counted(
+  count: number,
+  one: string,
+  many: string,
+  more = false,
+): string {
+  return `${figure(count, more)} ${count === 1 && !more ? one : many}`;
 }
 
 /**
@@ -75,8 +85,7 @@ function OverviewTile({
           <Skeleton className="h-8 w-10" />
         ) : (
           <span className="font-display text-5xl leading-none tabular-nums [--display-optical-size:40]">
-            {failed || count === undefined ? '—' : String(count)}
-            {more ? '+' : ''}
+            {failed || count === undefined ? '—' : figure(count, more)}
           </span>
         )}
         <span className="text-sm font-medium">{label}</span>
@@ -125,12 +134,12 @@ function WorkflowsTile({
               tone={state.tone}
               className="font-mono text-[0.72rem] font-normal"
             >
-              {String(state.count)} {state.label}
+              {figure(state.count, query.hasNextPage)} {state.label}
             </Status>
           ))}
           {archived === 0 ? null : (
             <span className="font-mono text-[0.72rem]">
-              {String(archived)} archived
+              {figure(archived, query.hasNextPage)} archived
             </span>
           )}
         </span>
@@ -153,7 +162,14 @@ function MembersTile({
     const count = members.filter((member) => member.role === role).length;
     return count === 0
       ? []
-      : [counted(count, ROLE_NAMES[role], `${ROLE_NAMES[role]}s`)];
+      : [
+          counted(
+            count,
+            ROLE_NAMES[role],
+            `${ROLE_NAMES[role]}s`,
+            query.hasNextPage,
+          ),
+        ];
   });
   const suspended = members.filter(
     (member) => member.membershipStatus === 'suspended',
@@ -171,7 +187,9 @@ function MembersTile({
     >
       {[
         ...byRole,
-        ...(suspended === 0 ? [] : [`${String(suspended)} suspended`]),
+        ...(suspended === 0
+          ? []
+          : [`${figure(suspended, query.hasNextPage)} suspended`]),
       ].join(' · ')}
     </OverviewTile>
   );
@@ -218,7 +236,8 @@ function ConnectionsTile({
           {providers.join(' · ')}
           {needsAttention === 0 ? null : (
             <Status tone="attention" className="mt-1 text-xs font-normal">
-              {counted(needsAttention, 'needs', 'need')} reconnecting
+              {counted(needsAttention, 'needs', 'need', query.hasNextPage)}{' '}
+              reconnecting
             </Status>
           )}
         </>
