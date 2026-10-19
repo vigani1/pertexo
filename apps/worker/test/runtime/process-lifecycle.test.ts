@@ -22,7 +22,9 @@ type ProcessFixture = Readonly<{
   output: () => string;
 }>;
 
-function startFixture(mode: 'active' | 'bootstrap-failure' | 'disabled') {
+function startFixture(
+  mode: 'active' | 'bootstrap-failure' | 'disabled' | 'held-open',
+) {
   const child = spawn(process.execPath, [fixturePath, mode], {
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -128,6 +130,23 @@ describe('compiled worker process lifecycle', () => {
       if (mode === 'active') {
         expect(fixture.output()).toContain('consumer.closed');
       }
+    },
+    PROCESS_TEST_TIMEOUT_MILLIS,
+  );
+
+  it(
+    'exits after SIGTERM even when something still holds the process open',
+    async () => {
+      const fixture = startFixture('held-open');
+      processFixtures.set(fixture.child, fixture);
+
+      await waitForOutput(fixture.output, 'worker.ready');
+      fixture.child.kill('SIGTERM');
+      const { code, signal } = await waitForExit(fixture);
+
+      expect(signal).toBeNull();
+      expect(code).toBe(0);
+      expect(fixture.output()).toContain('database.closed');
     },
     PROCESS_TEST_TIMEOUT_MILLIS,
   );
