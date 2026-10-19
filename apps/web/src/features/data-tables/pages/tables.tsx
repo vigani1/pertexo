@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ArrowLeftIcon } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import type {
   AccessibleWorkspace,
@@ -43,22 +44,44 @@ export function DataTablesPage({
   return (
     <div className="flex min-w-0 max-w-7xl flex-col gap-6">
       <PageHeader>
-        <PageHeaderTitle>{table?.name ?? 'Data tables'}</PageHeaderTitle>
+        {tableId === undefined ? (
+          <PageHeaderTitle>Data tables</PageHeaderTitle>
+        ) : (
+          <div className="flex min-w-0 items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Back to all tables"
+              onClick={() => {
+                onOpen(undefined);
+              }}
+            >
+              <ArrowLeftIcon aria-hidden="true" />
+            </Button>
+            <PageHeaderTitle className="truncate">
+              {table?.name ?? 'Data table'}
+            </PageHeaderTitle>
+          </div>
+        )}
         <TablePageActions
           detail={tableId !== undefined}
           editable={editable}
           admin={admin}
           table={table}
-          onOpen={onOpen}
           onDialog={setDialog}
         />
       </PageHeader>
-      <TableCapacity quotas={quotas} />
-      <p className="text-sm text-muted-foreground">
-        Small lookups and saved state your workflows read and write. Keep
-        secrets in Connections; an exported workflow names its tables but never
-        carries their rows.
-      </p>
+      {tableId === undefined ? (
+        <>
+          <TableCapacity quotas={quotas} />
+          <p className="text-sm text-muted-foreground">
+            Small lookups and saved state your workflows read and write. Keep
+            secrets in Connections; an exported workflow names its tables but
+            never carries their rows.
+          </p>
+        </>
+      ) : null}
       {query.isPending ? <p role="status">Loading data tables…</p> : null}
       {query.isError ? (
         <Notice

@@ -34,7 +34,10 @@ export const DATA_TABLE_LIMITS = Object.freeze({
 });
 export const dataTableNameSchema = z
   .string()
-  .regex(/^[A-Za-z][A-Za-z0-9_]{0,63}$/u);
+  .regex(
+    /^[A-Za-z][A-Za-z0-9_]{0,63}$/u,
+    'Use letters, numbers and underscores, starting with a letter (64 at most).',
+  );
 export const dataTableNewColumnSchema = z
   .object({
     name: dataTableNameSchema,

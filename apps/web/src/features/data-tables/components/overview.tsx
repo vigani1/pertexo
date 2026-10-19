@@ -3,7 +3,14 @@ import type {
   DataTablesResponse,
   DataTableDefinition,
 } from '@pertexo/contracts';
+import { EllipsisIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { StatusGlyph } from '@/components/ui/status';
 import { formatByteLength } from '@/lib/format/bytes';
 export function TablePageActions({
@@ -11,29 +18,56 @@ export function TablePageActions({
   editable,
   admin,
   table,
-  onOpen,
   onDialog,
 }: Readonly<{
   detail: boolean;
   editable: boolean;
   admin: boolean;
   table: DataTableDefinition | undefined;
-  onOpen: (id: string | undefined) => void;
   onDialog: (dialog: 'create' | 'limits' | 'remove' | 'columns') => void;
 }>) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      {detail ? (
+  // One table's page keeps to that table; workspace limits live on the list.
+  if (detail)
+    return table === undefined || !editable ? null : (
+      <div className="flex gap-2">
         <Button
           type="button"
           variant="outline"
           onClick={() => {
-            onOpen(undefined);
+            onDialog('columns');
           }}
         >
-          All tables
+          Edit columns
         </Button>
-      ) : editable ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="More table actions"
+              />
+            }
+          >
+            <EllipsisIcon aria-hidden="true" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={() => {
+                onDialog('remove');
+              }}
+            >
+              Delete table
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    );
+  return (
+    <div className="flex flex-wrap gap-2">
+      {editable ? (
         <Button
           type="button"
           variant="primary"
@@ -53,28 +87,6 @@ export function TablePageActions({
           }}
         >
           Table limits
-        </Button>
-      ) : null}
-      {table !== undefined && editable ? (
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => {
-            onDialog('columns');
-          }}
-        >
-          Edit columns
-        </Button>
-      ) : null}
-      {table !== undefined && editable ? (
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => {
-            onDialog('remove');
-          }}
-        >
-          Delete table
         </Button>
       ) : null}
     </div>
