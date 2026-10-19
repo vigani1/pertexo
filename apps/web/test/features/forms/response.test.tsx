@@ -27,6 +27,30 @@ it('preserves zero and false, omits blank optional input and reports required er
     expect(send).toHaveBeenCalledWith({ amount: 0, ready: false });
   });
 });
+it('asks for a tick on a must-be-ticked box before sending', async () => {
+  const consent = formFieldsSchema.parse([
+    {
+      id: 'agree',
+      name: 'agree',
+      label: 'I agree to the terms',
+      type: 'boolean',
+      mustBeTicked: true,
+    },
+  ]);
+  const send = vi.fn().mockResolvedValue(undefined);
+  render(<FormResponse fields={consent} onSubmit={send} />);
+  const user = userEvent.setup();
+  await user.click(screen.getByRole('button', { name: 'Send response' }));
+  expect(await screen.findByText('Tick this box to continue.')).toBeVisible();
+  expect(send).not.toHaveBeenCalled();
+  await user.click(
+    screen.getByRole('checkbox', { name: 'I agree to the terms' }),
+  );
+  await user.click(screen.getByRole('button', { name: 'Send response' }));
+  await waitFor(() => {
+    expect(send).toHaveBeenCalledWith({ agree: true });
+  });
+});
 it('prevents changes and submissions while a response outcome is unresolved', async () => {
   const send = vi.fn();
   render(<FormResponse fields={fields} disabled onSubmit={send} />);

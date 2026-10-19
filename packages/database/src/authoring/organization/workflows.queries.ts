@@ -170,8 +170,9 @@ export function createWorkflowOrganizationReadDatabase(
     if (filters.query?.includes('\0') === true) predicates.push('false');
     else if (filters.query !== undefined && filters.query !== '') {
       const pattern = `%${filters.query.replace(/[\\%_]/gu, (letter) => `\\${letter}`)}%`;
+      // ASCII letters fold, as tag keys do; everything else matches literally.
       predicates.push(
-        String.raw`w.name COLLATE "C" LIKE ${parameter(pattern)} ESCAPE '\'`,
+        String.raw`lower(w.name COLLATE "C") LIKE lower(${parameter(pattern)} COLLATE "C") ESCAPE '\'`,
       );
     }
     if (filters.view !== 'all')

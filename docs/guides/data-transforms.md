@@ -78,18 +78,21 @@ callable-result declaration used by Call workflow.
 
 ## Dates and simple expressions
 
-Convert date accepts integer **epoch milliseconds** for **ISO timestamp (UTC)**,
-or a valid timestamp with an explicit offset for **Epoch milliseconds**:
+Convert date accepts integer **epoch milliseconds**, a plain date such as
+`2026-01-01` (what date columns and date pickers give, read as midnight UTC), or
+a timestamp with an explicit offset:
 
 | Input | Convert to | Output |
 | --- | --- | --- |
 | `1767225600000` | ISO timestamp (UTC) | `"2026-01-01T00:00:00.000Z"` |
+| `"2026-01-01"` | ISO timestamp (UTC) | `"2026-01-01T00:00:00.000Z"` |
 | `"2026-01-01T01:00:00+01:00"` | Epoch milliseconds | `1767225600000` |
 
 The input and output field is `value`. Seconds are not guessed. Timestamps require
 `YYYY-MM-DDTHH:mm:ss`, optional 1–3 fraction digits, and `Z` or `±HH:mm`. Invalid
-calendar days, leap seconds, 24:00, natural-language dates and missing offsets
-fail. Instants stay within UTC years 0000–9999; there is no local-timezone inference.
+calendar days, leap seconds, 24:00, natural-language dates and times without an
+offset fail. Instants stay within UTC years 0000–9999; there is no local-timezone
+inference.
 
 Choose **Format timestamp** with an explicit IANA timezone such as
 `Europe/Paris`. Named formats are **Date only** (`2026-01-01`), **Date and time**
