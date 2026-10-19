@@ -145,16 +145,24 @@ export function WorkspaceMobileBar({
             <SheetHeader>
               <SheetTitle>More</SheetTitle>
             </SheetHeader>
-            <SheetBody className="flex flex-col gap-1">
+            {/* Following any link closes More, including the account links
+                the shell passes in, which stay inside this workspace. */}
+            <SheetBody
+              className="flex flex-col gap-1"
+              onClick={(event) => {
+                if (
+                  event.target instanceof Element &&
+                  event.target.closest('a') !== null
+                )
+                  setMoreOpen(false);
+              }}
+            >
               {secondary.map((destination) => (
                 <Link
                   key={destination.to}
                   to={destination.to}
                   params={{ workspaceId: workspace.id }}
                   activeOptions={{ exact: destination.exact ?? false }}
-                  onClick={() => {
-                    setMoreOpen(false);
-                  }}
                   className="flex items-center gap-3 rounded-md px-2 py-2.5 text-sm text-muted-foreground hover:bg-white/5 hover:text-foreground aria-[current=page]:text-accent-foreground [&_svg]:size-4"
                 >
                   {destination.icon}
