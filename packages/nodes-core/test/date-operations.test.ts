@@ -168,18 +168,25 @@ describe('named date formats, IANA conversion and durations', () => {
       ),
     ).toMatchObject({ output: { value: '1890-01-01 00:09:21' } });
   });
-  it('has identical results after restart under different host timezones', () => {
-    const source = new URL('../src/server.ts', import.meta.url).href;
-    const script = `import {createCoreNodeRegistry} from ${JSON.stringify(source)};const registry=createCoreNodeRegistry();const results=[];for(const config of [{operation:'convert_timezone',timeZone:'Europe/Paris'},{operation:'format',format:'date_time',timeZone:'America/New_York'},{operation:'add_duration',unit:'months'}])results.push(await registry.execute({definition:{key:'core.date',version:1},executor:{key:'core.date',version:1},config,input:{value:'2026-01-31T12:00:00Z',...(config.operation==='add_duration'?{amount:1}:{})},signal:new AbortController().signal}));process.stdout.write(JSON.stringify(results));`;
-    const results = ['UTC', 'America/New_York', 'Europe/Belgrade'].map((TZ) => {
-      const child = spawnSync(
-        process.execPath,
-        ['--import', 'tsx', '--input-type=module', '-e', script],
-        { env: { ...process.env, TZ }, encoding: 'utf8', timeout: 10_000 },
+  // Three cold child processes, each allowed 10 s, need more than the default 5 s.
+  it(
+    'has identical results after restart under different host timezones',
+    { timeout: 40_000 },
+    () => {
+      const source = new URL('../src/server.ts', import.meta.url).href;
+      const script = `import {createCoreNodeRegistry} from ${JSON.stringify(source)};const registry=createCoreNodeRegistry();const results=[];for(const config of [{operation:'convert_timezone',timeZone:'Europe/Paris'},{operation:'format',format:'date_time',timeZone:'America/New_York'},{operation:'add_duration',unit:'months'}])results.push(await registry.execute({definition:{key:'core.date',version:1},executor:{key:'core.date',version:1},config,input:{value:'2026-01-31T12:00:00Z',...(config.operation==='add_duration'?{amount:1}:{})},signal:new AbortController().signal}));process.stdout.write(JSON.stringify(results));`;
+      const results = ['UTC', 'America/New_York', 'Europe/Belgrade'].map(
+        (TZ) => {
+          const child = spawnSync(
+            process.execPath,
+            ['--import', 'tsx', '--input-type=module', '-e', script],
+            { env: { ...process.env, TZ }, encoding: 'utf8', timeout: 10_000 },
+          );
+          expect(child.status).toBe(0);
+          return child.stdout;
+        },
       );
-      expect(child.status).toBe(0);
-      return child.stdout;
-    });
-    expect(new Set(results).size).toBe(1);
-  });
+      expect(new Set(results).size).toBe(1);
+    },
+  );
 });

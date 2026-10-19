@@ -101,21 +101,28 @@ describe('explicit date conversion', () => {
       output: { value: Date.UTC(2000, 1, 29) },
     });
   });
-  it('uses the same registry result after fresh process starts under different host timezones', () => {
-    const source = new URL('../src/server.ts', import.meta.url).href;
-    const script = `import { createCoreNodeRegistry } from ${JSON.stringify(source)}; const result = await createCoreNodeRegistry().execute({definition:{key:'core.date',version:1},executor:{key:'core.date',version:1},config:{operation:'to_epoch_millis'},input:{value:'2026-03-29T02:30:00+01:00'},signal:new AbortController().signal}); process.stdout.write(JSON.stringify(result));`;
-    const results = ['UTC', 'America/New_York', 'Europe/Belgrade'].map((TZ) => {
-      const child = spawnSync(
-        process.execPath,
-        ['--import', 'tsx', '--input-type=module', '-e', script],
-        { env: { ...process.env, TZ }, encoding: 'utf8', timeout: 10_000 },
+  // Three cold child processes, each allowed 10 s, need more than the default 5 s.
+  it(
+    'uses the same registry result after fresh process starts under different host timezones',
+    { timeout: 40_000 },
+    () => {
+      const source = new URL('../src/server.ts', import.meta.url).href;
+      const script = `import { createCoreNodeRegistry } from ${JSON.stringify(source)}; const result = await createCoreNodeRegistry().execute({definition:{key:'core.date',version:1},executor:{key:'core.date',version:1},config:{operation:'to_epoch_millis'},input:{value:'2026-03-29T02:30:00+01:00'},signal:new AbortController().signal}); process.stdout.write(JSON.stringify(result));`;
+      const results = ['UTC', 'America/New_York', 'Europe/Belgrade'].map(
+        (TZ) => {
+          const child = spawnSync(
+            process.execPath,
+            ['--import', 'tsx', '--input-type=module', '-e', script],
+            { env: { ...process.env, TZ }, encoding: 'utf8', timeout: 10_000 },
+          );
+          expect(child.status).toBe(0);
+          return child.stdout;
+        },
       );
-      expect(child.status).toBe(0);
-      return child.stdout;
-    });
-    expect(new Set(results).size).toBe(1);
-    expect(JSON.parse(results[0] ?? '{}') as unknown).toMatchObject({
-      output: { value: Date.UTC(2026, 2, 29, 1, 30) },
-    });
-  });
+      expect(new Set(results).size).toBe(1);
+      expect(JSON.parse(results[0] ?? '{}') as unknown).toMatchObject({
+        output: { value: Date.UTC(2026, 2, 29, 1, 30) },
+      });
+    },
+  );
 });
