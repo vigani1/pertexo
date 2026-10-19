@@ -141,7 +141,16 @@ it('backfills typed defaults, rejects missing/oversized defaults atomically and 
       operation: 'add_column',
       column: { name: 'required_flag', type: 'boolean', required: true },
     }),
-  ).rejects.toThrow('required');
+  ).rejects.toThrow(
+    'Give the required column required_flag a default for existing rows.',
+  );
+  await expect(
+    edit(table.id, {
+      operation: 'add_column',
+      column: { name: 'blank_text', type: 'text', required: true },
+      defaultValue: '  ',
+    }),
+  ).rejects.toThrow('a default for existing rows');
   await expect(
     edit(table.id, {
       operation: 'add_column',
