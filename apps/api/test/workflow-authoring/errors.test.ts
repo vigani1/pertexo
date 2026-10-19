@@ -144,11 +144,23 @@ describe('workflow authoring error mapping', () => {
       },
     ],
     [
-      'request schema failure',
-      new z.ZodError([]),
+      'graph schema failure',
+      new z.ZodError([
+        { code: 'custom', path: ['graph', 'nodes'], message: 'unsafe detail' },
+      ]),
       {
         code: 'request.invalid',
         safeDetail: 'The workflow graph is invalid.',
+      },
+    ],
+    [
+      'other request schema failure',
+      new z.ZodError([
+        { code: 'custom', path: ['endpointKey'], message: 'unsafe detail' },
+      ]),
+      {
+        code: 'request.invalid',
+        safeDetail: 'The workflow request is invalid.',
       },
     ],
   ] as const)(

@@ -5,6 +5,7 @@ import {
   dataTableNewColumnsSchema,
   DataTableError,
   type DataTableQuery,
+  type DataTableValues,
 } from '@pertexo/node-sdk';
 import { createDataTablesStore } from '../../src/data-tables/index.js';
 import { parseDatabaseConfig } from '../../src/config.js';
@@ -100,6 +101,51 @@ it('stores typed rows, filters/sorts stable pages and preserves exact command re
     },
   });
   expect(next.rows[0]?.values.amount).toBe(3);
+});
+it('keeps the columns an upsert of an existing row does not name', async () => {
+  const f = await table();
+  await insert(f, 'kept', 5);
+  const upsert = (values: DataTableValues) =>
+    store.write({
+      ...scope(),
+      tableId: f.id,
+      idempotencyKey: randomUUID(),
+      command: { operation: 'upsert', table: f.name, values },
+    });
+  const stored = async () =>
+    (await store.find({ ...scope(), tableId: f.id, query })).rows[0]?.values;
+  await upsert({ key: 'kept', amount: 7 });
+  expect(await stored()).toEqual({ key: 'kept', amount: 7, active: true });
+  await upsert({ key: 'kept', active: null });
+  expect(await stored()).toEqual({ key: 'kept', amount: 7, active: null });
+  await expect(upsert({ amount: 1 })).rejects.toMatchObject({
+    code: 'invalid_values',
+  });
+});
+it('still asks for every required column when an upsert inserts', async () => {
+  const name = `People_${randomUUID().replaceAll('-', '')}`;
+  const created = await store.create({
+    ...scope(),
+    name,
+    columns: dataTableNewColumnsSchema.parse([
+      { name: 'email', type: 'text', required: true },
+      { name: 'name', type: 'text', required: true },
+    ]),
+    keyColumn: 'email',
+    idempotencyKey: randomUUID(),
+  });
+  await expect(
+    store.write({
+      ...scope(),
+      tableId: created.id,
+      idempotencyKey: randomUUID(),
+      command: {
+        operation: 'upsert',
+        table: name,
+        values: { email: 'a@b.co' },
+      },
+    }),
+  ).rejects.toMatchObject({ code: 'invalid_values' });
 });
 it('serializes concurrent upserts and refuses duplicate keys and stale row revisions', async () => {
   const f = await table();
