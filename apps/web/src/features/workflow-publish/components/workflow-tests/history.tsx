@@ -1,7 +1,7 @@
 import { TestSuiteHistory } from '../test-suites/history';
 import { TestSuiteDialog } from '../test-suites/dialog';
+import { XIcon } from 'lucide-react';
 import { WorkflowTestResults } from './results';
-import { WorkflowTestButton } from './controls';
 import {
   Select,
   SelectTrigger,
@@ -10,7 +10,6 @@ import {
   SelectItem,
 } from '@/components/ui/select';
 import { formatDate, formatClock } from '@/lib/format/time';
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Status } from '@/components/ui/status';
 import { Notice } from '@/components/ui/notice';
@@ -21,6 +20,11 @@ import {
 import { useRunEvents } from '@/features/workflow-runs/queries.public';
 import type { WorkflowTests } from '../../hooks/use-workflow-tests';
 
+/**
+ * The tests bar over the canvas. It shows only for test activity: a test or
+ * suite started here, history asked for from the Test workflow menu, a test
+ * still running, or a problem to report. Run all tests lives in that menu.
+ */
 export function WorkflowTestHistory({
   tests,
   ensureSaved,
@@ -32,115 +36,116 @@ export function WorkflowTestHistory({
   currentRevision: number;
   canCancel: boolean;
 }>) {
-  const [expanded, setExpanded] = useState(false);
   if (!tests.enabled) return null;
+  const progress = tests.progress.data;
+  const running =
+    progress !== undefined && isActiveRunStatus(progress.run.status);
+  const problem =
+    tests.cancel.error !== undefined ||
+    tests.history.isError ||
+    tests.progress.isError ||
+    tests.snapshot.isError;
+  const expanded = tests.panel === 'history';
   return (
-    <section
-      aria-label="Workflow tests"
-      className="lens pointer-events-auto max-h-[40svh] overflow-y-auto rounded-xl p-3"
-    >
-      <WorkflowTestRunControls
-        tests={tests}
-        expanded={expanded}
-        onToggle={() => {
-          setExpanded(!expanded);
-        }}
-        currentRevision={currentRevision}
-        canCancel={canCancel}
-      />
-      {tests.cancel.error === undefined ? null : (
-        <Notice tone="destructive">
-          {tests.cancel.error}
-          {tests.cancel.uncertain ? (
-            <Button size="sm" variant="ghost" onClick={tests.cancel.retry}>
-              Retry same cancellation
-            </Button>
-          ) : null}
-        </Notice>
-      )}
-      {tests.history.isError ? (
-        <p role="alert">
-          Test history couldn’t be loaded.{' '}
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => void tests.history.refetch()}
-          >
-            Retry
-          </Button>
-        </p>
-      ) : null}
-      {tests.progress.isError || tests.snapshot.isError ? (
-        <p role="alert">
-          This test couldn’t be read.{' '}
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => {
-              void tests.progress.refetch();
-              void tests.snapshot.refetch();
-            }}
-          >
-            Retry
-          </Button>
-        </p>
-      ) : null}
+    <>
+      {/* Outside the bar: Run all tests opens it from the menu. */}
       <TestSuiteDialog key={String(tests.suites.open)} suites={tests.suites} />
-      {expanded ? (
-        <div className="mt-3 flex flex-col gap-3">
-          {tests.history.data?.items.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No workflow tests yet.
+      {tests.panel === 'hidden' && !running && !problem ? null : (
+        <section
+          aria-label="Workflow tests"
+          className="lens pointer-events-auto max-h-[40svh] overflow-y-auto rounded-xl p-3"
+        >
+          <WorkflowTestRunControls
+            tests={tests}
+            expanded={expanded}
+            running={running}
+            onToggle={() => {
+              if (expanded) tests.showSummary();
+              else tests.showHistory();
+            }}
+            currentRevision={currentRevision}
+            canCancel={canCancel}
+          />
+          {tests.cancel.error === undefined ? null : (
+            <Notice tone="destructive">
+              {tests.cancel.error}
+              {tests.cancel.uncertain ? (
+                <Button size="sm" variant="ghost" onClick={tests.cancel.retry}>
+                  Retry same cancellation
+                </Button>
+              ) : null}
+            </Notice>
+          )}
+          {tests.history.isError ? (
+            <p role="alert">
+              Test history couldn’t be loaded.{' '}
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => void tests.history.refetch()}
+              >
+                Retry
+              </Button>
             </p>
           ) : null}
-          <WorkflowTestPicker tests={tests} />
-          <WorkflowTestResults tests={tests} ensureSaved={ensureSaved} />
-          <TestSuiteHistory
-            suites={tests.suites}
-            canCancel={canCancel}
-            onViewRun={tests.selectRun}
-          />
-        </div>
-      ) : null}
-    </section>
+          {tests.progress.isError || tests.snapshot.isError ? (
+            <p role="alert">
+              This test couldn’t be read.{' '}
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  void tests.progress.refetch();
+                  void tests.snapshot.refetch();
+                }}
+              >
+                Retry
+              </Button>
+            </p>
+          ) : null}
+          {expanded ? (
+            <div className="mt-3 flex flex-col gap-3">
+              {tests.history.data?.items.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No workflow tests yet.
+                </p>
+              ) : null}
+              <WorkflowTestPicker tests={tests} />
+              <WorkflowTestResults tests={tests} ensureSaved={ensureSaved} />
+              <TestSuiteHistory
+                suites={tests.suites}
+                canCancel={canCancel}
+                onViewRun={tests.selectRun}
+              />
+            </div>
+          ) : null}
+        </section>
+      )}
+    </>
   );
 }
 function WorkflowTestRunControls({
   tests,
   expanded,
+  running,
   onToggle,
   currentRevision,
   canCancel,
 }: Readonly<{
   tests: WorkflowTests;
   expanded: boolean;
+  running: boolean;
   onToggle: () => void;
   currentRevision: number;
   canCancel: boolean;
 }>) {
   const snapshot = tests.snapshot.data;
   const progress = tests.progress.data;
-  const active =
-    progress !== undefined && isActiveRunStatus(progress.run.status);
   const look =
     progress === undefined ? undefined : describeRunStatus(progress.run.status);
   return (
     <>
       <div className="flex flex-wrap items-center gap-3">
-        <WorkflowTestButton tests={tests} className="sm:hidden" />
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={
-            tests.blocked ||
-            tests.suites.preparing ||
-            tests.suites.start.pending ||
-            tests.start.pending
-          }
-          onClick={() => void tests.suites.prepare()}
-        >
-          Run all tests
-        </Button>
         {look === undefined ? (
           <span className="text-sm font-medium">Workflow tests</span>
         ) : (
@@ -162,9 +167,9 @@ function WorkflowTestRunControls({
             onToggle();
           }}
         >
-          {expanded ? 'Hide tests' : 'Test history'}
+          {expanded ? 'Hide history' : 'Test history'}
         </Button>
-        {canCancel && active && tests.activeId !== undefined ? (
+        {canCancel && running && tests.activeId !== undefined ? (
           <Button
             size="sm"
             variant="outline"
@@ -174,8 +179,18 @@ function WorkflowTestRunControls({
             Cancel test
           </Button>
         ) : null}
+        {running ? null : (
+          <Button
+            size="icon-sm"
+            variant="ghost"
+            aria-label="Close tests"
+            onClick={tests.hidePanel}
+          >
+            <XIcon />
+          </Button>
+        )}
       </div>
-      {tests.activeId === undefined || !active ? null : (
+      {tests.activeId === undefined || !running ? null : (
         <TestStream key={tests.activeId} tests={tests} runId={tests.activeId} />
       )}
     </>

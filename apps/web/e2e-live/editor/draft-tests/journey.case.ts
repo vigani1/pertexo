@@ -211,9 +211,14 @@ test('saved draft tests run on the worker, skip waits and pinned human steps, an
   expect(realHistory.items).toEqual([]);
   await page.screenshot({ path: '/tmp/pertexo-draft-tests-desktop.png' });
   await page.setViewportSize({ width: 375, height: 768 });
+  // On phones the test actions join the editor's ⋯ menu.
+  await page
+    .getByRole('button', { name: 'More workflow actions', exact: true })
+    .click();
   await expect(
-    page.getByRole('button', { name: 'Test workflow', exact: true }),
-  ).toBeInViewport();
+    page.getByRole('menuitem', { name: 'Test workflow', exact: true }),
+  ).toBeVisible();
+  await page.keyboard.press('Escape');
   await expect(
     page.getByRole('button', { name: 'Publish v1', exact: true }),
   ).toBeInViewport();
