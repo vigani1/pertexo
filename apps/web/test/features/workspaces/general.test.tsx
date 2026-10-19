@@ -617,6 +617,72 @@ describe('workspace settings', () => {
     );
   });
 
+  it('marks counts from a first page as floors while more pages exist', async () => {
+    const api = `http://pertexo.test/v1/workspaces/${workspaceId}`;
+    mockServer.use(
+      ...identityHandlers({
+        ...workspace,
+        capabilities: [
+          'workspace:read',
+          'member:read',
+          'workflow:read',
+          'connection:read',
+        ],
+      }),
+      http.get(`${api}/workflows`, () =>
+        HttpResponse.json({
+          items: [
+            {
+              id: '11111111-1111-4111-8111-111111111111',
+              workspaceId,
+              name: 'Workflow 11',
+              nameRevision: 1,
+              lifecycleStatus: 'active',
+              lifecycleRevision: 1,
+              activationStatus: 'active',
+              publishedVersionId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+              createdAt: timestamp,
+              updatedAt: timestamp,
+            },
+          ],
+          nextCursor: 'next-workflows',
+        }),
+      ),
+      http.get(`${api}/members`, () =>
+        HttpResponse.json({
+          items: [
+            {
+              userId,
+              email: 'owner@example.test',
+              displayName: 'Owner',
+              role: 'owner',
+              roleRevision: 1,
+              membershipStatus: 'active',
+              createdAt: timestamp,
+              updatedAt: timestamp,
+            },
+          ],
+          nextCursor: 'next-members',
+        }),
+      ),
+      http.get(`${api}/connections`, () =>
+        HttpResponse.json({ items: [], nextCursor: null }),
+      ),
+    );
+    renderApp(`/w/${workspaceId}/settings`);
+    const glance = within(
+      await screen.findByRole('region', { name: 'At a glance' }),
+    );
+    const tile = (name: RegExp) => glance.getByRole('link', { name });
+    // Only the first page was read, so "1 live" would claim an exact count.
+    await waitFor(() => {
+      expect(tile(/workflows/u)).toHaveTextContent('1+workflows1+ live');
+    });
+    await waitFor(() => {
+      expect(tile(/members/u)).toHaveTextContent('1+members1+ Owners');
+    });
+  });
+
   it('shows read-only identity without management commands when capability is absent', async () => {
     let requests = 0;
     mockServer.use(
