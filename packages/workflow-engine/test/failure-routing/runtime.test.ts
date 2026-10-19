@@ -91,6 +91,7 @@ function fixture() {
     failureKind = 'failed',
     errorKind = 'authentication',
     attemptNumber = 1,
+    safeErrorCode = `execution.${errorKind}`,
   ) {
     return step([
       {
@@ -102,7 +103,7 @@ function fixture() {
         failureKind,
         errorKind,
         possiblyDispatched: false,
-        safeErrorCode: `execution.${errorKind}`,
+        safeErrorCode,
       },
     ]);
   }
@@ -193,6 +194,24 @@ describe('failure routing through public engine transitions', () => {
       expect(stopped.failureValues).toBeUndefined();
       expect(stopped.attempts).toEqual([]);
       expect(stopped.checkpoint.runStatus).toBe(kind);
+    },
+  );
+  it.each([
+    ['configuration', 'execution.attempt_invalid'],
+    ['configuration', 'execution.table_key_conflict'],
+    ['internal', 'code.runtime_error'],
+  ])(
+    'routes the step’s own %s failure %s to its handler',
+    async (errorKind, safeErrorCode) => {
+      const f = fixture();
+      await f.step();
+      await f.success('manual');
+      const routed = await f.fail('set', 'failed', errorKind, 1, safeErrorCode);
+      expect(routed.attempts.map((a) => a.nodeId)).toEqual(['handler']);
+      expect(routed.failureValues?.[0]?.value).toMatchObject({
+        errorKind,
+        safeErrorCode,
+      });
     },
   );
   it('does not route unapproved platform/internal classification', async () => {
