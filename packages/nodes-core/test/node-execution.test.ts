@@ -87,12 +87,16 @@ describe('core node public execution contracts', () => {
       executor: CORE_MERGE_EXECUTOR,
       config: { parallelNodeId: 'parallel', policy: { kind: 'all' } },
       input: {
-        ledger: { 'branch-01': { disposition: 'arrived', output: true } },
-        selectedBranchIds: ['branch-01'],
+        ledger: {
+          'branch-01': { disposition: 'arrived', output: { total: 3 } },
+          'branch-02': { disposition: 'skipped' },
+          'branch-03': { disposition: 'arrived', output: ['a'] },
+        },
+        selectedBranchIds: ['branch-01', 'branch-03'],
       },
       expected: {
-        ledger: { 'branch-01': { disposition: 'arrived', output: true } },
-        selectedBranchIds: ['branch-01'],
+        branches: { 'branch-01': { total: 3 }, 'branch-03': ['a'] },
+        selectedBranchIds: ['branch-01', 'branch-03'],
       },
     },
     {

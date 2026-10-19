@@ -295,6 +295,12 @@ export type NodeAttemptLoopDeclaration = Readonly<{
   output: unknown;
 }>;
 
+/** A succeeded attempt's stored output, such as a Merge branch's result. */
+export type NodeAttemptStoredOutput = Readonly<{
+  attemptId: string;
+  output: unknown;
+}>;
+
 export type NodeAttemptCompletion =
   | Readonly<{ status: 'succeeded'; output: unknown }>
   | Readonly<{ status: 'suspended'; output: unknown; durationSeconds: number }>
@@ -337,6 +343,13 @@ export interface NodeAttemptRunStore {
       signal: AbortSignal;
     }>,
   ): Promise<NodeAttemptLoopDeclaration | undefined>;
+  readAttemptOutputs(
+    input: Readonly<{
+      lease: NodeAttemptLease;
+      attemptIds: readonly string[];
+      signal: AbortSignal;
+    }>,
+  ): Promise<readonly NodeAttemptStoredOutput[]>;
   markDispatched(
     input: Readonly<{
       lease: NodeAttemptLease;

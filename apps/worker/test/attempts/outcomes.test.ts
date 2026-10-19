@@ -520,6 +520,7 @@ describe('NodeAttemptHandler', () => {
     'maps durable dispatch evidence failures to %s',
     async (error, code) => {
       const runStore = executionStore({
+        readAttemptOutputs: vi.fn().mockResolvedValue([]),
         readLoopDeclaration: vi.fn(),
         markDispatched: vi.fn().mockRejectedValue(error),
       });
@@ -627,6 +628,7 @@ describe('NodeAttemptHandler', () => {
           completedNodeOutputs: [],
           runInput: null,
         }),
+        readAttemptOutputs: vi.fn().mockResolvedValue([]),
         readLoopDeclaration: vi.fn(),
         markDispatched: vi.fn(),
       } satisfies NodeAttemptRunStore;
@@ -747,6 +749,7 @@ describe('NodeAttemptHandler', () => {
           completedNodeOutputs: [],
           runInput: null,
         }),
+        readAttemptOutputs: vi.fn().mockResolvedValue([]),
         readLoopDeclaration: vi.fn(),
         markDispatched: vi.fn(),
       } satisfies NodeAttemptRunStore;
@@ -814,6 +817,7 @@ describe('NodeAttemptHandler', () => {
         completedNodeOutputs: [],
         runInput: null,
       }),
+      readAttemptOutputs: vi.fn().mockResolvedValue([]),
       readLoopDeclaration: vi.fn(),
       markDispatched: vi.fn(),
     } satisfies NodeAttemptRunStore;
@@ -878,6 +882,7 @@ describe('NodeAttemptHandler', () => {
         completedNodeOutputs: [],
         runInput: null,
       }),
+      readAttemptOutputs: vi.fn().mockResolvedValue([]),
       readLoopDeclaration: vi.fn(),
       markDispatched: vi.fn(),
     } satisfies NodeAttemptRunStore;
@@ -1080,6 +1085,7 @@ describe('NodeAttemptHandler', () => {
           completedNodeOutputs: [],
           runInput: null,
         }),
+        readAttemptOutputs: vi.fn().mockResolvedValue([]),
         readLoopDeclaration: vi.fn(),
         markDispatched: vi.fn(),
       } satisfies NodeAttemptRunStore;

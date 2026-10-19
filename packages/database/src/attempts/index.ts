@@ -9,6 +9,7 @@ export {
 export type {
   NodeAttemptLease,
   NodeAttemptLoopDeclaration,
+  NodeAttemptStoredOutput,
   NodeAttemptRunStore,
   NodeAttemptStoredInputs,
 } from './store.js';
