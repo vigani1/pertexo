@@ -1,3 +1,5 @@
+import { APIError } from 'better-auth/api';
+
 import { IdentityError } from '../../identity/errors.js';
 import type {
   AuthenticatedSession,
@@ -75,7 +77,12 @@ export class BetterAuthSessionService {
     } catch (error: unknown) {
       options.signal?.throwIfAborted();
       if (error instanceof IdentityError) throw error;
-      throw new IdentityError('identity.session_invalid');
+      // Better Auth answers UNAUTHORIZED for a session that is gone. Anything
+      // else, like an unreachable database, says nothing about the session:
+      // calling it invalid would send a signed-in person to sign in again.
+      if (error instanceof APIError && error.status === 'UNAUTHORIZED')
+        throw new IdentityError('identity.session_invalid');
+      throw error;
     }
   }
 
