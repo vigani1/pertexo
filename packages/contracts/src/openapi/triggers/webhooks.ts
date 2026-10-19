@@ -109,10 +109,10 @@ export const webhooksClientContract = Object.freeze({
       requiredHeaders: ['Idempotency-Key', 'X-CSRF-Token'],
     },
     { method: 'OPTIONS', path: '/hooks/:endpointKey' },
+    { method: 'GET', path: '/hooks/:endpointKey' },
     {
       method: 'POST',
       path: '/hooks/:endpointKey',
-      requiredHeaders: ['Content-Type'],
       maximumBodyBytes: 262_144,
     },
   ]),
@@ -236,7 +236,7 @@ export const webhooksOpenApiDocument = Object.freeze({
             name: 'Access-Control-Request-Method',
             in: 'header',
             required: true,
-            schema: { type: 'string', const: 'POST' },
+            schema: { type: 'string', enum: ['GET', 'POST'] },
           },
           {
             name: 'Access-Control-Request-Headers',
@@ -252,6 +252,47 @@ export const webhooksOpenApiDocument = Object.freeze({
           '401': responseReference('Unauthenticated'),
           '429': responseReference('RateLimited'),
           '503': responseReference('Unavailable'),
+        },
+      },
+      get: {
+        operationId: 'acceptWebhookGet',
+        description:
+          'Starts a run from the query string. Signed endpoints refuse GET with 405, because the signature covers the body.',
+        parameters: [pathParameter('endpointKey', '^[A-Za-z0-9_-]{43}$')],
+        responses: {
+          '202': ingressWorkflowResponse(
+            'Immediate mode, timeout or wait overflow returns {runId,replayed}; an opt-in workflow may also choose status 202 with its configured JSON/text body.',
+            {
+              anyOf: [
+                { $ref: '#/components/schemas/WebhookIngressResponse' },
+                {},
+              ],
+            },
+          ),
+          '400': ingressWorkflowResponse(
+            'Invalid request before admission, or the configured workflow response.',
+          ),
+          '401': ingressWorkflowResponse(
+            'Webhook authentication failed, or the configured workflow response.',
+          ),
+          '405': ingressWorkflowResponse(
+            'Signed endpoint, which accepts POST only.',
+          ),
+          '409': ingressWorkflowResponse(
+            'Idempotency conflict, or the configured workflow response.',
+          ),
+          '429': ingressWorkflowResponse(
+            'Ingress rate limit, or the configured workflow response.',
+          ),
+          '503': ingressWorkflowResponse(
+            'Unavailable before acceptance, or the configured workflow response.',
+          ),
+          '500': ingressWorkflowResponse(
+            'Failure before a workflow response returns only {code:"webhook.workflow_failed"}; a workflow may instead choose its own status 500 JSON/text body.',
+          ),
+          default: ingressWorkflowResponse(
+            'Opt-in Respond to webhook result (200–599), with JSON or plain text up to 1 MiB, no-store, nosniff and only the safe header allowlist. Work continues after responding.',
+          ),
         },
       },
       post: {
@@ -276,8 +317,17 @@ export const webhooksOpenApiDocument = Object.freeze({
           },
         ],
         requestBody: {
-          required: true,
-          content: { 'application/json': { schema: {} } },
+          required: false,
+          content: {
+            'application/json': { schema: {} },
+            'application/x-www-form-urlencoded': {
+              schema: {
+                type: 'object',
+                additionalProperties: { type: 'string' },
+              },
+            },
+            'text/plain': { schema: { type: 'string' } },
+          },
         },
         responses: {
           '202': ingressWorkflowResponse(

@@ -8,10 +8,7 @@ import { createWebhookResponseWaiter } from './responses/wait.js';
 import { replyToAcceptedWebhook } from './responses/reply.js';
 import { createHash, randomUUID } from 'node:crypto';
 
-import {
-  idempotencyKeySchema,
-  webhookJsonContentTypeSchema,
-} from '@pertexo/contracts';
+import { idempotencyKeySchema } from '@pertexo/contracts';
 
 import {
   WebhookIngressRateLimitExceededError,
@@ -44,6 +41,12 @@ import {
   parseRequestId,
   withRequestOperationSignal,
 } from '../platform/http/index.js';
+import { parseWebhookBody, webhookMediaType } from './requests/body.js';
+import {
+  rawWebhookQuery,
+  searchFields,
+  webhookHeaders,
+} from './requests/details.js';
 
 const MAX_BODY = 256 * 1024;
 const WEBHOOK_FRESHNESS_ALLOWANCE_SECONDS = 300;
@@ -111,23 +114,29 @@ export function registerWebhookIngress(
         parsed(null, body);
       },
     );
-    scope.post(
-      '/hooks/:endpointKey',
-      { bodyLimit: MAX_BODY + 1 },
-      (request, reply) =>
+    const accept =
+      (method: WebhookMethod) =>
+      (request: FastifyRequest, reply: FastifyReply) =>
         traceAcceptance(telemetry, singleHeader(request, 'traceparent'), () =>
           withRequestOperationSignal(request, (signal) =>
             acceptWebhook(
               request,
               reply,
+              method,
               dependencies,
               telemetry,
               signal,
               responseWaiter,
             ),
           ),
-        ),
+        );
+    scope.post(
+      '/hooks/:endpointKey',
+      { bodyLimit: MAX_BODY + 1 },
+      accept('POST'),
     );
+    // A HEAD probe must never start a run.
+    scope.get('/hooks/:endpointKey', { exposeHeadRoute: false }, accept('GET'));
     done();
   });
 }
@@ -152,9 +161,12 @@ function traceAcceptance<T>(
   return acceptancePromise ?? acceptOnce();
 }
 
+type WebhookMethod = 'GET' | 'POST';
+
 async function acceptWebhook(
   request: FastifyRequest,
   reply: FastifyReply,
+  method: WebhookMethod,
   dependencies: WebhookIngressDependencies,
   telemetry: WebhookIngressTelemetry,
   encryptionSignal: AbortSignal,
@@ -162,7 +174,11 @@ async function acceptWebhook(
 ): Promise<void> {
   const requestId =
     parseRequestId(request.headers['x-request-id']) ?? randomUUID();
-  const body = request.body;
+  // Fastify leaves the body unset when a request carries none.
+  const body =
+    method === 'GET' || request.body === undefined
+      ? new Uint8Array()
+      : request.body;
   if (!(body instanceof Uint8Array)) {
     record(() => {
       telemetry.delivery('invalid_request');
@@ -178,10 +194,15 @@ async function acceptWebhook(
     return;
   }
   const contentType = singleHeader(request, 'content-type');
+  const mediaType =
+    method === 'GET'
+      ? ''
+      : contentType === undefined && headerPresent(request, 'content-type')
+        ? undefined
+        : webhookMediaType(contentType, body.byteLength);
   if (
-    contentType === undefined ||
-    !webhookJsonContentTypeSchema.safeParse(contentType).success ||
-    headerPresent(request, 'content-encoding')
+    mediaType === undefined ||
+    (method === 'POST' && headerPresent(request, 'content-encoding'))
   ) {
     record(() => {
       telemetry.delivery('invalid_request');
@@ -225,6 +246,16 @@ async function acceptWebhook(
   // ADR 045: from here on every rejection is attributed to this endpoint.
   const reject = (attempt: RejectedAttempt) =>
     recordRejectedAttempt(dependencies.database, verification, body, attempt);
+  // A signature covers the body, and a GET has none to cover.
+  if (method === 'GET' && verification.authentication.mode === 'signed') {
+    await reject(REJECTED_ATTEMPT.invalidRequest);
+    record(() => {
+      telemetry.delivery('invalid_request');
+    });
+    reply.header('allow', 'POST');
+    await problem(reply, 405, 'webhook.method_not_allowed', requestId);
+    return;
+  }
   const origin = singleHeader(request, 'origin');
   if (
     verification.authentication.mode !== 'signed' &&
@@ -291,17 +322,13 @@ async function acceptWebhook(
     return;
   }
 
-  let payload: unknown;
-  try {
-    payload = JSON.parse(
-      new TextDecoder('utf-8', { fatal: true }).decode(body),
-    ) as unknown;
-  } catch {
+  const parsed = parseWebhookBody(mediaType, body);
+  if (!parsed.ok) {
     await reject(REJECTED_ATTEMPT.invalidRequest);
     record(() => {
       telemetry.delivery('invalid_request');
     });
-    await problem(reply, 400, 'webhook.invalid_json', requestId);
+    await problem(reply, 400, parsed.problem, requestId);
     return;
   }
   const idempotency = optionalIdempotencyKey(request);
@@ -313,8 +340,11 @@ async function acceptWebhook(
     await problem(reply, 400, 'request.invalid', requestId);
     return;
   }
+  const query = rawWebhookQuery(request);
   const fingerprint = sha256(
-    `${verification.endpointId}\0${sha256(body)}\0application/json`,
+    method === 'GET'
+      ? `${verification.endpointId}\0GET\0${sha256(query)}`
+      : `${verification.endpointId}\0${sha256(body)}\0${mediaType}${query === '' ? '' : `\0${sha256(query)}`}`,
   );
   try {
     const traceparent = diagnosticTraceparent(telemetry);
@@ -327,7 +357,12 @@ async function acceptWebhook(
       ...(idempotency === undefined
         ? {}
         : { idempotencyKeyHash: sha256(idempotency) }),
-      payload,
+      request: {
+        method,
+        body: parsed.value,
+        query: searchFields(query),
+        headers: webhookHeaders(request, verification.authentication),
+      },
       signal: encryptionSignal,
       checkpointFactory: dependencies.checkpointFactory,
       ...(traceparent === undefined ? {} : { traceparent }),
@@ -525,7 +560,9 @@ async function preflightWebhook(
   if (
     origin === undefined ||
     !webhookOriginAllowed(verification.authentication, origin) ||
-    singleHeader(request, 'access-control-request-method') !== 'POST'
+    !['GET', 'POST'].includes(
+      singleHeader(request, 'access-control-request-method') ?? '',
+    )
   ) {
     await authenticationFailed(reply, requestId, telemetry);
     return;
@@ -546,7 +583,7 @@ async function preflightWebhook(
       'vary',
       'Origin, Access-Control-Request-Method, Access-Control-Request-Headers',
     )
-    .header('access-control-allow-methods', 'POST');
+    .header('access-control-allow-methods', 'GET, POST');
   if (headers.length > 0)
     reply.header('access-control-allow-headers', headers.join(', '));
   await reply.code(204).send();

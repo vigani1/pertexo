@@ -6,6 +6,12 @@ import { z } from 'zod';
 export const CORE_WEBHOOK_CONFIG_SCHEMA = z
   .object({
     coordination: eventCoordinationPolicySchema.exactOptional(),
+    runInput: z
+      .enum(['body', 'request'])
+      .optional()
+      .describe(
+        'What the run receives: the data sent (body, or query for GET), or the whole request with its method, query and headers.',
+      ),
     responseMode: z
       .enum(['immediate', 'workflow'])
       .optional()

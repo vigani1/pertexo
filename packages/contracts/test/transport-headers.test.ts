@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   csrfTokenSchema,
-  webhookJsonContentTypeSchema,
+  webhookContentTypeSchema,
 } from '../src/schemas/shared/transport-headers.js';
 import { idempotencyKeySchema } from '../src/schemas/identity/workspaces.js';
 import {
@@ -36,32 +36,43 @@ describe('transport header contracts', () => {
     expect(pattern.test('one,two')).toBe(false);
   });
 
-  it('documents runtime webhook charset restrictions separately from OpenAPI media type', () => {
+  it('documents the webhook body media types and their UTF-8 charset', () => {
     for (const value of [
       'application/json',
       'Application/JSON',
       'application/json; charset=utf-8',
       'APPLICATION/JSON ; CHARSET=UTF-8',
+      'application/cloudevents+json',
+      'application/x-www-form-urlencoded; charset=UTF-8',
+      'text/plain',
+      'text/plain; charset="utf-8"',
     ])
-      expect(webhookJsonContentTypeSchema.safeParse(value).success).toBe(true);
+      expect(webhookContentTypeSchema.safeParse(value).success).toBe(true);
     for (const value of [
       'application/jsonevil',
+      'application/+json',
       'application/json; charset=latin1',
       'application/json; profile=test',
+      'text/html',
+      'multipart/form-data; boundary=x',
     ])
-      expect(webhookJsonContentTypeSchema.safeParse(value).success).toBe(false);
+      expect(webhookContentTypeSchema.safeParse(value).success).toBe(false);
 
-    const operation =
-      webhooksOpenApiDocument.paths['/hooks/{endpointKey}'].post;
-    expect(operation.requestBody.content).toHaveProperty('application/json');
-    expect(operation.parameters).toEqual(
+    const hook = webhooksOpenApiDocument.paths['/hooks/{endpointKey}'];
+    expect(Object.keys(hook.post.requestBody.content)).toEqual([
+      'application/json',
+      'application/x-www-form-urlencoded',
+      'text/plain',
+    ]);
+    expect(hook.post.parameters).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           name: 'Content-Type',
           in: 'header',
-          required: true,
+          required: false,
         }),
       ]),
     );
+    expect(hook.get.responses).toHaveProperty('405');
   });
 });

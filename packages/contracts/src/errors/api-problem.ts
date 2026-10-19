@@ -121,6 +121,7 @@ export const API_PROBLEM_CODES = [
   'webhook.payload_too_large',
   'webhook.unsupported_media_type',
   'webhook.invalid_json',
+  'webhook.method_not_allowed',
   'webhook.idempotency_conflict',
   'webhook.rate_limited',
   'webhook.workflow_paused',
@@ -546,6 +547,12 @@ const apiProblemDetails = {
   'webhook.invalid_json': {
     status: 400,
     title: 'Invalid webhook JSON',
+    severity: 'info',
+    exposeDetail: false,
+  },
+  'webhook.method_not_allowed': {
+    status: 405,
+    title: 'Webhook method not allowed',
     severity: 'info',
     exposeDetail: false,
   },

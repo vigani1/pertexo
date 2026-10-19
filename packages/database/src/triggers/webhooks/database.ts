@@ -5,10 +5,12 @@ import {
   createEventCoordinationPreparation,
   closeEventCoordinationStore,
 } from '../coordination/prepare.js';
-import type {
-  EventCoordinationPolicy,
-  EventCoordinationReceipt,
-} from '@pertexo/workflow-model';
+import type { EventCoordinationReceipt } from '@pertexo/workflow-model';
+import {
+  CORE_WEBHOOK_CONFIG_SCHEMA,
+  webhookRunInput,
+  type WebhookRequest,
+} from '@pertexo/nodes-core';
 import { WorkflowAlreadyRunningError } from '../../runs/commands/concurrency.js';
 import { recordWorkflowTriggerSkip } from '../skips.js';
 import {
@@ -113,7 +115,7 @@ export type AcceptVerifiedWebhookDeliveryInput = Readonly<{
   requestFingerprint: string;
   idempotencyKeyHash?: string;
   bodyBytes: number;
-  payload: unknown;
+  request: WebhookRequest;
   checkpointFactory: InitialCheckpointFactory;
   traceparent?: string;
   signal?: AbortSignal;
@@ -619,23 +621,27 @@ export function createWebhookTriggerDatabase(
           );
           if (replay.rows.length > 0) return { replay: true as const };
           const row = (
-            await transaction.db.execute<{
-              desired_config: { coordination?: EventCoordinationPolicy };
-            }>(
+            await transaction.db.execute<{ desired_config: unknown }>(
               sql`select desired_config from app.workflow_triggers where workspace_id=${transaction.workspaceId} and id=${verification.triggerId} and workflow_version_id=${verification.workflowVersionId}`,
             )
           ).rows[0];
+          const config =
+            row === undefined
+              ? undefined
+              : CORE_WEBHOOK_CONFIG_SCHEMA.parse(row.desired_config);
           return {
             replay: false as const,
-            policy: row?.desired_config.coordination,
+            policy: config?.coordination,
+            runInput: webhookRunInput(config?.runInput, input.request),
           };
         },
       );
+      const runInput = candidate.replay ? undefined : candidate.runInput;
       const prepared = candidate.replay
         ? undefined
         : await eventPreparation.prepare(
             candidate.policy,
-            input.payload,
+            candidate.runInput,
             input.signal,
           );
       return withWorkspaceTransaction(
@@ -714,6 +720,7 @@ export function createWebhookTriggerDatabase(
             return coordinateVerifiedWebhook(
               transaction,
               input,
+              runInput,
               prepared,
               projection,
               deliveryId,
@@ -735,7 +742,7 @@ export function createWebhookTriggerDatabase(
               triggerType: 'webhook',
               workflowId: verification.workflowId,
               workflowVersionId: verification.workflowVersionId,
-              runInput: input.payload,
+              runInput,
               ...(input.traceparent === undefined
                 ? {}
                 : { traceparent: input.traceparent }),

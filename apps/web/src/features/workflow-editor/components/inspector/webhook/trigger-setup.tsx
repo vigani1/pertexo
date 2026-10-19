@@ -12,7 +12,23 @@ export function WebhookTriggerSetup({
   const mode = config.responseMode ?? 'immediate';
   return (
     <>
-      <EventCoordinationSetup node={node} graph={graph} form={form} />
+      <SchemaField
+        config={{ ...config, runInput: config.runInput ?? 'body' }}
+        form={form}
+        field={{
+          key: 'runInput',
+          label: 'Run input',
+          kind: 'string',
+          required: true,
+          options: ['body', 'request'],
+          optionLabels: {
+            body: 'Data sent',
+            request: 'Full request',
+          },
+          description:
+            'Data sent is a POST body, or the query of a GET. Full request adds the method, query and headers, without credentials, signatures, cookies or proxy headers.',
+        }}
+      />
       <SchemaField
         config={{ ...config, responseMode: mode }}
         form={form}
@@ -49,6 +65,7 @@ export function WebhookTriggerSetup({
           }}
         />
       ) : null}
+      <EventCoordinationSetup node={node} graph={graph} form={form} />
     </>
   );
 }

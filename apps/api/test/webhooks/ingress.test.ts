@@ -5,7 +5,7 @@ import { WebhookPreflightController } from '../../src/webhooks/authentication/pr
 import { WEBHOOK_PREFLIGHT } from '../../src/webhooks/tokens.js';
 import { RateLimitModule } from '../../src/platform/rate-limit/rate-limit.module.js';
 import type { RateLimitConsumer } from '../../src/platform/rate-limit/admission.js';
-import { createHmac } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import { CallableInputInvalidError } from '@pertexo/workflow-model';
 import { StoredExecutionValueInvalidError } from '@pertexo/database/platform';
 import { request as sendHttpRequest } from 'node:http';
@@ -54,6 +54,14 @@ const verification: WebhookVerificationReference = {
     validUntil: new Date(now.getTime() + 1),
   },
 };
+
+type AcceptInput = Parameters<
+  WebhookTriggerDatabase['acceptVerifiedDelivery']
+>[0];
+const acceptedInputs = (
+  database: Pick<WebhookTriggerDatabase, 'acceptVerifiedDelivery'>,
+): AcceptInput[] =>
+  vi.mocked(database.acceptVerifiedDelivery).mock.calls.map(([input]) => input);
 
 describe('generic webhook ingress', () => {
   const applications: FastifyInstance[] = [];
@@ -219,7 +227,7 @@ describe('generic webhook ingress', () => {
     expect(response.statusCode).toBe(204);
     expect(response.headers).toMatchObject({
       'access-control-allow-origin': 'https://app.example',
-      'access-control-allow-methods': 'POST',
+      'access-control-allow-methods': 'GET, POST',
       'access-control-allow-headers':
         'content-type, x-webhook-secret, idempotency-key',
     });
@@ -268,7 +276,7 @@ describe('generic webhook ingress', () => {
     for (const extra of [
       { origin: 'https://evil.example' },
       { origin: 'null' },
-      { 'access-control-request-method': 'GET' },
+      { 'access-control-request-method': 'PUT' },
       { 'access-control-request-headers': 'authorization' },
     ]) {
       const result = await f.application.inject({
@@ -507,10 +515,13 @@ describe('generic webhook ingress', () => {
     });
     expect(database.acceptVerifiedDelivery).toHaveBeenCalledWith(
       expect.objectContaining({
-        payload: { value: 1 },
         traceparent: '00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01',
       }),
     );
+    expect(acceptedInputs(database)[0]?.request).toMatchObject({
+      method: 'POST',
+      body: { value: 1 },
+    });
     expect(database.consumeIngressLimit).toHaveBeenCalledOnce();
     expect(database.readResponse).not.toHaveBeenCalled();
     expect(delivery).toHaveBeenCalledWith('accepted');
@@ -857,7 +868,12 @@ describe('generic webhook ingress', () => {
   });
 
   it.each([
-    [{ 'content-type': 'text/plain' }, 415, 'webhook.unsupported_media_type'],
+    [{ 'content-type': 'text/html' }, 415, 'webhook.unsupported_media_type'],
+    [
+      { 'content-type': 'multipart/form-data; boundary=x' },
+      415,
+      'webhook.unsupported_media_type',
+    ],
     [
       { 'content-type': 'application/jsonevil' },
       415,
@@ -882,6 +898,158 @@ describe('generic webhook ingress', () => {
     });
     expect(response.statusCode).toBe(status);
     expect(response.json<{ code: string }>().code).toBe(code);
+  });
+
+  describe('request shapes', () => {
+    const open = () =>
+      setup({
+        ...verification,
+        authentication: { mode: 'secret_url', allowedOrigins: [] },
+      });
+    const accepted = (f: ReturnType<typeof setup>) =>
+      acceptedInputs(f.database);
+
+    it('reads form fields, plain text, +json and an empty POST', async () => {
+      const f = open();
+      const send = (headers: Record<string, string>, payload: string) =>
+        f.application.inject({
+          method: 'POST',
+          url: `/hooks/${endpointKey}`,
+          headers,
+          payload,
+        });
+      for (const [headers, payload] of [
+        [
+          { 'content-type': 'application/x-www-form-urlencoded' },
+          'name=Ada+L&tag=a&tag=b&note=%E2%9C%93',
+        ],
+        [{ 'content-type': 'text/plain; charset=utf-8' }, 'hello\nthere'],
+        [{ 'content-type': 'application/cloudevents+json' }, '{"id":"e1"}'],
+        [{}, ''],
+      ] as const)
+        expect((await send(headers, payload)).statusCode).toBe(202);
+      expect(accepted(f).map((input) => input.request.body)).toEqual([
+        { name: 'Ada L', tag: ['a', 'b'], note: '✓' },
+        'hello\nthere',
+        { id: 'e1' },
+        {},
+      ]);
+      expect((await send({}, '{}')).statusCode).toBe(415);
+      const latin = await f.application.inject({
+        method: 'POST',
+        url: `/hooks/${endpointKey}`,
+        headers: { 'content-type': 'text/plain' },
+        payload: Buffer.from([0xff, 0xfe]),
+      });
+      expect(latin.statusCode).toBe(400);
+      expect(latin.json<{ code: string }>().code).toBe('request.invalid');
+    });
+
+    it('starts a GET run from the query and keeps queries apart', async () => {
+      const f = open();
+      const get = (query: string) =>
+        f.application.inject({
+          method: 'GET',
+          url: `/hooks/${endpointKey}${query}`,
+        });
+      expect((await get('?order=A-1&tag=x&tag=y')).statusCode).toBe(202);
+      expect((await get('?order=A-2')).statusCode).toBe(202);
+      expect((await get('?order=A-1&tag=x&tag=y')).statusCode).toBe(202);
+      const [first, second, third] = accepted(f);
+      expect(first?.request).toMatchObject({
+        method: 'GET',
+        body: {},
+        query: { order: 'A-1', tag: ['x', 'y'] },
+      });
+      expect(first?.requestFingerprint).not.toBe(second?.requestFingerprint);
+      expect(first?.requestFingerprint).toBe(third?.requestFingerprint);
+      expect(
+        (
+          await f.application.inject({
+            method: 'HEAD',
+            url: `/hooks/${endpointKey}`,
+          })
+        ).statusCode,
+      ).toBe(404);
+      expect(accepted(f)).toHaveLength(3);
+    });
+
+    it('refuses GET on a signed endpoint, whose signature covers a body', async () => {
+      const f = setup();
+      const response = await f.application.inject({
+        method: 'GET',
+        url: `/hooks/${endpointKey}?order=A-1`,
+      });
+      expect(response.statusCode).toBe(405);
+      expect(response.headers.allow).toBe('POST');
+      expect(response.json<{ code: string }>().code).toBe(
+        'webhook.method_not_allowed',
+      );
+      expect(f.database.recordRejectedDelivery).toHaveBeenCalledOnce();
+      expect(f.database.acceptVerifiedDelivery).not.toHaveBeenCalled();
+    });
+
+    it('keeps the fingerprint of a JSON POST as it was', async () => {
+      const f = open();
+      await f.application.inject({
+        method: 'POST',
+        url: `/hooks/${endpointKey}`,
+        headers: { 'content-type': 'Application/JSON' },
+        payload: '{"a":1}',
+      });
+      await f.application.inject({
+        method: 'POST',
+        url: `/hooks/${endpointKey}?source=shop`,
+        headers: { 'content-type': 'application/json' },
+        payload: '{"a":1}',
+      });
+      const sha = (value: string) =>
+        createHash('sha256').update(value).digest('hex');
+      const [plain, withQuery] = accepted(f);
+      expect(plain?.requestFingerprint).toBe(
+        sha(`${verification.endpointId}\0${sha('{"a":1}')}\0application/json`),
+      );
+      expect(withQuery?.requestFingerprint).not.toBe(plain?.requestFingerprint);
+    });
+
+    it('leaves credentials, signatures and proxy headers out of the request', async () => {
+      const f = setup({
+        ...verification,
+        authentication: {
+          mode: 'header_secret',
+          headerName: 'x-webhook-secret',
+          allowedOrigins: [],
+        },
+      });
+      const response = await f.application.inject({
+        method: 'POST',
+        url: `/hooks/${endpointKey}`,
+        headers: {
+          'content-type': 'application/json',
+          'x-webhook-secret': Buffer.from(currentSecret).toString('base64url'),
+          authorization: 'Bearer other',
+          cookie: 'session=1',
+          'x-forwarded-for': '203.0.113.9',
+          'x-shop-event': 'order.paid',
+          'user-agent': 'shop/1',
+        },
+        payload: '{}',
+      });
+      expect(response.statusCode).toBe(202);
+      const headers = accepted(f)[0]?.request.headers ?? {};
+      expect(headers).toMatchObject({
+        'x-shop-event': 'order.paid',
+        'user-agent': 'shop/1',
+        'content-type': 'application/json',
+      });
+      for (const name of [
+        'x-webhook-secret',
+        'authorization',
+        'cookie',
+        'x-forwarded-for',
+      ])
+        expect(headers).not.toHaveProperty(name);
+    });
   });
 
   it('accepts case-insensitive JSON media type and UTF-8 parameter', async () => {
