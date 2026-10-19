@@ -10,7 +10,8 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SkeletonRows } from '@/components/ui/skeleton';
+import { useNow } from '@/lib/hooks/use-now';
 import { tasksQueryOptions } from '../data/tasks.queries';
 import type { TaskScope } from '../data/tasks.api';
 import { TaskRow } from './task-row';
@@ -24,7 +25,10 @@ export function TaskList({
   compact?: boolean;
 }>) {
   const query = useInfiniteQuery(tasksQueryOptions(scope, filters));
-  if (query.isPending) return <Skeleton className="h-24 w-full" />;
+  // Expiry reads "expires in 12 minutes"; a minute's tick keeps it honest.
+  const nowMs = useNow(60_000);
+  if (query.isPending)
+    return <SkeletonRows label="Loading requests" rows={compact ? 2 : 4} />;
   if (query.isError)
     return (
       <ReadFailure
@@ -64,9 +68,9 @@ export function TaskList({
           </Empty>
         )
       ) : (
-        <ul>
+        <ul className="-mx-3">
           {(compact ? items.slice(0, 5) : items).map((task) => (
-            <TaskRow key={task.id} task={task} />
+            <TaskRow key={task.id} scope={scope} task={task} nowMs={nowMs} />
           ))}
         </ul>
       )}
