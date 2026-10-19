@@ -879,6 +879,49 @@ describe('http.request@1 server executor', () => {
     },
   );
 
+  it.each([
+    ['GET', 404, '{"error":"not found"}'],
+    ['POST', 500, '{"error":"down"}'],
+    ['POST', 429, 'slow down'],
+  ] as const)(
+    'returns a %s answered %i as output when asked to',
+    async (method, status, text) => {
+      const answered = await createHttpRequestExecutorRegistration({
+        httpClient: streamingHttpClient(async (request) => {
+          await request.beforeDispatch();
+          return response(encoder.encode(text), status);
+        }),
+      }).execute(
+        invocation(runtime().value, {
+          config: config({ method, returnErrorResponses: true }),
+          input: {},
+        }),
+      );
+      expect(answered).toMatchObject({
+        status,
+        body: { kind: 'inline', value: text },
+      });
+    },
+  );
+
+  it('still fails a 2xx-only step on an error status', async () => {
+    await expect(
+      createHttpRequestExecutorRegistration({
+        httpClient: streamingHttpClient(async (request) => {
+          await request.beforeDispatch();
+          return response(encoder.encode('gone'), 404);
+        }),
+      }).execute(
+        invocation(runtime().value, {
+          config: config({ method: 'GET', returnErrorResponses: false }),
+          input: {},
+        }),
+      ),
+    ).rejects.toMatchObject({
+      decision: { kind: 'failed', errorKind: 'provider' },
+    });
+  });
+
   it('classifies rate-limited, timed, and canceled dispatches truthfully under the pinned unsafe class', async () => {
     // A post-dispatch 429 is a definite failure for unsafe work and must
     // never enter automatic retry.
