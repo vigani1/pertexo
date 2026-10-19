@@ -42,8 +42,9 @@ export function queryClause(
             return `${cell} = ${value}::jsonb`;
           case 'not_equals':
             return `${cell} is distinct from ${value}::jsonb`;
+          // ASCII letters fold, as workflow search does (ADR 064).
           case 'contains':
-            return `strpos(values_json::jsonb ->> ${column}::text,${value}::jsonb #>> '{}')>0`;
+            return `strpos(lower((values_json::jsonb ->> ${column}::text) collate "C"),lower((${value}::jsonb #>> '{}') collate "C"))>0`;
           case 'greater_than':
             return `${cell} > ${value}::jsonb`;
           case 'less_than':

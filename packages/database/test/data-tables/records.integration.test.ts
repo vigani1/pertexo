@@ -102,6 +102,23 @@ it('stores typed rows, filters/sorts stable pages and preserves exact command re
   });
   expect(next.rows[0]?.values.amount).toBe(3);
 });
+it('finds text with contains whatever its capital letters', async () => {
+  const f = await table();
+  for (const key of ['Quoted-A', 'quoted-b', 'other']) await insert(f, key);
+  const found = await store.find({
+    ...scope(),
+    tableId: f.id,
+    query: {
+      ...query,
+      filters: [{ column: 'key', operator: 'contains', value: 'QUOTED' }],
+      sort: { column: 'key', direction: 'asc' },
+    },
+  });
+  expect(found.rows.map((row) => row.values.key)).toEqual([
+    'Quoted-A',
+    'quoted-b',
+  ]);
+});
 it('keeps the columns an upsert of an existing row does not name', async () => {
   const f = await table();
   await insert(f, 'kept', 5);
