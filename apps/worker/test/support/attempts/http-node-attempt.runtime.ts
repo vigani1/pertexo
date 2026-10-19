@@ -426,6 +426,12 @@ export async function createHttpNodeAttemptProofRuntime(
         readAttemptOutputs: (
           input: Parameters<NodeAttemptRunStore['readAttemptOutputs']>[0],
         ) => baseRunStore.readAttemptOutputs(input),
+        listNodeOutcomes: (
+          input: Parameters<NodeAttemptRunStore['listNodeOutcomes']>[0],
+        ) => baseRunStore.listNodeOutcomes(input),
+        readNodeOutputs: (
+          input: Parameters<NodeAttemptRunStore['readNodeOutputs']>[0],
+        ) => baseRunStore.readNodeOutputs(input),
         markDispatched: async (
           input: Parameters<NodeAttemptRunStore['markDispatched']>[0],
         ) => {
