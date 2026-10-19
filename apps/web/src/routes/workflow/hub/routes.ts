@@ -116,14 +116,19 @@ export const workflowTriggersRoute = createRoute({
     const { apiClient, queryClient, user, workspace, workflowId } = context;
     if (workflowId === null) return;
     warmPrefetches(context, [
-      queryClient.query(
-        webhookTriggersQueryOptions(
-          apiClient,
-          user.id,
-          workspace.id,
-          workflowId,
-        ),
-      ),
+      // Webhook details are only for people who can edit the workflow.
+      ...(workspace.capabilities.includes('workflow:update')
+        ? [
+            queryClient.query(
+              webhookTriggersQueryOptions(
+                apiClient,
+                user.id,
+                workspace.id,
+                workflowId,
+              ),
+            ),
+          ]
+        : []),
       queryClient.query(
         scheduleTriggersQueryOptions(
           apiClient,

@@ -40,7 +40,13 @@ export function WorkflowPromotionPage({
   selected?: string;
   onSelect: (selections: WorkflowPromotionPreviewRequest['selections']) => void;
 }) {
-  const settings = useQuery(promotionSettingsQuery(scope));
+  const allowed =
+    workspace.capabilities.includes('workflow:update') &&
+    workspace.status === 'active';
+  const settings = useQuery({
+    ...promotionSettingsQuery(scope),
+    enabled: allowed,
+  });
   const selections = promotionSelections(selected);
   const [mode, setMode] = useState<WorkflowPromotionMode>('draft');
   const [note, setNote] = useState('');
@@ -82,11 +88,15 @@ export function WorkflowPromotionPage({
     command.reset();
     setAcknowledged([]);
   }
-  if (
-    !workspace.capabilities.includes('workflow:update') ||
-    workspace.status !== 'active'
-  )
-    return <Notice>Promotion needs edit access in an active workspace.</Notice>;
+  if (!allowed)
+    return (
+      <div className="flex min-w-0 max-w-5xl flex-col gap-7">
+        <PageHeader>
+          <PageHeaderTitle>Promotion</PageHeaderTitle>
+        </PageHeader>
+        <Notice>Promotion needs edit access in an active workspace.</Notice>
+      </div>
+    );
   if (snapshot === undefined || settings.isError)
     return (
       <PromotionSettingsState
