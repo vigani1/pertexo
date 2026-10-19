@@ -365,14 +365,10 @@ export async function executeCuratedTemplateGraphs(
         node.node_id === 'slack-notification' && node.status === 'succeeded',
     ),
   ).toBe(false);
-  // Existing unsafe HTTP policy classifies ambiguous 5xx as outcome_unknown;
-  // no automatic retry/provider fallback and no Slack dispatch may follow.
-  const providerFailure = await run(
-    httpId,
-    {},
-    'controlled-http',
-    'outcome_unknown',
-  );
+  // The template's request is a GET, which reads without side effects: the
+  // controlled provider failure retries under the engine policy and then
+  // fails definitely. No Slack dispatch may follow.
+  const providerFailure = await run(httpId, {}, 'controlled-http', 'failed');
   expect(
     providerFailure.nodes.some(
       (node) =>
@@ -385,8 +381,10 @@ export async function executeCuratedTemplateGraphs(
       "select split_part(node.provider_dispatch_binding,':',1) as kind,count(*)::int as count from app.node_attempts attempt join app.node_runs node on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id where node.workspace_id=$1 and node.workflow_run_id=any($2::uuid[]) and node.provider_dispatch_binding is not null and attempt.dispatch_marked_at is not null group by kind order by kind",
       [workspaceId, [notified.runId, skipped.runId, providerFailure.runId]],
     );
+  // One request each for the two notification runs, three attempts for the
+  // failing GET.
   expect(dispatch.rows).toEqual([
-    { kind: 'http', count: 3 },
+    { kind: 'http', count: 5 },
     { kind: 'slack', count: 1 },
   ]);
   return {

@@ -450,6 +450,15 @@
                     "maxLength": 128
                   }
                 },
+                "optionalConnections": {
+                  "maxItems": 64,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  }
+                },
                 "integration": {
                   "readOnly": true,
                   "type": "object",

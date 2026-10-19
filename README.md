@@ -218,6 +218,9 @@ Current capacity, approaching-limit warnings and retained run trends:
 Pinned samples, whole-draft tests and saved-case suites with publish warnings:
 [pinned samples guide](docs/guides/pinned-samples.md).
 
+Call APIs with run data in the address, parsed JSON responses and safe retries:
+[HTTP requests guide](docs/guides/http-requests.md).
+
 Receive events with Signed, Secret URL or Header secret authentication:
 [webhooks guide](docs/guides/webhooks.md).
 

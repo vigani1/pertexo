@@ -23,9 +23,12 @@ export function workflowConnectionIssues(
     return level.nodes.flatMap((node) => {
       if (node.disabled === true) return [];
       const definition = findDefinition(definitions, node);
+      const optional = new Set(definition?.optionalConnections ?? []);
       const issues = (definition?.connectionRequirements ?? []).flatMap(
         (requirement) => {
           const selectedId = node.connectionRefs[requirement];
+          // An optional connection left empty is a choice, not a problem.
+          if (selectedId === undefined && optional.has(requirement)) return [];
           const message = describeCredentialIssue(
             requirement,
             selectedId,

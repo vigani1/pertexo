@@ -10,7 +10,7 @@ import type {
   SecureHttpTransportRequest,
   SecureHttpTransportResponse,
 } from '../secure.js';
-import { SecureHttpClient } from '../secure.js';
+import { SecureHttpClient, type SecureHttpAddressPolicy } from '../secure.js';
 
 export class NodeDnsResolver implements SecureHttpResolver {
   public async resolve(hostname: string): Promise<readonly ResolvedAddress[]> {
@@ -75,6 +75,13 @@ export class NodeHttpTransport implements SecureHttpTransport {
   }
 }
 
-export function createNodeSecureHttpClient(): SecureHttpClient {
-  return new SecureHttpClient(new NodeDnsResolver(), new NodeHttpTransport());
+export function createNodeSecureHttpClient(
+  addressPolicy?: SecureHttpAddressPolicy,
+): SecureHttpClient {
+  return new SecureHttpClient(
+    new NodeDnsResolver(),
+    new NodeHttpTransport(),
+    undefined,
+    addressPolicy,
+  );
 }

@@ -120,3 +120,90 @@ function matchesIpv6Prefix(
     ((address[wholeWords] ?? 0) & mask) === ((network[wholeWords] ?? 0) & mask)
   );
 }
+
+export type AllowedPrivateNetwork = Readonly<{
+  family: 4 | 6;
+  words: readonly number[];
+  prefix: number;
+}>;
+
+// Cloud metadata services hand out credentials; no allowlist reaches them.
+const METADATA_NETWORKS = Object.freeze([
+  Object.freeze({
+    family: 4 as const,
+    words: ipv4Words('169.254.0.0'),
+    prefix: 16,
+  }),
+  Object.freeze({
+    family: 6 as const,
+    words: ipv6Words('fd00:ec2::'),
+    prefix: 32,
+  }),
+]);
+
+function ipv4Words(address: string): readonly number[] {
+  const value = ipv4Number(address);
+  return [(value >>> 16) & 0xffff, value & 0xffff];
+}
+
+/**
+ * The operator's HTTP_ALLOWED_PRIVATE_NETWORKS: comma-separated CIDRs such as
+ * `10.0.0.0/8,192.168.1.20/32,fd12::/48`. A malformed entry stops startup.
+ */
+export function parseAllowedPrivateNetworks(
+  value: string | undefined,
+): readonly AllowedPrivateNetwork[] {
+  if (value === undefined || value.trim() === '') return Object.freeze([]);
+  return Object.freeze(
+    value.split(',').map((entry) => {
+      const [address = '', prefixText = ''] = entry.trim().split('/');
+      const family = isIP(address);
+      const prefix = Number(prefixText);
+      if (
+        (family !== 4 && family !== 6) ||
+        !/^\d{1,3}$/u.test(prefixText) ||
+        prefix > (family === 4 ? 32 : 128)
+      )
+        throw new Error(
+          `HTTP_ALLOWED_PRIVATE_NETWORKS has an invalid entry "${entry.trim()}"; use CIDRs such as 10.0.0.0/8.`,
+        );
+      return Object.freeze({
+        family,
+        words: family === 4 ? ipv4Words(address) : ipv6Words(address),
+        prefix: family === 4 ? prefix + 96 : prefix,
+      });
+    }),
+  );
+}
+
+function inNetwork(
+  family: 4 | 6,
+  words: readonly number[],
+  network: AllowedPrivateNetwork,
+): boolean {
+  if (network.family !== family) return false;
+  // IPv4 networks are stored behind 96 zero bits, so one matcher serves both.
+  const padded = family === 4 ? [0, 0, 0, 0, 0, 0, ...words] : words;
+  const base =
+    network.family === 4 ? [0, 0, 0, 0, 0, 0, ...network.words] : network.words;
+  return matchesIpv6Prefix(padded, base, network.prefix);
+}
+
+/** Whether the operator allowed this private address; metadata never is. */
+export function isAllowedPrivateAddress(
+  address: string,
+  networks: readonly AllowedPrivateNetwork[],
+): boolean {
+  if (networks.length === 0) return false;
+  const family = isIP(address);
+  if (family !== 4 && family !== 6) return false;
+  const words = family === 4 ? ipv4Words(address) : ipv6Words(address);
+  const metadata = METADATA_NETWORKS.map((network) =>
+    network.family === 4
+      ? { ...network, prefix: network.prefix + 96 }
+      : network,
+  );
+  if (metadata.some((network) => inNetwork(family, words, network)))
+    return false;
+  return networks.some((network) => inNetwork(family, words, network));
+}

@@ -1,10 +1,13 @@
 import { Buffer } from 'node:buffer';
 
 import {
+  type JsonValue,
   type NodeExecutionInvocation,
   type NodeExecutorRegistration,
+  canonicalizeBoundedJson,
   FileInputFailure,
   NodeExecutorFailure,
+  NodeInputValidationError,
   ProviderCredentialInvalidError,
   ProviderExecutionRateLimitError,
 } from '@pertexo/node-sdk/server';
@@ -25,14 +28,25 @@ import {
   HTTP_REQUEST_EXECUTOR,
 } from './definition.js';
 import {
+  HTTP_REQUEST_LIMITS,
   httpRequestConfigSchema,
   httpRequestInputSchema,
   httpRequestOutputSchema,
+  safeRequestUrl,
   type HttpRequestConfig,
   type HttpRequestInput,
   type HttpRequestOutput,
 } from './validation.js';
-import { createProviderBeforeDispatch } from '../provider-dispatch-fence.js';
+import {
+  fillHttpTemplate,
+  HTTP_PLACEHOLDER_NAME,
+  HttpPlaceholderError,
+  type HttpPlaceholderValue,
+} from './placeholders.js';
+import {
+  createProviderBeforeDispatch,
+  createUnauthenticatedBeforeDispatch,
+} from '../provider-dispatch-fence.js';
 import { decodeCredential, mergeHeaders } from './request-material.js';
 import { encodeMultipart } from './multipart/encode.js';
 import { readRequestBody, artifactContentType } from './read-body.js';
@@ -78,18 +92,49 @@ function failedConfiguration(): HttpRequestExecutorError {
   );
 }
 
-function inlineBody(bytes: Uint8Array, preferred: 'base64' | 'utf8') {
+const JSON_MEDIA_TYPE =
+  /^\s*(?:application\/(?:[!#$%&'*.^_`|~0-9a-z-]+\+)?json|text\/json)\s*(?:;|$)/iu;
+// Leaves room in the step's 1 MiB, 10,000-member output for the text and
+// headers the parsed value sits beside.
+const PARSED_JSON_LIMITS = Object.freeze({
+  bytes: 262_144,
+  depth: 48,
+  members: 8_000,
+});
+
+/** A JSON response later steps can map into; absent when it doesn't fit. */
+function parsedJson(text: string): Readonly<{ json?: JsonValue }> {
+  try {
+    return {
+      json: canonicalizeBoundedJson(JSON.parse(text), PARSED_JSON_LIMITS),
+    };
+  } catch {
+    return {};
+  }
+}
+
+function inlineBody(
+  bytes: Uint8Array,
+  preferred: 'base64' | 'utf8',
+  mediaType: string | undefined,
+) {
   if (preferred === 'utf8') {
+    let value: string | undefined;
     try {
-      return Object.freeze({
-        kind: 'inline' as const,
-        encoding: 'utf8' as const,
-        value: new TextDecoder('utf-8', { fatal: true }).decode(bytes),
-        byteLength: bytes.byteLength,
-      });
+      value = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
     } catch {
       // Invalid text is represented exactly as base64.
     }
+    if (value !== undefined)
+      return Object.freeze({
+        kind: 'inline' as const,
+        encoding: 'utf8' as const,
+        value,
+        byteLength: bytes.byteLength,
+        ...(mediaType !== undefined && JSON_MEDIA_TYPE.test(mediaType)
+          ? parsedJson(value)
+          : {}),
+      });
   }
   return Object.freeze({
     kind: 'inline' as const,
@@ -113,35 +158,85 @@ function requestHeaders(
   return { ...headers, 'content-type': multipartContentType };
 }
 
+/**
+ * Split the {placeholder} values from the body inputs and fill the address
+ * and header values. The filled address keeps the configured origin.
+ */
+function fillPlaceholders(
+  configured: HttpRequestConfig,
+  mapped: HttpRequestInput,
+): Readonly<{ config: HttpRequestConfig; input: HttpRequestInput }> {
+  const values: Record<string, HttpPlaceholderValue> = {};
+  const input: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(mapped))
+    if (
+      key !== 'body' &&
+      HTTP_PLACEHOLDER_NAME.test(key) &&
+      (typeof value === 'string' ||
+        typeof value === 'number' ||
+        typeof value === 'boolean')
+    )
+      values[key] = value;
+    else input[key] = value;
+  let filled;
+  try {
+    filled = fillHttpTemplate(configured, values);
+  } catch (error) {
+    if (error instanceof HttpPlaceholderError)
+      throw new NodeInputValidationError(error.message);
+    throw error;
+  }
+  if (
+    !safeRequestUrl(filled.url) ||
+    new TextEncoder().encode(filled.url).byteLength >
+      HTTP_REQUEST_LIMITS.maxUrlBytes ||
+    new URL(filled.url).origin !== new URL(configured.url).origin
+  )
+    throw new NodeInputValidationError(
+      'The filled-in address is too long or no longer a safe address; check the values mapped into it.',
+    );
+  return {
+    config: { ...configured, url: filled.url, headers: filled.headers },
+    input: input as HttpRequestInput,
+  };
+}
+
 async function executeHttpRequest(
   dependencies: HttpRequestExecutorDependencies,
   invocation: NodeExecutionInvocation<unknown, unknown>,
 ): Promise<HttpRequestOutput> {
-  let config: HttpRequestConfig;
-  let input: HttpRequestInput;
+  let configured: HttpRequestConfig;
+  let mapped: HttpRequestInput;
   try {
     // Executors are also callable as isolated adapter boundaries, so they
     // retain fail-closed parsing even though createNodeRegistry parses first.
-    config = httpRequestConfigSchema.parse(invocation.config);
-    input = httpRequestInputSchema.parse(invocation.input);
+    configured = httpRequestConfigSchema.parse(invocation.config);
+    mapped = httpRequestInputSchema.parse(invocation.input);
   } catch {
     throw failedConfiguration();
   }
+  const { config, input } = fillPlaceholders(configured, mapped);
   const runtime = invocation.runtime;
   if (runtime === undefined) throw failedConfiguration();
   const connections = runtime.connections;
+  // The connection is optional: a public API needs no auth headers.
+  const connectionId = invocation.connectionRefs[HTTP_REQUEST_CONNECTION_SLOT];
   if (
-    connections?.assertCurrent === undefined ||
+    (connectionId !== undefined && connections?.assertCurrent === undefined) ||
     runtime.sideEffectClass !== 'unsafe' ||
     runtime.providerIdempotencyKey !== undefined ||
-    Object.keys(invocation.connectionRefs).length !== 1
+    Object.keys(invocation.connectionRefs).some(
+      (slot) => slot !== HTTP_REQUEST_CONNECTION_SLOT,
+    )
   )
     throw failedConfiguration();
-  const assertCurrent = connections.assertCurrent;
-  const connectionId = invocation.connectionRefs[HTTP_REQUEST_CONNECTION_SLOT];
-  if (connectionId === undefined) throw failedConfiguration();
-  const target = new URL(config.url);
-  if (target.protocol !== 'https:') throw failedConfiguration();
+  // GET and HEAD only read (RFC 9110 §9.2.1), so a repeat can't cause a side
+  // effect: their failures retry and can follow a failure link instead of
+  // leaving the outcome unknown.
+  const repeatable = config.method === 'GET' || config.method === 'HEAD';
+  const sideEffect = repeatable
+    ? HTTP_SIDE_EFFECT_CLASS.safe
+    : HTTP_SIDE_EFFECT_CLASS.unsafe;
   let body: Uint8Array | undefined;
   let multipartContentType: string | undefined;
   try {
@@ -174,65 +269,71 @@ async function executeHttpRequest(
     throw error;
   }
 
-  let resolved;
-  try {
-    resolved = await connections.resolve({
-      connectionId,
-      expectedProviderKey: 'http',
-      expectedAuthType: 'http_headers',
-      purpose: 'http.request.execute',
-      signal: invocation.signal,
-    });
-  } catch (error: unknown) {
-    body?.fill(0);
-    if (runtime.providerDispatchUnresolved === true)
-      throw new HttpRequestExecutorError(
-        Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
-        true,
-      );
-    if (safeInstanceOf(error, ProviderExecutionRateLimitError))
+  let resolved:
+    Awaited<ReturnType<NonNullable<typeof connections>['resolve']>> | undefined;
+  if (connectionId !== undefined && connections !== undefined)
+    try {
+      resolved = await connections.resolve({
+        connectionId,
+        expectedProviderKey: 'http',
+        expectedAuthType: 'http_headers',
+        purpose: 'http.request.execute',
+        signal: invocation.signal,
+      });
+    } catch (error: unknown) {
+      body?.fill(0);
+      if (runtime.providerDispatchUnresolved === true)
+        throw new HttpRequestExecutorError(
+          Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
+          true,
+        );
+      if (safeInstanceOf(error, ProviderExecutionRateLimitError))
+        throw new HttpRequestExecutorError(
+          Object.freeze({
+            kind: 'retry',
+            errorKind: 'rate_limit',
+            reuseProviderKey: false,
+          }),
+          false,
+        );
+      if (safeInstanceOf(error, ProviderCredentialInvalidError))
+        throw new HttpRequestExecutorError(
+          Object.freeze({ kind: 'failed', errorKind: 'authentication' }),
+          false,
+        );
+      if (invocation.signal.aborted || errorNameIs(error, 'AbortError'))
+        throw new HttpRequestExecutorError(
+          Object.freeze({ kind: 'canceled', errorKind: 'canceled' }),
+          false,
+        );
       throw new HttpRequestExecutorError(
         Object.freeze({
           kind: 'retry',
-          errorKind: 'rate_limit',
+          errorKind: 'provider',
           reuseProviderKey: false,
         }),
         false,
       );
-    if (safeInstanceOf(error, ProviderCredentialInvalidError))
-      throw new HttpRequestExecutorError(
-        Object.freeze({ kind: 'failed', errorKind: 'authentication' }),
-        false,
-      );
-    if (invocation.signal.aborted || errorNameIs(error, 'AbortError'))
-      throw new HttpRequestExecutorError(
-        Object.freeze({ kind: 'canceled', errorKind: 'canceled' }),
-        false,
-      );
-    throw new HttpRequestExecutorError(
-      Object.freeze({
-        kind: 'retry',
-        errorKind: 'provider',
-        reuseProviderKey: false,
-      }),
-      false,
-    );
-  }
+    }
   try {
     if (
-      resolved.connectionId !== connectionId ||
-      resolved.providerKey !== 'http' ||
-      resolved.authType !== 'http_headers'
+      resolved !== undefined &&
+      (resolved.connectionId !== connectionId ||
+        resolved.providerKey !== 'http' ||
+        resolved.authType !== 'http_headers')
     )
       throw failedConfiguration();
-    const credential = decodeCredential(
-      resolved.secret,
-      () =>
-        new HttpRequestExecutorError(
-          Object.freeze({ kind: 'failed', errorKind: 'authentication' }),
-          false,
-        ),
-    );
+    const credential =
+      resolved === undefined
+        ? { headers: Object.freeze({}) }
+        : decodeCredential(
+            resolved.secret,
+            () =>
+              new HttpRequestExecutorError(
+                Object.freeze({ kind: 'failed', errorKind: 'authentication' }),
+                false,
+              ),
+          );
     let headers: Readonly<Record<string, string>>;
     try {
       headers = requestHeaders(
@@ -265,15 +366,20 @@ async function executeHttpRequest(
           maxResponseBytes: config.maxResponseBytes,
           sensitiveValues: Object.values(credential.headers),
           signal: invocation.signal,
-          beforeDispatch: createProviderBeforeDispatch({
-            assertCurrent,
-            connectionId,
-            expectedProviderKey: 'http',
-            expectedAuthType: 'http_headers',
-            secretVersionId: resolved.secretVersionId,
-            signal: invocation.signal,
-            runtime,
-          }),
+          beforeDispatch:
+            resolved === undefined ||
+            connectionId === undefined ||
+            connections?.assertCurrent === undefined
+              ? createUnauthenticatedBeforeDispatch(runtime)
+              : createProviderBeforeDispatch({
+                  assertCurrent: connections.assertCurrent,
+                  connectionId,
+                  expectedProviderKey: 'http',
+                  expectedAuthType: 'http_headers',
+                  secretVersionId: resolved.secretVersionId,
+                  signal: invocation.signal,
+                  runtime,
+                }),
         },
         (stream) =>
           consumeResponseBody(
@@ -304,21 +410,17 @@ async function executeHttpRequest(
       if (secureError.code === SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch)
         throw failedConfiguration();
       throw new HttpRequestExecutorError(
-        classifySecureHttpError(
-          secureError.error,
-          HTTP_SIDE_EFFECT_CLASS.unsafe,
-          false,
-        ),
-        secureError.possiblyDispatched,
+        classifySecureHttpError(secureError.error, sideEffect, false),
+        !repeatable && secureError.possiblyDispatched,
       );
     }
     const decision = classifySecureHttpResponse(
       response.status,
-      HTTP_SIDE_EFFECT_CLASS.unsafe,
+      sideEffect,
       false,
     );
     if (decision.kind !== 'succeeded')
-      throw new HttpRequestExecutorError(decision, true);
+      throw new HttpRequestExecutorError(decision, !repeatable);
     return httpRequestOutputSchema.parse({
       status: response.status,
       headers: response.headers,
@@ -328,7 +430,7 @@ async function executeHttpRequest(
     });
   } finally {
     body?.fill(0);
-    resolved.secret.fill(0);
+    resolved?.secret.fill(0);
   }
 }
 
@@ -454,7 +556,11 @@ async function consumeResponseBody(
       if (next.done === true) {
         const bytes = concatenate(buffered, byteLength);
         try {
-          return inlineBody(bytes, response.bodyEncoding);
+          return inlineBody(
+            bytes,
+            response.bodyEncoding,
+            response.headers['content-type'],
+          );
         } finally {
           bytes.fill(0);
           for (const chunk of buffered) chunk.fill(0);

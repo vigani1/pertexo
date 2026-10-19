@@ -33,7 +33,11 @@ import {
   composeExecutableCatalog,
   type NodeExecutionRegistry,
 } from '@pertexo/workflow-engine';
-import type { ConnectionEnvelopeEncryptionConfig } from '@pertexo/integrations/server';
+import {
+  createNodeSecureHttpClient,
+  type ConnectionEnvelopeEncryptionConfig,
+  type SecureHttpAddressPolicy,
+} from '@pertexo/integrations/server';
 import { JsonataEvaluator } from '@pertexo/workflow-model/server';
 import {
   createNodeAttemptExecutionEngine,
@@ -96,6 +100,8 @@ export type NodeAttemptRuntimeOptions = Readonly<{
   database: DatabaseConfig;
   databaseRuntime?: DatabaseRuntime;
   heartbeatIntervalMillis: number;
+  /** The HTTP request step's private-network policy. */
+  httpRequest?: SecureHttpAddressPolicy;
   leaseDurationSeconds: number;
   observer?: QueueConsumerObserver;
   preview?: PreviewAttemptRuntimeDependency;
@@ -230,6 +236,9 @@ async function createProductionNodeAttemptRuntime(
   const registry =
     dependencies.registry ??
     createPlatformNodeRegistry({
+      httpRequest: {
+        httpClient: createNodeSecureHttpClient(options.httpRequest),
+      },
       httpRequestTelemetry: createHttpProviderTelemetry(),
       slackSendMessageTelemetry: createSlackProviderTelemetry(),
       emailSendNotificationTelemetry: createEmailProviderTelemetry(),

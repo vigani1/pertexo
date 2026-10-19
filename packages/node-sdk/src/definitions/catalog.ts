@@ -67,6 +67,8 @@ export interface NodeManifest {
   readonly ports: NodePorts;
   readonly credentialRequirements: readonly string[];
   readonly connectionRequirements: readonly string[];
+  /** Connection slots a step may leave empty, such as auth for a public API. */
+  readonly optionalConnections?: readonly string[] | undefined;
   readonly integration?: NodeIntegrationOperation | undefined;
   readonly retryClass: RetryClass;
   readonly resourceClass: ResourceClass;
@@ -140,6 +142,7 @@ export const nodeManifestSchema = z
     ports: portsSchema,
     credentialRequirements: identifiersSchema,
     connectionRequirements: identifiersSchema,
+    optionalConnections: identifiersSchema.optional(),
     integration: integrationOperationSchema.optional(),
     retryClass: z.enum(['safe', 'idempotent-with-key', 'unsafe']),
     resourceClass: z.enum(['io', 'cpu']),
@@ -148,7 +151,17 @@ export const nodeManifestSchema = z
     executorAbi: z.number().int().positive(),
     policyReferences: z.array(policyReferenceSchema),
   })
-  .strict();
+  .strict()
+  .refine(
+    (manifest) =>
+      (manifest.optionalConnections ?? []).every((slot) =>
+        manifest.connectionRequirements.includes(slot),
+      ),
+    {
+      path: ['optionalConnections'],
+      message: 'optional connections must be connection requirements',
+    },
+  );
 
 export const executorManifestSchema = z
   .object({

@@ -25,6 +25,8 @@ export interface WorkflowDefinitionCatalog {
       readonly providerKey: string;
       readonly operationKey: string;
       readonly connectionSlots: readonly string[];
+      /** Slots a step may leave empty, such as auth for a public API. */
+      readonly optionalConnectionSlots?: readonly string[];
     }>;
   }[];
 }
@@ -94,6 +96,11 @@ export function workflowIntegrationUsage(
     if (integration !== undefined) {
       for (const slot of integration.connectionSlots) {
         const connectionId = node.connectionRefs[slot];
+        if (
+          connectionId === undefined &&
+          integration.optionalConnectionSlots?.includes(slot) === true
+        )
+          continue;
         if (connectionId === undefined) {
           throw new TypeError(
             `Integration definition ${node.definition.key}@${String(node.definition.version)} requires connection slot ${slot}`,
