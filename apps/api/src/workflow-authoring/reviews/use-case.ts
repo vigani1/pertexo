@@ -11,6 +11,7 @@ import {
   type WorkspaceAuthorizationSource,
 } from '../../authorization/index.js';
 import type { WorkflowApplicationInput } from '../ports.js';
+import { parseRequestBody } from '../../platform/http/index.js';
 
 type Scope = WorkflowApplicationInput & {
   signal?: AbortSignal;
@@ -46,7 +47,10 @@ export class PublicationReviewUseCase {
     },
   ) {
     await this.authorize(input, 'workflow:publish');
-    const body = publicationReviewRequestSchema.parse(input.request);
+    const body = parseRequestBody(
+      publicationReviewRequestSchema,
+      input.request,
+    );
     return publicationReviewSchema.parse(
       await this.store.request({
         ...this.scope(input),
@@ -61,7 +65,10 @@ export class PublicationReviewUseCase {
     input: RequestInput & { request: unknown; idempotencyKey: string },
   ) {
     await this.authorize(input, 'governance:manage');
-    const body = publicationReviewDecisionSchema.parse(input.request);
+    const body = parseRequestBody(
+      publicationReviewDecisionSchema,
+      input.request,
+    );
     return publicationReviewSchema.parse(
       await this.store.decide({
         ...this.scope(input),
