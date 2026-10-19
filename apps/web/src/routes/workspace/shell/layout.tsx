@@ -113,7 +113,10 @@ export function WorkspaceShellFrame({
     to: '/w/$workspaceId/runs/$runId',
     params: { workspaceId: workspace.id },
   });
-  const routeCrumbs = useShellCrumbs(workspace);
+  const routeCrumbs = useShellCrumbs(workspace, {
+    apiClient,
+    userId: user.id,
+  });
 
   // Stable, so pages that receive it through context don't re-render.
   const openSearch = useCallback(() => {
