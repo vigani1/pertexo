@@ -54,10 +54,7 @@ import {
   type WorkflowExecutableNode,
   type WorkflowExecutableGraph,
 } from './compilation/foundation.js';
-import {
-  normalizeBoundedEngineJson,
-  normalizeBoundedEngineValue,
-} from './compilation/validation.js';
+import { normalizeBoundedEngineValue } from './compilation/validation.js';
 import type { WorkflowObservation } from './types.js';
 import { parseCheckpoint } from './checkpoint/create-and-parse.js';
 import type { SchedulerState } from './transition/scheduling/readiness.js';
@@ -487,7 +484,7 @@ export async function resolveSingleNodePreviewInput(
   try {
     runInput = normalizeBoundedEngineValue(input.runInput);
     const rawNode = record(
-      normalizeBoundedEngineJson(input.node),
+      normalizeBoundedEngineValue(input.node),
       'attempt_invalid',
       'preview node',
     );
