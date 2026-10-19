@@ -18,6 +18,7 @@ import {
   workerBaseUrl,
   workspaceA,
 } from './fixtures.js';
+import { NodeAttemptStateCorruptError } from '../../../src/attempts/index.js';
 
 function recordBenchmarkOperation(name: string, startedAt: number): void {
   if (process.env.PERTEXO_Q11_OPERATION_TIMING !== '1') return;
@@ -541,5 +542,47 @@ describe('Coordinator For Each persistence invariants', () => {
       attemptId: declarationAttemptId,
       output: { items, iterationCount: 2 },
     });
+    // Each pass's result is read back by key once the loop is done.
+    const signal = new AbortController().signal;
+    const outcomes = await nodeAttemptStore.listNodeOutcomes({
+      lease,
+      nodeId: 'body-first',
+      signal,
+    });
+    expect(
+      outcomes
+        .map(({ invocationKey, status }) => ({ invocationKey, status }))
+        .sort((left, right) =>
+          left.invocationKey.localeCompare(right.invocationKey),
+        ),
+    ).toEqual([
+      { invocationKey: first0Key, status: 'succeeded' },
+      { invocationKey: first1Key, status: 'succeeded' },
+    ]);
+    expect(outcomes.every(({ outputBytes }) => outputBytes > 0)).toBe(true);
+    await expect(
+      nodeAttemptStore.listNodeOutcomes({ lease, nodeId: 'body-sink', signal }),
+    ).resolves.toEqual([]);
+    expect(
+      [
+        ...(await nodeAttemptStore.readNodeOutputs({
+          lease,
+          invocationKeys: [first1Key, first0Key],
+          signal,
+        })),
+      ].sort((left, right) =>
+        left.invocationKey.localeCompare(right.invocationKey),
+      ),
+    ).toEqual([
+      { invocationKey: first0Key, output: { value: 'ordinal-zero' } },
+      { invocationKey: first1Key, output: { value: 'ordinal-one' } },
+    ]);
+    await expect(
+      nodeAttemptStore.readNodeOutputs({
+        lease,
+        invocationKeys: [first0Key, sink1Key],
+        signal,
+      }),
+    ).rejects.toThrow(NodeAttemptStateCorruptError);
   });
 });

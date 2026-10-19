@@ -3,7 +3,9 @@ import {
   CANONICAL_JSON_MAX_DEPTH,
   InvalidJsonValueError,
   canonicalJson,
+  canonicalizeJson,
   inspectJsonValue,
+  normalizeJson,
 } from '../../src/json/canonical.js';
 
 describe('canonical JSON', () => {
@@ -96,4 +98,19 @@ it('counts UTF-8 and JSON-escaped bytes identically in browsers and Node', () =>
   expect(inspectJsonValue(input).bytes).toBe(
     Buffer.byteLength(canonicalJson(input), 'utf8'),
   );
+});
+
+describe('normalizeJson', () => {
+  it('validates like canonicalizeJson but keeps key order', () => {
+    const value = { name: 'Ada', qty: 2, nested: { zip: '10115', city: 'B' } };
+    expect(JSON.stringify(normalizeJson(value))).toBe(
+      '{"name":"Ada","qty":2,"nested":{"zip":"10115","city":"B"}}',
+    );
+    expect(JSON.stringify(canonicalizeJson(value))).toBe(
+      '{"name":"Ada","nested":{"city":"B","zip":"10115"},"qty":2}',
+    );
+    expect(() => normalizeJson({ value: Number.NaN })).toThrow(
+      InvalidJsonValueError,
+    );
+  });
 });

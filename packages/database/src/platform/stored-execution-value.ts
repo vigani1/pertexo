@@ -251,7 +251,14 @@ function cloneInlineJson(value: unknown): StoredExecutionJsonValue {
   return normalized;
 }
 
-function canonicalJson(value: StoredExecutionJsonValue): string {
+/**
+ * Stored values keep the key order they were written with, as people see
+ * them. Comparisons and checksums use the sorted, canonical text instead.
+ */
+function serializeJson(
+  value: StoredExecutionJsonValue,
+  order: 'as_written' | 'canonical',
+): string {
   type Frame =
     | Readonly<{ kind: 'value'; value: StoredExecutionJsonValue }>
     | Readonly<{ kind: 'token'; token: string }>;
@@ -282,7 +289,8 @@ function canonicalJson(value: StoredExecutionJsonValue): string {
       continue;
     }
     const record = item as Readonly<Record<string, StoredExecutionJsonValue>>;
-    const keys = Object.keys(record).sort();
+    const keys =
+      order === 'canonical' ? Object.keys(record).sort() : Object.keys(record);
     frames.push({ kind: 'token', token: '}' });
     for (let index = keys.length - 1; index >= 0; index -= 1) {
       const key = keys[index];
@@ -334,16 +342,21 @@ export function parseStoredExecutionValue(
   invalid();
 }
 
+function storedValueJson(
+  parsed: StoredExecutionValue,
+  order: 'as_written' | 'canonical',
+): string {
+  return parsed.kind === 'artifact'
+    ? `{"artifactId":${JSON.stringify(parsed.artifactId)},"kind":"artifact"}`
+    : `{"kind":"inline","value":${serializeJson(parsed.value, order)}}`;
+}
+
 export function prepareStoredExecutionValue(value: unknown): Readonly<{
   value: StoredExecutionValue;
   json: string;
 }> {
   const parsed = parseStoredExecutionValue(value);
-  const json =
-    parsed.kind === 'artifact'
-      ? `{"artifactId":${JSON.stringify(parsed.artifactId)},"kind":"artifact"}`
-      : `{"kind":"inline","value":${canonicalJson(parsed.value)}}`;
-  return { value: parsed, json };
+  return { value: parsed, json: storedValueJson(parsed, 'as_written') };
 }
 
 export function serializeStoredExecutionValue(value: unknown): string {
@@ -356,7 +369,17 @@ export function serializeStoredExecutionJsonValue(value: unknown): string {
     value,
   });
   if (parsed.kind !== 'inline') invalid();
-  return canonicalJson(parsed.value);
+  return serializeJson(parsed.value, 'canonical');
+}
+
+/** A JSON value's text with its keys in the order they were written. */
+export function serializeWrittenJsonValue(value: unknown): string {
+  const parsed = parseStoredExecutionValue({
+    kind: 'inline',
+    value,
+  });
+  if (parsed.kind !== 'inline') invalid();
+  return serializeJson(parsed.value, 'as_written');
 }
 
 /** Descriptor fields do not consume the inline value's byte/member budget. */
@@ -366,6 +389,7 @@ export function storedExecutionValuesEqual(
 ): boolean {
   if (left === null || right === null) return left === right;
   return (
-    serializeStoredExecutionValue(left) === serializeStoredExecutionValue(right)
+    storedValueJson(parseStoredExecutionValue(left), 'canonical') ===
+    storedValueJson(parseStoredExecutionValue(right), 'canonical')
   );
 }

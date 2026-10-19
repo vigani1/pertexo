@@ -442,9 +442,7 @@ export async function acceptWorkflowRun(
               replaySourceRunId: parsed.replaySourceRunId,
             }),
         inputRef:
-          storedRunInputJson === null
-            ? null
-            : sql`${storedRunInputJson}::jsonb`,
+          storedRunInputJson === null ? null : sql`${storedRunInputJson}::json`,
         inputRefExpiresAt:
           storedRunInputJson === null
             ? null

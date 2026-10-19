@@ -292,7 +292,7 @@ it('keeps the decision name through profile edits and command replay; reads lega
   expect((await store.read(f.scope)).completedByName).toBe('Approver');
   expect((await store.decide(command)).task.output).toEqual(first.task.output);
   await admin.query(
-    "update app.pending_run_tasks set output_ref=output_ref #- '{value,decidedByName}' where id=$1",
+    "update app.pending_run_tasks set output_ref=(output_ref::jsonb #- '{value,decidedByName}')::json where id=$1",
     [f.taskId],
   );
   const legacy = await store.read(f.scope);

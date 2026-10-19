@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg';
-import { canonicalJson } from '@pertexo/workflow-model';
+import { canonicalJson, normalizedJson } from '@pertexo/workflow-model';
 import {
   DataTableError,
   DATA_TABLE_LIMITS,
@@ -117,7 +117,7 @@ export async function mutateRows(
     (command.operation === 'upsert' && old.length === 0)
   ) {
     const values = validateDataTableValues(table.columns, command.values);
-    const text = canonicalJson(values);
+    const text = normalizedJson(values);
     const id = generatePersistedId();
     countDelta = 1;
     byteDelta = Buffer.byteLength(text);
@@ -135,7 +135,7 @@ export async function mutateRows(
         ...(JSON.parse(row.values_json) as DataTableValues),
         ...patch,
       });
-      const text = canonicalJson(values);
+      const text = normalizedJson(values);
       byteDelta += Buffer.byteLength(text) - Buffer.byteLength(row.values_json);
       await client.query(
         'update app.workspace_data_table_rows set values_json=$4,key_value=$5,revision=revision+1 where workspace_id=$1 and table_id=$2 and id=$3',
@@ -208,7 +208,7 @@ export async function insertTableBatch(
       const values = validateDataTableValues(table.columns, input);
       return {
         id: generatePersistedId(),
-        values_json: canonicalJson(values),
+        values_json: normalizedJson(values),
         key_value: keyValue(table, values),
       };
     } catch (error) {

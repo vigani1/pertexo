@@ -87,7 +87,11 @@ the way those products do.
 - **Field order is kept.** Columns holding step inputs, outputs and results
   move from `jsonb` to `json`, which stores the text as written. Queries that
   need jsonb operators cast in place. Rows written earlier keep the order
-  they already have. A new ADR records the stored format.
+  they already have. A new ADR records the stored format. Graphs move too,
+  since a Set step's fields are its mappings: otherwise the editor would show
+  them in alphabetical order after saving. Values that flow to steps keep
+  their order in TypeScript as well; hashes and comparisons stay canonical.
+  Table rows follow their column order ([ADR 088](../adr/088-stored-key-order.md)).
 
 ## Steps
 
@@ -97,9 +101,9 @@ the way those products do.
   URL placeholders with query and headers, private-network allowlist.
 - [x] 3. Failure links catch step errors (ADR 073 amendment).
 - [x] 4. Merge passes its branches' data.
-- [ ] 5. For each returns its results (ADR 020 amendment).
+- [x] 5. For each returns its results (ADR 020 amendment).
 - [x] 6. Webhook request details, form posts and GET.
-- [ ] 7. Order-keeping storage for inputs, outputs and results (new ADR).
+- [x] 7. Order-keeping storage for inputs, outputs and results (new ADR).
 
 Each step ships as its own PR with tests that fail without it, and is checked
 end to end on the local stack with the QA step lab.

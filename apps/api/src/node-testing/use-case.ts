@@ -18,6 +18,7 @@ import {
 } from '@pertexo/database/authoring';
 import {
   canonicalJson,
+  normalizedJson,
   type JsonValue,
   parseWorkflowGraphDraft,
 } from '@pertexo/workflow-model';
@@ -221,7 +222,7 @@ export class TestWorkflowNodeUseCase {
         definitionVersion: prepared.definition.version,
         executorKey: prepared.executor.key,
         executorVersion: prepared.executor.version,
-        executableNode: canonicalExecutableNode(prepared.executableNode),
+        executableNode: normalizedExecutableNode(prepared.executableNode),
         input: request.input,
         sideEffectClass: prepared.disclosure.sideEffectClass,
         mayContactProvider: prepared.disclosure.mayContactProvider,
@@ -453,7 +454,7 @@ function previewAcceptanceResponse(
   });
 }
 
-function canonicalExecutableNode(value: unknown) {
-  const parsed: unknown = JSON.parse(canonicalJson(value));
+function normalizedExecutableNode(value: unknown) {
+  const parsed: unknown = JSON.parse(normalizedJson(value));
   return executableNodeSchema.parse(parsed);
 }

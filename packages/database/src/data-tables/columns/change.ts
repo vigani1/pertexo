@@ -6,7 +6,7 @@ import {
   type DataTableColumn,
   type DataTableValues,
 } from '@pertexo/node-sdk';
-import { canonicalJson } from '@pertexo/workflow-model';
+import { canonicalJson, normalizedJson } from '@pertexo/workflow-model';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { readQuotas, requireTable } from '../read.js';
 import { keyValue } from '../mutate.js';
@@ -174,13 +174,16 @@ export async function editTableSchema(
         input.change,
         JSON.parse(row.values_json) as DataTableValues,
       );
-      const text = canonicalJson(values);
+      const text = normalizedJson(values);
       bytes += Buffer.byteLength(text);
       return {
         id: row.id,
         values_json: text,
         key_value: keyValue(next, values),
-        changed: text !== row.values_json,
+        // Older rows were stored with sorted keys; only content counts.
+        changed:
+          canonicalJson(values) !==
+          canonicalJson(JSON.parse(row.values_json) as DataTableValues),
       };
     });
     if (quota.storedBytes - table.storedBytes + bytes > quota.byteLimit)

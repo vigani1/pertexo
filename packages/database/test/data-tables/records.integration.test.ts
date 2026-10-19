@@ -139,6 +139,32 @@ it('keeps the columns an upsert of an existing row does not name', async () => {
     code: 'invalid_values',
   });
 });
+it('stores and returns row values in column order', async () => {
+  const f = await table();
+  await store.write({
+    ...scope(),
+    tableId: f.id,
+    idempotencyKey: randomUUID(),
+    command: {
+      operation: 'insert',
+      table: f.name,
+      values: { active: false, amount: 4, key: 'ordered' },
+    },
+  });
+  const found = await store.find({ ...scope(), tableId: f.id, query });
+  expect(Object.keys(found.rows[0]?.values ?? {})).toEqual([
+    'key',
+    'amount',
+    'active',
+  ]);
+  const stored = await queryAsOwner<{ values_json: string }>(
+    'select values_json from app.workspace_data_table_rows where workspace_id=$1 and table_id=$2',
+    [workspaceId, f.id],
+  );
+  expect(stored[0]?.values_json).toBe(
+    '{"key":"ordered","amount":4,"active":false}',
+  );
+});
 it('still asks for every required column when an upsert inserts', async () => {
   const name = `People_${randomUUID().replaceAll('-', '')}`;
   const created = await store.create({

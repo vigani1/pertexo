@@ -98,7 +98,7 @@ async function restoreWorkflowVersion(
 
     await lockArtifactReferences(client, workspaceId, sourceVersion.graphJson);
     const updatedResult = await client.query<Record<string, unknown>>(
-      `update app.workflow_drafts set graph_json=$1::jsonb,
+      `update app.workflow_drafts set graph_json=$1::json,
          revision=revision+1,updated_by=$2,
          updated_at=transaction_timestamp()
        where workspace_id=$3 and workflow_id=$4 and revision=$5

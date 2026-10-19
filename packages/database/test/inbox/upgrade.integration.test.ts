@@ -97,6 +97,7 @@ it('upgrades populated workflow threads and private read revisions without chang
       '0034_organization_directory.sql',
       '0035_workflow_promotions.sql',
       '0036_workflow_collaboration.sql',
+      '0037_keep_field_order.sql',
     ]);
     read = createWorkspaceInboxDatabase(
       parseDatabaseConfig({

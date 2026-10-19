@@ -11,7 +11,7 @@ function copyJsonataValue(value: unknown): unknown {
       string,
       unknown
     >;
-    for (const key of Object.keys(value).sort())
+    for (const key of Object.keys(value))
       result[key] = copyJsonataValue(Reflect.get(value, key));
     return result;
   }

@@ -1,7 +1,7 @@
 import { UUID_PATTERN } from '@pertexo/workflow-model';
 import { resolvePlatformNodeDefinition } from '@pertexo/node-catalog';
 import {
-  canonicalizeJson,
+  normalizeJson,
   type JsonValue,
   resolveValueSource,
   type WorkflowGraph,
@@ -168,8 +168,8 @@ export async function prepareNodeValidation(
         });
 
     if (input.deferInput !== true) {
-      const runInput = canonicalizeJson(input.sampleInput ?? {});
-      for (const key of Object.keys(node.inputMappings).sort()) {
+      const runInput = normalizeJson(input.sampleInput ?? {});
+      for (const key of Object.keys(node.inputMappings)) {
         const source = node.inputMappings[key];
         if (source === undefined) continue;
         const resolution = await resolveValueSource(
@@ -192,7 +192,7 @@ export async function prepareNodeValidation(
           });
       }
     }
-    const resolvedInput = canonicalizeJson(mapped);
+    const resolvedInput = normalizeJson(mapped);
     if (input.deferInput !== true) {
       const parsedInput = definition.inputSchema.safeParse(resolvedInput);
       if (!parsedInput.success)
@@ -204,7 +204,7 @@ export async function prepareNodeValidation(
           });
     }
   }
-  const resolvedInput = canonicalizeJson(mapped);
+  const resolvedInput = normalizeJson(mapped);
 
   return Object.freeze({
     definition: Object.freeze({ ...definition.manifest.definition }),
@@ -222,7 +222,7 @@ export async function prepareNodeValidation(
             definition.manifest.capabilities,
           ),
     executableNode: Object.freeze(
-      canonicalizeJson({
+      normalizeJson({
         id: node.id,
         definition: node.definition,
         configVersion: node.configVersion,

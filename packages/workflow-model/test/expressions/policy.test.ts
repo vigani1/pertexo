@@ -217,8 +217,27 @@ describe('restricted JSONata policy v1', () => {
     ).toEqual(
       expect.objectContaining({
         kind: 'value',
-        value: ['nodeOutputs', 'runInput'],
+        value: ['runInput', 'nodeOutputs'],
       }),
+    );
+  });
+  it('keeps the key order of the data it reads and returns', async () => {
+    const evaluator = new JsonataEvaluator();
+    evaluators.push(evaluator);
+    const context = {
+      runInput: {
+        name: 'Ada',
+        qty: 2,
+        address: { zip: '10115', city: 'Berlin' },
+      },
+      nodeOutputs: {},
+    };
+    const result = await evaluator.evaluate({
+      expression: '{ "row": runInput, "keys": $keys(runInput.address) }',
+      context,
+    });
+    expect(result.kind === 'value' && JSON.stringify(result.value)).toBe(
+      '{"row":{"name":"Ada","qty":2,"address":{"zip":"10115","city":"Berlin"}},"keys":["zip","city"]}',
     );
   });
   it('rejects accessor-bearing and hostile contexts before worker creation', async () => {

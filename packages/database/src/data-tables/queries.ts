@@ -14,11 +14,17 @@ export interface StoredRow {
   revision: number;
   values_json: string;
 }
-function projectRow(row: StoredRow): DataTableRow {
+/** A row's values in column order, whichever order they were stored in. */
+function projectRow(table: DataTableDefinition, row: StoredRow): DataTableRow {
+  const stored = JSON.parse(row.values_json) as DataTableValues;
   return {
     id: row.id,
     revision: row.revision,
-    values: JSON.parse(row.values_json) as DataTableValues,
+    values: Object.fromEntries(
+      table.columns
+        .filter(({ name }) => Object.hasOwn(stored, name))
+        .map(({ name }) => [name, stored[name] ?? null]),
+    ),
   };
 }
 export function queryClause(
@@ -88,7 +94,7 @@ export async function findRows(
     parameters,
   );
   return boundedResult(
-    result.rows.slice(0, query.limit).map(projectRow),
+    result.rows.slice(0, query.limit).map((row) => projectRow(table, row)),
     Math.min(result.rows.length, query.limit),
     result.rows.length > query.limit,
   );
