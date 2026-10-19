@@ -228,3 +228,73 @@ it('keeps an edited comment and its original revision when a newer reply or edit
     expectedRevision: 2,
   });
 });
+it('mentions someone by typing @ and their name, as Slack does', async () => {
+  const writes: unknown[] = [];
+  const searched: string[] = [];
+  const fetch = vi
+    .fn<typeof globalThis.fetch>()
+    .mockImplementation((input, init) => {
+      const path =
+        typeof input === 'string'
+          ? input
+          : input instanceof URL
+            ? input.href
+            : input.url;
+      if (init?.method === 'POST') {
+        writes.push(
+          JSON.parse(typeof init.body === 'string' ? init.body : 'null'),
+        );
+        return Promise.resolve(
+          json({
+            threadId,
+            commentId,
+            revision: 1,
+            replayed: false,
+            deleted: false,
+            threadDeleted: false,
+          }),
+        );
+      }
+      if (path.includes('/people?')) {
+        searched.push(new URL(path, 'http://x').searchParams.get('q') ?? '');
+        return Promise.resolve(
+          json({
+            items: [{ userId, displayName: 'Ada Lovelace', role: 'owner' }],
+            nextCursor: null,
+          }),
+        );
+      }
+      return Promise.resolve(json({ items: [], nextCursor: null }));
+    });
+  renderInRouter(
+    <WorkflowCommentsPage
+      scope={scopeFor(fetch)}
+      steps={[]}
+      search={{}}
+      onNavigate={vi.fn()}
+    />,
+  );
+  const user = userEvent.setup();
+  await user.click(
+    await screen.findByRole('button', { name: 'New discussion' }),
+  );
+  const text = screen.getByRole('textbox', { name: 'New discussion' });
+  await user.type(text, 'Can you check this, @Ad');
+  await user.click(await screen.findByRole('button', { name: 'Ada Lovelace' }));
+  expect(text).toHaveValue('Can you check this, @Ada Lovelace ');
+  expect(
+    screen.getByRole('button', { name: 'Remove mention of Ada Lovelace' }),
+  ).toBeVisible();
+  expect(text).toHaveFocus();
+  await user.keyboard('please');
+  await user.click(screen.getByRole('button', { name: 'Post comment' }));
+  await waitFor(() => {
+    expect(writes).toEqual([
+      {
+        body: 'Can you check this, @Ada Lovelace please',
+        mentionUserIds: [userId],
+        stepId: null,
+      },
+    ]);
+  });
+});

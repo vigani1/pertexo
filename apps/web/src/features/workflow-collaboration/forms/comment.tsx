@@ -1,4 +1,10 @@
-import { useId, useState, type ReactNode } from 'react';
+import {
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import {
   workflowCommentBodySchema,
   COLLABORATION_LIMITS,
@@ -17,6 +23,11 @@ import {
   MentionPicker,
   type MentionPerson,
 } from '../components/mention-picker';
+import {
+  insertMention,
+  typedMention,
+  type TypedMention,
+} from '../model/mentions';
 export function CommentForm({
   scope,
   title,
@@ -42,6 +53,19 @@ export function CommentForm({
     initial?.mentions ?? [],
   );
   const [validation, setValidation] = useState<string>();
+  // Typing "@na" offers members, like Slack and Linear; picking one writes
+  // "@Name" into the comment and adds the mention.
+  const [typed, setTyped] = useState<TypedMention>();
+  const textarea = useRef<HTMLTextAreaElement>(null);
+  const caretAfterMention = useRef<number>(undefined);
+  useLayoutEffect(() => {
+    // After the name is written, typing goes on right behind it.
+    const caret = caretAfterMention.current;
+    if (caret === undefined || textarea.current === null) return;
+    caretAfterMention.current = undefined;
+    textarea.current.focus();
+    textarea.current.setSelectionRange(caret, caret);
+  }, [body]);
   const command = useDiscussionCommand(scope, (result) => {
     setBody('');
     setMentions([]);
@@ -77,8 +101,18 @@ export function CommentForm({
         disabled={locked}
         aria-invalid={validation !== undefined}
         aria-describedby={validation === undefined ? undefined : id + '-error'}
+        ref={textarea}
         onChange={(event) => {
           setBody(event.target.value);
+          setTyped(
+            typedMention(event.target.value, event.target.selectionStart),
+          );
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape' && typed !== undefined) {
+            event.preventDefault();
+            setTyped(undefined);
+          }
         }}
       />
       {validation === undefined ? null : (
@@ -91,6 +125,15 @@ export function CommentForm({
         selected={mentions}
         onChange={setMentions}
         disabled={locked}
+        typed={typed?.query}
+        onPicked={(person) => {
+          if (typed === undefined) return;
+          const caret = textarea.current?.selectionStart ?? body.length;
+          const next = insertMention(body, typed, caret, person.displayName);
+          caretAfterMention.current = next.caret;
+          setBody(next.text);
+          setTyped(undefined);
+        }}
       />
       <p className="text-xs text-muted-foreground">
         Plain text · Visible to members who can read this workflow
