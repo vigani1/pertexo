@@ -728,7 +728,7 @@ describe('NodeAttemptHandler', () => {
   });
 
   it.each([undefined, TRACEPARENT])(
-    'fails a typed invalid attempt without exposing details for trace %s',
+    "fails a typed invalid attempt as the step's own failure, without exposing details, for trace %s",
     async (traceparent) => {
       const attemptLease = lease();
       const complete = vi
@@ -782,10 +782,16 @@ describe('NodeAttemptHandler', () => {
       expect(complete.mock.calls[0]?.[0]).toMatchObject({
         lease: attemptLease,
         outcome: {
-          status: 'failed',
+          status: 'executor_failure',
+          failureKind: 'failed',
+          errorKind: 'configuration',
+          possiblyDispatched: false,
           safeErrorCode: 'execution.attempt_invalid',
         },
       });
+      expect(JSON.stringify(complete.mock.calls[0]?.[0])).not.toContain(
+        'secret detail',
+      );
       expect(complete.mock.calls[0]?.[0].signal).toBeInstanceOf(AbortSignal);
     },
   );
