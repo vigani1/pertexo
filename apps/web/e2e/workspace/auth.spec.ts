@@ -749,6 +749,27 @@ test('login remains keyboard-visible, motion-safe, and narrow-screen bounded', a
   ).toBe(true);
 });
 
+for (const [width, height] of [
+  [390, 844],
+  [375, 667],
+])
+  test(`sign-in fits a ${String(width)}×${String(height)} phone without scrolling`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height });
+    await mockIdentity(page, { authenticated: false });
+    await page.goto('/login');
+    await expect(
+      page.getByRole('button', { name: 'Sign in', exact: true }),
+    ).toBeVisible();
+    // Nothing waits below the form: the page's one job is the lens.
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollHeight - window.innerHeight,
+      ),
+    ).toBeLessThanOrEqual(0);
+  });
+
 test('explains expired and first-stage email verification links', async ({
   page,
 }) => {
