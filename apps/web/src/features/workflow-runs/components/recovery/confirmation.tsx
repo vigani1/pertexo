@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
+import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DeadlineField } from '@/components/ui/deadline-field';
 import { Status } from '@/components/ui/status';

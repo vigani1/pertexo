@@ -1,5 +1,5 @@
 import { Fragment } from 'react';
-import { SettingsSection } from '@/components/patterns/settings-section';
+import { SettingsSection } from '@/components/patterns/settings/section';
 import { cn } from '@/lib/utils';
 import {
   ROLE_MATRIX,

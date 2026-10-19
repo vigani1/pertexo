@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { CornerDownRightIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
+import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
 import { describeReadError } from '@/lib/api/error-copy';

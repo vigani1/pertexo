@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Status } from '@/components/ui/status';
-import { JsonTree } from '@/components/patterns/json-tree';
+import { JsonTree } from '@/components/patterns/code/json-tree';
 import { describeNodeStatus } from '@/features/workflow-runs/run-labels.public';
 import { nodeRunOutputQueryOptions } from '@/features/workflow-runs/queries.public';
 import { workflowTestStepLabels } from '../../model/testing/workflow';

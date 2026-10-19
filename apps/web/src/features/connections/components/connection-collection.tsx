@@ -6,7 +6,7 @@ import type {
   InfiniteData,
   UseInfiniteQueryResult,
 } from '@tanstack/react-query';
-import { LoadMore } from '@/components/patterns/load-more';
+import { LoadMore } from '@/components/patterns/lists/load-more';
 import { StaleLine } from '@/components/patterns/states/stale-line';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';

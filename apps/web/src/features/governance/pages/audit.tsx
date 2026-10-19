@@ -8,7 +8,7 @@ import {
   PageHeaderMeta,
   PageHeaderTitle,
 } from '@/components/patterns/page-header';
-import { RecentLog } from '@/components/patterns/recent-log';
+import { RecentLog } from '@/components/patterns/lists/recent-log';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { describeCommandError } from '@/lib/api/error-copy';

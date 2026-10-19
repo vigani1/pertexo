@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
+import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import { Button } from '@/components/ui/button';
 
 /** Restoring cancels the deletion; the dialog says what stays off afterwards. */

@@ -1,7 +1,10 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type { WorkflowPromotionHistory } from '@pertexo/contracts';
-import { RecentLog, RecentLogEntry } from '@/components/patterns/recent-log';
+import {
+  RecentLog,
+  RecentLogEntry,
+} from '@/components/patterns/lists/recent-log';
 import type { PromotionScope } from '../data/promotions.api';
 import { promotionHistoryQuery } from '../data/promotions.queries';
 

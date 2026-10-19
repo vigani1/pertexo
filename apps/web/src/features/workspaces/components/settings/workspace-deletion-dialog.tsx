@@ -1,6 +1,6 @@
 import { useId, useState } from 'react';
 import { workspaceDeletionRequestSchema } from '@pertexo/contracts';
-import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
+import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { FieldGroup, LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';

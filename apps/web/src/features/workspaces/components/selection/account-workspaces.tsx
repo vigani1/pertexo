@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { ChevronRightIcon } from 'lucide-react';
-import { SettingsSection } from '@/components/patterns/settings-section';
+import { SettingsSection } from '@/components/patterns/settings/section';
 import { Badge } from '@/components/ui/badge';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import { Status } from '@/components/ui/status';

@@ -3,7 +3,7 @@ import {
   type EditorPresenceSource,
 } from '../model/state/presence';
 import type { CodeSettings } from '@pertexo/node-sdk';
-import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
+import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import type {
   NodeDefinitionCatalogItem,
   WorkflowGraphContract,

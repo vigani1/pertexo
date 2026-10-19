@@ -10,7 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { FieldGroup, LabelledField } from '@/components/ui/field';
 import { Notice } from '@/components/ui/notice';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { LoadMore } from '@/components/patterns/load-more';
+import { LoadMore } from '@/components/patterns/lists/load-more';
 import { workflowTagAssignmentsInfiniteQueryOptions } from '../../../data/organization/queries';
 import type { WorkflowOrganizationAttempt } from '../../../model/organization/requests';
 import {

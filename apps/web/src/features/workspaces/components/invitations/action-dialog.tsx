@@ -1,5 +1,5 @@
 import type { WorkspaceInvitation } from '@pertexo/contracts';
-import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
+import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import type { InvitationAction } from './list';
 
 export type InvitationSelection = Readonly<{

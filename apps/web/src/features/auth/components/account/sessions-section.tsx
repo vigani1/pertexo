@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { LaptopIcon, SmartphoneIcon } from 'lucide-react';
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
+import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import type { ApiClient } from '@/lib/api/client';

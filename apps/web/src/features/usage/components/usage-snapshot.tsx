@@ -1,6 +1,6 @@
 import { RefreshCwIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { SettingsSection } from '@/components/patterns/settings-section';
+import { SettingsSection } from '@/components/patterns/settings/section';
 import { StaleLine } from '@/components/patterns/states/stale-line';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';

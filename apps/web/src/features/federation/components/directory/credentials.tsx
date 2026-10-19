@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { DIRECTORY_LIMITS, type DirectorySettings } from '@pertexo/contracts';
-import { SettingsSection } from '@/components/patterns/settings-section';
+import { SettingsSection } from '@/components/patterns/settings/section';
 import { Button } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';
 import {

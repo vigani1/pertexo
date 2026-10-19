@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { Separator } from '@/components/ui/separator';
-import { LoadMore } from '@/components/patterns/load-more';
+import { LoadMore } from '@/components/patterns/lists/load-more';
 import {
   workflowFoldersQueryOptions,
   workflowTagsInfiniteQueryOptions,

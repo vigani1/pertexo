@@ -1,5 +1,5 @@
 import { RunInputUpload } from './file-input';
-import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
+import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import { useCallback, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';

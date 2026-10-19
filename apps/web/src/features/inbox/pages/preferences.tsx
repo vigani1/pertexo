@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
-import { SettingsSection } from '@/components/patterns/settings-section';
+import { SettingsSection } from '@/components/patterns/settings/section';
 import { Notice } from '@/components/ui/notice';
 import { Button } from '@/components/ui/button';
 import { notificationPreferencesQueryOptions } from '../data/preferences.queries';

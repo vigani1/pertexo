@@ -15,7 +15,7 @@ import {
   type InfiniteData,
 } from '@tanstack/react-query';
 import { CheckCheckIcon } from 'lucide-react';
-import { LoadMore } from '@/components/patterns/load-more';
+import { LoadMore } from '@/components/patterns/lists/load-more';
 import {
   PageHeader,
   PageHeaderActions,

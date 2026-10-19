@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import type { ApiTokenMetadata } from '@pertexo/contracts';
-import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
+import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import type { ApiClient } from '@/lib/api/client';
 import { useTokenRevocation } from '../data/api-tokens.mutations';
 import { tokenCommandFeedback, uncertainTokenOutcome } from '../model/copy';
