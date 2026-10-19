@@ -13,6 +13,7 @@ import {
   type WorkspaceAuthorizationSource,
 } from '../../authorization/index.js';
 import type { WorkflowApplicationInput } from '../ports.js';
+import { parseRequestBody } from '../../platform/http/index.js';
 
 type WorkflowReadInput = WorkflowApplicationInput &
   Readonly<{ workflowId: string }>;
@@ -41,7 +42,10 @@ export class WorkflowAutoPauseUseCase {
     input: CommandInput & Readonly<{ workflowId: string }>,
   ) {
     await this.authorize(input, 'workflow:update');
-    const request = workflowAutoPauseSettingsRequestSchema.parse(input.request);
+    const request = parseRequestBody(
+      workflowAutoPauseSettingsRequestSchema,
+      input.request,
+    );
     return workflowAutoPauseCommandResponseSchema.parse(
       await this.persistence.updateWorkflowSettings({
         ...this.commandContext(input),
@@ -53,7 +57,10 @@ export class WorkflowAutoPauseUseCase {
 
   public async resume(input: CommandInput & Readonly<{ workflowId: string }>) {
     await this.authorize(input, 'workflow:publish');
-    const request = workflowResumeRequestSchema.parse(input.request);
+    const request = parseRequestBody(
+      workflowResumeRequestSchema,
+      input.request,
+    );
     return workflowAutoPauseCommandResponseSchema.parse(
       await this.persistence.resumeWorkflow({
         ...this.commandContext(input),
@@ -75,7 +82,8 @@ export class WorkflowAutoPauseUseCase {
 
   public async updateWorkspace(input: CommandInput) {
     await this.authorize(input, 'workspace:manage');
-    const request = workspaceAutoPauseSettingsRequestSchema.parse(
+    const request = parseRequestBody(
+      workspaceAutoPauseSettingsRequestSchema,
       input.request,
     );
     return workspaceAutoPauseCommandResponseSchema.parse(

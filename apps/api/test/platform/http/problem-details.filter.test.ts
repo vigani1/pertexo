@@ -50,6 +50,7 @@ function hostFor(
   request: Readonly<{
     url?: string;
     headers?: Readonly<Record<string, string | readonly string[] | undefined>>;
+    raw?: Readonly<{ destroyed?: boolean }>;
   }>,
   response: ResponseMock | object,
 ): ArgumentsHost {
@@ -641,6 +642,32 @@ describe('RFC 9457 problem details filter', () => {
     );
 
     expect(response.body).not.toHaveProperty('errors');
+  });
+
+  it('treats work stopped by a closed browser request as expected, not a failure', () => {
+    const contexts = new RequestContextStore();
+    const logger = { log: vi.fn() };
+    const filter = new ProblemDetailsFilter(contexts, logger);
+    const aborted = Object.assign(new Error('Workspace transaction aborted'), {
+      name: 'AbortError',
+    });
+    const closed = responseMock();
+    contexts.run('request-closed', () => {
+      filter.catch(
+        aborted,
+        hostFor({ url: '/v1/workspaces', raw: { destroyed: true } }, closed),
+      );
+    });
+    expect(closed.status).toHaveBeenCalledWith(499);
+    expect(logger.log).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'request.aborted', severity: 'info' }),
+    );
+    // A server-side abort while the browser still waits stays a failure.
+    const open = responseMock();
+    contexts.run('request-open', () => {
+      filter.catch(aborted, hostFor({ url: '/v1/workspaces' }, open));
+    });
+    expect(open.status).toHaveBeenCalledWith(500);
   });
 
   it('returns a generic safe 500 and logs the unknown cause', () => {

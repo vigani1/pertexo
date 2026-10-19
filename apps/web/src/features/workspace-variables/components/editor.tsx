@@ -12,24 +12,35 @@ import type {
 } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import { useRetainedCommand } from '@/lib/api/commands/use-retained';
+import { cn } from '@/lib/utils';
 import { replaceVariables, type VariablesScope } from '../data/variables.api';
 import { variableKeys, variablesQueryOptions } from '../data/variables.queries';
 import {
+  variableMatches,
   variableRows,
+  variableUnsaved,
   readVariableRows,
   type VariableRow as Row,
 } from '../model/draft';
+import { VariableColumns } from './columns';
 import { VariableRow } from './row';
 import { VariableUsageDialog } from './usage';
 export function VariablesEditor({
   scope,
   snapshot,
-}: Readonly<{ scope: VariablesScope; snapshot: WorkspaceVariablesResponse }>) {
+  filter,
+}: Readonly<{
+  scope: VariablesScope;
+  snapshot: WorkspaceVariablesResponse;
+  filter: string;
+}>) {
   const cache = useQueryClient();
   const [draft, setDraft] = useState(() => ({
     base: snapshot,
     rows: variableRows(snapshot.values, snapshot.descriptions),
   }));
+  // Rows being edited show their fields; the rest stay one line each.
+  const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set());
   const [error, setError] = useState<string>();
   const [inspect, setInspect] =
     useState<Readonly<{ name: string; removeId?: string }>>();
@@ -49,6 +60,7 @@ export function VariablesEditor({
         descriptions: body.descriptions,
       };
       setDraft((current) => ({ ...current, base: accepted }));
+      setOpen(new Set());
       setSaved(result.revision);
       setError(undefined);
       const key = variablesQueryOptions(scope).queryKey;
@@ -75,6 +87,9 @@ export function VariablesEditor({
         descriptions: draft.base.descriptions,
       });
   const locked = command.pending || command.uncertain || reloading;
+  const visible = draft.rows.filter(
+    (row) => open.has(row.id) || variableMatches(row, filter),
+  );
   const removalId = inspect?.removeId;
   const serverChanged = snapshot.revision !== draft.base.revision;
   function change(id: string, row: Row) {
@@ -95,6 +110,14 @@ export function VariablesEditor({
     }));
     setInspect(undefined);
   }
+  function toggle(id: string, opened: boolean) {
+    setOpen((current) => {
+      const next = new Set(current);
+      if (opened) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
   async function reload() {
     if (locked) return;
     setReloading(true);
@@ -106,10 +129,17 @@ export function VariablesEditor({
       command.reset();
       setError(undefined);
       setSaved(undefined);
-      setDraft({
-        base: latest,
-        rows: variableRows(latest.values, latest.descriptions),
-      });
+      const rows = variableRows(latest.values, latest.descriptions);
+      // A variable that was open stays open with its reloaded value.
+      const openNames = new Set(
+        draft.rows.filter((row) => open.has(row.id)).map((row) => row.name),
+      );
+      setOpen(
+        new Set(
+          rows.filter((row) => openNames.has(row.name)).map((row) => row.id),
+        ),
+      );
+      setDraft({ base: latest, rows });
     } catch {
       setError(
         'Current variables could not be loaded. Your edits are kept. Try reloading again.',
@@ -145,11 +175,25 @@ export function VariablesEditor({
               No variables yet. Add a reusable non-secret value, such as
               CURRENCY or BASE_URL.
             </p>
-          ) : null}
-          {draft.rows.map((row) => (
+          ) : visible.length === 0 ? (
+            <p className="py-5 text-sm text-muted-foreground">
+              No variables match “{filter.trim()}”.
+            </p>
+          ) : (
+            <VariableColumns />
+          )}
+          {visible.map((row) => (
             <VariableRow
               key={row.id}
               row={row}
+              open={open.has(row.id)}
+              unsaved={variableUnsaved(row, draft.base)}
+              onOpen={() => {
+                toggle(row.id, true);
+              }}
+              onClose={() => {
+                toggle(row.id, false);
+              }}
               onChange={(next) => {
                 change(row.id, next);
               }}
@@ -169,19 +213,15 @@ export function VariablesEditor({
             variant="outline"
             disabled={draft.rows.length >= WORKSPACE_VARIABLE_LIMITS.count}
             onClick={() => {
+              const id = crypto.randomUUID();
               setDraft((current) => ({
                 ...current,
                 rows: [
                   ...current.rows,
-                  {
-                    id: crypto.randomUUID(),
-                    name: '',
-                    type: 'text',
-                    value: '',
-                    description: '',
-                  },
+                  { id, name: '', type: 'text', value: '', description: '' },
                 ],
               }));
+              toggle(id, true);
               setSaved(undefined);
             }}
           >
@@ -194,7 +234,15 @@ export function VariablesEditor({
           error={error}
           command={command}
         />
-        <div className="flex flex-wrap items-center gap-3">
+        <div
+          className={cn(
+            'flex flex-wrap items-center gap-3',
+            // Unsaved edits keep Save in view however long the list is.
+            changed &&
+              // On phones it sits above the navigation dock, as run actions do.
+              'sticky bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.25rem)] z-10 -mx-4 border-t border-border bg-background/95 px-4 py-3 backdrop-blur-sm md:bottom-0',
+          )}
+        >
           <Button type="submit" variant="primary" disabled={locked || !changed}>
             {command.pending ? 'Saving…' : 'Save variables'}
           </Button>

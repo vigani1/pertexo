@@ -16,6 +16,7 @@ import {
   WORKFLOW_AUTHORING_OPERATION,
   type WorkflowAuthoringTelemetry,
 } from '../telemetry.js';
+import { parseRequestBody } from '../../platform/http/index.js';
 
 export type RestoreWorkflowVersionInput = WorkflowApplicationInput &
   Readonly<{
@@ -53,7 +54,7 @@ export class RestoreWorkflowVersionUseCase {
             ? {}
             : { authorizedWorkspace: input.authorizedWorkspace }),
         });
-        workflowVersionRestoreRequestSchema.parse(input.request);
+        parseRequestBody(workflowVersionRestoreRequestSchema, input.request);
         const restored = await this.persistence.restoreWorkflowVersion({
           workspaceId: input.routeWorkspaceId,
           workflowId: input.workflowId,

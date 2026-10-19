@@ -1,5 +1,6 @@
 import { codeStepPublicationIssues } from './code-validation.js';
 import { missingConnectionIssues } from './connection-validation.js';
+import { switchCaseIssues } from './switch-validation.js';
 import { DEFAULT_CODE_SETTINGS, type CodeSettings } from '@pertexo/node-sdk';
 import {
   createWorkflowAuthoringDatabase,
@@ -104,6 +105,7 @@ export function createCoreAuthoringOptions(
       const issues = [
         ...codeStepPublicationIssues(graph, codeSettings),
         ...missingConnectionIssues(graph, compatibility.definitionCatalog),
+        ...switchCaseIssues(graph),
       ];
       return issues.length === 0
         ? result

@@ -39,8 +39,11 @@ type CanonicalCompletionOutcome =
     }>
   | Readonly<{
       safeErrorCode: string;
+      errorSummary: string | null;
       status: Exclude<PreviewStatus, 'queued' | 'running' | 'succeeded'>;
     }>;
+
+const errorSummarySchema = z.string().min(1).max(2048);
 
 type PreviewCompletionScope = Readonly<{
   attemptFenceToken: number;
@@ -144,13 +147,15 @@ async function exactDuplicateCompletion(
   const current = await client.query<{
     attempt_output_ref: unknown;
     code_diagnostics: unknown;
+    error_summary: string | null;
     attempt_safe_error_code: string | null;
     attempt_status: string;
     run_output_ref: unknown;
     run_safe_error_code: string | null;
     run_status: string;
   }>(
-    `select attempt.code_diagnostics,attempt.status as attempt_status,
+    `select attempt.code_diagnostics,attempt.error_summary,
+          attempt.status as attempt_status,
           attempt.output_ref as attempt_output_ref,
           attempt.safe_error_code as attempt_safe_error_code,
           run.status as run_status,
@@ -190,7 +195,8 @@ async function exactDuplicateCompletion(
       row.attempt_output_ref === null &&
       row.run_output_ref === null &&
       row.attempt_safe_error_code === outcome.safeErrorCode &&
-      row.run_safe_error_code === outcome.safeErrorCode;
+      row.run_safe_error_code === outcome.safeErrorCode &&
+      row.error_summary === outcome.errorSummary;
   }
   if (
     !statusesMatch ||
@@ -244,6 +250,10 @@ export async function completePreviewAttempt(
         } as const)
       : ({
           safeErrorCode: safeErrorCodeSchema.parse(input.outcome.safeErrorCode),
+          errorSummary:
+            input.outcome.errorSummary === undefined
+              ? null
+              : errorSummarySchema.parse(input.outcome.errorSummary),
           status: input.outcome.status,
         } as const);
   try {
@@ -269,6 +279,7 @@ export async function completePreviewAttempt(
              output_ref=$7::json,
              safe_error_code=$8::varchar,
              code_diagnostics=$9::jsonb,
+             error_summary=$10::varchar,
              completed_at=clock_timestamp(),
              lease_owner=null,
              lease_expires_at=null,
@@ -290,6 +301,9 @@ export async function completePreviewAttempt(
               ? null
               : outcome.safeErrorCode,
             diagnostics === undefined ? null : canonicalJson(diagnostics),
+            outcome.status === PREVIEW_STATUS.succeeded
+              ? null
+              : outcome.errorSummary,
           ],
         );
         if (terminal.rowCount !== 1)

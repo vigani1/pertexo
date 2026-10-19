@@ -122,7 +122,8 @@ export function createHttpProviderTelemetry(
       operation: 'request',
       successAttributes: (output) => ({
         response_storage: output.body.kind,
-        status_class: '2xx',
+        // Steps that return error responses succeed with 3xx to 5xx too.
+        status_class: `${String(Math.floor(output.status / 100))}xx`,
       }),
     },
     options,

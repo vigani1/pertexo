@@ -257,6 +257,11 @@ function TestResult({
       <p role="status">
         <Status tone={status.tone}>{status.label}</Status>
       </p>
+      {preview.errorSummary === undefined ? null : (
+        <p className="text-[0.8rem] leading-relaxed text-foreground">
+          {preview.errorSummary}
+        </p>
+      )}
       {preview.safeErrorCode === null ? null : (
         <p className="text-xs text-muted-foreground">
           {`The step reported: ${shortStepError(preview.safeErrorCode)} `}

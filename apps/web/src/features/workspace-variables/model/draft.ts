@@ -17,15 +17,18 @@ export function variableRows(
   return Object.entries(values).map(([name, value]) => ({
     id: crypto.randomUUID(),
     name,
-    type:
-      typeof value === 'number'
-        ? 'number'
-        : typeof value === 'boolean'
-          ? 'boolean'
-          : 'text',
+    type: variableType(value),
     value: String(value),
     description: descriptions[name] ?? '',
   }));
+}
+
+function variableType(value: string | number | boolean): VariableRow['type'] {
+  return typeof value === 'number'
+    ? 'number'
+    : typeof value === 'boolean'
+      ? 'boolean'
+      : 'text';
 }
 export function readVariableRows(rows: readonly VariableRow[]):
   | Readonly<{
@@ -80,4 +83,45 @@ export function readVariableRows(rows: readonly VariableRow[]):
         'Check the variable descriptions.',
     };
   return { values: parsed.data, descriptions: descriptions.data };
+}
+
+export const VARIABLE_TYPE_LABELS: Readonly<
+  Record<VariableRow['type'], string>
+> = { text: 'Text', number: 'Number', boolean: 'True / false' };
+
+/** The value on one line, as a summary row shows it. */
+export function valuePreview(row: VariableRow): string {
+  if (row.type === 'boolean') return row.value === 'true' ? 'True' : 'False';
+  if (row.type === 'number') return row.value;
+  return row.value === '' ? 'Empty' : row.value.replace(/\s*\n\s*/gu, ' ⏎ ');
+}
+
+/** Whether a row holds the filter text in its name, value or description. */
+export function variableMatches(row: VariableRow, filter: string): boolean {
+  const wanted = filter.trim().toLowerCase();
+  return (
+    wanted === '' ||
+    [row.name, row.value, row.description].some((text) =>
+      text.toLowerCase().includes(wanted),
+    )
+  );
+}
+
+/** Whether a row differs from what the workspace last saved. */
+export function variableUnsaved(
+  row: VariableRow,
+  saved: Readonly<{
+    values: WorkspaceVariableValues;
+    descriptions: Readonly<Record<string, string>>;
+  }>,
+): boolean {
+  const value = Object.hasOwn(saved.values, row.name)
+    ? saved.values[row.name]
+    : undefined;
+  return (
+    value === undefined ||
+    variableType(value) !== row.type ||
+    String(value) !== row.value ||
+    (saved.descriptions[row.name] ?? '') !== row.description
+  );
 }

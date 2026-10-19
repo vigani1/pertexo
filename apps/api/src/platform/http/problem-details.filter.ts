@@ -36,6 +36,7 @@ import {
   RequestContextStore,
   setResponseHeader,
 } from './request-context.js';
+import { isRequestBodyError } from './request-body.js';
 import { firstRequestHeader } from './request-headers.js';
 import { normalizeWorkflowMetadataConflict } from './problems/workflow-metadata-conflict.js';
 import {
@@ -202,7 +203,9 @@ function fromApplicationError(error: ApplicationError): NormalizedProblem {
   const issues =
     error.code === 'workflow.invalid' || error.code === 'form.invalid'
       ? safeApplicationIssues(error.details?.issues)
-      : undefined;
+      : error.code === 'request.invalid' && isRequestBodyError(error.cause)
+        ? zodIssues(error.cause)
+        : undefined;
   const base = {
     code: error.code,
     status: entry.status,
@@ -325,11 +328,39 @@ function normalize(
   };
 }
 
+/**
+ * The browser closed the request (navigated, closed the tab) and the work it
+ * started stopped with it: an expected end, not a server failure.
+ */
+function abandonedByClient(
+  exception: unknown,
+  request: HttpRequestLike,
+): boolean {
+  const gone =
+    request.raw?.destroyed === true || request.raw?.socket?.destroyed === true;
+  return (
+    gone &&
+    exception instanceof Error &&
+    (exception.name === 'AbortError' ||
+      (exception.cause instanceof Error &&
+        exception.cause.name === 'AbortError'))
+  );
+}
+
 function normalizeFailClosed(
   exception: unknown,
   request: HttpRequestLike,
   applicationErrorMappers: readonly HttpApplicationErrorMapper[],
 ): NormalizedProblem {
+  if (abandonedByClient(exception, request)) {
+    const entry = APPLICATION_ERROR_CATALOG['request.aborted'];
+    return {
+      code: 'request.aborted',
+      status: entry.status,
+      title: entry.title,
+      cause: exception,
+    };
+  }
   try {
     return normalize(exception, request, applicationErrorMappers);
   } catch {

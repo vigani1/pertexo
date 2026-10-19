@@ -45,9 +45,7 @@ export function TagManagement({
   const id = useId();
   const fields = useFieldValidation<'name'>();
   const nameError = (value: string) =>
-    workflowTagKeyInputSchema.safeParse(value).success
-      ? undefined
-      : 'Enter a tag key of 1–32 bytes using letters, numbers and single hyphens.';
+    workflowTagKeyInputSchema.safeParse(value).error?.issues[0]?.message;
   const changeConfirmation = (open: boolean) => {
     if (open) command.reset();
     setDeleteTarget(open ? current : undefined);
@@ -108,7 +106,7 @@ export function TagManagement({
             id={id}
             label="Tag key"
             error={fields.error('name')}
-            description="Lowercase letters, numbers and single hyphens; at most 32 bytes."
+            description="Letters, numbers and single hyphens, up to 32 characters. Capitals become lowercase."
           >
             {(control) => (
               <Input

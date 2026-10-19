@@ -17,6 +17,7 @@ import {
   WORKFLOW_AUTHORING_OPERATION,
   type WorkflowAuthoringTelemetry,
 } from '../telemetry.js';
+import { parseRequestBody } from '../../platform/http/index.js';
 
 export type RenameWorkflowInput = WorkflowApplicationInput &
   Readonly<{
@@ -54,8 +55,10 @@ export class RenameWorkflowUseCase {
             ? {}
             : { authorizedWorkspace: input.authorizedWorkspace }),
         });
-        const { name, expectedNameRevision } =
-          workflowRenameRequestSchema.parse(input.request);
+        const { name, expectedNameRevision } = parseRequestBody(
+          workflowRenameRequestSchema,
+          input.request,
+        );
         const renamed = await this.persistence.renameWorkflow({
           name,
           expectedNameRevision,

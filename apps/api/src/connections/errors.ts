@@ -57,13 +57,20 @@ export function mapConnectionError(error: unknown): ApplicationError {
     return applicationError('request.idempotency_conflict', {
       safeDetail: 'The idempotency key was already used for another request.',
     });
-  if (
-    error instanceof ConnectionConflictError ||
-    error instanceof ConnectionSecretVersionConflictError ||
-    error instanceof ConnectionTestInProgressError
-  )
+  if (error instanceof ConnectionConflictError)
     return applicationError('connection.conflict', {
-      safeDetail: 'The connection conflicts with current state.',
+      safeDetail:
+        'A connection with this name already exists for this service. Choose another name.',
+    });
+  if (error instanceof ConnectionSecretVersionConflictError)
+    return applicationError('connection.conflict', {
+      safeDetail:
+        'The connection’s secret changed since you opened it. Reload, then try again.',
+    });
+  if (error instanceof ConnectionTestInProgressError)
+    return applicationError('connection.conflict', {
+      safeDetail:
+        'A test of this connection is already running. Wait for it to finish.',
     });
   if (error instanceof ConnectionUnavailableError)
     return applicationError('connection.revoked', {
