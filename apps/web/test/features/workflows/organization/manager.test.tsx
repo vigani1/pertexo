@@ -250,7 +250,7 @@ describe('workflow organization manager', () => {
       label: 'Tag key',
       action: 'Create tag',
       value: 'bad.key',
-      message: /1–32 bytes/,
+      message: /Use 1–32 letters, numbers and single hyphens/,
     },
   ])(
     'associates $label validation and focuses the invalid field only on submit',
