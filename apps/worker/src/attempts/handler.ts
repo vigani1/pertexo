@@ -30,6 +30,7 @@ import type {
 import { WorkflowEngineError } from '@pertexo/workflow-engine';
 import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
 import {
+  describeNodeRefusal,
   FileInputFailure,
   NodeExecutorFailure,
 } from '@pertexo/node-sdk/server';
@@ -293,6 +294,7 @@ async function executePreparedNodeAttempt(
       // The step's input or setup can't work: a definite failure of the step
       // itself, so the coordinator decides it like any other and its failure
       // link can take it.
+      const reason = describeNodeRefusal(error.cause);
       const completed = await dependencies.runStore.complete({
         ...connectionHealthCompletionFields(environment),
         ...codeCompletionFields(environment),
@@ -303,6 +305,7 @@ async function executePreparedNodeAttempt(
           errorKind: 'configuration',
           possiblyDispatched: false,
           safeErrorCode: `execution.${error.code}`,
+          ...(reason === undefined ? {} : { errorSummary: reason }),
         },
         ...traceContext,
         signal: contextSignal,

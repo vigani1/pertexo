@@ -75,6 +75,7 @@ export {
   type NodeExecutorErrorKind,
   type NodeExecutorFailureOutcome,
 } from './execution/errors.js';
+export { describeNodeRefusal } from './execution/refusal.js';
 export {
   canonicalizeBoundedJson,
   NODE_EXECUTION_LIMITS,
