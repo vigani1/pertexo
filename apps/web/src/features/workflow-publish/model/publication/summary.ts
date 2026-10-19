@@ -4,8 +4,8 @@ import type {
 } from '@pertexo/contracts';
 import { describeStep } from '@/features/catalog/presentation.public';
 import {
+  describeStepChange,
   diffWorkflowGraphs,
-  type StepChangeAspect,
 } from '@/features/workflow-drafts/public';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
@@ -50,7 +50,7 @@ export function summarizePublish(
     ...diff.added.map((node) => line('added', node)),
     ...diff.removed.map((node) => line('removed', node)),
     ...diff.changed.map((change) =>
-      line('changed', change.after, describeAspects(change.aspects)),
+      line('changed', change.after, describeStepChange(change.aspects)),
     ),
   ];
   return {
@@ -85,18 +85,4 @@ function line(
 
 function nodeName(node: WorkflowNode): string {
   return node.label ?? describeStep(node.definition.key).name;
-}
-
-const aspectWords: Readonly<Record<StepChangeAspect, string>> = {
-  label: 'renamed',
-  setup: 'setup',
-  inputs: 'inputs',
-  connections: 'connection',
-  enabled: 'turned on or off',
-  position: 'moved',
-  type: 'step type',
-};
-
-function describeAspects(aspects: readonly StepChangeAspect[]): string {
-  return aspects.map((aspect) => aspectWords[aspect]).join(', ');
 }

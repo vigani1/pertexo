@@ -11,7 +11,7 @@ function ChangeList({
   tone,
 }: Readonly<{
   title: string;
-  items: readonly Readonly<{ id: string; label: string }>[];
+  items: readonly Readonly<{ id: string; label: string; detail?: string }>[];
   tone: 'added' | 'removed' | 'changed';
 }>) {
   if (items.length === 0) return null;
@@ -29,7 +29,12 @@ function ChangeList({
       </h4>
       <ul className="flex flex-col gap-1 text-sm text-muted-foreground">
         {items.map((item) => (
-          <li key={item.id}>{item.label}</li>
+          <li key={item.id}>
+            {item.label}
+            {item.detail === undefined ? null : (
+              <span className="text-subtle-foreground"> · {item.detail}</span>
+            )}
+          </li>
         ))}
       </ul>
     </div>

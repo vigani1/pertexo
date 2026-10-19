@@ -96,3 +96,20 @@ function changedAspects(
 function sameJson(left: unknown, right: unknown): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
 }
+
+const ASPECT_WORDS: Readonly<Record<StepChangeAspect, string>> = {
+  label: 'renamed',
+  setup: 'setup',
+  inputs: 'inputs',
+  connections: 'connection',
+  enabled: 'turned on or off',
+  position: 'moved',
+  type: 'step type',
+};
+
+/** What changed about a step, in a few words: "setup, inputs". */
+export function describeStepChange(
+  aspects: readonly StepChangeAspect[],
+): string {
+  return aspects.map((aspect) => ASPECT_WORDS[aspect]).join(', ');
+}
