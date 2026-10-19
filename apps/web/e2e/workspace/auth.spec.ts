@@ -541,9 +541,10 @@ test('keeps the mobile workspace bar and More sheet bounded and keyboard accessi
   await page.keyboard.press('Escape');
   await expect(barBox).toHaveCSS('display', 'flex');
 
+  // A link that stays in the workspace closes More too.
   await trigger.press('Enter');
-  await drawer.getByRole('link', { name: 'All workspaces' }).click();
-  await expect(page).toHaveURL(/\/workspaces$/u);
+  await drawer.getByRole('link', { name: 'Account & security' }).click();
+  await expect(page).toHaveURL(new RegExp(`/w/${workspaceId}/account$`, 'u'));
   await expect(drawer).toBeHidden();
 });
 
