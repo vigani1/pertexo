@@ -197,11 +197,13 @@ test('real cross-workspace reviewed exports, explicit rebinding, independent edi
     versionFile.buffer,
     'Explicitly rebound import',
   );
+  // An HTTP request can run without a connection, so its slot is optional:
+  // the import could go ahead unbound. Here it is bound to a chosen account.
   await expect(
     slotDialog.getByRole('button', { name: 'Preview import' }),
-  ).toBeDisabled();
+  ).toBeEnabled();
   const selector = slotDialog.getByRole('combobox');
-  await expect(selector).toContainText('Choose a connection');
+  await expect(selector).toContainText('No connection');
   await expect(selector).toBeEnabled({ timeout: 10_000 });
   await selector.focus();
   await expect(selector).toBeFocused();
