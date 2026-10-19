@@ -38,6 +38,7 @@ export {
   SecureHttpError,
 } from './http/secure.js';
 export type {
+  SecureHttpAddressPolicy,
   SecureHttpErrorCode,
   SecureHttpFailureObservation,
   SecureHttpFailureStage,
@@ -56,6 +57,10 @@ export {
   NodeDnsResolver,
   NodeHttpTransport,
 } from './http/transport/node.js';
+export {
+  parseAllowedPrivateNetworks,
+  type AllowedPrivateNetwork,
+} from './http/transport/address-policy.js';
 export {
   classifySecureHttpError,
   classifySecureHttpResponse,

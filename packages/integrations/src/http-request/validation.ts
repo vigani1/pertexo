@@ -77,8 +77,9 @@ function safeConfiguredHeader(name: string): boolean {
 export function safeRequestUrl(value: string): boolean {
   try {
     const url = new URL(value);
+    // Plain http reaches only networks the operator allowed; dispatch checks.
     return (
-      url.protocol === 'https:' &&
+      (url.protocol === 'https:' || url.protocol === 'http:') &&
       url.username === '' &&
       url.password === '' &&
       url.hash === '' &&
@@ -181,7 +182,7 @@ export const httpRequestConfigSchema = z
       .meta({
         title: 'URL',
         description:
-          'An https address. Put {name} in the path or query, or in a header value, and map a value for it on Inputs.',
+          'An https address, or http inside a private network your administrator allowed. Put {name} in the path or query, or in a header value, and map a value for it on Inputs.',
       }),
     headers: httpRequestHeadersSchema,
     timeoutMillis: z.number().int().min(1).max(120_000),

@@ -193,7 +193,7 @@ function fillPlaceholders(
     new URL(filled.url).origin !== new URL(configured.url).origin
   )
     throw new NodeInputValidationError(
-      'The filled-in address is too long or no longer a safe https address; check the values mapped into it.',
+      'The filled-in address is too long or no longer a safe address; check the values mapped into it.',
     );
   return {
     config: { ...configured, url: filled.url, headers: filled.headers },
@@ -230,8 +230,6 @@ async function executeHttpRequest(
     )
   )
     throw failedConfiguration();
-  const target = new URL(config.url);
-  if (target.protocol !== 'https:') throw failedConfiguration();
   // GET and HEAD only read (RFC 9110 §9.2.1), so a repeat can't cause a side
   // effect: their failures retry and can follow a failure link instead of
   // leaving the outcome unknown.

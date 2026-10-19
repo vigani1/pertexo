@@ -1,5 +1,6 @@
 import type { Provider } from '@nestjs/common';
 import { createDatabasePreviewAttemptRunStore } from '@pertexo/database/previews';
+import { createNodeSecureHttpClient } from '@pertexo/integrations/server';
 import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import type { QueueConsumerObserver } from '@pertexo/queue';
 
@@ -62,7 +63,11 @@ export function nodeAttemptRuntimeProvider(
       let previewInvoker: ReturnType<typeof createPlatformPreviewNodeInvoker>;
       try {
         previewInvoker = factories.createPreviewInvoker({
-          registry: createPlatformNodeRegistry(),
+          registry: createPlatformNodeRegistry({
+            httpRequest: {
+              httpClient: createNodeSecureHttpClient(config.httpRequest),
+            },
+          }),
         });
       } catch (error: unknown) {
         return closePreviewStoreAfterFailure(previewRunStore, error);
@@ -99,6 +104,7 @@ async function composeNodeAttemptRuntime(
     database: config.database,
     ...(databaseRuntime === undefined ? {} : { databaseRuntime }),
     heartbeatIntervalMillis: config.nodeAttempt.heartbeatIntervalMillis,
+    httpRequest: config.httpRequest,
     leaseDurationSeconds: config.nodeAttempt.leaseDurationSeconds,
     observer,
     preview: { invoker: preview.invoker, runStore: preview.runStore },
