@@ -233,6 +233,14 @@ test('saved draft tests run on the worker, skip waits and pinned human steps, an
   ).toBe(true);
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.reload();
+  // After a reload the bar waits until asked; the last test is in history.
+  await expect(history).toHaveCount(0);
+  await page
+    .getByRole('button', { name: 'More test actions', exact: true })
+    .click();
+  await page
+    .getByRole('menuitem', { name: 'Test history', exact: true })
+    .click();
   await expect(
     history.getByText('Test · Succeeded', { exact: true }),
   ).toBeVisible();
