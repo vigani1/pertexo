@@ -28,6 +28,15 @@ export type SchemaFieldSpec = Readonly<{
   format?: 'json-path';
 }>;
 
+/** How many settings a catalog JSON Schema declares at its top level. */
+export function schemaPropertyCount(schema: unknown): number {
+  if (typeof schema !== 'object' || schema === null) return 0;
+  const properties: unknown = Reflect.get(schema, 'properties');
+  return typeof properties === 'object' && properties !== null
+    ? Object.keys(properties).length
+    : 0;
+}
+
 /** A typed value ready for the graph, or a sentence saying what's wrong. */
 export type FieldParseResult<Value> =
   Readonly<{ ok: true; value: Value }> | Readonly<{ ok: false; error: string }>;
