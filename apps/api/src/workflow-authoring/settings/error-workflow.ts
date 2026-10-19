@@ -11,6 +11,7 @@ import {
   type WorkspaceAuthorizationSource,
 } from '../../authorization/index.js';
 import type { WorkflowApplicationInput } from '../ports.js';
+import { parseRequestBody } from '../../platform/http/index.js';
 
 type ReadInput = WorkflowApplicationInput &
   Readonly<{ workflowId: string; signal?: AbortSignal }>;
@@ -45,7 +46,10 @@ export class WorkflowErrorUseCase {
     input.signal?.throwIfAborted();
     await this.authorize(input, 'workflow:update');
     input.signal?.throwIfAborted();
-    const request = workflowErrorSettingsRequestSchema.parse(input.request);
+    const request = parseRequestBody(
+      workflowErrorSettingsRequestSchema,
+      input.request,
+    );
     return workflowErrorSettingsResponseSchema.parse(
       await this.persistence.updateSettings({
         ...this.context(input),

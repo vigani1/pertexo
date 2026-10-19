@@ -268,6 +268,36 @@ describe('node test panel', () => {
     expect(onSucceeded).toHaveBeenCalledTimes(1);
   });
 
+  it('says why the step refused its input', async () => {
+    const apiClient = apiClientFor(() =>
+      Promise.resolve({
+        mode: 'test_execute',
+        replayed: false,
+        preview: {
+          ...previewSummary('running'),
+          status: 'failed',
+          safeErrorCode: 'preview.input_invalid',
+          errorSummary: 'Use a date like 2026-10-19.',
+          completedAt: '2026-09-15T10:00:02.000Z',
+        },
+      }),
+    );
+    render(panel(apiClient, 'node-a'));
+    const event = userEvent.setup();
+    await event.click(
+      screen.getByRole('switch', {
+        name: 'I understand this test runs for real',
+      }),
+    );
+    await event.click(screen.getByRole('button', { name: 'Run test' }));
+    expect(
+      await screen.findByText('Use a date like 2026-10-19.'),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/The step reported: an input couldn’t be used/u),
+    ).toBeVisible();
+  });
+
   it('resumes observation of an accepted test instead of running it again', async () => {
     let submissions = 0;
     let observations = 0;

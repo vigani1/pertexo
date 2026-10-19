@@ -28,6 +28,7 @@ export async function readPreviewRun(
     .select({
       completedAt: previewRuns.completedAt,
       codeDiagnostics: previewAttempts.codeDiagnostics,
+      errorSummary: previewAttempts.errorSummary,
       createdAt: previewRuns.createdAt,
       draftRevision: previewRuns.draftRevision,
       dryRun: previewRuns.dryRun,
@@ -67,6 +68,7 @@ export async function readPreviewRun(
     ...(row.codeDiagnostics === null
       ? {}
       : { codeDiagnostics: codeDiagnosticsSchema.parse(row.codeDiagnostics) }),
+    ...(row.errorSummary === null ? {} : { errorSummary: row.errorSummary }),
     id: row.id,
     workspaceId: row.workspaceId,
     workflowId: row.workflowId,

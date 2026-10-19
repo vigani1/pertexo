@@ -9,7 +9,7 @@ export const CORE_UNIQUE_CONFIG_SCHEMA = z
     path: collectionPathSchema.meta({
       title: 'Compare by',
       description:
-        '$ compares the whole item. The first equal value is kept; object key order is ignored.',
+        'A field like email; $ compares the whole item. The first equal value is kept; object key order is ignored.',
     }),
     missing: z.enum(['error', 'skip']).meta({
       title: 'Missing keys',

@@ -27,11 +27,7 @@ export function StepError({
   const canOpenConnections = workspace.capabilities.includes('connection:read');
   return (
     <div className="mt-2 rounded-md border border-destructive/20 bg-destructive/[0.05] p-3 text-[0.8rem] leading-relaxed">
-      <p className="text-foreground">
-        {code === 'execution.file_input' && summary !== undefined
-          ? summary
-          : copy.sentence}
-      </p>
+      <p className="text-foreground">{summary ?? copy.sentence}</p>
       <p className="mt-1 text-muted-foreground">{copy.advice}</p>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
         <code className="font-mono text-[0.7rem] text-destructive/90">

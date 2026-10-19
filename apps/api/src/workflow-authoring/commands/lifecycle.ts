@@ -17,6 +17,7 @@ import {
   WORKFLOW_AUTHORING_OPERATION,
   type WorkflowAuthoringTelemetry,
 } from '../telemetry.js';
+import { parseRequestBody } from '../../platform/http/index.js';
 
 export type WorkflowLifecycleInput = WorkflowApplicationInput &
   Readonly<{
@@ -55,7 +56,10 @@ export class TransitionWorkflowLifecycleUseCase {
             ? {}
             : { authorizedWorkspace: input.authorizedWorkspace }),
         });
-        const request = workflowLifecycleRequestSchema.parse(input.request);
+        const request = parseRequestBody(
+          workflowLifecycleRequestSchema,
+          input.request,
+        );
         const accepted = await this.persistence.transitionWorkflowLifecycle({
           ...request,
           command: input.command,

@@ -8,7 +8,8 @@ export const CORE_SORT_CONFIG_SCHEMA = z
   .object({
     path: collectionPathSchema.meta({
       title: 'Sort by',
-      description: '$ selects the whole item; otherwise select one own field.',
+      description:
+        'A field like price or order.total; $ sorts by the whole item.',
     }),
     valueType: z.enum(['number', 'text']).meta({
       title: 'Value type',

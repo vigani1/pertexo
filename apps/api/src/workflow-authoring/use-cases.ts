@@ -53,6 +53,7 @@ import { createDraftRepresentationTag } from './http/etag.js';
 import { workflowTemplateOriginProjectionResponseSchema } from '@pertexo/contracts';
 import {
   applicationError,
+  parseRequestBody,
   throwApplicationError,
 } from '../platform/http/index.js';
 
@@ -208,7 +209,10 @@ export class CreateWorkflowUseCase {
       WORKFLOW_AUTHORING_OPERATION.create,
       async () => {
         await authorize(input, 'workflow:create', this.authorization);
-        const request = workflowCreateRequestSchema.parse(input.request);
+        const request = parseRequestBody(
+          workflowCreateRequestSchema,
+          input.request,
+        );
         const created = await this.persistence.createWorkflow({
           workspaceId: input.routeWorkspaceId,
           actorId: input.actor.actorId,

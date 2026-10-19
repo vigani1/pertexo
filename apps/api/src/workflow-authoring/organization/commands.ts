@@ -15,6 +15,7 @@ import type {
   WorkflowFavoriteDatabase,
 } from '@pertexo/database/authoring';
 import type { WorkspaceAuthorizationSource } from '../../authorization/index.js';
+import { parseRequestBody } from '../../platform/http/index.js';
 import {
   authorizeWorkflowOrganization,
   workflowOrganizationContext,
@@ -36,7 +37,10 @@ export class WorkflowOrganizationCommandsUseCase {
 
   public async createTag(input: CommandInput) {
     await authorizeWorkflowOrganization(input, this.authorization, 'admin');
-    const request = workflowTagCreateRequestSchema.parse(input.request);
+    const request = parseRequestBody(
+      workflowTagCreateRequestSchema,
+      input.request,
+    );
     const result = await this.tags.createTag({
       ...this.command(input),
       ...request,
@@ -47,7 +51,10 @@ export class WorkflowOrganizationCommandsUseCase {
 
   public async renameTag(input: TagInput) {
     await authorizeWorkflowOrganization(input, this.authorization, 'admin');
-    const request = workflowTagRenameRequestSchema.parse(input.request);
+    const request = parseRequestBody(
+      workflowTagRenameRequestSchema,
+      input.request,
+    );
     const result = await this.tags.renameTag({
       ...this.command(input),
       tagId: input.tagId,
@@ -59,7 +66,10 @@ export class WorkflowOrganizationCommandsUseCase {
 
   public async deleteTag(input: TagInput) {
     await authorizeWorkflowOrganization(input, this.authorization, 'admin');
-    const request = workflowTagDeleteRequestSchema.parse(input.request);
+    const request = parseRequestBody(
+      workflowTagDeleteRequestSchema,
+      input.request,
+    );
     const result = await this.tags.deleteTag({
       ...this.command(input),
       tagId: input.tagId,
@@ -71,7 +81,10 @@ export class WorkflowOrganizationCommandsUseCase {
 
   public async replaceTags(input: WorkflowInput) {
     await authorizeWorkflowOrganization(input, this.authorization, 'editor');
-    const request = workflowTagReplaceRequestSchema.parse(input.request);
+    const request = parseRequestBody(
+      workflowTagReplaceRequestSchema,
+      input.request,
+    );
     const result = await this.tags.replaceTags({
       ...this.command(input),
       workflowId: input.workflowId,
@@ -86,7 +99,10 @@ export class WorkflowOrganizationCommandsUseCase {
       Readonly<{ request: unknown; workflowId: string }>,
   ) {
     await authorizeWorkflowOrganization(input, this.authorization, 'read');
-    const request = workflowFavoriteRequestSchema.parse(input.request);
+    const request = parseRequestBody(
+      workflowFavoriteRequestSchema,
+      input.request,
+    );
     input.signal?.throwIfAborted();
     const result = await this.favorites.setFavorite({
       ...workflowOrganizationContext(input),

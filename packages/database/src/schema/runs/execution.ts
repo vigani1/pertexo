@@ -927,6 +927,7 @@ export const previewAttempts = appSchema.table(
     outputRef: json('output_ref'),
     codeDiagnostics: jsonb('code_diagnostics').$type<CodeDiagnostics>(),
     safeErrorCode: varchar('safe_error_code', { length: 128 }),
+    errorSummary: varchar('error_summary', { length: 2048 }),
     reconciliationRef: jsonb('reconciliation_ref'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .default(sql`clock_timestamp()`)
