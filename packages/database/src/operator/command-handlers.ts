@@ -571,7 +571,7 @@ export async function requestRunReplay(
       sourceRunId: input.sourceRunId,
       workflowId: found.source_workflow_id,
       workflowVersionId: input.workflowVersionId,
-      runInput: sql`${input.runInput}::jsonb`,
+      runInput: sql`${input.runInput}::json`,
       requestFingerprint: input.requestFingerprint,
     });
     outboxEventId = await enqueue(transaction, {

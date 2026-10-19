@@ -266,7 +266,7 @@ export async function completePreviewAttempt(
         const terminal = await client.query<{ id: string }>(
           `update app.preview_attempts
          set status=$6::varchar,
-             output_ref=$7::jsonb,
+             output_ref=$7::json,
              safe_error_code=$8::varchar,
              code_diagnostics=$9::jsonb,
              completed_at=clock_timestamp(),
@@ -305,7 +305,7 @@ export async function completePreviewAttempt(
         const syncedRuns = await client.query<{ id: string }>(
           `update app.preview_runs
          set status=$3::varchar,
-             output_ref=$4::jsonb,
+             output_ref=$4::json,
              safe_error_code=$5::varchar,
              completed_at=clock_timestamp(),
              updated_at=clock_timestamp()

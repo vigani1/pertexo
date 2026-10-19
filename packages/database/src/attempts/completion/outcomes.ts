@@ -192,7 +192,7 @@ async function updateAttempt(
   await client.query(
     `update app.node_attempts
       set status=$3,lease_owner=null,lease_expires_at=null,
-          output_ref=$4::jsonb,safe_error_code=$5,error_summary=$6,
+          output_ref=$4::json,safe_error_code=$5,error_summary=$6,
           executor_failure_kind=$7,executor_error_kind=$8,
           executor_possibly_dispatched=$9,retry_decision=$10,code_diagnostics=$11::jsonb,
           completed_at=clock_timestamp(),updated_at=clock_timestamp()
@@ -261,7 +261,7 @@ async function commitSuspension(
 ): Promise<CompleteNodeAttemptResult> {
   const suspended = await client.query<{ resume_at: Date }>(
     `update app.node_runs
-     set status='waiting',output_ref=$3::jsonb,wait_kind='node_wait',
+     set status='waiting',output_ref=$3::json,wait_kind='node_wait',
          resume_at=clock_timestamp()+make_interval(secs=>$4),
          retry_due_at=null,due_wakeup_at=null,safe_error_code=null,
          completed_at=null,updated_at=clock_timestamp()
@@ -315,7 +315,7 @@ async function commitTerminal(
 ): Promise<CompleteNodeAttemptResult> {
   const node = await client.query(
     `update app.node_runs
-     set status=$3,output_ref=$4::jsonb,safe_error_code=$5,
+     set status=$3,output_ref=$4::json,safe_error_code=$5,
          completed_at=clock_timestamp(),updated_at=clock_timestamp()
      where workspace_id=$1 and id=$2 and current_attempt_id=$6`,
     [

@@ -3,11 +3,13 @@ import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 
 import {
-  EXECUTION_JSONB_DATABASE_BACKSTOP_BYTES,
   parseStoredExecutionValue,
+  EXECUTION_JSONB_DATABASE_BACKSTOP_BYTES,
+  serializeStoredExecutionJsonValue,
   serializeStoredExecutionValue,
   STORED_EXECUTION_VALUE_LIMITS,
   StoredExecutionValueInvalidError,
+  storedExecutionValuesEqual,
 } from '../../src/platform/stored-execution-value.js';
 
 function canonicalJsonOracle(value: unknown): string {
@@ -211,13 +213,31 @@ describe('StoredExecutionValue', () => {
     expect(Reflect.get(parsed.value, '__proto__')).toEqual({ safe: true });
   });
 
-  it('serializes objects canonically without changing the exact value bound', () => {
+  it('stores objects in the key order they were written in', () => {
     expect(
       serializeStoredExecutionValue({
         kind: 'inline',
         value: { z: 1, a: { y: 2, b: 3 } },
       }),
-    ).toBe('{"kind":"inline","value":{"a":{"b":3,"y":2},"z":1}}');
+    ).toBe('{"kind":"inline","value":{"z":1,"a":{"y":2,"b":3}}}');
+    expect(serializeStoredExecutionJsonValue({ z: 1, a: { y: 2, b: 3 } })).toBe(
+      '{"a":{"b":3,"y":2},"z":1}',
+    );
+  });
+
+  it('compares stored values whatever order their keys were written in', () => {
+    expect(
+      storedExecutionValuesEqual(
+        { kind: 'inline', value: { z: 1, a: { y: 2, b: 3 } } },
+        '{"kind":"inline","value":{"a":{"b":3,"y":2},"z":1}}',
+      ),
+    ).toBe(true);
+    expect(
+      storedExecutionValuesEqual(
+        { kind: 'inline', value: { z: 1 } },
+        { kind: 'inline', value: { z: 2 } },
+      ),
+    ).toBe(false);
   });
 
   it('normalizes negative zero to the persisted JSON value', () => {

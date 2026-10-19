@@ -94,6 +94,7 @@ it('upgrades a populated standalone test without changing its source identity or
       '0034_organization_directory.sql',
       '0035_workflow_promotions.sql',
       '0036_workflow_collaboration.sql',
+      '0037_keep_field_order.sql',
     ]);
     expect(
       (

@@ -228,8 +228,8 @@ export async function reconcilePreviewDelivery(
                    run.operation_key,
                    run.provider_key,
                    coalesce(
-                     jsonb_typeof(run.executable_node_json->'connectionRefs') = 'object'
-                     and run.executable_node_json->'connectionRefs' <> '{}'::jsonb,
+                     jsonb_typeof(run.executable_node_json::jsonb->'connectionRefs') = 'object'
+                     and run.executable_node_json::jsonb->'connectionRefs' <> '{}'::jsonb,
                      false
                    )
                      as uses_connection,

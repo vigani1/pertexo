@@ -9,7 +9,6 @@ import { failureNotificationDestinationVersions } from '../notifications.js';
 import { users } from '../foundation.js';
 import { workflows } from '../authoring/workflows.js';
 import {
-  type PgTableExtraConfigValue,
   bigint,
   boolean,
   char,
@@ -17,9 +16,11 @@ import {
   foreignKey,
   index,
   integer,
+  json,
   jsonb,
   primaryKey,
   timestamp,
+  type PgTableExtraConfigValue,
   unique,
   uniqueIndex,
   uuid,
@@ -95,7 +96,7 @@ export const workflowRuns = appSchema.table(
       mode: 'date',
     }),
     variableSetRevision: integer('variable_set_revision'),
-    inputRef: jsonb('input_ref'),
+    inputRef: json('input_ref'),
     inputRefExpiresAt: timestamp('input_ref_expires_at', {
       withTimezone: true,
       mode: 'date',
@@ -104,7 +105,7 @@ export const workflowRuns = appSchema.table(
       withTimezone: true,
       mode: 'date',
     }),
-    outputRef: jsonb('output_ref'),
+    outputRef: json('output_ref'),
     errorSummary: varchar('error_summary', { length: 2048 }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
@@ -411,9 +412,9 @@ export const nodeRuns = appSchema.table(
     providerDispatchBinding: varchar('provider_dispatch_binding', {
       length: 128,
     }),
-    inputRef: jsonb('input_ref'),
-    outputRef: jsonb('output_ref'),
-    failureRef: jsonb('failure_ref'),
+    inputRef: json('input_ref'),
+    outputRef: json('output_ref'),
+    failureRef: json('failure_ref'),
     failureHandlerEntryKey: varchar('failure_handler_entry_key', {
       length: 256,
     }),
@@ -596,7 +597,7 @@ export const nodeAttempts = appSchema.table(
       withTimezone: true,
       mode: 'date',
     }),
-    outputRef: jsonb('output_ref'),
+    outputRef: json('output_ref'),
     codeDiagnostics: jsonb('code_diagnostics').$type<CodeDiagnostics>(),
     safeErrorCode: varchar('safe_error_code', { length: 128 }),
     errorSummary: varchar('error_summary', { length: 2048 }),
@@ -728,9 +729,9 @@ export const previewRuns = appSchema.table(
     traceId: varchar('trace_id', { length: 128 }),
     providerKey: varchar('provider_key', { length: 64 }),
     operationKey: varchar('operation_key', { length: 128 }),
-    executableNodeJson: jsonb('executable_node_json').notNull(),
+    executableNodeJson: json('executable_node_json').notNull(),
     variableSetRevision: integer('variable_set_revision'),
-    inputRef: jsonb('input_ref').notNull(),
+    inputRef: json('input_ref').notNull(),
     priorPreviewRunId: uuid('prior_preview_run_id'),
     sideEffectClass: varchar('side_effect_class', { length: 32 }).notNull(),
     mayContactProvider: boolean('may_contact_provider').notNull(),
@@ -739,7 +740,7 @@ export const previewRuns = appSchema.table(
     ).notNull(),
     dryRun: varchar('dry_run', { length: 32 }).notNull(),
     status: varchar('status', { length: 32 }).default('queued').notNull(),
-    outputRef: jsonb('output_ref'),
+    outputRef: json('output_ref'),
     pinnedSampleId: uuid('pinned_sample_id'),
     safeErrorCode: varchar('safe_error_code', { length: 128 }),
     traceparent: varchar('traceparent', { length: 55 }),
@@ -821,7 +822,7 @@ export const previewRuns = appSchema.table(
     ),
     check(
       'preview_runs_node_object',
-      sql`(jsonb_typeof(executable_node_json) = 'object'::text)`,
+      sql`(json_typeof(executable_node_json) = 'object'::text)`,
     ),
     check(
       'preview_runs_output_bounded',
@@ -923,7 +924,7 @@ export const previewAttempts = appSchema.table(
       withTimezone: true,
       mode: 'date',
     }),
-    outputRef: jsonb('output_ref'),
+    outputRef: json('output_ref'),
     codeDiagnostics: jsonb('code_diagnostics').$type<CodeDiagnostics>(),
     safeErrorCode: varchar('safe_error_code', { length: 128 }),
     reconciliationRef: jsonb('reconciliation_ref'),
