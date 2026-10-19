@@ -11,6 +11,7 @@ import {
 import { isActiveRunStatus } from '../../model/presentation/run-status';
 import { useNow } from '@/lib/hooks/use-now';
 import { cn } from '@/lib/utils';
+import { admissionBlockerWords } from '../../model/presentation/admission';
 import { RunRow } from './run-row';
 import { RUN_ROW_LAYOUT, type RunListVariant } from './run-row-layout';
 
@@ -37,8 +38,23 @@ export function RunList({
     runs.map((run) => [run.id, runDurationMs(run, nowMs)] as const),
   );
   const scale = threadBarScale([...durations.values()]);
+  const waiting = runs.filter(
+    (run) =>
+      run.status === 'queued' &&
+      (run.admissionBlockers?.reasons.length ?? 0) > 0,
+  );
+  const waitingFor = admissionBlockerWords([
+    ...new Set(waiting.flatMap((run) => run.admissionBlockers?.reasons ?? [])),
+  ]);
   return (
     <div className="flex flex-col gap-8">
+      {waiting.length < 2 ? null : (
+        // Said once here, so each queued row needs only its reason.
+        <p className="px-3 text-sm text-muted-foreground">
+          {waiting.length} queued runs are waiting for {waitingFor}. They start
+          in turn as capacity frees up; the queue can change.
+        </p>
+      )}
       {groupRunsByDay(runs, nowMs).map((group) => (
         <section key={group.key} aria-labelledby={`runs-day-${group.key}`}>
           <h2

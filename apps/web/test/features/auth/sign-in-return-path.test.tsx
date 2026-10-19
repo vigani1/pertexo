@@ -31,6 +31,8 @@ describe('sign-in return paths', () => {
       '/invitations/accept',
       '/account/security',
       `/w/${workspaceId}/account`,
+      `/w/${workspaceId}/settings`,
+      `/w/${workspaceId}/runs`,
     ])
       expect(allowlistedReturnPath(path)).toBe(path);
     for (const path of [
@@ -39,7 +41,7 @@ describe('sign-in return paths', () => {
       '/\\evil.example',
       'javascript:alert(1)',
       '/account/security?next=//evil.example',
-      `/w/${workspaceId}/settings`,
+      `/w/${workspaceId}/runs?filter=failed`,
       undefined,
       42,
     ])

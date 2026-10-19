@@ -7,6 +7,10 @@ import {
   currentUserQueryOptions,
   isUnauthenticated,
 } from '@/features/auth/session/queries.public';
+import {
+  allowlistedReturnPath,
+  returnToSearch,
+} from '@/features/auth/return-path.public';
 import { publishSessionChange } from '@/features/auth/session/session-sync.public';
 import { authoringCatalogQueryOptions } from '@/features/catalog/queries.public';
 import { editorConnectionsQueryOptions } from '@/features/connections/queries.public';
@@ -29,14 +33,28 @@ async function clearAuthenticatedQueries(context: RouterContext) {
   context.queryClient.clear();
 }
 
-/** Ends the local session view and sends the person to sign in. */
-async function signOutLocally(context: RouterContext): Promise<never> {
+/**
+ * Ends the local session view and sends the person to sign in, then back to
+ * `returnPath` when it's a page they may return to.
+ */
+async function signOutLocally(
+  context: RouterContext,
+  returnPath?: string,
+): Promise<never> {
   await clearAuthenticatedQueries(context);
-  redirect({ to: '/login', throw: true });
+  redirect({
+    to: '/login',
+    search: returnToSearch(allowlistedReturnPath(returnPath)),
+    throw: true,
+  });
   throw new Error('The sign-in redirect did not interrupt the route.');
 }
 
-export async function loadCurrentUser(context: RouterContext) {
+/** `returnPath` is the page being opened, for after signing in again. */
+export async function loadCurrentUser(
+  context: RouterContext,
+  returnPath?: string,
+) {
   const options = currentUserQueryOptions(context.apiClient);
   const previous = context.queryClient.getQueryData(options.queryKey);
   try {
@@ -48,7 +66,7 @@ export async function loadCurrentUser(context: RouterContext) {
     }
     return current;
   } catch (error) {
-    if (isUnauthenticated(error)) return signOutLocally(context);
+    if (isUnauthenticated(error)) return signOutLocally(context, returnPath);
     return rethrowError(error);
   }
 }
