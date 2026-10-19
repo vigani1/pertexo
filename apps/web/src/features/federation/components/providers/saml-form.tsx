@@ -17,6 +17,7 @@ import {
   ProviderFooter,
   type ProviderEditorProps,
 } from './editor';
+import { Disclosure } from '@/components/ui/disclosure';
 type Provider = Extract<
   NonNullable<FederationSettings['organization']>['providers'][number],
   { kind: 'saml' }
@@ -219,11 +220,8 @@ export function SamlProviderForm({
             />
           )}
         </LabelledField>
-        <details>
-          <summary className="cursor-pointer text-sm font-semibold">
-            Certificate rotation and attributes
-          </summary>
-          <div className="mt-3 space-y-3">
+        <Disclosure summary="Certificate rotation and attributes" tone="strong">
+          <div className="space-y-3">
             <LabelledField
               id={`${id}-next`}
               label="Additional signing certificate"
@@ -270,7 +268,7 @@ export function SamlProviderForm({
               )}
             </LabelledField>
           </div>
-        </details>
+        </Disclosure>
         {stale ? (
           <Notice
             tone="warning"

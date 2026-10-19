@@ -1,10 +1,10 @@
 import { Link } from '@tanstack/react-router';
-import { ChevronDownIcon } from 'lucide-react';
 import { Status } from '@/components/ui/status';
 import { formatClock, formatDurationMs } from '@/lib/format/time';
 import type { LoomModel } from '../../model/loom/model';
 import { describeRunStatus } from '../../model/presentation/run-status';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
+import { Disclosure } from '@/components/ui/disclosure';
 
 /**
  * The Loom's text alternative: every plotted run, per workflow, as a link.
@@ -17,19 +17,19 @@ export function LoomRunList({
 }: Readonly<{ model: LoomModel; workspaceId: string; windowLabel: string }>) {
   if (model.runCount === 0) return null;
   return (
-    <details className="group text-sm">
-      <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-sm text-xs text-subtle-foreground outline-none hover:text-foreground focus-ring [&::-webkit-details-marker]:hidden">
-        <ChevronDownIcon
-          aria-hidden="true"
-          className="size-3.5 transition-transform group-open:rotate-180 motion-reduce:transition-none"
-        />
-        {model.runCount === 1
-          ? 'List the run on this timeline'
-          : `List the ${String(model.runCount)} runs on this timeline`}
-        {model.hiddenLaneCount > 0
-          ? ` (and ${String(model.hiddenLaneCount)} more ${model.hiddenLaneCount === 1 ? 'workflow' : 'workflows'} not drawn)`
-          : ''}
-      </summary>
+    <Disclosure
+      summary={
+        <>
+          {model.runCount === 1
+            ? 'List the run on this timeline'
+            : `List the ${String(model.runCount)} runs on this timeline`}
+          {model.hiddenLaneCount > 0
+            ? ` (and ${String(model.hiddenLaneCount)} more ${model.hiddenLaneCount === 1 ? 'workflow' : 'workflows'} not drawn)`
+            : ''}
+        </>
+      }
+      size="xs"
+    >
       <div className="mt-3 grid gap-5 sm:grid-cols-2">
         {model.lanes.map((lane) => (
           <section key={lane.key} aria-label={lane.label} className="min-w-0">
@@ -70,6 +70,6 @@ export function LoomRunList({
           </section>
         ))}
       </div>
-    </details>
+    </Disclosure>
   );
 }

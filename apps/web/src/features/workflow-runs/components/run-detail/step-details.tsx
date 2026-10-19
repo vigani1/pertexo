@@ -1,7 +1,6 @@
 import { StepCodeDiagnostics } from './code/diagnostics';
 import { StepExecutionHistory } from './execution-history';
 export { StepError } from './execution-history';
-import { ChevronDownIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Status } from '@/components/ui/status';
 import { stepTag } from '../../model/step-inspection/step-copy';
@@ -10,6 +9,7 @@ import { shortRunId } from '../../model/list/runs';
 import { CopyButton } from '@/components/ui/copy-button';
 import { InfoHint } from '@/components/patterns/guidance/info-hint';
 import { StepInputData, StepOutputData, type RunDataScope } from './data';
+import { Disclosure } from '@/components/ui/disclosure';
 
 function StepDetailsSection({
   title,
@@ -128,15 +128,8 @@ export function RunStepDetails({
           <StepCodeDiagnostics row={row} scope={scope} />
         </StepDetailsSection>
       ) : null}
-      <details className="group mt-6">
-        <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 text-xs font-semibold text-subtle-foreground outline-none hover:text-foreground focus-ring [&::-webkit-details-marker]:hidden">
-          Details
-          <ChevronDownIcon
-            aria-hidden="true"
-            className="size-3.5 transition-transform group-open:rotate-180 motion-reduce:transition-none"
-          />
-        </summary>
-        <dl className="mt-2 grid grid-cols-[6.5rem_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-xs">
+      <Disclosure summary="Details" size="xs" className="mt-6">
+        <dl className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-xs">
           <dt className="text-subtle-foreground">Step ID</dt>
           <dd className="min-w-0">
             <CopyButton
@@ -170,7 +163,7 @@ export function RunStepDetails({
             </>
           )}
         </dl>
-      </details>
+      </Disclosure>
     </div>
   );
 }

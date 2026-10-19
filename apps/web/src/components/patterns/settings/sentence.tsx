@@ -1,5 +1,6 @@
 import { useId, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
+import { Disclosure } from '@/components/ui/disclosure';
 
 /**
  * A setting read as one sentence. "Change" opens its editor in place; the
@@ -56,14 +57,15 @@ export function SettingSentence({
         </div>
       )}
       {rules === undefined ? null : (
-        <details className="text-xs text-muted-foreground">
-          <summary className="w-fit cursor-pointer rounded-sm py-0.5 outline-none focus-ring hover:text-foreground">
-            How this works
-          </summary>
+        <Disclosure
+          summary="How this works"
+          size="xs"
+          className="text-xs text-muted-foreground"
+        >
           <div className="mt-2 flex max-w-lg flex-col gap-1.5 leading-relaxed">
             {rules}
           </div>
-        </details>
+        </Disclosure>
       )}
     </div>
   );

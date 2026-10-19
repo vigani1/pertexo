@@ -10,6 +10,7 @@ import {
   type CuratedTemplate,
 } from '../../model/templates/curated-setup';
 import { PatternGlyph } from '../pattern-glyph';
+import { Disclosure } from '@/components/ui/disclosure';
 
 /**
  * Ready-made workflows, each drawn as its own thread: one line on what it
@@ -126,10 +127,11 @@ export function CuratedTemplateChoice({
                   {reason}
                 </p>
               ))}
-              <details className="group/details text-xs text-muted-foreground">
-                <summary className="w-fit cursor-pointer rounded-sm text-subtle-foreground outline-none select-none hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring">
-                  Details
-                </summary>
+              <Disclosure
+                summary="Details"
+                size="xs"
+                className="text-xs text-muted-foreground"
+              >
                 <dl className="mt-1.5 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1">
                   <dt className="text-subtle-foreground">Input</dt>
                   <dd>{template.inputSummary}</dd>
@@ -138,7 +140,7 @@ export function CuratedTemplateChoice({
                   <dt className="text-subtle-foreground">Effects</dt>
                   <dd>{template.effectsSummary}</dd>
                 </dl>
-              </details>
+              </Disclosure>
             </div>
           </article>
         );

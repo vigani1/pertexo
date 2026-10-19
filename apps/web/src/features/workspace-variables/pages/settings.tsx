@@ -13,6 +13,7 @@ import { variablesQueryOptions } from '../data/variables.queries';
 import type { VariablesScope } from '../data/variables.api';
 import { VariablesEditor } from '../components/editor';
 import { variableMatches, variableRows } from '../model/draft';
+import { Disclosure } from '@/components/ui/disclosure';
 export function WorkspaceVariablesPage({
   scope,
   workspace,
@@ -47,16 +48,13 @@ export function WorkspaceVariablesPage({
           <p>
             Use <code translate="no">$vars.NAME</code> in a step’s mappings.
           </p>
-          <details className="text-xs">
-            <summary className="w-fit cursor-pointer rounded-sm py-0.5 outline-none focus-ring hover:text-foreground">
-              Limits
-            </summary>
-            <p className="mt-1.5 max-w-lg leading-relaxed">
+          <Disclosure summary="Limits" size="xs" className="text-xs">
+            <p className="max-w-lg leading-relaxed">
               Up to 100 names, 4,096 characters per text value and 32 KB in all.
               A replay, a recovery or a child workflow keeps the values its run
               started with.
             </p>
-          </details>
+          </Disclosure>
         </div>
         {query.isError ? (
           <Notice

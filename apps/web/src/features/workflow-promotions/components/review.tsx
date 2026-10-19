@@ -8,6 +8,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Notice } from '@/components/ui/notice';
 import { Status } from '@/components/ui/status';
+import { Disclosure } from '@/components/ui/disclosure';
 export function PromotionReview({
   review,
   acknowledged,
@@ -84,17 +85,14 @@ export function PromotionReview({
                 ) : null}
               </ul>
             )}
-            <details>
-              <summary className="cursor-pointer text-sm text-action">
-                Inspect proposed definition
-              </summary>
+            <Disclosure summary="Inspect proposed definition" tone="link">
               <pre
-                className="mt-2 max-h-72 overflow-auto rounded border border-border p-3 text-xs"
+                className="max-h-72 overflow-auto rounded border border-border p-3 text-xs"
                 tabIndex={0}
               >
                 {JSON.stringify(workflow.proposedGraph, null, 2)}
               </pre>
-            </details>
+            </Disclosure>
             {workflow.directChanges ? (
               <Notice tone="warning">
                 <p>

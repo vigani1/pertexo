@@ -18,6 +18,7 @@ import {
   type ProviderEditorProps,
 } from './editor';
 import { SamlProviderForm } from './saml-form';
+import { Disclosure } from '@/components/ui/disclosure';
 type Organization = NonNullable<FederationSettings['organization']>;
 type Provider = Extract<Organization['providers'][number], { kind: 'oidc' }>;
 function initial(provider: Provider | undefined) {
@@ -241,11 +242,8 @@ function OidcProviderForm({
             />
           )}
         </LabelledField>
-        <details>
-          <summary className="cursor-pointer text-sm font-semibold">
-            Claim names
-          </summary>
-          <div className="mt-3 space-y-3">
+        <Disclosure summary="Claim names" tone="strong">
+          <div className="space-y-3">
             <LabelledField
               id={`${id}-email`}
               label="Email claim"
@@ -274,7 +272,7 @@ function OidcProviderForm({
               )}
             </LabelledField>
           </div>
-        </details>
+        </Disclosure>
         {stale ? (
           <Notice
             tone="warning"
