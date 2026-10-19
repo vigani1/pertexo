@@ -32,6 +32,8 @@ interface ComposerProps {
   onCancel?: (() => void) | undefined;
   disabled?: boolean | undefined;
 }
+// Steps get UUIDs as IDs, so this can't name one.
+const WHOLE_WORKFLOW = ':workflow';
 export function CommentComposer(props: ComposerProps) {
   if (props.target.kind === 'create')
     return <NewDiscussionComposer {...props} target={props.target} />;
@@ -50,10 +52,11 @@ function NewDiscussionComposer({
   target,
   ...props
 }: Omit<ComposerProps, 'target'> & { target: NewThread }) {
-  const [stepId, setStepId] = useState(target.stepId ?? '');
+  const [stepId, setStepId] = useState(target.stepId ?? WHOLE_WORKFLOW);
   const aboutId = useId();
+  // A named choice, so the workflow reads as chosen rather than as a hint.
   const choices = [
-    { value: '', label: 'The workflow' },
+    { value: WHOLE_WORKFLOW, label: 'The workflow' },
     ...target.steps.map((step) => ({ value: step.id, label: step.label })),
   ];
   return (
@@ -62,7 +65,7 @@ function NewDiscussionComposer({
       title="New discussion"
       buildCommand={(body) => ({
         kind: 'create',
-        body: { ...body, stepId: stepId === '' ? null : stepId },
+        body: { ...body, stepId: stepId === WHOLE_WORKFLOW ? null : stepId },
       })}
     >
       {(locked) => (
@@ -73,7 +76,7 @@ function NewDiscussionComposer({
               value={stepId}
               disabled={locked}
               onValueChange={(value: string | null) => {
-                setStepId(value ?? '');
+                setStepId(value ?? WHOLE_WORKFLOW);
               }}
             >
               <SelectTrigger {...control} aria-label="Discussion step">
