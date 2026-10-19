@@ -146,7 +146,7 @@ export function LiveTextField<Value>({
    * The digit pad, for whole counts from 0 only: iPhone's has no minus key,
    * and its decimal key types the region's separator, often ",".
    */
-  inputMode?: 'numeric';
+  inputMode?: 'numeric' | undefined;
   placeholder?: string;
   className?: string;
   /** Sameness for values that aren't compared by identity, like lists. */
