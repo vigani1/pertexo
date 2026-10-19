@@ -670,6 +670,30 @@ describe('RFC 9457 problem details filter', () => {
     expect(open.status).toHaveBeenCalledWith(500);
   });
 
+  it('treats a closed request as expected when an area mapper wrapped its abort', () => {
+    const contexts = new RequestContextStore();
+    const logger = { log: vi.fn() };
+    const filter = new ProblemDetailsFilter(contexts, logger);
+    // What an area's error mapper throws for an error it doesn't recognise.
+    const wrapped = applicationError('internal.unexpected', {
+      cause: new DOMException('Request aborted', 'AbortError'),
+    });
+    const closed = responseMock();
+    contexts.run('request-closed', () => {
+      filter.catch(
+        wrapped,
+        hostFor(
+          { url: '/v1/workspaces', raw: { socket: { destroyed: true } } },
+          closed,
+        ),
+      );
+    });
+    expect(closed.status).toHaveBeenCalledWith(499);
+    expect(logger.log).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'request.aborted', severity: 'info' }),
+    );
+  });
+
   it('returns a generic safe 500 and logs the unknown cause', () => {
     const contexts = new RequestContextStore();
     const logger = { log: vi.fn() };

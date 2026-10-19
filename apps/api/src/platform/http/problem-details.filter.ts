@@ -325,9 +325,15 @@ function normalize(
   };
 }
 
+function isAbortError(value: unknown): boolean {
+  return value instanceof Error && value.name === 'AbortError';
+}
+
 /**
  * The browser closed the request (navigated, closed the tab) and the work it
- * started stopped with it: an expected end, not a server failure.
+ * started stopped with it: an expected end, not a server failure. Area error
+ * mappers wrap what they don't recognise as an unexpected application error,
+ * so the abort can arrive as that error's cause.
  */
 function abandonedByClient(
   exception: unknown,
@@ -335,13 +341,13 @@ function abandonedByClient(
 ): boolean {
   const gone =
     request.raw?.destroyed === true || request.raw?.socket?.destroyed === true;
-  return (
-    gone &&
-    exception instanceof Error &&
-    (exception.name === 'AbortError' ||
-      (exception.cause instanceof Error &&
-        exception.cause.name === 'AbortError'))
-  );
+  if (!gone) return false;
+  if (isAbortError(exception)) return true;
+  const cause =
+    exception instanceof Error || isApplicationError(exception)
+      ? exception.cause
+      : undefined;
+  return isAbortError(cause);
 }
 
 function normalizeFailClosed(
