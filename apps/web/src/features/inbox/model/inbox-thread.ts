@@ -2,6 +2,7 @@ import type { WorkspaceInboxFailureThread } from '@pertexo/contracts';
 import { describeListedFailure } from '@/features/workflow-runs/failure.public';
 import { describeRunStatus } from '@/features/workflow-runs/run-labels.public';
 import { formatDateTime } from '@/lib/format/time';
+import { FORMAT_LOCALE } from '@/lib/format/locale';
 
 /** How a failing workflow's notice reads in the inbox. */
 export type InboxThreadView = Readonly<{
@@ -22,7 +23,7 @@ export function describeInboxThread(
     occurrences:
       thread.occurrenceCount === 1
         ? 'Failed once'
-        : `Failed ${thread.occurrenceCount.toLocaleString()} times since ${formatDateTime(thread.firstOccurredAt)}`,
+        : `Failed ${thread.occurrenceCount.toLocaleString(FORMAT_LOCALE)} times since ${formatDateTime(thread.firstOccurredAt)}`,
     ...(failure.step === undefined ? {} : { step: failure.step }),
     ...(failure.reason === undefined ? {} : { reason: failure.reason }),
   };

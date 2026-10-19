@@ -19,6 +19,7 @@ import {
 import { StatusGuide } from '@/components/patterns/guidance/status-guide';
 import { WORKFLOW_LIST_GUIDE } from '../../model/guide';
 import { countWorkflowStates } from '../../model/list-view';
+import { FORMAT_LOCALE } from '@/lib/format/locale';
 
 /**
  * The list's one primary action. Its N shortcut shows on hover, not as an
@@ -79,7 +80,7 @@ export function WorkflowListHeader({
               <>
                 <span>
                   <b className="font-semibold text-foreground">
-                    {total.toLocaleString()}
+                    {total.toLocaleString(FORMAT_LOCALE)}
                     {more}
                   </b>{' '}
                   {total === 1 && more === '' ? 'workflow' : 'workflows'}
@@ -91,7 +92,7 @@ export function WorkflowListHeader({
                     className="font-mono text-xs font-normal"
                   >
                     <b className="font-semibold">
-                      {state.count.toLocaleString()}
+                      {state.count.toLocaleString(FORMAT_LOCALE)}
                       {more}
                     </b>{' '}
                     {state.label}

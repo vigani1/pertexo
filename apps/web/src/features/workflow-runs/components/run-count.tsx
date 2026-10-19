@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils';
 import { Status, type StatusTone } from '@/components/ui/status';
 import type { RunStatistics } from '../data/workflow-runs.queries';
+import { FORMAT_LOCALE } from '@/lib/format/locale';
 
 /** One exact count in a page header's mono line, e.g. "3 running". */
 export function RunCount({
@@ -25,7 +26,7 @@ export function RunCount({
             count === 0 ? 'text-subtle-foreground' : 'text-foreground',
           )}
         >
-          {count.toLocaleString()}
+          {count.toLocaleString(FORMAT_LOCALE)}
         </b>{' '}
         {label}
       </span>

@@ -14,6 +14,7 @@ import {
   type LoomModel,
   type LoomRun,
 } from './model';
+import { FORMAT_LOCALE } from '@/lib/format/locale';
 
 // Canvas 2D drawing for the Loom. Threads are drawn from real run times;
 // running ones grow to "now" and feed light into the Core overlaid on the
@@ -152,7 +153,10 @@ export class LoomRenderer extends CanvasScene {
     this.#model.lanes.forEach((lane, index) => {
       const y = loomLaneY(layout, index);
       // The lane's exact window total sits at the end of its label column.
-      const total = lane.total === undefined ? '' : lane.total.toLocaleString();
+      const total =
+        lane.total === undefined
+          ? ''
+          : lane.total.toLocaleString(FORMAT_LOCALE);
       context.font = MONO_FONT;
       const totalWidth =
         total === '' ? 0 : context.measureText(total).width + 8;

@@ -20,6 +20,7 @@ import {
   type InputMappingDraftRow,
   validateInputMappingRows,
 } from '../../../model/inspector/input-mappings';
+import { FORMAT_LOCALE } from '@/lib/format/locale';
 
 export function EventCoordinationSetup({
   node,
@@ -297,7 +298,9 @@ function NumberSetting({
         onBlur={draft.blur}
       />
       {draft.error === undefined ? (
-        <FieldDescription>1–{maximum.toLocaleString()}</FieldDescription>
+        <FieldDescription>
+          1–{maximum.toLocaleString(FORMAT_LOCALE)}
+        </FieldDescription>
       ) : (
         <FieldError id={`${id}-error`}>{draft.error}</FieldError>
       )}

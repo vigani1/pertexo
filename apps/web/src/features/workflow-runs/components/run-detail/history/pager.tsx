@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { FORMAT_LOCALE } from '@/lib/format/locale';
 
 export function HistoryPager({
   label,
@@ -27,8 +28,9 @@ export function HistoryPager({
         className="font-mono text-xs text-muted-foreground"
         aria-live="polite"
       >
-        {(start + 1).toLocaleString()}–{end.toLocaleString()} of{' '}
-        {total.toLocaleString()}
+        {(start + 1).toLocaleString(FORMAT_LOCALE)}–
+        {end.toLocaleString(FORMAT_LOCALE)} of{' '}
+        {total.toLocaleString(FORMAT_LOCALE)}
       </span>
       <div className="flex gap-2">
         <Button
