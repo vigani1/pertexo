@@ -19,6 +19,7 @@ export {
   WebhookIngressRateLimitExceededError,
   WebhookTriggerIdempotencyConflictError,
   WebhookTriggerNotFoundError,
+  WebhookTriggerStateError,
   WebhookWorkflowPausedError,
 } from './webhooks/database.js';
 export type {
