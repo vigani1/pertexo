@@ -2,7 +2,6 @@ import type { WorkflowRunReadSummary } from '@pertexo/contracts';
 import { useEffect, useMemo, useRef } from 'react';
 import { CoreOrb } from '@/components/patterns/core/orb';
 import { useCanvasRenderer } from '@/lib/hooks/use-canvas-renderer';
-import { usePrefersReducedMotion } from '@/lib/hooks/use-prefers-reduced-motion';
 import {
   LOOM_TALL_HEIGHT,
   loomHeight,
@@ -73,6 +72,7 @@ export function RunLoom({
           <CoreOrb
             state={model.liveCount > 0 ? 'live' : 'idle'}
             energy={coreEnergy(model.liveCount)}
+            still={model.liveCount === 0}
             className={
               height >= LOOM_TALL_HEIGHT
                 ? 'size-12 @min-[640px]:size-36'
@@ -103,18 +103,18 @@ function LoomCanvas({
   label,
 }: Readonly<{ model: LoomModel; label: string }>) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const reducedMotion = usePrefersReducedMotion();
-  const rendererRef = useCanvasRenderer(
+  // Without live runs the threads only drift with the clock, which the
+  // model's own 15-second refresh redraws.
+  const { renderer: rendererRef, refresh } = useCanvasRenderer(
     canvasRef,
     (canvas) => new LoomRenderer(canvas, model),
+    model.liveCount > 0,
   );
 
   useEffect(() => {
-    const renderer = rendererRef.current;
-    if (renderer === null) return;
-    renderer.setModel(model);
-    if (reducedMotion) renderer.render(3);
-  }, [rendererRef, model, reducedMotion]);
+    rendererRef.current?.setModel(model);
+    refresh();
+  }, [rendererRef, refresh, model]);
 
   return (
     <canvas

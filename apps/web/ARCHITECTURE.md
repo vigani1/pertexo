@@ -919,6 +919,12 @@ object or reservation disappeared. Artifact list UI is not assumed available.
   technology. Reduced motion removes continuous rotation/travel/pulsing. Prefer
   short opacity/transform transitions; no generic `transition-all` on complex
   nodes.
+- Looping motion runs only where it means something, because every moving frame
+  repaints the window. Status motion (the Core, the Loom, status glyphs) runs
+  only while work is live, never for a zero count or a legend. CSS loops use the
+  `motion-loop` variant and canvases `useStillCanvases`: both hold still under
+  reduced motion and on touch-first devices. Canvases draw 30 frames a second
+  and pause off-screen and in a background window.
 - The legacy aurora uses huge `150vmax` layers and blur: preserve the
   appearance, not that unmeasured cost. Bound effects to their container;
   provide static border and opaque glass fallbacks. No animated glow on every
@@ -946,7 +952,7 @@ palette, the particle orb, the aurora edge and glass stay — each with one job.
 | --------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
 | Thread    | A run moving through time: grows while running, knots on success, stops at a cross on failure, coils while waiting | Every status in the product speaks the thread glyph language                                                 | `components/ui/status.tsx` (`Status`, `StatusGlyph`, `StatusTone`)                                |
 | Loom      | Time laid sideways, one lane per workflow                                                                          | Charts come from real run times, never invented metrics                                                      | Runs feature (Home and the Runs "Loom" view); step thread view on run detail                      |
-| Core      | The living particle orb                                                                                            | At most one large animated Core per screen                                                                   | `components/patterns/core/orb.tsx` + `orb-scene.ts` (Canvas 2D, token colours, paused off-screen) |
+| Core      | The living particle orb                                                                                            | At most one large animated Core per screen                                                                   | `components/patterns/core/orb.tsx` + `orb-scene.ts` (Canvas 2D, token colours, still unless live) |
 | Lens      | Glass                                                                                                              | Only layers that float above the page: spine, bars, inspectors, dialogs, menus, toasts. Page content is flat | `lens` utility in `styles/globals.css`; `components/ui/sheet.tsx`, dialog, popups                 |
 | Live edge | The aurora travelling around a border                                                                              | Only while real work is in flight; nothing moves when nothing happens                                        | `live-edge` class (animated `@property` angle, bounded to the element)                            |
 
@@ -982,8 +988,9 @@ palette, the particle orb, the aurora edge and glass stay — each with one job.
   page instead of blacking it out. With `prefers-reduced-transparency` or no
   backdrop blur, every weight falls back to a solid surface.
 - Textures: `warp` (page background threads), `weave` (canvas and run maps),
-  `ambient` (two slow aurora blobs in the shell). All decorative layers are
-  `aria-hidden` and motion stops under `prefers-reduced-motion`.
+  `ambient` (two aurora blobs: they drift behind sign-in and boot and hold still
+  in the workspace and hub, `ambient-still`). All decorative layers are
+  `aria-hidden` and hold still under reduced motion and on touch-first devices.
 
 #### Status language
 

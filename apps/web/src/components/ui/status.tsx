@@ -36,7 +36,11 @@ const strokeProps = {
   strokeLinejoin: 'round',
 } as const;
 
-function GlyphShape({ tone }: Readonly<{ tone: StatusTone }>) {
+function GlyphShape({
+  tone,
+  still,
+}: Readonly<{ tone: StatusTone; still: boolean }>) {
+  const loop = (animation: string) => (still ? undefined : animation);
   switch (tone) {
     case 'live':
       return (
@@ -44,25 +48,33 @@ function GlyphShape({ tone }: Readonly<{ tone: StatusTone }>) {
           <path d="M1.5 8h13" opacity={0.28} />
           <path
             d="M1.5 8h13"
-            className="[stroke-dasharray:4_22] drop-shadow-[0_0_3px_currentColor] motion-safe:animate-thread-flow"
+            className={cn(
+              '[stroke-dasharray:4_22] drop-shadow-[0_0_3px_currentColor]',
+              loop('motion-loop:animate-thread-flow'),
+            )}
           />
         </>
       );
     case 'queued':
       return (
         <g fill="currentColor" stroke="none">
-          <circle cx="3" cy="8" r="1.5" className="motion-safe:animate-bead" />
+          <circle
+            cx="3"
+            cy="8"
+            r="1.5"
+            className={loop('motion-loop:animate-bead')}
+          />
           <circle
             cx="8"
             cy="8"
             r="1.5"
-            className="motion-safe:animate-bead [animation-delay:300ms]"
+            className={loop('motion-loop:animate-bead [animation-delay:300ms]')}
           />
           <circle
             cx="13"
             cy="8"
             r="1.5"
-            className="motion-safe:animate-bead [animation-delay:600ms]"
+            className={loop('motion-loop:animate-bead [animation-delay:600ms]')}
           />
         </g>
       );
@@ -91,7 +103,10 @@ function GlyphShape({ tone }: Readonly<{ tone: StatusTone }>) {
           <path d="M1.5 8h5" />
           <path
             d="M9 8h6"
-            className="[stroke-dasharray:1_2.4] motion-safe:animate-blink"
+            className={cn(
+              '[stroke-dasharray:1_2.4]',
+              loop('motion-loop:animate-blink'),
+            )}
           />
         </>
       );
@@ -104,17 +119,22 @@ function GlyphShape({ tone }: Readonly<{ tone: StatusTone }>) {
   }
 }
 
+/**
+ * `still` holds the glyph's motion for a status that isn't happening right
+ * now, such as a zero count or a legend entry.
+ */
 export function StatusGlyph({
   tone,
+  still = false,
   className,
-}: Readonly<{ tone: StatusTone; className?: string }>) {
+}: Readonly<{ tone: StatusTone; still?: boolean; className?: string }>) {
   return (
     <span
       data-slot="status-glyph"
       aria-hidden="true"
       className={cn(
         'inline-grid size-4 shrink-0 place-items-center',
-        tone === 'waiting' && 'motion-safe:animate-coil',
+        tone === 'waiting' && !still && 'motion-loop:animate-coil',
         className,
       )}
     >
@@ -123,7 +143,7 @@ export function StatusGlyph({
         className="size-full overflow-visible"
         {...strokeProps}
       >
-        <GlyphShape tone={tone} />
+        <GlyphShape tone={tone} still={still} />
       </svg>
     </span>
   );
@@ -132,12 +152,14 @@ export function StatusGlyph({
 /** A status word led by its glyph. The children are the accessible label. */
 export function Status({
   tone,
+  still = false,
   className,
   children,
   ...props
 }: Omit<ComponentProps<'span'>, 'children'> &
   VariantProps<typeof statusVariants> & {
     tone: StatusTone;
+    still?: boolean;
     children?: ReactNode;
   }) {
   return (
@@ -147,7 +169,7 @@ export function Status({
       className={cn(statusVariants({ tone }), className)}
       {...props}
     >
-      <StatusGlyph tone={tone} />
+      <StatusGlyph tone={tone} still={still} />
       {children === undefined ? null : <span>{children}</span>}
     </span>
   );

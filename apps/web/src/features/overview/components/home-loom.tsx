@@ -105,8 +105,9 @@ export function HomeLoom({
         >
           {legend.map(([tone, label]) => (
             <li key={tone} className="inline-flex items-center gap-1.5">
-              {/* Each glyph in its status colour, as the Loom draws it. */}
-              <StatusGlyph tone={tone} className={statusToneText[tone]} />
+              {/* Each glyph in its status colour, as the Loom draws it; a key
+                  names a status, so it doesn't play one. */}
+              <StatusGlyph tone={tone} still className={statusToneText[tone]} />
               {label}
             </li>
           ))}

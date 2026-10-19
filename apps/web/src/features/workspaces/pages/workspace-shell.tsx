@@ -63,7 +63,7 @@ export function WorkspaceShell({
 }: WorkspaceShellProps) {
   return (
     <div className="relative min-h-svh bg-background">
-      <div className="ambient fixed" aria-hidden="true" />
+      <div className="ambient ambient-still fixed" aria-hidden="true" />
       <div
         className="warp pointer-events-none fixed inset-0"
         aria-hidden="true"

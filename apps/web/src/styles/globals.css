@@ -5,6 +5,16 @@
    lens (glass only for floating layers) and live edge (aurora only while work
    is actually happening). Tokens are semantic; components never hard-code hex. */
 
+/* Looping motion that decorates or restates a status runs only where it's
+   welcome: not when the person asks for less motion, and not on touch-first
+   devices, where heat and battery matter more. useStillCanvases applies the
+   same rule to canvas drawings. */
+@custom-variant motion-loop {
+  @media (prefers-reduced-motion: no-preference) and (pointer: fine) {
+    @slot;
+  }
+}
+
 @theme inline {
   --font-sans: 'Inter Variable', Inter, ui-sans-serif, system-ui, sans-serif;
   --font-heading:
@@ -469,7 +479,9 @@
     border-radius: 999px;
     content: '';
     filter: blur(100px);
-    animation: ambient-drift 28s ease-in-out infinite alternate;
+    @variant motion-loop {
+      animation: ambient-drift 28s ease-in-out infinite alternate;
+    }
   }
 
   .ambient::before {
@@ -488,6 +500,14 @@
     background: color-mix(in srgb, var(--secondary) 8%, transparent);
     animation-duration: 34s;
     animation-direction: alternate-reverse;
+  }
+
+  /* Where a tab stays open all day (the workspace and the workflow hub), the
+     aurora holds still: its drift repaints the whole window every frame. It
+     drifts behind full-screen moments such as sign-in and boot. */
+  .ambient-still::before,
+  .ambient-still::after {
+    animation: none;
   }
 
   .loading-orb {
@@ -560,8 +580,6 @@
 
   @media (prefers-reduced-motion: reduce) {
     .live-edge::before,
-    .ambient::before,
-    .ambient::after,
     .loading-orb-core,
     .loading-orb-ring,
     .loading-orb-particle {

@@ -43,6 +43,8 @@ export function AddStepLens({
     );
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {/* Heads the group names below, which are level 3 like quick add's. */}
+      <h2 className="sr-only">Add a step</h2>
       <div className="flex items-center gap-1.5 px-3 pt-3">
         <StepSearch
           query={query}
