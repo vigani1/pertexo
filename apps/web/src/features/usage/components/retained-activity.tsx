@@ -35,7 +35,9 @@ export function RetainedActivity({
       {/* The count is its own sentence; the link sits beside it. */}
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <p>
-          <span className="font-mono text-2xl">{snapshot.window.total}</span>{' '}
+          <span className="font-mono text-2xl">
+            {snapshot.window.total.toLocaleString()}
+          </span>{' '}
           <span className="text-sm text-muted-foreground">
             {snapshot.window.total === 1 ? 'run' : 'runs'} started{' '}
             {windowPhrase}
@@ -53,7 +55,7 @@ export function RetainedActivity({
       {snapshot.window.skippedTriggerEvents === undefined ? null : (
         <p className="text-sm text-muted-foreground">
           <span className="font-mono">
-            {snapshot.window.skippedTriggerEvents}
+            {snapshot.window.skippedTriggerEvents.toLocaleString()}
           </span>{' '}
           trigger events skipped {windowPhrase} because their workflow was at
           its limit. A skipped event starts no run.
@@ -62,7 +64,7 @@ export function RetainedActivity({
       {snapshot.window.coordinatedTriggerEvents === undefined ? null : (
         <p className="text-sm text-muted-foreground">
           <span className="font-mono">
-            {snapshot.window.coordinatedTriggerEvents}
+            {snapshot.window.coordinatedTriggerEvents.toLocaleString()}
           </span>{' '}
           events matched up by trigger coordination {windowPhrase}, whether they
           waited, started a run or were skipped. Runs are counted separately.
@@ -81,12 +83,12 @@ export function RetainedActivity({
                   to="/w/$workspaceId/runs"
                   params={{ workspaceId }}
                   search={{ ...search, status }}
-                  aria-label={`${look.label} ${String(snapshot.window.byStatus[status])}`}
+                  aria-label={`${look.label} ${snapshot.window.byStatus[status].toLocaleString()}`}
                   className="focus-ring flex items-center justify-between gap-4 rounded-sm border-t border-border py-3 text-sm hover:text-accent-foreground"
                 >
                   <Status tone={look.tone}>{look.label}</Status>
                   <span className="font-mono">
-                    {snapshot.window.byStatus[status]}
+                    {snapshot.window.byStatus[status].toLocaleString()}
                   </span>
                 </Link>
               </li>
@@ -115,7 +117,9 @@ export function RetainedActivity({
                       {(canReadWorkflowNames ? workflow.workflowName : null) ??
                         `Workflow ${shortRunId(workflow.workflowId)}`}
                     </span>
-                    <span className="font-mono">{workflow.total}</span>
+                    <span className="font-mono">
+                      {workflow.total.toLocaleString()}
+                    </span>
                   </Link>
                 </li>
               ))}
