@@ -152,7 +152,7 @@ export class LoomRenderer extends CanvasScene {
     this.#model.lanes.forEach((lane, index) => {
       const y = loomLaneY(layout, index);
       // The lane's exact window total sits at the end of its label column.
-      const total = lane.total === undefined ? '' : String(lane.total);
+      const total = lane.total === undefined ? '' : lane.total.toLocaleString();
       context.font = MONO_FONT;
       const totalWidth =
         total === '' ? 0 : context.measureText(total).width + 8;

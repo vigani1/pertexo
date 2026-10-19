@@ -27,7 +27,8 @@ export function HistoryPager({
         className="font-mono text-xs text-muted-foreground"
         aria-live="polite"
       >
-        {String(start + 1)}–{String(end)} of {String(total)}
+        {(start + 1).toLocaleString()}–{end.toLocaleString()} of{' '}
+        {total.toLocaleString()}
       </span>
       <div className="flex gap-2">
         <Button

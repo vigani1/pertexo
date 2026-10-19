@@ -37,8 +37,8 @@ export function LoomRunList({
             </h3>
             {lane.total === undefined ? null : (
               <p className="font-mono text-xs text-subtle-foreground">
-                {String(lane.total)} {lane.total === 1 ? 'run' : 'runs'} in{' '}
-                {windowLabel}
+                {lane.total.toLocaleString()}{' '}
+                {lane.total === 1 ? 'run' : 'runs'} in {windowLabel}
               </p>
             )}
             <ul className="mt-1.5 flex flex-col">

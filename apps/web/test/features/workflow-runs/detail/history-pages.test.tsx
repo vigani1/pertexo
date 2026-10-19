@@ -54,15 +54,15 @@ it('pages maximum-size histories and follows a newly inspected step without losi
   };
   const result = render(<RunDetailTabs {...props} />);
   const pager = screen.getByRole('navigation', { name: 'Step history pages' });
-  expect(pager).toHaveTextContent('1–50 of 5000');
+  expect(pager).toHaveTextContent('1–50 of 5,000');
   expect(screen.getAllByRole('button', { name: /^Item /u })).toHaveLength(50);
   expect(
     within(pager).getByRole('button', { name: 'Previous' }),
   ).toBeDisabled();
   await user.click(within(pager).getByRole('button', { name: 'Next' }));
-  expect(pager).toHaveTextContent('51–100 of 5000');
+  expect(pager).toHaveTextContent('51–100 of 5,000');
   result.rerender(<RunDetailTabs {...props} selectedKey="4999" />);
-  expect(pager).toHaveTextContent('4951–5000 of 5000');
+  expect(pager).toHaveTextContent('4,951–5,000 of 5,000');
   expect(
     screen.getByRole('button', { name: 'Item 5000: Succeeded' }),
   ).toHaveAttribute('aria-pressed', 'true');
@@ -71,7 +71,7 @@ it('pages maximum-size histories and follows a newly inspected step without losi
   result.rerender(
     <RunDetailTabs {...props} selectedKey="4999" nowMs={2_000} />,
   );
-  expect(pager).toHaveTextContent('4901–4950 of 5000');
+  expect(pager).toHaveTextContent('4,901–4,950 of 5,000');
   result.rerender(
     <RunDetailTabs
       {...props}

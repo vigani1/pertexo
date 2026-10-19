@@ -148,6 +148,52 @@ describe('workspace Usage', () => {
     ).toBe(true);
   });
 
+  it('writes counts in the thousands with separators', async () => {
+    install({
+      snapshot: {
+        ...capacity,
+        artifacts: { ...capacity.artifacts, chargedCount: 1250 },
+      },
+    });
+    mockServer.use(
+      statisticsHandler((query) =>
+        fixtureStatistics({
+          window: query.get('window') ?? '24h',
+          byStatus: { succeeded: 1881, failed: 142 },
+          ...(query.get('breakdown') === 'workflow'
+            ? {
+                workflows: [
+                  {
+                    workflowId: fixtureIds.workflow,
+                    workflowName: 'Daily intake',
+                    total: 2023,
+                  },
+                ],
+              }
+            : {}),
+        }),
+      ),
+    );
+    renderApp(path);
+    await screen.findByRole('heading', { name: 'Usage' }, coldStart);
+    // "2023 runs started" in the display face reads like a year.
+    expect(
+      await screen.findByText('2,023', { selector: 'span.text-2xl' }),
+    ).toBeVisible();
+    const statuses = screen.getByRole('list', {
+      name: 'Activity by current run status',
+    });
+    expect(
+      within(statuses).getByRole('link', { name: 'Succeeded 1,881' }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('list', { name: 'Activity by workflow' }),
+    ).toHaveTextContent('Daily intake2,023');
+    expect(
+      screen.getByRole('region', { name: 'Current capacity' }),
+    ).toHaveTextContent('1,250 / 1,000');
+  });
+
   it('keeps the fixed window in the URL and never requests history to aggregate', async () => {
     const { seen } = install();
     const { router } = renderApp(path);

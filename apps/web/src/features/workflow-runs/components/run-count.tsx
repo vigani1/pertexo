@@ -25,7 +25,7 @@ export function RunCount({
             count === 0 ? 'text-subtle-foreground' : 'text-foreground',
           )}
         >
-          {String(count)}
+          {count.toLocaleString()}
         </b>{' '}
         {label}
       </span>
