@@ -1,4 +1,4 @@
-import { expect, test } from '../support/fixtures';
+import { chooseTestAction, expect, test } from '../support/fixtures';
 import {
   addCsrfCookie,
   editorUrl,
@@ -108,9 +108,7 @@ for (const width of [1280, 375])
       }),
     );
     await page.goto(editorUrl);
-    await page
-      .getByRole('button', { name: 'Run all tests', exact: true })
-      .click();
+    await chooseTestAction(page, 'Run all tests');
     const dialog = page.getByRole('dialog', {
       name: 'Run all tests',
       exact: true,
@@ -139,9 +137,7 @@ for (const width of [1280, 375])
       signature: current.signature,
       acknowledgeSideEffects: true,
     });
-    await page
-      .getByRole('button', { name: 'Test history', exact: true })
-      .click();
+    // A started suite opens the tests bar on its history.
     const history = page.getByRole('region', {
       name: 'Test suites',
       exact: true,

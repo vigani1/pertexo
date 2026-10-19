@@ -1,6 +1,6 @@
 # Weft design pass
 
-Status: slices complete; one follow-up open (below). Started 2026-10-18 after
+Status: complete. Started 2026-10-18 after
 F18, F28, F17 and F19.
 
 The core screens (Home, Runs, run detail, the editor, Team, Connections) speak
@@ -85,15 +85,15 @@ result at desktop and phone width, then rebase-merge after CI passes.
   always-present reload: Discard changes appears only with unsaved edits, and
   Load the latest only when stored values moved on. A published version's row
   keeps Preview and Restore to draft; Promote, Export and Duplicate move into
-  its More menu. Still open: the editor's
-  test bar should wait for test activity, which needs Run all tests in a split
-  Test workflow menu first.
+  its More menu. Test workflow is a split button whose menu holds Run all tests
+  and Test history (on phones they join the editor's ⋯ menu), so the tests bar
+  appears only for test activity: a test or suite started, history asked for,
+  a test still running or a problem to report.
 - [x] 7. **A run's ending.** When a run ends at a Stop run step whose outcome
   is a fixed word, run detail says "Succeeded as “rejected” in 0.57s", read from
   the run version's graph without another request.
 
-Open follow-ups: the editor's test bar should wait for test activity once Run
-all tests also lives in a split Test workflow menu.
+No follow-ups remain open.
 
 Not in this pass: new backend endpoints (a reviewer's list of waiting
 publication reviews still arrives through Inbox notices), moving existing

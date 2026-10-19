@@ -1,21 +1,91 @@
+import { ChevronDownIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button-variants';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
 import type { WorkflowTests } from '../../hooks/use-workflow-tests';
 
+function testBusy(tests: WorkflowTests) {
+  return tests.preparing || tests.blocked || tests.start.pending;
+}
+
+/**
+ * Test workflow, split: the button tests this draft once, and its menu holds
+ * Run all tests and Test history, so neither needs a bar of its own.
+ */
 export function WorkflowTestButton({
   tests,
   className,
 }: Readonly<{ tests: WorkflowTests; className?: string }>) {
   if (!tests.enabled) return null;
   return (
-    <Button
-      className={className}
-      variant="outline"
-      size="sm"
-      disabled={tests.preparing || tests.blocked || tests.start.pending}
-      onClick={() => void tests.prepare()}
-    >
-      Test workflow
-    </Button>
+    <div className={cn('inline-flex', className)}>
+      <Button
+        variant="outline"
+        size="sm"
+        className="rounded-r-none"
+        disabled={testBusy(tests)}
+        onClick={() => void tests.prepare()}
+      >
+        Test workflow
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          aria-label="More test actions"
+          className={cn(
+            buttonVariants({ variant: 'outline', size: 'icon-sm' }),
+            '-ml-px rounded-l-none',
+          )}
+        >
+          <ChevronDownIcon />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <WorkflowTestMenuItems tests={tests} withTest={false} />
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
+
+/**
+ * The test actions as menu items: in the split button's menu, and on phones
+ * in the editor's ⋯ menu, where Test workflow joins them.
+ */
+export function WorkflowTestMenuItems({
+  tests,
+  withTest = true,
+}: Readonly<{ tests: WorkflowTests; withTest?: boolean }>) {
+  if (!tests.enabled) return null;
+  return (
+    <>
+      {withTest ? (
+        <DropdownMenuItem
+          disabled={testBusy(tests)}
+          onClick={() => void tests.prepare()}
+        >
+          Test workflow
+        </DropdownMenuItem>
+      ) : null}
+      <DropdownMenuItem
+        disabled={
+          tests.blocked ||
+          tests.suites.preparing ||
+          tests.suites.start.pending ||
+          tests.start.pending
+        }
+        onClick={() => void tests.suites.prepare()}
+      >
+        Run all tests
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={tests.showHistory}>
+        Test history
+      </DropdownMenuItem>
+    </>
   );
 }
 

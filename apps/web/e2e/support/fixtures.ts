@@ -1,4 +1,4 @@
-import { test as base } from '@playwright/test';
+import { test as base, type Page } from '@playwright/test';
 
 export {
   expect,
@@ -49,3 +49,27 @@ export const test = base.extend({
     await runWithPage(page);
   },
 });
+
+/**
+ * Opens a workflow test action: from the split Test workflow button, or on
+ * phones (below `sm`) from the editor's ⋯ menu, where the split button hides.
+ */
+export async function chooseTestAction(
+  page: Page,
+  action: 'Test workflow' | 'Run all tests' | 'Test history',
+) {
+  if ((page.viewportSize()?.width ?? 1280) < 640)
+    await page
+      .getByRole('button', { name: 'More workflow actions', exact: true })
+      .click();
+  else if (action === 'Test workflow') {
+    await page
+      .getByRole('button', { name: 'Test workflow', exact: true })
+      .click();
+    return;
+  } else
+    await page
+      .getByRole('button', { name: 'More test actions', exact: true })
+      .click();
+  await page.getByRole('menuitem', { name: action, exact: true }).click();
+}

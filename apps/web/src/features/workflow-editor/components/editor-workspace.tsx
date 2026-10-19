@@ -48,11 +48,14 @@ import {
   WorkflowTestButton,
   WorkflowTestHistory,
   WorkflowTestDialog,
+  WorkflowTestMenuItems,
 } from '@/features/workflow-publish/workflow-tests.public';
 import { StepHistoryPanel } from '@/features/workflow-runs/step-history.public';
 
 export type EditorChrome = Readonly<{
   workflowTestAction: ReactNode;
+  /** The same test actions as items for the phone's ⋯ menu. */
+  workflowTestMenuItems: ReactNode;
   renderFeedback: (feedback: ReactNode) => ReactNode;
   shortcutsOpen: boolean;
   onShortcutsOpenChange: (open: boolean) => void;
@@ -191,6 +194,7 @@ export function EditorWorkspace({
     workflowTestAction: (
       <WorkflowTestButton tests={tests} className="hidden sm:inline-flex" />
     ),
+    workflowTestMenuItems: <WorkflowTestMenuItems tests={tests} />,
     shortcutsOpen,
     onShortcutsOpenChange: setShortcutsOpen,
     issuesOpen,

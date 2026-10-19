@@ -1,4 +1,4 @@
-import { expect, test } from '../support/fixtures';
+import { chooseTestAction, expect, test } from '../support/fixtures';
 import {
   addCsrfCookie,
   editorNode,
@@ -44,9 +44,7 @@ for (const width of [375, 1280]) {
       await route.abort('failed');
     });
     await page.goto(editorUrl);
-    await page
-      .getByRole('button', { name: 'Test workflow', exact: true })
-      .click();
+    await chooseTestAction(page, 'Test workflow');
     const dialog = page.getByRole('dialog', {
       name: 'Test workflow',
       exact: true,

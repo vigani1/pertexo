@@ -22,11 +22,14 @@ export function useTestSuites({
   enabled,
   ensureSaved,
   verifyIdentity,
+  onStarted,
 }: Readonly<{
   scope: WorkflowTestScope;
   enabled: boolean;
   ensureSaved: () => Promise<{ revision: number }>;
   verifyIdentity: () => Promise<void>;
+  /** A suite started, so its progress can show. */
+  onStarted?: () => void;
 }>) {
   const cache = useQueryClient();
   const lifetime = useRef<AbortController | undefined>(undefined);
@@ -112,6 +115,7 @@ export function useTestSuites({
       if (lifetime.current?.signal.aborted !== false) return;
       select(result.suiteId);
       setOpen(false);
+      onStarted?.();
       await refresh();
     },
     { action: 'starting the test suite' },
