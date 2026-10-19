@@ -45,7 +45,10 @@ export type {
   WorkflowExecutableNode,
   WorkflowExecutable,
 } from './compilation/foundation.js';
-export { invocationKey } from './transition/scheduling/loops.js';
+export {
+  invocationKey,
+  loopIterationOrdinal,
+} from './transition/scheduling/loops.js';
 export type * from './types.js';
 export { selectRecoveryPrefix } from './recovery/select-prefix.js';
 export { planRecovery } from './recovery/plan.js';

@@ -11,6 +11,8 @@ import {
   loadNodeAttemptInputs,
   readNodeAttemptLoopDeclaration,
   readNodeAttemptOutputs,
+  listNodeRunOutcomes,
+  readNodeRunOutputs,
 } from './inputs.js';
 
 import {
@@ -25,6 +27,8 @@ import {
   type NodeAttemptCompletion,
   type NodeAttemptLoopDeclaration,
   type NodeAttemptStoredOutput,
+  type NodeRunOutcome,
+  type NodeRunStoredOutput,
   type NodeAttemptStoredInputs,
   type NodeAttemptLease,
   type NodeAttemptRunStore,
@@ -44,6 +48,8 @@ export type {
   NodeAttemptCompletion,
   NodeAttemptLoopDeclaration,
   NodeAttemptStoredOutput,
+  NodeRunOutcome,
+  NodeRunStoredOutput,
   NodeAttemptStoredInputs,
   NodeAttemptLease,
   NodeAttemptRunStore,
@@ -67,6 +73,12 @@ export function createNodeAttemptRunStore(
     readAttemptOutputs: (
       input: Parameters<NodeAttemptRunStore['readAttemptOutputs']>[0],
     ) => readNodeAttemptOutputs(pool, input),
+    listNodeOutcomes: (
+      input: Parameters<NodeAttemptRunStore['listNodeOutcomes']>[0],
+    ) => listNodeRunOutcomes(pool, input),
+    readNodeOutputs: (
+      input: Parameters<NodeAttemptRunStore['readNodeOutputs']>[0],
+    ) => readNodeRunOutputs(pool, input),
     markDispatched: (
       input: Parameters<NodeAttemptRunStore['markDispatched']>[0],
     ) => markNodeAttemptDispatched(pool, input),
