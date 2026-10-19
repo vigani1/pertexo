@@ -308,6 +308,7 @@ describe.runIf(fixture.enabled)(
             ),
           ).toEqual([{ status: 'canceled', consumed: true }]);
         });
+        // Nobody resolved it: the task closed with its canceled run.
         await expect(
           tasks.decide({
             workspaceId: fixture.workspaceId,
@@ -316,7 +317,7 @@ describe.runIf(fixture.enabled)(
             decision: 'approved',
             idempotencyKey: randomUUID(),
           }),
-        ).rejects.toMatchObject({ reason: 'resolved' });
+        ).rejects.toMatchObject({ reason: 'run_closed' });
         await workers.restart();
         expect(
           (
