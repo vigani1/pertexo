@@ -650,6 +650,46 @@ describe('Better Auth on PostgreSQL', () => {
     }
   });
 
+  it('keeps serving after PostgreSQL ends an idle connection', async () => {
+    const application = Fastify();
+    registerBetterAuthHandler(application, {
+      handler: runtime.auth.handler,
+      rateLimitConsumer: {
+        consume: () => Promise.resolve({ allowed: true as const }),
+      },
+      publicOrigin: 'http://pertexo.test',
+      sessionCookie: { secure: false, sameSite: 'lax', maxAgeSeconds: 3_600 },
+    });
+    const signUp = () =>
+      application.inject({
+        method: 'POST',
+        url: '/v1/auth/sign-up/email',
+        headers: { origin: 'http://pertexo.test' },
+        payload: {
+          name: 'Restart Survivor',
+          email: `restart-${randomUUID()}@example.test`,
+          password: 'correct horse battery staple',
+        },
+      });
+    const admin = new Pool({ connectionString: adminUrl, max: 1 });
+    try {
+      expect((await signUp()).statusCode).toBe(200);
+      // What a PostgreSQL restart or failover does to the pool's idle
+      // connections. An unhandled pool error would end the whole process.
+      const ended = await admin.query(
+        `select pg_terminate_backend(pid) from pg_stat_activity
+          where datname=$1 and application_name='pertexo-api-authentication'`,
+        [databaseName],
+      );
+      expect(ended.rowCount).toBeGreaterThan(0);
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      expect((await signUp()).statusCode).toBe(200);
+    } finally {
+      await admin.end();
+      await application.close();
+    }
+  });
+
   it('commits encrypted authentication mail before acknowledging enqueue', async () => {
     const key = Buffer.alloc(32, 9).toString('base64');
     const envelope = createApplicationSecretEnvelope({
