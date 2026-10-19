@@ -122,10 +122,12 @@ export async function mutateRows(
     countDelta = 1;
     byteDelta = Buffer.byteLength(text);
     result = boundedResult([{ id, revision: 1, values }], 1);
-    await client.query(
-      'insert into app.workspace_data_table_rows(workspace_id,table_id,id,values_json,key_value) values($1,$2,$3,$4,$5)',
-      [workspaceId, table.id, id, text, keyValue(table, values)],
-    );
+    await client
+      .query(
+        'insert into app.workspace_data_table_rows(workspace_id,table_id,id,values_json,key_value) values($1,$2,$3,$4,$5)',
+        [workspaceId, table.id, id, text, keyValue(table, values)],
+      )
+      .catch((error: unknown) => rowKeyConflict(error, table, values));
   } else {
     // An existing row keeps every column the command doesn't name.
     const patch = validateDataTableValues(table.columns, command.values, true);
@@ -137,10 +139,12 @@ export async function mutateRows(
       });
       const text = normalizedJson(values);
       byteDelta += Buffer.byteLength(text) - Buffer.byteLength(row.values_json);
-      await client.query(
-        'update app.workspace_data_table_rows set values_json=$4,key_value=$5,revision=revision+1 where workspace_id=$1 and table_id=$2 and id=$3',
-        [workspaceId, table.id, row.id, text, keyValue(table, values)],
-      );
+      await client
+        .query(
+          'update app.workspace_data_table_rows set values_json=$4,key_value=$5,revision=revision+1 where workspace_id=$1 and table_id=$2 and id=$3',
+          [workspaceId, table.id, row.id, text, keyValue(table, values)],
+        )
+        .catch((error: unknown) => rowKeyConflict(error, table, values));
       if (command.operation === 'upsert')
         outputs.push({ id: row.id, revision: row.revision + 1, values });
     }
@@ -157,18 +161,44 @@ export async function mutateRows(
   );
   return result;
 }
-export function translateTableConstraint(error: unknown): never {
-  if (
+function isUniqueViolation(
+  error: unknown,
+): error is Readonly<{ code: string; constraint?: string }> {
+  return (
     typeof error === 'object' &&
     error !== null &&
     'code' in error &&
     error.code === '23505'
-  )
+  );
+}
+
+export function translateTableConstraint(error: unknown): never {
+  if (isUniqueViolation(error))
     throw new DataTableError(
       'key_conflict',
-      'A table or row already uses that name or unique key.',
+      error.constraint === 'workspace_data_tables_name'
+        ? 'A table with this name already exists. Choose another name.'
+        : 'Another row already uses this unique key.',
     );
   throw error;
+}
+
+/** Names the clash, since the person writing the row sent this key. */
+function rowKeyConflict(
+  error: unknown,
+  table: DataTableDefinition,
+  values: DataTableValues,
+): never {
+  if (!isUniqueViolation(error) || table.keyColumn === null) throw error;
+  const key = values[table.keyColumn];
+  const shown =
+    typeof key === 'string'
+      ? `“${key.length > 64 ? `${key.slice(0, 63)}…` : key}”`
+      : JSON.stringify(key);
+  throw new DataTableError(
+    'key_conflict',
+    `A row with ${table.keyColumn} ${shown} already exists.`,
+  );
 }
 
 async function chargeMutation(

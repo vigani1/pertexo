@@ -5,6 +5,7 @@ import type { FormDraftValue } from '../model/values';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DateInput } from '@/components/ui/date-input';
 
 export function FormFieldControl({
   field,
@@ -66,6 +67,13 @@ export function FormFieldControl({
               </option>
             ))}
           </select>
+        ) : field.type === 'date' ? (
+          <DateInput
+            control={control}
+            value={text}
+            disabled={disabled}
+            onChange={onChange}
+          />
         ) : field.type === 'textarea' ? (
           <Textarea
             {...control}
@@ -82,11 +90,9 @@ export function FormFieldControl({
             type={
               field.type === 'number'
                 ? 'number'
-                : field.type === 'date'
-                  ? 'date'
-                  : field.type === 'email'
-                    ? 'email'
-                    : 'text'
+                : field.type === 'email'
+                  ? 'email'
+                  : 'text'
             }
             {...(field.type === 'number'
               ? { step: 'any' }

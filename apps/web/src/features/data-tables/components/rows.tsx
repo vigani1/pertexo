@@ -16,6 +16,7 @@ import { TableRowEditor } from './row-editor';
 import { ImportTableCsv } from './import';
 import { DataTableFilters } from './filters';
 import { TableCommandFeedback } from './command-feedback';
+import { tableCellText } from '../model/values';
 export function DataTableRows({
   scope,
   table,
@@ -87,7 +88,8 @@ export function DataTableRows({
         </Notice>
       ) : null}
       {rows.isPending ? <p role="status">Loading rows…</p> : null}
-      <div className="max-w-full overflow-x-auto rounded-md border border-border">
+      {/* Relative keeps hidden labels inside the scroller, not past the page. */}
+      <div className="relative max-w-full overflow-x-auto rounded-md border border-border">
         <table className="w-full text-left text-sm">
           <caption className="sr-only">{table.name} rows</caption>
           <thead>
@@ -119,13 +121,7 @@ export function DataTableRows({
                     key={column.name}
                     className="max-w-72 min-w-28 px-4 py-3 align-top"
                   >
-                    <div className="line-clamp-4 break-words whitespace-pre-wrap">
-                      {typeof row.values[column.name] === 'object'
-                        ? JSON.stringify(row.values[column.name])
-                        : JSON.stringify(
-                            row.values[column.name] ?? '—',
-                          ).replace(/^"|"$/gu, '')}
-                    </div>
+                    <TableCell value={row.values[column.name]} />
                   </td>
                 ))}
                 {editable ? (
@@ -239,5 +235,17 @@ export function DataTableRows({
         />
       ) : null}
     </div>
+  );
+}
+
+function TableCell({ value }: Readonly<{ value: unknown }>) {
+  const text = tableCellText(value);
+  return text === undefined ? (
+    <span className="text-muted-foreground">
+      <span aria-hidden="true">—</span>
+      <span className="sr-only">Empty</span>
+    </span>
+  ) : (
+    <div className="line-clamp-4 break-words whitespace-pre-wrap">{text}</div>
   );
 }
