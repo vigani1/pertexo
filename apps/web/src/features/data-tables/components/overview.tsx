@@ -138,12 +138,14 @@ export function TableCollection({
               {item.name}
             </p>
             <p className="text-xs text-muted-foreground">
-              {item.columns.length} columns
+              {item.columns.length}{' '}
+              {item.columns.length === 1 ? 'column' : 'columns'}
               {item.keyColumn === null ? '' : ` · key: ${item.keyColumn}`}
             </p>
           </div>
           <p className="text-right text-sm tabular-nums">
-            {item.rowCount.toLocaleString(FORMAT_LOCALE)} rows
+            {item.rowCount.toLocaleString(FORMAT_LOCALE)}{' '}
+            {item.rowCount === 1 ? 'row' : 'rows'}
             <br />
             <span className="text-xs text-muted-foreground">
               {formatByteLength(item.storedBytes)}
