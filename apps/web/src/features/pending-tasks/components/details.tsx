@@ -1,18 +1,22 @@
 import type { PendingTaskSummary } from '@pertexo/contracts';
 
-export function TaskDetails({
-  details,
-}: Readonly<{ details: PendingTaskSummary['details'] }>) {
+type Details = PendingTaskSummary['details'];
+
+/** A request's details as a grid of named values, for its own page. */
+export function TaskDetails({ details }: Readonly<{ details: Details }>) {
   const entries = Object.entries(details);
   if (entries.length === 0) return null;
   return (
-    <dl aria-label="Request details" className="mt-4 grid min-w-0 gap-3">
+    <dl
+      aria-label="Request details"
+      className="grid min-w-0 gap-x-8 gap-y-5 sm:grid-cols-2"
+    >
       {entries.map(([name, value]) => (
         <div key={name} className="min-w-0">
-          <dt className="whitespace-pre-wrap break-words text-sm text-muted-foreground [overflow-wrap:anywhere]">
+          <dt className="text-xs whitespace-pre-wrap break-words text-subtle-foreground [overflow-wrap:anywhere]">
             {name}
           </dt>
-          <dd className="whitespace-pre-wrap break-words text-sm [overflow-wrap:anywhere]">
+          <dd className="mt-1 text-base whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
             {Array.isArray(value) ? (
               <PlainDetailList values={value} />
             ) : value === null ? (
@@ -25,6 +29,38 @@ export function TaskDetails({
       ))}
     </dl>
   );
+}
+
+/**
+ * A request's details on one or two lines of a list: "Amount 120 ·
+ * Customer Ada Lovelace". The request page shows them in full.
+ */
+export function TaskDetailsLine({ details }: Readonly<{ details: Details }>) {
+  const entries = Object.entries(details);
+  if (entries.length === 0) return null;
+  return (
+    <p className="line-clamp-2 min-w-0 text-sm [overflow-wrap:anywhere]">
+      {entries.map(([name, value], index) => (
+        <span key={name}>
+          {index === 0 ? null : (
+            <span aria-hidden="true" className="text-subtle-foreground">
+              {' · '}
+            </span>
+          )}
+          <span className="text-subtle-foreground">{name} </span>
+          <span className="text-foreground/90">{detailText(value)}</span>
+        </span>
+      ))}
+    </p>
+  );
+}
+
+function detailText(value: Details[string]): string {
+  if (Array.isArray(value))
+    return value.length === 0
+      ? '—'
+      : value.map((item) => (item === null ? '—' : String(item))).join(', ');
+  return value === null ? '—' : String(value);
 }
 
 function PlainDetailList({

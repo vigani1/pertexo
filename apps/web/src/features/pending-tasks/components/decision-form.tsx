@@ -48,6 +48,8 @@ export function DecisionForm({
           <div className="flex flex-wrap gap-3">
             <ProgressButton
               type="button"
+              variant="primary"
+              size="lg"
               pending={command.pending}
               pendingLabel="Recording…"
               disabled={disabled}
@@ -60,6 +62,7 @@ export function DecisionForm({
             <Button
               type="button"
               variant="outline"
+              size="lg"
               disabled={disabled}
               onClick={() =>
                 void command.send({ decision: 'rejected', comment })
