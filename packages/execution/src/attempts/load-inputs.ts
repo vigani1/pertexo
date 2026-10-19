@@ -32,22 +32,51 @@ export type NodeAttemptInputs = Omit<NodeAttemptStoredInputs, 'checkpoint'> &
 
 type LoadInputsRequest = Parameters<NodeAttemptRunStore['loadInputs']>[0];
 
-function coordinatorInput(
+/**
+ * A Merge's settled branches with each selected branch's result: the
+ * checkpoint keeps a reference to the branch's attempt, and its stored output
+ * is what the Merge passes on.
+ */
+async function coordinatorInput(
+  store: Pick<NodeAttemptRunStore, 'readAttemptOutputs'>,
+  request: LoadInputsRequest,
   checkpoint: WorkflowCheckpoint,
-  key: string,
-): NodeAttemptInputs['coordinatorInput'] {
+): Promise<NodeAttemptInputs['coordinatorInput']> {
   const join = checkpoint.joins.find(
-    ({ joinInvocationKey }) => joinInvocationKey === key,
+    ({ joinInvocationKey }) =>
+      joinInvocationKey === request.lease.invocationKey,
   );
-  if (join?.selectedBranchIds === undefined) return undefined;
+  const selected = join?.selectedBranchIds;
+  if (join === undefined || selected === undefined) return undefined;
+  const attemptIds = join.ledger.flatMap(({ branchId, output }) =>
+    selected.includes(branchId) && output?.kind === 'inline'
+      ? [output.attemptId]
+      : [],
+  );
+  const outputs = new Map(
+    (
+      await store.readAttemptOutputs({
+        lease: request.lease,
+        attemptIds,
+        signal: request.signal,
+      })
+    ).map(({ attemptId, output }) => [attemptId, output]),
+  );
   return Object.freeze({
     ledger: Object.fromEntries(
-      join.ledger.map(({ branchId, disposition, output }) => [
-        branchId,
-        { disposition, ...(output === undefined ? {} : { output }) },
-      ]),
+      join.ledger.map(({ branchId, disposition, output }) => {
+        if (output === undefined) return [branchId, { disposition }];
+        if (!selected.includes(branchId) || output.kind !== 'inline')
+          return [branchId, { disposition, output }];
+        if (!outputs.has(output.attemptId))
+          throw new NodeAttemptStateCorruptError();
+        return [
+          branchId,
+          { disposition, output: outputs.get(output.attemptId) },
+        ];
+      }),
     ),
-    selectedBranchIds: join.selectedBranchIds,
+    selectedBranchIds: selected,
   });
 }
 
@@ -81,7 +110,10 @@ function innermostLoop(
  * The engine verifies the loop item against the declared checksum.
  */
 export async function loadAttemptInputs(
-  store: Pick<NodeAttemptRunStore, 'loadInputs' | 'readLoopDeclaration'>,
+  store: Pick<
+    NodeAttemptRunStore,
+    'loadInputs' | 'readLoopDeclaration' | 'readAttemptOutputs'
+  >,
   input: LoadInputsRequest,
 ): Promise<NodeAttemptInputs> {
   const { checkpoint: stored, ...inputs } = await store.loadInputs(input);
@@ -103,7 +135,7 @@ export async function loadAttemptInputs(
     )
       throw new NodeAttemptStateCorruptError();
   }
-  const join = coordinatorInput(checkpoint, input.lease.invocationKey);
+  const join = await coordinatorInput(store, input, checkpoint);
   const innermost = innermostLoop(
     checkpoint,
     input.lease.iterationPath ?? [],

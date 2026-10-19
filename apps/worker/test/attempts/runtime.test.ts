@@ -185,6 +185,7 @@ describe('node-attempt runtime', () => {
           close: closePreview,
           complete: vi.fn(),
           heartbeat: vi.fn(),
+          readAttemptOutputs: vi.fn().mockResolvedValue([]),
           readLoopDeclaration: vi.fn(),
           markDispatched: vi.fn(),
         }),
@@ -302,6 +303,7 @@ describe('node-attempt runtime', () => {
             complete: vi.fn(),
             heartbeat: vi.fn(),
             loadInputs: vi.fn(),
+            readAttemptOutputs: vi.fn().mockResolvedValue([]),
             readLoopDeclaration: vi.fn(),
             markDispatched: vi.fn(),
           },
@@ -378,6 +380,7 @@ describe('node-attempt runtime', () => {
           complete: vi.fn(),
           heartbeat: vi.fn(),
           loadInputs: vi.fn(),
+          readAttemptOutputs: vi.fn().mockResolvedValue([]),
           readLoopDeclaration: vi.fn(),
           markDispatched: vi.fn(),
         },
@@ -446,6 +449,7 @@ describe('node-attempt runtime', () => {
           complete: vi.fn(),
           heartbeat: vi.fn(),
           loadInputs: vi.fn(),
+          readAttemptOutputs: vi.fn().mockResolvedValue([]),
           readLoopDeclaration: vi.fn(),
           markDispatched: vi.fn(),
         },
@@ -516,6 +520,7 @@ describe('node-attempt runtime', () => {
           complete: vi.fn(),
           heartbeat: vi.fn(),
           loadInputs: vi.fn(),
+          readAttemptOutputs: vi.fn().mockResolvedValue([]),
           readLoopDeclaration: vi.fn(),
           markDispatched: vi.fn(),
         },
@@ -547,6 +552,7 @@ describe('node-attempt runtime', () => {
         completedNodeOutputs: [],
         runInput: null,
       }),
+      readAttemptOutputs: vi.fn().mockResolvedValue([]),
       readLoopDeclaration: vi.fn(),
       markDispatched: vi.fn(),
     };
@@ -600,6 +606,7 @@ describe('node-attempt runtime', () => {
         completedNodeOutputs: [],
         runInput: null,
       }),
+      readAttemptOutputs: vi.fn().mockResolvedValue([]),
       readLoopDeclaration: vi.fn(),
       markDispatched: vi.fn(),
     };
@@ -662,6 +669,7 @@ describe('node-attempt runtime', () => {
       complete: vi.fn(),
       heartbeat: vi.fn(),
       loadInputs: vi.fn(),
+      readAttemptOutputs: vi.fn().mockResolvedValue([]),
       readLoopDeclaration: vi.fn(),
       markDispatched: vi.fn(),
     };
@@ -752,6 +760,7 @@ describe('node-attempt runtime', () => {
       heartbeat: vi.fn(),
       loadInputs: vi.fn(),
       markDispatched: vi.fn(),
+      readAttemptOutputs: vi.fn().mockResolvedValue([]),
       readLoopDeclaration: vi.fn(),
     };
     const closeReader = vi.fn().mockResolvedValue(undefined);
