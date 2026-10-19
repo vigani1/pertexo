@@ -87,3 +87,16 @@ export function createProviderBeforeDispatch(input: {
     }
   };
 }
+
+/** Dispatch evidence for a request that carries no connection, such as a public API call. */
+export function createUnauthenticatedBeforeDispatch(
+  runtime: NodeExecutionRuntime,
+): () => Promise<void> {
+  return async () => {
+    try {
+      await runtime.beforeDispatch();
+    } catch (error: unknown) {
+      throw secureHttpPreDispatchError(dispatchEvidenceErrorCode(error));
+    }
+  };
+}

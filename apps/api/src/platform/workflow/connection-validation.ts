@@ -13,11 +13,19 @@ export function missingConnectionIssues(
   graph: WorkflowGraph,
   catalog: WorkflowDefinitionCatalog,
 ): readonly GraphValidationIssue[] {
+  // Only the slots a step can't run without; optional ones may stay empty.
   const slots = new Map(
-    catalog.definitions.map((definition) => [
-      `${definition.key}@${String(definition.version)}`,
-      definition.integration?.connectionSlots ?? [],
-    ]),
+    catalog.definitions.map((definition) => {
+      const optional = new Set(
+        definition.integration?.optionalConnectionSlots ?? [],
+      );
+      return [
+        `${definition.key}@${String(definition.version)}`,
+        (definition.integration?.connectionSlots ?? []).filter(
+          (slot) => !optional.has(slot),
+        ),
+      ];
+    }),
   );
   const issues: GraphValidationIssue[] = [];
   const levels = [{ graph, path: '$' }];

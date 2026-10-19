@@ -94,10 +94,6 @@ describe('pure node preview validation', () => {
           code: 'node.config_invalid',
         }),
         expect.objectContaining({
-          path: '$.connectionRefs.http_headers',
-          code: 'node.connection_required',
-        }),
-        expect.objectContaining({
           path: '$.connectionRefs.unexpected',
           code: 'node.connection_unexpected',
         }),
@@ -175,9 +171,18 @@ describe('pure node preview validation', () => {
     ]);
   });
 
-  it('distinguishes missing and unexpected connection slots', async () => {
+  it('distinguishes a malformed and an unexpected connection, and lets an optional one stay empty', async () => {
+    const empty = await prepareNodeValidation({
+      graph: graph({ connectionRefs: {} }),
+      nodeId: 'http',
+    });
+    expect(
+      empty.issues.filter(({ code }) => code.includes('connection')),
+    ).toEqual([]);
     const result = await prepareNodeValidation({
-      graph: graph({ connectionRefs: { extra: randomUUID() } }),
+      graph: graph({
+        connectionRefs: { http_headers: 'not-a-uuid', extra: randomUUID() },
+      }),
       nodeId: 'http',
     });
 
@@ -195,6 +200,32 @@ describe('pure node preview validation', () => {
         message: 'Connection reference is not declared by this definition',
       },
     ]);
+  });
+
+  it('requires a connection a step cannot run without', async () => {
+    const result = await prepareNodeValidation({
+      graph: {
+        nodes: [
+          {
+            id: 'post',
+            definition: { key: 'slack.send_message', version: 1 },
+            position: { x: 0, y: 0 },
+            configVersion: 1,
+            config: { timeoutMillis: 1_000 },
+            inputMappings: {},
+            connectionRefs: {},
+          },
+        ],
+        edges: [],
+        settings: {},
+      },
+      nodeId: 'post',
+    });
+    expect(result.issues).toContainEqual({
+      path: '$.connectionRefs.slack_bot_token',
+      code: 'node.connection_required',
+      message: 'Required connection reference is missing or invalid',
+    });
   });
 
   it('distinguishes missing and failed input mappings', async () => {
@@ -270,6 +301,7 @@ describe('pure node preview validation', () => {
 
   it('caps issues deterministically and bounds every public issue field', async () => {
     const connectionRefs: Record<string, string> = {
+      http_headers: 'not-a-uuid',
       ['a'.repeat(2_000)]: randomUUID(),
     };
     for (let index = 0; index < 105; index += 1)

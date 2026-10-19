@@ -189,7 +189,6 @@ describe('http.request@1 definition', () => {
       config({ headers: { 'x-api-key': 'secret' } }),
       config({ headers: { host: 'metadata.internal' } }),
       config({ url: 'file:///etc/passwd' }),
-      config({ url: 'http://example.test/' }),
       config({ url: 'https://user:secret@example.test/' }),
       config({ url: 'https://example.test/?api_key=secret' }),
       config({ timeoutMillis: 120_001 }),
@@ -212,17 +211,20 @@ describe('http.request@1 definition', () => {
       }),
     ])
       expect(httpRequestConfigSchema.safeParse(candidate).success).toBe(false);
-    expect(
-      httpRequestInputSchema.safeParse({ body: undefined, unknown: true })
-        .success,
-    ).toBe(false);
+    for (const input of [
+      { 'un-known': true },
+      { '1abc': 'x' },
+      { orderId: { nested: true } },
+      { orderId: Number.NaN },
+    ])
+      expect(httpRequestInputSchema.safeParse(input).success).toBe(false);
   });
 
   it.each([
     ['malformed', 'not-a-url'],
     ['relative', '/relative/path'],
     ['empty', ''],
-    ['HTTP', 'http://example.test/'],
+    ['FTP', 'ftp://example.test/'],
     ['credentials', 'https://user:secret@example.test/'],
     ['fragment', 'https://example.test/path#private'],
     ['credential-like query', 'https://example.test/?api_token=secret'],
@@ -326,6 +328,116 @@ describe('http.request@1 server executor', () => {
     expect(requestBody?.every((byte) => byte === 0)).toBe(true);
     expect(providerBody.every((byte) => byte === 0)).toBe(true);
     expect(measure).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    [
+      'application/json',
+      '{"order":{"id":7,"tags":["a"]}}',
+      { order: { id: 7, tags: ['a'] } },
+    ],
+    [
+      'application/problem+json; charset=utf-8',
+      '{"title":"Gone"}',
+      { title: 'Gone' },
+    ],
+    ['text/plain', '{"order":1}', undefined],
+    ['application/json', '{"order": ', undefined],
+    ['application/json', `${'['.repeat(60)}${']'.repeat(60)}`, undefined],
+  ])(
+    'parses a %s response for later steps when it is JSON within the limits',
+    async (contentType, text, json) => {
+      const registration = createHttpRequestExecutorRegistration({
+        httpClient: streamingHttpClient(async (request) => {
+          await request.beforeDispatch();
+          return {
+            ...response(encoder.encode(text), 200),
+            headers: { 'content-type': contentType },
+          };
+        }),
+      });
+      const output = await registration.execute(invocation(runtime().value));
+      expect(output).toMatchObject({
+        body: { kind: 'inline', encoding: 'utf8', value: text },
+      });
+      expect((output as { body: { json?: unknown } }).body.json).toEqual(json);
+    },
+  );
+
+  it('sends run data filled into {placeholders}, keeping the configured origin', async () => {
+    let sent: SecureHttpRequest | undefined;
+    const registration = createHttpRequestExecutorRegistration({
+      httpClient: streamingHttpClient(async (request) => {
+        sent = request;
+        await request.beforeDispatch();
+        return response(encoder.encode('{}'), 200);
+      }),
+    });
+    await registration.execute(
+      invocation(runtime().value, {
+        config: config({
+          method: 'GET',
+          url: 'https://provider.example.test/v1/items/{itemId}?q={term}',
+          headers: { accept: 'application/json', 'x-customer': '{customer}' },
+        }),
+        input: { itemId: 'a/b', term: 'x&y', customer: 42 },
+      }),
+    );
+    expect(sent?.url).toBe(
+      'https://provider.example.test/v1/items/a%2Fb?q=x%26y',
+    );
+    expect(sent?.headers).toMatchObject({ 'x-customer': '42' });
+    await expect(
+      registration.execute(
+        invocation(runtime().value, {
+          config: config({
+            method: 'GET',
+            url: 'https://provider.example.test/v1/items/{itemId}',
+          }),
+          input: {},
+        }),
+      ),
+    ).rejects.toMatchObject({
+      code: 'invalid_input',
+      cause: 'Map a value for {itemId}.',
+    });
+  });
+
+  it('calls a public API without a connection, marking dispatch without a fence', async () => {
+    const state = runtime();
+    let sent: SecureHttpRequest | undefined;
+    const registration = createHttpRequestExecutorRegistration({
+      httpClient: streamingHttpClient(async (request) => {
+        sent = request;
+        await request.beforeDispatch();
+        return response(encoder.encode('{"ok":true}'), 200);
+      }),
+    });
+    await expect(
+      registration.execute(
+        invocation(state.value, {
+          config: config({ method: 'GET' }),
+          input: {},
+          connectionRefs: {},
+        }),
+      ),
+    ).resolves.toMatchObject({ status: 200, body: { json: { ok: true } } });
+    expect(sent?.headers).toEqual({ accept: 'application/json' });
+    expect(sent?.sensitiveValues).toEqual([]);
+    expect(state.resolve).not.toHaveBeenCalled();
+    expect(state.assertCurrent).not.toHaveBeenCalled();
+    expect(state.beforeDispatch).toHaveBeenCalledWith();
+    await expect(
+      registration.execute(
+        invocation(state.value, {
+          config: config({ method: 'GET' }),
+          input: {},
+          connectionRefs: { other: connectionId },
+        }),
+      ),
+    ).rejects.toMatchObject({
+      decision: { kind: 'failed', errorKind: 'configuration' },
+    });
   });
 
   it('atomically forwards the resolved connection fence after a rotation race', async () => {
@@ -718,6 +830,52 @@ describe('http.request@1 server executor', () => {
         ),
       ).rejects.toMatchObject({ decision, possiblyDispatched: true });
       expect(providerResponse.close).toHaveBeenCalledOnce();
+    },
+  );
+
+  it.each(['GET', 'HEAD'])(
+    'lets a %s that failed after sending retry, since reading has no side effect',
+    async (method) => {
+      const unavailable = createHttpRequestExecutorRegistration({
+        httpClient: streamingHttpClient(async (request) => {
+          await request.beforeDispatch();
+          return response(encoder.encode('unavailable'), 503);
+        }),
+      }).execute(
+        invocation(runtime().value, { config: config({ method }), input: {} }),
+      );
+      await expect(unavailable).rejects.toMatchObject({
+        decision: { kind: 'retry', errorKind: 'provider' },
+        possiblyDispatched: false,
+      });
+      const timedOut = createHttpRequestExecutorRegistration({
+        httpClient: streamingHttpClient(async (request) => {
+          await request.beforeDispatch();
+          throw new SecureHttpError(
+            SECURE_HTTP_ERROR_CODE.timedOut,
+            'ambiguous',
+            true,
+          );
+        }),
+      }).execute(
+        invocation(runtime().value, { config: config({ method }), input: {} }),
+      );
+      await expect(timedOut).rejects.toMatchObject({
+        decision: { kind: 'retry', errorKind: 'timeout' },
+        possiblyDispatched: false,
+      });
+      const missing = createHttpRequestExecutorRegistration({
+        httpClient: streamingHttpClient(async (request) => {
+          await request.beforeDispatch();
+          return response(encoder.encode('gone'), 404);
+        }),
+      }).execute(
+        invocation(runtime().value, { config: config({ method }), input: {} }),
+      );
+      await expect(missing).rejects.toMatchObject({
+        decision: { kind: 'failed', errorKind: 'provider' },
+        possiblyDispatched: false,
+      });
     },
   );
 

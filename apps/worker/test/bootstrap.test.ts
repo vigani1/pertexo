@@ -41,6 +41,7 @@ const database: WorkspaceDatabase = {
 };
 
 const workerConfig = {
+  httpRequest: { allowedPrivateNetworks: [] },
   codeRunner: {
     settings: DEFAULT_CODE_SETTINGS,
     socketPath: '/tmp/unused-code.sock',
