@@ -260,6 +260,8 @@ const inlineBodySchema = z
     encoding: z.enum(['base64', 'utf8']),
     value: z.string().max(Math.ceil((MAX_INLINE_RESPONSE_BYTES * 4) / 3) + 4),
     byteLength: z.number().int().min(0).max(MAX_INLINE_RESPONSE_BYTES),
+    // A JSON response, parsed, for later steps to map into.
+    json: z.json().optional(),
   })
   .strict()
   .readonly();

@@ -328,6 +328,40 @@ describe('http.request@1 server executor', () => {
     expect(measure).toHaveBeenCalledOnce();
   });
 
+  it.each([
+    [
+      'application/json',
+      '{"order":{"id":7,"tags":["a"]}}',
+      { order: { id: 7, tags: ['a'] } },
+    ],
+    [
+      'application/problem+json; charset=utf-8',
+      '{"title":"Gone"}',
+      { title: 'Gone' },
+    ],
+    ['text/plain', '{"order":1}', undefined],
+    ['application/json', '{"order": ', undefined],
+    ['application/json', `${'['.repeat(60)}${']'.repeat(60)}`, undefined],
+  ])(
+    'parses a %s response for later steps when it is JSON within the limits',
+    async (contentType, text, json) => {
+      const registration = createHttpRequestExecutorRegistration({
+        httpClient: streamingHttpClient(async (request) => {
+          await request.beforeDispatch();
+          return {
+            ...response(encoder.encode(text), 200),
+            headers: { 'content-type': contentType },
+          };
+        }),
+      });
+      const output = await registration.execute(invocation(runtime().value));
+      expect(output).toMatchObject({
+        body: { kind: 'inline', encoding: 'utf8', value: text },
+      });
+      expect((output as { body: { json?: unknown } }).body.json).toEqual(json);
+    },
+  );
+
   it('atomically forwards the resolved connection fence after a rotation race', async () => {
     const state = runtime();
     const rotatedSecretVersionId = '88888888-8888-4888-8888-888888888888';

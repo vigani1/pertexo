@@ -1,8 +1,10 @@
 import { Buffer } from 'node:buffer';
 
 import {
+  type JsonValue,
   type NodeExecutionInvocation,
   type NodeExecutorRegistration,
+  canonicalizeBoundedJson,
   FileInputFailure,
   NodeExecutorFailure,
   ProviderCredentialInvalidError,
@@ -78,18 +80,49 @@ function failedConfiguration(): HttpRequestExecutorError {
   );
 }
 
-function inlineBody(bytes: Uint8Array, preferred: 'base64' | 'utf8') {
+const JSON_MEDIA_TYPE =
+  /^\s*(?:application\/(?:[!#$%&'*.^_`|~0-9a-z-]+\+)?json|text\/json)\s*(?:;|$)/iu;
+// Leaves room in the step's 1 MiB, 10,000-member output for the text and
+// headers the parsed value sits beside.
+const PARSED_JSON_LIMITS = Object.freeze({
+  bytes: 262_144,
+  depth: 48,
+  members: 8_000,
+});
+
+/** A JSON response later steps can map into; absent when it doesn't fit. */
+function parsedJson(text: string): Readonly<{ json?: JsonValue }> {
+  try {
+    return {
+      json: canonicalizeBoundedJson(JSON.parse(text), PARSED_JSON_LIMITS),
+    };
+  } catch {
+    return {};
+  }
+}
+
+function inlineBody(
+  bytes: Uint8Array,
+  preferred: 'base64' | 'utf8',
+  mediaType: string | undefined,
+) {
   if (preferred === 'utf8') {
+    let value: string | undefined;
     try {
-      return Object.freeze({
-        kind: 'inline' as const,
-        encoding: 'utf8' as const,
-        value: new TextDecoder('utf-8', { fatal: true }).decode(bytes),
-        byteLength: bytes.byteLength,
-      });
+      value = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
     } catch {
       // Invalid text is represented exactly as base64.
     }
+    if (value !== undefined)
+      return Object.freeze({
+        kind: 'inline' as const,
+        encoding: 'utf8' as const,
+        value,
+        byteLength: bytes.byteLength,
+        ...(mediaType !== undefined && JSON_MEDIA_TYPE.test(mediaType)
+          ? parsedJson(value)
+          : {}),
+      });
   }
   return Object.freeze({
     kind: 'inline' as const,
@@ -454,7 +487,11 @@ async function consumeResponseBody(
       if (next.done === true) {
         const bytes = concatenate(buffered, byteLength);
         try {
-          return inlineBody(bytes, response.bodyEncoding);
+          return inlineBody(
+            bytes,
+            response.bodyEncoding,
+            response.headers['content-type'],
+          );
         } finally {
           bytes.fill(0);
           for (const chunk of buffered) chunk.fill(0);
