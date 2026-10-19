@@ -2,31 +2,33 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Notice } from '@/components/ui/notice';
 import { Button } from '@/components/ui/button';
+import { CopyButton } from '@/components/ui/copy-button';
+import { Disclosure } from '@/components/ui/disclosure';
+import { SkeletonLines } from '@/components/ui/skeleton';
 import type { ApiClient } from '@/lib/api/client';
 import { workflowRunVariablesQueryOptions } from '../../data/stored-values.queries';
+// Enough to recognise the set; the rest wait behind "Show all".
+const FIRST_TILES = 8;
 type Scope = Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspaceId: string;
   runId: string;
 }>;
+
+/**
+ * The workspace variables this run captured when it started, read only once
+ * the fold opens. Each is a tile: its name, the value it had, and Copy.
+ */
 export function RunVariables({ scope }: Readonly<{ scope: Scope }>) {
-  const [open, setOpen] = useState(false);
   return (
-    <details
-      className="border-y border-border py-3"
-      onToggle={(event) => {
-        setOpen(event.currentTarget.open);
-      }}
-    >
-      <summary className="cursor-pointer rounded text-sm outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring">
-        Workspace variables for this run
-      </summary>
-      {open ? <CapturedVariables scope={scope} /> : null}
-    </details>
+    <Disclosure summary="Workspace variables this run used" look="framed" lazy>
+      <CapturedVariables scope={scope} />
+    </Disclosure>
   );
 }
 function CapturedVariables({ scope }: Readonly<{ scope: Scope }>) {
+  const [showAll, setShowAll] = useState(false);
   const query = useQuery(
     workflowRunVariablesQueryOptions(
       scope.apiClient,
@@ -36,11 +38,7 @@ function CapturedVariables({ scope }: Readonly<{ scope: Scope }>) {
     ),
   );
   if (query.isPending)
-    return (
-      <p role="status" className="py-3 text-sm text-muted-foreground">
-        Loading captured values…
-      </p>
-    );
+    return <SkeletonLines label="Loading captured values" lines={2} />;
   if (query.isError)
     return (
       <Notice
@@ -61,34 +59,61 @@ function CapturedVariables({ scope }: Readonly<{ scope: Scope }>) {
   const snapshot = query.data.snapshot;
   if (snapshot === null)
     return (
-      <p className="py-3 text-sm text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         This run’s variable snapshot expired with its execution details. Start a
         new run to use current values.
       </p>
     );
+  const entries = Object.entries(snapshot.values);
+  const shown = showAll ? entries : entries.slice(0, FIRST_TILES);
   return (
-    <div className="pt-3">
-      <p className="text-sm text-muted-foreground">
-        Captured revision {snapshot.revision}. Replay, recovery and child
-        workflows keep these values.
-      </p>
-      {Object.keys(snapshot.values).length === 0 ? (
-        <p className="mt-2 text-sm">No workspace variables were configured.</p>
+    <div className="flex flex-col gap-3">
+      {entries.length === 0 ? (
+        <p className="text-sm">No workspace variables were configured.</p>
       ) : (
-        <dl className="mt-2 divide-y divide-border">
-          {Object.entries(snapshot.values).map(([name, value]) => (
-            <div
-              key={name}
-              className="flex min-w-0 flex-col gap-1 py-2 text-sm sm:flex-row sm:gap-6"
-            >
-              <dt className="font-mono">{name}</dt>
-              <dd className="break-words whitespace-pre-wrap">
-                {String(value)}
-              </dd>
-            </div>
-          ))}
+        <dl className="grid gap-2 sm:grid-cols-2">
+          {shown.map(([name, value]) => {
+            const text = String(value);
+            return (
+              <div
+                key={name}
+                className="group/variable flex min-w-0 items-start gap-2 rounded-md border border-white/6 bg-white/[0.02] px-3 py-2.5"
+              >
+                <div className="min-w-0 flex-1">
+                  <dt className="truncate font-mono text-xs text-subtle-foreground">
+                    {name}
+                  </dt>
+                  <dd className="mt-1 font-mono text-sm break-all whitespace-pre-wrap text-foreground">
+                    {text}
+                  </dd>
+                </div>
+                <CopyButton
+                  value={text}
+                  label={`Copy ${name}`}
+                  className="-mt-1 -mr-1.5 opacity-60 group-hover/variable:opacity-100 focus-visible:opacity-100"
+                />
+              </div>
+            );
+          })}
         </dl>
       )}
+      {shown.length < entries.length ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="w-fit"
+          onClick={() => {
+            setShowAll(true);
+          }}
+        >
+          Show all {entries.length}
+        </Button>
+      ) : null}
+      <p className="text-xs text-subtle-foreground">
+        Captured at revision {snapshot.revision} when the run started. Replays,
+        recovery and child workflows keep these values.
+      </p>
     </div>
   );
 }
