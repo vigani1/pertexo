@@ -28,6 +28,7 @@ import {
   StepTile,
 } from '@/features/catalog/presentation.public';
 import { PortableGraphReview } from './portable-graph-review';
+import { Disclosure } from '@/components/ui/disclosure';
 
 type PortableNode = WorkflowPortableManifest['graph']['nodes'][number];
 
@@ -79,17 +80,18 @@ function ImportContents({
           );
         })}
       </ol>
-      <details className="text-xs text-muted-foreground">
-        <summary className="w-fit cursor-pointer rounded-sm text-subtle-foreground outline-none select-none hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring">
-          Everything in the file
-        </summary>
+      <Disclosure
+        summary="Everything in the file"
+        size="xs"
+        className="text-xs text-muted-foreground"
+      >
         <div className="mt-2">
           <PortableGraphReview
             graph={manifest.graph}
             label="Complete imported graph"
           />
         </div>
-      </details>
+      </Disclosure>
     </section>
   );
 }

@@ -8,6 +8,7 @@ import { statusToneText } from '@/components/ui/status-tone';
 import { describeRunStatus } from '@/features/workflow-runs/run-labels.public';
 import { formatDurationMs } from '@/lib/format/time';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
+import { Disclosure } from '@/components/ui/disclosure';
 
 function segments(day: UsageTrendsResponse['days'][number], scale: number) {
   let bottom = 176;
@@ -101,12 +102,9 @@ export function DailyChart({
             </Status>
           ))}
       </figcaption>
-      <details className="text-sm">
-        <summary className="cursor-pointer underline underline-offset-4">
-          Daily data
-        </summary>
+      <Disclosure summary="Daily data">
         <div
-          className="mt-3 max-h-96 min-w-0 max-w-full overflow-auto"
+          className="max-h-96 min-w-0 max-w-full overflow-auto"
           tabIndex={0}
           role="region"
           aria-label="Daily run counts"
@@ -158,7 +156,7 @@ export function DailyChart({
             </tbody>
           </table>
         </div>
-      </details>
+      </Disclosure>
     </figure>
   );
 }

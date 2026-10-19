@@ -10,6 +10,7 @@ import {
   type FederationScope,
 } from '../../data/settings.api';
 import { downloadSamlMetadata } from '../../model/download-metadata';
+import { Disclosure } from '@/components/ui/disclosure';
 function MetadataValue({
   label,
   value,
@@ -56,11 +57,8 @@ export function SamlMetadata({
     }
   }
   return (
-    <details>
-      <summary className="cursor-pointer text-sm font-semibold">
-        SAML setup and metadata
-      </summary>
-      <div className="mt-3 space-y-3">
+    <Disclosure summary="SAML setup and metadata" tone="strong">
+      <div className="space-y-3">
         <p className="text-xs text-muted-foreground">
           Configure your IdP with these values before adding a SAML provider.
           The organization has one SP identity; each provider keeps separate
@@ -82,6 +80,6 @@ export function SamlMetadata({
         </ProgressButton>
         {error === undefined ? null : <Notice tone="warning">{error}</Notice>}
       </div>
-    </details>
+    </Disclosure>
   );
 }
