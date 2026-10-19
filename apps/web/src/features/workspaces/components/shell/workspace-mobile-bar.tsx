@@ -8,6 +8,7 @@ import {
   WorkflowIcon,
 } from 'lucide-react';
 import { CoreOrb } from '@/components/patterns/core/orb';
+import { cn } from '@/lib/utils';
 import {
   Sheet,
   SheetBody,
@@ -17,6 +18,9 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { spineDestinations, useIncludedPage } from './spine-destinations';
+
+const AWAY_WHILE_TYPING =
+  'transition-[visibility] delay-300 typing:invisible typing:delay-0 typing:duration-0';
 
 const barLinkClass =
   "flex min-w-0 flex-1 flex-col items-center gap-1 py-1.5 text-[0.68rem] text-subtle-foreground outline-none aria-[current=page]:text-accent-foreground data-[active=true]:text-accent-foreground focus-visible:text-foreground [&_svg:not([class*='size-'])]:size-5";
@@ -74,14 +78,22 @@ export function WorkspaceMobileBar({
   return (
     <>
       {/* Content fades out under the floating bar instead of showing
-          through the gap below it. */}
+          through the gap below it. While typing both step aside, and come
+          back 300 ms after: the tap that ends typing (Approve under the
+          keyboard) then lands on its button, not on the returning bar. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none fixed inset-x-0 bottom-0 z-20 h-24 bg-linear-to-t from-background via-background/85 to-transparent typing:hidden md:hidden"
+        className={cn(
+          'pointer-events-none fixed inset-x-0 bottom-0 z-20 h-24 bg-linear-to-t from-background via-background/85 to-transparent md:hidden',
+          AWAY_WHILE_TYPING,
+        )}
       />
       <nav
         aria-label="Workspace"
-        className="lens fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 flex items-center rounded-2xl px-2 py-1 typing:hidden md:hidden"
+        className={cn(
+          'lens fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 flex items-center rounded-2xl px-2 py-1 md:hidden',
+          AWAY_WHILE_TYPING,
+        )}
       >
         <Link
           to="/w/$workspaceId"
