@@ -23,6 +23,8 @@ export function missingConnectionIssues(
   const levels = [{ graph, path: '$' }];
   for (const level of levels)
     for (const node of level.graph.nodes) {
+      // A disabled step, and any loop body inside it, never runs.
+      if (node.disabled === true) continue;
       const path = `${level.path}.nodes.${node.id}`;
       if (node.structured !== undefined)
         levels.push({

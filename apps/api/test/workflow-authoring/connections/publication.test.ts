@@ -67,6 +67,15 @@ describe('connection publication policy', () => {
     ).toEqual([]);
   });
 
+  it('skips a disabled step, which never runs', () => {
+    expect(
+      missingConnectionIssues(
+        graph({ ...node('call', 'http.request'), disabled: true }),
+        catalog,
+      ),
+    ).toEqual([]);
+  });
+
   it('finds the step inside a For each body', () => {
     const loop = node(
       'each',
