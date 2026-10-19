@@ -32,6 +32,17 @@ export const DATA_TABLE_LIMITS = Object.freeze({
   batchRows: 1_000,
   resultBytes: 1_048_576,
 });
+// A table's name is shown to people and finds the table for its steps, so
+// like n8n it may hold words with spaces; column names stay identifiers.
+export const DATA_TABLE_NAME_PATTERN =
+  '^[A-Za-z0-9](?:[A-Za-z0-9 _-]{0,62}[A-Za-z0-9_-])?$';
+export const dataTableNameSchema = z
+  .string()
+  .trim()
+  .regex(
+    new RegExp(DATA_TABLE_NAME_PATTERN, 'u'),
+    'Use letters, numbers, spaces, hyphens and underscores, starting with a letter or number (64 at most).',
+  );
 export const dataTableIdentifierSchema = z
   .string()
   .regex(
@@ -80,7 +91,7 @@ export const dataTableBindingsSchema = z
 export type DataTableBindings = z.infer<typeof dataTableBindingsSchema>;
 export const dataTableConfigSchema = z
   .object({
-    table: dataTableIdentifierSchema,
+    table: dataTableNameSchema,
     columnBindings: dataTableBindingsSchema.optional(),
   })
   .strict();
@@ -147,28 +158,28 @@ export const dataTableCommandSchema = z.discriminatedUnion('operation', [
   z
     .object({
       operation: z.literal('find'),
-      table: dataTableIdentifierSchema,
+      table: dataTableNameSchema,
       query: dataTableQuerySchema,
     })
     .strict(),
   z
     .object({
       operation: z.literal('insert'),
-      table: dataTableIdentifierSchema,
+      table: dataTableNameSchema,
       values: dataTableValuesSchema,
     })
     .strict(),
   z
     .object({
       operation: z.literal('upsert'),
-      table: dataTableIdentifierSchema,
+      table: dataTableNameSchema,
       values: dataTableValuesSchema,
     })
     .strict(),
   z
     .object({
       operation: z.literal('update'),
-      table: dataTableIdentifierSchema,
+      table: dataTableNameSchema,
       query: dataTableQuerySchema,
       values: dataTableValuesSchema,
     })
@@ -176,7 +187,7 @@ export const dataTableCommandSchema = z.discriminatedUnion('operation', [
   z
     .object({
       operation: z.literal('delete'),
-      table: dataTableIdentifierSchema,
+      table: dataTableNameSchema,
       query: dataTableQuerySchema,
     })
     .strict(),
