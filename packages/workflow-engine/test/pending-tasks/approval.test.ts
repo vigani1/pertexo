@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
 import {
   approvalConfigSchema,
+  type JsonValue,
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
 import {
@@ -20,7 +21,7 @@ import { completion } from '../compilation/calls/fixtures.js';
 const at = '2026-10-15T00:00:00.000Z';
 function fixture(
   withHandler = false,
-  config: Record<string, unknown> = approvalConfigSchema.parse({}),
+  config: Readonly<Record<string, JsonValue>> = approvalConfigSchema.parse({}),
 ) {
   const base = graph();
   const workflow: WorkflowGraph = {
@@ -105,7 +106,10 @@ function fixture(
     );
   return { advance, initial };
 }
-async function declared(withHandler = false, config?: Record<string, unknown>) {
+async function declared(
+  withHandler = false,
+  config?: Readonly<Record<string, JsonValue>>,
+) {
   const run = fixture(withHandler, config);
   const initial = await run.initial();
   const preparation = await run.advance(
