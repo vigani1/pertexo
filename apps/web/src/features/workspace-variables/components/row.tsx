@@ -195,7 +195,8 @@ function VariableForm({
               {...control}
               name={`${prefix}.value`}
               rows={1}
-              className="min-h-9"
+              // Grows with its text where the browser supports it.
+              className="max-h-48 min-h-9 [field-sizing:content]"
               value={row.value}
               maxLength={4096}
               onChange={(event) => {

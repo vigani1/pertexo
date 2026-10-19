@@ -239,7 +239,8 @@ export function VariablesEditor({
             'flex flex-wrap items-center gap-3',
             // Unsaved edits keep Save in view however long the list is.
             changed &&
-              'sticky bottom-0 z-10 -mx-4 border-t border-border bg-background/95 px-4 py-3 backdrop-blur-sm',
+              // On phones it sits above the navigation dock, as run actions do.
+              'sticky bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.25rem)] z-10 -mx-4 border-t border-border bg-background/95 px-4 py-3 backdrop-blur-sm md:bottom-0',
           )}
         >
           <Button type="submit" variant="primary" disabled={locked || !changed}>
