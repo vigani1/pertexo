@@ -187,7 +187,7 @@ export function SamlProviderForm({
             <Textarea
               {...control}
               {...fields.control('certificate')}
-              className="min-h-40 font-mono text-xs"
+              className="min-h-40 font-mono text-base md:text-xs"
               spellCheck={false}
               autoCapitalize="none"
               autoCorrect="off"
@@ -234,7 +234,7 @@ export function SamlProviderForm({
                 <Textarea
                   {...control}
                   {...fields.control('nextCertificate')}
-                  className="min-h-32 font-mono text-xs"
+                  className="min-h-32 font-mono text-base md:text-xs"
                   spellCheck={false}
                   autoCapitalize="none"
                   autoCorrect="off"
