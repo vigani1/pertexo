@@ -32,7 +32,7 @@ export const DATA_TABLE_LIMITS = Object.freeze({
   batchRows: 1_000,
   resultBytes: 1_048_576,
 });
-export const dataTableNameSchema = z
+export const dataTableIdentifierSchema = z
   .string()
   .regex(
     /^[A-Za-z][A-Za-z0-9_]{0,63}$/u,
@@ -40,14 +40,14 @@ export const dataTableNameSchema = z
   );
 export const dataTableNewColumnSchema = z
   .object({
-    name: dataTableNameSchema,
+    name: dataTableIdentifierSchema,
     type: z.enum(['text', 'number', 'boolean', 'date', 'json']),
     required: z.boolean().default(false),
   })
   .strict();
 export type DataTableNewColumn = z.infer<typeof dataTableNewColumnSchema>;
 export const dataTableColumnSchema = dataTableNewColumnSchema.extend({
-  id: dataTableNameSchema,
+  id: dataTableIdentifierSchema,
 });
 export type DataTableColumn = z.infer<typeof dataTableColumnSchema>;
 export const dataTableNewColumnsSchema = z
@@ -70,7 +70,7 @@ export const dataTableColumnsSchema = z
     'Column names and IDs must be unique',
   );
 export const dataTableBindingsSchema = z
-  .record(dataTableNameSchema, dataTableNameSchema)
+  .record(dataTableIdentifierSchema, dataTableIdentifierSchema)
   .refine(
     (bindings) =>
       Object.keys(bindings).length <= DATA_TABLE_LIMITS.maxColumns &&
@@ -80,7 +80,7 @@ export const dataTableBindingsSchema = z
 export type DataTableBindings = z.infer<typeof dataTableBindingsSchema>;
 export const dataTableConfigSchema = z
   .object({
-    table: dataTableNameSchema,
+    table: dataTableIdentifierSchema,
     columnBindings: dataTableBindingsSchema.optional(),
   })
   .strict();
@@ -112,7 +112,7 @@ export const dataTableValuesSchema = boundedTableJson.pipe(
 export type DataTableValues = z.infer<typeof dataTableValuesSchema>;
 export const dataTableFilterSchema = z
   .object({
-    column: dataTableNameSchema,
+    column: dataTableIdentifierSchema,
     operator: z.enum([
       'equals',
       'not_equals',
@@ -128,7 +128,7 @@ export const dataTableQuerySchema = z
     filters: z.array(dataTableFilterSchema).max(10).default([]),
     sort: z
       .object({
-        column: dataTableNameSchema,
+        column: dataTableIdentifierSchema,
         direction: z.enum(['asc', 'desc']),
       })
       .strict()
@@ -147,28 +147,28 @@ export const dataTableCommandSchema = z.discriminatedUnion('operation', [
   z
     .object({
       operation: z.literal('find'),
-      table: dataTableNameSchema,
+      table: dataTableIdentifierSchema,
       query: dataTableQuerySchema,
     })
     .strict(),
   z
     .object({
       operation: z.literal('insert'),
-      table: dataTableNameSchema,
+      table: dataTableIdentifierSchema,
       values: dataTableValuesSchema,
     })
     .strict(),
   z
     .object({
       operation: z.literal('upsert'),
-      table: dataTableNameSchema,
+      table: dataTableIdentifierSchema,
       values: dataTableValuesSchema,
     })
     .strict(),
   z
     .object({
       operation: z.literal('update'),
-      table: dataTableNameSchema,
+      table: dataTableIdentifierSchema,
       query: dataTableQuerySchema,
       values: dataTableValuesSchema,
     })
@@ -176,7 +176,7 @@ export const dataTableCommandSchema = z.discriminatedUnion('operation', [
   z
     .object({
       operation: z.literal('delete'),
-      table: dataTableNameSchema,
+      table: dataTableIdentifierSchema,
       query: dataTableQuerySchema,
     })
     .strict(),
