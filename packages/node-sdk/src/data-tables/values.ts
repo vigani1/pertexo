@@ -31,6 +31,12 @@ export function validateDataTableValues(
       result[column.name] = null;
       continue;
     }
+    // A required text column needs words, not an empty or blank cell.
+    if (column.required && typeof value === 'string' && value.trim() === '')
+      throw new DataTableError(
+        'invalid_values',
+        `Column ${column.name} is required.`,
+      );
     let valid: boolean;
     switch (column.type) {
       case 'text':
@@ -148,7 +154,8 @@ export function dataTableCsvValue(
   column: DataTableNewColumn,
   text: string,
 ): unknown {
-  if (text === '' && !column.required) return null;
+  // An empty cell is no value; a required column then says it's required.
+  if (text === '') return null;
   if (
     column.type === 'number' &&
     text.trim() !== '' &&

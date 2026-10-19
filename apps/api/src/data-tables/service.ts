@@ -54,18 +54,8 @@ export class DataTablesService {
         'The CSV is malformed or a row is too large. Check quoting and column counts, or split the file.',
       );
     }
-    const header = records.shift();
-    if (
-      new Set(header).size !== header?.length ||
-      header.length !== table.columns.length ||
-      header.some(
-        (name) => !table.columns.some((column) => column.name === name),
-      )
-    )
-      throw new DataTableError(
-        'invalid_values',
-        'CSV headers must name each table column exactly once.',
-      );
+    const header = records.shift() ?? [];
+    checkCsvHeader(header, table);
     if (records.length === 0 || records.length > DATA_TABLE_LIMITS.batchRows)
       throw new DataTableError(
         'invalid_values',
@@ -92,4 +82,37 @@ export class DataTablesService {
     });
     return rows;
   }
+}
+
+/**
+ * Like Airtable and n8n, a file may hold some of the columns: the ones it
+ * leaves out stay empty, but it names every required column and nothing the
+ * table doesn't have.
+ */
+function checkCsvHeader(
+  header: readonly string[],
+  table: DataTableDefinition,
+): void {
+  const fail = (message: string): never => {
+    throw new DataTableError('invalid_values', message);
+  };
+  if (header.length === 0)
+    fail('The CSV has no header row. Name the columns in the first row.');
+  const repeated = header.find((name, index) => header.indexOf(name) !== index);
+  if (repeated !== undefined)
+    fail(`The CSV names the column ${repeated} more than once.`);
+  const unknown = header.filter(
+    (name) => !table.columns.some((column) => column.name === name),
+  );
+  if (unknown.length > 0)
+    fail(
+      `The CSV has ${unknown.length === 1 ? 'a column' : 'columns'} this table doesn’t: ${unknown.slice(0, 5).join(', ')}. Rename or remove ${unknown.length === 1 ? 'it' : 'them'}.`,
+    );
+  const missing = table.columns
+    .filter((column) => column.required && !header.includes(column.name))
+    .map((column) => column.name);
+  if (missing.length > 0)
+    fail(
+      `The CSV is missing the required ${missing.length === 1 ? 'column' : 'columns'} ${missing.join(', ')}.`,
+    );
 }

@@ -77,8 +77,10 @@ rows and open the latest revision before applying your changes.
 
 **Import CSV** accepts a UTF-8 file or pasted CSV, with an optional BOM and RFC
 4180 quoting. Commas separate cells; quote commas, quotes and line breaks inside
-cells. Headers must name every column exactly once. Imports are atomic: one bad
-row, duplicate key or quota failure saves none of the rows. For example:
+cells. The header names each column once; it may leave out optional columns,
+which stay empty, but must include every required one. An empty cell is no
+value. Imports are atomic: one bad row, duplicate key or quota failure saves
+none of the rows. For example:
 
 ```csv
 order_id,amount,paid,day,extra
