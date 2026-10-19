@@ -122,12 +122,15 @@ test('owned complete examples retain historical origin through independent edits
       ).toBeDisabled();
       await dialog.getByLabel('HTTPS endpoint').fill(seed.httpEndpoint);
       await dialog.getByLabel('Slack channel ID').fill(seed.slackChannel);
-      for (const [index, name] of [
-        'F06 controlled HTTP account',
-        'F06 controlled Slack account',
-      ].entries()) {
+      // An HTTP request can run without a connection; a Slack message can't.
+      for (const [index, [name, unbound]] of (
+        [
+          ['F06 controlled HTTP account', 'No connection'],
+          ['F06 controlled Slack account', 'Choose a connection'],
+        ] as const
+      ).entries()) {
         const selector = dialog.getByRole('combobox').nth(index);
-        await expect(selector).toContainText('Choose a connection');
+        await expect(selector).toContainText(unbound);
         await expect(selector).toBeEnabled();
         await selector.click();
         await page.getByRole('option', { name, exact: true }).click();
