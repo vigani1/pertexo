@@ -9,11 +9,11 @@ import {
 import { createPlatformNodeRegistry } from '../src/server.js';
 
 describe('platform structured node execution', () => {
-  it('executes a settled Merge ledger', async () => {
+  it('passes on what each selected branch of a settled Merge produced', async () => {
     const registry = createPlatformNodeRegistry();
     const input = {
       ledger: {
-        'branch-01': { disposition: 'arrived' },
+        'branch-01': { disposition: 'arrived', output: { total: 3 } },
         'branch-02': { disposition: 'skipped' },
       },
       selectedBranchIds: ['branch-01'],
@@ -27,7 +27,13 @@ describe('platform structured node execution', () => {
         input,
         signal: new AbortController().signal,
       }),
-    ).resolves.toEqual({ kind: 'succeeded', output: input });
+    ).resolves.toEqual({
+      kind: 'succeeded',
+      output: {
+        branches: { 'branch-01': { total: 3 } },
+        selectedBranchIds: ['branch-01'],
+      },
+    });
   });
 
   it('executes a bounded Parallel declaration', async () => {
