@@ -3,12 +3,8 @@ import { parseFederationSearch } from '@/features/federation/search.public';
 import { parseAuditSearch } from '@/features/governance/search.public';
 import { parseUsageTrendsSearch } from '@/features/usage/usage-search.public';
 import { parseTaskSearch } from '@/features/pending-tasks/queries.public';
-import {
-  createRoute,
-  lazyRouteComponent,
-  notFound,
-  redirect,
-} from '@tanstack/react-router';
+import { createRoute, notFound, redirect } from '@tanstack/react-router';
+import { lazyRoute } from '@/components/patterns/app-update/lazy';
 import {
   type AccessibleWorkspace,
   workflowRunIdentifierSchema,
@@ -92,14 +88,11 @@ export const workspaceShellRoute = createRoute({
   id: 'shell',
   // A page that doesn't exist inside a workspace keeps the spine and
   // breadcrumb, so people can move on without reloading.
-  notFoundComponent: lazyRouteComponent(
+  notFoundComponent: lazyRoute(
     () => import('./shell/not-found'),
     'ShellNotFound',
   ),
-  component: lazyRouteComponent(
-    () => import('./shell/layout'),
-    'WorkspaceShellRoute',
-  ),
+  component: lazyRoute(() => import('./shell/layout'), 'WorkspaceShellRoute'),
 });
 
 /** Any other address inside a workspace: the shell's not-found page. */
@@ -185,7 +178,7 @@ export const homeRoute = createRoute({
   head: ({ match }) => ({
     meta: [{ title: pageTitle(match.context.workspace.name) }],
   }),
-  component: lazyRouteComponent(() => import('./home'), 'HomeRoute'),
+  component: lazyRoute(() => import('./home'), 'HomeRoute'),
 });
 
 export const workflowsRoute = createRoute({
@@ -208,10 +201,7 @@ export const workflowsRoute = createRoute({
   head: ({ match }) => ({
     meta: [{ title: pageTitle('Workflows', match.context.workspace.name) }],
   }),
-  component: lazyRouteComponent(
-    () => import('../workflow/list'),
-    'WorkflowListRoute',
-  ),
+  component: lazyRoute(() => import('../workflow/list'), 'WorkflowListRoute'),
 });
 
 export const runsRoute = createRoute({
@@ -242,7 +232,7 @@ export const runsRoute = createRoute({
   head: ({ match }) => ({
     meta: [{ title: pageTitle('Runs', match.context.workspace.name) }],
   }),
-  component: lazyRouteComponent(
+  component: lazyRoute(
     () => import('../workflow/run-history'),
     'RunHistoryRoute',
   ),
@@ -277,7 +267,7 @@ export const runDetailRoute = createRoute({
   head: ({ match }) => ({
     meta: [{ title: pageTitle('Run', match.context.workspace.name) }],
   }),
-  component: lazyRouteComponent(
+  component: lazyRoute(
     () => import('../workflow/run-detail'),
     'RunDetailRoute',
   ),
@@ -300,10 +290,7 @@ export const connectionsRoute = createRoute({
   head: ({ match }) => ({
     meta: [{ title: pageTitle('Connections', match.context.workspace.name) }],
   }),
-  component: lazyRouteComponent(
-    () => import('./connections'),
-    'ConnectionsRoute',
-  ),
+  component: lazyRoute(() => import('./connections'), 'ConnectionsRoute'),
 });
 
 /** ADR 055: the person's failure notices for this workspace. */
@@ -337,7 +324,7 @@ export const inboxRoute = createRoute({
   head: ({ match }) => ({
     meta: [{ title: pageTitle('Inbox', match.context.workspace.name) }],
   }),
-  component: lazyRouteComponent(() => import('./inbox'), 'InboxRoute'),
+  component: lazyRoute(() => import('./inbox'), 'InboxRoute'),
 });
 
 export const teamRoute = createRoute({
@@ -357,17 +344,14 @@ export const teamRoute = createRoute({
   head: ({ match }) => ({
     meta: [{ title: pageTitle('Team', match.context.workspace.name) }],
   }),
-  component: lazyRouteComponent(() => import('./team'), 'TeamRoute'),
+  component: lazyRoute(() => import('./team'), 'TeamRoute'),
 });
 
 /** Pathless layout: every Settings page beside the Settings rail. */
 export const settingsHubRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   id: 'settings-hub',
-  component: lazyRouteComponent(
-    () => import('./settings/hub'),
-    'SettingsHubRoute',
-  ),
+  component: lazyRoute(() => import('./settings/hub'), 'SettingsHubRoute'),
 });
 
 /** Alerts moved into Settings; older links still arrive there. */
@@ -413,7 +397,7 @@ export const alertsRoute = createRoute({
   head: ({ match }) => ({
     meta: [{ title: pageTitle('Alerts', match.context.workspace.name) }],
   }),
-  component: lazyRouteComponent(() => import('./alerts'), 'AlertsRoute'),
+  component: lazyRoute(() => import('./alerts'), 'AlertsRoute'),
 });
 
 export const workspaceSettingsRoute = createRoute({
@@ -423,10 +407,7 @@ export const workspaceSettingsRoute = createRoute({
   head: ({ match }) => ({
     meta: [{ title: pageTitle('Settings', match.context.workspace.name) }],
   }),
-  component: lazyRouteComponent(
-    () => import('./settings'),
-    'WorkspaceSettingsRoute',
-  ),
+  component: lazyRoute(() => import('./settings'), 'WorkspaceSettingsRoute'),
 });
 
 export const usageTrendsRoute = createRoute({
@@ -437,10 +418,7 @@ export const usageTrendsRoute = createRoute({
   head: ({ match }) => ({
     meta: [{ title: pageTitle('Trends', match.context.workspace.name) }],
   }),
-  component: lazyRouteComponent(
-    () => import('./usage-trends'),
-    'UsageTrendsRoute',
-  ),
+  component: lazyRoute(() => import('./usage-trends'), 'UsageTrendsRoute'),
 });
 
 export const usageRoute = createRoute({
@@ -451,7 +429,7 @@ export const usageRoute = createRoute({
   head: ({ match }) => ({
     meta: [{ title: pageTitle('Usage', match.context.workspace.name) }],
   }),
-  component: lazyRouteComponent(() => import('./usage'), 'UsageRoute'),
+  component: lazyRoute(() => import('./usage'), 'UsageRoute'),
 });
 
 export const federationSettingsRoute = createRoute({
@@ -464,7 +442,7 @@ export const federationSettingsRoute = createRoute({
       { title: pageTitle('Single sign-on', match.context.workspace.name) },
     ],
   }),
-  component: lazyRouteComponent(
+  component: lazyRoute(
     () => import('./settings/sso'),
     'FederationSettingsRoute',
   ),
@@ -478,7 +456,7 @@ export const auditRoute = createRoute({
   head: ({ match }) => ({
     meta: [{ title: pageTitle('Audit log', match.context.workspace.name) }],
   }),
-  component: lazyRouteComponent(() => import('./audit'), 'AuditRoute'),
+  component: lazyRoute(() => import('./audit'), 'AuditRoute'),
 });
 
 export const workspaceVariablesRoute = createRoute({
@@ -488,10 +466,7 @@ export const workspaceVariablesRoute = createRoute({
   head: ({ match }) => ({
     meta: [{ title: pageTitle('Variables', match.context.workspace.name) }],
   }),
-  component: lazyRouteComponent(
-    () => import('./variables'),
-    'WorkspaceVariablesRoute',
-  ),
+  component: lazyRoute(() => import('./variables'), 'WorkspaceVariablesRoute'),
 });
 
 export const apiTokensRoute = createRoute({
@@ -501,7 +476,7 @@ export const apiTokensRoute = createRoute({
   head: ({ match }) => ({
     meta: [{ title: pageTitle('API tokens', match.context.workspace.name) }],
   }),
-  component: lazyRouteComponent(() => import('./api-tokens'), 'ApiTokensRoute'),
+  component: lazyRoute(() => import('./api-tokens'), 'ApiTokensRoute'),
 });
 
 export const workspaceAccountRoute = createRoute({
@@ -513,10 +488,7 @@ export const workspaceAccountRoute = createRoute({
       { title: pageTitle('Account & security', match.context.workspace.name) },
     ],
   }),
-  component: lazyRouteComponent(
-    () => import('./account'),
-    'WorkspaceAccountRoute',
-  ),
+  component: lazyRoute(() => import('./account'), 'WorkspaceAccountRoute'),
 });
 
 export const approvalsRoute = createRoute({
@@ -527,16 +499,13 @@ export const approvalsRoute = createRoute({
   head: ({ match }) => ({
     meta: [{ title: pageTitle('Approvals', match.context.workspace.name) }],
   }),
-  component: lazyRouteComponent(
-    () => import('./approvals/list'),
-    'ApprovalsRoute',
-  ),
+  component: lazyRoute(() => import('./approvals/list'), 'ApprovalsRoute'),
 });
 export const approvalDetailRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'approvals/$taskId',
   staticData: { crumb: 'Approval' },
-  component: lazyRouteComponent(
+  component: lazyRoute(
     () => import('./approvals/detail'),
     'ApprovalDetailRoute',
   ),
@@ -546,10 +515,7 @@ export const memberFormRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'forms/$workflowId',
   staticData: { crumb: 'Form' },
-  component: lazyRouteComponent(
-    () => import('../forms/member'),
-    'MemberFormRoute',
-  ),
+  component: lazyRoute(() => import('../forms/member'), 'MemberFormRoute'),
 });
 
 export const requestsRoute = createRoute({
@@ -560,19 +526,13 @@ export const requestsRoute = createRoute({
   head: ({ match }) => ({
     meta: [{ title: pageTitle('Requests', match.context.workspace.name) }],
   }),
-  component: lazyRouteComponent(
-    () => import('./requests/list'),
-    'RequestsRoute',
-  ),
+  component: lazyRoute(() => import('./requests/list'), 'RequestsRoute'),
 });
 export const requestDetailRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'requests/$taskId',
   staticData: { crumb: 'Request' },
-  component: lazyRouteComponent(
-    () => import('./requests/detail'),
-    'RequestDetailRoute',
-  ),
+  component: lazyRoute(() => import('./requests/detail'), 'RequestDetailRoute'),
 });
 
 export const notificationPreferencesRoute = createRoute({
@@ -582,7 +542,7 @@ export const notificationPreferencesRoute = createRoute({
   head: ({ match }) => ({
     meta: [{ title: pageTitle('Notifications', match.context.workspace.name) }],
   }),
-  component: lazyRouteComponent(
+  component: lazyRoute(
     () => import('./settings/notifications'),
     'NotificationPreferencesRoute',
   ),
@@ -595,29 +555,20 @@ export const dataTablesRoute = createRoute({
   head: ({ match }) => ({
     meta: [{ title: pageTitle('Data tables', match.context.workspace.name) }],
   }),
-  component: lazyRouteComponent(
-    () => import('./data-tables'),
-    'DataTablesRoute',
-  ),
+  component: lazyRoute(() => import('./data-tables'), 'DataTablesRoute'),
 });
 export const dataTableDetailRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'data-tables/$tableId',
   staticData: { crumb: 'Data table' },
-  component: lazyRouteComponent(
-    () => import('./data-tables'),
-    'DataTablesRoute',
-  ),
+  component: lazyRoute(() => import('./data-tables'), 'DataTablesRoute'),
 });
 
 export const publicationReviewRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'publish-reviews/$requestId',
   staticData: { crumb: 'Publication review' },
-  component: lazyRouteComponent(
-    () => import('./review'),
-    'PublicationReviewRoute',
-  ),
+  component: lazyRoute(() => import('./review'), 'PublicationReviewRoute'),
 });
 
 export const workflowPromotionRoute = createRoute({
@@ -628,7 +579,7 @@ export const workflowPromotionRoute = createRoute({
   head: ({ match }) => ({
     meta: [{ title: pageTitle('Promotion', match.context.workspace.name) }],
   }),
-  component: lazyRouteComponent(
+  component: lazyRoute(
     () => import('./settings/promotion'),
     'WorkflowPromotionRoute',
   ),

@@ -1,15 +1,19 @@
-import { lazy, Suspense, type ComponentProps } from 'react';
+import { Suspense, type ComponentProps } from 'react';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
+import { lazyPiece } from '@/components/patterns/app-update/lazy';
+import { AppUpdatedDialog } from '@/components/patterns/app-update/notice';
 import { Button } from '@/components/ui/button';
 import type { DialogContent } from '@/components/ui/dialog';
 import type { ApiClient } from '@/lib/api/client';
 
 // Loaded on first open: the workflow bar is on every hub page and in its
 // loading state, so a static import put the whole dialog in the first load.
-const WorkflowExportDialog = lazy(() =>
-  import('./workflow-export-dialog').then((module) => ({
-    default: module.WorkflowExportDialog,
-  })),
+const WorkflowExportDialog = lazyPiece(
+  () =>
+    import('./workflow-export-dialog').then(
+      (module) => module.WorkflowExportDialog,
+    ),
+  AppUpdatedDialog,
 );
 
 export function WorkflowExportAction({

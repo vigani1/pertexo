@@ -1,8 +1,5 @@
-import {
-  createRoute,
-  lazyRouteComponent,
-  redirect,
-} from '@tanstack/react-router';
+import { createRoute, redirect } from '@tanstack/react-router';
+import { lazyRoute } from '@/components/patterns/app-update/lazy';
 import {
   allowlistedReturnPath,
   returnToSearch,
@@ -88,7 +85,7 @@ export const loginRoute = createRoute({
     else redirect({ href: safeReturnPath, throw: true });
   },
   head: () => ({ meta: [{ title: pageTitle('Sign in') }] }),
-  component: lazyRouteComponent(() => import('../auth/login'), 'LoginRoute'),
+  component: lazyRoute(() => import('../auth/login'), 'LoginRoute'),
 });
 
 export const signUpRoute = createRoute({
@@ -98,7 +95,7 @@ export const signUpRoute = createRoute({
   validateSearch: (search: Record<string, unknown>) =>
     returnToSearch(allowlistedReturnPath(search.returnTo)),
   head: () => ({ meta: [{ title: pageTitle('Create account') }] }),
-  component: lazyRouteComponent(() => import('../auth/sign-up'), 'SignUpRoute'),
+  component: lazyRoute(() => import('../auth/sign-up'), 'SignUpRoute'),
 });
 
 export const passwordRecoveryRoute = createRoute({
@@ -106,7 +103,7 @@ export const passwordRecoveryRoute = createRoute({
   path: 'forgot-password',
   pendingComponent: AuthLensPending,
   head: () => ({ meta: [{ title: pageTitle('Reset password') }] }),
-  component: lazyRouteComponent(
+  component: lazyRoute(
     () => import('../auth/password-recovery'),
     'PasswordRecoveryRoute',
   ),
@@ -122,7 +119,7 @@ export const passwordResetRoute = createRoute({
   loaderDeps: ({ search }) => ({ token: search.token }),
   loader: ({ deps }) => deps,
   head: () => ({ meta: [{ title: pageTitle('Choose a new password') }] }),
-  component: lazyRouteComponent(
+  component: lazyRoute(
     () => import('../auth/password-reset'),
     'PasswordResetRoute',
   ),
@@ -135,7 +132,7 @@ export const logoutRoute = createRoute({
   validateSearch: (search: Record<string, unknown>) =>
     returnToSearch(allowlistedReturnPath(search.returnTo)),
   head: () => ({ meta: [{ title: pageTitle('Signing out') }] }),
-  component: lazyRouteComponent(() => import('../auth/logout'), 'LogoutRoute'),
+  component: lazyRoute(() => import('../auth/logout'), 'LogoutRoute'),
 });
 
 // Standalone account page: the target of sign-in method link callbacks.
@@ -149,7 +146,7 @@ export const accountSecurityRoute = createRoute({
   }),
   loader: async ({ context }) => loadCurrentUser(context),
   head: () => ({ meta: [{ title: pageTitle('Account & security') }] }),
-  component: lazyRouteComponent(
+  component: lazyRoute(
     () => import('../auth/account-security'),
     'AccountSecurityRoute',
   ),
@@ -160,7 +157,7 @@ export const invitationAcceptanceRoute = createRoute({
   path: '/invitations/accept',
   pendingComponent: BootPage,
   head: () => ({ meta: [{ title: pageTitle('Workspace invitation') }] }),
-  component: lazyRouteComponent(
+  component: lazyRoute(
     () => import('../auth/invitation-acceptance'),
     'InvitationAcceptanceRoute',
   ),
@@ -176,7 +173,7 @@ export const workspacesRoute = createRoute({
     return { user, workspaces };
   },
   head: () => ({ meta: [{ title: pageTitle('Workspaces') }] }),
-  component: lazyRouteComponent(
+  component: lazyRoute(
     () => import('../workspace/selection'),
     'WorkspaceSelectionRoute',
   ),

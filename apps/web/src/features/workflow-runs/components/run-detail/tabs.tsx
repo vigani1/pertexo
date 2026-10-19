@@ -4,7 +4,8 @@ import type {
   WorkflowGraphContract,
   WorkflowRunEvent,
 } from '@pertexo/contracts';
-import { lazy, Suspense, useState } from 'react';
+import { Suspense, useState } from 'react';
+import { lazyPiece } from '@/components/patterns/app-update/lazy';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { RunTimelineModel } from '../../model/timeline/runs';
 import { RunEventsView } from './events-view';
@@ -17,9 +18,9 @@ import { RunTimeline } from './timeline/view';
 type RunTab = 'thread' | 'graph' | 'events' | 'io';
 
 // The map pulls in React Flow; load it only when someone opens the tab.
-const RunGraphView = lazy(async () => ({
-  default: (await import('./graph-view')).RunGraphView,
-}));
+const RunGraphView = lazyPiece(() =>
+  import('./graph-view').then((module) => module.RunGraphView),
+);
 
 const graphMessages = {
   loading: 'Loading the exact version this run used…',

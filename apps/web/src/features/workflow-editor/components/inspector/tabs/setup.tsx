@@ -1,6 +1,7 @@
 import { DataTableSetup } from '../builders/table-setup';
 import { isDataTableDefinition, type CodeSettings } from '@pertexo/node-sdk';
-import { lazy, Suspense } from 'react';
+import { Suspense } from 'react';
+import { lazyPiece } from '@/components/patterns/app-update/lazy';
 import { SkeletonLines } from '@/components/ui/skeleton';
 import { WebhookTriggerSetup } from '../webhook/trigger-setup';
 import { WebhookResponseSetup } from '../webhook/response-setup';
@@ -40,8 +41,8 @@ import { ParallelBranches } from '../builders/parallel-branches';
 import { SwitchCases } from '../builders/switch-cases';
 import { ValidateRules } from '../builders/validate-rules';
 
-const CodeSetup = lazy(() =>
-  import('../code/setup').then((module) => ({ default: module.CodeSetup })),
+const CodeSetup = lazyPiece(() =>
+  import('../code/setup').then((module) => module.CodeSetup),
 );
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
