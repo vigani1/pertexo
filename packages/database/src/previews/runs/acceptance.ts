@@ -125,6 +125,7 @@ export type AcceptedPreviewRun = Readonly<{
 
 export type PreviewRunRecord = Readonly<{
   codeDiagnostics?: CodeDiagnostics;
+  errorSummary?: string;
   id: string;
   workspaceId: string;
   workflowId: string;

@@ -125,6 +125,8 @@ export const previewRunSummarySchema = z
       .min(1)
       .max(NODE_TEST_LIMITS.safeErrorCodeLength)
       .nullable(),
+    /** The step's own reason, when it refused its input or setup. */
+    errorSummary: z.string().min(1).max(2048).optional(),
     createdAt: z.iso.datetime({ offset: true }),
     startedAt: z.iso.datetime({ offset: true }).nullable(),
     completedAt: z.iso.datetime({ offset: true }).nullable(),
