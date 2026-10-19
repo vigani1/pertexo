@@ -12,6 +12,7 @@ export function RunCount({
   return (
     <Status
       tone={tone}
+      still={count === 0}
       className={cn(
         'font-mono text-xs font-normal',
         count === 0 && 'opacity-55',

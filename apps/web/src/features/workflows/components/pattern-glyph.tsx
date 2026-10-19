@@ -12,9 +12,10 @@ const SIZES = {
 type GlyphSize = keyof typeof SIZES;
 
 const FLOW_CLASS = {
-  on: 'motion-safe:opacity-100',
+  on: 'motion-loop:opacity-100 motion-loop:animate-thread-flow',
+  // The flow runs only while it shows, not unseen under every card.
   hover:
-    'motion-safe:group-hover/starter:opacity-100 motion-safe:group-focus-visible/starter:opacity-100 motion-safe:group-has-focus-visible/starter:opacity-100',
+    'motion-loop:group-hover/starter:opacity-100 motion-loop:group-hover/starter:animate-thread-flow motion-loop:group-focus-visible/starter:opacity-100 motion-loop:group-focus-visible/starter:animate-thread-flow motion-loop:group-has-focus-visible/starter:opacity-100 motion-loop:group-has-focus-visible/starter:animate-thread-flow',
 } as const;
 
 /**
@@ -85,7 +86,7 @@ export function PatternGlyph({
                 strokeLinecap="round"
                 style={{ animationDelay: `${String(index * 320)}ms` }}
                 className={cn(
-                  'fill-none stroke-accent-foreground opacity-0 transition-opacity [stroke-dasharray:4_22] motion-safe:animate-thread-flow',
+                  'fill-none stroke-accent-foreground opacity-0 transition-opacity [stroke-dasharray:4_22]',
                   FLOW_CLASS[flow],
                 )}
               />

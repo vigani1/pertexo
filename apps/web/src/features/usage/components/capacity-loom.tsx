@@ -51,7 +51,7 @@ export function CapacityLoom({
             <span
               key={index}
               style={{ animationDelay: `${String((beads - index) * 140)}ms` }}
-              className="relative size-1.5 rounded-full bg-secondary motion-safe:animate-bead"
+              className="relative size-1.5 rounded-full bg-secondary motion-loop:animate-bead"
             />
           ))}
         </div>
@@ -72,7 +72,7 @@ export function CapacityLoom({
                 )}
               >
                 {running ? (
-                  <span className="size-2 rounded-full bg-primary motion-safe:animate-tip" />
+                  <span className="size-2 rounded-full bg-primary motion-loop:animate-tip" />
                 ) : held ? (
                   <StatusGlyph tone="waiting" className="size-3.5" />
                 ) : null}
