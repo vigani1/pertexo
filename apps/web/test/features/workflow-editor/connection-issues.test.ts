@@ -56,6 +56,26 @@ const publication = {
 };
 
 describe('editor credential issues', () => {
+  it('lets an optional connection stay empty but still flags a removed one', () => {
+    const http = {
+      ...definition,
+      definition: { key: 'http.request', version: 1 },
+      connectionRequirements: ['http_headers'],
+      optionalConnections: ['http_headers'],
+    };
+    const request = (connectionRefs: Node['connectionRefs']) =>
+      graph([node('call', { definition: http.definition, connectionRefs })]);
+    expect(workflowConnectionIssues(request({}), [http], [], true)).toEqual([]);
+    expect(
+      workflowConnectionIssues(
+        request({ http_headers: '55555555-5555-4555-8555-555555555555' }),
+        [http],
+        [],
+        true,
+      ),
+    ).toHaveLength(1);
+  });
+
   it('counts a missing selection before the first server check and targets Setup', () => {
     const current = graph([node('post')]);
     const issues = workflowConnectionIssues(current, [definition], [], true);

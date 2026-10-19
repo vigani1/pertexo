@@ -13,6 +13,7 @@ import {
   describeRetryBehaviour,
   describeStep,
   familyWord,
+  requiredConnections,
 } from '@/features/catalog/presentation.public';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
@@ -55,9 +56,16 @@ export function AboutTab({
           <Row term="Side effects">
             {sideEffects(definition, step.sideEffect)}
           </Row>
-          {definition.connectionRequirements.length === 0 ? null : (
+          {requiredConnections(definition).length === 0 ? null : (
             <Row term="Needs">
-              {definition.connectionRequirements
+              {requiredConnections(definition)
+                .map(describeConnectionRequirement)
+                .join(', ')}
+            </Row>
+          )}
+          {(definition.optionalConnections ?? []).length === 0 ? null : (
+            <Row term="Can use">
+              {(definition.optionalConnections ?? [])
                 .map(describeConnectionRequirement)
                 .join(', ')}
             </Row>
