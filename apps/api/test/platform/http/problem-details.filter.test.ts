@@ -682,10 +682,7 @@ describe('RFC 9457 problem details filter', () => {
     contexts.run('request-closed', () => {
       filter.catch(
         wrapped,
-        hostFor(
-          { url: '/v1/workspaces', raw: { socket: { destroyed: true } } },
-          closed,
-        ),
+        hostFor({ url: '/v1/workspaces', raw: { destroyed: true } }, closed),
       );
     });
     expect(closed.status).toHaveBeenCalledWith(499);
