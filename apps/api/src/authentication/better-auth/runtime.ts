@@ -79,6 +79,10 @@ export function createBetterAuthRuntime(
     max: config.database.max,
     application_name: 'pertexo-api-authentication',
   });
+  // PostgreSQL ends idle connections on a restart or failover. The pool drops
+  // them and the next checkout reconnects, but an error event nobody listens
+  // for would end the whole API process.
+  pool.on('error', () => undefined);
   const emailProofs = new OwnedEmailProofs(pool, config.mail, config.baseUrl);
   const auth = createPertexoBetterAuth({
     pool,
