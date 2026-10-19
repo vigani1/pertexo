@@ -5,12 +5,11 @@
    lens (glass only for floating layers) and live edge (aurora only while work
    is actually happening). Tokens are semantic; components never hard-code hex. */
 
-/* Looping motion that decorates or restates a status runs only where it's
-   welcome: not when the person asks for less motion, and not on touch-first
-   devices, where heat and battery matter more. useStillCanvases applies the
-   same rule to canvas drawings. */
+/* Looping motion that decorates or restates a status runs unless the person
+   asks for less motion. useStillCanvases applies the same rule to canvas
+   drawings. */
 @custom-variant motion-loop {
-  @media (prefers-reduced-motion: no-preference) and (pointer: fine) {
+  @media (prefers-reduced-motion: no-preference) {
     @slot;
   }
 }
@@ -585,6 +584,11 @@
     .loading-orb-particle {
       animation: none;
     }
+
+    /* A loader that stands still reads as stuck: it fades in place instead. */
+    .loading-orb {
+      animation: loading-orb-fade 1.4s ease-in-out infinite alternate;
+    }
   }
 
   @media (forced-colors: active) {
@@ -940,6 +944,12 @@
 @keyframes loading-orb-particle {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes loading-orb-fade {
+  to {
+    opacity: 0.35;
   }
 }
 

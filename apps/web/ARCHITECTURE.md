@@ -922,11 +922,14 @@ object or reservation disappeared. Artifact list UI is not assumed available.
   short opacity/transform transitions; no generic `transition-all` on complex
   nodes.
 - Looping motion runs only where it means something, because every moving frame
-  repaints the window. Status motion (the Core, the Loom, status glyphs) runs
-  only while work is live, never for a zero count or a legend. CSS loops use the
-  `motion-loop` variant and canvases `useStillCanvases`: both hold still under
-  reduced motion and on touch-first devices. Canvases draw 30 frames a second
-  and pause off-screen and in a background window.
+  repaints the window. Status glyphs and the Loom move only while work is live,
+  never for a zero count or a legend. The Core is the exception: it always
+  drifts, slowly when nothing runs (`CORE_IDLE_ENERGY`), and quickens with live
+  work, because a frozen orb reads as a stalled app. Loaders never stand still.
+  CSS loops use the `motion-loop` variant and canvases `useStillCanvases`: both
+  hold still only under reduced motion, where the loading orb fades in place
+  instead. Canvases draw 30 frames a second and pause off-screen and in hidden
+  tabs; a visible window without focus keeps moving.
 - The legacy aurora uses huge `150vmax` layers and blur: preserve the
   appearance, not that unmeasured cost. Bound effects to their container;
   provide static border and opaque glass fallbacks. No animated glow on every
@@ -950,13 +953,13 @@ palette, the particle orb, the aurora edge and glass stay — each with one job.
 
 #### Five materials, one rule each
 
-| Material  | Meaning                                                                                                            | Rule                                                                                                         | Implementation                                                                                    |
-| --------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
-| Thread    | A run moving through time: grows while running, knots on success, stops at a cross on failure, coils while waiting | Every status in the product speaks the thread glyph language                                                 | `components/ui/status.tsx` (`Status`, `StatusGlyph`, `StatusTone`)                                |
-| Loom      | Time laid sideways, one lane per workflow                                                                          | Charts come from real run times, never invented metrics                                                      | Runs feature (Home and the Runs "Loom" view); step thread view on run detail                      |
-| Core      | The living particle orb                                                                                            | At most one large animated Core per screen                                                                   | `components/patterns/core/orb.tsx` + `orb-scene.ts` (Canvas 2D, token colours, still unless live) |
-| Lens      | Glass                                                                                                              | Only layers that float above the page: spine, bars, inspectors, dialogs, menus, toasts. Page content is flat | `lens` utility in `styles/globals.css`; `components/ui/sheet.tsx`, dialog, popups                 |
-| Live edge | The aurora travelling around a border                                                                              | Only while real work is in flight; nothing moves when nothing happens                                        | `live-edge` class (animated `@property` angle, bounded to the element)                            |
+| Material  | Meaning                                                                                                            | Rule                                                                                                         | Implementation                                                                                                |
+| --------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| Thread    | A run moving through time: grows while running, knots on success, stops at a cross on failure, coils while waiting | Every status in the product speaks the thread glyph language                                                 | `components/ui/status.tsx` (`Status`, `StatusGlyph`, `StatusTone`)                                            |
+| Loom      | Time laid sideways, one lane per workflow                                                                          | Charts come from real run times, never invented metrics                                                      | Runs feature (Home and the Runs "Loom" view); step thread view on run detail                                  |
+| Core      | The living particle orb                                                                                            | At most one large animated Core per screen                                                                   | `components/patterns/core/orb.tsx` + `orb-scene.ts` (Canvas 2D, token colours, drifts; live work quickens it) |
+| Lens      | Glass                                                                                                              | Only layers that float above the page: spine, bars, inspectors, dialogs, menus, toasts. Page content is flat | `lens` utility in `styles/globals.css`; `components/ui/sheet.tsx`, dialog, popups                             |
+| Live edge | The aurora travelling around a border                                                                              | Only while real work is in flight; nothing moves when nothing happens                                        | `live-edge` class (animated `@property` angle, bounded to the element)                                        |
 
 #### Tokens and type
 
@@ -992,7 +995,7 @@ palette, the particle orb, the aurora edge and glass stay — each with one job.
 - Textures: `warp` (page background threads), `weave` (canvas and run maps),
   `ambient` (two aurora blobs: they drift behind sign-in and boot and hold still
   in the workspace and hub, `ambient-still`). All decorative layers are
-  `aria-hidden` and hold still under reduced motion and on touch-first devices.
+  `aria-hidden` and hold still under reduced motion.
 
 #### Status language
 
