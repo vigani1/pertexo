@@ -139,9 +139,20 @@ export async function editTableSchema(
       'Column limit reached. Ask an admin to raise it.',
     );
   if (input.change.operation === 'add_column') {
+    const { column, defaultValue } = input.change;
     // Validate even an empty table: a required addition always needs its typed default.
-    validateDataTableValues([input.change.column], {
-      [input.change.column.name]: input.change.defaultValue ?? null,
+    if (
+      column.required &&
+      (defaultValue === undefined ||
+        defaultValue === null ||
+        (typeof defaultValue === 'string' && defaultValue.trim() === ''))
+    )
+      throw new DataTableError(
+        'invalid_values',
+        `Give the required column ${column.name} a default for existing rows.`,
+      );
+    validateDataTableValues([column], {
+      [column.name]: defaultValue ?? null,
     });
   }
   if (
