@@ -1,14 +1,12 @@
 import type { ReactNode } from 'react';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
-import { useQuery } from '@tanstack/react-query';
 import { Link, useMatches } from '@tanstack/react-router';
-import { tablesQuery } from '@/features/data-tables/picker.public';
-import { taskQueryOptions } from '@/features/pending-tasks/queries.public';
 import {
   shortRunId,
   workflowLabel,
 } from '@/features/workflow-runs/run-labels.public';
 import type { ApiClient } from '@/lib/api/client';
+import { RequestName, TableName } from './crumb-names';
 
 /** What the run page's loader knows about its run, for the breadcrumb. */
 export type RunCrumb = Readonly<{
@@ -20,7 +18,7 @@ export type RunCrumb = Readonly<{
 /** One step of the workspace breadcrumb after the switcher. */
 export type Crumb = Readonly<{ key: string; label: ReactNode }>;
 
-type NameScope = Readonly<{ apiClient: ApiClient; userId: string }>;
+export type NameScope = Readonly<{ apiClient: ApiClient; userId: string }>;
 
 type CrumbSource =
   | Readonly<{ kind: 'page'; label: string }>
@@ -112,29 +110,6 @@ function linkCrumb(
       </Link>
     ),
   };
-}
-
-/** A request named by its title, from the read its page already makes. */
-function RequestName({
-  scope,
-  workspaceId,
-  taskId,
-}: Readonly<{ scope: NameScope; workspaceId: string; taskId: string }>) {
-  const task = useQuery(taskQueryOptions({ ...scope, workspaceId }, taskId))
-    .data?.task;
-  return task?.title ?? 'Request';
-}
-
-/** A table named by its name, from the list its page already reads. */
-function TableName({
-  scope,
-  workspaceId,
-  tableId,
-}: Readonly<{ scope: NameScope; workspaceId: string; tableId: string }>) {
-  const table = useQuery(
-    tablesQuery({ ...scope, workspaceId }),
-  ).data?.tables.find((item) => item.id === tableId);
-  return table?.name ?? 'Data table';
 }
 
 /**
