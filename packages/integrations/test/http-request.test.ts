@@ -212,10 +212,13 @@ describe('http.request@1 definition', () => {
       }),
     ])
       expect(httpRequestConfigSchema.safeParse(candidate).success).toBe(false);
-    expect(
-      httpRequestInputSchema.safeParse({ body: undefined, unknown: true })
-        .success,
-    ).toBe(false);
+    for (const input of [
+      { 'un-known': true },
+      { '1abc': 'x' },
+      { orderId: { nested: true } },
+      { orderId: Number.NaN },
+    ])
+      expect(httpRequestInputSchema.safeParse(input).success).toBe(false);
   });
 
   it.each([
@@ -361,6 +364,45 @@ describe('http.request@1 server executor', () => {
       expect((output as { body: { json?: unknown } }).body.json).toEqual(json);
     },
   );
+
+  it('sends run data filled into {placeholders}, keeping the configured origin', async () => {
+    let sent: SecureHttpRequest | undefined;
+    const registration = createHttpRequestExecutorRegistration({
+      httpClient: streamingHttpClient(async (request) => {
+        sent = request;
+        await request.beforeDispatch();
+        return response(encoder.encode('{}'), 200);
+      }),
+    });
+    await registration.execute(
+      invocation(runtime().value, {
+        config: config({
+          method: 'GET',
+          url: 'https://provider.example.test/v1/items/{itemId}?q={term}',
+          headers: { accept: 'application/json', 'x-customer': '{customer}' },
+        }),
+        input: { itemId: 'a/b', term: 'x&y', customer: 42 },
+      }),
+    );
+    expect(sent?.url).toBe(
+      'https://provider.example.test/v1/items/a%2Fb?q=x%26y',
+    );
+    expect(sent?.headers).toMatchObject({ 'x-customer': '42' });
+    await expect(
+      registration.execute(
+        invocation(runtime().value, {
+          config: config({
+            method: 'GET',
+            url: 'https://provider.example.test/v1/items/{itemId}',
+          }),
+          input: {},
+        }),
+      ),
+    ).rejects.toMatchObject({
+      code: 'invalid_input',
+      cause: 'Map a value for {itemId}.',
+    });
+  });
 
   it('atomically forwards the resolved connection fence after a rotation race', async () => {
     const state = runtime();

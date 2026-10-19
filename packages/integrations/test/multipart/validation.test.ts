@@ -121,7 +121,7 @@ describe('multipart boundary validation', () => {
       }).success,
     ).toBe(true);
     expect(
-      httpRequestInputSchema.safeParse({ unexpected: 'value' }).success,
+      httpRequestInputSchema.safeParse({ 'not-a-name': 'value' }).success,
     ).toBe(false);
     expect(httpRequestInputSchema.safeParse({ [key]: 42 }).success).toBe(false);
     expect(

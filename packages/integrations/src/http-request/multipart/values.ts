@@ -30,11 +30,7 @@ export function multipartValues(
         throw new FileInputFailure({ reason: 'multipart_values' });
       bytes += Buffer.byteLength(value, 'utf8');
     } else {
-      if (
-        value === undefined ||
-        typeof value === 'string' ||
-        !('kind' in value)
-      )
+      if (typeof value !== 'object' || !('kind' in value))
         throw new FileInputFailure({ reason: 'multipart_values' });
       bytes += value.byteLength;
     }

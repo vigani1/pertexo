@@ -54,6 +54,7 @@ import { useEditorSessionVerification } from '../hooks/use-editor-session-verifi
 import { useLeaveGuard } from '../hooks/use-leave-guard';
 import { workflowDraftQueryOptions } from '../data/workflow-editor.queries';
 import { workflowConnectionIssues } from '../model/connection-issues';
+import { workflowPlaceholderIssues } from '../model/inspector/http-body';
 import { StepDiscussionsContext } from '../model/state/discussions';
 
 const NO_CONNECTIONS: readonly ConnectionResponse[] = [];
@@ -240,13 +241,15 @@ function WorkflowEditorSession({
     generation,
   });
   const connectionIssues = useMemo(
-    () =>
-      workflowConnectionIssues(
+    () => [
+      ...workflowConnectionIssues(
         graph,
         definitions,
         connections,
         connectionsAvailable,
       ),
+      ...workflowPlaceholderIssues(graph),
+    ],
     [graph, definitions, connections, connectionsAvailable],
   );
   const issues = useIssuesView(

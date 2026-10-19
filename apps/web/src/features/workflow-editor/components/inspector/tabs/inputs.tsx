@@ -26,6 +26,7 @@ import {
 } from '../input-mappings/insert-data-picker';
 import { MappingRow } from '../input-mappings/mapping-row';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
+import { httpRequestPlaceholders } from '../../../model/inspector/http-body';
 
 type RowDisclosure = Readonly<{
   /** Rows whose editor is open. */
@@ -112,7 +113,15 @@ function MappedInputsTab({
   });
   const rowsShown = useRowDisclosure(mappings, node.id, focusTarget);
   const editable = form.editable && definition !== undefined;
-  const suggestions = inputKeySuggestions(definition?.inputSchema);
+  const suggestions = [
+    ...inputKeySuggestions(definition?.inputSchema),
+    ...httpRequestPlaceholders(node).map((name) => ({
+      key: name,
+      label: `{${name}}`,
+      description: 'A value filled into the request address or headers',
+      type: 'string' as const,
+    })),
+  ];
   const predecessors = directPredecessorOptions(graph, node.id);
   if (nodeUsesRunInputDirectly(node.definition))
     return (
