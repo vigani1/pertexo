@@ -38,22 +38,29 @@ function NoTriggerStep({
   kind,
   workspaceId,
   workflowId,
+  editable,
 }: Readonly<{
   kind: 'Webhook' | 'Schedule';
   workspaceId: string;
   workflowId: string;
+  editable: boolean;
 }>) {
   return (
     <p className="text-sm text-muted-foreground">
-      The published version has no {kind} step.{' '}
-      <Link
-        to="/w/$workspaceId/workflows/$workflowId"
-        params={{ workspaceId, workflowId }}
-        className="inline-link"
-      >
-        Add one in Build
-      </Link>
-      , then publish.
+      The published version has no {kind} step.
+      {editable ? (
+        <>
+          {' '}
+          <Link
+            to="/w/$workspaceId/workflows/$workflowId"
+            params={{ workspaceId, workflowId }}
+            className="inline-link"
+          >
+            Add one in Build
+          </Link>
+          , then publish.
+        </>
+      ) : null}
     </p>
   );
 }
@@ -154,9 +161,18 @@ function TriggersSession({
   workspace,
   workflowId,
 }: TriggersPageProps) {
-  const webhooks = useQuery(
-    webhookTriggersQueryOptions(apiClient, user.id, workspace.id, workflowId),
-  );
+  const editable = workspace.capabilities.includes('workflow:update');
+  // Webhook addresses and their deliveries are for the people who build
+  // (owners, admins, builders); others aren't sent to ask for them.
+  const webhooks = useQuery({
+    ...webhookTriggersQueryOptions(
+      apiClient,
+      user.id,
+      workspace.id,
+      workflowId,
+    ),
+    enabled: editable,
+  });
   const schedules = useQuery(
     scheduleTriggersQueryOptions(apiClient, user.id, workspace.id, workflowId),
   );
@@ -166,7 +182,6 @@ function TriggersSession({
   const summary = useQuery(
     workflowSummaryQueryOptions(apiClient, user.id, workspace.id, workflowId),
   );
-  const editable = workspace.capabilities.includes('workflow:update');
   const webhookItems = visibleSettingsData(webhooks)?.items;
   const scheduleItems = visibleSettingsData(schedules)?.items;
   const stepName = (
@@ -181,7 +196,8 @@ function TriggersSession({
     editable,
   };
 
-  if (webhookItems?.length === 0 && scheduleItems?.length === 0)
+  // Only someone who can read webhooks knows the version has none.
+  if (editable && webhookItems?.length === 0 && scheduleItems?.length === 0)
     return (
       <NoTriggers
         workspaceId={workspace.id}
@@ -195,19 +211,24 @@ function TriggersSession({
         title="Webhooks"
         description="Start a run when another system sends an event to the endpoint address."
       >
-        <SettingsQueryState query={webhooks} resource="Webhooks" />
-        {webhookItems?.length === 0 ? (
-          <NoTriggerStep
-            kind="Webhook"
-            workspaceId={workspace.id}
-            workflowId={workflowId}
-          />
-        ) : null}
-        <WebhooksSection
-          {...common}
-          triggers={webhookItems ?? []}
-          stepNameFor={(trigger) => stepName(trigger, 'Webhook')}
-        />
+        {editable ? (
+          <>
+            <SettingsQueryState query={webhooks} resource="Webhooks" />
+            {webhookItems?.length === 0 ? (
+              <NoTriggerStep kind="Webhook" {...common} />
+            ) : null}
+            <WebhooksSection
+              {...common}
+              triggers={webhookItems ?? []}
+              stepNameFor={(trigger) => stepName(trigger, 'Webhook')}
+            />
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Webhook addresses and deliveries are shown to owners, admins and
+            builders.
+          </p>
+        )}
       </SettingsSection>
       <SettingsSection
         title="Schedules"
@@ -215,11 +236,7 @@ function TriggersSession({
       >
         <SettingsQueryState query={schedules} resource="Schedules" />
         {scheduleItems?.length === 0 ? (
-          <NoTriggerStep
-            kind="Schedule"
-            workspaceId={workspace.id}
-            workflowId={workflowId}
-          />
+          <NoTriggerStep kind="Schedule" {...common} />
         ) : null}
         <SchedulesSection
           {...common}

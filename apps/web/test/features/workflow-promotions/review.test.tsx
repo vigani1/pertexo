@@ -256,3 +256,30 @@ it('clears the protected review when apply loses workspace access', async () => 
     screen.queryByRole('button', { name: 'Create target drafts' }),
   ).not.toBeInTheDocument();
 });
+
+it('tells a viewer promotion needs edit access without asking for its settings', async () => {
+  const fetch = vi.fn<typeof globalThis.fetch>();
+  const scope = {
+    apiClient: createApiClient({
+      fetch,
+      readCsrfToken: () =>
+        'csrf-token-for-component-tests-12345678901234567890',
+    }),
+    userId,
+    workspaceId,
+  };
+  renderInRouter(
+    <WorkflowPromotionPage
+      scope={scope}
+      workspace={workspaceWith([]) as AccessibleWorkspace}
+      onSelect={vi.fn()}
+    />,
+  );
+  expect(
+    await screen.findByRole('heading', { name: 'Promotion' }),
+  ).toBeVisible();
+  expect(
+    screen.getByText('Promotion needs edit access in an active workspace.'),
+  ).toBeVisible();
+  expect(fetch).not.toHaveBeenCalled();
+});
