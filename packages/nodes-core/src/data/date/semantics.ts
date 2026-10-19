@@ -7,9 +7,11 @@ const MIN_INSTANT = -62_167_219_200_000;
 const MAX_INSTANT = 253_402_300_799_999;
 const INSTANT =
   /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?(Z|[+-]\d{2}:\d{2})$/u;
+// What date columns and date pickers produce; read as midnight UTC.
+const PLAIN_DATE = /^(\d{4})-(\d{2})-(\d{2})$/u;
 function invalidDate(): never {
   throw new NodeInputValidationError(
-    'Use integer epoch milliseconds or a valid explicit-offset timestamp within UTC years 0000 through 9999',
+    'Use a date like 2026-10-19, a time with its offset like 2026-10-19T09:30:00+02:00, or epoch milliseconds, within the years 0000 to 9999.',
   );
 }
 function checkInstant(value: number): number {
@@ -18,7 +20,8 @@ function checkInstant(value: number): number {
   return value;
 }
 function parseInstant(value: string): number {
-  const parts = INSTANT.exec(value);
+  const plain = PLAIN_DATE.exec(value);
+  const parts = INSTANT.exec(plain === null ? value : `${value}T00:00:00Z`);
   if (parts === null) return invalidDate();
   const year = Number(parts[1]),
     month = Number(parts[2]),
@@ -43,15 +46,18 @@ function parseInstant(value: string): number {
       (Number(offset.slice(1, 3)) > 23 || Number(offset.slice(4)) > 59))
   )
     return invalidDate();
-  return checkInstant(Date.parse(value));
+  return checkInstant(Date.parse(parts[0]));
 }
 export function transformDateValue(
   config: CoreDateConfig,
   input: CoreDateInput,
 ) {
   if (config.operation === 'to_iso') {
-    if (typeof input.value !== 'number') return invalidDate();
-    return { value: new Date(checkInstant(input.value)).toISOString() };
+    const instant =
+      typeof input.value === 'number'
+        ? checkInstant(input.value)
+        : parseInstant(input.value);
+    return { value: new Date(instant).toISOString() };
   }
   if (config.operation === 'to_epoch_millis') {
     if (typeof input.value !== 'string') return invalidDate();
