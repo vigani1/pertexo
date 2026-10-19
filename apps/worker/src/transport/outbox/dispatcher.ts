@@ -83,6 +83,11 @@ const WORKSPACE_CAPACITY_SAMPLE_INTERVAL_MILLIS = 5 * 60_000;
 const MAX_TRACKED_WORKSPACE_CAPACITY_SAMPLES = 1_000;
 const MAX_PENDING_WORKSPACE_CAPACITY_SAMPLES = 100;
 const ACTIVE_POLL_INTERVAL_MILLIS = 25;
+// A run's next step reaches the outbox a few dozen milliseconds after its
+// previous publication, two hops per step. Polling quickly for this long after
+// the last publication keeps those hops from each waiting out a backed-off
+// interval; an idle worker still backs off once it passes.
+const ACTIVE_WINDOW_MILLIS = 1_000;
 
 function transportJobName(jobName: string): TransportJob | undefined {
   return Object.values<string>(JOB_NAME).includes(jobName)
@@ -425,27 +430,36 @@ export class OutboxDispatcher {
   }
 
   private async runLoop(): Promise<void> {
+    const activePollIntervalMillis = Math.min(
+      ACTIVE_POLL_INTERVAL_MILLIS,
+      this.options.pollIntervalMillis,
+    );
     let pollIntervalMillis = this.options.pollIntervalMillis;
+    let lastActivityAt = Number.NEGATIVE_INFINITY;
     while (this.isRunning() && this.drainState.canAcceptWork()) {
       try {
         const result = await this.dispatchOnce();
+        const now = performance.now();
         // Successive steps need successive publications. Keep those rounds
         // close together without imposing busy polling on an idle workspace.
-        pollIntervalMillis =
-          result.published > 0 || result.outcomeUnknown > 0
-            ? Math.min(
-                ACTIVE_POLL_INTERVAL_MILLIS,
-                this.options.pollIntervalMillis,
-              )
-            : result.failed > 0
-              ? this.options.pollIntervalMillis
-              : Math.min(
-                  pollIntervalMillis * 2,
-                  this.options.pollIntervalMillis,
-                );
+        if (result.published > 0 || result.outcomeUnknown > 0) {
+          lastActivityAt = now;
+          pollIntervalMillis = activePollIntervalMillis;
+        } else if (result.failed > 0) {
+          lastActivityAt = Number.NEGATIVE_INFINITY;
+          pollIntervalMillis = this.options.pollIntervalMillis;
+        } else if (now - lastActivityAt < ACTIVE_WINDOW_MILLIS) {
+          pollIntervalMillis = activePollIntervalMillis;
+        } else {
+          pollIntervalMillis = Math.min(
+            pollIntervalMillis * 2,
+            this.options.pollIntervalMillis,
+          );
+        }
       } catch {
         // Readiness surfaces boundary health. The loop stays alive so a
         // transient PostgreSQL/Redis failure cannot permanently stop dispatch.
+        lastActivityAt = Number.NEGATIVE_INFINITY;
         pollIntervalMillis = this.options.pollIntervalMillis;
       }
       if (!this.isRunning() || !this.drainState.canAcceptWork()) break;
