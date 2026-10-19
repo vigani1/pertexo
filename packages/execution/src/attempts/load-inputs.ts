@@ -4,6 +4,7 @@ import {
   type NodeAttemptStoredInputs,
 } from '@pertexo/database/attempts';
 import {
+  loopIterationOrdinal,
   parseCheckpoint,
   type BranchScopePart,
   type IterationScopePart,
@@ -28,9 +29,84 @@ export type NodeAttemptInputs = Omit<NodeAttemptStoredInputs, 'checkpoint'> &
       collectionSize: number;
       declaredCollectionChecksum: string;
     }>;
+    /** A finished loop's results were too large to pass on. */
+    loopResultsTooLarge?: true;
   }>;
 
 type LoadInputsRequest = Parameters<NodeAttemptRunStore['loadInputs']>[0];
+
+/** A finished For Each step that feeds the attempt, and its body's last step. */
+export type ForEachUpstream = Readonly<{
+  nodeId: string;
+  invocationKey: string;
+  sinkNodeId: string;
+}>;
+
+export type LoopResultsRequest = Readonly<{
+  loops: readonly ForEachUpstream[];
+  maxBytes: number;
+}>;
+
+type CompletedOutput = NodeAttemptStoredInputs['completedNodeOutputs'][number];
+
+/**
+ * What a finished loop passes on: its output plus `results`, each pass's
+ * result in item order, null for a pass that skipped the body's last step.
+ * The checkpoint releases passes as they settle, so results are read back
+ * from the stored step runs.
+ */
+async function withLoopResults(
+  store: Pick<NodeAttemptRunStore, 'listNodeOutcomes' | 'readNodeOutputs'>,
+  request: LoadInputsRequest,
+  output: CompletedOutput,
+  loop: ForEachUpstream,
+  maxBytes: number,
+): Promise<CompletedOutput | undefined> {
+  const count = (output.value as { iterationCount?: unknown } | null)
+    ?.iterationCount;
+  if (typeof count !== 'number') throw new NodeAttemptStateCorruptError();
+  const passes = new Map<number, { invocationKey: string; bytes?: number }>();
+  for (const outcome of await store.listNodeOutcomes({
+    lease: request.lease,
+    nodeId: loop.sinkNodeId,
+    signal: request.signal,
+  })) {
+    const ordinal = loopIterationOrdinal(
+      outcome.invocationKey,
+      loop.nodeId,
+      request.lease.iterationPath ?? [],
+    );
+    if (ordinal === undefined) continue;
+    if (ordinal >= count || passes.has(ordinal))
+      throw new NodeAttemptStateCorruptError();
+    passes.set(ordinal, {
+      invocationKey: outcome.invocationKey,
+      ...(outcome.status === 'succeeded' ? { bytes: outcome.outputBytes } : {}),
+    });
+  }
+  const succeeded = [...passes.values()].filter(
+    (pass) => pass.bytes !== undefined,
+  );
+  if (succeeded.reduce((sum, pass) => sum + (pass.bytes ?? 0), 0) > maxBytes)
+    return undefined;
+  const stored = new Map(
+    (
+      await store.readNodeOutputs({
+        lease: request.lease,
+        invocationKeys: succeeded.map(({ invocationKey }) => invocationKey),
+        signal: request.signal,
+      })
+    ).map(({ invocationKey, output: value }) => [invocationKey, value]),
+  );
+  const results = Array.from({ length: count }, (_, ordinal) => {
+    const pass = passes.get(ordinal);
+    return pass?.bytes === undefined ? null : stored.get(pass.invocationKey);
+  });
+  return Object.freeze({
+    ...output,
+    value: { ...(output.value as object), results },
+  });
+}
 
 /**
  * A Merge's settled branches with each selected branch's result: the
@@ -112,11 +188,40 @@ function innermostLoop(
 export async function loadAttemptInputs(
   store: Pick<
     NodeAttemptRunStore,
-    'loadInputs' | 'readLoopDeclaration' | 'readAttemptOutputs'
+    | 'loadInputs'
+    | 'readLoopDeclaration'
+    | 'readAttemptOutputs'
+    | 'listNodeOutcomes'
+    | 'readNodeOutputs'
   >,
   input: LoadInputsRequest,
+  loopResults?: LoopResultsRequest,
 ): Promise<NodeAttemptInputs> {
-  const { checkpoint: stored, ...inputs } = await store.loadInputs(input);
+  const { checkpoint: stored, ...loaded } = await store.loadInputs(input);
+  const resolved = await Promise.all(
+    loaded.completedNodeOutputs.map(async (output) => {
+      const loop = loopResults?.loops.find(
+        ({ invocationKey }) => invocationKey === output.invocationKey,
+      );
+      if (loop === undefined) return { output, tooLarge: false };
+      const withResults = await withLoopResults(
+        store,
+        input,
+        output,
+        loop,
+        loopResults?.maxBytes ?? 0,
+      );
+      return {
+        output: withResults ?? output,
+        tooLarge: withResults === undefined,
+      };
+    }),
+  );
+  const loopResultsTooLarge = resolved.some(({ tooLarge }) => tooLarge);
+  const inputs = {
+    ...loaded,
+    completedNodeOutputs: resolved.map(({ output }) => output),
+  };
   const checkpoint = parseCheckpoint(stored);
   if (inputs.sourceFailure !== undefined) {
     const source = checkpoint.invocations.find(
@@ -164,5 +269,6 @@ export async function loadAttemptInputs(
     ...inputs,
     ...(join === undefined ? {} : { coordinatorInput: join }),
     ...(structuredCollection === undefined ? {} : { structuredCollection }),
+    ...(loopResultsTooLarge ? { loopResultsTooLarge: true as const } : {}),
   });
 }

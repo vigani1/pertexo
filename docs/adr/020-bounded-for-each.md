@@ -178,3 +178,19 @@ fixtures. The [F08 plan](../feature-plans/08-subworkflows.md) records checkpoint
 rewrite/WAL measurements, their scope and recovery/retention evidence. All
 2026-10-09 limits remain unchanged; future increases still require separate
 evidence, including Call waits once that runtime exists.
+
+## Accepted amendment — 2026-10-19
+
+The owner approved passing loop results on, as n8n, Zapier and Make do
+([plan](../feature-plans/step-capability-upgrades.md)). A step after a finished
+For Each sees the loop's output with `results`: each pass's result in item
+order, which is what the body's single last step returned, or null where a pass
+skipped it. The checkpoint stays as it is. When the worker loads that step's
+inputs, it lists the last step's stored runs, keeps the ones whose invocation
+key places them directly in this loop instance, and reads their outputs. The
+loop's stored output keeps its two fields.
+
+Results larger than the node JSON byte limit are not read. The step fails as a
+configuration failure with `execution.loop_results_too_large`, which a failure
+link can take, and the person is told to return less from the loop's last step.
+
