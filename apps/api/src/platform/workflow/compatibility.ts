@@ -1,4 +1,5 @@
 import { codeStepPublicationIssues } from './code-validation.js';
+import { missingConnectionIssues } from './connection-validation.js';
 import { DEFAULT_CODE_SETTINGS, type CodeSettings } from '@pertexo/node-sdk';
 import {
   createWorkflowAuthoringDatabase,
@@ -97,7 +98,10 @@ export function createCoreAuthoringOptions(
         compatibility.authoringPolicies,
         options,
       );
-      const issues = codeStepPublicationIssues(graph, codeSettings);
+      const issues = [
+        ...codeStepPublicationIssues(graph, codeSettings),
+        ...missingConnectionIssues(graph, compatibility.definitionCatalog),
+      ];
       return issues.length === 0
         ? result
         : {
