@@ -16,8 +16,4 @@ export {
 } from './request-context.js';
 export * from './idempotency-key.js';
 export { withRequestOperationSignal } from './request-operation-signal.js';
-export {
-  isRequestBodyError,
-  parseRequestBody,
-  requestBodyCause,
-} from './request-body.js';
+export { parseRequestBody, requestBodyCause } from './request-body.js';
