@@ -5,8 +5,14 @@ describe('registered portable definition policy', () => {
   it('derives exact registered slots/config schemas without executor/credential access', () => {
     const policy = platformPortableDefinitionPolicy();
     const http = policy.definitions.find(({ key }) => key === 'http.request');
+    // A public API needs no key, so an import may leave this slot unbound.
     expect(http?.slots).toEqual([
-      { slot: 'http_headers', providerKey: 'http', authType: 'http_headers' },
+      {
+        slot: 'http_headers',
+        providerKey: 'http',
+        authType: 'http_headers',
+        optional: true,
+      },
     ]);
     const config = {
       method: 'GET',
@@ -87,6 +93,7 @@ describe('registered portable definition policy', () => {
         slot: 'resend_api_key',
         providerKey: 'email',
         authType: 'resend_api_key',
+        optional: false,
       },
     ]);
     expect(
@@ -96,6 +103,7 @@ describe('registered portable definition policy', () => {
         slot: 'slack_bot_token',
         providerKey: 'slack',
         authType: 'slack_bot_token',
+        optional: false,
       },
     ]);
   });

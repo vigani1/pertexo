@@ -229,6 +229,41 @@ describe('portable authoring projection and rebinding', () => {
     ]);
     expect(inspected.graph.nodes[0]?.connectionRefs).toEqual({});
   });
+  it('lets an optional connection stay unbound, keeping the file format', () => {
+    const optionalCatalog: WorkflowPortabilityCatalog = {
+      definitions: catalog.definitions.map((definition) => ({
+        ...definition,
+        slots: definition.slots.map((slot) => ({ ...slot, optional: true })),
+      })),
+    };
+    const manifest = projectWorkflowPortableManifest(
+      graph([node('http', 'http.request')]),
+      optionalCatalog,
+    );
+    // The file still lists the slot, exactly as before.
+    expect(manifest.connectionSlots).toEqual([
+      {
+        nodeId: 'http',
+        slot: 'http_headers',
+        providerKey: 'http',
+        authType: 'http_headers',
+      },
+    ]);
+    expect(
+      inspectWorkflowPortableManifest(manifest, [], optionalCatalog).issues,
+    ).toEqual([]);
+    // A file exported before the slot became optional imports the same way.
+    expect(
+      inspectWorkflowPortableManifest(
+        projectWorkflowPortableManifest(
+          graph([node('http', 'http.request')]),
+          catalog,
+        ),
+        [],
+        optionalCatalog,
+      ).issues,
+    ).toEqual([]);
+  });
   it.each([
     'password_auth',
     'credential',

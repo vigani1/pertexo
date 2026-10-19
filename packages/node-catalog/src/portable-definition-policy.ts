@@ -22,7 +22,11 @@ export function platformPortableDefinitionPolicy() {
       const policy = CONNECTION_SLOT_POLICIES[slot];
       if (policy === undefined)
         throw new Error('Portable connection slot policy is unavailable');
-      return Object.freeze({ slot, ...policy });
+      return Object.freeze({
+        slot,
+        ...policy,
+        optional: (manifest.optionalConnections ?? []).includes(slot),
+      });
     });
     return Object.freeze({
       ...manifest.definition,

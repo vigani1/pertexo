@@ -1,3 +1,4 @@
+import { connectionSlotKey } from '../../model/portability';
 import { useQuery } from '@tanstack/react-query';
 import type {
   AccessibleWorkspace,
@@ -100,6 +101,7 @@ function WorkflowImportConnections({
   slots,
   nodes,
   bindings,
+  optionalSlots,
   disabled,
   onChange,
 }: Readonly<{
@@ -109,6 +111,7 @@ function WorkflowImportConnections({
   slots: readonly PortableConnectionSlot[];
   nodes: readonly PortableNode[];
   bindings: readonly PortableConnectionBinding[];
+  optionalSlots: ReadonlySet<string>;
   disabled: boolean;
   onChange: (bindings: PortableConnectionBinding[]) => void;
 }>) {
@@ -154,6 +157,9 @@ function WorkflowImportConnections({
             connection.authType === slot.authType &&
             connection.status === 'active',
         );
+        const optional = optionalSlots.has(
+          connectionSlotKey(slot.nodeId, slot.slot),
+        );
         const selected =
           bindings.find(
             (binding) =>
@@ -167,15 +173,24 @@ function WorkflowImportConnections({
               nodes.find((node) => node.id === slot.nodeId),
               slot.nodeId,
             )}
-            description={`${describeConnectionRequirement(slot.authType)}${choices.length === 0 && !connections.isFetching ? '. This workspace has none yet; add one in Connections.' : ''}`}
+            description={
+              optional
+                ? `${describeConnectionRequirement(slot.authType)}, optional: leave it empty for an API that needs no key.`
+                : `${describeConnectionRequirement(slot.authType)}${choices.length === 0 && !connections.isFetching ? '. This workspace has none yet; add one in Connections.' : ''}`
+            }
           >
             {(control) => (
               <Select
                 value={selected}
-                items={choices.map((connection) => ({
-                  value: connection.id,
-                  label: connection.name,
-                }))}
+                items={[
+                  ...(optional
+                    ? [{ value: null, label: 'No connection' }]
+                    : []),
+                  ...choices.map((connection) => ({
+                    value: connection.id,
+                    label: connection.name,
+                  })),
+                ]}
                 disabled={
                   disabled ||
                   connections.isFetching ||
@@ -202,9 +217,16 @@ function WorkflowImportConnections({
                 }}
               >
                 <SelectTrigger {...control}>
-                  <SelectValue placeholder="Choose a connection" />
+                  <SelectValue
+                    placeholder={
+                      optional ? 'No connection' : 'Choose a connection'
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
+                  {optional ? (
+                    <SelectItem value={null}>No connection</SelectItem>
+                  ) : null}
                   {choices.map((connection) => (
                     <SelectItem key={connection.id} value={connection.id}>
                       {connection.name}
@@ -264,6 +286,7 @@ export function WorkflowImportReview({
   manifest,
   preview,
   bindings,
+  optionalSlots,
   disabled,
   onBindingsChange,
 }: Readonly<{
@@ -273,6 +296,7 @@ export function WorkflowImportReview({
   manifest: WorkflowPortableManifest | undefined;
   preview: WorkflowImportPreviewResponse | undefined;
   bindings: readonly PortableConnectionBinding[];
+  optionalSlots: ReadonlySet<string>;
   disabled: boolean;
   onBindingsChange: (bindings: PortableConnectionBinding[]) => void;
 }>) {
@@ -289,6 +313,7 @@ export function WorkflowImportReview({
               slots={manifest.connectionSlots}
               nodes={manifest.graph.nodes}
               bindings={bindings}
+              optionalSlots={optionalSlots}
               disabled={disabled}
               onChange={onBindingsChange}
             />
