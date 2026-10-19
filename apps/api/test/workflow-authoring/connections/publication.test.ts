@@ -15,6 +15,16 @@ const catalog: WorkflowDefinitionCatalog = {
         connectionSlots: ['http_headers'],
       },
     },
+    {
+      key: 'http.public',
+      version: 1,
+      integration: {
+        providerKey: 'http',
+        operationKey: 'request',
+        connectionSlots: ['http_headers'],
+        optionalConnectionSlots: ['http_headers'],
+      },
+    },
   ],
 };
 
@@ -64,6 +74,12 @@ describe('connection publication policy', () => {
         ),
         catalog,
       ),
+    ).toEqual([]);
+  });
+
+  it('lets an optional connection stay empty', () => {
+    expect(
+      missingConnectionIssues(graph(node('call', 'http.public')), catalog),
     ).toEqual([]);
   });
 
