@@ -272,6 +272,27 @@ export function FormFieldsEditor({
               />
             )}
           </LabelledField>
+          {field.type === 'boolean' ? (
+            <LabelledField
+              id={`${id}-${field.id}-ticked`}
+              label="Must be ticked to send"
+              description="For an agreement such as terms of service. Leave it off for a yes/no question."
+            >
+              {(control) => (
+                <Checkbox
+                  {...control}
+                  checked={field.mustBeTicked === true}
+                  onCheckedChange={(ticked) => {
+                    update(index, (current) => {
+                      if (current.type !== 'boolean') return current;
+                      const { mustBeTicked: _previous, ...rest } = current;
+                      return ticked ? { ...rest, mustBeTicked: true } : rest;
+                    });
+                  }}
+                />
+              )}
+            </LabelledField>
+          ) : null}
         </section>
       ))}
       <Button
