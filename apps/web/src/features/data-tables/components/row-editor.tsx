@@ -172,10 +172,11 @@ export function TableRowEditor({
                         onChange={set}
                       />
                     ) : column.type === 'number' ? (
+                      // No digit pad: iPhone's has no minus key, and its
+                      // decimal key types the region's separator, often ",".
                       <Input
                         {...control}
                         ref={validation.register(column.name)}
-                        inputMode="decimal"
                         className="font-mono"
                         value={text}
                         onChange={(event) => {

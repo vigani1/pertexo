@@ -15,6 +15,11 @@
   }
 }
 
+/* While a text field has focus a phone's keyboard is up, and iOS lifts fixed
+   bottom bars above it, over the page and its buttons. Such bars hide while
+   typing, the way a native tab bar stays behind the keyboard. */
+@custom-variant typing (body:has(:is(textarea, [contenteditable='true'], input:not([type='checkbox'], [type='radio'], [type='range'], [type='button'], [type='submit'], [type='reset'], [type='file'], [type='color'])):focus) &);
+
 @theme inline {
   --font-sans: 'Inter Variable', Inter, ui-sans-serif, system-ui, sans-serif;
   --font-heading:

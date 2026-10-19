@@ -142,7 +142,11 @@ export function LiveTextField<Value>({
   /** Names this box's unfinished text for the form. */
   scratchKey: string;
   mono?: boolean;
-  inputMode?: 'decimal' | 'numeric' | 'text';
+  /**
+   * The digit pad, for whole counts from 0 only: iPhone's has no minus key,
+   * and its decimal key types the region's separator, often ",".
+   */
+  inputMode?: 'numeric' | undefined;
   placeholder?: string;
   className?: string;
   /** Sameness for values that aren't compared by identity, like lists. */
