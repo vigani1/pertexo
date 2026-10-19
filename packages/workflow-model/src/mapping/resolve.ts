@@ -1,5 +1,5 @@
 import { lookupWorkspaceVariable } from '../variables/lookup.js';
-import { canonicalizeJson, type JsonValue } from '../json/canonical.js';
+import { normalizeJson, type JsonValue } from '../json/canonical.js';
 import type {
   ExpressionContext,
   ExpressionEvaluator,
@@ -31,7 +31,7 @@ export async function resolveValueSource(
   if (source.kind === 'workspace_variable')
     return lookupWorkspaceVariable(source.name, context.variables ?? {});
   if (source.kind === 'literal')
-    return { kind: 'value', value: canonicalizeJson(source.value) };
+    return { kind: 'value', value: normalizeJson(source.value) };
   if (source.kind === 'run_input')
     return resolveJsonPath(context.runInput, source.path);
   if (source.kind === 'node_output') {

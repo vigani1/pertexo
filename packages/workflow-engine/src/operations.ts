@@ -54,7 +54,10 @@ import {
   type WorkflowExecutableNode,
   type WorkflowExecutableGraph,
 } from './compilation/foundation.js';
-import { normalizeBoundedEngineJson } from './compilation/validation.js';
+import {
+  normalizeBoundedEngineJson,
+  normalizeBoundedEngineValue,
+} from './compilation/validation.js';
 import type { WorkflowObservation } from './types.js';
 import { parseCheckpoint } from './checkpoint/create-and-parse.js';
 import type { SchedulerState } from './transition/scheduling/readiness.js';
@@ -404,7 +407,8 @@ async function resolveMappedNodeInput(
 ): Promise<JsonValue> {
   if (isWorkflowTriggerDefinition(node.definition)) return runInput;
   const mapped = Object.create(null) as Record<string, JsonValue>;
-  for (const key of Object.keys(node.inputMappings).sort()) {
+  // Mappings resolve independently; their authored order is the input's.
+  for (const key of Object.keys(node.inputMappings)) {
     assertNotAborted(signal);
     const source = node.inputMappings[key];
     if (source === undefined) continue;
@@ -462,7 +466,7 @@ async function resolveMappedNodeInput(
     if (resolution.kind === 'value') mapped[key] = resolution.value;
   }
   try {
-    return normalizeBoundedEngineJson(mapped);
+    return normalizeBoundedEngineValue(mapped);
   } catch {
     operationError('attempt_invalid', 'mapped input exceeds runtime limits');
   }
@@ -481,7 +485,7 @@ export async function resolveSingleNodePreviewInput(
   let node: Pick<WorkflowExecutableNode, 'definition' | 'inputMappings'>;
   let runInput: JsonValue;
   try {
-    runInput = normalizeBoundedEngineJson(input.runInput);
+    runInput = normalizeBoundedEngineValue(input.runInput);
     const rawNode = record(
       normalizeBoundedEngineJson(input.node),
       'attempt_invalid',
@@ -555,7 +559,7 @@ export async function executeNodeAttempt(
     if (input.coordinatorInput === undefined)
       operationError('attempt_invalid', 'settled Merge input is missing');
     try {
-      executionInput = normalizeBoundedEngineJson(input.coordinatorInput);
+      executionInput = normalizeBoundedEngineValue(input.coordinatorInput);
     } catch {
       operationError('attempt_invalid', 'settled Merge input is invalid');
     }
