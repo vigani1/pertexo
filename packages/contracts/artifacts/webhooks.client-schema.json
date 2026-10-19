@@ -45,11 +45,12 @@
       "path": "/hooks/:endpointKey"
     },
     {
+      "method": "GET",
+      "path": "/hooks/:endpointKey"
+    },
+    {
       "method": "POST",
       "path": "/hooks/:endpointKey",
-      "requiredHeaders": [
-        "Content-Type"
-      ],
       "maximumBodyBytes": 262144
     }
   ]
