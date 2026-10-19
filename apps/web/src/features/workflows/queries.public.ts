@@ -7,5 +7,6 @@ export {
 } from './data/workflows.queries';
 export {
   workflowListQueryOptions,
+  workflowNameSearchQueryOptions,
   workflowOrganizationKeys,
 } from './data/organization/queries';

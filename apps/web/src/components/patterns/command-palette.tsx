@@ -35,13 +35,20 @@ export function CommandPalette({
   onOpenChange,
   groups,
   resolveQuery,
+  onQueryChange,
 }: Readonly<{
   open: boolean;
   onOpenChange: (open: boolean) => void;
   groups: readonly CommandGroup[];
   resolveQuery?: (query: string) => CommandGroup | undefined;
+  /** Lets a caller search the server for what's being typed. */
+  onQueryChange?: (query: string) => void;
 }>) {
-  const [query, setQuery] = useState('');
+  const [query, setQueryState] = useState('');
+  function setQuery(next: string) {
+    setQueryState(next);
+    onQueryChange?.(next.trim());
+  }
   const dynamic = resolveQuery?.(query.trim());
   const visibleGroups = [...(dynamic === undefined ? [] : [dynamic]), ...groups]
     .map((group) => ({
