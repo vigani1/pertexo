@@ -12,6 +12,9 @@ import { CanvasActionsContext } from '../../model/canvas/actions-context';
 
 const HIDE_DELAY_MS = 160;
 const WEAVE_STEP_MS = 320;
+// The thread's own stroke outranks React Flow's focus style, so a link with
+// keyboard focus looks selected here.
+const FOCUSED_THREAD = String.raw`in-[.react-flow\_\_edge:focus-visible]:!stroke-primary in-[.react-flow\_\_edge:focus-visible]:!stroke-2`;
 
 /**
  * A link is a thread: it brightens on hover, turns cyan when selected
@@ -76,6 +79,7 @@ export function WorkflowEdge({
             '!stroke-destructive/70 [stroke-dasharray:1_4_7_4]',
           hovered && '!stroke-accent-foreground/75',
           selected === true && '!stroke-primary !stroke-2',
+          FOCUSED_THREAD,
         )}
       />
       <path

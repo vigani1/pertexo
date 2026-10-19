@@ -14,7 +14,7 @@ export function SelectTrigger({
     <SelectPrimitive.Trigger
       data-slot="select-trigger"
       className={cn(
-        "recessed-control flex h-9 w-full min-w-0 items-center justify-between gap-2 rounded-md border px-3 text-sm whitespace-nowrap outline-none select-none data-placeholder:text-subtle-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "recessed-control flex h-9 w-full min-w-0 items-center justify-between gap-2 rounded-md border px-3 text-sm whitespace-nowrap select-none data-placeholder:text-subtle-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className,
       )}
       {...props}
