@@ -86,7 +86,7 @@ describe('node testing error mapping', () => {
       'request schema failure',
       new z.ZodError([]),
       'request.invalid',
-      'The workflow graph is invalid.',
+      'The step test request is invalid.',
     ],
   ] as const)(
     'maps %s to its exact bounded public problem',

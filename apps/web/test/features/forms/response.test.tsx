@@ -20,7 +20,7 @@ it('preserves zero and false, omits blank optional input and reports required er
   const user = userEvent.setup();
   await user.click(screen.getByRole('button', { name: 'Send response' }));
   expect(send).not.toHaveBeenCalled();
-  await screen.findByText('Enter a valid value for this field.');
+  await screen.findByText('This field is required.');
   await user.type(screen.getByLabelText('Amount', { exact: true }), '0');
   await user.click(screen.getByRole('button', { name: 'Send response' }));
   await waitFor(() => {

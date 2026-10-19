@@ -50,6 +50,7 @@ import {
   persistPublishedWorkflowTriggers,
 } from './trigger-reconciliation.js';
 import { validatePublicationCalls, persistPublicationCalls } from './calls.js';
+import { connectionReferenceIssues } from './connections.js';
 import type { AuthoringCatalogs } from '../workflows/catalogs.js';
 
 export { reconcileWorkflowTriggersPayload } from './trigger-reconciliation.js';
@@ -210,6 +211,13 @@ async function lockAndCompilePublication(
     graph,
   );
   if (tableIssues.length > 0) throw new InvalidWorkflowGraphError(tableIssues);
+  const connectionIssues = await connectionReferenceIssues(
+    client,
+    input.workspaceId,
+    graph,
+  );
+  if (connectionIssues.length > 0)
+    throw new InvalidWorkflowGraphError(connectionIssues);
   await validateApprovalAudience(client, input.workspaceId, graph);
   await lockArtifactReferences(client, input.workspaceId, graph);
   const executable = executableSchema.parse(variant.executableCompiler(graph));
