@@ -136,3 +136,99 @@ test('explains why the starter cannot decide and sends no command', async ({
     page.getByRole('button', { name: 'Reject', exact: true }),
   ).toBeDisabled();
 });
+/** A request as the queue lists it: the detail fields stay on its page. */
+function listed(detail: Record<string, unknown>) {
+  const summary = { ...detail };
+  for (const field of [
+    'instructions',
+    'audience',
+    'output',
+    'workflowVersionId',
+  ])
+    Reflect.deleteProperty(summary, field);
+  return summary;
+}
+
+for (const width of [1280, 375])
+  test(`decides a waiting approval from the queue at ${String(width)}px`, async ({
+    page,
+    baseURL,
+  }) => {
+    await page.setViewportSize({ width, height: 800 });
+    await installEditorRoutes(page, remoteDraft());
+    await page.context().addCookies([
+      {
+        name: 'pertexo_csrf',
+        value: 'csrf-approval-browser-123456789012345678901234567890',
+        url: baseURL ?? 'http://127.0.0.1:4173',
+      },
+    ]);
+    const decided = listed({
+      ...task,
+      id: '55555555-5555-4555-8555-555555555555',
+      title: 'Refund the order',
+      status: 'approved',
+      canRespond: false,
+      blockedReason: 'resolved',
+      completedAt: '2026-10-15T09:00:00.000Z',
+      completedByName: 'Ada Admin',
+    });
+    let waiting = true;
+    await page.route(
+      `**/v1/workspaces/${workspaceId}/pending-tasks?**`,
+      (route) =>
+        route.fulfill({
+          json: {
+            items: waiting ? [listed(task), decided] : [decided],
+            nextCursor: null,
+            pendingCount: waiting ? 1 : 0,
+          },
+        }),
+    );
+    const writes: unknown[] = [];
+    await page.route(`**/pending-tasks/${taskId}/decide`, (route) => {
+      writes.push(route.request().postDataJSON());
+      waiting = false;
+      return route.fulfill({
+        json: {
+          task: {
+            ...task,
+            status: 'approved',
+            canRespond: false,
+            blockedReason: 'resolved',
+            completedAt: '2026-10-15T09:00:00.000Z',
+            completedByName: user.displayName,
+            output: {
+              decision: 'approved',
+              comment: null,
+              decidedBy: user.id,
+              decidedAt: '2026-10-15T09:00:00.000Z',
+            },
+          },
+          replayed: false,
+        },
+      });
+    });
+    await page.goto(`/w/${workspaceId}/requests?kind=all&view=all&status=all`);
+    // A finished request says who ended it and offers no decision.
+    await expect(
+      page.getByText('Ada Admin approved', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Approve Refund the order' }),
+    ).toHaveCount(0);
+    await page
+      .getByRole('button', { name: 'Approve Review payment', exact: true })
+      .click();
+    await expect
+      .poll(() => writes)
+      .toEqual([{ decision: 'approved', comment: '' }]);
+    await expect(
+      page.getByRole('button', { name: 'Approve Review payment', exact: true }),
+    ).toHaveCount(0);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+  });
