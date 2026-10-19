@@ -21,6 +21,7 @@ import {
   TableCapacity,
   TableCollection,
 } from '../components/overview';
+import { FORMAT_LOCALE } from '@/lib/format/locale';
 type TableDialog = 'create' | 'limits' | 'remove' | 'columns';
 export function DataTablesPage({
   scope,
@@ -148,8 +149,8 @@ function TableDetail({
   return (
     <>
       <p className="text-sm text-muted-foreground">
-        {table.rowCount.toLocaleString()} / {quotas?.rowLimit.toLocaleString()}{' '}
-        rows ·{' '}
+        {table.rowCount.toLocaleString(FORMAT_LOCALE)} /{' '}
+        {quotas?.rowLimit.toLocaleString(FORMAT_LOCALE)} rows ·{' '}
         {table.keyColumn === null
           ? 'No unique key'
           : `Unique key: ${table.keyColumn}`}

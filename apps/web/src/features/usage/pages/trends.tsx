@@ -16,6 +16,7 @@ import { accessLost } from '../model/usage-access';
 import { UsageSnapshot } from '../components/usage-snapshot';
 import { DailyChart } from '../components/trends/daily-chart';
 import { WorkflowRankings } from '../components/trends/rankings';
+import { FORMAT_LOCALE } from '@/lib/format/locale';
 export function UsageTrendsPage({
   apiClient,
   user,
@@ -85,7 +86,7 @@ export function UsageTrendsPage({
             {data === undefined ? null : (
               <div className="space-y-6">
                 <p className="text-lg tabular-nums">
-                  {data.total.toLocaleString()} runs
+                  {data.total.toLocaleString(FORMAT_LOCALE)} runs
                 </p>
                 <DailyChart snapshot={data} />
                 <p className="text-xs text-muted-foreground">
@@ -116,7 +117,8 @@ export function UsageTrendsPage({
                   </div>
                 </dl>
                 <p className="mt-3 text-xs text-muted-foreground">
-                  Measured across {data.elapsed.measuredRuns.toLocaleString()}{' '}
+                  Measured across{' '}
+                  {data.elapsed.measuredRuns.toLocaleString(FORMAT_LOCALE)}{' '}
                   completed runs.
                 </p>
               </SettingsSection>

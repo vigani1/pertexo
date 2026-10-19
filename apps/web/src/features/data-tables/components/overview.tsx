@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { StatusGlyph } from '@/components/ui/status';
 import { formatByteLength } from '@/lib/format/bytes';
+import { FORMAT_LOCALE } from '@/lib/format/locale';
 export function TablePageActions({
   detail,
   editable,
@@ -142,7 +143,7 @@ export function TableCollection({
             </p>
           </div>
           <p className="text-right text-sm tabular-nums">
-            {item.rowCount.toLocaleString()} rows
+            {item.rowCount.toLocaleString(FORMAT_LOCALE)} rows
             <br />
             <span className="text-xs text-muted-foreground">
               {formatByteLength(item.storedBytes)}

@@ -1,3 +1,5 @@
+import { FORMAT_LOCALE } from '@/lib/format/locale';
+
 /**
  * The sentence under the Loom. With the exact window total it says how many
  * runs the window holds and, when the drawing stops at its cap, that only the
@@ -18,7 +20,7 @@ export function loomCaption({
     return capped
       ? `Showing the latest 300 runs in ${phrase}. Narrow the window to see every run.`
       : undefined;
-  const runs = `${total.toLocaleString()} ${total === 1 ? 'run' : 'runs'} in ${phrase}`;
+  const runs = `${total.toLocaleString(FORMAT_LOCALE)} ${total === 1 ? 'run' : 'runs'} in ${phrase}`;
   return capped
     ? `${runs}. The Loom draws the latest 300; narrow the window to see every run.`
     : `${runs}.`;

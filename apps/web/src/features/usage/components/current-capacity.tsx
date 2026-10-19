@@ -2,6 +2,7 @@ import type { UsageCapacityResponse } from '@pertexo/contracts';
 import type { ReactNode } from 'react';
 import { formatByteLength } from '@/lib/format/bytes';
 import { CapacityLoom, StorageSpool } from './capacity-loom';
+import { FORMAT_LOCALE } from '@/lib/format/locale';
 
 const policyLabels: Readonly<
   Record<UsageCapacityResponse['execution']['policy']['state'], string>
@@ -48,17 +49,19 @@ export function CurrentCapacity({
         <dl>
           <CapacityRow
             label="In progress"
-            used={execution.activeCapacityConsumed.toLocaleString()}
+            used={execution.activeCapacityConsumed.toLocaleString(
+              FORMAT_LOCALE,
+            )}
             limit={
-              execution.policy.activeRunLimit?.toLocaleString() ??
+              execution.policy.activeRunLimit?.toLocaleString(FORMAT_LOCALE) ??
               'limit unavailable'
             }
           />
           <CapacityRow
             label="Queued runs"
-            used={execution.queuedRuns.toLocaleString()}
+            used={execution.queuedRuns.toLocaleString(FORMAT_LOCALE)}
             limit={
-              execution.policy.queuedRunLimit?.toLocaleString() ??
+              execution.policy.queuedRunLimit?.toLocaleString(FORMAT_LOCALE) ??
               'limit unavailable'
             }
           />
@@ -99,8 +102,8 @@ export function CurrentCapacity({
           />
           <CapacityRow
             label="Files"
-            used={artifacts.chargedCount.toLocaleString()}
-            limit={artifacts.artifactCountLimit.toLocaleString()}
+            used={artifacts.chargedCount.toLocaleString(FORMAT_LOCALE)}
+            limit={artifacts.artifactCountLimit.toLocaleString(FORMAT_LOCALE)}
           />
         </dl>
         <p className="mt-3 text-xs leading-relaxed text-muted-foreground">

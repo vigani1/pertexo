@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import type { UsageTrendsResponse } from '@pertexo/contracts';
+import { FORMAT_LOCALE } from '@/lib/format/locale';
 export function WorkflowRankings({
   items,
   metric,
@@ -38,7 +39,7 @@ export function WorkflowRankings({
             )}
           </span>
           <span className="shrink-0 tabular-nums">
-            {item[metric].toLocaleString()}{' '}
+            {item[metric].toLocaleString(FORMAT_LOCALE)}{' '}
             {item[metric] === 1
               ? metric === 'runs'
                 ? 'run'

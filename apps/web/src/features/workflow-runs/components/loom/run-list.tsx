@@ -4,6 +4,7 @@ import { Status } from '@/components/ui/status';
 import { formatClock, formatDurationMs } from '@/lib/format/time';
 import type { LoomModel } from '../../model/loom/model';
 import { describeRunStatus } from '../../model/presentation/run-status';
+import { FORMAT_LOCALE } from '@/lib/format/locale';
 
 /**
  * The Loom's text alternative: every plotted run, per workflow, as a link.
@@ -37,7 +38,7 @@ export function LoomRunList({
             </h3>
             {lane.total === undefined ? null : (
               <p className="font-mono text-xs text-subtle-foreground">
-                {lane.total.toLocaleString()}{' '}
+                {lane.total.toLocaleString(FORMAT_LOCALE)}{' '}
                 {lane.total === 1 ? 'run' : 'runs'} in {windowLabel}
               </p>
             )}

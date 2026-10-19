@@ -9,6 +9,7 @@ import {
   shortRunId,
 } from '@/features/workflow-runs/run-labels.public';
 import { formatDateTime } from '@/lib/format/time';
+import { FORMAT_LOCALE } from '@/lib/format/locale';
 
 type RunStatus = WorkflowRunSummary['status'];
 
@@ -36,7 +37,7 @@ export function RetainedActivity({
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <p>
           <span className="font-mono text-2xl">
-            {snapshot.window.total.toLocaleString()}
+            {snapshot.window.total.toLocaleString(FORMAT_LOCALE)}
           </span>{' '}
           <span className="text-sm text-muted-foreground">
             {snapshot.window.total === 1 ? 'run' : 'runs'} started{' '}
@@ -55,7 +56,7 @@ export function RetainedActivity({
       {snapshot.window.skippedTriggerEvents === undefined ? null : (
         <p className="text-sm text-muted-foreground">
           <span className="font-mono">
-            {snapshot.window.skippedTriggerEvents.toLocaleString()}
+            {snapshot.window.skippedTriggerEvents.toLocaleString(FORMAT_LOCALE)}
           </span>{' '}
           trigger events skipped {windowPhrase} because their workflow was at
           its limit. A skipped event starts no run.
@@ -64,7 +65,9 @@ export function RetainedActivity({
       {snapshot.window.coordinatedTriggerEvents === undefined ? null : (
         <p className="text-sm text-muted-foreground">
           <span className="font-mono">
-            {snapshot.window.coordinatedTriggerEvents.toLocaleString()}
+            {snapshot.window.coordinatedTriggerEvents.toLocaleString(
+              FORMAT_LOCALE,
+            )}
           </span>{' '}
           events matched up by trigger coordination {windowPhrase}, whether they
           waited, started a run or were skipped. Runs are counted separately.
@@ -83,12 +86,14 @@ export function RetainedActivity({
                   to="/w/$workspaceId/runs"
                   params={{ workspaceId }}
                   search={{ ...search, status }}
-                  aria-label={`${look.label} ${snapshot.window.byStatus[status].toLocaleString()}`}
+                  aria-label={`${look.label} ${snapshot.window.byStatus[status].toLocaleString(FORMAT_LOCALE)}`}
                   className="focus-ring flex items-center justify-between gap-4 rounded-sm border-t border-border py-3 text-sm hover:text-accent-foreground"
                 >
                   <Status tone={look.tone}>{look.label}</Status>
                   <span className="font-mono">
-                    {snapshot.window.byStatus[status].toLocaleString()}
+                    {snapshot.window.byStatus[status].toLocaleString(
+                      FORMAT_LOCALE,
+                    )}
                   </span>
                 </Link>
               </li>
@@ -118,7 +123,7 @@ export function RetainedActivity({
                         `Workflow ${shortRunId(workflow.workflowId)}`}
                     </span>
                     <span className="font-mono">
-                      {workflow.total.toLocaleString()}
+                      {workflow.total.toLocaleString(FORMAT_LOCALE)}
                     </span>
                   </Link>
                 </li>

@@ -7,6 +7,7 @@ import { Status } from '@/components/ui/status';
 import { statusToneText } from '@/components/ui/status-tone';
 import { describeRunStatus } from '@/features/workflow-runs/run-labels.public';
 import { formatDurationMs } from '@/lib/format/time';
+import { FORMAT_LOCALE } from '@/lib/format/locale';
 
 function segments(day: UsageTrendsResponse['days'][number], scale: number) {
   let bottom = 176;
@@ -31,10 +32,9 @@ export function DailyChart({
         </p>
         <p className="text-xs text-muted-foreground">
           Peak{' '}
-          {Math.max(
-            0,
-            ...snapshot.days.map((day) => day.total),
-          ).toLocaleString()}{' '}
+          {Math.max(0, ...snapshot.days.map((day) => day.total)).toLocaleString(
+            FORMAT_LOCALE,
+          )}{' '}
           runs in a day
         </p>
         <div
