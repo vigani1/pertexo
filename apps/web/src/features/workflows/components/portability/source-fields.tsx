@@ -1,11 +1,8 @@
 import type { WorkflowPortableManifest } from '@pertexo/workflow-model';
-import { ChevronDownIcon } from 'lucide-react';
-import { useState } from 'react';
 import { FieldGroup, LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import type { useFieldValidation } from '@/components/ui/use-field-validation';
 import type { ApiClient } from '@/lib/api/client';
-import { cn } from '@/lib/utils';
 import { workflowNameError } from '../../model/rename';
 import type { CuratedTemplate } from '../../model/templates/curated-setup';
 import { CuratedTemplateChoice } from '../templates/curated-template-choice';
@@ -24,7 +21,8 @@ export function WorkflowImportSourceFields({
   reading,
   locked,
   validation,
-  examplesFirst,
+  example,
+  opening,
   onChooseTemplate,
   onChooseFile,
   onNameChange,
@@ -40,58 +38,37 @@ export function WorkflowImportSourceFields({
   reading: boolean;
   locked: boolean;
   validation: ReturnType<typeof useFieldValidation<string>>;
-  /** Opened to choose an example, so the examples start unfolded. */
-  examplesFirst: boolean;
+  /** The example the dialog opened on; without one it takes a file. */
+  example: string | undefined;
+  /** The example still to choose for the person, until they've chosen one. */
+  opening: string | undefined;
   onChooseTemplate: (template: CuratedTemplate) => void;
   onChooseFile: (file: File | undefined) => void;
   onNameChange: (name: string) => void;
   onSetupChange: (index: number, value: string) => void;
 }>) {
-  const [examplesOpen, setExamplesOpen] = useState(examplesFirst);
-  const showExamples = examplesOpen || template !== undefined;
   return (
     <>
-      <WorkflowFileDrop
-        key={fileGeneration}
-        inputRef={validation.register('file')}
-        error={validation.error('file')}
-        locked={locked}
-        reading={reading}
-        manifest={template === undefined ? manifest : undefined}
-        onChoose={onChooseFile}
-      />
-      <div className="flex flex-col gap-2">
-        <button
-          type="button"
-          aria-expanded={showExamples}
-          aria-controls="import-examples"
-          disabled={template !== undefined}
-          onClick={() => {
-            setExamplesOpen((open) => !open);
-          }}
-          className="flex w-fit items-center gap-1.5 rounded-sm text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring disabled:text-foreground"
-        >
-          Or start from a ready-made example
-          <ChevronDownIcon
-            aria-hidden="true"
-            className={cn(
-              'size-4 transition-transform motion-reduce:transition-none',
-              showExamples && 'rotate-180',
-            )}
-          />
-        </button>
-        {showExamples ? (
-          <div id="import-examples">
-            <CuratedTemplateChoice
-              apiClient={apiClient}
-              userId={userId}
-              disabled={locked}
-              selectedId={template?.templateId}
-              onChoose={onChooseTemplate}
-            />
-          </div>
-        ) : null}
-      </div>
+      {example === undefined ? (
+        <WorkflowFileDrop
+          key={fileGeneration}
+          inputRef={validation.register('file')}
+          error={validation.error('file')}
+          locked={locked}
+          reading={reading}
+          manifest={manifest}
+          onChoose={onChooseFile}
+        />
+      ) : (
+        <CuratedTemplateChoice
+          apiClient={apiClient}
+          userId={userId}
+          disabled={locked}
+          selectedId={template?.templateId}
+          initialId={opening}
+          onChoose={onChooseTemplate}
+        />
+      )}
       <FieldGroup>
         <LabelledField
           id="portable-workflow-name"

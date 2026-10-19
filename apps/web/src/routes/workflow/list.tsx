@@ -1,5 +1,4 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { saveWorkflowDraft } from '@/features/workflow-editor/draft.public';
 import { WorkflowListPage } from '@/features/workflows/list.public';
 import { useWorkspaceScope } from '../workspace/shell/use-workspace-scope';
 
@@ -13,7 +12,6 @@ export function WorkflowListRoute() {
       user={user}
       workspace={workspace}
       search={search}
-      starterDraftWriter={saveWorkflowDraft}
       onSearchChange={(next) => {
         return navigate({
           to: '/w/$workspaceId/workflows',

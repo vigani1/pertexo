@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { WorkflowGraphContract } from '@pertexo/contracts';
 import type {
   InlineRenameCommand,
   InlineRenameError,
@@ -20,28 +19,6 @@ import type { LifecycleAction } from '../model/lifecycle';
 import { workflowKeys } from './workflows.queries';
 import { workflowOrganizationKeys } from './organization/queries';
 
-/**
- * Saves a starter graph into a new workflow's draft with the ETag returned by
- * creation. The editor owns draft saving; routes pass its transport in.
- */
-export type StarterDraftWriter = (
-  apiClient: ApiClient,
-  workspaceId: string,
-  workflowId: string,
-  input: Readonly<{ graph: WorkflowGraphContract; etag: string }>,
-) => Promise<unknown>;
-
-export type StarterSeed = Readonly<{
-  graph: WorkflowGraphContract;
-  write: StarterDraftWriter;
-}>;
-
-export type CreateWorkflowResult = Readonly<{
-  created: CreatedWorkflow;
-  /** Whether the starter steps reached the draft; `none` for Blank. */
-  seeded: 'none' | 'saved' | 'failed' | 'uncertain';
-}>;
-
 export function useCreateWorkflow(
   apiClient: ApiClient,
   userId: string,
@@ -49,31 +26,10 @@ export function useCreateWorkflow(
 ) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (
-      input: Readonly<{
-        name: string;
-        idempotencyKey: string;
-        seed?: StarterSeed;
-      }>,
-    ): Promise<CreateWorkflowResult> => {
-      const created = await createWorkflow(apiClient, workspaceId, input);
-      if (input.seed === undefined) return { created, seeded: 'none' };
-      try {
-        await input.seed.write(
-          apiClient,
-          workspaceId,
-          created.body.workflow.id,
-          { graph: input.seed.graph, etag: created.draftEtag },
-        );
-        return { created, seeded: 'saved' };
-      } catch (error) {
-        // The workflow exists either way; only its starter steps are unsure.
-        return {
-          created,
-          seeded: isUncertainOutcome(error) ? 'uncertain' : 'failed',
-        };
-      }
-    },
+    mutationFn: (
+      input: Readonly<{ name: string; idempotencyKey: string }>,
+    ): Promise<CreatedWorkflow> =>
+      createWorkflow(apiClient, workspaceId, input),
     onSuccess: () =>
       Promise.all([
         queryClient.invalidateQueries({

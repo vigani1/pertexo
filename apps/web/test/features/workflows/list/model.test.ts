@@ -18,11 +18,7 @@ import {
   layoutPatternGlyph,
   workflowTriggerKinds,
 } from '@/features/workflows/model/shape';
-import {
-  availableStarters,
-  buildStarterGraph,
-} from '@/features/workflows/model/templates/starters';
-import { catalogDefinition, catalogOf, graphOf, summary } from './fixtures';
+import { graphOf, summary } from './fixtures';
 
 function graph(value: WorkflowGraphContract): WorkflowGraphContract {
   return value;
@@ -206,54 +202,6 @@ describe('workflow list view', () => {
         { create: false, view: 'active', sort: 'updated' },
       ),
     ).toEqual({});
-  });
-});
-
-describe('starter patterns', () => {
-  it('offers a starter only when the catalog has every step', () => {
-    const catalog = catalogOf([
-      catalogDefinition('core.webhook', 'trigger'),
-      catalogDefinition('http.request', 'action'),
-      catalogDefinition('http.request', 'action', { version: 3 }),
-      catalogDefinition('slack.send_message', 'action'),
-      catalogDefinition('core.schedule', 'trigger'),
-      catalogDefinition('email.send_notification', 'action'),
-    ]);
-    const starters = availableStarters(catalog);
-    expect(starters.map((starter) => starter.id)).toEqual([
-      'webhook-http-slack',
-      'schedule-http',
-    ]);
-    expect(
-      starters[0]?.definitions.map((item) => item.definition.version),
-    ).toEqual([1, 3, 1]);
-  });
-
-  it('builds an unconfigured, connected draft from the chosen definitions', () => {
-    const [starter] = availableStarters(
-      catalogOf([
-        catalogDefinition('core.schedule', 'trigger', { version: 3 }),
-        catalogDefinition('http.request', 'action'),
-      ]),
-    );
-    if (starter === undefined) throw new Error('Expected a starter');
-    let id = 0;
-    const built = buildStarterGraph(starter, () => {
-      id += 1;
-      return `id-${String(id)}`;
-    });
-    expect(built.nodes.map((node) => [node.definition, node.label])).toEqual([
-      [{ key: 'core.schedule', version: 3 }, 'Schedule'],
-      [{ key: 'http.request', version: 1 }, 'Call API'],
-    ]);
-    expect(built.nodes[0]?.configVersion).toBe(3);
-    expect(built.edges).toEqual([
-      {
-        id: 'id-3',
-        source: { nodeId: 'id-1', port: 'out' },
-        target: { nodeId: 'id-2', port: 'in' },
-      },
-    ]);
   });
 });
 

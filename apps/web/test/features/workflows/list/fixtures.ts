@@ -1,5 +1,6 @@
 import { HttpResponse, http } from 'msw';
 import type { NodeDefinitionListResponse } from '@pertexo/contracts';
+import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
 
 // Contract-valid fixtures shared by the workflow list and New workflow tests.
 
@@ -198,4 +199,20 @@ export function catalogOf(
   items: readonly CatalogItem[],
 ): NodeDefinitionListResponse {
   return { items: [...items] };
+}
+
+/** A catalog with exactly the steps every curated example pins. */
+export function curatedCatalog(): NodeDefinitionListResponse {
+  const requirements = new Map(
+    CURATED_WORKFLOW_TEMPLATES.flatMap(
+      (template) => template.manifest.requirements.definitions,
+    ).map((definition) => [definition.key, definition]),
+  );
+  return catalogOf(
+    [...requirements.values()].map((requirement) => ({
+      ...catalogDefinition(requirement.key, 'logic'),
+      definition: { key: requirement.key, version: requirement.version },
+      configVersion: requirement.configVersion,
+    })),
+  );
 }

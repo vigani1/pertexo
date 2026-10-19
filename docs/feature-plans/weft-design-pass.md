@@ -1,6 +1,6 @@
 # Weft design pass
 
-Status: slices complete; two follow-ups open (below). Started 2026-10-18 after
+Status: slices complete; one follow-up open (below). Started 2026-10-18 after
 F18, F28, F17 and F19.
 
 The core screens (Home, Runs, run detail, the editor, Team, Connections) speak
@@ -71,11 +71,13 @@ result at desktop and phone width, then rebase-merge after CI passes.
   the workflow does; manifests and digests are unchanged. The editor names a
   workflow's origin by the example's title. Choosing an example that needs no
   setup checks it at once, so Import is the next click; one with setup still
-  waits for its values. Unavailable primary buttons look unavailable. Merging
-  the client-side starters with the curated examples into one list stays open:
-  it needs a decision on whether the starters become curated examples. The step palette should show everyday
-actions before the four data table steps, which could share one bundle once a
-bundle can carry its own tile.
+  waits for its values. Unavailable primary buttons look unavailable. The
+  client-side starters are gone: like n8n and Zapier, Pertexo keeps one
+  library of ready-made workflows. The curated examples sit under the name in
+  New workflow and as cards on an empty list, and each opens its setup in a
+  "Start from an example" dialog; Import takes files. The step palette should
+  show everyday actions before the four data table steps, which could share one
+  bundle once a bundle can carry its own tile.
 - [x] 6. **Plain words on the newer screens.** Data tables, notifications,
   usage, single sign-on and promotion open with a sentence or two about what the
   page is for; variables keep their limits in a disclosure. Requests and Inbox
@@ -91,9 +93,7 @@ bundle can carry its own tile.
   the run version's graph without another request.
 
 Open follow-ups: the editor's test bar should wait for test activity once Run
-all tests also lives in a split Test workflow menu, and the client-side starters
-and curated examples should become one list once it is decided whether the
-starters become curated examples.
+all tests also lives in a split Test workflow menu.
 
 Not in this pass: new backend endpoints (a reviewer's list of waiting
 publication reviews still arrives through Inbox notices), moving existing
