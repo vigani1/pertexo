@@ -18,7 +18,10 @@ import { graph, nodeCatalog } from '../support/executable-workflow.js';
 import { completion } from '../compilation/calls/fixtures.js';
 
 const at = '2026-10-15T00:00:00.000Z';
-function fixture(withHandler = false) {
+function fixture(
+  withHandler = false,
+  config: Record<string, unknown> = approvalConfigSchema.parse({}),
+) {
   const base = graph();
   const workflow: WorkflowGraph = {
     ...base,
@@ -28,7 +31,7 @@ function fixture(withHandler = false) {
         ...base.nodes[1],
         id: 'approval',
         definition: { key: 'core.approval', version: 1 },
-        config: approvalConfigSchema.parse({}),
+        config,
         inputMappings: {},
       },
       { ...base.nodes[2], id: 'approved-stop', inputMappings: {} },
@@ -102,8 +105,8 @@ function fixture(withHandler = false) {
     );
   return { advance, initial };
 }
-async function declared(withHandler = false) {
-  const run = fixture(withHandler);
+async function declared(withHandler = false, config?: Record<string, unknown>) {
+  const run = fixture(withHandler, config);
   const initial = await run.initial();
   const preparation = await run.advance(
     initial.checkpoint,
@@ -142,6 +145,16 @@ it('declares once, persists a human wait without a worker, and survives checkpoi
   expect(next.attempts).toEqual([]);
   expect(next.events).toEqual([]);
   expect(next.immediateContinuation).toBeUndefined();
+});
+it('captures the default audience and expiry for a step left on its defaults', async () => {
+  // A step saved without touching Setup has no audience or expiry in its
+  // config; who may answer and when it expires are read from the task.
+  const { waiting } = await declared(false, { title: 'Refund over limit' });
+  expect(waiting.taskIntents?.[0]?.config).toMatchObject({
+    title: 'Refund over limit',
+    audience: { roles: ['owner', 'admin'], memberIds: [] },
+    expiresAfterSeconds: 604800,
+  });
 });
 it.each(['approved', 'rejected'] as const)(
   'continues only the %s path once',

@@ -1,13 +1,13 @@
 import {
+  approvalConfigSchema,
   canonicalJson,
+  inputRequestConfigSchema,
   isHumanTaskDefinition,
   UUID_PATTERN,
   WORKFLOW_GRAPH_LIMITS,
   taskContextSchema,
   type TaskContext,
   type JsonValue,
-  type ApprovalConfig,
-  type InputRequestConfig,
 } from '@pertexo/workflow-model';
 import type {
   WorkflowExecutableGraph,
@@ -98,11 +98,11 @@ export function taskDeclarationObservations(
       ...(node.definition.key === 'core.approval'
         ? {
             kind: 'approval' as const,
-            config: node.config as unknown as ApprovalConfig,
+            config: taskSetup(approvalConfigSchema, node.config),
           }
         : {
             kind: 'input_request' as const,
-            config: node.config as unknown as InputRequestConfig,
+            config: taskSetup(inputRequestConfigSchema, node.config),
           }),
     });
   }
@@ -115,6 +115,25 @@ export function taskDeclarationObservations(
       coordinatorDerived: true,
     })),
   };
+}
+
+/**
+ * The task keeps its setup with every default filled in. Who may answer and
+ * when it expires are read from it later, and a step left on the default
+ * audience or expiry has neither in its graph config.
+ */
+function taskSetup<Setup>(
+  schema: Readonly<{
+    safeParse(
+      value: unknown,
+    ): Readonly<{ success: true; data: Setup }> | Readonly<{ success: false }>;
+  }>,
+  config: unknown,
+): Setup {
+  const parsed = schema.safeParse(config);
+  if (!parsed.success)
+    return operationError('observation_invalid', 'task setup is invalid');
+  return parsed.data;
 }
 
 function parseTaskOutcome(value: JsonValue): PendingTaskOutcome {
