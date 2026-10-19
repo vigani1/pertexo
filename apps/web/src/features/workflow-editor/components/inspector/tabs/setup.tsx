@@ -19,7 +19,10 @@ import { BracesIcon, ListIcon } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { FieldGroup } from '@/components/ui/field';
-import { schemaFields } from '../../../model/inspector/draft';
+import {
+  schemaFields,
+  schemaPropertyCount,
+} from '../../../model/inspector/draft';
 import { describeTransformFields } from '../../../model/inspector/transforms/fields';
 import { stepTitle } from '../../../model/graph/adapter';
 import {
@@ -378,14 +381,6 @@ function JsonModeToggle({
       {jsonMode ? 'Back to fields' : 'Edit as JSON'}
     </Button>
   );
-}
-
-function schemaPropertyCount(schema: unknown): number {
-  if (typeof schema !== 'object' || schema === null) return 0;
-  const properties: unknown = Reflect.get(schema, 'properties');
-  return typeof properties === 'object' && properties !== null
-    ? Object.keys(properties).length
-    : 0;
 }
 
 /**
