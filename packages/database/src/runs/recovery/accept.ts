@@ -150,7 +150,7 @@ export async function recoverWorkflowRunInTransaction(
           : { providerIdempotencyKey: copy.providerIdempotencyKey }),
         branchContext:
           copy.branchPath === undefined ? {} : { branchPath: copy.branchPath },
-        outputRef: sql`${prepareStoredExecutionValue({ kind: 'inline', value: copy.value }).json}::jsonb`,
+        outputRef: sql`${prepareStoredExecutionValue({ kind: 'inline', value: copy.value }).json}::json`,
         reusedSourceRunId: copy.sourceRunId,
         reusedSourceNodeRunId: copy.sourceNodeRunId,
         reusedSourceCompletedAt: new Date(copy.sourceCompletedAt),

@@ -1,12 +1,13 @@
 import {
-  type PgTableExtraConfigValue,
   boolean,
   char,
   check,
   foreignKey,
   index,
+  json,
   jsonb,
   timestamp,
+  type PgTableExtraConfigValue,
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
@@ -78,7 +79,7 @@ export const operatorRunReplayRequests = appSchema.table(
     sourceRunId: uuid('source_run_id').notNull(),
     workflowId: uuid('workflow_id').notNull(),
     workflowVersionId: uuid('workflow_version_id').notNull(),
-    runInput: jsonb('run_input').notNull(),
+    runInput: json('run_input').notNull(),
     requestFingerprint: char('request_fingerprint', { length: 64 }).notNull(),
     status: varchar({ length: 16 }).default('pending').notNull(),
     resultRunId: uuid('result_run_id'),

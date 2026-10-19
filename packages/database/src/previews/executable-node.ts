@@ -1,9 +1,9 @@
 import { z } from 'zod';
-import { canonicalizeJson } from '@pertexo/workflow-model';
+import { normalizeJson } from '@pertexo/workflow-model';
 
 export const executableNodeSchema = z.unknown().transform((value, context) => {
   try {
-    const admitted = canonicalizeJson(value);
+    const admitted = normalizeJson(value);
     if (
       admitted === null ||
       typeof admitted !== 'object' ||

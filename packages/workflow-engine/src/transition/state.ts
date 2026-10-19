@@ -1,6 +1,7 @@
 import { WorkflowEngineError } from '../errors.js';
 import type { SchedulerState } from './scheduling/readiness.js';
 import {
+  canonicalJson,
   compareOrdinal,
   type WorkflowNodeFailureValue,
 } from '@pertexo/workflow-model';
@@ -212,7 +213,7 @@ export function sameJoinDeclaration(
     left.joinId === right.joinId &&
     sameBranchPath(left.branchPath, right.branchPath) &&
     sameIterationPath(left.iterationPath, right.iterationPath) &&
-    JSON.stringify(left.policy) === JSON.stringify(right.policy) &&
+    canonicalJson(left.policy) === canonicalJson(right.policy) &&
     left.ledger.length === right.ledger.length &&
     left.ledger.every(
       ({ branchId }, index) => branchId === right.ledger[index]?.branchId,

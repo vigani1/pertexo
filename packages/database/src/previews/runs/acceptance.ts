@@ -506,7 +506,7 @@ export async function acceptPreviewRun(
       operationKey: sample === undefined ? (parsed.operationKey ?? null) : null,
       executableNodeJson: parsed.executableNode,
       variableSetRevision: await captureWorkspaceVariableRevision(transaction),
-      inputRef: sql`${resolvedInput.stored}::jsonb`,
+      inputRef: sql`${resolvedInput.stored}::json`,
       priorPreviewRunId: resolvedInput.priorPreviewRunId,
       sideEffectClass: sample === undefined ? parsed.sideEffectClass : 'safe',
       mayContactProvider: sample === undefined && parsed.mayContactProvider,
@@ -519,7 +519,7 @@ export async function acceptPreviewRun(
       outputRef:
         sample === undefined
           ? null
-          : sql`${serializeStoredExecutionValue(sample.output)}::jsonb`,
+          : sql`${serializeStoredExecutionValue(sample.output)}::json`,
       completedAt: sample === undefined ? null : sql`clock_timestamp()`,
       traceparent: parsed.traceparent ?? null,
       expiresAt: parsed.expiresAt,

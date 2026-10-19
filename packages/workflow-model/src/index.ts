@@ -106,6 +106,8 @@ export {
   CANONICAL_JSON_MAX_DEPTH,
   canonicalJson,
   canonicalizeJson,
+  normalizedJson,
+  normalizeJson,
   inspectJsonValue,
   type JsonValue,
 } from './json/canonical.js';

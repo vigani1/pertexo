@@ -4,6 +4,7 @@ import { z } from 'zod';
 import {
   canonicalJson,
   inspectJsonValue,
+  normalizedJson,
   DEFAULT_TEST_EXPECTATIONS,
   workflowTestExpectationsSchema,
   type WorkflowTestExpectations,
@@ -128,7 +129,8 @@ function payload(value: unknown): { text: string; bytes: number } {
     inspection.members > 10_000
   )
     throw new TypeError('Run-input case JSON exceeds its bounds');
-  const text = canonicalJson(value);
+  // The case keeps its fields in the order they were written.
+  const text = normalizedJson(value);
   return { text, bytes: inspection.bytes };
 }
 async function workflow(
