@@ -19,6 +19,7 @@ export type NodeExecutorFailureOutcome = Readonly<{
   kind: 'failed' | 'canceled' | 'retry' | 'outcome_unknown';
   errorKind: NodeExecutorErrorKind;
   possiblyDispatched: boolean;
+  minimumRetryDelayMillis?: number;
 }>;
 
 const nodeExecutorFailureSchema = z
@@ -35,6 +36,7 @@ const nodeExecutorFailureSchema = z
       'timeout',
     ]),
     possiblyDispatched: z.boolean(),
+    minimumRetryDelayMillis: z.number().int().min(0).max(60_000).optional(),
   })
   .strict();
 
@@ -43,6 +45,7 @@ export class NodeExecutorFailure extends Error {
   public readonly kind: NodeExecutorFailureOutcome['kind'];
   public readonly errorKind: NodeExecutorErrorKind;
   public readonly possiblyDispatched: boolean;
+  public readonly minimumRetryDelayMillis?: number;
   public constructor(outcome: unknown) {
     const parsed = nodeExecutorFailureSchema.safeParse(outcome);
     if (!parsed.success) throw new TypeError('Invalid node executor failure');
@@ -50,6 +53,8 @@ export class NodeExecutorFailure extends Error {
     this.kind = parsed.data.kind;
     this.errorKind = parsed.data.errorKind;
     this.possiblyDispatched = parsed.data.possiblyDispatched;
+    if (parsed.data.minimumRetryDelayMillis !== undefined)
+      this.minimumRetryDelayMillis = parsed.data.minimumRetryDelayMillis;
   }
 }
 

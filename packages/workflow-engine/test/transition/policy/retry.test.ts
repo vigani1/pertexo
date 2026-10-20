@@ -129,6 +129,47 @@ describe('retry and transition policy', () => {
     },
   );
 
+  it.each([
+    [0, 100],
+    [400, 400],
+    [60_000, 500],
+  ])(
+    'combines a bounded provider hint %s with backoff and the policy cap',
+    (minimumRetryDelayMillis, delayMs) => {
+      const input = {
+        sideEffectClass: 'safe' as const,
+        currentAttemptNumber: 1,
+        policy,
+        observation: {
+          kind: 'executor_failure' as const,
+          recommendation: 'retry' as const,
+          errorKind: 'rate_limit' as const,
+          possiblyDispatched: false,
+          minimumRetryDelayMillis,
+        },
+      };
+      expect(decideRetry(input)).toEqual({
+        kind: 'retry',
+        attemptNumber: 2,
+        delayMs,
+      });
+      expect(decideRetry({ ...input, currentAttemptNumber: 3 })).toEqual({
+        kind: 'failed',
+        reasonCode: 'rate_limit',
+      });
+      expect(
+        decideRetry({
+          ...input,
+          sideEffectClass: 'unsafe',
+          observation: { ...input.observation, possiblyDispatched: true },
+        }),
+      ).toEqual({
+        kind: 'outcome_unknown',
+        reasonCode: 'unsafe_possible_dispatch',
+      });
+    },
+  );
+
   it('rejects terminal resurrection in all state machines', () => {
     expect(() => {
       assertRunTransition('succeeded', 'running');

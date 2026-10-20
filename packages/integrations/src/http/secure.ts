@@ -91,6 +91,8 @@ export type SecureHttpRequest = Readonly<{
   maxRedirects: number;
   maxResponseBytes: number;
   sensitiveValues?: readonly string[];
+  /** Private page navigation; never returned as step output or observation metadata. */
+  navigation?: Readonly<{ origin: string; link: boolean }>;
   signal?: AbortSignal;
   beforeDispatch(): Promise<void>;
 }>;
@@ -105,6 +107,7 @@ export type SecureHttpResponse<Body = Uint8Array> = Readonly<{
 }>;
 
 export type SecureHttpStreamingBody = Readonly<{
+  navigation?: Readonly<{ url: string; link?: string }>;
   status: number;
   headers: Readonly<Record<string, string>>;
   body: AsyncIterable<Uint8Array>;
@@ -183,6 +186,11 @@ function redirectTransition(
   if (current.redirectCount >= request.maxRedirects)
     throw failure(SECURE_HTTP_ERROR_CODE.redirectRejected, true, false);
   const nextUrl = parseRedirectUrl(location, current.url);
+  if (
+    request.navigation !== undefined &&
+    nextUrl.origin !== request.navigation.origin
+  )
+    throw failure(SECURE_HTTP_ERROR_CODE.paginationOriginChanged, true, false);
   if (current.url.protocol === 'https:' && nextUrl.protocol !== 'https:')
     throw failure(SECURE_HTTP_ERROR_CODE.redirectRejected, true, false);
   if (
@@ -234,6 +242,15 @@ async function consumeFinalResponse<Body>(
         Object.freeze({
           status: response.status,
           headers: selectedHeaders,
+          ...(request.navigation === undefined
+            ? {}
+            : {
+                navigation: pageNavigation(
+                  response,
+                  state.url,
+                  request.navigation.link,
+                ),
+              }),
           body: boundedRedactedBody(
             response.body,
             request.maxResponseBytes,
@@ -500,8 +517,10 @@ function failureStage(code: SecureHttpErrorCode): SecureHttpFailureStage {
     case SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch:
     case SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed:
       return 'pre_dispatch';
+    case SECURE_HTTP_ERROR_CODE.paginationOriginChanged:
     case SECURE_HTTP_ERROR_CODE.redirectRejected:
       return 'redirect';
+    case SECURE_HTTP_ERROR_CODE.paginationNavigationInvalid:
     case SECURE_HTTP_ERROR_CODE.responseEncodingRejected:
     case SECURE_HTTP_ERROR_CODE.responseTooLarge:
       return 'response';
@@ -698,4 +717,20 @@ function raceWithSignal<T>(
 
 function normalizedHeaderValue(value: string | readonly string[]): string {
   return typeof value === 'string' ? value : value.join(', ');
+}
+
+function pageNavigation(
+  response: SecureHttpTransportResponse,
+  url: URL,
+  includeLink: boolean,
+): Readonly<{ url: string; link?: string }> {
+  const raw = includeLink ? response.headers.link : undefined;
+  const link = raw === undefined ? undefined : normalizedHeaderValue(raw);
+  if (link !== undefined && new TextEncoder().encode(link).byteLength > 8192)
+    throw failure(
+      SECURE_HTTP_ERROR_CODE.paginationNavigationInvalid,
+      true,
+      false,
+    );
+  return { url: url.toString(), ...(link === undefined ? {} : { link }) };
 }

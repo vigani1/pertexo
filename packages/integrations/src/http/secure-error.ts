@@ -8,6 +8,8 @@ export const SECURE_HTTP_ERROR_CODE = Object.freeze({
   dnsFailed: 'dns_failed',
   invalidRequest: 'invalid_request',
   networkFailed: 'network_failed',
+  paginationOriginChanged: 'pagination_origin_changed',
+  paginationNavigationInvalid: 'pagination_navigation_invalid',
   redirectRejected: 'redirect_rejected',
   responseEncodingRejected: 'response_encoding_rejected',
   responseTooLarge: 'response_too_large',

@@ -11,6 +11,9 @@ export function pendingFailureObservations(
     attemptId: failure.attempt_id,
     attemptNumber: failure.attempt_number,
     failureKind: failure.executor_failure_kind,
+    ...(failure.executor_retry_after_millis === null
+      ? {}
+      : { minimumRetryDelayMillis: failure.executor_retry_after_millis }),
     errorKind: failure.executor_error_kind,
     possiblyDispatched: failure.executor_possibly_dispatched,
     safeErrorCode: failure.safe_error_code,

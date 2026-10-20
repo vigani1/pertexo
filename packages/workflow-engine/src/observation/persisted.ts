@@ -69,6 +69,7 @@ export type AttemptFailureObservation = Readonly<{
   readonly attemptId: string;
   readonly attemptNumber: number;
   readonly failureKind: 'failed' | 'canceled' | 'retry' | 'outcome_unknown';
+  readonly minimumRetryDelayMillis?: number;
   readonly errorKind:
     | 'authentication'
     | 'canceled'
