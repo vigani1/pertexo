@@ -1,5 +1,6 @@
 export type { DatabaseConfig } from '../config.js';
 export {
+  parseDatabaseConfig,
   parseMaintenanceDatabaseConfig,
   parseOperatorDatabaseConfig,
 } from '../config.js';

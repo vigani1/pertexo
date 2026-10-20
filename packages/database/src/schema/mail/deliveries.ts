@@ -75,7 +75,7 @@ export const systemMailDeliveries = appSchema.table(
     ),
     check(
       'system_mail_purpose_valid',
-      sql`((purpose)::text = ANY (ARRAY[('verification'::character varying)::text, ('password_reset'::character varying)::text, ('email_change_confirmation'::character varying)::text, ('workspace_notice'::character varying)::text]))`,
+      sql`((purpose)::text = ANY (ARRAY[('verification'::character varying)::text, ('password_reset'::character varying)::text, ('email_change_confirmation'::character varying)::text, ('workspace_notice'::character varying)::text, ('two_factor_disabled'::character varying)::text, ('recovery_code_sign_in'::character varying)::text]))`,
     ),
     check(
       'system_mail_status_valid',

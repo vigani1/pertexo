@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import type {
   SystemMailEnqueueStore,
   SealedSystemMailPayload,
+  SystemMailPurpose,
 } from '@pertexo/database/platform';
 import type { ApplicationSecretEnvelope } from '@pertexo/integrations/server';
 
@@ -14,7 +15,15 @@ export type PreparedAuthenticationProofMail = Readonly<{
   sealedPayload: SealedSystemMailPayload;
 }>;
 
+export type AuthenticationSecurityNotice = Readonly<{
+  purpose: 'two_factor_disabled' | 'recovery_code_sign_in';
+  recipient: string;
+  displayName: string;
+  url: string;
+}>;
+
 export type AuthenticationMail = Readonly<{
+  sendSecurityNotice(input: AuthenticationSecurityNotice): Promise<void>;
   prepareProof?(
     input: Readonly<{
       purpose: 'verification' | 'email_change_confirmation';
@@ -50,7 +59,11 @@ export type AuthenticationMail = Readonly<{
 }>;
 
 export type LocalAuthenticationMailMessage = Readonly<{
-  purpose: 'verification' | 'password_reset' | 'email_change_confirmation';
+  purpose:
+    | 'verification'
+    | 'password_reset'
+    | 'email_change_confirmation'
+    | AuthenticationSecurityNotice['purpose'];
   recipient: string;
   displayName: string;
   url: string;
@@ -68,6 +81,13 @@ export class LocalAuthenticationMailSink implements AuthenticationMail {
       message: LocalAuthenticationMailMessage,
     ) => void,
   ) {}
+
+  public sendSecurityNotice(
+    input: AuthenticationSecurityNotice,
+  ): Promise<void> {
+    this.emit(input);
+    return Promise.resolve();
+  }
 
   public sendVerification(input: {
     recipient: string;
@@ -125,6 +145,30 @@ export class DurableAuthenticationMail implements AuthenticationMail {
     private readonly fromEmail: string,
     private readonly now: () => Date = () => new Date(),
   ) {}
+
+  public sendSecurityNotice(
+    input: AuthenticationSecurityNotice,
+  ): Promise<void> {
+    const disabled = input.purpose === 'two_factor_disabled';
+    return this.enqueue(
+      input.purpose,
+      input.recipient,
+      disabled
+        ? 'Two-factor sign-in was turned off'
+        : 'A recovery code was used to sign in',
+      [
+        `Hello ${input.displayName},`,
+        '',
+        disabled
+          ? 'Two-factor sign-in was turned off for your Pertexo account.'
+          : 'Someone signed in to your Pertexo account using a one-time recovery code.',
+        '',
+        'If this was not you, secure your account and contact your Pertexo operator immediately.',
+        input.url,
+      ].join('\n'),
+      24 * 60 * 60_000,
+    );
+  }
 
   public sendVerification(input: {
     recipient: string;
@@ -206,7 +250,7 @@ export class DurableAuthenticationMail implements AuthenticationMail {
   }
 
   private enqueue(
-    purpose: 'verification' | 'password_reset' | 'email_change_confirmation',
+    purpose: SystemMailPurpose,
     recipient: string,
     subject: string,
     text: string,
@@ -217,13 +261,18 @@ export class DurableAuthenticationMail implements AuthenticationMail {
     );
   }
 
-  private prepare(
-    purpose: 'verification' | 'password_reset' | 'email_change_confirmation',
+  private prepare<Purpose extends SystemMailPurpose>(
+    purpose: Purpose,
     recipient: string,
     subject: string,
     text: string,
     validityMillis: number,
-  ): PreparedAuthenticationProofMail {
+  ): Readonly<{
+    id: string;
+    purpose: Purpose;
+    expiresAt: Date;
+    sealedPayload: SealedSystemMailPayload;
+  }> {
     const id = randomUUID();
     const expiresAt = new Date(this.now().getTime() + validityMillis);
     const associatedData = authenticationMailAssociatedData(

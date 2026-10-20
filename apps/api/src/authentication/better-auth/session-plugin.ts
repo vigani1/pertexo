@@ -1,5 +1,6 @@
 import {
   isAuthenticationSessionAllowed,
+  recordIdentitySecurityFact,
   identityEmailChangeEligibility,
 } from '@pertexo/database/tenant-access';
 import type { BetterAuthOptions, BetterAuthPlugin } from 'better-auth';
@@ -15,6 +16,7 @@ import { setSessionCookie, deleteSessionCookie } from 'better-auth/cookies';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
+import type { AuthenticationMail } from '../mail/delivery.js';
 import type { SocialProviderGateway } from '../providers/contract.js';
 import { accountSecurityEndpoints } from '../account-security/endpoints.js';
 import { requireDoubleSubmitCsrf } from './csrf.js';
@@ -36,6 +38,10 @@ type BeforeHooks = NonNullable<
 export function createTrustedSessionPlugin(
   pool: Pool,
   availableLinkProviders: SocialProviderGateway['available'],
+  securityNotices: Readonly<{
+    mail: Pick<AuthenticationMail, 'sendSecurityNotice'>;
+    accountUrl: string;
+  }>,
 ) {
   return {
     id: 'pertexo-trusted-session-boundary',
@@ -49,6 +55,7 @@ export function createTrustedSessionPlugin(
       after: [
         {
           matcher: (context) =>
+            context.path === '/two-factor/disable' ||
             context.path === '/sign-in/email' ||
             isTwoFactorVerificationPath(context.path) ||
             context.path === '/internal/session/issue',
@@ -65,6 +72,31 @@ export function createTrustedSessionPlugin(
               deleteSessionCookie(context);
               throw authenticationChangedError();
             }
+            if (created === null) return;
+            const purpose =
+              context.path === '/two-factor/verify-backup-code'
+                ? 'recovery_code_sign_in'
+                : context.path === '/two-factor/disable' &&
+                    Reflect.get(
+                      context.context.session?.user ?? {},
+                      'twoFactorEnabled',
+                    ) === true
+                  ? 'two_factor_disabled'
+                  : undefined;
+            if (purpose === undefined) return;
+            await recordIdentitySecurityFact(
+              pool,
+              created.user.id,
+              purpose === 'two_factor_disabled'
+                ? 'two_factor.disabled'
+                : 'two_factor.recovery_code_used',
+            );
+            await securityNotices.mail.sendSecurityNotice({
+              purpose,
+              recipient: created.user.email,
+              displayName: created.user.name,
+              url: securityNotices.accountUrl,
+            });
           }),
         },
       ],
