@@ -307,3 +307,33 @@ describe('connections URL state', () => {
     ).toEqual({});
   });
 });
+
+it('keeps signing key whitespace, enforces UTF-8 size and never shows key fragments', () => {
+  const draft = { provider: 'signing', signingKey: ' key\n' } as const;
+  expect(credentialErrors(draft)).toEqual({});
+  expect(toCreateRequest('Orders', draft)).toEqual({
+    providerKey: 'signing',
+    name: 'Orders',
+    credential: { type: 'hmac_key', signingKey: ' key\n' },
+  });
+  expect(describeSavedCredential(draft)).toEqual({
+    term: 'Key',
+    value: 'Stored encrypted',
+  });
+  expect(
+    credentialErrors({ provider: 'signing', signingKey: '😀'.repeat(1024) }),
+  ).toEqual({});
+  expect(
+    credentialErrors({ provider: 'signing', signingKey: '😀'.repeat(1025) }),
+  ).toHaveProperty('signingKey');
+  expect(
+    credentialErrors({ provider: 'signing', signingKey: '' }),
+  ).toHaveProperty('signingKey');
+  expect(
+    describeTestOutcome('signing', {
+      ok: true,
+      httpStatus: 200,
+      errorCode: null,
+    }).title,
+  ).toBe('The signing key can be opened.');
+});

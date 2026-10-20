@@ -70,6 +70,7 @@ export type ConnectionStatus =
   (typeof CONNECTION_STATUS)[keyof typeof CONNECTION_STATUS];
 
 export const CONNECTION_AUTH_TYPE = {
+  signingKey: 'hmac_key',
   httpHeaders: 'http_headers',
   slackBotToken: 'slack_bot_token',
   resendApiKey: 'resend_api_key',

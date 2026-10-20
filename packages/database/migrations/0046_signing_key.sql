@@ -1,0 +1,2 @@
+ALTER TABLE "app"."connections" DROP CONSTRAINT "connections_auth_type_valid";--> statement-breakpoint
+ALTER TABLE "app"."connections" ADD CONSTRAINT "connections_auth_type_valid" CHECK (((auth_type)::text = ANY (ARRAY[('hmac_key'::character varying)::text, ('http_headers'::character varying)::text, ('slack_bot_token'::character varying)::text, ('resend_api_key'::character varying)::text])));

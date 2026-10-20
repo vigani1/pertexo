@@ -1,3 +1,5 @@
+import { UtilitySetup } from '../builders/utility-setup';
+import { UTILITY_OPERATION_KEYS } from '../../../model/inspector/transforms/utility-config';
 import { useScratchForm } from '../use-draft-field';
 import { httpSetupFields } from '../../../model/inspector/http-pagination/fields';
 import { HttpPaginationSetup } from '../http-pagination/setup';
@@ -202,6 +204,7 @@ const SIMPLE_SETUP_RENDERERS: Readonly<
     string,
     ComponentType<
       Readonly<{
+        definitionKey: string;
         schema: unknown;
         config: WorkflowNode['config'];
         form: NodeFormApi;
@@ -213,6 +216,9 @@ const SIMPLE_SETUP_RENDERERS: Readonly<
   'core.read_file': ReadFileSetup,
   'core.create_file': CreateFileSetup,
   'core.date': DateSetup,
+  ...Object.fromEntries(
+    UTILITY_OPERATION_KEYS.map((key) => [key, UtilitySetup]),
+  ),
 };
 
 /** The controls for a catalog step's setup, when it isn't shown as JSON. */
@@ -267,7 +273,14 @@ function SetupControls({
     return <WebhookTriggerSetup node={node} graph={graph} form={form} />;
   const SimpleSetup = SIMPLE_SETUP_RENDERERS[formKey];
   if (SimpleSetup !== undefined)
-    return <SimpleSetup schema={configSchema} config={config} form={form} />;
+    return (
+      <SimpleSetup
+        definitionKey={formKey}
+        schema={configSchema}
+        config={config}
+        form={form}
+      />
+    );
   if (scheduleSchema !== undefined)
     return (
       <ScheduleBuilder config={config} schema={scheduleSchema} form={form} />

@@ -50,6 +50,7 @@ const FAILURE_REASONS: Readonly<Record<string, string>> = {
 };
 
 const REJECTED_CREDENTIAL: Readonly<Record<ProviderKey, string>> = {
+  signing: 'key unavailable',
   slack: 'invalid token',
   http: 'headers rejected',
   email: 'invalid API key',
@@ -119,12 +120,17 @@ export function describeConnectionHealth(
 export type TestOutcomeCopy = Readonly<{ title: string; detail: string }>;
 
 const SUCCESS_TITLES: Readonly<Record<ProviderKey, string>> = {
+  signing: 'The signing key can be opened.',
   slack: 'Slack accepted the token.',
   http: 'The API answered.',
   email: 'Resend accepted the test email.',
 };
 
 const REJECTED_HELP: Readonly<Record<ProviderKey, TestOutcomeCopy>> = {
+  signing: {
+    title: 'The signing key is unavailable.',
+    detail: 'Replace the key and check the instance encryption settings.',
+  },
   slack: {
     title: 'Slack rejected the token.',
     detail:

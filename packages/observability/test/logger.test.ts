@@ -126,6 +126,7 @@ describe('createStructuredLogger', () => {
       authToken: 'auth-token-value',
       privateKey: 'private-key-value',
       signing_key: 'signing-key-value',
+      signingKey: 'hmac-signing-value',
       tokenCount: 7,
       xApiKey: 'api-key-value',
     });
@@ -134,6 +135,7 @@ describe('createStructuredLogger', () => {
       authToken: '[Redacted]',
       privateKey: '[Redacted]',
       signing_key: '[Redacted]',
+      signingKey: '[Redacted]',
       tokenCount: 7,
       xApiKey: '[Redacted]',
     });
@@ -141,6 +143,7 @@ describe('createStructuredLogger', () => {
     expect(serialized).not.toContain('auth-token-value');
     expect(serialized).not.toContain('private-key-value');
     expect(serialized).not.toContain('signing-key-value');
+    expect(serialized).not.toContain('hmac-signing-value');
     expect(serialized).not.toContain('api-key-value');
   });
 
