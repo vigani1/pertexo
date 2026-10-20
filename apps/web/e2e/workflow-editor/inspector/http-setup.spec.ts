@@ -405,6 +405,7 @@ for (const width of [375, 1280]) {
     await nextPath.press('Tab');
     await expect(nextPath).toHaveAttribute('aria-invalid', 'true');
     await expect(mode).toBeDisabled();
+    await expect(mode).toHaveAccessibleDescription(/Finish incomplete fields/u);
     await expect(
       page.getByLabel('Next link in', { exact: true }),
     ).toBeDisabled();
