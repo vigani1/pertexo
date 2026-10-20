@@ -11,6 +11,7 @@ import {
   SearchIcon,
   ShieldCheckIcon,
 } from 'lucide-react';
+import { AppearanceChoice } from '@/components/patterns/appearance-choice';
 import { Button } from '@/components/ui/button';
 import { AccountMenu } from '../components/shell/account-menu';
 import { ShellBreadcrumb } from '../components/shell/breadcrumb';
@@ -135,6 +136,9 @@ export function WorkspaceShell({
               <LayoutGridIcon aria-hidden="true" />
               All workspaces
             </Link>
+            <div className="px-2 py-3">
+              <AppearanceChoice />
+            </div>
             {/* Red like Sign out in every other menu. */}
             <button
               type="button"

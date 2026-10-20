@@ -72,6 +72,7 @@ export async function mutateStepSample(
         input,
         source,
         current,
+        binding,
       );
       const retainedBytes =
         Buffer.byteLength(binding) + Buffer.byteLength(captured.output);

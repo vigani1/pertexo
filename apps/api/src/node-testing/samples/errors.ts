@@ -10,7 +10,7 @@ const messages: Readonly<Record<WorkflowStepSampleError['reason'], string>> = {
   expired:
     'This pinned sample expired. Pin fresh data or remove it before testing the real step.',
   source_unavailable:
-    'That successful step output is unavailable, expired, or belongs to another workflow.',
+    'That sample source is unavailable, expired, or its setup changed. Capture a new request or choose a current successful step output.',
   file_output:
     'Pin JSON output only. Use Read file to turn a file into JSON first; file references cannot be pinned.',
   value_invalid:

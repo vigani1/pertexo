@@ -146,7 +146,7 @@ describe('documentation comparisons', () => {
     expect(summary.lines).toContainEqual({
       kind: 'added',
       nodeId: `note:${note.id}`,
-      name: 'Note: # Orders',
+      name: 'Note: Orders',
     });
     expect(summary.layoutOnly).toBe(false);
   });

@@ -93,3 +93,10 @@ React Doctor reports no findings (91/100, including the token-only pass).
 Browser screenshots and contrast manifests stay in `/tmp/pertexo-f36-audit`.
 The existing >500 kB editor chunk warning remains; this feature adds no runtime
 dependency. Full pre-push verification is required before PR delivery.
+
+## Quick appearance access (2026-10-20)
+
+The account menu and the phone's More sheet offer System, Light and Dark.
+The command palette's Switch theme opens the same three-way choice, and
+Account → Appearance remains available. All use lib/appearance; Tailwind dark
+variants follow data-theme rather than the OS preference directly.

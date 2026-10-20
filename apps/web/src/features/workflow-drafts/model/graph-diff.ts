@@ -1,3 +1,4 @@
+import { noteTextStart } from './note-text';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 
 export type NoteChange = Readonly<{
@@ -131,8 +132,7 @@ function diffNotes(
   const previous = new Map((before.notes ?? []).map((note) => [note.id, note]));
   const current = new Map((after.notes ?? []).map((note) => [note.id, note]));
   const changes: NoteChange[] = [];
-  const label = (text: string) =>
-    `Note: ${text.replace(/\s+/gu, ' ').trim().slice(0, 80) || 'Untitled'}`;
+  const label = (text: string) => `Note: ${noteTextStart(text) || 'Untitled'}`;
   for (const note of current.values()) {
     const old = previous.get(note.id);
     if (old === undefined)

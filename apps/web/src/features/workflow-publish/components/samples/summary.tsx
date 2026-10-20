@@ -4,6 +4,14 @@ import { Notice } from '@/components/ui/notice';
 import { Status } from '@/components/ui/status';
 import { formatRelativeTime } from '@/lib/format/time';
 import { sampleStateLabel } from '../../model/testing/samples';
+const SOURCE_LABEL: Readonly<
+  Record<StepSampleMetadata['source']['kind'], string>
+> = {
+  json: 'JSON',
+  run: 'a workflow run',
+  preview: 'a test',
+  webhook_test: 'a captured request',
+};
 export function SampleSummary({
   sample,
   state,
@@ -28,13 +36,8 @@ export function SampleSummary({
       </p>
       {sample === null ? null : (
         <p className="text-xs text-muted-foreground">
-          From{' '}
-          {sample.source.kind === 'json'
-            ? 'JSON'
-            : sample.source.kind === 'run'
-              ? 'a workflow run'
-              : 'a test'}
-          . Expires {formatRelativeTime(sample.expiresAt)}.
+          From {SOURCE_LABEL[sample.source.kind]}. Expires{' '}
+          {formatRelativeTime(sample.expiresAt)}.
         </p>
       )}
       {state === 'stale' ? (
