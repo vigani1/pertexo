@@ -277,7 +277,6 @@ describeIntegration('authenticated workflow lifecycle HTTP commands', () => {
       lifecycleStatus: 'active',
       lifecycleRevision: 3,
       activationStatus: 'inactive',
-      webhookSetupRequired: false,
       publishedVersionId: null,
     });
 
@@ -458,6 +457,7 @@ function expectLifecycleResponse(
     lifecycleStatus: 'active' | 'archived';
     lifecycleRevision: number;
     activationStatus: LifecycleResponse['workflow']['activationStatus'];
+    webhookSetupRequired: boolean;
     publishedVersionId: string | null;
     replayed: boolean;
   }>,
@@ -475,6 +475,7 @@ function expectLifecycleResponse(
     'nameRevision',
     'publishedVersionId',
     'updatedAt',
+    'webhookSetupRequired',
     'workspaceId',
   ]);
   expect(body.workflow.createdAt).toMatch(
@@ -487,6 +488,7 @@ function expectLifecycleResponse(
     replayed: expected.replayed,
     workflow: {
       activationStatus: expected.activationStatus,
+      webhookSetupRequired: expected.webhookSetupRequired,
       createdAt: body.workflow.createdAt,
       id: expected.id,
       lifecycleRevision: expected.lifecycleRevision,
