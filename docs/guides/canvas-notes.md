@@ -3,7 +3,7 @@
 Notes explain why a workflow works the way it does. They are documentation;
 [comment threads](collaboration.md) remain the place for discussions and mentions.
 
-Choose **Add note** beside the canvas zoom controls, write your text and choose
+Choose **Add note** in the labelled canvas toolbar below the workflow header, write your text and choose
 **Save note**. The new note appears below the existing steps without covering
 their controls. Notes save with the draft, using the same permissions and
 conflict protection as steps. Viewers can read them; editors can change them.

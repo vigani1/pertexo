@@ -24,7 +24,7 @@ export type SampleRow = Readonly<{
   binding: string;
   output_ref: string;
   retained_bytes: number;
-  source_kind: 'json' | 'run' | 'preview';
+  source_kind: 'json' | 'run' | 'preview' | 'webhook_test';
   source_run_id: string | null;
   source_node_run_id: string | null;
   source_preview_id: string | null;
@@ -38,8 +38,11 @@ export type SampleMetadata = Readonly<{
   binding: string;
   state: SampleState;
   source:
-    | Exclude<SampleSource, { kind: 'confirm' } | { kind: 'json' }>
-    | { kind: 'json' };
+    | Exclude<
+        SampleSource,
+        { kind: 'confirm' } | { kind: 'json' } | { kind: 'webhook_test' }
+      >
+    | { kind: 'json' | 'webhook_test' };
   createdAt: Date;
   expiresAt: Date;
 }>;

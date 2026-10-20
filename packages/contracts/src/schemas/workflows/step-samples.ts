@@ -5,6 +5,7 @@ export const stepSampleSourceSchema = z.discriminatedUnion('kind', [
   z
     .object({ kind: z.literal('json'), value: boundedNodeTestJsonInputSchema })
     .strict(),
+  z.object({ kind: z.literal('webhook_test'), listenerId: z.uuid() }).strict(),
   z.object({ kind: z.literal('preview'), previewRunId: z.uuid() }).strict(),
   z
     .object({ kind: z.literal('run'), runId: z.uuid(), nodeRunId: z.uuid() })
@@ -32,6 +33,7 @@ export const stepSampleMetadataSchema = z
     state: z.enum(['pinned', 'stale', 'expired']),
     source: z.discriminatedUnion('kind', [
       z.object({ kind: z.literal('json') }).strict(),
+      z.object({ kind: z.literal('webhook_test') }).strict(),
       z.object({ kind: z.literal('preview'), previewRunId: z.uuid() }).strict(),
       z
         .object({

@@ -16,6 +16,7 @@ export async function captureSampleSource(
   input: SampleCommand,
   source: SampleSource,
   current: SampleRow | undefined,
+  binding: string,
 ) {
   if (source.kind === 'confirm') {
     if (current === undefined) throw new WorkflowStepSampleError('changed');
@@ -41,6 +42,29 @@ export async function captureSampleSource(
       nodeRunId: null,
       previewId: null,
     };
+  if (source.kind === 'webhook_test') {
+    const rows = await client.query<{ output_ref: unknown }>(
+      `select output_ref from app.webhook_test_events where workspace_id=$1 and workflow_id=$2 and node_id=$3 and created_by=$4 and id=$5 and binding=$6 and expires_at>clock_timestamp() and output_ref is not null for share`,
+      [
+        input.workspaceId,
+        input.workflowId,
+        input.nodeId,
+        input.actorId,
+        source.listenerId,
+        binding,
+      ],
+    );
+    const row = rows.rows[0];
+    if (row === undefined)
+      throw new WorkflowStepSampleError('source_unavailable');
+    return {
+      output: inlineSampleOutput(row.output_ref),
+      kind: source.kind,
+      runId: null,
+      nodeRunId: null,
+      previewId: null,
+    };
+  }
   const rows =
     source.kind === 'preview'
       ? await client.query<{ output_ref: unknown }>(

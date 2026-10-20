@@ -36,6 +36,7 @@ import { useQuickAdd } from './add-step/use-quick-add';
 import { useStepPlacement } from './add-step/use-step-placement';
 import { AddStepLens } from './add-step/lens';
 import { QuickAddLens } from './add-step/quick-add-lens';
+import { NoteTools } from './canvas/notes/tools';
 import { SelectionToolbar } from './canvas/selection-toolbar';
 import { StartPicker } from './canvas/start-picker';
 import { TestResultBar } from './chrome/test-result-bar';
@@ -209,6 +210,7 @@ export function EditorWorkspace({
   return (
     <EditorLayout
       bar={bar(chrome)}
+      canvasTools={<NoteTools editable={editable} containerRef={canvasRef} />}
       bottomLens={
         <>
           {bottomLens(chrome)}

@@ -146,7 +146,7 @@ describe('webhook test capture', () => {
     ).toEqual({
       expectedDraftRevision: 3,
       expectedSampleId: null,
-      source: { kind: 'json', value: { amount: 17 } },
+      source: { kind: 'webhook_test', listenerId: id },
     });
   });
   it('stops listening on close and suppresses captures when the local setup changes', async () => {
@@ -189,6 +189,47 @@ describe('webhook test capture', () => {
     ).toEqual({
       expectedDraftRevision: 3,
       authentication: { mode: 'secret_url', allowedOrigins: [] },
+    });
+  });
+  it('keeps the chosen authentication and non-secret fields after stopping', async () => {
+    const f = fixture();
+    render(f.view());
+    const user = userEvent.setup();
+    await user.click(screen.getByLabelText('Test authentication'));
+    await user.click(
+      await screen.findByRole('option', { name: 'Header secret' }),
+    );
+    await user.clear(screen.getByLabelText('Secret header'));
+    await user.type(screen.getByLabelText('Secret header'), 'x-test-secret');
+    await user.type(
+      screen.getByLabelText('Allowed browser origins (optional)'),
+      'https://example.test',
+    );
+    await user.click(
+      screen.getByRole('button', { name: 'Listen for test event' }),
+    );
+    await screen.findByText('Listening for one request…');
+    await user.click(screen.getByRole('button', { name: 'Stop listening' }));
+    await screen.findByRole('button', { name: 'Listen for test event' });
+    expect(screen.getByLabelText('Test authentication')).toHaveTextContent(
+      'Header secret',
+    );
+    expect(screen.getByLabelText('Secret header')).toHaveValue('x-test-secret');
+    expect(
+      screen.getByLabelText('Allowed browser origins (optional)'),
+    ).toHaveValue('https://example.test');
+    await user.click(
+      screen.getByRole('button', { name: 'Listen for test event' }),
+    );
+    await screen.findByText('Listening for one request…');
+    expect(
+      f.requests.filter((request) => request.method === 'POST').at(-1)?.body,
+    ).toMatchObject({
+      authentication: {
+        mode: 'header_secret',
+        headerName: 'x-test-secret',
+        allowedOrigins: ['https://example.test'],
+      },
     });
   });
   it('expires visibly and never offers to pin a changed server capture', async () => {

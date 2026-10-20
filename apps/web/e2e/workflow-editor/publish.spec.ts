@@ -486,3 +486,76 @@ for (const width of [1280, 375])
     expect(keys[1]).not.toBe(keys[0]);
     expect(remote.graph).toEqual(savedGraph);
   });
+
+for (const width of [375, 990, 1440]) {
+  test(`directs an unconfigured published webhook to Triggers at ${String(width)}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 768 });
+    const graph: Graph = {
+      settings: {},
+      edges: [],
+      nodes: [
+        {
+          id: 'incoming',
+          definition: { key: 'core.webhook', version: 1 },
+          position: { x: 0, y: 0 },
+          configVersion: 1,
+          config: {},
+          inputMappings: {},
+          connectionRefs: {},
+        },
+      ],
+    };
+    await installEditorRoutes(page, remoteDraft(graph));
+    const summary = workflowSummary('Incoming orders', versionId);
+    summary.workflow.activationStatus = 'activating';
+    await page.route(
+      `**/v1/workspaces/${workspaceId}/workflows/${workflowId}`,
+      (route) => route.fulfill({ json: summary }),
+    );
+    await page.route(
+      `**/v1/workspaces/${workspaceId}/workflows/${workflowId}?include=templateOrigin`,
+      (route) => route.fulfill({ json: { ...summary, templateOrigin: null } }),
+    );
+    await routeVersions(page, () => graph, 'a');
+    await page.route(
+      `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/triggers`,
+      (route) =>
+        route.fulfill({
+          json: {
+            items: [
+              {
+                id: previewId,
+                workflowId,
+                workflowVersionId: versionId,
+                nodeId: 'incoming',
+                kind: 'webhook',
+                status: 'configuration_required',
+                healthStatus: 'pending',
+                endpointReady: false,
+                authentication: { mode: 'signed', allowedOrigins: [] },
+                lastErrorCode: null,
+                reconciledAt: null,
+              },
+            ],
+          },
+        }),
+    );
+    await page.goto(editorUrl);
+    const setup = page.getByRole('link', {
+      name: 'Trigger needs setup — open Triggers',
+      exact: true,
+    });
+    await expect(setup).toBeVisible();
+    await expect(setup).toHaveAttribute(
+      'href',
+      `/w/${workspaceId}/workflows/${workflowId}/triggers`,
+    );
+    await expect(page.getByText('Starting', { exact: true })).toHaveCount(0);
+    await page.screenshot({
+      path: test.info().outputPath(`trigger-setup-${String(width)}.png`),
+      fullPage: true,
+    });
+  });
+}

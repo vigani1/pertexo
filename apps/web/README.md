@@ -252,11 +252,13 @@ and feature plans when adding a surface.
 ## Appearance
 
 Account → Profile → Appearance offers System (the default), Light and Dark. The
-choice is saved for this browser, across workspaces and sign-in sessions. System
-follows device changes live. If browser storage is blocked, the choice still
-works for the open tab. The boot screen resolves it before the app loads. Light
-Weft uses dark teal and violet inks on a pale cloth ground; the same thread
-glyphs, floating lenses, Loom and Core retain their meaning.
+account menu (More on phones) and command palette → Switch theme offer quick
+access to the same choice. The choice is saved for this browser, across
+workspaces and sign-in sessions. System follows device changes live. If browser
+storage is blocked, the choice still works for the open tab. The boot screen
+resolves it before the app loads. Light Weft uses dark teal and violet inks on a
+pale cloth ground; the same thread glyphs, floating lenses, Loom and Core retain
+their meaning.
 
 ## Weft design system
 

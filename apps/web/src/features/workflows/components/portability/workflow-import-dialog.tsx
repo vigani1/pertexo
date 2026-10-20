@@ -32,6 +32,7 @@ type WorkflowImportDialogProps = Readonly<{
    * file; with one it sets up that example, and the others stay a click away.
    */
   example?: string | undefined;
+  initialName?: string | undefined;
 }>;
 
 export function WorkflowImportDialog(props: WorkflowImportDialogProps) {
@@ -63,8 +64,9 @@ function WorkflowImportSession({
   open = true,
   onReopen,
   example,
+  initialName = '',
 }: WorkflowImportDialogProps) {
-  const draft = useImportDraft(apiClient, userId, workspace);
+  const draft = useImportDraft(apiClient, userId, workspace, initialName);
   // The example the dialog opened on is chosen once; after that, by hand.
   const [opening, setOpening] = useState(example);
   return (

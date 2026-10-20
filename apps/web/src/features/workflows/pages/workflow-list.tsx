@@ -173,6 +173,7 @@ function WorkflowListContent({
   const [importing, setImporting] = useState(false);
   // The example a start-from-example dialog opened on; none imports a file.
   const [example, setExample] = useState<string>();
+  const [exampleName, setExampleName] = useState('');
   const runner = useRunWorkflow({
     apiClient,
     userId: user.id,
@@ -184,15 +185,16 @@ function WorkflowListContent({
     void onSearchChange(updateWorkflowListSearch(search, { create: true }));
   }
 
-  function openImport(nextExample?: string) {
+  function openImport(nextExample?: string, name = '') {
+    setExampleName(name);
     setExample(nextExample);
     setImporting(true);
   }
 
-  function chooseExample(templateId: string) {
+  function chooseExample(templateId: string, name = '') {
     if (search.create === true)
       void onSearchChange(updateWorkflowListSearch(search, { create: false }));
-    openImport(templateId);
+    openImport(templateId, name);
   }
 
   useListShortcuts({
@@ -339,12 +341,13 @@ function WorkflowListContent({
       {/* A file import and each example keep their own session, so a
           retained file import isn't mixed with an example's setup. */}
       <WorkflowImportDialog
-        key={`${user.id}:${workspace.id}:${example ?? 'file'}`}
+        key={`${user.id}:${workspace.id}:${example ?? 'file'}:${exampleName}`}
         apiClient={apiClient}
         userId={user.id}
         workspace={workspace}
         open={importing}
         example={example}
+        initialName={exampleName}
         onReopen={() => {
           setImporting(true);
         }}

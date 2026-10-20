@@ -61,7 +61,7 @@ export const workflowStepSamples = appSchema.table(
     ),
     check(
       'workflow_step_samples_source_valid',
-      sql`((source_kind='json' AND source_run_id IS NULL AND source_node_run_id IS NULL AND source_preview_id IS NULL) OR (source_kind='run' AND source_run_id IS NOT NULL AND source_node_run_id IS NOT NULL AND source_preview_id IS NULL) OR (source_kind='preview' AND source_run_id IS NULL AND source_node_run_id IS NULL AND source_preview_id IS NOT NULL)) IS TRUE`,
+      sql`((source_kind IN ('json','webhook_test') AND source_run_id IS NULL AND source_node_run_id IS NULL AND source_preview_id IS NULL) OR (source_kind='run' AND source_run_id IS NOT NULL AND source_node_run_id IS NOT NULL AND source_preview_id IS NULL) OR (source_kind='preview' AND source_run_id IS NULL AND source_node_run_id IS NULL AND source_preview_id IS NOT NULL)) IS TRUE`,
     ),
     check('workflow_step_samples_expiry_valid', sql`expires_at > created_at`),
     index('workflow_step_samples_expiry_idx').on(table.expiresAt, table.id),

@@ -5,12 +5,15 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuLinkItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { setAppearance, useAppearance } from '@/lib/appearance/use-choice';
 import { RingMonogram } from './workspace-mark';
 
 export function AccountMenu({
@@ -24,6 +27,7 @@ export function AccountMenu({
   logoutPending: boolean;
   onLogout: () => void;
 }>) {
+  const appearance = useAppearance();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -52,6 +56,23 @@ export function AccountMenu({
           <ShieldCheckIcon aria-hidden="true" />
           Account &amp; security
         </DropdownMenuLinkItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Theme</DropdownMenuLabel>
+          <DropdownMenuRadioGroup
+            aria-label="Theme"
+            value={appearance.preference}
+            onValueChange={(value: unknown) => {
+              if (value === 'system' || value === 'light' || value === 'dark')
+                setAppearance(value);
+            }}
+          >
+            <DropdownMenuRadioItem value="system">System</DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="light">Light</DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="dark">Dark</DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
         <DropdownMenuItem
           variant="destructive"
           disabled={logoutPending}

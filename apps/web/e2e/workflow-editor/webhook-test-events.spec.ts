@@ -54,7 +54,7 @@ for (const width of [375, 1280])
             nodeId: node.id,
             binding: stepSampleIdentity(current),
             state: 'pinned',
-            source: { kind: 'json' },
+            source: { kind: 'webhook_test' },
             createdAt: new Date().toISOString(),
             expiresAt: new Date(Date.now() + 2592000000).toISOString(),
           }
@@ -75,7 +75,7 @@ for (const width of [375, 1280])
           stepSampleWriteRequestSchema.parse(route.request().postDataJSON()),
         ).toMatchObject({
           expectedSampleId: null,
-          source: { kind: 'json', value: { orderId: 17, amount: 24 } },
+          source: { kind: 'webhook_test', listenerId: id },
         });
         pinned = true;
         await route.fulfill({
@@ -117,7 +117,14 @@ for (const width of [375, 1280])
             state: captured ? 'captured' : 'waiting',
             expiresAt: new Date(Date.now() + 120000).toISOString(),
             output: captured
-              ? { kind: 'inline', value: { orderId: 17, amount: 24 } }
+              ? {
+                  kind: 'inline',
+                  value: {
+                    orderId: 17,
+                    amount: 24,
+                    nested: { child: { value: 1 } },
+                  },
+                }
               : null,
           },
         });
@@ -156,6 +163,21 @@ for (const width of [375, 1280])
     captured = true;
     await expect(panel.getByText('Test event received')).toBeVisible();
     expect(pinned).toBe(false);
+    const tree = panel.getByRole('group', { name: 'Received test data' });
+    const outer = tree.locator('details').first();
+    const nested = tree.locator('details').nth(1);
+    const child = tree.locator('details').nth(2);
+    const arrow = (details: typeof child) =>
+      details.locator(':scope > summary > svg');
+    await expect(arrow(outer)).toHaveCSS('rotate', '90deg');
+    await expect(arrow(nested)).toHaveCSS('rotate', '90deg');
+    await expect(arrow(child)).toHaveCSS('rotate', 'none');
+    await child.locator(':scope > summary').click();
+    await expect(arrow(child)).toHaveCSS('rotate', '90deg');
+    await nested.locator(':scope > summary').click();
+    await expect(arrow(nested)).toHaveCSS('rotate', 'none');
+    await expect(arrow(outer)).toHaveCSS('rotate', '90deg');
+
     await panel.getByRole('button', { name: 'Keep as pinned sample' }).click();
     await page
       .getByRole('dialog')
@@ -163,6 +185,9 @@ for (const width of [375, 1280])
       .click();
     await expect(panel.getByText('Kept as pinned sample')).toBeVisible();
     expect(pinned).toBe(true);
+    await expect(
+      page.getByText('From a captured request.', { exact: false }),
+    ).toBeVisible();
     await panel
       .getByRole('heading', { name: 'Receive a real sample' })
       .scrollIntoViewIfNeeded();
@@ -179,4 +204,7 @@ for (const width of [375, 1280])
       panel.getByRole('button', { name: 'Listen for test event' }),
     ).toBeVisible();
     expect(stopped).toBe(true);
+    await expect(panel.getByLabel('Test authentication')).toContainText(
+      'Secret URL',
+    );
   });

@@ -7,7 +7,6 @@ import { JsonTree } from '@/components/patterns/code/json-tree';
 import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import type { SampleScope } from '../../data/samples/api';
 import { stepSampleQueryOptions } from '../../data/samples/queries';
-import { readWebhookTest } from '../../data/webhook-test-events/api';
 import { useSampleCommand } from '../samples/use-command';
 export function CapturedEvent({
   scope,
@@ -25,28 +24,10 @@ export function CapturedEvent({
   const sample = useQuery(stepSampleQueryOptions(scope, nodeId));
   const [confirm, setConfirm] = useState(false);
   const [kept, setKept] = useState(false);
-  const pin = useSampleCommand(
-    scope,
-    nodeId,
-    async () => {
-      const saved = await ensureSaved();
-      const checked = await readWebhookTest(
-        scope,
-        nodeId,
-        listenerId,
-        AbortSignal.timeout(5000),
-      );
-      if (checked.state !== 'captured')
-        throw new Error(
-          'The test event expired or its setup changed. Listen again.',
-        );
-      return saved;
-    },
-    () => {
-      setConfirm(false);
-      setKept(true);
-    },
-  );
+  const pin = useSampleCommand(scope, nodeId, ensureSaved, () => {
+    setConfirm(false);
+    setKept(true);
+  });
   return (
     <>
       <JsonTree value={output.value} label="Received test data" />
@@ -84,7 +65,7 @@ export function CapturedEvent({
             if (pin.uncertain) pin.retry();
             else if (sample.data !== undefined)
               void pin.save(
-                { kind: 'json', value: output.value },
+                { kind: 'webhook_test', listenerId },
                 sample.data.sample,
               );
           }}
