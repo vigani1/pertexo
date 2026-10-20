@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
 import type { AccessibleWorkspace, ApiTokenMetadata } from '@pertexo/contracts';
 import {
   PageHeader,
   PageHeaderActions,
   PageHeaderTitle,
 } from '@/components/patterns/page-header';
-import { SettingsSection } from '@/components/patterns/settings/section';
+import { RefreshCwIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Disclosure } from '@/components/ui/disclosure';
+import { cn } from '@/lib/utils';
 import { Notice } from '@/components/ui/notice';
 import type { ApiClient } from '@/lib/api/client';
 import {
@@ -47,24 +48,21 @@ export function ApiTokensPage({
   return (
     <div className="flex max-w-5xl flex-col gap-6">
       <PageHeader>
-        <div className="flex flex-col gap-3">
-          <Link
-            to="/w/$workspaceId/settings"
-            params={{ workspaceId: workspace.id }}
-            className="inline-link self-start text-sm"
-          >
-            Settings
-          </Link>
-          <PageHeaderTitle>API tokens</PageHeaderTitle>
-        </div>
+        <PageHeaderTitle>API tokens</PageHeaderTitle>
         <PageHeaderActions>
           <Button
             type="button"
             variant="ghost"
+            size="icon"
+            aria-label="Refresh"
+            title="Refresh"
             disabled={query.isFetching}
             onClick={refresh}
           >
-            Refresh
+            <RefreshCwIcon
+              aria-hidden="true"
+              className={cn(query.isFetching && 'motion-safe:animate-spin')}
+            />
           </Button>
           <Button
             type="button"
@@ -78,15 +76,26 @@ export function ApiTokensPage({
           </Button>
         </PageHeaderActions>
       </PageHeader>
-      <SettingsSection
-        title="Your scripts"
-        description="Personal tokens for this workspace. Each grants an explicit part of your current access; membership changes invalidate it."
-      >
+      <div className="flex max-w-2xl flex-col gap-2">
         <p className="text-sm leading-relaxed text-muted-foreground">
-          Keep secrets in a secrets manager. To replace a token, create another,
-          update the script, then revoke the old one. Signing out or changing
-          your password does not revoke API tokens.
+          Personal keys for your scripts and the CLI in this workspace. Each
+          grants an explicit part of your current access.
         </p>
+        <Disclosure summary="How tokens work" size="xs">
+          <ul className="flex list-disc flex-col gap-1 pl-5 text-xs leading-relaxed text-muted-foreground">
+            <li>Keep a token in a secrets manager; it is shown once.</li>
+            <li>
+              To replace one, create another, update the script, then revoke the
+              old one.
+            </li>
+            <li>
+              A change to your membership stops a token; signing out or a new
+              password doesn't.
+            </li>
+          </ul>
+        </Disclosure>
+      </div>
+      <div className="flex flex-col gap-4">
         {first?.enabled !== false ? null : (
           <Notice tone="warning">
             Automation tokens are disabled on this server. Ask the person
@@ -106,7 +115,7 @@ export function ApiTokensPage({
           onRefresh={refresh}
           onRevoke={setRevoking}
         />
-      </SettingsSection>
+      </div>
       {!creating || first === undefined ? null : (
         <CreateTokenDialog
           apiClient={apiClient}
