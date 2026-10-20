@@ -203,7 +203,9 @@ test('keeps keyboard placement usable and the narrow editor horizontally bounded
   expect(outside).not.toBeNull();
   await page.mouse.click(outside?.x ?? 0, outside?.y ?? 0);
   await expect(stepPanel).toBeHidden();
-  await panels.getByRole('button', { name: 'Step', exact: true }).click();
+  // A double tap on the step brings its panel back, its edit still there.
+  await page.locator('.react-flow__node').dblclick();
+  await expect(stepPanel).toBeVisible();
   await expect(page.getByLabel('Label', { exact: true })).toHaveValue(
     'Mobile scratch',
   );
