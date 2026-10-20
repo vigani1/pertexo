@@ -1,4 +1,4 @@
-import { expect, test } from '../support/fixtures';
+import { expect, test } from '../../support/fixtures';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
@@ -9,7 +9,7 @@ import {
   installEditorRoutes,
   mappingGraph,
   remoteDraft,
-} from './support';
+} from '../support';
 for (const viewport of [
   { width: 1440, height: 900 },
   { width: 375, height: 768 },

@@ -1,5 +1,5 @@
 import { workflowGraphSchema } from '@pertexo/workflow-model';
-import { expect, test } from '../support/fixtures';
+import { expect, test } from '../../support/fixtures';
 import {
   addCsrfCookie,
   definition,
@@ -9,7 +9,7 @@ import {
   remoteDraft,
   mappingGraph,
   workspace,
-} from './support';
+} from '../support';
 
 test.beforeEach(async ({ context }) => {
   await addCsrfCookie(context);

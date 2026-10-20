@@ -1,5 +1,5 @@
-import { expect, test } from '../support/fixtures';
-import { slackConnection } from '../../test/support/fixtures/slack-channels';
+import { expect, test } from '../../support/fixtures';
+import { slackConnection } from '../../../test/support/fixtures/slack-channels';
 import {
   addCsrfCookie,
   definition,
@@ -7,7 +7,7 @@ import {
   installEditorRoutes,
   remoteDraft,
   workspaceId,
-} from './support';
+} from '../support';
 
 const connectionId = '44444444-4444-4444-8444-444444444444';
 const slackDefinition = {

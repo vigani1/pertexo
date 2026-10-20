@@ -1,12 +1,12 @@
-import { expect, test } from '../support/fixtures';
-import { platformBrowserNodeDefinitionCatalog } from '../../../../packages/node-catalog/dist/index.js';
+import { expect, test } from '../../support/fixtures';
+import { platformBrowserNodeDefinitionCatalog } from '../../../../../packages/node-catalog/dist/index.js';
 import {
   nodeDefinitionListResponseSchema,
   workflowDraftResponseSchema,
   workflowVersionResponseSchema,
   type WorkflowVersionResponse,
 } from '@pertexo/contracts';
-import { authorWebhookHttpGraph } from '../../e2e-live/support/authoring/webhook-http';
+import { authorWebhookHttpGraph } from '../../../e2e-live/support/authoring/webhook-http';
 import {
   addCsrfCookie,
   currentEtag,
@@ -18,7 +18,7 @@ import {
   workflowSummary,
   workspace,
   workspaceId,
-} from './support';
+} from '../support';
 
 test('explains disabled webhook encryption to an owner at phone width', async ({
   page,
