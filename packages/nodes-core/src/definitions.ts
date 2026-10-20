@@ -1,3 +1,9 @@
+import {
+  CORE_CREATE_FILE_MANIFEST,
+  CORE_CREATE_FILE_CONFIG_SCHEMA,
+  CORE_CREATE_FILE_INPUT_SCHEMA,
+  CORE_CREATE_FILE_OUTPUT_SCHEMA,
+} from './data/create-file/index.js';
 import { DATA_TABLE_DEFINITIONS } from './data/tables/definitions.js';
 import {
   CORE_CODE_MANIFEST,
@@ -173,6 +179,12 @@ import {
 
 export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistration[] =
   Object.freeze([
+    Object.freeze({
+      manifest: CORE_CREATE_FILE_MANIFEST,
+      configSchema: CORE_CREATE_FILE_CONFIG_SCHEMA,
+      inputSchema: CORE_CREATE_FILE_INPUT_SCHEMA,
+      outputSchema: CORE_CREATE_FILE_OUTPUT_SCHEMA,
+    }),
     ...DATA_TABLE_DEFINITIONS,
     Object.freeze({
       manifest: CORE_CODE_MANIFEST,

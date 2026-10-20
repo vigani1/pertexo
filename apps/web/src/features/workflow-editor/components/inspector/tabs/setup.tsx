@@ -10,6 +10,7 @@ import { SkeletonLines } from '@/components/ui/skeleton';
 import { WebhookTriggerSetup } from '../webhook/trigger-setup';
 import { WebhookResponseSetup } from '../webhook/response-setup';
 import { HumanFormSetup } from '../human-task/setup';
+import { CreateFileSetup } from '../builders/create-file-setup';
 import { ReadFileSetup } from '../builders/read-file-setup';
 import { DateSetup } from '../builders/date-setup';
 import { CallTargetField } from '../fields/call-target';
@@ -20,7 +21,7 @@ import type {
   WorkflowGraphContract,
 } from '@pertexo/contracts';
 import { BracesIcon, ListIcon } from 'lucide-react';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode, type ComponentType } from 'react';
 import { Button } from '@/components/ui/button';
 import { FieldGroup } from '@/components/ui/field';
 import {
@@ -126,7 +127,7 @@ function CatalogSetupTab({
     [node.definition.key, definition?.configSchema],
   );
   const [jsonMode, setJsonMode] = useState(false);
-  const { form: jsonForm, hasScratch: jsonScratch } = useScratchForm(form);
+  const { form: setupForm, hasScratch: setupScratch } = useScratchForm(form);
   const onlyJson = definition === undefined;
   const showJson = onlyJson || jsonMode;
   // A step whose schema has nothing to set (Condition, say) is decided by
@@ -163,7 +164,7 @@ function CatalogSetupTab({
       ) : showJson ? (
         <ConfigJsonEditor
           config={node.config}
-          form={jsonForm}
+          form={setupForm}
           description={
             onlyJson
               ? 'This step type isn’t in the catalog, so its setup is kept exactly as it is.'
@@ -180,13 +181,13 @@ function CatalogSetupTab({
           configSchema={definition.configSchema}
           fields={fields}
           scheduleSchema={scheduleSchema}
-          form={form}
+          form={setupForm}
         />
       )}
       {onlyJson || nothingToSet ? null : (
         <JsonModeToggle
           jsonMode={jsonMode}
-          disabled={jsonMode && jsonScratch}
+          disabled={setupScratch}
           onToggle={() => {
             setJsonMode((current) => !current);
           }}
@@ -195,6 +196,24 @@ function CatalogSetupTab({
     </FieldGroup>
   );
 }
+
+const SIMPLE_SETUP_RENDERERS: Readonly<
+  Record<
+    string,
+    ComponentType<
+      Readonly<{
+        schema: unknown;
+        config: WorkflowNode['config'];
+        form: NodeFormApi;
+      }>
+    >
+  >
+> = {
+  'core.respond_webhook': WebhookResponseSetup,
+  'core.read_file': ReadFileSetup,
+  'core.create_file': CreateFileSetup,
+  'core.date': DateSetup,
+};
 
 /** The controls for a catalog step's setup, when it isn't shown as JSON. */
 function SetupControls({
@@ -246,12 +265,9 @@ function SetupControls({
     );
   if (node.definition.key === 'core.webhook')
     return <WebhookTriggerSetup node={node} graph={graph} form={form} />;
-  if (node.definition.key === 'core.respond_webhook')
-    return <WebhookResponseSetup config={config} form={form} />;
-  if (node.definition.key === 'core.read_file')
-    return <ReadFileSetup config={config} form={form} />;
-  if (node.definition.key === 'core.date')
-    return <DateSetup schema={configSchema} config={config} form={form} />;
+  const SimpleSetup = SIMPLE_SETUP_RENDERERS[formKey];
+  if (SimpleSetup !== undefined)
+    return <SimpleSetup schema={configSchema} config={config} form={form} />;
   if (scheduleSchema !== undefined)
     return (
       <ScheduleBuilder config={config} schema={scheduleSchema} form={form} />

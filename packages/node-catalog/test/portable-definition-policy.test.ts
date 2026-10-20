@@ -53,6 +53,34 @@ describe('registered portable definition policy', () => {
     ).toBe(false);
     expect(http?.validateConfig({ ...config, unexpected: true })).toBe(false);
   });
+  it('keeps Create file formats and ordered columns portable', () => {
+    const definition = platformPortableDefinitionPolicy().definitions.find(
+      ({ key }) => key === 'core.create_file',
+    );
+    expect(definition?.slots).toEqual([]);
+    for (const format of ['json', 'text'])
+      expect(definition?.validateConfig({ format })).toBe(true);
+    expect(
+      definition?.validateConfig({
+        format: 'csv',
+        delimiter: ',',
+        columns: ['b', 'a'],
+      }),
+    ).toBe(true);
+    expect(
+      definition?.validateConfig({
+        format: 'csv',
+        delimiter: ',',
+        columns: ['a', 'a'],
+      }),
+    ).toBe(false);
+    expect(definition?.validateConfig({ format: 'csv', delimiter: ',' })).toBe(
+      false,
+    );
+    expect(definition?.validateConfig({ format: 'text', columns: [] })).toBe(
+      false,
+    );
+  });
   it('preserves explicit Read file formats and conversion choices in portable definitions', () => {
     const definition = platformPortableDefinitionPolicy().definitions.find(
       ({ key }) => key === 'core.read_file',
