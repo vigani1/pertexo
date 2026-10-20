@@ -33,7 +33,7 @@ import {
 import { tableRowsQuery, tableKeys } from '../data/tables.queries';
 import { TableRowEditor } from './row-editor';
 import { ImportTableCsv } from './import';
-import { DataTableFilters } from './filters';
+import { DataTableFilters, DataTableSort } from './filters';
 import { TableCommandFeedback } from './command-feedback';
 import { tableCellText } from '../model/values';
 import { COLUMN_TYPES } from '../model/column-types';
@@ -72,6 +72,7 @@ export function DataTableRows({
       <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
         <DataTableFilters table={table} query={query} onChange={setQuery} />
         <div className="flex flex-wrap items-center gap-1.5 sm:ml-auto">
+          <DataTableSort table={table} query={query} onChange={setQuery} />
           <Button
             type="button"
             variant="ghost"
@@ -188,6 +189,9 @@ export function DataTableRows({
                       className={cn(
                         'max-w-72 min-w-28 px-4 py-2.5 align-top',
                         column.type === 'number' && 'text-right',
+                        // A number or a day never breaks across lines.
+                        (column.type === 'number' || column.type === 'date') &&
+                          'whitespace-nowrap',
                       )}
                     >
                       <TableCell

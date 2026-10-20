@@ -76,7 +76,7 @@ export function NoticeFrame({
           </time>
         </div>
         {summary === undefined ? null : (
-          <div className="line-clamp-2 min-w-0 text-sm text-muted-foreground sm:line-clamp-1">
+          <div className="line-clamp-2 min-w-0 text-sm text-muted-foreground xl:line-clamp-1">
             {summary}
           </div>
         )}

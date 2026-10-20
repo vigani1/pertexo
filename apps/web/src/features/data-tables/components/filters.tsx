@@ -15,7 +15,7 @@ const OPERATORS = [
   { value: 'less_than', label: 'Less than' },
 ];
 
-/** The rows' one filter and their order, in one row above the grid. */
+/** The rows' one filter, in one row above the grid. */
 export function DataTableFilters({
   table,
   query,
@@ -113,43 +113,57 @@ export function DataTableFilters({
           <XIcon aria-hidden="true" className="size-3 shrink-0" />
         </button>
       )}
-      <TableChoice
-        label="Sort"
-        className="h-8 w-40"
-        value={
-          query.sort === undefined
-            ? ''
-            : `${query.sort.column}:${query.sort.direction}`
-        }
-        choices={[
-          { value: '', label: 'Creation order' },
-          ...table.columns.flatMap((item) => [
-            { value: `${item.name}:asc`, label: `${item.name} ↑` },
-            { value: `${item.name}:desc`, label: `${item.name} ↓` },
-          ]),
-        ]}
-        onChange={(next) => {
-          const [sortColumn, direction] = next.split(':');
-          const { sort: _sort, ...rest } = query;
-          onChange(
-            next === ''
-              ? { ...rest, offset: 0 }
-              : {
-                  ...rest,
-                  offset: 0,
-                  sort: {
-                    column: sortColumn ?? '',
-                    direction: direction === 'desc' ? 'desc' : 'asc',
-                  },
-                },
-          );
-        }}
-      />
       {error === undefined ? null : (
         <Notice tone="warning" className="w-full">
           {error}
         </Notice>
       )}
     </form>
+  );
+}
+
+/** The rows' order, beside the row actions so filters keep their own row. */
+export function DataTableSort({
+  table,
+  query,
+  onChange,
+}: Readonly<{
+  table: DataTableDefinition;
+  query: DataTableQuery;
+  onChange: (query: DataTableQuery) => void;
+}>) {
+  return (
+    <TableChoice
+      label="Sort"
+      className="h-8 w-32 sm:w-40"
+      value={
+        query.sort === undefined
+          ? ''
+          : `${query.sort.column}:${query.sort.direction}`
+      }
+      choices={[
+        { value: '', label: 'Creation order' },
+        ...table.columns.flatMap((item) => [
+          { value: `${item.name}:asc`, label: `${item.name} ↑` },
+          { value: `${item.name}:desc`, label: `${item.name} ↓` },
+        ]),
+      ]}
+      onChange={(next) => {
+        const [sortColumn, direction] = next.split(':');
+        const { sort: _sort, ...rest } = query;
+        onChange(
+          next === ''
+            ? { ...rest, offset: 0 }
+            : {
+                ...rest,
+                offset: 0,
+                sort: {
+                  column: sortColumn ?? '',
+                  direction: direction === 'desc' ? 'desc' : 'asc',
+                },
+              },
+        );
+      }}
+    />
   );
 }

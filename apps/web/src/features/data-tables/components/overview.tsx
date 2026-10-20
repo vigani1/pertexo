@@ -106,7 +106,7 @@ export function TableCapacity({
       <div className="flex flex-col gap-1.5">
         <p className="flex items-baseline justify-between gap-2">
           <span className="text-muted-foreground">Tables</span>
-          <span className="font-mono text-xs tabular-nums">
+          <span className="font-mono text-xs whitespace-nowrap tabular-nums">
             {quotas.tableCount} / {quotas.tableLimit}
           </span>
         </p>
@@ -119,7 +119,7 @@ export function TableCapacity({
       <div className="flex flex-col gap-1.5">
         <p className="flex items-baseline justify-between gap-2">
           <span className="text-muted-foreground">Storage</span>
-          <span className="font-mono text-xs tabular-nums">
+          <span className="font-mono text-xs whitespace-nowrap tabular-nums">
             {formatByteLength(quotas.storedBytes)} /{' '}
             {formatByteLength(quotas.byteLimit)}
           </span>
