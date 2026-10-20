@@ -4,8 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
-import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../../src/migrations.js';
-import { createDisposableDatabaseFixture } from '../support/postgres/disposable-database.js';
+import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../../../src/migrations.js';
+import { createDisposableDatabaseFixture } from '../../support/postgres/disposable-database.js';
 
 it('upgrades password accounts with two-factor off, isolated auth grants and cascading factor deletion', async () => {
   const adminUrl =

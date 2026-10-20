@@ -15,13 +15,13 @@ import {
   HTTP_REQUEST_MANIFEST,
   HTTP_REQUEST_DEFINITION_REGISTRATION,
   httpRequestConfigSchema,
-} from '../../src/index.js';
+} from '../../../src/index.js';
 import {
   createHttpRequestExecutorRegistration,
   createNodeSecureHttpClient,
   parseAllowedPrivateNetworks,
-} from '../../src/server.js';
-import { nextLink } from '../../src/http-request/pagination/link.js';
+} from '../../../src/server.js';
+import { nextLink } from '../../../src/http-request/pagination/link.js';
 
 const closers: (() => Promise<void>)[] = [];
 afterEach(async () => {
