@@ -59,6 +59,11 @@
           "lodash",
           "dayjs"
         ]
+      },
+      "apps/ops": {
+        "entry": [
+          "src/identity/main.ts"
+        ]
       }
     }
   },
