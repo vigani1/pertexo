@@ -127,8 +127,6 @@ export function WorkspaceSpine({
   return (
     <nav
       aria-label="Workspace"
-      // The light theme keeps its rail dark: one dyed thread to anchor the page.
-      data-theme="dark"
       className="lens fixed top-3 bottom-3 left-3 z-40 hidden w-15 flex-col items-center gap-1 rounded-xl py-2.5 md:flex"
     >
       <HomeCore workspaceId={workspace.id} liveRunCount={liveRunCount} />

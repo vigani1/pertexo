@@ -1,4 +1,9 @@
-import { CanvasScene, rgba, type Rgb } from '@/lib/canvas-scene';
+import {
+  CanvasScene,
+  readTokenColor,
+  rgba,
+  type Rgb,
+} from '@/lib/canvas-scene';
 
 // Canvas 2D port of the legacy particle-orb shader: points on a Fibonacci
 // sphere, displaced by three travelling waves, rotated and projected with a
@@ -122,9 +127,10 @@ export class CoreOrbScene extends CanvasScene {
 
   setState(state: CoreOrbState): void {
     this.#motion = MOTION[state];
-    const ink = this.particleComposition === 'multiply';
+    // Light composes normally: there are no points of light on white.
+    const ink = this.particleComposition === 'source-over';
     const palette = PALETTE_TOKENS[state].map((token) =>
-      this.tokenColor(token, FALLBACK_RGB),
+      readTokenColor(token, FALLBACK_RGB),
     );
     this.#sprites = palette.map((rgb) => particleSprite(rgb, ink));
     this.#halo = ink ? (palette[1] ?? FALLBACK_RGB) : undefined;

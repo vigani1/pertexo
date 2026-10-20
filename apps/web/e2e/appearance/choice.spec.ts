@@ -20,7 +20,7 @@ for (const theme of ['light', 'dark'] as const) {
       await page
         .locator('html')
         .evaluate((el) => getComputedStyle(el).backgroundColor),
-    ).toBe(theme === 'light' ? 'rgb(228, 233, 230)' : 'rgb(17, 19, 22)');
+    ).toBe(theme === 'light' ? 'rgb(247, 249, 248)' : 'rgb(17, 19, 22)');
     await page.evaluate(
       (value) =>
         window.pertexoAppearance?.setPreference(
