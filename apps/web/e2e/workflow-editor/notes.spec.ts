@@ -254,6 +254,7 @@ test('compares and reapplies a note-only conflict without replacing steps', asyn
   const conflict = page.getByRole('region', { name: 'Draft conflict' });
   await expect(conflict).toContainText('Changed elsewhere');
   await conflict.getByRole('button', { name: 'Compare' }).click();
+  await page.getByRole('tab', { name: 'Steps and notes', exact: true }).click();
   await expect(page.getByRole('dialog')).toContainText(
     'Note: My documented change',
   );
