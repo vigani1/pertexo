@@ -158,6 +158,26 @@ describe('HTTP pagination setup', () => {
       ),
     ).toEqual(['collected']);
   });
+  it('selects from own config fields rather than inherited object properties', () => {
+    const schema = {
+      anyOf: [{ properties: { absent: {} } }, { properties: { present: {} } }],
+    };
+    const selection = {
+      configProperty: 'toString',
+      whenPresent: 1,
+      whenAbsent: 0,
+    };
+    expect(
+      outputFieldsOf(schema, { config: {} }, selection).map(
+        (field) => field.key,
+      ),
+    ).toEqual(['absent']);
+    expect(
+      outputFieldsOf(schema, { config: { toString: true } }, selection).map(
+        (field) => field.key,
+      ),
+    ).toEqual(['present']);
+  });
   it('does not claim one alternative’s type when union fields disagree', () => {
     expect(
       outputFieldsOf({
