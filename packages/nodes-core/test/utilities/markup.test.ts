@@ -11,6 +11,61 @@ const run = (key: string, config: unknown, value: unknown) =>
   });
 
 describe('bounded markup conversion', () => {
+  it('quotes boolean attributes and preserves their text on round trip', async () => {
+    const built = await run(
+      'xml',
+      { operation: 'build' },
+      { r: { '@_enabled': true, '@_disabled': false, '@_literal': 'true' } },
+    );
+    expect(built).toMatchObject({
+      output: { value: '<r enabled="true" disabled="false" literal="true"/>' },
+    });
+    expect(
+      await run(
+        'xml',
+        { operation: 'parse' },
+        (built.output as { value: string }).value,
+      ),
+    ).toMatchObject({
+      output: {
+        value: {
+          r: {
+            '@_enabled': 'true',
+            '@_disabled': 'false',
+            '@_literal': 'true',
+          },
+        },
+      },
+    });
+  });
+  it('requires names for nested lists and scalar non-null #text', async () => {
+    for (const value of [{ r: { item: [[1, 2]] } }, { r: { '#text': null } }])
+      await expect(
+        run('xml', { operation: 'build' }, value),
+      ).rejects.toMatchObject({ safeErrorCode: 'utility.xml_data' });
+  });
+  it('preserves empty lists, null attributes and null elements when budgeting XML', async () => {
+    expect(
+      await run(
+        'xml',
+        { operation: 'build' },
+        { r: { '@_omit': null, missing: [], child: null } },
+      ),
+    ).toMatchObject({ output: { value: '<r><child/></r>' } });
+  });
+  it('admits the exact retained XML result size and refuses one additional byte', async () => {
+    const count =
+      262_144 - Buffer.byteLength(JSON.stringify({ value: '<r></r>' }));
+    const result = await run(
+      'xml',
+      { operation: 'build' },
+      { r: 'x'.repeat(count) },
+    );
+    expect(Buffer.byteLength(JSON.stringify(result.output))).toBe(262_144);
+    await expect(
+      run('xml', { operation: 'build' }, { r: 'x'.repeat(count + 1) }),
+    ).rejects.toMatchObject({ safeErrorCode: 'utility.result_too_large' });
+  });
   it('converts XML with strings, Unicode names, attributes, namespaces and repeated elements', async () => {
     const source =
       '<orders xmlns:x="urn:order"><x:order id="001"><amount>12.5</amount></x:order><x:order id="002"><amount>0</amount></x:order><名>&lt;A &amp; B&gt; &#x1F600;</名></orders>';

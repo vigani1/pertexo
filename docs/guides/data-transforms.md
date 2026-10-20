@@ -227,6 +227,8 @@ refused; built-in and numeric character references work. Up to 48 nested element
 and 8,000 elements/attributes, with the usual output envelope. Malformed errors
 show line/column without echoing the document. Nothing loads a DTD or resolves a URL.
 
+XML creation checks encoded size, including repeated names and escaped text, before allocating the output. Boolean attributes become quoted `"true"` or `"false"`; null attributes are omitted. Null elements become empty elements, while `#text` needs text, a number or a boolean. Give nested lists named child elements instead of using anonymous arrays inside arrays.
+
 ### Extract HTML
 
 Map HTML text in `value`. Select **Extract text** or **Extract attribute**, enter
