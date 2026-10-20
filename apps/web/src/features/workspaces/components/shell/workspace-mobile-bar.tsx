@@ -90,6 +90,7 @@ export function WorkspaceMobileBar({
       />
       <nav
         aria-label="Workspace"
+        data-theme="dark"
         className={cn(
           'lens fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 flex items-center rounded-2xl px-2 py-1 md:hidden',
           AWAY_WHILE_TYPING,

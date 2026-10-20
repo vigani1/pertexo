@@ -978,10 +978,17 @@ No account/workspace API or server state is mirrored. Blocked storage retains a
 choice in memory and explains that it cannot survive closing the tab.
 
 Neutral surfaces use `surface-ink` and `recess-ink`, with shared shadows, canvas
-ground, scrim and glass tokens. Light uses pale cloth with deeper teal, violet
-and status inks. `useCanvasRenderer` recreates decorative scenes when the
-resolved theme changes, including reduced-motion scenes. Particle compositing is
-additive in dark and ordinary ink in light; both React Flow views follow the
+ground, scrim and glass tokens. Light is the loom in daylight: a sage linen
+cloth (`background`), a lighter paper for content (`card`), frosted paper for
+floating chrome, deeper teal, violet and status inks, and no large pure-white
+surface. The workspace rail stays dark in both themes: `data-theme="dark"` on an
+element re-scopes the dark palette to it, and the light theme dyes that rail's
+glass teal so the Core keeps glowing there. `useCanvasRenderer` recreates
+decorative scenes when the resolved theme changes, including reduced-motion
+scenes. Scenes read their tokens at the canvas, so a dark section draws dark.
+Particle compositing is additive in dark and multiplied, like dye, in light,
+where the Core takes its own vivid inks (`core-live`, `core-glint`,
+`core-accent`), crisp beads and a faint glow. Both React Flow views follow the
 same resolved choice. Provider brand marks and alpha masks are not theme inks.
 
 - Keep semantic colour tokens in both palettes. Dark values include: `success`
