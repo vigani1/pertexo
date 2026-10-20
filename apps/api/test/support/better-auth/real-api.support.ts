@@ -426,6 +426,7 @@ export function useBetterAuthRealApi(
     signUp,
     signIn,
     mailedLink,
+    mailedMessages,
     database,
     listen,
     createIdentityPeer,

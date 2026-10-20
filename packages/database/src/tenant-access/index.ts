@@ -118,3 +118,10 @@ export type { DirectoryQuery } from '../identity/federation/provisioning/resourc
 export { DirectoryManagedMembershipError } from './errors.js';
 
 export { isAuthenticationSessionAllowed } from '../identity/federation/sessions/lookup.js';
+
+export { createTwoFactorRecoveryStore } from '../identity/two-factor/recovery.js';
+export { recordIdentitySecurityFact } from '../identity/security-facts.js';
+export type {
+  TwoFactorRecoveryStore,
+  TwoFactorRecoveryResult,
+} from '../identity/two-factor/recovery.js';

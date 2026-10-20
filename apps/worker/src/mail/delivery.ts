@@ -1,3 +1,4 @@
+import { authenticationMailAssociatedData } from '@pertexo/database/platform';
 import { z } from 'zod';
 import type {
   SystemMailDeliveryClaim,
@@ -89,7 +90,11 @@ async function deliverClaim(
     return;
   }
   // Durable ciphertext and provider identities predate the system-mail table name.
-  const associatedData = `pertexo/authentication-mail/${claim.purpose}/${claim.id}/${claim.expiresAt.toISOString()}`;
+  const associatedData = authenticationMailAssociatedData(
+    claim.purpose,
+    claim.id,
+    claim.expiresAt,
+  );
   const message = payload.parse(
     JSON.parse(
       dependencies.envelope.open(claim.sealedPayload, associatedData),

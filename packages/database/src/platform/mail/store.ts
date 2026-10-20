@@ -10,6 +10,8 @@ import { acquireDatabasePool, type DatabaseRuntime } from '../pool/runtime.js';
 
 const purpose = z.enum([
   'workspace_notice',
+  'two_factor_disabled',
+  'recovery_code_sign_in',
   'verification',
   'password_reset',
   'email_change_confirmation',
