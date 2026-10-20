@@ -8,6 +8,7 @@ import {
   mapDraft,
   mapVersion,
   mapWorkflow,
+  workflowSetupSelection,
   workflowVersionRowSelection,
 } from './representation/rows.js';
 import type {
@@ -141,7 +142,7 @@ export function createWorkflowAuthoringReadStore(
       context.transact(workspaceId, actorId, async (client) => {
         await context.requireReader(client, workspaceId, actorId);
         const result = await client.query<Record<string, unknown>>(
-          'select * from app.workflows where workspace_id = $1 and id = $2',
+          `select *, ${workflowSetupSelection} from app.workflows where workspace_id = $1 and id = $2`,
           [workspaceId, uuidSchema.parse(workflowId)],
         );
         return result.rows[0] === undefined
@@ -166,14 +167,14 @@ export function createWorkflowAuthoringReadStore(
           input.after === undefined ? null : uuidSchema.parse(input.after.id);
         const result = await client.query<Record<string, unknown>>(
           order === 'updated_desc'
-            ? `select *, to_char(updated_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as cursor_position_at
+            ? `select *, ${workflowSetupSelection}, to_char(updated_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as cursor_position_at
                from app.workflows where workspace_id = $1
                  and ($5::uuid is null or exists(select 1 from app.workflow_version_dependencies dependency
                    where dependency.workspace_id=$1 and dependency.parent_version_id=app.workflows.published_version_id
                      and dependency.target_workflow_id=$5))
                  and ($2::timestamptz is null or (updated_at, id) < ($2::timestamptz, $3::uuid))
                order by updated_at desc, id desc limit $4`
-            : `select *, to_char(created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as cursor_position_at
+            : `select *, ${workflowSetupSelection}, to_char(created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as cursor_position_at
                from app.workflows where workspace_id = $1
                  and ($5::uuid is null or exists(select 1 from app.workflow_version_dependencies dependency
                    where dependency.workspace_id=$1 and dependency.parent_version_id=app.workflows.published_version_id

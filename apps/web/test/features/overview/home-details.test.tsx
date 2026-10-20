@@ -127,6 +127,36 @@ describe('home details', () => {
     ).toBeVisible();
   });
 
+  it('shows webhook setup in Recently changed using the existing summary read', async () => {
+    mockServer.use(...homeReads());
+    mockServer.use(
+      http.get(`${apiBase}/workflows`, () =>
+        HttpResponse.json({
+          items: [
+            {
+              ...fixtureWorkflow(),
+              activationStatus: 'activating',
+              webhookSetupRequired: true,
+            },
+          ],
+          nextCursor: null,
+        }),
+      ),
+    );
+    renderApp(`/w/${workspaceId}`);
+    const recent = await screen.findByRole(
+      'region',
+      { name: 'Recently changed' },
+      coldStart,
+    );
+    expect(
+      await within(recent).findByText('Trigger needs setup'),
+    ).toBeVisible();
+    expect(
+      within(recent).queryByText('Starting', { exact: true }),
+    ).not.toBeInTheDocument();
+  });
+
   it('shows each recently changed workflow’s shape and live version', async () => {
     mockServer.use(...homeReads());
     renderApp(`/w/${workspaceId}`);

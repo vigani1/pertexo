@@ -167,8 +167,6 @@ export function WorkflowHubBar({
           )}
           <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-0.5 font-mono text-[0.7rem] text-subtle-foreground">
             <WorkflowActivationState
-              apiClient={apiClient}
-              userId={userId}
               workspace={workspace}
               workflowId={workflowId}
               workflow={workflow}

@@ -13,6 +13,7 @@ export type WorkflowRecord = Readonly<{
   lifecycleStatus: WorkflowLifecycleStatus;
   lifecycleRevision: number;
   activationStatus: WorkflowActivationStatus;
+  webhookSetupRequired: boolean;
   publishedVersionId: string | null;
   createdBy: string;
   createdAt: Date;

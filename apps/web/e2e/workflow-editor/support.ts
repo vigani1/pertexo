@@ -334,6 +334,7 @@ export function workflowSummary(
       lifecycleStatus: 'active',
       lifecycleRevision: 1,
       activationStatus: publishedVersionId === null ? 'inactive' : 'active',
+      webhookSetupRequired: false,
       publishedVersionId,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,

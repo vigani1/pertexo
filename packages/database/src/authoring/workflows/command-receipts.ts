@@ -27,6 +27,8 @@ const storedResultSchema = z
         lifecycleStatus: workflowLifecycleStatusSchema,
         lifecycleRevision: revisionSchema,
         activationStatus: workflowActivationStatusSchema,
+        // Receipts written before endpoint availability was projected contain no flag.
+        webhookSetupRequired: z.boolean().default(false),
         publishedVersionId: uuidSchema.nullable(),
         createdBy: uuidSchema,
         createdAt: z.coerce.date(),
@@ -90,6 +92,7 @@ export async function completeWorkflowCommand(
       lifecycleStatus: workflow.lifecycleStatus,
       lifecycleRevision: workflow.lifecycleRevision,
       activationStatus: workflow.activationStatus,
+      webhookSetupRequired: workflow.webhookSetupRequired,
       publishedVersionId: workflow.publishedVersionId,
       createdBy: workflow.createdBy,
       createdAt: workflow.createdAt.toISOString(),

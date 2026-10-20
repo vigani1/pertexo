@@ -73,6 +73,7 @@ function installExistingEditorHandlers(
           lifecycleStatus: 'active',
           lifecycleRevision: 1,
           activationStatus: 'inactive',
+          webhookSetupRequired: false,
           publishedVersionId: null,
           createdAt: '2026-09-27T16:38:54.900Z',
           updatedAt: '2026-09-27T16:38:54.882Z',

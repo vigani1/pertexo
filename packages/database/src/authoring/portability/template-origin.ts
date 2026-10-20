@@ -2,7 +2,10 @@ import type { WorkflowAuthoringDatabase } from '../workflows/contracts.js';
 import type { WorkflowAuthoringReadContext } from '../workflows/reads.js';
 import { WorkflowTemplateOriginUnavailableError } from '../workflows/errors.js';
 import { workflowTemplateOriginSchema } from '@pertexo/templates';
-import { mapWorkflow } from '../workflows/representation/rows.js';
+import {
+  mapWorkflow,
+  workflowRowSelection,
+} from '../workflows/representation/rows.js';
 import { z } from 'zod';
 
 /** One scoped statement keeps summary and immutable origin in the same snapshot. */
@@ -17,7 +20,7 @@ export function createWorkflowTemplateOriginReader(
       try {
         result = await client.query<Record<string, unknown>>(
           `select row_to_json(workflow) workflow, origin.origin template_origin
-             from app.workflows workflow
+             from (select ${workflowRowSelection} from app.workflows) workflow
              left join app.workflow_template_origins origin on origin.workspace_id=workflow.workspace_id and origin.workflow_id=workflow.id
              where workflow.workspace_id=$1 and workflow.id=$2`,
           [workspaceId, id],

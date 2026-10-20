@@ -11,6 +11,7 @@ function storedWorkflow(activationStatus: unknown) {
     lifecycle_status: 'active',
     lifecycle_revision: 1,
     activation_status: activationStatus,
+    webhook_setup_required: false,
     published_version_id: '33333333-3333-4333-8333-333333333333',
     created_by: '44444444-4444-4444-8444-444444444444',
     created_at: new Date('2026-09-06T00:00:00.000Z'),

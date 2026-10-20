@@ -21,6 +21,7 @@ import {
   createdWorkflowRowSchema,
   mapDraft,
   mapWorkflow,
+  workflowRowSelection,
 } from '../representation/rows.js';
 import type {
   CreateWorkflowInput,
@@ -106,7 +107,7 @@ async function createWorkflow(
     const created = await client.query<Record<string, unknown>>(
       `select row_to_json(workflow.*) as workflow,
               row_to_json(draft.*) as draft
-       from app.workflows workflow
+       from (select ${workflowRowSelection} from app.workflows) workflow
        join app.workflow_drafts draft
          on draft.workspace_id = workflow.workspace_id
         and draft.workflow_id = workflow.id
@@ -164,7 +165,7 @@ async function saveDraft(
        revision = revision + 1, updated_by = $2, updated_at = transaction_timestamp()
        where workspace_id = $3 and workflow_id = $4 and revision = $5
          and exists (
-           select 1 from app.workflows workflow
+           select 1 from (select ${workflowRowSelection} from app.workflows) workflow
            where workflow.workspace_id = $3 and workflow.id = $4
              and workflow.lifecycle_status = 'active'
          )

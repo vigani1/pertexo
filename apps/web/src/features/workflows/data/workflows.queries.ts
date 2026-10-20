@@ -61,6 +61,15 @@ export function workflowSummaryQueryOptions(
     queryFn: ({ signal }) =>
       getWorkflowSummary(apiClient, workspaceId, workflowId, signal),
     staleTime: 30_000,
+    refetchInterval: (query) => {
+      const workflow = query.state.data;
+      return workflow?.lifecycleStatus === 'active' &&
+        (workflow.activationStatus === 'deactivating' ||
+          (workflow.activationStatus === 'activating' &&
+            !workflow.webhookSetupRequired))
+        ? 5000
+        : false;
+    },
   });
 }
 

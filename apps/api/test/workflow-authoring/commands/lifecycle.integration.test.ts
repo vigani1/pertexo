@@ -206,6 +206,7 @@ describeIntegration('authenticated workflow lifecycle HTTP commands', () => {
       lifecycleStatus: 'archived',
       lifecycleRevision: 2,
       activationStatus: 'inactive',
+      webhookSetupRequired: false,
       publishedVersionId: null,
     });
     expect(archiveBodies[0]?.workflow).toEqual(archiveBodies[1]?.workflow);
@@ -216,6 +217,7 @@ describeIntegration('authenticated workflow lifecycle HTTP commands', () => {
       lifecycleStatus: 'archived',
       lifecycleRevision: 2,
       activationStatus: 'inactive',
+      webhookSetupRequired: false,
       publishedVersionId: null,
       replayed: archiveBodies[0]?.replayed ?? false,
     });
@@ -255,6 +257,7 @@ describeIntegration('authenticated workflow lifecycle HTTP commands', () => {
       lifecycleStatus: 'active',
       lifecycleRevision: 3,
       activationStatus: 'inactive',
+      webhookSetupRequired: false,
       publishedVersionId: null,
       replayed: false,
     });
@@ -274,6 +277,7 @@ describeIntegration('authenticated workflow lifecycle HTTP commands', () => {
       lifecycleStatus: 'active',
       lifecycleRevision: 3,
       activationStatus: 'inactive',
+      webhookSetupRequired: false,
       publishedVersionId: null,
     });
 
@@ -294,6 +298,7 @@ describeIntegration('authenticated workflow lifecycle HTTP commands', () => {
       lifecycleStatus: 'active',
       lifecycleRevision: 3,
       activationStatus: 'inactive',
+      webhookSetupRequired: false,
       publishedVersionId: null,
       replayed: false,
     });
@@ -342,6 +347,7 @@ describeIntegration('authenticated workflow lifecycle HTTP commands', () => {
       lifecycleStatus: 'archived',
       lifecycleRevision: 2,
       activationStatus: 'deactivating',
+      webhookSetupRequired: false,
       publishedVersionId: ids.publishedVersion,
       replayed: false,
     });
@@ -368,6 +374,7 @@ describeIntegration('authenticated workflow lifecycle HTTP commands', () => {
       lifecycleStatus: 'archived',
       lifecycleRevision: 2,
       activationStatus: 'deactivating',
+      webhookSetupRequired: false,
       publishedVersionId: ids.publishedVersion,
       replayed: true,
     });
@@ -390,6 +397,7 @@ describeIntegration('authenticated workflow lifecycle HTTP commands', () => {
       lifecycleStatus: 'active',
       lifecycleRevision: 3,
       activationStatus: 'activating',
+      webhookSetupRequired: false,
       publishedVersionId: ids.publishedVersion,
       replayed: false,
     });
