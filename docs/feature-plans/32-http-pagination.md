@@ -176,7 +176,7 @@ matches [n8n's HTTP Request pagination](https://docs.n8n.io/build/code-in-n8n/co
 
 | Slice | Status | PR |
 | --- | --- | --- |
-| 1 Engine | Complete | [#428](https://github.com/vigani1/pertexo/pull/428) |
+| 1 Engine | Complete | [#430](https://github.com/vigani1/pertexo/pull/430) |
 | 2 Editor and docs | Complete | This PR |
 
 ## Retry and deadline alignment (owner-approved 2026-10-20)

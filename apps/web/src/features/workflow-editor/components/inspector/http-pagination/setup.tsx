@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { createScratchTracker } from '../use-draft-field';
 import { isRecord } from '@pertexo/workflow-model';
 import { Field, FieldLabel, FieldDescription } from '@/components/ui/field';
+import { Disclosure } from '@/components/ui/disclosure';
 import { ChoiceSelect } from '../fields/choice-select';
 import { SchemaField } from '../fields/schema-field';
 import {
@@ -59,67 +60,67 @@ export function HttpPaginationSetup({
   const id = fieldControlId(form.nodeId, 'pagination-mode');
   const modeHelpId = `${id}-help`;
   return (
-    <details className="border-t border-border pt-3">
-      <summary className="cursor-pointer rounded-sm py-2 text-sm outline-offset-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring">
-        Pagination · {label}
-      </summary>
-      <div className="flex flex-col gap-4 pt-3">
-        <Field>
-          <FieldLabel htmlFor={id}>Pagination mode</FieldLabel>
-          <ChoiceSelect
-            id={id}
-            value={mode}
-            choices={paginationModes}
-            describedBy={modeHelpId}
-            disabled={
-              !form.editable ||
-              hasScratch ||
-              (config.method !== 'GET' && value === undefined)
-            }
-            onChange={(next) => {
-              if (next === null) return;
-              form.commit(
-                (node) => ({
-                  config: withConfigValue(
-                    node.config,
-                    'pagination',
-                    paginationForMode(next, paginationValue(node.config)),
-                  ),
-                }),
-                `${form.nodeId}:pagination:mode`,
-              );
-            }}
-          />
-          <FieldDescription id={modeHelpId}>
-            {value === undefined
-              ? 'Off fetches one response. Pagination combines JSON items from a GET request.'
-              : paginationDescription(value)}{' '}
-            Finish incomplete fields to change mode or source.
-          </FieldDescription>
-        </Field>
-        {config.method !== 'GET' ? (
-          <p className="text-sm text-muted-foreground">
-            Pagination supports GET requests only. Choose GET or turn pagination
-            off.
-          </p>
-        ) : null}
-        {config.returnErrorResponses === true ? (
-          <p className="text-sm text-muted-foreground">
-            Turn off Return error responses before using pagination.
-          </p>
-        ) : null}
-        {value === undefined ? null : (
-          <PaginationFields
-            schema={schema}
-            value={value}
-            form={nested}
-            sourceForm={sourceForm}
-            hasScratch={hasScratch}
-            modeHelpId={modeHelpId}
-          />
-        )}
-      </div>
-    </details>
+    <Disclosure
+      summary={`Pagination · ${label}`}
+      tone="strong"
+      className="border-t border-border pt-3"
+      contentClassName="mt-0 flex flex-col gap-4 pt-3"
+    >
+      <Field>
+        <FieldLabel htmlFor={id}>Pagination mode</FieldLabel>
+        <ChoiceSelect
+          id={id}
+          value={mode}
+          choices={paginationModes}
+          describedBy={modeHelpId}
+          disabled={
+            !form.editable ||
+            hasScratch ||
+            (config.method !== 'GET' && value === undefined)
+          }
+          onChange={(next) => {
+            if (next === null) return;
+            form.commit(
+              (node) => ({
+                config: withConfigValue(
+                  node.config,
+                  'pagination',
+                  paginationForMode(next, paginationValue(node.config)),
+                ),
+              }),
+              `${form.nodeId}:pagination:mode`,
+            );
+          }}
+        />
+        <FieldDescription id={modeHelpId}>
+          {value === undefined
+            ? 'Off fetches one response. Pagination combines JSON items from a GET request.'
+            : paginationDescription(value)}{' '}
+          Finish incomplete fields to change mode or source.
+        </FieldDescription>
+      </Field>
+      {config.method !== 'GET' ? (
+        <p className="text-sm text-muted-foreground">
+          Pagination supports GET requests only. Choose GET or turn pagination
+          off.
+        </p>
+      ) : null}
+      {config.returnErrorResponses === true ? (
+        <p className="text-sm text-muted-foreground">
+          Turn off Return error responses before using pagination.
+        </p>
+      ) : null}
+      {value === undefined ? null : (
+        <PaginationFields
+          schema={schema}
+          value={value}
+          form={nested}
+          sourceForm={sourceForm}
+          hasScratch={hasScratch}
+          modeHelpId={modeHelpId}
+        />
+      )}
+    </Disclosure>
   );
 }
 function PaginationFields({
