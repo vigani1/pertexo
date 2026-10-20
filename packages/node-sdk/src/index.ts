@@ -23,7 +23,8 @@ export {
   validateDataTableValues,
   validateDataTableQuery,
   dataTableCsvValue,
-  escapeDataTableCsv,
 } from './data-tables/values.js';
 
 export * from './data-tables/bindings.js';
+
+export { escapeCsvValue } from './values/csv.js';

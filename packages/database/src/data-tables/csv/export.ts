@@ -5,7 +5,7 @@ import type {
 } from '@pertexo/contracts';
 import {
   DataTableError,
-  escapeDataTableCsv,
+  escapeCsvValue,
   type DataTableValues,
 } from '@pertexo/node-sdk';
 import { queryClause } from '../queries.js';
@@ -36,9 +36,8 @@ export function exportTableCsv(
 
   async function* encodeRows(): AsyncGenerator<string> {
     signal?.throwIfAborted();
-    yield table.columns
-      .map((column) => escapeDataTableCsv(column.name))
-      .join(',') + '\r\n';
+    yield table.columns.map((column) => escapeCsvValue(column.name)).join(',') +
+      '\r\n';
     let after: string | null = null;
     for (;;) {
       signal?.throwIfAborted();
@@ -73,7 +72,7 @@ export function exportTableCsv(
         signal?.throwIfAborted();
         const values = JSON.parse(row.values_json) as DataTableValues;
         yield table.columns
-          .map((column) => escapeDataTableCsv(values[column.name] ?? null))
+          .map((column) => escapeCsvValue(values[column.name] ?? null))
           .join(',') + '\r\n';
         after = row.id;
       }
