@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 import { expect, it, vi } from 'vitest';
-import { securityTransaction } from '../../../src/authentication/better-auth/security-transaction.js';
+import { securityTransaction } from '../../../src/authentication/better-auth/transactions/response.js';
 
 it('does not fail a committed sign-in when the development mail observer throws or rejects', async () => {
   const query = vi
