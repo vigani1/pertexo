@@ -1,4 +1,4 @@
-import { expect, test } from '../support/fixtures';
+import { expect, test } from '../../support/fixtures';
 import {
   addCsrfCookie,
   currentEtag,
@@ -8,7 +8,7 @@ import {
   workflowId,
   workflowSummary,
   workspaceId,
-} from './support';
+} from '../support';
 
 const versionId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 const graph = {

@@ -68,7 +68,7 @@ by itself.
 - [x] 4. Point the architecture's Deployment paragraph at the helpers.
 
 Verification: web lint, TypeScript, unit tests and build. A mocked browser test
-(`e2e/workflow-editor/app-update.spec.ts`) answers every asset with 404 after
+(`e2e/workflow-editor/publishing/app-update.spec.ts`) answers every asset with 404 after
 the editor loads, as a deployment would: the Code step's setup shows the notice
 beside an unsaved edit, Reload raises the browser's leave prompt, and a link to
 an unloaded route shows the update page without reloading. It passed in

@@ -1,4 +1,4 @@
-import { chooseTestAction, expect, test } from '../support/fixtures';
+import { chooseTestAction, expect, test } from '../../support/fixtures';
 import {
   addCsrfCookie,
   editorNode,
@@ -7,7 +7,7 @@ import {
   remoteDraft,
   workflowId,
   workspaceId,
-} from './support';
+} from '../support';
 
 for (const width of [375, 1280]) {
   test(`draft tests list real effects and retain the exact uncertain command at ${String(width)}px`, async ({
