@@ -42,7 +42,7 @@ export function NoticeFrame({
     <li
       data-slot="inbox-thread"
       data-unread={unread ? true : undefined}
-      className="group/row relative grid grid-cols-[2rem_minmax(0,1fr)] items-center gap-x-4 gap-y-2 rounded-lg px-3 py-3 transition-colors before:pointer-events-none before:absolute before:inset-x-3 before:top-0 before:h-px before:bg-border first:before:hidden hover:bg-white/[0.035] hover:before:opacity-0 motion-reduce:transition-none sm:grid-cols-[2rem_minmax(0,1fr)_auto] [:hover+&]:before:opacity-0"
+      className="group/row row-divider grid grid-cols-[2rem_minmax(0,1fr)] items-center gap-x-4 gap-y-2 rounded-lg px-3 py-3 transition-colors hover:bg-white/[0.035] motion-reduce:transition-none sm:grid-cols-[2rem_minmax(0,1fr)_auto]"
     >
       <span
         aria-hidden="true"

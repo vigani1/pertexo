@@ -45,10 +45,7 @@ export function AccountWorkspacesSection({
       ) : (
         <ul className="flex flex-col">
           {workspaces.map((workspace) => (
-            <li
-              key={workspace.id}
-              className="border-t border-border first:border-t-0"
-            >
+            <li key={workspace.id} className="row-divider">
               <Link
                 to="/w/$workspaceId"
                 params={{ workspaceId: workspace.id }}
