@@ -1,5 +1,6 @@
 import { parseXml, XmlError } from '@rgrove/parse-xml';
 import { Parser } from 'htmlparser2';
+import { XML_LIMITS } from './validation.js';
 import { refuseUtility } from '../result.js';
 
 /** Resource preflight protects the strict parser's recursive element reader. */
@@ -14,12 +15,12 @@ export function parseBoundedXml(value: string, signal: AbortSignal) {
         signal.throwIfAborted();
         depth++;
         members += 1 + Object.keys(attributes).length;
-        if (depth > 48)
+        if (depth > XML_LIMITS.depth)
           refuseUtility(
             'xml_depth',
             'The XML is nested too deeply. Use a smaller document.',
           );
-        if (members > 8_000)
+        if (members > XML_LIMITS.members)
           refuseUtility(
             'xml_size',
             'The XML has too many elements or attributes. Split the document.',
@@ -30,7 +31,7 @@ export function parseBoundedXml(value: string, signal: AbortSignal) {
       },
       onprocessinginstruction: (name) => {
         members++;
-        if (members > 8_000)
+        if (members > XML_LIMITS.members)
           refuseUtility(
             'xml_size',
             'The XML has too many nodes or attributes. Split the document.',
