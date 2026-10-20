@@ -407,3 +407,51 @@ test('keeps imported step IDs independent of documentation decorations', async (
   expect(remote.graph.nodes).toHaveLength(2);
   await expect(step).toBeVisible();
 });
+
+test('keeps deeply nested imported Markdown readable and editable without breaking the canvas', async ({
+  page,
+}) => {
+  const text = '>'.repeat(3998) + 'x';
+  const remote = remoteDraft({
+    ...mappingGraph(),
+    notes: [
+      {
+        id: '00000000-0000-4000-8000-000000000006',
+        text,
+        position: { x: 100, y: 270 },
+        size: { width: 420, height: 240 },
+        color: 'neutral',
+      },
+    ],
+  });
+  await installEditorRoutes(page, remote, {
+    definitions: [manualDefinition, definition],
+  });
+  await page.goto(editorUrl);
+  const note = page.getByRole('article', { name: 'Canvas note', exact: true });
+  await expect(
+    note.getByText(
+      'This note has deeply nested formatting and is shown as plain text.',
+    ),
+  ).toBeVisible();
+  await expect(note.locator('pre')).toHaveText(text);
+  expect(remote.graph.notes?.[0]?.text).toBe(text);
+  await note.getByRole('button', { name: 'Edit note', exact: true }).click();
+  const form = page.getByRole('dialog', { name: 'Edit note' });
+  await expect(
+    form.getByRole('textbox', { name: 'Note', exact: true }),
+  ).toHaveValue(text);
+  await form
+    .getByRole('textbox', { name: 'Note', exact: true })
+    .fill('# Simplified instructions');
+  await form.getByRole('button', { name: 'Save note', exact: true }).click();
+  await expect(
+    note.getByRole('heading', { name: 'Simplified instructions' }),
+  ).toBeVisible();
+  await expect
+    .poll(() => remote.graph.notes?.[0]?.text)
+    .toBe('# Simplified instructions');
+  await expect(
+    page.getByRole('button', { name: 'Add note', exact: true }),
+  ).toBeVisible();
+});
