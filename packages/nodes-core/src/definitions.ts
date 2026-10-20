@@ -4,6 +4,7 @@ import {
   CORE_CREATE_FILE_INPUT_SCHEMA,
   CORE_CREATE_FILE_OUTPUT_SCHEMA,
 } from './data/create-file/index.js';
+import { UTILITY_DEFINITIONS } from './data/utilities/definitions.js';
 import { DATA_TABLE_DEFINITIONS } from './data/tables/definitions.js';
 import {
   CORE_CODE_MANIFEST,
@@ -186,6 +187,7 @@ export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistra
       outputSchema: CORE_CREATE_FILE_OUTPUT_SCHEMA,
     }),
     ...DATA_TABLE_DEFINITIONS,
+    ...UTILITY_DEFINITIONS,
     Object.freeze({
       manifest: CORE_CODE_MANIFEST,
       configSchema: CORE_CODE_CONFIG_SCHEMA,

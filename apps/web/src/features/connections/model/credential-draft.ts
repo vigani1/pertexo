@@ -1,4 +1,5 @@
 import {
+  signingKeyCredentialSchema,
   httpHeadersCredentialSchema,
   resendApiKeyCredentialSchema,
   slackBotTokenCredentialSchema,
@@ -13,11 +14,13 @@ export type HeaderRow = Readonly<{ id: string; name: string; value: string }>;
 
 /** Unsaved credential input. It lives only in the form that owns it. */
 export type CredentialDraft =
+  | Readonly<{ provider: 'signing'; signingKey: string }>
   | Readonly<{ provider: 'slack'; botToken: string }>
   | Readonly<{ provider: 'http'; headers: readonly HeaderRow[] }>
   | Readonly<{ provider: 'email'; apiKey: string; fromEmail: string }>;
 
 export type CredentialField =
+  | 'signingKey'
   | 'botToken'
   | 'apiKey'
   | 'fromEmail'
@@ -33,6 +36,8 @@ const SLACK_TOKEN_FORMAT =
 /** Whether anything secret has been typed or pasted into the draft. */
 export function credentialDraftHasSecret(draft: CredentialDraft): boolean {
   switch (draft.provider) {
+    case 'signing':
+      return draft.signingKey !== '';
     case 'slack':
       return draft.botToken.trim() !== '';
     case 'http':
@@ -47,6 +52,8 @@ export function emptyCredentialDraft(
   createId: () => string,
 ): CredentialDraft {
   switch (provider) {
+    case 'signing':
+      return { provider, signingKey: '' };
     case 'slack':
       return { provider, botToken: '' };
     case 'http':
@@ -174,6 +181,16 @@ export function credentialErrors(
   draft: CredentialDraft,
 ): FieldErrors<CredentialField> {
   switch (draft.provider) {
+    case 'signing':
+      return signingKeyCredentialSchema.safeParse({
+        type: 'hmac_key',
+        signingKey: draft.signingKey,
+      }).success
+        ? {}
+        : {
+            signingKey:
+              'Enter valid Unicode text of 1–4,096 UTF-8 bytes. Whitespace is preserved.',
+          };
     case 'slack': {
       const botToken = slackTokenError(draft.botToken);
       return botToken === undefined ? {} : { botToken };
@@ -200,6 +217,8 @@ export function toConnectionCredential(
   draft: CredentialDraft,
 ): ConnectionCredential {
   switch (draft.provider) {
+    case 'signing':
+      return { type: 'hmac_key', signingKey: draft.signingKey };
     case 'slack':
       return {
         type: 'slack_bot_token',
@@ -231,6 +250,8 @@ export function toCreateRequest(
 ): ConnectionCreateRequest {
   const credential = toConnectionCredential(draft);
   switch (credential.type) {
+    case 'hmac_key':
+      return { providerKey: 'signing', name, credential };
     case 'slack_bot_token':
       return { providerKey: 'slack', name, credential };
     case 'resend_api_key':
@@ -250,7 +271,9 @@ export function credentialServerErrors(
     const path = issue.path.split('.');
     if (path[0] !== 'credential') continue;
     const field = path[1];
-    if (draft.provider === 'slack' && field === 'botToken')
+    if (draft.provider === 'signing' && field === 'signingKey')
+      errors.signingKey = 'Use valid Unicode text of 1–4,096 UTF-8 bytes.';
+    else if (draft.provider === 'slack' && field === 'botToken')
       errors.botToken = SLACK_TOKEN_FORMAT;
     else if (draft.provider === 'email' && field === 'apiKey')
       errors.apiKey = 'Resend didn’t accept this API key format.';
@@ -283,6 +306,8 @@ export function describeSavedCredential(
   draft: CredentialDraft,
 ): SavedCredential {
   switch (draft.provider) {
+    case 'signing':
+      return { term: 'Key', value: 'Stored encrypted' };
     case 'slack':
       return {
         term: 'Token',

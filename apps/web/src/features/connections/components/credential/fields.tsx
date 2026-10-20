@@ -20,7 +20,7 @@ type FieldsProps = Readonly<{
 }>;
 
 type SecretFieldProps = Readonly<{
-  field: 'botToken' | 'apiKey' | 'fromEmail';
+  field: 'signingKey' | 'botToken' | 'apiKey' | 'fromEmail';
   label: string;
   value: string;
   placeholder: string;
@@ -59,7 +59,7 @@ function CredentialInput({
           autoComplete={secret ? 'new-password' : 'email'}
           spellCheck={false}
           placeholder={placeholder}
-          maxLength={512}
+          maxLength={field === 'signingKey' ? 4_096 : 512}
           disabled={disabled}
           value={value}
           onChange={(event) => {
@@ -86,6 +86,21 @@ export function CredentialFields(props: FieldsProps) {
         onChange={props.onChange}
         createId={props.createId}
       />
+    );
+  if (draft.provider === 'signing')
+    return (
+      <FieldGroup>
+        <CredentialInput
+          {...props}
+          field="signingKey"
+          label="Signing key"
+          value={draft.signingKey}
+          placeholder="Paste the exact signing key"
+          secret
+          description="Stored encrypted. Whitespace is part of the key. Test checks local access only."
+          update={(signingKey) => ({ ...draft, signingKey })}
+        />
+      </FieldGroup>
     );
   if (draft.provider === 'slack')
     return (

@@ -97,6 +97,7 @@ export function createProviderConnectionRuntimeFactory(
       ): Promise<void> => {
         assertNotAborted(input.signal);
         if (
+          input.expectedAuthType !== CONNECTION_AUTH_TYPE.signingKey &&
           input.expectedAuthType !== CONNECTION_AUTH_TYPE.httpHeaders &&
           input.expectedAuthType !== CONNECTION_AUTH_TYPE.slackBotToken &&
           input.expectedAuthType !== CONNECTION_AUTH_TYPE.resendApiKey
