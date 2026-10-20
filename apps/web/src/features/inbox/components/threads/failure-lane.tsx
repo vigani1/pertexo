@@ -2,85 +2,71 @@ import type { WorkspaceInboxFailureThread } from '@pertexo/contracts';
 import { cn } from '@/lib/utils';
 
 const DAY_MILLIS = 86_400_000;
+const DAYS = 30;
+
+/** How strongly a day glows: one failure is a mark, many a bright bar. */
+function intensity(count: number): string {
+  if (count === 0) return 'bg-white/[0.07]';
+  if (count === 1) return 'bg-destructive/45';
+  if (count <= 3) return 'bg-destructive/70';
+  return 'bg-destructive shadow-[0_0_6px_-1px_var(--destructive)]';
+}
 
 /**
- * The workflow's last 30 days as one thread, today at the right: a cross
- * snags it on each day it failed, the latest one larger, with the count
- * above a day that failed more than once.
+ * The workflow's last 30 days as one compact strip, today at the right: a
+ * bar per day, red where runs failed and brighter the more did, so where a
+ * failure streak starts and stops reads at a glance. The words around it
+ * say since when and how many; each bar names its day on hover.
  */
 export function FailureLane({
   days,
   nowMs,
-  unread = false,
+  className,
 }: Readonly<{
   days: WorkspaceInboxFailureThread['failureDays'];
   nowMs: number;
-  /** An unread notice's thread reads a little brighter. */
-  unread?: boolean;
+  className?: string;
 }>) {
   const today = Math.floor(nowMs / DAY_MILLIS) * DAY_MILLIS;
   const counts = new Map(days.map(({ day, count }) => [day, count]));
-  const marks = Array.from({ length: 30 }, (_, index) => {
-    const day = new Date(today - (29 - index) * DAY_MILLIS)
+  const marks = Array.from({ length: DAYS }, (_, index) => {
+    const day = new Date(today - (DAYS - 1 - index) * DAY_MILLIS)
       .toISOString()
       .slice(0, 10);
     return { day, count: counts.get(day) ?? 0 };
   });
-  const total = marks.reduce((sum, mark) => sum + mark.count, 0);
-  const latest = marks.reduce(
-    (found, mark, index) => (mark.count > 0 ? index : found),
-    -1,
-  );
+  const failing = marks.filter((mark) => mark.count > 0);
+  const total = failing.reduce((sum, mark) => sum + mark.count, 0);
   return (
     <figure
-      className="mt-2 w-full"
+      className={cn('flex items-center gap-2', className)}
       aria-label={`${String(total)} ${total === 1 ? 'failure' : 'failures'} in the last 30 days`}
     >
-      <div className="relative flex items-center" aria-hidden="true">
-        <span
-          className={cn(
-            'absolute inset-x-0 h-px',
-            unread ? 'bg-white/18' : 'bg-border',
-          )}
-        />
+      <span
+        aria-hidden="true"
+        className="font-mono text-[0.6rem] text-subtle-foreground"
+      >
+        30d
+      </span>
+      <div aria-hidden="true" className="flex items-end gap-px">
         {marks.map(({ day, count }, index) => (
           <span
             key={day}
-            className="relative flex h-6 min-w-0 flex-1 items-center justify-center"
             title={`${day} UTC: ${String(count)} ${count === 1 ? 'failure' : 'failures'}`}
-          >
-            {count > 1 ? (
-              <span className="absolute -top-1.5 font-mono text-[0.58rem] leading-none text-destructive/80">
-                {count > 99 ? '99+' : count}
-              </span>
-            ) : null}
-            {count > 0 ? (
-              // Weft's failure cross: the thread is snagged here.
-              <svg
-                viewBox="8.5 4 8 8"
-                className={cn(
-                  'relative bg-background text-destructive',
-                  index === latest
-                    ? 'size-3 drop-shadow-[0_0_5px_var(--destructive)]'
-                    : 'size-2 opacity-80',
-                )}
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-              >
-                <path d="M9.5 5l6 6M15.5 5l-6 6" />
-              </svg>
-            ) : null}
-          </span>
+            className={cn(
+              'w-[5px] rounded-[1.5px]',
+              count === 0 ? 'h-2.5' : 'h-4',
+              intensity(count),
+              // Today: where the strip has reached.
+              index === DAYS - 1 &&
+                'outline outline-1 outline-offset-1 outline-white/25',
+            )}
+          />
         ))}
-        {/* Now: where the thread has reached. */}
-        <span className="relative ml-1 size-1.5 shrink-0 rounded-full bg-subtle-foreground" />
       </div>
       <span className="sr-only">
         Failure days:{' '}
-        {marks
-          .filter((mark) => mark.count > 0)
+        {failing
           .map(
             (mark) =>
               `${mark.day} UTC, ${String(mark.count)} ${mark.count === 1 ? 'failure' : 'failures'}`,
@@ -88,10 +74,6 @@ export function FailureLane({
           .join('; ') || 'none'}
         .
       </span>
-      <figcaption className="mt-0.5 flex justify-between gap-3 font-mono text-[0.6rem] text-subtle-foreground">
-        <span>30 days ago</span>
-        <span>Today</span>
-      </figcaption>
     </figure>
   );
 }
