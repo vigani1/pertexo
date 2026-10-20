@@ -248,6 +248,11 @@ export function EditorWorkspace({
           onDropStep={placement.addAt}
           onPortDrop={quickAdd.openAtDrop}
           onAddToBody={addToBody}
+          onOpenStep={() => {
+            // The first tap already selected it; this brings its panel up
+            // on a phone and the setup tab everywhere.
+            navigation.openTab('setup');
+          }}
         >
           <StartPicker
             definitions={definitions}

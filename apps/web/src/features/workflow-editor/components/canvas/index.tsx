@@ -15,6 +15,7 @@ import {
   type DragEvent,
   type ReactNode,
   type RefObject,
+  useRef,
 } from 'react';
 import { stepSampleBindings } from '@pertexo/workflow-model';
 import { currentSampleState } from '@/features/workflow-publish/step-samples.public';
@@ -54,6 +55,9 @@ const nodeTypes = Object.freeze({
 const edgeTypes = Object.freeze({ workflow: WorkflowEdge });
 const multiSelectionKeys = ['Meta', 'Control', 'Shift'];
 
+// Two taps on one step within this long open it.
+const DOUBLE_TAP_MS = 350;
+
 type Position = Readonly<{ x: number; y: number }>;
 type Size = Readonly<{ width: number; height: number }>;
 
@@ -86,6 +90,7 @@ export function WorkflowCanvas({
   onDropStep,
   onPortDrop,
   onAddToBody,
+  onOpenStep,
   children,
 }: Readonly<{
   definitions: readonly NodeDefinitionCatalogItem[];
@@ -99,8 +104,12 @@ export function WorkflowCanvas({
   /** A link from `from` ended over empty canvas at `point`. */
   onPortDrop: (from: PortRef, point: Position) => void;
   onAddToBody: (loopId: string, opener: HTMLElement) => void;
+  /** A step was double-clicked or double-tapped: show it in its panel. */
+  onOpenStep: (nodeId: string) => void;
   children?: ReactNode;
 }>) {
+  // Timed by hand: a phone's double tap doesn't reliably fire dblclick.
+  const lastTap = useRef<Readonly<{ id: string; at: number }>>(undefined);
   const store = useEditorStoreApi();
   const { screenToFlowPosition } = useReactFlow();
   const fit = useCanvasFraming(containerRef);
@@ -185,6 +194,19 @@ export function WorkflowCanvas({
           isValidConnection={linkGestures.isValidConnection}
           onConnect={linkGestures.onConnect}
           onConnectEnd={linkGestures.onConnectEnd}
+          onNodeClick={(event, node) => {
+            const previous = lastTap.current;
+            const now = event.timeStamp;
+            lastTap.current = { id: node.id, at: now };
+            if (
+              previous !== undefined &&
+              previous.id === node.id &&
+              now - previous.at < DOUBLE_TAP_MS
+            ) {
+              lastTap.current = undefined;
+              onOpenStep(node.id);
+            }
+          }}
           onPaneClick={(event) => {
             event.currentTarget
               .closest<HTMLElement>('[data-workflow-canvas]')
