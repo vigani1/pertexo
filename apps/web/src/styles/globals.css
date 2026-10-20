@@ -1,5 +1,7 @@
 @import 'tailwindcss';
 
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
 /* Weft: Pertexo's visual language. Five materials, one rule each:
    thread (a run through time), loom (time laid sideways), core (the live orb),
    lens (glass only for floating layers) and live edge (aurora only while work
@@ -833,15 +835,17 @@
     }
   }
 
-  /* Notifications step aside from an open side sheet so they never cover its
-     actions. A modal sheet makes them inert, so they must not catch clicks. */
+  /* Position variables feed the viewport utilities, avoiding layer precedence
+     conflicts with their default insets. Notifications step aside from an open
+     side sheet so they never cover its actions. A modal sheet makes them inert,
+     so they must not catch clicks. */
   body:has([data-slot='sheet-content'][data-side='right'])
     [data-slot='toast-viewport'] {
-    right: calc(min(26rem, 100vw - 1.5rem) + 1.75rem);
+    --toast-right: calc(min(26rem, 100vw - 1.5rem) + 1.75rem);
   }
 
   body:has([data-slot='sheet-content']) [data-slot='toast-viewport'] {
-    pointer-events: none;
+    --toast-pointer-events: none;
   }
 
   /* In the editor, toasts sit left of an open step panel, not on its
@@ -849,15 +853,27 @@
   @media (width >= 64rem) {
     body:has(#editor-panel-inspector[data-open='true'])
       [data-slot='toast-viewport'] {
-      right: 23rem;
+      --toast-right: 23rem;
+    }
+  }
+
+  /* Leave a clear gap above the editor's panel bar or the workspace's
+     phone navigation. Only the bar mounted on this page reserves space. */
+  @media (width < 64rem) {
+    body:has(nav[aria-label='Editor panels']) [data-slot='toast-viewport'] {
+      --toast-bottom: calc(4.5rem + env(safe-area-inset-bottom));
     }
   }
 
   @media (width < 48rem) {
+    body:has(nav[aria-label='Workspace']) [data-slot='toast-viewport'] {
+      --toast-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+    }
+
     body:has([data-slot='sheet-content']) [data-slot='toast-viewport'] {
-      top: 1rem;
-      right: 1rem;
-      bottom: auto;
+      --toast-top: 1rem;
+      --toast-right: 1rem;
+      --toast-bottom: auto;
     }
   }
 }

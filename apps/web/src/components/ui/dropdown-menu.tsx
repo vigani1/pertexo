@@ -1,3 +1,4 @@
+import { CheckIcon } from 'lucide-react';
 import { Menu as MenuPrimitive } from '@base-ui/react/menu';
 import { cn } from '@/lib/utils';
 import { popupSurface } from './popup-surface';
@@ -5,6 +6,29 @@ import { popupSurface } from './popup-surface';
 export const DropdownMenu = MenuPrimitive.Root;
 export const DropdownMenuTrigger = MenuPrimitive.Trigger;
 export const DropdownMenuGroup = MenuPrimitive.Group;
+export const DropdownMenuRadioGroup = MenuPrimitive.RadioGroup;
+
+export function DropdownMenuRadioItem({
+  className,
+  children,
+  ...props
+}: MenuPrimitive.RadioItem.Props) {
+  return (
+    <MenuPrimitive.RadioItem
+      className={cn(
+        itemClassName,
+        'data-checked:bg-action/10 data-checked:text-accent-foreground',
+        className,
+      )}
+      {...props}
+    >
+      {children}
+      <MenuPrimitive.RadioItemIndicator className="ml-auto">
+        <CheckIcon aria-hidden="true" />
+      </MenuPrimitive.RadioItemIndicator>
+    </MenuPrimitive.RadioItem>
+  );
+}
 
 export function DropdownMenuContent({
   className,

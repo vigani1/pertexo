@@ -1,3 +1,4 @@
+import { noteTextStart } from '@/features/workflow-drafts/public';
 import { noteElementId } from './types';
 import { useState, type RefObject } from 'react';
 import { useReactFlow } from '@xyflow/react';
@@ -77,21 +78,27 @@ export function NoteTools({
     });
   }
   return (
-    <>
+    <div
+      role="toolbar"
+      aria-label="Canvas tools"
+      className="lens pointer-events-auto relative z-20 flex w-fit items-center gap-1 rounded-lg p-1"
+      {...{ [CANVAS_COVER_ATTRIBUTE]: '' }}
+    >
       <Tooltip>
         <TooltipTrigger
           render={
             <Button
               type="button"
               variant="ghost"
-              size="icon-xs"
+              size="sm"
               aria-label="Add note"
               disabled={count >= limits.count}
               onClick={add}
             />
           }
         >
-          <StickyNoteIcon />
+          <StickyNoteIcon data-icon="inline-start" />
+          Add note
         </TooltipTrigger>
         <TooltipContent>
           {count >= limits.count
@@ -124,8 +131,7 @@ export function NoteTools({
               >
                 <StickyNoteIcon aria-hidden="true" />
                 <span className="truncate">
-                  {note.text.replace(/\s+/gu, ' ').trim().slice(0, 80) ||
-                    'Untitled note'}
+                  {noteTextStart(note.text) || 'Untitled note'}
                 </span>
               </DropdownMenuItem>
             ))}
@@ -173,6 +179,6 @@ export function NoteTools({
           }}
         />
       )}
-    </>
+    </div>
   );
 }

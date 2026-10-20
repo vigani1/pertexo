@@ -46,11 +46,14 @@ function Node({
     ? `[${String(entries.length)}]`
     : `{${String(entries.length)}}`;
   return (
-    <details open={depth < OPEN_DEPTH} className="group/json">
+    <details
+      open={depth < OPEN_DEPTH}
+      className="[&[open]>summary>svg]:rotate-90"
+    >
       <summary className="flex cursor-default list-none items-center gap-1 rounded-sm py-0.5 outline-none select-none hover:bg-surface-ink/4 focus-ring [&::-webkit-details-marker]:hidden">
         <ChevronRightIcon
           aria-hidden="true"
-          className="size-3.5 shrink-0 text-subtle-foreground transition-transform group-open/json:rotate-90 motion-reduce:transition-none"
+          className="size-3.5 shrink-0 text-subtle-foreground transition-transform motion-reduce:transition-none"
         />
         {label}
         <span className="text-subtle-foreground">{summary}</span>

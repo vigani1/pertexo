@@ -221,6 +221,42 @@ describe('ready-made examples', () => {
     });
   });
 
+  it('carries a typed name into an example and preserves it when choosing another', async () => {
+    mockServer.use(...discoveryHandlers(), emptyList());
+    mockServer.use(exampleHandlers());
+    renderApp(`/w/${workspaceId}/workflows?create=true`);
+    const event = userEvent.setup();
+    const sheet = await screen.findByRole('dialog', { name: 'New workflow' });
+    await event.type(
+      within(sheet).getByLabelText('Workflow name'),
+      'My invoice intake',
+    );
+    await event.click(
+      within(sheet).getByRole('button', {
+        name: new RegExp(`^${controlled.title}`, 'u'),
+      }),
+    );
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Start from an example',
+    });
+    await waitFor(() =>
+      expect(
+        within(dialog).getByRole('button', {
+          name: `Set up ${controlled.title}`,
+        }),
+      ).toHaveAttribute('aria-pressed', 'true'),
+    );
+    expect(within(dialog).getByLabelText('New workflow name')).toHaveValue(
+      'My invoice intake',
+    );
+    await event.click(
+      within(dialog).getByRole('button', { name: `Set up ${first.title}` }),
+    );
+    expect(within(dialog).getByLabelText('New workflow name')).toHaveValue(
+      'My invoice intake',
+    );
+  });
+
   it('offers the same examples beside Start blank on an empty list', async () => {
     mockServer.use(...discoveryHandlers(), emptyList());
     mockServer.use(exampleHandlers());

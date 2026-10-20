@@ -63,14 +63,15 @@ export function WebhookTestEventPanel({
         the workflow. Request data may contain secrets. Keeping it as a pin
         shares it with people who can see run data.
       </p>
-      {listener === undefined ? (
+      <div hidden={listener !== undefined}>
         <ListenerAuthentication
           pending={test.start.isPending}
           onListen={(authentication) => {
             test.start.mutate(authentication);
           }}
         />
-      ) : (
+      </div>
+      {listener === undefined ? null : (
         <>
           <Status role="status" tone={status.tone}>
             {status.label}

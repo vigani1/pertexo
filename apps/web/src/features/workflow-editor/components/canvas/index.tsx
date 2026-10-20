@@ -1,5 +1,4 @@
 import { CanvasNote } from './notes/card';
-import { NoteTools } from './notes/tools';
 import { useNoteProjection } from './notes/use-projection';
 import { isNoteFlowId, type CanvasFlowNode } from './notes/types';
 import { useAppearance } from '@/lib/appearance/use-choice';
@@ -258,9 +257,7 @@ export function WorkflowCanvas({
             onFit={() => {
               fit(true);
             }}
-          >
-            <NoteTools editable={editable} containerRef={containerRef} />
-          </CanvasZoomLens>
+          />
         </ReactFlow>
       </CanvasActionsContext>
       {children}

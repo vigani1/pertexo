@@ -23,6 +23,9 @@ export function sampleErrorDetail(cause: unknown): string | undefined {
 }
 
 export type SampleDialogSource =
-  | Exclude<StepSampleSource, { kind: 'confirm' } | { kind: 'json' }>
+  | Exclude<
+      StepSampleSource,
+      { kind: 'confirm' } | { kind: 'json' } | { kind: 'webhook_test' }
+    >
   | 'paste'
   | 'view';

@@ -60,7 +60,7 @@ export function NewWorkflowSheet({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated: (workflowId: string) => void;
-  onChooseExample?: ((templateId: string) => void) | undefined;
+  onChooseExample?: ((templateId: string, name?: string) => void) | undefined;
 }>) {
   const notifications = useNotifications();
   const [name, setName] = useState('');
@@ -165,7 +165,9 @@ export function NewWorkflowSheet({
                 <ExampleCards
                   layout="rows"
                   disabled={mutation.isPending}
-                  onChoose={onChooseExample}
+                  onChoose={(templateId) => {
+                    onChooseExample(templateId, name.trim());
+                  }}
                 />
               </section>
             )}

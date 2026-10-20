@@ -177,17 +177,40 @@ export async function qualifyWebhookTestEvents(f: Fixture) {
     expect(replies.map((reply) => reply.status).sort()).toEqual([202, 401]);
     const snapshot = await f.store.get({ ...f.scope, id: listener.id });
     expect(snapshot.state).toBe('captured');
-    const value = (snapshot.output as { kind: 'inline'; value: unknown }).value;
     await f.authoring.stepSamples.put({
       ...f.scope,
       expectedDraftRevision: f.revision,
       expectedSampleId: null,
       idempotencyKey: randomUUID(),
-      source: { kind: 'json', value },
+      source: { kind: 'webhook_test', listenerId: listener.id },
     });
     const sample = await f.authoring.stepSamples.get(f.scope);
     expect(sample.output).toEqual(snapshot.output);
     expect(sample.sample?.state).toBe('pinned');
+    expect(sample.sample?.source).toEqual({ kind: 'webhook_test' });
+    const sampleId = sample.sample?.id;
+    if (sampleId === undefined) throw new Error('Sample missing');
+    await f.store.stop({ ...f.scope, id: listener.id });
+    await f.authoring.stepSamples.put({
+      ...f.scope,
+      expectedDraftRevision: f.revision,
+      expectedSampleId: sampleId,
+      idempotencyKey: randomUUID(),
+      source: { kind: 'confirm' },
+    });
+    expect((await f.authoring.stepSamples.get(f.scope)).sample?.source).toEqual(
+      { kind: 'webhook_test' },
+    );
+    await expect(
+      f.authoring.stepSamples.put({
+        ...f.scope,
+        expectedDraftRevision: f.revision,
+        expectedSampleId:
+          (await f.authoring.stepSamples.get(f.scope)).sample?.id ?? null,
+        idempotencyKey: randomUUID(),
+        source: { kind: 'webhook_test', listenerId: listener.id },
+      }),
+    ).rejects.toThrow('workflow.sample_source_unavailable');
   } finally {
     await other.close();
   }

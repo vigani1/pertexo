@@ -88,7 +88,7 @@ export function NotificationsProvider({
       <Toast.Portal>
         <Toast.Viewport
           data-slot="toast-viewport"
-          className="fixed right-4 bottom-4 z-60 flex w-[min(22rem,calc(100vw-2rem))] flex-col gap-2 outline-none"
+          className="fixed top-[var(--toast-top,auto)] right-[var(--toast-right,1rem)] bottom-[var(--toast-bottom,1rem)] z-60 flex w-[min(22rem,calc(100vw-2rem))] flex-col gap-2 outline-none [pointer-events:var(--toast-pointer-events,auto)]"
         >
           <ToastList />
         </Toast.Viewport>

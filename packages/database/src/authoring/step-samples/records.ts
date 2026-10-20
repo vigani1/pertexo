@@ -70,8 +70,8 @@ export function sampleMetadata(
     binding: state === 'expired' ? '' : row.binding,
     state,
     source:
-      row.source_kind === 'json'
-        ? { kind: 'json' }
+      row.source_kind === 'json' || row.source_kind === 'webhook_test'
+        ? { kind: row.source_kind }
         : row.source_kind === 'preview'
           ? {
               kind: 'preview',

@@ -18,6 +18,7 @@ const covers = { [CANVAS_COVER_ATTRIBUTE]: '' };
  */
 export function EditorLayout({
   bar,
+  canvasTools,
   banner,
   canvas,
   addStep,
@@ -31,6 +32,7 @@ export function EditorLayout({
   onMobilePanelChange,
 }: Readonly<{
   bar: ReactNode;
+  canvasTools: ReactNode;
   banner: ReactNode;
   canvas: ReactNode;
   addStep: ReactNode;
@@ -74,6 +76,7 @@ export function EditorLayout({
           {bar}
         </div>
         <div {...covers}>{banner}</div>
+        {canvasTools}
         <div className="relative min-h-0 flex-1">
           {editable ? (
             <aside

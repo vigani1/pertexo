@@ -39,11 +39,13 @@ export function useImportDraft(
   apiClient: ApiClient,
   userId: string,
   workspace: AccessibleWorkspace,
+  initialName = '',
 ) {
   const [template, setTemplate] = useState<CuratedTemplate>();
   const [setupValues, setSetupValues] = useState<string[]>([]);
   const [manifest, setManifest] = useState<WorkflowPortableManifest>();
-  const [name, setName] = useState('');
+  const [name, setName] = useState(initialName);
+  const customName = useRef(initialName.trim() !== '');
   const [bindings, setBindings] = useState<PortableConnectionBinding[]>([]);
   const [preview, setPreview] = useState<WorkflowImportPreviewResponse>();
   const [error, setError] = useState<string>();
@@ -61,6 +63,7 @@ export function useImportDraft(
     setTemplate(undefined);
     setSetupValues([]);
     setName('');
+    customName.current = false;
     setBindings([]);
     setPreview(undefined);
     setError(undefined);
@@ -251,7 +254,7 @@ export function useImportDraft(
     setTemplate(next);
     setReading(false);
     setManifest(structuredClone(next.manifest));
-    setName(next.title);
+    if (!customName.current) setName(next.title);
     setBindings([]);
     // Destination literals must be supplied explicitly, never reused from demo data.
     setSetupValues(next.setupTargets.map(() => ''));
@@ -273,6 +276,7 @@ export function useImportDraft(
     checkChosenExample();
   }, [template]);
   function changeName(next: string) {
+    customName.current = next.trim() !== '';
     invalidate();
     setName(next);
   }

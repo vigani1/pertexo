@@ -103,3 +103,10 @@ live co-editing and integrations/AI.
   (about 36 kB gzip); the existing >500 kB editor-chunk warning remains.
 - Run the complete pre-push hook before delivery. No hook bypass, new service,
   role or CI job. Integrations and AI remain later.
+
+## UX follow-up (2026-10-20)
+
+Add note is a labelled action in the main canvas toolbar, separate from zoom.
+Publish review, version diffs and the note list use a shared plain-text Markdown
+excerpt (the existing Markdown parser grammar), without formatting markers or
+link destinations. Stored note text and execution identity are unchanged.

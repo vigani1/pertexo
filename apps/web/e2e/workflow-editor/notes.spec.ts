@@ -30,7 +30,16 @@ for (const theme of ['light', 'dark'] as const)
         definitions: [manualDefinition, definition],
       });
       await page.goto(editorUrl);
-      await page.getByRole('button', { name: 'Add note', exact: true }).click();
+      const toolbar = page.getByRole('toolbar', {
+        name: 'Canvas tools',
+        exact: true,
+      });
+      await expect(
+        toolbar.getByRole('button', { name: 'Add note', exact: true }),
+      ).toHaveText('Add note');
+      await toolbar
+        .getByRole('button', { name: 'Add note', exact: true })
+        .click();
       const form = page.getByRole('dialog', { name: 'Edit note' });
       await expect(
         form.getByRole('textbox', { name: 'Note', exact: true }),
@@ -92,6 +101,18 @@ for (const theme of ['light', 'dark'] as const)
       await note.focus();
       await page.keyboard.press('Delete');
       await expect(note).toHaveCount(0);
+      if (width < 1024) {
+        const bar = await page
+          .getByRole('navigation', { name: 'Editor panels' })
+          .boundingBox();
+        const toast = await page
+          .locator('[data-slot="toast-viewport"]')
+          .boundingBox();
+        expect(bar).not.toBeNull();
+        expect(toast).not.toBeNull();
+        if (bar !== null && toast !== null)
+          expect(toast.y + toast.height).toBeLessThan(bar.y);
+      }
       await page
         .getByRole('button', { name: 'Undo', exact: true })
         .last()

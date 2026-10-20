@@ -11,6 +11,7 @@ import {
   LayoutGridIcon,
   LogOutIcon,
   PlugIcon,
+  SunMoonIcon,
   ShieldCheckIcon,
   SlidersHorizontalIcon,
   UsersIcon,
@@ -26,6 +27,13 @@ import {
   workflowNameSearchQueryOptions,
   workflowsInfiniteQueryOptions,
 } from '@/features/workflows/queries.public';
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { AppearanceChoice } from '@/components/patterns/appearance-choice';
 import { useWorkspaceScope } from './use-workspace-scope';
 
 export function WorkspaceCommandPalette({
@@ -45,6 +53,7 @@ export function WorkspaceCommandPalette({
   const can = (capability: (typeof workspace.capabilities)[number]) =>
     workspace.capabilities.includes(capability);
   const [typed, setTyped] = useState('');
+  const [themeOpen, setThemeOpen] = useState(false);
   const workflows = useInfiniteQuery({
     ...workflowsInfiniteQueryOptions(apiClient, user.id, workspaceId),
     enabled: open && can('workflow:read'),
@@ -190,6 +199,15 @@ export function WorkspaceCommandPalette({
   }));
 
   const accountItems: CommandItem[] = [
+    {
+      id: 'switch-theme',
+      label: 'Switch theme',
+      keywords: 'appearance system light dark',
+      icon: <SunMoonIcon />,
+      onSelect: () => {
+        setThemeOpen(true);
+      },
+    },
     ...workspaces
       .filter((candidate) => candidate.id !== workspaceId)
       .map((candidate) => ({
@@ -230,32 +248,44 @@ export function WorkspaceCommandPalette({
   ];
 
   return (
-    <CommandPalette
-      open={open}
-      onOpenChange={onOpenChange}
-      groups={groups}
-      onQueryChange={setTyped}
-      resolveQuery={(query) => {
-        if (!can('run:read')) return undefined;
-        const runId = workflowRunIdentifierSchema.safeParse(query);
-        if (!runId.success) return undefined;
-        return {
-          label: 'Run',
-          items: [
-            {
-              id: `run-${runId.data}`,
-              label: `Open run ${runId.data.slice(0, 8)}…`,
-              keywords: runId.data,
-              icon: <WavesIcon />,
-              onSelect: () =>
-                void navigate({
-                  to: '/w/$workspaceId/runs/$runId',
-                  params: { workspaceId, runId: runId.data },
-                }),
-            },
-          ],
-        };
-      }}
-    />
+    <>
+      <CommandPalette
+        open={open}
+        onOpenChange={onOpenChange}
+        groups={groups}
+        onQueryChange={setTyped}
+        resolveQuery={(query) => {
+          if (!can('run:read')) return undefined;
+          const runId = workflowRunIdentifierSchema.safeParse(query);
+          if (!runId.success) return undefined;
+          return {
+            label: 'Run',
+            items: [
+              {
+                id: `run-${runId.data}`,
+                label: `Open run ${runId.data.slice(0, 8)}…`,
+                keywords: runId.data,
+                icon: <WavesIcon />,
+                onSelect: () =>
+                  void navigate({
+                    to: '/w/$workspaceId/runs/$runId',
+                    params: { workspaceId, runId: runId.data },
+                  }),
+              },
+            ],
+          };
+        }}
+      />
+      <Dialog open={themeOpen} onOpenChange={setThemeOpen}>
+        <DialogContent>
+          <DialogTitle>Switch theme</DialogTitle>
+          <DialogDescription>
+            Saved for this browser, across workspaces. System follows your
+            device’s appearance.
+          </DialogDescription>
+          <AppearanceChoice />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

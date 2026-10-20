@@ -5,10 +5,9 @@ import { ArrowLeftIcon, EllipsisIcon } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { useMediaQuery } from '@/lib/hooks/use-media-query';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Status } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
-import { describeWorkflowState } from '../model/state';
+import { WorkflowActivationState } from './header/activation-state';
 import { WorkflowNameWithDialog } from './workflow-name-field';
 import { WorkflowDuplicateAction } from './workflow-duplicate-action';
 import { WorkflowExportAction } from './portability/export-action';
@@ -121,14 +120,6 @@ export function WorkflowHubBar({
   mobileActions?: ReactNode;
   overflowRef?: RefObject<HTMLButtonElement | null>;
 }>) {
-  const state =
-    workflow === undefined ? undefined : describeWorkflowState(workflow);
-  const stateWord =
-    state === undefined ? null : (
-      <Status tone={state.tone} className="font-sans text-[0.75rem]">
-        {state.label}
-      </Status>
-    );
   const secondaryActions =
     workflow === undefined ? null : (
       <HubSecondaryActions
@@ -175,22 +166,14 @@ export function WorkflowHubBar({
             </WorkflowNameWithDialog>
           )}
           <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-0.5 font-mono text-[0.7rem] text-subtle-foreground">
-            {/* Starting lasts until every trigger is ready; a webhook waits
-                for its endpoint, so say where to look. */}
-            {workflow?.activationStatus === 'activating' &&
-            workflow.lifecycleStatus === 'active' &&
-            activeTab !== 'triggers' ? (
-              <Link
-                to="/w/$workspaceId/workflows/$workflowId/triggers"
-                params={{ workspaceId: workspace.id, workflowId }}
-                aria-label="Starting — check triggers"
-                className="inline-link rounded-sm focus-ring"
-              >
-                {stateWord}
-              </Link>
-            ) : (
-              stateWord
-            )}
+            <WorkflowActivationState
+              apiClient={apiClient}
+              userId={userId}
+              workspace={workspace}
+              workflowId={workflowId}
+              workflow={workflow}
+              activeTab={activeTab}
+            />
             {detail}
             {/* Appended to a line that already exists, so it moves nothing
                 when it arrives; a phone reads it in Settings instead. */}

@@ -92,3 +92,15 @@ proxy test checks POST bytes, API-owned OPTIONS and redacted outage logs.
 Generated secrets stay out of Query/mutation caches. React Doctor reports no
 introduced diagnostics. Full repository gates and pre-push remain required for
 delivery; required GitHub CI controls auto rebase-merge.
+
+## UX follow-up (2026-10-20)
+
+Stopping a listener preserves its selected authentication mode, header name
+and allowed origins while the panel stays open; generated credentials still
+leave with the listener. Keeping a captured request uses the existing F02 pin
+command with a webhook_test source and listener ID. The transaction reads the
+exact captured output with actor/workspace/workflow/step, expiry and current
+binding fences. The existing sample source discriminator records webhook_test
+(with no retained listener ID or secret); confirmation preserves this provenance
+after the listener expires. A JSON paste stays JSON. Existing pins whose origin
+was discarded cannot be retrospectively identified as captures.
