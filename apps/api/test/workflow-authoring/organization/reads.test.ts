@@ -36,6 +36,7 @@ function fixture(role: 'owner' | 'admin' | 'builder' | 'viewer' = 'viewer') {
       name: 'Reader fixture',
       lifecycleStatus: 'active',
       activationStatus: 'inactive',
+      webhookSetupRequired: false,
       nameRevision: 1,
       lifecycleRevision: 1,
       publishedVersionId: null,
