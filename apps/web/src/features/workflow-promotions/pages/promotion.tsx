@@ -24,6 +24,7 @@ import { previewPromotion, type PromotionScope } from '../data/promotions.api';
 import { promotionSettingsQuery } from '../data/promotions.queries';
 import { promotionSelections } from '../model/search';
 import { PromotionTarget } from '../components/target';
+import { PromotionLink } from '../components/link';
 import { PromotionSelection } from '../components/selection';
 import { PromotionConfirmation } from '../components/confirmation';
 import { PromotionResult } from '../components/result';
@@ -109,6 +110,7 @@ export function WorkflowPromotionPage({
       <PageHeader>
         <PageHeaderTitle>Promotion</PageHeaderTitle>
       </PageHeader>
+      <PromotionLink workspaceName={workspace.name} target={snapshot.target} />
       <SettingsSection
         title="Linked workspaces"
         description="Send reviewed workflows from here to another workspace, such as production. Values and secrets stay where they are."
@@ -119,9 +121,6 @@ export function WorkflowPromotionPage({
           disabled={busy}
           onChange={clearReview}
         />
-        {snapshot.target?.status === 'unavailable' ? (
-          <Notice tone="warning">{snapshot.target.reason}</Notice>
-        ) : null}
       </SettingsSection>
       {snapshot.target?.status === 'available' ? (
         <SettingsSection
