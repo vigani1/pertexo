@@ -7,16 +7,21 @@ import {
 } from '@/components/ui/select';
 export function TableChoice({
   id,
+  label,
   value,
   choices,
   onChange,
   disabled = false,
+  className,
 }: Readonly<{
-  id: string;
+  id?: string;
+  /** Names the control when no visible label sits beside it. */
+  label?: string;
   value: string;
   choices: readonly Readonly<{ value: string; label: string }>[];
   onChange: (value: string) => void;
   disabled?: boolean;
+  className?: string;
 }>) {
   return (
     <Select<string>
@@ -27,7 +32,7 @@ export function TableChoice({
       }}
       disabled={disabled}
     >
-      <SelectTrigger id={id}>
+      <SelectTrigger id={id} aria-label={label} className={className}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
