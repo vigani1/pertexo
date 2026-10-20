@@ -82,7 +82,10 @@
   --animate-fray: fray-in 0.5s ease-out;
 }
 
-:root {
+/* Dark Weft. Also any `data-theme='dark'` element: the light theme keeps its
+   workspace rail in the dark palette, so the Core still glows there. */
+:root,
+[data-theme='dark'] {
   --node-shadow: 0 18px 44px -18px rgb(0 0 0 / 90%);
   --graph-link: #7f8b8e;
   --loom-thread-opacity: 0.85;
@@ -133,6 +136,9 @@
   /* The Core's own inks. The status colours above are pale so text reads on
      the dark; drawn as points of light they wash out, so the orb takes
      deeper ones. */
+  --core-live: #00e5ff;
+  --core-glint: #c3f5ff;
+  --core-accent: #d0bcff;
   --core-failed: #ff5c52;
   --core-waiting: #a98bff;
   --core-succeeded: #36e0a2;
@@ -159,65 +165,91 @@
   --blur-popup: 28px;
 }
 
-/* Light Weft is ink on cloth: teal work, violet waiting and deeper status
-   inks. Floating glass stays translucent; page content stays flat. */
+/* Light Weft is the loom in daylight: undyed linen cloth, paper for content,
+   teal-dyed glass for the chrome and ink for text. Nothing large is pure
+   white, so the page never glares; tones, not white on white, separate the
+   layers. Status inks are deeper rather than inverted. */
 :root[data-theme='light'] {
-  --node-shadow: 0 12px 28px -18px rgb(24 49 57 / 30%);
-  --graph-link: #62787f;
+  --node-shadow:
+    0 1px 2px rgb(20 45 53 / 10%), 0 12px 26px -16px rgb(20 45 53 / 38%);
+  --graph-link: #5b737a;
   --loom-thread-opacity: 1;
   --loom-success-opacity: 1;
   --loom-label-opacity: 1;
-  --background: #f4f6f5;
-  --foreground: #183139;
-  --card: #ffffff;
-  --card-foreground: #183139;
-  --popover: #ffffff;
-  --popover-foreground: #183139;
-  --primary: #006b79;
+  --background: #e4e9e6;
+  --foreground: #132c34;
+  --card: #f3f6f4;
+  --card-foreground: #132c34;
+  --popover: #f6f8f7;
+  --popover-foreground: #132c34;
+  --primary: #006472;
   --primary-foreground: #ffffff;
-  --action: #006b79;
-  --action-hover: #005866;
+  --action: #006472;
+  --action-hover: #00525d;
   --action-foreground: #ffffff;
-  --secondary: #63449a;
+  --secondary: #5d3f93;
   --secondary-foreground: #ffffff;
-  --muted: #e8eeec;
-  --muted-foreground: #435b63;
-  --subtle-foreground: #435b63;
-  --accent: rgb(0 107 121 / 9%);
-  --accent-foreground: #005c6b;
-  --raised: #e5ecea;
-  --destructive: #b52e36;
-  --success: #187450;
-  --warning: #8a5b08;
-  --core-failed: #b52e36;
-  --core-waiting: #63449a;
-  --core-succeeded: #187450;
+  --muted: #dde4e0;
+  --muted-foreground: #3b545c;
+  --subtle-foreground: #45606a;
+  --accent: rgb(0 107 121 / 8%);
+  --accent-foreground: #005866;
+  --raised: #eaefec;
+  --destructive: #a82a33;
+  --success: #146848;
+  --warning: #7a5106;
+  /* Dye, not light: vivid mid-tone inks that deepen where they overlap. The
+     text-strength teal and violet would draw the Core as grey dust. */
+  --core-live: #0a9fb3;
+  --core-glint: #27c2d6;
+  --core-accent: #7a56d6;
+  --core-failed: #d23c44;
+  --core-waiting: #7a56d6;
+  --core-succeeded: #1d9a68;
   --surface-ink: #183139;
-  --recess-ink: #637d84;
+  /* Wells (code, data, tracks) are deeper cloth, not grey slabs. */
+  --recess-ink: #8ea7a1;
   --shadow-ink: #687f85;
-  --canvas-composite: source-over;
-  --canvas-ground: #edf2ef;
-  --weave-accent: rgb(0 107 121 / 4%);
-  --border: rgb(24 49 57 / 15%);
-  --border-strong: rgb(24 49 57 / 26%);
-  --input: rgb(24 49 57 / 18%);
-  --ring: #006b79;
-  --glass-background: rgb(255 255 255 / 78%);
-  --glass-fallback: #ffffff;
-  --glass-popup: rgb(255 255 255 / 88%);
-  --glass-popup-fallback: #ffffff;
-  --glass-border-strong: rgb(24 49 57 / 22%);
-  --glass-border-subtle: rgb(24 49 57 / 13%);
-  --control-background: rgb(255 255 255 / 78%);
+  --canvas-composite: multiply;
+  --canvas-ground: #dfe6e2;
+  --weave-accent: rgb(0 107 121 / 7%);
+  --border: rgb(20 45 53 / 15%);
+  --border-strong: rgb(20 45 53 / 27%);
+  --input: rgb(20 45 53 / 20%);
+  --ring: #006472;
+  /* Floating chrome is frosted paper a step above the cloth, as in dark. */
+  --glass-background: rgb(243 247 245 / 76%);
+  --glass-fallback: #f1f5f3;
+  --glass-popup: rgb(243 247 245 / 92%);
+  --glass-popup-fallback: #f3f7f5;
+  --glass-border-strong: rgb(255 255 255 / 70%);
+  --glass-border-subtle: rgb(20 45 53 / 14%);
+  --control-background: rgb(248 250 249 / 88%);
   --control-border: #7d9196;
-  --scrim-solid: rgb(41 62 68 / 28%);
-  --scrim-glass: rgb(41 62 68 / 18%);
-  --scrim-reduced: rgb(41 62 68 / 38%);
-  --tooltip-background: rgb(255 255 255 / 97%);
+  --scrim-solid: rgb(31 52 58 / 32%);
+  --scrim-glass: rgb(31 52 58 / 20%);
+  --scrim-reduced: rgb(31 52 58 / 42%);
+  --tooltip-background: rgb(248 250 249 / 97%);
   --action-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 20%), 0 1px 2px rgb(24 49 57 / 18%);
+    inset 0 1px 0 rgb(255 255 255 / 22%), 0 1px 2px rgb(20 45 53 / 22%);
   --lens-shadow:
-    0 30px 80px -30px rgb(41 62 68 / 28%), inset 0 1px 0 rgb(255 255 255 / 80%);
+    0 1px 2px rgb(20 45 53 / 8%), 0 22px 56px -26px rgb(20 45 53 / 34%),
+    inset 0 1px 0 rgb(255 255 255 / 55%);
+}
+
+/* The workspace rail is the light theme's one dark thread: dyed teal glass,
+   because dark's translucent charcoal would turn grey over pale cloth. */
+:root[data-theme='light'] [data-theme='dark'] {
+  color: var(--foreground);
+  color-scheme: dark;
+  --subtle-foreground: #93a7ab;
+  --glass-background: rgb(14 45 53 / 95%);
+  --glass-fallback: #0e2d35;
+  --glass-border-strong: rgb(255 255 255 / 14%);
+  --glass-border-subtle: rgb(255 255 255 / 6%);
+  --lens-shadow:
+    0 1px 2px rgb(8 30 36 / 25%), 0 22px 50px -24px rgb(8 30 36 / 55%),
+    inset 0 1px 0 rgb(255 255 255 / 8%);
 }
 
 @layer base {

@@ -15,9 +15,16 @@ function parseHexColor(value: string): Rgb | undefined {
   return [(numeric >> 16) & 255, (numeric >> 8) & 255, numeric & 255];
 }
 
-/** One `--token` colour from the root element, or `fallback`. */
-export function readTokenColor(token: string, fallback: Rgb): Rgb {
-  const styles = getComputedStyle(document.documentElement);
+/**
+ * One `--token` colour as `source` sees it (the root by default, or a canvas
+ * inside a section with its own theme), or `fallback`.
+ */
+export function readTokenColor(
+  token: string,
+  fallback: Rgb,
+  source: Element = document.documentElement,
+): Rgb {
+  const styles = getComputedStyle(source);
   return parseHexColor(styles.getPropertyValue(token)) ?? fallback;
 }
 
@@ -50,11 +57,14 @@ export abstract class CanvasScene implements CanvasRenderer {
   protected constructor(canvas: HTMLCanvasElement) {
     const context = canvas.getContext('2d');
     if (context === null) throw new Error('Canvas 2D is unavailable.');
+    // Dark adds light where particles overlap; light deepens ink like dye.
+    // Read at the canvas, so a dark section inside a light page draws light.
+    const composite = getComputedStyle(canvas)
+      .getPropertyValue('--canvas-composite')
+      .trim();
     this.particleComposition =
-      getComputedStyle(document.documentElement)
-        .getPropertyValue('--canvas-composite')
-        .trim() === 'source-over'
-        ? 'source-over'
+      composite === 'source-over' || composite === 'multiply'
+        ? composite
         : 'lighter';
     this.#canvas = canvas;
     this.context = context;
@@ -69,6 +79,11 @@ export abstract class CanvasScene implements CanvasRenderer {
   }
 
   public abstract render(timeSeconds: number, deltaSeconds: number): void;
+
+  /** A theme colour as this canvas sees it. */
+  protected tokenColor(token: string, fallback: Rgb): Rgb {
+    return readTokenColor(token, fallback, this.#canvas);
+  }
 
   /** Starts a frame in CSS pixels on a cleared canvas. */
   protected beginFrame(): CanvasRenderingContext2D {

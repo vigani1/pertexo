@@ -18,10 +18,13 @@ Status: implemented and locally qualified; owner-approved on 2026-10-20.
 - First commit migrates neutral utility colours, canvas inks, gradients, glass,
   shadows and textures to semantic tokens, preserving dark values. Mask colours
   and third-party brand logos are intentionally not theme colours.
-- Weft light uses cloth #f4f6f5, surface #ffffff, ink #183139, muted #435b63,
-  teal #006b79 and violet #63449a. Keep Bricolage/Inter/JetBrains, flat content,
-  floating glass, thread glyphs, real Loom data and bounded motion. Status inks
-  become deeper rather than inverted. Light particles use normal compositing;
+- Weft light uses sage cloth #e4e9e6, paper #f3f6f4, ink #132c34, muted
+  #3b545c, teal #006472 and violet #5d3f93, with no large pure-white surface
+  (revised 2026-10-20 after the owner found the first palette white on white).
+  The workspace rail keeps the dark palette, dyed teal. Keep
+  Bricolage/Inter/JetBrains, flat content, floating glass, thread glyphs, real
+  Loom data and bounded motion. Status inks become deeper rather than inverted.
+  Light particles multiply like dye, and the Core takes its own vivid inks;
   dark keeps additive light. Theme changes repaint even reduced-motion canvases.
 - Text needs WCAG AA (4.5:1 ordinary, 3:1 large); meaningful controls, focused
   outlines and chart marks need 3:1. Decorative low-alpha cloth and glows carry
