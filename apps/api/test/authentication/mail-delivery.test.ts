@@ -137,14 +137,12 @@ for (const purpose of [
 ] as const) {
   it(`seals the ${purpose} security notice without codes or an ignore-this-message footer`, async () => {
     const enqueue = vi.fn().mockResolvedValue(undefined);
-    const seal = vi
-      .fn()
-      .mockReturnValue({
-        ciphertext: 'sealed',
-        nonce: 'nonce',
-        tag: 'tag',
-        keyVersion: 'v1',
-      });
+    const seal = vi.fn().mockReturnValue({
+      ciphertext: 'sealed',
+      nonce: 'nonce',
+      tag: 'tag',
+      keyVersion: 'v1',
+    });
     const now = new Date('2026-10-20T00:00:00Z');
     const mail = new DurableAuthenticationMail(
       { enqueue, close: vi.fn().mockResolvedValue(undefined) },
