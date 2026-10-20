@@ -96,7 +96,7 @@ export function CompletedJourney({
           </p>
           <span
             aria-hidden="true"
-            className="block h-0.5 w-40 overflow-hidden rounded-full bg-white/8"
+            className="block h-0.5 w-40 overflow-hidden rounded-full bg-surface-ink/8"
           >
             <span
               style={{ animationDuration: `${String(autoOpenAfterMs)}ms` }}

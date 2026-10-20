@@ -40,6 +40,7 @@ export function rgba(color: Rgb, alpha: number): string {
 
 /** A Canvas 2D drawing sized in CSS pixels; subclasses draw each frame. */
 export abstract class CanvasScene implements CanvasRenderer {
+  protected readonly particleComposition: GlobalCompositeOperation;
   protected readonly context: CanvasRenderingContext2D;
   protected width = 0;
   protected height = 0;
@@ -49,6 +50,12 @@ export abstract class CanvasScene implements CanvasRenderer {
   protected constructor(canvas: HTMLCanvasElement) {
     const context = canvas.getContext('2d');
     if (context === null) throw new Error('Canvas 2D is unavailable.');
+    this.particleComposition =
+      getComputedStyle(document.documentElement)
+        .getPropertyValue('--canvas-composite')
+        .trim() === 'source-over'
+        ? 'source-over'
+        : 'lighter';
     this.#canvas = canvas;
     this.context = context;
   }

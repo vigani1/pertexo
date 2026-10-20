@@ -17,7 +17,7 @@ const chipVariants = cva(
       tone: {
         reference: 'bg-accent text-accent-foreground',
         code: 'bg-secondary/10 text-secondary',
-        value: 'bg-white/6 text-muted-foreground',
+        value: 'bg-surface-ink/6 text-muted-foreground',
         missing:
           'text-subtle-foreground shadow-[inset_0_0_0_1px_var(--border-strong)]',
       } satisfies Record<MappingSourceTone, string>,
@@ -56,7 +56,7 @@ export function MappingSummary({
       aria-expanded={open}
       aria-controls={controlsId}
       aria-describedby={describedBy}
-      className="-m-1.5 flex w-[calc(100%+0.75rem)] flex-col gap-2.5 rounded-md p-1.5 text-left outline-none hover:bg-white/3 focus-ring"
+      className="-m-1.5 flex w-[calc(100%+0.75rem)] flex-col gap-2.5 rounded-md p-1.5 text-left outline-none hover:bg-surface-ink/3 focus-ring"
       onClick={onToggle}
     >
       {/* Spaces between the parts keep the accessible name readable:
@@ -89,7 +89,7 @@ export function MappingSummary({
       {source.code === undefined || open ? null : (
         <>
           {' '}
-          <code className="block w-full rounded-md border border-primary/28 bg-black/30 px-2.5 py-2 font-mono text-[0.78rem] break-words whitespace-pre-wrap text-foreground">
+          <code className="block w-full rounded-md border border-primary/28 bg-recess-ink/30 px-2.5 py-2 font-mono text-[0.78rem] break-words whitespace-pre-wrap text-foreground">
             {source.code}
           </code>
         </>

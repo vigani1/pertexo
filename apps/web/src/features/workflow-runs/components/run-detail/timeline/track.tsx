@@ -38,7 +38,7 @@ function SegmentEnd({ segment }: Readonly<{ segment: RunTimelineSegment }>) {
       <span
         className={cn(
           base,
-          'size-3 translate-x-1/2 rounded-full bg-[radial-gradient(circle,white_0_18%,var(--accent-foreground)_30%,color-mix(in_srgb,var(--primary)_35%,transparent)_55%,transparent_72%)] motion-safe:animate-tip',
+          'size-3 translate-x-1/2 rounded-full bg-[radial-gradient(circle,var(--surface-ink)_0_18%,var(--accent-foreground)_30%,color-mix(in_srgb,var(--primary)_35%,transparent)_55%,transparent_72%)] motion-safe:animate-tip',
         )}
       />
     );

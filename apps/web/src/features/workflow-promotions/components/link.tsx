@@ -25,7 +25,7 @@ export function PromotionLink({
             ? `Promotes to ${target.name}`
             : 'The linked workspace is unavailable'
       }
-      className="flex flex-col gap-3 rounded-xl border border-white/7 bg-white/[0.02] p-5 sm:flex-row sm:items-center sm:gap-0"
+      className="flex flex-col gap-3 rounded-xl border border-surface-ink/7 bg-surface-ink/[0.02] p-5 sm:flex-row sm:items-center sm:gap-0"
     >
       <Workspace name={workspaceName} caption="This workspace" lit />
       <span
@@ -35,7 +35,7 @@ export function PromotionLink({
           linked
             ? 'bg-action/50'
             : target === null
-              ? 'border-l border-dashed border-white/15 sm:border-t sm:border-l-0'
+              ? 'border-l border-dashed border-surface-ink/15 sm:border-t sm:border-l-0'
               : 'border-l border-dashed border-warning/50 sm:border-t sm:border-l-0',
         )}
       >
@@ -82,7 +82,7 @@ function Workspace({
           lit && 'border-action/40 bg-action/8 text-accent-foreground',
           !lit &&
             !warning &&
-            'border-dashed border-white/20 text-subtle-foreground',
+            'border-dashed border-surface-ink/20 text-subtle-foreground',
           warning && 'border-dashed border-warning/50 text-warning',
         )}
       >

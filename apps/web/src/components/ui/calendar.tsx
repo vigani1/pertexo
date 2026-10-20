@@ -230,7 +230,7 @@ export function Calendar({
                           ? // Opaque under the wash, so the band stops at its
                             // edge; lit from its centre, like a small orb.
                             'neon bg-popover [--neon-wash:radial-gradient(circle_at_50%_38%,color-mix(in_oklab,var(--primary)_18%,transparent),color-mix(in_oklab,var(--primary)_6%,transparent)_72%)] [--neon-wash-hover:radial-gradient(circle_at_50%_38%,color-mix(in_oklab,var(--primary)_26%,transparent),color-mix(in_oklab,var(--primary)_10%,transparent)_72%)] font-semibold'
-                          : 'hover:border-white/12 hover:bg-white/[0.06]',
+                          : 'hover:border-surface-ink/12 hover:bg-surface-ink/[0.06]',
                       )}
                       onClick={() => {
                         setFocused(day);

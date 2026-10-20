@@ -71,7 +71,7 @@ export function RetainedActivity({
       {total === 0 ? null : (
         <div
           aria-hidden="true"
-          className="flex h-2.5 overflow-hidden rounded-full bg-white/[0.06]"
+          className="flex h-2.5 overflow-hidden rounded-full bg-surface-ink/[0.06]"
         >
           {statuses.map((status) => {
             const count = snapshot.window.byStatus[status];
@@ -104,7 +104,7 @@ export function RetainedActivity({
                 search={{ ...search, status }}
                 aria-label={`${look.label} ${count.toLocaleString(FORMAT_LOCALE)}`}
                 className={cn(
-                  'focus-ring inline-flex items-center gap-2 rounded-md border border-white/7 bg-white/[0.025] px-2.5 py-1.5 text-sm transition-colors hover:border-white/15 hover:bg-white/[0.05] motion-reduce:transition-none',
+                  'focus-ring inline-flex items-center gap-2 rounded-md border border-surface-ink/7 bg-surface-ink/[0.025] px-2.5 py-1.5 text-sm transition-colors hover:border-surface-ink/15 hover:bg-surface-ink/[0.05] motion-reduce:transition-none',
                   count === 0 && 'opacity-55',
                 )}
               >
@@ -157,7 +157,7 @@ export function RetainedActivity({
                     to="/w/$workspaceId/runs"
                     params={{ workspaceId }}
                     search={{ ...search, workflowId: workflow.workflowId }}
-                    className="focus-ring group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-white/[0.035] motion-reduce:transition-none sm:grid-cols-[minmax(0,14rem)_minmax(0,1fr)_3.5rem]"
+                    className="focus-ring group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-surface-ink/[0.035] motion-reduce:transition-none sm:grid-cols-[minmax(0,14rem)_minmax(0,1fr)_3.5rem]"
                   >
                     <span className="min-w-0 truncate group-hover:text-accent-foreground">
                       {(canReadWorkflowNames ? workflow.workflowName : null) ??
@@ -166,7 +166,7 @@ export function RetainedActivity({
                     {/* How busy, next to the busiest one in the window. */}
                     <span
                       aria-hidden="true"
-                      className="col-span-2 row-start-2 h-1.5 rounded-full bg-white/[0.05] sm:col-span-1 sm:row-start-auto"
+                      className="col-span-2 row-start-2 h-1.5 rounded-full bg-surface-ink/[0.05] sm:col-span-1 sm:row-start-auto"
                     >
                       <span
                         className="block h-full rounded-full bg-action/60 group-hover:bg-action/80"

@@ -165,7 +165,7 @@ function MappedInputsTab({
     <div className="flex flex-col gap-5">
       <section aria-label="Inputs" className="flex flex-col gap-3">
         {mappings.rows.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-white/10 p-3 text-sm text-muted-foreground">
+          <p className="rounded-lg border border-dashed border-surface-ink/10 p-3 text-sm text-muted-foreground">
             No input mappings yet. Add a value, part of the run input, or the
             output of a step linked before this one.
           </p>

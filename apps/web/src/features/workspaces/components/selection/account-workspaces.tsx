@@ -49,7 +49,7 @@ export function AccountWorkspacesSection({
               <Link
                 to="/w/$workspaceId"
                 params={{ workspaceId: workspace.id }}
-                className="group flex min-h-14 items-center gap-3 rounded-md px-1 py-2 outline-none transition-colors hover:bg-white/[0.03] focus-ring"
+                className="group flex min-h-14 items-center gap-3 rounded-md px-1 py-2 outline-none transition-colors hover:bg-surface-ink/[0.03] focus-ring"
               >
                 <WorkspaceMark
                   name={workspace.name}

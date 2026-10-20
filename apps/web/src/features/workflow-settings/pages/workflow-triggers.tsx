@@ -131,7 +131,7 @@ function WaysIn() {
               'size-2.5 shrink-0 rounded-full',
               way.on
                 ? 'bg-action shadow-[0_0_8px_var(--action)]'
-                : 'border border-white/20',
+                : 'border border-surface-ink/20',
             )}
           />
           {/* Phones stack the sentence under its name, not beside it. */}

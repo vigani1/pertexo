@@ -44,7 +44,7 @@ function CapacityFigure({
       </div>
       <span
         aria-hidden="true"
-        className="relative h-1 overflow-hidden rounded-full bg-white/[0.07]"
+        className="relative h-1 overflow-hidden rounded-full bg-surface-ink/[0.07]"
       >
         <span
           className={cn(
@@ -73,7 +73,7 @@ function Instrument({
   children: ReactNode;
 }>) {
   return (
-    <div className="flex min-w-0 flex-col gap-4 rounded-xl border border-white/7 bg-white/[0.02] p-5">
+    <div className="flex min-w-0 flex-col gap-4 rounded-xl border border-surface-ink/7 bg-surface-ink/[0.02] p-5">
       <div className="flex min-w-0 items-center gap-5">
         {drawing}
         <div className="min-w-0">

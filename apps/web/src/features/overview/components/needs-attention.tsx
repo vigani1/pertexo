@@ -96,7 +96,7 @@ export function NeedsAttention({
       }
     >
       {shown.length === 0 ? (
-        <div className="flex items-center gap-3 border-t border-white/6 py-3.5">
+        <div className="flex items-center gap-3 border-t border-surface-ink/6 py-3.5">
           <StatusGlyph tone="success" />
           <p className="text-sm">
             <span className="font-semibold">All clear.</span>{' '}
@@ -108,7 +108,7 @@ export function NeedsAttention({
           {shown.map((item) => (
             <li
               key={item.key}
-              className="grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-center gap-3 border-t border-white/6 py-3"
+              className="grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-center gap-3 border-t border-surface-ink/6 py-3"
             >
               <StatusGlyph tone={item.tone} />
               <div className="min-w-0">
@@ -129,7 +129,7 @@ export function NeedsAttention({
         </ul>
       )}
       {items.length > NEEDS_ATTENTION_LIMIT || moreFailedRuns ? (
-        <p className="border-t border-white/6 pt-2 text-xs text-subtle-foreground">
+        <p className="border-t border-surface-ink/6 pt-2 text-xs text-subtle-foreground">
           {items.length > NEEDS_ATTENTION_LIMIT
             ? `${String(items.length - NEEDS_ATTENTION_LIMIT)} more not shown. `
             : ''}

@@ -27,7 +27,7 @@ export function BuilderCard({
   children: ReactNode;
 }>) {
   return (
-    <li className="flex flex-col gap-3 rounded-lg border border-border bg-white/[0.02] p-3">
+    <li className="flex flex-col gap-3 rounded-lg border border-border bg-surface-ink/[0.02] p-3">
       <div className="flex min-h-7 items-center justify-between gap-2">
         <p className="flex min-w-0 items-baseline gap-2 text-sm font-semibold">
           {title}

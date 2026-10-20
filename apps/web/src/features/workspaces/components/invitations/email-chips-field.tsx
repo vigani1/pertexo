@@ -46,14 +46,14 @@ export function EmailChipsField({
           {emails.map((email) => (
             <span
               key={email}
-              className="inline-flex max-w-full items-center gap-1 rounded-sm bg-white/8 py-0.5 pr-0.5 pl-2 text-xs"
+              className="inline-flex max-w-full items-center gap-1 rounded-sm bg-surface-ink/8 py-0.5 pr-0.5 pl-2 text-xs"
             >
               <span className="truncate">{email}</span>
               <button
                 type="button"
                 aria-label={`Remove ${email}`}
                 disabled={disabled}
-                className="grid size-5 place-items-center rounded-sm text-subtle-foreground hover:bg-white/10 hover:text-foreground"
+                className="grid size-5 place-items-center rounded-sm text-subtle-foreground hover:bg-surface-ink/10 hover:text-foreground"
                 onClick={() => {
                   onRemove(email);
                 }}

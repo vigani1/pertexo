@@ -142,7 +142,7 @@ export function PatternGlyphPlaceholder({
       <path
         d={`M5 ${String(middle)}H${String(width - 5)}`}
         strokeWidth={1.2}
-        className="fill-none stroke-white/12 [stroke-dasharray:2_3]"
+        className="fill-none stroke-surface-ink/12 [stroke-dasharray:2_3]"
       />
       <circle
         cx={5}

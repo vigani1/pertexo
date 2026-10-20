@@ -16,7 +16,7 @@ export function NotificationRoute({
   return (
     <figure
       aria-label="Where your notices go"
-      className="flex flex-col gap-3 rounded-xl border border-white/7 bg-white/[0.02] p-5 sm:flex-row sm:items-center sm:gap-0"
+      className="flex flex-col gap-3 rounded-xl border border-surface-ink/7 bg-surface-ink/[0.02] p-5 sm:flex-row sm:items-center sm:gap-0"
     >
       <Stop
         icon={<SparkleIcon aria-hidden="true" className="size-4" />}
@@ -70,7 +70,7 @@ function Stop({
           tone === 'action' &&
             'border-action/50 bg-action/8 text-accent-foreground shadow-[0_0_0_4px_color-mix(in_srgb,var(--action)_8%,transparent)]',
           tone === 'muted' && 'border-border text-subtle-foreground',
-          tone === 'plain' && 'border-white/12 text-muted-foreground',
+          tone === 'plain' && 'border-surface-ink/12 text-muted-foreground',
         )}
       >
         {icon}
@@ -92,7 +92,7 @@ function Thread({ lit }: Readonly<{ lit: boolean }>) {
         'ml-[1.125rem] h-5 w-px sm:mx-3 sm:mb-8 sm:h-px sm:w-auto sm:min-w-8 sm:flex-1',
         lit
           ? 'bg-action/50'
-          : 'border-l border-dashed border-white/15 bg-transparent sm:border-t sm:border-l-0',
+          : 'border-l border-dashed border-surface-ink/15 bg-transparent sm:border-t sm:border-l-0',
       )}
     />
   );

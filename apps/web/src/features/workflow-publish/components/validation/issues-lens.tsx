@@ -59,7 +59,7 @@ export function IssuesLens({
         close();
       }}
     >
-      <header className="flex items-start gap-3 border-b border-white/7 px-4 py-3">
+      <header className="flex items-start gap-3 border-b border-surface-ink/7 px-4 py-3">
         <StatusGlyph
           tone={count !== undefined && count > 0 ? 'failure' : 'neutral'}
           className="mt-1"

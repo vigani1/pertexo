@@ -132,7 +132,7 @@ function UploadSession({
         )}
       </LabelledField>
       <div
-        className="flex min-w-0 flex-col gap-2 rounded-lg border border-white/8 bg-black/18 p-3"
+        className="flex min-w-0 flex-col gap-2 rounded-lg border border-surface-ink/8 bg-recess-ink/18 p-3"
         role="status"
         aria-live="polite"
         aria-atomic="true"

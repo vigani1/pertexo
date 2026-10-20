@@ -186,7 +186,7 @@ function SchedulePreview({
   return (
     <section
       aria-label="When it runs"
-      className="rounded-lg border border-white/7 bg-white/[0.025] px-3 py-2.5"
+      className="rounded-lg border border-surface-ink/7 bg-surface-ink/[0.025] px-3 py-2.5"
     >
       <p
         aria-live="polite"

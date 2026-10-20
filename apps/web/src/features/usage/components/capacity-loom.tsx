@@ -35,7 +35,7 @@ export function SlotWheel({
           cx={CENTRE}
           cy={CENTRE}
           r={radius}
-          className="fill-none stroke-white/[0.06]"
+          className="fill-none stroke-surface-ink/[0.06]"
           strokeWidth={1}
         />
         {Array.from({ length: shown }, (_, index) => {
@@ -107,7 +107,7 @@ export function StorageArc({
           cx={CENTRE}
           cy={CENTRE}
           r={radius}
-          className="fill-none stroke-white/[0.07]"
+          className="fill-none stroke-surface-ink/[0.07]"
           strokeWidth={7}
           strokeLinecap="round"
           strokeDasharray={`${String(length * sweep)} ${String(length)}`}

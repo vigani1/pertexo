@@ -96,7 +96,7 @@ function ColumnHeadings({ variant }: Readonly<{ variant: RunListVariant }>) {
     <div
       aria-hidden="true"
       className={cn(
-        'mb-1 hidden gap-x-4 border-b border-white/[0.055] px-3 pb-2 font-mono text-[0.68rem] text-subtle-foreground md:grid',
+        'mb-1 hidden gap-x-4 border-b border-surface-ink/[0.055] px-3 pb-2 font-mono text-[0.68rem] text-subtle-foreground md:grid',
         RUN_ROW_LAYOUT[variant].grid,
       )}
     >

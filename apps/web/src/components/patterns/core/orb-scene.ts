@@ -135,7 +135,7 @@ export class CoreOrbScene extends CanvasScene {
 
   render(timeSeconds: number): void {
     const context = this.beginFrame();
-    context.globalCompositeOperation = 'lighter';
+    context.globalCompositeOperation = this.particleComposition;
     const half = Math.min(this.width, this.height) / 2;
     const radius = half * 0.72;
     const centreX = this.width / 2;

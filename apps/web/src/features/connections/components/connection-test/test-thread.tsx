@@ -94,7 +94,7 @@ export function TestThread({
       data-slot="test-thread"
       data-phase={phase}
       className={cn(
-        'relative grid h-28 grid-cols-[3.5rem_minmax(0,1fr)_2.5rem] items-center gap-1 rounded-lg border border-border bg-black/25 px-4',
+        'relative grid h-28 grid-cols-[3.5rem_minmax(0,1fr)_2.5rem] items-center gap-1 rounded-lg border border-border bg-recess-ink/25 px-4',
         phase === 'running' && 'live-edge',
         className,
       )}

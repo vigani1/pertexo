@@ -116,7 +116,7 @@ export function InsertDataPicker({
                 />
                 This item
               </p>
-              <ul className="mt-1 ml-3 flex flex-col border-l border-white/8 pl-2">
+              <ul className="mt-1 ml-3 flex flex-col border-l border-surface-ink/8 pl-2">
                 {loopPorts.map((port) => {
                   const field = loopFields[port] ?? {
                     label: port,
@@ -231,7 +231,7 @@ function FieldList({
   onPick: (path: string, fieldName: string) => void;
 }>) {
   return (
-    <ul className="mt-1 ml-3 flex flex-col border-l border-white/8 pl-2">
+    <ul className="mt-1 ml-3 flex flex-col border-l border-surface-ink/8 pl-2">
       <li>
         <PickButton
           label={wholeLabel}
@@ -264,7 +264,7 @@ function PickButton({
   return (
     <button
       type="button"
-      className="flex w-full items-center justify-between gap-3 rounded-sm px-1.5 py-1 text-left text-[0.8rem] text-muted-foreground outline-none hover:bg-white/5 hover:text-accent-foreground focus-ring"
+      className="flex w-full items-center justify-between gap-3 rounded-sm px-1.5 py-1 text-left text-[0.8rem] text-muted-foreground outline-none hover:bg-surface-ink/5 hover:text-accent-foreground focus-ring"
       onClick={onClick}
     >
       <span className="truncate">{label}</span>

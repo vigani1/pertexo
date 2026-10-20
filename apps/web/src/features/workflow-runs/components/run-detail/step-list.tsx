@@ -48,7 +48,7 @@ export function RunStepList({
               type="button"
               aria-pressed={row.key === selectedKey}
               aria-label={`${row.label}: ${row.statusLabel}${row.attempts > 1 ? `, ${String(row.attempts)} attempts` : ''}`}
-              className="flex min-h-12 w-full items-center justify-between gap-3 border-t border-white/6 px-1 py-2 text-left outline-none focus-ring aria-pressed:bg-action/[0.06]"
+              className="flex min-h-12 w-full items-center justify-between gap-3 border-t border-surface-ink/6 px-1 py-2 text-left outline-none focus-ring aria-pressed:bg-action/[0.06]"
               onClick={() => {
                 onSelectStep(row.key);
               }}

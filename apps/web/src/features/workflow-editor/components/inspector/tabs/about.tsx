@@ -107,7 +107,7 @@ function ReturnedFields({
       {fields.map((field) => (
         <li
           key={field.key}
-          className="rounded-sm border border-white/8 bg-white/[0.03] px-1.5 py-0.5 font-mono text-xs"
+          className="rounded-sm border border-surface-ink/8 bg-surface-ink/[0.03] px-1.5 py-0.5 font-mono text-xs"
         >
           {field.key}
           {field.type === undefined ? null : (

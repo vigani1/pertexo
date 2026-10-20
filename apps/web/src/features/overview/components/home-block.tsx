@@ -49,7 +49,7 @@ export function HomeBlockBody({
       <div
         role="status"
         aria-label={`Loading ${title.toLocaleLowerCase()}`}
-        className="flex flex-col gap-5 border-t border-white/6 py-5"
+        className="flex flex-col gap-5 border-t border-surface-ink/6 py-5"
       >
         {[0, 1, 2].map((order) => (
           <SkeletonThread key={order} order={order} />
@@ -58,7 +58,7 @@ export function HomeBlockBody({
     );
   if (state.failed && !state.hasData)
     return (
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/6 py-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-surface-ink/6 py-4">
         <p
           role="alert"
           className="flex items-center gap-2 text-sm text-destructive"

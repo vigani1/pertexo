@@ -41,7 +41,7 @@ export function DiscussionThreads({
             <li key={thread.id} className="row-divider">
               <button
                 type="button"
-                className="flex w-full gap-3 rounded-lg px-3 py-4 text-left transition-colors hover:bg-white/[0.035] focus-ring motion-reduce:transition-none"
+                className="flex w-full gap-3 rounded-lg px-3 py-4 text-left transition-colors hover:bg-surface-ink/[0.035] focus-ring motion-reduce:transition-none"
                 onClick={() => {
                   onOpen(thread.id);
                 }}

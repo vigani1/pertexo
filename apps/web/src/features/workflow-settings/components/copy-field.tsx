@@ -21,7 +21,7 @@ export function CopyField({
     <div className={cn('flex min-w-0 flex-col gap-1.5', className)}>
       <span className="text-xs text-muted-foreground">{label}</span>
       <div className="flex min-w-0 items-start gap-2">
-        <code className="min-w-0 flex-1 rounded-md border border-border bg-black/30 px-3 py-2 font-mono text-[0.8rem] break-all text-foreground">
+        <code className="min-w-0 flex-1 rounded-md border border-border bg-recess-ink/30 px-3 py-2 font-mono text-[0.8rem] break-all text-foreground">
           {display ?? value}
         </code>
         <CopyButton

@@ -36,7 +36,7 @@ function SessionRow({
   return (
     <li className="flex items-center justify-between gap-4 py-3 first:pt-0">
       <div className="flex min-w-0 items-center gap-3">
-        <span className="grid size-9 shrink-0 place-items-center rounded-md border border-white/10 bg-white/[0.035] text-muted-foreground">
+        <span className="grid size-9 shrink-0 place-items-center rounded-md border border-surface-ink/10 bg-surface-ink/[0.035] text-muted-foreground">
           <Icon aria-hidden="true" className="size-4" />
         </span>
         <div className="min-w-0">

@@ -11,7 +11,7 @@ export function ToggleGroup({
     <ToggleGroupPrimitive
       data-slot="toggle-group"
       className={cn(
-        'inline-flex w-fit items-center gap-0.5 rounded-md border border-white/7 bg-white/[0.035] p-[3px]',
+        'inline-flex w-fit items-center gap-0.5 rounded-md border border-surface-ink/7 bg-surface-ink/[0.035] p-[3px]',
         className,
       )}
       {...props}
@@ -27,7 +27,7 @@ export function ToggleGroupItem({
     <TogglePrimitive
       data-slot="toggle-group-item"
       className={cn(
-        "inline-flex h-7 items-center gap-1.5 rounded-sm px-3 text-[0.8rem] font-medium whitespace-nowrap text-subtle-foreground transition-colors outline-none hover:text-foreground focus-ring disabled:pointer-events-none disabled:opacity-50 data-pressed:bg-white/8 data-pressed:text-foreground data-pressed:shadow-[inset_0_1px_0_rgb(255_255_255/6%)] [&_svg:not([class*='size-'])]:size-3.5",
+        "inline-flex h-7 items-center gap-1.5 rounded-sm px-3 text-[0.8rem] font-medium whitespace-nowrap text-subtle-foreground transition-colors outline-none hover:text-foreground focus-ring disabled:pointer-events-none disabled:opacity-50 data-pressed:bg-surface-ink/8 data-pressed:text-foreground data-pressed:shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-ink)_6%,transparent)] [&_svg:not([class*='size-'])]:size-3.5",
         className,
       )}
       {...props}

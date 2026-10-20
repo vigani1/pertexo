@@ -51,7 +51,7 @@ export function ParallelBranches({
         <output
           id={id}
           aria-live="polite"
-          className="grid h-9 min-w-12 place-items-center rounded-md border border-border bg-black/20 px-3 font-mono text-sm"
+          className="grid h-9 min-w-12 place-items-center rounded-md border border-border bg-recess-ink/20 px-3 font-mono text-sm"
         >
           {count}
         </output>

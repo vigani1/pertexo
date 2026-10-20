@@ -43,7 +43,7 @@ export function FormPart({
 }>) {
   const prefix = `${nodeId}-${part.inputKey}`;
   return (
-    <fieldset className="flex min-w-0 flex-col gap-3 rounded-lg border border-white/10 bg-black/15 p-3">
+    <fieldset className="flex min-w-0 flex-col gap-3 rounded-lg border border-surface-ink/10 bg-recess-ink/15 p-3">
       <legend className="max-w-full break-all px-1 text-xs text-muted-foreground">
         Part {index + 1}: {part.name === '' ? 'new part' : part.name}
       </legend>

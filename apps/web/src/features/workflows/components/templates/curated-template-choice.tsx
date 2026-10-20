@@ -89,12 +89,12 @@ export function CuratedTemplateChoice({
               'grid grid-cols-1 items-center gap-x-3 gap-y-2 rounded-lg border p-2.5 transition-colors motion-reduce:transition-none sm:grid-cols-[8.25rem_minmax(0,1fr)]',
               selected
                 ? 'border-primary/45 bg-primary/[0.06]'
-                : 'border-border bg-white/[0.02] hover:border-border-strong',
+                : 'border-border bg-surface-ink/[0.02] hover:border-border-strong',
             )}
           >
             <span
               aria-hidden="true"
-              className="grid place-items-center self-start rounded-md bg-black/25 py-2 sm:row-span-2"
+              className="grid place-items-center self-start rounded-md bg-recess-ink/25 py-2 sm:row-span-2"
             >
               <PatternGlyph graph={template.manifest.graph} />
             </span>

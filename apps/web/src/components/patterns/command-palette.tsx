@@ -120,7 +120,7 @@ export function CommandPalette({
                       onClick={() => {
                         choose(item);
                       }}
-                      className="flex cursor-default items-center gap-3 rounded-md px-2 py-2 text-sm text-muted-foreground outline-none select-none data-highlighted:bg-white/6 data-highlighted:text-foreground [&_svg:not([class*='size-'])]:size-4"
+                      className="flex cursor-default items-center gap-3 rounded-md px-2 py-2 text-sm text-muted-foreground outline-none select-none data-highlighted:bg-surface-ink/6 data-highlighted:text-foreground [&_svg:not([class*='size-'])]:size-4"
                     >
                       {item.icon}
                       <span className="min-w-0 flex-1 truncate">

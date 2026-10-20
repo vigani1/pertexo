@@ -21,7 +21,7 @@ export function NavigationProgress() {
       aria-label="Loading the page"
       className="pointer-events-none fixed inset-x-0 top-0 z-70 skeleton-wait"
     >
-      <SkeletonThread className="h-[3px] rounded-none bg-white/8 after:shadow-[0_0_8px_var(--primary)] motion-reduce:bg-accent-foreground/45" />
+      <SkeletonThread className="h-[3px] rounded-none bg-surface-ink/8 after:shadow-[0_0_8px_var(--primary)] motion-reduce:bg-accent-foreground/45" />
     </div>
   );
 }

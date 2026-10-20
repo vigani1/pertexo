@@ -102,7 +102,7 @@ export function StepHealthList({
               const look = describeNodeStatus(item.lastStatus);
               const label = labelOf(item.nodeId);
               return (
-                <tr key={item.nodeId} className="border-t border-white/6">
+                <tr key={item.nodeId} className="border-t border-surface-ink/6">
                   <td className="max-w-[14rem] truncate py-2 pr-3">
                     {label ?? (
                       <span className="text-muted-foreground">

@@ -95,7 +95,7 @@ export function InspectorHeader({
           placeholder={step.name}
           value={label.text}
           disabled={!form.editable}
-          className="-mx-1 w-full min-w-0 rounded-sm bg-transparent px-1 font-heading text-lg leading-tight font-semibold tracking-[-0.02em] outline-none placeholder:text-foreground hover:bg-white/4 focus-visible:bg-black/25 focus-ring disabled:hover:bg-transparent"
+          className="-mx-1 w-full min-w-0 rounded-sm bg-transparent px-1 font-heading text-lg leading-tight font-semibold tracking-[-0.02em] outline-none placeholder:text-foreground hover:bg-surface-ink/4 focus-visible:bg-recess-ink/25 focus-ring disabled:hover:bg-transparent"
           onChange={(event) => {
             label.change(event.currentTarget.value);
           }}

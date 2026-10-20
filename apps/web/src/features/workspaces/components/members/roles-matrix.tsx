@@ -72,7 +72,7 @@ export function RolesMatrix({
                       key={role}
                       className={cn(
                         'relative h-8 text-center',
-                        "before:absolute before:inset-x-0 before:top-1/2 before:h-px before:bg-white/6 before:content-['']",
+                        "before:absolute before:inset-x-0 before:top-1/2 before:h-px before:bg-surface-ink/6 before:content-['']",
                         role === yourRole && 'bg-primary/5',
                       )}
                     >
@@ -86,7 +86,7 @@ export function RolesMatrix({
                             ? role === yourRole
                               ? 'bg-action'
                               : 'bg-action/45'
-                            : 'border border-white/18 bg-card',
+                            : 'border border-surface-ink/18 bg-card',
                         )}
                       />
                       <span className="sr-only">{allowed ? 'Yes' : 'No'}</span>

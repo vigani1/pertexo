@@ -48,7 +48,7 @@ export function AddStepBundle({
         id={listId}
         hidden={!open}
         aria-label={bundle.name}
-        className="mt-0.5 ml-4.5 flex flex-col border-l border-white/8 pl-1.5"
+        className="mt-0.5 ml-4.5 flex flex-col border-l border-surface-ink/8 pl-1.5"
       >
         {bundle.choices.map((choice) => (
           <li key={choice.identity}>

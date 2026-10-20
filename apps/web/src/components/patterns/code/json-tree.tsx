@@ -47,7 +47,7 @@ function Node({
     : `{${String(entries.length)}}`;
   return (
     <details open={depth < OPEN_DEPTH} className="group/json">
-      <summary className="flex cursor-default list-none items-center gap-1 rounded-sm py-0.5 outline-none select-none hover:bg-white/4 focus-ring [&::-webkit-details-marker]:hidden">
+      <summary className="flex cursor-default list-none items-center gap-1 rounded-sm py-0.5 outline-none select-none hover:bg-surface-ink/4 focus-ring [&::-webkit-details-marker]:hidden">
         <ChevronRightIcon
           aria-hidden="true"
           className="size-3.5 shrink-0 text-subtle-foreground transition-transform group-open/json:rotate-90 motion-reduce:transition-none"
@@ -79,7 +79,7 @@ export function JsonTree({
       role="group"
       aria-label={label}
       className={cn(
-        'max-h-96 overflow-auto rounded-md border border-border bg-black/25 p-2 font-mono text-xs leading-relaxed',
+        'max-h-96 overflow-auto rounded-md border border-border bg-recess-ink/25 p-2 font-mono text-xs leading-relaxed',
         className,
       )}
     >

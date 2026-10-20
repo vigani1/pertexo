@@ -6,7 +6,7 @@ const DAYS = 30;
 
 /** How strong a day's red is: one failure is faint, four or more solid. */
 function intensity(count: number): string {
-  if (count === 0) return 'bg-white/[0.08]';
+  if (count === 0) return 'bg-surface-ink/[0.08]';
   if (count === 1) return 'bg-destructive/45';
   if (count <= 3) return 'bg-destructive/70';
   return 'bg-destructive';

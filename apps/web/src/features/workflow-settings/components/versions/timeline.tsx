@@ -76,7 +76,7 @@ export function VersionTimeline({
                   : 'border-accent-foreground/50',
               )}
             />
-            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg px-3 py-3 transition-colors hover:bg-white/[0.03] motion-reduce:transition-none">
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg px-3 py-3 transition-colors hover:bg-surface-ink/[0.03] motion-reduce:transition-none">
               <div className="min-w-0">
                 <div className="flex items-center gap-2.5">
                   <h3 className="text-lg leading-none font-semibold">

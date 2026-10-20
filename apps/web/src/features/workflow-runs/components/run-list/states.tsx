@@ -25,7 +25,7 @@ export function RunListSkeleton() {
       {Array.from({ length: 7 }, (_, index) => (
         <div
           key={index}
-          className="grid grid-cols-[6rem_minmax(0,1fr)_6rem] items-center gap-4 border-t border-white/[0.055] px-3 py-4"
+          className="grid grid-cols-[6rem_minmax(0,1fr)_6rem] items-center gap-4 border-t border-surface-ink/[0.055] px-3 py-4"
         >
           <Skeleton className="h-3 w-16" />
           <Skeleton className="h-3 w-2/5" />

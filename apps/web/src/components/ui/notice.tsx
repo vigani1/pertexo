@@ -11,7 +11,7 @@ const noticeVariants = cva(
   {
     variants: {
       tone: {
-        info: 'border-border bg-white/[0.03]',
+        info: 'border-border bg-surface-ink/[0.03]',
         success: 'border-success/25 bg-success/6',
         warning: 'border-warning/25 bg-warning/6',
         destructive: 'border-destructive/30 bg-destructive/8',

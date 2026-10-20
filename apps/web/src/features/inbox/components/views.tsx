@@ -52,7 +52,7 @@ export function InboxViews({
   return (
     <nav
       aria-label="Inbox views"
-      className="flex w-fit items-center gap-1 rounded-md border border-white/6 bg-black/25 p-[3px]"
+      className="flex w-fit items-center gap-1 rounded-md border border-surface-ink/6 bg-recess-ink/25 p-[3px]"
     >
       <Link
         to="/w/$workspaceId/inbox"

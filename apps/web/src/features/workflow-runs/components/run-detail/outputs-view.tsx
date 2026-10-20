@@ -101,7 +101,7 @@ export function RunOutputsView({
                 <button
                   type="button"
                   aria-current={row.key === selectedKey ? 'true' : undefined}
-                  className="flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-2 text-left outline-none transition-colors hover:bg-white/[0.04] focus-ring aria-[current=true]:bg-action/8 motion-reduce:transition-none"
+                  className="flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-2 text-left outline-none transition-colors hover:bg-surface-ink/[0.04] focus-ring aria-[current=true]:bg-action/8 motion-reduce:transition-none"
                   onClick={() => {
                     onSelectStep(row.key);
                   }}
