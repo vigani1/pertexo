@@ -78,7 +78,7 @@ export function RunRow({
     <li
       data-slot="run-row"
       className={cn(
-        'group/row relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 rounded-md px-3 py-3 transition-colors hover:bg-white/[0.035] md:gap-x-4 md:py-2.5',
+        'group/row row-divider grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 rounded-lg px-3 py-3 transition-colors hover:bg-white/[0.035] md:gap-x-4 md:py-2.5',
         layout.grid,
       )}
     >

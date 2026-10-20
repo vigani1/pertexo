@@ -20,7 +20,7 @@ function ConnectionRow({
   const status = describeConnectionStatus(connection.status, connection.health);
   const health = describeConnectionHealth(connection);
   return (
-    <li className="border-t border-border first:border-t-0">
+    <li className="row-divider">
       <button
         type="button"
         aria-label={`${connection.name}, ${status.label}, ${health.text}`}

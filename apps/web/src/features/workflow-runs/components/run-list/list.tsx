@@ -66,7 +66,7 @@ export function RunList({
           <ColumnHeadings variant={variant} />
           <ul
             aria-label={`Runs from ${group.heading}`}
-            className="flex flex-col divide-y divide-white/[0.055]"
+            className="flex flex-col"
           >
             {group.runs.map((run) => {
               const durationMs = durations.get(run.id);
@@ -96,7 +96,7 @@ function ColumnHeadings({ variant }: Readonly<{ variant: RunListVariant }>) {
     <div
       aria-hidden="true"
       className={cn(
-        'hidden gap-x-4 border-b border-white/[0.055] px-3 pb-2 font-mono text-[0.68rem] text-subtle-foreground md:grid',
+        'mb-1 hidden gap-x-4 border-b border-white/[0.055] px-3 pb-2 font-mono text-[0.68rem] text-subtle-foreground md:grid',
         RUN_ROW_LAYOUT[variant].grid,
       )}
     >
