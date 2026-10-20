@@ -1,6 +1,6 @@
 # F37 — Notes on the workflow canvas
 
-Owner-approved 2026-10-20. Status: implemented; delivery pending green CI and rebase merge.
+Owner-approved 2026-10-20. Status: implemented.
 
 ## Decisions and rules
 
@@ -82,7 +82,7 @@ live co-editing and integrations/AI.
 
 - Build, lint, full workspace types, dependency boundaries, generated contracts,
   migration/schema ownership and architecture checks pass.
-- 1,419 web unit tests pass. Focused model (11), engine identity (23) and
+- Over 1,400 web unit tests and 16 focused note checks pass. Focused model (11), engine identity (23) and
   publication comparison (3) tests pass. The engine test compares the exact
   executable envelope and checksum; the model test compares pin bindings.
 - Real PostgreSQL: 18 tests across publication/restore/duplication, promotion
@@ -92,7 +92,9 @@ live co-editing and integrations/AI.
   gesture undo and note-only conflict reapplication. An additional touch-device
   journey verifies off-screen notes can be moved, resized, edited, deleted and
   restored through the toolbar and ordinary form. Rendered canvases and the
-  phone form receive visual inspection.
+  phone form receive visual inspection. A regression also moves an imported
+  `note:<uuid>` step and a note independently; projection IDs cannot collide
+  with any valid persisted step ID.
 - React Doctor: 100/100 for changed files, no findings. Markdown is lazy-loaded
   (about 36 kB gzip); the existing >500 kB editor-chunk warning remains.
 - Run the complete pre-push hook before delivery. No hook bypass, new service,

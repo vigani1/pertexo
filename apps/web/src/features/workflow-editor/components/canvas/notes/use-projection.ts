@@ -5,7 +5,12 @@ import {
   useEditorStoreApi,
 } from '../../../model/state/context';
 import { moveWorkflowNotes } from '../../../model/notes/commands';
-import { noteFlowId, type CanvasFlowNode, type NoteFlowNode } from './types';
+import {
+  noteIdFromFlowId,
+  noteFlowId,
+  type CanvasFlowNode,
+  type NoteFlowNode,
+} from './types';
 
 type Point = Readonly<{ x: number; y: number }>;
 type Size = Readonly<{ width: number; height: number }>;
@@ -47,7 +52,7 @@ export function useNoteProjection(editable: boolean) {
         finished = new Set<string>();
       for (const change of changes) {
         if (change.type === 'add' || change.type === 'replace') continue;
-        const id = change.id.slice('note:'.length);
+        const id = noteIdFromFlowId(change.id);
         if (change.type === 'position' && change.position !== undefined) {
           // React Flow's resize moves have no dragging flag. Only a finished
           // pointer drag commits here; the resizer owns its final rectangle.

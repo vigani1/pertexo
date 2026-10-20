@@ -1,3 +1,4 @@
+import { workflowGraphSchema } from '@pertexo/workflow-model';
 import { expect, test } from '../support/fixtures';
 import {
   addCsrfCookie,
@@ -348,4 +349,61 @@ test.describe('touch canvas documentation', () => {
       .boundingBox();
     expect(touchBounds?.width).toBeGreaterThanOrEqual(40);
   });
+});
+
+test('keeps imported step IDs independent of documentation decorations', async ({
+  page,
+}) => {
+  const id = '00000000-0000-4000-8000-000000000005';
+  const stepId = `note:${id}`;
+  const original = workflowGraphSchema.parse(mappingGraph());
+  const remote = remoteDraft({
+    ...original,
+    settings: { ...original.settings },
+    nodes: original.nodes.map((node) =>
+      node.id === 'target' ? { ...node, id: stepId } : node,
+    ),
+    edges: [
+      {
+        id: 'manual-target',
+        source: { nodeId: 'manual', port: 'out' },
+        target: { nodeId: stepId, port: 'in' },
+      },
+    ],
+    notes: [
+      {
+        id,
+        text: 'Independent documentation',
+        position: { x: 100, y: 270 },
+        size: { width: 320, height: 200 },
+        color: 'teal',
+      },
+    ],
+  });
+  await installEditorRoutes(page, remote, {
+    definitions: [manualDefinition, definition],
+  });
+  await page.goto(editorUrl);
+  const step = page.getByTestId(`rf__node-${stepId}`);
+  await step.click();
+  await step.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect
+    .poll(
+      () =>
+        workflowGraphSchema
+          .parse(remote.graph)
+          .nodes.find((node) => node.id === stepId)?.position.x ?? 0,
+    )
+    .toBeGreaterThan(380);
+  expect(remote.graph.notes?.[0]?.position).toEqual({ x: 100, y: 270 });
+  const notes = page.getByRole('article', { name: 'Canvas note', exact: true });
+  await expect(notes).toContainText('Independent documentation');
+  await notes.focus();
+  await page.keyboard.press('ArrowDown');
+  await expect.poll(() => remote.graph.notes?.[0]?.position.y).toBe(280);
+  await page.keyboard.press('Delete');
+  await expect.poll(() => remote.graph.notes?.length).toBe(0);
+  expect(remote.graph.nodes).toHaveLength(2);
+  await expect(step).toBeVisible();
 });
