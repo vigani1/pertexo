@@ -266,3 +266,5 @@ export {
 } from './event-coordination/decision.js';
 
 export { workflowNodes } from './graph/nodes.js';
+
+export { collectionPathSchema } from './json/path-validation.js';
