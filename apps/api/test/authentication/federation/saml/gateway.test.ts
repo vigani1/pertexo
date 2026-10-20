@@ -82,8 +82,12 @@ describe('SAML proof gateway with actual signed protocol responses', () => {
       `SAML exact 256 KiB: ${String(Math.round(performance.now() - started))} ms; only normalized identity leaves the gateway`,
     );
   });
+  // xml-crypto 6.4 takes over a second to sign the comment-heavy fixture, so
+  // the default 5 s fails under a loaded test run; the gateway rejects it in
+  // milliseconds.
   it.each(['depth', 'elements', 'nodes', 'attributes'] as const)(
     'bounds signed XML %s before recursive SDK traversal',
+    { timeout: 20_000 },
     async (mode) => {
       const fixture = samlFixture(material);
       const value =
