@@ -5,8 +5,8 @@ import type {
   SecureHttpBodyConsumer,
   SecureHttpRequest,
   SecureHttpResponse,
-} from '../../src/server.js';
-import { executePagination } from '../../src/http-request/pagination/execute.js';
+} from '../../../src/server.js';
+import { executePagination } from '../../../src/http-request/pagination/execute.js';
 
 afterEach(() => {
   mock.timers.reset();

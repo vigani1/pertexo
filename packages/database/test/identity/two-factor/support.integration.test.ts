@@ -1,18 +1,18 @@
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { migrateDatabase } from '../../src/migrations.js';
-import { parseDatabaseConfig } from '../../src/config.js';
+import { migrateDatabase } from '../../../src/migrations.js';
+import { parseDatabaseConfig } from '../../../src/config.js';
 import {
   createTwoFactorRecoveryStore,
   type TwoFactorRecoveryStore,
-} from '../../src/identity/two-factor/recovery.js';
+} from '../../../src/identity/two-factor/recovery.js';
 import {
   createSystemMailDeliveryStore,
   type SystemMailDeliveryStore,
   type SystemMailInput,
-} from '../../src/platform/mail/store.js';
-import { createDisposableDatabaseFixture } from '../support/postgres/disposable-database.js';
+} from '../../../src/platform/mail/store.js';
+import { createDisposableDatabaseFixture } from '../../support/postgres/disposable-database.js';
 
 describe('privileged two-factor recovery with application grants', () => {
   const adminUrl =
