@@ -74,9 +74,7 @@ test('System follows changes live, explicit choices win, and another tab follows
   await second.close();
 });
 
-test('switches between light and dark from the sidebar and the phone More sheet', async ({
-  page,
-}) => {
+test('switches between light and dark from the sidebar', async ({ page }) => {
   await installEditorRoutes(page, remoteDraft());
   await page.emulateMedia({ colorScheme: 'light' });
   await page.route('**/v1/auth/account-security', (route) =>
@@ -101,14 +99,6 @@ test('switches between light and dark from the sidebar and the phone More sheet'
   ).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: 'Switch to light theme' }).click();
   await expect(html).toHaveAttribute('data-theme', 'light');
-
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole('button', { name: 'More', exact: true }).click();
-  await page.getByRole('button', { name: 'Dark theme', exact: true }).click();
-  await expect(html).toHaveAttribute('data-theme', 'dark');
-  await expect(
-    page.getByRole('button', { name: 'Light theme', exact: true }),
-  ).toBeVisible();
 });
 
 test('blocked storage still paints and permits a choice, with a clear persistence hint', async ({

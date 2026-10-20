@@ -6,13 +6,12 @@ import {
 } from '@/components/ui/tooltip';
 import { setAppearance, useAppearance } from '@/lib/appearance/use-choice';
 
-// The chrome flips between light and dark in one press, like most apps'
-// sidebars. Following the device stays in Account → Appearance.
+// The rail flips between light and dark in one press, like most apps'
+// sidebars. The account menu and Account → Appearance also offer System.
 function useNextTheme() {
   const { theme } = useAppearance();
   const next = theme === 'dark' ? 'light' : 'dark';
   return {
-    next,
     label: next === 'light' ? 'Switch to light theme' : 'Switch to dark theme',
     icon:
       next === 'light' ? (
@@ -47,18 +46,5 @@ export function ThemeSwitchButton({
       </TooltipTrigger>
       <TooltipContent side="right">{label}</TooltipContent>
     </Tooltip>
-  );
-}
-
-/** A labelled row for a menu or sheet. */
-export function ThemeSwitchRow({
-  className,
-}: Readonly<{ className?: string }>) {
-  const { next, icon, switchTheme } = useNextTheme();
-  return (
-    <button type="button" className={className} onClick={switchTheme}>
-      {icon}
-      {next === 'light' ? 'Light theme' : 'Dark theme'}
-    </button>
   );
 }
