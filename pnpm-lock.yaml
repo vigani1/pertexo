@@ -606,6 +606,9 @@ importers:
       '@rgrove/parse-xml':
         specifier: 5.0.0
         version: 5.0.0
+      '@streamparser/json':
+        specifier: 0.0.26
+        version: 0.0.26
       cron-parser:
         specifier: 5.10.2
         version: 5.10.2
@@ -2258,6 +2261,9 @@ packages:
 
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
+
+  '@streamparser/json@0.0.26':
+    resolution: {integrity: sha512-46597LNFI+MFdUnzX2QJWwmdTRdq0XVD+vVNJTtGVzIrnCuhG9pFo1OAzbNBqci8UJgk/X5KJZ6LcV+y7PTuDQ==}
 
   '@tailwindcss/node@4.3.3':
     resolution: {integrity: sha512-/T8IKEsf9VTU6tLjgC7+sv2mOPtQxzE2jMw7u4Tt40Tx+QSZxpzh95/H6cMKoja9XuW7iMdLJYBB0o9G1CaAgg==}
@@ -6421,6 +6427,8 @@ snapshots:
       tslib: 2.8.1
 
   '@standard-schema/spec@1.1.0': {}
+
+  '@streamparser/json@0.0.26': {}
 
   '@tailwindcss/node@4.3.3':
     dependencies:

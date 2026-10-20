@@ -1,6 +1,6 @@
 # F45 — Bigger files and paged step data
 
-Status: **Approved by owner 2026-10-21**. Deliver the four slices below, including the ADR 075 amendment and dedicated disk-backed scratch. Parser and resource qualification gates remain mandatory; implementation and limit changes are not yet delivered.
+Status: **Approved by owner 2026-10-21**. Deliver the four slices below, including the ADR 075 amendment and dedicated disk-backed scratch. Slice 1 is locally qualified and awaiting delivery. Public file and execution limits remain unchanged; runtime, pages and full release qualification are pending.
 
 ## Current code and problem
 
@@ -60,6 +60,41 @@ Keep ordinary capacity unchanged. Record measured RSS, heap/external memory, dis
 - Slow/stalled storage and HTTP peers, redirects, disconnects and cancellation release iterators, handles, scratch and pooled connections. Existing retries/unknown outcomes remain unchanged. No generated files or scratch paths leak into logs.
 - At maximum default worker attempt concurrency, mix large raw/multipart transfers, paging and ordinary short steps. Record RSS/heap/external buffers and disk separately (including container tmpfs), deadline/queue latency, database write volume and checkpoint size. Demonstrate bounded growth and responsive short work without raising capacity.
 - Upload → page CSV → outer/inner loops → summarize → Create file from pages → exact local multipart receiver; real JSON paginated HTTP source → pages → same consumers. Preview/test/pin/history, expiry, workspace purge and backup/restore continue to authorize and retain every referenced page correctly.
+
+## Slice 1 evidence (2026-10-21)
+
+Qualification uses disposable PostgreSQL/artifact data and dedicated private local
+scratch. These are component measurements on the development machine, not a
+whole-worker release claim. The 10 MiB candidate passes this gate; public limits
+remain unchanged until the next slices.
+
+| Probe | Baseline | Candidate maximum |
+| --- | --- | --- |
+| Streaming JSON records | 10,000 records / 968,889 bytes | 100,000 records / 9,788,889 bytes |
+| Parser peak RSS / heap / external | 80.9 / 18.4 / 1.74 MiB | 81.9 / 19.0 / 1.78 MiB |
+| 32 concurrent disk spools | 32 × 1 MiB | 32 × 10 MiB |
+| Scratch peak RSS / heap / external | 100.1 / 11.4 / 32.4 MiB | 110.4 / 10.6 / 47.0 MiB |
+| Scratch bytes, held until release | 32 MiB | 320 MiB |
+| Spool elapsed / event-loop p99 | 48.8 / 10.3 ms | 232.6 / 10.9 ms |
+| PostgreSQL artifact metadata row | 312 bytes for 1 MiB file | 312 bytes for 10 MiB file |
+
+- Both allocation probes run in child processes with a 64 MiB heap ceiling.
+  Parser qualification includes unfinished exponents, long strings/keys, deep
+  nesting, excessive members, exact/over byte limits, split UTF-8 and escapes,
+  malformed EOF, cancellation and paused consumers. A separate raw-token budget
+  bounds unfinished numeric tokens even where the library emits no useful
+  partial callback. No fallback parser is selected.
+- Private scratch proves 0700/0600 permissions, hash through EOF, exact reopen,
+  cancellation, disk reservations at the 20 MiB/attempt and 1 GiB/worker bounds,
+  reader closure, startup cleanup, and refusal after cleanup failure. A failed
+  cleanup retains its reservation and refuses further work until clean startup.
+- Real artifact upload/finalize/download checks exact bytes and metadata at
+  1 MiB and 10 MiB; original public readers still refuse the larger file. No
+  file contents enter PostgreSQL. Artifact and disposable database cleanup pass.
+- Remaining in slice 4: mixed actual workflow transfers/pages at default
+  concurrency, full checkpoint/WAL/write-volume and scheduling evidence,
+  browser hashing responsiveness, retention/purge/restore and full journeys.
+  The scratch event-loop probe does not replace those acceptance tests.
 
 ## Later
 

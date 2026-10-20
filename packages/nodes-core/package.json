@@ -26,6 +26,7 @@
     "@pertexo/node-sdk": "workspace:*",
     "@pertexo/workflow-model": "workspace:*",
     "@rgrove/parse-xml": "5.0.0",
+    "@streamparser/json": "0.0.26",
     "cron-parser": "5.10.2",
     "css-select": "7.0.0",
     "css-what": "8.0.0",
