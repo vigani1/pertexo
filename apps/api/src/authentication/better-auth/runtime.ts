@@ -1,7 +1,7 @@
 import {
   needsSecurityTransaction,
   securityTransaction,
-} from './security-transaction.js';
+} from './transactions/response.js';
 import {
   createSamlProofGateway,
   type SamlProofGateway,

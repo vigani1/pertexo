@@ -1,4 +1,4 @@
-import { isSecurityMutationPath } from './security-transaction.js';
+import { isSecurityMutationPath } from './transactions/response.js';
 import { insertSystemMail } from '@pertexo/database/platform';
 import {
   isAuthenticationSessionAllowed,
