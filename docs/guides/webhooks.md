@@ -16,6 +16,50 @@ keeping credential paths out of nginx. Its default log encoder redacts the
 entire URI, including when the API is unavailable. Preserve that protection in
 any customized proxy or access logger.
 
+## Listen for a test event
+
+You can try a saved Webhook trigger before publishing. Select it in the editor,
+open **Test**, choose **Test authentication**, and select **Listen for test
+event**. Pertexo saves the draft and opens a separate test URL for two minutes.
+It captures the first authenticated request without starting the workflow.
+Production webhooks keep working independently.
+
+Use the shown test URL and temporary signing/header secret, rather than your
+production credentials. Signed is the default; its timestamp and signature work
+exactly as described below. Secret URL is convenient for a sender that cannot
+sign, but anyone with that address can send your sample. Header secret supports
+Authorization: Bearer or a dedicated header. Browser origins are optional and
+follow the same exact-origin rules below. The single-server public test address
+is `https://<app host>/hooks/<temporary key>/test`.
+
+For example, choose Secret URL and send a small sample from your terminal:
+
+```sh
+curl --request POST "$PERTEXO_TEST_WEBHOOK_URL" \
+  --header 'Content-Type: application/json' \
+  --data '{"orderId":17,"amount":24,"currency":"EUR"}'
+```
+
+The receipt is `202 {"captured":true}`. Review **Received test data**, then select
+**Keep as pinned sample** and confirm. Check for secrets first: request data is
+not automatically sanitized beyond the credential/proxy header removal described
+below. Keeping the sample shares it with people who can see run data. It uses
+the normal [pin rules](pinned-samples.md), including conflicts, stale setup,
+retention and omission from workflow exports. Published runs never use the pin.
+You can then use **Test workflow** to run the draft with the captured trigger
+output and your other pins.
+
+A listener captures one request, not a request history. The body is limited to
+256 KB and the resulting sample must also fit the existing 256 KB, depth and
+member limits. Full-request headers/query count toward that result. Send a
+smaller sample if it is too large. Stop/restart invalidates the old URL. Closing
+the panel stops it when possible; expiry is authoritative. Editing the trigger's
+setup requires listening again. One listener per workflow and ten per workspace
+keep capture bounded. Unauthenticated attempts count toward a 60-attempt limit
+per listener. A temporary capture disappears after ten minutes unless kept as a
+pin. Failed/stopped/expired/consumed URLs use the ordinary authentication failure.
+No run capacity, coordination, failure alerts or workflow responses are involved.
+
 ## What the run receives
 
 The trigger's **Run input** setting decides what the workflow sees:

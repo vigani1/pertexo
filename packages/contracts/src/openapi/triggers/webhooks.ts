@@ -1,3 +1,8 @@
+import {
+  testEventRoutes,
+  testEventSchemas,
+  testEventPaths,
+} from './test-events.js';
 import { webhookAuthenticationSchema } from '../../schemas/triggers/authentication.js';
 import { apiProblemSchema } from '../../errors/api-problem.js';
 import {
@@ -45,6 +50,7 @@ const managementParameters = [
 const security = [{ cookieSession: [] }] as const;
 
 const schemas = Object.freeze({
+  ...testEventSchemas,
   WebhookAuthentication: jsonSchema(webhookAuthenticationSchema, 'input'),
   ApiProblem: jsonSchema(apiProblemSchema, 'output'),
   WebhookIngressResponse: jsonSchema(webhookIngressResponseSchema, 'output'),
@@ -80,6 +86,7 @@ const responses = Object.freeze({
 
 export const webhooksClientContract = Object.freeze({
   routes: Object.freeze([
+    ...testEventRoutes,
     {
       method: 'GET',
       path: '/v1/workspaces/:workspaceId/workflows/:workflowId/triggers',
@@ -165,6 +172,7 @@ export const webhooksOpenApiDocument = Object.freeze({
   info: { title: 'Pertexo Webhooks API', version: '1.0.0' },
   components: authenticatedComponents(schemas, responses),
   paths: {
+    ...testEventPaths,
     '/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers': {
       get: {
         operationId: 'listWebhookTriggers',

@@ -518,6 +518,10 @@ export const RETENTION_RULES = Object.freeze([
     name: 'workflow_step_samples',
     statement: `with page as (select workspace_id,id from app.workflow_step_samples where expires_at <= clock_timestamp() order by expires_at,id limit $1) delete from app.workflow_step_samples sample using page where sample.workspace_id=page.workspace_id and sample.id=page.id`,
   },
+  {
+    name: 'webhook_test_events',
+    statement: `with page as (select workspace_id,id from app.webhook_test_events where expires_at<=clock_timestamp() order by expires_at,id limit $1 for update skip locked) delete from app.webhook_test_events event using page where event.workspace_id=page.workspace_id and event.id=page.id`,
+  },
   VARIABLE_SET_RETENTION_RULE,
 ] as const);
 

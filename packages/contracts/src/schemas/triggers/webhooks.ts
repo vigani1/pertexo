@@ -1,3 +1,4 @@
+import { boundedNodeTestJsonInputSchema } from '../shared/bounded-json-input.js';
 import { eventCoordinationReceiptSchema } from '@pertexo/workflow-model';
 import { coordinatedEventSchema } from '../forms/coordination.js';
 import { z } from 'zod';
@@ -145,4 +146,39 @@ export type WebhookDeliveryListResponse = z.output<
 >;
 export type WebhookManagementCommandResponse = z.output<
   typeof webhookManagementCommandResponseSchema
+>;
+
+export const webhookTestEventStartSchema = z
+  .object({
+    expectedDraftRevision: z.number().int().min(1),
+    authentication: webhookAuthenticationSchema,
+  })
+  .strict();
+export const webhookTestEventStartedSchema = z
+  .object({
+    id: z.uuid(),
+    path: z.string().regex(/^\/hooks\/[A-Za-z0-9_-]{43}\/test$/u),
+    expiresAt: z.iso.datetime(),
+    signingSecret: webhookCredentialSchema.optional(),
+    authentication: webhookAuthenticationSchema,
+  })
+  .strict();
+export const webhookTestEventSnapshotSchema = z
+  .object({
+    state: z.enum(['waiting', 'captured', 'expired', 'changed']),
+    expiresAt: z.iso.datetime().nullable(),
+    output: z
+      .object({
+        kind: z.literal('inline'),
+        value: boundedNodeTestJsonInputSchema,
+      })
+      .strict()
+      .nullable(),
+  })
+  .strict();
+export type WebhookTestEventStarted = z.output<
+  typeof webhookTestEventStartedSchema
+>;
+export type WebhookTestEventSnapshot = z.output<
+  typeof webhookTestEventSnapshotSchema
 >;

@@ -30,7 +30,7 @@ export function SampleSummary({
         <p className="text-xs text-muted-foreground">
           From{' '}
           {sample.source.kind === 'json'
-            ? 'pasted JSON'
+            ? 'JSON'
             : sample.source.kind === 'run'
               ? 'a workflow run'
               : 'a test'}

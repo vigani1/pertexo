@@ -11,6 +11,15 @@ export class WebhookPreflightController {
     private readonly preflight: ReturnType<typeof createWebhookPreflight>,
   ) {}
 
+  @Options(':endpointKey/test')
+  @RateLimit('webhook_preflight')
+  public test(
+    @Req() request: FastifyRequest,
+    @Res() reply: FastifyReply,
+  ): Promise<void> {
+    return this.preflight(request, reply);
+  }
+
   @Options(':endpointKey')
   @RateLimit('webhook_preflight')
   public handle(

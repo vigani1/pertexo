@@ -415,3 +415,7 @@ workaround is involved.
 Binary/file-backed pinned samples remain later. Keep the current single-step preview seam; never label a published real
 run as an isolated test. No automatic production-data capture or
 automatic redaction claim.
+
+[F35](35-webhook-test-events.md) can capture one authenticated webhook request
+and keep its projected trigger output through the existing JSON pin command.
+It retains the same visibility, conflicts, staleness, limits and retention.

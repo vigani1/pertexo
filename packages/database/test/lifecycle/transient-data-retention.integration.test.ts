@@ -37,6 +37,33 @@ async function asOwner<Row extends QueryResultRow = QueryResultRow>(
 }
 
 describe('transient data retention', () => {
+  it('prunes expired webhook captures in pages and leaves a live listener', async () => {
+    const ids = [randomUUID(), randomUUID(), randomUUID()];
+    const active = randomUUID();
+    for (const id of [...ids, active]) {
+      const workflow = randomUUID();
+      await asOwner(
+        'insert into app.workflows(id,workspace_id,name,created_by) values($1,$2,$3,$4)',
+        [workflow, workspaceId, 'Capture retention', userId],
+      );
+      await asOwner(
+        `insert into app.webhook_test_events(id,workspace_id,workflow_id,node_id,created_by,endpoint_key_hash,binding,authentication,kms_key_reference,encrypted_data_key,ciphertext,nonce,auth_tag,output_ref,received_at,created_at,expires_at) values($1,$2,$3,'webhook',$4,$5,'binding','{"mode":"signed","allowedOrigins":[]}','fixture','data-key','sealed','nonce','tag','{"kind":"inline","value":{"sample":true}}',clock_timestamp()-interval '1 day',clock_timestamp()-interval '1 day',clock_timestamp()+case when $6 then interval '120 seconds' else interval '-1 second' end)`,
+        [id, workspaceId, workflow, userId, digest(id), id === active],
+      );
+    }
+    expect((await retention.enforce()).removed.webhook_test_events).toBe(2);
+    expect((await retention.enforce()).removed.webhook_test_events).toBe(1);
+    expect(
+      (
+        await asOwner<{ id: string }>(
+          'select id from app.webhook_test_events where id=any($1::uuid[])',
+          [[...ids, active]],
+        )
+      ).rows,
+    ).toEqual([{ id: active }]);
+    await asOwner('delete from app.webhook_test_events where id=$1', [active]);
+  });
+
   it('prunes expired method-link attempts in bounded pages', async () => {
     const ids = [randomUUID(), randomUUID(), randomUUID()];
     for (const [index, id] of ids.entries())

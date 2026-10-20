@@ -1,0 +1,29 @@
+import type { PoolClient } from 'pg';
+import { CORE_WEBHOOK_CONFIG_SCHEMA } from '@pertexo/nodes-core';
+import { rolesForCapability } from '../../../tenant-access/policy.js';
+import { lockWorkflowAuthoringAuthority } from '../../../authoring/workflows/authority.js';
+import { sampleDraft } from '../../../authoring/step-samples/records.js';
+import { WebhookTestEventError, type TestEventScope } from './contract.js';
+
+export async function testEventDraft(
+  client: PoolClient,
+  input: TestEventScope,
+) {
+  await lockWorkflowAuthoringAuthority(
+    client,
+    input.workspaceId,
+    input.actorId,
+    rolesForCapability('workflow:update'),
+  );
+  const draft = await sampleDraft(client, input, true);
+  const node = draft.graph.nodes.find((node) => node.id === input.nodeId);
+  if (node?.definition.key !== 'core.webhook' || node.definition.version !== 1)
+    throw new WebhookTestEventError('unavailable');
+  const binding = draft.bindings.get(input.nodeId);
+  if (binding === undefined) throw new WebhookTestEventError('unavailable');
+  return {
+    revision: draft.revision,
+    binding,
+    config: CORE_WEBHOOK_CONFIG_SCHEMA.parse(node.config),
+  };
+}

@@ -4,6 +4,9 @@ import { Ajv2020 } from 'ajv/dist/2020.js';
 import { describe, expect, it } from 'vitest';
 
 import {
+  webhookTestEventStartSchema,
+  webhookTestEventStartedSchema,
+  webhookTestEventSnapshotSchema,
   webhookDeliveryListQuerySchema,
   webhookDeliveryListResponseSchema,
   webhookIngressResponseSchema,
@@ -187,7 +190,7 @@ describe('webhook public contracts', () => {
       >;
       const operation = paths[path]?.[route.method.toLowerCase()];
       expect(operation?.responses).toHaveProperty(
-        route.method === 'OPTIONS'
+        route.method === 'OPTIONS' || route.method === 'DELETE'
           ? '204'
           : route.path.startsWith('/hooks/')
             ? '202'
@@ -230,4 +233,46 @@ it('describes asynchronous coordination without exposing keys or pretending a ru
     expect(
       webhookIngressResponseSchema.safeParse({ ...receipt, ...extra }).success,
     ).toBe(false);
+});
+
+it('bounds temporary webhook contracts and never rediscloses a credential in snapshots', () => {
+  const authentication = { mode: 'signed', allowedOrigins: [] };
+  expect(
+    webhookTestEventStartSchema.safeParse({
+      expectedDraftRevision: 0,
+      authentication,
+    }).success,
+  ).toBe(false);
+  expect(
+    webhookTestEventStartSchema.safeParse({
+      expectedDraftRevision: 1,
+      authentication,
+    }).success,
+  ).toBe(true);
+  const started = {
+    id: trigger.id,
+    path: `/hooks/${'a'.repeat(43)}/test`,
+    expiresAt: new Date().toISOString(),
+    authentication,
+    signingSecret: 'b'.repeat(43),
+  };
+  expect(webhookTestEventStartedSchema.parse(started)).toEqual(started);
+  expect(
+    webhookTestEventStartedSchema.safeParse({
+      ...started,
+      path: 'https://untrusted.example/test',
+    }).success,
+  ).toBe(false);
+  const snapshot = {
+    state: 'captured',
+    expiresAt: new Date().toISOString(),
+    output: { kind: 'inline', value: { order: 17 } },
+  };
+  expect(webhookTestEventSnapshotSchema.parse(snapshot)).toEqual(snapshot);
+  expect(
+    webhookTestEventSnapshotSchema.safeParse({
+      ...snapshot,
+      signingSecret: started.signingSecret,
+    }).success,
+  ).toBe(false);
 });

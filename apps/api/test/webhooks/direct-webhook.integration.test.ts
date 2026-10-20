@@ -1,3 +1,6 @@
+import { createWebhookTestEventStore } from '@pertexo/database/triggers';
+import { WebhookTestEventService } from '../../src/webhooks/test-events/service.js';
+import { qualifyWebhookTestEvents } from './test-events/qualify.js';
 import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
 import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 import { qualifyWebhookResponseWaiting } from './responses/qualify.js';
@@ -166,6 +169,7 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
   let workspaceDatabase!: ReturnType<typeof createWorkspaceDatabase>;
   let encryption!: WebhookTriggerEnvelopeEncryption;
   let service!: WebhookManagementService;
+  let testEvents!: ReturnType<typeof createWebhookTestEventStore>;
   let ingressDatabase!: WebhookTriggerDatabase;
   let application!: Awaited<ReturnType<typeof createApiApplication>>;
   let fixtureOwner: FixtureResourceOwner | undefined;
@@ -292,6 +296,11 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
         new DeterministicEnvelopeKeys(),
       );
       service = new WebhookManagementService(webhookDatabase, encryption);
+      testEvents = resources.acquire(
+        'test event store',
+        createWebhookTestEventStore(apiConfig),
+        (store) => store.close(),
+      );
       ingressDatabase = {
         configureAuthentication: (input) =>
           webhookDatabase.configureAuthentication(input),
@@ -343,8 +352,10 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
           identityRuntime,
           webhookRuntime: {
             service,
+            testService: new WebhookTestEventService(testEvents, encryption),
             ingress: {
               database: ingressDatabase,
+              testEvents,
               encryption,
               checkpointFactory: (projection) =>
                 createInitialCheckpoint(projection, { catalog }),
@@ -487,6 +498,60 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
       workflowId: created.workflowId,
     };
   }
+
+  it('captures one real test event before publication, across replicas, with authentication and pin fences', async () => {
+    const seed = await seedWebhook('test-event-editor');
+    const created = await authoring.createWorkflow({
+      actorId: seed.actorId,
+      workspaceId: seed.workspaceId,
+      name: 'Unpublished webhook sample',
+      idempotencyKey: randomUUID(),
+      emptyGraph: {
+        settings: {},
+        nodes: [
+          {
+            id: 'webhook',
+            definition: { key: 'core.webhook', version: 1 },
+            position: { x: 0, y: 0 },
+            configVersion: 1,
+            config: {},
+            inputMappings: {},
+            connectionRefs: {},
+          },
+        ],
+        edges: [],
+      },
+    });
+    const scope = {
+      workspaceId: seed.workspaceId,
+      workflowId: created.workflowId,
+      nodeId: 'webhook',
+      actorId: seed.actorId,
+    };
+    const session = await issueBrowserSession(
+      identityRuntime.dependencies.sessions,
+      seed.actorId,
+    );
+    await qualifyWebhookTestEvents({
+      origin,
+      scope,
+      revision: created.draft.revision,
+      session,
+      store: testEvents,
+      ingress: {
+        database: ingressDatabase,
+        testEvents,
+        encryption,
+        checkpointFactory: (projection) =>
+          createInitialCheckpoint(projection, { catalog }),
+      },
+      authoring,
+      apiPool,
+      query: ownerQuery,
+      issueSession: (userId) =>
+        issueBrowserSession(identityRuntime.dependencies.sessions, userId),
+    });
+  }, 30000);
 
   it('qualifies durable response waiting across independent API listeners and restart', async () => {
     await qualifyWebhookResponseWaiting({

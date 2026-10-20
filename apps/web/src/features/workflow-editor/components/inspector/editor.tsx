@@ -1,3 +1,4 @@
+import { WebhookTestListener } from '@/features/workflow-publish/webhook-tests.public';
 import { useNavigate } from '@tanstack/react-router';
 import type { CodeSettings } from '@pertexo/node-sdk';
 import {
@@ -222,7 +223,18 @@ export function EditorInspector({
             setPassedTest({ previewId: preview.id, nodeId });
             onTestPassed(nodeId, inlineOutputBytes(preview.output));
           }}
-        />
+        >
+          {editable &&
+          findStep(graph, nodeId)?.definition.key === 'core.webhook' ? (
+            <WebhookTestListener
+              scope={{ apiClient, userId, workspaceId, workflowId }}
+              nodeId={nodeId}
+              binding={sampleBinding(findStep(graph, nodeId))}
+              ensureSaved={ensureSaved}
+              active={tab === 'test'}
+            />
+          ) : null}
+        </NodeTestPanel>
       )}
     />
   );

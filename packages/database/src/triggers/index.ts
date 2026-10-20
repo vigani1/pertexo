@@ -73,3 +73,11 @@ export {
   type TriggerEventScanner,
 } from './coordination/scanner.js';
 export { EventCoordinationUnavailableError } from './coordination/contract.js';
+
+export { createWebhookTestEventStore } from './webhooks/test-events/store.js';
+export { WebhookTestEventError } from './webhooks/test-events/contract.js';
+export type {
+  WebhookTestEventStore,
+  TestEventReference,
+  TestEventScope,
+} from './webhooks/test-events/contract.js';

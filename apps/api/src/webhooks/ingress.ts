@@ -11,6 +11,9 @@ import { createHash, randomUUID } from 'node:crypto';
 import { idempotencyKeySchema } from '@pertexo/contracts';
 
 import {
+  WebhookTestEventError,
+  type WebhookTestEventStore,
+  type TestEventReference,
   WebhookIngressRateLimitExceededError,
   type WebhookTriggerDatabase,
   type WebhookVerificationReference,
@@ -53,6 +56,7 @@ const WEBHOOK_FRESHNESS_ALLOWANCE_SECONDS = 300;
 
 export type WebhookIngressDependencies = Readonly<{
   database: WebhookTriggerDatabase;
+  testEvents?: WebhookTestEventStore;
   encryption: WebhookTriggerEnvelopeEncryption;
   checkpointFactory: InitialCheckpointFactory;
   telemetry?: WebhookIngressTelemetry;
@@ -115,7 +119,7 @@ export function registerWebhookIngress(
       },
     );
     const accept =
-      (method: WebhookMethod) =>
+      (method: WebhookMethod, testEvent = false) =>
       (request: FastifyRequest, reply: FastifyReply) =>
         traceAcceptance(telemetry, singleHeader(request, 'traceparent'), () =>
           withRequestOperationSignal(request, (signal) =>
@@ -127,6 +131,7 @@ export function registerWebhookIngress(
               telemetry,
               signal,
               responseWaiter,
+              testEvent,
             ),
           ),
         );
@@ -134,6 +139,16 @@ export function registerWebhookIngress(
       '/hooks/:endpointKey',
       { bodyLimit: MAX_BODY + 1 },
       accept('POST'),
+    );
+    scope.post(
+      '/hooks/:endpointKey/test',
+      { bodyLimit: MAX_BODY + 1 },
+      accept('POST', true),
+    );
+    scope.get(
+      '/hooks/:endpointKey/test',
+      { exposeHeadRoute: false },
+      accept('GET', true),
     );
     // A HEAD probe must never start a run.
     scope.get('/hooks/:endpointKey', { exposeHeadRoute: false }, accept('GET'));
@@ -171,6 +186,7 @@ async function acceptWebhook(
   telemetry: WebhookIngressTelemetry,
   encryptionSignal: AbortSignal,
   responseWaiter: ReturnType<typeof createWebhookResponseWaiter>,
+  testEvent: boolean,
 ): Promise<void> {
   const requestId =
     parseRequestId(request.headers['x-request-id']) ?? randomUUID();
@@ -221,18 +237,27 @@ async function acceptWebhook(
     await authenticationFailed(reply, requestId, telemetry);
     return;
   }
-  const verification = await dependencies.database.resolveVerification(
-    sha256(endpointKey),
-  );
+  const productionReference = testEvent
+    ? null
+    : await dependencies.database.resolveVerification(sha256(endpointKey));
+  const verification = testEvent
+    ? ((await dependencies.testEvents?.resolve(sha256(endpointKey))) ?? null)
+    : productionReference;
   if (verification === null) {
     await authenticationFailed(reply, requestId, telemetry);
     return;
   }
   try {
-    await dependencies.database.consumeIngressLimit(
-      verification.endpointKeyHash,
-    );
+    if (testEvent) await dependencies.testEvents?.consume(verification);
+    else
+      await dependencies.database.consumeIngressLimit(
+        verification.endpointKeyHash,
+      );
   } catch (error) {
+    if (testEvent && error instanceof WebhookTestEventError) {
+      await authenticationFailed(reply, requestId, telemetry);
+      return;
+    }
     if (error instanceof WebhookIngressRateLimitExceededError) {
       record(() => {
         telemetry.delivery('rate_limited');
@@ -245,7 +270,14 @@ async function acceptWebhook(
   }
   // ADR 045: from here on every rejection is attributed to this endpoint.
   const reject = (attempt: RejectedAttempt) =>
-    recordRejectedAttempt(dependencies.database, verification, body, attempt);
+    productionReference === null
+      ? Promise.resolve()
+      : recordRejectedAttempt(
+          dependencies.database,
+          productionReference,
+          body,
+          attempt,
+        );
   // A signature covers the body, and a GET has none to cover.
   if (method === 'GET' && verification.authentication.mode === 'signed') {
     await reject(REJECTED_ATTEMPT.invalidRequest);
@@ -331,6 +363,32 @@ async function acceptWebhook(
     await problem(reply, 400, parsed.problem, requestId);
     return;
   }
+  const requestData = {
+    method,
+    body: parsed.value,
+    query: searchFields(rawWebhookQuery(request)),
+    headers: webhookHeaders(request, verification.authentication),
+  };
+  if (testEvent) {
+    try {
+      if (await dependencies.testEvents?.capture(verification, requestData)) {
+        await reply
+          .header('cache-control', 'no-store')
+          .code(202)
+          .send({ captured: true });
+      } else await authenticationFailed(reply, requestId, telemetry);
+    } catch (error) {
+      if (
+        error instanceof WebhookTestEventError &&
+        error.reason === 'value_invalid'
+      )
+        await problem(reply, 413, 'webhook.payload_too_large', requestId);
+      else throw error;
+    }
+    return;
+  }
+  if (productionReference === null)
+    throw new Error('Production webhook reference is unavailable');
   const idempotency = optionalIdempotencyKey(request);
   if (idempotency === null) {
     await reject(REJECTED_ATTEMPT.invalidRequest);
@@ -350,19 +408,14 @@ async function acceptWebhook(
     const traceparent = diagnosticTraceparent(telemetry);
     encryptionSignal.throwIfAborted();
     const result = await dependencies.database.acceptVerifiedDelivery({
-      verification,
+      verification: productionReference,
       verifiedSecretVersionId,
       requestFingerprint: fingerprint,
       bodyBytes: body.byteLength,
       ...(idempotency === undefined
         ? {}
         : { idempotencyKeyHash: sha256(idempotency) }),
-      request: {
-        method,
-        body: parsed.value,
-        query: searchFields(query),
-        headers: webhookHeaders(request, verification.authentication),
-      },
+      request: requestData,
       signal: encryptionSignal,
       checkpointFactory: dependencies.checkpointFactory,
       ...(traceparent === undefined ? {} : { traceparent }),
@@ -415,7 +468,7 @@ function diagnosticTraceparent(
 
 async function verifyWebhookSecrets(
   encryption: WebhookTriggerEnvelopeEncryption,
-  verification: WebhookVerificationReference,
+  verification: TestEventReference,
   request:
     | Readonly<{ body: Uint8Array; signature: string; timestamp: string }>
     | Readonly<{ headerSecret: string }>,
@@ -523,7 +576,10 @@ function sha256(value: string | Uint8Array): string {
 }
 
 export function createWebhookPreflight(
-  dependencies: Pick<WebhookIngressDependencies, 'database' | 'telemetry'>,
+  dependencies: Pick<
+    WebhookIngressDependencies,
+    'database' | 'telemetry' | 'testEvents'
+  >,
 ): (request: FastifyRequest, reply: FastifyReply) => Promise<void> {
   const telemetry = dependencies.telemetry ?? createWebhookIngressTelemetry();
   return async (request, reply) => {
@@ -544,14 +600,17 @@ export function createWebhookPreflight(
 async function preflightWebhook(
   request: FastifyRequest,
   reply: FastifyReply,
-  dependencies: Pick<WebhookIngressDependencies, 'database'>,
+  dependencies: Pick<WebhookIngressDependencies, 'database' | 'testEvents'>,
   telemetry: WebhookIngressTelemetry,
 ): Promise<void> {
   const requestId = randomUUID();
   const key = (request.params as { endpointKey: string }).endpointKey;
   const origin = singleHeader(request, 'origin');
+  const testEvent = request.routeOptions.url?.endsWith('/test') === true;
   const verification = /^[A-Za-z0-9_-]{43}$/u.test(key)
-    ? await dependencies.database.resolveVerification(sha256(key))
+    ? testEvent
+      ? ((await dependencies.testEvents?.resolve(sha256(key))) ?? null)
+      : await dependencies.database.resolveVerification(sha256(key))
     : null;
   if (verification === null) {
     await authenticationFailed(reply, requestId, telemetry);

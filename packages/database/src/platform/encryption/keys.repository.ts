@@ -26,14 +26,22 @@ interface KeyRow {
 }
 const inventories = [
   {
+    kind: 'webhook',
+    table: 'webhook_test_events',
+    resource: 'id',
+    retained: 'expires_at>clock_timestamp()',
+  },
+  {
     kind: 'connection',
     table: 'connection_secret_versions',
     resource: 'connection_id',
+    retained: 'true',
   },
   {
     kind: 'webhook',
     table: 'webhook_trigger_secret_versions',
     resource: 'trigger_id',
+    retained: 'true',
   },
 ] as const;
 
@@ -112,7 +120,7 @@ async function* readKeys(
         const page: QueryResult<KeyRow> = await client.query<KeyRow>(
           `select id, workspace_id, ${inventory.resource} as resource_id, kms_key_reference, encrypted_data_key
              from app.${inventory.table}
-            where ($1::uuid is null or id > $1::uuid)
+            where ${inventory.retained} and ($1::uuid is null or id > $1::uuid)
             order by id limit 250`,
           [after],
         );
