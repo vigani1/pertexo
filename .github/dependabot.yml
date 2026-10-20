@@ -9,53 +9,12 @@ updates:
       timezone: Europe/Belgrade
     open-pull-requests-limit: 12
     versioning-strategy: increase-if-necessary
+    # One weekly batch: each pull request reruns the full CI and rebases
+    # whenever the lockfile changes on main, so many small ones crowd it out.
     groups:
-      production-http-stack:
-        dependency-type: production
+      weekly:
         patterns:
-          - '@nestjs/*'
-          - fastify
-        update-types:
-          - minor
-          - patch
-      production-validation:
-        dependency-type: production
-        patterns:
-          - zod
-        update-types:
-          - minor
-          - patch
-      production-aws:
-        dependency-type: production
-        patterns:
-          - '@aws-sdk/*'
-        update-types:
-          - minor
-          - patch
-      production-telemetry:
-        dependency-type: production
-        patterns:
-          - '@opentelemetry/*'
-        update-types:
-          - minor
-          - patch
-      production-queue:
-        dependency-type: production
-        patterns:
-          - bullmq
-        update-types:
-          - minor
-          - patch
-      production-routine:
-        dependency-type: production
-        patterns:
-          - jose
-          - uuid
-        update-types:
-          - minor
-          - patch
-      development-minor-patch:
-        dependency-type: development
+          - '*'
         update-types:
           - minor
           - patch
@@ -63,6 +22,10 @@ updates:
       - dependency-name: '*'
         update-types:
           - version-update:semver-major
+      # Deferred in docs/operations/dependency-updates.md.
+      - dependency-name: '@xmldom/xmldom'
+        versions:
+          - '>=0.9.0'
     commit-message:
       prefix: build
     labels:
@@ -76,6 +39,10 @@ updates:
       time: '04:00'
       timezone: Europe/Belgrade
     open-pull-requests-limit: 4
+    groups:
+      images:
+        patterns:
+          - '*'
     ignore:
       - dependency-name: node
         versions:
