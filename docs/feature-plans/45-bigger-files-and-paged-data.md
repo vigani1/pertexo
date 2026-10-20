@@ -1,6 +1,6 @@
 # F45 — Bigger files and paged step data
 
-Status: **proposal for owner review**, 2026-10-20. Plan only: no implementation or limit change is authorized by this document. F34 and F38 remain independently usable. Review this proposal before amending ADR 075 or building the slices below.
+Status: **Approved by owner 2026-10-21**. Deliver the four slices below, including the ADR 075 amendment and dedicated disk-backed scratch. Parser and resource qualification gates remain mandatory; implementation and limit changes are not yet delivered.
 
 ## Current code and problem
 
