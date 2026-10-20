@@ -38,6 +38,7 @@ import {
   workflowTestSuiteCases,
 } from './schema/runs/suites.js';
 import { workflowTestSnapshots } from './schema/runs/tests.js';
+import { webhookTestEvents } from './schema/triggers/test-events.js';
 import { webhookRunResponses } from './schema/triggers/responses.js';
 export { workflowStepSamples } from './schema/authoring/step-samples.js';
 import { workflowStepSamples } from './schema/authoring/step-samples.js';
@@ -264,6 +265,7 @@ export const databaseSchema = {
   workflowTestSuiteCases,
   workflowTestSnapshots,
   webhookRunResponses,
+  webhookTestEvents,
   workflowStepSamples,
   noticeWorkspaceSettings,
   noticePreferences,

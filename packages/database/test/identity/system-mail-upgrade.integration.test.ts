@@ -112,6 +112,7 @@ it('preserves mail identities through the rename and old messages through subseq
       '0040_two_factor_sign_in.sql',
       '0041_two_factor_security_notices.sql',
       '0042_http_retry_delay.sql',
+      '0043_webhook_test_events.sql',
     ]);
     const after = await catalog('app.system_mail_deliveries');
     expect(after.relation).toEqual(before.relation);
