@@ -12,8 +12,9 @@ const covers = { [CANVAS_COVER_ATTRIBUTE]: '' };
  * Places the editor's layers: the canvas fills the screen, and the command
  * bar, add-step lens, inspector lens and the bottom lens (the issues
  * lens, or the last test's bar) float above it. Under 1024px the two
- * lenses become bottom panels behind buttons. They stay mounted either way,
- * so unfinished edits and navigation guards survive switching panels.
+ * lenses become bottom panels behind buttons, put away by a tap outside.
+ * They stay mounted either way, so unfinished edits and navigation guards
+ * survive switching panels.
  */
 export function EditorLayout({
   bar,
@@ -55,8 +56,21 @@ export function EditorLayout({
       }
     >
       {canvas}
+      {mobilePanel === 'none' ? null : (
+        // Below 1024px a panel is a sheet: a tap anywhere outside puts it
+        // away, like any phone sheet. Its edits stay, since it stays mounted.
+        <div
+          aria-hidden="true"
+          data-slot="panel-dismiss"
+          className="fixed inset-0 z-30 bg-black/15 lg:hidden"
+          onClick={() => {
+            onMobilePanelChange('none');
+          }}
+        />
+      )}
       <div className="pointer-events-none absolute inset-0 flex flex-col gap-2 p-3">
-        <div className="pointer-events-auto" {...covers}>
+        {/* Above the dismiss layer: the bar stays usable with a panel open. */}
+        <div className="pointer-events-auto relative z-40" {...covers}>
           {bar}
         </div>
         <div {...covers}>{banner}</div>
@@ -67,7 +81,9 @@ export function EditorLayout({
               aria-label="Add a step"
               {...covers}
               className={cn(
-                'lens pointer-events-auto fixed inset-x-2 bottom-16 z-40 max-h-[62svh] flex-col rounded-xl',
+                // A sheet on a phone; from 768px a side sheet, so the canvas
+                // stays in view beside it.
+                'lens pointer-events-auto fixed inset-x-2 bottom-16 z-40 max-h-[62svh] flex-col rounded-xl md:right-auto md:w-80 md:max-h-[calc(100svh-15rem)]',
                 mobilePanel === 'add' ? 'flex' : 'hidden',
                 'lg:absolute lg:inset-x-auto lg:top-0 lg:bottom-0 lg:left-0 lg:z-10 lg:flex lg:max-h-none',
                 // Folded, it's just its button, not an empty rail.
@@ -83,7 +99,7 @@ export function EditorLayout({
             data-open={inspectorOpen}
             {...covers}
             className={cn(
-              'lens pointer-events-auto fixed inset-x-2 bottom-16 z-40 h-[68svh] flex-col rounded-xl',
+              'lens pointer-events-auto fixed inset-x-2 bottom-16 z-40 h-[68svh] flex-col rounded-xl md:left-auto md:w-96 md:h-[calc(100svh-15rem)]',
               mobilePanel === 'inspector' ? 'flex' : 'hidden',
               'lg:absolute lg:inset-x-auto lg:top-0 lg:right-0 lg:bottom-0 lg:z-10 lg:h-auto lg:w-86',
               inspectorOpen ? 'lg:flex' : 'lg:hidden',

@@ -188,6 +188,25 @@ test('keeps keyboard placement usable and the narrow editor horizontally bounded
   await expect(page.getByLabel('Label', { exact: true })).toHaveValue(
     'Mobile scratch',
   );
+  // A tap outside the panel puts it away, like any sheet, and keeps its edit.
+  const stepPanel = page.getByRole('complementary', { name: 'Step panel' });
+  const outside = await page.evaluate(() => {
+    for (let y = 0; y < innerHeight; y += 8)
+      for (let x = 0; x < innerWidth; x += 8)
+        if (
+          document.elementFromPoint(x, y)?.getAttribute('data-slot') ===
+          'panel-dismiss'
+        )
+          return { x, y };
+    return null;
+  });
+  expect(outside).not.toBeNull();
+  await page.mouse.click(outside?.x ?? 0, outside?.y ?? 0);
+  await expect(stepPanel).toBeHidden();
+  await panels.getByRole('button', { name: 'Step', exact: true }).click();
+  await expect(page.getByLabel('Label', { exact: true })).toHaveValue(
+    'Mobile scratch',
+  );
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
