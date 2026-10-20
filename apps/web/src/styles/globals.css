@@ -379,6 +379,29 @@
 
 /* The one inline link: pale cyan, underlined, a bolder underline on hover.
    Router links in running text and `Button variant="link"` share it. */
+/* A row in a list that highlights on hover: an inset hairline above it
+   instead of a full-width border, so a rounded hover never crosses a line.
+   A hovered or focused row hides its own line and the next row's. */
+@utility row-divider {
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset-inline: 0.75rem;
+    top: 0;
+    height: 1px;
+    background: var(--border);
+    pointer-events: none;
+  }
+
+  &:first-child::before,
+  &:where(:hover, :focus-within)::before,
+  &:where(:hover, :focus-within) + &::before {
+    opacity: 0;
+  }
+}
+
 @utility inline-link {
   color: var(--accent-foreground);
   font-weight: 600;
