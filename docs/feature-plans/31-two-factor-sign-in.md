@@ -100,7 +100,9 @@ in. This matches [n8n's two-factor sign-in](https://docs.n8n.io/user-management/
     SDK change, identity audit fact and sealed system-mail command in one
     transaction, before returning session cookies. A failed fact, seal or enqueue
     rolls everything back, preserving the code/challenge or enabled factor for
-    another attempt. Transport delivery remains asynchronous. The development
+    another attempt. Late policy refusals also roll back; only the SDK's explicit
+    failed-code/challenge/account lockout refusals retain their attempt counters.
+    Transport delivery remains asynchronous. The development
     sink runs after commit and cannot turn a committed sign-in into an error
     (review follow-up, 2026-10-20).
 12. **Read model.** `accountSecurityResponseSchema` gains
