@@ -65,6 +65,25 @@ async function password(
 }
 
 describe('two-factor account controls', () => {
+  it.each([0, 1, 2])(
+    'describes %i recovery codes clearly',
+    async (remaining) => {
+      identity(() => account(true, remaining));
+      await openSecurity();
+      expect(
+        await screen.findByText(
+          `On · ${String(remaining)} recovery ${remaining === 1 ? 'code' : 'codes'} remaining`,
+        ),
+      ).toBeVisible();
+      expect(
+        await screen.findByText(
+          remaining === 0
+            ? 'No recovery codes left. Get new codes now.'
+            : `Only ${String(remaining)} recovery ${remaining === 1 ? 'code' : 'codes'} left. Get new codes before you need them.`,
+        ),
+      ).toBeVisible();
+    },
+  );
   it('verifies the first code, shows recovery codes once and keeps secrets out of caches', async () => {
     let enabled = false;
     identity(() => account(enabled, enabled ? 10 : null));

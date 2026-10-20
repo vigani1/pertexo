@@ -19,6 +19,7 @@ export class NodeCodeFailure extends NodeExecutorFailure {
             ? 'internal'
             : 'configuration',
       possiblyDispatched: false,
+      safeErrorCode: code,
     });
   }
 }

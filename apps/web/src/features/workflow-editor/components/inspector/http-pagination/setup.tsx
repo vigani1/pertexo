@@ -1,6 +1,6 @@
 import { nestedConfigForm } from '../../../model/inspector/nested-config-form';
-import { useMemo, useState } from 'react';
-import { createScratchTracker } from '../use-draft-field';
+import { useMemo } from 'react';
+import { useScratchForm } from '../use-draft-field';
 import { isRecord } from '@pertexo/workflow-model';
 import { Field, FieldLabel, FieldDescription } from '@/components/ui/field';
 import { Disclosure } from '@/components/ui/disclosure';
@@ -27,18 +27,7 @@ export function HttpPaginationSetup({
   config,
   form,
 }: Readonly<{ schema: unknown; config: NodeConfig; form: NodeFormApi }>) {
-  const [hasScratch, setHasScratch] = useState(false);
-  const [trackScratch] = useState(() => createScratchTracker(setHasScratch));
-  const paginationForm = useMemo<NodeFormApi>(
-    () => ({
-      ...form,
-      reportScratch: (field, scratch) => {
-        trackScratch(field, scratch);
-        form.reportScratch(field, scratch);
-      },
-    }),
-    [form, trackScratch],
-  );
+  const { form: paginationForm, hasScratch } = useScratchForm(form);
   const nested = useMemo(
     () => nestedConfigForm(paginationForm, 'pagination'),
     [paginationForm],
@@ -96,7 +85,9 @@ export function HttpPaginationSetup({
           {value === undefined
             ? 'Off fetches one response. Pagination combines JSON items from a GET request.'
             : paginationDescription(value)}{' '}
-          Finish incomplete fields to change mode or source.
+          {hasScratch
+            ? 'Finish incomplete fields to change mode or source.'
+            : null}
         </FieldDescription>
       </Field>
       {config.method !== 'GET' ? (

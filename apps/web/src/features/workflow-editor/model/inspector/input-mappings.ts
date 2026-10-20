@@ -339,8 +339,28 @@ export function inputKeySuggestions(
 export type OutputField = Readonly<{ key: string; type?: SchemaValueType }>;
 
 /** Top-level output fields, including alternatives, for "Insert data". */
-export function outputFieldsOf(outputSchema: unknown): readonly OutputField[] {
-  return schemaProperties(outputSchema).map(([key, candidate]) => {
+export function outputFieldsOf(
+  outputSchema: unknown,
+  node?: Pick<WorkflowNode, 'definition' | 'config'>,
+): readonly OutputField[] {
+  let schema = outputSchema;
+  if (
+    node?.definition.key === 'http.request' &&
+    node.definition.version === 1 &&
+    isRecord(schema)
+  ) {
+    const variants = schema.anyOf ?? schema.oneOf;
+    if (Array.isArray(variants)) {
+      const paginated = node.config.pagination !== undefined;
+      schema =
+        variants.find(
+          (variant: unknown) =>
+            schemaProperties(variant).some(([key]) => key === 'items') ===
+            paginated,
+        ) ?? schema;
+    }
+  }
+  return schemaProperties(schema).map(([key, candidate]) => {
     const type = isRecord(candidate) ? schemaValueType(candidate) : undefined;
     return type === undefined ? { key } : { key, type };
   });

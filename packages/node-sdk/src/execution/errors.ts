@@ -20,6 +20,9 @@ export type NodeExecutorFailureOutcome = Readonly<{
   errorKind: NodeExecutorErrorKind;
   possiblyDispatched: boolean;
   minimumRetryDelayMillis?: number;
+  /** Fixed, content-free diagnostics supplied by the executor, never provider text. */
+  safeErrorCode?: string;
+  errorSummary?: string;
 }>;
 
 const nodeExecutorFailureSchema = z
@@ -37,6 +40,13 @@ const nodeExecutorFailureSchema = z
     ]),
     possiblyDispatched: z.boolean(),
     minimumRetryDelayMillis: z.number().int().min(0).max(60_000).optional(),
+    safeErrorCode: z
+      .string()
+      .min(1)
+      .max(128)
+      .regex(/^[a-z][a-z0-9_.]*$/u)
+      .optional(),
+    errorSummary: z.string().min(1).max(2048).optional(),
   })
   .strict();
 
@@ -46,6 +56,8 @@ export class NodeExecutorFailure extends Error {
   public readonly errorKind: NodeExecutorErrorKind;
   public readonly possiblyDispatched: boolean;
   public readonly minimumRetryDelayMillis?: number;
+  public readonly safeErrorCode?: string;
+  public readonly errorSummary?: string;
   public constructor(outcome: unknown) {
     const parsed = nodeExecutorFailureSchema.safeParse(outcome);
     if (!parsed.success) throw new TypeError('Invalid node executor failure');
@@ -53,6 +65,10 @@ export class NodeExecutorFailure extends Error {
     this.kind = parsed.data.kind;
     this.errorKind = parsed.data.errorKind;
     this.possiblyDispatched = parsed.data.possiblyDispatched;
+    if (parsed.data.safeErrorCode !== undefined)
+      this.safeErrorCode = parsed.data.safeErrorCode;
+    if (parsed.data.errorSummary !== undefined)
+      this.errorSummary = parsed.data.errorSummary;
     if (parsed.data.minimumRetryDelayMillis !== undefined)
       this.minimumRetryDelayMillis = parsed.data.minimumRetryDelayMillis;
   }

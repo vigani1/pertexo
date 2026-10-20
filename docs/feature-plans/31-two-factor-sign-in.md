@@ -96,7 +96,13 @@ in. This matches [n8n's two-factor sign-in](https://docs.n8n.io/user-management/
 11. **Security emails.** Send one when two-factor is turned off and when
     someone signs in with a recovery code, through the existing durable
     authentication mail (`apps/api/src/authentication/mail`). The email never
-    contains codes.
+    contains codes. Recovery-code sign-in and disabling two-factor commit the
+    SDK change, identity audit fact and sealed system-mail command in one
+    transaction, before returning session cookies. A failed fact, seal or enqueue
+    rolls everything back, preserving the code/challenge or enabled factor for
+    another attempt. Transport delivery remains asynchronous. The development
+    sink runs after commit and cannot turn a committed sign-in into an error
+    (review follow-up, 2026-10-20).
 12. **Read model.** `accountSecurityResponseSchema` gains
     `twoFactor: { enabled: boolean; recoveryCodesRemaining: number | null }`.
     `recoveryCodesRemaining` is `null` when off.
@@ -188,6 +194,7 @@ visible behavior until slice 2 adds the controls.
 | 1 Backend | Merged | [#425](https://github.com/vigani1/pertexo/pull/425) |
 | 2 Web | Merged | [#427](https://github.com/vigani1/pertexo/pull/427) |
 | 3 Support and safety | Merged | [#429](https://github.com/vigani1/pertexo/pull/429) |
+| Review hardening: atomic notices and recovery-code wording | Complete | This PR |
 
 ### Backend alignment (owner-approved 2026-10-19)
 

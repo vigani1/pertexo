@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import type { NodeFormApi } from '../../model/inspector/node-form';
 import type { FieldParseResult } from '../../model/inspector/draft';
 
 type InspectorDraftFieldState<Value, Text> = Readonly<{
@@ -93,4 +94,21 @@ export function createScratchTracker(onChange: (hasScratch: boolean) => void) {
     else fields.delete(field);
     onChange(fields.size > 0);
   };
+}
+
+/** Keep local scratch visibility and the inspector's scratch fence in sync. */
+export function useScratchForm(form: NodeFormApi) {
+  const [hasScratch, setHasScratch] = useState(false);
+  const [trackScratch] = useState(() => createScratchTracker(setHasScratch));
+  const trackedForm = useMemo<NodeFormApi>(
+    () => ({
+      ...form,
+      reportScratch: (field, scratch) => {
+        trackScratch(field, scratch);
+        form.reportScratch(field, scratch);
+      },
+    }),
+    [form, trackScratch],
+  );
+  return { form: trackedForm, hasScratch };
 }

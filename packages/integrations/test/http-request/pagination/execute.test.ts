@@ -66,6 +66,8 @@ function setup(
     signal?: AbortSignal;
     deadlineAt?: Date;
     credentials?: boolean;
+    singleRequest?: boolean;
+    unexpectedTransportFailure?: boolean;
     config?: Record<string, unknown>;
   }> = {},
 ) {
@@ -129,6 +131,8 @@ function setup(
     },
     ...options.config,
   };
+  if (options.singleRequest === true)
+    Reflect.deleteProperty(config, 'pagination');
   const registry = createNodeRegistry({
     catalog: createNodeCatalog({
       definitions: [HTTP_REQUEST_MANIFEST],
@@ -145,9 +149,16 @@ function setup(
     definitions: [HTTP_REQUEST_DEFINITION_REGISTRATION],
     executors: [
       createHttpRequestExecutorRegistration({
-        httpClient: createNodeSecureHttpClient({
-          allowedPrivateNetworks: parseAllowedPrivateNetworks('127.0.0.1/32'),
-        }),
+        httpClient:
+          options.unexpectedTransportFailure === true
+            ? {
+                executeStreaming: () =>
+                  Promise.reject(new Error('private transport error')),
+              }
+            : createNodeSecureHttpClient({
+                allowedPrivateNetworks:
+                  parseAllowedPrivateNetworks('127.0.0.1/32'),
+              }),
       }),
     ],
   });
@@ -419,6 +430,110 @@ describe('HTTP pagination through the real secure transport and registry', () =>
       errorKind: 'rate_limit',
       possiblyDispatched: false,
       minimumRetryDelayMillis: 30_000,
+    });
+  });
+  it('honours Retry-After for a single request too', async () => {
+    const root = await server((_url, _request, response) => {
+      response.writeHead(429, { 'retry-after': '30' });
+      response.end('rate limited');
+    });
+    await expect(
+      setup(root, {}, { singleRequest: true }).run(),
+    ).rejects.toMatchObject({ kind: 'retry', minimumRetryDelayMillis: 30_000 });
+  });
+  it('reports unexpected paging errors as definite without disclosing them', async () => {
+    await expect(
+      setup(
+        'https://example.test',
+        { mode: 'page', parameter: 'page' },
+        { unexpectedTransportFailure: true },
+      ).run(),
+    ).rejects.toMatchObject({
+      kind: 'failed',
+      errorKind: 'internal',
+      possiblyDispatched: false,
+    });
+  });
+  it.each(['next_link', 'link_header', 'cursor'])(
+    'does not inspect unused %s navigation at Max pages',
+    async (mode) => {
+      const root = await server((_url, _request, response) => {
+        response.setHeader('link', '</a>; rel=next, </b>; rel=next');
+        json(response, { data: [1], next: { invalid: true } });
+      });
+      const pagination =
+        mode === 'cursor'
+          ? { mode, parameter: 'cursor', cursorPath: '$.next' }
+          : {
+              mode: 'next_link',
+              source:
+                mode === 'link_header'
+                  ? { kind: 'link_header' }
+                  : { kind: 'body', path: '$.next' },
+            };
+      expect(
+        (await setup(root, { ...pagination, maxPages: 1 }).run()).output,
+      ).toMatchObject({ items: [1], pageCount: 1, complete: false });
+    },
+  );
+  it.each(['page', 'offset', 'cursor'])(
+    'preserves unrelated query encoding in %s mode',
+    async (mode) => {
+      const received: string[] = [];
+      const root = await server((_url, request, response) => {
+        received.push(request.url ?? '');
+        json(response, {
+          data: [received.length],
+          next: received.length === 1 ? 'a b~' : null,
+        });
+      });
+      const pagination =
+        mode === 'cursor'
+          ? { mode, parameter: 'position', cursorPath: '$.next' }
+          : {
+              mode,
+              parameter: 'position',
+              ...(mode === 'offset' ? { step: 10 } : {}),
+            };
+      await setup(
+        `${root}/?q=a%20b~&escaped=%2f&position=old&repeated=1&repeated=2`,
+        { ...pagination, maxPages: 2 },
+      ).run();
+      expect(received).toHaveLength(2);
+      expect(received[0]).toBe(
+        `/?q=a%20b~&escaped=%2f&position=${mode === 'cursor' ? 'old' : mode === 'page' ? '1' : '0'}&repeated=1&repeated=2`,
+      );
+      expect(received[1]).toBe(
+        `/?q=a%20b~&escaped=%2f&position=${mode === 'cursor' ? 'a+b%7E' : mode === 'page' ? '2' : '10'}&repeated=1&repeated=2`,
+      );
+    },
+  );
+  it('refuses a huge item array with a safe page diagnostic', async () => {
+    const root = await server((_url, _request, response) => {
+      json(response, { data: Array.from({ length: 131_000 }, () => 0) });
+    });
+    await expect(
+      setup(root, { mode: 'page', parameter: 'page' }, {}).run(),
+    ).rejects.toMatchObject({
+      kind: 'failed',
+      code: 'http.pagination_invalid_page',
+    });
+  });
+  it('accounts for escaped multibyte items and nested members across pages', async () => {
+    const value = { text: '\u0000"é🙂', nested: [1, { ok: true }] };
+    const root = await server((_url, _request, response) => {
+      json(response, { data: [value] });
+    });
+    const output = (
+      await setup(root, {
+        mode: 'page',
+        parameter: 'page',
+        maxPages: 100,
+      }).run()
+    ).output;
+    expect(output).toMatchObject({
+      items: Array.from({ length: 100 }, () => value),
+      pageCount: 100,
     });
   });
   it('refuses a paging budget that cannot fit before dispatch', async () => {

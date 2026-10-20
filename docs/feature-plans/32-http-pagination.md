@@ -79,6 +79,10 @@ matches [n8n's HTTP Request pagination](https://docs.n8n.io/build/code-in-n8n/co
    responses are never stored as files.
 8. **Errors.** A page with a non-2xx status fails the step, the same way a
    single request fails today, including 429 with `Retry-After`.
+   Single and paged requests share status classification and the bounded
+   `Retry-After` floor on 429. Unexpected paging errors are definite failures:
+   GET pagination cannot leave an unknown external effect. Query-counter and
+   cursor modes preserve all unrelated query bytes (review follow-up, 2026-10-20).
    `returnErrorResponses` together with pagination is refused in this first
    slice.
 9. **Output.** With pagination on, the step outputs:
@@ -96,14 +100,17 @@ matches [n8n's HTTP Request pagination](https://docs.n8n.io/build/code-in-n8n/co
 
    - `items` is every page's list, joined in order.
    - `complete` is `false` only when Max pages stopped it while another page
-     existed.
+     could exist; the next link is not inspected or followed at the cap.
    - `status`, `headers` and `finalOrigin` come from the last page.
 
    The output schema becomes a union of today's shape (unchanged) and this
-   one, so mapping suggestions offer `items`.
+   one. Mapping suggestions select the shape for that step's pagination setting.
 10. **Size.** The joined output must fit the 1 MiB step-output limit. If it
     would go over, the step fails with `http.pagination_too_large`, and the
-    message suggests lowering Max pages or narrowing the request. F45 (bigger
+    message suggests lowering Max pages or narrowing the request. Accumulate byte,
+    member and depth usage from each new page and the current response envelope;
+    do not re-inspect all earlier items at each page. Append items without spreading
+    them into call arguments. F45 (bigger
     data) lifts this later. It never silently returns partial data except
     through `complete: false`.
 11. **Time.** `timeoutMillis` applies to each page. Validation refuses a
@@ -177,7 +184,8 @@ matches [n8n's HTTP Request pagination](https://docs.n8n.io/build/code-in-n8n/co
 | Slice | Status | PR |
 | --- | --- | --- |
 | 1 Engine | Complete | [#430](https://github.com/vigani1/pertexo/pull/430) |
-| 2 Editor and docs | Complete | This PR |
+| 2 Editor and docs | Complete | [#434](https://github.com/vigani1/pertexo/pull/434) |
+| Review hardening: request/retry bounds, navigation and editor output | Complete | This PR |
 
 ## Retry and deadline alignment (owner-approved 2026-10-20)
 

@@ -48,7 +48,9 @@ export function AboutTab({
       ) : (
         <>
           <Row term="Returns">
-            <ReturnedFields fields={outputFieldsOf(definition.outputSchema)} />
+            <ReturnedFields
+              fields={outputFieldsOf(definition.outputSchema, node)}
+            />
           </Row>
           <Row term="Retries">
             {describeRetryBehaviour(definition.retryClass)}

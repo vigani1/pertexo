@@ -1,4 +1,5 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useScratchForm } from '../use-draft-field';
+import { useState, type ReactNode } from 'react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import type { FileUploadScope } from '@/features/artifacts/public';
@@ -56,17 +57,7 @@ function BodyInputs({
   function change(next: HttpBodyDraft, key: string) {
     draft.change(next, key);
   }
-  const [rawScratch, setRawScratch] = useState(false);
-  const rawForm = useMemo<NodeFormApi>(
-    () => ({
-      ...form,
-      reportScratch: (field, scratch) => {
-        if (field === 'inputs') setRawScratch(scratch);
-        form.reportScratch(field, scratch);
-      },
-    }),
-    [form],
-  );
+  const { form: rawForm, hasScratch: rawScratch } = useScratchForm(form);
   const [confirmation, setConfirmation] = useState<
     | Readonly<{
         signature: string;

@@ -2,9 +2,10 @@ import { HttpPaginationFailure } from './failure.js';
 import timers from 'node:timers/promises';
 import {
   canonicalizeBoundedJson,
+  NODE_EXECUTION_LIMITS,
   type JsonValue,
 } from '@pertexo/node-sdk/server';
-import { resolveJsonPath } from '@pertexo/workflow-model';
+import { inspectJsonValue, resolveJsonPath } from '@pertexo/workflow-model';
 import { inspectSecureHttpError } from '../../http/secure-error.js';
 import type {
   SecureHttpClient,
@@ -12,18 +13,17 @@ import type {
   SecureHttpStreamingBody,
 } from '../../http/secure.js';
 import type { HttpPagination } from './validation.js';
-import { nextPage } from './navigation.js';
+import { nextPage, setPaginationParameter } from './navigation.js';
+import { JSON_MEDIA_TYPE } from '../../http/content-type.js';
 
 type Page = Readonly<{ value: JsonValue; url: string; link?: string }>;
-const jsonMedia =
-  /^\s*(?:application\/(?:[!#$%&'*.^_`|~0-9a-z-]+\+)?json|text\/json)\s*(?:;|$)/iu;
 async function readPage(
   stream: SecureHttpStreamingBody,
   page: number,
 ): Promise<Page> {
   if (
     stream.navigation === undefined ||
-    !jsonMedia.test(stream.headers['content-type'] ?? '')
+    !JSON_MEDIA_TYPE.test(stream.headers['content-type'] ?? '')
   )
     throw new HttpPaginationFailure('http.pagination_invalid_page', page);
   const chunks: Uint8Array[] = [];
@@ -83,7 +83,11 @@ export async function executePagination(
     throw new HttpPaginationFailure('http.pagination_budget_exceeded', 1);
   const first = new URL(request.url);
   if (pagination.mode === 'page' || pagination.mode === 'offset')
-    first.searchParams.set(pagination.parameter, String(pagination.start));
+    setPaginationParameter(
+      first,
+      pagination.parameter,
+      String(pagination.start),
+    );
   let url = first.toString();
   const seen = new Set<string>(pagination.mode === 'cursor' ? [] : [url]);
   if (pagination.mode === 'cursor') {
@@ -91,6 +95,9 @@ export async function executePagination(
     if (cursor !== null) seen.add(cursor);
   }
   const items: JsonValue[] = [];
+  let itemBytes = 0;
+  let itemMembers = 0;
+  let itemDepth = 1;
   for (let page = 1; page <= pagination.maxPages; page += 1) {
     request.signal?.throwIfAborted();
     let response;
@@ -132,24 +139,33 @@ export async function executePagination(
     if (found.kind !== 'value' || !Array.isArray(found.value))
       throw new HttpPaginationFailure('http.pagination_invalid_page', page);
     const pageItems = found.value as readonly JsonValue[];
-    items.push(...pageItems);
+    const added = inspectJsonValue(pageItems);
+    itemBytes +=
+      added.bytes - 2 + (items.length > 0 && pageItems.length > 0 ? 1 : 0);
+    itemMembers += added.members;
+    itemDepth = Math.max(itemDepth, added.depth);
     const next =
-      found.value.length === 0
+      found.value.length === 0 || page === pagination.maxPages
         ? undefined
         : nextPage({ pagination, first, current: response.body, page, seen });
     const output = {
       items,
       pageCount: page,
-      complete: next === undefined,
+      complete:
+        pageItems.length === 0 ||
+        (page < pagination.maxPages && next === undefined),
       status: response.status,
       headers: response.headers,
       finalOrigin: response.finalUrl,
     };
-    try {
-      canonicalizeBoundedJson(output);
-    } catch {
+    const envelope = inspectJsonValue({ ...output, items: [] });
+    if (
+      envelope.bytes + itemBytes > NODE_EXECUTION_LIMITS.bytes ||
+      envelope.members + itemMembers > NODE_EXECUTION_LIMITS.members ||
+      Math.max(envelope.depth, itemDepth + 1) > NODE_EXECUTION_LIMITS.depth
+    )
       throw new HttpPaginationFailure('http.pagination_too_large', page);
-    }
+    for (const item of pageItems) items.push(item);
     if (next === undefined || page === pagination.maxPages) return output;
     url = next;
     if (pagination.delayMillis > 0)

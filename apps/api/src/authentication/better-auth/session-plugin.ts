@@ -1,3 +1,5 @@
+import { isSecurityMutationPath } from './security-transaction.js';
+import { insertSystemMail } from '@pertexo/database/platform';
 import {
   isAuthenticationSessionAllowed,
   recordIdentitySecurityFact,
@@ -13,10 +15,13 @@ import {
   sessionMiddleware,
 } from 'better-auth/api';
 import { setSessionCookie, deleteSessionCookie } from 'better-auth/cookies';
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
-import type { AuthenticationMail } from '../mail/delivery.js';
+import type {
+  AuthenticationMail,
+  AuthenticationSecurityNotice,
+} from '../mail/delivery.js';
 import type { SocialProviderGateway } from '../providers/contract.js';
 import { accountSecurityEndpoints } from '../account-security/endpoints.js';
 import { requireDoubleSubmitCsrf } from './csrf.js';
@@ -39,7 +44,12 @@ export function createTrustedSessionPlugin(
   pool: Pool,
   availableLinkProviders: SocialProviderGateway['available'],
   securityNotices: Readonly<{
-    mail: Pick<AuthenticationMail, 'sendSecurityNotice'>;
+    mail: Pick<
+      AuthenticationMail,
+      'sendSecurityNotice' | 'prepareSecurityNotice'
+    >;
+    client: Pool | PoolClient;
+    afterCommit: ((deliver: () => Promise<void>) => void) | undefined;
     accountUrl: string;
   }>,
 ) {
@@ -51,7 +61,21 @@ export function createTrustedSessionPlugin(
       ...internalSessionEndpoints(pool),
     },
     hooks: {
-      before: [...nativeRouteGuards(pool), twoFactorRouteGuard(pool)],
+      before: [
+        {
+          matcher: (context) => isSecurityMutationPath(context.path ?? ''),
+          handler: createAuthMiddleware(() => {
+            if (!('release' in securityNotices.client))
+              throw new APIError('INTERNAL_SERVER_ERROR', {
+                message:
+                  'Security changes require an authentication transaction.',
+              });
+            return Promise.resolve();
+          }),
+        },
+        ...nativeRouteGuards(pool),
+        twoFactorRouteGuard(securityNotices.client),
+      ],
       after: [
         {
           matcher: (context) =>
@@ -64,7 +88,10 @@ export function createTrustedSessionPlugin(
             // Enforcement may change between the SDK's before hook and its insert.
             if (
               created !== null &&
-              !(await isAuthenticationSessionAllowed(pool, created.session.id))
+              !(await isAuthenticationSessionAllowed(
+                securityNotices.client,
+                created.session.id,
+              ))
             ) {
               await context.context.internalAdapter.deleteSession(
                 created.session.token,
@@ -85,18 +112,30 @@ export function createTrustedSessionPlugin(
                   : undefined;
             if (purpose === undefined) return;
             await recordIdentitySecurityFact(
-              pool,
+              securityNotices.client,
               created.user.id,
               purpose === 'two_factor_disabled'
                 ? 'two_factor.disabled'
                 : 'two_factor.recovery_code_used',
             );
-            await securityNotices.mail.sendSecurityNotice({
+            const notice: AuthenticationSecurityNotice = {
               purpose,
               recipient: created.user.email,
               displayName: created.user.name,
               url: securityNotices.accountUrl,
-            });
+            };
+            const prepared =
+              securityNotices.mail.prepareSecurityNotice?.(notice);
+            if (prepared !== undefined)
+              await insertSystemMail(securityNotices.client, prepared);
+            else if (securityNotices.afterCommit !== undefined)
+              securityNotices.afterCommit(() =>
+                securityNotices.mail.sendSecurityNotice(notice),
+              );
+            else
+              throw new Error(
+                'Security changes require an authentication transaction',
+              );
           }),
         },
       ],

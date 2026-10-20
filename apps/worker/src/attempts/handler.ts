@@ -1,7 +1,4 @@
-import { HttpPaginationFailure } from '@pertexo/integrations/server';
-import { NodeDataTableFailure } from '@pertexo/node-sdk/server';
 import { codeCompletionFields } from './code/diagnostics.js';
-import { NodeCodeFailure } from '@pertexo/node-sdk/server';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/outbox';
 import {
   NodeAttemptOutputInvalidError,
@@ -32,11 +29,8 @@ import { WorkflowEngineError } from '@pertexo/workflow-engine';
 import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
 import {
   describeNodeRefusal,
-  FileInputFailure,
   NodeExecutorFailure,
 } from '@pertexo/node-sdk/server';
-import { FILE_INPUT_ERROR_CODE } from '@pertexo/node-sdk';
-import { describeFileInputFailure } from '@pertexo/node-sdk/server';
 import { classifyProcessError } from '@pertexo/observability/startup';
 import { waitForCancelableDelay } from '../runtime/abortable-delay.js';
 import type { NodeExecutionCapabilityFactories } from './capabilities.js';
@@ -274,22 +268,10 @@ async function executePreparedNodeAttempt(
             : { minimumRetryDelayMillis: error.minimumRetryDelayMillis }),
           errorKind: error.errorKind,
           possiblyDispatched: error.possiblyDispatched,
-          safeErrorCode:
-            error instanceof HttpPaginationFailure
-              ? error.code
-              : error instanceof NodeDataTableFailure
-                ? `execution.table_${error.code}`
-                : error instanceof NodeCodeFailure
-                  ? error.code
-                  : error instanceof FileInputFailure
-                    ? FILE_INPUT_ERROR_CODE
-                    : `execution.${error.errorKind}`,
-          ...(error instanceof HttpPaginationFailure
-            ? { errorSummary: error.summary }
-            : {}),
-          ...(error instanceof FileInputFailure
-            ? { errorSummary: describeFileInputFailure(error.diagnostic) }
-            : {}),
+          safeErrorCode: error.safeErrorCode ?? `execution.${error.errorKind}`,
+          ...(error.errorSummary === undefined
+            ? {}
+            : { errorSummary: error.errorSummary }),
         },
         ...traceContext,
         signal: contextSignal,

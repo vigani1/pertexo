@@ -584,6 +584,20 @@ describe('platform preview node invoker', () => {
   it.each([
     [
       new NodeExecutorFailure({
+        kind: 'failed',
+        errorKind: 'provider',
+        possiblyDispatched: false,
+        safeErrorCode: 'http.pagination_too_large',
+        errorSummary: 'Page 3: Lower Max pages.',
+      }),
+      {
+        safeErrorCode: 'http.pagination_too_large',
+        errorSummary: 'Page 3: Lower Max pages.',
+        status: 'failed',
+      },
+    ],
+    [
+      new NodeExecutorFailure({
         kind: 'canceled',
         errorKind: 'canceled',
         possiblyDispatched: false,
