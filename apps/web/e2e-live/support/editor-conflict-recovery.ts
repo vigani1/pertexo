@@ -141,7 +141,9 @@ export async function verifyEditorConflictAndImmutableRun(
     await conflict
       .getByRole('button', { name: 'Compare', exact: true })
       .click();
-    await compare.getByRole('tab', { name: 'Steps', exact: true }).click();
+    await compare
+      .getByRole('tab', { name: 'Steps and notes', exact: true })
+      .click();
     await compare
       .getByRole('button', {
         name: 'Use your copy of Local source choice',
