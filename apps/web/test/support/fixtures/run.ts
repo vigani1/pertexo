@@ -153,6 +153,7 @@ export function fixtureWorkflow(overrides: Record<string, unknown> = {}) {
     lifecycleStatus: 'active',
     lifecycleRevision: 1,
     activationStatus: 'active',
+    webhookSetupRequired: false,
     publishedVersionId: fixtureIds.version,
     createdAt: fixtureTimestamp,
     updatedAt: fixtureTimestamp,

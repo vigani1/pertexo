@@ -28,6 +28,7 @@ const workflow = {
   lifecycleStatus: 'active' as const,
   lifecycleRevision: 1,
   activationStatus: 'inactive' as const,
+  webhookSetupRequired: false,
   publishedVersionId: null,
   createdAt: '2026-08-20T12:00:00.000Z',
   updatedAt: '2026-08-20T12:00:00.000Z',

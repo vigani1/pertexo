@@ -171,6 +171,7 @@ describe('workflow list view', () => {
   const items = [
     summary('1', 'Daily intake', {
       activationStatus: 'active',
+      webhookSetupRequired: false,
       publishedVersionId: '9',
     }),
     summary('2', 'Old report', { lifecycleStatus: 'archived' }),

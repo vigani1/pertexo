@@ -113,6 +113,7 @@ describeIntegration('authenticated immutable version restoration', () => {
       lifecycleStatus: 'archived',
       lifecycleRevision: 2,
       activationStatus: 'deactivating',
+      webhookSetupRequired: false,
       publishedVersionId: ids.publishedVersion,
     });
   });

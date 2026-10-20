@@ -53,6 +53,7 @@ export const summary = {
   lifecycleStatus: 'active',
   lifecycleRevision: 7,
   activationStatus: 'active',
+  webhookSetupRequired: false,
   publishedVersionId: versionId,
   createdAt: '2026-09-14T10:00:00.000Z',
   updatedAt: '2026-09-14T10:00:00.000Z',

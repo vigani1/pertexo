@@ -174,6 +174,10 @@ for (const width of [375, 1280])
     await expect(arrow(child)).toHaveCSS('rotate', 'none');
     await child.locator(':scope > summary').click();
     await expect(arrow(child)).toHaveCSS('rotate', '90deg');
+    await child.locator(':scope > summary').click();
+    await expect(arrow(child)).toHaveCSS('rotate', 'none');
+    await expect(arrow(nested)).toHaveCSS('rotate', '90deg');
+    await expect(arrow(outer)).toHaveCSS('rotate', '90deg');
     await nested.locator(':scope > summary').click();
     await expect(arrow(nested)).toHaveCSS('rotate', 'none');
     await expect(arrow(outer)).toHaveCSS('rotate', '90deg');

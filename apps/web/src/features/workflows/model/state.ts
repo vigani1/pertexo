@@ -10,7 +10,10 @@ export type WorkflowState = Readonly<{ tone: StatusTone; label: string }>;
 export function describeWorkflowState(
   workflow: Pick<
     WorkflowSummary,
-    'lifecycleStatus' | 'activationStatus' | 'publishedVersionId'
+    | 'lifecycleStatus'
+    | 'activationStatus'
+    | 'publishedVersionId'
+    | 'webhookSetupRequired'
   >,
 ): WorkflowState {
   if (workflow.lifecycleStatus === 'archived')
@@ -24,7 +27,9 @@ export function describeWorkflowState(
     case 'inactive':
       return { tone: 'success', label: 'Live' };
     case 'activating':
-      return { tone: 'live', label: 'Starting' };
+      return workflow.webhookSetupRequired
+        ? { tone: 'attention', label: 'Trigger needs setup' }
+        : { tone: 'live', label: 'Starting' };
     case 'deactivating':
       return { tone: 'waiting', label: 'Stopping' };
     case 'degraded':

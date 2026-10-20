@@ -7131,6 +7131,9 @@
                   "error"
                 ]
               },
+              "webhookSetupRequired": {
+                "type": "boolean"
+              },
               "publishedVersionId": {
                 "anyOf": [
                   {
@@ -7162,6 +7165,7 @@
               "lifecycleStatus",
               "lifecycleRevision",
               "activationStatus",
+              "webhookSetupRequired",
               "publishedVersionId",
               "createdAt",
               "updatedAt"
@@ -7335,6 +7339,9 @@
                   "error"
                 ]
               },
+              "webhookSetupRequired": {
+                "type": "boolean"
+              },
               "publishedVersionId": {
                 "anyOf": [
                   {
@@ -7366,6 +7373,7 @@
               "lifecycleStatus",
               "lifecycleRevision",
               "activationStatus",
+              "webhookSetupRequired",
               "publishedVersionId",
               "createdAt",
               "updatedAt"
@@ -15737,6 +15745,9 @@
                         "error"
                       ]
                     },
+                    "webhookSetupRequired": {
+                      "type": "boolean"
+                    },
                     "publishedVersionId": {
                       "anyOf": [
                         {
@@ -15768,6 +15779,7 @@
                     "lifecycleStatus",
                     "lifecycleRevision",
                     "activationStatus",
+                    "webhookSetupRequired",
                     "publishedVersionId",
                     "createdAt",
                     "updatedAt"
@@ -15914,6 +15926,9 @@
                   "error"
                 ]
               },
+              "webhookSetupRequired": {
+                "type": "boolean"
+              },
               "publishedVersionId": {
                 "anyOf": [
                   {
@@ -15945,6 +15960,7 @@
               "lifecycleStatus",
               "lifecycleRevision",
               "activationStatus",
+              "webhookSetupRequired",
               "publishedVersionId",
               "createdAt",
               "updatedAt"
@@ -16071,6 +16087,9 @@
                   "error"
                 ]
               },
+              "webhookSetupRequired": {
+                "type": "boolean"
+              },
               "publishedVersionId": {
                 "anyOf": [
                   {
@@ -16102,6 +16121,7 @@
               "lifecycleStatus",
               "lifecycleRevision",
               "activationStatus",
+              "webhookSetupRequired",
               "publishedVersionId",
               "createdAt",
               "updatedAt"
@@ -17217,6 +17237,9 @@
                   "error"
                 ]
               },
+              "webhookSetupRequired": {
+                "type": "boolean"
+              },
               "publishedVersionId": {
                 "anyOf": [
                   {
@@ -17248,6 +17271,7 @@
               "lifecycleStatus",
               "lifecycleRevision",
               "activationStatus",
+              "webhookSetupRequired",
               "publishedVersionId",
               "createdAt",
               "updatedAt"
@@ -18289,6 +18313,9 @@
               "error"
             ]
           },
+          "webhookSetupRequired": {
+            "type": "boolean"
+          },
           "publishedVersionId": {
             "anyOf": [
               {
@@ -18320,6 +18347,7 @@
           "lifecycleStatus",
           "lifecycleRevision",
           "activationStatus",
+          "webhookSetupRequired",
           "publishedVersionId",
           "createdAt",
           "updatedAt"
@@ -18376,6 +18404,9 @@
                   "error"
                 ]
               },
+              "webhookSetupRequired": {
+                "type": "boolean"
+              },
               "publishedVersionId": {
                 "anyOf": [
                   {
@@ -18407,6 +18438,7 @@
               "lifecycleStatus",
               "lifecycleRevision",
               "activationStatus",
+              "webhookSetupRequired",
               "publishedVersionId",
               "createdAt",
               "updatedAt"
@@ -18469,6 +18501,9 @@
                   "error"
                 ]
               },
+              "webhookSetupRequired": {
+                "type": "boolean"
+              },
               "publishedVersionId": {
                 "anyOf": [
                   {
@@ -18500,6 +18535,7 @@
               "lifecycleStatus",
               "lifecycleRevision",
               "activationStatus",
+              "webhookSetupRequired",
               "publishedVersionId",
               "createdAt",
               "updatedAt"
@@ -18612,6 +18648,9 @@
                     "error"
                   ]
                 },
+                "webhookSetupRequired": {
+                  "type": "boolean"
+                },
                 "publishedVersionId": {
                   "anyOf": [
                     {
@@ -18643,6 +18682,7 @@
                 "lifecycleStatus",
                 "lifecycleRevision",
                 "activationStatus",
+                "webhookSetupRequired",
                 "publishedVersionId",
                 "createdAt",
                 "updatedAt"

@@ -110,6 +110,7 @@ describeIntegration(
       });
       expect(await fixture.readLifecycle(result.workflowId)).toMatchObject({
         activationStatus: 'inactive',
+        webhookSetupRequired: false,
         publishedVersionId: null,
       });
       // A lost response has the same explicit retry transport: discover, never create again.
