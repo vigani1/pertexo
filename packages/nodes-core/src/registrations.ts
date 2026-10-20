@@ -1,3 +1,4 @@
+import { coreCreateFileExecutor } from './data/create-file/executor.js';
 import { DATA_TABLE_EXECUTORS } from './data/tables/executors.js';
 import { coreCodeExecutor } from './data/code/executor.js';
 import { coreRespondWebhookExecutor } from './flow/respond-webhook/executor.js';
@@ -33,6 +34,7 @@ import { coreWebhookExecutor } from './triggers/webhook/executor.js';
 /** One implementation per core executor, in definition order. */
 export const CORE_NODE_EXECUTOR_REGISTRATIONS: readonly NodeExecutorRegistration[] =
   Object.freeze([
+    coreCreateFileExecutor,
     ...DATA_TABLE_EXECUTORS,
     coreCodeExecutor,
     coreRespondWebhookExecutor,

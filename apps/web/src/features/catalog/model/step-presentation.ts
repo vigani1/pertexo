@@ -93,6 +93,12 @@ const registry: Readonly<Record<string, RegistryEntry>> = Object.freeze({
     icon: WebhookIcon,
     family: 'output',
   },
+  'core.create_file': {
+    name: 'Create file',
+    description: 'Turn data into a CSV, JSON or text file',
+    icon: FileJsonIcon,
+    family: 'transform',
+  },
   'core.read_file': {
     name: 'Read file',
     description: 'Turn a CSV or JSON file into data',
