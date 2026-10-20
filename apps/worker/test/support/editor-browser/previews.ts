@@ -7,13 +7,14 @@ import { createPlatformPreviewNodeInvoker } from '../../../src/previews/runtime.
 /** The shared attempt runtime takes ownership of these existing preview ports. */
 export async function createEditorPreview(
   database: DatabaseConfig,
+  registry = createPlatformNodeRegistry(),
 ): Promise<NonNullable<NodeAttemptRuntimeOptions['preview']>> {
   const runStore = createDatabasePreviewAttemptRunStore(database);
   try {
     return {
       runStore,
       invoker: createPlatformPreviewNodeInvoker({
-        registry: createPlatformNodeRegistry(),
+        registry,
       }),
     };
   } catch (error) {

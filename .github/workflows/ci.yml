@@ -244,7 +244,7 @@ jobs:
             journeys: >-
               duplication portability curated-templates run-recovery forms
               transforms pinned-samples governance promotion collaboration
-              federation organization-oidc two-factor
+              federation organization-oidc two-factor http-pagination
     env:
       COMPOSE_PROJECT_NAME:
         pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-browser

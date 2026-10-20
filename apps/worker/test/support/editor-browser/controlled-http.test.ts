@@ -60,6 +60,27 @@ describe('owned controlled HTTP transport', () => {
     });
   });
 
+  it('serves three authenticated JSON pages without recording effects', async () => {
+    const owned = target();
+    await owned.start();
+    for (const page of [1, 2, 3]) {
+      const response = await owned.httpClient.execute({
+        url: new URL(`/pages?page=${String(page)}`, controlledActionUrl).href,
+        method: 'GET',
+        headers: { authorization: 'Bearer test-only-credential' },
+        timeoutMillis: 1_000,
+        maxResponseBytes: 4_096,
+        maxRedirects: 0,
+        beforeDispatch: () => Promise.resolve(),
+      });
+      expect(JSON.parse(new TextDecoder().decode(response.body))).toEqual({
+        data: [{ id: page }],
+        next: page < 3 ? `?page=${String(page + 1)}` : null,
+      });
+    }
+    expect(owned.observe()).toMatchObject({ requests: 3, effects: 0 });
+  });
+
   it.each([
     { url: new URL('https://other.example.test/effect') },
     { url: new URL(`${controlledActionUrl}?redirect=http://127.0.0.1`) },

@@ -338,10 +338,8 @@ export function inputKeySuggestions(
 
 export type OutputField = Readonly<{ key: string; type?: SchemaValueType }>;
 
-/** Top-level fields a step's output schema promises, for "Insert data". */
-export function outputFieldsOf(
-  outputSchema: NodeDefinitionCatalogItem['outputSchema'] | undefined,
-): readonly OutputField[] {
+/** Top-level output fields, including alternatives, for "Insert data". */
+export function outputFieldsOf(outputSchema: unknown): readonly OutputField[] {
   return schemaProperties(outputSchema).map(([key, candidate]) => {
     const type = isRecord(candidate) ? schemaValueType(candidate) : undefined;
     return type === undefined ? { key } : { key, type };
@@ -409,9 +407,26 @@ export function isEditableInputMappingKind(
 }
 
 function schemaProperties(schema: unknown): [string, unknown][] {
-  if (!isRecord(schema) || Reflect.get(schema, 'type') !== 'object') return [];
-  const properties = Reflect.get(schema, 'properties');
-  return isRecord(properties) ? Object.entries(properties) : [];
+  if (!isRecord(schema)) return [];
+  const properties = new Map<string, unknown>(
+    isRecord(schema.properties) ? Object.entries(schema.properties) : [],
+  );
+  for (const key of ['oneOf', 'anyOf']) {
+    const variants = schema[key];
+    if (!Array.isArray(variants)) continue;
+    for (const variant of variants as unknown[])
+      for (const [name, value] of schemaProperties(variant))
+        if (!properties.has(name)) properties.set(name, value);
+        else {
+          const previous = properties.get(name);
+          const previousType = isRecord(previous)
+            ? schemaValueType(previous)
+            : undefined;
+          const nextType = isRecord(value) ? schemaValueType(value) : undefined;
+          if (previousType !== nextType) properties.set(name, {});
+        }
+  }
+  return [...properties];
 }
 
 function schemaValueType(

@@ -4,6 +4,7 @@ import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
 import { renderApp } from '../../support/render-app';
+import { coldStart } from '../../support/fixtures/run';
 import {
   api,
   problem,
@@ -54,7 +55,11 @@ describe('workflow triggers tab', () => {
     );
     renderApp(triggersPath);
     expect(
-      await screen.findByText(/Webhooks are unavailable on this server/u),
+      await screen.findByText(
+        /Webhooks are unavailable on this server/u,
+        {},
+        coldStart,
+      ),
     ).toBeVisible();
     expect(screen.queryByText(/role changed/u)).not.toBeInTheDocument();
     expect(
