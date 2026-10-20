@@ -57,6 +57,7 @@ export function HttpPaginationSetup({
     paginationModes.find((choice) => choice.value === mode)?.label ??
     'Check setup';
   const id = fieldControlId(form.nodeId, 'pagination-mode');
+  const modeHelpId = `${id}-help`;
   return (
     <details className="border-t border-border pt-3">
       <summary className="cursor-pointer rounded-sm py-2 text-sm outline-offset-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring">
@@ -69,6 +70,7 @@ export function HttpPaginationSetup({
             id={id}
             value={mode}
             choices={paginationModes}
+            describedBy={modeHelpId}
             disabled={
               !form.editable ||
               hasScratch ||
@@ -88,10 +90,11 @@ export function HttpPaginationSetup({
               );
             }}
           />
-          <FieldDescription>
+          <FieldDescription id={modeHelpId}>
             {value === undefined
               ? 'Off fetches one response. Pagination combines JSON items from a GET request.'
-              : paginationDescription(value)}
+              : paginationDescription(value)}{' '}
+            Finish incomplete fields to change mode or source.
           </FieldDescription>
         </Field>
         {config.method !== 'GET' ? (
@@ -112,6 +115,7 @@ export function HttpPaginationSetup({
             form={nested}
             sourceForm={sourceForm}
             hasScratch={hasScratch}
+            modeHelpId={modeHelpId}
           />
         )}
       </div>
@@ -124,12 +128,14 @@ function PaginationFields({
   form,
   sourceForm,
   hasScratch,
+  modeHelpId,
 }: Readonly<{
   schema: unknown;
   value: NodeConfig;
   form: NodeFormApi;
   sourceForm: NodeFormApi;
   hasScratch: boolean;
+  modeHelpId: string;
 }>) {
   const source = isRecord(value.source) ? (value.source as NodeConfig) : {};
   const fields = paginationFields(schema, value.mode, source.kind);
@@ -150,6 +156,7 @@ function PaginationFields({
               { value: 'link_header', label: 'Link header' },
             ]}
             disabled={!form.editable || hasScratch}
+            describedBy={modeHelpId}
             onChange={(kind) => {
               if (kind === null) return;
               form.commit(
@@ -178,7 +185,6 @@ function PaginationFields({
         <SchemaField key={field.key} field={field} config={value} form={form} />
       ))}
       <p className="text-xs text-subtle-foreground">
-        Finish incomplete fields before changing mode or next-link source.
         Results are in items. Each page must fit the inline limit; combined
         results must fit 1 MB. A retry starts again from the first page.
       </p>
