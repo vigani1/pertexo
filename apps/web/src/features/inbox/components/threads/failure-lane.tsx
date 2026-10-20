@@ -4,12 +4,12 @@ import { cn } from '@/lib/utils';
 const DAY_MILLIS = 86_400_000;
 const DAYS = 30;
 
-/** How strongly a day glows: one failure is a mark, many a bright bar. */
+/** How strong a day's red is: one failure is faint, four or more solid. */
 function intensity(count: number): string {
-  if (count === 0) return 'bg-white/[0.07]';
+  if (count === 0) return 'bg-white/[0.08]';
   if (count === 1) return 'bg-destructive/45';
   if (count <= 3) return 'bg-destructive/70';
-  return 'bg-destructive shadow-[0_0_6px_-1px_var(--destructive)]';
+  return 'bg-destructive';
 }
 
 /**
@@ -41,6 +41,7 @@ export function FailureLane({
     <figure
       className={cn('flex items-center gap-2', className)}
       aria-label={`${String(total)} ${total === 1 ? 'failure' : 'failures'} in the last 30 days`}
+      title="The last 30 days, today on the right"
     >
       <span
         aria-hidden="true"
@@ -48,21 +49,19 @@ export function FailureLane({
       >
         30d
       </span>
-      <div aria-hidden="true" className="flex items-end gap-px">
-        {marks.map(({ day, count }, index) => (
-          <span
-            key={day}
-            title={`${day} UTC: ${String(count)} ${count === 1 ? 'failure' : 'failures'}`}
-            className={cn(
-              'w-[5px] rounded-[1.5px]',
-              count === 0 ? 'h-2.5' : 'h-4',
-              intensity(count),
-              // Today: where the strip has reached.
-              index === DAYS - 1 &&
-                'outline outline-1 outline-offset-1 outline-white/25',
-            )}
-          />
-        ))}
+      {/* Every day the same size, so only colour says which failed; a dot
+          under the last one says it's today. */}
+      <div aria-hidden="true" className="flex flex-col gap-[3px]">
+        <div className="flex gap-[2px]">
+          {marks.map(({ day, count }) => (
+            <span
+              key={day}
+              title={`${day} UTC: ${String(count)} ${count === 1 ? 'failure' : 'failures'}`}
+              className={cn('h-3 w-1 rounded-[1px]', intensity(count))}
+            />
+          ))}
+        </div>
+        <span className="size-1 self-end rounded-full bg-subtle-foreground" />
       </div>
       <span className="sr-only">
         Failure days:{' '}
