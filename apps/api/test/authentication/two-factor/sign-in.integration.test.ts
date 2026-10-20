@@ -315,15 +315,10 @@ for (const backup of [false, true])
           429,
           'auth.two_factor_locked',
         );
-        const locked = await api
-          .database()
-          .query<{
-            failed_verification_count: number;
-            locked_until: Date | null;
-          }>(
-            'select failed_verification_count,locked_until from app.auth_two_factors where user_id=(select id from app.users where email=$1)',
-            [user.email],
-          );
+        const locked = await api.database().query<{
+          failed_verification_count: number;
+          locked_until: Date | null;
+        }>('select failed_verification_count,locked_until from app.auth_two_factors where user_id=(select id from app.users where email=$1)', [user.email]);
         expect(locked.rows[0]?.failed_verification_count).toBe(10);
         expect(locked.rows[0]?.locked_until?.getTime()).toBeGreaterThan(
           Date.now(),
