@@ -76,6 +76,22 @@ notifications button, and the run header squeezed beside the lens. The
 trigger-less Triggers tab, Connections tiles and Inbox notice timelines read
 well at both widths and stay as they are.
 
+## Owner review, round two
+
+The owner's next look (2026-10-20) added, all done in the same PR:
+
+- [x] Breadcrumbs follow the switcher and lead back up, naming records.
+- [x] A refresh paints the boot screen styled, never plain text on white.
+- [x] Inbox notices share one compact frame with a 30-day strip; no lines
+  overlap between kinds.
+- [x] Editor panels close on a tap outside and are side sheets from 768px; a
+  double tap on a step opens its panel.
+- [x] Data tables as woven cards; a table page with typed columns, one
+  toolbar row, a typed grid and paging in its footer.
+- [x] Notifications draw where notices go; API tokens are cards with their
+  lifetime; Promotion draws its link; Usage's trends button sits by the title.
+- [x] Lists that highlight on hover use one inset row divider.
+
 ## Verification
 
 Lint, TypeScript, unit and mocked browser tests; screenshots of every changed
