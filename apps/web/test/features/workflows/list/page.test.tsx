@@ -57,6 +57,28 @@ describe('workflow list', () => {
     await expectSignInPage();
   });
 
+  it('shows webhook setup from the summary without reading trigger credentials', async () => {
+    mockServer.use(
+      ...discoveryHandlers(),
+      draftHandler(),
+      listHandler(() => ({
+        items: [
+          summary(workflowId, 'Incoming orders', {
+            activationStatus: 'activating',
+            publishedVersionId: versionId,
+            webhookSetupRequired: true,
+          }),
+        ],
+        nextCursor: null,
+      })),
+    );
+    renderApp(`/w/${workspaceId}/workflows`);
+    expect(await screen.findByText('Trigger needs setup')).toBeVisible();
+    expect(
+      screen.queryByText('Starting', { exact: true }),
+    ).not.toBeInTheDocument();
+  });
+
   it('loads real pages newest first and appends the next cursor page', async () => {
     const orders: (string | null)[] = [];
     mockServer.use(
@@ -169,10 +191,12 @@ describe('workflow list', () => {
         items: [
           summary(workflowId, 'Invoice intake', {
             activationStatus: 'active',
+            webhookSetupRequired: false,
             publishedVersionId: versionId,
           }),
           summary(secondWorkflowId, 'Nightly sync', {
             activationStatus: 'degraded',
+            webhookSetupRequired: false,
             publishedVersionId: versionId,
           }),
           summary(thirdWorkflowId, 'Onboarding email'),

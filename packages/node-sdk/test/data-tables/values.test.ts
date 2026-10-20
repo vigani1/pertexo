@@ -6,7 +6,7 @@ import {
   validateDataTableValues,
   validateDataTableQuery,
   dataTableCsvValue,
-  escapeDataTableCsv,
+  escapeCsvValue,
   DataTableError,
 } from '../../src/index.js';
 const columns = dataTableNewColumnsSchema.parse([
@@ -67,8 +67,8 @@ describe('typed data table boundary', () => {
     expect(dataTableCsvValue(required(columns[4]), '{"x":1}')).toEqual({
       x: 1,
     });
-    expect(escapeDataTableCsv('=SUM(A1)')).toBe('"\'=SUM(A1)"');
-    expect(escapeDataTableCsv('a,"b"')).toBe('"a,""b"""');
+    expect(escapeCsvValue('=SUM(A1)')).toBe('"\'=SUM(A1)"');
+    expect(escapeCsvValue('a,"b"')).toBe('"a,""b"""');
   });
   it('bounds query shapes and validates filter columns and types', () => {
     expect(() =>

@@ -19,8 +19,17 @@ const uuidSchema = z.uuid();
 const revisionSchema = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 export const workflowVersionRowSelection =
   'id,workspace_id,workflow_id,version_number,graph_json,checksum,published_by,published_at';
-export const workflowRowSelection =
-  'id,workspace_id,name,name_revision,lifecycle_status,lifecycle_revision,activation_status,published_version_id,created_by,created_at,updated_at';
+// Endpoint availability is safe summary data; endpoint keys and secrets never leave this query.
+export const workflowSetupSelection = `exists (
+  select 1 from app.workflow_triggers trigger
+  left join app.webhook_trigger_endpoints endpoint
+    on endpoint.workspace_id=trigger.workspace_id and endpoint.trigger_id=trigger.id
+  where trigger.workspace_id=app.workflows.workspace_id
+    and trigger.workflow_id=app.workflows.id
+    and trigger.workflow_version_id=app.workflows.published_version_id
+    and trigger.kind='webhook' and (endpoint.id is null or endpoint.status<>'active')
+) as webhook_setup_required`;
+export const workflowRowSelection = `id,workspace_id,name,name_revision,lifecycle_status,lifecycle_revision,activation_status,published_version_id,created_by,created_at,updated_at,${workflowSetupSelection}`;
 const checksumSchema = z.string().regex(/^wf:sha256:[0-9a-f]{64}$/u);
 const workflowRowSchema = z
   .object({
@@ -31,6 +40,7 @@ const workflowRowSchema = z
     lifecycle_status: workflowLifecycleStatusSchema,
     lifecycle_revision: revisionSchema,
     activation_status: workflowActivationStatusSchema,
+    webhook_setup_required: z.boolean(),
     published_version_id: uuidSchema.nullable(),
     // ADR 056: operational auto-pause settings and trigger pause state,
     // present when a query selects every column.
@@ -99,6 +109,7 @@ export function mapWorkflow(row: Record<string, unknown>): WorkflowRecord {
     lifecycleStatus: parsed.lifecycle_status,
     lifecycleRevision: parsed.lifecycle_revision,
     activationStatus: parsed.activation_status,
+    webhookSetupRequired: parsed.webhook_setup_required,
     publishedVersionId: parsed.published_version_id,
     createdBy: parsed.created_by,
     createdAt: parsed.created_at,

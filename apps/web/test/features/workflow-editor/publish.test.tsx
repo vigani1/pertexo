@@ -264,6 +264,7 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
             lifecycleStatus: 'active',
             lifecycleRevision: 1,
             activationStatus: 'active',
+            webhookSetupRequired: false,
             publishedVersionId: versionId,
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,

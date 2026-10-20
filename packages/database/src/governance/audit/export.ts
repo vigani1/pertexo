@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg';
 import type { AuditFilter } from '@pertexo/contracts';
-import { escapeDataTableCsv } from '@pertexo/node-sdk';
+import { escapeCsvValue } from '@pertexo/node-sdk';
 import { GovernanceError } from '../contract.js';
 import {
   countAuditExport,
@@ -60,7 +60,7 @@ export async function prepareAuditExport(
           event.targetId,
           JSON.stringify(event.metadata),
         ]
-          .map(escapeDataTableCsv)
+          .map(escapeCsvValue)
           .join(',') + '\r\n';
         after = { time: row.cursor_time, id: row.id };
       }

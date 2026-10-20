@@ -79,6 +79,7 @@ async function installRoutes(page: Page, workflowName?: string) {
     lifecycleStatus: 'active',
     lifecycleRevision: 1,
     activationStatus: 'active',
+    webhookSetupRequired: false,
     publishedVersionId: workflowVersionId,
     createdAt: timestamp,
     updatedAt: timestamp,

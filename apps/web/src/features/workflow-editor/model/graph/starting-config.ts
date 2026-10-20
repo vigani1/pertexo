@@ -14,6 +14,7 @@ type NodeConfig = WorkflowNode['config'];
 const STARTING: Readonly<Record<string, NodeConfig>> = {
   'core.code': { code: 'return input;' },
   'core.respond_webhook': { bodyType: 'json' },
+  'core.create_file': { format: 'csv', delimiter: ',', columns: [] },
   'core.read_file': { format: 'csv', delimiter: ',', convertValues: true },
   'core.batch': { size: 100 },
   'core.take': { count: 100 },

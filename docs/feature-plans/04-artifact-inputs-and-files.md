@@ -17,8 +17,8 @@ response artifact can feed a later HTTP request through the same input.
 
 The first release includes the consumer, both input-local upload entry points,
 retention safety, documentation and real integrated qualification. CSV/JSON
-parsing and multipart are approved in the follow-up below; generated files and
-asset discovery remain later work. Undelivered controls stay absent.
+parsing and multipart are approved in the follow-up below; generated files are delivered by [F34](34-create-file.md); asset discovery remains
+later work. Undelivered controls stay absent.
 
 ## Reconciled foundation
 
@@ -232,7 +232,7 @@ finalize/download and abandoned-upload cleanup stay operational.
 
 The approved follow-up below covers bounded CSV/JSON reading and multipart.
 Bigger files via streaming or paging are the next file improvement, separately
-scoped after this slice. Asset discovery, file creation, scanning and all
+scoped after this slice. Asset discovery, scanning and all
 artifact-aware step recovery remain later work.
 No production rollout is included.
 
@@ -704,7 +704,7 @@ choice outside this plan returns to the owner for review.
 
 Next file improvement: **bigger files via streaming or paging**, separately
 planned after this slice. Other later work: email attachments, webhook file
-ingestion, Excel/other formats, a file browser, CSV/JSON file creation, scanning,
+ingestion, Excel/other formats, a file browser, scanning,
 all artifact-aware step recovery (including Read file) and asset management.
 None is an implicit dependency of these parts.
 

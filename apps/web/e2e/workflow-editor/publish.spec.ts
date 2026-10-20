@@ -510,6 +510,7 @@ for (const width of [375, 990, 1440]) {
     await installEditorRoutes(page, remoteDraft(graph));
     const summary = workflowSummary('Incoming orders', versionId);
     summary.workflow.activationStatus = 'activating';
+    summary.workflow.webhookSetupRequired = true;
     await page.route(
       `**/v1/workspaces/${workspaceId}/workflows/${workflowId}`,
       (route) => route.fulfill({ json: summary }),
@@ -521,26 +522,9 @@ for (const width of [375, 990, 1440]) {
     await routeVersions(page, () => graph, 'a');
     await page.route(
       `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/triggers`,
-      (route) =>
-        route.fulfill({
-          json: {
-            items: [
-              {
-                id: previewId,
-                workflowId,
-                workflowVersionId: versionId,
-                nodeId: 'incoming',
-                kind: 'webhook',
-                status: 'configuration_required',
-                healthStatus: 'pending',
-                endpointReady: false,
-                authentication: { mode: 'signed', allowedOrigins: [] },
-                lastErrorCode: null,
-                reconciledAt: null,
-              },
-            ],
-          },
-        }),
+      () => {
+        throw new Error('Summary state must not fetch trigger credentials');
+      },
     );
     await page.goto(editorUrl);
     const setup = page.getByRole('link', {

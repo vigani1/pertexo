@@ -4,6 +4,7 @@ import type {
 } from '@pertexo/contracts';
 import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { workflowKeys } from '@/features/workflows/queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { commandWebhook, setScheduleEnabled } from '../workflow-settings.api';
 import { workflowSettingsKeys } from '../workflow-settings.queries';
@@ -221,13 +222,18 @@ export function useWebhookCommand({
         });
       }
       try {
-        await queryClient.invalidateQueries({
-          queryKey: workflowSettingsKeys.webhooks(
-            userId,
-            workspaceId,
-            workflowId,
-          ),
-        });
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: workflowSettingsKeys.webhooks(
+              userId,
+              workspaceId,
+              workflowId,
+            ),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: workflowKeys.scope(userId, workspaceId),
+          }),
+        ]);
       } catch {
         setError({
           triggerId: attempt.triggerId,

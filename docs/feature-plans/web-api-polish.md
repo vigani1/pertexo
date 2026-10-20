@@ -141,3 +141,15 @@ credential-reference changes remain a separate connection aspect. The glossary
 and web guide record that distinction. React Flow's external API names and
 stored graph fields remain unchanged. The incoming-link file move has its own
 gated commit before the copy and helper names change.
+
+
+## Summary readiness follow-up (2026-10-20)
+
+Expose `webhookSetupRequired` with the workflow summary: one scoped SQL
+projection of current-publication webhook endpoint availability, shared by
+ordinary reads and organization pages. The header, list and Home use the same
+state helper; no row fetches trigger management or credentials. Only transient
+activation polls the existing summary; creating an endpoint refreshes it.
+Regression coverage includes serving-role PostgreSQL projections, list/Home
+labels, the header without a trigger-health request, and each nested JSON tree
+arrow opening and closing independently of its parent. No stored schema change.
