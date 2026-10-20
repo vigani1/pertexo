@@ -249,9 +249,9 @@ export function EditorWorkspace({
           onPortDrop={quickAdd.openAtDrop}
           onAddToBody={addToBody}
           onOpenStep={() => {
-            // The first tap already selected it; this brings its panel up
-            // on a phone and the setup tab everywhere.
-            navigation.openTab('setup');
+            // The first tap already selected it; this only brings its panel
+            // up where panels fold away, and leaves the tab as it was.
+            setMobilePanel('inspector');
           }}
         >
           <StartPicker
