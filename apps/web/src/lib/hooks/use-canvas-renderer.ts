@@ -1,3 +1,4 @@
+import { useAppearance } from '../appearance/use-choice';
 import {
   useCallback,
   useEffect,
@@ -53,6 +54,7 @@ export function useCanvasRenderer<Renderer extends CanvasRenderer>(
   createRenderer: (canvas: HTMLCanvasElement) => Renderer,
   animate = true,
 ): CanvasHandle<Renderer> {
+  const { theme } = useAppearance();
   const rendererRef = useRef<Renderer | null>(null);
   const loopRef = useRef<Readonly<{
     update: () => void;
@@ -143,7 +145,7 @@ export function useCanvasRenderer<Renderer extends CanvasRenderer>(
       rendererRef.current = null;
       loopRef.current = null;
     };
-  }, [canvasRef]);
+  }, [canvasRef, theme]);
 
   useEffect(() => {
     loopRef.current?.update();

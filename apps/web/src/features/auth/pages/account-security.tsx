@@ -1,3 +1,4 @@
+import { AccountAppearanceSection } from '../components/account/appearance';
 import { AccountTwoFactorSection } from '../components/two-factor/section';
 import type { UserProfileResponse } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
@@ -77,6 +78,7 @@ export function AccountSecurityPage({
           <TabsTrigger value="sessions">Sessions</TabsTrigger>
         </TabsList>
         <TabsContent value="profile" className="flex flex-col pt-6">
+          <AccountAppearanceSection />
           <AccountProfileSection
             apiClient={apiClient}
             user={user}

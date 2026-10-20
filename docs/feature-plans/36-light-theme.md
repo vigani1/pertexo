@@ -1,6 +1,6 @@
 # F36 — Light and dark appearance
 
-Status: planned; owner-approved on 2026-10-20.
+Status: implemented and locally qualified; owner-approved on 2026-10-20.
 
 ## Decisions and rules
 
@@ -11,7 +11,7 @@ Status: planned; owner-approved on 2026-10-20.
   storage is unavailable. System follows live OS changes. No backend preference
   subsystem or account migration is needed for a device display preference.
 - One TypeScript owner resolves, persists and applies the choice. Vite injects
-  its small synchronous bootstrap before styles and first paint; the React
+  its small synchronous bootstrap before first paint; the React
   control subscribes to that same owner. The boot ground, text, browser chrome,
   native controls and application share the resolved palette. Invalid/missing
   storage falls back to System. The bootstrap works before authentication.
@@ -38,11 +38,11 @@ additional appearance requirement.
 
 | Part | Owner | Status |
 | --- | --- | --- |
-| Semantic token pass, dark unchanged | styles/globals.css, existing renderers and shared primitives | Pending |
-| Bootstrap and subscription | lib/appearance; Vite HTML injection | Pending |
-| Appearance control | auth/components/account/appearance, account profile page | Pending |
-| Light palette and canvas redraw | styles and existing canvas lifecycle owner | Pending |
-| Qualification and docs | web tests, e2e, README and architecture §11 | Pending |
+| Semantic token pass, dark unchanged | styles/globals.css, existing renderers and shared primitives | Complete |
+| Bootstrap and subscription | lib/appearance; Vite HTML injection | Complete |
+| Appearance control | auth/components/account/appearance, account profile page | Complete |
+| Light palette and canvas redraw | styles and existing canvas lifecycle owner | Complete |
+| Qualification and docs | web tests, e2e, README and architecture §11 | Complete |
 
 ## Verification
 
@@ -61,8 +61,26 @@ additional appearance requirement.
 
 No integrations, AI, theme packages, custom themes or per-workspace appearance.
 
-Token qualification: nine deterministic renders (login, workflows and editor at
-1440/990/375 px) match the prior dark appearance. Login is pixel-identical;
+Token qualification: nine deterministic renders (public error state, workflows and editor at
+1440/990/375 px) match the prior dark appearance. The public error state is pixel-identical;
 other surfaces differ by at most one RGB level from alpha colour interpolation.
 No geometry or readable contrast changed. Baselines are local qualification
 artifacts under `/tmp/pertexo-f36-visual`, not application assets.
+
+Contrast qualification also removes zero-count label fading, makes light Loom
+labels/threads opaque and gives meaningful graph links a readable ink. The node
+card used an invalid combined image/colour value; separate background colour
+and gradient now make its intended solid fill work. Light node shadows are
+shorter and softer than dark ones.
+
+Final qualification (2026-10-20): build/types and lint pass; 1,404 web unit tests;
+243 mocked journeys in dark, 236 plus seven added page journeys in light, and
+15 focused appearance/page checks. Automated rendered contrast checks cover 49
+routes in both palettes at 1440, 990 and 375 px with no reported failures.
+Decorative gradients produce some incomplete automated checks; the editor,
+run detail, Loom, glass and Core also receive rendered inspection. Light Loom
+labels/threads use opaque ink; graph-link ink exceeds 3:1 on its ground.
+React Doctor reports no findings (91/100, including the token-only pass).
+Browser screenshots and contrast manifests stay in `/tmp/pertexo-f36-audit`.
+The existing >500 kB editor chunk warning remains; this feature adds no runtime
+dependency. Full pre-push verification is required before PR delivery.

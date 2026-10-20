@@ -73,10 +73,10 @@ export function WorkflowEdge({
         className={cn(
           '!stroke-[1.6] transition-[stroke] duration-150 motion-reduce:transition-none',
           data?.intoIssue === true
-            ? '!stroke-destructive/70 [stroke-dasharray:4_5]'
-            : '!stroke-muted-foreground/35',
+            ? '!stroke-destructive [stroke-dasharray:4_5]'
+            : '!stroke-graph-link',
           data?.failure === true &&
-            '!stroke-destructive/70 [stroke-dasharray:1_4_7_4]',
+            '!stroke-destructive [stroke-dasharray:1_4_7_4]',
           hovered && '!stroke-accent-foreground/75',
           selected === true && '!stroke-primary !stroke-2',
           FOCUSED_THREAD,

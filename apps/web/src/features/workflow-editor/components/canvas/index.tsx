@@ -1,3 +1,4 @@
+import { useAppearance } from '@/lib/appearance/use-choice';
 import '@xyflow/react/dist/style.css';
 import {
   ReactFlow,
@@ -109,6 +110,7 @@ export function WorkflowCanvas({
   children?: ReactNode;
 }>) {
   // Timed by hand: a phone's double tap doesn't reliably fire dblclick.
+  const { theme } = useAppearance();
   const lastTap = useRef<Readonly<{ id: string; at: number }>>(undefined);
   const store = useEditorStoreApi();
   const { screenToFlowPosition } = useReactFlow();
@@ -185,6 +187,7 @@ export function WorkflowCanvas({
       />
       <CanvasActionsContext value={actions}>
         <ReactFlow<WorkflowFlowNode, WorkflowFlowEdge>
+          colorMode={theme}
           nodes={projection.nodes}
           edges={projection.edges}
           nodeTypes={nodeTypes}
