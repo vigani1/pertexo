@@ -1,3 +1,5 @@
+import { signingKeyCredentialSchema } from '@pertexo/node-sdk';
+export { signingKeyCredentialSchema } from '@pertexo/node-sdk';
 import { z } from 'zod';
 import { utf8ByteLength } from './shared/text.js';
 
@@ -5,8 +7,14 @@ import { isSupportedHttpFieldValue } from './shared/http-field-value.js';
 
 export const connectionIdentifierSchema = z.uuid();
 const connectionSecretVersionIdentifierSchema = z.uuid();
-const connectionProviderKeySchema = z.enum(['http', 'slack', 'email']);
+const connectionProviderKeySchema = z.enum([
+  'http',
+  'slack',
+  'email',
+  'signing',
+]);
 const connectionAuthTypeSchema = z.enum([
+  'hmac_key',
   'http_headers',
   'slack_bot_token',
   'resend_api_key',
@@ -174,6 +182,7 @@ export const resendApiKeyCredentialSchema = z
   .readonly();
 
 const connectionCredentialSchema = z.discriminatedUnion('type', [
+  signingKeyCredentialSchema,
   httpHeadersCredentialSchema,
   slackBotTokenCredentialSchema,
   resendApiKeyCredentialSchema,
@@ -182,6 +191,14 @@ const connectionCredentialSchema = z.discriminatedUnion('type', [
 export const connectionCreateRequestSchema = z.discriminatedUnion(
   'providerKey',
   [
+    z
+      .object({
+        providerKey: z.literal('signing'),
+        name: connectionNameSchema,
+        credential: signingKeyCredentialSchema,
+      })
+      .strict()
+      .readonly(),
     z
       .object({
         providerKey: z.literal('http'),
@@ -249,6 +266,10 @@ const emailConnectionTestRequestSchema = z
   .readonly();
 
 export const connectionTestRequestSchema = z.union([
+  z
+    .object({ providerKey: z.literal('signing') })
+    .strict()
+    .readonly(),
   httpConnectionTestRequestSchema,
   slackConnectionTestRequestSchema,
   emailConnectionTestRequestSchema,

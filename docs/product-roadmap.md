@@ -247,7 +247,7 @@ only after its gate is resolved.
 | [F35](feature-plans/35-webhook-test-events.md) | Webhook test events: listen in the editor and keep a real request as sample data | Extends webhook triggers and F02 samples | M | Implemented (2026-10-20): authenticated, one-shot temporary test URL, explicit F02 pin and local/real-API/browser qualification |
 | [F36](feature-plans/36-light-theme.md) | Light theme alongside the dark one | Frontend design tokens and a personal setting | M | Implemented: System/Light/Dark, pre-paint preference, semantic Weft palettes and browser qualification |
 | [F37](feature-plans/37-canvas-notes.md) | Notes on the workflow canvas | Editor and graph metadata, separate from F19 comments | M | Implemented: bounded Markdown notes, keyboard/phone editing, version comparisons and portable graph metadata |
-| F38 | Utility steps: XML/HTML parsing, hashes, signatures and IDs, text and number formatting | Extends F24 transforms | M–L | Proposed |
+| [F38](feature-plans/38-utility-steps.md) | Utility steps: XML/HTML parsing, hashes, signatures and IDs, text and number formatting | Extends F24 transforms | M–L | Delivered |
 | F39 | Python in the Code step | Extends the F20 runner | L | Proposed (later, by demand) |
 | F40 | Community-built steps through a public step SDK | Opens the node SDK and catalog | XL | Proposed (later, by demand) |
 | F41 | External secret stores for connection credentials | Extends connections | L | Proposed (later, by demand) |

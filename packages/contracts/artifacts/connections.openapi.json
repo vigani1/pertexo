@@ -1535,6 +1535,47 @@
             "properties": {
               "providerKey": {
                 "type": "string",
+                "const": "signing"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "credential": {
+                "readOnly": true,
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "hmac_key"
+                  },
+                  "signingKey": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  }
+                },
+                "required": [
+                  "type",
+                  "signingKey"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "providerKey",
+              "name",
+              "credential"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "providerKey": {
+                "type": "string",
                 "const": "http"
               },
               "name": {
@@ -1698,7 +1739,8 @@
                   "enum": [
                     "http",
                     "slack",
-                    "email"
+                    "email",
+                    "signing"
                   ]
                 },
                 "name": {
@@ -1709,6 +1751,7 @@
                 "authType": {
                   "type": "string",
                   "enum": [
+                    "hmac_key",
                     "http_headers",
                     "slack_bot_token",
                     "resend_api_key"
@@ -1880,7 +1923,8 @@
             "enum": [
               "http",
               "slack",
-              "email"
+              "email",
+              "signing"
             ]
           },
           "name": {
@@ -1891,6 +1935,7 @@
           "authType": {
             "type": "string",
             "enum": [
+              "hmac_key",
               "http_headers",
               "slack_bot_token",
               "resend_api_key"
@@ -2122,6 +2167,26 @@
                 "properties": {
                   "type": {
                     "type": "string",
+                    "const": "hmac_key"
+                  },
+                  "signingKey": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  }
+                },
+                "required": [
+                  "type",
+                  "signingKey"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "readOnly": true,
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
                     "const": "http_headers"
                   },
                   "headers": {
@@ -2209,6 +2274,20 @@
             "readOnly": true,
             "type": "object",
             "properties": {
+              "providerKey": {
+                "type": "string",
+                "const": "signing"
+              }
+            },
+            "required": [
+              "providerKey"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
               "url": {
                 "type": "string",
                 "maxLength": 2048,
@@ -2279,7 +2358,8 @@
                 "enum": [
                   "http",
                   "slack",
-                  "email"
+                  "email",
+                  "signing"
                 ]
               },
               "name": {
@@ -2290,6 +2370,7 @@
               "authType": {
                 "type": "string",
                 "enum": [
+                  "hmac_key",
                   "http_headers",
                   "slack_bot_token",
                   "resend_api_key"

@@ -2,6 +2,50 @@ import type { SchemaFieldSpec } from '../draft';
 
 type FieldWords = Pick<SchemaFieldSpec, 'optionLabels' | 'description'>;
 const words: Readonly<Record<string, Readonly<Record<string, FieldWords>>>> = {
+  'core.hmac': {
+    algorithm: { optionLabels: { sha256: 'SHA-256', sha512: 'SHA-512' } },
+  },
+  'core.text': {
+    operation: {
+      optionLabels: {
+        uppercase: 'Uppercase',
+        lowercase: 'Lowercase',
+        trim: 'Trim whitespace',
+        replace: 'Replace text',
+        split: 'Split text',
+        truncate: 'Truncate text',
+      },
+    },
+  },
+  'core.crypto': {
+    operation: {
+      optionLabels: { hash: 'Hash text', uuid: 'UUID', random_id: 'Random ID' },
+    },
+    algorithm: {
+      optionLabels: {
+        sha256: 'SHA-256',
+        sha512: 'SHA-512',
+        md5: 'MD5 · not for security',
+      },
+    },
+  },
+  'core.xml': {
+    operation: { optionLabels: { parse: 'XML to JSON', build: 'JSON to XML' } },
+  },
+  'core.html': {
+    operation: {
+      optionLabels: { text: 'Extract text', attribute: 'Extract attribute' },
+    },
+  },
+  'core.number': {
+    operation: {
+      optionLabels: {
+        decimal: 'Decimal',
+        percent: 'Percent',
+        currency: 'Currency',
+      },
+    },
+  },
   'core.filter': {
     path: {
       description:

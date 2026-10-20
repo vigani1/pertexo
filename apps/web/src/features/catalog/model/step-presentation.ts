@@ -1,6 +1,10 @@
 import { WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import {
+  KeyRoundIcon,
+  CaseSensitiveIcon,
+  CodeXmlIcon,
+  BinaryIcon,
   Table2Icon,
   BoxIcon,
   FileJsonIcon,
@@ -47,6 +51,42 @@ type RegistryEntry = Omit<StepPresentation, 'family'> &
   Readonly<{ family: StepFamily }>;
 
 const registry: Readonly<Record<string, RegistryEntry>> = Object.freeze({
+  'core.text': {
+    name: 'Format text',
+    description: 'Case, trim, replace, split or truncate text',
+    icon: CaseSensitiveIcon,
+    family: 'transform',
+  },
+  'core.number': {
+    name: 'Format number',
+    description: 'Format decimals, percentages and currency',
+    icon: HashIcon,
+    family: 'transform',
+  },
+  'core.crypto': {
+    name: 'Crypto',
+    description: 'Hash text or generate UUIDs and random IDs',
+    icon: BinaryIcon,
+    family: 'transform',
+  },
+  'core.hmac': {
+    name: 'HMAC signature',
+    description: 'Sign text with an encrypted key',
+    icon: KeyRoundIcon,
+    family: 'transform',
+  },
+  'core.xml': {
+    name: 'Convert XML',
+    description: 'Convert XML to JSON and back',
+    icon: CodeXmlIcon,
+    family: 'transform',
+  },
+  'core.html': {
+    name: 'Extract HTML',
+    description: 'Select text or attributes with CSS selectors',
+    icon: CodeXmlIcon,
+    family: 'transform',
+  },
   'core.table_find': {
     name: 'Find rows',
     description: 'Find rows in a workspace data table',
@@ -338,6 +378,7 @@ export function familyWord(family: StepFamily | 'unknown'): string {
 const connectionWords: Readonly<Record<string, string>> = {
   slack_bot_token: 'Slack',
   resend_api_key: 'Email · Resend',
+  hmac_key: 'Signing key',
   http_headers: 'HTTP',
 };
 

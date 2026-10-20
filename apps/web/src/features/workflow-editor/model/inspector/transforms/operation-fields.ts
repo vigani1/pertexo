@@ -2,10 +2,11 @@ import { isRecord } from '@pertexo/workflow-model';
 import { schemaFields, type SchemaFieldSpec } from '../draft';
 import { describeTransformFields } from './fields';
 
-/** Only Date's catalog union is projected; unknown shapes remain editable as JSON. */
+/** Project a catalog operation union; unknown shapes remain editable as JSON. */
 export function operationSetupFields(
   schema: unknown,
   operation: unknown,
+  definitionKey = 'core.date',
 ):
   | Readonly<{ operation: SchemaFieldSpec; fields: readonly SchemaFieldSpec[] }>
   | undefined {
@@ -29,13 +30,13 @@ export function operationSetupFields(
     [
       {
         key: 'operation',
-        label: 'Date operation',
+        label: definitionKey === 'core.date' ? 'Date operation' : 'Operation',
         kind: 'string',
         required: true,
         options: operations.map((variant) => variant.operation),
       },
     ],
-    'core.date',
+    definitionKey,
   );
   if (operationField === undefined) return undefined;
   return {
@@ -44,7 +45,7 @@ export function operationSetupFields(
       schemaFields(selected?.schema).filter(
         (field) => field.key !== 'operation',
       ),
-      'core.date',
+      definitionKey,
     ),
   };
 }

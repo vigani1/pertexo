@@ -33,3 +33,5 @@ export {
   StoredExecutionValueInvalidError,
   storedExecutionJsonStringBytes,
 } from './values/stored-json.js';
+
+export { signingKeyCredentialSchema } from './credentials/signing-key.js';

@@ -35,6 +35,7 @@ import {
 } from '../telemetry.js';
 import {
   connectionTestRequestSchema,
+  signingKeyCredentialSchema,
   httpHeadersCredentialSchema,
   resendApiKeyCredentialSchema,
   slackBotTokenCredentialSchema,
@@ -206,7 +207,7 @@ export class TestConnectionUseCase {
 
   private async testProvider(
     destination: FailureNotificationDestinationResponse | undefined,
-    expectedProviderKey: 'email' | 'http' | 'slack',
+    expectedProviderKey: 'email' | 'http' | 'slack' | 'signing',
     request: ParsedConnectionTestRequest,
     credential: DecodedConnectionCredential,
     input: TestConnectionCommand,
@@ -271,6 +272,14 @@ export class TestConnectionUseCase {
       });
       return slackTestOutcome(result);
     }
+    if (
+      credential.type === 'hmac_key' &&
+      'providerKey' in request &&
+      request.providerKey === 'signing'
+    ) {
+      await beforeDispatch();
+      return Object.freeze({ ok: true, httpStatus: 200 });
+    }
     if (credential.type !== 'http_headers' || !('url' in request))
       throw new ConnectionSecretEncryptionError();
     const response = await this.httpClient.execute({
@@ -298,6 +307,8 @@ function decodeCredential(plaintext: Uint8Array) {
       new TextDecoder('utf-8', { fatal: true }).decode(plaintext),
     );
     if (value !== null && typeof value === 'object' && 'type' in value) {
+      if (value.type === 'hmac_key')
+        return signingKeyCredentialSchema.parse(value);
       if (value.type === 'slack_bot_token')
         return slackBotTokenCredentialSchema.parse(value);
       if (value.type === 'resend_api_key')

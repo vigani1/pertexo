@@ -1,3 +1,4 @@
+import { utilityOperationConfig } from '../inspector/transforms/utility-config';
 import {
   approvalConfigSchema,
   formConfigSchema,
@@ -75,7 +76,9 @@ export function startingConfig(
         : {}),
     };
   }
-  return structuredClone(STARTING[definitionKey] ?? {});
+  return structuredClone(
+    STARTING[definitionKey] ?? utilityOperationConfig(definitionKey) ?? {},
+  );
 }
 
 /** Changing Date operation replaces its exact variant in one undoable edit. */

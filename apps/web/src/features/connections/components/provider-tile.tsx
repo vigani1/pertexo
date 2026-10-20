@@ -1,8 +1,15 @@
-import { GlobeIcon, HashIcon, MailIcon, type LucideIcon } from 'lucide-react';
+import {
+  KeyRoundIcon,
+  GlobeIcon,
+  HashIcon,
+  MailIcon,
+  type LucideIcon,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ProviderKey } from '../model/connection-providers';
 
 const ICONS: Readonly<Record<ProviderKey, LucideIcon>> = {
+  signing: KeyRoundIcon,
   slack: HashIcon,
   http: GlobeIcon,
   email: MailIcon,

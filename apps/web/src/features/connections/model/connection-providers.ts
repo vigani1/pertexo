@@ -6,6 +6,7 @@ export const PROVIDER_KEYS = [
   'slack',
   'http',
   'email',
+  'signing',
 ] as const satisfies readonly ProviderKey[];
 
 type ProviderCopy = Readonly<{
@@ -22,6 +23,13 @@ type ProviderCopy = Readonly<{
 }>;
 
 export const PROVIDERS: Readonly<Record<ProviderKey, ProviderCopy>> = {
+  signing: {
+    name: 'Signing key',
+    purpose: 'Create HMAC signatures locally',
+    credential: 'HMAC key',
+    connectTitle: 'Connect Signing key',
+    usedBy: 'HMAC steps',
+  },
   slack: {
     name: 'Slack',
     purpose: 'Post messages to channels',
@@ -48,6 +56,7 @@ export const PROVIDERS: Readonly<Record<ProviderKey, ProviderCopy>> = {
 const PROVIDER_BY_CREDENTIAL: Readonly<
   Record<ConnectionResponse['authType'], ProviderKey>
 > = {
+  hmac_key: 'signing',
   slack_bot_token: 'slack',
   http_headers: 'http',
   resend_api_key: 'email',
@@ -84,6 +93,7 @@ export function connectionNameError(name: string): string | undefined {
 }
 
 const NAME_NOUNS: Readonly<Record<ProviderKey, string>> = {
+  signing: 'signing key',
   slack: 'Slack',
   http: 'API',
   email: 'email',

@@ -434,3 +434,7 @@ The shared collection browser authoring case now creates nine steps rather than
 six; its mocked case uses the matching live journey's existing 60-second budget
 for ordinary debounced saves plus reload/edit verification. Assertions and
 retry settings stay unchanged. The worker maximum retains its original timeout.
+
+## Utility extension
+
+[F38](38-utility-steps.md) extends the same transform catalog and bounded value contract with XML, HTML extraction, text, number formatting, hashes, HMAC and random IDs. Its plan owns the exact semantics and delivery.

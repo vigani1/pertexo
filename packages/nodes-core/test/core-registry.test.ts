@@ -54,6 +54,12 @@ describe('core node catalog', () => {
       'core.table_update@1',
       'core.table_upsert@1',
       'core.table_delete@1',
+      'core.text@1',
+      'core.number@1',
+      'core.crypto@1',
+      'core.hmac@1',
+      'core.xml@1',
+      'core.html@1',
       'core.code@1',
       'core.respond_webhook@1',
       'core.request_input@1',
@@ -98,7 +104,9 @@ describe('core node catalog', () => {
       CORE_NODE_CATALOG.definitions.every(
         (manifest) =>
           manifest.credentialRequirements.length === 0 &&
-          manifest.connectionRequirements.length === 0,
+          (manifest.definition.key === 'core.hmac'
+            ? manifest.connectionRequirements.join(',') === 'hmac_key'
+            : manifest.connectionRequirements.length === 0),
       ),
     ).toBe(true);
   });
