@@ -1,6 +1,6 @@
 # F34 — Create file
 
-Status: implemented and locally qualified on 2026-10-20; delivery PR pending CI. F45 remains separate.
+Status: implemented and locally qualified on 2026-10-20. One delivery PR; F45 remains separate.
 
 ## Decisions and rules
 
