@@ -1,3 +1,5 @@
+import { httpSetupFields } from '../../../model/inspector/http-pagination/fields';
+import { HttpPaginationSetup } from '../http-pagination/setup';
 import { DataTableSetup } from '../builders/table-setup';
 import { isDataTableDefinition, type CodeSettings } from '@pertexo/node-sdk';
 import { Suspense } from 'react';
@@ -258,6 +260,24 @@ function SetupControls({
   if (scheduleSchema !== undefined)
     return (
       <ScheduleBuilder config={config} schema={scheduleSchema} form={form} />
+    );
+  if (formKey === 'http.request')
+    return (
+      <>
+        <SchemaFieldList
+          fields={httpSetupFields(fields, config)}
+          config={config}
+          form={form}
+          jsonOnlySettings={
+            schemaPropertyCount(configSchema) > fields.length + 1
+          }
+        />
+        <HttpPaginationSetup
+          schema={configSchema}
+          config={config}
+          form={form}
+        />
+      </>
     );
   const list = listBuilder(node, graph, form);
   const propertyCount = schemaPropertyCount(configSchema);

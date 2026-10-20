@@ -37,3 +37,8 @@ export type {
   HttpMultipartPart,
   HttpMultipartFile,
 } from './multipart/validation.js';
+
+export {
+  httpPaginationSchema,
+  type HttpPagination,
+} from './pagination/validation.js';

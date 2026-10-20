@@ -1,6 +1,6 @@
 # F32 — HTTP Request pagination
 
-Status: engine implemented, in verification; scope approved 2026-10-19 and implementation alignments approved 2026-10-20.
+Status: engine implemented and locally verified; editor and docs in progress; scope approved 2026-10-19 and implementation alignments approved 2026-10-20.
 Parent: [product roadmap](../product-roadmap.md). Size: **M**.
 
 ## Outcome
@@ -151,7 +151,7 @@ matches [n8n's HTTP Request pagination](https://docs.n8n.io/build/code-in-n8n/co
 
 ## Acceptance
 
-- [ ] A real run against a three-page JSON API outputs all items in order,
+- [x] A real run against a three-page JSON API outputs all items in order,
       with `pageCount: 3` and `complete: true`.
 - [x] Each of the four modes works, and each stop rule ends paging correctly.
 - [x] A next link to another host fails without sending credentials there.
@@ -159,7 +159,7 @@ matches [n8n's HTTP Request pagination](https://docs.n8n.io/build/code-in-n8n/co
       failure.
 - [x] A step without pagination behaves exactly as before; all existing HTTP
       tests pass unchanged.
-- [ ] Setup shows only the chosen mode's fields, works on a phone, and
+- [x] Setup shows only the chosen mode's fields, works on a phone, and
       explains what it will do.
 - [ ] The guide section is published and the roadmap row is updated.
 
@@ -177,7 +177,7 @@ matches [n8n's HTTP Request pagination](https://docs.n8n.io/build/code-in-n8n/co
 | Slice | Status | PR |
 | --- | --- | --- |
 | 1 Engine | Implemented; verification in progress | This PR |
-| 2 Editor and docs | Approved | — |
+| 2 Editor and docs | In progress | This PR |
 
 ## Retry and deadline alignment (owner-approved 2026-10-20)
 
@@ -257,3 +257,25 @@ contract. No syntax, stored format, role or service changes.
 - HTTP success telemetry adds only pages_fetched (1–100). Pagination failures
   persist a fixed code and a safe numbered diagnostic in runs and previews.
   Real run and single-step preview qualification belongs to slice 2.
+
+
+### Editor alignment
+
+The generic setup form projects top-level primitive fields. It cannot select
+a nested discriminated pagination union and its next-link source cleanly.
+Use a focused, initially collapsed Pagination section with mode/source choices,
+and reuse the existing schema field controls for the selected shape. Defaults
+and validation come from the public integration schema. Nested edits apply
+to the current draft, preserving sibling settings and undo behavior. Mapping
+suggestions collect root properties from output unions, preserving legacy
+response fields while adding items.
+
+### Editor verification
+
+The owned browser/worker journey fetched three authenticated local JSON pages
+through a published run and a single-step preview. Both produced ordered items,
+pageCount 3 and complete true. Desktop (1280 px) and phone (375 px) screenshots
+were inspected; setup stays inside the viewport and scrolls in the inspector.
+The mocked browser cases exercise all modes, source choices, human units, bounds
+and saved-draft reloads. Eight model tests cover shared defaults, schema
+projection, nested edits and mapping suggestions.

@@ -1,6 +1,9 @@
 import { expect, test, type Page } from '../../support/fixtures';
 import { workflowDraftResponseSchema } from '@pertexo/contracts';
-import { httpMultipartConfigSchema } from '@pertexo/integrations';
+import {
+  httpMultipartConfigSchema,
+  httpPaginationSchema,
+} from '@pertexo/integrations';
 import { platformBrowserNodeDefinitionCatalog } from '../../../../../packages/node-catalog/dist/index.js';
 import {
   addCsrfCookie,
@@ -365,5 +368,122 @@ for (const width of [375, 1280]) {
           .parts.map(({ name }) => name),
       )
       .toEqual(['restored']);
+  });
+}
+
+for (const width of [375, 1280]) {
+  test(`configures each pagination mode and keeps its bounds at ${String(width)}px`, async ({
+    page,
+    context,
+  }) => {
+    await page.setViewportSize({ width, height: 768 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await addCsrfCookie(context);
+    const remote = httpDraft();
+    await installHttp(page, remote);
+    await page.goto(editorUrl);
+    await openSetup(page, width);
+    const section = page.locator('details').filter({
+      has: page.locator('summary').filter({ hasText: 'Pagination' }),
+    });
+    await expect(section.locator('summary')).toHaveText('Pagination · Off');
+    await expect(page.getByLabel('Items path', { exact: true })).toBeHidden();
+    await section.locator('summary').click();
+    const mode = page.getByLabel('Pagination mode', { exact: true });
+    const choose = async (label: string) => {
+      await mode.click();
+      await page.getByRole('option', { name: label, exact: true }).click();
+    };
+    const saved = () =>
+      httpPaginationSchema.safeParse(savedConfig(remote).pagination).data;
+    await choose('Next page link');
+    await expect(
+      page.getByLabel('Next link path', { exact: true }),
+    ).toHaveValue('$.next');
+    await page.getByLabel('Items path', { exact: true }).fill('records');
+    await page.getByLabel('Max pages', { exact: true }).fill('3');
+    await expect.poll(() => saved()?.itemsPath).toBe('$.records');
+    await expect.poll(() => saved()?.maxPages).toBe(3);
+    await expect(
+      page.getByLabel('Largest page (in kilobytes)', { exact: true }),
+    ).toHaveValue('64');
+    await choose('Cursor');
+    await expect(
+      page.getByLabel('Next link path', { exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByLabel('Next cursor path', { exact: true }),
+    ).toHaveValue('$.meta.next_cursor');
+    await page.getByLabel('Query parameter', { exact: true }).fill('after');
+    await expect
+      .poll(() => saved())
+      .toMatchObject({
+        mode: 'cursor',
+        parameter: 'after',
+        itemsPath: '$.records',
+        maxPages: 3,
+      });
+    await choose('Page number');
+    await expect(
+      page.getByLabel('Next cursor path', { exact: true }),
+    ).toHaveCount(0);
+    await expect(page.getByLabel('First page', { exact: true })).toHaveValue(
+      '1',
+    );
+    await choose('Offset');
+    await expect(page.getByLabel('First offset', { exact: true })).toHaveValue(
+      '0',
+    );
+    await page.getByLabel('Offset step', { exact: true }).fill('50');
+    await page
+      .getByLabel('Delay between pages (in seconds)', { exact: true })
+      .fill('0.25');
+    await expect
+      .poll(() => saved())
+      .toMatchObject({
+        mode: 'offset',
+        step: 50,
+        delayMillis: 250,
+        maxPages: 3,
+      });
+    await page.getByLabel('Max pages', { exact: true }).fill('0');
+    await page.getByLabel('Max pages', { exact: true }).press('Tab');
+    await expect(page.getByLabel('Max pages', { exact: true })).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+    expect(saved()?.maxPages).toBe(3);
+    await page.getByLabel('Max pages', { exact: true }).fill('3');
+    await choose('Next page link');
+    await page.getByLabel('Next link in', { exact: true }).click();
+    await page
+      .getByRole('option', { name: 'Link header', exact: true })
+      .click();
+    await expect(
+      page.getByLabel('Next link path', { exact: true }),
+    ).toHaveCount(0);
+    await expect
+      .poll(() => saved())
+      .toMatchObject({
+        mode: 'next_link',
+        source: { kind: 'link_header' },
+        itemsPath: '$.records',
+        maxPages: 3,
+        delayMillis: 250,
+      });
+    expect(savedConfig(remote).headers).toEqual({ 'X-Trace': 'preserved' });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.reload();
+    await openSetup(page, width);
+    await section.locator('summary').click();
+    await expect(mode).toContainText('Next page link');
+    await choose('Off');
+    await expect.poll(() => savedConfig(remote).pagination).toBeUndefined();
+    await expect(page.getByLabel('Items path', { exact: true })).toHaveCount(0);
+    expect(savedConfig(remote).headers).toEqual({ 'X-Trace': 'preserved' });
   });
 }

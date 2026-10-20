@@ -132,6 +132,7 @@ const scenario = z
     'collaboration',
     'federation',
     'two-factor',
+    'http-pagination',
     'organization-oidc',
     'notifications',
     'transforms',
@@ -183,7 +184,8 @@ let worker: ChildProcess;
 const controlledHttpScenario =
   scenario === 'webhook-controlled-http' ||
   scenario === 'failure-routing' ||
-  scenario === 'artifact-inputs';
+  scenario === 'artifact-inputs' ||
+  scenario === 'http-pagination';
 let failureRoutingEvidence:
   z.infer<typeof failureRoutingEvidenceSchema> | undefined;
 const httpMaster =
@@ -1152,72 +1154,75 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
             'test',
             '--config',
             'playwright.live.config.ts',
-            scenario === 'federation' || scenario === 'two-factor'
-              ? scenario === 'two-factor'
-                ? 'authentication/two-factor.spec.ts'
-                : 'editor/federation/sign-in.spec.ts'
-              : scenario === 'organization-oidc'
-                ? 'editor/federation/organization.spec.ts'
-                : scenario === 'collaboration'
-                  ? 'editor/collaboration'
-                  : scenario === 'promotion'
-                    ? 'editor/promotions'
-                    : scenario === 'governance'
-                      ? 'editor/governance'
-                      : scenario === 'code'
-                        ? 'editor/code.spec.ts'
-                        : scenario === 'webhook-responses'
-                          ? 'editor/webhook-responses.spec.ts'
-                          : scenario === 'pinned-samples'
-                            ? 'editor/pinned-samples.spec.ts'
-                            : scenario === 'notifications'
-                              ? 'editor/notifications/attention.spec.ts'
-                              : scenario === 'variables'
-                                ? 'editor/variables/snapshots.spec.ts'
-                                : scenario === 'forms'
-                                  ? 'editor/forms/submission.spec.ts'
-                                  : scenario === 'approvals'
-                                    ? 'editor/approvals.spec.ts'
-                                    : scenario === 'error-workflows'
-                                      ? 'editor/error-workflows.spec.ts'
-                                      : scenario === 'artifact-inputs'
-                                        ? 'editor/files/'
-                                        : scenario === 'api-tokens'
-                                          ? 'api-tokens.spec.ts'
-                                          : scenario === 'callable'
-                                            ? 'editor/callable.spec.ts'
-                                            : scenario === 'curated-templates'
-                                              ? 'curated-templates.spec.ts'
-                                              : scenario === 'portability'
-                                                ? 'workflow-portability.spec.ts'
-                                                : scenario === 'input-cases'
-                                                  ? 'workflow-input-cases.spec.ts'
-                                                  : scenario === 'duplication'
-                                                    ? 'workflow-duplication.spec.ts'
-                                                    : scenario ===
-                                                        'nested-conflict'
-                                                      ? 'editor/execution.spec.ts'
-                                                      : scenario === 'receipts'
-                                                        ? 'editor/receipts.spec.ts'
+            scenario === 'http-pagination'
+              ? 'editor/http-pagination.spec.ts'
+              : scenario === 'federation' || scenario === 'two-factor'
+                ? scenario === 'two-factor'
+                  ? 'authentication/two-factor.spec.ts'
+                  : 'editor/federation/sign-in.spec.ts'
+                : scenario === 'organization-oidc'
+                  ? 'editor/federation/organization.spec.ts'
+                  : scenario === 'collaboration'
+                    ? 'editor/collaboration'
+                    : scenario === 'promotion'
+                      ? 'editor/promotions'
+                      : scenario === 'governance'
+                        ? 'editor/governance'
+                        : scenario === 'code'
+                          ? 'editor/code.spec.ts'
+                          : scenario === 'webhook-responses'
+                            ? 'editor/webhook-responses.spec.ts'
+                            : scenario === 'pinned-samples'
+                              ? 'editor/pinned-samples.spec.ts'
+                              : scenario === 'notifications'
+                                ? 'editor/notifications/attention.spec.ts'
+                                : scenario === 'variables'
+                                  ? 'editor/variables/snapshots.spec.ts'
+                                  : scenario === 'forms'
+                                    ? 'editor/forms/submission.spec.ts'
+                                    : scenario === 'approvals'
+                                      ? 'editor/approvals.spec.ts'
+                                      : scenario === 'error-workflows'
+                                        ? 'editor/error-workflows.spec.ts'
+                                        : scenario === 'artifact-inputs'
+                                          ? 'editor/files/'
+                                          : scenario === 'api-tokens'
+                                            ? 'api-tokens.spec.ts'
+                                            : scenario === 'callable'
+                                              ? 'editor/callable.spec.ts'
+                                              : scenario === 'curated-templates'
+                                                ? 'curated-templates.spec.ts'
+                                                : scenario === 'portability'
+                                                  ? 'workflow-portability.spec.ts'
+                                                  : scenario === 'input-cases'
+                                                    ? 'workflow-input-cases.spec.ts'
+                                                    : scenario === 'duplication'
+                                                      ? 'workflow-duplication.spec.ts'
+                                                      : scenario ===
+                                                          'nested-conflict'
+                                                        ? 'editor/execution.spec.ts'
                                                         : scenario ===
-                                                            'run-recovery'
-                                                          ? 'editor/run-recovery.spec.ts'
+                                                            'receipts'
+                                                          ? 'editor/receipts.spec.ts'
                                                           : scenario ===
-                                                              'expression-admission'
-                                                            ? 'editor/expression-admission.spec.ts'
+                                                              'run-recovery'
+                                                            ? 'editor/run-recovery.spec.ts'
                                                             : scenario ===
-                                                                'readonly'
-                                                              ? 'editor/readonly.spec.ts'
+                                                                'expression-admission'
+                                                              ? 'editor/expression-admission.spec.ts'
                                                               : scenario ===
-                                                                  'schedule'
-                                                                ? 'editor/schedule.spec.ts'
+                                                                  'readonly'
+                                                                ? 'editor/readonly.spec.ts'
                                                                 : scenario ===
-                                                                    'failure-routing'
-                                                                  ? 'editor/failure-routing.spec.ts'
+                                                                    'schedule'
+                                                                  ? 'editor/schedule.spec.ts'
                                                                   : scenario ===
-                                                                      'transforms'
-                                                                    ? 'editor/transforms.spec.ts'
-                                                                    : 'editor/webhook-controlled-http.spec.ts',
+                                                                      'failure-routing'
+                                                                    ? 'editor/failure-routing.spec.ts'
+                                                                    : scenario ===
+                                                                        'transforms'
+                                                                      ? 'editor/transforms.spec.ts'
+                                                                      : 'editor/webhook-controlled-http.spec.ts',
           ],
           {
             cwd: webDirectory,
@@ -1253,7 +1258,7 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
       ).toBe(0);
       return;
     }
-    if (scenario === 'two-factor') return;
+    if (scenario === 'two-factor' || scenario === 'http-pagination') return;
     if (scenario === 'federation') {
       const providers = await api
         .database()

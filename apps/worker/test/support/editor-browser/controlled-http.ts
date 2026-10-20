@@ -36,8 +36,11 @@ export function createEditorControlledHttpTarget(
       try {
         if (
           stopped ||
-          incoming.method !== 'POST' ||
-          incoming.url !== '/effect'
+          !(
+            (incoming.method === 'POST' && incoming.url === '/effect') ||
+            (incoming.method === 'GET' &&
+              /^\/pages\?page=[123]$/u.test(incoming.url ?? ''))
+          )
         ) {
           outgoing.writeHead(404).end();
           return;
@@ -49,6 +52,21 @@ export function createEditorControlledHttpTarget(
         supplied.fill(0);
         if (!authorized) {
           outgoing.writeHead(401).end();
+          return;
+        }
+        if (incoming.method === 'GET') {
+          const page = Number(
+            new URL(incoming.url ?? '', controlledActionUrl).searchParams.get(
+              'page',
+            ),
+          );
+          outgoing.writeHead(200, { 'content-type': 'application/json' });
+          outgoing.end(
+            JSON.stringify({
+              data: [{ id: page }],
+              next: page < 3 ? `?page=${String(page + 1)}` : null,
+            }),
+          );
           return;
         }
         const bytes: Buffer[] = [];
@@ -111,16 +129,24 @@ export function createEditorControlledHttpTarget(
   const dispatch = (
     input: SecureHttpTransportRequest,
   ): Promise<SecureHttpTransportResponse> => {
+    const isPage =
+      input.method === 'GET' &&
+      input.url.origin === new URL(controlledActionUrl).origin &&
+      input.url.hash === '' &&
+      /^\/pages\?page=[123]$/u.test(input.url.pathname + input.url.search) &&
+      input.body === undefined;
+    const isEffect =
+      input.url.href === controlledActionUrl &&
+      input.method === 'POST' &&
+      input.body !== undefined &&
+      input.body.byteLength <= maximumBytes;
     // No DNS fallback, redirect forwarding or caller-specified local destination.
     if (
       stopped ||
       port === undefined ||
-      input.url.href !== controlledActionUrl ||
-      input.method !== 'POST' ||
+      !(isPage || isEffect) ||
       input.address.address !== publicTestAddress ||
       input.address.family !== 4 ||
-      input.body === undefined ||
-      input.body.byteLength > maximumBytes ||
       Object.keys(input.headers).some(
         (name) => !['authorization', 'content-type'].includes(name),
       ) ||
@@ -155,11 +181,13 @@ export function createEditorControlledHttpTarget(
         {
           host: '127.0.0.1',
           port,
-          path: '/effect',
-          method: 'POST',
+          path: input.url.pathname + input.url.search,
+          method: input.method,
           headers: {
             ...input.headers,
-            'content-length': input.body?.byteLength,
+            ...(input.body === undefined
+              ? {}
+              : { 'content-length': input.body.byteLength }),
           },
         },
         (incoming) => {

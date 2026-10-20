@@ -80,11 +80,13 @@ const scheduleCase = process.env.EDITOR_BROWSER_CASE === 'schedule';
 const errorWorkflowCase = process.env.EDITOR_BROWSER_CASE === 'error-workflows';
 const webhookResponseCase =
   process.env.EDITOR_BROWSER_CASE === 'webhook-responses';
+const paginationCase = process.env.EDITOR_BROWSER_CASE === 'http-pagination';
 const previewCase =
   process.env.EDITOR_BROWSER_CASE === 'variables' ||
   process.env.EDITOR_BROWSER_CASE === 'transforms' ||
   process.env.EDITOR_BROWSER_CASE === 'pinned-samples' ||
   webhookResponseCase ||
+  paginationCase ||
   codeCase;
 const artifactInputs = process.env.EDITOR_BROWSER_CASE === 'artifact-inputs';
 let artifactTarget:
@@ -92,7 +94,8 @@ let artifactTarget:
 const controlledHttp =
   process.env.EDITOR_BROWSER_CASE === 'webhook-controlled-http' ||
   process.env.EDITOR_BROWSER_CASE === 'failure-routing' ||
-  artifactInputs;
+  artifactInputs ||
+  paginationCase;
 const curatedTemplates =
   process.env.EDITOR_BROWSER_CASE === 'curated-templates';
 let curatedTarget:
@@ -453,7 +456,18 @@ async function constructRuntimes(
       leaseDurationSeconds: 10,
       redisUrl: namespace.redisUrl,
       workerId: `editor-browser-${randomUUID()}`,
-      ...(previewCase ? { preview: await createEditorPreview(database) } : {}),
+      ...(previewCase
+        ? {
+            preview: await createEditorPreview(
+              database,
+              controlledHttpClient === undefined
+                ? undefined
+                : createPlatformNodeRegistry({
+                    httpRequest: { httpClient: controlledHttpClient },
+                  }),
+            ),
+          }
+        : {}),
     },
     {
       // These fail closed if a supposedly pure graph tries to use a provider.

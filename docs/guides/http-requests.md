@@ -1,6 +1,7 @@
 # Call an API with HTTP Request
 
-**HTTP Request** sends one request and hands the response to the steps after it.
+**HTTP Request** calls an API and hands its response to the steps after it.
+Turn on pagination to combine a sequence of JSON pages into one list.
 
 ## Address and run data
 
@@ -50,3 +51,67 @@ On a self-hosted install, requests reach only public addresses until an
 administrator lists the networks to allow in `HTTP_ALLOWED_PRIVATE_NETWORKS`.
 Inside those networks plain `http` also works. See
 [single-server operations](../operations/single-server.md).
+
+
+## Fetch every page
+
+Open **Setup → Pagination** and choose a mode. Pagination supports **GET**;
+turn **Return error responses** off. **Items path** names the list on each
+page, such as `$.data`, or `$` when the response itself is a list.
+
+| Mode | Set | Stops when |
+| --- | --- | --- |
+| Next page link | A JSON path such as `$.next`, or the `Link` header’s `rel="next"` | The next link is missing, null, empty or already visited |
+| Cursor | Next cursor path and the query parameter, such as `$.meta.next_cursor` and `cursor` | The next cursor is missing, null, empty or already visited |
+| Page number | Query parameter and first page (default 1) | A page’s item list is empty |
+| Offset | Query parameter, first offset (default 0) and offset step matching the service’s page size | A page’s item list is empty |
+
+**Max pages** is 10 by default, from 1 to 100. **Delay between pages** is 0 by
+default, up to 10 seconds. Requests run one after another. A relative next link
+uses the current page’s address, including a same-origin redirect. Every page
+and redirect must keep the first request’s scheme, host and port; otherwise
+the step fails before sending credentials to that destination. Private-network
+rules apply to every page.
+
+For example, suppose `https://api.example.com/orders` returns:
+
+```json
+{ "data": [{ "id": 1 }], "next": "?page=2" }
+```
+
+Choose **Next page link → JSON response**, set **Next link path** to `$.next`
+and **Items path** to `$.data`. When three pages return one order each and the
+last returns `"next": null`, the result is:
+
+```json
+{
+  "items": [{ "id": 1 }, { "id": 2 }, { "id": 3 }],
+  "pageCount": 3,
+  "complete": true,
+  "status": 200,
+  "headers": { "content-type": "application/json" },
+  "finalOrigin": "https://api.example.com"
+}
+```
+
+Map `$.items` into the next list or For each step. Paginated output uses
+`items` instead of `body`; status, safe headers and origin describe the last
+page. `pageCount` includes an empty page fetched to find the end.
+
+`complete: false` means Max pages stopped paging. Counter modes conservatively
+report false when their last allowed page was nonempty: proving the end would
+require another request. Check this flag when the next step needs every item.
+Repeated links or cursors end paging without making another request.
+
+Each page must be JSON and fit **Largest page** (64 KB by default, at most
+256 KB). Larger pages fail; they are never stored as files. The combined output
+must fit the step’s 1 MB, depth and member limits. An oversized result fails
+with the page number and advice to lower Max pages or narrow the request; it
+does not return a partial list.
+
+Timeout applies separately to each page. The worst case — Max pages multiplied
+by timeout plus delay — must fit the remaining run or single-step test budget.
+If a test refuses this setup, lower Max pages, timeout or delay. A 429 uses a
+bounded Retry-After hint (integer seconds, at most one minute) with the existing
+retry backoff. A retry fetches from the first page again. Cancellation also
+stops an inter-page delay.
