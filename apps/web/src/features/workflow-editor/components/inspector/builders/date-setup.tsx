@@ -1,6 +1,6 @@
 import { Field, FieldLabel, FieldDescription } from '@/components/ui/field';
 import { dateOperationConfig } from '../../../model/graph/starting-config';
-import { dateSetupFields } from '../../../model/inspector/transforms/date-setup';
+import { operationSetupFields } from '../../../model/inspector/transforms/operation-fields';
 import type { NodeConfig } from '../../../model/inspector/draft';
 import {
   fieldControlId,
@@ -14,7 +14,7 @@ export function DateSetup({
   config,
   form,
 }: Readonly<{ schema: unknown; config: NodeConfig; form: NodeFormApi }>) {
-  const fields = dateSetupFields(schema, config.operation);
+  const fields = operationSetupFields(schema, config.operation);
   if (fields === undefined)
     return (
       <p className="text-sm text-muted-foreground">
