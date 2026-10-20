@@ -101,6 +101,11 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
           await blocker.query('select pg_advisory_unlock(704282,1)');
           const reply = await pending;
           expectProblem(reply, 409, 'auth.conflict');
+          expect(
+            api
+              .mailedMessages(email)
+              .filter((message) => message.purpose === 'recovery_code_sign_in'),
+          ).toHaveLength(0);
           const cookies = reply.headers['set-cookie'];
           expect(
             Array.isArray(cookies) ? cookies : [cookies ?? ''],

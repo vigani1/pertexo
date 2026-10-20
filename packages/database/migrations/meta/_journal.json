@@ -288,6 +288,13 @@
       "when": 1792443914063,
       "tag": "0040_two_factor_sign_in",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1792453911050,
+      "tag": "0041_two_factor_security_notices",
+      "breakpoints": true
     }
   ]
 }

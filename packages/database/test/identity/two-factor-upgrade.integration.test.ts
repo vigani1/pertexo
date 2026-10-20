@@ -50,6 +50,7 @@ it('upgrades password accounts with two-factor off, isolated auth grants and cas
     );
     expect(await migrateDatabase(migration)).toEqual([
       '0040_two_factor_sign_in.sql',
+      '0041_two_factor_security_notices.sql',
     ]);
     expect(
       (

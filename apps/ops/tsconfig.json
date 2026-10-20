@@ -16,6 +16,9 @@
     },
     {
       "path": "../../packages/observability/tsconfig.json"
+    },
+    {
+      "path": "../../packages/integrations/tsconfig.json"
     }
   ]
 }
