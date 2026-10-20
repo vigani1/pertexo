@@ -27,6 +27,6 @@
     "@pertexo/workflow-model": "workspace:*",
     "cron-parser": "5.10.0",
     "csv-parse": "7.0.3",
-    "zod": "4.6.5"
+    "zod": "4.6.7"
   }
 }
