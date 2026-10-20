@@ -164,6 +164,7 @@ export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
         and payload.revision = page.revision and page.bytes <= 1048576`,
   },
   deleteRows('workflow_input_cases'),
+  deleteRows('webhook_test_events'),
   deleteRows('workflow_step_samples'),
   deleteRows('webhook_run_responses'),
   {

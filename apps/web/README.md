@@ -95,11 +95,11 @@ pnpm --filter @pertexo/web exec playwright install chromium
 pnpm --filter @pertexo/web test:e2e
 ```
 
-Development uses `http://127.0.0.1:5173` and proxies unchanged `/v1` requests to
-`http://127.0.0.1:3000`. Set the server-only `PERTEXO_API_PROXY_TARGET` to a
-different HTTP(S) origin when needed; do not use a `VITE_*` value for this.
-Browser tests build the app, own a preview server on port 4173 and control the
-identity/workspace HTTP boundary. Optionally set
+Development uses `http://127.0.0.1:5173` and proxies unchanged `/v1` and
+`/hooks` requests to `http://127.0.0.1:3000`. Set the server-only
+`PERTEXO_API_PROXY_TARGET` to a different HTTP(S) origin when needed; do not use
+a `VITE_*` value for this. Browser tests build the app, own a preview server on
+port 4173 and control the identity/workspace HTTP boundary. Optionally set
 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to an existing Chromium/Chrome executable.
 The tests do not require a live identity provider, backend, Redis or database;
 the API/database suites separately exercise the real callback and discovery
@@ -305,3 +305,8 @@ Workflow Comments support workflow/step threads, explicit private mentions,
 resolve/reopen and author-only edits/deletion. The shared workflow bar shows
 advisory tab presence; unsaved-change warnings retain the draft's existing
 revision checks. See [Collaboration](../../docs/guides/collaboration.md).
+
+The Webhook trigger’s Test tab can listen for one real event on a temporary,
+authenticated URL and explicitly keep it as a pinned sample. It works before
+publishing; see
+[webhook tests](../../docs/guides/webhooks.md#listen-for-a-test-event).

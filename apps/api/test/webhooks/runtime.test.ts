@@ -1,6 +1,7 @@
 import type {
   createWebhookTriggerDatabase,
   WebhookTriggerDatabase,
+  WebhookTestEventStore,
 } from '@pertexo/database/triggers';
 import type {
   DatabaseConfig,
@@ -176,6 +177,10 @@ describe('API webhook runtime ownership', () => {
       sharedRuntime,
       {
         database: factory,
+        testEvents: (_config, selectedRuntime) => {
+          expect(selectedRuntime).toBe(sharedRuntime);
+          return { close: () => Promise.resolve() } as WebhookTestEventStore;
+        },
         envelope: () => envelope(envelopeClose),
       },
     );

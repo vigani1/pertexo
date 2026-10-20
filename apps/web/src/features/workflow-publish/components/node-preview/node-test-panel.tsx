@@ -4,7 +4,7 @@ import { SampleAvailability } from '../samples/availability';
 import { PreviewInputFields, RealTestPermission } from './inputs';
 import { useStepSample } from './use-step-sample';
 import { FlaskConicalIcon, ListChecksIcon } from 'lucide-react';
-import { useImperativeHandle, useState, type Ref } from 'react';
+import { useImperativeHandle, useState, type Ref, type ReactNode } from 'react';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Notice } from '@/components/ui/notice';
 import { JsonTree } from '@/components/patterns/code/json-tree';
@@ -32,6 +32,7 @@ export function NodeTestPanel({
   apiClient,
   userId,
   editable,
+  children,
   stepBinding,
   liveTestUnavailable,
   workspaceId,
@@ -48,6 +49,7 @@ export function NodeTestPanel({
   apiClient: ApiClient;
   userId: string;
   editable: boolean;
+  children?: ReactNode;
   stepBinding?: string | undefined;
   liveTestUnavailable?: string | undefined;
   workspaceId: string;
@@ -122,6 +124,7 @@ export function NodeTestPanel({
         test.pending === 'run' && 'live-edge',
       )}
     >
+      {children}
       {!editable ? null : (
         <SampleAvailability
           query={sampleQuery}

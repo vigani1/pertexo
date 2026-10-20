@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import { createLogger, defineConfig } from 'vite';
 
 const apiProxyTarget =
   process.env.PERTEXO_API_PROXY_TARGET ?? 'http://127.0.0.1:3000';
@@ -17,13 +17,27 @@ if (
   throw new Error('PERTEXO_API_PROXY_TARGET must be an HTTP(S) origin');
 }
 
+const logger = createLogger();
+const logError = logger.error.bind(logger);
+// Proxy outages must not print a Secret URL credential or its query string.
+logger.error = (message, options) => {
+  logError(
+    message.replaceAll(/\/hooks\/[^\s]+/gu, '/hooks/[redacted]'),
+    options,
+  );
+};
+
 export default defineConfig({
+  customLogger: logger,
   plugins: [react(), tailwindcss()],
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   server: {
+    // The API owns webhook CORS, including OPTIONS; Vite must forward it.
+    cors: false,
     port: 5173,
     strictPort: true,
     proxy: {
+      '/hooks': { target: parsedApiProxyTarget.origin, changeOrigin: false },
       '/v1': {
         target: parsedApiProxyTarget.origin,
         changeOrigin: false,

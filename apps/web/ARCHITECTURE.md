@@ -1538,3 +1538,10 @@ hooks. `lib/api/workspace-scope.ts` names the authenticated
 client/user/workspace tuple used by both file uploads and variable mappings.
 Generic inspector props call it `workspaceScope`; file-only body controls keep
 their upload vocabulary.
+
+F35’s webhook Test panel lives in workflow-publish and composes into the generic
+node test panel through children. Its bounded temporary listener uses the
+existing webhook protocols, and the explicit Keep action uses the existing F02
+pin command. Listener credentials stay in mounted component memory; Query and
+mutation caches retain no generated signing/header credential. Local Vite also
+forwards `/hooks`, redacting capability paths in proxy-error logs.

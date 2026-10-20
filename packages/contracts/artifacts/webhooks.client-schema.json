@@ -1,6 +1,36 @@
 {
   "routes": [
     {
+      "method": "POST",
+      "path": "/v1/workspaces/:workspaceId/workflows/:workflowId/draft/nodes/:nodeId/webhook-test-events",
+      "requiredHeaders": [
+        "X-CSRF-Token"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/workspaces/:workspaceId/workflows/:workflowId/draft/nodes/:nodeId/webhook-test-events/:id"
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/workspaces/:workspaceId/workflows/:workflowId/draft/nodes/:nodeId/webhook-test-events/:id",
+      "requiredHeaders": [
+        "X-CSRF-Token"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/hooks/:endpointKey/test"
+    },
+    {
+      "method": "POST",
+      "path": "/hooks/:endpointKey/test"
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/hooks/:endpointKey/test"
+    },
+    {
       "method": "GET",
       "path": "/v1/workspaces/:workspaceId/workflows/:workflowId/triggers"
     },

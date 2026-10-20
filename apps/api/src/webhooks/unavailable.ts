@@ -1,4 +1,4 @@
-import { Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Controller, Delete, Get, Post, UseGuards } from '@nestjs/common';
 import {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
@@ -32,6 +32,30 @@ export class UnconfiguredWebhooksController {
     CsrfProtectionGuard,
   )
   public command(): never {
+    return throwApplicationError(applicationError('webhook.not_configured'));
+  }
+}
+
+@Controller(
+  'v1/workspaces/:workspaceId/workflows/:workflowId/draft/nodes/:nodeId/webhook-test-events',
+)
+@UseGuards(SessionAuthenticationGuard, WebhookUpdateGuard)
+export class UnconfiguredWebhookTestsController {
+  @Get(':id')
+  @RateLimit('authenticated_read')
+  read(): never {
+    return throwApplicationError(applicationError('webhook.not_configured'));
+  }
+  @Post()
+  @RateLimit('trigger_mutation')
+  @UseGuards(CsrfProtectionGuard)
+  start(): never {
+    return throwApplicationError(applicationError('webhook.not_configured'));
+  }
+  @Delete(':id')
+  @RateLimit('trigger_mutation')
+  @UseGuards(CsrfProtectionGuard)
+  stop(): never {
     return throwApplicationError(applicationError('webhook.not_configured'));
   }
 }

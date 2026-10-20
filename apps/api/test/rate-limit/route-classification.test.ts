@@ -1,3 +1,5 @@
+import { WebhookTestEventController } from '../../src/webhooks/test-events/controller.js';
+import { UnconfiguredWebhookTestsController } from '../../src/webhooks/unavailable.js';
 import { DataTablesController } from '../../src/data-tables/controller.js';
 import { WebhookPreflightController } from '../../src/webhooks/authentication/preflight.controller.js';
 import { UnconfiguredConnectionsController } from '../../src/connections/http/unavailable.js';
@@ -46,6 +48,13 @@ const routes: readonly (readonly [
   [DataTablesController, 'write', 'ordinary_mutation'],
   [DataTablesController, 'importCsv', 'ordinary_mutation'],
   [WebhookPreflightController, 'handle', 'webhook_preflight'],
+  [WebhookPreflightController, 'test', 'webhook_preflight'],
+  [WebhookTestEventController, 'start', 'trigger_mutation'],
+  [WebhookTestEventController, 'get', 'authenticated_read'],
+  [WebhookTestEventController, 'stop', 'trigger_mutation'],
+  [UnconfiguredWebhookTestsController, 'start', 'trigger_mutation'],
+  [UnconfiguredWebhookTestsController, 'read', 'authenticated_read'],
+  [UnconfiguredWebhookTestsController, 'stop', 'trigger_mutation'],
   [SessionController, 'logout', 'actor_mutation'],
   [UserController, 'me', 'authenticated_read'],
   [UserController, 'updateMe', 'actor_mutation'],

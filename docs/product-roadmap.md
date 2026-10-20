@@ -244,7 +244,7 @@ only after its gate is resolved.
 | [F32](feature-plans/32-http-pagination.md) | HTTP Request pagination: follow next-page links or page counters, within bounds | Extends the HTTP Request step | M | Complete: bounded pagination, editor setup, real run and preview qualification |
 | [F33](feature-plans/33-step-retry-settings.md) | Retry settings per step: how many tries and the wait between them | Extends step execution within existing safety rules: no automatic retry after `outcome_unknown` | M–L | Implemented: pinned total tries and fixed waits, unchanged defaults, existing coordinator/recovery, editor controls and qualification. [Guide](guides/step-retries.md) |
 | F34 | Create a file: CSV, JSON or text from step data, kept as a run file | Extends F04 files | M | Proposed |
-| F35 | Webhook test events: listen in the editor and keep a real request as sample data | Extends webhook triggers and F02 samples | M | Proposed |
+| [F35](feature-plans/35-webhook-test-events.md) | Webhook test events: listen in the editor and keep a real request as sample data | Extends webhook triggers and F02 samples | M | Implemented (2026-10-20): authenticated, one-shot temporary test URL, explicit F02 pin and local/real-API/browser qualification |
 | F36 | Light theme alongside the dark one | Frontend design tokens and a personal setting | M | Proposed |
 | F37 | Notes on the workflow canvas | Editor and graph metadata, separate from F19 comments | M | Proposed |
 | F38 | Utility steps: XML/HTML parsing, hashes, signatures and IDs, text and number formatting | Extends F24 transforms | M–L | Proposed |
