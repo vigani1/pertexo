@@ -3,7 +3,7 @@ import { schemaFields, type SchemaFieldSpec } from '../draft';
 import { describeTransformFields } from './fields';
 
 /** Only Date's catalog union is projected; unknown shapes remain editable as JSON. */
-export function dateSetupFields(
+export function operationSetupFields(
   schema: unknown,
   operation: unknown,
 ):
