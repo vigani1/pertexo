@@ -36,7 +36,7 @@ import {
   NodeExecutorFailure,
 } from '@pertexo/node-sdk/server';
 import { FILE_INPUT_ERROR_CODE } from '@pertexo/node-sdk';
-import { describeFileInputFailure } from './artifacts/diagnostics.js';
+import { describeFileInputFailure } from '@pertexo/node-sdk/server';
 import { classifyProcessError } from '@pertexo/observability/startup';
 import { waitForCancelableDelay } from '../runtime/abortable-delay.js';
 import type { NodeExecutionCapabilityFactories } from './capabilities.js';

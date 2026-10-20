@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fileInputDiagnosticSchema } from '@pertexo/node-sdk';
 import { FileInputFailure } from '@pertexo/node-sdk/server';
-import { describeFileInputFailure } from '../../../src/attempts/artifacts/diagnostics.js';
+import { describeFileInputFailure } from '@pertexo/node-sdk/server';
 
 describe('file diagnostics disclose only fixed reasons and bounded coordinates', () => {
   it('refuses raw content, arbitrary reasons, non-finite and oversized locations', () => {

@@ -1,3 +1,4 @@
+import { nestedConfigForm } from '../../../model/inspector/nested-config-form';
 import { useMemo, useState } from 'react';
 import { createScratchTracker } from '../use-draft-field';
 import { isRecord } from '@pertexo/workflow-model';
@@ -15,7 +16,6 @@ import {
 } from '../../../model/inspector/draft';
 import { paginationFields } from '../../../model/inspector/http-pagination/fields';
 import {
-  nestedConfigForm,
   paginationDescription,
   paginationForMode,
   paginationModes,

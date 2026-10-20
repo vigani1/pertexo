@@ -436,3 +436,5 @@ export type {
 export { readCodeFrame, writeCodeFrame } from './code/framing.js';
 
 export { NodeDataTableFailure } from './data-tables/failure.js';
+
+export { describeFileInputFailure } from './artifacts/describe-failure.js';

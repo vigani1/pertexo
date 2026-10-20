@@ -1,4 +1,4 @@
-import type { FileInputDiagnostic } from '@pertexo/node-sdk';
+import type { FileInputDiagnostic } from './diagnostic.js';
 
 const split = 'Split the file into smaller files and run them separately.';
 

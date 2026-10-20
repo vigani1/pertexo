@@ -1,3 +1,4 @@
+import { nestedConfigForm } from '@/features/workflow-editor/model/inspector/nested-config-form';
 import { describe, expect, it, vi } from 'vitest';
 import {
   HTTP_REQUEST_MANIFEST,
@@ -7,7 +8,6 @@ import type { WorkflowGraphContract } from '@pertexo/contracts';
 import type { NodeFormApi } from '@/features/workflow-editor/model/inspector/node-form';
 import { withConfigValue } from '@/features/workflow-editor/model/inspector/draft';
 import {
-  nestedConfigForm,
   paginationForMode,
   paginationValue,
 } from '@/features/workflow-editor/model/inspector/http-pagination/draft';
