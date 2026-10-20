@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg';
 import { DataTableError } from '@pertexo/node-sdk';
-import type { DataTableAttempt } from './contract.js';
+import type { DataTableAttempt } from '../data-tables/contract.js';
 export async function lockTableExecution(
   client: PoolClient,
   input: DataTableAttempt,
