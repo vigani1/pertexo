@@ -82,7 +82,7 @@
     "@pertexo/workflow-engine": "workspace:*",
     "@pertexo/workflow-model": "workspace:*",
     "cron-parser": "5.10.0",
-    "drizzle-orm": "0.45.3",
+    "drizzle-orm": "0.45.4",
     "pg": "8.23.1",
     "scim2-parse-filter": "0.3.0",
     "scimmy": "1.3.5",
