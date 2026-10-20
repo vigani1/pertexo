@@ -33,7 +33,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { AppearanceChoice } from '@/components/patterns/appearance-choice';
+import { AppearanceChoice } from '@/components/patterns/appearance/choice';
 import { useWorkspaceScope } from './use-workspace-scope';
 
 export function WorkspaceCommandPalette({

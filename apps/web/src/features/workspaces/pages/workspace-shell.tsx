@@ -11,7 +11,7 @@ import {
   SearchIcon,
   ShieldCheckIcon,
 } from 'lucide-react';
-import { AppearanceChoice } from '@/components/patterns/appearance-choice';
+import { AppearanceChoice } from '@/components/patterns/appearance/choice';
 import { Button } from '@/components/ui/button';
 import { AccountMenu } from '../components/shell/account-menu';
 import { ShellBreadcrumb } from '../components/shell/breadcrumb';

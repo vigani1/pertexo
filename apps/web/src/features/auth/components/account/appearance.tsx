@@ -1,4 +1,4 @@
-import { AppearanceChoice } from '@/components/patterns/appearance-choice';
+import { AppearanceChoice } from '@/components/patterns/appearance/choice';
 import { AccountSection } from './section';
 
 export function AccountAppearanceSection() {
