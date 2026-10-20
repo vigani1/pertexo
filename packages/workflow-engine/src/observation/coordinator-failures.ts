@@ -84,6 +84,9 @@ export function resolveAttemptFailures(
         recommendation: failure.failureKind,
         errorKind: failure.errorKind,
         possiblyDispatched: failure.possiblyDispatched,
+        ...(failure.minimumRetryDelayMillis === undefined
+          ? {}
+          : { minimumRetryDelayMillis: failure.minimumRetryDelayMillis }),
       },
       jitterIdentity: `${input.runId}\u0000${failure.invocationKey}\u0000${String(failure.attemptNumber)}\u0000${input.retryPolicyReference.key}@${String(input.retryPolicyReference.version)}`,
     });

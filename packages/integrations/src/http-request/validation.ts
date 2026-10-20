@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { httpPaginationSchema } from './pagination/validation.js';
 import {
   ARTIFACT_INPUT_MAX_BYTES,
   nodeArtifactReferenceSchema,
@@ -190,6 +191,7 @@ export const httpRequestConfigSchema = z
     maxResponseBytes: z.number().int().min(1).max(MAX_RESPONSE_BYTES),
     inlineResponseBytes: z.number().int().min(1).max(MAX_INLINE_RESPONSE_BYTES),
     multipart: httpMultipartConfigSchema.optional(),
+    pagination: httpPaginationSchema.optional(),
     returnErrorResponses: z.boolean().optional().meta({
       title: 'Return error responses',
       description:
@@ -198,6 +200,18 @@ export const httpRequestConfigSchema = z
   })
   .strict()
   .superRefine((config, context) => {
+    if (config.pagination !== undefined && config.method !== 'GET')
+      context.addIssue({
+        code: 'custom',
+        path: ['pagination'],
+        message: 'Pagination supports GET requests only',
+      });
+    if (config.pagination !== undefined && config.returnErrorResponses === true)
+      context.addIssue({
+        code: 'custom',
+        path: ['returnErrorResponses'],
+        message: 'Turn off Return error responses when using pagination',
+      });
     if (
       config.multipart !== undefined &&
       (config.method === 'GET' || config.method === 'HEAD')
@@ -304,7 +318,7 @@ const artifactBodySchema = nodeArtifactReferenceSchema
   .strict()
   .readonly();
 
-export const httpRequestOutputSchema = z
+const singleHttpRequestOutputSchema = z
   .object({
     // Below 300 unless the step returns error responses.
     status: z.number().int().min(200).max(599),
@@ -315,6 +329,22 @@ export const httpRequestOutputSchema = z
   })
   .strict()
   .readonly();
+
+const paginatedHttpRequestOutputSchema = z
+  .object({
+    items: z.array(z.json()),
+    pageCount: z.number().int().min(1).max(100),
+    complete: z.boolean(),
+    status: z.number().int().min(200).max(299),
+    headers: z.record(z.string().max(128), z.string().max(2_048)),
+    finalOrigin: z.string().max(MAX_URL_BYTES),
+  })
+  .strict()
+  .readonly();
+export const httpRequestOutputSchema = z.union([
+  singleHttpRequestOutputSchema,
+  paginatedHttpRequestOutputSchema,
+]);
 
 export type HttpRequestConfig = z.output<typeof httpRequestConfigSchema>;
 export type HttpRequestInput = z.output<typeof httpRequestInputSchema>;

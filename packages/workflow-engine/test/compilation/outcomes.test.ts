@@ -145,61 +145,71 @@ describe('attempt outcome production operations', () => {
     expect(admittedKey).toBe(materializedKey);
   });
 
-  it('resolves typed attempt failure into one coordinator retry transition', async () => {
-    const executable = buildWorkflowExecutable({
-      graph: graph(),
-      catalog: composeExecutableCatalog(nodeCatalog()),
-    });
-    const started = await advanceWorkflow({
-      runId: 'retry-run',
-      executable,
-      workflowVersionId: '00000000-0000-4000-8000-000000000001',
-      checkpoint: createCheckpoint({
+  it.each([undefined, 30_000])(
+    'resolves typed attempt failure into one coordinator retry transition (hint %s)',
+    async (minimumRetryDelayMillis) => {
+      const executable = buildWorkflowExecutable({
+        graph: graph(),
+        catalog: composeExecutableCatalog(nodeCatalog()),
+      });
+      const started = await advanceWorkflow({
+        runId: 'retry-run',
+        executable,
         workflowVersionId: '00000000-0000-4000-8000-000000000001',
-        iterationBudget: 0,
-      }),
-      occurredAt: '2026-08-20T10:00:00.000Z',
-      maximumAdmissions: 1,
-      observations: [],
-      signal: new AbortController().signal,
-    });
-    const attempt = started.attempts[0];
-    if (attempt === undefined) throw new Error('attempt was not admitted');
+        checkpoint: createCheckpoint({
+          workflowVersionId: '00000000-0000-4000-8000-000000000001',
+          iterationBudget: 0,
+        }),
+        occurredAt: '2026-08-20T10:00:00.000Z',
+        maximumAdmissions: 1,
+        observations: [],
+        signal: new AbortController().signal,
+      });
+      const attempt = started.attempts[0];
+      if (attempt === undefined) throw new Error('attempt was not admitted');
 
-    const retried = await advanceWorkflow({
-      runId: 'retry-run',
-      executable,
-      workflowVersionId: '00000000-0000-4000-8000-000000000001',
-      checkpoint: started.checkpoint,
-      occurredAt: '2026-08-20T10:01:00.000Z',
-      maximumAdmissions: 1,
-      observations: [
-        {
-          kind: 'attempt_failure',
-          occurredAt: '2026-08-20T10:00:30.000Z',
-          invocationKey: attempt.invocationKey,
-          attemptId: '00000000-0000-4000-8000-000000000099',
-          attemptNumber: attempt.attemptNumber,
-          failureKind: 'retry',
-          errorKind: 'rate_limit',
-          possiblyDispatched: false,
-          safeErrorCode: 'execution.rate_limit',
-        },
-      ],
-      signal: new AbortController().signal,
-    });
+      const retried = await advanceWorkflow({
+        runId: 'retry-run',
+        executable,
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
+        checkpoint: started.checkpoint,
+        occurredAt: '2026-08-20T10:01:00.000Z',
+        maximumAdmissions: 1,
+        observations: [
+          {
+            kind: 'attempt_failure',
+            occurredAt: '2026-08-20T10:00:30.000Z',
+            invocationKey: attempt.invocationKey,
+            attemptId: '00000000-0000-4000-8000-000000000099',
+            attemptNumber: attempt.attemptNumber,
+            failureKind: 'retry',
+            errorKind: 'rate_limit',
+            possiblyDispatched: false,
+            safeErrorCode: 'execution.rate_limit',
+            ...(minimumRetryDelayMillis === undefined
+              ? {}
+              : { minimumRetryDelayMillis }),
+          },
+        ],
+        signal: new AbortController().signal,
+      });
 
-    const scheduled = retried.events.find(
-      ({ name }) => name === 'node.retry_scheduled',
-    );
-    expect(scheduled?.dueAt).toBe('2026-08-20T10:00:31.200Z');
-    expect(retried.attempts).toEqual([]);
-    expect(retried.checkpoint.invocations[0]).toMatchObject({
-      status: 'waiting',
-      resumeAt: scheduled?.dueAt,
-      attemptNumber: 1,
-    });
-  });
+      const scheduled = retried.events.find(
+        ({ name }) => name === 'node.retry_scheduled',
+      );
+      expect(scheduled?.dueAt).toBe(
+        minimumRetryDelayMillis === undefined
+          ? '2026-08-20T10:00:31.200Z'
+          : '2026-08-20T10:01:00.000Z',
+      );
+      expect(retried.attempts).toEqual([]);
+      expect(retried.checkpoint.invocations[0]).toMatchObject({
+        status: 'waiting',
+        resumeAt: scheduled?.dueAt,
+        attemptNumber: 1,
+      });
+    },
+  );
 
   it('preserves a definite executor cancellation as canceled', async () => {
     const executable = buildWorkflowExecutable({

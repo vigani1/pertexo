@@ -1,3 +1,4 @@
+import { HttpPaginationFailure } from '@pertexo/integrations/server';
 import { NodeDataTableFailure } from '@pertexo/node-sdk/server';
 import { codeCompletionFields } from './code/diagnostics.js';
 import { NodeCodeFailure } from '@pertexo/node-sdk/server';
@@ -268,16 +269,24 @@ async function executePreparedNodeAttempt(
         outcome: {
           status: 'executor_failure',
           failureKind: error.kind,
+          ...(error.minimumRetryDelayMillis === undefined
+            ? {}
+            : { minimumRetryDelayMillis: error.minimumRetryDelayMillis }),
           errorKind: error.errorKind,
           possiblyDispatched: error.possiblyDispatched,
           safeErrorCode:
-            error instanceof NodeDataTableFailure
-              ? `execution.table_${error.code}`
-              : error instanceof NodeCodeFailure
-                ? error.code
-                : error instanceof FileInputFailure
-                  ? FILE_INPUT_ERROR_CODE
-                  : `execution.${error.errorKind}`,
+            error instanceof HttpPaginationFailure
+              ? error.code
+              : error instanceof NodeDataTableFailure
+                ? `execution.table_${error.code}`
+                : error instanceof NodeCodeFailure
+                  ? error.code
+                  : error instanceof FileInputFailure
+                    ? FILE_INPUT_ERROR_CODE
+                    : `execution.${error.errorKind}`,
+          ...(error instanceof HttpPaginationFailure
+            ? { errorSummary: error.summary }
+            : {}),
           ...(error instanceof FileInputFailure
             ? { errorSummary: describeFileInputFailure(error.diagnostic) }
             : {}),
@@ -513,6 +522,9 @@ export function createNodeAttemptHandler(
         const environment = createNodeExecutionEnvironment({
           executionSignal: heartbeat.executionSignal,
           variables: inputs.variables ?? {},
+          ...(inputs.deadlineAt === undefined
+            ? {}
+            : { deadlineAt: inputs.deadlineAt }),
           test: published.test !== undefined,
           ...(published.testExpiresAt === undefined
             ? {}

@@ -1,6 +1,6 @@
 # F32 — HTTP Request pagination
 
-Status: approved scope; implementation alignment required before engine work.
+Status: engine implemented, in verification; scope approved 2026-10-19 and implementation alignments approved 2026-10-20.
 Parent: [product roadmap](../product-roadmap.md). Size: **M**.
 
 ## Outcome
@@ -59,9 +59,10 @@ matches [n8n's HTTP Request pagination](https://docs.n8n.io/build/code-in-n8n/co
    - **Delay between pages**: 0 to 10,000 ms, default 0
 4. **JSON paths reuse the existing syntax and reader.** These are the
    `$.status` / `$.items[0].id` paths the list steps use (`collectionPathSchema`,
-   format `json-path`, from #392). If that schema lives in `nodes-core`, move
-   it to `node-sdk` first in a move-only commit, so `integrations` can use it
-   without a reverse dependency.
+   format `json-path`, from #392). Move the schema unchanged from `nodes-core`
+   to `workflow-model/src/json/path-validation.ts` first in a move-only commit,
+   beside its parser. Integrations uses that same portable owner (alignment
+   approved 2026-10-20).
 5. **Stopping.** Stop when any of these happens:
    - the next link or cursor is missing, `null` or empty
    - the next link or cursor is the same as the previous one, which guards
@@ -107,7 +108,8 @@ matches [n8n's HTTP Request pagination](https://docs.n8n.io/build/code-in-n8n/co
     through `complete: false`.
 11. **Time.** `timeoutMillis` applies to each page. Validation refuses a
     setup whose worst case (`maxPages × (timeoutMillis + delay)`) can't fit
-    the step's attempt time budget; check the worker's attempt deadline. The
+    the remaining enclosing run or single-step preview deadline, checked before
+    first dispatch. A run without a deadline has no invented attempt timeout. The
     step checks for cancellation between pages and during the delay.
 12. **Editor.** Add a Pagination section in Setup, collapsed and set to Off by
     default:
@@ -151,11 +153,11 @@ matches [n8n's HTTP Request pagination](https://docs.n8n.io/build/code-in-n8n/co
 
 - [ ] A real run against a three-page JSON API outputs all items in order,
       with `pageCount: 3` and `complete: true`.
-- [ ] Each of the four modes works, and each stop rule ends paging correctly.
-- [ ] A next link to another host fails without sending credentials there.
-- [ ] Max pages gives `complete: false`, and the size limit gives a clear
+- [x] Each of the four modes works, and each stop rule ends paging correctly.
+- [x] A next link to another host fails without sending credentials there.
+- [x] Max pages gives `complete: false`, and the size limit gives a clear
       failure.
-- [ ] A step without pagination behaves exactly as before; all existing HTTP
+- [x] A step without pagination behaves exactly as before; all existing HTTP
       tests pass unchanged.
 - [ ] Setup shows only the chosen mode's fields, works on a phone, and
       explains what it will do.
@@ -174,10 +176,10 @@ matches [n8n's HTTP Request pagination](https://docs.n8n.io/build/code-in-n8n/co
 
 | Slice | Status | PR |
 | --- | --- | --- |
-| 1 Engine | Blocked on the alignment below; no engine code changed | This PR |
+| 1 Engine | Implemented; verification in progress | This PR |
 | 2 Editor and docs | Approved | — |
 
-## Implementation alignment required (2026-10-20)
+## Retry and deadline alignment (owner-approved 2026-10-20)
 
 Code inspection found two assumptions in decision 11 and the error contract
 that need correction before implementation:
@@ -193,7 +195,7 @@ that need correction before implementation:
   single-step previews have `PreviewAttemptLease.executionDeadlineAt`. The
   node execution runtime currently exposes neither deadline to an adapter.
 
-Recommended alignment, pending the owner's decision:
+Accepted alignment:
 
 1. Keep one retry owner: extend the existing SDK failure and persisted attempt
    failure with an optional bounded delay hint, then let the existing engine
@@ -208,7 +210,50 @@ Recommended alignment, pending the owner's decision:
    run without a deadline has no invented attempt timeout. Do not introduce a
    new global timeout setting.
 
-The alternative for item 1 is to retain today's backoff and explicitly defer
-Retry-After support, correcting decision 8 rather than claiming it already
-works. The engine and editor trackers remain undelivered until alignment and
-implementation are complete.
+The owner approved both corrections on 2026-10-20. The engine and editor
+trackers remain undelivered until implementation and verification are complete.
+
+
+## JSON-path ownership alignment (owner-approved 2026-10-20)
+
+Keep the parser/reader in workflow-model and move collectionPathSchema beside
+it, with imports and exports only in a separate move commit. Both node-sdk →
+workflow-model and workflow-model → node-sdk are prohibited by current package
+boundaries. Integrations may consume the existing deterministic workflow-model
+contract. No syntax, stored format, role or service changes.
+
+## Implementation rules
+
+- Retry hints are bounded to 60 seconds and combined with exponential backoff
+  by the existing retry owner, anchored to the persisted failure time. Only
+  paginated HTTP 429 responses opt into the new hint; existing provider and
+  unpaginated HTTP behavior stays unchanged. Retry-After uses the existing
+  integer-seconds parser, including its one-second fallback, not HTTP dates.
+- Next-page navigation is private to the secure client/body consumer. Full
+  URLs, cursors and raw Link headers never enter step metadata or telemetry.
+  Raw Link is bounded to 8 KiB and never silently truncated. Redirects also
+  remain on the original origin, including public unauthenticated requests.
+- A cursor is text or a number; missing, null and empty end paging. A repeated
+  visited cursor or URL ends it without another dispatch. Relative links use
+  the actual page URL after same-origin redirects.
+- Counter modes cannot prove that a nonempty page is the last one without
+  fetching another page. At Max pages they conservatively return complete:
+  false; an empty page proves completion. No request beyond Max pages probes
+  for an end.
+
+
+### Engine verification
+
+- Local secure HTTP transport/registry tests cover the four modes, stopping,
+  credential fencing per page, one durable dispatch mark, redirect origins,
+  256 KiB pages, 1 MiB/member limits, cancellation, native fake-timer delay
+  and a page-two 429 before non-JSON error-body parsing. Existing single-request
+  tests pass without changes.
+- The nullable persisted retry-hint column has the same application-role
+  update grant as the existing failure columns, plus a 0–60,000 ms constraint.
+  Real PostgreSQL tests cover old null hints, new hints, exact duplicate
+  completion and loading the hint into coordinator observations. Retry tests
+  prove failure-time anchoring, bounds and unchanged unsafe-outcome handling.
+- HTTP success telemetry adds only pages_fetched (1–100). Pagination failures
+  persist a fixed code and a safe numbered diagnostic in runs and previews.
+  Real run and single-step preview qualification belongs to slice 2.

@@ -105,7 +105,7 @@ export async function completeNodeAttempt(
                   attempt.lease_owner,attempt.lease_expires_at,
                   (attempt.lease_expires_at > clock_timestamp()) lease_valid,
                   attempt.output_ref,attempt.safe_error_code,
-                   attempt.error_summary,attempt.code_diagnostics,attempt.executor_failure_kind,
+                   attempt.error_summary,attempt.code_diagnostics,attempt.executor_failure_kind,attempt.executor_retry_after_millis,
                    attempt.executor_error_kind,
                    attempt.executor_possibly_dispatched,
                     attempt.retry_decision,node.status node_status,node.wait_kind,

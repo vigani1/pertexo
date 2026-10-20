@@ -215,6 +215,7 @@ function createPreviewExecutionEnvironment(
   let diagnostics: CodeDiagnostics | undefined;
   let dispatchState: 'not_started' | 'marking' | 'marked' = 'not_started';
   const runtime: NodeExecutionRuntime = Object.freeze({
+    deadlineAt: lease.executionDeadlineAt,
     ...(code === undefined ? {} : { code }),
     ...(dataTables === undefined ? {} : { dataTables }),
     observeCodeDiagnostics: (value: CodeDiagnostics) => {

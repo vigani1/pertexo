@@ -226,6 +226,7 @@ const completionOutcomeSchema = z.discriminatedUnion('status', [
   z
     .object({
       status: z.literal('executor_failure'),
+      minimumRetryDelayMillis: z.number().int().min(0).max(60_000).optional(),
       failureKind: executorFailureKindSchema,
       errorKind: executorErrorKindSchema,
       possiblyDispatched: z.boolean(),
@@ -237,8 +238,9 @@ const completionOutcomeSchema = z.discriminatedUnion('status', [
       (outcome) =>
         outcome.errorSummary === undefined ||
         outcome.safeErrorCode === 'execution.file_input' ||
+        outcome.safeErrorCode.startsWith('http.pagination_') ||
         outcome.safeErrorCode === 'execution.attempt_invalid',
-      'Only a sanitized file diagnostic or a step’s own refusal can accompany an executor failure',
+      'Only a sanitized file, pagination or step-refusal diagnostic can accompany an executor failure',
     ),
 ]);
 const traceparentSchema = z
@@ -326,6 +328,7 @@ export type NodeAttemptCompletion =
   | Readonly<{
       status: 'executor_failure';
       failureKind: z.output<typeof executorFailureKindSchema>;
+      minimumRetryDelayMillis?: number;
       errorKind: z.output<typeof executorErrorKindSchema>;
       possiblyDispatched: boolean;
       safeErrorCode: string;

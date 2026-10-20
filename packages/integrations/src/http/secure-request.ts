@@ -28,6 +28,16 @@ const requestSchema = z
     maxRedirects: z.number(),
     maxResponseBytes: z.number(),
     sensitiveValues: z.array(z.string()).optional(),
+    navigation: z
+      .object({
+        origin: z
+          .url()
+          .max(2048)
+          .refine((value) => new URL(value).origin === value),
+        link: z.boolean(),
+      })
+      .strict()
+      .optional(),
     signal: z
       .custom<AbortSignal>((value) => safeInstanceOf(value, AbortSignal))
       .optional(),
@@ -52,9 +62,12 @@ const blockedRequestHeaders = new Set([
 ]);
 
 export type ParsedSecureHttpRequest = Required<
-  Omit<SecureHttpRequest, 'body' | 'headers' | 'sensitiveValues' | 'signal'>
+  Omit<
+    SecureHttpRequest,
+    'body' | 'headers' | 'sensitiveValues' | 'signal' | 'navigation'
+  >
 > &
-  Pick<SecureHttpRequest, 'body' | 'signal'> &
+  Pick<SecureHttpRequest, 'body' | 'signal' | 'navigation'> &
   Readonly<{
     headers: Readonly<Record<string, string>>;
     sensitiveValues: readonly string[];
@@ -142,9 +155,17 @@ export function parseRequest(
   try {
     const parsed = requestSchema.parse(input);
     assertRequestBounds(parsed);
+    if (
+      parsed.navigation !== undefined &&
+      new URL(parsed.url).origin !== parsed.navigation.origin
+    )
+      throw new Error('Navigation origin mismatch');
     assertRequestMethodBodyPolicy(parsed);
     return Object.freeze({
       url: parsed.url,
+      ...(parsed.navigation === undefined
+        ? {}
+        : { navigation: parsed.navigation }),
       method: parsed.method,
       headers: parseHeaders(parsed.headers ?? {}),
       ...(parsed.body === undefined

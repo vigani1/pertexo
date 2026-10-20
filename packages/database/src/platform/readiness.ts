@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0041_two_factor_security_notices.sql';
+export const EXPECTED_MIGRATION_HEAD = '0042_http_retry_delay.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{

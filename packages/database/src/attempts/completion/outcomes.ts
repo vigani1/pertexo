@@ -45,6 +45,7 @@ export interface LockedAttemptRow {
   readonly error_summary: string | null;
   readonly code_diagnostics: unknown;
   readonly executor_error_kind: string | null;
+  readonly executor_retry_after_millis: number | null;
   readonly executor_failure_kind: string | null;
   readonly executor_possibly_dispatched: boolean | null;
   readonly fence_token: string;
@@ -138,6 +139,8 @@ async function duplicateCompletion(
       row.executor_error_kind !== fields.executorOutcome.errorKind ||
       row.executor_possibly_dispatched !==
         fields.executorOutcome.possiblyDispatched ||
+      row.executor_retry_after_millis !==
+        (fields.executorOutcome.minimumRetryDelayMillis ?? null) ||
       row.retry_decision === null);
   if (
     row.attempt_status !== fields.durableStatus ||
@@ -194,7 +197,7 @@ async function updateAttempt(
       set status=$3,lease_owner=null,lease_expires_at=null,
           output_ref=$4::json,safe_error_code=$5,error_summary=$6,
           executor_failure_kind=$7,executor_error_kind=$8,
-          executor_possibly_dispatched=$9,retry_decision=$10,code_diagnostics=$11::jsonb,
+          executor_possibly_dispatched=$9,retry_decision=$10,code_diagnostics=$11::jsonb,executor_retry_after_millis=$12,
           completed_at=clock_timestamp(),updated_at=clock_timestamp()
       where workspace_id=$1 and id=$2`,
     [
@@ -211,6 +214,7 @@ async function updateAttempt(
       input.codeDiagnostics === undefined
         ? null
         : canonicalJson(input.codeDiagnostics),
+      fields.executorOutcome?.minimumRetryDelayMillis ?? null,
     ],
   );
 }

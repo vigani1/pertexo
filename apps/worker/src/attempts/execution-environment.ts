@@ -29,6 +29,7 @@ export function createNodeExecutionEnvironment(
     executionSignal: AbortSignal;
     test?: boolean;
     artifactRetentionDeadline?: Date;
+    deadlineAt?: Date;
     variables?: Readonly<Record<string, JsonValue>>;
     lease: NodeAttemptLease;
     registry: NodeExecutionRegistry;
@@ -68,6 +69,7 @@ export function createNodeExecutionEnvironment(
   });
   let diagnostics: CodeDiagnostics | undefined;
   const runtime: NodeExecutionRuntime = Object.freeze({
+    ...(input.deadlineAt === undefined ? {} : { deadlineAt: input.deadlineAt }),
     ...(code === undefined ? {} : { code }),
     ...(dataTables === undefined ? {} : { dataTables }),
     observeCodeDiagnostics: (value: CodeDiagnostics) => {
