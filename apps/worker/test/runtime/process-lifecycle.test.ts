@@ -157,6 +157,7 @@ describe('compiled worker process lifecycle', () => {
       const fixture = startFixture('bootstrap-failure');
       processFixtures.set(fixture.child, fixture);
 
+      await waitForOutput(fixture.output, 'bootstrap.failed');
       const { code, signal } = await waitForExit(fixture);
 
       expect(signal).toBeNull();
