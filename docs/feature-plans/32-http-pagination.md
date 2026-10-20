@@ -1,6 +1,6 @@
 # F32 — HTTP Request pagination
 
-Status: approved by the owner 2026-10-19; ready for implementation.
+Status: approved scope; implementation alignment required before engine work.
 Parent: [product roadmap](../product-roadmap.md). Size: **M**.
 
 ## Outcome
@@ -174,5 +174,41 @@ matches [n8n's HTTP Request pagination](https://docs.n8n.io/build/code-in-n8n/co
 
 | Slice | Status | PR |
 | --- | --- | --- |
-| 1 Engine | Approved | — |
+| 1 Engine | Blocked on the alignment below; no engine code changed | This PR |
 | 2 Editor and docs | Approved | — |
+
+## Implementation alignment required (2026-10-20)
+
+Code inspection found two assumptions in decision 11 and the error contract
+that need correction before implementation:
+
+- **Retry-After is not an existing HTTP retry capability.** The HTTP executor
+  classifies 429 as retryable, but does not read its Retry-After header.
+  `workflow-engine/src/attempt/retries.ts` uses only exponential backoff and
+  jitter. The SDK failure, stored attempt outcome and engine observation have
+  no retry-delay hint. The existing bounded Retry-After parser is used by other
+  adapters; their hints also do not reach workflow retry scheduling.
+- **There is no separate worker attempt timeout.** Production attempts have
+  the enclosing run's optional deadline (`NodeAttemptStoredInputs.deadlineAt`);
+  single-step previews have `PreviewAttemptLease.executionDeadlineAt`. The
+  node execution runtime currently exposes neither deadline to an adapter.
+
+Recommended alignment, pending the owner's decision:
+
+1. Keep one retry owner: extend the existing SDK failure and persisted attempt
+   failure with an optional bounded delay hint, then let the existing engine
+   retry policy combine it with backoff, anchored to the failure's time. Wire
+   that hint for paginated HTTP 429 responses using the existing bounded
+   Retry-After parsing policy. Old facts have no hint and keep their behavior.
+   This requires a narrow database migration and retry-contract change outside
+   the plan's originally listed integrations-only implementation area; do not
+   implement a second scheduler or sleep in the worker to imitate backoff.
+2. Expose the existing run/preview deadline as ephemeral runtime metadata and
+   check the paging worst case against its remaining time before dispatch. A
+   run without a deadline has no invented attempt timeout. Do not introduce a
+   new global timeout setting.
+
+The alternative for item 1 is to retain today's backoff and explicitly defer
+Retry-After support, correcting decision 8 rather than claiming it already
+works. The engine and editor trackers remain undelivered until alignment and
+implementation are complete.
