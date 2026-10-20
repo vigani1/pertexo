@@ -11,6 +11,9 @@ Owner-approved 2026-10-20. Status: implemented.
   inline/code blocks and safe links. No raw HTML, images, embeds or scripts.
   Use a maintained Markdown-to-React parser rather than a hand-written parser;
   rendering emits React elements and never injects HTML or fetches note content.
+  Bound formatting to 32 AST levels before recursive rendering; deeper notes
+  display their full, unchanged source as plain text with a reason. This is a
+  rendering limit, not another stored format or server-side Markdown parser.
 - A note has a stable ID, text, position, size and one Weft colour: neutral,
   teal, violet, sage or amber. Default 320×200 px; minimum 200×120 and maximum
   1,200×1,200. Position is finite and bounded to ±100,000 canvas units. At most
@@ -94,7 +97,8 @@ live co-editing and integrations/AI.
   restored through the toolbar and ordinary form. Rendered canvases and the
   phone form receive visual inspection. A regression also moves an imported
   `note:<uuid>` step and a note independently; projection IDs cannot collide
-  with any valid persisted step ID.
+  with any valid persisted step ID. Deeply nested valid Markdown is covered by
+  parser/rendering regressions and an editable imported-note browser journey.
 - React Doctor: 100/100 for changed files, no findings. Markdown is lazy-loaded
   (about 36 kB gzip); the existing >500 kB editor-chunk warning remains.
 - Run the complete pre-push hook before delivery. No hook bypass, new service,

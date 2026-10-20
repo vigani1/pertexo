@@ -9,7 +9,8 @@ their controls. Notes save with the draft, using the same permissions and
 conflict protection as steps. Viewers can read them; editors can change them.
 
 Use headings, **bold**, *italic*, lists, quotes, code and ordinary links in
-Markdown. Images, embedded resources and raw HTML are not supported. Links open
+Markdown. Very deeply nested formatting is shown as plain text, with the
+original text kept for editing. Images, embedded resources and raw HTML are not supported. Links open
 in a separate tab; writing a note never loads content from an external site.
 
 Drag a note by its header. Hover or focus it to reveal its resize handles.

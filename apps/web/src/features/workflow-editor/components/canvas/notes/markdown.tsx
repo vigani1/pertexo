@@ -1,5 +1,6 @@
 import { memo, type ReactNode } from 'react';
 import Markdown from 'react-markdown';
+import { boundedNoteFormatting } from '../../../model/notes/formatting';
 import { safeNoteUrl } from '../../../model/notes/markup';
 
 const allowed = [
@@ -47,6 +48,7 @@ export const NoteMarkdown = memo(function NoteMarkdown({
   return (
     <div className="text-sm leading-relaxed break-words [&_p]:my-1.5 [&_h1]:text-lg [&_h2]:text-base [&_h3]:text-sm [&_h4]:text-sm [&_h5]:text-sm [&_h6]:text-sm [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1 [&_blockquote]:border-l-2 [&_blockquote]:border-border-strong [&_blockquote]:pl-3 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-muted [&_pre]:p-2 [&_code]:font-mono [&_code]:text-xs [&_hr]:my-3">
       <Markdown
+        remarkPlugins={[boundedNoteFormatting(text)]}
         allowedElements={allowed}
         unwrapDisallowed
         skipHtml
