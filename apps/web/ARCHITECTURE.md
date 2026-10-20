@@ -978,18 +978,19 @@ No account/workspace API or server state is mirrored. Blocked storage retains a
 choice in memory and explains that it cannot survive closing the tab.
 
 Neutral surfaces use `surface-ink` and `recess-ink`, with shared shadows, canvas
-ground, scrim and glass tokens. Light is the loom in daylight: a sage linen
-cloth (`background`), a lighter paper for content (`card`), frosted paper for
-floating chrome, deeper teal, violet and status inks, and no large pure-white
-surface. The workspace rail stays dark in both themes: `data-theme="dark"` on an
-element re-scopes the dark palette to it, and the light theme dyes that rail's
-glass teal so the Core keeps glowing there. `useCanvasRenderer` recreates
-decorative scenes when the resolved theme changes, including reduced-motion
-scenes. Scenes read their tokens at the canvas, so a dark section draws dark.
-Particle compositing is additive in dark and multiplied, like dye, in light,
-where the Core takes its own vivid inks (`core-live`, `core-glint`,
-`core-accent`), crisp beads and a faint glow. Both React Flow views follow the
-same resolved choice. Provider brand marks and alpha masks are not theme inks.
+ground, scrim and glass tokens. Light follows the Radix light-scale roles (sage
+neutrals, cyan brand, violet waiting, jade/red/amber status): a near-white
+ground (`background`, sage 2), surfaces a step lighter (`card`), hairline
+borders (sage 6–8) for structure and shadows only on what floats. Text uses the
+step-11/12 inks; drawings (the Core, the aurora, status graphics) use the
+saturated step-9 solids through `core-live`, `core-glint` and `core-accent`,
+because light borrowed from the dark theme washes out on white. Never a mid-grey
+ground. `useCanvasRenderer` recreates decorative scenes when the resolved theme
+changes, including reduced-motion scenes. Particle compositing is additive in
+dark and ordinary in light, where the Core draws crisp beads with a faint glow:
+finer beads on a large Core, stronger ones on a small one. Both React Flow views
+follow the same resolved choice. Provider brand marks and alpha masks are not
+theme inks.
 
 - Keep semantic colour tokens in both palettes. Dark values include: `success`
   #8fe3c0, `warning` #f3c677, `raised` #212428, `subtle-foreground` #7f8b8e,

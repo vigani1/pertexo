@@ -82,10 +82,7 @@
   --animate-fray: fray-in 0.5s ease-out;
 }
 
-/* Dark Weft. Also any `data-theme='dark'` element: the light theme keeps its
-   workspace rail in the dark palette, so the Core still glows there. */
-:root,
-[data-theme='dark'] {
+:root {
   --node-shadow: 0 18px 44px -18px rgb(0 0 0 / 90%);
   --graph-link: #7f8b8e;
   --loom-thread-opacity: 0.85;
@@ -104,6 +101,7 @@
   --canvas-composite: lighter;
   --canvas-ground: #101215;
   --weave-accent: rgb(195 245 255 / 3.5%);
+  --weave-line: color-mix(in srgb, var(--surface-ink) 2.8%, transparent);
   --scrim-solid: rgb(6 7 9 / 62%);
   --scrim-glass: rgb(6 7 9 / 42%);
   --scrim-reduced: rgb(6 7 9 / 72%);
@@ -165,91 +163,75 @@
   --blur-popup: 28px;
 }
 
-/* Light Weft is the loom in daylight: undyed linen cloth, paper for content,
-   teal-dyed glass for the chrome and ink for text. Nothing large is pure
-   white, so the page never glares; tones, not white on white, separate the
-   layers. Status inks are deeper rather than inverted. */
+/* Light Weft follows the Radix light-scale roles (sage neutrals, cyan brand,
+   violet waiting, jade/red/amber status): a near-white ground, surfaces a
+   step lighter, structure from hairline borders and shadows only on what
+   floats. Text uses step-11/12 inks; graphics use the saturated step-9 solids,
+   because light from the dark theme washes out on white. */
 :root[data-theme='light'] {
   --node-shadow:
-    0 1px 2px rgb(20 45 53 / 10%), 0 12px 26px -16px rgb(20 45 53 / 38%);
-  --graph-link: #5b737a;
+    0 1px 2px rgb(16 38 43 / 8%), 0 6px 16px -8px rgb(16 38 43 / 18%);
+  --graph-link: #7a8a8e;
   --loom-thread-opacity: 1;
   --loom-success-opacity: 1;
   --loom-label-opacity: 1;
-  --background: #e4e9e6;
-  --foreground: #132c34;
-  --card: #f3f6f4;
-  --card-foreground: #132c34;
-  --popover: #f6f8f7;
-  --popover-foreground: #132c34;
-  --primary: #006472;
+  --background: #f7f9f8;
+  --foreground: #16262b;
+  --card: #fbfdfc;
+  --card-foreground: #16262b;
+  --popover: #ffffff;
+  --popover-foreground: #16262b;
+  --primary: #0b7590;
   --primary-foreground: #ffffff;
-  --action: #006472;
-  --action-hover: #00525d;
+  --action: #0b7590;
+  --action-hover: #095f75;
   --action-foreground: #ffffff;
-  --secondary: #5d3f93;
+  --secondary: #6550b9;
   --secondary-foreground: #ffffff;
-  --muted: #dde4e0;
-  --muted-foreground: #3b545c;
-  --subtle-foreground: #45606a;
-  --accent: rgb(0 107 121 / 8%);
-  --accent-foreground: #005866;
-  --raised: #eaefec;
-  --destructive: #a82a33;
-  --success: #146848;
-  --warning: #7a5106;
-  /* Dye, not light: vivid mid-tone inks that deepen where they overlap. The
-     text-strength teal and violet would draw the Core as grey dust. */
-  --core-live: #0a9fb3;
-  --core-glint: #27c2d6;
-  --core-accent: #7a56d6;
-  --core-failed: #d23c44;
-  --core-waiting: #7a56d6;
-  --core-succeeded: #1d9a68;
-  --surface-ink: #183139;
-  /* Wells (code, data, tracks) are deeper cloth, not grey slabs. */
-  --recess-ink: #8ea7a1;
-  --shadow-ink: #687f85;
-  --canvas-composite: multiply;
-  --canvas-ground: #dfe6e2;
-  --weave-accent: rgb(0 107 121 / 7%);
-  --border: rgb(20 45 53 / 15%);
-  --border-strong: rgb(20 45 53 / 27%);
-  --input: rgb(20 45 53 / 20%);
-  --ring: #006472;
-  /* Floating chrome is frosted paper a step above the cloth, as in dark. */
-  --glass-background: rgb(243 247 245 / 76%);
-  --glass-fallback: #f1f5f3;
-  --glass-popup: rgb(243 247 245 / 92%);
-  --glass-popup-fallback: #f3f7f5;
-  --glass-border-strong: rgb(255 255 255 / 70%);
-  --glass-border-subtle: rgb(20 45 53 / 14%);
-  --control-background: rgb(248 250 249 / 88%);
-  --control-border: #7d9196;
-  --scrim-solid: rgb(31 52 58 / 32%);
-  --scrim-glass: rgb(31 52 58 / 20%);
-  --scrim-reduced: rgb(31 52 58 / 42%);
-  --tooltip-background: rgb(248 250 249 / 97%);
+  --muted: #eef1f0;
+  --muted-foreground: #4e5c60;
+  --subtle-foreground: #5f6563;
+  --accent: rgb(0 162 199 / 12%);
+  --accent-foreground: #0b6278;
+  --raised: #eef1f0;
+  --destructive: #c42a2f;
+  --success: #1b7458;
+  --warning: #935600;
+  /* Drawn graphics take the vivid step-9 solids. */
+  --core-live: #00a2c7;
+  --core-glint: #3db9cf;
+  --core-accent: #6e56cf;
+  --core-failed: #e5484d;
+  --core-waiting: #6e56cf;
+  --core-succeeded: #29a383;
+  --surface-ink: #16262b;
+  --recess-ink: #c7cdcc;
+  --shadow-ink: #1a2b30;
+  --canvas-composite: source-over;
+  --canvas-ground: #f2f5f4;
+  --weave-accent: rgb(0 162 199 / 6%);
+  /* A grid you can see, as on n8n's canvas; dark's 2.8% vanishes on white. */
+  --weave-line: rgb(22 38 43 / 7%);
+  --border: #d7dad9;
+  --border-strong: #b8bcba;
+  --input: #cbcfcd;
+  --ring: #0891b2;
+  --glass-background: rgb(251 253 252 / 82%);
+  --glass-fallback: #fbfdfc;
+  --glass-popup: rgb(255 255 255 / 94%);
+  --glass-popup-fallback: #ffffff;
+  --glass-border-strong: #d7dad9;
+  --glass-border-subtle: #d7dad9;
+  --control-background: #ffffff;
+  --control-border: #808c89;
+  --scrim-solid: rgb(16 30 34 / 30%);
+  --scrim-glass: rgb(16 30 34 / 18%);
+  --scrim-reduced: rgb(16 30 34 / 40%);
+  --tooltip-background: rgb(255 255 255 / 98%);
   --action-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 22%), 0 1px 2px rgb(20 45 53 / 22%);
+    inset 0 1px 0 rgb(255 255 255 / 18%), 0 1px 2px rgb(16 38 43 / 16%);
   --lens-shadow:
-    0 1px 2px rgb(20 45 53 / 8%), 0 22px 56px -26px rgb(20 45 53 / 34%),
-    inset 0 1px 0 rgb(255 255 255 / 55%);
-}
-
-/* The workspace rail is the light theme's one dark thread: dyed teal glass,
-   because dark's translucent charcoal would turn grey over pale cloth. */
-:root[data-theme='light'] [data-theme='dark'] {
-  color: var(--foreground);
-  color-scheme: dark;
-  --subtle-foreground: #93a7ab;
-  --glass-background: rgb(14 45 53 / 95%);
-  --glass-fallback: #0e2d35;
-  --glass-border-strong: rgb(255 255 255 / 14%);
-  --glass-border-subtle: rgb(255 255 255 / 6%);
-  --lens-shadow:
-    0 1px 2px rgb(8 30 36 / 25%), 0 22px 50px -24px rgb(8 30 36 / 55%),
-    inset 0 1px 0 rgb(255 255 255 / 8%);
+    0 1px 2px rgb(16 38 43 / 6%), 0 12px 32px -12px rgb(16 38 43 / 18%);
 }
 
 @layer base {
@@ -559,12 +541,12 @@
   background-image:
     repeating-linear-gradient(
       0deg,
-      color-mix(in srgb, var(--surface-ink) 2.8%, transparent) 0 1px,
+      var(--weave-line) 0 1px,
       transparent 1px 24px
     ),
     repeating-linear-gradient(
       90deg,
-      color-mix(in srgb, var(--surface-ink) 2.8%, transparent) 0 1px,
+      var(--weave-line) 0 1px,
       transparent 1px 24px
     ),
     repeating-linear-gradient(
@@ -639,7 +621,8 @@
     right: -11rem;
     width: 38rem;
     height: 38rem;
-    background: color-mix(in srgb, var(--primary) 10%, transparent);
+    /* The vivid drawing inks: in light, the text teal would tint it grey. */
+    background: color-mix(in srgb, var(--core-live) 10%, transparent);
   }
 
   .ambient::after {
@@ -647,7 +630,7 @@
     left: 3rem;
     width: 34rem;
     height: 34rem;
-    background: color-mix(in srgb, var(--secondary) 8%, transparent);
+    background: color-mix(in srgb, var(--core-accent) 8%, transparent);
     animation-duration: 34s;
     animation-direction: alternate-reverse;
   }

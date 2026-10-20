@@ -18,14 +18,18 @@ Status: implemented and locally qualified; owner-approved on 2026-10-20.
 - First commit migrates neutral utility colours, canvas inks, gradients, glass,
   shadows and textures to semantic tokens, preserving dark values. Mask colours
   and third-party brand logos are intentionally not theme colours.
-- Weft light uses sage cloth #e4e9e6, paper #f3f6f4, ink #132c34, muted
-  #3b545c, teal #006472 and violet #5d3f93, with no large pure-white surface
-  (revised 2026-10-20 after the owner found the first palette white on white).
-  The workspace rail keeps the dark palette, dyed teal. Keep
+- Weft light follows the [Radix light-scale roles](https://www.radix-ui.com/colors/docs/palette-composition/understanding-the-scale)
+  (revised 2026-10-20 after owner review: the first palette had too little
+  structure, and a mid-grey ground with a dark rail was dingy and loud): a
+  near-white sage ground #f7f9f8, surfaces #fbfdfc, hairline borders
+  #d7dad9/#b8bcba, ink #16262b, muted #4e5c60, cyan #0b7590 for text and
+  actions and violet #6550b9. Drawings use the saturated step-9 solids (cyan
+  #00a2c7, violet #6e56cf, red #e5484d, jade #29a383) so the Core, aurora and
+  canvas grid stay visible on white. Never a mid-grey ground. Keep
   Bricolage/Inter/JetBrains, flat content, floating glass, thread glyphs, real
   Loom data and bounded motion. Status inks become deeper rather than inverted.
-  Light particles multiply like dye, and the Core takes its own vivid inks;
-  dark keeps additive light. Theme changes repaint even reduced-motion canvases.
+  Light particles use normal compositing; dark keeps additive light. Theme
+  changes repaint even reduced-motion canvases.
 - Text needs WCAG AA (4.5:1 ordinary, 3:1 large); meaningful controls, focused
   outlines and chart marks need 3:1. Decorative low-alpha cloth and glows carry
   no information. Keep labels in addition to status colours. Respect reduced
