@@ -209,8 +209,8 @@
   --core-accent: #107d98;
   /* A blurred glow fades much faster on white, so the one light source is
      stronger here to read like dark's. */
-  --ambient-glow: color-mix(in srgb, var(--core-live) 24%, transparent);
-  --ambient-echo: color-mix(in srgb, var(--core-accent) 10%, transparent);
+  --ambient-glow: color-mix(in srgb, var(--core-live) 12%, transparent);
+  --ambient-echo: color-mix(in srgb, var(--core-accent) 6%, transparent);
   --core-failed: #e5484d;
   --core-waiting: #6e56cf;
   --core-succeeded: #29a383;
