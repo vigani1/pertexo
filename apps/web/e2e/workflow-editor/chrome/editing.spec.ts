@@ -1,5 +1,5 @@
 import type { Locator } from '@playwright/test';
-import { expect, test } from '../support/fixtures';
+import { expect, test } from '../../support/fixtures';
 import {
   addCsrfCookie,
   addStep,
@@ -16,7 +16,7 @@ import {
   workflowSummary,
   workspace,
   workspaceId,
-} from './support';
+} from '../support';
 
 test('edits typed input mappings live, saves them and restores rendered controls after reload', async ({
   context,

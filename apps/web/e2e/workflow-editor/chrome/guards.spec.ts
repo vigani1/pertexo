@@ -1,4 +1,4 @@
-import { expect, test } from '../support/fixtures';
+import { expect, test } from '../../support/fixtures';
 import {
   addCsrfCookie,
   definition,
@@ -9,7 +9,7 @@ import {
   mappingGraph,
   remoteDraft,
   user,
-} from './support';
+} from '../support';
 
 test('applies schema controls live and keeps invalid numbers as guarded scratch', async ({
   context,

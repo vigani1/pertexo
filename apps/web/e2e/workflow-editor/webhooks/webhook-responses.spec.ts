@@ -1,5 +1,5 @@
-import { expect, test } from '../support/fixtures';
-import { platformBrowserNodeDefinitionCatalog } from '../../../../packages/node-catalog/dist/index.js';
+import { expect, test } from '../../support/fixtures';
+import { platformBrowserNodeDefinitionCatalog } from '../../../../../packages/node-catalog/dist/index.js';
 import {
   nodeDefinitionListResponseSchema,
   workflowGraphSchema,
@@ -9,7 +9,7 @@ import {
   editorUrl,
   installEditorRoutes,
   remoteDraft,
-} from './support';
+} from '../support';
 const definitions = nodeDefinitionListResponseSchema.parse({
   items: platformBrowserNodeDefinitionCatalog().definitions,
 }).items;

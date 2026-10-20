@@ -1,4 +1,4 @@
-import { expect, test } from '../support/fixtures';
+import { expect, test } from '../../support/fixtures';
 import {
   addCsrfCookie,
   definition,
@@ -8,7 +8,7 @@ import {
   remoteDraft,
   workspace,
   workspaceId,
-} from './support';
+} from '../support';
 
 const connectionId = '44444444-4444-4444-8444-444444444444';
 

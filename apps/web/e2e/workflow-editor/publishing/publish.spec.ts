@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '../support/fixtures';
+import { expect, test, type Page } from '../../support/fixtures';
 import {
   addCsrfCookie,
   addStep,
@@ -14,7 +14,7 @@ import {
   workflowSummary,
   type Graph,
   type RemoteDraft,
-} from './support';
+} from '../support';
 
 const versionId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 const previewId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';

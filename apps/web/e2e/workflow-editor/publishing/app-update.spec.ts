@@ -1,5 +1,5 @@
-import { expect, test, type Page } from '../support/fixtures';
-import { platformBrowserNodeDefinitionCatalog } from '../../../../packages/node-catalog/dist/index.js';
+import { expect, test, type Page } from '../../support/fixtures';
+import { platformBrowserNodeDefinitionCatalog } from '../../../../../packages/node-catalog/dist/index.js';
 import {
   addCsrfCookie,
   blocksUnload,
@@ -9,7 +9,7 @@ import {
   remoteDraft,
   workflowId,
   workspaceId,
-} from './support';
+} from '../support';
 
 const codeDefinition = platformBrowserNodeDefinitionCatalog().definitions.find(
   ({ definition: identity }) =>
