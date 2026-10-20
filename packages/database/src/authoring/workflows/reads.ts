@@ -21,7 +21,10 @@ import type {
   WorkflowDraftRecord,
   WorkflowVersionRecord,
 } from './representation/records.js';
-import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
+import {
+  sameWorkflowNotes,
+  parseWorkflowGraphDraft,
+} from '@pertexo/workflow-model';
 import { admitWorkflowAuthoring } from './admission.js';
 import type { AuthoringCatalogs } from './catalogs.js';
 import { parseWorkflowGraphForPublish } from '@pertexo/workflow-model/server';
@@ -100,8 +103,9 @@ export function createWorkflowAuthoringReadStore(
             versionId: string;
             versionNumber: number;
             checksum: string;
+            graphJson: unknown;
           }>(
-            `select version.id as "versionId", version.version_number as "versionNumber", version.checksum
+            `select version.id as "versionId", version.version_number as "versionNumber", version.checksum, version.graph_json as "graphJson"
              from app.workflows workflow join app.workflow_versions version
                on version.workspace_id = workflow.workspace_id and version.workflow_id = workflow.id
                  and version.id = workflow.published_version_id
@@ -123,7 +127,11 @@ export function createWorkflowAuthoringReadStore(
                         draft.graphJson,
                         variant.definitionCatalog,
                       ),
-                    ).checksum === live.checksum,
+                    ).checksum === live.checksum &&
+                    sameWorkflowNotes(
+                      draft.graphJson,
+                      parseWorkflowGraphDraft(live.graphJson),
+                    ),
                 });
           return Object.freeze({ draft, validation, currentPublication });
         },

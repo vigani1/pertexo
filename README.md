@@ -247,3 +247,7 @@ separate. Target publishing approval still applies.
 
 Configure optional [Google/GitHub sign-in](docs/guides/single-sign-on.md) per
 install.
+
+Document a workflow with [canvas notes](docs/guides/canvas-notes.md): Markdown,
+Weft colours and keyboard/phone editing, retained through publication and
+promotion without changing execution.

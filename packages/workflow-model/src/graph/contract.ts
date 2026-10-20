@@ -1,3 +1,4 @@
+import { workflowNotesSchema, type WorkflowNote } from './notes/contract.js';
 import {
   runInputValueSourceSchema,
   expressionValueSourceSchema,
@@ -55,7 +56,10 @@ export interface WorkflowEdge {
 export interface WorkflowSettings {
   readonly maxRunDurationMs?: number | undefined;
 }
-export interface StructuredBody extends Omit<WorkflowGraph, 'callable'> {
+export interface StructuredBody extends Omit<
+  WorkflowGraph,
+  'callable' | 'notes'
+> {
   readonly inputPorts: readonly string[];
   readonly outputPorts: readonly string[];
 }
@@ -79,6 +83,7 @@ export interface WorkflowNode {
   readonly structured?: ForEachStructure | undefined;
 }
 export interface WorkflowGraph {
+  readonly notes?: readonly WorkflowNote[] | undefined;
   readonly nodes: readonly WorkflowNode[];
   readonly edges: readonly WorkflowEdge[];
   readonly settings: WorkflowSettings;
@@ -239,6 +244,7 @@ export const workflowGraphStructuralSchema: z.ZodType<WorkflowGraph> = z.lazy(
           .max(WORKFLOW_GRAPH_CONTRACT_LIMITS.edges),
         settings: workflowSettingsSchema,
         callable: callableDeclarationSchema.optional(),
+        notes: workflowNotesSchema.optional(),
       })
       .strict(),
 );

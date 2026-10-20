@@ -1560,3 +1560,15 @@ existing webhook protocols, and the explicit Keep action uses the existing F02
 pin command. Listener credentials stay in mounted component memory; Query and
 mutation caches retain no generated signing/header credential. Local Vite also
 forwards `/hooks`, redacting capability paths in proxy-error logs.
+
+### Canvas documentation (F37)
+
+`workflow-editor/components/canvas/notes/` projects graph notes into
+non-connectable React Flow decorations. `model/notes/` owns immutable commands,
+edit validation and safe link handling. The scoped editor store owns the draft
+and undo; gesture-only positions/sizes are ephemeral projection state. Markdown
+is lazily parsed to React elements, without HTML injection or embedded
+resources. Numeric geometry controls provide keyboard and phone parity.
+`workflow-drafts/model/graph-diff.ts` owns note comparison for conflicts,
+publishing and version history. Notes never enter the execution projection or
+pinned sample identities. See ADR 089 for publication reuse.

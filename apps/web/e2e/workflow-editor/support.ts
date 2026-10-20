@@ -1,3 +1,4 @@
+import type { WorkflowNote } from '@pertexo/workflow-model';
 import { expect, type BrowserContext, type Page } from '@playwright/test';
 import { unpausedWorkflowSettings } from '../../test/support/fixtures/auto-pause';
 import { defaultConcurrencySettings } from '../../test/support/fixtures/concurrency';
@@ -104,6 +105,7 @@ export async function openWorkflowAction(page: Page, name: string) {
 }
 
 export type Graph = Readonly<{
+  notes?: readonly WorkflowNote[] | undefined;
   nodes: readonly unknown[];
   edges: readonly unknown[];
   settings: Readonly<Record<string, unknown>>;

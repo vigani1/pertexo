@@ -66,7 +66,7 @@ async function published(graph: WorkflowGraph = emptyGraph) {
     emptyGraph,
     idempotencyKey: randomUUID(),
   });
-  if (graph.nodes.length > 0)
+  if (graph.nodes.length > 0 || (graph.notes?.length ?? 0) > 0)
     await saveCurrentDraft(database, {
       ...scope(),
       workflowId: created.workflowId,
@@ -296,6 +296,50 @@ it('publishes through the normal owner, retains correspondence, and refuses an F
       otherWorkspaceId,
     );
   }
+});
+
+it('retains canvas documentation in the promoted draft and immutable publication', async () => {
+  await configure();
+  const notes = [
+    {
+      id: randomUUID(),
+      text: '# Production instructions',
+      position: { x: 80, y: 160 },
+      size: { width: 320, height: 200 },
+      color: 'teal' as const,
+    },
+  ];
+  const selection = await published({ ...emptyGraph, notes });
+  const preview = await promotions().preview({
+    ...scope(),
+    selections: [selection],
+    mode: 'publish',
+  });
+  const applied = await promotions().apply({
+    ...scope(),
+    selections: [selection],
+    mode: 'publish',
+    fingerprint: preview.fingerprint,
+    acknowledgeTargetChanges: [],
+    idempotencyKey: randomUUID(),
+  });
+  const item = applied.items[0];
+  if (item?.publishedVersionId == null)
+    throw new Error('Missing promoted publication');
+  expect(
+    (await database.getDraft(otherWorkspaceId, item.targetWorkflowId, actorId))
+      ?.graphJson.notes,
+  ).toEqual(notes);
+  expect(
+    (
+      await database.getVersion(
+        otherWorkspaceId,
+        item.targetWorkflowId,
+        item.publishedVersionId,
+        actorId,
+      )
+    )?.graphJson.notes,
+  ).toEqual(notes);
 });
 
 it('serializes competing applies and rolls the entire reviewed batch back on a conflict', async () => {

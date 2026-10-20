@@ -28,6 +28,10 @@ destination, approval decision, credential
 shared with the people who may read that workflow. Resolving a discussion does
 not change the workflow. _Avoid_: Inbox notice, run event, approval request
 
+**Canvas note**: Markdown documentation positioned on a workflow canvas and
+retained in its draft and published versions. It never participates in execution
+or changes a pinned sample binding. _Avoid_: Comment thread, step, run data
+
 **Editing presence**: An advisory indication of who is viewing or editing a
 workflow and who has unsaved changes. It grants no access and does not merge
 edits or replace draft concurrency checks. _Avoid_: Edit lock, multiplayer

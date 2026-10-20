@@ -1,0 +1,1 @@
+ALTER TABLE "app"."workflow_versions" DROP CONSTRAINT "workflow_versions_checksum_unique";

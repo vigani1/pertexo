@@ -1,3 +1,6 @@
+import { useNotifications } from '@/components/ui/use-notifications';
+import { WORKFLOW_NOTE_LIMITS } from '@pertexo/workflow-model';
+import { adoptWorkflowNote } from '../../model/notes/commands';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { MinusIcon, PencilIcon, PlusIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -19,6 +22,7 @@ import { adoptStepFrom } from '../../model/graph/copies';
 
 type Line = Readonly<{
   nodeId: string;
+  noteId?: string;
   name: string;
   kind: 'added' | 'removed' | 'changed';
   detail?: string;
@@ -33,6 +37,7 @@ export function ConflictCompareDialog({
   open,
   onOpenChange,
 }: Readonly<{ open: boolean; onOpenChange: (open: boolean) => void }>) {
+  const notifications = useNotifications();
   const conflict = useEditorStore((state) => state.conflict);
   const inConflict = useEditorStore((state) => state.saveStatus === 'conflict');
   const graph = useEditorStore((state) => state.graph);
@@ -53,13 +58,13 @@ export function ConflictCompareDialog({
         </DialogDescription>
         <Tabs defaultValue="steps" className="mt-4">
           <TabsList>
-            <TabsTrigger value="steps">Steps</TabsTrigger>
+            <TabsTrigger value="steps">Steps and notes</TabsTrigger>
             <TabsTrigger value="json">JSON</TabsTrigger>
           </TabsList>
           <TabsContent value="steps" className="pt-4">
             {lines.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No step differences: only the layout differs.
+                No step or note differences: only step layout differs.
               </p>
             ) : (
               <ul className="flex max-h-80 flex-col gap-2 overflow-y-auto pr-1">
@@ -83,9 +88,25 @@ export function ConflictCompareDialog({
                         variant="outline"
                         aria-label={`Use your copy of ${line.name}`}
                         onClick={() => {
-                          transact(
-                            adoptStepFrom(graph, conflict.local, line.nodeId),
-                          );
+                          const next =
+                            line.noteId === undefined
+                              ? adoptStepFrom(
+                                  graph,
+                                  conflict.local,
+                                  line.nodeId,
+                                )
+                              : adoptWorkflowNote(
+                                  graph,
+                                  conflict.local,
+                                  line.noteId,
+                                );
+                          if (next === null)
+                            notifications.error({
+                              title: `The canvas has ${String(WORKFLOW_NOTE_LIMITS.count)} notes`,
+                              description:
+                                'Remove a note before applying this one.',
+                            });
+                          else transact(next);
                         }}
                       >
                         Use mine
@@ -120,6 +141,13 @@ function compareLines(
 ): readonly Line[] {
   const diff = diffWorkflowGraphs(theirs, mine, { ignoreLayout: true });
   return [
+    ...diff.notes.map((note) => ({
+      nodeId: `note:${note.id}`,
+      noteId: note.id,
+      name: note.label,
+      kind: note.kind,
+      ...(note.detail === undefined ? {} : { detail: note.detail }),
+    })),
     ...diff.added.map((node) => ({
       nodeId: node.id,
       name: stepTitle(node),

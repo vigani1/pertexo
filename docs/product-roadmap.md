@@ -115,8 +115,8 @@ performance/reliability rankings are asserted. Editions differ.
 | Choose how a step retries | [n8n Retry On Fail](https://docs.n8n.io/integrations/builtin/handle-rate-limits) sets the tries and the wait between them | Configurable total tries and fixed waits; [F33 guide](guides/step-retries.md); existing safety still decides eligibility |
 | Produce a file from data | [n8n Convert to File](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.converttofile) writes CSV, JSON, text and spreadsheets | Read file exists (F04); writing files F34 |
 | Build with a real incoming event | [n8n test webhook URL](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/workflow-development) shows the received request in the editor | Pinned samples and input cases exist (F02); capturing a real webhook request F35 |
-| Light and dark appearance | [n8n release notes](https://docs.n8n.io/changelog/release-notes) describe the editor in light and dark mode | Dark only; F36 |
-| Explain a workflow on its canvas | [n8n sticky notes](https://docs.n8n.io/build/understand-workflows/workflow-components/add-notes-and-documentation) | Comments exist (F19); notes on the canvas F37 |
+| Light and dark appearance | [n8n release notes](https://docs.n8n.io/changelog/release-notes) describe the editor in light and dark mode | System/Light/Dark delivered in F36 |
+| Explain a workflow on its canvas | [n8n sticky notes](https://docs.n8n.io/build/understand-workflows/workflow-components/add-notes-and-documentation) | Canvas documentation delivered in F37; discussions remain F19 |
 | Format and convert values without code | [Zapier Formatter](https://help.zapier.com/hc/en-us/articles/8496212590093-Get-started-with-Formatter) covers text, numbers, dates and utilities; [n8n XML](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.xml) converts XML | Transforms (F24) and the Code step (F20) cover part; utility steps F38 |
 | Work with large files | [n8n external storage](https://docs.n8n.io/deploy/host-n8n/configure-n8n/scaling/use-external-storage) keeps execution files on disk or S3 instead of in memory | Files and step values stop at 1 MiB (F04); bigger files F45 |
 | Resume when another system calls back | [n8n Wait](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait) can resume on a per-run webhook URL | Timed Wait and human approvals/input exist (F10, F11); callback resume F46 |
@@ -246,7 +246,7 @@ only after its gate is resolved.
 | F34 | Create a file: CSV, JSON or text from step data, kept as a run file | Extends F04 files | M | Proposed |
 | [F35](feature-plans/35-webhook-test-events.md) | Webhook test events: listen in the editor and keep a real request as sample data | Extends webhook triggers and F02 samples | M | Implemented (2026-10-20): authenticated, one-shot temporary test URL, explicit F02 pin and local/real-API/browser qualification |
 | [F36](feature-plans/36-light-theme.md) | Light theme alongside the dark one | Frontend design tokens and a personal setting | M | Implemented: System/Light/Dark, pre-paint preference, semantic Weft palettes and browser qualification |
-| F37 | Notes on the workflow canvas | Editor and graph metadata, separate from F19 comments | M | Proposed |
+| [F37](feature-plans/37-canvas-notes.md) | Notes on the workflow canvas | Editor and graph metadata, separate from F19 comments | M | Implemented: bounded Markdown notes, keyboard/phone editing, version comparisons and portable graph metadata |
 | F38 | Utility steps: XML/HTML parsing, hashes, signatures and IDs, text and number formatting | Extends F24 transforms | M–L | Proposed |
 | F39 | Python in the Code step | Extends the F20 runner | L | Proposed (later, by demand) |
 | F40 | Community-built steps through a public step SDK | Opens the node SDK and catalog | XL | Proposed (later, by demand) |

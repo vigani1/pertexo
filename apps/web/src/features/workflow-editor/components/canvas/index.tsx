@@ -1,3 +1,7 @@
+import { CanvasNote } from './notes/card';
+import { NoteTools } from './notes/tools';
+import { useNoteProjection } from './notes/use-projection';
+import { isNoteFlowId, type CanvasFlowNode } from './notes/types';
 import { useAppearance } from '@/lib/appearance/use-choice';
 import '@xyflow/react/dist/style.css';
 import {
@@ -50,6 +54,7 @@ import { WorkflowNodeCard } from './cards/node';
 
 // Module-level so React Flow never sees new node types between renders.
 const nodeTypes = Object.freeze({
+  note: CanvasNote,
   workflow: WorkflowNodeCard,
   forEach: ForEachNodeCard,
 });
@@ -123,6 +128,30 @@ export function WorkflowCanvas({
     onSelectNodes,
   });
 
+  const { nodes: noteNodes, onChanges: onNoteChanges } =
+    useNoteProjection(editable);
+  const canvasNodes = useMemo(
+    () => [...noteNodes, ...projection.nodes],
+    [noteNodes, projection.nodes],
+  );
+  const onCanvasNodesChange = useCallback(
+    (changes: NodeChange<CanvasFlowNode>[]) => {
+      const mountedChanges = changes.filter(
+        (
+          change,
+        ): change is Exclude<
+          NodeChange<CanvasFlowNode>,
+          { type: 'add' | 'replace' }
+        > => change.type !== 'add' && change.type !== 'replace',
+      );
+      onNoteChanges(mountedChanges.filter((change) => isNoteFlowId(change.id)));
+      onNodesChange(
+        mountedChanges.filter((change) => !isNoteFlowId(change.id)),
+      );
+    },
+    [onNoteChanges, onNodesChange],
+  );
+
   const onEdgesChange = useCallback(
     (changes: EdgeChange<WorkflowFlowEdge>[]) => {
       const selection = new Set(store.getState().selectedEdgeIds);
@@ -186,18 +215,19 @@ export function WorkflowCanvas({
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_55%_40%,transparent_30%,color-mix(in_srgb,var(--background)_85%,transparent)_90%)]"
       />
       <CanvasActionsContext value={actions}>
-        <ReactFlow<WorkflowFlowNode, WorkflowFlowEdge>
+        <ReactFlow<CanvasFlowNode, WorkflowFlowEdge>
           colorMode={theme}
-          nodes={projection.nodes}
+          nodes={canvasNodes}
           edges={projection.edges}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
-          onNodesChange={onNodesChange}
+          onNodesChange={onCanvasNodesChange}
           onEdgesChange={onEdgesChange}
           isValidConnection={linkGestures.isValidConnection}
           onConnect={linkGestures.onConnect}
           onConnectEnd={linkGestures.onConnectEnd}
           onNodeClick={(event, node) => {
+            if (node.type === 'note') return;
             const previous = lastTap.current;
             const now = event.timeStamp;
             lastTap.current = { id: node.id, at: now };
@@ -228,7 +258,9 @@ export function WorkflowCanvas({
             onFit={() => {
               fit(true);
             }}
-          />
+          >
+            <NoteTools editable={editable} containerRef={containerRef} />
+          </CanvasZoomLens>
         </ReactFlow>
       </CanvasActionsContext>
       {children}
