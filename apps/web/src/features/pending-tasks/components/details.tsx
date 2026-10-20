@@ -48,7 +48,22 @@ export function TaskDetailsLine({ details }: Readonly<{ details: Details }>) {
             </span>
           )}
           <span className="text-subtle-foreground">{name} </span>
-          <span className="text-foreground/90">{detailText(value)}</span>
+          {Array.isArray(value) && value.length > 0 ? (
+            // Each chosen item reads on its own, as on the request page.
+            value.map((item, itemIndex) => (
+              <span
+                // Items can repeat; their order is their identity here.
+                // eslint-disable-next-line react/no-array-index-key
+                key={itemIndex}
+                className="text-foreground/90"
+              >
+                {itemIndex === 0 ? null : ', '}
+                <span>{item === null ? '—' : String(item)}</span>
+              </span>
+            ))
+          ) : (
+            <span className="text-foreground/90">{detailText(value)}</span>
+          )}
         </span>
       ))}
     </p>
