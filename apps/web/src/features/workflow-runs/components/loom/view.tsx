@@ -1,6 +1,6 @@
 import type { WorkflowRunReadSummary } from '@pertexo/contracts';
 import { useEffect, useMemo, useRef } from 'react';
-import { CoreOrb } from '@/components/patterns/core/orb';
+import { CORE_IDLE_ENERGY, CoreOrb } from '@/components/patterns/core/orb';
 import { useCanvasRenderer } from '@/lib/hooks/use-canvas-renderer';
 import {
   LOOM_TALL_HEIGHT,
@@ -14,7 +14,10 @@ import { LoomThreadLinks } from './thread-links';
 import { LoomRenderer } from '../../model/loom/renderer';
 
 function coreEnergy(liveCount: number): number {
-  return 0.6 + Math.min(liveCount, 6) * 0.15;
+  // Each live run quickens the Core, up to six.
+  return liveCount === 0
+    ? CORE_IDLE_ENERGY
+    : 0.6 + Math.min(liveCount, 6) * 0.15;
 }
 
 /**
@@ -72,7 +75,6 @@ export function RunLoom({
           <CoreOrb
             state={model.liveCount > 0 ? 'live' : 'idle'}
             energy={coreEnergy(model.liveCount)}
-            still={model.liveCount === 0}
             className={
               height >= LOOM_TALL_HEIGHT
                 ? 'size-12 @min-[640px]:size-36'

@@ -928,11 +928,14 @@ object or reservation disappeared. Artifact list UI is not assumed available.
   short opacity/transform transitions; no generic `transition-all` on complex
   nodes.
 - Looping motion runs only where it means something, because every moving frame
-  repaints the window. Status motion (the Core, the Loom, status glyphs) runs
-  only while work is live, never for a zero count or a legend. CSS loops use the
-  `motion-loop` variant and canvases `useStillCanvases`: both hold still under
-  reduced motion and on touch-first devices. Canvases draw 30 frames a second
-  and pause off-screen and in a background window.
+  repaints the window. Status glyphs and the Loom move only while work is live,
+  never for a zero count or a legend. The Core is the exception: it always
+  drifts, slowly when nothing runs (`CORE_IDLE_ENERGY`), and quickens with live
+  work, because a frozen orb reads as a stalled app. Loaders never stand still.
+  CSS loops use the `motion-loop` variant and canvases `useStillCanvases`: both
+  hold still only under reduced motion, where the loading orb fades in place
+  instead. Canvases draw 30 frames a second and pause off-screen and in hidden
+  tabs; a visible window without focus keeps moving.
 - The legacy aurora uses huge `150vmax` layers and blur: preserve the
   appearance, not that unmeasured cost. Bound effects to their container;
   provide static border and opaque glass fallbacks. No animated glow on every
@@ -956,13 +959,13 @@ palette, the particle orb, the aurora edge and glass stay — each with one job.
 
 #### Five materials, one rule each
 
-| Material  | Meaning                                                                                                            | Rule                                                                                                         | Implementation                                                                                    |
-| --------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
-| Thread    | A run moving through time: grows while running, knots on success, stops at a cross on failure, coils while waiting | Every status in the product speaks the thread glyph language                                                 | `components/ui/status.tsx` (`Status`, `StatusGlyph`, `StatusTone`)                                |
-| Loom      | Time laid sideways, one lane per workflow                                                                          | Charts come from real run times, never invented metrics                                                      | Runs feature (Home and the Runs "Loom" view); step thread view on run detail                      |
-| Core      | The living particle orb                                                                                            | At most one large animated Core per screen                                                                   | `components/patterns/core/orb.tsx` + `orb-scene.ts` (Canvas 2D, token colours, still unless live) |
-| Lens      | Glass                                                                                                              | Only layers that float above the page: spine, bars, inspectors, dialogs, menus, toasts. Page content is flat | `lens` utility in `styles/globals.css`; `components/ui/sheet.tsx`, dialog, popups                 |
-| Live edge | The aurora travelling around a border                                                                              | Only while real work is in flight; nothing moves when nothing happens                                        | `live-edge` class (animated `@property` angle, bounded to the element)                            |
+| Material  | Meaning                                                                                                            | Rule                                                                                                         | Implementation                                                                                                |
+| --------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| Thread    | A run moving through time: grows while running, knots on success, stops at a cross on failure, coils while waiting | Every status in the product speaks the thread glyph language                                                 | `components/ui/status.tsx` (`Status`, `StatusGlyph`, `StatusTone`)                                            |
+| Loom      | Time laid sideways, one lane per workflow                                                                          | Charts come from real run times, never invented metrics                                                      | Runs feature (Home and the Runs "Loom" view); step thread view on run detail                                  |
+| Core      | The living particle orb                                                                                            | At most one large animated Core per screen                                                                   | `components/patterns/core/orb.tsx` + `orb-scene.ts` (Canvas 2D, token colours, drifts; live work quickens it) |
+| Lens      | Glass                                                                                                              | Only layers that float above the page: spine, bars, inspectors, dialogs, menus, toasts. Page content is flat | `lens` utility in `styles/globals.css`; `components/ui/sheet.tsx`, dialog, popups                             |
+| Live edge | The aurora travelling around a border                                                                              | Only while real work is in flight; nothing moves when nothing happens                                        | `live-edge` class (animated `@property` angle, bounded to the element)                                        |
 
 #### Tokens and type
 
@@ -998,7 +1001,7 @@ palette, the particle orb, the aurora edge and glass stay — each with one job.
 - Textures: `warp` (page background threads), `weave` (canvas and run maps),
   `ambient` (two aurora blobs: they drift behind sign-in and boot and hold still
   in the workspace and hub, `ambient-still`). All decorative layers are
-  `aria-hidden` and hold still under reduced motion and on touch-first devices.
+  `aria-hidden` and hold still under reduced motion.
 
 #### Status language
 
@@ -1032,6 +1035,8 @@ their own:
 | Confirmation   | `components/patterns/actions/confirm-dialog.tsx`                          | `ConfirmDialog`: title, description or consequences, optional inputs, one failure `Notice`, Cancel + `ProgressButton`; `unconfirmed` turns confirm into the exact retry and Cancel into Close                                                                                                                                     |
 | Pending button | `components/ui/progress-button.tsx`                                       | `ProgressButton`: mini orb + swapped verb while pending, countdown while waiting; never hand-build the orb                                                                                                                                                                                                                        |
 | Rename         | `components/patterns/actions/inline-rename.tsx`                           | `InlineRename` (pencil → field → Save/Cancel), `RenameForm` in dialogs; sends the revision the edit started from, conflicts offer “Use theirs / Keep mine”                                                                                                                                                                        |
+| Disclosure     | `components/ui/disclosure.tsx`                                            | `Disclosure`: the one "show more": the app's chevron turning as it opens on the native disclosure (find-in-page and keyboard keep working), quiet/strong/link tones, a framed look, and `lazy` for folds that read data. Never a raw `<details>`                                                                                  |
+| Row divider    | `styles/globals.css` (`row-divider`)                                      | Lists whose rows highlight on hover: an inset hairline above each row, hidden on the hovered or focused row and the next, so a rounded hover never crosses a line. Never `divide-y` or row borders with a hover background                                                                                                        |
 | Copy           | `components/ui/copy-button.tsx`, `components/ui/use-copy-to-clipboard.ts` | `CopyButton` (icon, or a short value in mono whose name adds it) confirms in place; `useCopyToClipboard` for menu items (toast, same wording). Only `lib/clipboard.ts` touches the clipboard                                                                                                                                      |
 | Notice         | `components/ui/notice.tsx`                                                | `Notice`: tones `info`/`success`/`warning`/`destructive` (destructive is an alert), optional thread `glyph`, title and one action. Banners, failed commands and uncertain outcomes                                                                                                                                                |
 | Stale data     | `components/patterns/states/stale-line.tsx`                               | `StaleLine`: the one amber "Couldn’t refresh. Showing results from 14:02" line with Retry                                                                                                                                                                                                                                         |
@@ -1043,7 +1048,7 @@ their own:
 | Status colour  | `components/ui/status.tsx`, `components/ui/status-tone.ts`                | `Status`/`StatusGlyph` and `statusToneText`, the one colour per tone                                                                                                                                                                                                                                                              |
 | Pagination     | `lib/api/pagination.ts`                                                   | `cursorPages`/`collectPages` walk cursors once (repeat or overrun is a protocol failure); `searchParams` builds page queries                                                                                                                                                                                                      |
 | Setting        | `components/patterns/settings/sentence.tsx`                               | `SettingSentence`: a setting read as one sentence of its current value; Change opens its unchanged editor in place (kept mounted, so edits and an unconfirmed retry survive closing) and the rules wait in "How this works"                                                                                                       |
-| Settings rail  | `features/workspaces/components/shell/settings-rail.tsx`                  | `SettingsRail`: Settings' own navigation beside every Settings page (a pathless layout keeps it mounted); a bead per page and a knot for the open one, a scrolling row on narrow screens                                                                                                                                          |
+| Settings rail  | `features/workspaces/components/shell/settings-rail.tsx`                  | `SettingsRail`: Settings' own navigation beside every Settings page (a pathless layout keeps it mounted); a bead per page and a knot for the open one while the page has room beside it (a container query), otherwise one button naming the open section that lists them all in a sheet                                          |
 | Day range      | `components/ui/day-range-form.tsx`                                        | `DayRangeForm`: whole days in the person's time zone on one calendar, shared by the Runs and audit time filters                                                                                                                                                                                                                   |
 
 The Loom uses Canvas for drawing and native SVG links over the plotted runs for

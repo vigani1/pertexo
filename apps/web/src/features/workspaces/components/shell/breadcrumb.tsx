@@ -39,7 +39,10 @@ export function ShellBreadcrumb({
   return (
     <nav aria-label="Breadcrumb" className="min-w-0 flex-1">
       <ol className="flex min-w-0 items-center gap-2 text-[0.8rem] text-subtle-foreground">
-        <li className="min-w-0">{root}</li>
+        {/* The cap sits on the step, not the switcher inside it: a width
+            capped by a percentage still reserves the whole name, which
+            pushed the rest of the trail across the bar. */}
+        <li className="max-w-60 min-w-0">{root}</li>
         {middle.length === 0 ? null : (
           <li className="flex shrink-0 items-center gap-2 sm:hidden">
             <Separator />

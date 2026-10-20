@@ -28,10 +28,13 @@ export type GuideSection = Readonly<{
 export function StatusGuide({
   title = 'What these mean',
   sections,
+  compact = false,
   className,
 }: Readonly<{
   title?: string;
   sections: readonly GuideSection[];
+  /** On a phone, only the question mark, so a toolbar keeps to one row. */
+  compact?: boolean;
   className?: string;
 }>) {
   return (
@@ -50,7 +53,7 @@ export function StatusGuide({
         }
       >
         <CircleHelpIcon aria-hidden="true" />
-        {title}
+        <span className={compact ? 'max-sm:sr-only' : undefined}>{title}</span>
       </PopoverTrigger>
       <PopoverContent
         align="end"

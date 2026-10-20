@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
 import type { ConnectionResponse } from '@pertexo/contracts';
-import { ChevronRightIcon } from 'lucide-react';
 import { CopyButton } from '@/components/ui/copy-button';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { PROVIDERS } from '../../model/connection-providers';
+import { Disclosure } from '@/components/ui/disclosure';
 
 function shortId(id: string): string {
   return `${id.slice(0, 4)}…${id.slice(-3)}`;
@@ -103,15 +103,8 @@ export function ConnectionFacts({
         services, use Test. A failed test means Pertexo couldn’t use this
         credential, not that the service is down.
       </p>
-      <details className="group/details text-sm">
-        <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-subtle-foreground outline-none select-none hover:text-foreground focus-visible:text-foreground [&::-webkit-details-marker]:hidden">
-          <ChevronRightIcon
-            aria-hidden="true"
-            className="size-3.5 transition-transform group-open/details:rotate-90"
-          />
-          Details
-        </summary>
-        <dl className="mt-3 grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-x-4 gap-y-1.5">
+      <Disclosure summary="Details">
+        <dl className="grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-x-4 gap-y-1.5">
           <IdentifierFact
             term="Connection ID"
             value={connection.id}
@@ -123,7 +116,7 @@ export function ConnectionFacts({
             copyLabel="Copy secret version"
           />
         </dl>
-      </details>
+      </Disclosure>
     </div>
   );
 }

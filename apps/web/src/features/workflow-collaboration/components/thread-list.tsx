@@ -36,12 +36,12 @@ export function DiscussionThreads({
           share.
         </p>
       ) : (
-        <ul className="divide-y divide-border">
+        <ul>
           {items.map((thread) => (
-            <li key={thread.id}>
+            <li key={thread.id} className="row-divider">
               <button
                 type="button"
-                className="flex w-full gap-3 rounded px-2 py-4 text-left hover:bg-muted/30 focus-ring"
+                className="flex w-full gap-3 rounded-lg px-3 py-4 text-left transition-colors hover:bg-white/[0.035] focus-ring motion-reduce:transition-none"
                 onClick={() => {
                   onOpen(thread.id);
                 }}

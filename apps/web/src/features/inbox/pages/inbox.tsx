@@ -19,7 +19,6 @@ import { LoadMore } from '@/components/patterns/lists/load-more';
 import {
   PageHeader,
   PageHeaderActions,
-  PageHeaderMeta,
   PageHeaderTitle,
 } from '@/components/patterns/page-header';
 import { ReadFailure } from '@/components/patterns/states/read-failure';
@@ -50,7 +49,6 @@ import {
 } from '../data/inbox.queries';
 
 function InboxHeader({
-  unreadCount,
   filter,
   canMarkAll,
   marking,
@@ -59,7 +57,6 @@ function InboxHeader({
   onFilter,
   onMarkAll,
 }: Readonly<{
-  unreadCount: number | undefined;
   filter: WorkspaceInboxFilter;
   canMarkAll: boolean;
   marking: boolean;
@@ -71,16 +68,9 @@ function InboxHeader({
   return (
     <PageHeader>
       <div className="flex flex-col gap-4">
-        <div>
-          <PageHeaderTitle>Inbox</PageHeaderTitle>
-          {unreadCount === undefined ? null : (
-            <PageHeaderMeta>
-              <span>
-                <b className="text-foreground">{unreadCount}</b> unread
-              </span>
-            </PageHeaderMeta>
-          )}
-        </div>
+        {/* The unread count rides on the Notices view, so Notices and
+            Requests share one header and switching never moves the page. */}
+        <PageHeaderTitle>Inbox</PageHeaderTitle>
         {views}
       </div>
       <PageHeaderActions>
@@ -106,7 +96,8 @@ function InboxHeader({
           onClick={onMarkAll}
         >
           <CheckCheckIcon aria-hidden="true" data-icon="inline-start" />
-          Mark all read
+          {/* An icon on a phone keeps the controls on one row. */}
+          <span className="max-sm:sr-only">Mark all read</span>
         </ProgressButton>
       </PageHeaderActions>
     </PageHeader>
@@ -238,7 +229,6 @@ export function InboxPage({
   return (
     <div className="flex flex-col gap-8">
       <InboxHeader
-        unreadCount={unreadCount}
         filter={filter}
         canMarkAll={cut !== undefined && (unreadCount ?? 0) > 0}
         marking={markAll.isPending}

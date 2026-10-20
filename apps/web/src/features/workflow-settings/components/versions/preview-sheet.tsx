@@ -1,4 +1,3 @@
-import { ChevronRightIcon } from 'lucide-react';
 import { useRef } from 'react';
 import type { WorkflowVersionResponse } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
@@ -17,6 +16,7 @@ import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { stepCountLabel, versionSteps } from '../../model/versions/steps';
 import { CopyField } from '../copy-field';
 import { VersionDiffSummary } from './diff-summary';
+import { Disclosure } from '@/components/ui/disclosure';
 
 function VersionChanges({
   version,
@@ -105,16 +105,8 @@ export function VersionPreviewSheet({
                 <h3 className="text-sm font-semibold">Changes</h3>
                 <VersionChanges version={version} previous={previous} />
               </section>
-              <details className="group/details rounded-lg border border-border px-3 py-2 text-sm">
-                {/* The app's chevron instead of the browser's own marker. */}
-                <summary className="flex cursor-pointer list-none items-center gap-1.5 text-muted-foreground [&::-webkit-details-marker]:hidden">
-                  <ChevronRightIcon
-                    aria-hidden="true"
-                    className="size-3.5 transition-transform group-open/details:rotate-90 motion-reduce:transition-none"
-                  />
-                  Details
-                </summary>
-                <div className="mt-3 flex flex-col gap-3">
+              <Disclosure summary="Details" look="framed">
+                <div className="flex flex-col gap-3">
                   <CopyField
                     label="Version ID"
                     value={version.id}
@@ -126,7 +118,7 @@ export function VersionPreviewSheet({
                     display={`${version.checksum.slice(0, 24)}…`}
                   />
                 </div>
-              </details>
+              </Disclosure>
             </SheetBody>
             <SheetFooter>
               <SheetClose

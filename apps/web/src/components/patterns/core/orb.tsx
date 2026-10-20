@@ -8,24 +8,24 @@ import { CoreOrbScene, type CoreOrbState } from './orb-scene';
 
 export type { CoreOrbState };
 
+/** The energy of a Core with nothing running: a slow, calm drift. */
+export const CORE_IDLE_ENERGY = 0.3;
+
 /**
  * The Core: Pertexo's living orb. Decorative only; callers pair it with a
- * visible status sentence. `energy` (0.2–1.6) follows live work, `assemble`
- * gathers scattered particles into the sphere once on mount. A Core that
- * reports status passes `still` while nothing is running, so it moves only
- * when that means something.
+ * visible status sentence. It always drifts; `energy` (0.2–1.6) follows live
+ * work, so an idle Core turns slowly and a busy one quickens and brightens.
+ * `assemble` gathers scattered particles into the sphere once on mount.
  */
 export function CoreOrb({
   state = 'live',
   energy = 1,
   assemble = false,
-  still = false,
   className,
 }: Readonly<{
   state?: CoreOrbState;
   energy?: number;
   assemble?: boolean;
-  still?: boolean;
   className?: string;
 }>) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -37,7 +37,6 @@ export function CoreOrb({
       scene.setEnergy(energy);
       return scene;
     },
-    !still,
   );
 
   useEffect(() => {
@@ -51,9 +50,9 @@ export function CoreOrb({
   }, [sceneRef, refresh, energy]);
 
   useEffect(() => {
-    if (assemble && !still && !deviceStill)
+    if (assemble && !deviceStill)
       sceneRef.current?.assemble(performance.now() / 1000);
-  }, [sceneRef, assemble, still, deviceStill]);
+  }, [sceneRef, assemble, deviceStill]);
 
   return (
     <canvas

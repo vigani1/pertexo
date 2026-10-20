@@ -5,6 +5,7 @@ import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { diffWorkflowGraphs } from '@/features/workflow-drafts/public';
 import { LabelledField } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
+import { Disclosure } from '@/components/ui/disclosure';
 
 export function ReviewCandidate({
   graph,
@@ -41,10 +42,9 @@ export function ReviewCandidate({
               {node.definition.key} · v{node.definition.version}
               {node.disabled === true ? ' · disabled' : ''}
             </p>
-            <details className="mt-2 text-sm">
-              <summary className="cursor-pointer">Setup and mappings</summary>
+            <Disclosure summary="Setup and mappings" className="mt-2">
               <pre
-                className="mt-2 max-h-80 overflow-auto rounded-md border border-border p-3 text-xs"
+                className="max-h-80 overflow-auto rounded-md border border-border p-3 text-xs"
                 tabIndex={0}
               >
                 {JSON.stringify(
@@ -58,15 +58,12 @@ export function ReviewCandidate({
                   2,
                 )}
               </pre>
-            </details>
+            </Disclosure>
           </li>
         ))}
       </ol>
-      <details>
-        <summary className="cursor-pointer text-sm">
-          Complete draft and live version
-        </summary>
-        <div className="mt-3 flex min-w-0 flex-col gap-4">
+      <Disclosure summary="Complete draft and live version">
+        <div className="flex min-w-0 flex-col gap-4">
           <LabelledField
             id={`${id}-candidate`}
             label="Reviewed draft JSON"
@@ -96,7 +93,7 @@ export function ReviewCandidate({
             </LabelledField>
           )}
         </div>
-      </details>
+      </Disclosure>
     </section>
   );
 }

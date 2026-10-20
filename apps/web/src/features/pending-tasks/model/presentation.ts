@@ -37,6 +37,63 @@ export function taskTone(status: PendingTaskSummary['status']) {
       return 'canceled';
   }
 }
+/** How a request's status reads in a list or a header. */
+export function taskStatusLabel(status: PendingTaskSummary['status']) {
+  switch (status) {
+    case 'pending':
+      return 'Waiting';
+    case 'approved':
+      return 'Approved';
+    case 'rejected':
+      return 'Rejected';
+    case 'submitted':
+      return 'Answered';
+    case 'expired':
+      return 'Expired';
+    case 'canceled':
+      return 'Canceled';
+    case 'refused':
+      return 'Refused';
+  }
+}
+
+/**
+ * Who ended a request, for its list row: "Development approved". A request
+ * that ended by itself (expired, canceled) reads as its status.
+ */
+export function taskOutcome(
+  task: Pick<PendingTaskSummary, 'status' | 'completedByName'>,
+) {
+  const verb =
+    task.status === 'approved'
+      ? 'approved'
+      : task.status === 'rejected'
+        ? 'rejected'
+        : task.status === 'submitted'
+          ? 'answered'
+          : undefined;
+  return verb === undefined || task.completedByName === null
+    ? taskStatusLabel(task.status)
+    : `${task.completedByName} ${verb}`;
+}
+
+/** Why a waiting request isn't yours to answer, in a few words for a list. */
+export function blockedLabel(reason: PendingTaskSummary['blockedReason']) {
+  switch (reason) {
+    case 'starter':
+      return 'You started this run; someone else decides';
+    case 'audience':
+      return 'Not in your role’s audience';
+    case 'expired':
+      return 'Expired';
+    case 'run_closed':
+      return 'The run has ended';
+    case 'resolved':
+    case null:
+      return undefined;
+  }
+}
+
 export function blockedSentence(reason: PendingTaskSummary['blockedReason']) {
   switch (reason) {
     case 'starter':

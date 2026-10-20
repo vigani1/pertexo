@@ -26,12 +26,12 @@ function mountCanvas(animate = true) {
   return { recorder, hook };
 }
 
-function touchFirstDevice() {
+function deviceMatching(matching: string) {
   vi.stubGlobal(
     'matchMedia',
     (query: string) =>
       ({
-        matches: query === '(pointer: coarse)',
+        matches: query === matching,
         addEventListener: () => undefined,
         removeEventListener: () => undefined,
       }) as unknown as MediaQueryList,
@@ -42,7 +42,6 @@ beforeEach(() => {
   vi.useFakeTimers({
     toFake: ['requestAnimationFrame', 'cancelAnimationFrame', 'performance'],
   });
-  vi.spyOn(document, 'hasFocus').mockReturnValue(true);
 });
 
 afterEach(() => {
@@ -61,8 +60,8 @@ describe('canvas renderer loop', () => {
     expect(recorder.frames.length).toBeLessThanOrEqual(32);
   });
 
-  it('holds one still frame on a touch-first device', () => {
-    touchFirstDevice();
+  it('holds one still frame when motion is reduced', () => {
+    deviceMatching('(prefers-reduced-motion: reduce)');
     const { recorder } = mountCanvas();
     act(() => {
       vi.advanceTimersByTime(1000);
@@ -70,19 +69,39 @@ describe('canvas renderer loop', () => {
     expect(recorder.frames).toEqual([3]);
   });
 
-  it('pauses while its window is in the background', () => {
+  it('moves on a touch-first device too', () => {
+    deviceMatching('(pointer: coarse)');
     const { recorder } = mountCanvas();
     act(() => {
-      vi.advanceTimersByTime(200);
+      vi.advanceTimersByTime(1000);
+    });
+    expect(recorder.frames.length).toBeGreaterThanOrEqual(28);
+  });
+
+  it('keeps moving in a visible window without focus', () => {
+    const { recorder } = mountCanvas();
+    act(() => {
       window.dispatchEvent(new Event('blur'));
+      vi.advanceTimersByTime(1000);
+    });
+    expect(recorder.frames.length).toBeGreaterThanOrEqual(28);
+  });
+
+  it('pauses while its tab is hidden', () => {
+    const { recorder } = mountCanvas();
+    const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true);
+    act(() => {
+      vi.advanceTimersByTime(200);
+      document.dispatchEvent(new Event('visibilitychange'));
     });
     const before = recorder.frames.length;
     act(() => {
       vi.advanceTimersByTime(1000);
     });
     expect(recorder.frames).toHaveLength(before);
+    hidden.mockReturnValue(false);
     act(() => {
-      window.dispatchEvent(new Event('focus'));
+      document.dispatchEvent(new Event('visibilitychange'));
       vi.advanceTimersByTime(200);
     });
     expect(recorder.frames.length).toBeGreaterThan(before);

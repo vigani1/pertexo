@@ -7,7 +7,7 @@ import {
   WavesIcon,
   WorkflowIcon,
 } from 'lucide-react';
-import { CoreOrb } from '@/components/patterns/core/orb';
+import { CORE_IDLE_ENERGY, CoreOrb } from '@/components/patterns/core/orb';
 import { cn } from '@/lib/utils';
 import {
   Sheet,
@@ -103,7 +103,11 @@ export function WorkspaceMobileBar({
         >
           {/* The same 20px box as the icons beside it, so labels line up. */}
           <span className="grid size-5 place-items-center">
-            <CoreOrb state="live" still className="size-6" />
+            <CoreOrb
+              state="idle"
+              energy={CORE_IDLE_ENERGY}
+              className="size-6"
+            />
           </span>
           Home
         </Link>

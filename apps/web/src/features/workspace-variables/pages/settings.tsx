@@ -13,6 +13,7 @@ import { variablesQueryOptions } from '../data/variables.queries';
 import type { VariablesScope } from '../data/variables.api';
 import { VariablesEditor } from '../components/editor';
 import { variableMatches, variableRows } from '../model/draft';
+import { Disclosure } from '@/components/ui/disclosure';
 export function WorkspaceVariablesPage({
   scope,
   workspace,
@@ -27,18 +28,22 @@ export function WorkspaceVariablesPage({
   return (
     <div className="flex min-w-0 max-w-5xl flex-col gap-6">
       <PageHeader>
-        <PageHeaderTitle>Variables</PageHeaderTitle>
+        <div className="flex flex-col gap-3">
+          <PageHeaderTitle>Variables</PageHeaderTitle>
+          {/* How values reach runs, read under the title; the section
+              below draws the page's one divider. */}
+          <div className="flex flex-col gap-1.5 text-sm text-muted-foreground sm:flex-row sm:gap-6">
+            <p className="flex items-center gap-2">
+              <StatusGlyph tone="live" />
+              New runs take the current values.
+            </p>
+            <p className="flex items-center gap-2">
+              <StatusGlyph tone="success" />
+              Existing runs keep their captured set.
+            </p>
+          </div>
+        </div>
       </PageHeader>
-      <div className="flex flex-col gap-3 border-y border-border py-4 text-sm sm:flex-row sm:gap-8">
-        <p className="flex gap-2">
-          <StatusGlyph tone="live" />
-          New runs take the current values.
-        </p>
-        <p className="flex gap-2">
-          <StatusGlyph tone="success" />
-          Existing runs keep their captured set.
-        </p>
-      </div>
       <SettingsSection
         title="Shared configuration"
         description="Text, numbers and true/false that every member can read. Secrets belong in Connections."
@@ -47,16 +52,13 @@ export function WorkspaceVariablesPage({
           <p>
             Use <code translate="no">$vars.NAME</code> in a step’s mappings.
           </p>
-          <details className="text-xs">
-            <summary className="w-fit cursor-pointer rounded-sm py-0.5 outline-none focus-ring hover:text-foreground">
-              Limits
-            </summary>
-            <p className="mt-1.5 max-w-lg leading-relaxed">
+          <Disclosure summary="Limits" size="xs" className="text-xs">
+            <p className="max-w-lg leading-relaxed">
               Up to 100 names, 4,096 characters per text value and 32 KB in all.
               A replay, a recovery or a child workflow keeps the values its run
               started with.
             </p>
-          </details>
+          </Disclosure>
         </div>
         {query.isError ? (
           <Notice

@@ -1,9 +1,10 @@
 import type { AccessibleWorkspace, WorkflowRunData } from '@pertexo/contracts';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-import { ChevronDownIcon, Maximize2Icon, RefreshCwIcon } from 'lucide-react';
+import { Maximize2Icon, RefreshCwIcon } from 'lucide-react';
 import { useId, useState, type ReactNode } from 'react';
 import { JsonTree } from '@/components/patterns/code/json-tree';
 import { Button } from '@/components/ui/button';
+import { Disclosure } from '@/components/ui/disclosure';
 import { CopyButton } from '@/components/ui/copy-button';
 import {
   Dialog,
@@ -425,28 +426,16 @@ function SourceData({ children }: Readonly<{ children: ReactNode }>) {
 
 /** Mounts the sources only once opened, so their reads wait until asked. */
 function SourcesDisclosure({ children }: Readonly<{ children: ReactNode }>) {
-  const [open, setOpen] = useState(false);
   return (
-    <details
-      className="group"
-      onToggle={(event) => {
-        setOpen(event.currentTarget.open);
-      }}
+    <Disclosure
+      summary="Where it came from"
+      size="xs"
+      lazy
+      contentClassName="flex flex-col gap-2"
     >
-      <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-xs text-subtle-foreground outline-none hover:text-foreground focus-ring [&::-webkit-details-marker]:hidden">
-        Where it came from
-        <ChevronDownIcon
-          aria-hidden="true"
-          className="size-3.5 transition-transform group-open:rotate-180 motion-reduce:transition-none"
-        />
-      </summary>
-      {open ? (
-        <div className="mt-2 flex flex-col gap-2">
-          <SourceNote />
-          {children}
-        </div>
-      ) : null}
-    </details>
+      <SourceNote />
+      {children}
+    </Disclosure>
   );
 }
 

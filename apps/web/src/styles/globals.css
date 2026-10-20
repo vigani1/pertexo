@@ -5,12 +5,11 @@
    lens (glass only for floating layers) and live edge (aurora only while work
    is actually happening). Tokens are semantic; components never hard-code hex. */
 
-/* Looping motion that decorates or restates a status runs only where it's
-   welcome: not when the person asks for less motion, and not on touch-first
-   devices, where heat and battery matter more. useStillCanvases applies the
-   same rule to canvas drawings. */
+/* Looping motion that decorates or restates a status runs unless the person
+   asks for less motion. useStillCanvases applies the same rule to canvas
+   drawings. */
 @custom-variant motion-loop {
-  @media (prefers-reduced-motion: no-preference) and (pointer: fine) {
+  @media (prefers-reduced-motion: no-preference) {
     @slot;
   }
 }
@@ -380,6 +379,29 @@
 
 /* The one inline link: pale cyan, underlined, a bolder underline on hover.
    Router links in running text and `Button variant="link"` share it. */
+/* A row in a list that highlights on hover: an inset hairline above it
+   instead of a full-width border, so a rounded hover never crosses a line.
+   A hovered or focused row hides its own line and the next row's. */
+@utility row-divider {
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset-inline: 0.75rem;
+    top: 0;
+    height: 1px;
+    background: var(--border);
+    pointer-events: none;
+  }
+
+  &:first-child::before,
+  &:where(:hover, :focus-within)::before,
+  &:where(:hover, :focus-within) + &::before {
+    opacity: 0;
+  }
+}
+
 @utility inline-link {
   color: var(--accent-foreground);
   font-weight: 600;
@@ -589,6 +611,11 @@
     .loading-orb-ring,
     .loading-orb-particle {
       animation: none;
+    }
+
+    /* A loader that stands still reads as stuck: it fades in place instead. */
+    .loading-orb {
+      animation: loading-orb-fade 1.4s ease-in-out infinite alternate;
     }
   }
 
@@ -945,6 +972,12 @@
 @keyframes loading-orb-particle {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes loading-orb-fade {
+  to {
+    opacity: 0.35;
   }
 }
 

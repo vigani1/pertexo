@@ -46,6 +46,7 @@ import {
   DestinationFields,
   type DestinationValues,
 } from './destination-fields';
+import { Disclosure } from '@/components/ui/disclosure';
 
 export type ListRefresh = Readonly<{
   failed: boolean;
@@ -62,11 +63,8 @@ function DestinationDetails({
   version,
 }: Readonly<{ destinationId: string; version: number }>) {
   return (
-    <details className="text-sm text-subtle-foreground">
-      <summary className="cursor-pointer select-none hover:text-foreground">
-        Details
-      </summary>
-      <p className="mt-2 flex items-center gap-2 font-mono text-xs">
+    <Disclosure summary="Details" className="text-subtle-foreground">
+      <p className="flex items-center gap-2 font-mono text-xs">
         Version {version} · saving creates version {version + 1}
       </p>
       <CopyButton
@@ -75,7 +73,7 @@ function DestinationDetails({
         label="Copy destination ID"
         display={`${destinationId.slice(0, 4)}…${destinationId.slice(-3)}`}
       />
-    </details>
+    </Disclosure>
   );
 }
 

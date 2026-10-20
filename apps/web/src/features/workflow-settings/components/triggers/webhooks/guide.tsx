@@ -1,5 +1,4 @@
 import type { WebhookAuthentication } from '@pertexo/contracts';
-import { ChevronRightIcon } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   CURL_SNIPPET,
@@ -7,6 +6,7 @@ import {
   WEBHOOK_FRESHNESS,
   WEBHOOK_MAX_BODY,
 } from '../../../model/triggers/webhook-snippets';
+import { Disclosure } from '@/components/ui/disclosure';
 
 const HEADERS = [
   ['Content-Type', 'application/json'],
@@ -37,14 +37,11 @@ export function WebhookGuide({
   authentication,
 }: Readonly<{ authentication: WebhookAuthentication }>) {
   return (
-    <details className="group/guide rounded-lg border border-border">
-      <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-sm font-medium text-muted-foreground outline-none select-none hover:text-foreground focus-ring [&::-webkit-details-marker]:hidden">
-        <ChevronRightIcon
-          aria-hidden="true"
-          className="size-4 transition-transform duration-150 group-open/guide:rotate-90 motion-reduce:transition-none"
-        />
-        How to send events to this webhook
-      </summary>
+    <Disclosure
+      summary="How to send events to this webhook"
+      look="framed"
+      tone="strong"
+    >
       <div className="flex flex-col gap-4 border-t border-border px-3 py-4 text-sm">
         <p className="text-muted-foreground">
           {authentication.mode === 'signed'
@@ -104,6 +101,6 @@ export function WebhookGuide({
           </>
         )}
       </div>
-    </details>
+    </Disclosure>
   );
 }

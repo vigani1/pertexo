@@ -22,6 +22,8 @@ import {
   TableCollection,
 } from '../components/overview';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
+import { formatByteLength } from '@/lib/format/bytes';
+import { ColumnChip, UsageMeter } from '../components/column-type';
 type TableDialog = 'create' | 'limits' | 'remove' | 'columns';
 export function DataTablesPage({
   scope,
@@ -75,12 +77,12 @@ export function DataTablesPage({
       </PageHeader>
       {tableId === undefined ? (
         <>
-          <TableCapacity quotas={quotas} />
-          <p className="text-sm text-muted-foreground">
+          <p className="max-w-2xl text-sm text-muted-foreground">
             Small lookups and saved state your workflows read and write. Keep
             secrets in Connections; an exported workflow names its tables but
             never carries their rows.
           </p>
+          <TableCapacity quotas={quotas} />
         </>
       ) : null}
       {query.isPending ? <p role="status">Loading data tables…</p> : null}
@@ -103,6 +105,7 @@ export function DataTablesPage({
       {tableId === undefined ? (
         <TableCollection
           tables={query.data?.tables}
+          rowLimit={quotas?.rowLimit}
           workspaceId={workspace.id}
         />
       ) : (
@@ -148,14 +151,47 @@ function TableDetail({
     );
   return (
     <>
-      <p className="text-sm text-muted-foreground">
-        {table.rowCount.toLocaleString(FORMAT_LOCALE)} /{' '}
-        {quotas?.rowLimit.toLocaleString(FORMAT_LOCALE)} rows ·{' '}
-        {table.keyColumn === null
-          ? 'No unique key'
-          : `Unique key: ${table.keyColumn}`}
-        . Each row fits 64 KB.
-      </p>
+      {/* The table's shape: its typed columns, then how full it is. */}
+      <section
+        aria-label="Columns and capacity"
+        className="flex flex-col gap-3"
+      >
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+          {table.columns.map((column) => (
+            <ColumnChip
+              key={column.name}
+              column={column}
+              isKey={column.name === table.keyColumn}
+            />
+          ))}
+        </div>
+        <div className="flex max-w-xl min-w-0 items-center gap-3 text-xs text-muted-foreground">
+          <span className="shrink-0 font-mono tabular-nums">
+            {table.rowCount.toLocaleString(FORMAT_LOCALE)}
+            {quotas === undefined
+              ? ''
+              : ` / ${quotas.rowLimit.toLocaleString(FORMAT_LOCALE)}`}{' '}
+            rows
+          </span>
+          {quotas === undefined ? null : (
+            <UsageMeter
+              used={table.rowCount}
+              limit={quotas.rowLimit}
+              label="Rows used"
+              className="min-w-16 flex-1"
+            />
+          )}
+          <span className="shrink-0 font-mono">
+            {formatByteLength(table.storedBytes)}
+          </span>
+        </div>
+        <p className="text-xs text-subtle-foreground">
+          {table.keyColumn === null
+            ? 'No unique key: rows can repeat.'
+            : `Rows are unique by ${table.keyColumn}.`}{' '}
+          Each row fits 64 KB.
+        </p>
+      </section>
       <DataTableRows
         key={table.id}
         scope={scope}
