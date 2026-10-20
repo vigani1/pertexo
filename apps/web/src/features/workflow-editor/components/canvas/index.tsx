@@ -198,11 +198,7 @@ export function WorkflowCanvas({
             const previous = lastTap.current;
             const now = event.timeStamp;
             lastTap.current = { id: node.id, at: now };
-            if (
-              previous !== undefined &&
-              previous.id === node.id &&
-              now - previous.at < DOUBLE_TAP_MS
-            ) {
+            if (previous?.id === node.id && now - previous.at < DOUBLE_TAP_MS) {
               lastTap.current = undefined;
               onOpenStep(node.id);
             }
