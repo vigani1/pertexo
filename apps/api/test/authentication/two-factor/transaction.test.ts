@@ -23,7 +23,11 @@ it('does not fail a committed sign-in when the development mail observer throws 
   });
   expect(await response.text()).toBe('signed in');
   expect(response.headers.get('set-cookie')).toBe('session=valid');
-  expect(query.mock.calls.map(([sql]) => sql)).toEqual(['BEGIN', 'COMMIT']);
+  expect(
+    query.mock.calls
+      .map(([sql]) => sql.toUpperCase())
+      .filter((sql) => ['BEGIN', 'COMMIT', 'ROLLBACK'].includes(sql)),
+  ).toEqual(['BEGIN', 'COMMIT']);
   expect(release).toHaveBeenCalledOnce();
 });
 
@@ -52,10 +56,11 @@ it.each([
         ),
       );
     });
-    expect(query.mock.calls.map(([sql]) => sql)).toEqual([
-      'BEGIN',
-      commit ? 'COMMIT' : 'ROLLBACK',
-    ]);
+    expect(
+      query.mock.calls
+        .map(([sql]) => sql.toUpperCase())
+        .filter((sql) => ['BEGIN', 'COMMIT', 'ROLLBACK'].includes(sql)),
+    ).toEqual(['BEGIN', commit ? 'COMMIT' : 'ROLLBACK']);
     expect(response.status).toBe(status);
     expect(response.headers.get('set-cookie')).toBe(
       commit ? 'session=candidate' : null,

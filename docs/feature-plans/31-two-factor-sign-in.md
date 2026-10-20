@@ -98,7 +98,8 @@ in. This matches [n8n's two-factor sign-in](https://docs.n8n.io/user-management/
     authentication mail (`apps/api/src/authentication/mail`). The email never
     contains codes. Recovery-code sign-in and disabling two-factor commit the
     SDK change, identity audit fact and sealed system-mail command in one
-    transaction, before returning session cookies. A failed fact, seal or enqueue
+    transaction through the existing platform transaction runner, before returning
+    session cookies. A failed fact, seal or enqueue
     rolls everything back, preserving the code/challenge or enabled factor for
     another attempt. Late policy refusals also roll back; only the SDK's explicit
     failed-code/challenge/account lockout refusals retain their attempt counters.
