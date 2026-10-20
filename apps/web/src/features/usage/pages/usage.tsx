@@ -1,4 +1,6 @@
 import { Link } from '@tanstack/react-router';
+import { ChartLineIcon } from 'lucide-react';
+import { buttonVariants } from '@/components/ui/button-variants';
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
@@ -6,6 +8,7 @@ import type {
 import { useQuery } from '@tanstack/react-query';
 import {
   PageHeader,
+  PageHeaderActions,
   PageHeaderMeta,
   PageHeaderTitle,
 } from '@/components/patterns/page-header';
@@ -94,21 +97,24 @@ export function UsagePage({
               </span>
             </PageHeaderMeta>
           )}
-          {canReadRuns ? (
-            <Link
-              className="mt-3 inline-block text-sm underline underline-offset-4"
-              to="/w/$workspaceId/settings/usage/trends"
-              params={{ workspaceId: workspace.id }}
-              search={{ period: '30d' }}
-            >
-              View trends
-            </Link>
-          ) : null}
           <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
             What this workspace is using right now, and how many runs started
             recently.
           </p>
         </div>
+        {canReadRuns ? (
+          <PageHeaderActions>
+            <Link
+              className={buttonVariants({ variant: 'outline' })}
+              to="/w/$workspaceId/settings/usage/trends"
+              params={{ workspaceId: workspace.id }}
+              search={{ period: '30d' }}
+            >
+              <ChartLineIcon aria-hidden="true" data-icon="inline-start" />
+              View trends
+            </Link>
+          </PageHeaderActions>
+        ) : null}
       </PageHeader>
       <div className="flex flex-col">
         {canReadCapacity ? (
