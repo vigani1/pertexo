@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { createScratchTracker } from '../use-draft-field';
 import { isRecord } from '@pertexo/workflow-model';
 import { Field, FieldLabel, FieldDescription } from '@/components/ui/field';
 import { ChoiceSelect } from '../fields/choice-select';
@@ -25,7 +26,22 @@ export function HttpPaginationSetup({
   config,
   form,
 }: Readonly<{ schema: unknown; config: NodeConfig; form: NodeFormApi }>) {
-  const nested = useMemo(() => nestedConfigForm(form, 'pagination'), [form]);
+  const [hasScratch, setHasScratch] = useState(false);
+  const [trackScratch] = useState(() => createScratchTracker(setHasScratch));
+  const paginationForm = useMemo<NodeFormApi>(
+    () => ({
+      ...form,
+      reportScratch: (field, scratch) => {
+        trackScratch(field, scratch);
+        form.reportScratch(field, scratch);
+      },
+    }),
+    [form, trackScratch],
+  );
+  const nested = useMemo(
+    () => nestedConfigForm(paginationForm, 'pagination'),
+    [paginationForm],
+  );
   const sourceForm = useMemo(
     () => nestedConfigForm(nested, 'source'),
     [nested],
@@ -54,7 +70,9 @@ export function HttpPaginationSetup({
             value={mode}
             choices={paginationModes}
             disabled={
-              !form.editable || (config.method !== 'GET' && value === undefined)
+              !form.editable ||
+              hasScratch ||
+              (config.method !== 'GET' && value === undefined)
             }
             onChange={(next) => {
               if (next === null) return;
@@ -93,6 +111,7 @@ export function HttpPaginationSetup({
             value={value}
             form={nested}
             sourceForm={sourceForm}
+            hasScratch={hasScratch}
           />
         )}
       </div>
@@ -104,11 +123,13 @@ function PaginationFields({
   value,
   form,
   sourceForm,
+  hasScratch,
 }: Readonly<{
   schema: unknown;
   value: NodeConfig;
   form: NodeFormApi;
   sourceForm: NodeFormApi;
+  hasScratch: boolean;
 }>) {
   const source = isRecord(value.source) ? (value.source as NodeConfig) : {};
   const fields = paginationFields(schema, value.mode, source.kind);
@@ -128,7 +149,7 @@ function PaginationFields({
               { value: 'body', label: 'JSON response' },
               { value: 'link_header', label: 'Link header' },
             ]}
-            disabled={!form.editable}
+            disabled={!form.editable || hasScratch}
             onChange={(kind) => {
               if (kind === null) return;
               form.commit(
@@ -157,6 +178,7 @@ function PaginationFields({
         <SchemaField key={field.key} field={field} config={value} form={form} />
       ))}
       <p className="text-xs text-subtle-foreground">
+        Finish incomplete fields before changing mode or next-link source.
         Results are in items. Each page must fit the inline limit; combined
         results must fit 1 MB. A retry starts again from the first page.
       </p>

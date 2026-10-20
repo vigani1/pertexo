@@ -278,3 +278,8 @@ were inspected; setup stays inside the viewport and scrolls in the inspector.
 The mocked browser cases exercise all modes, source choices, human units, bounds
 and saved-draft reloads. Eight model tests cover shared defaults, schema
 projection, nested edits and mapping suggestions.
+
+Mode and next-link source choices stay unavailable while a pagination field
+has unfinished input. This keeps the invalid field visible and recoverable
+instead of hiding it and leaving a stale publish guard. The existing shared
+scratch tracker also owns this section’s validity; no draft mirror is added.

@@ -400,6 +400,19 @@ for (const width of [375, 1280]) {
     await expect(
       page.getByLabel('Next link path', { exact: true }),
     ).toHaveValue('$.next');
+    const nextPath = page.getByLabel('Next link path', { exact: true });
+    await nextPath.fill('$.items[');
+    await nextPath.press('Tab');
+    await expect(nextPath).toHaveAttribute('aria-invalid', 'true');
+    await expect(mode).toBeDisabled();
+    await expect(
+      page.getByLabel('Next link in', { exact: true }),
+    ).toBeDisabled();
+    await nextPath.fill('next');
+    await expect(mode).toBeEnabled();
+    await expect(
+      page.getByLabel('Next link in', { exact: true }),
+    ).toBeEnabled();
     await page.getByLabel('Items path', { exact: true }).fill('records');
     await page.getByLabel('Max pages', { exact: true }).fill('3');
     await expect.poll(() => saved()?.itemsPath).toBe('$.records');
@@ -423,6 +436,13 @@ for (const width of [375, 1280]) {
         itemsPath: '$.records',
         maxPages: 3,
       });
+    const cursorPath = page.getByLabel('Next cursor path', { exact: true });
+    await cursorPath.fill('$.items[');
+    await cursorPath.press('Tab');
+    await expect(cursorPath).toHaveAttribute('aria-invalid', 'true');
+    await expect(mode).toBeDisabled();
+    await cursorPath.fill('next_cursor');
+    await expect(mode).toBeEnabled();
     await choose('Page number');
     await expect(
       page.getByLabel('Next cursor path', { exact: true }),
@@ -453,7 +473,9 @@ for (const width of [375, 1280]) {
       'true',
     );
     expect(saved()?.maxPages).toBe(3);
+    await expect(mode).toBeDisabled();
     await page.getByLabel('Max pages', { exact: true }).fill('3');
+    await expect(mode).toBeEnabled();
     await choose('Next page link');
     await page.getByLabel('Next link in', { exact: true }).click();
     await page
