@@ -104,6 +104,7 @@ it('upgrades populated workflow threads and private read revisions without chang
       '0041_two_factor_security_notices.sql',
       '0042_http_retry_delay.sql',
       '0043_webhook_test_events.sql',
+      '0044_canvas_notes.sql',
     ]);
     read = createWorkspaceInboxDatabase(
       parseDatabaseConfig({

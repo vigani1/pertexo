@@ -209,10 +209,6 @@ export const workflowVersions = appSchema.table(
       sql`(json_typeof(graph_json) = 'object'::text)`,
     ),
     check('workflow_versions_number_positive', sql`(version_number > 0)`),
-    unique('workflow_versions_checksum_unique').on(
-      table.workflowId,
-      table.checksum,
-    ),
     unique('workflow_versions_number_unique').on(
       table.workflowId,
       table.versionNumber,

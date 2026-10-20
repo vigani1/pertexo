@@ -80,6 +80,7 @@ describe('version changes', () => {
       added: [{ id: 'mail', label: 'Send email' }],
       removed: [{ id: 'old', label: 'Tidy' }],
       changed: [{ id: 'call', label: 'Call API', detail: 'setup' }],
+      notes: [],
       linksChanged: true,
       contractChanged: false,
       settingsChanged: false,

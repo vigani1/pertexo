@@ -319,3 +319,7 @@ The Webhook trigger’s Test tab can listen for one real event on a temporary,
 authenticated URL and explicitly keep it as a pinned sample. It works before
 publishing; see
 [webhook tests](../../docs/guides/webhooks.md#listen-for-a-test-event).
+
+The canvas supports bounded Markdown documentation with drag/resize, an
+accessible edit form and ordinary undo. Notes stay separate from discussion
+threads; see [Canvas notes](../../docs/guides/canvas-notes.md).

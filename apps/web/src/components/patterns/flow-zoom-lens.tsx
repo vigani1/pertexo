@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { MiniMap, Panel, useReactFlow, type Node } from '@xyflow/react';
 import { MaximizeIcon, MinusIcon, PlusIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,7 @@ export function FlowZoomLens<NodeType extends Node>({
   nodeStrokeColor,
   onFit,
   className,
+  children,
 }: Readonly<{
   /** Names the overview map: "Workflow overview". */
   mapLabel: string;
@@ -30,6 +32,7 @@ export function FlowZoomLens<NodeType extends Node>({
   /** Replaces the plain fit, e.g. with the editor's own framing. */
   onFit?: () => void;
   className?: string;
+  children?: ReactNode;
 }>) {
   const { fitView, zoomIn, zoomOut } = useReactFlow();
   const reducedMotion = usePrefersReducedMotion();
@@ -89,6 +92,7 @@ export function FlowZoomLens<NodeType extends Node>({
         >
           <MaximizeIcon />
         </Button>
+        {children}
       </div>
     </Panel>
   );

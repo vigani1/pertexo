@@ -27,7 +27,7 @@ export function ReviewCandidate({
         {liveGraph === null ? 'First publication. ' : ''}
         {diff.added.length} steps added, {diff.changed.length} changed,{' '}
         {diff.removed.length} removed. {diff.linksAdded} links added,{' '}
-        {diff.linksRemoved} removed.
+        {diff.linksRemoved} removed. {diff.notes.length} notes changed.
         {canonicalJson(before.settings) === canonicalJson(graph.settings)
           ? ''
           : ' Workflow settings changed.'}

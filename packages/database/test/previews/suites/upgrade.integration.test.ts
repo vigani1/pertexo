@@ -101,6 +101,7 @@ it('upgrades a populated standalone test without changing its source identity or
       '0041_two_factor_security_notices.sql',
       '0042_http_retry_delay.sql',
       '0043_webhook_test_events.sql',
+      '0044_canvas_notes.sql',
     ]);
     expect(
       (

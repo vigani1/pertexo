@@ -9,8 +9,9 @@ const byId = (left: { id: string }, right: { id: string }): number =>
 
 /** The graph without presentation: positions, labels and list order. */
 function executableShape(graph: WorkflowGraph): unknown {
+  const { notes: _notes, ...execution } = graph;
   return {
-    ...graph,
+    ...execution,
     nodes: [...graph.nodes]
       .sort(byId)
       .map(({ position: _position, label: _label, ...node }) =>

@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+import type { CanvasFlowNode } from './notes/types';
 import { FlowZoomLens } from '@/components/patterns/flow-zoom-lens';
 import { useEditorStore } from '../../model/state/context';
 import type { WorkflowFlowNode } from '../../model/graph/adapter';
@@ -18,20 +20,30 @@ const familyFill: Readonly<Record<WorkflowFlowNode['data']['family'], string>> =
  * The editor's zoom lens: each step on the overview map in its family's
  * colour, the selected one outlined, and fit using the editor's framing.
  */
-export function CanvasZoomLens({ onFit }: Readonly<{ onFit: () => void }>) {
+export function CanvasZoomLens({
+  onFit,
+  children,
+}: Readonly<{ onFit: () => void; children?: ReactNode }>) {
   // An empty draft has nothing to map, so no empty frame either.
-  const empty = useEditorStore((state) => state.graph.nodes.length === 0);
+  const empty = useEditorStore(
+    (state) =>
+      state.graph.nodes.length === 0 && (state.graph.notes?.length ?? 0) === 0,
+  );
   return (
-    <FlowZoomLens<WorkflowFlowNode>
+    <FlowZoomLens<CanvasFlowNode>
       mapLabel="Workflow overview"
       fitLabel="Fit workflow to screen"
       showMap={!empty}
-      nodeColor={(node) => familyFill[node.data.family]}
+      nodeColor={(node) =>
+        node.type === 'note' ? 'var(--secondary)' : familyFill[node.data.family]
+      }
       nodeStrokeColor={(node) =>
         node.selected === true ? 'var(--primary)' : 'transparent'
       }
       onFit={onFit}
       className="lg:!left-[var(--editor-left-inset,0.75rem)]"
-    />
+    >
+      {children}
+    </FlowZoomLens>
   );
 }

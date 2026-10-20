@@ -14,6 +14,7 @@ import {
 import { generatePersistedId } from '../../platform/persisted-id.js';
 
 import {
+  sameWorkflowNotes,
   InvalidWorkflowGraphError,
   type WorkflowGraph,
   type CallableVersionSummary,
@@ -257,7 +258,11 @@ async function persistVersion(
   let versionRow: Record<string, unknown> | undefined;
   for (const row of retained.rows) {
     const version = mapVersion(row);
-    if (version.checksum === publication.checksum) versionRow = row;
+    if (
+      version.checksum === publication.checksum &&
+      sameWorkflowNotes(version.graphJson, publication.graph)
+    )
+      versionRow = row;
   }
   const reused = versionRow !== undefined;
   if (!reused) {

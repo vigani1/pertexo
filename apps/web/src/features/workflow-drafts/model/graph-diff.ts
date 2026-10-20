@@ -1,5 +1,12 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 
+export type NoteChange = Readonly<{
+  kind: 'added' | 'removed' | 'changed';
+  id: string;
+  label: string;
+  detail?: string;
+}>;
+
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
 
 export type StepChangeAspect =
@@ -21,6 +28,7 @@ export type WorkflowGraphDiff = Readonly<{
   added: readonly WorkflowNode[];
   removed: readonly WorkflowNode[];
   changed: readonly ChangedStep[];
+  notes: readonly NoteChange[];
   linksAdded: number;
   linksRemoved: number;
 }>;
@@ -56,6 +64,7 @@ export function diffWorkflowGraphs(
   const afterEdges = new Set(after.edges.map(edgeKey));
   return {
     added,
+    notes: diffNotes(before, after),
     removed: before.nodes.filter((node) => !afterIds.has(node.id)),
     changed,
     linksAdded: [...afterEdges].filter((key) => !beforeEdges.has(key)).length,
@@ -113,4 +122,39 @@ export function describeStepChange(
   aspects: readonly StepChangeAspect[],
 ): string {
   return aspects.map((aspect) => ASPECT_WORDS[aspect]).join(', ');
+}
+
+function diffNotes(
+  before: WorkflowGraphContract,
+  after: WorkflowGraphContract,
+): NoteChange[] {
+  const previous = new Map((before.notes ?? []).map((note) => [note.id, note]));
+  const current = new Map((after.notes ?? []).map((note) => [note.id, note]));
+  const changes: NoteChange[] = [];
+  const label = (text: string) =>
+    `Note: ${text.replace(/\s+/gu, ' ').trim().slice(0, 80) || 'Untitled'}`;
+  for (const note of current.values()) {
+    const old = previous.get(note.id);
+    if (old === undefined)
+      changes.push({ kind: 'added', id: note.id, label: label(note.text) });
+    else {
+      const aspects = [
+        old.text !== note.text ? 'text' : null,
+        !sameJson(old.position, note.position) ? 'moved' : null,
+        !sameJson(old.size, note.size) ? 'resized' : null,
+        old.color !== note.color ? 'colour' : null,
+      ].filter((value) => value !== null);
+      if (aspects.length > 0)
+        changes.push({
+          kind: 'changed',
+          id: note.id,
+          label: label(note.text),
+          detail: aspects.join(', '),
+        });
+    }
+  }
+  for (const note of previous.values())
+    if (!current.has(note.id))
+      changes.push({ kind: 'removed', id: note.id, label: label(note.text) });
+  return changes;
 }

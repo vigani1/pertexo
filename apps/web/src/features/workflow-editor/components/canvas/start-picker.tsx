@@ -19,7 +19,10 @@ export function StartPicker({
   editable: boolean;
   onPick: (definition: NodeDefinitionCatalogItem) => void;
 }>) {
-  const empty = useEditorStore((state) => state.graph.nodes.length === 0);
+  const empty = useEditorStore(
+    (state) =>
+      state.graph.nodes.length === 0 && (state.graph.notes?.length ?? 0) === 0,
+  );
   if (!empty) return null;
   // One choice per step type, at the version a new step would use.
   const placeable = placeableDefinitions(definitions);

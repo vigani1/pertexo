@@ -20,6 +20,28 @@ import {
 } from '../support/executable-workflow.js';
 
 describe('workflow executable identity', () => {
+  it('excludes canvas notes from the executable and keeps its exact checksum', () => {
+    const catalog = composeExecutableCatalog(nodeCatalog());
+    const original = graph();
+    const before = buildWorkflowExecutable({ graph: original, catalog });
+    const documented = buildWorkflowExecutable({
+      graph: {
+        ...original,
+        notes: [
+          {
+            id: '00000000-0000-4000-8000-000000000001',
+            text: '# Documentation',
+            position: { x: -40, y: 90 },
+            size: { width: 320, height: 200 },
+            color: 'violet',
+          },
+        ],
+      },
+      catalog,
+    });
+    expect(documented.envelope).toEqual(before.envelope);
+    expect(documented.checksum).toBe(before.checksum);
+  });
   it('pins retry settings and loads them without changing legacy executable identity', () => {
     const catalog = composeExecutableCatalog(nodeCatalog());
     const original = graph();

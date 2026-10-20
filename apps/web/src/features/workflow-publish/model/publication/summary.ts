@@ -47,6 +47,12 @@ export function summarizePublish(
   const diff = diffWorkflowGraphs(previous, draft, { ignoreLayout: true });
   const withLayout = diffWorkflowGraphs(previous, draft);
   const lines: PublishSummaryLine[] = [
+    ...diff.notes.map((note) => ({
+      kind: note.kind,
+      nodeId: `note:${note.id}`,
+      name: note.label,
+      ...(note.detail === undefined ? {} : { detail: note.detail }),
+    })),
     ...diff.added.map((node) => line('added', node)),
     ...diff.removed.map((node) => line('removed', node)),
     ...diff.changed.map((change) =>

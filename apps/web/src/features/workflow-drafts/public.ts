@@ -6,4 +6,5 @@ export {
   describeStepChange,
   diffWorkflowGraphs,
   type StepChangeAspect,
+  type NoteChange,
 } from './model/graph-diff';

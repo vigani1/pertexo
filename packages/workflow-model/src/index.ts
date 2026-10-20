@@ -275,3 +275,13 @@ export {
 export { workflowNodes } from './graph/nodes.js';
 
 export { collectionPathSchema } from './json/path-validation.js';
+
+export {
+  WORKFLOW_NOTE_LIMITS,
+  workflowNoteColorSchema,
+  workflowNoteSchema,
+  workflowNotesSchema,
+  type WorkflowNote,
+  type WorkflowNoteColor,
+} from './graph/notes/contract.js';
+export { sameWorkflowNotes } from './graph/notes/identity.js';

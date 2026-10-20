@@ -66,6 +66,14 @@ export function VersionDiffSummary({
       <ChangeList title="Added" items={diff.added} tone="added" />
       <ChangeList title="Removed" items={diff.removed} tone="removed" />
       <ChangeList title="Changed" items={diff.changed} tone="changed" />
+      {(['added', 'removed', 'changed'] as const).map((kind) => (
+        <ChangeList
+          key={kind}
+          title={`Notes ${kind}`}
+          items={diff.notes.filter((note) => note.kind === kind)}
+          tone={kind}
+        />
+      ))}
       {diff.contractChanged ? (
         <p className="text-sm text-muted-foreground">
           Input or callable contract changed since {since}.

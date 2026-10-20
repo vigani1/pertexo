@@ -25,6 +25,8 @@ async function compare(
   validation = valid,
   currentChecksum = checksum,
   published = true,
+  draftGraph = graph,
+  liveGraph = graph,
 ) {
   const client = {
     query: vi
@@ -35,7 +37,7 @@ async function compare(
             workspace_id: workspaceId,
             workflow_id: workflowId,
             revision: 1,
-            graph_json: graph,
+            graph_json: draftGraph,
             updated_by: actorId,
             updated_at: new Date(),
           },
@@ -43,7 +45,9 @@ async function compare(
       })
       .mockResolvedValueOnce({ rows: [{ setting: '30000', unit: 'ms' }] })
       .mockResolvedValueOnce({
-        rows: published ? [{ versionId, versionNumber: 3, checksum }] : [],
+        rows: published
+          ? [{ versionId, versionNumber: 3, checksum, graphJson: liveGraph }]
+          : [],
       }),
   } as unknown as PoolClient;
   const compiler = vi.fn(() => ({
@@ -66,6 +70,28 @@ async function compare(
 }
 
 describe('current publication comparison', () => {
+  it('enables publication for changed notes without changing execution identity', async () => {
+    const documented = {
+      ...graph,
+      notes: [
+        {
+          id: '00000000-0000-4000-8000-000000000001',
+          text: 'Review this path',
+          position: { x: 0, y: 0 },
+          size: { width: 320, height: 200 },
+          color: 'teal' as const,
+        },
+      ],
+    };
+    expect(
+      (await compare(valid, checksum, true, documented)).result
+        ?.currentPublication?.matchesDraft,
+    ).toBe(false);
+    expect(
+      (await compare(valid, checksum, true, documented, documented)).result
+        ?.currentPublication?.matchesDraft,
+    ).toBe(true);
+  });
   it('uses the injected publication compiler, including changes in runtime/catalog identity', async () => {
     const unchanged = await compare();
     expect(unchanged.result?.currentPublication).toEqual({

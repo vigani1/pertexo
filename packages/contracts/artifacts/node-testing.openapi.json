@@ -2666,6 +2666,82 @@
                   "result"
                 ],
                 "additionalProperties": false
+              },
+              "notes": {
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "text": {
+                      "type": "string",
+                      "maxLength": 4000
+                    },
+                    "position": {
+                      "type": "object",
+                      "properties": {
+                        "x": {
+                          "type": "number",
+                          "minimum": -100000,
+                          "maximum": 100000
+                        },
+                        "y": {
+                          "type": "number",
+                          "minimum": -100000,
+                          "maximum": 100000
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "size": {
+                      "type": "object",
+                      "properties": {
+                        "width": {
+                          "type": "number",
+                          "minimum": 200,
+                          "maximum": 1200
+                        },
+                        "height": {
+                          "type": "number",
+                          "minimum": 120,
+                          "maximum": 1200
+                        }
+                      },
+                      "required": [
+                        "width",
+                        "height"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "color": {
+                      "type": "string",
+                      "enum": [
+                        "neutral",
+                        "teal",
+                        "violet",
+                        "sage",
+                        "amber"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "text",
+                    "position",
+                    "size",
+                    "color"
+                  ],
+                  "additionalProperties": false
+                }
               }
             },
             "required": [
