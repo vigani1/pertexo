@@ -26,10 +26,10 @@
     "@pertexo/node-sdk": "workspace:*",
     "@pertexo/templates": "workspace:*",
     "@pertexo/workflow-model": "workspace:*",
-    "zod": "4.6.5"
+    "zod": "4.6.7"
   },
   "devDependencies": {
-    "@redocly/cli": "2.63.0",
+    "@redocly/cli": "2.64.1",
     "ajv": "8.20.0"
   }
 }
