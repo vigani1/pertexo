@@ -1,7 +1,13 @@
+import {
+  noteFlowId,
+  isNoteFlowId,
+  noteIdFromFlowId,
+} from '@/features/workflow-editor/components/canvas/notes/types';
 import { describe, expect, it } from 'vitest';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import {
   WORKFLOW_NOTE_LIMITS,
+  WORKFLOW_GRAPH_CONTRACT_LIMITS,
   type WorkflowNote,
 } from '@pertexo/workflow-model';
 import {
@@ -176,4 +182,15 @@ describe('note input and safe links', () => {
   ])('retains a plain safe link: %s', (value) => {
     expect(safeNoteUrl(value)).toBe(value);
   });
+});
+
+it('keeps every canvas decoration ID outside the valid persisted step ID space', () => {
+  const id = noteFlowId(note.id);
+  expect(id.length).toBeGreaterThan(
+    WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength,
+  );
+  expect(isNoteFlowId(id)).toBe(true);
+  expect(noteIdFromFlowId(id)).toBe(note.id);
+  expect(isNoteFlowId(`note:${note.id}`)).toBe(false);
+  expect(isNoteFlowId('pertexo:workflow-editor:canvas-note:')).toBe(false);
 });
