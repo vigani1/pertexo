@@ -7,7 +7,9 @@ import {
 } from '@pertexo/database/tenant-access';
 import { betterAuth, type BetterAuthOptions } from 'better-auth';
 import { PostgresDialect } from 'kysely';
-import type { Pool, PoolClient } from 'pg';
+import type { Pool } from 'pg';
+import type { AuthenticationTransactions } from './transactions/context.js';
+import { AuthenticationTransactionDialect } from './transactions/dialect.js';
 
 import type { SocialProviderGateway } from '../providers/contract.js';
 import type { AuthenticationMail } from '../mail/delivery.js';
@@ -21,8 +23,7 @@ import {
 
 type PertexoBetterAuthInput = Readonly<{
   pool: Pool;
-  transaction?: PoolClient;
-  afterCommit?: (deliver: () => Promise<void>) => void;
+  transactions?: AuthenticationTransactions;
   baseUrl: string;
   secret: string;
   secureCookies: boolean;
@@ -76,28 +77,14 @@ export function createPertexoBetterAuth(input: PertexoBetterAuthInput) {
     // Security mutations borrow the caller's transaction: the SDK must neither
     // release its client nor open a nested transaction before the notice commits.
     database: {
-      dialect: new PostgresDialect({
-        pool:
-          input.transaction === undefined
-            ? pool
-            : {
-                options: pool.options,
-                end: () => Promise.resolve(),
-                connect: () => {
-                  const client = input.transaction;
-                  if (client === undefined)
-                    throw new Error('Authentication transaction missing');
-                  return Promise.resolve({
-                    query: client.query.bind(client),
-                    release: () => undefined,
-                  });
-                },
-              },
-      }),
+      dialect:
+        input.transactions === undefined
+          ? new PostgresDialect({ pool })
+          : new AuthenticationTransactionDialect(pool, input.transactions),
       type: 'postgres',
       casing: 'snake',
       schemaName: 'app',
-      transaction: input.transaction === undefined,
+      transaction: input.transactions === undefined,
     },
     user: {
       modelName: 'users',
@@ -147,12 +134,11 @@ export function createPertexoBetterAuth(input: PertexoBetterAuthInput) {
       createTwoFactorPlugin(),
       createTrustedSessionPlugin(pool, input.availableLinkProviders, {
         mail: input.mail,
-        client: input.transaction ?? pool,
-        afterCommit: input.afterCommit,
+        transactions: input.transactions,
         accountUrl: new URL('/account/security', input.baseUrl).toString(),
       }),
     ],
-    databaseHooks: identityChangeHooks(input.transaction ?? pool),
+    databaseHooks: identityChangeHooks(pool, input.transactions),
     disabledPaths: [...DISABLED_NATIVE_PATHS],
     advanced: cookiePolicy(input.secureCookies),
     telemetry: { enabled: false },
@@ -237,7 +223,10 @@ function credentialPolicy(pool: Pool, mail: AuthenticationMail) {
  * Only active users may be given a native credential session.
  * Provider sign-in and linking revoke sessions in their identity transaction.
  */
-function identityChangeHooks(pool: Pool | PoolClient) {
+function identityChangeHooks(
+  pool: Pool,
+  transactions?: AuthenticationTransactions,
+) {
   return {
     session: {
       create: {
@@ -245,6 +234,7 @@ function identityChangeHooks(pool: Pool | PoolClient) {
           const decision = await authorizeCredentialSignIn(
             pool,
             session.userId,
+            transactions?.current()?.client,
           );
           if (
             isTwoFactorVerificationPath(context?.path) &&

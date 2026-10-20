@@ -105,7 +105,12 @@ in. This matches [n8n's two-factor sign-in](https://docs.n8n.io/user-management/
     failed-code/challenge/account lockout refusals retain their attempt counters.
     Transport delivery remains asynchronous. The development
     sink runs after commit and cannot turn a committed sign-in into an error
-    (review follow-up, 2026-10-20).
+    (review follow-up, 2026-10-20). A follow-up qualifies ten incorrect recovery
+    codes against the real plugin, persisting the account lockout just like TOTP.
+    The runtime creates its normal and security Better Auth instances once.
+    Security requests pass an explicit transaction through a request-local
+    context and a Kysely transaction dialect; no fake pool or per-request auth
+    construction. The platform runner alone commits/releases the client.
 12. **Read model.** `accountSecurityResponseSchema` gains
     `twoFactor: { enabled: boolean; recoveryCodesRemaining: number | null }`.
     `recoveryCodesRemaining` is `null` when off.

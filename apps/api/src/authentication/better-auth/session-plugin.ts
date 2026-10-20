@@ -15,7 +15,8 @@ import {
   sessionMiddleware,
 } from 'better-auth/api';
 import { setSessionCookie, deleteSessionCookie } from 'better-auth/cookies';
-import type { Pool, PoolClient } from 'pg';
+import type { Pool } from 'pg';
+import type { AuthenticationTransactions } from './transactions/context.js';
 import { z } from 'zod';
 
 import type {
@@ -48,8 +49,7 @@ export function createTrustedSessionPlugin(
       AuthenticationMail,
       'sendSecurityNotice' | 'prepareSecurityNotice'
     >;
-    client: Pool | PoolClient;
-    afterCommit: ((deliver: () => Promise<void>) => void) | undefined;
+    transactions: AuthenticationTransactions | undefined;
     accountUrl: string;
   }>,
 ) {
@@ -65,7 +65,7 @@ export function createTrustedSessionPlugin(
         {
           matcher: (context) => isSecurityMutationPath(context.path ?? ''),
           handler: createAuthMiddleware(() => {
-            if (!('release' in securityNotices.client))
+            if (securityNotices.transactions?.current() === undefined)
               throw new APIError('INTERNAL_SERVER_ERROR', {
                 message:
                   'Security changes require an authentication transaction.',
@@ -74,7 +74,7 @@ export function createTrustedSessionPlugin(
           }),
         },
         ...nativeRouteGuards(pool),
-        twoFactorRouteGuard(securityNotices.client),
+        twoFactorRouteGuard(pool, securityNotices.transactions),
       ],
       after: [
         {
@@ -84,12 +84,14 @@ export function createTrustedSessionPlugin(
             isTwoFactorVerificationPath(context.path) ||
             context.path === '/internal/session/issue',
           handler: createAuthMiddleware(async (context) => {
+            const transaction = securityNotices.transactions?.current();
+            const client = transaction?.client ?? pool;
             const created = context.context.newSession;
             // Enforcement may change between the SDK's before hook and its insert.
             if (
               created !== null &&
               !(await isAuthenticationSessionAllowed(
-                securityNotices.client,
+                client,
                 created.session.id,
               ))
             ) {
@@ -112,7 +114,7 @@ export function createTrustedSessionPlugin(
                   : undefined;
             if (purpose === undefined) return;
             await recordIdentitySecurityFact(
-              securityNotices.client,
+              client,
               created.user.id,
               purpose === 'two_factor_disabled'
                 ? 'two_factor.disabled'
@@ -127,9 +129,9 @@ export function createTrustedSessionPlugin(
             const prepared =
               securityNotices.mail.prepareSecurityNotice?.(notice);
             if (prepared !== undefined)
-              await insertSystemMail(securityNotices.client, prepared);
-            else if (securityNotices.afterCommit !== undefined)
-              securityNotices.afterCommit(() =>
+              await insertSystemMail(client, prepared);
+            else if (transaction !== undefined)
+              transaction.afterCommit(() =>
                 securityNotices.mail.sendSecurityNotice(notice),
               );
             else

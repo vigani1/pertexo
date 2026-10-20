@@ -135,8 +135,9 @@ export async function readEligibleAuthenticationSession(
   return { id: session.id, userId: session.user_id, proof };
 }
 export function authorizeCredentialSignIn(
-  pool: Pool | PoolClient,
+  pool: Pool,
   userId: string,
+  transaction?: PoolClient,
 ): Promise<'allowed' | 'recovery' | 'sso_required' | 'inactive'> {
   const authorize = async (
     client: PoolClient,
@@ -169,9 +170,9 @@ export function authorizeCredentialSignIn(
     );
     return 'recovery';
   };
-  return 'release' in pool
-    ? authorize(pool)
-    : withPlatformTransaction(pool, authorize);
+  return transaction === undefined
+    ? withPlatformTransaction(pool, authorize)
+    : authorize(transaction);
 }
 
 export type IdentityEmailChangeEligibility =

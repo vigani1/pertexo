@@ -1,3 +1,4 @@
+import type { OutputVariantSelection } from '@pertexo/node-sdk';
 import {
   isWorkflowTriggerDefinition,
   workspaceVariableNameSchema,
@@ -341,23 +342,18 @@ export type OutputField = Readonly<{ key: string; type?: SchemaValueType }>;
 /** Top-level output fields, including alternatives, for "Insert data". */
 export function outputFieldsOf(
   outputSchema: unknown,
-  node?: Pick<WorkflowNode, 'definition' | 'config'>,
+  node?: Pick<WorkflowNode, 'config'>,
+  outputVariant?: OutputVariantSelection,
 ): readonly OutputField[] {
   let schema = outputSchema;
-  if (
-    node?.definition.key === 'http.request' &&
-    node.definition.version === 1 &&
-    isRecord(schema)
-  ) {
+  if (node !== undefined && outputVariant !== undefined && isRecord(schema)) {
     const variants = schema.anyOf ?? schema.oneOf;
     if (Array.isArray(variants)) {
-      const paginated = node.config.pagination !== undefined;
-      schema =
-        variants.find(
-          (variant: unknown) =>
-            schemaProperties(variant).some(([key]) => key === 'items') ===
-            paginated,
-        ) ?? schema;
+      const index =
+        node.config[outputVariant.configProperty] === undefined
+          ? outputVariant.whenAbsent
+          : outputVariant.whenPresent;
+      schema = variants[index];
     }
   }
   return schemaProperties(schema).map(([key, candidate]) => {

@@ -333,6 +333,43 @@ describe('node-sdk catalog contracts', () => {
     ).toThrow(/unknown executor/u);
   });
 
+  it('validates configuration-selected output branches at catalog registration', () => {
+    const outputSchema = {
+      anyOf: [
+        { type: 'object', properties: { body: {} } },
+        { type: 'object', properties: { items: {} } },
+      ],
+    };
+    const outputVariant = {
+      configProperty: 'collect',
+      whenPresent: 1,
+      whenAbsent: 0,
+    };
+    expect(
+      nodeManifestSchema.safeParse({ ...manifest, outputSchema, outputVariant })
+        .success,
+    ).toBe(true);
+    for (const selection of [
+      { ...outputVariant, whenPresent: 2 },
+      { ...outputVariant, whenAbsent: -1 },
+      { ...outputVariant, configProperty: '' },
+    ])
+      expect(
+        nodeManifestSchema.safeParse({
+          ...manifest,
+          outputSchema,
+          outputVariant: selection,
+        }).success,
+      ).toBe(false);
+    expect(
+      nodeManifestSchema.safeParse({
+        ...manifest,
+        outputSchema: { type: 'object' },
+        outputVariant,
+      }).success,
+    ).toBe(false);
+  });
+
   it('validates integration operation metadata', () => {
     const integrated = createNodeCatalog({
       definitions: [

@@ -17,6 +17,7 @@ import {
 } from '../federation/protocol/oidc.js';
 import type { BetterAuthOptions } from 'better-auth';
 import { Pool } from 'pg';
+import { AuthenticationTransactions } from './transactions/context.js';
 
 import { AccountLinking } from '../account-security/linking.js';
 import type { SocialProviderGateway } from '../providers/contract.js';
@@ -105,6 +106,11 @@ export function createBetterAuthRuntime(
       configuredSocialProviders(config.socialProviders),
   };
   const auth = createPertexoBetterAuth(authOptions);
+  const transactions = new AuthenticationTransactions();
+  const securityAuth = createPertexoBetterAuth({
+    ...authOptions,
+    transactions,
+  });
   const providers =
     config.linkProviderGateway ??
     betterAuthSocialProviders(auth, config.socialProviders);
@@ -168,11 +174,9 @@ export function createBetterAuthRuntime(
         const returnTo = await emailProofs.signUpReturnPath(request);
         const response = needsSecurityTransaction(request)
           ? await securityTransaction(pool, (transaction, afterCommit) =>
-              createPertexoBetterAuth({
-                ...authOptions,
-                transaction,
-                afterCommit,
-              }).handler(request),
+              transactions.run({ client: transaction, afterCommit }, () =>
+                securityAuth.handler(request),
+              ),
             )
           : await auth.handler(request);
         await emailProofs.issueAfterSignUp(request, response, returnTo);

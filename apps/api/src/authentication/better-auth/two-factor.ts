@@ -5,7 +5,8 @@ import {
   getAuthoritativeSessionFromCtx,
 } from 'better-auth/api';
 import { isAuthenticationSessionAllowed } from '@pertexo/database/tenant-access';
-import type { Pool, PoolClient } from 'pg';
+import type { Pool } from 'pg';
+import type { AuthenticationTransactions } from './transactions/context.js';
 import { requireDoubleSubmitCsrf } from './csrf.js';
 
 export const TWO_FACTOR_VERIFICATION_PATHS = [
@@ -50,7 +51,10 @@ export function createTwoFactorPlugin() {
 }
 
 /** Native factor endpoints keep Pertexo's account-security policy. */
-export function twoFactorRouteGuard(pool: Pool | PoolClient) {
+export function twoFactorRouteGuard(
+  pool: Pool,
+  transactions?: AuthenticationTransactions,
+) {
   return {
     matcher: (context: { path?: string | undefined }) =>
       managementPaths.has(context.path ?? '') ||
@@ -74,7 +78,12 @@ export function twoFactorRouteGuard(pool: Pool | PoolClient) {
         if (management) throw new APIError('UNAUTHORIZED');
         return;
       }
-      if (!(await isAuthenticationSessionAllowed(pool, session.session.id)))
+      if (
+        !(await isAuthenticationSessionAllowed(
+          transactions?.current()?.client ?? pool,
+          session.session.id,
+        ))
+      )
         throw new APIError('UNAUTHORIZED');
       requireDoubleSubmitCsrf(context.headers);
       if (

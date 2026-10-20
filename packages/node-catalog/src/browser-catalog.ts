@@ -21,6 +21,7 @@ export type PlatformNodeDefinitionBrowserProjection = Readonly<{
   readonly configSchema: NodeManifest['configSchema'];
   readonly inputSchema: NodeManifest['inputSchema'];
   readonly outputSchema: NodeManifest['outputSchema'];
+  readonly outputVariant?: NodeManifest['outputVariant'];
   readonly ports: Readonly<{
     readonly inputs: readonly string[];
     readonly outputs: readonly string[];
@@ -74,6 +75,9 @@ export function platformBrowserNodeDefinitionCatalog(): PlatformNodeDefinitionBr
                 projection.definition.version === 1
               ? inputBrowserOutputSchema
               : projection.outputSchema,
+        ...(projection.outputVariant === undefined
+          ? {}
+          : { outputVariant: projection.outputVariant }),
         ports: Object.freeze({
           inputs: Object.freeze([...projection.ports.inputs]),
           outputs: Object.freeze([...projection.ports.outputs]),

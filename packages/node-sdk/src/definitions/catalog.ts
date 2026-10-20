@@ -1,4 +1,12 @@
 import { z } from 'zod';
+import {
+  outputVariantSelectionSchema,
+  type OutputVariantSelection,
+} from './output-variant.js';
+export {
+  outputVariantSelectionSchema,
+  type OutputVariantSelection,
+} from './output-variant.js';
 
 import { cloneAndFreeze } from '../values/freeze.js';
 import { compareIdentity, identityToken } from './identity.js';
@@ -64,6 +72,7 @@ export interface NodeManifest {
   readonly configSchema: SchemaDocument;
   readonly inputSchema: SchemaDocument;
   readonly outputSchema: SchemaDocument;
+  readonly outputVariant?: OutputVariantSelection | undefined;
   readonly ports: NodePorts;
   readonly credentialRequirements: readonly string[];
   readonly connectionRequirements: readonly string[];
@@ -139,6 +148,7 @@ export const nodeManifestSchema = z
     configSchema: schemaDocumentSchema,
     inputSchema: schemaDocumentSchema,
     outputSchema: schemaDocumentSchema,
+    outputVariant: outputVariantSelectionSchema.optional(),
     ports: portsSchema,
     credentialRequirements: identifiersSchema,
     connectionRequirements: identifiersSchema,
@@ -152,6 +162,31 @@ export const nodeManifestSchema = z
     policyReferences: z.array(policyReferenceSchema),
   })
   .strict()
+  .refine(
+    (manifest) => {
+      if (manifest.outputVariant === undefined) return true;
+      const variants =
+        manifest.outputSchema.anyOf ?? manifest.outputSchema.oneOf;
+      return (
+        Array.isArray(variants) &&
+        [
+          manifest.outputVariant.whenPresent,
+          manifest.outputVariant.whenAbsent,
+        ].every((index) => {
+          const candidate: unknown = variants[index];
+          return (
+            candidate !== null &&
+            typeof candidate === 'object' &&
+            !Array.isArray(candidate)
+          );
+        })
+      );
+    },
+    {
+      path: ['outputVariant'],
+      message: 'output variants must select object schemas in the output union',
+    },
+  )
   .refine(
     (manifest) =>
       (manifest.optionalConnections ?? []).every((slot) =>
