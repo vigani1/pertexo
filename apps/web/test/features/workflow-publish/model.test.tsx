@@ -1,8 +1,15 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
-import { act, renderHook } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+} from '@testing-library/react';
 import { createElement, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+import { ReviewCandidate } from '@/features/workflow-publish/components/reviews/candidate';
 import { diffWorkflowGraphs } from '@/features/workflow-drafts/public';
 import { emptyDraftHint } from '@/features/workflow-publish/model/publication/readiness';
 import { summarizePublish } from '@/features/workflow-publish/model/publication/summary';
@@ -112,6 +119,47 @@ describe('automatic validation throttle', () => {
 });
 
 describe('publish summary', () => {
+  it.each([
+    [undefined, { maximumAttempts: 5, delayMillis: 2_000 }],
+    [
+      { maximumAttempts: 5, delayMillis: 2_000 },
+      { maximumAttempts: 1, delayMillis: 2_000 },
+    ],
+    [{ maximumAttempts: 1, delayMillis: 2_000 }, undefined],
+  ] as const)(
+    'counts a retry-only edit as a setup change: %o to %o',
+    (before, after) => {
+      expect(
+        diffWorkflowGraphs(
+          graph([node('action', 'core.set', { retry: before })]),
+          graph([node('action', 'core.set', { retry: after })]),
+          { ignoreLayout: true },
+        ).changed,
+      ).toMatchObject([{ aspects: ['setup'] }]);
+    },
+  );
+
+  it('shows the exact reviewed retry override alongside the step setup', () => {
+    render(
+      createElement(ReviewCandidate, {
+        graph: graph([
+          node('action', 'core.set', {
+            retry: { maximumAttempts: 5, delayMillis: 2_000 },
+          }),
+        ]),
+        liveGraph: graph([node('action', 'core.set')]),
+      }),
+    );
+    expect(screen.getByText(/0 steps added, 1 changed/u)).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Setup and mappings'));
+    expect(
+      screen.getByText(/"maximumAttempts": 5/u, { selector: 'pre' }),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/"delayMillis": 2000/u, { selector: 'pre' }),
+    ).toBeVisible();
+  });
+
   it('lists steps added, removed and changed against the live version', () => {
     const live = graph([
       node('trigger', 'core.webhook', { label: 'New invoice' }),

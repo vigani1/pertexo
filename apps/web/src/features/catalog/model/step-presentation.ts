@@ -360,8 +360,7 @@ const retryWords: Readonly<
   safe: 'Safe to retry: running it again has no extra effect.',
   'idempotent-with-key':
     'Retries reuse an idempotency key, so a retry can’t repeat the effect.',
-  unsafe:
-    'Won’t retry automatically, because repeating it could repeat its effect.',
+  unsafe: 'Retries never repeat a possibly dispatched effect.',
 };
 
 export function describeRetryBehaviour(

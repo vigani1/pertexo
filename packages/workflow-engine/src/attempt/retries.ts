@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import type { StepRetrySettings } from '@pertexo/workflow-model';
 
 import type { SideEffectClass } from '../types.js';
 
@@ -76,6 +77,7 @@ export function decideRetry(input: {
   readonly sideEffectClass: SideEffectClass;
   readonly currentAttemptNumber: number;
   readonly policy: RetryPolicy;
+  readonly settings?: StepRetrySettings | undefined;
   readonly observation: AttemptObservation;
   readonly jitterIdentity?: string;
 }): RetryDecision {
@@ -109,16 +111,22 @@ export function decideRetry(input: {
         input.policy.retryableErrorCodes.includes(errorCode)
       : input.policy.retryableErrorCodes.includes(errorCode));
   const nextAttemptNumber = input.currentAttemptNumber + 1;
-  if (!isRetryable || nextAttemptNumber > input.policy.maximumAttempts) {
+  if (
+    !isRetryable ||
+    nextAttemptNumber >
+      (input.settings?.maximumAttempts ?? input.policy.maximumAttempts)
+  ) {
     return { kind: 'failed', reasonCode: errorCode };
   }
   const exponent = Math.max(0, input.currentAttemptNumber - 1);
-  const boundedDelay = Math.min(
-    input.policy.maximumDelayMs,
-    input.policy.baseDelayMs * 2 ** exponent,
-  );
+  const boundedDelay =
+    input.settings?.delayMillis ??
+    Math.min(
+      input.policy.maximumDelayMs,
+      input.policy.baseDelayMs * 2 ** exponent,
+    );
   const jitter =
-    input.jitterIdentity === undefined
+    input.settings !== undefined || input.jitterIdentity === undefined
       ? 1
       : 0.75 +
         createHash('sha256')

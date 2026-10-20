@@ -20,6 +20,70 @@ import {
 } from '../support/executable-workflow.js';
 
 describe('workflow executable identity', () => {
+  it('pins retry settings and loads them without changing legacy executable identity', () => {
+    const catalog = composeExecutableCatalog(nodeCatalog());
+    const original = graph();
+    const baseline = buildWorkflowExecutable({ graph: original, catalog });
+    expect(baseline.checksum).toBe(
+      'wf:sha256:bc624efc7e092d274f7655954b21da21501b8ac128fafb5095fdd91e7bb1e6d7',
+    );
+    const configured = buildWorkflowExecutable({
+      graph: {
+        ...original,
+        nodes: original.nodes.map((node) =>
+          node.id === 'set'
+            ? { ...node, retry: { maximumAttempts: 5, delayMillis: 4_000 } }
+            : node,
+        ),
+      },
+      catalog,
+    });
+    expect(configured.checksum).not.toBe(baseline.checksum);
+    const loaded = verifyWorkflowExecutable({
+      envelope: JSON.parse(JSON.stringify(configured.envelope)),
+      checksum: configured.checksum,
+      catalog,
+    });
+    expect(
+      loaded.envelope.graph.nodes.find((node) => node.id === 'set')?.retry,
+    ).toEqual({ maximumAttempts: 5, delayMillis: 4_000 });
+    expect(
+      baseline.envelope.graph.nodes.every(
+        (node) => !Object.hasOwn(node, 'retry'),
+      ),
+    ).toBe(true);
+  });
+  it('retains and validates retry settings inside a For each body', () => {
+    const catalog = composeExecutableCatalog(nodeCatalog({ forEach: true }));
+    const nested = forEachGraph();
+    const loop = nested.nodes.find((node) => node.id === 'loop');
+    if (loop === undefined || !('structured' in loop))
+      throw new Error('The loop must exist');
+    const action = loop.structured.body.nodes.find(
+      (node) => node.id === 'body-first',
+    );
+    if (action === undefined) throw new Error('The body action must exist');
+    Object.assign(action, {
+      retry: { maximumAttempts: 5, delayMillis: 60_000 },
+    });
+    const executable = buildWorkflowExecutable({ graph: nested, catalog });
+    const loaded = verifyWorkflowExecutable({
+      envelope: JSON.parse(JSON.stringify(executable.envelope)),
+      checksum: executable.checksum,
+      catalog,
+    });
+    expect(
+      loaded.envelope.graph.nodes
+        .find((node) => node.id === 'loop')
+        ?.structured?.body.nodes.find((node) => node.id === 'body-first')
+        ?.retry,
+    ).toEqual({ maximumAttempts: 5, delayMillis: 60_000 });
+    Object.assign(action, {
+      retry: { maximumAttempts: 6, delayMillis: 60_000 },
+    });
+    expect(() => buildWorkflowExecutable({ graph: nested, catalog })).toThrow();
+  });
+
   it('retains callable contracts and includes every declaration in the immutable identity', () => {
     const catalog = composeExecutableCatalog(nodeCatalog());
     const callable = {

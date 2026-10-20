@@ -49,6 +49,7 @@ function executableNode(
     inputMappings: node.inputMappings,
     connectionRefs: node.connectionRefs,
     disabled: node.disabled ?? false,
+    ...(node.retry === undefined ? {} : { retry: node.retry }),
     sideEffectClass: sideEffectClass(definition.retryClass),
     executor: definition.executor,
     executorAbi: executor.abiVersion,

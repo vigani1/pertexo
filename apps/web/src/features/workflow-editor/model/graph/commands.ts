@@ -219,6 +219,7 @@ export type WorkflowNodeUpdate = Readonly<{
   inputMappings?: WorkflowNode['inputMappings'];
   connectionRefs?: WorkflowNode['connectionRefs'];
   disabled?: boolean;
+  retry?: WorkflowNode['retry'];
   structured?: WorkflowNode['structured'];
 }>;
 
@@ -246,6 +247,7 @@ function updateIn<Level extends GraphLevel>(
       const updated = { ...node, ...update };
       if (updated.label === undefined) delete updated.label;
       if (updated.disabled !== true) delete updated.disabled;
+      if (updated.retry === undefined) delete updated.retry;
       return updated;
     }),
   };

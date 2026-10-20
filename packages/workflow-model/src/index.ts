@@ -113,6 +113,13 @@ export {
 } from './json/canonical.js';
 export { parseJsonPath, resolveJsonPath } from './json/path.js';
 export {
+  DEFAULT_STEP_RETRY_SETTINGS,
+  STEP_RETRY_LIMITS,
+  stepRetrySettingsSchema,
+  supportsStepRetrySettings,
+  type StepRetrySettings,
+} from './step-retries/contract.js';
+export {
   planWorkflowLifecycleCommand,
   workflowActivationAfterReconciliation,
   workflowActivationStatusSchema,

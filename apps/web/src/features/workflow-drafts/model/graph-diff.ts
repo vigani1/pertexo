@@ -76,6 +76,7 @@ function changedAspects(
   if ((before.label ?? '') !== (after.label ?? '')) aspects.push('label');
   if (
     !sameJson(before.config, after.config) ||
+    !sameJson(before.retry, after.retry) ||
     !sameJson(before.structured, after.structured)
   )
     aspects.push('setup');

@@ -77,7 +77,7 @@ export function readRawExecutableGraph(
         'executorAbi',
         'policyReferences',
       ],
-      ['structured'],
+      ['structured', 'retry'],
     );
     if (node.structured === undefined) return { raw: node };
     const structured = record(node.structured, 'executable For Each structure');
@@ -104,6 +104,7 @@ function authoringNode(node: RawExecutableNode): unknown {
     inputMappings: raw.inputMappings,
     connectionRefs: raw.connectionRefs,
     disabled: raw.disabled,
+    ...(raw.retry === undefined ? {} : { retry: raw.retry }),
   };
   if (node.structured !== undefined) {
     authoring.structured = {
@@ -162,6 +163,7 @@ function validatePin(
     inputMappings: node.inputMappings,
     connectionRefs: node.connectionRefs,
     disabled: node.disabled ?? false,
+    ...(node.retry === undefined ? {} : { retry: node.retry }),
     sideEffectClass: selectedSideEffectClass,
     executor,
     executorAbi: executorPin.abiVersion,

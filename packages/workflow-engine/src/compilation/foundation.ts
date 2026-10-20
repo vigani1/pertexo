@@ -53,6 +53,7 @@ export interface WorkflowExecutableNode {
   readonly inputMappings: Readonly<Record<string, ValueSource>>;
   readonly connectionRefs: Readonly<Record<string, string>>;
   readonly disabled: boolean;
+  readonly retry?: WorkflowGraph['nodes'][number]['retry'];
   readonly sideEffectClass: SideEffectClass;
   readonly executor: ExecutorIdentity;
   readonly executorAbi: number;

@@ -113,5 +113,6 @@ Timeout applies separately to each page. The worst case — Max pages multiplied
 by timeout plus delay — must fit the remaining run or single-step test budget.
 If a test refuses this setup, lower Max pages, timeout or delay. A 429 uses a
 bounded Retry-After hint (integer seconds, at most one minute) with the existing
-retry backoff. A retry fetches from the first page again. Cancellation also
+step retry policy. Choose the total tries and fixed wait with
+[step retry settings](step-retries.md). A retry fetches from the first page again. Cancellation also
 stops an inter-page delay.

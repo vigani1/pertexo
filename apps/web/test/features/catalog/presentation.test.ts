@@ -67,7 +67,9 @@ describe('step presentation registry', () => {
     expect(describeConnectionRequirement('custom_token')).toBe(
       'Custom token connection',
     );
-    expect(describeRetryBehaviour('unsafe')).toMatch(/Won’t retry/u);
+    expect(describeRetryBehaviour('unsafe')).toMatch(
+      /never repeat a possibly dispatched effect/u,
+    );
     expect(describeRetryBehaviour('idempotent-with-key')).toMatch(
       /idempotency key/u,
     );
