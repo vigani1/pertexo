@@ -56,16 +56,21 @@ async function postAuthentication<Value>(
   }
 }
 
-export function signInWithEmail(
+export async function signInWithEmail(
   apiClient: ApiClient,
   input: Readonly<{ email: string; password: string }>,
   signal?: AbortSignal,
 ) {
-  return postAuthentication<unknown>(apiClient, {
+  const result = await postAuthentication<unknown>(apiClient, {
     path: '/v1/auth/sign-in/email',
     body: { ...input, callbackURL: '/workspaces' },
     ...(signal === undefined ? {} : { signal }),
   });
+  if (typeof result !== 'object' || result === null)
+    throw new TypeError('The sign-in response was invalid.');
+  return {
+    twoFactorRedirect: Reflect.get(result, 'twoFactorRedirect') === true,
+  };
 }
 
 export function signUpWithEmail(
