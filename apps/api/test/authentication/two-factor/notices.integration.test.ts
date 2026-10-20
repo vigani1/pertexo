@@ -51,6 +51,13 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
         401,
         'auth.unauthenticated',
       );
+      const counter = await api
+        .database()
+        .query<{ failed_verification_count: number }>(
+          'select failed_verification_count from app.auth_two_factors where user_id=(select id from app.users where email=$1)',
+          [user.email],
+        );
+      expect(counter.rows).toEqual([{ failed_verification_count: 1 }]);
       expect(
         (
           await verify(

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { APIError } from 'better-auth/api';
 import { describe, expect, it } from 'vitest';
 import { createApplicationSecretEnvelope } from '@pertexo/integrations/server';
 import { DurableAuthenticationMail } from '../../../src/authentication/mail/delivery.js';
@@ -15,7 +16,7 @@ import {
 describe.skipIf(!betterAuthIntegrationEnabled)(
   'atomic two-factor security notices',
   () => {
-    let refusePreparation = false;
+    let refusePreparation: 'prepare' | 'policy' | undefined;
     const durable = new DurableAuthenticationMail(
       {
         enqueue: () =>
@@ -42,13 +43,19 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
               local.sendEmailChangeConfirmation(input),
             sendSecurityNotice: (input) => local.sendSecurityNotice(input),
             prepareSecurityNotice: (input) => {
-              if (refusePreparation) throw new Error('Fixture sealing failure');
+              if (refusePreparation === 'prepare')
+                throw new Error('Fixture sealing failure');
+              if (refusePreparation === 'policy')
+                throw new APIError('CONFLICT', {
+                  code: 'AUTHENTICATION_CHANGED',
+                  message: 'Fixture policy changed',
+                });
               return durable.prepareSecurityNotice(input);
             },
           }),
         });
 
-        it.each(['prepare', 'audit', 'outbox'] as const)(
+        it.each(['prepare', 'policy', 'audit', 'outbox'] as const)(
           `${operation}: rolls back on %s failure and retries without losing the notice`,
           async (failure) => {
             const email = `${randomUUID()}@example.test`;
@@ -94,7 +101,8 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
               failure === 'audit'
                 ? 'identity_security_audit_facts'
                 : 'system_mail_deliveries';
-            if (failure === 'prepare') refusePreparation = true;
+            if (failure === 'prepare' || failure === 'policy')
+              refusePreparation = failure;
             else
               await api
                 .database()
@@ -113,12 +121,14 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
                   });
             try {
               const rejected = await command();
-              expect(rejected.statusCode, rejected.payload).toBe(500);
+              expect(rejected.statusCode, rejected.payload).toBe(
+                failure === 'policy' ? 409 : 500,
+              );
               expect(rejected.headers['set-cookie']).toBeUndefined();
               expect(await read()).toEqual(before);
             } finally {
-              refusePreparation = false;
-              if (failure !== 'prepare')
+              refusePreparation = undefined;
+              if (failure === 'audit' || failure === 'outbox')
                 await api
                   .database()
                   .query(

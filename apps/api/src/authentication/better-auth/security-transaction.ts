@@ -1,3 +1,5 @@
+import { TWO_FACTOR_ERROR_CODES } from 'better-auth/plugins/two-factor';
+import { isRecord } from '@pertexo/workflow-model';
 import type { Pool, PoolClient } from 'pg';
 
 const securityMutationPaths = new Set([
@@ -19,6 +21,27 @@ export function needsSecurityTransaction(request: Request): boolean {
   );
 }
 
+// These refusals happen before code consumption/session creation. Their writes
+// are the SDK's lockout budget, which must survive an incorrect-code response.
+const lockoutRefusals = new Map<string, number>([
+  [TWO_FACTOR_ERROR_CODES.INVALID_BACKUP_CODE.code, 401],
+  [TWO_FACTOR_ERROR_CODES.TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE.code, 400],
+  [TWO_FACTOR_ERROR_CODES.ACCOUNT_TEMPORARILY_LOCKED.code, 429],
+]);
+
+async function isLockoutRefusal(response: Response): Promise<boolean> {
+  try {
+    const body: unknown = await response.clone().json();
+    return (
+      isRecord(body) &&
+      typeof body.code === 'string' &&
+      lockoutRefusals.get(body.code) === response.status
+    );
+  } catch {
+    return false;
+  }
+}
+
 export async function securityTransaction(
   pool: Pool,
   handle: (
@@ -29,14 +52,16 @@ export async function securityTransaction(
   const client = await pool.connect();
   const deliveries: (() => Promise<void>)[] = [];
   let response: Response;
+  let committed = false;
   try {
     await client.query('BEGIN');
     response = await handle(client, (deliver) => deliveries.push(deliver));
-    // Better Auth converts internal exceptions into HTTP errors. Never commit
-    // a partial session, consumed recovery code or disabled factor on a 5xx.
-    // Commit 4xx refusals so wrong codes still consume the SDK lockout budget.
-    await client.query(response.status >= 500 ? 'ROLLBACK' : 'COMMIT');
-    if (response.status >= 500) {
+    // A policy refusal can happen after the SDK changes credentials. Commit
+    // successful responses or the explicit pre-mutation lockout refusals only.
+    const commit = response.ok || (await isLockoutRefusal(response));
+    await client.query(commit ? 'COMMIT' : 'ROLLBACK');
+    committed = commit;
+    if (!commit) {
       const headers = new Headers(response.headers);
       headers.delete('set-cookie');
       response = new Response(response.body, {
@@ -52,7 +77,7 @@ export async function securityTransaction(
   }
   // Only the development/test sink uses callbacks. Production mail commands
   // were inserted above; SMTP delivery runs independently after the commit.
-  if (response.status < 500)
+  if (committed)
     await Promise.allSettled(
       deliveries.map((deliver) => Promise.resolve().then(deliver)),
     );
