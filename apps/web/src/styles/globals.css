@@ -129,12 +129,16 @@
   --destructive: #ffb4ab;
   --success: #8fe3c0;
   --warning: #f3c677;
-  /* The Core's own inks. The status colours above are pale so text reads on
-     the dark; drawn as points of light they wash out, so the orb takes
-     deeper ones. */
+  /* Drawing inks, kept apart from text colours: the Core, the sign-in threads,
+     the Loom's live threads, the loading wave and the ambient glow. Text needs
+     different strengths per theme than light drawn on the ground does. The
+     status colours above are pale so text reads on the dark; drawn as points
+     of light they wash out, so the Core's states take deeper ones. */
   --core-live: #00e5ff;
   --core-glint: #c3f5ff;
   --core-accent: #d0bcff;
+  --ambient-glow: color-mix(in srgb, var(--core-live) 10%, transparent);
+  --ambient-echo: color-mix(in srgb, var(--core-accent) 8%, transparent);
   --core-failed: #ff5c52;
   --core-waiting: #a98bff;
   --core-succeeded: #36e0a2;
@@ -195,10 +199,16 @@
   --destructive: #c42a2f;
   --success: #1b7458;
   --warning: #935600;
-  /* Drawn graphics take the vivid step-9 solids. */
+  /* Drawn graphics take the vivid step-9 solids, in one hue: light mirrors
+     dark's single cyan light (bright, pale and deep cyan), so the page never
+     turns into a rainbow. Violet stays only where it means waiting. */
   --core-live: #00a2c7;
   --core-glint: #3db9cf;
-  --core-accent: #6e56cf;
+  --core-accent: #107d98;
+  /* A blurred glow fades much faster on white, so the one light source is
+     stronger here to read like dark's. */
+  --ambient-glow: color-mix(in srgb, var(--core-live) 24%, transparent);
+  --ambient-echo: color-mix(in srgb, var(--core-accent) 10%, transparent);
   --core-failed: #e5484d;
   --core-waiting: #6e56cf;
   --core-succeeded: #29a383;
@@ -619,8 +629,7 @@
     right: -11rem;
     width: 38rem;
     height: 38rem;
-    /* The vivid drawing inks: in light, the text teal would tint it grey. */
-    background: color-mix(in srgb, var(--core-live) 10%, transparent);
+    background: var(--ambient-glow);
   }
 
   .ambient::after {
@@ -628,7 +637,7 @@
     left: 3rem;
     width: 34rem;
     height: 34rem;
-    background: color-mix(in srgb, var(--core-accent) 8%, transparent);
+    background: var(--ambient-echo);
     animation-duration: 34s;
     animation-direction: alternate-reverse;
   }

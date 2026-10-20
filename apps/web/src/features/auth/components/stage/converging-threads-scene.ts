@@ -20,7 +20,8 @@ interface Thread {
 const THREAD_COUNT = 30;
 const PARTICLES_PER_THREAD = 2;
 const TRAIL_STEPS = 5;
-const COLOR_TOKENS = ['--primary', '--secondary', '--accent-foreground'];
+// The Core's drawing inks, so the threads and the Core share one light.
+const COLOR_TOKENS = ['--core-live', '--core-accent', '--core-glint'];
 const FALLBACK: Rgb = [0, 229, 255];
 const FALLBACK_RGB = FALLBACK.join(',');
 
