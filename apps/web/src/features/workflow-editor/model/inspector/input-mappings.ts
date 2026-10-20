@@ -349,10 +349,9 @@ export function outputFieldsOf(
   if (node !== undefined && outputVariant !== undefined && isRecord(schema)) {
     const variants = schema.anyOf ?? schema.oneOf;
     if (Array.isArray(variants)) {
-      const index =
-        node.config[outputVariant.configProperty] === undefined
-          ? outputVariant.whenAbsent
-          : outputVariant.whenPresent;
+      const index = Object.hasOwn(node.config, outputVariant.configProperty)
+        ? outputVariant.whenPresent
+        : outputVariant.whenAbsent;
       schema = variants[index];
     }
   }
