@@ -405,8 +405,8 @@ importers:
         specifier: 3.5.13
         version: 3.5.13
       bullmq:
-        specifier: 6.3.14
-        version: 6.3.14(ioredis@6.0.0(supports-color@7.2.0))(pg@8.23.1)
+        specifier: 6.3.16
+        version: 6.3.16(ioredis@6.0.0(supports-color@7.2.0))(pg@8.23.1)
       drizzle-orm:
         specifier: 0.45.3
         version: 0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.29.6)(pg@8.23.1)
@@ -662,8 +662,8 @@ importers:
         specifier: 1.9.1
         version: 1.9.1
       bullmq:
-        specifier: 6.3.14
-        version: 6.3.14(ioredis@6.0.0(supports-color@7.2.0))(pg@8.23.1)
+        specifier: 6.3.16
+        version: 6.3.16(ioredis@6.0.0(supports-color@7.2.0))(pg@8.23.1)
       ioredis:
         specifier: 6.0.0
         version: 6.0.0(supports-color@7.2.0)
@@ -2794,8 +2794,8 @@ packages:
   buffer-from@1.1.2:
     resolution: {integrity: sha512-E+XQCRwSbaaiChtv6k6Dwgc+bx+Bs6vuKJHHl5kox/BaKbhiXzqQOwK4cO22yElGp2OCmjwVhT3HmxgyPGnJfQ==}
 
-  bullmq@6.3.14:
-    resolution: {integrity: sha512-iXpDyX45fonQugWAHw+FNPH/YIjqzmzi/xxs31dzWGNP7j6b4jAVN0oNWU5cz0mVi1RofEkrlRwRbLqhqNkjHw==}
+  bullmq@6.3.16:
+    resolution: {integrity: sha512-savxnrdqckobnm31XWwCKTAswkxrNIqLD/PsdwgYaDpst0UdULu/QjOtPdn86KNrBq8WoHKhJvbgGK13dgPJ8w==}
     engines: {node: '>=14.17.0'}
     peerDependencies:
       bullmq-otel: '>=2.0.0'
@@ -6700,7 +6700,7 @@ snapshots:
 
   buffer-from@1.1.2: {}
 
-  bullmq@6.3.14(ioredis@6.0.0(supports-color@7.2.0))(pg@8.23.1):
+  bullmq@6.3.16(ioredis@6.0.0(supports-color@7.2.0))(pg@8.23.1):
     dependencies:
       cron-parser: 5.10.2
       msgpackr: 2.1.0
