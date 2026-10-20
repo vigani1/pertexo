@@ -270,6 +270,7 @@ describe('authentication and workspace entry', () => {
       email: 'operator@example.test',
       emailVerified: true,
       availableProviders: ['google' as const],
+      twoFactor: { enabled: false, recoveryCodesRemaining: null },
       methods: [
         {
           id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
@@ -698,6 +699,7 @@ describe('authentication and workspace entry', () => {
           email: user.email,
           emailVerified: true,
           availableProviders: [],
+          twoFactor: { enabled: false, recoveryCodesRemaining: null },
           methods: [
             {
               id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
@@ -874,6 +876,7 @@ describe('authentication and workspace entry', () => {
           email: user.email,
           emailVerified: true,
           availableProviders: [],
+          twoFactor: { enabled: false, recoveryCodesRemaining: null },
           methods: [
             {
               id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
@@ -917,6 +920,7 @@ describe('authentication and workspace entry', () => {
           email: user.email,
           emailVerified: true,
           availableProviders: ['google'],
+          twoFactor: { enabled: false, recoveryCodesRemaining: null },
           methods: [
             {
               id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
@@ -957,6 +961,7 @@ describe('authentication and workspace entry', () => {
           email: user.email,
           emailVerified: true,
           availableProviders: ['google'],
+          twoFactor: { enabled: false, recoveryCodesRemaining: null },
           methods: [
             {
               id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',

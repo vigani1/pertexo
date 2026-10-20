@@ -104,6 +104,7 @@ describe('sign-in return paths', () => {
           email: user.email,
           emailVerified: true,
           availableProviders: [],
+          twoFactor: { enabled: false, recoveryCodesRemaining: null },
           methods: [],
         }),
       ),

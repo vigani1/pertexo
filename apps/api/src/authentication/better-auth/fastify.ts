@@ -7,6 +7,7 @@ import type {
   RouteShorthandOptions,
 } from 'fastify';
 import {
+  API_PROBLEM_MANIFEST,
   SAML_LIMITS,
   authenticationCapabilitiesResponseSchema,
   type AuthenticationCapabilitiesResponse,
@@ -20,6 +21,7 @@ import {
 import type { RateLimitConsumer } from '../../platform/rate-limit/interceptor.js';
 import type { BetterAuthRuntime } from './runtime.js';
 import { isProviderFormCallback } from '../journeys/form-callback.js';
+import { TWO_FACTOR_VERIFICATION_PATHS } from './two-factor.js';
 
 type AuthenticationHandler = BetterAuthRuntime['auth']['handler'];
 type AuthenticationRateLimits = Readonly<
@@ -38,6 +40,7 @@ const BLOCKED_BROWSER_AUTH_PATHS = new Set([
 ]);
 
 const TOKEN_BEARING_RESPONSE_PATHS = new Set([
+  ...TWO_FACTOR_VERIFICATION_PATHS.map((path) => `/v1/auth${path}`),
   '/v1/auth/sign-in/email',
   '/v1/auth/sign-up/email',
   '/v1/auth/sign-in/social',
@@ -265,6 +268,7 @@ function normalizedNativeError(
   } catch {
     nativeCode = undefined;
   }
+  const factorLocked = nativeCode === 'ACCOUNT_TEMPORARILY_LOCKED';
   const mapped =
     status === 403 && nativeCode === 'ALTERNATIVE_SIGN_IN_REQUIRED'
       ? {
@@ -331,8 +335,14 @@ function normalizedNativeError(
                           : status === 429
                             ? {
                                 status,
-                                code: 'request.rate_limited',
-                                title: 'Too many requests',
+                                code: factorLocked
+                                  ? 'auth.two_factor_locked'
+                                  : 'request.rate_limited',
+                                title: factorLocked
+                                  ? API_PROBLEM_MANIFEST[
+                                      'auth.two_factor_locked'
+                                    ].title
+                                  : 'Too many requests',
                               }
                             : status === 503
                               ? {

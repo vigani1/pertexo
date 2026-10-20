@@ -40,6 +40,19 @@ export function accountSecurityEndpoints(
         use: [sessionMiddleware],
       },
       async (context) => {
+        const enabled = context.context.session.user.twoFactorEnabled === true;
+        let recoveryCodesRemaining: number | null = null;
+        if (enabled) {
+          const plugin = context.context.getPlugin('two-factor');
+          if (plugin === null)
+            throw new Error('Two-factor plugin is not configured');
+          recoveryCodesRemaining = (
+            await plugin.endpoints.viewBackupCodes({
+              body: { userId: context.context.session.user.id },
+              context: context.context,
+            })
+          ).backupCodes.length;
+        }
         const accounts = await context.context.internalAdapter.findAccounts(
           context.context.session.user.id,
         );
@@ -54,6 +67,7 @@ export function accountSecurityEndpoints(
           email: context.context.session.user.email,
           emailVerified: context.context.session.user.emailVerified,
           availableProviders: availableLinkProviders,
+          twoFactor: { enabled, recoveryCodesRemaining },
           methods: accounts.map((account) => ({
             id: account.id,
             kind:

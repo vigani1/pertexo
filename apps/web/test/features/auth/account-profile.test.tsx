@@ -18,6 +18,7 @@ function accountHandlers(profile: () => typeof user) {
         email: user.email,
         emailVerified: true,
         availableProviders: [],
+        twoFactor: { enabled: false, recoveryCodesRemaining: null },
         methods: [],
       }),
     ),
