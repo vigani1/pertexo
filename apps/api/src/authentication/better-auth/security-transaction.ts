@@ -1,3 +1,4 @@
+import { withPlatformTransaction } from '@pertexo/database/platform';
 import { TWO_FACTOR_ERROR_CODES } from 'better-auth/plugins/two-factor';
 import { isRecord } from '@pertexo/workflow-model';
 import type { Pool, PoolClient } from 'pg';
@@ -42,6 +43,12 @@ async function isLockoutRefusal(response: Response): Promise<boolean> {
   }
 }
 
+class RefusedSecurityMutation extends Error {
+  constructor(readonly response: Response) {
+    super('Security mutation refused');
+  }
+}
+
 export async function securityTransaction(
   pool: Pool,
   handle: (
@@ -49,37 +56,32 @@ export async function securityTransaction(
     afterCommit: (deliver: () => Promise<void>) => void,
   ) => Promise<Response>,
 ): Promise<Response> {
-  const client = await pool.connect();
   const deliveries: (() => Promise<void>)[] = [];
   let response: Response;
-  let committed = false;
   try {
-    await client.query('BEGIN');
-    response = await handle(client, (deliver) => deliveries.push(deliver));
-    // A policy refusal can happen after the SDK changes credentials. Commit
-    // successful responses or the explicit pre-mutation lockout refusals only.
-    const commit = response.ok || (await isLockoutRefusal(response));
-    await client.query(commit ? 'COMMIT' : 'ROLLBACK');
-    committed = commit;
-    if (!commit) {
-      const headers = new Headers(response.headers);
-      headers.delete('set-cookie');
-      response = new Response(response.body, {
-        status: response.status,
-        headers,
-      });
-    }
+    response = await withPlatformTransaction(pool, async (client) => {
+      const result = await handle(client, (deliver) =>
+        deliveries.push(deliver),
+      );
+      // A policy refusal can follow SDK writes. Preserve only successful changes
+      // or explicit pre-mutation lockout refusals; the database owns rollback.
+      if (!result.ok && !(await isLockoutRefusal(result)))
+        throw new RefusedSecurityMutation(result);
+      return result;
+    });
   } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    client.release();
+    if (!(error instanceof RefusedSecurityMutation)) throw error;
+    const headers = new Headers(error.response.headers);
+    headers.delete('set-cookie');
+    return new Response(error.response.body, {
+      status: error.response.status,
+      headers,
+    });
   }
   // Only the development/test sink uses callbacks. Production mail commands
   // were inserted above; SMTP delivery runs independently after the commit.
-  if (committed)
-    await Promise.allSettled(
-      deliveries.map((deliver) => Promise.resolve().then(deliver)),
-    );
+  await Promise.allSettled(
+    deliveries.map((deliver) => Promise.resolve().then(deliver)),
+  );
   return response;
 }
