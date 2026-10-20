@@ -53,7 +53,6 @@ export function TaskDetailsLine({ details }: Readonly<{ details: Details }>) {
             value.map((item, itemIndex) => (
               <span
                 // Items can repeat; their order is their identity here.
-                // eslint-disable-next-line react/no-array-index-key
                 key={itemIndex}
                 className="text-foreground/90"
               >
