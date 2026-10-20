@@ -21,6 +21,53 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.json" />
     <title>Pertexo</title>
+    <!-- The boot screen's look before any stylesheet arrives: the dev server
+         injects CSS from script, so without this a refresh paints the two
+         boot lines as plain text on white. Values mirror globals.css. -->
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: #111316;
+        color: #e2e2e6;
+        color-scheme: dark;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+      }
+      .boot-first-frame {
+        display: grid;
+        min-height: 100svh;
+        place-items: center;
+        text-align: center;
+      }
+      .boot-first-frame .boot-column {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+      }
+      .boot-first-frame p {
+        margin: 0;
+      }
+      .boot-first-frame .boot-core {
+        width: 15rem;
+        height: 15rem;
+      }
+      @media (min-width: 40rem) {
+        .boot-first-frame .boot-core {
+          width: 18rem;
+          height: 18rem;
+        }
+      }
+      .boot-first-frame .boot-name {
+        font-size: 1.5rem;
+        font-weight: 620;
+      }
+      .boot-first-frame .boot-line {
+        color: #7f8b8e;
+        font-family: ui-monospace, monospace;
+        font-size: 0.75rem;
+      }
+    </style>
   </head>
   <body>
     <div id="root">
@@ -28,18 +75,22 @@
            src/routes/root/status/pages.tsx) laid out the same way, with room
            for its Core, so the app's first frame replaces it without a jump. -->
       <div
-        class="relative grid min-h-svh place-items-center overflow-hidden bg-background px-5"
+        class="boot-first-frame relative grid min-h-svh place-items-center overflow-hidden bg-background px-5"
       >
         <div class="ambient" aria-hidden="true"></div>
         <div class="relative z-10 w-full">
-          <div class="mx-auto flex flex-col items-center gap-4 text-center">
-            <div class="size-60 sm:size-72"></div>
+          <div
+            class="boot-column mx-auto flex flex-col items-center gap-4 text-center"
+          >
+            <div class="boot-core size-60 sm:size-72"></div>
             <p
-              class="font-display text-2xl [--display-optical-size:24] [--display-width:80%]"
+              class="boot-name font-display text-2xl [--display-optical-size:24] [--display-width:80%]"
             >
-              Pertexo<span class="text-secondary">.</span>
+              Pertexo<span class="text-secondary" style="color: #d0bcff"
+                >.</span
+              >
             </p>
-            <p class="font-mono text-xs text-subtle-foreground">
+            <p class="boot-line font-mono text-xs text-subtle-foreground">
               Opening Pertexo…
             </p>
           </div>
