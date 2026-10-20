@@ -162,6 +162,85 @@ describe('public network address policy', () => {
 });
 
 describe('secure HTTP client', () => {
+  it('keeps full page navigation private to the consumer after same-origin redirects', async () => {
+    const transport = new FakeTransport((_request, index) =>
+      Promise.resolve(
+        index === 0
+          ? transportResponse(302, { location: '/moved/page?cursor=private' })
+              .response
+          : transportResponse(200, {
+              link: '</moved/next?cursor=opaque>; rel="next"',
+            }).response,
+      ),
+    );
+    const client = new SecureHttpClient(
+      new FakeResolver({
+        'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+      }),
+      transport,
+    );
+    let navigation: unknown;
+    const result = await client.executeStreaming(
+      request({
+        navigation: { origin: 'https://api.example.test', link: true },
+      }),
+      (stream) => {
+        navigation = stream.navigation;
+        return Promise.resolve('read');
+      },
+    );
+    expect(navigation).toEqual({
+      url: 'https://api.example.test/moved/page?cursor=private',
+      link: '</moved/next?cursor=opaque>; rel="next"',
+    });
+    expect(result.finalUrl).toBe('https://api.example.test');
+    expect(result.headers).not.toHaveProperty('link');
+    expect(result).not.toHaveProperty('navigation');
+  });
+  it('blocks foreign redirects for paginated public requests before DNS or dispatch there', async () => {
+    const resolver = new FakeResolver({
+      'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+    });
+    const transport = new FakeTransport(() =>
+      Promise.resolve(
+        transportResponse(302, {
+          location: 'https://elsewhere.example.test/items',
+        }).response,
+      ),
+    );
+    const client = new SecureHttpClient(resolver, transport);
+    await expectSecureFailure(
+      client.execute(
+        request({
+          navigation: { origin: 'https://api.example.test', link: false },
+        }),
+      ),
+      { code: SECURE_HTTP_ERROR_CODE.paginationOriginChanged },
+    );
+    expect(resolver.calls).toEqual(['api.example.test']);
+    expect(transport.requests).toHaveLength(1);
+  });
+  it('refuses an oversized navigation header without silently truncating it', async () => {
+    const response = transportResponse(200, {
+      link: '<' + 'a'.repeat(8192) + '>; rel="next"',
+    });
+    const client = new SecureHttpClient(
+      new FakeResolver({
+        'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+      }),
+      new FakeTransport(() => Promise.resolve(response.response)),
+    );
+    await expectSecureFailure(
+      client.execute(
+        request({
+          navigation: { origin: 'https://api.example.test', link: true },
+        }),
+      ),
+      { code: SECURE_HTTP_ERROR_CODE.paginationNavigationInvalid },
+    );
+    expect(response.close).toHaveBeenCalledOnce();
+  });
+
   it('emits bounded categorical diagnostics without request data', async () => {
     const observations: SecureHttpFailureObservation[] = [];
     const client = new SecureHttpClient(

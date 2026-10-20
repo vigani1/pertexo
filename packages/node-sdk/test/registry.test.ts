@@ -203,6 +203,21 @@ describe('node-sdk catalog contracts', () => {
     ).toThrow(new TypeError('Invalid node executor failure'));
   });
 
+  it.each([-1, 60_001, 0.5, '3000'])(
+    'rejects an invalid minimum retry delay %s',
+    (minimumRetryDelayMillis) => {
+      expect(
+        () =>
+          new NodeExecutorFailure({
+            kind: 'retry',
+            errorKind: 'rate_limit',
+            possiblyDispatched: false,
+            minimumRetryDelayMillis,
+          }),
+      ).toThrow('Invalid node executor failure');
+    },
+  );
+
   it('sorts definitions, executors and policies regardless of declaration order', () => {
     const one = catalog();
     const reversed = createNodeCatalog({

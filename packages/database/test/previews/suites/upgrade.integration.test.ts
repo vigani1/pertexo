@@ -99,6 +99,7 @@ it('upgrades a populated standalone test without changing its source identity or
       '0039_table_names_with_spaces.sql',
       '0040_two_factor_sign_in.sql',
       '0041_two_factor_security_notices.sql',
+      '0042_http_retry_delay.sql',
     ]);
     expect(
       (

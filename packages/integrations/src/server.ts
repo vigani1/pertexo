@@ -147,3 +147,5 @@ export {
   openNoticeUnsubscribe,
   type NoticeUnsubscribeClaims,
 } from './system-mail/unsubscribe.js';
+
+export { HttpPaginationFailure } from './http-request/pagination/failure.js';

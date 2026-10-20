@@ -56,6 +56,7 @@ export type AttemptObservation =
         | 'rate_limit'
         | 'timeout';
       readonly possiblyDispatched: boolean;
+      readonly minimumRetryDelayMillis?: number;
     };
 
 export type RetryDecision =
@@ -131,7 +132,12 @@ export function decideRetry(input: {
     attemptNumber: nextAttemptNumber,
     delayMs: Math.min(
       input.policy.maximumDelayMs,
-      Math.floor(boundedDelay * jitter),
+      Math.max(
+        Math.floor(boundedDelay * jitter),
+        input.observation.kind === 'executor_failure'
+          ? (input.observation.minimumRetryDelayMillis ?? 0)
+          : 0,
+      ),
     ),
   };
 }

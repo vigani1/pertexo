@@ -23,4 +23,23 @@ describe('persisted executor failure code', () => {
       ).toMatchObject({ safeErrorCode });
     },
   );
+  it.each([-1, 60_001, '3000', null])(
+    'refuses an invalid persisted retry hint %s',
+    (minimumRetryDelayMillis) => {
+      expect(() =>
+        parsePersistedObservation({
+          kind: 'attempt_failure',
+          occurredAt: '2026-09-27T12:00:00.000Z',
+          invocationKey: 'node',
+          attemptId: randomUUID(),
+          attemptNumber: 1,
+          failureKind: 'retry',
+          errorKind: 'rate_limit',
+          possiblyDispatched: false,
+          safeErrorCode: 'execution.rate_limit',
+          minimumRetryDelayMillis,
+        }),
+      ).toThrow();
+    },
+  );
 });

@@ -52,6 +52,7 @@ export type PendingCoordinatorFailure = Readonly<{
   completed_at: Date;
   executor_error_kind: string;
   executor_failure_kind: string;
+  executor_retry_after_millis: number | null;
   executor_possibly_dispatched: boolean;
   invocation_key: string;
   safe_error_code: string;
@@ -188,7 +189,7 @@ export async function loadRunForAdvance(
   const pendingFailures = await client.query<PendingCoordinatorFailure>(
     `select attempt.id attempt_id, attempt.attempt_number,
             coalesce(attempt.completed_at, attempt.updated_at) completed_at,
-            attempt.executor_failure_kind,
+            attempt.executor_failure_kind, attempt.executor_retry_after_millis,
             attempt.executor_error_kind, attempt.executor_possibly_dispatched,
             attempt.safe_error_code, node.invocation_key
        from app.node_attempts attempt

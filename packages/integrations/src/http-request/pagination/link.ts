@@ -1,0 +1,69 @@
+import { HttpPaginationFailure } from './failure.js';
+
+/** RFC 8288: commas inside a URI or quoted parameter do not separate links. */
+export function nextLink(
+  header: string | undefined,
+  page: number,
+): string | undefined {
+  if (header === undefined || header.trim() === '') return undefined;
+  const invalid = () =>
+    new HttpPaginationFailure('http.pagination_invalid_navigation', page);
+  const links: string[] = [];
+  let start = 0;
+  let quoted = false;
+  let angle = false;
+  let escaped = false;
+  for (let index = 0; index < header.length; index += 1) {
+    const char = header[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (quoted && char === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (!angle && char === '"') quoted = !quoted;
+    else if (!quoted && char === '<') angle = true;
+    else if (!quoted && char === '>') angle = false;
+    else if (!quoted && !angle && char === ',') {
+      links.push(header.slice(start, index));
+      start = index + 1;
+    }
+  }
+  if (quoted || angle || escaped) throw invalid();
+  links.push(header.slice(start));
+  let result: string | undefined;
+  for (const link of links) {
+    const match = /^\s*<([^<>]*)>(.*)$/u.exec(link);
+    if (match === null) throw invalid();
+    const target = match[1];
+    let rest = match[2] ?? '';
+    let rel: string | undefined;
+    let anchored = false;
+    while (rest.trim() !== '') {
+      const parameter =
+        /^\s*;\s*([!#$%&'*+.^_`|~0-9A-Za-z-]+)\s*(?:=\s*(?:"((?:[^"\\]|\\.)*)"|([!#$%&'*+.^_`|~0-9A-Za-z:/-]+)))?/u.exec(
+          rest,
+        );
+      if (parameter === null) throw invalid();
+      const name = parameter[1]?.toLowerCase();
+      const value = (parameter[2] ?? parameter[3] ?? '').replace(
+        /\\(.)/gu,
+        '$1',
+      );
+      if (name === 'rel' && rel === undefined) rel = value;
+      if (name === 'anchor') anchored = true;
+      rest = rest.slice(parameter[0].length);
+    }
+    // A link with another context is not a next page of this response.
+    if (
+      anchored ||
+      !rel?.split(/\s+/u).some((value) => value.toLowerCase() === 'next')
+    )
+      continue;
+    if (result !== undefined && result !== target) throw invalid();
+    result = target;
+  }
+  return result === '' ? undefined : result;
+}
