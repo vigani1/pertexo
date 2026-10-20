@@ -25,19 +25,19 @@
          injects CSS from script, so without this a refresh paints the two
          boot lines as plain text on white. Values mirror globals.css. -->
     <style>
-      html,
-      body {
-        margin: 0;
+      /* Only the page's ground and the boot screen itself: the app's own
+         stylesheet owns everything else, its font included. */
+      html {
         background: #111316;
-        color: #e2e2e6;
         color-scheme: dark;
-        font-family: ui-sans-serif, system-ui, sans-serif;
       }
       .boot-first-frame {
         display: grid;
         min-height: 100svh;
         place-items: center;
         text-align: center;
+        color: #e2e2e6;
+        font-family: ui-sans-serif, system-ui, sans-serif;
       }
       .boot-first-frame .boot-column {
         display: flex;
