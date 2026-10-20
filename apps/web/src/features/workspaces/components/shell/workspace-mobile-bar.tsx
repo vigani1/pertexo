@@ -1,7 +1,6 @@
 import { useState, type ReactNode, type Ref } from 'react';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { Link, useMatchRoute } from '@tanstack/react-router';
-import { ThemeSwitchRow } from '@/components/patterns/appearance/theme-switch';
 import {
   InboxIcon,
   MoreHorizontalIcon,
@@ -186,7 +185,6 @@ export function WorkspaceMobileBar({
                   {destination.label}
                 </Link>
               ))}
-              <ThemeSwitchRow className="flex items-center gap-3 rounded-md px-2 py-2.5 text-left text-sm text-muted-foreground hover:bg-surface-ink/5 hover:text-foreground focus-ring [&_svg]:size-4" />
               <div className="mt-3 border-t border-border pt-3">{more}</div>
             </SheetBody>
           </SheetContent>
