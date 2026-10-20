@@ -6,6 +6,7 @@ export class NodeDataTableFailure extends NodeExecutorFailure {
       kind: code === 'unavailable' ? 'retry' : 'failed',
       errorKind: code === 'unavailable' ? 'network' : 'configuration',
       possiblyDispatched: code === 'unavailable',
+      safeErrorCode: `execution.table_${code}`,
     });
   }
 }

@@ -396,6 +396,9 @@ for (const width of [375, 1280]) {
     };
     const saved = () =>
       httpPaginationSchema.safeParse(savedConfig(remote).pagination).data;
+    await expect(mode).not.toHaveAccessibleDescription(
+      /Finish incomplete fields/u,
+    );
     await choose('Next page link');
     await expect(
       page.getByLabel('Next link path', { exact: true }),
@@ -411,6 +414,9 @@ for (const width of [375, 1280]) {
     ).toBeDisabled();
     await nextPath.fill('next');
     await expect(mode).toBeEnabled();
+    await expect(mode).not.toHaveAccessibleDescription(
+      /Finish incomplete fields/u,
+    );
     await expect(
       page.getByLabel('Next link in', { exact: true }),
     ).toBeEnabled();

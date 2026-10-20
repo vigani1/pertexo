@@ -18,6 +18,25 @@ function at(value: JsonValue, path: string): JsonValue | undefined {
   const found = resolveJsonPath(value, path);
   return found.kind === 'value' ? found.value : undefined;
 }
+/** Preserve unrelated query bytes: signed URLs may depend on their encoding. */
+export function setPaginationParameter(
+  url: URL,
+  parameter: string,
+  value: string,
+): void {
+  const replacement = new URLSearchParams([[parameter, value]]).toString();
+  let replaced = false;
+  const parts: string[] = [];
+  for (const part of url.search.slice(1).split('&')) {
+    if (new URLSearchParams(part).has(parameter)) {
+      if (!replaced) parts.push(replacement);
+      replaced = true;
+    } else if (part !== '' || url.search !== '') parts.push(part);
+  }
+  if (!replaced) parts.push(replacement);
+  url.search = parts.join('&');
+}
+
 export function nextPage(
   input: Readonly<{
     pagination: HttpPagination;
@@ -54,13 +73,13 @@ export function nextPage(
         true,
       );
       if (cursor === undefined) return undefined;
-      url.searchParams.set(pagination.parameter, cursor);
+      setPaginationParameter(url, pagination.parameter, cursor);
       identity = cursor;
     } else {
       const counter =
         pagination.start +
         page * (pagination.mode === 'page' ? 1 : pagination.step);
-      url.searchParams.set(pagination.parameter, String(counter));
+      setPaginationParameter(url, pagination.parameter, String(counter));
       identity = url.toString();
     }
     target = url.toString();

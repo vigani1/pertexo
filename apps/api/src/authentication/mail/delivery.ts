@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 
 import type {
   SystemMailEnqueueStore,
+  SystemMailInput,
   SealedSystemMailPayload,
   SystemMailPurpose,
 } from '@pertexo/database/platform';
@@ -24,6 +25,7 @@ export type AuthenticationSecurityNotice = Readonly<{
 
 export type AuthenticationMail = Readonly<{
   sendSecurityNotice(input: AuthenticationSecurityNotice): Promise<void>;
+  prepareSecurityNotice?(input: AuthenticationSecurityNotice): SystemMailInput;
   prepareProof?(
     input: Readonly<{
       purpose: 'verification' | 'email_change_confirmation';
@@ -149,8 +151,15 @@ export class DurableAuthenticationMail implements AuthenticationMail {
   public sendSecurityNotice(
     input: AuthenticationSecurityNotice,
   ): Promise<void> {
+    return this.store.enqueue(this.prepareSecurityNotice(input));
+  }
+
+  /** The caller commits this sealed command with the security change. */
+  public prepareSecurityNotice(
+    input: AuthenticationSecurityNotice,
+  ): SystemMailInput {
     const disabled = input.purpose === 'two_factor_disabled';
-    return this.enqueue(
+    return this.prepare(
       input.purpose,
       input.recipient,
       disabled

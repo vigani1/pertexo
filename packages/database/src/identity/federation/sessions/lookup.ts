@@ -1,4 +1,4 @@
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import {
   accountPolicy,
   authenticationAllowed,
@@ -23,7 +23,7 @@ type SessionFacts = StoredSessionProof &
 
 /** The materialized scope precedes RLS reads and expires with this single statement. */
 export async function isAuthenticationSessionAllowed(
-  pool: Pool,
+  pool: Pool | PoolClient,
   sessionId: string,
 ): Promise<boolean> {
   const facts = (

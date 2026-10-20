@@ -135,10 +135,12 @@ export async function readEligibleAuthenticationSession(
   return { id: session.id, userId: session.user_id, proof };
 }
 export function authorizeCredentialSignIn(
-  pool: Pool,
+  pool: Pool | PoolClient,
   userId: string,
 ): Promise<'allowed' | 'recovery' | 'sso_required' | 'inactive'> {
-  return withPlatformTransaction(pool, async (client) => {
+  const authorize = async (
+    client: PoolClient,
+  ): Promise<'allowed' | 'recovery' | 'sso_required' | 'inactive'> => {
     const policy = await readAuthenticationPolicy(client, userId);
     if (!policy.active) return 'inactive';
     if (!authenticationAllowed(policy, { method: 'credential' }))
@@ -166,7 +168,10 @@ export function authorizeCredentialSignIn(
       },
     );
     return 'recovery';
-  });
+  };
+  return 'release' in pool
+    ? authorize(pool)
+    : withPlatformTransaction(pool, authorize);
 }
 
 export type IdentityEmailChangeEligibility =

@@ -5,7 +5,7 @@ import {
   getAuthoritativeSessionFromCtx,
 } from 'better-auth/api';
 import { isAuthenticationSessionAllowed } from '@pertexo/database/tenant-access';
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import { requireDoubleSubmitCsrf } from './csrf.js';
 
 export const TWO_FACTOR_VERIFICATION_PATHS = [
@@ -50,7 +50,7 @@ export function createTwoFactorPlugin() {
 }
 
 /** Native factor endpoints keep Pertexo's account-security policy. */
-export function twoFactorRouteGuard(pool: Pool) {
+export function twoFactorRouteGuard(pool: Pool | PoolClient) {
   return {
     matcher: (context: { path?: string | undefined }) =>
       managementPaths.has(context.path ?? '') ||

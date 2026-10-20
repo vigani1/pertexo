@@ -25,6 +25,8 @@ export class HttpPaginationFailure extends NodeExecutorFailure {
           ? 'configuration'
           : 'provider',
       possiblyDispatched: false,
+      safeErrorCode: code,
+      errorSummary: `Page ${String(page)}: ${descriptions[code]}`,
     });
     if (!Number.isInteger(page) || page < 1 || page > 100)
       throw new TypeError('Invalid pagination page');

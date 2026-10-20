@@ -41,3 +41,5 @@ export type {
 } from './mail/store.js';
 
 export { authenticationMailAssociatedData } from './mail/payload.js';
+
+export { insertSystemMail } from './mail/store.js';

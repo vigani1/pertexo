@@ -1,3 +1,4 @@
+import { useScratchForm } from '../use-draft-field';
 import { httpSetupFields } from '../../../model/inspector/http-pagination/fields';
 import { HttpPaginationSetup } from '../http-pagination/setup';
 import { DataTableSetup } from '../builders/table-setup';
@@ -121,17 +122,7 @@ function CatalogSetupTab({
     [node.definition.key, definition?.configSchema],
   );
   const [jsonMode, setJsonMode] = useState(false);
-  const [jsonScratch, setJsonScratch] = useState(false);
-  const jsonForm = useMemo<NodeFormApi>(
-    () => ({
-      ...form,
-      reportScratch: (field, scratch) => {
-        setJsonScratch(scratch);
-        form.reportScratch(field, scratch);
-      },
-    }),
-    [form],
-  );
+  const { form: jsonForm, hasScratch: jsonScratch } = useScratchForm(form);
   const onlyJson = definition === undefined;
   const showJson = onlyJson || jsonMode;
   // A step whose schema has nothing to set (Condition, say) is decided by

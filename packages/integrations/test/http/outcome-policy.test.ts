@@ -320,7 +320,12 @@ describe('ADR 007 HTTP outcome policy', () => {
         expect({ name, sideEffectClass, decision }).toEqual({
           name,
           sideEffectClass,
-          decision: expected(sideEffectClass),
+          decision: {
+            ...expected(sideEffectClass),
+            ...(status === 429 && sideEffectClass !== 'unsafe'
+              ? { minimumRetryDelayMillis: 1000 }
+              : {}),
+          },
         });
       }
   });

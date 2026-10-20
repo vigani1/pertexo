@@ -58,7 +58,7 @@ test('fetches three authenticated pages in a real run and single-step preview', 
   await page
     .getByRole('option', { name: 'Next page link', exact: true })
     .click();
-  await page.getByLabel('Max pages', { exact: true }).fill('3');
+  await page.getByLabel('Max pages', { exact: true }).fill('4');
   await page.getByLabel('Items path', { exact: true }).scrollIntoViewIfNeeded();
   await page.screenshot({ path: `${images}/desktop.png` });
   await page.setViewportSize({ width: 375, height: 768 });
@@ -79,7 +79,7 @@ test('fetches three authenticated pages in a real run and single-step preview', 
       async () =>
         (await readEditorDraft(page, path)).graph.nodes[0]?.config.pagination,
     )
-    .toMatchObject({ mode: 'next_link', maxPages: 3, itemsPath: '$.data' });
+    .toMatchObject({ mode: 'next_link', maxPages: 4, itemsPath: '$.data' });
   await page.getByRole('tab', { name: 'Test', exact: true }).click();
   await page.getByLabel('Sample input (JSON)', { exact: true }).fill('{}');
   await page.getByRole('button', { name: 'Check setup', exact: true }).click();

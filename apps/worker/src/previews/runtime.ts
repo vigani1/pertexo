@@ -1,5 +1,3 @@
-import { HttpPaginationFailure } from '@pertexo/integrations/server';
-import { NodeDataTableFailure } from '@pertexo/node-sdk/server';
 import {
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
@@ -14,7 +12,6 @@ import type { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import { unrecoverableQueueError } from '@pertexo/queue';
 import {
   describeNodeRefusal,
-  NodeCodeFailure,
   NodeConfigValidationError,
   NodeExecutorFailure,
   NodeInputValidationError,
@@ -128,14 +125,6 @@ export function createPlatformPreviewNodeInvoker(
           error.code === 'variable_missing'
         )
           return failedWith('preview.variable_missing');
-        if (
-          error instanceof NodeDataTableFailure &&
-          error.code !== 'unavailable'
-        )
-          return failedWith(`execution.table_${error.code}`);
-        if (error instanceof HttpPaginationFailure)
-          return failedWith(error.code, error.summary);
-        if (error instanceof NodeCodeFailure) return failedWith(error.code);
         // The step refused its input or setup and said why.
         if (error instanceof NodeInputValidationError)
           return failedWith(
@@ -204,7 +193,10 @@ function classifyExecutorFailure(
   sideEffectClass: 'safe' | 'idempotent_with_key' | 'unsafe',
   outcomes: Readonly<{
     canceledWith: () => PreviewInvocationOutcome;
-    failedWith: (safeErrorCode: string) => PreviewInvocationOutcome;
+    failedWith: (
+      safeErrorCode: string,
+      errorSummary?: string,
+    ) => PreviewInvocationOutcome;
     unknownWith: () => PreviewInvocationOutcome;
   }>,
 ): PreviewInvocationOutcome {
@@ -222,9 +214,15 @@ function classifyExecutorFailure(
         case 'retry':
           return nonSafePossibleDispatch
             ? outcomes.unknownWith()
-            : outcomes.failedWith(`preview.${error.errorKind}`);
+            : outcomes.failedWith(
+                error.safeErrorCode ?? `preview.${error.errorKind}`,
+                error.errorSummary,
+              );
         case 'failed':
-          return outcomes.failedWith(`preview.${error.errorKind}`);
+          return outcomes.failedWith(
+            error.safeErrorCode ?? `preview.${error.errorKind}`,
+            error.errorSummary,
+          );
       }
     }
     if (isAbortError(error)) return outcomes.canceledWith();

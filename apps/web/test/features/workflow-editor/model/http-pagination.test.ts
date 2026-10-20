@@ -115,25 +115,21 @@ describe('HTTP pagination setup', () => {
     source.reportScratch('path', true);
     expect(scratch).toHaveBeenCalledWith('pagination:source:path', true);
   });
-  it('offers items alongside the existing response fields in mappings', () => {
-    expect(outputFieldsOf(HTTP_REQUEST_MANIFEST.outputSchema)).toContainEqual({
-      key: 'items',
-      type: 'array',
-    });
-    expect(
-      outputFieldsOf(HTTP_REQUEST_MANIFEST.outputSchema).map(({ key }) => key),
-    ).toEqual(
-      expect.arrayContaining([
-        'status',
-        'headers',
-        'body',
-        'finalOrigin',
-        'redirectCount',
-        'pageCount',
-        'complete',
-      ]),
-    );
-  });
+  it.each([false, true])(
+    'offers only the HTTP output fields for pagination=%s',
+    (enabled) => {
+      const fields = outputFieldsOf(HTTP_REQUEST_MANIFEST.outputSchema, {
+        definition: { key: 'http.request', version: 1 },
+        config: enabled
+          ? { pagination: { mode: 'page', parameter: 'page', itemsPath: '$' } }
+          : {},
+      }).map(({ key }) => key);
+      expect(fields).toContain(enabled ? 'items' : 'body');
+      expect(fields).not.toContain(enabled ? 'body' : 'items');
+      expect(fields).toContain(enabled ? 'pageCount' : 'redirectCount');
+      expect(fields).not.toContain(enabled ? 'redirectCount' : 'pageCount');
+    },
+  );
   it('does not claim one alternative’s type when union fields disagree', () => {
     expect(
       outputFieldsOf({

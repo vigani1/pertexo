@@ -172,7 +172,7 @@ export function InsertDataPicker({
                   {stepTitle(source)}
                 </p>
                 <FieldList
-                  fields={outputFieldsOf(definition?.outputSchema)}
+                  fields={outputFieldsOf(definition?.outputSchema, source)}
                   onPick={(path, name) => {
                     pick(
                       { kind: 'node_output', nodeId: source.id, path },

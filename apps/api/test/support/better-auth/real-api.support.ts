@@ -1,3 +1,4 @@
+import type { AuthenticationMail } from '../../../src/authentication/mail/delivery.js';
 import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 import type { ApiIdentityConfig } from '../../../src/platform/config/identity.js';
 import { captureLocalAuthenticationMail } from './mail-capture.js';
@@ -124,6 +125,7 @@ export function useBetterAuthRealApi(
   options: Readonly<{
     publicWebOrigin?: string;
     databasePoolMax?: number;
+    authenticationMail?: (local: AuthenticationMail) => AuthenticationMail;
     automationTokens?: boolean;
     artifacts?: ApiConfig['artifacts'];
     /** F07-owned qualification namespace, never a shared database selection. */
@@ -249,7 +251,7 @@ export function useBetterAuthRealApi(
     identityRuntime = owner.acquire(
       'identity runtime',
       await createApiIdentityRuntime(identity, databaseConfig, {
-        authenticationMail: mail,
+        authenticationMail: options.authenticationMail?.(mail) ?? mail,
       }),
       (runtime) => runtime.close(),
     );

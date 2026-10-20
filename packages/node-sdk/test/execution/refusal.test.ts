@@ -62,3 +62,25 @@ describe('a step refusal in words', () => {
     );
   });
 });
+
+it('keeps bounded safe executor diagnostics independent of the failure subclass', () => {
+  const outcome = {
+    kind: 'failed',
+    errorKind: 'configuration',
+    possiblyDispatched: false,
+    safeErrorCode: 'execution.file_input',
+    errorSummary: 'Split the file into smaller files.',
+  };
+  expect(new NodeExecutorFailure(outcome)).toMatchObject(outcome);
+  expect(
+    () =>
+      new NodeExecutorFailure({
+        ...outcome,
+        safeErrorCode: 'provider text with secrets',
+      }),
+  ).toThrow(TypeError);
+  expect(
+    () =>
+      new NodeExecutorFailure({ ...outcome, errorSummary: 'x'.repeat(2049) }),
+  ).toThrow(TypeError);
+});

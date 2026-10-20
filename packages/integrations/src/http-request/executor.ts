@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer';
 import { executePagination } from './pagination/execute.js';
 import { HttpPaginationFailure } from './pagination/failure.js';
-import { parseBoundedRetryAfterMillis } from '../http/retry-after.js';
+import { JSON_MEDIA_TYPE } from '../http/content-type.js';
 
 import {
   type JsonValue,
@@ -62,7 +62,6 @@ export class HttpRequestExecutorError extends NodeExecutorFailure {
     public readonly decision: HttpOutcomeDecision,
     possiblyDispatched: boolean,
     cause?: unknown,
-    minimumRetryDelayMillis?: number,
   ) {
     if (decision.kind === 'succeeded')
       throw new TypeError('Successful HTTP outcome');
@@ -70,9 +69,10 @@ export class HttpRequestExecutorError extends NodeExecutorFailure {
       kind: decision.kind,
       errorKind: decision.errorKind,
       possiblyDispatched,
-      ...(minimumRetryDelayMillis === undefined
-        ? {}
-        : { minimumRetryDelayMillis }),
+      ...(decision.kind === 'retry' &&
+      decision.minimumRetryDelayMillis !== undefined
+        ? { minimumRetryDelayMillis: decision.minimumRetryDelayMillis }
+        : {}),
     });
     this.cause = cause;
   }
@@ -99,8 +99,6 @@ function failedConfiguration(): HttpRequestExecutorError {
   );
 }
 
-const JSON_MEDIA_TYPE =
-  /^\s*(?:application\/(?:[!#$%&'*.^_`|~0-9a-z-]+\+)?json|text\/json)\s*(?:;|$)/iu;
 // Leaves room in the step's 1 MiB, 10,000-member output for the text and
 // headers the parsed value sits beside.
 const PARSED_JSON_LIMITS = Object.freeze({
@@ -289,7 +287,7 @@ async function executeHttpRequest(
       });
     } catch (error: unknown) {
       body?.fill(0);
-      if (runtime.providerDispatchUnresolved === true)
+      if (!repeatable && runtime.providerDispatchUnresolved === true)
         throw new HttpRequestExecutorError(
           Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
           true,
@@ -416,19 +414,10 @@ async function executeHttpRequest(
                 status,
                 sideEffect,
                 false,
+                responseHeaders,
               );
               if (decision.kind !== 'succeeded')
-                throw new HttpRequestExecutorError(
-                  decision,
-                  false,
-                  undefined,
-                  status === 429
-                    ? parseBoundedRetryAfterMillis(
-                        responseHeaders['retry-after'],
-                        60_000,
-                      )
-                    : undefined,
-                );
+                throw new HttpRequestExecutorError(decision, false);
             },
           }),
         );
@@ -459,10 +448,12 @@ async function executeHttpRequest(
       const secureError = inspectSecureHttpError(error);
       if (secureError === undefined)
         throw new HttpRequestExecutorError(
-          Object.freeze({ kind: 'outcome_unknown', errorKind: 'network' }),
-          true,
+          repeatable
+            ? Object.freeze({ kind: 'failed', errorKind: 'internal' })
+            : Object.freeze({ kind: 'outcome_unknown', errorKind: 'network' }),
+          !repeatable,
         );
-      if (runtime.providerDispatchUnresolved === true)
+      if (!repeatable && runtime.providerDispatchUnresolved === true)
         throw new HttpRequestExecutorError(
           Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
           true,
@@ -483,6 +474,7 @@ async function executeHttpRequest(
       response.status,
       sideEffect,
       false,
+      response.headers,
     );
     // Like n8n's "Never error": the service answered, and the person asked
     // to branch on its answer rather than fail.

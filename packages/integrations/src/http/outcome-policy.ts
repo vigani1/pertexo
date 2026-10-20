@@ -1,3 +1,4 @@
+import { parseBoundedRetryAfterMillis } from './retry-after.js';
 import { SECURE_HTTP_ERROR_CODE, type SecureHttpError } from './secure.js';
 
 export const HTTP_SIDE_EFFECT_CLASS = Object.freeze({
@@ -27,6 +28,7 @@ export type HttpOutcomeDecision =
       kind: 'retry';
       errorKind: HttpExecutionErrorKind;
       reuseProviderKey: boolean;
+      minimumRetryDelayMillis?: number;
     }>
   | Readonly<{
       kind: 'outcome_unknown';
@@ -37,14 +39,29 @@ export function classifySecureHttpResponse(
   status: number,
   sideEffectClass: HttpSideEffectClass,
   providerKeyPresent: boolean,
+  headers: Readonly<Record<string, string>> = {},
 ): HttpOutcomeDecision {
   if (!validPolicy(sideEffectClass, providerKeyPresent))
     return failed('configuration');
   if (status >= 200 && status <= 299)
     return Object.freeze({ kind: 'succeeded' });
   if (status === 401 || status === 403) return failed('authentication');
-  if (status === 429)
-    return retryDefinite('rate_limit', sideEffectClass, providerKeyPresent);
+  if (status === 429) {
+    const decision = retryDefinite(
+      'rate_limit',
+      sideEffectClass,
+      providerKeyPresent,
+    );
+    return decision.kind === 'retry'
+      ? Object.freeze({
+          ...decision,
+          minimumRetryDelayMillis: parseBoundedRetryAfterMillis(
+            headers['retry-after'],
+            60_000,
+          ),
+        })
+      : decision;
+  }
   if ([408, 425].includes(status))
     return retryDefinite('timeout', sideEffectClass, providerKeyPresent);
   if (status >= 500 && status <= 599)

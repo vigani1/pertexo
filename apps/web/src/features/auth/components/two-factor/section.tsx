@@ -35,6 +35,7 @@ export function AccountTwoFactorSection({
     }
   }
   const { enabled, recoveryCodesRemaining } = security.twoFactor;
+  const codes = recoveryCodeCopy(recoveryCodesRemaining);
   const hasPassword = security.methods.some(
     (method) => method.kind === 'password',
   );
@@ -48,17 +49,13 @@ export function AccountTwoFactorSection({
           {readState === 'unavailable'
             ? 'Refresh your sign-in methods above to confirm the status.'
             : enabled
-              ? `On · ${String(recoveryCodesRemaining)} recovery codes remaining`
+              ? codes.status
               : 'Off'}
         </p>
         {readState !== 'unavailable' &&
         enabled &&
-        recoveryCodesRemaining !== null &&
-        recoveryCodesRemaining <= 2 ? (
-          <Notice tone="warning">
-            Only {recoveryCodesRemaining} recovery codes left. Get new codes
-            before you need them.
-          </Notice>
+        codes.warning !== undefined ? (
+          <Notice tone="warning">{codes.warning}</Notice>
         ) : null}
         <div className="flex flex-wrap gap-2">
           {enabled ? (
@@ -116,4 +113,18 @@ export function AccountTwoFactorSection({
       )}
     </AccountSection>
   );
+}
+
+function recoveryCodeCopy(remaining: number | null) {
+  if (remaining === null) return { status: 'On', warning: undefined };
+  const noun = remaining === 1 ? 'code' : 'codes';
+  return {
+    status: `On · ${String(remaining)} recovery ${noun} remaining`,
+    warning:
+      remaining > 2
+        ? undefined
+        : remaining === 0
+          ? 'No recovery codes left. Get new codes now.'
+          : `Only ${String(remaining)} recovery ${noun} left. Get new codes before you need them.`,
+  };
 }

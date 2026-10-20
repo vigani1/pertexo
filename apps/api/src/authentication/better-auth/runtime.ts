@@ -1,4 +1,8 @@
 import {
+  needsSecurityTransaction,
+  securityTransaction,
+} from './security-transaction.js';
+import {
   createSamlProofGateway,
   type SamlProofGateway,
 } from '../federation/protocol/saml/gateway.js';
@@ -84,7 +88,7 @@ export function createBetterAuthRuntime(
   // for would end the whole API process.
   pool.on('error', () => undefined);
   const emailProofs = new OwnedEmailProofs(pool, config.mail, config.baseUrl);
-  const auth = createPertexoBetterAuth({
+  const authOptions = {
     pool,
     baseUrl: config.baseUrl,
     secret: config.secret,
@@ -99,7 +103,8 @@ export function createBetterAuthRuntime(
     availableLinkProviders:
       config.linkProviderGateway?.available ??
       configuredSocialProviders(config.socialProviders),
-  });
+  };
+  const auth = createPertexoBetterAuth(authOptions);
   const providers =
     config.linkProviderGateway ??
     betterAuthSocialProviders(auth, config.socialProviders);
@@ -161,7 +166,15 @@ export function createBetterAuthRuntime(
           (await emailProofs.handle(request));
         if (owned !== undefined) return owned;
         const returnTo = await emailProofs.signUpReturnPath(request);
-        const response = await auth.handler(request);
+        const response = needsSecurityTransaction(request)
+          ? await securityTransaction(pool, (transaction, afterCommit) =>
+              createPertexoBetterAuth({
+                ...authOptions,
+                transaction,
+                afterCommit,
+              }).handler(request),
+            )
+          : await auth.handler(request);
         await emailProofs.issueAfterSignUp(request, response, returnTo);
         return response;
       },
