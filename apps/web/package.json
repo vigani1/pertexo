@@ -29,7 +29,7 @@
     "@pertexo/node-sdk": "workspace:*",
     "@pertexo/templates": "workspace:*",
     "@pertexo/workflow-model": "workspace:*",
-    "@tanstack/react-query": "5.104.1",
+    "@tanstack/react-query": "5.104.3",
     "@tanstack/react-router": "1.170.41",
     "@xyflow/react": "12.12.0",
     "class-variance-authority": "0.7.1",
