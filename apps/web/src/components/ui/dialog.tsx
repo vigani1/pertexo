@@ -1,4 +1,4 @@
-import type { ComponentProps } from 'react';
+import { useId, type ComponentProps } from 'react';
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
@@ -40,10 +40,17 @@ const dialogContentVariants = cva(
 
 export function DialogContent({
   className,
+  id,
+  initialFocus,
   placement = 'center',
   ...props
 }: ComponentProps<typeof DialogPrimitive.Popup> &
   VariantProps<typeof dialogContentVariants>) {
+  const generatedId = useId();
+  const popupId = id ?? generatedId;
+  // Initial focus may settle after someone has already chosen another control.
+  const focusFirstUnlessChosen = () =>
+    document.getElementById(popupId)?.contains(document.activeElement) !== true;
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Backdrop className="scrim fixed inset-0 z-50 transition-opacity data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none" />
@@ -51,6 +58,8 @@ export function DialogContent({
         className={dialogViewportVariants({ placement })}
       >
         <DialogPrimitive.Popup
+          id={popupId}
+          initialFocus={initialFocus ?? focusFirstUnlessChosen}
           className={cn(dialogContentVariants({ placement }), className)}
           {...props}
         />

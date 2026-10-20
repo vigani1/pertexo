@@ -249,6 +249,9 @@ describe('SAML provider editing', () => {
       screen.getByLabelText('SSO sign-in URL'),
       'https://unsaved.example.test/sso',
     );
+    expect(screen.getByLabelText('SSO sign-in URL')).toHaveValue(
+      'https://unsaved.example.test/sso',
+    );
     const changed = {
       ...original,
       revision: 2,
