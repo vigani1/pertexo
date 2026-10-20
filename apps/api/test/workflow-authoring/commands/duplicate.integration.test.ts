@@ -70,7 +70,6 @@ describeIntegration(
       expect(await fixture.readLifecycle(result.workflowId)).toMatchObject({
         lifecycleStatus: 'active',
         activationStatus: 'inactive',
-        webhookSetupRequired: false,
         publishedVersionId: null,
         lifecycleRevision: 1,
       });

@@ -111,7 +111,7 @@ describe('persisted workflow activation projection', () => {
       expect(
         await authoring.getWorkflow(workspaceId, created.workflowId, actorId),
       ).toMatchObject({ webhookSetupRequired: true });
-      // Historical trigger rows must not mark a newer publication as needing setup.
+      // Historical trigger rows cannot make an unpublished workflow need setup.
       await queryAsOwner(
         'update app.workflows set published_version_id=null where id=$1',
         [created.workflowId],
