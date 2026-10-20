@@ -1,5 +1,6 @@
 export type { DatabaseConfig } from '../config.js';
 export {
+  parseDatabaseConfig,
   parseMaintenanceDatabaseConfig,
   parseOperatorDatabaseConfig,
 } from '../config.js';
@@ -38,3 +39,5 @@ export type {
   SystemMailPurpose,
   SealedSystemMailPayload,
 } from './mail/store.js';
+
+export { authenticationMailAssociatedData } from './mail/payload.js';

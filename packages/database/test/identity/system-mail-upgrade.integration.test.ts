@@ -9,7 +9,7 @@ import { createSystemMailDeliveryStore } from '../../src/platform/mail/store.js'
 import { parseDatabaseConfig } from '../../src/config.js';
 import { createDisposableDatabaseFixture } from '../support/postgres/disposable-database.js';
 
-it('renames populated mail without changing row, grant, index or referenced relation identities', async () => {
+it('preserves mail identities through the rename and old messages through subsequent upgrades', async () => {
   const adminUrl =
     process.env.DATABASE_ADMIN_URL ??
     'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
@@ -78,8 +78,15 @@ it('renames populated mail without changing row, grant, index or referenced rela
       ).rows,
     });
     const before = await catalog('app.authentication_mail_deliveries');
-    expect(await migrateDatabase(migration)).toEqual([
+    await copyFile(
+      join(MIGRATIONS_DIRECTORY, '0017_system_mail_deliveries.sql'),
+      join(directory, '0017_system_mail_deliveries.sql'),
+    );
+    expect(await migrateDatabase(migration, directory)).toEqual([
       '0017_system_mail_deliveries.sql',
+    ]);
+    expect(await catalog('app.system_mail_deliveries')).toEqual(before);
+    expect(await migrateDatabase(migration)).toEqual([
       '0018_workflow_polish.sql',
       '0019_pinned_step_samples.sql',
       '0020_webhook_responses.sql',
@@ -103,8 +110,12 @@ it('renames populated mail without changing row, grant, index or referenced rela
       '0038_step_refusal_reasons.sql',
       '0039_table_names_with_spaces.sql',
       '0040_two_factor_sign_in.sql',
+      '0041_two_factor_security_notices.sql',
     ]);
-    expect(await catalog('app.system_mail_deliveries')).toEqual(before);
+    const after = await catalog('app.system_mail_deliveries');
+    expect(after.relation).toEqual(before.relation);
+    expect(after.columns).toEqual(before.columns);
+    expect(after.indexes).toEqual(before.indexes);
     expect(
       (
         await admin.query(

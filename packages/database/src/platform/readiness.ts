@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0040_two_factor_sign_in.sql';
+export const EXPECTED_MIGRATION_HEAD = '0041_two_factor_security_notices.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{

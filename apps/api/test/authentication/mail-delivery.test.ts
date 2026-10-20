@@ -1,3 +1,4 @@
+import { authenticationMailAssociatedData } from '@pertexo/database/platform';
 import type { SystemMailEnqueueStore } from '@pertexo/database/platform';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -5,7 +6,6 @@ import {
   DurableAuthenticationMail,
   LocalAuthenticationMailSink,
   type LocalAuthenticationMailMessage,
-  authenticationMailAssociatedData,
   printLocalAuthenticationMail,
 } from '../../src/authentication/mail/delivery.js';
 
@@ -130,3 +130,44 @@ describe('durable authentication mail', () => {
     );
   });
 });
+
+for (const purpose of [
+  'two_factor_disabled',
+  'recovery_code_sign_in',
+] as const) {
+  it(`seals the ${purpose} security notice without codes or an ignore-this-message footer`, async () => {
+    const enqueue = vi.fn().mockResolvedValue(undefined);
+    const seal = vi.fn().mockReturnValue({
+      ciphertext: 'sealed',
+      nonce: 'nonce',
+      tag: 'tag',
+      keyVersion: 'v1',
+    });
+    const now = new Date('2026-10-20T00:00:00Z');
+    const mail = new DurableAuthenticationMail(
+      { enqueue, close: vi.fn().mockResolvedValue(undefined) },
+      { seal },
+      'security@example.test',
+      () => now,
+    );
+    await mail.sendSecurityNotice({
+      purpose,
+      recipient: 'ada@example.test',
+      displayName: 'Ada',
+      url: 'https://app.example.test/account/security',
+    });
+    expect(enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        purpose,
+        expiresAt: new Date('2026-10-21T00:00:00Z'),
+      }),
+    );
+    const text = String(seal.mock.calls[0]?.[0]);
+    expect(text).toContain('contact your Pertexo operator immediately');
+    expect(text).not.toContain('ignore this message');
+    expect(text).not.toContain('backupCodes');
+    expect(JSON.stringify(enqueue.mock.calls)).not.toContain(
+      'ada@example.test',
+    );
+  });
+}

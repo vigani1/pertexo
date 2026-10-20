@@ -124,7 +124,10 @@ export function createPertexoBetterAuth(input: PertexoBetterAuthInput) {
       : { socialProviders: input.socialProviders }),
     plugins: [
       createTwoFactorPlugin(),
-      createTrustedSessionPlugin(pool, input.availableLinkProviders),
+      createTrustedSessionPlugin(pool, input.availableLinkProviders, {
+        mail: input.mail,
+        accountUrl: new URL('/account/security', input.baseUrl).toString(),
+      }),
     ],
     databaseHooks: identityChangeHooks(pool),
     disabledPaths: [...DISABLED_NATIVE_PATHS],

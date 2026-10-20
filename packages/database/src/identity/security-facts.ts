@@ -1,5 +1,5 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
-import type { PoolClient } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 
 import { identitySecurityAuditFacts } from '../schema/authentication.js';
 
@@ -16,11 +16,14 @@ export type IdentitySecurityEvent =
   | 'password.configured'
   | 'password.reset'
   | 'profile.display_name_changed'
-  | 'session.signed_in';
+  | 'session.signed_in'
+  | 'two_factor.disabled'
+  | 'two_factor.recovery_code_used'
+  | 'two_factor.operator_disabled';
 
-/** Records a security fact about a user in the caller's transaction. */
+/** Accepts the caller's transaction when the fact must commit with an identity change. */
 export async function recordIdentitySecurityFact(
-  client: PoolClient,
+  client: Pool | PoolClient,
   userId: string,
   event: IdentitySecurityEvent,
 ): Promise<void> {

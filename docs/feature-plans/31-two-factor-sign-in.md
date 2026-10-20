@@ -1,6 +1,6 @@
 # F31 — Two-factor sign-in
 
-Status: backend merged; web implemented; support and safety next. Owner-approved 2026-10-19.
+Status: backend and web merged; support and safety implemented, awaiting final CI. Owner-approved 2026-10-19.
 Parent: [product roadmap](../product-roadmap.md). Size: **M**.
 
 ## Outcome
@@ -170,7 +170,7 @@ visible behavior until slice 2 adds the controls.
 - [x] The secret and codes never appear in logs, URLs or error messages.
 - [x] The phone layout works, and the code field opens the numeric keyboard
       on iPhone.
-- [ ] The guide is published and the roadmap row is updated.
+- [x] The guide is published and the roadmap row is updated.
 
 ## Non-goals
 
@@ -186,8 +186,8 @@ visible behavior until slice 2 adds the controls.
 | Slice | Status | PR |
 | --- | --- | --- |
 | 1 Backend | Merged | [#425](https://github.com/vigani1/pertexo/pull/425) |
-| 2 Web | Implemented; verified in component, mocked and live browser tests | This PR |
-| 3 Support and safety | Approved | — |
+| 2 Web | Merged | [#427](https://github.com/vigani1/pertexo/pull/427) |
+| 3 Support and safety | Implemented; integration and unit checks passed | This PR |
 
 ### Backend alignment (owner-approved 2026-10-19)
 
@@ -204,3 +204,27 @@ reuse the authoritative session, double-submit CSRF and five-minute freshness
 rules. Keep the credential-session issuance policy check as well as the
 post-issuance check; a policy refusal at the code step is
 `AUTHENTICATION_CHANGED` in either case.
+
+### Support implementation alignment (2026-10-20)
+
+- Security notices use the existing encrypted system-mail queue, sender and
+  delivery worker. They expire after 24 hours and contain a fixed security
+  message and the account-security link, never a code or authenticator key.
+  Recovery notices follow successful session-policy checks; failed codes and
+  ordinary TOTP sign-ins do not send them.
+- Operator recovery is `pnpm ops:two-factor-disable --email person@example.com`
+  in `apps/ops/src/identity/`. It uses the existing application database login
+  (`DATABASE_URL`), whose global identity grants already allow this operation.
+  Maintenance gains no identity access. An operator supplies their actor
+  reference and reason, plus the existing authentication-mail configuration.
+  No `BETTER_AUTH_SECRET`, factor or recovery code is required.
+- The operator command locks the account, removes the opaque factor, clears
+  the enabled flag, records a fixed identity security fact and queues its
+  disabled notice in one transaction. Repeating it is a visible no-op. Other
+  sessions remain signed in, matching self-service disable. Production and
+  staging require durable mail; local development prints that no email was sent.
+- Disabled factors, recovery-code sign-ins and operator resets use the existing
+  global identity security facts, with fixed event kinds and no secret metadata.
+  The migration extends existing purpose/event constraints only.
+- The existing mail associated-data helper moves unchanged to database/platform
+  for the API, worker and ops command; its historical bytes remain unchanged.

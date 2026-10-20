@@ -83,6 +83,7 @@ describe('Better Auth runtime composition', () => {
     const mail: AuthenticationMail = {
       sendVerification: () => Promise.resolve(),
       sendPasswordReset: () => Promise.resolve(),
+      sendSecurityNotice: () => Promise.resolve(),
       sendEmailChangeConfirmation: () => Promise.resolve(),
     };
 

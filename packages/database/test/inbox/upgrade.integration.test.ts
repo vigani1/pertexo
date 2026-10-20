@@ -101,6 +101,7 @@ it('upgrades populated workflow threads and private read revisions without chang
       '0038_step_refusal_reasons.sql',
       '0039_table_names_with_spaces.sql',
       '0040_two_factor_sign_in.sql',
+      '0041_two_factor_security_notices.sql',
     ]);
     read = createWorkspaceInboxDatabase(
       parseDatabaseConfig({
