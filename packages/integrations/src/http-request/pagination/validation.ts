@@ -23,27 +23,15 @@ const common = {
     title: 'Items path',
     description: 'The list on each page, for example $.data or $',
   }),
-  maxPages: z
-    .number()
-    .int()
-    .min(1)
-    .max(100)
-    .default(10)
-    .meta({
-      title: 'Max pages',
-      description:
-        'Stop after at most 100 pages. The combined output must fit 1 MB.',
-    }),
-  delayMillis: z
-    .number()
-    .int()
-    .min(0)
-    .max(10_000)
-    .default(0)
-    .meta({
-      title: 'Delay between pages',
-      description: 'Pause before fetching the next page, up to 10 seconds.',
-    }),
+  maxPages: z.number().int().min(1).max(100).default(10).meta({
+    title: 'Max pages',
+    description:
+      'Stop after at most 100 pages. The combined output must fit 1 MB.',
+  }),
+  delayMillis: z.number().int().min(0).max(10_000).default(0).meta({
+    title: 'Delay between pages',
+    description: 'Pause before fetching the next page, up to 10 seconds.',
+  }),
 };
 export const httpPaginationSchema = z
   .discriminatedUnion('mode', [

@@ -1,6 +1,6 @@
 # F31 — Two-factor sign-in
 
-Status: backend and web merged; support and safety implemented, awaiting final CI. Owner-approved 2026-10-19.
+Status: complete. Owner-approved 2026-10-19.
 Parent: [product roadmap](../product-roadmap.md). Size: **M**.
 
 ## Outcome
@@ -187,7 +187,7 @@ visible behavior until slice 2 adds the controls.
 | --- | --- | --- |
 | 1 Backend | Merged | [#425](https://github.com/vigani1/pertexo/pull/425) |
 | 2 Web | Merged | [#427](https://github.com/vigani1/pertexo/pull/427) |
-| 3 Support and safety | Implemented; integration and unit checks passed | This PR |
+| 3 Support and safety | Merged | [#429](https://github.com/vigani1/pertexo/pull/429) |
 
 ### Backend alignment (owner-approved 2026-10-19)
 

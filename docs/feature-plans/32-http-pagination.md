@@ -1,6 +1,6 @@
 # F32 — HTTP Request pagination
 
-Status: engine implemented and locally verified; editor and docs in progress; scope approved 2026-10-19 and implementation alignments approved 2026-10-20.
+Status: complete; scope approved 2026-10-19 and implementation alignments approved 2026-10-20.
 Parent: [product roadmap](../product-roadmap.md). Size: **M**.
 
 ## Outcome
@@ -161,7 +161,7 @@ matches [n8n's HTTP Request pagination](https://docs.n8n.io/build/code-in-n8n/co
       tests pass unchanged.
 - [x] Setup shows only the chosen mode's fields, works on a phone, and
       explains what it will do.
-- [ ] The guide section is published and the roadmap row is updated.
+- [x] The guide section is published and the roadmap row is updated.
 
 ## Non-goals
 
@@ -176,8 +176,8 @@ matches [n8n's HTTP Request pagination](https://docs.n8n.io/build/code-in-n8n/co
 
 | Slice | Status | PR |
 | --- | --- | --- |
-| 1 Engine | Implemented; verification in progress | This PR |
-| 2 Editor and docs | In progress | This PR |
+| 1 Engine | Complete | [#428](https://github.com/vigani1/pertexo/pull/428) |
+| 2 Editor and docs | Complete | This PR |
 
 ## Retry and deadline alignment (owner-approved 2026-10-20)
 
@@ -210,8 +210,7 @@ Accepted alignment:
    run without a deadline has no invented attempt timeout. Do not introduce a
    new global timeout setting.
 
-The owner approved both corrections on 2026-10-20. The engine and editor
-trackers remain undelivered until implementation and verification are complete.
+The owner approved both corrections on 2026-10-20. Both slices use those existing owners; no separate scheduler or timeout was added.
 
 
 ## JSON-path ownership alignment (owner-approved 2026-10-20)
