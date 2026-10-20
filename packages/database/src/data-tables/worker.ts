@@ -18,7 +18,7 @@ import type { WorkerDataTablesStore } from './contract.js';
 import { readQuotas, requireTable } from './read.js';
 import { findRows } from './queries.js';
 import { mutateRows, translateTableConstraint } from './mutate.js';
-import { lockTableExecution, assertTableExecution } from './fence.js';
+import { lockTableExecution, assertTableExecution } from '../attempts/capability-fence.js';
 export function createWorkerDataTablesStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,

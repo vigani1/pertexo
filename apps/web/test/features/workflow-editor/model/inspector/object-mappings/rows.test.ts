@@ -3,7 +3,7 @@ import { expect, it } from 'vitest';
 import {
   contextMapping,
   contextRows,
-} from '@/features/workflow-editor/model/inspector/task-context/rows';
+} from '@/features/workflow-editor/model/inspector/object-mappings/rows';
 
 it('builds ordinary JSONata for mixed sources and preserves plain lists and exact names', async () => {
   const mapping = contextMapping({

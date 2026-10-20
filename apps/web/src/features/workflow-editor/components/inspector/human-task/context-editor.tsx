@@ -16,7 +16,7 @@ import type { NodeFormApi } from '../../../model/inspector/node-form';
 import {
   contextRows,
   contextMapping,
-} from '../../../model/inspector/task-context/rows';
+} from '../../../model/inspector/object-mappings/rows';
 import {
   validateInputMappingRows,
   type InputMappingDraftRow,
