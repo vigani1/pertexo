@@ -1,4 +1,7 @@
-import { codeSettingsSchema } from '@pertexo/node-sdk';
+import {
+  codeSettingsSchema,
+  outputVariantSelectionSchema,
+} from '@pertexo/node-sdk';
 import { z } from 'zod';
 
 const identityKey = z
@@ -58,6 +61,7 @@ export const nodeDefinitionCatalogItemSchema = z
     configSchema: schemaDocumentSchema,
     inputSchema: schemaDocumentSchema,
     outputSchema: schemaDocumentSchema,
+    outputVariant: outputVariantSelectionSchema.optional(),
     ports: nodePortsSchema,
     credentialRequirements: z
       .array(z.string().min(1).max(128))

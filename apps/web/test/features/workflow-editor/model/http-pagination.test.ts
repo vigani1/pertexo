@@ -118,18 +118,46 @@ describe('HTTP pagination setup', () => {
   it.each([false, true])(
     'offers only the HTTP output fields for pagination=%s',
     (enabled) => {
-      const fields = outputFieldsOf(HTTP_REQUEST_MANIFEST.outputSchema, {
-        definition: { key: 'http.request', version: 1 },
-        config: enabled
-          ? { pagination: { mode: 'page', parameter: 'page', itemsPath: '$' } }
-          : {},
-      }).map(({ key }) => key);
+      const fields = outputFieldsOf(
+        HTTP_REQUEST_MANIFEST.outputSchema,
+        {
+          config: enabled
+            ? {
+                pagination: { mode: 'page', parameter: 'page', itemsPath: '$' },
+              }
+            : {},
+        },
+        HTTP_REQUEST_MANIFEST.outputVariant,
+      ).map(({ key }) => key);
       expect(fields).toContain(enabled ? 'items' : 'body');
       expect(fields).not.toContain(enabled ? 'body' : 'items');
       expect(fields).toContain(enabled ? 'pageCount' : 'redirectCount');
       expect(fields).not.toContain(enabled ? 'redirectCount' : 'pageCount');
     },
   );
+  it('selects output variants using discovery metadata for any step and config property', () => {
+    const schema = {
+      oneOf: [
+        { properties: { plain: { type: 'string' } } },
+        { properties: { collected: { type: 'array' } } },
+      ],
+    };
+    const selection = {
+      configProperty: 'collect',
+      whenPresent: 1,
+      whenAbsent: 0,
+    };
+    expect(
+      outputFieldsOf(schema, { config: {} }, selection).map(
+        (field) => field.key,
+      ),
+    ).toEqual(['plain']);
+    expect(
+      outputFieldsOf(schema, { config: { collect: true } }, selection).map(
+        (field) => field.key,
+      ),
+    ).toEqual(['collected']);
+  });
   it('does not claim one alternative’s type when union fields disagree', () => {
     expect(
       outputFieldsOf({

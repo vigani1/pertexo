@@ -35,6 +35,11 @@ export const HTTP_REQUEST_MANIFEST: NodeManifest = Object.freeze({
   configSchema: generateSchemaDocument(httpRequestConfigSchema),
   inputSchema: generateSchemaDocument(httpRequestInputSchema),
   outputSchema: generateSchemaDocument(httpRequestOutputSchema),
+  outputVariant: Object.freeze({
+    configProperty: 'pagination',
+    whenPresent: 1,
+    whenAbsent: 0,
+  }),
   ports: Object.freeze({
     inputs: Object.freeze(['in']),
     outputs: Object.freeze(['out']),

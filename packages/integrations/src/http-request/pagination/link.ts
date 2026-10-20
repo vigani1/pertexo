@@ -4,6 +4,7 @@ import { HttpPaginationFailure } from './failure.js';
 export function nextLink(
   header: string | undefined,
   page: number,
+  presenceOnly = false,
 ): string | undefined {
   if (header === undefined || header.trim() === '') return undefined;
   const invalid = () =>
@@ -62,6 +63,7 @@ export function nextLink(
       !rel?.split(/\s+/u).some((value) => value.toLowerCase() === 'next')
     )
       continue;
+    if (presenceOnly && target !== '') return target;
     if (result !== undefined && result !== target) throw invalid();
     result = target;
   }

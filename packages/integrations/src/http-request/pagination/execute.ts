@@ -13,7 +13,7 @@ import type {
   SecureHttpStreamingBody,
 } from '../../http/secure.js';
 import type { HttpPagination } from './validation.js';
-import { nextPage, setPaginationParameter } from './navigation.js';
+import { hasNextPage, nextPage, setPaginationParameter } from './navigation.js';
 import { JSON_MEDIA_TYPE } from '../../http/content-type.js';
 
 type Page = Readonly<{ value: JsonValue; url: string; link?: string }>;
@@ -153,7 +153,9 @@ export async function executePagination(
       pageCount: page,
       complete:
         pageItems.length === 0 ||
-        (page < pagination.maxPages && next === undefined),
+        (page === pagination.maxPages
+          ? !hasNextPage(pagination, response.body, page)
+          : next === undefined),
       status: response.status,
       headers: response.headers,
       finalOrigin: response.finalUrl,

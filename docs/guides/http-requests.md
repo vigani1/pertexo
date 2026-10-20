@@ -98,9 +98,12 @@ Map `$.items` into the next list or For each step. Paginated output uses
 `items` instead of `body`; status, safe headers and origin describe the last
 page. `pageCount` includes an empty page fetched to find the end.
 
-`complete: false` means Max pages stopped paging at a nonempty page. Pertexo
-conservatively reports false in every mode: it does not inspect an unused next
-link or make another request to prove the end. Check this flag when the next step needs every item.
+`complete: false` means Max pages stopped paging with a continuation value
+still present (or a nonempty page in counter modes). A missing, null or empty
+next link/cursor means `complete: true`, even on the last allowed page. Pertexo
+checks only that value's presence at the cap; it never follows the unused link
+or makes another request to prove the end. Check this flag when the next step
+needs every item.
 Repeated links or cursors end paging without making another request.
 
 Each page must be JSON and fit **Largest page** (64 KB by default, at most

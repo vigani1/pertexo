@@ -476,6 +476,43 @@ describe('HTTP pagination through the real secure transport and registry', () =>
       ).toMatchObject({ items: [1], pageCount: 1, complete: false });
     },
   );
+  it.each(['body', 'link_header', 'cursor'] as const)(
+    'reports final-page completion from %s continuation presence without following it',
+    async (mode) => {
+      for (const present of [false, true]) {
+        let requests = 0;
+        const root = await server((_url, _request, response) => {
+          requests += 1;
+          if (mode === 'link_header' && present)
+            response.setHeader(
+              'link',
+              '<https://another-origin.example.test/next>; rel=next',
+            );
+          json(response, {
+            data: [1],
+            ...(present
+              ? { next: 'https://another-origin.example.test/next' }
+              : {}),
+          });
+        });
+        const pagination =
+          mode === 'cursor'
+            ? { mode, parameter: 'cursor', cursorPath: '$.next' }
+            : {
+                mode: 'next_link',
+                source:
+                  mode === 'body'
+                    ? { kind: 'body', path: '$.next' }
+                    : { kind: 'link_header' },
+              };
+        expect(
+          (await setup(root, { ...pagination, maxPages: 1 }).run()).output,
+        ).toMatchObject({ items: [1], pageCount: 1, complete: !present });
+        expect(requests).toBe(1);
+      }
+    },
+  );
+
   it.each(['page', 'offset', 'cursor'])(
     'preserves unrelated query encoding in %s mode',
     async (mode) => {

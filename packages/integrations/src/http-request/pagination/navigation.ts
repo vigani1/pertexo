@@ -37,6 +37,23 @@ export function setPaginationParameter(
   url.search = parts.join('&');
 }
 
+/** A capped request needs presence, not URL resolution, origin or cycle checks. */
+export function hasNextPage(
+  pagination: HttpPagination,
+  current: Readonly<{ value: JsonValue; link?: string }>,
+  page: number,
+): boolean {
+  const value =
+    pagination.mode === 'cursor'
+      ? at(current.value, pagination.cursorPath)
+      : pagination.mode === 'next_link'
+        ? pagination.source.kind === 'body'
+          ? at(current.value, pagination.source.path)
+          : nextLink(current.link, page, true)
+        : true;
+  return value !== undefined && value !== null && value !== '';
+}
+
 export function nextPage(
   input: Readonly<{
     pagination: HttpPagination;

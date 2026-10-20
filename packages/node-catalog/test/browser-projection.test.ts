@@ -35,6 +35,17 @@ describe('browser-safe platform catalog projection', () => {
     }
   });
 
+  it('exposes config-selected output variants to mapping clients', () => {
+    const item = platformBrowserNodeDefinitionCatalog().definitions.find(
+      (definition) => definition.definition.key === 'http.request',
+    );
+    expect(item?.outputVariant).toEqual({
+      configProperty: 'pagination',
+      whenPresent: 1,
+      whenAbsent: 0,
+    });
+  });
+
   it('advertises the logical Approval result rather than the private declaration marker', () => {
     const item = platformBrowserNodeDefinitionCatalog().definitions.find(
       (definition) => definition.definition.key === 'core.approval',

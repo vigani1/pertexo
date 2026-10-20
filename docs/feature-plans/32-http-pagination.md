@@ -99,8 +99,10 @@ matches [n8n's HTTP Request pagination](https://docs.n8n.io/build/code-in-n8n/co
    ```
 
    - `items` is every page's list, joined in order.
-   - `complete` is `false` only when Max pages stopped it while another page
-     could exist; the next link is not inspected or followed at the cap.
+   - At Max pages, next-link and cursor modes check continuation presence only:
+     absent/null/empty means `complete: true`; a next value means `false`.
+     They do not resolve, validate origins/cycles, or follow the unused target.
+     Counter modes remain incomplete after a nonempty capped page.
    - `status`, `headers` and `finalOrigin` come from the last page.
 
    The output schema becomes a union of today's shape (unchanged) and this
@@ -274,8 +276,11 @@ Use a focused, initially collapsed Pagination section with mode/source choices,
 and reuse the existing schema field controls for the selected shape. Defaults
 and validation come from the public integration schema. Nested edits apply
 to the current draft, preserving sibling settings and undo behavior. Mapping
-suggestions collect root properties from output unions, preserving legacy
-response fields while adding items.
+suggestions use optional catalog `outputVariant` metadata: a config property’s
+presence selects an existing output-union branch by index. HTTP declares its
+inline and paged branches; the generic editor knows no HTTP key or version.
+Catalog registration validates both referenced branches. Definitions without
+selection metadata continue exposing the union’s shared/alternative fields.
 
 ### Editor verification
 

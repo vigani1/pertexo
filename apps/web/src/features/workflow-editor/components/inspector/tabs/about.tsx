@@ -51,7 +51,11 @@ export function AboutTab({
         <>
           <Row term="Returns">
             <ReturnedFields
-              fields={outputFieldsOf(definition.outputSchema, node)}
+              fields={outputFieldsOf(
+                definition.outputSchema,
+                node,
+                definition.outputVariant,
+              )}
             />
           </Row>
           <Row term="Retries">

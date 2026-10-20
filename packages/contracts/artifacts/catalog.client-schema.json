@@ -329,6 +329,33 @@
                   "$ref": "#/schemas/NodeDefinitionListResponse/$defs/__schema0"
                 }
               },
+              "outputVariant": {
+                "readOnly": true,
+                "type": "object",
+                "properties": {
+                  "configProperty": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "whenPresent": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 63
+                  },
+                  "whenAbsent": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 63
+                  }
+                },
+                "required": [
+                  "configProperty",
+                  "whenPresent",
+                  "whenAbsent"
+                ],
+                "additionalProperties": false
+              },
               "ports": {
                 "readOnly": true,
                 "type": "object",
