@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -28,15 +28,26 @@
       /* Only the page's ground and the boot screen itself: the app's own
          stylesheet owns everything else, its font included. */
       html {
-        background: #111316;
+        --boot-ground: #111316;
+        --boot-ink: #e2e2e6;
+        --boot-muted: #7f8b8e;
+        --boot-accent: #d0bcff;
+        background: var(--boot-ground);
         color-scheme: dark;
+      }
+      html[data-theme='light'] {
+        --boot-ground: #f4f6f5;
+        --boot-ink: #183139;
+        --boot-muted: #435b63;
+        --boot-accent: #63449a;
+        color-scheme: light;
       }
       .boot-first-frame {
         display: grid;
         min-height: 100svh;
         place-items: center;
         text-align: center;
-        color: #e2e2e6;
+        color: var(--boot-ink);
         font-family: ui-sans-serif, system-ui, sans-serif;
       }
       .boot-first-frame .boot-column {
@@ -63,7 +74,7 @@
         font-weight: 620;
       }
       .boot-first-frame .boot-line {
-        color: #7f8b8e;
+        color: var(--boot-muted);
         font-family: ui-monospace, monospace;
         font-size: 0.75rem;
       }
@@ -86,7 +97,9 @@
             <p
               class="boot-name font-display text-2xl [--display-optical-size:24] [--display-width:80%]"
             >
-              Pertexo<span class="text-secondary" style="color: #d0bcff"
+              Pertexo<span
+                class="text-secondary"
+                style="color: var(--boot-accent)"
                 >.</span
               >
             </p>

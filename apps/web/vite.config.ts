@@ -1,3 +1,4 @@
+import { initializeAppearance } from './src/lib/appearance/bootstrap.ts';
 import { fileURLToPath } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
@@ -29,7 +30,24 @@ logger.error = (message, options) => {
 
 export default defineConfig({
   customLogger: logger,
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    {
+      name: 'appearance-before-paint',
+      transformIndexHtml: {
+        order: 'pre',
+        handler: () => [
+          {
+            tag: 'script',
+            children: `(${initializeAppearance.toString()})()`,
+            injectTo: 'head',
+          },
+        ],
+      },
+    },
+    react(),
+    tailwindcss(),
+  ],
+
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   server: {
     // The API owns webhook CORS, including OPTIONS; Vite must forward it.

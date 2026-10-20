@@ -969,9 +969,24 @@ palette, the particle orb, the aurora edge and glass stay — each with one job.
 
 #### Tokens and type
 
-- Keep every existing colour token. Added: `success` #8fe3c0, `warning` #f3c677,
-  `raised` #212428, `subtle-foreground` #7f8b8e, `border-strong`. Cyan means
-  brand, focus and _live work_ — never success.
+F36 adds a browser-local appearance choice in Account → Profile. System is the
+default; Light and Dark are explicit overrides. `lib/appearance/bootstrap.ts` is
+the single owner of persistence, system changes, tab synchronization and
+resolved theme. Vite embeds its self-contained initializer synchronously in the
+HTML head, before first paint; the React hook subscribes to the same instance.
+No account/workspace API or server state is mirrored. Blocked storage retains a
+choice in memory and explains that it cannot survive closing the tab.
+
+Neutral surfaces use `surface-ink` and `recess-ink`, with shared shadows, canvas
+ground, scrim and glass tokens. Light uses pale cloth with deeper teal, violet
+and status inks. `useCanvasRenderer` recreates decorative scenes when the
+resolved theme changes, including reduced-motion scenes. Particle compositing is
+additive in dark and ordinary ink in light; both React Flow views follow the
+same resolved choice. Provider brand marks and alpha masks are not theme inks.
+
+- Keep semantic colour tokens in both palettes. Dark values include: `success`
+  #8fe3c0, `warning` #f3c677, `raised` #212428, `subtle-foreground` #7f8b8e,
+  `border-strong`. Cyan means brand, focus and _live work_ — never success.
 - Things people press are calmer than live work: `action` (a softer cyan,
   `oklch(0.82 0.11 205)`, with `action-hover` and `action-foreground`) fills
   primary buttons, checked controls, the current tab and the calendar day, and

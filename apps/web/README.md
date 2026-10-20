@@ -249,6 +249,15 @@ checksum/finalize proof. Payments and billing remain future product work. Follow
 the [definition of done](ARCHITECTURE.md#14-definition-of-done-for-each-feature)
 and feature plans when adding a surface.
 
+## Appearance
+
+Account → Profile → Appearance offers System (the default), Light and Dark. The
+choice is saved for this browser, across workspaces and sign-in sessions. System
+follows device changes live. If browser storage is blocked, the choice still
+works for the open tab. The boot screen resolves it before the app loads. Light
+Weft uses dark teal and violet inks on a pale cloth ground; the same thread
+glyphs, floating lenses, Loom and Core retain their meaning.
+
 ## Weft design system
 
 Every page uses the Weft design system; the binding summary, the status language

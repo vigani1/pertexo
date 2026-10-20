@@ -1,3 +1,4 @@
+import { useAppearance } from '@/lib/appearance/use-choice';
 import '@xyflow/react/dist/style.css';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import {
@@ -144,11 +145,11 @@ function ReadableFit({
 
 const edgeStrokeClass: Readonly<Partial<Record<StatusTone, string>>> = {
   live: '!stroke-primary',
-  success: '!stroke-success/55',
+  success: '!stroke-success',
   failure: '!stroke-destructive',
   timeout: '!stroke-destructive',
   attention: '!stroke-warning',
-  waiting: '!stroke-secondary/70',
+  waiting: '!stroke-secondary',
 };
 
 /**
@@ -170,6 +171,7 @@ export function RunGraphView({
   const projection = useMemo(() => projectRunGraph(graph, rows), [graph, rows]);
   // Hidden until the first fit, so the map never jumps into place.
   const [fitted, setFitted] = useState(false);
+  const { theme } = useAppearance();
   const phone = useMediaQuery(PHONE_MEDIA_QUERY);
   // React Flow measures each step; the overview map only draws steps whose
   // own objects carry that size, so the measurements come back in here.
@@ -234,7 +236,7 @@ export function RunGraphView({
           if (measured.length > 0)
             setSizes((current) => new Map([...current, ...measured]));
         }}
-        colorMode="dark"
+        colorMode={theme}
         fitView
         fitViewOptions={phone ? PHONE_FIT_OPTIONS : FIT_OPTIONS}
         minZoom={0.2}
@@ -272,7 +274,7 @@ function WorkflowRunNode({ data }: NodeProps<RunNode>) {
   return (
     <article
       className={cn(
-        'relative w-56 cursor-pointer rounded-lg border bg-card shadow-[0_18px_44px_-18px_color-mix(in_srgb,var(--shadow-ink)_90%,transparent)] transition-shadow',
+        'relative w-56 cursor-pointer rounded-lg border bg-card shadow-node transition-shadow',
         toneBorderClass[data.tone],
         data.tone === 'live' && 'live-edge',
         data.selected && 'ring-2 ring-ring/60',
@@ -356,8 +358,8 @@ function WorkflowRunEdge({
           '!stroke-[1.5]',
           // A path the run didn't take is dashed and quiet.
           data?.skipped === true
-            ? '![stroke-dasharray:4_5] !stroke-muted-foreground/30'
-            : (edgeStrokeClass[tone] ?? '!stroke-muted-foreground/35'),
+            ? '![stroke-dasharray:4_5] !stroke-graph-link'
+            : (edgeStrokeClass[tone] ?? '!stroke-graph-link'),
         )}
       />
       {data?.branch === undefined ? null : (

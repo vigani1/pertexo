@@ -105,7 +105,6 @@ export function RetainedActivity({
                 aria-label={`${look.label} ${count.toLocaleString(FORMAT_LOCALE)}`}
                 className={cn(
                   'focus-ring inline-flex items-center gap-2 rounded-md border border-surface-ink/7 bg-surface-ink/[0.025] px-2.5 py-1.5 text-sm transition-colors hover:border-surface-ink/15 hover:bg-surface-ink/[0.05] motion-reduce:transition-none',
-                  count === 0 && 'opacity-55',
                 )}
               >
                 <Status tone={look.tone}>{look.label}</Status>

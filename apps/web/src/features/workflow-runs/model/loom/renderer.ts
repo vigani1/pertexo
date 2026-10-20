@@ -73,12 +73,29 @@ function bezierPoint(
 
 export class LoomRenderer extends CanvasScene {
   readonly #palette: Palette;
+  readonly #inkOpacity: Readonly<{
+    thread: number;
+    success: number;
+    label: number;
+  }>;
   readonly #landed = new Map<string, number>();
   #model: LoomModel;
 
   public constructor(canvas: HTMLCanvasElement, model: LoomModel) {
     super(canvas);
     this.#palette = readTokenColors(TOKENS);
+    const styles = getComputedStyle(document.documentElement);
+    this.#inkOpacity = {
+      thread:
+        Number.parseFloat(styles.getPropertyValue('--loom-thread-opacity')) ||
+        0.85,
+      success:
+        Number.parseFloat(styles.getPropertyValue('--loom-success-opacity')) ||
+        0.6,
+      label:
+        Number.parseFloat(styles.getPropertyValue('--loom-label-opacity')) ||
+        0.85,
+    };
     this.#model = model;
   }
 
@@ -143,7 +160,7 @@ export class LoomRenderer extends CanvasScene {
       context.lineTo(x, layout.bottom);
       context.stroke();
       if (index % labelEvery !== 0) continue;
-      context.fillStyle = rgba(palette.muted, 0.85);
+      context.fillStyle = rgba(palette.muted, this.#inkOpacity.label);
       const half = context.measureText(tick.label).width / 2;
       context.fillText(
         tick.label,
@@ -203,7 +220,7 @@ export class LoomRenderer extends CanvasScene {
     const context = this.context;
     context.font = MONO_FONT;
     context.textAlign = 'right';
-    context.fillStyle = rgba(this.#palette.muted, 0.85);
+    context.fillStyle = rgba(this.#palette.muted, this.#inkOpacity.label);
     context.fillText(total, right, y);
     context.textAlign = 'left';
     context.font = LABEL_FONT;
@@ -247,7 +264,12 @@ export class LoomRenderer extends CanvasScene {
     const color = toneColor(this.#palette, run.tone);
     const dashed = run.tone === 'waiting' || run.tone === 'queued';
     const dotted = run.tone === 'attention';
-    context.strokeStyle = rgba(color, run.tone === 'success' ? 0.6 : 0.85);
+    context.strokeStyle = rgba(
+      color,
+      run.tone === 'success'
+        ? this.#inkOpacity.success
+        : this.#inkOpacity.thread,
+    );
     context.lineWidth = 2;
     context.setLineDash(dashed ? [3, 5] : dotted ? [1, 4] : []);
     context.beginPath();
