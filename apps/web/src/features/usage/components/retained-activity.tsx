@@ -137,7 +137,7 @@ export function RetainedActivity({
                   FORMAT_LOCALE,
                 )}
               </span>{' '}
-              events matched up by coordination
+              events matched up by trigger coordination
             </span>
           )}
         </p>
