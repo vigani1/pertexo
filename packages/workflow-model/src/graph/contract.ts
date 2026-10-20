@@ -3,6 +3,10 @@ import {
   expressionValueSourceSchema,
 } from '../mapping/contract.js';
 import { workspaceVariableNameSchema } from '../variables/contract.js';
+import {
+  stepRetrySettingsSchema,
+  type StepRetrySettings,
+} from '../step-retries/contract.js';
 import { z } from 'zod';
 
 import type { JsonValue } from '../json/canonical.js';
@@ -71,6 +75,7 @@ export interface WorkflowNode {
   readonly connectionRefs: Readonly<Record<string, string>>;
   readonly label?: string | undefined;
   readonly disabled?: boolean | undefined;
+  readonly retry?: StepRetrySettings | undefined;
   readonly structured?: ForEachStructure | undefined;
 }
 export interface WorkflowGraph {
@@ -182,6 +187,7 @@ const workflowNodeSchema: z.ZodType<WorkflowNode> = z.lazy(() =>
       connectionRefs: z.record(z.string(), identifierSchema),
       label: z.string().optional(),
       disabled: z.boolean().optional(),
+      retry: stepRetrySettingsSchema.optional(),
       structured: z
         .object({
           kind: z.literal('for_each'),

@@ -50,6 +50,7 @@ export function ReviewCandidate({
                 {JSON.stringify(
                   {
                     config: node.config,
+                    retry: node.retry,
                     inputMappings: node.inputMappings,
                     connectionRefs: node.connectionRefs,
                     structured: node.structured,

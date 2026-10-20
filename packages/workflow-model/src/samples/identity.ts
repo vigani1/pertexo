@@ -10,6 +10,7 @@ export function stepSampleIdentity(node: WorkflowNode): string {
     inputMappings: node.inputMappings,
     connectionRefs: node.connectionRefs,
     disabled: node.disabled ?? false,
+    ...(node.retry === undefined ? {} : { retry: node.retry }),
     structured:
       node.structured === undefined
         ? null

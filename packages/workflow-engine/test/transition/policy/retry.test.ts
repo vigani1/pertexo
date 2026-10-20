@@ -9,6 +9,78 @@ import {
 } from '../../support/engine.js';
 
 describe('retry and transition policy', () => {
+  it('uses fixed custom waits without jitter and includes the first try in the bound', () => {
+    const input = {
+      sideEffectClass: 'safe' as const,
+      policy: {
+        maximumAttempts: 3,
+        baseDelayMs: 1_000,
+        maximumDelayMs: 60_000,
+        retryableErrorCodes: ['network', 'rate_limit'],
+      },
+      settings: { maximumAttempts: 5, delayMillis: 4_000 },
+      observation: {
+        kind: 'executor_failure' as const,
+        recommendation: 'retry' as const,
+        errorKind: 'network' as const,
+        possiblyDispatched: false,
+      },
+      jitterIdentity: 'fixed-wait',
+    };
+    for (const attempt of [1, 2, 3, 4])
+      expect(decideRetry({ ...input, currentAttemptNumber: attempt })).toEqual({
+        kind: 'retry',
+        attemptNumber: attempt + 1,
+        delayMs: 4_000,
+      });
+    expect(decideRetry({ ...input, currentAttemptNumber: 5 })).toEqual({
+      kind: 'failed',
+      reasonCode: 'network',
+    });
+    expect(
+      decideRetry({
+        ...input,
+        currentAttemptNumber: 1,
+        settings: { ...input.settings, maximumAttempts: 1 },
+      }),
+    ).toEqual({ kind: 'failed', reasonCode: 'network' });
+    expect(
+      decideRetry({
+        ...input,
+        currentAttemptNumber: 1,
+        observation: { ...input.observation, minimumRetryDelayMillis: 30_000 },
+      }),
+    ).toMatchObject({ delayMs: 30_000 });
+    expect(
+      decideRetry({
+        ...input,
+        currentAttemptNumber: 1,
+        observation: { ...input.observation, recommendation: 'failed' },
+      }),
+    ).toEqual({ kind: 'failed', reasonCode: 'network' });
+    expect(
+      decideRetry({
+        ...input,
+        currentAttemptNumber: 1,
+        observation: {
+          ...input.observation,
+          recommendation: 'canceled',
+          errorKind: 'canceled',
+        },
+      }),
+    ).toEqual({ kind: 'failed', reasonCode: 'canceled' });
+    expect(
+      decideRetry({
+        ...input,
+        currentAttemptNumber: 1,
+        sideEffectClass: 'unsafe',
+        observation: { ...input.observation, possiblyDispatched: true },
+      }),
+    ).toEqual({
+      kind: 'outcome_unknown',
+      reasonCode: 'unsafe_possible_dispatch',
+    });
+  });
   const policy = {
     maximumAttempts: 3,
     baseDelayMs: 100,

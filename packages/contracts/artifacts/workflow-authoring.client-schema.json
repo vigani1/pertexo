@@ -2838,6 +2838,27 @@
                     "disabled": {
                       "type": "boolean"
                     },
+                    "retry": {
+                      "type": "object",
+                      "properties": {
+                        "maximumAttempts": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 5
+                        },
+                        "delayMillis": {
+                          "type": "integer",
+                          "minimum": 1000,
+                          "maximum": 60000,
+                          "multipleOf": 1000
+                        }
+                      },
+                      "required": [
+                        "maximumAttempts",
+                        "delayMillis"
+                      ],
+                      "additionalProperties": false
+                    },
                     "structured": {
                       "type": "object",
                       "properties": {
@@ -3653,6 +3674,27 @@
                     },
                     "disabled": {
                       "type": "boolean"
+                    },
+                    "retry": {
+                      "type": "object",
+                      "properties": {
+                        "maximumAttempts": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 5
+                        },
+                        "delayMillis": {
+                          "type": "integer",
+                          "minimum": 1000,
+                          "maximum": 60000,
+                          "multipleOf": 1000
+                        }
+                      },
+                      "required": [
+                        "maximumAttempts",
+                        "delayMillis"
+                      ],
+                      "additionalProperties": false
                     },
                     "structured": {
                       "type": "object",
@@ -5735,6 +5777,27 @@
                       "disabled": {
                         "type": "boolean"
                       },
+                      "retry": {
+                        "type": "object",
+                        "properties": {
+                          "maximumAttempts": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 5
+                          },
+                          "delayMillis": {
+                            "type": "integer",
+                            "minimum": 1000,
+                            "maximum": 60000,
+                            "multipleOf": 1000
+                          }
+                        },
+                        "required": [
+                          "maximumAttempts",
+                          "delayMillis"
+                        ],
+                        "additionalProperties": false
+                      },
                       "structured": {
                         "type": "object",
                         "properties": {
@@ -6545,6 +6608,27 @@
                           },
                           "disabled": {
                             "type": "boolean"
+                          },
+                          "retry": {
+                            "type": "object",
+                            "properties": {
+                              "maximumAttempts": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 5
+                              },
+                              "delayMillis": {
+                                "type": "integer",
+                                "minimum": 1000,
+                                "maximum": 60000,
+                                "multipleOf": 1000
+                              }
+                            },
+                            "required": [
+                              "maximumAttempts",
+                              "delayMillis"
+                            ],
+                            "additionalProperties": false
                           },
                           "structured": {
                             "type": "object",
@@ -10567,6 +10651,27 @@
                     "disabled": {
                       "type": "boolean"
                     },
+                    "retry": {
+                      "type": "object",
+                      "properties": {
+                        "maximumAttempts": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 5
+                        },
+                        "delayMillis": {
+                          "type": "integer",
+                          "minimum": 1000,
+                          "maximum": 60000,
+                          "multipleOf": 1000
+                        }
+                      },
+                      "required": [
+                        "maximumAttempts",
+                        "delayMillis"
+                      ],
+                      "additionalProperties": false
+                    },
                     "structured": {
                       "type": "object",
                       "properties": {
@@ -11876,6 +11981,27 @@
                 "disabled": {
                   "type": "boolean"
                 },
+                "retry": {
+                  "type": "object",
+                  "properties": {
+                    "maximumAttempts": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 5
+                    },
+                    "delayMillis": {
+                      "type": "integer",
+                      "minimum": 1000,
+                      "maximum": 60000,
+                      "multipleOf": 1000
+                    }
+                  },
+                  "required": [
+                    "maximumAttempts",
+                    "delayMillis"
+                  ],
+                  "additionalProperties": false
+                },
                 "structured": {
                   "type": "object",
                   "properties": {
@@ -12704,6 +12830,27 @@
                 },
                 "disabled": {
                   "type": "boolean"
+                },
+                "retry": {
+                  "type": "object",
+                  "properties": {
+                    "maximumAttempts": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 5
+                    },
+                    "delayMillis": {
+                      "type": "integer",
+                      "minimum": 1000,
+                      "maximum": 60000,
+                      "multipleOf": 1000
+                    }
+                  },
+                  "required": [
+                    "maximumAttempts",
+                    "delayMillis"
+                  ],
+                  "additionalProperties": false
                 },
                 "structured": {
                   "type": "object",
@@ -13770,6 +13917,27 @@
                     "disabled": {
                       "type": "boolean"
                     },
+                    "retry": {
+                      "type": "object",
+                      "properties": {
+                        "maximumAttempts": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 5
+                        },
+                        "delayMillis": {
+                          "type": "integer",
+                          "minimum": 1000,
+                          "maximum": 60000,
+                          "multipleOf": 1000
+                        }
+                      },
+                      "required": [
+                        "maximumAttempts",
+                        "delayMillis"
+                      ],
+                      "additionalProperties": false
+                    },
                     "structured": {
                       "type": "object",
                       "properties": {
@@ -14628,6 +14796,27 @@
                 "disabled": {
                   "type": "boolean"
                 },
+                "retry": {
+                  "type": "object",
+                  "properties": {
+                    "maximumAttempts": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 5
+                    },
+                    "delayMillis": {
+                      "type": "integer",
+                      "minimum": 1000,
+                      "maximum": 60000,
+                      "multipleOf": 1000
+                    }
+                  },
+                  "required": [
+                    "maximumAttempts",
+                    "delayMillis"
+                  ],
+                  "additionalProperties": false
+                },
                 "structured": {
                   "type": "object",
                   "properties": {
@@ -15481,6 +15670,27 @@
                       },
                       "disabled": {
                         "type": "boolean"
+                      },
+                      "retry": {
+                        "type": "object",
+                        "properties": {
+                          "maximumAttempts": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 5
+                          },
+                          "delayMillis": {
+                            "type": "integer",
+                            "minimum": 1000,
+                            "maximum": 60000,
+                            "multipleOf": 1000
+                          }
+                        },
+                        "required": [
+                          "maximumAttempts",
+                          "delayMillis"
+                        ],
+                        "additionalProperties": false
                       },
                       "structured": {
                         "type": "object",

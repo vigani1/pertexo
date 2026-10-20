@@ -1,4 +1,5 @@
 import { canonicalJson } from '../../json/canonical.js';
+import { supportsStepRetrySettings } from '../../step-retries/contract.js';
 import type {
   ForEachStructure,
   WorkflowGraph,
@@ -331,6 +332,16 @@ export function validateGraphStructure(
   let iterations = 0;
   let concurrent = 0;
   for (const node of graph.nodes) {
+    if (
+      node.retry !== undefined &&
+      !supportsStepRetrySettings(node.definition)
+    ) {
+      context.issue(
+        'invalid_graph',
+        `${path}.nodes.${node.id}.retry`,
+        'Retry settings apply to action steps, not triggers or workflow controls',
+      );
+    }
     const totals = validateStructuredNode(
       node,
       `${path}.nodes.${node.id}`,

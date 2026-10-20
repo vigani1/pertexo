@@ -1,3 +1,5 @@
+import { supportsStepRetrySettings } from '@pertexo/workflow-model';
+import { describeStepRetrySettings } from '../../../model/inspector/retries/draft';
 import type {
   NodeDefinitionCatalogItem,
   WorkflowGraphContract,
@@ -53,7 +55,12 @@ export function AboutTab({
             />
           </Row>
           <Row term="Retries">
-            {describeRetryBehaviour(definition.retryClass)}
+            {supportsStepRetrySettings(node.definition) ? (
+              <p>{describeStepRetrySettings(node.retry)}</p>
+            ) : null}
+            <p className="text-muted-foreground">
+              {describeRetryBehaviour(definition.retryClass)}
+            </p>
           </Row>
           <Row term="Side effects">
             {sideEffects(definition, step.sideEffect)}

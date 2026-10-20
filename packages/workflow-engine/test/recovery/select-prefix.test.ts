@@ -1,4 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import {
+  buildWorkflowExecutable,
+  composeExecutableCatalog,
+} from '../../src/index.js';
+import { graph, nodeCatalog } from '../support/executable-workflow.js';
 import { selectRecoveryPrefix } from '../../src/recovery/select-prefix.js';
 import type { RecoveryNode } from '../../src/recovery/contract.js';
 import { conditional, id, linear, record, source } from './fixtures.js';
@@ -19,6 +24,50 @@ function changeTarget(
 }
 
 describe('recovery prefix selection', () => {
+  it.each([1, 5])(
+    'checks retained retry evidence against the pinned %i-try setting',
+    (maximumAttempts) => {
+      const original = graph();
+      const executable = buildWorkflowExecutable({
+        graph: {
+          ...original,
+          nodes: original.nodes.map((node) =>
+            node.id === 'set'
+              ? { ...node, retry: { maximumAttempts, delayMillis: 1_000 } }
+              : node,
+          ),
+        },
+        catalog: composeExecutableCatalog(nodeCatalog()),
+      });
+      const target = record(executable, 'set', 2, 'failed');
+      const originalAttempt = target.attempts[0];
+      if (originalAttempt === undefined)
+        throw new Error('Recovery attempt fixture is missing');
+      const attempts = Array.from({ length: maximumAttempts }, (_, i) => ({
+        ...originalAttempt,
+        id: id(501 + i),
+        number: i + 1,
+        status: 'failed' as const,
+        failureKind: 'retry' as const,
+        errorKind: 'network' as const,
+        possiblyDispatched: false,
+        retryDecision:
+          i + 1 === maximumAttempts ? ('failed' as const) : ('retry' as const),
+      }));
+      const retained = source([
+        record(executable, 'manual', 1, 'succeeded'),
+        {
+          ...target,
+          attempts,
+          currentAttemptId: id(500 + maximumAttempts),
+          currentAttemptNumber: maximumAttempts,
+        },
+      ]);
+      expect(
+        selectRecoveryPrefix({ executable, source: retained }),
+      ).toMatchObject({ kind: 'candidate', target: { nodeId: 'set' } });
+    },
+  );
   it('selects only completed earlier steps and leaves the failed step for execution', () => {
     const result = selectRecoveryPrefix(linear());
     expect(result.kind).toBe('candidate');

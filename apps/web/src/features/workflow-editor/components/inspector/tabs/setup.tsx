@@ -1,6 +1,7 @@
 import { useScratchForm } from '../use-draft-field';
 import { httpSetupFields } from '../../../model/inspector/http-pagination/fields';
 import { HttpPaginationSetup } from '../http-pagination/setup';
+import { StepRetrySetup } from '../retries/setup';
 import { DataTableSetup } from '../builders/table-setup';
 import { isDataTableDefinition, type CodeSettings } from '@pertexo/node-sdk';
 import { Suspense } from 'react';
@@ -75,20 +76,23 @@ type SetupTabProps = Readonly<{
 }>;
 
 export function SetupTab(props: SetupTabProps) {
-  if (
-    props.node.definition.key === 'core.call' &&
-    props.callScope !== undefined
-  )
-    return (
-      <FieldGroup className="gap-4">
-        <CallTargetField
-          node={props.node}
-          form={props.form}
-          scope={props.callScope}
-        />
-      </FieldGroup>
-    );
-  return <CatalogSetupTab {...props} />;
+  return (
+    <>
+      {props.node.definition.key === 'core.call' &&
+      props.callScope !== undefined ? (
+        <FieldGroup className="gap-4">
+          <CallTargetField
+            node={props.node}
+            form={props.form}
+            scope={props.callScope}
+          />
+        </FieldGroup>
+      ) : (
+        <CatalogSetupTab {...props} />
+      )}
+      <StepRetrySetup node={props.node} form={props.form} />
+    </>
+  );
 }
 
 function CatalogSetupTab({

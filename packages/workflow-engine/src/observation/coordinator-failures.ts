@@ -79,6 +79,7 @@ export function resolveAttemptFailures(
       sideEffectClass: node.sideEffectClass,
       currentAttemptNumber: failure.attemptNumber,
       policy: retryPolicy,
+      settings: node.retry,
       observation: {
         kind: 'executor_failure',
         recommendation: failure.failureKind,

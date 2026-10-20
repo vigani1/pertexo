@@ -3,6 +3,7 @@ import {
   canonicalJson,
   inspectWorkflowDecisionTree,
   type WorkflowEdge,
+  type StepRetrySettings,
   WORKFLOW_FAILURE_PORT,
 } from '@pertexo/workflow-model';
 import { assertAuthenticExecutableIdentity } from '../compilation/foundation.js';
@@ -70,12 +71,14 @@ function retryOutcome(
   node: RecoveryNode,
   attempt: RecoveryAttempt,
   policy: RetryPolicy,
+  settings?: StepRetrySettings,
 ) {
   if (!completeFailure(attempt)) return undefined;
   return decideRetry({
     sideEffectClass: node.sideEffectClass,
     currentAttemptNumber: attempt.number,
     policy,
+    settings,
     observation: {
       kind: 'executor_failure',
       recommendation: attempt.failureKind,
@@ -157,7 +160,7 @@ export function selectRecoveryPrefix(
         record.status !== 'outcome_unknown'
       )
         return { kind: 'refused', reason: 'unknown_effect' };
-      const decision = retryOutcome(record, attempt, policy);
+      const decision = retryOutcome(record, attempt, policy, node.retry);
       if (
         decision?.kind === 'outcome_unknown' &&
         record.status !== 'outcome_unknown'
@@ -182,7 +185,8 @@ export function selectRecoveryPrefix(
     target.status !== source.status ||
     final.retryDecision !== target.status ||
     target.completedAt === null ||
-    retryOutcome(target, final, policy)?.kind !== target.status
+    retryOutcome(target, final, policy, nodes.get(target.nodeId)?.retry)
+      ?.kind !== target.status
   )
     return { kind: 'refused', reason: 'evidence_unavailable' };
 

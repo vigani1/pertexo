@@ -54,6 +54,15 @@ const graph = (nodes: WorkflowGraph['nodes']): WorkflowGraph => ({
 const connectionId = '11111111-1111-4111-8111-111111111111';
 
 describe('portable raw JSON admission', () => {
+  it('keeps retry settings when exporting and importing a workflow', () => {
+    const original = graph([
+      { ...node('action'), retry: { maximumAttempts: 5, delayMillis: 60_000 } },
+    ]);
+    const manifest = projectWorkflowPortableManifest(original, catalog);
+    expect(
+      inspectWorkflowPortableManifest(manifest, [], catalog).graph,
+    ).toEqual(original);
+  });
   it.each([
     '{"a":1,"a":2}',
     '{"a":1,"\\u0061":2}',

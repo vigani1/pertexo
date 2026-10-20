@@ -34,6 +34,8 @@ describe('pinned sample setup identity', () => {
     { inputMappings: { value: { kind: 'run_input', path: 'amount' } } },
     { connectionRefs: { credential: '00000000-0000-4000-8000-000000000001' } },
     { disabled: true },
+    { retry: { maximumAttempts: 1, delayMillis: 1_000 } },
+    { retry: { maximumAttempts: 5, delayMillis: 60_000 } },
   ])('invalidates a changed behavior field: %o', (change) => {
     expect(stepSampleIdentity({ ...node, ...change })).not.toBe(
       stepSampleIdentity(node),

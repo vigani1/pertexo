@@ -100,10 +100,10 @@ The three repetition mechanisms have different identity and owners:
 | User replay | New run ID | Executions application command | Original run is unchanged; selected original or current workflow version is explicit |
 
 BullMQ backoff and delivery counts never decide business retry eligibility.
-The coordinator applies the pinned maximum-attempt, error-class, timeout, and
-bounded exponential-backoff policy. A delayed retry is stored as a due time in
-PostgreSQL and delivered through outbox after it becomes due; correctness does
-not depend on a BullMQ delayed job.
+The coordinator applies the pinned error-class and timeout policy, with the
+platform count/backoff or the action's explicit count/fixed-wait override below.
+A delayed retry is stored as a due time in PostgreSQL and delivered through
+outbox after it becomes due; correctness does not depend on a BullMQ delayed job.
 
 Request idempotency is separate from both transport deduplication and provider
 idempotency. Run acceptance and replay commands claim a workspace-, operation-,
@@ -121,6 +121,30 @@ when no dispatch marker exists or when its `safe` or `idempotent_with_key`
 contract permits it. A definite retryable failure closes the current attempt
 and lets the coordinator create a new one. An unsafe attempt with possible
 dispatch is never automatically redelivered or converted into a logical retry.
+
+### Per-step count and wait overrides (2026-10-20)
+
+[F33](../feature-plans/33-step-retry-settings.md) adds an optional
+`retry: { maximumAttempts, delayMillis }` to an action's workflow node and
+compiled executable. Publication pins it with the rest of the operation. One to
+five total attempts are allowed; the first try counts. An explicit override uses
+a fixed whole-second wait of 1–60 seconds, without jitter. A bounded provider
+minimum delay can lengthen that wait. One total attempt turns logical retries
+off. Without the field, today's three-attempt exponential backoff and
+deterministic jitter remain unchanged, including legacy executable and
+pinned-sample identities.
+
+The same coordinator retry decision owns eligibility and the configured bound.
+Overrides cannot turn permanent failures, cancellation, an expired deadline or a
+terminal `outcome_unknown` into another automatic call. Stable provider keys,
+dispatch fencing, due times, failure routing and capacity rules remain as above.
+Recovery validates historical attempts using the exact version's step override.
+Engine-owned controls and human tasks do not accept overrides.
+
+Draft **Test workflow** runs use the captured override. Single-step previews keep
+their existing one-attempt lease: they do not add a second retry coordinator. The
+editor and [guide](../guides/step-retries.md) state this distinction. Test suites,
+replay and recovery continue to use their existing execution paths.
 
 ### Leases and reconciliation
 
