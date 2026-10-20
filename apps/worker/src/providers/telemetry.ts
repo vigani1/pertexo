@@ -121,7 +121,8 @@ export function createHttpProviderTelemetry(
       key: 'http',
       operation: 'request',
       successAttributes: (output) => ({
-        response_storage: output.body.kind,
+        response_storage: 'body' in output ? output.body.kind : 'inline',
+        ...('pageCount' in output ? { pages_fetched: output.pageCount } : {}),
         // Steps that return error responses succeed with 3xx to 5xx too.
         status_class: `${String(Math.floor(output.status / 100))}xx`,
       }),

@@ -162,6 +162,8 @@ function secureErrorKind(error: SecureHttpError): HttpExecutionErrorKind {
     case SECURE_HTTP_ERROR_CODE.connectionFenceFailed:
     case SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch:
     case SECURE_HTTP_ERROR_CODE.invalidRequest:
+    case SECURE_HTTP_ERROR_CODE.paginationOriginChanged:
+    case SECURE_HTTP_ERROR_CODE.paginationNavigationInvalid:
     case SECURE_HTTP_ERROR_CODE.redirectRejected:
     case SECURE_HTTP_ERROR_CODE.responseEncodingRejected:
     case SECURE_HTTP_ERROR_CODE.responseTooLarge:

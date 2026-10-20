@@ -96,6 +96,33 @@ describe('provider telemetry', () => {
     expect(JSON.stringify(recorded)).not.toMatch(/sentinel/u);
   });
 
+  it('records only a bounded page count for pagination, never its items or navigation', async () => {
+    const recorded = recorder();
+    const output = {
+      items: [{ cursor: 'private-cursor-sentinel' }],
+      pageCount: 3,
+      complete: true,
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+      finalOrigin: 'https://private-origin-sentinel.test',
+    };
+    await createHttpProviderTelemetry(recorded).measure(() =>
+      Promise.resolve(output),
+    );
+    expect(recorded.spans[0]?.attributes).toEqual({
+      provider_key: 'http',
+      operation_key: 'request',
+      outcome: 'succeeded',
+      possibly_dispatched: true,
+      response_storage: 'inline',
+      status_class: '2xx',
+      pages_fetched: 3,
+    });
+    expect(JSON.stringify([recorded.spans, recorded.durations])).not.toContain(
+      'sentinel',
+    );
+  });
+
   it('adds the response storage to an HTTP success', async () => {
     const recorded = recorder();
     const output = { status: 200, body: { kind: 'inline' } } as never;

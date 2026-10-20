@@ -1,3 +1,4 @@
+import { HttpPaginationFailure } from '@pertexo/integrations/server';
 import { NodeDataTableFailure } from '@pertexo/node-sdk/server';
 import {
   PreviewAttemptStateError,
@@ -132,6 +133,8 @@ export function createPlatformPreviewNodeInvoker(
           error.code !== 'unavailable'
         )
           return failedWith(`execution.table_${error.code}`);
+        if (error instanceof HttpPaginationFailure)
+          return failedWith(error.code, error.summary);
         if (error instanceof NodeCodeFailure) return failedWith(error.code);
         // The step refused its input or setup and said why.
         if (error instanceof NodeInputValidationError)

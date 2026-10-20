@@ -89,6 +89,8 @@ export interface NodeArtifactRuntime {
 }
 
 export interface NodeExecutionRuntime {
+  /** Existing run or preview deadline; absent for an unbounded run. */
+  readonly deadlineAt?: Date;
   readonly workspaceId: string;
   readonly runId: string;
   readonly nodeRunId: string;

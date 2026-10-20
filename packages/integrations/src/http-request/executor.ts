@@ -1,4 +1,7 @@
 import { Buffer } from 'node:buffer';
+import { executePagination } from './pagination/execute.js';
+import { HttpPaginationFailure } from './pagination/failure.js';
+import { parseBoundedRetryAfterMillis } from '../http/retry-after.js';
 
 import {
   type JsonValue,
@@ -59,6 +62,7 @@ export class HttpRequestExecutorError extends NodeExecutorFailure {
     public readonly decision: HttpOutcomeDecision,
     possiblyDispatched: boolean,
     cause?: unknown,
+    minimumRetryDelayMillis?: number,
   ) {
     if (decision.kind === 'succeeded')
       throw new TypeError('Successful HTTP outcome');
@@ -66,6 +70,9 @@ export class HttpRequestExecutorError extends NodeExecutorFailure {
       kind: decision.kind,
       errorKind: decision.errorKind,
       possiblyDispatched,
+      ...(minimumRetryDelayMillis === undefined
+        ? {}
+        : { minimumRetryDelayMillis }),
     });
     this.cause = cause;
   }
@@ -353,34 +360,80 @@ async function executeHttpRequest(
         );
       throw error;
     }
+    let marked = false;
+    const dispatchRuntime =
+      config.pagination === undefined
+        ? runtime
+        : {
+            ...runtime,
+            beforeDispatch: async (
+              evidence?: Parameters<typeof runtime.beforeDispatch>[0],
+            ) => {
+              if (marked) return;
+              await runtime.beforeDispatch(evidence);
+              marked = true;
+            },
+          };
     let response;
     try {
+      const request = {
+        url: config.url,
+        method: config.method,
+        headers,
+        ...(body === undefined ? {} : { body }),
+        timeoutMillis: config.timeoutMillis,
+        maxRedirects: config.maxRedirects,
+        maxResponseBytes: config.maxResponseBytes,
+        sensitiveValues: Object.values(credential.headers),
+        signal: invocation.signal,
+        beforeDispatch:
+          resolved === undefined ||
+          connectionId === undefined ||
+          connections?.assertCurrent === undefined
+            ? createUnauthenticatedBeforeDispatch(dispatchRuntime)
+            : createProviderBeforeDispatch({
+                assertCurrent: connections.assertCurrent,
+                connectionId,
+                expectedProviderKey: 'http',
+                expectedAuthType: 'http_headers',
+                secretVersionId: resolved.secretVersionId,
+                signal: invocation.signal,
+                runtime: dispatchRuntime,
+              }),
+      };
+      if (config.pagination !== undefined)
+        return httpRequestOutputSchema.parse(
+          await executePagination({
+            client: dependencies.httpClient,
+            request,
+            pagination: config.pagination,
+            inlineBytes: config.inlineResponseBytes,
+            ...(runtime.deadlineAt === undefined
+              ? {}
+              : { deadlineAt: runtime.deadlineAt }),
+            checkResponse: (status, responseHeaders) => {
+              const decision = classifySecureHttpResponse(
+                status,
+                sideEffect,
+                false,
+              );
+              if (decision.kind !== 'succeeded')
+                throw new HttpRequestExecutorError(
+                  decision,
+                  false,
+                  undefined,
+                  status === 429
+                    ? parseBoundedRetryAfterMillis(
+                        responseHeaders['retry-after'],
+                        60_000,
+                      )
+                    : undefined,
+                );
+            },
+          }),
+        );
       response = await dependencies.httpClient.executeStreaming(
-        {
-          url: config.url,
-          method: config.method,
-          headers,
-          ...(body === undefined ? {} : { body }),
-          timeoutMillis: config.timeoutMillis,
-          maxRedirects: config.maxRedirects,
-          maxResponseBytes: config.maxResponseBytes,
-          sensitiveValues: Object.values(credential.headers),
-          signal: invocation.signal,
-          beforeDispatch:
-            resolved === undefined ||
-            connectionId === undefined ||
-            connections?.assertCurrent === undefined
-              ? createUnauthenticatedBeforeDispatch(runtime)
-              : createProviderBeforeDispatch({
-                  assertCurrent: connections.assertCurrent,
-                  connectionId,
-                  expectedProviderKey: 'http',
-                  expectedAuthType: 'http_headers',
-                  secretVersionId: resolved.secretVersionId,
-                  signal: invocation.signal,
-                  runtime,
-                }),
-        },
+        request,
         (stream) =>
           consumeResponseBody(
             runtime.artifacts,
@@ -390,7 +443,19 @@ async function executeHttpRequest(
           ),
       );
     } catch (error: unknown) {
-      if (safeInstanceOf(error, HttpRequestExecutorError)) throw error;
+      if (
+        safeInstanceOf(error, HttpRequestExecutorError) ||
+        safeInstanceOf(error, HttpPaginationFailure)
+      )
+        throw error;
+      if (
+        config.pagination !== undefined &&
+        (invocation.signal.aborted || errorNameIs(error, 'AbortError'))
+      )
+        throw new HttpRequestExecutorError(
+          { kind: 'canceled', errorKind: 'canceled' },
+          false,
+        );
       const secureError = inspectSecureHttpError(error);
       if (secureError === undefined)
         throw new HttpRequestExecutorError(

@@ -64,17 +64,21 @@ function parseSequencedCursor(observation: ObservationRecord): void {
 function parseAttemptFailure(
   observation: ObservationRecord,
 ): AttemptFailureObservation {
-  exactKeys(observation, [
-    'kind',
-    'occurredAt',
-    'invocationKey',
-    'attemptId',
-    'attemptNumber',
-    'failureKind',
-    'errorKind',
-    'possiblyDispatched',
-    'safeErrorCode',
-  ]);
+  exactKeys(
+    observation,
+    [
+      'kind',
+      'occurredAt',
+      'invocationKey',
+      'attemptId',
+      'attemptNumber',
+      'failureKind',
+      'errorKind',
+      'possiblyDispatched',
+      'safeErrorCode',
+    ],
+    ['minimumRetryDelayMillis'],
+  );
   const failureKinds = ['failed', 'canceled', 'retry', 'outcome_unknown'];
   const errorKinds = [
     'authentication',
@@ -95,7 +99,12 @@ function parseAttemptFailure(
     typeof observation.errorKind !== 'string' ||
     !errorKinds.includes(observation.errorKind) ||
     typeof observation.possiblyDispatched !== 'boolean' ||
-    !isSafeExecutorErrorCode(observation.safeErrorCode)
+    !isSafeExecutorErrorCode(observation.safeErrorCode) ||
+    (observation.minimumRetryDelayMillis !== undefined &&
+      (typeof observation.minimumRetryDelayMillis !== 'number' ||
+        !Number.isInteger(observation.minimumRetryDelayMillis) ||
+        observation.minimumRetryDelayMillis < 0 ||
+        observation.minimumRetryDelayMillis > 60_000))
   ) {
     operationError('observation_invalid', 'attempt failure is invalid');
   }

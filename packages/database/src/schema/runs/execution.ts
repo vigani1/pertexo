@@ -601,6 +601,7 @@ export const nodeAttempts = appSchema.table(
     codeDiagnostics: jsonb('code_diagnostics').$type<CodeDiagnostics>(),
     safeErrorCode: varchar('safe_error_code', { length: 128 }),
     errorSummary: varchar('error_summary', { length: 2048 }),
+    executorRetryAfterMillis: integer('executor_retry_after_millis'),
     executorFailureKind: varchar('executor_failure_kind', { length: 32 }),
     executorErrorKind: varchar('executor_error_kind', { length: 32 }),
     executorPossiblyDispatched: boolean('executor_possibly_dispatched'),
@@ -629,6 +630,10 @@ export const nodeAttempts = appSchema.table(
     check(
       'node_attempts_admission_kind_valid',
       sql`((admission_kind)::text = ANY (ARRAY[('execute'::character varying)::text, ('retry'::character varying)::text, ('wait_resume'::character varying)::text]))`,
+    ),
+    check(
+      'node_attempts_executor_retry_after_valid',
+      sql`executor_retry_after_millis IS NULL OR (executor_failure_kind IS NOT NULL AND executor_retry_after_millis BETWEEN 0 AND 60000)`,
     ),
     check(
       'node_attempts_executor_error_kind_valid',
