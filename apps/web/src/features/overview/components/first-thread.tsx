@@ -86,7 +86,7 @@ export function FirstThread({
   return (
     <section
       aria-labelledby="first-thread-title"
-      className="rounded-xl border border-white/6 bg-linear-to-b from-white/[0.02] to-transparent p-5 sm:p-7"
+      className="rounded-xl border border-surface-ink/6 bg-linear-to-b from-surface-ink/[0.02] to-transparent p-5 sm:p-7"
     >
       <h2 id="first-thread-title" className="text-2xl font-semibold">
         Your first thread
@@ -98,7 +98,7 @@ export function FirstThread({
       <ol className="relative mt-6 flex flex-col gap-5 pl-7">
         <span
           aria-hidden="true"
-          className="absolute top-2 bottom-2 left-[0.4rem] w-0.5 rounded-full bg-white/8"
+          className="absolute top-2 bottom-2 left-[0.4rem] w-0.5 rounded-full bg-surface-ink/8"
         />
         {steps.map((step) => (
           <li key={step.key} className="relative">
@@ -108,7 +108,7 @@ export function FirstThread({
                 'absolute top-1 -left-7 size-3.5 rounded-full border-2',
                 step.done
                   ? 'border-success bg-success shadow-[0_0_0_4px_color-mix(in_srgb,var(--success)_15%,transparent)]'
-                  : 'border-white/20 bg-background',
+                  : 'border-surface-ink/20 bg-background',
               )}
             />
             <div className="flex flex-wrap items-baseline gap-x-2">

@@ -47,7 +47,7 @@ export function RunEventsView({
           {lines.map((line) => (
             <li
               key={line.sequence}
-              className="group/event grid grid-cols-[4.75rem_1rem_minmax(0,1fr)_auto] items-start gap-x-3 border-t border-white/6 py-2.5 text-[0.82rem]"
+              className="group/event grid grid-cols-[4.75rem_1rem_minmax(0,1fr)_auto] items-start gap-x-3 border-t border-surface-ink/6 py-2.5 text-[0.82rem]"
             >
               {/* Right-aligned, so offsets of any length line up at the end. */}
               <span className="pt-px text-right font-mono text-[0.7rem] text-subtle-foreground">

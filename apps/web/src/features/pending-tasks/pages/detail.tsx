@@ -81,7 +81,7 @@ export function TaskDetailPage({
         </p>
       </section>
       {task.kind !== 'approval' || task.output === null ? null : (
-        <section className="flex items-start gap-4 rounded-xl border border-border bg-white/[0.02] p-5">
+        <section className="flex items-start gap-4 rounded-xl border border-border bg-surface-ink/[0.02] p-5">
           <span
             aria-hidden="true"
             className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-full border border-border"

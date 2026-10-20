@@ -65,7 +65,7 @@ export function MappingRow({
   const showProblem = !open && problem !== undefined;
   return (
     <li
-      className="rounded-lg border border-white/7 bg-black/18 p-3"
+      className="rounded-lg border border-surface-ink/7 bg-recess-ink/18 p-3"
       onFocus={onFocusRow}
       onBlur={onLeaveRow}
     >
@@ -90,7 +90,7 @@ export function MappingRow({
       <div
         id={editorId}
         hidden={!open}
-        className="mt-3 flex flex-col gap-3 border-t border-white/7 pt-3"
+        className="mt-3 flex flex-col gap-3 border-t border-surface-ink/7 pt-3"
       >
         {open ? <MappingEditor {...props} focusKey={focusKey} /> : null}
       </div>

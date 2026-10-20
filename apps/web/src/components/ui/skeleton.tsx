@@ -10,7 +10,7 @@ export function Skeleton({ className, ...props }: ComponentProps<'div'>) {
     <div
       data-slot="skeleton"
       aria-hidden="true"
-      className={cn('skeleton-blink rounded-sm bg-white/6', className)}
+      className={cn('skeleton-blink rounded-sm bg-surface-ink/6', className)}
       {...props}
     />
   );
@@ -37,7 +37,7 @@ export function SkeletonThread({
         } as CSSProperties
       }
       className={cn(
-        'relative skeleton-wait h-0.5 overflow-hidden rounded-full bg-white/7',
+        'relative skeleton-wait h-0.5 overflow-hidden rounded-full bg-surface-ink/7',
         'after:absolute after:inset-y-[-1px] after:left-[-45%] after:w-[45%] after:bg-linear-to-r after:from-transparent after:via-accent-foreground after:to-transparent after:content-[""] motion-safe:after:animate-spool after:[animation-delay:var(--spool-delay)]',
         className,
       )}

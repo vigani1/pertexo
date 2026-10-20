@@ -18,7 +18,7 @@ export function ColumnChip({
   return (
     <span
       className={cn(
-        'inline-flex max-w-40 min-w-0 items-center gap-1.5 rounded-md border border-white/7 bg-white/[0.03] px-1.5 py-0.5 font-mono text-[0.7rem] text-muted-foreground',
+        'inline-flex max-w-40 min-w-0 items-center gap-1.5 rounded-md border border-surface-ink/7 bg-surface-ink/[0.03] px-1.5 py-0.5 font-mono text-[0.7rem] text-muted-foreground',
         isKey && 'border-action/30 text-accent-foreground',
         className,
       )}
@@ -58,7 +58,7 @@ export function TableSwatch({
       aria-hidden="true"
       viewBox={`0 0 ${String(width)} ${String(height)}`}
       className={cn(
-        'size-10 shrink-0 rounded-lg border border-white/7 bg-white/[0.025] p-1.5',
+        'size-10 shrink-0 rounded-lg border border-surface-ink/7 bg-surface-ink/[0.025] p-1.5',
         className,
       )}
       fill="none"
@@ -73,7 +73,7 @@ export function TableSwatch({
             x2={width - 2}
             y1={y}
             y2={y}
-            className="stroke-white/25"
+            className="stroke-surface-ink/25"
             strokeWidth={1.4}
           />
         );
@@ -118,7 +118,7 @@ export function UsageMeter({
       aria-valuemax={limit}
       aria-valuenow={used}
       className={cn(
-        'relative block h-1 overflow-hidden rounded-full bg-white/[0.07]',
+        'relative block h-1 overflow-hidden rounded-full bg-surface-ink/[0.07]',
         className,
       )}
     >

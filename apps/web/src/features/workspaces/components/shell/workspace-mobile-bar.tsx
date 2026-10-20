@@ -179,7 +179,7 @@ export function WorkspaceMobileBar({
                   to={destination.to}
                   params={{ workspaceId: workspace.id }}
                   activeOptions={{ exact: destination.exact ?? false }}
-                  className="flex items-center gap-3 rounded-md px-2 py-2.5 text-sm text-muted-foreground hover:bg-white/5 hover:text-foreground aria-[current=page]:text-accent-foreground [&_svg]:size-4"
+                  className="flex items-center gap-3 rounded-md px-2 py-2.5 text-sm text-muted-foreground hover:bg-surface-ink/5 hover:text-foreground aria-[current=page]:text-accent-foreground [&_svg]:size-4"
                 >
                   {destination.icon}
                   {destination.label}

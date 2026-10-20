@@ -37,7 +37,7 @@ function GraphPlaceholder({
     <p className="relative max-w-sm text-sm text-muted-foreground">{message}</p>
   );
   return (
-    <div className="weave relative grid h-72 place-items-center overflow-hidden rounded-xl border border-white/6 px-6 text-center">
+    <div className="weave relative grid h-72 place-items-center overflow-hidden rounded-xl border border-surface-ink/6 px-6 text-center">
       {loading ? (
         // Loading waits like a skeleton, so a quick load never flashes it.
         <div className="absolute inset-0 grid skeleton-wait place-items-center rounded-[inherit] px-6">

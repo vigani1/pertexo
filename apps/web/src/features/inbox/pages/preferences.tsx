@@ -100,7 +100,7 @@ function ScheduleCard({
   return (
     <section
       aria-labelledby={headingId}
-      className="flex flex-col gap-4 rounded-xl border border-white/7 bg-white/[0.015] p-5"
+      className="flex flex-col gap-4 rounded-xl border border-surface-ink/7 bg-surface-ink/[0.015] p-5"
     >
       <div className="flex flex-col gap-1">
         <h2 id={headingId} className="font-semibold">

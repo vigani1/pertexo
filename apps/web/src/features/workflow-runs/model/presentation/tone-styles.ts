@@ -10,9 +10,9 @@ export const toneBorderClass: Readonly<Record<StatusTone, string>> = {
   failure: 'border-destructive/55',
   timeout: 'border-destructive/45',
   attention: 'border-warning/50',
-  canceled: 'border-white/10',
-  skipped: 'border-white/8',
-  neutral: 'border-white/10',
+  canceled: 'border-surface-ink/10',
+  skipped: 'border-surface-ink/8',
+  neutral: 'border-surface-ink/10',
 };
 
 /** How a thread is drawn for a tone: solid, dashed (waiting) or dotted. */

@@ -274,7 +274,7 @@ export function WorkflowRow({
       onKeyDown={(event) => {
         runShortcut(event, run);
       }}
-      className={`group/row relative grid ${WORKFLOW_ROW_COLUMNS} items-center gap-x-4 gap-y-1.5 rounded-lg px-3 py-3 transition-colors duration-150 before:pointer-events-none before:absolute before:inset-x-3 before:top-0 before:h-px before:bg-border first:before:hidden focus-within:bg-white/[0.03] hover:bg-white/[0.035] hover:before:opacity-0 focus-within:before:opacity-0 [:focus-within+&]:before:opacity-0 [:hover+&]:before:opacity-0 hover:shadow-[inset_0_0_0_1px_rgb(255_255_255/6%)] motion-reduce:transition-none`}
+      className={`group/row relative grid ${WORKFLOW_ROW_COLUMNS} items-center gap-x-4 gap-y-1.5 rounded-lg px-3 py-3 transition-colors duration-150 before:pointer-events-none before:absolute before:inset-x-3 before:top-0 before:h-px before:bg-border first:before:hidden focus-within:bg-surface-ink/[0.03] hover:bg-surface-ink/[0.035] hover:before:opacity-0 focus-within:before:opacity-0 [:focus-within+&]:before:opacity-0 [:hover+&]:before:opacity-0 hover:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--surface-ink)_6%,transparent)] motion-reduce:transition-none`}
     >
       <div className="row-span-2 flex items-center gap-2 lg:row-span-1">
         {selectionControl == null ? null : (

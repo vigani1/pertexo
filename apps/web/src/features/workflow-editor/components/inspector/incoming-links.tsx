@@ -51,7 +51,7 @@ export function IncomingLinks({
   return (
     <section
       aria-labelledby={`incoming-${node.id}`}
-      className="flex flex-col gap-3 border-t border-white/7 pt-4"
+      className="flex flex-col gap-3 border-t border-surface-ink/7 pt-4"
     >
       <div>
         <h3 id={`incoming-${node.id}`} className="text-sm font-semibold">
@@ -109,7 +109,7 @@ export function IncomingLinks({
         </Button>
       ) : null}
       {editable && others.length > 0 && wiring ? (
-        <FieldGroup className="gap-3 rounded-lg border border-white/7 bg-black/18 p-3">
+        <FieldGroup className="gap-3 rounded-lg border border-surface-ink/7 bg-recess-ink/18 p-3">
           <Field>
             <FieldLabel htmlFor={`link-source-${node.id}`}>
               Link from step

@@ -121,13 +121,13 @@ export function DataTableRows({
           Rows could not be loaded. Narrow the filter or refresh to try again.
         </Notice>
       ) : null}
-      <div className="min-w-0 overflow-hidden rounded-xl border border-white/8 bg-white/[0.015]">
+      <div className="min-w-0 overflow-hidden rounded-xl border border-surface-ink/8 bg-surface-ink/[0.015]">
         {/* Relative keeps hidden labels inside the scroller, not past the page. */}
         <div className="relative max-w-full overflow-x-auto">
           <table className="w-full text-left text-sm">
             <caption className="sr-only">{table.name} rows</caption>
-            <thead className="bg-white/[0.025]">
-              <tr className="border-b border-white/8">
+            <thead className="bg-surface-ink/[0.025]">
+              <tr className="border-b border-surface-ink/8">
                 {table.columns.map((column) => {
                   const look = COLUMN_TYPES[column.type];
                   const Icon =
@@ -167,7 +167,7 @@ export function DataTableRows({
                     <tr
                       key={`loading-${String(index)}`}
                       aria-hidden="true"
-                      className="border-b border-white/5 last:border-0"
+                      className="border-b border-surface-ink/5 last:border-0"
                     >
                       <td
                         colSpan={table.columns.length + (editable ? 1 : 0)}
@@ -181,7 +181,7 @@ export function DataTableRows({
               {rows.data?.rows.map((row) => (
                 <tr
                   key={row.id}
-                  className="group/row border-b border-white/5 transition-colors last:border-0 hover:bg-white/[0.03] motion-reduce:transition-none"
+                  className="group/row border-b border-surface-ink/5 transition-colors last:border-0 hover:bg-surface-ink/[0.03] motion-reduce:transition-none"
                 >
                   {table.columns.map((column) => (
                     <td
@@ -264,7 +264,7 @@ export function DataTableRows({
           ) : null}
         </div>
         {/* The grid's own footer: where you are on the left, paging right. */}
-        <div className="flex items-center justify-between gap-3 border-t border-white/8 px-4 py-2 text-xs text-muted-foreground">
+        <div className="flex items-center justify-between gap-3 border-t border-surface-ink/8 px-4 py-2 text-xs text-muted-foreground">
           <p className="font-mono tabular-nums" aria-live="polite">
             {shown === 0
               ? 'No rows shown'

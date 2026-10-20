@@ -250,7 +250,7 @@ function InspectorFooter({
   return (
     <div
       role="status"
-      className="flex min-h-11 items-center gap-2 border-t border-white/7 px-4 py-2 text-xs text-subtle-foreground"
+      className="flex min-h-11 items-center gap-2 border-t border-surface-ink/7 px-4 py-2 text-xs text-subtle-foreground"
     >
       {scratch ? (
         <>

@@ -70,14 +70,14 @@ export function WorkflowFileDrop({
           dragging
             ? 'border-action bg-action/[0.06]'
             : error === undefined
-              ? 'border-border-strong bg-white/[0.015]'
+              ? 'border-border-strong bg-surface-ink/[0.015]'
               : 'border-destructive/70 bg-destructive/[0.04]',
           read && !dragging && 'border-solid border-border',
         )}
       >
         <span
           aria-hidden="true"
-          className="grid h-12 w-[8.25rem] shrink-0 place-items-center rounded-md bg-black/25"
+          className="grid h-12 w-[8.25rem] shrink-0 place-items-center rounded-md bg-recess-ink/25"
         >
           {read ? <PatternGlyph graph={manifest.graph} /> : <UnwovenThread />}
         </span>
@@ -162,7 +162,7 @@ function UnwovenThread() {
       <path
         d="M8 16H58c10 0 12-9 22-9s12 13 22 13"
         strokeWidth={1.2}
-        className="stroke-white/20 [stroke-dasharray:3_4]"
+        className="stroke-surface-ink/20 [stroke-dasharray:3_4]"
       />
       <circle
         cx={8}

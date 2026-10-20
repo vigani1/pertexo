@@ -86,7 +86,7 @@ export function RecentlyChanged({
       }
     >
       {workflows.length === 0 ? (
-        <p className="border-t border-white/6 py-3.5 text-sm text-muted-foreground">
+        <p className="border-t border-surface-ink/6 py-3.5 text-sm text-muted-foreground">
           No workflows yet. Create one from Workflows.
         </p>
       ) : (
@@ -94,7 +94,7 @@ export function RecentlyChanged({
           {workflows.map((workflow) => (
             <li
               key={workflow.id}
-              className="grid grid-cols-[3.9rem_minmax(0,1fr)_auto] items-center gap-3 border-t border-white/6 py-3"
+              className="grid grid-cols-[3.9rem_minmax(0,1fr)_auto] items-center gap-3 border-t border-surface-ink/6 py-3"
             >
               <WorkflowGlyph
                 apiClient={apiClient}

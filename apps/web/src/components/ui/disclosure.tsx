@@ -8,7 +8,7 @@ const disclosureVariants = cva('', {
     // A plain fold in running text, or a framed one standing on its own.
     look: {
       plain: '',
-      framed: 'rounded-lg border border-border bg-white/[0.015]',
+      framed: 'rounded-lg border border-border bg-surface-ink/[0.015]',
     },
   },
   defaultVariants: { look: 'plain' },

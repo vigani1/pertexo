@@ -36,14 +36,16 @@ export function WorkspaceAccess({
                 'flex min-w-0 items-center gap-2.5 rounded-md border px-2.5 py-2 text-[0.8rem] leading-snug',
                 allowed
                   ? 'border-action/20 bg-action/[0.05]'
-                  : 'border-white/6 bg-transparent',
+                  : 'border-surface-ink/6 bg-transparent',
               )}
             >
               <span
                 aria-hidden="true"
                 className={cn(
                   'size-2 shrink-0 rounded-full',
-                  allowed ? 'bg-action' : 'border border-white/18 bg-card',
+                  allowed
+                    ? 'bg-action'
+                    : 'border border-surface-ink/18 bg-card',
                 )}
               />
               <span className={allowed ? undefined : 'text-subtle-foreground'}>

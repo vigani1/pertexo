@@ -40,7 +40,7 @@ export function RunStrip({ ticks }: Readonly<{ ticks: readonly RunTick[] }>) {
       {Array.from({ length: padding }, (_, index) => (
         <span
           key={`empty-${String(index)}`}
-          className="h-3.5 w-1 rounded-[2px] bg-white/7"
+          className="h-3.5 w-1 rounded-[2px] bg-surface-ink/7"
         />
       ))}
       {ticks.map((tick, index) => (
@@ -59,7 +59,7 @@ export function RunStripPlaceholder() {
       {Array.from({ length: RUN_STRIP_LENGTH }, (_, index) => (
         <span
           key={String(index)}
-          className="h-3.5 w-1 rounded-[2px] bg-white/5 motion-safe:animate-blink"
+          className="h-3.5 w-1 rounded-[2px] bg-surface-ink/5 motion-safe:animate-blink"
         />
       ))}
     </span>

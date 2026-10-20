@@ -30,7 +30,7 @@ export function RunTimeline({
     active && view.rows.every((row) => row.status === 'not_started');
   if (view.rows.length === 0)
     return (
-      <div className="relative grid h-64 place-items-center overflow-hidden rounded-xl border border-white/6">
+      <div className="relative grid h-64 place-items-center overflow-hidden rounded-xl border border-surface-ink/6">
         {active ? <RunLoadingWave /> : null}
         <p className="relative text-sm text-muted-foreground">
           {active
@@ -44,7 +44,7 @@ export function RunTimeline({
     // step lens it is narrower than the screen.
     <div
       className={cn(
-        '@container relative rounded-xl border border-white/6 px-2 pt-3 pb-2 @xl:px-4',
+        '@container relative rounded-xl border border-surface-ink/6 px-2 pt-3 pb-2 @xl:px-4',
         active && 'live-edge',
       )}
     >
@@ -74,14 +74,14 @@ export function RunTimeline({
             // selected or hovered row hides the lines on both its edges.
             <li
               key={row.key}
-              className="relative before:pointer-events-none before:absolute before:inset-x-2.5 before:top-0 before:h-px before:bg-white/5 first:before:hidden has-[button:hover]:before:opacity-0 has-[[aria-pressed=true]]:before:opacity-0 [:has(button:hover)+&]:before:opacity-0 [:has([aria-pressed=true])+&]:before:opacity-0"
+              className="relative before:pointer-events-none before:absolute before:inset-x-2.5 before:top-0 before:h-px before:bg-surface-ink/5 first:before:hidden has-[button:hover]:before:opacity-0 has-[[aria-pressed=true]]:before:opacity-0 [:has(button:hover)+&]:before:opacity-0 [:has([aria-pressed=true])+&]:before:opacity-0"
             >
               <button
                 type="button"
                 aria-pressed={selected}
                 aria-label={`${row.label}: ${row.statusLabel}, ${stepTag(row, nowMs)}`}
                 className={cn(
-                  'grid h-13 w-full grid-cols-[9rem_minmax(0,1fr)] items-center rounded-lg px-2.5 text-left outline-none transition-colors duration-150 hover:bg-white/[0.035] focus-ring motion-reduce:transition-none @xl:grid-cols-[13rem_minmax(0,1fr)]',
+                  'grid h-13 w-full grid-cols-[9rem_minmax(0,1fr)] items-center rounded-lg px-2.5 text-left outline-none transition-colors duration-150 hover:bg-surface-ink/[0.035] focus-ring motion-reduce:transition-none @xl:grid-cols-[13rem_minmax(0,1fr)]',
                   selected &&
                     'bg-action/[0.07] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--action)_24%,transparent)] hover:bg-action/[0.09]',
                 )}

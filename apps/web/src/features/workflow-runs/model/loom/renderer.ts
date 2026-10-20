@@ -22,6 +22,7 @@ import { FORMAT_LOCALE } from '@/lib/format/locale';
 
 const FALLBACK: Rgb = [127, 139, 142];
 const TOKENS = {
+  ink: ['--surface-ink', [255, 255, 255]],
   live: ['--primary', FALLBACK],
   tip: ['--accent-foreground', FALLBACK],
   success: ['--success', FALLBACK],
@@ -135,7 +136,7 @@ export class LoomRenderer extends CanvasScene {
         nowMs,
         nowMs - tick.offsetMs,
       );
-      context.strokeStyle = 'rgba(255,255,255,0.045)';
+      context.strokeStyle = rgba(palette.ink, 0.045);
       context.lineWidth = 1;
       context.beginPath();
       context.moveTo(x, layout.top - 6);
@@ -180,7 +181,7 @@ export class LoomRenderer extends CanvasScene {
           layout.left,
           y - 7,
         );
-      context.strokeStyle = 'rgba(255,255,255,0.04)';
+      context.strokeStyle = rgba(palette.ink, 0.04);
       context.beginPath();
       context.moveTo(layout.left, y);
       context.lineTo(layout.right, y);
@@ -343,7 +344,7 @@ export class LoomRenderer extends CanvasScene {
       context.fill();
       const pulse = 1 + 0.25 * Math.sin(timeSeconds * 5 + index);
       const glow = context.createRadialGradient(x, y, 0, x, y, 11 * pulse);
-      glow.addColorStop(0, 'rgba(255,255,255,0.95)');
+      glow.addColorStop(0, rgba(palette.ink, 0.95));
       glow.addColorStop(0.25, rgba(palette.tip, 0.8));
       glow.addColorStop(0.6, rgba(palette.live, 0.25));
       glow.addColorStop(1, rgba(palette.pending, 0));

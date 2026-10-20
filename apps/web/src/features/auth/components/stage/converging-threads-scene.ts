@@ -174,7 +174,7 @@ export class ConvergingThreadsScene extends CanvasScene {
     const { sprite } = thread;
     if (sprite === undefined) return;
     const context = this.context;
-    context.globalCompositeOperation = 'lighter';
+    context.globalCompositeOperation = this.particleComposition;
     for (let particle = 0; particle < PARTICLES_PER_THREAD; particle += 1) {
       const progress =
         (((timeSeconds * thread.speed +

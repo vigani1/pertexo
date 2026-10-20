@@ -16,7 +16,7 @@ export function DraftNextRuns({
   const preview = useSchedulePreview(recurrence);
   if (preview.status === 'unavailable') return null;
   return (
-    <div className="mt-3 flex flex-col gap-1.5 border-t border-white/7 pt-2.5">
+    <div className="mt-3 flex flex-col gap-1.5 border-t border-surface-ink/7 pt-2.5">
       <p className="text-xs font-medium text-muted-foreground">
         Next runs if published now
       </p>

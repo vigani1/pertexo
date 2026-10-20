@@ -152,7 +152,7 @@ export function TableCollection({
 }>) {
   if (tables?.length === 0)
     return (
-      <div className="flex items-center gap-4 rounded-xl border border-dashed border-white/10 px-5 py-10">
+      <div className="flex items-center gap-4 rounded-xl border border-dashed border-surface-ink/10 px-5 py-10">
         <TableSwatch columns={[]} rowCount={0} />
         <div>
           <p>No tables yet.</p>
@@ -172,7 +172,7 @@ export function TableCollection({
             <Link
               to="/w/$workspaceId/data-tables/$tableId"
               params={{ workspaceId, tableId: item.id }}
-              className="group flex h-full min-w-0 flex-col gap-4 rounded-xl border border-white/7 bg-white/[0.02] p-4 outline-none transition-colors duration-150 hover:border-white/14 hover:bg-white/[0.04] focus-ring motion-reduce:transition-none"
+              className="group flex h-full min-w-0 flex-col gap-4 rounded-xl border border-surface-ink/7 bg-surface-ink/[0.02] p-4 outline-none transition-colors duration-150 hover:border-surface-ink/14 hover:bg-surface-ink/[0.04] focus-ring motion-reduce:transition-none"
             >
               <div className="flex min-w-0 items-center gap-3">
                 <TableSwatch columns={item.columns} rowCount={item.rowCount} />

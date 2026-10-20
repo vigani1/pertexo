@@ -10,7 +10,7 @@ export function PortableGraphReview({
     <pre
       tabIndex={0}
       aria-label={label}
-      className="max-h-80 overflow-auto overscroll-contain rounded-md border border-border bg-black/25 p-3 font-mono text-xs whitespace-pre-wrap break-all focus-ring"
+      className="max-h-80 overflow-auto overscroll-contain rounded-md border border-border bg-recess-ink/25 p-3 font-mono text-xs whitespace-pre-wrap break-all focus-ring"
     >
       {json}
     </pre>

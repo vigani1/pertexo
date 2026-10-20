@@ -22,7 +22,7 @@ function formatBadge(count: number): string {
 }
 
 const spineLinkClass =
-  "relative grid size-10 place-items-center rounded-md text-subtle-foreground outline-none transition-colors hover:bg-white/5 hover:text-foreground focus-ring aria-[current=page]:bg-action/10 aria-[current=page]:text-accent-foreground aria-[current=page]:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--action)_22%,transparent)] [&_svg:not([class*='size-'])]:size-[1.15rem]";
+  "relative grid size-10 place-items-center rounded-md text-subtle-foreground outline-none transition-colors hover:bg-surface-ink/5 hover:text-foreground focus-ring aria-[current=page]:bg-action/10 aria-[current=page]:text-accent-foreground aria-[current=page]:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--action)_22%,transparent)] [&_svg:not([class*='size-'])]:size-[1.15rem]";
 
 function SpineLink({
   workspaceId,
@@ -130,7 +130,7 @@ export function WorkspaceSpine({
       className="lens fixed top-3 bottom-3 left-3 z-40 hidden w-15 flex-col items-center gap-1 rounded-xl py-2.5 md:flex"
     >
       <HomeCore workspaceId={workspace.id} liveRunCount={liveRunCount} />
-      <span aria-hidden="true" className="my-1.5 h-px w-6 bg-white/9" />
+      <span aria-hidden="true" className="my-1.5 h-px w-6 bg-surface-ink/9" />
       {destinations.primary.map((destination) => (
         <SpineLink
           key={destination.to}
@@ -141,7 +141,7 @@ export function WorkspaceSpine({
           }
         />
       ))}
-      <span aria-hidden="true" className="my-1.5 h-px w-6 bg-white/9" />
+      <span aria-hidden="true" className="my-1.5 h-px w-6 bg-surface-ink/9" />
       {destinations.workspace.map((destination) => (
         <SpineLink
           key={destination.to}

@@ -10,13 +10,13 @@ export const buttonVariants = cva(
         // Neon wash. Unavailable, it turns a quiet grey (dimmer than a live
         // cyan; while its request runs (data-pending) it keeps its light.
         primary:
-          'neon disabled:border-transparent disabled:bg-white/6 disabled:bg-none disabled:text-subtle-foreground disabled:shadow-none disabled:opacity-100 aria-disabled:border-transparent aria-disabled:bg-white/6 aria-disabled:bg-none aria-disabled:text-subtle-foreground aria-disabled:shadow-none aria-disabled:opacity-100 data-pending:disabled:neon',
+          'neon disabled:border-transparent disabled:bg-surface-ink/6 disabled:bg-none disabled:text-subtle-foreground disabled:shadow-none disabled:opacity-100 aria-disabled:border-transparent aria-disabled:bg-surface-ink/6 aria-disabled:bg-none aria-disabled:text-subtle-foreground aria-disabled:shadow-none aria-disabled:opacity-100 data-pending:disabled:neon',
         default:
           'border-action/25 bg-action/8 text-accent-foreground not-aria-disabled:hover:border-action/45 not-aria-disabled:hover:bg-action/13 aria-expanded:bg-action/13',
         outline:
-          'border-white/8 bg-white/[0.035] text-muted-foreground not-aria-disabled:hover:border-white/14 not-aria-disabled:hover:bg-white/[0.06] not-aria-disabled:hover:text-foreground aria-expanded:bg-white/[0.06] aria-expanded:text-foreground',
+          'border-surface-ink/8 bg-surface-ink/[0.035] text-muted-foreground not-aria-disabled:hover:border-surface-ink/14 not-aria-disabled:hover:bg-surface-ink/[0.06] not-aria-disabled:hover:text-foreground aria-expanded:bg-surface-ink/[0.06] aria-expanded:text-foreground',
         ghost:
-          'text-muted-foreground not-aria-disabled:hover:bg-white/[0.05] not-aria-disabled:hover:text-foreground aria-expanded:bg-white/[0.05] aria-expanded:text-foreground',
+          'text-muted-foreground not-aria-disabled:hover:bg-surface-ink/[0.05] not-aria-disabled:hover:text-foreground aria-expanded:bg-surface-ink/[0.05] aria-expanded:text-foreground',
         destructive:
           'border-destructive/30 bg-destructive/6 text-destructive hover:border-destructive/60 hover:bg-destructive/14 [--focus-ring-color:var(--destructive)]',
         link: 'inline-link h-auto px-0',

@@ -24,7 +24,7 @@ export function RunDurationBar({
         className,
       )}
     >
-      <span className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-white/6" />
+      <span className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-surface-ink/6" />
       <span
         className="absolute top-1/2 left-0 -translate-y-1/2"
         style={{ width: `${String(Math.round(share * 1000) / 10)}%` }}

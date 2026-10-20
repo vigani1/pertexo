@@ -30,7 +30,7 @@ export function HowItWorks({
       </h2>
       {/* The thread the beads sit on: along the top on a wide screen, down
           the left edge on a phone. */}
-      <ol className="relative grid gap-6 before:absolute before:top-1 before:bottom-1 before:left-[0.3125rem] before:w-px before:bg-linear-to-b before:from-primary/50 before:via-white/12 before:to-transparent before:content-[''] sm:grid-cols-3 sm:gap-8 sm:before:top-[0.3125rem] sm:before:right-0 sm:before:bottom-auto sm:before:left-0 sm:before:h-px sm:before:w-auto sm:before:bg-linear-to-r">
+      <ol className="relative grid gap-6 before:absolute before:top-1 before:bottom-1 before:left-[0.3125rem] before:w-px before:bg-linear-to-b before:from-primary/50 before:via-surface-ink/12 before:to-transparent before:content-[''] sm:grid-cols-3 sm:gap-8 sm:before:top-[0.3125rem] sm:before:right-0 sm:before:bottom-auto sm:before:left-0 sm:before:h-px sm:before:w-auto sm:before:bg-linear-to-r">
         {steps.map((step, index) => (
           <li
             key={step.title}

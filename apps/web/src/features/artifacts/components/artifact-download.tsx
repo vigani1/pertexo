@@ -99,9 +99,9 @@ function ArtifactDownloadScope({
 
   const details = metadata.data;
   return (
-    <div className="rounded-lg border border-white/8 bg-card px-3 py-2.5 text-sm">
+    <div className="rounded-lg border border-surface-ink/8 bg-card px-3 py-2.5 text-sm">
       <div className="flex items-center gap-3">
-        <span className="grid size-8 shrink-0 place-items-center rounded-md border border-white/8 bg-white/[0.03] text-muted-foreground">
+        <span className="grid size-8 shrink-0 place-items-center rounded-md border border-surface-ink/8 bg-surface-ink/[0.03] text-muted-foreground">
           <FileTextIcon aria-hidden="true" className="size-4" />
         </span>
         <div className="min-w-0 flex-1">

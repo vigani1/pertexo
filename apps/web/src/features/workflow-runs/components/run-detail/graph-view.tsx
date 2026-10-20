@@ -211,7 +211,7 @@ export function RunGraphView({
 
   return (
     <div
-      className="weave relative h-[30rem] overflow-hidden rounded-xl border border-white/6"
+      className="weave relative h-[30rem] overflow-hidden rounded-xl border border-surface-ink/6"
       aria-label="Map of the steps in this run's version"
     >
       <ReactFlow<RunNode, RunEdge>
@@ -272,7 +272,7 @@ function WorkflowRunNode({ data }: NodeProps<RunNode>) {
   return (
     <article
       className={cn(
-        'relative w-56 cursor-pointer rounded-lg border bg-card shadow-[0_18px_44px_-18px_rgb(0_0_0/90%)] transition-shadow',
+        'relative w-56 cursor-pointer rounded-lg border bg-card shadow-[0_18px_44px_-18px_color-mix(in_srgb,var(--shadow-ink)_90%,transparent)] transition-shadow',
         toneBorderClass[data.tone],
         data.tone === 'live' && 'live-edge',
         data.selected && 'ring-2 ring-ring/60',
@@ -287,7 +287,7 @@ function WorkflowRunNode({ data }: NodeProps<RunNode>) {
           style={{
             top: `${String(((index + 1) / (data.inputs.length + 1)) * 100)}%`,
           }}
-          className="!size-2 !border-white/20 !bg-background"
+          className="!size-2 !border-surface-ink/20 !bg-background"
         />
       ))}
       <div className="px-3 pt-2.5 pb-2">
@@ -298,7 +298,7 @@ function WorkflowRunNode({ data }: NodeProps<RunNode>) {
           </p>
         )}
       </div>
-      <div className="flex items-center justify-between gap-2 border-t border-white/6 px-3 py-2">
+      <div className="flex items-center justify-between gap-2 border-t border-surface-ink/6 px-3 py-2">
         <Status tone={data.tone}>{data.statusLabel}</Status>
         {data.invocations > 1 ? (
           <span className="font-mono text-[0.7rem] text-subtle-foreground">
@@ -315,7 +315,7 @@ function WorkflowRunNode({ data }: NodeProps<RunNode>) {
           style={{
             top: `${String(((index + 1) / (data.outputs.length + 1)) * 100)}%`,
           }}
-          className="!size-2 !border-white/20 !bg-background"
+          className="!size-2 !border-surface-ink/20 !bg-background"
         />
       ))}
     </article>
@@ -347,7 +347,7 @@ function WorkflowRunEdge({
       <BaseEdge
         path={path}
         {...marker}
-        className="!stroke-white/8 !stroke-[3]"
+        className="!stroke-surface-ink/8 !stroke-[3]"
       />
       <BaseEdge
         path={path}
@@ -373,7 +373,7 @@ function WorkflowRunEdge({
       {data?.active === true ? (
         <circle
           r="2.5"
-          className="workflow-transfer-marker fill-accent-foreground [filter:drop-shadow(0_0_5px_rgb(0_229_255/70%))] motion-reduce:hidden"
+          className="workflow-transfer-marker fill-accent-foreground [filter:drop-shadow(0_0_5px_color-mix(in_srgb,var(--primary)_70%,transparent))] motion-reduce:hidden"
           aria-hidden="true"
         >
           <animate

@@ -22,7 +22,7 @@ export function VariablePicker({
           Variable names could not be loaded.
         </p>
       ) : (
-        <ul className="mt-1 ml-3 flex flex-col border-l border-white/8 pl-2">
+        <ul className="mt-1 ml-3 flex flex-col border-l border-surface-ink/8 pl-2">
           {Object.entries(snapshot.values).map(([name, value]) => (
             <li key={name}>
               <button

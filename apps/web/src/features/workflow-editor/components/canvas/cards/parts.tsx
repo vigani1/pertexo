@@ -147,7 +147,7 @@ function stepMarks(data: WorkflowFlowNode['data']): ReactNode[] {
 }
 
 const markTones = {
-  neutral: 'border-white/8 bg-white/4 text-muted-foreground',
+  neutral: 'border-surface-ink/8 bg-surface-ink/4 text-muted-foreground',
   success: 'border-success/20 bg-success/6 text-success',
   warning: 'border-warning/30 bg-warning/8 text-warning',
 } as const;

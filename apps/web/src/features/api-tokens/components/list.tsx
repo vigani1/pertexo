@@ -29,7 +29,7 @@ export function TokenList({
           <li
             key={token.id}
             className={cn(
-              'flex min-w-0 flex-col gap-4 rounded-xl border border-white/7 bg-white/[0.02] p-5',
+              'flex min-w-0 flex-col gap-4 rounded-xl border border-surface-ink/7 bg-surface-ink/[0.02] p-5',
               !live && 'opacity-80',
             )}
           >
@@ -81,7 +81,7 @@ export function TokenList({
                 <li
                   key={scope}
                   title={SCOPE_COPY[scope].description}
-                  className="rounded-md border border-white/7 bg-white/[0.03] px-2 py-0.5 text-xs text-muted-foreground"
+                  className="rounded-md border border-surface-ink/7 bg-surface-ink/[0.03] px-2 py-0.5 text-xs text-muted-foreground"
                 >
                   {SCOPE_COPY[scope].label}
                 </li>
@@ -115,12 +115,16 @@ function Lifetime({
     <div className="flex flex-col gap-1.5 text-xs">
       <div
         aria-hidden="true"
-        className="relative h-1 rounded-full bg-white/[0.07]"
+        className="relative h-1 rounded-full bg-surface-ink/[0.07]"
       >
         <span
           className={cn(
             'absolute inset-y-0 left-0 rounded-full',
-            ended ? 'bg-white/20' : closing ? 'bg-warning' : 'bg-action/70',
+            ended
+              ? 'bg-surface-ink/20'
+              : closing
+                ? 'bg-warning'
+                : 'bg-action/70',
           )}
           style={{ width: `${String(share * 100)}%` }}
         />

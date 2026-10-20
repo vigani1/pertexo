@@ -38,7 +38,7 @@ export function PasswordMeter({
     >
       <div
         aria-hidden="true"
-        className="relative mt-1 h-0.5 rounded-full bg-white/8"
+        className="relative mt-1 h-0.5 rounded-full bg-surface-ink/8"
       >
         <span
           style={

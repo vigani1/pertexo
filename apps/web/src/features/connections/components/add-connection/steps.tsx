@@ -34,7 +34,7 @@ export function StepIndicator({ step }: Readonly<{ step: AddStep }>) {
           <span
             key={candidate}
             className={cn(
-              'h-0.75 flex-1 rounded-full bg-white/10 transition-colors',
+              'h-0.75 flex-1 rounded-full bg-surface-ink/10 transition-colors',
               index < current && 'bg-action/40',
               index === current && 'bg-action',
             )}
@@ -136,7 +136,7 @@ export function TestStep({
       />
       <section
         aria-labelledby="add-connection-summary"
-        className="rounded-lg border border-white/6 bg-black/20 p-3.5"
+        className="rounded-lg border border-surface-ink/6 bg-recess-ink/20 p-3.5"
       >
         <h3
           id="add-connection-summary"

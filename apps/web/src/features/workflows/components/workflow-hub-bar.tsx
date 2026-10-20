@@ -210,7 +210,7 @@ export function WorkflowHubBar({
       </div>
       <nav
         aria-label="Workflow sections"
-        className="order-last flex w-full items-center gap-1 overflow-x-auto rounded-md border border-white/6 bg-black/25 p-[3px] min-[1728px]:order-none min-[1728px]:w-auto"
+        className="order-last flex w-full items-center gap-1 overflow-x-auto rounded-md border border-surface-ink/6 bg-recess-ink/25 p-[3px] min-[1728px]:order-none min-[1728px]:w-auto"
       >
         {hubTabs(workspace).map((link) => (
           <Link

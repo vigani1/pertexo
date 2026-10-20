@@ -62,7 +62,7 @@ export function EditorLayout({
         <div
           aria-hidden="true"
           data-slot="panel-dismiss"
-          className="fixed inset-0 z-30 bg-black/15 lg:hidden"
+          className="fixed inset-0 z-30 bg-recess-ink/15 lg:hidden"
           onClick={() => {
             onMobilePanelChange('none');
           }}

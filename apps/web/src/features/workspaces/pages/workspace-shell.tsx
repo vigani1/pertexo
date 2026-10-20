@@ -20,7 +20,7 @@ import { WorkspaceSpine } from '../components/shell/workspace-spine';
 import { WorkspaceSwitcher } from '../components/shell/workspace-switcher';
 
 const moreLinkClass =
-  'flex w-full items-center gap-3 rounded-md px-2 py-2.5 text-sm text-muted-foreground hover:bg-white/5 hover:text-foreground [&_svg]:size-4';
+  'flex w-full items-center gap-3 rounded-md px-2 py-2.5 text-sm text-muted-foreground hover:bg-surface-ink/5 hover:text-foreground [&_svg]:size-4';
 
 type WorkspaceShellProps = Readonly<{
   user: UserProfileResponse;

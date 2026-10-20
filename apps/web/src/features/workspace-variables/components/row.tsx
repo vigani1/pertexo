@@ -125,7 +125,7 @@ function VariableForm({
 }: Readonly<{ row: Row }> & RowActions) {
   const prefix = `variable-${row.id}`;
   return (
-    <div className="my-3 grid min-w-0 gap-3 rounded-lg border border-border bg-white/[0.02] p-4">
+    <div className="my-3 grid min-w-0 gap-3 rounded-lg border border-border bg-surface-ink/[0.02] p-4">
       <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_10rem]">
         <LabelledField id={`${prefix}-name`} label="Name">
           {(control) => (

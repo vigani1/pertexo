@@ -25,7 +25,7 @@ function methodName(method: Method): string {
 
 function MethodMark({ method }: Readonly<{ method: Method }>) {
   return (
-    <span className="grid size-9 shrink-0 place-items-center rounded-md border border-white/10 bg-white/[0.035] text-muted-foreground">
+    <span className="grid size-9 shrink-0 place-items-center rounded-md border border-surface-ink/10 bg-surface-ink/[0.035] text-muted-foreground">
       {isSocialProvider(method.provider) ? (
         <ProviderMark provider={method.provider} />
       ) : (

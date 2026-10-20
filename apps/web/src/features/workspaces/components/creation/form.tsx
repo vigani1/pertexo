@@ -47,7 +47,7 @@ function HandlePreview({
   return (
     <p className="flex min-w-0 flex-wrap items-center gap-x-2 text-[0.8rem] text-muted-foreground">
       Handle
-      <code className="max-w-full truncate rounded-sm bg-white/[0.04] px-1.5 py-0.5 text-foreground">
+      <code className="max-w-full truncate rounded-sm bg-surface-ink/[0.04] px-1.5 py-0.5 text-foreground">
         {slug === '' ? 'follows the name' : slug}
       </code>
       <Button

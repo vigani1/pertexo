@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { PatternGlyph } from '../pattern-glyph';
 
 const CARD =
-  'group/pattern w-full rounded-lg border border-border bg-white/[0.02] text-left transition-colors duration-150 outline-none hover:border-primary/35 hover:bg-primary/[0.04] focus-ring disabled:pointer-events-none disabled:opacity-60 motion-reduce:transition-none';
+  'group/pattern w-full rounded-lg border border-border bg-surface-ink/[0.02] text-left transition-colors duration-150 outline-none hover:border-primary/35 hover:bg-primary/[0.04] focus-ring disabled:pointer-events-none disabled:opacity-60 motion-reduce:transition-none';
 
 /**
  * The ready-made examples: the one list of ways to start other than blank, in
@@ -40,7 +40,7 @@ export function ExampleCards({
           >
             <span
               aria-hidden="true"
-              className="grid w-full place-items-center self-stretch rounded-md bg-black/25 py-2"
+              className="grid w-full place-items-center self-stretch rounded-md bg-recess-ink/25 py-2"
             >
               <PatternGlyph
                 graph={template.manifest.graph}

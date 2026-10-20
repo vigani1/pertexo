@@ -42,7 +42,7 @@ export function NoticeFrame({
     <li
       data-slot="inbox-thread"
       data-unread={unread ? true : undefined}
-      className="group/row row-divider grid grid-cols-[2rem_minmax(0,1fr)] items-center gap-x-4 gap-y-2 rounded-lg px-3 py-3 transition-colors hover:bg-white/[0.035] motion-reduce:transition-none sm:grid-cols-[2rem_minmax(0,1fr)_auto]"
+      className="group/row row-divider grid grid-cols-[2rem_minmax(0,1fr)] items-center gap-x-4 gap-y-2 rounded-lg px-3 py-3 transition-colors hover:bg-surface-ink/[0.035] motion-reduce:transition-none sm:grid-cols-[2rem_minmax(0,1fr)_auto]"
     >
       <span
         aria-hidden="true"
@@ -50,7 +50,7 @@ export function NoticeFrame({
           'grid size-8 place-items-center rounded-full border transition-colors',
           unread
             ? 'border-action/60 bg-action/[0.07] shadow-[0_0_0_4px_color-mix(in_srgb,var(--action)_10%,transparent)]'
-            : 'border-border bg-white/[0.02] opacity-70',
+            : 'border-border bg-surface-ink/[0.02] opacity-70',
         )}
       >
         <StatusGlyph tone={tone} />

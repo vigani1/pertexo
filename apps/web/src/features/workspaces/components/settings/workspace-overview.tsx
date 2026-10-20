@@ -71,7 +71,7 @@ function OverviewTile({
     <Link
       to={to}
       params={{ workspaceId }}
-      className="group flex min-h-32 flex-col border-border px-4 py-4 outline-none transition-colors duration-150 not-first:border-l hover:bg-white/[0.03] focus-ring max-xl:odd:border-l-0 max-xl:nth-[n+3]:border-t motion-reduce:transition-none"
+      className="group flex min-h-32 flex-col border-border px-4 py-4 outline-none transition-colors duration-150 not-first:border-l hover:bg-surface-ink/[0.03] focus-ring max-xl:odd:border-l-0 max-xl:nth-[n+3]:border-t motion-reduce:transition-none"
     >
       <span className="flex items-center justify-between text-muted-foreground [&_svg]:size-4">
         {icon}

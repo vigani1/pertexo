@@ -18,9 +18,9 @@ const tileVariants = cva(
         transform:
           'bg-success/8 text-success [--tile-ring:color-mix(in_srgb,var(--success)_22%,transparent)]',
         output:
-          'bg-white/5 text-muted-foreground [--tile-ring:var(--border-strong)]',
+          'bg-surface-ink/5 text-muted-foreground [--tile-ring:var(--border-strong)]',
         unknown:
-          'bg-white/4 text-subtle-foreground [--tile-ring:var(--border)]',
+          'bg-surface-ink/4 text-subtle-foreground [--tile-ring:var(--border)]',
       },
       size: {
         sm: 'size-6.5 rounded-[0.5rem] [&_svg]:size-3.5',

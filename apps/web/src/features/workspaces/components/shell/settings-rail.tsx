@@ -105,7 +105,7 @@ function SectionSwitcher({
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger
-        className="flex w-full items-center gap-3 rounded-lg border border-border bg-white/[0.025] px-3.5 py-2.5 text-left text-sm outline-none transition-colors hover:bg-white/[0.05] focus-ring @3xl:hidden"
+        className="flex w-full items-center gap-3 rounded-lg border border-border bg-surface-ink/[0.025] px-3.5 py-2.5 text-left text-sm outline-none transition-colors hover:bg-surface-ink/[0.05] focus-ring @3xl:hidden"
         aria-label={`Settings section: ${current?.label ?? 'General'}. Choose another`}
       >
         <span
@@ -147,7 +147,7 @@ function SectionSwitcher({
                         setOpen(false);
                       }}
                       className={cn(
-                        'flex items-center gap-3 rounded-md px-2 py-2.5 text-sm text-muted-foreground outline-none hover:bg-white/5 hover:text-foreground focus-ring',
+                        'flex items-center gap-3 rounded-md px-2 py-2.5 text-sm text-muted-foreground outline-none hover:bg-surface-ink/5 hover:text-foreground focus-ring',
                         'aria-[current=page]:bg-action/8 aria-[current=page]:text-accent-foreground',
                       )}
                     >

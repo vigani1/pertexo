@@ -8,7 +8,7 @@ import { STEP_DRAG_TYPE, type StepChoice } from '../../model/step-catalog';
 
 /** The shape every add-step row shares: a tile, its words and a trailing mark. */
 export const stepRowClass =
-  'group flex w-full items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left outline-none hover:bg-white/5 focus-visible:bg-white/5 focus-ring';
+  'group flex w-full items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left outline-none hover:bg-surface-ink/5 focus-visible:bg-surface-ink/5 focus-ring';
 
 /** A row's name and one line about it, both cut to the row's width. */
 export function StepRowText({

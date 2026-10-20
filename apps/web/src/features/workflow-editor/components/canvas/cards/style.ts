@@ -50,7 +50,7 @@ export function cardClassName(
   className?: string,
 ): string {
   return cn(
-    'relative w-56 rounded-lg border border-white/9 border-t-white/15 bg-[linear-gradient(160deg,rgb(255_255_255/5.5%),rgb(255_255_255/1.5%)),var(--card)] px-3 py-2.5 text-card-foreground shadow-[0_18px_44px_-18px_rgb(0_0_0/90%)] transition-[border-color,box-shadow,opacity] duration-150 motion-reduce:transition-none',
+    'relative w-56 rounded-lg border border-surface-ink/9 border-t-surface-ink/15 bg-[linear-gradient(160deg,color-mix(in_srgb,var(--surface-ink)_5.5%,transparent),color-mix(in_srgb,var(--surface-ink)_1.5%,transparent)),var(--card)] px-3 py-2.5 text-card-foreground shadow-[0_18px_44px_-18px_color-mix(in_srgb,var(--shadow-ink)_90%,transparent)] transition-[border-color,box-shadow,opacity] duration-150 motion-reduce:transition-none',
     NODE_FOCUS_RING,
     state.hasIssues &&
       'border-destructive/50 shadow-[0_0_0_1px_color-mix(in_srgb,var(--destructive)_20%,transparent),0_0_26px_-6px_color-mix(in_srgb,var(--destructive)_45%,transparent)]',

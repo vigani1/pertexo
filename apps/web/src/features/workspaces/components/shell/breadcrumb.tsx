@@ -80,7 +80,7 @@ function FoldedCrumbs({ crumbs }: Readonly<{ crumbs: readonly Crumb[] }>) {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         aria-label={`Show ${String(count)} more ${count === 1 ? 'step' : 'steps'} of the path`}
-        className="grid size-7 place-items-center rounded-md outline-none hover:bg-white/5 hover:text-foreground focus-ring"
+        className="grid size-7 place-items-center rounded-md outline-none hover:bg-surface-ink/5 hover:text-foreground focus-ring"
       >
         <EllipsisIcon aria-hidden="true" className="size-4" />
       </PopoverTrigger>
@@ -90,7 +90,7 @@ function FoldedCrumbs({ crumbs }: Readonly<{ crumbs: readonly Crumb[] }>) {
           {crumbs.map((crumb) => (
             <li
               key={crumb.key}
-              className="truncate rounded-sm px-2 py-1.5 has-[a:hover]:bg-white/5"
+              className="truncate rounded-sm px-2 py-1.5 has-[a:hover]:bg-surface-ink/5"
             >
               {crumb.label}
             </li>
