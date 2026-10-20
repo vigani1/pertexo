@@ -25,12 +25,14 @@ export function useSignIn({
   navigateToProvider,
   onAuthenticated,
   onUnverified,
+  onTwoFactor,
   returnTo,
 }: Readonly<{
   apiClient: ApiClient;
   navigateToProvider: (authorizationUrl: string) => void;
   onAuthenticated: () => void;
   onUnverified: (email: string) => void;
+  onTwoFactor: () => void;
   /** An allowlisted path social sign-in comes back to. */
   returnTo?: string | undefined;
 }>) {
@@ -56,9 +58,14 @@ export function useSignIn({
     const request = requests.begin();
     clearFailure();
     try {
-      await signInWithEmail(apiClient, { email, password }, request.signal);
+      const result = await signInWithEmail(
+        apiClient,
+        { email, password },
+        request.signal,
+      );
       if (!request.isCurrent()) return false;
-      onAuthenticated();
+      if (result.twoFactorRedirect) onTwoFactor();
+      else onAuthenticated();
       return true;
     } catch (error) {
       if (!request.isCurrent()) return false;

@@ -30,6 +30,7 @@ export function SignInLens({
   notice,
   navigateToProvider,
   onAuthenticated,
+  onTwoFactor,
   onUnverified,
   onRequestVerificationLink,
   onOrganizationSignIn,
@@ -40,6 +41,7 @@ export function SignInLens({
   notice: LoginNotice | undefined;
   navigateToProvider: (authorizationUrl: string) => void;
   onAuthenticated: () => void;
+  onTwoFactor: () => void;
   onUnverified: (email: string) => void;
   onRequestVerificationLink: () => void;
   onOrganizationSignIn?: () => void;
@@ -49,6 +51,7 @@ export function SignInLens({
     apiClient,
     navigateToProvider,
     onAuthenticated,
+    onTwoFactor,
     onUnverified,
     returnTo,
   });

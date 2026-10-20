@@ -390,6 +390,12 @@ security lives under `/v1/auth/account-security`. `pertexo_session` is HttpOnly;
 read a session token into JavaScript. Authenticated fetches use cookie
 credentials, and the SPA requests `/v1/users/me` before protected loaders run.
 
+Password sign-in can return a two-factor challenge instead of a session. The
+sign-in lens then verifies an authenticator or recovery code using the plugin's
+HttpOnly challenge cookie. Account setup draws its QR code locally. Passwords,
+keys and recovery codes stay in the mounted form, outside Query and mutation
+caches; recovery codes are displayed once and require a saved confirmation.
+
 On explicit logout/identity change: stop streams/timers, invalidate the scope
 generation, abort reads, dispose editor/form state and remove protected query
 and mutation caches. Late results must not repopulate the next user's state.
