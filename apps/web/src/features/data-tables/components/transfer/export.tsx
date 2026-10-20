@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { DataTableDefinition } from '@pertexo/contracts';
 import type { DataTableQuery } from '@pertexo/node-sdk';
+import { DownloadIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { describeCommandError } from '@/lib/api/error-copy';
@@ -29,16 +30,21 @@ export function ExportTableRows({
       <Button
         type="button"
         variant="outline"
+        size="sm"
+        title="CSV in the order rows were added"
         onClick={() => {
           download(false);
         }}
       >
-        Export all rows
+        <DownloadIcon aria-hidden="true" data-icon="inline-start" />
+        {/* Icon only on a phone, so the actions keep to one row. */}
+        <span className="max-sm:sr-only">Export all rows</span>
       </Button>
       {query.filters.length === 0 ? null : (
         <Button
           type="button"
           variant="outline"
+          size="sm"
           onClick={() => {
             download(true);
           }}
@@ -46,11 +52,11 @@ export function ExportTableRows({
           Export filtered rows
         </Button>
       )}
-      <p className="text-xs text-muted-foreground">
-        CSV exports use row creation order. Your browser tracks progress and
-        reports interrupted downloads.
-      </p>
-      {error === undefined ? null : <Notice tone="warning">{error}</Notice>}
+      {error === undefined ? null : (
+        <Notice tone="warning" className="basis-full">
+          {error}
+        </Notice>
+      )}
     </>
   );
 }
