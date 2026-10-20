@@ -1,4 +1,9 @@
-import { CanvasScene, readTokenColor, type Rgb } from '@/lib/canvas-scene';
+import {
+  CanvasScene,
+  readTokenColor,
+  rgba,
+  type Rgb,
+} from '@/lib/canvas-scene';
 
 // Canvas 2D port of the legacy particle-orb shader: points on a Fibonacci
 // sphere, displaced by three travelling waves, rotated and projected with a
@@ -22,15 +27,15 @@ const MOTION: Record<CoreOrbState, Motion> = {
   succeeded: { speed: 0.5, amplitude: 0.45, loosen: false, glow: 1.25 },
 };
 
-// Palettes come from the design tokens so the orb never drifts from the
-// theme: a state's own Core ink leads, its paler text colour highlights.
+// Palettes come from the Core's own design tokens so the orb never drifts
+// from the theme: a state's ink leads, a glint or accent highlights.
 const PALETTE_TOKENS: Record<CoreOrbState, readonly [string, string, string]> =
   {
-    live: ['--primary', '--accent-foreground', '--secondary'],
-    idle: ['--primary', '--accent-foreground', '--secondary'],
-    waiting: ['--core-waiting', '--secondary', '--core-waiting'],
+    live: ['--core-live', '--core-glint', '--core-accent'],
+    idle: ['--core-live', '--core-glint', '--core-accent'],
+    waiting: ['--core-waiting', '--core-accent', '--core-waiting'],
     failed: ['--core-failed', '--core-failed', '--destructive'],
-    succeeded: ['--core-succeeded', '--success', '--primary'],
+    succeeded: ['--core-succeeded', '--success', '--core-live'],
   };
 
 const FALLBACK_RGB: Rgb = [0, 229, 255];
@@ -50,8 +55,27 @@ interface Particle {
 
 const spriteCache = new Map<string, HTMLCanvasElement>();
 
-function particleSprite(rgb: Rgb): HTMLCanvasElement {
-  const key = rgb.join(',');
+// Dark draws points of light: a bright centre with a short falloff. Light
+// draws beads of dye: a solid body with a soft rim, so on pale cloth a
+// particle reads as a crisp bead rather than a smudge.
+const SPRITE_STOPS = {
+  light: [
+    [0, 1],
+    [0.18, 0.8],
+    [0.45, 0.18],
+    [1, 0],
+  ],
+  ink: [
+    [0, 1],
+    [0.34, 0.95],
+    [0.52, 0.42],
+    [0.74, 0.08],
+    [1, 0],
+  ],
+} as const;
+
+function particleSprite(rgb: Rgb, ink: boolean): HTMLCanvasElement {
+  const key = `${rgb.join(',')}${ink ? ':ink' : ''}`;
   const cached = spriteCache.get(key);
   if (cached !== undefined) return cached;
   const sprite = document.createElement('canvas');
@@ -60,11 +84,8 @@ function particleSprite(rgb: Rgb): HTMLCanvasElement {
   const context = sprite.getContext('2d');
   if (context !== null) {
     const gradient = context.createRadialGradient(32, 32, 0, 32, 32, 32);
-    // A bright core with a short falloff: a point of light, not a blur.
-    gradient.addColorStop(0, `rgba(${key},1)`);
-    gradient.addColorStop(0.18, `rgba(${key},0.8)`);
-    gradient.addColorStop(0.45, `rgba(${key},0.18)`);
-    gradient.addColorStop(1, `rgba(${key},0)`);
+    for (const [offset, alpha] of SPRITE_STOPS[ink ? 'ink' : 'light'])
+      gradient.addColorStop(offset, rgba(rgb, alpha));
     context.fillStyle = gradient;
     context.fillRect(0, 0, 64, 64);
   }
@@ -77,10 +98,11 @@ function particleSprite(rgb: Rgb): HTMLCanvasElement {
 // Past 2,400 the shell barely gets denser, but every frame draws them all.
 const MAX_PARTICLES = 2400;
 const MAX_PARTICLE_SIZE = 3.2;
+const SMALL_CORE_SIZE = 140;
 
 function particleCountFor(cssSize: number): number {
   if (cssSize <= 48) return 150;
-  if (cssSize <= 140) return 520;
+  if (cssSize <= SMALL_CORE_SIZE) return 520;
   return Math.min(MAX_PARTICLES, Math.round(1400 * (cssSize / 180) ** 1.6));
 }
 
@@ -93,6 +115,8 @@ export class CoreOrbScene extends CanvasScene {
   #scatter: readonly (readonly [number, number])[] = [];
   #sprites: readonly HTMLCanvasElement[] = [];
   #motion: Motion = MOTION.live;
+  /** Light only: a faint dyed glow, so the Core has its own light on cloth. */
+  #halo: Rgb | undefined;
   #energy = 1;
   #assemblyStart: number | undefined;
 
@@ -103,9 +127,13 @@ export class CoreOrbScene extends CanvasScene {
 
   setState(state: CoreOrbState): void {
     this.#motion = MOTION[state];
-    this.#sprites = PALETTE_TOKENS[state].map((token) =>
-      particleSprite(readTokenColor(token, FALLBACK_RGB)),
+    // Light composes normally: there are no points of light on white.
+    const ink = this.particleComposition === 'source-over';
+    const palette = PALETTE_TOKENS[state].map((token) =>
+      readTokenColor(token, FALLBACK_RGB),
     );
+    this.#sprites = palette.map((rgb) => particleSprite(rgb, ink));
+    this.#halo = ink ? (palette[1] ?? FALLBACK_RGB) : undefined;
   }
 
   setEnergy(energy: number): void {
@@ -149,6 +177,29 @@ export class CoreOrbScene extends CanvasScene {
     const breathe = 0.95 + Math.sin(time * 0.5) * 0.05 * amplitude;
     const baseSize = Math.min(MAX_PARTICLE_SIZE, Math.max(1.1, radius / 34));
     const assembly = this.#assemblyProgress(timeSeconds);
+    if (this.#halo !== undefined) {
+      context.globalCompositeOperation = 'source-over';
+      const glow = context.createRadialGradient(
+        centreX,
+        centreY,
+        radius * 0.2,
+        centreX,
+        centreY,
+        half,
+      );
+      glow.addColorStop(0, rgba(this.#halo, 0.2 * assembly));
+      glow.addColorStop(0.6, rgba(this.#halo, 0.08 * assembly));
+      glow.addColorStop(1, rgba(this.#halo, 0));
+      context.fillStyle = glow;
+      context.fillRect(0, 0, this.width, this.height);
+      context.globalCompositeOperation = this.particleComposition;
+    }
+    // Dye only deepens where it overlaps, so a large Core's dense shell takes
+    // finer beads or it knots into a dark rim. A small Core has few particles
+    // and needs full beads, a little stronger, to read at all.
+    const dense = Math.min(this.width, this.height) > SMALL_CORE_SIZE;
+    const beadScale = this.#halo === undefined || !dense ? 1 : 0.6;
+    const strength = this.#halo === undefined || dense ? 1 : 1.35;
 
     this.#particles.forEach((particle, index) => {
       const { x, y, z, seed } = particle;
@@ -178,10 +229,10 @@ export class CoreOrbScene extends CanvasScene {
       if (reach > EDGE_FADE_START)
         alpha *= Math.max(0, (1 - reach) / (1 - EDGE_FADE_START));
       if (alpha <= 0) return;
-      const size = baseSize * (1 + seed * 1.2) * perspective;
+      const size = baseSize * beadScale * (1 + seed * 1.2) * perspective;
       const sprite = this.#sprites[particle.swatch] ?? this.#sprites[0];
       if (sprite === undefined) return;
-      context.globalAlpha = Math.min(1, alpha);
+      context.globalAlpha = Math.min(1, alpha * strength);
       context.drawImage(
         sprite,
         screenX - size,

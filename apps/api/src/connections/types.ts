@@ -10,6 +10,7 @@ export {
   connectionRotateSecretRequestSchema,
   connectionTestRequestSchema,
   connectionTestResponseSchema,
+  signingKeyCredentialSchema,
   httpHeadersCredentialSchema,
   slackBotTokenCredentialSchema,
   slackChannelLookupQuerySchema,

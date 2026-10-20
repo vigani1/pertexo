@@ -161,7 +161,7 @@ field on the same step. A missing path does not invent a value; null or wrong
 function arguments can fail. Number conversion explicitly uses `$number`.
 
 All collection steps accept at most 4,998 items within the existing whole-JSON
-limits: 1 MiB, depth 64 and 10,000 members. A wide collection can hit a whole-JSON
+limits: the SDK envelope is 1 MiB; retained execution JSON is capped at 256 KiB, depth 64 and 10,000 members. A wide collection can hit a whole-JSON
 limit before 4,998 items. Input/output inspection, step testing, saved workflows,
 export/import and For each bodies use the same current nodes and limits.
 One-item batches at the cap use 9,999 members, including their count fields;
@@ -169,3 +169,99 @@ One-item batches at the cap use 9,999 members, including their count fields;
 summary groups may reach the member/byte limit sooner. No global limit is raised.
 CSV/file conversion awaits F04's file-consumer contract; these steps accept JSON,
 not file uploads.
+
+## Text, numbers, XML, HTML and signatures
+
+These utilities are under **Shape data**. They do not fetch documents or call provider endpoints; HMAC only resolves its key through the existing secret store. Map data in
+**Inputs**, choose behavior in **Setup**, and map `$.value` into the next step
+(except Extract HTML, whose list is `$.items`). All use the existing step-data
+limits: a whole invocation up to 1 MiB, with retained JSON output up to 256 KiB, depth 64 and 10,000 members. Results that
+expand beyond these bounds fail with advice to split the input; limits are not
+raised by these utilities.
+
+### Format text
+
+Choose uppercase, lowercase, trim, replace, split or truncate. Case uses explicit
+en-US Unicode casing. Replace maps `value`, `search` and `replacement`; **All**
+chooses every non-overlapping match, otherwise only the first. Search is literal,
+not regex; `$&` in replacement is literal too. An empty replacement removes the
+match; an empty search is refused.
+
+Split maps `value` and a nonempty `delimiter`, returning a list under `value`.
+`"a||b|"` split on `"|"` becomes `["a", "", "b", ""]`. Keep at most 4,998 items,
+within the whole value envelope. Truncate counts Unicode code points, preserving
+surrogate-pair characters; combining marks can still be separate code points.
+The optional `…` occupies one place inside the selected limit.
+
+### Format number
+
+Map a finite numeric `value`. Pick a locale (en-US, en-GB, de-DE, fr-FR or ja-JP),
+grouping and minimum/maximum fraction digits (0–20). Decimal, Percent and Currency
+are display formats, without text parsing or currency conversion. For example,
+1234.5 with de-DE, grouping and two digits becomes `1.234,50`; 0.25 with Percent
+becomes `25%`. Currency requires a three-letter uppercase code such as EUR.
+JavaScript floating-point and Intl rounding apply; this is not financial arithmetic.
+
+### Convert XML
+
+**XML to JSON** takes XML text in `value`. Strings stay strings, including `001`;
+attributes use `@_`, text beside children/attributes uses `#text`, and repeated
+siblings become arrays:
+
+```xml
+<orders><order id="001"><total>12.50</total></order><order id="002"><total>7</total></order></orders>
+```
+
+```json
+{"orders":{"order":[{"@_id":"001","total":"12.50"},{"@_id":"002","total":"7"}]}}
+```
+
+**JSON to XML** takes that object in `value`, with exactly one root. Attributes
+and `#text` are scalar values; arrays repeat the corresponding element. Text and
+attributes are escaped. Empty elements become empty strings when parsed. Namespace
+prefixes are preserved, as are whitespace values (XML normalizes line endings and
+attribute whitespace). Comments, declarations and processing instructions are not
+data; mixed content is normalized into children and joined `#text`, so this is not
+a lossless document formatter. DTD/custom entities and reserved object names are
+refused; built-in and numeric character references work. Up to 48 nested elements
+and 8,000 elements/attributes, with the usual output envelope. Malformed errors
+show line/column without echoing the document. Nothing loads a DTD or resolves a URL.
+
+XML creation checks encoded size, including repeated names and escaped text, before allocating the output. Boolean attributes become quoted `"true"` or `"false"`; null attributes are omitted. Null elements become empty elements, while `#text` needs text, a number or a boolean. Give nested lists named child elements instead of using anonymous arrays inside arrays.
+
+### Extract HTML
+
+Map HTML text in `value`. Select **Extract text** or **Extract attribute**, enter
+a CSS selector (for example `main > a.invoice`) and a result limit (default 100,
+up to 4,998). Attribute extraction also needs a name such as `href`; a missing
+attribute produces an empty string. Results keep document order. `matchCount`
+reports total matches and `truncated` tells you whether the chosen limit omitted
+matches. Feed `items` into Filter, Take or other list steps.
+
+Supported selectors: tags, classes, IDs, attributes and descendant/child/sibling
+combinators. At most 256 characters, four selector groups and 16 total tokens; each group may have one descendant and one flat structural pseudo-class. Use child (`>`) or adjacent (`+`) combinators for longer paths. Structural pseudo-classes such as `:first-child`, `:nth-child(2n+1)`,
+`:last-of-type`, `:empty` and `:root` work. General sibling (`~`), relational/content pseudos, nested selectors
+(such as `:has()` or `:not()`) and pseudo-elements are refused. Documents are bounded to
+48 levels and 8,000 elements/text nodes/attributes during parsing. Scripts never
+run, URLs are never fetched, and output is text/attribute strings, not safe HTML.
+Keep it in ordinary text fields rather than rendering it as markup.
+
+### Crypto and HMAC signature
+
+**Crypto → Hash text** hashes exact UTF-8 `value` using SHA-256, SHA-512 or MD5,
+with hex/base64 output. **MD5 is not for security.** For example SHA-256 of `hello`
+in hex is `2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824`.
+**UUID** generates UUID v4; **Random ID** generates 1–256 URL-safe characters
+(default 24). Both use the cryptographic system RNG and generate a new value on
+each execution, including an explicit re-execution.
+
+For **HMAC signature**, add a **Signing key** connection, paste the exact UTF-8
+key and select it in Setup. Spaces and newlines are part of the key; it is never
+trimmed. Keys are 1–4,096 UTF-8 bytes and stored encrypted, with existing access,
+rotation and revocation controls. **Check key access** only opens the key locally;
+it does not prove that an external service will accept the signature.
+
+Choose SHA-256 or SHA-512 and hex/base64, then map the message in `value`. Only
+the signature is output. The key never goes into workflow configuration, mappings,
+exports or step outputs. Workspace variables are non-secret values; this step uses
+an encrypted connection instead of treating a variable as a secret store.

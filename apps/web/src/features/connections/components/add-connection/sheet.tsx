@@ -176,8 +176,11 @@ export function AddConnectionSheet({
     clearSensitiveState();
     setCreated(connection);
     setStep('test');
-    if (connection.providerKey === 'slack')
-      test.run(connection, { providerKey: 'slack' });
+    if (
+      connection.providerKey === 'slack' ||
+      connection.providerKey === 'signing'
+    )
+      test.run(connection, { providerKey: connection.providerKey });
   }
 
   const createFailed = create.isError && !isFieldProblem(create.error);

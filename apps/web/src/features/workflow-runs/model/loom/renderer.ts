@@ -23,8 +23,8 @@ import { FORMAT_LOCALE } from '@/lib/format/locale';
 const FALLBACK: Rgb = [127, 139, 142];
 const TOKENS = {
   ink: ['--surface-ink', [255, 255, 255]],
-  live: ['--primary', FALLBACK],
-  tip: ['--accent-foreground', FALLBACK],
+  live: ['--core-live', FALLBACK],
+  tip: ['--core-glint', FALLBACK],
   success: ['--success', FALLBACK],
   failure: ['--destructive', FALLBACK],
   pending: ['--secondary', FALLBACK],

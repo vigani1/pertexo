@@ -1,4 +1,5 @@
 import { coreCreateFileExecutor } from './data/create-file/executor.js';
+import { UTILITY_EXECUTORS } from './data/utilities/executors.js';
 import { DATA_TABLE_EXECUTORS } from './data/tables/executors.js';
 import { coreCodeExecutor } from './data/code/executor.js';
 import { coreRespondWebhookExecutor } from './flow/respond-webhook/executor.js';
@@ -36,6 +37,7 @@ export const CORE_NODE_EXECUTOR_REGISTRATIONS: readonly NodeExecutorRegistration
   Object.freeze([
     coreCreateFileExecutor,
     ...DATA_TABLE_EXECUTORS,
+    ...UTILITY_EXECUTORS,
     coreCodeExecutor,
     coreRespondWebhookExecutor,
     coreRequestInputExecutor,

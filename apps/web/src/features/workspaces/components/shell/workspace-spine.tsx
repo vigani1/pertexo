@@ -3,6 +3,7 @@ import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import { SearchIcon } from 'lucide-react';
 import { CORE_IDLE_ENERGY, CoreOrb } from '@/components/patterns/core/orb';
+import { ThemeSwitchButton } from '@/components/patterns/appearance/theme-switch';
 import { Kbd } from '@/components/ui/kbd';
 import {
   Tooltip,
@@ -150,6 +151,7 @@ export function WorkspaceSpine({
         />
       ))}
       <span className="flex-1" />
+      <ThemeSwitchButton className={spineLinkClass} />
       <Tooltip>
         <TooltipTrigger
           render={

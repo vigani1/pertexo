@@ -970,19 +970,32 @@ palette, the particle orb, the aurora edge and glass stay — each with one job.
 #### Tokens and type
 
 F36 adds a browser-local appearance choice in Account → Profile. System is the
-default; Light and Dark are explicit overrides. `lib/appearance/bootstrap.ts` is
-the single owner of persistence, system changes, tab synchronization and
-resolved theme. Vite embeds its self-contained initializer synchronously in the
-HTML head, before first paint; the React hook subscribes to the same instance.
-No account/workspace API or server state is mirrored. Blocked storage retains a
+default; Light and Dark are explicit overrides. The workspace sidebar has a
+one-press light/dark switch, and the account menu, command palette and phone
+More sheet offer the full choice; all use the same owner
+(`components/patterns/appearance/`). `lib/appearance/bootstrap.ts` is the single
+owner of persistence, system changes, tab synchronization and resolved theme.
+Vite embeds its self-contained initializer synchronously in the HTML head,
+before first paint; the React hook subscribes to the same instance. No
+account/workspace API or server state is mirrored. Blocked storage retains a
 choice in memory and explains that it cannot survive closing the tab.
 
 Neutral surfaces use `surface-ink` and `recess-ink`, with shared shadows, canvas
-ground, scrim and glass tokens. Light uses pale cloth with deeper teal, violet
-and status inks. `useCanvasRenderer` recreates decorative scenes when the
-resolved theme changes, including reduced-motion scenes. Particle compositing is
-additive in dark and ordinary ink in light; both React Flow views follow the
-same resolved choice. Provider brand marks and alpha masks are not theme inks.
+ground, scrim and glass tokens. Light follows the Radix light-scale roles (sage
+neutrals, cyan brand, violet waiting, jade/red/amber status): a near-white
+ground (`background`, sage 2), surfaces a step lighter (`card`), hairline
+borders (sage 6–8) for structure and shadows only on what floats. Text uses the
+step-11/12 inks; drawings (the Core, the sign-in threads, the Loom's live
+threads, the loading wave and the ambient glow) use the saturated step-9 solids
+through `core-live`, `core-glint` and `core-accent`, because light borrowed from
+the dark theme washes out on white. Light mirrors dark's single cyan light: one
+cyan glow from the top-right and a cyan Core, with violet only where it means
+waiting, never a multi-hue wash. Never a mid-grey ground. `useCanvasRenderer`
+recreates decorative scenes when the resolved theme changes, including
+reduced-motion scenes. Particle compositing is additive in dark and ordinary in
+light, where the Core draws crisp beads with a faint glow: finer beads on a
+large Core, stronger ones on a small one. Both React Flow views follow the same
+resolved choice. Provider brand marks and alpha masks are not theme inks.
 
 - Keep semantic colour tokens in both palettes. Dark values include: `success`
   #8fe3c0, `warning` #f3c677, `raised` #212428, `subtle-foreground` #7f8b8e,

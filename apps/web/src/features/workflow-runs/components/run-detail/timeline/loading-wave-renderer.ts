@@ -9,8 +9,8 @@ const WAVE_SECONDS = 3.4;
 const WAVE_WIDTH = 82;
 const WAVE_HEIGHT = 11;
 const TOKENS = {
-  rest: ['--primary', [0, 229, 255]],
-  crest: ['--accent-foreground', [195, 245, 255]],
+  rest: ['--core-live', [0, 229, 255]],
+  crest: ['--core-glint', [195, 245, 255]],
 } as const;
 
 function smoothstep(edgeStart: number, edgeEnd: number, value: number) {

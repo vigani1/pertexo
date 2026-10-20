@@ -20,7 +20,7 @@ for (const theme of ['light', 'dark'] as const) {
       await page
         .locator('html')
         .evaluate((el) => getComputedStyle(el).backgroundColor),
-    ).toBe(theme === 'light' ? 'rgb(244, 246, 245)' : 'rgb(17, 19, 22)');
+    ).toBe(theme === 'light' ? 'rgb(247, 249, 248)' : 'rgb(17, 19, 22)');
     await page.evaluate(
       (value) =>
         window.pertexoAppearance?.setPreference(
@@ -72,6 +72,33 @@ test('System follows changes live, explicit choices win, and another tab follows
   await page.getByRole('button', { name: 'System', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await second.close();
+});
+
+test('switches between light and dark from the sidebar', async ({ page }) => {
+  await installEditorRoutes(page, remoteDraft());
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.route('**/v1/auth/account-security', (route) =>
+    route.fulfill({
+      json: {
+        email: user.email,
+        emailVerified: true,
+        availableProviders: [],
+        twoFactor: { enabled: false, recoveryCodesRemaining: null },
+        methods: [],
+      },
+    }),
+  );
+  await page.goto(`/w/${workspaceId}/account`);
+  const html = page.locator('html');
+  await expect(html).toHaveAttribute('data-theme', 'light');
+  await page.getByRole('button', { name: 'Switch to dark theme' }).click();
+  await expect(html).toHaveAttribute('data-theme', 'dark');
+  // The sidebar and Account → Appearance share one choice.
+  await expect(
+    page.getByRole('button', { name: 'Dark', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Switch to light theme' }).click();
+  await expect(html).toHaveAttribute('data-theme', 'light');
 });
 
 test('blocked storage still paints and permits a choice, with a clear persistence hint', async ({

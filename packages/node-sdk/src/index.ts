@@ -28,3 +28,10 @@ export {
 export * from './data-tables/bindings.js';
 
 export { escapeCsvValue } from './values/csv.js';
+export {
+  STORED_EXECUTION_VALUE_LIMITS,
+  StoredExecutionValueInvalidError,
+  storedExecutionJsonStringBytes,
+} from './values/stored-json.js';
+
+export { signingKeyCredentialSchema } from './credentials/signing-key.js';
