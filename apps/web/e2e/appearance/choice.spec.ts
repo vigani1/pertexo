@@ -74,6 +74,43 @@ test('System follows changes live, explicit choices win, and another tab follows
   await second.close();
 });
 
+test('switches between light and dark from the sidebar and the phone More sheet', async ({
+  page,
+}) => {
+  await installEditorRoutes(page, remoteDraft());
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.route('**/v1/auth/account-security', (route) =>
+    route.fulfill({
+      json: {
+        email: user.email,
+        emailVerified: true,
+        availableProviders: [],
+        twoFactor: { enabled: false, recoveryCodesRemaining: null },
+        methods: [],
+      },
+    }),
+  );
+  await page.goto(`/w/${workspaceId}/account`);
+  const html = page.locator('html');
+  await expect(html).toHaveAttribute('data-theme', 'light');
+  await page.getByRole('button', { name: 'Switch to dark theme' }).click();
+  await expect(html).toHaveAttribute('data-theme', 'dark');
+  // The sidebar and Account → Appearance share one choice.
+  await expect(
+    page.getByRole('button', { name: 'Dark', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Switch to light theme' }).click();
+  await expect(html).toHaveAttribute('data-theme', 'light');
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole('button', { name: 'More', exact: true }).click();
+  await page.getByRole('button', { name: 'Dark theme', exact: true }).click();
+  await expect(html).toHaveAttribute('data-theme', 'dark');
+  await expect(
+    page.getByRole('button', { name: 'Light theme', exact: true }),
+  ).toBeVisible();
+});
+
 test('blocked storage still paints and permits a choice, with a clear persistence hint', async ({
   page,
 }) => {
