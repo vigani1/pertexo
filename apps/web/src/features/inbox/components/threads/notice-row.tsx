@@ -115,7 +115,12 @@ function noticeSummary(thread: WorkspaceInboxAttentionThread): ReactNode {
     return <TaskDetailsLine details={thread.details} />;
   const limits = thread.limits.map((limit) => limitNames[limit]).join(' · ');
   if (thread.noticeKind === 'limit_approaching')
-    return `${limits === '' ? 'Capacity' : limits} at 80% or more`;
+    return (
+      <>
+        {limits === '' ? null : <span>{limits} · </span>}
+        <span>At least 80% of this capacity is in use.</span>
+      </>
+    );
   return limits === '' ? undefined : limits;
 }
 
