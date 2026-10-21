@@ -176,10 +176,40 @@ function PaginationFields({
       {fields.common.map((field) => (
         <SchemaField key={field.key} field={field} config={value} form={form} />
       ))}
-      <p className="text-xs text-subtle-foreground">
-        Results are in items. Each page must fit the inline limit; combined
-        results must fit 1 MB. A retry starts again from the first page.
-      </p>
+      <Field>
+        <FieldLabel htmlFor={fieldControlId(form.nodeId, 'pagination-output')}>
+          Results
+        </FieldLabel>
+        <ChoiceSelect
+          id={fieldControlId(form.nodeId, 'pagination-output')}
+          value={value.outputMode === 'pages' ? 'pages' : 'inline'}
+          disabled={!form.editable || hasScratch}
+          choices={[
+            { value: 'inline', label: 'Inline items' },
+            { value: 'pages', label: 'Save items as pages' },
+          ]}
+          onChange={(mode) => {
+            if (mode === null) return;
+            form.commit(
+              {
+                config: withConfigValue(
+                  value,
+                  'outputMode',
+                  mode === 'pages' ? 'pages' : undefined,
+                ),
+              },
+              `${form.nodeId}:pagination:outputMode`,
+            );
+          }}
+        />
+        <FieldDescription>
+          {value.outputMode === 'pages'
+            ? 'Up to 10 MB / 100,000 items in 64 KB JSON-array files (at most 1,000 records each, 256 files). Map pages to For Each; Read file each page as inline data. pageCount counts stored files; fetchedPageCount counts API requests.'
+            : 'Results are in items. The combined output must fit 1 MB.'}{' '}
+          Each provider page must fit the inline limit. A retry starts again
+          from the first page.
+        </FieldDescription>
+      </Field>
     </>
   );
 }

@@ -1,5 +1,7 @@
 # F38 — Utility steps
 
+F45 amendment (2026-10-21): F45 file pages feed bounded list operations one page at a time. XML, HTML, text, number and crypto steps keep their existing inline limits; this does not add streaming XML/HTML parsing. See the [approved F45 plan](45-bigger-files-and-paged-data.md) for delivery and qualification; older limit descriptions below record the original slices.
+
 Status: implemented and locally qualified on 2026-10-20. One feature PR; no F21/F22 work.
 
 ## Decisions

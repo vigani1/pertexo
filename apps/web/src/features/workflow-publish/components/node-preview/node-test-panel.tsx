@@ -11,7 +11,7 @@ import { JsonTree } from '@/components/patterns/code/json-tree';
 import { Button } from '@/components/ui/button';
 import { LoadingOrb } from '@/components/ui/loading-orb';
 import { Status, StatusGlyph } from '@/components/ui/status';
-import { ArtifactDownload } from '@/features/artifacts/public';
+import { ArtifactDownload, FilePages } from '@/features/artifacts/public';
 import { shortStepError } from '@/features/workflow-runs/failure.public';
 import type { ApiClient } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -277,7 +277,14 @@ function TestResult({
         <CodeDiagnostics diagnostics={preview.codeDiagnostics} />
       )}
       {preview.output?.kind === 'inline' ? (
-        <JsonTree value={preview.output.value} label="Test output" />
+        <>
+          <FilePages
+            value={preview.output.value}
+            apiClient={apiClient}
+            workspaceId={workspaceId}
+          />
+          <JsonTree value={preview.output.value} label="Test output" />
+        </>
       ) : null}
       {preview.output?.kind === 'artifact' ? (
         <ArtifactDownload

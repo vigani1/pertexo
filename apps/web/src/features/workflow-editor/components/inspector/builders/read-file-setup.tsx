@@ -1,4 +1,5 @@
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
+import { withConfigValue } from '../../../model/inspector/draft';
 import type { NodeConfig } from '../../../model/inspector/draft';
 import {
   fieldControlId,
@@ -30,17 +31,60 @@ export function ReadFileSetup({
               {
                 config:
                   format === 'csv'
-                    ? { format, delimiter: ',', convertValues: true }
-                    : { format },
+                    ? {
+                        format,
+                        delimiter: ',',
+                        convertValues: true,
+                        ...(config.outputMode === 'pages'
+                          ? { outputMode: 'pages' }
+                          : {}),
+                      }
+                    : {
+                        format,
+                        ...(config.outputMode === 'pages'
+                          ? { outputMode: 'pages' }
+                          : {}),
+                      },
               },
               `${form.nodeId}:config:format:${format}`,
             );
           }}
         />
         <FieldDescription>
-          Read a file up to 1 MB. About 4,996 narrow rows fit an end-to-end list
-          workflow; wide rows fit fewer. Split larger files into smaller files
-          for separate runs.
+          Read strict UTF-8 CSV or JSON. Choose pages for files larger than 1
+          MB; split files above 10 MB.
+        </FieldDescription>
+      </Field>
+      <Field>
+        <FieldLabel htmlFor={fieldControlId(form.nodeId, 'output-mode')}>
+          Output
+        </FieldLabel>
+        <ChoiceSelect
+          id={fieldControlId(form.nodeId, 'output-mode')}
+          value={config.outputMode === 'pages' ? 'pages' : 'inline'}
+          disabled={!form.editable}
+          choices={[
+            { value: 'inline', label: 'Inline data' },
+            { value: 'pages', label: 'Output pages' },
+          ]}
+          onChange={(mode) => {
+            if (mode === null) return;
+            form.commit(
+              {
+                config: withConfigValue(
+                  config,
+                  'outputMode',
+                  mode === 'pages' ? 'pages' : undefined,
+                ),
+              },
+              `${form.nodeId}:config:outputMode`,
+            );
+          }}
+        />
+        <FieldDescription>
+          {config.outputMode === 'pages'
+            ? 'Up to 10 MB / 100,000 records in 64 KB JSON-array files (at most 1,000 records each, 256 files). Output contains pages, itemCount and pageCount. For Each over pages, then Read file each page as inline data.'
+            : 'Up to 1 MB; about 4,996 narrow rows fit the unchanged list limits. Wide rows fit fewer. CSV returns rows, JSON returns its value.'}
         </FieldDescription>
       </Field>
       {config.format === 'csv' ? (
@@ -72,8 +116,9 @@ export function ReadFileSetup({
         </>
       ) : null}
       <p className="text-xs text-muted-foreground">
-        Map a file reference on Inputs, or upload a file there. JSON returns its
-        value; CSV returns rows keyed by their header names.
+        {config.outputMode === 'pages'
+          ? 'Map or upload a file on Inputs. The worker returns page references and counts; it does not load the full array into run data.'
+          : 'Map a file reference on Inputs, or upload a file there. JSON returns its value; CSV returns rows keyed by their header names.'}
       </p>
     </>
   );

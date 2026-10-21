@@ -25,10 +25,15 @@ export const CORE_READ_FILE_MANIFEST: NodeManifest = Object.freeze({
   inputSchema: generateSchemaDocument(CORE_READ_FILE_INPUT_SCHEMA),
   outputSchema: generateSchemaDocument(CORE_READ_FILE_OUTPUT_SCHEMA, {
     runtimeOnlySemantics: [
-      'Read a finalized, workspace-scoped file up to 1 MiB as strict UTF-8 with one optional BOM. Parse the selected format, without MIME guessing or decompression.',
+      'Inline reads accept up to 1 MiB; explicit Output pages accepts up to 10 MiB through verified disk scratch. Read strict UTF-8 with one optional BOM. Parse the selected format, without MIME guessing or decompression.',
       'CSV headers are unique, nonblank and untrimmed; fields use strict quoting and column counts. Conversion defaults on; explicit false keeps strings.',
-      'Return the parsed value itself. Arrays contain at most the shared collection cap; whole values retain SDK byte/depth/member limits. Split larger files into smaller files for separate runs.',
+      'Inline mode returns the parsed value with ordinary collection/value limits. Output pages returns ordinary file references, itemCount and pageCount; it never loads all records into a mapped value.',
     ],
+  }),
+  outputVariant: Object.freeze({
+    configProperty: 'outputMode',
+    whenPresent: 1,
+    whenAbsent: 0,
   }),
   ports: Object.freeze({
     inputs: Object.freeze(['in']),
@@ -38,7 +43,7 @@ export const CORE_READ_FILE_MANIFEST: NodeManifest = Object.freeze({
   connectionRequirements: Object.freeze([]),
   retryClass: 'safe',
   resourceClass: 'io',
-  capabilities: Object.freeze([ARTIFACT_INPUT_CAPABILITY]),
+  capabilities: Object.freeze([ARTIFACT_INPUT_CAPABILITY, 'artifact_output']),
   executor: CORE_READ_FILE_EXECUTOR,
   executorAbi: 1,
   policyReferences: Object.freeze([CORE_BOUNDED_JSON_POLICY]),

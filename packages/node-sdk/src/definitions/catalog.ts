@@ -172,6 +172,9 @@ export const nodeManifestSchema = z
         [
           manifest.outputVariant.whenPresent,
           manifest.outputVariant.whenAbsent,
+          ...(manifest.outputVariant.overrides ?? []).map(
+            (override) => override.variant,
+          ),
         ].every((index) => {
           const candidate: unknown = variants[index];
           return (

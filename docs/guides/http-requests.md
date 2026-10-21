@@ -119,3 +119,11 @@ bounded Retry-After hint (integer seconds, at most one minute) with the existing
 step retry policy. Choose the total tries and fixed wait with
 [step retry settings](step-retries.md). A retry fetches from the first page again. Cancellation also
 stops an inter-page delay.
+
+### Save items as pages
+
+Under **Setup → Pagination → Results**, choose **Save items as pages** when the combined list cannot fit inline. Each provider response still must fit **Largest page** (at most 256 KB), and Max pages still allows at most 100 requests. The existing navigation, origin, redaction, retry and deadline rules are unchanged.
+
+The result has `pages`, `itemCount`, `pageCount`, `fetchedPageCount`, `complete`, `status`, `headers` and `finalOrigin`. `pageCount` counts stored JSON-array files; `fetchedPageCount` counts provider requests, including an empty final response. `items` is absent in this explicit mode. Files can be packed across provider response boundaries, in record order.
+
+The shared page limits are 64 KB / 1,000 records per file, 10 MB / 100,000 records / 256 files overall. A single record must fit one page, and all files must finalize before success. A later provider or storage failure never returns a successful partial bundle. Retries fetch from the first request again; abandoned partial files expire normally. Map `pages` to an outer For each, then Read file each page inline, or map the ordered pages to Create file's From pages mode. See [file pages](files.md#work-with-larger-data-as-explicit-pages).

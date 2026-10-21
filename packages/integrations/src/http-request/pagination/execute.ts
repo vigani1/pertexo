@@ -2,6 +2,10 @@ import { HttpPaginationFailure } from './failure.js';
 import timers from 'node:timers/promises';
 import {
   canonicalizeBoundedJson,
+  encodeFilePageRecord,
+  writeFilePages,
+  type EncodedFilePageRecord,
+  type NodeArtifactRuntime,
   NODE_EXECUTION_LIMITS,
   type JsonValue,
 } from '@pertexo/node-sdk/server';
@@ -66,6 +70,7 @@ export async function executePagination(
     request: SecureHttpRequest;
     pagination: HttpPagination;
     inlineBytes: number;
+    artifacts?: NodeArtifactRuntime;
     deadlineAt?: Date;
     checkResponse(
       status: number,
@@ -98,82 +103,119 @@ export async function executePagination(
   let itemBytes = 0;
   let itemMembers = 0;
   let itemDepth = 1;
-  for (let page = 1; page <= pagination.maxPages; page += 1) {
-    request.signal?.throwIfAborted();
-    let response;
-    try {
-      response = await input.client.executeStreaming(
-        {
-          ...request,
-          url,
-          maxResponseBytes: input.inlineBytes,
-          navigation: {
-            origin: first.origin,
-            link:
-              pagination.mode === 'next_link' &&
-              pagination.source.kind === 'link_header',
+  let metadata:
+    | Readonly<{
+        pageCount: number;
+        complete: boolean;
+        status: number;
+        headers: Readonly<Record<string, string>>;
+        finalOrigin: string;
+      }>
+    | undefined;
+  const signal = request.signal ?? new AbortController().signal;
+  const paged = pagination.outputMode === 'pages';
+  async function* records(): AsyncGenerator<EncodedFilePageRecord> {
+    for (let page = 1; page <= pagination.maxPages; page += 1) {
+      request.signal?.throwIfAborted();
+      let response;
+      try {
+        response = await input.client.executeStreaming(
+          {
+            ...request,
+            url,
+            maxResponseBytes: input.inlineBytes,
+            navigation: {
+              origin: first.origin,
+              link:
+                pagination.mode === 'next_link' &&
+                pagination.source.kind === 'link_header',
+            },
           },
-        },
-        async (stream) => {
-          input.checkResponse(stream.status, stream.headers);
-          return readPage(stream, page);
-        },
-      );
-    } catch (error) {
-      const code = inspectSecureHttpError(error)?.code;
-      if (code === 'pagination_origin_changed')
-        throw new HttpPaginationFailure('http.pagination_origin_changed', page);
-      if (code === 'pagination_navigation_invalid')
-        throw new HttpPaginationFailure(
-          'http.pagination_invalid_navigation',
-          page,
+          async (stream) => {
+            input.checkResponse(stream.status, stream.headers);
+            return readPage(stream, page);
+          },
         );
-      if (
-        code === 'response_too_large' ||
-        code === 'response_encoding_rejected'
-      )
+      } catch (error) {
+        const code = inspectSecureHttpError(error)?.code;
+        if (code === 'pagination_origin_changed')
+          throw new HttpPaginationFailure(
+            'http.pagination_origin_changed',
+            page,
+          );
+        if (code === 'pagination_navigation_invalid')
+          throw new HttpPaginationFailure(
+            'http.pagination_invalid_navigation',
+            page,
+          );
+        if (
+          code === 'response_too_large' ||
+          code === 'response_encoding_rejected'
+        )
+          throw new HttpPaginationFailure('http.pagination_invalid_page', page);
+        throw error;
+      }
+      const found = resolveJsonPath(response.body.value, pagination.itemsPath);
+      if (found.kind !== 'value' || !Array.isArray(found.value))
         throw new HttpPaginationFailure('http.pagination_invalid_page', page);
-      throw error;
+      const pageItems = found.value as readonly JsonValue[];
+      const added = paged
+        ? { bytes: 2, members: 0, depth: 1 }
+        : inspectJsonValue(pageItems);
+      itemBytes +=
+        added.bytes - 2 + (items.length > 0 && pageItems.length > 0 ? 1 : 0);
+      itemMembers += added.members;
+      itemDepth = Math.max(itemDepth, added.depth);
+      const next =
+        found.value.length === 0 || page === pagination.maxPages
+          ? undefined
+          : nextPage({ pagination, first, current: response.body, page, seen });
+      const output = {
+        items,
+        pageCount: page,
+        complete:
+          pageItems.length === 0 ||
+          (page === pagination.maxPages
+            ? !hasNextPage(pagination, response.body, page)
+            : next === undefined),
+        status: response.status,
+        headers: response.headers,
+        finalOrigin: response.finalUrl,
+      };
+      const envelope = inspectJsonValue({ ...output, items: [] });
+      if (
+        !paged &&
+        (envelope.bytes + itemBytes > NODE_EXECUTION_LIMITS.bytes ||
+          envelope.members + itemMembers > NODE_EXECUTION_LIMITS.members ||
+          Math.max(envelope.depth, itemDepth + 1) > NODE_EXECUTION_LIMITS.depth)
+      )
+        throw new HttpPaginationFailure('http.pagination_too_large', page);
+      for (const item of pageItems) {
+        if (paged) yield encodeFilePageRecord(item);
+        else items.push(item);
+      }
+      if (next === undefined || page === pagination.maxPages) {
+        const { items: _items, ...finished } = output;
+        metadata = finished;
+        return;
+      }
+      url = next;
+      if (pagination.delayMillis > 0)
+        await timers.setTimeout(pagination.delayMillis, undefined, {
+          ...(request.signal === undefined ? {} : { signal: request.signal }),
+        });
     }
-    const found = resolveJsonPath(response.body.value, pagination.itemsPath);
-    if (found.kind !== 'value' || !Array.isArray(found.value))
-      throw new HttpPaginationFailure('http.pagination_invalid_page', page);
-    const pageItems = found.value as readonly JsonValue[];
-    const added = inspectJsonValue(pageItems);
-    itemBytes +=
-      added.bytes - 2 + (items.length > 0 && pageItems.length > 0 ? 1 : 0);
-    itemMembers += added.members;
-    itemDepth = Math.max(itemDepth, added.depth);
-    const next =
-      found.value.length === 0 || page === pagination.maxPages
-        ? undefined
-        : nextPage({ pagination, first, current: response.body, page, seen });
-    const output = {
-      items,
-      pageCount: page,
-      complete:
-        pageItems.length === 0 ||
-        (page === pagination.maxPages
-          ? !hasNextPage(pagination, response.body, page)
-          : next === undefined),
-      status: response.status,
-      headers: response.headers,
-      finalOrigin: response.finalUrl,
-    };
-    const envelope = inspectJsonValue({ ...output, items: [] });
-    if (
-      envelope.bytes + itemBytes > NODE_EXECUTION_LIMITS.bytes ||
-      envelope.members + itemMembers > NODE_EXECUTION_LIMITS.members ||
-      Math.max(envelope.depth, itemDepth + 1) > NODE_EXECUTION_LIMITS.depth
-    )
-      throw new HttpPaginationFailure('http.pagination_too_large', page);
-    for (const item of pageItems) items.push(item);
-    if (next === undefined || page === pagination.maxPages) return output;
-    url = next;
-    if (pagination.delayMillis > 0)
-      await timers.setTimeout(pagination.delayMillis, undefined, {
-        ...(request.signal === undefined ? {} : { signal: request.signal }),
-      });
+    throw new Error('Pagination bound exhausted without a result');
   }
-  throw new Error('Pagination bound exhausted without a result');
+  if (paged) {
+    const bundle = await writeFilePages(records(), input.artifacts, signal);
+    if (metadata === undefined) throw new Error('Pagination result missing');
+    const { pageCount: fetchedPageCount, ...rest } = metadata;
+    return { ...bundle, fetchedPageCount, ...rest };
+  }
+  for await (const _record of records()) {
+    /* Inline mode retains its original bounded array. */
+  }
+  if (metadata === undefined) throw new Error('Pagination result missing');
+  return { items, ...metadata };
 }

@@ -19,9 +19,9 @@ export function isBoundedNodeJson(value: unknown): value is SchemaJson {
   return inspectBoundedJson(value).ok;
 }
 
-export const boundedNodeJsonSchema: z.ZodType<SchemaJson> = z
+const boundedValueSchema = z
   .unknown()
-  .transform((value, context) => {
+  .transform((value, context): SchemaJson => {
     const inspected = inspectBoundedJson(value);
     if (inspected.ok) return inspected.value;
     context.addIssue({
@@ -30,6 +30,8 @@ export const boundedNodeJsonSchema: z.ZodType<SchemaJson> = z
     });
     return z.NEVER;
   });
+
+export const boundedNodeJsonSchema: z.ZodType<SchemaJson> = boundedValueSchema;
 
 export const boundedNodeJsonRecordSchema: z.ZodType<SchemaDocument> =
   boundedNodeJsonSchema.refine(
@@ -83,7 +85,16 @@ export function generateSchemaDocument(
       ? BOUNDED_NODE_JSON_SCHEMA_DOCUMENT
       : schema === boundedNodeJsonRecordSchema
         ? BOUNDED_NODE_JSON_RECORD_SCHEMA_DOCUMENT
-        : schemaDocumentSchema.parse(z.toJSONSchema(schema));
+        : schemaDocumentSchema.parse(
+            z.toJSONSchema(schema, {
+              // Only the existing bounded-value transform has a structural
+              // projection. Every other unrepresentable schema remains refused.
+              unrepresentable: ({ zodSchema }) =>
+                zodSchema === boundedValueSchema.out
+                  ? BOUNDED_NODE_JSON_SCHEMA_DOCUMENT
+                  : 'throw',
+            }),
+          );
   return cloneAndFreeze(
     schemaDocumentSchema.parse({
       ...projection,

@@ -41,3 +41,11 @@ export {
   FILE_PAGE_LIMITS,
   FILE_TRANSFER_NO_PROGRESS_MILLIS,
 } from './artifacts/page-limits.js';
+
+export {
+  filePageBundleSchema,
+  filePageReferenceSchema,
+  type FilePageBundle,
+} from './artifacts/pages/bundle.js';
+
+export { selectOutputVariant } from './definitions/output-variant.js';

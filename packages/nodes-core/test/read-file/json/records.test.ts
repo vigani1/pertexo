@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import type { JsonValue } from '@pertexo/node-sdk/server';
+import type {
+  JsonValue,
+  EncodedFilePageRecord,
+} from '@pertexo/node-sdk/server';
 import { FILE_PAGE_LIMITS } from '@pertexo/node-sdk';
 import { readJsonRecords } from '../../../src/data/read-file/json/records.js';
 
@@ -15,10 +18,11 @@ function collect(text: string, size?: number) {
 }
 
 async function collectValues(
-  source: AsyncIterable<JsonValue>,
+  source: AsyncIterable<EncodedFilePageRecord>,
 ): Promise<JsonValue[]> {
   const values: JsonValue[] = [];
-  for await (const value of source) values.push(value);
+  for await (const value of source)
+    values.push(JSON.parse(value.json) as JsonValue);
   return values;
 }
 
@@ -60,6 +64,11 @@ describe('bounded streaming JSON records', () => {
       collectValues(readJsonRecords(source(1), new AbortController().signal)),
     ).rejects.toMatchObject({ diagnostic: { reason: 'file_size' } });
   });
+  it('explains that a valid JSON object needs inline mode or a list export', async () => {
+    await expect(collect('{}')).rejects.toMatchObject({
+      diagnostic: { reason: 'page_array' },
+    });
+  });
   it('accepts an empty array', async () => {
     expect(await collect('[]')).toEqual([]);
   });
@@ -67,7 +76,7 @@ describe('bounded streaming JSON records', () => {
     const text = 'x'.repeat(FILE_PAGE_LIMITS.bytes - 4);
     expect(await collect(JSON.stringify([text]))).toEqual([text]);
     await expect(collect(JSON.stringify([text + 'x']))).rejects.toMatchObject({
-      diagnostic: { reason: 'value_size' },
+      diagnostic: { reason: 'page_value_size' },
     });
   });
   it.each([
@@ -101,10 +110,10 @@ describe('bounded streaming JSON records', () => {
   });
   it('bounds nesting and member allocation before a hostile record is assembled', async () => {
     await expect(collect('[' + '['.repeat(100_000))).rejects.toMatchObject({
-      diagnostic: { reason: 'value_size' },
+      diagnostic: { reason: 'page_value_size' },
     });
     await expect(collect('[[' + '0,'.repeat(100_000))).rejects.toMatchObject({
-      diagnostic: { reason: 'value_size' },
+      diagnostic: { reason: 'page_value_size' },
     });
   });
   it('bounds incomplete exponents even when the tokenizer emits no useful partial value', async () => {
@@ -123,7 +132,7 @@ describe('bounded streaming JSON records', () => {
     }
     await expect(
       collectValues(readJsonRecords(source(), new AbortController().signal)),
-    ).rejects.toMatchObject({ diagnostic: { reason: 'value_size' } });
+    ).rejects.toMatchObject({ diagnostic: { reason: 'page_value_size' } });
     expect(supplied).toBeLessThan(512 * 1024);
     expect(returned).toBe(true);
   });
@@ -153,7 +162,7 @@ describe('bounded streaming JSON records', () => {
       yield Buffer.from('2]');
     }
     const iterator = readJsonRecords(source(), new AbortController().signal);
-    expect(await iterator.next()).toEqual({ value: 1, done: false });
+    expect((await iterator.next()).value).toMatchObject({ json: '1' });
     expect(read).toBe(1);
     await iterator.return(undefined);
   });

@@ -3,6 +3,7 @@ import { httpPaginationSchema } from './pagination/validation.js';
 import {
   ARTIFACT_INPUT_MAX_BYTES,
   FILE_PAGE_LIMITS,
+  filePageBundleSchema,
   nodeArtifactReferenceSchema,
 } from '@pertexo/node-sdk';
 
@@ -342,9 +343,20 @@ const paginatedHttpRequestOutputSchema = z
   })
   .strict()
   .readonly();
+const pagedHttpRequestOutputSchema = filePageBundleSchema
+  .unwrap()
+  .safeExtend({
+    fetchedPageCount: z.number().int().min(1).max(100),
+    complete: z.boolean(),
+    status: z.number().int().min(200).max(299),
+    headers: z.record(z.string().max(128), z.string().max(2_048)),
+    finalOrigin: z.string().max(MAX_URL_BYTES),
+  })
+  .readonly();
 export const httpRequestOutputSchema = z.union([
   singleHttpRequestOutputSchema,
   paginatedHttpRequestOutputSchema,
+  pagedHttpRequestOutputSchema,
 ]);
 
 export type HttpRequestConfig = z.output<typeof httpRequestConfigSchema>;

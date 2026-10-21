@@ -5,6 +5,7 @@ import {
   FieldError,
 } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
+import { withConfigValue } from '../../../model/inspector/draft';
 import type { NodeConfig } from '../../../model/inspector/draft';
 import {
   fieldControlId,
@@ -44,8 +45,20 @@ export function CreateFileSetup({
               {
                 config:
                   format === 'csv'
-                    ? { format, delimiter: ',', columns: [] }
-                    : { format },
+                    ? {
+                        format,
+                        delimiter: ',',
+                        columns: [],
+                        ...(config.inputMode === 'pages'
+                          ? { inputMode: 'pages' }
+                          : {}),
+                      }
+                    : {
+                        format,
+                        ...(format !== 'text' && config.inputMode === 'pages'
+                          ? { inputMode: 'pages' }
+                          : {}),
+                      },
               },
               `${form.nodeId}:config:format:${format}`,
             );
@@ -54,9 +67,45 @@ export function CreateFileSetup({
         <FieldDescription>
           {hasScratch
             ? 'Finish or clear the column names before changing format.'
-            : 'Create a file up to 1 MB, including CSV headers and quoting. Split larger data into smaller files.'}
+            : config.inputMode === 'pages'
+              ? 'Stream pages into a file up to 10 MB, including CSV headers and quoting.'
+              : 'Create a file up to 1 MB from inline data. Choose From pages for larger CSV or JSON files.'}
         </FieldDescription>
       </Field>
+      {config.format === 'text' ? null : (
+        <Field>
+          <FieldLabel htmlFor={fieldControlId(form.nodeId, 'input-mode')}>
+            Data source
+          </FieldLabel>
+          <ChoiceSelect
+            id={fieldControlId(form.nodeId, 'input-mode')}
+            value={config.inputMode === 'pages' ? 'pages' : 'inline'}
+            disabled={!form.editable || hasScratch}
+            choices={[
+              { value: 'inline', label: 'Inline data' },
+              { value: 'pages', label: 'From pages' },
+            ]}
+            onChange={(mode) => {
+              if (mode === null) return;
+              form.commit(
+                {
+                  config: withConfigValue(
+                    config,
+                    'inputMode',
+                    mode === 'pages' ? 'pages' : undefined,
+                  ),
+                },
+                `${form.nodeId}:config:inputMode`,
+              );
+            }}
+          />
+          <FieldDescription>
+            From pages reads the ordered page references on Inputs. CSV needs
+            explicit columns; it writes the header once. Remove any incompatible
+            Data or Pages mapping when changing source.
+          </FieldDescription>
+        </Field>
+      )}
       {config.format === 'csv' ? (
         <>
           <SchemaField
@@ -75,9 +124,10 @@ export function CreateFileSetup({
         </>
       ) : null}
       <p className="text-xs text-muted-foreground">
-        Map Data on Inputs: rows with named fields for CSV, any value for JSON,
-        or a string for plain text. The file can be read or sent by a later
-        step.
+        {config.inputMode === 'pages'
+          ? 'Map the pages list to Pages on Inputs. Files are read in order, one page at a time.'
+          : 'Map Data on Inputs: rows with named fields for CSV, any value for JSON, or a string for plain text.'}{' '}
+        The file can be read or sent by a later step.
       </p>
     </>
   );
@@ -154,7 +204,8 @@ function ColumnNames({
       />
       <FieldDescription id={`${id}-hint`}>
         One field name per line, up to {limits.count}. Leave empty to use all
-        fields. Missing cells are empty; spreadsheet formulas are protected.
+        fields for inline data. From pages requires explicit columns. Missing
+        cells are empty; spreadsheet formulas are protected.
       </FieldDescription>
       {live.error === undefined ? null : (
         <FieldError id={`${id}-error`}>{live.error}</FieldError>

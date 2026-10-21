@@ -1,4 +1,7 @@
-import type { OutputVariantSelection } from '@pertexo/node-sdk';
+import {
+  selectOutputVariant,
+  type OutputVariantSelection,
+} from '@pertexo/node-sdk';
 import {
   isWorkflowTriggerDefinition,
   workspaceVariableNameSchema,
@@ -349,9 +352,7 @@ export function outputFieldsOf(
   if (node !== undefined && outputVariant !== undefined && isRecord(schema)) {
     const variants = schema.anyOf ?? schema.oneOf;
     if (Array.isArray(variants)) {
-      const index = Object.hasOwn(node.config, outputVariant.configProperty)
-        ? outputVariant.whenPresent
-        : outputVariant.whenAbsent;
+      const index = selectOutputVariant(outputVariant, node.config);
       schema = variants[index];
     }
   }

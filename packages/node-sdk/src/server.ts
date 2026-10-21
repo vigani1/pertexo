@@ -440,3 +440,9 @@ export { NodeDataTableFailure } from './data-tables/failure.js';
 export { describeFileInputFailure } from './artifacts/describe-failure.js';
 
 export type { NodeVerifiedByteSource } from './artifacts/verified-source.js';
+
+export {
+  encodeFilePageRecord,
+  type EncodedFilePageRecord,
+} from './artifacts/pages/encode-record.js';
+export { writeFilePages } from './artifacts/pages/write.js';

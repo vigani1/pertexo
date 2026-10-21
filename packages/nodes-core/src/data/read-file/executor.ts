@@ -5,6 +5,7 @@ import {
   type NodeExecutionInvocation,
   type NodeExecutorRegistration,
 } from '@pertexo/node-sdk/server';
+import { readFilePages } from './pages.js';
 import { CORE_READ_FILE_EXECUTOR } from './definition.js';
 import type { CoreReadFileConfig, CoreReadFileInput } from './validation.js';
 import { parseJsonFile } from './json/inline.js';
@@ -17,8 +18,26 @@ export const coreReadFileExecutor: NodeExecutorRegistration = Object.freeze({
     const {
       file: { kind: _kind, ...reference },
     } = invocation.input as CoreReadFileInput;
+    if (config.outputMode === 'pages') {
+      try {
+        return await readFilePages(
+          reference,
+          config,
+          invocation.runtime?.artifacts,
+          invocation.signal,
+        );
+      } catch (error) {
+        if (invocation.signal.aborted)
+          throw new NodeExecutorFailure({
+            kind: 'canceled',
+            errorKind: 'canceled',
+            possiblyDispatched: false,
+          });
+        throw error;
+      }
+    }
     if (reference.byteLength > ARTIFACT_INPUT_MAX_BYTES)
-      throw new FileInputFailure({ reason: 'file_size' });
+      throw new FileInputFailure({ reason: 'inline_file_size' });
     const artifacts = invocation.runtime?.artifacts;
     if (artifacts?.read === undefined)
       throw new FileInputFailure({ reason: 'file_unavailable' });

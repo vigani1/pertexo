@@ -22,7 +22,11 @@ export function ReadFileUpload({
       useLabel={
         node.inputMappings.file === undefined ? 'Use file' : 'Replace file'
       }
-      description="Up to 1 MB. Using this file replaces the file mapping. Split larger files into smaller files for separate runs."
+      description={
+        node.config.outputMode === 'pages'
+          ? 'Up to 10 MB, or the lower storage limit. Using this file replaces the file mapping. Split larger files.'
+          : 'Inline reads support 1 MB. Choose Output pages on Setup for larger files up to 10 MB. Using this file replaces the file mapping.'
+      }
       onUse={(reference) => {
         form.commit(
           (current) => ({

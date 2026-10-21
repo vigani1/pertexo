@@ -265,3 +265,7 @@ Choose SHA-256 or SHA-512 and hex/base64, then map the message in `value`. Only
 the signature is output. The key never goes into workflow configuration, mappings,
 exports or step outputs. Workspace variables are non-secret values; this step uses
 an encrypted connection instead of treating a variable as a secret store.
+
+### Lists from larger files
+
+[Read file → Output pages](files.md#work-with-larger-data-as-explicit-pages) and HTTP's Save items as pages keep larger sources as ordinary JSON-array files. For each over `pages`, Read file each Current item inline, then Filter/Summarize that page or use an inner loop. Batch items still accepts only bounded inline lists; it never loads a whole paged result. Whole-run and checkpoint bounds still apply. XML, HTML and other utility steps keep their existing inline bounds.

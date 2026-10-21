@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { SkeletonLines } from '@/components/ui/skeleton';
-import { ArtifactDownload } from '@/features/artifacts/public';
+import { ArtifactDownload, FilePages } from '@/features/artifacts/public';
 import type { ApiClient } from '@/lib/api/client';
 import {
   nodeRunInputQueryOptions,
@@ -110,7 +110,16 @@ function RunDataValue({
       return isEmptyValue(data.value) ? (
         <Muted>{emptyText}</Muted>
       ) : (
-        <InlineValue value={data.value} title={title} />
+        <>
+          {scope.workspace.capabilities.includes('artifact:read') ? (
+            <FilePages
+              value={data.value}
+              apiClient={scope.apiClient}
+              workspaceId={scope.workspace.id}
+            />
+          ) : null}
+          <InlineValue value={data.value} title={title} />
+        </>
       );
     case 'artifact':
       return scope.workspace.capabilities.includes('artifact:read') ? (
