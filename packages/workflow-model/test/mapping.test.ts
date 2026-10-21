@@ -1,8 +1,8 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { JsonataEvaluator } from '../src/expressions/evaluator.js';
-import type { ExpressionEvaluator } from '../src/expressions/policy.js';
-import { resolveJsonPath } from '../src/json/path.js';
-import { resolveValueSource } from '../src/mapping/resolve.js';
+import { JsonataEvaluator } from '../src/values/expressions/evaluator.js';
+import type { ExpressionEvaluator } from '../src/values/expressions/policy.js';
+import { resolveJsonPath } from '../src/values/json/path.js';
+import { resolveValueSource } from '../src/values/mapping/resolve.js';
 
 const evaluators: JsonataEvaluator[] = [];
 afterAll(async () => {

@@ -1,7 +1,7 @@
 import { it, expect, vi } from 'vitest';
 import { z } from 'zod';
 import type { RunValuesStore } from '@pertexo/database/runs';
-import { createRunValuesRuntime } from '../../src/attempts/run-values.js';
+import { createRunValuesRuntime } from '../../src/attempts/execution/run-values.js';
 import {
   controlledActionUrl,
   createEditorControlledHttpTarget,

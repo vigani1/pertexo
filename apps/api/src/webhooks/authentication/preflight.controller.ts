@@ -1,7 +1,7 @@
 import { Controller, Inject, Options, Req, Res } from '@nestjs/common';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
-import type { createWebhookPreflight } from '../ingress.js';
+import type { createWebhookPreflight } from '../ingress/register.js';
 import { WEBHOOK_PREFLIGHT } from '../tokens.js';
 
 @Controller('hooks')

@@ -22,7 +22,7 @@ import { HttpPlatformModule } from '../../../src/platform/http/http.module.js';
 import { ScheduleModule } from '../../../src/schedules/module.js';
 import { ScheduleManagementService } from '../../../src/schedules/service.js';
 import { WebhookModule } from '../../../src/webhooks/module.js';
-import { WebhookManagementService } from '../../../src/webhooks/service.js';
+import { WebhookManagementService } from '../../../src/webhooks/management/service.js';
 import type {
   WorkspaceAccess,
   WorkspaceAccessQuery,

@@ -3,7 +3,7 @@ import {
   callbackReferenceIssue,
   callbackTargetNodes,
   callbackMappingExpression,
-} from '../../src/callbacks/validation.js';
+} from '../../src/flow/callbacks/validation.js';
 const sender = {
   id: 'send',
   definition: { key: 'http.request', version: 1 },

@@ -3,17 +3,17 @@
  * main.ts; tests use these stable module interfaces instead of sibling-private
  * execution files.
  */
-export { createNodeAttemptHandler } from './attempts/handler.js';
+export { createNodeAttemptHandler } from './attempts/delivery/handler.js';
 export type {
   NodeAttemptExecutionEngine,
   PreparedNodeAttempt,
-} from './attempts/handler.js';
+} from './attempts/delivery/handler.js';
 export {
   createNodeAttemptRuntime,
   type NodeAttemptRuntime,
   type NodeAttemptRuntimeOptions,
-} from './attempts/runtime.js';
-export { createWorkerNodeRuntimeCapabilities } from './attempts/runtime-capabilities.js';
+} from './attempts/delivery/runtime.js';
+export { createWorkerNodeRuntimeCapabilities } from './attempts/execution/runtime-capabilities.js';
 export {
   createPlatformPreviewNodeInvoker,
   mapPreviewHandlerError,

@@ -1,5 +1,5 @@
-import { canonicalJson } from '../../json/canonical.js';
-import { supportsStepRetrySettings } from '../../step-retries/contract.js';
+import { canonicalJson } from '../../values/json/canonical.js';
+import { supportsStepRetrySettings } from '../../execution/step-retries/contract.js';
 import type {
   ForEachStructure,
   WorkflowGraph,

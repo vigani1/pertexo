@@ -8,7 +8,7 @@ import {
   createArtifactStore,
   parseArtifactStoreConfig,
 } from '@pertexo/artifact-store';
-import { createWorkerNodeRuntimeCapabilities } from '../../../src/attempts/runtime-capabilities.js';
+import { createWorkerNodeRuntimeCapabilities } from '../../../src/attempts/execution/runtime-capabilities.js';
 import { coordinatorFixture as fixture } from '../../support/coordinator/consumer.js';
 import { insertCompiledWorkflow } from '../../support/coordinator/workflows.js';
 import { acceptManualFixtureRun } from '../../support/attempts/manual-start.js';

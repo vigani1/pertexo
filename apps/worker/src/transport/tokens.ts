@@ -8,7 +8,7 @@ import type { QueueProducer } from '@pertexo/queue';
 
 import type { CoordinatorRuntime } from '../runs/runtime.js';
 import type { FailureNotificationDeliveryCapability } from '../notifications/failure-handler.js';
-import type { NodeAttemptRuntime } from '../attempts/runtime.js';
+import type { NodeAttemptRuntime } from '../attempts/delivery/runtime.js';
 import type { MaintenanceRuntime } from '../maintenance/runtime.js';
 import type { TriggerRuntime } from '../triggers/runtime.js';
 

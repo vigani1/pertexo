@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   inspectWorkflowDecisionTree,
   type DecisionTreeNode,
-} from '../../src/failure-routing/decision-tree.js';
+} from '../../src/flow/failure-routing/decision-tree.js';
 import type { WorkflowEdge } from '../../src/graph/contract.js';
 const node = (id: string, key = 'core.set'): DecisionTreeNode => ({
   id,

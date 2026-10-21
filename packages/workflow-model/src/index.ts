@@ -12,51 +12,51 @@ export {
   WORKFLOW_FAILURE_PATHS,
   isWorkflowFailureSource,
   type WorkflowFailureRoute,
-} from './failure-routing/contract.js';
+} from './flow/failure-routing/contract.js';
 export {
   inspectWorkflowFailureRoutes,
   type FailureRoutingGraph,
   type WorkflowFailureRoutes,
-} from './failure-routing/validation.js';
+} from './flow/failure-routing/validation.js';
 export {
   isRoutableExecutorFailure,
   workflowNodeFailureValueSchema,
   workflowFailureClassificationSchema,
   type WorkflowNodeFailureValue,
-} from './failure-routing/failure-value.js';
+} from './flow/failure-routing/failure-value.js';
 export {
   inspectWorkflowDecisionTree,
   type WorkflowDecisionTree,
-} from './failure-routing/decision-tree.js';
+} from './flow/failure-routing/decision-tree.js';
 export {
   WORKFLOW_RECOVERY_LIMITS,
   WORKFLOW_RECOVERY_REFUSALS,
   type WorkflowRecoveryEffectRisk,
   type WorkflowRecoveryRefusal,
-} from './recovery/contract.js';
+} from './execution/recovery/contract.js';
 export {
   workflowCallPinSchema,
   workflowCallConfigSchema,
   isWorkflowCallDefinition,
   type WorkflowCallConfig,
-} from './callable/invocation.js';
-export type { WorkflowCallPin } from './callable/dependencies.js';
-export { CallableInputInvalidError } from './callable/errors.js';
+} from './flow/callable/invocation.js';
+export type { WorkflowCallPin } from './flow/callable/dependencies.js';
+export { CallableInputInvalidError } from './flow/callable/errors.js';
 export {
   callableTypeStructuralSchema,
   callableTypeIssues,
   type CallableType,
   type CallableDeclaration,
   type CallableTypeIssue,
-} from './callable/contract.js';
+} from './flow/callable/contract.js';
 export {
   validateCallableValue,
   type CallableValueIssue,
-} from './callable/validate-value.js';
+} from './flow/callable/validate-value.js';
 export {
   SAFE_EXECUTOR_ERROR_CODE_PATTERN,
   isSafeExecutorErrorCode,
-} from './attempt-failure.js';
+} from './execution/attempt-failure.js';
 export {
   FAILURE_NOTIFICATION_CONTEXT_MAX_BYTES,
   FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT,
@@ -66,7 +66,7 @@ export {
   type FailureNotificationContext,
   type FailureNotificationDeliveryResult,
   type FailureNotificationDestinationConfig,
-} from './failure-notification.js';
+} from './execution/failure-notification.js';
 export {
   EMPTY_WORKFLOW_GRAPH,
   WORKFLOW_EXECUTION_LIMITS,
@@ -110,15 +110,15 @@ export {
   normalizeJson,
   inspectJsonValue,
   type JsonValue,
-} from './json/canonical.js';
-export { parseJsonPath, resolveJsonPath } from './json/path.js';
+} from './values/json/canonical.js';
+export { parseJsonPath, resolveJsonPath } from './values/json/path.js';
 export {
   DEFAULT_STEP_RETRY_SETTINGS,
   STEP_RETRY_LIMITS,
   stepRetrySettingsSchema,
   supportsStepRetrySettings,
   type StepRetrySettings,
-} from './step-retries/contract.js';
+} from './execution/step-retries/contract.js';
 export {
   planWorkflowLifecycleCommand,
   workflowActivationAfterReconciliation,
@@ -128,9 +128,12 @@ export {
   type WorkflowActivationStatus,
   type WorkflowLifecycleStatus,
   type WorkflowTriggerStatus,
-} from './lifecycle.js';
-export { resolveValueSource, type ValueResolution } from './mapping/resolve.js';
-export { WORKFLOW_OBSERVATION_WINDOW_LIMITS } from './observation-window.js';
+} from './execution/lifecycle.js';
+export {
+  resolveValueSource,
+  type ValueResolution,
+} from './values/mapping/resolve.js';
+export { WORKFLOW_OBSERVATION_WINDOW_LIMITS } from './execution/observation-window.js';
 export {
   PortableJsonError,
   WORKFLOW_PORTABILITY_LIMITS,
@@ -147,32 +150,32 @@ export {
   type PortableConnectionSlot,
   type PortableIssue,
   type WorkflowPortableManifest,
-} from './portability/contract.js';
+} from './authoring/portability/contract.js';
 export {
   WorkflowPortabilityError,
   inspectWorkflowPortableManifest,
   projectWorkflowPortableManifest,
   type WorkflowPortabilityCatalog,
-} from './portability/projection.js';
+} from './authoring/portability/projection.js';
 
-export { compareOrdinal } from './ordering.js';
+export { compareOrdinal } from './values/ordering.js';
 
-export { isRecord } from './json/object.js';
-export { UUID_PATTERN } from './identifiers.js';
+export { isRecord } from './values/json/object.js';
+export { UUID_PATTERN } from './values/identifiers.js';
 
 export {
   summarizeWorkflowCalls,
   validateCallDependencyClosure,
   WorkflowCallDependencyError,
   type CallableVersionSummary,
-} from './callable/dependencies.js';
+} from './flow/callable/dependencies.js';
 
 export {
   workflowErrorInputSchema,
   type WorkflowErrorInput,
-} from './error-workflows/contract.js';
+} from './triggers/error-workflows/contract.js';
 
-export { isWorkflowErrorTarget } from './error-workflows/target.js';
+export { isWorkflowErrorTarget } from './triggers/error-workflows/target.js';
 
 export {
   approvalConfigSchema,
@@ -181,13 +184,13 @@ export {
   isHumanTaskDefinition,
   type ApprovalConfig,
   type ApprovalOutput,
-} from './pending-tasks/approval.js';
+} from './flow/pending-tasks/approval.js';
 
 export {
   PENDING_TASK_LIMITS,
   taskAudienceSchema,
   type TaskAudience,
-} from './pending-tasks/audience.js';
+} from './flow/pending-tasks/audience.js';
 export {
   FORM_LIMITS,
   formFieldSchema,
@@ -197,7 +200,7 @@ export {
   DEFAULT_FORM_THANK_YOU_MESSAGE,
   type FormField,
   type FormConfig,
-} from './forms/fields.js';
+} from './triggers/forms/fields.js';
 export {
   parseFormValues,
   formSubmissionSchema,
@@ -205,11 +208,11 @@ export {
   FormValuesInvalidError,
   type FormValues,
   type FormSubmission,
-} from './forms/values.js';
+} from './triggers/forms/values.js';
 export {
   inputRequestConfigSchema,
   type InputRequestConfig,
-} from './pending-tasks/input-request.js';
+} from './flow/pending-tasks/input-request.js';
 
 export {
   WORKSPACE_VARIABLE_LIMITS,
@@ -221,22 +224,28 @@ export {
   EMPTY_VARIABLE_SNAPSHOT,
   type WorkspaceVariableValues,
   type WorkspaceVariableSnapshot,
-} from './variables/contract.js';
+} from './values/variables/contract.js';
 
-export { ianaTimeZoneSchema } from './json/time-zone.js';
+export { ianaTimeZoneSchema } from './values/json/time-zone.js';
 export {
   taskDetailsSchema,
   taskContextSchema,
   parseTaskPrefill,
   type TaskContext,
-} from './pending-tasks/context.js';
+} from './flow/pending-tasks/context.js';
 
-export { formRedirectUrlSchema, formLinkUrlSchema } from './forms/links.js';
+export {
+  formRedirectUrlSchema,
+  formLinkUrlSchema,
+} from './triggers/forms/links.js';
 
-export { stepSampleIdentity, stepSampleBindings } from './samples/identity.js';
-export type { StepSampleSource } from './samples/contract.js';
+export {
+  stepSampleIdentity,
+  stepSampleBindings,
+} from './authoring/samples/identity.js';
+export type { StepSampleSource } from './authoring/samples/contract.js';
 
-export { isStorageText } from './json/text.js';
+export { isStorageText } from './values/json/text.js';
 export {
   workflowTestExpectationsSchema,
   testAssertionSchema,
@@ -244,14 +253,14 @@ export {
   DEFAULT_TEST_EXPECTATIONS,
   type WorkflowTestExpectations,
   type TestAssertion,
-} from './test-suites/contract.js';
+} from './authoring/test-suites/contract.js';
 export {
   matchesTestAssertion,
   observeTestAssertion,
   type TestAssertionObservation,
-} from './test-suites/compare.js';
+} from './authoring/test-suites/compare.js';
 
-export { workflowTestStepChoices } from './test-suites/steps.js';
+export { workflowTestStepChoices } from './authoring/test-suites/steps.js';
 
 export {
   EVENT_COORDINATION_LIMITS,
@@ -266,15 +275,15 @@ export {
   type EventCoordinationReceipt,
   type EventCoordinationStatus,
   type EventCoordinationReason,
-} from './event-coordination/contract.js';
+} from './triggers/event-coordination/contract.js';
 export {
   decideEventCoordination,
   type EventCoordinationWindow,
-} from './event-coordination/decision.js';
+} from './triggers/event-coordination/decision.js';
 
 export { workflowNodes } from './graph/nodes.js';
 
-export { collectionPathSchema } from './json/path-validation.js';
+export { collectionPathSchema } from './values/json/path-validation.js';
 
 export {
   WORKFLOW_NOTE_LIMITS,
@@ -289,7 +298,7 @@ export { sameWorkflowNotes } from './graph/notes/identity.js';
 export {
   webhookAuthenticationSchema,
   type WebhookAuthentication,
-} from './webhooks/authentication.js';
+} from './triggers/webhooks/authentication.js';
 
 export {
   callbackWaitConfigSchema,
@@ -300,13 +309,13 @@ export {
   type CallbackWaitConfig,
   type CallbackBindings,
   type CallbackBinding,
-} from './callbacks/contract.js';
+} from './flow/callbacks/contract.js';
 
-export { supportsExpressionMappings } from './mapping/policy.js';
+export { supportsExpressionMappings } from './values/mapping/policy.js';
 
 export {
   callbackTargetNodes,
   callbackMappingExpression,
-} from './callbacks/validation.js';
+} from './flow/callbacks/validation.js';
 
-export { remapCallbackReferences } from './callbacks/references.js';
+export { remapCallbackReferences } from './flow/callbacks/references.js';

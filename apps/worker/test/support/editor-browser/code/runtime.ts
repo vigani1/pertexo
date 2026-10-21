@@ -5,7 +5,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 import type { DatabaseConfig } from '@pertexo/database/platform';
-import { createWorkerNodeRuntimeCapabilities } from '../../../../src/attempts/runtime-capabilities.js';
+import { createWorkerNodeRuntimeCapabilities } from '../../../../src/attempts/execution/runtime-capabilities.js';
 
 /** Development/CI uses the approved separate-process path, never an evaluator stub. */
 export async function createEditorCodeRuntime(database: DatabaseConfig) {

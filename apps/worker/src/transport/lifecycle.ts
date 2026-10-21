@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 
 import type { CoordinatorRuntime } from '../runs/runtime.js';
-import type { NodeAttemptRuntime } from '../attempts/runtime.js';
+import type { NodeAttemptRuntime } from '../attempts/delivery/runtime.js';
 import type { MaintenanceRuntime } from '../maintenance/runtime.js';
 import { WorkerDrainState } from '../runtime/shutdown/drain-state.js';
 import type { TriggerRuntime } from '../triggers/runtime.js';

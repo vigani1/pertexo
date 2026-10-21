@@ -11,7 +11,7 @@ import {
   NodeExecutorFailure,
   type NodeCallbackRuntime,
 } from '@pertexo/node-sdk/server';
-import type { NodeExecutionCapabilityContext } from '../capabilities.js';
+import type { NodeExecutionCapabilityContext } from '../execution/capabilities.js';
 export function createCallbackRuntime(
   store: CallbackStore,
   keys: CallbackTokenKeys,

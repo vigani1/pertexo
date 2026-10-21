@@ -7,12 +7,12 @@ import {
   SessionAuthenticationGuard,
 } from '../../src/workspaces/index.js';
 import type { IdentityWorkspaceRequest } from '../../src/workspaces/types.js';
-import { WebhookManagementController } from '../../src/webhooks/controllers.js';
+import { WebhookManagementController } from '../../src/webhooks/management/controllers.js';
 import {
   WebhookReadGuard,
   WebhookUpdateGuard,
-} from '../../src/webhooks/guards.js';
-import type { WebhookManagementService } from '../../src/webhooks/service.js';
+} from '../../src/webhooks/management/guards.js';
+import type { WebhookManagementService } from '../../src/webhooks/management/service.js';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

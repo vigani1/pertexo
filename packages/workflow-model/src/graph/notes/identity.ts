@@ -1,4 +1,4 @@
-import { canonicalJson } from '../../json/canonical.js';
+import { canonicalJson } from '../../values/json/canonical.js';
 import type { WorkflowNote } from './contract.js';
 
 type DocumentedGraph = Readonly<{

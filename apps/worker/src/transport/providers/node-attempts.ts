@@ -8,7 +8,7 @@ import type { WorkerConfig } from '../../config/worker.js';
 import {
   createNodeAttemptRuntime,
   type NodeAttemptRuntime,
-} from '../../attempts/runtime.js';
+} from '../../attempts/delivery/runtime.js';
 import { createPlatformPreviewNodeInvoker } from '../../previews/runtime.js';
 import {
   NODE_ATTEMPT_RUNTIME,

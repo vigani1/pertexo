@@ -11,7 +11,7 @@ import {
 import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
 import { describe, expect, it, vi } from 'vitest';
 
-import { WebhookManagementService } from '../../src/webhooks/service.js';
+import { WebhookManagementService } from '../../src/webhooks/management/service.js';
 
 const health = {
   id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',

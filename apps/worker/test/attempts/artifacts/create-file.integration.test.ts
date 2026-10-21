@@ -15,7 +15,7 @@ import type {
   NodeExecutionRuntime,
 } from '@pertexo/node-sdk/server';
 import { eq } from 'drizzle-orm';
-import { createWorkerNodeRuntimeCapabilities } from '../../../src/attempts/runtime-capabilities.js';
+import { createWorkerNodeRuntimeCapabilities } from '../../../src/attempts/execution/runtime-capabilities.js';
 import { runWithCleanup } from '../../support/infrastructure/test-operation.js';
 import { createArtifactDatabaseEnvironment } from './database.js';
 import {

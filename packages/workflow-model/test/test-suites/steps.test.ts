@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import type { WorkflowGraph, WorkflowNode } from '../../src/graph/contract.js';
-import { workflowTestStepChoices } from '../../src/test-suites/steps.js';
+import { workflowTestStepChoices } from '../../src/authoring/test-suites/steps.js';
 function node(id: string, label?: string): WorkflowNode {
   return {
     id,

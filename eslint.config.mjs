@@ -497,9 +497,9 @@ export default tseslint.config(
     ignores: [
       'packages/workflow-model/src/server.ts',
       'packages/workflow-model/src/graph/identity.ts',
-      'packages/workflow-model/src/event-coordination/key.ts',
-      'packages/workflow-model/src/expressions/**',
-      'packages/workflow-model/src/authoring-validation/**',
+      'packages/workflow-model/src/triggers/event-coordination/key.ts',
+      'packages/workflow-model/src/values/expressions/**',
+      'packages/workflow-model/src/authoring/validation/**',
     ],
     rules: {
       'no-restricted-imports': [

@@ -5,7 +5,7 @@ import type {
   NodeArtifactRuntime,
   NodeVerifiedByteSource,
 } from '@pertexo/node-sdk/server';
-import type { NodeExecutionCapabilityContext } from '../capabilities.js';
+import type { NodeExecutionCapabilityContext } from '../execution/capabilities.js';
 import { artifactExpiry, assertArtifactByteLimit } from './policy.js';
 import { createArtifactReader } from './read.js';
 import type { ArtifactScratchSpace } from './scratch/space.js';

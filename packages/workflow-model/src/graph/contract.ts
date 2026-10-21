@@ -2,19 +2,19 @@ import { workflowNotesSchema, type WorkflowNote } from './notes/contract.js';
 import {
   runInputValueSourceSchema,
   expressionValueSourceSchema,
-} from '../mapping/contract.js';
-import { workspaceVariableNameSchema } from '../variables/contract.js';
+} from '../values/mapping/contract.js';
+import { workspaceVariableNameSchema } from '../values/variables/contract.js';
 import {
   stepRetrySettingsSchema,
   type StepRetrySettings,
-} from '../step-retries/contract.js';
+} from '../execution/step-retries/contract.js';
 import { z } from 'zod';
 
-import type { JsonValue } from '../json/canonical.js';
+import type { JsonValue } from '../values/json/canonical.js';
 import {
   callableTypeStructuralSchema,
   type CallableDeclaration,
-} from '../callable/contract.js';
+} from '../flow/callable/contract.js';
 
 import { hasBoundedGraphAggregateUnsafe } from './aggregate.js';
 import { inspectWorkflowGraphAdmission } from './validation/admission.js';

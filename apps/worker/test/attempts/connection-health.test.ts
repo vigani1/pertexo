@@ -5,8 +5,8 @@ import {
 import { describe, expect, it, vi } from 'vitest';
 import type { NodeAttemptRunStore } from '@pertexo/database/attempts';
 
-import { createNodeAttemptHandler } from '../../src/attempts/handler.js';
-import { createNodeExecutionEnvironment } from '../../src/attempts/execution-environment.js';
+import { createNodeAttemptHandler } from '../../src/attempts/delivery/handler.js';
+import { createNodeExecutionEnvironment } from '../../src/attempts/execution/execution-environment.js';
 import {
   delivery,
   executionStore,

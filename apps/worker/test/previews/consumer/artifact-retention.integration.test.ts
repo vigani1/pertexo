@@ -15,7 +15,7 @@ import {
 import type { NodeArtifactReference } from '@pertexo/node-sdk/server';
 import { describe, expect, it } from 'vitest';
 
-import { createWorkerNodeRuntimeCapabilities } from '../../../src/attempts/runtime-capabilities.js';
+import { createWorkerNodeRuntimeCapabilities } from '../../../src/attempts/execution/runtime-capabilities.js';
 import {
   acceptanceInput,
   artifactStoreIntegrationEnabled,

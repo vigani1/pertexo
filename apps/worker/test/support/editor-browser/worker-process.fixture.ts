@@ -13,8 +13,8 @@ import { createOutboxDispatcherDatabase } from '@pertexo/database/outbox';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
 import { createCoordinatorRuntime } from '../../../src/runs/runtime.js';
-import { createNodeAttemptRuntime } from '../../../src/attempts/runtime.js';
-import { createWorkerNodeRuntimeCapabilities } from '../../../src/attempts/runtime-capabilities.js';
+import { createNodeAttemptRuntime } from '../../../src/attempts/delivery/runtime.js';
+import { createWorkerNodeRuntimeCapabilities } from '../../../src/attempts/execution/runtime-capabilities.js';
 import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import {
   ConnectionEnvelopeEncryption,

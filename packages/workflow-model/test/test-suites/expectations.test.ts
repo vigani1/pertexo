@@ -2,11 +2,11 @@ import { describe, it, expect } from 'vitest';
 import {
   workflowTestExpectationsSchema,
   testAssertionSchema,
-} from '../../src/test-suites/contract.js';
+} from '../../src/authoring/test-suites/contract.js';
 import {
   matchesTestAssertion,
   observeTestAssertion,
-} from '../../src/test-suites/compare.js';
+} from '../../src/authoring/test-suites/compare.js';
 const assertion = (extra: Record<string, unknown> = {}) =>
   testAssertionSchema.parse({
     source: { kind: 'final' },

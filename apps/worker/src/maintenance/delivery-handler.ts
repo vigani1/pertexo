@@ -11,7 +11,7 @@ import {
 import {
   mapUnknownOutcomeReconciliationError,
   type createUnknownOutcomeReconciliationHandler,
-} from '../attempts/unknown-outcome-reconciliation.js';
+} from '../attempts/delivery/unknown-outcome-reconciliation.js';
 import type { createOperatorRunReplayHandler } from '../operator/run-replay.js';
 import type { FailureNotificationHandler } from '../notifications/failure-handler.js';
 import type { WorkspaceInvitationDeliveryHandler } from '../identity/invitation-delivery.js';

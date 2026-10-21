@@ -17,7 +17,7 @@ import {
   type WorkflowNode,
 } from '@pertexo/workflow-model';
 import { createCoordinatorRuntime } from '../../../dist/runs/runtime.js';
-import { createNodeAttemptRuntime } from '../../../dist/attempts/runtime.js';
+import { createNodeAttemptRuntime } from '../../../dist/attempts/delivery/runtime.js';
 import { createMaintenanceRuntime } from '../../../dist/maintenance/runtime.js';
 import { WorkerDrainState } from '../../../dist/runtime/shutdown/drain-state.js';
 import { OutboxDispatcher } from '../../../dist/transport/outbox/dispatcher.js';

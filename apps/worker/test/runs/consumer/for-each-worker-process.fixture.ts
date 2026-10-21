@@ -4,7 +4,7 @@ import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 
 import { createCoordinatorRuntime } from '../../../src/runs/runtime.js';
-import { createNodeAttemptRuntime } from '../../../src/attempts/runtime.js';
+import { createNodeAttemptRuntime } from '../../../src/attempts/delivery/runtime.js';
 
 const databaseUrl = process.env.FOR_EACH_DATABASE_URL;
 const maintenanceDatabaseUrl = process.env.FOR_EACH_MAINTENANCE_DATABASE_URL;

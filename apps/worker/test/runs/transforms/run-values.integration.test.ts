@@ -16,7 +16,7 @@ import {
 } from '@pertexo/workflow-model';
 import { beforeAll, afterAll, describe, it, expect } from 'vitest';
 import { createCoordinatorRuntime } from '../../../src/runs/runtime.js';
-import { createNodeAttemptRuntime } from '../../../src/attempts/runtime.js';
+import { createNodeAttemptRuntime } from '../../../src/attempts/delivery/runtime.js';
 import { WorkerDrainState } from '../../../src/runtime/shutdown/drain-state.js';
 import { OutboxDispatcher } from '../../../src/transport/outbox/dispatcher.js';
 import { coordinatorFixture as fixture } from '../../support/coordinator/consumer.js';

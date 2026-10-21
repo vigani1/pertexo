@@ -10,8 +10,8 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   decodeWebhookDeliveryCursor,
   encodeWebhookDeliveryCursor,
-} from '../../src/webhooks/cursor.js';
-import { WebhookManagementService } from '../../src/webhooks/service.js';
+} from '../../src/webhooks/management/cursor.js';
+import { WebhookManagementService } from '../../src/webhooks/management/service.js';
 
 const scope = {
   workspaceId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',

@@ -1,8 +1,8 @@
 import {
   createConnectionSharingPersistence,
   type ConnectionSharingDatabase,
-} from './sharing.repository.js';
-export type { ConnectionSharingDatabase } from './sharing.repository.js';
+} from './commands/sharing.repository.js';
+export type { ConnectionSharingDatabase } from './commands/sharing.repository.js';
 import { acquireDatabasePool } from '../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../platform/pool/runtime.js';
 
@@ -11,14 +11,14 @@ import {
   createConnectionLookupPersistence,
   type ConnectionLookupDatabase,
 } from './runtime/lookup.js';
-import { createConnectionManagementPersistence } from './management.repository.js';
+import { createConnectionManagementPersistence } from './commands/management.repository.js';
 import { createConnectionResolutionPersistence } from './runtime/resolution.js';
-import { createConnectionReadPersistence } from './reads.queries.js';
+import { createConnectionReadPersistence } from './discovery/reads.queries.js';
 import {
   createConnectionUsagePersistence,
   type ConnectionUsageDatabase,
-} from './usage.queries.js';
-import { createConnectionSecretPersistence } from './secrets.repository.js';
+} from './discovery/usage.queries.js';
+import { createConnectionSecretPersistence } from './commands/secrets.repository.js';
 import { createConnectionTestPersistence } from './connection-tests/results.repository.js';
 import type {
   ConnectionDatabase,
@@ -60,7 +60,7 @@ export type {
   ConnectionUsageCursor,
   ConnectionUsagePage,
   ListConnectionUsageInput,
-} from './usage.queries.js';
+} from './discovery/usage.queries.js';
 export type {
   AbandonConnectionTestInput,
   AssertConnectionSecretCurrentInput,

@@ -29,7 +29,7 @@ import type {
 
 import type { WorkerConfig } from './config/worker.js';
 import type { CoordinatorRuntime } from './runs/runtime.js';
-import type { NodeAttemptRuntime } from './attempts/runtime.js';
+import type { NodeAttemptRuntime } from './attempts/delivery/runtime.js';
 import type { MaintenanceRuntime } from './maintenance/runtime.js';
 import type { TriggerRuntime } from './triggers/runtime.js';
 import { createSystemMailDeliveryHandler } from './mail/delivery.js';

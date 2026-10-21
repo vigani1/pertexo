@@ -1,5 +1,5 @@
-import { synchronizeHumanWait } from '../../pending-tasks/time-capacity.js';
-import { readPendingTaskFacts } from '../../pending-tasks/facts.js';
+import { synchronizeHumanWait } from '../../pending-tasks/lifecycle/time-capacity.js';
+import { readPendingTaskFacts } from '../../pending-tasks/lifecycle/facts.js';
 import type { PoolClient } from 'pg';
 import { workflowControlOutputNodeIds } from '@pertexo/workflow-model';
 

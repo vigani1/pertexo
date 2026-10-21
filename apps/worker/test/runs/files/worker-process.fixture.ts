@@ -7,7 +7,7 @@ import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
 import { createStructuredLogger } from '@pertexo/observability';
 import { parseWorkerConfig } from '../../../dist/config/worker.js';
 import { createCoordinatorRuntime } from '../../../dist/runs/runtime.js';
-import { createNodeAttemptRuntime } from '../../../dist/attempts/runtime.js';
+import { createNodeAttemptRuntime } from '../../../dist/attempts/delivery/runtime.js';
 import { OutboxDispatcher } from '../../../dist/transport/outbox/dispatcher.js';
 import { WorkerDrainState } from '../../../dist/runtime/shutdown/drain-state.js';
 import { WorkerResourceMonitor } from '../../../dist/runtime/health/resource-monitor.js';

@@ -30,8 +30,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   registerWebhookIngress,
   createWebhookPreflight,
-} from '../../src/webhooks/ingress.js';
-import type { WebhookIngressTelemetry } from '../../src/webhooks/telemetry.js';
+} from '../../src/webhooks/ingress/register.js';
+import type { WebhookIngressTelemetry } from '../../src/webhooks/ingress/telemetry.js';
 
 const endpointKey = 'a'.repeat(43);
 const currentSecret = new Uint8Array(32).fill(4);

@@ -43,8 +43,8 @@
       },
       "packages/workflow-model": {
         "entry": [
-          "src/expressions/evaluation-thread.ts",
-          "src/authoring-validation/validation-thread.ts"
+          "src/values/expressions/evaluation-thread.ts",
+          "src/authoring/validation/validation-thread.ts"
         ]
       },
       "packages/database": {

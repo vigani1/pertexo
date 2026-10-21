@@ -6,7 +6,7 @@ import {
   canonicalizeJson,
   inspectJsonValue,
   normalizeJson,
-} from '../../src/json/canonical.js';
+} from '../../src/values/json/canonical.js';
 
 describe('canonical JSON', () => {
   it('sorts every object and reports stable UTF-8 bytes', () => {

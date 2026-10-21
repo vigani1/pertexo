@@ -1,0 +1,179 @@
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  webhookDeliveryListQuerySchema,
+  webhookAuthenticationSchema,
+  webhookRotateSecretRequestSchema,
+} from '@pertexo/contracts';
+import { z } from 'zod';
+
+import {
+  CsrfProtectionGuard,
+  SessionAuthenticationGuard,
+  authenticatedSession,
+} from '../../workspaces/index.js';
+import type { IdentityWorkspaceRequest } from '../../workspaces/types.js';
+import {
+  requestIdempotencyKey,
+  withRequestOperationSignal,
+} from '../../platform/http/index.js';
+import { RateLimit } from '../../platform/rate-limit/metadata.js';
+import { WebhookReadGuard, WebhookUpdateGuard } from './guards.js';
+import { WebhookManagementService } from './service.js';
+
+const routeShape = { workspaceId: z.uuid(), workflowId: z.uuid() };
+const routeSchema = z.object(routeShape).strict().readonly();
+const commandRouteSchema = z
+  .object({ ...routeShape, triggerId: z.uuid() })
+  .strict()
+  .readonly();
+type Request = IdentityWorkspaceRequest &
+  Readonly<{
+    raw?: Readonly<{
+      destroyed?: boolean;
+      once(event: 'aborted', listener: () => void): unknown;
+      off(event: 'aborted', listener: () => void): unknown;
+    }>;
+  }>;
+
+@Controller('v1/workspaces/:workspaceId/workflows/:workflowId/triggers')
+@RateLimit('trigger_mutation')
+export class WebhookManagementController {
+  public constructor(private readonly service: WebhookManagementService) {}
+
+  @Get()
+  @RateLimit('authenticated_read')
+  @UseGuards(SessionAuthenticationGuard, WebhookReadGuard)
+  public list(@Req() request: Request, @Param() params: unknown) {
+    const route = routeSchema.parse(params);
+    return this.service.list({
+      workspaceId: route.workspaceId,
+      workflowId: route.workflowId,
+      actorId: authenticatedSession(request).userId,
+    });
+  }
+
+  @Get(':triggerId/webhook/deliveries')
+  @RateLimit('authenticated_read')
+  @UseGuards(SessionAuthenticationGuard, WebhookReadGuard)
+  public deliveries(
+    @Req() request: Request,
+    @Param() params: unknown,
+    @Query() query: unknown,
+  ) {
+    const route = commandRouteSchema.parse(params);
+    const page = webhookDeliveryListQuerySchema.parse(query ?? {});
+    return this.service.listDeliveries({
+      workspaceId: route.workspaceId,
+      workflowId: route.workflowId,
+      triggerId: route.triggerId,
+      actorId: authenticatedSession(request).userId,
+      ...(page.limit === undefined ? {} : { limit: page.limit }),
+      ...(page.after === undefined ? {} : { after: page.after }),
+    });
+  }
+
+  @Post(':triggerId/webhook/provision')
+  @HttpCode(200)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    WebhookUpdateGuard,
+    CsrfProtectionGuard,
+  )
+  public provision(@Req() request: Request, @Param() params: unknown) {
+    return this.command('provision', request, params);
+  }
+
+  @Post(':triggerId/webhook/authentication')
+  @HttpCode(200)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    WebhookUpdateGuard,
+    CsrfProtectionGuard,
+  )
+  public configureAuthentication(
+    @Req() request: Request,
+    @Param() params: unknown,
+    @Body() body: unknown,
+  ) {
+    const route = commandRouteSchema.parse(params);
+    const authentication = webhookAuthenticationSchema.parse(body);
+    return withRequestOperationSignal(request, (signal) =>
+      this.service.configureAuthentication({
+        ...route,
+        actorId: authenticatedSession(request).userId,
+        idempotencyKey: requestIdempotencyKey(request.headers),
+        authentication,
+        signal,
+      }),
+    );
+  }
+
+  @Post(':triggerId/webhook/rotate-endpoint')
+  @HttpCode(200)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    WebhookUpdateGuard,
+    CsrfProtectionGuard,
+  )
+  public rotateEndpoint(@Req() request: Request, @Param() params: unknown) {
+    return this.command('rotateEndpoint', request, params);
+  }
+
+  @Post(':triggerId/webhook/rotate-secret')
+  @HttpCode(200)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    WebhookUpdateGuard,
+    CsrfProtectionGuard,
+  )
+  public rotateSecret(
+    @Req() request: Request,
+    @Param() params: unknown,
+    @Body() body: unknown,
+  ) {
+    const input = webhookRotateSecretRequestSchema.parse(body);
+    return this.command('rotateSecret', request, params, input.endpointKey);
+  }
+
+  private command(
+    operation: Operation,
+    request: Request,
+    params: unknown,
+    endpointKey?: string,
+  ) {
+    const route = commandRouteSchema.parse(params);
+    return withRequestOperationSignal(request, (signal) => {
+      const idempotencyKey = requestIdempotencyKey(request.headers);
+      const input = {
+        workspaceId: route.workspaceId,
+        workflowId: route.workflowId,
+        triggerId: route.triggerId,
+        actorId: authenticatedSession(request).userId,
+        idempotencyKey,
+        signal,
+      };
+      switch (operation) {
+        case 'provision':
+          return this.service.provision(input);
+        case 'rotateEndpoint':
+          return this.service.rotateEndpoint(input);
+        case 'rotateSecret':
+          if (endpointKey === undefined)
+            throw new Error('Webhook endpoint key was not parsed');
+          return this.service.rotateSecret({ ...input, endpointKey });
+      }
+    });
+  }
+}
+
+type Operation = 'provision' | 'rotateEndpoint' | 'rotateSecret';

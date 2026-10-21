@@ -15,7 +15,7 @@ import {
   type RateLimitDecision,
 } from '@pertexo/rate-limit';
 
-import type { NodeExecutionCapabilityContext } from '../attempts/capabilities.js';
+import type { NodeExecutionCapabilityContext } from '../attempts/execution/capabilities.js';
 
 export type ProviderRateLimiter = Readonly<{
   consume(decision: RateLimitDecision): Promise<DistributedRateLimitResult>;

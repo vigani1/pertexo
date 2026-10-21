@@ -5,7 +5,7 @@ import type { QueryResult, QueryResultRow } from 'pg';
 import {
   registerWebhookIngress,
   type WebhookIngressDependencies,
-} from '../../../src/webhooks/ingress.js';
+} from '../../../src/webhooks/ingress/register.js';
 import { createWebhookResponseWaiter } from '../../../src/webhooks/responses/wait.js';
 import { sendBoundedWebhook, signatureFor } from '../support/bounded-client.js';
 

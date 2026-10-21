@@ -8,11 +8,11 @@ import {
   type WorkflowNote,
 } from '../../../src/graph/notes/contract.js';
 import { sameWorkflowNotes } from '../../../src/graph/notes/identity.js';
-import { stepSampleBindings } from '../../../src/samples/identity.js';
+import { stepSampleBindings } from '../../../src/authoring/samples/identity.js';
 import {
   projectWorkflowPortableManifest,
   inspectWorkflowPortableManifest,
-} from '../../../src/portability/projection.js';
+} from '../../../src/authoring/portability/projection.js';
 
 const note: WorkflowNote = {
   id: '00000000-0000-4000-8000-000000000001',

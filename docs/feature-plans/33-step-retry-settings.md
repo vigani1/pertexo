@@ -72,7 +72,7 @@ durable scheduler rather than copying another product's replay semantics.
 
 ## Structure
 
-- `packages/workflow-model/src/step-retries/contract.ts`: one bounded portable
+- `packages/workflow-model/src/execution/step-retries/contract.ts`: one bounded portable
   schema, defaults and applicability rule; graph schema and pin identity use it.
 - `packages/workflow-engine/src/compilation/`: copy the optional typed field
   through compilation and loading; omit it for legacy nodes.

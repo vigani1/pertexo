@@ -1,8 +1,8 @@
 import jsonata from 'jsonata';
-import { remapCallbackReferences } from '../../src/callbacks/references.js';
+import { remapCallbackReferences } from '../../src/flow/callbacks/references.js';
 import { afterEach, expect, it } from 'vitest';
-import { JsonataEvaluator } from '../../src/expressions/evaluator.js';
-import { inspectExpression } from '../../src/expressions/policy.js';
+import { JsonataEvaluator } from '../../src/values/expressions/evaluator.js';
+import { inspectExpression } from '../../src/values/expressions/policy.js';
 
 const evaluators: JsonataEvaluator[] = [];
 afterEach(async () => {

@@ -44,11 +44,11 @@ export type {
   RotateConnectionSecretInput,
   SealedConnectionSecretRecord,
 } from './database.js';
-export { createWorkflowIntegrationUsageDatabase } from './integration-usage.queries.js';
+export { createWorkflowIntegrationUsageDatabase } from './discovery/integration-usage.queries.js';
 export type {
   FindConnectionImpactInput,
   FindProviderOperationImpactInput,
   WorkflowIntegrationImpactPage,
   WorkflowIntegrationImpactRecord,
   WorkflowIntegrationUsageDatabase,
-} from './integration-usage.queries.js';
+} from './discovery/integration-usage.queries.js';

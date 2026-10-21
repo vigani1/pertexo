@@ -2,7 +2,7 @@ import { callbackScopeHash } from './identity.js';
 import {
   readPendingTaskAllowance,
   hasPendingTaskCapacity,
-} from '../allowance.js';
+} from '../lifecycle/allowance.js';
 import { callbackWaitConfigSchema } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 import {
