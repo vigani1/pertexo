@@ -44,8 +44,17 @@ input mappings determine the data they receive. _Avoid_: Connection, credential
 service, referenced by workflow steps. _Avoid_: Workflow link, sign-in method
 
 **Workflow organization**: Shared workspace metadata that helps people discover
-and arrange workflows without changing their behavior or access. _Avoid_:
-Workflow graph, permission inheritance
+and arrange workflows. Folder access grants are separate from that metadata.
+_Avoid_: Workflow graph, access grant
+
+**Folder access grant**: Permission for a member or directory group to view or
+edit a folder’s workflows within their workspace role. Restricted ancestors may
+narrow that permission. _Avoid_: Workspace membership, workspace role, workflow
+ownership
+
+**Connection sharing**: Permission to use a workflow connection in authoring and
+testing without receiving its secret or administration rights. _Avoid_: Copying
+credentials, workflow access, workspace membership
 
 **Workflow tag**: A shared workspace label with stable identity that can be
 assigned to workflows independently of their names and lifecycle. _Avoid_:

@@ -257,7 +257,7 @@ only after its gate is resolved.
 | [F45](feature-plans/45-bigger-files-and-paged-data.md) | Bigger files and step data beyond 1 MiB, by streaming or paging | Extends F04 files and the artifact store | L–XL | Delivered (2026-10-21): checked 10 MiB files, explicit pages, streamed assembly and full release qualification; inline, loop and capacity bounds unchanged |
 | F46 | Resume a waiting run when another system calls a per-run URL | Extends durable waits and webhook authentication | L | Proposed |
 | [F47](feature-plans/47-run-values.md) | Save a few business values on a run and find runs by them | Extends run history | M–L | Delivered (2026-10-21, #451 merged green): bounded mapped values, execution-fenced persistence, exact Runs filter and detail display; real worker/API/browser, retention, isolation and responsive theme checks qualified |
-| F48 | Finer sharing: access to chosen folders or workflows, and connections shared with chosen people | Extends roles, F07 folders and F18 governance | XL | Proposed |
+| [F48](feature-plans/48-finer-sharing.md) | Finer sharing: access to chosen folders or workflows, and connections shared with chosen people | Extends roles, F07 folders and F18 governance | XL | Plan and ADR prepared; folders → connections → UI → qualification |
 | F49 | Git sync for workflows | Extends versions and F17 promotion | XL | Proposed (later, by demand) |
 
 ## Shared implementation rules
