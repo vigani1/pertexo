@@ -1,6 +1,6 @@
 # F45 — Bigger files and paged step data
 
-Status: **Approved by owner 2026-10-21** (#447 merged). Slice 1 delivered in #450; slice 2 delivered in #452 (verified 10 MiB file transport and private disk scratch). Slice 3 implements explicit Read file/HTTP result pages and Create file from pages; local component/storage/browser checks pass; PR delivery is pending. Inline JSON, checkpoint, ordinary collection/loop and capacity limits remain unchanged. Full release qualification is slice 4.
+Status: **Delivered (2026-10-21)**. Slices 1–3 merged in #450, #452 and #453. Slice 4 qualifies the 10 MiB ceiling through actual compiled workflows at 32 attempt slots, nested page loops, exact native HTTP uploads, private container disk, maximum browser uploads, retention, isolation, purge and matched backup/restore. Reproducible worker probes are in `apps/worker/test/runs/files/`; browser resource qualification uses `F45_RELEASE_QUALIFICATION=true`. The release PR records measured evidence and its CI gate. Inline JSON, checkpoint, ordinary collection/loop, capacity and worker memory limits remain unchanged; file references remain ineligible for pins.
 
 ## Current code and problem
 
