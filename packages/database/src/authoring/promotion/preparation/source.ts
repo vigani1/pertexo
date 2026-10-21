@@ -1,3 +1,8 @@
+import { bindResourcePredicate } from '../../../tenant-access/resources/query-scope.js';
+import {
+  connectionScope,
+  connectionScopeSql,
+} from '../../../tenant-access/resources/connections/scope.js';
 import { readFolderScope } from '../../../tenant-access/resources/facts.js';
 import { workflowAccessible } from '../../../tenant-access/resources/workflows.js';
 import type { PoolClient } from 'pg';
@@ -99,13 +104,20 @@ export async function readPromotionSources(
       'limit',
       'Select fewer workflows to review their connections.',
     );
+  const connectionParameters: unknown[] = [workspaceId, connectionIds];
+  const permitted = bindResourcePredicate(
+    connectionScopeSql(
+      connectionScope({ workspaceId, actorId }, scope.role, 'connection:read'),
+    ),
+    connectionParameters,
+  );
   const connections =
     connectionIds.length === 0
       ? []
       : (
           await client.query<ConnectionMetadata>(
-            'select id,name,lower(name) normalized_name,provider_key,auth_type from app.connections where workspace_id=$1 and id=any($2::uuid[]) order by id for share',
-            [workspaceId, connectionIds],
+            `select id,name,lower(name) normalized_name,provider_key,auth_type from app.connections connection where workspace_id=$1 and id=any($2::uuid[]) and ${permitted} order by id for share`,
+            connectionParameters,
           )
         ).rows;
   const tableNames = [

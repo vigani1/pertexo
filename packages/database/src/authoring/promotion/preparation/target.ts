@@ -1,3 +1,4 @@
+import { connectionScope } from '../../../tenant-access/resources/connections/scope.js';
 import { readFolderScope } from '../../../tenant-access/resources/facts.js';
 import { workflowAccessible } from '../../../tenant-access/resources/workflows.js';
 import { WorkflowNotFoundError } from '../../workflows/errors.js';
@@ -61,6 +62,7 @@ export async function preparePromotionTarget(
 ) {
   const workflows: ReviewedWorkflow[] = [];
   const scope = await readFolderScope(client, input);
+  const connections = connectionScope(input, scope.role, 'connection:use');
   const requirements: WorkflowPromotionRequirement[] = [];
   const seenRequirements = new Set<string>();
   const report = (requirement: WorkflowPromotionRequirement) => {
@@ -176,6 +178,7 @@ export async function preparePromotionTarget(
       graph = await rebindPromotionConnections(
         client,
         input.workspaceId,
+        connections,
         source,
         sources,
         context.catalogs,
@@ -205,6 +208,7 @@ export async function preparePromotionTarget(
         input.workspaceId,
         source.workflowId,
         graph,
+        connections,
       ))
         report(requirement);
       const validation = await admitWorkflowAuthoring(
@@ -241,6 +245,7 @@ export async function preparePromotionTarget(
           source,
           origin?.workflow_id ?? null,
           scope,
+          connections,
           graph,
           budget,
           report,

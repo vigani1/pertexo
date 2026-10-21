@@ -1,4 +1,4 @@
-import { users, workspaces } from './foundation.js';
+import { users, workspaces, workspaceMemberships } from './foundation.js';
 import {
   type PgTableExtraConfigValue,
   bigint,
@@ -28,6 +28,12 @@ export const connections = appSchema.table(
     name: varchar('name', { length: 128 }).notNull(),
     authType: varchar('auth_type', { length: 64 }).notNull(),
     status: varchar('status', { length: 32 }).notNull(),
+    accessMode: varchar('access_mode', { length: 16 })
+      .notNull()
+      .default('workspace'),
+    sharingRevision: bigint('sharing_revision', { mode: 'number' })
+      .notNull()
+      .default(1),
     currentSecretVersionId: uuid('current_secret_version_id').notNull(),
     lastTestedAt: timestamp('last_tested_at', {
       withTimezone: true,
@@ -69,6 +75,11 @@ export const connections = appSchema.table(
       'connections_error_code_format',
       sql`((last_error_code IS NULL) OR ((last_error_code)::text ~ '^[a-z][a-z0-9._:-]{0,127}$'::text))`,
     ),
+    check(
+      'connections_access_mode_valid',
+      sql`access_mode in ('workspace','restricted')`,
+    ),
+    check('connections_sharing_revision_positive', sql`sharing_revision > 0`),
     check('connections_health_revision_positive', sql`(health_revision > 0)`),
     check(
       'connections_health_transition_source_valid',
@@ -322,5 +333,37 @@ export const connectionHealthObservations = appSchema.table(
       table.observedAt,
       table.id,
     ),
+  ],
+);
+
+export const connectionShares = appSchema.table(
+  'connection_shares',
+  {
+    workspaceId: uuid('workspace_id').notNull(),
+    connectionId: uuid('connection_id').notNull(),
+    userId: uuid('user_id').notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.workspaceId, table.connectionId, table.userId],
+    }),
+    index('connection_shares_member_idx').on(
+      table.workspaceId,
+      table.userId,
+      table.connectionId,
+    ),
+    foreignKey({
+      name: 'connection_shares_connection_fk',
+      columns: [table.workspaceId, table.connectionId],
+      foreignColumns: [connections.workspaceId, connections.id],
+    }).onDelete('cascade'),
+    foreignKey({
+      name: 'connection_shares_member_fk',
+      columns: [table.workspaceId, table.userId],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.userId,
+      ],
+    }).onDelete('cascade'),
   ],
 );

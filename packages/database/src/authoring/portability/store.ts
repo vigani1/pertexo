@@ -1,3 +1,4 @@
+import { requireConnectionBindings } from '../../tenant-access/resources/connections/bindings.js';
 import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.js';
 import { lockArtifactReferences } from '../../artifacts/references.js';
 import { createHash } from 'node:crypto';
@@ -200,6 +201,7 @@ async function inspectImport(
     ...(await inspectPortableConnections(
       client,
       input.workspaceId,
+      input.actorId,
       input.manifest,
       input.bindings,
     )),
@@ -394,6 +396,7 @@ function importPortableWorkflow(
         portableFailure(error);
       }
       await requireWorkflowCallTargets(client, input, graph);
+      await requireConnectionBindings(client, input, graph);
       await lockArtifactReferences(
         client,
         input.workspaceId,

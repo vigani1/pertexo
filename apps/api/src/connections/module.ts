@@ -1,3 +1,5 @@
+import { ConnectionSharingController } from './sharing/controller.js';
+import { ConnectionSharingUseCases } from './sharing/use-case.js';
 import { UnconfiguredConnectionsController } from './http/unavailable.js';
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import { Module } from '@nestjs/common';
@@ -128,6 +130,15 @@ export class ConnectionsModule {
         ),
       },
     ];
+    if (dependencies.sharingPersistence !== undefined)
+      providers.push({
+        provide: ConnectionSharingUseCases,
+        useValue: new ConnectionSharingUseCases(
+          dependencies.sharingPersistence,
+          dependencies.authorization,
+          telemetry,
+        ),
+      });
     if (dependencies.destinationPersistence !== undefined)
       providers.push({
         provide: FailureNotificationDestinationUseCases,
@@ -150,6 +161,9 @@ export class ConnectionsModule {
       imports: [identityModule],
       controllers: [
         ConnectionsController,
+        ...(dependencies.sharingPersistence === undefined
+          ? []
+          : [ConnectionSharingController]),
         ...(dependencies.usagePersistence === undefined
           ? []
           : [ConnectionUsageController]),

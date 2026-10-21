@@ -125,6 +125,7 @@ export async function createApiConnectionRuntime(
         persistence: database,
         destinationPersistence: destinationDatabase,
         usagePersistence: database,
+        sharingPersistence: database,
         authorization: identityRuntime.dependencies.authorization,
         encryption,
         httpClient,

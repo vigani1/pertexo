@@ -1,3 +1,4 @@
+import { requireConnectionBindings } from '../../tenant-access/resources/connections/bindings.js';
 import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.js';
 import type { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -164,6 +165,7 @@ export function createWorkflowTestSuiteStore(
           );
         }
         await requireWorkflowCallTargets(client, input, snapshot.graph);
+        await requireConnectionBindings(client, input, snapshot.graph);
         await lockArtifactReferences(
           client,
           input.workspaceId,

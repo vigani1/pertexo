@@ -292,6 +292,7 @@ describe('connection public contracts', () => {
     );
     expect(Object.keys(connectionsOpenApiDocument.paths)).toEqual([
       '/v1/workspaces/{workspaceId}/connections',
+      '/v1/workspaces/{workspaceId}/connections/{connectionId}/sharing',
       '/v1/workspaces/{workspaceId}/connections/{connectionId}/usage',
       '/v1/workspaces/{workspaceId}/connections/{connectionId}/secret',
       '/v1/workspaces/{workspaceId}/connections/{connectionId}',

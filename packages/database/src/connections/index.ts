@@ -3,6 +3,7 @@ export {
   ConnectionConflictError,
   ConnectionIdempotencyConflictError,
   ConnectionNotFoundError,
+  ConnectionSharingRevisionConflictError,
   ConnectionSecretVersionConflictError,
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
@@ -10,6 +11,7 @@ export {
   createWorkerConnectionResolutionDatabase,
 } from './database.js';
 export type {
+  ConnectionSharingDatabase,
   ApiConnectionDatabase,
   ConnectionLookupDatabase,
   ConnectionManagementDatabase,

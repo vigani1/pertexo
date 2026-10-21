@@ -1,3 +1,4 @@
+import type { ConnectionScope } from '../../../tenant-access/resources/connections/scope.js';
 import { sql } from 'drizzle-orm';
 import type { FolderScope } from '../../../tenant-access/resources/contract.js';
 import {
@@ -104,6 +105,7 @@ export async function inspectPromotionCallDependencies(
   source: PromotionSource,
   targetWorkflowId: string | null,
   resources: FolderScope,
+  connections: ConnectionScope,
   graph: WorkflowGraph,
   budget: PromotionGraphBudget,
   report: (requirement: WorkflowPromotionRequirement) => void,
@@ -154,6 +156,7 @@ export async function inspectPromotionCallDependencies(
           workspaceId,
           source.workflowId,
           child,
+          connections,
         ))
           report({
             ...requirement,

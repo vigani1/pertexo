@@ -583,6 +583,10 @@ describe('workspace purge', () => {
         ) values($1,$2,'email','Purge email','resend_api_key','active',$3,$4)`,
         [connectionId, workspaceId, firstSecretId, userId],
       );
+      await owner.query(
+        'insert into app.connection_shares(workspace_id,connection_id,user_id) values($1,$2,$3)',
+        [workspaceId, connectionId, userId],
+      );
       for (const secretId of [firstSecretId, currentSecretId])
         await owner.query(
           `insert into app.connection_secret_versions(
@@ -701,6 +705,7 @@ describe('workspace purge', () => {
     });
     // Cycles go together, after everything that points at them.
     expect(steps).toContain('connections');
+    expect(steps).toContain('connection_shares');
     expect(steps.indexOf('workflow_published_versions')).toBeLessThan(
       steps.indexOf('workflow_versions'),
     );
@@ -760,7 +765,7 @@ describe('workspace purge', () => {
     } finally {
       await admin.end();
     }
-  });
+  }, 30_000);
 
   it('names every workspace table as purged or kept', async () => {
     if (owner === undefined) throw new Error('Owner pool unavailable');

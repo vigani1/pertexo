@@ -1,3 +1,8 @@
+import {
+  createConnectionSharingPersistence,
+  type ConnectionSharingDatabase,
+} from './sharing.repository.js';
+export type { ConnectionSharingDatabase } from './sharing.repository.js';
 import { acquireDatabasePool } from '../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../platform/pool/runtime.js';
 
@@ -24,7 +29,8 @@ import type {
 } from './records.js';
 
 /** API capability plus the lifecycle operation owned by its runtime factory. */
-export type ApiConnectionDatabase = ConnectionManagementDatabase &
+export type ApiConnectionDatabase = ConnectionSharingDatabase &
+  ConnectionManagementDatabase &
   ConnectionReadDatabase &
   ConnectionTestDatabase &
   ConnectionLookupDatabase &
@@ -42,6 +48,7 @@ export {
   ConnectionConflictError,
   ConnectionIdempotencyConflictError,
   ConnectionNotFoundError,
+  ConnectionSharingRevisionConflictError,
   ConnectionSecretVersionConflictError,
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
@@ -88,10 +95,14 @@ export type {
 export function createConnectionDatabase(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): ConnectionDatabase & ConnectionLookupDatabase & ConnectionUsageDatabase {
+): ConnectionDatabase &
+  ConnectionLookupDatabase &
+  ConnectionUsageDatabase &
+  ConnectionSharingDatabase {
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   return Object.freeze({
+    ...createConnectionSharingPersistence(pool),
     ...createConnectionManagementPersistence(pool),
     ...createConnectionReadPersistence(pool),
     ...createConnectionUsagePersistence(pool),
@@ -109,6 +120,8 @@ export function createApiConnectionDatabase(
 ): ApiConnectionDatabase {
   const database = createConnectionDatabase(config, runtime);
   return Object.freeze({
+    readConnectionSharing: database.readConnectionSharing.bind(database),
+    replaceConnectionSharing: database.replaceConnectionSharing.bind(database),
     listConnections: database.listConnections.bind(database),
     readConnection: database.readConnection.bind(database),
     listConnectionUsage: database.listConnectionUsage.bind(database),

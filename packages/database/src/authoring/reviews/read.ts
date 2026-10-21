@@ -1,3 +1,10 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
+import {
+  connectionUseIssues,
+  workflowConnectionReferences,
+} from '../../tenant-access/resources/connections/bindings.js';
+import { connectionScope } from '../../tenant-access/resources/connections/scope.js';
 import { readFolderScope } from '../../tenant-access/resources/facts.js';
 import { workflowAccessible } from '../../tenant-access/resources/workflows.js';
 import type { PoolClient } from 'pg';
@@ -20,6 +27,7 @@ import {
 } from './eligibility.js';
 
 interface ReviewRow {
+  draft_graph: unknown;
   id: string;
   workflow_id: string;
   workflow_name: string;
@@ -45,7 +53,7 @@ export async function readReviewRow(
 ): Promise<ReviewRow> {
   const row = (
     await client.query<ReviewRow>(
-      `select review.*,workflow.name workflow_name,requester_user.display_name requester_name,
+      `select review.*,draft.graph_json draft_graph,workflow.name workflow_name,requester_user.display_name requester_name,
     decider.display_name decider_name,version.version_number,(${REVIEW_STATE_SQL}) state,
     ${reviewDecisionAllowedSql('$3', 'actor.role')} can_decide
     ${REVIEW_SOURCE_SQL}
@@ -58,21 +66,32 @@ export async function readReviewRow(
   ).rows[0];
   if (row === undefined)
     throw new WorkflowNotFoundError('Publication request is not visible');
-  if (
-    row.state === 'pending' &&
-    !(await workflowAccessible(
+  if (row.state === 'pending') {
+    const requester = {
+      workspaceId: input.workspaceId,
+      actorId: row.requested_by,
+    };
+    const resources = await readFolderScope(client, requester);
+    const canPublish = await workflowAccessible(
       client,
-      await readFolderScope(client, {
-        workspaceId: input.workspaceId,
-        actorId: row.requested_by,
-      }),
+      resources,
       input.workspaceId,
       row.workflow_id,
       'workflow:publish',
-    ))
-  ) {
-    row.state = 'stale';
-    row.can_decide = false;
+    );
+    const issues = canPublish
+      ? await connectionUseIssues(
+          { db: drizzle(client) },
+          connectionScope(requester, resources.role, 'connection:use'),
+          workflowConnectionReferences(
+            parseWorkflowGraphDraft(row.draft_graph),
+          ),
+        )
+      : [];
+    if (!canPublish || issues.length > 0) {
+      row.state = 'stale';
+      row.can_decide = false;
+    }
   }
   return row;
 }

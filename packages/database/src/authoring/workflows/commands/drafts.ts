@@ -1,3 +1,4 @@
+import { requireConnectionBindings } from '../../../tenant-access/resources/connections/bindings.js';
 import { readFolderScope } from '../../../tenant-access/resources/facts.js';
 import { requireWorkflowCallTargets } from '../../../tenant-access/resources/bindings.js';
 import { pruneStepSamples } from '../../step-samples/records.js';
@@ -101,6 +102,7 @@ async function createWorkflow(
       );
     } else {
       await requireWorkflowCallTargets(client, input, graph);
+      await requireConnectionBindings(client, input, graph);
       await lockArtifactReferences(
         client,
         input.workspaceId,
@@ -202,6 +204,12 @@ async function saveDraft(
       placementDefinitionCatalog,
     );
     await requireWorkflowCallTargets(
+      client,
+      input,
+      graph,
+      currentDraft.graphJson,
+    );
+    await requireConnectionBindings(
       client,
       input,
       graph,

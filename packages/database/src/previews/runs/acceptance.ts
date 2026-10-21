@@ -1,3 +1,5 @@
+import { requireTransactionConnectionBindings } from '../../tenant-access/resources/connections/bindings.js';
+import { connectionScope } from '../../tenant-access/resources/connections/scope.js';
 import { readTransactionFolderScope } from '../../tenant-access/resources/facts.js';
 import { workflowScopeSql } from '../../tenant-access/resources/query-scope.js';
 import type { CodeDiagnostics } from '@pertexo/node-sdk';
@@ -379,7 +381,7 @@ export async function acceptPreviewRun(
 ): Promise<AcceptedPreviewRun> {
   const parsed = acceptPreviewRunInputSchema.parse(input);
   await assertPreviewActor(transaction, parsed.actorUserId);
-  await assertPreviewWorkflow(
+  const resources = await assertPreviewWorkflow(
     transaction,
     parsed.actorUserId,
     parsed.workflowId,
@@ -429,6 +431,20 @@ export async function acceptPreviewRun(
         };
 
   if (sample === undefined) {
+    await requireTransactionConnectionBindings(
+      transaction,
+      connectionScope(
+        { workspaceId: transaction.workspaceId, actorId: parsed.actorUserId },
+        resources.role,
+        'connection:use',
+      ),
+      Object.entries(parsed.executableNode.connectionRefs ?? {}).map(
+        ([slot, id]) => ({
+          id,
+          path: `$.nodes.${parsed.nodeId}.connectionRefs.${slot}`,
+        }),
+      ),
+    );
     await lockActorArtifactReferences(
       transaction,
       parsed.actorUserId,
@@ -621,12 +637,12 @@ export async function acceptPreviewRun(
   });
 }
 
-export async function previewWorkflowVisible(
+async function previewWorkflowScope(
   transaction: WorkspaceTransaction,
   actorId: string,
   workflowId: string,
   capability: 'workflow:read' | 'workflow:update',
-): Promise<boolean> {
+) {
   const scope = await readTransactionFolderScope(transaction, {
     workspaceId: transaction.workspaceId,
     actorId,
@@ -635,7 +651,23 @@ export async function previewWorkflowVisible(
     .execute(sql`select 1 from app.workflows workflow
     where workflow.workspace_id=${transaction.workspaceId} and workflow.id=${workflowId}
       and ${workflowScopeSql(scope, sql`workflow.id`, capability)}`);
-  return visible.rows.length === 1;
+  return visible.rows.length === 1 ? scope : undefined;
+}
+
+export async function previewWorkflowVisible(
+  transaction: WorkspaceTransaction,
+  actorId: string,
+  workflowId: string,
+  capability: 'workflow:read' | 'workflow:update',
+): Promise<boolean> {
+  return (
+    (await previewWorkflowScope(
+      transaction,
+      actorId,
+      workflowId,
+      capability,
+    )) !== undefined
+  );
 }
 
 async function assertPreviewWorkflow(
@@ -643,14 +675,13 @@ async function assertPreviewWorkflow(
   actorId: string,
   workflowId: string,
   capability: 'workflow:read' | 'workflow:update',
-): Promise<void> {
-  if (
-    !(await previewWorkflowVisible(
-      transaction,
-      actorId,
-      workflowId,
-      capability,
-    ))
-  )
-    throw new PreviewAdmissionDeniedError('draft');
+) {
+  const resources = await previewWorkflowScope(
+    transaction,
+    actorId,
+    workflowId,
+    capability,
+  );
+  if (resources === undefined) throw new PreviewAdmissionDeniedError('draft');
+  return resources;
 }

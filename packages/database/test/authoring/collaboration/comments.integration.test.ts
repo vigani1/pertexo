@@ -441,4 +441,5 @@ it('purges discussion rows explicitly and leaves the other workspace independent
       workspaceId,
     ),
   ).toEqual([{ count: 0 }]);
-});
+  // Page-size-one cleanup deliberately spans many short transactions.
+}, 30_000);

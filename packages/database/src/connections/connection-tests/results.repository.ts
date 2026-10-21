@@ -104,7 +104,12 @@ export function createConnectionTestPersistence(
         input.workspaceId,
         actorId,
         async (client, workspaceId) => {
-          await requireConnectionUser(client, workspaceId, actorId);
+          await requireConnectionUser(
+            client,
+            workspaceId,
+            actorId,
+            connectionId,
+          );
           const inserted = await client.query(
             `insert into app.idempotency_records
                (id, workspace_id, operation, scope, key_hash, request_hash,
@@ -220,7 +225,12 @@ export function createConnectionTestPersistence(
         input.workspaceId,
         actorId,
         async (client, workspaceId) => {
-          await requireConnectionUser(client, workspaceId, actorId);
+          await requireConnectionUser(
+            client,
+            workspaceId,
+            actorId,
+            connectionId,
+          );
           const claim = await client.query(
             `select 1 from app.idempotency_records
              where workspace_id = $1 and operation = 'connection.test'

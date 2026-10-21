@@ -2,6 +2,8 @@ export const CONNECTION_OPERATION = Object.freeze({
   list: 'connection.list',
   read: 'connection.read',
   usage: 'connection.usage.read',
+  sharingRead: 'connection.sharing.read',
+  sharingUpdate: 'connection.sharing.update',
   create: 'connection.create',
   rotate: 'connection.secret.rotate',
   revoke: 'connection.revoke',

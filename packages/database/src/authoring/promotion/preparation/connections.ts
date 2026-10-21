@@ -1,3 +1,8 @@
+import {
+  connectionScopeSql,
+  type ConnectionScope,
+} from '../../../tenant-access/resources/connections/scope.js';
+import { bindResourcePredicate } from '../../../tenant-access/resources/query-scope.js';
 import type { PoolClient } from 'pg';
 import {
   inspectWorkflowPortableManifest,
@@ -14,6 +19,7 @@ import { promotionNodes } from './graph.js';
 export async function rebindPromotionConnections(
   client: PoolClient,
   workspaceId: string,
+  scope: ConnectionScope,
   source: PromotionSource,
   sources: PromotionSourceSet,
   catalogs: AuthoringCatalogs,
@@ -34,6 +40,11 @@ export async function rebindPromotionConnections(
       sources.connections.map((connection) => connection.normalized_name),
     ),
   ];
+  const parameters: unknown[] = [workspaceId, names];
+  const permitted = bindResourcePredicate(
+    connectionScopeSql(scope),
+    parameters,
+  );
   const targets =
     names.length === 0
       ? []
@@ -46,8 +57,8 @@ export async function rebindPromotionConnections(
             auth_type: string;
             status: string;
           }>(
-            'select id,name,lower(name) normalized_name,provider_key,auth_type,status from app.connections where workspace_id=$1 and lower(name)=any($2::text[]) order by id for share',
-            [workspaceId, names],
+            `select id,name,lower(name) normalized_name,provider_key,auth_type,status from app.connections connection where workspace_id=$1 and lower(name)=any($2::text[]) and ${permitted} order by id for share`,
+            parameters,
           )
         ).rows;
   const bindings: PortableConnectionBinding[] = [];

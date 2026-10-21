@@ -111,6 +111,7 @@ it('upgrades populated workflow threads and private read revisions without chang
       '0048_callback_waits.sql',
       '0049_live_callback_keys.sql',
       '0050_folder_access.sql',
+      '0051_connection_sharing.sql',
     ]);
     read = createWorkspaceInboxDatabase(
       parseDatabaseConfig({

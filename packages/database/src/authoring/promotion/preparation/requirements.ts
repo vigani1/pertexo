@@ -1,3 +1,8 @@
+import {
+  connectionScopeSql,
+  type ConnectionScope,
+} from '../../../tenant-access/resources/connections/scope.js';
+import { bindResourcePredicate } from '../../../tenant-access/resources/query-scope.js';
 import type { PoolClient } from 'pg';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import {
@@ -14,6 +19,7 @@ export async function inspectPromotionRequirements(
   workspaceId: string,
   workflowId: string,
   graph: WorkflowGraph,
+  scope: ConnectionScope,
 ): Promise<WorkflowPromotionRequirement[]> {
   const report: WorkflowPromotionRequirement[] = [];
   const variableNames = await lockWorkspaceVariableNames(client, workspaceId);
@@ -57,10 +63,15 @@ export async function inspectPromotionRequirements(
     ),
   ].sort();
   if (ids.length > 0) {
+    const parameters: unknown[] = [workspaceId, ids];
+    const visible = bindResourcePredicate(
+      connectionScopeSql(scope),
+      parameters,
+    );
     const rows = (
-      await client.query<{ id: string; name: string; status: string }>(
-        'select id,name,status from app.connections where workspace_id=$1 and id=any($2::uuid[]) order by id for share',
-        [workspaceId, ids],
+      await client.query<{ id: string; name: string | null; status: string }>(
+        `select id,case when ${visible} then name else null end name,status from app.connections connection where workspace_id=$1 and id=any($2::uuid[]) order by id for share`,
+        parameters,
       )
     ).rows;
     for (const id of ids) {
@@ -69,10 +80,12 @@ export async function inspectPromotionRequirements(
         workflowId,
         kind: 'connection',
         status: connection?.status === 'active' ? 'ready' : 'missing',
-        name: connection?.name ?? 'Unavailable connection',
+        name: connection?.name ?? 'Published child connection',
         detail:
           connection?.status === 'active'
-            ? 'Uses this target connection.'
+            ? connection.name === null
+              ? 'Uses the published child’s accepted connection binding.'
+              : 'Uses this target connection.'
             : 'A retained Call dependency needs an active target connection.',
       });
     }

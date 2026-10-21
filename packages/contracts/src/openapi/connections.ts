@@ -11,6 +11,9 @@ import {
   responseReference,
 } from './primitives.js';
 import {
+  connectionSharingRequestSchema,
+  connectionSharingResponseSchema,
+  connectionSharingCommandResponseSchema,
   connectionCursorSchema,
   connectionCreateRequestSchema,
   connectionIdentifierSchema,
@@ -38,6 +41,12 @@ import type { z } from 'zod';
 
 const schemas = Object.freeze({
   ApiProblem: jsonSchema(apiProblemSchema, 'output'),
+  ConnectionSharingRequest: jsonSchema(connectionSharingRequestSchema, 'input'),
+  ConnectionSharing: jsonSchema(connectionSharingResponseSchema, 'output'),
+  ConnectionSharingCommand: jsonSchema(
+    connectionSharingCommandResponseSchema,
+    'output',
+  ),
   ConnectionCreateRequest: jsonSchema(connectionCreateRequestSchema, 'input'),
   ConnectionListResponse: jsonSchema(connectionListResponseSchema, 'output'),
   ConnectionResponse: jsonSchema(connectionResponseSchema, 'output'),
@@ -164,6 +173,50 @@ export const connectionsOpenApiDocument = Object.freeze({
           '403': responseReference('Forbidden'),
           '409': responseReference('Conflict'),
           '503': responseReference('ServiceUnavailable'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+    },
+    '/v1/workspaces/{workspaceId}/connections/{connectionId}/sharing': {
+      get: {
+        operationId: 'getConnectionSharing',
+        description:
+          'Current sharing metadata for workspace owners and admins. No secret material.',
+        security: [{ cookieSession: [] }],
+        parameters: [workspaceParameter, connectionParameter],
+        responses: {
+          '200': jsonResponse('Connection sharing', 'ConnectionSharing'),
+          '400': responseReference('BadRequest'),
+          '401': responseReference('Unauthenticated'),
+          '403': responseReference('Forbidden'),
+          '404': responseReference('NotFound'),
+          '429': responseReference('RateLimited'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+      post: {
+        operationId: 'replaceConnectionSharing',
+        description:
+          'Replace named Use grants within current workspace capabilities; check the sharing revision and append a metadata audit fact.',
+        security: [{ cookieSession: [] }],
+        parameters: [
+          workspaceParameter,
+          connectionParameter,
+          csrfParameter,
+          idempotencyParameter,
+        ],
+        requestBody: jsonRequest('ConnectionSharingRequest'),
+        responses: {
+          '200': jsonResponse(
+            'Connection sharing changed',
+            'ConnectionSharingCommand',
+          ),
+          '400': responseReference('BadRequest'),
+          '401': responseReference('Unauthenticated'),
+          '403': responseReference('Forbidden'),
+          '404': responseReference('NotFound'),
+          '409': responseReference('Conflict'),
+          '429': responseReference('RateLimited'),
           '500': responseReference('Unexpected'),
         },
       },

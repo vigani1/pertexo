@@ -1,3 +1,7 @@
+import {
+  connectionScope,
+  connectionScopeSql,
+} from '../tenant-access/resources/connections/scope.js';
 import { sql } from 'drizzle-orm';
 import { readFolderScope } from '../tenant-access/resources/facts.js';
 import {
@@ -117,9 +121,20 @@ export function createConnectionUsagePersistence(
             { workspaceId, actorId },
             role,
           );
+          const connectionParameters: unknown[] = [workspaceId, connectionId];
+          const permitted = bindResourcePredicate(
+            connectionScopeSql(
+              connectionScope(
+                { workspaceId, actorId },
+                role,
+                'connection:read',
+              ),
+            ),
+            connectionParameters,
+          );
           const connection = await client.query(
-            'select id from app.connections where workspace_id = $1 and id = $2',
-            [workspaceId, connectionId],
+            `select id from app.connections connection where workspace_id=$1 and id=$2 and ${permitted}`,
+            connectionParameters,
           );
           if (connection.rowCount !== 1)
             throw new ConnectionNotFoundError('Connection is not visible');

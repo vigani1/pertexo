@@ -1,3 +1,4 @@
+import { requireConnectionBindings } from '../../tenant-access/resources/connections/bindings.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';
@@ -56,6 +57,7 @@ export async function requestPublicationReview(
     input,
     input.representationTag,
   );
+  await requireConnectionBindings(client, input, draft.graphJson);
   await client.query(
     `update app.workflow_publication_requests current set status='stale' where current.workspace_id=$1 and current.workflow_id=$2 and current.status='pending'
      and (current.representation_tag<>$3 or current.id in (select review.id ${REVIEW_SOURCE_SQL} where review.workspace_id=$1 and review.workflow_id=$2 and (${REVIEW_STATE_SQL})<>'pending'))`,

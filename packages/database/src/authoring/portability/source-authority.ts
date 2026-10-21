@@ -1,3 +1,8 @@
+import {
+  readConnectionScope,
+  connectionScopeSql,
+} from '../../tenant-access/resources/connections/scope.js';
+import { bindResourcePredicate } from '../../tenant-access/resources/query-scope.js';
 import { authorizeWorkflowResource } from '../../tenant-access/resources/authority.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
@@ -73,6 +78,7 @@ export function reviewedSourceGraph(
 export async function inspectPortableConnections(
   client: PoolClient,
   workspaceId: string,
+  actorId: string,
   manifest: WorkflowPortableManifest,
   bindings: readonly PortableConnectionBinding[],
 ) {
@@ -82,14 +88,25 @@ export async function inspectPortableConnections(
     ),
   ].sort();
   if (ids.length === 0) return [];
+  const parameters: unknown[] = [workspaceId, ids];
+  const permitted = bindResourcePredicate(
+    connectionScopeSql(
+      await readConnectionScope(
+        client,
+        { workspaceId, actorId },
+        'connection:use',
+      ),
+    ),
+    parameters,
+  );
   const result = await client.query<{
     id: string;
     provider_key: string;
     auth_type: string;
     status: string;
   }>(
-    'select id,provider_key,auth_type,status from app.connections where workspace_id=$1 and id=any($2::uuid[]) order by id for share',
-    [workspaceId, ids],
+    `select id,provider_key,auth_type,status from app.connections connection where workspace_id=$1 and id=any($2::uuid[]) and ${permitted} order by id for share`,
+    parameters,
   );
   const rows = new Map(result.rows.map((row) => [row.id, row]));
   const slots = new Map(

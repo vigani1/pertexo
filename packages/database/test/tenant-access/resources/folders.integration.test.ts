@@ -1,3 +1,4 @@
+import { connectionScope } from '../../../src/tenant-access/resources/connections/scope.js';
 import { inspectPromotionCallDependencies } from '../../../src/authoring/promotion/preparation/calls.js';
 import { PromotionGraphBudget } from '../../../src/authoring/promotion/preparation/graph.js';
 import { readFolderScope } from '../../../src/tenant-access/resources/facts.js';
@@ -667,12 +668,21 @@ it('keeps delegated private child requirements out of promotion reviews', async 
       { workspaceId, actorId: reader },
       async (client) => {
         const requirements: WorkflowPromotionRequirement[] = [];
+        const resources = await readFolderScope(client, {
+          workspaceId,
+          actorId: reader,
+        });
         await inspectPromotionCallDependencies(
           client,
           workspaceId,
           source,
           publicId,
-          await readFolderScope(client, { workspaceId, actorId: reader }),
+          resources,
+          connectionScope(
+            { workspaceId, actorId: reader },
+            resources.role,
+            'connection:use',
+          ),
           graph,
           new PromotionGraphBudget(),
           (item) => requirements.push(item),

@@ -217,7 +217,7 @@ async function lockAndCompilePublication(
   if (tableIssues.length > 0) throw new InvalidWorkflowGraphError(tableIssues);
   const connectionIssues = await connectionReferenceIssues(
     client,
-    input.workspaceId,
+    input,
     graph,
   );
   if (connectionIssues.length > 0)

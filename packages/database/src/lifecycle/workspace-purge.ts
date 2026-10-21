@@ -76,6 +76,7 @@ export const PURGE_PRESERVED_TABLES = Object.freeze([
  */
 export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
   deleteRows('workflow_folder_grants'),
+  deleteRows('connection_shares'),
   {
     name: 'personal_notice_mail',
     statement: `with page as (select delivery.id from app.system_mail_deliveries delivery join app.notice_mail_batches batch on batch.id=delivery.id where batch.workspace_id=$1 limit $2) delete from app.system_mail_deliveries delivery using page where delivery.id=page.id`,
