@@ -1,4 +1,4 @@
-import { expect, test } from '../support/fixtures';
+import { expect, test } from '../../support/fixtures';
 import {
   addCsrfCookie,
   definition,
@@ -8,7 +8,7 @@ import {
   remoteDraft,
   workflowSummary,
   workspaceId,
-} from './support';
+} from '../support';
 
 const childId = '11111111-1111-4111-8111-111111111111';
 const firstId = '22222222-2222-4222-8222-222222222222';

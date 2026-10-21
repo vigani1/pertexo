@@ -104,3 +104,40 @@ or MIME safety guarantee, and downloads remain attachments. Existing ownership,
 purge rules remain. No new role, service, storage, table, graph/checkpoint format,
 HTTP generation or CI job is needed. Email attachments, webhook file ingestion,
 Excel/other formats, larger streaming bodies and a file browser stay deferred.
+
+## Accepted amendment — 2026-10-21: larger files and explicit pages
+
+The owner approved [F45](../feature-plans/45-bigger-files-and-paged-data.md)
+as written on 2026-10-21. Permit files and total encoded raw/multipart HTTP
+bodies up to 10 MiB, further limited by configured object storage. Inline mapped
+JSON remains 1 MiB; retained values and checkpoints remain 256 KiB. Ordinary
+run capacity, worker memory and concurrency do not increase.
+
+Verify every consumed file through EOF against its workspace authorization,
+retention and full fingerprint before parsing it or dispatching external bytes.
+Use private disk scratch, capped at 20 MiB per attempt and 1 GiB per worker,
+with filesystem headroom. Single-server uses a dedicated Docker volume; ECS
+uses task ephemeral storage. Scratch is neither a durable store nor a backup.
+Startup must remove owned abandoned spools before consumers start. Failed
+cleanup keeps its reservation charged and refuses fresh spools until a clean
+startup, including after tiny failed files. Existing deadlines and a 60-second
+no-progress timeout bound I/O.
+
+Large structured data uses explicit Read file **Output pages** and HTTP
+pagination **Save items as pages** modes. The result is ordinary JSON containing
+ordered existing artifact references, an item count and a page count. Page files
+are UTF-8 JSON arrays, at most 64 KiB, 1,000 items, depth 48 and 4,000 members;
+the aggregate stops at 10 MiB, 100,000 records or 256 pages. A record must fit
+one page. There is no lazy remote array, new stored-value kind or checkpoint
+format. Users explicitly loop over pages and read each page. Create file can
+combine pages incrementally into JSON or CSV; CSV requires chosen columns.
+
+Retain the pinned strict CSV parser. Select `@streamparser/json` 0.0.26 only
+with pre-assembly token, depth, member and encoded-record guards, bounded
+feeding and discarded emitted records. Partial-token callbacks alone are not
+security limits. Qualification must refuse hostile strings, numbers, nesting,
+wide records and malformed final bytes under a bounded heap. If that cannot be
+proven, stop without a fallback parser. Keep all earlier file isolation,
+retention, redaction, unknown-outcome and recovery restrictions. Resource and
+end-to-end qualification gates remain required before releasing the larger
+ceiling; this amendment is not a claim those delivery slices have shipped.

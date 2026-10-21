@@ -1,5 +1,5 @@
-import { expect, test } from '../support/fixtures';
-import { platformBrowserNodeDefinitionCatalog } from '../../../../packages/node-catalog/dist/index.js';
+import { expect, test } from '../../support/fixtures';
+import { platformBrowserNodeDefinitionCatalog } from '../../../../../packages/node-catalog/dist/index.js';
 import {
   nodeDefinitionListResponseSchema,
   stepSampleWriteRequestSchema,
@@ -15,7 +15,7 @@ import {
   remoteDraft,
   workflowId,
   workspaceId,
-} from './support';
+} from '../support';
 const definitions = nodeDefinitionListResponseSchema.parse({
   items: platformBrowserNodeDefinitionCatalog().definitions,
 }).items;

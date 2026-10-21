@@ -7,7 +7,7 @@ import {
   stepSampleDeleteRequestSchema,
   type StepSampleMetadata,
 } from '@pertexo/contracts';
-import { expect, test } from '../support/fixtures';
+import { expect, test } from '../../support/fixtures';
 import {
   addCsrfCookie,
   editorNode,
@@ -16,7 +16,7 @@ import {
   remoteDraft,
   workflowId,
   workspaceId,
-} from './support';
+} from '../support';
 const sampleId = '11111111-1111-4111-8111-111111111111';
 const secondId = '22222222-2222-4222-8222-222222222222';
 const previewId = '33333333-3333-4333-8333-333333333333';

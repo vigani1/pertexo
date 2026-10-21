@@ -1,4 +1,4 @@
-import { defineUtility } from './definition.js';
+import { defineUtility } from './registration.js';
 import {
   textConfigSchema,
   textInputSchema,

@@ -1,11 +1,11 @@
-import { expect, test } from '../support/fixtures';
-import { platformBrowserNodeDefinitionCatalog } from '../../../../packages/node-catalog/dist/index.js';
+import { expect, test } from '../../support/fixtures';
+import { platformBrowserNodeDefinitionCatalog } from '../../../../../packages/node-catalog/dist/index.js';
 import {
   nodeDefinitionListResponseSchema,
   workflowDraftResponseSchema,
   workflowGraphSchema,
 } from '@pertexo/contracts';
-import { authorCollectionGraph } from '../../e2e-live/support/authoring/transforms';
+import { authorCollectionGraph } from '../../../e2e-live/support/authoring/transforms';
 import {
   addCsrfCookie,
   editorUrl,
@@ -16,7 +16,7 @@ import {
   workflowId,
   workspaceId,
   type RemoteDraft,
-} from './support';
+} from '../support';
 
 const definitions = nodeDefinitionListResponseSchema.parse({
   items: platformBrowserNodeDefinitionCatalog().definitions,

@@ -1,5 +1,5 @@
-import { expect, test, type Page } from '../support/fixtures';
-import { platformBrowserNodeDefinitionCatalog } from '../../../../packages/node-catalog/dist/index.js';
+import { expect, test, type Page } from '../../support/fixtures';
+import { platformBrowserNodeDefinitionCatalog } from '../../../../../packages/node-catalog/dist/index.js';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import { nodeDefinitionListResponseSchema } from '@pertexo/contracts';
 import {
@@ -7,7 +7,7 @@ import {
   editorUrl,
   installEditorRoutes,
   remoteDraft,
-} from './support';
+} from '../support';
 const definitions = nodeDefinitionListResponseSchema.parse({
   items: platformBrowserNodeDefinitionCatalog().definitions,
 }).items;

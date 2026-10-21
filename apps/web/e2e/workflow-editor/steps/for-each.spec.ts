@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '../support/fixtures';
+import { expect, test, type Page } from '../../support/fixtures';
 import {
   addCsrfCookie,
   definition,
@@ -8,7 +8,7 @@ import {
   remoteDraft,
   workspace,
   type RemoteDraft,
-} from './support';
+} from '../support';
 
 const forEachDefinition = {
   ...definition,
