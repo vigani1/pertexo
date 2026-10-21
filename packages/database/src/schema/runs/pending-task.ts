@@ -125,8 +125,10 @@ export const pendingRunTasks = appSchema.table(
       foreignColumns: [users.id],
     }).onDelete('restrict'),
     index('pending_run_tasks_callback_inventory_idx')
-      .on(table.id)
-      .where(sql`kind='callback'`),
+      .on(sql`${table.callbackKeyVersion} collate "C"`, table.id)
+      .where(
+        sql`kind='callback' and consumed_at is null and status in ('prepared','pending','submitted')`,
+      ),
     index('pending_run_tasks_unconsumed_run_idx')
       .on(table.workspaceId, table.runId)
       .where(sql`consumed_at IS NULL`),

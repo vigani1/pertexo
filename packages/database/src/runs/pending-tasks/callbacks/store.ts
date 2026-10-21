@@ -75,7 +75,7 @@ export function createCallbackStore(
           callback_token_hash: string;
           callback_key_version: string;
         }> = await lease.pool.query(
-          'select * from app.pending_callback_key_inventory($1::uuid)',
+          'select * from app.pending_callback_key_inventory($1::text)',
           [after],
         );
         if (page.rows.length === 0) return;
@@ -85,7 +85,7 @@ export function createCallbackStore(
             keyVersion: row.callback_key_version,
             tokenHash: row.callback_token_hash,
           };
-        after = page.rows.at(-1)?.id ?? null;
+        after = page.rows.at(-1)?.callback_key_version ?? null;
       } while (after !== null);
     },
     respond: (input) =>

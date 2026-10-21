@@ -92,7 +92,10 @@ it('upgrades populated human tasks without changing their decisions or context',
         'select * from app.pending_run_tasks order by id',
       )
     ).rows;
-    expect(await migrateDatabase(config)).toEqual(['0048_callback_waits.sql']);
+    expect(await migrateDatabase(config)).toEqual([
+      '0048_callback_waits.sql',
+      '0049_live_callback_keys.sql',
+    ]);
     const after = (
       await owner.query<Record<string, unknown>>(
         'select * from app.pending_run_tasks order by id',

@@ -106,6 +106,7 @@ it('upgrades a populated standalone test without changing its source identity or
       '0046_signing_key.sql',
       '0047_run_values.sql',
       '0048_callback_waits.sql',
+      '0049_live_callback_keys.sql',
     ]);
     expect(
       (
