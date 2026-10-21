@@ -446,3 +446,9 @@ export {
   type EncodedFilePageRecord,
 } from './artifacts/pages/encode-record.js';
 export { writeFilePages } from './artifacts/pages/write.js';
+
+export type {
+  NodeCallbackRuntime,
+  NodeCallbackTarget,
+  NodeCallbackBindings,
+} from './callbacks/contract.js';

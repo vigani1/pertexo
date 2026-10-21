@@ -423,7 +423,7 @@ describe('secure HTTP client', () => {
     { maxResponseBytes: 10_485_761 },
     { sensitiveValues: [42 as never] },
     { sensitiveValues: [''] },
-    { sensitiveValues: Array.from({ length: 33 }, () => 'secret') },
+    { sensitiveValues: Array.from({ length: 65 }, () => 'secret') },
     {
       headers: Object.fromEntries(
         Array.from({ length: 65 }, (_, index) => [`x-${String(index)}`, 'x']),

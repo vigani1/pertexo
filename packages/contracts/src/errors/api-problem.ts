@@ -1,3 +1,4 @@
+import { CALLBACK_PROBLEM_CODES, callbackProblems } from './callbacks.js';
 import { collaborationProblems } from './workflows/collaboration.js';
 import { promotionProblems } from './workflows/promotion.js';
 import { publicationReviewProblems } from './workflows/publication-review.js';
@@ -23,6 +24,7 @@ import {
 import { workflowConcurrencyProblems } from './workflows/concurrency.js';
 
 export const API_PROBLEM_CODES = [
+  ...CALLBACK_PROBLEM_CODES,
   'api_token.unavailable',
   'api_token.limit',
   'auth.unauthenticated',
@@ -173,6 +175,7 @@ export type ApiProblemCode = z.output<typeof apiProblemCodeSchema>;
 export type ApiProblemIssue = z.output<typeof apiProblemIssueSchema>;
 export type ApiProblem = z.output<typeof apiProblemSchema>;
 const apiProblemDetails = {
+  ...callbackProblems,
   'api_token.unavailable': {
     status: 503,
     title: 'Automation tokens unavailable',

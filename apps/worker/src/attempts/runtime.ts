@@ -1,3 +1,4 @@
+import type { CallbackKeyConfig } from '@pertexo/integrations/server';
 import type { WorkerCodeRunnerConfig } from './code/client.js';
 import {
   createNodeAttemptRunStore,
@@ -94,6 +95,7 @@ type PreviewAttemptRuntimeDependency = Readonly<{
 }>;
 
 export type NodeAttemptRuntimeOptions = Readonly<{
+  callbacks?: CallbackKeyConfig;
   codeRunner?: WorkerCodeRunnerConfig;
   artifactStore?: ArtifactStoreConfig;
   artifactScratchDirectory?: string;
@@ -265,6 +267,9 @@ async function createProductionNodeAttemptRuntime(
     )(
       {
         database: options.database,
+        ...(options.callbacks === undefined
+          ? {}
+          : { callbacks: options.callbacks }),
         ...(options.artifactScratchDirectory === undefined
           ? {}
           : { artifactScratchDirectory: options.artifactScratchDirectory }),

@@ -1,12 +1,10 @@
+import { resolveAttemptCallbacks } from './attempt/callbacks.js';
+import type { CallbackBindings } from '@pertexo/workflow-model';
 import type { WorkflowTestPolicy } from './testing/policy.js';
 import {
   testStepDisposition,
   applyWorkflowTestPolicy,
 } from './testing/policy.js';
-import {
-  isHumanTaskDefinition,
-  isWorkflowCallDefinition,
-} from '@pertexo/workflow-model';
 import {
   isWorkflowTriggerDefinition,
   workspaceVariableValuesSchema,
@@ -227,15 +225,13 @@ export async function advanceWorkflow(
     controlCanceled,
     controlDeadline,
   });
-  // Test human/Call outputs are final samples, never declarations of work.
+  // Only executed steps can declare work; pinned outputs remain final samples.
   const declarationNodes =
     test === undefined
       ? nodesById
       : new Map(
           [...nodesById].filter(
-            ([, node]) =>
-              !isHumanTaskDefinition(node.definition) &&
-              !isWorkflowCallDefinition(node.definition),
+            ([, node]) => testStepDisposition(node, test).kind === 'execute',
           ),
         );
   const calls = callDeclarationObservations(
@@ -401,6 +397,7 @@ async function resolveMappedNodeInput(
   structuredInputs?: Readonly<Record<string, JsonValue>>,
   sourceFailure?: WorkflowNodeFailureValue,
   variables?: WorkspaceVariableValues,
+  callbacks?: CallbackBindings,
 ): Promise<JsonValue> {
   if (isWorkflowTriggerDefinition(node.definition)) return runInput;
   const mapped = Object.create(null) as Record<string, JsonValue>;
@@ -432,6 +429,7 @@ async function resolveMappedNodeInput(
         source,
         {
           runInput,
+          ...(callbacks === undefined ? {} : { execution: { callbacks } }),
           nodeOutputs: completedOutputs,
           ...(variables === undefined ? {} : { variables }),
           ...(sourceFailure === undefined
@@ -538,6 +536,7 @@ export async function executeNodeAttempt(
     structuredInputs,
     sourceFailure,
   } = prepareNodeAttemptInput(input);
+  const callbacks = await resolveAttemptCallbacks(input, node);
   const resolvedInput = await resolveMappedNodeInput(
     isCoreMergeDefinition(node.definition)
       ? { ...node, inputMappings: {} }
@@ -550,6 +549,7 @@ export async function executeNodeAttempt(
     structuredInputs,
     sourceFailure,
     variables,
+    callbacks,
   );
   let executionInput = resolvedInput;
   if (isCoreMergeDefinition(node.definition)) {

@@ -258,6 +258,10 @@ export function mergeCoordinatorObservations(
               const source = scoped.find(
                 ({ nodeId }) => nodeId === mergeSourceNodeId,
               );
+              // A selected descendant may be admitted on the next transition.
+              // Its earlier ancestors cannot settle an arrival without its result.
+              if (source === undefined && mergeSourceNodeId !== parallelNodeId)
+                return [];
               const statuses = new Set(scoped.map(({ status }) => status));
               const disposition =
                 statuses.has('failed') ||

@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   check,
+  char,
   foreignKey,
   index,
   json,
@@ -21,7 +22,13 @@ export const pendingRunTasks = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     runId: uuid('run_id').notNull(),
     workflowVersionId: uuid('workflow_version_id').notNull(),
-    nodeRunId: uuid('node_run_id').notNull(),
+    nodeRunId: uuid('node_run_id'),
+    callbackNodeId: varchar('callback_node_id', { length: 64 }),
+    callbackScope: jsonb('callback_scope'),
+    callbackScopeHash: char('callback_scope_hash', { length: 64 }),
+    callbackTokenHash: char('callback_token_hash', { length: 64 }),
+    callbackKeyVersion: varchar('callback_key_version', { length: 64 }),
+    openedAt: timestamp('opened_at', { withTimezone: true, mode: 'date' }),
     invocationKey: varchar('invocation_key', { length: 256 }).notNull(),
     kind: varchar({ length: 32 }).notNull(),
     config: jsonb().notNull(),
@@ -37,7 +44,7 @@ export const pendingRunTasks = appSchema.table(
     expiresAt: timestamp('expires_at', {
       withTimezone: true,
       mode: 'date',
-    }).notNull(),
+    }),
     completedAt: timestamp('completed_at', {
       withTimezone: true,
       mode: 'date',
@@ -56,11 +63,11 @@ export const pendingRunTasks = appSchema.table(
     ),
     check(
       'pending_run_tasks_kind_valid',
-      sql`kind IN ('approval', 'input_request')`,
+      sql`kind IN ('approval', 'input_request','callback')`,
     ),
     check(
       'pending_run_tasks_result_kind_valid',
-      sql`(status NOT IN ('approved','rejected','submitted') OR (kind='approval' AND status IN ('approved','rejected')) OR (kind='input_request' AND status='submitted')) IS TRUE`,
+      sql`(status NOT IN ('approved','rejected','submitted') OR (kind='approval' AND status IN ('approved','rejected')) OR (kind IN ('input_request','callback') AND status='submitted')) IS TRUE`,
     ),
     check(
       'pending_run_tasks_config_bounded',
@@ -76,13 +83,27 @@ export const pendingRunTasks = appSchema.table(
     ),
     check(
       'pending_run_tasks_expiry_valid',
-      sql`expires_at > created_at AND expires_at <= created_at + interval '30 days'`,
+      sql`((kind<>'callback' AND expires_at > created_at AND expires_at <= created_at + interval '30 days') OR (kind='callback' AND ((opened_at IS NULL AND expires_at IS NULL) OR (opened_at IS NOT NULL AND expires_at>opened_at AND expires_at<=opened_at+interval '30 days')))) IS TRUE`,
     ),
     check(
       'pending_run_tasks_state_valid',
-      sql`((status = 'pending' AND output_ref IS NULL AND decided_by IS NULL AND completed_at IS NULL AND consumed_at IS NULL)
-    OR (status IN ('approved','rejected','submitted') AND output_ref IS NOT NULL AND decided_by IS NOT NULL AND completed_at IS NOT NULL)
+      sql`((kind='callback' AND status='prepared' AND node_run_id IS NULL AND opened_at IS NULL AND output_ref IS NULL AND decided_by IS NULL AND completed_at IS NULL AND consumed_at IS NULL)
+    OR (status = 'pending' AND output_ref IS NULL AND decided_by IS NULL AND completed_at IS NULL AND consumed_at IS NULL)
+    OR (status IN ('approved','rejected','submitted') AND output_ref IS NOT NULL AND ((kind='callback' AND decided_by IS NULL) OR (kind<>'callback' AND decided_by IS NOT NULL)) AND completed_at IS NOT NULL)
     OR (status IN ('expired','refused','canceled') AND output_ref IS NULL AND decided_by IS NULL AND completed_at IS NOT NULL)) IS TRUE`,
+    ),
+    check(
+      'pending_run_tasks_binding_valid',
+      sql`((kind<>'callback' AND node_run_id IS NOT NULL AND callback_node_id IS NULL AND callback_scope IS NULL AND callback_scope_hash IS NULL AND callback_token_hash IS NULL AND callback_key_version IS NULL AND opened_at IS NULL) OR (kind='callback' AND (status<>'pending' OR node_run_id IS NOT NULL) AND callback_node_id IS NOT NULL AND jsonb_typeof(callback_scope)='array' AND octet_length(callback_scope::text)<=8192 AND callback_scope_hash ~ '^[0-9a-f]{64}$' AND callback_token_hash ~ '^[0-9a-f]{64}$' AND callback_key_version ~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$' AND ((node_run_id IS NULL AND opened_at IS NULL) OR (node_run_id IS NOT NULL AND opened_at IS NOT NULL)))) IS TRUE`,
+    ),
+    unique('pending_run_tasks_callback_token_unique').on(
+      table.callbackTokenHash,
+    ),
+    unique('pending_run_tasks_callback_scope_unique').on(
+      table.workspaceId,
+      table.runId,
+      table.callbackNodeId,
+      table.callbackScopeHash,
     ),
     foreignKey({
       name: 'pending_run_tasks_run_fk',
@@ -103,6 +124,9 @@ export const pendingRunTasks = appSchema.table(
       columns: [table.decidedBy],
       foreignColumns: [users.id],
     }).onDelete('restrict'),
+    index('pending_run_tasks_callback_inventory_idx')
+      .on(table.id)
+      .where(sql`kind='callback'`),
     index('pending_run_tasks_unconsumed_run_idx')
       .on(table.workspaceId, table.runId)
       .where(sql`consumed_at IS NULL`),

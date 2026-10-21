@@ -75,7 +75,7 @@ export async function synchronizeHumanWait(
       union select call.parent_run_id from app.workflow_calls call join ancestors on call.child_run_id=ancestors.id where call.workspace_id=$1 and call.status='accepted'
     ), resume(id) as (
       select task.run_id from app.pending_run_tasks task join descendants on descendants.id=task.run_id
-      where task.workspace_id=$1 and task.status<>'pending' and task.consumed_at is null
+      where task.workspace_id=$1 and task.status<>'pending' and task.node_run_id is not null and task.consumed_at is null
       union select node.workflow_run_id from app.node_runs node join descendants on descendants.id=node.workflow_run_id
       where node.workspace_id=$1 and node.status in ('ready','running')
     ), structural_joins as (

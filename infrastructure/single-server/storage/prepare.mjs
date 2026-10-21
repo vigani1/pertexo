@@ -174,9 +174,21 @@ const encryptionLines = optionalValues(
   Object.keys(encryptionEnvironment),
   encryptionEnvironment,
 );
+const callbackLines = optionalValues([
+  'CALLBACK_TOKEN_KEY',
+  'CALLBACK_TOKEN_KEY_VERSION',
+  'CALLBACK_TOKEN_PREVIOUS_KEYS',
+]);
 await output(
   'encryption.env',
-  encryptionLines + optionalValues(['NODE_ENV', 'DATABASE_MAINTENANCE_URL']),
+  encryptionLines +
+    callbackLines +
+    optionalValues([
+      'NODE_ENV',
+      'DATABASE_MAINTENANCE_URL',
+      'DATABASE_URL',
+      'PUBLIC_WEB_ORIGIN',
+    ]),
 );
 const previous = ['AUTH_MAIL_PREVIOUS_KEYS', 'INVITATION_TOKEN_PREVIOUS_KEYS'];
 const providers = ['GOOGLE', 'GITHUB', 'MICROSOFT', 'APPLE'].flatMap(
@@ -194,7 +206,9 @@ await output(
     'AUTH_FEDERATION_KEY',
     'AUTH_FEDERATION_KEY_VERSION',
     'AUTH_FEDERATION_PREVIOUS_KEYS',
-  ]) + encryptionLines,
+  ]) +
+    encryptionLines +
+    callbackLines,
 );
 const mailMode = workerConfig.systemMailDelivery.delivery?.mode ?? 'resend';
 if (environment.SYSTEM_MAIL_TRANSPORT === 'smtp' && mailMode !== 'smtp')
@@ -212,5 +226,6 @@ const mailNames =
 await output(
   'worker.env',
   optionalValues([...previous, 'SYSTEM_MAIL_TRANSPORT', ...mailNames]) +
-    encryptionLines,
+    encryptionLines +
+    callbackLines,
 );

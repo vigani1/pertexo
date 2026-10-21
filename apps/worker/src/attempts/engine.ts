@@ -1,5 +1,9 @@
 import { testStepDisposition } from '@pertexo/workflow-engine';
 import { WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
+import {
+  hasCallbackMapping,
+  inspectExpression,
+} from '@pertexo/workflow-model/server';
 import type { NodeAttemptLease } from '@pertexo/database/attempts';
 import type { WorkflowExecutionProjection } from '@pertexo/database/runs';
 import type {
@@ -171,12 +175,15 @@ function prepareNode(
   // A step that uses a connection sends its input to a provider, and what
   // it sends never enters execution records (ADR 023, 024): only other
   // steps record their input (ADR 052).
-  const recordsInput = Object.keys(node.connectionRefs).length === 0;
+  const recordsInput =
+    Object.keys(node.connectionRefs).length === 0 &&
+    !hasCallbackMapping(node.inputMappings, inspectExpression);
   return Object.freeze({
     ...(substituted ? { testSubstitution: true } : {}),
     ...(disposition?.kind === 'pin_required' ? { testPinRequired: true } : {}),
     ...(node.definition.key === 'core.wait' &&
     node.definition.version === 1 &&
+    node.config.mode !== 'callback' &&
     projection.test === undefined
       ? {
           suspensionDurationSeconds: Number(

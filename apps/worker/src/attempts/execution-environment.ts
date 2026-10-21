@@ -58,6 +58,7 @@ export function createNodeExecutionEnvironment(
     workerId: lease.workerId,
     fenceToken: lease.fenceToken,
   });
+  const callbacks = input.runtimeCapabilities?.callbacks?.(capabilityContext);
   const connections =
     input.runtimeCapabilities?.connections?.(capabilityContext);
   const artifacts = input.runtimeCapabilities?.artifacts?.(capabilityContext);
@@ -73,6 +74,7 @@ export function createNodeExecutionEnvironment(
   const runtime: NodeExecutionRuntime = Object.freeze({
     ...(input.deadlineAt === undefined ? {} : { deadlineAt: input.deadlineAt }),
     ...(code === undefined ? {} : { code }),
+    ...(callbacks === undefined ? {} : { callbacks }),
     ...(dataTables === undefined ? {} : { dataTables }),
     ...(runValues === undefined ? {} : { runValues }),
     observeCodeDiagnostics: (value: CodeDiagnostics) => {

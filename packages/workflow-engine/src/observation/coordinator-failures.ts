@@ -110,7 +110,7 @@ export function resolveAttemptFailures(
       reasonCode: failure.safeErrorCode,
       ...(decision.kind === 'failed' &&
       !node.disabled &&
-      isWorkflowFailureSource(node.definition) &&
+      isWorkflowFailureSource(node.definition, node.config) &&
       isRoutableExecutorFailure(failure)
         ? {
             failure: {

@@ -2,6 +2,7 @@ import type { SchedulerState } from '../transition/scheduling/readiness.js';
 import type { JsonValue } from '@pertexo/workflow-model';
 import {
   isHumanTaskDefinition,
+  isCallbackWaitNode,
   isWorkflowCallDefinition,
 } from '@pertexo/workflow-model';
 import type { WorkflowExecutableNode } from '../compilation/foundation.js';
@@ -12,7 +13,8 @@ export type WorkflowTestPins = Readonly<
 /** The coordinator needs pin identities, never their payloads. */
 export type WorkflowTestPolicy = Readonly<{ pinnedNodeIds: readonly string[] }>;
 export function testStepDisposition(
-  node: Pick<WorkflowExecutableNode, 'id' | 'definition'>,
+  node: Pick<WorkflowExecutableNode, 'id' | 'definition'> &
+    Partial<Pick<WorkflowExecutableNode, 'config'>>,
   test: WorkflowTestPolicy,
 ) {
   if (test.pinnedNodeIds.includes(node.id)) return { kind: 'pinned' as const };
@@ -21,7 +23,11 @@ export function testStepDisposition(
     isWorkflowCallDefinition(node.definition)
   )
     return { kind: 'pin_required' as const };
-  if (node.definition.key === 'core.wait' && node.definition.version === 1)
+  if (
+    node.definition.key === 'core.wait' &&
+    node.definition.version === 1 &&
+    !isCallbackWaitNode(node)
+  )
     return { kind: 'wait_skipped' as const };
   if (
     node.definition.key === 'core.respond_webhook' &&

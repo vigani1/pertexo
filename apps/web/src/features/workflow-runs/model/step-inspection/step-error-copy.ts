@@ -82,14 +82,14 @@ const knownCodes: Readonly<Record<string, StepErrorCopy>> = {
   },
 
   'pending_task.expired': {
-    sentence: 'The approval expired before an eligible person decided.',
+    sentence: 'This task expired before it received a response.',
     advice:
-      'Check who can decide and the expiry period. Replay the run to request a new approval; a failure route can handle expiry.',
+      'Check the task’s audience or callback sender, and its expiry period. Replay to open a new task; a failure route can handle expiry.',
   },
   'pending_task.capacity_exceeded': {
     sentence: 'This workspace has reached its pending-task allowance.',
     advice:
-      'Finish or cancel other pending tasks, then replay this run. The queued-run allowance also bounds pending human tasks.',
+      'Finish or cancel other pending tasks, then replay this run. The queued-run allowance also bounds pending tasks.',
   },
   'execution.file_input': {
     sentence: 'This step could not read the file.',

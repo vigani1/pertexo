@@ -3,6 +3,9 @@ import {
   type VariablesScope,
 } from '@/features/workspace-variables/picker.public';
 import {
+  callbackTargetNodes,
+  callbackMappingExpression,
+  callbackWaitConfigSchema,
   WORKFLOW_FAILURE_PORT,
   WORKFLOW_FAILURE_FIELDS,
 } from '@pertexo/workflow-model';
@@ -28,6 +31,7 @@ import {
 } from '../../../model/inspector/input-mappings';
 
 export type InsertedSource =
+  | Readonly<{ kind: 'expression'; expression: string }>
   | Readonly<{ kind: 'workspace_variable'; name: string }>
   | Readonly<{ kind: 'node_failure'; nodeId: string; path: string }>
   | Readonly<{ kind: 'node_output'; nodeId: string; path: string }>
@@ -85,6 +89,13 @@ export function InsertDataPicker({
           edge.source.port === WORKFLOW_FAILURE_PORT,
       )?.source.nodeId
     : undefined;
+  const current = graph.nodes.find((node) => node.id === nodeId);
+  const definition =
+    current === undefined ? undefined : findDefinition(definitions, current);
+  const callbackTargets =
+    definition?.capabilities.includes('external_http') === true
+      ? callbackTargetNodes(graph, nodeId)
+      : [];
   const sources = graph.nodes.filter((node) => sourceIds.has(node.id));
   function pick(source: InsertedSource, fieldName: string) {
     setOpen(false);
@@ -159,6 +170,43 @@ export function InsertDataPicker({
               />
             </li>
           )}
+          {callbackTargets.map((target) => (
+            <li key={`callback:${target.id}`}>
+              <p className="text-[0.8rem] font-semibold">
+                {stepTitle(target)} · callback
+              </p>
+              <ul className="mt-1 ml-3 flex flex-col border-l border-surface-ink/8 pl-2">
+                {(callbackWaitConfigSchema.parse(target.config).authentication
+                  .mode === 'secret_url'
+                  ? (['url'] as const)
+                  : (['url', 'secret'] as const)
+                ).map((field) => (
+                  <li key={field}>
+                    <PickButton
+                      label={
+                        field === 'url'
+                          ? 'Callback URL'
+                          : 'Authentication secret'
+                      }
+                      type="credential"
+                      onClick={() => {
+                        pick(
+                          {
+                            kind: 'expression',
+                            expression: callbackMappingExpression(
+                              target.id,
+                              field,
+                            ),
+                          },
+                          field === 'url' ? 'callbackUrl' : 'callbackSecret',
+                        );
+                      }}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
           {sources.map((source) => {
             const definition = findDefinition(definitions, source);
             const step = describeStep(

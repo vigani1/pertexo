@@ -1,3 +1,5 @@
+import { NestFactory } from '@nestjs/core';
+import { createDatabaseRuntime } from '@pertexo/database/platform';
 import { createWorkerApplication } from '../../dist/app.js';
 import { WorkerProcessShutdown } from '../../dist/runtime/shutdown/process.js';
 import process from 'node:process';
@@ -158,28 +160,42 @@ const config = {
 };
 
 try {
-  const application = await createWorkerApplication(config, {
-    database,
-    dispatcherDatabase,
-    logger,
-    queueProducer,
-    readinessMarker,
-    telemetry,
-    workspaceInboxRuntime: {
-      start: () => undefined,
-      checkReadiness: () => Promise.resolve(),
-      close: () => Promise.resolve(),
+  const application = await createWorkerApplication(
+    config,
+    {
+      database,
+      dispatcherDatabase,
+      logger,
+      queueProducer,
+      readinessMarker,
+      telemetry,
+      workspaceInboxRuntime: {
+        start: () => undefined,
+        checkReadiness: () => Promise.resolve(),
+        close: () => Promise.resolve(),
+      },
+      // Every runtime is composed; only an active fixture holds a consumer open.
+      coordinatorRuntime: idleRuntime(
+        mode === 'active' ? activeConsumer : idleConsumer,
+      ),
+      nodeAttemptRuntime: idleRuntime(),
+      maintenanceRuntime: idleRuntime(),
+      triggerRuntime: idleRuntime(),
+      workflowAutoPauseRuntime: idleRuntime(),
+      retentionRuntime: idleRuntime(),
     },
-    // Every runtime is composed; only an active fixture holds a consumer open.
-    coordinatorRuntime: idleRuntime(
-      mode === 'active' ? activeConsumer : idleConsumer,
-    ),
-    nodeAttemptRuntime: idleRuntime(),
-    maintenanceRuntime: idleRuntime(),
-    triggerRuntime: idleRuntime(),
-    workflowAutoPauseRuntime: idleRuntime(),
-    retentionRuntime: idleRuntime(),
-  });
+    {
+      applicationContext: (module, options) =>
+        NestFactory.createApplicationContext(module, options),
+      databaseRuntime: createDatabaseRuntime,
+      callbackStore: () => ({
+        async *keysInUse() {
+          yield* await Promise.resolve([]);
+        },
+        close: () => Promise.resolve(),
+      }),
+    },
+  );
   new WorkerProcessShutdown(application, logger).install();
   report('worker.ready');
 } catch (error) {

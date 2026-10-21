@@ -110,3 +110,24 @@ it('materializes input declarations without treating their single continuation a
     }),
   ).toEqual(new Set(['input']));
 });
+
+it('loads callback declarations but leaves existing duration Wait outputs alone', () => {
+  expect(
+    workflowControlOutputNodeIds({
+      graph: {
+        nodes: [
+          {
+            id: 'callback',
+            definition: { key: 'core.wait', version: 1 },
+            config: { mode: 'callback', timeoutSeconds: 60 },
+          },
+          {
+            id: 'duration',
+            definition: { key: 'core.wait', version: 1 },
+            config: { durationSeconds: 60 },
+          },
+        ],
+      },
+    }),
+  ).toEqual(new Set(['callback']));
+});

@@ -1,4 +1,8 @@
 import {
+  createApiCallbackRuntime,
+  type ApiCallbackRuntime,
+} from './platform/webhooks/callback-runtime.module.js';
+import {
   createDatabaseRuntime,
   type DatabaseRuntime,
   type WorkspaceDatabase,
@@ -52,6 +56,7 @@ import {
 type ApiApplicationDependencyCore = Readonly<{
   database?: WorkspaceDatabase;
   databaseRuntime?: DatabaseRuntime;
+  callbackRuntime?: ApiCallbackRuntime;
   webhookRuntime?: ApiWebhookRuntime;
   scheduleRuntime?: ApiScheduleRuntime;
   notificationRuntime?: ApiNotificationRuntime;
@@ -114,6 +119,7 @@ export async function acquireApiRuntimes(
   let identityRuntime: ApiIdentityRuntime | undefined;
   let workflowRuntime: ApiWorkflowRuntime | undefined;
   let connectionRuntime: ApiConnectionRuntime | undefined;
+  let callbackRuntime: ApiCallbackRuntime | undefined;
   let webhookRuntime: ApiWebhookRuntime | undefined;
   let scheduleRuntime: ApiScheduleRuntime | undefined;
   let notificationRuntime: ApiNotificationRuntime | undefined;
@@ -157,6 +163,12 @@ export async function acquireApiRuntimes(
         databaseRuntime,
       );
 
+    callbackRuntime = dependencies.callbackRuntime;
+    if (
+      callbackRuntime === undefined &&
+      (dependencies.database === undefined || config.callbacks !== undefined)
+    )
+      callbackRuntime = await createApiCallbackRuntime(config, databaseRuntime);
     webhookRuntime = dependencies.webhookRuntime;
     if (
       webhookRuntime === undefined &&
@@ -211,6 +223,7 @@ export async function acquireApiRuntimes(
       );
   } catch (error: unknown) {
     const runtimes = {
+      callbackRuntime,
       artifactRuntime,
       connectionRuntime,
       databaseRuntime,
@@ -224,6 +237,7 @@ export async function acquireApiRuntimes(
     throwStartupFailure(error, cleanupErrors);
   }
   return {
+    callbackRuntime,
     artifactRuntime,
     connectionRuntime,
     databaseRuntime,
@@ -236,6 +250,7 @@ export async function acquireApiRuntimes(
 }
 
 type ApiRuntimeSet = Readonly<{
+  callbackRuntime: ApiCallbackRuntime | undefined;
   artifactRuntime: ApiArtifactRuntime | undefined;
   connectionRuntime: ApiConnectionRuntime | undefined;
   databaseRuntime: DatabaseRuntime | undefined;
@@ -251,6 +266,7 @@ export async function cleanupApiRuntimes(
 ): Promise<readonly unknown[]> {
   const results = await Promise.allSettled(
     [
+      runtimes.callbackRuntime,
       runtimes.identityRuntime,
       runtimes.workflowRuntime,
       runtimes.connectionRuntime,

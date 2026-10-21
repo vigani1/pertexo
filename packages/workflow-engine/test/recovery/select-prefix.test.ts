@@ -317,3 +317,35 @@ describe('recovery prefix selection', () => {
       ).toEqual({ kind: 'refused', reason: 'source_not_failed' });
   });
 });
+
+it('keeps callback Wait outside step recovery even though it can handle expiry', () => {
+  const original = graph();
+  const executable = buildWorkflowExecutable({
+    graph: {
+      ...original,
+      nodes: original.nodes.map((node) =>
+        node.id === 'set'
+          ? {
+              ...node,
+              definition: { key: 'core.wait', version: 1 },
+              config: {
+                mode: 'callback',
+                timeoutSeconds: 60,
+                authentication: { mode: 'secret_url', allowedOrigins: [] },
+              },
+              inputMappings: {},
+            }
+          : node,
+      ),
+    },
+    catalog: composeExecutableCatalog(nodeCatalog({ wait: true })),
+  });
+  const retained = source([
+    record(executable, 'manual', 1, 'succeeded'),
+    record(executable, 'set', 2, 'failed'),
+  ]);
+  expect(selectRecoveryPrefix({ executable, source: retained })).toEqual({
+    kind: 'refused',
+    reason: 'unsupported_graph',
+  });
+});

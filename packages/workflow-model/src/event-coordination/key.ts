@@ -15,7 +15,11 @@ export function inspectEventCoordinationExpression(
   const checked = inspectExpression(expression);
   if (checked.kind === 'error')
     return 'Use a valid restricted JSONata expression for the event key.';
-  if (checked.references.dynamic || checked.references.names.length > 0)
+  if (
+    checked.callbacks.length > 0 ||
+    checked.references.dynamic ||
+    checked.references.names.length > 0
+  )
     return 'Event keys read event input only, not workspace variables.';
   return undefined;
 }

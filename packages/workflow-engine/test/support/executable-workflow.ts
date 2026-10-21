@@ -24,6 +24,7 @@ type FixtureDefinitionKey =
   | 'core.switch'
   | 'core.terminate'
   | 'core.webhook'
+  | 'core.wait'
   | 'test.unrelated';
 
 const branchPorts = Array.from(
@@ -120,6 +121,12 @@ const fixtureDefinitions: Readonly<
     inputs: ['in'],
     outputs: [],
   },
+  'core.wait': {
+    capabilities: ['suspends_run'],
+    family: 'logic',
+    inputs: ['in'],
+    outputs: ['out'],
+  },
   'core.webhook': {
     capabilities: [],
     family: 'trigger',
@@ -177,6 +184,7 @@ export function nodeCatalog(input?: {
   readonly inputRequest?: boolean;
   readonly schedule?: boolean;
   readonly webhook?: boolean;
+  readonly wait?: boolean;
   readonly extraPolicyVersion?: number;
 }): NodeCatalog {
   const definitions = [
@@ -188,6 +196,7 @@ export function nodeCatalog(input?: {
     manifest('core.terminate'),
     ...(input?.schedule ? [manifest('core.schedule')] : []),
     ...(input?.webhook ? [manifest('core.webhook')] : []),
+    ...(input?.wait ? [manifest('core.wait')] : []),
     ...(input?.condition ? [manifest('core.condition')] : []),
     ...(input?.switch ? [manifest('core.switch')] : []),
     ...(input?.parallel ? [manifest('core.parallel')] : []),

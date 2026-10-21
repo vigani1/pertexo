@@ -1,3 +1,5 @@
+import { verifyWorkerCallbacks } from './runtime/startup/verify-callbacks.js';
+import type { createCallbackStore } from '@pertexo/database/runs';
 import { verifyWorkerEncryption } from './runtime/startup/verify-encryption.js';
 import type {
   DynamicModule,
@@ -35,6 +37,7 @@ export type WorkerApplicationCompositionFactories = Readonly<{
   ): Promise<INestApplicationContext>;
   databaseRuntime: typeof createDatabaseRuntime;
   encryptionKeysRepository?: typeof createEncryptionKeyRepository;
+  callbackStore?: typeof createCallbackStore;
 }>;
 
 const productionFactories: WorkerApplicationCompositionFactories = {
@@ -53,6 +56,7 @@ export async function createWorkerApplication(
   let application: INestApplicationContext;
   try {
     await verifyWorkerEncryption(config, factories.encryptionKeysRepository);
+    await verifyWorkerCallbacks(config, factories.callbackStore);
     databaseRuntime =
       dependencies.databaseRuntime ??
       (dependencies.database === undefined

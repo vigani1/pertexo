@@ -24,7 +24,7 @@ const blocked = pendingTaskBlockedSql('$2', '$3');
 const columns = `task.*,node.node_id,run.workflow_id,workflow.name workflow_name,
   decider.display_name decided_by_name,node.branch_context,${blocked} blocked_reason`;
 const from = `from app.pending_run_tasks task join app.workflow_runs run
-  on run.workspace_id=task.workspace_id and run.id=task.run_id and run.workflow_version_id=task.workflow_version_id
+  on run.workspace_id=task.workspace_id and run.id=task.run_id and run.workflow_version_id=task.workflow_version_id and task.kind in ('approval','input_request')
   join app.node_runs node on node.workspace_id=task.workspace_id and node.workflow_run_id=task.run_id
     and node.id=task.node_run_id and node.invocation_key=task.invocation_key
   join app.workflows workflow on workflow.workspace_id=run.workspace_id and workflow.id=run.workflow_id

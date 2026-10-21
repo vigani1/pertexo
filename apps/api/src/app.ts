@@ -1,3 +1,4 @@
+import { registerCallbackIngress } from './webhooks/callbacks/ingress.js';
 import { registerDirectoryTransport } from './authentication/federation/provisioning/transport/register.js';
 import type { WorkspaceDatabase } from '@pertexo/database/platform';
 import { NestFactory } from '@nestjs/core';
@@ -41,6 +42,7 @@ export async function createApiApplication(
   const runtimes = await acquireApiRuntimes(config, dependencies);
   const {
     artifactRuntime,
+    callbackRuntime,
     connectionRuntime,
     databaseRuntime,
     identityRuntime,
@@ -73,6 +75,7 @@ export async function createApiApplication(
         ...(workflowRuntime === undefined ? {} : { workflowRuntime }),
         ...(connectionRuntime === undefined ? {} : { connectionRuntime }),
         ...(webhookRuntime === undefined ? {} : { webhookRuntime }),
+        ...(callbackRuntime === undefined ? {} : { callbackRuntime }),
         ...(scheduleRuntime === undefined ? {} : { scheduleRuntime }),
         ...(notificationRuntime === undefined ? {} : { notificationRuntime }),
         ...(artifactRuntime === undefined ? {} : { artifactRuntime }),
@@ -137,6 +140,12 @@ export async function createApiApplication(
         publicOrigin: config.identity.publicWebOrigin,
       });
     await application.init();
+    if (callbackRuntime !== undefined)
+      registerCallbackIngress(fastifyInstance, {
+        ...callbackRuntime,
+        rateLimitConsumer:
+          application.get<RateLimitConsumer>(RATE_LIMIT_CONSUMER),
+      });
     if (webhookRuntime !== undefined) {
       registerWebhookIngress(fastifyInstance, webhookRuntime.ingress);
     }

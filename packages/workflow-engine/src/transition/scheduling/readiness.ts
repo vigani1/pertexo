@@ -170,14 +170,11 @@ function descendants(
 function matchesSchedulerScope(
   invocation: Pick<InvocationState, 'branchPath' | 'iterationPath'> | undefined,
   input: Pick<DeriveReadyNodesInput, 'branchPath' | 'iterationPath'>,
-  exactBranchPath: boolean,
 ): boolean {
   const branchPath = input.branchPath ?? [];
   return (
     invocation !== undefined &&
     sameIterationPath(invocation.iterationPath, input.iterationPath) &&
-    (!exactBranchPath ||
-      (invocation.branchPath?.length ?? 0) === branchPath.length) &&
     branchPathHasPrefix(invocation.branchPath, branchPath)
   );
 }
@@ -203,12 +200,11 @@ function indexInvocations(input: DeriveReadyNodesInput): SchedulerIndexes {
       matchesSchedulerScope(
         invocationByKey.get(selection.invocationKey),
         input,
-        true,
       ),
   );
   const invocationByNode = new Map<string, InvocationState>();
   for (const invocation of input.invocations.filter((candidate) =>
-    matchesSchedulerScope(candidate, input, false),
+    matchesSchedulerScope(candidate, input),
   )) {
     const existing = invocationByNode.get(invocation.nodeId);
     const isRoot =

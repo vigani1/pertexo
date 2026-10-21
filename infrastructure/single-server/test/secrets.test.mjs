@@ -46,6 +46,9 @@ test('generated keys and URLs work at the actual deployed application boundaries
   };
   const api = parseApiConfig(environment);
   const worker = parseWorkerConfig(environment);
+  assert.equal(api.callbacks.keys.current.key, secrets.CALLBACK_TOKEN_KEY);
+  assert.equal(api.callbacks.keys.current.version, '1');
+  assert.deepEqual(api.callbacks, worker.callbacks);
   assert.equal(api.observability.otlpHttpEndpoint, undefined);
   assert.equal(worker.observability.otlpHttpEndpoint, undefined);
   assert.equal(

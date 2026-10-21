@@ -15,7 +15,22 @@ import { describe, expect, it, vi } from 'vitest';
 
 /* eslint-disable @typescript-eslint/unbound-method -- assertions target injected seam fakes */
 
-import { createWorkerApplication } from '../src/app.js';
+import { createWorkerApplication as constructWorkerApplication } from '../src/app.js';
+import { emptyCallbackStore } from './support/callback-store.js';
+import { createDatabaseRuntime } from '@pertexo/database/platform';
+import { NestFactory } from '@nestjs/core';
+
+function createWorkerApplication(
+  ...[config, dependencies]: Parameters<typeof constructWorkerApplication>
+) {
+  return constructWorkerApplication(config, dependencies, {
+    applicationContext: (module, options) =>
+      NestFactory.createApplicationContext(module, options),
+    databaseRuntime: createDatabaseRuntime,
+    callbackStore: emptyCallbackStore,
+  });
+}
+
 import type { CoordinatorRuntime } from '../src/runs/runtime.js';
 import type { NodeAttemptRuntime } from '../src/attempts/runtime.js';
 import type { MaintenanceRuntime } from '../src/maintenance/runtime.js';

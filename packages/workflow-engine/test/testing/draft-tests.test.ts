@@ -32,6 +32,7 @@ function runtime(
       inputRequest: true,
       forEach: true,
       condition: true,
+      wait: true,
       ...options,
     }),
   );
@@ -219,3 +220,44 @@ describe('whole-draft test policy', () => {
     expect(pinned.initialCheckpoint(randomUUID()).nextEventSequence).toBe(2);
   });
 });
+
+it.each([false, true])(
+  'declares a live callback Wait in whole tests unless pinned (%s)',
+  async (pinned) => {
+    const source = parseWorkflowGraphDraft(graph());
+    const callbackGraph = {
+      ...source,
+      nodes: source.nodes.map((node) =>
+        node.id === 'set'
+          ? {
+              ...node,
+              definition: { key: 'core.wait', version: 1 },
+              config: {
+                mode: 'callback',
+                timeoutSeconds: 3600,
+                authentication: { mode: 'secret_url', allowedOrigins: [] },
+              },
+            }
+          : node,
+      ),
+    };
+    const run = runtime(
+      callbackGraph,
+      pinned ? { set: pin({ pending: true }) } : {},
+    );
+    const start = await run.initial();
+    const step = await run.advance(start.checkpoint, completion(start));
+    const next = await run.advance(
+      step.checkpoint,
+      completion(step, { pending: true }),
+    );
+    if (pinned) {
+      expect(next.taskIntents ?? []).toEqual([]);
+      expect(next.attempts[0]?.nodeId).toBe('terminate');
+    } else {
+      expect(next.taskIntents).toHaveLength(1);
+      expect(next.taskIntents?.[0]?.kind).toBe('callback');
+      expect(next.checkpoint.runStatus).toBe('waiting');
+    }
+  },
+);

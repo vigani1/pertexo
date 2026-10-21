@@ -402,7 +402,10 @@ async function executeHttpRequest(
         timeoutMillis: config.timeoutMillis,
         maxRedirects: config.maxRedirects,
         maxResponseBytes: config.maxResponseBytes,
-        sensitiveValues: Object.values(credential.headers),
+        sensitiveValues: [
+          ...Object.values(credential.headers),
+          ...(invocation.runtime?.callbacks?.sensitiveValues() ?? []),
+        ],
         signal: invocation.signal,
         beforeDispatch: async () => {
           await beforeDispatch();
