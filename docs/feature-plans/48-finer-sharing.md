@@ -1,6 +1,7 @@
 # F48 — Finer sharing
 
-Status: plan and ADR first; implementation starts only after this PR merges.
+Status: approved by the owner as written on 2026-10-21; implementation starts
+after this plan PR merges. Deliver slices 1–4 in order, one PR per slice.
 Owner authorized the scope and delegated recommended choices on 2026-10-21.
 Decision: [ADR 090](../adr/090-resource-sharing-within-workspaces.md).
 
