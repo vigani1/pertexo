@@ -62,7 +62,12 @@ export function createConnectionLookupPersistence(
         input.workspaceId,
         actorId,
         async (client, workspaceId) => {
-          await requireConnectionUser(client, workspaceId, actorId);
+          await requireConnectionUser(
+            client,
+            workspaceId,
+            actorId,
+            connectionId,
+          );
           const connection = await selectConnection(
             client,
             workspaceId,

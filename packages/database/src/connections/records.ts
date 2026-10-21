@@ -385,6 +385,13 @@ export class ConnectionUnavailableError extends Error {
   public override readonly name = 'ConnectionUnavailableError';
 }
 
+export class ConnectionSharingRevisionConflictError extends Error {
+  override readonly name = 'ConnectionSharingRevisionConflictError';
+  constructor() {
+    super('Connection sharing changed');
+  }
+}
+
 export class ConnectionSecretVersionConflictError extends Error {
   public override readonly name = 'ConnectionSecretVersionConflictError';
 }

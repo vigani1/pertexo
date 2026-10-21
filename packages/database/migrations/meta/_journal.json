@@ -358,6 +358,13 @@
       "when": 1792605484661,
       "tag": "0050_folder_access",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1792614941007,
+      "tag": "0051_connection_sharing",
+      "breakpoints": true
     }
   ]
 }

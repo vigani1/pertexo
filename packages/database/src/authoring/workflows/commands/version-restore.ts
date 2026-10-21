@@ -1,3 +1,4 @@
+import { requireConnectionBindings } from '../../../tenant-access/resources/connections/bindings.js';
 import { requireWorkflowCallTargets } from '../../../tenant-access/resources/bindings.js';
 import { pruneStepSamples } from '../../step-samples/records.js';
 import { lockArtifactReferences } from '../../../artifacts/references.js';
@@ -98,6 +99,11 @@ async function restoreWorkflowVersion(
     );
 
     await requireWorkflowCallTargets(
+      client,
+      { workspaceId, actorId },
+      sourceVersion.graphJson,
+    );
+    await requireConnectionBindings(
       client,
       { workspaceId, actorId },
       sourceVersion.graphJson,

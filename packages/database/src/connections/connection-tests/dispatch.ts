@@ -37,7 +37,7 @@ export async function markConnectionTestDispatched(
     input.workspaceId,
     actorId,
     async (client, workspaceId) => {
-      await requireConnectionUser(client, workspaceId, actorId);
+      await requireConnectionUser(client, workspaceId, actorId, connectionId);
       const claim = await client.query<{ result_ref: unknown }>(
         `select result_ref from app.idempotency_records
          where workspace_id = $1 and operation = 'connection.test'

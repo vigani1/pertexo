@@ -928,7 +928,7 @@ describe('workflow publication projections', () => {
         expect.objectContaining({
           path: '$.nodes.send.connectionRefs.primary',
           message:
-            'This connection was removed or belongs to another workspace. Choose another.',
+            'This connection is unavailable. Choose a connection you can use.',
         }),
       ],
     };

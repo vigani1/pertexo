@@ -2542,6 +2542,9 @@
           "412": {
             "$ref": "#/components/responses/PreconditionFailed"
           },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
           "429": {
             "$ref": "#/components/responses/RateLimited"
           },
@@ -2714,6 +2717,9 @@
           },
           "412": {
             "$ref": "#/components/responses/PreconditionFailed"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
           },
           "429": {
             "$ref": "#/components/responses/RateLimited"

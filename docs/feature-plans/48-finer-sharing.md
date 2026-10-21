@@ -141,8 +141,8 @@ Each PR runs the full hook and relevant existing tests and merges only green.
 
 | Slice | Existing owners and delivery | Required proof | Status |
 | --- | --- | --- | --- |
-| 1. Folders | `tenant-access/resources`, `schema/authoring`, `authoring/organization` and workflow/run/inbox/artifact consumers; contracts/API routes. All folder fences land before restrictions can be used. | Populated migration unchanged defaults; role ceiling, ancestor intersection, group/manual/removed memberships; every direct/discovery path; no pagination/count leaks; move/revoke races, audit/purge and current published jobs. | Delivered |
-| 2. Connections | Existing connection reads/authority, authoring/preview/test/publication/portability/promotion admission; schema/grants and sharing endpoints. | Existing bindings keep executing; reference change, URL/upstream change, preview/test/publish require Use; metadata non-disclosure, revocation races, no secret/export copying. | Planned |
+| 1. Folders | `tenant-access/resources`, `schema/authoring`, `authoring/organization` and workflow/run/inbox/artifact consumers; contracts/API routes. All folder fences land before restrictions can be used. | Populated migration unchanged defaults; role ceiling, ancestor intersection, group/manual/removed memberships; every direct/discovery path; no pagination/count leaks; move/revoke races, audit/purge and current published jobs. | Delivered — [#460](https://github.com/vigani1/pertexo/pull/460) |
+| 2. Connections | Existing connection reads/authority, authoring/preview/test/publication/portability/promotion admission; schema/grants and sharing endpoints. | Existing bindings keep executing; reference change, URL/upstream change, preview/test/publish require Use; metadata non-disclosure, revocation races, no secret/export copying. | Delivered in the connection-sharing PR |
 | 3. UI | Existing workflow organization, connection and promotion features; server-projected actions and normal Weft forms/principal pickers. | Sharing and audience review, unavailable bindings, read-only editor, query invalidation; keyboard/reduced motion; desktop, 990 px pane and phone in both themes; mocked and real browser journeys, React Doctor. | Planned |
 | 4. Qualification | Existing database/API/worker/browser checks, guides and delivery tracker. No new CI job. | Repeat the cross-surface negative matrix, SCIM removal, tokens, accepted public/Call/callback execution, approval/inbox/mail, slow export/SSE and restore/purge. Natural main CI inspected after merge. | Planned |
 
@@ -179,3 +179,32 @@ available to active members, subject to current folder grants. Authoring and new
 execution admission still require an active workspace. Qualification uses a
 private disk-backed CI temporary root because Ubuntu 26.04 mounts `/tmp` in RAM;
 production scratch refusal remains unchanged.
+
+## Slice 2 implementation choices
+
+Connections have no authoring revision. Add a dedicated `sharing_revision` beside
+`access_mode`, independent of secret versions and health revisions, for sharing
+preconditions and principal-removal invalidation. Reuse the existing connection
+command, audit, workspace-first authority and forced-RLS owners.
+
+Workspace-shared metadata retains existing reader visibility. Restricted metadata
+follows effective Use (or administrator access); a workspace viewer cannot acquire
+Use through a named grant. Compare ordinary draft bindings by stable node path,
+definition, slot and connection identity. New publication and real draft execution
+admit all current references; accepted published bindings remain delegated.
+
+Publication requests require the requester's Use at request and approval time,
+as well as the reviewer's existing publishing authority. Promotion checks direct
+bindings but does not require re-admitting credentials inside an already-published
+Call child; private dependency labels remain unavailable.
+
+
+Slice 2 verification covers a populated upgrade with unchanged secret pointers,
+forced workspace RLS, discovery before keyset pagination, creator and role
+ceilings, revision/idempotency and metadata audit facts, member removal, a positive
+publication followed by refusal after a grant is removed, and a real preview
+accepted before removal and refused afterwards. Sharing routes use the real Nest
+HTTP stack with authorization, CSRF, validation and conflict checks. The existing
+workspace purge fixture includes connection grants; no credential material is
+copied or rewritten. Slice 4 supplies the complete cross-surface worker/browser
+qualification rather than treating these admission checks as execution evidence.

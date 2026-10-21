@@ -2,7 +2,10 @@ import type {
   ConnectionRecord,
   FailureNotificationDestinationDatabase,
 } from '@pertexo/database/testing';
-import { ConnectionNotFoundError } from '@pertexo/database/connections';
+import {
+  ConnectionSharingRevisionConflictError,
+  ConnectionNotFoundError,
+} from '@pertexo/database/connections';
 import { FailureNotificationDestinationError } from '@pertexo/database/notifications';
 import { connectionResponseSchema } from '@pertexo/contracts';
 import {
@@ -185,9 +188,22 @@ function connectionRuntime(
       ConnectionDependencies['usagePersistence']
     >['listConnectionUsage']
   >(() => Promise.resolve({ items: [] }));
+  const readConnectionSharing = vi.fn(() =>
+    Promise.resolve({
+      connectionId: destinationId,
+      mode: 'restricted' as const,
+      revision: 2,
+      members: [{ userId: actorId, label: 'Member', active: true }],
+    }),
+  );
+  const replaceConnectionSharing = vi.fn(async () => ({
+    ...(await readConnectionSharing()),
+    replayed: false,
+  }));
   const runtime: ApiConnectionRuntime = Object.freeze({
     dependencies: {
       authorization,
+      sharingPersistence: { readConnectionSharing, replaceConnectionSharing },
       encryption,
       httpClient: {
         execute: executeHttp,
@@ -287,6 +303,8 @@ function connectionRuntime(
   });
   return {
     runtime,
+    readConnectionSharing,
+    replaceConnectionSharing,
     createConnection,
     encryption,
     executeHttp,
@@ -359,6 +377,95 @@ describe('connections real Nest HTTP stack', () => {
     await application?.close();
     application = undefined;
   });
+
+  it('guards sharing routes before persistence, validates members and maps revision conflicts', async () => {
+    const { application, connection } = await start();
+    const url = `${connectionUrl}/${destinationId}/sharing`;
+    expect((await application.inject({ method: 'GET', url })).statusCode).toBe(
+      401,
+    );
+    expect(connection.readConnectionSharing).not.toHaveBeenCalled();
+    const read = await application.inject({
+      method: 'GET',
+      url,
+      headers: authenticatedHeaders,
+    });
+    expect(read.statusCode).toBe(200);
+    expect(read.json()).toMatchObject({ mode: 'restricted', revision: 2 });
+    const payload = {
+      mode: 'restricted',
+      expectedSharingRevision: 2,
+      userIds: [actorId],
+    };
+    expect(
+      (
+        await application.inject({
+          method: 'POST',
+          url,
+          headers: { cookie: authenticatedHeaders.cookie },
+          payload,
+        })
+      ).statusCode,
+    ).toBe(403);
+    expect(
+      (
+        await application.inject({
+          method: 'POST',
+          url,
+          headers: authenticatedHeaders,
+          payload: { ...payload, userIds: [actorId, actorId] },
+        })
+      ).statusCode,
+    ).toBe(400);
+    expect(connection.replaceConnectionSharing).not.toHaveBeenCalled();
+    expect(
+      (
+        await application.inject({
+          method: 'POST',
+          url,
+          headers: authenticatedHeaders,
+          payload,
+        })
+      ).statusCode,
+    ).toBe(200);
+    expect(connection.replaceConnectionSharing).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId,
+        actorId,
+        connectionId: destinationId,
+        request: payload,
+      }),
+    );
+    connection.replaceConnectionSharing.mockRejectedValueOnce(
+      new ConnectionSharingRevisionConflictError(),
+    );
+    const stale = await application.inject({
+      method: 'POST',
+      url,
+      headers: authenticatedHeaders,
+      payload,
+    });
+    expect(stale.statusCode).toBe(409);
+    expect(stale.json()).toMatchObject({ code: 'connection.conflict' });
+  });
+
+  it.each(['builder', 'viewer'] as const)(
+    'never lets a %s administer connection sharing',
+    async (role) => {
+      const { application, connection } = await start(role);
+      const url = `${connectionUrl}/${destinationId}/sharing`;
+      expect(
+        (
+          await application.inject({
+            method: 'GET',
+            url,
+            headers: authenticatedHeaders,
+          })
+        ).statusCode,
+      ).toBe(404);
+      expect(connection.readConnectionSharing).not.toHaveBeenCalled();
+    },
+  );
 
   it('reports unconfigured connections only to an eligible workspace reader', async () => {
     application = await createApiApplication(config, {

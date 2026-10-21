@@ -4,61 +4,55 @@ import type {
   WorkflowGraph,
 } from '@pertexo/workflow-model';
 import { CONNECTION_STATUS } from '../../connections/records.js';
+import {
+  workflowConnectionReferences,
+  connectionReferenceIds,
+} from '../../tenant-access/resources/connections/bindings.js';
+import {
+  readConnectionScope,
+  connectionScopeSql,
+} from '../../tenant-access/resources/connections/scope.js';
+import { bindResourcePredicate } from '../../tenant-access/resources/query-scope.js';
+import type { ResourceActor } from '../../tenant-access/resources/contract.js';
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
-
-/**
- * Every chosen connection must still exist in this workspace and not be
- * revoked. Locking the rows keeps a revoke from landing between this check
- * and the version that records them.
- */
+/** Permission applies to every binding; only enabled steps require a non-revoked secret. */
 export async function connectionReferenceIssues(
   client: PoolClient,
-  workspaceId: string,
+  actor: ResourceActor,
   graph: WorkflowGraph,
 ): Promise<readonly GraphValidationIssue[]> {
-  const references: { path: string; connectionId: string }[] = [];
-  const levels = [{ graph, path: '$' }];
-  for (const level of levels)
-    for (const node of level.graph.nodes) {
-      // A disabled step, and any loop body inside it, never runs.
-      if (node.disabled === true) continue;
-      const path = `${level.path}.nodes.${node.id}`;
-      if (node.structured !== undefined)
-        levels.push({
-          graph: node.structured.body,
-          path: `${path}.structured.body`,
-        });
-      for (const [slot, connectionId] of Object.entries(node.connectionRefs))
-        references.push({
-          path: `${path}.connectionRefs.${slot}`,
-          connectionId,
-        });
-    }
+  const references = workflowConnectionReferences(graph);
   if (references.length === 0) return [];
-  const ids = [
-    ...new Set(
-      references
-        .map((reference) => reference.connectionId)
-        .filter((id) => UUID.test(id)),
+  const ids = connectionReferenceIds(references);
+  const parameters: unknown[] = [actor.workspaceId, ids];
+  const permitted = bindResourcePredicate(
+    connectionScopeSql(
+      await readConnectionScope(client, actor, 'connection:use'),
     ),
-  ];
-  const usable = new Set(
+    parameters,
+  );
+  const rows =
     ids.length === 0
       ? []
       : (
-          await client.query<{ id: string }>(
-            'select id from app.connections where workspace_id=$1 and id=any($2::uuid[]) and status<>$3 order by id for share',
-            [workspaceId, ids, CONNECTION_STATUS.revoked],
+          await client.query<{ id: string; status: string }>(
+            `select connection.id,connection.status from app.connections connection where connection.workspace_id=$1 and connection.id=any($2::uuid[]) and ${permitted} order by connection.id for share`,
+            parameters,
           )
-        ).rows.map((row) => row.id),
-  );
+        ).rows;
+  const available = new Map(rows.map((row) => [row.id, row.status]));
   return references
-    .filter((reference) => !usable.has(reference.connectionId.toLowerCase()))
+    .filter((reference) => {
+      const status = available.get(reference.id.toLowerCase());
+      return (
+        status === undefined ||
+        (reference.enabled && status === CONNECTION_STATUS.revoked)
+      );
+    })
     .map((reference) => ({
       code: 'invalid_graph',
       path: reference.path,
       message:
-        'This connection was removed or belongs to another workspace. Choose another.',
+        'This connection is unavailable. Choose a connection you can use.',
     }));
 }

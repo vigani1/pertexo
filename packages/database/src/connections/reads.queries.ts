@@ -1,3 +1,8 @@
+import {
+  connectionScope,
+  connectionScopeSql,
+} from '../tenant-access/resources/connections/scope.js';
+import { bindResourcePredicate } from '../tenant-access/resources/query-scope.js';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
@@ -5,7 +10,6 @@ import { requireConnectionReader } from './authority.js';
 import {
   CONNECTION_STATUS,
   mapConnection,
-  selectConnection,
   uuidSchema,
   withConnectionTransaction,
   type ConnectionPage,
@@ -43,7 +47,27 @@ export function createConnectionReadPersistence(
         input.workspaceId,
         actorId,
         async (client, workspaceId) => {
-          await requireConnectionReader(client, workspaceId, actorId);
+          const role = await requireConnectionReader(
+            client,
+            workspaceId,
+            actorId,
+          );
+          const scope = connectionScope(
+            { workspaceId, actorId },
+            role,
+            'connection:read',
+          );
+          const parameters: unknown[] = [
+            workspaceId,
+            after?.status ?? null,
+            after?.createdAt ?? null,
+            after?.id ?? null,
+            limit + 1,
+          ];
+          const permitted = bindResourcePredicate(
+            connectionScopeSql(scope),
+            parameters,
+          );
           const result = await client.query<
             Record<string, unknown> & { created_at_cursor: string }
           >(
@@ -53,8 +77,8 @@ export function createConnectionReadPersistence(
                     last_health_transition_source, created_by, created_at, updated_at,
                     to_char(created_at at time zone 'UTC',
                       'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as created_at_cursor
-             from app.connections
-             where workspace_id = $1
+             from app.connections connection
+             where workspace_id = $1 and ${permitted}
                and ($2::text is null
                  or status > $2::text
                  or (status = $2::text and created_at < $3::timestamptz)
@@ -62,13 +86,7 @@ export function createConnectionReadPersistence(
                    and id > $4::uuid))
              order by status asc, created_at desc, id asc
              limit $5`,
-            [
-              workspaceId,
-              after?.status ?? null,
-              after?.createdAt ?? null,
-              after?.id ?? null,
-              limit + 1,
-            ],
+            parameters,
           );
           const hasMore = result.rows.length > limit;
           const items = Object.freeze(
@@ -99,8 +117,31 @@ export function createConnectionReadPersistence(
         input.workspaceId,
         actorId,
         async (client, workspaceId) => {
-          await requireConnectionReader(client, workspaceId, actorId);
-          return selectConnection(client, workspaceId, input.connectionId);
+          const role = await requireConnectionReader(
+            client,
+            workspaceId,
+            actorId,
+          );
+          const scope = connectionScope(
+            { workspaceId, actorId },
+            role,
+            'connection:read',
+          );
+          const parameters: unknown[] = [
+            workspaceId,
+            uuidSchema.parse(input.connectionId),
+          ];
+          const permitted = bindResourcePredicate(
+            connectionScopeSql(scope),
+            parameters,
+          );
+          const row = (
+            await client.query<Record<string, unknown>>(
+              `select * from app.connections connection where workspace_id=$1 and id=$2 and ${permitted}`,
+              parameters,
+            )
+          ).rows[0];
+          return row === undefined ? null : mapConnection(row);
         },
       );
     },

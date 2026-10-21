@@ -1,9 +1,11 @@
+import { requireConnectionBindings } from '../../../tenant-access/resources/connections/bindings.js';
 import { requireWorkflowCallTargets } from '../../../tenant-access/resources/bindings.js';
 import { lockArtifactReferences } from '../../../artifacts/references.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import {
   EMPTY_WORKFLOW_GRAPH,
+  InvalidWorkflowGraphError,
   parseWorkflowGraphDraft,
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
@@ -90,37 +92,6 @@ async function selectedGraph(
   return draft.graphJson;
 }
 
-/** Check every nested reference, not only known provider slots; never load secret bytes. */
-async function requireOwnedConnections(
-  client: PoolClient,
-  workspaceId: string,
-  graph: WorkflowGraph,
-): Promise<void> {
-  const ids = new Set<string>();
-  const pending: WorkflowGraph[] = [graph];
-  while (pending.length > 0) {
-    const current = pending.pop();
-    if (current === undefined) break;
-    for (const node of current.nodes) {
-      for (const reference of Object.values(node.connectionRefs)) {
-        const id = uuid.safeParse(reference);
-        if (!id.success)
-          throw new WorkflowNotFoundError('Workflow connection is not visible');
-        ids.add(id.data);
-      }
-      if (node.structured !== undefined) pending.push(node.structured.body);
-    }
-  }
-  if (ids.size === 0) return;
-  const connections = await client.query(
-    `select id from app.connections where workspace_id=$1 and id=any($2::uuid[])
-     order by id for key share`,
-    [workspaceId, [...ids].sort()],
-  );
-  if (connections.rowCount !== ids.size)
-    throw new WorkflowNotFoundError('Workflow connection is not visible');
-}
-
 export function createWorkflowDuplicationStore(
   context: WorkflowAuthoringWriteContext,
 ): Pick<WorkflowAuthoringDatabase, 'duplicateWorkflow'> {
@@ -195,8 +166,16 @@ export function createWorkflowDuplicationStore(
             graph,
             placementDefinitionCatalog ?? definitionCatalog,
           );
-          await requireOwnedConnections(client, input.workspaceId, graph);
           await requireWorkflowCallTargets(client, input, graph);
+          try {
+            await requireConnectionBindings(client, input, graph);
+          } catch (error) {
+            if (error instanceof InvalidWorkflowGraphError)
+              throw new WorkflowNotFoundError(
+                'Workflow connection is not visible',
+              );
+            throw error;
+          }
           await lockArtifactReferences(
             client,
             input.workspaceId,

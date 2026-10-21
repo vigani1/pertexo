@@ -1,4 +1,5 @@
 import type {
+  ConnectionSharingDatabase,
   ConnectionLookupDatabase,
   ConnectionManagementDatabase,
   ConnectionReadDatabase,
@@ -61,4 +62,5 @@ export type ConnectionDependencies = Readonly<{
   telemetry?: ConnectionTelemetry;
   destinationPersistence?: FailureNotificationDestinationDatabase;
   usagePersistence?: ConnectionUsageDatabase;
+  sharingPersistence?: ConnectionSharingDatabase;
 }>;

@@ -5,7 +5,6 @@ import {
   ConnectionConflictError,
   ConnectionNotFoundError,
   ConnectionSecretVersionConflictError,
-  ConnectionUnavailableError,
   Pool,
   apiBaseUrl,
   checkDatabaseReadiness,
@@ -390,7 +389,7 @@ describe('connection concurrency and security', () => {
         requestHash: 'b'.repeat(64),
         dispatchToken: randomUUID(),
       }),
-    ).rejects.toBeInstanceOf(ConnectionUnavailableError);
+    ).rejects.toBeInstanceOf(ConnectionNotFoundError);
 
     const apiReadinessPool = new Pool({
       connectionString: databaseUrl(apiBaseUrl),

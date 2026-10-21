@@ -1,38 +1,38 @@
 import type { PoolClient } from 'pg';
-
-import { rolesForCapability } from '../tenant-access/policy.js';
-import { ConnectionNotFoundError, uuidSchema } from './records.js';
+import { rolesForCapability, type Role } from '../tenant-access/policy.js';
+import { lockWorkspaceAuthority } from '../tenant-access/workspaces/authority.js';
+import { WorkspaceAccessDeniedError } from '../tenant-access/errors.js';
+import {
+  connectionScope,
+  connectionScopeSql,
+} from '../tenant-access/resources/connections/scope.js';
+import { bindResourcePredicate } from '../tenant-access/resources/query-scope.js';
+import { ConnectionNotFoundError } from './records.js';
 
 async function requireConnectionCapability(
   client: PoolClient,
   workspaceId: string,
   actorId: string,
   capability: 'connection:manage' | 'connection:read' | 'connection:use',
-): Promise<void> {
-  const result = await client.query(
-    `select 1 from app.workspace_memberships membership
-     join app.workspaces workspace on workspace.id = membership.workspace_id
-     join app.users actor on actor.id = membership.user_id
-     where membership.workspace_id = $1 and membership.user_id = $2
-       and membership.status = 'active'
-       and membership.role = any($3::text[])
-       and workspace.status = 'active' and actor.status = 'active'
-     for share of membership, workspace, actor`,
-    [
+): Promise<Role> {
+  try {
+    return await lockWorkspaceAuthority(
+      client,
       workspaceId,
-      uuidSchema.parse(actorId),
-      [...rolesForCapability(capability)],
-    ],
-  );
-  if (result.rowCount !== 1)
-    throw new ConnectionNotFoundError('Connection is not visible');
+      actorId,
+      rolesForCapability(capability),
+    );
+  } catch (error) {
+    if (error instanceof WorkspaceAccessDeniedError)
+      throw new ConnectionNotFoundError('Connection is not visible');
+    throw error;
+  }
 }
-
 export function requireConnectionManager(
   client: PoolClient,
   workspaceId: string,
   actorId: string,
-): Promise<void> {
+): Promise<Role> {
   return requireConnectionCapability(
     client,
     workspaceId,
@@ -40,12 +40,11 @@ export function requireConnectionManager(
     'connection:manage',
   );
 }
-
 export function requireConnectionReader(
   client: PoolClient,
   workspaceId: string,
   actorId: string,
-): Promise<void> {
+): Promise<Role> {
   return requireConnectionCapability(
     client,
     workspaceId,
@@ -53,16 +52,29 @@ export function requireConnectionReader(
     'connection:read',
   );
 }
-
-export function requireConnectionUser(
+export async function requireConnectionUser(
   client: PoolClient,
   workspaceId: string,
   actorId: string,
+  connectionId: string,
 ): Promise<void> {
-  return requireConnectionCapability(
+  const role = await requireConnectionCapability(
     client,
     workspaceId,
     actorId,
     'connection:use',
   );
+  const parameters: unknown[] = [workspaceId, connectionId];
+  const permitted = bindResourcePredicate(
+    connectionScopeSql(
+      connectionScope({ workspaceId, actorId }, role, 'connection:use'),
+    ),
+    parameters,
+  );
+  const found = await client.query(
+    `select 1 from app.connections connection where connection.workspace_id=$1 and connection.id=$2 and ${permitted}`,
+    parameters,
+  );
+  if (found.rowCount !== 1)
+    throw new ConnectionNotFoundError('Connection is not visible');
 }

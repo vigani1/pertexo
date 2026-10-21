@@ -83,6 +83,9 @@ function operation(
       '404': responseReference('NotFound'),
       '409': responseReference('Conflict'),
       '412': responseReference('PreconditionFailed'),
+      ...(request === undefined
+        ? {}
+        : { '422': responseReference('UnprocessableEntity') }),
       '429': responseReference('RateLimited'),
       '500': responseReference('Unexpected'),
     },

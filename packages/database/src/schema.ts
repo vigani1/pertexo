@@ -94,6 +94,7 @@ import {
 import { rlsProbeRecords } from './schema/rls-probe.js';
 import { workflowConcurrencyPolicies } from './schema/authoring/concurrency.js';
 import {
+  connectionShares,
   connections,
   connectionSecretVersions,
   connectionEvents,
@@ -327,6 +328,7 @@ export const databaseSchema = {
   authSessions,
   authVerifications,
   connectionEvents,
+  connectionShares,
   connections,
   connectionSecretVersions,
   idempotencyRecords,

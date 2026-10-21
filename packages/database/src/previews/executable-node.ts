@@ -16,7 +16,15 @@ export const executableNodeSchema = z.unknown().transform((value, context) => {
     // Drizzle inspects the root object's constructor. Materialize the admitted
     // descriptor snapshot as ordinary JSON instead of exposing its null-
     // prototype normalization object to the adapter.
-    return JSON.parse(serialized) as Readonly<Record<string, unknown>>;
+    const node = JSON.parse(serialized) as Readonly<Record<string, unknown>>;
+    const connectionRefs = z
+      .record(z.string(), z.string())
+      .optional()
+      .parse(node.connectionRefs);
+    return {
+      ...node,
+      ...(connectionRefs === undefined ? {} : { connectionRefs }),
+    };
   } catch {
     context.addIssue({
       code: 'custom',

@@ -1,4 +1,4 @@
-import { removeMemberFolderGrants } from '../resources/revocation.js';
+import { removeMemberResourceGrants } from '../resources/revocation.js';
 import type { PoolClient } from 'pg';
 import type { MembershipRole } from '../contracts.js';
 import { appendAuditFacts } from '../../governance/audit/append.js';
@@ -111,7 +111,7 @@ export async function updateMemberships(
      from unnest($2::uuid[]) as removed(user_id)`,
     [workspaceId, removed],
   );
-  await removeMemberFolderGrants(client, workspaceId, removed);
+  await removeMemberResourceGrants(client, workspaceId, removed);
   await client.query(
     'delete from app.workflow_favorites where workspace_id=$1 and actor_id=any($2::uuid[])',
     [workspaceId, removed],

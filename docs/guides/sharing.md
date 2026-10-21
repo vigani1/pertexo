@@ -82,3 +82,37 @@ or up to 50 explicit workflows. Each result contains a token for that resource's
 current review. An audience-changing move carries
 `audienceReview: { "token": "…", "acknowledge": true }`; the server checks both the
 administrator's current authority and the current review in the move transaction.
+
+## Connection Use
+
+Connections also start workspace-shared. Owners and admins can restrict Use to up
+to 100 active workspace members. The active creator and administrators keep Use;
+a removed creator does not. A named grant never raises the workspace role ceiling
+or permits reading plaintext secrets, rotating credentials, or changing sharing.
+Restricted connection names and health are visible only to people who can use
+that connection, plus administrators. Workspace-shared metadata keeps its existing
+reader visibility.
+
+A new connection binding, publication, real single-step preview, or whole-draft
+test needs Use. A saved draft may retain an unchanged unavailable binding, but
+cannot exercise it through a new test or publication. Publication approval checks
+the requester again before publishing. Existing published runs deliberately keep
+their accepted credentials after a sharing change; revoking the credential itself
+still stops its use through the existing revocation rules.
+
+Administrators read or replace sharing at
+`/v1/workspaces/:workspaceId/connections/:connectionId/sharing` with GET or POST.
+POST needs CSRF protection and an idempotency key:
+
+```json
+{
+  "mode": "restricted",
+  "expectedSharingRevision": 1,
+  "userIds": ["00000000-0000-4000-8000-000000000001"]
+}
+```
+
+Sharing has its own revision, independent of secret rotation and health checks.
+A stale form must reload. Removing a member clears their named grants and advances
+that revision. Grants and secrets never travel through workflow exports or
+promotion; target connections follow the target workspace's rules.

@@ -2,6 +2,7 @@ import {
   ConnectionConflictError,
   ConnectionIdempotencyConflictError,
   ConnectionNotFoundError,
+  ConnectionSharingRevisionConflictError,
   ConnectionSecretVersionConflictError,
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
@@ -56,6 +57,11 @@ export function mapConnectionError(error: unknown): ApplicationError {
   if (error instanceof ConnectionIdempotencyConflictError)
     return applicationError('request.idempotency_conflict', {
       safeDetail: 'The idempotency key was already used for another request.',
+    });
+  if (error instanceof ConnectionSharingRevisionConflictError)
+    return applicationError('connection.conflict', {
+      safeDetail:
+        'Sharing changed since you opened it. Reload, then try again.',
     });
   if (error instanceof ConnectionConflictError)
     return applicationError('connection.conflict', {
