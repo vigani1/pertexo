@@ -48,6 +48,19 @@ describe.runIf(fixture.enabled)(
             }
             const secret = Buffer.concat(chunks).toString('utf8');
             if (url === null) throw new Error('Missing outbound callback URL');
+            const supplied = new URL(url);
+            const token = /^\/hooks\/([A-Za-z0-9_-]{43})\/resume$/u.exec(
+              supplied.pathname,
+            )?.[1];
+            if (
+              supplied.origin !== api.origin ||
+              token === undefined ||
+              supplied.search ||
+              supplied.hash
+            )
+              throw new Error('Callback must target the owned API receiver');
+            const target = new URL(api.origin);
+            target.pathname = `/hooks/${token}/resume`;
             received = { url, secret };
             const body = JSON.stringify({
               amount: 17,
@@ -64,7 +77,7 @@ describe.runIf(fixture.enabled)(
                       'x-pertexo-signature': `v1=${createHmac('sha256', Buffer.from(secret, 'base64url')).update(`${timestamp}.`).update(body).digest('hex')}`,
                     }
                   : {};
-            const reply = await fetch(url, {
+            const reply = await fetch(target, {
               method: 'POST',
               headers: {
                 'content-type': 'application/json',
@@ -73,12 +86,10 @@ describe.runIf(fixture.enabled)(
               body,
             });
             expect(reply.status).toBe(202);
-            const token = new URL(url).pathname.split('/')[2];
-            expect(token).toBeDefined();
             expect(
               await fixture.workerQuery(
                 'select node_run_id,status from app.pending_run_tasks where callback_token_hash=$1',
-                [callbackTokenHash(token ?? '')],
+                [callbackTokenHash(token)],
               ),
             ).toEqual([{ node_run_id: null, status: 'submitted' }]);
             response.writeHead(200, {
