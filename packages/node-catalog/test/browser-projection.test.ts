@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { selectOutputVariant } from '@pertexo/node-sdk';
+import { isRecord } from '@pertexo/workflow-model';
 
 import { platformBrowserNodeDefinitionCatalog } from '../src/index.js';
 
@@ -35,16 +37,31 @@ describe('browser-safe platform catalog projection', () => {
     }
   });
 
-  it('exposes config-selected output variants to mapping clients', () => {
-    const item = platformBrowserNodeDefinitionCatalog().definitions.find(
-      (definition) => definition.definition.key === 'http.request',
-    );
-    expect(item?.outputVariant).toEqual({
-      configProperty: 'pagination',
-      whenPresent: 1,
-      whenAbsent: 0,
-    });
-  });
+  it.each([
+    [{}, 'body'],
+    [{ pagination: { mode: 'page' } }, 'items'],
+    [{ pagination: { mode: 'page', outputMode: 'pages' } }, 'pages'],
+  ] as const)(
+    'lets browser clients discover %s as %s output',
+    (config, field) => {
+      const item = platformBrowserNodeDefinitionCatalog().definitions.find(
+        (definition) => definition.definition.key === 'http.request',
+      );
+      if (item?.outputVariant === undefined)
+        throw new Error('HTTP output discovery is missing');
+      const alternatives = item.outputSchema.anyOf ?? item.outputSchema.oneOf;
+      if (!Array.isArray(alternatives))
+        throw new Error('HTTP output alternatives are missing');
+      const selected: unknown =
+        alternatives[selectOutputVariant(item.outputVariant, config)];
+      if (!isRecord(selected) || !isRecord(selected.properties))
+        throw new Error('Selected output fields are missing');
+      const fields = Object.keys(selected.properties);
+      expect(fields).toContain(field);
+      for (const other of ['body', 'items', 'pages'])
+        if (other !== field) expect(fields).not.toContain(other);
+    },
+  );
 
   it('advertises the logical Approval result rather than the private declaration marker', () => {
     const item = platformBrowserNodeDefinitionCatalog().definitions.find(
