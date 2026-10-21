@@ -1,3 +1,4 @@
+import { redactText } from '../security/redact-text.js';
 import type { NodeVerifiedByteSource } from '@pertexo/node-sdk/server';
 import { isIP } from 'node:net';
 
@@ -634,13 +635,6 @@ function isTextualContentType(contentType: string): boolean {
     normalized.includes('javascript') ||
     normalized.includes('x-www-form-urlencoded')
   );
-}
-
-function redactText(value: string, sensitiveValues: readonly string[]): string {
-  let result = value;
-  for (const sensitive of sensitiveValues)
-    result = result.replaceAll(sensitive, '[Redacted]');
-  return result;
 }
 
 function safeFinalUrl(url: URL): string {

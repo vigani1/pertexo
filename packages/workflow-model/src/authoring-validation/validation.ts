@@ -1,3 +1,5 @@
+import { supportsExpressionMappings } from '../mapping/policy.js';
+import { callbackReferenceIssue } from '../callbacks/validation.js';
 import {
   eventCoordinationPolicySchema,
   isEventCoordinationTrigger,
@@ -77,8 +79,8 @@ export function validateAuthoringBatch(
   }
   const expressionDefinitions = new Set(
     policies.definitions
-      .filter(({ policyReferences }) =>
-        policyReferences.some(({ key }) => key === 'jsonata.restricted'),
+      .filter(({ policyReferences, capabilities }) =>
+        supportsExpressionMappings(policyReferences, capabilities),
       )
       .map(
         ({ definition }) =>
@@ -122,6 +124,9 @@ export function validateAuthoringBatch(
     source: ValueSource,
     path: string,
     supportsExpressions: boolean,
+    localGraph?: WorkflowGraph,
+    nodeId?: string,
+    externalHttp = false,
   ): GraphValidationIssue | undefined {
     let message = '';
     let code: GraphValidationIssue['code'] = 'invalid_mapping';
@@ -138,6 +143,13 @@ export function validateAuthoringBatch(
         if (validation.kind === 'valid') {
           code = 'invalid_mapping';
           message = missingVariableMessage(validation.references.requiredNames);
+          message ||=
+            callbackReferenceIssue(
+              validation.callbacks,
+              localGraph,
+              nodeId,
+              externalHttp,
+            ) ?? '';
         }
       }
     }
@@ -201,6 +213,15 @@ export function validateAuthoringBatch(
           source,
           `${nodePath}.inputMappings.${key}`,
           supportsExpressions,
+          entry.graph,
+          node.id,
+          policies.definitions
+            .find(
+              (definition) =>
+                definition.definition.key === node.definition.key &&
+                definition.definition.version === node.definition.version,
+            )
+            ?.capabilities?.includes('external_http') === true,
         );
         if (issue === undefined) continue;
         admitIssue(issue);

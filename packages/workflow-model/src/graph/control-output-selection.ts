@@ -1,9 +1,12 @@
+import { isRecord } from '../json/object.js';
+import { isCallbackWaitNode } from '../callbacks/contract.js';
 export type WorkflowControlOutputKind =
   'branch' | 'parallel' | 'for_each' | 'human_task';
 
 /** Definition identity, not output property names, determines control materialization. */
 export function workflowControlOutputKind(
   definition: Readonly<{ key: string; version: number }> | undefined,
+  config?: Readonly<Record<string, unknown>>,
 ): WorkflowControlOutputKind | undefined {
   if (definition?.version !== 1) return undefined;
   if (
@@ -12,7 +15,14 @@ export function workflowControlOutputKind(
     definition.key === 'core.approval'
   )
     return 'branch';
-  if (definition.key === 'core.request_input') return 'human_task';
+  if (
+    definition.key === 'core.request_input' ||
+    isCallbackWaitNode({
+      definition,
+      ...(config === undefined ? {} : { config }),
+    })
+  )
+    return 'human_task';
   if (definition.key === 'core.foreach') return 'for_each';
   if (definition.key === 'core.parallel') return 'parallel';
   return undefined;
@@ -72,7 +82,13 @@ export function workflowControlOutputNodeIds(
       )
         throw new TypeError('Executable control definition is invalid');
       seen.add(nodeId);
-      if (workflowControlOutputKind({ key, version }) !== undefined)
+      const config: unknown = Reflect.get(value, 'config');
+      if (
+        workflowControlOutputKind(
+          { key, version },
+          isRecord(config) ? config : undefined,
+        ) !== undefined
+      )
         ids.add(nodeId);
       const structured = Reflect.get(value, 'structured') as unknown;
       if (structured === undefined) continue;

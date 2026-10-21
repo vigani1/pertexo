@@ -75,9 +75,11 @@ export async function synchronizeHumanWait(
       union select call.parent_run_id from app.workflow_calls call join ancestors on call.child_run_id=ancestors.id where call.workspace_id=$1 and call.status='accepted'
     ), resume(id) as (
       select task.run_id from app.pending_run_tasks task join descendants on descendants.id=task.run_id
-      where task.workspace_id=$1 and task.status<>'pending' and task.consumed_at is null
+      where task.workspace_id=$1 and task.status<>'pending' and task.node_run_id is not null and task.consumed_at is null
       union select node.workflow_run_id from app.node_runs node join descendants on descendants.id=node.workflow_run_id
       where node.workspace_id=$1 and node.status in ('ready','running')
+      union select call.parent_run_id from app.workflow_calls call join descendants on descendants.id=call.parent_run_id
+      where call.workspace_id=$1 and call.status not in ('pending','accepted') and call.consumed_at is null
     ), structural_joins as (
       select identity->>'joinInvocationKey' invocation_key from app.run_checkpoints checkpoint
       cross join lateral jsonb_array_elements(checkpoint.scheduler_state->'joins') identity
@@ -102,6 +104,7 @@ export async function synchronizeHumanWait(
   );
   const facts = state.rows[0];
   if (facts === undefined) throw new Error('Human wait state is unavailable');
+  // Completed Calls remain runnable work until their parent consumes the result.
   // A parent cannot execute ready siblings while its slot is lent. Keep its
   // clock paused until the human-blocked child can resume, as with a lone Call.
   const quiescent =

@@ -1,3 +1,4 @@
+import './callbacks/journey.case';
 import { mkdir } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { expect, type Page } from '@playwright/test';

@@ -117,6 +117,18 @@ export class JsonataEvaluator implements ExpressionEvaluator {
         ),
       );
     }
+    for (const reference of validation.callbacks) {
+      if (
+        context.execution?.callbacks[reference.nodeId]?.[reference.field] ===
+        undefined
+      )
+        return Promise.resolve(
+          expressionError(
+            'callback_unavailable',
+            'The callback is unavailable here. Use Test workflow and select an enabled callback Wait in this scope.',
+          ),
+        );
+    }
     for (const name of validation.references.requiredNames) {
       const value = lookupWorkspaceVariable(name, context.variables ?? {});
       if (value.kind === 'error')

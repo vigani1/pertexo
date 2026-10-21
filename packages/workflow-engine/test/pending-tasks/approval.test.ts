@@ -136,7 +136,9 @@ async function declared(
 it('declares once, persists a human wait without a worker, and survives checkpoint parsing', async () => {
   const { run, waiting } = await declared();
   expect(waiting.taskIntents).toHaveLength(1);
-  expect(waiting.taskIntents?.[0]?.config.expiresAfterSeconds).toBe(604800);
+  const intent = waiting.taskIntents?.[0];
+  if (intent?.kind !== 'approval') throw new Error('Approval intent missing');
+  expect(intent.config.expiresAfterSeconds).toBe(604800);
   expect(waiting.checkpoint.runStatus).toBe('waiting');
   expect(waiting.attempts).toEqual([]);
   expect(

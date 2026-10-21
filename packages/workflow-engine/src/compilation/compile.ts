@@ -1,3 +1,7 @@
+import {
+  inspectExpression,
+  callbackReferenceIssue,
+} from '@pertexo/workflow-model/server';
 import { parseNodeCatalog, type NodeCatalog } from '@pertexo/node-sdk';
 import type { WorkflowGraph, WorkflowNode } from '@pertexo/workflow-model';
 import { parseWorkflowGraphForPublish } from '@pertexo/workflow-model/server';
@@ -40,7 +44,11 @@ function executableNode(
   // Parsing the catalog already checked the definition-executor binding and ABI.
   if (node.configVersion !== definition.configVersion)
     fail('node config version is incompatible');
-  assertExpressionPolicies(node, definition.policyReferences);
+  assertExpressionPolicies(
+    node,
+    definition.policyReferences,
+    definition.capabilities,
+  );
   const executable: WorkflowExecutableNode = {
     id: node.id,
     definition: definition.definition,
@@ -75,6 +83,22 @@ function compileExecutableGraph(
   graph: WorkflowGraph,
   catalog: NodeCatalog,
 ): WorkflowExecutableGraph {
+  for (const node of graph.nodes) {
+    const manifest = definitionManifest(catalog, node.definition);
+    for (const source of Object.values(node.inputMappings)) {
+      if (source.kind !== 'expression') continue;
+      const checked = inspectExpression(source.expression);
+      if (checked.kind === 'valid') {
+        const issue = callbackReferenceIssue(
+          checked.callbacks,
+          graph,
+          node.id,
+          manifest.capabilities.includes('external_http'),
+        );
+        if (issue !== undefined) fail(issue);
+      }
+    }
+  }
   const index = graphValidationIndex(graph);
   assertGraphPorts(graph, catalog, index);
   assertBranchesDoNotReconverge(graph, index);
@@ -97,6 +121,11 @@ function buildBoundary(input: {
   const graph = parseWorkflowGraphForPublish(input.graph, {
     definitions: catalog.definitions.map(({ definition }) => definition),
   });
+  if (graph.callable?.result.kind === 'expression') {
+    const inspected = inspectExpression(graph.callable.result.expression);
+    if (inspected.kind === 'valid' && inspected.callbacks.length > 0)
+      fail('Callback credentials cannot be a workflow result.');
+  }
   const executableGraph = compileExecutableGraph(graph, catalog);
   const envelope: WorkflowExecutable = {
     graph: executableGraph,

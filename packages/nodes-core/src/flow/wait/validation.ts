@@ -1,17 +1,9 @@
 import { boundedNodeJsonSchema } from '@pertexo/node-sdk';
-import { z } from 'zod';
+import type { z } from 'zod';
 
-export const CORE_WAIT_MAX_DURATION_SECONDS = 2_592_000;
-
-export const CORE_WAIT_CONFIG_SCHEMA = z
-  .object({
-    durationSeconds: z
-      .number()
-      .int()
-      .min(1)
-      .max(CORE_WAIT_MAX_DURATION_SECONDS),
-  })
-  .strict();
+export { WAIT_MAXIMUM_SECONDS as CORE_WAIT_MAX_DURATION_SECONDS } from '@pertexo/workflow-model';
+export { waitConfigSchema as CORE_WAIT_CONFIG_SCHEMA } from '@pertexo/workflow-model';
+import type { waitConfigSchema as CORE_WAIT_CONFIG_SCHEMA } from '@pertexo/workflow-model';
 export const CORE_WAIT_INPUT_SCHEMA = boundedNodeJsonSchema;
 export const CORE_WAIT_OUTPUT_SCHEMA = boundedNodeJsonSchema;
 

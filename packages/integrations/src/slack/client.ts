@@ -69,6 +69,7 @@ export type SlackClient = Readonly<{
       botToken: string;
       channelId: string;
       text: string;
+      sensitiveValues?: readonly string[];
       timeoutMillis: number;
       signal: AbortSignal;
       beforeDispatch(): Promise<void>;
@@ -106,6 +107,7 @@ export function createSlackClient(
     schema: z.ZodType<Envelope>,
     options: Readonly<{
       timeoutMillis: number;
+      sensitiveValues?: readonly string[];
       signal?: AbortSignal | undefined;
       beforeDispatch: () => Promise<void>;
     }>,
@@ -122,7 +124,7 @@ export function createSlackClient(
       timeoutMillis: options.timeoutMillis,
       maxRedirects: 0,
       maxResponseBytes: SLACK_SEND_MESSAGE_LIMITS.maxResponseBytes,
-      sensitiveValues: [token],
+      sensitiveValues: [token, ...(options.sensitiveValues ?? [])],
       ...(options.signal === undefined ? {} : { signal: options.signal }),
       beforeDispatch: options.beforeDispatch,
     };

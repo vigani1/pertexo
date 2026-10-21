@@ -13,7 +13,7 @@ export function canOwnFailureLink(
   if (
     node === undefined ||
     scopeOf(graph, nodeId)?.length !== 0 ||
-    !isWorkflowFailureSource(node.definition)
+    !isWorkflowFailureSource(node.definition, node.config)
   )
     return false;
   const inspected = inspectWorkflowFailureRoutes(graph);

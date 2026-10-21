@@ -141,3 +141,12 @@ export { createRunValuesStore } from './values/store.js';
 export { RunValuesLimitError } from './values/records.js';
 export type { RunValuesStore } from './values/records.js';
 export { ExecutionCapabilityExpiredError } from '../attempts/capability-fence.js';
+
+export { createCallbackStore } from './pending-tasks/callbacks/store.js';
+export {
+  CallbackCapacityError,
+  CallbackResponseError,
+  type CallbackStore,
+  type PreparedCallback,
+  type CallbackIdentity,
+} from './pending-tasks/callbacks/contract.js';

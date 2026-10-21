@@ -1,6 +1,6 @@
 # F46 — Resume a Wait through a callback
 
-Status: **Approved by the owner on 2026-10-21; implementation next.**
+Status: **Implemented (owner approval: 2026-10-21).**
 
 ## Outcome
 
@@ -40,6 +40,9 @@ another resume subsystem:
   `CALLBACK_TOKEN_PREVIOUS_KEYS`, using the same generator, startup refusal and
   separately supplied backup-key instructions. Retain previous versions while
   live callback tasks still need them; refuse missing or incorrect keys at startup.
+  Require the key/version pair when deployed and refuse the public development
+  key, including in previous-key entries. API and worker each verify retained
+  hashes independently; no API-waits-for-worker ordering is introduced.
 
 The owner explicitly approved the runtime mapping binding, prepared callback task
 inside the existing pending-task owner, ADR 076 amendment and hash-only token
@@ -89,6 +92,10 @@ storage on 2026-10-21. The mapping keeps the existing stored expression format.
   or traces. Reuse known-secret response redaction at provider boundaries. Prove
   the supported delivery path and echo behavior before claiming hash-only storage;
   do not add a general taint engine to make unsupported transformations work.
+  Only static binding leaves, including the existing picker’s parenthesized
+  object/array values, are supported. Copies remap a copied Wait’s references.
+  At most 16 Waits can be prepared per sender; transport redaction allows 64
+  known values (32 existing credential values plus two per callback).
 - Show the Wait mode, timeout, authentication choice and mapping reference with
   normal editor controls. Run history records the first callback and the timeout
   outcome without request credentials. No manual copy of a live run secret from
@@ -117,3 +124,18 @@ header and credential non-retention; retention/purge/restore with right/wrong ke
 real editor journey and desktop/pane/phone in both themes. Full unskipped hook and
 green existing CI before rebase merge. Update only this status and the F46 roadmap
 row on delivery.
+
+Qualification also covers inherited Condition selections inside a parallel branch.
+The shared scheduler now retains those selections in their existing iteration
+scope, so skipped callback targets close through ordinary coordinator settlement.
+Merge waits for its selected source to materialize before recording an immutable
+arrival; an intermediate ancestor cannot settle it without the final result.
+
+The approval notice observer takes its run fence before its task fence, matching
+decisions and coordinator settlement. A deterministic PostgreSQL regression covers
+the deadlock found by the existing live approvals journey during qualification.
+
+A completed, unconsumed descendant Call keeps its ancestors runnable during human
+wait resumption. The shared clock owner must not pause the ancestor again between
+child completion and result consumption; that would prevent the descendant from
+reacquiring its inherited slot. Qualification covers that ordering deterministically.

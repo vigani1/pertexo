@@ -1,3 +1,4 @@
+import { CALLBACK_TASK_RETENTION_RULE } from '../runs/pending-tasks/callbacks/retention.js';
 import { RUN_VALUES_RETENTION_RULE } from '../runs/values/retention.js';
 import { AUDIT_RETENTION_MIN_DAYS } from '@pertexo/contracts';
 import { expiredNoticeSql } from '../inbox/lifetime.js';
@@ -85,6 +86,7 @@ export const RETENTION_RULES = Object.freeze([
       set input_ref = null, input_ref_expires_at = null, updated_at = clock_timestamp()
       from page where run.id = page.id`,
   },
+  CALLBACK_TASK_RETENTION_RULE,
   {
     // Test details follow the creation window; ordinary details follow completion.
     // Deleting a node run also deletes its attempts.
@@ -143,6 +145,8 @@ export const RETENTION_RULES = Object.freeze([
           and ${expiredRunSql('run')}
           and not exists (select 1 from app.workflow_run_values value
             where value.workspace_id = run.workspace_id and value.workflow_run_id = run.id)
+          and not exists (select 1 from app.pending_run_tasks task
+            where task.workspace_id = run.workspace_id and task.run_id = run.id and task.kind='callback')
           and not exists (select 1 from app.node_runs node
             where node.workspace_id = run.workspace_id and node.workflow_run_id = run.id)
           and not exists (select 1 from app.run_events event

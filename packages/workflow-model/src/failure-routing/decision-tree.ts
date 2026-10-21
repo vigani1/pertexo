@@ -1,3 +1,4 @@
+import { isCallbackWaitNode } from '../callbacks/contract.js';
 import { isWorkflowTriggerKey } from '../graph/triggers.js';
 import type { WorkflowEdge } from '../graph/contract.js';
 
@@ -5,6 +6,7 @@ export type DecisionTreeNode = Readonly<{
   id: string;
   definition: Readonly<{ key: string; version: number }>;
   disabled?: boolean | undefined;
+  config?: Readonly<Record<string, unknown>> | undefined;
   forEach?: unknown;
   structured?: unknown;
 }>;
@@ -34,7 +36,8 @@ export function inspectWorkflowDecisionTree(
   if (nodes.size === 0 || nodes.size !== graph.nodes.length) return undefined;
   for (const node of graph.nodes)
     if (
-      excludedControls.has(node.definition.key) ||
+      (excludedControls.has(node.definition.key) &&
+        !isCallbackWaitNode(node)) ||
       node.forEach !== undefined ||
       node.structured !== undefined ||
       (['core.condition', 'core.approval'].includes(node.definition.key) &&

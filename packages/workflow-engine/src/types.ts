@@ -1,3 +1,4 @@
+import type { CallbackWaitConfig } from '@pertexo/workflow-model';
 import type {
   JsonValue,
   ApprovalConfig,
@@ -333,6 +334,7 @@ export type PendingTaskIntent = Readonly<{
   (
     | Readonly<{ kind: 'approval'; config: ApprovalConfig }>
     | Readonly<{ kind: 'input_request'; config: InputRequestConfig }>
+    | Readonly<{ kind: 'callback'; config: CallbackWaitConfig }>
   );
 
 export interface PendingTaskOutcome {

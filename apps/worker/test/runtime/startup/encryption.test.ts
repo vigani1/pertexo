@@ -1,3 +1,4 @@
+import { emptyCallbackStore } from '../../support/callback-store.js';
 import { Readable } from 'node:stream';
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
@@ -30,6 +31,7 @@ const dependencies = {
     shutdown: vi.fn(() => Promise.resolve()),
   },
 };
+
 async function record() {
   const workspaceId = randomUUID(),
     resourceId = randomUUID(),
@@ -60,6 +62,7 @@ describe('encryption verification before worker construction', () => {
     const stored = await record();
     const cleanup = new Error('Fixture repository cleanup failed');
     const factories = {
+      callbackStore: emptyCallbackStore,
       encryptionKeysRepository: () => ({
         read: () => Readable.from([stored]),
         close: () => Promise.reject(cleanup),
@@ -86,6 +89,7 @@ describe('encryption verification before worker construction', () => {
     const stored = await record();
     const close = vi.fn(() => Promise.resolve());
     const factories = {
+      callbackStore: emptyCallbackStore,
       encryptionKeysRepository: () => ({
         read: () => Readable.from([stored]),
         close,
@@ -113,6 +117,7 @@ describe('encryption verification before worker construction', () => {
     const events: string[] = [];
     const reached = new Error('Ordinary runtime construction reached');
     const factories = {
+      callbackStore: emptyCallbackStore,
       encryptionKeysRepository: () => ({
         read: () => {
           events.push('read');

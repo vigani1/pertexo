@@ -23,6 +23,12 @@ const requiredEnvironment = {
   ARTIFACT_STORE_SECRET_ACCESS_KEY: 'local-secret',
 } as const;
 
+const callbackEnvironment = {
+  CALLBACK_TOKEN_KEY: Buffer.alloc(32, 71).toString('base64'),
+  CALLBACK_TOKEN_KEY_VERSION: 'v1',
+  PUBLIC_WEB_ORIGIN: 'https://app.example.test',
+};
+
 describe('parseWorkerConfig', () => {
   it('enables the shared local provider only outside deployed environments', () => {
     const local = {
@@ -77,6 +83,7 @@ describe('parseWorkerConfig', () => {
     expect(() =>
       parseWorkerConfig({
         ...requiredEnvironment,
+        ...callbackEnvironment,
         NODE_ENV: 'production',
         OTEL_EXPORTER_OTLP_ENDPOINT: 'https://telemetry.example.test/v1',
       }),
@@ -301,6 +308,7 @@ describe('parseWorkerConfig', () => {
         CONNECTION_KMS_ENDPOINT: 'http://kms.example.test',
         CONNECTION_KMS_KEY_REFERENCE: 'alias/pertexo-connections',
         CONNECTION_KMS_REGION: 'eu-central-1',
+        ...callbackEnvironment,
         NODE_ENV: 'production',
         OTEL_EXPORTER_OTLP_ENDPOINT: 'https://telemetry.example.test/v1',
       });
@@ -324,6 +332,7 @@ describe('parseWorkerConfig', () => {
       ARTIFACT_STORE_SECRET_ACCESS_KEY: 'primary-secret',
       CONNECTION_KMS_KEY_REFERENCE: 'alias/pertexo-connections',
       CONNECTION_KMS_REGION: 'eu-central-1',
+      ...callbackEnvironment,
       NODE_ENV: 'production',
       OTEL_EXPORTER_OTLP_ENDPOINT: 'https://telemetry.example.test/v1',
       AUTH_MAIL_EMAIL_API_KEY: 'provider-key',
@@ -617,6 +626,7 @@ it('requires an explicit deployed disk scratch directory before delivery starts'
   try {
     parseWorkerConfig({
       ...environment,
+      ...callbackEnvironment,
       NODE_ENV: 'production',
       CONNECTION_KMS_KEY_REFERENCE: 'alias/pertexo',
       CONNECTION_KMS_REGION: 'eu-central-1',

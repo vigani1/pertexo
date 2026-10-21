@@ -83,7 +83,7 @@ export function inspectWorkflowFailureRoutes(
     const source = nodes.get(failure.source.nodeId);
     if (
       source === undefined ||
-      !isWorkflowFailureSource(source.definition) ||
+      !isWorkflowFailureSource(source.definition, source.config) ||
       source.structured !== undefined
     )
       return invalid('Only ordinary actions can own a failure link.');

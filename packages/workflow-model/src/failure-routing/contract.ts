@@ -1,3 +1,4 @@
+import { isCallbackWaitNode } from '../callbacks/contract.js';
 import { isWorkflowTriggerKey } from '../graph/triggers.js';
 
 /** Engine-owned alternative path, never a provider's successful output. */
@@ -27,10 +28,15 @@ const excludedSources = new Set([
 ]);
 export function isWorkflowFailureSource(
   definition: Readonly<{ key: string; version: number }>,
+  config?: Readonly<Record<string, unknown>>,
 ): boolean {
   return (
-    !isWorkflowTriggerKey(definition.key) &&
-    !excludedSources.has(definition.key)
+    isCallbackWaitNode({
+      definition,
+      ...(config === undefined ? {} : { config }),
+    }) ||
+    (!isWorkflowTriggerKey(definition.key) &&
+      !excludedSources.has(definition.key))
   );
 }
 

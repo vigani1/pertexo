@@ -72,6 +72,11 @@ function attemptSuffix(attemptNumber: number | undefined): string {
 }
 
 function describeSentence(event: WorkflowRunEvent): string {
+  if (
+    event.type === 'node.succeeded' &&
+    event.payload.reasonCode === 'callback.received'
+  )
+    return 'resumed after callback';
   const fixed = fixedSentences[event.type];
   if (fixed !== undefined) return fixed;
   const { dueAt, attemptNumber } = event.payload;

@@ -1,3 +1,5 @@
+import { callbackWaitConfigSchema } from '@pertexo/workflow-model';
+import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import type {
   NodeExecutionInvocation,
   NodeExecutorRegistration,
@@ -7,6 +9,30 @@ import { CORE_WAIT_EXECUTOR } from './definition.js';
 
 export const coreWaitExecutor: NodeExecutorRegistration = Object.freeze({
   executor: CORE_WAIT_EXECUTOR,
-  execute: (invocation: NodeExecutionInvocation<unknown, unknown>) =>
-    Promise.resolve(invocation.input),
+  execute: async (invocation: NodeExecutionInvocation<unknown, unknown>) => {
+    if ((invocation.config as { mode?: string }).mode !== 'callback')
+      return invocation.input;
+    const runtime = invocation.runtime;
+    if (runtime?.callbacks === undefined)
+      throw new NodeExecutorFailure({
+        kind: 'failed',
+        errorKind: 'configuration',
+        possiblyDispatched: false,
+        safeErrorCode: 'execution.configuration',
+        errorSummary:
+          'Callback waits are unavailable. Configure callback keys before running this workflow.',
+      });
+    const config = callbackWaitConfigSchema.parse(invocation.config);
+    await runtime.callbacks.prepare({
+      targets: [
+        {
+          nodeId: runtime.nodeId,
+          timeoutSeconds: config.timeoutSeconds,
+          authentication: config.authentication,
+        },
+      ],
+      signal: invocation.signal,
+    });
+    return { pending: true };
+  },
 });

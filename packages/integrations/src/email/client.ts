@@ -31,6 +31,7 @@ export type ResendClient = Readonly<{
       text: string;
       unsubscribeUrl?: string;
       idempotencyKey: string;
+      sensitiveValues?: readonly string[];
       timeoutMillis: number;
       signal?: AbortSignal;
       beforeDispatch(): Promise<void>;
@@ -72,7 +73,7 @@ export function createResendClient(
         timeoutMillis: input.timeoutMillis,
         maxRedirects: 0,
         maxResponseBytes: EMAIL_SEND_NOTIFICATION_LIMITS.maxResponseBytes,
-        sensitiveValues: [input.apiKey],
+        sensitiveValues: [input.apiKey, ...(input.sensitiveValues ?? [])],
         ...(input.signal === undefined ? {} : { signal: input.signal }),
         beforeDispatch: input.beforeDispatch,
       };

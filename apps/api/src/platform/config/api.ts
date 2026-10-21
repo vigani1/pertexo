@@ -1,3 +1,7 @@
+import {
+  parseCallbackKeyConfig,
+  type CallbackKeyConfig,
+} from '@pertexo/integrations/server';
 import { parseCodeSettings, type CodeSettings } from '@pertexo/node-sdk';
 import { isIP } from 'node:net';
 import {
@@ -91,6 +95,7 @@ const apiEnvironmentSchema = z.object({
 export type ApiNodeEnvironment = (typeof API_NODE_ENVIRONMENTS)[number];
 
 export type ApiConfig = Readonly<{
+  callbacks?: CallbackKeyConfig;
   codeSettings: CodeSettings;
   artifacts?: ArtifactStoreConfig;
   connections?:
@@ -142,7 +147,9 @@ export function parseApiConfig(
   }
   const artifacts = parseArtifactsConfig(parsed.NODE_ENV, environment);
 
+  const callbacks = parseCallbackKeyConfig(environment, deployed);
   return Object.freeze({
+    ...(callbacks === undefined ? {} : { callbacks }),
     codeSettings: parseCodeSettings(environment),
     ...(artifacts === undefined ? {} : { artifacts }),
     ...(connections === undefined ? {} : { connections }),

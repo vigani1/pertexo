@@ -2731,6 +2731,9 @@
         "code": {
           "type": "string",
           "enum": [
+            "callback.already_received",
+            "callback.expired",
+            "callback.unavailable",
             "api_token.unavailable",
             "api_token.limit",
             "auth.unauthenticated",

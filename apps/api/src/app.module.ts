@@ -1,3 +1,4 @@
+import type { ApiCallbackRuntime } from './platform/webhooks/callback-runtime.module.js';
 import 'reflect-metadata';
 
 import type { DynamicModule } from '@nestjs/common';
@@ -69,6 +70,7 @@ export type ApiModuleDependencies = Readonly<{
   connectionRuntime?: ApiConnectionRuntime;
   workflowRuntime?: ApiWorkflowRuntime;
   webhookRuntime?: ApiWebhookRuntime;
+  callbackRuntime?: ApiCallbackRuntime;
   scheduleRuntime?: ApiScheduleRuntime;
   notificationRuntime?: ApiNotificationRuntime;
   artifactRuntime?: ApiArtifactRuntime;
@@ -195,6 +197,10 @@ export class AppModule {
             if (dependencies.connectionRuntime !== undefined)
               shutdown.register('connection', () =>
                 dependencies.connectionRuntime?.close(),
+              );
+            if (dependencies.callbackRuntime !== undefined)
+              shutdown.register('callback', () =>
+                dependencies.callbackRuntime?.close(),
               );
             if (webhookRuntime !== undefined)
               shutdown.register('webhook', () => webhookRuntime.close());

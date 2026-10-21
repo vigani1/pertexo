@@ -291,7 +291,7 @@ const registry: Readonly<Record<string, RegistryEntry>> = Object.freeze({
   },
   'core.wait': {
     name: 'Wait',
-    description: 'Pause the run for a set time',
+    description: 'Pause for a duration or until called back',
     icon: HourglassIcon,
     family: 'logic',
   },

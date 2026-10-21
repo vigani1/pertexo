@@ -1,3 +1,4 @@
+import type { NodeCallbackRuntime } from '../callbacks/contract.js';
 import type { NodeRunValuesRuntime } from '../run-values/contract.js';
 import type { NodeVerifiedByteSource } from '../artifacts/verified-source.js';
 import type { NodeDataTableRuntime } from '../data-tables/contract.js';
@@ -107,6 +108,7 @@ export interface NodeArtifactRuntime {
 }
 
 export interface NodeExecutionRuntime {
+  readonly callbacks?: NodeCallbackRuntime;
   /** Existing run or preview deadline; absent for an unbounded run. */
   readonly deadlineAt?: Date;
   readonly workspaceId: string;

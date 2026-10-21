@@ -1,4 +1,9 @@
 import {
+  callbackReferences,
+  type CallbackReference,
+} from '../callbacks/references.js';
+import type { CallbackBindings } from '../callbacks/contract.js';
+import {
   expressionVariableReferences,
   type ExpressionVariableReferences,
 } from './variable-references.js';
@@ -56,12 +61,14 @@ export type ExpressionResult =
         | 'timed_out'
         | 'canceled'
         | 'evaluation_failed'
-        | 'variable_missing';
+        | 'variable_missing'
+        | 'callback_unavailable';
       readonly message: string;
       readonly limit?: ExpressionLimit;
     };
 
 export interface ExpressionContext {
+  readonly execution?: Readonly<{ callbacks: CallbackBindings }>;
   readonly variables?: WorkspaceVariableValues;
   readonly runInput: JsonValue;
   readonly nodeOutputs: Readonly<Record<string, JsonValue>>;
@@ -244,7 +251,8 @@ function astSize(root: JsonataAst): {
         type === 'variable' &&
         parentKey !== 'procedure' &&
         value.value !== '' &&
-        value.value !== 'vars'
+        value.value !== 'vars' &&
+        value.value !== 'execution'
       )
         disallowed = 'variable';
       const steps = isUnknownArray(value.steps) ? value.steps : undefined;
@@ -267,11 +275,13 @@ function astSize(root: JsonataAst): {
     : { nodes, depth, disallowed };
 }
 
-export function inspectExpression(
-  source: string,
-):
+export function inspectExpression(source: string):
   | Exclude<ExpressionValidation, { kind: 'valid' }>
-  | Readonly<{ kind: 'valid'; references: ExpressionVariableReferences }> {
+  | Readonly<{
+      kind: 'valid';
+      references: ExpressionVariableReferences;
+      callbacks: readonly CallbackReference[];
+    }> {
   if (Buffer.byteLength(source, 'utf8') > EXPRESSION_POLICY.expressionBytes)
     return expressionError(
       'limit_exceeded',
@@ -298,7 +308,17 @@ export function inspectExpression(
         'disallowed_construct',
         `JSONata construct ${size.disallowed} is unavailable`,
       );
-    return { kind: 'valid', references: expressionVariableReferences(ast) };
+    const callbacks = callbackReferences(ast);
+    if (callbacks.invalid)
+      return expressionError(
+        'disallowed_construct',
+        'Select a callback URL or secret by its Wait step identity.',
+      );
+    return {
+      kind: 'valid',
+      references: expressionVariableReferences(ast),
+      callbacks: callbacks.references,
+    };
   } catch (cause) {
     return expressionError(
       'invalid_expression',
@@ -350,7 +370,15 @@ export function projectExpressionContext(
     if (loopDescriptor !== undefined && !('value' in loopDescriptor))
       throw new TypeError();
     const loopValue: unknown = loopDescriptor?.value;
+    const executionDescriptor = Object.getOwnPropertyDescriptor(
+      value,
+      'execution',
+    );
+    if (executionDescriptor !== undefined && !('value' in executionDescriptor))
+      throw new TypeError();
+    const executionValue: unknown = executionDescriptor?.value;
     const canonical = normalizeJson({
+      ...(executionValue === undefined ? {} : { execution: executionValue }),
       runInput: runInputValue,
       nodeOutputs: nodeOutputsValue,
       ...(variablesValue === undefined ? {} : { variables: variablesValue }),
@@ -364,6 +392,30 @@ export function projectExpressionContext(
     const runInput = canonical.runInput;
     const nodeOutputs = canonical.nodeOutputs;
     const loop = canonical.loop;
+    const execution = canonical.execution;
+    let executionBinding: ExpressionContext['execution'];
+    if (execution !== undefined) {
+      if (!isJsonObject(execution)) throw new TypeError();
+      const callbacks = execution.callbacks;
+      if (callbacks === undefined || !isJsonObject(callbacks))
+        throw new TypeError();
+      const bindings = Object.entries(callbacks).map(([id, entry]) => {
+        if (
+          !isJsonObject(entry) ||
+          typeof entry.url !== 'string' ||
+          (entry.secret !== undefined && typeof entry.secret !== 'string')
+        )
+          throw new TypeError();
+        return [
+          id,
+          {
+            url: entry.url,
+            ...(entry.secret === undefined ? {} : { secret: entry.secret }),
+          },
+        ] as const;
+      });
+      executionBinding = { callbacks: Object.fromEntries(bindings) };
+    }
     if (
       runInput === undefined ||
       nodeOutputs === undefined ||
@@ -374,6 +426,9 @@ export function projectExpressionContext(
     return {
       runInput,
       nodeOutputs,
+      ...(executionBinding === undefined
+        ? {}
+        : { execution: executionBinding }),
       ...(variables === undefined ? {} : { variables }),
       ...(loop === undefined ? {} : { loop }),
     };

@@ -1,3 +1,5 @@
+import type { CallbackKeyConfig } from '@pertexo/integrations/server';
+import { z } from 'zod';
 import { createTestArtifactScratch } from '../infrastructure/artifact-scratch.js';
 import { createEditorCodeRuntime } from './code/runtime.js';
 import { createEditorNotifications } from './notifications/runtime.js';
@@ -140,6 +142,7 @@ let configuration:
       migrationUrl: string;
       connectionMasterKey?: string;
       authorizationValue?: string;
+      callbackConfig?: CallbackKeyConfig;
     }
   | undefined;
 const runtimeOwner = createEditorBrowserWorkerLifetime(
@@ -290,6 +293,21 @@ async function constructRuntimes(
       dispatcherUrl: raw.dispatcherUrl,
       apiUrl: raw.apiUrl,
       migrationUrl: raw.migrationUrl,
+      ...('callbackConfig' in raw
+        ? {
+            callbackConfig: z
+              .object({
+                origin: z.string(),
+                keys: z.object({
+                  current: z.object({ key: z.string(), version: z.string() }),
+                  previous: z.array(
+                    z.object({ key: z.string(), version: z.string() }),
+                  ),
+                }),
+              })
+              .parse(raw.callbackConfig),
+          }
+        : {}),
       ...(!controlledHttp && !curatedTemplates
         ? {}
         : (() => {
@@ -451,10 +469,15 @@ async function constructRuntimes(
   }
   if (
     webhookResponseCase ||
-    ['variables', 'run-values'].includes(process.env.EDITOR_BROWSER_CASE ?? '')
+    ['variables', 'run-values', 'approvals'].includes(
+      process.env.EDITOR_BROWSER_CASE ?? '',
+    )
   ) {
     controlledCapabilities = await createWorkerNodeRuntimeCapabilities({
       database,
+      ...(raw.callbackConfig === undefined
+        ? {}
+        : { callbacks: raw.callbackConfig }),
     });
     resources.capabilities = controlledCapabilities;
     await controlledCapabilities.checkReadiness();
@@ -489,6 +512,9 @@ async function constructRuntimes(
       controlledHttpClient === undefined
         ? {
             runtimeCapabilities: {
+              ...(controlledCapabilities?.factories.callbacks === undefined
+                ? {}
+                : { callbacks: controlledCapabilities.factories.callbacks }),
               ...(controlledCapabilities?.factories.runValues === undefined
                 ? {}
                 : { runValues: controlledCapabilities.factories.runValues }),

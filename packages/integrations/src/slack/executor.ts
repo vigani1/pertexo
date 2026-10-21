@@ -210,6 +210,7 @@ async function execute(
         botToken: credential.botToken,
         channelId: input.channelId,
         text: input.text,
+        sensitiveValues: invocation.runtime?.callbacks?.sensitiveValues() ?? [],
         timeoutMillis: config.timeoutMillis,
         signal: invocation.signal,
         beforeDispatch: createProviderBeforeDispatch({

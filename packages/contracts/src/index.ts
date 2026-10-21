@@ -10,7 +10,10 @@ export * from './schemas/execution/node-testing.js';
 export * from './schemas/triggers/schedules.js';
 export * from './schemas/shared/transport-headers.js';
 export * from './schemas/triggers/webhooks.js';
-export * from './schemas/triggers/authentication.js';
+export {
+  webhookAuthenticationSchema,
+  type WebhookAuthentication,
+} from '@pertexo/workflow-model';
 export * from './schemas/workflows/authoring.js';
 export * from './schemas/workflows/portability.js';
 export * from './schemas/execution/runs.js';

@@ -129,6 +129,21 @@ for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
           config.services[service].environment?.[variable],
           undefined,
         );
+    assert.deepEqual(
+      api.callbacks,
+      parseWorkerConfig({
+        ...config.services.worker.environment,
+        WORKER_INSTANCE_ID: 'callback-qualification',
+      }).callbacks,
+    );
+    for (const key of ['CALLBACK_TOKEN_KEY', 'CALLBACK_TOKEN_KEY_VERSION']) {
+      assert.equal(
+        parseEnv(readFileSync(join(directory, 'encryption.env'), 'utf8'))[key],
+        generated[key],
+      );
+      for (const service of ['web', 'storage', 'code-runner', 'migration'])
+        assert.equal(config.services[service].environment?.[key], undefined);
+    }
     const worker = parseWorkerConfig({
       ...config.services.worker.environment,
       WORKER_INSTANCE_ID: 'fixture',
@@ -250,7 +265,13 @@ for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
         (key) =>
           key.startsWith('CONNECTION_') ||
           key.startsWith('AWS_') ||
-          ['NODE_ENV', 'DATABASE_MAINTENANCE_URL'].includes(key),
+          key.startsWith('CALLBACK_TOKEN_') ||
+          [
+            'NODE_ENV',
+            'DATABASE_MAINTENANCE_URL',
+            'DATABASE_URL',
+            'PUBLIC_WEB_ORIGIN',
+          ].includes(key),
       ),
     );
     for (const file of ['encryption.env', 'api.env', 'worker.env'])
