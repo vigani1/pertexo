@@ -552,6 +552,7 @@ export function createWebhookTriggerDatabase(
             client,
             input.workspaceId,
             input.actorId,
+            input.workflowId,
           );
           return readHealth(
             client,

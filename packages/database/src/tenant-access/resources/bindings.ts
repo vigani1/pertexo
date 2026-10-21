@@ -1,0 +1,83 @@
+import type { PoolClient } from 'pg';
+import { sql } from 'drizzle-orm';
+import {
+  canonicalJson,
+  InvalidWorkflowGraphError,
+  isWorkflowCallDefinition,
+  workflowCallConfigSchema,
+  type WorkflowGraph,
+} from '@pertexo/workflow-model';
+import { readFolderScope } from './facts.js';
+import { bindResourcePredicate, workflowScopeSql } from './query-scope.js';
+import type { ResourceActor } from './contract.js';
+
+function callTargets(graph: WorkflowGraph): Map<string, string> {
+  const targets = new Map<string, string>();
+  const pending: { graph: WorkflowGraph; path: readonly string[] }[] = [
+    { graph, path: [] },
+  ];
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (current === undefined) break;
+    for (const node of current.graph.nodes) {
+      if (isWorkflowCallDefinition(node.definition)) {
+        // Incomplete draft configuration is not an executable binding yet.
+        const parsed = workflowCallConfigSchema.safeParse(node.config);
+        if (parsed.success)
+          targets.set(
+            canonicalJson([
+              [...current.path, node.id],
+              node.definition,
+              parsed.data.target,
+            ]),
+            parsed.data.target.workflowId,
+          );
+      }
+      if (node.structured !== undefined)
+        pending.push({
+          graph: node.structured.body,
+          path: [...current.path, node.id],
+        });
+    }
+  }
+  return targets;
+}
+
+/** Only direct bindings are admitted; immutable child versions delegate their own closure. */
+export async function requireWorkflowCallTargets(
+  client: PoolClient,
+  actor: ResourceActor,
+  graph: WorkflowGraph,
+  previous?: WorkflowGraph,
+): Promise<void> {
+  const existing =
+    previous === undefined ? new Map<string, string>() : callTargets(previous);
+  const targets = [
+    ...new Set(
+      [...callTargets(graph)]
+        .filter(([key]) => !existing.has(key))
+        .map(([, id]) => id),
+    ),
+  ];
+  if (targets.length === 0) return;
+  const parameters: unknown[] = [actor.workspaceId, targets];
+  const scope = await readFolderScope(client, actor);
+  const visible = bindResourcePredicate(
+    workflowScopeSql(scope, sql`workflow.id`),
+    parameters,
+  );
+  const found = await client.query(
+    `select workflow.id from app.workflows workflow
+    where workflow.workspace_id=$1 and workflow.id=any($2::uuid[]) and ${visible}`,
+    parameters,
+  );
+  if (found.rows.length !== targets.length)
+    throw new InvalidWorkflowGraphError([
+      {
+        code: 'invalid_graph',
+        path: '$.nodes',
+        message:
+          'A Call target is unavailable. Choose a workflow you can read.',
+      },
+    ]);
+}

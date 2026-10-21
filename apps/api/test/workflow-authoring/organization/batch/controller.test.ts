@@ -151,6 +151,10 @@ afterEach(async () => {
  * This fixture is not evidence for production session authentication or SQL. */
 async function setup() {
   const folders = {
+    sharingPrincipals: vi.fn(),
+    readSharing: vi.fn(),
+    replaceSharing: vi.fn(),
+    reviewMove: vi.fn(),
     listFolders: vi.fn().mockResolvedValue({ items: [folder] }),
     createFolder: vi.fn().mockResolvedValue({ folder, replayed: false }),
     renameFolder: vi.fn().mockResolvedValue({ folder, replayed: true }),

@@ -36,6 +36,7 @@ export class GetUsageTrendsUseCase {
     });
     return usageTrendsResponseSchema.parse(
       await this.persistence.usageTrends({
+        actorId: input.actor.actorId,
         workspaceId: input.routeWorkspaceId,
         period: input.period,
         includeWorkflowNames: hasCapability(access.role, 'workflow:read'),

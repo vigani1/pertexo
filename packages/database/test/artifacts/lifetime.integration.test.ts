@@ -244,7 +244,7 @@ describe.each(shapes)('artifact lifetime and cleanup (%s)', (shape) => {
       state.pool,
       { workspaceId },
       async (client) => {
-        await lockArtifactReferences(client, workspaceId, state.graph);
+        await lockArtifactReferences(client, workspaceId, state.graph, userId);
         held.open();
         await release.promise;
         await client.query(
@@ -286,7 +286,12 @@ describe.each(shapes)('artifact lifetime and cleanup (%s)', (shape) => {
       await deleting.promise;
       await expect(
         withTenantScopedClient(state.pool, { workspaceId }, async (client) => {
-          await lockArtifactReferences(client, workspaceId, state.graph);
+          await lockArtifactReferences(
+            client,
+            workspaceId,
+            state.graph,
+            userId,
+          );
           await client.query(
             'update app.workflow_drafts set graph_json=$3::jsonb where workspace_id=$1 and workflow_id=$2',
             [workspaceId, state.workflowId, JSON.stringify(state.graph)],
@@ -314,7 +319,7 @@ describe.each(shapes)('artifact lifetime and cleanup (%s)', (shape) => {
       ])
         await expect(
           withTenantScopedClient(state.pool, { workspaceId }, (client) =>
-            lockArtifactReferences(client, workspaceId, reference),
+            lockArtifactReferences(client, workspaceId, reference, userId),
           ),
         ).rejects.toBeInstanceOf(ArtifactMetadataNotFoundError);
       await state.coordinator.processNext();
@@ -347,7 +352,7 @@ describe.each(shapes)('artifact lifetime and cleanup (%s)', (shape) => {
       });
       await expect(
         withTenantScopedClient(state.pool, { workspaceId }, (client) =>
-          lockArtifactReferences(client, workspaceId, state.graph),
+          lockArtifactReferences(client, workspaceId, state.graph, userId),
         ),
       ).rejects.toBeInstanceOf(ArtifactMetadataNotFoundError);
       await expect(
@@ -412,7 +417,12 @@ describe.each(shapes)('artifact lifetime and cleanup (%s)', (shape) => {
           state.pool,
           { workspaceId: foreignWorkspaceId },
           (client) =>
-            lockArtifactReferences(client, foreignWorkspaceId, state.graph),
+            lockArtifactReferences(
+              client,
+              foreignWorkspaceId,
+              state.graph,
+              userId,
+            ),
         ),
       ).rejects.toBeInstanceOf(ArtifactMetadataNotFoundError);
       await state.coordinator.processNext();

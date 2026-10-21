@@ -1,3 +1,10 @@
+import { lockActorArtifactReferences } from '../artifacts/references.js';
+import { withResourceRunRead } from '../tenant-access/resources/transactions.js';
+import {
+  withRunCommand,
+  requireRunAccess,
+  requireWorkflowAccess,
+} from './queries/access.js';
 import {
   readUsageTrends,
   type UsageTrendsInput,
@@ -29,10 +36,7 @@ import {
   type PublishedWorkflow,
 } from './queries/execution/published.js';
 import { sha256HexSchema as digestSchema } from '../platform/persisted-primitives.js';
-import {
-  withWorkspaceTransaction,
-  withWorkspaceReadTransaction,
-} from '../tenant-access/transactions.js';
+import {} from '../tenant-access/transactions.js';
 import {
   recoverWorkflowRunInTransaction,
   allocateRecoveryIdentity,
@@ -181,6 +185,7 @@ const cancelInputSchema = z
 
 const recoveryPreviewInputSchema = z
   .object({
+    actorId: z.uuid(),
     workspaceId: z.uuid(),
     runId: z.uuid(),
     signal: z.instanceof(AbortSignal).optional(),
@@ -218,6 +223,15 @@ export type CancelWorkflowRunInput = Readonly<
   z.input<typeof cancelInputSchema>
 >;
 export interface WorkflowRunDatabase {
+  canRead(
+    input: Readonly<{
+      workspaceId: string;
+      actorId: string;
+      runId: string;
+      signal?: AbortSignal | undefined;
+    }>,
+  ): Promise<boolean>;
+
   usageTrends(input: UsageTrendsInput): Promise<UsageTrendsResponse>;
   recovery(
     input: WorkflowRecoveryPreviewInput,
@@ -283,52 +297,63 @@ export function createWorkflowRunDatabase(
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   return Object.freeze({
+    canRead: async (input: Parameters<WorkflowRunDatabase['canRead']>[0]) =>
+      (await withResourceRunRead(pool, input, () => Promise.resolve(true))) ===
+      true,
     recovery: async (input: WorkflowRecoveryPreviewInput) => {
       const parsed = recoveryPreviewInputSchema.parse(input);
-      return withWorkspaceReadTransaction(
-        pool,
-        parsed.workspaceId,
-        async (transaction) => {
-          const metadata = await readRecoveryMetadata(
-            transaction,
-            parsed.runId,
-            'snapshot',
-          );
-          if ('kind' in metadata) return metadata;
-          const candidate = parsed.prepareRecovery(metadata);
-          if (candidate.kind === 'refused') return candidate;
-          const values = await readRecoveryValues(
-            transaction,
-            parsed.runId,
-            candidate.nodeRunIds,
-          );
-          if ('kind' in values) return values;
-          const prepared = candidate.complete(values);
-          if (prepared.kind === 'refused') return prepared;
-          const seed = prepared.seed(
-            allocateRecoveryIdentity(candidate.nodeRunIds),
-          );
-          return seed.kind === 'refused' ? seed : prepared.preview;
-        },
-        parsed.signal === undefined ? {} : { signal: parsed.signal },
-      );
+      return withResourceRunRead(pool, parsed, async (transaction) => {
+        const metadata = await readRecoveryMetadata(
+          transaction,
+          parsed.runId,
+          'snapshot',
+        );
+        if ('kind' in metadata) return metadata;
+        const candidate = parsed.prepareRecovery(metadata);
+        if (candidate.kind === 'refused') return candidate;
+        const values = await readRecoveryValues(
+          transaction,
+          parsed.runId,
+          candidate.nodeRunIds,
+        );
+        if ('kind' in values) return values;
+        const prepared = candidate.complete(values);
+        if (prepared.kind === 'refused') return prepared;
+        const seed = prepared.seed(
+          allocateRecoveryIdentity(candidate.nodeRunIds),
+        );
+        return seed.kind === 'refused' ? seed : prepared.preview;
+      }).then((result) => {
+        if (result === undefined) throw new WorkflowRunNotFoundError();
+        return result;
+      });
     },
     recover: async (input: RecoverPublishedWorkflowRunInput) => {
       const parsed = recoveryInputSchema.parse(input);
-      return withWorkspaceTransaction(
-        pool,
-        parsed.workspaceId,
-        (transaction) => recoverWorkflowRunInTransaction(transaction, parsed),
-        parsed.signal === undefined ? {} : { signal: parsed.signal },
-      );
+      return withRunCommand(pool, parsed, 'run:replay', async (transaction) => {
+        await requireRunAccess(transaction, parsed.sourceRunId, 'run:replay');
+        return recoverWorkflowRunInTransaction(transaction, parsed);
+      });
     },
     start: async (input: StartPublishedWorkflowRunInput) => {
       const parsed = startInputSchema.parse(input);
-      const result = await withWorkspaceTransaction(
+      const result = await withRunCommand(
         pool,
-        parsed.workspaceId,
-        async (transaction) => startInTransaction(transaction, parsed),
-        parsed.signal === undefined ? {} : { signal: parsed.signal },
+        parsed,
+        'run:start',
+        async (transaction) => {
+          await requireWorkflowAccess(
+            transaction,
+            parsed.workflowId,
+            'run:start',
+          );
+          await lockActorArtifactReferences(
+            transaction,
+            parsed.actorId,
+            parsed.input,
+          );
+          return startInTransaction(transaction, parsed);
+        },
       );
       if ('kind' in result)
         throw new WorkflowPublishedVersionConflictError(
@@ -339,13 +364,10 @@ export function createWorkflowRunDatabase(
     },
     replay: async (input: ReplayPublishedWorkflowRunInput) => {
       const parsed = replayInputSchema.parse(input);
-      return withWorkspaceTransaction(
-        pool,
-        parsed.workspaceId,
-        async (transaction) =>
-          replayWorkflowRunInTransaction(transaction, parsed),
-        parsed.signal === undefined ? {} : { signal: parsed.signal },
-      );
+      return withRunCommand(pool, parsed, 'run:replay', async (transaction) => {
+        await requireRunAccess(transaction, parsed.sourceRunId, 'run:replay');
+        return replayWorkflowRunInTransaction(transaction, parsed);
+      });
     },
     get: (input: GetWorkflowRunInput) => readWorkflowRun(pool, input),
     list: (input: ListWorkflowRunsDatabaseInput) =>
@@ -371,12 +393,10 @@ export function createWorkflowRunDatabase(
       readWorkspaceUsageCapacity(pool, input),
     cancel: async (input: CancelWorkflowRunInput) => {
       const parsed = cancelInputSchema.parse(input);
-      return withWorkspaceTransaction(
-        pool,
-        parsed.workspaceId,
-        async (transaction) => cancelInTransaction(transaction, parsed),
-        parsed.signal === undefined ? {} : { signal: parsed.signal },
-      );
+      return withRunCommand(pool, parsed, 'run:cancel', async (transaction) => {
+        await requireRunAccess(transaction, parsed.runId, 'run:cancel');
+        return cancelInTransaction(transaction, parsed);
+      });
     },
     close: () => lease.close(),
   });

@@ -1,3 +1,4 @@
+import { withResourceRunRead } from '../../tenant-access/resources/transactions.js';
 import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 import type { WorkflowRunErrorWorkflow } from '@pertexo/contracts';
 import { readErrorWorkflow } from '../error-workflows/read.js';
@@ -10,10 +11,7 @@ import { sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
-import {
-  withWorkspaceReadTransaction,
-  type WorkspaceTransaction,
-} from '../../tenant-access/transactions.js';
+import type { ResourceTransaction } from '../../tenant-access/resources/transactions.js';
 import { WorkflowRunReadCapacityError } from '../errors.js';
 import {
   readWorkflowRunReadRecord,
@@ -23,6 +21,7 @@ import {
 const getInputSchema = z
   .object({
     workspaceId: z.uuid(),
+    actorId: z.uuid(),
     runId: z.uuid(),
     includeWorkflowName: z.boolean().default(false),
     signal: z.instanceof(AbortSignal).optional(),
@@ -100,17 +99,13 @@ export async function readWorkflowRun(
   input: GetWorkflowRunInput,
 ): Promise<WorkflowRunReadModel | undefined> {
   const parsed = getInputSchema.parse(input);
-  return withWorkspaceReadTransaction(
-    pool,
-    parsed.workspaceId,
-    async (transaction) =>
-      readRunModel(transaction, parsed.runId, parsed.includeWorkflowName),
-    parsed.signal === undefined ? {} : { signal: parsed.signal },
+  return withResourceRunRead(pool, parsed, async (transaction) =>
+    readRunModel(transaction, parsed.runId, parsed.includeWorkflowName),
   );
 }
 
 async function readRunModel(
-  transaction: WorkspaceTransaction,
+  transaction: ResourceTransaction,
   runId: string,
   includeWorkflowName: boolean,
 ): Promise<WorkflowRunReadModel | undefined> {

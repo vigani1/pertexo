@@ -1,3 +1,5 @@
+import { readFolderScope } from '../../../tenant-access/resources/facts.js';
+import { workflowAccessible } from '../../../tenant-access/resources/workflows.js';
 import type { PoolClient } from 'pg';
 import type { WorkflowPromotionPreviewRequest } from '@pertexo/contracts';
 import {
@@ -38,13 +40,26 @@ export type PromotionSourceSet = Readonly<{
 export async function readPromotionSources(
   client: PoolClient,
   workspaceId: string,
+  actorId: string,
   selections: WorkflowPromotionPreviewRequest['selections'],
   budget: PromotionGraphBudget,
 ): Promise<PromotionSourceSet> {
   const workflows: PromotionSource[] = [];
+  const scope = await readFolderScope(client, { workspaceId, actorId });
   for (const selection of [...selections].sort((a, b) =>
     a.workflowId < b.workflowId ? -1 : 1,
   )) {
+    if (
+      !(await workflowAccessible(
+        client,
+        scope,
+        workspaceId,
+        selection.workflowId,
+      ))
+    )
+      throw new WorkflowNotFoundError(
+        'A selected published workflow version is unavailable.',
+      );
     const workflow = (
       await client.query<{ name: string }>(
         "select name from app.workflows where workspace_id=$1 and id=$2 and lifecycle_status='active' for share",

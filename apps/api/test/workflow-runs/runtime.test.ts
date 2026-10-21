@@ -33,6 +33,7 @@ const identityRuntime = {
   dependencies: { authorization },
 } as unknown as ApiIdentityRuntime;
 const persistence = {
+  canRead: () => Promise.resolve(true),
   start: () => Promise.reject(new Error('not exercised')),
   recovery: () => Promise.reject(new Error('not exercised')),
   recover: () => Promise.reject(new Error('not exercised')),

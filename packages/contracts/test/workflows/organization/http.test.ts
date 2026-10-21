@@ -53,7 +53,8 @@ describe('organization HTTP manifest and generated structural contracts', () => 
         (operation) =>
           !operation.includes('workflow-folders') &&
           !operation.endsWith('/folder') &&
-          !operation.endsWith('/organization/bulk'),
+          !operation.endsWith('/organization/bulk') &&
+          !operation.endsWith('/resource-sharing-principals'),
       ),
     ).toEqual([
       'GET /v1/workspaces/{workspaceId}/workflow-tags',
@@ -68,7 +69,9 @@ describe('organization HTTP manifest and generated structural contracts', () => 
   });
 
   it('requires authenticated CSRF and idempotency command headers and private no-store responses', () => {
-    for (const methods of Object.values(workflowOrganizationContractPaths)) {
+    for (const [path, methods] of Object.entries(
+      workflowOrganizationContractPaths,
+    )) {
       for (const [method, operation] of Object.entries(methods) as [
         string,
         OperationShape,
@@ -79,11 +82,13 @@ describe('organization HTTP manifest and generated structural contracts', () => 
         );
         // Setting a favorite is idempotent by itself and needs no key.
         expect(headers.map((parameter) => parameter.name)).toEqual(
-          method === 'post'
-            ? ['x-csrf-token', 'Idempotency-Key']
-            : method === 'put'
-              ? ['x-csrf-token']
-              : [],
+          method === 'post' && path.endsWith('/review-move')
+            ? ['x-csrf-token']
+            : method === 'post'
+              ? ['x-csrf-token', 'Idempotency-Key']
+              : method === 'put'
+                ? ['x-csrf-token']
+                : [],
         );
         expect(headers.every((header) => header.required)).toBe(true);
         const success =
@@ -246,7 +251,7 @@ describe('organization HTTP manifest and generated structural contracts', () => 
   });
 
   it('centralizes exactly the accepted sanitized problems without private extension fields', () => {
-    expect(WORKFLOW_ORGANIZATION_PROBLEM_CODES).toHaveLength(11);
+    expect(WORKFLOW_ORGANIZATION_PROBLEM_CODES).toHaveLength(12);
     for (const code of WORKFLOW_ORGANIZATION_PROBLEM_CODES) {
       const entry = API_PROBLEM_MANIFEST[code];
       expect(entry.status).toBe(409);

@@ -1,3 +1,9 @@
+import { sql } from 'drizzle-orm';
+import { readFolderScope } from '../../tenant-access/resources/facts.js';
+import {
+  bindResourcePredicate,
+  workflowScopeSql,
+} from '../../tenant-access/resources/query-scope.js';
 import type { Pool } from 'pg';
 import {
   workflowRunStatusSchema,
@@ -10,6 +16,7 @@ import { ordinaryRunSql } from '../data-policy.js';
 
 export type UsageTrendsInput = Readonly<{
   workspaceId: string;
+  actorId: string;
   period: UsageTrendPeriod;
   includeWorkflowNames: boolean;
   signal?: AbortSignal;
@@ -60,8 +67,9 @@ export function readUsageTrends(
 ): Promise<UsageTrendsResponse> {
   return withTenantScopedReadClient(
     pool,
-    { workspaceId: input.workspaceId },
+    { workspaceId: input.workspaceId, actorId: input.actorId },
     async (client) => {
+      const access = await readFolderScope(client, input);
       const length = input.period === '30d' ? 30 : 90;
       const clock = await client.query<{
         as_of: string;
@@ -76,8 +84,13 @@ export function readUsageTrends(
       const bounds = clock.rows[0];
       if (bounds === undefined) throw new WorkspaceAccessDeniedError();
       const parameters = [input.workspaceId, bounds.from_at, bounds.as_of];
+      const dailyParameters: unknown[] = [
+        ...parameters,
+        JSON.stringify(emptyCounts()),
+      ];
+      const dailyWindow = `${windowRowsSql} and ${bindResourcePredicate(workflowScopeSql(access, sql`app.workflow_runs.workflow_id`), dailyParameters)}`;
       const daily = await client.query<DayRow>(
-        `with window_runs as (${windowRowsSql}), daily as (
+        `with window_runs as (${dailyWindow}), daily as (
  select (run.created_at at time zone 'UTC')::date utc_day,count(*)::integer total,${countsSql} by_status,
  count(${elapsedSql})::integer measured_runs,avg(${elapsedSql})::double precision average_ms,max(${elapsedSql})::double precision slowest_ms
  from window_runs run group by 1)
@@ -85,17 +98,22 @@ export function readUsageTrends(
  coalesce(daily.measured_runs,0) measured_runs,daily.average_ms,daily.slowest_ms
  from generate_series($2::timestamptz at time zone 'UTC',($3::timestamptz at time zone 'UTC')::date,interval '1 day') as bucket(utc_day)
  left join daily on daily.utc_day=bucket.utc_day::date order by bucket.utc_day`,
-        [...parameters, JSON.stringify(emptyCounts())],
+        dailyParameters,
       );
+      const rankingParameters: unknown[] = [
+        ...parameters,
+        input.includeWorkflowNames,
+      ];
+      const rankingWindow = `${windowRowsSql} and ${bindResourcePredicate(workflowScopeSql(access, sql`app.workflow_runs.workflow_id`), rankingParameters)}`;
       const rankings = await client.query<RankedRow>(
-        `with window_runs as (${windowRowsSql}), totals as (
+        `with window_runs as (${rankingWindow}), totals as (
  select workflow_id,count(*)::integer runs,(count(*) filter(where status in ('failed','timed_out','outcome_unknown')))::integer failures
  from window_runs group by workflow_id), ranked as (
  select *,row_number() over(order by runs desc,workflow_id) runs_rank,row_number() over(order by failures desc,workflow_id) failures_rank from totals)
  select ranked.*,case when $4::boolean then workflow.name else null end workflow_name from ranked
  left join app.workflows workflow on workflow.workspace_id=$1 and workflow.id=ranked.workflow_id
  where runs_rank<=10 or (failures_rank<=10 and failures>0) order by ranked.workflow_id`,
-        [...parameters, input.includeWorkflowNames],
+        rankingParameters,
       );
       const days = daily.rows.map((row) => ({
         day: row.day,

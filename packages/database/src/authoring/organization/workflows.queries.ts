@@ -1,3 +1,9 @@
+import { sql } from 'drizzle-orm';
+import { readFolderScope } from '../../tenant-access/resources/facts.js';
+import {
+  bindResourcePredicate,
+  workflowScopeSql,
+} from '../../tenant-access/resources/query-scope.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import type { DatabaseConfig } from '../../config.js';
@@ -155,7 +161,11 @@ export function createWorkflowOrganizationReadDatabase(
       values.push(value);
       return `$${String(values.length)}`;
     };
-    const predicates = ['w.workspace_id=$1'];
+    const access = await readFolderScope(client, scope);
+    const predicates = [
+      'w.workspace_id=$1',
+      bindResourcePredicate(workflowScopeSql(access, sql`w.id`), values),
+    ];
     const filters = filterSchema.parse({
       query: input.query,
       view: input.view,

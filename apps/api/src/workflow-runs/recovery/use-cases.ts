@@ -47,6 +47,7 @@ export class GetRunRecoveryUseCase {
     await authorize(input, this.authorization);
     return workflowRecoveryPreviewSchema.parse(
       await this.persistence.recovery({
+        actorId: input.actor.actorId,
         workspaceId: input.routeWorkspaceId,
         runId: input.runId,
       }),

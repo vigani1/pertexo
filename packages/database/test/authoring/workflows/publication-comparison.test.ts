@@ -1,3 +1,4 @@
+import { folderScope } from '../../../src/tenant-access/resources/policy.js';
 import type { PoolClient } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -31,6 +32,7 @@ async function compare(
   const client = {
     query: vi
       .fn()
+      .mockResolvedValueOnce({ rows: [{ id: workflowId }], rowCount: 1 })
       .mockResolvedValueOnce({
         rows: [
           {
@@ -55,7 +57,8 @@ async function compare(
     executableJson: { graph },
   }));
   const store = createWorkflowAuthoringReadStore({
-    requireReader: () => Promise.resolve(),
+    requireReader: () =>
+      Promise.resolve(folderScope(workspaceId, 'owner', [], [])),
     catalogs: {
       definitionCatalog: EMPTY_DEFINITION_CATALOG,
       validateAuthoringGraph: () => Promise.resolve(validation),

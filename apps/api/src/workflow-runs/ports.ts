@@ -155,6 +155,7 @@ export type WorkflowRunListPosition = Readonly<{
 }>;
 
 export type ListWorkflowRunsQuery = Readonly<{
+  actorId: string;
   workspaceId: string;
   limit: number;
   workflowId?: string;
@@ -171,6 +172,7 @@ export type ListWorkflowRunsQuery = Readonly<{
 export type WorkflowRunStatisticsWindow = '1h' | '6h' | '24h' | '7d';
 
 export type WorkflowRunStatisticsQuery = Readonly<{
+  actorId: string;
   workspaceId: string;
   window: WorkflowRunStatisticsWindow;
   includeWorkflows: boolean;
@@ -255,8 +257,16 @@ export type CancelWorkflowRunCommand = Readonly<{
 }>;
 
 export interface WorkflowRunPersistence {
+  canRead(
+    input: Readonly<{
+      workspaceId: string;
+      actorId: string;
+      runId: string;
+      signal?: AbortSignal | undefined;
+    }>,
+  ): Promise<boolean>;
   recovery(
-    input: Readonly<{ workspaceId: string; runId: string }>,
+    input: Readonly<{ actorId: string; workspaceId: string; runId: string }>,
   ): Promise<WorkflowRecoveryPreview>;
   recover(
     input: RecoverWorkflowRunCommand,
@@ -264,6 +274,7 @@ export interface WorkflowRunPersistence {
 
   usageTrends(
     input: Readonly<{
+      actorId: string;
       workspaceId: string;
       period: UsageTrendPeriod;
       includeWorkflowNames: boolean;
@@ -287,6 +298,7 @@ export interface WorkflowRunPersistence {
   >;
   get(
     input: Readonly<{
+      actorId: string;
       workspaceId: string;
       runId: string;
       includeWorkflowName?: boolean;
@@ -302,22 +314,41 @@ export interface WorkflowRunPersistence {
     input: WorkflowRunStatisticsQuery,
   ): Promise<WorkflowRunStatisticsRecord>;
   readVariables(
-    input: Readonly<{ workspaceId: string; runId: string }>,
+    input: Readonly<{ actorId: string; workspaceId: string; runId: string }>,
   ): Promise<WorkspaceVariableSnapshot | null | undefined>;
   readInput(
-    input: Readonly<{ workspaceId: string; runId: string }>,
+    input: Readonly<{ actorId: string; workspaceId: string; runId: string }>,
   ): Promise<WorkflowRunDataRecord | undefined>;
   readNodeRunDiagnostics(
-    input: Readonly<{ workspaceId: string; runId: string; nodeRunId: string }>,
+    input: Readonly<{
+      actorId: string;
+      workspaceId: string;
+      runId: string;
+      nodeRunId: string;
+    }>,
   ): Promise<CodeDiagnostics | null | undefined>;
   readNodeRunOutput(
-    input: Readonly<{ workspaceId: string; runId: string; nodeRunId: string }>,
+    input: Readonly<{
+      actorId: string;
+      workspaceId: string;
+      runId: string;
+      nodeRunId: string;
+    }>,
   ): Promise<WorkflowRunDataRecord | undefined>;
   readNodeRunInput(
-    input: Readonly<{ workspaceId: string; runId: string; nodeRunId: string }>,
+    input: Readonly<{
+      actorId: string;
+      workspaceId: string;
+      runId: string;
+      nodeRunId: string;
+    }>,
   ): Promise<WorkflowRunDataRecord | undefined>;
   stepHealth(
-    input: Readonly<{ workspaceId: string; workflowId: string }>,
+    input: Readonly<{
+      actorId: string;
+      workspaceId: string;
+      workflowId: string;
+    }>,
   ): Promise<
     | Readonly<{
         runsConsidered: number;
@@ -328,6 +359,7 @@ export interface WorkflowRunPersistence {
   >;
   stepRuns(
     input: Readonly<{
+      actorId: string;
       workspaceId: string;
       workflowId: string;
       nodeId: string;

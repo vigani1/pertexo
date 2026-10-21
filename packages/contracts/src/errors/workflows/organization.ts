@@ -10,6 +10,7 @@ export const WORKFLOW_ORGANIZATION_PROBLEM_CODES = [
   'workflow.folder_hierarchy_conflict',
   'workflow.folder_not_empty',
   'workflow.folder_not_visible',
+  'workflow.folder_audience_review_required',
 ] as const;
 
 export const workflowOrganizationProblems = {
@@ -76,6 +77,12 @@ export const workflowOrganizationProblems = {
   'workflow.folder_not_visible': {
     status: 409,
     title: 'Workflow folder is not visible',
+    severity: 'warn',
+    exposeDetail: true,
+  },
+  'workflow.folder_audience_review_required': {
+    status: 409,
+    title: 'Review the audience change',
     severity: 'warn',
     exposeDetail: true,
   },

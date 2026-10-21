@@ -152,6 +152,13 @@ async function seedWorkspaces() {
      from unnest(array[$1::uuid, $2::uuid]) with ordinality as listed(id, ordinal)`,
     [busyWorkspace, quietWorkspace, person],
   );
+  for (const workspace of [busyWorkspace, quietWorkspace])
+    await inWorkspace(
+      'owner',
+      workspace,
+      "insert into app.workspace_memberships(workspace_id,user_id,role,status) values($1,$2,'owner','active')",
+      [workspace, person],
+    );
   await addWorkflows(busyWorkspace, [
     [intake, 'Invoice intake'],
     [sync, 'Nightly sync'],
@@ -487,6 +494,7 @@ describe('workspace run statistics', () => {
     );
 
     const page = await runs.list({
+      actorId: person,
       workspaceId: busyWorkspace,
       limit: 100,
       includeWorkflowName: true,
@@ -500,16 +508,22 @@ describe('workspace run statistics', () => {
     expect(
       (
         await runs.list({
+          actorId: person,
           workspaceId: busyWorkspace,
           workflowId: sync,
           limit: 100,
         })
       ).items,
     ).toEqual([]);
-    const firstPage = await runs.list({ workspaceId: busyWorkspace, limit: 1 });
+    const firstPage = await runs.list({
+      actorId: person,
+      workspaceId: busyWorkspace,
+      limit: 1,
+    });
     expect(firstPage.items[0]?.workflowId).toBe(intake);
     expect(firstPage.nextCursor).toBeDefined();
     const statistics = await runs.statistics({
+      actorId: person,
       workspaceId: busyWorkspace,
       window: '24h',
       includeWorkflows: true,
@@ -555,6 +569,7 @@ describe('workspace run statistics', () => {
     await addRuns(quietWorkspace, elsewhere, 'running', 1, '10 minutes');
 
     const hour = await runs.statistics({
+      actorId: person,
       workspaceId: busyWorkspace,
       window: '1h',
     });
@@ -574,7 +589,11 @@ describe('workspace run statistics', () => {
     expect(hour.window.createdAtFrom.slice(-8)).toBe(hour.asOf.slice(-8));
 
     await expect(
-      runs.statistics({ workspaceId: busyWorkspace, window: '6h' }),
+      runs.statistics({
+        actorId: person,
+        workspaceId: busyWorkspace,
+        window: '6h',
+      }),
     ).resolves.toMatchObject({
       window: {
         total: 12,
@@ -589,7 +608,11 @@ describe('workspace run statistics', () => {
       },
     });
     await expect(
-      runs.statistics({ workspaceId: busyWorkspace, window: '7d' }),
+      runs.statistics({
+        actorId: person,
+        workspaceId: busyWorkspace,
+        window: '7d',
+      }),
     ).resolves.toMatchObject({
       current: { queued: 3, running: 2, waiting: 1 },
       window: {
@@ -608,6 +631,7 @@ describe('workspace run statistics', () => {
     });
 
     const day = await runs.statistics({
+      actorId: person,
       workspaceId: busyWorkspace,
       window: '24h',
       includeWorkflows: true,
@@ -639,6 +663,7 @@ describe('workspace run statistics', () => {
       ],
     });
     const unnamed = await runs.statistics({
+      actorId: person,
       workspaceId: busyWorkspace,
       window: '24h',
       includeWorkflows: true,
@@ -649,6 +674,7 @@ describe('workspace run statistics', () => {
 
     await expect(
       runs.statistics({
+        actorId: person,
         workspaceId: quietWorkspace,
         window: '24h',
         includeWorkflows: true,
@@ -667,6 +693,7 @@ describe('workspace run statistics', () => {
   it('returns zeros for an idle workspace and rejects unsupported windows', async () => {
     await expect(
       runs.statistics({
+        actorId: person,
         workspaceId: busyWorkspace,
         window: '24h',
         includeWorkflows: true,
@@ -678,12 +705,17 @@ describe('workspace run statistics', () => {
     });
     await expect(
       runs.statistics({
+        actorId: person,
         workspaceId: busyWorkspace,
         window: '30d' as '7d',
       }),
     ).rejects.toThrow();
     await expect(
-      runs.statistics({ workspaceId: 'not-a-workspace', window: '1h' }),
+      runs.statistics({
+        actorId: person,
+        workspaceId: 'not-a-workspace',
+        window: '1h',
+      }),
     ).rejects.toThrow();
   });
 
@@ -703,6 +735,7 @@ describe('workspace run statistics', () => {
     await addRuns(busyWorkspace, busiest, 'failed', 2, '5 minutes');
 
     const statistics = await runs.statistics({
+      actorId: person,
       workspaceId: busyWorkspace,
       window: '1h',
       includeWorkflows: true,
@@ -1010,6 +1043,7 @@ it('counts logical trigger skips separately from runs in the same bounded worksp
     [id, busyWorkspace, intake, `trigger-skip:${id}`],
   );
   const result = await runs.statistics({
+    actorId: person,
     workspaceId: busyWorkspace,
     window: '24h',
   });
@@ -1021,7 +1055,12 @@ it('counts logical trigger skips separately from runs in the same bounded worksp
     ),
   );
   expect(
-    (await runs.statistics({ workspaceId: quietWorkspace, window: '24h' }))
-      .window.skippedTriggerEvents,
+    (
+      await runs.statistics({
+        actorId: person,
+        workspaceId: quietWorkspace,
+        window: '24h',
+      })
+    ).window.skippedTriggerEvents,
   ).toBe(0);
 });

@@ -1,3 +1,4 @@
+import { audienceReviewSchema, type AudienceReview } from '@pertexo/contracts';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../../config.js';
@@ -19,6 +20,7 @@ import {
 export type WorkflowOrganizationBatchItem = Readonly<{
   workflowId: string;
   expectedOrganizationRevision: number;
+  audienceReview?: AudienceReview | undefined;
 }>;
 type Selection = Readonly<{ items: readonly WorkflowOrganizationBatchItem[] }>;
 export type WorkflowOrganizationBatchRequest = Selection &
@@ -56,7 +58,11 @@ const EDITORS = ['owner', 'admin', 'builder'] as const;
 const uuid = z.uuid().overwrite((value) => value.toLowerCase());
 const revision = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const item = z
-  .object({ workflowId: uuid, expectedOrganizationRevision: revision })
+  .object({
+    workflowId: uuid,
+    expectedOrganizationRevision: revision,
+    audienceReview: audienceReviewSchema.optional(),
+  })
   .strict();
 const items = z
   .array(item)
@@ -150,7 +156,11 @@ export function createWorkflowOrganizationBatchDatabase(
       );
       if (selected === undefined)
         throw new WorkflowOrganizationValidationError();
-      const change = changeOf(body);
+      const baseChange = changeOf(body);
+      const change =
+        baseChange.kind === 'move' && selected.audienceReview !== undefined
+          ? { ...baseChange, audienceReview: selected.audienceReview }
+          : baseChange;
       return session.transact(input, async (client, scope) => {
         const { result, replayed } = await runOrganizationCommand(
           client,
@@ -166,7 +176,13 @@ export function createWorkflowOrganizationBatchDatabase(
             },
             roles: rolesFor(body),
             replay: () =>
-              checkOrganizationReplay(client, scope, workflowId, change.kind),
+              checkOrganizationReplay(
+                client,
+                scope,
+                workflowId,
+                change.kind,
+                change.kind === 'move' ? change.folderId : undefined,
+              ),
             apply: async () => {
               const organizationRevision = await organizeWorkflow(
                 client,

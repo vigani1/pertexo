@@ -5,7 +5,7 @@ import {
   withTenantScopedClient,
   withTenantScopedReadClient,
 } from '../../tenant-access/transactions.js';
-import { SCHEDULE_TRIGGER_READ_ROLES } from '../../tenant-access/policy.js';
+import { authorizeWorkflowResource } from '../../tenant-access/resources/authority.js';
 import {
   MAX_SCHEDULE_PROJECTION,
   parsePersistedScheduleRecurrence,
@@ -93,18 +93,15 @@ export async function authorizeScheduleReader(
   actorId: string,
   workflowId: string,
 ): Promise<void> {
-  const result = await client.query(
-    `select 1 from app.workspace_memberships membership
-      join app.workspaces workspace on workspace.id=membership.workspace_id
-      join app.users actor on actor.id=membership.user_id
-      join app.workflows workflow on workflow.workspace_id=membership.workspace_id
-     where membership.workspace_id=$1 and membership.user_id=$2 and workflow.id=$3
-       and membership.status='active'
-       and membership.role = any($4::text[])
-       and workspace.status='active' and actor.status='active'`,
-    [workspaceId, actorId, workflowId, SCHEDULE_TRIGGER_READ_ROLES],
-  );
-  if (result.rowCount !== 1) throw new ScheduleTriggerError('not_found');
+  if (
+    !(await authorizeWorkflowResource(
+      client,
+      { workspaceId, actorId, workflowId },
+      'workflow:read',
+      false,
+    ))
+  )
+    throw new ScheduleTriggerError('not_found');
 }
 
 function tenantScope(read: Pick<TriggerRead, 'workspaceId' | 'actorId'>) {

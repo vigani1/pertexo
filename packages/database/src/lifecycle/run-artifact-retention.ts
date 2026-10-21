@@ -1,4 +1,6 @@
-import { REFERENCED } from '../artifacts/reference-owners.js';
+import { sql } from 'drizzle-orm';
+import { bindResourcePredicate } from '../tenant-access/resources/query-scope.js';
+import { artifactReferenceOwnersSql } from '../artifacts/reference-owners.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
@@ -132,9 +134,17 @@ export function createRunArtifactRetentionCoordinator(
         await client.query("select set_config('app.workspace_id', $1, true)", [
           artifact.workspace_id,
         ]);
+        const parameters: unknown[] = [];
+        const query = bindResourcePredicate(
+          artifactReferenceOwnersSql(
+            sql`${artifact.workspace_id}`,
+            sql`${artifact.id}`,
+          ),
+          parameters,
+        );
         const referenced = await client.query<{ referenced: boolean }>(
-          REFERENCED,
-          [artifact.workspace_id, artifact.id],
+          query,
+          parameters,
         );
         if (referenced.rows[0]?.referenced === true) {
           await retryLater(client, artifact.id, '1 day');

@@ -1,3 +1,6 @@
+import { readTransactionFolderScope } from '../../tenant-access/resources/facts.js';
+import { workflowScopeSql } from '../../tenant-access/resources/query-scope.js';
+import { sql } from 'drizzle-orm';
 import { codeDiagnosticsSchema } from '@pertexo/node-sdk';
 import { and, eq, gt } from 'drizzle-orm';
 import { z } from 'zod';
@@ -24,6 +27,10 @@ export async function readPreviewRun(
   const actorUserId = z.uuid().parse(input.actorUserId);
   const previewRunId = z.uuid().parse(input.previewRunId);
   await assertPreviewActor(transaction, actorUserId);
+  const resources = await readTransactionFolderScope(transaction, {
+    workspaceId: transaction.workspaceId,
+    actorId: actorUserId,
+  });
   const rows = await transaction.db
     .select({
       completedAt: previewRuns.completedAt,
@@ -58,6 +65,7 @@ export async function readPreviewRun(
       and(
         eq(previewRuns.workspaceId, transaction.workspaceId),
         eq(previewRuns.id, previewRunId),
+        workflowScopeSql(resources, sql`${previewRuns.workflowId}`),
         gt(previewRuns.expiresAt, now),
       ),
     )

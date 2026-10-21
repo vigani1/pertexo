@@ -1,7 +1,7 @@
 # F48 — Finer sharing
 
-Status: approved by the owner as written on 2026-10-21; implementation starts
-after this plan PR merges. Deliver slices 1–4 in order, one PR per slice.
+Status: in delivery. The owner approved the plan as written on 2026-10-21;
+plan PR #458 is merged. Deliver slices 1–4 in order, one PR per slice.
 Owner authorized the scope and delegated recommended choices on 2026-10-21.
 Decision: [ADR 090](../adr/090-resource-sharing-within-workspaces.md).
 
@@ -141,7 +141,7 @@ Each PR runs the full hook and relevant existing tests and merges only green.
 
 | Slice | Existing owners and delivery | Required proof | Status |
 | --- | --- | --- | --- |
-| 1. Folders | `tenant-access/resources`, `schema/authoring`, `authoring/organization` and workflow/run/inbox/artifact consumers; contracts/API routes. All folder fences land before restrictions can be used. | Populated migration unchanged defaults; role ceiling, ancestor intersection, group/manual/removed memberships; every direct/discovery path; no pagination/count leaks; move/revoke races, audit/purge and current published jobs. | Planned |
+| 1. Folders | `tenant-access/resources`, `schema/authoring`, `authoring/organization` and workflow/run/inbox/artifact consumers; contracts/API routes. All folder fences land before restrictions can be used. | Populated migration unchanged defaults; role ceiling, ancestor intersection, group/manual/removed memberships; every direct/discovery path; no pagination/count leaks; move/revoke races, audit/purge and current published jobs. | Delivered |
 | 2. Connections | Existing connection reads/authority, authoring/preview/test/publication/portability/promotion admission; schema/grants and sharing endpoints. | Existing bindings keep executing; reference change, URL/upstream change, preview/test/publish require Use; metadata non-disclosure, revocation races, no secret/export copying. | Planned |
 | 3. UI | Existing workflow organization, connection and promotion features; server-projected actions and normal Weft forms/principal pickers. | Sharing and audience review, unavailable bindings, read-only editor, query invalidation; keyboard/reduced motion; desktop, 990 px pane and phone in both themes; mocked and real browser journeys, React Doctor. | Planned |
 | 4. Qualification | Existing database/API/worker/browser checks, guides and delivery tracker. No new CI job. | Repeat the cross-surface negative matrix, SCIM removal, tokens, accepted public/Call/callback execution, approval/inbox/mail, slow export/SSE and restore/purge. Natural main CI inspected after merge. | Planned |
@@ -150,3 +150,26 @@ Later: direct per-workflow exceptions, local group management, cross-workspace
 sharing, ACLs for tables/variables, external policy engines, and revocable download
 proxies. F21/F22 remain later. Production/provider qualification is separate from
 local and merged CI evidence.
+
+## Slice 1 delivery details
+
+The folder implementation uses one workspace-bound scope from
+`tenant-access/resources`. Authenticated workflow/run reads, inbox/mail, files,
+variable and connection usage, trigger management, promotion and commands compose
+that scope with their existing capabilities. Accepted immutable background jobs
+retain their execution bindings.
+
+Audience reviews return one concurrency token per selected workflow (at most 50)
+or one folder. Each token binds the current folder tree, destination and that
+resource's organization revision. This lets a bulk move finish independently per
+item without making later items stale because earlier items moved. Review tokens
+are not credentials and persist no new format. Principal revocation advances
+folder revisions as it clears grants, invalidating open sharing forms.
+
+Fresh file access also honors the existing run-data expiry rules before retention
+cleanup catches up; durable references in another readable owner deliberately
+share the immutable bytes. See [Sharing within a workspace](../guides/sharing.md).
+
+Call admission compares each stable node path and exact target pin. Ordinary saves
+preserve unchanged bindings; new publications and draft tests recheck every direct
+Call target. Immutable children retain their delegated execution closure.

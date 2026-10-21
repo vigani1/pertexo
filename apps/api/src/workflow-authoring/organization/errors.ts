@@ -46,6 +46,13 @@ const tagConflicts: Readonly<
 const folderConflicts: Readonly<
   Record<WorkflowFolderConflictKind, ApplicationError>
 > = {
+  audience_review: applicationError(
+    'workflow.folder_audience_review_required',
+    {
+      safeDetail:
+        'An administrator must review this audience change. Review again if the folder or workflow changed.',
+    },
+  ),
   name: applicationError('workflow.folder_name_conflict', {
     safeDetail: 'The folder name conflicts with another folder in this parent.',
   }),

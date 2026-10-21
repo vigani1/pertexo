@@ -322,6 +322,7 @@ describe.runIf(fixture.enabled)(
         expect(
           (
             await runs.get({
+              actorId: fixture.actorId,
               workspaceId: fixture.workspaceId,
               runId: run.runId,
             })
@@ -400,6 +401,7 @@ describe.runIf(fixture.enabled)(
           expect(
             (
               await runs.get({
+                actorId: fixture.actorId,
                 workspaceId: fixture.workspaceId,
                 runId: busy.runId,
               })
@@ -441,6 +443,7 @@ describe.runIf(fixture.enabled)(
           expect(
             (
               await runs.get({
+                actorId: fixture.actorId,
                 workspaceId: fixture.workspaceId,
                 runId: run.runId,
               })

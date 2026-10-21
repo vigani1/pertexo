@@ -325,16 +325,20 @@ describe('accepted folder and general-bulk public contracts', () => {
       ).toBe(false);
   });
 
-  it('adds exactly six folder operations plus bulk with narrow roles and no-store checked commands', () => {
+  it('documents folder operations, sharing and bulk moves with narrow roles and no-store checked commands', () => {
     const paths = workflowOrganizationContractPaths;
     const operations = Object.entries(paths).flatMap(([path, methods]) =>
       Object.keys(methods).map((method) => `${method.toUpperCase()} ${path}`),
     );
-    expect(operations.slice(-7)).toEqual([
+    expect(operations.slice(8)).toEqual([
       'GET /v1/workspaces/{workspaceId}/workflow-folders',
       'POST /v1/workspaces/{workspaceId}/workflow-folders',
       'POST /v1/workspaces/{workspaceId}/workflow-folders/{folderId}/rename',
       'POST /v1/workspaces/{workspaceId}/workflow-folders/{folderId}/move',
+      'GET /v1/workspaces/{workspaceId}/resource-sharing-principals',
+      'GET /v1/workspaces/{workspaceId}/workflow-folders/{folderId}/sharing',
+      'POST /v1/workspaces/{workspaceId}/workflow-folders/{folderId}/sharing',
+      'POST /v1/workspaces/{workspaceId}/workflow-folders/review-move',
       'POST /v1/workspaces/{workspaceId}/workflow-folders/{folderId}/delete',
       'POST /v1/workspaces/{workspaceId}/workflows/{workflowId}/folder',
       'POST /v1/workspaces/{workspaceId}/workflows/organization/bulk',

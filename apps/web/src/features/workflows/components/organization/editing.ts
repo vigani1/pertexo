@@ -109,6 +109,8 @@ export function organizationOutcomeText(
           'Conflict — request key used for different input',
         'workflow.lifecycle_conflict': 'Conflict — workflow lifecycle changed',
         'workflow.folder_not_visible': 'Conflict — folder no longer visible',
+        'workflow.folder_audience_review_required':
+          'An administrator must review this audience change',
       };
       return messages[item.code];
     }

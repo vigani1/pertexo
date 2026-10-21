@@ -395,6 +395,7 @@ it('full replay retains the source snapshot after edits; logical detail expiry r
     expect(await snapshot(source.runId)).not.toBeNull();
     expect(
       await runs.readVariables({
+        actorId: userId,
         workspaceId: f.workspaceId,
         runId: source.runId,
       }),
@@ -547,6 +548,7 @@ it('keeps the fixed empty revision on replay after configuration is first added'
     expect(await snapshot(replay.run.id)).toEqual({ revision: 0, values: {} });
     expect(
       await runs.readVariables({
+        actorId: userId,
         workspaceId: f.workspaceId,
         runId: replay.run.id,
       }),

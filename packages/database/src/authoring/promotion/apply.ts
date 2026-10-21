@@ -1,4 +1,7 @@
-import { promotionReceiptSchema, readPromotionReceipt } from './receipt.js';
+import {
+  promotionReceiptSchema,
+  readAuthorizedPromotionReceipt,
+} from './receipt.js';
 import type {
   WorkflowPromotionPreview,
   WorkflowPromotionResult,
@@ -177,15 +180,11 @@ export async function applyPromotion(
             input.mode === 'draft' ? 'workflow:update' : 'workflow:publish',
           ),
       );
-      return inWorkspace(
-        { workspaceId: input.workspaceId, actorId: input.actorId },
-        (client) =>
-          readPromotionReceipt(
-            client,
-            input.workspaceId,
-            stored,
-            input.selections.map((selection) => selection.workflowId),
-          ),
+      return readAuthorizedPromotionReceipt(
+        inWorkspace,
+        input,
+        stored,
+        input.selections.map((selection) => selection.workflowId),
       );
     }, input.signal);
   }
@@ -216,15 +215,11 @@ export async function applyPromotion(
           'stale',
           'The target changed while this command completed. Retry this exact command to retrieve its result.',
         );
-      return inWorkspace(
-        { workspaceId: input.workspaceId, actorId: input.actorId },
-        (client) =>
-          readPromotionReceipt(
-            client,
-            input.workspaceId,
-            stored,
-            input.selections.map((selection) => selection.workflowId),
-          ),
+      return readAuthorizedPromotionReceipt(
+        inWorkspace,
+        input,
+        stored,
+        input.selections.map((selection) => selection.workflowId),
       );
     }
     if (review.fingerprint !== input.fingerprint)

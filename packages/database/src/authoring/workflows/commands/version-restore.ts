@@ -1,3 +1,4 @@
+import { requireWorkflowCallTargets } from '../../../tenant-access/resources/bindings.js';
 import { pruneStepSamples } from '../../step-samples/records.js';
 import { lockArtifactReferences } from '../../../artifacts/references.js';
 import { z } from 'zod';
@@ -45,7 +46,7 @@ async function restoreWorkflowVersion(
   );
 
   return context.transact(workspaceId, actorId, async (client) => {
-    await context.requireAuthor(client, workspaceId, actorId);
+    await context.requireAuthor(client, workspaceId, actorId, workflowId);
     const { definitionCatalog, placementDefinitionCatalog } = context.catalogs;
 
     const workflowResult = await client.query<Record<string, unknown>>(
@@ -96,7 +97,17 @@ async function restoreWorkflowVersion(
       placementDefinitionCatalog,
     );
 
-    await lockArtifactReferences(client, workspaceId, sourceVersion.graphJson);
+    await requireWorkflowCallTargets(
+      client,
+      { workspaceId, actorId },
+      sourceVersion.graphJson,
+    );
+    await lockArtifactReferences(
+      client,
+      workspaceId,
+      sourceVersion.graphJson,
+      actorId,
+    );
     const updatedResult = await client.query<Record<string, unknown>>(
       `update app.workflow_drafts set graph_json=$1::json,
          revision=revision+1,updated_by=$2,

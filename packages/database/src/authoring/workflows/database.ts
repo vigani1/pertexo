@@ -1,3 +1,8 @@
+import type { FolderScope } from '../../tenant-access/resources/contract.js';
+import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
+import { readFolderScope } from '../../tenant-access/resources/facts.js';
+import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority.js';
+import { ROLES } from '../../tenant-access/policy.js';
 import { createWorkflowCollaborationStore } from '../collaboration/store.js';
 import { createWorkflowPromotionStore } from '../promotion/store.js';
 import { createPublicationReviewStore } from '../reviews/store.js';
@@ -143,12 +148,15 @@ async function requireWorkspaceAuthor(
   client: PoolClient,
   workspaceId: string,
   actorId: string,
+  workflowId?: string,
+  capability: 'workflow:read' | 'workflow:update' = 'workflow:update',
 ): Promise<void> {
   await lockWorkflowAuthoringAuthority(
     client,
     workspaceId,
     actorId,
     rolesForCapability('workflow:update'),
+    workflowId === undefined ? undefined : { workflowId, capability },
   );
 }
 
@@ -156,18 +164,20 @@ async function requireWorkspaceReader(
   client: PoolClient,
   workspaceId: string,
   actorId: string,
-): Promise<void> {
-  const result = await client.query(
-    `select 1 from app.workspace_memberships membership
-     join app.users actor on actor.id = membership.user_id
-     join app.workspaces workspace on workspace.id = membership.workspace_id
-     where membership.workspace_id = $1 and membership.user_id = $2
-       and membership.status = 'active' and actor.status = 'active'
-       and workspace.status = 'active'`,
-    [workspaceId, actorId],
-  );
-  if (result.rowCount !== 1)
-    throw new WorkflowNotFoundError('Workflow is not visible');
+): Promise<FolderScope> {
+  try {
+    const role = await lockWorkspaceAuthority(
+      client,
+      workspaceId,
+      actorId,
+      ROLES,
+    );
+    return await readFolderScope(client, { workspaceId, actorId }, role);
+  } catch (error) {
+    if (error instanceof WorkspaceAccessDeniedError)
+      throw new WorkflowNotFoundError('Workflow is not visible');
+    throw error;
+  }
 }
 
 function createPreviewStore(

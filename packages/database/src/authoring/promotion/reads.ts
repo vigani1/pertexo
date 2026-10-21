@@ -1,3 +1,9 @@
+import { sql } from 'drizzle-orm';
+import { readFolderScope } from '../../tenant-access/resources/facts.js';
+import {
+  bindResourcePredicate,
+  workflowScopeSql,
+} from '../../tenant-access/resources/query-scope.js';
 import { workflowPromotionHistorySchema } from '@pertexo/contracts';
 import { requirePromotionAuthority } from './authority.js';
 import type { PromotionContext, WorkflowPromotionStore } from './contract.js';
@@ -12,20 +18,26 @@ export function promotionReads(
         input.actorId,
         async (client) => {
           await requirePromotionAuthority(client, input);
+          const resources = await readFolderScope(client, input);
           if (input.workflowId !== undefined) {
+            const parameters: unknown[] = [
+              input.workspaceId,
+              input.workflowId,
+              input.beforeVersionNumber ?? null,
+              input.limit + 1,
+            ];
+            const visible = bindResourcePredicate(
+              workflowScopeSql(resources, sql`workflow.id`),
+              parameters,
+            );
             const result = await client.query<{
               workflow_id: string;
               name: string;
               id: string;
               version_number: number;
             }>(
-              `select version.workflow_id,workflow.name,version.id,version.version_number from app.workflow_versions version join app.workflows workflow on workflow.workspace_id=version.workspace_id and workflow.id=version.workflow_id where version.workspace_id=$1 and version.workflow_id=$2 and workflow.lifecycle_status='active' and ($3::integer is null or version.version_number<$3) order by version.version_number desc limit $4`,
-              [
-                input.workspaceId,
-                input.workflowId,
-                input.beforeVersionNumber ?? null,
-                input.limit + 1,
-              ],
+              `select version.workflow_id,workflow.name,version.id,version.version_number from app.workflow_versions version join app.workflows workflow on workflow.workspace_id=version.workspace_id and workflow.id=version.workflow_id where version.workspace_id=$1 and version.workflow_id=$2 and ${visible} and workflow.lifecycle_status='active' and ($3::integer is null or version.version_number<$3) order by version.version_number desc limit $4`,
+              parameters,
             );
             const rows = result.rows.slice(0, input.limit);
             return {
@@ -43,6 +55,16 @@ export function promotionReads(
             };
           }
 
+          const parameters: unknown[] = [
+            input.workspaceId,
+            input.after ?? null,
+            input.search ?? null,
+            input.limit + 1,
+          ];
+          const visible = bindResourcePredicate(
+            workflowScopeSql(resources, sql`workflow.id`),
+            parameters,
+          );
           const result = await client.query<{
             id: string;
             name: string;
@@ -51,14 +73,9 @@ export function promotionReads(
           }>(
             `select workflow.id,workflow.name,version.id version_id,version.version_number from app.workflows workflow
          join app.workflow_versions version on version.workspace_id=workflow.workspace_id and version.workflow_id=workflow.id and version.id=workflow.published_version_id
-         where workflow.workspace_id=$1 and workflow.lifecycle_status='active' and ($2::uuid is null or workflow.id>$2) and ($3::text is null or position(lower($3) in lower(workflow.name))>0)
+         where workflow.workspace_id=$1 and ${visible} and workflow.lifecycle_status='active' and ($2::uuid is null or workflow.id>$2) and ($3::text is null or position(lower($3) in lower(workflow.name))>0)
          order by workflow.id limit $4`,
-            [
-              input.workspaceId,
-              input.after ?? null,
-              input.search ?? null,
-              input.limit + 1,
-            ],
+            parameters,
           );
           const page = result.rows.slice(0, input.limit);
           return {
@@ -83,6 +100,16 @@ export function promotionReads(
         input.actorId,
         async (client) => {
           await requirePromotionAuthority(client, input);
+          const resources = await readFolderScope(client, input);
+          const parameters: unknown[] = [
+            input.workspaceId,
+            input.after ?? null,
+            input.limit + 1,
+          ];
+          const visible = bindResourcePredicate(
+            workflowScopeSql(resources, sql`event.target_id`),
+            parameters,
+          );
           const result = await client.query<{
             id: string;
             actor_user_id: string | null;
@@ -92,9 +119,9 @@ export function promotionReads(
             metadata: Record<string, unknown>;
           }>(
             `select event.id,event.actor_user_id,coalesce(actor.display_name,'Former member') actor_name,event.occurred_at,event.target_id,event.metadata from app.audit_events event left join app.users actor on actor.id=event.actor_user_id
-         where event.workspace_id=$1 and event.action in ('workflow.promoted','workflow.promotion_sent') and ($2::uuid is null or event.id<$2)
+         where event.workspace_id=$1 and ${visible} and event.action in ('workflow.promoted','workflow.promotion_sent') and ($2::uuid is null or event.id<$2)
          order by event.id desc limit $3`,
-            [input.workspaceId, input.after ?? null, input.limit + 1],
+            parameters,
           );
           const items = result.rows.slice(0, input.limit).map((row) => ({
             id: row.id,

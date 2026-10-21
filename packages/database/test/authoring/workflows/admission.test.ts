@@ -1,3 +1,4 @@
+import { folderScope } from '../../../src/tenant-access/resources/policy.js';
 import { createHash } from 'node:crypto';
 
 import { describe, expect, it, vi } from 'vitest';
@@ -197,7 +198,8 @@ describe('snapshot validation and publication ordering', () => {
       rollbackEntered = resolve;
     });
     const release = vi.fn();
-    const query = vi.fn((sql: string) => {
+    const query = vi.fn((statement: string | { text: string }) => {
+      const sql = typeof statement === 'string' ? statement : statement.text;
       if (sql === 'begin') transaction = true;
       if (sql === 'rollback') {
         rollbackEntered();
@@ -206,7 +208,7 @@ describe('snapshot validation and publication ordering', () => {
           return { rows: [] };
         });
       }
-      if (sql.includes("current_setting('app.workspace_id'"))
+      if (sql.startsWith("select current_setting('app.workspace_id'"))
         return Promise.resolve({
           rows: [
             {
@@ -217,8 +219,14 @@ describe('snapshot validation and publication ordering', () => {
             },
           ],
         });
-      if (sql.includes('select 1 from app.workspace_memberships'))
+      if (
+        sql.startsWith('select 1 from app.workspaces') ||
+        sql.startsWith('select 1 from app.users') ||
+        sql.startsWith('select 1 from app.workflows workflow')
+      )
         return Promise.resolve({ rows: [{}], rowCount: 1 });
+      if (sql.startsWith('select role from app.workspace_memberships'))
+        return Promise.resolve({ rows: [{ role: 'owner' }], rowCount: 1 });
       if (sql.includes('select * from app.workflow_drafts'))
         return Promise.resolve({ rows: [row] });
       if (sql.includes('pg_settings')) return Promise.resolve(budget);
@@ -274,6 +282,7 @@ describe('snapshot validation and publication ordering', () => {
   it('validates and returns one selected-release snapshot in one transaction, with its signal', async () => {
     const query = vi
       .fn()
+      .mockResolvedValueOnce({ rows: [{ id: workflowId }], rowCount: 1 })
       .mockResolvedValueOnce({ rows: [row] })
       .mockResolvedValueOnce(budget)
       .mockResolvedValueOnce({ rows: [] });
@@ -291,7 +300,9 @@ describe('snapshot validation and publication ordering', () => {
       return operation(client);
     }
     const store = createWorkflowAuthoringReadStore({
-      requireReader: vi.fn().mockResolvedValue(undefined),
+      requireReader: vi
+        .fn()
+        .mockResolvedValue(folderScope(workspaceId, 'owner', [], [])),
       catalogs: {
         definitionCatalog: catalog,
         executableCompiler: testExecutableCompiler,
@@ -324,7 +335,8 @@ describe('snapshot validation and publication ordering', () => {
       .update(JSON.stringify(command.requestHash))
       .digest('hex'),
   ) {
-    const query = vi.fn((sql: string) => {
+    const query = vi.fn((statement: string | { text: string }) => {
+      const sql = typeof statement === 'string' ? statement : statement.text;
       // A new command inserts its claim; a retry finds it completed.
       if (sql.includes('insert into app.idempotency_records'))
         return Promise.resolve({
@@ -424,7 +436,9 @@ describe('snapshot validation and publication ordering', () => {
     expect(fixture.requireAuthor).toHaveBeenCalledOnce();
     expect(fixture.validator).not.toHaveBeenCalled();
     expect(
-      fixture.query.mock.calls.some(([sql]) => sql.includes('workflow_drafts')),
+      fixture.query.mock.calls.some(([sql]) =>
+        (typeof sql === 'string' ? sql : sql.text).includes('workflow_drafts'),
+      ),
     ).toBe(false);
   });
 
@@ -451,7 +465,9 @@ describe('snapshot validation and publication ordering', () => {
     expect(fixture.executableCompiler).not.toHaveBeenCalled();
     expect(
       fixture.query.mock.calls.some(([sql]) =>
-        sql.includes('insert into app.workflow_versions'),
+        (typeof sql === 'string' ? sql : sql.text).includes(
+          'insert into app.workflow_versions',
+        ),
       ),
     ).toBe(false);
   });

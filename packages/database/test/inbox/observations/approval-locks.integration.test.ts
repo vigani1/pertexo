@@ -1,3 +1,4 @@
+import { readFolderScope } from '../../../src/tenant-access/resources/facts.js';
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
 import { Pool } from 'pg';
@@ -68,6 +69,11 @@ it('lets an approval decision finish while its notice waits for the same run', a
             idempotencyKey: randomUUID(),
           },
           'admin',
+          await readFolderScope(
+            client,
+            { workspaceId: f.workspaceId, actorId: f.members.admin },
+            'admin',
+          ),
         );
       },
     );

@@ -1,3 +1,4 @@
+import { WEBHOOK_TRIGGER_READ_ROLES } from '../../tenant-access/policy.js';
 import type { CoordinatedEvent } from '@pertexo/contracts';
 import { COORDINATED_EVENT_METADATA_SQL } from '../coordination/history.js';
 import { sql } from 'drizzle-orm';
@@ -10,7 +11,7 @@ import {
   withWorkspaceTransaction,
   type WorkspaceTransaction,
 } from '../../tenant-access/transactions.js';
-import { WEBHOOK_TRIGGER_READ_ROLES } from '../../tenant-access/policy.js';
+import { authorizeWorkflowResource } from '../../tenant-access/resources/authority.js';
 import { WebhookTriggerNotFoundError } from './errors.js';
 
 /**
@@ -140,18 +141,18 @@ export async function authorizeWebhookTriggerReader(
   client: PoolClient,
   workspaceId: string,
   actorId: string,
+  workflowId: string,
 ): Promise<void> {
-  const result = await client.query(
-    `select 1 from app.workspace_memberships membership
-      join app.workspaces workspace on workspace.id=membership.workspace_id
-      join app.users actor on actor.id=membership.user_id
-     where membership.workspace_id=$1 and membership.user_id=$2
-       and membership.status='active'
-       and membership.role = any($3::text[])
-       and workspace.status='active' and actor.status='active'`,
-    [workspaceId, actorId, WEBHOOK_TRIGGER_READ_ROLES],
-  );
-  if (result.rowCount !== 1) throw new WebhookTriggerNotFoundError();
+  if (
+    !(await authorizeWorkflowResource(
+      client,
+      { workspaceId, actorId, workflowId },
+      'workflow:read',
+      false,
+      WEBHOOK_TRIGGER_READ_ROLES,
+    ))
+  )
+    throw new WebhookTriggerNotFoundError();
 }
 
 /** Writes one delivery row inside the caller's workspace transaction. */
@@ -266,7 +267,12 @@ export function createWebhookDeliveryLog(pool: Pool): WebhookDeliveryLog {
         pool,
         { workspaceId, actorId },
         async (client) => {
-          await authorizeWebhookTriggerReader(client, workspaceId, actorId);
+          await authorizeWebhookTriggerReader(
+            client,
+            workspaceId,
+            actorId,
+            workflowId,
+          );
           const trigger = await client.query(
             `select 1 from app.workflow_triggers
               where workspace_id=$1 and id=$2 and workflow_id=$3

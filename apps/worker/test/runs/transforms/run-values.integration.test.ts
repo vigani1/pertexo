@@ -173,6 +173,7 @@ qualified('business values through the real worker', () => {
         { status: 'succeeded', error_summary: null },
       ]);
       const visible = await runs.get({
+        actorId: fixture.actorId,
         workspaceId: fixture.workspaceId,
         runId: accepted.run.id,
       });
@@ -182,6 +183,7 @@ qualified('business values through the real worker', () => {
         accessToken: '[Redacted]',
       });
       const filtered = await runs.list({
+        actorId: fixture.actorId,
         workspaceId: fixture.workspaceId,
         limit: 20,
         runValueKey: 'orderId',
@@ -189,6 +191,7 @@ qualified('business values through the real worker', () => {
       });
       expect(filtered.items.map((run) => run.id)).toContain(accepted.run.id);
       const prior = await runs.list({
+        actorId: fixture.actorId,
         workspaceId: fixture.workspaceId,
         limit: 20,
         runValueKey: 'orderId',

@@ -1,3 +1,4 @@
+import { removeDirectoryFolderGrants } from '../../../../tenant-access/resources/revocation.js';
 import type { Pool } from 'pg';
 import {
   claimCommand,
@@ -85,6 +86,9 @@ export async function unlinkDirectoryWorkspace(
       DIRECTORY_LIMITS.users,
       input.actorId,
     );
+    await removeDirectoryFolderGrants(client, organization.id, [
+      input.targetWorkspaceId,
+    ]);
     await client.query(
       'delete from app.auth_organization_workspaces where organization_id=$1 and workspace_id=$2',
       [organization.id, input.targetWorkspaceId],

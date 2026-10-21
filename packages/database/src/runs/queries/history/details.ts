@@ -1,3 +1,4 @@
+import { withResourceRunRead } from '../../../tenant-access/resources/transactions.js';
 import {
   retainedTestRunSql,
   runRetentionIntervalSql,
@@ -14,10 +15,7 @@ import { workflowGraphStepSql } from '../execution/graph-step.js';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
-import {
-  withWorkspaceReadTransaction,
-  type WorkspaceTransaction,
-} from '../../../tenant-access/transactions.js';
+import type { WorkspaceTransaction } from '../../../tenant-access/transactions.js';
 import {
   parseStoredExecutionValue,
   type StoredExecutionJsonValue,
@@ -44,6 +42,7 @@ export type WorkflowRunFailedStep = Readonly<{
 const runDataInputSchema = z
   .object({
     workspaceId: z.uuid(),
+    actorId: z.uuid(),
     runId: z.uuid(),
     signal: z.instanceof(AbortSignal).optional(),
   })
@@ -86,11 +85,8 @@ export async function readWorkflowRunInput(
   input: ReadWorkflowRunInputInput,
 ): Promise<WorkflowRunData | undefined> {
   const parsed = runDataInputSchema.parse(input);
-  return withWorkspaceReadTransaction(
-    pool,
-    parsed.workspaceId,
-    (transaction) => runInputInTransaction(transaction, parsed.runId),
-    parsed.signal === undefined ? {} : { signal: parsed.signal },
+  return withResourceRunRead(pool, parsed, (transaction) =>
+    runInputInTransaction(transaction, parsed.runId),
   );
 }
 
@@ -103,17 +99,13 @@ export async function readWorkflowNodeRunInput(
   input: ReadWorkflowNodeRunOutputInput,
 ): Promise<WorkflowRunData | undefined> {
   const parsed = nodeRunDataInputSchema.parse(input);
-  return withWorkspaceReadTransaction(
-    pool,
-    parsed.workspaceId,
-    (transaction) =>
-      nodeRunValueInTransaction(
-        transaction,
-        parsed.runId,
-        parsed.nodeRunId,
-        'input',
-      ),
-    parsed.signal === undefined ? {} : { signal: parsed.signal },
+  return withResourceRunRead(pool, parsed, (transaction) =>
+    nodeRunValueInTransaction(
+      transaction,
+      parsed.runId,
+      parsed.nodeRunId,
+      'input',
+    ),
   );
 }
 
@@ -123,17 +115,13 @@ export async function readWorkflowNodeRunOutput(
   input: ReadWorkflowNodeRunOutputInput,
 ): Promise<WorkflowRunData | undefined> {
   const parsed = nodeRunDataInputSchema.parse(input);
-  return withWorkspaceReadTransaction(
-    pool,
-    parsed.workspaceId,
-    (transaction) =>
-      nodeRunValueInTransaction(
-        transaction,
-        parsed.runId,
-        parsed.nodeRunId,
-        'output',
-      ),
-    parsed.signal === undefined ? {} : { signal: parsed.signal },
+  return withResourceRunRead(pool, parsed, (transaction) =>
+    nodeRunValueInTransaction(
+      transaction,
+      parsed.runId,
+      parsed.nodeRunId,
+      'output',
+    ),
   );
 }
 
@@ -239,23 +227,18 @@ export async function readWorkflowRunVariables(
   input: ReadWorkflowRunInputInput,
 ): Promise<WorkspaceVariableSnapshot | null | undefined> {
   const parsed = runDataInputSchema.parse(input);
-  return withWorkspaceReadTransaction(
-    pool,
-    parsed.workspaceId,
-    async (transaction) => {
-      const result = await transaction.db.execute<{
-        snapshot: unknown;
-        retained: boolean;
-      }>(
-        sql`select ${sql.raw(variableSetSnapshotSql('run'))} snapshot,(run.details_purged_at IS NULL AND (run.completed_at IS NULL OR run.completed_at>clock_timestamp()-${sql.raw(RUN_DETAILS_RETENTION_SQL)}) AND ${sql.raw(retainedTestRunSql('run', 'clock_timestamp()'))}) retained from app.workflow_runs run left join app.workspace_variable_set_revisions variable_set on variable_set.workspace_id=run.workspace_id and variable_set.revision=run.variable_set_revision where run.workspace_id=${transaction.workspaceId} and run.id=${parsed.runId}`,
-      );
-      const row = result.rows[0];
-      if (row === undefined) return undefined;
-      if (!row.retained) return null;
-      return workspaceVariableSnapshotSchema.parse(row.snapshot);
-    },
-    parsed.signal === undefined ? {} : { signal: parsed.signal },
-  );
+  return withResourceRunRead(pool, parsed, async (transaction) => {
+    const result = await transaction.db.execute<{
+      snapshot: unknown;
+      retained: boolean;
+    }>(
+      sql`select ${sql.raw(variableSetSnapshotSql('run'))} snapshot,(run.details_purged_at IS NULL AND (run.completed_at IS NULL OR run.completed_at>clock_timestamp()-${sql.raw(RUN_DETAILS_RETENTION_SQL)}) AND ${sql.raw(retainedTestRunSql('run', 'clock_timestamp()'))}) retained from app.workflow_runs run left join app.workspace_variable_set_revisions variable_set on variable_set.workspace_id=run.workspace_id and variable_set.revision=run.variable_set_revision where run.workspace_id=${transaction.workspaceId} and run.id=${parsed.runId}`,
+    );
+    const row = result.rows[0];
+    if (row === undefined) return undefined;
+    if (!row.retained) return null;
+    return workspaceVariableSnapshotSchema.parse(row.snapshot);
+  });
 }
 
 /** Private diagnostics follow the current attempt and the logical detail window. */
@@ -264,11 +247,8 @@ export async function readWorkflowNodeRunDiagnostics(
   input: ReadWorkflowNodeRunOutputInput,
 ): Promise<CodeDiagnostics | null | undefined> {
   const parsed = nodeRunDataInputSchema.parse(input);
-  return withWorkspaceReadTransaction(
-    pool,
-    parsed.workspaceId,
-    async (transaction) => {
-      const result = await transaction.db.execute<{ diagnostics: unknown }>(sql`
+  return withResourceRunRead(pool, parsed, async (transaction) => {
+    const result = await transaction.db.execute<{ diagnostics: unknown }>(sql`
       select case when run.details_purged_at is null
         and (run.completed_at is null or run.completed_at > statement_timestamp() - ${sql.raw(RUN_DETAILS_RETENTION_SQL)})
         and ${sql.raw(retainedTestRunSql('run'))}
@@ -281,12 +261,10 @@ export async function readWorkflowNodeRunDiagnostics(
         and node.workflow_run_id = ${parsed.runId} and node.id = ${parsed.nodeRunId}
       limit 1
     `);
-      const row = result.rows[0];
-      if (row === undefined) return undefined;
-      return row.diagnostics === null
-        ? null
-        : codeDiagnosticsSchema.parse(row.diagnostics);
-    },
-    parsed.signal === undefined ? {} : { signal: parsed.signal },
-  );
+    const row = result.rows[0];
+    if (row === undefined) return undefined;
+    return row.diagnostics === null
+      ? null
+      : codeDiagnosticsSchema.parse(row.diagnostics);
+  });
 }

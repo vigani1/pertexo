@@ -97,6 +97,10 @@ function setup(role: Role = 'owner') {
   };
   const authorization = { findAccess: vi.fn().mockResolvedValue(access) };
   const store = {
+    sharingPrincipals: vi.fn(),
+    readSharing: vi.fn(),
+    replaceSharing: vi.fn(),
+    reviewMove: vi.fn(),
     listFolders: vi.fn(),
     createFolder: vi.fn(),
     renameFolder: vi.fn(),

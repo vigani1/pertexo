@@ -1,3 +1,9 @@
+import { sql } from 'drizzle-orm';
+import { readFolderScope } from '../../tenant-access/resources/facts.js';
+import {
+  bindResourcePredicate,
+  workflowScopeSql,
+} from '../../tenant-access/resources/query-scope.js';
 import type { PoolClient } from 'pg';
 import { noticeSubscriptionSchema } from '@pertexo/contracts';
 import type { DatabaseConfig } from '../../config.js';
@@ -28,11 +34,23 @@ import { replacePreference, replaceSubscription } from './commands.js';
 async function subjectExists(
   client: PoolClient,
   input: NoticeReader & NoticeSubject,
+  locking = false,
 ) {
   const table = input.subjectKind === 'workflow' ? 'workflows' : 'connections';
+  const parameters: unknown[] = [input.workspaceId, input.subjectId];
+  const visible =
+    input.subjectKind === 'workflow'
+      ? bindResourcePredicate(
+          workflowScopeSql(
+            await readFolderScope(client, input),
+            sql`subject.id`,
+          ),
+          parameters,
+        )
+      : 'true';
   const found = await client.query(
-    `select id from app.${table} where workspace_id=$1 and id=$2 for share`,
-    [input.workspaceId, input.subjectId],
+    `select subject.id from app.${table} subject where subject.workspace_id=$1 and subject.id=$2 and ${visible} ${locking ? 'for share' : ''}`,
+    parameters,
   );
   if (found.rowCount !== 1)
     throw new NoticeUnavailableError('This subject is unavailable.');
@@ -130,14 +148,7 @@ export function createNoticePreferencesStore(
             input.actorId,
             rolesForCapability('run:read'),
           );
-          const table =
-            input.subjectKind === 'workflow' ? 'workflows' : 'connections';
-          const visible = await client.query(
-            `select id from app.${table} where workspace_id=$1 and id=$2`,
-            [input.workspaceId, input.subjectId],
-          );
-          if (visible.rowCount !== 1)
-            throw new NoticeUnavailableError('This subject is unavailable.');
+          await subjectExists(client, input);
           const found = await client.query(
             'select revision,followed,muted from app.notice_subscriptions where workspace_id=$1 and user_id=$2 and subject_kind=$3 and subject_id=$4',
             [
@@ -164,7 +175,7 @@ export function createNoticePreferencesStore(
             input.actorId,
             rolesForCapability('run:read'),
           );
-          await subjectExists(client, input);
+          await subjectExists(client, input, true);
           if (input.subjectKind === 'connection' && input.followed)
             throw new NoticeUnavailableError('Only workflows can be followed.');
           return replaceSubscription(client, input);

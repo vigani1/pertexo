@@ -1,3 +1,4 @@
+import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.js';
 import type { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -159,9 +160,16 @@ export function createWorkflowTestSuiteStore(
             client,
             input.workspaceId,
             JSON.parse(entry.input) as unknown,
+            input.actorId,
           );
         }
-        await lockArtifactReferences(client, input.workspaceId, snapshot.graph);
+        await requireWorkflowCallTargets(client, input, snapshot.graph);
+        await lockArtifactReferences(
+          client,
+          input.workspaceId,
+          snapshot.graph,
+          input.actorId,
+        );
         const snapshotId = generatePersistedId();
         await saveTestSnapshot(
           client,

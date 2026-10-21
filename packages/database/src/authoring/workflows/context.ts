@@ -10,6 +10,8 @@ export type WorkflowAuthoringWriteContext = Readonly<{
     client: PoolClient,
     workspaceId: string,
     actorId: string,
+    workflowId?: string,
+    capability?: 'workflow:read' | 'workflow:update',
   ): Promise<void>;
   requirePlaceable(
     previous: WorkflowGraph,

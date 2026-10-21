@@ -1,3 +1,9 @@
+import { sql } from 'drizzle-orm';
+import type { FolderScope } from '../../tenant-access/resources/contract.js';
+import {
+  bindResourcePredicate,
+  workflowScopeSql,
+} from '../../tenant-access/resources/query-scope.js';
 import type { PoolClient } from 'pg';
 import {
   approvalOutputSchema,
@@ -25,10 +31,16 @@ export async function respondToTask(
     | (Parameters<PendingTaskStore['submit']>[0] &
         Readonly<{ kind: 'input_request' }>),
   role: Role,
+  resources: FolderScope,
 ) {
+  const parameters: unknown[] = [input.workspaceId, input.taskId];
+  const visible = bindResourcePredicate(
+    workflowScopeSql(resources, sql`run.workflow_id`),
+    parameters,
+  );
   const target = await client.query<{ run_id: string }>(
-    'select run_id from app.pending_run_tasks where workspace_id=$1 and id=$2',
-    [input.workspaceId, input.taskId],
+    `select task.run_id from app.pending_run_tasks task join app.workflow_runs run on run.workspace_id=task.workspace_id and run.id=task.run_id where task.workspace_id=$1 and task.id=$2 and ${visible}`,
+    parameters,
   );
   const runId = target.rows[0]?.run_id;
   if (runId === undefined)
@@ -37,7 +49,7 @@ export async function respondToTask(
     'select id from app.workflow_runs where workspace_id=$1 and id=$2 for no key update',
     [input.workspaceId, runId],
   );
-  const row = await readTaskRow(client, input, role, true);
+  const row = await readTaskRow(client, input, role, resources, true);
   if (row.kind !== input.kind)
     throw new PendingTaskNotFoundError('Task is not visible.');
   const values =
@@ -130,7 +142,7 @@ export async function respondToTask(
   await wakeWorkflowRun(client, input.workspaceId, runId);
   await wakeTaskAncestors(client, input.workspaceId, runId);
   return {
-    task: projectTask(await readTaskRow(client, input, role)),
+    task: projectTask(await readTaskRow(client, input, role, resources)),
     replayed: false,
   };
 }

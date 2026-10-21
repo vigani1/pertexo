@@ -97,7 +97,9 @@ function persistence() {
   const stepHealth = vi.fn<WorkflowRunPersistence['stepHealth']>();
   const stepRuns = vi.fn<WorkflowRunPersistence['stepRuns']>();
   return {
+    canRead: () => Promise.resolve(true),
     store: {
+      canRead: () => Promise.resolve(true),
       start,
       replay,
       recovery: vi.fn<WorkflowRunPersistence['recovery']>(),
@@ -623,7 +625,11 @@ describe('workflow run application seams', () => {
         authorization('viewer'),
       ).execute({ actor, routeWorkspaceId: workspaceId, runId }),
     ).resolves.toEqual({ input: { kind: 'expired' } });
-    expect(fixture.readInput).toHaveBeenCalledWith({ workspaceId, runId });
+    expect(fixture.readInput).toHaveBeenCalledWith({
+      actorId,
+      workspaceId,
+      runId,
+    });
 
     const output = new GetWorkflowNodeRunOutputUseCase(
       fixture.store,
@@ -777,6 +783,7 @@ describe('workflow run application seams', () => {
     expect(result.run.id).toBe(runId);
     expect(result.nodes).toEqual([]);
     expect(fixture.get).toHaveBeenCalledWith({
+      actorId,
       workspaceId,
       runId,
       includeWorkflowName: true,
@@ -968,6 +975,7 @@ describe('workflow run application seams', () => {
     });
 
     expect(fixture.get).toHaveBeenCalledWith({
+      actorId,
       workspaceId,
       runId,
       includeWorkflowName: false,
@@ -1109,6 +1117,61 @@ describe('workflow run application seams', () => {
     await expect(iterator.next()).rejects.toMatchObject({
       code: 'resource.not_found',
     });
+    expect(access.findAccess).toHaveBeenCalledTimes(3);
+    expect(cleanedUp).toBe(true);
+  });
+
+  it('stops before later frames after folder access is revoked while membership stays active', async () => {
+    const fixture = persistence();
+    const canRead = vi.fn().mockResolvedValue(true);
+    fixture.store.canRead = canRead;
+    const access = authorization('viewer');
+    const later = Promise.withResolvers<undefined>();
+    let cleanedUp = false;
+    const streamer = {
+      stream: vi.fn().mockReturnValue({
+        async *[Symbol.asyncIterator]() {
+          try {
+            yield { id: 1, event: 'run.started', data: '{}' };
+            await later.promise;
+            yield { id: 2, event: 'run.succeeded', data: '{}' };
+          } finally {
+            cleanedUp = true;
+          }
+        },
+      }),
+    };
+    const frames = await new StreamRunEventsUseCase(
+      fixture.store,
+      access,
+      streamer,
+    ).execute({
+      actor,
+      routeWorkspaceId: workspaceId,
+      runId,
+      lastEventId: 0,
+      sessionExpiresAt: new Date(Date.now() + 60_000),
+      signal: new AbortController().signal,
+      abortStream: vi.fn(),
+      reauthorizeSession: vi.fn().mockResolvedValue({
+        userId: actorId,
+        sessionId,
+        expiresAt: new Date(Date.now() + 60_000),
+        clientMetadata: {},
+      }),
+    });
+    const iterator = frames[Symbol.asyncIterator]();
+
+    await expect(iterator.next()).resolves.toMatchObject({
+      done: false,
+      value: { id: 1 },
+    });
+    canRead.mockResolvedValue(false);
+    later.resolve(undefined);
+
+    await expect(iterator.next()).rejects.toBeInstanceOf(
+      WorkflowRunNotFoundError,
+    );
     expect(access.findAccess).toHaveBeenCalledTimes(3);
     expect(cleanedUp).toBe(true);
   });

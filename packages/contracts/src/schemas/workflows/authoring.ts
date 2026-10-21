@@ -1,3 +1,4 @@
+export * from './sharing.js';
 import { z } from 'zod';
 import { workflowTemplateOriginSchema } from '@pertexo/templates';
 export type { WorkflowTemplateOrigin } from '@pertexo/templates';
@@ -63,7 +64,14 @@ export { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
 export type WorkflowGraphContract = WorkflowGraph;
 
 export const workflowCreateRequestSchema = z
-  .object({ name: workflowNameSchema })
+  .object({
+    name: workflowNameSchema,
+    folderId: z
+      .uuid()
+      .overwrite((value) => value.toLowerCase())
+      .nullable()
+      .optional(),
+  })
   .strict();
 
 const workflowDuplicateSourceSchema = z.discriminatedUnion('kind', [

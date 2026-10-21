@@ -44,12 +44,13 @@ async function add(
   );
 }
 function read(
-  workspaceId: string,
+  workspace: Awaited<ReturnType<typeof seedNoticeWorkspace>>,
   period: '30d' | '90d' = '30d',
   includeWorkflowNames = true,
 ) {
   return readUsageTrends(apiPool, {
-    workspaceId,
+    workspaceId: workspace.workspaceId,
+    actorId: workspace.members.owner,
     period,
     includeWorkflowNames,
   });
@@ -59,9 +60,7 @@ describe('retained usage trends', () => {
   it('returns 30/90 UTC days, zero outcomes and unavailable durations when empty', async () => {
     const f = await seedNoticeWorkspace();
     for (const period of ['30d', '90d'] as const) {
-      const result = usageTrendsResponseSchema.parse(
-        await read(f.workspaceId, period),
-      );
+      const result = usageTrendsResponseSchema.parse(await read(f, period));
       expect(result.days).toHaveLength(period === '30d' ? 30 : 90);
       expect(result.from).toMatch(/T00:00:00\.000000Z$/u);
       expect(result.days.at(-1)?.day).toBe(result.asOf.slice(0, 10));
@@ -81,7 +80,7 @@ describe('retained usage trends', () => {
     await add(f.workspaceId, f.workflowId, 'queued', '3 hours', null);
     await add(f.workspaceId, other, 'outcome_unknown', '45 days', 80);
     await add(f.workspaceId, other, 'succeeded', '1 hour', 1000, true);
-    const recent = usageTrendsResponseSchema.parse(await read(f.workspaceId));
+    const recent = usageTrendsResponseSchema.parse(await read(f));
     expect(recent).toMatchObject({
       total: 3,
       byStatus: { succeeded: 1, failed: 1, queued: 1 },
@@ -89,7 +88,7 @@ describe('retained usage trends', () => {
       busiest: [{ workflowId: f.workflowId, runs: 3, failures: 1 }],
       mostFailures: [{ workflowId: f.workflowId, runs: 3, failures: 1 }],
     });
-    const long = await read(f.workspaceId, '90d');
+    const long = await read(f, '90d');
     expect(long).toMatchObject({
       total: 4,
       byStatus: { outcome_unknown: 1 },
@@ -108,7 +107,7 @@ describe('retained usage trends', () => {
       [f.workspaceId],
       f.workspaceId,
     );
-    const hidden = await read(f.workspaceId, '90d', false);
+    const hidden = await read(f, '90d', false);
     expect(hidden).toMatchObject({
       total: 1,
       busiest: [
@@ -116,9 +115,9 @@ describe('retained usage trends', () => {
       ],
       mostFailures: [],
     });
-    const named = await read(f.workspaceId, '90d');
+    const named = await read(f, '90d');
     expect(named.busiest[0]?.workflowName).toBeTruthy();
-    expect((await read(foreign.workspaceId)).total).toBe(1);
+    expect((await read(foreign)).total).toBe(1);
   });
 
   it('includes the exact first UTC midnight and excludes the instant before it and future runs', async () => {
@@ -135,7 +134,7 @@ describe('retained usage trends', () => {
           [f.workspaceId, f.workflowId],
         ),
     );
-    const result = await read(f.workspaceId);
+    const result = await read(f);
     expect(result.total).toBe(1);
     expect(result.days[0]).toMatchObject({
       day: result.from.slice(0, 10),
@@ -146,6 +145,7 @@ describe('retained usage trends', () => {
     await expect(
       readUsageTrends(apiPool, {
         workspaceId: f.workspaceId,
+        actorId: f.members.owner,
         period: '30d',
         includeWorkflowNames: true,
         signal: controller.signal,
@@ -214,7 +214,7 @@ describe('retained usage trends', () => {
     let statements: { text: string; values: unknown[] }[] = [];
     const started = performance.now();
     try {
-      const result = await read(f.workspaceId, '90d');
+      const result = await read(f, '90d');
       expect(result.total).toBeGreaterThan(10000);
       expect(result.total).toBeLessThan(16000);
       expect(result.busiest).toHaveLength(10);

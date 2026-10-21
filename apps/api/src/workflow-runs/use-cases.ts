@@ -203,6 +203,7 @@ export class GetWorkflowRunUseCase {
       ['active', 'suspended', 'pending_deletion'],
     );
     const result = await this.persistence.get({
+      actorId: input.actor.actorId,
       workspaceId: input.routeWorkspaceId,
       runId: input.runId,
       includeWorkflowName:
@@ -238,6 +239,7 @@ export class ListWorkflowRunsUseCase {
       throw new WorkflowRunNotFoundError();
     }
     const page = await this.persistence.list({
+      actorId: input.actor.actorId,
       workspaceId: input.routeWorkspaceId,
       limit: input.limit ?? 50,
       includeWorkflowName,
@@ -306,7 +308,10 @@ export class CancelWorkflowRunUseCase {
 
 export class StreamRunEventsUseCase {
   public constructor(
-    private readonly persistence: Pick<WorkflowRunPersistence, 'get'>,
+    private readonly persistence: Pick<
+      WorkflowRunPersistence,
+      'get' | 'canRead'
+    >,
     private readonly authorization: WorkspaceAuthorizationSource,
     private readonly streamer: WorkflowRunEventStreamer,
   ) {}
@@ -320,6 +325,7 @@ export class StreamRunEventsUseCase {
       'pending_deletion',
     ]);
     const run = await this.persistence.get({
+      actorId: input.actor.actorId,
       workspaceId: input.routeWorkspaceId,
       runId: input.runId,
       includeWorkflowName: false,
@@ -330,6 +336,7 @@ export class StreamRunEventsUseCase {
       input,
       this.authorization,
       SSE_REAUTHORIZATION_INTERVAL_MS,
+      (identity) => this.persistence.canRead(identity),
     );
   }
 }
@@ -339,6 +346,7 @@ async function* authorizedStreamFrames(
   input: StreamRunEventsInput,
   authorization: WorkspaceAuthorizationSource,
   intervalMs: number,
+  canRead: WorkflowRunPersistence['canRead'],
 ): AsyncGenerator<WorkflowRunEventFrame> {
   let iterator: AsyncIterator<WorkflowRunEventFrame> | undefined;
   let lifetimeController: AbortController | undefined;
@@ -361,7 +369,21 @@ async function* authorizedStreamFrames(
     });
     iterator = frames[Symbol.asyncIterator]();
     authorizationLifetime = createStreamAuthorizationLifetime(
-      { ...input, signal: lifetimeSignal },
+      {
+        ...input,
+        signal: lifetimeSignal,
+        reauthorizeResource: async (signal) => {
+          if (
+            !(await canRead({
+              actorId: input.actor.actorId,
+              workspaceId: input.routeWorkspaceId,
+              runId: input.runId,
+              signal,
+            }))
+          )
+            throw new WorkflowRunNotFoundError();
+        },
+      },
       authorization,
       intervalMs,
       lifetimeController,

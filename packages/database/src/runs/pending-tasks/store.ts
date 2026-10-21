@@ -1,3 +1,4 @@
+import { readFolderScope } from '../../tenant-access/resources/facts.js';
 import { readWorkspacePeople } from '../../tenant-access/members/discovery.js';
 import type { DatabaseConfig } from '../../config.js';
 import {
@@ -41,7 +42,12 @@ export function createPendingTaskStore(
             input.actorId,
             rolesForCapability('run:read'),
           );
-          return listTasks(client, input, role);
+          return listTasks(
+            client,
+            input,
+            role,
+            await readFolderScope(client, input, role),
+          );
         },
         input.signal === undefined ? {} : { signal: input.signal },
       ),
@@ -56,7 +62,14 @@ export function createPendingTaskStore(
             input.actorId,
             rolesForCapability('run:read'),
           );
-          return projectTask(await readTaskRow(client, input, role));
+          return projectTask(
+            await readTaskRow(
+              client,
+              input,
+              role,
+              await readFolderScope(client, input, role),
+            ),
+          );
         },
         input.signal === undefined ? {} : { signal: input.signal },
       ),
@@ -71,7 +84,12 @@ export function createPendingTaskStore(
             input.actorId,
             rolesForCapability('run:read'),
           );
-          return respondToTask(client, { ...input, kind: 'approval' }, role);
+          return respondToTask(
+            client,
+            { ...input, kind: 'approval' },
+            role,
+            await readFolderScope(client, input, role),
+          );
         },
         input.signal === undefined ? {} : { signal: input.signal },
       ),
@@ -90,6 +108,7 @@ export function createPendingTaskStore(
             client,
             { ...input, kind: 'input_request' },
             role,
+            await readFolderScope(client, input, role),
           );
         },
         input.signal === undefined ? {} : { signal: input.signal },

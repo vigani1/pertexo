@@ -80,6 +80,7 @@ describe('workflow run statistics use case', () => {
     ).execute({ actor, routeWorkspaceId: workspaceId });
 
     expect(store.statistics).toHaveBeenCalledExactlyOnceWith({
+      actorId,
       workspaceId,
       window: '24h',
       includeWorkflows: false,
@@ -111,6 +112,7 @@ describe('workflow run statistics use case', () => {
 
     expect(policy).toHaveBeenCalledWith('viewer', 'workflow:read');
     expect(store.statistics).toHaveBeenCalledWith({
+      actorId,
       workspaceId,
       window: '7d',
       includeWorkflows: true,

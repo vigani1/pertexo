@@ -1,3 +1,5 @@
+import { readFolderScope } from '../../tenant-access/resources/facts.js';
+import { workflowAccessible } from '../../tenant-access/resources/workflows.js';
 import type { Pool, PoolClient } from 'pg';
 import {
   withTenantScopedClient,
@@ -25,6 +27,7 @@ export async function lockTestAuthority(
     input.workspaceId,
     input.actorId,
     testRoles,
+    { workflowId: input.workflowId, capability: 'workflow:update' },
   );
 }
 export function withTestAuthority<T>(
@@ -55,12 +58,22 @@ export function withTestRead<T>(
     { workspaceId: input.workspaceId, actorId: input.actorId },
     async (client) => {
       try {
-        await readWorkspaceAuthority(
+        const role = await readWorkspaceAuthority(
           client,
           input.workspaceId,
           input.actorId,
           testRoles,
         );
+        const access = await readFolderScope(client, input, role);
+        if (
+          !(await workflowAccessible(
+            client,
+            access,
+            input.workspaceId,
+            input.workflowId,
+          ))
+        )
+          throw new WorkflowNotFoundError('Workflow is not visible');
       } catch (error) {
         if (error instanceof WorkspaceAccessDeniedError)
           throw new WorkflowNotFoundError('Workflow is not visible');

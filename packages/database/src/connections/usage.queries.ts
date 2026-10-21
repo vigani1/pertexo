@@ -1,3 +1,11 @@
+import { sql } from 'drizzle-orm';
+import { readFolderScope } from '../tenant-access/resources/facts.js';
+import {
+  bindResourcePredicate,
+  workflowScopeSql,
+} from '../tenant-access/resources/query-scope.js';
+import { lockWorkspaceAuthority } from '../tenant-access/workspaces/authority.js';
+import { WorkspaceAccessDeniedError } from '../tenant-access/errors.js';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
@@ -36,13 +44,15 @@ export type ConnectionUsageDatabase = Readonly<{
 }>;
 
 /** The projection index pages version identities before bounded metadata joins. */
-export const CONNECTION_USAGE_PAGE_SQL = `with page as materialized (
-  select workflow_version_id, array_agg(distinct operation_key order by operation_key) as operation_keys
-  from app.workflow_integration_usage
-  where workspace_id = $1 and connection_id = $2
-    and ($3::uuid is null or workflow_version_id > $3::uuid)
-  group by workflow_version_id
-  order by workflow_version_id
+function connectionUsagePageSql(visible: string): string {
+  return `with page as materialized (
+  select usage.workflow_version_id, array_agg(distinct usage.operation_key order by usage.operation_key) as operation_keys
+  from app.workflow_integration_usage usage
+  join app.workflow_versions version on version.workspace_id=usage.workspace_id and version.id=usage.workflow_version_id
+  where usage.workspace_id = $1 and usage.connection_id = $2 and (${visible})
+    and ($3::uuid is null or usage.workflow_version_id > $3::uuid)
+  group by usage.workflow_version_id
+  order by usage.workflow_version_id
   limit $4
 )
 select workflow.id as workflow_id, workflow.name as workflow_name,
@@ -54,6 +64,8 @@ from page
 join app.workflow_versions version on version.workspace_id = $1 and version.id = page.workflow_version_id
 join app.workflows workflow on workflow.workspace_id = $1 and workflow.id = version.workflow_id
 order by page.workflow_version_id`;
+}
+export const CONNECTION_USAGE_PAGE_SQL = connectionUsagePageSql('true');
 
 const rowSchema = z.object({
   workflow_id: z.uuid(),
@@ -87,24 +99,24 @@ export function createConnectionUsagePersistence(
         input.workspaceId,
         actorId,
         async (client, workspaceId) => {
-          const authority = await client.query(
-            `select 1
-          from app.workspace_memberships membership
-          join app.workspaces workspace on workspace.id = membership.workspace_id
-          join app.users actor on actor.id = membership.user_id
-          where membership.workspace_id = $1 and membership.user_id = $2
-            and membership.status = 'active' and workspace.status = 'active' and actor.status = 'active'
-            and membership.role = any($3::text[]) and membership.role = any($4::text[])
-          for share of membership, workspace, actor`,
-            [
+          let role;
+          try {
+            role = await lockWorkspaceAuthority(
+              client,
               workspaceId,
               actorId,
-              [...rolesForCapability('connection:read')],
-              [...rolesForCapability('workflow:read')],
-            ],
+              rolesForCapability('connection:read'),
+            );
+          } catch (error) {
+            if (error instanceof WorkspaceAccessDeniedError)
+              throw new ConnectionNotFoundError('Connection is not visible');
+            throw error;
+          }
+          const resources = await readFolderScope(
+            client,
+            { workspaceId, actorId },
+            role,
           );
-          if (authority.rowCount !== 1)
-            throw new ConnectionNotFoundError('Connection is not visible');
           const connection = await client.query(
             'select id from app.connections where workspace_id = $1 and id = $2',
             [workspaceId, connectionId],
@@ -112,22 +124,36 @@ export function createConnectionUsagePersistence(
           if (connection.rowCount !== 1)
             throw new ConnectionNotFoundError('Connection is not visible');
           if (after !== undefined) {
+            const parameters: unknown[] = [workspaceId, connectionId, after];
+            const visible = bindResourcePredicate(
+              workflowScopeSql(resources, sql`version.workflow_id`),
+              parameters,
+            );
             const anchor = await client.query(
-              `select 1 from app.workflow_integration_usage
-            where workspace_id = $1 and connection_id = $2 and workflow_version_id = $3 limit 1`,
-              [workspaceId, connectionId, after],
+              `select 1 from app.workflow_integration_usage usage
+              join app.workflow_versions version on version.workspace_id=usage.workspace_id and version.id=usage.workflow_version_id
+              where usage.workspace_id=$1 and usage.connection_id=$2 and usage.workflow_version_id=$3 and ${visible} limit 1`,
+              parameters,
             );
             if (anchor.rowCount !== 1)
               throw new ConnectionNotFoundError(
                 'Connection usage cursor is not visible',
               );
           }
-          const result = await client.query(CONNECTION_USAGE_PAGE_SQL, [
+          const parameters: unknown[] = [
             workspaceId,
             connectionId,
             after ?? null,
             limit + 1,
-          ]);
+          ];
+          const visible = bindResourcePredicate(
+            workflowScopeSql(resources, sql`version.workflow_id`),
+            parameters,
+          );
+          const result = await client.query(
+            connectionUsagePageSql(visible),
+            parameters,
+          );
           const items = Object.freeze(
             result.rows.slice(0, limit).map((value): ConnectionUsageRecord => {
               const row = rowSchema.parse(value);

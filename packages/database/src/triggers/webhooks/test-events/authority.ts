@@ -14,6 +14,7 @@ export async function testEventDraft(
     input.workspaceId,
     input.actorId,
     rolesForCapability('workflow:update'),
+    { workflowId: input.workflowId, capability: 'workflow:update' },
   );
   const draft = await sampleDraft(client, input, true);
   const node = draft.graph.nodes.find((node) => node.id === input.nodeId);

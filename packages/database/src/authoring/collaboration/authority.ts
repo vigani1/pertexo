@@ -14,6 +14,10 @@ export async function requireCollaborationAuthority(
     input.workspaceId,
     input.actorId,
     rolesForCapability(editing ? 'workflow:update' : 'workflow:read'),
+    {
+      workflowId: input.workflowId,
+      capability: editing ? 'workflow:update' : 'workflow:read',
+    },
   );
   const row = await client.query(
     'select id from app.workflows where workspace_id=$1 and id=$2 for ' + lock,
