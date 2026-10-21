@@ -83,6 +83,7 @@ const webhookResponseCase =
   process.env.EDITOR_BROWSER_CASE === 'webhook-responses';
 const paginationCase = process.env.EDITOR_BROWSER_CASE === 'http-pagination';
 const previewCase =
+  process.env.EDITOR_BROWSER_CASE === 'artifact-inputs' ||
   process.env.EDITOR_BROWSER_CASE === 'variables' ||
   process.env.EDITOR_BROWSER_CASE === 'transforms' ||
   process.env.EDITOR_BROWSER_CASE === 'pinned-samples' ||
@@ -406,6 +407,7 @@ async function constructRuntimes(
     } else if (artifactInputs) {
       artifactTarget = await createArtifactDestination(sendHttpEffects);
       resources.controlledHttp = artifactTarget;
+      sendHttpEffects();
     } else {
       if (raw.authorizationValue === undefined)
         throw new Error('Owned HTTP authorization missing');

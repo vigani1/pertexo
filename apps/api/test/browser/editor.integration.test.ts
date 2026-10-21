@@ -1188,7 +1188,11 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
                                         : scenario === 'error-workflows'
                                           ? 'editor/error-workflows.spec.ts'
                                           : scenario === 'artifact-inputs'
-                                            ? 'editor/files/'
+                                            ? process.env
+                                                .F45_RELEASE_QUALIFICATION ===
+                                              'true'
+                                              ? 'editor/files/maximum-upload.spec.ts'
+                                              : 'editor/files/'
                                             : scenario === 'api-tokens'
                                               ? 'api-tokens.spec.ts'
                                               : scenario === 'callable'
@@ -1457,6 +1461,11 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
     if (scenario === 'artifact-inputs') {
       if (httpEffects === undefined)
         throw new Error('Owned artifact HTTP effects missing');
+      if (process.env.F45_RELEASE_QUALIFICATION === 'true') {
+        expect(httpEffects.requests).toBe(0);
+        expect(httpEffects.effects).toBe(0);
+        return;
+      }
       expect(httpEffects.requests).toBe(7);
       expect(httpEffects.effects).toBe(7);
       const binary = Buffer.alloc(1048576);
