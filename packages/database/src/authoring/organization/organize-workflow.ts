@@ -78,7 +78,7 @@ export async function organizeWorkflow(
     change.kind === 'move' &&
     !access.permits(change.folderId, 'workflow:create')
   )
-    throw new WorkflowNotFoundError('Folder is not visible');
+    throw new WorkflowFolderConflictError('not_visible');
   if (change.kind === 'move') {
     await requireMoveAudienceReview(
       client,
@@ -193,7 +193,7 @@ export async function checkOrganizationReplay(
     destinationFolderId !== undefined &&
     !access.permits(destinationFolderId, 'workflow:create')
   )
-    throw new WorkflowNotFoundError('Folder is not visible');
+    throw new WorkflowFolderConflictError('not_visible');
   const workflow = await client.query<{ lifecycle_status: string }>(
     `select lifecycle_status from app.workflows
      where workspace_id = $1 and id = $2 for share`,
