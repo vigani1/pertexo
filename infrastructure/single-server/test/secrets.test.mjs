@@ -27,6 +27,7 @@ test('generated keys and URLs work at the actual deployed application boundaries
   const environment = {
     ...secrets,
     NODE_ENV: 'production',
+    ARTIFACT_SCRATCH_DIRECTORY: '/var/lib/pertexo/artifact-scratch',
     AUTH_MAIL_MODE: 'durable',
     SESSION_COOKIE_SECURE: 'true',
     PUBLIC_WEB_ORIGIN: 'https://app.example.test',
@@ -92,6 +93,7 @@ test('self-managed generation works at both production boundaries without AWS co
   const env = {
     ...secrets,
     NODE_ENV: 'production',
+    ARTIFACT_SCRATCH_DIRECTORY: '/var/lib/pertexo/artifact-scratch',
     AUTH_MAIL_MODE: 'durable',
     SESSION_COOKIE_SECURE: 'true',
     PUBLIC_WEB_ORIGIN: 'https://app.example.test',

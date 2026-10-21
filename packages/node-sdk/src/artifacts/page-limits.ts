@@ -9,3 +9,5 @@ export const FILE_PAGE_LIMITS = Object.freeze({
   depth: 48,
   members: 4_000,
 });
+
+export const FILE_TRANSFER_NO_PROGRESS_MILLIS = 60_000;
