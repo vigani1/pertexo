@@ -1,3 +1,5 @@
+import { describeUpload } from '@/features/artifacts/model/upload';
+import { createHash } from 'node:crypto';
 import { setup, file, scope, artifactId, bytes } from './upload.fixture';
 import { webcrypto } from 'node:crypto';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -64,11 +66,11 @@ it('reconciles a lost PUT reply using the same identity before sending bytes aga
 it('rejects one byte over the consumer budget without reading or reserving', async () => {
   const calls = setup();
   const { event, onUse } = await open();
-  const selected = file(1024 * 1024 + 1);
+  const selected = file(10 * 1024 * 1024 + 1);
   const read = vi.spyOn(selected, 'arrayBuffer');
   await event.upload(screen.getByLabelText('File', { exact: true }), selected);
   await screen.findByText(
-    'Choose a file no larger than 1 MB. Split larger files into smaller files and upload them separately.',
+    'Choose a file no larger than 10 MB. Split larger files into smaller files and upload them separately.',
   );
   expect(read).not.toHaveBeenCalled();
   expect(calls.keys).toHaveLength(0);
@@ -219,4 +221,26 @@ it('does not invoke insertion if its target changes before the queued callback s
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
   expect(onUse).not.toHaveBeenCalled();
+});
+
+it('hashes exactly ten MiB and wipes its owned buffer before returning upload metadata', async () => {
+  const selected = file(10485760);
+  const owned = await selected.arrayBuffer();
+  const expected = createHash('sha256')
+    .update(new Uint8Array(owned))
+    .digest('hex');
+  vi.spyOn(selected, 'arrayBuffer').mockResolvedValue(owned);
+  const result = await describeUpload(selected, new AbortController().signal);
+  expect(result).toMatchObject({ byteLength: 10485760, sha256: expected });
+  expect(new Uint8Array(owned).every((byte) => byte === 0)).toBe(true);
+});
+
+it('explains a lower server storage limit without retrying an unchanged oversized file', async () => {
+  const calls = setup({ tooLarge: true });
+  const { event } = await open();
+  await event.upload(screen.getByLabelText('File', { exact: true }), file());
+  expect(
+    await screen.findByText(/file exceeds the server’s storage limit/u),
+  ).toHaveTextContent('Split it into smaller files');
+  expect(calls.counts()).toEqual({ puts: 0, finalizes: 0 });
 });

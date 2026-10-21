@@ -30,7 +30,7 @@ export async function observeMultipart(body: Buffer, contentType: string) {
   const parser = new Busboy({
     headers: { 'content-type': contentType },
     isPartAFile: () => true,
-    limits: { parts: 64, files: 64, fileSize: 1048576, headerSize: 4096 },
+    limits: { parts: 64, files: 64, fileSize: 10485760, headerSize: 4096 },
   });
   parser.on('file', (name, stream, filename) => {
     const index = parts.length;

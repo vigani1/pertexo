@@ -31,6 +31,29 @@ scripts; `deploy.sh` extracts each chosen commit into `releases/<commit>`.
 Persistent Compose volumes belong to the stable `pertexo-beta` project. Never
 run `down -v` on a serving installation.
 
+## Worker file scratch
+
+Set `ARTIFACT_SCRATCH_DIRECTORY=/var/lib/pertexo/artifact-scratch` in the
+installation environment when updating an existing beta. Each worker container has its own disk-backed volume mounted at
+`/var/lib/pertexo/artifact-scratch` (`ARTIFACT_SCRATCH_DIRECTORY`). The image
+creates it for UID 10001 with mode 0700; spool files use 0600. Do not replace it
+with tmpfs, share it between workers or include it in backups. Files are
+immutable in the artifact store; scratch is disposable and is verified again
+on retry. Startup removes only owned abandoned spools before consumers start.
+
+Allow 1 GiB of scratch per worker plus at least 64 MiB filesystem headroom.
+Each attempt is limited to 20 MiB across its live spools. File steps stop after
+60 seconds without byte progress or at the existing run deadline. A failed
+cleanup retains its charge and makes file readiness fail; correct the storage
+problem, then restart that worker for startup cleanup. Ordinary capacity,
+checkpoint and inline-data limits stay unchanged. Local non-container workers
+use a private `.pertexo/worker-scratch` under their working directory by
+default; give simultaneously running workers separate absolute paths.
+
+ECS workers mount task-local ephemeral storage at the same path. Keep the
+matching Dockerfile `VOLUME` and task `containerPath`: ECS copies the image
+volume's owner and mode when preparing the mount. It is not shared storage.
+
 ## Public webhook address
 
 Send webhooks to `https://<app host>/hooks/<key>`, for example

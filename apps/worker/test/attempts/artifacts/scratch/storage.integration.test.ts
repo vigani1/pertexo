@@ -1,3 +1,9 @@
+import { createHash } from 'node:crypto';
+import { createHttpRequestExecutorRegistration } from '@pertexo/integrations/server';
+import {
+  artifactDestinationUrl,
+  createArtifactDestination,
+} from '../http-destination.js';
 import { randomUUID } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -14,7 +20,6 @@ import {
 } from '@pertexo/database/testing';
 import type { NodeArtifactReference } from '@pertexo/node-sdk/server';
 import { createWorkerNodeRuntimeCapabilities } from '../../../../src/attempts/runtime-capabilities.js';
-import { ArtifactScratchSpace } from '../../../../src/attempts/artifacts/scratch/space.js';
 import { createArtifactDatabaseEnvironment } from '../database.js';
 import { runWithCleanup } from '../../../support/infrastructure/test-operation.js';
 
@@ -68,13 +73,15 @@ async function* document(size: number, rows: number) {
       let store: ReturnType<typeof createArtifactStore> | undefined;
       let database: ReturnType<typeof createWorkspaceDatabase> | undefined;
       const references: NodeArtifactReference[] = [];
+      let destination:
+        Awaited<ReturnType<typeof createArtifactDestination>> | undefined;
       await runWithCleanup(
         async () => {
           await environment.initialize();
           directory = await mkdtemp(
             path.join(tmpdir(), 'pertexo-file-storage-'),
           );
-          const space = await ArtifactScratchSpace.create(directory);
+          destination = await createArtifactDestination();
           capabilities = await createWorkerNodeRuntimeCapabilities(
             { database: environment.workerConfig, artifactStore: config },
             { spoolDirectory: directory },
@@ -82,12 +89,16 @@ async function* document(size: number, rows: number) {
           store = createArtifactStore(config);
           database = createWorkspaceDatabase(environment.apiConfig);
           const artifacts = capabilities.factories.artifacts?.(context);
-          if (artifacts?.read === undefined)
+          if (
+            artifacts?.read === undefined ||
+            artifacts.openVerified === undefined
+          )
             throw new Error('Missing artifact capability');
           const measurements: { bytes: number; recordBytes: number }[] = [];
           for (const [size, rows] of [
             [1_048_576, 10_000],
             [10_485_760, 100_000],
+            [10_484_736, 100_000],
           ] as const) {
             const signal = new AbortController().signal;
             const reference = await artifacts.write({
@@ -123,15 +134,23 @@ async function* document(size: number, rows: number) {
               workspaceId,
               ...reference,
             });
-            const spool = await space.spool({
-              attemptId: context.attemptId,
+            download.body.destroy();
+            const spool = await artifacts.openVerified({
+              reference,
               maxBytes: size,
-              body: download.body,
               signal,
             });
             try {
               expect(spool.byteLength).toBe(size);
               expect(spool.sha256).toBe(reference.sha256);
+              const digest = createHash('sha256');
+              for await (const value of spool.open(signal)) {
+                const chunk: unknown = value;
+                if (!(chunk instanceof Uint8Array))
+                  throw new Error('Expected file bytes');
+                digest.update(chunk);
+              }
+              expect(digest.digest('hex')).toBe(reference.sha256);
               if (size === 1_048_576) {
                 const original = await artifacts.read({
                   reference,
@@ -153,6 +172,106 @@ async function* document(size: number, rows: number) {
               }
             } finally {
               await spool.release();
+            }
+            const receiver = destination;
+            const executor = createHttpRequestExecutorRegistration({
+              httpClient: receiver.httpClient,
+            });
+            const before = destination.observe().length;
+            let dispatched = 0;
+            const execute = (multipart: boolean) =>
+              executor.execute({
+                config: {
+                  method: 'POST',
+                  url: artifactDestinationUrl,
+                  headers: {},
+                  timeoutMillis: 10000,
+                  maxRedirects: 0,
+                  maxResponseBytes: 8192,
+                  inlineResponseBytes: 8192,
+                  ...(multipart
+                    ? {
+                        multipart: {
+                          parts: [
+                            {
+                              inputKey:
+                                'part_11111111-1111-4111-8111-111111111111',
+                              name: 'file',
+                              kind: 'file',
+                            },
+                          ],
+                        },
+                      }
+                    : {}),
+                },
+                input: multipart
+                  ? {
+                      'part_11111111-1111-4111-8111-111111111111': {
+                        kind: 'artifact',
+                        ...reference,
+                      },
+                    }
+                  : { body: { kind: 'artifact', ...reference } },
+                connectionRefs: {
+                  http_headers: '55555555-5555-4555-8555-555555555555',
+                },
+                signal,
+                runtime: {
+                  ...context,
+                  artifacts,
+                  connections: {
+                    resolve: () =>
+                      Promise.resolve({
+                        connectionId: '55555555-5555-4555-8555-555555555555',
+                        providerKey: 'http',
+                        authType: 'http_headers',
+                        secretVersionId: '66666666-6666-4666-8666-666666666666',
+                        secret: Buffer.from(
+                          JSON.stringify({
+                            type: 'http_headers',
+                            headers: { authorization: receiver.authorization },
+                          }),
+                        ),
+                      }),
+                    assertCurrent: () => Promise.resolve(),
+                  },
+                  sideEffectClass: 'unsafe',
+                  beforeDispatch: () => {
+                    dispatched++;
+                    return Promise.resolve();
+                  },
+                },
+              });
+            await execute(false);
+            expect(destination.observe()[before]).toMatchObject({
+              byteLength: size,
+              sha256: reference.sha256,
+              mediaType: 'application/json',
+            });
+            if (size === 10485760) {
+              await expect(execute(true)).rejects.toMatchObject({
+                diagnostic: { reason: 'multipart_size' },
+              });
+              expect(dispatched).toBe(1);
+              expect(destination.observe()).toHaveLength(before + 1);
+            } else {
+              const sent = await execute(true);
+              expect(dispatched).toBe(2);
+              expect(sent).toMatchObject({
+                body: {
+                  kind: 'inline',
+                  json: {
+                    parts: [
+                      {
+                        name: 'file',
+                        byteLength: size,
+                        sha256: reference.sha256,
+                        contentType: 'application/json',
+                      },
+                    ],
+                  },
+                },
+              });
             }
           }
           expect(measurements[0]?.recordBytes).toBe(
@@ -181,6 +300,7 @@ async function* document(size: number, rows: number) {
                   artifactId: reference.artifactId,
                 }) ?? Promise.resolve(),
             );
+          await clean(() => destination?.close() ?? Promise.resolve());
           await clean(() => store?.close() ?? Promise.resolve());
           await clean(() => capabilities?.close() ?? Promise.resolve());
           await clean(() => database?.close() ?? Promise.resolve());

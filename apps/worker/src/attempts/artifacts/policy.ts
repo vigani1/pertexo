@@ -1,10 +1,10 @@
-const MAXIMUM_NODE_ARTIFACT_BYTES = 10_485_760;
+import { FILE_PAGE_LIMITS } from '@pertexo/node-sdk';
 
 export function assertArtifactByteLimit(maxBytes: number): void {
   if (
     !Number.isSafeInteger(maxBytes) ||
     maxBytes < 1 ||
-    maxBytes > MAXIMUM_NODE_ARTIFACT_BYTES
+    maxBytes > FILE_PAGE_LIMITS.fileBytes
   )
     throw new TypeError('Node artifact byte limit is invalid');
 }

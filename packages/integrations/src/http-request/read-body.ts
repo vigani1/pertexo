@@ -1,4 +1,7 @@
-import type { NodeArtifactRuntime } from '@pertexo/node-sdk/server';
+import type {
+  NodeArtifactRuntime,
+  NodeVerifiedByteSource,
+} from '@pertexo/node-sdk/server';
 import {
   HTTP_REQUEST_LIMITS,
   type HttpRequestInput,
@@ -12,14 +15,18 @@ export async function readRequestBody(
   artifacts: NodeArtifactRuntime | undefined,
   signal: AbortSignal,
   failure: () => Error,
-): Promise<Uint8Array | undefined> {
+): Promise<Uint8Array | NodeVerifiedByteSource | undefined> {
   const body = input.body;
   if (body === undefined || !('kind' in body))
     return requestBody(input, method, failure);
-  if (method === 'GET' || method === 'HEAD' || artifacts?.read === undefined)
+  if (
+    method === 'GET' ||
+    method === 'HEAD' ||
+    artifacts?.openVerified === undefined
+  )
     throw failure();
   const { kind: _kind, ...reference } = body;
-  return artifacts.read({
+  return artifacts.openVerified({
     reference,
     maxBytes: HTTP_REQUEST_LIMITS.maxRequestBodyBytes,
     signal,

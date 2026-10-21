@@ -1,3 +1,4 @@
+import { EventEmitter } from 'node:events';
 import { describe, expect, it, vi } from 'vitest';
 
 const fixtures = vi.hoisted(() => ({
@@ -29,7 +30,7 @@ type RequestOptions = Readonly<{
 }>;
 
 function responseFixture() {
-  return {
+  return Object.assign(new EventEmitter(), {
     statusCode: 204,
     headers: { 'content-type': 'text/plain' },
     destroy: vi.fn(),
@@ -38,7 +39,7 @@ function responseFixture() {
       await Promise.resolve();
       yield new Uint8Array();
     },
-  };
+  });
 }
 
 function requestFixture(
@@ -47,6 +48,7 @@ function requestFixture(
   respond = true,
   expectedAddress = { address: '2001:4860:4860::8888', family: 6 },
 ) {
+  const emitter = new EventEmitter();
   const timeout = vi.fn();
   const once = vi.fn();
   const write = vi.fn();
@@ -56,9 +58,20 @@ function requestFixture(
   once.mockImplementation(
     (event: string, listener: (error: unknown) => void) => {
       if (event === 'error') errorListener = listener;
+      else emitter.once(event, listener);
     },
   );
+  const native = {
+    setTimeout: timeout,
+    once,
+    on: once,
+    write,
+    destroy,
+    end,
+    destroyed: false,
+  };
   destroy.mockImplementation((error?: unknown) => {
+    native.destroyed = true;
     if (error !== undefined) errorListener?.(error);
   });
   requestFunction.mockImplementationOnce(
@@ -76,13 +89,14 @@ function requestFixture(
         options.lookup(url.hostname, {}, (...args) => {
           singleAnswers.push(args);
         });
+        emitter.emit('finish');
         if (respond) callback(response);
         expect(allAnswers).toEqual([[null, [expectedAddress]]]);
         expect(singleAnswers).toEqual([
           [null, expectedAddress.address, expectedAddress.family],
         ]);
       });
-      return { setTimeout: timeout, once, write, destroy, end };
+      return native;
     },
   );
   return { timeout, once, write, destroy, end };
@@ -139,7 +153,7 @@ describe('Node DNS and HTTP adapters', () => {
       signal: controller.signal,
     });
     expect(request.timeout).toHaveBeenCalledWith(1_234, expect.any(Function));
-    expect(request.write).toHaveBeenCalledWith(expect.any(Uint8Array));
+    expect(request.end).toHaveBeenCalledWith(expect.any(Uint8Array));
     expect(request.end).toHaveBeenCalledOnce();
     expect(transportResponse.status).toBe(204);
     transportResponse.close();

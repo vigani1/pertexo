@@ -10,6 +10,7 @@ type Phase =
   | 'triggers'
   | 'code-runner'
   | 'capabilities'
+  | 'artifact-scratch'
   | 'controlled-http'
   | 'envelope-keys'
   | 'startup'
@@ -27,6 +28,7 @@ export type EditorBrowserWorkerRuntimes = Readonly<{
   notifications?: Closable | undefined;
   capabilities?: Closable | undefined;
   codeRunner?: Closable | undefined;
+  artifactScratch?: Closable | undefined;
   controlledHttp?: Closable | undefined;
   envelopeKeys?: Closable | undefined;
 }>;
@@ -68,6 +70,7 @@ export async function closeEditorBrowserWorkerRuntimes(
     ['capabilities', resources.capabilities],
     ['code-runner', resources.codeRunner],
     ['controlled-http', resources.controlledHttp],
+    ['artifact-scratch', resources.artifactScratch],
     ['envelope-keys', resources.envelopeKeys],
   ];
   for (const [phase, resource] of owned) {
@@ -77,6 +80,7 @@ export async function closeEditorBrowserWorkerRuntimes(
         'capabilities',
         'code-runner',
         'controlled-http',
+        'artifact-scratch',
         'envelope-keys',
       ].includes(phase)
     )

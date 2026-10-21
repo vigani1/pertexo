@@ -96,6 +96,7 @@ type PreviewAttemptRuntimeDependency = Readonly<{
 export type NodeAttemptRuntimeOptions = Readonly<{
   codeRunner?: WorkerCodeRunnerConfig;
   artifactStore?: ArtifactStoreConfig;
+  artifactScratchDirectory?: string;
   connectionEncryption?: ConnectionEnvelopeEncryptionConfig;
   database: DatabaseConfig;
   databaseRuntime?: DatabaseRuntime;
@@ -264,6 +265,9 @@ async function createProductionNodeAttemptRuntime(
     )(
       {
         database: options.database,
+        ...(options.artifactScratchDirectory === undefined
+          ? {}
+          : { artifactScratchDirectory: options.artifactScratchDirectory }),
         ...(options.codeRunner === undefined
           ? {}
           : { codeRunner: options.codeRunner }),

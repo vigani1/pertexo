@@ -1,4 +1,5 @@
 import type { NodeRunValuesRuntime } from '../run-values/contract.js';
+import type { NodeVerifiedByteSource } from '../artifacts/verified-source.js';
 import type { NodeDataTableRuntime } from '../data-tables/contract.js';
 import type { NodeCodeRuntime, CodeDiagnostics } from '../code/contract.js';
 import type { NodeWebhookResponseRuntime } from './webhooks.js';
@@ -71,6 +72,21 @@ export interface NodeConnectionRuntime {
 }
 
 export interface NodeArtifactRuntime {
+  openVerified?(
+    input: Readonly<{
+      reference: NodeArtifactReference;
+      maxBytes: number;
+      signal: AbortSignal;
+    }>,
+  ): Promise<NodeVerifiedByteSource>;
+  spool?(
+    input: Readonly<{
+      body: AsyncIterable<Uint8Array>;
+      cancelSource?: (reason: Error) => void;
+      maxBytes: number;
+      signal: AbortSignal;
+    }>,
+  ): Promise<NodeVerifiedByteSource>;
   read?(
     input: Readonly<{
       reference: NodeArtifactReference;
@@ -81,6 +97,7 @@ export interface NodeArtifactRuntime {
   write(
     input: Readonly<{
       body: AsyncIterable<Uint8Array>;
+      cancelSource?: (reason: Error) => void;
       maxBytes: number;
       mediaType: string;
       purpose: string;

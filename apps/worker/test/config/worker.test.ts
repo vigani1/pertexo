@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { DEFAULT_CODE_SETTINGS, codeRunnerSocketPath } from '@pertexo/node-sdk';
 import { readFileSync } from 'node:fs';
 import { parseEnv } from 'node:util';
@@ -14,6 +15,7 @@ const databaseEnvironment = {
 } as const;
 const requiredEnvironment = {
   ...databaseEnvironment,
+  ARTIFACT_SCRATCH_DIRECTORY: '/var/lib/pertexo/artifact-scratch',
   ARTIFACT_STORE_ACCESS_KEY_ID: 'local-access',
   ARTIFACT_STORE_BUCKET: 'pertexo-artifacts',
   ARTIFACT_STORE_ENDPOINT: 'http://localhost:9090',
@@ -102,6 +104,7 @@ describe('parseWorkerConfig', () => {
         ...requiredEnvironment,
       }),
     ).toEqual({
+      artifactScratchDirectory: '/var/lib/pertexo/artifact-scratch',
       httpRequest: { allowedPrivateNetworks: [] },
       codeRunner: {
         settings: DEFAULT_CODE_SETTINGS,
@@ -592,4 +595,43 @@ describe('parseWorkerConfig', () => {
     expect(config.invitationDelivery).toBeUndefined();
     expect(config.retention.maintenanceDatabase).toBeDefined();
   });
+});
+
+it('defaults local scratch under the working directory and refuses relative overrides', () => {
+  const { ARTIFACT_SCRATCH_DIRECTORY: _scratch, ...environment } =
+    requiredEnvironment;
+  expect(parseWorkerConfig(environment).artifactScratchDirectory).toBe(
+    path.resolve('.pertexo/worker-scratch'),
+  );
+  expect(() =>
+    parseWorkerConfig({
+      ...environment,
+      ARTIFACT_SCRATCH_DIRECTORY: 'relative/path',
+    }),
+  ).toThrow('Invalid worker configuration');
+});
+it('requires an explicit deployed disk scratch directory before delivery starts', () => {
+  const { ARTIFACT_SCRATCH_DIRECTORY: _scratch, ...environment } =
+    requiredEnvironment;
+  let failure: unknown;
+  try {
+    parseWorkerConfig({
+      ...environment,
+      NODE_ENV: 'production',
+      CONNECTION_KMS_KEY_REFERENCE: 'alias/pertexo',
+      CONNECTION_KMS_REGION: 'eu-central-1',
+      ARTIFACT_STORE_ENDPOINT: 'https://files.example.test',
+    });
+  } catch (error) {
+    failure = error;
+  }
+  expect(failure).toBeInstanceOf(Error);
+  if (!(failure instanceof Error))
+    throw new Error('Missing configuration refusal');
+  expect(failure.cause).toBeInstanceOf(ZodError);
+  if (!(failure.cause instanceof ZodError))
+    throw new Error('Missing configuration field');
+  expect(failure.cause.issues.map((issue) => issue.path)).toContainEqual([
+    'ARTIFACT_SCRATCH_DIRECTORY',
+  ]);
 });

@@ -133,11 +133,15 @@ services:
         apps/worker/dist/main.js',
       ]
     environment:
+      ARTIFACT_SCRATCH_DIRECTORY: /var/lib/pertexo/artifact-scratch
       <<: [*environment, *code-settings]
       DATABASE_MAINTENANCE_URL: ${DATABASE_MAINTENANCE_URL:?}
       INVITATION_EMAIL_FROM: ${INVITATION_EMAIL_FROM:?}
       HTTP_ALLOWED_PRIVATE_NETWORKS: ${HTTP_ALLOWED_PRIVATE_NETWORKS:-}
-    volumes: [code-socket:/run/pertexo-code]
+    volumes:
+      - code-socket:/run/pertexo-code
+      - type: volume
+        target: /var/lib/pertexo/artifact-scratch
     depends_on:
       migration: { condition: service_completed_successfully }
       redis: { condition: service_healthy }

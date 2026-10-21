@@ -1,3 +1,4 @@
+import { spoolBytes } from '../support/artifact-runtime.js';
 import FormData from 'form-data';
 import { describe, expect, it } from 'vitest';
 import { collectMultipart } from '../../src/http-request/multipart/collect.js';
@@ -19,6 +20,7 @@ describe('bounded encoder collection', () => {
           value,
           value.getLengthSync() + delta,
           new AbortController().signal,
+          spoolBytes,
         ),
       ).rejects.toMatchObject({ diagnostic: { reason: 'multipart_encoding' } });
     },
@@ -26,7 +28,12 @@ describe('bounded encoder collection', () => {
   it('refuses an over-budget form before consuming it', async () => {
     const value = form();
     await expect(
-      collectMultipart(value, 1048577, new AbortController().signal),
+      collectMultipart(
+        value,
+        10485761,
+        new AbortController().signal,
+        spoolBytes,
+      ),
     ).rejects.toMatchObject({ diagnostic: { reason: 'multipart_size' } });
   });
   it('honors cancellation during assembly and removes its error listener', async () => {
@@ -36,7 +43,12 @@ describe('bounded encoder collection', () => {
       controller.abort();
     });
     await expect(
-      collectMultipart(value, value.getLengthSync(), controller.signal),
+      collectMultipart(
+        value,
+        value.getLengthSync(),
+        controller.signal,
+        spoolBytes,
+      ),
     ).rejects.toMatchObject({ name: 'AbortError' });
     expect(value.listenerCount('error')).toBe(0);
   });
@@ -50,6 +62,7 @@ describe('bounded encoder collection', () => {
         value,
         value.getLengthSync(),
         new AbortController().signal,
+        spoolBytes,
       ),
     ).rejects.toMatchObject({ diagnostic: { reason: 'multipart_encoding' } });
     expect(value.listenerCount('error')).toBe(0);

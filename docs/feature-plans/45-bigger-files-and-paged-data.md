@@ -1,6 +1,6 @@
 # F45 — Bigger files and paged step data
 
-Status: **Approved by owner 2026-10-21**. Deliver the four slices below, including the ADR 075 amendment and dedicated disk-backed scratch. Slice 1 is locally qualified and awaiting delivery. Public file and execution limits remain unchanged; runtime, pages and full release qualification are pending.
+Status: **Approved by owner 2026-10-21** (#447 merged). Slice 1 delivered in #450. Slice 2 implements verified disk-backed file transport and 10 MiB uploads/raw/multipart bodies; local qualification passes and PR delivery is pending. Ordinary Read file/Create file, inline JSON and checkpoint bounds remain unchanged. Explicit pages and full release qualification are pending in slices 3–4.
 
 ## Current code and problem
 

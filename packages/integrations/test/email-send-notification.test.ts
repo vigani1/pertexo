@@ -1,3 +1,4 @@
+import { inlineBytes } from './support/artifact-runtime.js';
 import { createHash } from 'node:crypto';
 
 import {
@@ -187,11 +188,10 @@ describe('email.send_notification@1', () => {
     const requests: SecureHttpRequest[] = [];
     const execute = vi.fn(
       async (request: SecureHttpRequest): Promise<SecureHttpResponse> => {
+        const bytes = inlineBytes(request.body);
         requests.push({
           ...request,
-          ...(request.body === undefined
-            ? {}
-            : { body: new Uint8Array(request.body) }),
+          ...(bytes === undefined ? {} : { body: new Uint8Array(bytes) }),
         });
         await request.beforeDispatch();
         return {
@@ -238,7 +238,9 @@ describe('email.send_notification@1', () => {
     });
     const bodies = requests.map(
       (request) =>
-        JSON.parse(new TextDecoder().decode(request.body)) as unknown,
+        JSON.parse(
+          new TextDecoder().decode(inlineBytes(request.body)),
+        ) as unknown,
     );
     expect(bodies).toEqual([
       {
@@ -288,7 +290,7 @@ describe('email.send_notification@1', () => {
       let requestBody: Uint8Array | undefined;
       const client = createResendClient({
         execute: (request) => {
-          requestBody = request.body;
+          requestBody = inlineBytes(request.body);
           expect(request.signal).toBeUndefined();
           return Promise.resolve({
             status,
@@ -345,7 +347,7 @@ describe('email.send_notification@1', () => {
       let directRequestBody: Uint8Array | undefined;
       const directClient = createResendClient({
         execute: async (request) => {
-          directRequestBody = request.body;
+          directRequestBody = inlineBytes(request.body);
           await request.beforeDispatch();
           return {
             status,
@@ -377,7 +379,7 @@ describe('email.send_notification@1', () => {
       const state = runtime(undefined);
       const executorClient = createResendClient({
         execute: async (request) => {
-          executorRequestBody = request.body;
+          executorRequestBody = inlineBytes(request.body);
           await request.beforeDispatch();
           return {
             status,

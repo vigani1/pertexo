@@ -1,3 +1,5 @@
+import { ArtifactScratchSpace } from './artifacts/scratch/space.js';
+import { FILE_PAGE_LIMITS } from '@pertexo/node-sdk';
 import {
   createRunValuesStore,
   type RunValuesStore,
@@ -70,6 +72,7 @@ export type WorkerNodeRuntimeCapabilityOptions = Readonly<{
   connectionEncryption?: ConnectionEnvelopeEncryptionConfig;
   artifactStore?: ArtifactStoreConfig;
   artifactRetentionMillis?: number;
+  artifactScratchDirectory?: string;
   redisUrl?: string;
 }>;
 
@@ -371,7 +374,30 @@ export async function createWorkerNodeRuntimeCapabilities(
       const checkReadiness = readiness.checkReadiness;
       if (checkReadiness !== undefined)
         checkArtifactReadiness = () => checkReadiness.call(readiness);
+      const directory =
+        dependencies.spoolDirectory ?? options.artifactScratchDirectory;
+      if (directory === undefined)
+        throw new Error(
+          'Configure ARTIFACT_SCRATCH_DIRECTORY as a private disk-backed directory for this worker.',
+        );
+      const scratch = await ArtifactScratchSpace.create(
+        directory,
+        dependencies.artifactSpoolOperations,
+      );
+      const checkStoreReadiness = checkArtifactReadiness;
+      checkArtifactReadiness = async () => {
+        scratch.checkReadiness();
+        await checkStoreReadiness?.();
+      };
       factories.artifacts = createNodeArtifactRuntimeFactory({
+        assertOpen: () => {
+          assertCapabilityRuntimeOpen(lifecycle);
+        },
+        scratch,
+        maximumBytes: Math.min(
+          FILE_PAGE_LIMITS.fileBytes,
+          options.artifactStore?.maxObjectBytes ?? FILE_PAGE_LIMITS.fileBytes,
+        ),
         persistence,
         store,
         retentionMillis,
@@ -379,12 +405,6 @@ export async function createWorkerNodeRuntimeCapabilities(
           ? {}
           : { artifactId: dependencies.artifactId }),
         ...(dependencies.now === undefined ? {} : { now: dependencies.now }),
-        ...(dependencies.spoolDirectory === undefined
-          ? {}
-          : { spoolDirectory: dependencies.spoolDirectory }),
-        ...(dependencies.artifactSpoolOperations === undefined
-          ? {}
-          : { spoolOperations: dependencies.artifactSpoolOperations }),
       });
     }
   } catch (error: unknown) {

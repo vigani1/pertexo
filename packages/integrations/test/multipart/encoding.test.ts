@@ -1,3 +1,9 @@
+import {
+  verifiedSource,
+  spoolBytes,
+  emptyArtifactRuntime,
+  sourceBytes,
+} from '../support/artifact-runtime.js';
 import { createHash, randomUUID } from 'node:crypto';
 import FormData from 'form-data';
 import { describe, expect, it, vi } from 'vitest';
@@ -23,12 +29,16 @@ function reference(bytes: Uint8Array) {
 }
 function runtime(bytes: Uint8Array) {
   const copies: Uint8Array[] = [];
-  const read = vi.fn<NonNullable<NodeArtifactRuntime['read']>>(() => {
+  const read = vi.fn<NonNullable<NodeArtifactRuntime['openVerified']>>(() => {
     const copy = Uint8Array.from(bytes);
     copies.push(copy);
-    return Promise.resolve(copy);
+    return Promise.resolve(verifiedSource(copy));
   });
-  return { artifacts: { read, write: vi.fn() }, read, copies };
+  return {
+    artifacts: { openVerified: read, spool: spoolBytes, write: vi.fn() },
+    read,
+    copies,
+  };
 }
 function encode(
   config: unknown,
@@ -38,15 +48,18 @@ function encode(
   return encodeMultipart({
     config: httpMultipartConfigSchema.parse(config),
     values: httpRequestInputSchema.parse(values),
-    artifacts,
+    artifacts: artifacts ?? emptyArtifactRuntime,
     signal,
   });
 }
-async function parsed(body: Uint8Array, contentType: string) {
+async function parsed(
+  body: Awaited<ReturnType<typeof encodeMultipart>>['body'],
+  contentType: string,
+) {
   return new Request('http://owned.example.test', {
     method: 'POST',
     headers: { 'content-type': contentType },
-    body: Buffer.from(body),
+    body: Uint8Array.from(await sourceBytes(body)),
   }).formData();
 }
 describe('bounded multipart encoding', () => {
@@ -98,7 +111,7 @@ describe('bounded multipart encoding', () => {
         mediaType: 'application/octet-stream',
         sha256: reference(bytes).sha256,
       },
-      maxBytes: 1048576,
+      maxBytes: 10485760,
       signal,
     });
   });
@@ -158,7 +171,7 @@ describe('bounded multipart encoding', () => {
     }).toEqual({ name: 'note.txt', type: 'text/x-owned', text: 'hello' });
   });
   it('refuses a lower-bound overrun before file reads, counting each occurrence', async () => {
-    const store = runtime(new Uint8Array(600000));
+    const store = runtime(new Uint8Array(6000000));
     await expect(
       encode(
         {
@@ -168,8 +181,8 @@ describe('bounded multipart encoding', () => {
           ],
         },
         {
-          [fileKey]: reference(new Uint8Array(600000)),
-          [secondKey]: reference(new Uint8Array(600000)),
+          [fileKey]: reference(new Uint8Array(6000000)),
+          [secondKey]: reference(new Uint8Array(6000000)),
         },
         store.artifacts,
       ),
@@ -181,13 +194,15 @@ describe('bounded multipart encoding', () => {
     await expect(
       encode(
         { parts: [{ inputKey: fileKey, name: 'file', kind: 'file' }] },
-        { [fileKey]: { ...reference(new Uint8Array()), byteLength: 2097152 } },
+        {
+          [fileKey]: { ...reference(new Uint8Array()), byteLength: 104857601 },
+        },
         store.artifacts,
       ),
     ).rejects.toMatchObject({ diagnostic: { reason: 'multipart_size' } });
     expect(store.read).not.toHaveBeenCalled();
   });
-  it('measures an exact 1 MiB wire body and refuses one byte over, including framing', async () => {
+  it('measures an exact 10 MiB wire body and refuses one byte over, including framing', async () => {
     const config = {
       parts: [{ inputKey: fileKey, name: 'file', kind: 'file' }],
     };
@@ -199,7 +214,7 @@ describe('bounded multipart encoding', () => {
         empty.artifacts,
       )
     ).body.byteLength;
-    const bytes = new Uint8Array(1048576 - overhead).fill(7);
+    const bytes = new Uint8Array(10485760 - overhead).fill(7);
     const store = runtime(bytes);
     const start = performance.now();
     const result = await encode(
@@ -207,7 +222,7 @@ describe('bounded multipart encoding', () => {
       { [fileKey]: reference(bytes) },
       store.artifacts,
     );
-    expect(result.body.byteLength).toBe(1048576);
+    expect(result.body.byteLength).toBe(10485760);
     const form = await parsed(result.body, result.contentType);
     const file = form.get('file');
     if (!(file instanceof File)) throw new Error('Expected file');
@@ -217,7 +232,7 @@ describe('bounded multipart encoding', () => {
         .digest('hex'),
     ).toBe(reference(bytes).sha256);
     process.stdout.write(
-      `Multipart exact 1 MiB: ${String(Math.round(performance.now() - start))} ms; framing ${String(overhead)} bytes; one bounded file view plus final wire buffer\n`,
+      `Multipart exact 10 MiB: ${String(Math.round(performance.now() - start))} ms; framing ${String(overhead)} bytes; test adapter only; real disk resource qualification is separate\n`,
     );
     const over = runtime(new Uint8Array(bytes.length + 1));
     await expect(
@@ -227,11 +242,11 @@ describe('bounded multipart encoding', () => {
         over.artifacts,
       ),
     ).rejects.toMatchObject({ diagnostic: { reason: 'multipart_size' } });
-    const full = runtime(new Uint8Array(1048576));
+    const full = runtime(new Uint8Array(10485760));
     await expect(
       encode(
         config,
-        { [fileKey]: reference(new Uint8Array(1048576)) },
+        { [fileKey]: reference(new Uint8Array(10485760)) },
         full.artifacts,
       ),
     ).rejects.toMatchObject({ diagnostic: { reason: 'multipart_size' } });
@@ -256,16 +271,14 @@ describe('bounded multipart encoding', () => {
         runtime(new Uint8Array()).artifacts,
       )
     ).body.byteLength;
-    const bytes = new Uint8Array(1048576 - overhead).fill(11);
-    const bufferBaseline = process.memoryUsage().arrayBuffers;
+    const bytes = new Uint8Array(10485760 - overhead).fill(11);
     const start = performance.now();
     const result = await encode(
       config,
       { ...emptyValues, [fileKey]: reference(bytes) },
       runtime(bytes).artifacts,
     );
-    const growth = process.memoryUsage().arrayBuffers - bufferBaseline;
-    expect(result.body.byteLength).toBe(1048576);
+    expect(result.body.byteLength).toBe(10485760);
     const form = await parsed(result.body, result.contentType);
     expect(Array.from(form.keys())).toHaveLength(64);
     const file = form.get('file');
@@ -276,7 +289,7 @@ describe('bounded multipart encoding', () => {
         .digest('hex'),
     ).toBe(reference(bytes).sha256);
     process.stdout.write(
-      `Multipart 64-part maximum: ${String(Math.round(performance.now() - start))} ms; ${String(overhead)} framing bytes; ${String(growth)} bytes array-buffer growth before independent parsing\n`,
+      `Multipart 64-part maximum: ${String(Math.round(performance.now() - start))} ms; ${String(overhead)} framing bytes; test adapter; disk allocation is measured independently\n`,
     );
   });
   it.each([
@@ -321,7 +334,7 @@ describe('bounded multipart encoding', () => {
     const bytes = new Uint8Array([1, 2, 3]);
     const store = runtime(bytes);
     store.read
-      .mockImplementationOnce(() => Promise.resolve(bytes))
+      .mockImplementationOnce(() => Promise.resolve(verifiedSource(bytes)))
       .mockRejectedValueOnce(new Error('Temporary storage failure'));
     await expect(
       encode(

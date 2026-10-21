@@ -112,6 +112,7 @@ const workerConfig = {
     pollIntervalMillis: 250,
   },
   redisUrl: 'redis://localhost:6379/0',
+  artifactScratchDirectory: '/var/lib/pertexo/artifact-scratch',
   artifactStore: {
     accessKeyId: 'local-access',
     bucket: 'pertexo-artifacts',

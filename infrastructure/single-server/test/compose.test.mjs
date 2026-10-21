@@ -133,6 +133,24 @@ for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
       ...config.services.worker.environment,
       WORKER_INSTANCE_ID: 'fixture',
     });
+    const scratchPath = '/var/lib/pertexo/artifact-scratch';
+    assert.equal(worker.artifactScratchDirectory, scratchPath);
+    const scratch = config.services.worker.volumes.find(
+      (volume) => volume.target === scratchPath,
+    );
+    assert.equal(scratch.type, 'volume');
+    assert.equal(scratch.source, undefined);
+    assert.equal(scratch.read_only, undefined);
+    assert.ok(
+      !(config.services.worker.tmpfs ?? []).some((entry) =>
+        entry.startsWith(scratchPath),
+      ),
+    );
+    assert.ok(
+      !(config.services['code-runner'].volumes ?? []).some(
+        (volume) => volume.target === scratchPath,
+      ),
+    );
     const runner = config.services['code-runner'];
     const limits = codeContainerLimits(api.codeSettings);
     assert.equal(runner.network_mode, 'none');
@@ -302,3 +320,56 @@ for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
       'service_completed_successfully',
     );
   });
+
+test('ECS gives only the worker a private task-local file scratch mount', (t) => {
+  const directory = mkdtempSync(join(tmpdir(), 'pertexo-ecs-scratch-'));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  execFileSync(
+    process.execPath,
+    ['infrastructure/ecs/render-task-definitions.mjs', directory],
+    {
+      env: {
+        ...process.env,
+        ECS_IMAGE_URI: 'fixture/pertexo@sha256:' + 'a'.repeat(64),
+        ECS_EXECUTION_ROLE_ARN_PREFIX:
+          'arn:aws:iam::123456789012:role/pertexo-execution',
+        ECS_TASK_ROLE_ARN_PREFIX: 'arn:aws:iam::123456789012:role/pertexo-task',
+        ECS_CONFIG_PREFIX_ARN:
+          'arn:aws:ssm:eu-central-1:123456789012:parameter/pertexo',
+        ECS_SECRET_PREFIX_ARN:
+          'arn:aws:secretsmanager:eu-central-1:123456789012:secret:pertexo',
+        ECS_LOG_GROUP: '/pertexo/qualification',
+      },
+      stdio: 'pipe',
+    },
+  );
+  const worker = JSON.parse(
+    readFileSync(join(directory, 'worker.json'), 'utf8'),
+  );
+  const api = JSON.parse(readFileSync(join(directory, 'api.json'), 'utf8'));
+  assert.ok(
+    worker.volumes.some(
+      (volume) =>
+        volume.name === 'artifact-scratch' &&
+        !volume.efsVolumeConfiguration &&
+        !volume.dockerVolumeConfiguration,
+    ),
+  );
+  assert.deepEqual(
+    worker.containerDefinitions[0].mountPoints.find(
+      (mount) => mount.sourceVolume === 'artifact-scratch',
+    ),
+    {
+      sourceVolume: 'artifact-scratch',
+      containerPath: '/var/lib/pertexo/artifact-scratch',
+      readOnly: false,
+    },
+  );
+  assert.equal(
+    worker.containerDefinitions[0].environment.find(
+      (entry) => entry.name === 'ARTIFACT_SCRATCH_DIRECTORY',
+    ).value,
+    '/var/lib/pertexo/artifact-scratch',
+  );
+  assert.ok(!api.volumes.some((volume) => volume.name === 'artifact-scratch'));
+});

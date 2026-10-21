@@ -60,6 +60,7 @@
               "request.rate_limited",
               "request.rate_limit_unavailable",
               "workspace.quota_exceeded",
+              "artifact.too_large",
               "artifact.conflict",
               "artifact.unavailable",
               "workspace.conflict",
@@ -498,6 +499,16 @@
           }
         }
       },
+      "TooLarge": {
+        "description": "File exceeds 10 MB or the configured lower storage limit",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ApiProblem"
+            }
+          }
+        }
+      },
       "QuotaExceeded": {
         "description": "Workspace artifact capacity exceeded",
         "content": {
@@ -627,6 +638,9 @@
           "409": {
             "$ref": "#/components/responses/Conflict"
           },
+          "413": {
+            "$ref": "#/components/responses/TooLarge"
+          },
           "429": {
             "$ref": "#/components/responses/QuotaExceeded"
           },
@@ -727,6 +741,9 @@
           "409": {
             "$ref": "#/components/responses/Conflict"
           },
+          "413": {
+            "$ref": "#/components/responses/TooLarge"
+          },
           "429": {
             "$ref": "#/components/responses/QuotaExceeded"
           },
@@ -806,6 +823,9 @@
           "409": {
             "$ref": "#/components/responses/Conflict"
           },
+          "413": {
+            "$ref": "#/components/responses/TooLarge"
+          },
           "429": {
             "$ref": "#/components/responses/QuotaExceeded"
           },
@@ -884,6 +904,9 @@
           },
           "409": {
             "$ref": "#/components/responses/Conflict"
+          },
+          "413": {
+            "$ref": "#/components/responses/TooLarge"
           },
           "429": {
             "$ref": "#/components/responses/QuotaExceeded"

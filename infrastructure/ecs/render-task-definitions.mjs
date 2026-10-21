@@ -64,6 +64,15 @@ for (const [name, workload] of Object.entries(manifest.workloads).sort(
     ],
     mountPoints: [
       { sourceVolume: 'tmp', containerPath: '/tmp', readOnly: false },
+      ...(name === 'worker'
+        ? [
+            {
+              sourceVolume: 'artifact-scratch',
+              containerPath: '/var/lib/pertexo/artifact-scratch',
+              readOnly: false,
+            },
+          ]
+        : []),
     ],
     logConfiguration: {
       logDriver: 'awslogs',
@@ -101,7 +110,10 @@ for (const [name, workload] of Object.entries(manifest.workloads).sort(
       operatingSystemFamily: manifest.platform.operatingSystem,
     },
     containerDefinitions: [container],
-    volumes: [{ name: 'tmp' }],
+    volumes: [
+      { name: 'tmp' },
+      ...(name === 'worker' ? [{ name: 'artifact-scratch' }] : []),
+    ],
     tags: [
       { key: 'pertexo:workload', value: name },
       { key: 'pertexo:kind', value: workload.kind },

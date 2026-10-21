@@ -1,3 +1,12 @@
+import {
+  emptyArtifactRuntime,
+  spoolBytes,
+  sourceBytes,
+} from '../support/artifact-runtime.js';
+import {
+  NodeExecutorFailure,
+  type NodeVerifiedByteSource,
+} from '@pertexo/node-sdk/server';
 import { describe, expect, it, vi } from 'vitest';
 import { createNodeCatalog } from '@pertexo/node-sdk';
 import {
@@ -35,6 +44,7 @@ function fixture(
     }),
   );
   const runtime: NodeExecutionRuntime = {
+    artifacts: emptyArtifactRuntime,
     workspaceId: 'workspace',
     runId: 'run',
     nodeRunId: 'node-run',
@@ -144,15 +154,16 @@ describe('multipart dispatch outcomes', () => {
     'keeps %s after dispatch unknown and releases request bytes',
     async (failure) => {
       const state = fixture({ authorization: 'Bearer owned' });
-      let ownedBody: Uint8Array | undefined;
+      let ownedBody: NodeVerifiedByteSource | Uint8Array | undefined;
       const client = new SecureHttpClient(
         { resolve: () => Promise.resolve([{ address: '8.8.8.8', family: 4 }]) },
         {
-          dispatch: (request) => {
+          dispatch: async (request) => {
             ownedBody = request.body;
-            expect(Buffer.from(request.body ?? []).toString('utf8')).toContain(
-              'hello',
-            );
+            if (request.body === undefined) throw new Error('Body missing');
+            expect(
+              (await sourceBytes(request.body)).toString('utf8'),
+            ).toContain('hello');
             if (failure === 'network loss')
               return Promise.reject(
                 new SecureHttpError(
@@ -187,7 +198,12 @@ describe('multipart dispatch outcomes', () => {
         possiblyDispatched: true,
       });
       expect(state.beforeDispatch).toHaveBeenCalledOnce();
-      expect(ownedBody?.every((byte) => byte === 0)).toBe(true);
+      if (ownedBody === undefined || ownedBody instanceof Uint8Array)
+        throw new Error('Expected file body');
+      const releasedBody = ownedBody;
+      expect(() => releasedBody.open(new AbortController().signal)).toThrow(
+        'Released test source',
+      );
       expect(state.secret.every((byte) => byte === 0)).toBe(true);
     },
   );
@@ -228,7 +244,7 @@ describe('multipart size feedback through registry validation', () => {
           [key]: {
             kind: 'artifact',
             artifactId: '44444444-4444-4444-8444-444444444444',
-            byteLength: 2097152,
+            byteLength: 10485761,
             mediaType: 'application/octet-stream',
             sha256: 'a'.repeat(64),
           },
@@ -248,4 +264,55 @@ describe('multipart size feedback through registry validation', () => {
     expect(state.beforeDispatch).not.toHaveBeenCalled();
     expect(state.executeStreaming).not.toHaveBeenCalled();
   });
+});
+
+it('keeps an effectful request unknown if file cleanup fails after a successful dispatch, and still wipes credentials', async () => {
+  const state = fixture({ authorization: 'Bearer owned' });
+  const client = new SecureHttpClient(
+    { resolve: () => Promise.resolve([{ address: '8.8.8.8', family: 4 }]) },
+    {
+      dispatch: () =>
+        Promise.resolve({
+          status: 204,
+          headers: {},
+          body: (async function* () {
+            await Promise.resolve();
+            yield new Uint8Array();
+          })(),
+          close: () => undefined,
+        }),
+    },
+  );
+  state.executeStreaming.mockImplementation(
+    client.executeStreaming.bind(client),
+  );
+  await expect(
+    state.execute({
+      runtime: {
+        ...state.runtime,
+        artifacts: {
+          ...emptyArtifactRuntime,
+          spool: async (input) => {
+            const body = await spoolBytes(input);
+            return {
+              ...body,
+              release: async () => {
+                await body.release();
+                throw new NodeExecutorFailure({
+                  kind: 'retry',
+                  errorKind: 'internal',
+                  possiblyDispatched: false,
+                });
+              },
+            };
+          },
+        },
+      },
+    }),
+  ).rejects.toMatchObject({
+    kind: 'outcome_unknown',
+    possiblyDispatched: true,
+  });
+  expect(state.beforeDispatch).toHaveBeenCalledOnce();
+  expect(state.secret.every((byte) => byte === 0)).toBe(true);
 });

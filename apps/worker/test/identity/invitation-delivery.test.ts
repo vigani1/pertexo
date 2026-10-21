@@ -126,6 +126,11 @@ describe('workspace invitation delivery', () => {
       { mode: 'resend', apiKey: 'provider-key' },
       {
         execute: async (request) => {
+          if (
+            request.body !== undefined &&
+            !(request.body instanceof Uint8Array)
+          )
+            throw new Error('Expected inline mail body');
           await request.beforeDispatch();
           return {
             status: 500,
@@ -185,6 +190,11 @@ describe('workspace invitation delivery', () => {
         { mode: 'resend', apiKey: 'provider-key' },
         {
           execute: async (request) => {
+            if (
+              request.body !== undefined &&
+              !(request.body instanceof Uint8Array)
+            )
+              throw new Error('Expected inline mail body');
             requests.push({
               key: request.headers?.['idempotency-key'] ?? '',
               body: new TextDecoder().decode(request.body),

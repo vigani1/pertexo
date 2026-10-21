@@ -1,3 +1,4 @@
+import type { NodeVerifiedByteSource } from '@pertexo/node-sdk/server';
 import { isIP } from 'node:net';
 
 import { boundedRedactedBody } from './stream-redaction.js';
@@ -86,7 +87,7 @@ export type SecureHttpRequest = Readonly<{
   url: string;
   method: 'DELETE' | 'GET' | 'HEAD' | 'PATCH' | 'POST' | 'PUT';
   headers?: Readonly<Record<string, string>>;
-  body?: Uint8Array;
+  body?: Uint8Array | NodeVerifiedByteSource;
   timeoutMillis: number;
   maxRedirects: number;
   maxResponseBytes: number;
@@ -111,6 +112,7 @@ export type SecureHttpStreamingBody = Readonly<{
   status: number;
   headers: Readonly<Record<string, string>>;
   body: AsyncIterable<Uint8Array>;
+  cancelSource?: (reason: Error) => void;
   bodyEncoding: 'base64' | 'utf8';
   finalUrl: string;
   redirectCount: number;
@@ -130,7 +132,7 @@ export type SecureHttpTransportRequest = Readonly<{
   address: ResolvedAddress;
   method: SecureHttpRequest['method'];
   headers: Readonly<Record<string, string>>;
-  body?: Uint8Array;
+  body?: Uint8Array | NodeVerifiedByteSource;
   timeoutMillis: number;
   signal?: AbortSignal;
 }>;
@@ -151,7 +153,7 @@ export interface SecureHttpTransport {
 type RedirectState = Readonly<{
   url: URL;
   method: SecureHttpRequest['method'];
-  body?: Uint8Array;
+  body?: Uint8Array | NodeVerifiedByteSource;
   headers: Readonly<Record<string, string>>;
   redirectCount: number;
 }>;
@@ -258,6 +260,9 @@ async function consumeFinalResponse<Body>(
             request.sensitiveValues,
             deadline,
           ),
+          cancelSource: () => {
+            response.close();
+          },
           bodyEncoding,
           finalUrl,
           redirectCount: state.redirectCount,
@@ -327,7 +332,7 @@ export class SecureHttpClient {
       }
       throw error;
     } finally {
-      parsed?.body?.fill(0);
+      if (parsed?.body instanceof Uint8Array) parsed.body.fill(0);
     }
   }
 
@@ -570,11 +575,11 @@ function redirectLocation(
 function redirectRequest(
   status: number,
   method: SecureHttpRequest['method'],
-  body: Uint8Array | undefined,
+  body: Uint8Array | NodeVerifiedByteSource | undefined,
   headers: Readonly<Record<string, string>>,
 ): Readonly<{
   method: SecureHttpRequest['method'];
-  body?: Uint8Array;
+  body?: Uint8Array | NodeVerifiedByteSource;
   headers: Readonly<Record<string, string>>;
 }> {
   if (status === 307 || status === 308)

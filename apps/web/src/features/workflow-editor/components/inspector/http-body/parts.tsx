@@ -40,9 +40,9 @@ export function MultipartParts({
   return (
     <>
       <p className="text-sm text-muted-foreground">
-        The whole request must fit in 1 MB, including form headers. A full 1 MB
-        file will not fit. Split larger files into separate uploads accepted by
-        your destination.
+        The whole request must fit in 10 MB, including form headers. A full 10
+        MB file will not fit. Split larger files into separate uploads accepted
+        by your destination.
       </p>
       <p className="text-xs text-subtle-foreground">
         {validation.value === undefined ? (

@@ -55,10 +55,12 @@ export function mapArtifactError(error: unknown): ApplicationError {
   if (isApplicationError(error)) return error;
   if (error instanceof InvalidAuthenticatedWorkspaceContextError)
     return applicationError('request.invalid', { safeDetail: error.message });
-  if (
-    error instanceof z.ZodError ||
-    error instanceof ArtifactUploadTooLargeError
-  )
+  if (error instanceof ArtifactUploadTooLargeError)
+    return applicationError('artifact.too_large', {
+      safeDetail:
+        'The file exceeds 10 MB or the configured lower storage limit. Split it into smaller files and upload them separately.',
+    });
+  if (error instanceof z.ZodError)
     return applicationError('request.invalid', {
       safeDetail: 'The artifact request is invalid.',
     });

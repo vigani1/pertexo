@@ -1,3 +1,4 @@
+import { inlineBytes } from '../support/artifact-runtime.js';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -20,7 +21,7 @@ function lookup(
   const execute = vi.fn(
     async (request: SecureHttpRequest): Promise<SecureHttpResponse> => {
       requests.push(request);
-      requestBodies.push(new TextDecoder().decode(request.body));
+      requestBodies.push(new TextDecoder().decode(inlineBytes(request.body)));
       await request.beforeDispatch();
       return {
         status,
@@ -79,7 +80,9 @@ describe('Slack conversations.info channel lookup (ADR 046)', () => {
     expect(call.requests[0]).not.toHaveProperty('signal');
     expect(call.requestBodies).toEqual(['channel=C0123ABCD']);
     expect(call.beforeDispatch).toHaveBeenCalledOnce();
-    expect(call.requests[0]?.body?.every((byte) => byte === 0)).toBe(true);
+    expect(
+      inlineBytes(call.requests[0]?.body)?.every((byte) => byte === 0),
+    ).toBe(true);
     expect(call.responseBody.every((byte) => byte === 0)).toBe(true);
   });
 

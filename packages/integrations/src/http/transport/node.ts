@@ -1,6 +1,7 @@
 import { lookup } from 'node:dns/promises';
 import http from 'node:http';
 import https from 'node:https';
+import { Transform, pipeline, type Readable } from 'node:stream';
 import type { LookupFunction } from 'node:net';
 
 import type { ResolvedAddress } from './address-policy.js';
@@ -38,39 +39,109 @@ export class NodeHttpTransport implements SecureHttpTransport {
         }
         callback(null, input.address.address, input.address.family);
       };
+      let response: http.IncomingMessage | undefined;
+      let source: Readable | undefined;
+      let uploadFinished = false;
+      let settled = false;
+      const fail = (error: Error): void => {
+        source?.destroy(error);
+        response?.destroy();
+        if (!request.destroyed) request.destroy(error);
+        if (!settled) {
+          settled = true;
+          reject(error);
+        }
+      };
+      const complete = (): void => {
+        if (settled || !uploadFinished || response === undefined) return;
+        settled = true;
+        const received = response;
+        resolve(
+          Object.freeze({
+            status: received.statusCode ?? 0,
+            headers: Object.freeze({ ...received.headers }),
+            body: received,
+            close: (): void => {
+              received.destroy();
+            },
+          }),
+        );
+      };
       const requestFunction =
         input.url.protocol === 'https:' ? https.request : http.request;
       const request = requestFunction(
         input.url,
         {
           agent: false,
-          headers: input.headers,
+          headers: {
+            ...input.headers,
+            ...(input.body === undefined
+              ? {}
+              : { 'content-length': String(input.body.byteLength) }),
+          },
           lookup: pinnedLookup,
           maxHeaderSize: 32_768,
           method: input.method,
           signal: input.signal,
         },
-        (response) => {
-          resolve(
-            Object.freeze({
-              status: response.statusCode ?? 0,
-              headers: Object.freeze({ ...response.headers }),
-              body: response,
-              close: (): void => {
-                response.destroy();
-              },
-            }),
-          );
+        (received) => {
+          response = received;
+          received.on('error', fail);
+          complete();
         },
       );
-      request.setTimeout(input.timeoutMillis, () => {
-        const error = new Error('Secure HTTP request timed out');
-        Object.assign(error, { code: 'ETIMEDOUT' });
-        request.destroy(error);
+      request.setTimeout(Math.min(input.timeoutMillis, 60_000), () => {
+        const error = Object.assign(
+          new Error('Secure HTTP request timed out'),
+          { code: 'ETIMEDOUT' },
+        );
+        fail(error);
       });
-      request.once('error', reject);
-      if (input.body !== undefined) request.write(input.body);
-      request.end();
+      request.on('error', fail);
+      request.once('finish', () => {
+        uploadFinished = true;
+        complete();
+      });
+      if (input.body === undefined || input.body instanceof Uint8Array) {
+        request.end(input.body);
+        return;
+      }
+      const length = input.body.byteLength;
+      let written = 0;
+      const counter = new Transform({
+        readableHighWaterMark: 65536,
+        writableHighWaterMark: 65536,
+        transform(chunk: unknown, _encoding, callback) {
+          if (
+            !(chunk instanceof Uint8Array) ||
+            written + chunk.byteLength > length
+          ) {
+            callback(new Error('Verified HTTP body length mismatch'));
+            return;
+          }
+          written += chunk.byteLength;
+          callback(null, chunk);
+        },
+        flush(callback) {
+          callback(
+            written === length
+              ? undefined
+              : new Error('Verified HTTP body length mismatch'),
+          );
+        },
+      });
+      try {
+        source = input.body.open(input.signal ?? new AbortController().signal);
+        pipeline(source, counter, request, (error) => {
+          if (error) fail(error);
+        });
+      } catch (error) {
+        fail(
+          error instanceof Error
+            ? error
+            : new Error('Verified HTTP body could not be opened'),
+        );
+      }
     });
   }
 }

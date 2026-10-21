@@ -43,6 +43,7 @@ export function createNodeExecutionEnvironment(
     () => dispatchState === 'marked',
   );
   const capabilityContext = Object.freeze({
+    ...(input.deadlineAt === undefined ? {} : { deadlineAt: input.deadlineAt }),
     ...(input.test === true ? { testRun: true } : {}),
     ...(input.artifactRetentionDeadline === undefined
       ? {}

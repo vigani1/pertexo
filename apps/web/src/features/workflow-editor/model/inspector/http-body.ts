@@ -179,7 +179,7 @@ export function validateBodyDraft(
   if (knownBytes >= HTTP_REQUEST_LIMITS.maxRequestBodyBytes)
     return {
       error:
-        'Known part data already fills 1 MB before form headers. Use smaller files or split them into separate uploads.',
+        'Known part data already fills 10 MB before form headers. Use smaller files or split them into separate uploads.',
       parts,
       knownBytes,
       unknownSize,

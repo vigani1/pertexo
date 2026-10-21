@@ -3,46 +3,88 @@ import {
   ArtifactNotFoundError,
   type ArtifactStore,
 } from '@pertexo/artifact-store';
-import { ARTIFACT_INPUT_MAX_BYTES } from '@pertexo/node-sdk';
+import { ARTIFACT_INPUT_MAX_BYTES, FILE_PAGE_LIMITS } from '@pertexo/node-sdk';
 import { ArtifactMetadataNotFoundError } from '@pertexo/database/runs';
 import {
   FileInputFailure,
   NodeExecutorFailure,
   type NodeArtifactRuntime,
+  type NodeVerifiedByteSource,
 } from '@pertexo/node-sdk/server';
-
-type ReadInput = Parameters<NonNullable<NodeArtifactRuntime['read']>>[0];
-
+import type { ArtifactScratchSpace } from './scratch/space.js';
+import {
+  ArtifactTransfer,
+  withByteProgress,
+  closeArtifactStream,
+} from './scratch/progress.js';
+type OpenInput = Parameters<
+  NonNullable<NodeArtifactRuntime['openVerified']>
+>[0];
 export function createArtifactReader(
   input: Readonly<{
     workspaceId: string;
+    attemptId: string;
+    scratch: ArtifactScratchSpace;
+    maximumBytes: number;
+    deadlineAt?: Date;
+    assertOpen(): void;
     store: Pick<ArtifactStore, 'getStream'>;
     requireReadable(
-      reference: ReadInput['reference'],
+      reference: OpenInput['reference'],
       signal: AbortSignal,
     ): Promise<void>;
   }>,
-): NonNullable<NodeArtifactRuntime['read']> {
-  return async ({ reference, maxBytes, signal }) => {
-    let bytes: Uint8Array | undefined;
+): Pick<NodeArtifactRuntime, 'read' | 'openVerified'> {
+  const openVerified = async ({
+    reference,
+    maxBytes,
+    signal,
+  }: OpenInput): Promise<NodeVerifiedByteSource> => {
+    const transfer = new ArtifactTransfer(signal, input.deadlineAt);
     try {
+      input.assertOpen();
       signal.throwIfAborted();
       if (
         !Number.isSafeInteger(maxBytes) ||
         maxBytes < 1 ||
-        maxBytes > ARTIFACT_INPUT_MAX_BYTES ||
-        reference.byteLength > maxBytes
+        maxBytes > FILE_PAGE_LIMITS.fileBytes ||
+        reference.byteLength > Math.min(maxBytes, input.maximumBytes)
       )
-        throw new ArtifactIntegrityError(
-          'Artifact request body exceeds its byte limit',
-        );
-      await input.requireReadable(reference, signal);
+        throw new FileInputFailure({ reason: 'file_size' });
+      await input.requireReadable(reference, transfer.signal);
       const download = await input.store.getStream({
         workspaceId: input.workspaceId,
         artifactId: reference.artifactId,
-        signal,
+        signal: transfer.signal,
+      });
+      download.body.on('error', () => undefined);
+      transfer.ownSource((reason) => {
+        download.body.destroy(reason);
       });
       try {
+        async function* checkedBody() {
+          let count = 0;
+          try {
+            for await (const value of download.body) {
+              const chunk: unknown = value;
+              if (!(chunk instanceof Uint8Array))
+                throw new ArtifactIntegrityError('Artifact is not bytes');
+              transfer.advance();
+              count += chunk.byteLength;
+              if (count > reference.byteLength) {
+                chunk.fill(0);
+                throw new ArtifactIntegrityError('Artifact length mismatch');
+              }
+              yield chunk;
+            }
+            if (count !== reference.byteLength)
+              throw new ArtifactIntegrityError('Artifact length mismatch');
+          } catch (error) {
+            if (error instanceof ArtifactIntegrityError)
+              throw new FileInputFailure({ reason: 'file_integrity' });
+            throw error;
+          }
+        }
         const actual = download.metadata;
         if (
           actual.workspaceId !== input.workspaceId ||
@@ -51,40 +93,38 @@ export function createArtifactReader(
           actual.mediaType !== reference.mediaType ||
           actual.sha256 !== reference.sha256
         )
-          throw new ArtifactIntegrityError(
-            'Artifact request body metadata changed',
-          );
-        bytes = new Uint8Array(reference.byteLength);
-        let offset = 0;
-        for await (const value of download.body) {
-          const chunk: unknown = value;
-          if (!(chunk instanceof Uint8Array))
-            throw new ArtifactIntegrityError(
-              'Artifact request body is not bytes',
-            );
-          try {
-            signal.throwIfAborted();
-            if (offset + chunk.byteLength > bytes.byteLength)
-              throw new ArtifactIntegrityError(
-                'Artifact request body exceeds its declared size',
-              );
-            bytes.set(chunk, offset);
-            offset += chunk.byteLength;
-          } finally {
-            chunk.fill(0);
-          }
+          throw new ArtifactIntegrityError('Artifact metadata changed');
+        const handle = await input.scratch.spool({
+          attemptId: input.attemptId,
+          body: checkedBody(),
+          maxBytes: Math.max(1, reference.byteLength),
+          signal: transfer.signal,
+          transfer,
+        });
+        if (
+          handle.byteLength !== reference.byteLength ||
+          handle.sha256 !== reference.sha256
+        ) {
+          await handle.release();
+          throw new ArtifactIntegrityError('Artifact integrity mismatch');
         }
-        signal.throwIfAborted();
-        if (offset !== bytes.byteLength)
-          throw new ArtifactIntegrityError(
-            'Artifact request body is incomplete',
-          );
-        return bytes;
+        return Object.freeze({
+          byteLength: handle.byteLength,
+          sha256: handle.sha256,
+          release: () => handle.release(),
+          open: (readSignal: AbortSignal) => {
+            readSignal.throwIfAborted();
+            return withByteProgress(
+              handle.open(),
+              readSignal,
+              input.deadlineAt,
+            );
+          },
+        });
       } finally {
-        download.body.destroy();
+        await closeArtifactStream(download.body);
       }
     } catch (error) {
-      bytes?.fill(0);
       if (signal.aborted)
         throw new NodeExecutorFailure({
           kind: 'canceled',
@@ -92,17 +132,54 @@ export function createArtifactReader(
           possiblyDispatched: false,
         });
       if (
+        error instanceof FileInputFailure ||
+        error instanceof NodeExecutorFailure
+      )
+        throw error;
+      if (
         error instanceof ArtifactMetadataNotFoundError ||
         error instanceof ArtifactNotFoundError
       )
         throw new FileInputFailure({ reason: 'file_unavailable' });
       if (error instanceof ArtifactIntegrityError)
         throw new FileInputFailure({ reason: 'file_integrity' });
+      if (transfer.signal.aborted) throw transfer.signal.reason;
       throw new NodeExecutorFailure({
         kind: 'retry',
         errorKind: 'network',
         possiblyDispatched: false,
       });
+    } finally {
+      transfer.finish();
     }
+  };
+  return {
+    openVerified,
+    read: async ({ reference, maxBytes, signal }) => {
+      if (
+        maxBytes > ARTIFACT_INPUT_MAX_BYTES ||
+        reference.byteLength > ARTIFACT_INPUT_MAX_BYTES
+      )
+        throw new FileInputFailure({ reason: 'file_size' });
+      const source = await openVerified({ reference, maxBytes, signal });
+      const bytes = new Uint8Array(source.byteLength);
+      try {
+        let offset = 0;
+        for await (const value of source.open(signal)) {
+          const chunk: unknown = value;
+          if (!(chunk instanceof Uint8Array))
+            throw new FileInputFailure({ reason: 'file_integrity' });
+          bytes.set(chunk, offset);
+          offset += chunk.byteLength;
+          chunk.fill(0);
+        }
+        return bytes;
+      } catch (error) {
+        bytes.fill(0);
+        throw error;
+      } finally {
+        await source.release();
+      }
+    },
   };
 }

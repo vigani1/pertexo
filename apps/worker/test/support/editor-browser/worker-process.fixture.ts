@@ -1,3 +1,4 @@
+import { createTestArtifactScratch } from '../infrastructure/artifact-scratch.js';
 import { createEditorCodeRuntime } from './code/runtime.js';
 import { createEditorNotifications } from './notifications/runtime.js';
 import { createMaintenanceRuntime } from '../../../src/maintenance/runtime.js';
@@ -417,8 +418,15 @@ async function constructRuntimes(
       await httpTarget.start();
     }
     assertSetupActive();
+    const scratch = artifactInputs
+      ? await createTestArtifactScratch()
+      : undefined;
+    resources.artifactScratch = scratch;
     controlledCapabilities = await createWorkerNodeRuntimeCapabilities(
       {
+        ...(scratch === undefined
+          ? {}
+          : { artifactScratchDirectory: scratch.directory }),
         database,
         redisUrl: namespace.redisUrl,
         ...(artifactInputs

@@ -148,6 +148,11 @@ describe('system mail delivery', () => {
       { mode: 'resend', apiKey: 'provider-key' },
       {
         execute: async (request) => {
+          if (
+            request.body !== undefined &&
+            !(request.body instanceof Uint8Array)
+          )
+            throw new Error('Expected inline mail body');
           requests.push({
             key: request.headers?.['idempotency-key'] ?? '',
             body: new TextDecoder().decode(request.body),
@@ -305,6 +310,11 @@ it.each(['https://app.example.test', 'http://127.0.0.1:4174'])(
       { mode: 'resend', apiKey: 'provider-key' },
       {
         execute: async (request) => {
+          if (
+            request.body !== undefined &&
+            !(request.body instanceof Uint8Array)
+          )
+            throw new Error('Expected inline mail body');
           requests.push({
             key: request.headers?.['idempotency-key'] ?? '',
             body: new TextDecoder().decode(request.body),
