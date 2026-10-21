@@ -144,9 +144,10 @@ keys are refused in production, including in previous keys.
 The generator also creates `CALLBACK_TOKEN_KEY` and `CALLBACK_TOKEN_KEY_VERSION`
 for machine callback Waits. API and worker share that pair and optional
 `CALLBACK_TOKEN_PREVIOUS_KEYS` (the same version/key JSON shape as invitation
-keys). Save these separately in your password manager. Keep historical versions
-needed by retained callback hashes and backups; missing or wrong bytes refuse
-startup. The public development callback key is refused when deployed. See the
+keys). Save these separately in your password manager. Keep previous versions configured while live callbacks need them
+(prepared, pending, or submitted but not consumed); startup checks one live hash
+per version and refuses missing or wrong keys. Finished history needs no key.
+Keep retired keys offline for backups containing live callbacks. The public development callback key is refused when deployed. See the
 [callback guide](../guides/callbacks.md) for rotation and authentication.
 
 To rotate self-managed keys, save a new random key with a new version, move the

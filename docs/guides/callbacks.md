@@ -71,13 +71,14 @@ CALLBACK_TOKEN_PREVIOUS_KEYS='[{"version":"1","key":"<original key>"}]'
 The existing single-server secret generator creates the current key and version.
 Save them in a password manager; never rerun the generator over an installation.
 Deployed API and worker require the pair and refuse the public development key,
-including in previous entries. At startup they independently verify retained
-callback hashes. Wrong bytes or a missing version refuse startup clearly.
+including in previous entries. At startup they independently verify one live callback
+hash per key version. Live means prepared, pending, or submitted but not consumed. Wrong bytes or a missing version refuse startup clearly.
 
 Rotate by setting a new random current key and version, retaining the old pair
 in the previous-key list (at most eight versions). Both processes must use the
-same ring and public web origin. Keep every version needed by retained callback
-records and backups. Restore original keys separately from the password manager;
+same ring and public web origin. Keep each previous version configured while live callbacks need it; finished
+callback history needs no key. Save retired versions offline for backups that
+contain live callbacks. Restore original keys separately from the password manager;
 keys and environment files are never included in the database/object backup.
 Callback credentials and responses expire with run details, including the shorter
 test retention, and workspace purge removes them.

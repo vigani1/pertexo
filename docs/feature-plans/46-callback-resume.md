@@ -38,10 +38,13 @@ another resume subsystem:
   token or encrypted equivalent. Follow the invitation-token key pattern exactly:
   `CALLBACK_TOKEN_KEY`, `CALLBACK_TOKEN_KEY_VERSION` and
   `CALLBACK_TOKEN_PREVIOUS_KEYS`, using the same generator, startup refusal and
-  separately supplied backup-key instructions. Retain previous versions while
-  live callback tasks still need them; refuse missing or incorrect keys at startup.
+  separately supplied backup-key instructions. Keep a previous version configured only while it has a live callback: prepared,
+  pending, or submitted but not consumed. Startup verifies one live callback per
+  key version through an indexed inventory, independent of finished history;
+  missing or incorrect live keys still refuse startup. Keep retired keys offline
+  for backups that contain live callbacks.
   Require the key/version pair when deployed and refuse the public development
-  key, including in previous-key entries. API and worker each verify retained
+  key, including in previous-key entries. API and worker each verify live
   hashes independently; no API-waits-for-worker ordering is introduced.
 
 The owner explicitly approved the runtime mapping binding, prepared callback task

@@ -61,6 +61,7 @@ it('upgrades password accounts with two-factor off, isolated auth grants and cas
       '0046_signing_key.sql',
       '0047_run_values.sql',
       '0048_callback_waits.sql',
+      '0049_live_callback_keys.sql',
     ]);
     expect(
       (
