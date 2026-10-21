@@ -1,3 +1,4 @@
+import type { RunValues } from '@pertexo/node-sdk';
 import type { CodeDiagnostics } from '@pertexo/node-sdk';
 import type { WorkspaceVariableSnapshot } from '@pertexo/workflow-model';
 import type {
@@ -52,6 +53,7 @@ export type WorkflowRunRecord = Readonly<{
 export type WorkflowRunReadRecord = WorkflowRunRecord &
   Readonly<{
     hasHumanTasks?: boolean;
+    runValues?: RunValues;
     humanWait?: Readonly<{
       since: string;
       remainingExecutionMs: number | null;
@@ -156,6 +158,8 @@ export type ListWorkflowRunsQuery = Readonly<{
   workspaceId: string;
   limit: number;
   workflowId?: string;
+  runValueKey?: string;
+  runValue?: string;
   workflowNamePrefix?: string;
   includeWorkflowName: boolean;
   status?: WorkflowRunRecord['status'];

@@ -18,6 +18,8 @@ export * from './code/limits.js';
 export * from './code/source.js';
 export * from './code/contract.js';
 
+export * from './run-values/contract.js';
+
 export * from './data-tables/contract.js';
 export {
   validateDataTableValues,

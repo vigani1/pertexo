@@ -1,3 +1,5 @@
+import { workflowRunValues } from './schema/runs/values.js';
+export { workflowRunValues } from './schema/runs/values.js';
 import { workflowCommentThreads } from './schema/authoring/collaboration/threads.js';
 import { workflowComments } from './schema/authoring/collaboration/comments.js';
 import { workflowCommentMentions } from './schema/authoring/collaboration/mentions.js';
@@ -234,6 +236,7 @@ export {
 } from './schema/triggers/schedules.js';
 
 export const databaseSchema = {
+  workflowRunValues,
   workflowCommentThreads,
   workflowComments,
   workflowCommentMentions,

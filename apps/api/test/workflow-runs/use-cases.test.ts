@@ -182,6 +182,30 @@ async function replayCommand(overrides: Partial<ReplayWorkflowRunInput> = {}) {
 }
 
 describe('workflow run application seams', () => {
+  it('passes an exact run-value pair through paging without changing other filters', async () => {
+    const fixture = persistence();
+    fixture.list.mockResolvedValue({ items: [run()] });
+    await new ListWorkflowRunsUseCase(fixture.store, authorization()).execute({
+      actor,
+      routeWorkspaceId: workspaceId,
+      runValueKey: 'orderId',
+      runValue: '',
+      workflowId,
+      status: 'queued',
+      limit: 10,
+    });
+    expect(fixture.list).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId,
+        runValueKey: 'orderId',
+        runValue: '',
+        workflowId,
+        status: 'queued',
+        limit: 10,
+      }),
+    );
+  });
+
   it('binds exact-precision pagination cursors to workspace and normalized filters', async () => {
     const fixture = persistence();
     fixture.list

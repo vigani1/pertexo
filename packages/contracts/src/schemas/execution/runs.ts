@@ -1,5 +1,10 @@
 import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
-import { codeDiagnosticsSchema } from '@pertexo/node-sdk';
+import {
+  codeDiagnosticsSchema,
+  runValueKeySchema,
+  runValueTextSchema,
+  runValuesSchema,
+} from '@pertexo/node-sdk';
 import { z } from 'zod';
 import { workflowNameSchema } from '../workflows/authoring.js';
 import {
@@ -132,6 +137,7 @@ export const workflowRunSummarySchema = z
     deadlineAt: z.iso.datetime({ offset: true }).nullable(),
     cancelRequestedAt: z.iso.datetime({ offset: true }).nullable(),
     hasHumanTasks: z.boolean().optional(),
+    runValues: runValuesSchema.optional(),
     humanWait: z
       .object({
         since: z.iso.datetime(),
@@ -191,6 +197,8 @@ export const workflowRunListQuerySchema = z
     limit: workflowRunPageLimitSchema.optional(),
     after: workflowRunCursorSchema.optional(),
     workflowId: z.uuid().optional(),
+    runValueKey: runValueKeySchema.optional(),
+    runValue: runValueTextSchema.optional(),
     workflowNamePrefix: workflowNameSchema.optional(),
     status: workflowRunStatusSchema.optional(),
     createdAtFrom: workflowRunCreatedAtSchema.optional(),
@@ -198,6 +206,13 @@ export const workflowRunListQuerySchema = z
   })
   .strict()
   .superRefine((query, context) => {
+    if ((query.runValueKey === undefined) !== (query.runValue === undefined)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['runValue'],
+        message: 'Provide both the run value key and its exact text value.',
+      });
+    }
     if (
       query.createdAtFrom !== undefined &&
       query.createdAtBefore !== undefined &&

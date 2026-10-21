@@ -87,6 +87,12 @@ const registry: Readonly<Record<string, RegistryEntry>> = Object.freeze({
     icon: CodeXmlIcon,
     family: 'transform',
   },
+  'core.run_values': {
+    name: 'Save run values',
+    description: 'Save business values on a run for exact lookup',
+    icon: Table2Icon,
+    family: 'transform',
+  },
   'core.table_find': {
     name: 'Find rows',
     description: 'Find rows in a workspace data table',

@@ -208,6 +208,8 @@ function createPreviewExecutionEnvironment(
     dependencies.runtimeCapabilities?.webhookResponse?.(capabilityContext);
   const dataTables =
     dependencies.runtimeCapabilities?.dataTables?.(capabilityContext);
+  const runValues =
+    dependencies.runtimeCapabilities?.runValues?.(capabilityContext);
   const code = dependencies.runtimeCapabilities?.code?.({
     ...capabilityContext,
     variables: lease.variables ?? {},
@@ -218,6 +220,7 @@ function createPreviewExecutionEnvironment(
     deadlineAt: lease.executionDeadlineAt,
     ...(code === undefined ? {} : { code }),
     ...(dataTables === undefined ? {} : { dataTables }),
+    ...(runValues === undefined ? {} : { runValues }),
     observeCodeDiagnostics: (value: CodeDiagnostics) => {
       // Safe previews do not need an external-dispatch marker. Completion
       // still fences this private data to the claimed preview attempt.

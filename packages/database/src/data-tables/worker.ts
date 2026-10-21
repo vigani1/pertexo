@@ -18,7 +18,11 @@ import type { WorkerDataTablesStore } from './contract.js';
 import { readQuotas, requireTable } from './read.js';
 import { findRows } from './queries.js';
 import { mutateRows, translateTableConstraint } from './mutate.js';
-import { lockTableExecution, assertTableExecution } from '../attempts/capability-fence.js';
+import {
+  lockCapabilityExecution,
+  assertCapabilityExecution,
+  ExecutionCapabilityExpiredError,
+} from '../attempts/capability-fence.js';
 export function createWorkerDataTablesStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
@@ -32,9 +36,9 @@ export function createWorkerDataTablesStore(
         input.workspaceId,
         input.signal,
         async (client) => {
-          await lockTableExecution(client, input);
+          await lockCapabilityExecution(client, input);
           if (input.command.operation === 'find') {
-            await assertTableExecution(client, input);
+            await assertCapabilityExecution(client, input);
             const table = await requireTable(client, input.workspaceId, {
               name: input.command.table,
             });
@@ -52,7 +56,7 @@ export function createWorkerDataTablesStore(
             );
           }
           const quotas = await readQuotas(client, input.workspaceId, true);
-          await assertTableExecution(client, input, true);
+          await assertCapabilityExecution(client, input, true);
           const requestHash = createHash('sha256')
             .update(
               canonicalJson(
@@ -97,7 +101,7 @@ export function createWorkerDataTablesStore(
             await mutateRows(client, input.workspaceId, table, quotas, command),
             names,
           );
-          await assertTableExecution(client, input, true);
+          await assertCapabilityExecution(client, input, true);
           await client.query(
             'insert into app.data_table_write_receipts(workspace_id,execution_id,invocation_id,run_id,preview_run_id,request_hash,result_json) values($1,$2,$3,$4,$5,$6,$7)',
             [
@@ -126,6 +130,8 @@ export function createWorkerDataTablesStore(
           return result;
         },
       ).catch((error: unknown) => {
+        if (error instanceof ExecutionCapabilityExpiredError)
+          throw new DataTableError('attempt_expired', error.message);
         if (
           typeof error === 'object' &&
           error !== null &&

@@ -1,4 +1,6 @@
-import { ordinaryRunSql } from '../../data-policy.js';
+import { ordinaryRunSql, expiredRunSql } from '../../data-policy.js';
+import { runValueKeySchema, runValueTextSchema } from '@pertexo/node-sdk';
+import { workflowRunValues } from '../../../schema/runs/values.js';
 import { workflows } from '../../../schema/authoring/workflows.js';
 import { workflowRuns } from '../../../schema/runs/execution.js';
 import { workflowRunReadQuery, runAdmissionBlockers } from '../admission.js';
@@ -48,6 +50,8 @@ export type ListWorkflowRunsDatabaseInput = Readonly<{
   workspaceId: string;
   limit: number;
   workflowId?: string;
+  runValueKey?: string;
+  runValue?: string;
   workflowNamePrefix?: string;
   includeWorkflowName?: boolean;
   status?: z.output<typeof runStatusSchema>;
@@ -71,6 +75,8 @@ const inputSchema = z
     workspaceId: z.uuid(),
     limit: z.number().int().min(1).max(100),
     workflowId: z.uuid().optional(),
+    runValueKey: runValueKeySchema.optional(),
+    runValue: runValueTextSchema.optional(),
     workflowNamePrefix: z.string().trim().min(1).max(128).optional(),
     includeWorkflowName: z.boolean().default(false),
     status: runStatusSchema.optional(),
@@ -96,6 +102,14 @@ export async function readWorkflowRunListPage(
     async (transaction) =>
       listWorkflowRunsInTransaction(transaction, {
         limit: parsed.limit,
+        ...(parsed.runValueKey === undefined
+          ? {}
+          : {
+              runValueKey: parsed.runValueKey,
+              ...(parsed.runValue === undefined
+                ? {}
+                : { runValue: parsed.runValue }),
+            }),
         ...(parsed.workflowId === undefined
           ? {}
           : { workflowId: parsed.workflowId }),
@@ -132,6 +146,13 @@ async function listWorkflowRunsInTransaction(
       and(
         eq(workflowRuns.workspaceId, transaction.workspaceId),
         sql.raw(ordinaryRunSql('workflow_runs')),
+        input.runValueKey === undefined
+          ? undefined
+          : sql`not (${sql.raw(expiredRunSql('workflow_runs'))}) and exists (
+          select 1 from ${workflowRunValues} value
+          where value.workspace_id=${workflowRuns.workspaceId} and value.workflow_run_id=${workflowRuns.id}
+            and value.key=${input.runValueKey} and value.value=${input.runValue}
+        )`,
         input.workflowId === undefined
           ? undefined
           : eq(workflowRuns.workflowId, input.workflowId),

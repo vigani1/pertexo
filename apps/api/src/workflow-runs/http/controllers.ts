@@ -181,6 +181,14 @@ export class WorkflowRunsController {
       routeWorkspaceId: route.workspaceId,
       ...guardAuthorization(request),
       ...(input.limit === undefined ? {} : { limit: input.limit }),
+      ...(input.runValueKey === undefined
+        ? {}
+        : {
+            runValueKey: input.runValueKey,
+            ...(input.runValue === undefined
+              ? {}
+              : { runValue: input.runValue }),
+          }),
       ...(input.after === undefined ? {} : { after: input.after }),
       ...(input.workflowId === undefined
         ? {}

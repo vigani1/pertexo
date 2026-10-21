@@ -1,3 +1,5 @@
+import type { RunValues } from '@pertexo/node-sdk';
+import { runValuesInTransaction } from '../values/queries.js';
 import { retainedTestRunSql } from '../data-policy.js';
 import type { WorkflowRecoverySummary } from '../recovery/contract.js';
 import { workflowRuns } from '../../schema/runs/execution.js';
@@ -98,6 +100,7 @@ export type WorkflowRunRecord = Readonly<{
 export type WorkflowRunReadRecord = WorkflowRunRecord &
   Readonly<{
     hasHumanTasks?: boolean;
+    runValues?: RunValues;
     humanWait?: Readonly<{
       since: string;
       remainingExecutionMs: number | null;
@@ -155,13 +158,15 @@ export async function readWorkflowRunReadRecord(
       ),
     )
     .limit(1);
-  return row === undefined
-    ? undefined
-    : toWorkflowRunReadRecord({
-        ...row.run,
-        workflow_name: row.workflowName,
-        admission_blockers: runAdmissionBlockers(row),
-      });
+  if (row === undefined) return undefined;
+  return Object.freeze({
+    ...toWorkflowRunReadRecord({
+      ...row.run,
+      workflow_name: row.workflowName,
+      admission_blockers: runAdmissionBlockers(row),
+    }),
+    runValues: await runValuesInTransaction(transaction, runId),
+  });
 }
 
 export async function requireWorkflowRunRecord(

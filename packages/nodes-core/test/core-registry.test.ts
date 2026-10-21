@@ -48,6 +48,7 @@ describe('core node catalog', () => {
           `${manifest.definition.key}@${String(manifest.definition.version)}`,
       ),
     ).toEqual([
+      'core.run_values@1',
       'core.create_file@1',
       'core.table_find@1',
       'core.table_insert@1',

@@ -5078,6 +5078,19 @@
             "hasHumanTasks": {
               "type": "boolean"
             },
+            "runValues": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 50,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+              },
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 255
+              }
+            },
             "humanWait": {
               "type": "object",
               "properties": {
@@ -5301,6 +5314,19 @@
         "hasHumanTasks": {
           "type": "boolean"
         },
+        "runValues": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+          },
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 255
+          }
+        },
         "humanWait": {
           "type": "object",
           "properties": {
@@ -5513,6 +5539,19 @@
         },
         "hasHumanTasks": {
           "type": "boolean"
+        },
+        "runValues": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+          },
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 255
+          }
         },
         "humanWait": {
           "type": "object",
@@ -5778,6 +5817,19 @@
         },
         "hasHumanTasks": {
           "type": "boolean"
+        },
+        "runValues": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+          },
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 255
+          }
         },
         "humanWait": {
           "type": "object",
@@ -6109,6 +6161,19 @@
               },
               "hasHumanTasks": {
                 "type": "boolean"
+              },
+              "runValues": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 50,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+                },
+                "additionalProperties": {
+                  "type": "string",
+                  "maxLength": 255
+                }
               },
               "humanWait": {
                 "type": "object",
@@ -6965,6 +7030,19 @@
             "hasHumanTasks": {
               "type": "boolean"
             },
+            "runValues": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 50,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+              },
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 255
+              }
+            },
             "humanWait": {
               "type": "object",
               "properties": {
@@ -7621,6 +7699,19 @@
             },
             "hasHumanTasks": {
               "type": "boolean"
+            },
+            "runValues": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 50,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+              },
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 255
+              }
             },
             "humanWait": {
               "type": "object",

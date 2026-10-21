@@ -1,3 +1,4 @@
+import { copyRecoveryRunValues } from '../values/queries.js';
 import { sql } from 'drizzle-orm';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
@@ -136,6 +137,7 @@ export async function recoverWorkflowRunInTransaction(
       replayed: true,
     };
   if (seed.copies.length > 0) {
+    await copyRecoveryRunValues(transaction, input.sourceRunId, accepted.runId);
     await transaction.db.insert(nodeRuns).values(
       seed.copies.map((copy) => ({
         id: copy.id,

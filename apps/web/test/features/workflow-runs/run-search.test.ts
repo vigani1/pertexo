@@ -132,3 +132,30 @@ describe('run search', () => {
     ]);
   });
 });
+
+it('keeps an exact run value pair including empty text and clears both fields together', () => {
+  expect(
+    sanitizeRunSearch({
+      runValueKey: 'orderId',
+      runValue: ' A-1042 ',
+      status: 'failed',
+    }),
+  ).toEqual({ runValueKey: 'orderId', runValue: ' A-1042 ', status: 'failed' });
+  expect(filtersFromSearch({ runValueKey: 'empty', runValue: '' })).toEqual({
+    runValueKey: 'empty',
+    runValue: '',
+  });
+  expect(sanitizeRunSearch({ runValueKey: 'orderId' })).toEqual({});
+  expect(sanitizeRunSearch({ runValueKey: '-invalid', runValue: 'a' })).toEqual(
+    {},
+  );
+  expect(
+    withoutRunFilter(
+      { runValueKey: 'orderId', runValue: 'a', status: 'failed' },
+      'runValueKey',
+    ),
+  ).toEqual({ status: 'failed' });
+  expect(
+    runFilterChips({ runValueKey: 'orderId', runValue: 'a' }, undefined),
+  ).toEqual([{ key: 'runValueKey', label: 'orderId = a' }]);
+});

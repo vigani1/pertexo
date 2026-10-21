@@ -1,3 +1,4 @@
+import type { NodeRunValuesRuntime } from '../run-values/contract.js';
 import type { NodeDataTableRuntime } from '../data-tables/contract.js';
 import type { NodeCodeRuntime, CodeDiagnostics } from '../code/contract.js';
 import type { NodeWebhookResponseRuntime } from './webhooks.js';
@@ -106,6 +107,7 @@ export interface NodeExecutionRuntime {
   readonly artifacts?: NodeArtifactRuntime;
   readonly webhookResponse?: NodeWebhookResponseRuntime;
   readonly dataTables?: NodeDataTableRuntime;
+  readonly runValues?: NodeRunValuesRuntime;
   readonly code?: NodeCodeRuntime;
   readonly observeCodeDiagnostics?: (diagnostics: CodeDiagnostics) => void;
   /** Synchronous, nonthrowing capture only. Never performs persistence or I/O. */

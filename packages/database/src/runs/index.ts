@@ -136,3 +136,8 @@ export type {
 } from './queries/execution/source.js';
 
 export type { UsageTrendsInput } from './queries/usage-trends.js';
+
+export { createRunValuesStore } from './values/store.js';
+export { RunValuesLimitError } from './values/records.js';
+export type { RunValuesStore } from './values/records.js';
+export { ExecutionCapabilityExpiredError } from '../attempts/capability-fence.js';

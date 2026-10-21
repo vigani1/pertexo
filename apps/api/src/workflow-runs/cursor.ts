@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { workflowRunStatusSchema } from '@pertexo/contracts';
 import { z } from 'zod';
 
@@ -9,6 +10,10 @@ import {
 const filterSchema = z
   .object({
     workflowId: z.uuid().nullable(),
+    filterFingerprint: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/u)
+      .optional(),
     workflowNamePrefix: z.string().min(1).max(128).nullable().optional(),
     status: workflowRunStatusSchema.nullable(),
     createdAtFrom: z.iso.datetime({ offset: true }).nullable(),
@@ -30,6 +35,8 @@ const cursorPayloadSchema = z
 export type WorkflowRunCursorContext = Readonly<{
   workspaceId: string;
   workflowId?: string;
+  runValueKey?: string;
+  runValue?: string;
   workflowNamePrefix?: string;
   status?: z.output<typeof workflowRunStatusSchema>;
   createdAtFrom?: string;
@@ -72,7 +79,7 @@ export function decodeWorkflowRunCursor(
 }
 
 function cursorFilters(context: WorkflowRunCursorContext) {
-  return filterSchema.parse({
+  const filters = {
     workflowId: context.workflowId ?? null,
     ...(context.workflowNamePrefix === undefined
       ? {}
@@ -80,12 +87,30 @@ function cursorFilters(context: WorkflowRunCursorContext) {
     status: context.status ?? null,
     createdAtFrom: context.createdAtFrom ?? null,
     createdAtBefore: context.createdAtBefore ?? null,
+  };
+  if (context.runValueKey === undefined) return filterSchema.parse(filters);
+  // Bind the entire combination without letting maximum Unicode filters grow a cursor.
+  return filterSchema.parse({
+    workflowId: null,
+    status: null,
+    createdAtFrom: null,
+    createdAtBefore: null,
+    filterFingerprint: createHash('sha256')
+      .update(
+        JSON.stringify({
+          filters,
+          runValueKey: context.runValueKey,
+          runValue: context.runValue,
+        }),
+      )
+      .digest('hex'),
   });
 }
 
 function normalizeFilters(filters: z.output<typeof filterSchema>) {
   return {
     workflowId: filters.workflowId,
+    filterFingerprint: filters.filterFingerprint ?? null,
     workflowNamePrefix: filters.workflowNamePrefix ?? null,
     status: filters.status,
     createdAtFrom: filters.createdAtFrom,

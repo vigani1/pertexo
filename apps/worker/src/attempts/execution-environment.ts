@@ -63,6 +63,7 @@ export function createNodeExecutionEnvironment(
   const webhookResponse =
     input.runtimeCapabilities?.webhookResponse?.(capabilityContext);
   const dataTables = input.runtimeCapabilities?.dataTables?.(capabilityContext);
+  const runValues = input.runtimeCapabilities?.runValues?.(capabilityContext);
   const code = input.runtimeCapabilities?.code?.({
     ...capabilityContext,
     variables: input.variables ?? {},
@@ -72,6 +73,7 @@ export function createNodeExecutionEnvironment(
     ...(input.deadlineAt === undefined ? {} : { deadlineAt: input.deadlineAt }),
     ...(code === undefined ? {} : { code }),
     ...(dataTables === undefined ? {} : { dataTables }),
+    ...(runValues === undefined ? {} : { runValues }),
     observeCodeDiagnostics: (value: CodeDiagnostics) => {
       if (dispatchState === 'marked') diagnostics ??= value;
     },

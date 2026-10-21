@@ -195,6 +195,20 @@ function isSecretName(name: string): boolean {
   );
 }
 
+/** Keep credential labels and inline credentials out of plain metadata. */
+export function redactCredentialFields(
+  values: Readonly<Record<string, string>>,
+): Readonly<Record<string, string>> {
+  return Object.freeze(
+    Object.fromEntries(
+      Object.entries(values).map(([key, value]) => [
+        key,
+        isSecretName(key) || redactLogText(value) !== value ? REDACTED : value,
+      ]),
+    ),
+  );
+}
+
 function sanitizeError(
   error: Error,
   depth: number,
