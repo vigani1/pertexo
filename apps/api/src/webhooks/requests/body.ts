@@ -49,3 +49,5 @@ export function parseWebhookBody(
     return { ok: false, problem: 'webhook.invalid_json' };
   }
 }
+
+export const WEBHOOK_BODY_MAX_BYTES = 256 * 1024;

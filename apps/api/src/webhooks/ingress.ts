@@ -1,3 +1,9 @@
+import {
+  headerPresent,
+  singleHeader,
+  WEBHOOK_FRESHNESS_ALLOWANCE_SECONDS,
+} from './requests/headers.js';
+import { WEBHOOK_BODY_MAX_BYTES as MAX_BODY } from './requests/body.js';
 import { verifyWebhookHeaderSecret } from './authentication/header-secret.js';
 import {
   allowWebhookOrigin,
@@ -50,9 +56,6 @@ import {
   searchFields,
   webhookHeaders,
 } from './requests/details.js';
-
-const MAX_BODY = 256 * 1024;
-const WEBHOOK_FRESHNESS_ALLOWANCE_SECONDS = 300;
 
 export type WebhookIngressDependencies = Readonly<{
   database: WebhookTriggerDatabase;
@@ -537,28 +540,6 @@ async function openSecret(
     },
     signal,
   );
-}
-
-function headerPresent(request: FastifyRequest, name: string): boolean {
-  // Webhook verification reads raw headers intentionally: unlike ordinary HTTP
-  // adaptation, duplicate or comma-folded signature inputs must be rejected.
-  return request.raw.rawHeaders.some(
-    (value, index) => index % 2 === 0 && value.toLowerCase() === name,
-  );
-}
-
-function singleHeader(
-  request: FastifyRequest,
-  name: string,
-): string | undefined {
-  const values: string[] = [];
-  const raw = request.raw.rawHeaders;
-  for (let index = 0; index < raw.length; index += 2)
-    if (raw[index]?.toLowerCase() === name) values.push(raw[index + 1] ?? '');
-  const value = values[0];
-  return values.length === 1 && value !== undefined && !value.includes(',')
-    ? value
-    : undefined;
 }
 
 function optionalIdempotencyKey(
