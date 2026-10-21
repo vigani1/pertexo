@@ -37,4 +37,7 @@ export {
 } from './values/stored-json.js';
 
 export { signingKeyCredentialSchema } from './credentials/signing-key.js';
-export { FILE_PAGE_LIMITS } from './artifacts/page-limits.js';
+export {
+  FILE_PAGE_LIMITS,
+  FILE_TRANSFER_NO_PROGRESS_MILLIS,
+} from './artifacts/page-limits.js';

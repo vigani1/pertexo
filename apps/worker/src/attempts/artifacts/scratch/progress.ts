@@ -1,7 +1,7 @@
+import { FILE_TRANSFER_NO_PROGRESS_MILLIS } from '@pertexo/node-sdk';
 import { pipeline, Transform, type Readable } from 'node:stream';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import { ArtifactSourceCleanupError } from './consume.js';
-const NO_PROGRESS_MILLIS = 60_000;
 function timedOut(deadline: boolean): NodeExecutorFailure {
   return new NodeExecutorFailure({
     kind: 'retry',
@@ -58,12 +58,12 @@ export class ArtifactTransfer {
       this.deadline === undefined
         ? Infinity
         : this.deadline.getTime() - Date.now();
-    const deadline = remaining <= NO_PROGRESS_MILLIS;
+    const deadline = remaining <= FILE_TRANSFER_NO_PROGRESS_MILLIS;
     this.timer = setTimeout(
       () => {
         this.abort(timedOut(deadline));
       },
-      Math.max(0, Math.min(NO_PROGRESS_MILLIS, remaining)),
+      Math.max(0, Math.min(FILE_TRANSFER_NO_PROGRESS_MILLIS, remaining)),
     );
     this.timer.unref();
   }

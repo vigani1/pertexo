@@ -1,3 +1,4 @@
+import { FILE_TRANSFER_NO_PROGRESS_MILLIS } from '@pertexo/node-sdk';
 import { lookup } from 'node:dns/promises';
 import http from 'node:http';
 import https from 'node:https';
@@ -90,13 +91,20 @@ export class NodeHttpTransport implements SecureHttpTransport {
           complete();
         },
       );
-      request.setTimeout(Math.min(input.timeoutMillis, 60_000), () => {
-        const error = Object.assign(
-          new Error('Secure HTTP request timed out'),
-          { code: 'ETIMEDOUT' },
-        );
-        fail(error);
-      });
+      const fileTransfer =
+        input.body !== undefined && !(input.body instanceof Uint8Array);
+      request.setTimeout(
+        fileTransfer
+          ? Math.min(input.timeoutMillis, FILE_TRANSFER_NO_PROGRESS_MILLIS)
+          : input.timeoutMillis,
+        () => {
+          const error = Object.assign(
+            new Error('Secure HTTP request timed out'),
+            { code: 'ETIMEDOUT' },
+          );
+          fail(error);
+        },
+      );
       request.on('error', fail);
       request.once('finish', () => {
         uploadFinished = true;

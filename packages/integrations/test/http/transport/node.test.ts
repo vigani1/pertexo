@@ -207,3 +207,42 @@ describe('Node DNS and HTTP adapters', () => {
     await expect(errorPromise).rejects.toBe(requestError);
   });
 });
+
+it('keeps the chosen ordinary request timeout while bounding an explicit file transfer to sixty seconds', async () => {
+  for (const fileTransfer of [false, true]) {
+    const expected = fileTransfer ? 60000 : 120000;
+    const native = requestFixture(
+      fixtures.httpRequest,
+      responseFixture(),
+      false,
+      { address: '8.8.8.8', family: 4 },
+    );
+    const openingFailure = new Error('File source unavailable');
+    const dispatch = new NodeHttpTransport().dispatch({
+      url: new URL('http://api.example.test/timeout'),
+      address: { address: '8.8.8.8', family: 4 },
+      method: fileTransfer ? 'POST' : 'GET',
+      headers: {},
+      timeoutMillis: 120000,
+      ...(fileTransfer
+        ? {
+            body: {
+              byteLength: 1,
+              sha256: 'a'.repeat(64),
+              open: () => {
+                throw openingFailure;
+              },
+              release: () => Promise.resolve(),
+            },
+          }
+        : {}),
+    });
+    expect(native.timeout).toHaveBeenCalledWith(expected, expect.any(Function));
+    if (fileTransfer) await expect(dispatch).rejects.toBe(openingFailure);
+    else {
+      const timeout = native.timeout.mock.calls[0]?.[1] as () => void;
+      timeout();
+      await expect(dispatch).rejects.toMatchObject({ code: 'ETIMEDOUT' });
+    }
+  }
+});
