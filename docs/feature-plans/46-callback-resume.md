@@ -18,15 +18,16 @@ cannot receive a response before it opens. Putting a resume URL in a normal
 step output would store a credential; opening the task only when Wait executes
 would lose fast callbacks. An in-memory latch would fail across workers/restarts.
 
-Recommended: extend the **existing graph mapping format**, **existing pending-task
+Recommended: extend the **existing runtime mapping context**, **existing pending-task
 format** and [ADR 076](../adr/076-durable-human-tasks.md), rather than introduce
 another resume subsystem:
 
-- Add an explicit callback mapping source selecting a Wait in the same structured
-  scope and either its URL or its authentication secret. The stored graph keeps
-  only that reference. Resolve it through a worker capability, not a literal,
-  run input, step output or expression placeholder. Nested object mapping uses
-  the same source; no second expression evaluator or browser-issued token.
+- Add a bounded execution binding to the existing JSONata mapping context, keyed
+  by Wait identity and selecting its URL or authentication secret in the same
+  structured scope. The normal picker inserts an existing expression mapping;
+  label/value object rows keep their existing JSONata serialization. A worker
+  capability supplies the credential just before resolution. The stored graph
+  keeps the expression reference, with one evaluator and no browser-issued token.
 - Permit a prepared callback task without a physical node-run binding. It retains
   a stable logical identity (run, Wait and iteration scope), token hash, derivation
   key version and bounded optional response. Bind it to the exact invocation when
@@ -37,8 +38,8 @@ another resume subsystem:
   token or encrypted equivalent. Reuse the current key/version/previous-keys
   configuration pattern, startup refusal and separately supplied backup keys.
 
-These are stored-format extensions and an ADR amendment absent from the original
-scope. AGENTS.md reserves them for the owner; implementation is paused until
+The prepared-task format extension and ADR amendment are absent from the original
+scope; the mapping uses the existing stored expression format. AGENTS.md reserves them for the owner; implementation is paused until
 approved. This plan does not silently authorize them.
 
 ## Rules after approval
