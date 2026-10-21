@@ -1,3 +1,5 @@
+import { FILE_PAGE_LIMITS } from '@pertexo/node-sdk';
+import type { NodeVerifiedByteSource } from '@pertexo/node-sdk/server';
 import { z } from 'zod';
 import { isSerializableHttpHeaderValue } from './header-value.js';
 import {
@@ -23,7 +25,23 @@ const requestSchema = z
     url: z.string(),
     method: methodSchema,
     headers: z.record(z.string(), z.string()).optional(),
-    body: z.instanceof(Uint8Array).optional(),
+    body: z
+      .union([
+        z.instanceof(Uint8Array),
+        z
+          .object({
+            byteLength: z.number().int().min(0).max(FILE_PAGE_LIMITS.fileBytes),
+            sha256: z.string().regex(/^[a-f0-9]{64}$/u),
+            open: z.custom<NodeVerifiedByteSource['open']>(
+              (value) => typeof value === 'function',
+            ),
+            release: z.custom<NodeVerifiedByteSource['release']>(
+              (value) => typeof value === 'function',
+            ),
+          })
+          .strict(),
+      ])
+      .optional(),
     timeoutMillis: z.number(),
     maxRedirects: z.number(),
     maxResponseBytes: z.number(),
@@ -92,7 +110,12 @@ function assertRequestBounds(request: z.output<typeof requestSchema>): void {
     request.maxResponseBytes > MAX_RESPONSE_BYTES
   )
     throw new Error('invalid response byte limit');
-  if ((request.body?.byteLength ?? 0) > MAX_REQUEST_BODY_BYTES)
+  if (
+    (request.body?.byteLength ?? 0) >
+    (request.body instanceof Uint8Array
+      ? MAX_REQUEST_BODY_BYTES
+      : FILE_PAGE_LIMITS.fileBytes)
+  )
     throw new Error('request body exceeds byte limit');
 }
 
@@ -170,7 +193,12 @@ export function parseRequest(
       headers: parseHeaders(parsed.headers ?? {}),
       ...(parsed.body === undefined
         ? {}
-        : { body: new Uint8Array(parsed.body) }),
+        : {
+            body:
+              parsed.body instanceof Uint8Array
+                ? new Uint8Array(parsed.body)
+                : parsed.body,
+          }),
       timeoutMillis: parsed.timeoutMillis,
       maxRedirects: parsed.maxRedirects,
       maxResponseBytes: parsed.maxResponseBytes,

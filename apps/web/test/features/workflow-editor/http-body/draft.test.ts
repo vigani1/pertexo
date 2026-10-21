@@ -193,10 +193,17 @@ describe('HTTP body draft', () => {
         },
       };
     }
+    const below = validateBodyDraft(
+      { mode: 'multipart', parts: [ready(first, 2097152)] },
+      graph,
+      node.id,
+    );
+    expect(below.error).toBeUndefined();
+    expect(below.knownBytes).toBe(2097152);
     for (const parts of [
-      [ready(first, 1048576)],
-      [ready(first, 2097152)],
-      [ready(first, 600000), ready(second, 600000)],
+      [ready(first, 10485760)],
+      [ready(first, 10485761)],
+      [ready(first, 6000000), ready(second, 6000000)],
     ]) {
       const result = validateBodyDraft(
         { mode: 'multipart', parts },

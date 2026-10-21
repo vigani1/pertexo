@@ -8,7 +8,7 @@ export function describeFileInputFailure(
 ): string {
   switch (diagnostic.reason) {
     case 'multipart_size':
-      return 'The multipart request exceeds 1 MB including form headers. A full 1 MB file cannot fit. Use a smaller file or split it into separate uploads accepted by the destination.';
+      return 'The multipart request exceeds 10 MB including form headers. A full 10 MB file cannot fit. Use a smaller file or split it into separate uploads accepted by the destination.';
     case 'multipart_values':
       return 'Multipart inputs do not match the parts. Give each text part a text value and each file part a file reference; remove unused inputs or the raw body.';
     case 'multipart_content_type':
@@ -18,7 +18,7 @@ export function describeFileInputFailure(
     case 'multipart_boundary':
       return 'A multipart boundary could not be generated safely. Start a new run.';
     case 'file_size':
-      return `The file exceeds 1 MB. ${split}`;
+      return `The file exceeds this operation's limit: 1 MB for inline Read file, or up to 10 MB for file transfers (less when storage is configured lower). ${split}`;
     case 'value_size':
       return `The parsed file exceeds the step's value limits. Wide rows fit fewer records. ${split}`;
     case 'item_count':

@@ -149,7 +149,7 @@ export function FormPart({
           disabled={!editable}
           label="Upload part file"
           useLabel="Use file for this part"
-          description="The entire request must fit in 1 MB including form headers. A full 1 MB file will not fit. Using a file replaces this part’s value; its original local filename is not saved."
+          description="The entire request must fit in 10 MB including form headers. A full 10 MB file will not fit. Using a file replaces this part’s value; its original local filename is not saved."
           onUse={(reference) => {
             return onChange(
               {

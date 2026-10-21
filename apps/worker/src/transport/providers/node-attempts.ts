@@ -97,6 +97,7 @@ async function composeNodeAttemptRuntime(
 ): Promise<NodeAttemptRuntime> {
   return factories.createRuntime({
     artifactStore: config.artifactStore,
+    artifactScratchDirectory: config.artifactScratchDirectory,
     codeRunner: config.codeRunner,
     ...(config.connectionEncryption === undefined
       ? {}

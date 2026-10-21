@@ -1,23 +1,16 @@
-import {
-  assertNotAborted,
-  completeWithCleanup,
-  consumeArtifactChunks,
-} from './scratch/consume.js';
-import { createHash } from 'node:crypto';
-import { createReadStream, type ReadStream } from 'node:fs';
-import { mkdtemp, open, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-
 import type { ArtifactStore } from '@pertexo/artifact-store';
 import { artifactStorageKey } from '@pertexo/database/runs';
 import { generatePersistedId } from '@pertexo/database/platform';
-import type { NodeArtifactRuntime } from '@pertexo/node-sdk/server';
-
+import type {
+  NodeArtifactRuntime,
+  NodeVerifiedByteSource,
+} from '@pertexo/node-sdk/server';
 import type { NodeExecutionCapabilityContext } from '../capabilities.js';
 import { artifactExpiry, assertArtifactByteLimit } from './policy.js';
 import { createArtifactReader } from './read.js';
-
+import type { ArtifactScratchSpace } from './scratch/space.js';
+import { withByteProgress, closeArtifactStream } from './scratch/progress.js';
+export type { ArtifactSpoolOperations } from './scratch/space.js';
 type ArtifactDescriptor = Readonly<{
   artifactId: string;
   workspaceId: string;
@@ -27,7 +20,6 @@ type ArtifactDescriptor = Readonly<{
   storageKey: string;
   previewRunId?: string;
 }>;
-
 export interface WorkerArtifactPersistence {
   requireReadable?(
     input: NodeExecutionCapabilityContext &
@@ -46,204 +38,135 @@ export interface WorkerArtifactPersistence {
     input: ArtifactDescriptor & Readonly<{ signal: AbortSignal }>,
   ): Promise<void>;
 }
-
-export type ArtifactSpoolOperations = Readonly<{
-  openFile(path: string): ReturnType<typeof open>;
-  removeDirectory(path: string): Promise<void>;
-}>;
-
-type SpooledArtifact = Readonly<{
-  byteLength: number;
-  sha256: string;
-}>;
-
-function ownArtifactUploadStream(stream: ReadStream): Readonly<{
-  close(): Promise<void>;
-  stream: ReadStream;
-}> {
-  let failed = false;
-  let failure: unknown;
-  const closed = new Promise<void>((resolve) => {
-    stream.once('close', resolve);
-  });
-  stream.on('error', (error: unknown) => {
-    if (!failed) {
-      failed = true;
-      failure = error;
-    }
-  });
-  return Object.freeze({
-    stream,
-    close: async (): Promise<void> => {
-      if (!stream.destroyed) stream.destroy();
-      if (!stream.closed) await closed;
-      if (failed) throw failure;
-    },
-  });
-}
-
-async function writeAll(
-  file: Awaited<ReturnType<typeof open>>,
-  chunk: Uint8Array,
-): Promise<void> {
-  let offset = 0;
-  while (offset < chunk.byteLength) {
-    const result = await file.write(
-      chunk,
-      offset,
-      chunk.byteLength - offset,
-      null,
-    );
-    if (result.bytesWritten <= 0)
-      throw new Error('Artifact spool made no write progress');
-    offset += result.bytesWritten;
-  }
-}
-
-async function spoolArtifactBody(
-  body: AsyncIterable<Uint8Array>,
-  maxBytes: number,
-  signal: AbortSignal,
-  spoolPath: string,
-  openFile: ArtifactSpoolOperations['openFile'],
-): Promise<SpooledArtifact> {
-  const digest = createHash('sha256');
-  let byteLength = 0;
-  const file = await openFile(spoolPath);
-  await completeWithCleanup(
-    async () => {
-      await consumeArtifactChunks(body, signal, async (chunk) => {
-        const nextByteLength = byteLength + chunk.byteLength;
-        if (nextByteLength > maxBytes)
-          throw new RangeError('Node artifact exceeds its byte limit');
-        byteLength = nextByteLength;
-        digest.update(chunk);
-        await writeAll(file, chunk);
-      });
-      assertNotAborted(signal);
-      await file.sync();
-    },
-    () => file.close(),
-    'Artifact spool write and file close both failed',
-  );
-  return Object.freeze({ byteLength, sha256: digest.digest('hex') });
-}
-
 export function createNodeArtifactRuntimeFactory(
   input: Readonly<{
     persistence: WorkerArtifactPersistence;
     store: Pick<ArtifactStore, 'put'> &
       Partial<Pick<ArtifactStore, 'getStream'>>;
+    scratch: ArtifactScratchSpace;
+    maximumBytes: number;
+    assertOpen(): void;
     retentionMillis: number;
     artifactId?: () => string;
     now?: () => Date;
-    spoolDirectory?: string;
-    spoolOperations?: ArtifactSpoolOperations;
   }>,
 ): (context: NodeExecutionCapabilityContext) => NodeArtifactRuntime {
   const artifactId = input.artifactId ?? generatePersistedId;
   const now = input.now ?? (() => new Date());
-  const spoolDirectory = input.spoolDirectory ?? tmpdir();
-  const spoolOperations = input.spoolOperations ?? {
-    openFile: (filePath: string) => open(filePath, 'wx', 0o600),
-    removeDirectory: (directory: string) =>
-      rm(directory, { recursive: true, force: true }),
-  };
   const requireReadable = input.persistence.requireReadable?.bind(
     input.persistence,
   );
   const getStream = input.store.getStream?.bind(input.store);
-  return (context) =>
-    Object.freeze({
+  return (context) => {
+    const spool: NonNullable<NodeArtifactRuntime['spool']> = async (
+      request,
+    ) => {
+      input.assertOpen();
+      request.signal.throwIfAborted();
+      assertArtifactByteLimit(request.maxBytes);
+      const maximumBytes = Math.min(request.maxBytes, input.maximumBytes);
+      const handle = await input.scratch.spool({
+        attemptId: context.attemptId,
+        body: request.body,
+        maxBytes: maximumBytes,
+        signal: request.signal,
+        ...(context.deadlineAt === undefined
+          ? {}
+          : { deadlineAt: context.deadlineAt }),
+        ...(request.cancelSource === undefined
+          ? {}
+          : { cancelSource: request.cancelSource }),
+      });
+      const source: NodeVerifiedByteSource = Object.freeze({
+        byteLength: handle.byteLength,
+        sha256: handle.sha256,
+        release: () => handle.release(),
+        open: (signal: AbortSignal) => {
+          signal.throwIfAborted();
+          return withByteProgress(handle.open(), signal, context.deadlineAt);
+        },
+      });
+      return source;
+    };
+    return Object.freeze({
       ...(requireReadable === undefined || getStream === undefined
         ? {}
-        : {
-            read: createArtifactReader({
-              workspaceId: context.workspaceId,
-              store: { getStream },
-              requireReadable: (reference, signal) =>
-                requireReadable({ ...context, reference, signal }),
-            }),
-          }),
-      write: async (
-        writeInput: Parameters<NodeArtifactRuntime['write']>[0],
-      ) => {
-        assertArtifactByteLimit(writeInput.maxBytes);
-        assertNotAborted(writeInput.signal);
-        const directory = await mkdtemp(
-          path.join(spoolDirectory, 'pertexo-node-artifact-'),
-        );
-        const spoolPath = path.join(directory, 'body');
-        return completeWithCleanup(
-          async () => {
-            const spooled = await spoolArtifactBody(
-              writeInput.body,
-              writeInput.maxBytes,
-              writeInput.signal,
-              spoolPath,
-              spoolOperations.openFile,
-            );
-            assertNotAborted(writeInput.signal);
-            const id = artifactId();
-            const storageKey = artifactStorageKey(context.workspaceId, id);
-            const createdAt = now();
-            const descriptor: ArtifactDescriptor = Object.freeze({
+        : createArtifactReader({
+            workspaceId: context.workspaceId,
+            attemptId: context.attemptId,
+            scratch: input.scratch,
+            maximumBytes: input.maximumBytes,
+            ...(context.deadlineAt === undefined
+              ? {}
+              : { deadlineAt: context.deadlineAt }),
+            assertOpen: input.assertOpen,
+            store: { getStream },
+            requireReadable: (reference, signal) =>
+              requireReadable({ ...context, reference, signal }),
+          })),
+      spool,
+      write: async (request: Parameters<NodeArtifactRuntime['write']>[0]) => {
+        const handle = await spool(request);
+        try {
+          request.signal.throwIfAborted();
+          const id = artifactId();
+          const descriptor: ArtifactDescriptor = Object.freeze({
+            artifactId: id,
+            workspaceId: context.workspaceId,
+            byteLength: handle.byteLength,
+            mediaType: request.mediaType,
+            sha256: handle.sha256,
+            storageKey: artifactStorageKey(context.workspaceId, id),
+            ...(context.previewRunId === undefined
+              ? {}
+              : { previewRunId: context.previewRunId }),
+          });
+          await input.persistence.createPending({
+            ...descriptor,
+            expiresAt: artifactExpiry(
+              now(),
+              input.retentionMillis,
+              context.artifactRetentionDeadline,
+            ),
+            purpose: request.purpose,
+            signal: request.signal,
+          });
+          request.signal.throwIfAborted();
+          const upload = handle.open(request.signal);
+          upload.on('error', () => undefined);
+          try {
+            await input.store.put({
               artifactId: id,
-              workspaceId: context.workspaceId,
-              byteLength: spooled.byteLength,
-              mediaType: writeInput.mediaType,
-              sha256: spooled.sha256,
-              storageKey,
-              ...(context.previewRunId === undefined
-                ? {}
-                : { previewRunId: context.previewRunId }),
-            });
-            await input.persistence.createPending({
-              ...descriptor,
-              expiresAt: artifactExpiry(
-                createdAt,
-                input.retentionMillis,
-                context.artifactRetentionDeadline,
-              ),
-              purpose: writeInput.purpose,
-              signal: writeInput.signal,
-            });
-            assertNotAborted(writeInput.signal);
-            const upload = ownArtifactUploadStream(createReadStream(spoolPath));
-            await completeWithCleanup(
-              () =>
-                input.store.put({
-                  artifactId: descriptor.artifactId,
-                  workspaceId: descriptor.workspaceId,
-                  byteLength: descriptor.byteLength,
-                  mediaType: descriptor.mediaType,
-                  sha256: descriptor.sha256,
-                  body: upload.stream,
-                  signal: writeInput.signal,
-                }),
-              upload.close,
-              'Artifact upload and source stream cleanup both failed',
-            );
-            assertNotAborted(writeInput.signal);
-            await input.persistence.finalize({
-              artifactId: descriptor.artifactId,
               workspaceId: descriptor.workspaceId,
               byteLength: descriptor.byteLength,
               mediaType: descriptor.mediaType,
               sha256: descriptor.sha256,
-              storageKey: descriptor.storageKey,
-              signal: writeInput.signal,
+              body: upload,
+              signal: request.signal,
             });
-            return Object.freeze({
-              artifactId: id,
-              byteLength: spooled.byteLength,
-              mediaType: writeInput.mediaType,
-              sha256: spooled.sha256,
-            });
-          },
-          () => spoolOperations.removeDirectory(directory),
-          'Artifact write failed and spool cleanup was incomplete',
-        );
+          } finally {
+            await closeArtifactStream(upload);
+          }
+          request.signal.throwIfAborted();
+          await input.persistence.finalize({
+            ...descriptor,
+            signal: request.signal,
+          });
+          return Object.freeze({
+            artifactId: id,
+            byteLength: descriptor.byteLength,
+            mediaType: descriptor.mediaType,
+            sha256: descriptor.sha256,
+          });
+        } catch (error) {
+          if (error instanceof Error) throw error;
+          throw new Error('Artifact operation failed with a non-Error value', {
+            cause: undefined,
+          });
+        } finally {
+          await handle.release();
+        }
       },
     });
+  };
 }

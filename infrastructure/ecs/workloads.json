@@ -63,6 +63,7 @@
         "export WORKER_INSTANCE_ID=$HOSTNAME; exec node apps/worker/dist/main.js"
       ],
       "environment": {
+        "ARTIFACT_SCRATCH_DIRECTORY": "/var/lib/pertexo/artifact-scratch",
         "DATABASE_DISPATCHER_POOL_MAX": "2",
         "DATABASE_MAINTENANCE_POOL_MAX": "2",
         "DATABASE_POOL_MAX": "5",

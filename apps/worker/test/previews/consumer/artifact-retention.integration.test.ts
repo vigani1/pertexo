@@ -1,3 +1,4 @@
+import { createTestArtifactScratch } from '../../support/infrastructure/artifact-scratch.js';
 import {
   createArtifactStore,
   parseArtifactStoreConfig,
@@ -39,6 +40,7 @@ describeIntegration('preview artifact retention transport', () => {
   itArtifactIntegration(
     'removes an expired preview and its object through the real maintenance path',
     async () => {
+      const scratch = await createTestArtifactScratch();
       const artifactConfig = parseArtifactStoreConfig(process.env);
       const previewDeadline = new Date(Date.now() + 10_000);
       const traceparent = validTraceparent;
@@ -59,6 +61,7 @@ describeIntegration('preview artifact retention transport', () => {
           );
           capabilities = await createWorkerNodeRuntimeCapabilities({
             artifactStore: artifactConfig,
+            artifactScratchDirectory: scratch.directory,
             database: parseDatabaseConfig({
               connectionString: databaseUrl(workerUrl),
             }),
@@ -177,6 +180,7 @@ describeIntegration('preview artifact retention transport', () => {
           await Promise.resolve()
             .then(() => verifier?.close())
             .catch((error: unknown) => errors.push(error));
+          await scratch.close().catch((error: unknown) => errors.push(error));
           if (errors.length > 0)
             throw new AggregateError(
               errors,

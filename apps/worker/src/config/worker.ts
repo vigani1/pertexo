@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { parseCodeSettings, codeRunnerSocketPath } from '@pertexo/node-sdk';
 import type { WorkerCodeRunnerConfig } from '../attempts/code/client.js';
 import { z } from 'zod';
@@ -360,6 +361,7 @@ const workerConfigSchema = z
 export type WorkerConfig = Readonly<
   z.output<typeof workerConfigSchema> & {
     artifactStore: ArtifactStoreConfig;
+    artifactScratchDirectory: string;
     codeRunner: WorkerCodeRunnerConfig;
     httpRequest: SecureHttpAddressPolicy;
     retention: RetentionConfig;
@@ -411,6 +413,19 @@ export function parseWorkerConfig(
       result.data.nodeEnv === 'staging' || result.data.nodeEnv === 'production';
     const connectionEncryption = parseConnectionEncryptionConfig(raw, deployed);
     const artifactStore = artifactStoreConfig(raw, deployed);
+    const artifactScratchDirectory = z
+      .object({
+        ARTIFACT_SCRATCH_DIRECTORY: z.string().min(1).max(4096),
+      })
+      .parse({
+        ARTIFACT_SCRATCH_DIRECTORY:
+          raw.ARTIFACT_SCRATCH_DIRECTORY ??
+          (deployed ? undefined : path.resolve('.pertexo/worker-scratch')),
+      }).ARTIFACT_SCRATCH_DIRECTORY;
+    if (!path.isAbsolute(artifactScratchDirectory))
+      throw new Error(
+        'ARTIFACT_SCRATCH_DIRECTORY must be an absolute private disk-backed directory',
+      );
     const invitationDelivery = parseInvitationDeliveryConfig(raw, deployed);
     const systemMailDelivery = parseSystemMailDeliveryConfig(raw, deployed);
     if (deployed && connectionEncryption === undefined)
@@ -433,6 +448,7 @@ export function parseWorkerConfig(
       },
       ...(connectionEncryption === undefined ? {} : { connectionEncryption }),
       artifactStore,
+      artifactScratchDirectory,
       retention: Object.freeze({
         maintenanceDatabase: parseMaintenanceDatabaseConfig(raw),
       }),

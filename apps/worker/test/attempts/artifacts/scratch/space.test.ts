@@ -4,6 +4,7 @@ import {
   lstat,
   mkdir,
   mkdtemp,
+  open,
   readFile,
   readdir,
   rm,
@@ -13,11 +14,12 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Readable } from 'node:stream';
-import { afterEach, expect, it } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 import { ArtifactScratchSpace } from '../../../../src/attempts/artifacts/scratch/space.js';
 
 const roots: string[] = [];
 afterEach(async () => {
+  vi.useRealTimers();
   for (const root of roots.splice(0))
     await rm(root, { recursive: true, force: true });
 });
@@ -199,9 +201,91 @@ it('cleans cancellation after a partial write and refuses fresh canceled work', 
   }
   await expect(
     space.spool({ ...input(), body: source(), signal: controller.signal }),
-  ).rejects.toMatchObject({ name: 'AbortError' });
+  ).rejects.toMatchObject({ kind: 'canceled' });
   expect(await readdir(directory)).toEqual([]);
   await expect(
     space.spool({ ...input(), signal: controller.signal }),
   ).rejects.toMatchObject({ name: 'AbortError' });
+});
+
+it('attempts file and directory cleanup after a source error even when file close also fails', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'pertexo-scratch-double-'));
+  roots.push(root);
+  let closed = 0,
+    removed = 0;
+  const scratch = await ArtifactScratchSpace.create(root, {
+    openFile: async (filename) => {
+      const file = await open(filename, 'wx', 0o600);
+      const close = file.close.bind(file);
+      file.close = async () => {
+        closed++;
+        await close();
+        throw new Error('private close failure');
+      };
+      return file;
+    },
+    removeDirectory: async (directory) => {
+      removed++;
+      await rm(directory, { recursive: true, force: true });
+    },
+  });
+  const bytes = new Uint8Array([1]);
+  const result: unknown = await scratch
+    .spool({
+      attemptId: 'failed',
+      maxBytes: 1,
+      body: (async function* () {
+        yield await Promise.resolve(bytes);
+        throw new Error('private source failure');
+      })(),
+      signal: new AbortController().signal,
+    })
+    .catch((error: unknown) => error);
+  expect(result).toMatchObject({
+    safeErrorCode: 'execution.file_scratch_cleanup',
+  });
+  expect(bytes).toEqual(new Uint8Array([0]));
+  expect(closed).toBe(1);
+  expect(removed).toBe(1);
+  expect(await readdir(root)).toEqual([]);
+  expect(JSON.stringify(result)).not.toContain('private');
+  await expect(
+    scratch.spool({
+      attemptId: 'new',
+      maxBytes: 1,
+      body: Readable.from([Buffer.from('x')]),
+      signal: new AbortController().signal,
+    }),
+  ).rejects.toMatchObject({ safeErrorCode: 'execution.file_scratch_cleanup' });
+});
+
+it('cancels and closes a stalled native producer after sixty seconds, then allows fresh work', async () => {
+  const { space, directory } = await fixture();
+  vi.useFakeTimers();
+  let reading!: () => void;
+  const started = new Promise<void>((resolve) => {
+    reading = resolve;
+  });
+  const body = new Readable({
+    read: () => {
+      reading();
+    },
+  });
+  const failed = expect(
+    space.spool({
+      ...input(100),
+      body,
+      cancelSource: (reason) => {
+        body.destroy(reason);
+      },
+    }),
+  ).rejects.toMatchObject({ safeErrorCode: 'execution.file_progress_timeout' });
+  await started;
+  await vi.advanceTimersByTimeAsync(60000);
+  await failed;
+  expect(body.closed).toBe(true);
+  expect(await readdir(directory)).toEqual([]);
+  vi.useRealTimers();
+  const next = await space.spool(input(4, 'next'));
+  await next.release();
 });

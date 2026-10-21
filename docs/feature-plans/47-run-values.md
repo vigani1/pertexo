@@ -1,6 +1,6 @@
 # F47 — Run values
 
-Status: **Implemented 2026-10-21**, awaiting green CI and rebase merge. Owner-approved scope; reconciled with current code.
+Status: **Delivered 2026-10-21**, #451 rebase-merged after green CI. Owner-approved scope; qualified with real worker/API/browser and retention checks.
 
 ## Outcome and decisions
 

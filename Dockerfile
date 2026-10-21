@@ -72,5 +72,8 @@ COPY --from=build --chown=10001:10001 /workspace/packages/rate-limit/dist ./pack
 COPY --from=build --chown=10001:10001 /workspace/packages/templates/dist ./packages/templates/dist
 COPY --from=build --chown=10001:10001 /workspace/packages/workflow-engine/dist ./packages/workflow-engine/dist
 COPY --from=build --chown=10001:10001 /workspace/packages/workflow-model/dist ./packages/workflow-model/dist
+RUN mkdir -p /var/lib/pertexo/artifact-scratch && chown 10001:10001 /var/lib/pertexo/artifact-scratch && chmod 0700 /var/lib/pertexo/artifact-scratch
+VOLUME ["/var/lib/pertexo/artifact-scratch"]
+ENV ARTIFACT_SCRATCH_DIRECTORY=/var/lib/pertexo/artifact-scratch
 USER 10001:10001
 CMD ["node", "apps/api/dist/main.js"]

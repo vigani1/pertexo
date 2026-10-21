@@ -1,20 +1,51 @@
 import FormData from 'form-data';
-import { ARTIFACT_INPUT_MAX_BYTES } from '@pertexo/node-sdk';
+import type { Readable } from 'node:stream';
 import {
   FileInputFailure,
   type NodeArtifactRuntime,
+  type NodeVerifiedByteSource,
 } from '@pertexo/node-sdk/server';
 import { HTTP_REQUEST_LIMITS, type HttpRequestInput } from '../validation.js';
 import type { HttpMultipartConfig } from './validation.js';
 import { multipartValues } from './values.js';
 import { collectMultipart } from './collect.js';
 
-type BufferedPart = Readonly<{
+type Part = Readonly<{
   name: string;
-  bytes: Buffer;
+  value: Buffer | NodeVerifiedByteSource;
   filename?: string;
   contentType: string;
 }>;
+async function collides(
+  part: Part,
+  boundary: string,
+  signal: AbortSignal,
+): Promise<boolean> {
+  if (Buffer.isBuffer(part.value)) return part.value.includes(boundary);
+  const stream = part.value.open(signal);
+  const needle = Buffer.from(boundary);
+  let tail = Buffer.alloc(0);
+  try {
+    for await (const value of stream) {
+      const chunk: unknown = value;
+      if (!(chunk instanceof Uint8Array))
+        throw new FileInputFailure({ reason: 'multipart_encoding' });
+      const bytes = Buffer.concat([tail, chunk]);
+      const found = bytes.includes(needle);
+      tail.fill(0);
+      tail = Buffer.from(
+        bytes.subarray(Math.max(0, bytes.byteLength - needle.byteLength + 1)),
+      );
+      bytes.fill(0);
+      chunk.fill(0);
+      if (found) return true;
+    }
+    return false;
+  } finally {
+    tail.fill(0);
+    stream.destroy();
+  }
+}
 export async function encodeMultipart(
   input: Readonly<{
     config: HttpMultipartConfig;
@@ -22,31 +53,34 @@ export async function encodeMultipart(
     artifacts: NodeArtifactRuntime | undefined;
     signal: AbortSignal;
   }>,
-): Promise<Readonly<{ body: Uint8Array; contentType: string }>> {
+): Promise<Readonly<{ body: NodeVerifiedByteSource; contentType: string }>> {
   input.signal.throwIfAborted();
   const values = multipartValues(input.config, input.values);
-  const parts: BufferedPart[] = [];
+  const spool = input.artifacts?.spool?.bind(input.artifacts);
+  if (spool === undefined)
+    throw new FileInputFailure({ reason: 'file_unavailable' });
+  const parts: Part[] = [];
+  let encoded: NodeVerifiedByteSource | undefined;
   try {
     for (const { part, value } of values) {
       input.signal.throwIfAborted();
-      let buffer: Buffer;
-      if (typeof value === 'string') buffer = Buffer.from(value, 'utf8');
+      let source: Buffer | NodeVerifiedByteSource;
+      if (typeof value === 'string') source = Buffer.from(value, 'utf8');
       else {
-        if (input.artifacts?.read === undefined)
+        if (input.artifacts?.openVerified === undefined)
           throw new FileInputFailure({ reason: 'file_unavailable' });
         const { kind: _kind, ...reference } = value;
-        const bytes = await input.artifacts.read({
+        source = await input.artifacts.openVerified({
           reference,
-          maxBytes: ARTIFACT_INPUT_MAX_BYTES,
+          maxBytes: HTTP_REQUEST_LIMITS.maxRequestBodyBytes,
           signal: input.signal,
         });
-        buffer = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
       }
       const filename =
         part.filename ?? (part.kind === 'file' ? 'file' : undefined);
       parts.push({
         name: part.name,
-        bytes: buffer,
+        value: source,
         ...(filename === undefined ? {} : { filename }),
         contentType:
           part.contentType ??
@@ -55,25 +89,77 @@ export async function encodeMultipart(
             : value.mediaType),
       });
     }
-    input.signal.throwIfAborted();
     for (let attempt = 0; attempt < 3; attempt++) {
+      input.signal.throwIfAborted();
       const form = new FormData();
       const boundary = form.getBoundary();
-      if (parts.some((part) => part.bytes.includes(boundary))) continue;
+      let collision = false;
       for (const part of parts)
-        form.append(part.name, part.bytes, {
-          ...(part.filename === undefined ? {} : { filename: part.filename }),
-          contentType: part.contentType,
-          knownLength: part.bytes.byteLength,
-        });
-      const length = form.getLengthSync();
-      if (length > HTTP_REQUEST_LIMITS.maxRequestBodyBytes)
-        throw new FileInputFailure({ reason: 'multipart_size' });
-      const body = await collectMultipart(form, length, input.signal);
-      return { body, contentType: `multipart/form-data; boundary=${boundary}` };
+        if (await collides(part, boundary, input.signal)) {
+          collision = true;
+          break;
+        }
+      if (collision) {
+        form.destroy();
+        continue;
+      }
+      const streams: Readable[] = [];
+      try {
+        for (const part of parts) {
+          const value = Buffer.isBuffer(part.value)
+            ? part.value
+            : part.value.byteLength === 0
+              ? Buffer.alloc(0)
+              : part.value.open(input.signal);
+          if (!Buffer.isBuffer(value)) streams.push(value);
+          form.append(part.name, value, {
+            ...(part.filename === undefined ? {} : { filename: part.filename }),
+            contentType: part.contentType,
+            knownLength: part.value.byteLength,
+          });
+        }
+        const length = form.getLengthSync();
+        if (length > HTTP_REQUEST_LIMITS.maxRequestBodyBytes)
+          throw new FileInputFailure({ reason: 'multipart_size' });
+        const body = await collectMultipart(form, length, input.signal, spool);
+        encoded = body;
+        return {
+          body,
+          contentType: `multipart/form-data; boundary=${boundary}`,
+        };
+      } finally {
+        form.destroy();
+        await Promise.all(
+          streams.map(async (stream) => {
+            if (stream.closed) return;
+            const closed = new Promise<void>((resolve) => {
+              stream.once('close', resolve);
+            });
+            stream.destroy();
+            await closed;
+          }),
+        );
+      }
     }
     throw new FileInputFailure({ reason: 'multipart_boundary' });
   } finally {
-    for (const part of parts) part.bytes.fill(0);
+    await releaseParts(parts, encoded);
+  }
+}
+
+async function releaseParts(
+  parts: readonly Part[],
+  encoded: NodeVerifiedByteSource | undefined,
+): Promise<void> {
+  const released = await Promise.allSettled(
+    parts.map(async (part) => {
+      if (Buffer.isBuffer(part.value)) part.value.fill(0);
+      else await part.value.release();
+    }),
+  );
+  const failed = released.find((result) => result.status === 'rejected');
+  if (failed?.status === 'rejected') {
+    await encoded?.release();
+    throw failed.reason;
   }
 }

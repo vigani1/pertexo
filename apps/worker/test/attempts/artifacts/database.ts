@@ -1,3 +1,4 @@
+import { createTestArtifactScratch } from '../../support/infrastructure/artifact-scratch.js';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import {
@@ -40,6 +41,8 @@ export function createArtifactDatabaseEnvironment() {
     connectionString: databaseUrl(workerDatabaseUrl, databaseName),
     max: 2,
   });
+  let scratch:
+    Awaited<ReturnType<typeof createTestArtifactScratch>> | undefined;
   let databaseCreated = false;
   let initializePromise: Promise<void> | undefined;
   let closePromise: Promise<void> | undefined;
@@ -47,8 +50,14 @@ export function createArtifactDatabaseEnvironment() {
   return Object.freeze({
     apiConfig,
     workerConfig,
+    get artifactScratchDirectory() {
+      if (scratch === undefined)
+        throw new Error('Artifact environment not initialized');
+      return scratch.directory;
+    },
     initialize(): Promise<void> {
       initializePromise ??= (async () => {
+        scratch = await createTestArtifactScratch();
         const admin = new Pool({ connectionString: adminDatabaseUrl, max: 1 });
         let setupError: unknown;
         try {
@@ -102,6 +111,7 @@ export function createArtifactDatabaseEnvironment() {
     },
     close(): Promise<void> {
       closePromise ??= (async () => {
+        await scratch?.close();
         if (!databaseCreated) return;
         const admin = new Pool({ connectionString: adminDatabaseUrl, max: 1 });
         const errors: unknown[] = [];

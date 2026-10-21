@@ -57,7 +57,11 @@ const integration =
         async () => {
           await environment.initialize();
           capabilities = await createWorkerNodeRuntimeCapabilities(
-            { database: environment.workerConfig, artifactStore: config },
+            {
+              database: environment.workerConfig,
+              artifactScratchDirectory: environment.artifactScratchDirectory,
+              artifactStore: config,
+            },
             { artifactId: () => artifactId },
           );
           store = createArtifactStore(config);

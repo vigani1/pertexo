@@ -1,58 +1,53 @@
-import { Writable } from 'node:stream';
-import { finished } from 'node:stream/promises';
+import { PassThrough } from 'node:stream';
 import type FormData from 'form-data';
+import {
+  FileInputFailure,
+  type NodeArtifactRuntime,
+} from '@pertexo/node-sdk/server';
 import { HTTP_REQUEST_LIMITS } from '../validation.js';
-import { FileInputFailure } from '@pertexo/node-sdk/server';
 
-/** The encoder receives only bounded Buffers; its legacy stream owns MIME framing. */
+/** CombinedStream needs an explicit bridge: it does not expose modern close semantics. */
 export async function collectMultipart(
   form: FormData,
   length: number,
   signal: AbortSignal,
-): Promise<Buffer> {
+  spool: NonNullable<NodeArtifactRuntime['spool']>,
+) {
   signal.throwIfAborted();
   if (length > HTTP_REQUEST_LIMITS.maxRequestBodyBytes)
     throw new FileInputFailure({ reason: 'multipart_size' });
-  const body = Buffer.alloc(length);
-  let offset = 0;
-  const sink = new Writable({
-    write(chunk: unknown, _encoding, done) {
-      if (
-        !(chunk instanceof Uint8Array) ||
-        chunk.byteLength > length - offset
-      ) {
-        done(new FileInputFailure({ reason: 'multipart_encoding' }));
-        return;
-      }
-      body.set(chunk, offset);
-      offset += chunk.byteLength;
-      done();
-    },
-  });
-  const fail = (error: Error) => {
-    sink.destroy(error);
+  const bridge = new PassThrough({ highWaterMark: 65536 });
+  bridge.on('error', () => undefined);
+  const fail = () => {
+    bridge.destroy(new FileInputFailure({ reason: 'multipart_encoding' }));
   };
   form.once('error', fail);
-  try {
-    // CombinedStream is not a modern Readable: pipeline() cannot observe its close.
-    const completion = finished(sink, { signal, cleanup: true });
-    try {
-      form.pipe(sink);
-    } catch {
-      sink.destroy(new FileInputFailure({ reason: 'multipart_encoding' }));
+  const cancelSource = (reason: Error): void => {
+    form.destroy();
+    bridge.destroy(reason);
+  };
+  async function* chunks() {
+    let count = 0;
+    form.pipe(bridge);
+    for await (const chunk of bridge) {
+      if (!(chunk instanceof Uint8Array) || count + chunk.byteLength > length)
+        throw new FileInputFailure({ reason: 'multipart_encoding' });
+      count += chunk.byteLength;
+      yield chunk;
     }
-    await completion;
-    signal.throwIfAborted();
-    if (offset !== length)
+    if (count !== length)
       throw new FileInputFailure({ reason: 'multipart_encoding' });
-    return body;
-  } catch {
-    body.fill(0);
-    signal.throwIfAborted();
-    throw new FileInputFailure({ reason: 'multipart_encoding' });
+  }
+  try {
+    return await spool({
+      body: chunks(),
+      maxBytes: length,
+      signal,
+      cancelSource,
+    });
   } finally {
     form.destroy();
-    sink.destroy();
+    bridge.destroy();
     form.removeListener('error', fail);
   }
 }

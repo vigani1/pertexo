@@ -1,3 +1,4 @@
+import { inlineBytes } from '../support/artifact-runtime.js';
 import { createServer, validateHeaderValue } from 'node:http';
 import { execFile } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
@@ -497,8 +498,8 @@ describe('secure HTTP client', () => {
     });
     const observed: Uint8Array[] = [];
     const successfulTransport = new FakeTransport((transportRequest) => {
-      if (transportRequest.body !== undefined)
-        observed.push(transportRequest.body);
+      const bytes = inlineBytes(transportRequest.body);
+      if (bytes !== undefined) observed.push(bytes);
       return Promise.resolve(transportResponse(200).response);
     });
     await new SecureHttpClient(resolver, successfulTransport).execute(
@@ -507,8 +508,8 @@ describe('secure HTTP client', () => {
     expect(observed[0]?.every((byte) => byte === 0)).toBe(true);
 
     const failedTransport = new FakeTransport((transportRequest) => {
-      if (transportRequest.body !== undefined)
-        observed.push(transportRequest.body);
+      const bytes = inlineBytes(transportRequest.body);
+      if (bytes !== undefined) observed.push(bytes);
       return Promise.reject(new Error('network failure'));
     });
     await expectSecureFailure(
@@ -661,7 +662,7 @@ describe('secure HTTP client', () => {
       const final = transportResponse(204, {}, []);
       const bodies: string[] = [];
       const transport = new FakeTransport((transportRequest, index) => {
-        bodies.push(decoder.decode(transportRequest.body));
+        bodies.push(decoder.decode(inlineBytes(transportRequest.body)));
         return Promise.resolve(
           index === 0 ? redirect.response : final.response,
         );

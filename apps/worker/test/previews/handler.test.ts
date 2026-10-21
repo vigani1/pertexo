@@ -317,6 +317,7 @@ describe('preview attempt handler', () => {
 
     expect(artifactFactory).toHaveBeenCalledWith({
       artifactRetentionDeadline: lease.retentionExpiresAt,
+      deadlineAt: lease.executionDeadlineAt,
       fenceToken: lease.attemptFenceToken,
       attemptId: previewAttemptId,
       attemptNumber: 1,

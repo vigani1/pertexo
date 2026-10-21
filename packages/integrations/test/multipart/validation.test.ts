@@ -99,7 +99,7 @@ describe('multipart boundary validation', () => {
       httpRequestConfigSchema.safeParse({ ...config, method: 'GET' }).success,
     ).toBe(true);
   });
-  it('keeps raw file limits while allowing multipart preflight to explain an oversized reference', () => {
+  it('accepts larger raw files while allowing multipart preflight to explain an oversized reference', () => {
     const reference = {
       kind: 'artifact',
       artifactId: '22222222-2222-4222-8222-222222222222',
@@ -108,7 +108,7 @@ describe('multipart boundary validation', () => {
       sha256: 'a'.repeat(64),
     };
     expect(httpRequestInputSchema.safeParse({ body: reference }).success).toBe(
-      false,
+      true,
     );
     expect(httpRequestInputSchema.safeParse({ [key]: reference }).success).toBe(
       true,

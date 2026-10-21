@@ -43,6 +43,9 @@ const responses = Object.freeze({
   Conflict: problemResponse(
     'Artifact lifecycle, metadata or idempotency conflict',
   ),
+  TooLarge: problemResponse(
+    'File exceeds 10 MB or the configured lower storage limit',
+  ),
   QuotaExceeded: problemResponse('Workspace artifact capacity exceeded'),
   Unavailable: problemResponse('Artifact storage is unavailable'),
   Unexpected: problemResponse('Unexpected server error'),
@@ -58,6 +61,7 @@ const errors = {
   '403': responseReference('Forbidden'),
   '404': responseReference('NotFound'),
   '409': responseReference('Conflict'),
+  '413': responseReference('TooLarge'),
   '429': responseReference('QuotaExceeded'),
   '503': responseReference('Unavailable'),
   '500': responseReference('Unexpected'),

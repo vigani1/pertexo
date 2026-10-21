@@ -1,14 +1,21 @@
+export class ArtifactSourceCleanupError extends Error {
+  override readonly name = 'ArtifactSourceCleanupError';
+  constructor() {
+    super('Artifact source cleanup could not be confirmed');
+  }
+}
+
 type OwnedArtifactIterator = AsyncIterator<Uint8Array>;
 
 function abortError(): DOMException {
   return new DOMException('The operation was aborted', 'AbortError');
 }
 
-export function assertNotAborted(signal: AbortSignal): void {
+function assertNotAborted(signal: AbortSignal): void {
   if (signal.aborted) throw abortError();
 }
 
-export async function completeWithCleanup<T>(
+async function completeWithCleanup<T>(
   operation: () => Promise<T>,
   cleanup: () => Promise<void>,
   combinedFailureMessage: string,
@@ -90,7 +97,11 @@ export async function consumeArtifactChunks(
       signal.removeEventListener('abort', returnOnAbort);
       if (!iteratorDone)
         iteratorReturn = requestIteratorReturn(iterator, iteratorReturn);
-      await iteratorReturn;
+      try {
+        await iteratorReturn;
+      } catch {
+        throw new ArtifactSourceCleanupError();
+      }
     },
     'Artifact source iteration and cancellation both failed',
   );

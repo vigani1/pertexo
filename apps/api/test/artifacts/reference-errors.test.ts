@@ -1,3 +1,7 @@
+import {
+  mapArtifactError,
+  ArtifactUploadTooLargeError,
+} from '../../src/artifacts/index.js';
 import { describe, expect, it } from 'vitest';
 import { ArtifactMetadataNotFoundError } from '@pertexo/database/runs';
 import { mapWorkflowAuthoringError } from '../../src/workflow-authoring/errors.js';
@@ -20,4 +24,11 @@ describe('unavailable artifact reference feedback', () => {
       );
     },
   );
+});
+
+it('returns a distinct file-size problem with split-file advice for configured storage limits', () => {
+  const problem = mapArtifactError(new ArtifactUploadTooLargeError());
+  expect(problem.code).toBe('artifact.too_large');
+  expect(problem.safeDetail).toContain('configured lower storage limit');
+  expect(problem.safeDetail).toContain('Split');
 });

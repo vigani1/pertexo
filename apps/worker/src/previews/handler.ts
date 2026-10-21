@@ -187,6 +187,7 @@ function createPreviewExecutionEnvironment(
   executionSignal: AbortSignal,
 ): PreviewExecutionEnvironment {
   const capabilityContext = Object.freeze({
+    deadlineAt: lease.executionDeadlineAt,
     artifactRetentionDeadline: lease.retentionExpiresAt,
     attemptId: lease.previewAttemptId,
     attemptNumber: 1,

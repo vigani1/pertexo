@@ -9,3 +9,5 @@ coverage/
 playwright-report/
 test-results/
 !infrastructure/single-server/.env.production.example
+
+.pertexo/

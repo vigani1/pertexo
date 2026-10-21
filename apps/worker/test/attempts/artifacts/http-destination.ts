@@ -1,8 +1,9 @@
 import { observeMultipart } from './multipart-observation.js';
 import { createHash } from 'node:crypto';
-import { createServer, request } from 'node:http';
+import { createServer } from 'node:http';
 import type { Socket } from 'node:net';
 import {
+  NodeHttpTransport,
   SecureHttpClient,
   type SecureHttpTransportRequest,
   type SecureHttpTransportResponse,
@@ -44,7 +45,7 @@ export async function createArtifactDestination(
         if (!(chunk instanceof Uint8Array))
           throw new Error('Invalid destination bytes');
         byteLength += chunk.byteLength;
-        if (byteLength > 1048576)
+        if (byteLength > 10485760)
           throw new Error('Destination byte limit exceeded');
         hash.update(chunk);
         if (multipart) chunks.push(Buffer.from(chunk));
@@ -87,40 +88,14 @@ export async function createArtifactDestination(
       input.address.address !== address ||
       input.method !== 'POST' ||
       input.body === undefined ||
-      input.body.byteLength > 1048576 ||
+      input.body.byteLength > 10485760 ||
       input.signal?.aborted === true
     )
       return Promise.reject(new Error('Destination outside owned fixture'));
-    return new Promise((resolve, reject) => {
-      const outgoing = request(
-        {
-          host: '127.0.0.1',
-          port: target.port,
-          method: 'POST',
-          path: '/upload',
-          headers: {
-            ...input.headers,
-            'content-length': input.body?.byteLength,
-          },
-          signal: input.signal,
-        },
-        (incoming) => {
-          resolve({
-            status: incoming.statusCode ?? 0,
-            headers: incoming.headers,
-            body: incoming,
-            close: () => {
-              incoming.destroy();
-              outgoing.destroy();
-            },
-          });
-        },
-      );
-      outgoing.setTimeout(input.timeoutMillis, () =>
-        outgoing.destroy(new Error('Destination timed out')),
-      );
-      outgoing.once('error', reject);
-      outgoing.end(input.body);
+    return new NodeHttpTransport().dispatch({
+      ...input,
+      url: new URL(`http://127.0.0.1:${String(target.port)}/upload`),
+      address: { address: '127.0.0.1', family: 4 },
     });
   };
   return {

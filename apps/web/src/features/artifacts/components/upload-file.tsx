@@ -114,7 +114,7 @@ function UploadSession({
       <LabelledField
         id="upload-file"
         label="File"
-        description="Up to 1 MB. Files are not virus-checked."
+        description="Up to 10 MB (or the server’s lower storage limit). Files are not virus-checked."
       >
         {(control) => (
           <Input

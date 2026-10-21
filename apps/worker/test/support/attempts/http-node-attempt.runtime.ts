@@ -1,3 +1,4 @@
+import { createTestArtifactScratch } from '../infrastructure/artifact-scratch.js';
 import { randomUUID } from 'node:crypto';
 
 import {
@@ -114,6 +115,11 @@ export async function createHttpNodeAttemptProofRuntime(
     owners.splice(index, 1);
   };
   try {
+    const scratch = own(
+      'artifact scratch',
+      await createTestArtifactScratch(),
+      (value) => value.close(),
+    );
     const artifactConfig = parseArtifactStoreConfig(process.env);
     const artifactVerifier = own(
       'artifact verifier',
@@ -313,6 +319,7 @@ export async function createHttpNodeAttemptProofRuntime(
       await createWorkerNodeRuntimeCapabilities(
         {
           artifactStore: artifactConfig,
+          artifactScratchDirectory: scratch.directory,
           database: parseDatabaseConfig({
             connectionString: databaseUrl(workerUrl),
             max: 3,

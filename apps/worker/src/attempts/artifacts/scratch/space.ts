@@ -1,3 +1,8 @@
+import { ArtifactTransfer } from './progress.js';
+import {
+  consumeArtifactChunks,
+  ArtifactSourceCleanupError,
+} from './consume.js';
 import { createHash } from 'node:crypto';
 import { createReadStream, type ReadStream } from 'node:fs';
 import {
@@ -37,6 +42,16 @@ export type ScratchFile = Readonly<{
   release(): Promise<void>;
 }>;
 
+export type ArtifactSpoolOperations = Readonly<{
+  openFile(path: string): ReturnType<typeof open>;
+  removeDirectory(path: string): Promise<void>;
+}>;
+const filesystemOperations: ArtifactSpoolOperations = {
+  openFile: (filename) => open(filename, 'wx', 0o600),
+  removeDirectory: (directory) =>
+    rm(directory, { recursive: true, force: true }),
+};
+
 /** One container's private disk space; failed cleanup never returns its charge. */
 export class ArtifactScratchSpace {
   private readonly attempts = new Map<string, number>();
@@ -44,9 +59,15 @@ export class ArtifactScratchSpace {
   private unwritten = 0;
   private cleanupFailed = false;
 
-  private constructor(private readonly directory: string) {}
+  private constructor(
+    private readonly directory: string,
+    private readonly operations: ArtifactSpoolOperations,
+  ) {}
 
-  static async create(directory: string): Promise<ArtifactScratchSpace> {
+  static async create(
+    directory: string,
+    operations: ArtifactSpoolOperations = filesystemOperations,
+  ): Promise<ArtifactScratchSpace> {
     try {
       if (
         !path.isAbsolute(directory) ||
@@ -75,12 +96,16 @@ export class ArtifactScratchSpace {
             recursive: true,
             force: true,
           });
-      return new ArtifactScratchSpace(directory);
+      return new ArtifactScratchSpace(directory, operations);
     } catch {
       throw new Error(
         'File scratch requires a private disk-backed directory with removable abandoned spools',
       );
     }
+  }
+
+  checkReadiness(): void {
+    if (this.cleanupFailed) throw unavailable('cleanup');
   }
 
   private async reserve(attemptId: string, bytes: number): Promise<() => void> {
@@ -125,6 +150,9 @@ export class ArtifactScratchSpace {
       maxBytes: number;
       body: AsyncIterable<Uint8Array>;
       signal: AbortSignal;
+      deadlineAt?: Date;
+      cancelSource?: (reason: Error) => void;
+      transfer?: ArtifactTransfer;
     }>,
   ): Promise<ScratchFile> {
     input.signal.throwIfAborted();
@@ -132,31 +160,45 @@ export class ArtifactScratchSpace {
       input.attemptId,
       input.maxBytes,
     );
+    const transfer =
+      input.transfer ??
+      new ArtifactTransfer(input.signal, input.deadlineAt, input.cancelSource);
     let directory: string | undefined;
     let file: Awaited<ReturnType<typeof open>> | undefined;
     let written = 0;
     let unwritten = input.maxBytes;
     const streams = new Set<ReadStream>();
     let releasing: Promise<void> | undefined;
+    let sourceCleanupFailed = false;
     const cleanup = async (): Promise<void> => {
-      try {
-        await Promise.all(
-          [...streams].map(async (stream) => {
-            if (stream.closed) return;
-            const closed = new Promise<void>((resolve) => {
-              stream.once('close', resolve);
-            });
-            stream.destroy();
-            await closed;
-          }),
-        );
-        if (file !== undefined) {
+      let failed = sourceCleanupFailed;
+      const closed = await Promise.allSettled(
+        [...streams].map(async (stream) => {
+          if (stream.closed) return;
+          const done = new Promise<void>((resolve) => {
+            stream.once('close', resolve);
+          });
+          stream.destroy();
+          await done;
+        }),
+      );
+      if (closed.some((result) => result.status === 'rejected')) failed = true;
+      if (file !== undefined) {
+        try {
           await file.close();
           file = undefined;
+        } catch {
+          failed = true;
         }
-        if (directory !== undefined)
-          await rm(directory, { recursive: true, force: true });
-      } catch {
+      }
+      if (directory !== undefined) {
+        try {
+          await this.operations.removeDirectory(directory);
+        } catch {
+          failed = true;
+        }
+      }
+      if (failed) {
         this.cleanupFailed = true;
         throw unavailable('cleanup');
       }
@@ -168,36 +210,43 @@ export class ArtifactScratchSpace {
     try {
       directory = await mkdtemp(path.join(this.directory, 'spool-'));
       const filename = path.join(directory, 'body');
-      file = await open(filename, 'wx', 0o600);
+      const outputFile = await this.operations.openFile(filename);
+      file = outputFile;
       const digest = createHash('sha256');
-      for await (const chunk of input.body) {
-        try {
-          input.signal.throwIfAborted();
-          if (written + chunk.byteLength > input.maxBytes)
-            throw new NodeExecutorFailure({
-              kind: 'failed',
-              errorKind: 'configuration',
-              possiblyDispatched: false,
-              safeErrorCode: 'execution.file_size',
-              errorSummary:
-                'The file is too large. Split it into smaller files.',
-            });
-          digest.update(chunk);
-          let offset = 0;
-          while (offset < chunk.byteLength) {
-            const amount = Math.min(65_536, chunk.byteLength - offset);
-            const result = await file.write(chunk, offset, amount);
-            if (result.bytesWritten <= 0) throw unavailable('io');
-            offset += result.bytesWritten;
-            written += result.bytesWritten;
-            unwritten -= result.bytesWritten;
-            this.unwritten -= result.bytesWritten;
+      await consumeArtifactChunks(
+        input.body,
+        transfer.signal,
+        async (chunk) => {
+          try {
+            transfer.signal.throwIfAborted();
+            if (written + chunk.byteLength > input.maxBytes)
+              throw new NodeExecutorFailure({
+                kind: 'failed',
+                errorKind: 'configuration',
+                possiblyDispatched: false,
+                safeErrorCode: 'execution.file_size',
+                errorSummary:
+                  'The file is too large. Split it into smaller files.',
+              });
+            digest.update(chunk);
+            let offset = 0;
+            while (offset < chunk.byteLength) {
+              const amount = Math.min(65_536, chunk.byteLength - offset);
+              const result = await outputFile.write(chunk, offset, amount);
+              if (result.bytesWritten <= 0) throw unavailable('io');
+              transfer.advance();
+              offset += result.bytesWritten;
+              written += result.bytesWritten;
+              unwritten -= result.bytesWritten;
+              this.unwritten -= result.bytesWritten;
+            }
+          } finally {
+            chunk.fill(0);
           }
-        } finally {
-          chunk.fill(0);
-        }
-      }
-      input.signal.throwIfAborted();
+        },
+      );
+      transfer.signal.throwIfAborted();
+      if (input.transfer === undefined) transfer.finish();
       await file.close();
       file = undefined;
       return Object.freeze({
@@ -209,15 +258,29 @@ export class ArtifactScratchSpace {
           streams.add(stream);
           // Prevent unobserved errors during cancellation; consumers still see
           // the error through their iterator or pipeline.
-          stream.on('error', () => undefined);
+          stream.on('error', (error: Error) => {
+            if (!(error instanceof NodeExecutorFailure))
+              sourceCleanupFailed = true;
+          });
           stream.once('close', () => streams.delete(stream));
           return stream;
         },
         release,
       });
     } catch (error) {
+      sourceCleanupFailed ||=
+        error instanceof ArtifactSourceCleanupError ||
+        (error instanceof AggregateError &&
+          error.errors.some(
+            (entry: unknown) => entry instanceof ArtifactSourceCleanupError,
+          ));
+      try {
+        if (input.transfer === undefined) transfer.finish();
+      } catch {
+        sourceCleanupFailed = true;
+      }
       await release();
-      if (input.signal.aborted) throw input.signal.reason;
+      if (transfer.signal.aborted) throw transfer.signal.reason;
       throw error instanceof NodeExecutorFailure ? error : unavailable('io');
     }
   }

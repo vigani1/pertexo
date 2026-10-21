@@ -44,6 +44,7 @@ export const API_PROBLEM_CODES = [
   'request.rate_limited',
   'request.rate_limit_unavailable',
   'workspace.quota_exceeded',
+  'artifact.too_large',
   'artifact.conflict',
   'artifact.unavailable',
   'workspace.conflict',
@@ -296,6 +297,12 @@ const apiProblemDetails = {
     status: 429,
     title: 'Workspace quota exceeded',
     severity: 'warn',
+    exposeDetail: true,
+  },
+  'artifact.too_large': {
+    status: 413,
+    title: 'File too large',
+    severity: 'info',
     exposeDetail: true,
   },
   'artifact.conflict': {

@@ -1,3 +1,4 @@
+import { inlineBytes } from '../support/artifact-runtime.js';
 import {
   NodeDispatchEvidenceError,
   ProviderExecutionRateLimitError,
@@ -357,8 +358,8 @@ describe('slack.send_message@1', () => {
     let requestBody: Uint8Array | undefined;
     const execute = vi.fn(
       async (request: SecureHttpRequest): Promise<SecureHttpResponse> => {
-        requestBody =
-          request.body === undefined ? undefined : new Uint8Array(request.body);
+        const bytes = inlineBytes(request.body);
+        requestBody = bytes === undefined ? undefined : new Uint8Array(bytes);
         expect(request).toMatchObject({
           url: 'https://slack.com/api/chat.postMessage',
           method: 'POST',

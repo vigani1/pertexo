@@ -31,6 +31,7 @@ export function setup(
   options: {
     lostPut?: boolean;
     unavailable?: boolean;
+    tooLarge?: boolean;
     lostBegin?: boolean;
     lostFinalize?: boolean;
     missingPut?: boolean;
@@ -57,6 +58,20 @@ export function setup(
   mockServer.use(
     http.post(`${path}/uploads`, async ({ request }) => {
       keys.push(request.headers.get('idempotency-key'));
+      if (options.tooLarge)
+        return HttpResponse.json(
+          {
+            type: 'urn:pertexo:problem:artifact.too_large',
+            title: 'File too large',
+            status: 413,
+            code: 'artifact.too_large',
+            requestId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+          },
+          {
+            status: 413,
+            headers: { 'content-type': 'application/problem+json' },
+          },
+        );
       if (options.unavailable)
         return HttpResponse.json(
           {

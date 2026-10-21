@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { httpPaginationSchema } from './pagination/validation.js';
 import {
   ARTIFACT_INPUT_MAX_BYTES,
+  FILE_PAGE_LIMITS,
   nodeArtifactReferenceSchema,
 } from '@pertexo/node-sdk';
 
@@ -259,7 +260,7 @@ export const httpRequestInputSchema = z
         inlineRequestBodySchema,
         httpMultipartFileSchema
           .extend({
-            byteLength: z.number().int().min(0).max(MAX_REQUEST_BODY_BYTES),
+            byteLength: z.number().int().min(0).max(FILE_PAGE_LIMITS.fileBytes),
           })
           .readonly(),
       ])
@@ -352,7 +353,8 @@ export type HttpRequestOutput = z.output<typeof httpRequestOutputSchema>;
 
 export const HTTP_REQUEST_LIMITS = Object.freeze({
   maxInlineResponseBytes: MAX_INLINE_RESPONSE_BYTES,
-  maxRequestBodyBytes: MAX_REQUEST_BODY_BYTES,
+  maxInlineRequestBodyBytes: MAX_REQUEST_BODY_BYTES,
+  maxRequestBodyBytes: FILE_PAGE_LIMITS.fileBytes,
   maxResponseBytes: MAX_RESPONSE_BYTES,
   maxUrlBytes: MAX_URL_BYTES,
 });

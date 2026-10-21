@@ -1,3 +1,4 @@
+import { FILE_PAGE_LIMITS } from '@pertexo/node-sdk';
 import {
   ArtifactIntegrityError,
   ArtifactNotFoundError,
@@ -136,6 +137,7 @@ export class ArtifactService {
     if (artifact.expiresAt.getTime() <= this.now().getTime())
       throw new ArtifactUploadDeadlineError();
 
+    this.assertSize(artifact.byteLength);
     const expected = declaredMetadata(artifact);
     try {
       const finalized = await this.dependencies.database.finalizeUpload({
@@ -244,7 +246,10 @@ export class ArtifactService {
   }
 
   private assertSize(byteLength: number): void {
-    if (byteLength > this.options.maxObjectBytes)
+    if (
+      byteLength >
+      Math.min(FILE_PAGE_LIMITS.fileBytes, this.options.maxObjectBytes)
+    )
       throw new ArtifactUploadTooLargeError();
   }
 

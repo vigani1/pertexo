@@ -1,3 +1,4 @@
+import { FILE_PAGE_LIMITS } from '@pertexo/node-sdk';
 import {
   artifactUploadRequestSchema,
   type ArtifactMetadataResponse,
@@ -7,7 +8,7 @@ import { describeCommandError } from '@/lib/api/error-copy';
 
 export class UploadValidationError extends Error {}
 
-const MAX_INPUT_FILE_BYTES = 1024 * 1024;
+const MAX_INPUT_FILE_BYTES = FILE_PAGE_LIMITS.fileBytes;
 export type UploadMetadata = Pick<
   ArtifactMetadataResponse,
   'byteLength' | 'mediaType' | 'sha256'
@@ -41,7 +42,7 @@ export async function describeUpload(
 ): Promise<UploadMetadata> {
   if (file.size > MAX_INPUT_FILE_BYTES)
     throw new UploadValidationError(
-      'Choose a file no larger than 1 MB. Split larger files into smaller files and upload them separately.',
+      'Choose a file no larger than 10 MB. Split larger files into smaller files and upload them separately.',
     );
   signal.throwIfAborted();
   const bytes = await file.arrayBuffer();
@@ -69,6 +70,8 @@ export async function describeUpload(
 
 export function uploadFailure(error: unknown): string {
   if (isApiError(error)) {
+    if (error.problem?.code === 'artifact.too_large')
+      return 'The file exceeds the server’s storage limit (up to 10 MB). Split it into smaller files and upload them separately.';
     if (error.problem?.code === 'artifact.unavailable')
       return 'File storage is unavailable. The server needs working ARTIFACT_STORE_* configuration; ask the person running Pertexo to check it.';
     if (error.problem?.code === 'workspace.quota_exceeded')

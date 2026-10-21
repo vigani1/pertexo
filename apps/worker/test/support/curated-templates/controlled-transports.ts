@@ -87,7 +87,7 @@ export function createCuratedTemplateControlledTransports(
       } else if (input.url.href === SLACK_API_ENDPOINTS.sendMessage) {
         if (
           input.method !== 'POST' ||
-          input.body === undefined ||
+          !(input.body instanceof Uint8Array) ||
           Object.keys(input.headers).sort().join(',') !==
             'accept,authorization,content-type' ||
           input.headers.accept !== 'application/json' ||
@@ -131,7 +131,9 @@ export function createCuratedTemplateControlledTransports(
           kind,
           status,
           bodyHash: createHash('sha256')
-            .update(input.body ?? new Uint8Array())
+            .update(
+              input.body instanceof Uint8Array ? input.body : new Uint8Array(),
+            )
             .digest('hex'),
         }),
       );

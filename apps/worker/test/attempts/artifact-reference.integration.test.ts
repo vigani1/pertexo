@@ -293,6 +293,8 @@ describeIntegration('Phase 4 worker artifact output capability', () => {
           await databaseEnvironment.initialize();
           runtime = await createWorkerNodeRuntimeCapabilities({
             database: databaseEnvironment.workerConfig,
+            artifactScratchDirectory:
+              databaseEnvironment.artifactScratchDirectory,
             artifactStore: artifactConfig,
           });
           verifier = createArtifactStore(artifactConfig);

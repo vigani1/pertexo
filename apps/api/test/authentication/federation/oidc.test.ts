@@ -48,6 +48,8 @@ function fixture(
   };
   const seen: SecureHttpTransportRequest[] = [];
   const dispatch = vi.fn((request: SecureHttpTransportRequest) => {
+    if (request.body !== undefined && !(request.body instanceof Uint8Array))
+      throw new Error('Expected inline OIDC body');
     seen.push({
       ...request,
       ...(request.body === undefined
@@ -171,9 +173,10 @@ describe('organization OIDC proof gateway', () => {
         request.url.pathname.endsWith('/token'),
       );
       expect(token).toBeDefined();
-      const fields = new URLSearchParams(
-        Buffer.from(token?.body ?? []).toString('utf8'),
-      );
+      const body = token?.body;
+      if (!(body instanceof Uint8Array))
+        throw new Error('Expected inline OIDC token body');
+      const fields = new URLSearchParams(Buffer.from(body).toString('utf8'));
       expect(fields.get('code_verifier')).toBe(proof.codeVerifier);
       expect(fields.get('redirect_uri')).toBe(proof.redirectUri);
       if (method === 'client_secret_basic')

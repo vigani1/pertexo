@@ -14,7 +14,7 @@ import {
 import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createWorkerNodeRuntimeCapabilities } from '../../src/testing.js';
+import { createWorkerNodeRuntimeCapabilities as createRuntimeCapabilities } from '../../src/testing.js';
 
 const workspaceId = '11111111-1111-4111-8111-111111111111';
 const connectionId = '22222222-2222-4222-8222-222222222222';
@@ -42,6 +42,24 @@ const databaseConfig = {
 } as const;
 
 const temporaryDirectories: string[] = [];
+async function createOwnedCapabilities(
+  options: Parameters<typeof createRuntimeCapabilities>[0],
+  dependencies: NonNullable<
+    Parameters<typeof createRuntimeCapabilities>[1]
+  > = {},
+) {
+  let spoolDirectory = dependencies.spoolDirectory;
+  if (spoolDirectory === undefined) {
+    spoolDirectory = await mkdtemp(
+      path.join(tmpdir(), 'pertexo-capability-test-'),
+    );
+    temporaryDirectories.push(spoolDirectory);
+  }
+  return createRuntimeCapabilities(options, {
+    ...dependencies,
+    spoolDirectory,
+  });
+}
 
 afterEach(async () => {
   await Promise.all(
@@ -56,7 +74,7 @@ describe('worker node runtime capabilities', () => {
     const respond = vi
       .fn()
       .mockResolvedValue({ outcome: 'responded', statusCode: 200 });
-    const runtime = await createWorkerNodeRuntimeCapabilities(
+    const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       { webhookResponses: { respond } },
     );
@@ -107,7 +125,7 @@ describe('worker node runtime capabilities', () => {
 
   it('fails closed for partially configured runtime capabilities', async () => {
     await expect(
-      createWorkerNodeRuntimeCapabilities(
+      createOwnedCapabilities(
         { database: databaseConfig },
         {
           connectionDatabase: {
@@ -118,7 +136,7 @@ describe('worker node runtime capabilities', () => {
       ),
     ).rejects.toThrow('Worker provider rate limiter is incomplete');
     await expect(
-      createWorkerNodeRuntimeCapabilities(
+      createOwnedCapabilities(
         { database: databaseConfig },
         {
           connectionDatabase: {
@@ -132,7 +150,7 @@ describe('worker node runtime capabilities', () => {
       ),
     ).rejects.toThrow('Worker connection capability is incomplete');
     await expect(
-      createWorkerNodeRuntimeCapabilities(
+      createOwnedCapabilities(
         { database: databaseConfig },
         {
           artifactPersistence: {
@@ -152,7 +170,7 @@ describe('worker node runtime capabilities', () => {
         throw cleanupError;
       });
     try {
-      const result = await createWorkerNodeRuntimeCapabilities(
+      const result = await createOwnedCapabilities(
         { database: databaseConfig, redisUrl: 'redis://localhost:6379/0' },
         {
           connectionDatabase: {
@@ -184,7 +202,7 @@ describe('worker node runtime capabilities', () => {
     );
     try {
       await expect(
-        createWorkerNodeRuntimeCapabilities(
+        createOwnedCapabilities(
           { database: databaseConfig },
           {
             connectionEncryption: { open: vi.fn() },
@@ -203,7 +221,7 @@ describe('worker node runtime capabilities', () => {
   });
 
   it('owns the default artifact persistence database lifecycle', async () => {
-    const runtime = await createWorkerNodeRuntimeCapabilities(
+    const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       { artifactStore: { put: vi.fn() } },
     );
@@ -218,7 +236,7 @@ describe('worker node runtime capabilities', () => {
       monitorLockWaits: false,
       role: 'worker',
     });
-    const runtime = await createWorkerNodeRuntimeCapabilities(
+    const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       {
         artifactStore: { put: vi.fn() },
@@ -239,7 +257,7 @@ describe('worker node runtime capabilities', () => {
       .spyOn(RedisRateLimitRuntime.prototype, 'close')
       .mockRejectedValueOnce(new Error('injected Redis close failure'));
     try {
-      const runtime = await createWorkerNodeRuntimeCapabilities({
+      const runtime = await createOwnedCapabilities({
         connectionEncryption: {
           keyReference: 'alias/pertexo',
           region: 'eu-central-1',
@@ -296,7 +314,7 @@ describe('worker node runtime capabilities', () => {
     const consumeProviderLimit = vi
       .fn()
       .mockResolvedValue({ allowed: true as const });
-    const runtime = await createWorkerNodeRuntimeCapabilities(
+    const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       {
         connectionDatabase: {
@@ -372,7 +390,7 @@ describe('worker node runtime capabilities', () => {
 
   it('rejects provider execution before secret or provider work when admission is exhausted', async () => {
     const resolveConnectionSecret = vi.fn();
-    const runtime = await createWorkerNodeRuntimeCapabilities(
+    const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       {
         connectionDatabase: {
@@ -419,7 +437,7 @@ describe('worker node runtime capabilities', () => {
           }
       >();
       const resolveConnectionSecret = vi.fn();
-      const runtime = await createWorkerNodeRuntimeCapabilities(
+      const runtime = await createOwnedCapabilities(
         { database: databaseConfig },
         {
           connectionDatabase: {
@@ -473,7 +491,7 @@ describe('worker node runtime capabilities', () => {
       .fn()
       .mockReturnValue(resolvedSecret.promise);
     const open = vi.fn();
-    const runtime = await createWorkerNodeRuntimeCapabilities(
+    const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       {
         connectionDatabase: {
@@ -549,7 +567,7 @@ describe('worker node runtime capabilities', () => {
       }),
     );
     const assertConnectionSecretCurrent = vi.fn(() => Promise.resolve());
-    const runtime = await createWorkerNodeRuntimeCapabilities(
+    const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       {
         connectionDatabase: {
@@ -618,7 +636,7 @@ describe('worker node runtime capabilities', () => {
         sealed: {} as never,
       }),
     );
-    const runtime = await createWorkerNodeRuntimeCapabilities(
+    const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       {
         connectionDatabase: {
@@ -664,7 +682,7 @@ describe('worker node runtime capabilities', () => {
   it('awaits late decryption, clears its secret, and refuses it after cancellation', async () => {
     const decrypted = Promise.withResolvers<Uint8Array>();
     const open = vi.fn().mockReturnValue(decrypted.promise);
-    const runtime = await createWorkerNodeRuntimeCapabilities(
+    const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       {
         connectionDatabase: {
@@ -716,7 +734,7 @@ describe('worker node runtime capabilities', () => {
       workspaceId,
     } as const;
     const open = vi.fn();
-    const runtime = await createWorkerNodeRuntimeCapabilities(
+    const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       {
         connectionDatabase: {
@@ -756,7 +774,7 @@ describe('worker node runtime capabilities', () => {
       controller.abort();
       return Promise.resolve();
     });
-    const runtime = await createWorkerNodeRuntimeCapabilities(
+    const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       {
         connectionDatabase: {
@@ -812,7 +830,7 @@ describe('worker node runtime capabilities', () => {
   ] as const)(
     'preserves %s failure semantics at the worker capability boundary',
     async (_name, stage, sourceError, invalidCredential) => {
-      const runtime = await createWorkerNodeRuntimeCapabilities(
+      const runtime = await createOwnedCapabilities(
         { database: databaseConfig },
         {
           connectionDatabase: {
@@ -893,7 +911,7 @@ describe('worker node runtime capabilities', () => {
     });
     const checkReadiness = vi.fn().mockResolvedValue({ bucket: 'artifacts' });
     const now = new Date('2026-08-22T12:00:00.000Z');
-    const runtime = await createWorkerNodeRuntimeCapabilities(
+    const runtime = await createOwnedCapabilities(
       { database: databaseConfig, artifactRetentionMillis: 60_000 },
       {
         artifactPersistence: { createPending, finalize },
@@ -959,7 +977,7 @@ describe('worker node runtime capabilities', () => {
       );
       temporaryDirectories.push(spoolDirectory);
       const uploaded: number[] = [];
-      const runtime = await createWorkerNodeRuntimeCapabilities(
+      const runtime = await createOwnedCapabilities(
         { database: databaseConfig },
         {
           artifactPersistence: {
@@ -1034,7 +1052,7 @@ describe('worker node runtime capabilities', () => {
     );
     temporaryDirectories.push(spoolDirectory);
     const put = vi.fn();
-    const runtime = await createWorkerNodeRuntimeCapabilities(
+    const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       {
         artifactPersistence: {
@@ -1060,7 +1078,10 @@ describe('worker node runtime capabilities', () => {
         purpose: 'node-output',
         signal: new AbortController().signal,
       }),
-    ).rejects.toBeInstanceOf(RangeError);
+    ).rejects.toMatchObject({
+      safeErrorCode: 'execution.file_size',
+      kind: 'failed',
+    });
     expect(overflow).toEqual(new Uint8Array([0, 0, 0]));
     expect(put).not.toHaveBeenCalled();
     expect(await readdir(spoolDirectory)).toEqual([]);
@@ -1079,7 +1100,7 @@ describe('worker node runtime capabilities', () => {
       value: undefined,
     });
     const put = vi.fn();
-    const runtime = await createWorkerNodeRuntimeCapabilities(
+    const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       {
         artifactPersistence: {
@@ -1115,7 +1136,7 @@ describe('worker node runtime capabilities', () => {
     });
     expect(settled).not.toHaveBeenCalled();
     pendingChunk.resolve({ done: false, value: chunk });
-    await expect(written).rejects.toMatchObject({ name: 'AbortError' });
+    await expect(written).rejects.toMatchObject({ kind: 'canceled' });
     expect(chunk).toEqual(new Uint8Array([0, 0]));
     expect(put).not.toHaveBeenCalled();
     expect(await readdir(spoolDirectory)).toEqual([]);
@@ -1129,7 +1150,7 @@ describe('worker node runtime capabilities', () => {
     temporaryDirectories.push(spoolDirectory);
     const returnError = new Error('artifact source return failed');
     const overflow = new Uint8Array([1, 2]);
-    const runtime = await createWorkerNodeRuntimeCapabilities(
+    const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       {
         artifactPersistence: {
@@ -1162,9 +1183,11 @@ describe('worker node runtime capabilities', () => {
         () => undefined,
         (error: unknown) => error,
       );
-    expect(result).toBeInstanceOf(AggregateError);
-    expect((result as AggregateError).errors[0]).toBeInstanceOf(RangeError);
-    expect((result as AggregateError).errors[1]).toBe(returnError);
+    expect(result).toMatchObject({
+      safeErrorCode: 'execution.file_scratch_cleanup',
+      kind: 'retry',
+    });
+    expect(JSON.stringify(result)).not.toContain(returnError.message);
     expect(overflow).toEqual(new Uint8Array([0, 0]));
     expect(await readdir(spoolDirectory)).toEqual([]);
     await runtime.close();
@@ -1182,7 +1205,7 @@ describe('worker node runtime capabilities', () => {
           destroyed: boolean;
         })
       | undefined;
-    const runtime = await createWorkerNodeRuntimeCapabilities(
+    const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       {
         artifactPersistence: {
@@ -1241,7 +1264,7 @@ describe('worker node runtime capabilities', () => {
       return uploadResult.promise;
     });
     const finalize = vi.fn();
-    const runtime = await createWorkerNodeRuntimeCapabilities(
+    const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       {
         artifactPersistence: {
@@ -1294,7 +1317,7 @@ describe('worker node runtime capabilities', () => {
     const writeResult = Promise.withResolvers<{ bytesWritten: number }>();
     const write = vi.fn().mockReturnValue(writeResult.promise);
     const put = vi.fn();
-    const runtime = await createWorkerNodeRuntimeCapabilities(
+    const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       {
         artifactPersistence: {
@@ -1339,7 +1362,7 @@ describe('worker node runtime capabilities', () => {
     expect(settled).not.toHaveBeenCalled();
     expect(chunk).toEqual(new Uint8Array([9]));
     writeResult.resolve({ bytesWritten: 1 });
-    await expect(writing).rejects.toMatchObject({ name: 'AbortError' });
+    await expect(writing).rejects.toMatchObject({ kind: 'canceled' });
     expect(chunk).toEqual(new Uint8Array([0]));
     expect(put).not.toHaveBeenCalled();
     expect(await readdir(spoolDirectory)).toEqual([]);
@@ -1352,7 +1375,7 @@ describe('worker node runtime capabilities', () => {
     );
     temporaryDirectories.push(spoolDirectory);
     const put = vi.fn();
-    const runtime = await createWorkerNodeRuntimeCapabilities(
+    const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       {
         artifactPersistence: {
@@ -1386,20 +1409,23 @@ describe('worker node runtime capabilities', () => {
         purpose: 'node-output',
         signal: new AbortController().signal,
       }),
-    ).rejects.toThrow('Artifact spool made no write progress');
+    ).rejects.toMatchObject({
+      safeErrorCode: 'execution.file_scratch_io',
+      possiblyDispatched: false,
+    });
     expect(put).not.toHaveBeenCalled();
     expect(await readdir(spoolDirectory)).toEqual([]);
     await runtime.close();
   });
 
-  it('preserves sole and combined spool file-close failures', async () => {
+  it('refuses more writes after a file-close failure and still removes the owned directory', async () => {
     const spoolDirectory = await mkdtemp(
       path.join(tmpdir(), 'pertexo-capability-test-'),
     );
     temporaryDirectories.push(spoolDirectory);
     const sourceError = new Error('injected artifact source failure');
     const closeError = new Error('injected spool close failure');
-    const runtime = await createWorkerNodeRuntimeCapabilities(
+    const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       {
         artifactPersistence: {
@@ -1437,7 +1463,9 @@ describe('worker node runtime capabilities', () => {
         purpose: 'node-output',
         signal: new AbortController().signal,
       }),
-    ).rejects.toBe(closeError);
+    ).rejects.toMatchObject({
+      safeErrorCode: 'execution.file_scratch_cleanup',
+    });
     await expect(
       artifacts.write({
         body: (async function* (): AsyncGenerator<Uint8Array> {
@@ -1450,13 +1478,8 @@ describe('worker node runtime capabilities', () => {
         purpose: 'node-output',
         signal: new AbortController().signal,
       }),
-    ).rejects.toSatisfy((error: unknown) => {
-      expect(error).toBeInstanceOf(AggregateError);
-      expect((error as AggregateError).errors).toEqual([
-        sourceError,
-        closeError,
-      ]);
-      return true;
+    ).rejects.toMatchObject({
+      safeErrorCode: 'execution.file_scratch_cleanup',
     });
     expect(await readdir(spoolDirectory)).toEqual([]);
     await runtime.close();
@@ -1467,7 +1490,7 @@ describe('worker node runtime capabilities', () => {
       path.join(tmpdir(), 'pertexo-capability-test-'),
     );
     temporaryDirectories.push(spoolDirectory);
-    const runtime = await createWorkerNodeRuntimeCapabilities(
+    const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       {
         artifactPersistence: {
@@ -1508,14 +1531,14 @@ describe('worker node runtime capabilities', () => {
         signal: new AbortController().signal,
       }),
     ).rejects.toMatchObject({
-      message: 'Artifact cleanup failed with a non-Error value',
-      cause: undefined,
+      safeErrorCode: 'execution.file_scratch_cleanup',
+      possiblyDispatched: false,
     });
     expect(await readdir(spoolDirectory)).toEqual([]);
     await runtime.close();
   });
 
-  it('preserves sole and combined spool-directory cleanup failures', async () => {
+  it('keeps failed directory cleanup charged and refuses fresh writes', async () => {
     const spoolDirectory = await mkdtemp(
       path.join(tmpdir(), 'pertexo-capability-test-'),
     );
@@ -1526,7 +1549,7 @@ describe('worker node runtime capabilities', () => {
       .fn()
       .mockResolvedValueOnce(undefined)
       .mockRejectedValueOnce(operationError);
-    const runtime = await createWorkerNodeRuntimeCapabilities(
+    const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       {
         artifactPersistence: {
@@ -1568,16 +1591,18 @@ describe('worker node runtime capabilities', () => {
         signal: new AbortController().signal,
       });
 
-    await expect(write()).rejects.toBe(cleanupError);
+    await expect(write()).rejects.toMatchObject({
+      safeErrorCode: 'execution.file_scratch_cleanup',
+    });
     const combined = await write().then(
       () => undefined,
       (error: unknown) => error,
     );
-    expect(combined).toBeInstanceOf(AggregateError);
-    expect((combined as AggregateError).errors).toEqual([
-      operationError,
-      cleanupError,
-    ]);
+    expect(combined).toMatchObject({
+      safeErrorCode: 'execution.file_scratch_cleanup',
+    });
+    expect(createPending).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(combined)).not.toContain(cleanupError.message);
     await runtime.close();
   });
 
@@ -1587,7 +1612,7 @@ describe('worker node runtime capabilities', () => {
     );
     temporaryDirectories.push(spoolDirectory);
     const put = vi.fn();
-    const runtime = await createWorkerNodeRuntimeCapabilities(
+    const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       {
         artifactPersistence: {
@@ -1638,7 +1663,7 @@ describe('worker node runtime capabilities', () => {
     );
     temporaryDirectories.push(spoolDirectory);
     const put = vi.fn();
-    const runtime = await createWorkerNodeRuntimeCapabilities(
+    const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       {
         artifactPersistence: {
@@ -1677,7 +1702,7 @@ describe('worker node runtime capabilities', () => {
     );
     temporaryDirectories.push(spoolDirectory);
     const createPending = vi.fn(() => Promise.resolve());
-    const runtime = await createWorkerNodeRuntimeCapabilities(
+    const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       {
         artifactPersistence: {
@@ -1728,7 +1753,7 @@ describe('worker node runtime capabilities', () => {
     const createPending = vi.fn(() => Promise.resolve());
     const now = new Date('2026-08-22T12:00:00.000Z');
     const previewDeadline = new Date(now.getTime() + 10_000);
-    const runtime = await createWorkerNodeRuntimeCapabilities(
+    const runtime = await createOwnedCapabilities(
       { database: databaseConfig, artifactRetentionMillis: 60_000 },
       {
         artifactPersistence: {
@@ -1782,7 +1807,7 @@ describe('worker node runtime capabilities', () => {
   it.each([0, 1.5, 10_485_761])(
     'rejects invalid artifact byte limit %s',
     async (maxBytes) => {
-      const runtime = await createWorkerNodeRuntimeCapabilities(
+      const runtime = await createOwnedCapabilities(
         { database: databaseConfig },
         {
           artifactPersistence: { createPending: vi.fn(), finalize: vi.fn() },
@@ -1811,7 +1836,7 @@ describe('worker node runtime capabilities', () => {
   it('rejects an artifact whose retention deadline has passed', async () => {
     const artifactRetentionDeadline = new Date('2026-08-22T11:59:59.000Z');
     const now = new Date('2026-08-22T12:00:00.000Z');
-    const runtime = await createWorkerNodeRuntimeCapabilities(
+    const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       {
         artifactPersistence: { createPending: vi.fn(), finalize: vi.fn() },
@@ -1838,4 +1863,56 @@ describe('worker node runtime capabilities', () => {
     ).rejects.toBeInstanceOf(RangeError);
     await runtime.close();
   });
+});
+
+it('cleans after simultaneous metadata and directory-removal failures and reports no private adapter details', async () => {
+  const spoolDirectory = await mkdtemp(
+    path.join(tmpdir(), 'pertexo-capability-test-'),
+  );
+  temporaryDirectories.push(spoolDirectory);
+  const createPending = vi
+    .fn()
+    .mockRejectedValue(new Error('private metadata failure'));
+  const removeDirectory = vi
+    .fn()
+    .mockRejectedValue(new Error('private directory path'));
+  const put = vi.fn();
+  const runtime = await createOwnedCapabilities(
+    { database: databaseConfig },
+    {
+      artifactPersistence: { createPending, finalize: vi.fn() },
+      artifactStore: { put },
+      spoolDirectory,
+      artifactSpoolOperations: {
+        openFile: (file) => open(file, 'wx', 0o600),
+        removeDirectory,
+      },
+    },
+  );
+  try {
+    const artifacts = runtime.factories.artifacts?.(context);
+    if (artifacts === undefined) throw new Error('Artifacts missing');
+    const bytes = new Uint8Array([1]);
+    const result: unknown = await artifacts
+      .write({
+        body: (async function* () {
+          yield await Promise.resolve(bytes);
+        })(),
+        maxBytes: 1,
+        mediaType: 'text/plain',
+        purpose: 'node-output',
+        signal: new AbortController().signal,
+      })
+      .catch((error: unknown) => error);
+    expect(result).toMatchObject({
+      safeErrorCode: 'execution.file_scratch_cleanup',
+    });
+    expect(createPending).toHaveBeenCalledTimes(1);
+    expect(removeDirectory).toHaveBeenCalledTimes(1);
+    expect(put).not.toHaveBeenCalled();
+    expect(bytes).toEqual(new Uint8Array([0]));
+    expect(JSON.stringify(result)).not.toContain('private');
+  } finally {
+    await runtime.close();
+  }
 });

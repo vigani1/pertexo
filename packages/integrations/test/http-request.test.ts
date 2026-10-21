@@ -1,3 +1,5 @@
+import { inlineBytes } from './support/artifact-runtime.js';
+import { verifiedSource, sourceBytes } from './support/artifact-runtime.js';
 import { createNodeCatalog } from '@pertexo/node-sdk';
 import {
   createNodeRegistry,
@@ -283,7 +285,7 @@ describe('http.request@1 server executor', () => {
         authorization: 'Bearer executor-secret',
       });
       expect(request.sensitiveValues).toEqual(['Bearer executor-secret']);
-      requestBody = request.body;
+      requestBody = inlineBytes(request.body);
       await request.beforeDispatch();
       expect(state.beforeDispatch).toHaveBeenCalledOnce();
       return response(providerBody);
@@ -1574,14 +1576,16 @@ describe('HTTP artifact request bodies', () => {
   };
   it('sends exact verified bytes, sets MIME type and clears owned bytes afterwards', async () => {
     const bytes = new Uint8Array([0, 255, 128, 42]);
-    const read = vi.fn().mockResolvedValue(bytes);
-    const state = runtime({ artifacts: { read, write: vi.fn() } });
+    const read = vi.fn().mockResolvedValue(verifiedSource(bytes));
+    const state = runtime({
+      artifacts: { openVerified: read, write: vi.fn() },
+    });
     const sent: Uint8Array[] = [];
     const headers: Record<string, string>[] = [];
     const httpClient = streamingHttpClient(async (request) => {
       await request.beforeDispatch();
       if (request.body === undefined) throw new Error('File body missing');
-      sent.push(new Uint8Array(request.body));
+      sent.push(Uint8Array.from(await sourceBytes(request.body)));
       headers.push({ ...request.headers });
       return response(encoder.encode('{}'));
     });
@@ -1596,7 +1600,7 @@ describe('HTTP artifact request bodies', () => {
     expect(headers[0]?.['content-type']).toBe(reference.mediaType);
     expect(read).toHaveBeenCalledWith({
       reference,
-      maxBytes: 1048576,
+      maxBytes: 10485760,
       signal,
     });
     expect(bytes).toEqual(new Uint8Array(4));
@@ -1605,7 +1609,9 @@ describe('HTTP artifact request bodies', () => {
   it('retains an explicit content type', async () => {
     const state = runtime({
       artifacts: {
-        read: vi.fn().mockResolvedValue(new Uint8Array(4)),
+        openVerified: vi
+          .fn()
+          .mockResolvedValue(verifiedSource(new Uint8Array(4))),
         write: vi.fn(),
       },
     });
@@ -1625,7 +1631,9 @@ describe('HTTP artifact request bodies', () => {
     'rejects %s file bodies before reading or dispatching',
     async (method) => {
       const read = vi.fn();
-      const state = runtime({ artifacts: { read, write: vi.fn() } });
+      const state = runtime({
+        artifacts: { openVerified: read, write: vi.fn() },
+      });
       const httpClient = { executeStreaming: vi.fn() };
       await expect(
         createHttpRequestExecutorRegistration({ httpClient }).execute(
@@ -1650,7 +1658,7 @@ describe('HTTP artifact request bodies', () => {
     const httpClient = { executeStreaming: vi.fn() };
     for (const unresolved of [false, true]) {
       const state = runtime({
-        artifacts: { read, write: vi.fn() },
+        artifacts: { openVerified: read, write: vi.fn() },
         ...(unresolved ? { providerDispatchUnresolved: true as const } : {}),
       });
       await expect(
@@ -1670,11 +1678,11 @@ describe('HTTP artifact request bodies', () => {
   it('accepts the exact maximum descriptor and rejects oversized or malformed references', () => {
     expect(
       httpRequestInputSchema.safeParse({
-        body: { kind: 'artifact', ...reference, byteLength: 1048576 },
+        body: { kind: 'artifact', ...reference, byteLength: 10485760 },
       }).success,
     ).toBe(true);
     for (const patch of [
-      { byteLength: 1048577 },
+      { byteLength: 10485761 },
       { artifactId: 'bad' },
       { sha256: 'bad' },
       { mediaType: 'text/plain\r\nInjected: value' },

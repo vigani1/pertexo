@@ -5,6 +5,7 @@ import { JSON_MEDIA_TYPE } from '../http/content-type.js';
 
 import {
   type JsonValue,
+  type NodeVerifiedByteSource,
   type NodeExecutionInvocation,
   type NodeExecutorRegistration,
   canonicalizeBoundedJson,
@@ -242,8 +243,9 @@ async function executeHttpRequest(
   const sideEffect = repeatable
     ? HTTP_SIDE_EFFECT_CLASS.safe
     : HTTP_SIDE_EFFECT_CLASS.unsafe;
-  let body: Uint8Array | undefined;
+  let body: Uint8Array | NodeVerifiedByteSource | undefined;
   let multipartContentType: string | undefined;
+  let possiblyDispatched = runtime.providerDispatchUnresolved === true;
   try {
     if (config.multipart !== undefined) {
       const encoded = await encodeMultipart({
@@ -286,7 +288,12 @@ async function executeHttpRequest(
         signal: invocation.signal,
       });
     } catch (error: unknown) {
-      body?.fill(0);
+      await releaseHttpMaterial(
+        body,
+        undefined,
+        repeatable,
+        possiblyDispatched,
+      );
       if (!repeatable && runtime.providerDispatchUnresolved === true)
         throw new HttpRequestExecutorError(
           Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
@@ -374,6 +381,20 @@ async function executeHttpRequest(
           };
     let response;
     try {
+      const beforeDispatch =
+        resolved === undefined ||
+        connectionId === undefined ||
+        connections?.assertCurrent === undefined
+          ? createUnauthenticatedBeforeDispatch(dispatchRuntime)
+          : createProviderBeforeDispatch({
+              assertCurrent: connections.assertCurrent,
+              connectionId,
+              expectedProviderKey: 'http',
+              expectedAuthType: 'http_headers',
+              secretVersionId: resolved.secretVersionId,
+              signal: invocation.signal,
+              runtime: dispatchRuntime,
+            });
       const request = {
         url: config.url,
         method: config.method,
@@ -384,20 +405,10 @@ async function executeHttpRequest(
         maxResponseBytes: config.maxResponseBytes,
         sensitiveValues: Object.values(credential.headers),
         signal: invocation.signal,
-        beforeDispatch:
-          resolved === undefined ||
-          connectionId === undefined ||
-          connections?.assertCurrent === undefined
-            ? createUnauthenticatedBeforeDispatch(dispatchRuntime)
-            : createProviderBeforeDispatch({
-                assertCurrent: connections.assertCurrent,
-                connectionId,
-                expectedProviderKey: 'http',
-                expectedAuthType: 'http_headers',
-                secretVersionId: resolved.secretVersionId,
-                signal: invocation.signal,
-                runtime: dispatchRuntime,
-              }),
+        beforeDispatch: async () => {
+          await beforeDispatch();
+          possiblyDispatched = true;
+        },
       };
       if (config.pagination !== undefined)
         return httpRequestOutputSchema.parse(
@@ -491,9 +502,20 @@ async function executeHttpRequest(
       redirectCount: response.redirectCount,
     });
   } finally {
-    body?.fill(0);
-    resolved?.secret.fill(0);
+    await releaseHttpMaterial(
+      body,
+      resolved?.secret,
+      repeatable,
+      possiblyDispatched,
+    );
   }
+}
+
+async function releaseRequestBody(
+  body: Uint8Array | NodeVerifiedByteSource | undefined,
+): Promise<void> {
+  if (body instanceof Uint8Array) body.fill(0);
+  else await body?.release();
 }
 
 async function writeArtifact(
@@ -504,6 +526,7 @@ async function writeArtifact(
   mediaType: string,
   maxBytes: number,
   signal: AbortSignal,
+  cancelSource?: (reason: Error) => void,
 ) {
   if (artifacts === undefined)
     throw new HttpRequestExecutorError(
@@ -518,6 +541,7 @@ async function writeArtifact(
       mediaType,
       purpose: 'node-output',
       signal,
+      ...(cancelSource === undefined ? {} : { cancelSource }),
     });
   } catch (error) {
     throw new HttpRequestExecutorError(
@@ -640,6 +664,7 @@ async function consumeResponseBody(
           response.headers['content-type'] ?? 'application/octet-stream',
           maxBytes,
           response.signal,
+          response.cancelSource,
         );
       }
     }
@@ -667,4 +692,24 @@ export function createHttpRequestExecutorRegistration(
         () => executeHttpRequest(dependencies, invocation),
       ),
   });
+}
+
+async function releaseHttpMaterial(
+  body: Uint8Array | NodeVerifiedByteSource | undefined,
+  secret: Uint8Array | undefined,
+  repeatable: boolean,
+  possiblyDispatched: boolean,
+): Promise<void> {
+  try {
+    await releaseRequestBody(body);
+  } catch (error) {
+    if (!repeatable && possiblyDispatched)
+      throw new HttpRequestExecutorError(
+        { kind: 'outcome_unknown', errorKind: 'provider' },
+        true,
+      );
+    throw error;
+  } finally {
+    secret?.fill(0);
+  }
 }

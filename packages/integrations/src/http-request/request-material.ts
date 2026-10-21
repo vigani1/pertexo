@@ -22,7 +22,7 @@ export function requestBody(
   if (method === 'GET' || method === 'HEAD') throw createFailure();
   if (input.body.encoding === 'utf8') {
     const bytes = new TextEncoder().encode(input.body.value);
-    if (bytes.byteLength > HTTP_REQUEST_LIMITS.maxRequestBodyBytes)
+    if (bytes.byteLength > HTTP_REQUEST_LIMITS.maxInlineRequestBodyBytes)
       throw createFailure();
     return bytes;
   }
@@ -34,7 +34,7 @@ export function requestBody(
     throw createFailure();
   const bytes = Buffer.from(input.body.value, 'base64');
   if (
-    bytes.byteLength > HTTP_REQUEST_LIMITS.maxRequestBodyBytes ||
+    bytes.byteLength > HTTP_REQUEST_LIMITS.maxInlineRequestBodyBytes ||
     bytes.toString('base64') !== input.body.value
   )
     throw createFailure();
