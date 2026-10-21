@@ -43,9 +43,15 @@
       ],
       "sharedConfiguration": [
         "AUTH_MAIL_KEY_VERSION",
-        "INVITATION_TOKEN_KEY_VERSION"
+        "INVITATION_TOKEN_KEY_VERSION",
+        "CALLBACK_TOKEN_KEY_VERSION"
       ],
-      "sharedSecrets": ["AUTH_MAIL_KEY", "INVITATION_TOKEN_KEY"],
+      "sharedSecrets": [
+        "AUTH_MAIL_KEY",
+        "INVITATION_TOKEN_KEY",
+        "CALLBACK_TOKEN_KEY",
+        "CALLBACK_TOKEN_PREVIOUS_KEYS"
+      ],
       "port": 3000,
       "healthCheck": [
         "CMD-SHELL",
@@ -97,9 +103,15 @@
       ],
       "sharedConfiguration": [
         "AUTH_MAIL_KEY_VERSION",
-        "INVITATION_TOKEN_KEY_VERSION"
+        "INVITATION_TOKEN_KEY_VERSION",
+        "CALLBACK_TOKEN_KEY_VERSION"
       ],
-      "sharedSecrets": ["AUTH_MAIL_KEY", "INVITATION_TOKEN_KEY"],
+      "sharedSecrets": [
+        "AUTH_MAIL_KEY",
+        "INVITATION_TOKEN_KEY",
+        "CALLBACK_TOKEN_KEY",
+        "CALLBACK_TOKEN_PREVIOUS_KEYS"
+      ],
       "healthCheck": [
         "CMD-SHELL",
         "test -f /tmp/pertexo-worker-ready && test ! -f /tmp/pertexo-worker-not-ready && kill -0 1"

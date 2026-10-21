@@ -231,6 +231,8 @@ async function execute(
           subject: input.subject,
           text: input.text,
           idempotencyKey: runtime.providerIdempotencyKey,
+          sensitiveValues:
+            invocation.runtime?.callbacks?.sensitiveValues() ?? [],
           timeoutMillis: config.timeoutMillis,
           signal: invocation.signal,
           beforeDispatch: createProviderBeforeDispatch({

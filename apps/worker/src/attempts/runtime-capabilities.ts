@@ -1,3 +1,13 @@
+import {
+  createCallbackStore,
+  type CallbackStore,
+} from '@pertexo/database/runs';
+import {
+  createCallbackTokenKeys,
+  type CallbackKeyConfig,
+  type CallbackTokenKeys,
+} from '@pertexo/integrations/server';
+import { createCallbackRuntime } from './callbacks/runtime.js';
 import { ArtifactScratchSpace } from './artifacts/scratch/space.js';
 import { FILE_PAGE_LIMITS } from '@pertexo/node-sdk';
 import {
@@ -67,6 +77,7 @@ function assertCapabilityRuntimeOpen(lifecycle: { terminal: boolean }): void {
 }
 
 export type WorkerNodeRuntimeCapabilityOptions = Readonly<{
+  callbacks?: CallbackKeyConfig;
   database: DatabaseConfig;
   codeRunner?: WorkerCodeRunnerConfig;
   connectionEncryption?: ConnectionEnvelopeEncryptionConfig;
@@ -77,6 +88,7 @@ export type WorkerNodeRuntimeCapabilityOptions = Readonly<{
 }>;
 
 export type WorkerNodeRuntimeCapabilityDependencies = Readonly<{
+  callbackStore?: CallbackStore;
   databaseRuntime?: DatabaseRuntime;
   webhookResponses?: Pick<WebhookResponseStore, 'respond'>;
   dataTables?: Pick<WorkerDataTablesStore, 'execute'>;
@@ -177,6 +189,8 @@ export async function createWorkerNodeRuntimeCapabilities(
   const retentionMillis =
     options.artifactRetentionMillis ?? DEFAULT_ARTIFACT_RETENTION_MILLIS;
 
+  let ownedCallbacks: CallbackStore | undefined;
+  let callbackKeys: CallbackTokenKeys | undefined;
   let ownedDataTables: WorkerDataTablesStore | undefined;
   let ownedRunValues: RunValuesStore | undefined;
   let ownedWebhookResponses: WebhookResponseStore | undefined;
@@ -200,6 +214,7 @@ export async function createWorkerNodeRuntimeCapabilities(
       ? undefined
       : createCodeRunnerClient(options.codeRunner);
   const factories: {
+    callbacks?: NonNullable<NodeExecutionCapabilityFactories['callbacks']>;
     runValues?: NonNullable<NodeExecutionCapabilityFactories['runValues']>;
     dataTables?: NonNullable<NodeExecutionCapabilityFactories['dataTables']>;
     code?: NonNullable<NodeExecutionCapabilityFactories['code']>;
@@ -217,8 +232,10 @@ export async function createWorkerNodeRuntimeCapabilities(
       lifecycle.terminal = true;
       closePromise = (async (): Promise<void> => {
         codeClient?.close();
+        callbackKeys?.close();
         const closeOperations = [
           ownedDataTables?.close.bind(ownedDataTables),
+          ownedCallbacks?.close.bind(ownedCallbacks),
           ownedRunValues?.close.bind(ownedRunValues),
           ownedWebhookResponses?.close.bind(ownedWebhookResponses),
           ownedConnectionDatabase?.close.bind(ownedConnectionDatabase),
@@ -243,6 +260,19 @@ export async function createWorkerNodeRuntimeCapabilities(
     return closePromise;
   };
   try {
+    if (options.callbacks !== undefined) {
+      const callbackStore =
+        dependencies.callbackStore ??
+        (ownedCallbacks = createCallbackStore(
+          options.database,
+          dependencies.databaseRuntime,
+        ));
+      const keys = (callbackKeys = createCallbackTokenKeys(options.callbacks));
+      factories.callbacks = (context) =>
+        createCallbackRuntime(callbackStore, keys, context, () => {
+          assertCapabilityRuntimeOpen(lifecycle);
+        });
+    }
     const runValues =
       dependencies.runValues ??
       (ownedRunValues = createRunValuesStore(

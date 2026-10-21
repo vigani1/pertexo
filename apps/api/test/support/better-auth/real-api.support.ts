@@ -127,6 +127,7 @@ export function useBetterAuthRealApi(
     databasePoolMax?: number;
     authenticationMail?: (local: AuthenticationMail) => AuthenticationMail;
     automationTokens?: boolean;
+    callbacks?: ApiConfig['callbacks'];
     artifacts?: ApiConfig['artifacts'];
     /** F07-owned qualification namespace, never a shared database selection. */
     databaseNamespace?: 'f07_organization';
@@ -239,6 +240,9 @@ export function useBetterAuthRealApi(
     identityConfiguration = identity;
     const config: ApiConfig = {
       ...defaults,
+      ...(options.callbacks === undefined
+        ? {}
+        : { callbacks: options.callbacks }),
       identity,
       redisUrl: options.redisUrl ?? redisUrl,
       ...(options.artifacts === undefined

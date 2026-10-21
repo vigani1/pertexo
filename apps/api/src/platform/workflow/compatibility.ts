@@ -64,6 +64,7 @@ function buildCoreWorkflowCompatibility() {
               key: manifest.definition.key,
               version: manifest.definition.version,
             }),
+            capabilities: manifest.capabilities,
             policyReferences: Object.freeze(
               manifest.policyReferences.map((policy) =>
                 Object.freeze({ key: policy.key, version: policy.version }),

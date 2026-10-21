@@ -190,11 +190,13 @@ describe('webhook public contracts', () => {
       >;
       const operation = paths[path]?.[route.method.toLowerCase()];
       expect(operation?.responses).toHaveProperty(
-        route.method === 'OPTIONS' || route.method === 'DELETE'
-          ? '204'
-          : route.path.startsWith('/hooks/')
-            ? '202'
-            : '200',
+        route.path.endsWith('/resume') && ['GET', 'HEAD'].includes(route.method)
+          ? '405'
+          : route.method === 'OPTIONS' || route.method === 'DELETE'
+            ? '204'
+            : route.path.startsWith('/hooks/')
+              ? '202'
+              : '200',
       );
       for (const header of 'requiredHeaders' in route
         ? route.requiredHeaders

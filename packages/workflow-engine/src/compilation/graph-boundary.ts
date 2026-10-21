@@ -154,7 +154,7 @@ function validatePin(
       canonicalJson([...definitionPin.policyReferences].sort(compareIdentity))
   )
     fail('node executable pins are incompatible');
-  assertExpressionPolicies(node, policies);
+  assertExpressionPolicies(node, policies, definitionPin.capabilities);
   return {
     id: node.id,
     definition,

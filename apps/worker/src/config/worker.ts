@@ -1,3 +1,7 @@
+import {
+  parseCallbackKeyConfig,
+  type CallbackKeyConfig,
+} from '@pertexo/integrations/server';
 import path from 'node:path';
 import { parseCodeSettings, codeRunnerSocketPath } from '@pertexo/node-sdk';
 import type { WorkerCodeRunnerConfig } from '../attempts/code/client.js';
@@ -360,6 +364,7 @@ const workerConfigSchema = z
 
 export type WorkerConfig = Readonly<
   z.output<typeof workerConfigSchema> & {
+    callbacks?: CallbackKeyConfig;
     artifactStore: ArtifactStoreConfig;
     artifactScratchDirectory: string;
     codeRunner: WorkerCodeRunnerConfig;
@@ -411,6 +416,7 @@ export function parseWorkerConfig(
     const raw = stringEnvironment(environment);
     const deployed =
       result.data.nodeEnv === 'staging' || result.data.nodeEnv === 'production';
+    const callbacks = parseCallbackKeyConfig(raw, deployed);
     const connectionEncryption = parseConnectionEncryptionConfig(raw, deployed);
     const artifactStore = artifactStoreConfig(raw, deployed);
     const artifactScratchDirectory = z
@@ -432,6 +438,7 @@ export function parseWorkerConfig(
       throw new Error('A deployed worker requires connection encryption');
     return Object.freeze({
       ...result.data,
+      ...(callbacks === undefined ? {} : { callbacks }),
       httpRequest: Object.freeze({
         allowedPrivateNetworks: parseAllowedPrivateNetworks(
           raw.HTTP_ALLOWED_PRIVATE_NETWORKS,

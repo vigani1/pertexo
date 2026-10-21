@@ -141,6 +141,14 @@ environment outside Git. Never rerun the generator over installed keys.
 Regenerating keys makes retained credentials unreadable. Public development
 keys are refused in production, including in previous keys.
 
+The generator also creates `CALLBACK_TOKEN_KEY` and `CALLBACK_TOKEN_KEY_VERSION`
+for machine callback Waits. API and worker share that pair and optional
+`CALLBACK_TOKEN_PREVIOUS_KEYS` (the same version/key JSON shape as invitation
+keys). Save these separately in your password manager. Keep historical versions
+needed by retained callback hashes and backups; missing or wrong bytes refuse
+startup. The public development callback key is refused when deployed. See the
+[callback guide](../guides/callbacks.md) for rotation and authentication.
+
 To rotate self-managed keys, save a new random key with a new version, move the
 old current pair into `CONNECTION_SELF_MANAGED_PREVIOUS_KEYS` (JSON
 `[{"version":"1","key":"<old key>"}]`), then use the normal deployment procedure.
@@ -299,9 +307,10 @@ are visible in the journal. This plan adds no uptime or backup alert service.
 
 Use a fresh disposable Docker host or a replacement server with no serving
 containers, no recorded current release, an empty database and an empty artifact
-bucket. Supply the original key ring separately from your password manager (or
-access to the original KMS key), then prepare the mode-600 environment, repository and Docker as
-above. The Compose project and volume names are stable: a second drill on the
+bucket. Supply the original callback key ring separately from your password
+manager. For connections, supply the original self-managed key ring or access to
+the original KMS key. Then prepare the mode-600 environment, repository and Docker
+as above. The Compose project and volume names are stable: a second drill on the
 same live host would share its data, so do not do that. Do not delete production
 volumes to create a drill target.
 

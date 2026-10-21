@@ -1,3 +1,4 @@
+import { supportsExpressionMappings } from '@pertexo/workflow-model';
 import type {
   DefinitionIdentity,
   ExecutorIdentity,
@@ -78,7 +79,10 @@ export function assertGraphPorts(
       !source.ports.outputs.includes(edge.source.port) &&
       !(
         edge.source.port === WORKFLOW_FAILURE_PORT &&
-        isWorkflowFailureSource(source.definition)
+        isWorkflowFailureSource(
+          source.definition,
+          index.nodesById.get(edge.source.nodeId)?.config,
+        )
       )
     )
       fail('workflow edge source port is unavailable');
@@ -256,11 +260,12 @@ export function assertBranchesDoNotReconverge(
 export function assertExpressionPolicies(
   node: Pick<WorkflowNode, 'inputMappings'>,
   policies: readonly PolicyReference[],
+  capabilities: readonly string[] = [],
 ): void {
   for (const source of Object.values(node.inputMappings))
     if (
       source.kind === 'expression' &&
-      !policies.some((policy) => policy.key === 'jsonata.restricted')
+      !supportsExpressionMappings(policies, capabilities)
     )
       fail('expression policy is not available for the node definition');
 }

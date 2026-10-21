@@ -17,6 +17,8 @@ function validDeployedEnvironment(): Record<string, string> {
     AUTH_MAIL_KEY_VERSION: 'auth-mail-v1',
     INVITATION_TOKEN_KEY: Buffer.alloc(32, 8).toString('base64'),
     INVITATION_TOKEN_KEY_VERSION: 'invite-v1',
+    CALLBACK_TOKEN_KEY: Buffer.alloc(32, 71).toString('base64'),
+    CALLBACK_TOKEN_KEY_VERSION: 'callback-v1',
     PUBLIC_WEB_ORIGIN: 'https://app.example.test',
     CONNECTION_KMS_KEY_REFERENCE: 'alias/pertexo-connections',
     CONNECTION_KMS_REGION: 'eu-central-1',

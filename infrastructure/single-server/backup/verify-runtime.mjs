@@ -33,6 +33,9 @@ try {
           { encoding: 'utf8' },
         ),
       ),
+      CALLBACK_TOKEN_PREVIOUS_KEYS: JSON.stringify([
+        { version: '0', key: randomBytes(32).toString('base64') },
+      ]),
       NODE_ENV: 'production',
       ARTIFACT_SCRATCH_DIRECTORY: '/var/lib/pertexo/artifact-scratch',
       AUTH_MAIL_MODE: 'durable',
@@ -228,6 +231,20 @@ try {
       readFileSync(join(prepared, 'encryption.env'), 'utf8'),
     );
     assert.equal(verification.CONNECTION_ENCRYPTION_MODE, mode);
+    for (const filename of ['api.env', 'worker.env', 'encryption.env']) {
+      const preparedEnv = parseEnv(
+        readFileSync(join(prepared, filename), 'utf8'),
+      );
+      for (const key of [
+        'CALLBACK_TOKEN_KEY',
+        'CALLBACK_TOKEN_KEY_VERSION',
+        'CALLBACK_TOKEN_PREVIOUS_KEYS',
+      ]) {
+        assert.equal(preparedEnv[key], env[key]);
+      }
+    }
+    assert.equal(verification.DATABASE_URL, env.DATABASE_URL);
+    assert.equal(verification.PUBLIC_WEB_ORIGIN, env.PUBLIC_WEB_ORIGIN);
     assert.equal(
       readFileSync(join(prepared, 'source-bucket'), 'utf8'),
       'artifacts',

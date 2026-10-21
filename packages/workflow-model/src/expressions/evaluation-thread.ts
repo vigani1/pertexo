@@ -37,6 +37,7 @@ async function evaluateExpression(
     targetPort.postMessage({ started: true });
     const value = (await jsonata(message.expression).evaluate(input, {
       vars: copyJsonataValue(message.context.variables ?? {}),
+      execution: copyJsonataValue(message.context.execution ?? {}),
     })) as unknown;
     targetPort.postMessage({
       ok: true,

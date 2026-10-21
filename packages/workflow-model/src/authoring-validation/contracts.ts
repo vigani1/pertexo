@@ -34,6 +34,7 @@ export const policyProjectionSchema = z
                 version: z.number().int().positive(),
               })
               .strict(),
+            capabilities: z.array(z.string()).readonly().optional(),
             policyReferences: z
               .array(
                 z

@@ -318,7 +318,7 @@ function projectNode(
         .length,
       failureEligible:
         parent === undefined &&
-        isWorkflowFailureSource(node.definition) &&
+        isWorkflowFailureSource(node.definition, node.config) &&
         !projection.handlerNodeIds.has(node.id),
       disabled: node.disabled === true,
       unsupported: definition === undefined,

@@ -740,3 +740,13 @@ describe('a run’s ending', () => {
     expect(runEnding([], graph)).toBeUndefined();
   });
 });
+
+it('names a callback completion without exposing its request credential', () => {
+  expect(
+    describeRunEvent(
+      nodeEvent('node.succeeded', 5, { reasonCode: 'callback.received' }),
+      start,
+      () => 'Wait',
+    ),
+  ).toMatchObject({ sentence: 'resumed after callback', tone: 'success' });
+});

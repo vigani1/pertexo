@@ -1,3 +1,4 @@
+import { callbackRoutes, callbackPaths } from './callbacks.js';
 import {
   testEventRoutes,
   testEventSchemas,
@@ -87,6 +88,7 @@ const responses = Object.freeze({
 export const webhooksClientContract = Object.freeze({
   routes: Object.freeze([
     ...testEventRoutes,
+    ...callbackRoutes,
     {
       method: 'GET',
       path: '/v1/workspaces/:workspaceId/workflows/:workflowId/triggers',
@@ -173,6 +175,7 @@ export const webhooksOpenApiDocument = Object.freeze({
   components: authenticatedComponents(schemas, responses),
   paths: {
     ...testEventPaths,
+    ...callbackPaths,
     '/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers': {
       get: {
         operationId: 'listWebhookTriggers',

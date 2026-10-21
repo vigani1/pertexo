@@ -57,80 +57,97 @@ describe('AdvanceWorkflow branching', () => {
     ).toEqual(['Z', 'a']);
   });
 
-  it('derives selected Condition readiness and explicit non-selected skips', () => {
-    const conditionKey = invocationKey({
-      workflowVersionId: '00000000-0000-4000-8000-000000000002',
-      nodeId: 'condition',
-    });
+  it.each([false, true])(
+    'derives Condition readiness and skips inside an inherited branch: %s',
+    (nested) => {
+      const inherited = nested
+        ? [{ nodeId: 'outer', outputPort: 'branch-01' }]
+        : [];
+      const encoded = inherited.map(
+        ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
+      );
+      const conditionKey = invocationKey({
+        workflowVersionId: '00000000-0000-4000-8000-000000000002',
+        nodeId: 'condition',
+        branchPath: encoded,
+      });
 
-    expect(
-      deriveReadyNodes({
-        graph: {
-          deriveReadiness: true,
-          nodes: [
+      expect(
+        deriveReadyNodes({
+          graph: {
+            deriveReadiness: true,
+            nodes: [
+              {
+                id: 'condition',
+                definition: { key: 'core.condition', version: 1 },
+                sideEffectClass: 'safe',
+              },
+              { id: 'selected', sideEffectClass: 'safe' },
+              { id: 'unselected', sideEffectClass: 'safe' },
+            ],
+            edges: [
+              {
+                source: { nodeId: 'condition', port: 'true' },
+                target: { nodeId: 'selected', port: 'in' },
+              },
+              {
+                source: { nodeId: 'condition', port: 'false' },
+                target: { nodeId: 'unselected', port: 'in' },
+              },
+            ],
+          },
+          workflowVersionId: '00000000-0000-4000-8000-000000000002',
+          invocations: [
             {
-              id: 'condition',
-              definition: { key: 'core.condition', version: 1 },
-              sideEffectClass: 'safe',
+              invocationKey: conditionKey,
+              nodeId: 'condition',
+              status: 'succeeded',
+              branchPath: inherited,
+              attemptNumber: 1,
+              output: {
+                kind: 'inline',
+                attemptId: '00000000-0000-4000-8000-000000000101',
+              },
             },
-            { id: 'selected', sideEffectClass: 'safe' },
-            { id: 'unselected', sideEffectClass: 'safe' },
           ],
-          edges: [
+          branchSelections: [
             {
-              source: { nodeId: 'condition', port: 'true' },
-              target: { nodeId: 'selected', port: 'in' },
+              invocationKey: conditionKey,
+              nodeId: 'condition',
+              selectedOutputPort: 'true',
             },
-            {
-              source: { nodeId: 'condition', port: 'false' },
-              target: { nodeId: 'unselected', port: 'in' },
-            },
+          ],
+        }),
+      ).toEqual([
+        {
+          invocationKey: invocationKey({
+            workflowVersionId: '00000000-0000-4000-8000-000000000002',
+            nodeId: 'selected',
+            branchPath: [...encoded, 'condition:true'],
+          }),
+          nodeId: 'selected',
+          disposition: 'ready',
+          branchPath: [
+            ...inherited,
+            { nodeId: 'condition', outputPort: 'true' },
           ],
         },
-        workflowVersionId: '00000000-0000-4000-8000-000000000002',
-        invocations: [
-          {
-            invocationKey: conditionKey,
-            nodeId: 'condition',
-            status: 'succeeded',
-            attemptNumber: 1,
-            output: {
-              kind: 'inline',
-              attemptId: '00000000-0000-4000-8000-000000000101',
-            },
-          },
-        ],
-        branchSelections: [
-          {
-            invocationKey: conditionKey,
-            nodeId: 'condition',
-            selectedOutputPort: 'true',
-          },
-        ],
-      }),
-    ).toEqual([
-      {
-        invocationKey: invocationKey({
-          workflowVersionId: '00000000-0000-4000-8000-000000000002',
-          nodeId: 'selected',
-          branchPath: ['condition:true'],
-        }),
-        nodeId: 'selected',
-        disposition: 'ready',
-        branchPath: [{ nodeId: 'condition', outputPort: 'true' }],
-      },
-      {
-        invocationKey: invocationKey({
-          workflowVersionId: '00000000-0000-4000-8000-000000000002',
+        {
+          invocationKey: invocationKey({
+            workflowVersionId: '00000000-0000-4000-8000-000000000002',
+            nodeId: 'unselected',
+            branchPath: [...encoded, 'condition:false'],
+          }),
           nodeId: 'unselected',
-          branchPath: ['condition:false'],
-        }),
-        nodeId: 'unselected',
-        disposition: 'skipped',
-        branchPath: [{ nodeId: 'condition', outputPort: 'false' }],
-      },
-    ]);
-  });
+          disposition: 'skipped',
+          branchPath: [
+            ...inherited,
+            { nodeId: 'condition', outputPort: 'false' },
+          ],
+        },
+      ]);
+    },
+  );
 
   it('scopes branch selections by exact local invocation identity', () => {
     const graph = {

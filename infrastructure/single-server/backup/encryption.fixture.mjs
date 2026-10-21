@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
-import { randomBytes, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import {
   createConnectionEnvelopeEncryption,
   createWebhookTriggerEnvelopeEncryption,
   parseConnectionEncryptionConfig,
+  parseCallbackKeyConfig,
+  createCallbackTokenKeys,
+  callbackTokenHash,
 } from '../../../packages/integrations/dist/server.js';
 
 const quoted = (value) => "'" + value.replaceAll("'", "''") + "'";
@@ -21,7 +24,17 @@ export async function seedEncryptedRecoveryFixture(sql, database) {
     randomBytes(32).toString('base64'),
     randomBytes(32).toString('base64'),
   ];
+  const callbackKeys = [
+    randomBytes(32).toString('base64'),
+    randomBytes(32).toString('base64'),
+  ];
   const environment = {
+    PUBLIC_WEB_ORIGIN: 'https://app.example.test',
+    CALLBACK_TOKEN_KEY: callbackKeys[1],
+    CALLBACK_TOKEN_KEY_VERSION: '2',
+    CALLBACK_TOKEN_PREVIOUS_KEYS: JSON.stringify([
+      { version: '1', key: callbackKeys[0] },
+    ]),
     NODE_ENV: 'production',
     CONNECTION_ENCRYPTION_MODE: 'self-managed',
     CONNECTION_SELF_MANAGED_KEY: keys[1],
@@ -87,6 +100,20 @@ export async function seedEncryptedRecoveryFixture(sql, database) {
       }
     }
   }
+  const callbackConfig = parseCallbackKeyConfig(environment, true);
+  const tokenKeys = createCallbackTokenKeys(callbackConfig);
+  const callbackRun = randomUUID();
+  const callbacks = ['1', '2'].map((keyVersion) => {
+    const id = randomUUID();
+    return {
+      id,
+      keyVersion,
+      tokenHash: callbackTokenHash(
+        tokenKeys.material({ id }, keyVersion).token,
+      ),
+    };
+  });
+  tokenKeys.close();
   const statements = [
     'BEGIN;',
     insert('users', {
@@ -163,6 +190,39 @@ export async function seedEncryptedRecoveryFixture(sql, database) {
         },
       ),
     ),
+    "SELECT set_config('app.workspace_id'," +
+      quoted(webhookWorkspace) +
+      ',true);',
+    insert('workflow_runs', {
+      id: callbackRun,
+      workspace_id: webhookWorkspace,
+      workflow_id: workflow,
+      workflow_version_id: version,
+      trigger_type: 'manual',
+      status: 'waiting',
+      started_at: new Date().toISOString(),
+    }),
+    ...callbacks.map((callback) =>
+      insert('pending_run_tasks', {
+        id: callback.id,
+        workspace_id: webhookWorkspace,
+        run_id: callbackRun,
+        workflow_version_id: version,
+        invocation_key: 'callback:wait-' + callback.keyVersion,
+        kind: 'callback',
+        status: 'prepared',
+        config: JSON.stringify({
+          mode: 'callback',
+          timeoutSeconds: 3600,
+          authentication: { mode: 'secret_url', allowedOrigins: [] },
+        }),
+        callback_node_id: 'wait-' + callback.keyVersion,
+        callback_scope: '[]',
+        callback_scope_hash: createHash('sha256').update('[]').digest('hex'),
+        callback_token_hash: callback.tokenHash,
+        callback_key_version: callback.keyVersion,
+      }),
+    ),
     'COMMIT;',
   ];
   sql(database, statements.join('\n'));
@@ -176,6 +236,27 @@ export async function seedEncryptedRecoveryFixture(sql, database) {
       },
     ],
     async openRestored(target) {
+      const restoredCallbacks = JSON.parse(
+        sql(
+          target,
+          "SELECT json_agg(json_build_object('id',id,'keyVersion',callback_key_version,'tokenHash',callback_token_hash)) FROM app.pending_run_tasks WHERE kind='callback';",
+        ),
+      );
+      const restoredKeys = createCallbackTokenKeys(
+        parseCallbackKeyConfig(environment, true),
+      );
+      try {
+        for (const callback of restoredCallbacks)
+          assert.equal(
+            callbackTokenHash(
+              restoredKeys.material(callback, callback.keyVersion).token,
+            ),
+            callback.tokenHash,
+          );
+      } finally {
+        restoredKeys.close();
+      }
+
       const config = parseConnectionEncryptionConfig(environment, true);
       for (const record of records) {
         const table =
@@ -215,6 +296,13 @@ export async function seedEncryptedRecoveryFixture(sql, database) {
         'BEGIN; DELETE FROM app.connection_secret_versions; DELETE FROM app.connections; COMMIT;',
       );
     },
-    masterKeys: keys,
+    callbackUnavailable: [
+      { ...environment, CALLBACK_TOKEN_PREVIOUS_KEYS: undefined },
+      {
+        ...environment,
+        CALLBACK_TOKEN_KEY: randomBytes(32).toString('base64'),
+      },
+    ],
+    masterKeys: [...keys, ...callbackKeys],
   };
 }

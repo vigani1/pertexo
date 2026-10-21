@@ -201,6 +201,7 @@ export function stepSummary(
     case 'http.request':
       return typeof config.method === 'string' ? config.method : undefined;
     case 'core.wait':
+      if (config.mode === 'callback') return 'Until called back';
       return typeof config.durationSeconds === 'number' &&
         config.durationSeconds > 0
         ? describeAmount(config.durationSeconds, 'seconds')

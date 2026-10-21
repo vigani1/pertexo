@@ -193,6 +193,12 @@ async function database(alias, migrate) {
   );
   const port = docker(['port', id, '5432/tcp']).trim().split(':').at(-1);
   databaseEnvironments.set(id, {
+    DATABASE_URL:
+      'postgresql://pertexo_app:' +
+      secret.POSTGRES_APP_PASSWORD +
+      '@127.0.0.1:' +
+      port +
+      '/pertexo',
     DATABASE_MAINTENANCE_URL:
       'postgresql://pertexo_maintenance:' +
       secret.POSTGRES_MAINTENANCE_PASSWORD +
@@ -500,6 +506,14 @@ try {
     webhookKeys: 2,
   });
   await encryption.openRestored(targetDb);
+  for (const configuration of encryption.callbackUnavailable) {
+    const failure = preflight(targetDb, configuration, 1);
+    assert.equal(failure.code, 'callback_key_unavailable');
+    assert.match(failure.detail, /CALLBACK_TOKEN_PREVIOUS_KEYS/u);
+  }
+  console.log(
+    'Callback recovery: both hash/key versions restored; wrong and missing callback keys refused; no callback keys in recovery files',
+  );
   for (const [index, configuration] of encryption.unavailable.entries()) {
     const failure = preflight(restoredTargets[index + 1], configuration, 1);
     assert.equal(failure.code, 'unavailable_key_material');

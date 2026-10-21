@@ -2,7 +2,9 @@ import {
   approvalConfigSchema,
   canonicalJson,
   inputRequestConfigSchema,
-  isHumanTaskDefinition,
+  isPendingTaskNode,
+  isCallbackWaitNode,
+  callbackWaitConfigSchema,
   UUID_PATTERN,
   WORKFLOW_GRAPH_LIMITS,
   taskContextSchema,
@@ -54,8 +56,7 @@ export function taskDeclarationObservations(
       value: JsonValue;
     }>;
     const owner = invocations.get(material.invocationKey);
-    if (!isHumanTaskDefinition(nodes.get(owner?.nodeId ?? '')?.definition))
-      continue;
+    if (!isPendingTaskNode(nodes.get(owner?.nodeId ?? ''))) continue;
     const value = record(
       material.value,
       'observation_invalid',
@@ -79,11 +80,7 @@ export function taskDeclarationObservations(
         ? invocations.get(outcome.invocationKey)
         : undefined;
     const node = nodes.get(owner?.nodeId ?? '');
-    if (
-      owner === undefined ||
-      node === undefined ||
-      !isHumanTaskDefinition(node.definition)
-    )
+    if (owner === undefined || node === undefined || !isPendingTaskNode(node))
       continue;
     if (!pending.has(identity) || declarations.has(owner.invocationKey))
       operationError(
@@ -95,15 +92,20 @@ export function taskDeclarationObservations(
     intents.push({
       invocationKey: owner.invocationKey,
       ...(context === undefined ? {} : { context }),
-      ...(node.definition.key === 'core.approval'
+      ...(isCallbackWaitNode(node)
         ? {
-            kind: 'approval' as const,
-            config: taskSetup(approvalConfigSchema, node.config),
+            kind: 'callback' as const,
+            config: taskSetup(callbackWaitConfigSchema, node.config),
           }
-        : {
-            kind: 'input_request' as const,
-            config: taskSetup(inputRequestConfigSchema, node.config),
-          }),
+        : node.definition.key === 'core.approval'
+          ? {
+              kind: 'approval' as const,
+              config: taskSetup(approvalConfigSchema, node.config),
+            }
+          : {
+              kind: 'input_request' as const,
+              config: taskSetup(inputRequestConfigSchema, node.config),
+            }),
     });
   }
   return {
@@ -215,7 +217,7 @@ export function taskOutcomeObservations(
       iterationPath: fact.iterationPath ?? [],
     });
     if (
-      !isHumanTaskDefinition(nodes.get(fact.nodeId)?.definition) ||
+      !isPendingTaskNode(nodes.get(fact.nodeId)) ||
       expected !== fact.invocationKey ||
       context?.ancestors.length !== (fact.iterationPath?.length ?? 0) ||
       context.ancestors.some(
@@ -245,7 +247,8 @@ export function taskOutcomeObservations(
     if (owner.status !== 'waiting' || owner.waitKind !== 'human_task')
       operationError('observation_invalid', 'task outcome has no durable wait');
     const inputRequest =
-      nodes.get(fact.nodeId)?.definition.key === 'core.request_input';
+      nodes.get(fact.nodeId)?.definition.key === 'core.request_input' ||
+      isCallbackWaitNode(nodes.get(fact.nodeId));
     if (
       (fact.status === 'submitted' && !inputRequest) ||
       (['approved', 'rejected'].includes(fact.status) && inputRequest)
@@ -265,7 +268,12 @@ export function taskOutcomeObservations(
           ? 'canceled'
           : 'failed',
       ...(decided
-        ? { output: { kind: 'task', taskId: fact.taskId } as const }
+        ? {
+            output: { kind: 'task', taskId: fact.taskId } as const,
+            ...(isCallbackWaitNode(nodes.get(fact.nodeId))
+              ? { reasonCode: 'callback.received' }
+              : {}),
+          }
         : { reasonCode }),
       ...(!decided && fact.status !== 'canceled'
         ? {

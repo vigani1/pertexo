@@ -141,3 +141,41 @@ object expressions without evaluating them in the browser. Imported whole-object
 or dynamic-key mappings remain unchanged and editable in Inputs. Each row can
 read a literal, run input, earlier step output, workspace variable or expression;
 the JSONata runtime's existing context and server evaluation bounds still apply.
+
+
+### Amendment: machine callbacks through the pending-task owner (2026-10-21)
+
+The owner approved F46's callback task kind and prepared state. Existing Approval
+and Request input authorization and decider requirements remain unchanged.
+Callback tasks are authenticated by a per-run/per-Wait capability, optionally
+strengthened with the existing webhook HMAC or header-secret protocol. They are
+not human tasks and never enter the human task list or Inbox audience.
+
+A sending step can prepare a task before Wait runs. Preparation commits before
+the credential is delivered; an early accepted response is retained without
+advancing the workflow. Wait binds that same task to its exact invocation and
+starts its required, at-most-thirty-day timeout. The existing task-result,
+checkpoint, wakeup, expiry, clock and capacity owners settle it once. Prepared
+and answered-but-unbound tasks consume the existing pending-task allowance.
+
+Only token hashes and derivation key versions are stored. Purpose-specific,
+versioned application keys reproduce the URL and optional authentication secret
+after restart. Existing expression mappings carry references; materialization
+occurs only in the sending attempt's bounded runtime context. External HTTP
+steps suppress credential-bearing input capture and redact known echoes before
+returning or writing response data. Data/file/Code mappings and workflow results
+cannot read this binding. This is a bounded credential-delivery capability, not
+a general information-flow/taint subsystem.
+
+Callbacks lock the run and task in the existing order; a first valid response
+commits its bounded output and wakeup together. Duplicates return 409, and
+expired, canceled or terminal runs return 410 after authentication. Cancellation,
+skipped scopes, retention and workspace purge close or remove unused prepared
+callbacks. Replay gets new credentials. Whole-workflow draft tests issue live
+callback credentials and pause at an unpinned callback Wait; pinned steps remain
+samples and timed Waits complete immediately. Single-step previews never issue
+callback credentials. Deploy matching readers before publishing callback mode.
+
+The owner chose the invitation-token key pattern exactly: `CALLBACK_TOKEN_KEY`,
+`CALLBACK_TOKEN_KEY_VERSION` and `CALLBACK_TOKEN_PREVIOUS_KEYS`, using the existing
+fresh-install secret generator, startup refusal and separate backup-key supply.

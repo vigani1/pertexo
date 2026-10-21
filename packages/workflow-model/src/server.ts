@@ -26,3 +26,11 @@ export {
 } from './expressions/variable-usage.js';
 
 export { resolveEventCoordinationKey } from './event-coordination/key.js';
+
+export { inspectExpression } from './expressions/policy.js';
+export type { CallbackReference } from './callbacks/references.js';
+
+export {
+  callbackReferenceIssue,
+  hasCallbackMapping,
+} from './callbacks/validation.js';

@@ -1,3 +1,5 @@
+import jsonata from 'jsonata';
+import { remapCallbackReferences } from '@pertexo/workflow-model';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { cardSize, overlaps, settleBodyLayout } from './for-each-body-layout';
 import { removeWorkflowElements } from './commands';
@@ -133,7 +135,12 @@ function copyStep(
         (source.kind === 'node_output' || source.kind === 'node_failure') &&
         idMap.has(source.nodeId)
           ? { ...source, nodeId: idMap.get(source.nodeId) ?? source.nodeId }
-          : source,
+          : source.kind === 'expression'
+            ? {
+                ...source,
+                expression: copyCallbackBindings(source.expression, idMap),
+              }
+            : source,
       ]),
     ),
   };
@@ -206,4 +213,15 @@ export function adoptStepFrom(
       nodeIds.has(edge.target.nodeId),
   );
   return { ...graph, nodes, edges: [...graph.edges, ...edges] };
+}
+
+function copyCallbackBindings(
+  expression: string,
+  ids: ReadonlyMap<string, string>,
+): string {
+  try {
+    return remapCallbackReferences(expression, jsonata(expression).ast(), ids);
+  } catch {
+    return expression;
+  }
 }

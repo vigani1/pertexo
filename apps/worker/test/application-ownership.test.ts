@@ -1,3 +1,4 @@
+import { emptyCallbackStore } from './support/callback-store.js';
 import type { DatabaseRuntime } from '@pertexo/database/platform';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -42,6 +43,7 @@ describe('worker application construction ownership', () => {
       throw failure;
     });
     const factories = {
+      callbackStore: emptyCallbackStore,
       applicationContext,
       databaseRuntime,
     } as unknown as WorkerApplicationCompositionFactories;
@@ -64,6 +66,7 @@ describe('worker application construction ownership', () => {
       });
     const applicationContext = vi.fn();
     const factories = {
+      callbackStore: emptyCallbackStore,
       applicationContext,
       databaseRuntime,
     } as unknown as WorkerApplicationCompositionFactories;
@@ -88,6 +91,7 @@ describe('worker application construction ownership', () => {
       .mockReturnValueOnce(runtime(workerClose))
       .mockReturnValueOnce(runtime(dispatcherClose));
     const factories = {
+      callbackStore: emptyCallbackStore,
       applicationContext: vi.fn().mockRejectedValue(constructionFailure),
       databaseRuntime,
     } as unknown as WorkerApplicationCompositionFactories;
@@ -124,6 +128,7 @@ describe('worker application construction ownership', () => {
       }),
     };
     const factories = {
+      callbackStore: emptyCallbackStore,
       applicationContext: vi.fn().mockResolvedValue(application),
       databaseRuntime: vi
         .fn()

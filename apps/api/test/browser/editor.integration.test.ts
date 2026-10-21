@@ -1,3 +1,5 @@
+import { verifyCallbackEvidence } from './editor/evidence/callbacks/verify.js';
+import { createCallbackTokenKeys } from '@pertexo/integrations/server';
 import { createBrowserOidcProvider } from './editor/federation/oidc-provider.js';
 import * as oidcProtocol from '../../src/authentication/federation/protocol/oidc.js';
 import { Resolver } from 'node:dns/promises';
@@ -150,6 +152,14 @@ const scenario = z
   ])
   .parse(process.env.EDITOR_BROWSER_CASE ?? 'nested-conflict');
 const webOrigin = 'http://127.0.0.1:4174';
+const callbackConfig = {
+  origin: webOrigin,
+  keys: {
+    current: { version: '1', key: Buffer.alloc(32, 71).toString('base64url') },
+    previous: [],
+  },
+};
+
 const workerDirectory = new URL('../../../worker/', import.meta.url);
 const owner = new FixtureResourceOwner();
 const webDirectory = new URL('../../../web/', import.meta.url);
@@ -469,6 +479,7 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
   if (scenario === 'federation')
     useSocialProviderGateway(identityProvider.gateway);
   const api = useBetterAuthRealApi('editor_browser', {
+    ...(scenario === 'approvals' ? { callbacks: callbackConfig } : {}),
     ...(scenario === 'federation' || scenario === 'organization-oidc'
       ? {
           federationEncryption: {
@@ -606,6 +617,7 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
       }
       const ready = phase(worker, 'worker-ready');
       worker.send({
+        ...(scenario === 'approvals' ? { callbackConfig } : {}),
         workerUrl: databaseUrl(process.env.DATABASE_URL ?? ''),
         dispatcherUrl: databaseUrl(process.env.DATABASE_MAINTENANCE_URL ?? ''),
         apiUrl: databaseUrl(process.env.DATABASE_URL ?? ''),
@@ -744,6 +756,54 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         return;
       if (httpControl?.handle(request, response) === true) return;
       const url = new URL(request.url ?? '/', 'http://127.0.0.1');
+      if (
+        scenario === 'approvals' &&
+        request.method === 'POST' &&
+        url.pathname === '/callback-resume'
+      ) {
+        void (async () => {
+          const chunks: Buffer[] = [];
+          for await (const chunk of request) {
+            if (!(chunk instanceof Uint8Array))
+              throw new Error('Invalid callback fixture bytes');
+            chunks.push(Buffer.from(chunk));
+            if (chunks.reduce((sum, value) => sum + value.byteLength, 0) > 1024)
+              throw new Error('Callback fixture command too large');
+          }
+          const input = z
+            .object({ workspaceId: z.uuid(), runId: z.uuid() })
+            .parse(JSON.parse(Buffer.concat(chunks).toString('utf8')));
+          const found = await api
+            .database()
+            .query<{ id: string; callback_key_version: string }>(
+              "select task.id,task.callback_key_version from app.pending_run_tasks task join app.workflow_runs run on run.workspace_id=task.workspace_id and run.id=task.run_id where task.workspace_id=$1 and task.run_id=$2 and task.kind='callback' and task.status='pending' and run.trigger_type='test'",
+              [input.workspaceId, input.runId],
+            );
+          const task = found.rows[0];
+          if (task === undefined)
+            throw new Error('No owned pending test callback');
+          const keys = createCallbackTokenKeys(callbackConfig);
+          try {
+            const token = keys.material(task, task.callback_key_version).token;
+            const accepted = await fetch(`${apiOrigin}/hooks/${token}/resume`, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ completed: 'callback-browser-proof' }),
+            });
+            if (accepted.status !== 202)
+              throw new Error('Callback fixture refused');
+            response.writeHead(204);
+            response.end();
+          } finally {
+            keys.close();
+          }
+        })().catch(() => {
+          response.writeHead(500);
+          response.end('Callback qualification failed');
+        });
+        return;
+      }
+
       if (
         scenario === 'organization-oidc' &&
         request.method === 'GET' &&
@@ -1346,6 +1406,7 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
     }
     if (scenario === 'approvals') {
       await verifyApprovalEvidence(api.database());
+      await verifyCallbackEvidence(api.database());
       return;
     }
     if (scenario === 'error-workflows') {

@@ -1,3 +1,4 @@
+import { WaitSetup } from '../wait/setup';
 import { RunValuesSetup } from '../run-values/setup';
 import { UtilitySetup } from '../builders/utility-setup';
 import { UTILITY_OPERATION_KEYS } from '../../../model/inspector/transforms/utility-config';
@@ -221,6 +222,7 @@ const SIMPLE_SETUP_RENDERERS: Readonly<
     >
   >
 > = {
+  'core.wait': WaitSetup,
   'core.respond_webhook': WebhookResponseSetup,
   'core.read_file': ReadFileSetup,
   'core.create_file': CreateFileSetup,

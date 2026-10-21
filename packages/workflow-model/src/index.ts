@@ -290,3 +290,23 @@ export {
   webhookAuthenticationSchema,
   type WebhookAuthentication,
 } from './webhooks/authentication.js';
+
+export {
+  callbackWaitConfigSchema,
+  waitConfigSchema,
+  WAIT_MAXIMUM_SECONDS,
+  isCallbackWaitNode,
+  isPendingTaskNode,
+  type CallbackWaitConfig,
+  type CallbackBindings,
+  type CallbackBinding,
+} from './callbacks/contract.js';
+
+export { supportsExpressionMappings } from './mapping/policy.js';
+
+export {
+  callbackTargetNodes,
+  callbackMappingExpression,
+} from './callbacks/validation.js';
+
+export { remapCallbackReferences } from './callbacks/references.js';

@@ -4,6 +4,7 @@ import type {
 } from '@pertexo/node-sdk';
 import type { NodeCodeRuntime, JsonValue } from '@pertexo/node-sdk/server';
 import type {
+  NodeCallbackRuntime,
   NodeArtifactRuntime,
   NodeConnectionRuntime,
   NodeWebhookResponseRuntime,
@@ -27,6 +28,9 @@ export type NodeExecutionCapabilityContext = Readonly<{
 
 /** Per-attempt factories shared by production and preview execution modes. */
 export type NodeExecutionCapabilityFactories = Readonly<{
+  callbacks?: (
+    context: NodeExecutionCapabilityContext & Readonly<{ fenceToken: number }>,
+  ) => NodeCallbackRuntime;
   runValues?: (
     context: NodeExecutionCapabilityContext & Readonly<{ fenceToken: number }>,
   ) => NodeRunValuesRuntime;

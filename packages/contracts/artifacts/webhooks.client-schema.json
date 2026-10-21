@@ -31,6 +31,23 @@
       "path": "/hooks/:endpointKey/test"
     },
     {
+      "method": "POST",
+      "path": "/hooks/:endpointKey/resume",
+      "maximumBodyBytes": 262144
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/hooks/:endpointKey/resume"
+    },
+    {
+      "method": "GET",
+      "path": "/hooks/:endpointKey/resume"
+    },
+    {
+      "method": "HEAD",
+      "path": "/hooks/:endpointKey/resume"
+    },
+    {
       "method": "GET",
       "path": "/v1/workspaces/:workspaceId/workflows/:workflowId/triggers"
     },
