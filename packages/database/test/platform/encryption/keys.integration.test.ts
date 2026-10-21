@@ -213,6 +213,7 @@ describe('retained encryption key inventory', () => {
       ...process.env,
       NODE_ENV: 'test',
       DATABASE_MAINTENANCE_URL: url(maintenanceUrl),
+      DATABASE_URL: url(appUrl),
       CONNECTION_ENCRYPTION_MODE: 'kms',
       CONNECTION_KMS_KEY_REFERENCE: 'alias/fixture',
       CONNECTION_KMS_REGION: 'eu-central-1',
