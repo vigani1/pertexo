@@ -43,7 +43,10 @@ describe.skipIf(!organizationFixtureEnabled)(
       const folderId = created.folder.id;
       expect(
         await stores.folders.listFolders({ ...context, actorId: scope.viewer }),
-      ).toEqual({ items: [created.folder] });
+      ).toEqual({ items: [{ ...created.folder, canCreateWorkflows: false }] });
+      expect(await stores.folders.listFolders(context)).toEqual({
+        items: [{ ...created.folder, canCreateWorkflows: true }],
+      });
       await expect(
         stores.folders.createFolder({
           ...context,

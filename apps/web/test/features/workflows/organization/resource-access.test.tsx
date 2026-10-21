@@ -6,7 +6,9 @@ import {
   useMutation,
 } from '@tanstack/react-query';
 import { HttpResponse, http } from 'msw';
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
+import { deferred } from '../../../support/fixtures/workflow-editor';
+import { useWorkflowRename } from '@/features/workflows/data/workflows.mutations';
 import { accessibleWorkspaceSchema } from '@pertexo/contracts';
 import { workflowWorkspaceAccess } from '@/features/workflows/model/resource-access';
 import { WorkflowReadBoundary } from '@/features/workflows/components/workflow-read-boundary';
@@ -66,7 +68,26 @@ function MissingTarget() {
     </button>
   );
 }
+function PendingRename({ onRenamed }: { onRenamed: (name: string) => void }) {
+  const command = useWorkflowRename({
+    apiClient,
+    userId,
+    workspaceId,
+    workflowId,
+    onRenamed,
+  });
+  return (
+    <button
+      onClick={() => {
+        void command.start('Renamed private workflow', 1);
+      }}
+    >
+      Rename while readable
+    </button>
+  );
+}
 function setup() {
+  const renamed = vi.fn();
   const cache = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -103,10 +124,11 @@ function setup() {
       >
         <p>Workflow visible</p>
         <MissingTarget />
+        <PendingRename onRenamed={renamed} />
       </WorkflowReadBoundary>
     </QueryClientProvider>,
   );
-  return { cache, graphKey, reads: () => reads };
+  return { cache, graphKey, renamed, reads: () => reads };
 }
 it('unmounts a revoked workflow and clears cached graphs and collection snapshots after its own read refuses access', async () => {
   const f = setup();
@@ -144,4 +166,48 @@ it('rechecks the workflow after a missing mutation target and preserves access w
   expect(f.cache.getQueryData(f.graphKey)).toEqual({
     private: 'retained graph',
   });
+});
+
+it('never reopens a revoked workflow when an older successful rename receipt arrives late', async () => {
+  const held = deferred<undefined>();
+  mockServer.use(
+    http.post(`${api}/workflows/${workflowId}/rename`, async () => {
+      await held.promise;
+      return HttpResponse.json({
+        workflow: {
+          ...summary(workflowId, 'Renamed private workflow'),
+          nameRevision: 2,
+        },
+        replayed: false,
+      });
+    }),
+  );
+  const f = setup();
+  await waitFor(() => {
+    expect(f.reads()).toBe(1);
+  });
+  await userEvent
+    .setup()
+    .click(screen.getByRole('button', { name: 'Rename while readable' }));
+  mockServer.use(
+    http.get(`${api}/workflows/${workflowId}`, () =>
+      problem(404, 'resource.not_found'),
+    ),
+  );
+  await act(async () => {
+    await f.cache.invalidateQueries({
+      queryKey: workflowKeys.detail(userId, workspaceId, workflowId),
+    });
+  });
+  await screen.findByText('Workflow unavailable');
+  await act(() => {
+    held.resolve(undefined);
+    return held.promise;
+  });
+  await waitFor(() => {
+    expect(f.renamed).toHaveBeenCalledOnce();
+  });
+  expect(screen.getByText('Workflow unavailable')).toBeInTheDocument();
+  expect(screen.queryByText('Workflow visible')).not.toBeInTheDocument();
+  expect(f.cache.getQueryData(f.graphKey)).toBeUndefined();
 });
