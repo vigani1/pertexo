@@ -67,6 +67,7 @@ async function storage(alias, bucket) {
   const env = {
     ...secret,
     NODE_ENV: 'production',
+    ARTIFACT_SCRATCH_DIRECTORY: '/var/lib/pertexo/artifact-scratch',
     AUTH_MAIL_MODE: 'durable',
     SESSION_COOKIE_SECURE: 'true',
     PUBLIC_WEB_ORIGIN: 'https://app.example.test',
