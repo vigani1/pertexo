@@ -41,7 +41,7 @@ it('switches Wait modes with normal live controls and keeps callback secrets out
   render(<Wait />);
   const user = userEvent.setup();
   expect(
-    screen.getByRole('textbox', { name: 'Wait for (seconds)' }),
+    screen.getByRole('textbox', { name: 'Wait for (in seconds)' }),
   ).toHaveValue('60');
   await user.click(screen.getByRole('combobox', { name: 'Wait until' }));
   await user.click(await screen.findByRole('option', { name: 'Called back' }));
@@ -71,5 +71,19 @@ it('switches Wait modes with normal live controls and keeps callback secrets out
   );
   expect(screen.getByLabelText('Saved configuration')).toHaveTextContent(
     '{"durationSeconds":60}',
+  );
+});
+
+it('keeps the existing duration control and its live saved value', async () => {
+  render(<Wait />);
+  const user = userEvent.setup();
+  const duration = screen.getByRole('textbox', {
+    name: 'Wait for (in seconds)',
+  });
+  await user.clear(duration);
+  await user.type(duration, '600');
+  await user.tab();
+  expect(screen.getByLabelText('Saved configuration')).toHaveTextContent(
+    '{"durationSeconds":600}',
   );
 });
