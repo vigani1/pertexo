@@ -149,3 +149,5 @@ export {
 } from './system-mail/unsubscribe.js';
 
 export { HttpPaginationFailure } from './http-request/pagination/failure.js';
+
+export { redactText } from './security/redact-text.js';
