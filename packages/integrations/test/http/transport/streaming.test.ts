@@ -135,6 +135,72 @@ it('does not accept early response headers as success while the file source can 
   expect(await observed).toMatchObject({ message: 'Late file read failed' });
   expect(body.closed).toBe(true);
 });
+it('accepts a complete response when the receiver closes before the file reader observes EOF', async () => {
+  let bytesSent = false;
+  let finishSource: (() => void) | undefined;
+  const body = new Readable({
+    read() {
+      if (bytesSent) return;
+      bytesSent = true;
+      this.push(Buffer.from('body'));
+      finishSource = () => {
+        this.push(null);
+      };
+    },
+  });
+  const url = await receiver((request, response) => {
+    request.resume();
+    request.on('end', () => {
+      response.writeHead(200).end('ok', () => {
+        // File reads observe EOF in another I/O turn after the final bytes.
+        setTimeout(() => {
+          finishSource?.();
+        }, 30);
+      });
+    });
+  });
+  const response = await send(
+    url,
+    source(4, () => body),
+  );
+  const chunks = [];
+  for await (const chunk of response.body) chunks.push(chunk);
+  expect(response.status).toBe(200);
+  expect(Buffer.concat(chunks).toString()).toBe('ok');
+  response.close();
+  expect(body.closed).toBe(true);
+});
+it.each(['read_failure', 'cancellation'] as const)(
+  'still refuses %s after all declared bytes and the response have arrived',
+  async (outcome) => {
+    const controller = new AbortController();
+    const body = new PassThrough({ highWaterMark: 65536 });
+    const url = await receiver((request, response) => {
+      request.resume();
+      request.on('end', () => {
+        response.writeHead(200).end('ok', () => {
+          setTimeout(() => {
+            if (outcome === 'read_failure')
+              body.destroy(new Error('Late verified EOF failed'));
+            else controller.abort();
+          }, 30);
+        });
+      });
+    });
+    const observed = expect(
+      send(
+        url,
+        source(4, () => body),
+        controller.signal,
+      ),
+    ).rejects;
+    body.write(Buffer.from('body'));
+    if (outcome === 'read_failure')
+      await observed.toThrow('Late verified EOF failed');
+    else await observed.toMatchObject({ name: 'AbortError' });
+    expect(body.closed).toBe(true);
+  },
+);
 it.each([3, 5])(
   'refuses actual length %i when the source declared four bytes',
   async (actual) => {

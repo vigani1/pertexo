@@ -2,7 +2,8 @@ import { FILE_TRANSFER_NO_PROGRESS_MILLIS } from '@pertexo/node-sdk';
 import { lookup } from 'node:dns/promises';
 import http from 'node:http';
 import https from 'node:https';
-import { Transform, pipeline, type Readable } from 'node:stream';
+import { Writable, type Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import type { LookupFunction } from 'node:net';
 
 import type { ResolvedAddress } from './address-policy.js';
@@ -107,6 +108,7 @@ export class NodeHttpTransport implements SecureHttpTransport {
       );
       request.on('error', fail);
       request.once('finish', () => {
+        if (fileTransfer) return;
         uploadFinished = true;
         complete();
       });
@@ -116,10 +118,12 @@ export class NodeHttpTransport implements SecureHttpTransport {
       }
       const length = input.body.byteLength;
       let written = 0;
-      const counter = new Transform({
-        readableHighWaterMark: 65536,
-        writableHighWaterMark: 65536,
-        transform(chunk: unknown, _encoding, callback) {
+      // A length-delimited receiver may close before the file's EOF read.
+      // End the HTTP message at its declared length, but independently require
+      // the source's verified EOF before publishing a successful response.
+      const counter = new Writable({
+        highWaterMark: 65536,
+        write(chunk: unknown, _encoding, callback) {
           if (
             !(chunk instanceof Uint8Array) ||
             written + chunk.byteLength > length
@@ -128,21 +132,37 @@ export class NodeHttpTransport implements SecureHttpTransport {
             return;
           }
           written += chunk.byteLength;
-          callback(null, chunk);
+          request.write(chunk, callback);
+          if (written === length) request.end();
         },
-        flush(callback) {
-          callback(
-            written === length
-              ? undefined
-              : new Error('Verified HTTP body length mismatch'),
-          );
+        final(callback) {
+          if (written !== length) {
+            callback(new Error('Verified HTTP body length mismatch'));
+            return;
+          }
+          if (!request.writableEnded) request.end();
+          callback();
         },
       });
       try {
         source = input.body.open(input.signal ?? new AbortController().signal);
-        pipeline(source, counter, request, (error) => {
-          if (error) fail(error);
-        });
+        void pipeline(
+          source,
+          counter,
+          input.signal === undefined ? {} : { signal: input.signal },
+        ).then(
+          () => {
+            uploadFinished = true;
+            complete();
+          },
+          (error: unknown) => {
+            fail(
+              error instanceof Error
+                ? error
+                : new Error('Verified HTTP body transfer failed'),
+            );
+          },
+        );
       } catch (error) {
         fail(
           error instanceof Error
