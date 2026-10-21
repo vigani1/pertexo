@@ -14,6 +14,11 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Readable } from 'node:stream';
+import { finished } from 'node:stream/promises';
+import {
+  closeArtifactStream,
+  withByteProgress,
+} from '../../../../src/attempts/artifacts/scratch/progress.js';
 import { afterEach, expect, it, vi } from 'vitest';
 import { ArtifactScratchSpace } from '../../../../src/attempts/artifacts/scratch/space.js';
 
@@ -288,4 +293,46 @@ it('cancels and closes a stalled native producer after sixty seconds, then allow
   vi.useRealTimers();
   const next = await space.spool(input(4, 'next'));
   await next.release();
+});
+
+it('still disables scratch after a real file read failure', async () => {
+  const { space } = await fixture();
+  const file = await space.spool(input());
+  const reader = file.open();
+  await closeArtifactStream(reader);
+  await rm(reader.path);
+  const failedReader = withByteProgress(
+    file.open(),
+    new AbortController().signal,
+  );
+  await expect(finished(failedReader)).rejects.toMatchObject({
+    safeErrorCode: 'execution.file_scratch_io',
+  });
+  await expect(file.release()).rejects.toMatchObject({
+    safeErrorCode: 'execution.file_scratch_cleanup',
+  });
+  expect(() => {
+    space.checkReadiness();
+  }).toThrow();
+  await expect(
+    space.spool(input(4, 'after-disk-failure')),
+  ).rejects.toMatchObject({
+    safeErrorCode: 'execution.file_scratch_cleanup',
+  });
+});
+
+it('keeps a file error observed during release in the readiness result', async () => {
+  const { space } = await fixture();
+  const file = await space.spool(input());
+  const reader = file.open();
+  await closeArtifactStream(reader);
+  await rm(reader.path);
+  const failedReader = file.open();
+  await expect(file.release()).rejects.toMatchObject({
+    safeErrorCode: 'execution.file_scratch_cleanup',
+  });
+  expect(failedReader.closed).toBe(true);
+  expect(() => {
+    space.checkReadiness();
+  }).toThrow();
 });

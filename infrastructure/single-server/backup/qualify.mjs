@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { S3Client } from '@aws-sdk/client-s3';
 import { copyObjectTree } from './copy-objects.mjs';
 import { execFileSync, spawnSync } from 'node:child_process';
+import { createRecoveryFiles } from './files.fixture.mjs';
 import { seedEncryptedRecoveryFixture } from './encryption.fixture.mjs';
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
@@ -240,27 +241,23 @@ try {
   const sourceDb = await database('source-db', true);
   const targetDb = await database('target-db', false);
   const encryption = await seedEncryptedRecoveryFixture(sql, sourceDb);
-  const body = Buffer.from('matched workflow artifact — UTF-8');
-  const artifacts = [0, 1].map(() => ({
-    artifactId: randomUUID(),
-    workspaceId: randomUUID(),
-    byteLength: body.length,
-    mediaType: 'text/plain; charset=utf-8',
-    sha256: createHash('sha256').update(body).digest('hex'),
-  }));
+  const { artifacts, bodies, bundle } = createRecoveryFiles();
   store = createArtifactStore(parseArtifactStoreConfig(source));
   for (const artifact of artifacts)
-    await store.put({ ...artifact, body: Readable.from([body]) });
+    await store.put({
+      ...artifact,
+      body: Readable.from([bodies.get(artifact.artifactId)]),
+    });
   sql(
     sourceDb,
     `SET ROLE pertexo_owner;
- CREATE TABLE public.recovery_fixture(workspace_id uuid, artifact_id uuid, sha256 text);
+ CREATE TABLE public.recovery_fixture(workspace_id uuid, artifact_id uuid, sha256 text, pages_json jsonb);
  ALTER TABLE public.recovery_fixture ENABLE ROW LEVEL SECURITY;
  ALTER TABLE public.recovery_fixture FORCE ROW LEVEL SECURITY;
  CREATE POLICY workspace_only ON public.recovery_fixture USING (workspace_id = current_setting('app.workspace_id', true)::uuid);
  GRANT SELECT ON public.recovery_fixture TO pertexo_app;
  RESET ROLE;
- INSERT INTO public.recovery_fixture VALUES ${artifacts.map((a) => `('${a.workspaceId}','${a.artifactId}','${a.sha256}')`).join(',')};`,
+ INSERT INTO public.recovery_fixture VALUES ${artifacts.map((a) => `('${a.workspaceId}','${a.artifactId}','${a.sha256}',${a.artifactId === bundle.pages[0].artifactId ? "'" + JSON.stringify(bundle) + "'::jsonb" : 'NULL'})`).join(',')};`,
   );
   const dump = docker(
     [
@@ -424,7 +421,7 @@ try {
     const download = await store.getStream(artifact);
     const chunks = [];
     for await (const chunk of download.body) chunks.push(chunk);
-    assert.deepEqual(Buffer.concat(chunks), body);
+    assert.deepEqual(Buffer.concat(chunks), bodies.get(artifact.artifactId));
   }
   const restoredTargets = [
     targetDb,
@@ -453,13 +450,27 @@ try {
     );
   assert.equal(
     sql(targetDb, 'SELECT count(*) FROM public.recovery_fixture;').trim(),
-    '2',
+    String(artifacts.length),
+  );
+  assert.deepEqual(
+    JSON.parse(
+      sql(
+        targetDb,
+        'SELECT pages_json FROM public.recovery_fixture WHERE pages_json IS NOT NULL LIMIT 1;',
+      ).trim(),
+    ),
+    bundle,
   );
   const visible = sql(
     targetDb,
     `SET ROLE pertexo_app; SELECT set_config('app.workspace_id','${artifacts[0].workspaceId}',false); SELECT count(*) FROM public.recovery_fixture;`,
   );
   assert.equal(visible.trim().split('\n').at(-1), '1');
+  const foreignPages = sql(
+    targetDb,
+    `SET ROLE pertexo_app; SELECT set_config('app.workspace_id','${artifacts[0].workspaceId}',false); SELECT count(*) FROM public.recovery_fixture WHERE pages_json IS NOT NULL;`,
+  );
+  assert.equal(foreignPages.trim().split('\n').at(-1), '0');
   assert.equal(
     sql(
       targetDb,
