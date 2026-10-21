@@ -8,13 +8,13 @@ import {
   PortableJsonError,
   workflowPortableManifestSchema,
   WORKFLOW_PORTABILITY_LIMITS,
-} from '../src/portability/contract.js';
+} from '../src/authoring/portability/contract.js';
 import {
   inspectWorkflowPortableManifest,
   projectWorkflowPortableManifest,
   WorkflowPortabilityError,
   type WorkflowPortabilityCatalog,
-} from '../src/portability/projection.js';
+} from '../src/authoring/portability/projection.js';
 
 const catalog: WorkflowPortabilityCatalog = {
   definitions: ['core.set', 'core.foreach', 'http.request'].map((key) => ({

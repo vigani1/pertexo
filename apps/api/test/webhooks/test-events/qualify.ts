@@ -10,7 +10,7 @@ import type {
 import {
   registerWebhookIngress,
   type WebhookIngressDependencies,
-} from '../../../src/webhooks/ingress.js';
+} from '../../../src/webhooks/ingress/register.js';
 import type { HttpSessionCookies } from '../support/browser-session.fixture.js';
 
 interface Fixture {

@@ -1,4 +1,4 @@
-import type { NodeExecutionCapabilityFactories } from '../../../src/attempts/capabilities.js';
+import type { NodeExecutionCapabilityFactories } from '../../../src/attempts/execution/capabilities.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { createDeadlineWakeupScanner } from '@pertexo/database/runs';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
@@ -16,7 +16,7 @@ import type {
 } from '@pertexo/workflow-model';
 import { vi } from 'vitest';
 import { createCoordinatorRuntime } from '../../../src/runs/runtime.js';
-import { createNodeAttemptRuntime } from '../../../src/attempts/runtime.js';
+import { createNodeAttemptRuntime } from '../../../src/attempts/delivery/runtime.js';
 import { WorkerDrainState } from '../../../src/runtime/shutdown/drain-state.js';
 import { OutboxDispatcher } from '../../../src/transport/outbox/dispatcher.js';
 import { coordinatorFixture } from '../../support/coordinator/consumer.js';

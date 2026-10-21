@@ -31,8 +31,8 @@ import type { NodeExecutionRegistry } from '@pertexo/workflow-engine';
 
 import { createCoordinatorRuntime } from '../../../src/runs/runtime.js';
 import { createHttpProviderTelemetry } from '../../../src/providers/telemetry.js';
-import { createNodeAttemptRuntime } from '../../../src/attempts/runtime.js';
-import { createWorkerNodeRuntimeCapabilities } from '../../../src/attempts/runtime-capabilities.js';
+import { createNodeAttemptRuntime } from '../../../src/attempts/delivery/runtime.js';
+import { createWorkerNodeRuntimeCapabilities } from '../../../src/attempts/execution/runtime-capabilities.js';
 import {
   databaseUrl,
   operatorUrl,

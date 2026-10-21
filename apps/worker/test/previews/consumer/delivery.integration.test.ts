@@ -8,7 +8,7 @@ import {
 import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import { describe, expect, it } from 'vitest';
 
-import { createNodeAttemptRuntime } from '../../../src/attempts/runtime.js';
+import { createNodeAttemptRuntime } from '../../../src/attempts/delivery/runtime.js';
 import { createPlatformPreviewNodeInvoker } from '../../../src/previews/runtime.js';
 import {
   acceptDelivery,

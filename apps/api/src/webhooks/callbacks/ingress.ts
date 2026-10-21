@@ -10,7 +10,7 @@ import {
   parseRequestId,
   withRequestOperationSignal,
 } from '../../platform/http/index.js';
-import { problem } from '../ingress-responses.js';
+import { problem } from '../ingress/reply.js';
 import {
   WEBHOOK_BODY_MAX_BYTES,
   parseWebhookBody,

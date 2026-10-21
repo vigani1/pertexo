@@ -13,7 +13,7 @@ vi.mock('../../src/tenant-access/transactions.js', () => ({
   },
 }));
 
-import { createConnectionUsagePersistence } from '../../src/connections/usage.queries.js';
+import { createConnectionUsagePersistence } from '../../src/connections/discovery/usage.queries.js';
 import { ConnectionNotFoundError } from '../../src/connections/records.js';
 
 const workspaceId = '11111111-1111-4111-8111-111111111111';

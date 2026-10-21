@@ -25,7 +25,7 @@ import type { PreviewTelemetry } from '../previews/telemetry.js';
 import {
   unknownOutcomeReconciliationFactories,
   type UnknownOutcomeReconciliationStore,
-} from '../attempts/unknown-outcome-reconciliation.js';
+} from '../attempts/delivery/unknown-outcome-reconciliation.js';
 import type {
   FailureNotificationDeliveryCapability,
   FailureNotificationHandler,

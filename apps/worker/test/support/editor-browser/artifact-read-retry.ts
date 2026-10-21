@@ -1,5 +1,5 @@
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
-import type { NodeExecutionCapabilityFactories } from '../../../src/attempts/capabilities.js';
+import type { NodeExecutionCapabilityFactories } from '../../../src/attempts/execution/capabilities.js';
 
 /** A controlled temporary read outage in the real worker, never a production hook. */
 export function withArtifactReadOutage(

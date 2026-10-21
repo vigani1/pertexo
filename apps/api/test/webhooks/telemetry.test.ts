@@ -8,7 +8,7 @@ import {
 import { core, NodeSDK } from '@opentelemetry/sdk-node';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createWebhookIngressTelemetry } from '../../src/webhooks/telemetry.js';
+import { createWebhookIngressTelemetry } from '../../src/webhooks/ingress/telemetry.js';
 
 describe('webhook ingress telemetry', () => {
   afterEach(() => {

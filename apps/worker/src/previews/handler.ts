@@ -15,8 +15,8 @@ import type {
   PreviewAttemptRunStore,
 } from '@pertexo/database/previews';
 export type { PreviewAttemptRunStore } from '@pertexo/database/previews';
-import type { NodeExecutionCapabilityFactories } from '../attempts/capabilities.js';
-import { nodeExecutionOptionalFields } from '../attempts/runtime-fields.js';
+import type { NodeExecutionCapabilityFactories } from '../attempts/execution/capabilities.js';
+import { nodeExecutionOptionalFields } from '../attempts/execution/runtime-fields.js';
 import type { PreviewTelemetry, PreviewTerminalStatus } from './telemetry.js';
 import { startPreviewAttemptSupervisor } from './supervisor.js';
 

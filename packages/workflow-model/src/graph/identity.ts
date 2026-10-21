@@ -1,9 +1,9 @@
 import { workflowNodes } from './nodes.js';
-import { compareOrdinal } from '../ordering.js';
+import { compareOrdinal } from '../values/ordering.js';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
-import { canonicalJson } from '../json/canonical.js';
+import { canonicalJson } from '../values/json/canonical.js';
 import {
   WORKFLOW_VALIDATION_MAX_ISSUES,
   type WorkflowGraph,

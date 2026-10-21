@@ -14,7 +14,7 @@ import {
   rolesForCapability,
   type AuthorizationCapability,
 } from '../tenant-access/policy.js';
-import { pendingTaskBlockedSql } from '../runs/pending-tasks/eligibility.js';
+import { pendingTaskBlockedSql } from '../runs/pending-tasks/responses/eligibility.js';
 
 function capabilityAudienceSql(capability: AuthorizationCapability): string {
   const roles = rolesForCapability(capability)

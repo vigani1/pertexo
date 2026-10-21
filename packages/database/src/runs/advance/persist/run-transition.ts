@@ -1,6 +1,6 @@
 import { isTestRun } from '../../data-policy.js';
 import { wakeErrorWorkflowsForCapacity } from '../../error-workflows/queue-wait.js';
-import { synchronizeHumanWait } from '../../pending-tasks/time-capacity.js';
+import { synchronizeHumanWait } from '../../pending-tasks/lifecycle/time-capacity.js';
 import { persistErrorWorkflowIntent } from '../../error-workflows/produce.js';
 import type { PoolClient } from 'pg';
 

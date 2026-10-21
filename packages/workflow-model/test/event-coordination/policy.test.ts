@@ -2,13 +2,13 @@ import { afterAll, expect, it } from 'vitest';
 import {
   eventCoordinationPolicySchema,
   isEventCoordinationTrigger,
-} from '../../src/event-coordination/contract.js';
-import { decideEventCoordination } from '../../src/event-coordination/decision.js';
+} from '../../src/triggers/event-coordination/contract.js';
+import { decideEventCoordination } from '../../src/triggers/event-coordination/decision.js';
 import {
   resolveEventCoordinationKey,
   inspectEventCoordinationExpression,
-} from '../../src/event-coordination/key.js';
-import { JsonataEvaluator } from '../../src/expressions/evaluator.js';
+} from '../../src/triggers/event-coordination/key.js';
+import { JsonataEvaluator } from '../../src/values/expressions/evaluator.js';
 const key = { kind: 'run_input', path: '$.id' } as const;
 const evaluator = new JsonataEvaluator();
 afterAll(() => evaluator.shutdown());

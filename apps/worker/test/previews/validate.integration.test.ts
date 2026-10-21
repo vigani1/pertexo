@@ -15,7 +15,7 @@ import { Queue } from 'bullmq';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createCoordinatorRuntime } from '../../src/runs/runtime.js';
-import { createNodeAttemptRuntime } from '../../src/attempts/runtime.js';
+import { createNodeAttemptRuntime } from '../../src/attempts/delivery/runtime.js';
 import { createPlatformPreviewNodeInvoker } from '../../src/previews/runtime.js';
 import {
   acceptDelivery,

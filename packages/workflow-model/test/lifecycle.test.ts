@@ -5,7 +5,7 @@ import {
   workflowActivationAfterReconciliation,
   workflowActivationStatusSchema,
   type WorkflowTriggerStatus,
-} from '../src/lifecycle.js';
+} from '../src/execution/lifecycle.js';
 
 describe('workflow lifecycle command decisions', () => {
   it.each([false, true])(

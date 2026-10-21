@@ -1,16 +1,16 @@
-import { resolveValueSource } from '../../src/mapping/resolve.js';
+import { resolveValueSource } from '../../src/values/mapping/resolve.js';
 import { afterAll, expect, it } from 'vitest';
 import {
   workspaceVariableValuesSchema,
   workspaceVariableSnapshotSchema,
-} from '../../src/variables/contract.js';
-import { canonicalJson } from '../../src/json/canonical.js';
-import { JsonataEvaluator } from '../../src/expressions/evaluator.js';
-import { validateExpression } from '../../src/expressions/policy.js';
+} from '../../src/values/variables/contract.js';
+import { canonicalJson } from '../../src/values/json/canonical.js';
+import { JsonataEvaluator } from '../../src/values/expressions/evaluator.js';
+import { validateExpression } from '../../src/values/expressions/policy.js';
 import {
   workflowVariableSources,
   inspectWorkflowVariableSource,
-} from '../../src/expressions/variable-usage.js';
+} from '../../src/values/expressions/variable-usage.js';
 function workflowVariableReferences(graph: WorkflowGraph) {
   const inspected = [...workflowVariableSources(graph)].map(
     inspectWorkflowVariableSource,

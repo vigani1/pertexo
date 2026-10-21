@@ -24,7 +24,7 @@ import {
   type WorkflowAuthoringDatabase,
 } from '../../src/authoring/workflows/database.js';
 import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringDatabase } from './workflow-authoring-admission.fixture.js';
-import { createWorkflowIntegrationUsageDatabase } from '../../src/connections/integration-usage.queries.js';
+import { createWorkflowIntegrationUsageDatabase } from '../../src/connections/discovery/integration-usage.queries.js';
 import { createDisposableDatabaseFixture } from './postgres/disposable-database.js';
 import { purgeWorkspace } from './workspace-purge.js';
 import { enforceRetention } from './retention.js';

@@ -37,7 +37,7 @@ import {
   type ApiIdentityRuntime,
 } from '../../src/platform/identity/identity-runtime.module.js';
 import { createCoreWorkflowAuthoringDatabase } from '../../src/platform/workflow/workflow-runtime.module.js';
-import { WebhookManagementService } from '../../src/webhooks/service.js';
+import { WebhookManagementService } from '../../src/webhooks/management/service.js';
 import { issueBrowserSession } from './support/browser-session.fixture.js';
 import { dropDisconnectedDatabase } from '../support/disposable-database.js';
 import {

@@ -4,10 +4,10 @@ export {
   AUTHORING_VALIDATION_BUDGET,
   AuthoringValidationUnavailableError,
   type WorkflowAuthoringValidationOptions,
-} from './authoring-validation/contracts.js';
-export { WorkflowAuthoringValidator } from './authoring-validation/validator.js';
-export { JsonataEvaluator } from './expressions/evaluator.js';
-export type { ExpressionEvaluator } from './expressions/policy.js';
+} from './authoring/validation/contracts.js';
+export { WorkflowAuthoringValidator } from './authoring/validation/validator.js';
+export { JsonataEvaluator } from './values/expressions/evaluator.js';
+export type { ExpressionEvaluator } from './values/expressions/policy.js';
 export {
   EMPTY_DEFINITION_CATALOG,
   parseWorkflowGraphForPublish,
@@ -23,14 +23,14 @@ export {
   inspectWorkflowVariableSource,
   type WorkflowVariableReference,
   type WorkflowVariableSource,
-} from './expressions/variable-usage.js';
+} from './values/expressions/variable-usage.js';
 
-export { resolveEventCoordinationKey } from './event-coordination/key.js';
+export { resolveEventCoordinationKey } from './triggers/event-coordination/key.js';
 
-export { inspectExpression } from './expressions/policy.js';
-export type { CallbackReference } from './callbacks/references.js';
+export { inspectExpression } from './values/expressions/policy.js';
+export type { CallbackReference } from './flow/callbacks/references.js';
 
 export {
   callbackReferenceIssue,
   hasCallbackMapping,
-} from './callbacks/validation.js';
+} from './flow/callbacks/validation.js';

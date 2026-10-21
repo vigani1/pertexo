@@ -19,7 +19,7 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { createCoordinatorRuntime } from '../../../src/runs/runtime.js';
-import { createNodeAttemptRuntime } from '../../../src/attempts/runtime.js';
+import { createNodeAttemptRuntime } from '../../../src/attempts/delivery/runtime.js';
 import { coordinatorFixture } from '../../support/coordinator/consumer.js';
 import {
   createCoordinatorDispatcher,

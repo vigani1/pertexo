@@ -1,5 +1,5 @@
 import { WebhookTestEventController } from '../../src/webhooks/test-events/controller.js';
-import { UnconfiguredWebhookTestsController } from '../../src/webhooks/unavailable.js';
+import { UnconfiguredWebhookTestsController } from '../../src/webhooks/management/unavailable.js';
 import { DataTablesController } from '../../src/data-tables/controller.js';
 import { WebhookPreflightController } from '../../src/webhooks/authentication/preflight.controller.js';
 import { UnconfiguredConnectionsController } from '../../src/connections/http/unavailable.js';
@@ -26,7 +26,7 @@ import {
 } from '../../src/platform/rate-limit/metadata.js';
 import type { RateLimitEndpointClass } from '@pertexo/rate-limit';
 import { ScheduleManagementController } from '../../src/schedules/controllers.js';
-import { WebhookManagementController } from '../../src/webhooks/controllers.js';
+import { WebhookManagementController } from '../../src/webhooks/management/controllers.js';
 import { WorkflowAuthoringController } from '../../src/workflow-authoring/http/controllers.js';
 import { WorkflowRunsController } from '../../src/workflow-runs/http/controllers.js';
 

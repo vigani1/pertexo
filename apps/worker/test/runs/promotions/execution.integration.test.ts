@@ -34,7 +34,7 @@ import {
   EMPTY_WORKFLOW_GRAPH,
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
-import { createWorkerNodeRuntimeCapabilities } from '../../../src/attempts/runtime-capabilities.js';
+import { createWorkerNodeRuntimeCapabilities } from '../../../src/attempts/execution/runtime-capabilities.js';
 import {
   createEditorControlledHttpTarget,
   controlledActionUrl,

@@ -21,7 +21,7 @@ import type {
   NodeArtifactReference,
   NodeExecutionRuntime,
 } from '@pertexo/node-sdk/server';
-import { createWorkerNodeRuntimeCapabilities } from '../../../src/attempts/runtime-capabilities.js';
+import { createWorkerNodeRuntimeCapabilities } from '../../../src/attempts/execution/runtime-capabilities.js';
 import { createArtifactDatabaseEnvironment } from './database.js';
 import {
   createArtifactDestination,

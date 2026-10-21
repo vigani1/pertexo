@@ -3,7 +3,7 @@ import {
   validateCallDependencyClosure,
   summarizeWorkflowCalls,
   type CallableVersionSummary,
-} from '../../src/callable/dependencies.js';
+} from '../../src/flow/callable/dependencies.js';
 
 const version = (
   workflowId: string,

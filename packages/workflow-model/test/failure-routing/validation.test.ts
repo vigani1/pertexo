@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   inspectWorkflowFailureRoutes,
   type FailureRoutingGraph,
-} from '../../src/failure-routing/validation.js';
-import { WORKFLOW_FAILURE_PORT } from '../../src/failure-routing/contract.js';
+} from '../../src/flow/failure-routing/validation.js';
+import { WORKFLOW_FAILURE_PORT } from '../../src/flow/failure-routing/contract.js';
 const node = (
   id: string,
   key = 'core.set',

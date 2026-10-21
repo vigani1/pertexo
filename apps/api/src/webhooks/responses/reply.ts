@@ -1,8 +1,8 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { withRequestOperationSignal } from '../../platform/http/index.js';
 import type { WebhookResponseWaiter } from './wait.js';
-import type { WebhookIngressTelemetry } from '../telemetry.js';
-import { record } from '../ingress-responses.js';
+import type { WebhookIngressTelemetry } from '../ingress/telemetry.js';
+import { record } from '../ingress/reply.js';
 
 type Acceptance = Readonly<{
   runId: string;

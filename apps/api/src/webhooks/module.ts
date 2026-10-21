@@ -8,15 +8,15 @@ import { WebhookPreflightController } from './authentication/preflight.controlle
 import {
   createWebhookPreflight,
   type WebhookIngressDependencies,
-} from './ingress.js';
-import { WebhookManagementController } from './controllers.js';
-import { WebhookManagementService } from './service.js';
-import { WebhookReadGuard, WebhookUpdateGuard } from './guards.js';
+} from './ingress/register.js';
+import { WebhookManagementController } from './management/controllers.js';
+import { WebhookManagementService } from './management/service.js';
+import { WebhookReadGuard, WebhookUpdateGuard } from './management/guards.js';
 import { WEBHOOK_AUTHORIZATION, WEBHOOK_PREFLIGHT } from './tokens.js';
 import {
   UnconfiguredWebhooksController,
   UnconfiguredWebhookTestsController,
-} from './unavailable.js';
+} from './management/unavailable.js';
 
 @Module({})
 // Nest dynamic modules require a class container.

@@ -32,7 +32,7 @@ function createWorkerApplication(
 }
 
 import type { CoordinatorRuntime } from '../src/runs/runtime.js';
-import type { NodeAttemptRuntime } from '../src/attempts/runtime.js';
+import type { NodeAttemptRuntime } from '../src/attempts/delivery/runtime.js';
 import type { MaintenanceRuntime } from '../src/maintenance/runtime.js';
 import type { TriggerRuntime } from '../src/triggers/runtime.js';
 import type { RetentionRuntime } from '../src/retention/runtime.js';

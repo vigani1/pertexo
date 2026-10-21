@@ -1,7 +1,7 @@
 import {
   persistTaskIntents,
   persistConsumedTasks,
-} from '../../pending-tasks/persist.js';
+} from '../../pending-tasks/lifecycle/persist.js';
 import { persistFailureHandling } from './failure-handling.js';
 import type { PoolClient } from 'pg';
 import type { WorkflowCheckpoint } from '@pertexo/workflow-engine';

@@ -28,7 +28,7 @@ import type { ApiIdentityRuntime } from '../src/platform/identity/identity-runti
 import type { ApiWorkflowRuntime } from '../src/platform/workflow/workflow-runtime.module.js';
 import type { ApiConnectionRuntime } from '../src/platform/connections/connection-runtime.module.js';
 import type { ApiWebhookRuntime } from '../src/platform/webhooks/webhook-runtime.module.js';
-import type { WebhookManagementService } from '../src/webhooks/service.js';
+import type { WebhookManagementService } from '../src/webhooks/management/service.js';
 import type { ApiScheduleRuntime } from '../src/platform/schedules/schedule-runtime.module.js';
 import type { ApiNotificationRuntime } from '../src/platform/notifications/notification-runtime.module.js';
 import { WorkspaceInboxService } from '../src/notifications/service.js';

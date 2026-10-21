@@ -26,7 +26,7 @@ import { eq } from 'drizzle-orm';
 import { describe, expect, it, vi } from 'vitest';
 
 import { observeWorkspaceArtifactCapacity } from '../../src/runtime/health/artifact-metrics.js';
-import { createWorkerNodeRuntimeCapabilities } from '../../src/attempts/runtime-capabilities.js';
+import { createWorkerNodeRuntimeCapabilities } from '../../src/attempts/execution/runtime-capabilities.js';
 import { runWithCleanup } from '../support/infrastructure/test-operation.js';
 
 const integration =

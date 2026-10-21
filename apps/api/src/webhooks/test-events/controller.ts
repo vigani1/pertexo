@@ -21,7 +21,7 @@ import {
 import type { IdentityWorkspaceRequest } from '../../workspaces/types.js';
 import { withRequestOperationSignal } from '../../platform/http/index.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
-import { WebhookUpdateGuard } from '../guards.js';
+import { WebhookUpdateGuard } from '../management/guards.js';
 import { WebhookTestEventService } from './service.js';
 const scope = {
   workspaceId: z.uuid(),

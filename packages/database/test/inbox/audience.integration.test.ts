@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
 import { apiPool } from '../support/workflow-authoring.js';
 import { withTenantScopedClient } from '../../src/tenant-access/transactions.js';
-import { createPendingTaskStore } from '../../src/runs/pending-tasks/store.js';
+import { createPendingTaskStore } from '../../src/runs/pending-tasks/responses/store.js';
 import {
   own,
   config,

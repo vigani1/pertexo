@@ -1,5 +1,5 @@
-import { isRecord } from '../json/object.js';
-import { isCallbackWaitNode } from '../callbacks/contract.js';
+import { isRecord } from '../values/json/object.js';
+import { isCallbackWaitNode } from '../flow/callbacks/contract.js';
 export type WorkflowControlOutputKind =
   'branch' | 'parallel' | 'for_each' | 'human_task';
 

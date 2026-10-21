@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   stepSampleBindings,
   stepSampleIdentity,
-} from '../../src/samples/identity.js';
+} from '../../src/authoring/samples/identity.js';
 import type { WorkflowNode } from '../../src/graph/contract.js';
 
 const node: WorkflowNode = {
