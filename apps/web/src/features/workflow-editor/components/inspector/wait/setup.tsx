@@ -1,11 +1,10 @@
+import { CallbackSetup } from './callback';
 import {
   callbackWaitConfigSchema,
-  isRecord,
   WAIT_MAXIMUM_SECONDS,
 } from '@pertexo/workflow-model';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import type { NodeConfig } from '../../../model/inspector/draft';
-import { nestedConfigForm } from '../../../model/inspector/nested-config-form';
 import {
   fieldControlId,
   type NodeFormApi,
@@ -18,10 +17,6 @@ export function WaitSetup({
   form,
 }: Readonly<{ config: NodeConfig; form: NodeFormApi }>) {
   const callback = config.mode === 'callback';
-  const authentication = isRecord(config.authentication)
-    ? config.authentication
-    : { mode: 'secret_url', allowedOrigins: [] };
-  const authenticationForm = nestedConfigForm(form, 'authentication');
   return (
     <>
       <Field>
@@ -73,74 +68,7 @@ export function WaitSetup({
             : 'From 1 second to 30 days.',
         }}
       />
-      {callback ? (
-        <>
-          <Field>
-            <FieldLabel htmlFor={fieldControlId(form.nodeId, 'callback-auth')}>
-              Callback authentication
-            </FieldLabel>
-            <ChoiceSelect
-              id={fieldControlId(form.nodeId, 'callback-auth')}
-              value={
-                typeof authentication.mode === 'string'
-                  ? authentication.mode
-                  : 'secret_url'
-              }
-              disabled={!form.editable}
-              choices={[
-                { value: 'secret_url', label: 'Secret URL' },
-                { value: 'signed', label: 'Signed (HMAC)' },
-                { value: 'header_secret', label: 'Header secret' },
-              ]}
-              onChange={(mode) => {
-                if (mode === null) return;
-                form.commit(
-                  (node) => ({
-                    config: {
-                      ...node.config,
-                      authentication:
-                        mode === 'header_secret'
-                          ? {
-                              mode,
-                              headerName: 'authorization',
-                              allowedOrigins: [],
-                            }
-                          : { mode, allowedOrigins: [] },
-                    },
-                  }),
-                  `${form.nodeId}:callback-auth`,
-                );
-              }}
-            />
-            <FieldDescription>
-              {authentication.mode === 'secret_url'
-                ? 'Anyone holding the URL can resume this Wait. Send it only to a trusted service.'
-                : authentication.mode === 'signed'
-                  ? 'Map the authentication secret to the sender. Sign the exact request bytes using the normal Pertexo webhook signature and timestamp headers.'
-                  : 'Map the authentication secret to the sender. Use Authorization: Bearer, or choose a dedicated header.'}
-            </FieldDescription>
-          </Field>
-          {authentication.mode === 'header_secret' ? (
-            <SchemaField
-              config={authentication}
-              form={authenticationForm}
-              field={{
-                key: 'headerName',
-                label: 'Secret header name',
-                kind: 'string',
-                required: true,
-                description:
-                  'authorization uses Bearer; dedicated headers send the secret directly. Proxy, cookie and reserved headers are refused.',
-              }}
-            />
-          ) : null}
-          <p className="text-xs text-subtle-foreground">
-            In an earlier HTTP, Slack or email step, choose Inputs → Insert data
-            → this Wait. Test workflow supports live callbacks; single-step
-            previews do not.
-          </p>
-        </>
-      ) : null}
+      {callback ? <CallbackSetup config={config} form={form} /> : null}
     </>
   );
 }
