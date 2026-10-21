@@ -226,7 +226,8 @@ review tokens for bulk moves. Session identity is checked before sharing writes.
 
 The hub closes the active workflow view only when its own fresh summary read
 proves access was lost. It clears graph/history caches and unsaved editor state;
-a missing target reported by a command merely rechecks that own read. Viewer
+a missing target reported by a command merely rechecks that own read. Late rename
+receipts invalidate the summary instead of replacing a newer denied read. Viewer
 access keeps the editor readable with authoring/test/publish controls unavailable.
 
 Verification includes stale and failed refreshes, exact uncertain retries,

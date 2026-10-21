@@ -210,7 +210,8 @@ export function useWorkflowRename({
         workflowId,
         attempt,
       );
-      queryClient.setQueryData(detailKey, workflow);
+      // A delayed receipt must not replace a newer read that revoked access.
+      void queryClient.invalidateQueries({ queryKey: detailKey, exact: true });
       void queryClient.invalidateQueries({
         queryKey: workflowOrganizationKeys.scope(userId, workspaceId),
       });
