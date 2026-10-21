@@ -1,3 +1,4 @@
+import { WorkflowReadBoundary } from '@/features/workflows/hub.public';
 import { WorkflowPresenceProvider } from '@/features/workflow-collaboration/presence.public';
 import {
   Link,
@@ -22,36 +23,45 @@ export function WorkflowHubRoute() {
   const { found } = useLoaderData({
     from: '/w/$workspaceId/workflows/$workflowId',
   });
-  if (workflowId === null || !found)
-    return (
-      <WorkspaceShellFrame crumbs={[workflowsCrumb(workspace.id)]}>
-        <ResourceNotFound resource="workflow">
-          <Link
-            to="/w/$workspaceId/workflows"
-            params={{ workspaceId: workspace.id }}
-            className={buttonVariants({ variant: 'primary' })}
-          >
-            Back to workflows
-          </Link>
-        </ResourceNotFound>
-      </WorkspaceShellFrame>
-    );
+  const unavailable = (
+    <WorkspaceShellFrame crumbs={[workflowsCrumb(workspace.id)]}>
+      <ResourceNotFound resource="workflow">
+        <Link
+          to="/w/$workspaceId/workflows"
+          params={{ workspaceId: workspace.id }}
+          className={buttonVariants({ variant: 'primary' })}
+        >
+          Back to workflows
+        </Link>
+      </ResourceNotFound>
+    </WorkspaceShellFrame>
+  );
+  if (workflowId === null || !found) return unavailable;
   return (
-    <WorkflowPresenceProvider
+    <WorkflowReadBoundary
       key={`${user.id}:${workspace.id}:${workflowId}`}
-      scope={{
-        apiClient,
-        userId: user.id,
-        workspaceId: workspace.id,
-        workflowId,
-      }}
+      apiClient={apiClient}
+      userId={user.id}
+      workspaceId={workspace.id}
+      workflowId={workflowId}
+      fallback={unavailable}
     >
-      <div className="relative min-h-svh bg-background">
-        <div className="ambient ambient-still fixed" aria-hidden="true" />
-        <main id="main" className="relative min-h-svh">
-          <Outlet />
-        </main>
-      </div>
-    </WorkflowPresenceProvider>
+      <WorkflowPresenceProvider
+        key={`${user.id}:${workspace.id}:${workflowId}`}
+        scope={{
+          apiClient,
+          userId: user.id,
+          workspaceId: workspace.id,
+          workflowId,
+        }}
+      >
+        <div className="relative min-h-svh bg-background">
+          <div className="ambient ambient-still fixed" aria-hidden="true" />
+          <main id="main" className="relative min-h-svh">
+            <Outlet />
+          </main>
+        </div>
+      </WorkflowPresenceProvider>
+    </WorkflowReadBoundary>
   );
 }

@@ -58,6 +58,7 @@ export const workflowFolderSchema = z
     name: workflowFolderNameSchema,
     parentId: canonicalIdentifier.nullable(),
     revision: workflowFolderRevisionSchema,
+    canCreateWorkflows: z.boolean().optional(),
     depth: z.number().int().min(1).max(WORKFLOW_FOLDER_LIMITS.depth),
   })
   .strict()

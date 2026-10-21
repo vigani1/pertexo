@@ -187,10 +187,13 @@ describe('workflow settings tab', () => {
       ).not.toBeInTheDocument();
     });
     expect(
-      within(region('Identity')).queryByText('Daily control'),
+      screen.queryByRole('region', { name: 'Identity' }),
     ).not.toBeInTheDocument();
     expect(
-      within(region('Lifecycle')).getByText(/This isn’t available to you/u),
+      screen.queryByRole('region', { name: 'Lifecycle' }),
+    ).not.toBeInTheDocument();
+    expect(
+      await screen.findByRole('link', { name: 'Back to workflows' }),
     ).toBeVisible();
     expect(
       screen.queryByRole('button', { name: 'Archive workflow' }),

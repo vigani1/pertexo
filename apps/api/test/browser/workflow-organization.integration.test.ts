@@ -437,6 +437,7 @@ describe.skipIf(!enabled).each(['viewer', 'builder', 'admin'] as const)(
                       'workflow-created',
                       'workflow-create-rejected',
                       'folders',
+                      'folder-sharing',
                       'manager',
                       'tags',
                       'placement',

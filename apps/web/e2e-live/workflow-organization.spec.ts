@@ -826,6 +826,41 @@ test('ordinary owner persists shared organization, exact recovery and private di
     manager.getByRole('button', { name: 'Move folder', exact: true }),
     '/move',
   );
+  await phase('folder-sharing');
+  await manager.getByRole('button', { name: 'Sharing', exact: true }).click();
+  const sharing = manager.getByRole('region', { name: 'Sharing for Delivery' });
+  await choose(
+    page,
+    sharing.getByRole('combobox', { name: 'Access', exact: true }),
+    'Selected members and groups',
+  );
+  await expect(
+    sharing.getByText('Only owners and admins can access this folder.'),
+  ).toBeVisible();
+  await command(
+    page,
+    sharing.getByRole('button', { name: 'Save sharing', exact: true }),
+    '/sharing',
+  );
+  await page.reload();
+  await openManager(page);
+  await manager
+    .getByRole('button', { name: 'Edit folder Delivery', exact: true })
+    .click();
+  await manager.getByRole('button', { name: 'Sharing', exact: true }).click();
+  await expect(
+    sharing.getByText('Only owners and admins can access this folder.'),
+  ).toBeVisible();
+  await choose(
+    page,
+    sharing.getByRole('combobox', { name: 'Access', exact: true }),
+    'Workspace members',
+  );
+  await command(
+    page,
+    sharing.getByRole('button', { name: 'Save sharing', exact: true }),
+    '/sharing',
+  );
   await manager.getByLabel('Tag key', { exact: true }).fill('ops');
   await phase('tags');
   const tagReply = await command(

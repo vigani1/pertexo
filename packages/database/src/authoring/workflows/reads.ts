@@ -1,6 +1,9 @@
 import { sql } from 'drizzle-orm';
 import type { FolderScope } from '../../tenant-access/resources/contract.js';
-import { workflowAccessible } from '../../tenant-access/resources/workflows.js';
+import {
+  workflowActions,
+  workflowAccessible,
+} from '../../tenant-access/resources/workflows.js';
 import {
   bindResourcePredicate,
   workflowScopeSql,
@@ -159,15 +162,32 @@ export function createWorkflowAuthoringReadStore(
       ),
     getWorkflow: (workspaceId: string, workflowId: string, actorId: string) =>
       context.transact(workspaceId, actorId, async (client) => {
-        if (!(await canReadWorkflow(client, workspaceId, actorId, workflowId)))
-          return null;
-        const result = await client.query<Record<string, unknown>>(
-          `select *, ${workflowSetupSelection} from app.workflows where workspace_id = $1 and id = $2`,
-          [workspaceId, uuidSchema.parse(workflowId)],
+        const access = await context.requireReader(
+          client,
+          workspaceId,
+          actorId,
         );
-        return result.rows[0] === undefined
-          ? null
-          : mapWorkflow(result.rows[0]);
+        if (
+          !(await workflowAccessible(client, access, workspaceId, workflowId))
+        )
+          return null;
+        const parameters: unknown[] = [
+          workspaceId,
+          uuidSchema.parse(workflowId),
+        ];
+        const result = await client.query<
+          Record<string, unknown> & { resource_folder_id: string | null }
+        >(
+          `select *, ${workflowSetupSelection}, (select state.folder_id from app.workflow_organization_state state where state.workspace_id=app.workflows.workspace_id and state.workflow_id=app.workflows.id) resource_folder_id from app.workflows where workspace_id=$1 and id=$2`,
+          parameters,
+        );
+        const row = result.rows[0];
+        if (row === undefined) return null;
+        const { resource_folder_id, ...workflow } = row;
+        return {
+          ...mapWorkflow(workflow),
+          resourceAccess: workflowActions(access, resource_folder_id),
+        };
       }),
     listWorkflows: (input: ListWorkflowsInput): Promise<WorkflowPage> =>
       context.transact(input.workspaceId, input.actorId, async (client) => {
@@ -202,16 +222,18 @@ export function createWorkflowAuthoringReadStore(
           workflowScopeSql(access, sql`app.workflows.id`),
           parameters,
         );
-        const result = await client.query<Record<string, unknown>>(
+        const result = await client.query<
+          Record<string, unknown> & { resource_folder_id: string | null }
+        >(
           order === 'updated_desc'
-            ? `select *, ${workflowSetupSelection}, to_char(updated_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as cursor_position_at
+            ? `select *, ${workflowSetupSelection}, (select state.folder_id from app.workflow_organization_state state where state.workspace_id=app.workflows.workspace_id and state.workflow_id=app.workflows.id) resource_folder_id, to_char(updated_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as cursor_position_at
                from app.workflows where workspace_id = $1 and ${visible}
                  and ($5::uuid is null or exists(select 1 from app.workflow_version_dependencies dependency
                    where dependency.workspace_id=$1 and dependency.parent_version_id=app.workflows.published_version_id
                      and dependency.target_workflow_id=$5))
                  and ($2::timestamptz is null or (updated_at, id) < ($2::timestamptz, $3::uuid))
                order by updated_at desc, id desc limit $4`
-            : `select *, ${workflowSetupSelection}, to_char(created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as cursor_position_at
+            : `select *, ${workflowSetupSelection}, (select state.folder_id from app.workflow_organization_state state where state.workspace_id=app.workflows.workspace_id and state.workflow_id=app.workflows.id) resource_folder_id, to_char(created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as cursor_position_at
                from app.workflows where workspace_id = $1 and ${visible}
                  and ($5::uuid is null or exists(select 1 from app.workflow_version_dependencies dependency
                    where dependency.workspace_id=$1 and dependency.parent_version_id=app.workflows.published_version_id
@@ -224,9 +246,13 @@ export function createWorkflowAuthoringReadStore(
         const pageRows = result.rows.slice(0, limit);
         const items = Object.freeze(
           pageRows.map((row) => {
-            const workflowRow = { ...row };
+            const workflowRow: Record<string, unknown> = { ...row };
             delete workflowRow.cursor_position_at;
-            return mapWorkflow(workflowRow);
+            delete workflowRow.resource_folder_id;
+            return {
+              ...mapWorkflow(workflowRow),
+              resourceAccess: workflowActions(access, row.resource_folder_id),
+            };
           }),
         );
         const last = items.at(-1);

@@ -49,7 +49,14 @@ export function WorkflowFolderPicker({
           <SelectContent>
             <SelectGroup>
               {items.map((item) => (
-                <SelectItem key={item.value} value={item.value}>
+                <SelectItem
+                  key={item.value}
+                  value={item.value}
+                  disabled={
+                    folders.find((folder) => folder.id === item.value)
+                      ?.canCreateWorkflows === false
+                  }
+                >
                   {item.label}
                 </SelectItem>
               ))}

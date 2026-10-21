@@ -27,7 +27,8 @@ export function canEditOrganization(
   if (
     workspace.status !== 'active' ||
     !['owner', 'admin', 'builder'].includes(workspace.role) ||
-    !workspace.capabilities.includes('workflow:update')
+    !workspace.capabilities.includes('workflow:update') ||
+    workflows.some((item) => item.workflow.resourceAccess?.canEdit === false)
   )
     return false;
   const archived = workflows.some(

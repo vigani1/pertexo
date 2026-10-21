@@ -1,3 +1,5 @@
+import { useConnectionSharingEditor } from '../../hooks/use-sharing-editor';
+import { ConnectionSharingPanel } from '../sharing/panel';
 import { NoticeSubjectActions } from '@/features/inbox/subscriptions.public';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -37,7 +39,7 @@ import { ReplaceCredentialForm } from './replace-credential-form';
 import { RevokeConnectionDialog } from './revoke-connection-dialog';
 import { ConnectionUsage } from './connection-usage';
 
-type Mode = 'overview' | 'test' | 'replace';
+type Mode = 'overview' | 'test' | 'replace' | 'sharing';
 
 function ConnectionReadState({
   error,
@@ -169,10 +171,12 @@ function DetailBody({
   scope,
   connection,
   permissions,
+  sharing,
 }: Readonly<{
   scope: ConnectionMutationScope;
   connection: ConnectionResponse;
   permissions: ConnectionPermissions;
+  sharing: ReturnType<typeof useConnectionSharingEditor>;
 }>) {
   const [mode, setMode] = useState<Mode>('overview');
   const test = useConnectionTest(scope);
@@ -194,6 +198,18 @@ function DetailBody({
             permissions={permissions}
             onMode={setMode}
           />
+          {permissions.canManage ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="self-start"
+              onClick={() => {
+                setMode('sharing');
+              }}
+            >
+              Sharing
+            </Button>
+          ) : null}
           <Separator />
           <ConnectionFacts connection={connection} />
           <Separator />
@@ -241,6 +257,20 @@ function DetailBody({
           </Button>
         </>
       ) : null}
+      {mode === 'sharing' && permissions.canManage ? (
+        <>
+          <ConnectionSharingPanel scope={scope} editor={sharing} />
+          <Button
+            type="button"
+            variant="ghost"
+            className="self-start"
+            disabled={sharing.closeLocked}
+            onClick={back}
+          >
+            Back to details
+          </Button>
+        </>
+      ) : null}
       {mode === 'replace' &&
       permissions.canManage &&
       connection.status !== 'revoked' ? (
@@ -258,7 +288,7 @@ function DetailBody({
  * The detail lens, backed by the single-connection read. Test, replace and
  * revoke live here instead of in every row.
  */
-export function ConnectionDetailSheet({
+function ConnectionDetailSession({
   scope,
   connectionId,
   placeholder,
@@ -271,6 +301,10 @@ export function ConnectionDetailSheet({
   permissions: ConnectionPermissions;
   onClose: () => void;
 }>) {
+  const sharing = useConnectionSharingEditor(
+    scope,
+    permissions.canManage ? connectionId : undefined,
+  );
   const detail = useQuery({
     ...connectionDetailQueryOptions(
       scope.apiClient,
@@ -291,7 +325,7 @@ export function ConnectionDetailSheet({
     <Sheet
       open={connectionId !== undefined}
       onOpenChange={(open) => {
-        if (!open) onClose();
+        if (!open && !sharing.closeLocked) onClose();
       }}
     >
       <SheetContent className="w-[min(28rem,calc(100vw-1.5rem))]">
@@ -318,6 +352,7 @@ export function ConnectionDetailSheet({
               scope={scope}
               connection={connection}
               permissions={permissions}
+              sharing={sharing}
             />
             {detail.isError ? (
               <SheetBody>
@@ -335,5 +370,22 @@ export function ConnectionDetailSheet({
         )}
       </SheetContent>
     </Sheet>
+  );
+}
+
+export function ConnectionDetailSheet(
+  props: Readonly<{
+    scope: ConnectionMutationScope;
+    connectionId: string | undefined;
+    placeholder: ConnectionResponse | undefined;
+    permissions: ConnectionPermissions;
+    onClose: () => void;
+  }>,
+) {
+  return (
+    <ConnectionDetailSession
+      key={`${props.scope.userId}:${props.scope.workspaceId}:${props.connectionId ?? 'closed'}`}
+      {...props}
+    />
   );
 }

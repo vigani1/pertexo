@@ -116,3 +116,25 @@ Sharing has its own revision, independent of secret rotation and health checks.
 A stale form must reload. Removing a member clears their named grants and advances
 that revision. Grants and secrets never travel through workflow exports or
 promotion; target connections follow the target workspace's rules.
+
+## Sharing in the app
+
+Open **Workflows → Filters → Manage folders and tags…**, select a folder and
+choose **Sharing**. Select workspace access, or selected members and directory
+groups. Each entry has a Viewer or Editor grant. Save explicitly. If someone
+changes sharing while the form is open, your edits stay visible; **Discard edits
+and reload sharing** loads the current revision before another save. A temporary
+read failure also keeps your edits. An uncertain save offers an exact retry;
+check its outcome before starting a different change.
+
+In **Connections**, open the connection, then **Sharing** to manage Use. The
+same revision and retry controls apply. Neither form displays credentials.
+
+A move that removes a restriction opens **Review audience change**. Read the
+listed restrictions and explicitly acknowledge the change. Bulk moves carry
+independent review tokens, so each item can report its own result.
+
+A readable workflow with Viewer access opens a view-only editor. Run actions
+still follow the workspace role. If a fresh workflow read reports lost access,
+the editor closes and clears its cached graph and related history. An unavailable
+Call target or connection never reveals its private name.

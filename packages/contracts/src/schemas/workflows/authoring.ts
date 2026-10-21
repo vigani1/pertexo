@@ -138,6 +138,10 @@ export const workflowSummarySchema = z
     lifecycleRevision: workflowLifecycleRevisionSchema,
     activationStatus: workflowActivationStatusSchema,
     webhookSetupRequired: z.boolean(),
+    resourceAccess: z
+      .object({ canEdit: z.boolean(), canPublish: z.boolean() })
+      .strict()
+      .optional(),
     publishedVersionId: z.uuid().nullable(),
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),

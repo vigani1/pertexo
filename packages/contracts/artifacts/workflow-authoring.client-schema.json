@@ -346,6 +346,22 @@
             "webhookSetupRequired": {
               "type": "boolean"
             },
+            "resourceAccess": {
+              "type": "object",
+              "properties": {
+                "canEdit": {
+                  "type": "boolean"
+                },
+                "canPublish": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "canEdit",
+                "canPublish"
+              ],
+              "additionalProperties": false
+            },
             "publishedVersionId": {
               "anyOf": [
                 {
@@ -553,6 +569,22 @@
             },
             "webhookSetupRequired": {
               "type": "boolean"
+            },
+            "resourceAccess": {
+              "type": "object",
+              "properties": {
+                "canEdit": {
+                  "type": "boolean"
+                },
+                "canPublish": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "canEdit",
+                "canPublish"
+              ],
+              "additionalProperties": false
             },
             "publishedVersionId": {
               "anyOf": [
@@ -8443,6 +8475,17 @@
               }
             ]
           }
+        },
+        "labels": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       },
       "required": [
@@ -8540,6 +8583,17 @@
                 "additionalProperties": false
               }
             ]
+          }
+        },
+        "labels": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "additionalProperties": {
+            "type": "string"
           }
         },
         "replayed": {
@@ -9470,6 +9524,22 @@
                   "webhookSetupRequired": {
                     "type": "boolean"
                   },
+                  "resourceAccess": {
+                    "type": "object",
+                    "properties": {
+                      "canEdit": {
+                        "type": "boolean"
+                      },
+                      "canPublish": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "canEdit",
+                      "canPublish"
+                    ],
+                    "additionalProperties": false
+                  },
                   "publishedVersionId": {
                     "anyOf": [
                       {
@@ -9651,6 +9721,22 @@
             "webhookSetupRequired": {
               "type": "boolean"
             },
+            "resourceAccess": {
+              "type": "object",
+              "properties": {
+                "canEdit": {
+                  "type": "boolean"
+                },
+                "canPublish": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "canEdit",
+                "canPublish"
+              ],
+              "additionalProperties": false
+            },
             "publishedVersionId": {
               "anyOf": [
                 {
@@ -9811,6 +9897,22 @@
             },
             "webhookSetupRequired": {
               "type": "boolean"
+            },
+            "resourceAccess": {
+              "type": "object",
+              "properties": {
+                "canEdit": {
+                  "type": "boolean"
+                },
+                "canPublish": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "canEdit",
+                "canPublish"
+              ],
+              "additionalProperties": false
             },
             "publishedVersionId": {
               "anyOf": [
@@ -10042,6 +10144,9 @@
                 "exclusiveMinimum": 0,
                 "maximum": 9007199254740991
               },
+              "canCreateWorkflows": {
+                "type": "boolean"
+              },
               "depth": {
                 "type": "integer",
                 "minimum": 1,
@@ -10142,6 +10247,9 @@
               "exclusiveMinimum": 0,
               "maximum": 9007199254740991
             },
+            "canCreateWorkflows": {
+              "type": "boolean"
+            },
             "depth": {
               "type": "integer",
               "minimum": 1,
@@ -10237,6 +10345,9 @@
               "type": "integer",
               "exclusiveMinimum": 0,
               "maximum": 9007199254740991
+            },
+            "canCreateWorkflows": {
+              "type": "boolean"
             },
             "depth": {
               "type": "integer",
@@ -10359,6 +10470,9 @@
               "type": "integer",
               "exclusiveMinimum": 0,
               "maximum": 9007199254740991
+            },
+            "canCreateWorkflows": {
+              "type": "boolean"
             },
             "depth": {
               "type": "integer",
@@ -11046,6 +11160,22 @@
             },
             "webhookSetupRequired": {
               "type": "boolean"
+            },
+            "resourceAccess": {
+              "type": "object",
+              "properties": {
+                "canEdit": {
+                  "type": "boolean"
+                },
+                "canPublish": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "canEdit",
+                "canPublish"
+              ],
+              "additionalProperties": false
             },
             "publishedVersionId": {
               "anyOf": [
@@ -12123,6 +12253,22 @@
         "webhookSetupRequired": {
           "type": "boolean"
         },
+        "resourceAccess": {
+          "type": "object",
+          "properties": {
+            "canEdit": {
+              "type": "boolean"
+            },
+            "canPublish": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "canEdit",
+            "canPublish"
+          ],
+          "additionalProperties": false
+        },
         "publishedVersionId": {
           "anyOf": [
             {
@@ -12213,6 +12359,22 @@
             },
             "webhookSetupRequired": {
               "type": "boolean"
+            },
+            "resourceAccess": {
+              "type": "object",
+              "properties": {
+                "canEdit": {
+                  "type": "boolean"
+                },
+                "canPublish": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "canEdit",
+                "canPublish"
+              ],
+              "additionalProperties": false
             },
             "publishedVersionId": {
               "anyOf": [
@@ -12310,6 +12472,22 @@
             },
             "webhookSetupRequired": {
               "type": "boolean"
+            },
+            "resourceAccess": {
+              "type": "object",
+              "properties": {
+                "canEdit": {
+                  "type": "boolean"
+                },
+                "canPublish": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "canEdit",
+                "canPublish"
+              ],
+              "additionalProperties": false
             },
             "publishedVersionId": {
               "anyOf": [
@@ -12457,6 +12635,22 @@
               },
               "webhookSetupRequired": {
                 "type": "boolean"
+              },
+              "resourceAccess": {
+                "type": "object",
+                "properties": {
+                  "canEdit": {
+                    "type": "boolean"
+                  },
+                  "canPublish": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "canEdit",
+                  "canPublish"
+                ],
+                "additionalProperties": false
               },
               "publishedVersionId": {
                 "anyOf": [

@@ -14,11 +14,12 @@ export function workflowNameError(name: string): string | undefined {
  */
 export function canRenameWorkflow(
   workspace: Pick<AccessibleWorkspace, 'capabilities' | 'status'>,
-  workflow: Pick<WorkflowSummary, 'lifecycleStatus'>,
+  workflow: Pick<WorkflowSummary, 'lifecycleStatus' | 'resourceAccess'>,
 ): boolean {
   return (
     workspace.status === 'active' &&
     workspace.capabilities.includes('workflow:update') &&
-    workflow.lifecycleStatus === 'active'
+    workflow.lifecycleStatus === 'active' &&
+    workflow.resourceAccess?.canEdit !== false
   );
 }

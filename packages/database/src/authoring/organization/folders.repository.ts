@@ -51,6 +51,7 @@ export type WorkflowFolderRecord = Readonly<{
   parentId: string | null;
   revision: number;
   depth: number;
+  canCreateWorkflows?: boolean;
 }>;
 export type WorkflowFolderCommandResult = Readonly<{
   folder: WorkflowFolderRecord;
@@ -341,7 +342,15 @@ export function createWorkflowFolderDatabase(
           items: Object.freeze(
             items
               .filter((item) => access.permits(item.id, 'workflow:read'))
-              .map((item) => Object.freeze(item)),
+              .map((item) =>
+                Object.freeze({
+                  ...item,
+                  canCreateWorkflows: access.permits(
+                    item.id,
+                    'workflow:create',
+                  ),
+                }),
+              ),
           ),
         });
       }),

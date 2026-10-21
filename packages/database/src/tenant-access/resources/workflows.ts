@@ -22,3 +22,11 @@ export async function workflowAccessible(
   );
   return result.rowCount === 1;
 }
+
+/** Project allowed actions from the same bounded facts that filter the read. */
+export function workflowActions(scope: FolderScope, folderId: string | null) {
+  return {
+    canEdit: scope.permits(folderId, 'workflow:update'),
+    canPublish: scope.permits(folderId, 'workflow:publish'),
+  };
+}

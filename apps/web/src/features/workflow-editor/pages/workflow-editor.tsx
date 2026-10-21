@@ -1,3 +1,5 @@
+import { Notice } from '@/components/ui/notice';
+import { workflowWorkspaceAccess } from '@/features/workflows/access.public';
 import {
   editorPresenceSource,
   type EditorPresenceSource,
@@ -173,7 +175,11 @@ function WorkflowEditorSession({
   const revision = useEditorStore((state) => state.revision);
   const saveStatus = useEditorStore((state) => state.saveStatus);
   const inspectorScratch = useEditorStore((state) => state.inspectorScratch);
-  const canUpdate = workspace.capabilities.includes('workflow:update');
+  const scopedWorkspace = workflowWorkspaceAccess(
+    workspace,
+    workflow.data?.resourceAccess,
+  );
+  const canUpdate = scopedWorkspace.capabilities.includes('workflow:update');
   const verification = useEditorSessionVerification({
     apiClient,
     userId,
@@ -278,7 +284,7 @@ function WorkflowEditorSession({
         <EditorWorkspace
           apiClient={apiClient}
           userId={userId}
-          workspace={workspace}
+          workspace={scopedWorkspace}
           workflowId={workflowId}
           definitions={definitions}
           codeSettings={codeSettings}
@@ -300,7 +306,7 @@ function WorkflowEditorSession({
               paused={paused}
               apiClient={apiClient}
               userId={userId}
-              workspace={workspace}
+              workspace={scopedWorkspace}
               workflowId={workflowId}
               workflow={workflow.data}
               shortcutsOpen={chrome.shortcutsOpen}
@@ -322,7 +328,7 @@ function WorkflowEditorSession({
                     renderFeedback={chrome.renderFeedback}
                     apiClient={apiClient}
                     userId={userId}
-                    workspace={workspace}
+                    workspace={scopedWorkspace}
                     workflowId={workflowId}
                     workflow={workflow.data}
                     graph={graph}
@@ -360,6 +366,12 @@ function WorkflowEditorSession({
           }
           banner={
             <>
+              {!canUpdate ? (
+                <Notice>
+                  View-only access. Ask a workspace owner or admin for access to
+                  edit, publish or test this draft.
+                </Notice>
+              ) : null}
               {triggerNotice}
               <ConflictBar
                 onCompare={() => {

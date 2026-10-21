@@ -1,9 +1,25 @@
+import { workflowMoveReviewRequestSchema } from '@pertexo/contracts';
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
 import { unpausedWorkflowSettings } from './fixtures/auto-pause';
 import { defaultConcurrencySettings } from './fixtures/concurrency';
 
 export const mockServer = setupServer(
+  http.post(
+    'http://pertexo.test/v1/workspaces/:workspaceId/workflow-folders/review-move',
+    async ({ request }) => {
+      const body = workflowMoveReviewRequestSchema.parse(await request.json());
+      const ids = body.kind === 'folder' ? [body.folderId] : body.workflowIds;
+      return HttpResponse.json({
+        items: ids.map((id) => ({
+          id,
+          requiresReview: false,
+          token: 'a'.repeat(64),
+          removedRestrictions: [],
+        })),
+      });
+    },
+  ),
   http.get(
     'http://pertexo.test/v1/workspaces/:workspaceId/workflows/:workflowId/presence',
     () => HttpResponse.json({ people: [] }),

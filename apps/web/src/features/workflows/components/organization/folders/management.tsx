@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import {
   workflowFolderNameInputSchema,
   type WorkflowFolder,
@@ -25,6 +26,9 @@ export function FolderManagement({
   command,
   pendingKind,
   onConfirmationChange,
+  sharing,
+  sharingFolderId,
+  onSharingChange,
 }: Readonly<{
   folders: readonly WorkflowFolder[];
   ready: boolean;
@@ -34,6 +38,9 @@ export function FolderManagement({
   command: ReturnType<typeof useWorkflowOrganizationCommand>;
   pendingKind: WorkflowOrganizationAttempt['kind'] | undefined;
   onConfirmationChange: (open: boolean) => void;
+  sharing: ReactNode;
+  sharingFolderId: string | undefined;
+  onSharingChange: (folderId: string | undefined) => void;
 }>) {
   const [selected, setSelected] = useState<string>();
   const [name, setName] = useState('');
@@ -56,31 +63,18 @@ export function FolderManagement({
   return (
     <section aria-label="Folder management" className="flex flex-col gap-4">
       <h2 className="font-display text-lg">Folders</h2>
-      {folders.length === 0 ? (
-        <p>No folders yet.</p>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {folders.map((folder) => (
-            <li key={folder.id}>
-              <Button
-                type="button"
-                variant="ghost"
-                className="h-auto min-h-9 max-w-full py-2 whitespace-normal wrap-anywhere pointer-coarse:h-auto pointer-coarse:min-h-10"
-                disabled={locked}
-                onClick={() => {
-                  setSelected(folder.id);
-                  fields.reset();
-                  setName(folder.name);
-                  setParentId(folder.parentId);
-                  setDeleteTarget(undefined);
-                }}
-              >
-                Edit folder {folder.name}
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <FolderList
+        folders={folders}
+        disabled={locked}
+        onSelect={(folder) => {
+          setSelected(folder.id);
+          onSharingChange(undefined);
+          fields.reset();
+          setName(folder.name);
+          setParentId(folder.parentId);
+          setDeleteTarget(undefined);
+        }}
+      />
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -170,6 +164,19 @@ export function FolderManagement({
                 </ProgressButton>
                 <Button
                   type="button"
+                  variant="outline"
+                  disabled={disabled}
+                  aria-expanded={sharingFolderId === current.id}
+                  onClick={() => {
+                    onSharingChange(
+                      sharingFolderId === current.id ? undefined : current.id,
+                    );
+                  }}
+                >
+                  Sharing
+                </Button>
+                <Button
+                  type="button"
                   variant="destructive"
                   disabled={disabled}
                   onClick={() => {
@@ -197,6 +204,7 @@ export function FolderManagement({
           </div>
         </FieldGroup>
       </form>
+      {current !== undefined && sharingFolderId === current.id ? sharing : null}
       {selected !== undefined && current === undefined ? (
         <Button
           type="button"
@@ -280,5 +288,36 @@ function FolderDeleteConfirmation({
         </Notice>
       )}
     </ConfirmDialog>
+  );
+}
+
+function FolderList({
+  folders,
+  disabled,
+  onSelect,
+}: Readonly<{
+  folders: readonly WorkflowFolder[];
+  disabled: boolean;
+  onSelect: (folder: WorkflowFolder) => void;
+}>) {
+  if (folders.length === 0) return <p>No folders yet.</p>;
+  return (
+    <ul className="flex flex-col gap-2">
+      {folders.map((folder) => (
+        <li key={folder.id}>
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-auto min-h-9 max-w-full py-2 whitespace-normal wrap-anywhere pointer-coarse:h-auto pointer-coarse:min-h-10"
+            disabled={disabled}
+            onClick={() => {
+              onSelect(folder);
+            }}
+          >
+            Edit folder {folder.name}
+          </Button>
+        </li>
+      ))}
+    </ul>
   );
 }

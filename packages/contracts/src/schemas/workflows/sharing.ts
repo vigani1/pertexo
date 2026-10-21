@@ -42,6 +42,10 @@ export const folderSharingResponseSchema = z
     revision: z.number().int().positive(),
     mode: z.enum(['workspace', 'restricted']),
     grants: z.array(folderPrincipalSchema).max(100),
+    labels: z
+      .record(id, z.string())
+      .refine((labels) => Object.keys(labels).length <= 100)
+      .optional(),
   })
   .strict();
 export const folderSharingCommandResponseSchema =
