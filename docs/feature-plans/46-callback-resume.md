@@ -134,3 +134,8 @@ arrival; an intermediate ancestor cannot settle it without the final result.
 The approval notice observer takes its run fence before its task fence, matching
 decisions and coordinator settlement. A deterministic PostgreSQL regression covers
 the deadlock found by the existing live approvals journey during qualification.
+
+A completed, unconsumed descendant Call keeps its ancestors runnable during human
+wait resumption. The shared clock owner must not pause the ancestor again between
+child completion and result consumption; that would prevent the descendant from
+reacquiring its inherited slot. Qualification covers that ordering deterministically.
