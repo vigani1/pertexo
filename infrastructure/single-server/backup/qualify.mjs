@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { S3Client } from '@aws-sdk/client-s3';
 import { copyObjectTree } from './copy-objects.mjs';
 import { execFileSync, spawnSync } from 'node:child_process';
+import { createRecoveryFiles } from './files.fixture.mjs';
 import { seedEncryptedRecoveryFixture } from './encryption.fixture.mjs';
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
@@ -240,14 +241,7 @@ try {
   const sourceDb = await database('source-db', true);
   const targetDb = await database('target-db', false);
   const encryption = await seedEncryptedRecoveryFixture(sql, sourceDb);
-  const body = Buffer.from('matched workflow artifact — UTF-8');
-  const artifacts = [0, 1].map(() => ({
-    artifactId: randomUUID(),
-    workspaceId: randomUUID(),
-    byteLength: body.length,
-    mediaType: 'text/plain; charset=utf-8',
-    sha256: createHash('sha256').update(body).digest('hex'),
-  }));
+  const { body, artifacts } = createRecoveryFiles();
   store = createArtifactStore(parseArtifactStoreConfig(source));
   for (const artifact of artifacts)
     await store.put({ ...artifact, body: Readable.from([body]) });
