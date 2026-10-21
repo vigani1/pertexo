@@ -1,6 +1,6 @@
 # F46 — Resume a Wait through a callback
 
-Status: **Plan ready; owner decision required on the format extensions below.**
+Status: **Approved by the owner on 2026-10-21; implementation next.**
 
 ## Outcome
 
@@ -10,7 +10,7 @@ POST resumes the original run once, using the existing durable pending-task
 mechanism. Follow [n8n Wait](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/),
 with the owner's stricter per-Wait identity and hash-only token storage.
 
-## Required decision before code
+## Approved design decision (2026-10-21)
 
 Current mappings are ordinary JSON, and ADR 052 records their resolved values
 before execution. Existing pending tasks require an already completed step and
@@ -18,7 +18,7 @@ cannot receive a response before it opens. Putting a resume URL in a normal
 step output would store a credential; opening the task only when Wait executes
 would lose fast callbacks. An in-memory latch would fail across workers/restarts.
 
-Recommended: extend the **existing runtime mapping context**, **existing pending-task
+Approved: extend the **existing runtime mapping context**, **existing pending-task
 format** and [ADR 076](../adr/076-durable-human-tasks.md), rather than introduce
 another resume subsystem:
 
@@ -35,14 +35,17 @@ another resume subsystem:
   transaction as an ordinary response. No second resume queue or scanner.
 - Use a purpose-specific versioned application key to reproduce an unguessable
   256-bit token after restart. Keep only its hash in PostgreSQL; store no plaintext
-  token or encrypted equivalent. Reuse the current key/version/previous-keys
-  configuration pattern, startup refusal and separately supplied backup keys.
+  token or encrypted equivalent. Follow the invitation-token key pattern exactly:
+  `CALLBACK_TOKEN_KEY`, `CALLBACK_TOKEN_KEY_VERSION` and
+  `CALLBACK_TOKEN_PREVIOUS_KEYS`, using the same generator, startup refusal and
+  separately supplied backup-key instructions. Retain previous versions while
+  live callback tasks still need them; refuse missing or incorrect keys at startup.
 
-The prepared-task format extension and ADR amendment are absent from the original
-scope; the mapping uses the existing stored expression format. AGENTS.md reserves them for the owner; implementation is paused until
-approved. This plan does not silently authorize them.
+The owner explicitly approved the runtime mapping binding, prepared callback task
+inside the existing pending-task owner, ADR 076 amendment and hash-only token
+storage on 2026-10-21. The mapping keeps the existing stored expression format.
 
-## Rules after approval
+## Rules
 
 - Old duration-only Wait configuration and execution stay unchanged. Callback
   timeout is required, 1 second–30 days. Start the timeout when Wait opens; the
@@ -52,9 +55,12 @@ approved. This plan does not silently authorize them.
   reuse the same identity. Mapping targets must be enabled callback Waits in the
   same containing graph/iteration scope. Publication rejects missing or ambiguous
   targets. New replay runs get fresh identities; recovery retains its existing
-  restrictions on control steps. No live credential is issued for previews or
-  draft tests; tests must pin the sending step if it needs a callback URL, while
-  Wait keeps the existing immediate-test behavior.
+  restrictions on control steps. Whole-workflow draft tests issue live callback
+  URLs and pause at an unpinned callback Wait, so the editor can test an actual
+  callback end to end. Existing draft-test effects acknowledgement, capacity,
+  retention, history and notification exclusions remain. Single-step previews
+  never issue live callback URLs. Duration Waits still complete immediately in
+  draft tests; pins still replace a pinned step's execution.
 - Default authentication is Secret URL. Optionally choose Signed or Header secret,
   reusing [webhook authentication](webhook-authentication.md): exact raw-byte HMAC,
   timestamp window, constant-time header comparison and the shared header-name
@@ -90,7 +96,7 @@ approved. This plan does not silently authorize them.
 
 ## Ownership and delivery
 
-One implementation PR after the format decision; moves remain separate commits.
+One implementation PR after this approved plan merges; moves remain separate commits.
 
 | Existing owner | Change |
 | --- | --- |
@@ -104,7 +110,8 @@ One implementation PR after the format decision; moves remain separate commits.
 
 Qualification: unit bounds and target/scope validation; populated migration and
 forced RLS; real API/worker POST before/after Wait, concurrent duplicate, restart,
-retry, wrong-workspace/scope, cancellation, timeout and failure route; nested and
+retry, whole-workflow draft-test callbacks, single-step preview refusal,
+wrong-workspace/scope, cancellation, timeout and failure route; nested and
 parallel/Call capacity and clock behavior; all three authentication modes; body,
 header and credential non-retention; retention/purge/restore with right/wrong key;
 real editor journey and desktop/pane/phone in both themes. Full unskipped hook and
