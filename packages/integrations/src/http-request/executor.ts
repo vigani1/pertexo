@@ -447,7 +447,8 @@ async function executeHttpRequest(
     } catch (error: unknown) {
       if (
         safeInstanceOf(error, HttpRequestExecutorError) ||
-        safeInstanceOf(error, NodeExecutorFailure)
+        (config.pagination !== undefined &&
+          safeInstanceOf(error, NodeExecutorFailure))
       )
         throw error;
       if (
