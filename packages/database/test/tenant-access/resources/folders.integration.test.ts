@@ -773,3 +773,69 @@ it('keeps retained run reads available in inactive workspaces without widening f
     );
   }
 });
+
+it('serializes a grant removal against authoring and refuses even an exact old command after revocation', async () => {
+  const folder = (
+    await folders.createFolder({
+      workspaceId,
+      actorId,
+      name: 'Concurrent sharing',
+      parentId: null,
+      idempotencyKey: randomUUID(),
+    })
+  ).folder;
+  const created = await authoring.createWorkflow({
+    workspaceId,
+    actorId,
+    name: 'Concurrent authoring',
+    emptyGraph,
+    folderId: folder.id,
+    idempotencyKey: randomUUID(),
+  });
+  await folders.replaceSharing({
+    workspaceId,
+    actorId,
+    folderId: folder.id,
+    idempotencyKey: randomUUID(),
+    request: {
+      mode: 'restricted',
+      expectedFolderRevision: 1,
+      grants: [{ kind: 'member', userId: builder, access: 'editor' }],
+    },
+  });
+  const command = {
+    workspaceId,
+    actorId: builder,
+    workflowId: created.workflowId,
+    name: 'Accepted before revocation',
+    expectedNameRevision: 1,
+    idempotencyKey: randomUUID(),
+  };
+  const [write, revoke] = await Promise.allSettled([
+    authoring.renameWorkflow(command),
+    folders.replaceSharing({
+      workspaceId,
+      actorId,
+      folderId: folder.id,
+      idempotencyKey: randomUUID(),
+      request: { mode: 'restricted', expectedFolderRevision: 2, grants: [] },
+    }),
+  ]);
+  expect(revoke.status).toBe('fulfilled');
+  if (write.status === 'rejected')
+    expect(write.reason).toBeInstanceOf(WorkflowNotFoundError);
+  expect(
+    await authoring.getWorkflow(workspaceId, created.workflowId, builder),
+  ).toBeNull();
+  await expect(authoring.renameWorkflow(command)).rejects.toBeInstanceOf(
+    WorkflowNotFoundError,
+  );
+  const current = await authoring.getWorkflow(
+    workspaceId,
+    created.workflowId,
+    actorId,
+  );
+  expect(current?.name).toBe(
+    write.status === 'fulfilled' ? command.name : 'Concurrent authoring',
+  );
+});

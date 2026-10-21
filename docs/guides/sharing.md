@@ -138,3 +138,17 @@ A readable workflow with Viewer access opens a view-only editor. Run actions
 still follow the workspace role. If a fresh workflow read reports lost access,
 the editor closes and clears its cached graph and related history. An unavailable
 Call target or connection never reveals its private name.
+
+## Backup and recovery
+
+Sharing modes, grants, original member/group identities, resource relationships
+and sharing revisions are part of the database backup. Restore them together; a
+workflow export is not a backup of its access rules. Forced workspace isolation
+remains in effect after restore. Supply encryption and callback token keys
+separately, as described in the
+[single-server recovery instructions](../operations/single-server.md#restore-drill-or-replacement-server).
+
+The existing recovery qualification seeds restricted folders and connections and
+checks that their grants, identities, revisions and workspace fences survive the
+restore. Sharing does not change artifact bytes, encrypted credentials or the
+retention and purge rules.

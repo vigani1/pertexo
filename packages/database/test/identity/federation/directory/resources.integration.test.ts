@@ -1,3 +1,5 @@
+import { readFolderScope } from '../../../../src/tenant-access/resources/facts.js';
+import { withTenantScopedReadClient } from '../../../../src/tenant-access/transactions.js';
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { useIdentityCommandDatabase } from '../../command.support.js';
@@ -237,7 +239,46 @@ describe('SCIM resources with existing membership authority', () => {
         [user.id],
       ),
     ).toEqual([{ revision: 3 }]);
+    const folderId = randomUUID(),
+      workflowId = randomUUID();
+    await db.asAdmin(
+      "insert into app.workflow_folders(workspace_id,id,name,name_key,access_mode) values($1,$2,'Directory private','directory private','restricted')",
+      [f.workspaceId, folderId],
+    );
+    await db.asAdmin(
+      "insert into app.workflows(workspace_id,id,name,created_by) values($1,$2,'Directory workflow',$3)",
+      [f.workspaceId, workflowId, f.owner.id],
+    );
+    await db.asAdmin(
+      'insert into app.workflow_organization_state(workspace_id,workflow_id,folder_id) values($1,$2,$3)',
+      [f.workspaceId, workflowId, folderId],
+    );
+    await db.asAdmin(
+      "insert into app.workflow_folder_grants(id,workspace_id,folder_id,organization_id,group_id,access) values($1,$2,$3,$4,$5,'editor')",
+      [randomUUID(), f.workspaceId, folderId, f.organizationId, group.id],
+    );
+    const access = () =>
+      withTenantScopedReadClient(
+        f.pool,
+        { workspaceId: f.workspaceId, actorId: person.id },
+        async (client) =>
+          (
+            await readFolderScope(client, {
+              workspaceId: f.workspaceId,
+              actorId: person.id,
+            })
+          ).permits(folderId, 'workflow:read'),
+      );
+    expect(await access()).toBe(true);
     await deleteDirectoryGroup(f.pool, f.principal, group.id, 2);
+    expect(await access()).toBe(false);
+    expect(
+      await db.asAdmin(
+        'select id from app.workflow_folder_grants where workspace_id=$1 and folder_id=$2',
+        [f.workspaceId, folderId],
+      ),
+    ).toEqual([]);
+
     expect(
       await db.asAdmin(
         'select revision from app.auth_organizations where id=$1',

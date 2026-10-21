@@ -1,3 +1,4 @@
+import { restrictAcceptedWorkflows } from '../../../support/resources/sharing.js';
 import { callbackResources } from './fixtures.js';
 import { randomUUID } from 'node:crypto';
 import { createWorkflowAuthoringDatabase } from '@pertexo/database/authoring';
@@ -120,6 +121,8 @@ describe.runIf(fixture.enabled)('Callback waits through real workers', () => {
       const { store, keys, capabilities } = callbackResources();
       const receiver = await startCallbackReceiver();
       const workers = await runtime(undefined, capabilities);
+      let sharing:
+        Awaited<ReturnType<typeof restrictAcceptedWorkflows>> | undefined;
       try {
         let id = '';
         await workers.until(async () => {
@@ -152,6 +155,15 @@ describe.runIf(fixture.enabled)('Callback waits through real workers', () => {
         );
         if (callback === null) throw new Error('Missing callback');
         await workers.pause();
+        if (!test) {
+          sharing = await restrictAcceptedWorkflows({
+            ownerQuery: fixture.ownerQuery,
+            workspaceId: fixture.workspaceId,
+            workflowIds: [version.workflowId],
+            apiUrl: fixture.databaseUrl(fixture.apiUrl),
+          });
+          expect(await sharing.canRead(run.runId)).toBe(false);
+        }
         const url = `${receiver.origin}/hooks/${keys.material({ id }, '1').token}/resume`;
         const response = await fetch(url, {
           method: 'POST',
@@ -195,6 +207,7 @@ describe.runIf(fixture.enabled)('Callback waits through real workers', () => {
         ).toEqual([{ status: 'submitted', consumed: true }]);
       } finally {
         await workers.close();
+        await sharing?.close();
         await receiver.close();
         await store.close();
         keys.close();

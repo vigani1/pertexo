@@ -1,3 +1,4 @@
+import { restrictAcceptedWorkflows } from '../../support/resources/sharing.js';
 import { randomUUID } from 'node:crypto';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/outbox';
 import { createWorkflowCallStore } from '@pertexo/database/runs';
@@ -85,6 +86,46 @@ describeIntegration('Workflow Call execution through real transport', () => {
       ).toEqual([]);
     } finally {
       await workers.close();
+    }
+  }, 30_000);
+
+  it('finishes an accepted published Call after its parent and child become private, without sharing child history', async () => {
+    const child = await publishGraph(childGraph());
+    const parent = await publishGraph(parentGraph(child.pin));
+    const accepted = await accept(parent);
+    const sharing = await restrictAcceptedWorkflows({
+      ownerQuery: fixture.ownerQuery,
+      workspaceId: fixture.workspaceId,
+      workflowIds: [parent.workflowId, child.workflowId],
+      apiUrl: fixture.databaseUrl(fixture.apiUrl),
+    });
+    const workers = await runtime();
+    try {
+      expect(await sharing.canRead(accepted.runId)).toBe(false);
+      await workers.until(async () => {
+        expect(
+          await fixture.workerQuery(
+            'select status,output_ref from app.workflow_runs where id=$1',
+            [accepted.runId],
+          ),
+        ).toEqual([
+          {
+            status: 'succeeded',
+            output_ref: { kind: 'inline', value: 'Ada!' },
+          },
+        ]);
+      });
+      const call = (
+        await fixture.workerQuery<{ child_run_id: string }>(
+          'select child_run_id from app.workflow_calls where parent_run_id=$1',
+          [accepted.runId],
+        )
+      )[0];
+      if (!call) throw new Error('Missing delegated child');
+      expect(await sharing.canRead(call.child_run_id)).toBe(false);
+    } finally {
+      await workers.close();
+      await sharing.close();
     }
   }, 30_000);
 

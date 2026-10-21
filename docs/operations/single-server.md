@@ -348,6 +348,10 @@ and restores it into fresh PostgreSQL targets. It checks retained connection
 and webhook secrets under current/previous keys, wrong and missing keys,
 webhook-only inventory, schema ownership, RLS and artifact bytes/metadata. It
 also verifies that only the fixed recovery files and object tree were uploaded.
+Restricted folder and connection modes, grants, original member identities,
+workflow relationships and sharing revisions must survive the same restore, with
+forced workspace isolation intact. Callback material is reopened with the
+separately supplied versioned token keys.
 The existing production-image check exercises both encryption configurations.
 These isolated fixtures verify repository behavior; the remote drill above
 remains necessary for the owner's actual backup provider and server.

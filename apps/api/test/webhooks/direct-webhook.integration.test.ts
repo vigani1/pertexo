@@ -829,6 +829,58 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
     expect(log.nextCursor).toBeNull();
   }, 60_000);
 
+  it('keeps a published public webhook accepting after its workflow becomes private', async () => {
+    const seeded = await seedWebhook('restricted-published');
+    const folderId = randomUUID(),
+      readerId = randomUUID();
+    await identity.createUser({
+      id: readerId,
+      email: `${readerId}@example.test`,
+      displayName: 'Unshared reader',
+    });
+    await ownerQuery(
+      "insert into app.workspace_memberships(workspace_id,user_id,role,status) values($1,$2,'builder','active')",
+      [seeded.workspaceId, readerId],
+    );
+    expect(
+      await authoring.getWorkflow(
+        seeded.workspaceId,
+        seeded.workflowId,
+        readerId,
+      ),
+    ).not.toBeNull();
+    await ownerQuery(
+      "insert into app.workflow_folders(workspace_id,id,name,name_key,access_mode) values($1,$2,'Private public trigger','private public trigger','restricted')",
+      [seeded.workspaceId, folderId],
+    );
+    await ownerQuery(
+      'insert into app.workflow_organization_state(workspace_id,workflow_id,folder_id) values($1,$2,$3) on conflict(workspace_id,workflow_id) do update set folder_id=excluded.folder_id,revision=app.workflow_organization_state.revision+1',
+      [seeded.workspaceId, seeded.workflowId, folderId],
+    );
+    expect(
+      await authoring.getWorkflow(
+        seeded.workspaceId,
+        seeded.workflowId,
+        readerId,
+      ),
+    ).toBeNull();
+    const accepted = await sendWebhook(
+      seeded.endpointKey,
+      seeded.originalSecret,
+      Buffer.from('{"privateWorkflow":true}'),
+      randomUUID(),
+    );
+    expect(accepted.status).toBe(202);
+    expect(
+      (
+        await apiQuery(
+          'select status,trigger_type from app.workflow_runs where id=$1',
+          [String(accepted.json.runId)],
+        )
+      ).rows,
+    ).toEqual([{ status: 'queued', trigger_type: 'webhook' }]);
+  });
+
   it('returns 202 for signed and Secret URL concurrency skips, with durable native history and one usage fact', async () => {
     const seeded = await seedWebhook('concurrency-skip');
     const raw = Buffer.from('{"event":"skip proof"}');
