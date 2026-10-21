@@ -58,7 +58,9 @@ export function WaitSetup({
         form={form}
         field={{
           key: callback ? 'timeoutSeconds' : 'durationSeconds',
-          label: callback ? 'Callback timeout (seconds)' : 'Wait for (seconds)',
+          label: callback
+            ? 'Callback timeout (seconds)'
+            : 'Wait for (in seconds)',
           kind: 'integer',
           required: true,
           minimum: 1,
