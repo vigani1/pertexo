@@ -1,6 +1,6 @@
 import { workflowScopeSql } from '../../../tenant-access/resources/query-scope.js';
 import type { ResourceTransaction } from '../../../tenant-access/resources/transactions.js';
-import { withResourceRead } from '../../../tenant-access/resources/transactions.js';
+import { withRetainedResourceRead } from '../../../tenant-access/resources/transactions.js';
 import { ordinaryRunSql } from '../../data-policy.js';
 import { sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
@@ -99,7 +99,7 @@ export async function readWorkflowRunStatistics(
   input: WorkflowRunStatisticsDatabaseInput,
 ): Promise<WorkflowRunStatisticsRecord> {
   const parsed = inputSchema.parse(input);
-  return withResourceRead(
+  return withRetainedResourceRead(
     pool,
     parsed,
     (transaction) => readInTransaction(transaction, parsed),

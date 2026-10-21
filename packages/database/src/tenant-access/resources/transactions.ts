@@ -1,3 +1,4 @@
+import { RETAINED_RESOURCE_WORKSPACE_STATUSES } from './policy.js';
 import { sql } from 'drizzle-orm';
 import { workflowScopeSql } from './query-scope.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -21,7 +22,7 @@ import { readFolderScope } from './facts.js';
 export type ResourceTransaction = WorkspaceTransaction &
   Readonly<{ resources: FolderScope }>;
 
-export function withResourceRead<T>(
+export function withRetainedResourceRead<T>(
   pool: Pool,
   input: ResourceActor & Readonly<{ signal?: AbortSignal | undefined }>,
   read: (transaction: ResourceTransaction) => Promise<T>,
@@ -34,7 +35,12 @@ export function withResourceRead<T>(
       read({
         db: drizzle(client, { schema: databaseSchema }),
         workspaceId: parseWorkspaceId(input.workspaceId),
-        resources: await readFolderScope(client, input),
+        resources: await readFolderScope(
+          client,
+          input,
+          undefined,
+          RETAINED_RESOURCE_WORKSPACE_STATUSES,
+        ),
       }),
     {
       ...(input.signal === undefined ? {} : { signal: input.signal }),
@@ -78,7 +84,7 @@ function withResourceOwnerRead<T>(
   owner: Readonly<{ kind: 'workflow' | 'run'; id: string }>,
   read: (transaction: ResourceTransaction) => Promise<T>,
 ): Promise<T | undefined> {
-  return withResourceRead(pool, input, async (transaction) => {
+  return withRetainedResourceRead(pool, input, async (transaction) => {
     const source =
       owner.kind === 'run'
         ? sql`app.workflow_runs resource_owner`

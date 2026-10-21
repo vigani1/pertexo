@@ -638,7 +638,7 @@ export async function previewWorkflowVisible(
   return visible.rows.length === 1;
 }
 
-export async function assertPreviewWorkflow(
+async function assertPreviewWorkflow(
   transaction: WorkspaceTransaction,
   actorId: string,
   workflowId: string,

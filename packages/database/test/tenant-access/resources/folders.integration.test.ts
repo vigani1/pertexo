@@ -687,3 +687,48 @@ it('keeps delegated private child requirements out of promotion reviews', async 
   );
   expect(await inspect(builder)).toEqual([]);
 });
+
+it('keeps retained run reads available in inactive workspaces without widening folder grants or writes', async () => {
+  try {
+    for (const status of ['suspended', 'pending_deletion']) {
+      await queryAsOwner(
+        `update app.workspaces set status=$2::text,
+          deletion_requested_at=case when $2::text='pending_deletion' then clock_timestamp() end,
+          deletion_requested_by=case when $2::text='pending_deletion' then $3::uuid end,
+          deletion_reason=case when $2::text='pending_deletion' then 'retained-read proof' end,
+          purge_after=case when $2::text='pending_deletion' then clock_timestamp()+interval '1 day' end
+          where id=$1`,
+        [workspaceId, status, actorId],
+        workspaceId,
+      );
+      expect(
+        await runs.canRead({ workspaceId, actorId, runId: privateRun }),
+      ).toBe(true);
+      expect(
+        await runs.canRead({
+          workspaceId,
+          actorId: builder,
+          runId: privateRun,
+        }),
+      ).toBe(false);
+      expect(
+        await runs.canRead({ workspaceId, actorId: builder, runId: publicRun }),
+      ).toBe(true);
+      await expect(
+        authoring.createWorkflow({
+          workspaceId,
+          actorId: builder,
+          name: 'Inactive write',
+          emptyGraph,
+          idempotencyKey: randomUUID(),
+        }),
+      ).rejects.toThrow();
+    }
+  } finally {
+    await queryAsOwner(
+      "update app.workspaces set status='active',deletion_requested_at=null,deletion_requested_by=null,deletion_reason=null,purge_after=null where id=$1",
+      [workspaceId],
+      workspaceId,
+    );
+  }
+});

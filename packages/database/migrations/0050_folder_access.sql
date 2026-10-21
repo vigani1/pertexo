@@ -33,3 +33,5 @@ GRANT SELECT,DELETE ON app.workflow_folder_grants TO {{maintenance_role}};
 --> statement-breakpoint
 GRANT UPDATE(access_mode) ON app.workflow_folders TO {{app_role}};
 GRANT EXECUTE ON FUNCTION app.jsonb_references_artifact(jsonb,uuid) TO {{app_role}};
+
+GRANT UPDATE(revision) ON app.workflow_folders TO {{maintenance_role}};

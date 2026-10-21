@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import {
   createNodeRegistry,
   NodeExecutorFailure,
@@ -59,12 +60,13 @@ describeIntegration('Workflow Call controls and retained public reads', () => {
     workers: Awaited<ReturnType<typeof runtime>>,
     runId: string,
     status: string,
+    readerId = fixture.actorId,
   ) {
     await workers.until(async () => {
       expect(
         (
           await runs.get({
-            actorId: fixture.actorId,
+            actorId: readerId,
             workspaceId: fixture.workspaceId,
             runId,
           })
@@ -296,6 +298,16 @@ describeIntegration('Workflow Call controls and retained public reads', () => {
   }, 30_000);
 
   it('continues an accepted child after its workflow is archived and the starting member is revoked', async () => {
+    const readerId = randomUUID();
+    await fixture.ownerQuery(
+      "insert into app.users(id,email,display_name) values($1,$2,'Retained run reader')",
+      [readerId, `${readerId}@example.test`],
+    );
+    await fixture.ownerQuery(
+      "insert into app.workspace_memberships(workspace_id,user_id,role) values($1,$2,'viewer')",
+      [fixture.workspaceId, readerId],
+    );
+
     const child = await publishGraph(childGraph(2));
     const parent = await publishGraph(parentGraph(child.pin));
     await fixture.ownerQuery(
@@ -317,7 +329,14 @@ describeIntegration('Workflow Call controls and retained public reads', () => {
         ),
       ).toEqual([{ user_id: fixture.actorId }]);
       await workers.restart();
-      await settled(workers, accepted.runId, 'succeeded');
+      expect(
+        await runs.get({
+          workspaceId: fixture.workspaceId,
+          actorId: fixture.actorId,
+          runId: accepted.runId,
+        }),
+      ).toBeUndefined();
+      await settled(workers, accepted.runId, 'succeeded', readerId);
       await noLoans();
     } finally {
       await workers.close();

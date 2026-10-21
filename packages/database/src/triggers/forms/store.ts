@@ -121,7 +121,13 @@ export function createFormStore(
         lease.pool,
         { workspaceId: input.workspaceId, actorId: input.actorId },
         async (client) => {
-          await authorizeForm(client, input, undefined, false, true);
+          try {
+            await authorizeForm(client, input, undefined, false, true);
+          } catch (error) {
+            if (!(error instanceof FormUnavailableError)) throw error;
+            // History is a list: unavailable workflow identities disclose no events.
+            return { items: [], next: null };
+          }
           return readCoordinatedEventHistory(client, input);
         },
         input.signal === undefined ? {} : { signal: input.signal },
