@@ -1,5 +1,7 @@
 # F04 — File inputs and artifact lifecycle
 
+F45 amendment (2026-10-21): F45 extends upload/raw/multipart file transport to 10 MiB through verified private scratch, and adds explicit Read file pages / Create file from pages. Inline reads and values retain their existing limits; file-aware recovery stays deferred. See the [approved F45 plan](45-bigger-files-and-paged-data.md) for delivery and qualification; older limit descriptions below record the original slices.
+
 Status: first release complete on 2026-10-15; Read file/multipart follow-up approved on 2026-10-15; implementation in progress.
 The owner accepted the HTTP consumer, 1 MiB budget, opaque-file policy and reference
 lifetime on 2026-10-14. Delivery and qualification evidence is recorded below.

@@ -6,6 +6,13 @@ import { isRecord } from '@pertexo/workflow-model';
 import type { NodeConfig } from '../draft';
 
 type Pagination = NonNullable<HttpRequestConfig['pagination']>;
+function paginationConfig(value: Pagination): NodeConfig {
+  const { outputMode, ...rest } = value;
+  return outputMode === undefined ? rest : { ...rest, outputMode };
+}
+function parsePagination(value: unknown): NodeConfig {
+  return paginationConfig(httpPaginationSchema.parse(value));
+}
 export const paginationModes = [
   { value: 'off', label: 'Off' },
   { value: 'next_link', label: 'Next page link' },
@@ -16,38 +23,41 @@ export const paginationModes = [
 export function paginationValue(config: NodeConfig): NodeConfig | undefined {
   if (!isRecord(config.pagination)) return undefined;
   const parsed = httpPaginationSchema.safeParse(config.pagination);
-  return parsed.success ? parsed.data : config.pagination;
+  return parsed.success ? paginationConfig(parsed.data) : config.pagination;
 }
 export function paginationForMode(
   mode: string,
   previous: NodeConfig | undefined,
-): Pagination | undefined {
+): NodeConfig | undefined {
   const parsed = httpPaginationSchema.safeParse(previous);
   const common = parsed.success
     ? {
         itemsPath: parsed.data.itemsPath,
         maxPages: parsed.data.maxPages,
         delayMillis: parsed.data.delayMillis,
+        ...(parsed.data.outputMode === undefined
+          ? {}
+          : { outputMode: parsed.data.outputMode }),
       }
     : { itemsPath: '$.data' };
   switch (mode) {
     case 'next_link':
-      return httpPaginationSchema.parse({
+      return parsePagination({
         ...common,
         mode,
         source: { kind: 'body', path: '$.next' },
       });
     case 'cursor':
-      return httpPaginationSchema.parse({
+      return parsePagination({
         ...common,
         mode,
         cursorPath: '$.meta.next_cursor',
         parameter: 'cursor',
       });
     case 'page':
-      return httpPaginationSchema.parse({ ...common, mode, parameter: 'page' });
+      return parsePagination({ ...common, mode, parameter: 'page' });
     case 'offset':
-      return httpPaginationSchema.parse({
+      return parsePagination({
         ...common,
         mode,
         parameter: 'offset',

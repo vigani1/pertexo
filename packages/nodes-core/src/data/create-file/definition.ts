@@ -1,4 +1,8 @@
-import { generateSchemaDocument, type NodeManifest } from '@pertexo/node-sdk';
+import {
+  ARTIFACT_INPUT_CAPABILITY,
+  generateSchemaDocument,
+  type NodeManifest,
+} from '@pertexo/node-sdk';
 import { CORE_BOUNDED_JSON_POLICY } from '../../policies.js';
 import {
   CORE_CREATE_FILE_CONFIG_SCHEMA,
@@ -20,7 +24,7 @@ export const CORE_CREATE_FILE_MANIFEST: NodeManifest = Object.freeze({
   inputSchema: generateSchemaDocument(CORE_CREATE_FILE_INPUT_SCHEMA),
   outputSchema: generateSchemaDocument(CORE_CREATE_FILE_OUTPUT_SCHEMA, {
     runtimeOnlySemantics: [
-      'Create a UTF-8 CSV, JSON or text file up to 1 MiB, including headers and quoting. Split larger data into smaller files.',
+      'Inline data creates up to 1 MiB. Explicit From pages streams ordered JSON-array files into CSV or JSON up to 10 MiB, including headers and quoting. CSV from pages requires explicit columns. Split larger data into smaller files.',
       'CSV accepts bounded object rows, always writes a header, preserves explicit column order, and protects spreadsheet formulas. An empty column list discovers fields in first-seen order.',
       'Files use existing workspace-scoped artifact storage, accounting and run/preview retention. No external destination is called.',
     ],
@@ -33,7 +37,7 @@ export const CORE_CREATE_FILE_MANIFEST: NodeManifest = Object.freeze({
   connectionRequirements: Object.freeze([]),
   retryClass: 'safe',
   resourceClass: 'io',
-  capabilities: Object.freeze(['artifact_output']),
+  capabilities: Object.freeze(['artifact_output', ARTIFACT_INPUT_CAPABILITY]),
   executor: CORE_CREATE_FILE_EXECUTOR,
   executorAbi: 1,
   policyReferences: Object.freeze([CORE_BOUNDED_JSON_POLICY]),

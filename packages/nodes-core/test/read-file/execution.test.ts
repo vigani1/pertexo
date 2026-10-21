@@ -198,7 +198,7 @@ describe('Read file through the scoped runtime', () => {
     expect(bad.bytes[0]).toBe(0);
     const large = fixture(new Uint8Array(1048577));
     await expect(large.execute()).rejects.toMatchObject({
-      diagnostic: { reason: 'file_size' },
+      diagnostic: { reason: 'inline_file_size' },
     });
     expect(large.read).not.toHaveBeenCalled();
   });

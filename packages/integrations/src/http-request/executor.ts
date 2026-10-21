@@ -1,6 +1,5 @@
 import { Buffer } from 'node:buffer';
 import { executePagination } from './pagination/execute.js';
-import { HttpPaginationFailure } from './pagination/failure.js';
 import { JSON_MEDIA_TYPE } from '../http/content-type.js';
 
 import {
@@ -416,6 +415,9 @@ async function executeHttpRequest(
             client: dependencies.httpClient,
             request,
             pagination: config.pagination,
+            ...(runtime.artifacts === undefined
+              ? {}
+              : { artifacts: runtime.artifacts }),
             inlineBytes: config.inlineResponseBytes,
             ...(runtime.deadlineAt === undefined
               ? {}
@@ -445,7 +447,7 @@ async function executeHttpRequest(
     } catch (error: unknown) {
       if (
         safeInstanceOf(error, HttpRequestExecutorError) ||
-        safeInstanceOf(error, HttpPaginationFailure)
+        safeInstanceOf(error, NodeExecutorFailure)
       )
         throw error;
       if (

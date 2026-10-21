@@ -1,5 +1,7 @@
 # F32 — HTTP Request pagination
 
+F45 amendment (2026-10-21): F45 adds explicit Save items as pages. Provider responses still fit the inline page window and at most 100 requests; aggregate files allow 10 MiB / 100,000 records / 256 files. In this mode pageCount counts stored files and fetchedPageCount counts requests; the old items mode is unchanged. See the [approved F45 plan](45-bigger-files-and-paged-data.md) for delivery and qualification; older limit descriptions below record the original slices.
+
 Status: complete; scope approved 2026-10-19 and implementation alignments approved 2026-10-20.
 Parent: [product roadmap](../product-roadmap.md). Size: **M**.
 

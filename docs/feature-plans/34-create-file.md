@@ -1,5 +1,7 @@
 # F34 — Create file
 
+F45 amendment (2026-10-21): F45 adds From pages for ordered ordinary JSON-array files, streamed into JSON or CSV up to 10 MiB. CSV requires explicit columns and writes one header. Inline Data and plain text keep their existing bounds. See the [approved F45 plan](45-bigger-files-and-paged-data.md) for delivery and qualification; older limit descriptions below record the original slices.
+
 Status: implemented and locally qualified on 2026-10-20. One delivery PR; F45 remains separate.
 
 ## Decisions and rules

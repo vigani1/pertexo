@@ -6,6 +6,7 @@ import {
   type NodeExecutorRegistration,
 } from '@pertexo/node-sdk/server';
 import { CORE_CREATE_FILE_EXECUTOR } from './definition.js';
+import { createFileFromPages } from './pages.js';
 import { encodeFile } from './encode.js';
 import { refuseFileCreation } from './failure.js';
 import type {
@@ -18,9 +19,31 @@ export const coreCreateFileExecutor: NodeExecutorRegistration = Object.freeze({
     let bytes: Uint8Array | undefined;
     let body: Readable | undefined;
     try {
+      const config = invocation.config as CoreCreateFileConfig;
+      const input = invocation.input as CoreCreateFileInput;
+      if ('inputMode' in config && config.inputMode === 'pages') {
+        const artifacts = invocation.runtime?.artifacts;
+        if (artifacts === undefined)
+          refuseFileCreation(
+            'storage',
+            'File storage is unavailable. Ask the instance owner to configure it.',
+          );
+        const reference = await createFileFromPages(
+          config,
+          input,
+          artifacts,
+          invocation.signal,
+        );
+        return { file: { kind: 'artifact' as const, ...reference } };
+      }
+      if (!('data' in input))
+        refuseFileCreation(
+          'data',
+          'Map a value to Data, or choose From pages and map page references.',
+        );
       const encoded = encodeFile(
         invocation.config as CoreCreateFileConfig,
-        (invocation.input as CoreCreateFileInput).data,
+        input.data,
         invocation.signal,
       );
       bytes = encoded.bytes;

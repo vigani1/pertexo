@@ -1,6 +1,6 @@
 # F45 — Bigger files and paged step data
 
-Status: **Approved by owner 2026-10-21** (#447 merged). Slice 1 delivered in #450. Slice 2 implements verified disk-backed file transport and 10 MiB uploads/raw/multipart bodies; local qualification passes and PR delivery is pending. Ordinary Read file/Create file, inline JSON and checkpoint bounds remain unchanged. Explicit pages and full release qualification are pending in slices 3–4.
+Status: **Approved by owner 2026-10-21** (#447 merged). Slice 1 delivered in #450; slice 2 delivered in #452 (verified 10 MiB file transport and private disk scratch). Slice 3 implements explicit Read file/HTTP result pages and Create file from pages; local component/storage/browser checks pass; PR delivery is pending. Inline JSON, checkpoint, ordinary collection/loop and capacity limits remain unchanged. Full release qualification is slice 4.
 
 ## Current code and problem
 

@@ -6,21 +6,24 @@ import {
   storedExecutionJsonStringBytes,
 } from '@pertexo/node-sdk';
 import {
-  canonicalizeBoundedJson,
+  encodeFilePageRecord,
+  NodeExecutorFailure,
+  type EncodedFilePageRecord,
   FileInputFailure,
   InvalidBoundedJsonError,
-  type JsonValue,
 } from '@pertexo/node-sdk/server';
 
 const INPUT_CHUNK_BYTES = 1_024;
 const YIELD_BYTES = 65_536;
 
 function tooLarge(): never {
-  throw new FileInputFailure({ reason: 'value_size' });
+  throw new FileInputFailure({ reason: 'page_value_size' });
 }
 
 /** Token callbacks enforce allocation bounds before the library builds a record. */
-function createParser(accept: (value: JsonValue) => void): Readonly<{
+function createParser(
+  accept: (value: EncodedFilePageRecord) => void,
+): Readonly<{
   write(chunk: Uint8Array): void;
   end(): void;
 }> {
@@ -54,7 +57,7 @@ function createParser(accept: (value: JsonValue) => void): Readonly<{
     const token = info.token;
     if (!started) {
       if (token !== TokenType.LEFT_BRACKET)
-        throw new FileInputFailure({ reason: 'json_syntax' });
+        throw new FileInputFailure({ reason: 'page_array' });
       started = true;
     }
     if (
@@ -100,14 +103,12 @@ function createParser(accept: (value: JsonValue) => void): Readonly<{
   parser.onValue = ({ value }): void => {
     items += 1;
     if (items > FILE_PAGE_LIMITS.totalItems)
-      throw new FileInputFailure({ reason: 'item_count' });
-    accept(
-      canonicalizeBoundedJson(value, {
-        bytes: FILE_PAGE_LIMITS.bytes - 2,
-        depth: FILE_PAGE_LIMITS.depth - 1,
-        members: FILE_PAGE_LIMITS.members - 1,
-      }),
-    );
+      throw new FileInputFailure({ reason: 'page_item_count' });
+    try {
+      accept(encodeFilePageRecord(value));
+    } catch {
+      tooLarge();
+    }
     encodedBytes = 0;
     members = 1;
   };
@@ -116,7 +117,7 @@ function createParser(accept: (value: JsonValue) => void): Readonly<{
   };
   // Never let parser diagnostics include file contents in a failure summary.
   parser.onError = tokenizer.onError = (error: Error): never => {
-    if (error instanceof FileInputFailure) throw error;
+    if (error instanceof NodeExecutorFailure) throw error;
     if (
       error instanceof StoredExecutionValueInvalidError ||
       error instanceof InvalidBoundedJsonError
@@ -152,8 +153,8 @@ function createParser(accept: (value: JsonValue) => void): Readonly<{
 export async function* readJsonRecords(
   source: AsyncIterable<Uint8Array>,
   signal: AbortSignal,
-): AsyncGenerator<JsonValue> {
-  let pending: JsonValue[] = [];
+): AsyncGenerator<EncodedFilePageRecord> {
+  let pending: EncodedFilePageRecord[] = [];
   const parser = createParser((value) => pending.push(value));
   let sinceYield = 0;
   for await (const chunk of source) {

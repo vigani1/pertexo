@@ -24,7 +24,7 @@ export function paginationFields(
   const selected = variant(property(schema, 'pagination'), 'mode', mode);
   return {
     common: schemaFields(selected).filter(
-      ({ key }) => key !== 'mode' && key !== 'source',
+      ({ key }) => key !== 'mode' && key !== 'source' && key !== 'outputMode',
     ),
     source: schemaFields(
       variant(property(selected, 'source'), 'kind', source),

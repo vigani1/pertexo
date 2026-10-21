@@ -424,6 +424,38 @@
                       "type": "integer",
                       "minimum": 0,
                       "maximum": 63
+                    },
+                    "overrides": {
+                      "readOnly": true,
+                      "maxItems": 8,
+                      "type": "array",
+                      "items": {
+                        "readOnly": true,
+                        "type": "object",
+                        "properties": {
+                          "configPath": {
+                            "readOnly": true,
+                            "minItems": 1,
+                            "maxItems": 8,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 128
+                            }
+                          },
+                          "variant": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 63
+                          }
+                        },
+                        "required": [
+                          "configPath",
+                          "variant"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "required": [

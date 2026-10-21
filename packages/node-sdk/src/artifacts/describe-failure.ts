@@ -18,7 +18,15 @@ export function describeFileInputFailure(
     case 'multipart_boundary':
       return 'A multipart boundary could not be generated safely. Start a new run.';
     case 'file_size':
-      return `The file exceeds this operation's limit: 1 MB for inline Read file, or up to 10 MB for file transfers (less when storage is configured lower). ${split}`;
+      return `The file exceeds this operation's file limit (up to 10 MB, or the lower configured storage limit). ${split}`;
+    case 'inline_file_size':
+      return `Inline Read file accepts up to 1 MB. For CSV or a JSON list, choose Output pages (up to 10 MB); otherwise split the file.`;
+    case 'page_array':
+      return 'Output pages needs a top-level JSON list. Choose Inline data for a small object, or export a list.';
+    case 'page_value_size':
+      return `One record exceeds a data page (64 KB, depth 48 or 4,000 fields/items). Narrow or flatten the record. ${split}`;
+    case 'page_item_count':
+      return `The file contains more than 100,000 records. ${split}`;
     case 'value_size':
       return `The parsed file exceeds the step's value limits. Wide rows fit fewer records. ${split}`;
     case 'item_count':

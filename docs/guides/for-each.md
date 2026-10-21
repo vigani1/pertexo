@@ -54,3 +54,11 @@ body to visit every ID still counts every inner iteration and step. Lists over
 the 4,998-item collection cap, or over the value-size envelope, must be split by
 the source into separate bounded runs; batching cannot accept an oversized value.
 See [data transforms](data-transforms.md#batching-work-for-for-each) for mappings.
+
+## Work with file pages
+
+For a larger CSV/JSON source, choose **Read file → Output pages** (or HTTP pagination's **Save items as pages**), then map `$.pages` into an outer For each. Inside it, **Read file** the Current item in **Inline data** mode. Use the resulting bounded array in list operations, or an inner For each.
+
+For example, a 2,000-row file can produce two 1,000-row pages: set the outer maximum to 2 and the inner maximum to 1,000, with a small body that fits publication's existing whole-run bounds. Start both at one item at a time. A page has at most 1,000 records; wide records make smaller pages. Prefer Filter/Summarize or a bulk operation per page when individual steps would exhaust the run budget.
+
+Paging keeps bytes outside the checkpoint; it does **not** reset the 5,000 iteration/expanded-step budgets, increase capacity or accept an oversized mapped array. Keep loop results small and split larger workloads into separate runs. [Create file → From pages](files.md#work-with-larger-data-as-explicit-pages) can combine ordered pages without an inner row loop.

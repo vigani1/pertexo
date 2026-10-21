@@ -39,6 +39,9 @@ export const HTTP_REQUEST_MANIFEST: NodeManifest = Object.freeze({
     configProperty: 'pagination',
     whenPresent: 1,
     whenAbsent: 0,
+    overrides: Object.freeze([
+      { configPath: Object.freeze(['pagination', 'outputMode']), variant: 2 },
+    ]),
   }),
   ports: Object.freeze({
     inputs: Object.freeze(['in']),

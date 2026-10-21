@@ -1,5 +1,7 @@
 # F08 — Reusable subworkflows after the architecture reset
 
+F45 amendment (2026-10-21): F45 adds explicit ordinary file pages as a source for outer/inner loops. The shared loop/expanded-step budgets, slot handoff, checkpoint and capacity limits are unchanged; large datasets need page-level bulk work or separate runs. See the [approved F45 plan](45-bigger-files-and-paged-data.md) for delivery and qualification; older limit descriptions below record the original slices.
+
 Status: accepted by the owner on 2026-10-10; slices 1–4 implement and qualify
 finished-loop pruning, callable contracts, durable Calls, controls and history.
 Slice 5 was authorized on 2026-10-17; its measured limit decision is recorded below. This document

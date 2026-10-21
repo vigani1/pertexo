@@ -135,6 +135,37 @@ describe('HTTP pagination setup', () => {
       expect(fields).not.toContain(enabled ? 'redirectCount' : 'pageCount');
     },
   );
+  it('offers pages and file counts instead of items or body for an explicitly paged result', () => {
+    const fields = outputFieldsOf(
+      HTTP_REQUEST_MANIFEST.outputSchema,
+      {
+        config: {
+          pagination: {
+            mode: 'page',
+            parameter: 'page',
+            itemsPath: '$',
+            outputMode: 'pages',
+          },
+        },
+      },
+      HTTP_REQUEST_MANIFEST.outputVariant,
+    ).map(({ key }) => key);
+    expect(fields).toContain('pages');
+    expect(fields).toContain('itemCount');
+    expect(fields).toContain('fetchedPageCount');
+    expect(fields).not.toContain('items');
+    expect(fields).not.toContain('body');
+    expect(
+      paginationForMode('cursor', {
+        mode: 'page',
+        parameter: 'page',
+        itemsPath: '$',
+        maxPages: 3,
+        delayMillis: 0,
+        outputMode: 'pages',
+      }),
+    ).toMatchObject({ outputMode: 'pages' });
+  });
   it('selects output variants using discovery metadata for any step and config property', () => {
     const schema = {
       oneOf: [

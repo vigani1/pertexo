@@ -19,6 +19,11 @@ const counter = z
   .min(0)
   .max(Number.MAX_SAFE_INTEGER - 100);
 const common = {
+  outputMode: z.literal('pages').optional().meta({
+    title: 'Save items as pages',
+    description:
+      'Store up to 10 MB / 100,000 records as JSON-array file pages instead of one inline list.',
+  }),
   itemsPath: collectionPathSchema.meta({
     title: 'Items path',
     description: 'The list on each page, for example $.data or $',
@@ -26,7 +31,7 @@ const common = {
   maxPages: z.number().int().min(1).max(100).default(10).meta({
     title: 'Max pages',
     description:
-      'Stop after at most 100 pages. The combined output must fit 1 MB.',
+      'Stop after at most 100 pages. Inline output must fit 1 MB; Save items as pages supports up to 10 MB.',
   }),
   delayMillis: z.number().int().min(0).max(10_000).default(0).meta({
     title: 'Delay between pages',

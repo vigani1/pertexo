@@ -254,7 +254,7 @@ only after its gate is resolved.
 | F42 | Log streaming to external monitoring | Extends observability and audit | M–L | Proposed (later, by demand) |
 | F43 | Interface languages | Frontend localization | L | Proposed (later, by demand) |
 | F44 | Mobile apps | New client over the existing API | XL | Proposed (later, by demand) |
-| [F45](feature-plans/45-bigger-files-and-paged-data.md) | Bigger files and step data beyond 1 MiB, by streaming or paging | Extends F04 files and the artifact store | L–XL | Approved by owner 2026-10-21 (#447 merged); slice 1 parser/private-scratch qualification delivered in #450; slice 2 verified 10 MiB file transport implemented, pending PR delivery; explicit pages and release qualification remain |
+| [F45](feature-plans/45-bigger-files-and-paged-data.md) | Bigger files and step data beyond 1 MiB, by streaming or paging | Extends F04 files and the artifact store | L–XL | Approved by owner 2026-10-21 (#447 merged); slices 1–2 delivered in #450/#452; explicit pages implemented with qualification/PR delivery in progress; full release qualification remains |
 | F46 | Resume a waiting run when another system calls a per-run URL | Extends durable waits and webhook authentication | L | Proposed |
 | [F47](feature-plans/47-run-values.md) | Save a few business values on a run and find runs by them | Extends run history | M–L | Delivered (2026-10-21, #451 merged green): bounded mapped values, execution-fenced persistence, exact Runs filter and detail display; real worker/API/browser, retention, isolation and responsive theme checks qualified |
 | F48 | Finer sharing: access to chosen folders or workflows, and connections shared with chosen people | Extends roles, F07 folders and F18 governance | XL | Proposed |
