@@ -3,7 +3,7 @@ import { expect, it } from 'vitest';
 
 function runProbe(kind: string) {
   const moduleUrl = new URL(
-    '../../../dist/data/read-file/paging/json.js',
+    '../../../dist/data/read-file/json/records.js',
     import.meta.url,
   ).href;
   const script = `

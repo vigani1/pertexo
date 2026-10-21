@@ -1,7 +1,7 @@
 import { performance } from 'node:perf_hooks';
 import { describe, expect, it } from 'vitest';
 import { createCoreNodeRegistry } from '../../src/server.js';
-import { parseCsvFile } from '../../src/data/read-file/parse-csv.js';
+import { parseCsvFile } from '../../src/data/read-file/csv/inline.js';
 
 const registry = createCoreNodeRegistry();
 const signal = new AbortController().signal;

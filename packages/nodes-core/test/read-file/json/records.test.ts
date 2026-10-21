@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { JsonValue } from '@pertexo/node-sdk/server';
 import { FILE_PAGE_LIMITS } from '@pertexo/node-sdk';
-import { readJsonRecords } from '../../../src/data/read-file/paging/json.js';
+import { readJsonRecords } from '../../../src/data/read-file/json/records.js';
 
 async function* chunks(text: string, size = 65_536) {
   const bytes = Buffer.from(text);

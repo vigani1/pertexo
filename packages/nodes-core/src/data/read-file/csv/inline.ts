@@ -3,10 +3,10 @@ import { pipeline } from 'node:stream/promises';
 import { parse, CsvError } from 'csv-parse';
 import { NODE_JSON_LIMITS } from '@pertexo/node-sdk';
 import { FileInputFailure, type JsonValue } from '@pertexo/node-sdk/server';
-import { COLLECTION_MAX_ITEMS } from '../lists/semantics/validation.js';
-import { convertCsvValue } from './conversion.js';
-import type { CoreReadFileConfig } from './validation.js';
-import { admitFileValue } from './admit-value.js';
+import { COLLECTION_MAX_ITEMS } from '../../lists/semantics/validation.js';
+import { convertCsvValue } from '../conversion.js';
+import type { CoreReadFileConfig } from '../validation.js';
+import { admitFileValue } from '../admit-value.js';
 
 type CsvConfig = Extract<CoreReadFileConfig, { format: 'csv' }>;
 export async function parseCsvFile(
