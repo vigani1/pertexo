@@ -3,7 +3,7 @@ import {
   testEventSchemas,
   testEventPaths,
 } from './test-events.js';
-import { webhookAuthenticationSchema } from '../../schemas/triggers/authentication.js';
+import { webhookAuthenticationSchema } from '@pertexo/workflow-model';
 import { apiProblemSchema } from '../../errors/api-problem.js';
 import {
   webhookDeliveryCursorSchema,

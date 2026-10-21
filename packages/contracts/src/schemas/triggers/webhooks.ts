@@ -2,7 +2,7 @@ import { boundedNodeTestJsonInputSchema } from '../shared/bounded-json-input.js'
 import { eventCoordinationReceiptSchema } from '@pertexo/workflow-model';
 import { coordinatedEventSchema } from '../forms/coordination.js';
 import { z } from 'zod';
-import { webhookAuthenticationSchema } from './authentication.js';
+import { webhookAuthenticationSchema } from '@pertexo/workflow-model';
 
 export const webhookCredentialSchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/u);
 const webhookTriggerStatusSchema = z.enum([
