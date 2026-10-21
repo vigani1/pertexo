@@ -7,8 +7,8 @@ import {
 } from '@pertexo/node-sdk/server';
 import { CORE_READ_FILE_EXECUTOR } from './definition.js';
 import type { CoreReadFileConfig, CoreReadFileInput } from './validation.js';
-import { parseJsonFile } from './parse-json.js';
-import { parseCsvFile } from './parse-csv.js';
+import { parseJsonFile } from './json/inline.js';
+import { parseCsvFile } from './csv/inline.js';
 
 export const coreReadFileExecutor: NodeExecutorRegistration = Object.freeze({
   executor: CORE_READ_FILE_EXECUTOR,

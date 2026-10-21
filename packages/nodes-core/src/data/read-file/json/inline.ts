@@ -1,5 +1,5 @@
 import { FileInputFailure, type JsonValue } from '@pertexo/node-sdk/server';
-import { admitFileValue } from './admit-value.js';
+import { admitFileValue } from '../admit-value.js';
 
 export function parseJsonFile(text: string): JsonValue {
   let value: unknown;
