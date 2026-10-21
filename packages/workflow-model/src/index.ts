@@ -285,3 +285,8 @@ export {
   type WorkflowNoteColor,
 } from './graph/notes/contract.js';
 export { sameWorkflowNotes } from './graph/notes/identity.js';
+
+export {
+  webhookAuthenticationSchema,
+  type WebhookAuthentication,
+} from './webhooks/authentication.js';
