@@ -107,7 +107,7 @@ export const sharingPrincipalsQuerySchema = z
     limit: z.coerce.number().int().min(1).max(100).default(50),
   })
   .strict();
-export const sharingPrincipalSchema = z.discriminatedUnion('kind', [
+const sharingPrincipalSchema = z.discriminatedUnion('kind', [
   z
     .object({ kind: z.literal('member'), userId: id, label: z.string() })
     .strict(),

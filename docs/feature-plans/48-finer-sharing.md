@@ -173,3 +173,9 @@ share the immutable bytes. See [Sharing within a workspace](../guides/sharing.md
 Call admission compares each stable node path and exact target pin. Ordinary saves
 preserve unchanged bindings; new publications and draft tests recheck every direct
 Call target. Immutable children retain their delegated execution closure.
+
+Existing retained-run reads in suspended or pending-deletion workspaces remain
+available to active members, subject to current folder grants. Authoring and new
+execution admission still require an active workspace. Qualification uses a
+private disk-backed CI temporary root because Ubuntu 26.04 mounts `/tmp` in RAM;
+production scratch refusal remains unchanged.

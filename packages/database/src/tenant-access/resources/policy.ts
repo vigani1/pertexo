@@ -7,6 +7,12 @@ import type {
   WorkflowResourceCapability,
 } from './contract.js';
 
+export const RETAINED_RESOURCE_WORKSPACE_STATUSES = Object.freeze([
+  'active',
+  'suspended',
+  'pending_deletion',
+] as const);
+
 export const RESOURCE_ADMINISTRATORS: readonly Role[] = Object.freeze([
   'owner',
   'admin',

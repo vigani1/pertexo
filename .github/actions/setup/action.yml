@@ -12,6 +12,12 @@ runs:
       with:
         node-version: 24
         cache: pnpm
+    # Ubuntu 26.04 mounts /tmp in RAM; file scratch qualification requires disk.
+    - name: Use disk-backed temporary storage
+      shell: bash
+      run: |
+        temporary_root="$(mktemp -d "$RUNNER_TEMP/pertexo-tests.XXXXXX")"
+        printf 'TMPDIR=%s\n' "$temporary_root" >> "$GITHUB_ENV"
     - name: Install dependencies
       shell: bash
       run: pnpm install --frozen-lockfile

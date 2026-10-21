@@ -18,7 +18,7 @@ import { WorkflowPromotionError } from './contract.js';
 export const promotionReceiptSchema = z
   .object({ promotionId: z.uuid(), targetWorkspaceId: z.uuid() })
   .strict();
-export async function readPromotionReceipt(
+async function readPromotionReceipt(
   client: PoolClient,
   workspaceId: string,
   actorId: string,

@@ -16,6 +16,7 @@ export async function readTransactionFolderScope(
   transaction: Pick<WorkspaceTransaction, 'db'>,
   actor: ResourceActor,
   fencedRole?: Role,
+  workspaceStatuses: readonly string[] = ['active'],
 ) {
   const { db } = transaction;
   const role =
@@ -26,7 +27,7 @@ export async function readTransactionFolderScope(
     join app.users person on person.id=member.user_id
     join app.workspaces workspace on workspace.id=member.workspace_id
     where member.workspace_id=${actor.workspaceId} and member.user_id=${actor.actorId}
-      and member.status='active' and person.status='active' and workspace.status='active'
+      and member.status='active' and person.status='active' and workspace.status=any(${sql.param(workspaceStatuses)}::text[])
   `)
     ).rows[0]?.role ??
     null;
@@ -64,6 +65,12 @@ export function readFolderScope(
   client: PoolClient,
   actor: ResourceActor,
   fencedRole?: Role,
+  workspaceStatuses: readonly string[] = ['active'],
 ) {
-  return readTransactionFolderScope({ db: drizzle(client) }, actor, fencedRole);
+  return readTransactionFolderScope(
+    { db: drizzle(client) },
+    actor,
+    fencedRole,
+    workspaceStatuses,
+  );
 }

@@ -1,6 +1,6 @@
 import { workflowScopeSql } from '../../../tenant-access/resources/query-scope.js';
 import type { ResourceTransaction } from '../../../tenant-access/resources/transactions.js';
-import { withResourceRead } from '../../../tenant-access/resources/transactions.js';
+import { withRetainedResourceRead } from '../../../tenant-access/resources/transactions.js';
 import { ordinaryRunSql, expiredRunSql } from '../../data-policy.js';
 import { runValueKeySchema, runValueTextSchema } from '@pertexo/node-sdk';
 import { workflowRunValues } from '../../../schema/runs/values.js';
@@ -97,7 +97,7 @@ export async function readWorkflowRunListPage(
   input: ListWorkflowRunsDatabaseInput,
 ): Promise<WorkflowRunListPage> {
   const parsed = inputSchema.parse(input);
-  return withResourceRead(pool, parsed, async (transaction) =>
+  return withRetainedResourceRead(pool, parsed, async (transaction) =>
     listWorkflowRunsInTransaction(transaction, {
       limit: parsed.limit,
       ...(parsed.runValueKey === undefined

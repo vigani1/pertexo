@@ -219,7 +219,7 @@ export function createWorkflowErrorStore(
               'workflow:update',
             ))
           )
-            throw new WorkflowErrorTargetUnavailableError();
+            throw new WorkflowNotFoundError('Workflow is not visible');
           // Stable order also covers two editors choosing each other's workflows.
           const ids = [
             ...new Set([

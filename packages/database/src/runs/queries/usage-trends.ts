@@ -1,3 +1,4 @@
+import { RETAINED_RESOURCE_WORKSPACE_STATUSES } from '../../tenant-access/resources/policy.js';
 import { sql } from 'drizzle-orm';
 import { readFolderScope } from '../../tenant-access/resources/facts.js';
 import {
@@ -69,7 +70,12 @@ export function readUsageTrends(
     pool,
     { workspaceId: input.workspaceId, actorId: input.actorId },
     async (client) => {
-      const access = await readFolderScope(client, input);
+      const access = await readFolderScope(
+        client,
+        input,
+        undefined,
+        RETAINED_RESOURCE_WORKSPACE_STATUSES,
+      );
       const length = input.period === '30d' ? 30 : 90;
       const clock = await client.query<{
         as_of: string;

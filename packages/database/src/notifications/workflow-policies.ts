@@ -89,7 +89,13 @@ export function clearWorkflowFailureNotificationPolicy(
   return transaction(input, async (client) => {
     await authorize(client, input.workspaceId, input.actorId, false);
     const workflowId = z.uuid().parse(input.workflowId);
+    const existing = await client.query(
+      'select id from app.workflows where workspace_id=$1 and id=$2 for share',
+      [input.workspaceId, workflowId],
+    );
+    // A deleted workflow has no remaining authority to resurrect; only its null receipt may replay.
     if (
+      existing.rowCount === 1 &&
       !(await authorizeWorkflowResource(
         client,
         { ...input, workflowId },
@@ -108,12 +114,7 @@ export function clearWorkflowFailureNotificationPolicy(
       workflowId,
     );
     if (replay.kind === 'replay') return;
-    const workflow = await client.query(
-      `select id from app.workflows
-            where workspace_id=$1 and id=$2 for share`,
-      [input.workspaceId, workflowId],
-    );
-    if (workflow.rowCount !== 1)
+    if (existing.rowCount !== 1)
       throw destinationError('not_found', 'Workflow is not visible');
     const result = await client.query(
       `delete from app.workflow_failure_notification_policies where workspace_id=$1 and workflow_id=$2`,
