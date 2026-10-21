@@ -111,11 +111,18 @@ export async function readAttentionFact(
       };
     }
     case 'approval_waiting': {
+      // Decisions and the coordinator lock the run before its task.
+      await client.query(
+        `select id from app.workflow_runs where workspace_id=$1 and id=(
+          select run_id from app.pending_run_tasks where workspace_id=$1 and id=$2
+        ) for share`,
+        values,
+      );
       const found = await client.query<{
         workflow_id: string;
         pending: boolean;
       }>(
-        `select run.workflow_id,(task.kind='approval' and task.status='pending' and task.expires_at>clock_timestamp() and run.status in ('queued','running','waiting') and run.cancel_requested_at is null and (run.deadline_at is null or run.deadline_at>clock_timestamp())) pending from app.pending_run_tasks task join app.workflow_runs run on run.workspace_id=task.workspace_id and run.id=task.run_id where task.workspace_id=$1 and task.id=$2 for share of task,run`,
+        `select run.workflow_id,(task.kind='approval' and task.status='pending' and task.expires_at>clock_timestamp() and run.status in ('queued','running','waiting') and run.cancel_requested_at is null and (run.deadline_at is null or run.deadline_at>clock_timestamp())) pending from app.pending_run_tasks task join app.workflow_runs run on run.workspace_id=task.workspace_id and run.id=task.run_id where task.workspace_id=$1 and task.id=$2 for share of task`,
         values,
       );
       const row = found.rows[0];

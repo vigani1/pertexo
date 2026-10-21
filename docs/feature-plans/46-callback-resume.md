@@ -130,3 +130,7 @@ The shared scheduler now retains those selections in their existing iteration
 scope, so skipped callback targets close through ordinary coordinator settlement.
 Merge waits for its selected source to materialize before recording an immutable
 arrival; an intermediate ancestor cannot settle it without the final result.
+
+The approval notice observer takes its run fence before its task fence, matching
+decisions and coordinator settlement. A deterministic PostgreSQL regression covers
+the deadlock found by the existing live approvals journey during qualification.
