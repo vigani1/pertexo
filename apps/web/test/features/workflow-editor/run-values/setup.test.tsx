@@ -58,7 +58,7 @@ it('edits plain key/value rows with normal mappings and keeps incomplete scratch
   await user.type(within(row).getByLabelText('Key'), 'orderId');
   await user.type(within(row).getByLabelText('Value'), 'A-1042');
   expect(
-    JSON.parse(screen.getByLabelText('Saved mappings').textContent ?? '{}'),
+    JSON.parse(screen.getByLabelText('Saved mappings').textContent),
   ).toEqual({ values: { kind: 'literal', value: { orderId: 'A-1042' } } });
   await user.click(within(row).getByRole('button', { name: 'Run input' }));
   await user.clear(within(row).getByLabelText('Run input path'));
