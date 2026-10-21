@@ -1,4 +1,9 @@
 import {
+  createRunValuesStore,
+  type RunValuesStore,
+} from '@pertexo/database/runs';
+import { createRunValuesRuntime } from './run-values.js';
+import {
   createWorkerDataTablesStore,
   type WorkerDataTablesStore,
 } from '@pertexo/database/data-tables';
@@ -72,6 +77,7 @@ export type WorkerNodeRuntimeCapabilityDependencies = Readonly<{
   databaseRuntime?: DatabaseRuntime;
   webhookResponses?: Pick<WebhookResponseStore, 'respond'>;
   dataTables?: Pick<WorkerDataTablesStore, 'execute'>;
+  runValues?: Pick<RunValuesStore, 'save'>;
   connectionDatabase?: Parameters<
     typeof createProviderConnectionRuntimeFactory
   >[0];
@@ -169,6 +175,7 @@ export async function createWorkerNodeRuntimeCapabilities(
     options.artifactRetentionMillis ?? DEFAULT_ARTIFACT_RETENTION_MILLIS;
 
   let ownedDataTables: WorkerDataTablesStore | undefined;
+  let ownedRunValues: RunValuesStore | undefined;
   let ownedWebhookResponses: WebhookResponseStore | undefined;
   let encryptionRuntime: ConnectionEnvelopeEncryptionRuntime | undefined;
   let ownedConnectionDatabase: WorkerConnectionResolutionDatabase | undefined;
@@ -190,6 +197,7 @@ export async function createWorkerNodeRuntimeCapabilities(
       ? undefined
       : createCodeRunnerClient(options.codeRunner);
   const factories: {
+    runValues?: NonNullable<NodeExecutionCapabilityFactories['runValues']>;
     dataTables?: NonNullable<NodeExecutionCapabilityFactories['dataTables']>;
     code?: NonNullable<NodeExecutionCapabilityFactories['code']>;
     connections?: NonNullable<NodeExecutionCapabilityFactories['connections']>;
@@ -208,6 +216,7 @@ export async function createWorkerNodeRuntimeCapabilities(
         codeClient?.close();
         const closeOperations = [
           ownedDataTables?.close.bind(ownedDataTables),
+          ownedRunValues?.close.bind(ownedRunValues),
           ownedWebhookResponses?.close.bind(ownedWebhookResponses),
           ownedConnectionDatabase?.close.bind(ownedConnectionDatabase),
           ownedArtifactDatabase?.close.bind(ownedArtifactDatabase),
@@ -231,6 +240,16 @@ export async function createWorkerNodeRuntimeCapabilities(
     return closePromise;
   };
   try {
+    const runValues =
+      dependencies.runValues ??
+      (ownedRunValues = createRunValuesStore(
+        options.database,
+        dependencies.databaseRuntime,
+      ));
+    factories.runValues = (context) =>
+      createRunValuesRuntime(runValues, context, () => {
+        assertCapabilityRuntimeOpen(lifecycle);
+      });
     const dataTables =
       dependencies.dataTables ??
       (ownedDataTables = createWorkerDataTablesStore(

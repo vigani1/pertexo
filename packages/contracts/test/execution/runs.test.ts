@@ -315,3 +315,26 @@ describe('failed-step recovery transport', () => {
     });
   });
 });
+
+it('requires both exact run-value filter fields and preserves empty text', () => {
+  expect(
+    workflowRunListQuerySchema.parse({
+      runValueKey: 'empty',
+      runValue: '',
+      status: 'failed',
+      limit: 10,
+    }),
+  ).toEqual({
+    runValueKey: 'empty',
+    runValue: '',
+    status: 'failed',
+    limit: 10,
+  });
+  for (const input of [
+    { runValueKey: 'orderId' },
+    { runValue: 'a' },
+    { runValueKey: '-bad', runValue: 'a' },
+    { runValueKey: 'orderId', runValue: 'x'.repeat(256) },
+  ])
+    expect(workflowRunListQuerySchema.safeParse(input).success).toBe(false);
+});

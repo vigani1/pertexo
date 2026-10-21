@@ -1,3 +1,4 @@
+import { RunValuesSetup } from '../run-values/setup';
 import { UtilitySetup } from '../builders/utility-setup';
 import { UTILITY_OPERATION_KEYS } from '../../../model/inspector/transforms/utility-config';
 import { useScratchForm } from '../use-draft-field';
@@ -81,8 +82,16 @@ type SetupTabProps = Readonly<{
 export function SetupTab(props: SetupTabProps) {
   return (
     <>
-      {props.node.definition.key === 'core.call' &&
-      props.callScope !== undefined ? (
+      {props.node.definition.key === 'core.run_values' ? (
+        <RunValuesSetup
+          node={props.node}
+          graph={props.graph}
+          definitions={props.definitions ?? []}
+          form={props.form}
+          variableScope={props.callScope}
+        />
+      ) : props.node.definition.key === 'core.call' &&
+        props.callScope !== undefined ? (
         <FieldGroup className="gap-4">
           <CallTargetField
             node={props.node}

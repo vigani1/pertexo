@@ -1,3 +1,4 @@
+import { coreRunValuesExecutor } from './data/run-values/executor.js';
 import { coreCreateFileExecutor } from './data/create-file/executor.js';
 import { UTILITY_EXECUTORS } from './data/utilities/executors.js';
 import { DATA_TABLE_EXECUTORS } from './data/tables/executors.js';
@@ -35,6 +36,7 @@ import { coreWebhookExecutor } from './triggers/webhook/executor.js';
 /** One implementation per core executor, in definition order. */
 export const CORE_NODE_EXECUTOR_REGISTRATIONS: readonly NodeExecutorRegistration[] =
   Object.freeze([
+    coreRunValuesExecutor,
     coreCreateFileExecutor,
     ...DATA_TABLE_EXECUTORS,
     ...UTILITY_EXECUTORS,

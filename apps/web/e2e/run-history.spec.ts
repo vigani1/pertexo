@@ -789,3 +789,75 @@ for (const width of [1280, 375])
       contentType: 'image/png',
     });
   });
+
+for (const theme of ['light', 'dark'] as const)
+  for (const width of [375, 990, 1440])
+    test(`finds exact business values and reads their run in ${theme} at ${String(width)}px`, async ({
+      page,
+    }, info) => {
+      await page.setViewportSize({ width, height: 800 });
+      await page.addInitScript((choice) => {
+        localStorage.setItem('pertexo.appearance', choice);
+      }, theme);
+      await installRoutes(page);
+      await page.route(
+        `**/v1/workspaces/${workspaceId}/runs/${firstRunId}`,
+        (route) =>
+          route.fulfill({
+            json: {
+              run: {
+                ...run(firstRunId, 'succeeded'),
+                runValues: { orderId: 'A-1042', empty: '' },
+              },
+              nodes: [],
+            },
+          }),
+      );
+      await page.goto(`/w/${workspaceId}/runs`);
+      await page.getByText('Run value', { exact: true }).click();
+      await page.getByLabel('Run value key', { exact: true }).fill('orderId');
+      await page.getByLabel('Exact value', { exact: true }).fill('A-1042');
+      const request = page.waitForRequest((request) => {
+        const url = new URL(request.url());
+        return (
+          url.pathname.endsWith('/runs') &&
+          url.searchParams.get('runValueKey') === 'orderId' &&
+          url.searchParams.get('runValue') === 'A-1042'
+        );
+      });
+      await page.getByRole('button', { name: 'Apply value filter' }).click();
+      await request;
+      await expect(page).toHaveURL(/runValueKey=orderId/);
+      await expect(
+        page.getByRole('button', { name: 'Remove filter orderId = A-1042' }),
+      ).toBeVisible();
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+      await page.screenshot({
+        path: info.outputPath(`run-value-filter-${theme}-${String(width)}.png`),
+        fullPage: true,
+      });
+      await page.goto(`/w/${workspaceId}/runs/${firstRunId}`);
+      await expect(
+        page.getByText('Saved run values', { exact: true }),
+      ).toBeVisible();
+      await expect(page.getByText('A-1042', { exact: true })).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'Copy orderId' }),
+      ).toBeVisible();
+      await expect(page.getByText('Empty text', { exact: true })).toBeVisible();
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+      await page.screenshot({
+        path: info.outputPath(
+          `run-values-detail-${theme}-${String(width)}.png`,
+        ),
+        fullPage: true,
+      });
+    });

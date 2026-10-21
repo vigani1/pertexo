@@ -1,3 +1,4 @@
+import { RunBusinessValues } from '../components/run-detail/business-values';
 import { RunVariables } from '../components/run-detail/variables';
 import { PendingTasks } from '@/features/pending-tasks/public';
 import { ErrorWorkflowStatus } from '../components/error-workflow-status';
@@ -226,6 +227,7 @@ export function RunDetailPage({
             delivery={snapshot.errorWorkflow}
             workspaceId={workspace.id}
           />
+          <RunBusinessValues values={run.runValues} />
           <RunVariables
             scope={{
               apiClient,

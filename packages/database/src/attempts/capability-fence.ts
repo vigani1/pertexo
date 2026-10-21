@@ -1,17 +1,36 @@
 import type { PoolClient } from 'pg';
-import { DataTableError } from '@pertexo/node-sdk';
-import type { DataTableAttempt } from '../data-tables/contract.js';
-export async function lockTableExecution(
+
+export type ExecutionCapabilityScope = Readonly<{
+  workspaceId: string;
+  runId: string;
+  nodeRunId: string;
+  attemptId: string;
+  attemptNumber: number;
+  workerId: string;
+  fenceToken: number;
+  previewRunId?: string;
+  nodeId: string;
+  invocationKey: string;
+}>;
+export class ExecutionCapabilityExpiredError extends Error {
+  override readonly name = 'ExecutionCapabilityExpiredError';
+  constructor(message = 'This execution attempt is no longer current.') {
+    super(message);
+  }
+}
+export async function lockCapabilityExecution(
   client: PoolClient,
-  input: DataTableAttempt,
+  input: ExecutionCapabilityScope,
 ): Promise<void> {
   const workspace = await client.query<{ status: string }>(
     'select status from app.workspaces where id=$1 for share',
     [input.workspaceId],
   );
   if (workspace.rows[0]?.status !== 'active')
-    throw new DataTableError('attempt_expired', 'The workspace is not active.');
+    throw new ExecutionCapabilityExpiredError('The workspace is not active.');
   if (input.previewRunId !== undefined) {
+    if (input.previewRunId !== input.runId)
+      throw new ExecutionCapabilityExpiredError();
     await client.query(
       'select id from app.preview_runs where workspace_id=$1 and id=$2 for update',
       [input.workspaceId, input.previewRunId],
@@ -35,9 +54,9 @@ export async function lockTableExecution(
     );
   }
 }
-export async function assertTableExecution(
+export async function assertCapabilityExecution(
   client: PoolClient,
-  input: DataTableAttempt,
+  input: ExecutionCapabilityScope,
   requireDispatch = false,
 ): Promise<void> {
   const parameters: unknown[] = [
@@ -68,9 +87,5 @@ export async function assertTableExecution(
     );
     valid = found.rows[0]?.valid;
   }
-  if (valid !== true)
-    throw new DataTableError(
-      'attempt_expired',
-      'This execution attempt is no longer current.',
-    );
+  if (valid !== true) throw new ExecutionCapabilityExpiredError();
 }

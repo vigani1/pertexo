@@ -1,3 +1,4 @@
+import { RUN_VALUES_RETENTION_RULE } from '../runs/values/retention.js';
 import { AUDIT_RETENTION_MIN_DAYS } from '@pertexo/contracts';
 import { expiredNoticeSql } from '../inbox/lifetime.js';
 import {
@@ -26,6 +27,7 @@ import {
  */
 export const RETENTION_RULES = Object.freeze([
   API_TOKEN_RETENTION_RULE,
+  RUN_VALUES_RETENTION_RULE,
   {
     name: 'workflow_presence_leases',
     statement: `with page as(select workspace_id,workflow_id,user_id,tab_id from app.workflow_presence_leases where expires_at<=clock_timestamp() order by expires_at limit $1) delete from app.workflow_presence_leases lease using page where lease.workspace_id=page.workspace_id and lease.workflow_id=page.workflow_id and lease.user_id=page.user_id and lease.tab_id=page.tab_id and lease.expires_at<=clock_timestamp()`,
@@ -139,6 +141,8 @@ export const RETENTION_RULES = Object.freeze([
         select run.id from app.workflow_runs run
         where run.details_purged_at is null
           and ${expiredRunSql('run')}
+          and not exists (select 1 from app.workflow_run_values value
+            where value.workspace_id = run.workspace_id and value.workflow_run_id = run.id)
           and not exists (select 1 from app.node_runs node
             where node.workspace_id = run.workspace_id and node.workflow_run_id = run.id)
           and not exists (select 1 from app.run_events event

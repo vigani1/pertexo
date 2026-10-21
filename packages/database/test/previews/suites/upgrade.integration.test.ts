@@ -104,6 +104,7 @@ it('upgrades a populated standalone test without changing its source identity or
       '0044_canvas_notes.sql',
       '0045_captured_sample_origin.sql',
       '0046_signing_key.sql',
+      '0047_run_values.sql',
     ]);
     expect(
       (

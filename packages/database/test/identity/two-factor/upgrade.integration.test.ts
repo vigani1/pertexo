@@ -59,6 +59,7 @@ it('upgrades password accounts with two-factor off, isolated auth grants and cas
       '0044_canvas_notes.sql',
       '0045_captured_sample_origin.sql',
       '0046_signing_key.sql',
+      '0047_run_values.sql',
     ]);
     expect(
       (

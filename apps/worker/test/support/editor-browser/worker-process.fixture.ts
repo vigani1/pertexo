@@ -439,7 +439,10 @@ async function constructRuntimes(
     resources.capabilities = controlledCapabilities;
     assertSetupActive();
   }
-  if (webhookResponseCase || process.env.EDITOR_BROWSER_CASE === 'variables') {
+  if (
+    webhookResponseCase ||
+    ['variables', 'run-values'].includes(process.env.EDITOR_BROWSER_CASE ?? '')
+  ) {
     controlledCapabilities = await createWorkerNodeRuntimeCapabilities({
       database,
     });
@@ -476,6 +479,9 @@ async function constructRuntimes(
       controlledHttpClient === undefined
         ? {
             runtimeCapabilities: {
+              ...(controlledCapabilities?.factories.runValues === undefined
+                ? {}
+                : { runValues: controlledCapabilities.factories.runValues }),
               ...(controlledCapabilities?.factories.dataTables === undefined
                 ? {}
                 : { dataTables: controlledCapabilities.factories.dataTables }),

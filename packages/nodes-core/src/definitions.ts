@@ -1,4 +1,10 @@
 import {
+  CORE_RUN_VALUES_MANIFEST,
+  CORE_RUN_VALUES_CONFIG_SCHEMA,
+  CORE_RUN_VALUES_INPUT_SCHEMA,
+  CORE_RUN_VALUES_OUTPUT_SCHEMA,
+} from './data/run-values/index.js';
+import {
   CORE_CREATE_FILE_MANIFEST,
   CORE_CREATE_FILE_CONFIG_SCHEMA,
   CORE_CREATE_FILE_INPUT_SCHEMA,
@@ -180,6 +186,12 @@ import {
 
 export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistration[] =
   Object.freeze([
+    Object.freeze({
+      manifest: CORE_RUN_VALUES_MANIFEST,
+      configSchema: CORE_RUN_VALUES_CONFIG_SCHEMA,
+      inputSchema: CORE_RUN_VALUES_INPUT_SCHEMA,
+      outputSchema: CORE_RUN_VALUES_OUTPUT_SCHEMA,
+    }),
     Object.freeze({
       manifest: CORE_CREATE_FILE_MANIFEST,
       configSchema: CORE_CREATE_FILE_CONFIG_SCHEMA,

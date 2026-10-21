@@ -167,6 +167,7 @@ export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
   deleteRows('webhook_test_events'),
   deleteRows('workflow_step_samples'),
   deleteRows('webhook_run_responses'),
+  deleteRows('workflow_run_values'),
   {
     // A node run points at its current attempt; clear it before attempts go.
     name: 'node_run_current_attempts',

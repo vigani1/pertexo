@@ -3,7 +3,12 @@ import type { RunPresetRange, RunSearch } from './run-search';
 import { describeRunStatus, describeTrigger } from '../presentation/run-status';
 
 type RunFilterChipKey =
-  'workflowId' | 'workflowNamePrefix' | 'status' | 'time' | 'trigger';
+  | 'workflowId'
+  | 'workflowNamePrefix'
+  | 'status'
+  | 'runValueKey'
+  | 'time'
+  | 'trigger';
 
 export type RunFilterChip = Readonly<{ key: RunFilterChipKey; label: string }>;
 
@@ -60,6 +65,11 @@ export function runFilterChips(
     chips.push({
       key: 'status',
       label: `Status: ${describeRunStatus(search.status).label}`,
+    });
+  if (search.runValueKey !== undefined)
+    chips.push({
+      key: 'runValueKey',
+      label: `${search.runValueKey} = ${search.runValue ?? ''}`,
     });
   const time = timeRangeLabel(search);
   if (time !== undefined) chips.push({ key: 'time', label: `When: ${time}` });

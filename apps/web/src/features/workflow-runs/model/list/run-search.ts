@@ -12,6 +12,8 @@ export type RunHistoryFilters = Readonly<
     WorkflowRunListQuery,
     | 'workflowId'
     | 'workflowNamePrefix'
+    | 'runValueKey'
+    | 'runValue'
     | 'status'
     | 'createdAtFrom'
     | 'createdAtBefore'
@@ -79,7 +81,12 @@ function parseField<Key extends keyof RunHistoryFilters>(
   key: Key,
   value: unknown,
 ): RunHistoryFilters[Key] | undefined {
-  if (value === undefined || value === null || value === '') return undefined;
+  if (
+    value === undefined ||
+    value === null ||
+    (value === '' && key !== 'runValue')
+  )
+    return undefined;
   const parsed = filterShape[key].safeParse(stringValue(value));
   return parsed.success
     ? (parsed.data as RunHistoryFilters[Key] | undefined)
@@ -94,6 +101,8 @@ function readApiFilters(
     'workflowNamePrefix',
     record.workflowNamePrefix,
   );
+  const runValueKey = parseField('runValueKey', record.runValueKey);
+  const runValue = parseField('runValue', record.runValue);
   const status = parseField('status', record.status);
   const createdAtFrom = parseField('createdAtFrom', record.createdAtFrom);
   const parsedBefore = parseField('createdAtBefore', record.createdAtBefore);
@@ -104,6 +113,9 @@ function readApiFilters(
       ? undefined
       : parsedBefore;
   return {
+    ...(runValueKey === undefined || runValue === undefined
+      ? {}
+      : { runValueKey, runValue }),
     ...(workflowId === undefined ? {} : { workflowId }),
     ...(workflowNamePrefix === undefined ? {} : { workflowNamePrefix }),
     ...(status === undefined ? {} : { status }),
@@ -188,6 +200,8 @@ export function withoutRunFilter<Search extends RunSearch>(
   search: Search,
   key: keyof RunSearch,
 ): Search {
+  if (key === 'runValueKey' || key === 'runValue')
+    return omitKeys(search, ['runValueKey', 'runValue']) as Search;
   if (key === 'createdAtFrom' || key === 'createdAtBefore')
     return omitKeys(search, [key, 'range']) as Search;
   return omitKeys(search, [key]) as Search;

@@ -90,6 +90,8 @@ export type ListWorkflowRunsInput = WorkflowRunApplicationInput &
     createdAtFrom?: string;
     createdAtBefore?: string;
     workflowNamePrefix?: string;
+    runValueKey?: string;
+    runValue?: string;
   }>;
 
 export type CancelWorkflowRunInput = GetWorkflowRunInput &
@@ -239,6 +241,14 @@ export class ListWorkflowRunsUseCase {
       workspaceId: input.routeWorkspaceId,
       limit: input.limit ?? 50,
       includeWorkflowName,
+      ...(context.runValueKey === undefined
+        ? {}
+        : {
+            runValueKey: context.runValueKey,
+            ...(context.runValue === undefined
+              ? {}
+              : { runValue: context.runValue }),
+          }),
       ...(context.workflowId === undefined
         ? {}
         : { workflowId: context.workflowId }),
@@ -445,6 +455,12 @@ function normalizedCursorContext(
 ): WorkflowRunCursorContext {
   return {
     workspaceId: input.routeWorkspaceId,
+    ...(input.runValueKey === undefined
+      ? {}
+      : {
+          runValueKey: input.runValueKey,
+          ...(input.runValue === undefined ? {} : { runValue: input.runValue }),
+        }),
     ...(input.workflowId === undefined ? {} : { workflowId: input.workflowId }),
     ...(input.workflowNamePrefix === undefined
       ? {}

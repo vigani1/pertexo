@@ -1,3 +1,4 @@
+import type { ExecutionCapabilityScope } from '../attempts/capability-fence.js';
 import type {
   DataTableWriteReceipt,
   DataTableSchemaEdit,
@@ -97,18 +98,7 @@ export interface DataTablesStore {
   ): Promise<{ affected: number }>;
   close(): Promise<void>;
 }
-export type DataTableAttempt = Readonly<{
-  workspaceId: string;
-  runId: string;
-  nodeRunId: string;
-  attemptId: string;
-  attemptNumber: number;
-  workerId: string;
-  fenceToken: number;
-  previewRunId?: string;
-  nodeId: string;
-  invocationKey: string;
-}>;
+export type DataTableAttempt = ExecutionCapabilityScope;
 export interface WorkerDataTablesStore {
   execute(
     input: DataTableAttempt &

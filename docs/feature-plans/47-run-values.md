@@ -1,6 +1,6 @@
 # F47 — Run values
 
-Status: owner-approved scope; plan reconciled with main on 2026-10-21. Implementation pending.
+Status: **Implemented 2026-10-21**, awaiting green CI and rebase merge. Owner-approved scope; reconciled with current code.
 
 ## Outcome and decisions
 
@@ -12,15 +12,14 @@ Use the existing run/preview execution and retention owners, not another store
 or execution mechanism.
 
 - Add **Save run values** (`core.run_values@1`), an internal safe-to-repeat data
-  step. Normal mappings provide one to ten key/value pairs. Keys use ASCII
+  step. Normal mappings provide an object with one to ten key/value pairs. Keys use ASCII
   letters, digits, underscore, dot and hyphen, beginning with a letter or digit.
   Values are strings, including empty text; preserve case and whitespace.
   Invalid text, NUL and unpaired surrogates fail clearly at the step boundary.
   No implicit conversion, truncation, secret fields or arbitrary expressions
   beyond the existing mapping language.
 - The ten-key bound applies to the entire execution, including multiple steps,
-  loop iterations and parallel branches. Duplicate keys in one invocation use
-  the last pair. Later committed writes replace earlier values. Serialize on
+  loop iterations and parallel branches. Saving a key again replaces its earlier value. Later committed writes win. Serialize on
   the existing run/preview owner row; count the resulting distinct keys in
   TypeScript and refuse an eleventh atomically, with no partial writes.
 - Save through an attempt-scoped capability, enforcing the existing execution
@@ -46,7 +45,9 @@ or execution mechanism.
 - Add one exact, case-sensitive key/value filter to Runs, combinable with current
   workflow, status and time filters. Require both fields together; an empty value
   is a valid exact search. Keep cursor paging and the shared test-run exclusion.
-  Run detail shows a compact labelled list using existing Weft fields and copy
+  Searches with run values bind a SHA-256 digest of the entire filter combination,
+  keeping maximum Unicode filters within the existing cursor ceiling. Existing
+  searches keep their legacy cursor encoding. Run detail shows a compact labelled list using existing Weft fields and copy
   controls; no new polling or request per list row.
 - No new export/import behavior: workflow structure includes the ordinary step
   and mappings, while recorded run values never enter portable workflow files,
@@ -55,7 +56,8 @@ or execution mechanism.
 
 ## Structure and delivery
 
-One PR, with a separate move-only commit only if an existing module must move.
+One PR. The initial move-only commit relocates existing object-mapping helpers
+and execution-fence checks to their shared owners; the implementation reuses them.
 
 | Owner | Change |
 | --- | --- |
@@ -75,9 +77,19 @@ Keep all database checkouts short and all durable rules in TypeScript.
 
 ## Qualification and status
 
-Pending: boundary/duplicate/empty-text tests; concurrent ten-key cap and last-write
-behavior; stale-fence and workspace refusal; preview/test/recovery ownership;
-retention/purge; exact indexed filter composed with existing filters and excluding
-tests; real worker → API → browser journey, credential echo redaction, keyboard
-and light/dark phone/pane/desktop checks. Run project checks, full pre-push,
-React Doctor and existing CI, then update only this status and F47's roadmap row.
+Passed locally: shared input boundaries; core execution; credential field/text
+redaction (including a 255-character credential-bearing value); real HTTP echo
+redaction; concurrent ten-key cap and atomic replacement; stale fence/workspace
+refusal; preview expiry; retained/test/recovery metadata; retention and workspace
+purge; populated migration upgrade and forced RLS; exact filtering alongside
+existing filters and excluding tests; cursor binding including empty/max text.
+The existing data-table preview/record integration regressions pass after sharing
+the execution fence.
+
+A real browser registers an account, authors and publishes the step, runs it on
+the real API/worker, reads the saved value and proves case-sensitive lookup.
+Twelve focused mocked journeys cover editor/filter/detail in both themes at
+375/990/1440 px; all twenty run-history journeys pass. Rendered screenshots were
+inspected. React Doctor changed-file scan reports 98/100 with no findings.
+Architecture, schema ownership (129 tables), dependency and generated-contract
+checks pass. Full unskipped pre-push and CI remain required before merge.

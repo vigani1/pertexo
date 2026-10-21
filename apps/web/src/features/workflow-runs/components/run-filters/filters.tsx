@@ -1,3 +1,4 @@
+import { BusinessValueFilter } from './business-value';
 import { XIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
@@ -109,6 +110,7 @@ export function RunFilters({
           </SelectContent>
         </Select>
       </div>
+      <BusinessValueFilter search={search} onSearchChange={onSearchChange} />
       {chips.length === 0 ? null : (
         <div
           role="group"
