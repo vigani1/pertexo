@@ -1,3 +1,4 @@
+import { FOLDER_LIMIT, FOLDER_DEPTH_LIMIT } from './limits.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
@@ -72,8 +73,6 @@ export interface WorkflowFolderDatabase {
   close(): Promise<void>;
 }
 
-const FOLDER_LIMIT = 256;
-const FOLDER_DEPTH_LIMIT = 4;
 const ADMINISTRATORS = ['owner', 'admin'] as const;
 const EDITORS = ['owner', 'admin', 'builder'] as const;
 
