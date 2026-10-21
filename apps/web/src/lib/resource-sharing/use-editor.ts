@@ -1,0 +1,91 @@
+import { useState } from 'react';
+import { useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query';
+import { useRetainedCommand } from '../api/commands/use-retained';
+import { isApiError } from '../api/error';
+/** Unsaved edits own a snapshot only after an edit. Refetches never replace it. */
+export function useSharingEditor<
+  Snapshot extends { readonly revision: number },
+>({
+  resourceId,
+  queryKey,
+  invalidationKey,
+  read,
+  replace,
+}: Readonly<{
+  resourceId: string | undefined;
+  queryKey: QueryKey;
+  invalidationKey: QueryKey;
+  read: (signal: AbortSignal) => Promise<Snapshot>;
+  replace: (snapshot: Snapshot, key: string) => Promise<unknown>;
+}>) {
+  const cache = useQueryClient();
+  const reader = useQuery({
+    queryKey,
+    queryFn: ({ signal }) => read(signal),
+    enabled: resourceId !== undefined,
+    retry: false,
+  });
+  const [edited, setEdited] =
+    useState<Readonly<{ resourceId: string; snapshot: Snapshot }>>();
+  const command = useRetainedCommand(
+    replace,
+    async () => {
+      // A receipt confirms the command, not the current grants. Read them again.
+      const refreshed = reader.refetch({ cancelRefetch: false });
+      await cache.invalidateQueries(
+        { queryKey: invalidationKey },
+        { cancelRefetch: false },
+      );
+      if ((await refreshed).isSuccess) setEdited(undefined);
+    },
+    { action: 'saving sharing' },
+  );
+  const denied =
+    reader.isError &&
+    isApiError(reader.error) &&
+    [401, 403, 404].includes(reader.error.status ?? 0);
+  const snapshot =
+    denied || resourceId === undefined
+      ? undefined
+      : edited?.resourceId === resourceId
+        ? edited.snapshot
+        : reader.data;
+  const locked = command.pending || command.uncertain || command.expired;
+  const closeLocked =
+    command.pending || (command.uncertain && !command.expired);
+  const stale =
+    snapshot !== undefined &&
+    reader.data !== undefined &&
+    snapshot.revision !== reader.data.revision;
+  return {
+    reader,
+    snapshot,
+    command,
+    locked,
+    closeLocked,
+    stale,
+    update: (change: (snapshot: Snapshot) => Snapshot) => {
+      if (snapshot === undefined || resourceId === undefined || locked) return;
+      command.reset();
+      setEdited({ resourceId, snapshot: change(snapshot) });
+    },
+    submit: async () => {
+      if (snapshot !== undefined && !locked && !stale && reader.isSuccess)
+        await command.send(snapshot);
+    },
+    reload: async () => {
+      if (locked) return;
+      const next = await reader.refetch();
+      if (next.isSuccess) {
+        setEdited(undefined);
+        command.reset();
+      }
+    },
+    discard: () => {
+      if (!closeLocked) {
+        setEdited(undefined);
+        command.reset();
+      }
+    },
+  };
+}

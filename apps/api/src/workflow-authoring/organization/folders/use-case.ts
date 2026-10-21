@@ -81,7 +81,12 @@ export class WorkflowFoldersUseCase {
       workflowMoveReviewRequestSchema,
       input.request,
     );
-    await authorizeWorkflowOrganization(input, this.authorization, 'editor');
+    await authorizeWorkflowOrganization(
+      input,
+      this.authorization,
+      'editor',
+      true,
+    );
     return workflowMoveReviewResponseSchema.parse(
       await this.folders.reviewMove({
         ...workflowOrganizationContext(input),

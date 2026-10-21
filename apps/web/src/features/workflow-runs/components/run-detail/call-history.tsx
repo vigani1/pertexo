@@ -70,6 +70,11 @@ export function CallHistory({
                   >
                     Open child run
                   </Link>
+                ) : call.childHistory === 'unavailable' ? (
+                  <Notice tone="info">
+                    Child history is unavailable with your current access. The
+                    parent’s Call outcome remains visible.
+                  </Notice>
                 ) : call.childHistory === 'expired' ? (
                   <Notice tone="info">
                     Child history expired. The Call’s identity and outcome

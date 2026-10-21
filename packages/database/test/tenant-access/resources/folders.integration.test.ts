@@ -185,6 +185,24 @@ it('allows a Viewer grant to read without granting authoring, and keeps the work
       await authoring.getDraft(workspaceId, workflowId, builder),
     ).not.toBeNull();
     expect(
+      (await authoring.getWorkflow(workspaceId, workflowId, builder))
+        ?.resourceAccess,
+    ).toEqual({ canEdit: false, canPublish: false });
+    expect(
+      (
+        await organization.getWorkflow({
+          workspaceId,
+          workflowId,
+          actorId: builder,
+        })
+      )?.workflow.resourceAccess,
+    ).toEqual({ canEdit: false, canPublish: false });
+    expect(
+      (await folders.listFolders({ workspaceId, actorId: builder })).items.find(
+        (folder) => folder.id === folderId,
+      )?.canCreateWorkflows,
+    ).toBe(false);
+    expect(
       await runs.canRead({ workspaceId, actorId: viewer, runId: privateRun }),
     ).toBe(true);
     await expect(
@@ -235,6 +253,19 @@ it('fences grant edits, audience reviews and replayed authoring commands with cu
       grants: [{ kind: 'member', userId: builder, access: 'editor' }],
     },
   });
+  expect(
+    (await authoring.getWorkflow(workspaceId, created.workflowId, builder))
+      ?.resourceAccess,
+  ).toEqual({ canEdit: true, canPublish: true });
+  expect(
+    (
+      await folders.readSharing({
+        workspaceId,
+        folderId: privateFolder.id,
+        actorId,
+      })
+    ).labels?.[builder],
+  ).toBe('Resource reader');
   expect(
     await authoring.getDraft(workspaceId, created.workflowId, viewer),
   ).toBeNull();

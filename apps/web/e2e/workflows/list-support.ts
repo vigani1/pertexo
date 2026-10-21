@@ -32,6 +32,28 @@ export async function routeEmptyWorkflowOrganization(
   workspaceId: string,
 ): Promise<void> {
   await page.route(
+    `**/v1/workspaces/${workspaceId}/workflow-folders/review-move`,
+    (route) => {
+      const body = route.request().postDataJSON() as {
+        kind: string;
+        folderId?: string;
+        workflowIds?: string[];
+      };
+      const ids =
+        body.kind === 'folder' ? [body.folderId] : (body.workflowIds ?? []);
+      return route.fulfill({
+        json: {
+          items: ids.map((id) => ({
+            id,
+            requiresReview: false,
+            token: 'a'.repeat(64),
+            removedRestrictions: [],
+          })),
+        },
+      });
+    },
+  );
+  await page.route(
     `**/v1/workspaces/${workspaceId}/workflow-folders`,
     (route) => route.fulfill({ json: { items: [] } }),
   );

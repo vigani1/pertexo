@@ -1,4 +1,7 @@
-import { workflowAccessible } from '../../tenant-access/resources/workflows.js';
+import {
+  workflowActions,
+  workflowAccessible,
+} from '../../tenant-access/resources/workflows.js';
 import type { WorkflowAuthoringDatabase } from '../workflows/contracts.js';
 import type { WorkflowAuthoringReadContext } from '../workflows/reads.js';
 import { WorkflowTemplateOriginUnavailableError } from '../workflows/errors.js';
@@ -19,14 +22,16 @@ export function createWorkflowTemplateOriginReader(
       if (!(await workflowAccessible(client, access, workspaceId, workflowId)))
         return null;
       const id = z.uuid().parse(workflowId);
+      const parameters: unknown[] = [workspaceId, id];
       let result;
       try {
         result = await client.query<Record<string, unknown>>(
-          `select row_to_json(workflow) workflow, origin.origin template_origin
+          `select row_to_json(workflow) workflow, origin.origin template_origin, state.folder_id
              from (select ${workflowRowSelection} from app.workflows) workflow
+             left join app.workflow_organization_state state on state.workspace_id=workflow.workspace_id and state.workflow_id=workflow.id
              left join app.workflow_template_origins origin on origin.workspace_id=workflow.workspace_id and origin.workflow_id=workflow.id
              where workflow.workspace_id=$1 and workflow.id=$2`,
-          [workspaceId, id],
+          parameters,
         );
       } catch (error) {
         // Missing/incompatible storage is unsupported projection, never authoritative null.
@@ -46,7 +51,13 @@ export function createWorkflowTemplateOriginReader(
         .safeParse(row.template_origin);
       if (!origin.success) throw new WorkflowTemplateOriginUnavailableError();
       return Object.freeze({
-        workflow: mapWorkflow(row.workflow as Record<string, unknown>),
+        workflow: {
+          ...mapWorkflow(row.workflow as Record<string, unknown>),
+          resourceAccess: workflowActions(
+            access,
+            z.uuid().nullable().parse(row.folder_id),
+          ),
+        },
         templateOrigin: origin.data,
       });
     });

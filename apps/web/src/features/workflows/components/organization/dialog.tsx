@@ -1,3 +1,5 @@
+import { useAudienceMove } from '../../hooks/use-audience-move';
+import { AudienceMoveReview } from './folders/audience-review';
 import { useEffect, useId, useRef, useState } from 'react';
 import {
   useInfiniteQuery,
@@ -76,6 +78,9 @@ function useOrganizationEdit({
     workspace,
     requiredRole: 'editor',
   });
+  const audience = useAudienceMove(apiClient, workspace.id, (attempt) =>
+    command.start(attempt),
+  );
   const enabled = selectionValid && !command.denied;
   const reads = useQueries({
     queries: selected.map(({ workflow }) => ({
@@ -107,7 +112,12 @@ function useOrganizationEdit({
     tags.isPending;
   const failedRead =
     reads.some((read) => read.isError) || folders.isError || tags.isError;
-  const locked = preparing || command.pending || command.retryAvailable;
+  const locked =
+    preparing ||
+    command.pending ||
+    command.retryAvailable ||
+    audience.pending ||
+    audience.review !== undefined;
   const feedback =
     command.error ??
     readError ??
@@ -179,7 +189,7 @@ function useOrganizationEdit({
         );
         return;
       }
-      await command.start(
+      await audience.begin(
         organizationEditAttempt(
           workspace.id,
           latest,
@@ -215,6 +225,7 @@ function useOrganizationEdit({
     formEpoch,
     refresh,
     confirm,
+    audience,
   };
 }
 
@@ -269,6 +280,23 @@ export function WorkflowOrganizationDialog(props: Props) {
           {command.denied || !reading ? null : (
             <Notice>Reading current organization…</Notice>
           )}
+          {editor.audience.error ? (
+            <Notice tone="warning">{editor.audience.error}</Notice>
+          ) : null}
+          {editor.audience.review ? (
+            <AudienceMoveReview
+              key={editor.audience.review.report.items
+                .map((item) => item.token)
+                .join(':')}
+              report={editor.audience.review.report}
+              administrator={['owner', 'admin'].includes(workspace.role)}
+              pending={command.pending}
+              onConfirm={() => {
+                void editor.audience.confirm();
+              }}
+              onCancel={editor.audience.cancel}
+            />
+          ) : null}
           <OrganizationEditForm editor={editor} workspace={workspace} />
           <OrganizationEditResult editor={editor} />
           <p className="text-xs leading-relaxed text-muted-foreground">

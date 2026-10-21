@@ -3,3 +3,5 @@ export {
   type WorkflowHubTab,
 } from './components/workflow-hub-bar';
 export { describeWorkflowState } from './model/state';
+
+export { WorkflowReadBoundary } from './components/workflow-read-boundary';

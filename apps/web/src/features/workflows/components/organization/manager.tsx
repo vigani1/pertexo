@@ -1,3 +1,7 @@
+import { useFolderSharingEditor } from '../../hooks/use-folder-sharing';
+import { FolderSharingPanel } from './folders/sharing';
+import { useAudienceMove } from '../../hooks/use-audience-move';
+import { AudienceMoveReview } from './folders/audience-review';
 import { FolderManagement } from './folders/management';
 import { TagManagement } from './tags/management';
 import { useState } from 'react';
@@ -75,17 +79,31 @@ function useOrganizationManager({
   });
   const [validation, setValidation] = useState<string>();
   const [cleanup, setCleanup] = useState<WorkflowTag>();
+  const [sharingFolderId, setSharingFolderId] = useState<string>();
+  const sharing = useFolderSharingEditor(
+    { apiClient, userId, workspaceId: workspace.id },
+    sharingFolderId,
+  );
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [pendingKind, setPendingKind] =
     useState<WorkflowOrganizationAttempt['kind']>();
-  const locked = command.pending || command.retryAvailable || command.denied;
+  const audience = useAudienceMove(apiClient, workspace.id, (attempt) =>
+    command.start(attempt),
+  );
+  const locked =
+    command.pending ||
+    command.retryAvailable ||
+    command.denied ||
+    sharing.closeLocked ||
+    audience.pending ||
+    audience.review !== undefined;
   const start: StartCommand = (attempt) => {
     if (locked) return;
     try {
       const frozen = freezeWorkflowOrganizationAttempt(attempt);
       setValidation(undefined);
       setPendingKind(frozen.kind);
-      void command.start(frozen);
+      void audience.begin(frozen);
     } catch {
       setValidation(
         'Check the name, destination and selection. Names must fit their limits; folder names cannot contain control characters.',
@@ -107,6 +125,20 @@ function useOrganizationManager({
     locked,
     start,
     scope,
+    audience,
+    sharing,
+    sharingFolderId,
+    changeSharing: (folderId: string | undefined) => {
+      if (!sharing.closeLocked) {
+        sharing.discard();
+        setSharingFolderId(folderId);
+      }
+    },
+    closeLocked:
+      command.pending ||
+      command.retryAvailable ||
+      sharing.closeLocked ||
+      audience.pending,
   };
 }
 
@@ -123,18 +155,19 @@ function OrganizationManagerContent(props: ManagerProps) {
     locked,
   } = manager;
   const { onClose } = props;
+  const { closeLocked } = manager;
   return (
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open && !command.pending && !command.retryAvailable) onClose();
+        if (!open && !closeLocked) onClose();
       }}
     >
       <DialogContent className="max-w-2xl">
         <DialogTitle>Manage workflow organization</DialogTitle>
         <DialogDescription>
-          Shared folders and tags help people find workflows. They do not change
-          permissions or execution.
+          Organize workflows and review folder sharing. Tags never change access
+          or execution.
         </DialogDescription>
         <div className="mt-6 flex flex-col gap-6">
           {!command.denied &&
@@ -178,11 +211,12 @@ function OrganizationManagerContent(props: ManagerProps) {
               current revisions are loaded.
             </Notice>
           ) : null}
+          <ManagerAudienceReview manager={manager} />
           <OrganizationManagerControls manager={manager} {...props} />
           <Button
             type="button"
             variant="outline"
-            disabled={command.pending || command.retryAvailable}
+            disabled={closeLocked}
             onClick={onClose}
           >
             Close manager
@@ -230,6 +264,19 @@ function OrganizationManagerControls({
             command={command}
             pendingKind={pendingKind}
             onConfirmationChange={setConfirmationOpen}
+            sharingFolderId={manager.sharingFolderId}
+            onSharingChange={manager.changeSharing}
+            sharing={
+              <FolderSharingPanel
+                scope={{ apiClient, userId, workspaceId: workspace.id }}
+                name={
+                  folders.data?.items.find(
+                    (folder) => folder.id === manager.sharingFolderId,
+                  )?.name ?? 'Folder'
+                }
+                editor={manager.sharing}
+              />
+            }
           />
           <Separator />
           <TagManagement
@@ -272,6 +319,29 @@ function OrganizationManagerControls({
           }}
         />
       )}
+    </>
+  );
+}
+
+function ManagerAudienceReview({
+  manager,
+}: Readonly<{ manager: ReturnType<typeof useOrganizationManager> }>) {
+  const { audience, command } = manager;
+  return (
+    <>
+      {audience.error ? <Notice tone="warning">{audience.error}</Notice> : null}
+      {audience.review ? (
+        <AudienceMoveReview
+          key={audience.review.report.items.map((item) => item.token).join(':')}
+          report={audience.review.report}
+          administrator
+          pending={command.pending}
+          onConfirm={() => {
+            void audience.confirm();
+          }}
+          onCancel={audience.cancel}
+        />
+      ) : null}
     </>
   );
 }

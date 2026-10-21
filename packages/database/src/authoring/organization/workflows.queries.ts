@@ -1,3 +1,4 @@
+import { workflowActions } from '../../tenant-access/resources/workflows.js';
 import { sql } from 'drizzle-orm';
 import { readFolderScope } from '../../tenant-access/resources/facts.js';
 import {
@@ -225,7 +226,10 @@ export function createWorkflowOrganizationReadDatabase(
       rowSchema.parse(projection),
     );
     const items = projections.slice(0, input.limit).map((row) => {
-      const workflow = mapWorkflow(row.workflow);
+      const workflow = {
+        ...mapWorkflow(row.workflow),
+        resourceAccess: workflowActions(access, row.folderId),
+      };
       const organization: WorkflowOrganizationMetadata = Object.freeze({
         tags: Object.freeze(row.tags.map((tag) => Object.freeze(tag))),
         organizationRevision: row.organizationRevision,

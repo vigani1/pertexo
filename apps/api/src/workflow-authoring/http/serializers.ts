@@ -153,6 +153,9 @@ export function workflowSummary(workflow: WorkflowRecord): WorkflowSummary {
     lifecycleRevision: workflow.lifecycleRevision,
     activationStatus: workflow.activationStatus,
     webhookSetupRequired: workflow.webhookSetupRequired,
+    ...(workflow.resourceAccess === undefined
+      ? {}
+      : { resourceAccess: workflow.resourceAccess }),
     publishedVersionId: workflow.publishedVersionId,
     createdAt: workflow.createdAt.toISOString(),
     updatedAt: workflow.updatedAt.toISOString(),

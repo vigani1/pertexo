@@ -35,14 +35,19 @@ export async function readFolderSharing(
   ).rows[0];
   if (folder === undefined)
     throw new WorkflowNotFoundError('Folder is not visible');
-  const grants = (
-    await client.query<{ principal: FolderPrincipal }>(
-      `select case when user_id is not null then jsonb_build_object('kind','member','userId',user_id,'access',access)
-      else jsonb_build_object('kind','group','organizationId',organization_id,'groupId',group_id,'access',access) end principal
-      from app.workflow_folder_grants where workspace_id=$1 and folder_id=$2 order by id limit 101`,
+  const rows = (
+    await client.query<{ principal: FolderPrincipal; label: string }>(
+      `select case when permission.user_id is not null then jsonb_build_object('kind','member','userId',permission.user_id,'access',permission.access)
+      else jsonb_build_object('kind','group','organizationId',permission.organization_id,'groupId',permission.group_id,'access',permission.access) end principal,coalesce(person.display_name,directory.display_name,'Unavailable principal') label
+      from app.workflow_folder_grants permission
+      left join app.users person on person.id=permission.user_id
+      left join app.auth_organization_workspaces link on link.workspace_id=permission.workspace_id and link.organization_id=permission.organization_id
+      left join app.auth_directory_groups directory on directory.organization_id=link.organization_id and directory.id=permission.group_id
+      where permission.workspace_id=$1 and permission.folder_id=$2 order by permission.id limit 101`,
       [scope.workspaceId, folderId],
     )
-  ).rows.map(({ principal }) => principal);
+  ).rows;
+  const grants = rows.map(({ principal }) => principal);
   if (grants.length > 100)
     throw new Error('Folder grants exceed the supported bound');
   return {
@@ -50,6 +55,12 @@ export async function readFolderSharing(
     revision: Number(folder.revision),
     mode: folder.access_mode,
     grants,
+    labels: Object.fromEntries(
+      rows.map(({ principal, label }) => [
+        principal.kind === 'member' ? principal.userId : principal.groupId,
+        label,
+      ]),
+    ),
   };
 }
 

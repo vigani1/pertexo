@@ -142,8 +142,8 @@ Each PR runs the full hook and relevant existing tests and merges only green.
 | Slice | Existing owners and delivery | Required proof | Status |
 | --- | --- | --- | --- |
 | 1. Folders | `tenant-access/resources`, `schema/authoring`, `authoring/organization` and workflow/run/inbox/artifact consumers; contracts/API routes. All folder fences land before restrictions can be used. | Populated migration unchanged defaults; role ceiling, ancestor intersection, group/manual/removed memberships; every direct/discovery path; no pagination/count leaks; move/revoke races, audit/purge and current published jobs. | Delivered — [#460](https://github.com/vigani1/pertexo/pull/460) |
-| 2. Connections | Existing connection reads/authority, authoring/preview/test/publication/portability/promotion admission; schema/grants and sharing endpoints. | Existing bindings keep executing; reference change, URL/upstream change, preview/test/publish require Use; metadata non-disclosure, revocation races, no secret/export copying. | Delivered in the connection-sharing PR |
-| 3. UI | Existing workflow organization, connection and promotion features; server-projected actions and normal Weft forms/principal pickers. | Sharing and audience review, unavailable bindings, read-only editor, query invalidation; keyboard/reduced motion; desktop, 990 px pane and phone in both themes; mocked and real browser journeys, React Doctor. | Planned |
+| 2. Connections | Existing connection reads/authority, authoring/preview/test/publication/portability/promotion admission; schema/grants and sharing endpoints. | Existing bindings keep executing; reference change, URL/upstream change, preview/test/publish require Use; metadata non-disclosure, revocation races, no secret/export copying. | Delivered — [#461](https://github.com/vigani1/pertexo/pull/461) |
+| 3. UI | Existing workflow organization, connection and promotion features; server-projected actions and normal Weft forms/principal pickers. | Sharing and audience review, unavailable bindings, read-only editor, query invalidation; keyboard/reduced motion; desktop, 990 px pane and phone in both themes; mocked and real browser journeys, React Doctor. | Delivered in the sharing UI PR |
 | 4. Qualification | Existing database/API/worker/browser checks, guides and delivery tracker. No new CI job. | Repeat the cross-surface negative matrix, SCIM removal, tokens, accepted public/Call/callback execution, approval/inbox/mail, slow export/SSE and restore/purge. Natural main CI inspected after merge. | Planned |
 
 Later: direct per-workflow exceptions, local group management, cross-workspace
@@ -208,3 +208,32 @@ HTTP stack with authorization, CSRF, validation and conflict checks. The existin
 workspace purge fixture includes connection grants; no credential material is
 copied or rewritten. Slice 4 supplies the complete cross-surface worker/browser
 qualification rather than treating these admission checks as execution evidence.
+
+## Slice 3 delivery details
+
+The browser presents actions projected by the existing resource scope; it never
+evaluates grants. Workflow summaries carry edit/publish flags in their existing
+read/list responses, and folder summaries carry create authority. Folder sharing
+includes current labels from one bounded principal read. Member/group selection
+uses paged discovery, with at most 100 visible choices and 100 sharing entries.
+
+Both sharing forms use one local draft/command owner after the first edit. A
+newer revision or a temporary read failure preserves edits. An explicit successful
+reload discards them; a receipt triggers a fresh read instead of becoming current
+state. Uncertain saves keep the exact body/key and prevent closing the control.
+Audience review binds one frozen move, starts unchecked, and preserves per-item
+review tokens for bulk moves. Session identity is checked before sharing writes.
+
+The hub closes the active workflow view only when its own fresh summary read
+proves access was lost. It clears graph/history caches and unsaved editor state;
+a missing target reported by a command merely rechecks that own read. Viewer
+access keeps the editor readable with authoring/test/publish controls unavailable.
+
+Verification includes stale and failed refreshes, exact uncertain retries,
+audience acknowledgement, lost-access cache removal and server-projected role
+ceilings. The ordinary real-browser organization journey saves restrictions,
+reloads and restores workspace sharing. Synthetic visual journeys cover keyboard,
+reduced motion, both themes and 1280/990/375 px widths. React Doctor reports
+100/100 for the changed React files. A real-API regression also covers move review
+with the edit authorization context; the read guard's context cannot authorize
+that separate operation.

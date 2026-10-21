@@ -1,3 +1,4 @@
+import { workflowWorkspaceAccess } from '../../model/resource-access';
 import type { ReactNode } from 'react';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
@@ -53,8 +54,12 @@ export function WorkflowRowMenu({
   organizationActions?: ReactNode;
 }>) {
   const params = { workspaceId: workspace.id, workflowId: workflow.id };
+  const resourceWorkspace = workflowWorkspaceAccess(
+    workspace,
+    workflow.resourceAccess,
+  );
   const can = (capability: AccessibleWorkspace['capabilities'][number]) =>
-    workspace.capabilities.includes(capability);
+    resourceWorkspace.capabilities.includes(capability);
   const archived = workflow.lifecycleStatus === 'archived';
 
   const copy = useCopyToClipboard();

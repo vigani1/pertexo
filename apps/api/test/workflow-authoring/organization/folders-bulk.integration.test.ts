@@ -93,6 +93,22 @@ describe.skipIf(process.env.F07_ORGANIZATION_OWNED_FIXTURE !== 'true')(
       );
       expect(rename.statusCode, rename.payload).toBe(200);
       expect(rename.json()).toMatchObject({ folder: { revision: 2 } });
+      const review = await api.send(
+        'POST',
+        `${f.route}/workflow-folders/review-move`,
+        {
+          browser: f.browser,
+          payload: {
+            kind: 'folder',
+            folderId: child.id,
+            destinationFolderId: null,
+          },
+        },
+      );
+      expect(review.statusCode, review.payload).toBe(200);
+      expect(review.json()).toMatchObject({
+        items: [{ id: child.id, requiresReview: false }],
+      });
       const moved = await api.send(
         'POST',
         `${f.route}/workflow-folders/${child.id}/move`,
