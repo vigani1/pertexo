@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fileInputDiagnosticSchema } from '@pertexo/node-sdk';
+import { FILE_PAGE_LIMITS, fileInputDiagnosticSchema } from '@pertexo/node-sdk';
 import { FileInputFailure } from '@pertexo/node-sdk/server';
 import { describeFileInputFailure } from '@pertexo/node-sdk/server';
 
@@ -9,11 +9,17 @@ describe('file diagnostics disclose only fixed reasons and bounded coordinates',
       { reason: 'json_syntax', text: 'secret' },
       { reason: 'arbitrary provider error' },
       { reason: 'csv_columns', record: Infinity, expected: 1, actual: 2 },
-      { reason: 'csv_syntax', line: 1048578 },
+      { reason: 'csv_syntax', line: FILE_PAGE_LIMITS.fileBytes + 2 },
     ])
       expect(fileInputDiagnosticSchema.safeParse(value).success).toBe(false);
   });
   it('persists actionable content-free locations', () => {
+    expect(
+      fileInputDiagnosticSchema.safeParse({
+        reason: 'json_syntax',
+        position: FILE_PAGE_LIMITS.fileBytes + 1,
+      }).success,
+    ).toBe(true);
     const error = new FileInputFailure({
       reason: 'csv_columns',
       record: 3,
