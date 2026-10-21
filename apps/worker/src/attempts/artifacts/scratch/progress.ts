@@ -1,5 +1,5 @@
 import { FILE_TRANSFER_NO_PROGRESS_MILLIS } from '@pertexo/node-sdk';
-import { pipeline, Transform, type Readable } from 'node:stream';
+import { pipeline, Transform, Readable } from 'node:stream';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import { ArtifactSourceCleanupError } from './consume.js';
 function timedOut(deadline: boolean): NodeExecutorFailure {
@@ -124,7 +124,7 @@ export function withByteProgress(
   });
   guarded.on('error', () => undefined);
   const transfer = new ArtifactTransfer(signal, deadline, (reason) => {
-    source.destroy(reason);
+    source.destroy();
     guarded.destroy(reason);
   });
   source.on('error', (error: unknown) => {
@@ -139,6 +139,18 @@ export function withByteProgress(
       source.destroy();
     }
   });
-  if (!transfer.signal.aborted) pipeline(source, guarded, () => undefined);
+  if (!transfer.signal.aborted) {
+    // The consumer owns this adapter, not the disk reader. Downstream errors
+    // close the reader cleanly; only its own read/close errors report disk failure.
+    async function* readBytes() {
+      for await (const chunk of source.iterator({ destroyOnReturn: false }))
+        yield chunk;
+    }
+    const bytes = Readable.from(readBytes(), {
+      objectMode: false,
+      highWaterMark: 65536,
+    });
+    pipeline(bytes, guarded, () => undefined);
+  }
   return guarded;
 }
