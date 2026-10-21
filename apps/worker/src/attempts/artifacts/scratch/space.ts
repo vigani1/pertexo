@@ -171,7 +171,7 @@ export class ArtifactScratchSpace {
     let releasing: Promise<void> | undefined;
     let sourceCleanupFailed = false;
     const cleanup = async (): Promise<void> => {
-      let failed = sourceCleanupFailed;
+      let failed = false;
       const closed = await Promise.allSettled(
         [...streams].map(async (stream) => {
           if (stream.closed) return;
@@ -198,7 +198,7 @@ export class ArtifactScratchSpace {
           failed = true;
         }
       }
-      if (failed) {
+      if (failed || sourceCleanupFailed) {
         this.cleanupFailed = true;
         throw unavailable('cleanup');
       }

@@ -320,3 +320,19 @@ it('still disables scratch after a real file read failure', async () => {
     safeErrorCode: 'execution.file_scratch_cleanup',
   });
 });
+
+it('keeps a file error observed during release in the readiness result', async () => {
+  const { space } = await fixture();
+  const file = await space.spool(input());
+  const reader = file.open();
+  await closeArtifactStream(reader);
+  await rm(reader.path);
+  const failedReader = file.open();
+  await expect(file.release()).rejects.toMatchObject({
+    safeErrorCode: 'execution.file_scratch_cleanup',
+  });
+  expect(failedReader.closed).toBe(true);
+  expect(() => {
+    space.checkReadiness();
+  }).toThrow();
+});
