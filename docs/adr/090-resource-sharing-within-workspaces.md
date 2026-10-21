@@ -1,6 +1,6 @@
 # ADR 090 — Resource sharing within a workspace
 
-Status: accepted on merge of the owner-authorized F48 plan PR. Date: 2026-10-21.
+Status: accepted by the owner as written on 2026-10-21. Date: 2026-10-21.
 Feature: [F48](../feature-plans/48-finer-sharing.md).
 
 ## Context
