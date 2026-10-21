@@ -1677,6 +1677,52 @@ describeIntegration('active HTTP node attempt', () => {
     30_000,
   );
 
+  it('uses an already accepted HTTP binding after connection sharing becomes restricted', async () => {
+    if (!fixtureEncryption)
+      throw new Error('HTTP attempt fixture encryption is missing');
+    const runtime = await createHttpNodeAttemptProofRuntime(fixtureEncryption);
+    try {
+      const scenario = await admitProviderScenario(runtime, 'http');
+      await withOwner((client) =>
+        client.query(
+          "update app.connections set access_mode='restricted',sharing_revision=sharing_revision+1 where workspace_id=$1 and id=$2",
+          [workspaceId, connectionId],
+        ),
+      );
+      await publishAndWaitForCompletion(
+        runtime.producer,
+        runtime.attemptQueue,
+        attemptJob(scenario.accepted.runId, scenario.attempt),
+        'Delegated HTTP after sharing change',
+      );
+      expect(
+        await workerQuery('select status from app.node_attempts where id=$1', [
+          scenario.attempt.attempt_id,
+        ]),
+      ).toEqual([{ status: 'succeeded' }]);
+      expect(runtime.transportRequests).toHaveLength(1);
+      await advanceScenario(
+        runtime,
+        scenario.accepted.runId,
+        scenario.coordinatorOutboxes,
+        'Delegated HTTP completion',
+      );
+      expect(
+        await workerQuery('select status from app.workflow_runs where id=$1', [
+          scenario.accepted.runId,
+        ]),
+      ).toEqual([{ status: 'succeeded' }]);
+    } finally {
+      await withOwner((client) =>
+        client.query(
+          "update app.connections set access_mode='workspace',sharing_revision=sharing_revision+1 where workspace_id=$1 and id=$2",
+          [workspaceId, connectionId],
+        ),
+      );
+      await closeProofRuntime(runtime);
+    }
+  }, 30_000);
+
   it('persists a transient HTTP credential-resolution failure and lets the pinned coordinator schedule exactly one retry', async () => {
     const encryption = fixtureEncryption;
     if (encryption === undefined)

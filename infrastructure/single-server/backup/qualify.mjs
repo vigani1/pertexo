@@ -1,3 +1,4 @@
+import { seedSharingRecoveryFixture } from './sharing.fixture.mjs';
 import assert from 'node:assert/strict';
 import { S3Client } from '@aws-sdk/client-s3';
 import { copyObjectTree } from './copy-objects.mjs';
@@ -247,6 +248,7 @@ try {
   const sourceDb = await database('source-db', true);
   const targetDb = await database('target-db', false);
   const encryption = await seedEncryptedRecoveryFixture(sql, sourceDb);
+  const sharing = seedSharingRecoveryFixture(sql, sourceDb);
   const { artifacts, bodies, bundle } = createRecoveryFiles();
   store = createArtifactStore(parseArtifactStoreConfig(source));
   for (const artifact of artifacts)
@@ -467,6 +469,7 @@ try {
     ),
     bundle,
   );
+  sharing.verify(targetDb);
   const visible = sql(
     targetDb,
     `SET ROLE pertexo_app; SELECT set_config('app.workspace_id','${artifacts[0].workspaceId}',false); SELECT count(*) FROM public.recovery_fixture;`,

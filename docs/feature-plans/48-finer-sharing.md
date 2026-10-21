@@ -1,7 +1,7 @@
 # F48 — Finer sharing
 
-Status: in delivery. The owner approved the plan as written on 2026-10-21;
-plan PR #458 is merged. Deliver slices 1–4 in order, one PR per slice.
+Status: delivered (2026-10-22). The owner approved the plan as written on
+2026-10-21; plan PR #458 and the four delivery slices are merged in order.
 Owner authorized the scope and delegated recommended choices on 2026-10-21.
 Decision: [ADR 090](../adr/090-resource-sharing-within-workspaces.md).
 
@@ -14,7 +14,7 @@ resources remain workspace-shared until an administrator changes them.
 The baseline has F07 folders (256 per workspace, depth four), organization revisions,
 workspace role/capability policy, F28 SCIM groups and immediate membership removal,
 F18 audit/publication review, F17 promotion, immutable published versions and F02
-draft tests. There are no resource ACLs today. Extend these owners; do not add
+draft tests. F48 extends these owners; do not add
 projects, local group management, a role, service, cache, permission subsystem or
 second authorization language.
 
@@ -143,8 +143,8 @@ Each PR runs the full hook and relevant existing tests and merges only green.
 | --- | --- | --- | --- |
 | 1. Folders | `tenant-access/resources`, `schema/authoring`, `authoring/organization` and workflow/run/inbox/artifact consumers; contracts/API routes. All folder fences land before restrictions can be used. | Populated migration unchanged defaults; role ceiling, ancestor intersection, group/manual/removed memberships; every direct/discovery path; no pagination/count leaks; move/revoke races, audit/purge and current published jobs. | Delivered — [#460](https://github.com/vigani1/pertexo/pull/460) |
 | 2. Connections | Existing connection reads/authority, authoring/preview/test/publication/portability/promotion admission; schema/grants and sharing endpoints. | Existing bindings keep executing; reference change, URL/upstream change, preview/test/publish require Use; metadata non-disclosure, revocation races, no secret/export copying. | Delivered — [#461](https://github.com/vigani1/pertexo/pull/461) |
-| 3. UI | Existing workflow organization, connection and promotion features; server-projected actions and normal Weft forms/principal pickers. | Sharing and audience review, unavailable bindings, read-only editor, query invalidation; keyboard/reduced motion; desktop, 990 px pane and phone in both themes; mocked and real browser journeys, React Doctor. | Delivered in the sharing UI PR |
-| 4. Qualification | Existing database/API/worker/browser checks, guides and delivery tracker. No new CI job. | Repeat the cross-surface negative matrix, SCIM removal, tokens, accepted public/Call/callback execution, approval/inbox/mail, slow export/SSE and restore/purge. Natural main CI inspected after merge. | Planned |
+| 3. UI | Existing workflow organization, connection and promotion features; server-projected actions and normal Weft forms/principal pickers. | Sharing and audience review, unavailable bindings, read-only editor, query invalidation; keyboard/reduced motion; desktop, 990 px pane and phone in both themes; mocked and real browser journeys, React Doctor. | Delivered — [#462](https://github.com/vigani1/pertexo/pull/462) |
+| 4. Qualification | Existing database/API/worker/browser checks, guides and delivery tracker. No new CI job. | Repeat the cross-surface negative matrix, SCIM removal, tokens, accepted public/Call/callback execution, approval/inbox/mail, slow export/SSE and restore/purge. Natural main CI inspected after merge. | Delivered in the qualification PR |
 
 Later: direct per-workflow exceptions, local group management, cross-workspace
 sharing, ACLs for tables/variables, external policy engines, and revocable download
@@ -238,3 +238,24 @@ reduced motion, both themes and 1280/990/375 px widths. React Doctor reports
 100/100 for the changed React files. A real-API regression also covers move review
 with the edit authorization context; the read guard's context cannot authorize
 that separate operation.
+
+## Slice 4 qualification
+
+| Existing owner | Evidence |
+| --- | --- |
+| Folder and connection resource stores | Populated upgrades, before-pagination discovery/counts, role and ancestor ceilings, reference/publication admission, metadata non-disclosure, grant-removal/authoring race and post-revocation exact command refusal. |
+| Real API | Builder token reads, list pagination and an accepted command's replay lose access after a folder restriction. An already open session run stream closes on its current resource recheck. A published signed webhook still accepts while an unshared member cannot read its workflow. |
+| Real workers | An accepted HTTP binding executes after connection sharing narrows; a published parent/child Call completes after both move into a private folder, with child history still hidden; a pending callback resumes after sharing changes and worker restart. |
+| Directory, F18 and F27 | Actual SCIM group deletion clears the grant and immediately removes folder access. Publication approval remains authoritative. Pending task, Inbox and already prepared email authorization recheck folder access; connection health notices keep their existing administrator audience. |
+| Exports and lifecycle | The existing slow/stalled table/audit export check keeps other requests responsive through a one-connection serving pool. Grant rows are included in populated workspace purge fixtures. |
+| Recovery | Real PostgreSQL custom dump/restore retains modes, grants, original identities, relationship/revision facts and forced RLS. Restored connection/webhook secrets and callback material reopen with separately supplied keys; keys are absent from the dump. The existing full recovery script now seeds and verifies these sharing rows. |
+
+UI verification covers both themes at desktop, 990 px and phone widths, keyboard
+and reduced motion, real browser sessions and React Doctor 100/100. Qualification
+adds no rule, role, service, stored format or CI job. Full hooks and CI gate each
+slice; natural main CI is inspected after landing.
+
+The isolated local recovery check reused the attested PostgreSQL container and
+downloaded no image. The complete RustFS/rclone copy lane was not repeated locally
+because its client images are not cached; F48 changes no artifact bytes or adapter.
+Provider/production qualification remains separate from this local and CI evidence.
