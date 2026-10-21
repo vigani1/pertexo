@@ -1,3 +1,4 @@
+import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.js';
 import { TEST_RUN_RETENTION_MILLIS } from '../../runs/data-policy.js';
 import { lockArtifactReferences } from '../../artifacts/references.js';
 import type { Pool, PoolClient } from 'pg';
@@ -18,7 +19,7 @@ import {
   sameTestSamples,
   saveTestSnapshot,
 } from './snapshot.js';
-import { withTestAuthority } from './authority.js';
+import { withTestAuthority, withTestRead } from './authority.js';
 import {
   requireNoActiveSuite,
   requireNoActiveTest,
@@ -91,7 +92,19 @@ export function createWorkflowTestStore(
           );
         await requireNoActiveSuite(client, input);
         await requireNoActiveTest(client, input);
-        await lockArtifactReferences(client, input.workspaceId, snapshot.graph);
+        await requireWorkflowCallTargets(client, input, snapshot.graph);
+        await lockArtifactReferences(
+          client,
+          input.workspaceId,
+          snapshot.graph,
+          input.actorId,
+        );
+        await lockArtifactReferences(
+          client,
+          input.workspaceId,
+          input.request.input,
+          input.actorId,
+        );
         const accepted = await admitTestRun(client, {
           ...input,
           runId,
@@ -122,8 +135,10 @@ export function createWorkflowTestStore(
         await completeCommand(client, command, result);
         return result;
       }),
-    list: (input) => transact(input, (client) => listTests(client, input)),
-    get: (input) => transact(input, (client) => readTestDetail(client, input)),
+    list: (input) =>
+      withTestRead(pool, input, (client) => listTests(client, input)),
+    get: (input) =>
+      withTestRead(pool, input, (client) => readTestDetail(client, input)),
     cancel: (input) =>
       transact(input, async (client) => {
         const test = await readTestDetail(client, input);

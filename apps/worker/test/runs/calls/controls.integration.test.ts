@@ -62,8 +62,13 @@ describeIntegration('Workflow Call controls and retained public reads', () => {
   ) {
     await workers.until(async () => {
       expect(
-        (await runs.get({ workspaceId: fixture.workspaceId, runId }))?.run
-          .status,
+        (
+          await runs.get({
+            actorId: fixture.actorId,
+            workspaceId: fixture.workspaceId,
+            runId,
+          })
+        )?.run.status,
       ).toBe(status);
     });
   }
@@ -90,6 +95,7 @@ describeIntegration('Workflow Call controls and retained public reads', () => {
     try {
       const childId = await activeChild(workers, accepted.runId);
       const pending = await runs.get({
+        actorId: fixture.actorId,
         workspaceId: fixture.workspaceId,
         runId: accepted.runId,
       });
@@ -105,12 +111,14 @@ describeIntegration('Workflow Call controls and retained public reads', () => {
       if (waitingCall === undefined) throw new Error('Call node missing');
       expect(
         await runs.readNodeRunOutput({
+          actorId: fixture.actorId,
           workspaceId: fixture.workspaceId,
           runId: accepted.runId,
           nodeRunId: waitingCall.id,
         }),
       ).toEqual({ kind: 'none' });
       const incoming = await runs.get({
+        actorId: fixture.actorId,
         workspaceId: fixture.workspaceId,
         runId: childId,
       });
@@ -121,12 +129,14 @@ describeIntegration('Workflow Call controls and retained public reads', () => {
       await settled(workers, accepted.runId, 'succeeded');
       expect(
         await runs.readNodeRunOutput({
+          actorId: fixture.actorId,
           workspaceId: fixture.workspaceId,
           runId: accepted.runId,
           nodeRunId: waitingCall.id,
         }),
       ).toEqual({ kind: 'inline', value: 'Ada!' });
       const usage = await runs.statistics({
+        actorId: fixture.actorId,
         workspaceId: fixture.workspaceId,
         window: '1h',
         includeWorkflows: true,
@@ -170,6 +180,7 @@ describeIntegration('Workflow Call controls and retained public reads', () => {
       expect(
         (
           await runs.get({
+            actorId: fixture.actorId,
             workspaceId: fixture.workspaceId,
             runId: accepted.runId,
           })
@@ -228,8 +239,13 @@ describeIntegration('Workflow Call controls and retained public reads', () => {
       // close intent are ordinary competing controls; the first one settles it.
       await workers.until(async () => {
         expect(['timed_out', 'canceled']).toContain(
-          (await runs.get({ workspaceId: fixture.workspaceId, runId: childId }))
-            ?.run.status,
+          (
+            await runs.get({
+              actorId: fixture.actorId,
+              workspaceId: fixture.workspaceId,
+              runId: childId,
+            })
+          )?.run.status,
         );
       });
       await workers.until(noLoans);
@@ -267,6 +283,7 @@ describeIntegration('Workflow Call controls and retained public reads', () => {
       expect(
         (
           await runs.get({
+            actorId: fixture.actorId,
             workspaceId: fixture.workspaceId,
             runId: accepted.runId,
           })
@@ -326,6 +343,7 @@ describeIntegration('Workflow Call controls and retained public reads', () => {
       expect(
         (
           await runs.get({
+            actorId: fixture.actorId,
             workspaceId: fixture.workspaceId,
             runId: accepted.runId,
           })
@@ -375,6 +393,7 @@ describeIntegration('Workflow Call controls and retained public reads', () => {
     try {
       await settled(workers, accepted.runId, 'outcome_unknown');
       const saved = await runs.get({
+        actorId: fixture.actorId,
         workspaceId: fixture.workspaceId,
         runId: accepted.runId,
       });
@@ -386,6 +405,7 @@ describeIntegration('Workflow Call controls and retained public reads', () => {
       expect(
         (
           await runs.get({
+            actorId: fixture.actorId,
             workspaceId: fixture.workspaceId,
             runId: accepted.runId,
           })

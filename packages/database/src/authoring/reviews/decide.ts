@@ -61,6 +61,7 @@ export async function decidePublicationReview(
     input.workspaceId,
     row.requested_by,
     rolesForCapability('workflow:publish'),
+    { workflowId: row.workflow_id, capability: 'workflow:publish' },
   );
   // Approval uses the publisher's tag check; rejection has no publication.
   if (input.decision === 'reject')

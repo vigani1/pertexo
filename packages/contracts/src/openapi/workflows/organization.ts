@@ -1,3 +1,4 @@
+import * as sharing from '../../schemas/workflows/sharing.js';
 import type { z } from 'zod';
 import * as organization from '../../schemas/workflows/organization.js';
 import * as folders from '../../schemas/workflows/organization-folders.js';
@@ -20,6 +21,21 @@ import {
 } from '../primitives.js';
 
 const definitions = {
+  SharingPrincipalsResponse: [
+    sharing.sharingPrincipalsResponseSchema,
+    'output',
+  ],
+  FolderSharingRequest: [sharing.folderSharingRequestSchema, 'input'],
+  FolderSharingResponse: [sharing.folderSharingResponseSchema, 'output'],
+  FolderSharingCommandResponse: [
+    sharing.folderSharingCommandResponseSchema,
+    'output',
+  ],
+  WorkflowMoveReviewRequest: [sharing.workflowMoveReviewRequestSchema, 'input'],
+  WorkflowMoveReviewResponse: [
+    sharing.workflowMoveReviewResponseSchema,
+    'output',
+  ],
   WorkflowTagListQuery: [organization.workflowTagListQuerySchema, 'input'],
   WorkflowTagListResponse: [
     organization.workflowTagListResponseSchema,
@@ -403,6 +419,63 @@ export const workflowOrganizationContractPaths = {
       'WorkflowFolderMoveRequest',
       'WorkflowFolderMoveResponse',
     ),
+  },
+  '/v1/workspaces/{workspaceId}/resource-sharing-principals': {
+    get: {
+      operationId: 'listResourceSharingPrincipals',
+      description:
+        'Current owner/admin discovers active members or current linked directory groups before pagination; no local group management.',
+      security: [{ cookieSession: [] }],
+      parameters: [
+        ...workspaceParameters,
+        ...Object.entries(sharing.sharingPrincipalsQuerySchema.shape).map(
+          ([name, schema]) => queryParameter(name, schema),
+        ),
+      ],
+      responses: {
+        '200': privateResponse(
+          'Bounded current principals',
+          'SharingPrincipalsResponse',
+        ),
+        ...readProblems,
+      },
+    },
+  },
+  '/v1/workspaces/{workspaceId}/workflow-folders/{folderId}/sharing': {
+    get: {
+      operationId: 'readWorkflowFolderSharing',
+      description: 'Current owner/admin reads bounded folder grants.',
+      security: [{ cookieSession: [] }],
+      parameters: folderParameters,
+      responses: {
+        '200': privateResponse('Current sharing', 'FolderSharingResponse'),
+        ...readProblems,
+      },
+    },
+    post: folderCommand(
+      'replaceWorkflowFolderSharing',
+      'Current owner/admin replaces at most 100 current member or linked directory group grants with expected folder revision and one audit fact.',
+      folderParameters,
+      'FolderSharingRequest',
+      'FolderSharingCommandResponse',
+    ),
+  },
+  '/v1/workspaces/{workspaceId}/workflow-folders/review-move': {
+    post: {
+      operationId: 'reviewWorkflowMoveAudience',
+      description:
+        'Batch review up to 50 visible workflows or one folder. Administrator acknowledgement of the current token is required when a restriction is removed or replaced.',
+      security: [{ cookieSession: [] }],
+      parameters: [...workspaceParameters, csrfHeaderParameter()],
+      requestBody: jsonRequest('WorkflowMoveReviewRequest'),
+      responses: {
+        '200': privateResponse(
+          'Current audience review',
+          'WorkflowMoveReviewResponse',
+        ),
+        ...readProblems,
+      },
+    },
   },
   '/v1/workspaces/{workspaceId}/workflow-folders/{folderId}/delete': {
     post: folderCommand(

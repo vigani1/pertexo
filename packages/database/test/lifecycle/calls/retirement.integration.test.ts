@@ -6,6 +6,7 @@ import { enforceRetention } from '../../support/retention.js';
 import { purgeWorkspace } from '../../support/workspace-purge.js';
 import {
   adminUrl,
+  userId,
   apiUrl,
   maintenanceUrl,
   randomUUID,
@@ -14,11 +15,22 @@ import {
 import {
   admin,
   callRow,
-  createFamily,
+  createFamily as createRetainedFamily,
   daysAgo,
   insertBorrowedSlot,
   runRow,
 } from './fixtures.js';
+
+async function createFamily(
+  input: Parameters<typeof createRetainedFamily>[0] = {},
+) {
+  const family = await createRetainedFamily(input);
+  await admin.query(
+    "insert into app.workspace_memberships(workspace_id,user_id,role,status) values($1,$2,'owner','active') on conflict do nothing",
+    [family.workspaceId, userId],
+  );
+  return family;
+}
 
 const reads = createWorkflowRunDatabase(
   parseDatabaseConfig({ connectionString: withDatabase(apiUrl), max: 1 }),
@@ -52,6 +64,7 @@ describe('parent-owned call retention', () => {
     expect(
       (
         await reads.get({
+          actorId: userId,
           workspaceId: family.workspaceId,
           runId: family.parentRunId,
         })
@@ -94,6 +107,7 @@ describe('parent-owned call retention', () => {
     expect(
       (
         await reads.get({
+          actorId: userId,
           workspaceId: family.workspaceId,
           runId: family.parentRunId,
         })

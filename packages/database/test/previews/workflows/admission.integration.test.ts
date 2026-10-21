@@ -359,13 +359,21 @@ describe('whole-draft test admission', () => {
       [accepted.runId],
     );
     expect(
-      await runs.readInput({ workspaceId, runId: accepted.runId }),
+      await runs.readInput({
+        actorId: actorId,
+        workspaceId,
+        runId: accepted.runId,
+      }),
     ).toEqual({ kind: 'expired' });
     expect(
-      await runs.get({ workspaceId, runId: accepted.runId }),
+      await runs.get({ actorId: actorId, workspaceId, runId: accepted.runId }),
     ).toBeUndefined();
     expect(
-      await runs.readVariables({ workspaceId, runId: accepted.runId }),
+      await runs.readVariables({
+        actorId: actorId,
+        workspaceId,
+        runId: accepted.runId,
+      }),
     ).toBeNull();
     expect((await database.workflowTests.list(f.scope)).items).toEqual([]);
     await expect(

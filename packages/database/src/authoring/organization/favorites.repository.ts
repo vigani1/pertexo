@@ -38,6 +38,7 @@ export function createWorkflowFavoriteDatabase(
           scope.workspaceId,
           scope.actorId,
           ROLES,
+          { workflowId, capability: 'workflow:read' },
         );
         const workflow = await client.query(
           'select 1 from app.workflows where workspace_id = $1 and id = $2 for share',

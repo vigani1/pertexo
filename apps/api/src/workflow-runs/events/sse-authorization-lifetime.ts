@@ -14,6 +14,7 @@ type SseAuthorizationLifetimeInput = Pick<
     /** What the stream shows; run events by default. */
     capability?: AuthorizationCapability;
     allowedWorkspaceStatuses?: readonly WorkspaceStatus[];
+    reauthorizeResource?: (signal: AbortSignal) => Promise<void>;
     sessionExpiresAt: Date;
     reauthorizeSession: (signal: AbortSignal) => Promise<
       Readonly<{
@@ -115,6 +116,8 @@ export function createStreamAuthorizationLifetime(
       ],
       signal,
     });
+    signal.throwIfAborted();
+    await input.reauthorizeResource?.(signal);
     signal.throwIfAborted();
     armAuthorizationDeadline(session.expiresAt, true);
   };

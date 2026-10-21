@@ -7,6 +7,7 @@ import {
   primaryKey,
   unique,
   uuid,
+  varchar,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
@@ -20,11 +21,18 @@ export const workflowFolders = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     id: uuid().notNull(),
     parentId: uuid('parent_id'),
+    accessMode: varchar('access_mode', { length: 16 })
+      .notNull()
+      .default('workspace'),
     name: textC('name').notNull(),
     nameKey: textC('name_key').notNull(),
     revision: bigint({ mode: 'number' }).default(1).notNull(),
   },
   (table): PgTableExtraConfigValue[] => [
+    check(
+      'workflow_folders_access_mode_valid',
+      sql`access_mode in ('workspace','restricted')`,
+    ),
     check(
       'workflow_folders_check',
       sql`(name_key = translate(name, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'::text, 'abcdefghijklmnopqrstuvwxyz'::text))`,

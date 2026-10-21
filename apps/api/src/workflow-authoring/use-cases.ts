@@ -217,6 +217,9 @@ export class CreateWorkflowUseCase {
           workspaceId: input.routeWorkspaceId,
           actorId: input.actor.actorId,
           name: request.name,
+          ...(request.folderId === undefined
+            ? {}
+            : { folderId: request.folderId }),
           emptyGraph: EMPTY_WORKFLOW_GRAPH,
           idempotencyKey: input.idempotencyKey,
           ...(input.requestId === undefined

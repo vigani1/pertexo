@@ -24,7 +24,13 @@ export async function preparePromotion(
   const sources = await inWorkspace(
     { workspaceId: input.workspaceId, actorId: input.actorId },
     (client) =>
-      readPromotionSources(client, input.workspaceId, input.selections, budget),
+      readPromotionSources(
+        client,
+        input.workspaceId,
+        input.actorId,
+        input.selections,
+        budget,
+      ),
   );
   const prepared = await inWorkspace(
     { workspaceId: pair.target.workspaceId, actorId: input.actorId },

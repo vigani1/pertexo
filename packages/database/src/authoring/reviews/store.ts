@@ -1,3 +1,9 @@
+import { readFolderScope } from '../../tenant-access/resources/facts.js';
+import {
+  bindResourcePredicate,
+  workflowScopeSql,
+} from '../../tenant-access/resources/query-scope.js';
+import { sql } from 'drizzle-orm';
 import type { PoolClient } from 'pg';
 import { rolesForCapability } from '../../tenant-access/policy.js';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
@@ -49,12 +55,22 @@ export function createPublicationReviewStore(
       'workflowId' in identity
         ? 'id=$2'
         : 'id=(select workflow_id from app.workflow_publication_requests where workspace_id=$1 and id=$2)';
+    const parameters: unknown[] = [
+      input.workspaceId,
+      'workflowId' in identity ? identity.workflowId : identity.reviewId,
+    ];
+    const scope = await readFolderScope(client, input);
+    const visible = bindResourcePredicate(
+      workflowScopeSql(
+        scope,
+        sql`app.workflows.id`,
+        write ? 'workflow:publish' : 'workflow:read',
+      ),
+      parameters,
+    );
     const found = await client.query(
-      `select id from app.workflows where workspace_id=$1 and ${predicate} ${write ? 'for update' : 'for share'}`,
-      [
-        input.workspaceId,
-        'workflowId' in identity ? identity.workflowId : identity.reviewId,
-      ],
+      `select id from app.workflows where workspace_id=$1 and ${predicate} and ${visible} ${write ? 'for update' : 'for share'}`,
+      parameters,
     );
     if (found.rowCount !== 1)
       throw new WorkflowNotFoundError('Workflow is not visible');

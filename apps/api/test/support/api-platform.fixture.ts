@@ -120,6 +120,7 @@ export function createStubApiWorkflowRuntime(
     runDependencies: {
       authorization,
       persistence: {
+        canRead: () => Promise.resolve(true),
         start: () => Promise.reject(new Error('not used')),
         recovery: () => Promise.reject(new Error('not exercised')),
         recover: () => Promise.reject(new Error('not exercised')),

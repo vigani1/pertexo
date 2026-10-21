@@ -13,6 +13,7 @@ import {
 import { RUN_VALUES_RETENTION_RULE } from '../../../src/runs/values/retention.js';
 import {
   store,
+  actorId,
   running,
   read,
   terminal,
@@ -82,6 +83,7 @@ it('filters by exact pair alongside status, workflow and time, without including
   await terminal(expired.runId, '31 days');
   const list = (key: string, value: string) =>
     readWorkflowRunListPage(apiPool, {
+      actorId: actorId,
       workspaceId,
       limit: 20,
       workflowId,

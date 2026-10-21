@@ -1,3 +1,4 @@
+import { requireWorkflowCallTargets } from '../../../tenant-access/resources/bindings.js';
 import { lockArtifactReferences } from '../../../artifacts/references.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
@@ -131,7 +132,13 @@ export function createWorkflowDuplicationStore(
         input.workspaceId,
         input.actorId,
         async (client) => {
-          await context.requireAuthor(client, input.workspaceId, input.actorId);
+          await context.requireAuthor(
+            client,
+            input.workspaceId,
+            input.actorId,
+            input.workflowId,
+            'workflow:read',
+          );
           // Workflow precedes draft, consistent with restore/publication/lifecycle.
           const source = await client.query<{ lifecycle_status: string }>(
             `select lifecycle_status from app.workflows where workspace_id=$1 and id=$2 for update`,
@@ -161,6 +168,13 @@ export function createWorkflowDuplicationStore(
           });
           if (stored !== null) {
             const replay = resultSchema.parse(stored);
+            await context.requireAuthor(
+              client,
+              input.workspaceId,
+              input.actorId,
+              replay.workflowId,
+              'workflow:read',
+            );
             const destination = await client.query(
               'select id from app.workflows where workspace_id=$1 and id=$2 for share',
               [input.workspaceId, replay.workflowId],
@@ -182,7 +196,13 @@ export function createWorkflowDuplicationStore(
             placementDefinitionCatalog ?? definitionCatalog,
           );
           await requireOwnedConnections(client, input.workspaceId, graph);
-          await lockArtifactReferences(client, input.workspaceId, graph);
+          await requireWorkflowCallTargets(client, input, graph);
+          await lockArtifactReferences(
+            client,
+            input.workspaceId,
+            graph,
+            input.actorId,
+          );
           await client.query(
             `insert into app.workflows
                (id, workspace_id, name, lifecycle_status, activation_status, created_by)

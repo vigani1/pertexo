@@ -52,6 +52,7 @@ export class GetWorkflowRunStatisticsUseCase {
         : { authorizedWorkspace: input.authorizedWorkspace }),
     });
     const statistics = await this.persistence.statistics({
+      actorId: input.actor.actorId,
       workspaceId: input.routeWorkspaceId,
       window: input.window ?? '24h',
       includeWorkflows: input.breakdown === 'workflow',

@@ -1,3 +1,6 @@
+import { workflowScopeSql } from '../../../tenant-access/resources/query-scope.js';
+import type { ResourceTransaction } from '../../../tenant-access/resources/transactions.js';
+import { withResourceRead } from '../../../tenant-access/resources/transactions.js';
 import { ordinaryRunSql, expiredRunSql } from '../../data-policy.js';
 import { runValueKeySchema, runValueTextSchema } from '@pertexo/node-sdk';
 import { workflowRunValues } from '../../../schema/runs/values.js';
@@ -8,10 +11,6 @@ import { and, desc, eq, lt, or, sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
-import {
-  withWorkspaceReadTransaction,
-  type WorkspaceTransaction,
-} from '../../../tenant-access/transactions.js';
 import {
   readWorkflowRunFailedSteps,
   type WorkflowRunFailedStep,
@@ -48,6 +47,7 @@ export type WorkflowRunListPosition = Readonly<{
 
 export type ListWorkflowRunsDatabaseInput = Readonly<{
   workspaceId: string;
+  actorId: string;
   limit: number;
   workflowId?: string;
   runValueKey?: string;
@@ -73,6 +73,7 @@ export type WorkflowRunListPage = Readonly<{
 const inputSchema = z
   .object({
     workspaceId: z.uuid(),
+    actorId: z.uuid(),
     limit: z.number().int().min(1).max(100),
     workflowId: z.uuid().optional(),
     runValueKey: runValueKeySchema.optional(),
@@ -96,43 +97,42 @@ export async function readWorkflowRunListPage(
   input: ListWorkflowRunsDatabaseInput,
 ): Promise<WorkflowRunListPage> {
   const parsed = inputSchema.parse(input);
-  return withWorkspaceReadTransaction(
-    pool,
-    parsed.workspaceId,
-    async (transaction) =>
-      listWorkflowRunsInTransaction(transaction, {
-        limit: parsed.limit,
-        ...(parsed.runValueKey === undefined
-          ? {}
-          : {
-              runValueKey: parsed.runValueKey,
-              ...(parsed.runValue === undefined
-                ? {}
-                : { runValue: parsed.runValue }),
-            }),
-        ...(parsed.workflowId === undefined
-          ? {}
-          : { workflowId: parsed.workflowId }),
-        ...(parsed.workflowNamePrefix === undefined
-          ? {}
-          : { workflowNamePrefix: parsed.workflowNamePrefix }),
-        includeWorkflowName: parsed.includeWorkflowName,
-        ...(parsed.status === undefined ? {} : { status: parsed.status }),
-        ...(parsed.createdAtFrom === undefined
-          ? {}
-          : { createdAtFrom: parsed.createdAtFrom }),
-        ...(parsed.createdAtBefore === undefined
-          ? {}
-          : { createdAtBefore: parsed.createdAtBefore }),
-        ...(parsed.after === undefined ? {} : { after: parsed.after }),
-      }),
-    parsed.signal === undefined ? {} : { signal: parsed.signal },
+  return withResourceRead(pool, parsed, async (transaction) =>
+    listWorkflowRunsInTransaction(transaction, {
+      limit: parsed.limit,
+      ...(parsed.runValueKey === undefined
+        ? {}
+        : {
+            runValueKey: parsed.runValueKey,
+            ...(parsed.runValue === undefined
+              ? {}
+              : { runValue: parsed.runValue }),
+          }),
+      ...(parsed.workflowId === undefined
+        ? {}
+        : { workflowId: parsed.workflowId }),
+      ...(parsed.workflowNamePrefix === undefined
+        ? {}
+        : { workflowNamePrefix: parsed.workflowNamePrefix }),
+      includeWorkflowName: parsed.includeWorkflowName,
+      ...(parsed.status === undefined ? {} : { status: parsed.status }),
+      ...(parsed.createdAtFrom === undefined
+        ? {}
+        : { createdAtFrom: parsed.createdAtFrom }),
+      ...(parsed.createdAtBefore === undefined
+        ? {}
+        : { createdAtBefore: parsed.createdAtBefore }),
+      ...(parsed.after === undefined ? {} : { after: parsed.after }),
+    }),
   );
 }
 
 async function listWorkflowRunsInTransaction(
-  transaction: WorkspaceTransaction,
-  input: Omit<ListWorkflowRunsDatabaseInput, 'workspaceId' | 'signal'>,
+  transaction: ResourceTransaction,
+  input: Omit<
+    ListWorkflowRunsDatabaseInput,
+    'workspaceId' | 'actorId' | 'signal'
+  >,
 ): Promise<WorkflowRunListPage> {
   const escapedPrefix =
     input.workflowNamePrefix === undefined
@@ -145,6 +145,7 @@ async function listWorkflowRunsInTransaction(
     .where(
       and(
         eq(workflowRuns.workspaceId, transaction.workspaceId),
+        workflowScopeSql(transaction.resources, sql`workflow_runs.workflow_id`),
         sql.raw(ordinaryRunSql('workflow_runs')),
         input.runValueKey === undefined
           ? undefined

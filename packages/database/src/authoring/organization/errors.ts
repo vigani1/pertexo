@@ -6,7 +6,13 @@ export class WorkflowOrganizationValidationError extends Error {
 }
 
 export type WorkflowFolderConflictKind =
-  'name' | 'limit' | 'revision' | 'hierarchy' | 'not_empty' | 'not_visible';
+  | 'name'
+  | 'limit'
+  | 'revision'
+  | 'hierarchy'
+  | 'not_empty'
+  | 'not_visible'
+  | 'audience_review';
 
 export class WorkflowFolderConflictError extends Error {
   override readonly name = 'WorkflowFolderConflictError';

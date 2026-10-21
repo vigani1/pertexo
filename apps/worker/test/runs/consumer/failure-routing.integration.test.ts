@@ -244,6 +244,7 @@ qualified(
           (entered) => entered,
         );
         const pending = await runs.get({
+          actorId: fixture.actorId,
           workspaceId: fixture.workspaceId,
           runId: first.run.id,
         });
@@ -306,6 +307,7 @@ qualified(
         releaseHandler();
         await wait(first.run.id, 'succeeded');
         const finished = await runs.get({
+          actorId: fixture.actorId,
           workspaceId: fixture.workspaceId,
           runId: first.run.id,
         });
@@ -339,6 +341,7 @@ qualified(
           events.filter((e) => e.type === 'node.failure_handled'),
         ).toHaveLength(1);
         const health = await runs.stepHealth({
+          actorId: fixture.actorId,
           workspaceId: fixture.workspaceId,
           workflowId,
         });
@@ -346,6 +349,7 @@ qualified(
           health?.items.find((step) => step.nodeId === 'source'),
         ).toMatchObject({ runs: 1, failed: 1, lastStatus: 'failed' });
         const summaries = await runs.list({
+          actorId: fixture.actorId,
           workspaceId: fixture.workspaceId,
           workflowId,
           limit: 10,
@@ -363,6 +367,7 @@ qualified(
           const accepted = await start();
           await wait(accepted.run.id, status);
           const result = await runs.get({
+            actorId: fixture.actorId,
             workspaceId: fixture.workspaceId,
             runId: accepted.run.id,
           });
@@ -384,6 +389,7 @@ qualified(
         const retried = await start();
         await wait(retried.run.id, 'succeeded');
         const retryHistory = await runs.get({
+          actorId: fixture.actorId,
           workspaceId: fixture.workspaceId,
           runId: retried.run.id,
         });
@@ -440,12 +446,14 @@ qualified(
         expect(
           (
             await runs.get({
+              actorId: fixture.actorId,
               workspaceId: fixture.workspaceId,
               runId: callableRun.run.id,
             })
           )?.run.handledFailureCount,
         ).toBe(1);
         const callableList = await runs.list({
+          actorId: fixture.actorId,
           workspaceId: fixture.workspaceId,
           workflowId: callableWorkflowId,
           limit: 10,
@@ -468,6 +476,7 @@ qualified(
         expect(
           (
             await runs.get({
+              actorId: fixture.actorId,
               workspaceId: fixture.workspaceId,
               runId: first.run.id,
             })

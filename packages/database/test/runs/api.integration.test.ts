@@ -441,6 +441,7 @@ describe('workflow run API persistence', () => {
     let after: Readonly<{ createdAt: string; id: string }> | undefined;
     do {
       const page = await database.list({
+        actorId: actorId,
         workspaceId,
         workflowId,
         workflowNamePrefix: 'Executable Run',
@@ -458,6 +459,7 @@ describe('workflow run API persistence', () => {
     expect(new Set(seen)).toEqual(new Set([first.run.id, second.run.id]));
     expect(seen).not.toContain(other.run.id);
     const named = await database.list({
+      actorId: actorId,
       workspaceId,
       workflowNamePrefix: 'Executable Run API',
       includeWorkflowName: true,
@@ -471,6 +473,7 @@ describe('workflow run API persistence', () => {
     ).toBe(true);
     await expect(
       database.list({
+        actorId: actorId,
         workspaceId,
         workflowNamePrefix: 'Executable Run API%',
         includeWorkflowName: true,
@@ -479,6 +482,7 @@ describe('workflow run API persistence', () => {
     ).resolves.toMatchObject({ items: [] });
     await expect(
       database.list({
+        actorId: actorId,
         workspaceId,
         workflowNamePrefix: 'Executable Run API\\',
         includeWorkflowName: true,
@@ -491,6 +495,7 @@ describe('workflow run API persistence', () => {
       [workspaceId, workflowId],
     );
     const literalSpecials = await database.list({
+      actorId: actorId,
       workspaceId,
       workflowNamePrefix: 'Éxecutable',
       includeWorkflowName: true,
@@ -508,6 +513,7 @@ describe('workflow run API persistence', () => {
       [workspaceId, workflowId],
     );
     const archivedNamed = await database.list({
+      actorId: actorId,
       workspaceId,
       workflowNamePrefix: 'Éxecutable',
       includeWorkflowName: true,
@@ -519,7 +525,13 @@ describe('workflow run API persistence', () => {
       ),
     ).toBe(true);
     await expect(
-      database.list({ workspaceId, workflowId, status: 'failed', limit: 10 }),
+      database.list({
+        actorId: actorId,
+        workspaceId,
+        workflowId,
+        status: 'failed',
+        limit: 10,
+      }),
     ).resolves.toMatchObject({ items: [{ id: filtered.run.id }] });
 
     const indexes = await ownerQuery(
@@ -1006,10 +1018,14 @@ describe('workflow run API persistence', () => {
     ).rejects.toBeInstanceOf(IdempotencyRequestConflictError);
 
     await expect(
-      database.get({ workspaceId: otherWorkspaceId, runId: first.run.id }),
+      database.get({
+        actorId: actorId,
+        workspaceId: otherWorkspaceId,
+        runId: first.run.id,
+      }),
     ).resolves.toBeUndefined();
     await expect(
-      database.get({ workspaceId, runId: first.run.id }),
+      database.get({ actorId: actorId, workspaceId, runId: first.run.id }),
     ).resolves.toMatchObject({ run: { id: first.run.id }, nodes: [] });
 
     const canceled = await database.cancel({
@@ -1059,7 +1075,11 @@ describe('workflow run API persistence', () => {
         WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations,
       ],
     );
-    const exact = await database.get({ workspaceId, runId: started.run.id });
+    const exact = await database.get({
+      actorId: actorId,
+      workspaceId,
+      runId: started.run.id,
+    });
     expect(exact?.nodes).toHaveLength(
       WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations,
     );
@@ -1079,7 +1099,7 @@ describe('workflow run API persistence', () => {
       [workspaceId, started.run.id],
     );
     await expect(
-      database.get({ workspaceId, runId: started.run.id }),
+      database.get({ actorId: actorId, workspaceId, runId: started.run.id }),
     ).rejects.toBeInstanceOf(WorkflowRunReadCapacityError);
   });
 
@@ -1103,7 +1123,11 @@ describe('workflow run API persistence', () => {
         ],
       );
     await insert(WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations);
-    const exact = await database.get({ workspaceId, runId: started.run.id });
+    const exact = await database.get({
+      actorId: actorId,
+      workspaceId,
+      runId: started.run.id,
+    });
     expect(exact?.calls).toHaveLength(
       WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations,
     );
@@ -1116,7 +1140,7 @@ describe('workflow run API persistence', () => {
     });
     await insert(1, WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations);
     await expect(
-      database.get({ workspaceId, runId: started.run.id }),
+      database.get({ actorId: actorId, workspaceId, runId: started.run.id }),
     ).rejects.toBeInstanceOf(WorkflowRunReadCapacityError);
   });
 
@@ -1129,13 +1153,29 @@ describe('workflow run API persistence', () => {
     });
     expect(first).toMatchObject({ alreadyRequested: false, eventSequence: 2 });
 
+    const otherDecider = randomUUID();
+    await ownerQuery(
+      "insert into app.users(id,email,display_name) values($1,$2,'Other canceller')",
+      [otherDecider, `${otherDecider}@example.test`],
+    );
+    await ownerQuery(
+      "insert into app.workspace_memberships(workspace_id,user_id,role,status) values($1,$2,'operator','active')",
+      [workspaceId, otherDecider],
+    );
+    await expect(
+      database.cancel({
+        actorId: otherDecider,
+        workspaceId,
+        runId: started.run.id,
+      }),
+    ).rejects.toMatchObject({ message: 'execution.cancel_request_conflict' });
     await expect(
       database.cancel({
         actorId: randomUUID(),
         workspaceId,
         runId: started.run.id,
       }),
-    ).rejects.toMatchObject({ message: 'execution.cancel_request_conflict' });
+    ).rejects.toBeInstanceOf(WorkflowRunNotFoundError);
     await expect(
       database.cancel({
         actorId,
@@ -1191,7 +1231,7 @@ describe('workflow run API persistence', () => {
       triggerType: 'replay',
     });
     await expect(
-      database.get({ workspaceId, runId: source.run.id }),
+      database.get({ actorId: actorId, workspaceId, runId: source.run.id }),
     ).resolves.toMatchObject({
       run: {
         id: source.run.id,
@@ -1569,19 +1609,28 @@ describe('workflow run API persistence', () => {
   it('reads a run input as stored, absent, or past its 30-day window', async () => {
     const started = await database.start(startInput());
     await expect(
-      database.readInput({ workspaceId, runId: started.run.id }),
+      database.readInput({
+        actorId: actorId,
+        workspaceId,
+        runId: started.run.id,
+      }),
     ).resolves.toEqual({
       kind: 'inline',
       value: { customerId: 'customer-42' },
     });
     await expect(
       database.readInput({
+        actorId: actorId,
         workspaceId: otherWorkspaceId,
         runId: started.run.id,
       }),
     ).resolves.toBeUndefined();
     await expect(
-      database.readInput({ workspaceId, runId: randomUUID() }),
+      database.readInput({
+        actorId: actorId,
+        workspaceId,
+        runId: randomUUID(),
+      }),
     ).resolves.toBeUndefined();
 
     await ownerQuery(
@@ -1591,7 +1640,11 @@ describe('workflow run API persistence', () => {
       [started.run.id],
     );
     await expect(
-      database.readInput({ workspaceId, runId: started.run.id }),
+      database.readInput({
+        actorId: actorId,
+        workspaceId,
+        runId: started.run.id,
+      }),
     ).resolves.toEqual({ kind: 'none' });
 
     await ownerQuery(
@@ -1602,7 +1655,11 @@ describe('workflow run API persistence', () => {
       [started.run.id],
     );
     await expect(
-      database.readInput({ workspaceId, runId: started.run.id }),
+      database.readInput({
+        actorId: actorId,
+        workspaceId,
+        runId: started.run.id,
+      }),
     ).resolves.toEqual({ kind: 'expired' });
   });
 
@@ -1638,6 +1695,7 @@ describe('workflow run API persistence', () => {
     );
     await expect(
       database.readNodeRunInput({
+        actorId: actorId,
         workspaceId,
         runId: started.run.id,
         nodeRunId: withOutput,
@@ -1648,6 +1706,7 @@ describe('workflow run API persistence', () => {
     });
     await expect(
       database.readNodeRunInput({
+        actorId: actorId,
         workspaceId,
         runId: started.run.id,
         nodeRunId: withoutOutput,
@@ -1656,6 +1715,7 @@ describe('workflow run API persistence', () => {
 
     await expect(
       database.readNodeRunOutput({
+        actorId: actorId,
         workspaceId,
         runId: started.run.id,
         nodeRunId: withOutput,
@@ -1666,6 +1726,7 @@ describe('workflow run API persistence', () => {
     });
     await expect(
       database.readNodeRunOutput({
+        actorId: actorId,
         workspaceId,
         runId: started.run.id,
         nodeRunId: withoutOutput,
@@ -1673,6 +1734,7 @@ describe('workflow run API persistence', () => {
     ).resolves.toEqual({ kind: 'none' });
     await expect(
       database.readNodeRunOutput({
+        actorId: actorId,
         workspaceId,
         runId: other.run.id,
         nodeRunId: withOutput,
@@ -1680,6 +1742,7 @@ describe('workflow run API persistence', () => {
     ).resolves.toBeUndefined();
     await expect(
       database.readNodeRunOutput({
+        actorId: actorId,
         workspaceId: otherWorkspaceId,
         runId: started.run.id,
         nodeRunId: withOutput,
@@ -1758,6 +1821,7 @@ describe('workflow run API persistence', () => {
     );
 
     const page = await database.list({
+      actorId: actorId,
       workspaceId,
       limit: 10,
       includeWorkflowName: true,
@@ -1776,7 +1840,7 @@ describe('workflow run API persistence', () => {
       failedStep: null,
     });
     await expect(
-      database.get({ workspaceId, runId: replay.run.id }),
+      database.get({ actorId: actorId, workspaceId, runId: replay.run.id }),
     ).resolves.toMatchObject({ run: { replaySourceRunId: source.run.id } });
   });
 
@@ -1803,7 +1867,11 @@ describe('workflow run API persistence', () => {
       [workspaceId, first.run.id, second.run.id],
     );
 
-    const health = await database.stepHealth({ workspaceId, workflowId });
+    const health = await database.stepHealth({
+      actorId: actorId,
+      workspaceId,
+      workflowId,
+    });
     expect(health).toMatchObject({ runsConsidered: 2 });
     expect(health?.oldestRunAt).toBeInstanceOf(Date);
     expect(health?.items).toEqual([
@@ -1827,6 +1895,7 @@ describe('workflow run API persistence', () => {
     ]);
 
     const charge = await database.stepRuns({
+      actorId: actorId,
       workspaceId,
       workflowId,
       nodeId: 'charge',
@@ -1841,16 +1910,33 @@ describe('workflow run API persistence', () => {
       }),
     ]);
     await expect(
-      database.stepRuns({ workspaceId, workflowId, nodeId: 'fetch', limit: 1 }),
+      database.stepRuns({
+        actorId: actorId,
+        workspaceId,
+        workflowId,
+        nodeId: 'fetch',
+        limit: 1,
+      }),
     ).resolves.toEqual([expect.objectContaining({ runId: second.run.id })]);
     await expect(
-      database.stepRuns({ workspaceId, workflowId, nodeId: 'never', limit: 5 }),
+      database.stepRuns({
+        actorId: actorId,
+        workspaceId,
+        workflowId,
+        nodeId: 'never',
+        limit: 5,
+      }),
     ).resolves.toEqual([]);
     await expect(
-      database.stepHealth({ workspaceId: otherWorkspaceId, workflowId }),
+      database.stepHealth({
+        actorId: actorId,
+        workspaceId: otherWorkspaceId,
+        workflowId,
+      }),
     ).resolves.toBeUndefined();
     await expect(
       database.stepRuns({
+        actorId: actorId,
         workspaceId,
         workflowId: randomUUID(),
         nodeId: 'fetch',

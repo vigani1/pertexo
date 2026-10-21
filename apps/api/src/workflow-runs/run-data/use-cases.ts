@@ -65,6 +65,7 @@ export class GetWorkflowRunInputUseCase {
   ): Promise<WorkflowRunInputResponse> {
     await authorizeRunData(input, this.authorization);
     const data = await this.persistence.readInput({
+      actorId: input.actor.actorId,
       workspaceId: input.routeWorkspaceId,
       runId: input.runId,
     });
@@ -88,6 +89,7 @@ export class GetWorkflowNodeRunOutputUseCase {
   ): Promise<WorkflowNodeRunOutputResponse> {
     await authorizeRunData(input, this.authorization);
     const data = await this.persistence.readNodeRunOutput({
+      actorId: input.actor.actorId,
       workspaceId: input.routeWorkspaceId,
       runId: input.runId,
       nodeRunId: input.nodeRunId,
@@ -112,6 +114,7 @@ export class GetWorkflowNodeRunInputUseCase {
   ): Promise<WorkflowNodeRunInputResponse> {
     await authorizeRunData(input, this.authorization);
     const data = await this.persistence.readNodeRunInput({
+      actorId: input.actor.actorId,
       workspaceId: input.routeWorkspaceId,
       runId: input.runId,
       nodeRunId: input.nodeRunId,
@@ -143,6 +146,7 @@ export class GetWorkflowStepHealthUseCase {
   ): Promise<WorkflowStepHealthResponse> {
     await authorizeRunData(input, this.authorization);
     const page = await this.persistence.stepHealth({
+      actorId: input.actor.actorId,
       workspaceId: input.routeWorkspaceId,
       workflowId: input.workflowId,
     });
@@ -170,6 +174,7 @@ export class ListWorkflowStepRunsUseCase {
   ): Promise<WorkflowStepRunsResponse> {
     await authorizeRunData(input, this.authorization);
     const items = await this.persistence.stepRuns({
+      actorId: input.actor.actorId,
       workspaceId: input.routeWorkspaceId,
       workflowId: input.workflowId,
       nodeId: input.nodeId,
@@ -197,6 +202,7 @@ export class GetWorkflowRunVariablesUseCase {
   ): Promise<WorkflowRunVariablesResponse> {
     await authorizeRunData(input, this.authorization);
     const snapshot = await this.persistence.readVariables({
+      actorId: input.actor.actorId,
       workspaceId: input.routeWorkspaceId,
       runId: input.runId,
     });
@@ -218,6 +224,7 @@ export class GetWorkflowNodeRunDiagnosticsUseCase {
   ): Promise<WorkflowNodeRunDiagnosticsResponse> {
     await authorizeRunData(input, this.authorization);
     const diagnostics = await this.persistence.readNodeRunDiagnostics({
+      actorId: input.actor.actorId,
       workspaceId: input.routeWorkspaceId,
       runId: input.runId,
       nodeRunId: input.nodeRunId,

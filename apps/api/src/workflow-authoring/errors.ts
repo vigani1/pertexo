@@ -1,3 +1,4 @@
+import { WorkspaceAccessDeniedError } from '@pertexo/database/tenant-access';
 import {
   PublicationReviewError,
   WorkflowPromotionError,
@@ -71,6 +72,8 @@ const EXECUTABLE_PROBLEMS: Readonly<Record<string, string>> = {
 };
 
 export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
+  if (error instanceof WorkspaceAccessDeniedError)
+    return applicationError('resource.not_found');
   if (error instanceof WorkflowPromotionError)
     return applicationError(
       error.reason === 'unavailable'

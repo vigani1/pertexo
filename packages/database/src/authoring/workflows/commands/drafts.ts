@@ -1,3 +1,5 @@
+import { readFolderScope } from '../../../tenant-access/resources/facts.js';
+import { requireWorkflowCallTargets } from '../../../tenant-access/resources/bindings.js';
 import { pruneStepSamples } from '../../step-samples/records.js';
 import { lockArtifactReferences } from '../../../artifacts/references.js';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
@@ -58,6 +60,18 @@ async function createWorkflow(
       graph,
       placementDefinitionCatalog,
     );
+    const folderId =
+      input.folderId == null
+        ? null
+        : uuidSchema.parse(input.folderId).toLowerCase();
+    if (
+      folderId !== null &&
+      !(await readFolderScope(client, input)).permits(
+        folderId,
+        'workflow:create',
+      )
+    )
+      throw new WorkflowNotFoundError('Folder is not visible');
     const name = nameSchema.parse(input.name);
     const command = {
       workspaceId: input.workspaceId,
@@ -67,20 +81,43 @@ async function createWorkflow(
     };
     const stored = await claimCommand(client, {
       ...command,
-      request: { name, graph, requestedWorkflowId: input.id ?? null },
+      request: {
+        name,
+        graph,
+        requestedWorkflowId: input.id ?? null,
+        ...(folderId === null ? {} : { folderId }),
+      },
       resourceId: workflowId,
     });
     let createdId = workflowId;
-    if (stored !== null)
+    if (stored !== null) {
       createdId = createdResultSchema.parse(stored).workflowId;
-    else {
-      await lockArtifactReferences(client, input.workspaceId, graph);
+      await context.requireAuthor(
+        client,
+        input.workspaceId,
+        input.actorId,
+        createdId,
+        'workflow:read',
+      );
+    } else {
+      await requireWorkflowCallTargets(client, input, graph);
+      await lockArtifactReferences(
+        client,
+        input.workspaceId,
+        graph,
+        input.actorId,
+      );
       await client.query(
         `insert into app.workflows
            (id, workspace_id, name, lifecycle_status, activation_status, created_by)
          values ($1, $2, $3, 'active', 'inactive', $4)`,
         [workflowId, input.workspaceId, name, input.actorId],
       );
+      if (folderId !== null)
+        await client.query(
+          `insert into app.workflow_organization_state(workspace_id,workflow_id,folder_id,revision) values($1,$2,$3,1)`,
+          [input.workspaceId, workflowId, folderId],
+        );
       await client.query(
         `insert into app.workflow_drafts
            (workflow_id, workspace_id, revision, graph_json, updated_by)
@@ -133,7 +170,12 @@ async function saveDraft(
     input.representationTag,
   );
   return context.transact(input.workspaceId, input.actorId, async (client) => {
-    await context.requireAuthor(client, input.workspaceId, input.actorId);
+    await context.requireAuthor(
+      client,
+      input.workspaceId,
+      input.actorId,
+      input.workflowId,
+    );
     const { definitionCatalog, placementDefinitionCatalog } = context.catalogs;
     const graph = parseWorkflowGraphDraft(input.graphJson);
     const expected = z.number().int().positive().parse(input.expectedRevision);
@@ -159,7 +201,18 @@ async function saveDraft(
       graph,
       placementDefinitionCatalog,
     );
-    await lockArtifactReferences(client, input.workspaceId, graph);
+    await requireWorkflowCallTargets(
+      client,
+      input,
+      graph,
+      currentDraft.graphJson,
+    );
+    await lockArtifactReferences(
+      client,
+      input.workspaceId,
+      graph,
+      input.actorId,
+    );
     const result = await client.query<Record<string, unknown>>(
       `update app.workflow_drafts set graph_json = $1::json,
        revision = revision + 1, updated_by = $2, updated_at = transaction_timestamp()

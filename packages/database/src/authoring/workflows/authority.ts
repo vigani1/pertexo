@@ -1,3 +1,6 @@
+import { readFolderScope } from '../../tenant-access/resources/facts.js';
+import { workflowAccessible } from '../../tenant-access/resources/workflows.js';
+import type { WorkflowResourceCapability } from '../../tenant-access/resources/contract.js';
 import type { PoolClient } from 'pg';
 import type { Role } from '../../tenant-access/policy.js';
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
@@ -10,9 +13,35 @@ export async function lockWorkflowAuthoringAuthority(
   workspaceId: string,
   actorId: string,
   roles: readonly Role[],
+  resource?: Readonly<{
+    workflowId: string;
+    capability: WorkflowResourceCapability;
+  }>,
 ): Promise<void> {
   try {
-    await lockWorkspaceAuthority(client, workspaceId, actorId, roles);
+    const role = await lockWorkspaceAuthority(
+      client,
+      workspaceId,
+      actorId,
+      roles,
+    );
+    if (resource !== undefined) {
+      const access = await readFolderScope(
+        client,
+        { workspaceId, actorId },
+        role,
+      );
+      if (
+        !(await workflowAccessible(
+          client,
+          access,
+          workspaceId,
+          resource.workflowId,
+          resource.capability,
+        ))
+      )
+        throw new WorkflowNotFoundError('Workflow is not visible');
+    }
   } catch (error) {
     if (error instanceof WorkspaceAccessDeniedError)
       throw new WorkflowNotFoundError('Workflow is not visible');

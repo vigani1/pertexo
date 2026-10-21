@@ -1,3 +1,4 @@
+import { workflowAccessible } from '../../tenant-access/resources/workflows.js';
 import type { WorkflowAuthoringDatabase } from '../workflows/contracts.js';
 import type { WorkflowAuthoringReadContext } from '../workflows/reads.js';
 import { WorkflowTemplateOriginUnavailableError } from '../workflows/errors.js';
@@ -14,7 +15,9 @@ export function createWorkflowTemplateOriginReader(
 ): WorkflowAuthoringDatabase['getWorkflowWithTemplateOrigin'] {
   return (workspaceId: string, workflowId: string, actorId: string) =>
     context.transact(workspaceId, actorId, async (client) => {
-      await context.requireReader(client, workspaceId, actorId);
+      const access = await context.requireReader(client, workspaceId, actorId);
+      if (!(await workflowAccessible(client, access, workspaceId, workflowId)))
+        return null;
       const id = z.uuid().parse(workflowId);
       let result;
       try {

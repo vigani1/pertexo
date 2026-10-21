@@ -1,3 +1,9 @@
+import { sql } from 'drizzle-orm';
+import type { FolderScope } from '../../tenant-access/resources/contract.js';
+import {
+  bindResourcePredicate,
+  workflowScopeSql,
+} from '../../tenant-access/resources/query-scope.js';
 import type { PoolClient } from 'pg';
 import type {
   PendingTaskDetail,
@@ -117,11 +123,22 @@ export async function readTaskRow(
   client: PoolClient,
   input: PendingTaskScope & Readonly<{ taskId: string }>,
   role: Role,
+  resources: FolderScope,
   locking = false,
 ): Promise<TaskRow> {
+  const parameters: unknown[] = [
+    input.workspaceId,
+    input.actorId,
+    role,
+    input.taskId,
+  ];
+  const visible = bindResourcePredicate(
+    workflowScopeSql(resources, sql`run.workflow_id`),
+    parameters,
+  );
   const result = await client.query<TaskRow>(
-    `select ${columns} ${from} where task.workspace_id=$1 and task.id=$4 ${locking ? 'for update of task' : ''}`,
-    [input.workspaceId, input.actorId, role, input.taskId],
+    `select ${columns} ${from} where task.workspace_id=$1 and task.id=$4 and ${visible} ${locking ? 'for update of task' : ''}`,
+    parameters,
   );
   const row = result.rows[0];
   if (row === undefined)
@@ -132,8 +149,9 @@ export async function listTasks(
   client: PoolClient,
   input: PendingTaskScope & PendingTaskListQuery,
   role: Role,
+  resources: FolderScope,
 ): Promise<PendingTaskListResponse> {
-  const params = [
+  const params: unknown[] = [
     input.workspaceId,
     input.actorId,
     role,
@@ -143,7 +161,11 @@ export async function listTasks(
     input.after ?? null,
     input.kind ?? 'all',
   ];
-  const candidates = `task.workspace_id=$1 and ($4::uuid is null or task.run_id=$4)
+  const visible = bindResourcePredicate(
+    workflowScopeSql(resources, sql`run.workflow_id`),
+    params,
+  );
+  const candidates = `task.workspace_id=$1 and ${visible} and ($4::uuid is null or task.run_id=$4)
     and ($5='all' or task.decided_by=$2::uuid or (${audience}))
     and ($8='all' or task.kind=$8)
     and ($6='all' or ($6='pending' and task.status='pending') or ($6='resolved' and task.status<>'pending'))`;
@@ -151,9 +173,19 @@ export async function listTasks(
     `select ${columns} ${from} where ${candidates} and ($7::uuid is null or task.id<$7) order by task.id desc limit 51`,
     params,
   );
+  const countParameters: unknown[] = [
+    input.workspaceId,
+    input.actorId,
+    role,
+    input.kind ?? 'all',
+  ];
+  const countVisible = bindResourcePredicate(
+    workflowScopeSql(resources, sql`run.workflow_id`),
+    countParameters,
+  );
   const count = await client.query<{ count: number }>(
-    `select count(*)::int count ${from} where task.workspace_id=$1 and task.status='pending' and ($4='all' or task.kind=$4) and (${blocked}) is null`,
-    [...params.slice(0, 3), input.kind ?? 'all'],
+    `select count(*)::int count ${from} where task.workspace_id=$1 and ${countVisible} and task.status='pending' and ($4='all' or task.kind=$4) and (${blocked}) is null`,
+    countParameters,
   );
   const page = rows.rows.slice(0, 50);
   return {

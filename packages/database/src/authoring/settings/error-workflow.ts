@@ -1,3 +1,11 @@
+import { sql } from 'drizzle-orm';
+import { readFolderScope } from '../../tenant-access/resources/facts.js';
+import { workflowAccessible } from '../../tenant-access/resources/workflows.js';
+import {
+  bindResourcePredicate,
+  workflowScopeSql,
+} from '../../tenant-access/resources/query-scope.js';
+import type { FolderScope } from '../../tenant-access/resources/contract.js';
 import type { PoolClient } from 'pg';
 import { isWorkflowErrorTarget } from '@pertexo/workflow-model';
 import {
@@ -55,14 +63,20 @@ async function readPolicy(
   client: PoolClient,
   workspaceId: string,
   workflowId: string,
+  access: FolderScope,
 ): Promise<WorkflowErrorSettings> {
+  const parameters: unknown[] = [workspaceId, workflowId];
+  const visible = bindResourcePredicate(
+    workflowScopeSql(access, sql`target.id`),
+    parameters,
+  );
   const found = await client.query<{
     target_workflow_id: string | null;
     target_name: string | null;
     revision: number;
   }>(
-    'select policy.target_workflow_id,policy.revision,target.name target_name from app.workflow_error_policies policy left join app.workflows target on target.workspace_id=policy.workspace_id and target.id=policy.target_workflow_id where policy.workspace_id=$1 and policy.workflow_id=$2',
-    [workspaceId, workflowId],
+    `select policy.target_workflow_id,policy.revision,case when ${visible} then target.name else null end target_name from app.workflow_error_policies policy left join app.workflows target on target.workspace_id=policy.workspace_id and target.id=policy.target_workflow_id where policy.workspace_id=$1 and policy.workflow_id=$2`,
+    parameters,
   );
   return {
     targetWorkflowId: found.rows[0]?.target_workflow_id ?? null,
@@ -87,23 +101,43 @@ export function createWorkflowErrorStore(
             input.actorId,
             rolesForCapability('workflow:update'),
           );
+          const access = await readFolderScope(client, input);
+          if (
+            !(await workflowAccessible(
+              client,
+              access,
+              input.workspaceId,
+              input.workflowId,
+              'workflow:update',
+            ))
+          )
+            throw new WorkflowNotFoundError('Workflow is not visible');
           const source = await client.query(
             'select 1 from app.workflows where workspace_id=$1 and id=$2',
             [input.workspaceId, input.workflowId],
           );
           if (source.rowCount !== 1)
             throw new WorkflowNotFoundError('Workflow is not visible');
+          const parameters: unknown[] = [
+            input.workspaceId,
+            input.workflowId,
+            input.after ?? null,
+          ];
+          const visible = bindResourcePredicate(
+            workflowScopeSql(access, sql`workflow.id`, 'workflow:update'),
+            parameters,
+          );
           const rows = await client.query<{
             id: string;
             name: string;
             graph: unknown;
           }>(
             `select workflow.id,workflow.name,version.executable_json->'graph' graph from app.workflows workflow join app.workflow_versions version on version.workspace_id=workflow.workspace_id and version.id=workflow.published_version_id
-        where workflow.workspace_id=$1 and workflow.id<>$2 and workflow.lifecycle_status='active'
+        where workflow.workspace_id=$1 and ${visible} and workflow.id<>$2 and workflow.lifecycle_status='active'
         and ($3::uuid is null or workflow.id>$3)
         and version.executable_json::jsonb @> '{"graph":{"nodes":[{"definition":{"key":"core.workflow_error","version":1}}]}}'::jsonb
         order by workflow.id limit 51`,
-            [input.workspaceId, input.workflowId, input.after ?? null],
+            parameters,
           );
           const page = rows.rows.slice(0, 50);
           return {
@@ -127,13 +161,29 @@ export function createWorkflowErrorStore(
             input.actorId,
             rolesForCapability('workflow:read'),
           );
+          const access = await readFolderScope(client, input);
+          if (
+            !(await workflowAccessible(
+              client,
+              access,
+              input.workspaceId,
+              input.workflowId,
+              'workflow:read',
+            ))
+          )
+            throw new WorkflowNotFoundError('Workflow is not visible');
           const source = await client.query(
             'select id from app.workflows where workspace_id=$1 and id=$2 for share',
             [input.workspaceId, input.workflowId],
           );
           if (source.rowCount !== 1)
             throw new WorkflowNotFoundError('Workflow is not visible');
-          return readPolicy(client, input.workspaceId, input.workflowId);
+          return readPolicy(
+            client,
+            input.workspaceId,
+            input.workflowId,
+            access,
+          );
         },
         input.signal,
       ),
@@ -148,6 +198,28 @@ export function createWorkflowErrorStore(
             input.actorId,
             rolesForCapability('workflow:update'),
           );
+          const access = await readFolderScope(client, input);
+          if (
+            !(await workflowAccessible(
+              client,
+              access,
+              input.workspaceId,
+              input.workflowId,
+              'workflow:update',
+            ))
+          )
+            throw new WorkflowNotFoundError('Workflow is not visible');
+          if (
+            input.targetWorkflowId !== null &&
+            !(await workflowAccessible(
+              client,
+              access,
+              input.workspaceId,
+              input.targetWorkflowId,
+              'workflow:update',
+            ))
+          )
+            throw new WorkflowErrorTargetUnavailableError();
           // Stable order also covers two editors choosing each other's workflows.
           const ids = [
             ...new Set([
@@ -190,6 +262,7 @@ export function createWorkflowErrorStore(
             client,
             input.workspaceId,
             input.workflowId,
+            access,
           );
           if (policy.revision !== input.expectedRevision)
             throw new WorkflowErrorSettingsConflictError(policy.revision);

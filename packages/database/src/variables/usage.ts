@@ -1,3 +1,9 @@
+import { sql } from 'drizzle-orm';
+import { readFolderScope } from '../tenant-access/resources/facts.js';
+import {
+  bindResourcePredicate,
+  workflowScopeSql,
+} from '../tenant-access/resources/query-scope.js';
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
@@ -16,6 +22,20 @@ export async function readVariableUsage(
   input: Parameters<WorkspaceVariablesStore['usage']>[0],
 ): ReturnType<WorkspaceVariablesStore['usage']> {
   const cursor = input.after;
+  const resources = await readFolderScope(client, input);
+  const parameters: unknown[] = [
+    input.workspaceId,
+    cursor?.workflowId ?? null,
+    cursor?.offset ?? 0,
+  ];
+  const visible = bindResourcePredicate(
+    workflowScopeSql(resources, sql`workflow.id`),
+    parameters,
+  );
+  const laterVisible = bindResourcePredicate(
+    workflowScopeSql(resources, sql`later.id`),
+    parameters,
+  );
   const found = await client.query<{
     id: string;
     name: string;
@@ -27,11 +47,11 @@ export async function readVariableUsage(
     has_more: boolean;
   }>(
     `select workflow.id,workflow.name,workflow.lifecycle_status,draft.revision draft_revision,draft.graph_json draft_graph,version.id version_id,version.graph_json published_graph,
- exists(select 1 from app.workflows later where later.workspace_id=workflow.workspace_id and later.id>workflow.id) has_more
+ exists(select 1 from app.workflows later where later.workspace_id=workflow.workspace_id and later.id>workflow.id and ${laterVisible}) has_more
  from app.workflows workflow left join app.workflow_drafts draft on draft.workspace_id=workflow.workspace_id and draft.workflow_id=workflow.id
  left join app.workflow_versions version on version.workspace_id=workflow.workspace_id and version.workflow_id=workflow.id and version.id=workflow.published_version_id
- where workflow.workspace_id=$1 and ($2::uuid is null or (case when $3>0 then workflow.id>=$2::uuid else workflow.id>$2::uuid end)) order by workflow.id limit 1`,
-    [input.workspaceId, cursor?.workflowId ?? null, cursor?.offset ?? 0],
+ where workflow.workspace_id=$1 and ${visible} and ($2::uuid is null or (case when $3>0 then workflow.id>=$2::uuid else workflow.id>$2::uuid end)) order by workflow.id limit 1`,
+    parameters,
   );
   const workflow = found.rows[0];
   if (workflow === undefined)

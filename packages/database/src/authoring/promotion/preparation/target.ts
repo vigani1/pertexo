@@ -1,3 +1,6 @@
+import { readFolderScope } from '../../../tenant-access/resources/facts.js';
+import { workflowAccessible } from '../../../tenant-access/resources/workflows.js';
+import { WorkflowNotFoundError } from '../../workflows/errors.js';
 import type { PoolClient } from 'pg';
 import {
   PROMOTION_LIMITS,
@@ -57,6 +60,7 @@ export async function preparePromotionTarget(
   budget: PromotionGraphBudget,
 ) {
   const workflows: ReviewedWorkflow[] = [];
+  const scope = await readFolderScope(client, input);
   const requirements: WorkflowPromotionRequirement[] = [];
   const seenRequirements = new Set<string>();
   const report = (requirement: WorkflowPromotionRequirement) => {
@@ -90,6 +94,19 @@ export async function preparePromotionTarget(
           [input.workspaceId, sourceWorkspaceId, source.workflowId],
         )
       ).rows[0] ?? null;
+    if (
+      origin !== null &&
+      !(await workflowAccessible(
+        client,
+        scope,
+        input.workspaceId,
+        origin.workflow_id,
+        'workflow:update',
+      ))
+    )
+      throw new WorkflowNotFoundError('The target workflow is unavailable.');
+    if (origin === null && !scope.permits(null, 'workflow:create'))
+      throw new WorkflowNotFoundError('The target workflow is unavailable.');
     origins.push(origin);
     const target =
       origin === null
@@ -173,6 +190,7 @@ export async function preparePromotionTarget(
         client,
         sourceWorkspaceId,
         input.workspaceId,
+        scope,
         source,
         graph,
         report,
@@ -222,6 +240,7 @@ export async function preparePromotionTarget(
           input.workspaceId,
           source,
           origin?.workflow_id ?? null,
+          scope,
           graph,
           budget,
           report,

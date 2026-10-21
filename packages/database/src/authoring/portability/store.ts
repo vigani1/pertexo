@@ -1,3 +1,4 @@
+import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.js';
 import { lockArtifactReferences } from '../../artifacts/references.js';
 import { createHash } from 'node:crypto';
 
@@ -392,7 +393,13 @@ function importPortableWorkflow(
       } catch (error) {
         portableFailure(error);
       }
-      await lockArtifactReferences(client, input.workspaceId, graph);
+      await requireWorkflowCallTargets(client, input, graph);
+      await lockArtifactReferences(
+        client,
+        input.workspaceId,
+        graph,
+        input.actorId,
+      );
       await client.query(
         `insert into app.workflows
            (id, workspace_id, name, lifecycle_status, activation_status, created_by)

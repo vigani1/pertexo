@@ -1852,6 +1852,7 @@ describe('API bootstrap ownership and health', () => {
           authoring: { database: workflowAuthoringDatabase() },
           persistence: {
             runs: {
+              canRead: () => Promise.resolve(true),
               start: () => Promise.reject(new Error('not used')),
               recovery: () => Promise.reject(new Error('not exercised')),
               recover: () => Promise.reject(new Error('not exercised')),
@@ -1926,6 +1927,7 @@ describe('API bootstrap ownership and health', () => {
           },
           persistence: {
             runs: {
+              canRead: () => Promise.resolve(true),
               start: () => Promise.reject(new Error('not used')),
               recovery: () => Promise.reject(new Error('not exercised')),
               recover: () => Promise.reject(new Error('not exercised')),

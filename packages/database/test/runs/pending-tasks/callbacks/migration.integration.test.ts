@@ -95,6 +95,7 @@ it('upgrades populated human tasks without changing their decisions or context',
     expect(await migrateDatabase(config)).toEqual([
       '0048_callback_waits.sql',
       '0049_live_callback_keys.sql',
+      '0050_folder_access.sql',
     ]);
     const after = (
       await owner.query<Record<string, unknown>>(

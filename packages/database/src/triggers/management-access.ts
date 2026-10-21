@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import { rolesForCapability } from '../tenant-access/policy.js';
+import { authorizeWorkflowResource } from '../tenant-access/resources/authority.js';
 import { lockActiveTriggerWorkflow } from './reconciliation/activation.js';
 
 /** Configuration changes share actor authority and workflow-first lock order. */
@@ -17,16 +17,21 @@ export async function canManageWorkflowTrigger(
   const actorId = z.uuid().parse(input.actorId);
   const triggerId = z.uuid().parse(input.triggerId);
   const workflowId = z.uuid().optional().parse(input.workflowId);
-  const membership = await client.query(
-    `select 1 from app.workspace_memberships membership
-      join app.workspaces workspace on workspace.id=membership.workspace_id
-      join app.users actor on actor.id=membership.user_id
-     where membership.workspace_id=$1 and membership.user_id=$2
-       and membership.status='active' and membership.role=any($3::text[])
-       and workspace.status='active' and actor.status='active'
-     for share of membership,workspace,actor`,
-    [workspaceId, actorId, [...rolesForCapability('workflow:update')]],
+  const trigger = await client.query<{ workflow_id: string }>(
+    `select workflow_id from app.workflow_triggers where workspace_id=$1 and id=$2
+      and ($3::uuid is null or workflow_id=$3)`,
+    [workspaceId, triggerId, workflowId ?? null],
   );
-  if (membership.rowCount !== 1) return false;
+  const target = trigger.rows[0]?.workflow_id;
+  if (
+    target === undefined ||
+    !(await authorizeWorkflowResource(
+      client,
+      { workspaceId, actorId, workflowId: target },
+      'workflow:update',
+      true,
+    ))
+  )
+    return false;
   return lockActiveTriggerWorkflow(client, workspaceId, triggerId, workflowId);
 }

@@ -274,10 +274,12 @@ qualified(
           [fixture.workspaceId],
         );
         const before = await runs.get({
+          actorId: fixture.actorId,
           workspaceId: fixture.workspaceId,
           runId: source.run.id,
         });
         const preview = await runs.recovery({
+          actorId: fixture.actorId,
           workspaceId: fixture.workspaceId,
           runId: source.run.id,
           prepareRecovery,
@@ -357,6 +359,7 @@ qualified(
         const accepted = first.run.id;
         expect(
           await runs.readVariables({
+            actorId: fixture.actorId,
             workspaceId: fixture.workspaceId,
             runId: accepted,
           }),
@@ -375,6 +378,7 @@ qualified(
         ).toEqual(['target', 'stop']);
         expect(
           await runs.get({
+            actorId: fixture.actorId,
             workspaceId: fixture.workspaceId,
             runId: source.run.id,
           }),
@@ -387,6 +391,7 @@ qualified(
           { output_ref: { kind: 'inline', value: 'original' } },
         ]);
         const recovered = await runs.get({
+          actorId: fixture.actorId,
           workspaceId: fixture.workspaceId,
           runId: accepted,
         });
@@ -397,6 +402,7 @@ qualified(
           effectsAcknowledged: false,
         });
         const health = await runs.stepHealth({
+          actorId: fixture.actorId,
           workspaceId: fixture.workspaceId,
           workflowId,
         });
@@ -408,6 +414,7 @@ qualified(
         ).toBe(2);
         expect(
           await runs.stepRuns({
+            actorId: fixture.actorId,
             workspaceId: fixture.workspaceId,
             workflowId,
             nodeId: 'prefix',
@@ -447,6 +454,7 @@ qualified(
         ).rejects.toBeInstanceOf(IdempotencyRequestConflictError);
         await expect(
           runs.recovery({
+            actorId: fixture.actorId,
             workspaceId: randomUUID(),
             runId: source.run.id,
             prepareRecovery,
@@ -534,6 +542,7 @@ qualified(
             30_000,
           );
           const httpPreview = await runs.recovery({
+            actorId: fixture.actorId,
             workspaceId: fixture.workspaceId,
             runId: started.run.id,
             prepareRecovery,
@@ -596,6 +605,7 @@ qualified(
           expect(
             (
               await runs.get({
+                actorId: fixture.actorId,
                 workspaceId: fixture.workspaceId,
                 runId: retried.run.id,
               })
@@ -636,6 +646,7 @@ qualified(
         );
         expect(
           await runs.recovery({
+            actorId: fixture.actorId,
             workspaceId: fixture.workspaceId,
             runId: source.run.id,
             prepareRecovery,
@@ -647,6 +658,7 @@ qualified(
         });
         expect(
           await runs.readNodeRunOutput({
+            actorId: fixture.actorId,
             workspaceId: fixture.workspaceId,
             runId: accepted,
             nodeRunId: copies.find((x) => x.nodeId === 'prefix')?.id ?? '',

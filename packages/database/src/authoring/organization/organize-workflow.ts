@@ -1,3 +1,7 @@
+import type { AudienceReview } from '@pertexo/contracts';
+import { requireMoveAudienceReview } from './sharing/audience.js';
+import { readFolderScope } from '../../tenant-access/resources/facts.js';
+import { workflowAccessible } from '../../tenant-access/resources/workflows.js';
 import type { PoolClient } from 'pg';
 
 import { WorkflowNotFoundError } from '../workflows/errors.js';
@@ -8,7 +12,11 @@ import {
 } from './errors.js';
 
 export type OrganizationChange =
-  | Readonly<{ kind: 'move'; folderId: string | null }>
+  | Readonly<{
+      kind: 'move';
+      folderId: string | null;
+      audienceReview?: AudienceReview | undefined;
+    }>
   | Readonly<{ kind: 'replace_tags'; tagIds: readonly string[] }>
   | Readonly<{ kind: 'detach_tag'; tagId: string }>;
 
@@ -55,7 +63,33 @@ export async function organizeWorkflow(
   }>,
 ): Promise<number> {
   const { change, workflowId } = input;
+  const access = await readFolderScope(client, scope);
+  if (
+    !(await workflowAccessible(
+      client,
+      access,
+      scope.workspaceId,
+      workflowId,
+      'workflow:update',
+    ))
+  )
+    throw new WorkflowNotFoundError('Workflow is not visible');
+  if (
+    change.kind === 'move' &&
+    !access.permits(change.folderId, 'workflow:create')
+  )
+    throw new WorkflowNotFoundError('Folder is not visible');
   if (change.kind === 'move') {
+    await requireMoveAudienceReview(
+      client,
+      scope,
+      {
+        kind: 'workflows',
+        workflowIds: [workflowId],
+        destinationFolderId: change.folderId,
+      },
+      change.audienceReview,
+    );
     if (change.folderId !== null) {
       const folder = await client.query(
         'select 1 from app.workflow_folders where workspace_id = $1 and id = $2',
@@ -141,7 +175,25 @@ export async function checkOrganizationReplay(
   scope: OrganizationScope,
   workflowId: string,
   kind: OrganizationChange['kind'],
+  destinationFolderId?: string | null,
 ): Promise<void> {
+  const access = await readFolderScope(client, scope);
+  if (
+    !(await workflowAccessible(
+      client,
+      access,
+      scope.workspaceId,
+      workflowId,
+      'workflow:update',
+    ))
+  )
+    throw new WorkflowNotFoundError('Workflow is not visible');
+  if (
+    kind === 'move' &&
+    destinationFolderId !== undefined &&
+    !access.permits(destinationFolderId, 'workflow:create')
+  )
+    throw new WorkflowNotFoundError('Folder is not visible');
   const workflow = await client.query<{ lifecycle_status: string }>(
     `select lifecycle_status from app.workflows
      where workspace_id = $1 and id = $2 for share`,

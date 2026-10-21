@@ -351,6 +351,13 @@
       "when": 1792602656947,
       "tag": "0049_live_callback_keys",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1792605484661,
+      "tag": "0050_folder_access",
+      "breakpoints": true
     }
   ]
 }

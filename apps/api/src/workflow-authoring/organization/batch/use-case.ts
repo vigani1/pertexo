@@ -179,6 +179,15 @@ export class WorkflowOrganizationBatchesUseCase {
         };
     }
     if (
+      error instanceof WorkflowFolderConflictError &&
+      error.kind === 'audience_review'
+    )
+      return {
+        workflowId,
+        status: 'conflict',
+        code: 'workflow.folder_audience_review_required',
+      };
+    if (
       request.operation === 'move' &&
       error instanceof WorkflowFolderConflictError &&
       error.kind === 'not_visible'

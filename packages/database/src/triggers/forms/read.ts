@@ -1,11 +1,8 @@
+import { rolesForCapability } from '../../tenant-access/policy.js';
+import { authorizeWorkflowResource } from '../../tenant-access/resources/authority.js';
 import { readFormDefinition } from './definition.js';
 import type { PoolClient } from 'pg';
 import { parsePublishedWorkflowRow } from '../../runs/queries/execution/published.js';
-import {
-  lockWorkspaceAuthority,
-  readWorkspaceAuthority,
-} from '../../tenant-access/workspaces/authority.js';
-import { rolesForCapability } from '../../tenant-access/policy.js';
 import {
   FormUnavailableError,
   type FormScope,
@@ -38,12 +35,16 @@ export async function authorizeForm(
     if (current.rowCount !== 1) throw new FormUnavailableError();
   } else {
     if (input.actorId === undefined) throw new FormUnavailableError();
-    await (write ? lockWorkspaceAuthority : readWorkspaceAuthority)(
-      client,
-      input.workspaceId,
-      input.actorId,
-      rolesForCapability(manage ? 'workflow:update' : 'workspace:read'),
-    );
+    if (
+      !(await authorizeWorkflowResource(
+        client,
+        { ...input, actorId: input.actorId },
+        manage && write ? 'workflow:update' : 'workflow:read',
+        write,
+        rolesForCapability(manage ? 'workflow:update' : 'workspace:read'),
+      ))
+    )
+      throw new FormUnavailableError();
   }
 }
 export async function readFormVersion(

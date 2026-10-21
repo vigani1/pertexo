@@ -1,3 +1,5 @@
+import { readFolderScope } from '../../tenant-access/resources/facts.js';
+import { workflowAccessible } from '../../tenant-access/resources/workflows.js';
 import type { PoolClient } from 'pg';
 import type { PublicationReview } from '@pertexo/contracts';
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
@@ -56,6 +58,22 @@ export async function readReviewRow(
   ).rows[0];
   if (row === undefined)
     throw new WorkflowNotFoundError('Publication request is not visible');
+  if (
+    row.state === 'pending' &&
+    !(await workflowAccessible(
+      client,
+      await readFolderScope(client, {
+        workspaceId: input.workspaceId,
+        actorId: row.requested_by,
+      }),
+      input.workspaceId,
+      row.workflow_id,
+      'workflow:publish',
+    ))
+  ) {
+    row.state = 'stale';
+    row.can_decide = false;
+  }
   return row;
 }
 export function projectReview(row: ReviewRow): PublicationReview {

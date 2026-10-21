@@ -54,6 +54,9 @@ export async function runOrganizationCommand<T>(
   scope: OrganizationScope,
   command: OrganizationCommand<T>,
 ): Promise<Readonly<{ result: T; replayed: boolean }>> {
+  await client.query('select id from app.workspaces where id=$1 for update', [
+    scope.workspaceId,
+  ]);
   await lockWorkflowAuthoringAuthority(
     client,
     scope.workspaceId,

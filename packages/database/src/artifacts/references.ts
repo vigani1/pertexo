@@ -1,3 +1,4 @@
+import { visibleArtifactIds, visibleTransactionArtifactIds } from './access.js';
 import type { PoolClient } from 'pg';
 import { sql } from 'drizzle-orm';
 import {
@@ -15,6 +16,7 @@ type ArtifactRow = Record<string, unknown> & {
   media_type: string;
   sha256: string;
   preview_run_id: string | null;
+  purpose: string;
 };
 
 /** JSON is already bounded and validated by its owning persistence boundary. */
@@ -72,12 +74,13 @@ export async function lockArtifactReferences(
   client: PoolClient,
   workspaceId: string,
   value: unknown,
+  actorId: string,
 ): Promise<void> {
   const references = collectArtifactReferences(value);
   if (references.length === 0) return;
   const ids = [...new Set(references.map((ref) => ref.artifactId))].sort();
   const result = await client.query<ArtifactRow>(
-    `select artifact.id, artifact.byte_length, artifact.media_type, artifact.sha256,
+    `select artifact.id, artifact.byte_length, artifact.media_type, artifact.sha256, artifact.purpose,
       link.owner_id as preview_run_id
      from app.artifacts artifact
      left join app.artifact_links link
@@ -87,7 +90,19 @@ export async function lockArtifactReferences(
      order by artifact.id for share of artifact`,
     [workspaceId, ids],
   );
-  assertRows(references, result.rows);
+  const visible = await visibleArtifactIds(
+    client,
+    { workspaceId, actorId },
+    result.rows
+      .filter((row) => row.purpose !== 'user-upload')
+      .map((row) => row.id),
+  );
+  assertRows(
+    references,
+    result.rows.filter(
+      (row) => row.purpose === 'user-upload' || visible.has(row.id),
+    ),
+  );
 }
 
 export async function requireNodeArtifactReference(
@@ -115,7 +130,7 @@ async function lockExecutionReferences(
 ): Promise<void> {
   const ids = [...new Set(references.map((ref) => ref.artifactId))].sort();
   const result = await transaction.db.execute<ArtifactRow>(sql`
-    select artifact.id, artifact.byte_length, artifact.media_type, artifact.sha256,
+    select artifact.id, artifact.byte_length, artifact.media_type, artifact.sha256, artifact.purpose,
       link.owner_id as preview_run_id
     from app.artifacts artifact
     left join app.artifact_links link
@@ -139,4 +154,23 @@ async function lockExecutionReferences(
     order by artifact.id for share of artifact
   `);
   assertRows(references, result.rows, previewRunId);
+}
+
+/** Authored inputs need source access; accepted immutable execution keeps its binding. */
+export async function lockActorArtifactReferences(
+  transaction: WorkspaceTransaction,
+  actorId: string,
+  value: unknown,
+  previewRunId?: string,
+): Promise<void> {
+  const references = collectArtifactReferences(value);
+  if (references.length === 0) return;
+  const ids = [...new Set(references.map((reference) => reference.artifactId))];
+  const visible = await visibleTransactionArtifactIds(
+    transaction,
+    { workspaceId: transaction.workspaceId, actorId },
+    ids,
+  );
+  if (visible.size !== ids.length) throw new ArtifactMetadataNotFoundError();
+  await lockExecutionArtifactReferences(transaction, value, previewRunId);
 }

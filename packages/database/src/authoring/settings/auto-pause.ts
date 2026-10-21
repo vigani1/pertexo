@@ -220,6 +220,7 @@ export function createWorkflowAutoPauseStore(
       exclusive: boolean;
       operation: string;
       resourceId: string;
+      workflowId?: string;
       roles: readonly Role[];
       request: unknown;
       schema: z.ZodType<T>;
@@ -247,6 +248,9 @@ export function createWorkflowAutoPauseStore(
         workspaceId,
         actorId,
         options.roles,
+        options.workflowId === undefined
+          ? undefined
+          : { workflowId: options.workflowId, capability: 'workflow:update' },
       );
       const identity = {
         workspaceId,
@@ -300,6 +304,7 @@ export function createWorkflowAutoPauseStore(
           workspaceId,
           actorId,
           ROLES,
+          { workflowId, capability: 'workflow:read' },
         );
         return workflowSettingsOf(
           await lockWorkflow(client, workspaceId, workflowId),
@@ -334,6 +339,7 @@ export function createWorkflowAutoPauseStore(
       return command(input, {
         operation: 'workflow.autopause.resume',
         resourceId: workflowId,
+        workflowId,
         roles: EDITORS,
         request,
         schema: workflowSettings,
@@ -409,6 +415,7 @@ export function createWorkflowAutoPauseStore(
       return command(input, {
         operation: 'workflow.autopause.settings',
         resourceId: workflowId,
+        workflowId,
         roles: EDITORS,
         request,
         schema: workflowSettings,

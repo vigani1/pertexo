@@ -531,6 +531,7 @@
               "workflow.folder_hierarchy_conflict",
               "workflow.folder_not_empty",
               "workflow.folder_not_visible",
+              "workflow.folder_audience_review_required",
               "workspace.auto_pause_settings_conflict",
               "workflow.invalid",
               "workflow.portability_unavailable",

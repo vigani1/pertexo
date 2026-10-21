@@ -345,6 +345,7 @@ function databaseWith(
   overrides: Partial<WorkflowRunDatabase> = {},
 ): WorkflowRunDatabase {
   return {
+    canRead: () => Promise.resolve(true),
     recovery: vi.fn<WorkflowRunDatabase['recovery']>(),
     recover: vi.fn<WorkflowRunDatabase['recover']>(),
     usageTrends: vi.fn<WorkflowRunDatabase['usageTrends']>(),
@@ -402,6 +403,7 @@ async function invokePersistence(
 ): Promise<unknown> {
   if (operation === 'statistics')
     return adapter.persistence.statistics({
+      actorId,
       workspaceId,
       window: '24h',
       includeWorkflows: false,
@@ -428,7 +430,7 @@ async function invokePersistence(
       input: null,
     });
   if (operation === 'get')
-    return adapter.persistence.get({ workspaceId, runId });
+    return adapter.persistence.get({ actorId, workspaceId, runId });
   return adapter.persistence.cancel({ actorId, workspaceId, runId });
 }
 
@@ -585,6 +587,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
       statisticsRecord(),
     );
     expect(statistics).toHaveBeenCalledWith({
+      actorId,
       workspaceId,
       window: '24h',
       includeWorkflows: false,
@@ -683,11 +686,12 @@ describe('PostgreSQL workflow run persistence adapter', () => {
       database,
     );
     await expect(
-      adapter.persistence.readInput({ workspaceId, runId }),
+      adapter.persistence.readInput({ actorId, workspaceId, runId }),
     ).resolves.toEqual({ kind: 'inline', value: { rows: 42 } });
-    expect(readInput).toHaveBeenCalledWith({ workspaceId, runId });
+    expect(readInput).toHaveBeenCalledWith({ actorId, workspaceId, runId });
     await expect(
       adapter.persistence.readNodeRunOutput({
+        actorId,
         workspaceId,
         runId,
         nodeRunId: runId,
@@ -702,6 +706,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
     });
     const publish = vi.fn().mockResolvedValue({ receivers: 1 });
     const database = {
+      canRead: () => Promise.resolve(true),
       start: vi.fn<WorkflowRunDatabase['start']>(),
       replay,
       get: vi.fn<WorkflowRunDatabase['get']>().mockResolvedValue(undefined),
@@ -997,6 +1002,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
     const close = vi.fn<WorkflowRunDatabase['close']>().mockResolvedValue();
     const publish = vi.fn().mockResolvedValue({ receivers: 1 });
     const database = {
+      canRead: () => Promise.resolve(true),
       start,
       replay: vi.fn<WorkflowRunDatabase['replay']>(),
       get: vi.fn<WorkflowRunDatabase['get']>().mockResolvedValue(undefined),

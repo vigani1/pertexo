@@ -1,3 +1,4 @@
+import { audienceReviewSchema } from './sharing.js';
 import { z } from 'zod';
 import { trimSpaces, utf8ByteLength } from '../shared/text.js';
 import { strictlyAscendingIdentifiers } from './organization-order.js';
@@ -87,6 +88,7 @@ export const workflowFolderRenameRequestSchema = z
   .strict();
 export const workflowFolderMoveRequestSchema = z
   .object({
+    audienceReview: audienceReviewSchema.optional(),
     parentId: identifier.nullable(),
     expectedFolderRevision: workflowFolderRevisionSchema,
   })
@@ -110,6 +112,7 @@ export const workflowFolderDeleteResponseSchema = z
   .strict();
 export const workflowFolderPlacementRequestSchema = z
   .object({
+    audienceReview: audienceReviewSchema.optional(),
     folderId: identifier.nullable(),
     expectedOrganizationRevision: workflowOrganizationRevisionSchema,
   })
@@ -125,6 +128,7 @@ export const workflowFolderPlacementResponseSchema = z
 
 export const workflowOrganizationBulkItemSchema = z
   .object({
+    audienceReview: audienceReviewSchema.optional(),
     workflowId: identifier,
     expectedOrganizationRevision: workflowOrganizationRevisionSchema,
   })
@@ -161,6 +165,7 @@ export const workflowOrganizationBulkConflictCodeSchema = z.enum([
   'request.idempotency_conflict',
   'workflow.lifecycle_conflict',
   'workflow.folder_not_visible',
+  'workflow.folder_audience_review_required',
 ]);
 const itemIdentity = { workflowId: canonicalIdentifier };
 export const workflowOrganizationBulkItemOutcomeSchema = z.discriminatedUnion(

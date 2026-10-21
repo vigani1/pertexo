@@ -2,7 +2,8 @@ import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { WorkflowRunReadCapacityError } from '../../errors.js';
-import type { WorkspaceTransaction } from '../../../tenant-access/transactions.js';
+import type { ResourceTransaction } from '../../../tenant-access/resources/transactions.js';
+import { workflowScopeSql } from '../../../tenant-access/resources/query-scope.js';
 
 const callRow = z
   .object({
@@ -26,6 +27,7 @@ const callRow = z
     slot_lent: z.boolean(),
     details_retired: z.boolean(),
     safe_error_code: z.string().nullable(),
+    child_visible: z.boolean(),
   })
   .strict();
 export type WorkflowCallReadRecord = Readonly<{
@@ -34,7 +36,7 @@ export type WorkflowCallReadRecord = Readonly<{
   targetWorkflowId: string;
   targetVersionId: string;
   childRunId: string | null;
-  childHistory: 'not_started' | 'retained' | 'expired';
+  childHistory: 'not_started' | 'retained' | 'expired' | 'unavailable';
   status: z.output<typeof callRow>['status'];
   slotLent: boolean;
   detailsRetired: boolean;
@@ -48,16 +50,20 @@ export type WorkflowParentCallReadRecord = Readonly<{
 
 /** Both directions use the same authorized run snapshot and workspace fence. */
 export async function readWorkflowCalls(
-  transaction: WorkspaceTransaction,
+  transaction: ResourceTransaction,
   runId: string,
 ) {
   const result = await transaction.db.execute(sql`
     select id, invocation_key, parent_run_id, target_workflow_id, target_version_id,
       child_run_id, live_child_run_id, status, slot_lent,
-      details_purged_at is not null details_retired, safe_error_code
+      details_purged_at is not null details_retired, safe_error_code,
+      ${workflowScopeSql(transaction.resources, sql`target_workflow_id`)} child_visible
     from app.workflow_calls
     where workspace_id=${transaction.workspaceId}
-      and (parent_run_id=${runId} or child_run_id=${runId})
+      and (parent_run_id=${runId} or (child_run_id=${runId} and exists (
+        select 1 from app.workflow_runs parent where parent.workspace_id=app.workflow_calls.workspace_id
+        and parent.id=app.workflow_calls.parent_run_id
+        and ${workflowScopeSql(transaction.resources, sql`parent.workflow_id`)})))
     order by invocation_key
     limit ${WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations + 2}
   `);
@@ -80,13 +86,15 @@ export async function readWorkflowCalls(
       invocationKey: row.invocation_key,
       targetWorkflowId: row.target_workflow_id,
       targetVersionId: row.target_version_id,
-      childRunId: row.child_run_id,
+      childRunId: row.child_visible ? row.child_run_id : null,
       childHistory:
         row.child_run_id === null
           ? 'not_started'
-          : row.live_child_run_id === null
-            ? 'expired'
-            : 'retained',
+          : !row.child_visible
+            ? 'unavailable'
+            : row.live_child_run_id === null
+              ? 'expired'
+              : 'retained',
       status: row.status,
       slotLent: row.slot_lent,
       detailsRetired: row.details_retired,

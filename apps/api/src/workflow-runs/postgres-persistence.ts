@@ -57,6 +57,8 @@ export function createPostgresWorkflowRunPersistence(
   const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
   const database = databaseInput ?? createWorkflowRunDatabase(config, runtime);
   const persistence: WorkflowRunPersistence = Object.freeze({
+    canRead: (input: Parameters<WorkflowRunPersistence['canRead']>[0]) =>
+      database.canRead(input),
     recovery: async (
       input: Parameters<WorkflowRunPersistence['recovery']>[0],
     ) => {
@@ -94,8 +96,6 @@ export function createPostgresWorkflowRunPersistence(
       try {
         return await database.usageTrends(input);
       } catch (error: unknown) {
-        if (error instanceof WorkspaceAccessDeniedError)
-          return throwWorkflowRunError(applicationError('resource.not_found'));
         return mapPersistenceError(error);
       }
     },
@@ -105,8 +105,6 @@ export function createPostgresWorkflowRunPersistence(
       try {
         return await database.usageCapacity(input);
       } catch (error: unknown) {
-        if (error instanceof WorkspaceAccessDeniedError)
-          return throwWorkflowRunError(applicationError('resource.not_found'));
         return mapPersistenceError(error);
       }
     },
@@ -114,7 +112,7 @@ export function createPostgresWorkflowRunPersistence(
       executeAcceptance(database, input, catalog, notifications),
     replay: (input: ReplayWorkflowRunCommand) =>
       executeAcceptance(database, input, catalog, notifications),
-    get: async (input: Readonly<{ workspaceId: string; runId: string }>) => {
+    get: async (input: Parameters<WorkflowRunPersistence['get']>[0]) => {
       try {
         return await database.get(input);
       } catch (error: unknown) {
@@ -271,6 +269,8 @@ async function publishHint(
 }
 
 function mapPersistenceError(error: unknown): never {
+  if (error instanceof WorkspaceAccessDeniedError)
+    return throwWorkflowRunError(applicationError('resource.not_found'));
   if (error instanceof WorkflowRecoveryUnavailableError)
     return throwWorkflowRunError(
       applicationError('run.recovery_unavailable', {

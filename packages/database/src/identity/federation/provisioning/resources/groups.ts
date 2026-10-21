@@ -1,3 +1,4 @@
+import { removeDirectoryFolderGrants } from '../../../../tenant-access/resources/revocation.js';
 import type { Pool, PoolClient } from 'pg';
 import { generatePersistedId } from '../../../../platform/persisted-id.js';
 import { withDirectoryTransaction } from '../authority.js';
@@ -196,6 +197,12 @@ export function deleteDirectoryGroup(
         principal.organizationId,
         id,
         [],
+      );
+      await removeDirectoryFolderGrants(
+        client,
+        organization.id,
+        organization.workspaces.map((workspace) => workspace.workspace_id),
+        id,
       );
       await client.query(
         'delete from app.auth_directory_groups where organization_id=$1 and id=$2',

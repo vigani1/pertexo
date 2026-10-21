@@ -1,3 +1,11 @@
+import { sql } from 'drizzle-orm';
+import type { WorkspaceScopeRunner } from '../../tenant-access/transactions.js';
+import { readFolderScope } from '../../tenant-access/resources/facts.js';
+import {
+  bindResourcePredicate,
+  workflowScopeSql,
+} from '../../tenant-access/resources/query-scope.js';
+import type { PromotionScope } from './contract.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import {
@@ -13,18 +21,25 @@ export const promotionReceiptSchema = z
 export async function readPromotionReceipt(
   client: PoolClient,
   workspaceId: string,
+  actorId: string,
   receipt: z.output<typeof promotionReceiptSchema>,
   workflowIds: readonly string[],
 ) {
+  const parameters: unknown[] = [
+    workspaceId,
+    workflowIds,
+    receipt.promotionId,
+    PROMOTION_LIMITS.workflows + 1,
+  ];
+  const scope = await readFolderScope(client, { workspaceId, actorId });
+  const visible = bindResourcePredicate(
+    workflowScopeSql(scope, sql`target_id`),
+    parameters,
+  );
   const rows = (
     await client.query<{ metadata: Record<string, unknown> }>(
-      `select metadata from app.audit_events where workspace_id=$1 and action='workflow.promotion_sent' and target_id=any($2::uuid[]) and metadata->>'promotionId'=$3 order by id limit $4`,
-      [
-        workspaceId,
-        workflowIds,
-        receipt.promotionId,
-        PROMOTION_LIMITS.workflows + 1,
-      ],
+      `select metadata from app.audit_events where workspace_id=$1 and ${visible} and action='workflow.promotion_sent' and target_id=any($2::uuid[]) and metadata->>'promotionId'=$3 order by id limit $4`,
+      parameters,
     )
   ).rows;
   if (rows.length !== workflowIds.length)
@@ -46,4 +61,48 @@ export async function readPromotionReceipt(
       publicationRequestId: metadata.publicationRequestId,
     })),
   });
+}
+
+export async function readAuthorizedPromotionReceipt(
+  inWorkspace: WorkspaceScopeRunner,
+  input: PromotionScope,
+  receipt: z.output<typeof promotionReceiptSchema>,
+  workflowIds: readonly string[],
+) {
+  const result = await inWorkspace(input, (client) =>
+    readPromotionReceipt(
+      client,
+      input.workspaceId,
+      input.actorId,
+      receipt,
+      workflowIds,
+    ),
+  );
+  await inWorkspace(
+    { workspaceId: receipt.targetWorkspaceId, actorId: input.actorId },
+    async (client) => {
+      const scope = await readFolderScope(client, {
+        workspaceId: receipt.targetWorkspaceId,
+        actorId: input.actorId,
+      });
+      const parameters: unknown[] = [
+        receipt.targetWorkspaceId,
+        result.items.map((item) => item.targetWorkflowId),
+      ];
+      const visible = bindResourcePredicate(
+        workflowScopeSql(scope, sql`id`, 'workflow:update'),
+        parameters,
+      );
+      const found = await client.query(
+        `select id from app.workflows where workspace_id=$1 and id=any($2::uuid[]) and ${visible}`,
+        parameters,
+      );
+      if (found.rows.length !== result.items.length)
+        throw new WorkflowPromotionError(
+          'unavailable',
+          'The target workflow is unavailable.',
+        );
+    },
+  );
+  return result;
 }

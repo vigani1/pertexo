@@ -659,7 +659,10 @@ describe('workflow run SSE transport', () => {
       let failure: StreamCleanupIncompleteError | undefined;
       try {
         const frames = await new StreamRunEventsUseCase(
-          { get: vi.fn().mockResolvedValue({ run: {}, nodes: [] }) },
+          {
+            canRead: () => Promise.resolve(true),
+            get: vi.fn().mockResolvedValue({ run: {}, nodes: [] }),
+          },
           {
             findAccess: vi.fn().mockResolvedValue({
               actorId,
@@ -816,6 +819,7 @@ describe('workflow run SSE transport', () => {
     try {
       const frames = await new StreamRunEventsUseCase(
         {
+          canRead: () => Promise.resolve(true),
           get: vi.fn().mockResolvedValue({ run: {}, nodes: [] }),
         },
         {
@@ -888,6 +892,7 @@ describe('workflow run SSE transport', () => {
     try {
       const frames = await new StreamRunEventsUseCase(
         {
+          canRead: () => Promise.resolve(true),
           get: vi.fn().mockResolvedValue({ run: {}, nodes: [] }),
         },
         {
@@ -974,6 +979,7 @@ describe('workflow run SSE transport', () => {
     };
     const useCase = new StreamRunEventsUseCase(
       {
+        canRead: () => Promise.resolve(true),
         get: vi.fn().mockResolvedValue({ run: {}, nodes: [] }),
       },
       access,

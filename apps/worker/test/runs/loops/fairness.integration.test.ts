@@ -57,6 +57,7 @@ integration('maximum loops preserve ordinary run fairness', () => {
           expect(
             (
               await runs.get({
+                actorId: fixture.actorId,
                 workspaceId: fixture.workspaceId,
                 runId: sameWorkspace.runId,
               })
@@ -65,6 +66,7 @@ integration('maximum loops preserve ordinary run fairness', () => {
           expect(
             (
               await runs.get({
+                actorId: fixture.actorId,
                 workspaceId: other.workspaceId,
                 runId: other.runId,
               })
@@ -80,6 +82,7 @@ integration('maximum loops preserve ordinary run fairness', () => {
           expect(['running', 'waiting']).toContain(
             (
               await runs.get({
+                actorId: fixture.actorId,
                 workspaceId: fixture.workspaceId,
                 runId: accepted.runId,
               })
@@ -111,6 +114,7 @@ integration('maximum loops preserve ordinary run fairness', () => {
             expect(
               (
                 await runs.get({
+                  actorId: fixture.actorId,
                   workspaceId: fixture.workspaceId,
                   runId: accepted.runId,
                 })

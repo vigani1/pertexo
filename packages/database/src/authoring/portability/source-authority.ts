@@ -1,3 +1,4 @@
+import { authorizeWorkflowResource } from '../../tenant-access/resources/authority.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import {
@@ -20,6 +21,8 @@ export async function lockPortableSource(
   client: PoolClient,
   input: ExportWorkflowInput,
 ) {
+  if (!(await authorizeWorkflowResource(client, input, 'workflow:read', true)))
+    throw new WorkflowNotFoundError('Workflow source is not visible');
   const workflow = await client.query(
     "select id from app.workflows where workspace_id=$1 and id=$2 and lifecycle_status='active' for share",
     [input.workspaceId, input.workflowId],

@@ -421,7 +421,7 @@ const workflowCallSummarySchema = z
     targetWorkflowId: z.uuid(),
     targetVersionId: z.uuid(),
     childRunId: z.uuid().nullable(),
-    childHistory: z.enum(['not_started', 'retained', 'expired']),
+    childHistory: z.enum(['not_started', 'retained', 'expired', 'unavailable']),
     status: z.enum([
       'pending',
       'accepted',

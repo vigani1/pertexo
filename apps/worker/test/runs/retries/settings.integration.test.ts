@@ -286,6 +286,7 @@ function graph(
               30_000,
             );
             const history = await runs.get({
+              actorId: fixture.actorId,
               workspaceId: fixture.workspaceId,
               runId,
             });

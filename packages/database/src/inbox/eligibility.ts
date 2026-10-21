@@ -1,3 +1,9 @@
+import { sql } from 'drizzle-orm';
+import type { FolderScope } from '../tenant-access/resources/contract.js';
+import {
+  bindResourcePredicate,
+  workflowScopeSql,
+} from '../tenant-access/resources/query-scope.js';
 import { NOTICE_WINDOW_SQL } from './lifetime.js';
 import {
   REVIEW_SOURCE_SQL,
@@ -18,7 +24,15 @@ function capabilityAudienceSql(capability: AuthorizationCapability): string {
 }
 
 /** Query the audience before LIMIT, counts and writes; RLS only supplies the isolation fence. */
-export function noticeVisibilitySql(actorParameter: string): string {
+export function noticeVisibilitySql(
+  actorParameter: string,
+  resources: FolderScope,
+  parameters: unknown[],
+): string {
+  const visible = bindResourcePredicate(
+    workflowScopeSql(resources, sql`thread.workflow_id`),
+    parameters,
+  );
   const operational = capabilityAudienceSql('notification:read');
   const workflow = `(${operational} or exists(select 1 from app.notice_subscriptions follow
     where follow.workspace_id=thread.workspace_id and follow.user_id=${actorParameter}::uuid
@@ -36,7 +50,7 @@ export function noticeVisibilitySql(actorParameter: string): string {
       where task.workspace_id=thread.workspace_id and task.id=thread.task_id and task.kind='approval'
       and (${pendingTaskBlockedSql(actorParameter, 'member.role')}) is null)`,
   };
-  return `thread.active
+  return `${resources.role === null ? 'false' : 'true'} and (thread.workflow_id is null or (${visible})) and thread.active
     and (thread.notice_kind not in ('workflow_failure','workflow_mention') or thread.latest_occurred_at>statement_timestamp()-${NOTICE_WINDOW_SQL})
     and not exists(select 1 from app.notice_subscriptions muted
       where muted.workspace_id=thread.workspace_id and muted.user_id=${actorParameter}::uuid and muted.muted

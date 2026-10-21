@@ -1,3 +1,10 @@
+import { sql } from 'drizzle-orm';
+import type { FolderScope } from '../../tenant-access/resources/contract.js';
+import { workflowAccessible } from '../../tenant-access/resources/workflows.js';
+import {
+  bindResourcePredicate,
+  workflowScopeSql,
+} from '../../tenant-access/resources/query-scope.js';
 import { dataTableReferenceIssues } from '../../data-tables/columns/references.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
@@ -46,7 +53,7 @@ export type WorkflowAuthoringReadContext = Readonly<{
     client: PoolClient,
     workspaceId: string,
     actorId: string,
-  ): Promise<void>;
+  ): Promise<FolderScope>;
   catalogs: Pick<
     AuthoringCatalogs,
     'definitionCatalog' | 'validateAuthoringGraph' | 'executableCompiler'
@@ -64,6 +71,15 @@ const uuidSchema = z.uuid();
 export function createWorkflowAuthoringReadStore(
   context: WorkflowAuthoringReadContext,
 ): ReadStore {
+  async function canReadWorkflow(
+    client: PoolClient,
+    workspaceId: string,
+    actorId: string,
+    workflowId: string,
+  ) {
+    const access = await context.requireReader(client, workspaceId, actorId);
+    return workflowAccessible(client, access, workspaceId, workflowId);
+  }
   return Object.freeze({
     getWorkflowWithTemplateOrigin: createWorkflowTemplateOriginReader(context),
     validateDraft: (
@@ -76,7 +92,10 @@ export function createWorkflowAuthoringReadStore(
         workspaceId,
         actorId,
         async (client) => {
-          await context.requireReader(client, workspaceId, actorId);
+          if (
+            !(await canReadWorkflow(client, workspaceId, actorId, workflowId))
+          )
+            return null;
           const variant = context.catalogs;
           const result = await client.query<Record<string, unknown>>(
             'select * from app.workflow_drafts where workspace_id = $1 and workflow_id = $2',
@@ -140,7 +159,8 @@ export function createWorkflowAuthoringReadStore(
       ),
     getWorkflow: (workspaceId: string, workflowId: string, actorId: string) =>
       context.transact(workspaceId, actorId, async (client) => {
-        await context.requireReader(client, workspaceId, actorId);
+        if (!(await canReadWorkflow(client, workspaceId, actorId, workflowId)))
+          return null;
         const result = await client.query<Record<string, unknown>>(
           `select *, ${workflowSetupSelection} from app.workflows where workspace_id = $1 and id = $2`,
           [workspaceId, uuidSchema.parse(workflowId)],
@@ -151,7 +171,11 @@ export function createWorkflowAuthoringReadStore(
       }),
     listWorkflows: (input: ListWorkflowsInput): Promise<WorkflowPage> =>
       context.transact(input.workspaceId, input.actorId, async (client) => {
-        await context.requireReader(client, input.workspaceId, input.actorId);
+        const access = await context.requireReader(
+          client,
+          input.workspaceId,
+          input.actorId,
+        );
         const limit = z
           .number()
           .int()
@@ -165,31 +189,36 @@ export function createWorkflowAuthoringReadStore(
             : z.iso.datetime({ offset: true }).parse(input.after.positionAt);
         const afterId =
           input.after === undefined ? null : uuidSchema.parse(input.after.id);
+        const parameters: unknown[] = [
+          input.workspaceId,
+          afterPositionAt,
+          afterId,
+          limit + 1,
+          input.pinsWorkflowId === undefined
+            ? null
+            : uuidSchema.parse(input.pinsWorkflowId),
+        ];
+        const visible = bindResourcePredicate(
+          workflowScopeSql(access, sql`app.workflows.id`),
+          parameters,
+        );
         const result = await client.query<Record<string, unknown>>(
           order === 'updated_desc'
             ? `select *, ${workflowSetupSelection}, to_char(updated_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as cursor_position_at
-               from app.workflows where workspace_id = $1
+               from app.workflows where workspace_id = $1 and ${visible}
                  and ($5::uuid is null or exists(select 1 from app.workflow_version_dependencies dependency
                    where dependency.workspace_id=$1 and dependency.parent_version_id=app.workflows.published_version_id
                      and dependency.target_workflow_id=$5))
                  and ($2::timestamptz is null or (updated_at, id) < ($2::timestamptz, $3::uuid))
                order by updated_at desc, id desc limit $4`
             : `select *, ${workflowSetupSelection}, to_char(created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as cursor_position_at
-               from app.workflows where workspace_id = $1
+               from app.workflows where workspace_id = $1 and ${visible}
                  and ($5::uuid is null or exists(select 1 from app.workflow_version_dependencies dependency
                    where dependency.workspace_id=$1 and dependency.parent_version_id=app.workflows.published_version_id
                      and dependency.target_workflow_id=$5))
                  and ($2::timestamptz is null or (created_at, id) > ($2::timestamptz, $3::uuid))
                order by created_at, id limit $4`,
-          [
-            input.workspaceId,
-            afterPositionAt,
-            afterId,
-            limit + 1,
-            input.pinsWorkflowId === undefined
-              ? null
-              : uuidSchema.parse(input.pinsWorkflowId),
-          ],
+          parameters,
         );
         const hasMore = result.rows.length > limit;
         const pageRows = result.rows.slice(0, limit);
@@ -221,7 +250,8 @@ export function createWorkflowAuthoringReadStore(
       actorId: string,
     ): Promise<WorkflowDraftRecord | null> =>
       context.transact(workspaceId, actorId, async (client) => {
-        await context.requireReader(client, workspaceId, actorId);
+        if (!(await canReadWorkflow(client, workspaceId, actorId, workflowId)))
+          return null;
         const { definitionCatalog } = context.catalogs;
         const result = await client.query<Record<string, unknown>>(
           'select * from app.workflow_drafts where workspace_id = $1 and workflow_id = $2',
@@ -238,7 +268,8 @@ export function createWorkflowAuthoringReadStore(
       actorId: string,
     ): Promise<WorkflowVersionRecord | null> =>
       context.transact(workspaceId, actorId, async (client) => {
-        await context.requireReader(client, workspaceId, actorId);
+        if (!(await canReadWorkflow(client, workspaceId, actorId, workflowId)))
+          return null;
         const result = await client.query<Record<string, unknown>>(
           `select ${workflowVersionRowSelection} from app.workflow_versions
            where workspace_id = $1 and workflow_id = $2 and id = $3`,
@@ -254,7 +285,15 @@ export function createWorkflowAuthoringReadStore(
       input: ListWorkflowVersionsInput,
     ): Promise<WorkflowVersionPage> =>
       context.transact(input.workspaceId, input.actorId, async (client) => {
-        await context.requireReader(client, input.workspaceId, input.actorId);
+        if (
+          !(await canReadWorkflow(
+            client,
+            input.workspaceId,
+            input.actorId,
+            input.workflowId,
+          ))
+        )
+          throw new WorkflowNotFoundError('Workflow is not visible');
         const workflowId = uuidSchema.parse(input.workflowId);
         const visible = await client.query(
           'select 1 from app.workflows where workspace_id = $1 and id = $2',

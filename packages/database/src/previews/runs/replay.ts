@@ -5,6 +5,7 @@ import { z } from 'zod';
 
 import {
   assertPreviewActor,
+  previewWorkflowVisible,
   PREVIEW_STATUS,
   PreviewAcceptanceCorruptError,
   readExistingAcceptance,
@@ -59,6 +60,15 @@ export async function resolvePreviewReplay(
     .strict()
     .parse(input);
   await assertPreviewActor(transaction, parsed.actorUserId);
+  if (
+    !(await previewWorkflowVisible(
+      transaction,
+      parsed.actorUserId,
+      parsed.workflowId,
+      'workflow:update',
+    ))
+  )
+    return null;
   const existing = await readExistingAcceptance(transaction, {
     keyHash: parsed.keyHash,
     operation: 'preview.execute',

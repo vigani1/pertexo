@@ -1,3 +1,22 @@
+import { readSharingPrincipals } from '../../tenant-access/resources/principals.js';
+import type {
+  SharingPrincipalsQuery,
+  SharingPrincipals,
+} from '@pertexo/contracts';
+import {
+  audienceReviewSchema,
+  type AudienceReview,
+  type FolderSharing,
+  type FolderSharingRequest,
+  type WorkflowMoveReviewRequest,
+  type WorkflowMoveReview,
+} from '@pertexo/contracts';
+import { readFolderSharing, replaceFolderSharing } from './sharing/grants.js';
+import {
+  requireMoveAudienceReview,
+  reviewMoveAudience,
+} from './sharing/audience.js';
+import { readFolderScope } from '../../tenant-access/resources/facts.js';
 import { FOLDER_LIMIT, FOLDER_DEPTH_LIMIT } from './limits.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
@@ -49,6 +68,18 @@ export type WorkflowFolderPlacementResult = Readonly<{
   replayed: boolean;
 }>;
 export interface WorkflowFolderDatabase {
+  sharingPrincipals(
+    input: OrganizationRequestScope & { query: SharingPrincipalsQuery },
+  ): Promise<SharingPrincipals>;
+  readSharing(
+    input: OrganizationRequestScope & { folderId: string },
+  ): Promise<FolderSharing>;
+  replaceSharing(
+    input: Command & { folderId: string; request: FolderSharingRequest },
+  ): Promise<FolderSharing & { replayed: boolean }>;
+  reviewMove(
+    input: OrganizationRequestScope & { request: WorkflowMoveReviewRequest },
+  ): Promise<WorkflowMoveReview>;
   listFolders(
     input: OrganizationRequestScope,
   ): Promise<Readonly<{ items: readonly WorkflowFolderRecord[] }>>;
@@ -59,7 +90,11 @@ export interface WorkflowFolderDatabase {
     input: FolderCommand & Readonly<{ name: string }>,
   ): Promise<WorkflowFolderCommandResult>;
   moveFolder(
-    input: FolderCommand & Readonly<{ parentId: string | null }>,
+    input: FolderCommand &
+      Readonly<{
+        parentId: string | null;
+        audienceReview?: AudienceReview | undefined;
+      }>,
   ): Promise<WorkflowFolderCommandResult>;
   deleteFolder(input: FolderCommand): Promise<WorkflowFolderDeleteResult>;
   placeWorkflow(
@@ -68,6 +103,7 @@ export interface WorkflowFolderDatabase {
         workflowId: string;
         folderId: string | null;
         expectedOrganizationRevision: number;
+        audienceReview?: AudienceReview | undefined;
       }>,
   ): Promise<WorkflowFolderPlacementResult>;
   close(): Promise<void>;
@@ -250,6 +286,31 @@ export function createWorkflowFolderDatabase(
   }
 
   const store: WorkflowFolderDatabase = {
+    sharingPrincipals: (input) =>
+      session.transact(input, (client, scope) =>
+        readSharingPrincipals(client, scope, input.query),
+      ),
+    readSharing: (input) =>
+      session.transact(input, (client, scope) =>
+        readFolderSharing(client, scope, uuid.parse(input.folderId)),
+      ),
+    replaceSharing: (input) =>
+      session.transact(input, (client, scope) =>
+        replaceFolderSharing(client, scope, {
+          ...input,
+          folderId: uuid.parse(input.folderId),
+        }),
+      ),
+    reviewMove: (input) =>
+      session.transact(input, async (client, scope) => {
+        await lockWorkflowAuthoringAuthority(
+          client,
+          scope.workspaceId,
+          scope.actorId,
+          EDITORS,
+        );
+        return reviewMoveAudience(client, scope, input.request);
+      }),
     listFolders: (input: OrganizationRequestScope) =>
       session.transact(input, async (client, scope) => {
         await lockWorkflowAuthoringAuthority(
@@ -272,11 +333,16 @@ export function createWorkflowFolderDatabase(
           [scope.workspaceId],
         );
         const row = result.rows[0];
+        const access = await readFolderScope(client, scope);
         const items = z.array(folder).max(FOLDER_LIMIT).parse(row?.items);
         if (row?.total !== items.length)
           throw new Error('Workflow folder hierarchy is incompatible');
         return Object.freeze({
-          items: Object.freeze(items.map((item) => Object.freeze(item))),
+          items: Object.freeze(
+            items
+              .filter((item) => access.permits(item.id, 'workflow:read'))
+              .map((item) => Object.freeze(item)),
+          ),
         });
       }),
 
@@ -366,6 +432,11 @@ export function createWorkflowFolderDatabase(
       const folderId = uuid.parse(input.folderId);
       const request = {
         parentId: uuid.nullable().parse(input.parentId),
+        ...(input.audienceReview === undefined
+          ? {}
+          : {
+              audienceReview: audienceReviewSchema.parse(input.audienceReview),
+            }),
         expectedFolderRevision: revision.parse(input.expectedFolderRevision),
       };
       return folderCommand(
@@ -376,6 +447,12 @@ export function createWorkflowFolderDatabase(
         async (client, workspaceId) => {
           if (request.parentId !== null)
             await readFolder(client, workspaceId, request.parentId);
+          await requireMoveAudienceReview(
+            client,
+            { workspaceId, actorId: input.actorId },
+            { kind: 'folder', folderId, destinationFolderId: request.parentId },
+            request.audienceReview,
+          );
           const current = await readFolder(client, workspaceId, folderId);
           requireRevision(current, request.expectedFolderRevision);
           await requireFreeName(
@@ -476,6 +553,11 @@ export function createWorkflowFolderDatabase(
       const workflowId = uuid.parse(input.workflowId);
       const request = {
         folderId: uuid.nullable().parse(input.folderId),
+        ...(input.audienceReview === undefined
+          ? {}
+          : {
+              audienceReview: audienceReviewSchema.parse(input.audienceReview),
+            }),
         expectedOrganizationRevision: revision.parse(
           input.expectedOrganizationRevision,
         ),
@@ -491,14 +573,26 @@ export function createWorkflowFolderDatabase(
             request,
             roles: EDITORS,
             replay: () =>
-              checkOrganizationReplay(client, scope, workflowId, 'move'),
+              checkOrganizationReplay(
+                client,
+                scope,
+                workflowId,
+                'move',
+                request.folderId,
+              ),
             apply: async () => {
               const organizationRevision = await organizeWorkflow(
                 client,
                 scope,
                 {
                   workflowId,
-                  change: { kind: 'move', folderId: request.folderId },
+                  change: {
+                    kind: 'move',
+                    folderId: request.folderId,
+                    ...(request.audienceReview === undefined
+                      ? {}
+                      : { audienceReview: request.audienceReview }),
+                  },
                   expectedOrganizationRevision:
                     request.expectedOrganizationRevision,
                 },
@@ -512,7 +606,11 @@ export function createWorkflowFolderDatabase(
                 audit: {
                   action: 'workflow.organization.move',
                   targetId: workflowId,
-                  metadata: { organizationRevision },
+                  metadata: {
+                    organizationRevision,
+                    audienceReviewed:
+                      request.audienceReview?.acknowledge === true,
+                  },
                 },
               };
             },

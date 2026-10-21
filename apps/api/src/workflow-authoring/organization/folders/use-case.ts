@@ -1,4 +1,10 @@
 import {
+  sharingPrincipalsQuerySchema,
+  sharingPrincipalsResponseSchema,
+  folderSharingRequestSchema,
+  folderSharingResponseSchema,
+  workflowMoveReviewRequestSchema,
+  workflowMoveReviewResponseSchema,
   workflowFolderListQuerySchema,
   workflowFolderListResponseSchema,
   workflowFolderCreateRequestSchema,
@@ -31,6 +37,58 @@ export class WorkflowFoldersUseCase {
     private readonly folders: WorkflowFolderDatabase,
     private readonly authorization: WorkspaceAuthorizationSource,
   ) {}
+
+  public async sharingPrincipals(
+    input: WorkflowOrganizationInput & { query: unknown },
+  ) {
+    const query = sharingPrincipalsQuerySchema.parse(input.query);
+    await authorizeWorkflowOrganization(input, this.authorization, 'admin');
+    return sharingPrincipalsResponseSchema.parse(
+      await this.folders.sharingPrincipals({
+        ...workflowOrganizationContext(input),
+        query,
+      }),
+    );
+  }
+
+  public async readSharing(
+    input: WorkflowOrganizationInput & { folderId: string },
+  ) {
+    await authorizeWorkflowOrganization(input, this.authorization, 'admin');
+    return folderSharingResponseSchema.parse(
+      await this.folders.readSharing({
+        ...workflowOrganizationContext(input),
+        folderId: input.folderId,
+      }),
+    );
+  }
+
+  public async replaceSharing(input: FolderCommand) {
+    const request = parseRequestBody(folderSharingRequestSchema, input.request);
+    const context = await this.command(input, 'admin');
+    const { replayed, ...sharing } = await this.folders.replaceSharing({
+      ...context,
+      folderId: input.folderId,
+      request,
+    });
+    return { ...folderSharingResponseSchema.parse(sharing), replayed };
+  }
+
+  public async reviewMove(
+    input: WorkflowOrganizationInput & { request: unknown },
+  ) {
+    const request = parseRequestBody(
+      workflowMoveReviewRequestSchema,
+      input.request,
+    );
+    await authorizeWorkflowOrganization(input, this.authorization, 'editor');
+    return workflowMoveReviewResponseSchema.parse(
+      await this.folders.reviewMove({
+        ...workflowOrganizationContext(input),
+        request,
+      }),
+    );
+  }
 
   public async list(
     input: WorkflowOrganizationInput & Readonly<{ query: unknown }>,

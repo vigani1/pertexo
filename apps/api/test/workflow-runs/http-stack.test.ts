@@ -68,7 +68,9 @@ function persistenceFixture() {
   const stepHealth = vi.fn<WorkflowRunPersistence['stepHealth']>();
   const stepRuns = vi.fn<WorkflowRunPersistence['stepRuns']>();
   return {
+    canRead: () => Promise.resolve(true),
     persistence: {
+      canRead: () => Promise.resolve(true),
       start,
       replay,
       recovery,
@@ -191,7 +193,11 @@ describe('workflow runs real Nest HTTP stack', () => {
       effectRisk: 'possible_effects',
       reusedCount: 2,
     });
-    expect(fixture.recovery).toHaveBeenCalledWith({ workspaceId, runId });
+    expect(fixture.recovery).toHaveBeenCalledWith({
+      actorId,
+      workspaceId,
+      runId,
+    });
     for (const body of [
       { workflowVersionId, nodeRunId: runId, input: {} },
       {
@@ -386,6 +392,7 @@ describe('workflow runs real Nest HTTP stack', () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual(snapshot);
     expect(fixture.statistics).toHaveBeenCalledExactlyOnceWith({
+      actorId,
       workspaceId,
       window: '1h',
       includeWorkflows: true,
@@ -516,7 +523,11 @@ describe('workflow runs real Nest HTTP stack', () => {
     expect(input.json()).toEqual({
       input: { kind: 'inline', value: { customerId: 'customer-42' } },
     });
-    expect(fixture.readInput).toHaveBeenCalledWith({ workspaceId, runId });
+    expect(fixture.readInput).toHaveBeenCalledWith({
+      actorId,
+      workspaceId,
+      runId,
+    });
 
     const output = await application.inject({
       method: 'GET',
@@ -526,6 +537,7 @@ describe('workflow runs real Nest HTTP stack', () => {
     expect(output.statusCode).toBe(200);
     expect(output.json()).toEqual({ output: { kind: 'none' } });
     expect(fixture.readNodeRunOutput).toHaveBeenCalledWith({
+      actorId,
       workspaceId,
       runId,
       nodeRunId,
@@ -627,6 +639,7 @@ describe('workflow runs real Nest HTTP stack', () => {
       items: [{ runId, status: 'failed', safeErrorCode: 'provider.timeout' }],
     });
     expect(fixture.stepRuns).toHaveBeenCalledWith({
+      actorId,
       workspaceId,
       workflowId,
       nodeId: 'charge',

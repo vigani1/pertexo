@@ -268,6 +268,7 @@ describe.runIf(fixture.enabled)(
         expect(
           (
             await runs.get({
+              actorId: fixture.actorId,
               workspaceId: fixture.workspaceId,
               runId: first.run.id,
             })

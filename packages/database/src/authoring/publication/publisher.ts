@@ -1,3 +1,4 @@
+import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.js';
 import { recordPromotedPublication } from '../promotion/provenance.js';
 import { PublicationReviewError } from '../reviews/contract.js';
 import { dataTableReferenceIssues } from '../../data-tables/columns/references.js';
@@ -83,6 +84,8 @@ export type WorkflowPublicationDependencies = Readonly<{
     client: PoolClient,
     workspaceId: string,
     actorId: string,
+    workflowId?: string,
+    capability?: 'workflow:read' | 'workflow:update',
   ): Promise<void>;
   catalogs: AuthoringCatalogs;
   transact<T>(
@@ -220,7 +223,8 @@ async function lockAndCompilePublication(
   if (connectionIssues.length > 0)
     throw new InvalidWorkflowGraphError(connectionIssues);
   await validateApprovalAudience(client, input.workspaceId, graph);
-  await lockArtifactReferences(client, input.workspaceId, graph);
+  await requireWorkflowCallTargets(client, input, graph);
+  await lockArtifactReferences(client, input.workspaceId, graph, input.actorId);
   const executable = executableSchema.parse(variant.executableCompiler(graph));
   const versionId = generatePersistedId();
   const { calls } = await validatePublicationCalls(
@@ -459,6 +463,7 @@ export function createWorkflowPublisher(
           client,
           input.workspaceId,
           input.actorId,
+          input.workflowId,
         );
         const claim = await claimPublication(client, input);
         if (claim.replay !== null) return claim.replay;

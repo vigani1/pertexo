@@ -48,6 +48,70 @@ export class WorkflowFoldersController {
     );
   }
 
+  @Get('resource-sharing-principals')
+  @Header('Cache-Control', 'private, no-store')
+  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard)
+  public sharingPrincipals(
+    @Req() request: WorkflowAuthoringRequest,
+    @Param() params: unknown,
+    @Query() query: unknown,
+  ) {
+    const { workspaceId } = workflowFolderWorkspaceParamsSchema.parse(params);
+    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+      this.folders.sharingPrincipals({ ...input, query }),
+    );
+  }
+
+  @Get('workflow-folders/:folderId/sharing')
+  @Header('Cache-Control', 'private, no-store')
+  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard)
+  public readSharing(
+    @Req() request: WorkflowAuthoringRequest,
+    @Param() params: unknown,
+  ) {
+    const { workspaceId, folderId } = workflowFolderParamsSchema.parse(params);
+    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+      this.folders.readSharing({ ...input, folderId }),
+    );
+  }
+
+  @Post('workflow-folders/:folderId/sharing')
+  @Header('Cache-Control', 'private, no-store')
+  @RateLimit('ordinary_mutation')
+  @HttpCode(200)
+  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard, CsrfProtectionGuard)
+  public replaceSharing(
+    @Req() request: WorkflowAuthoringRequest,
+    @Param() params: unknown,
+    @Body() body: unknown,
+  ) {
+    const { workspaceId, folderId } = workflowFolderParamsSchema.parse(params);
+    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+      this.folders.replaceSharing({
+        ...input,
+        folderId,
+        request: body,
+        idempotencyKey: commandKey(request),
+      }),
+    );
+  }
+
+  @Post('workflow-folders/review-move')
+  @Header('Cache-Control', 'private, no-store')
+  @RateLimit('authenticated_read')
+  @HttpCode(200)
+  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard, CsrfProtectionGuard)
+  public reviewMove(
+    @Req() request: WorkflowAuthoringRequest,
+    @Param() params: unknown,
+    @Body() body: unknown,
+  ) {
+    const { workspaceId } = workflowFolderWorkspaceParamsSchema.parse(params);
+    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+      this.folders.reviewMove({ ...input, request: body }),
+    );
+  }
+
   @Post('workflow-folders')
   @Header('Cache-Control', 'private, no-store')
   @RateLimit('ordinary_mutation')

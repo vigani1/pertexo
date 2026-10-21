@@ -27,6 +27,10 @@ export function createWorkflowStepSampleStore(
           input.workspaceId,
           input.actorId,
           rolesForCapability(write ? 'workflow:update' : 'workflow:read'),
+          {
+            workflowId: input.workflowId,
+            capability: write ? 'workflow:update' : 'workflow:read',
+          },
         );
         if (!write)
           await lockWorkflowAuthoringAuthority(

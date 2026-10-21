@@ -165,6 +165,7 @@ export function createWorkflowConcurrencyStore(
             workspaceId,
             actorId,
             ROLES,
+            { workflowId, capability: 'workflow:read' },
           );
           await requireWorkflow(client, workspaceId, workflowId);
           const policy = settingsOf(
@@ -218,6 +219,7 @@ export function createWorkflowConcurrencyStore(
             workspaceId,
             actorId,
             EDITORS,
+            { workflowId, capability: 'workflow:update' },
           );
           await requireWorkflow(client, workspaceId, workflowId);
           const identity = {

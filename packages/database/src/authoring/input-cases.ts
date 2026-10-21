@@ -266,6 +266,10 @@ export function createWorkflowInputCaseDatabase(
           input.workspaceId,
           input.actorId,
           rolesForCapability(write ? 'workflow:update' : 'workflow:read'),
+          {
+            workflowId: input.workflowId,
+            capability: write ? 'workflow:update' : 'workflow:read',
+          },
         );
         return work(client);
       },
@@ -367,7 +371,12 @@ export function createWorkflowInputCaseDatabase(
               (expectations === null ? 0 : Buffer.byteLength(expectations)),
             true,
           );
-          await lockArtifactReferences(client, input.workspaceId, input.input);
+          await lockArtifactReferences(
+            client,
+            input.workspaceId,
+            input.input,
+            input.actorId,
+          );
           await client.query(
             'insert into app.workflow_input_cases(id,workspace_id,workflow_id,workflow_version_id,version_checksum,name) values($1,$2,$3,$4,$5,$6)',
             [
@@ -427,7 +436,12 @@ export function createWorkflowInputCaseDatabase(
             json.bytes +
             (expectations === null ? 0 : Buffer.byteLength(expectations));
           await quota(client, input, bytes, false);
-          await lockArtifactReferences(client, input.workspaceId, input.input);
+          await lockArtifactReferences(
+            client,
+            input.workspaceId,
+            input.input,
+            input.actorId,
+          );
           const revision = item.revision + 1;
           await client.query(
             'insert into app.workflow_input_case_payloads(workspace_id,case_id,revision,input,canonical_bytes,expectations) values($1,$2,$3,$4,$5,$6)',

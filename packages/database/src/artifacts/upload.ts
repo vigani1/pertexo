@@ -1,3 +1,6 @@
+import { lockWorkspaceAuthority } from '../tenant-access/workspaces/authority.js';
+import { WorkspaceAccessDeniedError } from '../tenant-access/errors.js';
+import { visibleArtifactIds } from './access.js';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
@@ -79,19 +82,13 @@ async function requireWorkspaceAccess(
   const roles = rolesForCapability(
     access === 'upload' ? 'artifact:upload' : 'artifact:read',
   );
-  const result = await client.query(
-    `select 1
-       from app.workspace_memberships membership
-       join app.users actor on actor.id=membership.user_id
-       join app.workspaces workspace on workspace.id=membership.workspace_id
-      where membership.workspace_id=$1 and membership.user_id=$2
-        and membership.status='active'
-        and membership.role=any($3::text[])
-        and actor.status='active' and workspace.status='active'
-      for share of membership, actor, workspace`,
-    [workspaceId, actorId, [...roles]],
-  );
-  if (result.rowCount !== 1) throw new ArtifactUploadNotFoundError();
+  try {
+    await lockWorkspaceAuthority(client, workspaceId, actorId, roles);
+  } catch (error) {
+    if (error instanceof WorkspaceAccessDeniedError)
+      throw new ArtifactUploadNotFoundError();
+    throw error;
+  }
 }
 
 async function loadArtifact(
@@ -218,6 +215,13 @@ async function readUploadArtifact(
         access,
       );
       try {
+        if (
+          access === 'read' &&
+          !(await visibleArtifactIds(client, parsed, [parsed.artifactId])).has(
+            parsed.artifactId,
+          )
+        )
+          return null;
         return await loadArtifact(
           client,
           parsed.workspaceId,

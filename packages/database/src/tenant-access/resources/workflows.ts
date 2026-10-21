@@ -1,0 +1,24 @@
+import { sql } from 'drizzle-orm';
+import type { PoolClient } from 'pg';
+import type { FolderScope, WorkflowResourceCapability } from './contract.js';
+import { bindResourcePredicate, workflowScopeSql } from './query-scope.js';
+
+/** Reuse the caller's scope for a direct read or command, including idempotent replay. */
+export async function workflowAccessible(
+  client: PoolClient,
+  scope: FolderScope,
+  workspaceId: string,
+  workflowId: string,
+  capability: WorkflowResourceCapability = 'workflow:read',
+): Promise<boolean> {
+  const parameters: unknown[] = [workspaceId, workflowId];
+  const visible = bindResourcePredicate(
+    workflowScopeSql(scope, sql`workflow.id`, capability),
+    parameters,
+  );
+  const result = await client.query(
+    `select 1 from app.workflows workflow where workflow.workspace_id=$1 and workflow.id=$2 and ${visible}`,
+    parameters,
+  );
+  return result.rowCount === 1;
+}

@@ -16,6 +16,7 @@ const descriptor = { kind: 'artifact', ...reference };
 function row(patch: Record<string, unknown> = {}) {
   return {
     id: reference.artifactId,
+    purpose: 'user-upload',
     byte_length: 4,
     media_type: reference.mediaType,
     sha256: reference.sha256,
@@ -48,15 +49,25 @@ describe('durable artifact references', () => {
   });
   it('does not authorize incidental artifact IDs', async () => {
     const query = vi.fn();
-    await lockArtifactReferences({ query } as never, workspaceId, {
-      artifactId: reference.artifactId,
-    });
+    await lockArtifactReferences(
+      { query } as never,
+      workspaceId,
+      {
+        artifactId: reference.artifactId,
+      },
+      workspaceId,
+    );
     expect(query).not.toHaveBeenCalled();
   });
   it('accepts exact metadata and rejects absent, mismatched or preview-owned authoring references', async () => {
     const query = vi.fn().mockResolvedValue({ rows: [row()] });
     await expect(
-      lockArtifactReferences({ query } as never, workspaceId, descriptor),
+      lockArtifactReferences(
+        { query } as never,
+        workspaceId,
+        descriptor,
+        workspaceId,
+      ),
     ).resolves.toBeUndefined();
     for (const rows of [
       [],
@@ -67,17 +78,24 @@ describe('durable artifact references', () => {
     ]) {
       query.mockResolvedValue({ rows });
       await expect(
-        lockArtifactReferences({ query } as never, workspaceId, descriptor),
+        lockArtifactReferences(
+          { query } as never,
+          workspaceId,
+          descriptor,
+          workspaceId,
+        ),
       ).rejects.toBeInstanceOf(ArtifactMetadataNotFoundError);
     }
   });
   it('checks repeated IDs with differing claimed metadata rather than trusting the first one', async () => {
     const query = vi.fn().mockResolvedValue({ rows: [row()] });
     await expect(
-      lockArtifactReferences({ query } as never, workspaceId, [
-        descriptor,
-        { ...descriptor, sha256: 'b'.repeat(64) },
-      ]),
+      lockArtifactReferences(
+        { query } as never,
+        workspaceId,
+        [descriptor, { ...descriptor, sha256: 'b'.repeat(64) }],
+        workspaceId,
+      ),
     ).rejects.toBeInstanceOf(ArtifactMetadataNotFoundError);
   });
   it('checks the complete reference before handing a worker storage authority', async () => {

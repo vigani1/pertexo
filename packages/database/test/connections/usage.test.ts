@@ -35,18 +35,25 @@ function fixture(
   rows: unknown[] = [],
   absent?: 'authority' | 'connection' | 'anchor',
 ) {
-  const query = vi.fn((sql: string) =>
-    Promise.resolve({
-      rows: sql.startsWith('with page') ? rows : [{}],
-      rowCount:
-        (absent === 'authority' && sql.includes('workspace_memberships')) ||
-        (absent === 'connection' && sql.startsWith('select id')) ||
-        (absent === 'anchor' &&
-          sql.startsWith('select 1 from app.workflow_integration_usage'))
-          ? 0
-          : 1,
-    }),
-  );
+  const query = vi.fn((statement: string | { text: string }) => {
+    const sql = typeof statement === 'string' ? statement : statement.text;
+    const missing =
+      (absent === 'authority' && sql.includes('workspace_memberships')) ||
+      (absent === 'connection' && sql.startsWith('select id')) ||
+      (absent === 'anchor' &&
+        sql.startsWith('select 1 from app.workflow_integration_usage'));
+    return Promise.resolve({
+      rows:
+        missing || sql.includes('from app.workflow_folders')
+          ? []
+          : sql.includes('workspace_memberships')
+            ? [{ role: 'owner' }]
+            : sql.startsWith('with page')
+              ? rows
+              : [{}],
+      rowCount: missing ? 0 : 1,
+    });
+  });
   tenant.client = { query } as unknown as PoolClient;
   return { query, database: createConnectionUsagePersistence({} as Pool) };
 }
@@ -59,13 +66,8 @@ describe('connection usage bounded persistence contract', () => {
     ).toBe(versionId);
     expect(query).toHaveBeenLastCalledWith(
       expect.stringContaining('limit $4'),
-      [workspaceId, connectionId, null, 51],
+      [workspaceId, connectionId, null, 51, workspaceId],
     );
-    expect(
-      query.mock.calls.find(([sql]) =>
-        sql.includes('workspace_memberships'),
-      )?.[0],
-    ).toContain('for share of membership, workspace, actor');
   });
   it('uses a version cursor and reports more only with a sentinel row', async () => {
     const { database } = fixture([
@@ -103,7 +105,9 @@ describe('connection usage bounded persistence contract', () => {
         }),
       ).rejects.toThrow(ConnectionNotFoundError);
       expect(
-        query.mock.calls.some(([sql]) => sql.startsWith('with page')),
+        query.mock.calls.some(([sql]) =>
+          (typeof sql === 'string' ? sql : sql.text).startsWith('with page'),
+        ),
       ).toBe(false);
     },
   );

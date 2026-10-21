@@ -350,6 +350,7 @@ describe('Coordinator node-attempt persistence invariants', () => {
       max: 1,
     });
     const read = {
+      actorId,
       workspaceId: workspaceA,
       runId: lease.runId,
       nodeRunId: lease.nodeRunId,

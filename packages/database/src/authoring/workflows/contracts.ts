@@ -72,6 +72,7 @@ export type ImportWorkflowResult = Readonly<{ workflowId: string }>;
 
 export type CreateWorkflowInput = Readonly<{
   id?: string;
+  folderId?: string | null;
   workspaceId: string;
   actorId: string;
   name: string;

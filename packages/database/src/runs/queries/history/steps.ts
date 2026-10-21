@@ -1,12 +1,10 @@
+import { withResourceWorkflowRead } from '../../../tenant-access/resources/transactions.js';
 import { ordinaryRunSql } from '../../data-policy.js';
 import { sql, type SQL } from 'drizzle-orm';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
-import {
-  withWorkspaceReadTransaction,
-  type WorkspaceTransaction,
-} from '../../../tenant-access/transactions.js';
+import type { WorkspaceTransaction } from '../../../tenant-access/transactions.js';
 
 /** How many of a workflow's newest runs step history looks at (ADR 051). */
 const STEP_HISTORY_RUN_WINDOW = 100;
@@ -37,6 +35,7 @@ const runStatusSchema = z.enum([
 const workflowInputSchema = z
   .object({
     workspaceId: z.uuid(),
+    actorId: z.uuid(),
     workflowId: z.uuid(),
     signal: z.instanceof(AbortSignal).optional(),
   })
@@ -159,20 +158,17 @@ export async function readWorkflowStepHealth(
   input: ReadWorkflowStepHealthInput,
 ): Promise<WorkflowStepHealthPage | undefined> {
   const parsed = workflowInputSchema.parse(input);
-  return withWorkspaceReadTransaction(
-    pool,
-    parsed.workspaceId,
-    async (transaction) => {
-      if (!(await workflowExists(transaction, parsed.workflowId)))
-        return undefined;
-      const recent = recentRuns(transaction, parsed.workflowId);
-      const window = await transaction.db.execute(sql`
+  return withResourceWorkflowRead(pool, parsed, async (transaction) => {
+    if (!(await workflowExists(transaction, parsed.workflowId)))
+      return undefined;
+    const recent = recentRuns(transaction, parsed.workflowId);
+    const window = await transaction.db.execute(sql`
         with recent as (${recent})
         select count(*)::int as runs_considered,
                min(created_at) as oldest_run_at
         from recent
       `);
-      const steps = await transaction.db.execute(sql`
+    const steps = await transaction.db.execute(sql`
         with recent as (${recent})
         select
           node.node_id,
@@ -204,30 +200,28 @@ export async function readWorkflowStepHealth(
         group by node.node_id
         order by node.node_id
       `);
-      const summary = windowRowSchema.parse(window.rows[0]);
-      return Object.freeze({
-        runsConsidered: summary.runs_considered,
-        oldestRunAt: summary.oldest_run_at,
-        items: Object.freeze(
-          steps.rows.map((value) => {
-            const row = healthRowSchema.parse(value);
-            return Object.freeze({
-              nodeId: row.node_id,
-              runs: row.runs,
-              succeeded: row.succeeded,
-              failed: row.failed,
-              skipped: row.skipped,
-              lastStatus: row.last_status,
-              lastRanAt: row.last_ran_at,
-              medianDurationMs: row.median_ms,
-              p95DurationMs: row.p95_ms,
-            });
-          }),
-        ),
-      });
-    },
-    parsed.signal === undefined ? {} : { signal: parsed.signal },
-  );
+    const summary = windowRowSchema.parse(window.rows[0]);
+    return Object.freeze({
+      runsConsidered: summary.runs_considered,
+      oldestRunAt: summary.oldest_run_at,
+      items: Object.freeze(
+        steps.rows.map((value) => {
+          const row = healthRowSchema.parse(value);
+          return Object.freeze({
+            nodeId: row.node_id,
+            runs: row.runs,
+            succeeded: row.succeeded,
+            failed: row.failed,
+            skipped: row.skipped,
+            lastStatus: row.last_status,
+            lastRanAt: row.last_ran_at,
+            medianDurationMs: row.median_ms,
+            p95DurationMs: row.p95_ms,
+          });
+        }),
+      ),
+    });
+  });
 }
 
 /**
@@ -240,13 +234,10 @@ export async function readWorkflowStepRuns(
   input: ReadWorkflowStepRunsInput,
 ): Promise<readonly WorkflowStepRunRecord[] | undefined> {
   const parsed = stepRunsInputSchema.parse(input);
-  return withWorkspaceReadTransaction(
-    pool,
-    parsed.workspaceId,
-    async (transaction) => {
-      if (!(await workflowExists(transaction, parsed.workflowId)))
-        return undefined;
-      const result = await transaction.db.execute(sql`
+  return withResourceWorkflowRead(pool, parsed, async (transaction) => {
+    if (!(await workflowExists(transaction, parsed.workflowId)))
+      return undefined;
+    const result = await transaction.db.execute(sql`
         with recent as (${recentRuns(transaction, parsed.workflowId)})
         select
           recent.id as run_id,
@@ -270,25 +261,23 @@ export async function readWorkflowStepRuns(
                  node.created_at desc, node.id desc
         limit ${parsed.limit}
       `);
-      return Object.freeze(
-        result.rows.map((value) => {
-          const row = stepRunRowSchema.parse(value);
-          return Object.freeze({
-            runId: row.run_id,
-            runStatus: row.run_status,
-            runCreatedAt: row.run_created_at,
-            workflowVersionId: row.workflow_version_id,
-            nodeRunId: row.node_run_id,
-            invocationKey: row.invocation_key,
-            status: row.status,
-            attempts: row.attempts,
-            startedAt: row.started_at,
-            completedAt: row.completed_at,
-            safeErrorCode: row.safe_error_code,
-          });
-        }),
-      );
-    },
-    parsed.signal === undefined ? {} : { signal: parsed.signal },
-  );
+    return Object.freeze(
+      result.rows.map((value) => {
+        const row = stepRunRowSchema.parse(value);
+        return Object.freeze({
+          runId: row.run_id,
+          runStatus: row.run_status,
+          runCreatedAt: row.run_created_at,
+          workflowVersionId: row.workflow_version_id,
+          nodeRunId: row.node_run_id,
+          invocationKey: row.invocation_key,
+          status: row.status,
+          attempts: row.attempts,
+          startedAt: row.started_at,
+          completedAt: row.completed_at,
+          safeErrorCode: row.safe_error_code,
+        });
+      }),
+    );
+  });
 }

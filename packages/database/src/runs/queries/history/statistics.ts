@@ -1,12 +1,11 @@
+import { workflowScopeSql } from '../../../tenant-access/resources/query-scope.js';
+import type { ResourceTransaction } from '../../../tenant-access/resources/transactions.js';
+import { withResourceRead } from '../../../tenant-access/resources/transactions.js';
 import { ordinaryRunSql } from '../../data-policy.js';
 import { sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
-import {
-  withWorkspaceReadTransaction,
-  type WorkspaceTransaction,
-} from '../../../tenant-access/transactions.js';
 import { runStatusSchema } from '../../commands/records.js';
 
 // Exact run counts for one workspace snapshot (ADR 044). Every statement
@@ -26,6 +25,7 @@ const WORKFLOW_RUN_STATISTICS_STATEMENT_TIMEOUT_MILLIS = 2_000;
 const inputSchema = z
   .object({
     workspaceId: z.uuid(),
+    actorId: z.uuid(),
     window: windowSchema,
     includeWorkflows: z.boolean().default(false),
     includeWorkflowName: z.boolean().default(false),
@@ -99,19 +99,16 @@ export async function readWorkflowRunStatistics(
   input: WorkflowRunStatisticsDatabaseInput,
 ): Promise<WorkflowRunStatisticsRecord> {
   const parsed = inputSchema.parse(input);
-  return withWorkspaceReadTransaction(
+  return withResourceRead(
     pool,
-    parsed.workspaceId,
+    parsed,
     (transaction) => readInTransaction(transaction, parsed),
-    {
-      statementTimeoutMillis: WORKFLOW_RUN_STATISTICS_STATEMENT_TIMEOUT_MILLIS,
-      ...(parsed.signal === undefined ? {} : { signal: parsed.signal }),
-    },
+    WORKFLOW_RUN_STATISTICS_STATEMENT_TIMEOUT_MILLIS,
   );
 }
 
 async function readInTransaction(
-  transaction: WorkspaceTransaction,
+  transaction: ResourceTransaction,
   input: z.output<typeof inputSchema>,
 ): Promise<WorkflowRunStatisticsRecord> {
   const hours = WINDOW_HOURS[input.window];
@@ -132,6 +129,7 @@ async function readInTransaction(
           (count(*) filter (where status = 'waiting'))::integer as waiting
         from app.workflow_runs
         where ${sql.raw(ordinaryRunSql())} and workspace_id = ${transaction.workspaceId}
+          and ${workflowScopeSql(transaction.resources, sql`workflow_runs.workflow_id`)}
           and status in ('queued', 'running', 'waiting')
       `)
     ).rows[0],
@@ -140,6 +138,7 @@ async function readInTransaction(
     select status, count(*)::integer as run_count
     from app.workflow_runs
     where ${sql.raw(ordinaryRunSql())} and workspace_id = ${transaction.workspaceId}
+          and ${workflowScopeSql(transaction.resources, sql`workflow_runs.workflow_id`)}
       and created_at >= transaction_timestamp()
         - make_interval(hours => ${hours}::integer)
       and created_at < transaction_timestamp()
@@ -150,7 +149,8 @@ async function readInTransaction(
     coordinated: number;
   }>(sql`
     select count(*) filter(where category='trigger.skipped')::integer count,count(*) filter(where category='trigger.coordinated')::integer coordinated from app.usage_events
-    where workspace_id=${transaction.workspaceId} and category in ('trigger.skipped','trigger.coordinated')
+    where workspace_id=${transaction.workspaceId}
+      and ${workflowScopeSql(transaction.resources, sql`usage_events.resource_id`)} and category in ('trigger.skipped','trigger.coordinated')
       and occurred_at>=transaction_timestamp()-make_interval(hours=>${hours}::integer)
       and occurred_at<transaction_timestamp()
   `);
@@ -183,7 +183,7 @@ async function readInTransaction(
 
 /** The window's busiest workflows, with one extra row to detect truncation. */
 async function readWorkflowBreakdown(
-  transaction: WorkspaceTransaction,
+  transaction: ResourceTransaction,
   input: z.output<typeof inputSchema>,
   hours: number,
 ): Promise<NonNullable<WorkflowRunStatisticsRecord['workflows']>> {
@@ -192,6 +192,7 @@ async function readWorkflowBreakdown(
       select workflow_id, status, count(*)::integer as run_count
       from app.workflow_runs
       where ${sql.raw(ordinaryRunSql())} and workspace_id = ${transaction.workspaceId}
+          and ${workflowScopeSql(transaction.resources, sql`workflow_runs.workflow_id`)}
         and created_at >= transaction_timestamp()
           - make_interval(hours => ${hours}::integer)
         and created_at < transaction_timestamp()

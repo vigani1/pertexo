@@ -1,3 +1,5 @@
+import { workflowFolderGrants } from './schema/authoring/folder-grants.js';
+export { workflowFolderGrants } from './schema/authoring/folder-grants.js';
 import { workflowRunValues } from './schema/runs/values.js';
 export { workflowRunValues } from './schema/runs/values.js';
 import { workflowCommentThreads } from './schema/authoring/collaboration/threads.js';
@@ -236,6 +238,7 @@ export {
 } from './schema/triggers/schedules.js';
 
 export const databaseSchema = {
+  workflowFolderGrants,
   workflowRunValues,
   workflowCommentThreads,
   workflowComments,

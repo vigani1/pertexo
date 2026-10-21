@@ -1,3 +1,4 @@
+import { authorizeWorkflowResource } from '../tenant-access/resources/authority.js';
 import { z } from 'zod';
 
 import {
@@ -30,6 +31,15 @@ export function setWorkflowFailureNotificationPolicy(
   return transaction(input, async (client) => {
     await authorize(client, input.workspaceId, input.actorId, false);
     const workflowId = z.uuid().parse(input.workflowId);
+    if (
+      !(await authorizeWorkflowResource(
+        client,
+        { ...input, workflowId },
+        'workflow:update',
+        true,
+      ))
+    )
+      throw destinationError('not_found', 'Workflow is not visible');
     const operation = 'workflow.failure.notification.policy.set';
     const scope = `${input.actorId}:${workflowId}`;
     const replay = await claimNotificationCommand(
@@ -79,6 +89,15 @@ export function clearWorkflowFailureNotificationPolicy(
   return transaction(input, async (client) => {
     await authorize(client, input.workspaceId, input.actorId, false);
     const workflowId = z.uuid().parse(input.workflowId);
+    if (
+      !(await authorizeWorkflowResource(
+        client,
+        { ...input, workflowId },
+        'workflow:update',
+        true,
+      ))
+    )
+      throw destinationError('not_found', 'Workflow is not visible');
     const operation = 'workflow.failure.notification.policy.clear';
     const scope = `${input.actorId}:${workflowId}`;
     const replay = await claimNotificationCommand(
@@ -124,6 +143,15 @@ export function readWorkflowFailureNotificationPolicy(
   return transaction(input, async (client) => {
     await authorize(client, input.workspaceId, input.actorId, false);
     const workflowId = z.uuid().parse(input.workflowId);
+    if (
+      !(await authorizeWorkflowResource(
+        client,
+        { ...input, workflowId },
+        'workflow:read',
+        true,
+      ))
+    )
+      throw destinationError('not_found', 'Workflow is not visible');
     const result = await client.query<{ destination_id: unknown }>(
       `select policy.destination_id from app.workflows workflow
          left join app.workflow_failure_notification_policies policy
