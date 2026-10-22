@@ -2,6 +2,7 @@ import {
   inspectCodeSource,
   CODE_LIMITS,
   type CodeSettings,
+  type CodeLanguage,
 } from '@pertexo/node-sdk';
 import { CodeField } from './field';
 import { formatByteLength } from '@/lib/format/bytes';
@@ -18,6 +19,8 @@ import {
 } from '../../../model/inspector/node-form';
 import { Notice } from '@/components/ui/notice';
 import { SchemaField } from '../fields/schema-field';
+import { CodeLanguageField } from './language';
+import { CODE_LANGUAGE_PRESENTATION } from './presentation';
 
 /** Syntax checks never execute code; previews use the ordinary worker path. */
 export function CodeSetup({
@@ -31,13 +34,17 @@ export function CodeSetup({
 }>) {
   const id = fieldControlId(form.nodeId, 'code');
   const source = typeof config.code === 'string' ? config.code : '';
-  const issue = inspectCodeSource(source);
+  const language: CodeLanguage =
+    config.language === 'python' ? 'python' : 'javascript';
+  const issue = inspectCodeSource(source, language);
+  const presentation = CODE_LANGUAGE_PRESENTATION[language];
   const defaultSeconds =
     settings === undefined
       ? undefined
       : Math.min(CODE_LIMITS.defaultTimeoutSeconds, settings.maximumSeconds);
   return (
     <>
+      <CodeLanguageField language={language} source={source} form={form} />
       {settings?.enabled === false ? (
         <Notice tone="warning">
           Code steps are off on this instance, so this step can't run or be
@@ -49,12 +56,13 @@ export function CodeSetup({
           id={`${id}-label`}
           className="text-[0.8rem] font-semibold text-foreground/85"
         >
-          JavaScript
+          {presentation.label}
         </p>
         <FieldControl>
           <CodeField
             id={id}
             value={source}
+            language={language}
             editable={form.editable}
             invalid={issue !== undefined}
             describedBy={`${id}-hint${issue === undefined ? '' : ` ${id}-error`}`}
@@ -67,9 +75,8 @@ export function CodeSetup({
           />
         </FieldControl>
         <FieldDescription id={`${id}-hint`}>
-          Return JSON from input and $vars. Await is supported. Code runs in an
-          isolated process without network access. Use HTTP Request to contact a
-          service.
+          {presentation.hint} Code runs in an isolated process without network
+          access. Use HTTP Request to contact a service.
         </FieldDescription>
         {issue === undefined ? null : (
           <FieldError id={`${id}-error`}>
@@ -103,7 +110,7 @@ export function CodeSetup({
         <p className="text-xs text-muted-foreground">
           {settings === undefined
             ? 'Instance limits are unavailable. Reload to try again.'
-            : `${String(settings.memoryMiB)} MB heap · ${String(settings.concurrency)} Code tasks at once. No network or credentials.`}
+            : `${String(settings.memoryMiB)} MB${presentation.memorySuffix} · ${String(settings.concurrency)} Code tasks at once. No network or credentials.`}
         </p>
       )}
     </>

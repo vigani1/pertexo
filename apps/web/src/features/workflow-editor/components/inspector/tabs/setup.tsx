@@ -276,7 +276,7 @@ function SetupControls({
     return <DataTableSetup scope={callScope} config={config} form={form} />;
   if (node.definition.key === 'core.code')
     return (
-      <Suspense fallback={<SkeletonLines label="Loading JavaScript editor" />}>
+      <Suspense fallback={<SkeletonLines label="Loading code editor" />}>
         <CodeSetup config={config} form={form} settings={codeSettings} />
       </Suspense>
     );

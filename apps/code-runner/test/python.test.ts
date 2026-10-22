@@ -139,6 +139,39 @@ return {"total": input["amount"] * _vars["RATE"], "zone": zoneinfo.ZoneInfo("Eur
       diagnostics: { error: { line: 2, message: 'private detail' } },
     });
   });
+  it('preserves multiline string contents in a function body', async () => {
+    expect(await execute('return """first\nsecond"""')).toMatchObject({
+      kind: 'succeeded',
+      output: 'first\nsecond',
+    });
+    expect(await execute('return "first\u2028second"')).toMatchObject({
+      kind: 'succeeded',
+      output: 'first\u2028second',
+    });
+  });
+  it('reports Unicode columns in the same UTF-16 coordinates as the editor', async () => {
+    const source = 'text = "é😀"; raise ValueError("private detail")';
+    expect(await execute(source)).toMatchObject({
+      kind: 'failed',
+      code: 'code.runtime_error',
+      diagnostics: { error: { line: 1, column: source.indexOf('raise') + 1 } },
+    });
+    const syntax = 'text = "😀"; return (';
+    expect(await execute(syntax)).toMatchObject({
+      kind: 'failed',
+      code: 'code.syntax_error',
+      diagnostics: { error: { line: 1, column: syntax.lastIndexOf('(') + 1 } },
+    });
+  });
+  it('locates a SyntaxError raised by user code at the runtime statement', async () => {
+    expect(
+      await execute('value = 1\nraise SyntaxError("private detail")'),
+    ).toMatchObject({
+      kind: 'failed',
+      code: 'code.runtime_error',
+      diagnostics: { error: { line: 2, message: 'private detail' } },
+    });
+  });
   it('bounds print lines and preserves later unclipped entries', async () => {
     const result = await execute(
       'print("x" * 5000)\nprint("later")\nreturn True',

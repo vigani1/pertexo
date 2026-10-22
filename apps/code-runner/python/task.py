@@ -1,5 +1,6 @@
 """Trusted bootstrap for one task; inherited kernel fences provide isolation."""
 import builtins
+import ast
 import importlib
 import json
 import math
@@ -124,11 +125,31 @@ def main():
     if len(frame) > boot["taskBytes"] or not frame.endswith(b"\n"):
         raise RuntimeError("Code task exceeds the bounded transport envelope")
     task = loads(frame)
-    source = "def pertexo_code(input, _vars):\n" + "".join(
-        "    " + line + "\n" for line in task["code"].splitlines())
+    body_lines = task["code"].replace("\r\n", "\n").replace("\r", "\n").split("\n")
+
+    def column(line, offset, byte_offset=False):
+        text = body_lines[line - 1] if 0 < line <= len(body_lines) else ""
+        prefix = (text.encode("utf-8")[:offset].decode("utf-8", errors="ignore")
+                  if byte_offset else text[:offset])
+        return len(prefix.encode("utf-16-le")) // 2 + 1
+
     phase = "compile"
     try:
-        compiled = compile(source, "pertexo-code.py", "exec")
+        tree = ast.parse("\n".join(body_lines), "pertexo-code.py")
+        if not tree.body:
+            raise SyntaxError("Enter a Python function body.", ("pertexo-code.py", 1, 1, body_lines[0]))
+        # Indenting source would also indent multiline string contents. Wrap
+        # the parsed statements instead, retaining their original coordinates.
+        function = ast.FunctionDef(
+            name="pertexo_code",
+            args=ast.arguments(posonlyargs=[], args=[ast.arg(arg="input"), ast.arg(arg="_vars")],
+                               vararg=None, kwonlyargs=[], kw_defaults=[], kwarg=None, defaults=[]),
+            body=tree.body, decorator_list=[], type_params=[],
+            returns=None, type_comment=None,
+            lineno=1, col_offset=0, end_lineno=len(body_lines),
+            end_col_offset=len(body_lines[-1].encode("utf-8")))
+        tree.body = [function]
+        compiled = compile(ast.fix_missing_locations(tree), "pertexo-code.py", "exec")
         user_builtins = dict(vars(builtins))
         for name in ("open", "exec", "eval", "compile", "breakpoint", "help", "exit", "quit"):
             user_builtins.pop(name, None)
@@ -149,15 +170,16 @@ def main():
                 "code.output_invalid" if phase == "output" else
                 "code.runtime_error")
         detail = {"message": bounded_text(error.msg if isinstance(error, SyntaxError) else str(error), 2048)}
-        if isinstance(error, SyntaxError):
-            detail["line"] = max(1, (error.lineno or 2) - 1)
-            detail["column"] = max(1, (error.offset or 5) - 4)
+        if phase == "compile" and isinstance(error, SyntaxError):
+            detail["line"] = max(1, error.lineno or 1)
+            detail["column"] = column(detail["line"], max(0, (error.offset or 1) - 1),
+                                      byte_offset=error.text is None)
         else:
             for entry in traceback.extract_tb(error.__traceback__):
                 if entry.filename == "pertexo-code.py":
-                    detail["line"] = max(1, entry.lineno - 1)
+                    detail["line"] = max(1, entry.lineno)
                     if entry.colno is not None:
-                        detail["column"] = max(1, entry.colno - 3)
+                        detail["column"] = column(detail["line"], entry.colno, byte_offset=True)
         send({"kind": "failed", "code": code,
               "diagnostics": {"logs": [], "truncated": False, "error": detail}})
 

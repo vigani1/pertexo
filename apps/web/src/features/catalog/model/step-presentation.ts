@@ -129,7 +129,8 @@ const registry: Readonly<Record<string, RegistryEntry>> = Object.freeze({
   },
   'core.code': {
     name: 'Code',
-    description: 'Transform JSON with JavaScript in an isolated process',
+    description:
+      'Transform JSON with JavaScript or Python in an isolated process',
     icon: BracesIcon,
     family: 'transform',
   },

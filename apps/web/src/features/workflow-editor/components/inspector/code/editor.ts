@@ -1,8 +1,15 @@
 import { codeTheme, codeSyntaxStyles } from './theme';
+import {
+  CODE_LIMITS,
+  type CodeLanguage,
+  type CodeSyntaxIssue,
+} from '@pertexo/node-sdk';
+import type { EditorState as CodeEditorState } from '@codemirror/state';
 
 export type CodeFieldProps = Readonly<{
   id: string;
   value: string;
+  language: CodeLanguage;
   editable: boolean;
   invalid: boolean;
   describedBy: string;
@@ -18,16 +25,17 @@ export async function createCodeEditor(
   parent: HTMLElement,
   readProps: () => CodeFieldProps,
   signal: AbortSignal,
+  reportSyntax: (source: string, issue: CodeSyntaxIssue | undefined) => void,
 ): Promise<CodeEditor | undefined> {
-  const [state, viewModule, commands, language, javascript] = await Promise.all(
-    [
+  const [state, viewModule, commands, language, javascript, python] =
+    await Promise.all([
       import('@codemirror/state'),
       import('@codemirror/view'),
       import('@codemirror/commands'),
       import('@codemirror/language'),
       import('@codemirror/lang-javascript'),
-    ],
-  );
+      import('@codemirror/lang-python'),
+    ]);
   if (signal.aborted) return;
   const { EditorState, Compartment, Annotation, Transaction } = state;
   const {
@@ -39,6 +47,34 @@ export async function createCodeEditor(
   } = viewModule;
   const externalChange = Annotation.define<boolean>();
   const options = new Compartment();
+  const syntax = new Compartment();
+  const syntaxFor = (chosen: CodeLanguage) =>
+    chosen === 'python' ? python.python() : javascript.javascript();
+  const inspect = (document: CodeEditorState, chosen: CodeLanguage) => {
+    const source = document.doc.toString();
+    if (chosen === 'python' && source.length <= CODE_LIMITS.sourceBytes) {
+      // Reuse CodeMirror's incremental grammar and keep typing work bounded.
+      const tree = language.ensureSyntaxTree(document, document.doc.length, 50);
+      const cursor = tree?.cursor();
+      if (cursor === undefined) {
+        reportSyntax(source, undefined);
+        return;
+      }
+      do {
+        if (!cursor.type.isError) continue;
+        const position = Math.min(cursor.from, document.doc.length);
+        const line = document.doc.lineAt(position);
+        reportSyntax(source, {
+          message:
+            'Check Python syntax here. Preview gives the compiler’s precise error.',
+          line: line.number,
+          column: position - line.from + 1,
+        });
+        return;
+      } while (cursor.next());
+    }
+    reportSyntax(source, undefined);
+  };
   const controlOptions = (props: CodeFieldProps) => [
     EditorState.readOnly.of(!props.editable),
     EditorView.editable.of(props.editable),
@@ -67,7 +103,7 @@ export async function createCodeEditor(
         highlightSpecialChars(),
         commands.history(),
         keymap.of([...commands.defaultKeymap, ...commands.historyKeymap]),
-        javascript.javascript(),
+        syntax.of(syntaxFor(current.language)),
         language.bracketMatching(),
         language.indentOnInput(),
         EditorView.lineWrapping,
@@ -84,22 +120,30 @@ export async function createCodeEditor(
             )
           )
             readProps().onChange(update.state.doc.toString());
+          if (
+            update.docChanged ||
+            language.syntaxTree(update.startState) !==
+              language.syntaxTree(update.state)
+          )
+            inspect(update.state, readProps().language);
         }),
       ],
     }),
   });
+  inspect(view.state, current.language);
   return {
     destroy: () => {
       view.destroy();
     },
     sync: (next) => {
       const changed = view.state.doc.toString() !== next.value;
+      const languageChanged = current.language !== next.language;
       const optionsChanged =
         current.editable !== next.editable ||
         current.invalid !== next.invalid ||
         current.describedBy !== next.describedBy ||
         current.id !== next.id;
-      if (changed || optionsChanged)
+      if (changed || optionsChanged || languageChanged)
         view.dispatch({
           ...(changed
             ? {
@@ -110,14 +154,20 @@ export async function createCodeEditor(
                 },
               }
             : {}),
-          ...(optionsChanged
-            ? { effects: options.reconfigure(controlOptions(next)) }
-            : {}),
+          effects: [
+            ...(optionsChanged
+              ? [options.reconfigure(controlOptions(next))]
+              : []),
+            ...(languageChanged
+              ? [syntax.reconfigure(syntaxFor(next.language))]
+              : []),
+          ],
           annotations: [
             externalChange.of(true),
             Transaction.addToHistory.of(false),
           ],
         });
+      if (languageChanged) inspect(view.state, next.language);
       current = next;
     },
   };
