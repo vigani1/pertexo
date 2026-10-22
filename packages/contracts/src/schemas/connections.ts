@@ -300,6 +300,8 @@ export const connectionResponseSchema = z
       .readonly(),
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
+    /** Omitted means everyone in the workspace; who can use it stays on the sharing read. */
+    accessMode: z.enum(['workspace', 'restricted']).optional(),
   })
   .strict()
   .readonly();

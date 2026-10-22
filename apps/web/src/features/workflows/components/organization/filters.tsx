@@ -43,7 +43,7 @@ import {
   type WorkflowListSearch,
   type WorkflowListSearchUpdate,
 } from '../../model/list-view';
-import { WorkflowOrganizationManager } from './manager';
+import { WorkflowTagsDialog } from './tags/dialog';
 import { workflowFolderOptions } from '../../model/organization/folder-navigation';
 import {
   isOrganizationReadDenied,
@@ -210,7 +210,7 @@ export function WorkflowOrganizationFilters({
         </Select>
       </div>
       {managing ? (
-        <WorkflowOrganizationManager
+        <WorkflowTagsDialog
           apiClient={apiClient}
           userId={userId}
           workspace={workspace}
@@ -335,7 +335,7 @@ function WorkflowFilterChoices({
       </Button>
       {onManage === undefined ? null : (
         <Button variant="outline" onClick={onManage}>
-          Manage folders and tags…
+          Manage tags…
         </Button>
       )}
     </>

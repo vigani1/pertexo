@@ -68,6 +68,7 @@ for (const theme of ['light', 'dark'] as const)
           revision: 1,
           depth: 1,
           canCreateWorkflows: true,
+          accessMode: 'restricted',
         },
         {
           id: folderId,
@@ -130,8 +131,20 @@ for (const theme of ['light', 'dark'] as const)
         route.fulfill({
           json: {
             items: [
-              { kind: 'member', userId: memberId, label: 'Finance reviewer' },
-              { kind: 'member', userId: user.id, label: 'Operations owner' },
+              {
+                kind: 'member',
+                userId: memberId,
+                label: 'Finance reviewer',
+                email: 'reviewer@example.test',
+                role: 'builder',
+              },
+              {
+                kind: 'member',
+                userId: user.id,
+                label: 'Operations owner',
+                email: 'owner@example.test',
+                role: 'operator',
+              },
             ],
             next: null,
           },
@@ -171,46 +184,47 @@ for (const theme of ['light', 'dark'] as const)
         },
       );
       await page.goto(`/w/${workspaceId}/workflows`);
-      await page.getByRole('button', { name: /^Filters/u }).click();
-      await page
-        .getByRole('button', { name: 'Manage folders and tags…' })
-        .click();
-      const manager = page.getByRole('dialog', {
-        name: 'Manage workflow organization',
-      });
-      await manager
-        .getByRole('button', { name: 'Edit folder Finance', exact: true })
-        .click();
-      await manager
-        .getByRole('button', { name: 'Sharing', exact: true })
-        .click();
-      const sharingForm = manager.getByRole('region', {
-        name: 'Sharing for Finance',
-      });
+      const shelf = page.getByRole('region', { name: 'Folders' });
       await expect(
-        sharingForm.getByRole('button', { name: 'Remove Finance reviewer' }),
+        shelf.getByRole('img', { name: 'Only chosen people' }),
       ).toBeVisible();
-      await sharingForm
+      await shelf
+        .getByRole('button', { name: /^Restricted Operations/u })
+        .click();
+      await expect(
+        page.getByRole('heading', { name: 'Restricted Operations', level: 2 }),
+      ).toBeVisible();
+      await shelf.getByRole('button', { name: 'Actions for Finance' }).click();
+      await page.getByRole('menuitem', { name: 'Share…' }).click();
+      const share = page.getByRole('dialog', { name: 'Share Finance' });
+      await expect(
+        share.getByRole('button', { name: 'Remove Finance reviewer' }),
+      ).toBeVisible();
+      await expect(
+        share.getByText('People also need access to', { exact: false }),
+      ).toBeVisible();
+      await share
         .getByRole('combobox', { name: 'Access for Finance reviewer' })
         .focus();
       await page.keyboard.press('ArrowDown');
-      await page.getByRole('option', { name: 'Viewer', exact: true }).click();
+      await page.getByRole('option', { name: 'Can view', exact: true }).click();
       await capture(page, info, `folder-sharing-${theme}-${String(width)}`);
-      await sharingForm
-        .getByRole('button', { name: 'Save sharing', exact: true })
+      await share
+        .getByRole('button', { name: 'Save', exact: true })
         .press('Enter');
       await expect.poll(() => shares).toBe(1);
-      await expect(
-        manager.getByRole('button', { name: 'Move folder', exact: true }),
-      ).toBeEnabled();
-      await manager.getByRole('combobox', { name: 'Parent folder' }).click();
+      await expect(share).toBeHidden();
+      await shelf.getByRole('button', { name: 'Actions for Finance' }).click();
+      await page.getByRole('menuitem', { name: 'Move to…' }).click();
+      const move = page.getByRole('dialog', { name: 'Move Finance' });
+      await move.getByRole('combobox', { name: 'Move to' }).click();
       await page
-        .getByRole('option', { name: 'Unfiled / top level', exact: true })
+        .getByRole('option', { name: 'Top level', exact: true })
         .click();
-      await manager
+      await move
         .getByRole('button', { name: 'Move folder', exact: true })
         .click();
-      const review = manager.getByRole('region', {
+      const review = move.getByRole('region', {
         name: 'Review audience change',
       });
       const approve = review.getByRole('button', {
@@ -222,7 +236,7 @@ for (const theme of ['light', 'dark'] as const)
       await capture(page, info, `audience-review-${theme}-${String(width)}`);
       await approve.press('Enter');
       await expect.poll(() => moves).toBe(1);
-      await manager.getByRole('button', { name: 'Close manager' }).click();
+      await expect(move).toBeHidden();
       const connection = {
         id: connectionId,
         workspaceId,
@@ -276,23 +290,25 @@ for (const theme of ['light', 'dark'] as const)
         name: 'Billing API',
         exact: true,
       });
-      await details
-        .getByRole('button', { name: 'Sharing', exact: true })
-        .click();
+      await details.getByRole('button', { name: 'Share', exact: true }).click();
       await expect(
         details.getByText('Who can use this connection?'),
       ).toBeVisible();
       await expect(
         details.getByRole('button', { name: 'Add Operations owner' }),
       ).toBeVisible();
+      await details
+        .getByRole('button', { name: 'Add Operations owner' })
+        .click();
       await capture(page, info, `connection-sharing-${theme}-${String(width)}`);
       await details
-        .getByRole('button', { name: 'Save sharing', exact: true })
+        .getByRole('button', { name: 'Save', exact: true })
         .press('Enter');
       await expect.poll(() => connectionShares).toBe(1);
+      // Saving returns to the connection's details.
       await expect(
-        details.getByRole('button', { name: 'Back to details' }),
-      ).toBeEnabled();
+        details.getByRole('button', { name: 'Share', exact: true }),
+      ).toBeVisible();
       await page.route(`${base}/workflows/${workflowId}`, (route) =>
         route.fulfill({
           json: {

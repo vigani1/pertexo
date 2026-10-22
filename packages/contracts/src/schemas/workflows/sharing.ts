@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { workspaceRoleSchema } from '../identity/membership.js';
 const id = z.uuid().overwrite((value) => value.toLowerCase());
 const access = z.enum(['viewer', 'editor']);
 export const folderPrincipalSchema = z.discriminatedUnion('kind', [
@@ -113,7 +114,14 @@ export const sharingPrincipalsQuerySchema = z
   .strict();
 const sharingPrincipalSchema = z.discriminatedUnion('kind', [
   z
-    .object({ kind: z.literal('member'), userId: id, label: z.string() })
+    .object({
+      kind: z.literal('member'),
+      userId: id,
+      label: z.string(),
+      // Owners and admins always have access, so pickers can say so instead of offering them.
+      email: z.string().max(320),
+      role: workspaceRoleSchema,
+    })
     .strict(),
   z
     .object({

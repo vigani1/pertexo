@@ -11,12 +11,15 @@ export function useSharingEditor<
   invalidationKey,
   read,
   replace,
+  onSaved,
 }: Readonly<{
   resourceId: string | undefined;
   queryKey: QueryKey;
   invalidationKey: QueryKey;
   read: (signal: AbortSignal) => Promise<Snapshot>;
   replace: (snapshot: Snapshot, key: string) => Promise<unknown>;
+  /** Called once the saved grants have been read back. */
+  onSaved?: (() => void) | undefined;
 }>) {
   const cache = useQueryClient();
   const reader = useQuery({
@@ -36,7 +39,10 @@ export function useSharingEditor<
         { queryKey: invalidationKey },
         { cancelRefetch: false },
       );
-      if ((await refreshed).isSuccess) setEdited(undefined);
+      if ((await refreshed).isSuccess) {
+        setEdited(undefined);
+        onSaved?.();
+      }
     },
     { action: 'saving sharing' },
   );

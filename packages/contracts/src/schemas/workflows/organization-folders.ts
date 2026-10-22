@@ -60,6 +60,8 @@ export const workflowFolderSchema = z
     revision: workflowFolderRevisionSchema,
     canCreateWorkflows: z.boolean().optional(),
     depth: z.number().int().min(1).max(WORKFLOW_FOLDER_LIMITS.depth),
+    /** Omitted means everyone in the workspace; who has access stays on the sharing read. */
+    accessMode: z.enum(['workspace', 'restricted']).optional(),
   })
   .strict()
   .refine((folder) =>

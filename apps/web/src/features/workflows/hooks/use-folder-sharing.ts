@@ -9,6 +9,7 @@ import { workflowOrganizationKeys } from '../data/organization/queries';
 export function useFolderSharingEditor(
   scope: WorkspaceApiScope,
   folderId: string | undefined,
+  onSaved?: () => void,
 ) {
   return useSharingEditor<FolderSharing>({
     resourceId: folderId,
@@ -36,5 +37,6 @@ export function useFolderSharingEditor(
         },
         key,
       ),
+    onSaved,
   });
 }
