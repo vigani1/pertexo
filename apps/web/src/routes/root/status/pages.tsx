@@ -8,6 +8,7 @@ import {
 } from '@tanstack/react-router';
 import { CopyButton } from '@/components/ui/copy-button';
 import { Button } from '@/components/ui/button';
+import { ProgressButton } from '@/components/ui/progress-button';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { CoreOrb } from '@/components/patterns/core/orb';
 import {
@@ -23,7 +24,14 @@ import {
 } from '@/components/patterns/states/thread-illustrations';
 import { Wordmark } from '@/features/auth/auth-stage.public';
 import { knownWorkspaceName } from '@/features/workspaces/last-workspace.public';
-import { isNotFound, supportReference } from '@/lib/api/error-copy';
+import { isApiError } from '@/lib/api/error';
+import {
+  isForbidden,
+  isNotFound,
+  retryAfterSeconds,
+  supportReference,
+} from '@/lib/api/error-copy';
+import { useNow } from '@/lib/hooks/use-now';
 
 function FullScreen({ children }: Readonly<{ children: ReactNode }>) {
   return (
@@ -189,7 +197,6 @@ function ErrorReference({ reference }: Readonly<{ reference: string }>) {
 
 export function RouteError({ error, reset }: ErrorComponentProps) {
   const router = useRouter();
-  const reference = supportReference(error);
   async function retry() {
     await router.invalidate();
     reset();
@@ -203,6 +210,43 @@ export function RouteError({ error, reset }: ErrorComponentProps) {
         action={goHome}
       />
     );
+  if (isForbidden(error))
+    return (
+      <FullScreenState
+        art={<BarredThread />}
+        title="You don’t have access to this"
+        description="Your role here doesn’t include this page. A workspace owner or admin can change it."
+        action={goHome}
+      />
+    );
+  if (isApiError(error) && error.status === 429)
+    return (
+      <RateLimited
+        // Each refusal brings its own Retry-After, so its countdown starts over.
+        key={error.requestId ?? 'rate-limited'}
+        seconds={retryAfterSeconds(error) ?? 0}
+        onRetry={() => void retry()}
+      />
+    );
+  if (isApiError(error) && error.kind === 'network')
+    return (
+      <Unreachable
+        orb="idle"
+        title="Pertexo can’t be reached"
+        description="Check your internet connection, then try again. Your work is safe."
+        onRetry={() => void retry()}
+      />
+    );
+  if (isApiError(error) && error.kind === 'timeout')
+    return (
+      <Unreachable
+        orb="waiting"
+        title="Pertexo is taking too long"
+        description="It may be busy for a moment. Try again; your work is safe."
+        onRetry={() => void retry()}
+      />
+    );
+  const reference = supportReference(error);
   return (
     <FullScreen>
       <SystemState role="alert" className={CENTRED}>
@@ -221,6 +265,70 @@ export function RouteError({ error, reset }: ErrorComponentProps) {
           <Button variant="primary" onClick={() => void retry()}>
             Try again
           </Button>
+        </SystemStateActions>
+      </SystemState>
+    </FullScreen>
+  );
+}
+
+/** Nothing is broken, so the Core stays calm instead of turning red. */
+function Unreachable({
+  orb,
+  title,
+  description,
+  onRetry,
+}: Readonly<{
+  orb: 'idle' | 'waiting';
+  title: string;
+  description: string;
+  onRetry: () => void;
+}>) {
+  return (
+    <FullScreen>
+      <SystemState role="alert" className={CENTRED}>
+        <SystemStateArt>
+          <CoreOrb state={orb} className="size-36" />
+        </SystemStateArt>
+        <SystemStateTitle>{title}</SystemStateTitle>
+        <SystemStateDescription>{description}</SystemStateDescription>
+        <SystemStateActions>
+          <Button variant="primary" onClick={onRetry}>
+            Try again
+          </Button>
+        </SystemStateActions>
+      </SystemState>
+    </FullScreen>
+  );
+}
+
+/** Retrying before the server's Retry-After only earns another refusal. */
+function RateLimited({
+  seconds,
+  onRetry,
+}: Readonly<{ seconds: number; onRetry: () => void }>) {
+  const [deadline] = useState(() => Date.now() + seconds * 1_000);
+  const now = useNow(250, seconds > 0, deadline);
+  const waitSeconds = Math.max(0, Math.ceil((deadline - now) / 1_000));
+  return (
+    <FullScreen>
+      <SystemState role="alert" className={CENTRED}>
+        <SystemStateArt>
+          <CoreOrb state="waiting" className="size-36" />
+        </SystemStateArt>
+        <SystemStateTitle>Too many requests</SystemStateTitle>
+        <SystemStateDescription>
+          Pertexo is pacing requests from this browser. Your work is safe, and
+          you can try again in a moment.
+        </SystemStateDescription>
+        <SystemStateActions>
+          <ProgressButton
+            variant="primary"
+            pendingLabel="Trying again…"
+            waitSeconds={waitSeconds}
+            onClick={onRetry}
+          >
+            Try again
+          </ProgressButton>
         </SystemStateActions>
       </SystemState>
     </FullScreen>
