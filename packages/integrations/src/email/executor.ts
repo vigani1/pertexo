@@ -30,12 +30,6 @@ import {
 
 export class EmailSendNotificationExecutorError extends NodeExecutorFailure {
   public override readonly name = 'EmailSendNotificationExecutorError';
-  public constructor(
-    outcome: ConstructorParameters<typeof NodeExecutorFailure>[0],
-    public readonly retryAfterMillis?: number,
-  ) {
-    super(outcome);
-  }
 }
 
 export interface EmailSendNotificationExecutorTelemetry {
@@ -85,10 +79,14 @@ function failure(
   possiblyDispatched: boolean,
   retryAfterMillis?: number,
 ) {
-  return new EmailSendNotificationExecutorError(
-    { kind, errorKind, possiblyDispatched },
-    retryAfterMillis,
-  );
+  return new EmailSendNotificationExecutorError({
+    kind,
+    errorKind,
+    possiblyDispatched,
+    ...(retryAfterMillis === undefined
+      ? {}
+      : { minimumRetryDelayMillis: Math.min(retryAfterMillis, 60_000) }),
+  });
 }
 
 function credentialFailure(runtime: NodeExecutionRuntime | undefined) {

@@ -1,15 +1,16 @@
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { isUnauthenticated } from '@/features/auth/session/session-identity.public';
 import { isApiError } from '@/lib/api/error';
-import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
+import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import { leaveWorkspace } from '../../workspaces.api';
 import { directoryMembershipFeedback } from '../../../model/directory-membership';
 
 /** Why leaving failed, in words; the owner is told what to do first. */
 function leaveFailure(cause: unknown): string {
-  if (isUncertainOutcome(cause))
+  if (isUnconfirmedCommand(cause))
     return 'We couldn’t confirm whether you left. Try again — it’s the same request, so it can’t happen twice.';
   const directoryFeedback = directoryMembershipFeedback(cause);
   if (directoryFeedback !== undefined) return directoryFeedback;
@@ -88,7 +89,7 @@ export function useLeaveWorkspaceCommand({
         await finish(false, submissionOwner);
         return false;
       }
-      const uncertain = isUncertainOutcome(cause);
+      const uncertain = isUnconfirmedCommand(cause);
       if (!uncertain) key.current = undefined;
       setFailure({ message: leaveFailure(cause), uncertain });
       return false;

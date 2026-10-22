@@ -502,3 +502,14 @@ all probes were removed. CLI 64 and operator 55 cases pass after this change.
 Reference: [typed-linting project selection](https://typescript-eslint.io/troubleshooting/typed-linting/monorepos/).
 A separate correction commit preserves the move/wiring history; required CI must
 pass on that final commit before merge.
+
+## Audit command identity correction (2026-10-23)
+
+Shared command receipts hash canonical JSON, so object key order cannot turn an
+exact retry into a conflict. Invitation resend/revoke identity includes the
+invitation ID as well as the reviewed revision. The owner approved direct hash
+replacement before launch; no production receipts require migration. Browser
+key holders use the shared unconfirmed-command rule for network, timeout,
+protocol and all 5xx failures, retaining the original key, body and preconditions.
+503 feedback never claims that nothing changed. Known configuration reasons
+remain visible while retaining the command; no automatic mutation retries.

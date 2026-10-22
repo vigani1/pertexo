@@ -56,12 +56,6 @@ type SlackCredential = ReturnType<
 
 export class SlackSendMessageExecutorError extends NodeExecutorFailure {
   public override readonly name = 'SlackSendMessageExecutorError';
-  public constructor(
-    outcome: ConstructorParameters<typeof NodeExecutorFailure>[0],
-    public readonly retryAfterMillis?: number,
-  ) {
-    super(outcome);
-  }
 }
 
 export interface SlackSendMessageExecutorTelemetry {
@@ -93,10 +87,14 @@ function failure(
   possiblyDispatched: boolean,
   retryAfterMillis?: number,
 ): SlackSendMessageExecutorError {
-  return new SlackSendMessageExecutorError(
-    { kind, errorKind, possiblyDispatched },
-    retryAfterMillis,
-  );
+  return new SlackSendMessageExecutorError({
+    kind,
+    errorKind,
+    possiblyDispatched,
+    ...(retryAfterMillis === undefined
+      ? {}
+      : { minimumRetryDelayMillis: Math.min(retryAfterMillis, 60_000) }),
+  });
 }
 
 function classifyResult(

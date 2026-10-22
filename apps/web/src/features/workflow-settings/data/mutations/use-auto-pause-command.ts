@@ -1,8 +1,9 @@
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
-import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
+import { describeCommandError } from '@/lib/api/error-copy';
 import { commandAutoPause, type AutoPauseCommand } from '../auto-pause.api';
 import { autoPauseKeys } from '../auto-pause.queries';
 import { settingsCommandError } from './settings-command';
@@ -51,7 +52,7 @@ export function useAutoPauseCommand(
       setUnconfirmed(false);
       return true;
     } catch (cause) {
-      const uncertain = isUncertainOutcome(cause);
+      const uncertain = isUnconfirmedCommand(cause);
       const revisionConflict =
         isApiError(cause) &&
         cause.kind === 'problem' &&

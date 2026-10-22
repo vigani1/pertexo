@@ -122,3 +122,13 @@ The PR records full pre-push and CI evidence before merge.
 
 Later: error-specific policy, configurable backoff/jitter, longer delays,
 single-step preview retry coordination, new integrations and AI.
+
+## Provider delay correction (2026-10-23)
+
+Slack and email use `NodeExecutorFailure.minimumRetryDelayMillis`, the existing
+worker/persistence/scheduler field, instead of subclass-only delay properties.
+Provider hints are bounded to the existing 60-second scheduler/receipt cap,
+matching HTTP; longer client hints do not extend the stored format. A real
+worker/Redis/PostgreSQL regression proves each provider's seven-second hint is
+persisted and its retry cannot be scheduled earlier. Retry eligibility, dispatch
+truth, configured attempt counts and unknown outcomes are unchanged.

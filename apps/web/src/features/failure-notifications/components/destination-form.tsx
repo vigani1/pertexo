@@ -1,3 +1,4 @@
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import { usableConnections } from '../model/destination-copy';
 import { useId, useRef, useState } from 'react';
 import type {
@@ -20,7 +21,6 @@ import {
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { isApiError } from '@/lib/api/error';
-import { isUncertainOutcome } from '@/lib/api/error-copy';
 import {
   destinationCommandError,
   isDestinationConflict,
@@ -139,7 +139,7 @@ function SaveFailure({
   return (
     <Notice
       role="alert"
-      tone={conflict || isUncertainOutcome(error) ? 'warning' : 'destructive'}
+      tone={conflict || isUnconfirmedCommand(error) ? 'warning' : 'destructive'}
       action={
         conflict ? (
           <Button
@@ -255,7 +255,7 @@ export function DestinationForm({
 
   const conflict =
     editing && mutation.isError && isDestinationConflict(mutation.error);
-  const uncertain = mutation.isError && isUncertainOutcome(mutation.error);
+  const uncertain = mutation.isError && isUnconfirmedCommand(mutation.error);
 
   return (
     <form

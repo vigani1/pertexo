@@ -1,8 +1,8 @@
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import type { UserProfileResponse } from '@pertexo/contracts';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { isApiError } from '@/lib/api/error';
-import { isUncertainOutcome } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import { updateCurrentUserProfile } from '../../../data/auth.api';
 import { currentUserQueryKey } from '../../../data/auth.queries';
@@ -49,7 +49,7 @@ export function useDisplayNameChange(
       setState({ kind: 'idle' });
       input.onChanged(receipt.profile);
     } catch (cause) {
-      if (isUncertainOutcome(cause)) {
+      if (isUnconfirmedCommand(cause)) {
         setState({ kind: 'unconfirmed', attempt });
         return;
       }

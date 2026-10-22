@@ -7,7 +7,7 @@ import {
 import type { ApiClient } from '@/lib/api/client';
 import { getAllAccessibleWorkspaces } from '@/features/workspaces/queries.public';
 import { ApiError, isApiError } from '@/lib/api/error';
-import { isUncertainOutcome } from '@/lib/api/error-copy';
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import { commandErrorMessage } from './command-utils';
 
 type RunAttempt = Readonly<{
@@ -214,13 +214,13 @@ export function useWorkflowRunSubmission({
           isApiError(cause) &&
             cause.problem?.code === 'workflow.published_version_conflict',
         );
-        const uncertain = isUncertainOutcome(cause);
+        const uncertain = isUnconfirmedCommand(cause);
         setRecoveryIntent(uncertain ? command.intent : undefined);
         if (!uncertain) attempt.current = undefined;
         setRetryAvailable(uncertain && attempt.current !== undefined);
       }
       setError(
-        submitted && isUncertainOutcome(cause)
+        submitted && isUnconfirmedCommand(cause)
           ? 'We couldn’t confirm whether this run started. Retry the same input, deadline and version within 24 hours of the first attempt. Don’t start a replacement run before resolving it.'
           : commandErrorMessage(cause, 'starting this run'),
       );
