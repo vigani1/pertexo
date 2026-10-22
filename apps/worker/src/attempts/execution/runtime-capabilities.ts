@@ -303,12 +303,13 @@ export async function createWorkerNodeRuntimeCapabilities(
     if (codeClient !== undefined && options.codeRunner !== undefined) {
       const settings = options.codeRunner.settings;
       factories.code = (context) => ({
-        execute: async ({ code, timeoutSeconds, input, signal }) => {
+        execute: async ({ code, language, timeoutSeconds, input, signal }) => {
           assertCapabilityRuntimeOpen(lifecycle);
           return retainCodeOutput(
             await codeClient.execute(
               {
                 code,
+                ...(language === undefined ? {} : { language }),
                 timeoutSeconds:
                   timeoutSeconds ??
                   Math.min(

@@ -20,6 +20,9 @@ export const coreCodeExecutor: NodeExecutorRegistration = Object.freeze({
     const settings = config as CoreCodeConfig;
     const result = await code.execute({
       code: settings.code,
+      ...(settings.language === undefined
+        ? {}
+        : { language: settings.language }),
       ...(settings.timeoutSeconds === undefined
         ? {}
         : { timeoutSeconds: settings.timeoutSeconds }),

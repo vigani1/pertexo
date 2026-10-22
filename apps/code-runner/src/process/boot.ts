@@ -8,4 +8,6 @@ export type ChildBoot = Readonly<{
   console: ConsoleBounds;
   modules: ModulePolicy;
   taskBytes: number;
+  pythonModules: readonly string[];
+  pythonPackages: readonly string[];
 }>;

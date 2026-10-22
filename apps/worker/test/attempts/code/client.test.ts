@@ -58,6 +58,20 @@ async function fixture(greeting: unknown) {
   return { client, received, server };
 }
 describe('worker Code transport boundary', () => {
+  it('refuses mismatched Python allowlists before sending private data', async () => {
+    const f = await fixture({
+      kind: 'ready',
+      mode: 'hardened',
+      settings: { ...DEFAULT_CODE_SETTINGS, pythonPackages: ['unreviewed'] },
+    });
+    expect(
+      await f.client.execute(
+        { ...task, language: 'python' },
+        AbortSignal.timeout(2000),
+      ),
+    ).toMatchObject({ kind: 'failed', code: 'code.runner_unavailable' });
+    expect(Buffer.concat(f.received)).toHaveLength(0);
+  });
   it('refuses a weak runner before sending input or variable data', async () => {
     const f = await fixture({
       kind: 'ready',

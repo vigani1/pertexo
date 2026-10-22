@@ -1,5 +1,5 @@
 import { parse } from 'acorn';
-import { CODE_LIMITS } from './limits.js';
+import { CODE_LIMITS, type CodeLanguage } from './limits.js';
 
 export type CodeSyntaxIssue = Readonly<{
   message: string;
@@ -9,10 +9,13 @@ export type CodeSyntaxIssue = Readonly<{
 const prefix =
   'async function pertexoCode(input, $vars, require, console) {\n"use strict";\n';
 /** Parse an async body without evaluating it, in the browser and at publication. */
-export function inspectCodeSource(source: string): CodeSyntaxIssue | undefined {
+export function inspectCodeSource(
+  source: string,
+  language: CodeLanguage = 'javascript',
+): CodeSyntaxIssue | undefined {
   if (!source.trim())
     return {
-      message: 'Enter JavaScript that returns a JSON value.',
+      message: `Enter ${language === 'python' ? 'Python' : 'JavaScript'} that returns a JSON value.`,
       line: 1,
       column: 1,
     };
@@ -22,6 +25,7 @@ export function inspectCodeSource(source: string): CodeSyntaxIssue | undefined {
       line: 1,
       column: 1,
     };
+  if (language === 'python') return undefined;
   try {
     const parsed = parse(prefix + source + '\n}', {
       ecmaVersion: 2025,
