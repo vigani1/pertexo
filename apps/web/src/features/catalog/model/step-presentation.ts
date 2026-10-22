@@ -129,8 +129,7 @@ const registry: Readonly<Record<string, RegistryEntry>> = Object.freeze({
   },
   'core.code': {
     name: 'Code',
-    description:
-      'Transform JSON with JavaScript or Python in an isolated process',
+    description: 'Transform data with JavaScript or Python',
     icon: BracesIcon,
     family: 'transform',
   },
@@ -286,7 +285,7 @@ const registry: Readonly<Record<string, RegistryEntry>> = Object.freeze({
   },
   'core.approval': {
     name: 'Approval',
-    description: 'Pause for an eligible member to approve or reject.',
+    description: 'Pause for an eligible member to approve or reject',
     icon: HandIcon,
     family: 'logic',
   },
@@ -357,16 +356,89 @@ export function describeStep(
   };
 }
 
-export const stepGroups: readonly Readonly<{
+export type StepGroup = Readonly<{
+  id: string;
   family: StepFamily;
   title: string;
-}>[] = Object.freeze([
-  { family: 'trigger', title: 'Start with' },
-  { family: 'action', title: 'Do something' },
-  { family: 'logic', title: 'Decide & flow' },
-  { family: 'transform', title: 'Shape data' },
-  { family: 'output', title: 'Finish' },
+  /** Steps this section lists first, in this order. */
+  keys?: readonly string[];
+  /** Steps from other families shown after this section's own, in this order. */
+  extras?: readonly string[];
+  /** Takes its family's steps that no section lists. */
+  rest?: true;
+}>;
+
+/**
+ * The add-step sections. Data steps are split by what they work on, the way
+ * n8n groups its transform nodes, so a long flat list stays scannable.
+ */
+export const stepGroups: readonly StepGroup[] = Object.freeze([
+  { id: 'start', family: 'trigger', title: 'Start with', rest: true },
+  {
+    id: 'act',
+    family: 'action',
+    title: 'Do something',
+    // Saving run values acts on the run itself; reading a table sits with its writes.
+    extras: ['core.run_values', 'core.table_find'],
+    rest: true,
+  },
+  { id: 'flow', family: 'logic', title: 'Decide & flow', rest: true },
+  {
+    id: 'lists',
+    family: 'transform',
+    title: 'Work with lists',
+    keys: [
+      'core.filter',
+      'core.sort',
+      'core.unique',
+      'core.take',
+      'core.summarize',
+      'core.batch',
+      'core.concat',
+    ],
+  },
+  {
+    id: 'values',
+    family: 'transform',
+    title: 'Text, numbers and dates',
+    keys: ['core.text', 'core.number', 'core.date'],
+  },
+  {
+    id: 'files',
+    family: 'transform',
+    title: 'Files and formats',
+    keys: ['core.read_file', 'core.create_file', 'core.xml', 'core.html'],
+  },
+  {
+    id: 'signatures',
+    family: 'transform',
+    title: 'IDs and signatures',
+    keys: ['core.crypto', 'core.hmac'],
+  },
+  {
+    id: 'fields',
+    family: 'transform',
+    title: 'Fields and code',
+    keys: ['core.set', 'core.validate', 'core.code'],
+    rest: true,
+  },
+  { id: 'finish', family: 'output', title: 'Finish', rest: true },
 ]);
+
+/** The section a step belongs to: the one that lists it, else its family's catch-all. */
+export function stepGroupFor(
+  key: string,
+  family: StepFamily | undefined,
+): StepGroup | undefined {
+  return (
+    stepGroups.find(
+      (group) =>
+        group.keys?.includes(key) === true ||
+        group.extras?.includes(key) === true,
+    ) ??
+    stepGroups.find((group) => group.family === family && group.rest === true)
+  );
+}
 
 const familyWords: Readonly<Record<StepFamily | 'unknown', string>> = {
   trigger: 'Trigger',

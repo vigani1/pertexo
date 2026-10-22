@@ -109,8 +109,8 @@ export function RunFilters({
             ))}
           </SelectContent>
         </Select>
+        <BusinessValueFilter search={search} onSearchChange={onSearchChange} />
       </div>
-      <BusinessValueFilter search={search} onSearchChange={onSearchChange} />
       {chips.length === 0 ? null : (
         <div
           role="group"

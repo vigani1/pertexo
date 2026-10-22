@@ -18,6 +18,7 @@ export function ChoiceSelect({
   disabled,
   invalid,
   describedBy,
+  label,
   onChange,
   ref,
   name,
@@ -28,6 +29,8 @@ export function ChoiceSelect({
   disabled: boolean;
   invalid?: boolean;
   describedBy?: string | undefined;
+  /** For a select that shares its field label with another control. */
+  label?: string;
   onChange: (value: string | null) => void;
   ref?: Ref<HTMLButtonElement>;
   name?: string;
@@ -47,6 +50,7 @@ export function ChoiceSelect({
         ref={ref}
         aria-invalid={invalid === true ? true : undefined}
         aria-describedby={describedBy}
+        aria-label={label}
       >
         <SelectValue />
       </SelectTrigger>

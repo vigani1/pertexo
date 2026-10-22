@@ -176,9 +176,8 @@ test('inspects a real failed Condition, replays its version and cancels a waitin
     /^Wait\b/u,
     'Long wait',
   );
-  await page
-    .getByRole('textbox', { name: 'Wait for (in seconds)', exact: true })
-    .fill('600');
+  // A new Wait starts at 1 minute, so 10 keeps that unit: 600 seconds.
+  await page.getByRole('textbox', { name: 'Wait for', exact: true }).fill('10');
   await page.keyboard.press('Tab');
   await expect
     .poll(
