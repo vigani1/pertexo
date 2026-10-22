@@ -8,7 +8,6 @@ import { RESOURCE_ADMINISTRATORS } from './policy.js';
 import type { ResourceActor } from './contract.js';
 import type { Role } from '../policy.js';
 
-
 /** Principal discovery is bounded and anchored to this workspace's current identities. */
 export async function readSharingPrincipals(
   client: PoolClient,
