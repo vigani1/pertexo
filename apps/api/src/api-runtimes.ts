@@ -154,14 +154,20 @@ export async function acquireApiRuntimes(
       connectionRuntime === undefined &&
       identityRuntime !== undefined &&
       config.connections !== undefined
-    )
+    ) {
+      if (config.identity === undefined)
+        throw new Error(
+          'Connections require application identity configuration',
+        );
       connectionRuntime = await createApiConnectionRuntime(
         config.connections,
         config.database,
         identityRuntime,
+        config.identity.betterAuth.secret,
         dependencies.connectionOverrides,
         databaseRuntime,
       );
+    }
 
     callbackRuntime = dependencies.callbackRuntime;
     if (

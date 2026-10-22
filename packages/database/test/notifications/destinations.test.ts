@@ -75,7 +75,9 @@ describe('failure notification destination decoding', () => {
     };
     const query = vi.fn((text: string) =>
       Promise.resolve(
-        text.includes('workspace_memberships') ? result([{}]) : result([row]),
+        text.includes('workspace_memberships')
+          ? result([{ role: 'owner' }])
+          : result([row]),
       ),
     );
     tenantState.client = { query } as unknown as PoolClient;
@@ -110,6 +112,11 @@ describe('failure notification destination decoding', () => {
     delete (replay as { updated_at?: unknown }).updated_at;
     const query = vi.fn((text: string) => {
       if (text.includes('workspace_memberships'))
+        return Promise.resolve(result([{ role: 'owner' }]));
+      if (
+        text.includes('from app.workspaces') ||
+        text.includes('from app.users')
+      )
         return Promise.resolve(result([{}]));
       if (text.includes('insert into app.idempotency_records'))
         return Promise.resolve(result([], 1));

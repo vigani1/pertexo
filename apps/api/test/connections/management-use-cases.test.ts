@@ -26,7 +26,12 @@ describe('connection management use cases', () => {
     const store = commandPersistence();
     const encryption = { seal: vi.fn() };
     await expect(
-      new CreateConnectionUseCase(store, authorization(), encryption).execute({
+      new CreateConnectionUseCase(
+        store,
+        authorization(),
+        encryption,
+        'fixture-application-secret',
+      ).execute({
         actor,
         routeWorkspaceId: workspaceId,
         idempotencyKey: 'create-invalid',
@@ -83,6 +88,7 @@ describe('connection management use cases', () => {
       store,
       authorization(),
       encryption,
+      'fixture-application-secret',
     ).execute({
       actor,
       routeWorkspaceId: workspaceId,
@@ -128,7 +134,12 @@ describe('connection management use cases', () => {
     };
 
     await expect(
-      new CreateConnectionUseCase(store, authorization(), encryption).execute({
+      new CreateConnectionUseCase(
+        store,
+        authorization(),
+        encryption,
+        'fixture-application-secret',
+      ).execute({
         actor,
         routeWorkspaceId: workspaceId,
         idempotencyKey: 'create-canceled',
@@ -152,6 +163,7 @@ describe('connection management use cases', () => {
       store,
       authorization(),
       encryption,
+      'fixture-application-secret',
     ).execute({
       actor,
       routeWorkspaceId: workspaceId,
@@ -180,6 +192,7 @@ describe('connection management use cases', () => {
       store,
       authorization(),
       encryption,
+      'fixture-application-secret',
     ).execute({
       actor,
       routeWorkspaceId: workspaceId,
@@ -218,6 +231,7 @@ describe('connection management use cases', () => {
       store,
       authorization(),
       encryption,
+      'fixture-application-secret',
     ).execute({
       actor,
       routeWorkspaceId: workspaceId,
@@ -250,7 +264,12 @@ describe('connection management use cases', () => {
     const encryption = { seal: vi.fn() };
 
     await expect(
-      new CreateConnectionUseCase(store, authorization(), encryption).execute({
+      new CreateConnectionUseCase(
+        store,
+        authorization(),
+        encryption,
+        'fixture-application-secret',
+      ).execute({
         actor,
         routeWorkspaceId: '11111111-1111-4111-8111-111111111111',
         idempotencyKey: 'create-42',

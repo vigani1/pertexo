@@ -64,6 +64,7 @@ export class TestConnectionUseCase {
     private readonly authorization: WorkspaceAuthorizationSource,
     private readonly encryption: ConnectionSecretEncryptionPort,
     private readonly httpClient: ConnectionHttpClient,
+    private readonly applicationSecret: string,
     private readonly telemetry: ConnectionTelemetry = NOOP_CONNECTION_TELEMETRY,
     private readonly slackClient?: Pick<
       ConnectionSlackClient,
@@ -109,17 +110,22 @@ export class TestConnectionUseCase {
       const request = connectionTestRequestSchema.parse(input.request);
       const expectedProviderKey =
         'url' in request ? 'http' : request.providerKey;
-      const requestHash = hashRequest({
-        connectionId: input.connectionId,
-        ...request,
-        ...(destination === undefined
-          ? {}
-          : {
-              destinationId: destination.id,
-              configVersion: destination.currentVersion,
-              config: destination.config,
-            }),
-      });
+      const requestHash = hashRequest(
+        this.applicationSecret,
+        input.routeWorkspaceId,
+        CONNECTION_OPERATION.test,
+        {
+          connectionId: input.connectionId,
+          ...request,
+          ...(destination === undefined
+            ? {}
+            : {
+                destinationId: destination.id,
+                configVersion: destination.currentVersion,
+                config: destination.config,
+              }),
+        },
+      );
       const dispatchToken = randomUUID();
       const common = Object.freeze({
         workspaceId: input.routeWorkspaceId,

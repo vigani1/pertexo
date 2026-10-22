@@ -259,3 +259,11 @@ The isolated local recovery check reused the attested PostgreSQL container and
 downloaded no image. The complete RustFS/rclone copy lane was not repeated locally
 because its client images are not cached; F48 changes no artifact bytes or adapter.
 Provider/production qualification remains separate from this local and CI evidence.
+
+## Audit security correction (2026-10-23)
+
+Upload finalization checks current file visibility before any available-file
+replay, and accepts only `user-upload` artifacts. Internal workflow files remain
+readable/downloadable only through their visible retained owners and cannot use
+the upload-finalization endpoint, including for administrators. The finalization
+write repeats the purpose and visibility checks in its tenant transaction.

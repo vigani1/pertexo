@@ -7,7 +7,7 @@ import {
   withTenantScopedClient,
 } from '../transactions.js';
 import { parseIdentityUuid } from '../support.js';
-import { WorkspaceAccessDeniedError } from '../errors.js';
+import { lockWorkspaceAuthority } from '../workspaces/authority.js';
 import type {
   IdentityWorkspaceDatabase,
   AccessibleWorkspacesPage,
@@ -159,31 +159,12 @@ async function listWorkspaceMembers(
     pool,
     { workspaceId, actorId },
     async (client): Promise<WorkspaceMembersPage> => {
-      // The workspace first, then the actor's user and membership: the same
-      // order invitation and member commands lock in, so reads never close a
-      // lock cycle with them.
-      const workspace = await client.query(
-        `select 1 from app.workspaces w
-         where w.id = $1 and w.status = 'active'
-         for share of w`,
-        [workspaceId],
+      await lockWorkspaceAuthority(
+        client,
+        workspaceId,
+        actorId,
+        rolesForCapability('member:read'),
       );
-      const actor =
-        workspace.rowCount === 1
-          ? await client.query(
-              `select 1
-               from app.workspace_memberships m
-               join app.users u on u.id = m.user_id and u.status = 'active'
-               where m.workspace_id = $1 and m.user_id = $2
-                 and m.status = 'active' and m.role = any($3::text[])
-               for share of m, u`,
-              [workspaceId, actorId, [...rolesForCapability('member:read')]],
-            )
-          : undefined;
-      if (actor?.rowCount !== 1)
-        throw new WorkspaceAccessDeniedError(
-          'Actor is no longer authorized for this workspace',
-        );
       const result = await client.query<
         (
           | {

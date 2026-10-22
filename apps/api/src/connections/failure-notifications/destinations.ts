@@ -31,11 +31,16 @@ function databaseCommand(input: DestinationCommandInput) {
   };
 }
 
-function idempotentCommand(input: DestinationMutationInput, value: unknown) {
+function idempotentCommand(
+  input: DestinationMutationInput,
+  secret: string,
+  purpose: string,
+  value: unknown,
+) {
   return {
     ...databaseCommand(input),
     idempotencyKey: input.idempotencyKey,
-    requestHash: hashRequest(value),
+    requestHash: hashRequest(secret, input.routeWorkspaceId, purpose, value),
   };
 }
 
@@ -97,6 +102,7 @@ export type GetWorkflowFailureNotificationPolicyInput =
 export class FailureNotificationDestinationUseCases {
   public constructor(
     private readonly database: FailureNotificationDestinationDatabase,
+    private readonly applicationSecret: string,
     private readonly telemetry: ConnectionTelemetry = NOOP_CONNECTION_TELEMETRY,
   ) {}
 
@@ -108,7 +114,12 @@ export class FailureNotificationDestinationUseCases {
       async () =>
         response(
           await this.database.create({
-            ...idempotentCommand(input, input.body),
+            ...idempotentCommand(
+              input,
+              this.applicationSecret,
+              CONNECTION_OPERATION.destinationCreate,
+              input.body,
+            ),
             destinationId: generatePersistedId(),
             config: input.body,
           }),
@@ -141,10 +152,15 @@ export class FailureNotificationDestinationUseCases {
       async () =>
         response(
           await this.database.appendVersion({
-            ...idempotentCommand(input, {
-              destinationId: input.destinationId,
-              ...input.body,
-            }),
+            ...idempotentCommand(
+              input,
+              this.applicationSecret,
+              CONNECTION_OPERATION.destinationAppend,
+              {
+                destinationId: input.destinationId,
+                ...input.body,
+              },
+            ),
             destinationId: input.destinationId,
             expectedVersion: input.body.expectedVersion,
             config: input.body.config,
@@ -160,10 +176,15 @@ export class FailureNotificationDestinationUseCases {
       async () =>
         response(
           await this.database.setStatus({
-            ...idempotentCommand(input, {
-              destinationId: input.destinationId,
-              ...input.body,
-            }),
+            ...idempotentCommand(
+              input,
+              this.applicationSecret,
+              CONNECTION_OPERATION.destinationStatus,
+              {
+                destinationId: input.destinationId,
+                ...input.body,
+              },
+            ),
             destinationId: input.destinationId,
             status: input.body.status,
           }),
@@ -185,10 +206,15 @@ export class FailureNotificationDestinationUseCases {
   ): Promise<void> {
     return this.telemetry.measure(CONNECTION_OPERATION.policySet, () =>
       this.database.setWorkflowPolicy({
-        ...idempotentCommand(input, {
-          workflowId: input.workflowId,
-          ...input.body,
-        }),
+        ...idempotentCommand(
+          input,
+          this.applicationSecret,
+          CONNECTION_OPERATION.policySet,
+          {
+            workflowId: input.workflowId,
+            ...input.body,
+          },
+        ),
         workflowId: input.workflowId,
         destinationId: input.body.destinationId,
       }),
@@ -199,9 +225,14 @@ export class FailureNotificationDestinationUseCases {
   ): Promise<void> {
     return this.telemetry.measure(CONNECTION_OPERATION.policyClear, () =>
       this.database.clearWorkflowPolicy({
-        ...idempotentCommand(input, {
-          workflowId: input.workflowId,
-        }),
+        ...idempotentCommand(
+          input,
+          this.applicationSecret,
+          CONNECTION_OPERATION.policyClear,
+          {
+            workflowId: input.workflowId,
+          },
+        ),
         workflowId: input.workflowId,
       }),
     );

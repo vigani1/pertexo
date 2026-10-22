@@ -53,6 +53,7 @@ export type ConnectionSlackClient = Pick<
 export type ConnectionEmailClient = Pick<ResendClient, 'sendNotification'>;
 
 export type ConnectionDependencies = Readonly<{
+  applicationSecret: string;
   persistence: ConnectionPersistence;
   authorization: WorkspaceAuthorizationSource;
   encryption: ConnectionSecretEncryptionPort;

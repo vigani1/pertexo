@@ -64,6 +64,7 @@ export async function createApiConnectionRuntime(
   config: NonNullable<ApiConfig['connections']>,
   databaseConfig: DatabaseConfig,
   identityRuntime: ApiIdentityRuntime,
+  applicationSecret: string,
   overrides: ApiConnectionRuntimeOverrides = {},
   runtime?: DatabaseRuntime,
 ): Promise<ApiConnectionRuntime> {
@@ -122,6 +123,7 @@ export async function createApiConnectionRuntime(
     let closePromise: Promise<void> | undefined;
     return Object.freeze({
       dependencies: Object.freeze({
+        applicationSecret,
         persistence: database,
         destinationPersistence: destinationDatabase,
         usagePersistence: database,

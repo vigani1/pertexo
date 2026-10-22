@@ -1,3 +1,6 @@
+import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority.js';
+import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
+import type { Role } from '../../tenant-access/policy.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 
@@ -109,18 +112,16 @@ export async function authorize(
   actorId: string,
   manage: boolean,
 ): Promise<void> {
-  const roles = manage ? ['owner', 'admin'] : ['owner', 'admin', 'builder'];
-  const result = await client.query(
-    `select 1 from app.workspace_memberships membership
-       join app.workspaces workspace on workspace.id=membership.workspace_id
-       join app.users actor on actor.id=membership.user_id
-      where membership.workspace_id=$1 and membership.user_id=$2
-        and membership.status='active' and membership.role=any($3::text[])
-        and workspace.status='active' and actor.status='active'`,
-    [workspaceId, actorId, roles],
-  );
-  if (result.rowCount !== 1)
-    throw destinationError('not_found', 'Destination is not visible');
+  const roles: readonly Role[] = manage
+    ? ['owner', 'admin']
+    : ['owner', 'admin', 'builder'];
+  try {
+    await lockWorkspaceAuthority(client, workspaceId, actorId, roles);
+  } catch (error) {
+    if (error instanceof WorkspaceAccessDeniedError)
+      throw destinationError('not_found', 'Destination is not visible');
+    throw error;
+  }
 }
 
 export async function audit(
