@@ -115,6 +115,7 @@ describe('connection testing security and cleanup regressions', () => {
         authorization,
         { seal: vi.fn(), open },
         { execute },
+        'fixture-application-secret',
       ).execute(
         command({
           url: `https://provider.example.test/${'😀'.repeat(700)}`,
@@ -158,6 +159,7 @@ describe('connection testing security and cleanup regressions', () => {
           authorization,
           { seal: vi.fn(), open },
           { execute },
+          'fixture-application-secret',
         ).execute(command({ url: 'https://provider.example.test/health' })),
       ).rejects.toMatchObject({ code: 'resource.not_found' });
       expect(authorization.findAccess).toHaveBeenCalledTimes(2);
@@ -198,6 +200,7 @@ describe('connection testing security and cleanup regressions', () => {
           authorization,
           { seal: vi.fn(), open: vi.fn(() => Promise.resolve(plaintext)) },
           { execute: vi.fn(() => Promise.reject(providerFailure)) },
+          'fixture-application-secret',
         ).execute(command({ url: 'https://provider.example.test/health' })),
       ).rejects.toBe(providerFailure);
       expect(abandonConnectionTest).toHaveBeenCalledOnce();
@@ -236,6 +239,7 @@ describe('connection testing security and cleanup regressions', () => {
         { findAccess: vi.fn().mockResolvedValue(activeAccess()) },
         { seal: vi.fn(), open: vi.fn(() => Promise.resolve(plaintext)) },
         { execute },
+        'fixture-application-secret',
       ).execute(command({ url: 'https://provider.example.test/health' })),
     ).rejects.toBe(markerFailure);
     expect(execute).toHaveBeenCalledOnce();
@@ -356,6 +360,7 @@ describe('connection testing security and cleanup regressions', () => {
           { findAccess: vi.fn().mockResolvedValue(activeAccess()) },
           { seal: vi.fn(), open: vi.fn(() => Promise.resolve(plaintext)) },
           { execute },
+          'fixture-application-secret',
           undefined,
           slackClient,
           emailClient,
@@ -449,6 +454,7 @@ describe('connection provider outcome projection', () => {
         { findAccess: vi.fn().mockResolvedValue(activeAccess()) },
         { seal: vi.fn(), open: vi.fn(() => Promise.resolve(plaintext)) },
         httpClient,
+        'fixture-application-secret',
       ).execute(command({ url: 'https://provider.example.test/health' }));
 
       expect(store.completeConnectionTest).toHaveBeenCalledWith(
@@ -594,6 +600,7 @@ describe('connection provider outcome projection', () => {
         { findAccess: vi.fn().mockResolvedValue(activeAccess()) },
         { seal: vi.fn(), open: vi.fn(() => Promise.resolve(plaintext)) },
         { execute: vi.fn() },
+        'fixture-application-secret',
         undefined,
         slackClient,
       ).execute(command({ providerKey: 'slack' }));
@@ -692,6 +699,7 @@ describe('connection provider outcome projection', () => {
         { findAccess: vi.fn().mockResolvedValue(activeAccess()) },
         { seal: vi.fn(), open: vi.fn(() => Promise.resolve(plaintext)) },
         { execute: vi.fn() },
+        'fixture-application-secret',
         undefined,
         undefined,
         emailClient,
@@ -760,6 +768,7 @@ describe('alert destination tests', () => {
         ),
       },
       { execute: vi.fn() },
+      'fixture-application-secret',
       undefined,
       { authTest, sendMessage },
     );
@@ -805,6 +814,7 @@ describe('alert destination tests', () => {
         ),
       },
       { execute: vi.fn() },
+      'fixture-application-secret',
       undefined,
       undefined,
       { sendNotification },
@@ -841,6 +851,7 @@ describe('alert destination tests', () => {
       { findAccess: vi.fn().mockResolvedValue(activeAccess()) },
       { seal: vi.fn(), open },
       { execute: vi.fn() },
+      'fixture-application-secret',
       undefined,
       { authTest: vi.fn(), sendMessage },
     );

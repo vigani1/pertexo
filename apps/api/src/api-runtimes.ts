@@ -153,12 +153,14 @@ export async function acquireApiRuntimes(
     if (
       connectionRuntime === undefined &&
       identityRuntime !== undefined &&
-      config.connections !== undefined
+      config.connections !== undefined &&
+      config.identity !== undefined
     )
       connectionRuntime = await createApiConnectionRuntime(
         config.connections,
         config.database,
         identityRuntime,
+        config.identity.betterAuth.secret,
         dependencies.connectionOverrides,
         databaseRuntime,
       );

@@ -203,6 +203,7 @@ function connectionRuntime(
   }));
   const runtime: ApiConnectionRuntime = Object.freeze({
     dependencies: {
+      applicationSecret: 'fixture-application-secret',
       authorization,
       sharingPersistence: { readConnectionSharing, replaceConnectionSharing },
       encryption,

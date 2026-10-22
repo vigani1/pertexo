@@ -35,9 +35,14 @@ it('seals exact signing keys and tests local access without any provider request
     });
     return Promise.resolve(sealed);
   });
-  const created = await new CreateConnectionUseCase(store, authorization(), {
-    seal,
-  }).execute({
+  const created = await new CreateConnectionUseCase(
+    store,
+    authorization(),
+    {
+      seal,
+    },
+    'fixture-application-secret',
+  ).execute({
     actor,
     routeWorkspaceId: workspaceId,
     idempotencyKey: 'signing-create',
@@ -79,6 +84,7 @@ it('seals exact signing keys and tests local access without any provider request
     authorization(),
     { seal, open: () => Promise.resolve(secret) },
     { execute },
+    'fixture-application-secret',
   ).execute({
     actor,
     routeWorkspaceId: workspaceId,

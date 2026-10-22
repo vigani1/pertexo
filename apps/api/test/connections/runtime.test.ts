@@ -65,6 +65,7 @@ describe('API connection runtime ownership', () => {
       config,
       databaseConfig,
       identityRuntime,
+      'fixture-application-secret',
       {
         persistence: {
           database: database(databaseClose),
@@ -165,6 +166,7 @@ describe('API connection runtime ownership', () => {
           config,
           databaseConfig,
           identityRuntime,
+          'fixture-application-secret',
           overrides,
         ),
       ).rejects.toBe(constructionFailure);
@@ -186,6 +188,7 @@ describe('API connection runtime ownership', () => {
       config,
       databaseConfig,
       identityRuntime,
+      'fixture-application-secret',
       {
         persistence: {
           database: database(() => Promise.reject(cleanupFailure)),
@@ -233,6 +236,7 @@ describe('API connection runtime ownership', () => {
       config,
       databaseConfig,
       identityRuntime,
+      'fixture-application-secret',
       {
         persistence: {
           databaseFactory,

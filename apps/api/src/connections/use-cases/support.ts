@@ -1,4 +1,6 @@
-import { createHash } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
+
+import { canonicalJson } from '@pertexo/workflow-model';
 
 import type {
   ConnectionRecord,
@@ -33,8 +35,15 @@ export const encryptionSignal = (input: ConnectionCommandInput): AbortSignal =>
 export const encodeCredential = (value: unknown): Uint8Array =>
   new TextEncoder().encode(JSON.stringify(value));
 
-export function hashRequest(value: unknown): string {
-  return createHash('sha256').update(JSON.stringify(value)).digest('hex');
+export function hashRequest(
+  secret: string,
+  workspaceId: string,
+  purpose: string,
+  value: unknown,
+): string {
+  return createHmac('sha256', secret)
+    .update(canonicalJson({ purpose, workspaceId, value }))
+    .digest('hex');
 }
 
 export function connectionTestProviderKey(

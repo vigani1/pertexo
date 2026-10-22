@@ -216,18 +216,20 @@ async function readUploadArtifact(
       );
       try {
         if (
-          access === 'read' &&
           !(await visibleArtifactIds(client, parsed, [parsed.artifactId])).has(
             parsed.artifactId,
           )
         )
           return null;
-        return await loadArtifact(
+        const artifact = await loadArtifact(
           client,
           parsed.workspaceId,
           parsed.artifactId,
           statuses,
         );
+        return access === 'upload' && artifact.purpose !== 'user-upload'
+          ? null
+          : artifact;
       } catch (error: unknown) {
         if (error instanceof ArtifactUploadNotFoundError) return null;
         throw error;
@@ -258,12 +260,18 @@ async function completeUploadFinalization(
                 sha256,status,expires_at,finalized_at,deleted_at,
                 retention_retry_at,created_at,updated_at
            from app.artifacts
-          where workspace_id=$1 and id=$2
+          where workspace_id=$1 and id=$2 and purpose='user-upload'
           for update`,
         [parsed.workspaceId, parsed.artifactId],
       );
       const row = result.rows[0];
       if (row === undefined) throw new ArtifactUploadNotFoundError();
+      if (
+        !(await visibleArtifactIds(client, parsed, [parsed.artifactId])).has(
+          parsed.artifactId,
+        )
+      )
+        throw new ArtifactUploadNotFoundError();
       const artifact = mapArtifact(row);
       const expected = parsed.expectedMetadata;
       if (!artifactMetadataMatches(artifact, expected))

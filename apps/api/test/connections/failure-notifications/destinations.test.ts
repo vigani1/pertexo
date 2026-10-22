@@ -1,3 +1,4 @@
+import { CONNECTION_OPERATION } from '../../../src/connections/telemetry.js';
 import { TestConnectionUseCase } from '../../../src/connections/use-cases/test-connection.js';
 import {
   authorization,
@@ -79,7 +80,10 @@ function persistence(): FailureNotificationDestinationDatabase {
 describe('failure notification destination API seams', () => {
   it('accepts typed application commands for all seven operations', async () => {
     const database = persistence();
-    const useCases = new FailureNotificationDestinationUseCases(database);
+    const useCases = new FailureNotificationDestinationUseCases(
+      database,
+      'fixture-application-secret',
+    );
     const mutation = { ...command, idempotencyKey: 'typed-command-42' };
 
     const created = await useCases.create({ ...mutation, body: record.config });
@@ -126,26 +130,46 @@ describe('failure notification destination API seams', () => {
         actorId,
         workspaceId,
         requestId: 'request-42',
-        requestHash: hashRequest(record.config),
+        requestHash: hashRequest(
+          'fixture-application-secret',
+          workspaceId,
+          CONNECTION_OPERATION.destinationCreate,
+          record.config,
+        ),
       }),
     );
     expect(database.appendVersion).toHaveBeenCalledWith(
       expect.objectContaining({
-        requestHash: hashRequest({
-          destinationId,
-          expectedVersion: 1,
-          config: record.config,
-        }),
+        requestHash: hashRequest(
+          'fixture-application-secret',
+          workspaceId,
+          CONNECTION_OPERATION.destinationAppend,
+          {
+            destinationId,
+            expectedVersion: 1,
+            config: record.config,
+          },
+        ),
       }),
     );
     expect(database.setStatus).toHaveBeenCalledWith(
       expect.objectContaining({
-        requestHash: hashRequest({ destinationId, status: 'disabled' }),
+        requestHash: hashRequest(
+          'fixture-application-secret',
+          workspaceId,
+          CONNECTION_OPERATION.destinationStatus,
+          { destinationId, status: 'disabled' },
+        ),
       }),
     );
     expect(database.setWorkflowPolicy).toHaveBeenCalledWith(
       expect.objectContaining({
-        requestHash: hashRequest({ workflowId, destinationId }),
+        requestHash: hashRequest(
+          'fixture-application-secret',
+          workspaceId,
+          CONNECTION_OPERATION.policySet,
+          { workflowId, destinationId },
+        ),
       }),
     );
     expect(database.clearWorkflowPolicy).toHaveBeenCalledWith(
@@ -153,7 +177,12 @@ describe('failure notification destination API seams', () => {
         actorId,
         workspaceId,
         idempotencyKey: 'typed-command-42',
-        requestHash: hashRequest({ workflowId }),
+        requestHash: hashRequest(
+          'fixture-application-secret',
+          workspaceId,
+          CONNECTION_OPERATION.policyClear,
+          { workflowId },
+        ),
       }),
     );
   });
@@ -163,12 +192,16 @@ describe('failure notification destination API seams', () => {
     const open = vi.fn();
     const connectionTests = connectionTestPersistence();
     const controller = new FailureNotificationDestinationsController(
-      new FailureNotificationDestinationUseCases(database),
+      new FailureNotificationDestinationUseCases(
+        database,
+        'fixture-application-secret',
+      ),
       new TestConnectionUseCase(
         connectionTests,
         authorization(),
         { seal: vi.fn(), open },
         { execute: vi.fn() },
+        'fixture-application-secret',
       ),
     );
     await expect(
@@ -195,12 +228,16 @@ describe('failure notification destination API seams', () => {
       const database = persistence();
       const connectionTests = connectionTestPersistence();
       const controller = new FailureNotificationDestinationsController(
-        new FailureNotificationDestinationUseCases(database),
+        new FailureNotificationDestinationUseCases(
+          database,
+          'fixture-application-secret',
+        ),
         new TestConnectionUseCase(
           connectionTests,
           authorization(),
           { seal: vi.fn(), open: vi.fn() },
           { execute: vi.fn() },
+          'fixture-application-secret',
         ),
       );
       await expect(
@@ -218,12 +255,16 @@ describe('failure notification destination API seams', () => {
   it('uses guarded actor identifiers consistently in destination commands', async () => {
     const database = persistence();
     const controller = new FailureNotificationDestinationsController(
-      new FailureNotificationDestinationUseCases(database),
+      new FailureNotificationDestinationUseCases(
+        database,
+        'fixture-application-secret',
+      ),
       new TestConnectionUseCase(
         connectionTestPersistence(),
         authorization(),
         { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
         { execute: vi.fn() },
+        'fixture-application-secret',
       ),
     );
     const guardedActor = createActorContext({
@@ -262,12 +303,16 @@ describe('failure notification destination API seams', () => {
     'rejects invalid or duplicate idempotency header values %j',
     async (value) => {
       const controller = new FailureNotificationDestinationsController(
-        new FailureNotificationDestinationUseCases(persistence()),
+        new FailureNotificationDestinationUseCases(
+          persistence(),
+          'fixture-application-secret',
+        ),
         new TestConnectionUseCase(
           connectionTestPersistence(),
           authorization(),
           { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
           { execute: vi.fn() },
+          'fixture-application-secret',
         ),
       );
 
@@ -284,12 +329,16 @@ describe('failure notification destination API seams', () => {
   it('parses a command, requires idempotency, and forwards canonical metadata', async () => {
     const database = persistence();
     const controller = new FailureNotificationDestinationsController(
-      new FailureNotificationDestinationUseCases(database),
+      new FailureNotificationDestinationUseCases(
+        database,
+        'fixture-application-secret',
+      ),
       new TestConnectionUseCase(
         connectionTestPersistence(),
         authorization(),
         { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
         { execute: vi.fn() },
+        'fixture-application-secret',
       ),
     );
 
@@ -322,12 +371,16 @@ describe('failure notification destination API seams', () => {
   it('keeps GET idempotency-free and measures destination-specific commands', async () => {
     const database = persistence();
     const measured: string[] = [];
-    const useCases = new FailureNotificationDestinationUseCases(database, {
-      measure: <T>(operation: string, work: () => Promise<T>) => {
-        measured.push(operation);
-        return work();
+    const useCases = new FailureNotificationDestinationUseCases(
+      database,
+      'fixture-application-secret',
+      {
+        measure: <T>(operation: string, work: () => Promise<T>) => {
+          measured.push(operation);
+          return work();
+        },
       },
-    });
+    );
 
     await useCases.list(command);
     await useCases.status({
@@ -346,12 +399,16 @@ describe('failure notification destination API seams', () => {
   it('gets one destination through the controller without command metadata', async () => {
     const database = persistence();
     const controller = new FailureNotificationDestinationsController(
-      new FailureNotificationDestinationUseCases(database),
+      new FailureNotificationDestinationUseCases(
+        database,
+        'fixture-application-secret',
+      ),
       new TestConnectionUseCase(
         connectionTestPersistence(),
         authorization(),
         { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
         { execute: vi.fn() },
+        'fixture-application-secret',
       ),
     );
 
@@ -373,12 +430,16 @@ describe('failure notification destination API seams', () => {
   it('reads the current workflow policy through the safe destination projection', async () => {
     const database = persistence();
     const controller = new FailureNotificationDestinationsController(
-      new FailureNotificationDestinationUseCases(database),
+      new FailureNotificationDestinationUseCases(
+        database,
+        'fixture-application-secret',
+      ),
       new TestConnectionUseCase(
         connectionTestPersistence(),
         authorization(),
         { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
         { execute: vi.fn() },
+        'fixture-application-secret',
       ),
     );
 
@@ -419,12 +480,16 @@ describe('failure notification destination API seams', () => {
   it('appends a version and propagates optimistic and idempotency conflicts', async () => {
     const database = persistence();
     const controller = new FailureNotificationDestinationsController(
-      new FailureNotificationDestinationUseCases(database),
+      new FailureNotificationDestinationUseCases(
+        database,
+        'fixture-application-secret',
+      ),
       new TestConnectionUseCase(
         connectionTestPersistence(),
         authorization(),
         { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
         { execute: vi.fn() },
+        'fixture-application-secret',
       ),
     );
     const body = {
@@ -481,12 +546,16 @@ describe('failure notification destination API seams', () => {
   it('sets and clears workflow policy with exact idempotent replay metadata', async () => {
     const database = persistence();
     const controller = new FailureNotificationDestinationsController(
-      new FailureNotificationDestinationUseCases(database),
+      new FailureNotificationDestinationUseCases(
+        database,
+        'fixture-application-secret',
+      ),
       new TestConnectionUseCase(
         connectionTestPersistence(),
         authorization(),
         { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
         { execute: vi.fn() },
+        'fixture-application-secret',
       ),
     );
     const setRequest = request({ 'idempotency-key': 'policy-set-42' });
@@ -527,12 +596,16 @@ describe('failure notification destination API seams', () => {
   it('propagates hidden destination read and write failures', async () => {
     const database = persistence();
     const controller = new FailureNotificationDestinationsController(
-      new FailureNotificationDestinationUseCases(database),
+      new FailureNotificationDestinationUseCases(
+        database,
+        'fixture-application-secret',
+      ),
       new TestConnectionUseCase(
         connectionTestPersistence(),
         authorization(),
         { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
         { execute: vi.fn() },
+        'fixture-application-secret',
       ),
     );
     vi.mocked(database.get).mockRejectedValueOnce(
