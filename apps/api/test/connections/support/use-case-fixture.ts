@@ -41,6 +41,7 @@ export function record(
     authType: 'http_headers',
     status: 'active',
     currentSecretVersionId: secretVersionId,
+    accessMode: 'workspace',
     lastTestedAt: null,
     lastHealthyAt: null,
     lastErrorCode: null,

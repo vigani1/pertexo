@@ -74,7 +74,7 @@ export function createConnectionReadPersistence(
             `select id, workspace_id, provider_key, name, auth_type, status,
                     current_secret_version_id, last_tested_at, last_healthy_at,
                     last_error_code, last_run_observed_at, last_health_transition_at,
-                    last_health_transition_source, created_by, created_at, updated_at,
+                    last_health_transition_source, created_by, created_at, updated_at, access_mode,
                     to_char(created_at at time zone 'UTC',
                       'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as created_at_cursor
              from app.connections connection

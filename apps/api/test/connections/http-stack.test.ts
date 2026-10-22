@@ -108,6 +108,7 @@ function connectionRuntime(
         createdBy: input.actorId,
         createdAt: new Date('2026-08-22T12:00:00.000Z'),
         updatedAt: new Date('2026-08-22T12:00:00.000Z'),
+        accessMode: 'workspace',
       };
       return Promise.resolve(stored);
     },
