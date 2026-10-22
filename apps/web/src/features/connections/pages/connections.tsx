@@ -265,15 +265,15 @@ function ConnectionsSession({
         steps={[
           {
             title: 'Connect a service',
-            body: 'Add a Slack bot token, an HTTPS API’s headers or a Resend API key. It’s stored encrypted, and nobody, including you, can see it again.',
+            body: 'Add a Slack bot token, an API’s headers, a Resend API key or a signing key. It’s stored encrypted, and nobody, including you, can see it again.',
           },
           {
             title: 'Keep it working',
-            body: 'Test it from its page to see the service still answers, and rotate the secret there when it changes.',
+            body: 'Test it from its page to see the service still answers, and replace the secret there when it changes.',
           },
           {
             title: 'Use it in steps and alerts',
-            body: 'Send Slack message, HTTP request and Send email steps pick a connection, and so do Slack and email alerts.',
+            body: 'Steps such as HTTP request, Send Slack message, Send email and HMAC signature pick a connection, and so do Slack and email alerts.',
           },
         ]}
       />

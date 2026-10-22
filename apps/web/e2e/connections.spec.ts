@@ -406,10 +406,12 @@ test('recovers run-rejected health, pages published usage, rotates to unknown an
   await expect(
     lens.getByText('Last tested').locator('xpath=following-sibling::dd[1]'),
   ).toHaveText('Never');
-  await expect(lens.getByText('Version 2 · Current publication')).toBeVisible();
+  await expect(lens.getByText('Live as version 2')).toBeVisible();
   await lens.getByRole('button', { name: 'Load more' }).click();
   await expect(
-    lens.getByText('Version 1 · Historical version · Archived workflow'),
+    lens.getByText(
+      'Live as version 2, 1 older version still used by runs (archived workflow)',
+    ),
   ).toBeVisible();
   await page.screenshot({ path: '/tmp/pertexo-connection-health-desktop.png' });
   await page.setViewportSize({ width: 390, height: 844 });

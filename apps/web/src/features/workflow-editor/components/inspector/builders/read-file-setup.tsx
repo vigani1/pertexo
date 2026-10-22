@@ -51,8 +51,8 @@ export function ReadFileSetup({
           }}
         />
         <FieldDescription>
-          Read strict UTF-8 CSV or JSON. Choose pages for files larger than 1
-          MB; split files above 10 MB.
+          CSV or JSON, saved as UTF-8. For files over 1 MB, use pages; split
+          files over 10 MB.
         </FieldDescription>
       </Field>
       <Field>
@@ -83,8 +83,8 @@ export function ReadFileSetup({
         />
         <FieldDescription>
           {config.outputMode === 'pages'
-            ? 'Up to 10 MB / 100,000 records in 64 KB JSON-array files (at most 1,000 records each, 256 files). Output contains pages, itemCount and pageCount. For Each over pages, then Read file each page as inline data.'
-            : 'Up to 1 MB; about 4,996 narrow rows fit the unchanged list limits. Wide rows fit fewer. CSV returns rows, JSON returns its value.'}
+            ? 'For files up to 10 MB or 100,000 records. The data arrives as pages of up to 1,000 records: loop over pages with For each, then read each page.'
+            : 'For files up to 1 MB, roughly 5,000 short rows. CSV gives one item per row, keyed by the header; JSON gives its value.'}
         </FieldDescription>
       </Field>
       {config.format === 'csv' ? (
@@ -116,9 +116,8 @@ export function ReadFileSetup({
         </>
       ) : null}
       <p className="text-xs text-muted-foreground">
-        {config.outputMode === 'pages'
-          ? 'Map or upload a file on Inputs. The worker returns page references and counts; it does not load the full array into run data.'
-          : 'Map a file reference on Inputs, or upload a file there. JSON returns its value; CSV returns rows keyed by their header names.'}
+        Choose the file on Inputs: map one from an earlier step or upload it
+        there.
       </p>
     </>
   );

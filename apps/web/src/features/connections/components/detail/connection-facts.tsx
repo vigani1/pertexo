@@ -99,9 +99,11 @@ export function ConnectionFacts({
         ) : null}
       </dl>
       <p className="text-xs leading-relaxed text-muted-foreground">
-        Runs that send Slack messages keep Slack health up to date; for other
-        services, use Test. A failed test means Pertexo couldn’t use this
-        credential, not that the service is down.
+        {connection.providerKey === 'slack'
+          ? 'Runs that send Slack messages keep its health up to date. '
+          : 'Test it to check it still works. '}
+        A failed test means Pertexo couldn’t use this credential, not that the
+        service is down.
       </p>
       <Disclosure summary="Details">
         <dl className="grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-x-4 gap-y-1.5">
