@@ -5,6 +5,7 @@ import {
   describeStep,
   familyWord,
   prettifyDefinitionKey,
+  stepGroupFor,
   stepGroups,
 } from '@/features/catalog/presentation.public';
 
@@ -50,14 +51,35 @@ describe('step presentation registry', () => {
     expect(familyWord('unknown')).toBe('Step');
   });
 
-  it('groups families under the add-step headings in order', () => {
+  it('groups steps under the add-step headings in order', () => {
     expect(stepGroups.map((group) => group.title)).toEqual([
       'Start with',
       'Do something',
       'Decide & flow',
-      'Shape data',
+      'Work with lists',
+      'Text, numbers and dates',
+      'Files and formats',
+      'IDs and signatures',
+      'Fields and code',
       'Finish',
     ]);
+  });
+
+  it('places each step in the section that lists it, else its family’s catch-all', () => {
+    expect(stepGroupFor('core.table_find', 'transform')?.title).toBe(
+      'Do something',
+    );
+    expect(stepGroupFor('core.run_values', 'transform')?.title).toBe(
+      'Do something',
+    );
+    expect(stepGroupFor('core.date', 'transform')?.title).toBe(
+      'Text, numbers and dates',
+    );
+    // A data step nobody has placed yet still appears.
+    expect(stepGroupFor('core.future_step', 'transform')?.title).toBe(
+      'Fields and code',
+    );
+    expect(stepGroupFor('http.request', 'action')?.title).toBe('Do something');
   });
 
   it('describes connections and retry behaviour in plain words', () => {

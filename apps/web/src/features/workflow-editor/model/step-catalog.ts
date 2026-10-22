@@ -1,7 +1,8 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
-import { WaypointsIcon } from 'lucide-react';
+import { Table2Icon, WaypointsIcon } from 'lucide-react';
 import {
   describeStep,
+  stepGroupFor,
   stepGroups,
   type StepFamily,
   type StepPresentation,
@@ -36,6 +37,7 @@ type StepListEntry =
   | Readonly<{ kind: 'bundle'; bundle: StepChoiceBundle }>;
 
 export type StepChoiceGroup = Readonly<{
+  id: string;
   family: StepFamily;
   title: string;
   choices: readonly StepChoice[];
@@ -73,15 +75,18 @@ const BUNDLES: readonly BundleRule[] = Object.freeze([
     place: 'first',
   },
   {
-    id: 'table-writes',
+    id: 'table-rows',
     keys: [
+      'core.table_find',
       'core.table_insert',
       'core.table_update',
       'core.table_upsert',
       'core.table_delete',
     ],
     name: 'Data table rows',
-    description: 'Insert, update, upsert or delete rows in a data table',
+    description: 'Find, insert, update, upsert or delete rows in a data table',
+    // One table mark for the row, though Find rows is a data step.
+    tile: { family: 'action', icon: Table2Icon },
     place: 'last',
   },
 ]);
@@ -133,17 +138,41 @@ export function groupStepChoices(
     },
   );
   const rankOf = (choice: StepChoice) => ranks.get(choice.identity) ?? 0;
+  // A section's listed steps come first, its own others next as the catalog
+  // lists them, and steps borrowed from other families last.
+  const placeIn = (group: (typeof stepGroups)[number], choice: StepChoice) => {
+    const key = choice.definition.definition.key;
+    const listed = group.keys?.indexOf(key) ?? -1;
+    if (listed !== -1) return listed;
+    const extra = group.extras?.indexOf(key) ?? -1;
+    return extra === -1 ? 1_000 : 2_000 + extra;
+  };
   const groups = stepGroups.flatMap((group) => {
     const grouped = choices
-      .filter((choice) => choice.definition.family === group.family)
-      // A stable sort: equally good matches keep the catalog's order.
+      .filter(
+        (choice) =>
+          stepGroupFor(
+            choice.definition.definition.key,
+            choice.definition.family,
+          )?.id === group.id,
+      )
+      // Stable sorts: equally good matches keep the section's order.
+      .sort((left, right) => placeIn(group, left) - placeIn(group, right))
       .sort((left, right) => rankOf(left) - rankOf(right));
     if (grouped.length === 0) return [];
     const entries =
       needle === ''
         ? bundledEntries(grouped)
         : grouped.map((choice) => ({ kind: 'step' as const, choice }));
-    return [{ ...group, choices: grouped, entries }];
+    return [
+      {
+        id: group.id,
+        family: group.family,
+        title: group.title,
+        choices: grouped,
+        entries,
+      },
+    ];
   });
   // The group holding the best match comes first, so Enter adds it.
   return groups.sort(
