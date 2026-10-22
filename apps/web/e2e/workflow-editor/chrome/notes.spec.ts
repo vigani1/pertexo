@@ -87,6 +87,10 @@ for (const theme of ['light', 'dark'] as const)
       await page.getByRole('option', { name: 'Amber', exact: true }).click();
       await page
         .getByRole('dialog')
+        .getByText('Position and size', { exact: true })
+        .click();
+      await page
+        .getByRole('dialog')
         .getByRole('spinbutton', { name: 'Width', exact: true })
         .fill('420');
       await page
@@ -328,6 +332,7 @@ test.describe('touch canvas documentation', () => {
       .getByRole('menuitem', { name: 'Phone instructions', exact: true })
       .tap();
     const form = page.getByRole('dialog', { name: 'Edit note' });
+    await form.getByText('Position and size', { exact: true }).tap();
     await form
       .getByRole('spinbutton', { name: 'Horizontal position', exact: true })
       .fill('160');

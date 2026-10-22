@@ -14,6 +14,7 @@ import { LabelledField, FieldGroup } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { Disclosure } from '@/components/ui/disclosure';
 import {
   Select,
   SelectTrigger,
@@ -71,6 +72,9 @@ export function NoteForm({
 }>) {
   const [fields, setFields] = useState(() => noteFields(note));
   const validation = useFieldValidation<keyof NoteFields>();
+  const geometryInvalid = geometry.some(
+    (field) => validation.error(field.key) !== undefined,
+  );
   function change<Key extends keyof NoteFields>(
     key: Key,
     value: NoteFields[Key],
@@ -159,13 +163,23 @@ export function NoteForm({
                 </Select>
               )}
             </LabelledField>
-            <div className="grid grid-cols-2 gap-4">
+            {/* Dragging and the keyboard move notes on the canvas; exact
+                numbers are the rare case, so they stay folded and the
+                dialog's buttons stay in view on a phone. */}
+            <Disclosure
+              key={geometryInvalid ? 'invalid' : 'valid'}
+              summary="Position and size"
+              defaultOpen={geometryInvalid}
+              contentClassName="grid grid-cols-2 gap-4 pt-1"
+            >
+              <p className="col-span-2 text-xs text-muted-foreground">
+                In canvas pixels.
+              </p>
               {geometry.map((field) => (
                 <LabelledField
                   key={field.key}
                   id={`note-${field.key}`}
                   label={field.label}
-                  description="Canvas pixels"
                   error={validation.error(field.key)}
                 >
                   {(control) => (
@@ -184,7 +198,7 @@ export function NoteForm({
                   )}
                 </LabelledField>
               ))}
-            </div>
+            </Disclosure>
           </FieldGroup>
           <div className="flex flex-wrap justify-end gap-2">
             {onRemove === undefined ? null : (
@@ -197,12 +211,15 @@ export function NoteForm({
                 Delete note
               </Button>
             )}
-            <Button type="button" variant="ghost" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="primary">
-              Save note
-            </Button>
+            {/* Cancel and Save wrap as a pair, never Save alone. */}
+            <div className="ml-auto flex gap-2">
+              <Button type="button" variant="ghost" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary">
+                Save note
+              </Button>
+            </div>
           </div>
         </form>
       </DialogContent>

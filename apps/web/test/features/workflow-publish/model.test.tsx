@@ -202,6 +202,23 @@ describe('publish summary', () => {
     expect(summary.triggerNames).toEqual(['New invoice']);
   });
 
+  it('names every trigger that starts runs on its own, but not a manual start', () => {
+    const summary = summarizePublish(
+      graph([
+        node('by-hand', 'core.manual'),
+        node('form', 'core.form', { label: 'Expense form' }),
+        node('fallback', 'core.workflow_error', { label: 'On failure' }),
+        node('nightly', 'core.schedule', { label: 'Nightly' }),
+      ]),
+      null,
+    );
+    expect(summary.triggerNames).toEqual([
+      'Expense form',
+      'On failure',
+      'Nightly',
+    ]);
+  });
+
   it('treats a first publish as version 1 and layout-only changes as no step change', () => {
     const first = summarizePublish(graph([node('a', 'core.manual')]), null);
     expect(first).toMatchObject({

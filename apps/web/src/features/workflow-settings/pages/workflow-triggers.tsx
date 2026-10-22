@@ -20,6 +20,7 @@ import { SettingsQueryState } from '../components/settings-query-state';
 import { SchedulesSection } from '../components/triggers/schedules/section';
 import { WebhooksSection } from '../components/triggers/webhooks/section';
 import { triggerStepName } from '../model/triggers/steps';
+import { publishedTriggerKinds } from '../model/triggers/published';
 import {
   scheduleTriggersQueryOptions,
   webhookTriggersQueryOptions,
@@ -65,7 +66,7 @@ function NoTriggerStep({
   );
 }
 
-/** Webhooks and schedules from the published version, and their controls. */
+/** How the published version's runs start, and the controls for each. */
 export function WorkflowTriggersPage(props: TriggersPageProps) {
   // A new identity is a new session: late credentials never cross workflows.
   return (
@@ -90,8 +91,8 @@ function NoTriggers({
       </EmptyTitle>
       <EmptyDescription>
         {published
-          ? 'Runs start only when someone runs the workflow. To start them on their own, add a Webhook or Schedule step in Build, then publish.'
-          : 'Triggers come from the published version. Add a Webhook or Schedule step in Build, then publish.'}
+          ? 'Runs start only when someone runs the workflow. To start them on their own, add a Webhook, Schedule or Form step in Build, then publish.'
+          : 'Triggers come from the published version. Add a trigger step in Build, then publish.'}
       </EmptyDescription>
       {published ? <WaysIn /> : null}
       <EmptyActions>
@@ -111,6 +112,12 @@ const WAYS_IN = [
   { name: 'By hand', detail: 'Someone runs it from the workflow.', on: true },
   { name: 'Webhook', detail: 'Another system sends it an event.', on: false },
   { name: 'Schedule', detail: 'It runs on a timetable.', on: false },
+  { name: 'Form', detail: 'Someone submits its form.', on: false },
+  {
+    name: 'On failure',
+    detail: 'Another workflow fails and hands its error here.',
+    on: false,
+  },
 ] as const;
 
 /** The ways a run can start, with the one this version has lit. */
@@ -136,7 +143,7 @@ function WaysIn() {
           />
           {/* Phones stack the sentence under its name, not beside it. */}
           <span className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-center sm:gap-3">
-            <span className="font-medium sm:w-20 sm:shrink-0">{way.name}</span>
+            <span className="font-medium sm:w-24 sm:shrink-0">{way.name}</span>
             <span className="text-muted-foreground max-sm:text-xs">
               {way.detail}
             </span>
@@ -196,8 +203,23 @@ function TriggersSession({
     editable,
   };
 
+  // Form and failure triggers have nothing to manage here, but they still
+  // start runs, so the page must not claim the version has no trigger.
+  const kinds = publishedTriggerKinds(
+    versions.data?.items,
+    summary.data?.publishedVersionId,
+  );
+  const form = kinds?.includes('core.form') === true;
+  const onFailure = kinds?.includes('core.workflow_error') === true;
+
   // Only someone who can read webhooks knows the version has none.
-  if (editable && webhookItems?.length === 0 && scheduleItems?.length === 0)
+  if (
+    editable &&
+    webhookItems?.length === 0 &&
+    scheduleItems?.length === 0 &&
+    !form &&
+    !onFailure
+  )
     return (
       <NoTriggers
         workspaceId={workspace.id}
@@ -207,6 +229,30 @@ function TriggersSession({
     );
   return (
     <div className="flex flex-col">
+      {form ? (
+        <SettingsSection
+          title="Form"
+          description="Starts a run each time someone submits the form. Its link, fields and who may submit are set on the Form step."
+        >
+          <Link
+            to="/w/$workspaceId/workflows/$workflowId"
+            params={{ workspaceId: workspace.id, workflowId }}
+            className={cn(buttonVariants({ variant: 'outline' }), 'w-fit')}
+          >
+            Open Build
+          </Link>
+        </SettingsSection>
+      ) : null}
+      {onFailure ? (
+        <SettingsSection
+          title="On failure"
+          description="Starts a run when another workflow fails and names this one as its error workflow."
+        >
+          <p className="text-sm text-muted-foreground">
+            Each workflow chooses its error workflow in its own Settings.
+          </p>
+        </SettingsSection>
+      ) : null}
       <SettingsSection
         title="Webhooks"
         description="Start a run when another system sends an event to the endpoint address."

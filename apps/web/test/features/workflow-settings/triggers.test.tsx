@@ -9,12 +9,15 @@ import {
   api,
   problem,
   installQueries,
+  publishedGraph,
   schedule,
   scheduleId,
   secondWebhook,
   secondWebhookId,
   secondWorkflowId,
   summary,
+  version,
+  versionId,
   userId,
   webhook,
   webhookId,
@@ -539,6 +542,45 @@ describe('workflow triggers tab', () => {
     const empty = heading.closest('[data-slot="empty"]');
     expect(empty).toHaveClass('border-t-0');
     expect(empty?.querySelector('[data-slot="status-glyph"]')).toBeNull();
+  });
+
+  it('shows a Form trigger instead of claiming the version has none', async () => {
+    const [step] = publishedGraph.nodes;
+    installQueries();
+    mockServer.use(
+      http.get(`${workflowApi}/triggers/schedules`, () =>
+        HttpResponse.json({ items: [] }),
+      ),
+      http.get(`${workflowApi}/triggers`, () =>
+        HttpResponse.json({ items: [] }),
+      ),
+      http.get(`${workflowApi}/versions`, () =>
+        HttpResponse.json({
+          items: [
+            version(versionId, 1, {
+              ...publishedGraph,
+              nodes: [
+                {
+                  ...step,
+                  id: 'form-node',
+                  definition: { key: 'core.form', version: 1 },
+                  label: 'Expense form',
+                },
+              ],
+            }),
+          ],
+          nextCursor: null,
+        }),
+      ),
+    );
+    renderApp(triggersPath);
+    const form = await screen.findByRole('region', { name: 'Form' });
+    expect(
+      within(form).getByText(/each time someone submits the form/u),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('heading', { name: 'This version has no trigger' }),
+    ).not.toBeInTheDocument();
   });
 
   it('lists recent deliveries with what happened, admission status and the run', async () => {

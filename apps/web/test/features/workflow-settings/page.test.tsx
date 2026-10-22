@@ -315,6 +315,46 @@ describe('workflow settings tab', () => {
     ).toBeVisible();
   });
 
+  it('still turns alerts off when its destination was the last one enabled', async () => {
+    const disabled = { ...destination, status: 'disabled' };
+    let current: typeof disabled | null = disabled;
+    installQueries();
+    mockServer.use(
+      http.get(`${api}/failure-notification-destinations`, () =>
+        HttpResponse.json({ items: [disabled] }),
+      ),
+      http.get(`${workflowApi}/failure-notification-policy`, () =>
+        HttpResponse.json({ destination: current }),
+      ),
+      http.delete(`${workflowApi}/failure-notification-policy`, () => {
+        current = null;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    renderApp(settingsPath);
+    const event = userEvent.setup();
+    const alerts = await screen.findByRole('region', {
+      name: 'Failure alerts',
+    });
+    expect(
+      await within(alerts).findByText(
+        /There’s no enabled alert destination in this workspace yet/u,
+      ),
+    ).toBeVisible();
+    expect(
+      within(alerts).queryByRole('combobox', {
+        name: 'Send failure alerts to',
+      }),
+    ).not.toBeInTheDocument();
+    await event.click(
+      within(alerts).getByRole('button', { name: 'Turn alerts off' }),
+    );
+    expect(await screen.findByText('Failure alerts turned off')).toBeVisible();
+    expect(
+      await within(alerts).findByText(/aren’t announced anywhere/u),
+    ).toBeVisible();
+  });
+
   it('blocks a conflicting alert change until the exact uncertain attempt resolves', async () => {
     installQueries();
     const setKeys: string[] = [];
