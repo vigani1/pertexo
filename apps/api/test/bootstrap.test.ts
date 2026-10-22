@@ -394,6 +394,28 @@ describe('API bootstrap ownership and health', () => {
       ).rejects.toThrow(selected.message);
   });
 
+  it('refuses configured connections without the application secret even with an injected identity runtime', async () => {
+    const selectedIdentity = identityRuntime();
+    const selectedWorkflow = createStubApiWorkflowRuntime(
+      selectedIdentity.dependencies.authorization,
+    );
+    await expect(
+      createApiApplication(
+        {
+          ...config,
+          connections: { kmsKeyReference: 'test-key', region: 'test-region' },
+        },
+        {
+          ...dependencies(),
+          identityRuntime: selectedIdentity,
+          workflowRuntime: selectedWorkflow,
+        },
+      ),
+    ).rejects.toThrow('Connections require application identity configuration');
+    expect(selectedIdentity.close).toHaveBeenCalledOnce();
+    expect(selectedWorkflow.close).toHaveBeenCalledOnce();
+  });
+
   it('closes already-created runtimes when a later runtime factory fails', async () => {
     const identityClose = vi.fn().mockResolvedValue(undefined);
     const workflowClose = vi.fn().mockResolvedValue(undefined);
@@ -414,6 +436,7 @@ describe('API bootstrap ownership and health', () => {
       createApiApplication(
         {
           ...config,
+          identity: betterAuthIdentityConfig('https://app.example.test'),
           connections: { kmsKeyReference: 'test-key', region: 'test-region' },
         },
         {
@@ -449,6 +472,7 @@ describe('API bootstrap ownership and health', () => {
     const failure = await createApiApplication(
       {
         ...config,
+        identity: betterAuthIdentityConfig('https://app.example.test'),
         connections: { kmsKeyReference: 'test-key', region: 'test-region' },
       },
       {
