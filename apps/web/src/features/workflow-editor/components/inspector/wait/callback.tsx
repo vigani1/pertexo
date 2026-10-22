@@ -58,10 +58,10 @@ export function CallbackSetup({
         />
         <FieldDescription>
           {authentication.mode === 'secret_url'
-            ? 'Anyone holding the URL can resume this Wait. Send it only to a trusted service.'
+            ? 'Anyone with the URL can resume the run, so send it only to a service you trust.'
             : authentication.mode === 'signed'
-              ? 'Map the authentication secret to the sender. Sign the exact request bytes using the normal Pertexo webhook signature and timestamp headers.'
-              : 'Map the authentication secret to the sender. Use Authorization: Bearer, or choose a dedicated header.'}
+              ? 'The service signs each call with a shared secret, using the same signature headers as Pertexo webhooks.'
+              : 'The service sends a shared secret in a header, Authorization: Bearer by default.'}
         </FieldDescription>
       </Field>
       {authentication.mode === 'header_secret' ? (
@@ -78,10 +78,10 @@ export function CallbackSetup({
           }}
         />
       ) : null}
-      <p className="text-xs text-subtle-foreground">
-        In an earlier HTTP, Slack or email step, choose Inputs → Insert data →
-        this Wait. Test workflow supports live callbacks; single-step previews
-        do not.
+      <p className="text-xs leading-relaxed text-subtle-foreground">
+        To send the URL, open an earlier HTTP, Slack or email step and insert it
+        from Inputs → Insert data. Test workflow runs can be called back;
+        testing this step alone can’t.
       </p>
     </>
   );

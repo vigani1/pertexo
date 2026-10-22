@@ -10,7 +10,7 @@ import {
   type NodeFormApi,
 } from '../../../model/inspector/node-form';
 import { ChoiceSelect } from '../fields/choice-select';
-import { SchemaField } from '../fields/schema-field';
+import { WaitDurationField } from './duration-field';
 
 export function WaitSetup({
   config,
@@ -49,26 +49,22 @@ export function WaitSetup({
         />
         <FieldDescription>
           {callback
-            ? 'An earlier sending step can insert this Wait’s callback URL. The first authenticated POST resumes this run once.'
-            : 'Pause for a fixed duration. Draft workflow tests complete duration waits immediately.'}
+            ? 'The run pauses here until another service calls this step’s URL.'
+            : 'Test runs skip the wait, so you don’t have to sit through it.'}
         </FieldDescription>
       </Field>
-      <SchemaField
+      <WaitDurationField
+        key={callback ? 'timeout' : 'duration'}
         config={config}
         form={form}
-        field={{
-          key: callback ? 'timeoutSeconds' : 'durationSeconds',
-          label: callback
-            ? 'Callback timeout (seconds)'
-            : 'Wait for (in seconds)',
-          kind: 'integer',
-          required: true,
-          minimum: 1,
-          maximum: WAIT_MAXIMUM_SECONDS,
-          description: callback
-            ? 'From 1 second to 30 days, starting when this step opens. A timeout fails the step; add a failure route to handle it.'
-            : 'From 1 second to 30 days.',
-        }}
+        configKey={callback ? 'timeoutSeconds' : 'durationSeconds'}
+        label={callback ? 'Give up after' : 'Wait for'}
+        description={
+          callback
+            ? 'Counted from when the run reaches this step, up to 30 days. Add a failure route to handle a timeout.'
+            : 'Up to 30 days.'
+        }
+        maximumSeconds={WAIT_MAXIMUM_SECONDS}
       />
       {callback ? <CallbackSetup config={config} form={form} /> : null}
     </>

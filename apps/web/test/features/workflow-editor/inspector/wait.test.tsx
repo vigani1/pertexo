@@ -40,14 +40,19 @@ function Wait() {
 it('switches Wait modes with normal live controls and keeps callback secrets out of the editor', async () => {
   render(<Wait />);
   const user = userEvent.setup();
+  // 60 seconds reads as the largest unit it fills: 1 minute.
+  expect(screen.getByRole('textbox', { name: 'Wait for' })).toHaveValue('1');
   expect(
-    screen.getByRole('textbox', { name: 'Wait for (in seconds)' }),
-  ).toHaveValue('60');
+    screen.getByRole('combobox', { name: 'Wait for unit' }),
+  ).toHaveTextContent('minutes');
   await user.click(screen.getByRole('combobox', { name: 'Wait until' }));
   await user.click(await screen.findByRole('option', { name: 'Called back' }));
+  expect(screen.getByRole('textbox', { name: 'Give up after' })).toHaveValue(
+    '1',
+  );
   expect(
-    screen.getByRole('textbox', { name: 'Callback timeout (seconds)' }),
-  ).toHaveValue('3600');
+    screen.getByRole('combobox', { name: 'Give up after unit' }),
+  ).toHaveTextContent('hours');
   await user.click(
     screen.getByRole('combobox', { name: 'Callback authentication' }),
   );
@@ -74,16 +79,29 @@ it('switches Wait modes with normal live controls and keeps callback secrets out
   );
 });
 
-it('keeps the existing duration control and its live saved value', async () => {
+it('saves an amount and unit as whole seconds, keeps the amount when the unit changes and stops at 30 days', async () => {
   render(<Wait />);
   const user = userEvent.setup();
-  const duration = screen.getByRole('textbox', {
-    name: 'Wait for (in seconds)',
-  });
+  const duration = screen.getByRole('textbox', { name: 'Wait for' });
   await user.clear(duration);
-  await user.type(duration, '600');
+  await user.type(duration, '10');
   await user.tab();
   expect(screen.getByLabelText('Saved configuration')).toHaveTextContent(
     '{"durationSeconds":600}',
+  );
+  await user.click(screen.getByRole('combobox', { name: 'Wait for unit' }));
+  await user.click(await screen.findByRole('option', { name: 'days' }));
+  // 10 days, still within 30.
+  expect(screen.getByLabelText('Saved configuration')).toHaveTextContent(
+    '{"durationSeconds":864000}',
+  );
+  await user.clear(duration);
+  await user.type(duration, '31');
+  await user.tab();
+  expect(await screen.findByText('Use 30 days or less.')).toBeVisible();
+  expect(duration).toHaveAttribute('aria-invalid', 'true');
+  // Typing 31 passes through 3; the step keeps that last valid value.
+  expect(screen.getByLabelText('Saved configuration')).toHaveTextContent(
+    '{"durationSeconds":259200}',
   );
 });
