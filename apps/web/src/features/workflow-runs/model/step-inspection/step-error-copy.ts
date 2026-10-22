@@ -82,9 +82,9 @@ const knownCodes: Readonly<Record<string, StepErrorCopy>> = {
   },
 
   'pending_task.expired': {
-    sentence: 'This task expired before it received a response.',
+    sentence: 'This task expired before anyone answered it.',
     advice:
-      'Check the task’s audience or callback sender, and its expiry period. Replay to open a new task; a failure route can handle expiry.',
+      'Check who can answer it and how long it waits. Replay to open a new task; a failure route can handle expiry.',
   },
   'pending_task.capacity_exceeded': {
     sentence: 'This workspace has reached its pending-task allowance.',
@@ -260,7 +260,33 @@ const fallback: StepErrorCopy = {
     'The code below tells support exactly what happened. Replay the run if repeating this step is safe.',
 };
 
-export function describeStepError(code: string): StepErrorCopy {
+/** An expiry reads differently for an approval, a form and a callback. */
+const EXPIRED_BY_STEP: Readonly<Record<string, StepErrorCopy>> = {
+  'core.approval': {
+    sentence: 'Nobody approved or rejected this before it expired.',
+    advice:
+      'Check who can approve it and how long it waits. Replay to ask again; a failure route can handle expiry.',
+  },
+  'core.request_input': {
+    sentence: 'Nobody filled in this form before it expired.',
+    advice:
+      'Check who can fill it in and how long it waits. Replay to ask again; a failure route can handle expiry.',
+  },
+  'core.wait': {
+    sentence: 'The other service didn’t call back in time.',
+    advice:
+      'Check that it received this step’s URL and how long the step waits. Replay to wait again; a failure route can handle a timeout.',
+  },
+};
+
+export function describeStepError(
+  code: string,
+  definitionKey?: string,
+): StepErrorCopy {
+  if (code === 'pending_task.expired' && definitionKey !== undefined) {
+    const expired = EXPIRED_BY_STEP[definitionKey];
+    if (expired !== undefined) return expired;
+  }
   const known = knownCodes[code];
   if (known !== undefined) return known;
   if (code.startsWith('provider.')) return providerUnavailable;

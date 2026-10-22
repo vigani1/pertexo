@@ -30,6 +30,27 @@ describe('step error copy', () => {
     );
   });
 
+  it('says what expired for an approval, a form and a callback, and stays general otherwise', () => {
+    expect(
+      describeStepError('pending_task.expired', 'core.approval').sentence,
+    ).toBe('Nobody approved or rejected this before it expired.');
+    expect(
+      describeStepError('pending_task.expired', 'core.request_input').sentence,
+    ).toBe('Nobody filled in this form before it expired.');
+    expect(
+      describeStepError('pending_task.expired', 'core.wait').sentence,
+    ).toBe('The other service didn’t call back in time.');
+    const general = describeStepError('pending_task.expired');
+    expect(general.sentence).toBe(
+      'This task expired before anyone answered it.',
+    );
+    expect(general.advice).not.toMatch(/callback/u);
+    // Other codes ignore the step type.
+    expect(describeStepError('execution.timeout', 'core.approval')).toEqual(
+      describeStepError('execution.timeout'),
+    );
+  });
+
   it('gives a step test the same few words as a run', () => {
     expect(shortStepError('execution.timeout')).toBe(
       'the service didn’t answer in time',

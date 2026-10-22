@@ -329,7 +329,11 @@ function PhoneFailureNotice({
   if (row === undefined) return null;
   return (
     <section aria-label={`Why ${row.label} failed`} className="-mt-3">
-      <StepError code={row.safeErrorCode} workspace={workspace} />
+      <StepError
+        code={row.safeErrorCode}
+        workspace={workspace}
+        definitionKey={row.definitionKey}
+      />
     </section>
   );
 }
