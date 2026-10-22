@@ -11,7 +11,7 @@ export async function startWebhookPeer(transport) {
   const api = (path) =>
     import(pathToFileURL(resolve('apps/api/dist', path)).href);
   const { registerWebhookIngress, createWebhookPreflight } = await api(
-    'webhooks/ingress.js',
+    'webhooks/ingress/register.js',
   );
   const { WebhookPreflightController } = await api(
     'webhooks/authentication/preflight.controller.js',

@@ -36,7 +36,7 @@ account, queue or CI job. Shared workflow alerts remain independent.
   in Requests rather than duplicating approval cards or adding an email kind.
 - `inbox/eligibility.ts` owns the complete notice predicate before pagination,
   counts/revisions/read commands and mail limits. It derives roles from policy
-  and reuses `runs/pending-tasks/eligibility.ts`. SQL keeps workspace/active-member
+  and reuses `runs/pending-tasks/responses/eligibility.ts`. SQL keeps workspace/active-member
   isolation and private-state fences, not another notice audience function.
 - Captured task details are eligible authenticated reads only. No task context,
   input/output, variable values, credentials, provider errors or comments enter

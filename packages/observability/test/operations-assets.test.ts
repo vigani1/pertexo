@@ -10,7 +10,7 @@ const assets = new URL(
 const emitterPaths = [
   '../../../apps/api/src/platform/observability/api-metrics.ts',
   '../../../apps/api/src/platform/observability/sse-visibility-metrics.ts',
-  '../../../apps/api/src/webhooks/telemetry.ts',
+  '../../../apps/api/src/webhooks/ingress/telemetry.ts',
   '../../../apps/worker/src/providers/telemetry.ts',
   '../../../apps/worker/src/retention/metrics.ts',
   '../../../apps/worker/src/runs/telemetry.ts',
