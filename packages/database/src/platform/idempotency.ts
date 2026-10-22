@@ -42,7 +42,7 @@ const sha256 = (value: string): string =>
   createHash('sha256').update(value).digest('hex');
 
 const requestDigest = (command: CommandRequest): string =>
-  command.requestHash ?? sha256(JSON.stringify(command.request));
+  command.requestHash ?? sha256(canonicalJson(command.request));
 
 function conflict(command: CommandLookup): Error {
   return command.conflict?.() ?? new IdempotencyConflictError();

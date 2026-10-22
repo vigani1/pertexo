@@ -1,10 +1,10 @@
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import { useRef } from 'react';
 import type { FailureNotificationDestinationResponse } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { Switch } from '@/components/ui/switch';
 import { useNotifications } from '@/components/ui/use-notifications';
-import { isUncertainOutcome } from '@/lib/api/error-copy';
 import { destinationCommandError } from '../model/failure-notification-errors';
 import {
   useSetFailureNotificationDestinationStatusMutation,
@@ -54,7 +54,7 @@ export function DestinationStatusSwitch({
     }
   }
 
-  const uncertain = mutation.isError && isUncertainOutcome(mutation.error);
+  const uncertain = mutation.isError && isUnconfirmedCommand(mutation.error);
   const requested = mutation.isPending ? mutation.variables.status : status;
 
   return (

@@ -1,5 +1,6 @@
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import { runAdmissionError } from '@/features/workflow-runs/commands.public';
-import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
+import { describeCommandError } from '@/lib/api/error-copy';
 import { sampleErrorDetail } from '../../model/testing/samples';
 import { isApiError } from '@/lib/api/error';
 
@@ -26,7 +27,7 @@ export function commandErrorMessage(error: unknown, action: string): string {
     error.problem?.code === 'workflow.validation_unavailable'
   )
     return 'The workflow check is temporarily unavailable. Wait a moment and try again; no new version was published.';
-  if (isUncertainOutcome(error))
+  if (isUnconfirmedCommand(error))
     return `We couldn’t confirm whether ${action} went through. Retrying is safe: it won’t happen twice.`;
   if (
     isApiError(error) &&

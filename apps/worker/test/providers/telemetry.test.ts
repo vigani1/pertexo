@@ -153,10 +153,12 @@ describe('provider telemetry', () => {
 
   it('classifies a provider failure and counts rate limits', async () => {
     const recorded = recorder();
-    const rateLimited = new SlackSendMessageExecutorError(
-      { kind: 'retry', errorKind: 'rate_limit', possiblyDispatched: true },
-      1_000,
-    );
+    const rateLimited = new SlackSendMessageExecutorError({
+      kind: 'retry',
+      errorKind: 'rate_limit',
+      possiblyDispatched: true,
+      minimumRetryDelayMillis: 1_000,
+    });
     Object.assign(rateLimited, { detail: 'private-error-sentinel' });
 
     await expect(

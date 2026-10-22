@@ -1,5 +1,6 @@
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import { isApiError } from '@/lib/api/error';
-import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
+import { describeCommandError } from '@/lib/api/error-copy';
 
 type DestinationCommand = 'create' | 'update' | 'enable' | 'disable';
 
@@ -34,7 +35,7 @@ export function destinationCommandError(
   error: unknown,
   command: DestinationCommand,
 ): string {
-  if (isUncertainOutcome(error)) return UNCERTAIN[command];
+  if (isUnconfirmedCommand(error)) return UNCERTAIN[command];
   if (isDestinationConflict(error))
     return command === 'update'
       ? 'Someone changed this destination while you were editing. Load the latest version, then save again — your edits stay.'

@@ -1,9 +1,10 @@
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import type { WorkspaceLifecycleChangeResponse } from '@pertexo/contracts';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
-import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
+import { describeCommandError } from '@/lib/api/error-copy';
 import {
   requestWorkspaceDeletion,
   restoreWorkspaceDeletion,
@@ -92,7 +93,7 @@ export function useWorkspaceLifecycleCommand({
       return owner.current === submissionOwner;
     } catch (cause) {
       if (owner.current !== submissionOwner) return false;
-      const uncertain = isUncertainOutcome(cause);
+      const uncertain = isUnconfirmedCommand(cause);
       if (!uncertain) attempt.current = undefined;
       setRetryAvailable(uncertain);
       setError(lifecycleCommandError(cause, current.intent.command));
@@ -135,7 +136,7 @@ function lifecycleCommandError(
 ): string {
   const subject =
     command === 'request-deletion' ? 'the deletion request' : 'the restore';
-  if (isUncertainOutcome(error))
+  if (isUnconfirmedCommand(error))
     return `We couldn’t confirm whether ${subject} went through. Try again — it’s the same request, so it can’t run twice.`;
   if (isApiError(error) && error.status === 409)
     return 'The workspace changed meanwhile. Reload the page to see where it stands.';

@@ -179,3 +179,55 @@ it('retries an uncertain checked start byte-for-byte after republication', async
   });
   expect(writes[1]).toEqual(writes[0]);
 });
+
+it('retries an accepted-then-503 start with the original key instead of creating a second run', async () => {
+  const accepted = new Map<string, string>();
+  const writes: { key: string; body: unknown }[] = [];
+  mockServer.use(
+    http.get(casesPath, () => HttpResponse.json({ items: [] })),
+    http.post(runPath, async ({ request }) => {
+      const key = request.headers.get('idempotency-key');
+      if (key === null) return problem(400, 'request.invalid');
+      writes.push({ key, body: await request.json() });
+      const previous = accepted.get(key);
+      const id = previous ?? crypto.randomUUID();
+      accepted.set(key, id);
+      if (writes.length === 1)
+        return problem(503, 'request.rate_limit_unavailable');
+      return HttpResponse.json(
+        {
+          run: {
+            id,
+            workspaceId,
+            workflowId,
+            workflowVersionId: versionId,
+            status: 'queued',
+            triggerType: 'manual',
+            createdAt: '2026-09-14T10:00:00.000Z',
+            updatedAt: '2026-09-14T10:00:00.000Z',
+            startedAt: null,
+            completedAt: null,
+            deadlineAt: null,
+            cancelRequestedAt: null,
+          },
+          replayed: previous !== undefined,
+        },
+        { status: 202 },
+      );
+    }),
+  );
+  const { event } = openRunMenu();
+  const start = await chooseRun(event);
+  fireEvent.change(screen.getByLabelText('Run input (JSON)'), {
+    target: { value: '{"proof":"accepted"}' },
+  });
+  await event.click(start);
+  const retry = await screen.findByRole('button', { name: 'Retry same run' });
+  expect(screen.getByLabelText('Run input (JSON)')).toBeDisabled();
+  await event.click(retry);
+  await waitFor(() => {
+    expect(writes).toHaveLength(2);
+  });
+  expect(writes[1]).toEqual(writes[0]);
+  expect(accepted.size).toBe(1);
+});

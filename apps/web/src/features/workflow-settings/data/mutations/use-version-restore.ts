@@ -1,3 +1,4 @@
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { WorkflowVersionResponse } from '@pertexo/contracts';
@@ -7,7 +8,7 @@ import {
 } from '@/features/workflow-editor/draft.public';
 import { restoreWorkflowVersion } from '@/features/workflow-versions/public';
 import { isApiError } from '@/lib/api/error';
-import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
+import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import { canonicalizeJson } from '@/lib/canonical-json';
 
@@ -143,7 +144,7 @@ export function useWorkflowVersionRestore({
     try {
       return await send(version);
     } catch (cause) {
-      const uncertain = isUncertainOutcome(cause);
+      const uncertain = isUnconfirmedCommand(cause);
       const attempt = attemptRef.current;
       if (
         attempt !== undefined &&

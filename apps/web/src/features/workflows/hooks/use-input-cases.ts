@@ -1,3 +1,4 @@
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   useInfiniteQuery,
@@ -13,7 +14,7 @@ import {
 import { getAllAccessibleWorkspaces } from '@/features/workspaces/queries.public';
 import { isApiError } from '@/lib/api/error';
 import { watchWorkspaceReadDenial } from '@/lib/api/read-denial';
-import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
+import { describeCommandError } from '@/lib/api/error-copy';
 import {
   getInputCase,
   sendInputCaseCommand,
@@ -37,7 +38,7 @@ function caseCommandError(cause: unknown) {
     return 'This case changed elsewhere. Your edits are still here. Read the current case and review before confirming a new change.';
   if (code === 'workflow.input_case_limit_exceeded')
     return 'This workspace or workflow has reached its input-case limit. Remove an unneeded case and try again.';
-  if (isUncertainOutcome(cause))
+  if (isUnconfirmedCommand(cause))
     return 'We couldn’t confirm this change. Retry the exact change within 24 hours; other changes are blocked until it is resolved.';
   return describeCommandError(cause, 'changing this input case');
 }
@@ -262,7 +263,7 @@ export function useInputCases(
     } catch (cause) {
       if (ownerRef.current !== token) return false;
       if (dispatched) {
-        const unknown = isUncertainOutcome(cause);
+        const unknown = isUnconfirmedCommand(cause);
         setUncertain(unknown);
         if (!unknown) retainedRef.current = undefined;
       }

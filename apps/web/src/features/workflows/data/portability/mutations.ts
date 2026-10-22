@@ -1,7 +1,8 @@
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import { useCallback, useRef, useState } from 'react';
 import type { WorkflowImportRequest } from '@pertexo/contracts';
 import { useQueryClient } from '@tanstack/react-query';
-import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
+import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
 import { importWorkflow } from './api';
@@ -82,7 +83,7 @@ export function useWorkflowImportCommand(
         phase === 'accepted' ||
         (!rejected &&
           (state.kind === 'uncertain' ||
-            (phase === 'mutation' && isUncertainOutcome(error))))
+            (phase === 'mutation' && isUnconfirmedCommand(error))))
       ) {
         setState({
           kind: 'uncertain',

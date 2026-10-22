@@ -1,3 +1,4 @@
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import { useId, useRef } from 'react';
 import type { ConnectionResponse } from '@pertexo/contracts';
 import { ProgressButton } from '@/components/ui/progress-button';
@@ -5,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { isApiError } from '@/lib/api/error';
-import { isUncertainOutcome } from '@/lib/api/error-copy';
 import { connectionCommandError } from '../../model/connection-errors';
 import {
   useRotateConnectionMutation,
@@ -74,7 +74,7 @@ export function ReplaceCredentialForm({
     finish();
   }
 
-  const uncertain = mutation.isError && isUncertainOutcome(mutation.error);
+  const uncertain = mutation.isError && isUnconfirmedCommand(mutation.error);
   return (
     <form
       noValidate

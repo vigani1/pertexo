@@ -1,9 +1,10 @@
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import { useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { WorkflowErrorSettingsRequest } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
-import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
+import { describeCommandError } from '@/lib/api/error-copy';
 import { putErrorWorkflow } from './api';
 import { errorWorkflowKey } from './queries';
 
@@ -32,7 +33,7 @@ export function useErrorWorkflowCommand(
       intent.current = undefined;
     },
     onError: async (error) => {
-      if (!isUncertainOutcome(error)) intent.current = undefined;
+      if (!isUnconfirmedCommand(error)) intent.current = undefined;
       if (isApiError(error) && [401, 403, 404].includes(error.status ?? 0)) {
         await cache.cancelQueries({ queryKey });
         cache.removeQueries({ queryKey });
@@ -64,7 +65,7 @@ export function useErrorWorkflowCommand(
   const conflict =
     isApiError(mutation.error) &&
     mutation.error.problem?.code === 'workflow.error_policy_conflict';
-  const unconfirmed = mutation.isError && isUncertainOutcome(mutation.error);
+  const unconfirmed = mutation.isError && isUnconfirmedCommand(mutation.error);
   const problem = !mutation.isError
     ? undefined
     : conflict

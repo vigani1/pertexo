@@ -1,3 +1,4 @@
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import { useId, useRef, useState } from 'react';
 import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import type { ConnectionResponse } from '@pertexo/contracts';
@@ -18,7 +19,6 @@ import {
 } from '@/components/ui/use-field-validation';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { isApiError } from '@/lib/api/error';
-import { isUncertainOutcome } from '@/lib/api/error-copy';
 import { connectionCommandError } from '../../model/connection-errors';
 import {
   useCreateConnectionMutation,
@@ -184,7 +184,7 @@ export function AddConnectionSheet({
   }
 
   const createFailed = create.isError && !isFieldProblem(create.error);
-  const uncertain = create.isError && isUncertainOutcome(create.error);
+  const uncertain = create.isError && isUnconfirmedCommand(create.error);
 
   return (
     <Sheet

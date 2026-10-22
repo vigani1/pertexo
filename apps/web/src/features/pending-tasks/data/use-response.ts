@@ -1,8 +1,9 @@
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import type { FormValues } from '@pertexo/workflow-model';
 import { useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { PendingTaskDecisionRequest } from '@pertexo/contracts';
-import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
+import { describeCommandError } from '@/lib/api/error-copy';
 import { isApiError } from '@/lib/api/error';
 import { decideTask, submitTask, type TaskScope } from './tasks.api';
 import { taskKeys, taskQueryOptions } from './tasks.queries';
@@ -27,7 +28,7 @@ export function useTaskResponse(scope: TaskScope, taskId: string) {
       });
     },
     onError: async (error) => {
-      if (!isUncertainOutcome(error)) intent.current = undefined;
+      if (!isUnconfirmedCommand(error)) intent.current = undefined;
       if (isApiError(error) && [401, 403, 404].includes(error.status ?? 0)) {
         await cache.cancelQueries({
           queryKey: taskKeys.scope(scope.userId, scope.workspaceId),
@@ -67,7 +68,7 @@ export function useTaskResponse(scope: TaskScope, taskId: string) {
     mutation.variables !== undefined && 'values' in mutation.variables.body
       ? 'response'
       : 'decision';
-  const uncertain = mutation.isError && isUncertainOutcome(mutation.error);
+  const uncertain = mutation.isError && isUnconfirmedCommand(mutation.error);
   return {
     send,
     pending: mutation.isPending,

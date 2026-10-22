@@ -18,7 +18,12 @@ import {
   workspaceMemberships,
 } from '../../src/testing.js';
 import { migrateDatabase } from '../../src/migrations.js';
-import { IdempotencyConflictError } from '../../src/platform/idempotency.js';
+import {
+  claimCommand,
+  completeCommand,
+  IdempotencyConflictError,
+} from '../../src/platform/idempotency.js';
+import { withTenantScopedClient } from '../../src/tenant-access/transactions.js';
 import { createWorkspaceInvitationDeliveryStore } from '../../src/tenant-access/index.js';
 import { createDisposableDatabaseFixture } from '../support/postgres/disposable-database.js';
 import { enforceRetention } from '../support/retention.js';
@@ -147,6 +152,51 @@ afterAll(async () => {
 });
 
 describe('identity/workspace persistence', () => {
+  it('replays a command with reordered nested object keys, while changed values conflict', async () => {
+    const pool = new Pool({ connectionString: apiUrl, max: 1 });
+    const identity = {
+      workspaceId,
+      scope: ownerUserId,
+      operation: 'test.canonical',
+      idempotencyKey: randomUUID(),
+    };
+    try {
+      await withTenantScopedClient(pool, { workspaceId }, async (client) => {
+        const request = {
+          settings: { left: 1, right: 2 },
+          values: [{ first: true, second: false }],
+        };
+        expect(
+          await claimCommand(client, {
+            ...identity,
+            request,
+            resourceId: workspaceId,
+          }),
+        ).toBeNull();
+        await completeCommand(client, identity, { receipt: 'first-command' });
+        expect(
+          await claimCommand(client, {
+            ...identity,
+            resourceId: workspaceId,
+            request: {
+              values: [{ second: false, first: true }],
+              settings: { right: 2, left: 1 },
+            },
+          }),
+        ).toEqual({ receipt: 'first-command' });
+        await expect(
+          claimCommand(client, {
+            ...identity,
+            resourceId: workspaceId,
+            request: { ...request, settings: { left: 2, right: 2 } },
+          }),
+        ).rejects.toBeInstanceOf(IdempotencyConflictError);
+      });
+    } finally {
+      await pool.end();
+    }
+  });
+
   it('discovers only the actor active workspaces with stable keyset pagination', async () => {
     const second = await identityDatabase.createWorkspaceWithOwner({
       name: 'Second Accessible Workspace',
@@ -1460,6 +1510,64 @@ describe('identity/workspace persistence', () => {
       }),
     ).rejects.toThrow('Unsafe audit metadata key');
   });
+
+  it.each(['resend', 'revoke'] as const)(
+    'binds an invitation %s command to its target',
+    async (operation) => {
+      const workspace = await identityDatabase.createWorkspaceWithOwner({
+        name: 'Invitation targets',
+        slug: `invite-target-${randomUUID().slice(0, 8)}`,
+        ownerUserId,
+      });
+      const first = await identityDatabase.createWorkspaceInvitation(
+        invitationCreateCommand(
+          workspace.id,
+          ownerUserId,
+          `${randomUUID()}@example.test`,
+        ),
+      );
+      const second = await identityDatabase.createWorkspaceInvitation(
+        invitationCreateCommand(
+          workspace.id,
+          ownerUserId,
+          `${randomUUID()}@example.test`,
+        ),
+      );
+      const command = {
+        workspaceId: workspace.id,
+        actorUserId: ownerUserId,
+        invitationId: first.invitation.id,
+        expectedRevision: 1,
+        idempotencyKey: randomUUID(),
+        tokenDigest: invitationTokenDigest(randomUUID()),
+        sealedToken: testSealedToken(),
+        deliveryAttemptId: randomUUID(),
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60_000),
+      };
+      if (operation === 'resend')
+        await tenantDatabase.withWorkspace(workspace.id, async ({ db }) => {
+          await db.execute(sql`update app.workspace_invitation_delivery_attempts
+        set status='failed',token_ciphertext=null,token_nonce=null,token_tag=null,token_key_version=null
+        where invitation_id in (${first.invitation.id}::uuid,${second.invitation.id}::uuid)`);
+        });
+      const method =
+        operation === 'resend'
+          ? 'resendWorkspaceInvitation'
+          : 'revokeWorkspaceInvitation';
+      const changed = await identityDatabase[method](command);
+      expect(changed.replayed).toBe(false);
+      expect(changed.invitation.id).toBe(first.invitation.id);
+      const replayed = await identityDatabase[method](command);
+      expect(replayed.replayed).toBe(true);
+      expect(replayed.invitation.id).toBe(first.invitation.id);
+      await expect(
+        identityDatabase[method]({
+          ...command,
+          invitationId: second.invitation.id,
+        }),
+      ).rejects.toBeInstanceOf(IdempotencyConflictError);
+    },
+  );
 
   it('creates one pending invitation, replays exactly, and arbitrates concurrent duplicates', async () => {
     const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(

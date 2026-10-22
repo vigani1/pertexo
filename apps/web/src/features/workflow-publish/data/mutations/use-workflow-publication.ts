@@ -1,3 +1,4 @@
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import type { PublicationReview } from '@pertexo/contracts';
 import { requestPublicationReview } from '../reviews/api';
 import { publicationReviewKeys } from '../reviews/queries';
@@ -6,7 +7,6 @@ import { useEffect, useRef, useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
 import { publishWorkflow } from '../workflow-publish.api';
 import { workflowPublishKeys } from '../workflow-publish.queries';
-import { isUncertainOutcome } from '@/lib/api/error-copy';
 import { commandErrorMessage } from './command-utils';
 import {
   useWorkflowDraftValidation,
@@ -201,11 +201,11 @@ export function useWorkflowPublication({
       return { kind: 'published', receipt };
     } catch (error) {
       if (owner.current !== publishOwner) return failed;
-      if (dispatched && !isUncertainOutcome(error))
+      if (dispatched && !isUnconfirmedCommand(error))
         publishAttempt.current = undefined;
       setPublishRecoveryPending(publishAttempt.current !== undefined);
       setRecoveryCommand(publishAttempt.current?.command.kind);
-      if (dispatched && !isUncertainOutcome(error))
+      if (dispatched && !isUnconfirmedCommand(error))
         void queryClient.invalidateQueries({
           queryKey: publicationReviewKeys.scope({
             apiClient,

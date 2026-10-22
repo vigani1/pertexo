@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ApiError } from '@/lib/api/error';
-import { readFailureReason } from '@/lib/api/error-copy';
+import { describeCommandError, readFailureReason } from '@/lib/api/error-copy';
 
 describe('read failure reasons', () => {
   it('says why a read failed without repeating what failed', () => {
@@ -23,4 +23,15 @@ describe('read failure reasons', () => {
       'Something went wrong on our side. Try again.',
     );
   });
+});
+
+it('does not claim a 503 command changed nothing', () => {
+  expect(
+    describeCommandError(
+      new ApiError({ kind: 'problem', status: 503, message: 'Unavailable' }),
+      'sending this invitation',
+    ),
+  ).toBe(
+    'We couldn’t confirm whether sending this invitation went through. Check again before retrying.',
+  );
 });
