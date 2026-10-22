@@ -124,7 +124,10 @@ function useAlertChoices({
   } as const;
 }
 
-/** Choose where failures go instead, or turn them off. */
+/**
+ * Choose where failures go instead, or turn them off. Turning off needs no
+ * other destination, so it stays when none is enabled to switch to.
+ */
 function DestinationPicker({
   options,
   pending,
@@ -142,40 +145,44 @@ function DestinationPicker({
   const selected = options.find((option) => option.value === selectedId);
   return (
     <div className="flex flex-wrap items-end gap-3">
-      <Field className="min-w-64 flex-1">
-        <FieldLabel id="failure-destination-label">
-          Send failure alerts to
-        </FieldLabel>
-        <Select
-          items={options}
-          value={selectedId}
-          onValueChange={(value) => {
-            setSelectedId(typeof value === 'string' ? value : null);
-          }}
-        >
-          <SelectTrigger aria-labelledby="failure-destination-label">
-            <SelectValue placeholder="Choose a destination" />
-          </SelectTrigger>
-          <SelectContent>
-            {options.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </Field>
-      <ProgressButton
-        type="button"
-        pending={pending}
-        pendingLabel="Saving…"
-        disabled={selected === undefined}
-        onClick={() => {
-          if (selected !== undefined) onSave(selected);
-        }}
-      >
-        Save destination
-      </ProgressButton>
+      {options.length === 0 ? null : (
+        <>
+          <Field className="min-w-64 flex-1">
+            <FieldLabel id="failure-destination-label">
+              Send failure alerts to
+            </FieldLabel>
+            <Select
+              items={options}
+              value={selectedId}
+              onValueChange={(value) => {
+                setSelectedId(typeof value === 'string' ? value : null);
+              }}
+            >
+              <SelectTrigger aria-labelledby="failure-destination-label">
+                <SelectValue placeholder="Choose a destination" />
+              </SelectTrigger>
+              <SelectContent>
+                {options.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <ProgressButton
+            type="button"
+            pending={pending}
+            pendingLabel="Saving…"
+            disabled={selected === undefined}
+            onClick={() => {
+              if (selected !== undefined) onSave(selected);
+            }}
+          >
+            Save destination
+          </ProgressButton>
+        </>
+      )}
       <Button
         type="button"
         variant="outline"
@@ -267,7 +274,8 @@ export function FailureAlertsSection({
           {commands.error === undefined ? null : (
             <Notice tone="destructive">{commands.error}</Notice>
           )}
-          {choices.options.length === 0 ? null : (
+          {choices.options.length === 0 &&
+          (choices.current?.destination ?? null) === null ? null : (
             <DestinationPicker
               options={choices.options}
               pending={commands.pending}

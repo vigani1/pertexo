@@ -7,6 +7,7 @@ import {
   describeStepChange,
   diffWorkflowGraphs,
 } from '@/features/workflow-drafts/public';
+import { triggerKindOf } from '@/features/workflows/shape.public';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
 
@@ -28,8 +29,6 @@ export type PublishSummary = Readonly<{
   layoutOnly: boolean;
   triggerNames: readonly string[];
 }>;
-
-const TRIGGER_KEYS = new Set(['core.webhook', 'core.schedule']);
 
 /**
  * What publishing changes against the latest published version, in step
@@ -70,8 +69,13 @@ export function summarizePublish(
       diff.linksAdded === 0 &&
       diff.linksRemoved === 0 &&
       withLayout.changed.length > 0,
+    // Triggers that start runs on their own; a manual start is a run
+    // someone starts, which the dialog already describes.
     triggerNames: draft.nodes
-      .filter((node) => TRIGGER_KEYS.has(node.definition.key))
+      .filter((node) => {
+        const kind = triggerKindOf(node.definition);
+        return kind !== undefined && kind !== 'core.manual';
+      })
       .map(nodeName),
   };
 }
