@@ -199,15 +199,14 @@ describe('connections page', () => {
       lens().getByText('Last tested').nextElementSibling,
     ).toHaveTextContent('Never');
     expect(lens().getByText('From a workflow run')).toBeVisible();
-    expect(
-      await lens().findByText(/Version 2 · Current publication/u),
-    ).toBeVisible();
+    expect(await lens().findByText('Live as version 2')).toBeVisible();
     await userEvent
       .setup()
       .click(lens().getByRole('button', { name: 'Load more' }));
     expect(
+      // Both versions belong to one workflow, so they share its row.
       await lens().findByText(
-        /Version 1 · Historical version · Archived workflow/u,
+        'Live as version 2, 1 older version still used by runs (archived workflow)',
       ),
     ).toBeVisible();
     expect(

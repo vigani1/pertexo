@@ -56,7 +56,7 @@ test('uploads CSV in the editor, reads default-converted values and runs Filter 
       exact: true,
     }),
   ).toBeChecked();
-  await expect(page.getByText(/4,996 narrow rows/u)).toBeVisible();
+  await expect(page.getByText(/roughly 5,000 short rows/u)).toBeVisible();
   await page.screenshot({ path: `${images}/setup-desktop.png` });
   await page.setViewportSize({ width: 375, height: 768 });
   await page

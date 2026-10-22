@@ -86,14 +86,12 @@ test('shows delivered run rejection, explicit recovery, stale-evidence fences an
     }),
   );
   const usedBy = lens.getByRole('region', { name: 'Used by' });
+  // One row per workflow, with its older versions counted.
   await expect(usedBy.getByRole('link', { name: 'Health sender' })).toHaveCount(
-    2,
+    1,
   );
   await expect(
-    usedBy.getByText('Version 2 · Current publication'),
-  ).toBeVisible();
-  await expect(
-    usedBy.getByText('Version 1 · Historical version'),
+    usedBy.getByText('Live as version 2, 1 older version still used by runs'),
   ).toBeVisible();
   await lens
     .getByText('Needs reauthorization', { exact: true })
