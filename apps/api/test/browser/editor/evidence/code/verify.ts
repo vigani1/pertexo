@@ -50,4 +50,5 @@ export async function verifyCodeEvidence(database: Pool) {
   const audits = await database.query('select metadata from app.audit_events');
   expect(JSON.stringify(audits.rows)).not.toContain('private Code log');
   expect(JSON.stringify(audits.rows)).not.toContain('private Code failure');
+  expect(JSON.stringify(audits.rows)).not.toContain('private Python log');
 }

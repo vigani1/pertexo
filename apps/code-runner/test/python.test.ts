@@ -72,6 +72,24 @@ return {"total": input["amount"] * _vars["RATE"], "zone": zoneinfo.ZoneInfo("Eur
       },
     });
   });
+  it('supports datetime parsing/formatting and CSV text buffers', async () => {
+    expect(
+      await execute(
+        'from datetime import datetime\nimport csv, io\nreturn {"date": datetime.strptime("22/10/2026", "%d/%m/%Y").strftime("%Y-%m-%d"), "rows": list(csv.DictReader(io.StringIO("name,value\\nAda,2\\n")))}',
+      ),
+    ).toMatchObject({
+      kind: 'succeeded',
+      output: { date: '2026-10-22', rows: [{ name: 'Ada', value: '2' }] },
+    });
+  });
+  it('bounds blocking standard-library waits beside a healthy task', async () => {
+    const [waiting, healthy] = await Promise.all([
+      execute('import time\ntime.sleep(10)\nreturn True', 1),
+      execute('return input["amount"]'),
+    ]);
+    expect(waiting).toMatchObject({ kind: 'failed', code: 'code.timeout' });
+    expect(healthy).toMatchObject({ kind: 'succeeded', output: 3 });
+  });
   it.each([
     'os',
     'sys',
@@ -133,6 +151,39 @@ return {"total": input["amount"] * _vars["RATE"], "zone": zoneinfo.ZoneInfo("Eur
     });
     expect(
       await execute('value = 1\nraise ValueError("private detail")'),
+    ).toMatchObject({
+      kind: 'failed',
+      code: 'code.runtime_error',
+      diagnostics: { error: { line: 2, message: 'private detail' } },
+    });
+  });
+  it('preserves multiline string contents in a function body', async () => {
+    expect(await execute('return """first\nsecond"""')).toMatchObject({
+      kind: 'succeeded',
+      output: 'first\nsecond',
+    });
+    expect(await execute('return "first\u2028second"')).toMatchObject({
+      kind: 'succeeded',
+      output: 'first\u2028second',
+    });
+  });
+  it('reports Unicode columns in the same UTF-16 coordinates as the editor', async () => {
+    const source = 'text = "é😀"; raise ValueError("private detail")';
+    expect(await execute(source)).toMatchObject({
+      kind: 'failed',
+      code: 'code.runtime_error',
+      diagnostics: { error: { line: 1, column: source.indexOf('raise') + 1 } },
+    });
+    const syntax = 'text = "😀"; return (';
+    expect(await execute(syntax)).toMatchObject({
+      kind: 'failed',
+      code: 'code.syntax_error',
+      diagnostics: { error: { line: 1, column: syntax.lastIndexOf('(') + 1 } },
+    });
+  });
+  it('locates a SyntaxError raised by user code at the runtime statement', async () => {
+    expect(
+      await execute('value = 1\nraise SyntaxError("private detail")'),
     ).toMatchObject({
       kind: 'failed',
       code: 'code.runtime_error',

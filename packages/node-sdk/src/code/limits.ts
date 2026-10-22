@@ -31,6 +31,9 @@ export const CODE_PYTHON_MODULES = Object.freeze([
   'math',
   'statistics',
   'datetime',
+  // datetime's C methods import these through the caller's import hook.
+  'time',
+  '_strptime',
   'zoneinfo',
   're',
   'decimal',
@@ -48,6 +51,7 @@ export const CODE_PYTHON_MODULES = Object.freeze([
   'urllib.parse',
   'html',
   'csv',
+  'io',
 ]);
 const packageName = z
   .string()

@@ -266,6 +266,8 @@ Slice 2 implementation choices (2026-10-16):
 
 ## Later work
 
+Python in the same runner is delivered by
+[F39](39-python-code.md), with the owner-approved amendment to ADR 082.
 Network access through approved hosts and connections (a capability broker),
-Python in the same runner design, more preinstalled libraries, and per-customer
-cloud provisioning. Each needs its own review.
+more preinstalled libraries and per-customer cloud provisioning remain later
+work. Each needs its own review.
