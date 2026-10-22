@@ -90,9 +90,9 @@ export function StepChoiceList({
       </p>
     );
   return groups.map((group) => {
-    const headingId = `${idPrefix}-${group.family}`;
+    const headingId = `${idPrefix}-${group.id}`;
     return (
-      <section key={group.family} aria-labelledby={headingId} className="mt-3">
+      <section key={group.id} aria-labelledby={headingId} className="mt-3">
         <h3
           id={headingId}
           className="px-1.5 font-mono text-[0.68rem] font-semibold tracking-wide text-subtle-foreground uppercase"

@@ -403,6 +403,42 @@ describe('add-step choices', () => {
     ]);
   });
 
+  it('splits data steps by what they work on and keeps table reads with table writes', () => {
+    const step = (key: string, family: NodeDefinitionCatalogItem['family']) =>
+      ({
+        ...definition,
+        definition: { key, version: 1 },
+        family,
+      }) satisfies NodeDefinitionCatalogItem;
+    const catalog = [
+      step('core.text', 'transform'),
+      step('core.table_find', 'transform'),
+      step('core.filter', 'transform'),
+      step('core.run_values', 'transform'),
+      step('core.table_insert', 'action'),
+      step('http.request', 'action'),
+    ];
+    const groups = groupStepChoices(catalog, '');
+    expect(
+      groups.map((group) => [
+        group.title,
+        group.entries.map((entry) =>
+          entry.kind === 'step' ? entry.choice.step.name : entry.bundle.name,
+        ),
+      ]),
+    ).toEqual([
+      ['Do something', ['HTTP request', 'Save run values', 'Data table rows']],
+      ['Work with lists', ['Filter items']],
+      ['Text, numbers and dates', ['Format text']],
+    ]);
+    const tables = groups[0]?.entries.at(-1);
+    expect(
+      tables?.kind === 'bundle'
+        ? tables.bundle.choices.map((choice) => choice.step.name)
+        : [],
+    ).toEqual(['Find rows', 'Insert row']);
+  });
+
   it('lists the step whose name matches first, so Enter adds it', () => {
     const logic = (key: string) =>
       ({

@@ -15,7 +15,9 @@ export {
   portName,
   prettifyDefinitionKey,
   requiredConnections,
+  stepGroupFor,
   stepGroups,
   type StepFamily,
+  type StepGroup,
   type StepPresentation,
 } from './model/step-presentation';
