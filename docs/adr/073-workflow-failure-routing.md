@@ -151,6 +151,10 @@ provider classifications, the routable codes are:
 - a file the step can't read (`execution.file_input`);
 - a table refusal (`execution.table_*` for not found, invalid values, quota,
   conflict, key conflict, result too large, unsafe filter);
+- a utility's fixed data/setup refusal (invalid text fields, XML data/name/root/DTD,
+  HTML selectors, crypto input or Signing key setup), or Create file's invalid
+  data/column setup (`utility.*` and `file.create_data` / `file.create_columns`,
+  individually allowlisted, corrected in the 2026-10-23 audit follow-up);
 - an error in the step's code (`code.syntax_error`, `code.runtime_error`,
   `code.timeout`, `code.memory_limit`, `code.output_invalid`,
   `code.module_refused`).
@@ -163,3 +167,13 @@ coordinator decides it on the same path as every other step failure, and error
 workflows classify these failures too. The change follows n8n's error output and
 Zapier's error paths, which catch any step error, and was approved with the
 [step capability upgrades](../feature-plans/step-capability-upgrades.md).
+
+### Audit correction — 2026-10-23
+
+Utility and Create file data/setup writers now match the definite-failure rule
+above. Their existing bounded private diagnostics may be persisted for the
+fixed writer codes; that does not expose them in a failure mapping or error
+workflow. Storage faults, utility resource/collection bounds and
+`file.create_size` remain unhandled. Discovered CSV-column overflow uses that
+existing size code; invalid column names and missing columns remain setup
+failures. Neither code prefixes nor arbitrary provider text grant routing.

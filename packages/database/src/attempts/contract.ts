@@ -190,6 +190,33 @@ export const recordInputSchema = ownedLeaseSchema
 export const heartbeatSchema = ownedLeaseSchema
   .extend({ leaseDurationSeconds: z.number().int().min(1).max(300) })
   .strict();
+// These writers produce bounded private diagnostics, including unhandled
+// storage and resource refusals. Provider messages remain excluded.
+const dataExecutorSummaryCodes = new Set([
+  'utility.invalid_data',
+  'utility.text_fields',
+  'utility.result_text',
+  'utility.result_too_large',
+  'utility.too_many_items',
+  'utility.xml_name',
+  'utility.xml_data',
+  'utility.xml_input',
+  'utility.xml_root',
+  'utility.xml_malformed',
+  'utility.xml_dtd',
+  'utility.xml_depth',
+  'utility.xml_size',
+  'utility.html_selector',
+  'utility.html_depth',
+  'utility.html_size',
+  'utility.crypto_input',
+  'utility.hmac_connection',
+  'utility.hmac_unavailable',
+  'file.create_data',
+  'file.create_columns',
+  'file.create_size',
+  'file.create_storage',
+]);
 const safeErrorCodeSchema = z.string().regex(SAFE_EXECUTOR_ERROR_CODE_PATTERN);
 export const executorFailureKindSchema = z.enum([
   'failed',
@@ -237,10 +264,11 @@ const completionOutcomeSchema = z.discriminatedUnion('status', [
     .refine(
       (outcome) =>
         outcome.errorSummary === undefined ||
+        dataExecutorSummaryCodes.has(outcome.safeErrorCode) ||
         outcome.safeErrorCode === 'execution.file_input' ||
         outcome.safeErrorCode.startsWith('http.pagination_') ||
         outcome.safeErrorCode === 'execution.attempt_invalid',
-      'Only a sanitized file, pagination or step-refusal diagnostic can accompany an executor failure',
+      'Only a sanitized data, file, pagination or step-refusal diagnostic can accompany an executor failure',
     ),
 ]);
 const traceparentSchema = z

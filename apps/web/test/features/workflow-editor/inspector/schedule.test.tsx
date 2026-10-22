@@ -82,6 +82,38 @@ function draftOf(config: Record<string, unknown>): ScheduleDraft {
 }
 
 describe('schedule builder model', () => {
+  it.each(['0 9 * * THU', '0 9 * JUL *', '0 9 * JUL THU', '0 9 * jul thu'])(
+    'accepts the supported month/day names in %s',
+    (expression) => {
+      expect(
+        scheduleIssue(
+          { ...draftOf({}), mode: 'custom', expression },
+          readSchema(),
+        ),
+      ).toBeUndefined();
+      expect(
+        configFromDraft(
+          { ...draftOf({}), mode: 'custom', expression },
+          readSchema(),
+        ),
+      ).toMatchObject({ ok: true, value: { expression } });
+    },
+  );
+  it.each([
+    'H 9 * * *',
+    '0 9 L * *',
+    '0 9 * * 4L',
+    '0 9 * * THU#2',
+    '0 9 ? JUL THU',
+  ])('refuses unsupported operators in %s', (expression) => {
+    const issue = scheduleIssue(
+      { ...draftOf({}), mode: 'custom', expression },
+      readSchema(),
+    );
+    expect(issue?.field).toBe('expression');
+    expect(issue?.message).toContain('aren’t supported');
+  });
+
   it('reads what the catalog’s schedule schema allows', () => {
     expect(readSchema()).toEqual({
       cron: { minLength: 9, maxLength: 255 },

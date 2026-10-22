@@ -319,3 +319,5 @@ export {
 } from './flow/callbacks/validation.js';
 
 export { remapCallbackReferences } from './flow/callbacks/references.js';
+
+export { cronHasUnsupportedOperators } from './triggers/schedules/cron.js';

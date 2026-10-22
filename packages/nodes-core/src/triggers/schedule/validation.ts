@@ -1,5 +1,6 @@
 import { CronExpressionParser } from 'cron-parser';
 import { z } from 'zod';
+import { cronHasUnsupportedOperators } from '@pertexo/workflow-model';
 
 export const CORE_SCHEDULE_MAX_INTERVAL_MINUTES = 43_200;
 export const CORE_SCHEDULE_MISFIRE_POLICY_SCHEMA = z
@@ -20,7 +21,7 @@ const strictCronExpressionSchema = z
     },
     { message: 'Expected a strict five-field cron expression' },
   )
-  .refine((expression) => !/[H?#L]/u.test(expression), {
+  .refine((expression) => !cronHasUnsupportedOperators(expression), {
     message: 'Cron expression contains an unsupported token',
   });
 const canonicalIanaTimezones = new Set(Intl.supportedValuesOf('timeZone'));

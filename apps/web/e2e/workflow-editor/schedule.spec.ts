@@ -54,7 +54,7 @@ async function choose(page: Page, label: string, option: string) {
 test('builds a schedule with a sentence preview and saves the step’s own config', async ({
   context,
   page,
-}) => {
+}, testInfo) => {
   const remote = remoteDraft({
     nodes: [
       {
@@ -102,6 +102,17 @@ test('builds a schedule with a sentence preview and saves the step’s own confi
   await choose(page, 'Runs', 'Custom cron rule');
   const rule = page.getByLabel('Cron rule', { exact: true });
   await expect(rule).toHaveValue('30 18 * * 1,4');
+  await rule.fill('30 18 * JUL THU');
+  await rule.blur();
+  await expect
+    .poll(() => remote.graph.nodes[0], { timeout: 4_000 })
+    .toMatchObject({ config: { expression: '30 18 * JUL THU' } });
+  await expect(rule).not.toHaveAttribute('aria-invalid', 'true');
+  await page.screenshot({
+    path: testInfo.outputPath('cron-named-fields.png'),
+    fullPage: true,
+  });
+
   await rule.fill('30 18 * *');
   // The error waits until the field is left, so typing never shifts it.
   await rule.blur();

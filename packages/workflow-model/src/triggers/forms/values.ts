@@ -96,7 +96,13 @@ export function parseFormValues(
       ];
     }),
   );
-  const result = z.object(shape).strict().safeParse(input);
+  // Zod reads declared properties directly; absent JSON fields must not
+  // resolve through Object.prototype.
+  const submitted =
+    typeof input === 'object' && input !== null && !Array.isArray(input)
+      ? Object.assign(Object.create(null) as Record<string, unknown>, input)
+      : input;
+  const result = z.object(shape).strict().safeParse(submitted);
   if (!result.success)
     throw new FormValuesInvalidError(
       result.error.issues.slice(0, FORM_LIMITS.fields).map((issue) => {
@@ -139,7 +145,9 @@ function fieldMessage(
   input: unknown,
 ): string {
   const value =
-    typeof input === 'object' && input !== null
+    typeof input === 'object' &&
+    input !== null &&
+    Object.hasOwn(input, field.name)
       ? (input as Record<string, unknown>)[field.name]
       : undefined;
   if (field.type === 'multi_select') return selectionMessage(field);

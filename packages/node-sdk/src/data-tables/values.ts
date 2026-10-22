@@ -21,7 +21,9 @@ export function validateDataTableValues(
   const result: DataTableValues = {};
   for (const column of columns) {
     if (partial && !Object.hasOwn(values, column.name)) continue;
-    const value = values[column.name] ?? null;
+    const value = Object.hasOwn(values, column.name)
+      ? (values[column.name] ?? null)
+      : null;
     if (value === null) {
       if (column.required)
         throw new DataTableError(

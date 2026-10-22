@@ -107,3 +107,21 @@ the way those products do.
 
 Each step ships as its own PR with tests that fail without it, and is checked
 end to end on the local stack with the QA step lab.
+
+## Audit corrections — 2026-10-23
+
+- The fixed utility and Create file data/setup codes use the existing definite
+  failure link rule. Persist their bounded private diagnostics through the
+  existing attempt outcome; storage and resource bounds remain unhandled.
+  Discovered CSV-column overflow uses `file.create_size`, keeping it separate
+  from column setup errors. Real worker and engine regressions cover malformed
+  XML and invalid CSV rows.
+- A failed HTTP response-file write after GET/HEAD remains a definite safe
+  retry; effectful methods keep the unknown-outcome safeguard.
+- HTTP placeholders, table values and form submission boundaries read own
+  properties, so omitted prototype-named fields do not become inherited values.
+- Webhook repeated fields accumulate linearly. An expired replay receipt is
+  prepared as a fresh event outside database locks, then rechecked under the
+  existing admission, coordination and replay fences; body and policy stay intact.
+- Schedule authoring shares one unsupported-operator check. Valid day/month
+  names such as THU and JUL pass; the server still parses the full cron rule.

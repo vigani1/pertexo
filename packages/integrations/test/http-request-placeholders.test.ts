@@ -75,3 +75,20 @@ describe('HTTP request placeholders', () => {
     ).toBe(true);
   });
 });
+
+it.each(['toString', 'constructor', 'valueOf', 'hasOwnProperty'])(
+  'requires an own placeholder value for %s',
+  (name) => {
+    const template = {
+      url: `https://api.example.test/{${name}}`,
+      headers: { 'x-value': `{${name}}` },
+    };
+    expect(() => fillHttpTemplate(template, {})).toThrow(
+      `Map a value for {${name}}.`,
+    );
+    expect(fillHttpTemplate(template, { [name]: 'supplied value' })).toEqual({
+      url: 'https://api.example.test/supplied%20value',
+      headers: { 'x-value': 'supplied value' },
+    });
+  },
+);
