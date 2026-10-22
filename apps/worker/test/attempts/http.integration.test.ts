@@ -630,6 +630,7 @@ describeIntegration('active HTTP node attempt', () => {
     let persistedArtifactId: string | undefined;
     let artifactBaseline: Set<string> | undefined;
     let credentialAuditBaseline = 0;
+    let slackAuditBaseline = 0;
     await runWithCleanup(
       async () => {
         artifactBaseline = await readArtifactIds();
@@ -642,6 +643,19 @@ describeIntegration('active HTTP node attempt', () => {
                   and event_type='connection.credential_accessed'
                   and actor_kind='worker'`,
                 [workspaceId, connectionId],
+              ),
+            )
+          ).rows[0]?.count ?? '0',
+        );
+        slackAuditBaseline = Number(
+          (
+            await withOwner((client) =>
+              client.query<{ count: string }>(
+                `select count(*)::text count from app.connection_events
+                where workspace_id=$1 and connection_id=$2
+                  and event_type='connection.credential_accessed'
+                  and actor_kind='worker'`,
+                [workspaceId, slackConnectionId],
               ),
             )
           ).rows[0]?.count ?? '0',
@@ -992,7 +1006,7 @@ describeIntegration('active HTTP node attempt', () => {
             [workspaceId, slackConnectionId],
           ),
         );
-        expect(slackAudit.rows[0]?.count).toBe('1');
+        expect(slackAudit.rows[0]?.count).toBe(String(slackAuditBaseline + 1));
         const completedSlackJob = await waitFor(
           () => attemptQueue.getJob(slackJob.jobId),
           (job) => job !== undefined,
