@@ -91,7 +91,9 @@ export function createCodeRunnerClient(config: WorkerCodeRunnerConfig) {
               config.settings.maximumSeconds ||
             greeting.settings.concurrency !== config.settings.concurrency ||
             JSON.stringify(greeting.settings.extraPackages) !==
-              JSON.stringify(config.settings.extraPackages)
+              JSON.stringify(config.settings.extraPackages) ||
+            JSON.stringify(greeting.settings.pythonPackages) !==
+              JSON.stringify(config.settings.pythonPackages)
           )
             return failed(
               'code.runner_unavailable',

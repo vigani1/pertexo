@@ -24,6 +24,31 @@ export const CODE_ALLOWED_BUILTINS = Object.freeze([
   'zlib',
 ]);
 export const CODE_DEFAULT_PACKAGES = Object.freeze(['lodash', 'dayjs']);
+export const codeLanguageSchema = z.enum(['javascript', 'python']);
+export type CodeLanguage = z.output<typeof codeLanguageSchema>;
+export const CODE_PYTHON_MODULES = Object.freeze([
+  'json',
+  'math',
+  'statistics',
+  'datetime',
+  'zoneinfo',
+  're',
+  'decimal',
+  'fractions',
+  'itertools',
+  'functools',
+  'collections',
+  'string',
+  'textwrap',
+  'hashlib',
+  'hmac',
+  'base64',
+  'uuid',
+  'random',
+  'urllib.parse',
+  'html',
+  'csv',
+]);
 const packageName = z
   .string()
   .max(214)
@@ -35,6 +60,16 @@ export const codeSettingsSchema = z
     maximumSeconds: z.number().int().min(1).max(300),
     concurrency: z.number().int().min(1).max(16),
     extraPackages: z.array(packageName).max(32).readonly(),
+    pythonPackages: z
+      .array(
+        z
+          .string()
+          .max(214)
+          .regex(/^[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*$/u),
+      )
+      .max(32)
+      .readonly()
+      .default([]),
   })
   .strict();
 export type CodeSettings = Readonly<z.output<typeof codeSettingsSchema>>;
@@ -44,6 +79,7 @@ export const DEFAULT_CODE_SETTINGS: CodeSettings = Object.freeze({
   maximumSeconds: 30,
   concurrency: 2,
   extraPackages: Object.freeze([]),
+  pythonPackages: Object.freeze([]),
 });
 
 /** Parse administrator input at each process's configuration boundary. */
@@ -72,6 +108,7 @@ export function parseCodeSettings(
         .max(16)
         .default(2),
       CODE_RUNNER_PACKAGES: z.string().default('[]'),
+      CODE_RUNNER_PYTHON_PACKAGES: z.string().default('[]'),
     })
     .parse(environment);
   const extra: unknown = JSON.parse(raw.CODE_RUNNER_PACKAGES);
@@ -81,6 +118,7 @@ export function parseCodeSettings(
     maximumSeconds: raw.CODE_RUNNER_MAX_SECONDS,
     concurrency: raw.CODE_RUNNER_CONCURRENCY,
     extraPackages: extra,
+    pythonPackages: JSON.parse(raw.CODE_RUNNER_PYTHON_PACKAGES) as unknown,
   });
 }
 

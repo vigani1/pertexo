@@ -18,6 +18,75 @@ const task = (
     AbortSignal.timeout(15_000),
   );
 try {
+  const pythonTask = (code, timeoutSeconds = 3) =>
+    client.execute(
+      {
+        language: 'python',
+        code,
+        timeoutSeconds,
+        input: { amount: 3 },
+        variables: { RATE: 2 },
+      },
+      AbortSignal.timeout(15000),
+    );
+  assert.deepEqual(
+    (
+      await pythonTask(
+        'import zoneinfo\nprint("private diagnostic")\nreturn {"total": input["amount"] * _vars["RATE"], "zone": zoneinfo.ZoneInfo("Europe/Paris").key}',
+      )
+    ).output,
+    { total: 6, zone: 'Europe/Paris' },
+  );
+  for (const [name, code, expected] of [
+    ...[
+      'os',
+      'subprocess',
+      'socket',
+      'ctypes',
+      'threading',
+      'multiprocessing',
+      'sys',
+      'importlib',
+      'pickle',
+      'asyncio',
+    ].map((name) => [
+      name,
+      `import ${name}\nreturn True`,
+      'code.module_refused',
+    ]),
+    ['CPU', 'while True: pass', 'code.timeout'],
+    [
+      'heap',
+      'items = []\nwhile True: items.append([42] * 100000)',
+      'code.memory_limit',
+    ],
+    [
+      'native',
+      'items = []\nwhile True: items.append(bytearray(16 * 1024 * 1024))',
+      'code.memory_limit',
+    ],
+    ['invalid output', 'return float("nan")', 'code.output_invalid'],
+  ]) {
+    const [hostile, healthy] = await Promise.all([
+      pythonTask(code, name === 'CPU' ? 1 : 3),
+      task('return input.amount;', 3),
+    ]);
+    assert.equal(
+      hostile.kind,
+      'failed',
+      `Python ${name}: ${JSON.stringify(hostile)}`,
+    );
+    assert.equal(
+      hostile.code,
+      expected,
+      `Python ${name}: ${JSON.stringify(hostile)}`,
+    );
+    assert.equal(healthy.kind, 'succeeded', `healthy beside Python ${name}`);
+    assert.equal(healthy.output, 3);
+  }
+  console.log(
+    'Python hostile imports, CPU, heap and native memory tasks left a healthy JavaScript task intact.',
+  );
   assert.deepEqual(
     await task(
       "console.info('amount', input.amount); return {total:require('lodash').sum([input.amount,$vars.RATE]),year:require('dayjs')('2026-01-01').year()};",

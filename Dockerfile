@@ -2,13 +2,31 @@
 FROM node:24.22.0-bookworm-slim@sha256:a5f4366e834695d5f363b920c104953a535d3a9864d1bdf74566a0ebe01daee5 AS build
 WORKDIR /workspace
 RUN corepack enable && corepack prepare pnpm@11.22.0 --activate
-COPY . .
 RUN apt-get update && apt-get install --yes --no-install-recommends gcc libc6-dev linux-libc-dev \
   && rm -rf /var/lib/apt/lists/*
+COPY . .
 RUN pnpm install --frozen-lockfile && pnpm build \
   && gcc -std=c11 -Wall -Wextra -Werror -O2 -fstack-protector-strong -fPIE -pie \
     -D_FORTIFY_SOURCE=3 -Wl,-z,relro,-z,now \
     -o apps/code-runner/dist/launch apps/code-runner/native/launch.c
+
+FROM node:24.22.0-bookworm-slim@sha256:a5f4366e834695d5f363b920c104953a535d3a9864d1bdf74566a0ebe01daee5 AS python-build
+RUN apt-get update && apt-get install --yes --no-install-recommends \
+    gcc make xz-utils libc6-dev libssl-dev zlib1g-dev libffi-dev libbz2-dev liblzma-dev \
+  && rm -rf /var/lib/apt/lists/*
+ADD --checksum=sha256:673ae7232d84c894729882c8257d300ef2d26523911bfd3917ec8ce7f526f99b https://www.python.org/ftp/python/3.15.1/Python-3.15.1.tar.xz /tmp/python.tar.xz
+RUN mkdir /tmp/python && tar -xf /tmp/python.tar.xz -C /tmp/python --strip-components=1 \
+  && cd /tmp/python \
+  && ./configure --prefix=/opt/pertexo-python --without-ensurepip --disable-test-modules \
+  && make -j2 && make install \
+  && rm -rf /opt/pertexo-python/lib/python3.15/ensurepip \
+    /opt/pertexo-python/include /opt/pertexo-python/share \
+    /opt/pertexo-python/lib/pkgconfig /opt/pertexo-python/lib/libpython3.15.a \
+    /opt/pertexo-python/lib/python3.15/config-* \
+  && find /opt/pertexo-python -name '*.opt-*.pyc' -delete \
+  && strip --strip-unneeded /opt/pertexo-python/bin/python3.15 \
+    /opt/pertexo-python/lib/python3.15/lib-dynload/*.so \
+  && /opt/pertexo-python/bin/python3.15 -I -c 'import sys; assert sys.version_info[:3] == (3, 15, 1)'
 
 FROM nginxinc/nginx-unprivileged:1.31.7-alpine@sha256:378d0c32f6562f7fd9629170797f57d2b953aa09be983b3daaf4809bb039ca00 AS web
 ARG SOURCE_COMMIT=unknown
@@ -41,6 +59,10 @@ LABEL org.opencontainers.image.source="https://github.com/vigani1/pertexo" \
   org.opencontainers.image.revision=$SOURCE_COMMIT
 ENV NODE_ENV=production
 WORKDIR /workspace
+RUN apt-get update && apt-get install --yes --no-install-recommends \
+    libssl3 zlib1g libffi8 libbz2-1.0 liblzma5 tzdata \
+  && rm -rf /var/lib/apt/lists/*
+COPY --from=python-build --chown=0:0 /opt/pertexo-python /opt/pertexo-python
 # Debian's PCRE2 and Perl security fixes postdate the pinned Node base.
 RUN --mount=type=bind,from=runtime-security-patches,target=/security-patches \
   dpkg --install "/security-patches/$(dpkg --print-architecture).deb" \
@@ -52,6 +74,7 @@ RUN rm -rf /usr/local/lib/node_modules/corepack /usr/local/lib/node_modules/npm 
   && useradd --uid 10001 --gid pertexo --no-create-home --shell /usr/sbin/nologin pertexo
 COPY --from=production-dependencies --chown=10001:10001 /workspace/node_modules ./node_modules
 COPY --from=production-dependencies --chown=10001:10001 /workspace/apps ./apps
+COPY --from=production-dependencies --chown=0:0 /workspace/apps/code-runner/python ./apps/code-runner/python
 COPY --from=production-dependencies --chown=10001:10001 /workspace/packages ./packages
 COPY --from=build --chown=10001:10001 /workspace/apps/api/dist ./apps/api/dist
 COPY --from=build --chown=10001:10001 /workspace/apps/worker/dist ./apps/worker/dist

@@ -4,7 +4,12 @@ import {
   boundedNodeJsonRecordSchema,
 } from '../definitions/catalog.js';
 import type { JsonValue } from '../execution/contract.js';
-import { CODE_LIMITS, codeSettingsSchema } from './limits.js';
+import {
+  CODE_LIMITS,
+  codeSettingsSchema,
+  codeLanguageSchema,
+  type CodeLanguage,
+} from './limits.js';
 
 export const CODE_ERROR_CODES = Object.freeze([
   'code.syntax_error',
@@ -55,6 +60,7 @@ export const codeDiagnosticsSchema = z
 export type CodeDiagnostics = Readonly<z.output<typeof codeDiagnosticsSchema>>;
 export const codeTaskSchema = z
   .object({
+    language: codeLanguageSchema.optional(),
     code: z
       .string()
       .max(CODE_LIMITS.sourceBytes)
@@ -97,6 +103,7 @@ export interface NodeCodeRuntime {
   execute(
     input: Readonly<{
       code: string;
+      language?: CodeLanguage;
       timeoutSeconds?: number;
       input: JsonValue;
       signal: AbortSignal;

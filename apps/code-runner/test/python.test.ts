@@ -1,0 +1,205 @@
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { DEFAULT_CODE_SETTINGS, type CodeResult } from '@pertexo/node-sdk';
+import { createTaskProcessPool } from '../dist/process/pool.js';
+
+describe('single-use Python Code processes', () => {
+  let pool: Awaited<ReturnType<typeof createTaskProcessPool>>;
+  beforeAll(async () => {
+    pool = await createTaskProcessPool({
+      settings: DEFAULT_CODE_SETTINGS,
+      mode: 'process',
+      socketPath: '/tmp/unused-python-test.sock',
+    });
+  });
+  afterAll(async () => {
+    await pool.close();
+  });
+  it.each(['os', 'pertexo_missing_package'])(
+    'refuses invalid administrator extras at runner startup: %s',
+    async (name) => {
+      await expect(
+        createTaskProcessPool({
+          settings: { ...DEFAULT_CODE_SETTINGS, pythonPackages: [name] },
+          mode: 'process',
+          socketPath: '/tmp/unused-python-policy.sock',
+        }),
+      ).rejects.toThrow('initialize its module policy');
+    },
+  );
+  async function reserve() {
+    const deadline = Date.now() + 5000;
+    for (;;) {
+      const slot = pool.reserve();
+      if (slot !== undefined) return slot;
+      if (Date.now() > deadline)
+        throw new Error('Python test could not reserve a Code slot');
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+  }
+  async function execute(
+    code: string,
+    timeoutSeconds = 2,
+  ): Promise<CodeResult> {
+    const slot = await reserve();
+    try {
+      return await slot.run(
+        {
+          language: 'python',
+          code,
+          timeoutSeconds,
+          input: { amount: 3 },
+          variables: { RATE: 2 },
+        },
+        new AbortController().signal,
+      );
+    } finally {
+      await slot.release();
+    }
+  }
+  it('uses mapped input, variables, stdlib, timezone data and private print diagnostics', async () => {
+    expect(
+      await execute(`import json, math, statistics, datetime, zoneinfo, re, decimal, fractions
+import itertools, functools, collections, string, textwrap, hashlib, hmac, base64, uuid, random, html, csv
+from urllib import parse
+print("amount", input["amount"])
+return {"total": input["amount"] * _vars["RATE"], "zone": zoneinfo.ZoneInfo("Europe/Paris").key, "sum": statistics.mean([2, 4]), "query": parse.quote("a b")}`),
+    ).toMatchObject({
+      kind: 'succeeded',
+      output: { total: 6, zone: 'Europe/Paris', sum: 3, query: 'a%20b' },
+      diagnostics: {
+        logs: [{ level: 'log', message: 'amount 3' }],
+        truncated: false,
+      },
+    });
+  });
+  it.each([
+    'os',
+    'sys',
+    'subprocess',
+    'socket',
+    'ctypes',
+    'threading',
+    'multiprocessing',
+    'importlib',
+    'pickle',
+    'asyncio',
+    'urllib.request',
+    'pathlib',
+  ])('refuses %s clearly', async (name) => {
+    const result = await execute(`import ${name}\nreturn True`);
+    expect(result).toMatchObject({
+      kind: 'failed',
+      code: 'code.module_refused',
+    });
+    expect(result.diagnostics.error?.message).toContain(name);
+  });
+  it.each([
+    'return float("nan")',
+    'return float("inf")',
+    'return {1: "value"}',
+    'return (1, 2)',
+    'return {1, 2}',
+    'return 9007199254740992',
+    'return object()',
+    'return "x" * 1048577',
+    'return [0] * 10001',
+    'a = []\na.append(a)\nreturn a',
+  ])('refuses non-JSON or oversized output: %s', async (source) => {
+    expect(await execute(source)).toMatchObject({
+      kind: 'failed',
+      code: 'code.output_invalid',
+    });
+  });
+  it('does not invoke custom output conversion hooks', async () => {
+    expect(
+      await execute(
+        'class Hostile:\n    def __str__(self):\n        while True: pass\nreturn Hostile()',
+      ),
+    ).toMatchObject({ kind: 'failed', code: 'code.output_invalid' });
+  });
+  it('uses UTF-8 output bytes and bounds UTF-16 diagnostic characters', async () => {
+    const result = await execute('print("😀" * 5000)\nreturn "é" * 500000');
+    expect(result.kind).toBe('succeeded');
+    if (result.kind === 'succeeded')
+      expect(result.output).toBe('é'.repeat(500000));
+    expect(result.diagnostics.logs[0]?.message).toHaveLength(2048);
+    expect(result.diagnostics.truncated).toBe(true);
+  });
+  it('reports body-relative syntax and runtime positions', async () => {
+    expect(await execute('value = 1\nreturn (')).toMatchObject({
+      kind: 'failed',
+      code: 'code.syntax_error',
+      diagnostics: { error: { line: 2 } },
+    });
+    expect(
+      await execute('value = 1\nraise ValueError("private detail")'),
+    ).toMatchObject({
+      kind: 'failed',
+      code: 'code.runtime_error',
+      diagnostics: { error: { line: 2, message: 'private detail' } },
+    });
+  });
+  it('bounds print lines and preserves later unclipped entries', async () => {
+    const result = await execute(
+      'print("x" * 5000)\nprint("later")\nreturn True',
+    );
+    expect(result).toMatchObject({
+      kind: 'succeeded',
+      diagnostics: { truncated: true },
+    });
+    expect(result.diagnostics.logs[0]?.message).toHaveLength(2048);
+    expect(result.diagnostics.logs[1]?.message).toBe('later');
+    const many = await execute('for i in range(500): print(i)\nreturn True');
+    expect(many.diagnostics.logs).toHaveLength(200);
+    expect(many.diagnostics.truncated).toBe(true);
+  });
+  it('keeps module mutation and globals out of the next process', async () => {
+    expect(
+      await execute(
+        'import math\nmath.sqrt = lambda x: 999\nglobals()["secret"] = "private"\nreturn True',
+      ),
+    ).toMatchObject({ kind: 'succeeded' });
+    expect(
+      await execute(
+        'import math\nreturn {"root": math.sqrt(9), "leaked": "secret" in globals()}',
+      ),
+    ).toMatchObject({ kind: 'succeeded', output: { root: 3, leaked: false } });
+  });
+  it('times out a CPU loop without blocking a healthy task in the shared pool', async () => {
+    const [bomb, healthy] = await Promise.all([
+      execute('while True: pass', 1),
+      execute('return input["amount"]'),
+    ]);
+    expect(bomb).toMatchObject({ kind: 'failed', code: 'code.timeout' });
+    expect(healthy).toMatchObject({ kind: 'succeeded', output: 3 });
+  });
+  it('reaps canceled Python and prevents reuse of a reservation', async () => {
+    const slot = await reserve();
+    const controller = new AbortController();
+    const pending = slot.run(
+      {
+        language: 'python',
+        code: 'while True: pass',
+        timeoutSeconds: 10,
+        input: null,
+        variables: {},
+      },
+      controller.signal,
+    );
+    setTimeout(() => {
+      controller.abort();
+    }, 200);
+    await expect(pending).rejects.toThrow();
+    await slot.release();
+    await expect(
+      slot.run(
+        { code: 'return true;', timeoutSeconds: 1, input: null, variables: {} },
+        new AbortController().signal,
+      ),
+    ).rejects.toThrow('single-use');
+    expect(await execute('return True')).toMatchObject({
+      kind: 'succeeded',
+      output: true,
+    });
+  });
+});

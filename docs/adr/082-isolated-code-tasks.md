@@ -1,4 +1,4 @@
-# ADR 082: Code steps run in single-use isolated Node processes
+# ADR 082: Code steps run in single-use isolated processes
 
 - **Status:** accepted
 - **Date:** 2026-10-16
@@ -45,4 +45,28 @@ a maintained Node/npm runtime; QuickJS-in-WebAssembly for this full-speed Node
 contract; and a fresh container per task for this single-server installation.
 A future shared multi-tenant product must revisit isolation rather than
 assuming this per-customer instance design is sufficient. Network access,
-Python and cloud provisioning remain separate reviewed work.
+Cloud provisioning remains separate reviewed work.
+
+## 2026-10-22: Python in the same runner (F39)
+
+The owner approves real CPython 3.15.1, pinned by source checksum, as a second
+language of `core.code@1`. Missing language still means JavaScript. Python is
+a synchronous function body over mapped `input` and captured `_vars`; it returns
+bounded JSON and writes `print()` to the existing private diagnostics. The
+existing task envelope adds language; no new socket protocol or stored format
+is introduced. See [F39](../feature-plans/39-python-code.md).
+
+Python uses the same manager, single-use process lifecycle, UID slots, native
+launcher and inherited syscall allowlist. A Python reservation reaps the unused
+JavaScript process before replacing it at that UID. Shared instance capacity,
+CPU/data/address-space bounds, RSS supervision, cancellation, read-only mounts
+and network refusal apply unchanged. CPython is built with the GIL, without JIT
+or pip; OS timezone data supports zoneinfo. No third-party Python packages ship.
+
+The standard-module and administrator-installed-package allowlists are defense
+in depth. They cannot be a Python sandbox: trusted modules and introspection
+can expose interpreter internals. The kernel/identity/container layer is the
+security boundary, exactly as for JavaScript. Independent probes deliberately
+bypass import restrictions and exercise os, subprocess, socket, ctypes, writes,
+forks and bounded thread creation; resource bombs run beside healthy tasks.
+Both image architectures must pass the existing image qualification jobs.
