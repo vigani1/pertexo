@@ -20,16 +20,18 @@ export function WorkflowFolderPicker({
   onChange,
   disabled = false,
   label = 'Folder',
+  rootLabel = 'Unfiled / top level',
 }: Readonly<{
   folders: readonly WorkflowFolder[];
   value: string | null;
   onChange: (value: string | null) => void;
   disabled?: boolean;
   label?: string;
+  rootLabel?: string;
 }>) {
   const id = useId();
   const items = [
-    { value: ROOT, label: 'Unfiled / top level' },
+    { value: ROOT, label: rootLabel },
     ...workflowFolderOptions(folders),
   ];
   return (

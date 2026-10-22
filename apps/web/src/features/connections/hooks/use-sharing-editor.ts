@@ -9,6 +9,7 @@ import {
 export function useConnectionSharingEditor(
   scope: ConnectionMutationScope,
   connectionId: string | undefined,
+  onSaved?: () => void,
 ) {
   return useSharingEditor<ConnectionSharing>({
     resourceId: connectionId,
@@ -33,5 +34,6 @@ export function useConnectionSharingEditor(
         },
         key,
       ),
+    onSaved,
   });
 }

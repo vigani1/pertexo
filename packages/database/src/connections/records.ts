@@ -109,6 +109,7 @@ export type ConnectionRecord = Readonly<{
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;
+  accessMode: 'workspace' | 'restricted';
 }>;
 
 export type ListConnectionsInput = Readonly<{
@@ -455,6 +456,7 @@ export function mapConnection(
     createdBy: uuidSchema.parse(row.created_by),
     createdAt: z.date().parse(row.created_at),
     updatedAt: z.date().parse(row.updated_at),
+    accessMode: z.enum(['workspace', 'restricted']).parse(row.access_mode),
   });
 }
 
@@ -550,6 +552,8 @@ const durableConnectionSnapshotSchema = z
     createdBy: z.uuid(),
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
+    // Receipts stored before sharing existed describe workspace-wide connections.
+    accessMode: z.enum(['workspace', 'restricted']).default('workspace'),
   })
   .strict();
 

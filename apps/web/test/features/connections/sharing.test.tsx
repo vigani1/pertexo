@@ -4,7 +4,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HttpResponse, http } from 'msw';
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import type { ConnectionSharing } from '@pertexo/contracts';
 import { ConnectionSharingPanel } from '@/features/connections/components/sharing/panel';
 import { createApiClient } from '@/lib/api/client';
@@ -35,7 +35,22 @@ function setup() {
     ),
     http.get(`${api}/resource-sharing-principals`, () =>
       HttpResponse.json({
-        items: [{ kind: 'member', userId, label: 'Jane' }],
+        items: [
+          {
+            kind: 'member',
+            userId,
+            label: 'Jane',
+            email: 'jane@example.test',
+            role: 'builder',
+          },
+          {
+            kind: 'member',
+            userId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+            label: 'Vic',
+            email: 'vic@example.test',
+            role: 'viewer',
+          },
+        ],
         next: null,
       }),
     ),
@@ -43,8 +58,11 @@ function setup() {
   function SharingHarness() {
     const scope = { apiClient, userId, workspaceId };
     const editor = useConnectionSharingEditor(scope, connectionId);
-    return <ConnectionSharingPanel scope={scope} editor={editor} />;
+    return (
+      <ConnectionSharingPanel scope={scope} editor={editor} onDone={done} />
+    );
   }
+  const done = vi.fn();
   render(
     <QueryClientProvider client={cache}>
       <SharingHarness />
@@ -52,12 +70,13 @@ function setup() {
   );
   return {
     cache,
+    done,
     update: (next: ConnectionSharing) => {
       current = next;
     },
   };
 }
-it('uses selected members, explains the role ceiling, and sends only Use grants with the current sharing revision', async () => {
+it('adds chosen people, says viewers can’t use it, and sends only the chosen people with the current sharing revision', async () => {
   const saved: unknown[] = [];
   const f = setup();
   mockServer.use(
@@ -78,17 +97,17 @@ it('uses selected members, explains the role ceiling, and sends only Use grants 
     ),
   );
   const event = userEvent.setup();
-  await event.click(await screen.findByRole('combobox', { name: 'Use' }));
+  // Nothing to save until something changes.
+  expect(await screen.findByRole('button', { name: 'Save' })).toBeDisabled();
   await event.click(
-    await screen.findByRole('option', { name: 'Selected members' }),
+    screen.getByRole('radio', { name: /Only people you choose/ }),
   );
   await event.click(await screen.findByRole('button', { name: 'Add Jane' }));
+  expect(screen.getByText('Viewers can’t use connections')).toBeVisible();
   expect(
-    screen.getByText('A workspace viewer cannot gain Use through sharing.', {
-      exact: false,
-    }),
-  ).toBeInTheDocument();
-  await event.click(screen.getByRole('button', { name: 'Save sharing' }));
+    screen.queryByRole('button', { name: 'Add Vic' }),
+  ).not.toBeInTheDocument();
+  await event.click(screen.getByRole('button', { name: 'Save' }));
   await waitFor(() => {
     expect(saved).toEqual([
       { mode: 'restricted', expectedSharingRevision: 1, userIds: [userId] },
@@ -98,9 +117,8 @@ it('uses selected members, explains the role ceiling, and sends only Use grants 
 it('keeps unsaved members on refetch and offers an explicit reload after a conflict', async () => {
   const f = setup(),
     event = userEvent.setup();
-  await event.click(await screen.findByRole('combobox', { name: 'Use' }));
   await event.click(
-    await screen.findByRole('option', { name: 'Selected members' }),
+    await screen.findByRole('radio', { name: /Only people you choose/ }),
   );
   await event.click(await screen.findByRole('button', { name: 'Add Jane' }));
   f.update({ connectionId, mode: 'workspace', revision: 2, members: [] });
@@ -109,17 +127,15 @@ it('keeps unsaved members on refetch and offers an explicit reload after a confl
       predicate: (query) => query.queryKey.includes('sharing'),
     });
   });
-  await screen.findByText('Sharing changed.', { exact: false });
-  expect(
-    screen.getByRole('button', { name: 'Remove Jane' }),
-  ).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Save sharing' })).toBeDisabled();
-  await event.click(
-    screen.getByRole('button', { name: 'Discard edits and reload sharing' }),
-  );
+  await screen.findByText(/Someone changed who can use this connection/);
+  expect(screen.getByRole('button', { name: 'Remove Jane' })).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+  await event.click(screen.getByRole('button', { name: 'Reload' }));
   await waitFor(() =>
     expect(
       screen.queryByRole('button', { name: 'Remove Jane' }),
     ).not.toBeInTheDocument(),
   );
+  await event.click(screen.getByRole('button', { name: 'Cancel' }));
+  expect(f.done).toHaveBeenCalledOnce();
 });

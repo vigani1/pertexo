@@ -80,7 +80,9 @@ it('keeps 1 MiB and 10 MiB record parsing bounded instead of retaining the docum
   expect(maximum.high.heapUsed).toBeLessThan(64 * 1024 * 1024);
   expect(maximum.high.external).toBeLessThan(8 * 1024 * 1024);
   console.info('F45 JSON parser baseline and maximum', { baseline, maximum });
-});
+  // Two child processes of up to 20 s each; the default 5 s fails whenever
+  // other packages' tests share the machine, as they do before a push.
+}, 60_000);
 
 it.each(['number', 'string', 'depth', 'members', 'wide'])(
   'refuses hostile %s within a 64 MiB heap before constructing an oversized record',
@@ -91,4 +93,5 @@ it.each(['number', 'string', 'depth', 'members', 'wide'])(
     if (kind === 'number' || kind === 'string' || kind === 'wide')
       expect(result.supplied).toBeLessThan(512 * 1024);
   },
+  30_000,
 );
