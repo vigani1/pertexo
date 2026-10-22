@@ -27,8 +27,8 @@ with `code.output_invalid`. Unsupported text, including NUL in the returned
 value, also fails. Use Read file before Code to turn a file into JSON.
 
 Workspace variables are non-secret values, not environment variables. Property
-access inside arbitrary JavaScript is not statically checked or included in
-the variable-usage list; missing properties have normal JavaScript behavior.
+access inside Code is not statically checked or included in the variable-usage
+list; missing properties or keys have the chosen language's normal behavior.
 
 ## JavaScript modules
 
@@ -95,9 +95,11 @@ return {"sha256": hashlib.sha256(input["message"].encode("utf-8")).hexdigest()}
 ```
 
 Python runs on CPython **3.15.1** in the same isolated runner as JavaScript.
-Allowed standard modules are json, math, statistics, datetime, zoneinfo, re,
+Allowed standard modules are json, math, statistics, datetime, time, zoneinfo, re,
 decimal, fractions, itertools, functools, collections, string, textwrap,
-hashlib, hmac, base64, uuid, random, urllib.parse, html and csv. No third-party
+hashlib, hmac, base64, uuid, random, urllib.parse, html, csv and io. The internal
+`_strptime` date helper is also allowed so datetime parsing works. Use io for
+in-memory CSV/text buffers; filesystem writes remain forbidden. No third-party
 Python packages are preinstalled. Other imports, including os, sys, subprocess,
 socket, ctypes, threading, multiprocessing, importlib, pickle and asyncio,
 are refused. Import restrictions are defense in depth; the kernel/container
