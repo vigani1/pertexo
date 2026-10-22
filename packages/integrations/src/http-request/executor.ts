@@ -445,6 +445,7 @@ async function executeHttpRequest(
             config.inlineResponseBytes,
             config.maxResponseBytes,
             stream,
+            repeatable,
           ),
       );
     } catch (error: unknown) {
@@ -532,13 +533,18 @@ async function writeArtifact(
   mediaType: string,
   maxBytes: number,
   signal: AbortSignal,
+  repeatable: boolean,
   cancelSource?: (reason: Error) => void,
 ) {
+  const failure: HttpOutcomeDecision = repeatable
+    ? Object.freeze({
+        kind: 'retry',
+        errorKind: 'provider',
+        reuseProviderKey: false,
+      })
+    : Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' });
   if (artifacts === undefined)
-    throw new HttpRequestExecutorError(
-      Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
-      true,
-    );
+    throw new HttpRequestExecutorError(failure, true);
   let reference;
   try {
     reference = await artifacts.write({
@@ -550,11 +556,7 @@ async function writeArtifact(
       ...(cancelSource === undefined ? {} : { cancelSource }),
     });
   } catch (error) {
-    throw new HttpRequestExecutorError(
-      Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
-      true,
-      error,
-    );
+    throw new HttpRequestExecutorError(failure, true, error);
   }
   return Object.freeze({ kind: 'artifact' as const, ...reference });
 }
@@ -637,6 +639,7 @@ async function consumeResponseBody(
   inlineLimit: number,
   maxBytes: number,
   response: Parameters<Parameters<SecureHttpClient['executeStreaming']>[1]>[0],
+  repeatable: boolean,
 ) {
   const iterator = response.body[Symbol.asyncIterator]();
   const buffered: Uint8Array[] = [];
@@ -670,6 +673,7 @@ async function consumeResponseBody(
           response.headers['content-type'] ?? 'application/octet-stream',
           maxBytes,
           response.signal,
+          repeatable,
           response.cancelSource,
         );
       }

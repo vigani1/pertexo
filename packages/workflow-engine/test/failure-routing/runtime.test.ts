@@ -110,6 +110,46 @@ function fixture() {
   return { executable, step, success, fail, checkpoint: () => checkpoint };
 }
 describe('failure routing through public engine transitions', () => {
+  it.each(['utility.xml_malformed', 'file.create_data'])(
+    'routes the definite data failure %s to the authored handler',
+    async (code) => {
+      const f = fixture();
+      await f.step();
+      await f.success('manual');
+      const routed = await f.fail('set', 'failed', 'configuration', 1, code);
+      expect(routed.attempts.map((attempt) => attempt.nodeId)).toEqual([
+        'handler',
+      ]);
+      expect(routed.failureValues).toMatchObject([
+        { value: { errorKind: 'configuration', safeErrorCode: code } },
+      ]);
+      expect(routed.checkpoint.runStatus).toBe('running');
+      await f.success('handler');
+      expect((await f.success('handler-stop')).checkpoint.runStatus).toBe(
+        'succeeded',
+      );
+    },
+  );
+  it.each([
+    'utility.xml_size',
+    'utility.xml_depth',
+    'utility.html_size',
+    'utility.html_depth',
+    'utility.result_too_large',
+    'utility.too_many_items',
+    'utility.hmac_unavailable',
+    'file.create_size',
+    'file.create_storage',
+  ])('leaves platform and storage refusal %s unhandled', async (code) => {
+    const f = fixture();
+    await f.step();
+    await f.success('manual');
+    const failed = await f.fail('set', 'failed', 'configuration', 1, code);
+    expect(failed.attempts).toEqual([]);
+    expect(failed.checkpoint.runStatus).toBe('failed');
+    expect(failed.failureValues ?? []).toEqual([]);
+  });
+
   it('keeps the source failed, skips normal continuation, selects one handler and only succeeds at its sink', async () => {
     const f = fixture();
     await f.step();

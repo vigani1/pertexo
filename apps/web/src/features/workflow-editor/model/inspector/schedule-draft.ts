@@ -1,4 +1,4 @@
-import { isRecord } from '@pertexo/workflow-model';
+import { cronHasUnsupportedOperators, isRecord } from '@pertexo/workflow-model';
 import type { FieldParseResult, NodeConfig } from './draft';
 
 // The Schedule step's builder: what the catalog's setup schema allows, the
@@ -230,7 +230,7 @@ function cronTextIssue(
   if (expression === '') return 'Enter a cron rule, like 0 9 * * 1-5.';
   if (expression.split(' ').length !== 5)
     return 'A cron rule has five parts: minute, hour, day of month, month and day of week.';
-  if (/[H?#L]/u.test(expression))
+  if (cronHasUnsupportedOperators(expression))
     return 'H, L, # and ? aren’t supported. Use numbers, names, *, commas, ranges and steps.';
   if (!/^[0-9A-Za-z*,/ -]+$/u.test(expression))
     return 'Use numbers, names, *, commas, ranges and steps in a cron rule.';

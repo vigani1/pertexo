@@ -56,7 +56,7 @@ export function fillHttpTemplate(
   values: Readonly<Record<string, HttpPlaceholderValue>>,
 ): Template {
   const value = (name: string): string => {
-    const found = values[name];
+    const found = Object.hasOwn(values, name) ? values[name] : undefined;
     if (found === undefined)
       throw new HttpPlaceholderError(`Map a value for {${name}}.`);
     if (typeof found === 'number' && !Number.isFinite(found))

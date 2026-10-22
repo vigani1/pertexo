@@ -1991,6 +1991,92 @@ describe('generic webhook database seam', () => {
     ).rejects.toBeInstanceOf(WebhookDeliveryIneligibleError);
   });
 
+  it.each([false, true])(
+    'prepares fresh input and coordination when a replay expires behind the admission fence (%s)',
+    async (coordinated) => {
+      const { resources, verification } = await createWebhookScenario(
+        coordinated
+          ? {
+              coordination: {
+                mode: 'deduplicate',
+                key: { kind: 'run_input', path: '$.orderId' },
+                windowSeconds: 60,
+              },
+            }
+          : {},
+      );
+      const input = {
+        verification,
+        verifiedSecretVersionId: verification.currentSecret.id,
+        requestFingerprint: hash(randomUUID()),
+        idempotencyKeyHash: hash(randomUUID()),
+        request: post({ orderId: 'order-42', amount: 19 }),
+        bodyBytes: 34,
+        checkpointFactory,
+      };
+      const first = await webhook.acceptVerifiedDelivery(input);
+      if (!('runId' in first)) throw new Error('Expected the initial run');
+      const fence = await owner.connect();
+      let replacement:
+        ReturnType<typeof webhook.acceptVerifiedDelivery> | undefined;
+      try {
+        await fence.query('begin');
+        await fence.query('set local role pertexo_owner');
+        await fence.query("select set_config('app.workspace_id',$1,true)", [
+          workspaceId,
+        ]);
+        const held = await fence.query<{ pid: number }>(
+          'select pg_backend_pid() pid, id from app.workspaces where id=$1 for update',
+          [workspaceId],
+        );
+        const pid = held.rows[0]?.pid;
+        if (pid === undefined) throw new Error('Admission fence missing');
+        replacement = webhook.acceptVerifiedDelivery(input);
+        // Observe the blocked write: its preliminary read has seen the live receipt.
+        const deadline = Date.now() + 10_000;
+        for (;;) {
+          const blocked = await workerPool.query<{ found: boolean }>(
+            'select exists(select 1 from pg_stat_activity where datname=$1 and $2::int=any(pg_blocking_pids(pid))) found',
+            [databaseName, pid],
+          );
+          if (blocked.rows[0]?.found === true) break;
+          if (Date.now() >= deadline)
+            throw new Error('Replacement did not reach the admission fence');
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+        await fence.query(
+          `update app.webhook_trigger_replay_records set created_at=clock_timestamp()-interval '24 hours 2 seconds', expires_at=clock_timestamp()-interval '2 seconds' where workspace_id=$1 and endpoint_id=$2 and dedupe_kind='keyed' and dedupe_key_hash=$3`,
+          [workspaceId, resources.endpointId, input.idempotencyKeyHash],
+        );
+        await fence.query('commit');
+      } finally {
+        await fence.query('rollback');
+        fence.release();
+      }
+      const result = await replacement;
+      if (coordinated) {
+        expect(result).toMatchObject({
+          coordinated: true,
+          outcome: 'deduplicated',
+        });
+      } else {
+        expect(result).toMatchObject({ replayed: false });
+        if (!('runId' in result)) throw new Error('Expected fresh admission');
+        expect(result.runId).not.toBe(first.runId);
+        const stored = await ownerQuery<{
+          input_ref: { value: unknown } | null;
+        }>('select input_ref from app.workflow_runs where id=$1', [
+          result.runId,
+        ]);
+        expect(stored.rows[0]?.input_ref?.value).toEqual({
+          orderId: 'order-42',
+          amount: 19,
+        });
+      }
+    },
+    20_000,
+  );
+
   it('serializes expired keyed and fingerprint replay replacement with database time', async () => {
     const { resources, verification } = await createWebhookScenario();
     for (const dedupeKind of ['keyed', 'fingerprint'] as const) {

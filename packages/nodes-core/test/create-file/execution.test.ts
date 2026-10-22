@@ -197,7 +197,7 @@ describe('Create file through the existing runtime', () => {
       ),
     ]);
     await expect(wide.execute()).rejects.toMatchObject({
-      safeErrorCode: 'file.create_columns',
+      safeErrorCode: 'file.create_size',
     });
     expect(wide.write).not.toHaveBeenCalled();
     await expect(fixture(csv, [{ ' ': 1 }]).execute()).rejects.toMatchObject({

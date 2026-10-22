@@ -26,8 +26,11 @@ export function searchFields(
   search: string,
 ): Record<string, string | string[]> {
   const fields = new Map<string, string[]>();
-  for (const [name, value] of new URLSearchParams(search))
-    fields.set(name, [...(fields.get(name) ?? []), value]);
+  for (const [name, value] of new URLSearchParams(search)) {
+    const values = fields.get(name);
+    if (values === undefined) fields.set(name, [value]);
+    else values.push(value);
+  }
   return Object.fromEntries(
     [...fields].map(([name, values]) => [
       name,

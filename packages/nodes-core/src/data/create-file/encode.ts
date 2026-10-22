@@ -45,7 +45,7 @@ function csvColumns(
       columns.add(name);
       if (columns.size > COLLECTION_MAX_ITEMS)
         refuseFileCreation(
-          'columns',
+          'size',
           `Choose up to ${String(COLLECTION_MAX_ITEMS)} CSV columns, in output order.`,
         );
     }

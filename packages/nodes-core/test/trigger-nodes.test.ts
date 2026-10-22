@@ -7,21 +7,30 @@ import {
 } from '../src/index.js';
 
 describe('core Schedule trigger contract', () => {
-  it.each(['0 0 * * *', '*/5 0-23 * * 1-5', '59 23 31 12 *'])(
-    'accepts strict runtime-compatible cron %s',
-    (expression) => {
-      expect(
-        CORE_SCHEDULE_CONFIG_SCHEMA.safeParse({
-          expression,
-          kind: 'cron',
-          misfirePolicy: 'catch_up_once',
-          timezone: 'Europe/Belgrade',
-        }).success,
-      ).toBe(true);
-    },
-  );
+  it.each([
+    '0 0 * * *',
+    '*/5 0-23 * * 1-5',
+    '59 23 31 12 *',
+    '0 9 * * THU',
+    '0 9 * JUL *',
+    '0 9 * jul thu',
+  ])('accepts strict runtime-compatible cron %s', (expression) => {
+    expect(
+      CORE_SCHEDULE_CONFIG_SCHEMA.safeParse({
+        expression,
+        kind: 'cron',
+        misfirePolicy: 'catch_up_once',
+        timezone: 'Europe/Belgrade',
+      }).success,
+    ).toBe(true);
+  });
 
   it.each([
+    'H 9 * * *',
+    '0 9 L * *',
+    '0 9 * * 4L',
+    '0 9 * * THU#2',
+    '0 9 ? JUL THU',
     '99 99 99 99 99',
     '*/0 * * * *',
     '? ? ? ? ?',
