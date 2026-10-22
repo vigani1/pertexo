@@ -33,7 +33,8 @@ for (const theme of ['light', 'dark'] as const) {
       'data-theme',
       theme === 'light' ? 'dark' : 'light',
     );
-    await expect(page.getByText('Opening Pertexo…')).toBeVisible();
+    // The first frame is the boot screen's wordmark; only the app says what it is doing.
+    await expect(page.getByText('Pertexo.', { exact: true })).toBeVisible();
   });
 }
 

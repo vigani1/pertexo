@@ -19,6 +19,7 @@ import {
   XIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { LoadingOrb } from '@/components/ui/loading-orb';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
 import { cn } from '@/lib/utils';
@@ -81,10 +82,11 @@ export function DataTableRows({
             title="Refresh rows"
             onClick={() => void rows.refetch()}
           >
-            <RefreshCwIcon
-              aria-hidden="true"
-              className={cn(rows.isFetching && 'motion-safe:animate-spin')}
-            />
+            {rows.isFetching ? (
+              <LoadingOrb />
+            ) : (
+              <RefreshCwIcon aria-hidden="true" />
+            )}
           </Button>
           <ExportTableRows scope={scope} table={table} query={query} />
           {editable ? (

@@ -82,11 +82,6 @@ export function BootPage() {
   return <Boot message="Checking your session…" />;
 }
 
-/** A public page that needs no session check, still loading. */
-export function OpeningPage() {
-  return <Boot message="Opening Pertexo…" />;
-}
-
 /** A workspace opening cold: named when this browser already knows it. */
 export function WorkspaceBootPage() {
   const queryClient = useQueryClient();

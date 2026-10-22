@@ -16,6 +16,6 @@ export function AuthLensPending() {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
-  const [title, label] = PENDING[pathname] ?? ['Pertexo', 'Opening Pertexo…'];
+  const [title, label] = PENDING[pathname] ?? ['Pertexo', 'Loading…'];
   return <LensLoading title={title} label={label} />;
 }

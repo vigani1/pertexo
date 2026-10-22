@@ -9,7 +9,7 @@ import {
 import { RefreshCwIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Disclosure } from '@/components/ui/disclosure';
-import { cn } from '@/lib/utils';
+import { LoadingOrb } from '@/components/ui/loading-orb';
 import { Notice } from '@/components/ui/notice';
 import type { ApiClient } from '@/lib/api/client';
 import {
@@ -59,10 +59,11 @@ export function ApiTokensPage({
             disabled={query.isFetching}
             onClick={refresh}
           >
-            <RefreshCwIcon
-              aria-hidden="true"
-              className={cn(query.isFetching && 'motion-safe:animate-spin')}
-            />
+            {query.isFetching ? (
+              <LoadingOrb />
+            ) : (
+              <RefreshCwIcon aria-hidden="true" />
+            )}
           </Button>
           <Button
             type="button"
