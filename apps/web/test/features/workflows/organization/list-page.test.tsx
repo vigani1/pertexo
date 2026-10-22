@@ -78,7 +78,8 @@ describe('owned organization workflow list integration', () => {
         .getAttribute('aria-expanded') !== 'true'
     )
       await userEvent.click(screen.getByRole('button', { name: /^Filters/u }));
-    await screen.findByText('Operations');
+    // The folder heading and its filter choice both name it.
+    expect(await screen.findAllByText('Operations')).not.toHaveLength(0);
     mockServer.use(
       http.get(`${api}/workflows`, ({ request }) =>
         new URL(request.url).searchParams.get('include') === 'organization'
@@ -99,7 +100,7 @@ describe('owned organization workflow list integration', () => {
     expect(
       screen.queryByRole('link', { name: 'Daily intake' }),
     ).not.toBeInTheDocument();
-    expect(screen.queryByText('Operations')).not.toBeInTheDocument();
+    expect(screen.queryAllByText('Operations')).toHaveLength(0);
     expect(
       screen.queryByRole('button', {
         name: 'Remove favorite for Daily intake',

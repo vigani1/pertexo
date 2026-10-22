@@ -1,11 +1,11 @@
-import { useFolderSharingEditor } from '@/features/workflows/hooks/use-folder-sharing';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HttpResponse, http } from 'msw';
 import { expect, it, vi } from 'vitest';
 import type { FolderSharing } from '@pertexo/contracts';
-import { FolderSharingPanel } from '@/features/workflows/components/organization/folders/sharing';
+import { FolderShareDialog } from '@/features/workflows/components/organization/folders/share-dialog';
+import { NotificationsProvider } from '@/components/ui/toast';
 import { AudienceMoveReview } from '@/features/workflows/components/organization/folders/audience-review';
 import { useAudienceMove } from '@/features/workflows/hooks/use-audience-move';
 import { createApiClient } from '@/lib/api/client';
@@ -23,16 +23,24 @@ const apiClient = createApiClient({
   fetch: testFetch,
   readCsrfToken: () => 'csrf-token-1234567890',
 });
-function SharingHarness() {
-  const scope = { apiClient, userId, workspaceId };
-  const editor = useFolderSharingEditor(scope, workflowId);
+const finance = {
+  id: workflowId,
+  name: 'Finance',
+  parentId: null,
+  revision: 1,
+  depth: 1,
+  accessMode: 'restricted' as const,
+};
+function SharingHarness({ onClose }: { onClose: () => void }) {
   return (
-    <>
-      <FolderSharingPanel scope={scope} name="Finance" editor={editor} />
-      <output aria-label="Sharing command">
-        {editor.closeLocked ? 'locked' : 'ready'}
-      </output>
-    </>
+    <NotificationsProvider>
+      <FolderShareDialog
+        scope={{ apiClient, userId, workspaceId }}
+        folder={finance}
+        folders={[finance]}
+        onClose={onClose}
+      />
+    </NotificationsProvider>
   );
 }
 function setup() {
@@ -54,32 +62,59 @@ function setup() {
     ),
     http.get(`${api}/resource-sharing-principals`, () =>
       HttpResponse.json({
-        items: [{ kind: 'member', userId, label: 'Jane' }],
+        items: [
+          {
+            kind: 'member',
+            userId,
+            label: 'Jane',
+            email: 'jane@example.test',
+            role: 'builder',
+          },
+          {
+            kind: 'member',
+            userId: secondWorkflowId,
+            label: 'Olu',
+            email: 'olu@example.test',
+            role: 'admin',
+          } as const,
+        ].map((item, index) =>
+          index === 1
+            ? { ...item, userId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd' }
+            : item,
+        ),
         next: null,
       }),
     ),
   );
+  const onClose = vi.fn();
   render(
     <QueryClientProvider client={cache}>
-      <SharingHarness />
+      <SharingHarness onClose={onClose} />
     </QueryClientProvider>,
   );
   return {
     cache,
+    onClose,
     update: (next: FolderSharing) => {
       current = next;
     },
     initial,
   };
 }
-it('shows current principal labels and keeps local grant edits across a newer sharing refetch until explicit reload', async () => {
+it('names people with email and role, marks admins, and keeps local edits across a newer refetch until an explicit reload', async () => {
   const event = userEvent.setup();
   const f = setup();
   await screen.findByText('Finance reviewer');
-  await event.click(await screen.findByRole('button', { name: 'Add Jane' }));
   expect(
-    screen.getByText('2 of 100 sharing entries.', { exact: false }),
+    await screen.findByText('jane@example.test · Builder'),
   ).toBeInTheDocument();
+  // Admins always have access, so they're stated, not offered.
+  expect(
+    screen.queryByRole('button', { name: 'Add Olu' }),
+  ).not.toBeInTheDocument();
+  expect(screen.getAllByText('Always has access')).not.toHaveLength(0);
+  await event.click(screen.getByRole('button', { name: 'Add Jane' }));
+  expect(screen.getByRole('button', { name: 'Remove Jane' })).toBeVisible();
   f.update({ ...f.initial, revision: 2 });
   await act(async () => {
     await f.cache.refetchQueries({
@@ -87,23 +122,18 @@ it('shows current principal labels and keeps local grant edits across a newer sh
     });
   });
   expect(
-    await screen.findByText('Sharing changed while this form was open.', {
-      exact: false,
-    }),
+    await screen.findByText(/Someone changed who can access this folder/),
   ).toBeInTheDocument();
-  expect(
-    screen.getByRole('button', { name: 'Remove Jane' }),
-  ).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Save sharing' })).toBeDisabled();
-  await event.click(
-    screen.getByRole('button', { name: 'Discard edits and reload sharing' }),
-  );
+  expect(screen.getByRole('button', { name: 'Remove Jane' })).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+  await event.click(screen.getByRole('button', { name: 'Reload' }));
   await waitFor(() =>
     expect(
       screen.queryByRole('button', { name: 'Remove Jane' }),
     ).not.toBeInTheDocument(),
   );
-  expect(screen.getByRole('button', { name: 'Save sharing' })).toBeEnabled();
+  // Nothing to save until something changes again.
+  expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
 });
 it('keeps unsaved grants through a temporary read failure and only discards them on an explicit successful reload', async () => {
   const event = userEvent.setup();
@@ -120,33 +150,24 @@ it('keeps unsaved grants through a temporary read failure and only discards them
       predicate: (query) => query.queryKey.includes('folder-sharing'),
     });
   });
-  expect(
-    screen.getByRole('button', { name: 'Remove Jane' }),
-  ).toBeInTheDocument();
-  await waitFor(() =>
-    expect(screen.getByRole('button', { name: 'Save sharing' })).toBeDisabled(),
-  );
-  await event.click(
-    screen.getByRole('button', { name: 'Discard edits and reload sharing' }),
-  );
-  expect(
-    screen.getByRole('button', { name: 'Remove Jane' }),
-  ).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Remove Jane' })).toBeVisible();
+  await screen.findByText(/Couldn’t check the latest sharing/);
+  expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+  await event.click(screen.getByRole('button', { name: 'Reload' }));
+  expect(screen.getByRole('button', { name: 'Remove Jane' })).toBeVisible();
   mockServer.use(
     http.get(`${api}/workflow-folders/${workflowId}/sharing`, () =>
       HttpResponse.json(f.initial),
     ),
   );
-  await event.click(
-    screen.getByRole('button', { name: 'Discard edits and reload sharing' }),
-  );
+  await event.click(screen.getByRole('button', { name: 'Reload' }));
   await waitFor(() =>
     expect(
       screen.queryByRole('button', { name: 'Remove Jane' }),
     ).not.toBeInTheDocument(),
   );
 });
-it('retains the exact sharing body and idempotency key after an uncertain response', async () => {
+it('retains the exact sharing body and idempotency key after an uncertain response, then closes on success', async () => {
   const requests: { key: string | null; body: unknown }[] = [];
   const f = setup();
   mockServer.use(
@@ -163,16 +184,16 @@ it('retains the exact sharing body and idempotency key after an uncertain respon
   );
   const event = userEvent.setup();
   await event.click(
-    await screen.findByRole('button', { name: 'Save sharing' }),
+    await screen.findByRole('combobox', {
+      name: 'Access for Finance reviewer',
+    }),
   );
-  await screen.findByRole('button', { name: 'Retry exact sharing change' });
-  expect(screen.getByLabelText('Sharing command')).toHaveTextContent('locked');
-  expect(
-    screen.getByRole('button', { name: 'Discard edits and reload sharing' }),
-  ).toBeDisabled();
-  await event.click(
-    screen.getByRole('button', { name: 'Retry exact sharing change' }),
-  );
+  await event.click(await screen.findByRole('option', { name: 'Can edit' }));
+  await event.click(screen.getByRole('button', { name: 'Save' }));
+  await screen.findByRole('button', { name: 'Try again' });
+  expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Close' })).toBeDisabled();
+  await event.click(screen.getByRole('button', { name: 'Try again' }));
   await waitFor(() => {
     expect(requests).toHaveLength(2);
   });
@@ -180,8 +201,12 @@ it('retains the exact sharing body and idempotency key after an uncertain respon
   expect(requests[0]?.body).toEqual({
     mode: 'restricted',
     expectedFolderRevision: 1,
-    grants: f.initial.grants,
+    grants: [{ ...f.initial.grants[0], access: 'editor' }],
   });
+  await waitFor(() => {
+    expect(f.onClose).toHaveBeenCalledOnce();
+  });
+  expect(await screen.findByText('Sharing saved for Finance')).toBeVisible();
 });
 function MoveHarness({ send }: { send: (input: unknown) => void }) {
   const move = useAudienceMove(apiClient, workspaceId, send);

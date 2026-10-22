@@ -200,11 +200,22 @@ async function openRowMenu(page: Page, name: string) {
   await expect(menu).toBeVisible();
   return menu;
 }
-async function openManager(page: Page) {
+async function openTags(page: Page) {
   await openFilters(page);
-  await page
-    .getByRole('button', { name: 'Manage folders and tags…', exact: true })
+  await page.getByRole('button', { name: 'Manage tags…', exact: true }).click();
+}
+function shelf(page: Page) {
+  return page.getByRole('region', { name: 'Folders', exact: true });
+}
+async function folderAction(
+  page: Page,
+  folder: string,
+  action: 'Rename…' | 'Move to…' | 'Share…' | 'Delete…',
+) {
+  await shelf(page)
+    .getByRole('button', { name: `Actions for ${folder}`, exact: true })
     .click();
+  await page.getByRole('menuitem', { name: action, exact: true }).click();
 }
 async function organize(
   page: Page,
@@ -301,16 +312,12 @@ async function lifecycle(
   await expect(dialog).not.toBeVisible();
 }
 async function cleanupTag(page: Page, workflowName: string) {
-  await openManager(page);
-  const manager = page.getByRole('dialog', {
-    name: 'Manage workflow organization',
-    exact: true,
-  });
+  await openTags(page);
+  // The dialog's title follows its view, so find it by role alone.
+  const manager = page.getByRole('dialog');
+  await manager.getByRole('button', { name: 'ops', exact: true }).click();
   await manager
-    .getByRole('button', { name: 'Edit tag ops', exact: true })
-    .click();
-  await manager
-    .getByRole('button', { name: 'Review tag assignments', exact: true })
+    .getByRole('button', { name: 'See workflows using it', exact: true })
     .click();
   await manager
     .getByRole('checkbox', {
@@ -336,9 +343,7 @@ async function cleanupTag(page: Page, workflowName: string) {
   await expect(
     manager.getByText(/No loaded assignments remain/u),
   ).toBeVisible();
-  await manager
-    .getByRole('button', { name: 'Close manager', exact: true })
-    .click();
+  await manager.getByRole('button', { name: 'Done', exact: true }).click();
 }
 async function invitedActor(input: {
   browser: Browser;
@@ -576,7 +581,7 @@ async function qualifyExtended(input: {
         await openFilters(actor.page);
         await expect(
           actor.page.getByRole('button', {
-            name: 'Manage folders and tags…',
+            name: 'Manage tags…',
             exact: true,
           }),
         ).toHaveCount(0);
@@ -617,7 +622,7 @@ async function qualifyExtended(input: {
         await openFilters(actor.page);
         await expect(
           actor.page.getByRole('button', {
-            name: 'Manage folders and tags…',
+            name: 'Manage tags…',
             exact: true,
           }),
         ).toHaveCount(0);
@@ -639,7 +644,7 @@ async function qualifyExtended(input: {
         await openFilters(actor.page);
         await expect(
           actor.page.getByRole('button', {
-            name: 'Manage folders and tags…',
+            name: 'Manage tags…',
             exact: true,
           }),
         ).toBeVisible();
@@ -750,34 +755,35 @@ test('ordinary owner persists shared organization, exact recovery and private di
   const beta = await createWorkflow(page, workspaceId, betaName, phase);
   const listPath = `/w/${workspaceId}/workflows`;
   await page.goto(listPath);
-  await phase('manager');
-  await openManager(page);
-  const manager = page.getByRole('dialog', {
-    name: 'Manage workflow organization',
-  });
   await phase('folders');
-  await manager.getByLabel('Folder name', { exact: true }).fill('Operations');
+  await shelf(page)
+    .getByRole('button', { name: 'New folder', exact: true })
+    .click();
+  let dialog = page.getByRole('dialog', { name: 'New folder', exact: true });
+  await dialog.getByLabel('Name', { exact: true }).fill('Operations');
   const parentReply = await command(
     page,
-    manager.getByRole('button', { name: 'Create folder', exact: true }),
+    dialog.getByRole('button', { name: 'Create folder', exact: true }),
     '/workflow-folders',
     201,
   );
   const parent = workflowFolderCreateResponseSchema.parse(
     await parentReply.json(),
   ).folder;
+  await shelf(page)
+    .getByRole('button', { name: /^Operations/u })
+    .click();
   await expect(
-    manager.getByRole('button', { name: 'Edit folder Operations' }),
+    page.getByRole('heading', { name: 'Operations', level: 2 }),
   ).toBeVisible();
-  await manager.getByLabel('Folder name', { exact: true }).fill('Child');
-  await choose(
-    page,
-    manager.getByRole('combobox', { name: 'Parent folder' }),
-    'Operations',
-  );
+  await shelf(page)
+    .getByRole('button', { name: 'New folder', exact: true })
+    .click();
+  dialog = page.getByRole('dialog', { name: 'New folder', exact: true });
+  await dialog.getByLabel('Name', { exact: true }).fill('Child');
   const childReply = await command(
     page,
-    manager.getByRole('button', { name: 'Create folder', exact: true }),
+    dialog.getByRole('button', { name: 'Create folder', exact: true }),
     '/workflow-folders',
     201,
   );
@@ -786,91 +792,84 @@ test('ordinary owner persists shared organization, exact recovery and private di
   ).folder;
   expect(child.parentId).toBe(parent.id);
   expect(child.depth).toBe(2);
-  await manager.getByRole('button', { name: 'Edit folder Operations' }).click();
-  await manager
-    .getByRole('button', { name: 'Delete folder', exact: true })
-    .click();
+  await folderAction(page, 'Operations', 'Delete…');
+  const deletion = page.getByRole('dialog', {
+    name: 'Delete Operations?',
+    exact: true,
+  });
   await command(
     page,
-    page
-      .getByRole('dialog', { name: 'Delete Operations?', exact: true })
-      .getByRole('button', { name: 'Confirm delete folder' }),
+    deletion.getByRole('button', { name: 'Delete folder', exact: true }),
     '/delete',
     409,
   );
   await expect(
-    page
-      .getByRole('dialog', { name: 'Delete Operations?', exact: true })
-      .getByText(
-        'Move the workflows and child folders out before deleting this folder.',
-      ),
+    deletion.getByText(
+      'Move the workflows and child folders out before deleting this folder.',
+    ),
   ).toBeVisible();
-  await page
-    .getByRole('dialog', { name: 'Delete Operations?', exact: true })
-    .getByRole('button', { name: 'Cancel', exact: true })
-    .click();
-  await manager.getByRole('button', { name: 'Edit folder Child' }).click();
-  await manager.getByLabel('Folder name', { exact: true }).fill('Delivery');
+  await deletion.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await folderAction(page, 'Child', 'Rename…');
+  dialog = page.getByRole('dialog', { name: 'Rename Child', exact: true });
+  await dialog.getByLabel('Name', { exact: true }).fill('Delivery');
   await command(
     page,
-    manager.getByRole('button', { name: 'Rename folder' }),
+    dialog.getByRole('button', { name: 'Save name', exact: true }),
     '/rename',
   );
+  await folderAction(page, 'Delivery', 'Move to…');
+  dialog = page.getByRole('dialog', { name: 'Move Delivery', exact: true });
   await choose(
     page,
-    manager.getByRole('combobox', { name: 'Parent folder' }),
-    'Unfiled / top level',
+    dialog.getByRole('combobox', { name: 'Move to' }),
+    'Top level',
   );
   await command(
     page,
-    manager.getByRole('button', { name: 'Move folder', exact: true }),
+    dialog.getByRole('button', { name: 'Move folder', exact: true }),
     '/move',
   );
+  await page
+    .getByRole('navigation', { name: 'Folder path' })
+    .getByRole('button', { name: 'All workflows', exact: true })
+    .click();
   await phase('folder-sharing');
-  await manager.getByRole('button', { name: 'Sharing', exact: true }).click();
-  const sharing = manager.getByRole('region', { name: 'Sharing for Delivery' });
-  await choose(
-    page,
-    sharing.getByRole('combobox', { name: 'Access', exact: true }),
-    'Selected members and groups',
-  );
-  await expect(
-    sharing.getByText('Only owners and admins can access this folder.'),
-  ).toBeVisible();
+  await folderAction(page, 'Delivery', 'Share…');
+  let share = page.getByRole('dialog', { name: 'Share Delivery', exact: true });
+  await share.getByText('Only people you choose', { exact: true }).click();
+  await expect(share.getByText('Workspace owners and admins')).toBeVisible();
   await command(
     page,
-    sharing.getByRole('button', { name: 'Save sharing', exact: true }),
+    share.getByRole('button', { name: 'Save', exact: true }),
     '/sharing',
   );
   await page.reload();
-  await openManager(page);
-  await manager
-    .getByRole('button', { name: 'Edit folder Delivery', exact: true })
-    .click();
-  await manager.getByRole('button', { name: 'Sharing', exact: true }).click();
   await expect(
-    sharing.getByText('Only owners and admins can access this folder.'),
+    shelf(page).getByRole('img', { name: 'Only chosen people' }),
   ).toBeVisible();
-  await choose(
-    page,
-    sharing.getByRole('combobox', { name: 'Access', exact: true }),
-    'Workspace members',
-  );
+  await folderAction(page, 'Delivery', 'Share…');
+  share = page.getByRole('dialog', { name: 'Share Delivery', exact: true });
+  await expect(
+    share.getByRole('radio', { name: /Only people you choose/u }),
+  ).toBeChecked();
+  await share.getByText('Everyone in this workspace', { exact: true }).click();
   await command(
     page,
-    sharing.getByRole('button', { name: 'Save sharing', exact: true }),
+    share.getByRole('button', { name: 'Save', exact: true }),
     '/sharing',
   );
-  await manager.getByLabel('Tag key', { exact: true }).fill('ops');
+  await openTags(page);
+  const tags = page.getByRole('dialog', { name: 'Tags', exact: true });
+  await tags.getByLabel('New tag', { exact: true }).fill('ops');
   await phase('tags');
   const tagReply = await command(
     page,
-    manager.getByRole('button', { name: 'Create tag', exact: true }),
+    tags.getByRole('button', { name: 'Add tag', exact: true }),
     '/workflow-tags',
     201,
   );
   const tag = workflowTagCreateResponseSchema.parse(await tagReply.json()).tag;
-  await manager.getByRole('button', { name: 'Close manager' }).click();
+  await tags.getByRole('button', { name: 'Done', exact: true }).click();
 
   await phase('placement');
   await organize(page, alphaName, 'move', 'Delivery');
