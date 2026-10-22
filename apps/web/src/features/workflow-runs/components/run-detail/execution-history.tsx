@@ -18,12 +18,15 @@ export function StepError({
   code,
   workspace,
   summary,
+  definitionKey,
 }: Readonly<{
   code: string;
   summary?: string | undefined;
   workspace: AccessibleWorkspace;
+  /** The step's type, so an expiry names what expired. */
+  definitionKey?: string | undefined;
 }>) {
-  const copy = describeStepError(code);
+  const copy = describeStepError(code, definitionKey);
   const canOpenConnections = workspace.capabilities.includes('connection:read');
   return (
     <div className="mt-2 rounded-md border border-destructive/20 bg-destructive/[0.05] p-3 text-[0.8rem] leading-relaxed">
@@ -52,8 +55,10 @@ function StoryEntry({
   nowMs,
   workspace,
   errorSummary,
+  definitionKey,
 }: Readonly<{
   errorSummary?: string | undefined;
+  definitionKey?: string | undefined;
   entry: StepStoryEntry;
   nowMs: number;
   workspace: AccessibleWorkspace;
@@ -80,6 +85,7 @@ function StoryEntry({
             code={entry.safeErrorCode}
             summary={errorSummary}
             workspace={workspace}
+            definitionKey={definitionKey}
           />
         )}
       </div>
@@ -146,6 +152,7 @@ export function StepExecutionHistory({
               nowMs={nowMs}
               workspace={workspace}
               errorSummary={row.errorSummary}
+              definitionKey={row.definitionKey}
             />
           ))}
         </ol>
@@ -156,6 +163,7 @@ export function StepExecutionHistory({
           code={row.safeErrorCode}
           summary={row.errorSummary}
           workspace={workspace}
+          definitionKey={row.definitionKey}
         />
       ) : null}
     </>

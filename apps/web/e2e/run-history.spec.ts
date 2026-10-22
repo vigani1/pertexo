@@ -814,9 +814,12 @@ for (const theme of ['light', 'dark'] as const)
           }),
       );
       await page.goto(`/w/${workspaceId}/runs`);
-      await page.getByText('Run value', { exact: true }).click();
-      await page.getByLabel('Run value key', { exact: true }).fill('orderId');
-      await page.getByLabel('Exact value', { exact: true }).fill('A-1042');
+      await page.getByRole('button', { name: 'Run value: any' }).click();
+      const valueFilter = page.getByRole('dialog', {
+        name: 'Find runs by a saved value',
+      });
+      await valueFilter.getByLabel('Name', { exact: true }).fill('orderId');
+      await valueFilter.getByLabel('Value', { exact: true }).fill('A-1042');
       const request = page.waitForRequest((request) => {
         const url = new URL(request.url());
         return (
@@ -825,7 +828,7 @@ for (const theme of ['light', 'dark'] as const)
           url.searchParams.get('runValue') === 'A-1042'
         );
       });
-      await page.getByRole('button', { name: 'Apply value filter' }).click();
+      await valueFilter.getByRole('button', { name: 'Find runs' }).click();
       await request;
       await expect(page).toHaveURL(/runValueKey=orderId/);
       await expect(

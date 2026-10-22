@@ -53,9 +53,12 @@ test('authors business values, runs them on the worker and finds the real run by
   ).toBeVisible();
   await expect(page.getByText('A-1042', { exact: true })).toBeVisible();
   await page.goto(`/w/${workspaceId}/runs`);
-  await page.getByText('Run value', { exact: true }).click();
-  await page.getByLabel('Run value key', { exact: true }).fill('orderId');
-  await page.getByLabel('Exact value', { exact: true }).fill('A-1042');
+  await page.getByRole('button', { name: 'Run value: any' }).click();
+  let valueFilter = page.getByRole('dialog', {
+    name: 'Find runs by a saved value',
+  });
+  await valueFilter.getByLabel('Name', { exact: true }).fill('orderId');
+  await valueFilter.getByLabel('Value', { exact: true }).fill('A-1042');
   const response = page.waitForResponse((response) => {
     const url = new URL(response.url());
     return (
@@ -64,7 +67,7 @@ test('authors business values, runs them on the worker and finds the real run by
       url.searchParams.get('runValue') === 'A-1042'
     );
   });
-  await page.getByRole('button', { name: 'Apply value filter' }).click();
+  await valueFilter.getByRole('button', { name: 'Find runs' }).click();
   const matched = await response;
   expect(matched.status()).toBe(200);
   expect(
@@ -73,12 +76,16 @@ test('authors business values, runs them on the worker and finds the real run by
       .items.map((run) => run.id),
   ).toContain(runId);
   await expect(page.getByText('Find an order', { exact: true })).toBeVisible();
-  await page.getByLabel('Exact value', { exact: true }).fill('a-1042');
+  await page.getByRole('button', { name: /^Run value: orderId is/u }).click();
+  valueFilter = page.getByRole('dialog', {
+    name: 'Find runs by a saved value',
+  });
+  await valueFilter.getByLabel('Value', { exact: true }).fill('a-1042');
   const noMatch = page.waitForResponse(
     (response) =>
       new URL(response.url()).searchParams.get('runValue') === 'a-1042',
   );
-  await page.getByRole('button', { name: 'Apply value filter' }).click();
+  await valueFilter.getByRole('button', { name: 'Find runs' }).click();
   expect(
     workflowRunListResponseSchema.parse(await (await noMatch).json()).items,
   ).toEqual([]);
