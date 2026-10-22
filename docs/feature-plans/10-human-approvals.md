@@ -25,7 +25,7 @@ not current authority, audience, lifecycle or one-winner checks.
   (one hour–30 days). Default deciders are owners/admins; empty configured
   audiences are invalid. Publish fences named members to this workspace.
 - Current active workspace/user/member and run-read authority are required at
-  discovery and decision. `runs/pending-tasks/eligibility.ts` owns the shared
+  discovery and decision. `runs/pending-tasks/responses/eligibility.ts` owns the shared
   audience/starter rule for task lists, locked decisions and notice/mail access.
   Role changes and removal take effect immediately; naming grants no capability.
 - Bind the real starting person at common admission. Calls inherit that person;

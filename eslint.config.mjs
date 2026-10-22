@@ -515,7 +515,7 @@ export default tseslint.config(
                 '**/graph/identity.js',
                 '**/event-coordination/key.js',
                 '**/expressions/*',
-                '**/authoring-validation/*',
+                '**/authoring/validation/*',
               ],
               allowTypeImports: true,
               message:
