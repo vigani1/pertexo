@@ -27,6 +27,11 @@ type OverviewTarget =
   | '/w/$workspaceId/settings/alerts';
 
 /** Counts read from the first page only are floors, written "24+". */
+/** "1 Owner · 1 Builder": a narrow tile breaks between items, never inside one. */
+function facts(parts: readonly string[]): string {
+  return parts.map((part) => part.replaceAll(' ', '\u00a0')).join(' · ');
+}
+
 function figure(count: number, more: boolean): string {
   return `${String(count)}${more ? '+' : ''}`;
 }
@@ -185,12 +190,12 @@ function MembersTile({
       loading={query.isPending}
       failed={query.isError && query.data === undefined}
     >
-      {[
+      {facts([
         ...byRole,
         ...(suspended === 0
           ? []
           : [`${figure(suspended, query.hasNextPage)} suspended`]),
-      ].join(' · ')}
+      ])}
     </OverviewTile>
   );
 }
@@ -233,7 +238,7 @@ function ConnectionsTile({
         'Nothing connected yet. Slack, HTTP APIs and email are ready to add.'
       ) : (
         <>
-          {providers.join(' · ')}
+          {facts(providers)}
           {needsAttention === 0 ? null : (
             <Status tone="attention" className="mt-1 text-xs font-normal">
               {counted(needsAttention, 'needs', 'need', query.hasNextPage)}{' '}
@@ -273,10 +278,10 @@ function AlertsTile({
     >
       {destinations.length === 0
         ? 'Failed runs aren’t announced anywhere yet.'
-        : [
+        : facts([
             `${String(enabled)} on`,
             ...(off === 0 ? [] : [`${String(off)} off`]),
-          ].join(' · ')}
+          ])}
     </OverviewTile>
   );
 }
