@@ -36,9 +36,12 @@ on hold. One Code step, runner, socket protocol and shared instance budget.
   Source positions are relative to the user's body, including syntax errors.
 - Import restrictions are usability and defense in depth, never the security
   boundary. Preload trusted dependencies before installing the user import
-  policy. Allow json, math, statistics, datetime, zoneinfo, re, decimal,
+  policy. Allow json, math, statistics, datetime, time, zoneinfo, re, decimal,
   fractions, itertools, functools, collections, string, textwrap, hashlib,
-  hmac, base64, uuid, random, urllib.parse, html and csv. Include OS tzdata.
+  hmac, base64, uuid, random, urllib.parse, html, csv and io. Also allow `_strptime`:
+  datetime's C parsing/formatting methods import it and time through the caller's
+  import hook. io provides ordinary in-memory CSV buffers; kernel write refusal
+  still applies to its file operations. Include OS tzdata.
   Refuse other imports clearly, including os, sys, subprocess, socket, ctypes,
   threading, multiprocessing, importlib, pickle and asyncio. Trusted stdlib
   dependencies do not make those modules available for direct user imports.
@@ -65,7 +68,7 @@ on hold. One Code step, runner, socket protocol and shared instance budget.
 | Slice | Changes | Status |
 | --- | --- | --- |
 | 1. Runtime and isolation | SDK language/settings, Code boundary and worker forwarding; Python task implementation in `apps/code-runner/python/`; same native launcher/pool; pinned image build and existing image qualification on AMD64/ARM64; ADR 082 | Merged [#465](https://github.com/vigani1/pertexo/pull/465); both architectures qualified |
-| 2. Editor, guide and qualification | Existing Code inspector and CodeMirror language compartment; confirmation; examples and custom-image docs; function-body fidelity and diagnostic coordinates; mocked and real browser journeys in both themes at desktop/990/phone | Implemented and locally qualified; PR CI required before merge |
+| 2. Editor, guide and qualification | Existing Code inspector and CodeMirror language compartment; confirmation; examples and custom-image docs; function-body fidelity and diagnostic coordinates; mocked and real browser journeys in both themes at desktop/990/phone | Implemented in this PR; merge requires green CI |
 
 Each slice is one PR with Moved, Removed, Lines and Test plan sections. Run the
 full pre-push hook. Work on useful independent qualification/docs while CI runs;
@@ -139,7 +142,8 @@ another service/protocol and other runtimes are outside this feature.
   content and body-relative locations survive unchanged. Unicode byte offsets
   are converted to the editor's UTF-16 columns, and user-raised SyntaxError uses
   its runtime location. Three regression cases failed before the fix and pass
-  afterwards (75 total Code process tests); a hardened ARM64 probe also passes.
+  afterwards; standard datetime/CSV and bounded blocking-wait cases bring the
+  total to 77 Code process tests. A hardened ARM64 probe also passes.
 - Both themes pass at 375, 990 and 1440 px in six mocked browser cases and the
   real API/worker journey. Real previews exercise a CPython syntax error and
   a successful transformation; the published run reads the captured variable
@@ -149,3 +153,6 @@ another service/protocol and other runtimes are outside this feature.
   development-process runner; no job or production service is added.
 - React Doctor reports **98/100, no diagnostics** after grouping language
   presentation and confirmation with their owners. No rule suppression.
+- Full web verification passes **1,457 unit tests** and **334 mocked browser
+  cases** (including Firefox/WebKit smoke tests), with two local workers to
+  keep this busy host within its resources. No assertions or timeouts changed.

@@ -56,6 +56,11 @@ try {
     ]),
     ['CPU', 'while True: pass', 'code.timeout'],
     [
+      'io filesystem write',
+      'import io\nio.open("/tmp/escape", "w")\nreturn True',
+      'code.runtime_error',
+    ],
+    [
       'heap',
       'items = []\nwhile True: items.append([42] * 100000)',
       'code.memory_limit',
