@@ -4,6 +4,7 @@ import {
   allowlistedReturnPath,
   returnToSearch,
 } from '@/features/auth/return-path.public';
+import { SigningOut } from '@/features/auth/sign-out.public';
 import { landingWorkspace } from '@/features/workspaces/last-workspace.public';
 import { pageTitle } from './page-title';
 import {
@@ -14,7 +15,7 @@ import {
 import { rootRoute } from './route';
 import { AuthLensPending } from '../auth/lens-pending';
 import { AuthStageRoute } from '../auth/stage';
-import { BootPage, OpeningPage } from './status/pages';
+import { BootPage } from './status/pages';
 
 function flag(value: unknown): boolean {
   return value === true || value === 'true';
@@ -128,7 +129,7 @@ export const passwordResetRoute = createRoute({
 export const logoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/logout',
-  pendingComponent: OpeningPage,
+  pendingComponent: SigningOut,
   validateSearch: (search: Record<string, unknown>) =>
     returnToSearch(allowlistedReturnPath(search.returnTo)),
   head: () => ({ meta: [{ title: pageTitle('Signing out') }] }),

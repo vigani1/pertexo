@@ -17,7 +17,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { SkeletonLines } from '@/components/ui/skeleton';
+import { Skeleton, SkeletonLines } from '@/components/ui/skeleton';
 import { Status } from '@/components/ui/status';
 import { describeReadError, isNotFound } from '@/lib/api/error-copy';
 import { cn } from '@/lib/utils';
@@ -57,22 +57,27 @@ function ConnectionReadState({
   const missing = failed && isNotFound(error);
   return (
     <>
-      <SheetHeader>
-        <SheetTitle>
-          {missing ? 'Connection not found' : 'Connection'}
-        </SheetTitle>
-        <SheetDescription>
-          {failed ? (
-            missing ? (
-              'This connection doesn’t exist, or you don’t have access to it.'
-            ) : (
-              describeReadError(error, 'This connection')
-            )
-          ) : (
-            <span className="skeleton-wait">Loading…</span>
-          )}
-        </SheetDescription>
-      </SheetHeader>
+      {failed ? (
+        <SheetHeader>
+          <SheetTitle>
+            {missing ? 'Connection not found' : 'Connection'}
+          </SheetTitle>
+          <SheetDescription>
+            {missing
+              ? 'This connection doesn’t exist, or you don’t have access to it.'
+              : describeReadError(error, 'This connection')}
+          </SheetDescription>
+        </SheetHeader>
+      ) : (
+        // The loaded header's shape, so the connection lands without a jump.
+        <SheetHeader className="flex-row items-center gap-3">
+          <Skeleton className="size-10 shrink-0 rounded-lg" />
+          <div className="min-w-0">
+            <SheetTitle>Connection</SheetTitle>
+            <Skeleton className="my-[3px] h-3.5 w-32" />
+          </div>
+        </SheetHeader>
+      )}
       <SheetBody className="flex flex-col gap-3">
         {failed ? (
           <Button

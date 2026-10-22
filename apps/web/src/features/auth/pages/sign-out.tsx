@@ -83,3 +83,9 @@ export function SignOutPage({
     </div>
   );
 }
+
+/** The same screen while the sign-out page's code loads, so it never reads as a different one. */
+export function SigningOut() {
+  // Nothing can fail, so nothing can be retried, before sign-out starts.
+  return <SignOutPage pending error={undefined} onRetry={() => undefined} />;
+}

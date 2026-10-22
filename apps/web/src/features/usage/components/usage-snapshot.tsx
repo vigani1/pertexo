@@ -2,11 +2,10 @@ import { RefreshCwIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { SettingsSection } from '@/components/patterns/settings/section';
 import { StaleLine } from '@/components/patterns/states/stale-line';
-import { Button } from '@/components/ui/button';
+import { ProgressButton } from '@/components/ui/progress-button';
 import { Notice } from '@/components/ui/notice';
 import { SkeletonThread } from '@/components/ui/skeleton';
 import { describeReadError } from '@/lib/api/error-copy';
-import { cn } from '@/lib/utils';
 
 /**
  * One section of the Usage page, laid out like every settings section, with
@@ -40,21 +39,18 @@ export function UsageSnapshot({
       title={title}
       description={description}
       action={
-        <Button
+        <ProgressButton
           variant="ghost"
           size="sm"
           aria-label={`Refresh ${title.toLowerCase()}`}
-          disabled={retrying}
           className="-ml-2.5"
+          pending={retrying}
+          pendingLabel="Refreshing…"
+          icon={<RefreshCwIcon data-icon="inline-start" aria-hidden="true" />}
           onClick={onRetry}
         >
-          <RefreshCwIcon
-            data-icon="inline-start"
-            aria-hidden="true"
-            className={cn(retrying && 'motion-safe:animate-spin')}
-          />
-          {retrying ? 'Refreshing…' : 'Refresh'}
-        </Button>
+          Refresh
+        </ProgressButton>
       }
     >
       {controls}

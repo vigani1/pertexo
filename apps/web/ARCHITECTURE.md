@@ -1160,15 +1160,17 @@ unread.
   (`defaultPendingMinMs` 0: the fade already keeps a short one from flashing):
   `PagePending` inside the shell, `WorkflowHubPending` in the hub,
   `WorkspaceBootPage` (“Opening Northwind Ops…”, then “Still connecting…” after
-  2 s) for a cold workspace and `BootPage`/`OpeningPage` for public pages.
-  `Skeleton` and `SkeletonThread` stay invisible for their first 150 ms and then
-  fade in over 250 ms, so an in-page skeleton never flashes either. A page
-  change that waits on the scope's session check (it runs again on every
-  navigation) keeps the current page on screen, and `NavigationProgress`
-  (`routes/navigation-progress.tsx`, in the root layout) draws a slim spooling
-  thread along the top from the router's pending state after the same 150 ms; it
-  holds still under reduced motion and never shows on a cold start, which has
-  the boot page.
+  2 s) for a cold workspace, `BootPage` for public pages that check the session
+  and `SigningOut` for sign-out. The static first frame in `index.html` has the
+  boot screen's layout with an empty status line, so the orb screen is the only
+  full-screen loading view. `Skeleton` and `SkeletonThread` stay invisible for
+  their first 150 ms and then fade in over 250 ms, so an in-page skeleton never
+  flashes either. A page change that waits on the scope's session check (it runs
+  again on every navigation) keeps the current page on screen, and
+  `NavigationProgress` (`routes/navigation-progress.tsx`, in the root layout)
+  draws a slim spooling thread along the top from the router's pending state
+  after the same 150 ms; it holds still under reduced motion and never shows on
+  a cold start, which has the boot page.
 - File placement is the same in every feature: `components/` holds components
   (and the Canvas scene a component owns); `model/` holds pure rules, types and
   the editor store with its React contexts; feature hooks (`use-*.ts`) sit at

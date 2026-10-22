@@ -22,8 +22,8 @@
     <link rel="manifest" href="/manifest.json" />
     <title>Pertexo</title>
     <!-- The boot screen's look before any stylesheet arrives: the dev server
-         injects CSS from script, so without this a refresh paints the two
-         boot lines as plain text on white. Values mirror globals.css. -->
+         injects CSS from script, so without this a refresh paints the
+         wordmark as plain text on white. Values mirror globals.css. -->
     <style>
       /* Only the page's ground and the boot screen itself: the app's own
          stylesheet owns everything else, its font included. */
@@ -84,7 +84,10 @@
     <div id="root">
       <!-- Painted before any script arrives: the boot screen (Boot in
            src/routes/root/status/pages.tsx) laid out the same way, with room
-           for its Core, so the app's first frame replaces it without a jump. -->
+           for its Core and its status line, so the app's first frame replaces
+           it without a jump. The line stays empty: only the app knows whether
+           it is checking a session or opening a workspace, and a generic line
+           here read as a second loading screen. -->
       <div
         class="boot-first-frame relative grid min-h-svh place-items-center overflow-hidden bg-background px-5"
       >
@@ -103,8 +106,11 @@
                 >.</span
               >
             </p>
-            <p class="boot-line font-mono text-xs text-subtle-foreground">
-              Opening Pertexo…
+            <p
+              class="boot-line font-mono text-xs text-subtle-foreground"
+              aria-hidden="true"
+            >
+              &nbsp;
             </p>
           </div>
         </div>
