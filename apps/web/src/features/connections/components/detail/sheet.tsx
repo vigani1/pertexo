@@ -3,10 +3,12 @@ import { ConnectionSharingPanel } from '../sharing/panel';
 import { NoticeSubjectActions } from '@/features/inbox/subscriptions.public';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { LockIcon } from 'lucide-react';
 import type { ConnectionResponse } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { Separator } from '@/components/ui/separator';
+import { useNotifications } from '@/components/ui/use-notifications';
 import {
   Sheet,
   SheetBody,
@@ -152,15 +154,26 @@ function OverviewActions({
           </Button>
         ) : null}
         {permissions.canManage ? (
-          <Button
-            type="button"
-            variant={reconnect ? 'primary' : 'outline'}
-            onClick={() => {
-              onMode('replace');
-            }}
-          >
-            Replace credential
-          </Button>
+          <>
+            <Button
+              type="button"
+              variant={reconnect ? 'primary' : 'outline'}
+              onClick={() => {
+                onMode('replace');
+              }}
+            >
+              Replace credential
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                onMode('sharing');
+              }}
+            >
+              Share
+            </Button>
+          </>
         ) : null}
       </div>
     </>
@@ -172,13 +185,16 @@ function DetailBody({
   connection,
   permissions,
   sharing,
+  mode,
+  onMode: setMode,
 }: Readonly<{
   scope: ConnectionMutationScope;
   connection: ConnectionResponse;
   permissions: ConnectionPermissions;
   sharing: ReturnType<typeof useConnectionSharingEditor>;
+  mode: Mode;
+  onMode: (mode: Mode) => void;
 }>) {
-  const [mode, setMode] = useState<Mode>('overview');
   const test = useConnectionTest(scope);
   const back = () => {
     setMode('overview');
@@ -186,11 +202,6 @@ function DetailBody({
   return (
     <SheetBody className="flex flex-col gap-5">
       <ConnectionState connection={connection} />
-      <NoticeSubjectActions
-        scope={scope}
-        subject={{ subjectKind: 'connection', subjectId: connection.id }}
-        name={connection.name}
-      />
       {mode === 'overview' ? (
         <>
           <OverviewActions
@@ -198,18 +209,6 @@ function DetailBody({
             permissions={permissions}
             onMode={setMode}
           />
-          {permissions.canManage ? (
-            <Button
-              type="button"
-              variant="outline"
-              className="self-start"
-              onClick={() => {
-                setMode('sharing');
-              }}
-            >
-              Sharing
-            </Button>
-          ) : null}
           <Separator />
           <ConnectionFacts connection={connection} />
           <Separator />
@@ -217,6 +216,12 @@ function DetailBody({
             scope={scope}
             connectionId={connection.id}
             canRead={permissions.canReadUsage ?? false}
+          />
+          <Separator />
+          <NoticeSubjectActions
+            scope={scope}
+            subject={{ subjectKind: 'connection', subjectId: connection.id }}
+            name={connection.name}
           />
           {/* Last, after everything it would stop. */}
           {permissions.canManage && connection.status !== 'revoked' ? (
@@ -258,18 +263,7 @@ function DetailBody({
         </>
       ) : null}
       {mode === 'sharing' && permissions.canManage ? (
-        <>
-          <ConnectionSharingPanel scope={scope} editor={sharing} />
-          <Button
-            type="button"
-            variant="ghost"
-            className="self-start"
-            disabled={sharing.closeLocked}
-            onClick={back}
-          >
-            Back to details
-          </Button>
-        </>
+        <ConnectionSharingPanel scope={scope} editor={sharing} onDone={back} />
       ) : null}
       {mode === 'replace' &&
       permissions.canManage &&
@@ -301,9 +295,15 @@ function ConnectionDetailSession({
   permissions: ConnectionPermissions;
   onClose: () => void;
 }>) {
+  const [mode, setMode] = useState<Mode>('overview');
+  const notifications = useNotifications();
   const sharing = useConnectionSharingEditor(
     scope,
     permissions.canManage ? connectionId : undefined,
+    () => {
+      notifications.success({ title: 'Sharing saved' });
+      setMode('overview');
+    },
   );
   const detail = useQuery({
     ...connectionDetailQueryOptions(
@@ -345,6 +345,12 @@ function ConnectionDetailSession({
                 <SheetDescription>
                   {describeConnectionKind(connection.providerKey)}
                 </SheetDescription>
+                {connection.accessMode === 'restricted' ? (
+                  <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <LockIcon aria-hidden="true" className="size-3" />
+                    Only chosen people can use it
+                  </p>
+                ) : null}
               </div>
             </SheetHeader>
             <DetailBody
@@ -353,6 +359,8 @@ function ConnectionDetailSession({
               connection={connection}
               permissions={permissions}
               sharing={sharing}
+              mode={mode}
+              onMode={setMode}
             />
             {detail.isError ? (
               <SheetBody>

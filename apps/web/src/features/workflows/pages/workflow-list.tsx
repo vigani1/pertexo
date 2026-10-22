@@ -1,4 +1,5 @@
-import { useRef, useState, type ComponentProps } from 'react';
+import { useCallback, useRef, useState, type ComponentProps } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
@@ -34,6 +35,16 @@ import { useRunWorkflow } from '../hooks/use-run-workflow';
 import { useOrganizationList } from '../hooks/use-organization-list';
 import { WorkflowOrganizationFilters } from '../components/organization/filters';
 import { WorkflowOrganizedResults } from '../components/organization/workflow-organized-results';
+import {
+  FolderShelf,
+  type FolderAction,
+} from '../components/organization/folders/shelf';
+import { FolderActionDialog } from '../components/organization/folders/actions';
+import { workflowFoldersQueryOptions } from '../data/organization/queries';
+import {
+  isOrganizationReadDenied,
+  useOrganizationReadLifetime,
+} from '../hooks/use-organization-read-lifetime';
 
 type LifecycleTarget = Readonly<{
   workflow: WorkflowSummary;
@@ -93,6 +104,77 @@ function useWorkflowList(
     organizations:
       workflows.data?.pages.flatMap((page) => page.organizations) ?? [],
   } as const;
+}
+
+/**
+ * The folders above the list and the dialog for whichever folder action is
+ * open. Folders are managed by owners and admins; everyone can open them.
+ */
+function WorkflowFolders({
+  apiClient,
+  userId,
+  workspace,
+  folderId,
+  onOpen,
+}: Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspace: AccessibleWorkspace;
+  folderId: string | undefined;
+  onOpen: (folderId: string | null) => void;
+}>) {
+  // A denied organization read anywhere retires the folder names too.
+  const lifetime = useOrganizationReadLifetime(userId, workspace.id);
+  const folders = useQuery({
+    ...workflowFoldersQueryOptions(apiClient, userId, workspace.id),
+    enabled: lifetime.error === undefined,
+  });
+  const [action, setAction] = useState<FolderAction>();
+  const items = folders.data?.items ?? [];
+  const canManage =
+    workspace.status === 'active' &&
+    (workspace.role === 'owner' || workspace.role === 'admin');
+  const close = useCallback(() => {
+    setAction(undefined);
+  }, []);
+  const done = useCallback(
+    (finished: FolderAction) => {
+      setAction(undefined);
+      // Leaving a folder that no longer exists.
+      if (finished.kind === 'delete' && finished.folder.id === folderId)
+        onOpen(finished.folder.parentId);
+    },
+    [folderId, onOpen],
+  );
+  if (
+    folders.data === undefined ||
+    lifetime.error !== undefined ||
+    isOrganizationReadDenied(folders.error)
+  )
+    return null;
+  return (
+    <>
+      <FolderShelf
+        folders={items}
+        currentFolderId={folderId === 'root' ? undefined : folderId}
+        canManage={canManage}
+        onOpen={onOpen}
+        onAction={setAction}
+      />
+      {action === undefined ? null : (
+        <FolderActionDialog
+          key={`${action.kind}:${action.kind === 'create' ? (action.parent?.id ?? 'top') : action.folder.id}`}
+          apiClient={apiClient}
+          userId={userId}
+          workspace={workspace}
+          folders={items}
+          action={action}
+          onClose={close}
+          onDone={done}
+        />
+      )}
+    </>
+  );
 }
 
 /** Renaming or archiving/restoring one workflow, over the list. */
@@ -225,6 +307,17 @@ function WorkflowListContent({
             </div>
           ) : undefined
         }
+      />
+      <WorkflowFolders
+        apiClient={apiClient}
+        userId={user.id}
+        workspace={workspace}
+        folderId={search.folderId}
+        onOpen={(folderId) => {
+          void onSearchChange((current) =>
+            updateWorkflowListSearch(current, { folderId }),
+          );
+        }}
       />
       <WorkflowOrganizationFilters
         apiClient={apiClient}

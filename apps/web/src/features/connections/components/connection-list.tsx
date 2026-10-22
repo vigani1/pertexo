@@ -1,5 +1,5 @@
 import type { ConnectionResponse } from '@pertexo/contracts';
-import { ChevronRightIcon } from 'lucide-react';
+import { ChevronRightIcon, LockIcon } from 'lucide-react';
 import { Status } from '@/components/ui/status';
 import { formatRelativeTime } from '@/lib/format/time';
 import { cn } from '@/lib/utils';
@@ -31,8 +31,15 @@ function ConnectionRow({
       >
         <ProviderTile provider={connection.providerKey} />
         <span className="min-w-0">
-          <span className="block truncate text-sm font-semibold">
-            {connection.name}
+          <span className="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
+            <span className="truncate">{connection.name}</span>
+            {connection.accessMode === 'restricted' ? (
+              <LockIcon
+                role="img"
+                aria-label="Only chosen people can use it"
+                className="size-3 shrink-0 text-muted-foreground"
+              />
+            ) : null}
           </span>
           <span className="block truncate text-xs text-muted-foreground">
             {describeConnectionKind(connection.providerKey)}

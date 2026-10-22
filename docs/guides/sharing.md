@@ -119,16 +119,23 @@ promotion; target connections follow the target workspace's rules.
 
 ## Sharing in the app
 
-Open **Workflows → Filters → Manage folders and tags…**, select a folder and
-choose **Sharing**. Select workspace access, or selected members and directory
-groups. Each entry has a Viewer or Editor grant. Save explicitly. If someone
-changes sharing while the form is open, your edits stay visible; **Discard edits
-and reload sharing** loads the current revision before another save. A temporary
-read failure also keeps your edits. An uncertain save offers an exact retry;
-check its outcome before starting a different change.
+Folders sit above the list in **Workflows**. A lock marks a restricted folder;
+open one to see its path, who can open it and the folders inside. Owners and
+admins use a folder's **⋯** menu, or **Share** inside it, to open **Share**.
+Choose **Everyone in this workspace** or **Only people you choose**, then add
+people or directory groups with **Can view** or **Can edit**. People are listed
+with their email and role; owners and admins always keep access, so they're
+shown but can't be added. **Save** stays off until something changes. If
+someone changes sharing while the dialog is open, your edits stay visible and
+**Reload** loads the current version before another save. A temporary read
+failure also keeps your edits. If a save can't be confirmed, **Try again** sends
+the exact same change; check its outcome before starting a different one.
+**Filters → Manage tags…** holds the workspace's tags.
 
-In **Connections**, open the connection, then **Sharing** to manage Use. The
-same revision and retry controls apply. Neither form displays credentials.
+In **Connections**, open the connection, then **Share** to choose who can use
+it. A lock marks restricted connections in the list. Viewers can't use
+connections, so the picker says so instead of offering them. Neither dialog
+shows credentials.
 
 A move that removes a restriction opens **Review audience change**. Read the
 listed restrictions and explicitly acknowledge the change. Bulk moves carry
