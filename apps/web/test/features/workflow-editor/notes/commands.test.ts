@@ -164,6 +164,15 @@ describe('note input and safe links', () => {
       noteFieldErrors({ ...fields, text: 'x'.repeat(4001) }).text,
     ).toBeDefined();
   });
+  it('shows dragged geometry in whole pixels without moving a note whose numbers stayed', () => {
+    const dragged = { ...note, position: { x: 602, y: 106.43629476 } };
+    const fields = noteFields(dragged);
+    expect(fields.y).toBe('106');
+    expect(
+      appliedNote(dragged, { ...fields, text: 'Updated' }).position,
+    ).toEqual({ x: 602, y: 106.43629476 });
+    expect(appliedNote(dragged, { ...fields, y: '120' }).position.y).toBe(120);
+  });
   it.each([
     'javascript:alert(1)',
     'java\nscript:alert(1)',

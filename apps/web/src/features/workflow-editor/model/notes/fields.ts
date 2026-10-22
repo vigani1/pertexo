@@ -11,14 +11,17 @@ export type NoteFields = Readonly<{
   width: string;
   height: string;
 }>;
+// Dragging leaves fractional canvas pixels; people read and type whole ones.
+const shown = (value: number): string => String(Math.round(value));
+
 export function noteFields(note: WorkflowNote): NoteFields {
   return {
     text: note.text,
     color: note.color,
-    x: String(note.position.x),
-    y: String(note.position.y),
-    width: String(note.size.width),
-    height: String(note.size.height),
+    x: shown(note.position.x),
+    y: shown(note.position.y),
+    width: shown(note.size.width),
+    height: shown(note.size.height),
   };
 }
 export function noteFieldErrors(
@@ -56,7 +59,18 @@ export function appliedNote(
     ...note,
     text: fields.text,
     color: fields.color,
-    position: { x: Number(fields.x), y: Number(fields.y) },
-    size: { width: Number(fields.width), height: Number(fields.height) },
+    position: {
+      x: kept(fields.x, note.position.x),
+      y: kept(fields.y, note.position.y),
+    },
+    size: {
+      width: kept(fields.width, note.size.width),
+      height: kept(fields.height, note.size.height),
+    },
   };
+}
+
+/** A field left as shown keeps the exact stored value, so saving text never nudges the note. */
+function kept(field: string, stored: number): number {
+  return field === shown(stored) ? stored : Number(field);
 }
