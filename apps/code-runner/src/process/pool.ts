@@ -7,6 +7,16 @@ import { startTaskSlot, type TaskSlot } from './slot.js';
 export async function createTaskProcessPool(config: RunnerConfig) {
   const lifetime = new AbortController();
   const policy = await resolveCodePackages(config.settings);
+  if (config.settings.enabled && config.settings.pythonPackages.length > 0) {
+    const checked = await startTaskSlot(
+      config,
+      policy,
+      0,
+      lifetime.signal,
+      'python',
+    );
+    await checked.stop();
+  }
   const slots: (TaskSlot | undefined)[] = Array.from({
     length: config.settings.enabled ? config.settings.concurrency : 0,
   });
@@ -76,13 +86,34 @@ export async function createTaskProcessPool(config: RunnerConfig) {
       if (slot === undefined) return undefined;
       slots[index] = undefined;
       let released = false;
+      let current = slot;
+      let used = false;
       return {
-        run: slot.run,
+        run: async (...args: Parameters<TaskSlot['run']>) => {
+          if (used || released || closed)
+            throw new Error('Code reservations are single-use');
+          used = true;
+          if (args[0].language === 'python') {
+            await current.stop();
+            owned.delete(current);
+            lifetime.signal.throwIfAborted();
+            args[1].throwIfAborted();
+            current = await startTaskSlot(
+              config,
+              policy,
+              index,
+              AbortSignal.any([lifetime.signal, args[1]]),
+              'python',
+            );
+            owned.add(current);
+          }
+          return current.run(...args);
+        },
         release: async () => {
           if (released) return;
           released = true;
-          await slot.stop();
-          owned.delete(slot);
+          await current.stop();
+          owned.delete(current);
           if (!closed) {
             replenish(index);
           }

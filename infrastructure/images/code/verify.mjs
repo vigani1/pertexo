@@ -84,6 +84,8 @@ try {
     `${volume}:/run/pertexo-code`,
     '--mount',
     mount('os-probe.mjs'),
+    '--mount',
+    mount('python-probe.mjs'),
     '--entrypoint',
     'node',
     image,
@@ -115,6 +117,9 @@ try {
   await ready();
   const before = JSON.parse(await docker(['inspect', manager]))[0].RestartCount;
   console.log(await docker(['exec', manager, 'node', '/probe/os-probe.mjs']));
+  console.log(
+    await docker(['exec', manager, 'node', '/probe/python-probe.mjs']),
+  );
   const client = await docker([
     'run',
     '-d',

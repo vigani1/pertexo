@@ -51,6 +51,26 @@ function fixture() {
   };
 }
 describe('Code execution capability', () => {
+  it('forwards Python through the same safe capability and preserves old JavaScript configs', async () => {
+    const f = fixture();
+    const code = 'return input["amount"] * 2';
+    expect(CORE_CODE_CONFIG_SCHEMA.parse({ language: 'python', code })).toEqual(
+      { language: 'python', code },
+    );
+    await f.run({ language: 'python', code });
+    expect(f.execute).toHaveBeenCalledWith({
+      language: 'python',
+      code,
+      input: { amount: 3 },
+      signal: f.signal,
+    });
+    expect(CORE_CODE_CONFIG_SCHEMA.parse({ code: 'return input;' })).toEqual({
+      code: 'return input;',
+    });
+    expect(
+      CORE_CODE_CONFIG_SCHEMA.safeParse({ language: 'ruby', code }).success,
+    ).toBe(false);
+  });
   it('is safe and delegates to the worker capability without evaluating source', async () => {
     expect(CORE_CODE_MANIFEST.retryClass).toBe('safe');
     const f = fixture();

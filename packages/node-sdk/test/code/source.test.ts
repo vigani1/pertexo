@@ -8,6 +8,20 @@ import {
 } from '../../src/index.js';
 
 describe('Code authoring boundary', () => {
+  it('validates Python source bounds without executing or using the JavaScript parser', () => {
+    expect(inspectCodeSource('while True: pass', 'python')).toBeUndefined();
+    expect(inspectCodeSource('', 'python')?.message).toContain('Python');
+    expect(inspectCodeSource('é'.repeat(65536), 'python')?.message).toContain(
+      '64 KB',
+    );
+    expect(
+      parseCodeSettings({ CODE_RUNNER_PYTHON_PACKAGES: '["acme.transforms"]' })
+        .pythonPackages,
+    ).toEqual(['acme.transforms']);
+    expect(() =>
+      parseCodeSettings({ CODE_RUNNER_PYTHON_PACKAGES: '["../secret"]' }),
+    ).toThrow();
+  });
   it('accepts async bodies without evaluating them', () => {
     expect(
       inspectCodeSource(

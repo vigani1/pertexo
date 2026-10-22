@@ -8,6 +8,8 @@ import {
   NODE_JSON_LIMITS,
   codeResultSchema,
   codeContainerLimits,
+  CODE_PYTHON_MODULES,
+  type CodeLanguage,
   type CodeTask,
   type CodeResult,
   type CodeErrorCode,
@@ -31,6 +33,7 @@ export async function startTaskSlot(
   policy: ModulePolicy,
   ordinal: number,
   lifetime: AbortSignal,
+  language: CodeLanguage = 'javascript',
 ): Promise<TaskSlot> {
   const boot: ChildBoot = {
     json: NODE_JSON_LIMITS,
@@ -41,6 +44,8 @@ export async function startTaskSlot(
     },
     modules: policy,
     taskBytes: CODE_LIMITS.taskBytes,
+    pythonModules: CODE_PYTHON_MODULES,
+    pythonPackages: config.settings.pythonPackages,
   };
   const entry = fileURLToPath(new URL('./child.js', import.meta.url));
   const reads = [
@@ -48,15 +53,27 @@ export async function startTaskSlot(
     fileURLToPath(new URL('../../package.json', import.meta.url)),
     ...policy.readPaths,
   ];
-  const args = [
-    '--permission',
-    '--disable-wasm-trap-handler',
-    '--no-experimental-strip-types',
-    `--max-old-space-size=${String(config.settings.memoryMiB)}`,
-    '--v8-pool-size=1',
-    ...reads.map((path) => '--allow-fs-read=' + path),
-    entry,
-  ];
+  const args =
+    language === 'python'
+      ? [
+          '-I',
+          '-B',
+          '-u',
+          // CPython's script entry uses FIOCLEX, outside the existing filter.
+          // run_path reads trusted code without weakening the syscall policy.
+          '-c',
+          `import runpy; runpy.run_path(${JSON.stringify(fileURLToPath(new URL('../../python/task.py', import.meta.url)))})`,
+        ]
+      : [
+          '--permission',
+          '--disable-wasm-trap-handler',
+          '--no-experimental-strip-types',
+          `--max-old-space-size=${String(config.settings.memoryMiB)}`,
+          '--v8-pool-size=1',
+          ...reads.map((path) => '--allow-fs-read=' + path),
+          entry,
+        ];
+  const executable = language === 'python' ? 'python3.15' : process.execPath;
   const child: ChildProcess =
     config.mode === 'hardened'
       ? spawn(
@@ -65,7 +82,9 @@ export async function startTaskSlot(
             String(20000 + ordinal),
             String(config.settings.memoryMiB),
             String(config.settings.maximumSeconds),
-            process.execPath,
+            language === 'python'
+              ? '/opt/pertexo-python/bin/python3.15'
+              : executable,
             ...args,
           ],
           {
@@ -77,7 +96,7 @@ export async function startTaskSlot(
             },
           },
         )
-      : spawn(process.execPath, args, {
+      : spawn(executable, args, {
           stdio: ['pipe', 'pipe', 'pipe', 'pipe'],
           env: {
             PATH: process.env.PATH ?? '/usr/local/bin:/usr/bin:/bin',
@@ -232,7 +251,7 @@ export async function startTaskSlot(
         }
         const code =
           failure ??
-          (/heap out of memory|allocation failed|out of memory/iu.test(
+          (/heap out of memory|allocation failed|out of memory|MemoryError/iu.test(
             stderr,
           ) || child.signalCode === 'SIGABRT'
             ? 'code.memory_limit'

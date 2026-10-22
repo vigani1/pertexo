@@ -248,7 +248,7 @@ only after its gate is resolved.
 | [F36](feature-plans/36-light-theme.md) | Light theme alongside the dark one | Frontend design tokens and a personal setting | M | Implemented: System/Light/Dark, pre-paint preference, semantic Weft palettes and browser qualification |
 | [F37](feature-plans/37-canvas-notes.md) | Notes on the workflow canvas | Editor and graph metadata, separate from F19 comments | M | Implemented: bounded Markdown notes, keyboard/phone editing, version comparisons and portable graph metadata |
 | [F38](feature-plans/38-utility-steps.md) | Utility steps: XML/HTML parsing, hashes, signatures and IDs, text and number formatting | Extends F24 transforms | M–L | Delivered |
-| F39 | Python in the Code step | Extends the F20 runner | L | Proposed (later, by demand) |
+| F39 | Python in the Code step | Extends the F20 runner | L | Runtime implemented; editor next — [plan](feature-plans/39-python-code.md) |
 | F40 | Community-built steps through a public step SDK | Opens the node SDK and catalog | XL | Proposed (later, by demand) |
 | F41 | External secret stores for connection credentials | Extends connections | L | Proposed (later, by demand) |
 | F42 | Log streaming to external monitoring | Extends observability and audit | M–L | Proposed (later, by demand) |

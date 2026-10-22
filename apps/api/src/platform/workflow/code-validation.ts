@@ -8,7 +8,7 @@ import type {
   GraphValidationIssue,
 } from '@pertexo/workflow-model';
 
-/** Instance policy and the same parser as execution; no code is evaluated. */
+/** Instance policy and shared source validation; no code is evaluated. */
 export function codeStepPublicationIssues(
   graph: WorkflowGraph,
   settings: CodeSettings,
