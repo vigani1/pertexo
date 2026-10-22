@@ -153,9 +153,12 @@ export async function acquireApiRuntimes(
     if (
       connectionRuntime === undefined &&
       identityRuntime !== undefined &&
-      config.connections !== undefined &&
-      config.identity !== undefined
-    )
+      config.connections !== undefined
+    ) {
+      if (config.identity === undefined)
+        throw new Error(
+          'Connections require application identity configuration',
+        );
       connectionRuntime = await createApiConnectionRuntime(
         config.connections,
         config.database,
@@ -164,6 +167,7 @@ export async function acquireApiRuntimes(
         dependencies.connectionOverrides,
         databaseRuntime,
       );
+    }
 
     callbackRuntime = dependencies.callbackRuntime;
     if (
