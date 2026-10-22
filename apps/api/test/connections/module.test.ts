@@ -14,6 +14,7 @@ import {
 import { CONNECTION_AUTHORIZATION } from '../../src/connections/tokens.js';
 
 const dependencies = {
+  applicationSecret: 'fixture-application-secret',
   persistence: {
     createConnection: () => Promise.reject(new Error('not exercised')),
     listConnections: () => Promise.resolve({ items: [] }),
@@ -88,6 +89,7 @@ describe('connections Nest module', () => {
         persistence: dependencies.persistence,
         authorization: dependencies.authorization,
         encryption: dependencies.encryption,
+        applicationSecret: dependencies.applicationSecret,
         httpClient: dependencies.httpClient,
       },
       { module: FakeIdentityModule },

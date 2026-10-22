@@ -117,6 +117,7 @@ export class CreateConnectionUseCase {
     private readonly persistence: ConnectionCommandPersistence,
     private readonly authorization: WorkspaceAuthorizationSource,
     private readonly encryption: Pick<ConnectionSecretEncryptionPort, 'seal'>,
+    private readonly applicationSecret: string,
     private readonly telemetry: ConnectionTelemetry = NOOP_CONNECTION_TELEMETRY,
   ) {}
 
@@ -124,7 +125,12 @@ export class CreateConnectionUseCase {
     return this.telemetry.measure(CONNECTION_OPERATION.create, async () => {
       await authorizeConnectionOperation(input, this.authorization);
       const request = connectionCreateRequestSchema.parse(input.request);
-      const requestHash = hashRequest(request);
+      const requestHash = hashRequest(
+        this.applicationSecret,
+        input.routeWorkspaceId,
+        CONNECTION_OPERATION.create,
+        request,
+      );
       const replay = await this.persistence.findConnectionCreateReplay({
         workspaceId: input.routeWorkspaceId,
         actorId: input.actor.actorId,
@@ -176,6 +182,7 @@ export class RotateConnectionSecretUseCase {
     private readonly persistence: ConnectionCommandPersistence,
     private readonly authorization: WorkspaceAuthorizationSource,
     private readonly encryption: Pick<ConnectionSecretEncryptionPort, 'seal'>,
+    private readonly applicationSecret: string,
     private readonly telemetry: ConnectionTelemetry = NOOP_CONNECTION_TELEMETRY,
   ) {}
 
@@ -186,10 +193,15 @@ export class RotateConnectionSecretUseCase {
       await authorizeConnectionOperation(input, this.authorization);
       const request = connectionRotateSecretRequestSchema.parse(input.request);
       const secretVersionId = generatePersistedId();
-      const requestHash = hashRequest({
-        connectionId: input.connectionId,
-        ...request,
-      });
+      const requestHash = hashRequest(
+        this.applicationSecret,
+        input.routeWorkspaceId,
+        CONNECTION_OPERATION.rotate,
+        {
+          connectionId: input.connectionId,
+          ...request,
+        },
+      );
       const replay = await this.persistence.findConnectionRotateReplay({
         workspaceId: input.routeWorkspaceId,
         actorId: input.actor.actorId,

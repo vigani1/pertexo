@@ -49,6 +49,7 @@ describe('connection testing use case', () => {
         authorization(),
         { open, seal: vi.fn() },
         { execute },
+        'fixture-application-secret',
       ).execute(testCommand),
     ).rejects.toMatchObject({ name: 'ZodError' });
 
@@ -103,6 +104,7 @@ describe('connection testing use case', () => {
       access,
       encryption,
       httpClient,
+      'fixture-application-secret',
     ).execute({
       actor,
       routeWorkspaceId: workspaceId,
@@ -150,6 +152,7 @@ describe('connection testing use case', () => {
       authorization(),
       encryption,
       httpClient,
+      'fixture-application-secret',
     ).execute({
       actor,
       routeWorkspaceId: workspaceId,
@@ -202,6 +205,7 @@ describe('connection testing use case', () => {
       authorization(),
       { seal: vi.fn(), open: vi.fn(() => Promise.resolve(plaintext)) },
       { execute: vi.fn() },
+      'fixture-application-secret',
       undefined,
       { authTest },
     ).execute({
@@ -275,6 +279,7 @@ describe('connection testing use case', () => {
       authorization(),
       { seal: vi.fn(), open: vi.fn(() => Promise.resolve(plaintext)) },
       { execute: vi.fn() },
+      'fixture-application-secret',
       undefined,
       undefined,
       { sendNotification },
@@ -315,9 +320,15 @@ describe('connection testing use case', () => {
     };
 
     await expect(
-      new TestConnectionUseCase(store, authorization(), encryption, {
-        execute,
-      }).execute({
+      new TestConnectionUseCase(
+        store,
+        authorization(),
+        encryption,
+        {
+          execute,
+        },
+        'fixture-application-secret',
+      ).execute({
         actor,
         routeWorkspaceId: workspaceId,
         connectionId,
@@ -349,6 +360,7 @@ describe('connection testing use case', () => {
           authorization(),
           { seal: vi.fn(), open },
           { execute: vi.fn() },
+          'fixture-application-secret',
           undefined,
           undefined,
           { sendNotification },
@@ -386,6 +398,7 @@ describe('connection testing use case', () => {
         deniedAuthorization,
         encryption,
         httpClient,
+        'fixture-application-secret',
       ).execute({
         actor,
         routeWorkspaceId: workspaceId,
@@ -422,6 +435,7 @@ describe('connection testing use case', () => {
       authorization(),
       encryption,
       securityClient,
+      'fixture-application-secret',
     ).execute({
       actor,
       routeWorkspaceId: workspaceId,
@@ -454,6 +468,7 @@ describe('connection testing use case', () => {
         authorization(),
         encryption,
         markerClient,
+        'fixture-application-secret',
       ).execute({
         actor,
         routeWorkspaceId: workspaceId,
@@ -503,6 +518,7 @@ describe('connection testing use case', () => {
             };
           }),
         },
+        'fixture-application-secret',
       ).execute({
         actor,
         routeWorkspaceId: workspaceId,
@@ -551,6 +567,7 @@ describe('connection testing use case', () => {
         authorization(),
         { seal: vi.fn(), open: vi.fn(() => Promise.resolve(plaintext)) },
         { execute: vi.fn() },
+        'fixture-application-secret',
         undefined,
         { authTest: vi.fn().mockResolvedValue(providerResult) },
       ).execute({
@@ -590,6 +607,7 @@ describe('connection testing use case', () => {
         authorization(),
         { seal: vi.fn(), open: vi.fn(() => Promise.resolve(plaintext)) },
         { execute: vi.fn() },
+        'fixture-application-secret',
         undefined,
         undefined,
         { sendNotification: vi.fn().mockResolvedValue(providerResult) },
@@ -617,6 +635,7 @@ describe('connection testing use case', () => {
         authorization(),
         { seal: vi.fn(), open: vi.fn(() => Promise.resolve(plaintext)) },
         { execute },
+        'fixture-application-secret',
       ).execute({
         actor,
         routeWorkspaceId: workspaceId,
@@ -651,6 +670,7 @@ describe('connection testing use case', () => {
           authorization(),
           { seal: vi.fn(), open: vi.fn(() => Promise.resolve(plaintext)) },
           { execute: vi.fn() },
+          'fixture-application-secret',
           undefined,
           provider === 'slack'
             ? undefined

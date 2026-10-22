@@ -87,6 +87,7 @@ export class ConnectionsModule {
           dependencies.persistence,
           dependencies.authorization,
           dependencies.encryption,
+          dependencies.applicationSecret,
           telemetry,
         ),
       },
@@ -96,6 +97,7 @@ export class ConnectionsModule {
           dependencies.persistence,
           dependencies.authorization,
           dependencies.encryption,
+          dependencies.applicationSecret,
           telemetry,
         ),
       },
@@ -114,6 +116,7 @@ export class ConnectionsModule {
           dependencies.authorization,
           dependencies.encryption,
           dependencies.httpClient,
+          dependencies.applicationSecret,
           telemetry,
           dependencies.slackClient,
           dependencies.emailClient,
@@ -144,6 +147,7 @@ export class ConnectionsModule {
         provide: FailureNotificationDestinationUseCases,
         useValue: new FailureNotificationDestinationUseCases(
           dependencies.destinationPersistence,
+          dependencies.applicationSecret,
           telemetry,
         ),
       });

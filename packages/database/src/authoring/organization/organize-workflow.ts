@@ -3,6 +3,7 @@ import { requireMoveAudienceReview } from './sharing/audience.js';
 import { readFolderScope } from '../../tenant-access/resources/facts.js';
 import { workflowAccessible } from '../../tenant-access/resources/workflows.js';
 import type { PoolClient } from 'pg';
+import type { Role } from '../../tenant-access/policy.js';
 
 import { WorkflowNotFoundError } from '../workflows/errors.js';
 import type { OrganizationScope } from './command.js';
@@ -20,31 +21,17 @@ export type OrganizationChange =
   | Readonly<{ kind: 'replace_tags'; tagIds: readonly string[] }>
   | Readonly<{ kind: 'detach_tag'; tagId: string }>;
 
-async function isAdministrator(
-  client: PoolClient,
-  scope: OrganizationScope,
-): Promise<boolean> {
-  const membership = await client.query(
-    `select 1 from app.workspace_memberships
-     where workspace_id = $1 and user_id = $2 and status = 'active'
-       and role in ('owner', 'admin')`,
-    [scope.workspaceId, scope.actorId],
-  );
-  return membership.rowCount === 1;
-}
-
 /**
  * Archived workflows keep their tags; only administrators move them between
  * folders. Tag detach is cleanup and works on any workflow.
  */
-async function checkLifecycle(
-  client: PoolClient,
-  scope: OrganizationScope,
+function checkLifecycle(
+  role: Role | null,
   lifecycleStatus: string,
   kind: OrganizationChange['kind'],
-): Promise<void> {
+): void {
   if (lifecycleStatus === 'active' || kind === 'detach_tag') return;
-  if (kind === 'move' && (await isAdministrator(client, scope))) return;
+  if (kind === 'move' && (role === 'owner' || role === 'admin')) return;
   throw new WorkflowTagConflictError('lifecycle');
 }
 
@@ -117,7 +104,7 @@ export async function organizeWorkflow(
   const lifecycleStatus = workflow.rows[0]?.lifecycle_status;
   if (lifecycleStatus === undefined)
     throw new WorkflowNotFoundError('Workflow is not visible');
-  await checkLifecycle(client, scope, lifecycleStatus, change.kind);
+  checkLifecycle(access.role, lifecycleStatus, change.kind);
 
   const state = await client.query<{ revision: string }>(
     `select revision from app.workflow_organization_state
@@ -202,6 +189,5 @@ export async function checkOrganizationReplay(
   const lifecycleStatus = workflow.rows[0]?.lifecycle_status;
   if (lifecycleStatus === undefined)
     throw new WorkflowNotFoundError('Workflow is not visible');
-  if (kind === 'move')
-    await checkLifecycle(client, scope, lifecycleStatus, kind);
+  if (kind === 'move') checkLifecycle(access.role, lifecycleStatus, kind);
 }

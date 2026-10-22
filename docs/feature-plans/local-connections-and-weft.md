@@ -54,3 +54,17 @@ The live Usage browser/API/PostgreSQL qualification also passed after its byte
 assertions were updated to readable units and the exact byte title. The initial
 CI browser failure was this stale raw-byte expectation; production behavior did
 not change in the follow-up fix.
+
+## Audit security correction (2026-10-23)
+
+Connection create, rotation and tests, and failure-alert destination/policy
+commands fingerprint canonical JSON with HMAC-SHA-256 using the existing
+application secret (`BETTER_AUTH_SECRET`), a command purpose and workspace ID.
+Command receipts no longer expose unkeyed credential verifiers. Identical
+requests replay; changed credentials conflict. The owner approved replacing the
+hash format directly: the install is prelaunch, with no production receipts to
+migrate. Changing the application secret invalidates outstanding command retries;
+clients must not treat that conflict as permission to repeat an uncertain effect.
+Destination commands hold the shared workspace → user → membership authority
+fence until their mutation, receipt and audit fact commit, serializing demotion
+with edits. Audience-only queries retain their existing rules.
