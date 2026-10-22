@@ -303,9 +303,11 @@ Webhook Setup can opt into bounded replies through a Respond to webhook step.
 See [webhook responses](../../docs/guides/webhook-responses.md) for limits, safe
 headers, previews, timeout fallback and the admission log.
 
-Code steps have a lazily loaded JavaScript editor with shared-parser syntax
-errors, effective instance limits, pinned previews and private console/error
-diagnostics in tests and run details. See [Code](../../docs/guides/code.md).
+Code steps choose JavaScript (default) or Python in the lazily loaded editor.
+Switching non-empty source asks for confirmation. Shared JavaScript parsing and
+the Python editor grammar give local syntax feedback; Python previews use the
+real compiler. Both languages share effective instance limits, pinned previews
+and private diagnostics. See [Code](../../docs/guides/code.md).
 
 Webhook endpoint settings support Signed (default), Secret URL and Header secret
 authentication, with optional exact browser origins for URL/header modes. Mode

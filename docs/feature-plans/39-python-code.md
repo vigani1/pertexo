@@ -64,8 +64,8 @@ on hold. One Code step, runner, socket protocol and shared instance budget.
 
 | Slice | Changes | Status |
 | --- | --- | --- |
-| 1. Runtime and isolation | SDK language/settings, Code boundary and worker forwarding; Python task implementation in `apps/code-runner/python/`; same native launcher/pool; pinned image build and existing image qualification on AMD64/ARM64; ADR 082 | Implemented; ARM64 qualified locally, AMD64 required in PR CI |
-| 2. Editor and guide | Existing Code inspector and CodeMirror language compartment; confirmation; examples and custom-image docs; mocked and real browser journeys in both themes at desktop/990/phone | Pending |
+| 1. Runtime and isolation | SDK language/settings, Code boundary and worker forwarding; Python task implementation in `apps/code-runner/python/`; same native launcher/pool; pinned image build and existing image qualification on AMD64/ARM64; ADR 082 | Merged [#465](https://github.com/vigani1/pertexo/pull/465); both architectures qualified |
+| 2. Editor, guide and qualification | Existing Code inspector and CodeMirror language compartment; confirmation; examples and custom-image docs; function-body fidelity and diagnostic coordinates; mocked and real browser journeys in both themes at desktop/990/phone | Implemented and locally qualified; PR CI required before merge |
 
 Each slice is one PR with Moved, Removed, Lines and Test plan sections. Run the
 full pre-push hook. Work on useful independent qualification/docs while CI runs;
@@ -110,6 +110,9 @@ another service/protocol and other runtimes are outside this feature.
   CPU/heap/native-memory bombs beside healthy tasks, transport and hard restart.
   The existing AMD64 image job runs the same assertions before merge; the
   existing ARM64 publishing job repeats them after merge. No CI job is added.
+- AMD64 PR CI also passed the full hardened qualification. Required modules
+  loaded at **32 MiB RLIMIT_DATA**, **19,832 KiB peak RSS**, confirming zero extra
+  startup headroom on both architectures.
 - At the minimum setting, required modules and Europe/Paris timezone data load
   under **32 MiB RLIMIT_DATA (zero extra headroom)**, with **18,544 KiB peak RSS**
   on ARM64. This measures module/startup headroom, not a promise that arbitrary
@@ -125,3 +128,24 @@ another service/protocol and other runtimes are outside this feature.
   cancellation and shared capacity. SDK, Code executor, worker handshake and API
   publication tests pass; strict types, lint, architecture and contract checks
   pass. Existing OpenAPI lint warnings are unchanged.
+
+## Editor evidence (2026-10-22)
+
+- One scoped language control owns confirmation; the draft remains the source
+  of truth. CodeMirror reconfigures the existing view and reuses its incremental
+  Python grammar with a bounded parse budget. No evaluation during editing.
+- Qualification found that text indentation changes multiline string values.
+  The runner wraps CPython's parsed statements in a function AST instead; source
+  content and body-relative locations survive unchanged. Unicode byte offsets
+  are converted to the editor's UTF-16 columns, and user-raised SyntaxError uses
+  its runtime location. Three regression cases failed before the fix and pass
+  afterwards (75 total Code process tests); a hardened ARM64 probe also passes.
+- Both themes pass at 375, 990 and 1440 px in six mocked browser cases and the
+  real API/worker journey. Real previews exercise a CPython syntax error and
+  a successful transformation; the published run reads the captured variable
+  revision, uses timezone data and returns the expected JSON/private diagnostics.
+  Existing JavaScript behavior passes in the same real-browser run.
+- The existing `live-1` browser job installs the pinned CPython for its separate
+  development-process runner; no job or production service is added.
+- React Doctor reports **98/100, no diagnostics** after grouping language
+  presentation and confirmation with their owners. No rule suppression.

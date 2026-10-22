@@ -108,7 +108,7 @@ performance/reliability rankings are asserted. Editions differ.
 | Respond through a webhook | [n8n Respond to Webhook](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook) | 202 stays default; opt-in stored workflow response (F15) |
 | Promote between environments | [n8n source control and environments](https://docs.n8n.io/administer/use-source-control-and-environments) | Versioning exists, environment product F17 does not follow automatically |
 | Organize workflows | [Make scenario capabilities](https://help.make.com/scenarios) documents folders/labels | Existing search; proposed metadata F07 |
-| User code as a workflow step | [n8n Code node](https://docs.n8n.io/build/code-in-n8n/using-the-code-node) supports JavaScript/Python | F20: JavaScript in an isolated runner container; Python later |
+| User code as a workflow step | [n8n Code node](https://docs.n8n.io/build/code-in-n8n/using-the-code-node) supports JavaScript/Python | F20/F39: JavaScript or Python in the same isolated runner |
 | Transform, review and AI breadth | [n8n current documentation index](https://docs.n8n.io/sitemap.md) lists transform nodes, reviews and AI features | Demand-driven F24, F18 and F22; not early parity blockers |
 | Sign in with a second factor | [n8n two-factor authentication](https://docs.n8n.io/user-management/two-factor-auth/) uses an authenticator app and recovery codes | Authenticator codes and one-time recovery codes protect password sign-in; provider sign-in keeps its own verification. F31 |
 | Fetch every page of an API result | [n8n HTTP Request pagination](https://docs.n8n.io/build/code-in-n8n/cookbook/http-request-node/pagination) follows a next-page URL or a page counter | HTTP Request optionally follows same-origin JSON pages; F32 |
@@ -171,7 +171,7 @@ Owner update 2026-10-19: after the whole-app QA pass, F31–F44 were added from 
 comparison with n8n, Zapier and Make. F31 two-factor sign-in comes before the
 hosted beta. F32 pagination, F33 retry settings and F35 webhook test events come
 before or alongside F21, because providers rely on them; F34 file output fits
-anywhere before it. F36–F38 follow when there is room. F39–F44 wait for demand.
+anywhere before it. F36–F39 are delivered. F40–F44 wait for demand.
 F45–F49 were added the same day: F45 bigger files also comes before or alongside
 F21, since provider files rarely fit in 1 MiB; F46–F48 follow when there is room;
 F49 waits for demand.
@@ -248,7 +248,7 @@ only after its gate is resolved.
 | [F36](feature-plans/36-light-theme.md) | Light theme alongside the dark one | Frontend design tokens and a personal setting | M | Implemented: System/Light/Dark, pre-paint preference, semantic Weft palettes and browser qualification |
 | [F37](feature-plans/37-canvas-notes.md) | Notes on the workflow canvas | Editor and graph metadata, separate from F19 comments | M | Implemented: bounded Markdown notes, keyboard/phone editing, version comparisons and portable graph metadata |
 | [F38](feature-plans/38-utility-steps.md) | Utility steps: XML/HTML parsing, hashes, signatures and IDs, text and number formatting | Extends F24 transforms | M–L | Delivered |
-| F39 | Python in the Code step | Extends the F20 runner | L | Runtime implemented; editor next — [plan](feature-plans/39-python-code.md) |
+| F39 | Python in the Code step | Extends the F20 runner | L | Delivered — [plan](feature-plans/39-python-code.md) |
 | F40 | Community-built steps through a public step SDK | Opens the node SDK and catalog | XL | Proposed (later, by demand) |
 | F41 | External secret stores for connection credentials | Extends connections | L | Proposed (later, by demand) |
 | F42 | Log streaming to external monitoring | Extends observability and audit | M–L | Proposed (later, by demand) |

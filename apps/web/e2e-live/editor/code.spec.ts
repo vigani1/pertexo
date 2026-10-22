@@ -230,3 +230,149 @@ test('browser-authored Code uses the actual worker runner and keeps diagnostics 
     ),
   ).toBe(true);
 });
+
+test('Python uses real previews and published runs in both themes and responsive editor layouts', async ({
+  page,
+  request,
+}, info) => {
+  const mailOrigin = process.env.PERTEXO_LIVE_MAIL_ORIGIN;
+  if (mailOrigin === undefined) throw new Error('Use the owned API fixture');
+  await registerEditorUser(page, request, mailOrigin, 'Python owner');
+  const workspaceId = await createEditorWorkspace(page, 'Python qualification');
+  await page.goto(`/w/${workspaceId}/settings/variables`);
+  await page.getByRole('button', { name: 'Add variable', exact: true }).click();
+  await page
+    .getByRole('region', { name: 'New variable', exact: true })
+    .getByLabel('Name', { exact: true })
+    .fill('RATE');
+  const variable = page.getByRole('region', { name: 'RATE', exact: true });
+  await variable.getByLabel('Type', { exact: true }).selectOption('number');
+  await variable.getByLabel('Value', { exact: true }).fill('4');
+  await page
+    .getByRole('button', { name: 'Save variables', exact: true })
+    .click();
+  await expect(
+    page.getByText('Saved revision 1 for new runs', { exact: true }),
+  ).toBeVisible();
+  const workflowPath = await createEditorWorkflow(
+    page,
+    workspaceId,
+    'Python qualification',
+  );
+  const editorUrl = new URL(page.url()).pathname;
+  const nodeId = await addSingleStep(
+    page,
+    workflowPath,
+    /^Code /u,
+    'Calculate Python',
+  );
+  await page.getByRole('combobox', { name: 'Language', exact: true }).click();
+  await page.getByRole('option', { name: 'Python', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Switch language', exact: true })
+    .click();
+  const source =
+    'from datetime import datetime\nfrom zoneinfo import ZoneInfo\nprint("private Python log")\nreturn {"total": input["amount"] + _vars["RATE"], "year": datetime(2026, 1, 1).year, "zone": ZoneInfo("Europe/Paris").key}';
+  const editor = page.getByRole('textbox', { name: 'Python', exact: true });
+  await editor.fill('value = 1\nreturn (');
+  await expect(editor).toHaveAttribute('aria-invalid', 'true');
+  await page.getByRole('tab', { name: 'Test', exact: true }).click();
+  await page.getByRole('button', { name: 'Check setup', exact: true }).click();
+  await expect(
+    page.getByText('Setup looks right', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: /^Run (?:another )?test$/u }),
+  ).toBeEnabled();
+  await page.getByRole('button', { name: /^Run (?:another )?test$/u }).click();
+  await expect(
+    page.getByRole('region', { name: 'Code diagnostics' }),
+  ).toContainText('Line 2');
+  await page.getByRole('tab', { name: 'Setup', exact: true }).click();
+  await editor.fill(source);
+  await expect(editor).toHaveAttribute('aria-invalid', 'false');
+  await page.getByRole('tab', { name: 'Inputs', exact: true }).click();
+  await page.getByRole('button', { name: 'Add input', exact: true }).click();
+  const mapping = page
+    .getByRole('region', { name: 'Inputs', exact: true })
+    .locator('ol > li')
+    .last();
+  await mapping.getByLabel('Field', { exact: true }).fill('amount');
+  await mapping.getByRole('button', { name: 'Run input', exact: true }).click();
+  await mapping.getByLabel('Run input path', { exact: true }).fill('$.amount');
+  await page.keyboard.press('Tab');
+  await page.getByRole('tab', { name: 'Test', exact: true }).click();
+  await page
+    .getByLabel('Sample input (JSON)', { exact: true })
+    .fill('{"amount":3}');
+  await page.getByRole('button', { name: 'Check setup', exact: true }).click();
+  await expect(
+    page.getByText('Setup looks right', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: /^Run (?:another )?test$/u }),
+  ).toBeEnabled();
+  await page.getByRole('button', { name: /^Run (?:another )?test$/u }).click();
+  await expect(page.getByRole('region', { name: 'Test result' })).toContainText(
+    '2026',
+  );
+  await expect(
+    page.getByRole('region', { name: 'Code diagnostics' }),
+  ).toContainText('private Python log');
+  await expect
+    .poll(
+      async () =>
+        (await readEditorDraft(page, workflowPath)).graph.nodes[0]?.config
+          .language,
+    )
+    .toBe('python');
+  for (const theme of ['light', 'dark'] as const)
+    for (const width of [1440, 990, 375]) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.evaluate((theme) => {
+        localStorage.setItem('pertexo.appearance', theme);
+      }, theme);
+      await page.goto(editorUrl);
+      await page.getByTestId(`rf__node-${nodeId}`).focus();
+      await page.keyboard.press('Enter');
+      if (width < 1024)
+        await page
+          .getByRole('navigation', { name: 'Editor panels' })
+          .getByRole('button', { name: 'Step', exact: true })
+          .click();
+      await page.getByRole('tab', { name: 'Setup', exact: true }).click();
+      await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+      await expect(editor).toContainText('private Python log');
+      await expect(editor).toHaveAttribute('aria-invalid', 'false');
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+      ).toBe(true);
+      await page.screenshot({
+        path: info.outputPath(`python-real-${theme}-${String(width)}.png`),
+        fullPage: true,
+      });
+    }
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await publishSingleStep(page, workflowPath);
+  const runId = await startSingleStep(page, { amount: 3 });
+  const run = await waitForRun(page, workspaceId, runId, 'succeeded');
+  const node = run.nodes.find((item) => item.nodeId === nodeId);
+  if (node === undefined) throw new Error('Python Code node run missing');
+  const base = `/v1/workspaces/${workspaceId}/runs/${runId}/node-runs/${node.id}`;
+  expect(
+    workflowNodeRunOutputResponseSchema.parse(
+      await (await page.request.get(base + '/output')).json(),
+    ).output,
+  ).toEqual({
+    kind: 'inline',
+    value: { total: 7, year: 2026, zone: 'Europe/Paris' },
+  });
+  expect(
+    workflowNodeRunDiagnosticsResponseSchema.parse(
+      await (await page.request.get(base + '/diagnostics')).json(),
+    ).diagnostics,
+  ).toMatchObject({ logs: [{ level: 'log', message: 'private Python log' }] });
+  expect(JSON.stringify(run)).not.toContain('private Python log');
+});
