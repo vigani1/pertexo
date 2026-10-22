@@ -6,6 +6,8 @@ import type {
 import { lockWorkspaceAuthority } from '../workspaces/authority.js';
 import { RESOURCE_ADMINISTRATORS } from './policy.js';
 import type { ResourceActor } from './contract.js';
+import type { Role } from '../policy.js';
+
 
 /** Principal discovery is bounded and anchored to this workspace's current identities. */
 export async function readSharingPrincipals(
@@ -29,11 +31,13 @@ export async function readSharingPrincipals(
     id: string;
     label: string;
     organization_id: string;
+    email: string;
+    role: Role;
   }>(
     input.kind === 'member'
-      ? `select person.id,person.display_name label from app.workspace_memberships member
+      ? `select person.id,person.display_name label,person.email,member.role from app.workspace_memberships member
       join app.users person on person.id=member.user_id and person.status='active'
-      where member.workspace_id=$1 and member.status='active' and ($2::text is null or position(lower($2) in lower(person.display_name))>0)
+      where member.workspace_id=$1 and member.status='active' and ($2::text is null or position(lower($2) in lower(person.display_name))>0 or position(lower($2) in lower(person.email))>0)
         and ($3::uuid is null or person.id>$3) order by person.id limit $4`
       : `select directory.id,directory.display_name label,directory.organization_id
       from app.auth_organization_workspaces link join app.auth_directory_groups directory on directory.organization_id=link.organization_id
@@ -45,7 +49,13 @@ export async function readSharingPrincipals(
   return {
     items: page.map((row) =>
       input.kind === 'member'
-        ? { kind: 'member', userId: row.id, label: row.label }
+        ? {
+            kind: 'member',
+            userId: row.id,
+            label: row.label,
+            email: row.email,
+            role: row.role,
+          }
         : {
             kind: 'group',
             organizationId: row.organization_id,

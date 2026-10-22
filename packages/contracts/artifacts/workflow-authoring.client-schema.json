@@ -8235,12 +8235,28 @@
                   },
                   "label": {
                     "type": "string"
+                  },
+                  "email": {
+                    "type": "string",
+                    "maxLength": 320
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "owner",
+                      "admin",
+                      "builder",
+                      "operator",
+                      "viewer"
+                    ]
                   }
                 },
                 "required": [
                   "kind",
                   "userId",
-                  "label"
+                  "label",
+                  "email",
+                  "role"
                 ],
                 "additionalProperties": false
               },
@@ -10151,6 +10167,13 @@
                 "type": "integer",
                 "minimum": 1,
                 "maximum": 4
+              },
+              "accessMode": {
+                "type": "string",
+                "enum": [
+                  "workspace",
+                  "restricted"
+                ]
               }
             },
             "required": [
@@ -10254,6 +10277,13 @@
               "type": "integer",
               "minimum": 1,
               "maximum": 4
+            },
+            "accessMode": {
+              "type": "string",
+              "enum": [
+                "workspace",
+                "restricted"
+              ]
             }
           },
           "required": [
@@ -10353,6 +10383,13 @@
               "type": "integer",
               "minimum": 1,
               "maximum": 4
+            },
+            "accessMode": {
+              "type": "string",
+              "enum": [
+                "workspace",
+                "restricted"
+              ]
             }
           },
           "required": [
@@ -10478,6 +10515,13 @@
               "type": "integer",
               "minimum": 1,
               "maximum": 4
+            },
+            "accessMode": {
+              "type": "string",
+              "enum": [
+                "workspace",
+                "restricted"
+              ]
             }
           },
           "required": [

@@ -51,6 +51,7 @@ export type WorkflowFolderRecord = Readonly<{
   parentId: string | null;
   revision: number;
   depth: number;
+  accessMode: 'workspace' | 'restricted';
   canCreateWorkflows?: boolean;
 }>;
 export type WorkflowFolderCommandResult = Readonly<{
@@ -140,6 +141,7 @@ const folder = z
     parentId: uuid.nullable(),
     revision,
     depth: z.number().int().min(1).max(FOLDER_DEPTH_LIMIT),
+    accessMode: z.enum(['workspace', 'restricted']),
   })
   .strict()
   .refine((value) =>
@@ -166,6 +168,7 @@ type FolderRow = Readonly<{
   name: string;
   parent_id: string | null;
   revision: string;
+  access_mode: 'workspace' | 'restricted';
 }>;
 
 async function readFolder(
@@ -174,7 +177,7 @@ async function readFolder(
   folderId: string,
 ): Promise<FolderRow> {
   const result = await client.query<FolderRow>(
-    `select id, name, parent_id, revision from app.workflow_folders
+    `select id, name, parent_id, revision, access_mode from app.workflow_folders
      where workspace_id = $1 and id = $2`,
     [workspaceId, folderId],
   );
@@ -249,6 +252,7 @@ async function folderRecord(
     parentId: row.parent_id,
     revision: Number(row.revision),
     depth: await folderDepth(client, workspaceId, row.id),
+    accessMode: row.access_mode,
   };
 }
 
@@ -324,13 +328,13 @@ export function createWorkflowFolderDatabase(
         // closed for missing roots, cycles or excessive depth.
         const result = await client.query<{ items: unknown; total: number }>(
           `with recursive bounded as materialized (
-          select id,name,parent_id,revision from app.workflow_folders where workspace_id=$1 order by id limit 257
+          select id,name,parent_id,revision,access_mode from app.workflow_folders where workspace_id=$1 order by id limit 257
         ), tree as (
           select *,1 depth,array[id] path from bounded where parent_id is null
           union all select f.*,t.depth+1,t.path||f.id from bounded f join tree t on f.parent_id=t.id
             where t.depth<5 and not f.id=any(t.path)
         ) select (select count(*)::int from bounded) total,
-          coalesce(jsonb_agg(jsonb_build_object('id',id,'name',name,'parentId',parent_id,'revision',revision,'depth',depth) order by id),'[]'::jsonb) items from tree`,
+          coalesce(jsonb_agg(jsonb_build_object('id',id,'name',name,'parentId',parent_id,'revision',revision,'depth',depth,'accessMode',access_mode) order by id),'[]'::jsonb) items from tree`,
           [scope.workspaceId],
         );
         const row = result.rows[0];
@@ -389,7 +393,7 @@ export function createWorkflowFolderDatabase(
           const created = await client.query<FolderRow>(
             `insert into app.workflow_folders (workspace_id, id, parent_id, name, name_key)
              values ($1, uuidv7(), $2, $3, $4)
-             returning id, name, parent_id, revision`,
+             returning id, name, parent_id, revision, access_mode`,
             [
               workspaceId,
               request.parentId,
@@ -429,7 +433,7 @@ export function createWorkflowFolderDatabase(
             `update app.workflow_folders
              set name = $3, name_key = $4, revision = revision + 1
              where workspace_id = $1 and id = $2
-             returning id, name, parent_id, revision`,
+             returning id, name, parent_id, revision, access_mode`,
             [workspaceId, folderId, request.name, nameKey(request.name)],
           );
           return renamed.rows[0] ?? current;
@@ -503,7 +507,7 @@ export function createWorkflowFolderDatabase(
             `update app.workflow_folders
              set parent_id = $3, revision = revision + 1
              where workspace_id = $1 and id = $2
-             returning id, name, parent_id, revision`,
+             returning id, name, parent_id, revision, access_mode`,
             [workspaceId, folderId, request.parentId],
           );
           return moved.rows[0] ?? current;

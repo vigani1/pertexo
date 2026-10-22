@@ -66,6 +66,7 @@ export function toResponse(record: ConnectionRecord): ConnectionResponse {
     },
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
+    accessMode: record.accessMode,
   });
 }
 
