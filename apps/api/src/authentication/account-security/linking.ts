@@ -184,13 +184,12 @@ export class AccountLinking {
         nextState,
       ).catch(() => undefined);
       if (nextUrl === undefined) return this.landing('failed');
-      const accepted = await this.commands.updateSource(
-        attempt,
+      const accepted = await this.commands.updateSource(attempt, {
         state,
         binding,
         identity,
         nextState,
-      );
+      });
       return accepted
         ? Response.redirect(nextUrl, 302)
         : this.landing('failed');

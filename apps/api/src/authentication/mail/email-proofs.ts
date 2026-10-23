@@ -151,14 +151,12 @@ export class OwnedEmailProofs {
     // A proof is issued only for the user's current address, while it still
     // needs this proof: unverified for a first verification, verified for a
     // change.
-    const issued = await this.commands.issue(
-      user,
-      purpose,
-      digest(token),
+    const issued = await this.commands.issue(user, purpose, {
+      tokenDigest: digest(token),
       newEmail,
       expiresAt,
       prepared,
-    );
+    });
     if (!issued || prepared !== undefined) return;
     if (purpose === 'change_old')
       await this.mail.sendEmailChangeConfirmation({
