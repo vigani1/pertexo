@@ -116,13 +116,7 @@ export function advanceWorkflowFromSchedulerState(
   const coordinatorNodeIds = new Set([
     ...current.joins.map(({ joinId }) => joinId),
     ...current.loops.map(({ loopId }) => loopId),
-    ...observations.flatMap((observation) =>
-      observation.kind === 'join_declared'
-        ? [observation.joinId]
-        : observation.kind === 'loop_started'
-          ? [observation.loopId]
-          : [],
-    ),
+    ...observations.flatMap(coordinatorNodeId),
   ]);
   deriveWorkflowTransitions(state, {
     coordinatorNodeIds,
@@ -136,4 +130,12 @@ export function advanceWorkflowFromSchedulerState(
     hasExecutionSlot: input.hasExecutionSlot ?? true,
     occurredAt: input.occurredAt,
   });
+}
+
+function coordinatorNodeId(
+  observation: WorkflowObservation,
+): readonly string[] {
+  if (observation.kind === 'join_declared') return [observation.joinId];
+  if (observation.kind === 'loop_started') return [observation.loopId];
+  return [];
 }

@@ -118,33 +118,60 @@ function samePersistedFact(
     return false;
   if (left.kind === 'cancel_requested')
     return right.kind === 'cancel_requested';
-  if (left.kind === 'cursor_only')
-    return (
-      right.kind === 'cursor_only' &&
-      left.eventName === right.eventName &&
-      left.invocationKey === right.invocationKey &&
-      left.attemptId === right.attemptId &&
-      left.attemptNumber === right.attemptNumber
-    );
-  if (left.kind === 'wait')
-    return (
-      right.kind === 'wait' &&
-      left.eventName === right.eventName &&
-      left.invocationKey === right.invocationKey &&
-      left.attemptId === right.attemptId &&
-      left.attemptNumber === right.attemptNumber &&
-      left.resumeAt === right.resumeAt &&
-      left.waitKind === right.waitKind &&
-      sameWaitOutput(left.output, right.output)
-    );
-  if (right.kind !== 'outcome') return false;
+  switch (left.kind) {
+    case 'cursor_only':
+      return right.kind === 'cursor_only' && sameCursorFact(left, right);
+    case 'wait':
+      return right.kind === 'wait' && sameWaitFact(left, right);
+    case 'outcome':
+      return right.kind === 'outcome' && sameOutcomeFact(left, right);
+  }
+}
+function sameCursorFact(
+  left: Extract<PersistedWorkflowObservation, { kind: 'cursor_only' }>,
+  right: Extract<PersistedWorkflowObservation, { kind: 'cursor_only' }>,
+): boolean {
+  return left.eventName === right.eventName && sameAttemptIdentity(left, right);
+}
+function sameWaitFact(
+  left: Extract<PersistedWorkflowObservation, { kind: 'wait' }>,
+  right: Extract<PersistedWorkflowObservation, { kind: 'wait' }>,
+): boolean {
   return (
-    left.attemptId === right.attemptId &&
-    left.attemptNumber === right.attemptNumber &&
-    left.invocationKey === right.invocationKey &&
+    left.eventName === right.eventName &&
+    sameAttemptIdentity(left, right) &&
+    left.resumeAt === right.resumeAt &&
+    left.waitKind === right.waitKind &&
+    sameWaitOutput(left.output, right.output)
+  );
+}
+function sameOutcomeFact(
+  left: Extract<PersistedWorkflowObservation, { kind: 'outcome' }>,
+  right: Extract<PersistedWorkflowObservation, { kind: 'outcome' }>,
+): boolean {
+  return (
+    sameAttemptIdentity(left, right) &&
     left.status === right.status &&
     left.reasonCode === right.reasonCode &&
     sameOutputReference(left.output, right.output)
+  );
+}
+function sameAttemptIdentity(
+  left: Readonly<{
+    invocationKey: string;
+    attemptId: string;
+    attemptNumber: number;
+  }>,
+  right: Readonly<{
+    invocationKey: string;
+    attemptId: string;
+    attemptNumber: number;
+  }>,
+): boolean {
+  return (
+    left.invocationKey === right.invocationKey &&
+    left.attemptId === right.attemptId &&
+    left.attemptNumber === right.attemptNumber
   );
 }
 
@@ -196,6 +223,58 @@ export function parsePersistedObservations(
 ): ParsedPersistedObservations {
   const items = normalizePersistedObservationWindow(value ?? []);
   const parsed = items.map(parsePersistedObservation);
+  const { deadlineExpiration, dueResumptions, attemptFailures, sequenced } =
+    partitionObservations(parsed);
+  dueResumptions.sort(
+    (left, right) =>
+      compareOrdinal(left.invocationKey, right.invocationKey) ||
+      compareOrdinal(left.occurredAt, right.occurredAt),
+  );
+  assertDueResumptions(dueResumptions, checkpoint);
+  const fresh = freshSequencedObservations(sequenced, checkpoint);
+  return {
+    facts: items,
+    observations: fresh.map((observation): WorkflowObservation => {
+      if (observation.kind === 'cancel_requested')
+        return { kind: observation.kind };
+      if (observation.kind === 'cursor_only') return { kind: observation.kind };
+      if (observation.kind === 'wait') {
+        return {
+          kind: observation.kind,
+          invocationKey: observation.invocationKey,
+          resumeAt: observation.resumeAt,
+          waitKind: observation.waitKind,
+          ...(observation.output === undefined
+            ? {}
+            : { output: observation.output }),
+        };
+      }
+      return {
+        kind: observation.kind,
+        invocationKey: observation.invocationKey,
+        status: observation.status,
+        ...(observation.output === undefined
+          ? {}
+          : { output: observation.output }),
+        ...(observation.reasonCode === undefined
+          ? {}
+          : { reasonCode: observation.reasonCode }),
+      };
+    }),
+    cursor: {
+      expectedNextEventSequence: checkpoint.nextEventSequence,
+      consumedThroughEventSequence:
+        checkpoint.nextEventSequence + fresh.length - 1,
+    },
+    dueResumptions,
+    attemptFailures,
+    ...(deadlineExpiration === undefined ? {} : { deadlineExpiration }),
+  };
+}
+
+function partitionObservations(
+  parsed: readonly ReturnType<typeof parsePersistedObservation>[],
+) {
   let deadlineExpiration: DeadlineExpiredObservation | undefined;
   const dueResumptions: DueAtObservation[] = [];
   const attemptFailures: AttemptFailureObservation[] = [];
@@ -236,11 +315,12 @@ export function parsePersistedObservations(
       operationError('observation_invalid', 'deadline observation conflicts');
     deadlineExpiration = observation;
   }
-  dueResumptions.sort(
-    (left, right) =>
-      compareOrdinal(left.invocationKey, right.invocationKey) ||
-      compareOrdinal(left.occurredAt, right.occurredAt),
-  );
+  return { deadlineExpiration, dueResumptions, attemptFailures, sequenced };
+}
+function assertDueResumptions(
+  dueResumptions: readonly DueAtObservation[],
+  checkpoint: ReturnType<typeof parseCheckpoint>,
+): void {
   for (const due of dueResumptions) {
     const invocation = checkpoint.invocations.find(
       ({ invocationKey }) => invocationKey === due.invocationKey,
@@ -258,6 +338,11 @@ export function parsePersistedObservations(
     if (invocation.status !== 'ready' && invocation.status !== 'running')
       operationError('observation_invalid', 'due invocation is not resumable');
   }
+}
+function freshSequencedObservations(
+  sequenced: readonly PersistedWorkflowObservation[],
+  checkpoint: ReturnType<typeof parseCheckpoint>,
+): readonly PersistedWorkflowObservation[] {
   const unique: PersistedWorkflowObservation[] = [];
   for (const observation of sequenced) {
     const previous = unique.at(-1);
@@ -295,42 +380,5 @@ export function parsePersistedObservations(
     if (invocation?.attemptNumber !== observation.attemptNumber)
       operationError('observation_invalid', 'observation attempt is stale');
   }
-  return {
-    facts: items,
-    observations: fresh.map((observation): WorkflowObservation => {
-      if (observation.kind === 'cancel_requested')
-        return { kind: observation.kind };
-      if (observation.kind === 'cursor_only') return { kind: observation.kind };
-      if (observation.kind === 'wait') {
-        return {
-          kind: observation.kind,
-          invocationKey: observation.invocationKey,
-          resumeAt: observation.resumeAt,
-          waitKind: observation.waitKind,
-          ...(observation.output === undefined
-            ? {}
-            : { output: observation.output }),
-        };
-      }
-      return {
-        kind: observation.kind,
-        invocationKey: observation.invocationKey,
-        status: observation.status,
-        ...(observation.output === undefined
-          ? {}
-          : { output: observation.output }),
-        ...(observation.reasonCode === undefined
-          ? {}
-          : { reasonCode: observation.reasonCode }),
-      };
-    }),
-    cursor: {
-      expectedNextEventSequence: checkpoint.nextEventSequence,
-      consumedThroughEventSequence:
-        checkpoint.nextEventSequence + fresh.length - 1,
-    },
-    dueResumptions,
-    attemptFailures,
-    ...(deadlineExpiration === undefined ? {} : { deadlineExpiration }),
-  };
+  return fresh;
 }

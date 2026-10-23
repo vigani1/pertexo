@@ -342,7 +342,8 @@ function parseOutcome(
 
 export function parsePersistedObservation(value: JsonValue): ParsedObservation {
   const observation = record(value, 'observation_invalid', 'observation');
-  switch (observation.kind) {
+  const kind = typeof observation.kind === 'string' ? observation.kind : '';
+  switch (kind) {
     case 'attempt_failure':
       return parseAttemptFailure(observation);
     case 'deadline_expired':
@@ -352,7 +353,7 @@ export function parsePersistedObservation(value: JsonValue): ParsedObservation {
     default:
       parseSequencedCursor(observation);
   }
-  switch (observation.kind) {
+  switch (kind) {
     case 'cancel_requested':
       return parseCancellation(observation);
     case 'cursor_only':

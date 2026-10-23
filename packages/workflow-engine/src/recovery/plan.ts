@@ -61,15 +61,8 @@ export function planRecovery(
     if (stored.node.kind === 'artifact' || stored.attempt?.kind === 'artifact')
       return { kind: 'refused', reason: 'artifact_value' };
     const json = canonicalJson(stored.node.value);
-    if (source.reused !== undefined) {
-      if (stored.attempt !== undefined)
-        return { kind: 'refused', reason: 'evidence_unavailable' };
-    } else {
-      if (stored.attempt === undefined)
-        return { kind: 'refused', reason: 'values_missing' };
-      if (canonicalJson(stored.attempt.value) !== json)
-        return { kind: 'refused', reason: 'evidence_unavailable' };
-    }
+    const attemptFailure = verifyStoredAttempt(source, stored.attempt, json);
+    if (attemptFailure !== undefined) return attemptFailure;
     const value = stored.node.value;
     if (containsArtifact(value))
       return { kind: 'refused', reason: 'artifact_value' };
@@ -110,4 +103,21 @@ function matchesBranchSelection({
       return false;
   }
   return true;
+}
+
+function verifyStoredAttempt(
+  source: RecoveryCandidate['prefix'][number]['source'],
+  attempt: Readonly<{ kind: 'inline'; value: JsonValue }> | undefined,
+  json: string,
+): RecoveryRefused | undefined {
+  if (source.reused !== undefined) {
+    if (attempt !== undefined)
+      return { kind: 'refused', reason: 'evidence_unavailable' };
+  } else {
+    if (attempt === undefined)
+      return { kind: 'refused', reason: 'values_missing' };
+    if (canonicalJson(attempt.value) !== json)
+      return { kind: 'refused', reason: 'evidence_unavailable' };
+  }
+  return undefined;
 }
