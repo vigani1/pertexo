@@ -133,30 +133,11 @@ async function receive(
   const authentication = callback.config.authentication;
   const origin = singleHeader(request, 'origin');
   if (request.method === 'OPTIONS') {
-    if (
-      origin === undefined ||
-      !webhookOriginAllowed(authentication, origin) ||
-      singleHeader(request, 'access-control-request-method') !== 'POST'
-    ) {
-      await rejectAuthentication();
-      return;
-    }
-    const requested = singleHeader(request, 'access-control-request-headers');
-    const headers = webhookPreflightHeaders(authentication, requested);
-    if (headers === undefined) {
-      await rejectAuthentication();
-      return;
-    }
-    allowWebhookOrigin(reply, origin);
-    reply
-      .header(
-        'vary',
-        'Origin, Access-Control-Request-Method, Access-Control-Request-Headers',
-      )
-      .header('access-control-allow-methods', 'POST');
-    if (headers.length > 0)
-      reply.header('access-control-allow-headers', headers.join(', '));
-    await reply.code(204).send();
+    await acceptCallbackPreflight(request, reply, {
+      authentication,
+      origin,
+      rejectAuthentication,
+    });
     return;
   }
   if (authentication.mode !== 'signed' && headerPresent(request, 'origin')) {
@@ -166,32 +147,13 @@ async function receive(
     }
     allowWebhookOrigin(reply, origin);
   }
-  const body = request.body ?? new Uint8Array();
-  if (
-    !(body instanceof Uint8Array) ||
-    body.byteLength > WEBHOOK_BODY_MAX_BYTES
-  ) {
-    await problem(reply, 413, 'webhook.payload_too_large', requestId);
-    return;
-  }
-  const contentType = singleHeader(request, 'content-type');
-  const mediaType =
-    contentType === undefined && headerPresent(request, 'content-type')
-      ? undefined
-      : webhookMediaType(contentType, body.byteLength);
-  if (mediaType === undefined || headerPresent(request, 'content-encoding')) {
-    await problem(reply, 415, 'webhook.unsupported_media_type', requestId);
-    return;
-  }
-  if (!verifyCallbackRequest(request, body, callback, keys)) {
-    await rejectAuthentication();
-    return;
-  }
-  const parsed = parseWebhookBody(mediaType, body);
-  if (!parsed.ok) {
-    await problem(reply, 400, parsed.problem, requestId);
-    return;
-  }
+  const parsed = await readCallbackBody(request, reply, {
+    callback,
+    keys,
+    requestId,
+    rejectAuthentication,
+  });
+  if (parsed === undefined) return;
   try {
     await dependencies.store.respond({
       callback,
@@ -218,4 +180,92 @@ async function receive(
     throw error;
   }
   await reply.code(202).send({ accepted: true });
+}
+
+async function acceptCallbackPreflight(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  {
+    authentication,
+    origin,
+    rejectAuthentication,
+  }: Readonly<{
+    authentication: Parameters<typeof webhookOriginAllowed>[0];
+    origin: string | undefined;
+    rejectAuthentication(): Promise<void>;
+  }>,
+): Promise<void> {
+  if (
+    origin === undefined ||
+    !webhookOriginAllowed(authentication, origin) ||
+    singleHeader(request, 'access-control-request-method') !== 'POST'
+  ) {
+    await rejectAuthentication();
+    return;
+  }
+  const requested = singleHeader(request, 'access-control-request-headers');
+  const headers = webhookPreflightHeaders(authentication, requested);
+  if (headers === undefined) {
+    await rejectAuthentication();
+    return;
+  }
+  allowWebhookOrigin(reply, origin);
+  reply
+    .header(
+      'vary',
+      'Origin, Access-Control-Request-Method, Access-Control-Request-Headers',
+    )
+    .header('access-control-allow-methods', 'POST');
+  if (headers.length > 0)
+    reply.header('access-control-allow-headers', headers.join(', '));
+  await reply.code(204).send();
+  return;
+}
+
+async function readCallbackBody(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  {
+    callback,
+    keys,
+    requestId,
+    rejectAuthentication,
+  }: Readonly<{
+    callback: Parameters<typeof verifyCallbackRequest>[2];
+    keys: Parameters<typeof verifyCallbackRequest>[3];
+    requestId: string;
+    rejectAuthentication(): Promise<void>;
+  }>,
+): Promise<
+  | Extract<ReturnType<typeof parseWebhookBody>, Readonly<{ ok: true }>>
+  | undefined
+> {
+  const body = request.body ?? new Uint8Array();
+  if (
+    !(body instanceof Uint8Array) ||
+    body.byteLength > WEBHOOK_BODY_MAX_BYTES
+  ) {
+    await problem(reply, 413, 'webhook.payload_too_large', requestId);
+    return;
+  }
+  const contentType = singleHeader(request, 'content-type');
+  const mediaType =
+    contentType === undefined && headerPresent(request, 'content-type')
+      ? undefined
+      : webhookMediaType(contentType, body.byteLength);
+  if (mediaType === undefined || headerPresent(request, 'content-encoding')) {
+    await problem(reply, 415, 'webhook.unsupported_media_type', requestId);
+    return;
+  }
+  if (!verifyCallbackRequest(request, body, callback, keys)) {
+    await rejectAuthentication();
+    return;
+  }
+  const parsed = parseWebhookBody(mediaType, body);
+  if (!parsed.ok) {
+    await problem(reply, 400, parsed.problem, requestId);
+    return;
+  }
+
+  return parsed;
 }

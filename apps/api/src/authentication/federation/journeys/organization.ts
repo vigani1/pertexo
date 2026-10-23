@@ -17,7 +17,10 @@ import {
 import type { OidcProofGateway } from '../protocol/oidc.js';
 import type { SamlProofGateway } from '../protocol/saml/gateway.js';
 import { samlTransportAvailable } from '../protocol/saml/configuration.js';
-import { readOrganizationCallback } from './callback.js';
+import {
+  readOrganizationCallback,
+  type OrganizationCallback,
+} from './callback.js';
 import { requireDoubleSubmitCsrf } from '../../better-auth/csrf.js';
 import {
   newJourneyToken,
@@ -123,42 +126,13 @@ export class OrganizationSignIn {
     if (!this.available(protocol)) return failure(503);
     const raw: unknown = await request.json().catch(() => null);
     try {
-      let material: Awaited<ReturnType<OrganizationSignInCommands['provider']>>;
-      let owner: BrowserSession | undefined;
-      let returnPath = '/workspaces';
-      if (testing) {
-        try {
-          requireDoubleSubmitCsrf(request.headers);
-        } catch {
-          return failure(403);
-        }
-        const parsed = federationTestStartSchema.safeParse(raw);
-        if (!parsed.success) return failure(400);
-        owner = await this.input.authenticate(request);
-        if (owner === undefined) return failure(401);
-        try {
-          material = await this.commands.testProvider({
-            ...parsed.data,
-            actorId: owner.userId,
-          });
-        } catch (cause: unknown) {
-          if (
-            cause instanceof FederationConflictError ||
-            cause instanceof WorkspaceAccessDeniedError
-          )
-            return failure(403);
-          throw cause;
-        }
-        returnPath = `/w/${parsed.data.workspaceId}/settings/sso`;
-      } else {
-        const parsed = federationSignInStartSchema.safeParse(raw);
-        if (!parsed.success) return failure(400);
-        material = await this.commands.provider(
-          parsed.data.providerId,
-          parsed.data.domain,
-        );
-        returnPath = parsed.data.returnPath ?? returnPath;
-      }
+      const prepared = await prepareOrganizationStart(request, raw, {
+        testing,
+        commands: this.commands,
+        authenticate: (request) => this.input.authenticate(request),
+      });
+      if (prepared instanceof Response) return prepared;
+      const { material, owner, returnPath } = prepared;
       if (material?.provider.kind !== protocol) return failure(404);
       const id = randomUUID(),
         state = newJourneyToken(),
@@ -246,24 +220,11 @@ export class OrganizationSignIn {
       }
       if (testing && protocol === 'saml')
         ownerSessionId = attempt.ownerSessionId ?? undefined;
-      let identity: OrganizationIdentity | undefined;
-      if (attempt.provider.kind === 'oidc') {
-        identity = await this.input.gateway?.verify(
-          attempt.provider,
-          this.proof(attempt.id, attempt.provider.id, state, browser),
-          url,
-        );
-      } else if (callback.samlResponse !== undefined) {
-        identity = await this.input.samlGateway?.verify(
-          attempt.provider,
-          this.samlProof(attempt.id, attempt.provider, {
-            state: state,
-            browser: browser,
-            createdAt: attempt.createdAt,
-          }),
-          callback.samlResponse,
-        );
-      }
+      const identity = await this.verifyIdentity(attempt, callback, {
+        state,
+        browser,
+        url,
+      });
       if (identity === undefined)
         return this.failed(destination, { testing: testing });
       const result = await this.commands.complete({
@@ -287,6 +248,39 @@ export class OrganizationSignIn {
       return this.failed(destination, { testing: testing });
     }
   }
+  private async verifyIdentity(
+    attempt: NonNullable<
+      Awaited<ReturnType<OrganizationSignInCommands['find']>>
+    >,
+    callback: OrganizationCallback,
+    {
+      state,
+      browser,
+      url,
+    }: Readonly<{ state: string; browser: string; url: URL }>,
+  ): Promise<OrganizationIdentity | undefined> {
+    let identity: OrganizationIdentity | undefined;
+    if (attempt.provider.kind === 'oidc') {
+      identity = await this.input.gateway?.verify(
+        attempt.provider,
+        this.proof(attempt.id, attempt.provider.id, state, browser),
+        url,
+      );
+    } else if (callback.samlResponse !== undefined) {
+      identity = await this.input.samlGateway?.verify(
+        attempt.provider,
+        this.samlProof(attempt.id, attempt.provider, {
+          state: state,
+          browser: browser,
+          createdAt: attempt.createdAt,
+        }),
+        callback.samlResponse,
+      );
+    }
+
+    return identity;
+  }
+
   private proof(
     id: string,
     providerId: string,
@@ -350,4 +344,60 @@ function failure(status: number) {
     { code: 'ORGANIZATION_SIGN_IN_UNAVAILABLE' },
     { status, headers: { 'cache-control': 'no-store' } },
   );
+}
+
+type OrganizationStartMaterial = Readonly<{
+  material: Awaited<ReturnType<OrganizationSignInCommands['provider']>>;
+  owner: BrowserSession | undefined;
+  returnPath: string;
+}>;
+
+async function prepareOrganizationStart(
+  request: Request,
+  raw: unknown,
+  input: Readonly<{
+    testing: boolean;
+    commands: OrganizationSignInCommands;
+    authenticate(request: Request): Promise<BrowserSession | undefined>;
+  }>,
+): Promise<OrganizationStartMaterial | Response> {
+  const { testing } = input;
+  let material: Awaited<ReturnType<OrganizationSignInCommands['provider']>>;
+  let owner: BrowserSession | undefined;
+  let returnPath = '/workspaces';
+  if (testing) {
+    try {
+      requireDoubleSubmitCsrf(request.headers);
+    } catch {
+      return failure(403);
+    }
+    const parsed = federationTestStartSchema.safeParse(raw);
+    if (!parsed.success) return failure(400);
+    owner = await input.authenticate(request);
+    if (owner === undefined) return failure(401);
+    try {
+      material = await input.commands.testProvider({
+        ...parsed.data,
+        actorId: owner.userId,
+      });
+    } catch (cause: unknown) {
+      if (
+        cause instanceof FederationConflictError ||
+        cause instanceof WorkspaceAccessDeniedError
+      )
+        return failure(403);
+      throw cause;
+    }
+    returnPath = `/w/${parsed.data.workspaceId}/settings/sso`;
+  } else {
+    const parsed = federationSignInStartSchema.safeParse(raw);
+    if (!parsed.success) return failure(400);
+    material = await input.commands.provider(
+      parsed.data.providerId,
+      parsed.data.domain,
+    );
+    returnPath = parsed.data.returnPath ?? returnPath;
+  }
+
+  return { material, owner, returnPath };
 }

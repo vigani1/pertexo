@@ -68,6 +68,16 @@ function filterChildren(node: Filter): readonly Filter[] {
       return [node.filter];
     case '[]':
       return [node.valFilter];
+    case 'co':
+    case 'eq':
+    case 'ew':
+    case 'ge':
+    case 'gt':
+    case 'le':
+    case 'lt':
+    case 'ne':
+    case 'pr':
+    case 'sw':
     default:
       return [];
   }

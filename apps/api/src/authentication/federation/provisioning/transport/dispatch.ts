@@ -108,47 +108,14 @@ export async function dispatchDirectoryRequest(
     reply.code(204).send();
     return;
   }
-  const body: unknown = request.body;
-  let resource: DirectoryUser | DirectoryGroup | undefined;
-  if (request.method === 'GET' && id !== undefined) {
-    resource =
-      kind === 'User'
-        ? await store.user(principal, id)
-        : await store.group(principal, id);
-  } else if (request.method === 'POST' && id === undefined) {
-    resource =
-      kind === 'User'
-        ? await store.createUser(principal, parseDirectoryUser(body))
-        : await store.createGroup(principal, parseDirectoryGroup(body));
-  } else if (request.method === 'PUT' && id !== undefined) {
-    if (kind === 'User') {
-      const values = parseDirectoryUser(body);
-      resource = await store.changeUser(principal, id, revision, () => values);
-    } else {
-      const values = parseDirectoryGroup(body);
-      resource = await store.changeGroup(principal, id, revision, () => values);
-    }
-  } else if (request.method === 'PATCH' && id !== undefined) {
-    const operations = parseDirectoryPatch(body, kind);
-    resource =
-      kind === 'User'
-        ? await store.changeUser(principal, id, revision, (current) =>
-            parseDirectoryUser(
-              applyDirectoryPatch(
-                directoryUserDocument(current, base),
-                operations,
-              ),
-            ),
-          )
-        : await store.changeGroup(principal, id, revision, (current) =>
-            parseDirectoryGroup(
-              applyDirectoryPatch(
-                directoryGroupDocument(current, base),
-                operations,
-              ),
-            ),
-          );
-  }
+  const resource = await resolveDirectoryResource(request, {
+    store,
+    principal,
+    base,
+    kind,
+    id,
+    revision,
+  });
   if (resource === undefined) throw new DirectoryError('not_found');
   const document =
     'user_name' in resource
@@ -167,4 +134,69 @@ function directoryResourceType(
   if (collection === 'Users') return 'User';
   if (collection === 'Groups') return 'Group';
   throw new DirectoryError('not_found');
+}
+
+async function resolveDirectoryResource(
+  request: FastifyRequest,
+  {
+    store,
+    principal,
+    base,
+    kind,
+    id,
+    revision,
+  }: Readonly<{
+    store: DirectoryStore;
+    principal: DirectoryPrincipal;
+    base: string;
+    kind: DirectoryResourceType;
+    id: string | undefined;
+    revision: number | undefined;
+  }>,
+): Promise<DirectoryUser | DirectoryGroup | undefined> {
+  const body: unknown = request.body;
+  switch (request.method) {
+    case 'GET':
+      if (id === undefined) return undefined;
+      return kind === 'User'
+        ? await store.user(principal, id)
+        : await store.group(principal, id);
+    case 'POST':
+      if (id !== undefined) return undefined;
+      return kind === 'User'
+        ? await store.createUser(principal, parseDirectoryUser(body))
+        : await store.createGroup(principal, parseDirectoryGroup(body));
+    case 'PUT': {
+      if (id === undefined) return undefined;
+      if (kind === 'User') {
+        const values = parseDirectoryUser(body);
+        return await store.changeUser(principal, id, revision, () => values);
+      }
+      const values = parseDirectoryGroup(body);
+      return await store.changeGroup(principal, id, revision, () => values);
+    }
+    case 'PATCH': {
+      if (id === undefined) return undefined;
+      const operations = parseDirectoryPatch(body, kind);
+      return kind === 'User'
+        ? await store.changeUser(principal, id, revision, (current) =>
+            parseDirectoryUser(
+              applyDirectoryPatch(
+                directoryUserDocument(current, base),
+                operations,
+              ),
+            ),
+          )
+        : await store.changeGroup(principal, id, revision, (current) =>
+            parseDirectoryGroup(
+              applyDirectoryPatch(
+                directoryGroupDocument(current, base),
+                operations,
+              ),
+            ),
+          );
+    }
+    default:
+      return undefined;
+  }
 }
