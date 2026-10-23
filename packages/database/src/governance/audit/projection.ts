@@ -62,31 +62,40 @@ export function projectAuditMetadata(
         if (names.data.length > WORKSPACE_VARIABLE_LIMITS.count)
           legacyChangedCount = names.data.length;
       }
-    } else if (
-      key === 'actorRef' &&
-      typeof value === 'string' &&
-      /^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/u.test(value)
-    )
-      result[key] = value;
-    else if (
-      identityKeys.has(key) &&
-      typeof value === 'string' &&
-      uuid.test(value)
-    )
-      result[key] = value;
-    else if (
-      numberKeys.has(key) &&
-      typeof value === 'number' &&
-      Number.isSafeInteger(value) &&
-      value >= 0
-    )
-      result[key] = value;
-    else if (booleanKeys.has(key) && typeof value === 'boolean')
-      result[key] = value;
-    else if (
-      key === 'operation' &&
-      typeof value === 'string' &&
-      [
+      continue;
+    }
+    const projected = projectAuditScalar(key, value);
+    if (projected !== undefined) result[key] = projected;
+  }
+  if (legacyChangedCount !== undefined) {
+    result.changedCount = legacyChangedCount;
+    result.changedNamesTruncated = true;
+  }
+  return result;
+}
+
+function projectAuditScalar(
+  key: string,
+  value: unknown,
+): string | number | boolean | undefined {
+  if (numberKeys.has(key)) {
+    const validNumber =
+      typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+    return validNumber ? value : undefined;
+  }
+  if (booleanKeys.has(key))
+    return typeof value === 'boolean' ? value : undefined;
+  if (typeof value !== 'string') return undefined;
+  if (identityKeys.has(key)) return uuid.test(value) ? value : undefined;
+  return allowedAuditString(key, value) ? value : undefined;
+}
+
+function allowedAuditString(key: string, value: string): boolean {
+  switch (key) {
+    case 'actorRef':
+      return /^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/u.test(value);
+    case 'operation':
+      return [
         'insert',
         'upsert',
         'update',
@@ -95,35 +104,20 @@ export function projectAuditMetadata(
         'rename_column',
         'remove_column',
         'set_key',
-      ].includes(value)
-    )
-      result[key] = value;
-    else if (
-      key === 'actorKind' &&
-      (value === 'worker' || value === 'workflow')
-    )
-      result[key] = value;
-    else if (
-      key === 'source' &&
-      typeof value === 'string' &&
-      ['workspace_creation', 'invitation', 'jit', 'directory'].includes(value)
-    )
-      result[key] = value;
-    else if (
-      key === 'status' &&
-      (value === 'active' || value === 'suspended' || value === 'removed')
-    )
-      result[key] = value;
-    else if (
-      ['role', 'fromRole', 'toRole'].includes(key) &&
-      typeof value === 'string' &&
-      ROLES.some((role) => role === value)
-    )
-      result[key] = value;
+      ].includes(value);
+    case 'actorKind':
+      return value === 'worker' || value === 'workflow';
+    case 'source':
+      return ['workspace_creation', 'invitation', 'jit', 'directory'].includes(
+        value,
+      );
+    case 'status':
+      return value === 'active' || value === 'suspended' || value === 'removed';
+    case 'role':
+    case 'fromRole':
+    case 'toRole':
+      return ROLES.some((role) => role === value);
+    default:
+      return false;
   }
-  if (legacyChangedCount !== undefined) {
-    result.changedCount = legacyChangedCount;
-    result.changedNamesTruncated = true;
-  }
-  return result;
 }
