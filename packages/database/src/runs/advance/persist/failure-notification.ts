@@ -62,47 +62,10 @@ export async function persistFailureNotificationIntent(
       );
     });
   const primary = failures[0];
-  let primaryFailure: Record<string, unknown>;
-  if (primary === undefined) {
-    if (
-      input.plan.checkpoint.runStatus !== 'timed_out' &&
-      !(
-        input.plan.checkpoint.runStatus === 'failed' &&
-        terminalEvent.reasonCode?.startsWith('callable_result_')
-      )
-    )
-      throw new CoordinatorRunStateCorruptError();
-    primaryFailure = {
-      source: 'run',
-      runStatus: input.plan.checkpoint.runStatus,
-      safeErrorCode: terminalEvent.reasonCode ?? 'execution.deadline_exceeded',
-    };
-  } else {
-    const physical = await client.query<{
-      current_attempt_number: number | null;
-      node_id: string;
-      safe_error_code: string | null;
-      status: string;
-    }>(
-      `select node_id,status,current_attempt_number,safe_error_code
-       from app.node_runs
-       where workspace_id=$1 and workflow_run_id=$2 and invocation_key=$3`,
-      [input.workspaceId, input.runId, primary.invocationKey],
-    );
-    const node = physical.rows[0];
-    if (node?.node_id !== primary.nodeId || node.status !== primary.status)
-      throw new CoordinatorRunStateCorruptError();
-    primaryFailure = {
-      nodeId: primary.nodeId,
-      invocationKey: primary.invocationKey,
-      nodeStatus: primary.status,
-      attemptNumber: node.current_attempt_number ?? primary.attemptNumber,
-      safeErrorCode:
-        node.safe_error_code ??
-        terminalEvent.reasonCode ??
-        `execution.${primary.status}`,
-    };
-  }
+  const primaryFailure = await readPrimaryFailure(client, input, {
+    primary,
+    terminalEvent,
+  });
   const context = FailureNotificationContextSchema.parse({
     runId: input.runId,
     workflowId: input.workflowId,
@@ -182,4 +145,60 @@ export async function persistFailureNotificationIntent(
      values ($1,$2,$3,'intent_created',0,false)`,
     [generatePersistedId(), input.workspaceId, intentId],
   );
+}
+
+async function readPrimaryFailure(
+  client: PoolClient,
+  input: Parameters<typeof persistFailureNotificationIntent>[1],
+  {
+    primary,
+    terminalEvent,
+  }: Readonly<{
+    primary: RunTransitionPlan['checkpoint']['invocations'][number] | undefined;
+    terminalEvent: RunTransitionPlan['events'][number];
+  }>,
+): Promise<Record<string, unknown>> {
+  let primaryFailure: Record<string, unknown>;
+  if (primary === undefined) {
+    if (
+      input.plan.checkpoint.runStatus !== 'timed_out' &&
+      !(
+        input.plan.checkpoint.runStatus === 'failed' &&
+        terminalEvent.reasonCode?.startsWith('callable_result_')
+      )
+    )
+      throw new CoordinatorRunStateCorruptError();
+    primaryFailure = {
+      source: 'run',
+      runStatus: input.plan.checkpoint.runStatus,
+      safeErrorCode: terminalEvent.reasonCode ?? 'execution.deadline_exceeded',
+    };
+  } else {
+    const physical = await client.query<{
+      current_attempt_number: number | null;
+      node_id: string;
+      safe_error_code: string | null;
+      status: string;
+    }>(
+      `select node_id,status,current_attempt_number,safe_error_code
+       from app.node_runs
+       where workspace_id=$1 and workflow_run_id=$2 and invocation_key=$3`,
+      [input.workspaceId, input.runId, primary.invocationKey],
+    );
+    const node = physical.rows[0];
+    if (node?.node_id !== primary.nodeId || node.status !== primary.status)
+      throw new CoordinatorRunStateCorruptError();
+    primaryFailure = {
+      nodeId: primary.nodeId,
+      invocationKey: primary.invocationKey,
+      nodeStatus: primary.status,
+      attemptNumber: node.current_attempt_number ?? primary.attemptNumber,
+      safeErrorCode:
+        node.safe_error_code ??
+        terminalEvent.reasonCode ??
+        `execution.${primary.status}`,
+    };
+  }
+
+  return primaryFailure;
 }

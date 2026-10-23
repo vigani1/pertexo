@@ -92,57 +92,8 @@ export async function persistCoordinatorRunTransition(
     workspaceId: string;
   }>,
 ): Promise<Readonly<{ scheduleDueAt?: string }>> {
-  const {
-    authoritativeCancellation,
-    plan,
-    row,
-    runId,
-    traceparent,
-    workflowVersionId,
-    workspaceId,
-  } = input;
-  if (!isTestRun(row.trigger_type)) {
-    await persistFailureNotificationIntent(client, {
-      workspaceId,
-      runId,
-      workflowId: row.workflow_id,
-      workflowVersionId,
-      triggerType: row.trigger_type,
-      startedAt: row.started_at,
-      createdAt: row.created_at,
-      destinationId: row.failure_notification_destination_id,
-      destinationConfigVersion:
-        row.failure_notification_destination_config_version,
-      sideEffectClass: row.failure_notification_side_effect_class,
-      cancellationRequested: authoritativeCancellation,
-      plan,
-      ...(traceparent === undefined ? {} : { traceparent }),
-    });
-    await persistErrorWorkflowIntent(client, {
-      workspaceId,
-      runId,
-      workflowId: row.workflow_id,
-      workflowVersionId,
-      cancellationRequested: authoritativeCancellation,
-      plan,
-      ...(traceparent === undefined ? {} : { traceparent }),
-    });
-    await persistWorkspaceInboxEvent(client, {
-      workspaceId,
-      workflowId: row.workflow_id,
-      runId,
-      cancellationRequested: authoritativeCancellation,
-      plan,
-    });
-    await persistWorkflowTriggerOutcome(client, {
-      workspaceId,
-      workflowId: row.workflow_id,
-      runId,
-      triggerType: row.trigger_type,
-      cancellationRequested: authoritativeCancellation,
-      plan,
-    });
-  }
+  const { plan, row, runId, workspaceId } = input;
+  await persistRunNotices(client, input);
   const checkpointUpdate = await client.query(
     `update app.run_checkpoints
        set revision=$1,  scheduler_state=$2::jsonb,
@@ -213,4 +164,61 @@ export async function persistCoordinatorRunTransition(
   const scheduleDueAt = scheduledOccurrence(row, plan);
   await persistDerivedContinuation(client, input);
   return Object.freeze(scheduleDueAt === undefined ? {} : { scheduleDueAt });
+}
+
+async function persistRunNotices(
+  client: PoolClient,
+  input: Parameters<typeof persistCoordinatorRunTransition>[1],
+): Promise<void> {
+  const {
+    authoritativeCancellation,
+    plan,
+    row,
+    runId,
+    traceparent,
+    workflowVersionId,
+    workspaceId,
+  } = input;
+  if (!isTestRun(row.trigger_type)) {
+    await persistFailureNotificationIntent(client, {
+      workspaceId,
+      runId,
+      workflowId: row.workflow_id,
+      workflowVersionId,
+      triggerType: row.trigger_type,
+      startedAt: row.started_at,
+      createdAt: row.created_at,
+      destinationId: row.failure_notification_destination_id,
+      destinationConfigVersion:
+        row.failure_notification_destination_config_version,
+      sideEffectClass: row.failure_notification_side_effect_class,
+      cancellationRequested: authoritativeCancellation,
+      plan,
+      ...(traceparent === undefined ? {} : { traceparent }),
+    });
+    await persistErrorWorkflowIntent(client, {
+      workspaceId,
+      runId,
+      workflowId: row.workflow_id,
+      workflowVersionId,
+      cancellationRequested: authoritativeCancellation,
+      plan,
+      ...(traceparent === undefined ? {} : { traceparent }),
+    });
+    await persistWorkspaceInboxEvent(client, {
+      workspaceId,
+      workflowId: row.workflow_id,
+      runId,
+      cancellationRequested: authoritativeCancellation,
+      plan,
+    });
+    await persistWorkflowTriggerOutcome(client, {
+      workspaceId,
+      workflowId: row.workflow_id,
+      runId,
+      triggerType: row.trigger_type,
+      cancellationRequested: authoritativeCancellation,
+      plan,
+    });
+  }
 }

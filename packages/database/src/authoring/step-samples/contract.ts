@@ -68,8 +68,10 @@ export interface WorkflowStepSampleStore {
 }
 export type SampleTransaction = <T>(
   input: SampleScope,
-  write: boolean,
-  work: (client: PoolClient) => Promise<T>,
+  options: Readonly<{
+    write: boolean;
+    work: (client: PoolClient) => Promise<T>;
+  }>,
 ) => Promise<T>;
 export class WorkflowStepSampleError extends Error {
   override readonly name = 'WorkflowStepSampleError';
