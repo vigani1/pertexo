@@ -155,24 +155,7 @@ function prepareNode(
   const upstreamNodeOutputs = substituted
     ? []
     : deriveUpstreamNodeOutputs(graph, node, lease);
-  const failureEdge = graph.edges.find(
-    ({ source, target }) =>
-      source.port === WORKFLOW_FAILURE_PORT && target.nodeId === node.id,
-  );
-  const sourceFailure =
-    failureEdge === undefined
-      ? undefined
-      : {
-          nodeId: failureEdge.source.nodeId,
-          invocationKey: invocationKey({
-            workflowVersionId: lease.workflowVersionId,
-            nodeId: failureEdge.source.nodeId,
-            branchPath: (lease.branchPath ?? []).map(
-              ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
-            ),
-            iterationPath: lease.iterationPath ?? [],
-          }),
-        };
+  const sourceFailure = deriveSourceFailure(graph, node, lease);
   // A step that uses a connection sends its input to a provider, and what
   // it sends never enters execution records (ADR 023, 024): only other
   // steps record their input (ADR 052).
@@ -273,4 +256,31 @@ export function createNodeAttemptExecutionEngine(
       }>,
     ) => prepareNode(input.projection, input.lease, options),
   });
+}
+
+function deriveSourceFailure(
+  graph: ExecutableGraph,
+  node: WorkflowExecutableNode,
+  lease: NodeAttemptLease,
+): PreparedNodeAttempt['sourceFailure'] {
+  const failureEdge = graph.edges.find(
+    ({ source, target }) =>
+      source.port === WORKFLOW_FAILURE_PORT && target.nodeId === node.id,
+  );
+  const sourceFailure =
+    failureEdge === undefined
+      ? undefined
+      : {
+          nodeId: failureEdge.source.nodeId,
+          invocationKey: invocationKey({
+            workflowVersionId: lease.workflowVersionId,
+            nodeId: failureEdge.source.nodeId,
+            branchPath: (lease.branchPath ?? []).map(
+              ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
+            ),
+            iterationPath: lease.iterationPath ?? [],
+          }),
+        };
+
+  return sourceFailure;
 }

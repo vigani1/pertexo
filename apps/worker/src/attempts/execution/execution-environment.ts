@@ -11,7 +11,10 @@ import {
   type NodeExecutionRuntime,
   type NodeConnectionHealthObservation,
 } from '@pertexo/node-sdk/server';
-import type { NodeExecutionCapabilityFactories } from './capabilities.js';
+import type {
+  NodeExecutionCapabilityFactories,
+  NodeExecutionCapabilityContext,
+} from './capabilities.js';
 import { nodeExecutionOptionalFields } from './runtime-fields.js';
 import { NodeAttemptHandlerStateError } from '../delivery/handler-state-error.js';
 import { createConnectionHealthCapture } from '../../connections/health-capture.js';
@@ -25,17 +28,7 @@ export type NodeExecutionEnvironment = Readonly<{
 }>;
 
 export function createNodeExecutionEnvironment(
-  input: Readonly<{
-    executionSignal: AbortSignal;
-    test?: boolean;
-    artifactRetentionDeadline?: Date;
-    deadlineAt?: Date;
-    variables?: Readonly<Record<string, JsonValue>>;
-    lease: NodeAttemptLease;
-    registry: NodeExecutionRegistry;
-    runStore: NodeAttemptRunStore;
-    runtimeCapabilities?: NodeExecutionCapabilityFactories;
-  }>,
+  input: NodeExecutionEnvironmentInput,
 ): NodeExecutionEnvironment {
   const { executionSignal, lease, registry: sourceRegistry, runStore } = input;
   let dispatchState: 'not_started' | 'marking' | 'marked' = 'not_started';
@@ -58,18 +51,15 @@ export function createNodeExecutionEnvironment(
     workerId: lease.workerId,
     fenceToken: lease.fenceToken,
   });
-  const callbacks = input.runtimeCapabilities?.callbacks?.(capabilityContext);
-  const connections =
-    input.runtimeCapabilities?.connections?.(capabilityContext);
-  const artifacts = input.runtimeCapabilities?.artifacts?.(capabilityContext);
-  const webhookResponse =
-    input.runtimeCapabilities?.webhookResponse?.(capabilityContext);
-  const dataTables = input.runtimeCapabilities?.dataTables?.(capabilityContext);
-  const runValues = input.runtimeCapabilities?.runValues?.(capabilityContext);
-  const code = input.runtimeCapabilities?.code?.({
-    ...capabilityContext,
-    variables: input.variables ?? {},
-  });
+  const {
+    callbacks,
+    connections,
+    artifacts,
+    webhookResponse,
+    dataTables,
+    runValues,
+    code,
+  } = bindExecutionCapabilities(input, capabilityContext);
   let diagnostics: CodeDiagnostics | undefined;
   const runtime: NodeExecutionRuntime = Object.freeze({
     ...(input.deadlineAt === undefined ? {} : { deadlineAt: input.deadlineAt }),
@@ -150,4 +140,45 @@ export function createNodeExecutionEnvironment(
       : healthCapture.read,
     codeDiagnostics: () => diagnostics,
   });
+}
+
+type NodeExecutionEnvironmentInput = Readonly<{
+  executionSignal: AbortSignal;
+  test?: boolean;
+  artifactRetentionDeadline?: Date;
+  deadlineAt?: Date;
+  variables?: Readonly<Record<string, JsonValue>>;
+  lease: NodeAttemptLease;
+  registry: NodeExecutionRegistry;
+  runStore: NodeAttemptRunStore;
+  runtimeCapabilities?: NodeExecutionCapabilityFactories;
+}>;
+
+function bindExecutionCapabilities(
+  input: NodeExecutionEnvironmentInput,
+  capabilityContext: NodeExecutionCapabilityContext &
+    Readonly<{ fenceToken: number }>,
+) {
+  const callbacks = input.runtimeCapabilities?.callbacks?.(capabilityContext);
+  const connections =
+    input.runtimeCapabilities?.connections?.(capabilityContext);
+  const artifacts = input.runtimeCapabilities?.artifacts?.(capabilityContext);
+  const webhookResponse =
+    input.runtimeCapabilities?.webhookResponse?.(capabilityContext);
+  const dataTables = input.runtimeCapabilities?.dataTables?.(capabilityContext);
+  const runValues = input.runtimeCapabilities?.runValues?.(capabilityContext);
+  const code = input.runtimeCapabilities?.code?.({
+    ...capabilityContext,
+    variables: input.variables ?? {},
+  });
+
+  return {
+    callbacks,
+    connections,
+    artifacts,
+    webhookResponse,
+    dataTables,
+    runValues,
+    code,
+  };
 }

@@ -265,25 +265,7 @@ async function createProductionNodeAttemptRuntime(
     capabilityRuntime = await (
       dependencies.capabilityFactory ?? createWorkerNodeRuntimeCapabilities
     )(
-      {
-        database: options.database,
-        ...(options.callbacks === undefined
-          ? {}
-          : { callbacks: options.callbacks }),
-        ...(options.artifactScratchDirectory === undefined
-          ? {}
-          : { artifactScratchDirectory: options.artifactScratchDirectory }),
-        ...(options.codeRunner === undefined
-          ? {}
-          : { codeRunner: options.codeRunner }),
-        redisUrl: options.redisUrl,
-        ...(options.connectionEncryption === undefined
-          ? {}
-          : { connectionEncryption: options.connectionEncryption }),
-        ...(options.artifactStore === undefined
-          ? {}
-          : { artifactStore: options.artifactStore }),
-      },
+      capabilityRuntimeOptions(options),
       options.databaseRuntime === undefined
         ? {}
         : { databaseRuntime: options.databaseRuntime },
@@ -403,4 +385,28 @@ export async function createNodeAttemptRuntime(
     await closeNodeAttemptResources(ownedResources, { error });
     throw error;
   }
+}
+
+function capabilityRuntimeOptions(
+  options: NodeAttemptRuntimeOptions,
+): Parameters<typeof createWorkerNodeRuntimeCapabilities>[0] {
+  return {
+    database: options.database,
+    ...(options.callbacks === undefined
+      ? {}
+      : { callbacks: options.callbacks }),
+    ...(options.artifactScratchDirectory === undefined
+      ? {}
+      : { artifactScratchDirectory: options.artifactScratchDirectory }),
+    ...(options.codeRunner === undefined
+      ? {}
+      : { codeRunner: options.codeRunner }),
+    redisUrl: options.redisUrl,
+    ...(options.connectionEncryption === undefined
+      ? {}
+      : { connectionEncryption: options.connectionEncryption }),
+    ...(options.artifactStore === undefined
+      ? {}
+      : { artifactStore: options.artifactStore }),
+  };
 }
