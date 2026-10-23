@@ -51,20 +51,23 @@ export function createCuratedTemplateControlledTransports(
       right.fill(0);
     }
   };
+  function assertRequest(input: SecureHttpTransportRequest): void {
+    if (
+      closed ||
+      observations.length >= 32 ||
+      input.signal?.aborted === true ||
+      input.address.address !== publicTestAddress ||
+      input.address.family !== 4 ||
+      input.timeoutMillis !== 1000 ||
+      (input.body?.byteLength ?? 0) > maximumBytes
+    )
+      throw new Error('rejected');
+  }
   const dispatch = (
     input: SecureHttpTransportRequest,
   ): Promise<SecureHttpTransportResponse> => {
     try {
-      if (
-        closed ||
-        observations.length >= 32 ||
-        input.signal?.aborted === true ||
-        input.address.address !== publicTestAddress ||
-        input.address.family !== 4 ||
-        input.timeoutMillis !== 1000 ||
-        (input.body?.byteLength ?? 0) > maximumBytes
-      )
-        throw new Error('rejected');
+      assertRequest(input);
       let status: number;
       let kind: Observation['kind'];
       let responseBody: Uint8Array;
@@ -101,21 +104,7 @@ export function createCuratedTemplateControlledTransports(
         const body: unknown = JSON.parse(
           new TextDecoder('utf-8', { fatal: true }).decode(input.body),
         );
-        if (
-          typeof body !== 'object' ||
-          body === null ||
-          Object.keys(body).sort().join(',') !==
-            'channel,text,unfurl_links,unfurl_media' ||
-          !('channel' in body) ||
-          body.channel !== CURATED_TEMPLATE_FIXTURE.slackChannel ||
-          !('text' in body) ||
-          body.text !== CURATED_TEMPLATE_FIXTURE.slackText ||
-          !('unfurl_links' in body) ||
-          body.unfurl_links !== false ||
-          !('unfurl_media' in body) ||
-          body.unfurl_media !== false
-        )
-          throw new Error('rejected');
+        assertSlackBody(body);
         status = 200;
         kind = 'slack';
         responseBody = Buffer.from(
@@ -190,4 +179,22 @@ export function createCuratedTemplateControlledTransports(
       return Promise.resolve();
     },
   };
+}
+
+function assertSlackBody(body: unknown): void {
+  if (
+    typeof body !== 'object' ||
+    body === null ||
+    Object.keys(body).sort().join(',') !==
+      'channel,text,unfurl_links,unfurl_media' ||
+    !('channel' in body) ||
+    body.channel !== CURATED_TEMPLATE_FIXTURE.slackChannel ||
+    !('text' in body) ||
+    body.text !== CURATED_TEMPLATE_FIXTURE.slackText ||
+    !('unfurl_links' in body) ||
+    body.unfurl_links !== false ||
+    !('unfurl_media' in body) ||
+    body.unfurl_media !== false
+  )
+    throw new Error('rejected');
 }

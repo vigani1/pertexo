@@ -49,9 +49,7 @@ export function createEditorWebhookLossProxy(
           const [media, key, timestamp, signature] = values;
           if (
             media !== 'application/json' ||
-            typeof key !== 'string' ||
-            !/^[!-~]{1,128}$/u.test(key) ||
-            key.includes(',') ||
+            !validProxyIdempotencyKey(key) ||
             typeof timestamp !== 'string' ||
             !/^\d{1,16}$/u.test(timestamp) ||
             typeof signature !== 'string' ||
@@ -216,4 +214,12 @@ export function createEditorWebhookLossProxy(
       return closing;
     },
   };
+}
+
+function validProxyIdempotencyKey(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    /^[!-~]{1,128}$/u.test(value) &&
+    !value.includes(',')
+  );
 }

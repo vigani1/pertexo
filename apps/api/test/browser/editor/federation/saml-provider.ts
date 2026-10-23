@@ -52,36 +52,8 @@ export async function createBrowserSamlProvider(appOrigin: string) {
           outgoing.writeHead(404).end();
           return;
         }
-        const encoded = url.searchParams.get('SAMLRequest') ?? '',
-          state = url.searchParams.get('RelayState') ?? '';
-        if (encoded.length > 16384 || !/^[A-Za-z0-9+/]+={0,2}$/u.test(encoded))
-          throw new Error('Invalid request encoding');
-        const requestBytes = Buffer.from(encoded, 'base64'),
-          canonical = requestBytes.toString('base64');
-        if (canonical !== encoded)
-          throw new Error('Ambiguous request encoding');
-        const xml = inflateRawSync(requestBytes, {
-          maxOutputLength: 65536,
-        }).toString();
-        const document = new DOMParser().parseFromString(
-            xml,
-            'application/xml',
-          ),
-          root = document.documentElement;
-        const entityId =
-            root.getElementsByTagNameNS(assertion, 'Issuer')[0]?.textContent ??
-            '',
-          redirectUri = root.getAttribute('AssertionConsumerServiceURL') ?? '',
-          requestId = root.getAttribute('ID') ?? '';
-        if (
-          root.localName !== 'AuthnRequest' ||
-          root.getAttribute('Destination') !== origin + '/sso' ||
-          known.get(entityId) !== redirectUri ||
-          redirectUri !== callbackUri ||
-          !/^_[a-zA-Z0-9_-]+$/u.test(requestId) ||
-          !/^[a-zA-Z0-9_-]{43}$/u.test(state)
-        )
-          throw new Error('Unregistered AuthnRequest');
+        const { state, canonical, entityId, redirectUri, requestId } =
+          readSamlRequest(url, origin, callbackUri, known);
         const email = url.searchParams.get('email');
         outgoing.setHeader('content-type', 'text/html; charset=utf-8');
         outgoing.setHeader('cache-control', 'no-store');
@@ -216,4 +188,39 @@ export async function createSamlAppProxy(
     proofs,
     close: () => close(server),
   };
+}
+
+function readSamlRequest(
+  url: URL,
+  origin: string,
+  callbackUri: string,
+  known: ReadonlyMap<string, string>,
+) {
+  const encoded = url.searchParams.get('SAMLRequest') ?? '',
+    state = url.searchParams.get('RelayState') ?? '';
+  if (encoded.length > 16384 || !/^[A-Za-z0-9+/]+={0,2}$/u.test(encoded))
+    throw new Error('Invalid request encoding');
+  const requestBytes = Buffer.from(encoded, 'base64'),
+    canonical = requestBytes.toString('base64');
+  if (canonical !== encoded) throw new Error('Ambiguous request encoding');
+  const xml = inflateRawSync(requestBytes, {
+    maxOutputLength: 65536,
+  }).toString();
+  const document = new DOMParser().parseFromString(xml, 'application/xml'),
+    root = document.documentElement;
+  const entityId =
+      root.getElementsByTagNameNS(assertion, 'Issuer')[0]?.textContent ?? '',
+    redirectUri = root.getAttribute('AssertionConsumerServiceURL') ?? '',
+    requestId = root.getAttribute('ID') ?? '';
+  if (
+    root.localName !== 'AuthnRequest' ||
+    root.getAttribute('Destination') !== origin + '/sso' ||
+    known.get(entityId) !== redirectUri ||
+    redirectUri !== callbackUri ||
+    !/^_[a-zA-Z0-9_-]+$/u.test(requestId) ||
+    !/^[a-zA-Z0-9_-]{43}$/u.test(state)
+  )
+    throw new Error('Unregistered AuthnRequest');
+
+  return { state, canonical, entityId, redirectUri, requestId };
 }

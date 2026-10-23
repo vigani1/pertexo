@@ -1,4 +1,9 @@
-import { createServer, request, type IncomingMessage } from 'node:http';
+import {
+  createServer,
+  request,
+  type IncomingMessage,
+  type ServerResponse,
+} from 'node:http';
 import type { Socket } from 'node:net';
 import { timingSafeEqual } from 'node:crypto';
 import {
@@ -29,31 +34,64 @@ export function createEditorControlledHttpTarget(
   let port: number | undefined;
   let startup: Promise<void> | undefined;
   let closing: Promise<void> | undefined;
+  function authorizeRequest(
+    incoming: IncomingMessage,
+    outgoing: ServerResponse,
+  ): boolean {
+    if (
+      stopped ||
+      !(
+        (incoming.method === 'POST' && incoming.url === '/effect') ||
+        (incoming.method === 'GET' &&
+          /^\/pages\?page=[123]$/u.test(incoming.url ?? ''))
+      )
+    ) {
+      outgoing.writeHead(404).end();
+      return false;
+    }
+    const supplied = Buffer.from(incoming.headers.authorization ?? '');
+    const authorized =
+      supplied.length === authorization.length &&
+      timingSafeEqual(supplied, authorization);
+    supplied.fill(0);
+    if (!authorized) {
+      outgoing.writeHead(401).end();
+      return false;
+    }
+
+    return true;
+  }
+  async function readEffectBody(
+    incoming: IncomingMessage,
+    outgoing: ServerResponse,
+  ) {
+    const bytes: Buffer[] = [];
+    let length = 0;
+    for await (const raw of incoming) {
+      const chunk = Buffer.isBuffer(raw) ? raw : Buffer.from(raw as Uint8Array);
+      length += chunk.length;
+      if (length > maximumBytes) {
+        outgoing.writeHead(413).end();
+        incoming.destroy();
+        return;
+      }
+      bytes.push(chunk);
+    }
+    const text = Buffer.concat(bytes).toString('utf8');
+    const body: unknown = JSON.parse(text);
+    if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+      outgoing.writeHead(400).end();
+      return;
+    }
+
+    return { text, body };
+  }
   const server = createServer((incoming, outgoing) => {
     const responseDisposed = () => stopped || outgoing.destroyed;
     requests++;
     void (async () => {
       try {
-        if (
-          stopped ||
-          !(
-            (incoming.method === 'POST' && incoming.url === '/effect') ||
-            (incoming.method === 'GET' &&
-              /^\/pages\?page=[123]$/u.test(incoming.url ?? ''))
-          )
-        ) {
-          outgoing.writeHead(404).end();
-          return;
-        }
-        const supplied = Buffer.from(incoming.headers.authorization ?? '');
-        const authorized =
-          supplied.length === authorization.length &&
-          timingSafeEqual(supplied, authorization);
-        supplied.fill(0);
-        if (!authorized) {
-          outgoing.writeHead(401).end();
-          return;
-        }
+        if (!authorizeRequest(incoming, outgoing)) return;
         if (incoming.method === 'GET') {
           const page = Number(
             new URL(incoming.url ?? '', controlledActionUrl).searchParams.get(
@@ -69,26 +107,9 @@ export function createEditorControlledHttpTarget(
           );
           return;
         }
-        const bytes: Buffer[] = [];
-        let length = 0;
-        for await (const raw of incoming) {
-          const chunk = Buffer.isBuffer(raw)
-            ? raw
-            : Buffer.from(raw as Uint8Array);
-          length += chunk.length;
-          if (length > maximumBytes) {
-            outgoing.writeHead(413).end();
-            incoming.destroy();
-            return;
-          }
-          bytes.push(chunk);
-        }
-        const text = Buffer.concat(bytes).toString('utf8');
-        const body: unknown = JSON.parse(text);
-        if (typeof body !== 'object' || body === null || Array.isArray(body)) {
-          outgoing.writeHead(400).end();
-          return;
-        }
+        const content = await readEffectBody(incoming, outgoing);
+        if (content === undefined) return;
+        const { text, body } = content;
         // Deliberate service outcomes for the owned recovery browser journey.
         if (
           'marker' in body &&

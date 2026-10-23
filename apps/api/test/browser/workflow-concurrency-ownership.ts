@@ -82,21 +82,11 @@ async function verifyService(
   project: string | undefined,
   hostPort: string,
 ) {
-  const localName =
-    service === 'postgres'
-      ? 'pertexo-concurrency-db-20261001'
-      : 'pertexo-concurrency-redis-20261001';
-  let target = localName;
-  if (project !== undefined) {
-    const ids = (
-      await docker(['compose', '--project-name', project, 'ps', '-q', service])
-    )
-      .trim()
-      .split(/\s+/u);
-    if (ids.length !== 1 || !/^[a-f0-9]{64}$/u.test(ids[0] ?? ''))
-      throw new Error('One exact owned concurrency Compose container required');
-    target = ids[0] ?? '';
-  }
+  const { localName, target } = await resolveServiceTarget(
+    docker,
+    service,
+    project,
+  );
   const inspected = inspectedSchema.parse(
     JSON.parse(await docker(['inspect', target])),
   )[0];
@@ -133,4 +123,28 @@ export async function verifyWorkflowConcurrencyOwnership(
   verifyUrls(env, postgresPort, redisPort);
   await verifyService(docker, 'postgres', project, postgresPort);
   await verifyService(docker, 'redis', project, redisPort);
+}
+
+async function resolveServiceTarget(
+  docker: DockerRead,
+  service: 'postgres' | 'redis',
+  project: string | undefined,
+) {
+  const localName =
+    service === 'postgres'
+      ? 'pertexo-concurrency-db-20261001'
+      : 'pertexo-concurrency-redis-20261001';
+  let target = localName;
+  if (project !== undefined) {
+    const ids = (
+      await docker(['compose', '--project-name', project, 'ps', '-q', service])
+    )
+      .trim()
+      .split(/\s+/u);
+    if (ids.length !== 1 || !/^[a-f0-9]{64}$/u.test(ids[0] ?? ''))
+      throw new Error('One exact owned concurrency Compose container required');
+    target = ids[0] ?? '';
+  }
+
+  return { localName, target };
 }
