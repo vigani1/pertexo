@@ -52,6 +52,109 @@ export function createEditorHttpControl(
     }
     return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown;
   }
+  async function invokeWebhook(
+    request: IncomingMessage,
+    response: ServerResponse,
+  ) {
+    if (used || apiOrigin === undefined)
+      throw new Error('Owned HTTP invocation not available');
+    used = true; // Own setup across awaits, not merely during HTTP dispatch.
+    const input = invocationSchema.parse(await body(request));
+    await verifyHttpEndpoint(database(), input, input.endpointKey);
+    active();
+    proxy = createEditorWebhookLossProxy(
+      apiOrigin,
+      input.endpointKey,
+      async (id) => {
+        await verifyHttpAccepted(database(), input, id);
+        active();
+      },
+    );
+    await proxy.start();
+    active();
+    const origin = proxy.origin();
+    const senderKey = randomUUID(),
+      falseKey = randomUUID();
+    const rawBody = Buffer.from(
+      JSON.stringify({
+        execute: true,
+        body: { encoding: 'utf8', value: httpActionBody },
+      }),
+    );
+    const sender = {
+      origin,
+      endpointKey: input.endpointKey,
+      secret: input.signingSecret,
+      rawBody,
+      idempotencyKey: senderKey,
+    };
+    let lost = false;
+    try {
+      await sendBoundedWebhook(sender);
+    } catch {
+      lost = true;
+    }
+    active();
+    const observation = proxy.observe();
+    if (
+      !lost ||
+      observation.lostRunId === undefined ||
+      observation.firstTimestamp === undefined
+    )
+      throw new Error('Committed ingress acknowledgement was not lost');
+    // Actual clock: the new signature timestamp must be fresh, not fabricated.
+    const waitStarted = Date.now();
+    while (
+      String(Math.floor(Date.now() / 1000)) === observation.firstTimestamp
+    ) {
+      if (Date.now() - waitStarted > 2000)
+        throw new Error('Owned sender clock did not advance');
+      await delay(25);
+      active();
+    }
+    const retry = await sendBoundedWebhook(sender);
+    active();
+    if (
+      retry.status !== 202 ||
+      retry.json.runId !== observation.lostRunId ||
+      retry.json.replayed !== true ||
+      retry.requestMaterial.timestamp === observation.firstTimestamp
+    )
+      throw new Error('Exact signed ingress replay failed');
+    const conflict = await sendBoundedWebhook({
+      ...sender,
+      rawBody: Buffer.from(JSON.stringify({ execute: true, changed: true })),
+    });
+    active();
+    if (conflict.status !== 409)
+      throw new Error('Changed signed intent did not conflict');
+    const second = await sendBoundedWebhook({
+      ...sender,
+      idempotencyKey: falseKey,
+      rawBody: Buffer.from(
+        JSON.stringify({
+          execute: false,
+          body: { encoding: 'utf8', value: httpActionBody },
+        }),
+      ),
+    });
+    active();
+    const falseRunId = z.uuid().parse(second.json.runId);
+    if (
+      second.status !== 202 ||
+      second.json.replayed !== false ||
+      falseRunId === observation.lostRunId
+    )
+      throw new Error('False branch not independently accepted');
+    accepted = {
+      trueRunId: observation.lostRunId,
+      falseRunId,
+      senderKey,
+      falseKey,
+    };
+    response.setHeader('content-type', 'application/json');
+    response.end(JSON.stringify(accepted));
+  }
   return {
     setApiOrigin(origin: string) {
       if (apiOrigin !== undefined)
@@ -97,106 +200,7 @@ export function createEditorHttpControl(
           }
           if (path !== '/http-invoke')
             throw new Error('Owned HTTP control path invalid');
-          if (used || apiOrigin === undefined)
-            throw new Error('Owned HTTP invocation not available');
-          used = true; // Own setup across awaits, not merely during HTTP dispatch.
-          const input = invocationSchema.parse(await body(request));
-          await verifyHttpEndpoint(database(), input, input.endpointKey);
-          active();
-          proxy = createEditorWebhookLossProxy(
-            apiOrigin,
-            input.endpointKey,
-            async (id) => {
-              await verifyHttpAccepted(database(), input, id);
-              active();
-            },
-          );
-          await proxy.start();
-          active();
-          const origin = proxy.origin();
-          const senderKey = randomUUID(),
-            falseKey = randomUUID();
-          const rawBody = Buffer.from(
-            JSON.stringify({
-              execute: true,
-              body: { encoding: 'utf8', value: httpActionBody },
-            }),
-          );
-          const sender = {
-            origin,
-            endpointKey: input.endpointKey,
-            secret: input.signingSecret,
-            rawBody,
-            idempotencyKey: senderKey,
-          };
-          let lost = false;
-          try {
-            await sendBoundedWebhook(sender);
-          } catch {
-            lost = true;
-          }
-          active();
-          const observation = proxy.observe();
-          if (
-            !lost ||
-            observation.lostRunId === undefined ||
-            observation.firstTimestamp === undefined
-          )
-            throw new Error('Committed ingress acknowledgement was not lost');
-          // Actual clock: the new signature timestamp must be fresh, not fabricated.
-          const waitStarted = Date.now();
-          while (
-            String(Math.floor(Date.now() / 1000)) === observation.firstTimestamp
-          ) {
-            if (Date.now() - waitStarted > 2000)
-              throw new Error('Owned sender clock did not advance');
-            await delay(25);
-            active();
-          }
-          const retry = await sendBoundedWebhook(sender);
-          active();
-          if (
-            retry.status !== 202 ||
-            retry.json.runId !== observation.lostRunId ||
-            retry.json.replayed !== true ||
-            retry.requestMaterial.timestamp === observation.firstTimestamp
-          )
-            throw new Error('Exact signed ingress replay failed');
-          const conflict = await sendBoundedWebhook({
-            ...sender,
-            rawBody: Buffer.from(
-              JSON.stringify({ execute: true, changed: true }),
-            ),
-          });
-          active();
-          if (conflict.status !== 409)
-            throw new Error('Changed signed intent did not conflict');
-          const second = await sendBoundedWebhook({
-            ...sender,
-            idempotencyKey: falseKey,
-            rawBody: Buffer.from(
-              JSON.stringify({
-                execute: false,
-                body: { encoding: 'utf8', value: httpActionBody },
-              }),
-            ),
-          });
-          active();
-          const falseRunId = z.uuid().parse(second.json.runId);
-          if (
-            second.status !== 202 ||
-            second.json.replayed !== false ||
-            falseRunId === observation.lostRunId
-          )
-            throw new Error('False branch not independently accepted');
-          accepted = {
-            trueRunId: observation.lostRunId,
-            falseRunId,
-            senderKey,
-            falseKey,
-          };
-          response.setHeader('content-type', 'application/json');
-          response.end(JSON.stringify(accepted));
+          await invokeWebhook(request, response);
         } catch {
           // Never reflect parse inputs, credentials, nested transport or SQL errors.
           if (!response.destroyed) response.writeHead(400).end();
