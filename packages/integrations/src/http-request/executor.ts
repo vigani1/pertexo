@@ -1,17 +1,11 @@
-import { utf8ByteLength } from '@pertexo/workflow-model';
-import { Buffer } from 'node:buffer';
 import { executePagination } from './pagination/execute.js';
-import { JSON_MEDIA_TYPE } from '../http/content-type.js';
 
 import {
-  type JsonValue,
   type NodeVerifiedByteSource,
   type NodeExecutionInvocation,
   type NodeExecutorRegistration,
-  canonicalizeBoundedJson,
   FileInputFailure,
   NodeExecutorFailure,
-  NodeInputValidationError,
   ProviderCredentialInvalidError,
   ProviderExecutionRateLimitError,
 } from '@pertexo/node-sdk/server';
@@ -19,12 +13,8 @@ import {
   classifySecureHttpError,
   classifySecureHttpResponse,
   HTTP_SIDE_EFFECT_CLASS,
-  type HttpOutcomeDecision,
 } from '../http/outcome-policy.js';
-import {
-  SECURE_HTTP_ERROR_CODE,
-  type SecureHttpClient,
-} from '../http/secure.js';
+import { SECURE_HTTP_ERROR_CODE } from '../http/secure.js';
 import { inspectSecureHttpError } from '../http/secure-error.js';
 import { errorNameIs, safeInstanceOf } from '../http/unknown-error.js';
 import {
@@ -32,180 +22,36 @@ import {
   HTTP_REQUEST_EXECUTOR,
 } from './definition.js';
 import {
-  HTTP_REQUEST_LIMITS,
   httpRequestConfigSchema,
   httpRequestInputSchema,
   httpRequestOutputSchema,
-  safeRequestUrl,
   type HttpRequestConfig,
   type HttpRequestInput,
   type HttpRequestOutput,
 } from './validation.js';
-import {
-  fillHttpTemplate,
-  HTTP_PLACEHOLDER_NAME,
-  HttpPlaceholderError,
-  type HttpPlaceholderValue,
-} from './placeholders.js';
+
 import {
   createProviderBeforeDispatch,
   createUnauthenticatedBeforeDispatch,
 } from '../provider-dispatch-fence.js';
-import { decodeCredential, mergeHeaders } from './request-material.js';
+import { decodeCredential } from './request-material.js';
 import { encodeMultipart } from './multipart/encode.js';
-import { readRequestBody, artifactContentType } from './read-body.js';
+import { readRequestBody } from './read-body.js';
+import {
+  HttpRequestExecutorError,
+  type HttpRequestExecutorDependencies,
+  NOOP_HTTP_REQUEST_EXECUTOR_TELEMETRY,
+  failedConfiguration,
+} from './execution/contract.js';
+import { consumeResponseBody, releaseHttpMaterial } from './execution/body.js';
+import { requestHeaders, fillPlaceholders } from './execution/input.js';
 
-export class HttpRequestExecutorError extends NodeExecutorFailure {
-  public override readonly name = 'HttpRequestExecutorError';
-  public override readonly cause: unknown;
-
-  public constructor(
-    public readonly decision: HttpOutcomeDecision,
-    possiblyDispatched: boolean,
-    cause?: unknown,
-  ) {
-    if (decision.kind === 'succeeded')
-      throw new TypeError('Successful HTTP outcome');
-    super({
-      kind: decision.kind,
-      errorKind: decision.errorKind,
-      possiblyDispatched,
-      ...(decision.kind === 'retry' &&
-      decision.minimumRetryDelayMillis !== undefined
-        ? { minimumRetryDelayMillis: decision.minimumRetryDelayMillis }
-        : {}),
-    });
-    this.cause = cause;
-  }
-}
-
-export type HttpRequestExecutorDependencies = Readonly<{
-  httpClient: Pick<SecureHttpClient, 'executeStreaming'>;
-  telemetry?: HttpRequestExecutorTelemetry;
-}>;
-
-export interface HttpRequestExecutorTelemetry {
-  measure(work: () => Promise<HttpRequestOutput>): Promise<HttpRequestOutput>;
-}
-
-export const NOOP_HTTP_REQUEST_EXECUTOR_TELEMETRY: HttpRequestExecutorTelemetry =
-  Object.freeze({
-    measure: (work: () => Promise<HttpRequestOutput>) => work(),
-  });
-
-function failedConfiguration(): HttpRequestExecutorError {
-  return new HttpRequestExecutorError(
-    Object.freeze({ kind: 'failed', errorKind: 'configuration' }),
-    false,
-  );
-}
-
-// Leaves room in the step's 1 MiB, 10,000-member output for the text and
-// headers the parsed value sits beside.
-const PARSED_JSON_LIMITS = Object.freeze({
-  bytes: 262_144,
-  depth: 48,
-  members: 8_000,
-});
-
-/** A JSON response later steps can map into; absent when it doesn't fit. */
-function parsedJson(text: string): Readonly<{ json?: JsonValue }> {
-  try {
-    return {
-      json: canonicalizeBoundedJson(JSON.parse(text), PARSED_JSON_LIMITS),
-    };
-  } catch {
-    return {};
-  }
-}
-
-function inlineBody(
-  bytes: Uint8Array,
-  preferred: 'base64' | 'utf8',
-  mediaType: string | undefined,
-) {
-  if (preferred === 'utf8') {
-    let value: string | undefined;
-    try {
-      value = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-    } catch {
-      // Invalid text is represented exactly as base64.
-    }
-    if (value !== undefined)
-      return Object.freeze({
-        kind: 'inline' as const,
-        encoding: 'utf8' as const,
-        value,
-        byteLength: bytes.byteLength,
-        ...(mediaType !== undefined && JSON_MEDIA_TYPE.test(mediaType)
-          ? parsedJson(value)
-          : {}),
-      });
-  }
-  return Object.freeze({
-    kind: 'inline' as const,
-    encoding: 'base64' as const,
-    value: Buffer.from(bytes).toString('base64'),
-    byteLength: bytes.byteLength,
-  });
-}
-
-function requestHeaders(
-  input: HttpRequestInput,
-  configured: Readonly<Record<string, string>>,
-  credential: Readonly<Record<string, string>>,
-  multipartContentType: string | undefined,
-): Readonly<Record<string, string>> {
-  const headers = mergeHeaders(configured, credential, failedConfiguration);
-  if (multipartContentType === undefined)
-    return artifactContentType(input, headers);
-  if (Object.hasOwn(headers, 'content-type'))
-    throw new FileInputFailure({ reason: 'multipart_content_type' });
-  return { ...headers, 'content-type': multipartContentType };
-}
-
-/**
- * Split the {placeholder} values from the body inputs and fill the address
- * and header values. The filled address keeps the configured origin.
- */
-function fillPlaceholders(
-  configured: HttpRequestConfig,
-  mapped: HttpRequestInput,
-): Readonly<{ config: HttpRequestConfig; input: HttpRequestInput }> {
-  const values: Record<string, HttpPlaceholderValue> = {};
-  const input: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(mapped))
-    if (
-      key !== 'body' &&
-      HTTP_PLACEHOLDER_NAME.test(key) &&
-      (typeof value === 'string' ||
-        typeof value === 'number' ||
-        typeof value === 'boolean')
-    )
-      values[key] = value;
-    else input[key] = value;
-  let filled;
-  try {
-    filled = fillHttpTemplate(configured, values);
-  } catch (error) {
-    if (error instanceof HttpPlaceholderError)
-      throw new NodeInputValidationError(error.message);
-    throw error;
-  }
-  if (
-    !safeRequestUrl(filled.url) ||
-    utf8ByteLength(filled.url) > HTTP_REQUEST_LIMITS.maxUrlBytes ||
-    new URL(filled.url).origin !== new URL(configured.url).origin
-  )
-    throw new NodeInputValidationError(
-      'The filled-in address is too long or no longer a safe address; check the values mapped into it.',
-    );
-  return {
-    config: { ...configured, url: filled.url, headers: filled.headers },
-    input: input as HttpRequestInput,
-  };
-}
-
+export {
+  HttpRequestExecutorError,
+  type HttpRequestExecutorDependencies,
+  type HttpRequestExecutorTelemetry,
+  NOOP_HTTP_REQUEST_EXECUTOR_TELEMETRY,
+} from './execution/contract.js';
 async function executeHttpRequest(
   dependencies: HttpRequestExecutorDependencies,
   invocation: NodeExecutionInvocation<unknown, unknown>,
@@ -518,180 +364,6 @@ async function executeHttpRequest(
   }
 }
 
-async function releaseRequestBody(
-  body: Uint8Array | NodeVerifiedByteSource | undefined,
-): Promise<void> {
-  if (body instanceof Uint8Array) body.fill(0);
-  else await body?.release();
-}
-
-async function writeArtifact(
-  artifacts: NonNullable<
-    NodeExecutionInvocation<unknown, unknown>['runtime']
-  >['artifacts'],
-  body: AsyncIterable<Uint8Array>,
-  mediaType: string,
-  maxBytes: number,
-  signal: AbortSignal,
-  repeatable: boolean,
-  cancelSource?: (reason: Error) => void,
-) {
-  const failure: HttpOutcomeDecision = repeatable
-    ? Object.freeze({
-        kind: 'retry',
-        errorKind: 'provider',
-        reuseProviderKey: false,
-      })
-    : Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' });
-  if (artifacts === undefined)
-    throw new HttpRequestExecutorError(failure, true);
-  let reference;
-  try {
-    reference = await artifacts.write({
-      body,
-      maxBytes,
-      mediaType,
-      purpose: 'node-output',
-      signal,
-      ...(cancelSource === undefined ? {} : { cancelSource }),
-    });
-  } catch (error) {
-    throw new HttpRequestExecutorError(failure, true, error);
-  }
-  return Object.freeze({ kind: 'artifact' as const, ...reference });
-}
-
-function concatenate(chunks: readonly Uint8Array[], byteLength: number) {
-  const result = new Uint8Array(byteLength);
-  let offset = 0;
-  for (const chunk of chunks) {
-    result.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return result;
-}
-
-type BodyFailure = Readonly<{ error: unknown; failed: boolean }>;
-const NO_BODY_FAILURE: BodyFailure = Object.freeze({
-  error: undefined,
-  failed: false,
-});
-
-async function preserveBodyFailureDuringCleanup(
-  primary: BodyFailure,
-  cleanup: () => Promise<void>,
-): Promise<void> {
-  try {
-    await cleanup();
-  } catch (cleanupError) {
-    if (primary.failed)
-      throw new AggregateError(
-        [primary.error, cleanupError],
-        'HTTP response body failed and its iterator cleanup was incomplete',
-      );
-    throw safeInstanceOf(cleanupError, Error)
-      ? cleanupError
-      : new Error('HTTP response body cleanup failed', {
-          cause: cleanupError,
-        });
-  }
-}
-
-async function* continueBody(
-  buffered: readonly Uint8Array[],
-  iterator: AsyncIterator<Uint8Array>,
-  markCleanupStarted: () => void,
-): AsyncGenerator<Uint8Array> {
-  let primary: BodyFailure = NO_BODY_FAILURE;
-  try {
-    for (const chunk of buffered) {
-      try {
-        yield chunk;
-      } finally {
-        chunk.fill(0);
-      }
-    }
-    for (;;) {
-      const next = await iterator.next();
-      if (next.done === true) break;
-      const chunk = next.value;
-      try {
-        yield chunk;
-      } finally {
-        chunk.fill(0);
-      }
-    }
-  } catch (error) {
-    primary = { error, failed: true };
-    throw error;
-  } finally {
-    markCleanupStarted();
-    await preserveBodyFailureDuringCleanup(primary, async () => {
-      await iterator.return?.();
-    });
-  }
-}
-
-async function consumeResponseBody(
-  artifacts: NonNullable<
-    NodeExecutionInvocation<unknown, unknown>['runtime']
-  >['artifacts'],
-  inlineLimit: number,
-  maxBytes: number,
-  response: Parameters<Parameters<SecureHttpClient['executeStreaming']>[1]>[0],
-  repeatable: boolean,
-) {
-  const iterator = response.body[Symbol.asyncIterator]();
-  const buffered: Uint8Array[] = [];
-  let byteLength = 0;
-  const bodyOwnership = { cleanupStarted: false };
-  try {
-    for (;;) {
-      const next = await iterator.next();
-      if (next.done === true) {
-        const bytes = concatenate(buffered, byteLength);
-        try {
-          return inlineBody(
-            bytes,
-            response.bodyEncoding,
-            response.headers['content-type'],
-          );
-        } finally {
-          bytes.fill(0);
-          for (const chunk of buffered) chunk.fill(0);
-        }
-      }
-      const chunk = next.value;
-      buffered.push(chunk);
-      byteLength += chunk.byteLength;
-      if (byteLength > inlineLimit) {
-        return await writeArtifact(
-          artifacts,
-          continueBody(buffered, iterator, () => {
-            bodyOwnership.cleanupStarted = true;
-          }),
-          response.headers['content-type'] ?? 'application/octet-stream',
-          maxBytes,
-          response.signal,
-          repeatable,
-          response.cancelSource,
-        );
-      }
-    }
-  } catch (error: unknown) {
-    for (const chunk of buffered) chunk.fill(0);
-    if (!bodyOwnership.cleanupStarted)
-      await preserveBodyFailureDuringCleanup(
-        { error, failed: true },
-        async () => {
-          bodyOwnership.cleanupStarted = true;
-          await iterator.return?.();
-        },
-      );
-    throw error;
-  }
-}
-
 export function createHttpRequestExecutorRegistration(
   dependencies: HttpRequestExecutorDependencies,
 ): NodeExecutorRegistration {
@@ -702,24 +374,4 @@ export function createHttpRequestExecutorRegistration(
         () => executeHttpRequest(dependencies, invocation),
       ),
   });
-}
-
-async function releaseHttpMaterial(
-  body: Uint8Array | NodeVerifiedByteSource | undefined,
-  secret: Uint8Array | undefined,
-  repeatable: boolean,
-  possiblyDispatched: boolean,
-): Promise<void> {
-  try {
-    await releaseRequestBody(body);
-  } catch (error) {
-    if (!repeatable && possiblyDispatched)
-      throw new HttpRequestExecutorError(
-        { kind: 'outcome_unknown', errorKind: 'provider' },
-        true,
-      );
-    throw error;
-  } finally {
-    secret?.fill(0);
-  }
 }
