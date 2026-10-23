@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { canonicalWorkflowPortableJson } from './contract.js';
+import { utf8ByteLength } from '../../values/text.js';
 
 const originFields = {
   templateId: z
@@ -23,9 +24,7 @@ export const workflowTemplateOriginSchema = z
   })
   .strict()
   .refine(
-    (value) =>
-      new TextEncoder().encode(canonicalWorkflowPortableJson(value))
-        .byteLength <= 512,
+    (value) => utf8ByteLength(canonicalWorkflowPortableJson(value)) <= 512,
   );
 
 export type WorkflowTemplateOriginRequest = z.infer<

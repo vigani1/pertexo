@@ -170,7 +170,10 @@ editor owns test history; lifecycle retention expires their data after seven day
 Storage may import `@pertexo/contracts` types for read models; it never loads
 runtime HTTP schemas or limits. ESLint enforces that boundary. Shared workspace
 identity, governance and authoring rules live in `workflow-model`; contracts
-re-export them and derive transport schemas. Stored command receipts and query
+re-export them and derive transport schemas. The unchanged template provenance
+format also lives in the model; storage retains its bounded-format check and
+imports only template types. ESLint permits only the schedule schema as a
+runtime import from `nodes-core`. Stored command receipts and query
 records are typed at their reads. The API prepares webhook run input and verifies
 curated template manifests before calling storage; acceptance still locks and
 rechecks the exact endpoint/version or draft binding in its transaction.
