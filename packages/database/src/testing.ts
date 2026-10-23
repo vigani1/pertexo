@@ -12,9 +12,9 @@ export {
 export {
   createFailureNotificationDestinationDatabase,
   FailureNotificationDestinationError,
-  type FailureNotificationDestinationDatabase,
   type FailureNotificationDestinationRecord,
 } from './notifications/destinations/repository.js';
+export type { FailureNotificationDestinationDatabase } from './notifications/destinations/contract.js';
 export { createDueNodeWakeupScanner } from './runs/wakeups/due-node-scanner.js';
 export type { DueNodeWakeupScanner } from './runs/wakeups/due-node-scanner.js';
 export {
