@@ -1,121 +1,53 @@
 import { GovernanceModule } from '../../governance/module.js';
-import type { GovernanceStore } from '@pertexo/database/governance';
+
 import { DataTablesModule } from '../../data-tables/module.js';
-import type { DataTablesStore } from '@pertexo/database/data-tables';
+
 import { DEFAULT_CODE_SETTINGS, type CodeSettings } from '@pertexo/node-sdk';
 import { WorkspaceVariablesModule } from '../../workspace-variables/module.js';
-import type { WorkspaceVariablesStore } from '@pertexo/database/variables';
-import { createFormStore, type FormStore } from '@pertexo/database/triggers';
+
+import { createFormStore } from '@pertexo/database/triggers';
 import { initialCheckpointFactory } from '@pertexo/execution';
 import { FormsModule } from '../../forms/module.js';
-import {
-  createPendingTaskStore,
-  type PendingTaskStore,
-} from '@pertexo/database/runs';
+import { createPendingTaskStore } from '@pertexo/database/runs';
 import { PendingTasksModule } from '../../pending-tasks/module.js';
 import type { DynamicModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
-import { metrics, trace } from '@opentelemetry/api';
+
 import {
   createWorkspaceDatabase,
   type DatabaseConfig,
   type DatabaseRuntime,
-  type WorkspaceDatabase,
 } from '@pertexo/database/platform';
-import {
-  createWorkflowAuthoringDatabase,
-  createWorkflowInputCaseDatabase,
-  type WorkflowAuthoringDatabase,
-  type WorkflowInputCaseDatabase,
-} from '@pertexo/database/authoring';
-import {
-  JsonataEvaluator,
-  WorkflowAuthoringValidator,
-} from '@pertexo/workflow-model/server';
 
+import { JsonataEvaluator } from '@pertexo/workflow-model/server';
 import type { ApiIdentityRuntime } from '../identity/identity-runtime.module.js';
+import { createApiWorkflowMetadataRuntime } from './metadata-runtime.js';
 import {
-  createApiWorkflowMetadataRuntime,
-  type ApiWorkflowMetadataRuntime,
-} from './metadata-runtime.js';
-import {
-  createPostgresRunEventReader,
-  RedisRunEventPublisher,
   RedisRunEventSource,
   type LiveRunEventSource,
-  type RunEventNotificationPublisher,
 } from '../../workflow-runs/events/index.js';
+import { WorkflowAuthoringModule } from '../../workflow-authoring/index.js';
+import { NodeTestingModule } from '../../node-testing/index.js';
+import { WorkflowRunsModule } from '../../workflow-runs/index.js';
+import { createCoreWorkflowCompatibility } from './compatibility.js';
+import type {
+  ApiWorkflowRuntime,
+  ApiWorkflowRuntimeOverrides,
+  WorkflowResources,
+} from './composition/contract.js';
 import {
-  createWorkflowAuthoringTelemetry,
-  WorkflowAuthoringModule,
-  type WorkflowAuthoringDependencies,
-  type WorkflowAuthoringMeter,
-  type WorkflowAuthoringSpan,
-  type WorkflowAuthoringTracer,
-} from '../../workflow-authoring/index.js';
-import {
-  NodeTestingModule,
-  type NodeTestingDependencies,
-} from '../../node-testing/index.js';
-import {
-  createPostgresWorkflowRunPersistence,
-  createWorkflowRunEventStreamer,
-  WorkflowRunsModule,
-  type WorkflowRunPersistence,
-  type WorkflowRunsDependencies,
-} from '../../workflow-runs/index.js';
-import {
-  createCoreAuthoringOptions,
-  createCoreWorkflowCompatibility,
-} from './compatibility.js';
-
+  acquireAuthoringDatabase,
+  acquireRunPersistence,
+  configuredRunEventStreamer,
+} from './composition/acquire.js';
+import { assembleWorkflowRuntime } from './composition/assemble.js';
+import { collectWorkflowCloseFailures } from './composition/lifecycle.js';
+import { productionTelemetry } from './composition/telemetry.js';
 export { createCoreWorkflowAuthoringDatabase } from './compatibility.js';
-
-export type ApiWorkflowRuntime = Readonly<{
-  dependencies: WorkflowAuthoringDependencies;
-  nodeTestingDependencies?: NodeTestingDependencies;
-  runDependencies: WorkflowRunsDependencies;
-  pendingTasks?: PendingTaskStore;
-  forms?: FormStore;
-  variables?: WorkspaceVariablesStore;
-  dataTables?: DataTablesStore;
-  governance?: GovernanceStore;
-  checkReadiness?(): Promise<void>;
-  close(): Promise<void>;
-}>;
-
-export type ApiWorkflowRuntimeOverrides = Readonly<{
-  authoring?: Readonly<{
-    database?: WorkflowAuthoringDatabase;
-    databaseFactory?: typeof createWorkflowAuthoringDatabase;
-    inputCasePersistence?: WorkflowInputCaseDatabase;
-    inputCasePersistenceFactory?: typeof createWorkflowInputCaseDatabase;
-    telemetry?: WorkflowAuthoringDependencies['telemetry'];
-    telemetryFactory?: () => NonNullable<
-      WorkflowAuthoringDependencies['telemetry']
-    >;
-    expressionEvaluatorFactory?: () => JsonataEvaluator;
-    authoringValidatorFactory?: () => Pick<
-      WorkflowAuthoringValidator,
-      'validate' | 'shutdown'
-    >;
-  }>;
-  persistence?: Readonly<{
-    notifications?: RunEventNotificationPublisher;
-    notificationsFactory?: (redisUrl: string) => RunEventNotificationPublisher;
-    runs?: WorkflowRunPersistence;
-    runsFactory?: typeof createPostgresWorkflowRunPersistence;
-  }>;
-  streaming?: Readonly<{
-    database?: WorkspaceDatabase;
-    databaseFactory?: typeof createWorkspaceDatabase;
-    liveSource?: LiveRunEventSource;
-    liveSourceFactory?: (redisUrl: string) => LiveRunEventSource;
-    streamer?: WorkflowRunsDependencies['streamer'];
-    streamerFactory?: typeof createWorkflowRunEventStreamer;
-  }>;
-}>;
-
+export {
+  type ApiWorkflowRuntime,
+  type ApiWorkflowRuntimeOverrides,
+} from './composition/contract.js';
 export async function createApiWorkflowRuntime(
   databaseConfig: DatabaseConfig,
   identityRuntime: ApiIdentityRuntime,
@@ -241,136 +173,6 @@ export async function createApiWorkflowRuntime(
   }
 }
 
-async function closeWorkflowResources(
-  authoring: WorkflowAuthoringDatabase,
-  runs: ReturnType<typeof createPostgresWorkflowRunPersistence> | undefined,
-  {
-    events,
-    notifications,
-    expressionEvaluator,
-    authoringValidator,
-    metadata,
-    pendingTasks,
-    forms,
-  }: Readonly<{
-    events: WorkspaceDatabase | undefined;
-    notifications: RunEventNotificationPublisher | undefined;
-    expressionEvaluator: JsonataEvaluator;
-    authoringValidator:
-      Pick<WorkflowAuthoringValidator, 'shutdown'> | undefined;
-    metadata: ApiWorkflowMetadataRuntime | undefined;
-    pendingTasks: PendingTaskStore | undefined;
-    forms: FormStore | undefined;
-  }>,
-): Promise<void> {
-  const failures = await collectWorkflowCloseFailures(authoring, runs, {
-    events: events,
-    notifications: notifications,
-    expressionEvaluator: expressionEvaluator,
-    authoringValidator: authoringValidator,
-    metadata: metadata,
-    pendingTasks: pendingTasks,
-    forms: forms,
-  });
-  if (failures.length > 0)
-    throw new AggregateError(failures, 'Workflow resource shutdown failed');
-}
-
-async function collectWorkflowCloseFailures(
-  authoring: WorkflowAuthoringDatabase | undefined,
-  runs: ReturnType<typeof createPostgresWorkflowRunPersistence> | undefined,
-  {
-    events,
-    notifications,
-    expressionEvaluator,
-    authoringValidator,
-    metadata,
-    pendingTasks,
-    forms,
-  }: Readonly<{
-    events: WorkspaceDatabase | undefined;
-    notifications: RunEventNotificationPublisher | undefined;
-    expressionEvaluator: JsonataEvaluator | undefined;
-    authoringValidator:
-      Pick<WorkflowAuthoringValidator, 'shutdown'> | undefined;
-    metadata: ApiWorkflowMetadataRuntime | undefined;
-    pendingTasks: PendingTaskStore | undefined;
-    forms: FormStore | undefined;
-  }>,
-): Promise<unknown[]> {
-  const failures: unknown[] = [];
-  try {
-    await authoringValidator?.shutdown();
-  } catch (error) {
-    failures.push(error);
-  }
-  const results = await Promise.allSettled([
-    Promise.resolve().then(() => authoring?.close()),
-    Promise.resolve().then(() => metadata?.close()),
-    Promise.resolve().then(() => pendingTasks?.close()),
-    Promise.resolve().then(() => forms?.close()),
-    Promise.resolve().then(() => runs?.close()),
-    Promise.resolve().then(() => events?.close()),
-    Promise.resolve().then(() => notifications?.close()),
-    Promise.resolve().then(() => expressionEvaluator?.shutdown()),
-  ]);
-  return [
-    ...failures,
-    ...results.flatMap((result) =>
-      result.status === 'rejected' ? [result.reason as unknown] : [],
-    ),
-  ];
-}
-
-function productionTelemetry(): NonNullable<
-  WorkflowAuthoringDependencies['telemetry']
-> {
-  const meter = metrics.getMeter('@pertexo/api.workflow-authoring', '0.0.0');
-  const tracer = trace.getTracer('@pertexo/api.workflow-authoring', '0.0.0');
-  const meterAdapter: WorkflowAuthoringMeter = {
-    createCounter: (name, options) => {
-      const counter = meter.createCounter(name, options);
-      return {
-        add: (value, attributes) => {
-          counter.add(value, attributes);
-        },
-      };
-    },
-    createHistogram: (name, options) => {
-      const histogram = meter.createHistogram(name, options);
-      return {
-        record: (value, attributes) => {
-          histogram.record(value, attributes);
-        },
-      };
-    },
-  };
-  const tracerAdapter: WorkflowAuthoringTracer = {
-    startActiveSpan: (name, callback) =>
-      tracer.startActiveSpan(name, (span) => callback(spanAdapter(span))),
-  };
-  return createWorkflowAuthoringTelemetry({
-    meter: meterAdapter,
-    tracer: tracerAdapter,
-  });
-}
-
-function spanAdapter(
-  span: Readonly<{
-    setAttribute(name: string, value: string): unknown;
-    end(): void;
-  }>,
-): WorkflowAuthoringSpan {
-  return {
-    setAttribute: (name, value) => {
-      span.setAttribute(name, value);
-    },
-    end: () => {
-      span.end();
-    },
-  };
-}
-
 @Module({})
 // Nest dynamic modules require a class container.
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
@@ -445,218 +247,4 @@ export class WorkflowRuntimeModule {
       providers: [],
     };
   }
-}
-
-interface WorkflowRuntimeAssembly {
-  readonly database: WorkflowAuthoringDatabase;
-  readonly metadataRuntime: ApiWorkflowMetadataRuntime;
-  readonly pendingTasks: PendingTaskStore;
-  readonly forms: FormStore;
-  readonly runPersistence: WorkflowRunPersistence;
-  readonly runStreamer: NonNullable<WorkflowRunsDependencies['streamer']>;
-  readonly liveSource: LiveRunEventSource | undefined;
-  readonly telemetry: NonNullable<WorkflowAuthoringDependencies['telemetry']>;
-  readonly expressionEvaluator: JsonataEvaluator;
-  readonly authoringValidator:
-    Pick<WorkflowAuthoringValidator, 'validate' | 'shutdown'> | undefined;
-  readonly runAdapter:
-    ReturnType<typeof createPostgresWorkflowRunPersistence> | undefined;
-  readonly eventDatabase: WorkspaceDatabase | undefined;
-  readonly notifications: RunEventNotificationPublisher | undefined;
-  readonly identityRuntime: ApiIdentityRuntime;
-}
-
-function assembleWorkflowRuntime({
-  database,
-  metadataRuntime,
-  pendingTasks,
-  forms,
-  runPersistence,
-  runStreamer,
-  liveSource,
-  telemetry,
-  expressionEvaluator,
-  authoringValidator,
-  runAdapter,
-  eventDatabase,
-  notifications,
-  identityRuntime,
-}: WorkflowRuntimeAssembly): ApiWorkflowRuntime {
-  const acquiredDatabase = database;
-
-  const acquiredMetadataRuntime = metadataRuntime;
-
-  const acquiredPendingTasks = pendingTasks;
-
-  const acquiredForms = forms;
-
-  const acquiredRunAdapter = runAdapter;
-
-  const acquiredEventDatabase = eventDatabase;
-
-  const acquiredNotifications = notifications;
-
-  const acquiredExpressionEvaluator = expressionEvaluator;
-
-  const acquiredAuthoringValidator = authoringValidator;
-
-  let closePromise: Promise<void> | undefined;
-
-  return Object.freeze({
-    pendingTasks,
-    forms,
-    variables: metadataRuntime.variables,
-    dataTables: metadataRuntime.dataTables,
-    governance: metadataRuntime.governance,
-    dependencies: Object.freeze({
-      persistence: database,
-      portabilityPersistence: database,
-      ...(database.collaboration === undefined
-        ? {}
-        : { collaborationPersistence: database.collaboration }),
-      ...(database.promotions === undefined
-        ? {}
-        : { promotionPersistence: database.promotions }),
-      ...(database.publicationReviews === undefined
-        ? {}
-        : { publicationReviewPersistence: database.publicationReviews }),
-      ...(metadataRuntime.inputCases === undefined
-        ? {}
-        : { inputCasePersistence: metadataRuntime.inputCases }),
-      organization: metadataRuntime.organization,
-      ...(database.errorWorkflow === undefined
-        ? {}
-        : { errorWorkflowPersistence: database.errorWorkflow }),
-      ...(database.concurrency === undefined
-        ? {}
-        : { concurrencyPersistence: database.concurrency }),
-      ...(database.autoPause === undefined
-        ? {}
-        : { autoPausePersistence: database.autoPause }),
-      authorization: identityRuntime.dependencies.authorization,
-      telemetry,
-    }),
-    nodeTestingDependencies: Object.freeze({
-      persistence: database,
-      authorization: identityRuntime.dependencies.authorization,
-      expressionEvaluator,
-    }),
-    runDependencies: Object.freeze({
-      persistence: runPersistence,
-      authorization: identityRuntime.dependencies.authorization,
-      streamer: runStreamer,
-    }),
-    checkReadiness: (): Promise<void> => {
-      if (liveSource === undefined) return Promise.resolve();
-      const readiness = liveSource as LiveRunEventSource & {
-        checkReadiness?: () => Promise<void>;
-      };
-      return readiness.checkReadiness?.() ?? Promise.resolve();
-    },
-    close: (): Promise<void> => {
-      closePromise ??= closeWorkflowResources(
-        acquiredDatabase,
-        acquiredRunAdapter,
-        {
-          events: acquiredEventDatabase,
-          notifications: acquiredNotifications,
-          expressionEvaluator: acquiredExpressionEvaluator,
-          authoringValidator: acquiredAuthoringValidator,
-          metadata: acquiredMetadataRuntime,
-          pendingTasks: acquiredPendingTasks,
-          forms: acquiredForms,
-        },
-      );
-      return closePromise;
-    },
-  });
-}
-
-interface WorkflowResources {
-  database: WorkflowAuthoringDatabase | undefined;
-  metadataRuntime: ApiWorkflowMetadataRuntime | undefined;
-  pendingTasks: PendingTaskStore | undefined;
-  forms: FormStore | undefined;
-  notifications: RunEventNotificationPublisher | undefined;
-  runAdapter:
-    ReturnType<typeof createPostgresWorkflowRunPersistence> | undefined;
-  eventDatabase: WorkspaceDatabase | undefined;
-  expressionEvaluator: JsonataEvaluator | undefined;
-  authoringValidator:
-    Pick<WorkflowAuthoringValidator, 'validate' | 'shutdown'> | undefined;
-}
-
-function acquireAuthoringDatabase(
-  databaseConfig: DatabaseConfig,
-  resources: WorkflowResources,
-  {
-    authoring,
-    compatibility,
-    codeSettings,
-    runtime,
-  }: Readonly<{
-    authoring: NonNullable<ApiWorkflowRuntimeOverrides['authoring']>;
-    compatibility: ReturnType<typeof createCoreWorkflowCompatibility>;
-    codeSettings: CodeSettings;
-    runtime: DatabaseRuntime | undefined;
-  }>,
-): WorkflowAuthoringDatabase {
-  if (authoring.database !== undefined) {
-    resources.database = authoring.database;
-  } else {
-    const validator =
-      authoring.authoringValidatorFactory?.() ??
-      new WorkflowAuthoringValidator();
-    resources.authoringValidator = validator;
-    resources.database = (
-      authoring.databaseFactory ?? createWorkflowAuthoringDatabase
-    )(databaseConfig, {
-      ...createCoreAuthoringOptions(compatibility, validator, codeSettings),
-      ...(runtime === undefined ? {} : { runtime }),
-    });
-  }
-  return resources.database;
-}
-
-function acquireRunPersistence(
-  databaseConfig: DatabaseConfig,
-  resources: WorkflowResources,
-  {
-    persistence,
-    redisUrl,
-    runtime,
-  }: Readonly<{
-    persistence: NonNullable<ApiWorkflowRuntimeOverrides['persistence']>;
-    redisUrl: string;
-    runtime: DatabaseRuntime | undefined;
-  }>,
-): WorkflowRunPersistence | undefined {
-  if (persistence.runs === undefined) {
-    resources.notifications =
-      persistence.notifications ??
-      (
-        persistence.notificationsFactory ??
-        ((url) => new RedisRunEventPublisher({ redisUrl: url }))
-      )(redisUrl);
-    resources.runAdapter = (
-      persistence.runsFactory ?? createPostgresWorkflowRunPersistence
-    )(databaseConfig, undefined, resources.notifications, runtime);
-  }
-  return persistence.runs ?? resources.runAdapter?.persistence;
-}
-
-function configuredRunEventStreamer(
-  streaming: NonNullable<ApiWorkflowRuntimeOverrides['streaming']>,
-  eventDatabase: WorkspaceDatabase | undefined,
-  liveSource: LiveRunEventSource | undefined,
-): WorkflowRunsDependencies['streamer'] | undefined {
-  return (
-    streaming.streamer ??
-    (eventDatabase === undefined || liveSource === undefined
-      ? undefined
-      : (streaming.streamerFactory ?? createWorkflowRunEventStreamer)(
-          createPostgresRunEventReader(eventDatabase),
-          liveSource,
-        ))
-  );
 }
