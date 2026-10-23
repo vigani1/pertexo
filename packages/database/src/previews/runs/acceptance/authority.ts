@@ -87,15 +87,14 @@ export async function assertPreviewActor(
     )
     .for('share')
     .limit(1);
-  if (
+  const authorUnavailable =
     workspace.length !== 1 ||
     actor.length !== 1 ||
     membership[0] === undefined ||
     !rolesForCapability('workflow:update').some(
       (role) => role === membership[0]?.role,
-    )
-  )
-    throw new PreviewAdmissionDeniedError('actor');
+    );
+  if (authorUnavailable) throw new PreviewAdmissionDeniedError('actor');
 }
 
 async function previewWorkflowScope(

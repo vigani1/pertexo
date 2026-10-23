@@ -1,3 +1,4 @@
+import { isIntegerInRange } from '../../platform/persisted-primitives.js';
 import { CronExpressionParser } from 'cron-parser';
 import { CORE_SCHEDULE_CONFIG_SCHEMA } from '@pertexo/nodes-core';
 import { z } from 'zod';
@@ -329,7 +330,12 @@ export function projectScheduleOccurrences(
   observedAt: Date,
   count: number,
 ): readonly Date[] {
-  if (!Number.isInteger(count) || count < 1 || count > MAX_SCHEDULE_PROJECTION)
+  const invalidProjectionCount = !isIntegerInRange(
+    count,
+    1,
+    MAX_SCHEDULE_PROJECTION,
+  );
+  if (invalidProjectionCount)
     throw new RangeError('Schedule projection count is out of bounds');
   const occurrences: Date[] = [];
   let cursor = observedAt;

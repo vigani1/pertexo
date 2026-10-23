@@ -1,3 +1,4 @@
+import { isIntegerInRange } from '../../platform/persisted-primitives.js';
 import type { Pool, PoolClient } from 'pg';
 
 import { destroyCanceledPoolClient } from '../../platform/pool/client-disposal.js';
@@ -40,12 +41,8 @@ export async function observeScheduleToStartSeconds(
   signal: AbortSignal,
   timeoutMillis = defaultObservationTimeoutMillis,
 ): Promise<number | undefined> {
-  if (
-    !Number.isSafeInteger(timeoutMillis) ||
-    timeoutMillis < 1 ||
-    timeoutMillis > 2_147_483_647
-  )
-    return undefined;
+  const invalidTimeout = !isIntegerInRange(timeoutMillis, 1, 2_147_483_647);
+  if (invalidTimeout) return undefined;
   const dueAtMillis = Date.parse(scheduleDueAt);
   if (!Number.isFinite(dueAtMillis)) return undefined;
 

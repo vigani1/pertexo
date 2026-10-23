@@ -93,7 +93,7 @@ export async function reconcileUnknownOutcomeEvidence(
       }
       if (row === undefined)
         throw new UnknownOutcomeReconciliationMismatchError();
-      if (
+      const invalidDelivery =
         row.aggregate_id !== parsed.attemptId ||
         row.aggregate_type !== 'node-attempt' ||
         row.job_name !== 'reconcile-unknown-outcome' ||
@@ -102,8 +102,8 @@ export async function reconcileUnknownOutcomeEvidence(
         payload.workspaceId !== transaction.workspaceId ||
         payload.attemptId !== parsed.attemptId ||
         payload.evidenceCommandId !== parsed.evidenceCommandId ||
-        payload.outboxEventId !== parsed.delivery.outboxEventId
-      )
+        payload.outboxEventId !== parsed.delivery.outboxEventId;
+      if (invalidDelivery)
         throw new UnknownOutcomeReconciliationMismatchError();
 
       const evidence = await transaction.db.execute<{ status: string }>(sql`

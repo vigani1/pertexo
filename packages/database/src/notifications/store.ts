@@ -1,3 +1,4 @@
+import { isIntegerInRange } from '../platform/persisted-primitives.js';
 import { acquireDatabasePool } from '../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../platform/pool/runtime.js';
 import { createHash } from 'node:crypto';
@@ -58,7 +59,8 @@ function createFailureNotificationRecovery(
       maxAttempts: number,
       signal?: AbortSignal,
     ) => {
-      if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100)
+      const invalidLimit = !isIntegerInRange(limit, 1, 100);
+      if (invalidLimit)
         throw new FailureNotificationStateError('Invalid recovery limit');
       const parsedMaxAttempts =
         parseFailureNotificationMaximumAttempts(maxAttempts);
@@ -96,11 +98,12 @@ export function createFailureNotificationStore(
       const maxAttempts = parseFailureNotificationMaximumAttempts(
         raw.maxAttempts,
       );
-      if (
-        !Number.isSafeInteger(raw.recoverySeconds) ||
-        raw.recoverySeconds < 1 ||
-        raw.recoverySeconds > 3600
-      )
+      const invalidRecoveryWindow = !isIntegerInRange(
+        raw.recoverySeconds,
+        1,
+        3600,
+      );
+      if (invalidRecoveryWindow)
         throw new FailureNotificationStateError('Invalid recovery timeout');
       const transaction: FailureNotificationTransaction =
         raw.signal === undefined
@@ -127,13 +130,13 @@ export function createFailureNotificationStore(
             : createHash('sha256')
                 .update(serializeStoredExecutionJsonValue(outbox.payload))
                 .digest('hex');
-        if (
+        const invalidDelivery =
           outbox?.aggregate_id !== intentId ||
           outbox.aggregate_type !== 'run-failure-notification' ||
           outbox.job_name !== 'deliver-run-failure-notification' ||
           outbox.payload_checksum !== delivery.payloadChecksum ||
-          actualChecksum !== delivery.payloadChecksum
-        )
+          actualChecksum !== delivery.payloadChecksum;
+        if (invalidDelivery)
           throw new FailureNotificationStateError('Delivery identity mismatch');
         const result = await client.query<{
           context: unknown;
@@ -167,11 +170,10 @@ export function createFailureNotificationStore(
           return Object.freeze({ kind: 'terminal' as const });
         if (row.status === 'claimed' || row.status === 'dispatching')
           return Object.freeze({ kind: 'busy' as const });
-        if (
+        const retryNotDue =
           row.status === 'retry' &&
-          (row.next_delivery_at === null || !row.retry_due)
-        )
-          return Object.freeze({ kind: 'busy' as const });
+          (row.next_delivery_at === null || !row.retry_due);
+        if (retryNotDue) return Object.freeze({ kind: 'busy' as const });
         if (row.delivery_attempts >= maxAttempts) {
           const unresolved =
             row.side_effect_class === 'idempotent_with_key' &&
@@ -198,10 +200,10 @@ export function createFailureNotificationStore(
           });
           return Object.freeze({ kind: 'terminal' as const });
         }
-        if (
+        const invalidPendingAttempt =
           (row.status !== 'pending' && row.status !== 'retry') ||
-          (row.status === 'pending' && row.delivery_attempts !== 0)
-        )
+          (row.status === 'pending' && row.delivery_attempts !== 0);
+        if (invalidPendingAttempt)
           throw new FailureNotificationStateError(
             'Intent lifecycle is corrupt',
           );

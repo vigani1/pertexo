@@ -106,11 +106,11 @@ export async function requireMoveAudienceReview(
   const current = (await reviewMoveAudience(client, actor, request)).items[0];
   if (!current?.requiresReview) return;
   const scope = await readFolderScope(client, actor);
-  if (
+  const audienceReviewRefused =
     scope.role === null ||
     !RESOURCE_ADMINISTRATORS.includes(scope.role) ||
     !review?.acknowledge ||
-    review.token !== current.token
-  )
+    review.token !== current.token;
+  if (audienceReviewRefused)
     throw new WorkflowFolderConflictError('audience_review');
 }

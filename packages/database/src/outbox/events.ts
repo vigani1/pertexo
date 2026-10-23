@@ -99,11 +99,9 @@ function writeCanonicalScalar(
   value: unknown,
   writer: CanonicalJsonWriter,
 ): boolean {
-  if (
-    value === null ||
-    typeof value === 'boolean' ||
-    typeof value === 'string'
-  ) {
+  const primitiveValue =
+    value === null || typeof value === 'boolean' || typeof value === 'string';
+  if (primitiveValue) {
     if (typeof value === 'string') assertPostgresJsonString(value);
     writer.append(JSON.stringify(value));
     return true;
@@ -121,15 +119,17 @@ function inspectCanonicalContainer(
   label: string,
 ): CanonicalContainer {
   const array = Array.isArray(value);
-  if (!array && (constraints?.plainObjectsOnly ?? false)) {
+  const requiresPlainObject =
+    !array && (constraints?.plainObjectsOnly ?? false);
+  if (requiresPlainObject) {
     const prototype = Object.getPrototypeOf(value) as object | null;
     if (prototype !== Object.prototype && prototype !== null)
       throw new BoundedJsonInvalidError(`${label} must contain plain objects`);
   }
-  if (
+  const hasRejectedSymbols =
     (constraints?.rejectSymbols ?? false) &&
-    Object.getOwnPropertySymbols(value).length !== 0
-  )
+    Object.getOwnPropertySymbols(value).length !== 0;
+  if (hasRejectedSymbols)
     throw new BoundedJsonInvalidError(
       `${label} must not contain symbol properties`,
     );
@@ -219,8 +219,9 @@ function canonicalJson(
 
     const item = frame.value;
     if (writeCanonicalScalar(item, writer)) continue;
-    if (item === null || typeof item !== 'object' || nodeTypes.isProxy(item))
-      throw new BoundedJsonInvalidError();
+    const invalidArrayItem =
+      item === null || typeof item !== 'object' || nodeTypes.isProxy(item);
+    if (invalidArrayItem) throw new BoundedJsonInvalidError();
     if (active.has(item)) throw new BoundedJsonInvalidError();
     if (constraints !== undefined && frame.depth >= constraints.maximumDepth)
       throw new BoundedJsonInvalidError(`${label} exceeds its depth limit`);

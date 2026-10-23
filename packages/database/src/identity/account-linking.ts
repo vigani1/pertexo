@@ -1,3 +1,4 @@
+import { isUniqueConstraintFailure } from '../platform/query-errors.js';
 import { hasSignInMethodCapacity } from './federation/accounts/limits.js';
 import {
   readEligibleAuthenticationSession,
@@ -200,13 +201,8 @@ export class AccountLinkingCommands {
       // Drizzle wraps PostgreSQL failures; the constraint remains the arbiter
       // when two users finish a proof for the same provider account.
       const cause = identityQueryFailure(error);
-      if (
-        typeof cause === 'object' &&
-        cause !== null &&
-        'code' in cause &&
-        cause.code === '23505'
-      )
-        return { kind: 'failed' };
+      const uniqueConstraintFailure = isUniqueConstraintFailure(cause);
+      if (uniqueConstraintFailure) return { kind: 'failed' };
       throw error instanceof Error
         ? error
         : new Error('Account linking failed');
@@ -251,12 +247,11 @@ async function lockAttempt(
       ),
     )
     .for('update');
-  if (
+  const invalidJourneyBinding =
     locked?.userId !== attempt.userId ||
     locked.sessionId !== attempt.sessionId ||
-    !locked.browserDigest.equals(journeyDigest(binding))
-  )
-    return undefined;
+    !locked.browserDigest.equals(journeyDigest(binding));
+  if (invalidJourneyBinding) return undefined;
   return locked;
 }
 

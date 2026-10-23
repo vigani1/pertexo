@@ -1,3 +1,4 @@
+import { isIntegerInRange } from '../../platform/persisted-primitives.js';
 import type { Role } from '@pertexo/workflow-model';
 import type { Pool } from 'pg';
 import { z } from 'zod';
@@ -37,7 +38,8 @@ async function listAccessibleWorkspaces(
   const after =
     input.after === undefined ? undefined : parseIdentityUuid(input.after);
   const limit = input.limit ?? 50;
-  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100)
+  const invalidLimit = !isIntegerInRange(limit, 1, 100);
+  if (invalidLimit)
     throw new RangeError('Accessible workspace page limit is invalid');
   return withActorScopedClient(pool, actorId, async (client) => {
     const result = await client.query<{
@@ -145,7 +147,8 @@ async function listWorkspaceMembers(
   const workspaceId = parseIdentityUuid(workspaceIdInput);
   const actorId = parseIdentityUuid(actorIdInput);
   const limit = input.limit ?? 50;
-  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100)
+  const invalidLimit = !isIntegerInRange(limit, 1, 100);
+  if (invalidLimit)
     throw new RangeError('Workspace member page limit is invalid');
   const afterUserId =
     input.after === undefined

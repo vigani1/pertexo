@@ -66,26 +66,25 @@ export async function readExistingAcceptance(
     throw new PreviewIdempotencyConflictError();
   const resultRef = resultRefSchema.safeParse(row.resultRef);
   const status = previewStatusSchema.safeParse(row.previewStatus);
-  if (
+  const { acceptedAt, expiresAt } = row;
+  const incompleteReceipt =
     row.idempotencyStatus !== 'completed' ||
-    row.acceptedAt === null ||
-    row.expiresAt === null ||
+    acceptedAt === null ||
+    expiresAt === null ||
     !resultRef.success ||
-    !status.success
-  )
-    throw new PreviewAcceptanceCorruptError();
-  if (
+    !status.success;
+  if (incompleteReceipt) throw new PreviewAcceptanceCorruptError();
+  const invalidPinnedReceipt =
     'pinnedSampleId' in resultRef.data &&
     (row.pinnedSampleId !== resultRef.data.pinnedSampleId ||
       status.data !== PREVIEW_STATUS.succeeded ||
-      row.outputRef === null)
-  )
-    throw new PreviewAcceptanceCorruptError();
+      row.outputRef === null);
+  if (invalidPinnedReceipt) throw new PreviewAcceptanceCorruptError();
   return Object.freeze({
-    acceptedAt: row.acceptedAt,
+    acceptedAt,
     completedAt: row.completedAt,
     duplicate: true,
-    expiresAt: row.expiresAt,
+    expiresAt,
     outboxEventId:
       'outboxEventId' in resultRef.data ? resultRef.data.outboxEventId : null,
     previewAttemptId:

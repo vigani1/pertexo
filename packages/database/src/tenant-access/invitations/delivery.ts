@@ -152,12 +152,12 @@ async function claimInvitationDelivery(
         : createHash('sha256')
             .update(serializeStoredExecutionJsonValue(outbox.payload))
             .digest('hex');
-    if (
+    const invalidDelivery =
       outbox?.aggregate_id !== invitationId ||
       outbox.aggregate_type !== 'workspace-invitation' ||
       outbox.job_name !== 'deliver-workspace-invitation' ||
-      outbox.payload_checksum !== checksum
-    )
+      outbox.payload_checksum !== checksum;
+    if (invalidDelivery)
       throw new Error('Workspace invitation delivery identity mismatch');
     await lockDeliveryScope(
       client,
@@ -198,13 +198,13 @@ async function claimInvitationDelivery(
     const row = result.rows[0];
     if (row === undefined)
       throw new Error('Workspace invitation delivery is unavailable');
-    if (
+    const invitationUnavailable =
       row.workspace_status !== 'active' ||
       row.invitation_status !== 'pending' ||
       row.invitation_revision !== row.current_revision ||
       row.expired ||
-      ['submitted', 'failed', 'canceled'].includes(row.attempt_status)
-    ) {
+      ['submitted', 'failed', 'canceled'].includes(row.attempt_status);
+    if (invitationUnavailable) {
       if (!['submitted', 'failed', 'canceled'].includes(row.attempt_status))
         await client.query(
           `update app.workspace_invitation_delivery_attempts
@@ -215,10 +215,10 @@ async function claimInvitationDelivery(
                   and status in ('queued','unknown')`,
           [workspaceId, deliveryAttemptId, invitationId],
         );
-      if (
+      const mustExpireInvitation =
         row.invitation_status === 'pending' &&
-        (row.expired || row.workspace_status !== 'active')
-      )
+        (row.expired || row.workspace_status !== 'active');
+      if (mustExpireInvitation)
         await client.query(
           `update app.workspace_invitations
                   set delivery_status='canceled',updated_at=clock_timestamp()
@@ -227,13 +227,13 @@ async function claimInvitationDelivery(
         );
       return Object.freeze({ kind: 'terminal' as const });
     }
-    if (
+    const attemptUnavailable =
       !['queued', 'unknown'].includes(row.attempt_status) ||
       row.ciphertext === null ||
       row.nonce === null ||
       row.tag === null ||
-      row.key_version === null
-    )
+      row.key_version === null;
+    if (attemptUnavailable)
       throw new Error('Workspace invitation delivery state is invalid');
     return Object.freeze({
       kind: 'ready' as const,

@@ -119,7 +119,7 @@ export async function validatePreviewDelivery(
   } catch {
     throw new PreviewDeliveryMismatchError();
   }
-  if (
+  const invalidExecutionDelivery =
     row.aggregate_id !== input.previewRunId ||
     row.aggregate_type !== 'preview-run' ||
     row.job_name !== 'execute-preview-attempt' ||
@@ -128,9 +128,8 @@ export async function validatePreviewDelivery(
     payload.workspaceId !== input.workspaceId ||
     payload.previewRunId !== input.previewRunId ||
     payload.previewAttemptId !== input.previewAttemptId ||
-    payload.outboxEventId !== input.delivery.outboxEventId
-  )
-    throw new PreviewDeliveryMismatchError();
+    payload.outboxEventId !== input.delivery.outboxEventId;
+  if (invalidExecutionDelivery) throw new PreviewDeliveryMismatchError();
 }
 
 export async function validatePreviewReconciliationDelivery(
@@ -167,7 +166,7 @@ export async function validatePreviewReconciliationDelivery(
   } catch {
     throw new PreviewDeliveryMismatchError();
   }
-  if (
+  const invalidReconciliationDelivery =
     row.aggregate_id !== input.previewRunId ||
     row.aggregate_type !== 'preview-run' ||
     row.job_name !== 'reconcile-preview-attempt' ||
@@ -177,9 +176,8 @@ export async function validatePreviewReconciliationDelivery(
     payload.previewRunId !== input.previewRunId ||
     payload.previewAttemptId !== input.previewAttemptId ||
     payload.attemptFenceToken !== input.attemptFenceToken ||
-    payload.outboxEventId !== input.delivery.outboxEventId
-  )
-    throw new PreviewDeliveryMismatchError();
+    payload.outboxEventId !== input.delivery.outboxEventId;
+  if (invalidReconciliationDelivery) throw new PreviewDeliveryMismatchError();
   return payload;
 }
 

@@ -153,6 +153,22 @@ async function readRunModel(
 
 function toNodeRecord(value: unknown): WorkflowNodeRunRecord {
   const row = nodeRowSchema.parse(value);
+  const {
+    failure_handler_entry_key,
+    failure_handler_sink_key,
+    failure_handling,
+    reused_source_run_id,
+    reused_source_node_run_id,
+    reused_source_completed_at,
+  } = row;
+  const incompleteFailureHandler =
+    failure_handler_entry_key === null ||
+    failure_handler_sink_key === null ||
+    failure_handling === null;
+  const incompleteReusedSource =
+    reused_source_run_id === null ||
+    reused_source_node_run_id === null ||
+    reused_source_completed_at === null;
   return Object.freeze({
     id: row.id,
     nodeId: row.node_id,
@@ -164,26 +180,22 @@ function toNodeRecord(value: unknown): WorkflowNodeRunRecord {
     resumeAt: row.resume_at,
     safeErrorCode: row.safe_error_code,
     ...(row.error_summary === null ? {} : { errorSummary: row.error_summary }),
-    ...(row.failure_handler_entry_key === null ||
-    row.failure_handler_sink_key === null ||
-    row.failure_handling === null
+    ...(incompleteFailureHandler
       ? {}
       : {
           failureHandling: {
-            entryInvocationKey: row.failure_handler_entry_key,
-            sinkInvocationKey: row.failure_handler_sink_key,
-            disposition: row.failure_handling,
+            entryInvocationKey: failure_handler_entry_key,
+            sinkInvocationKey: failure_handler_sink_key,
+            disposition: failure_handling,
           },
         }),
-    ...(row.reused_source_run_id === null ||
-    row.reused_source_node_run_id === null ||
-    row.reused_source_completed_at === null
+    ...(incompleteReusedSource
       ? {}
       : {
           reused: {
-            sourceRunId: row.reused_source_run_id,
-            sourceNodeRunId: row.reused_source_node_run_id,
-            sourceCompletedAt: row.reused_source_completed_at.toISOString(),
+            sourceRunId: reused_source_run_id,
+            sourceNodeRunId: reused_source_node_run_id,
+            sourceCompletedAt: reused_source_completed_at.toISOString(),
           },
         }),
   });

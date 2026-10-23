@@ -93,15 +93,14 @@ async function applyObservation(
     where workspace_id=${workspaceId} and id=${dispatch.connection_id}
     for update`);
   const connection = connections.rows[0];
-  if (
+  const staleObservation =
     connection === undefined ||
     connection.status === 'revoked' ||
     connection.current_secret_version_id !== dispatch.secret_version_id ||
     connection.health_revision !== dispatch.health_revision ||
     connection.provider_key !== 'slack' ||
-    connection.auth_type !== 'slack_bot_token'
-  )
-    return false;
+    connection.auth_type !== 'slack_bot_token';
+  if (staleObservation) return false;
   const ended = await transaction.db.execute(sql`
     select 1 from app.node_attempts
     where workspace_id=${workspaceId} and id=${observation.attempt_id}
@@ -172,7 +171,7 @@ export async function applyConnectionHealthObservation(
         return false;
       }
       const payload = payloadSchema.safeParse(row.payload);
-      if (
+      const invalidDelivery =
         !payload.success ||
         row.aggregate_id !== parsed.observationId ||
         row.aggregate_type !== 'connection-health-observation' ||
@@ -181,9 +180,8 @@ export async function applyConnectionHealthObservation(
         canonicalOutboxPayloadChecksum(payload.data) !== row.payload_checksum ||
         payload.data.workspaceId !== transaction.workspaceId ||
         payload.data.outboxEventId !== parsed.delivery.outboxEventId ||
-        payload.data.observationId !== parsed.observationId
-      )
-        throw new InboxReceiptUnavailableError();
+        payload.data.observationId !== parsed.observationId;
+      if (invalidDelivery) throw new InboxReceiptUnavailableError();
       return applyObservation(transaction, parsed);
     },
     options: {

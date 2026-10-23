@@ -65,12 +65,11 @@ export async function unlinkDirectoryWorkspace(
     );
     if (replay !== null) return;
     if (organization === undefined) throw new DirectoryError('not_found');
-    if (
+    const unlinkRefused =
       organization.control_workspace_id === input.targetWorkspaceId ||
       (input.workspaceId !== organization.control_workspace_id &&
-        input.workspaceId !== input.targetWorkspaceId)
-    )
-      throw new DirectoryError('forbidden');
+        input.workspaceId !== input.targetWorkspaceId);
+    if (unlinkRefused) throw new DirectoryError('forbidden');
     if (
       !organization.workspaces.some(
         (workspace) => workspace.workspace_id === input.targetWorkspaceId,

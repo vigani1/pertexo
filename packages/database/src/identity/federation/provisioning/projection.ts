@@ -103,15 +103,13 @@ export async function projectDirectoryMemberships(
         for (const user of users) {
           const member = members.get(user.user_id);
           // Manual grants, including removed ones, are never adopted implicitly.
-          if (
+          const membershipNotManaged =
             member !== undefined &&
-            (member.directory_user_id !== user.id || member.role === 'owner')
-          )
-            continue;
-          const status =
-            active && user.active && user.deleted_at === null
-              ? 'active'
-              : 'removed';
+            (member.directory_user_id !== user.id || member.role === 'owner');
+          if (membershipNotManaged) continue;
+          const membershipActive =
+            active && user.active && user.deleted_at === null;
+          const status = membershipActive ? 'active' : 'removed';
           const role = directoryRole(
             mappings,
             groupsByUser.get(user.id) ?? new Set<string>(),

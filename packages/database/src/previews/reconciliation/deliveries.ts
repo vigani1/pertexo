@@ -258,11 +258,11 @@ export async function reconcilePreviewDelivery(
             scope.workspaceId,
             input.delivery,
           );
-        if (
+        const staleReconciliation =
           TERMINAL_PREVIEW_STATUSES.has(state.attempt_status) ||
           state.attempt_status !== PREVIEW_STATUS.running ||
-          Number(state.fence_token) !== scope.attemptFenceToken
-        ) {
+          Number(state.fence_token) !== scope.attemptFenceToken;
+        if (staleReconciliation) {
           await completeReceipt();
           return Object.freeze({ kind: 'duplicate' });
         }

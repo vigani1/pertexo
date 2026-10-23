@@ -149,7 +149,7 @@ async function duplicateCompletion(
       row.executor_retry_after_millis !==
         (fields.executorOutcome.minimumRetryDelayMillis ?? null) ||
       row.retry_decision === null);
-  if (
+  const completionMismatch =
     row.attempt_status !== fields.durableStatus ||
     (fields.executorOutcome === undefined &&
       input.outcome.status !== 'suspended' &&
@@ -160,8 +160,8 @@ async function duplicateCompletion(
     row.error_summary !== fields.errorSummary ||
     canonicalJson(row.code_diagnostics) !==
       canonicalJson(input.codeDiagnostics ?? null) ||
-    executorMismatch
-  ) {
+    executorMismatch;
+  if (completionMismatch) {
     throw new NodeAttemptStateCorruptError();
   }
   if (receipt.completed_at === null) {
@@ -179,7 +179,7 @@ function assertActiveLease(
   row: LockedAttemptRow,
   receipt: CompletionReceiptRow,
 ): void {
-  if (
+  const staleAttemptLease =
     row.attempt_status !== 'running' ||
     !row.current_attempt ||
     row.node_status !== 'running' ||
@@ -187,8 +187,8 @@ function assertActiveLease(
     Number(row.fence_token) !== input.lease.fenceToken ||
     row.lease_expires_at === null ||
     !row.lease_valid ||
-    receipt.completed_at !== null
-  ) {
+    receipt.completed_at !== null;
+  if (staleAttemptLease) {
     throw new NodeAttemptReconciliationRequiredError();
   }
 }

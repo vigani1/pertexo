@@ -35,10 +35,9 @@ export async function requireFormAdmission(
     sql`select workflow_version_id,input_ref from app.workflow_runs where workspace_id=${transaction.workspaceId} and id=${input.replaySourceRunId ?? null} and (input_ref_expires_at is null or input_ref_expires_at>clock_timestamp())`,
   );
   const original = source.rows[0];
-  if (
+  const sourceInputChanged =
     original?.workflow_version_id !== input.workflowVersionId ||
     value === undefined ||
-    canonicalJson(original.input_ref) !== canonicalJson(value)
-  )
-    throw new RunRequiresFormError();
+    canonicalJson(original.input_ref) !== canonicalJson(value);
+  if (sourceInputChanged) throw new RunRequiresFormError();
 }

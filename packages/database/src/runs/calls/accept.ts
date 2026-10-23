@@ -95,15 +95,14 @@ export async function acceptPendingCall(
     [workspaceId, parentRunId, call.invocation_key],
   );
   const row = parent.rows[0];
-  if (
+  const parentUnavailable =
     row === undefined ||
     !['running', 'waiting'].includes(row.status) ||
     row.cancel_requested_at !== null ||
     row.deadline_expired ||
     !row.has_wait ||
-    row.has_ordinary_work
-  )
-    return;
+    row.has_ordinary_work;
+  if (parentUnavailable) return;
   const locked = await client.query<
     PendingWorkflowCall & { status: string; deadline_expired: boolean }
   >(
@@ -118,7 +117,10 @@ export async function acceptPendingCall(
   if (lent.rows.length > 0) return;
   await client.query('savepoint workflow_call_candidate');
   try {
-    if (unavailable || projection === null || preparation === undefined)
+    const prepared = preparation;
+    const childUnavailable =
+      unavailable || projection === null || prepared === undefined;
+    if (childUnavailable)
       throw new WorkflowCallRefusedError('call_target_unavailable');
     if (locked.rows[0].deadline_expired)
       throw new WorkflowCallRefusedError('call_deadline_expired');
@@ -160,7 +162,7 @@ export async function acceptPendingCall(
           : { traceparent: input.traceparent }),
       },
       {
-        ...preparation,
+        ...prepared,
         errorWorkflowOrigin: row.error_workflow_origin,
         variableSetRevision: row.variable_set_revision,
       },

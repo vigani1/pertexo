@@ -60,11 +60,10 @@ export async function readVariableUsage(
     createHash('sha256').update(JSON.stringify(value)).digest('hex');
   const stamp = digest([workflow.draft_revision, workflow.version_id]);
   const offset = cursor?.offset ?? 0;
-  if (
+  const staleCursor =
     offset > 0 &&
-    (cursor?.workflowId !== workflow.id || cursor.stamp !== stamp)
-  )
-    throw new WorkspaceVariableUsageChangedError();
+    (cursor?.workflowId !== workflow.id || cursor.stamp !== stamp);
+  if (staleCursor) throw new WorkspaceVariableUsageChangedError();
   let incomplete = false,
     position = 0,
     scanned = 0,
@@ -82,11 +81,11 @@ export async function readVariableUsage(
     )) {
       const ordinal = position++;
       if (ordinal < offset) continue;
-      if (
+      const pageBudgetReached =
         items.length >= input.limit ||
         scanned >= MAX_SOURCES_PER_PAGE ||
-        (scanned > 0 && bytes + entry.costBytes > MAX_SOURCE_BYTES_PER_PAGE)
-      ) {
+        (scanned > 0 && bytes + entry.costBytes > MAX_SOURCE_BYTES_PER_PAGE);
+      if (pageBudgetReached) {
         next = { workflowId: workflow.id, offset: ordinal, stamp };
         break scan;
       }
@@ -95,10 +94,10 @@ export async function readVariableUsage(
       const inspected = inspectWorkflowVariableSource(entry);
       incomplete ||= inspected.incomplete;
       const reference = inspected.reference;
-      if (
+      const referencesVariable =
         reference !== null &&
-        (reference.dynamic || reference.names.includes(input.name))
-      )
+        (reference.dynamic || reference.names.includes(input.name));
+      if (referencesVariable)
         items.push({
           id: digest([
             stage,

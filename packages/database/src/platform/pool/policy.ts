@@ -53,11 +53,11 @@ function positiveTimeout(
   name: string,
 ): number {
   const selected = value === undefined ? fallback : value;
-  if (
+  const invalidTimeout =
     typeof selected !== 'number' ||
     !Number.isSafeInteger(selected) ||
-    selected <= 0
-  )
+    selected <= 0;
+  if (invalidTimeout)
     throw new RangeError(`${name} must be a positive safe integer`);
   return selected;
 }

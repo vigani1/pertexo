@@ -62,9 +62,11 @@ export type StoredSessionProof = Readonly<{
 export function sessionProof(
   session: StoredSessionProof,
 ): SessionAuthenticationProof {
-  return session.authentication_method === 'organization' &&
+  const organizationProof =
+    session.authentication_method === 'organization' &&
     session.federation_provider_id !== null &&
-    session.federation_provider_revision !== null
+    session.federation_provider_revision !== null;
+  return organizationProof
     ? {
         method: 'organization',
         providerId: session.federation_provider_id,
@@ -85,15 +87,16 @@ export function accountPolicy(
     password_present: boolean;
   }>,
 ): AuthenticationPolicy {
+  const recoveryOwner =
+    (account.require_sso ?? false) &&
+    account.email_verified &&
+    account.control_owner &&
+    account.password_present;
   return {
     active: account.status === 'active',
     enforcedOrganizationId:
       (account.require_sso ?? false) ? account.organization_id : null,
     verifiedOrganizationId: account.organization_id,
-    recoveryOwner:
-      (account.require_sso ?? false) &&
-      account.email_verified &&
-      account.control_owner &&
-      account.password_present,
+    recoveryOwner,
   };
 }

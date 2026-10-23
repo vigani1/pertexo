@@ -35,16 +35,15 @@ export function authenticateApiToken(
         [input.workspaceId, input.tokenId],
       );
       const row = rows.rows[0];
-      if (
+      const tokenUnavailable =
         row === undefined ||
         !matchesApiTokenDigest(input.digest, row.secret_digest) ||
         apiTokenStatus(row, row.current_revision, row.observed_at) !==
           'active' ||
         row.owner_status !== 'active' ||
         row.member_status !== 'active' ||
-        row.workspace_status !== 'active'
-      )
-        return undefined;
+        row.workspace_status !== 'active';
+      if (tokenUnavailable) return undefined;
       // Verification is already complete; revocation doesn't cancel admitted work.
       await client.query(
         `update app.api_tokens set last_used_at=$3 where workspace_id=$1 and id=$2

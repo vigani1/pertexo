@@ -52,12 +52,12 @@ export function rebindPromotionTable(
   for (const [alias, name] of Object.entries(names)) {
     const from = source.columns.find((column) => column.name === name);
     const to = target.columns.find((column) => column.name === name);
-    if (
+    const incompatibleColumn =
       from?.type !== to?.type ||
       from === undefined ||
       to === undefined ||
-      (!from.required && to.required)
-    ) {
+      (!from.required && to.required);
+    if (incompatibleColumn) {
       report({
         nodeId: node.id,
         kind: 'column',
@@ -77,12 +77,12 @@ export function rebindPromotionTable(
     const to = target.columns.find(
       (column) => column.name === target.keyColumn,
     );
-    if (
+    const columnChanged =
       from?.name !== to?.name ||
       from?.type !== to?.type ||
       from === undefined ||
-      to === undefined
-    )
+      to === undefined;
+    if (columnChanged)
       issue(
         'Upsert requires the same unique key column name and type in the target table.',
       );

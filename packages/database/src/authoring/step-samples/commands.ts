@@ -85,13 +85,13 @@ export async function mutateStepSample(
       );
       const usage = quota.rows[0];
       if (usage === undefined) throw new Error('Sample quota is unavailable');
-      if (
+      const sampleQuotaExceeded =
         Number(usage.bytes) - (current?.retained_bytes ?? 0) + retainedBytes >
           SAMPLE_RETAINED_BYTES ||
         (current === undefined &&
           (Number(usage.workflow_count) >= 200 ||
-            Number(usage.workspace_count) >= 1000))
-      )
+            Number(usage.workspace_count) >= 1000));
+      if (sampleQuotaExceeded)
         throw new WorkflowStepSampleError('limit_reached');
       await client.query(
         `insert into app.workflow_step_samples(id,workspace_id,workflow_id,node_id,binding,output_ref,retained_bytes,source_kind,source_run_id,source_node_run_id,source_preview_id,created_by,expires_at) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,clock_timestamp()+make_interval(secs=>$13)) on conflict(workspace_id,workflow_id,node_id) do update set id=excluded.id,binding=excluded.binding,output_ref=excluded.output_ref,retained_bytes=excluded.retained_bytes,source_kind=excluded.source_kind,source_run_id=excluded.source_run_id,source_node_run_id=excluded.source_node_run_id,source_preview_id=excluded.source_preview_id,created_by=excluded.created_by,created_at=clock_timestamp(),expires_at=excluded.expires_at`,

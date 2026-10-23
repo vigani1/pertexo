@@ -54,7 +54,8 @@ export async function loadEventWindow(
             sql`select 1 from app.trigger_coordinated_events where workspace_id=${transaction.workspaceId} and key_id=${found.id} and status='pending' limit 1`,
           )
         ).rows.length > 0;
-  if (found !== undefined && (found.expires_at > now || pending)) return found;
+  const hasLiveKey = found !== undefined && (found.expires_at > now || pending);
+  if (hasLiveKey) return found;
   const count =
     (
       await transaction.db.execute<{ count: number }>(sql`

@@ -1,3 +1,4 @@
+import { isIntegerInRange } from '../../platform/persisted-primitives.js';
 import type { PoolClient } from 'pg';
 
 import {
@@ -49,25 +50,23 @@ export async function assertNoTenantContext(client: PoolClient): Promise<void> {
             current_setting('app.discovery_scope', true) as discovery_scope`,
   );
   const row = result.rows[0];
-  if (
+  const hasWorkspaceContext =
     row?.workspace_id !== undefined &&
     row.workspace_id !== null &&
-    row.workspace_id !== ''
-  ) {
+    row.workspace_id !== '';
+  if (hasWorkspaceContext) {
     throw new Error('Pooled PostgreSQL client retained workspace context');
   }
-  if (
-    row?.actor_id !== undefined &&
-    row.actor_id !== null &&
-    row.actor_id !== ''
-  ) {
+  const hasActorContext =
+    row?.actor_id !== undefined && row.actor_id !== null && row.actor_id !== '';
+  if (hasActorContext) {
     throw new Error('Pooled PostgreSQL client retained actor context');
   }
-  if (
+  const hasDiscoveryContext =
     row?.discovery_scope !== undefined &&
     row.discovery_scope !== null &&
-    row.discovery_scope !== ''
-  ) {
+    row.discovery_scope !== '';
+  if (hasDiscoveryContext) {
     throw new Error('Pooled PostgreSQL client retained discovery context');
   }
 }
@@ -122,7 +121,8 @@ export function parseStatementTimeout(
   value: number | undefined,
 ): number | undefined {
   if (value === undefined) return undefined;
-  if (!Number.isSafeInteger(value) || value < 1 || value > 2_147_483_647) {
+  const invalidTimeout = !isIntegerInRange(value, 1, 2_147_483_647);
+  if (invalidTimeout) {
     throw new RangeError('Invalid PostgreSQL statement timeout');
   }
   return value;

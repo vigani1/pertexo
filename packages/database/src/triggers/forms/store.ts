@@ -91,11 +91,11 @@ export function createFormStore(
           await client.query('select app.lock_workspace_run_admission($1)', [
             input.workspaceId,
           ]);
-          if (
+          const coordinatesEvent =
             prepared !== undefined &&
             !('error' in prepared) &&
-            prepared.coordination !== undefined
-          )
+            prepared.coordination !== undefined;
+          if (coordinatesEvent)
             await lockEventCoordination(input.workspaceId, drizzle(client));
           if (grant === undefined)
             await authorizeForm(client, input, {

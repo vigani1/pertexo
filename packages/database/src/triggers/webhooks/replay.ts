@@ -61,12 +61,12 @@ export function resolveExactReplay(
     throw new WebhookDeliveryReplayMismatchError();
   if (replay.skip_reason === 'concurrency_limit')
     return Object.freeze({ skipped: true, reason: 'concurrency_limit' });
-  if (
+  const coordinatedWithoutRun =
     replay.coordination_event_id !== null &&
     replay.workflow_run_id === null &&
     replay.initial_outcome !== null &&
-    replay.initial_status !== null
-  )
+    replay.initial_status !== null;
+  if (coordinatedWithoutRun)
     return coordinatedReceipt(
       replay.coordination_event_id,
       replay.initial_outcome,

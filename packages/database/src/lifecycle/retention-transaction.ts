@@ -1,3 +1,4 @@
+import { isIntegerInRange } from '../platform/persisted-primitives.js';
 import type { Pool, PoolClient } from 'pg';
 
 import { withPlatformTransaction } from '../tenant-access/transactions.js';
@@ -14,11 +15,12 @@ export async function inRetentionTransaction<T>(
   signal: AbortSignal | undefined,
   work: (client: PoolClient) => Promise<T>,
 ): Promise<T> {
-  if (
-    !Number.isSafeInteger(options.lockTimeoutMs) ||
-    options.lockTimeoutMs < 1 ||
-    options.lockTimeoutMs > 2_147_483_647
-  ) {
+  const invalidLockTimeout = !isIntegerInRange(
+    options.lockTimeoutMs,
+    1,
+    2_147_483_647,
+  );
+  if (invalidLockTimeout) {
     throw new RangeError('Invalid PostgreSQL lock timeout');
   }
   try {

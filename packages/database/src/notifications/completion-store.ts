@@ -77,12 +77,11 @@ function completionDecision(
   const unsafeRetryIsKnownNotDispatched =
     row.side_effect_class !== 'unsafe' ||
     (result.kind === 'retry' && !actuallyDispatched);
-  if (
+  const canRetry =
     retryRequested &&
     unsafeRetryIsKnownNotDispatched &&
-    attemptNumber < maxAttempts
-  )
-    return { kind: 'retry', deliveryUnresolved };
+    attemptNumber < maxAttempts;
+  if (canRetry) return { kind: 'retry', deliveryUnresolved };
   const status = terminalCompletionStatus(row, result, {
     actuallyDispatched,
     deliveryUnresolved,
@@ -126,17 +125,16 @@ export function createFailureNotificationCompletionStore(
             [workspaceId, intentId],
           );
           const row = locked.rows[0];
-          if (
+          const staleDeliveryAttempt =
             (row?.status !== 'claimed' && row?.status !== 'dispatching') ||
-            row.delivery_attempts !== attemptNumber
-          )
-            return 'stale' as const;
-          if (
+            row.delivery_attempts !== attemptNumber;
+          if (staleDeliveryAttempt) return 'stale' as const;
+          const invalidDispatchEvidence =
             row.status === 'claimed' &&
             (result.kind === 'delivered' ||
               (result.kind === 'outcome_unknown' &&
-                !(row.possibly_dispatched ?? false)))
-          )
+                !(row.possibly_dispatched ?? false)));
+          if (invalidDispatchEvidence)
             throw new FailureNotificationStateError(
               'Predispatch completion result is incompatible',
             );

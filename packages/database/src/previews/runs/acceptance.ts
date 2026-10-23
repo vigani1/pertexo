@@ -79,13 +79,12 @@ export async function acceptPreviewRun(
     parsed.expiresAt.getTime() - now.getTime() > PREVIEW_RETENTION_MAX_MS
   )
     throw new PreviewAdmissionDeniedError('retention');
-  if (
+  const invalidDeadline =
     parsed.executionDeadlineAt.getTime() <= now.getTime() ||
     parsed.executionDeadlineAt.getTime() - now.getTime() >
       PREVIEW_EXECUTION_TIMEOUT_MAX_MS ||
-    parsed.executionDeadlineAt.getTime() > parsed.expiresAt.getTime()
-  )
-    throw new PreviewAdmissionDeniedError('deadline');
+    parsed.executionDeadlineAt.getTime() > parsed.expiresAt.getTime();
+  if (invalidDeadline) throw new PreviewAdmissionDeniedError('deadline');
   const draftGraph = await assertAdmission(
     transaction,
     parsed.workflowId,

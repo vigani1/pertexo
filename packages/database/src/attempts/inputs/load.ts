@@ -57,24 +57,24 @@ function reconcileCompletedNodeOutputs(
         throw new NodeAttemptStateCorruptError();
       const reused = output.reused_source_run_id !== null;
       if (reused) {
-        if (
+        const invalidReusedOutput =
           output.reused_source_node_run_id === null ||
           output.reused_source_completed_at === null ||
           output.current_attempt_id !== null ||
           output.current_attempt_number !== null ||
-          output.attempt_status !== null
-        )
-          throw new NodeAttemptStateCorruptError();
-      } else if (
-        output.attempt_status !== 'succeeded' ||
-        output.reused_source_node_run_id !== null ||
-        output.reused_source_completed_at !== null ||
-        !storedExecutionValuesEqual(
-          output.node_output_ref,
-          output.attempt_output_ref,
-        )
-      )
-        throw new NodeAttemptStateCorruptError();
+          output.attempt_status !== null;
+        if (invalidReusedOutput) throw new NodeAttemptStateCorruptError();
+      } else {
+        const invalidAttemptOutput =
+          output.attempt_status !== 'succeeded' ||
+          output.reused_source_node_run_id !== null ||
+          output.reused_source_completed_at !== null ||
+          !storedExecutionValuesEqual(
+            output.node_output_ref,
+            output.attempt_output_ref,
+          );
+        if (invalidAttemptOutput) throw new NodeAttemptStateCorruptError();
+      }
       const stored = parseStoredExecutionValue(
         reused ? output.node_output_ref : output.attempt_output_ref,
       );
@@ -248,13 +248,12 @@ export async function loadNodeAttemptInputs(
           stored.kind === 'inline'
             ? workflowNodeFailureValueSchema.safeParse(stored.value)
             : undefined;
-        if (
+        const invalidSourceFailure =
           !parsed?.success ||
           parsed.data.attemptNumber !== selectedSource.current_attempt_number ||
           parsed.data.nodeId !== input.sourceFailure.nodeId ||
-          parsed.data.invocationKey !== input.sourceFailure.invocationKey
-        )
-          throw new NodeAttemptStateCorruptError();
+          parsed.data.invocationKey !== input.sourceFailure.invocationKey;
+        if (invalidSourceFailure) throw new NodeAttemptStateCorruptError();
         sourceFailure = parsed.data;
       }
       return Object.freeze({

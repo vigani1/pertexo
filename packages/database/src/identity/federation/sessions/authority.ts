@@ -44,14 +44,15 @@ async function readAuthenticationPolicy(
     };
   let controlOwner = false;
   let passwordPresent = false;
-  if (
+  const controlWorkspaceId = account.control_workspace_id;
+  const requiresOrganizationSignIn =
     (account.require_sso ?? false) &&
-    account.control_workspace_id !== null &&
-    account.email_verified
-  ) {
+    controlWorkspaceId !== null &&
+    account.email_verified;
+  if (requiresOrganizationSignIn) {
     controlOwner = await withWorkspaceScope(
       client,
-      { workspaceId: account.control_workspace_id },
+      { workspaceId: controlWorkspaceId },
       async (scoped) =>
         (
           await scoped.query(

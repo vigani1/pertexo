@@ -57,12 +57,11 @@ export async function completeFederationJourney(
   )
     throw new SignInProofRejectedError();
   if (attempt.purpose === 'test') {
-    if (
+    const invalidOwnerSession =
       attempt.ownerUserId === null ||
       attempt.ownerSessionId === null ||
-      attempt.ownerSessionId !== input.ownerSessionId
-    )
-      throw new SignInProofRejectedError();
+      attempt.ownerSessionId !== input.ownerSessionId;
+    if (invalidOwnerSession) throw new SignInProofRejectedError();
     const source = await readEligibleAuthenticationSession(
       client,
       attempt.ownerSessionId,

@@ -114,13 +114,12 @@ export async function coordinateEvent(
   `)
   ).rows[0];
   const replaced = policy.mode === 'debounce' ? pending : undefined;
-  if (
+  const coordinationQuotaExceeded =
     (budget?.count ?? 0) + (replaced === undefined ? 1 : 0) >
       EVENT_COORDINATION_LIMITS.pendingEvents ||
     (budget?.bytes ?? 0) - (replaced?.input_bytes ?? 0) + bytes >
-      EVENT_COORDINATION_LIMITS.pendingBytes
-  )
-    return refuse('coordination_full');
+      EVENT_COORDINATION_LIMITS.pendingBytes;
+  if (coordinationQuotaExceeded) return refuse('coordination_full');
   if (replaced !== undefined)
     await finishCoordinatedEvent(transaction, replaced.id, {
       status: 'coalesced',

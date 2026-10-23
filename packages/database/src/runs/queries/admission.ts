@@ -140,12 +140,11 @@ export function runAdmissionBlockers(row: AdmissionProjection) {
   const reasons: (
     'workspace_capacity' | 'workflow_capacity' | 'workflow_order'
   )[] = [];
-  if (
+  const workspaceCapacityReached =
     !row.reserved &&
     row.workspaceLimit !== null &&
-    row.workspaceActive + row.workspaceReserved >= row.workspaceLimit
-  )
-    reasons.push('workspace_capacity');
+    row.workspaceActive + row.workspaceReserved >= row.workspaceLimit;
+  if (workspaceCapacityReached) reasons.push('workspace_capacity');
   if (row.workflowLimit !== null) {
     if (
       !row.reserved &&

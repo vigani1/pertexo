@@ -231,21 +231,19 @@ async function authorizeBatch(
   const batch = found.rows[0];
   if (batch?.released_at !== null) return false;
   const to = await recipient(client, workspaceId, actorId);
-  if (
+  const recipientChanged =
     !to?.email_verified ||
     to.email !== batch.recipient ||
-    to.role_revision !== batch.member_revision
-  )
-    return false;
+    to.role_revision !== batch.member_revision;
+  if (recipientChanged) return false;
   const current = await settings(client, workspaceId, actorId, {
     create: false,
   });
-  if (
+  const preferencesChanged =
     current.pref?.revision !== batch.preference_revision ||
     current.defaultRevision !== batch.default_revision ||
-    current.effective.mode === 'off'
-  )
-    return false;
+    current.effective.mode === 'off';
+  if (preferencesChanged) return false;
   const items = await client.query<{ thread_id: string }>(
     'select thread_id from app.notice_mail_items where workspace_id=$1 and batch_id=$2',
     [workspaceId, deliveryId],

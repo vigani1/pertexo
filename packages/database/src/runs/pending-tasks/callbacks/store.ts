@@ -120,7 +120,7 @@ export function createCallbackStore(
           );
           const task = found.rows[0],
             owner = run.rows[0];
-          if (
+          const callbackUnavailable =
             workspace.rows[0]?.status !== 'active' ||
             owner === undefined ||
             owner.closed ||
@@ -128,9 +128,8 @@ export function createCallbackStore(
             task === undefined ||
             task.expired ||
             task.consumed_at !== null ||
-            ['expired', 'refused', 'canceled'].includes(task.status)
-          )
-            throw new CallbackResponseError('closed');
+            ['expired', 'refused', 'canceled'].includes(task.status);
+          if (callbackUnavailable) throw new CallbackResponseError('closed');
           if (task.status === 'submitted')
             throw new CallbackResponseError('resolved');
           // Normalize escapes and enforce the value bounds before credential redaction.

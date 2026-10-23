@@ -122,7 +122,7 @@ function assertStoredReconciliationIdentity(
     workflowId: string;
   }>,
 ): void {
-  if (
+  const invalidDelivery =
     eventRow.aggregate_id !== identity.workflowId ||
     eventRow.aggregate_type !== 'workflow' ||
     eventRow.job_name !== 'reconcile-workflow-triggers' ||
@@ -130,8 +130,8 @@ function assertStoredReconciliationIdentity(
     payload.workflowId !== identity.workflowId ||
     payload.publishedVersionId !== identity.versionId ||
     payload.outboxEventId !== identity.outboxEventId ||
-    canonicalOutboxPayloadChecksum(payload) !== eventRow.payload_checksum
-  )
+    canonicalOutboxPayloadChecksum(payload) !== eventRow.payload_checksum;
+  if (invalidDelivery)
     throw new WorkflowTriggerReconciliationMismatchError(
       'Reconciliation durable event identity is inconsistent',
     );

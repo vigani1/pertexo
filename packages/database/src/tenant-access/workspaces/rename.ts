@@ -117,11 +117,11 @@ export function createIdentityWorkspaceRenameStore(pool: Pool): RenameStore {
             [workspaceId, actorUserId],
           );
           const actor = access.rows[0];
-          if (
+          const managerUnavailable =
             actor?.membership_status !== 'active' ||
             actor.user_status !== 'active' ||
-            (actor.role !== 'owner' && actor.role !== 'admin')
-          )
+            (actor.role !== 'owner' && actor.role !== 'admin');
+          if (managerUnavailable)
             throw new WorkspaceRenameCommandConflictError(
               'actor_inactive',
               'The actor cannot manage this workspace',

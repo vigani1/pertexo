@@ -74,12 +74,12 @@ function changedDefinition(
     }
     case 'set_key': {
       const column = columns.find((column) => column.id === change.columnId);
-      if (
+      const invalidKeyColumn =
         change.columnId !== null &&
         (column === undefined ||
           !column.required ||
-          !['text', 'number', 'date'].includes(column.type))
-      )
+          !['text', 'number', 'date'].includes(column.type));
+      if (invalidKeyColumn)
         throw new DataTableError(
           'invalid_values',
           'The unique key must be a required text, number or date column.',
@@ -142,12 +142,12 @@ export async function editTableSchema(
   if (input.change.operation === 'add_column') {
     const { column, defaultValue } = input.change;
     // Validate even an empty table: a required addition always needs its typed default.
-    if (
+    const missingRequiredDefault =
       column.required &&
       (defaultValue === undefined ||
         defaultValue === null ||
-        (typeof defaultValue === 'string' && defaultValue.trim() === ''))
-    )
+        (typeof defaultValue === 'string' && defaultValue.trim() === ''));
+    if (missingRequiredDefault)
       throw new DataTableError(
         'invalid_values',
         `Give the required column ${column.name} a default for existing rows.`,

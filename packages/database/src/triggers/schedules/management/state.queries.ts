@@ -115,11 +115,11 @@ export function scheduleHealthTransition(
   target: ScheduleCommandTarget,
 ): ScheduleHealthTransition {
   let nextFireAt = target.next_fire_at;
-  if (
+  const enablesSkippedSchedule =
     input.enabled &&
     target.status === 'disabled' &&
-    target.misfire_policy === 'skip'
-  ) {
+    target.misfire_policy === 'skip';
+  if (enablesSkippedSchedule) {
     nextFireAt = resolveScheduleObservation(
       parsePersistedScheduleRecurrence(target),
       target.anchor_at,

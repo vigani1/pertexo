@@ -73,7 +73,9 @@ function parsePersistedIdentityMetadata(
   value: unknown,
 ): Record<string, unknown> {
   try {
-    if (typeof value !== 'object' || value === null || Array.isArray(value))
+    const invalidMetadata =
+      typeof value !== 'object' || value === null || Array.isArray(value);
+    if (invalidMetadata)
       metadataError('Identity metadata must be a JSON object');
     assertOrdinaryContainer(value, { isArray: false });
     const root: Record<string, unknown> = {};
@@ -102,23 +104,22 @@ function parsePersistedIdentityMetadata(
       members += 1;
       if (members > IDENTITY_METADATA_MAX_MEMBERS)
         metadataError('Identity metadata member limit exceeded');
-      if (
+      const unsafeKey =
         key === '__proto__' ||
         key === 'prototype' ||
         key === 'constructor' ||
-        unsafeMetadataKey.test(key)
-      )
-        metadataError('Unsafe audit metadata key');
+        unsafeMetadataKey.test(key);
+      if (unsafeKey) metadataError('Unsafe audit metadata key');
       const descriptor = Object.getOwnPropertyDescriptor(frame.source, key);
       if (descriptor === undefined || !('value' in descriptor))
         metadataError('Identity metadata must contain ordinary JSON data');
       const child: unknown = descriptor.value;
-      if (
+      const scalarValue =
         child === null ||
         typeof child === 'string' ||
         typeof child === 'boolean' ||
-        (typeof child === 'number' && Number.isFinite(child))
-      ) {
+        (typeof child === 'number' && Number.isFinite(child));
+      if (scalarValue) {
         assignJsonValue(frame.target, key, child);
         continue;
       }
@@ -181,7 +182,9 @@ export function throwIdentityDatabaseConflict(
   reason: IdentityConflictReason = 'identity',
 ): never {
   const code = readIdentityDatabaseErrorCode(error);
-  if (code === '23505' || code === '23503' || code === '23514')
+  const constraintFailure =
+    code === '23505' || code === '23503' || code === '23514';
+  if (constraintFailure)
     throw new IdentityConflictError(message, { cause: error, reason });
   throw error;
 }

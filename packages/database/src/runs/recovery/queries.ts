@@ -132,34 +132,43 @@ export async function readRecoveryMetadata(
       });
       attemptsByNode.set(row.node_run_id, list);
     }
-    const nodes: RecoveryNode[] = parsed.map((node) => ({
-      id: node.id,
-      nodeId: node.node_id,
-      invocationKey: node.invocation_key,
-      status: node.status,
-      sideEffectClass: node.side_effect_class,
-      currentAttemptId: node.current_attempt_id,
-      currentAttemptNumber: node.current_attempt_number,
-      completedAt: node.completed_at?.toISOString() ?? null,
-      ...(node.branch_context.branchPath === undefined
-        ? {}
-        : { branchPath: node.branch_context.branchPath }),
-      ...(node.branch_context.iterationPath === undefined
-        ? {}
-        : { iterationPath: node.branch_context.iterationPath }),
-      ...(node.reused_source_run_id === null ||
-      node.reused_source_node_run_id === null ||
-      node.reused_source_completed_at === null
-        ? {}
-        : {
-            reused: {
-              sourceRunId: node.reused_source_run_id,
-              sourceNodeRunId: node.reused_source_node_run_id,
-              completedAt: node.reused_source_completed_at.toISOString(),
-            },
-          }),
-      attempts: attemptsByNode.get(node.id) ?? [],
-    }));
+    const nodes: RecoveryNode[] = parsed.map((node) => {
+      const {
+        reused_source_run_id,
+        reused_source_node_run_id,
+        reused_source_completed_at,
+      } = node;
+      const incompleteReusedSource =
+        reused_source_run_id === null ||
+        reused_source_node_run_id === null ||
+        reused_source_completed_at === null;
+      return {
+        id: node.id,
+        nodeId: node.node_id,
+        invocationKey: node.invocation_key,
+        status: node.status,
+        sideEffectClass: node.side_effect_class,
+        currentAttemptId: node.current_attempt_id,
+        currentAttemptNumber: node.current_attempt_number,
+        completedAt: node.completed_at?.toISOString() ?? null,
+        ...(node.branch_context.branchPath === undefined
+          ? {}
+          : { branchPath: node.branch_context.branchPath }),
+        ...(node.branch_context.iterationPath === undefined
+          ? {}
+          : { iterationPath: node.branch_context.iterationPath }),
+        ...(incompleteReusedSource
+          ? {}
+          : {
+              reused: {
+                sourceRunId: reused_source_run_id,
+                sourceNodeRunId: reused_source_node_run_id,
+                completedAt: reused_source_completed_at.toISOString(),
+              },
+            }),
+        attempts: attemptsByNode.get(node.id) ?? [],
+      };
+    });
     const failedStep = (
       await readWorkflowRunFailedSteps(transaction, [runId])
     ).get(runId);

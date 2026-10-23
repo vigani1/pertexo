@@ -168,12 +168,12 @@ export async function claimNodeAttemptDelivery(
 
         // Already-admitted work needs a lease to commit its control outcome.
         // The handler reads durable cancellation/deadline state before execution.
-        if (
-          row.side_effect_class !== 'safe' &&
-          row.side_effect_class !== 'idempotent_with_key' &&
-          row.side_effect_class !== 'unsafe'
-        )
-          throw new NodeAttemptStateCorruptError();
+        const sideEffectClass = row.side_effect_class;
+        const invalidEffectClass =
+          sideEffectClass !== 'safe' &&
+          sideEffectClass !== 'idempotent_with_key' &&
+          sideEffectClass !== 'unsafe';
+        if (invalidEffectClass) throw new NodeAttemptStateCorruptError();
         const branchContext =
           row.branch_context === null
             ? undefined
@@ -236,7 +236,7 @@ export async function claimNodeAttemptDelivery(
           ...(iterationPath === undefined || iterationPath.length === 0
             ? {}
             : { iterationPath }),
-          sideEffectClass: row.side_effect_class,
+          sideEffectClass,
           ...(row.provider_idempotency_key === null
             ? {}
             : { providerIdempotencyKey: row.provider_idempotency_key }),

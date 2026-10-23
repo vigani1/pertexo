@@ -32,7 +32,9 @@ function checkLifecycle(
   kind: OrganizationChange['kind'],
 ): void {
   if (lifecycleStatus === 'active' || kind === 'detach_tag') return;
-  if (kind === 'move' && role !== null && isAdministrativeRole(role)) return;
+  const administratorMove =
+    kind === 'move' && role !== null && isAdministrativeRole(role);
+  if (administratorMove) return;
   throw new WorkflowTagConflictError('lifecycle');
 }
 
@@ -178,12 +180,11 @@ export async function checkOrganizationReplay(
     }))
   )
     throw new WorkflowNotFoundError('Workflow is not visible');
-  if (
+  const destinationRefused =
     kind === 'move' &&
     destinationFolderId !== undefined &&
-    !access.permits(destinationFolderId, 'workflow:create')
-  )
-    throw new WorkflowFolderConflictError('not_visible');
+    !access.permits(destinationFolderId, 'workflow:create');
+  if (destinationRefused) throw new WorkflowFolderConflictError('not_visible');
   const workflow = await client.query<{ lifecycle_status: string }>(
     `select lifecycle_status from app.workflows
      where workspace_id = $1 and id = $2 for share`,

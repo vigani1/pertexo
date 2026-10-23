@@ -58,12 +58,12 @@ export async function completePersistedConnectionTest(
         throw new ConnectionTestInProgressError(
           'Connection test secret version does not match credential evidence',
         );
-      if (
+      const requiresDispatchedClaim =
         (outcome.ok ||
           outcome.httpStatus !== null ||
           outcome.reauthorizationRequired) &&
-        claimState.state !== 'dispatched'
-      )
+        claimState.state !== 'dispatched';
+      if (requiresDispatchedClaim)
         throw new ConnectionTestInProgressError(
           'Connection test has no dispatch evidence',
         );

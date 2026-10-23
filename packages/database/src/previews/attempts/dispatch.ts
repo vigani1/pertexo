@@ -96,11 +96,11 @@ export async function markPreviewDispatched(
       const existingBinding = locked.rows[0]?.provider_dispatch_binding;
       if (existingBinding === undefined)
         throw new PreviewAttemptStateError('dispatch_marker_lost');
-      if (
+      const dispatchBindingChanged =
         scope.providerDispatchBinding !== undefined &&
         existingBinding !== null &&
-        existingBinding !== scope.providerDispatchBinding
-      )
+        existingBinding !== scope.providerDispatchBinding;
+      if (dispatchBindingChanged)
         throw new PreviewAttemptStateError('dispatch_binding_mismatch');
       const result = await client.query(
         `update app.preview_attempts

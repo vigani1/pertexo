@@ -1,3 +1,4 @@
+import { isIntegerInRange } from '../../platform/persisted-primitives.js';
 import type { DatabaseConfig } from '../../config.js';
 import {
   acquireDatabasePool,
@@ -34,7 +35,8 @@ export async function createWorkflowTestSuiteScanner(
   return {
     scan: async (limit, signal) => {
       signal?.throwIfAborted();
-      if (!Number.isInteger(limit) || limit < 1 || limit > 100)
+      const invalidLimit = !isIntegerInRange(limit, 1, 100);
+      if (invalidLimit)
         throw new RangeError('Suite scan limit must be between 1 and 100');
       const candidates = await discovery.pool.query<{
         id: string;

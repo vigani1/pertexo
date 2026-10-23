@@ -40,14 +40,13 @@ export async function persistFailureNotificationIntent(
       name === `run.${input.plan.checkpoint.runStatus}` &&
       ['run.failed', 'run.timed_out', 'run.outcome_unknown'].includes(name),
   );
-  if (
+  const notificationUnavailable =
     terminalEvent === undefined ||
     input.cancellationRequested ||
     input.destinationId === null ||
     input.destinationConfigVersion === null ||
-    input.sideEffectClass === null
-  )
-    return;
+    input.sideEffectClass === null;
+  if (notificationUnavailable) return;
 
   const failures = input.plan.checkpoint.invocations
     .filter(({ status }) =>

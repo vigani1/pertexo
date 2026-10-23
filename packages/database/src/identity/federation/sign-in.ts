@@ -1,3 +1,4 @@
+import { isUniqueConstraintFailure } from '../../platform/query-errors.js';
 import { SignInProofRejectedError } from './accounts/rejection.js';
 import type { Pool } from 'pg';
 import { withPlatformTransaction } from '../../tenant-access/transactions.js';
@@ -70,13 +71,8 @@ export class SocialSignInCommands {
       if (error instanceof SignInProofRejectedError)
         return { kind: 'failed' } as const;
       const cause = identityQueryFailure(error);
-      if (
-        typeof cause === 'object' &&
-        cause !== null &&
-        'code' in cause &&
-        cause.code === '23505'
-      )
-        return { kind: 'failed' } as const;
+      const uniqueConstraintFailure = isUniqueConstraintFailure(cause);
+      if (uniqueConstraintFailure) return { kind: 'failed' } as const;
       throw error;
     });
   }

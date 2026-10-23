@@ -181,13 +181,12 @@ export async function changeWorkspaceLifecycle(
   );
   if (existing.rows[0] !== undefined) {
     const prior = operationRowSchema.parse(existing.rows[0]);
-    if (
+    const commandMismatch =
       prior.command_type !== change.commandType ||
       prior.actor_user_id !== change.actorUserId ||
       prior.reason !== change.reason ||
-      prior.request_hash !== change.requestHash
-    )
-      throw new IdempotencyRequestConflictError();
+      prior.request_hash !== change.requestHash;
+    if (commandMismatch) throw new IdempotencyRequestConflictError();
     return operation(prior);
   }
 

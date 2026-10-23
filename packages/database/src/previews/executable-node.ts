@@ -5,11 +5,11 @@ import { normalizeJson } from '@pertexo/workflow-model';
 export const executableNodeSchema = z.unknown().transform((value, context) => {
   try {
     const admitted = normalizeJson(value);
-    if (
+    const invalidExecutable =
       admitted === null ||
       typeof admitted !== 'object' ||
-      Array.isArray(admitted)
-    )
+      Array.isArray(admitted);
+    if (invalidExecutable)
       throw new TypeError('executable node must be a bounded JSON object');
     const serialized = JSON.stringify(admitted);
     if (utf8ByteLength(serialized) > 1_048_576)
