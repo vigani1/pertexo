@@ -229,9 +229,7 @@ async function acceptWebhook(
   const mediaType =
     method === 'GET'
       ? ''
-      : contentType === undefined && headerPresent(request, 'content-type')
-        ? undefined
-        : webhookMediaType(contentType, body.byteLength);
+      : requestMediaType(request, contentType, body.byteLength);
   if (
     mediaType === undefined ||
     (method === 'POST' && headerPresent(request, 'content-encoding'))
@@ -608,11 +606,9 @@ async function preflightWebhook(
   const key = (request.params as { endpointKey: string }).endpointKey;
   const origin = singleHeader(request, 'origin');
   const testEvent = request.routeOptions.url?.endsWith('/test') === true;
-  const verification = /^[A-Za-z0-9_-]{43}$/u.test(key)
-    ? testEvent
-      ? ((await dependencies.testEvents?.resolve(sha256(key))) ?? null)
-      : await dependencies.database.resolveVerification(sha256(key))
-    : null;
+  const verification = await preflightVerification(dependencies, key, {
+    testEvent,
+  });
   if (verification === null) {
     await authenticationFailed(reply, requestId, telemetry);
     return;
@@ -647,4 +643,24 @@ async function preflightWebhook(
   if (headers.length > 0)
     reply.header('access-control-allow-headers', headers.join(', '));
   await reply.code(204).send();
+}
+
+function requestMediaType(
+  request: FastifyRequest,
+  contentType: string | undefined,
+  bodyBytes: number,
+) {
+  if (contentType === undefined && headerPresent(request, 'content-type'))
+    return undefined;
+  return webhookMediaType(contentType, bodyBytes);
+}
+async function preflightVerification(
+  dependencies: Pick<WebhookIngressDependencies, 'database' | 'testEvents'>,
+  key: string,
+  { testEvent }: Readonly<{ testEvent: boolean }>,
+) {
+  if (!/^[A-Za-z0-9_-]{43}$/u.test(key)) return null;
+  if (testEvent)
+    return (await dependencies.testEvents?.resolve(sha256(key))) ?? null;
+  return dependencies.database.resolveVerification(sha256(key));
 }

@@ -70,12 +70,7 @@ export function accountSecurityEndpoints(
           twoFactor: { enabled, recoveryCodesRemaining },
           methods: accounts.map((account) => ({
             id: account.id,
-            kind:
-              account.providerId === 'credential'
-                ? 'password'
-                : names.has(account.providerId)
-                  ? 'organization'
-                  : 'social',
+            kind: accountMethodKind(account.providerId, names),
             ...(names.has(account.providerId)
               ? { label: names.get(account.providerId) }
               : {}),
@@ -259,4 +254,12 @@ async function replaceSessionCookie(
   )
     throw new APIError('UNAUTHORIZED');
   await setSessionCookie(context, found);
+}
+
+function accountMethodKind(
+  providerId: string,
+  names: ReadonlyMap<string, string>,
+): 'password' | 'organization' | 'social' {
+  if (providerId === 'credential') return 'password';
+  return names.has(providerId) ? 'organization' : 'social';
 }

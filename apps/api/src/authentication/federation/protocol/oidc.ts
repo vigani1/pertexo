@@ -102,11 +102,7 @@ export function createOidcProofGateway(
     const methods = metadata.token_endpoint_auth_methods_supported ?? [
       'client_secret_basic',
     ];
-    const authentication = methods.includes('client_secret_basic')
-      ? oidc.ClientSecretBasic(secret)
-      : methods.includes('client_secret_post')
-        ? oidc.ClientSecretPost(secret)
-        : undefined;
+    const authentication = clientAuthentication(methods, secret);
     if (authentication === undefined)
       throw new Error('OIDC client authentication method is unsupported');
     const algorithms = metadata.id_token_signing_alg_values_supported ?? [
@@ -185,4 +181,15 @@ export function createOidcProofGateway(
       );
     },
   };
+}
+
+function clientAuthentication(
+  methods: readonly string[],
+  secret: string,
+): ReturnType<typeof oidc.ClientSecretBasic> | undefined {
+  if (methods.includes('client_secret_basic'))
+    return oidc.ClientSecretBasic(secret);
+  if (methods.includes('client_secret_post'))
+    return oidc.ClientSecretPost(secret);
+  return undefined;
 }

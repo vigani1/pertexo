@@ -69,14 +69,7 @@ export async function dispatchDirectoryRequest(
     }
   }
   const [collection, rawId, ...rest] = path.split('/');
-  const kind: DirectoryResourceType =
-    collection === 'Users'
-      ? 'User'
-      : collection === 'Groups'
-        ? 'Group'
-        : (() => {
-            throw new DirectoryError('not_found');
-          })();
+  const kind: DirectoryResourceType = directoryResourceType(collection);
   if (rest.length !== 0) throw new DirectoryError('not_found');
   const idResult = rawId === undefined ? undefined : z.uuid().safeParse(rawId);
   if (idResult !== undefined && !idResult.success)
@@ -166,4 +159,12 @@ export async function dispatchDirectoryRequest(
     .header('location', document.meta.location);
   if (request.method === 'POST') reply.code(201);
   sendDirectoryDocument(reply, projectDirectoryDocument(document, projection));
+}
+
+function directoryResourceType(
+  collection: string | undefined,
+): DirectoryResourceType {
+  if (collection === 'Users') return 'User';
+  if (collection === 'Groups') return 'Group';
+  throw new DirectoryError('not_found');
 }

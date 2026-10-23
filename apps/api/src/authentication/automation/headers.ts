@@ -44,8 +44,9 @@ export function bearerCredential(
   )
     return undefined;
   const raw = entries[0]?.[1];
-  const value =
-    typeof raw === 'string' ? raw : raw?.length === 1 ? raw[0] : undefined;
+  let value: string | undefined;
+  if (typeof raw === 'string') value = raw;
+  else if (raw?.length === 1) value = raw[0];
   if (value === undefined || !/^Bearer /iu.test(value)) return undefined;
   return parseApiTokenCredential(value.slice(7));
 }

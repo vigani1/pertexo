@@ -1,3 +1,4 @@
+import type { ApiProblemCode } from '@pertexo/contracts';
 import { errorRegistration } from '../../platform/http/problems/registry.js';
 import { FederationConflictError } from '@pertexo/database/tenant-access';
 import { applicationError } from '../../platform/http/index.js';
@@ -5,12 +6,16 @@ import { applicationError } from '../../platform/http/index.js';
 export const federationProblems = [
   errorRegistration(FederationConflictError, (error) => {
     return applicationError(
-      error.reason === 'owner_required'
-        ? 'auth.forbidden'
-        : error.reason === 'dns_unverified'
-          ? 'request.invalid'
-          : 'workspace.conflict',
+      FEDERATION_PROBLEMS.get(error.reason) ?? 'workspace.conflict',
       { safeDetail: error.message },
     );
   }),
 ];
+
+const FEDERATION_PROBLEMS = new Map<
+  FederationConflictError['reason'],
+  ApiProblemCode
+>([
+  ['owner_required', 'auth.forbidden'],
+  ['dns_unverified', 'request.invalid'],
+]);

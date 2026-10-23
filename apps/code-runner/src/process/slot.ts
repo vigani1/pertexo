@@ -269,14 +269,7 @@ export async function startTaskSlot(
             logs: [],
             truncated: false,
             error: {
-              message:
-                code === 'code.timeout'
-                  ? 'Code reached its time limit.'
-                  : code === 'code.memory_limit'
-                    ? 'Code reached its memory limit.'
-                    : code === 'code.output_invalid'
-                      ? 'Code exceeded its bounded output or diagnostic stream. Return and log less data.'
-                      : 'Code process ended without a valid JSON result.',
+              message: codeTerminationMessage(code),
             },
           },
         };
@@ -305,4 +298,12 @@ export async function startTaskSlot(
       };
     },
   });
+}
+
+function codeTerminationMessage(code: CodeErrorCode): string {
+  if (code === 'code.timeout') return 'Code reached its time limit.';
+  if (code === 'code.memory_limit') return 'Code reached its memory limit.';
+  if (code === 'code.output_invalid')
+    return 'Code exceeded its bounded output or diagnostic stream. Return and log less data.';
+  return 'Code process ended without a valid JSON result.';
 }

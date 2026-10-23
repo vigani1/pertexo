@@ -249,14 +249,7 @@ export class AccountLinking {
   }
 
   private landing(outcome: 'returned' | 'failed' | 'sign-in'): Response {
-    const url = new URL(
-      outcome === 'sign-in'
-        ? '/login?error=link_reauthenticate'
-        : outcome === 'returned'
-          ? '/account/security?linked=true'
-          : '/account/security?linkError=true',
-      this.input.baseUrl,
-    );
+    const url = new URL(LINK_LANDINGS[outcome], this.input.baseUrl);
     // A late callback must not erase a newer link journey's browser binding.
     // The five-minute HttpOnly cookie expires naturally and cannot replay a
     // consumed state.
@@ -281,3 +274,9 @@ function validCsrf(headers: Headers): boolean {
 function problem(status: number): Response {
   return Response.json({ code: 'LINK_ATTEMPT_UNAVAILABLE' }, { status });
 }
+
+const LINK_LANDINGS = {
+  'sign-in': '/login?error=link_reauthenticate',
+  returned: '/account/security?linked=true',
+  failed: '/account/security?linkError=true',
+} as const;

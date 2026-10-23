@@ -10,12 +10,10 @@ export function webhookOriginAllowed(
 
 export function allowWebhookOrigin(reply: FastifyReply, origin: string): void {
   const prior = reply.getHeader('vary');
-  const values =
-    typeof prior === 'string'
-      ? prior.split(',').map((value) => value.trim())
-      : Array.isArray(prior)
-        ? prior
-        : [];
+  let values: readonly string[] = [];
+  if (typeof prior === 'string')
+    values = prior.split(',').map((value) => value.trim());
+  else if (Array.isArray(prior)) values = prior;
   reply
     .header('access-control-allow-origin', origin)
     .header('vary', [...new Set([...values, 'Origin'])].join(', '));

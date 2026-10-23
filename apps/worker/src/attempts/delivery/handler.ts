@@ -121,6 +121,10 @@ async function completeControlOutcome(
   }>,
 ): Promise<NodeAttemptHandlerResult> {
   const outcomeUnknown = lease.sideEffectClass !== 'safe' && dispatched;
+  const controlError =
+    reason === 'canceled'
+      ? 'execution.canceled'
+      : 'execution.deadline_exceeded';
   const completed = await dependencies.runStore.complete({
     ...connectionHealthCompletionFields(environment),
     ...codeCompletionFields(environment),
@@ -129,9 +133,7 @@ async function completeControlOutcome(
       status: outcomeUnknown ? 'outcome_unknown' : reason,
       safeErrorCode: outcomeUnknown
         ? 'execution.outcome_unknown'
-        : reason === 'canceled'
-          ? 'execution.canceled'
-          : 'execution.deadline_exceeded',
+        : controlError,
     },
     ...(delivery.data.traceparent === undefined
       ? {}

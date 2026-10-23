@@ -202,16 +202,16 @@ try {
     writeSync(2, 'Code process startup: ' + detail.slice(0, 2048) + '\n');
     nativeProcess.exit(1);
   }
-  await fail(
-    phase === 'compile'
-      ? 'code.syntax_error'
-      : memoryFailure(error)
-        ? 'code.memory_limit'
-        : error instanceof RefusedCodeModule
-          ? 'code.module_refused'
-          : error instanceof InvalidCodeOutput
-            ? 'code.output_invalid'
-            : 'code.runtime_error',
-    error,
-  );
+  await fail(codeFailureCode(error, phase), error);
+}
+
+function codeFailureCode(
+  error: unknown,
+  phase: 'boot' | 'compile' | 'execute' | 'output',
+): CodeErrorCode {
+  if (phase === 'compile') return 'code.syntax_error';
+  if (memoryFailure(error)) return 'code.memory_limit';
+  if (error instanceof RefusedCodeModule) return 'code.module_refused';
+  if (error instanceof InvalidCodeOutput) return 'code.output_invalid';
+  return 'code.runtime_error';
 }

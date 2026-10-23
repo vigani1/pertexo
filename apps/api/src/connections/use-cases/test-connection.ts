@@ -365,12 +365,7 @@ function slackTestOutcome(
         ok: false,
         httpStatus: result.status,
         reauthorizationRequired: false,
-        errorCode:
-          result.status === 429
-            ? 'connection.provider_rate_limited'
-            : result.status >= 500
-              ? 'connection.provider_unavailable'
-              : 'connection.provider_rejected',
+        errorCode: slackHttpFailureCode(result.status),
       });
     case 'invalid_response':
       return Object.freeze({
@@ -454,4 +449,11 @@ function secureErrorOutcome(error: SecureHttpError): ConnectionTestOutcome {
     errorCode: `connection.test.${error.code}`,
     reauthorizationRequired: false,
   });
+}
+
+function slackHttpFailureCode(status: number): string {
+  if (status === 429) return 'connection.provider_rate_limited';
+  return status >= 500
+    ? 'connection.provider_unavailable'
+    : 'connection.provider_rejected';
 }
