@@ -3,7 +3,7 @@ import { readFolderScope } from '../tenant-access/resources/facts.js';
 import { folderScope } from '../tenant-access/resources/policy.js';
 import { lockWorkspaceAuthority } from '../tenant-access/workspaces/authority.js';
 import { WorkspaceAccessDeniedError } from '../tenant-access/errors.js';
-import { ROLES } from '../tenant-access/policy.js';
+import { ROLES } from '@pertexo/workflow-model';
 import type {
   WorkspaceInboxThread,
   WorkspaceNoticeKind,

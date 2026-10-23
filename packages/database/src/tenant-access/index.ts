@@ -4,8 +4,8 @@ export {
   hasCapability,
   ROLES,
   rolesForCapability,
-} from './policy.js';
-export type { AuthorizationCapability, Role } from './policy.js';
+} from '@pertexo/workflow-model';
+export type { AuthorizationCapability, Role } from '@pertexo/workflow-model';
 export {
   createIdentityWorkspaceDatabase,
   IdentityConflictError,

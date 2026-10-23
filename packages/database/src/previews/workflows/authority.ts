@@ -6,7 +6,7 @@ import {
   withTenantScopedReadClient,
 } from '../../tenant-access/transactions.js';
 import { lockWorkflowAuthoringAuthority } from '../../authoring/workflows/authority.js';
-import { rolesForCapability } from '../../tenant-access/policy.js';
+import { rolesForCapability } from '@pertexo/workflow-model';
 import { readWorkspaceAuthority } from '../../tenant-access/workspaces/authority.js';
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
 import { WorkflowNotFoundError } from '../../authoring/workflows/errors.js';

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 import { appendAuditFact } from '../../governance/audit/append.js';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
-import { rolesForCapability } from '../../tenant-access/policy.js';
+import { rolesForCapability } from '@pertexo/workflow-model';
 import { publishWorkflowCandidate } from '../publication/publisher.js';
 import {
   PublicationReviewError,

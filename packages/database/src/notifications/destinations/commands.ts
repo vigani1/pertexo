@@ -1,6 +1,6 @@
 import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority.js';
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
-import type { Role } from '../../tenant-access/policy.js';
+import type { Role } from '@pertexo/workflow-model';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 

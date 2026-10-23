@@ -3,7 +3,7 @@ import { requireMoveAudienceReview } from './sharing/audience.js';
 import { readFolderScope } from '../../tenant-access/resources/facts.js';
 import { workflowAccessible } from '../../tenant-access/resources/workflows.js';
 import type { PoolClient } from 'pg';
-import type { Role } from '../../tenant-access/policy.js';
+import type { Role } from '@pertexo/workflow-model';
 
 import { WorkflowNotFoundError } from '../workflows/errors.js';
 import type { OrganizationScope } from './command.js';

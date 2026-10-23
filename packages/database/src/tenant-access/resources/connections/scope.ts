@@ -1,6 +1,10 @@
 import { sql, type SQL } from 'drizzle-orm';
 import type { PoolClient } from 'pg';
-import { hasCapability, rolesForCapability, type Role } from '../../policy.js';
+import {
+  hasCapability,
+  rolesForCapability,
+  type Role,
+} from '@pertexo/workflow-model';
 import { WorkspaceAccessDeniedError } from '../../errors.js';
 import { readWorkspaceAuthority } from '../../workspaces/authority.js';
 import type { ResourceActor } from '../contract.js';

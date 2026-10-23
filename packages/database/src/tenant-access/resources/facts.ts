@@ -3,7 +3,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { FOLDER_LIMIT } from '../../authoring/organization/limits.js';
 import type { PoolClient } from 'pg';
 import type { WorkspaceTransaction } from '../transactions.js';
-import type { Role } from '../policy.js';
+import type { Role } from '@pertexo/workflow-model';
 import type {
   FolderFact,
   MatchingFolderGrant,

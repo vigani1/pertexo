@@ -5,7 +5,7 @@ import { workflowScopeSql } from '../../tenant-access/resources/query-scope.js';
 import type { CodeDiagnostics } from '@pertexo/node-sdk';
 import { definitionIdentitySchema } from '@pertexo/node-sdk';
 import { resolvePreviewSample } from './samples.js';
-import { rolesForCapability } from '../../tenant-access/policy.js';
+import { rolesForCapability } from '@pertexo/workflow-model';
 import { captureWorkspaceVariableRevision } from '../../variables/read.js';
 import { lockActorArtifactReferences } from '../../artifacts/references.js';
 import { and, eq, gt, sql } from 'drizzle-orm';

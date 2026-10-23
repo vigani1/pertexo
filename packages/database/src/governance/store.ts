@@ -15,7 +15,7 @@ import {
 import {
   rolesForCapability,
   type AuthorizationCapability,
-} from '../tenant-access/policy.js';
+} from '@pertexo/workflow-model';
 import type { GovernanceStore, GovernanceScope } from './contract.js';
 import {
   readAuditBatch,

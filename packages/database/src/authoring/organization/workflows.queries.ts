@@ -13,7 +13,7 @@ import {
   type DatabaseRuntime,
 } from '../../platform/pool/runtime.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
-import { ROLES } from '../../tenant-access/policy.js';
+import { ROLES } from '@pertexo/workflow-model';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 import { WorkflowNotFoundError } from '../workflows/errors.js';
 import {

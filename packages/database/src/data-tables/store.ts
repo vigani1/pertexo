@@ -16,7 +16,7 @@ import {
   lockWorkspaceAuthority,
   readWorkspaceAuthority,
 } from '../tenant-access/workspaces/authority.js';
-import { rolesForCapability } from '../tenant-access/policy.js';
+import { rolesForCapability } from '@pertexo/workflow-model';
 import { generatePersistedId } from '../platform/persisted-id.js';
 import { claimCommand, completeCommand } from '../platform/idempotency.js';
 import type { DataTableScope, DataTablesStore } from './contract.js';

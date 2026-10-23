@@ -2,7 +2,7 @@ import { readFolderScope } from '../../tenant-access/resources/facts.js';
 import { workflowAccessible } from '../../tenant-access/resources/workflows.js';
 import type { WorkflowResourceCapability } from '../../tenant-access/resources/contract.js';
 import type { PoolClient } from 'pg';
-import type { Role } from '../../tenant-access/policy.js';
+import type { Role } from '@pertexo/workflow-model';
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
 import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority.js';
 import { WorkflowNotFoundError } from './errors.js';

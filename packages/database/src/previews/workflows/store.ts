@@ -9,7 +9,7 @@ import { canonicalJson } from '@pertexo/workflow-model';
 import { databaseSchema } from '../../schema.js';
 import { parseWorkspaceId } from '../../tenant-access/transactions.js';
 import { lockWorkflowAuthoringAuthority } from '../../authoring/workflows/authority.js';
-import { rolesForCapability } from '../../tenant-access/policy.js';
+import { rolesForCapability } from '@pertexo/workflow-model';
 import type { AuthoringCatalogs } from '../../authoring/workflows/catalogs.js';
 import type { SampleScope } from '../../authoring/step-samples/contract.js';
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';

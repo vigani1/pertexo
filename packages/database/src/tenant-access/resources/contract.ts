@@ -1,4 +1,4 @@
-import type { AuthorizationCapability, Role } from '../policy.js';
+import type { AuthorizationCapability, Role } from '@pertexo/workflow-model';
 
 export type ResourceActor = Readonly<{
   workspaceId: string;

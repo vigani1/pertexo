@@ -1,4 +1,4 @@
-import { WEBHOOK_TRIGGER_READ_ROLES } from '../../tenant-access/policy.js';
+import { WEBHOOK_TRIGGER_READ_ROLES } from '@pertexo/workflow-model';
 import type { CoordinatedEvent } from '@pertexo/contracts';
 import { COORDINATED_EVENT_METADATA_SQL } from '../coordination/history.js';
 import { sql } from 'drizzle-orm';

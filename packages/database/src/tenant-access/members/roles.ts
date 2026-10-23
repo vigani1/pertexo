@@ -15,7 +15,7 @@ import {
   recordMemberCommandAudit,
 } from './command.js';
 import { revokeUserSessions } from '../users/sessions.js';
-import { canChangeWorkspaceMemberRole } from '../policy.js';
+import { canChangeWorkspaceMemberRole } from '@pertexo/workflow-model';
 
 type RoleCommandStore = Pick<
   IdentityWorkspaceDatabase,

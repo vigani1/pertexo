@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg';
-import { rolesForCapability } from '../../tenant-access/policy.js';
+import { rolesForCapability } from '@pertexo/workflow-model';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 import { WorkflowNotFoundError } from '../workflows/errors.js';
 import type { CollaborationScope } from './contract.js';

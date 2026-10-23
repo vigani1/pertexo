@@ -26,7 +26,7 @@ import {
   canLeaveWorkspace,
   canSuspendWorkspaceMember,
   canTransferWorkspaceOwnership,
-} from '../policy.js';
+} from '@pertexo/workflow-model';
 
 type MembershipLifecycleStore = Pick<
   IdentityWorkspaceDatabase,

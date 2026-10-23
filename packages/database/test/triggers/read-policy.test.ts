@@ -5,7 +5,7 @@ import {
   SCHEDULE_TRIGGER_READ_ROLES,
   WEBHOOK_TRIGGER_READ_ROLES,
   hasCapability,
-} from '../../src/tenant-access/policy.js';
+} from '@pertexo/workflow-model';
 
 describe('trigger read policy', () => {
   it('keeps schedule metadata readable by every role', () => {

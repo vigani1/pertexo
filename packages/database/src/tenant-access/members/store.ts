@@ -1,7 +1,7 @@
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
-import { rolesForCapability } from '../policy.js';
+import { rolesForCapability } from '@pertexo/workflow-model';
 import {
   withActorScopedClient,
   withTenantScopedClient,

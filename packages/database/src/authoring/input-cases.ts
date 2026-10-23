@@ -18,7 +18,7 @@ import { claimCommand, completeCommand } from '../platform/idempotency.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
 import { serializeStoredExecutionJsonValue } from '../platform/stored-execution-value.js';
 import { withTenantScopedClient } from '../tenant-access/transactions.js';
-import { rolesForCapability } from '../tenant-access/policy.js';
+import { rolesForCapability } from '@pertexo/workflow-model';
 import { lockWorkflowAuthoringAuthority } from './workflows/authority.js';
 import { WorkflowNotFoundError } from './workflows/errors.js';
 

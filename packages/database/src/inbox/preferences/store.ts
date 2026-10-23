@@ -19,10 +19,7 @@ import {
   lockWorkspaceAuthority,
   readWorkspaceAuthority,
 } from '../../tenant-access/workspaces/authority.js';
-import {
-  hasCapability,
-  rolesForCapability,
-} from '../../tenant-access/policy.js';
+import { hasCapability, rolesForCapability } from '@pertexo/workflow-model';
 import {
   NoticeUnavailableError,
   type NoticePreferencesStore,
