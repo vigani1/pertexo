@@ -1,3 +1,5 @@
+import { WorkflowLifecycleController } from '../../../src/workflow-authoring/http/lifecycle-controller.js';
+import { WorkflowVersionsController } from '../../../src/workflow-authoring/http/versions-controller.js';
 import { describe, expect, it, vi } from 'vitest';
 
 import { WorkflowAuthoringController } from '../../../src/workflow-authoring/http/controllers.js';
@@ -111,7 +113,7 @@ function makeController() {
     execute: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
   };
   return {
-    controller: new WorkflowAuthoringController(
+    authoring: new WorkflowAuthoringController(
       listWorkflows as never,
       createWorkflow as never,
       getWorkflow as never,
@@ -119,12 +121,16 @@ function makeController() {
       saveDraft as never,
       validateDraft as never,
       publishWorkflow as never,
-      listVersions as never,
+      {} as never,
+    ),
+    lifecycle: new WorkflowLifecycleController(
       transitionLifecycle as never,
-      restoreVersion as never,
       renameWorkflow as never,
       duplicateWorkflow as never,
-      {} as never,
+    ),
+    versions: new WorkflowVersionsController(
+      listVersions as never,
+      restoreVersion as never,
     ),
     transitionLifecycle,
     duplicateWorkflow,
@@ -143,7 +149,7 @@ function makeController() {
 
 describe('workflow authoring controller public seam', () => {
   it('passes an exact version filter under the normal workspace read authority', async () => {
-    const { controller, listVersions } = makeController();
+    const { versions: controller, listVersions } = makeController();
     await controller.versions(
       request(),
       { workspaceId, workflowId },
@@ -171,7 +177,7 @@ describe('workflow authoring controller public seam', () => {
   });
 
   it('uses the exact opt-in origin projection with no-store while preserving default GET', async () => {
-    const { controller, getWorkflow } = makeController();
+    const { authoring: controller, getWorkflow } = makeController();
     const header = vi.fn();
     await expect(
       controller.get(request(), { workspaceId, workflowId }, {}, { header }),
@@ -200,7 +206,7 @@ describe('workflow authoring controller public seam', () => {
   ])(
     'rejects malformed projection query %j before persistence',
     async (query) => {
-      const { controller, getWorkflow } = makeController();
+      const { authoring: controller, getWorkflow } = makeController();
       await expect(
         controller.get(request(), { workspaceId, workflowId }, query, {
           header: vi.fn(),
@@ -211,7 +217,7 @@ describe('workflow authoring controller public seam', () => {
   );
 
   it('duplicates only a selected saved source and forwards lifetime with a safe destination Location', async () => {
-    const { controller, duplicateWorkflow } = makeController();
+    const { lifecycle: controller, duplicateWorkflow } = makeController();
     const header = vi.fn();
     const payload = { name: 'Copy', source: { kind: 'draft' } };
     await expect(
@@ -246,7 +252,7 @@ describe('workflow authoring controller public seam', () => {
   });
 
   it('rejects absent/malformed draft tags and client graph payloads before duplication', async () => {
-    const { controller, duplicateWorkflow } = makeController();
+    const { lifecycle: controller, duplicateWorkflow } = makeController();
     const payload = { name: 'Copy', source: { kind: 'draft' } };
     for (const headers of [
       { 'idempotency-key': 'copy' },
@@ -272,7 +278,11 @@ describe('workflow authoring controller public seam', () => {
     expect(duplicateWorkflow.execute).not.toHaveBeenCalled();
   });
   it('returns the checked snapshot tag and forwards the request signal for validate and publish', async () => {
-    const { controller, validateDraft, publishWorkflow } = makeController();
+    const {
+      authoring: controller,
+      validateDraft,
+      publishWorkflow,
+    } = makeController();
     const header = vi.fn();
     await expect(
       controller.validate(request(), { workspaceId, workflowId }, { header }),
@@ -306,7 +316,7 @@ describe('workflow authoring controller public seam', () => {
     );
   });
   it('delegates bounded list input and rejects empty or oversized cursors before delegation', async () => {
-    const { controller, listWorkflows } = makeController();
+    const { authoring: controller, listWorkflows } = makeController();
     await expect(
       controller.list(
         request(),
@@ -340,7 +350,7 @@ describe('workflow authoring controller public seam', () => {
   });
 
   it('delegates a pinned-parent read and rejects organization filters mixed with it', async () => {
-    const { controller, listWorkflows } = makeController();
+    const { authoring: controller, listWorkflows } = makeController();
     await controller.list(
       request(),
       { workspaceId },
@@ -360,7 +370,7 @@ describe('workflow authoring controller public seam', () => {
   });
 
   it('uses session context without a guard and gives guarded context precedence', async () => {
-    const { controller, createWorkflow } = makeController();
+    const { authoring: controller, createWorkflow } = makeController();
     await controller.create(
       request(
         { 'idempotency-key': 'session-context' },
@@ -418,7 +428,7 @@ describe('workflow authoring controller public seam', () => {
   });
 
   it('requires If-Match for version restore and returns its fresh draft tag', async () => {
-    const { controller, restoreVersion } = makeController();
+    const { versions: controller, restoreVersion } = makeController();
     const route = {
       workspaceId,
       workflowId,
@@ -450,7 +460,7 @@ describe('workflow authoring controller public seam', () => {
   it.each(['archive', 'restore'] as const)(
     'forwards one %s command and requires idempotency',
     async (command) => {
-      const { controller, transitionLifecycle } = makeController();
+      const { lifecycle: controller, transitionLifecycle } = makeController();
       expect(() =>
         controller[command](
           request(),
@@ -476,7 +486,7 @@ describe('workflow authoring controller public seam', () => {
     },
   );
   it('forwards one rename command and requires idempotency before delegation', async () => {
-    const { controller, renameWorkflow } = makeController();
+    const { lifecycle: controller, renameWorkflow } = makeController();
     const renameBody = { name: 'Invoices', expectedNameRevision: 1 };
     expect(() =>
       controller.rename(request(), { workspaceId, workflowId }, renameBody),
@@ -507,7 +517,7 @@ describe('workflow authoring controller public seam', () => {
     );
   });
   it('parses and delegates a draft read once, then maps the representation ETag', async () => {
-    const { controller, getDraft } = makeController();
+    const { authoring: controller, getDraft } = makeController();
     const response = { header: vi.fn() };
     const result = await controller.draft(
       request(),
@@ -531,7 +541,7 @@ describe('workflow authoring controller public seam', () => {
   });
 
   it('classifies missing If-Match before calling the save use case', async () => {
-    const { controller, saveDraft } = makeController();
+    const { authoring: controller, saveDraft } = makeController();
     await expect(
       controller.save(
         request(),
@@ -547,7 +557,7 @@ describe('workflow authoring controller public seam', () => {
   });
 
   it('delegates one valid create command and maps its draft ETag', async () => {
-    const { controller, createWorkflow } = makeController();
+    const { authoring: controller, createWorkflow } = makeController();
     const response = { header: vi.fn() };
 
     await controller.create(
@@ -574,7 +584,7 @@ describe('workflow authoring controller public seam', () => {
   });
 
   it('parses a complete graph and forwards exactly one save command', async () => {
-    const { controller, saveDraft } = makeController();
+    const { authoring: controller, saveDraft } = makeController();
     const response = { header: vi.fn() };
     await controller.save(
       request({ 'if-match': tag }),
@@ -600,8 +610,12 @@ describe('workflow authoring controller public seam', () => {
   });
 
   it('forwards request and trace identifiers on mutating commands', async () => {
-    const { controller, createWorkflow, saveDraft, publishWorkflow } =
-      makeController();
+    const {
+      authoring: controller,
+      createWorkflow,
+      saveDraft,
+      publishWorkflow,
+    } = makeController();
     const identifiers = {
       requestId: 'request-forwarded-42',
       traceId: 'trace-forwarded-42',
@@ -644,7 +658,7 @@ describe('workflow authoring controller public seam', () => {
   });
 
   it('does not call create when its route parsing fails', async () => {
-    const { controller, createWorkflow } = makeController();
+    const { authoring: controller, createWorkflow } = makeController();
     await expect(
       controller.create(
         request({ 'idempotency-key': 'create-42' }),
@@ -657,7 +671,7 @@ describe('workflow authoring controller public seam', () => {
   });
 
   it('does not call save when its independently valid route has a malformed body', async () => {
-    const { controller, saveDraft } = makeController();
+    const { authoring: controller, saveDraft } = makeController();
     await expect(
       controller.save(
         request({ 'if-match': tag }),
@@ -670,7 +684,7 @@ describe('workflow authoring controller public seam', () => {
   });
 
   it('rejects route fields outside the workflow collection contract', async () => {
-    const { controller, createWorkflow } = makeController();
+    const { authoring: controller, createWorkflow } = makeController();
 
     await expect(
       controller.create(

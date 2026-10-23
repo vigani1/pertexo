@@ -1,4 +1,3 @@
-import { throwApplicationError } from '../../platform/http/application-error.js';
 import { AutomationAuthenticationGuard } from '../../authentication/automation/guard.js';
 import {
   Body,
@@ -15,34 +14,24 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { withRequestOperationSignal } from '../../platform/http/request-operation-signal.js';
-
 import {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
 } from '../../workspaces/index.js';
-import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
+
 import {
-  applicationError,
   parseRequestBody,
   requestIdempotencyKey,
 } from '../../platform/http/index.js';
-import {
-  requestHeaderValue,
-  singleRequestHeader,
-} from '../../platform/http/request-headers.js';
+import { requestHeaderValue } from '../../platform/http/request-headers.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
-import { TransitionWorkflowLifecycleUseCase } from '../commands/lifecycle.js';
-import { RenameWorkflowUseCase } from '../commands/rename.js';
-import { DuplicateWorkflowUseCase } from '../commands/duplicate.js';
+
 import {
-  workflowDuplicateRequestSchema,
   workflowOrganizationListQuerySchema,
   workflowGetQuerySchema,
-  workflowVersionRestoreParamsSchema,
 } from '@pertexo/contracts';
 import { WorkflowOrganizationReadsUseCase } from '../organization/reads.js';
 import { withWorkflowOrganizationRequest } from '../organization/http.js';
-import { RestoreWorkflowVersionUseCase } from '../commands/restore-version.js';
 
 import {
   WorkflowCreateGuard,
@@ -55,7 +44,6 @@ import {
   CreateWorkflowUseCase,
   GetWorkflowUseCase,
   GetWorkflowDraftUseCase,
-  ListWorkflowVersionsUseCase,
   ListWorkflowsUseCase,
   PublishWorkflowUseCase,
   SaveWorkflowDraftUseCase,
@@ -63,18 +51,17 @@ import {
 } from '../use-cases.js';
 import {
   workflowDraftSaveRequestSchema,
-  workflowIdParamSchema,
-  workflowVersionsQuerySchema,
   type WorkflowAuthoringRequest,
   type WorkflowResponse,
 } from '../types.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { authoringFailure } from '../../problems/context/normalize.js';
-
-const workflowWorkspaceParamSchema = workflowIdParamSchema
-  .pick({ workspaceId: true })
-  .strict()
-  .readonly();
+import {
+  workspaceParams,
+  workflowParams,
+  requestContext,
+  traceparent,
+} from './context.js';
 
 @UseInterceptors(domainErrors(authoringFailure))
 @Controller('v1/workspaces/:workspaceId/workflows')
@@ -88,14 +75,8 @@ export class WorkflowAuthoringController {
     private readonly saveDraft: SaveWorkflowDraftUseCase,
     private readonly validateDraft: ValidateWorkflowDraftUseCase,
     private readonly publishWorkflow: PublishWorkflowUseCase,
-    private readonly listVersions: ListWorkflowVersionsUseCase,
-    private readonly transitionLifecycle: TransitionWorkflowLifecycleUseCase,
-    private readonly restoreWorkflowVersion: RestoreWorkflowVersionUseCase,
-    private readonly renameWorkflow: RenameWorkflowUseCase,
-    private readonly duplicateWorkflow: DuplicateWorkflowUseCase,
     private readonly organization: WorkflowOrganizationReadsUseCase,
   ) {}
-
   @Get()
   @UseGuards(AutomationAuthenticationGuard, WorkflowReadGuard)
   public async list(
@@ -134,7 +115,6 @@ export class WorkflowAuthoringController {
       ...(input.order === undefined ? {} : { order: input.order }),
     });
   }
-
   @Post()
   @RateLimit('ordinary_mutation')
   @HttpCode(201)
@@ -160,7 +140,6 @@ export class WorkflowAuthoringController {
     response.header('ETag', result.representationTag);
     return result.body;
   }
-
   @Get(':workflowId')
   @UseGuards(AutomationAuthenticationGuard, WorkflowReadGuard)
   public async get(
@@ -196,7 +175,6 @@ export class WorkflowAuthoringController {
         : { include: projection.include }),
     });
   }
-
   @Get(':workflowId/draft')
   @UseGuards(AutomationAuthenticationGuard, WorkflowReadGuard)
   public async draft(
@@ -214,7 +192,6 @@ export class WorkflowAuthoringController {
     response.header('ETag', result.representationTag);
     return result.body;
   }
-
   @Put(':workflowId/draft')
   @RateLimit('ordinary_mutation')
   @UseGuards(
@@ -243,7 +220,6 @@ export class WorkflowAuthoringController {
     response.header('ETag', result.representationTag);
     return result.body;
   }
-
   @Post(':workflowId/validate')
   @RateLimit('workflow_compile')
   @HttpCode(200)
@@ -266,7 +242,6 @@ export class WorkflowAuthoringController {
     response.header('ETag', result.representationTag);
     return result.body;
   }
-
   @Post(':workflowId/publish')
   @RateLimit('workflow_compile')
   @HttpCode(200)
@@ -295,202 +270,4 @@ export class WorkflowAuthoringController {
       }),
     );
   }
-
-  @Post(':workflowId/versions/:versionId/restore')
-  @RateLimit('ordinary_mutation')
-  @HttpCode(200)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    WorkflowUpdateGuard,
-    CsrfProtectionGuard,
-  )
-  public async restoreVersion(
-    @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
-    @Res({ passthrough: true }) response: WorkflowResponse,
-  ) {
-    const route = workflowVersionRestoreParamsSchema.parse(params);
-    const context = requestContext(request, route.workspaceId);
-    const result = await this.restoreWorkflowVersion.execute({
-      ...context,
-      routeWorkspaceId: route.workspaceId,
-      workflowId: route.workflowId,
-      versionId: route.versionId,
-      representationTag: parseStrongIfMatch(
-        requestHeaderValue(request.headers, 'if-match'),
-      ),
-      request: body,
-    });
-    response.header('ETag', result.representationTag);
-    return result.body;
-  }
-
-  @Post(':workflowId/archive')
-  @RateLimit('ordinary_mutation')
-  @HttpCode(202)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    WorkflowPublishGuard,
-    CsrfProtectionGuard,
-  )
-  public archive(
-    @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
-  ) {
-    return this.lifecycleCommand('archive', request, params, body);
-  }
-
-  @Post(':workflowId/restore')
-  @RateLimit('ordinary_mutation')
-  @HttpCode(202)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    WorkflowPublishGuard,
-    CsrfProtectionGuard,
-  )
-  public restore(
-    @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
-  ) {
-    return this.lifecycleCommand('restore', request, params, body);
-  }
-
-  @Post(':workflowId/rename')
-  @RateLimit('ordinary_mutation')
-  @HttpCode(200)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    WorkflowUpdateGuard,
-    CsrfProtectionGuard,
-  )
-  public rename(
-    @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
-  ) {
-    const route = workflowParams(params);
-    return this.renameWorkflow.execute({
-      ...requestContext(request, route.workspaceId),
-      routeWorkspaceId: route.workspaceId,
-      workflowId: route.workflowId,
-      request: body,
-      idempotencyKey: requestIdempotencyKey(request.headers),
-    });
-  }
-
-  @Post(':workflowId/duplicate')
-  @RateLimit('ordinary_mutation')
-  @HttpCode(201)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    WorkflowReadGuard,
-    WorkflowCreateGuard,
-    CsrfProtectionGuard,
-  )
-  public async duplicate(
-    @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
-    @Res({ passthrough: true }) response: WorkflowResponse,
-  ) {
-    const route = workflowParams(params);
-    const input = parseRequestBody(workflowDuplicateRequestSchema, body);
-    const representationTag =
-      input.source.kind === 'draft'
-        ? parseStrongIfMatch(requestHeaderValue(request.headers, 'if-match'))
-        : undefined;
-    const context = requestContext(request, route.workspaceId);
-    const result = await withRequestOperationSignal(request, (signal) =>
-      this.duplicateWorkflow.execute({
-        ...context,
-        routeWorkspaceId: route.workspaceId,
-        workflowId: route.workflowId,
-        request: input,
-        idempotencyKey: requestIdempotencyKey(request.headers),
-        ...(representationTag === undefined ? {} : { representationTag }),
-        signal,
-      }),
-    );
-    response.header(
-      'Location',
-      `/v1/workspaces/${route.workspaceId}/workflows/${result.workflowId}`,
-    );
-    return result;
-  }
-
-  private lifecycleCommand(
-    command: 'archive' | 'restore',
-    request: WorkflowAuthoringRequest,
-    params: unknown,
-    body: unknown,
-  ) {
-    const route = workflowParams(params);
-    const context = requestContext(request, route.workspaceId);
-    return this.transitionLifecycle.execute({
-      command,
-      ...context,
-      routeWorkspaceId: route.workspaceId,
-      workflowId: route.workflowId,
-      request: body,
-      idempotencyKey: requestIdempotencyKey(request.headers),
-      ...traceparent(request),
-    });
-  }
-
-  @Get(':workflowId/versions')
-  @UseGuards(AutomationAuthenticationGuard, WorkflowReadGuard)
-  public async versions(
-    @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
-    @Query() query: unknown,
-  ) {
-    const route = workflowParams(params);
-    const input = workflowVersionsQuerySchema.parse(query ?? {});
-    const context = requestContext(request, route.workspaceId);
-    return this.listVersions.execute({
-      ...context,
-      routeWorkspaceId: route.workspaceId,
-      workflowId: route.workflowId,
-      ...(input.versionId === undefined ? {} : { versionId: input.versionId }),
-      ...(input.limit === undefined ? {} : { limit: input.limit }),
-      ...(input.after === undefined ? {} : { after: input.after }),
-    });
-  }
-}
-
-function workspaceParams(value: unknown): Readonly<{ workspaceId: string }> {
-  return workflowWorkspaceParamSchema.parse(value);
-}
-
-function workflowParams(value: unknown): Readonly<{
-  workspaceId: string;
-  workflowId: string;
-}> {
-  return workflowIdParamSchema.parse(value);
-}
-
-function requestContext(
-  request: WorkflowAuthoringRequest,
-  workspaceId: string,
-) {
-  try {
-    return projectAuthenticatedWorkspaceContext(request, workspaceId);
-  } catch (error: unknown) {
-    return throwApplicationError(
-      applicationError('request.invalid', {
-        safeDetail:
-          error instanceof Error ? error.message : 'Invalid actor context',
-      }),
-    );
-  }
-}
-
-function traceparent(
-  request: WorkflowAuthoringRequest,
-): Readonly<{ traceparent?: string }> {
-  const value = singleRequestHeader(request.headers, 'traceparent');
-  return value === undefined ? {} : { traceparent: value };
 }

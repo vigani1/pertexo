@@ -1,3 +1,5 @@
+import { WorkflowLifecycleController } from '../../src/workflow-authoring/http/lifecycle-controller.js';
+import { WorkflowVersionsController } from '../../src/workflow-authoring/http/versions-controller.js';
 import { WebhookTestEventController } from '../../src/webhooks/test-events/controller.js';
 import { UnconfiguredWebhookTestsController } from '../../src/webhooks/management/unavailable.js';
 import { DataTablesController } from '../../src/data-tables/controller.js';
@@ -104,12 +106,12 @@ const routes: readonly (readonly [
   [WorkflowAuthoringController, 'save', 'ordinary_mutation'],
   [WorkflowAuthoringController, 'validate', 'workflow_compile'],
   [WorkflowAuthoringController, 'publish', 'workflow_compile'],
-  [WorkflowAuthoringController, 'restoreVersion', 'ordinary_mutation'],
-  [WorkflowAuthoringController, 'archive', 'ordinary_mutation'],
-  [WorkflowAuthoringController, 'restore', 'ordinary_mutation'],
-  [WorkflowAuthoringController, 'rename', 'ordinary_mutation'],
-  [WorkflowAuthoringController, 'duplicate', 'ordinary_mutation'],
-  [WorkflowAuthoringController, 'versions', 'authenticated_read'],
+  [WorkflowVersionsController, 'restoreVersion', 'ordinary_mutation'],
+  [WorkflowLifecycleController, 'archive', 'ordinary_mutation'],
+  [WorkflowLifecycleController, 'restore', 'ordinary_mutation'],
+  [WorkflowLifecycleController, 'rename', 'ordinary_mutation'],
+  [WorkflowLifecycleController, 'duplicate', 'ordinary_mutation'],
+  [WorkflowVersionsController, 'versions', 'authenticated_read'],
   [WorkflowRunsController, 'startRun', 'run_admission'],
   [WorkflowRunsController, 'replayRun', 'run_admission'],
   [WorkflowRunsController, 'getRun', 'authenticated_read'],

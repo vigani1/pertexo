@@ -1,3 +1,5 @@
+import { WorkflowLifecycleController } from './http/lifecycle-controller.js';
+import { WorkflowVersionsController } from './http/versions-controller.js';
 import { WorkflowCollaborationUseCase } from './collaboration/use-case.js';
 import { WorkflowCommentsController } from './collaboration/comments-controller.js';
 import { WorkflowPresenceController } from './collaboration/presence-controller.js';
@@ -159,6 +161,8 @@ export class WorkflowAuthoringModule {
       imports: [identityModule],
       controllers: [
         WorkflowAuthoringController,
+        WorkflowLifecycleController,
+        WorkflowVersionsController,
         ...(dependencies.collaborationPersistence === undefined
           ? []
           : [WorkflowCommentsController, WorkflowPresenceController]),
