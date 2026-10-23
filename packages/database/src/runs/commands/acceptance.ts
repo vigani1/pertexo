@@ -1,13 +1,11 @@
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { requireRunTableReferences } from '../../data-tables/columns/references.js';
 import { requireWorkflowConcurrency } from './concurrency.js';
-export { WorkflowAlreadyRunningError } from './concurrency.js';
 import { runInputRetentionSql } from '../data-policy.js';
 import { variableRevisionForAcceptance } from './variables.js';
 import { requireFormAdmission } from './forms.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { lockExecutionArtifactReferences } from '../../artifacts/references.js';
-import { z } from 'zod';
 
 import {
   canonicalOutboxPayloadChecksum,
@@ -21,283 +19,47 @@ import {
   workflowRuns,
 } from '../../schema.js';
 import { prepareStoredExecutionValue } from '../../platform/stored-execution-value.js';
-import type { RunInputValidator } from './initial-checkpoint.js';
+
 import { resolveWorkflowFailureNotificationPolicy } from '../../notifications/policy.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
-import { sha256HexSchema as sha256Schema } from '../../platform/persisted-primitives.js';
+
 import { prepareWorkflowRunAcceptanceInput } from './acceptance-input.js';
-import type { WorkflowRecoverySummary } from '../recovery/contract.js';
-const traceparentSchema = z
-  .string()
-  .regex(/^00-[\da-f]{32}-[\da-f]{16}-[\da-f]{2}$/u)
-  .refine((value) => value.slice(3, 35) !== '0'.repeat(32))
-  .refine((value) => value.slice(36, 52) !== '0'.repeat(16))
-  .optional();
 
-const acceptWorkflowRunInputSchema = z
-  .object({
-    initialCheckpoint: z.unknown(),
-    validateInput: z
-      .custom<RunInputValidator>((value) => typeof value === 'function')
-      .optional(),
-    deadlineAt: z.date().optional(),
-    absoluteDeadlineAt: z.date().nullable().optional(),
-    startedBy: z.uuid().optional(),
-    keyHash: sha256Schema,
-    operation: z.literal('workflow.run.accept'),
-    requestHash: sha256Schema,
-    replayCommandId: z.uuid().optional(),
-    replaySourceRunId: z.uuid().optional(),
-    runInput: z.unknown().optional(),
-    scope: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u),
-    traceparent: traceparentSchema,
-    triggerType: z.enum([
-      'test',
-      'api',
-      'manual',
-      'replay',
-      'schedule',
-      'webhook',
-      'workflow_call',
-      'workflow_error',
-      'form',
-    ]),
-    workflowId: z.uuid(),
-    workflowVersionId: z.uuid(),
-  })
-  .strict();
-
-const resultRefSchema = z
-  .object({
-    outboxEventId: z.uuid(),
-    initialCheckpointHash: sha256Schema.optional(),
-  })
-  .strict();
-
-export const RUN_STATUS = {
-  queued: 'queued',
-  running: 'running',
-  waiting: 'waiting',
-  succeeded: 'succeeded',
-  failed: 'failed',
-  canceled: 'canceled',
-  timedOut: 'timed_out',
-  outcomeUnknown: 'outcome_unknown',
-} as const;
-
-export type RunStatus = (typeof RUN_STATUS)[keyof typeof RUN_STATUS];
-export const RUN_STATUS_VALUES = Object.values(RUN_STATUS) as [
-  RunStatus,
-  ...RunStatus[],
-];
-
-export const IDEMPOTENCY_STATUS = {
-  inProgress: 'in_progress',
-  completed: 'completed',
-  failed: 'failed',
-} as const;
-
-export type IdempotencyStatus =
-  (typeof IDEMPOTENCY_STATUS)[keyof typeof IDEMPOTENCY_STATUS];
-export const IDEMPOTENCY_STATUS_VALUES = Object.values(IDEMPOTENCY_STATUS) as [
-  IdempotencyStatus,
-  ...IdempotencyStatus[],
-];
-
-const workflowRunStatusSchema = z.enum(RUN_STATUS_VALUES);
-
-export type AcceptWorkflowRunInput = Readonly<
-  z.input<typeof acceptWorkflowRunInputSchema>
->;
-
-export type AcceptedWorkflowRun = Readonly<{
-  acceptedAt: Date;
-  duplicate: boolean;
-  outboxEventId: string;
-  runId: string;
-  status: z.output<typeof workflowRunStatusSchema>;
-}>;
-
-export class IdempotencyRequestConflictError extends Error {
-  public override readonly name = 'IdempotencyRequestConflictError';
-
-  public constructor() {
-    super('request.idempotency_conflict');
-  }
-}
-
-export class IdempotencyRecordCorruptError extends Error {
-  public override readonly name = 'IdempotencyRecordCorruptError';
-
-  public constructor() {
-    super('Persisted workflow run acceptance is incomplete or invalid');
-  }
-}
-
-export class WorkspaceRunAdmissionDeniedError extends Error {
-  public override readonly name = 'WorkspaceRunAdmissionDeniedError';
-
-  public constructor() {
-    super('workspace.run_admission_denied');
-  }
-}
-
-export class WorkspaceRunQuotaExceededError extends Error {
-  public override readonly name = 'WorkspaceRunQuotaExceededError';
-  public readonly retryAfterSeconds = 5;
-
-  public constructor() {
-    super('workspace.quota_exceeded');
-  }
-}
-
-type AdmissionSqlState = 'PTA01' | 'PTA02';
-
-function inspectAdmissionSqlState(error: unknown): AdmissionSqlState | null {
-  const visited = new Set<object>();
-  let current = error;
-  for (let depth = 0; depth < 16; depth += 1) {
-    if (
-      (typeof current !== 'object' && typeof current !== 'function') ||
-      current === null
-    )
-      return null;
-    if (visited.has(current)) return null;
-    visited.add(current);
-    try {
-      if (!(current instanceof Error)) return null;
-      const code = Reflect.get(current, 'code') as unknown;
-      if (code === 'PTA01' || code === 'PTA02') return code;
-      current = Reflect.get(current, 'cause');
-    } catch {
-      return null;
-    }
-  }
-  return null;
-}
-
-/** Operation-local SQLSTATE mapping for queued workflow-run admission. */
-export function throwWorkflowRunAdmissionError(error: unknown): never {
-  const code = inspectAdmissionSqlState(error);
-  if (code === 'PTA02') throw new WorkspaceRunQuotaExceededError();
-  if (code === 'PTA01') throw new WorkspaceRunAdmissionDeniedError();
-  throw error;
-}
-
-async function assertWorkspaceAcceptsNewRuns(
-  transaction: WorkspaceTransaction,
-): Promise<void> {
-  const result = await transaction.db.execute<{ status: string }>(sql`
-    select app.lock_workspace_run_admission(${transaction.workspaceId}) status
-  `);
-
-  if (result.rows[0]?.status !== 'active') {
-    throw new WorkspaceRunAdmissionDeniedError();
-  }
-}
-
-type ReplayValidation =
-  | Readonly<{ kind: 'request_only' }>
-  | Readonly<{ kind: 'exact_initial_checkpoint'; hash: string }>;
-
-async function readExistingAcceptance(
-  transaction: WorkspaceTransaction,
-  input: Pick<
-    z.output<typeof acceptWorkflowRunInputSchema>,
-    'keyHash' | 'operation' | 'requestHash' | 'scope'
-  >,
-  replayValidation: ReplayValidation,
-): Promise<AcceptedWorkflowRun | null> {
-  const rows = await transaction.db
-    .select({
-      requestHash: idempotencyRecords.requestHash,
-      resourceId: idempotencyRecords.resourceId,
-      resultRef: idempotencyRecords.resultRef,
-      idempotencyStatus: idempotencyRecords.status,
-      acceptedAt: workflowRuns.createdAt,
-      runStatus: workflowRuns.status,
-    })
-    .from(idempotencyRecords)
-    .leftJoin(
-      workflowRuns,
-      and(
-        eq(workflowRuns.workspaceId, idempotencyRecords.workspaceId),
-        eq(workflowRuns.id, idempotencyRecords.resourceId),
-      ),
-    )
-    .where(
-      and(
-        eq(idempotencyRecords.workspaceId, transaction.workspaceId),
-        eq(idempotencyRecords.operation, input.operation),
-        eq(idempotencyRecords.scope, input.scope),
-        eq(idempotencyRecords.keyHash, input.keyHash),
-      ),
-    )
-    .limit(1);
-  const row = rows[0];
-
-  if (row === undefined) {
-    return null;
-  }
-  if (row.requestHash !== input.requestHash) {
-    throw new IdempotencyRequestConflictError();
-  }
-  const resultRef = resultRefSchema.safeParse(row.resultRef);
-  const runStatus = workflowRunStatusSchema.safeParse(row.runStatus);
-  if (
-    row.idempotencyStatus !== IDEMPOTENCY_STATUS.completed ||
-    row.acceptedAt === null ||
-    !resultRef.success ||
-    !runStatus.success
-  ) {
-    throw new IdempotencyRecordCorruptError();
-  }
-  if (
-    replayValidation.kind === 'exact_initial_checkpoint' &&
-    resultRef.data.initialCheckpointHash !== replayValidation.hash
-  ) {
-    throw new IdempotencyRequestConflictError();
-  }
-
-  return Object.freeze({
-    acceptedAt: row.acceptedAt,
-    duplicate: true,
-    outboxEventId: resultRef.data.outboxEventId,
-    runId: row.resourceId,
-    status: runStatus.data,
-  });
-}
-
-const acceptanceReplayInputSchema = acceptWorkflowRunInputSchema.pick({
-  keyHash: true,
-  operation: true,
-  requestHash: true,
-  scope: true,
-});
-
-export type WorkflowRunAcceptanceReplayInput = Readonly<
-  z.input<typeof acceptanceReplayInputSchema>
->;
-
-/** Resolve a completed exact request replay before reading current workflow state. */
-export async function readWorkflowRunAcceptanceReplay(
-  transaction: WorkspaceTransaction,
-  input: WorkflowRunAcceptanceReplayInput,
-): Promise<AcceptedWorkflowRun | null> {
-  const parsed = acceptanceReplayInputSchema.parse(input);
-  return readExistingAcceptance(transaction, parsed, { kind: 'request_only' });
-}
-
-export type PreparedWorkflowRunAcceptance = Readonly<{
-  runId?: string;
-  variableSetRevision?: number | null;
-  errorWorkflowOrigin?: boolean;
-  recovery?: WorkflowRecoverySummary;
-  failureNotificationPolicy: Awaited<
-    ReturnType<typeof resolveWorkflowFailureNotificationPolicy>
-  >;
-}>;
-
+import {
+  acceptWorkflowRunInputSchema,
+  RUN_STATUS,
+  IDEMPOTENCY_STATUS,
+  type AcceptWorkflowRunInput,
+  type AcceptedWorkflowRun,
+  IdempotencyRecordCorruptError,
+  type PreparedWorkflowRunAcceptance,
+} from './acceptance/contract.js';
+import { readExistingAcceptance } from './acceptance/replay.js';
+import {
+  throwWorkflowRunAdmissionError,
+  assertWorkspaceAcceptsNewRuns,
+} from './acceptance/admission.js';
+export { WorkflowAlreadyRunningError } from './concurrency.js';
+export {
+  RUN_STATUS,
+  type RunStatus,
+  RUN_STATUS_VALUES,
+  IDEMPOTENCY_STATUS,
+  type IdempotencyStatus,
+  IDEMPOTENCY_STATUS_VALUES,
+  type AcceptWorkflowRunInput,
+  type AcceptedWorkflowRun,
+  IdempotencyRequestConflictError,
+  IdempotencyRecordCorruptError,
+  WorkspaceRunAdmissionDeniedError,
+  WorkspaceRunQuotaExceededError,
+  type PreparedWorkflowRunAcceptance,
+} from './acceptance/contract.js';
+export {
+  type WorkflowRunAcceptanceReplayInput,
+  readWorkflowRunAcceptanceReplay,
+} from './acceptance/replay.js';
+export { throwWorkflowRunAdmissionError } from './acceptance/admission.js';
 /** Call spawn acquires ordinary admission prerequisites before its parent lock. */
 export async function prepareWorkflowRunAcceptance(
   transaction: WorkspaceTransaction,

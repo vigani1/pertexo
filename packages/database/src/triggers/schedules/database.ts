@@ -1,379 +1,41 @@
 import { acquireDatabasePool } from '../../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
 
-import { generatePersistedId } from '../../platform/persisted-id.js';
-import { claimCommand, completeCommand } from '../../platform/idempotency.js';
-
-import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import { sha256HexSchema as digestSchema } from '../../platform/persisted-primitives.js';
 
 import type { DatabaseConfig } from '../../config.js';
 import { ScheduleTriggerError } from './errors.js';
-import {
-  parsePersistedScheduleRecurrence,
-  resolveScheduleObservation,
-} from './recurrence.js';
+
 import {
   authorizeScheduleReader,
   createScheduleTriggerReads,
-  type ScheduleTriggerReads,
 } from './reads.js';
 import { refreshWorkflowActivation } from '../reconciliation/database.js';
 import { canManageWorkflowTrigger } from '../management-access.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
-
-const uuidSchema = z.uuid();
-const scheduleTriggerSchema = z
-  .object({
-    id: z.uuid(),
-    workflowId: z.uuid(),
-    workflowVersionId: z.uuid(),
-    nodeId: z.string().min(1).max(256),
-    kind: z.literal('schedule'),
-    status: z.enum([
-      'desired',
-      'configuration_required',
-      'pending',
-      'active',
-      'degraded',
-      'disabled',
-      'error',
-    ]),
-    healthStatus: z.enum(['healthy', 'degraded', 'unhealthy', 'disabled']),
-    lastErrorCode: z.string().max(128).nullable(),
-    reconciledAt: z.date().nullable(),
-    recurrence: z.discriminatedUnion('kind', [
-      z.object({
-        kind: z.literal('cron'),
-        expression: z.string().min(1).max(256),
-        timezone: z.string().min(1).max(128),
-      }),
-      z.object({
-        kind: z.literal('interval'),
-        intervalMinutes: z.number().int().min(1).max(43_200),
-      }),
-    ]),
-    misfirePolicy: z.enum(['catch_up_once', 'skip']),
-    nextFireAt: z.date(),
-    lastFireAt: z.date().nullable(),
-  })
-  .strict();
-
-export type ScheduleTriggerRecord = Readonly<
-  z.output<typeof scheduleTriggerSchema>
->;
-export type ScheduleTriggerCommandResult = Readonly<{
-  trigger: ScheduleTriggerRecord;
-  replayed: boolean;
-}>;
-
-export interface ScheduleTriggerDatabase extends ScheduleTriggerReads {
-  list(
-    input: Readonly<{
-      workspaceId: string;
-      actorId: string;
-      workflowId: string;
-    }>,
-  ): Promise<readonly ScheduleTriggerRecord[]>;
-  setEnabled(
-    input: Readonly<{
-      workspaceId: string;
-      actorId: string;
-      workflowId: string;
-      triggerId: string;
-      enabled: boolean;
-      idempotencyKey: string;
-      requestHash: string;
-      requestId?: string;
-      traceId?: string;
-    }>,
-  ): Promise<ScheduleTriggerCommandResult>;
-  checkReadiness(): Promise<void>;
-  close(): Promise<void>;
-}
-
+import {
+  uuidSchema,
+  type ScheduleTriggerDatabase,
+} from './management/contract.js';
+import {
+  mapScheduleTrigger,
+  scheduleProjection,
+  readScheduleCommandTarget,
+  scheduleHealthTransition,
+} from './management/state.queries.js';
+import {
+  scheduleCommandIdentity,
+  claimScheduleCommand,
+  applyScheduleHealthTransition,
+  recordScheduleCommandAudit,
+  completeScheduleCommand,
+} from './management/receipts.js';
 export { ScheduleTriggerError } from './errors.js';
-
-function mapScheduleTrigger(
-  row: Record<string, unknown>,
-): ScheduleTriggerRecord {
-  const kind = z.enum(['cron', 'interval']).parse(row.recurrence_kind);
-  return scheduleTriggerSchema.parse({
-    id: row.id,
-    workflowId: row.workflow_id,
-    workflowVersionId: row.workflow_version_id,
-    nodeId: row.node_id,
-    kind: 'schedule',
-    status: row.status,
-    healthStatus: row.health_status,
-    lastErrorCode: row.last_error_code,
-    reconciledAt: row.reconciled_at,
-    recurrence: parsePersistedScheduleRecurrence({
-      recurrence_kind: kind,
-      cron_expression: z.string().nullable().parse(row.cron_expression),
-      timezone: z.string().nullable().parse(row.timezone),
-      interval_minutes: z.number().int().nullable().parse(row.interval_minutes),
-    }),
-    misfirePolicy: row.misfire_policy,
-    nextFireAt: row.next_fire_at,
-    lastFireAt: row.last_fire_at,
-  });
-}
-
-function parseStoredScheduleTrigger(value: unknown): ScheduleTriggerRecord {
-  const stored = z.record(z.string(), z.unknown()).parse(value);
-  return scheduleTriggerSchema.parse({
-    ...stored,
-    reconciledAt:
-      stored.reconciledAt === null
-        ? null
-        : new Date(z.string().parse(stored.reconciledAt)),
-    nextFireAt: new Date(z.string().parse(stored.nextFireAt)),
-    lastFireAt:
-      stored.lastFireAt === null
-        ? null
-        : new Date(z.string().parse(stored.lastFireAt)),
-  });
-}
-
-const scheduleProjection = `select trigger.id,trigger.workflow_id,trigger.workflow_version_id,
-       trigger.node_id,trigger.status,schedule.health_status,schedule.last_error_code,
-       trigger.reconciled_at,schedule.recurrence_kind,schedule.cron_expression,
-       schedule.timezone,schedule.interval_minutes,schedule.misfire_policy,
-       schedule.next_fire_at,schedule.last_fire_at
-  from app.trigger_schedules schedule
-  join app.workflow_triggers trigger on trigger.workspace_id=schedule.workspace_id
-   and trigger.id=schedule.trigger_id`;
-
-async function readSchedule(
-  client: PoolClient,
-  workspaceId: string,
-  workflowId: string,
-  triggerId: string,
-): Promise<ScheduleTriggerRecord> {
-  const result = await client.query<Record<string, unknown>>(
-    `${scheduleProjection}
-      where schedule.workspace_id=$1 and trigger.workflow_id=$2 and trigger.id=$3
-        and trigger.kind='schedule'`,
-    [workspaceId, workflowId, triggerId],
-  );
-  const row = result.rows[0];
-  if (row === undefined) throw new ScheduleTriggerError('not_found');
-  return mapScheduleTrigger(row);
-}
-
-type SetEnabledInput = Parameters<ScheduleTriggerDatabase['setEnabled']>[0];
-
-type ScheduleCommandIdentity = Readonly<{
-  idempotencyKey: string;
-  operation: 'schedule.trigger.setenabled';
-  requestHash: string;
-  scope: string;
-  triggerId: string;
-  workflowId: string;
-}>;
-
-type ScheduleCommandTarget = Readonly<{
-  workflow_id: string;
-  status: 'disabled' | 'enabled';
-  recurrence_kind: 'cron' | 'interval';
-  cron_expression: string | null;
-  timezone: string | null;
-  interval_minutes: number | null;
-  misfire_policy: 'catch_up_once' | 'skip';
-  anchor_at: Date;
-  next_fire_at: Date;
-  admission_deferred_until: Date | null;
-  observed_at: Date;
-}>;
-
-type ScheduleHealthTransition = Readonly<{
-  healthStatus: 'degraded' | 'disabled' | 'healthy';
-  lastErrorCode: 'schedule.admission_throttled' | null;
-  nextFireAt: Date;
-  scheduleStatus: 'disabled' | 'enabled';
-  triggerStatus: 'active' | 'disabled';
-}>;
-
-function scheduleCommandIdentity(
-  input: SetEnabledInput,
-): ScheduleCommandIdentity {
-  const triggerId = uuidSchema.parse(input.triggerId);
-  return Object.freeze({
-    idempotencyKey: z.string().min(1).max(128).parse(input.idempotencyKey),
-    operation: 'schedule.trigger.setenabled',
-    requestHash: digestSchema.parse(input.requestHash),
-    scope: `${input.actorId}:${triggerId}`,
-    triggerId,
-    workflowId: uuidSchema.parse(input.workflowId),
-  });
-}
-
-function scheduleCommand(
-  input: SetEnabledInput,
-  identity: ScheduleCommandIdentity,
-) {
-  return {
-    workspaceId: input.workspaceId,
-    operation: identity.operation,
-    scope: identity.scope,
-    idempotencyKey: identity.idempotencyKey,
-    requestHash: identity.requestHash,
-    conflict: () => new ScheduleTriggerError('idempotency_conflict'),
-  };
-}
-
-async function claimScheduleCommand(
-  client: PoolClient,
-  input: SetEnabledInput,
-  identity: ScheduleCommandIdentity,
-): Promise<ScheduleTriggerCommandResult | null> {
-  const claimed = await claimCommand(client, {
-    ...scheduleCommand(input, identity),
-    resourceId: identity.triggerId,
-  });
-  if (claimed === null) return null;
-  const stored = z.looseObject({ trigger: z.unknown() }).parse(claimed);
-  return Object.freeze({
-    trigger: parseStoredScheduleTrigger(stored.trigger),
-    replayed: true,
-  });
-}
-
-async function readScheduleCommandTarget(
-  client: PoolClient,
-  input: SetEnabledInput,
-  identity: ScheduleCommandIdentity,
-): Promise<ScheduleCommandTarget> {
-  const result = await client.query<ScheduleCommandTarget>(
-    `select trigger.workflow_id,schedule.status,schedule.recurrence_kind,
-            schedule.cron_expression,schedule.timezone,schedule.interval_minutes,
-            schedule.misfire_policy,schedule.anchor_at,schedule.next_fire_at,
-            schedule.admission_deferred_until,clock_timestamp() observed_at
-       from app.trigger_schedules schedule
-       join app.workflow_triggers trigger on trigger.id=schedule.trigger_id
-       where schedule.workspace_id=$1 and schedule.trigger_id=$2
-         and trigger.workflow_id=$3
-         and trigger.workflow_version_id=(select published_version_id
-           from app.workflows where workspace_id=$1 and id=$3)
-         and trigger.kind='schedule' for update of schedule,trigger`,
-    [input.workspaceId, identity.triggerId, identity.workflowId],
-  );
-  const row = result.rows[0];
-  if (row === undefined) throw new ScheduleTriggerError('not_found');
-  return row;
-}
-
-function scheduleHealthTransition(
-  input: SetEnabledInput,
-  target: ScheduleCommandTarget,
-): ScheduleHealthTransition {
-  let nextFireAt = target.next_fire_at;
-  if (
-    input.enabled &&
-    target.status === 'disabled' &&
-    target.misfire_policy === 'skip'
-  ) {
-    nextFireAt = resolveScheduleObservation(
-      parsePersistedScheduleRecurrence(target),
-      target.anchor_at,
-      target.observed_at,
-    ).nextAt;
-  }
-  const retainsAdmissionBackoff =
-    input.enabled &&
-    target.admission_deferred_until !== null &&
-    target.admission_deferred_until.getTime() > target.observed_at.getTime();
-  return Object.freeze({
-    healthStatus: input.enabled
-      ? retainsAdmissionBackoff
-        ? 'degraded'
-        : 'healthy'
-      : 'disabled',
-    lastErrorCode: retainsAdmissionBackoff
-      ? 'schedule.admission_throttled'
-      : null,
-    nextFireAt,
-    scheduleStatus: input.enabled ? 'enabled' : 'disabled',
-    triggerStatus: input.enabled ? 'active' : 'disabled',
-  });
-}
-
-async function applyScheduleHealthTransition(
-  client: PoolClient,
-  workspaceId: string,
-  triggerId: string,
-  transition: ScheduleHealthTransition,
-): Promise<void> {
-  await client.query(
-    `update app.trigger_schedules set status=$3,health_status=$4,
-       last_error_code=$5,next_fire_at=$6,
-       lease_owner=null,lease_token=null,lease_acquired_at=null,
-       lease_expires_at=null,updated_at=clock_timestamp()
-      where workspace_id=$1 and trigger_id=$2`,
-    [
-      workspaceId,
-      triggerId,
-      transition.scheduleStatus,
-      transition.healthStatus,
-      transition.lastErrorCode,
-      transition.nextFireAt,
-    ],
-  );
-  await client.query(
-    `update app.workflow_triggers set status=$3,health_status=$4,
-       last_error_code=$5,updated_at=clock_timestamp()
-      where workspace_id=$1 and id=$2`,
-    [
-      workspaceId,
-      triggerId,
-      transition.triggerStatus,
-      transition.healthStatus,
-      transition.lastErrorCode,
-    ],
-  );
-}
-
-async function recordScheduleCommandAudit(
-  client: PoolClient,
-  input: SetEnabledInput,
-  identity: ScheduleCommandIdentity,
-): Promise<void> {
-  await client.query(
-    `insert into app.audit_events
-      (id,workspace_id,actor_user_id,action,target_type,target_id,request_id,trace_id,metadata)
-     values($1,$2,$3,$4,'schedule_trigger',$5,$6,$7,$8::jsonb)`,
-    [
-      generatePersistedId(),
-      input.workspaceId,
-      input.actorId,
-      input.enabled ? 'schedule_trigger.enabled' : 'schedule_trigger.disabled',
-      identity.triggerId,
-      input.requestId ?? null,
-      input.traceId ?? null,
-      JSON.stringify({ workflowId: identity.workflowId }),
-    ],
-  );
-}
-
-async function completeScheduleCommand(
-  client: PoolClient,
-  input: SetEnabledInput,
-  identity: ScheduleCommandIdentity,
-): Promise<ScheduleTriggerCommandResult> {
-  const trigger = await readSchedule(
-    client,
-    input.workspaceId,
-    identity.workflowId,
-    identity.triggerId,
-  );
-  await completeCommand(client, scheduleCommand(input, identity), {
-    trigger,
-  });
-  return Object.freeze({ trigger, replayed: false });
-}
-
+export {
+  type ScheduleTriggerRecord,
+  type ScheduleTriggerCommandResult,
+  type ScheduleTriggerDatabase,
+} from './management/contract.js';
 export function createScheduleTriggerDatabase(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
