@@ -151,48 +151,12 @@ class AwsArtifactStore
     const issuedAt = Date.now();
     const metadata = beginDirectUploadSchema.parse(request);
     this.assertWithinLimit(metadata);
-    const checksum = checksumSha256Base64(metadata.sha256);
-    const storedMetadata = objectMetadata(metadata);
-    const command = new PutObjectCommand({
-      Bucket: this.config.bucket,
-      ChecksumSHA256: checksum,
-      ContentLength: metadata.byteLength,
-      ContentType: metadata.mediaType,
-      IfNoneMatch: '*',
-      Key: artifactStorageKey(metadata),
-      Metadata: storedMetadata,
-    });
-    const url = await awaitWithSignal(
-      this.presignPutObject({
-        command,
-        expiresInSeconds: metadata.expiresInSeconds,
-        signal,
-        signableHeaders: DIRECT_UPLOAD_SIGNABLE_HEADERS,
-        unhoistableHeaders: DIRECT_UPLOAD_UNHOISTABLE_HEADERS,
-      }),
+    return signArtifactUpload({
+      config: this.config,
+      presignPutObject: this.presignPutObject,
+      metadata,
       signal,
-    );
-    signal.throwIfAborted();
-    const headers = Object.freeze({
-      'content-length': String(metadata.byteLength),
-      'content-type': metadata.mediaType,
-      'if-none-match': '*',
-      'x-amz-checksum-sha256': checksum,
-      ...Object.fromEntries(
-        Object.entries(storedMetadata).map(([key, value]) => [
-          `x-amz-meta-${key}`,
-          value,
-        ]),
-      ),
-    });
-    return Object.freeze({
-      expiresAt: new Date(
-        issuedAt + metadata.expiresInSeconds * 1_000,
-      ).toISOString(),
-      expiresInSeconds: metadata.expiresInSeconds,
-      headers,
-      method: 'PUT' as const,
-      url,
+      issuedAt,
     });
   }
 
@@ -251,62 +215,12 @@ class AwsArtifactStore
     this.assertOpen();
     const identity = artifactIdentitySchema.parse(request);
     const signal = requestSignal(this.config.requestTimeoutMs, request.signal);
-    return this.getVerifiedStream(identity, undefined, signal);
-  }
-
-  private async getVerifiedStream(
-    identity: ArtifactIdentity,
-    expected: ArtifactMetadata | undefined,
-    signal: AbortSignal,
-  ): Promise<ArtifactDownload> {
-    let output: GetObjectCommandOutput;
-    try {
-      output = await sendS3(
-        this.client,
-        new GetObjectCommand({
-          Bucket: this.config.bucket,
-          Key: artifactStorageKey(identity),
-        }),
-        {
-          abortSignal: signal,
-        },
-      );
-    } catch (error: unknown) {
-      if (isNotFound(error)) {
-        throw new ArtifactNotFoundError();
-      }
-      throw error;
-    }
-
-    if (!(output.Body instanceof Readable)) {
-      destroyResponseBody(output.Body);
-      throw new ArtifactIntegrityError(
-        'Stored artifact body is not streamable',
-      );
-    }
-    let metadata: ArtifactMetadata;
-    try {
-      metadata = metadataFromHead(identity, output, this.config.maxObjectBytes);
-      if (
-        expected !== undefined &&
-        !artifactMetadataMatches(metadata, expected)
-      ) {
-        throw new ArtifactIntegrityError(
-          'Stored artifact metadata does not match the expected upload',
-        );
-      }
-    } catch (error: unknown) {
-      output.Body.destroy();
-      throw error;
-    }
-    return Object.freeze({
-      body: verifiedBody(output.Body, {
-        metadata: expected ?? metadata,
-        maxObjectBytes: this.config.maxObjectBytes,
-        source: 'stored',
-        signal: signal,
-      }),
-      metadata,
+    return readVerifiedArtifact({
+      client: this.client,
+      config: this.config,
+      identity,
+      expected: undefined,
+      signal,
     });
   }
 
@@ -448,7 +362,13 @@ class AwsArtifactStore
       return Object.freeze(expected);
     }
 
-    const download = await this.getVerifiedStream(expected, expected, signal);
+    const download = await readVerifiedArtifact({
+      client: this.client,
+      config: this.config,
+      identity: expected,
+      expected,
+      signal,
+    });
     await consume(download.body);
     return Object.freeze(expected);
   }
@@ -573,5 +493,125 @@ async function purgeWorkspaceObjects(
   return Object.freeze({
     completed: false,
     deletedCount,
+  });
+}
+
+async function readVerifiedArtifact({
+  client,
+  config,
+  identity,
+  expected,
+  signal,
+}: Readonly<{
+  client: S3ClientLike;
+  config: ArtifactStoreConfig;
+  identity: ArtifactIdentity;
+  expected: ArtifactMetadata | undefined;
+  signal: AbortSignal;
+}>): Promise<ArtifactDownload> {
+  let output: GetObjectCommandOutput;
+  try {
+    output = await sendS3(
+      client,
+      new GetObjectCommand({
+        Bucket: config.bucket,
+        Key: artifactStorageKey(identity),
+      }),
+      {
+        abortSignal: signal,
+      },
+    );
+  } catch (error: unknown) {
+    if (isNotFound(error)) {
+      throw new ArtifactNotFoundError();
+    }
+    throw error;
+  }
+
+  if (!(output.Body instanceof Readable)) {
+    destroyResponseBody(output.Body);
+    throw new ArtifactIntegrityError('Stored artifact body is not streamable');
+  }
+  let metadata: ArtifactMetadata;
+  try {
+    metadata = metadataFromHead(identity, output, config.maxObjectBytes);
+    if (
+      expected !== undefined &&
+      !artifactMetadataMatches(metadata, expected)
+    ) {
+      throw new ArtifactIntegrityError(
+        'Stored artifact metadata does not match the expected upload',
+      );
+    }
+  } catch (error: unknown) {
+    output.Body.destroy();
+    throw error;
+  }
+  return Object.freeze({
+    body: verifiedBody(output.Body, {
+      metadata: expected ?? metadata,
+      maxObjectBytes: config.maxObjectBytes,
+      source: 'stored',
+      signal: signal,
+    }),
+    metadata,
+  });
+}
+
+async function signArtifactUpload({
+  config,
+  presignPutObject,
+  metadata,
+  signal,
+  issuedAt,
+}: Readonly<{
+  config: ArtifactStoreConfig;
+  presignPutObject: PutObjectPresigner;
+  metadata: BeginDirectUploadRequest;
+  signal: AbortSignal;
+  issuedAt: number;
+}>): Promise<DirectUpload> {
+  const checksum = checksumSha256Base64(metadata.sha256);
+  const storedMetadata = objectMetadata(metadata);
+  const command = new PutObjectCommand({
+    Bucket: config.bucket,
+    ChecksumSHA256: checksum,
+    ContentLength: metadata.byteLength,
+    ContentType: metadata.mediaType,
+    IfNoneMatch: '*',
+    Key: artifactStorageKey(metadata),
+    Metadata: storedMetadata,
+  });
+  const url = await awaitWithSignal(
+    presignPutObject({
+      command,
+      expiresInSeconds: metadata.expiresInSeconds,
+      signal,
+      signableHeaders: DIRECT_UPLOAD_SIGNABLE_HEADERS,
+      unhoistableHeaders: DIRECT_UPLOAD_UNHOISTABLE_HEADERS,
+    }),
+    signal,
+  );
+  signal.throwIfAborted();
+  const headers = Object.freeze({
+    'content-length': String(metadata.byteLength),
+    'content-type': metadata.mediaType,
+    'if-none-match': '*',
+    'x-amz-checksum-sha256': checksum,
+    ...Object.fromEntries(
+      Object.entries(storedMetadata).map(([key, value]) => [
+        `x-amz-meta-${key}`,
+        value,
+      ]),
+    ),
+  });
+  return Object.freeze({
+    expiresAt: new Date(
+      issuedAt + metadata.expiresInSeconds * 1_000,
+    ).toISOString(),
+    expiresInSeconds: metadata.expiresInSeconds,
+    headers,
+    method: 'PUT' as const,
+    url,
   });
 }
