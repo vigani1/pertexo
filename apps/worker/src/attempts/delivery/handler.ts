@@ -1,213 +1,51 @@
 import { codeCompletionFields } from '../code/diagnostics.js';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/outbox';
-import {
-  NodeAttemptOutputInvalidError,
-  type NodeAttemptLease,
-  type NodeAttemptRunStore,
+import type {
+  NodeAttemptLease,
+  NodeAttemptRunStore,
 } from '@pertexo/database/attempts';
-import type {
-  WorkflowExecutionReader,
-  WorkflowExecutionProjection,
-} from '@pertexo/database/runs';
-import {
-  loadAttemptInputs,
-  type ForEachUpstream,
-  type NodeAttemptInputs,
-} from '@pertexo/execution';
+
+import { loadAttemptInputs, type NodeAttemptInputs } from '@pertexo/execution';
 import { NODE_JSON_LIMITS } from '@pertexo/node-sdk';
-import type {
-  QueueDelivery,
-  QueueHandlerContext,
-  RunEventNotificationPublisher,
-} from '@pertexo/queue';
-import type {
-  ExecuteNodeAttemptInput,
-  NodeAttemptOutcome,
-  NodeExecutionRegistry,
-} from '@pertexo/workflow-engine';
+import type { QueueHandlerContext } from '@pertexo/queue';
+import type { NodeAttemptOutcome } from '@pertexo/workflow-engine';
 import { WorkflowEngineError } from '@pertexo/workflow-engine';
-import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
+
 import {
   describeNodeRefusal,
   NodeExecutorFailure,
 } from '@pertexo/node-sdk/server';
-import { classifyProcessError } from '@pertexo/observability/startup';
-import { waitForCancelableDelay } from '../../runtime/abortable-delay.js';
-import type { NodeExecutionCapabilityFactories } from '../execution/capabilities.js';
+
 import {
   createNodeExecutionEnvironment,
   type NodeExecutionEnvironment,
 } from '../execution/execution-environment.js';
-export { NodeAttemptHandlerStateError } from './handler-state-error.js';
 import { NodeAttemptHandlerStateError } from './handler-state-error.js';
 import { connectionHealthCompletionFields } from '../../connections/health-completion.js';
 import { completionResult } from './completion-result.js';
-
-type AttemptDelivery = Extract<
-  QueueDelivery,
-  { readonly name: 'execute-node-attempt' }
->;
-
-export interface PreparedNodeAttempt {
-  readonly sourceFailure?: Readonly<{ nodeId: string; invocationKey: string }>;
-  readonly suspensionDurationSeconds?: number;
-  readonly testSubstitution?: boolean;
-  readonly testPinRequired?: boolean;
-  readonly upstreamNodeOutputs: readonly Readonly<{
-    nodeId: string;
-    invocationKey: string;
-  }>[];
-  /** The upstream For Each steps whose results the attempt receives. */
-  readonly forEachUpstreams?: readonly ForEachUpstream[];
-  execute(
-    input: Readonly<
-      NodeAttemptInputs & {
-        registry: NodeExecutionRegistry;
-        runtime?: NodeExecutionRuntime;
-        signal: AbortSignal;
-        onInputResolved?: ExecuteNodeAttemptInput['onInputResolved'];
-      }
-    >,
-  ): Promise<NodeAttemptOutcome>;
-}
-
-export interface NodeAttemptExecutionEngine {
-  prepare(
-    input: Readonly<{
-      lease: NodeAttemptLease;
-      projection: WorkflowExecutionProjection;
-    }>,
-  ): PreparedNodeAttempt;
-}
-
-export type NodeAttemptHandlerResult = Readonly<{
-  kind: 'duplicate' | 'committed';
-}>;
-
-export interface NodeAttemptHandler {
-  handle(
-    delivery: AttemptDelivery,
-    context: QueueHandlerContext,
-  ): Promise<NodeAttemptHandlerResult>;
-}
-
-export type NodeAttemptHandlerDependencies = Readonly<{
-  engine: NodeAttemptExecutionEngine;
-  heartbeatIntervalMillis: number;
-  leaseDurationSeconds: number;
-  notifications?: RunEventNotificationPublisher;
-  reader: WorkflowExecutionReader;
-  registry: NodeExecutionRegistry;
-  runStore: NodeAttemptRunStore;
-  runtimeCapabilities?: NodeExecutionCapabilityFactories;
-  workerId: string;
-}>;
-
-async function completeControlOutcome(
-  dependencies: NodeAttemptHandlerDependencies,
-  lease: NodeAttemptLease,
-  {
-    reason,
-    delivery,
-    signal,
-    dispatched,
-    environment,
-  }: Readonly<{
-    reason: 'canceled' | 'timed_out';
-    delivery: AttemptDelivery;
-    signal: AbortSignal;
-    dispatched: boolean;
-    environment?: NodeExecutionEnvironment | undefined;
-  }>,
-): Promise<NodeAttemptHandlerResult> {
-  const outcomeUnknown = lease.sideEffectClass !== 'safe' && dispatched;
-  const controlError =
-    reason === 'canceled'
-      ? 'execution.canceled'
-      : 'execution.deadline_exceeded';
-  const completed = await dependencies.runStore.complete({
-    ...connectionHealthCompletionFields(environment),
-    ...codeCompletionFields(environment),
-    lease,
-    outcome: {
-      status: outcomeUnknown ? 'outcome_unknown' : reason,
-      safeErrorCode: outcomeUnknown
-        ? 'execution.outcome_unknown'
-        : controlError,
-    },
-    ...(delivery.data.traceparent === undefined
-      ? {}
-      : { traceparent: delivery.data.traceparent }),
-    signal,
-  });
-  return completionResult(dependencies, lease, completed.kind);
-}
-
-type HeartbeatFailure =
-  Readonly<{ failed: false }> | Readonly<{ error: unknown; failed: true }>;
-
-type NodeAttemptHeartbeat = Readonly<{
-  executionSignal: AbortSignal;
-  durableAbortReason(): 'canceled' | 'timed_out' | undefined;
-  failure(): HeartbeatFailure;
-  stop(): Promise<void>;
-}>;
-
-function startNodeAttemptHeartbeat(
-  dependencies: NodeAttemptHandlerDependencies,
-  lease: NodeAttemptLease,
-  contextSignal: AbortSignal,
-): NodeAttemptHeartbeat {
-  const executionAbort = new AbortController();
-  const heartbeatStop = new AbortController();
-  const heartbeatSignal = AbortSignal.any([
-    contextSignal,
-    heartbeatStop.signal,
-  ]);
-  const executionSignal = AbortSignal.any([
-    contextSignal,
-    executionAbort.signal,
-  ]);
-  let abortReason: 'canceled' | 'timed_out' | undefined;
-  let heartbeatFailure: HeartbeatFailure = Object.freeze({ failed: false });
-  const heartbeat = (async (): Promise<void> => {
-    try {
-      while (!heartbeatSignal.aborted) {
-        await waitForCancelableDelay(
-          dependencies.heartbeatIntervalMillis,
-          heartbeatSignal,
-        );
-        const result = await dependencies.runStore.heartbeat({
-          lease,
-          leaseDurationSeconds: dependencies.leaseDurationSeconds,
-          signal: heartbeatSignal,
-        });
-        if (result.abortRequested) {
-          if (result.abortReason === undefined)
-            throw new NodeAttemptHandlerStateError('control_reason_missing');
-          abortReason = result.abortReason;
-          executionAbort.abort();
-          return;
-        }
-      }
-    } catch (error: unknown) {
-      if (!heartbeatStop.signal.aborted && !contextSignal.aborted) {
-        heartbeatFailure = Object.freeze({ error, failed: true });
-        executionAbort.abort();
-      }
-    }
-  })();
-  return Object.freeze({
-    executionSignal,
-    durableAbortReason: () => abortReason,
-    failure: () => heartbeatFailure,
-    stop: async (): Promise<void> => {
-      heartbeatStop.abort();
-      await heartbeat;
-    },
-  });
-}
-
+import type {
+  AttemptDelivery,
+  PreparedNodeAttempt,
+  NodeAttemptHandlerResult,
+  NodeAttemptHandler,
+  NodeAttemptHandlerDependencies,
+  NodeAttemptHeartbeat,
+} from './contract.js';
+import { startNodeAttemptHeartbeat } from './heartbeat.js';
+import {
+  completeControlOutcome,
+  resolveHeartbeatInterruption,
+  persistPreparedOutcome,
+  hasProviderDispatchUncertainty,
+} from './complete.js';
+export { NodeAttemptHandlerStateError } from './handler-state-error.js';
+export {
+  type PreparedNodeAttempt,
+  type NodeAttemptExecutionEngine,
+  type NodeAttemptHandlerResult,
+  type NodeAttemptHandler,
+  type NodeAttemptHandlerDependencies,
+} from './contract.js';
 /**
  * Keeps the input the executor receives for the run page (ADR 052). It is
  * diagnostic: a store without it, a lost lease or a failed write records
@@ -340,92 +178,6 @@ async function executePreparedNodeAttempt(
     contextSignal: contextSignal,
     environment: environment,
   });
-}
-
-async function resolveHeartbeatInterruption(
-  dependencies: NodeAttemptHandlerDependencies,
-  lease: NodeAttemptLease,
-  {
-    delivery,
-    contextSignal,
-    heartbeat,
-    environment,
-  }: Readonly<{
-    delivery: AttemptDelivery;
-    contextSignal: AbortSignal;
-    heartbeat: NodeAttemptHeartbeat;
-    environment: NodeExecutionEnvironment;
-  }>,
-): Promise<NodeAttemptHandlerResult | undefined> {
-  const durableAbortReason = heartbeat.durableAbortReason();
-  if (durableAbortReason !== undefined)
-    return completeControlOutcome(dependencies, lease, {
-      reason: durableAbortReason,
-      delivery: delivery,
-      signal: contextSignal,
-      dispatched: hasProviderDispatchUncertainty(lease, {
-        dispatched: environment.wasDispatched(),
-      }),
-      environment: environment,
-    });
-  const heartbeatFailure = heartbeat.failure();
-  if (!heartbeatFailure.failed) return undefined;
-  throw classifyProcessError(heartbeatFailure.error) === 'Error'
-    ? (heartbeatFailure.error as Error)
-    : new Error('Node attempt heartbeat failed', {
-        cause: heartbeatFailure.error,
-      });
-}
-
-async function persistPreparedOutcome(
-  dependencies: NodeAttemptHandlerDependencies,
-  lease: NodeAttemptLease,
-  {
-    prepared,
-    outcome,
-    traceContext,
-    contextSignal,
-    environment,
-  }: Readonly<{
-    prepared: PreparedNodeAttempt;
-    outcome: NodeAttemptOutcome;
-    traceContext: Readonly<{ traceparent?: string }>;
-    contextSignal: AbortSignal;
-    environment: NodeExecutionEnvironment;
-  }>,
-): Promise<NodeAttemptHandlerResult> {
-  try {
-    const completed = await dependencies.runStore.complete({
-      ...connectionHealthCompletionFields(environment),
-      ...codeCompletionFields(environment),
-      lease,
-      outcome:
-        prepared.suspensionDurationSeconds === undefined
-          ? { status: 'succeeded', output: outcome.output }
-          : {
-              status: 'suspended',
-              output: outcome.output,
-              durationSeconds: prepared.suspensionDurationSeconds,
-            },
-      ...traceContext,
-      signal: contextSignal,
-    });
-    return await completionResult(dependencies, lease, completed.kind);
-  } catch (error: unknown) {
-    if (!(error instanceof NodeAttemptOutputInvalidError)) throw error;
-    const completed = await dependencies.runStore.complete({
-      ...connectionHealthCompletionFields(environment),
-      ...codeCompletionFields(environment),
-      lease,
-      outcome: {
-        status: 'failed',
-        safeErrorCode: 'execution.output_invalid',
-      },
-      ...traceContext,
-      signal: contextSignal,
-    });
-    return completionResult(dependencies, lease, completed.kind);
-  }
 }
 
 export function createNodeAttemptHandler(
@@ -564,11 +316,4 @@ export function createNodeAttemptHandler(
       }
     },
   });
-}
-
-function hasProviderDispatchUncertainty(
-  lease: NodeAttemptLease,
-  { dispatched }: Readonly<{ dispatched: boolean }>,
-): boolean {
-  return (lease.providerDispatchUnresolved ?? false) || dispatched;
 }
