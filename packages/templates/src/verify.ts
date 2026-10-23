@@ -73,13 +73,12 @@ function restoreTarget(
   const bases = findNodes(base.graph, target.nodeId);
   const node = nodes[0];
   const baseNode = bases[0];
-  if (
+  const targetUnavailable =
     nodes.length !== 1 ||
     bases.length !== 1 ||
     node === undefined ||
-    baseNode === undefined
-  )
-    return false;
+    baseNode === undefined;
+  if (targetUnavailable) return false;
   if (target.location === 'config') {
     if (
       !Object.hasOwn(node.config, target.key) ||

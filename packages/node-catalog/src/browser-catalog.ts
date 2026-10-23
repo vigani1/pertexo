@@ -46,11 +46,9 @@ function compareDefinitionIdentity(
   left: Readonly<{ key: string; version: number }>,
   right: Readonly<{ key: string; version: number }>,
 ): number {
-  return left.key < right.key
-    ? -1
-    : left.key > right.key
-      ? 1
-      : left.version - right.version;
+  if (left.key < right.key) return -1;
+  if (left.key > right.key) return 1;
+  return left.version - right.version;
 }
 
 /** Every definition in the served catalog, without executor or policy details. */
@@ -67,14 +65,7 @@ export function platformBrowserNodeDefinitionCatalog(): PlatformNodeDefinitionBr
         configSchema: projection.configSchema,
         inputSchema: projection.inputSchema,
         // The executor declares a wait; mappings see only the final human result.
-        outputSchema:
-          projection.definition.key === 'core.approval' &&
-          projection.definition.version === 1
-            ? approvalBrowserOutputSchema
-            : projection.definition.key === 'core.request_input' &&
-                projection.definition.version === 1
-              ? inputBrowserOutputSchema
-              : projection.outputSchema,
+        outputSchema: browserOutputSchema(projection),
         ...(projection.outputVariant === undefined
           ? {}
           : { outputVariant: projection.outputVariant }),
@@ -106,4 +97,20 @@ export function platformBrowserNodeDefinitionCatalog(): PlatformNodeDefinitionBr
   return Object.freeze({
     definitions: Object.freeze(definitions),
   });
+}
+
+function browserOutputSchema(
+  projection: Pick<NodeManifest, 'definition' | 'outputSchema'>,
+): NodeManifest['outputSchema'] {
+  if (
+    projection.definition.key === 'core.approval' &&
+    projection.definition.version === 1
+  )
+    return approvalBrowserOutputSchema;
+  if (
+    projection.definition.key === 'core.request_input' &&
+    projection.definition.version === 1
+  )
+    return inputBrowserOutputSchema;
+  return projection.outputSchema;
 }

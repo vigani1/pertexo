@@ -50,15 +50,14 @@ function validQuery(query: string): boolean {
 
 /** ASCII-only, bounded and pure. Never trims, decodes or normalizes submitted bytes. */
 export function isCuratedHttpsEndpoint(value: unknown): boolean {
-  if (
+  const invalidEndpoint =
     typeof value !== 'string' ||
     value.length < 1 ||
     value.length > LIMITS.bytes ||
     /[^\x21-\x7E]/u.test(value) ||
     /[@#\\]/u.test(value) ||
-    !value.startsWith('https://')
-  )
-    return false;
+    !value.startsWith('https://');
+  if (invalidEndpoint) return false;
   const rest = value.slice('https://'.length);
   const slash = rest.indexOf('/');
   if (slash < 0 || !validHost(rest.slice(0, slash))) return false;
