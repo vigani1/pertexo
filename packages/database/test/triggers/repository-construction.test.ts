@@ -8,7 +8,7 @@ const database = vi.hoisted(() => ({
   }[],
 }));
 
-vi.mock('../../src/platform/pool/telemetry.js', () => ({
+vi.mock('../../src/platform/pool/telemetry/create-pool.js', () => ({
   createDatabasePool: () => {
     const pool = {
       connect: vi.fn(),

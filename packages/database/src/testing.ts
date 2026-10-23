@@ -232,7 +232,7 @@ export {
   DATABASE_METRIC_NAME,
   type DatabasePoolOptions,
   type DatabasePoolRole,
-} from './platform/pool/telemetry.js';
+} from './platform/pool/telemetry/create-pool.js';
 export { createWorkspaceDatabase } from './database.js';
 export type { WorkspaceDatabase } from './database.js';
 export {
