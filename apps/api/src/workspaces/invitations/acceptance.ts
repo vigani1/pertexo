@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { z } from 'zod';
-import { InvitationAcceptanceConflictError } from '@pertexo/database/tenant-access';
 
+import { InvitationAcceptanceConflictError } from '@pertexo/database/tenant-access';
 import {
   digestSha256Hex,
   encodeBase64Url,
@@ -13,28 +12,22 @@ import {
 import type {
   IdentityWorkspaceConfig,
   IdentityWorkspacePersistence,
-  InvitationAcceptanceIntentPersistenceRecord,
 } from '../ports.js';
 import {
   invitationAcceptanceCompleteRequestSchema,
-  invitationAcceptanceJourneySchema,
   invitationAcceptanceReceiptSchema,
   invitationAcceptanceResolveRequestSchema,
   type InvitationAcceptanceJourney,
   type InvitationAcceptanceReceipt,
 } from '../types.js';
+import { journey } from './acceptance/view.js';
+import { parseToken, parseBinding } from './acceptance/proof.js';
 
 const INTENT_TTL_MILLIS = 15 * 60_000;
+
 const PROOF_TTL_MILLIS = 5 * 60_000;
+
 const DEFAULT_SESSION_TTL_MILLIS = 8 * 60 * 60_000;
-const TOKEN_PATTERN =
-  /^wi1\.([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.([A-Za-z0-9_-]{43})$/u;
-const tokenSchema = z.string().regex(TOKEN_PATTERN);
-const bindingSchema = z
-  .string()
-  .regex(
-    /^wb1\.([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.([A-Za-z0-9_-]{43})\.([A-Za-z0-9_-]{43})$/u,
-  );
 
 type AcceptancePersistence = Required<
   Pick<
@@ -306,115 +299,6 @@ export class InvitationAcceptanceUseCase {
     )
       throw new IdentityError('identity.csrf_failed');
   }
-}
-
-function parseToken(value: string) {
-  const match = tokenSchema.safeParse(value);
-  if (!match.success) return null;
-  const [, workspaceId, invitationId, secret] = TOKEN_PATTERN.exec(value) ?? [];
-  return workspaceId === undefined ||
-    invitationId === undefined ||
-    secret === undefined
-    ? null
-    : { workspaceId, invitationId, secret };
-}
-
-function parseBinding(value: string | undefined) {
-  if (value === undefined || !bindingSchema.safeParse(value).success)
-    return null;
-  const match = /^wb1\.([^.]+)\.([^.]+)\.([^.]+)\.([^.]+)$/u.exec(value);
-  if (match === null) return null;
-  const [, workspaceId, intentId, bindingSecret, csrfToken] = match;
-  const incompleteAcceptanceProof =
-    workspaceId === undefined ||
-    intentId === undefined ||
-    bindingSecret === undefined ||
-    csrfToken === undefined;
-  if (incompleteAcceptanceProof) return null;
-  return {
-    workspaceId,
-    intentId,
-    bindingSecret,
-    csrfToken,
-  };
-}
-
-function journey(
-  intent: InvitationAcceptanceIntentPersistenceRecord,
-  csrfToken: string,
-  authenticatedUserId?: string,
-  now: Date = new Date(),
-): InvitationAcceptanceJourney {
-  const base = {
-    intentId: intent.id,
-    expiresAt: intent.expiresAt.toISOString(),
-    csrfToken,
-  };
-  if (intent.expiresAt.getTime() <= now.getTime())
-    return invitationAcceptanceJourneySchema.parse({
-      ...base,
-      state: 'expired',
-    });
-  if (intent.status === 'superseded')
-    return invitationAcceptanceJourneySchema.parse({
-      ...base,
-      state: 'superseded',
-    });
-  if (intent.status === 'abandoned') return { state: 'unavailable' };
-  if (intent.invitationStatus === 'revoked')
-    return invitationAcceptanceJourneySchema.parse({
-      ...base,
-      state: 'revoked',
-    });
-  if (intent.invitationStatus === 'expired')
-    return invitationAcceptanceJourneySchema.parse({
-      ...base,
-      state: 'expired',
-    });
-  if (intent.status === 'wrong_account')
-    return invitationAcceptanceJourneySchema.parse({
-      ...base,
-      state: 'wrong_account',
-    });
-  if (intent.status === 'completed') {
-    if (intent.receipt === null || intent.workspaceName === null)
-      return { state: 'unavailable' };
-    if (authenticatedUserId === undefined)
-      return invitationAcceptanceJourneySchema.parse({
-        ...base,
-        state: 'sign_in_required',
-      });
-    if (authenticatedUserId !== intent.acceptedUserId)
-      return invitationAcceptanceJourneySchema.parse({
-        ...base,
-        state: 'wrong_account',
-      });
-    return invitationAcceptanceJourneySchema.parse({
-      ...base,
-      state: 'completed',
-      workspace: { id: intent.workspaceId, name: intent.workspaceName },
-      role: intent.receipt.role,
-      membershipCreated: intent.receipt.membershipCreated,
-    });
-  }
-  const verifiedForCurrentUser =
-    intent.status === 'verified' &&
-    intent.workspaceName !== null &&
-    intent.invitationRole !== null &&
-    authenticatedUserId === intent.verifiedUserId;
-  if (verifiedForCurrentUser)
-    return invitationAcceptanceJourneySchema.parse({
-      ...base,
-      state: 'ready',
-      workspace: { id: intent.workspaceId, name: intent.workspaceName },
-      role: intent.invitationRole,
-      invitationRevision: intent.invitationRevision,
-      sessionRotationRequired: true,
-    });
-  return invitationAcceptanceJourneySchema.parse({
-    ...base,
-    state: 'sign_in_required',
-  });
 }
 
 function deterministicUuid(value: string, crypto: IdentityCrypto): string {

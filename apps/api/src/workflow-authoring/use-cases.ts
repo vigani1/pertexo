@@ -1,14 +1,5 @@
-import { createHash } from 'node:crypto';
-import { canonicalJson } from '@pertexo/workflow-model';
-
-import { EMPTY_WORKFLOW_GRAPH, parseWorkflowGraphDraft } from './graph.js';
-
-import {
-  authorizeWorkspaceOperation,
-  commandCredential,
-  type AuthorizationCapability,
-  type WorkspaceAuthorizationSource,
-} from '../authorization/index.js';
+import { parseWorkflowGraphDraft } from './graph.js';
+import type { WorkspaceAuthorizationSource } from '../authorization/index.js';
 import {
   decodeVersionCursor,
   decodeWorkflowCursor,
@@ -21,31 +12,16 @@ import {
   NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   type WorkflowAuthoringTelemetry,
 } from './telemetry.js';
-import {
-  workflowCreateRequestSchema,
-  type WorkflowPublishResponse,
-  type WorkflowSummary,
-  type WorkflowVersionsResponse,
-} from './types.js';
-import type {
-  WorkflowAuthoringPersistence,
-  WorkflowApplicationInput,
-} from './ports.js';
+import type { WorkflowSummary, WorkflowVersionsResponse } from './types.js';
+import type { WorkflowApplicationInput } from './ports.js';
 import type { WorkflowDraftRecord } from '@pertexo/database/authoring';
+import { WorkflowNotFoundError } from '@pertexo/database/authoring';
 import {
-  WorkflowNotFoundError,
-  WorkflowRevisionConflictError,
-} from '@pertexo/database/authoring';
-
-import {
-  serializeWorkflowCreate,
   serializeWorkflowDraft,
   serializeWorkflowList,
   serializeWorkflowSummary,
-  serializeWorkflowPublication,
   serializeWorkflowValidation,
   serializeWorkflowVersions,
-  type WorkflowCreateResult,
   type WorkflowDraftResult,
   type WorkflowValidationResult,
 } from './http/serializers.js';
@@ -53,10 +29,23 @@ import { createDraftRepresentationTag } from './http/etag.js';
 import { workflowTemplateOriginProjectionResponseSchema } from '@pertexo/contracts';
 import {
   applicationError,
-  parseRequestBody,
   throwApplicationError,
 } from '../platform/http/index.js';
-
+import {
+  ACTIVE_WORKFLOW_CAPABILITY,
+  type AuthoringPersistence,
+  revisionConflict,
+  authorize,
+} from './commands/authorization.js';
+export { InvalidWorkflowCursorError };
+export {
+  type CreateWorkflowInput,
+  CreateWorkflowUseCase,
+} from './commands/create.js';
+export {
+  type PublishWorkflowInput,
+  PublishWorkflowUseCase,
+} from './publication/publish.js';
 export type ListWorkflowsInput = WorkflowApplicationInput &
   Readonly<{
     limit?: number;
@@ -64,15 +53,10 @@ export type ListWorkflowsInput = WorkflowApplicationInput &
     order?: 'created_asc' | 'updated_desc';
     pinsWorkflowId?: string;
   }>;
-export type CreateWorkflowInput = WorkflowApplicationInput &
-  Readonly<{
-    request: unknown;
-    idempotencyKey: string;
-    requestId?: string;
-    traceId?: string;
-  }>;
+
 export type WorkflowResourceInput = WorkflowApplicationInput &
   Readonly<{ workflowId: string; signal?: AbortSignal }>;
+
 export type SaveWorkflowDraftInput = WorkflowResourceInput &
   Readonly<{
     representationTag: string;
@@ -80,23 +64,9 @@ export type SaveWorkflowDraftInput = WorkflowResourceInput &
     requestId?: string;
     traceId?: string;
   }>;
-export type PublishWorkflowInput = WorkflowResourceInput &
-  Readonly<{
-    representationTag: string;
-    idempotencyKey: string;
-    requestId?: string;
-    traceId?: string;
-    traceparent?: string;
-  }>;
+
 export type ListWorkflowVersionsInput = WorkflowResourceInput &
   Readonly<{ limit?: number; after?: string; versionId?: string }>;
-
-export { InvalidWorkflowCursorError };
-
-const ACTIVE_WORKFLOW_CAPABILITY = 'workflow:read' as const;
-
-type AuthoringPersistence<Method extends keyof WorkflowAuthoringPersistence> =
-  Pick<WorkflowAuthoringPersistence, Method>;
 
 export class ListWorkflowsUseCase {
   public constructor(
@@ -192,42 +162,6 @@ export class GetWorkflowUseCase {
         if (workflow === null)
           throw new WorkflowNotFoundError('Workflow is not visible');
         return serializeWorkflowSummary(workflow);
-      },
-    );
-  }
-}
-
-export class CreateWorkflowUseCase {
-  public constructor(
-    private readonly persistence: AuthoringPersistence<'createWorkflow'>,
-    private readonly authorization: WorkspaceAuthorizationSource,
-    private readonly telemetry: WorkflowAuthoringTelemetry = NOOP_WORKFLOW_AUTHORING_TELEMETRY,
-  ) {}
-
-  public execute(input: CreateWorkflowInput): Promise<WorkflowCreateResult> {
-    return this.telemetry.measure(
-      WORKFLOW_AUTHORING_OPERATION.create,
-      async () => {
-        await authorize(input, 'workflow:create', this.authorization);
-        const request = parseRequestBody(
-          workflowCreateRequestSchema,
-          input.request,
-        );
-        const created = await this.persistence.createWorkflow({
-          workspaceId: input.routeWorkspaceId,
-          actorId: input.actor.actorId,
-          name: request.name,
-          ...(request.folderId === undefined
-            ? {}
-            : { folderId: request.folderId }),
-          emptyGraph: EMPTY_WORKFLOW_GRAPH,
-          idempotencyKey: input.idempotencyKey,
-          ...(input.requestId === undefined
-            ? {}
-            : { requestId: input.requestId }),
-          ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
-        });
-        return serializeWorkflowCreate(created);
       },
     );
   }
@@ -345,48 +279,6 @@ export class ValidateWorkflowDraftUseCase {
   }
 }
 
-export class PublishWorkflowUseCase {
-  public constructor(
-    private readonly persistence: AuthoringPersistence<'publishWorkflow'>,
-    private readonly authorization: WorkspaceAuthorizationSource,
-    private readonly telemetry: WorkflowAuthoringTelemetry = NOOP_WORKFLOW_AUTHORING_TELEMETRY,
-  ) {}
-
-  public execute(
-    input: PublishWorkflowInput,
-  ): Promise<WorkflowPublishResponse> {
-    return this.telemetry.measure(
-      WORKFLOW_AUTHORING_OPERATION.publish,
-      async () => {
-        await authorize(input, 'workflow:publish', this.authorization);
-        // The opaque If-Match is handed to persistence without a preliminary
-        // draft read. Persistence must resolve an exact idempotent replay
-        // before looking up the current draft or evaluating the tag.
-        const result = await this.persistence.publishWorkflow({
-          workspaceId: input.routeWorkspaceId,
-          workflowId: input.workflowId,
-          actorId: input.actor.actorId,
-          representationTag: input.representationTag,
-          requestHash: publishRequestHash(input),
-          idempotencyKey: input.idempotencyKey,
-          ...commandCredential(input.actor),
-          ...(input.signal === undefined ? {} : { signal: input.signal }),
-          ...(input.requestId === undefined
-            ? {}
-            : { requestId: input.requestId }),
-          ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
-          ...(input.traceparent === undefined
-            ? {}
-            : { traceparent: input.traceparent }),
-        });
-        return serializeWorkflowPublication(result.version, {
-          reused: result.reused,
-        });
-      },
-    );
-  }
-}
-
 export class ListWorkflowVersionsUseCase {
   public constructor(
     private readonly persistence: AuthoringPersistence<'listVersions'>,
@@ -422,43 +314,4 @@ export class ListWorkflowVersionsUseCase {
       },
     );
   }
-}
-
-function revisionConflict(
-  draft: WorkflowDraftRecord,
-  currentEtag: string,
-): WorkflowRevisionConflictError {
-  return new WorkflowRevisionConflictError(draft.revision, currentEtag);
-}
-
-async function authorize(
-  input: WorkflowApplicationInput,
-  capability: AuthorizationCapability,
-  access: WorkspaceAuthorizationSource,
-): Promise<void> {
-  await authorizeWorkspaceOperation({
-    actor: input.actor,
-    routeWorkspaceId: input.routeWorkspaceId,
-    capability,
-    access,
-    disclosure: 'not_found',
-    allowedWorkspaceStatuses: ['active'],
-    ...(input.authorizedWorkspace === undefined
-      ? {}
-      : { authorizedWorkspace: input.authorizedWorkspace }),
-  });
-}
-
-function publishRequestHash(input: PublishWorkflowInput): string {
-  return createHash('sha256')
-    .update(
-      canonicalJson({
-        domain: 'pertexo.workflow.publish-request',
-        actorId: input.actor.actorId,
-        workspaceId: input.routeWorkspaceId,
-        workflowId: input.workflowId,
-        representationTag: input.representationTag,
-      }),
-    )
-    .digest('hex');
 }

@@ -1,259 +1,56 @@
 import { randomUUID } from 'node:crypto';
+import { projectConcurrencyConflict } from './problems/concurrency-conflict.js';
+import type { ApiProblem } from '@pertexo/contracts';
 import {
-  normalizeConcurrencyConflict,
-  projectConcurrencyConflict,
-  type ConcurrencyConflict,
-} from './problems/concurrency-conflict.js';
-
-import type { ApiProblem, ApiProblemIssue } from '@pertexo/contracts';
-import {
-  strongEtagSchema,
   workflowRecoveryUnavailableProblemSchema,
-  workflowRecoveryRefusalSchema,
   workflowRevisionConflictProblemSchema,
   workflowLifecycleConflictProblemSchema,
   workflowNameConflictProblemSchema,
-  type WorkflowLifecycleConflictProblem,
-  type WorkflowNameConflictProblem,
-  type WorkflowRevisionConflictProblem,
 } from '@pertexo/contracts';
 import { Catch, HttpException } from '@nestjs/common';
 import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
 import { ZodError } from 'zod';
-
 import {
   APPLICATION_ERROR_CATALOG,
-  type ApplicationError,
-  type ApplicationErrorCatalogEntry,
-  type ApplicationErrorCode,
   isApplicationError,
 } from './application-error.js';
 import {
   createRequestContext,
   type HttpRequestLike,
-  type HttpResponseLike,
   type RequestContext,
   RequestContextStore,
   setResponseHeader,
 } from './request-context.js';
-import { isRequestBodyError } from './request-body.js';
-import { firstRequestHeader } from './request-headers.js';
-import { normalizeWorkflowMetadataConflict } from './problems/workflow-metadata-conflict.js';
-import {
-  normalizeAutoPauseConflict,
-  projectAutoPauseConflict,
-  type AutoPauseConflictProblem,
-  type AutoPauseConflictRevision,
-} from './problems/auto-pause-conflict.js';
 
+import { firstRequestHeader } from './request-headers.js';
+
+import { projectAutoPauseConflict } from './problems/auto-pause-conflict.js';
+import type {
+  ProblemDetails,
+  HttpErrorLogger,
+  HttpApplicationErrorMapper,
+  ProblemResponse,
+  NormalizedProblem,
+} from './problems/normalization/contract.js';
+import {
+  text,
+  zodIssues,
+  nestIssues,
+  nestCode,
+  safeHttpStatus,
+} from './problems/normalization/values.js';
+import { fromApplicationError } from './problems/normalization/application.js';
+
+export {
+  type HttpErrorLogEntry,
+  type HttpErrorLogger,
+  type HttpApplicationErrorMapper,
+} from './problems/normalization/contract.js';
 export const HTTP_ERROR_LOGGER = Symbol('HTTP_ERROR_LOGGER');
+
 export const HTTP_APPLICATION_ERROR_MAPPERS = Symbol(
   'HTTP_APPLICATION_ERROR_MAPPERS',
 );
-
-type ProblemIssue = ApiProblemIssue;
-type ProblemDetails =
-  | ApiProblem
-  | WorkflowRevisionConflictProblem
-  | WorkflowLifecycleConflictProblem
-  | WorkflowNameConflictProblem
-  | AutoPauseConflictProblem
-  | ReturnType<typeof projectConcurrencyConflict>;
-
-export type HttpErrorLogEntry = Readonly<{
-  code: ApplicationErrorCode;
-  requestId: string;
-  severity: ApplicationErrorCatalogEntry['severity'];
-  actorId?: string;
-  workspaceId?: string;
-  instance?: string;
-  cause: unknown;
-}>;
-
-export interface HttpErrorLogger {
-  log(entry: HttpErrorLogEntry): void | Promise<void>;
-}
-
-export type HttpApplicationErrorMapper = (
-  error: unknown,
-  request: HttpRequestLike,
-) => ApplicationError | undefined;
-
-type ProblemResponse = HttpResponseLike & {
-  code?: (status: number) => unknown;
-  status?: (status: number) => unknown;
-  send?: (body: ProblemDetails) => unknown;
-  json?: (body: ProblemDetails) => unknown;
-};
-
-type NormalizedProblem = Readonly<{
-  code: ApplicationErrorCode;
-  status: number;
-  title: string;
-  detail?: string;
-  errors?: readonly ProblemIssue[];
-  revisionConflict?: Readonly<{
-    currentRevision: number;
-    currentEtag: string;
-  }>;
-  retryAfterSeconds?: number;
-  currentLifecycleRevision?: number;
-  currentNameRevision?: number;
-  autoPauseConflict?: AutoPauseConflictRevision;
-  concurrencyConflict?: ConcurrencyConflict;
-  recoveryReason?: ReturnType<
-    typeof workflowRecoveryRefusalSchema.parse
-  >['reason'];
-  cause?: unknown;
-}>;
-
-function text(value: unknown, maximumLength: number): string | undefined {
-  if (typeof value !== 'string') {
-    return undefined;
-  }
-
-  const normalized = value.replaceAll('\r', '').replaceAll('\n', '').trim();
-  return normalized.length === 0
-    ? undefined
-    : normalized.slice(0, maximumLength);
-}
-
-function pointer(path: readonly PropertyKey[]): string {
-  return path
-    .reduce<string>(
-      (current, segment) =>
-        `${current}/${String(segment).replaceAll('~', '~0').replaceAll('/', '~1')}`,
-      '',
-    )
-    .slice(0, 1_024);
-}
-
-function zodIssues(error: ZodError): readonly ProblemIssue[] {
-  return Object.freeze(
-    error.issues.slice(0, 100).map((issue) => ({
-      path: pointer(issue.path),
-      code: issue.code,
-      message: text(issue.message, 500) ?? 'Invalid value',
-    })),
-  );
-}
-
-function responseMessage(response: unknown): unknown {
-  if (
-    typeof response !== 'object' ||
-    response === null ||
-    !('message' in response)
-  ) {
-    return undefined;
-  }
-  return response.message;
-}
-
-function nestIssues(
-  exception: HttpException,
-): readonly ProblemIssue[] | undefined {
-  const message = responseMessage(exception.getResponse());
-  if (!Array.isArray(message)) {
-    return undefined;
-  }
-
-  const issues = message
-    .slice(0, 100)
-    .map((item): ProblemIssue | undefined => {
-      const safeMessage = text(item, 500);
-      return safeMessage === undefined
-        ? undefined
-        : { path: '', code: 'validation', message: safeMessage };
-    })
-    .filter((issue): issue is ProblemIssue => issue !== undefined);
-
-  return issues.length === 0 ? undefined : Object.freeze(issues);
-}
-
-function nestCode(status: number): ApplicationErrorCode {
-  if (status === 400) return 'request.invalid';
-  if (status === 401) return 'auth.unauthenticated';
-  if (status === 403) return 'auth.forbidden';
-  if (status === 404) return 'resource.not_found';
-  return 'internal.unexpected';
-}
-
-function safeHttpStatus(status: number): number {
-  return Number.isInteger(status) && status >= 400 && status <= 599
-    ? status
-    : APPLICATION_ERROR_CATALOG['internal.unexpected'].status;
-}
-
-function unexpectedProblem(cause: unknown): NormalizedProblem {
-  const fallback = APPLICATION_ERROR_CATALOG['internal.unexpected'];
-  return {
-    code: 'internal.unexpected',
-    status: fallback.status,
-    title: fallback.title,
-    cause,
-  };
-}
-
-function fromApplicationError(error: ApplicationError): NormalizedProblem {
-  const entry = APPLICATION_ERROR_CATALOG[error.code];
-  const detail =
-    entry.exposeDetail && error.safeDetail !== undefined
-      ? text(error.safeDetail, 2_000)
-      : undefined;
-  const issues = applicationProblemIssues(error);
-  const base = {
-    code: error.code,
-    status: entry.status,
-    title: entry.title,
-    ...(detail === undefined ? {} : { detail }),
-    cause: error.cause,
-    ...(issues === undefined ? {} : { errors: issues }),
-  };
-  const retryableProblem =
-    error.code === 'request.rate_limited' ||
-    error.code === 'request.rate_limit_unavailable' ||
-    error.code === 'workspace.quota_exceeded' ||
-    error.code === 'workflow.validation_unavailable';
-  if (retryableProblem) return retryableApplicationProblem(base, error);
-  if (error.code === 'run.recovery_unavailable') {
-    const refusal = workflowRecoveryRefusalSchema.safeParse({
-      kind: 'refused',
-      reason: error.details?.reason,
-    });
-    return refusal.success
-      ? { ...base, recoveryReason: refusal.data.reason }
-      : unexpectedProblem(error);
-  }
-  const autoPauseConflict = normalizeAutoPauseConflict(error);
-  if (autoPauseConflict !== undefined) return { ...base, autoPauseConflict };
-  const concurrencyConflict = normalizeConcurrencyConflict(error);
-  if (concurrencyConflict !== undefined)
-    return { ...base, concurrencyConflict };
-  const metadataConflict = normalizeWorkflowMetadataConflict(error);
-  if (metadataConflict === 'invalid') return unexpectedProblem(error);
-  if (metadataConflict !== undefined) return { ...base, ...metadataConflict };
-  if (error.code !== 'workflow.revision_conflict') return base;
-  return revisionConflictProblem(base, error);
-}
-
-function safeApplicationIssues(
-  value: unknown,
-): readonly ProblemIssue[] | undefined {
-  if (!Array.isArray(value)) return undefined;
-  const issues = value
-    .slice(0, 100)
-    .map((issue: unknown): ProblemIssue | undefined => {
-      if (typeof issue !== 'object' || issue === null) return undefined;
-      const path = 'path' in issue ? text(issue.path, 1_024) : undefined;
-      const code = 'code' in issue ? text(issue.code, 128) : undefined;
-      const message = 'message' in issue ? text(issue.message, 500) : undefined;
-      return path === undefined || code === undefined || message === undefined
-        ? undefined
-        : { path, code, message };
-    })
-    .filter((issue): issue is ProblemIssue => issue !== undefined);
-  return issues.length === 0 ? undefined : Object.freeze(issues);
-}
 
 function normalize(
   exception: unknown,
@@ -513,46 +310,4 @@ export class ProblemDetailsFilter implements ExceptionFilter {
 
     writeProblem(response, normalized.status, problem);
   }
-}
-
-function applicationProblemIssues(
-  error: ApplicationError,
-): readonly ProblemIssue[] | undefined {
-  if (error.code === 'workflow.invalid' || error.code === 'form.invalid')
-    return safeApplicationIssues(error.details?.issues);
-  if (error.code === 'request.invalid' && isRequestBodyError(error.cause))
-    return zodIssues(error.cause);
-  return undefined;
-}
-
-function retryableApplicationProblem(
-  base: NormalizedProblem,
-  error: ApplicationError,
-): NormalizedProblem {
-  const retryAfterSeconds = error.details?.retryAfterSeconds;
-  return typeof retryAfterSeconds === 'number' &&
-    Number.isSafeInteger(retryAfterSeconds) &&
-    retryAfterSeconds >= 1 &&
-    retryAfterSeconds <= 300
-    ? { ...base, retryAfterSeconds }
-    : base;
-}
-
-function revisionConflictProblem(
-  base: NormalizedProblem,
-  error: ApplicationError,
-): NormalizedProblem {
-  const currentRevision = error.details?.currentRevision;
-  const currentEtag = error.details?.currentEtag;
-  const parsedEtag = strongEtagSchema.safeParse(currentEtag);
-  const invalidRevisionConflict =
-    typeof currentRevision !== 'number' ||
-    !Number.isSafeInteger(currentRevision) ||
-    currentRevision < 1 ||
-    !parsedEtag.success;
-  if (invalidRevisionConflict) return unexpectedProblem(error);
-  return {
-    ...base,
-    revisionConflict: { currentRevision, currentEtag: parsedEtag.data },
-  };
 }

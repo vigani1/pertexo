@@ -1,116 +1,23 @@
-import {
-  createApiCallbackRuntime,
-  type ApiCallbackRuntime,
-} from './platform/webhooks/callback-runtime.module.js';
-import {
-  createDatabaseRuntime,
-  type DatabaseRuntime,
-  type WorkspaceDatabase,
-} from '@pertexo/database/platform';
-import type {
-  StructuredLogger,
-  TelemetryLifecycle,
-} from '@pertexo/observability';
+import { createApiCallbackRuntime } from './platform/webhooks/callback-runtime.module.js';
+import { createDatabaseRuntime } from '@pertexo/database/platform';
 
 import type { ApiConfig } from './platform/config/api.js';
-import {
-  createApiConnectionRuntime,
-  type ApiConnectionRuntime,
-  type ApiConnectionRuntimeOverrides,
-} from './platform/connections/connection-runtime.module.js';
-import {
-  createApiIdentityRuntime,
-  type ApiIdentityRuntime,
-  type ApiIdentityRuntimeOverrides,
-} from './platform/identity/identity-runtime.module.js';
-import {
-  createApiWorkflowRuntime,
-  type ApiWorkflowRuntime,
-  type ApiWorkflowRuntimeOverrides,
-} from './platform/workflow/workflow-runtime.module.js';
-import {
-  createApiWebhookRuntime,
-  type ApiWebhookRuntime,
-} from './platform/webhooks/webhook-runtime.module.js';
-import {
-  createApiScheduleRuntime,
-  type ApiScheduleRuntime,
-} from './platform/schedules/schedule-runtime.module.js';
-import {
-  createApiNotificationRuntime,
-  type ApiNotificationRuntime,
-} from './platform/notifications/notification-runtime.module.js';
-import type { RateLimitConsumer } from './platform/rate-limit/interceptor.js';
-import {
-  createApiArtifactRuntime,
-  type ApiArtifactRuntime,
-  type ApiArtifactRuntimeOverrides,
-} from './platform/artifacts/artifact-runtime.module.js';
+import { createApiConnectionRuntime } from './platform/connections/connection-runtime.module.js';
+import { createApiIdentityRuntime } from './platform/identity/identity-runtime.module.js';
+import { createApiWorkflowRuntime } from './platform/workflow/workflow-runtime.module.js';
+import { createApiWebhookRuntime } from './platform/webhooks/webhook-runtime.module.js';
+import { createApiScheduleRuntime } from './platform/schedules/schedule-runtime.module.js';
+import { createApiNotificationRuntime } from './platform/notifications/notification-runtime.module.js';
 
-/*
- * The feature runtimes an API process owns: which to create from
- * configuration, which a caller supplied, and how to release them when
- * startup fails.
- */
+import { createApiArtifactRuntime } from './platform/artifacts/artifact-runtime.module.js';
+import type {
+  ApiApplicationDependencies,
+  ApiRuntimeResources,
+  ApiRuntimeSet,
+} from './platform/application/contract.js';
 
-type ApiApplicationDependencyCore = Readonly<{
-  database?: WorkspaceDatabase;
-  databaseRuntime?: DatabaseRuntime;
-  callbackRuntime?: ApiCallbackRuntime;
-  webhookRuntime?: ApiWebhookRuntime;
-  scheduleRuntime?: ApiScheduleRuntime;
-  notificationRuntime?: ApiNotificationRuntime;
-  rateLimitConsumer?: RateLimitConsumer;
-  logger: StructuredLogger;
-  telemetry: TelemetryLifecycle;
-}>;
-
-type IdentityRuntimeSource =
-  | Readonly<{
-      identityRuntime: ApiIdentityRuntime;
-      identityOverrides?: never;
-    }>
-  | Readonly<{
-      identityRuntime?: undefined;
-      identityOverrides?: ApiIdentityRuntimeOverrides;
-    }>;
-
-type ConnectionRuntimeSource =
-  | Readonly<{
-      connectionRuntime: ApiConnectionRuntime;
-      connectionOverrides?: never;
-    }>
-  | Readonly<{
-      connectionRuntime?: undefined;
-      connectionOverrides?: ApiConnectionRuntimeOverrides;
-    }>;
-
-type WorkflowRuntimeSource =
-  | Readonly<{
-      workflowRuntime: ApiWorkflowRuntime;
-      workflowOverrides?: never;
-    }>
-  | Readonly<{
-      workflowRuntime?: undefined;
-      workflowOverrides?: ApiWorkflowRuntimeOverrides;
-    }>;
-
-type ArtifactRuntimeSource =
-  | Readonly<{
-      artifactRuntime: ApiArtifactRuntime;
-      artifactOverrides?: never;
-    }>
-  | Readonly<{
-      artifactRuntime?: undefined;
-      artifactOverrides?: ApiArtifactRuntimeOverrides;
-    }>;
-
-export type ApiApplicationDependencies = ApiApplicationDependencyCore &
-  IdentityRuntimeSource &
-  ConnectionRuntimeSource &
-  WorkflowRuntimeSource &
-  ArtifactRuntimeSource;
-
+export { type ApiApplicationDependencies } from './platform/application/contract.js';
+export { assertValidRuntimeSources } from './platform/application/sources.js';
 export async function acquireApiRuntimes(
   config: ApiConfig,
   dependencies: ApiApplicationDependencies,
@@ -135,20 +42,6 @@ export async function acquireApiRuntimes(
   }
   return runtimes;
 }
-
-interface ApiRuntimeResources {
-  callbackRuntime: ApiCallbackRuntime | undefined;
-  artifactRuntime: ApiArtifactRuntime | undefined;
-  connectionRuntime: ApiConnectionRuntime | undefined;
-  databaseRuntime: DatabaseRuntime | undefined;
-  identityRuntime: ApiIdentityRuntime | undefined;
-  notificationRuntime: ApiNotificationRuntime | undefined;
-  scheduleRuntime: ApiScheduleRuntime | undefined;
-  webhookRuntime: ApiWebhookRuntime | undefined;
-  workflowRuntime: ApiWorkflowRuntime | undefined;
-}
-
-type ApiRuntimeSet = Readonly<ApiRuntimeResources>;
 
 export async function cleanupApiRuntimes(
   runtimes: ApiRuntimeSet,
@@ -189,94 +82,6 @@ export function throwStartupFailure(
     [startupError, ...flattened],
     'API startup and cleanup did not complete cleanly',
   );
-}
-
-export function assertValidRuntimeSources(
-  config: ApiConfig,
-  dependencies: ApiApplicationDependencies,
-): void {
-  const unchecked = dependencies as ApiApplicationDependencyCore & {
-    identityRuntime?: ApiIdentityRuntime;
-    identityOverrides?: ApiIdentityRuntimeOverrides;
-    connectionRuntime?: ApiConnectionRuntime;
-    connectionOverrides?: ApiConnectionRuntimeOverrides;
-    workflowRuntime?: ApiWorkflowRuntime;
-    workflowOverrides?: ApiWorkflowRuntimeOverrides;
-    artifactRuntime?: ApiArtifactRuntime;
-    artifactOverrides?: ApiArtifactRuntimeOverrides;
-  };
-  assertExclusiveRuntime(
-    'identity',
-    unchecked.identityRuntime,
-    unchecked.identityOverrides,
-  );
-  assertExclusiveRuntime(
-    'artifact',
-    unchecked.artifactRuntime,
-    unchecked.artifactOverrides,
-  );
-  assertExclusiveRuntime(
-    'connection',
-    unchecked.connectionRuntime,
-    unchecked.connectionOverrides,
-  );
-  assertExclusiveRuntime(
-    'workflow',
-    unchecked.workflowRuntime,
-    unchecked.workflowOverrides,
-  );
-
-  const identityAvailable =
-    unchecked.identityRuntime !== undefined || config.identity !== undefined;
-  if (
-    unchecked.identityOverrides !== undefined &&
-    config.identity === undefined
-  )
-    throw new TypeError(
-      'identity overrides require configured identity runtime creation',
-    );
-  if (
-    unchecked.connectionOverrides !== undefined &&
-    (config.connections === undefined || !identityAvailable)
-  )
-    throw new TypeError(
-      'connection overrides require configured connection runtime creation',
-    );
-  if (unchecked.workflowOverrides !== undefined && !identityAvailable)
-    throw new TypeError(
-      'workflow overrides require available identity runtime creation',
-    );
-  if (
-    unchecked.artifactOverrides !== undefined &&
-    (config.artifacts === undefined || !identityAvailable)
-  )
-    throw new TypeError(
-      'artifact overrides require configured artifact runtime creation',
-    );
-  if (!identityAvailable) {
-    const featureRuntimeAvailable =
-      unchecked.connectionRuntime !== undefined ||
-      unchecked.workflowRuntime !== undefined ||
-      unchecked.webhookRuntime !== undefined ||
-      unchecked.scheduleRuntime !== undefined ||
-      unchecked.notificationRuntime !== undefined ||
-      unchecked.artifactRuntime !== undefined;
-    if (featureRuntimeAvailable)
-      throw new TypeError(
-        'feature runtimes require an available identity runtime',
-      );
-  }
-}
-
-function assertExclusiveRuntime(
-  feature: string,
-  runtime: unknown,
-  overrides: unknown,
-): void {
-  if (runtime !== undefined && overrides !== undefined)
-    throw new TypeError(
-      `${feature} runtime cannot be provided with ${feature} overrides`,
-    );
 }
 
 async function acquireIdentityWorkflows(
