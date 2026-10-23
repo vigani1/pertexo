@@ -49,6 +49,15 @@ SDK definitions and executors; browser code gets live catalog metadata from the
 API and imports only browser-safe packages. `pnpm architecture:check` verifies
 workspace dependencies, TypeScript references and source import cycles.
 
+## HTTP problems
+
+The API projects domain failures through `problems/registry.ts`'s
+`toProblem(error)`. Each error class has one registration beside its application
+area; the shared HTTP filter knows no feature URLs. Operation boundaries supply
+explicit meaning where access loss must stay hidden or request/preview wording
+differs. Register new domain failures in this owner; services and persistence
+adapters propagate them without translating them into HTTP problems.
+
 ## Built-in node layout
 
 `nodes-core/src/triggers/` owns start steps; `flow/` owns control steps;

@@ -27,16 +27,17 @@ function hiddenResourceFailure(error: unknown): unknown {
     : error;
 }
 
-function requestFailure(error: unknown, message: string): unknown {
+export function requestFailure(
+  error: unknown,
+  message = 'The request is invalid.',
+): unknown {
   return error instanceof z.ZodError
     ? new InvalidRequestError(message, requestBodyCause(error))
     : error;
 }
 
 export function resourceFailure(error: unknown): unknown {
-  return hiddenResourceFailure(
-    requestFailure(error, 'The request is invalid.'),
-  );
+  return hiddenResourceFailure(requestFailure(error));
 }
 
 function commandFailure(error: unknown): unknown {
@@ -46,7 +47,7 @@ function commandFailure(error: unknown): unknown {
 }
 
 export function workspaceFailure(error: unknown): unknown {
-  return commandFailure(requestFailure(error, 'The request is invalid.'));
+  return commandFailure(requestFailure(error));
 }
 
 export function authoringFailure(error: unknown): unknown {

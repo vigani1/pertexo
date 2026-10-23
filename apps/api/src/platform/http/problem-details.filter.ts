@@ -304,6 +304,11 @@ function normalize(
     };
   }
 
+  for (const mapper of applicationErrorMappers) {
+    const mapped = mapper(exception, request);
+    if (mapped !== undefined) return fromApplicationError(mapped);
+  }
+
   if (exception instanceof ZodError) {
     const entry = APPLICATION_ERROR_CATALOG['request.invalid'];
     return {
@@ -312,11 +317,6 @@ function normalize(
       title: entry.title,
       errors: zodIssues(exception),
     };
-  }
-
-  for (const mapper of applicationErrorMappers) {
-    const mapped = mapper(exception, request);
-    if (mapped !== undefined) return fromApplicationError(mapped);
   }
 
   if (isApplicationError(exception)) return fromApplicationError(exception);

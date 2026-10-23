@@ -21,7 +21,3 @@ export class IdentityError extends Error {
     this.code = code;
   }
 }
-
-export function isIdentityError(value: unknown): value is IdentityError {
-  return value instanceof IdentityError;
-}

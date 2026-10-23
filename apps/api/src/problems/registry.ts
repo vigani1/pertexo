@@ -1,3 +1,4 @@
+import { requestFailure } from './context/normalize.js';
 import { createErrorRegistry } from '../platform/http/problems/registry.js';
 import {
   applicationError,
@@ -56,7 +57,8 @@ const errorRegistry = createErrorRegistry([
 ]);
 
 export function toProblem(error: unknown): ApplicationError {
-  const registered = errorRegistry(error);
+  // Guard validation can fail before an operation interceptor supplies context.
+  const registered = errorRegistry(requestFailure(error));
   if (registered !== undefined) return registered;
   if (isApplicationError(error)) return error;
   return applicationError('internal.unexpected', { cause: error });

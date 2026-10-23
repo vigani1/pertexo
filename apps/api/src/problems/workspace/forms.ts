@@ -35,7 +35,7 @@ export const formsProblems = [
   }),
 ];
 
-export function formValidationProblem(error: FormValuesInvalidError) {
+function formValidationProblem(error: FormValuesInvalidError) {
   return applicationError('form.invalid', {
     safeDetail: error.message,
     details: {
