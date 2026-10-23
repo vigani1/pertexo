@@ -1,8 +1,5 @@
 import type { PoolClient } from 'pg';
-import {
-  workspaceVariablesResponseSchema,
-  type WorkspaceVariablesResponse,
-} from '@pertexo/contracts';
+import type { WorkspaceVariablesResponse } from '@pertexo/contracts';
 import { and, eq } from 'drizzle-orm';
 import { EMPTY_VARIABLE_SNAPSHOT } from '@pertexo/workflow-model';
 import {
@@ -33,9 +30,7 @@ export async function readWorkspaceVariables(
     )
     .where(eq(workspaceVariables.workspaceId, transaction.workspaceId))
     .limit(1);
-  return workspaceVariablesResponseSchema.parse(
-    row ?? { ...EMPTY_VARIABLE_SNAPSHOT, descriptions: {} },
-  );
+  return row ?? { ...EMPTY_VARIABLE_SNAPSHOT, descriptions: {} };
 }
 
 /** Admission holds the head until its immutable reference has been inserted. */

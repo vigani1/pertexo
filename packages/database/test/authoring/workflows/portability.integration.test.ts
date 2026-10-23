@@ -6,7 +6,10 @@ import {
   type WorkflowPortabilityCatalog,
 } from '@pertexo/workflow-model';
 import { workflowDefinitionCatalogFingerprint } from '@pertexo/workflow-model/server';
-import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
+import {
+  CURATED_WORKFLOW_TEMPLATES,
+  verifyCuratedTemplateManifest,
+} from '@pertexo/templates';
 import {
   WorkflowPortabilityCompatibilityConflictError,
   WorkflowPortabilityReviewConflictError,
@@ -85,7 +88,8 @@ function database(
 function command(
   extra: Partial<ImportWorkflowInput> = {},
 ): ImportWorkflowInput {
-  return {
+  const { templateOrigin, templateIssues: _issues, ...rest } = extra;
+  const input = {
     workspaceId,
     actorId,
     name: 'Portable independent workflow',
@@ -97,9 +101,20 @@ function command(
     expectedCompatibilityFingerprint:
       workflowDefinitionCatalogFingerprint(catalog),
     idempotencyKey: randomUUID(),
-    ...extra,
+    ...rest,
+  };
+  if (templateOrigin === undefined) return input;
+  const verified = verifyCuratedTemplateManifest(
+    input.manifest,
+    templateOrigin,
+  );
+  return {
+    ...input,
+    templateOrigin,
+    templateIssues: verified.ok ? [] : verified.issues,
   };
 }
+
 async function facts() {
   return queryAsOwner(
     `select (select count(*)::int from app.workflows where workspace_id=$1) workflows,
@@ -178,11 +193,9 @@ describe('portable workflow persistence under the API role', () => {
       },
     };
     await expect(
-      db.importWorkflow({
-        ...input,
-        manifest: changed,
-        idempotencyKey: randomUUID(),
-      }),
+      db.importWorkflow(
+        command({ ...input, manifest: changed, idempotencyKey: randomUUID() }),
+      ),
     ).rejects.toBeInstanceOf(WorkflowPortabilityValidationError);
   });
 

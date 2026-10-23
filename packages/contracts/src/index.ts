@@ -28,10 +28,7 @@ export {
   type WorkflowErrorSettingsRequest,
 } from './schemas/workflows/error-workflow.js';
 
-export {
-  workflowRunErrorWorkflowSchema,
-  type WorkflowRunErrorWorkflow,
-} from './schemas/execution/runs.js';
+export { type WorkflowRunErrorWorkflow } from './schemas/execution/runs.js';
 
 export {
   workflowErrorTargetsQuerySchema,

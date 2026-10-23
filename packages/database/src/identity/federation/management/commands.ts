@@ -1,8 +1,5 @@
 import type { Pool, PoolClient } from 'pg';
-import {
-  federationSettingsSchema,
-  type FederationSettings,
-} from '@pertexo/contracts';
+import type { FederationSettings } from '@pertexo/contracts';
 import {
   claimCommand,
   completeCommand,
@@ -86,13 +83,13 @@ export async function runFederationCommand(
         idempotencyKey: input.idempotencyKey,
       };
       const replay = await withWorkspaceScope(client, input, (scoped) =>
-        claimCommand(scoped, {
+        claimCommand<FederationSettings>(scoped, {
           ...identity,
           resourceId: generatePersistedId(),
           request,
         }),
       );
-      if (replay !== null) return federationSettingsSchema.parse(replay);
+      if (replay !== null) return replay;
       const changedOrganization = await change(client);
       const result: FederationSettings = {
         configured: true,

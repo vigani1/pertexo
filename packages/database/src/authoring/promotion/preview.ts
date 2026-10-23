@@ -1,8 +1,8 @@
+import { PROMOTION_LIMITS } from '@pertexo/workflow-model';
 import { utf8ByteLength } from '@pertexo/workflow-model';
-import {
-  PROMOTION_LIMITS,
-  type WorkflowPromotionPreview,
-  type WorkflowPromotionPreviewRequest,
+import type {
+  WorkflowPromotionPreview,
+  WorkflowPromotionPreviewRequest,
 } from '@pertexo/contracts';
 import type { WorkspaceScopeRunner } from '../../tenant-access/transactions.js';
 import { linkedPromotionTarget } from './authority.js';

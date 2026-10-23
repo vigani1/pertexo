@@ -1,7 +1,8 @@
+import type { FormSubmissionResponse } from '@pertexo/contracts';
 import { coordinateEvent } from '../coordination/accept.js';
 import type { PreparedFormEvent } from './prepare.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
-import { formSubmissionResponseSchema } from '@pertexo/contracts';
+
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 import { WorkflowAlreadyRunningError } from '../../runs/commands/concurrency.js';
 import { recordWorkflowTriggerSkip } from '../skips.js';
@@ -43,16 +44,16 @@ export async function submitForm(
     db: drizzle(client, { schema: databaseSchema }),
     workspaceId: parseWorkspaceId(input.workspaceId),
   };
-  const previous = await claimCommand(client, {
+  const previous = await claimCommand<FormSubmissionResponse>(client, {
     ...command,
     requestHash: identity.requestHash,
     resourceId: input.workflowId,
   });
   if (previous !== null)
-    return formSubmissionResponseSchema.parse({
-      ...formSubmissionResponseSchema.parse(previous),
+    return {
+      ...previous,
       replayed: true,
-    });
+    };
   const replay = await readWorkflowRunAcceptanceReplay(transaction, identity);
   if (replay !== null) {
     let acceptedForm = form;

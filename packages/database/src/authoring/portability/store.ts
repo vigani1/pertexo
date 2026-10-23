@@ -5,10 +5,6 @@ import { createHash } from 'node:crypto';
 
 import { z } from 'zod';
 import {
-  verifyCuratedTemplateManifest,
-  workflowTemplateOriginRequestSchema,
-} from '@pertexo/templates';
-import {
   canonicalWorkflowPortableJson,
   EMPTY_WORKFLOW_GRAPH,
   inspectWorkflowPortableManifest,
@@ -67,7 +63,6 @@ const previewInput = scope
     bindings: z
       .array(portableConnectionBindingSchema)
       .max(WORKFLOW_PORTABILITY_LIMITS.connectionSlots),
-    templateOrigin: workflowTemplateOriginRequestSchema.optional(),
   })
   .strict();
 const importInput = previewInput
@@ -115,11 +110,7 @@ function inspectTemplateOrigin(
   catalog: PortableCatalog,
 ): readonly PortableIssue[] {
   if (input.templateOrigin === undefined) return [];
-  const verified = verifyCuratedTemplateManifest(
-    input.manifest,
-    input.templateOrigin,
-  );
-  if (!verified.ok) return verified.issues;
+  if (input.templateIssues.length > 0) return input.templateIssues;
   if (catalog.validateTemplateSetup === undefined)
     throw new WorkflowPortabilityUnavailableError(
       'Registered template setup validation is unavailable',
@@ -151,7 +142,7 @@ async function requirePortabilityAuthority(
 
 /** The import command's digest, which a template origin records. */
 export function workflowImportCommandDigest(
-  input: ImportWorkflowInput,
+  input: Omit<ImportWorkflowInput, 'templateIssues'>,
 ): string {
   const command = canonicalWorkflowPortableJson({
     manifest: input.manifest,
@@ -298,7 +289,12 @@ function previewPortableWorkflow(
     manifest: rawInput.manifest,
     bindings: rawInput.bindings,
   });
-  const parsed = previewInput.parse(rawInput);
+  const {
+    templateIssues: _verification,
+    templateOrigin: _origin,
+    ...unverified
+  } = rawInput;
+  const parsed = previewInput.parse(unverified);
   const input: PreviewWorkflowImportInput = {
     ...rawInput,
     manifest: parsed.manifest,
@@ -338,7 +334,12 @@ function importPortableWorkflow(
     manifest: rawInput.manifest,
     bindings: rawInput.bindings,
   });
-  const parsed = importInput.parse(rawInput);
+  const {
+    templateIssues: _verification,
+    templateOrigin: _origin,
+    ...unverified
+  } = rawInput;
+  const parsed = importInput.parse(unverified);
   const input: ImportWorkflowInput = {
     ...rawInput,
     name: parsed.name,

@@ -1,3 +1,4 @@
+import { API_TOKEN_SCOPES } from '@pertexo/workflow-model';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { sql } from 'drizzle-orm';
 import {
@@ -12,7 +13,7 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 import type { ApiTokenScope } from '@pertexo/contracts';
-import { API_TOKEN_SCOPES } from '@pertexo/contracts';
+
 import { workspaceMemberships } from '../foundation.js';
 import { appSchema } from '../namespace.js';
 

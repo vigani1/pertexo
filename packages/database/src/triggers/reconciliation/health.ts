@@ -1,7 +1,4 @@
-import {
-  webhookAuthenticationSchema,
-  type WebhookAuthentication,
-} from '@pertexo/contracts';
+import type { WebhookAuthentication } from '@pertexo/contracts';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import {
@@ -25,7 +22,11 @@ export type WorkflowTriggerHealth = Readonly<{
   reconciledAt: Date | null;
 }>;
 
-function mapHealth(row: Record<string, unknown>): WorkflowTriggerHealth {
+function mapHealth(
+  row: Record<string, unknown> & {
+    authentication: WebhookAuthentication | null;
+  },
+): WorkflowTriggerHealth {
   return Object.freeze({
     id: z.uuid().parse(row.id),
     workflowId: z.uuid().parse(row.workflow_id),
@@ -40,9 +41,12 @@ function mapHealth(row: Record<string, unknown>): WorkflowTriggerHealth {
     endpointReady: z.boolean().parse(row.endpoint_ready),
     ...(row.kind === 'webhook'
       ? {
-          authentication: webhookAuthenticationSchema.parse(
-            row.authentication ?? { mode: 'signed', allowedOrigins: [] },
-          ),
+          authentication:
+            row.authentication ??
+            ({
+              mode: 'signed',
+              allowedOrigins: [],
+            } satisfies WebhookAuthentication),
         }
       : {}),
     reconciledAt: z.date().nullable().parse(row.reconciled_at),
@@ -96,7 +100,9 @@ export async function readHealth(
   workspaceId: string,
   workflowId: string,
 ): Promise<readonly WorkflowTriggerHealth[]> {
-  const result = await client.query<Record<string, unknown>>(
+  const result = await client.query<
+    Record<string, unknown> & { authentication: WebhookAuthentication | null }
+  >(
     `select trigger.id,trigger.workflow_id,trigger.workflow_version_id,
             trigger.node_id,trigger.kind,trigger.status,trigger.health_status,
             trigger.last_error_code,trigger.reconciled_at,

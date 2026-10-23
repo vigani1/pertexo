@@ -1,12 +1,13 @@
+import type { WorkflowRunErrorWorkflow } from '@pertexo/contracts';
 import { sql } from 'drizzle-orm';
-import { workflowRunErrorWorkflowSchema } from '@pertexo/contracts';
+
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 
 export async function readErrorWorkflow(
   transaction: WorkspaceTransaction,
   runId: string,
 ) {
-  const result = await transaction.db.execute(sql`
+  const result = await transaction.db.execute<WorkflowRunErrorWorkflow>(sql`
     select intent.status, intent.target_workflow_id as "targetWorkflowId",
       intent.target_version_id as "targetVersionId", target.id as "acceptedRunId",
       intent.refusal_code as "refusalCode"
@@ -16,7 +17,5 @@ export async function readErrorWorkflow(
     where intent.workspace_id=${transaction.workspaceId} and intent.source_run_id=${runId}
   `);
   const row = result.rows[0];
-  return row === undefined
-    ? {}
-    : { errorWorkflow: workflowRunErrorWorkflowSchema.parse(row) };
+  return row === undefined ? {} : { errorWorkflow: row };
 }

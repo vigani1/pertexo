@@ -1,7 +1,7 @@
 import { ADMINISTRATIVE_ROLES } from '@pertexo/workflow-model';
 import type { PoolClient, QueryResult } from 'pg';
 import { findCommandResult } from '../../../platform/idempotency.js';
-import { federationSettingsSchema } from '@pertexo/contracts';
+
 import type { FederationCommand } from './commands.js';
 import type { DatabaseConfig } from '../../../config.js';
 import {
@@ -154,7 +154,7 @@ export function createFederationManagementStore(
             'Manage domains from the control workspace.',
           );
         const stored = await withWorkspaceScope(client, input, (scoped) =>
-          findCommandResult(scoped, {
+          findCommandResult<FederationSettings>(scoped, {
             workspaceId: input.workspaceId,
             scope: input.actorId,
             operation: 'identity.domain.verify',
@@ -165,7 +165,7 @@ export function createFederationManagementStore(
             },
           }),
         );
-        return stored === null ? null : federationSettingsSchema.parse(stored);
+        return stored;
       }),
     createOrganization: (input: Parameters<typeof createOrganization>[1]) =>
       createOrganization(lease.pool, input),

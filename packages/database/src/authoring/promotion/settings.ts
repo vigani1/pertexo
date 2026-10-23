@@ -1,8 +1,6 @@
+import type { WorkflowPromotionTargetResult } from '@pertexo/contracts';
 import { hasCapability, type Role } from '@pertexo/workflow-model';
-import {
-  workflowPromotionTargetResultSchema,
-  type WorkflowPromotionSettings,
-} from '@pertexo/contracts';
+import type { WorkflowPromotionSettings } from '@pertexo/contracts';
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 import { appendAuditFact } from '../../governance/audit/append.js';
 import { WorkflowNotFoundError } from '../workflows/errors.js';
@@ -144,18 +142,21 @@ export function promotionSettings(
               scope: input.actorId,
               idempotencyKey: input.idempotencyKey,
             };
-            const stored = await claimCommand(client, {
-              ...identity,
-              resourceId: input.workspaceId,
-              request: {
-                expectedRevision: input.expectedRevision,
-                expectedTargetWorkspaceId: input.expectedTargetWorkspaceId,
-                targetWorkspaceId: input.targetWorkspaceId,
+            const stored = await claimCommand<WorkflowPromotionTargetResult>(
+              client,
+              {
+                ...identity,
+                resourceId: input.workspaceId,
+                request: {
+                  expectedRevision: input.expectedRevision,
+                  expectedTargetWorkspaceId: input.expectedTargetWorkspaceId,
+                  targetWorkspaceId: input.targetWorkspaceId,
+                },
               },
-            });
+            );
             if (stored !== null)
               return {
-                ...workflowPromotionTargetResultSchema.parse(stored),
+                ...stored,
                 replayed: true,
               };
             const current = await readPromotionLink(client, input.workspaceId);

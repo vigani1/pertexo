@@ -1,10 +1,9 @@
 import { canonicalOutboxPayloadChecksum } from '../../../outbox/events.js';
 import type { PoolClient } from 'pg';
-import {
-  folderSharingRequestSchema,
-  type FolderSharing,
-  type FolderSharingRequest,
-  type FolderPrincipal,
+import type {
+  FolderSharing,
+  FolderSharingRequest,
+  FolderPrincipal,
 } from '@pertexo/contracts';
 import { RESOURCE_ADMINISTRATORS } from '../../../tenant-access/resources/policy.js';
 import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
@@ -73,7 +72,7 @@ export async function replaceFolderSharing(
     idempotencyKey: string;
   },
 ): Promise<FolderSharing & { replayed: boolean }> {
-  const request = folderSharingRequestSchema.parse(input.request);
+  const request = input.request;
   const outcome = await runOrganizationCommand(client, scope, {
     operation: 'folder.sharing',
     target: input.folderId,

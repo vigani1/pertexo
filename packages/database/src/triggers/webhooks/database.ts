@@ -1,4 +1,4 @@
-import { CORE_WEBHOOK_CONFIG_SCHEMA } from '@pertexo/workflow-model';
+import type { CORE_WEBHOOK_CONFIG_SCHEMA } from '@pertexo/workflow-model';
 import { appendAuditFact } from '../../governance/audit/append.js';
 import { lockEventCoordination } from '../coordination/keys.js';
 import { coordinateVerifiedWebhook } from './coordinate.js';
@@ -7,13 +7,9 @@ import {
   closeEventCoordinationStore,
 } from '../coordination/prepare.js';
 import type { EventCoordinationReceipt } from '@pertexo/workflow-model';
-import { webhookRunInput, type WebhookRequest } from '@pertexo/nodes-core';
 import { WorkflowAlreadyRunningError } from '../../runs/commands/concurrency.js';
 import { recordWorkflowTriggerSkip } from '../skips.js';
-import {
-  webhookAuthenticationSchema,
-  type WebhookAuthentication,
-} from '@pertexo/contracts';
+import type { WebhookAuthentication } from '@pertexo/contracts';
 import {
   openWebhookResponse,
   webhookReplayWait,
@@ -93,6 +89,7 @@ type Command = Readonly<{
   idempotencyKey: string;
   requestHash: string;
 }>;
+type WebhookConfig = z.output<typeof CORE_WEBHOOK_CONFIG_SCHEMA>;
 export type WebhookVerificationReference = Readonly<{
   endpointId: string;
   endpointKeyHash: string;
@@ -103,6 +100,7 @@ export type WebhookVerificationReference = Readonly<{
   nodeId: string;
   databaseTime: Date;
   authentication: WebhookAuthentication;
+  runInputMode?: WebhookConfig['runInput'];
   currentSecret: SealedWebhookTriggerSecret;
   previousSecret?: SealedWebhookTriggerSecret & Readonly<{ validUntil: Date }>;
 }>;
@@ -113,7 +111,7 @@ export type AcceptVerifiedWebhookDeliveryInput = Readonly<{
   requestFingerprint: string;
   idempotencyKeyHash?: string;
   bodyBytes: number;
-  request: WebhookRequest;
+  runInput: unknown;
   checkpointFactory: InitialCheckpointFactory;
   traceparent?: string;
   signal?: AbortSignal;
@@ -564,15 +562,31 @@ export function createWebhookTriggerDatabase(
       >[0],
     ) => {
       const endpointKeyHash = digestSchema.parse(endpointKeyHashInput);
-      const result = await pool.query<Record<string, unknown>>(
-        'select * from app.resolve_public_webhook_endpoint($1::char(64))',
-        [endpointKeyHash],
-      );
+      const result = await pool.query<
+        Record<string, unknown> & { authentication: WebhookAuthentication }
+      >('select * from app.resolve_public_webhook_endpoint($1::char(64))', [
+        endpointKeyHash,
+      ]);
       const row = result.rows[0];
       if (row === undefined) return null;
       const currentSecret = mapSecret(row, 'current');
       if (currentSecret === undefined) return null;
       const previousSecret = mapSecret(row, 'previous');
+      const workspaceId = uuidSchema.parse(row.workspace_id);
+      const triggerId = uuidSchema.parse(row.trigger_id);
+      const workflowVersionId = uuidSchema.parse(row.workflow_version_id);
+      const config = await withWorkspaceReadTransaction(
+        pool,
+        workspaceId,
+        async (transaction) => {
+          const result = await transaction.db.execute<{
+            desired_config: WebhookConfig;
+          }>(
+            sql`select desired_config from app.workflow_triggers where workspace_id=${transaction.workspaceId} and id=${triggerId} and workflow_version_id=${workflowVersionId}`,
+          );
+          return result.rows[0]?.desired_config;
+        },
+      );
       return Object.freeze({
         endpointId: uuidSchema.parse(row.endpoint_id),
         endpointKeyHash,
@@ -582,7 +596,10 @@ export function createWebhookTriggerDatabase(
         workflowVersionId: uuidSchema.parse(row.workflow_version_id),
         nodeId: z.string().parse(row.node_id),
         databaseTime: z.date().parse(row.database_time),
-        authentication: webhookAuthenticationSchema.parse(row.authentication),
+        authentication: row.authentication,
+        ...(config?.runInput === undefined
+          ? {}
+          : { runInputMode: config.runInput }),
         currentSecret,
         ...(previousSecret === undefined
           ? {}
@@ -634,18 +651,15 @@ export function createWebhookTriggerDatabase(
               if (replay.rows.length > 0) return { replay: true as const };
             }
             const row = (
-              await transaction.db.execute<{ desired_config: unknown }>(
+              await transaction.db.execute<{ desired_config: WebhookConfig }>(
                 sql`select desired_config from app.workflow_triggers where workspace_id=${transaction.workspaceId} and id=${verification.triggerId} and workflow_version_id=${verification.workflowVersionId}`,
               )
             ).rows[0];
-            const config =
-              row === undefined
-                ? undefined
-                : CORE_WEBHOOK_CONFIG_SCHEMA.parse(row.desired_config);
+            const config = row?.desired_config;
             return {
               replay: false as const,
               policy: config?.coordination,
-              runInput: webhookRunInput(config?.runInput, input.request),
+              runInput: input.runInput,
             };
           },
         );

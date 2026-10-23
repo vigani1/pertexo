@@ -2,7 +2,7 @@ import {
   ADMINISTRATIVE_ROLES,
   WORKFLOW_EDITOR_ROLES,
 } from '@pertexo/workflow-model';
-import { audienceReviewSchema, type AudienceReview } from '@pertexo/contracts';
+import type { AudienceReview } from '@pertexo/contracts';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../../config.js';
@@ -65,7 +65,6 @@ const item = z
   .object({
     workflowId: uuid,
     expectedOrganizationRevision: revision,
-    audienceReview: audienceReviewSchema.optional(),
   })
   .strict();
 const items = z
@@ -125,7 +124,7 @@ export function createWorkflowOrganizationBatchDatabase(
   const session = createOrganizationSession(config, options.runtime);
   return Object.freeze({
     admitBatch: async (input: WorkflowOrganizationBatchInput) => {
-      const body = request.parse(input.request);
+      const body = parseRequest(input.request);
       return session.transact(input, async (client, scope) => {
         await lockWorkflowAuthoringAuthority(
           client,
@@ -153,7 +152,7 @@ export function createWorkflowOrganizationBatchDatabase(
     executeBatchItem: async (
       input: WorkflowOrganizationBatchInput & Readonly<{ workflowId: string }>,
     ) => {
-      const body = request.parse(input.request);
+      const body = parseRequest(input.request);
       const workflowId = uuid.parse(input.workflowId);
       const selected = body.items.find(
         (entry) => entry.workflowId === workflowId,
@@ -226,4 +225,20 @@ export function createWorkflowOrganizationBatchDatabase(
 
     close: session.close,
   });
+}
+
+function parseRequest(input: WorkflowOrganizationBatchRequest) {
+  const body = request.parse({
+    ...input,
+    items: input.items.map(({ audienceReview: _review, ...item }) => item),
+  });
+  return {
+    ...body,
+    items: body.items.map((item, index) => ({
+      ...item,
+      ...(input.items[index]?.audienceReview === undefined
+        ? {}
+        : { audienceReview: input.items[index].audienceReview }),
+    })),
+  };
 }

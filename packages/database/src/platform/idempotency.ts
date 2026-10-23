@@ -65,10 +65,10 @@ export function credentialCommandScope(
  * retry waits for the first one. The same key with a different request
  * throws.
  */
-export async function claimCommand(
+export async function claimCommand<Result = unknown>(
   client: PoolClient,
   command: CommandLookup & Readonly<{ resourceId: string }>,
-): Promise<unknown> {
+): Promise<Result | null> {
   const keyHash = sha256(command.idempotencyKey);
   const requestHash = requestDigest(command);
   const inserted = await client.query(
@@ -89,7 +89,7 @@ export async function claimCommand(
   );
   const claimed = await client.query<{
     request_hash: string;
-    result_ref: unknown;
+    result_ref: Result;
     status: string;
   }>(
     `select request_hash, status, result_ref from app.idempotency_records
@@ -113,13 +113,13 @@ export async function claimCommand(
  * caller can answer an exact retry before doing expensive work. Null when the
  * key is unused or its command has not completed.
  */
-export async function findCommandResult(
+export async function findCommandResult<Result = unknown>(
   client: PoolClient,
   command: CommandLookup,
-): Promise<unknown> {
+): Promise<Result | null> {
   const found = await client.query<{
     request_hash: string;
-    result_ref: unknown;
+    result_ref: Result;
     status: string;
   }>(
     `select request_hash, status, result_ref from app.idempotency_records

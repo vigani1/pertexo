@@ -1,6 +1,7 @@
+import { AUDIT_RETENTION_MIN_DAYS } from '@pertexo/workflow-model';
 import { CALLBACK_TASK_RETENTION_RULE } from '../runs/pending-tasks/callbacks/retention.js';
 import { RUN_VALUES_RETENTION_RULE } from '../runs/values/retention.js';
-import { AUDIT_RETENTION_MIN_DAYS } from '@pertexo/contracts';
+
 import { expiredNoticeSql } from '../inbox/lifetime.js';
 import {
   expiredRunSql,

@@ -518,10 +518,7 @@ describe('generic webhook ingress', () => {
         traceparent: '00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01',
       }),
     );
-    expect(acceptedInputs(database)[0]?.request).toMatchObject({
-      method: 'POST',
-      body: { value: 1 },
-    });
+    expect(acceptedInputs(database)[0]?.runInput).toEqual({ value: 1 });
     expect(database.consumeIngressLimit).toHaveBeenCalledOnce();
     expect(database.readResponse).not.toHaveBeenCalled();
     expect(delivery).toHaveBeenCalledWith('accepted');
@@ -928,7 +925,7 @@ describe('generic webhook ingress', () => {
         [{}, ''],
       ] as const)
         expect((await send(headers, payload)).statusCode).toBe(202);
-      expect(accepted(f).map((input) => input.request.body)).toEqual([
+      expect(accepted(f).map((input) => input.runInput)).toEqual([
         { name: 'Ada L', tag: ['a', 'b'], note: '✓' },
         'hello\nthere',
         { id: 'e1' },
@@ -956,11 +953,7 @@ describe('generic webhook ingress', () => {
       expect((await get('?order=A-2')).statusCode).toBe(202);
       expect((await get('?order=A-1&tag=x&tag=y')).statusCode).toBe(202);
       const [first, second, third] = accepted(f);
-      expect(first?.request).toMatchObject({
-        method: 'GET',
-        body: {},
-        query: { order: 'A-1', tag: ['x', 'y'] },
-      });
+      expect(first?.runInput).toEqual({ order: 'A-1', tag: ['x', 'y'] });
       expect(first?.requestFingerprint).not.toBe(second?.requestFingerprint);
       expect(first?.requestFingerprint).toBe(third?.requestFingerprint);
       expect(
@@ -1015,6 +1008,7 @@ describe('generic webhook ingress', () => {
     it('leaves credentials, signatures and proxy headers out of the request', async () => {
       const f = setup({
         ...verification,
+        runInputMode: 'request',
         authentication: {
           mode: 'header_secret',
           headerName: 'x-webhook-secret',
@@ -1036,11 +1030,13 @@ describe('generic webhook ingress', () => {
         payload: '{}',
       });
       expect(response.statusCode).toBe(202);
-      const headers = accepted(f)[0]?.request.headers ?? {};
-      expect(headers).toMatchObject({
-        'x-shop-event': 'order.paid',
-        'user-agent': 'shop/1',
-        'content-type': 'application/json',
+      const input = accepted(f)[0]?.runInput;
+      expect(input).toMatchObject({
+        headers: {
+          'x-shop-event': 'order.paid',
+          'user-agent': 'shop/1',
+          'content-type': 'application/json',
+        },
       });
       for (const name of [
         'x-webhook-secret',
@@ -1048,7 +1044,7 @@ describe('generic webhook ingress', () => {
         'cookie',
         'x-forwarded-for',
       ])
-        expect(headers).not.toHaveProperty(name);
+        expect(input).not.toHaveProperty(`headers.${name}`);
     });
   });
 

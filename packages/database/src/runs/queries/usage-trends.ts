@@ -1,3 +1,4 @@
+import { RUN_STATUS_VALUES } from '../commands/acceptance.js';
 import { RETAINED_RESOURCE_WORKSPACE_STATUSES } from '../../tenant-access/resources/policy.js';
 import { sql } from 'drizzle-orm';
 import { readFolderScope } from '../../tenant-access/resources/facts.js';
@@ -6,11 +7,7 @@ import {
   workflowScopeSql,
 } from '../../tenant-access/resources/query-scope.js';
 import type { Pool } from 'pg';
-import {
-  workflowRunStatusSchema,
-  type UsageTrendPeriod,
-  type UsageTrendsResponse,
-} from '@pertexo/contracts';
+import type { UsageTrendPeriod, UsageTrendsResponse } from '@pertexo/contracts';
 import { withTenantScopedReadClient } from '../../tenant-access/transactions.js';
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
 import { ordinaryRunSql } from '../data-policy.js';
@@ -45,12 +42,12 @@ const timestamp = (expression: string) =>
 const elapsedSql =
   "case when run.status not in ('queued','running','waiting') then extract(epoch from (run.completed_at-run.started_at))*1000 end";
 // Status names and SQL expressions come from shared definitions, never request text.
-const countsSql = `jsonb_build_object(${workflowRunStatusSchema.options.map((status) => `'${status}',(count(*) filter(where run.status='${status}'))::integer`).join(',')})`;
+const countsSql = `jsonb_build_object(${RUN_STATUS_VALUES.map((status) => `'${status}',(count(*) filter(where run.status='${status}'))::integer`).join(',')})`;
 const windowRowsSql = `select id,workflow_id,status,created_at,started_at,completed_at from app.workflow_runs
  where workspace_id=$1 and ${ordinaryRunSql()} and created_at>=$2::timestamptz and created_at<$3::timestamptz`;
 function emptyCounts(): Counts {
   return Object.fromEntries(
-    workflowRunStatusSchema.options.map((status) => [status, 0]),
+    RUN_STATUS_VALUES.map((status) => [status, 0]),
   ) as Counts;
 }
 function elapsed(row: DayRow): Elapsed {
@@ -134,7 +131,7 @@ export function readUsageTrends(
       let slowest: number | null = null;
       for (const row of daily.rows) {
         total += row.total;
-        for (const status of workflowRunStatusSchema.options)
+        for (const status of RUN_STATUS_VALUES)
           byStatus[status] += row.by_status[status];
         measured += row.measured_runs;
         if (row.average_ms !== null) sum += row.average_ms * row.measured_runs;

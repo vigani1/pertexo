@@ -1,8 +1,9 @@
+import { API_TOKEN_ACTIVE_LIMIT } from '@pertexo/workflow-model';
 import { serializeStoredExecutionJsonValue } from '../../platform/stored-execution-value.js';
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import { API_TOKEN_ACTIVE_LIMIT } from '@pertexo/contracts';
+
 import type { ApiTokenCreateRequest } from '@pertexo/contracts';
 import { canonicalJson } from '@pertexo/workflow-model';
 import type { DatabaseConfig } from '../../config.js';

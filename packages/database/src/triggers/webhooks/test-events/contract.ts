@@ -1,5 +1,4 @@
 import type { WebhookAuthentication } from '@pertexo/contracts';
-import type { WebhookRequest } from '@pertexo/nodes-core';
 import type {
   WebhookVerificationReference,
   SealedWebhookTriggerSecret,
@@ -38,10 +37,7 @@ export interface WebhookTestEventStore {
   stop(input: TestEventScope & Readonly<{ id: string }>): Promise<void>;
   resolve(endpointKeyHash: string): Promise<TestEventReference | null>;
   consume(reference: TestEventReference): Promise<void>;
-  capture(
-    reference: TestEventReference,
-    request: WebhookRequest,
-  ): Promise<boolean>;
+  capture(reference: TestEventReference, runInput: unknown): Promise<boolean>;
   close(): Promise<void>;
 }
 export class WebhookTestEventError extends Error {

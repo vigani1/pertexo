@@ -1,3 +1,5 @@
+import type { WorkflowPromotionResult } from '@pertexo/contracts';
+import { PROMOTION_LIMITS } from '@pertexo/workflow-model';
 import { sql } from 'drizzle-orm';
 import type { WorkspaceScopeRunner } from '../../tenant-access/transactions.js';
 import { readFolderScope } from '../../tenant-access/resources/facts.js';
@@ -8,10 +10,7 @@ import {
 import type { PromotionScope } from './contract.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import {
-  PROMOTION_LIMITS,
-  workflowPromotionResultSchema,
-} from '@pertexo/contracts';
+
 import { WorkflowPromotionError } from './contract.js';
 
 /** Audit facts outlive the command's 24-hour retry window (minimum retention: 30 days). */
@@ -37,7 +36,14 @@ async function readPromotionReceipt(
     parameters,
   );
   const rows = (
-    await client.query<{ metadata: Record<string, unknown> }>(
+    await client.query<{
+      metadata: Omit<
+        WorkflowPromotionResult['items'][number],
+        'publishedVersionId'
+      > & {
+        targetVersionId: string | null;
+      };
+    }>(
       `select metadata from app.audit_events where workspace_id=$1 and ${visible} and action='workflow.promotion_sent' and target_id=any($2::uuid[]) and metadata->>'promotionId'=$3 order by id limit $4`,
       parameters,
     )
@@ -47,7 +53,7 @@ async function readPromotionReceipt(
       'unavailable',
       'This promotion receipt is no longer available. Inspect the target before starting another promotion.',
     );
-  return workflowPromotionResultSchema.parse({
+  return {
     promotionId: receipt.promotionId,
     sourceWorkspaceId: workspaceId,
     targetWorkspaceId: receipt.targetWorkspaceId,
@@ -60,7 +66,7 @@ async function readPromotionReceipt(
       versionNumber: metadata.versionNumber,
       publicationRequestId: metadata.publicationRequestId,
     })),
-  });
+  };
 }
 
 export async function readAuthorizedPromotionReceipt(
