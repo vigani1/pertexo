@@ -7,10 +7,7 @@ import {
   auditFailureNotification,
   failureNotificationIdentitySchema,
 } from '../store-support.js';
-import type {
-  FailureNotificationResolvedDestination,
-  FailureNotificationStore,
-} from '../contracts.js';
+import type { FailureNotificationStore } from '../contracts.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import { recordCredentialAccess } from '../../connections/runtime/dispatch-fence.js';
 import { parseFailureNotificationAttemptNumber } from '../input-validation.js';
@@ -24,23 +21,31 @@ export function createFailureNotificationDestinationStore(
   pool: Pool,
 ): DestinationStore {
   return Object.freeze({
-    loadDestination: async (
+    loadDestination: (
       raw: Parameters<FailureNotificationStore['loadDestination']>[0],
-    ): Promise<FailureNotificationResolvedDestination> => {
-      const workspaceId = failureNotificationIdentitySchema.parse(
-        raw.workspaceId,
-      );
-      const intentId = failureNotificationIdentitySchema.parse(raw.intentId);
-      const workerId = z.string().min(1).max(128).parse(raw.workerId);
-      const attemptNumber = parseFailureNotificationAttemptNumber(
-        raw.attemptNumber,
-      );
-      return withTenantScopedClient(
-        pool,
-        { workspaceId },
-        async (client) => {
-          const result = await client.query<Record<string, unknown>>(
-            `select version.kind, version.config, intent.connection_secret_version_id,
+    ) => loadNotificationDestination(pool, raw),
+    fenceDispatch: (
+      raw: Parameters<FailureNotificationStore['fenceDispatch']>[0],
+    ) => fenceNotificationDispatch(pool, raw),
+  });
+}
+
+async function loadNotificationDestination(
+  pool: Pool,
+  raw: Parameters<DestinationStore['loadDestination']>[0],
+): ReturnType<DestinationStore['loadDestination']> {
+  const workspaceId = failureNotificationIdentitySchema.parse(raw.workspaceId);
+  const intentId = failureNotificationIdentitySchema.parse(raw.intentId);
+  const workerId = z.string().min(1).max(128).parse(raw.workerId);
+  const attemptNumber = parseFailureNotificationAttemptNumber(
+    raw.attemptNumber,
+  );
+  return withTenantScopedClient(
+    pool,
+    { workspaceId },
+    async (client) => {
+      const result = await client.query<Record<string, unknown>>(
+        `select version.kind, version.config, intent.connection_secret_version_id,
                   secret.kms_key_reference,
                   secret.encrypted_data_key, secret.ciphertext, secret.nonce,
                   secret.auth_tag
@@ -69,87 +74,87 @@ export function createFailureNotificationDestinationStore(
                  when 'slack' then 'slack_bot_token' else 'resend_api_key' end
                and connection.status='active'
               and connection.current_secret_version_id=intent.connection_secret_version_id`,
-            [workspaceId, intentId, attemptNumber],
-          );
-          const row = result.rows[0];
-          if (row === undefined)
-            throw new FailureNotificationStateError(
-              'Delivery destination is unavailable',
-            );
-          const kind = z.enum(['slack', 'email']).parse(row.kind);
-          const config = FailureNotificationDestinationConfigSchema.parse({
-            ...z.record(z.string(), z.unknown()).parse(row.config),
-            kind,
-          });
-          const connectionId = config.connectionId;
-          const secretVersionId = failureNotificationIdentitySchema.parse(
-            row.connection_secret_version_id,
-          );
-          await recordCredentialAccess(client, {
-            workspaceId,
-            connectionId,
-            secretVersionId,
-            workerId,
-            traceId: null,
-            purpose: 'failure_notification.deliver',
-          });
-          const resolved = {
-            connectionId,
-            secretVersionId,
-            sealed: Object.freeze({
-              kmsKeyReference: z.string().parse(row.kms_key_reference),
-              encryptedDataKey: z.string().parse(row.encrypted_data_key),
-              ciphertext: z.string().parse(row.ciphertext),
-              nonce: z.string().parse(row.nonce),
-              tag: z.string().parse(row.auth_tag),
-            }),
-          };
-          return config.kind === 'slack'
-            ? Object.freeze({
-                ...resolved,
-                kind: config.kind,
-                channelId: config.channelId,
-              })
-            : Object.freeze({
-                ...resolved,
-                kind: config.kind,
-                toEmail: config.toEmail,
-              });
-        },
-        { signal: raw.signal, statementTimeoutMillis: 30_000 },
+        [workspaceId, intentId, attemptNumber],
       );
+      const row = result.rows[0];
+      if (row === undefined)
+        throw new FailureNotificationStateError(
+          'Delivery destination is unavailable',
+        );
+      const kind = z.enum(['slack', 'email']).parse(row.kind);
+      const config = FailureNotificationDestinationConfigSchema.parse({
+        ...z.record(z.string(), z.unknown()).parse(row.config),
+        kind,
+      });
+      const connectionId = config.connectionId;
+      const secretVersionId = failureNotificationIdentitySchema.parse(
+        row.connection_secret_version_id,
+      );
+      await recordCredentialAccess(client, {
+        workspaceId,
+        connectionId,
+        secretVersionId,
+        workerId,
+        traceId: null,
+        purpose: 'failure_notification.deliver',
+      });
+      const resolved = {
+        connectionId,
+        secretVersionId,
+        sealed: Object.freeze({
+          kmsKeyReference: z.string().parse(row.kms_key_reference),
+          encryptedDataKey: z.string().parse(row.encrypted_data_key),
+          ciphertext: z.string().parse(row.ciphertext),
+          nonce: z.string().parse(row.nonce),
+          tag: z.string().parse(row.auth_tag),
+        }),
+      };
+      return config.kind === 'slack'
+        ? Object.freeze({
+            ...resolved,
+            kind: config.kind,
+            channelId: config.channelId,
+          })
+        : Object.freeze({
+            ...resolved,
+            kind: config.kind,
+            toEmail: config.toEmail,
+          });
     },
-    fenceDispatch: async (
-      raw: Parameters<FailureNotificationStore['fenceDispatch']>[0],
-    ): Promise<void> => {
-      const workspaceId = failureNotificationIdentitySchema.parse(
-        raw.workspaceId,
+    { signal: raw.signal, statementTimeoutMillis: 30_000 },
+  );
+}
+
+async function fenceNotificationDispatch(
+  pool: Pool,
+  raw: Parameters<DestinationStore['fenceDispatch']>[0],
+): ReturnType<DestinationStore['fenceDispatch']> {
+  const workspaceId = failureNotificationIdentitySchema.parse(raw.workspaceId);
+  const intentId = failureNotificationIdentitySchema.parse(raw.intentId);
+  const attemptNumber = parseFailureNotificationAttemptNumber(
+    raw.attemptNumber,
+  );
+  await withTenantScopedClient(
+    pool,
+    { workspaceId },
+    async (client) => {
+      const parsedBinding =
+        raw.deliveryBinding === undefined
+          ? null
+          : z
+              .string()
+              .regex(/^email:sha256:[0-9a-f]{64}$/u)
+              .parse(raw.deliveryBinding);
+      // The workspace must be active and the claimed intent's destination
+      // enabled; both stay locked until the dispatch is marked.
+      const workspace = await client.query(
+        "select 1 from app.workspaces where id=$1 and status='active' for share",
+        [workspaceId],
       );
-      const intentId = failureNotificationIdentitySchema.parse(raw.intentId);
-      const attemptNumber = parseFailureNotificationAttemptNumber(
-        raw.attemptNumber,
-      );
-      await withTenantScopedClient(
-        pool,
-        { workspaceId },
-        async (client) => {
-          const parsedBinding =
-            raw.deliveryBinding === undefined
-              ? null
-              : z
-                  .string()
-                  .regex(/^email:sha256:[0-9a-f]{64}$/u)
-                  .parse(raw.deliveryBinding);
-          // The workspace must be active and the claimed intent's destination
-          // enabled; both stay locked until the dispatch is marked.
-          const workspace = await client.query(
-            "select 1 from app.workspaces where id=$1 and status='active' for share",
-            [workspaceId],
-          );
-          const destination =
-            workspace.rowCount === 1
-              ? await client.query(
-                  `select 1 from app.run_failure_notification_intents intent
+      const destination =
+        workspace.rowCount === 1
+          ? await client.query(
+              `select 1 from app.run_failure_notification_intents intent
                    join app.failure_notification_destinations destination
                      on destination.workspace_id=intent.workspace_id
                     and destination.id=intent.destination_id
@@ -157,15 +162,15 @@ export function createFailureNotificationDestinationStore(
                      and intent.status='claimed' and intent.delivery_attempts=$3
                      and destination.status='enabled'
                    for share of destination`,
-                  [workspaceId, intentId, attemptNumber],
-                )
-              : undefined;
-          if (destination?.rowCount !== 1)
-            throw new FailureNotificationStateError(
-              'Delivery dispatch fence failed',
-            );
-          const fenced = await client.query(
-            `update app.run_failure_notification_intents intent
+              [workspaceId, intentId, attemptNumber],
+            )
+          : undefined;
+      if (destination?.rowCount !== 1)
+        throw new FailureNotificationStateError(
+          'Delivery dispatch fence failed',
+        );
+      const fenced = await client.query(
+        `update app.run_failure_notification_intents intent
               set status='dispatching',dispatch_marked_at=clock_timestamp(),
                   delivery_binding=coalesce(intent.delivery_binding,$4),
                   updated_at=clock_timestamp()
@@ -194,22 +199,20 @@ export function createFailureNotificationDestinationStore(
               and exists (select 1 from app.workspaces workspace
                 where workspace.id=intent.workspace_id and workspace.status='active')
             returning intent.id`,
-            [workspaceId, intentId, attemptNumber, parsedBinding],
-          );
-          if (fenced.rowCount !== 1)
-            throw new FailureNotificationStateError(
-              'Delivery dispatch fence failed',
-            );
-          await auditFailureNotification(client, {
-            workspaceId,
-            intentId,
-            factType: 'dispatch_marked',
-            attemptNumber,
-            possiblyDispatched: false,
-          });
-        },
-        raw.signal === undefined ? {} : { signal: raw.signal },
+        [workspaceId, intentId, attemptNumber, parsedBinding],
       );
+      if (fenced.rowCount !== 1)
+        throw new FailureNotificationStateError(
+          'Delivery dispatch fence failed',
+        );
+      await auditFailureNotification(client, {
+        workspaceId,
+        intentId,
+        factType: 'dispatch_marked',
+        attemptNumber,
+        possiblyDispatched: false,
+      });
     },
-  });
+    raw.signal === undefined ? {} : { signal: raw.signal },
+  );
 }

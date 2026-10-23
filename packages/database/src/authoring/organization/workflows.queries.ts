@@ -6,7 +6,7 @@ import {
   bindResourcePredicate,
   workflowScopeSql,
 } from '../../tenant-access/resources/query-scope.js';
-import type { PoolClient } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 import type { DatabaseConfig } from '../../config.js';
 import {
@@ -121,97 +121,107 @@ export function createWorkflowOrganizationReadDatabase(
   options: Readonly<{ runtime?: DatabaseRuntime }> = {},
 ): WorkflowOrganizationReadDatabase {
   const lease = acquireDatabasePool(config, options.runtime);
-  async function transact<T>(
-    input: Scope,
-    operation: (client: PoolClient, scope: Scope) => Promise<T>,
-  ): Promise<T> {
-    const { signal, ...base } = scopeSchema.parse(input);
-    const scope: Scope = signal === undefined ? base : { ...base, signal };
-    try {
-      return await withTenantScopedClient(
-        lease.pool,
-        scope,
-        (client) => operation(client, scope),
-        signal === undefined ? {} : { signal },
-      );
-    } catch (error: unknown) {
-      if (z.object({ code: z.literal('42501') }).safeParse(error).success)
-        throw new WorkflowNotFoundError('Workflow is not visible');
-      throw error;
-    }
-  }
-  async function select(
-    client: PoolClient,
-    scope: Scope,
-    input: Readonly<{
-      limit: number;
-      order: 'created_asc' | 'updated_desc';
-      after?: Position;
-      workflowId?: string;
-    }> &
-      WorkflowOrganizationFilters,
-  ) {
-    // Any active member reads organization, rechecked on every page.
-    await lockWorkflowAuthoringAuthority(
-      client,
-      scope.workspaceId,
-      scope.actorId,
-      ROLES,
+
+  const store: WorkflowOrganizationReadDatabase = {
+    getWorkflow: (input) => readOrganizedWorkflow(lease.pool, input),
+    listWorkflows: (input) => listOrganizedWorkflows(lease.pool, input),
+    close: lease.close,
+  };
+  return Object.freeze(store);
+}
+
+async function transact<T>(
+  pool: Pool,
+  input: Scope,
+  operation: (client: PoolClient, scope: Scope) => Promise<T>,
+): Promise<T> {
+  const { signal, ...base } = scopeSchema.parse(input);
+  const scope: Scope = signal === undefined ? base : { ...base, signal };
+  try {
+    return await withTenantScopedClient(
+      pool,
+      scope,
+      (client) => operation(client, scope),
+      signal === undefined ? {} : { signal },
     );
-    const values: unknown[] = [scope.workspaceId, scope.actorId];
-    const parameter = (value: unknown) => {
-      values.push(value);
-      return `$${String(values.length)}`;
-    };
-    const access = await readFolderScope(client, scope);
-    const predicates = [
-      'w.workspace_id=$1',
-      bindResourcePredicate(workflowScopeSql(access, sql`w.id`), values),
-    ];
-    const filters = filterSchema.parse({
-      query: input.query,
-      view: input.view,
-      tagId: input.tagId,
-      folderId: input.folderId,
-      favoritesOnly: input.favoritesOnly,
-    });
-    if (input.workflowId !== undefined)
-      predicates.push(`w.id=${parameter(uuid.parse(input.workflowId))}::uuid`);
-    // PostgreSQL text cannot contain NUL: this valid literal query can never
-    // match a stored name, and must not be sent as an invalid text parameter.
-    if (filters.query?.includes('\0') === true) predicates.push('false');
-    else if (filters.query !== undefined && filters.query !== '') {
-      const pattern = `%${filters.query.replace(/[\\%_]/gu, (letter) => `\\${letter}`)}%`;
-      // ASCII letters fold, as tag keys do; everything else matches literally.
-      predicates.push(
-        String.raw`lower(w.name COLLATE "C") LIKE lower(${parameter(pattern)} COLLATE "C") ESCAPE '\'`,
-      );
-    }
-    if (filters.view !== 'all')
-      predicates.push(`w.lifecycle_status=${parameter(filters.view)}`);
-    if (filters.tagId !== undefined)
-      predicates.push(
-        `exists(select 1 from app.workflow_tag_assignments selected where selected.workspace_id=w.workspace_id and selected.workflow_id=w.id and selected.tag_id=${parameter(filters.tagId)}::uuid)`,
-      );
-    if (filters.favoritesOnly) predicates.push('f.workflow_id is not null');
-    if (filters.folderId === 'root') predicates.push('s.folder_id is null');
-    else if (filters.folderId !== undefined)
-      predicates.push(`s.folder_id=${parameter(filters.folderId)}::uuid`);
-    const orderColumn =
-      input.order === 'created_asc' ? 'created_at' : 'updated_at';
-    const ascending = input.order === 'created_asc';
-    if (input.after !== undefined) {
-      const position = z
-        .object({ positionAt: z.iso.datetime({ offset: true }), id: uuid })
-        .strict()
-        .parse(input.after);
-      predicates.push(
-        `(w.${orderColumn},w.id) ${ascending ? '>' : '<'} (${parameter(position.positionAt)}::timestamptz,${parameter(position.id)}::uuid)`,
-      );
-    }
-    const limit = parameter(input.limit + 1);
-    const rows = await client.query<{ projection: unknown }>(
-      `select jsonb_build_object(
+  } catch (error: unknown) {
+    if (z.object({ code: z.literal('42501') }).safeParse(error).success)
+      throw new WorkflowNotFoundError('Workflow is not visible');
+    throw error;
+  }
+}
+async function select(
+  client: PoolClient,
+  scope: Scope,
+  input: Readonly<{
+    limit: number;
+    order: 'created_asc' | 'updated_desc';
+    after?: Position;
+    workflowId?: string;
+  }> &
+    WorkflowOrganizationFilters,
+) {
+  // Any active member reads organization, rechecked on every page.
+  await lockWorkflowAuthoringAuthority(
+    client,
+    scope.workspaceId,
+    scope.actorId,
+    ROLES,
+  );
+  const values: unknown[] = [scope.workspaceId, scope.actorId];
+  const parameter = (value: unknown) => {
+    values.push(value);
+    return `$${String(values.length)}`;
+  };
+  const access = await readFolderScope(client, scope);
+  const predicates = [
+    'w.workspace_id=$1',
+    bindResourcePredicate(workflowScopeSql(access, sql`w.id`), values),
+  ];
+  const filters = filterSchema.parse({
+    query: input.query,
+    view: input.view,
+    tagId: input.tagId,
+    folderId: input.folderId,
+    favoritesOnly: input.favoritesOnly,
+  });
+  if (input.workflowId !== undefined)
+    predicates.push(`w.id=${parameter(uuid.parse(input.workflowId))}::uuid`);
+  // PostgreSQL text cannot contain NUL: this valid literal query can never
+  // match a stored name, and must not be sent as an invalid text parameter.
+  if (filters.query?.includes('\0') === true) predicates.push('false');
+  else if (filters.query !== undefined && filters.query !== '') {
+    const pattern = `%${filters.query.replace(/[\\%_]/gu, (letter) => `\\${letter}`)}%`;
+    // ASCII letters fold, as tag keys do; everything else matches literally.
+    predicates.push(
+      String.raw`lower(w.name COLLATE "C") LIKE lower(${parameter(pattern)} COLLATE "C") ESCAPE '\'`,
+    );
+  }
+  if (filters.view !== 'all')
+    predicates.push(`w.lifecycle_status=${parameter(filters.view)}`);
+  if (filters.tagId !== undefined)
+    predicates.push(
+      `exists(select 1 from app.workflow_tag_assignments selected where selected.workspace_id=w.workspace_id and selected.workflow_id=w.id and selected.tag_id=${parameter(filters.tagId)}::uuid)`,
+    );
+  if (filters.favoritesOnly) predicates.push('f.workflow_id is not null');
+  if (filters.folderId === 'root') predicates.push('s.folder_id is null');
+  else if (filters.folderId !== undefined)
+    predicates.push(`s.folder_id=${parameter(filters.folderId)}::uuid`);
+  const orderColumn =
+    input.order === 'created_asc' ? 'created_at' : 'updated_at';
+  const ascending = input.order === 'created_asc';
+  if (input.after !== undefined) {
+    const position = z
+      .object({ positionAt: z.iso.datetime({ offset: true }), id: uuid })
+      .strict()
+      .parse(input.after);
+    predicates.push(
+      `(w.${orderColumn},w.id) ${ascending ? '>' : '<'} (${parameter(position.positionAt)}::timestamptz,${parameter(position.id)}::uuid)`,
+    );
+  }
+  const limit = parameter(input.limit + 1);
+  const rows = await client.query<{ projection: unknown }>(
+    `select jsonb_build_object(
       'workflow',row_to_json(w),'organizationRevision',coalesce(s.revision,1),'folderId',s.folder_id,
       'tags',coalesce((select jsonb_agg(jsonb_build_object('id',t.id,'key',t.key,'revision',t.revision) order by t.id)
         from app.workflow_tag_assignments a join app.workflow_tags t on t.workspace_id=a.workspace_id and t.id=a.tag_id
@@ -221,64 +231,68 @@ export function createWorkflowOrganizationReadDatabase(
       from (select ${workflowRowSelection} from app.workflows) w left join app.workflow_organization_state s on s.workspace_id=w.workspace_id and s.workflow_id=w.id
       left join app.workflow_favorites f on f.workspace_id=w.workspace_id and f.workflow_id=w.id and f.actor_id=$2
       where ${predicates.join(' and ')} order by w.${orderColumn} ${ascending ? 'asc' : 'desc'},w.id ${ascending ? 'asc' : 'desc'} limit ${limit}`,
-      values,
-    );
-    const projections = rows.rows.map(({ projection }) =>
-      rowSchema.parse(projection),
-    );
-    const items = projections.slice(0, input.limit).map((row) => {
-      const workflow = {
-        ...mapWorkflow(row.workflow),
-        resourceAccess: workflowActions(access, row.folderId),
-      };
-      const organization: WorkflowOrganizationMetadata = Object.freeze({
-        tags: Object.freeze(row.tags.map((tag) => Object.freeze(tag))),
-        organizationRevision: row.organizationRevision,
-        folderId: row.folderId,
-        isFavorite: row.isFavorite,
-      });
-      return Object.freeze({ workflow, organization });
+    values,
+  );
+  const projections = rows.rows.map(({ projection }) =>
+    rowSchema.parse(projection),
+  );
+  const items = projections.slice(0, input.limit).map((row) => {
+    const workflow = {
+      ...mapWorkflow(row.workflow),
+      resourceAccess: workflowActions(access, row.folderId),
+    };
+    const organization: WorkflowOrganizationMetadata = Object.freeze({
+      tags: Object.freeze(row.tags.map((tag) => Object.freeze(tag))),
+      organizationRevision: row.organizationRevision,
+      folderId: row.folderId,
+      isFavorite: row.isFavorite,
     });
-    const last = projections.slice(0, input.limit).at(-1);
-    return Object.freeze({
-      items: Object.freeze(items),
-      nextCursor:
-        projections.length > input.limit && last !== undefined
-          ? Object.freeze({
-              positionAt: last.positionAt,
-              id: uuid.parse(last.workflow.id),
-            })
-          : null,
-    });
-  }
-  const store: WorkflowOrganizationReadDatabase = {
-    getWorkflow: (input) =>
-      transact(
-        input,
-        async (client, scope) =>
-          (
-            await select(client, scope, {
-              workflowId: uuid.parse(input.workflowId),
-              limit: 1,
-              order: 'created_asc',
-            })
-          ).items[0] ?? null,
-      ),
-    listWorkflows: (input) => {
-      const limit = z
-        .number()
-        .int()
-        .min(1)
-        .max(100)
-        .parse(input.limit ?? 50);
-      const order = z
-        .enum(['created_asc', 'updated_desc'])
-        .parse(input.order ?? 'created_asc');
-      return transact(input, (client, scope) =>
-        select(client, scope, { ...input, limit, order }),
-      );
-    },
-    close: lease.close,
-  };
-  return Object.freeze(store);
+    return Object.freeze({ workflow, organization });
+  });
+  const last = projections.slice(0, input.limit).at(-1);
+  return Object.freeze({
+    items: Object.freeze(items),
+    nextCursor:
+      projections.length > input.limit && last !== undefined
+        ? Object.freeze({
+            positionAt: last.positionAt,
+            id: uuid.parse(last.workflow.id),
+          })
+        : null,
+  });
+}
+function readOrganizedWorkflow(
+  pool: Pool,
+  input: Parameters<WorkflowOrganizationReadDatabase['getWorkflow']>[0],
+): ReturnType<WorkflowOrganizationReadDatabase['getWorkflow']> {
+  return transact(
+    pool,
+    input,
+    async (client, scope) =>
+      (
+        await select(client, scope, {
+          workflowId: uuid.parse(input.workflowId),
+          limit: 1,
+          order: 'created_asc',
+        })
+      ).items[0] ?? null,
+  );
+}
+
+function listOrganizedWorkflows(
+  pool: Pool,
+  input: Parameters<WorkflowOrganizationReadDatabase['listWorkflows']>[0],
+): ReturnType<WorkflowOrganizationReadDatabase['listWorkflows']> {
+  const limit = z
+    .number()
+    .int()
+    .min(1)
+    .max(100)
+    .parse(input.limit ?? 50);
+  const order = z
+    .enum(['created_asc', 'updated_desc'])
+    .parse(input.order ?? 'created_asc');
+  return transact(pool, input, (client, scope) =>
+    select(client, scope, { ...input, limit, order }),
+  );
 }

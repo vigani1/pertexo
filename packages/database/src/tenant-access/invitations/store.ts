@@ -42,173 +42,11 @@ export function createIdentityWorkspaceInvitationStore(
   pool: Pool,
 ): InvitationStore {
   return Object.freeze({
-    listWorkspaceInvitations: async (
-      workspaceIdInput,
-      actorIdInput,
-      input = {},
-    ) => {
-      const workspaceId = parseIdentityUuid(workspaceIdInput);
-      const actorUserId = parseIdentityUuid(actorIdInput);
-      const limit = z
-        .number()
-        .int()
-        .min(1)
-        .max(100)
-        .parse(input.limit ?? 50);
-      return withTenantScopedClient(
-        pool,
-        { workspaceId, actorId: actorUserId },
-        async (client) => {
-          await lockAuthorizedActor(client, workspaceId, actorUserId, 'share');
-          await expireWorkspaceInvitations(client, { workspaceId });
-          const values: unknown[] = [workspaceId, limit + 1];
-          let after = '';
-          if (input.after !== undefined) {
-            values.push(
-              input.after.createdAt,
-              parseIdentityUuid(input.after.invitationId),
-            );
-            after = `and (created_at,id)<($3::timestamptz,$4::uuid)`;
-          }
-          const result = await client.query<InvitationRow>(
-            `select ${invitationSelection},
-                    to_char(created_at,'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') created_at_cursor
-               from app.workspace_invitations
-              where workspace_id=$1 ${after}
-              order by created_at desc,id desc limit $2`,
-            values,
-          );
-          const visible = result.rows.slice(0, limit);
-          const last = visible.at(-1);
-          return Object.freeze({
-            items: Object.freeze(visible.map(mapInvitation)),
-            ...(result.rows.length > limit &&
-            last?.created_at_cursor !== undefined
-              ? {
-                  nextCursor: Object.freeze({
-                    createdAt: last.created_at_cursor,
-                    invitationId: last.id,
-                  }),
-                }
-              : {}),
-          });
-        },
-      );
-    },
+    listWorkspaceInvitations: (workspaceIdInput, actorIdInput, input = {}) =>
+      listWorkspaceInvitations(pool, workspaceIdInput, actorIdInput, input),
 
-    createWorkspaceInvitation: async (raw: CreateWorkspaceInvitationInput) => {
-      const workspaceId = parseIdentityUuid(raw.workspaceId);
-      const actorUserId = parseIdentityUuid(raw.actorUserId);
-      const invitationId = parseIdentityUuid(
-        raw.invitationId ?? generatePersistedId(),
-      );
-      const deliveryAttemptId = parseIdentityUuid(
-        raw.deliveryAttemptId ?? generatePersistedId(),
-      );
-      const email = normalizeEmail(raw.email);
-      const role = delegatedRole.parse(raw.role);
-      const tokenDigest = digest.parse(raw.tokenDigest);
-      const sealed = sealedToken.parse(raw.sealedToken);
-      if (
-        !(raw.expiresAt instanceof Date) ||
-        raw.expiresAt.getTime() <= Date.now()
-      )
-        throw new Error('Invitation expiry must be in the future');
-      return withTenantScopedClient(
-        pool,
-        { workspaceId, actorId: actorUserId },
-        async (client) => {
-          const actorRole = await lockAuthorizedActor(
-            client,
-            workspaceId,
-            actorUserId,
-          );
-          if (!canInviteWorkspaceRole(actorRole, role))
-            throw new WorkspaceInvitationCommandConflictError(
-              'role_forbidden',
-              'The actor cannot assign this invitation role',
-            );
-          await expireWorkspaceInvitations(client, {
-            workspaceId,
-            normalizedEmail: email,
-          });
-          const key = invitationKey(
-            workspaceId,
-            actorUserId,
-            'create',
-            raw.idempotencyKey,
-          );
-          const replay = await claimInvitationCommand(
-            client,
-            key,
-            { email, role },
-            invitationId,
-          );
-          if (replay !== null) return replay;
-          const duplicate = await client.query(
-            `select 1 from app.workspace_invitations
-              where workspace_id=$1 and normalized_email=$2 and status='pending' for update`,
-            [workspaceId, email],
-          );
-          if ((duplicate.rowCount ?? 0) > 0)
-            throw new WorkspaceInvitationCommandConflictError(
-              'duplicate_pending',
-              'A pending invitation already exists for this recipient',
-            );
-          let inserted;
-          try {
-            inserted = await client.query<InvitationRow>(
-              `insert into app.workspace_invitations
-               (id,workspace_id,recipient_email,normalized_email,role,status,revision,
-                token_digest,delivery_status,created_by,expires_at)
-             values($1,$2,$3,$3,$4,'pending',1,$5,'queued',$6,$7)
-             returning ${invitationSelection}`,
-              [
-                invitationId,
-                workspaceId,
-                email,
-                role,
-                tokenDigest,
-                actorUserId,
-                raw.expiresAt,
-              ],
-            );
-          } catch (error: unknown) {
-            if (readIdentityDatabaseErrorCode(error) === '23505')
-              throw new WorkspaceInvitationCommandConflictError(
-                'duplicate_pending',
-                'A pending invitation already exists for this recipient',
-                { cause: error },
-              );
-            throw error;
-          }
-          const insertedInvitation = inserted.rows[0];
-          if (insertedInvitation === undefined)
-            throw new Error('Invitation insert returned no row');
-          const invitation = mapInvitation(insertedInvitation);
-          await insertDelivery(client, {
-            workspaceId,
-            invitationId,
-            revision: 1,
-            deliveryAttemptId,
-            sealed,
-          });
-          await recordAudit(client, {
-            workspaceId,
-            actorUserId,
-            invitationId,
-            action: 'workspace.invitation_created',
-            revision: 1,
-            role,
-            ...(raw.requestId === undefined
-              ? {}
-              : { requestId: raw.requestId }),
-            ...(raw.traceId === undefined ? {} : { traceId: raw.traceId }),
-          });
-          return completeInvitationCommand(client, key, invitation);
-        },
-      );
-    },
+    createWorkspaceInvitation: (raw: CreateWorkspaceInvitationInput) =>
+      createWorkspaceInvitation(pool, raw),
 
     resendWorkspaceInvitation: async (raw: ChangeWorkspaceInvitationInput) =>
       changeInvitation(pool, raw, 'resend'),
@@ -368,4 +206,170 @@ async function changeInvitation(
       'The invitation has expired',
     );
   return result;
+}
+
+async function listWorkspaceInvitations(
+  pool: Pool,
+  workspaceIdInput: Parameters<InvitationStore['listWorkspaceInvitations']>[0],
+  actorIdInput: Parameters<InvitationStore['listWorkspaceInvitations']>[1],
+  input: Parameters<InvitationStore['listWorkspaceInvitations']>[2] = {},
+): ReturnType<InvitationStore['listWorkspaceInvitations']> {
+  const workspaceId = parseIdentityUuid(workspaceIdInput);
+  const actorUserId = parseIdentityUuid(actorIdInput);
+  const limit = z
+    .number()
+    .int()
+    .min(1)
+    .max(100)
+    .parse(input.limit ?? 50);
+  return withTenantScopedClient(
+    pool,
+    { workspaceId, actorId: actorUserId },
+    async (client) => {
+      await lockAuthorizedActor(client, workspaceId, actorUserId, 'share');
+      await expireWorkspaceInvitations(client, { workspaceId });
+      const values: unknown[] = [workspaceId, limit + 1];
+      let after = '';
+      if (input.after !== undefined) {
+        values.push(
+          input.after.createdAt,
+          parseIdentityUuid(input.after.invitationId),
+        );
+        after = `and (created_at,id)<($3::timestamptz,$4::uuid)`;
+      }
+      const result = await client.query<InvitationRow>(
+        `select ${invitationSelection},
+                    to_char(created_at,'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') created_at_cursor
+               from app.workspace_invitations
+              where workspace_id=$1 ${after}
+              order by created_at desc,id desc limit $2`,
+        values,
+      );
+      const visible = result.rows.slice(0, limit);
+      const last = visible.at(-1);
+      return Object.freeze({
+        items: Object.freeze(visible.map(mapInvitation)),
+        ...(result.rows.length > limit && last?.created_at_cursor !== undefined
+          ? {
+              nextCursor: Object.freeze({
+                createdAt: last.created_at_cursor,
+                invitationId: last.id,
+              }),
+            }
+          : {}),
+      });
+    },
+  );
+}
+
+async function createWorkspaceInvitation(
+  pool: Pool,
+  raw: Parameters<InvitationStore['createWorkspaceInvitation']>[0],
+): ReturnType<InvitationStore['createWorkspaceInvitation']> {
+  const workspaceId = parseIdentityUuid(raw.workspaceId);
+  const actorUserId = parseIdentityUuid(raw.actorUserId);
+  const invitationId = parseIdentityUuid(
+    raw.invitationId ?? generatePersistedId(),
+  );
+  const deliveryAttemptId = parseIdentityUuid(
+    raw.deliveryAttemptId ?? generatePersistedId(),
+  );
+  const email = normalizeEmail(raw.email);
+  const role = delegatedRole.parse(raw.role);
+  const tokenDigest = digest.parse(raw.tokenDigest);
+  const sealed = sealedToken.parse(raw.sealedToken);
+  if (!(raw.expiresAt instanceof Date) || raw.expiresAt.getTime() <= Date.now())
+    throw new Error('Invitation expiry must be in the future');
+  return withTenantScopedClient(
+    pool,
+    { workspaceId, actorId: actorUserId },
+    async (client) => {
+      const actorRole = await lockAuthorizedActor(
+        client,
+        workspaceId,
+        actorUserId,
+      );
+      if (!canInviteWorkspaceRole(actorRole, role))
+        throw new WorkspaceInvitationCommandConflictError(
+          'role_forbidden',
+          'The actor cannot assign this invitation role',
+        );
+      await expireWorkspaceInvitations(client, {
+        workspaceId,
+        normalizedEmail: email,
+      });
+      const key = invitationKey(
+        workspaceId,
+        actorUserId,
+        'create',
+        raw.idempotencyKey,
+      );
+      const replay = await claimInvitationCommand(
+        client,
+        key,
+        { email, role },
+        invitationId,
+      );
+      if (replay !== null) return replay;
+      const duplicate = await client.query(
+        `select 1 from app.workspace_invitations
+              where workspace_id=$1 and normalized_email=$2 and status='pending' for update`,
+        [workspaceId, email],
+      );
+      if ((duplicate.rowCount ?? 0) > 0)
+        throw new WorkspaceInvitationCommandConflictError(
+          'duplicate_pending',
+          'A pending invitation already exists for this recipient',
+        );
+      let inserted;
+      try {
+        inserted = await client.query<InvitationRow>(
+          `insert into app.workspace_invitations
+               (id,workspace_id,recipient_email,normalized_email,role,status,revision,
+                token_digest,delivery_status,created_by,expires_at)
+             values($1,$2,$3,$3,$4,'pending',1,$5,'queued',$6,$7)
+             returning ${invitationSelection}`,
+          [
+            invitationId,
+            workspaceId,
+            email,
+            role,
+            tokenDigest,
+            actorUserId,
+            raw.expiresAt,
+          ],
+        );
+      } catch (error: unknown) {
+        if (readIdentityDatabaseErrorCode(error) === '23505')
+          throw new WorkspaceInvitationCommandConflictError(
+            'duplicate_pending',
+            'A pending invitation already exists for this recipient',
+            { cause: error },
+          );
+        throw error;
+      }
+      const insertedInvitation = inserted.rows[0];
+      if (insertedInvitation === undefined)
+        throw new Error('Invitation insert returned no row');
+      const invitation = mapInvitation(insertedInvitation);
+      await insertDelivery(client, {
+        workspaceId,
+        invitationId,
+        revision: 1,
+        deliveryAttemptId,
+        sealed,
+      });
+      await recordAudit(client, {
+        workspaceId,
+        actorUserId,
+        invitationId,
+        action: 'workspace.invitation_created',
+        revision: 1,
+        role,
+        ...(raw.requestId === undefined ? {} : { requestId: raw.requestId }),
+        ...(raw.traceId === undefined ? {} : { traceId: raw.traceId }),
+      });
+      return completeInvitationCommand(client, key, invitation);
+    },
+  );
 }

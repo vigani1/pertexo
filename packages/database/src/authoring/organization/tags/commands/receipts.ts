@@ -58,6 +58,7 @@ export function tagCommand(
   });
 }
 
+/** Replacing tags or detaching one from a workflow. */
 export function assignmentCommand<T extends object>(
   session: ReturnType<typeof createOrganizationSession>,
   input: AssignmentCommand,

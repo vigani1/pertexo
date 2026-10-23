@@ -90,197 +90,223 @@ export function collaborationCommands(
   'create' | 'reply' | 'edit' | 'remove' | 'setStatus'
 > {
   return {
-    create: (input) =>
-      runCommentCommand(
-        context,
-        input,
-        'workflow.comment.created',
-        {
-          body: input.body,
-          mentionUserIds: input.mentionUserIds,
-          stepId: input.stepId,
-        },
-        async (client) => {
-          let stepLabel: string | null = null;
-          if (input.stepId !== null) {
-            const draft = (
-              await client.query<{ graph_json: unknown }>(
-                'select graph_json from app.workflow_drafts where workspace_id=$1 and workflow_id=$2 for share',
-                [input.workspaceId, input.workflowId],
-              )
-            ).rows[0];
-            if (draft === undefined)
-              throw new WorkflowNotFoundError('Draft is not visible');
-            const matches = [
-              ...workflowNodes(parseWorkflowGraphDraft(draft.graph_json)),
-            ].filter((node) => node.id === input.stepId);
-            if (matches.length !== 1)
-              throw new WorkflowCollaborationError(
-                'conflict',
-                'This step is missing or its identity is ambiguous. Save the step or start a workflow discussion instead.',
-              );
-            const step = matches[0];
-            if (step === undefined) throw new Error('Matched step missing');
-            stepLabel = stepSnapshotLabel(step.label ?? step.definition.key);
-          }
-          const threadId = generatePersistedId();
-          await client.query(
-            'insert into app.workflow_comment_threads(workspace_id,id,workflow_id,step_id,step_label,created_by,comment_count) values($1,$2,$3,$4,$5,$6,1)',
-            [
-              input.workspaceId,
-              threadId,
-              input.workflowId,
-              input.stepId,
-              stepLabel,
-              input.actorId,
-            ],
-          );
-          const commentId = await insertComment(client, { ...input, threadId });
-          return commandResult(threadId, commentId, 1);
-        },
-      ),
-    reply: (input) =>
-      runCommentCommand(
-        context,
-        input,
-        'workflow.comment.replied',
-        {
-          threadId: input.threadId,
-          body: input.body,
-          mentionUserIds: input.mentionUserIds,
-        },
-        async (client) => {
-          const thread = await lockCommentThread(client, input);
-          if (thread.status !== 'open')
-            throw new WorkflowCollaborationError(
-              'conflict',
-              'Reopen this discussion before replying. Your text is kept.',
-            );
-          const commentId = await insertComment(client, input);
-          await client.query(
-            'update app.workflow_comment_threads set comment_count=comment_count+1,revision=revision+1,updated_at=clock_timestamp() where workspace_id=$1 and id=$2',
-            [input.workspaceId, input.threadId],
-          );
-          return commandResult(input.threadId, commentId, 1);
-        },
-      ),
-    edit: (input) =>
-      runCommentCommand(
-        context,
-        input,
-        'workflow.comment.edited',
-        {
-          threadId: input.threadId,
-          commentId: input.commentId,
-          body: input.body,
-          mentionUserIds: input.mentionUserIds,
-          expectedRevision: input.expectedRevision,
-        },
-        async (client) => {
-          await lockCommentThread(client, input);
-          await requireOwnComment(client, input);
-          await client.query(
-            'update app.workflow_comments set body=$4,revision=revision+1,edited_at=clock_timestamp() where workspace_id=$1 and thread_id=$2 and id=$3 and revision=$5',
-            [
-              input.workspaceId,
-              input.threadId,
-              input.commentId,
-              input.body,
-              input.expectedRevision,
-            ],
-          );
-          await syncCommentMentions(
-            client,
-            input,
-            input.commentId,
-            input.mentionUserIds,
-          );
-          await client.query(
-            'update app.workflow_comment_threads set revision=revision+1,updated_at=clock_timestamp() where workspace_id=$1 and id=$2',
-            [input.workspaceId, input.threadId],
-          );
-          return commandResult(
-            input.threadId,
-            input.commentId,
-            input.expectedRevision + 1,
-          );
-        },
-      ),
-    remove: (input) =>
-      runCommentCommand(
-        context,
-        input,
-        'workflow.comment.deleted',
-        {
-          threadId: input.threadId,
-          commentId: input.commentId,
-          expectedRevision: input.expectedRevision,
-        },
-        async (client) => {
-          const thread = await lockCommentThread(client, input);
-          await requireOwnComment(client, input);
-          await client.query(
-            'delete from app.workflow_comments where workspace_id=$1 and thread_id=$2 and id=$3 and revision=$4',
-            [
-              input.workspaceId,
-              input.threadId,
-              input.commentId,
-              input.expectedRevision,
-            ],
-          );
-          const empty = thread.comment_count === 1;
-          if (empty)
-            await client.query(
-              'delete from app.workflow_comment_threads where workspace_id=$1 and id=$2',
-              [input.workspaceId, input.threadId],
-            );
-          else
-            await client.query(
-              'update app.workflow_comment_threads set comment_count=comment_count-1,revision=revision+1,updated_at=clock_timestamp() where workspace_id=$1 and id=$2',
-              [input.workspaceId, input.threadId],
-            );
-          return commandResult(
-            input.threadId,
-            input.commentId,
-            input.expectedRevision + 1,
-            true,
-            empty,
-          );
-        },
-      ),
-    setStatus: (input) =>
-      runCommentCommand(
-        context,
-        input,
-        'workflow.comment.thread.changed',
-        {
-          threadId: input.threadId,
-          status: input.status,
-          expectedRevision: input.expectedRevision,
-        },
-        async (client) => {
-          const thread = await lockCommentThread(client, input);
-          if (thread.revision !== input.expectedRevision)
-            throw new WorkflowCollaborationError(
-              'conflict',
-              'This discussion changed. Review its latest state before resolving or reopening it.',
-            );
-          await client.query(
-            'update app.workflow_comment_threads set status=$3,revision=revision+1,updated_at=clock_timestamp() where workspace_id=$1 and id=$2 and revision=$4',
-            [
-              input.workspaceId,
-              input.threadId,
-              input.status,
-              input.expectedRevision,
-            ],
-          );
-          return commandResult(
-            input.threadId,
-            null,
-            input.expectedRevision + 1,
-          );
-        },
-        input.status,
-      ),
+    create: (input) => createCommentThread(context, input),
+    reply: (input) => replyToCommentThread(context, input),
+    edit: (input) => editComment(context, input),
+    remove: (input) => removeComment(context, input),
+    setStatus: (input) => setCommentThreadStatus(context, input),
   };
+}
+
+function createCommentThread(
+  context: CollaborationContext,
+  input: Parameters<WorkflowCollaborationStore['create']>[0],
+): ReturnType<WorkflowCollaborationStore['create']> {
+  return runCommentCommand(
+    context,
+    input,
+    'workflow.comment.created',
+    {
+      body: input.body,
+      mentionUserIds: input.mentionUserIds,
+      stepId: input.stepId,
+    },
+    async (client) => {
+      let stepLabel: string | null = null;
+      if (input.stepId !== null) {
+        const draft = (
+          await client.query<{ graph_json: unknown }>(
+            'select graph_json from app.workflow_drafts where workspace_id=$1 and workflow_id=$2 for share',
+            [input.workspaceId, input.workflowId],
+          )
+        ).rows[0];
+        if (draft === undefined)
+          throw new WorkflowNotFoundError('Draft is not visible');
+        const matches = [
+          ...workflowNodes(parseWorkflowGraphDraft(draft.graph_json)),
+        ].filter((node) => node.id === input.stepId);
+        if (matches.length !== 1)
+          throw new WorkflowCollaborationError(
+            'conflict',
+            'This step is missing or its identity is ambiguous. Save the step or start a workflow discussion instead.',
+          );
+        const step = matches[0];
+        if (step === undefined) throw new Error('Matched step missing');
+        stepLabel = stepSnapshotLabel(step.label ?? step.definition.key);
+      }
+      const threadId = generatePersistedId();
+      await client.query(
+        'insert into app.workflow_comment_threads(workspace_id,id,workflow_id,step_id,step_label,created_by,comment_count) values($1,$2,$3,$4,$5,$6,1)',
+        [
+          input.workspaceId,
+          threadId,
+          input.workflowId,
+          input.stepId,
+          stepLabel,
+          input.actorId,
+        ],
+      );
+      const commentId = await insertComment(client, { ...input, threadId });
+      return commandResult(threadId, commentId, 1);
+    },
+  );
+}
+
+function replyToCommentThread(
+  context: CollaborationContext,
+  input: Parameters<WorkflowCollaborationStore['reply']>[0],
+): ReturnType<WorkflowCollaborationStore['reply']> {
+  return runCommentCommand(
+    context,
+    input,
+    'workflow.comment.replied',
+    {
+      threadId: input.threadId,
+      body: input.body,
+      mentionUserIds: input.mentionUserIds,
+    },
+    async (client) => {
+      const thread = await lockCommentThread(client, input);
+      if (thread.status !== 'open')
+        throw new WorkflowCollaborationError(
+          'conflict',
+          'Reopen this discussion before replying. Your text is kept.',
+        );
+      const commentId = await insertComment(client, input);
+      await client.query(
+        'update app.workflow_comment_threads set comment_count=comment_count+1,revision=revision+1,updated_at=clock_timestamp() where workspace_id=$1 and id=$2',
+        [input.workspaceId, input.threadId],
+      );
+      return commandResult(input.threadId, commentId, 1);
+    },
+  );
+}
+
+function editComment(
+  context: CollaborationContext,
+  input: Parameters<WorkflowCollaborationStore['edit']>[0],
+): ReturnType<WorkflowCollaborationStore['edit']> {
+  return runCommentCommand(
+    context,
+    input,
+    'workflow.comment.edited',
+    {
+      threadId: input.threadId,
+      commentId: input.commentId,
+      body: input.body,
+      mentionUserIds: input.mentionUserIds,
+      expectedRevision: input.expectedRevision,
+    },
+    async (client) => {
+      await lockCommentThread(client, input);
+      await requireOwnComment(client, input);
+      await client.query(
+        'update app.workflow_comments set body=$4,revision=revision+1,edited_at=clock_timestamp() where workspace_id=$1 and thread_id=$2 and id=$3 and revision=$5',
+        [
+          input.workspaceId,
+          input.threadId,
+          input.commentId,
+          input.body,
+          input.expectedRevision,
+        ],
+      );
+      await syncCommentMentions(
+        client,
+        input,
+        input.commentId,
+        input.mentionUserIds,
+      );
+      await client.query(
+        'update app.workflow_comment_threads set revision=revision+1,updated_at=clock_timestamp() where workspace_id=$1 and id=$2',
+        [input.workspaceId, input.threadId],
+      );
+      return commandResult(
+        input.threadId,
+        input.commentId,
+        input.expectedRevision + 1,
+      );
+    },
+  );
+}
+
+function removeComment(
+  context: CollaborationContext,
+  input: Parameters<WorkflowCollaborationStore['remove']>[0],
+): ReturnType<WorkflowCollaborationStore['remove']> {
+  return runCommentCommand(
+    context,
+    input,
+    'workflow.comment.deleted',
+    {
+      threadId: input.threadId,
+      commentId: input.commentId,
+      expectedRevision: input.expectedRevision,
+    },
+    async (client) => {
+      const thread = await lockCommentThread(client, input);
+      await requireOwnComment(client, input);
+      await client.query(
+        'delete from app.workflow_comments where workspace_id=$1 and thread_id=$2 and id=$3 and revision=$4',
+        [
+          input.workspaceId,
+          input.threadId,
+          input.commentId,
+          input.expectedRevision,
+        ],
+      );
+      const empty = thread.comment_count === 1;
+      if (empty)
+        await client.query(
+          'delete from app.workflow_comment_threads where workspace_id=$1 and id=$2',
+          [input.workspaceId, input.threadId],
+        );
+      else
+        await client.query(
+          'update app.workflow_comment_threads set comment_count=comment_count-1,revision=revision+1,updated_at=clock_timestamp() where workspace_id=$1 and id=$2',
+          [input.workspaceId, input.threadId],
+        );
+      return commandResult(
+        input.threadId,
+        input.commentId,
+        input.expectedRevision + 1,
+        true,
+        empty,
+      );
+    },
+  );
+}
+
+function setCommentThreadStatus(
+  context: CollaborationContext,
+  input: Parameters<WorkflowCollaborationStore['setStatus']>[0],
+): ReturnType<WorkflowCollaborationStore['setStatus']> {
+  return runCommentCommand(
+    context,
+    input,
+    'workflow.comment.thread.changed',
+    {
+      threadId: input.threadId,
+      status: input.status,
+      expectedRevision: input.expectedRevision,
+    },
+    async (client) => {
+      const thread = await lockCommentThread(client, input);
+      if (thread.revision !== input.expectedRevision)
+        throw new WorkflowCollaborationError(
+          'conflict',
+          'This discussion changed. Review its latest state before resolving or reopening it.',
+        );
+      await client.query(
+        'update app.workflow_comment_threads set status=$3,revision=revision+1,updated_at=clock_timestamp() where workspace_id=$1 and id=$2 and revision=$4',
+        [
+          input.workspaceId,
+          input.threadId,
+          input.status,
+          input.expectedRevision,
+        ],
+      );
+      return commandResult(input.threadId, null, input.expectedRevision + 1);
+    },
+    input.status,
+  );
 }

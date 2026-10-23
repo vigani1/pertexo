@@ -153,165 +153,170 @@ export function createWorkflowConcurrencyStore(
   transact: Transact,
 ): WorkflowConcurrencyDatabase {
   return Object.freeze({
-    readSettings: async (input) => {
-      const workspaceId = z.uuid().parse(input.workspaceId),
-        actorId = z.uuid().parse(input.actorId),
-        workflowId = z.uuid().parse(input.workflowId);
-      return transact(
+    readSettings: (input) => readConcurrencySettings(transact, input),
+
+    updateSettings: (input) => updateConcurrencySettings(transact, input),
+  } satisfies WorkflowConcurrencyDatabase);
+}
+
+async function readConcurrencySettings(
+  transact: Transact,
+  input: Parameters<WorkflowConcurrencyDatabase['readSettings']>[0],
+): ReturnType<WorkflowConcurrencyDatabase['readSettings']> {
+  const workspaceId = z.uuid().parse(input.workspaceId),
+    actorId = z.uuid().parse(input.actorId),
+    workflowId = z.uuid().parse(input.workflowId);
+  return transact(
+    workspaceId,
+    actorId,
+    async (client) => {
+      await lockWorkflowAuthoringAuthority(
+        client,
         workspaceId,
         actorId,
-        async (client) => {
-          await lockWorkflowAuthoringAuthority(
-            client,
-            workspaceId,
-            actorId,
-            ROLES,
-            { workflowId, capability: 'workflow:read' },
-          );
-          await requireWorkflow(client, workspaceId, workflowId);
-          const policy = settingsOf(
-            await readPolicy(client, workspaceId, workflowId),
-            await readEntitlement(client, workspaceId),
-          );
-          const history = await client.query<{
-            id: string;
-            at: string;
-            trigger_type: NonNullable<
-              WorkflowConcurrencySettings['recentSkips']
-            >[number]['triggerType'];
-            reason: NonNullable<
-              WorkflowConcurrencySettings['recentSkips']
-            >[number]['reason'];
-          }>(
-            `select id,to_char(occurred_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') at,
+        ROLES,
+        { workflowId, capability: 'workflow:read' },
+      );
+      await requireWorkflow(client, workspaceId, workflowId);
+      const policy = settingsOf(
+        await readPolicy(client, workspaceId, workflowId),
+        await readEntitlement(client, workspaceId),
+      );
+      const history = await client.query<{
+        id: string;
+        at: string;
+        trigger_type: NonNullable<
+          WorkflowConcurrencySettings['recentSkips']
+        >[number]['triggerType'];
+        reason: NonNullable<
+          WorkflowConcurrencySettings['recentSkips']
+        >[number]['reason'];
+      }>(
+        `select id,to_char(occurred_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') at,
                     metadata->>'triggerType' trigger_type,metadata->>'reason' reason
              from app.usage_events where workspace_id=$1 and resource_type='workflow' and resource_id=$2
                and category='trigger.skipped' and occurred_at>statement_timestamp()-${RUN_SUMMARY_RETENTION_SQL}
              order by occurred_at desc nulls last,id limit 20`,
-            [workspaceId, workflowId],
-          );
-          return {
-            ...policy,
-            recentSkips: history.rows.map((row) => ({
-              id: row.id,
-              at: row.at,
-              triggerType: row.trigger_type,
-              reason: row.reason,
-            })),
-          };
-        },
-        input.signal,
+        [workspaceId, workflowId],
       );
-    },
-
-    updateSettings: async (input) => {
-      const workspaceId = z.uuid().parse(input.workspaceId),
-        actorId = z.uuid().parse(input.actorId),
-        workflowId = z.uuid().parse(input.workflowId);
-      const request = {
-        limit: limit.parse(input.limit),
-        expectedRevision: revision.parse(input.expectedRevision),
-        ...(input.overflow === undefined
-          ? {}
-          : { overflow: z.enum(['queue', 'skip']).parse(input.overflow) }),
+      return {
+        ...policy,
+        recentSkips: history.rows.map((row) => ({
+          id: row.id,
+          at: row.at,
+          triggerType: row.trigger_type,
+          reason: row.reason,
+        })),
       };
-      return transact(
+    },
+    input.signal,
+  );
+}
+
+async function updateConcurrencySettings(
+  transact: Transact,
+  input: Parameters<WorkflowConcurrencyDatabase['updateSettings']>[0],
+): ReturnType<WorkflowConcurrencyDatabase['updateSettings']> {
+  const workspaceId = z.uuid().parse(input.workspaceId),
+    actorId = z.uuid().parse(input.actorId),
+    workflowId = z.uuid().parse(input.workflowId);
+  const request = {
+    limit: limit.parse(input.limit),
+    expectedRevision: revision.parse(input.expectedRevision),
+    ...(input.overflow === undefined
+      ? {}
+      : { overflow: z.enum(['queue', 'skip']).parse(input.overflow) }),
+  };
+  return transact(
+    workspaceId,
+    actorId,
+    async (client) => {
+      await lockWorkflowAuthoringAuthority(
+        client,
         workspaceId,
         actorId,
-        async (client) => {
-          await lockWorkflowAuthoringAuthority(
-            client,
-            workspaceId,
-            actorId,
-            EDITORS,
-            { workflowId, capability: 'workflow:update' },
-          );
-          await requireWorkflow(client, workspaceId, workflowId);
-          const identity = {
-            workspaceId,
-            operation: 'workflow.concurrency',
-            scope: `${actorId}:${workflowId}`,
-            idempotencyKey: input.idempotencyKey,
-          };
-          const stored = await claimCommand<WorkflowConcurrencySettings>(
-            client,
-            {
-              ...identity,
-              request,
-              resourceId: workflowId,
-            },
-          );
-          if (stored !== null)
-            return Object.freeze({
-              settings: stored,
-              replayed: true,
-            });
-          // Run grants read the limit under the workspace's admission counter.
-          await client.query('select app.lock_workspace_admission($1)', [
-            workspaceId,
-          ]);
-          const entitlement = await readEntitlement(client, workspaceId);
-          const policy = await readPolicy(client, workspaceId, workflowId);
-          if (policy.revision !== request.expectedRevision)
-            throw new WorkflowConcurrencyRevisionConflictError(policy.revision);
-          if (request.limit !== null) {
-            if (entitlement.maximum === null)
-              throw new WorkflowConcurrencyLimitUnavailableError();
-            if (request.limit > entitlement.maximum)
-              throw new WorkflowConcurrencyLimitExceededError(
-                entitlement.maximum,
-              );
-          }
-          let current = policy;
-          const overflow = request.overflow ?? policy.overflow;
-          if (policy.limit !== request.limit || policy.overflow !== overflow) {
-            current = {
-              limit: request.limit,
-              revision: policy.revision + 1,
-              overflow,
-            };
-            await client.query(
-              `insert into app.workflow_concurrency_policies
+        EDITORS,
+        { workflowId, capability: 'workflow:update' },
+      );
+      await requireWorkflow(client, workspaceId, workflowId);
+      const identity = {
+        workspaceId,
+        operation: 'workflow.concurrency',
+        scope: `${actorId}:${workflowId}`,
+        idempotencyKey: input.idempotencyKey,
+      };
+      const stored = await claimCommand<WorkflowConcurrencySettings>(client, {
+        ...identity,
+        request,
+        resourceId: workflowId,
+      });
+      if (stored !== null)
+        return Object.freeze({
+          settings: stored,
+          replayed: true,
+        });
+      // Run grants read the limit under the workspace's admission counter.
+      await client.query('select app.lock_workspace_admission($1)', [
+        workspaceId,
+      ]);
+      const entitlement = await readEntitlement(client, workspaceId);
+      const policy = await readPolicy(client, workspaceId, workflowId);
+      if (policy.revision !== request.expectedRevision)
+        throw new WorkflowConcurrencyRevisionConflictError(policy.revision);
+      if (request.limit !== null) {
+        if (entitlement.maximum === null)
+          throw new WorkflowConcurrencyLimitUnavailableError();
+        if (request.limit > entitlement.maximum)
+          throw new WorkflowConcurrencyLimitExceededError(entitlement.maximum);
+      }
+      let current = policy;
+      const overflow = request.overflow ?? policy.overflow;
+      if (policy.limit !== request.limit || policy.overflow !== overflow) {
+        current = {
+          limit: request.limit,
+          revision: policy.revision + 1,
+          overflow,
+        };
+        await client.query(
+          `insert into app.workflow_concurrency_policies
                  (workspace_id, workflow_id, active_run_limit, revision, overflow)
                values ($1, $2, $3, $4, $5)
                on conflict (workspace_id, workflow_id) do update
                set active_run_limit = excluded.active_run_limit,
                    revision = excluded.revision, overflow = excluded.overflow`,
-              [
-                workspaceId,
-                workflowId,
-                current.limit,
-                current.revision,
-                current.overflow,
-              ],
-            );
-            await client.query(
-              `insert into app.audit_events
+          [
+            workspaceId,
+            workflowId,
+            current.limit,
+            current.revision,
+            current.overflow,
+          ],
+        );
+        await client.query(
+          `insert into app.audit_events
                  (id, workspace_id, actor_user_id, action, target_type, target_id,
                   request_id, trace_id, metadata)
                values ($1, $2, $3, 'workflow.concurrency_settings_changed', 'workflow',
                        $4, $5, $6, $7::jsonb)`,
-              [
-                generatePersistedId(),
-                workspaceId,
-                actorId,
-                workflowId,
-                input.requestId ?? null,
-                input.traceId ?? null,
-                JSON.stringify({
-                  limit: current.limit,
-                  revision: current.revision,
-                  overflow: current.overflow,
-                }),
-              ],
-            );
-          }
-          const result = settingsOf(current, entitlement);
-          await completeCommand(client, identity, result);
-          return Object.freeze({ settings: result, replayed: false });
-        },
-        input.signal,
-      );
+          [
+            generatePersistedId(),
+            workspaceId,
+            actorId,
+            workflowId,
+            input.requestId ?? null,
+            input.traceId ?? null,
+            JSON.stringify({
+              limit: current.limit,
+              revision: current.revision,
+              overflow: current.overflow,
+            }),
+          ],
+        );
+      }
+      const result = settingsOf(current, entitlement);
+      await completeCommand(client, identity, result);
+      return Object.freeze({ settings: result, replayed: false });
     },
-  } satisfies WorkflowConcurrencyDatabase);
+    input.signal,
+  );
 }
