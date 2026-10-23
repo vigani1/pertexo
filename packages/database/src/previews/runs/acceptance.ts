@@ -1,380 +1,60 @@
 import { requireTransactionConnectionBindings } from '../../tenant-access/resources/connections/bindings.js';
 import { connectionScope } from '../../tenant-access/resources/connections/scope.js';
-import { readTransactionFolderScope } from '../../tenant-access/resources/facts.js';
-import { workflowScopeSql } from '../../tenant-access/resources/query-scope.js';
-import type { CodeDiagnostics } from '@pertexo/node-sdk';
-import { definitionIdentitySchema } from '@pertexo/node-sdk';
+
 import { resolvePreviewSample } from './samples.js';
-import { rolesForCapability } from '@pertexo/workflow-model';
+
 import { captureWorkspaceVariableRevision } from '../../variables/read.js';
 import { lockActorArtifactReferences } from '../../artifacts/references.js';
-import { and, eq, gt, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
-import { z } from 'zod';
 
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
 } from '../../outbox/events.js';
-import { executableNodeSchema } from '../executable-node.js';
-import {
-  PREVIEW_STATUS,
-  traceparentSchema,
-  type PreviewStatus,
-} from '../contract.js';
-export { PREVIEW_STATUS } from '../contract.js';
-export type { PreviewStatus } from '../contract.js';
+
+import { PREVIEW_STATUS } from '../contract.js';
 import {
   auditEvents,
   idempotencyRecords,
   previewAttempts,
   previewRuns,
-  workflowDrafts,
-  workspaceMemberships,
-  workspaces,
-  users,
-  workflows,
 } from '../../schema.js';
-import {
-  parseStoredExecutionValue,
-  serializeStoredExecutionValue,
-} from '../../platform/stored-execution-value.js';
+import { serializeStoredExecutionValue } from '../../platform/stored-execution-value.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
-import { sha256HexSchema } from '../../platform/persisted-primitives.js';
 
-const identityKeySchema = definitionIdentitySchema.shape.key;
-const integrationKeySchema = z.string().regex(/^[a-z][a-z0-9._:-]*$/u);
-export const PREVIEW_RETENTION_MAX_MS = 7 * 24 * 60 * 60 * 1_000;
-const PREVIEW_EXECUTION_TIMEOUT_MAX_MS = 5 * 60 * 1_000;
-
-const previewStatusSchema = z.enum(
-  Object.values(PREVIEW_STATUS) as [PreviewStatus, ...PreviewStatus[]],
-);
-
-const inputSourceSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('manual'), value: z.unknown() }).strict(),
-  z
-    .object({ kind: z.literal('prior_preview'), previewRunId: z.uuid() })
-    .strict(),
-]);
-
-const acceptPreviewRunInputSchema = z
-  .object({
-    actorUserId: z.uuid(),
-    definitionKey: identityKeySchema,
-    definitionVersion: z.number().int().positive(),
-    draftFingerprint: sha256HexSchema,
-    draftRevision: z.number().int().positive(),
-    expectedSampleId: z.uuid().nullable().optional(),
-    dryRun: z.enum(['not_supported', 'provider_supported']),
-    executableNode: executableNodeSchema,
-    executorKey: identityKeySchema,
-    executorVersion: z.number().int().positive(),
-    executionDeadlineAt: z.date(),
-    expiresAt: z.date(),
-    input: inputSourceSchema,
-    keyHash: sha256HexSchema,
-    mayContactProvider: z.boolean(),
-    mayCauseExternalSideEffect: z.boolean(),
-    nodeId: z.string().min(1).max(256),
-    operation: z.literal('preview.execute'),
-    operationKey: integrationKeySchema.max(128).optional(),
-    providerKey: integrationKeySchema.max(64).optional(),
-    providerIdempotencyKey: z.string().min(1).max(256).optional(),
-    requestHash: sha256HexSchema,
-    requestId: z.string().min(1).max(128).optional(),
-    scope: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u),
-    sideEffectClass: z.enum(['safe', 'idempotent_with_key', 'unsafe']),
-    traceId: z.string().min(1).max(128).optional(),
-    traceparent: traceparentSchema,
-    workflowId: z.uuid(),
-  })
-  .strict()
-  .refine(
-    (input) =>
-      input.sideEffectClass !== 'idempotent_with_key' ||
-      input.providerIdempotencyKey !== undefined,
-    'idempotent execution requires a provider idempotency key',
-  )
-  .refine(
-    (input) =>
-      (input.providerKey === undefined) === (input.operationKey === undefined),
-    'provider and operation classification must be supplied together',
-  );
-
-const resultRefSchema = z.union([
-  z.object({ outboxEventId: z.uuid(), previewAttemptId: z.uuid() }).strict(),
-  z.object({ pinnedSampleId: z.uuid() }).strict(),
-]);
-
-type ParsedPreviewRunInput = z.input<typeof acceptPreviewRunInputSchema>;
-export type AcceptPreviewRunInput = Readonly<
-  Omit<ParsedPreviewRunInput, 'executableNode'> & {
-    executableNode: Readonly<Record<string, unknown>>;
-  }
->;
-
-export type AcceptedPreviewRun = Readonly<{
-  acceptedAt: Date;
-  duplicate: boolean;
-  expiresAt: Date;
-  outboxEventId: string | null;
-  previewAttemptId: string | null;
-  pinnedSampleId?: string;
-  pinnedOutput?: ReturnType<typeof parseStoredExecutionValue>;
-  completedAt?: Date | null;
-  previewRunId: string;
-  status: PreviewStatus;
-}>;
-
-export type PreviewRunRecord = Readonly<{
-  codeDiagnostics?: CodeDiagnostics;
-  errorSummary?: string;
-  id: string;
-  workspaceId: string;
-  workflowId: string;
-  draftRevision: number;
-  nodeId: string;
-  status: PreviewStatus;
-  sideEffectClass: 'safe' | 'idempotent_with_key' | 'unsafe';
-  mayContactProvider: boolean;
-  mayCauseExternalSideEffect: boolean;
-  dryRun: 'not_supported' | 'provider_supported';
-  output: ReturnType<typeof parseStoredExecutionValue> | null;
-  pinnedSampleId?: string | null;
-  safeErrorCode: string | null;
-  createdAt: Date;
-  startedAt: Date | null;
-  completedAt: Date | null;
-  expiresAt: Date;
-}>;
-
-export class PreviewIdempotencyConflictError extends Error {
-  public override readonly name = 'PreviewIdempotencyConflictError';
-  public constructor() {
-    super('request.idempotency_conflict');
-  }
-}
-
-export class PreviewAcceptanceCorruptError extends Error {
-  public override readonly name = 'PreviewAcceptanceCorruptError';
-  public constructor() {
-    super('Persisted preview acceptance is incomplete or invalid');
-  }
-}
-
-export class PreviewAdmissionDeniedError extends Error {
-  public override readonly name = 'PreviewAdmissionDeniedError';
-  public constructor(reason: 'actor' | 'deadline' | 'draft' | 'retention') {
-    super(`preview.${reason}_denied`);
-  }
-}
-
-export class PriorPreviewInputUnavailableError extends Error {
-  public override readonly name = 'PriorPreviewInputUnavailableError';
-  public constructor() {
-    super('preview.input_unavailable');
-  }
-}
-
-export async function readExistingAcceptance(
-  transaction: WorkspaceTransaction,
-  input: Pick<
-    z.output<typeof acceptPreviewRunInputSchema>,
-    'keyHash' | 'operation' | 'requestHash' | 'scope'
-  >,
-): Promise<AcceptedPreviewRun | null> {
-  const rows = await transaction.db
-    .select({
-      requestHash: idempotencyRecords.requestHash,
-      resourceId: idempotencyRecords.resourceId,
-      resultRef: idempotencyRecords.resultRef,
-      idempotencyStatus: idempotencyRecords.status,
-      acceptedAt: previewRuns.createdAt,
-      expiresAt: previewRuns.expiresAt,
-      previewStatus: previewRuns.status,
-      pinnedSampleId: previewRuns.pinnedSampleId,
-      outputRef: previewRuns.outputRef,
-      completedAt: previewRuns.completedAt,
-    })
-    .from(idempotencyRecords)
-    .leftJoin(
-      previewRuns,
-      and(
-        eq(previewRuns.workspaceId, idempotencyRecords.workspaceId),
-        eq(previewRuns.id, idempotencyRecords.resourceId),
-      ),
-    )
-    .where(
-      and(
-        eq(idempotencyRecords.workspaceId, transaction.workspaceId),
-        eq(idempotencyRecords.operation, input.operation),
-        eq(idempotencyRecords.scope, input.scope),
-        eq(idempotencyRecords.keyHash, input.keyHash),
-      ),
-    )
-    .limit(1);
-  const row = rows[0];
-  if (row === undefined) return null;
-  if (row.requestHash !== input.requestHash)
-    throw new PreviewIdempotencyConflictError();
-  const resultRef = resultRefSchema.safeParse(row.resultRef);
-  const status = previewStatusSchema.safeParse(row.previewStatus);
-  if (
-    row.idempotencyStatus !== 'completed' ||
-    row.acceptedAt === null ||
-    row.expiresAt === null ||
-    !resultRef.success ||
-    !status.success
-  )
-    throw new PreviewAcceptanceCorruptError();
-  if (
-    'pinnedSampleId' in resultRef.data &&
-    (row.pinnedSampleId !== resultRef.data.pinnedSampleId ||
-      status.data !== PREVIEW_STATUS.succeeded ||
-      row.outputRef === null)
-  )
-    throw new PreviewAcceptanceCorruptError();
-  return Object.freeze({
-    acceptedAt: row.acceptedAt,
-    completedAt: row.completedAt,
-    duplicate: true,
-    expiresAt: row.expiresAt,
-    outboxEventId:
-      'outboxEventId' in resultRef.data ? resultRef.data.outboxEventId : null,
-    previewAttemptId:
-      'previewAttemptId' in resultRef.data
-        ? resultRef.data.previewAttemptId
-        : null,
-    ...('pinnedSampleId' in resultRef.data
-      ? {
-          pinnedSampleId: resultRef.data.pinnedSampleId,
-          pinnedOutput: parseStoredExecutionValue(row.outputRef),
-        }
-      : {}),
-    previewRunId: row.resourceId,
-    status: status.data,
-  });
-}
-
-async function assertAdmission(
-  transaction: WorkspaceTransaction,
-  workflowId: string,
-  draftRevision: number,
-) {
-  const workflow = await transaction.db
-    .select({ id: workflows.id })
-    .from(workflows)
-    .where(
-      and(
-        eq(workflows.workspaceId, transaction.workspaceId),
-        eq(workflows.id, workflowId),
-        eq(workflows.lifecycleStatus, 'active'),
-      ),
-    )
-    .for('share')
-    .limit(1);
-  if (workflow.length !== 1) throw new PreviewAdmissionDeniedError('draft');
-  const drafts = await transaction.db
-    .select({
-      revision: workflowDrafts.revision,
-      graph: workflowDrafts.graphJson,
-    })
-    .from(workflowDrafts)
-    .where(
-      and(
-        eq(workflowDrafts.workspaceId, transaction.workspaceId),
-        eq(workflowDrafts.workflowId, workflowId),
-      ),
-    )
-    .for('share')
-    .limit(1);
-  if (drafts[0]?.revision !== draftRevision)
-    throw new PreviewAdmissionDeniedError('draft');
-  return drafts[0].graph;
-}
-
-export async function assertPreviewActor(
-  transaction: WorkspaceTransaction,
-  actorUserId: string,
-): Promise<void> {
-  const workspace = await transaction.db
-    .select({ id: workspaces.id })
-    .from(workspaces)
-    .where(
-      and(
-        eq(workspaces.id, transaction.workspaceId),
-        eq(workspaces.status, 'active'),
-      ),
-    )
-    .for('share')
-    .limit(1);
-  const actor = await transaction.db
-    .select({ id: users.id })
-    .from(users)
-    .where(and(eq(users.id, actorUserId), eq(users.status, 'active')))
-    .for('share')
-    .limit(1);
-  const membership = await transaction.db
-    .select({ role: workspaceMemberships.role })
-    .from(workspaceMemberships)
-    .where(
-      and(
-        eq(workspaceMemberships.workspaceId, transaction.workspaceId),
-        eq(workspaceMemberships.userId, actorUserId),
-        eq(workspaceMemberships.status, 'active'),
-      ),
-    )
-    .for('share')
-    .limit(1);
-  if (
-    workspace.length !== 1 ||
-    actor.length !== 1 ||
-    membership[0] === undefined ||
-    !rolesForCapability('workflow:update').some(
-      (role) => role === membership[0]?.role,
-    )
-  )
-    throw new PreviewAdmissionDeniedError('actor');
-}
-
-async function resolveInput(
-  transaction: WorkspaceTransaction,
-  workflowId: string,
-  input: z.output<typeof inputSourceSchema>,
-  now: Date,
-): Promise<Readonly<{ priorPreviewRunId: string | null; stored: string }>> {
-  if (input.kind === 'manual') {
-    return Object.freeze({
-      priorPreviewRunId: null,
-      stored: serializeStoredExecutionValue({
-        kind: 'inline',
-        value: input.value,
-      }),
-    });
-  }
-  const rows = await transaction.db
-    .select({ outputRef: previewRuns.outputRef })
-    .from(previewRuns)
-    .where(
-      and(
-        eq(previewRuns.workspaceId, transaction.workspaceId),
-        eq(previewRuns.workflowId, workflowId),
-        eq(previewRuns.id, input.previewRunId),
-        eq(previewRuns.status, PREVIEW_STATUS.succeeded),
-        gt(previewRuns.expiresAt, now),
-      ),
-    )
-    .limit(1);
-  const outputRef = rows[0]?.outputRef;
-  if (outputRef === undefined || outputRef === null)
-    throw new PriorPreviewInputUnavailableError();
-  return Object.freeze({
-    priorPreviewRunId: input.previewRunId,
-    stored: serializeStoredExecutionValue(parseStoredExecutionValue(outputRef)),
-  });
-}
-
+import {
+  PREVIEW_RETENTION_MAX_MS,
+  PREVIEW_EXECUTION_TIMEOUT_MAX_MS,
+  acceptPreviewRunInputSchema,
+  type AcceptPreviewRunInput,
+  type AcceptedPreviewRun,
+  PreviewAcceptanceCorruptError,
+  PreviewAdmissionDeniedError,
+} from './acceptance/contract.js';
+import { readExistingAcceptance, resolveInput } from './acceptance/replay.js';
+import {
+  assertAdmission,
+  assertPreviewActor,
+  assertPreviewWorkflow,
+} from './acceptance/authority.js';
+export { PREVIEW_STATUS } from '../contract.js';
+export type { PreviewStatus } from '../contract.js';
+export {
+  PREVIEW_RETENTION_MAX_MS,
+  type AcceptPreviewRunInput,
+  type AcceptedPreviewRun,
+  type PreviewRunRecord,
+  PreviewIdempotencyConflictError,
+  PreviewAcceptanceCorruptError,
+  PreviewAdmissionDeniedError,
+  PriorPreviewInputUnavailableError,
+} from './acceptance/contract.js';
+export { readExistingAcceptance } from './acceptance/replay.js';
+export {
+  assertPreviewActor,
+  previewWorkflowVisible,
+} from './acceptance/authority.js';
 export async function acceptPreviewRun(
   transaction: WorkspaceTransaction,
   input: AcceptPreviewRunInput,
@@ -635,53 +315,4 @@ export async function acceptPreviewRun(
       ? {}
       : { pinnedSampleId: sample.id, pinnedOutput: sample.output }),
   });
-}
-
-async function previewWorkflowScope(
-  transaction: WorkspaceTransaction,
-  actorId: string,
-  workflowId: string,
-  capability: 'workflow:read' | 'workflow:update',
-) {
-  const scope = await readTransactionFolderScope(transaction, {
-    workspaceId: transaction.workspaceId,
-    actorId,
-  });
-  const visible = await transaction.db
-    .execute(sql`select 1 from app.workflows workflow
-    where workflow.workspace_id=${transaction.workspaceId} and workflow.id=${workflowId}
-      and ${workflowScopeSql(scope, sql`workflow.id`, capability)}`);
-  return visible.rows.length === 1 ? scope : undefined;
-}
-
-export async function previewWorkflowVisible(
-  transaction: WorkspaceTransaction,
-  actorId: string,
-  workflowId: string,
-  capability: 'workflow:read' | 'workflow:update',
-): Promise<boolean> {
-  return (
-    (await previewWorkflowScope(
-      transaction,
-      actorId,
-      workflowId,
-      capability,
-    )) !== undefined
-  );
-}
-
-async function assertPreviewWorkflow(
-  transaction: WorkspaceTransaction,
-  actorId: string,
-  workflowId: string,
-  capability: 'workflow:read' | 'workflow:update',
-) {
-  const resources = await previewWorkflowScope(
-    transaction,
-    actorId,
-    workflowId,
-    capability,
-  );
-  if (resources === undefined) throw new PreviewAdmissionDeniedError('draft');
-  return resources;
 }

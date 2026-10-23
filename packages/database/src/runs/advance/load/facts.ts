@@ -1,81 +1,34 @@
-import { utf8ByteLength } from '@pertexo/workflow-model';
-import { UUID_PATTERN } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 import { WORKFLOW_OBSERVATION_WINDOW_LIMITS } from '@pertexo/workflow-model';
-
 import { CoordinatorRunStateCorruptError } from '../contract.js';
-import {
-  parseStoredExecutionValue,
-  serializeStoredExecutionJsonValue,
-  storedExecutionValuesEqual,
-} from '../../../platform/stored-execution-value.js';
+
 import {
   attachPhysicalAttempts,
   readPhysicalAttempts,
-  type CoordinatorEventRow,
   type PersistedCoordinatorEventRow,
 } from './attempts.js';
+import { canonicalEventPayload, eventIdentity } from './fact-admission.js';
+import type { EventRow } from './event-facts.js';
 
-const maximumCanonicalEventPayloadBytes =
-  WORKFLOW_OBSERVATION_WINDOW_LIMITS.canonicalFactBytes;
+export { canonicalTimestamp } from './fact-admission.js';
+export {
+  terminalStatus,
+  mapEvent,
+  completedInlineOutput,
+  assertAvailableArtifacts,
+} from './event-facts.js';
 export const maximumPersistedFacts = WORKFLOW_OBSERVATION_WINDOW_LIMITS.facts;
+
 const maximumCanonicalPersistedFactBytes =
   WORKFLOW_OBSERVATION_WINDOW_LIMITS.canonicalWindowBytes;
+
 // Keep each result bounded while avoiding a long-lived coordinator snapshot
 // spending hundreds of network round trips on the accepted observation window.
 const maximumPersistedFactRowsPerFetch = 1_000;
+
 // This is a materialization target, not a protocol limit. A single accepted
 // PostgreSQL JSON value may exceed it after numeric text expansion.
 const targetPersistedFactWirePageBytes = 4 * 1_024 * 1_024;
-
-function normalizedJson(value: unknown): unknown {
-  try {
-    return JSON.parse(serializeStoredExecutionJsonValue(value)) as unknown;
-  } catch {
-    throw new CoordinatorRunStateCorruptError();
-  }
-}
-
-function record(value: unknown): Readonly<Record<string, unknown>> {
-  const normalized = normalizedJson(value);
-  if (
-    normalized === null ||
-    typeof normalized !== 'object' ||
-    Array.isArray(normalized)
-  )
-    throw new CoordinatorRunStateCorruptError();
-  return normalized as Readonly<Record<string, unknown>>;
-}
-
-function canonicalEventPayload(value: unknown): Readonly<{
-  bytes: number;
-  payload: Readonly<Record<string, unknown>>;
-}> {
-  let serialized: string;
-  try {
-    serialized = serializeStoredExecutionJsonValue(value);
-  } catch {
-    throw new CoordinatorRunStateCorruptError();
-  }
-  const bytes = utf8ByteLength(serialized);
-  if (bytes > maximumCanonicalEventPayloadBytes)
-    throw new CoordinatorRunStateCorruptError();
-  const normalized = JSON.parse(serialized) as unknown;
-  if (
-    normalized === null ||
-    typeof normalized !== 'object' ||
-    Array.isArray(normalized)
-  )
-    throw new CoordinatorRunStateCorruptError();
-  return Object.freeze({
-    bytes,
-    payload: normalized as Readonly<Record<string, unknown>>,
-  });
-}
-
-function eventPayloadRecord(value: unknown): Readonly<Record<string, unknown>> {
-  return canonicalEventPayload(value).payload;
-}
 
 export async function persistedFactCapacity(
   client: PoolClient,
@@ -126,33 +79,6 @@ export async function persistedFactCapacity(
     storageBytes,
   });
 }
-
-export function canonicalTimestamp(value: unknown): string {
-  if (typeof value !== 'string') throw new CoordinatorRunStateCorruptError();
-  const milliseconds = Date.parse(value);
-  if (
-    !Number.isFinite(milliseconds) ||
-    new Date(milliseconds).toISOString() !== value
-  )
-    throw new CoordinatorRunStateCorruptError();
-  return value;
-}
-
-function eventIdentity(payload: Readonly<Record<string, unknown>>): Readonly<{
-  attemptId: string;
-  nodeRunId: string;
-}> {
-  if (
-    typeof payload.attemptId !== 'string' ||
-    !UUID_PATTERN.test(payload.attemptId) ||
-    typeof payload.nodeRunId !== 'string' ||
-    !UUID_PATTERN.test(payload.nodeRunId)
-  )
-    throw new CoordinatorRunStateCorruptError();
-  return { attemptId: payload.attemptId, nodeRunId: payload.nodeRunId };
-}
-
-type EventRow = CoordinatorEventRow;
 
 export async function readPersistedFacts(
   client: PoolClient,
@@ -227,199 +153,4 @@ export async function readPersistedFacts(
     identitiesBySequence,
     physicalByAttemptId,
   );
-}
-
-export function terminalStatus(type: string): string | undefined {
-  return (
-    {
-      'node.succeeded': 'succeeded',
-      'node.failed': 'failed',
-      'node.canceled': 'canceled',
-      'node.timed_out': 'timed_out',
-      'node.outcome_unknown': 'outcome_unknown',
-    } as Readonly<Record<string, string>>
-  )[type];
-}
-
-function attemptFact(
-  row: EventRow,
-  eventPayload?: Readonly<Record<string, unknown>>,
-): Readonly<{
-  attemptId: string;
-  attemptNumber: number;
-  invocationKey: string;
-}> {
-  const payload = eventIdentity(
-    eventPayload ?? eventPayloadRecord(row.payload),
-  );
-  if (
-    row.attempt_id !== payload.attemptId ||
-    row.node_run_id !== payload.nodeRunId ||
-    row.current_attempt_id !== payload.attemptId ||
-    row.attempt_number === null ||
-    row.attempt_number <= 0 ||
-    row.invocation_key === null
-  )
-    throw new CoordinatorRunStateCorruptError();
-  return {
-    attemptId: payload.attemptId,
-    attemptNumber: row.attempt_number,
-    invocationKey: row.invocation_key,
-  };
-}
-
-export function mapEvent(row: EventRow): unknown {
-  const payload = eventPayloadRecord(row.payload);
-  const occurredAt = new Date(row.created_at).toISOString();
-  if (row.type === 'run.cancel_requested')
-    return { kind: 'cancel_requested', sequence: row.sequence, occurredAt };
-  if (row.type === 'node.started' || row.type === 'node.progress') {
-    const physicalStatusIsCoherent =
-      row.attempt_status === row.node_status ||
-      (row.attempt_status === 'failed' &&
-        row.node_status === 'running' &&
-        row.executor_failure_kind !== null &&
-        row.retry_decision === 'pending') ||
-      (row.node_status === 'waiting' &&
-        (row.attempt_status === 'succeeded' ||
-          row.attempt_status === 'failed'));
-    if (
-      row.attempt_status === null ||
-      !physicalStatusIsCoherent ||
-      ![
-        'running',
-        'succeeded',
-        'failed',
-        'canceled',
-        'timed_out',
-        'outcome_unknown',
-      ].includes(row.attempt_status)
-    )
-      throw new CoordinatorRunStateCorruptError();
-    return {
-      kind: 'cursor_only',
-      eventName: row.type,
-      sequence: row.sequence,
-      occurredAt,
-      ...attemptFact(row, payload),
-    };
-  }
-  if (row.type === 'node.waiting' || row.type === 'node.retry_scheduled') {
-    const resumeAt = canonicalTimestamp(payload.dueAt);
-    const persistedDueAt =
-      row.type === 'node.waiting' ? row.resume_at : row.retry_due_at;
-    if (
-      row.attempt_status !==
-        (row.type === 'node.waiting' ? 'succeeded' : 'failed') ||
-      row.node_status !== 'waiting' ||
-      !storedExecutionValuesEqual(
-        row.attempt_output_ref,
-        row.node_output_ref,
-      ) ||
-      persistedDueAt?.toISOString() !== resumeAt
-    )
-      throw new CoordinatorRunStateCorruptError();
-    return {
-      kind: 'wait',
-      eventName: row.type,
-      sequence: row.sequence,
-      occurredAt,
-      resumeAt,
-      waitKind: row.type === 'node.waiting' ? 'node_wait' : 'retry_backoff',
-      ...(row.type !== 'node.waiting' || row.attempt_id === null
-        ? {}
-        : { output: { kind: 'inline' as const, attemptId: row.attempt_id } }),
-      ...attemptFact(row, payload),
-    };
-  }
-  const status = terminalStatus(row.type);
-  if (status === undefined) throw new CoordinatorRunStateCorruptError();
-  const identity = attemptFact(row, payload);
-  if (
-    row.attempt_status !== status ||
-    row.node_status !== status ||
-    !storedExecutionValuesEqual(row.attempt_output_ref, row.node_output_ref)
-  )
-    throw new CoordinatorRunStateCorruptError();
-  let output: unknown;
-  if (row.attempt_output_ref !== null) {
-    let stored;
-    try {
-      stored = parseStoredExecutionValue(row.attempt_output_ref);
-    } catch {
-      throw new CoordinatorRunStateCorruptError();
-    }
-    output =
-      stored.kind === 'inline'
-        ? { kind: 'inline', attemptId: identity.attemptId }
-        : { kind: 'artifact', artifactId: stored.artifactId };
-  }
-  return {
-    kind: 'outcome',
-    sequence: row.sequence,
-    occurredAt,
-    status,
-    ...identity,
-    ...(output === undefined ? {} : { output }),
-    ...(typeof payload.safeErrorCode === 'string'
-      ? { reasonCode: payload.safeErrorCode }
-      : {}),
-  };
-}
-
-export function completedInlineOutput(
-  row: EventRow,
-  controlOutputNodeIds: ReadonlySet<string>,
-): readonly unknown[] {
-  if (
-    row.type !== 'node.succeeded' ||
-    row.attempt_output_ref === null ||
-    row.node_id === null ||
-    !controlOutputNodeIds.has(row.node_id)
-  )
-    return [];
-  const identity = attemptFact(row);
-  let stored;
-  try {
-    stored = parseStoredExecutionValue(row.attempt_output_ref);
-  } catch {
-    throw new CoordinatorRunStateCorruptError();
-  }
-  return stored.kind === 'inline'
-    ? [
-        {
-          sequence: row.sequence,
-          attemptId: identity.attemptId,
-          invocationKey: identity.invocationKey,
-          value: stored.value,
-        },
-      ]
-    : [];
-}
-
-/** Artifact outputs the engine will reference must still be stored. */
-export async function assertAvailableArtifacts(
-  client: PoolClient,
-  workspaceId: string,
-  observations: readonly unknown[],
-): Promise<void> {
-  const artifactIds = new Set(
-    observations.flatMap((observation) => {
-      const output = record(observation).output;
-      if (output === undefined) return [];
-      const value = record(output);
-      return value.kind === 'artifact' && typeof value.artifactId === 'string'
-        ? [value.artifactId]
-        : [];
-    }),
-  );
-  if (artifactIds.size === 0) return;
-  const available = await client.query<{ id: string }>(
-    `select id from app.artifacts
-     where workspace_id=$1 and id=any($2::uuid[])
-       and status='available' and deleted_at is null`,
-    [workspaceId, [...artifactIds]],
-  );
-  if (available.rows.length !== artifactIds.size)
-    throw new CoordinatorRunStateCorruptError();
 }

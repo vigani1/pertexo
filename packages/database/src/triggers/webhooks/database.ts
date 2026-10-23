@@ -1,12 +1,10 @@
-import type { CORE_WEBHOOK_CONFIG_SCHEMA } from '@pertexo/workflow-model';
-import { appendAuditFact } from '../../governance/audit/append.js';
 import { lockEventCoordination } from '../coordination/keys.js';
 import { coordinateVerifiedWebhook } from './coordinate.js';
 import {
   createEventCoordinationPreparation,
   closeEventCoordinationStore,
 } from '../coordination/prepare.js';
-import type { EventCoordinationReceipt } from '@pertexo/workflow-model';
+
 import { WorkflowAlreadyRunningError } from '../../runs/commands/concurrency.js';
 import { recordWorkflowTriggerSkip } from '../skips.js';
 import type { WebhookAuthentication } from '@pertexo/contracts';
@@ -15,11 +13,8 @@ import {
   webhookReplayWait,
 } from './responses/admission.js';
 import { readWebhookResponse } from './responses/read.js';
-import type {
-  WebhookResponseScope,
-  WebhookResponseSnapshot,
-} from './responses/contract.js';
-import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
+import type { WebhookResponseScope } from './responses/contract.js';
+
 import { acquireDatabasePool } from '../../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
 import { createHash } from 'node:crypto';
@@ -30,22 +25,16 @@ import { sha256HexSchema as digestSchema } from '../../platform/persisted-primit
 import type { DatabaseConfig } from '../../config.js';
 import { acceptWorkflowRun } from '../../runs/commands/acceptance.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
-import { claimCommand, completeCommand } from '../../platform/idempotency.js';
-import {
-  parsePublishedWorkflowRow,
-  type PublishedWorkflow,
-} from '../../runs/queries/execution/published.js';
+
 import {
   readHealth,
   refreshWorkflowActivation,
-  type WorkflowTriggerHealth,
 } from '../reconciliation/database.js';
 import { canManageWorkflowTrigger } from '../management-access.js';
 import {
   authorizeWebhookTriggerReader,
   createWebhookDeliveryLog,
   insertWebhookDelivery,
-  type WebhookDeliveryLog,
 } from './deliveries.js';
 import {
   deleteExpiredReplay,
@@ -67,113 +56,24 @@ import {
   withTenantScopedClient,
   withWorkspaceTransaction,
   withWorkspaceReadTransaction,
-  type WorkspaceTransaction,
 } from '../../tenant-access/transactions.js';
-const uuidSchema = z.uuid();
-const sealedSchema = z
-  .object({
-    id: z.uuid(),
-    kmsKeyReference: z.string().min(1).max(2048),
-    encryptedDataKey: z.string().min(1),
-    ciphertext: z.string().min(1),
-    nonce: z.string().min(1).max(64),
-    authTag: z.string().min(1).max(64),
-  })
-  .strict();
-export type SealedWebhookTriggerSecret = Readonly<z.input<typeof sealedSchema>>;
-type Command = Readonly<{
-  workspaceId: string;
-  workflowId: string;
-  actorId: string;
-  triggerId: string;
-  idempotencyKey: string;
-  requestHash: string;
-}>;
-type WebhookConfig = z.output<typeof CORE_WEBHOOK_CONFIG_SCHEMA>;
-export type WebhookVerificationReference = Readonly<{
-  endpointId: string;
-  endpointKeyHash: string;
-  workspaceId: string;
-  triggerId: string;
-  workflowId: string;
-  workflowVersionId: string;
-  nodeId: string;
-  databaseTime: Date;
-  authentication: WebhookAuthentication;
-  runInputMode?: WebhookConfig['runInput'];
-  currentSecret: SealedWebhookTriggerSecret;
-  previousSecret?: SealedWebhookTriggerSecret & Readonly<{ validUntil: Date }>;
-}>;
-
-export type AcceptVerifiedWebhookDeliveryInput = Readonly<{
-  verification: WebhookVerificationReference;
-  verifiedSecretVersionId: string;
-  requestFingerprint: string;
-  idempotencyKeyHash?: string;
-  bodyBytes: number;
-  runInput: unknown;
-  checkpointFactory: InitialCheckpointFactory;
-  traceparent?: string;
-  signal?: AbortSignal;
-}>;
-
-export interface WebhookTriggerDatabase extends WebhookDeliveryLog {
-  readResponse(input: WebhookResponseScope): Promise<WebhookResponseSnapshot>;
-  configureAuthentication(
-    input: Command &
-      Readonly<{
-        authentication: WebhookAuthentication;
-        endpointKeyHash: string;
-        secret: SealedWebhookTriggerSecret;
-      }>,
-  ): Promise<
-    Readonly<{
-      trigger: WorkflowTriggerHealth;
-      replayed: boolean;
-      rotated: boolean;
-    }>
-  >;
-  provision(
-    input: Command &
-      Readonly<{
-        endpointId: string;
-        endpointKeyHash: string;
-        secret: SealedWebhookTriggerSecret;
-      }>,
-  ): Promise<WorkflowTriggerHealth>;
-  rotateEndpoint(
-    input: Command & Readonly<{ endpointKeyHash: string }>,
-  ): Promise<WorkflowTriggerHealth>;
-  rotateSecret(
-    input: Command &
-      Readonly<{
-        endpointKeyHash: string;
-        secret: SealedWebhookTriggerSecret;
-      }>,
-  ): Promise<WorkflowTriggerHealth>;
-  getHealth(
-    input: Readonly<{
-      workspaceId: string;
-      actorId: string;
-      workflowId: string;
-    }>,
-  ): Promise<readonly WorkflowTriggerHealth[]>;
-  resolveVerification(
-    endpointKeyHash: string,
-  ): Promise<WebhookVerificationReference | null>;
-  consumeIngressLimit(endpointKeyHash: string): Promise<void>;
-  acceptVerifiedDelivery(input: AcceptVerifiedWebhookDeliveryInput): Promise<
-    | Readonly<{
-        runId: string;
-        replayed: boolean;
-        responseWaitSeconds?: number;
-      }>
-    | Readonly<{ skipped: true; reason: 'concurrency_limit' }>
-    | EventCoordinationReceipt
-  >;
-  close(): Promise<void>;
-}
-
+import {
+  uuidSchema,
+  type Command,
+  type WebhookConfig,
+  type WebhookTriggerDatabase,
+} from './runtime/contract.js';
+import {
+  claimWebhookCommand,
+  completeWebhookCommand,
+  insertSecret,
+} from './runtime/receipts.js';
+import {
+  oneHealth,
+  mapSecret,
+  executableProjection,
+  lockEligibleEndpoint,
+} from './runtime/state.queries.js';
 export {
   WebhookTriggerStateError,
   WebhookDeliveryIneligibleError,
@@ -183,163 +83,12 @@ export {
   WebhookTriggerNotFoundError,
   WebhookWorkflowPausedError,
 };
-function webhookCommand(input: Command, operation: string) {
-  return {
-    workspaceId: input.workspaceId,
-    operation,
-    scope: `${input.actorId}:${input.workflowId}:${input.triggerId}`,
-    idempotencyKey: z.string().min(1).max(128).parse(input.idempotencyKey),
-    requestHash: digestSchema.parse(input.requestHash),
-    conflict: () => new WebhookTriggerIdempotencyConflictError(),
-  };
-}
-
-/** Claims the command's key; true when an exact retry already completed it. */
-async function claimWebhookCommand(
-  client: PoolClient,
-  input: Command,
-  operation: string,
-): Promise<boolean> {
-  const stored = await claimCommand(client, {
-    ...webhookCommand(input, operation),
-    resourceId: input.triggerId,
-  });
-  return stored !== null;
-}
-
-async function completeWebhookCommand(
-  client: PoolClient,
-  input: Command,
-  operation: string,
-): Promise<void> {
-  await appendAuditFact(client, {
-    workspaceId: input.workspaceId,
-    actorId: input.actorId,
-    action: operation,
-    targetType: 'webhook_trigger',
-    targetId: input.triggerId,
-    metadata: { workflowId: input.workflowId },
-  });
-  await completeCommand(client, webhookCommand(input, operation), {
-    triggerId: input.triggerId,
-  });
-}
-
-async function insertSecret(
-  client: PoolClient,
-  input: Command,
-  secretInput: SealedWebhookTriggerSecret,
-): Promise<z.output<typeof sealedSchema>> {
-  const secret = sealedSchema.parse(secretInput);
-  await client.query(
-    `insert into app.webhook_trigger_secret_versions
-      (id,workspace_id,trigger_id,purpose,kms_key_reference,
-       encrypted_data_key,ciphertext,nonce,auth_tag,created_by)
-     values($1,$2,$3,'webhook_hmac_sha256',$4,$5,$6,$7,$8,$9)`,
-    [
-      secret.id,
-      input.workspaceId,
-      input.triggerId,
-      secret.kmsKeyReference,
-      secret.encryptedDataKey,
-      secret.ciphertext,
-      secret.nonce,
-      secret.authTag,
-      input.actorId,
-    ],
-  );
-  return secret;
-}
-
-async function oneHealth(
-  client: PoolClient,
-  workspaceId: string,
-  triggerId: string,
-): Promise<WorkflowTriggerHealth> {
-  const identity = await client.query<{ workflow_id: string }>(
-    'select workflow_id from app.workflow_triggers where workspace_id=$1 and id=$2',
-    [workspaceId, triggerId],
-  );
-  const workflowId = identity.rows[0]?.workflow_id;
-  if (workflowId === undefined) throw new WebhookTriggerNotFoundError();
-  const health = await readHealth(client, workspaceId, workflowId);
-  const trigger = health.find(({ id }) => id === triggerId);
-  if (trigger === undefined) throw new WebhookTriggerNotFoundError();
-  return trigger;
-}
-
-function mapSecret(
-  row: Record<string, unknown>,
-  prefix: 'current' | 'previous',
-): SealedWebhookTriggerSecret | undefined {
-  if (row[`${prefix}_secret_version_id`] == null) return undefined;
-  return Object.freeze({
-    id: uuidSchema.parse(row[`${prefix}_secret_version_id`]),
-    kmsKeyReference: z.string().parse(row[`${prefix}_kms_key_reference`]),
-    encryptedDataKey: z.string().parse(row[`${prefix}_encrypted_data_key`]),
-    ciphertext: z.string().parse(row[`${prefix}_ciphertext`]),
-    nonce: z.string().parse(row[`${prefix}_nonce`]),
-    authTag: z.string().parse(row[`${prefix}_auth_tag`]),
-  });
-}
-
-async function executableProjection(
-  transaction: WorkspaceTransaction,
-  workflowVersionId: string,
-): Promise<PublishedWorkflow> {
-  const result = await transaction.db.execute(sql<Record<string, unknown>>`
-    select id,workspace_id,workflow_id,version_number,checksum,
-           executable_json
-      from app.workflow_versions where workspace_id=${transaction.workspaceId}
-       and id=${workflowVersionId}
-  `);
-  const published = parsePublishedWorkflowRow(result.rows[0]);
-  if (published === null) throw new WebhookDeliveryIneligibleError();
-  return published;
-}
-
-/** Locks the verified endpoint and everything that must stay admissible. */
-async function lockEligibleEndpoint(
-  transaction: WorkspaceTransaction,
-  verification: WebhookVerificationReference,
-  verifiedSecretVersionId: string,
-  replaying = false,
-): Promise<void> {
-  const eligible = await transaction.db.execute<{
-    workflow_version_id: string;
-    trigger_pause_state: string;
-  }>(sql`
-    select trigger.workflow_version_id,workflow.trigger_pause_state
-      from app.webhook_trigger_endpoints endpoint
-      join app.workflow_triggers trigger on trigger.workspace_id=endpoint.workspace_id
-       and trigger.id=endpoint.trigger_id
-      join app.workflows workflow on workflow.workspace_id=trigger.workspace_id
-       and workflow.id=trigger.workflow_id
-      join app.workspaces workspace on workspace.id=trigger.workspace_id
-     where endpoint.workspace_id=${transaction.workspaceId}
-       and endpoint.id=${verification.endpointId}
-       and endpoint.endpoint_key_hash=${verification.endpointKeyHash}
-       and endpoint.trigger_id=${verification.triggerId}
-       and endpoint.authentication=${JSON.stringify(verification.authentication)}::jsonb
-       and endpoint.status='active' and trigger.status='active'
-       and trigger.workflow_id=${verification.workflowId}
-       and trigger.workflow_version_id=${verification.workflowVersionId}
-       and workflow.published_version_id=trigger.workflow_version_id
-       and workflow.lifecycle_status='active'
-       and workflow.activation_status in ('active','degraded')
-       and workspace.status='active'
-       and (endpoint.current_secret_version_id=${verifiedSecretVersionId}
-         or (endpoint.previous_secret_version_id=${verifiedSecretVersionId}
-           and endpoint.previous_secret_valid_until>clock_timestamp()))
-     for share of endpoint,trigger,workflow,workspace
-  `);
-  const row = eligible.rows[0];
-  if (row === undefined) throw new WebhookDeliveryIneligibleError();
-  // ADR 056: the shared workflow lock orders this admission against a pause.
-  if (!replaying && row.trigger_pause_state === 'paused')
-    throw new WebhookWorkflowPausedError();
-}
-
+export {
+  type SealedWebhookTriggerSecret,
+  type WebhookVerificationReference,
+  type AcceptVerifiedWebhookDeliveryInput,
+  type WebhookTriggerDatabase,
+} from './runtime/contract.js';
 export function createWebhookTriggerDatabase(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
