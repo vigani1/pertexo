@@ -4,193 +4,61 @@ import {
 } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-
-import type { DatabaseConfig } from '../../config.js';
-import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
+import type { DatabaseConfig } from '../../../config.js';
+import type { DatabaseRuntime } from '../../../platform/pool/runtime.js';
 import { ROLES } from '@pertexo/workflow-model';
-import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
-import { WorkflowNotFoundError } from '../workflows/errors.js';
-import { runOrganizationCommand, type OrganizationScope } from './command.js';
-import { WorkflowTagConflictError } from './errors.js';
+import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
+import { WorkflowNotFoundError } from '../../workflows/errors.js';
+import { runOrganizationCommand, type OrganizationScope } from '../command.js';
+import { WorkflowTagConflictError } from '../errors.js';
 import {
   checkOrganizationReplay,
   organizeWorkflow,
   type OrganizationChange,
-} from './organize-workflow.js';
+} from '../organize-workflow.js';
+import { createOrganizationSession } from '../session.js';
 import {
-  createOrganizationSession,
-  type OrganizationRequestScope,
-} from './session.js';
-
+  type Command,
+  type AssignmentCommand,
+  type WorkflowTagCommandResult,
+  type WorkflowTagDatabase,
+  TAG_LIMIT,
+  TAG_DELETE_WORKFLOW_LIMIT,
+  uuid,
+  revision,
+  key,
+  tag,
+  assignment,
+  tagResult,
+  deleteResult,
+  tagIds,
+  replaceResult,
+} from './contract.js';
+import {
+  type TagRow,
+  tagRecord,
+  readTag,
+  requireFreeKey,
+  requireRevision,
+  page,
+  pagination,
+} from './state.queries.js';
 export {
   WorkflowTagConflictError,
   type WorkflowTagConflictKind,
-} from './errors.js';
-
-type Command = OrganizationRequestScope & Readonly<{ idempotencyKey: string }>;
-type PageInput = OrganizationRequestScope &
-  Readonly<{ limit?: number; afterId?: string }>;
-type TaggedCommand = Command &
-  Readonly<{ tagId: string; expectedTagRevision: number }>;
-type AssignmentCommand = Command &
-  Readonly<{ workflowId: string; expectedOrganizationRevision: number }>;
-export type WorkflowTagRecord = Readonly<{
-  id: string;
-  key: string;
-  revision: number;
-}>;
-export type WorkflowTagAssignment = Readonly<{
-  workflowId: string;
-  organizationRevision: number;
-}>;
-type Page<T> = Readonly<{ items: readonly T[]; nextId: string | null }>;
-export type WorkflowTagCommandResult = Readonly<{
-  tag: WorkflowTagRecord;
-  replayed: boolean;
-}>;
-export type WorkflowTagDeleteResult = Readonly<{
-  tagId: string;
-  deleted: true;
-  detachedWorkflowCount: number;
-  replayed: boolean;
-}>;
-export type WorkflowTagAssignmentResult = WorkflowTagAssignment &
-  Readonly<{ replayed: boolean }>;
-export type WorkflowTagReplaceResult = WorkflowTagAssignmentResult &
-  Readonly<{ tagIds: readonly string[] }>;
-
-/** Tags, their workflows and tag commands. Page positions are tag and
- * workflow UUIDs; signed wire continuations belong to the API. */
-export interface WorkflowTagDatabase {
-  listTags(input: PageInput): Promise<Page<WorkflowTagRecord>>;
-  listTagAssignments(
-    input: PageInput & Readonly<{ tagId: string }>,
-  ): Promise<Page<WorkflowTagAssignment>>;
-  createTag(
-    input: Command & Readonly<{ key: string }>,
-  ): Promise<WorkflowTagCommandResult>;
-  renameTag(
-    input: TaggedCommand & Readonly<{ key: string }>,
-  ): Promise<WorkflowTagCommandResult>;
-  deleteTag(input: TaggedCommand): Promise<WorkflowTagDeleteResult>;
-  replaceTags(
-    input: AssignmentCommand & Readonly<{ tagIds: readonly string[] }>,
-  ): Promise<WorkflowTagReplaceResult>;
-  detachTag(
-    input: AssignmentCommand & Readonly<{ tagId: string }>,
-  ): Promise<WorkflowTagAssignmentResult>;
-  close(): Promise<void>;
-}
-
-const TAG_LIMIT = 256;
-/** A tag on more workflows is detached through bounded cleanup first. */
-const TAG_DELETE_WORKFLOW_LIMIT = 50;
+} from '../errors.js';
+export {
+  type WorkflowTagRecord,
+  type WorkflowTagAssignment,
+  type WorkflowTagCommandResult,
+  type WorkflowTagDeleteResult,
+  type WorkflowTagAssignmentResult,
+  type WorkflowTagReplaceResult,
+  type WorkflowTagDatabase,
+} from './contract.js';
 const ADMINISTRATORS = ADMINISTRATIVE_ROLES;
+
 const EDITORS = WORKFLOW_EDITOR_ROLES;
-
-const uuid = z.uuid().overwrite((value) => value.toLowerCase());
-const revision = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
-const canonicalKey = z
-  .string()
-  .min(1)
-  .max(32)
-  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$(?![\s\S])/u);
-const key = z
-  .string()
-  .overwrite((value) =>
-    value
-      .replace(/^ +| +$(?![\s\S])/gu, '')
-      .replace(/[A-Z]/gu, (letter) => letter.toLowerCase()),
-  )
-  .pipe(canonicalKey);
-const tag = z.object({ id: uuid, key: canonicalKey, revision }).strict();
-const assignment = z
-  .object({ workflowId: uuid, organizationRevision: revision })
-  .strict();
-const tagResult = z.object({ tag }).strict();
-const deleteResult = z
-  .object({
-    tagId: uuid,
-    deleted: z.literal(true),
-    detachedWorkflowCount: z
-      .number()
-      .int()
-      .min(0)
-      .max(TAG_DELETE_WORKFLOW_LIMIT),
-  })
-  .strict();
-const tagIds = z
-  .array(uuid)
-  .max(16)
-  .refine((ids) => new Set(ids).size === ids.length)
-  .overwrite((ids) => [...ids].sort());
-const replaceResult = assignment.extend({ tagIds }).strict();
-
-type TagRow = Readonly<{ id: string; key: string; revision: string }>;
-
-const tagRecord = (row: TagRow): WorkflowTagRecord => ({
-  id: row.id,
-  key: row.key,
-  revision: Number(row.revision),
-});
-
-async function readTag(
-  client: PoolClient,
-  workspaceId: string,
-  tagId: string,
-): Promise<TagRow> {
-  const result = await client.query<TagRow>(
-    'select id, key, revision from app.workflow_tags where workspace_id = $1 and id = $2',
-    [workspaceId, tagId],
-  );
-  const row = result.rows[0];
-  if (row === undefined) throw new WorkflowNotFoundError('Tag is not visible');
-  return row;
-}
-
-async function requireFreeKey(
-  client: PoolClient,
-  workspaceId: string,
-  tagKey: string,
-  tagId: string | null,
-): Promise<void> {
-  const taken = await client.query(
-    `select 1 from app.workflow_tags
-     where workspace_id = $1 and key = $2 and id is distinct from $3::uuid`,
-    [workspaceId, tagKey, tagId],
-  );
-  if (taken.rowCount !== 0) throw new WorkflowTagConflictError('key');
-}
-
-function requireRevision(row: TagRow, expected: number): void {
-  if (Number(row.revision) !== expected)
-    throw new WorkflowTagConflictError('tag_revision');
-}
-
-function page(input: PageInput) {
-  return {
-    limit: z
-      .number()
-      .int()
-      .min(1)
-      .max(100)
-      .parse(input.limit ?? 50),
-    after: input.afterId === undefined ? null : uuid.parse(input.afterId),
-  };
-}
-
-function pagination<T>(
-  rows: readonly T[],
-  limit: number,
-  lastId: (item: T) => string,
-): Page<T> {
-  const items = rows.slice(0, limit).map((item) => Object.freeze(item));
-  const last = items.at(-1);
-  return Object.freeze({
-    items: Object.freeze(items),
-    nextId: rows.length > limit && last !== undefined ? lastId(last) : null,
-  });
-}
 
 /** Detaches a tag from at most 50 workflows, advancing each one's revision. */
 async function deleteTag(

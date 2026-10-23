@@ -1,210 +1,49 @@
 import { WORKFLOW_EDITOR_ROLES } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-
-import { claimCommand, completeCommand } from '../../platform/idempotency.js';
-import { generatePersistedId } from '../../platform/persisted-id.js';
+import {
+  claimCommand,
+  completeCommand,
+} from '../../../platform/idempotency.js';
+import { generatePersistedId } from '../../../platform/persisted-id.js';
 import { ROLES, type Role } from '@pertexo/workflow-model';
-import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
-import { WorkflowNotFoundError } from '../workflows/errors.js';
+import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
 
-export type WorkflowAutoPauseSettings = Readonly<{
-  enabled: boolean;
-  thresholdOverride: number | null;
-  workspaceThreshold: number;
-  effectiveThreshold: number;
-  settingsRevision: number;
-  pauseState: 'none' | 'paused';
-  pauseRevision: string;
-  pausedAt: string | null;
-  pauseReason: 'consecutive_failures' | null;
-  pausedFailures: number | null;
-  pausedLastRunId: string | null;
-}>;
-export type WorkspaceAutoPauseSettings = Readonly<{
-  threshold: number;
-  revision: number;
-}>;
-type Scope = Readonly<{ workspaceId: string; actorId: string }>;
-type WorkflowScope = Scope & Readonly<{ workflowId: string }>;
-type Command = Readonly<{
-  idempotencyKey: string;
-  requestId?: string;
-  traceId?: string;
-}>;
-export type AutoPauseCommandResult<T> = Readonly<{
-  settings: T;
-  replayed: boolean;
-}>;
-export interface WorkflowAutoPauseDatabase {
-  readWorkflowSettings(
-    input: WorkflowScope,
-  ): Promise<WorkflowAutoPauseSettings>;
-  updateWorkflowSettings(
-    input: WorkflowScope &
-      Command &
-      Readonly<{
-        enabled: boolean;
-        thresholdOverride: number | null;
-        expectedSettingsRevision: number;
-      }>,
-  ): Promise<AutoPauseCommandResult<WorkflowAutoPauseSettings>>;
-  resumeWorkflow(
-    input: WorkflowScope &
-      Command &
-      Readonly<{ expectedPauseRevision: string }>,
-  ): Promise<AutoPauseCommandResult<WorkflowAutoPauseSettings>>;
-  readWorkspaceSettings(input: Scope): Promise<WorkspaceAutoPauseSettings>;
-  updateWorkspaceSettings(
-    input: Scope &
-      Command &
-      Readonly<{ threshold: number; expectedRevision: number }>,
-  ): Promise<AutoPauseCommandResult<WorkspaceAutoPauseSettings>>;
-}
-export class WorkflowPauseRevisionConflictError extends Error {
-  public override readonly name = 'WorkflowPauseRevisionConflictError';
-  public constructor(public readonly currentRevision: string) {
-    super('Workflow pause revision does not match');
-  }
-}
-export class WorkflowAutoPauseSettingsRevisionConflictError extends Error {
-  public override readonly name =
-    'WorkflowAutoPauseSettingsRevisionConflictError';
-  public constructor(public readonly currentRevision: number) {
-    super('Workflow auto pause settings revision does not match');
-  }
-}
-export class WorkspaceAutoPauseSettingsRevisionConflictError extends Error {
-  public override readonly name =
-    'WorkspaceAutoPauseSettingsRevisionConflictError';
-  public constructor(public readonly currentRevision: number) {
-    super('Workspace auto pause settings revision does not match');
-  }
-}
-const revision = z.number().int().positive().max(2_147_483_647);
-const pauseRevision = z
-  .string()
-  .regex(/^[1-9][0-9]{0,18}$/u)
-  .refine((value) => BigInt(value) <= 9_223_372_036_854_775_807n);
-const threshold = z.number().int().min(3).max(100);
-const workflowSettings = z
-  .object({
-    enabled: z.boolean(),
-    thresholdOverride: threshold.nullable(),
-    workspaceThreshold: threshold,
-    effectiveThreshold: threshold,
-    settingsRevision: revision,
-    pauseState: z.enum(['none', 'paused']),
-    pauseRevision,
-    pausedAt: z.iso.datetime({ precision: 6 }).nullable(),
-    pauseReason: z.literal('consecutive_failures').nullable(),
-    pausedFailures: z.number().int().positive().nullable(),
-    pausedLastRunId: z.uuid().nullable(),
-  })
-  .strict();
-const workspaceSettings = z.object({ threshold, revision }).strict();
-type Transact = <T>(
-  workspaceId: string,
-  actorId: string,
-  operation: (client: PoolClient) => Promise<T>,
-) => Promise<T>;
+import {
+  type AutoPauseCommandResult,
+  type WorkflowAutoPauseDatabase,
+  WorkflowPauseRevisionConflictError,
+  WorkflowAutoPauseSettingsRevisionConflictError,
+  WorkspaceAutoPauseSettingsRevisionConflictError,
+  revision,
+  pauseRevision,
+  threshold,
+  workflowSettings,
+  workspaceSettings,
+  type Transact,
+  type CommandInput,
+} from './contract.js';
+import {
+  type WorkspaceRow,
+  type WorkflowRow,
+  lockWorkspace,
+  WORKFLOW_COLUMNS,
+  lockWorkflow,
+  workflowSettingsOf,
+} from './state.queries.js';
 
+export {
+  type WorkflowAutoPauseSettings,
+  type WorkspaceAutoPauseSettings,
+  type AutoPauseCommandResult,
+  type WorkflowAutoPauseDatabase,
+  WorkflowPauseRevisionConflictError,
+  WorkflowAutoPauseSettingsRevisionConflictError,
+  WorkspaceAutoPauseSettingsRevisionConflictError,
+} from './contract.js';
 const EDITORS: readonly Role[] = WORKFLOW_EDITOR_ROLES;
+
 const OWNERS: readonly Role[] = ['owner'];
-
-type WorkspaceRow = Readonly<{
-  auto_pause_threshold: number;
-  revision: number;
-}>;
-type WorkflowRow = Readonly<{
-  auto_pause_enabled: boolean;
-  auto_pause_threshold: number | null;
-  auto_pause_settings_revision: number;
-  trigger_pause_state: 'none' | 'paused';
-  trigger_pause_revision: string;
-  paused_at: string | null;
-  trigger_paused_at: Date | null;
-  trigger_pause_reason: 'consecutive_failures' | null;
-  trigger_pause_failures: number | null;
-  trigger_pause_last_run_id: string | null;
-}>;
-
-/**
- * Workspace default edits exclude outcome folds and workflow controls, which
- * take the same key shared.
- */
-async function lockWorkspace(
-  client: PoolClient,
-  workspaceId: string,
-  exclusive: boolean,
-): Promise<WorkspaceRow> {
-  await client.query(
-    `select ${exclusive ? 'pg_advisory_xact_lock' : 'pg_advisory_xact_lock_shared'}(hashtextextended($1, 0))`,
-    [`auto-pause-workspace:${workspaceId}`],
-  );
-  const workspace = await client.query<WorkspaceRow>(
-    `select auto_pause_threshold, revision from app.workspaces
-     where id = $1 and status = 'active' for ${exclusive ? 'no key update' : 'share'}`,
-    [workspaceId],
-  );
-  const row = workspace.rows[0];
-  if (row === undefined)
-    throw new WorkflowNotFoundError('Auto pause settings are not visible');
-  return row;
-}
-
-const WORKFLOW_COLUMNS = `auto_pause_enabled, auto_pause_threshold,
-  auto_pause_settings_revision, trigger_pause_state,
-  trigger_pause_revision::text trigger_pause_revision, trigger_paused_at,
-  to_char(trigger_paused_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') paused_at,
-  trigger_pause_reason, trigger_pause_failures, trigger_pause_last_run_id`;
-
-async function lockWorkflow(
-  client: PoolClient,
-  workspaceId: string,
-  workflowId: string,
-): Promise<WorkflowRow> {
-  await client.query('select pg_advisory_xact_lock(hashtextextended($1, 0))', [
-    `auto-pause-workflow:${workspaceId}:${workflowId}`,
-  ]);
-  const workflow = await client.query<WorkflowRow>(
-    `select ${WORKFLOW_COLUMNS} from app.workflows
-     where workspace_id = $1 and id = $2 for no key update`,
-    [workspaceId, workflowId],
-  );
-  const row = workflow.rows[0];
-  if (row === undefined)
-    throw new WorkflowNotFoundError('Auto pause settings are not visible');
-  return row;
-}
-
-function workflowSettingsOf(
-  workflow: WorkflowRow,
-  workspace: WorkspaceRow,
-): WorkflowAutoPauseSettings {
-  return workflowSettings.parse({
-    enabled: workflow.auto_pause_enabled,
-    thresholdOverride: workflow.auto_pause_threshold,
-    workspaceThreshold: workspace.auto_pause_threshold,
-    effectiveThreshold:
-      workflow.auto_pause_threshold ?? workspace.auto_pause_threshold,
-    settingsRevision: workflow.auto_pause_settings_revision,
-    pauseState: workflow.trigger_pause_state,
-    pauseRevision: workflow.trigger_pause_revision,
-    pausedAt: workflow.paused_at,
-    pauseReason: workflow.trigger_pause_reason,
-    pausedFailures: workflow.trigger_pause_failures,
-    pausedLastRunId: workflow.trigger_pause_last_run_id,
-  });
-}
-
-type CommandInput = Readonly<{
-  workspaceId: string;
-  actorId: string;
-  idempotencyKey: string;
-  requestId?: string;
-  traceId?: string;
-}>;
 
 /** All operations share the authoring factory's pool, tracked transactions and close. */
 export function createWorkflowAutoPauseStore(

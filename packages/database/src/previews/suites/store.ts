@@ -11,7 +11,7 @@ import type { WorkflowTestSuitePreparation } from '@pertexo/contracts';
 import { databaseSchema } from '../../schema.js';
 import { parseWorkspaceId } from '../../tenant-access/transactions.js';
 import { captureWorkspaceVariableRevision } from '../../variables/read.js';
-import { lockInputCaseQuota } from '../../authoring/input-cases.js';
+import { lockInputCaseQuota } from '../../authoring/input-cases/store.js';
 import { lockWorkflowAuthoringAuthority } from '../../authoring/workflows/authority.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
 import { lockArtifactReferences } from '../../artifacts/references.js';

@@ -3,22 +3,14 @@ import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindin
 import { lockArtifactReferences } from '../../artifacts/references.js';
 import { createHash } from 'node:crypto';
 
-import { z } from 'zod';
 import {
   canonicalWorkflowPortableJson,
-  EMPTY_WORKFLOW_GRAPH,
-  inspectWorkflowPortableManifest,
-  portableConnectionBindingSchema,
   portableGraphDigest,
-  type PortableIssue,
   portableManifestDigest,
   projectWorkflowPortableManifest,
   WORKFLOW_PORTABILITY_LIMITS,
-  WorkflowPortabilityError,
-  workflowPortableManifestSchema,
 } from '@pertexo/workflow-model';
 import { workflowDefinitionCatalogFingerprint } from '@pertexo/workflow-model/server';
-
 import {
   claimCommand,
   completeCommand,
@@ -33,99 +25,24 @@ import type {
   WorkflowAuthoringDatabase,
 } from '../workflows/contracts.js';
 import type { WorkflowAuthoringWriteContext } from '../workflows/context.js';
-import type { PortableCatalog } from '../workflows/types.js';
+
 import {
   WorkflowNotFoundError,
   WorkflowPortabilityCompatibilityConflictError,
   WorkflowPortabilityReviewConflictError,
-  WorkflowPortabilityUnavailableError,
   WorkflowPortabilityValidationError,
 } from '../workflows/errors.js';
 import { admitWorkflowAuthoring } from '../workflows/admission.js';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
+import { lockPortableSource, reviewedSourceGraph } from './source-authority.js';
+
 import {
-  inspectPortableConnections,
-  lockPortableSource,
-  reviewedSourceGraph,
-} from './source-authority.js';
-import type { AuthoringCatalogs } from '../workflows/catalogs.js';
-
-const scope = z.object({
-  workspaceId: z.uuid(),
-  actorId: z.uuid(),
-  signal: z.instanceof(AbortSignal).optional(),
-  requestId: z.string().max(128).optional(),
-  traceId: z.string().max(128).optional(),
-});
-const previewInput = scope
-  .extend({
-    manifest: workflowPortableManifestSchema,
-    bindings: z
-      .array(portableConnectionBindingSchema)
-      .max(WORKFLOW_PORTABILITY_LIMITS.connectionSlots),
-  })
-  .strict();
-const importInput = previewInput
-  .extend({
-    name: z.string().trim().min(1).max(128),
-    expectedCompatibilityFingerprint: z
-      .string()
-      .regex(/^wf-compat:sha256:[a-f0-9]{64}$/u),
-    idempotencyKey: z.string(),
-    commandCredentialId: z.uuid().optional(),
-  })
-  .strict();
-const importResultSchema = z.object({ workflowId: z.uuid() }).strict();
-const exportInput = scope
-  .extend({
-    workflowId: z.uuid(),
-    source: z.discriminatedUnion('kind', [
-      z.object({ kind: z.literal('draft') }).strict(),
-      z.object({ kind: z.literal('version'), versionId: z.uuid() }).strict(),
-    ]),
-    reviewedGraphDigest: z.string().regex(/^[a-f0-9]{64}$/u),
-    representationTag: z
-      .string()
-      .regex(/^"draft\.[A-Za-z0-9_-]{43}"$/u)
-      .optional(),
-  })
-  .strict()
-  .refine(
-    (value) =>
-      value.source.kind !== 'draft' || value.representationTag !== undefined,
-  );
-
-function selectedPolicy(selection: AuthoringCatalogs) {
-  const catalog = selection.portableCatalog;
-  if (catalog === undefined)
-    throw new WorkflowPortabilityUnavailableError(
-      'Workflow portability catalog is not configured',
-    );
-  return catalog;
-}
-
-/** A template origin must name a curated template and change only its setup values. */
-function inspectTemplateOrigin(
-  input: PreviewWorkflowImportInput,
-  catalog: PortableCatalog,
-): readonly PortableIssue[] {
-  if (input.templateOrigin === undefined) return [];
-  if (input.templateIssues.length > 0) return input.templateIssues;
-  if (catalog.validateTemplateSetup === undefined)
-    throw new WorkflowPortabilityUnavailableError(
-      'Registered template setup validation is unavailable',
-    );
-  if (!catalog.validateTemplateSetup(input.manifest, input.templateOrigin))
-    return [
-      {
-        code: 'template_setup_invalid',
-        path: '$.manifest',
-        message:
-          'Template setup does not satisfy the registered serving policy.',
-      },
-    ];
-  return [];
-}
+  previewInput,
+  importInput,
+  importResultSchema,
+  exportInput,
+} from './contract.js';
+import { selectedPolicy, inspectImport, portableFailure } from './admission.js';
 
 async function requirePortabilityAuthority(
   client: Parameters<typeof lockWorkflowAuthoringAuthority>[0],
@@ -154,68 +71,6 @@ export function workflowImportCommandDigest(
       : { templateOrigin: input.templateOrigin }),
   });
   return createHash('sha256').update(command).digest('hex');
-}
-
-async function inspectImport(
-  client: Parameters<typeof lockWorkflowAuthoringAuthority>[0],
-  context: WorkflowAuthoringWriteContext,
-  input: PreviewWorkflowImportInput,
-  selection: AuthoringCatalogs,
-) {
-  const catalog = selectedPolicy(selection);
-  const inspected = inspectWorkflowPortableManifest(
-    input.manifest,
-    input.bindings,
-    catalog,
-  );
-  context.requirePlaceable(
-    EMPTY_WORKFLOW_GRAPH,
-    inspected.graph,
-    selection.placementDefinitionCatalog ?? selection.definitionCatalog,
-  );
-  const admission = await admitWorkflowAuthoring(
-    client,
-    selection.validateAuthoringGraph,
-    inspected.graph,
-    input.signal === undefined ? {} : { signal: input.signal },
-  );
-  const issues: PortableIssue[] = [
-    ...inspectTemplateOrigin(input, catalog),
-    ...inspected.issues,
-    ...admission.issues.map(({ code, path }) => ({
-      code,
-      path: path.slice(0, 2048),
-      message: 'The graph is not valid under the serving authoring policy.',
-    })),
-  ];
-  issues.push(
-    ...(await inspectPortableConnections(
-      client,
-      input.workspaceId,
-      input.actorId,
-      input.manifest,
-      input.bindings,
-    )),
-  );
-  const hard = issues.filter(
-    ({ code }) =>
-      ![
-        'cycle',
-        'loop_iteration_limit',
-        'expansion_limit',
-        'invalid_loop_limit',
-      ].includes(code),
-  );
-  return { graph: inspected.graph, issues, hard };
-}
-
-function portableFailure(error: unknown): never {
-  if (error instanceof WorkflowPortabilityError)
-    throw new WorkflowPortabilityValidationError(
-      error.issues.slice(0, WORKFLOW_PORTABILITY_LIMITS.issues),
-      error.issues.length > WORKFLOW_PORTABILITY_LIMITS.issues,
-    );
-  throw error;
 }
 
 function exportPortableWorkflow(

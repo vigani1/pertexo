@@ -3,7 +3,7 @@ import { recordPromotedPublication } from '../promotion/provenance.js';
 import { PublicationReviewError } from '../reviews/contract.js';
 import { dataTableReferenceIssues } from '../../data-tables/columns/references.js';
 import { lockWorkspaceVariableNames } from '../../variables/read.js';
-import { revokeRemovedFormAccess } from '../../triggers/forms/publication.js';
+
 import { validateApprovalAudience } from './pending-tasks.js';
 import { lockArtifactReferences } from '../../artifacts/references.js';
 import {
@@ -13,26 +13,18 @@ import {
   type CommandIdentity,
 } from '../../platform/idempotency.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
-
 import {
   sameWorkflowNotes,
   InvalidWorkflowGraphError,
-  type WorkflowGraph,
-  type CallableVersionSummary,
 } from '@pertexo/workflow-model';
 import {
   parseWorkflowGraphForPublish,
   workflowCompatibilityReport,
-  type WorkflowDefinitionCatalog,
   workflowDraftRepresentationTag,
-  workflowIntegrationUsage,
 } from '@pertexo/workflow-model/server';
 import { admitWorkflowAuthoring } from '../workflows/admission.js';
 import type { PoolClient } from 'pg';
-import { z } from 'zod';
-import { sha256HexSchema } from '../../platform/persisted-primitives.js';
 
-import { canonicalOutboxPayloadChecksum } from '../../outbox/events.js';
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
@@ -47,80 +39,27 @@ import {
   mapVersion,
   workflowVersionRowSelection,
 } from '../workflows/representation/rows.js';
-import {
-  reconcileWorkflowTriggersPayload,
-  persistPublishedWorkflowTriggers,
-} from './trigger-reconciliation.js';
-import { validatePublicationCalls, persistPublicationCalls } from './calls.js';
+
+import { validatePublicationCalls } from './calls.js';
 import { connectionReferenceIssues } from './connections.js';
-import type { AuthoringCatalogs } from '../workflows/catalogs.js';
 
+import {
+  uuidSchema,
+  digestSchema,
+  workflowDraftTagSchema,
+  executableSchema,
+  type WorkflowPublicationDependencies,
+  type PublicationCandidateInput,
+  type PublicationClaim,
+  type CompiledPublication,
+  storedPublicationSchema,
+} from './contract.js';
+import {
+  persistPublicationProjections,
+  finalizePublication,
+} from './projections.js';
 export { reconcileWorkflowTriggersPayload } from './trigger-reconciliation.js';
-
-const uuidSchema = z.uuid();
-const digestSchema = sha256HexSchema;
-const workflowDraftTagSchema = z
-  .string()
-  .regex(/^"draft\.[A-Za-z0-9_-]{43}"$/u);
-const providerKeySchema = z
-  .string()
-  .min(1)
-  .max(64)
-  .regex(/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u);
-const operationKeySchema = z
-  .string()
-  .min(1)
-  .max(128)
-  .regex(/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u);
-const executableSchema = z
-  .object({
-    checksum: z.string().regex(/^wf:sha256:[0-9a-f]{64}$/u),
-    executableJson: z.record(z.string(), z.unknown()),
-  })
-  .strict();
-
-export type WorkflowPublicationDependencies = Readonly<{
-  requireAuthor(
-    client: PoolClient,
-    workspaceId: string,
-    actorId: string,
-    workflowId?: string,
-    capability?: 'workflow:read' | 'workflow:update',
-  ): Promise<void>;
-  catalogs: AuthoringCatalogs;
-  transact<T>(
-    workspaceId: string,
-    actorId: string,
-    operation: (client: PoolClient) => Promise<T>,
-    signal?: AbortSignal,
-  ): Promise<T>;
-}>;
-
-type PublicationCandidateInput = Omit<
-  PublishWorkflowInput,
-  'idempotencyKey' | 'requestHash' | 'commandCredentialId'
->;
-
-type PublicationClaim = Readonly<{
-  command: CommandIdentity;
-  replay: PublishWorkflowResult | null;
-  workflowId: string;
-}>;
-
-type CompiledPublication = Readonly<{
-  versionId: string;
-  calls: CallableVersionSummary['calls'];
-  checksum: string;
-  definitionCatalog: WorkflowDefinitionCatalog;
-  executable: z.output<typeof executableSchema>;
-  graph: WorkflowGraph;
-}>;
-
-/** A retry gets back the version its first attempt published. */
-const storedPublicationSchema = z
-  .object({ versionId: uuidSchema, reused: z.boolean() })
-  .strict();
-
+export { type WorkflowPublicationDependencies } from './contract.js';
 async function claimPublication(
   client: PoolClient,
   input: PublishWorkflowInput,
@@ -292,112 +231,6 @@ async function persistVersion(
     throw new Error('Workflow publication returned no version');
   const version = mapVersion(versionRow);
   return Object.freeze({ reused, version });
-}
-
-async function persistPublicationProjections(
-  client: PoolClient,
-  input: PublicationCandidateInput,
-  workflowId: string,
-  publication: CompiledPublication,
-  version: WorkflowVersionRecord,
-): Promise<void> {
-  await revokeRemovedFormAccess(
-    client,
-    input.workspaceId,
-    workflowId,
-    publication.graph,
-  );
-  const usage = workflowIntegrationUsage(
-    version.graphJson,
-    publication.definitionCatalog,
-  ).map((item) => ({
-    connection_id: uuidSchema.parse(item.connectionId),
-    operation_key: operationKeySchema.parse(item.operationKey),
-    provider_key: providerKeySchema.parse(item.providerKey),
-  }));
-  await client.query(
-    `delete from app.workflow_integration_usage
-     where workspace_id=$1 and workflow_version_id=$2`,
-    [input.workspaceId, version.id],
-  );
-  if (usage.length > 0)
-    await client.query(
-      `insert into app.workflow_integration_usage
-         (workspace_id,workflow_version_id,provider_key,operation_key,connection_id)
-       select $1,$2,item.provider_key,item.operation_key,item.connection_id
-       from jsonb_to_recordset($3::jsonb) as item(
-         provider_key varchar(64),operation_key varchar(128),connection_id uuid)`,
-      [input.workspaceId, version.id, JSON.stringify(usage)],
-    );
-  await persistPublicationCalls(
-    client,
-    input.workspaceId,
-    version.id,
-    publication.calls,
-  );
-  await persistPublishedWorkflowTriggers(client, {
-    workspaceId: input.workspaceId,
-    workflowId,
-    version,
-  });
-}
-
-async function finalizePublication(
-  client: PoolClient,
-  input: PublicationCandidateInput,
-  workflowId: string,
-  version: WorkflowVersionRecord,
-  reused: boolean,
-): Promise<void> {
-  await client.query(
-    `update app.workflows set published_version_id=$1,
-       activation_status='activating',updated_at=transaction_timestamp()
-     where workspace_id=$2 and id=$3`,
-    [version.id, input.workspaceId, workflowId],
-  );
-  const eventId = generatePersistedId();
-  const payload = reconcileWorkflowTriggersPayload({
-    workspaceId: input.workspaceId,
-    outboxEventId: eventId,
-    workflowId: workflowId,
-    publishedVersionId: version.id,
-    ...(input.traceparent === undefined
-      ? {}
-      : { traceparent: input.traceparent }),
-  });
-  await client.query(
-    `insert into app.outbox_events
-       (id,workspace_id,job_name,aggregate_type,aggregate_id,
-        payload,payload_checksum)
-     values($1,$2,'reconcile-workflow-triggers','workflow',$3,$4::jsonb,$5)`,
-    [
-      eventId,
-      input.workspaceId,
-      workflowId,
-      JSON.stringify(payload),
-      canonicalOutboxPayloadChecksum(payload),
-    ],
-  );
-  await client.query(
-    `insert into app.audit_events
-       (id,workspace_id,actor_user_id,action,target_type,target_id,request_id,
-        trace_id,metadata)
-     values($1,$2,$3,'workflow.published','workflow',$4,$5,$6,$7::jsonb)`,
-    [
-      generatePersistedId(),
-      input.workspaceId,
-      input.actorId,
-      workflowId,
-      input.requestId ?? null,
-      input.traceId ?? null,
-      JSON.stringify({
-        checksum: version.checksum,
-        reused,
-        versionId: version.id,
-        versionNumber: version.versionNumber,
-      }),
-    ],
-  );
 }
 
 /** One publication transaction core; only authoring command owners may call it. */

@@ -3,7 +3,7 @@ import {
   createWorkflowInputCaseDatabase,
   WorkflowInputCaseLimitError,
   WorkflowInputCaseRevisionConflictError,
-} from '../../../src/authoring/input-cases.js';
+} from '../../../src/authoring/input-cases/store.js';
 import { WorkflowNotFoundError } from '../../../src/authoring/workflows/errors.js';
 import { IdempotencyConflictError } from '../../../src/platform/idempotency.js';
 import { createRetentionDatabase } from '../../../src/lifecycle/retention.js';

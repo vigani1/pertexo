@@ -1,264 +1,68 @@
-import { utf8ByteLength } from '@pertexo/workflow-model';
 import {
   ADMINISTRATIVE_ROLES,
   WORKFLOW_EDITOR_ROLES,
 } from '@pertexo/workflow-model';
-import { readSharingPrincipals } from '../../tenant-access/resources/principals.js';
-import type {
-  SharingPrincipalsQuery,
-  SharingPrincipals,
-} from '@pertexo/contracts';
-import type {
-  AudienceReview,
-  FolderSharing,
-  FolderSharingRequest,
-  WorkflowMoveReviewRequest,
-  WorkflowMoveReview,
-} from '@pertexo/contracts';
-import { readFolderSharing, replaceFolderSharing } from './sharing/grants.js';
+import { readSharingPrincipals } from '../../../tenant-access/resources/principals.js';
+
+import { readFolderSharing, replaceFolderSharing } from '../sharing/grants.js';
 import {
   requireMoveAudienceReview,
   reviewMoveAudience,
-} from './sharing/audience.js';
-import { readFolderScope } from '../../tenant-access/resources/facts.js';
-import { FOLDER_LIMIT, FOLDER_DEPTH_LIMIT } from './limits.js';
+} from '../sharing/audience.js';
+import { readFolderScope } from '../../../tenant-access/resources/facts.js';
+import { FOLDER_LIMIT, FOLDER_DEPTH_LIMIT } from '../limits.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-
-import type { DatabaseConfig } from '../../config.js';
-import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
+import type { DatabaseConfig } from '../../../config.js';
+import type { DatabaseRuntime } from '../../../platform/pool/runtime.js';
 import { ROLES } from '@pertexo/workflow-model';
-import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
-import { WorkflowNotFoundError } from '../workflows/errors.js';
-import { runOrganizationCommand } from './command.js';
-import { WorkflowFolderConflictError } from './errors.js';
+import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
+
+import { runOrganizationCommand } from '../command.js';
+import { WorkflowFolderConflictError } from '../errors.js';
 import {
   checkOrganizationReplay,
   organizeWorkflow,
-} from './organize-workflow.js';
+} from '../organize-workflow.js';
 import {
   createOrganizationSession,
   type OrganizationRequestScope,
-} from './session.js';
-
+} from '../session.js';
+import {
+  type Command,
+  type WorkflowFolderCommandResult,
+  type WorkflowFolderDatabase,
+  uuid,
+  revision,
+  name,
+  folder,
+  folderResult,
+  deleteResult,
+  placementResult,
+  nameKey,
+} from './contract.js';
+import {
+  type FolderRow,
+  readFolder,
+  folderDepth,
+  requireFreeName,
+  requireRevision,
+  folderRecord,
+} from './hierarchy.queries.js';
 export {
   WorkflowFolderConflictError,
   type WorkflowFolderConflictKind,
-} from './errors.js';
-
-type Command = OrganizationRequestScope & Readonly<{ idempotencyKey: string }>;
-type FolderCommand = Command &
-  Readonly<{ folderId: string; expectedFolderRevision: number }>;
-export type WorkflowFolderRecord = Readonly<{
-  id: string;
-  name: string;
-  parentId: string | null;
-  revision: number;
-  depth: number;
-  accessMode: 'workspace' | 'restricted';
-  canCreateWorkflows?: boolean;
-}>;
-export type WorkflowFolderCommandResult = Readonly<{
-  folder: WorkflowFolderRecord;
-  replayed: boolean;
-}>;
-export type WorkflowFolderDeleteResult = Readonly<{
-  folderId: string;
-  deleted: true;
-  replayed: boolean;
-}>;
-export type WorkflowFolderPlacementResult = Readonly<{
-  workflowId: string;
-  folderId: string | null;
-  organizationRevision: number;
-  replayed: boolean;
-}>;
-export interface WorkflowFolderDatabase {
-  sharingPrincipals(
-    input: OrganizationRequestScope & { query: SharingPrincipalsQuery },
-  ): Promise<SharingPrincipals>;
-  readSharing(
-    input: OrganizationRequestScope & { folderId: string },
-  ): Promise<FolderSharing>;
-  replaceSharing(
-    input: Command & { folderId: string; request: FolderSharingRequest },
-  ): Promise<FolderSharing & { replayed: boolean }>;
-  reviewMove(
-    input: OrganizationRequestScope & { request: WorkflowMoveReviewRequest },
-  ): Promise<WorkflowMoveReview>;
-  listFolders(
-    input: OrganizationRequestScope,
-  ): Promise<Readonly<{ items: readonly WorkflowFolderRecord[] }>>;
-  createFolder(
-    input: Command & Readonly<{ name: string; parentId: string | null }>,
-  ): Promise<WorkflowFolderCommandResult>;
-  renameFolder(
-    input: FolderCommand & Readonly<{ name: string }>,
-  ): Promise<WorkflowFolderCommandResult>;
-  moveFolder(
-    input: FolderCommand &
-      Readonly<{
-        parentId: string | null;
-        audienceReview?: AudienceReview | undefined;
-      }>,
-  ): Promise<WorkflowFolderCommandResult>;
-  deleteFolder(input: FolderCommand): Promise<WorkflowFolderDeleteResult>;
-  placeWorkflow(
-    input: Command &
-      Readonly<{
-        workflowId: string;
-        folderId: string | null;
-        expectedOrganizationRevision: number;
-        audienceReview?: AudienceReview | undefined;
-      }>,
-  ): Promise<WorkflowFolderPlacementResult>;
-  close(): Promise<void>;
-}
-
+} from '../errors.js';
+export {
+  type WorkflowFolderRecord,
+  type WorkflowFolderCommandResult,
+  type WorkflowFolderDeleteResult,
+  type WorkflowFolderPlacementResult,
+  type WorkflowFolderDatabase,
+} from './contract.js';
 const ADMINISTRATORS = ADMINISTRATIVE_ROLES;
+
 const EDITORS = WORKFLOW_EDITOR_ROLES;
-
-const uuid = z.uuid().overwrite((value) => value.toLowerCase());
-const revision = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
-const canonicalName = z
-  .string()
-  .min(1)
-  .max(128)
-  .refine(
-    (value) =>
-      value === value.replace(/^ +| +$(?![\s\S])/gu, '') &&
-      utf8ByteLength(value) >= 1 &&
-      utf8ByteLength(value) <= 128 &&
-      !Array.from(value).some(
-        (character) =>
-          character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127,
-      ),
-  );
-const name = z
-  .string()
-  .overwrite((value) => value.replace(/^ +| +$(?![\s\S])/gu, ''))
-  .pipe(canonicalName);
-const folder = z
-  .object({
-    id: uuid,
-    name: canonicalName,
-    parentId: uuid.nullable(),
-    revision,
-    depth: z.number().int().min(1).max(FOLDER_DEPTH_LIMIT),
-    accessMode: z.enum(['workspace', 'restricted']),
-  })
-  .strict()
-  .refine((value) =>
-    value.parentId === null ? value.depth === 1 : value.depth > 1,
-  );
-const folderResult = z.object({ folder }).strict();
-const deleteResult = z
-  .object({ folderId: uuid, deleted: z.literal(true) })
-  .strict();
-const placementResult = z
-  .object({
-    workflowId: uuid,
-    folderId: uuid.nullable(),
-    organizationRevision: revision,
-  })
-  .strict();
-
-/** Sibling names are unique regardless of ASCII letter case. */
-const nameKey = (value: string): string =>
-  value.replace(/[A-Z]/gu, (letter) => letter.toLowerCase());
-
-type FolderRow = Readonly<{
-  id: string;
-  name: string;
-  parent_id: string | null;
-  revision: string;
-  access_mode: 'workspace' | 'restricted';
-}>;
-
-async function readFolder(
-  client: PoolClient,
-  workspaceId: string,
-  folderId: string,
-): Promise<FolderRow> {
-  const result = await client.query<FolderRow>(
-    `select id, name, parent_id, revision, access_mode from app.workflow_folders
-     where workspace_id = $1 and id = $2`,
-    [workspaceId, folderId],
-  );
-  const row = result.rows[0];
-  if (row === undefined)
-    throw new WorkflowNotFoundError('Folder is not visible');
-  return row;
-}
-
-/** How many folders deep a folder sits; a top-level folder is 1. */
-async function folderDepth(
-  client: PoolClient,
-  workspaceId: string,
-  folderId: string | null,
-): Promise<number> {
-  if (folderId === null) return 0;
-  const result = await client.query<{
-    depth: number | null;
-    rooted: boolean | null;
-  }>(
-    `with recursive ancestors as (
-       select parent_id, 1 depth from app.workflow_folders
-       where workspace_id = $1 and id = $2
-       union all
-       select folder.parent_id, ancestors.depth + 1 from ancestors
-       join app.workflow_folders folder
-         on folder.workspace_id = $1 and folder.id = ancestors.parent_id
-       where ancestors.depth <= $3
-     )
-     select max(depth)::int depth, bool_or(parent_id is null) rooted from ancestors`,
-    [workspaceId, folderId, FOLDER_DEPTH_LIMIT],
-  );
-  const row = result.rows[0];
-  if (
-    row?.rooted !== true ||
-    row.depth === null ||
-    row.depth > FOLDER_DEPTH_LIMIT
-  )
-    throw new WorkflowFolderConflictError('hierarchy');
-  return row.depth;
-}
-
-async function requireFreeName(
-  client: PoolClient,
-  workspaceId: string,
-  parentId: string | null,
-  folderName: string,
-  folderId: string | null,
-): Promise<void> {
-  const taken = await client.query(
-    `select 1 from app.workflow_folders
-     where workspace_id = $1 and parent_id is not distinct from $2::uuid
-       and name_key = $3 and id is distinct from $4::uuid`,
-    [workspaceId, parentId, nameKey(folderName), folderId],
-  );
-  if (taken.rowCount !== 0) throw new WorkflowFolderConflictError('name');
-}
-
-function requireRevision(row: FolderRow, expected: number): void {
-  if (Number(row.revision) !== expected)
-    throw new WorkflowFolderConflictError('revision');
-}
-
-async function folderRecord(
-  client: PoolClient,
-  workspaceId: string,
-  row: FolderRow,
-): Promise<WorkflowFolderRecord> {
-  return {
-    id: row.id,
-    name: row.name,
-    parentId: row.parent_id,
-    revision: Number(row.revision),
-    depth: await folderDepth(client, workspaceId, row.id),
-    accessMode: row.access_mode,
-  };
-}
 
 export function createWorkflowFolderDatabase(
   config: DatabaseConfig,

@@ -1,7 +1,7 @@
 export {
   createWorkflowFolderDatabase,
   WorkflowFolderConflictError,
-} from './organization/folders.repository.js';
+} from './organization/folders/commands.repository.js';
 export type {
   WorkflowFolderCommandResult,
   WorkflowFolderConflictKind,
@@ -9,7 +9,7 @@ export type {
   WorkflowFolderDeleteResult,
   WorkflowFolderPlacementResult,
   WorkflowFolderRecord,
-} from './organization/folders.repository.js';
+} from './organization/folders/commands.repository.js';
 export { createWorkflowOrganizationBatchDatabase } from './organization/batches.repository.js';
 export type {
   WorkflowOrganizationBatchDatabase,
@@ -28,7 +28,7 @@ export type {
 export {
   createWorkflowTagDatabase,
   WorkflowTagConflictError,
-} from './organization/tags.repository.js';
+} from './organization/tags/commands.repository.js';
 export type {
   WorkflowTagAssignment,
   WorkflowTagAssignmentResult,
@@ -38,7 +38,7 @@ export type {
   WorkflowTagDeleteResult,
   WorkflowTagRecord,
   WorkflowTagReplaceResult,
-} from './organization/tags.repository.js';
+} from './organization/tags/commands.repository.js';
 export { createWorkflowFavoriteDatabase } from './organization/favorites.repository.js';
 export type {
   WorkflowFavoriteCommand,
@@ -50,12 +50,12 @@ export {
   createWorkflowInputCaseDatabase,
   WorkflowInputCaseLimitError,
   WorkflowInputCaseRevisionConflictError,
-} from './input-cases.js';
+} from './input-cases/store.js';
 export type {
   WorkflowInputCaseDatabase,
   WorkflowInputCaseMetadata,
   WorkflowInputCaseResult,
-} from './input-cases.js';
+} from './input-cases/store.js';
 export {
   WorkflowConcurrencyLimitExceededError,
   WorkflowConcurrencyLimitUnavailableError,
@@ -69,13 +69,13 @@ export {
   WorkflowAutoPauseSettingsRevisionConflictError,
   WorkflowPauseRevisionConflictError,
   WorkspaceAutoPauseSettingsRevisionConflictError,
-} from './settings/auto-pause.js';
+} from './settings/auto-pause/store.js';
 export type {
   AutoPauseCommandResult,
   WorkflowAutoPauseDatabase,
   WorkflowAutoPauseSettings,
   WorkspaceAutoPauseSettings,
-} from './settings/auto-pause.js';
+} from './settings/auto-pause/store.js';
 export {
   createWorkflowAuthoringDatabase,
   WorkflowDefinitionPlacementError,
