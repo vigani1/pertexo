@@ -108,7 +108,6 @@ export function parseJoin(value: unknown): JoinState {
       'join count exceeds declared branches',
     );
   }
-  let selectedBranchIds: readonly string[] | undefined;
   let unsatisfiedReasonCode: JoinState['unsatisfiedReasonCode'];
   if (value.unsatisfiedReasonCode !== undefined) {
     assertCheckpoint(
@@ -124,42 +123,11 @@ export function parseJoin(value: unknown): JoinState {
       unsatisfiedReasonCode === undefined,
     'join cannot be both satisfied and unsatisfied',
   );
-  if (value.selectedBranchIds !== undefined) {
-    assertCheckpoint(
-      Array.isArray(value.selectedBranchIds),
-      'selectedBranchIds must be an array',
-    );
-    assertCheckpoint(
-      value.selectedBranchIds.every((item) => typeof item === 'string'),
-      'selectedBranchIds must contain strings',
-    );
-    selectedBranchIds = sortedUnique(
-      value.selectedBranchIds,
-      'selectedBranchIds',
-    );
-    assertCheckpoint(
-      ledger.every(({ disposition }) => disposition !== 'pending'),
-      'a selected join cannot contain pending branches',
-    );
-    const arrived = ledger
-      .filter(({ disposition }) => disposition === 'arrived')
-      .map(({ branchId }) => branchId);
-    const required = requiredJoinArrivals(policy, arrived.length);
-    const satisfiable = joinSelectionIsSatisfiable(
-      policy,
-      ledger,
-      arrived.length,
-    );
-    const expected = satisfiable ? arrived.slice(0, required) : [];
-    assertCheckpoint(
-      satisfiable &&
-        selectedBranchIds.length === expected.length &&
-        selectedBranchIds.every(
-          (branchId, index) => branchId === expected[index],
-        ),
-      'persisted join selection is inconsistent',
-    );
-  }
+  const selectedBranchIds = parseJoinSelection(
+    value.selectedBranchIds,
+    policy,
+    ledger,
+  );
   if (unsatisfiedReasonCode !== undefined) {
     assertCheckpoint(
       ledger.every(({ disposition }) => disposition !== 'pending'),
@@ -188,4 +156,41 @@ export function parseJoin(value: unknown): JoinState {
     ...(selectedBranchIds === undefined ? {} : { selectedBranchIds }),
     ...(unsatisfiedReasonCode === undefined ? {} : { unsatisfiedReasonCode }),
   };
+}
+
+function parseJoinSelection(
+  value: unknown,
+  policy: JoinPolicy,
+  ledger: JoinLedger,
+): readonly string[] | undefined {
+  if (value === undefined) return undefined;
+  assertCheckpoint(Array.isArray(value), 'selectedBranchIds must be an array');
+  assertCheckpoint(
+    value.every((item) => typeof item === 'string'),
+    'selectedBranchIds must contain strings',
+  );
+  const selectedBranchIds = sortedUnique(value, 'selectedBranchIds');
+  assertCheckpoint(
+    ledger.every(({ disposition }) => disposition !== 'pending'),
+    'a selected join cannot contain pending branches',
+  );
+  const arrived = ledger
+    .filter(({ disposition }) => disposition === 'arrived')
+    .map(({ branchId }) => branchId);
+  const required = requiredJoinArrivals(policy, arrived.length);
+  const satisfiable = joinSelectionIsSatisfiable(
+    policy,
+    ledger,
+    arrived.length,
+  );
+  const expected = satisfiable ? arrived.slice(0, required) : [];
+  assertCheckpoint(
+    satisfiable &&
+      selectedBranchIds.length === expected.length &&
+      selectedBranchIds.every(
+        (branchId, index) => branchId === expected[index],
+      ),
+    'persisted join selection is inconsistent',
+  );
+  return selectedBranchIds;
 }

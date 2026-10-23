@@ -133,12 +133,48 @@ export function parseLoop(value: unknown): LoopState {
     value.terminalOrdinals.every(isInteger),
     'terminalOrdinals must contain integers',
   );
-  const activeOrdinals = [...value.activeOrdinals].sort(
-    (left, right) => left - right,
+  const { activeOrdinals, terminalOrdinals } = parseLoopOrdinals(
+    value.activeOrdinals,
+    value.terminalOrdinals,
+    { completedPrefix, collectionSize, maxConcurrency, nextOrdinal },
   );
-  const terminalOrdinals = [...value.terminalOrdinals].sort(
-    (left, right) => left - right,
-  );
+  return {
+    controlInvocationKey,
+    loopId: value.loopId,
+    branchPath,
+    iterationPath,
+    bodyRootNodeIds,
+    bodySinkNodeId,
+    ...(terminalStatus === undefined ? {} : { terminalStatus }),
+    collection,
+    collectionChecksum: value.collectionChecksum,
+    collectionSize,
+    maxConcurrency,
+    maxIterations,
+    nextOrdinal,
+    completedPrefix,
+    activeOrdinals,
+    terminalOrdinals,
+  };
+}
+
+function parseLoopOrdinals(
+  active: readonly number[],
+  terminal: readonly number[],
+  {
+    completedPrefix,
+    collectionSize,
+    maxConcurrency,
+    nextOrdinal,
+  }: Readonly<{
+    completedPrefix: number;
+    collectionSize: number;
+    maxConcurrency: number;
+    nextOrdinal: number;
+  }>,
+) {
+  const activeOrdinals = [...active].sort((left, right) => left - right);
+  const terminalOrdinals = [...terminal].sort((left, right) => left - right);
   const ordinals = [...activeOrdinals, ...terminalOrdinals];
   assertCheckpoint(
     ordinals.every(
@@ -163,22 +199,5 @@ export function parseLoop(value: unknown): LoopState {
       admitted.every((ordinal, index) => ordinal === completedPrefix + index),
     'loop cursor has an unrecorded ordinal',
   );
-  return {
-    controlInvocationKey,
-    loopId: value.loopId,
-    branchPath,
-    iterationPath,
-    bodyRootNodeIds,
-    bodySinkNodeId,
-    ...(terminalStatus === undefined ? {} : { terminalStatus }),
-    collection,
-    collectionChecksum: value.collectionChecksum,
-    collectionSize,
-    maxConcurrency,
-    maxIterations,
-    nextOrdinal,
-    completedPrefix,
-    activeOrdinals,
-    terminalOrdinals,
-  };
+  return { activeOrdinals, terminalOrdinals };
 }

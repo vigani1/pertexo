@@ -81,21 +81,9 @@ export function assertBoundedCheckpointJson(value: unknown): void {
       bytes = addBytes(bytes, 4);
       continue;
     }
-    if (typeof item === 'string') {
-      bytes = addBytes(
-        bytes,
-        jsonStringByteLength(item, {
-          stopAfterBytes: WORKFLOW_CHECKPOINT_LIMITS.bytes,
-        }),
-      );
-      continue;
-    }
-    if (typeof item === 'boolean') {
-      bytes = addBytes(bytes, item ? 4 : 5);
-      continue;
-    }
-    if (typeof item === 'number' && Number.isFinite(item)) {
-      bytes = addBytes(bytes, Object.is(item, -0) ? 1 : String(item).length);
+    const primitiveBytes = checkpointPrimitiveBytes(item);
+    if (primitiveBytes !== undefined) {
+      bytes = addBytes(bytes, primitiveBytes);
       continue;
     }
     assertCheckpoint(typeof item === 'object', 'checkpoint must contain JSON');
@@ -191,4 +179,15 @@ export function assertBoundedCheckpointJson(value: unknown): void {
         'checkpoint object has hidden properties',
       );
   }
+}
+
+function checkpointPrimitiveBytes(item: unknown): number | undefined {
+  if (typeof item === 'string')
+    return jsonStringByteLength(item, {
+      stopAfterBytes: WORKFLOW_CHECKPOINT_LIMITS.bytes,
+    });
+  if (typeof item === 'boolean') return item ? 4 : 5;
+  if (typeof item === 'number' && Number.isFinite(item))
+    return Object.is(item, -0) ? 1 : String(item).length;
+  return undefined;
 }
