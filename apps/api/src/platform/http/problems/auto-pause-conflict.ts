@@ -34,31 +34,28 @@ export type AutoPauseConflictRevision =
 export function normalizeAutoPauseConflict(
   error: ApplicationError,
 ): AutoPauseConflictRevision | undefined {
-  switch (error.code) {
-    case 'workflow.pause_conflict':
-      return {
-        code: error.code,
-        currentPauseRevision: workflowPauseRevisionSchema.parse(
-          error.details?.currentPauseRevision,
-        ),
-      };
-    case 'workflow.auto_pause_settings_conflict':
-      return {
-        code: error.code,
-        currentSettingsRevision: autoPauseSettingsRevisionSchema.parse(
-          error.details?.currentSettingsRevision,
-        ),
-      };
-    case 'workspace.auto_pause_settings_conflict':
-      return {
-        code: error.code,
-        currentRevision: autoPauseSettingsRevisionSchema.parse(
-          error.details?.currentRevision,
-        ),
-      };
-    default:
-      return undefined;
-  }
+  if (error.code === 'workflow.pause_conflict')
+    return {
+      code: error.code,
+      currentPauseRevision: workflowPauseRevisionSchema.parse(
+        error.details?.currentPauseRevision,
+      ),
+    };
+  if (error.code === 'workflow.auto_pause_settings_conflict')
+    return {
+      code: error.code,
+      currentSettingsRevision: autoPauseSettingsRevisionSchema.parse(
+        error.details?.currentSettingsRevision,
+      ),
+    };
+  if (error.code === 'workspace.auto_pause_settings_conflict')
+    return {
+      code: error.code,
+      currentRevision: autoPauseSettingsRevisionSchema.parse(
+        error.details?.currentRevision,
+      ),
+    };
+  return undefined;
 }
 
 export function projectAutoPauseConflict(

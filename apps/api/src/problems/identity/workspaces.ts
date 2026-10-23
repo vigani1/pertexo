@@ -190,6 +190,10 @@ function mapMembershipConflict(
       return applicationError('auth.forbidden', {
         safeDetail: 'The owner must transfer ownership before leaving.',
       });
+    case 'actor_inactive':
+    case 'command_forbidden':
+    case 'owner_target':
+    case 'self_command':
     default:
       return applicationError('auth.forbidden', {
         safeDetail: 'This membership change is not allowed.',

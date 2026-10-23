@@ -233,6 +233,20 @@ export async function* streamRunEventFrames(
     return page.map((event) => persistedRunEventSchema.parse(event));
   };
 
+  async function* backfill(
+    visibilityPath: SseRunEventFrame['visibilityPath'],
+  ): AsyncGenerator<SseRunEventFrame> {
+    let page: readonly PersistedRunEvent[];
+    do {
+      page = await readPage();
+      assertEventPage(page, { pageSize, cursor });
+      for (const event of page) {
+        cursor = event.sequence;
+        yield frameForEvent(event, visibilityPath);
+      }
+    } while (page.length === pageSize);
+  }
+
   let primary = NO_STREAM_FAILURE;
   try {
     iterator = subscription[Symbol.asyncIterator]();
@@ -241,27 +255,7 @@ export async function* streamRunEventFrames(
       identity.lastEventId === 0 ? 'initial_backfill' : 'reconnect_backfill';
     while (!input.signal.aborted) {
       if (shouldBackfill) {
-        let page: readonly PersistedRunEvent[];
-        do {
-          page = await readPage();
-          if (page.length > pageSize) {
-            throw new RunEventStreamInvariantError(
-              'Persisted event reader exceeded the requested page size',
-            );
-          }
-
-          for (const [index, event] of page.entries()) {
-            if (event.sequence !== cursor + index + 1) {
-              throw new RunEventStreamInvariantError(
-                `Persisted run event sequence is not contiguous after ${String(cursor)}`,
-              );
-            }
-          }
-          for (const event of page) {
-            cursor = event.sequence;
-            yield frameForEvent(event, backfillPath);
-          }
-        } while (page.length === pageSize);
+        yield* backfill(backfillPath);
         shouldBackfill = false;
       }
 
@@ -279,13 +273,11 @@ export async function* streamRunEventFrames(
         backfillPath = 'recovery_backfill';
         continue;
       }
-      if (
+      const irrelevantNotification =
         notification.workspaceId !== identity.workspaceId ||
         notification.runId !== identity.runId ||
-        notification.sequence <= cursor
-      ) {
-        continue;
-      }
+        notification.sequence <= cursor;
+      if (irrelevantNotification) continue;
 
       // A notification for a later sequence deliberately triggers a complete
       // bounded-page read after the cursor, repairing every intervening gap.
@@ -311,5 +303,24 @@ export async function* streamRunEventFrames(
       });
     }
     await preserveFailureDuringStreamCleanup(primary, cleanups);
+  }
+}
+
+function assertEventPage(
+  page: readonly PersistedRunEvent[],
+  { pageSize, cursor }: Readonly<{ pageSize: number; cursor: number }>,
+): void {
+  if (page.length > pageSize) {
+    throw new RunEventStreamInvariantError(
+      'Persisted event reader exceeded the requested page size',
+    );
+  }
+
+  for (const [index, event] of page.entries()) {
+    if (event.sequence !== cursor + index + 1) {
+      throw new RunEventStreamInvariantError(
+        `Persisted run event sequence is not contiguous after ${String(cursor)}`,
+      );
+    }
   }
 }
