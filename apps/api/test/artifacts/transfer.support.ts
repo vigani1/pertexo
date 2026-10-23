@@ -158,14 +158,16 @@ function createFixtureLogCapture(): FixtureLogCapture {
         fieldsText = '[unserializable fields]';
       }
     }
-    const errorText =
-      error === undefined
-        ? ''
-        : error instanceof Error
-          ? error.message
-          : typeof error === 'string'
-            ? error
-            : '[unserializable error]';
+    let errorText;
+    if (error === undefined) {
+      errorText = '';
+    } else if (error instanceof Error) {
+      errorText = error.message;
+    } else if (typeof error === 'string') {
+      errorText = error;
+    } else {
+      errorText = '[unserializable error]';
+    }
     lines.push(`${event} ${fieldsText} ${errorText}`.trim());
   };
   return Object.freeze({

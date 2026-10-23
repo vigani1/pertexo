@@ -76,20 +76,22 @@ export async function qualifyWebhookTestEvents(f: Fixture) {
     origin = f.origin,
   ) {
     const timestamp = String(Math.floor(Date.now() / 1000));
-    const auth =
-      mode === 'signed'
-        ? {
-            'x-pertexo-timestamp': timestamp,
-            'x-pertexo-signature': `v1=${createHmac(
-              'sha256',
-              Buffer.from(listener.signingSecret ?? '', 'base64url'),
-            )
-              .update(`${timestamp}.${body}`)
-              .digest('hex')}`,
-          }
-        : mode === 'header_secret'
-          ? { 'x-event-secret': listener.signingSecret ?? '' }
-          : {};
+    let auth;
+    if (mode === 'signed') {
+      auth = {
+        'x-pertexo-timestamp': timestamp,
+        'x-pertexo-signature': `v1=${createHmac(
+          'sha256',
+          Buffer.from(listener.signingSecret ?? '', 'base64url'),
+        )
+          .update(`${timestamp}.${body}`)
+          .digest('hex')}`,
+      };
+    } else if (mode === 'header_secret') {
+      auth = { 'x-event-secret': listener.signingSecret ?? '' };
+    } else {
+      auth = {};
+    }
     return fetch(origin + listener.path + '?source=test', {
       method: 'POST',
       headers: { 'content-type': 'application/json', ...auth },

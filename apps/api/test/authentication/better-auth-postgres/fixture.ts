@@ -346,14 +346,21 @@ export async function assertSingleProviderLink(
     let first: Response;
     let second: Response;
     try {
-      const firstCallback =
-        firstCallbackFailure === 'early-return'
-          ? Promise.resolve(new Response(null, { status: 401 }))
-          : firstCallbackFailure === 'early-rejection'
-            ? Promise.reject(
-                new Error('Fixture callback rejected before authentication'),
-              )
-            : linkRequest(callback, 'GET', originalCookie ?? '', binding);
+      let firstCallback;
+      if (firstCallbackFailure === 'early-return') {
+        firstCallback = Promise.resolve(new Response(null, { status: 401 }));
+      } else if (firstCallbackFailure === 'early-rejection') {
+        firstCallback = Promise.reject(
+          new Error('Fixture callback rejected before authentication'),
+        );
+      } else {
+        firstCallback = linkRequest(
+          callback,
+          'GET',
+          originalCookie ?? '',
+          binding,
+        );
+      }
       pendingCallbacks.push(
         firstCallback.finally(() => {
           loserEnteredAuthentication.resolve(undefined);

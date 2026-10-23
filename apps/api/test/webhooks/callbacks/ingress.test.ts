@@ -110,20 +110,22 @@ it.each(['secret_url', 'signed', 'header_secret'] as const)(
     const timestamp = String(
       Math.floor(f.callback.databaseTime.getTime() / 1000),
     );
-    const auth =
-      mode === 'signed'
-        ? {
-            'x-pertexo-timestamp': timestamp,
-            'x-pertexo-signature': `v1=${createHmac(
-              'sha256',
-              Buffer.from(f.material.secret, 'base64url'),
-            )
-              .update(timestamp + '.' + payload)
-              .digest('hex')}`,
-          }
-        : mode === 'header_secret'
-          ? { authorization: `Bearer ${f.material.secret}` }
-          : {};
+    let auth;
+    if (mode === 'signed') {
+      auth = {
+        'x-pertexo-timestamp': timestamp,
+        'x-pertexo-signature': `v1=${createHmac(
+          'sha256',
+          Buffer.from(f.material.secret, 'base64url'),
+        )
+          .update(timestamp + '.' + payload)
+          .digest('hex')}`,
+      };
+    } else if (mode === 'header_secret') {
+      auth = { authorization: `Bearer ${f.material.secret}` };
+    } else {
+      auth = {};
+    }
     const input = {
       method: 'POST' as const,
       url: f.url,

@@ -90,14 +90,16 @@ describe('SAML proof gateway with actual signed protocol responses', () => {
     { timeout: 20_000 },
     async (mode) => {
       const fixture = samlFixture(material);
-      const value =
-        mode === 'depth'
-          ? '<item>'.repeat(40) + 'value' + '</item>'.repeat(40)
-          : mode === 'elements'
-            ? '<item/>'.repeat(SAML_LIMITS.elements)
-            : mode === 'nodes'
-              ? '<!--x-->'.repeat(SAML_LIMITS.nodes)
-              : `<item ${Array.from({ length: SAML_LIMITS.attributes + 1 }, (_, index) => `a${String(index)}="x"`).join(' ')}/>`;
+      let value;
+      if (mode === 'depth') {
+        value = '<item>'.repeat(40) + 'value' + '</item>'.repeat(40);
+      } else if (mode === 'elements') {
+        value = '<item/>'.repeat(SAML_LIMITS.elements);
+      } else if (mode === 'nodes') {
+        value = '<!--x-->'.repeat(SAML_LIMITS.nodes);
+      } else {
+        value = `<item ${Array.from({ length: SAML_LIMITS.attributes + 1 }, (_, index) => `a${String(index)}="x"`).join(' ')}/>`;
+      }
       const response = fixture.response({
         additionalAttributes: `<saml:Attribute Name="unused"><saml:AttributeValue>${value}</saml:AttributeValue></saml:Attribute>`,
       });
@@ -172,14 +174,16 @@ describe('SAML proof gateway with actual signed protocol responses', () => {
     'future conditions',
   ] as const)('refuses %s timestamps', async (mode) => {
     const fixture = samlFixture(material);
-    const options: ResponseOptions =
-      mode === 'expired'
-        ? { expiresAt: new Date(Date.now() - 180000).toISOString() }
-        : mode === 'old assertion'
-          ? { issuedAt: new Date(Date.now() - 480000).toISOString() }
-          : mode === 'future assertion'
-            ? { issuedAt: new Date(Date.now() + 180000).toISOString() }
-            : { notBefore: new Date(Date.now() + 180000).toISOString() };
+    let options: ResponseOptions;
+    if (mode === 'expired') {
+      options = { expiresAt: new Date(Date.now() - 180000).toISOString() };
+    } else if (mode === 'old assertion') {
+      options = { issuedAt: new Date(Date.now() - 480000).toISOString() };
+    } else if (mode === 'future assertion') {
+      options = { issuedAt: new Date(Date.now() + 180000).toISOString() };
+    } else {
+      options = { notBefore: new Date(Date.now() + 180000).toISOString() };
+    }
     await expect(
       gateway.verify(
         fixture.provider,
@@ -219,12 +223,14 @@ describe('SAML proof gateway with actual signed protocol responses', () => {
     if (mode === 'duplicate ID')
       xml = xml.replace('ID="_assertion"', 'ID="_response"');
     if (mode === 'too large') xml = 'a'.repeat(262145);
-    const encoded =
-      mode === 'invalid base64'
-        ? '!!!='
-        : mode === 'invalid UTF-8'
-          ? Buffer.from([0xc0, 0xaf]).toString('base64')
-          : Buffer.from(xml).toString('base64');
+    let encoded;
+    if (mode === 'invalid base64') {
+      encoded = '!!!=';
+    } else if (mode === 'invalid UTF-8') {
+      encoded = Buffer.from([0xc0, 0xaf]).toString('base64');
+    } else {
+      encoded = Buffer.from(xml).toString('base64');
+    }
     await expect(
       gateway.verify(fixture.provider, fixture.proof, encoded),
     ).rejects.toThrow();
