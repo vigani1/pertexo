@@ -1,4 +1,4 @@
-export { IdentityError, isIdentityError } from './errors.js';
+export { IdentityError } from './errors.js';
 export {
   digestSha256Hex,
   encodeBase64Url,

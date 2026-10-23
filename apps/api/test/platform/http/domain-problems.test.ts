@@ -1,5 +1,6 @@
 import 'reflect-metadata';
-import { Controller, Get, UseInterceptors } from '@nestjs/common';
+import { z } from 'zod';
+import { Controller, Get, UseGuards, UseInterceptors } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { FastifyAdapter } from '@nestjs/platform-fastify';
 import {
@@ -22,6 +23,10 @@ const unrelatedPath = '/outside-the-feature-route-table';
 
 class FailureController {
   fail(): never {
+    throw failure.current;
+  }
+
+  guarded(): never {
     throw failure.current;
   }
 
@@ -50,6 +55,22 @@ Get([workflowPath, connectionPath])(
   'resource',
   resourceDescriptor,
 );
+const guardedDescriptor = Object.getOwnPropertyDescriptor(
+  FailureController.prototype,
+  'guarded',
+);
+if (guardedDescriptor === undefined)
+  throw new Error('Missing guarded fixture route');
+Get('/unlisted-guarded')(
+  FailureController.prototype,
+  'guarded',
+  guardedDescriptor,
+);
+UseGuards({
+  canActivate: () => {
+    throw failure.current;
+  },
+})(FailureController.prototype, 'guarded', guardedDescriptor);
 UseInterceptors(domainErrors(resourceFailure))(
   FailureController.prototype,
   'resource',
@@ -147,6 +168,23 @@ describe('domain problems over HTTP', () => {
     expect(response.statusCode).toBe(404);
     expect(response.json()).toMatchObject({ code: 'resource.not_found' });
     expect(response.json()).not.toHaveProperty('detail');
+  });
+
+  it('keeps validation failures before controller interceptors opaque', async () => {
+    const validation = z.object({ privateSettings: z.string() }).safeParse({});
+    if (validation.success) throw new Error('Expected rejected validation');
+    failure.current = validation.error;
+    const response = await api.server.inject({
+      method: 'GET',
+      url: '/unlisted-guarded',
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({
+      code: 'request.invalid',
+      detail: 'The request is invalid.',
+    });
+    expect(response.body).not.toContain('private');
+    expect(response.json()).not.toHaveProperty('errors');
   });
 
   it('does not expose an unrecognized failure', async () => {
