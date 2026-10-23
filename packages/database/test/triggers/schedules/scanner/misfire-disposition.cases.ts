@@ -15,7 +15,7 @@ import {
   hourlyClaim,
 } from './fixture.js';
 
-export function registerDecidesSOccurrenceObservedAt(): void {
+export function registerScheduleMisfireDisposition(): void {
   it.each([
     ['skip', '2026-01-01T01:05:00.000Z', 'accepted'],
     ['skip', '2026-01-01T01:05:00.001Z', 'skipped'],

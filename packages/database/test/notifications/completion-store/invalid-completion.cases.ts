@@ -9,7 +9,7 @@ import {
   completionHarness,
 } from './fixture.js';
 
-export function registerRejectsInvalid02Before(): void {
+export function registerInvalidCompletionInputs(): void {
   it.each([
     ['attempt number', 'attemptNumber', 0],
     ['attempt number', 'attemptNumber', -1],

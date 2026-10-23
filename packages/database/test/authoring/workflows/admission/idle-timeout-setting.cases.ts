@@ -7,7 +7,7 @@ import {
 
 import { graph, valid, budget } from './fixture.js';
 
-export function registerQualifiesSettingSUnitS(): void {
+export function registerIdleTimeoutSettings(): void {
   it.each([
     ['35000', 'ms', true],
     ['2251', 'ms', true],

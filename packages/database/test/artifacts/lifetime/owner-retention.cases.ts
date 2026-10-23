@@ -10,7 +10,7 @@ import {
 } from '../../lifecycle/retention.support.js';
 import { gate, ownerTransaction, fixture, addVersion } from './fixture.js';
 
-export function registerKeepsFileSOwnerExists(
+export function registerArtifactOwnerRetention(
   shape: Parameters<typeof fixture>[0],
 ): void {
   it.each(['draft', 'version', 'input-case'] as const)(

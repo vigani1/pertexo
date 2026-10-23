@@ -9,7 +9,7 @@ import {
   completionHarness,
 } from './fixture.js';
 
-export function registerScenario(): void {
+export function registerCompletionPolicy(): void {
   it.each([
     {
       scenario: 'safe retry with attempts remaining',
