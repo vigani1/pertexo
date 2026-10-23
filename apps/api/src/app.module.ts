@@ -56,7 +56,7 @@ import type { ApiNotificationRuntime } from './platform/notifications/notificati
 import { NotificationsModule } from './notifications/module.js';
 import type { RateLimitConsumer } from './platform/rate-limit/interceptor.js';
 import { RateLimitModule } from './platform/rate-limit/rate-limit.module.js';
-import { APPLICATION_ERROR_MAPPERS } from './application-error-mappers.js';
+import { APPLICATION_ERROR_MAPPERS } from './application-errors.js';
 import {
   ArtifactRuntimeModule,
   DEFAULT_ARTIFACT_MAX_OBJECT_BYTES,

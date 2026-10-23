@@ -37,7 +37,7 @@ import {
 import { prepareSseResponse } from '../platform/http/sse-response.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { createStreamAuthorizationLifetime } from '../workflow-runs/events/sse-authorization-lifetime.js';
-import { mapNotificationError } from './errors.js';
+import { mapNotificationError } from '../problems/resources/notifications.js';
 import { NotificationReadGuard } from './guards.js';
 import { writeInboxHintStream } from './hint-stream.js';
 import type {

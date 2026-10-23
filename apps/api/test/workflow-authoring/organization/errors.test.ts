@@ -10,8 +10,8 @@ import { IdempotencyConflictError } from '@pertexo/database/platform';
 import { describe, expect, it } from 'vitest';
 
 import { APPLICATION_ERROR_CATALOG } from '../../../src/platform/http/application-error.js';
-import { mapWorkflowOrganizationError } from '../../../src/workflow-authoring/organization/errors.js';
-import { mapWorkflowAuthoringError } from '../../../src/workflow-authoring/errors.js';
+import { mapWorkflowOrganizationError } from '../../../src/problems/authoring/organization.js';
+import { mapWorkflowAuthoringError } from '../../../src/problems/authoring/workflows.js';
 import { AuthorizationError } from '../../../src/authorization/index.js';
 
 const cases = [

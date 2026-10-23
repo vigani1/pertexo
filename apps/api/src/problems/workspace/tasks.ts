@@ -1,4 +1,4 @@
-import { formValidationProblem } from '../forms/errors.js';
+import { formValidationProblem } from './forms.js';
 import { FormValuesInvalidError } from '@pertexo/workflow-model';
 import {
   PendingTaskDecisionError,
@@ -9,7 +9,7 @@ import { IdempotencyConflictError } from '@pertexo/database/platform';
 import {
   applicationError,
   throwApplicationError,
-} from '../platform/http/index.js';
+} from '../../platform/http/index.js';
 export async function taskOperation<T>(
   operation: () => Promise<T>,
 ): Promise<T> {

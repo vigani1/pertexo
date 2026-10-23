@@ -19,10 +19,10 @@ import {
 } from '../../../src/platform/http/index.js';
 import { IdentityError } from '../../../src/identity/index.js';
 import { mapIdentityWorkspaceError } from '../../../src/workspaces/index.js';
-import { APPLICATION_ERROR_MAPPERS } from '../../../src/application-error-mappers.js';
+import { APPLICATION_ERROR_MAPPERS } from '../../../src/application-errors.js';
 import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/server';
 import { WorkflowTagConflictError } from '@pertexo/database/authoring';
-import { mapWorkflowOrganizationError } from '../../../src/workflow-authoring/organization/errors.js';
+import { mapWorkflowOrganizationError } from '../../../src/problems/authoring/organization.js';
 
 interface ResponseMock {
   body?: unknown;

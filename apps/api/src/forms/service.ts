@@ -6,7 +6,7 @@ import {
   publicFormSubmissionResponseSchema,
 } from '@pertexo/contracts';
 import type { FormStore, PublicFormGrant } from '@pertexo/database/triggers';
-import { formOperation } from './errors.js';
+import { formOperation } from '../problems/workspace/forms.js';
 export class FormService {
   constructor(private readonly store: FormStore) {}
   discover(input: Parameters<FormStore['discover']>[0]) {

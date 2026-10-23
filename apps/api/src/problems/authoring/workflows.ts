@@ -35,16 +35,16 @@ import {
   requestBodyCause,
   throwApplicationError,
   type ApplicationError,
-} from '../platform/http/index.js';
-import { AuthorizationError } from '../authorization/index.js';
-import { WorkflowHeaderError } from './http/preconditions.js';
-import { InvalidWorkflowCursorError } from './cursor.js';
-import { mapWorkflowOrganizationError } from './organization/errors.js';
-import { mapWorkflowPortabilityError } from './portability/errors.js';
+} from '../../platform/http/index.js';
+import { AuthorizationError } from '../../authorization/index.js';
+import { WorkflowHeaderError } from '../../workflow-authoring/http/preconditions.js';
+import { InvalidWorkflowCursorError } from '../../workflow-authoring/cursor.js';
+import { mapWorkflowOrganizationError } from './organization.js';
+import { mapWorkflowPortabilityError } from './portability.js';
 import {
   InvalidWorkflowGraphError,
   WorkflowGraphContractError,
-} from './graph.js';
+} from '../../workflow-authoring/graph.js';
 
 /**
  * Engine compile failures a person can cause and fix, in their words. Any

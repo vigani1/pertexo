@@ -20,7 +20,7 @@ import {
   SessionAuthenticationGuard,
   CsrfProtectionGuard,
 } from '../../../src/workspaces/index.js';
-import { mapWorkflowAuthoringError } from '../../../src/workflow-authoring/errors.js';
+import { mapWorkflowAuthoringError } from '../../../src/problems/authoring/workflows.js';
 import {
   authorizeWorkspace,
   createActorContext,

@@ -20,14 +20,14 @@ import {
   isApplicationError,
   requestBodyCause,
   type ApplicationError,
-} from '../platform/http/index.js';
+} from '../../platform/http/index.js';
 import { z } from 'zod';
 import {
   AuthorizationError,
   type AuthorizationErrorCode,
-} from '../authorization/index.js';
-import { isIdentityError, type IdentityError } from '../identity/index.js';
-import { InvalidAuthenticatedWorkspaceContextError } from './request/authenticated-context-error.js';
+} from '../../authorization/index.js';
+import { isIdentityError, type IdentityError } from '../../identity/index.js';
+import { InvalidAuthenticatedWorkspaceContextError } from '../../workspaces/request/authenticated-context-error.js';
 
 function workspaceApplicationError(
   code: AuthorizationErrorCode,

@@ -27,7 +27,7 @@ import {
   WorkflowUpdateGuard,
   WorkflowPauseDefaultGuard,
 } from '../http/guards.js';
-import { throwWorkflowApplicationError } from '../errors.js';
+import { throwWorkflowApplicationError } from '../../problems/authoring/workflows.js';
 import type { WorkflowAuthoringRequest } from '../types.js';
 import { WorkflowPromotionUseCase } from './use-case.js';
 

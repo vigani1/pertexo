@@ -18,7 +18,7 @@ import {
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import { WorkflowAutoPauseUseCase } from './auto-pause.js';
-import { throwWorkflowApplicationError } from '../errors.js';
+import { throwWorkflowApplicationError } from '../../problems/authoring/workflows.js';
 import {
   WorkflowReadGuard,
   WorkflowUpdateGuard,

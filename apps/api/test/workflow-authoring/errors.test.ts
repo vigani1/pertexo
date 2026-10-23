@@ -21,7 +21,7 @@ import {
   type ApplicationError,
 } from '../../src/platform/http/index.js';
 import { InvalidWorkflowCursorError } from '../../src/workflow-authoring/cursor.js';
-import { mapWorkflowAuthoringError } from '../../src/workflow-authoring/errors.js';
+import { mapWorkflowAuthoringError } from '../../src/problems/authoring/workflows.js';
 import {
   InvalidWorkflowGraphError,
   WorkflowGraphContractError,

@@ -25,7 +25,7 @@ import type {
 } from '../../src/notifications/inbox-hint-hub.js';
 import { WorkspaceInboxService } from '../../src/notifications/service.js';
 import { RequestContextStore } from '../../src/platform/http/index.js';
-import { APPLICATION_ERROR_MAPPERS } from '../../src/application-error-mappers.js';
+import { APPLICATION_ERROR_MAPPERS } from '../../src/application-errors.js';
 import { HttpPlatformModule } from '../../src/platform/http/http.module.js';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';

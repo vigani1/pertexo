@@ -6,7 +6,7 @@ import {
   pendingTaskDecisionResponseSchema,
 } from '@pertexo/contracts';
 import type { PendingTaskStore } from '@pertexo/database/runs';
-import { taskOperation } from './errors.js';
+import { taskOperation } from '../problems/workspace/tasks.js';
 
 /** Transport contracts surround the same transaction-owned task rules. */
 export class PendingTaskService {

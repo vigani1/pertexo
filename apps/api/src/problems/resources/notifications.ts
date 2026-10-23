@@ -4,10 +4,10 @@ import {
   applicationError,
   isApplicationError,
   type ApplicationError,
-} from '../platform/http/index.js';
-import { AuthorizationError } from '../authorization/index.js';
-import { InvalidWorkspaceInboxCursorError } from './cursor.js';
-import { WorkspaceInboxThreadNotFoundError } from './service.js';
+} from '../../platform/http/index.js';
+import { AuthorizationError } from '../../authorization/index.js';
+import { InvalidWorkspaceInboxCursorError } from '../../notifications/cursor.js';
+import { WorkspaceInboxThreadNotFoundError } from '../../notifications/service.js';
 
 export function mapNotificationError(error: unknown): ApplicationError {
   if (isApplicationError(error)) return error;

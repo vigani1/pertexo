@@ -30,7 +30,7 @@ import {
 import type { AbortableRequest } from '../../platform/http/request-operation-signal.js';
 import { requestHeaderValue } from '../../platform/http/request-headers.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
-import { throwWorkflowInputCaseApplicationError as throwWorkflowApplicationError } from '../errors.js';
+import { throwWorkflowInputCaseApplicationError as throwWorkflowApplicationError } from '../../problems/authoring/workflows.js';
 import { WorkflowReadGuard, WorkflowUpdateGuard } from '../http/guards.js';
 import { WorkflowHeaderError } from '../http/preconditions.js';
 import type { WorkflowAuthoringRequest } from '../types.js';

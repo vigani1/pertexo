@@ -18,10 +18,10 @@ import {
   applicationError,
   isApplicationError,
   type ApplicationError,
-} from '../platform/http/index.js';
-import { AuthorizationError } from '../authorization/index.js';
-import { InvalidAuthenticatedWorkspaceContextError } from '../workspaces/request/authenticated-context-error.js';
-import { InvalidConnectionCursorError } from './cursor.js';
+} from '../../platform/http/index.js';
+import { AuthorizationError } from '../../authorization/index.js';
+import { InvalidAuthenticatedWorkspaceContextError } from '../../workspaces/request/authenticated-context-error.js';
+import { InvalidConnectionCursorError } from '../../connections/cursor.js';
 
 export function mapConnectionError(error: unknown): ApplicationError {
   if (error instanceof InvalidAuthenticatedWorkspaceContextError)
