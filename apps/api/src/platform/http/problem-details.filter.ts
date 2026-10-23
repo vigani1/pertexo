@@ -200,12 +200,7 @@ function fromApplicationError(error: ApplicationError): NormalizedProblem {
     entry.exposeDetail && error.safeDetail !== undefined
       ? text(error.safeDetail, 2_000)
       : undefined;
-  const issues =
-    error.code === 'workflow.invalid' || error.code === 'form.invalid'
-      ? safeApplicationIssues(error.details?.issues)
-      : error.code === 'request.invalid' && isRequestBodyError(error.cause)
-        ? zodIssues(error.cause)
-        : undefined;
+  const issues = applicationProblemIssues(error);
   const base = {
     code: error.code,
     status: entry.status,
@@ -538,4 +533,14 @@ export class ProblemDetailsFilter implements ExceptionFilter {
 
     writeProblem(response, normalized.status, problem);
   }
+}
+
+function applicationProblemIssues(
+  error: ApplicationError,
+): readonly ProblemIssue[] | undefined {
+  if (error.code === 'workflow.invalid' || error.code === 'form.invalid')
+    return safeApplicationIssues(error.details?.issues);
+  if (error.code === 'request.invalid' && isRequestBodyError(error.cause))
+    return zodIssues(error.cause);
+  return undefined;
 }

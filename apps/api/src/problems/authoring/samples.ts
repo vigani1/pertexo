@@ -21,12 +21,15 @@ const messages: Readonly<Record<WorkflowStepSampleError['reason'], string>> = {
     'This draft step no longer exists or its ID is ambiguous. Refresh the draft.',
 };
 export function sampleApplicationError(error: WorkflowStepSampleError) {
-  return applicationError(
-    error.reason === 'limit_reached'
-      ? 'workflow.sample_limit'
-      : error.reason === 'file_output' || error.reason === 'value_invalid'
-        ? 'workflow.sample_invalid'
-        : 'workflow.sample_conflict',
-    { safeDetail: messages[error.reason], details: { reason: error.reason } },
-  );
+  return applicationError(sampleProblemCode(error.reason), {
+    safeDetail: messages[error.reason],
+    details: { reason: error.reason },
+  });
+}
+
+function sampleProblemCode(reason: WorkflowStepSampleError['reason']) {
+  if (reason === 'limit_reached') return 'workflow.sample_limit';
+  if (reason === 'file_output' || reason === 'value_invalid')
+    return 'workflow.sample_invalid';
+  return 'workflow.sample_conflict';
 }

@@ -1,3 +1,4 @@
+import type { OrganizationIdentity } from '../protocol/identity.js';
 import { randomUUID } from 'node:crypto';
 import type { Pool } from 'pg';
 import {
@@ -240,26 +241,26 @@ export class OrganizationSignIn {
       }
       if (testing && protocol === 'saml')
         ownerSessionId = attempt.ownerSessionId ?? undefined;
-      const identity =
-        attempt.provider.kind === 'oidc'
-          ? await this.input.gateway?.verify(
-              attempt.provider,
-              this.proof(attempt.id, attempt.provider.id, state, browser),
-              url,
-            )
-          : callback.samlResponse === undefined
-            ? undefined
-            : await this.input.samlGateway?.verify(
-                attempt.provider,
-                this.samlProof(
-                  attempt.id,
-                  attempt.provider,
-                  state,
-                  browser,
-                  attempt.createdAt,
-                ),
-                callback.samlResponse,
-              );
+      let identity: OrganizationIdentity | undefined;
+      if (attempt.provider.kind === 'oidc') {
+        identity = await this.input.gateway?.verify(
+          attempt.provider,
+          this.proof(attempt.id, attempt.provider.id, state, browser),
+          url,
+        );
+      } else if (callback.samlResponse !== undefined) {
+        identity = await this.input.samlGateway?.verify(
+          attempt.provider,
+          this.samlProof(
+            attempt.id,
+            attempt.provider,
+            state,
+            browser,
+            attempt.createdAt,
+          ),
+          callback.samlResponse,
+        );
+      }
       if (identity === undefined) return this.failed(destination, testing);
       const result = await this.commands.complete({
         attemptId: attempt.id,

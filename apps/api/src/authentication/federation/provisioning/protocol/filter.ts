@@ -6,6 +6,32 @@ import {
 
 /** Budget the source before invoking the parser, then its linear AST before walking it. */
 export function parseDirectoryFilter(source: string): Filter {
+  assertFilterSource(source);
+  try {
+    const ast = parse(source),
+      pending: { node: Filter; depth: number }[] = [{ node: ast, depth: 0 }];
+    let nodes = 0;
+    while (pending.length > 0) {
+      const next = pending.pop();
+      if (next === undefined) break;
+      if (
+        ++nodes > DIRECTORY_LIMITS.filterNodes ||
+        next.depth > DIRECTORY_LIMITS.filterDepth
+      )
+        throw new DirectoryError('invalid_filter');
+      const { node } = next;
+      const children = filterChildren(node);
+      pending.push(
+        ...children.map((child) => ({ node: child, depth: next.depth + 1 })),
+      );
+    }
+    return ast;
+  } catch {
+    throw new DirectoryError('invalid_filter');
+  }
+}
+
+function assertFilterSource(source: string): void {
   if (source.length > DIRECTORY_LIMITS.filterCharacters)
     throw new DirectoryError('invalid_filter');
   let quoted = false,
@@ -31,33 +57,18 @@ export function parseDirectoryFilter(source: string): Filter {
       throw new DirectoryError('invalid_filter');
   }
   if (quoted || depth !== 0) throw new DirectoryError('invalid_filter');
-  try {
-    const ast = parse(source),
-      pending: { node: Filter; depth: number }[] = [{ node: ast, depth: 0 }];
-    let nodes = 0;
-    while (pending.length > 0) {
-      const next = pending.pop();
-      if (next === undefined) break;
-      if (
-        ++nodes > DIRECTORY_LIMITS.filterNodes ||
-        next.depth > DIRECTORY_LIMITS.filterDepth
-      )
-        throw new DirectoryError('invalid_filter');
-      const { node } = next;
-      const children =
-        node.op === 'and' || node.op === 'or'
-          ? node.filters
-          : node.op === 'not'
-            ? [node.filter]
-            : node.op === '[]'
-              ? [node.valFilter]
-              : [];
-      pending.push(
-        ...children.map((child) => ({ node: child, depth: next.depth + 1 })),
-      );
-    }
-    return ast;
-  } catch {
-    throw new DirectoryError('invalid_filter');
+}
+
+function filterChildren(node: Filter): readonly Filter[] {
+  switch (node.op) {
+    case 'and':
+    case 'or':
+      return node.filters;
+    case 'not':
+      return [node.filter];
+    case '[]':
+      return [node.valFilter];
+    default:
+      return [];
   }
 }

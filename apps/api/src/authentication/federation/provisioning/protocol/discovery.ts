@@ -69,13 +69,13 @@ export function directoryDiscovery(path: string, base: string): unknown {
               ? attribute
               : {
                   ...attribute,
-                  subAttributes: attribute.subAttributes?.map((child) =>
-                    child.name === 'type'
-                      ? { ...child, canonicalValues: ['User'] }
-                      : child.name === '$ref'
-                        ? { ...child, referenceTypes: ['User'] }
-                        : child,
-                  ),
+                  subAttributes: attribute.subAttributes?.map((child) => {
+                    if (child.name === 'type')
+                      return { ...child, canonicalValues: ['User'] };
+                    if (child.name === '$ref')
+                      return { ...child, referenceTypes: ['User'] };
+                    return child;
+                  }),
                 },
           ),
       };

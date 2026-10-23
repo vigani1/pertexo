@@ -170,11 +170,7 @@ export function createAutomationHttpClient(
             );
           throw cause;
         }
-        const message = input.signal.aborted
-          ? 'Command interrupted.'
-          : deadline.aborted
-            ? 'The API request timed out.'
-            : 'The API could not be reached, or refused a redirect.';
+        const message = transportFailureMessage(input.signal, deadline);
         throw new AutomationCommandError(
           'cli.transport_failure',
           message,
@@ -184,4 +180,13 @@ export function createAutomationHttpClient(
       }
     },
   };
+}
+
+function transportFailureMessage(
+  signal: AbortSignal,
+  deadline: AbortSignal,
+): string {
+  if (signal.aborted) return 'Command interrupted.';
+  if (deadline.aborted) return 'The API request timed out.';
+  return 'The API could not be reached, or refused a redirect.';
 }

@@ -102,16 +102,17 @@ export function createTrustedSessionPlugin(
               throw authenticationChangedError();
             }
             if (created === null) return;
-            const purpose =
-              context.path === '/two-factor/verify-backup-code'
-                ? 'recovery_code_sign_in'
-                : context.path === '/two-factor/disable' &&
-                    Reflect.get(
-                      context.context.session?.user ?? {},
-                      'twoFactorEnabled',
-                    ) === true
-                  ? 'two_factor_disabled'
-                  : undefined;
+            let purpose: AuthenticationSecurityNotice['purpose'] | undefined;
+            if (context.path === '/two-factor/verify-backup-code')
+              purpose = 'recovery_code_sign_in';
+            else if (
+              context.path === '/two-factor/disable' &&
+              Reflect.get(
+                context.context.session?.user ?? {},
+                'twoFactorEnabled',
+              ) === true
+            )
+              purpose = 'two_factor_disabled';
             if (purpose === undefined) return;
             await recordIdentitySecurityFact(
               client,
