@@ -52,6 +52,164 @@ const insertionCases = (['API', 'worker'] as const).flatMap((role) =>
 );
 
 describe('workflow concurrency review regressions', () => {
+  registerRechecksCapAfterCounterWait();
+
+  registerRestrictsReservationRebindAppRole();
+});
+
+/** Advancing a run reads its published version, so one must exist. */
+async function publishExecutableVersion(): Promise<void> {
+  await withOwner(async (client) => {
+    await client.query(
+      'alter table app.workflow_versions no force row level security',
+    );
+    await client.query(
+      `insert into app.workflow_versions (
+         id,workspace_id,workflow_id,version_number,graph_json,
+         checksum,executable_json,published_by
+       ) values ($1,$2,$3,1,'{}'::jsonb,$4,$5::jsonb,$6)
+       on conflict (id) do nothing`,
+      [
+        workflowVersionId,
+        workspaceA,
+        workflowId,
+        `wf:sha256:${'c'.repeat(64)}`,
+        JSON.stringify({ graph: { nodes: [], edges: [] } }),
+        workspaceCreatorId,
+      ],
+    );
+    await client.query(
+      'alter table app.workflow_versions force row level security',
+    );
+  });
+}
+
+function startInput(
+  event: LeasedOutboxEvent,
+  initial: Awaited<
+    ReturnType<typeof acceptRun>
+  >['request']['initialCheckpoint'],
+) {
+  return {
+    workspaceId: workspaceA,
+    runId: event.aggregateId,
+    workflowVersionId,
+    delivery: {
+      outboxEventId: event.id,
+      payloadChecksum: event.payloadChecksum,
+    },
+    signal: new AbortController().signal,
+    plan: {
+      expectedRevision: 0,
+      expectedNextEventSequence: 2,
+      consumedThroughEventSequence: 1,
+      checkpoint: {
+        ...initial,
+        revision: 1,
+        runStatus: 'running' as const,
+        nextEventSequence: 3,
+      },
+      events: [
+        {
+          sequence: 2,
+          name: 'run.started' as const,
+          occurredAt: '2026-10-01T00:00:00.000Z',
+        },
+      ],
+      nodeRunAdmissions: [],
+      attempts: [],
+    },
+  };
+}
+
+function reservations() {
+  return withOwner(
+    async (client) =>
+      (
+        await client.query<{
+          workflow_run_id: string;
+          outbox_event_id: string;
+          created_at: Date;
+          recovery_count: number;
+          workflow_concurrency_order_exempt: boolean;
+        }>(`select workflow_run_id,outbox_event_id,created_at,recovery_count::integer recovery_count,workflow_concurrency_order_exempt
+      from app.workflow_run_active_admissions order by workflow_run_id`)
+      ).rows,
+  );
+}
+
+async function deferredDelivery(runId: string, originalEventId: string) {
+  const events = await withOwner(
+    async (client) =>
+      (
+        await client.query<{ id: string; payload_checksum: string }>(
+          `select id,payload_checksum from app.outbox_events where aggregate_id=$1 and id<>$2
+      and job_name='advance-workflow-run' order by created_at`,
+          [runId, originalEventId],
+        )
+      ).rows,
+  );
+  expect(events).toHaveLength(1);
+  const event = events[0];
+  if (event === undefined)
+    throw new Error('Missing deferred transport identity');
+  return event;
+}
+
+async function withWorker<T>(operation: (client: PoolClient) => Promise<T>) {
+  const pool = new Pool({ connectionString: workerUrl(), max: 1 });
+  const client = await pool.connect();
+  try {
+    await client.query('begin');
+    await client.query("select set_config('app.workspace_id',$1,true)", [
+      workspaceA,
+    ]);
+    const result = await operation(client);
+    await client.query('commit');
+    return result;
+  } catch (error: unknown) {
+    await client.query('rollback');
+    throw error;
+  } finally {
+    client.release();
+    await pool.end();
+  }
+}
+
+async function pendingDelivery(runId: string, payloadRunId = runId) {
+  const id = randomUUID();
+  const payload = {
+    workspaceId: workspaceA,
+    outboxEventId: id,
+    runId: payloadRunId,
+  };
+  await apiDatabase.withWorkspace(workspaceA, (transaction) =>
+    insertOutboxEvent(transaction, {
+      id,
+      jobName: 'advance-workflow-run',
+      aggregateType: 'workflow-run',
+      aggregateId: runId,
+      payload,
+      payloadChecksum: canonicalOutboxPayloadChecksum(payload),
+      availableAt: new Date(),
+    }),
+  );
+  return id;
+}
+
+function rebind(runId: string, oldId: string, newId: string) {
+  return withWorker(
+    async (client) =>
+      (
+        await client.query<{ rebound: boolean }>(
+          'select app.rebind_workflow_run_active_admission($1,$2,$3,$4) rebound',
+          [workspaceA, runId, oldId, newId],
+        )
+      ).rows[0]?.rebound,
+  );
+}
+
+function registerRechecksCapAfterCounterWait(): void {
   it.each(insertionCases)(
     'rechecks cap after counter wait for $role direct $status INSERT, protocol=$protocol',
     async ({ role, status, protocol }) => {
@@ -259,7 +417,9 @@ describe('workflow concurrency review regressions', () => {
       await store.close();
     }
   });
+}
 
+function registerRestrictsReservationRebindAppRole(): void {
   it('restricts reservation rebind to the app role and installed workspace context', async () => {
     const run = await acceptRun();
     const next = await pendingDelivery(run.runId);
@@ -327,156 +487,4 @@ describe('workflow concurrency review regressions', () => {
     expect(before[0]?.outbox_event_id).toBe(recoveredEvent.id);
     expect(before[0]?.recovery_count).toBe(1);
   });
-});
-
-/** Advancing a run reads its published version, so one must exist. */
-async function publishExecutableVersion(): Promise<void> {
-  await withOwner(async (client) => {
-    await client.query(
-      'alter table app.workflow_versions no force row level security',
-    );
-    await client.query(
-      `insert into app.workflow_versions (
-         id,workspace_id,workflow_id,version_number,graph_json,
-         checksum,executable_json,published_by
-       ) values ($1,$2,$3,1,'{}'::jsonb,$4,$5::jsonb,$6)
-       on conflict (id) do nothing`,
-      [
-        workflowVersionId,
-        workspaceA,
-        workflowId,
-        `wf:sha256:${'c'.repeat(64)}`,
-        JSON.stringify({ graph: { nodes: [], edges: [] } }),
-        workspaceCreatorId,
-      ],
-    );
-    await client.query(
-      'alter table app.workflow_versions force row level security',
-    );
-  });
-}
-
-function startInput(
-  event: LeasedOutboxEvent,
-  initial: Awaited<
-    ReturnType<typeof acceptRun>
-  >['request']['initialCheckpoint'],
-) {
-  return {
-    workspaceId: workspaceA,
-    runId: event.aggregateId,
-    workflowVersionId,
-    delivery: {
-      outboxEventId: event.id,
-      payloadChecksum: event.payloadChecksum,
-    },
-    signal: new AbortController().signal,
-    plan: {
-      expectedRevision: 0,
-      expectedNextEventSequence: 2,
-      consumedThroughEventSequence: 1,
-      checkpoint: {
-        ...initial,
-        revision: 1,
-        runStatus: 'running' as const,
-        nextEventSequence: 3,
-      },
-      events: [
-        {
-          sequence: 2,
-          name: 'run.started' as const,
-          occurredAt: '2026-10-01T00:00:00.000Z',
-        },
-      ],
-      nodeRunAdmissions: [],
-      attempts: [],
-    },
-  };
-}
-
-function reservations() {
-  return withOwner(
-    async (client) =>
-      (
-        await client.query<{
-          workflow_run_id: string;
-          outbox_event_id: string;
-          created_at: Date;
-          recovery_count: number;
-          workflow_concurrency_order_exempt: boolean;
-        }>(`select workflow_run_id,outbox_event_id,created_at,recovery_count::integer recovery_count,workflow_concurrency_order_exempt
-      from app.workflow_run_active_admissions order by workflow_run_id`)
-      ).rows,
-  );
-}
-
-async function deferredDelivery(runId: string, originalEventId: string) {
-  const events = await withOwner(
-    async (client) =>
-      (
-        await client.query<{ id: string; payload_checksum: string }>(
-          `select id,payload_checksum from app.outbox_events where aggregate_id=$1 and id<>$2
-      and job_name='advance-workflow-run' order by created_at`,
-          [runId, originalEventId],
-        )
-      ).rows,
-  );
-  expect(events).toHaveLength(1);
-  const event = events[0];
-  if (event === undefined)
-    throw new Error('Missing deferred transport identity');
-  return event;
-}
-
-async function withWorker<T>(operation: (client: PoolClient) => Promise<T>) {
-  const pool = new Pool({ connectionString: workerUrl(), max: 1 });
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    await client.query("select set_config('app.workspace_id',$1,true)", [
-      workspaceA,
-    ]);
-    const result = await operation(client);
-    await client.query('commit');
-    return result;
-  } catch (error: unknown) {
-    await client.query('rollback');
-    throw error;
-  } finally {
-    client.release();
-    await pool.end();
-  }
-}
-
-async function pendingDelivery(runId: string, payloadRunId = runId) {
-  const id = randomUUID();
-  const payload = {
-    workspaceId: workspaceA,
-    outboxEventId: id,
-    runId: payloadRunId,
-  };
-  await apiDatabase.withWorkspace(workspaceA, (transaction) =>
-    insertOutboxEvent(transaction, {
-      id,
-      jobName: 'advance-workflow-run',
-      aggregateType: 'workflow-run',
-      aggregateId: runId,
-      payload,
-      payloadChecksum: canonicalOutboxPayloadChecksum(payload),
-      availableAt: new Date(),
-    }),
-  );
-  return id;
-}
-
-function rebind(runId: string, oldId: string, newId: string) {
-  return withWorker(
-    async (client) =>
-      (
-        await client.query<{ rebound: boolean }>(
-          'select app.rebind_workflow_run_active_admission($1,$2,$3,$4) rebound',
-          [workspaceA, runId, oldId, newId],
-        )
-      ).rows[0]?.rebound,
-  );
 }

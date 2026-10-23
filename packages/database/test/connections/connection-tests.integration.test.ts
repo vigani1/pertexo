@@ -22,6 +22,20 @@ import {
 const connections = registerCurrentConnectionsFixture();
 
 describe('connection test ownership', () => {
+  registerRecordsCompletedSSetupTest();
+
+  registerDurablyOwnsMarksCompletesExactly();
+
+  registerLinearizesDispatchBeforeConcurrentCredential();
+
+  registerHoldsActorAuthorityStableUntil();
+
+  registerRejectsDispatchWithoutAuditEvidence();
+
+  registerReleasesPreDispatchFailureNever();
+});
+
+function registerRecordsCompletedSSetupTest(): void {
   it.each(['dns_failed', 'ssrf_blocked'])(
     'records a completed %s setup test without claiming provider dispatch',
     async (reason) => {
@@ -171,7 +185,9 @@ describe('connection test ownership', () => {
       expect(completed.connection).toEqual(current);
     },
   );
+}
 
+function registerDurablyOwnsMarksCompletesExactly(): void {
   it('durably owns, marks, completes, and exactly replays a safe connection test', async () => {
     const input = createInput();
     await connections.api.createConnection(input);
@@ -341,7 +357,9 @@ describe('connection test ownership', () => {
       await owner.end();
     }
   });
+}
 
+function registerLinearizesDispatchBeforeConcurrentCredential(): void {
   it.each(['rotate', 'revoke'] as const)(
     'linearizes dispatch before a concurrent credential %s and writes one marker',
     async (mutation) => {
@@ -470,7 +488,9 @@ describe('connection test ownership', () => {
     },
     15_000,
   );
+}
 
+function registerHoldsActorAuthorityStableUntil(): void {
   it('holds actor authority stable until the dispatch marker commits', async () => {
     const input = createInput();
     await connections.api.createConnection(input);
@@ -644,7 +664,9 @@ describe('connection test ownership', () => {
       }),
     ).rejects.toThrow('Connection test idempotency result is corrupt');
   });
+}
 
+function registerRejectsDispatchWithoutAuditEvidence(): void {
   it.each(['rotate', 'revoke'] as const)(
     'rejects dispatch without audit evidence when credential %s commits first',
     async (mutation) => {
@@ -714,7 +736,9 @@ describe('connection test ownership', () => {
       }
     },
   );
+}
 
+function registerReleasesPreDispatchFailureNever(): void {
   it('releases a pre-dispatch failure and never revives health after a revocation race', async () => {
     const input = createInput();
     await connections.api.createConnection(input);
@@ -920,4 +944,4 @@ describe('connection test ownership', () => {
       lastErrorCode: null,
     });
   });
-});
+}

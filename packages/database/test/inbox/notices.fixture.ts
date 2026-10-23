@@ -129,9 +129,15 @@ export async function seedFailure(workspaceId: string, workflowId: string) {
 export async function seedApproval(
   workspaceId: string,
   workflowId: string,
-  starter: string,
-  named?: string,
-  allowStarterToDecide?: boolean,
+  {
+    starter,
+    named,
+    allowStarterToDecide,
+  }: Readonly<{
+    starter: string;
+    named?: string | undefined;
+    allowStarterToDecide?: boolean | undefined;
+  }>,
 ) {
   const runId = randomUUID(),
     versionId = randomUUID(),

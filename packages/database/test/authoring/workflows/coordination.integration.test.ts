@@ -30,6 +30,16 @@ import {
 } from '../../support/workflow-authoring.js';
 
 describe('workflow authoring coordination', () => {
+  registerAllowsExactlyOneRacingCompare();
+
+  registerHoldsActorAuthorityStableUntil();
+
+  registerListsImmutableVersionsBoundedDeterministic();
+
+  registerSerializesBothSaveFirstPublish();
+});
+
+function registerAllowsExactlyOneRacingCompare(): void {
   it('allows exactly one racing compare-and-swap save', async () => {
     const results = await Promise.allSettled([
       saveCurrentDraft(authoring, {
@@ -121,7 +131,9 @@ describe('workflow authoring coordination', () => {
     );
     expect(facts[0]).toEqual({ audits: '0', revision: 1 });
   });
+}
 
+function registerHoldsActorAuthorityStableUntil(): void {
   it.each(['save', 'publish', 'lifecycle'] as const)(
     'holds actor authority stable until the %s command commits',
     async (command) => {
@@ -132,21 +144,25 @@ describe('workflow authoring coordination', () => {
         name: `Authority ${command}`,
         workspaceId,
       });
-      const hold = await holdAtWrite(
-        command === 'save'
-          ? {
-              table: 'workflow_drafts',
-              operation: 'update',
-              when: `NEW.workflow_id = '${created.workflowId}'`,
-            }
-          : command === 'publish'
-            ? publicationWrite('version', created.workflowId)
-            : {
-                table: 'workflows',
-                operation: 'update',
-                when: `NEW.id = '${created.workflowId}' and NEW.lifecycle_status is distinct from OLD.lifecycle_status`,
-              },
-      );
+      let writeBarrier: Parameters<typeof holdAtWrite>[0];
+      if (command === 'save') {
+        writeBarrier = {
+          table: 'workflow_drafts',
+          operation: 'update',
+          when: `NEW.workflow_id = '${created.workflowId}'`,
+        };
+      } else {
+        if (command === 'publish') {
+          writeBarrier = publicationWrite('version', created.workflowId);
+        } else {
+          writeBarrier = {
+            table: 'workflows',
+            operation: 'update',
+            when: `NEW.id = '${created.workflowId}' and NEW.lifecycle_status is distinct from OLD.lifecycle_status`,
+          };
+        }
+      }
+      const hold = await holdAtWrite(writeBarrier);
       const authorityApplication = `wa-${command}-${randomUUID()}`;
       const controlled = createWorkflowAuthoringDatabase(
         parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
@@ -165,40 +181,45 @@ describe('workflow authoring coordination', () => {
       let primaryError: unknown;
       let cleanupFailures: unknown[] = [];
       try {
-        operation =
-          command === 'save'
-            ? saveCurrentDraft(controlled, {
-                actorId,
-                expectedRevision: 1,
-                graphJson: {
-                  ...emptyGraph,
-                  settings: { maxRunDurationMs: 5_000 },
-                },
-                workflowId: created.workflowId,
+        if (command === 'save') {
+          operation = saveCurrentDraft(controlled, {
+            actorId,
+            expectedRevision: 1,
+            graphJson: {
+              ...emptyGraph,
+              settings: { maxRunDurationMs: 5_000 },
+            },
+            workflowId: created.workflowId,
+            workspaceId,
+          });
+        } else {
+          if (command === 'publish') {
+            operation = controlled.publishWorkflow({
+              actorId,
+              representationTag: await currentRepresentationTag(
+                controlled,
                 workspaceId,
-              })
-            : command === 'publish'
-              ? controlled.publishWorkflow({
-                  actorId,
-                  representationTag: await currentRepresentationTag(
-                    controlled,
-                    workspaceId,
-                    created.workflowId,
-                    actorId,
-                  ),
-                  idempotencyKey: `publish-authority-${created.workflowId}`,
-                  requestHash: '9'.repeat(64),
-                  workflowId: created.workflowId,
-                  workspaceId,
-                })
-              : controlled.transitionWorkflowLifecycle({
-                  actorId,
-                  command: 'archive',
-                  expectedLifecycleRevision: 1,
-                  idempotencyKey: `archive-authority-${created.workflowId}`,
-                  workflowId: created.workflowId,
-                  workspaceId,
-                });
+                {
+                  scopedWorkflowId: created.workflowId,
+                  scopedActorId: actorId,
+                },
+              ),
+              idempotencyKey: `publish-authority-${created.workflowId}`,
+              requestHash: '9'.repeat(64),
+              workflowId: created.workflowId,
+              workspaceId,
+            });
+          } else {
+            operation = controlled.transitionWorkflowLifecycle({
+              actorId,
+              command: 'archive',
+              expectedLifecycleRevision: 1,
+              idempotencyKey: `archive-authority-${created.workflowId}`,
+              workflowId: created.workflowId,
+              workspaceId,
+            });
+          }
+        }
         await waitForOperationEntry(
           hold.reached(),
           operation,
@@ -224,6 +245,16 @@ describe('workflow authoring coordination', () => {
         await authority.query('rollback');
         authorityOpen = false;
 
+        let auditAction;
+        if (command === 'save') {
+          auditAction = 'workflow.draft_saved';
+        } else {
+          if (command === 'publish') {
+            auditAction = 'workflow.published';
+          } else {
+            auditAction = 'workflow.archived';
+          }
+        }
         const facts = await queryAsOwner<{
           audits: string;
           lifecycle_revision: number;
@@ -238,14 +269,7 @@ describe('workflow authoring coordination', () => {
              from app.workflows workflow
              join app.workflow_drafts draft on draft.workflow_id=workflow.id
             where workflow.id=$1`,
-          [
-            created.workflowId,
-            command === 'save'
-              ? 'workflow.draft_saved'
-              : command === 'publish'
-                ? 'workflow.published'
-                : 'workflow.archived',
-          ],
+          [created.workflowId, auditAction],
           workspaceId,
         );
         expect(facts[0]).toMatchObject({
@@ -296,7 +320,9 @@ describe('workflow authoring coordination', () => {
     },
     15_000,
   );
+}
 
+function registerListsImmutableVersionsBoundedDeterministic(): void {
   it('lists immutable versions with a bounded deterministic cursor', async () => {
     const created = await authoring.createWorkflow({
       actorId,
@@ -323,8 +349,7 @@ describe('workflow authoring coordination', () => {
         representationTag: await currentRepresentationTag(
           authoring,
           workspaceId,
-          created.workflowId,
-          actorId,
+          { scopedWorkflowId: created.workflowId, scopedActorId: actorId },
         ),
         idempotencyKey: `publish-version-page-${String(index + 1)}`,
         requestHash: createHash('sha256')
@@ -403,7 +428,9 @@ describe('workflow authoring coordination', () => {
       }),
     ).rejects.toThrow('Workflow is not visible');
   });
+}
 
+function registerSerializesBothSaveFirstPublish(): void {
   it('serializes both save-first and publish-first lock orders without graph skew', async () => {
     const saveFirstPublisherApplication = `workflow-save-first-${workflowId}`;
     const saveFirstDraft = await authoring.createWorkflow({
@@ -421,8 +448,7 @@ describe('workflow authoring coordination', () => {
     const saveFirstTag = await currentRepresentationTag(
       authoring,
       workspaceId,
-      saveFirstDraft.workflowId,
-      actorId,
+      { scopedWorkflowId: saveFirstDraft.workflowId, scopedActorId: actorId },
     );
     const saveFirstDatabase = createWorkflowAuthoringDatabase(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
@@ -494,8 +520,10 @@ describe('workflow authoring coordination', () => {
     const publishFirstTag = await currentRepresentationTag(
       authoring,
       workspaceId,
-      publishFirstDraft.workflowId,
-      actorId,
+      {
+        scopedWorkflowId: publishFirstDraft.workflowId,
+        scopedActorId: actorId,
+      },
     );
     const publishFirstDatabase = createWorkflowAuthoringDatabase(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
@@ -561,4 +589,4 @@ describe('workflow authoring coordination', () => {
       release: () => void publishHold.release(),
     });
   });
-});
+}

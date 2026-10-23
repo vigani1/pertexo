@@ -37,17 +37,27 @@ function completionHarness(row: LockedIntent | undefined) {
       text: string,
       parameters?: readonly unknown[],
     ) => Promise<{ rows: readonly unknown[] }>
-  >((text) =>
-    Promise.resolve({
-      rows: text.includes('for update')
-        ? row === undefined
-          ? []
-          : [row]
-        : text.includes("set status='retry'")
-          ? [{ next_delivery_at: new Date('2026-09-11T00:00:00.000Z') }]
-          : [],
-    }),
-  );
+  >((text) => {
+    let queryRows: unknown[];
+    if (text.includes('for update')) {
+      if (row === undefined) {
+        queryRows = [];
+      } else {
+        queryRows = [row];
+      }
+    } else {
+      if (text.includes("set status='retry'")) {
+        queryRows = [
+          { next_delivery_at: new Date('2026-09-11T00:00:00.000Z') },
+        ];
+      } else {
+        queryRows = [];
+      }
+    }
+    return Promise.resolve({
+      rows: queryRows,
+    });
+  });
   tenantState.client = { query };
   return {
     complete: createFailureNotificationCompletionStore({} as Pool)
@@ -298,16 +308,21 @@ describe('failure notification completion policy', () => {
           result.kind === 'delivered' ? result.providerReference : null,
         );
         expect(insertFailureNotificationDeliveryOutbox).not.toHaveBeenCalled();
+        let factType;
+        if (expectedStatus === 'delivered') {
+          factType = 'delivered';
+        } else {
+          if (expectedStatus === 'outcome_unknown') {
+            factType = 'outcome_unknown';
+          } else {
+            factType = 'dead_lettered';
+          }
+        }
         expect(auditFailureNotification).toHaveBeenCalledWith(
           expect.anything(),
           expect.objectContaining({
             attemptNumber: row.delivery_attempts,
-            factType:
-              expectedStatus === 'delivered'
-                ? 'delivered'
-                : expectedStatus === 'outcome_unknown'
-                  ? 'outcome_unknown'
-                  : 'dead_lettered',
+            factType: factType,
             intentId,
             possiblyDispatched: expectedUnresolved,
             workspaceId,

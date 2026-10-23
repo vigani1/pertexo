@@ -17,6 +17,14 @@ import {
 const connections = registerCurrentConnectionsFixture();
 
 describe('connection persistence', () => {
+  registerIdempotentlyManagesImmutableFailureNotification();
+
+  registerEnforcesDestinationCapabilitiesActiveAuthority();
+
+  registerAdmitsExactlyOneOptimisticDestination();
+});
+
+function registerIdempotentlyManagesImmutableFailureNotification(): void {
   it('idempotently manages immutable failure-notification destinations and workflow policy', async () => {
     const connection = createInput({
       providerKey: 'email',
@@ -321,7 +329,9 @@ describe('connection persistence', () => {
       await audit.end();
     }
   });
+}
 
+function registerEnforcesDestinationCapabilitiesActiveAuthority(): void {
   it('enforces destination capabilities, active authority, and workflow visibility', async () => {
     const connection = createInput({
       providerKey: 'email',
@@ -633,7 +643,9 @@ describe('connection persistence', () => {
       await authority.end();
     }
   });
+}
 
+function registerAdmitsExactlyOneOptimisticDestination(): void {
   it('admits exactly one optimistic destination append at a version boundary', async () => {
     const connection = createInput({
       providerKey: 'email',
@@ -708,4 +720,4 @@ describe('connection persistence', () => {
       await owner.end();
     }
   });
-});
+}

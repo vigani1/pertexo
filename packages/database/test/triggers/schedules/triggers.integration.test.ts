@@ -27,12 +27,18 @@ const {
 } = schedule;
 let replaySourceRunId = '';
 
-beforeAll(async () => {
-  replaySourceRunId = await schedule.initialize();
-}, 60_000);
+beforeAll(beforeAllFixture1, 60_000);
 afterAll(schedule.close);
 
 describe('schedule trigger PostgreSQL slice', () => {
+  registerRequestsWorkerAdmitsReplayImmutable();
+
+  registerDryRunsExactlyReplaysFresh();
+
+  registerMarksClaimedPermanentScanFailure();
+});
+
+function registerRequestsWorkerAdmitsReplayImmutable(): void {
   it('requests and worker-admits a replay with immutable lineage', async () => {
     await expect(
       schedule.operator.replayRun({
@@ -234,7 +240,9 @@ describe('schedule trigger PostgreSQL slice', () => {
       });
     }
   });
+}
 
+function registerDryRunsExactlyReplaysFresh(): void {
   it('dry-runs and exactly replays a fresh operator reconciliation request', async () => {
     const dryRun = await schedule.operator.retryTriggerReconciliation({
       actorRef: 'integration-operator',
@@ -420,7 +428,9 @@ describe('schedule trigger PostgreSQL slice', () => {
       otherWorkspaceId,
     );
   });
+}
 
+function registerMarksClaimedPermanentScanFailure(): void {
   it('marks a claimed permanent scan failure degraded without advancing the occurrence', async () => {
     const failedTriggerId = randomUUID();
     const fingerprint = `trigger:sha256:${createHash('sha256').update(failedTriggerId).digest('hex')}`;
@@ -635,4 +645,8 @@ describe('schedule trigger PostgreSQL slice', () => {
       has_outbox: true,
     });
   });
-});
+}
+
+async function beforeAllFixture1() {
+  replaySourceRunId = await schedule.initialize();
+}

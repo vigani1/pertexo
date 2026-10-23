@@ -109,49 +109,112 @@ async function findActiveAuthenticationSession(token: string) {
   }
 }
 
-beforeAll(async () => {
-  await fixture.create();
-  await migrateDatabase(migrationConfig);
-  identityDatabase = createIdentityWorkspaceDatabase(
-    parseDatabaseConfig({ connectionString: apiUrl, max: 3 }),
-  );
-  identityResources.push(identityDatabase);
-  tenantDatabase = createWorkspaceDatabase(
-    parseDatabaseConfig({ connectionString: apiUrl, max: 3 }),
-  );
-  identityResources.push(tenantDatabase);
-  const user = await identityDatabase.createUser({
-    id: '00000000-0000-4000-8000-000000000001',
-    email: `${randomUUID()}@example.test`,
-    displayName: 'Phase One Owner',
-  });
-  ownerUserId = user.id;
-  const workspace = await identityDatabase.createWorkspaceWithOwner({
-    name: 'Identity Workspace',
-    slug: `identity-${randomUUID().slice(0, 12)}`,
-    ownerUserId,
-    requestId: 'request-phase1',
-  });
-  workspaceId = workspace.id;
-});
+beforeAll(beforeAllFixture1);
 
-afterAll(async () => {
-  const closeResults = await Promise.allSettled(
-    identityResources.map((resource) => resource.close()),
-  );
-  const failures = closeResults.flatMap((result) =>
-    result.status === 'rejected' ? [result.reason as unknown] : [],
-  );
-  try {
-    await fixture.drop();
-  } catch (error: unknown) {
-    failures.push(error);
-  }
-  if (failures.length > 0)
-    throw new AggregateError(failures, 'Identity fixture cleanup failed');
-});
+afterAll(afterAllFixture2);
 
 describe('identity/workspace persistence', () => {
+  registerReplaysCommandReorderedNestedObject();
+
+  registerSerializesConcurrentRenamesAuthorizesAgainst();
+
+  registerListsActiveWorkspaceMembersBounded();
+
+  registerChangesExistingMemberRoleOnce();
+
+  registerSerializesSameRevisionRoleChanges();
+
+  registerRollsBackRoleSessionAudit();
+
+  registerSerializesRoleChangeBehindDeletion();
+
+  registerSerializesDuplicateWorkspaceSlugsLeaves();
+
+  registerBindsInvitationSCommandTarget();
+
+  registerAuthorizesInvitationsCurrentRolesKeeps();
+
+  registerInvalidatesReplacedBrowserBindingWithout();
+
+  registerRecoversExactCommittedReplacementRejecting();
+
+  registerReplacesSupersededResendJourneyValid();
+
+  registerReplacesTerminalSuccessorAcrossWorkspaces();
+
+  registerKeepsUnexpiredCompletedSuccessorLive();
+
+  registerSerializesReplacementClaimCleanupAcceptance();
+
+  registerAllowsOneConcurrentReplacementSame();
+
+  registerKeepsInvitationDeliveryRenderingStable();
+
+  registerExpiresSealedAttemptsBeforeReinviting();
+
+  registerRetiresEvidenceLeftBehindBy();
+
+  registerExpiresResolverSelectedInvitationSupersedes();
+
+  registerAcceptsOnceRotatesSessionsAtomically();
+
+  registerRechecksActiveUserStatusUnder();
+
+  registerSerializesAcceptanceAgainstRevocationSo();
+});
+
+function testSealedToken() {
+  return {
+    ciphertext: 'sealed-token',
+    nonce: 'nonce',
+    tag: 'tag',
+    keyVersion: 'test-v1',
+  };
+}
+
+function invitationTokenDigest(invitationId: string) {
+  return createHash('sha256').update(invitationId).digest('hex');
+}
+
+function invitationCreateCommand(
+  commandWorkspaceId: string,
+  actorUserId: string,
+  email: string,
+) {
+  return {
+    workspaceId: commandWorkspaceId,
+    actorUserId,
+    email,
+    role: 'viewer' as const,
+    idempotencyKey: randomUUID(),
+    tokenDigest: invitationTokenDigest(randomUUID()),
+    sealedToken: testSealedToken(),
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60_000),
+  };
+}
+
+async function createInvitationProofSession(userId: string): Promise<string> {
+  const pool = new Pool({ connectionString: apiUrl, max: 1 });
+  try {
+    const existing = (
+      await pool.query<{ id: string }>(
+        'select id from app.auth_sessions where user_id=$1 and expires_at>clock_timestamp() order by created_at desc,id limit 1',
+        [userId],
+      )
+    ).rows[0];
+    if (existing !== undefined) return existing.id;
+    const id = randomUUID();
+    await pool.query(
+      "insert into app.auth_sessions(id,user_id,token,expires_at) values($1,$2,$3,clock_timestamp()+interval '1 hour')",
+      [id, userId, randomUUID()],
+    );
+    return id;
+  } finally {
+    await pool.end();
+  }
+}
+
+function registerReplaysCommandReorderedNestedObject(): void {
   it('replays a command with reordered nested object keys, while changed values conflict', async () => {
     const pool = new Pool({ connectionString: apiUrl, max: 1 });
     const identity = {
@@ -363,7 +426,9 @@ describe('identity/workspace persistence', () => {
       await owner.end();
     }
   });
+}
 
+function registerSerializesConcurrentRenamesAuthorizesAgainst(): void {
   it('serializes concurrent renames and authorizes against current database state', async () => {
     const target = await identityDatabase.createWorkspaceWithOwner({
       name: 'Concurrent rename target',
@@ -545,7 +610,9 @@ describe('identity/workspace persistence', () => {
       identityDatabase.findWorkspaceAccess(ownerUserId, randomUUID()),
     ).resolves.toBeNull();
   });
+}
 
+function registerListsActiveWorkspaceMembersBounded(): void {
   it('lists active workspace members with bounded tuple pagination and rechecks member-read authorization', async () => {
     const isolatedWorkspace = await identityDatabase.createWorkspaceWithOwner({
       name: 'Member pagination',
@@ -691,7 +758,9 @@ describe('identity/workspace persistence', () => {
       ).rejects.toMatchObject({ name: 'ZodError' });
     },
   );
+}
 
+function registerChangesExistingMemberRoleOnce(): void {
   it('changes an existing member role once, revokes sessions, and replays without reapplying', async () => {
     const commandWorkspace = await identityDatabase.createWorkspaceWithOwner({
       name: 'Role command',
@@ -795,7 +864,9 @@ describe('identity/workspace persistence', () => {
       facts.filter((event) => event.action === 'workspace.member_role_changed'),
     ).toHaveLength(2);
   });
+}
 
+function registerSerializesSameRevisionRoleChanges(): void {
   it('serializes same-revision role changes and rejects stale and forbidden transitions', async () => {
     const commandWorkspace = await identityDatabase.createWorkspaceWithOwner({
       name: 'Role concurrency',
@@ -971,7 +1042,9 @@ describe('identity/workspace persistence', () => {
       }),
     ).rejects.toBeInstanceOf(WorkspaceMemberRoleCommandConflictError);
   });
+}
 
+function registerRollsBackRoleSessionAudit(): void {
   it('rolls back role, session, audit, and receipt writes when a late audit insert fails', async () => {
     const commandWorkspace = await identityDatabase.createWorkspaceWithOwner({
       name: 'Role rollback',
@@ -1149,7 +1222,9 @@ describe('identity/workspace persistence', () => {
       await blockerPool.end();
     }
   }, 15_000);
+}
 
+function registerSerializesRoleChangeBehindDeletion(): void {
   it('serializes a role change behind a deletion request', async () => {
     const commandWorkspace = await identityDatabase.createWorkspaceWithOwner({
       name: 'Role lifecycle lock',
@@ -1333,7 +1408,9 @@ describe('identity/workspace persistence', () => {
       ),
     ).rejects.toSatisfy((error: unknown) => pgCode(error) === '42501');
   });
+}
 
+function registerSerializesDuplicateWorkspaceSlugsLeaves(): void {
   it('serializes duplicate workspace slugs and leaves one complete aggregate', async () => {
     const slug = `concurrent-${randomUUID().slice(0, 12)}`;
     const outcomes = await Promise.allSettled([
@@ -1510,7 +1587,9 @@ describe('identity/workspace persistence', () => {
       }),
     ).rejects.toThrow('Unsafe audit metadata key');
   });
+}
 
+function registerBindsInvitationSCommandTarget(): void {
   it.each(['resend', 'revoke'] as const)(
     'binds an invitation %s command to its target',
     async (operation) => {
@@ -1687,7 +1766,9 @@ describe('identity/workspace persistence', () => {
       [],
     );
   });
+}
 
+function registerAuthorizesInvitationsCurrentRolesKeeps(): void {
   it('authorizes invitations from current roles and keeps workspace rows isolated', async () => {
     const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(
       {
@@ -1844,7 +1925,9 @@ describe('identity/workspace persistence', () => {
       ),
     ).resolves.toMatchObject({ status: 'superseded', invitationRevision: 1 });
   });
+}
 
+function registerInvalidatesReplacedBrowserBindingWithout(): void {
   it('invalidates a replaced browser binding without revoking the invitation', async () => {
     const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(
       {
@@ -1930,7 +2013,9 @@ describe('identity/workspace persistence', () => {
       invitations.items.find((item) => item.id === created.invitation.id),
     ).toMatchObject({ status: 'pending' });
   });
+}
 
+function registerRecoversExactCommittedReplacementRejecting(): void {
   it('recovers the exact committed replacement while rejecting a competing journey', async () => {
     const priorWorkspace = await identityDatabase.createWorkspaceWithOwner({
       name: 'Resolver recovery prior',
@@ -2088,7 +2173,9 @@ describe('identity/workspace persistence', () => {
       status: 'pending',
     });
   });
+}
 
+function registerReplacesSupersededResendJourneyValid(): void {
   it('replaces a superseded resend journey with the valid new generation', async () => {
     const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(
       {
@@ -2290,7 +2377,9 @@ describe('identity/workspace persistence', () => {
       ),
     ).resolves.toBeNull();
   });
+}
 
+function registerReplacesTerminalSuccessorAcrossWorkspaces(): void {
   it('replaces a terminal successor across workspaces without exposing its tenant row', async () => {
     const priorWorkspace = await identityDatabase.createWorkspaceWithOwner({
       name: 'Cross-workspace prior',
@@ -2508,7 +2597,9 @@ describe('identity/workspace persistence', () => {
       },
     );
   });
+}
 
+function registerKeepsUnexpiredCompletedSuccessorLive(): void {
   it('keeps an unexpired completed successor live against a stale ancestor replacement', async () => {
     const priorWorkspace = await identityDatabase.createWorkspaceWithOwner({
       name: 'Completed lineage prior',
@@ -2620,7 +2711,9 @@ describe('identity/workspace persistence', () => {
       status: 'completed',
     });
   });
+}
 
+function registerSerializesReplacementClaimCleanupAcceptance(): void {
   it('serializes replacement-claim cleanup with acceptance without duplicating durable effects', async () => {
     const recipient = await identityDatabase.createUser({
       email: `${randomUUID()}@example.test`,
@@ -2812,7 +2905,9 @@ describe('identity/workspace persistence', () => {
       invitationId: validInvitation.invitation.id,
     });
   });
+}
 
+function registerAllowsOneConcurrentReplacementSame(): void {
   it('allows only one concurrent replacement of the same browser binding and rolls back failed replacement', async () => {
     const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(
       {
@@ -2971,7 +3066,9 @@ describe('identity/workspace persistence', () => {
       },
     );
   });
+}
 
+function registerKeepsInvitationDeliveryRenderingStable(): void {
   it('keeps invitation delivery rendering stable across a workspace rename', async () => {
     const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(
       {
@@ -3153,7 +3250,9 @@ describe('identity/workspace persistence', () => {
       await delivery.close();
     }
   });
+}
 
+function registerExpiresSealedAttemptsBeforeReinviting(): void {
   it('expires sealed attempts before reinviting the same normalized recipient', async () => {
     const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(
       {
@@ -3332,7 +3431,9 @@ describe('identity/workspace persistence', () => {
       );
     }
   });
+}
 
+function registerRetiresEvidenceLeftBehindBy(): void {
   it('retires evidence left behind by an already-expired invitation, including verified and wrong-account journeys', async () => {
     const workspace = await identityDatabase.createWorkspaceWithOwner({
       name: 'Prior invitation expiry',
@@ -3493,7 +3594,9 @@ describe('identity/workspace persistence', () => {
       ]);
     });
   });
+}
 
+function registerExpiresResolverSelectedInvitationSupersedes(): void {
   it('expires a resolver-selected invitation and supersedes its open journey', async () => {
     const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(
       {
@@ -3571,7 +3674,9 @@ describe('identity/workspace persistence', () => {
       },
     );
   });
+}
 
+function registerAcceptsOnceRotatesSessionsAtomically(): void {
   it('accepts once, rotates sessions atomically, and replays the historical receipt', async () => {
     const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(
       {
@@ -3719,7 +3824,9 @@ describe('identity/workspace persistence', () => {
       },
     );
   });
+}
 
+function registerRechecksActiveUserStatusUnder(): void {
   it('rechecks active user status under the acceptance transaction lock', async () => {
     const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(
       {
@@ -3903,7 +4010,9 @@ describe('identity/workspace persistence', () => {
       findActiveAuthenticationSession(sessionToken),
     ).resolves.toMatchObject({ user_id: recipient.id });
   });
+}
 
+function registerSerializesAcceptanceAgainstRevocationSo(): void {
   it('serializes acceptance against revocation so exactly one lifecycle command wins', async () => {
     const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(
       {
@@ -3991,55 +4100,46 @@ describe('identity/workspace persistence', () => {
           invitation?.status === 'accepted'),
     ).toBe(true);
   });
-});
-
-function testSealedToken() {
-  return {
-    ciphertext: 'sealed-token',
-    nonce: 'nonce',
-    tag: 'tag',
-    keyVersion: 'test-v1',
-  };
 }
 
-function invitationTokenDigest(invitationId: string) {
-  return createHash('sha256').update(invitationId).digest('hex');
+async function beforeAllFixture1() {
+  await fixture.create();
+  await migrateDatabase(migrationConfig);
+  identityDatabase = createIdentityWorkspaceDatabase(
+    parseDatabaseConfig({ connectionString: apiUrl, max: 3 }),
+  );
+  identityResources.push(identityDatabase);
+  tenantDatabase = createWorkspaceDatabase(
+    parseDatabaseConfig({ connectionString: apiUrl, max: 3 }),
+  );
+  identityResources.push(tenantDatabase);
+  const user = await identityDatabase.createUser({
+    id: '00000000-0000-4000-8000-000000000001',
+    email: `${randomUUID()}@example.test`,
+    displayName: 'Phase One Owner',
+  });
+  ownerUserId = user.id;
+  const workspace = await identityDatabase.createWorkspaceWithOwner({
+    name: 'Identity Workspace',
+    slug: `identity-${randomUUID().slice(0, 12)}`,
+    ownerUserId,
+    requestId: 'request-phase1',
+  });
+  workspaceId = workspace.id;
 }
 
-function invitationCreateCommand(
-  commandWorkspaceId: string,
-  actorUserId: string,
-  email: string,
-) {
-  return {
-    workspaceId: commandWorkspaceId,
-    actorUserId,
-    email,
-    role: 'viewer' as const,
-    idempotencyKey: randomUUID(),
-    tokenDigest: invitationTokenDigest(randomUUID()),
-    sealedToken: testSealedToken(),
-    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60_000),
-  };
-}
-
-async function createInvitationProofSession(userId: string): Promise<string> {
-  const pool = new Pool({ connectionString: apiUrl, max: 1 });
+async function afterAllFixture2() {
+  const closeResults = await Promise.allSettled(
+    identityResources.map((resource) => resource.close()),
+  );
+  const failures = closeResults.flatMap((result) =>
+    result.status === 'rejected' ? [result.reason as unknown] : [],
+  );
   try {
-    const existing = (
-      await pool.query<{ id: string }>(
-        'select id from app.auth_sessions where user_id=$1 and expires_at>clock_timestamp() order by created_at desc,id limit 1',
-        [userId],
-      )
-    ).rows[0];
-    if (existing !== undefined) return existing.id;
-    const id = randomUUID();
-    await pool.query(
-      "insert into app.auth_sessions(id,user_id,token,expires_at) values($1,$2,$3,clock_timestamp()+interval '1 hour')",
-      [id, userId, randomUUID()],
-    );
-    return id;
-  } finally {
-    await pool.end();
+    await fixture.drop();
+  } catch (error: unknown) {
+    failures.push(error);
   }
+  if (failures.length > 0)
+    throw new AggregateError(failures, 'Identity fixture cleanup failed');
 }

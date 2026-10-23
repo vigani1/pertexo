@@ -84,10 +84,16 @@ async function publish(id: string, value: WorkflowGraph, ws = workspaceId) {
     workspaceId: ws,
     workflowId: id,
     expectedRevision: current.revision,
-    representationTag: await currentRepresentationTag(database, ws, id, author),
+    representationTag: await currentRepresentationTag(database, ws, {
+      scopedWorkflowId: id,
+      scopedActorId: author,
+    }),
     graphJson: value,
   });
-  const tag = await currentRepresentationTag(database, ws, id, author);
+  const tag = await currentRepresentationTag(database, ws, {
+    scopedWorkflowId: id,
+    scopedActorId: author,
+  });
   return database.publishWorkflow({
     actorId: author,
     workspaceId: ws,

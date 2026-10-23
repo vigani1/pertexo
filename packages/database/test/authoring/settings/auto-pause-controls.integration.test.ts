@@ -50,47 +50,14 @@ let fold: ReturnType<typeof createWorkflowTriggerPauseFoldStore>;
 let admin: Pool;
 let api: Pool;
 let worker: Pool;
-beforeAll(async () => {
-  await fixture.create();
-  await migrateDatabase({
-    connectionString: migrationUrl,
-    ownerRole: 'pertexo_owner',
-    appRole: 'pertexo_app',
-    maintenanceRole: 'pertexo_maintenance',
-  });
-  identity = createIdentityWorkspaceDatabase(
-    parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
-  );
-  authoring = createWorkflowAuthoringDatabase(
-    parseDatabaseConfig({ connectionString: apiUrl, max: 6 }),
-    { executableCompiler: testExecutableCompiler },
-  );
-  fold = createWorkflowTriggerPauseFoldStore(
-    parseDatabaseConfig({ connectionString: workerUrl, max: 6 }),
-  );
-  admin = new Pool({ connectionString: fixture.databaseUrl(adminUrl), max: 4 });
-  api = new Pool({ connectionString: apiUrl, max: 2 });
-  worker = new Pool({ connectionString: workerUrl, max: 2 });
-}, 60_000);
+beforeAll(beforeAllFixture1, 60_000);
 function closeStore(store: { close(): Promise<void> } | undefined) {
   return store?.close();
 }
 function closePool(pool: Pool | undefined) {
   return pool?.end();
 }
-afterAll(async () => {
-  const results = await Promise.allSettled([
-    closeStore(identity),
-    closeStore(authoring),
-    closeStore(fold),
-    closePool(admin),
-    closePool(api),
-    closePool(worker),
-  ]);
-  await fixture.drop();
-  const failure = results.find((result) => result.status === 'rejected');
-  if (failure?.status === 'rejected') throw failure.reason;
-});
+afterAll(afterAllFixture2);
 const controls = () => {
   const result = authoring.autoPause;
   if (result === undefined) throw new Error('Missing controls');
@@ -207,6 +174,14 @@ async function waitForBlocked(pid: number) {
   throw new Error('Expected database lock waiter');
 }
 describe('workflow auto pause operational controls', () => {
+  registerReadsDefaultsChangesIndependentlyVersioned();
+
+  registerSerializesBlockedEvaluatorResumeSkips();
+
+  registerRollsBackPauseStreakAudit();
+});
+
+function registerReadsDefaultsChangesIndependentlyVersioned(): void {
   it('reads defaults, changes independently versioned settings and makes exact retries/no-ops durable', async () => {
     const scope = await seed();
     const initial = await controls().readWorkflowSettings(scope);
@@ -265,6 +240,7 @@ describe('workflow auto pause operational controls', () => {
       )?.lifecycleRevision,
     ).toBe(1);
   });
+
   it('resumes atomically, discards old pending outcomes, counts new endings and replays the accepted snapshot', async () => {
     const scope = await seed();
     await pause(scope);
@@ -302,6 +278,7 @@ describe('workflow auto pause operational controls', () => {
     ).rejects.toMatchObject({ currentRevision: '4' });
     expect(await auditCount(scope, 'workflow.triggers_resumed')).toBe(1);
   });
+
   it('keeps a non-paused resume a no-op even with a live streak, and preserves bigint revisions', async () => {
     const scope = await seed();
     await outcome(scope);
@@ -340,6 +317,7 @@ describe('workflow auto pause operational controls', () => {
       )?.lifecycleStatus,
     ).toBe('archived');
   });
+
   it('uses workspace:manage owner-only while readers and workflow editors have their own scopes', async () => {
     const scope = await seed();
     for (const role of ['admin', 'builder', 'operator', 'viewer'] as const) {
@@ -400,6 +378,9 @@ describe('workflow auto pause operational controls', () => {
       (await controls().readWorkflowSettings(scope)).workspaceThreshold,
     ).toBe(4);
   });
+}
+
+function registerSerializesBlockedEvaluatorResumeSkips(): void {
   it('serializes a blocked evaluator with resume and skips its pre-resume candidates', async () => {
     const scope = await seed();
     await pause(scope);
@@ -456,6 +437,7 @@ describe('workflow auto pause operational controls', () => {
       blocker.release();
     }
   });
+
   it('rejects malformed and stale resume revisions', async () => {
     const scope = await seed();
     await expect(
@@ -480,6 +462,7 @@ describe('workflow auto pause operational controls', () => {
       }),
     ).rejects.toBeInstanceOf(WorkflowPauseRevisionConflictError);
   });
+
   it('excludes an old ending committed after resume without blocking its producer FK lock', async () => {
     const scope = await seed();
     await pause(scope);
@@ -515,6 +498,7 @@ describe('workflow auto pause operational controls', () => {
       producer.release();
     }
   });
+
   it('rechecks opt-out and lifecycle after waiting for concurrent commands', async () => {
     for (const change of ['opt_out', 'archive'] as const) {
       const scope = await seed();
@@ -556,6 +540,7 @@ describe('workflow auto pause operational controls', () => {
       }
     }
   });
+
   it('takes the workspace lock before actor locks and rejects a concurrent workspace suspension', async () => {
     for (const suspend of [false, true]) {
       const scope = await seed();
@@ -605,6 +590,9 @@ describe('workflow auto pause operational controls', () => {
       }
     }
   });
+}
+
+function registerRollsBackPauseStreakAudit(): void {
   it('rolls back pause, streak, audit and receipt together when the audit insert fails', async () => {
     const scope = await seed();
     await pause(scope);
@@ -636,6 +624,7 @@ describe('workflow auto pause operational controls', () => {
     expect(await failures(scope)).toBe(0);
     expect(await pausePeriodCount(scope)).toBe(1);
   });
+
   it('removes completed expired control receipts through retention', async () => {
     const scope = await seed();
     const command = {
@@ -665,4 +654,41 @@ describe('workflow auto pause operational controls', () => {
       controls().updateWorkflowSettings(command),
     ).rejects.toBeInstanceOf(WorkflowAutoPauseSettingsRevisionConflictError);
   });
-});
+}
+
+async function beforeAllFixture1() {
+  await fixture.create();
+  await migrateDatabase({
+    connectionString: migrationUrl,
+    ownerRole: 'pertexo_owner',
+    appRole: 'pertexo_app',
+    maintenanceRole: 'pertexo_maintenance',
+  });
+  identity = createIdentityWorkspaceDatabase(
+    parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
+  );
+  authoring = createWorkflowAuthoringDatabase(
+    parseDatabaseConfig({ connectionString: apiUrl, max: 6 }),
+    { executableCompiler: testExecutableCompiler },
+  );
+  fold = createWorkflowTriggerPauseFoldStore(
+    parseDatabaseConfig({ connectionString: workerUrl, max: 6 }),
+  );
+  admin = new Pool({ connectionString: fixture.databaseUrl(adminUrl), max: 4 });
+  api = new Pool({ connectionString: apiUrl, max: 2 });
+  worker = new Pool({ connectionString: workerUrl, max: 2 });
+}
+
+async function afterAllFixture2() {
+  const results = await Promise.allSettled([
+    closeStore(identity),
+    closeStore(authoring),
+    closeStore(fold),
+    closePool(admin),
+    closePool(api),
+    closePool(worker),
+  ]);
+  await fixture.drop();
+  const failure = results.find((result) => result.status === 'rejected');
+  if (failure?.status === 'rejected') throw failure.reason;
+}

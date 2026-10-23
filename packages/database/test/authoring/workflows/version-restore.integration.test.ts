@@ -62,12 +62,10 @@ async function createRestoreFixture(
   });
   const first = await database.publishWorkflow({
     actorId,
-    representationTag: await currentRepresentationTag(
-      database,
-      workspaceId,
-      created.workflowId,
-      actorId,
-    ),
+    representationTag: await currentRepresentationTag(database, workspaceId, {
+      scopedWorkflowId: created.workflowId,
+      scopedActorId: actorId,
+    }),
     idempotencyKey: `restore-publish-first-${name}`,
     requestHash: '1'.repeat(64),
     workflowId: created.workflowId,
@@ -83,12 +81,10 @@ async function createRestoreFixture(
   });
   const second = await database.publishWorkflow({
     actorId,
-    representationTag: await currentRepresentationTag(
-      database,
-      workspaceId,
-      created.workflowId,
-      actorId,
-    ),
+    representationTag: await currentRepresentationTag(database, workspaceId, {
+      scopedWorkflowId: created.workflowId,
+      scopedActorId: actorId,
+    }),
     idempotencyKey: `restore-publish-second-${name}`,
     requestHash: '2'.repeat(64),
     workflowId: created.workflowId,
@@ -119,12 +115,10 @@ async function restoreInput(
     actorId,
     representationTag:
       representationTag ??
-      (await currentRepresentationTag(
-        database,
-        workspaceId,
-        fixture.workflowId,
-        actorId,
-      )),
+      (await currentRepresentationTag(database, workspaceId, {
+        scopedWorkflowId: fixture.workflowId,
+        scopedActorId: actorId,
+      })),
     versionId: fixture.firstVersionId,
     workflowId: fixture.workflowId,
     workspaceId,
@@ -243,6 +237,14 @@ async function persistedRun(runId: string): Promise<string> {
 }
 
 describe('workflow version restoration persistence', () => {
+  registerCopiesExactRetainedGraphAdvances();
+
+  registerAppliesExistingPlaceabilityRuleRetained();
+
+  registerRestoresFreshTagIdenticalGraph();
+});
+
+function registerCopiesExactRetainedGraphAdvances(): void {
   it('copies the exact retained graph, advances once, audits identity, preserves history, and rejects retry', async () => {
     const fixture = await createRestoreFixture('copy-history');
     const runId = await insertSucceededRun(
@@ -251,12 +253,10 @@ describe('workflow version restoration persistence', () => {
     );
     const before = await restoreFacts(fixture.workflowId);
     const priorRun = await persistedRun(runId);
-    const tag = await currentRepresentationTag(
-      authoring,
-      workspaceId,
-      fixture.workflowId,
-      actorId,
-    );
+    const tag = await currentRepresentationTag(authoring, workspaceId, {
+      scopedWorkflowId: fixture.workflowId,
+      scopedActorId: actorId,
+    });
     const restored = await authoring.restoreWorkflowVersion({
       ...(await restoreInput(fixture, authoring, tag)),
       requestId: 'restore-request',
@@ -337,12 +337,10 @@ describe('workflow version restoration persistence', () => {
       { definitionCatalog: testDefinitionCatalog },
     );
     try {
-      const oldTag = await currentRepresentationTag(
-        authoring,
-        workspaceId,
-        fixture.workflowId,
-        actorId,
-      );
+      const oldTag = await currentRepresentationTag(authoring, workspaceId, {
+        scopedWorkflowId: fixture.workflowId,
+        scopedActorId: actorId,
+      });
       await expect(
         changedCatalog.restoreWorkflowVersion(
           await restoreInput(fixture, changedCatalog, oldTag),
@@ -375,20 +373,17 @@ describe('workflow version restoration persistence', () => {
       representationTag: await currentRepresentationTag(
         authoring,
         workspaceId,
-        sameWorkspace.workflowId,
-        actorId,
+        { scopedWorkflowId: sameWorkspace.workflowId, scopedActorId: actorId },
       ),
       idempotencyKey: 'restore-scope-other-workflow-publish',
       requestHash: '3'.repeat(64),
       workflowId: sameWorkspace.workflowId,
       workspaceId,
     });
-    const tag = await currentRepresentationTag(
-      authoring,
-      workspaceId,
-      fixture.workflowId,
-      actorId,
-    );
+    const tag = await currentRepresentationTag(authoring, workspaceId, {
+      scopedWorkflowId: fixture.workflowId,
+      scopedActorId: actorId,
+    });
     for (const sourceVersionId of [
       sameWorkspaceVersion.version.id,
       otherVersionId,
@@ -431,7 +426,9 @@ describe('workflow version restoration persistence', () => {
       }),
     ).rejects.toBeInstanceOf(WorkflowNotFoundError);
   });
+}
 
+function registerAppliesExistingPlaceabilityRuleRetained(): void {
   it('applies the existing placeability rule to retained graphs', async () => {
     const sourceAuthoring = createWorkflowAuthoringDatabase(
       parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
@@ -474,9 +471,11 @@ describe('workflow version restoration persistence', () => {
         representationTag: await currentRepresentationTag(
           sourceAuthoring,
           workspaceId,
-          created.workflowId,
-          actorId,
-          blockedDefinitionCatalog,
+          {
+            scopedWorkflowId: created.workflowId,
+            scopedActorId: actorId,
+            definitionCatalog: blockedDefinitionCatalog,
+          },
         ),
         idempotencyKey: 'restore-blocked-publish',
         requestHash: '5'.repeat(64),
@@ -497,9 +496,11 @@ describe('workflow version restoration persistence', () => {
           representationTag: await currentRepresentationTag(
             rejectingAuthoring,
             workspaceId,
-            created.workflowId,
-            actorId,
-            currentDefinitionCatalog,
+            {
+              scopedWorkflowId: created.workflowId,
+              scopedActorId: actorId,
+              definitionCatalog: currentDefinitionCatalog,
+            },
           ),
           versionId: blockedVersion.version.id,
           workflowId: created.workflowId,
@@ -560,12 +561,10 @@ describe('workflow version restoration persistence', () => {
       }),
     );
     try {
-      const tag = await currentRepresentationTag(
-        authoring,
-        workspaceId,
-        restoreFirstFixture.workflowId,
-        actorId,
-      );
+      const tag = await currentRepresentationTag(authoring, workspaceId, {
+        scopedWorkflowId: restoreFirstFixture.workflowId,
+        scopedActorId: actorId,
+      });
       const restore = restoreFirst.restoreWorkflowVersion(
         await restoreInput(restoreFirstFixture, restoreFirst, tag),
       );
@@ -617,12 +616,10 @@ describe('workflow version restoration persistence', () => {
       }),
     );
     try {
-      const tag = await currentRepresentationTag(
-        authoring,
-        workspaceId,
-        saveFirstFixture.workflowId,
-        actorId,
-      );
+      const tag = await currentRepresentationTag(authoring, workspaceId, {
+        scopedWorkflowId: saveFirstFixture.workflowId,
+        scopedActorId: actorId,
+      });
       const save = saveCurrentDraft(saveFirst, {
         actorId,
         expectedRevision: 3,
@@ -651,7 +648,9 @@ describe('workflow version restoration persistence', () => {
       await saveHold.remove();
     }
   });
+}
 
+function registerRestoresFreshTagIdenticalGraph(): void {
   it('restores a fresh tag for an identical graph', async () => {
     const created = await authoring.createWorkflow({
       actorId,
@@ -665,20 +664,17 @@ describe('workflow version restoration persistence', () => {
       representationTag: await currentRepresentationTag(
         authoring,
         workspaceId,
-        created.workflowId,
-        actorId,
+        { scopedWorkflowId: created.workflowId, scopedActorId: actorId },
       ),
       idempotencyKey: 'restore-identical-publish',
       requestHash: '4'.repeat(64),
       workflowId: created.workflowId,
       workspaceId,
     });
-    const tag = await currentRepresentationTag(
-      authoring,
-      workspaceId,
-      created.workflowId,
-      actorId,
-    );
+    const tag = await currentRepresentationTag(authoring, workspaceId, {
+      scopedWorkflowId: created.workflowId,
+      scopedActorId: actorId,
+    });
     await expect(
       authoring.restoreWorkflowVersion({
         actorId,
@@ -689,4 +685,4 @@ describe('workflow version restoration persistence', () => {
       }),
     ).resolves.toMatchObject({ revision: 2, graphJson: emptyGraph });
   });
-});
+}

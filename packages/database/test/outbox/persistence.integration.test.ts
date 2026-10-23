@@ -68,6 +68,20 @@ beforeEach(transport.reset);
 afterAll(transport.close);
 
 describe('transactional outbox persistence', () => {
+  registerInsertsTransactionScopeHidesRow();
+
+  registerRecoversAtomicInboxOutcomeAfter();
+
+  registerClaimsBoundedDisjointBatchesChanges();
+
+  registerKeepsDisabledJobKindsDurable();
+
+  registerAllowsDispatcherLifecycleMutationsBut();
+
+  registerRedispatchesOneFailedRowWithout();
+});
+
+function registerInsertsTransactionScopeHidesRow(): void {
   it('inserts with transaction scope and hides the row from another workspace', async () => {
     const input = outboxInput();
     await apiDatabase.withWorkspace(workspaceA, async (transaction) => {
@@ -153,13 +167,12 @@ describe('transactional outbox persistence', () => {
         ),
       ),
     ).resolves.toHaveLength(operationPopulation);
-    recordQ11Operation(
-      'foreground-acceptance',
-      operationStartedAt,
-      operationPopulation,
-      'concurrent real-role acceptance transactions through durable commit',
-      databaseIdentity,
-    );
+    recordQ11Operation('foreground-acceptance', operationStartedAt, {
+      population: operationPopulation,
+      boundary:
+        'concurrent real-role acceptance transactions through durable commit',
+      databaseIdentity: databaseIdentity,
+    });
     await apiDatabase.withWorkspace(workspaceA, async ({ db }) => {
       const acceptanceCount = await db.execute(sql`
         select count(*)::integer as count
@@ -172,7 +185,9 @@ describe('transactional outbox persistence', () => {
       expect(outboxCount).toEqual([{ count: operationPopulation }]);
     });
   });
+}
 
+function registerRecoversAtomicInboxOutcomeAfter(): void {
   it('recovers an atomic inbox outcome after the COMMIT acknowledgement is lost', async () => {
     const proxy = await createPostgresCommitAckProxy(apiUrl);
     const proxiedDatabase = createWorkspaceDatabase(
@@ -375,7 +390,9 @@ describe('transactional outbox persistence', () => {
       ]);
     });
   });
+}
 
+function registerClaimsBoundedDisjointBatchesChanges(): void {
   it('claims bounded disjoint batches and changes state only with the lease token', async () => {
     const ids: string[] = Array.from({ length: 4 }, () => randomUUID());
     await apiDatabase.withWorkspace(workspaceA, async (transaction) => {
@@ -482,7 +499,9 @@ describe('transactional outbox persistence', () => {
       dispatcher.observeBacklog({ enabledJobNames }),
     ).resolves.toEqual({ backlog: 0 });
   });
+}
 
+function registerKeepsDisabledJobKindsDurable(): void {
   it('keeps disabled job kinds durable and unattempted while enabled work is claimable', async () => {
     const enabledId = randomUUID();
     const heldId = randomUUID();
@@ -694,7 +713,9 @@ describe('transactional outbox persistence', () => {
       publishAttempts: 2,
     });
   });
+}
 
+function registerAllowsDispatcherLifecycleMutationsBut(): void {
   it('allows dispatcher lifecycle mutations but rejects immutable event rewrites', async () => {
     const input = outboxInput();
     await apiDatabase.withWorkspace(workspaceA, (transaction) =>
@@ -725,11 +746,17 @@ describe('transactional outbox persistence', () => {
         'update app.outbox_events set payload = $2::jsonb where id = $1',
         'update app.outbox_events set created_at = clock_timestamp() where id = $1',
       ]) {
-        const values = statement.includes('$2')
-          ? statement.includes('workspace_id')
-            ? [input.id, workspaceB]
-            : [input.id, JSON.stringify({ rewritten: true })]
-          : [input.id];
+        let queryValues;
+        if (statement.includes('$2')) {
+          if (statement.includes('workspace_id')) {
+            queryValues = [input.id, workspaceB];
+          } else {
+            queryValues = [input.id, JSON.stringify({ rewritten: true })];
+          }
+        } else {
+          queryValues = [input.id];
+        }
+        const values = queryValues;
         await expect(dispatcherPool.query(statement, values)).rejects.toSatisfy(
           hasPostgresCode('42501'),
         );
@@ -867,7 +894,9 @@ describe('transactional outbox persistence', () => {
     );
     expect(audits).toHaveLength(3);
   });
+}
 
+function registerRedispatchesOneFailedRowWithout(): void {
   it('redispatches one failed row without changing immutable transport identity', async () => {
     const input = outboxInput();
     await apiDatabase.withWorkspace(workspaceA, (transaction) =>
@@ -940,4 +969,4 @@ describe('transactional outbox persistence', () => {
   it('keeps the operator role function-only and on the expected migration head', async () => {
     await expect(operator.checkReadiness()).resolves.toBeUndefined();
   });
-});
+}

@@ -1,3 +1,4 @@
+import type { ConnectionTestOutcome } from '../../../src/connections/records.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { createOutboxDispatcherDatabase } from '../../../src/outbox/dispatcher/database.js';
 import type { PoolClient } from 'pg';
@@ -340,24 +341,29 @@ export async function testHealthConnection(
     });
     await api.markConnectionTestDispatched(common);
     await afterDispatch?.();
+    let testOutcome: ConnectionTestOutcome;
+    if (outcome === 'success') {
+      testOutcome = { ok: true, httpStatus: 200 };
+    } else {
+      if (outcome === 'inconclusive') {
+        testOutcome = {
+          ok: false,
+          httpStatus: null,
+          errorCode: 'connection.transport_failed',
+          reauthorizationRequired: false,
+        };
+      } else {
+        testOutcome = {
+          ok: false,
+          httpStatus: 200,
+          errorCode: 'connection.slack_token_revoked',
+          reauthorizationRequired: true,
+        };
+      }
+    }
     return api.completeConnectionTest({
       ...common,
-      outcome:
-        outcome === 'success'
-          ? { ok: true, httpStatus: 200 }
-          : outcome === 'inconclusive'
-            ? {
-                ok: false,
-                httpStatus: null,
-                errorCode: 'connection.transport_failed',
-                reauthorizationRequired: false,
-              }
-            : {
-                ok: false,
-                httpStatus: 200,
-                errorCode: 'connection.slack_token_revoked',
-                reauthorizationRequired: true,
-              },
+      outcome: testOutcome,
     });
   });
 }

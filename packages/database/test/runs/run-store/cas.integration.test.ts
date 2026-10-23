@@ -1,3 +1,4 @@
+import { requestText } from '../../support/query-text.js';
 import { Pool, type Pool as PgPool, type PoolClient } from 'pg';
 import { describe, it, expect } from 'vitest';
 
@@ -20,6 +21,14 @@ import {
 import { createDatabaseRuntime } from '../../../src/platform/pool/runtime.js';
 
 describe('Coordinator CAS and transition invariants', () => {
+  registerReplaysSafelyCommitAcknowledgementIs();
+
+  registerRollsBackAllWritesLate();
+
+  registerAtomicallyPersistsBranchScopedReady();
+});
+
+function registerReplaysSafelyCommitAcknowledgementIs(): void {
   it('replays safely when the commit acknowledgement is lost', async () => {
     const applicationName = `commit-ack-loss-${String(process.pid)}`;
     const connectionUrl = new URL(databaseUrl(workerBaseUrl));
@@ -59,15 +68,7 @@ describe('Coordinator CAS and transition invariants', () => {
         ) => unknown;
         client.query = ((...queryArguments: unknown[]): unknown => {
           const request = queryArguments[0];
-          const text =
-            typeof request === 'string'
-              ? request
-              : typeof request === 'object' &&
-                  request !== null &&
-                  'text' in request &&
-                  typeof request.text === 'string'
-                ? request.text
-                : '';
+          const text = requestText(request);
           const result = originalQuery(...queryArguments);
           if (
             loseCommitAcknowledgement &&
@@ -171,7 +172,9 @@ describe('Coordinator CAS and transition invariants', () => {
       }
     }
   });
+}
 
+function registerRollsBackAllWritesLate(): void {
   it('rolls back all writes when a late physical event membership check fails', async () => {
     const admitted = 'version-a/admitted';
     const ghost = 'version-a/ghost';
@@ -287,7 +290,9 @@ describe('Coordinator CAS and transition invariants', () => {
       revision: 0,
     });
   });
+}
 
+function registerAtomicallyPersistsBranchScopedReady(): void {
   it('atomically persists branch-scoped ready and skipped node runs', async () => {
     const selectedKey = `${versionA}|selected|b:condition%3Atrue|i:`;
     const skippedKey = `${versionA}|skipped|b:condition%3Afalse|i:`;
@@ -475,4 +480,4 @@ describe('Coordinator CAS and transition invariants', () => {
       }),
     ).resolves.toMatchObject({ kind: 'ready' });
   });
-});
+}

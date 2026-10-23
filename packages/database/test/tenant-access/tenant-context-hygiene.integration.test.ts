@@ -110,38 +110,17 @@ async function captureRejection(run: () => Promise<unknown>): Promise<unknown> {
   throw new Error('expected the transaction to reject');
 }
 
-beforeAll(async () => {
-  await fixture.create();
-  await migrateDatabase({
-    connectionString: databaseUrl(migrationBaseUrl),
-    ownerRole: 'pertexo_owner',
-    appRole: 'pertexo_app',
-    maintenanceRole: 'pertexo_maintenance',
-  });
-}, 60_000);
+beforeAll(beforeAllFixture1, 60_000);
 
-afterAll(async () => {
-  const failures: unknown[] = [];
-  try {
-    await apiPool.end();
-  } catch (error: unknown) {
-    failures.push(error);
-  }
-  try {
-    await fixture.drop();
-  } catch (error: unknown) {
-    failures.push(error);
-  }
-  try {
-    await admin.end();
-  } catch (error: unknown) {
-    failures.push(error);
-  }
-  if (failures.length > 0)
-    throw new AggregateError(failures, 'Tenant hygiene fixture cleanup failed');
-});
+afterAll(afterAllFixture2);
 
 describe('tenant-scoped transaction hygiene', () => {
+  registerRestoresActorDiscoveryBeforeSwitching();
+
+  registerDestroysPooledClientLeaksWorkspace();
+});
+
+function registerRestoresActorDiscoveryBeforeSwitching(): void {
   it('restores actor discovery before switching to a workspace, including application failure', async () => {
     await withPlatformTransaction(apiPool, async (client) => {
       const actorId = randomUUID();
@@ -350,7 +329,9 @@ describe('tenant-scoped transaction hygiene', () => {
       fresh.release();
     }
   });
+}
 
+function registerDestroysPooledClientLeaksWorkspace(): void {
   it('destroys a pooled client that leaks workspace context through the commit path', async () => {
     const workspaceId = randomUUID();
     let contaminatedBackend: number | undefined;
@@ -495,4 +476,35 @@ describe('tenant-scoped transaction hygiene', () => {
       }),
     ).resolves.toBe(workspaceId);
   });
-});
+}
+
+async function beforeAllFixture1() {
+  await fixture.create();
+  await migrateDatabase({
+    connectionString: databaseUrl(migrationBaseUrl),
+    ownerRole: 'pertexo_owner',
+    appRole: 'pertexo_app',
+    maintenanceRole: 'pertexo_maintenance',
+  });
+}
+
+async function afterAllFixture2() {
+  const failures: unknown[] = [];
+  try {
+    await apiPool.end();
+  } catch (error: unknown) {
+    failures.push(error);
+  }
+  try {
+    await fixture.drop();
+  } catch (error: unknown) {
+    failures.push(error);
+  }
+  try {
+    await admin.end();
+  } catch (error: unknown) {
+    failures.push(error);
+  }
+  if (failures.length > 0)
+    throw new AggregateError(failures, 'Tenant hygiene fixture cleanup failed');
+}

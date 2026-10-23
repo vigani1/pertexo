@@ -73,8 +73,7 @@ it.each([
     const representationTag = await currentRepresentationTag(
       authoring,
       workspaceId,
-      created.workflowId,
-      actorId,
+      { scopedWorkflowId: created.workflowId, scopedActorId: actorId },
     );
     const command = {
       workspaceId,

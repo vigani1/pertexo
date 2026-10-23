@@ -1,3 +1,4 @@
+import { requestText } from '../../support/query-text.js';
 import { describe, it, expect, vi } from 'vitest';
 import { z } from 'zod';
 import type { Pool as PgPool, PoolClient, QueryResult } from 'pg';
@@ -273,15 +274,7 @@ function createTestFailureNotificationStore(
       ) => unknown;
       client.query = ((...queryArguments: unknown[]): unknown => {
         const request = queryArguments[0];
-        const text =
-          typeof request === 'string'
-            ? request
-            : typeof request === 'object' &&
-                request !== null &&
-                'text' in request &&
-                typeof request.text === 'string'
-              ? request.text
-              : '';
+        const text = requestText(request);
         const query = originalQuery(...queryArguments);
         if (armed && failure.matches(text)) {
           armed = false;
@@ -378,6 +371,32 @@ async function closeFailureNotificationFixture(
 }
 
 describe('Coordinator scheduling and notification invariants', () => {
+  registerDefersQueuedCoordinationDurablyUntil();
+
+  registerReturnsCommittedSchedulePostCommit();
+
+  registerPreservesOneQueuedTimeoutIntent();
+
+  registerRecordsOneWorkspaceInboxFailure();
+
+  registerRejectsEachForgedQueueIdentity();
+
+  registerDistinguishesBusyDueBoundaryTerminal();
+
+  registerRollsBackEveryCompletionWrite();
+
+  registerCancelsCompletionBeforeCheckoutIntent();
+
+  registerEnforcesDestinationDisableDispatchFencing();
+
+  registerRejectsPermanentlyRevokedDestinationCredential();
+
+  registerPinsSecretRotationRetryRecovery();
+
+  registerExcludesPolicyPinnedCanceledTransition();
+});
+
+function registerDefersQueuedCoordinationDurablyUntil(): void {
   it('defers queued coordination durably until an active entitlement slot is free', async () => {
     await asOwner(workspaceB, async (client) => {
       await client.query(
@@ -587,7 +606,9 @@ describe('Coordinator scheduling and notification invariants', () => {
       }),
     ).resolves.toEqual({ kind: 'already_committed', revision: 1 });
   });
+}
 
+function registerReturnsCommittedSchedulePostCommit(): void {
   it('returns a committed schedule when post-commit observation is aborted', async () => {
     const applicationName = `held-schedule-observation-${randomUUID()}`;
     const connectionUrl = new URL(databaseUrl(workerBaseUrl));
@@ -636,15 +657,7 @@ describe('Coordinator scheduling and notification invariants', () => {
         ) => unknown;
         client.query = ((...queryArguments: unknown[]): unknown => {
           const request = queryArguments[0];
-          const text =
-            typeof request === 'string'
-              ? request
-              : typeof request === 'object' &&
-                  request !== null &&
-                  'text' in request &&
-                  typeof request.text === 'string'
-                ? request.text
-                : '';
+          const text = requestText(request);
           if (text.trim() === 'select clock_timestamp() observed_at') {
             markMetricStarted();
             return metric;
@@ -783,7 +796,9 @@ describe('Coordinator scheduling and notification invariants', () => {
       }
     }
   });
+}
 
+function registerPreservesOneQueuedTimeoutIntent(): void {
   it('preserves one queued-timeout intent through predecessor rejection and R1 rollback recovery', async () => {
     const runId = await insertRun({
       failureNotificationPolicy: {
@@ -1033,7 +1048,9 @@ describe('Coordinator scheduling and notification invariants', () => {
       await rollbackReaderStore.close();
     }
   });
+}
 
+function registerRecordsOneWorkspaceInboxFailure(): void {
   it('records one workspace inbox failure', async () => {
     const runId = await insertRun({
       status: 'running',
@@ -1142,7 +1159,9 @@ describe('Coordinator scheduling and notification invariants', () => {
       ),
     ).resolves.toMatchObject({ rows: [{ matches_pin: true }] });
   });
+}
 
+function registerRejectsEachForgedQueueIdentity(): void {
   it('rejects each forged queue identity and corrupt context before claiming', async () => {
     const { runId } = await commitPinnedFailureNotificationRun();
     const first = await failureNotificationIdentity(runId);
@@ -1359,7 +1378,9 @@ describe('Coordinator scheduling and notification invariants', () => {
       await closeFailureNotificationFixture(deliveryStore);
     }
   });
+}
 
+function registerDistinguishesBusyDueBoundaryTerminal(): void {
   it('distinguishes busy, due-boundary, terminal, and lowered attempt-ceiling claims', async () => {
     const firstRun = await commitPinnedFailureNotificationRun();
     const first = await failureNotificationIdentity(firstRun.runId);
@@ -1520,7 +1541,9 @@ describe('Coordinator scheduling and notification invariants', () => {
       await closeFailureNotificationFixture(deliveryStore);
     }
   });
+}
 
+function registerRollsBackEveryCompletionWrite(): void {
   it.each([
     {
       boundary: 'intent update',
@@ -1623,7 +1646,9 @@ describe('Coordinator scheduling and notification invariants', () => {
       }
     },
   );
+}
 
+function registerCancelsCompletionBeforeCheckoutIntent(): void {
   it('cancels completion before checkout and while its intent lock is blocked', async () => {
     const preabortRun = await commitPinnedFailureNotificationRun();
     const preabortIdentity = await failureNotificationIdentity(
@@ -1837,7 +1862,9 @@ describe('Coordinator scheduling and notification invariants', () => {
       ]);
     }
   });
+}
 
+function registerEnforcesDestinationDisableDispatchFencing(): void {
   it('enforces destination disable and dispatch fencing against the pinned configuration', async () => {
     const { runId } = await commitPinnedFailureNotificationRun();
     const first = await failureNotificationIdentity(runId);
@@ -2090,7 +2117,9 @@ describe('Coordinator scheduling and notification invariants', () => {
       await closeFailureNotificationFixture(deliveryStore);
     }
   });
+}
 
+function registerRejectsPermanentlyRevokedDestinationCredential(): void {
   it('rejects a permanently revoked destination credential without reviving it', async () => {
     const connectionId = randomUUID(),
       secretVersionId = randomUUID(),
@@ -2182,7 +2211,9 @@ describe('Coordinator scheduling and notification invariants', () => {
       await store.close();
     }
   });
+}
 
+function registerPinsSecretRotationRetryRecovery(): void {
   it('pins secret rotation while retry recovery preserves historical uncertainty', async () => {
     const { runId } = await commitPinnedFailureNotificationRun();
     const first = await failureNotificationIdentity(runId);
@@ -2418,7 +2449,9 @@ describe('Coordinator scheduling and notification invariants', () => {
       await closeFailureNotificationFixture(deliveryStore);
     }
   });
+}
 
+function registerExcludesPolicyPinnedCanceledTransition(): void {
   it('excludes a policy-pinned canceled transition from notification intent creation', async () => {
     const canceledRun = await insertRun({
       status: 'running',
@@ -2491,4 +2524,4 @@ describe('Coordinator scheduling and notification invariants', () => {
       { intent_count: 0, notification_outbox_count: 0 },
     ]);
   });
-});
+}

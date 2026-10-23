@@ -40,6 +40,14 @@ import {
 installExecutionAcceptanceFixture();
 
 describe('workflow run acceptance persistence and idempotency', () => {
+  registerValidatesFreshCallableInputAfter();
+
+  registerPersistsCanonicalInputWithoutInherited();
+
+  registerSerializesConcurrentExactRetriesOne();
+});
+
+function registerValidatesFreshCallableInputAfter(): void {
   it('validates a fresh callable input after storage admission and before any acceptance effects', async () => {
     const validateInput = vi.fn(
       (value: JsonValue | undefined, storedBytes: number) => {
@@ -252,7 +260,9 @@ describe('workflow run acceptance persistence and idempotency', () => {
       ]);
     });
   });
+}
 
+function registerPersistsCanonicalInputWithoutInherited(): void {
   it('persists canonical input without inherited toJSON hooks', async () => {
     const objectDescriptor = Object.getOwnPropertyDescriptor(
       Object.prototype,
@@ -457,7 +467,9 @@ describe('workflow run acceptance persistence and idempotency', () => {
       }
     });
   });
+}
 
+function registerSerializesConcurrentExactRetriesOne(): void {
   it('serializes concurrent exact retries to one accepted run', async () => {
     const [left, right] = await Promise.all([
       apiDatabase.withWorkspace(workspaceA, (transaction) =>
@@ -472,4 +484,4 @@ describe('workflow run acceptance persistence and idempotency', () => {
     expect([left.duplicate, right.duplicate].sort()).toEqual([false, true]);
     await expectAcceptanceRecordCounts(1);
   });
-});
+}

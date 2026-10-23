@@ -133,12 +133,10 @@ it('filters before pagination, revisions and read commands while SQL keeps only 
 
 it('keeps muted approvals in the task list and immediately hides resolved notice context without waiting for observation', async () => {
   const f = await seedNoticeWorkspace();
-  const { taskId } = await seedApproval(
-    f.workspaceId,
-    f.workflowId,
-    f.members.owner,
-    f.members.viewer,
-  );
+  const { taskId } = await seedApproval(f.workspaceId, f.workflowId, {
+    starter: f.members.owner,
+    named: f.members.viewer,
+  });
   await queryAsOwner(
     'update app.pending_run_tasks set context=$2::jsonb where id=$1',
     [taskId, JSON.stringify({ details: { Amount: 120 } })],
@@ -198,7 +196,7 @@ it('keeps muted approvals in the task list and immediately hides resolved notice
 
 it('shows approval notices to starters only when the captured step permits it', async () => {
   const f = await seedNoticeWorkspace();
-  await seedApproval(f.workspaceId, f.workflowId, f.members.owner);
+  await seedApproval(f.workspaceId, f.workflowId, { starter: f.members.owner });
   await observer().observeCurrent?.();
   const scope = { workspaceId: f.workspaceId, actorId: f.members.owner };
   expect(
@@ -206,13 +204,11 @@ it('shows approval notices to starters only when the captured step permits it', 
       await inbox().listThreads({ ...scope, filter: 'all', limit: 50 })
     ).items.filter((item) => item.noticeKind === 'approval_waiting'),
   ).toHaveLength(0);
-  await seedApproval(
-    f.workspaceId,
-    f.workflowId,
-    f.members.owner,
-    undefined,
-    true,
-  );
+  await seedApproval(f.workspaceId, f.workflowId, {
+    starter: f.members.owner,
+    named: undefined,
+    allowStarterToDecide: true,
+  });
   await observer().observeCurrent?.();
   expect(
     (

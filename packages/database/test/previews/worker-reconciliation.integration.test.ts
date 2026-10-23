@@ -37,6 +37,14 @@ async function waitForDatabaseTime(deadline: Date): Promise<void> {
 }
 
 describe('preview worker lease reconciliation', () => {
+  registerReconcilesExpiredAttemptsByDispatch();
+
+  registerDurablySchedulesReschedulesDeduplicatesLease();
+
+  registerRecordsUnsafePostDispatchAmbiguity();
+});
+
+function registerReconcilesExpiredAttemptsByDispatch(): void {
   it('reconciles expired attempts by dispatch evidence and side-effect class', async () => {
     const beforeDispatch = await claimFixture(
       await acceptFixture(),
@@ -196,7 +204,9 @@ describe('preview worker lease reconciliation', () => {
       }),
     ).resolves.toEqual({ kind: 'duplicate' });
   });
+}
 
+function registerDurablySchedulesReschedulesDeduplicatesLease(): void {
   it('durably schedules, reschedules, and deduplicates lease reconciliation', async () => {
     const claimed = await claimFixture(
       await acceptFixture({
@@ -376,7 +386,9 @@ describe('preview worker lease reconciliation', () => {
       ).rejects.toMatchObject({ code: 'completion_lost' });
     }
   });
+}
 
+function registerRecordsUnsafePostDispatchAmbiguity(): void {
   it('records unsafe post-dispatch ambiguity from the durable wake-up', async () => {
     const claimed = await claimFixture(
       await acceptFixture(),
@@ -516,4 +528,4 @@ describe('preview worker lease reconciliation', () => {
       }),
     ).rejects.toBeInstanceOf(PreviewAttemptStateError);
   });
-});
+}

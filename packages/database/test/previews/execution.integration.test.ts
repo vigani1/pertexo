@@ -219,52 +219,23 @@ async function resetFixture(): Promise<void> {
   }
 }
 
-beforeAll(async () => {
-  await disposableDatabase.create();
-  databaseCreated = true;
-  try {
-    await migrateDatabase(migrationConfig);
-    apiDatabase = createWorkspaceDatabase(
-      parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
-    );
-    workerDatabase = createWorkspaceDatabase(
-      parseDatabaseConfig({ connectionString: workerUrl, max: 2 }),
-    );
-  } catch (error: unknown) {
-    await Promise.allSettled([apiDatabase.close(), workerDatabase.close()]);
-    await disposableDatabase.drop();
-    databaseCreated = false;
-    throw error;
-  }
-});
+beforeAll(beforeAllFixture1);
 
 beforeEach(resetFixture);
 
-afterAll(async () => {
-  const failures: unknown[] = [];
-  for (const close of [
-    () => apiDatabase.close(),
-    () => workerDatabase.close(),
-  ]) {
-    try {
-      await close();
-    } catch (error: unknown) {
-      failures.push(error);
-    }
-  }
-  if (databaseCreated) {
-    try {
-      await disposableDatabase.drop();
-    } catch (error: unknown) {
-      failures.push(error);
-    }
-  }
-  if (failures.length === 1) throw failures[0];
-  if (failures.length > 1)
-    throw new AggregateError(failures, 'Preview fixture cleanup failed');
-});
+afterAll(afterAllFixture2);
 
 describe('durable preview acceptance', () => {
+  registerCapturesVariablesOnPreviewAdmission();
+
+  registerKeepsSimultaneousFirstRequestsBehind();
+
+  registerCopiesSuccessfulUnexpiredPriorOutput();
+
+  registerReadsUnexpiredTenantScopedPreview();
+});
+
+function registerCapturesVariablesOnPreviewAdmission(): void {
   it('captures variables on preview admission and preserves them for exact retries', async () => {
     await ownerWorkspaceQuery(
       workspaceA,
@@ -468,7 +439,9 @@ describe('durable preview acceptance', () => {
       ),
     ).rejects.toBeInstanceOf(PreviewIdempotencyConflictError);
   });
+}
 
+function registerKeepsSimultaneousFirstRequestsBehind(): void {
   it('keeps simultaneous first requests behind one atomic acceptance', async () => {
     const results = await Promise.all([
       apiDatabase.withWorkspace(workspaceA, (transaction) =>
@@ -571,7 +544,9 @@ describe('durable preview acceptance', () => {
       ),
     ).rejects.toBeInstanceOf(PreviewAdmissionDeniedError);
   });
+}
 
+function registerCopiesSuccessfulUnexpiredPriorOutput(): void {
   it('copies only a successful unexpired prior output in the same workflow', async () => {
     const first = await apiDatabase.withWorkspace(workspaceA, (transaction) =>
       acceptPreviewRun(transaction, input()),
@@ -754,7 +729,9 @@ describe('durable preview acceptance', () => {
       ),
     ).rejects.toSatisfy((error: unknown) => hasPostgresCode(error, '42501'));
   });
+}
 
+function registerReadsUnexpiredTenantScopedPreview(): void {
   it('reads only an unexpired tenant-scoped preview and its stored output', async () => {
     const accepted = await apiDatabase.withWorkspace(
       workspaceA,
@@ -842,4 +819,47 @@ describe('durable preview acceptance', () => {
       ).rejects.toThrow();
     });
   });
-});
+}
+
+async function beforeAllFixture1() {
+  await disposableDatabase.create();
+  databaseCreated = true;
+  try {
+    await migrateDatabase(migrationConfig);
+    apiDatabase = createWorkspaceDatabase(
+      parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
+    );
+    workerDatabase = createWorkspaceDatabase(
+      parseDatabaseConfig({ connectionString: workerUrl, max: 2 }),
+    );
+  } catch (error: unknown) {
+    await Promise.allSettled([apiDatabase.close(), workerDatabase.close()]);
+    await disposableDatabase.drop();
+    databaseCreated = false;
+    throw error;
+  }
+}
+
+async function afterAllFixture2() {
+  const failures: unknown[] = [];
+  for (const close of [
+    () => apiDatabase.close(),
+    () => workerDatabase.close(),
+  ]) {
+    try {
+      await close();
+    } catch (error: unknown) {
+      failures.push(error);
+    }
+  }
+  if (databaseCreated) {
+    try {
+      await disposableDatabase.drop();
+    } catch (error: unknown) {
+      failures.push(error);
+    }
+  }
+  if (failures.length === 1) throw failures[0];
+  if (failures.length > 1)
+    throw new AggregateError(failures, 'Preview fixture cleanup failed');
+}

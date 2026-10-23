@@ -15,6 +15,16 @@ import {
 import { generatePersistedId } from '../../../src/platform/persisted-id.js';
 
 describe('Coordinator output commit invariants', () => {
+  registerEnforcesV4V7ArtifactReferences();
+
+  registerAtomicallyCommitsExactEventsAll();
+
+  registerCommitsPersistedRetryFactsAdmits();
+
+  registerCommitsPersistedWaitFactUsing();
+});
+
+function registerEnforcesV4V7ArtifactReferences(): void {
   it('enforces v4 and v7 artifact references on every execution row surface', async () => {
     const availableV7 = generatePersistedId();
     const availableV4 = randomUUID();
@@ -142,7 +152,9 @@ describe('Coordinator output commit invariants', () => {
           ),
         ).rejects.toMatchObject({ code: '23503' });
   });
+}
 
+function registerAtomicallyCommitsExactEventsAll(): void {
   it('atomically commits exact events, all logical rows, an attempt subset, and IDs-only outbox', async () => {
     const runId = await insertRun({});
     const invocationA = 'version-a/a';
@@ -259,7 +271,9 @@ describe('Coordinator output commit invariants', () => {
       engine_node_events_valid: true,
     });
   });
+}
 
+function registerCommitsPersistedRetryFactsAdmits(): void {
   it('commits persisted retry facts and admits a due retry', async () => {
     const invocationKey = 'retry/past';
     const dueAt = '2020-01-01T00:00:00.000Z';
@@ -448,7 +462,9 @@ describe('Coordinator output commit invariants', () => {
     );
     expect(recorded.rows[0]?.input_ref).toBeNull();
   });
+}
 
+function registerCommitsPersistedWaitFactUsing(): void {
   it('commits a persisted wait fact using its physical attempt fence', async () => {
     const invocationKey = 'wait/persisted';
     const resumeAt = '2099-01-01T00:00:00.000Z';
@@ -647,4 +663,4 @@ describe('Coordinator output commit invariants', () => {
       due_payloads_valid: true,
     });
   });
-});
+}

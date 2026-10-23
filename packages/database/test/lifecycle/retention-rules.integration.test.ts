@@ -21,19 +21,9 @@ const inline = (value: unknown) => JSON.stringify({ kind: 'inline', value });
 
 let admin!: Client;
 
-beforeAll(async () => {
-  // Fixtures are written by the superuser; the rules run as maintenance. Run
-  // admission reads the workspace's entitlement in its own scope.
-  admin = new Client({ connectionString: withDatabase(adminUrl) });
-  await admin.connect();
-  await admin.query("select set_config('app.workspace_id', $1, false)", [
-    workspaceId,
-  ]);
-});
+beforeAll(beforeAllFixture1);
 
-afterAll(async () => {
-  await admin.end();
-});
+afterAll(afterAllFixture2);
 
 /** Runs the rules until no rule has more rows due. */
 async function enforceUntilIdle() {
@@ -180,17 +170,37 @@ async function insertOccurrence(
 }
 
 describe('retention rules', () => {
+  registerRemovesSignProofRowsDay();
+
+  registerSkipsLockedExpiredAuditRows();
+
+  registerDoesNotDeleteWarningReactivated();
+});
+
+function registerRemovesSignProofRowsDay(): void {
   it('removes sign-in proof rows a day after expiry, retaining recent and live journeys', async () => {
     const ids = [randomUUID(), randomUUID(), randomUUID()];
     for (const [index, id] of ids.entries()) {
-      const created =
-        index === 0 ? daysAgo(3) : index === 1 ? daysAgo(0.1) : new Date();
-      const expires =
-        index === 0
-          ? daysAgo(2)
-          : index === 1
-            ? daysAgo(0.05)
-            : new Date(Date.now() + 300_000);
+      let created;
+      if (index === 0) {
+        created = daysAgo(3);
+      } else {
+        if (index === 1) {
+          created = daysAgo(0.1);
+        } else {
+          created = new Date();
+        }
+      }
+      let expires;
+      if (index === 0) {
+        expires = daysAgo(2);
+      } else {
+        if (index === 1) {
+          expires = daysAgo(0.05);
+        } else {
+          expires = new Date(Date.now() + 300_000);
+        }
+      }
       await admin.query(
         `insert into app.auth_sign_in_attempts
         (id,provider,state_digest,browser_digest,return_path,created_at,expires_at)
@@ -212,6 +222,7 @@ describe('retention rules', () => {
     );
     expect(rows.rows.map((row) => row.id).sort()).toEqual(ids.slice(1).sort());
   });
+
   it('clears expired terminal input while retaining an expired live run input', async () => {
     await admin.query(
       "update app.workflow_runs set status='succeeded',completed_at=clock_timestamp() where id=any($1::uuid[])",
@@ -345,7 +356,9 @@ describe('retention rules', () => {
     );
     expect(audit.rows.map(({ id }) => id)).toEqual([recentAudit]);
   });
+}
 
+function registerSkipsLockedExpiredAuditRows(): void {
   it('skips locked expired audit rows without locking workspace settings', async () => {
     await enforceUntilIdle();
     const held = randomUUID(),
@@ -522,7 +535,9 @@ describe('retention rules', () => {
       ).rows,
     ).toEqual([{ active: true, occurrence_count: '1' }]);
   });
+}
 
+function registerDoesNotDeleteWarningReactivated(): void {
   it('does not delete a warning reactivated while its retention delete waits', async () => {
     const id = randomUUID();
     await admin.query(
@@ -596,4 +611,18 @@ describe('retention rules', () => {
     await enforceUntilIdle();
     expect(await count('run_events', old)).toBe(0);
   });
-});
+}
+
+async function beforeAllFixture1() {
+  // Fixtures are written by the superuser; the rules run as maintenance. Run
+  // admission reads the workspace's entitlement in its own scope.
+  admin = new Client({ connectionString: withDatabase(adminUrl) });
+  await admin.connect();
+  await admin.query("select set_config('app.workspace_id', $1, false)", [
+    workspaceId,
+  ]);
+}
+
+async function afterAllFixture2() {
+  await admin.end();
+}

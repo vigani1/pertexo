@@ -54,12 +54,10 @@ async function command(workflowId: string, database = authoring) {
     name: 'Independent copy',
     source: { kind: 'draft' as const },
     idempotencyKey: `duplicate-${randomUUID()}`,
-    representationTag: await currentRepresentationTag(
-      database,
-      workspaceId,
-      workflowId,
-      actorId,
-    ),
+    representationTag: await currentRepresentationTag(database, workspaceId, {
+      scopedWorkflowId: workflowId,
+      scopedActorId: actorId,
+    }),
   };
 }
 
@@ -110,6 +108,18 @@ async function commandFacts() {
 }
 
 describe('same-workspace workflow duplication through the runtime database role', () => {
+  registerReplaysCompletedCommandBeforeCatalog();
+
+  registerCreatesExactlyOneUnpublishedRevision();
+
+  registerRollsBackEntireCommandAfter();
+
+  registerRetainsSameWorkspaceConnectionReferences();
+
+  registerReapsExpiredSourceScopedDuplication();
+});
+
+function registerReplaysCompletedCommandBeforeCatalog(): void {
   it('replays a completed command before catalog admission while new copies cannot grandfather removed definitions', async () => {
     const current = createWorkflowAuthoringDatabase(
       parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
@@ -141,8 +151,7 @@ describe('same-workspace workflow duplication through the runtime database role'
           representationTag: await currentRepresentationTag(
             removed,
             workspaceId,
-            original.workflowId,
-            actorId,
+            { scopedWorkflowId: original.workflowId, scopedActorId: actorId },
           ),
         }),
       ).rejects.toThrow();
@@ -151,6 +160,7 @@ describe('same-workspace workflow duplication through the runtime database role'
       await Promise.all([current.close(), removed.close()]);
     }
   });
+
   it('preserves nested graph IDs, typed mappings, merge references and dynamic expressions as exact JSON content', async () => {
     const catalog = {
       definitions: [
@@ -275,8 +285,7 @@ describe('same-workspace workflow duplication through the runtime database role'
           representationTag: await currentRepresentationTag(
             database,
             workspaceId,
-            workflowId,
-            actorId,
+            { scopedWorkflowId: workflowId, scopedActorId: actorId },
           ),
           idempotencyKey: randomUUID(),
           requestHash: 'c'.repeat(64),
@@ -305,6 +314,9 @@ describe('same-workspace workflow duplication through the runtime database role'
       await database.close();
     }
   });
+}
+
+function registerCreatesExactlyOneUnpublishedRevision(): void {
   it('creates exactly one unpublished revision-1 draft with fresh operational defaults and identifier-only recovery', async () => {
     const original = await source();
     await authoring.publishWorkflow({
@@ -314,8 +326,7 @@ describe('same-workspace workflow duplication through the runtime database role'
       representationTag: await currentRepresentationTag(
         authoring,
         workspaceId,
-        original.workflowId,
-        actorId,
+        { scopedWorkflowId: original.workflowId, scopedActorId: actorId },
       ),
       idempotencyKey: randomUUID(),
       requestHash: 'd'.repeat(64),
@@ -427,8 +438,7 @@ describe('same-workspace workflow duplication through the runtime database role'
       representationTag: await currentRepresentationTag(
         authoring,
         workspaceId,
-        original.workflowId,
-        actorId,
+        { scopedWorkflowId: original.workflowId, scopedActorId: actorId },
       ),
       idempotencyKey: randomUUID(),
       requestHash: 'a'.repeat(64),
@@ -519,7 +529,9 @@ describe('same-workspace workflow duplication through the runtime database role'
       Number(before[0]?.workflows) + 1,
     );
   });
+}
 
+function registerRollsBackEntireCommandAfter(): void {
   it.each(['claim', 'workflow', 'draft', 'audit', 'idempotency'] as const)(
     'rolls back the entire command after a failed %s write',
     async (step) => {
@@ -718,7 +730,9 @@ describe('same-workspace workflow duplication through the runtime database role'
     );
     expect(await commandFacts()).toEqual(before);
   });
+}
 
+function registerRetainsSameWorkspaceConnectionReferences(): void {
   it('retains same-workspace connection references without reading or duplicating secrets and rejects foreign refs in arbitrary slots', async () => {
     const connections = createConnectionDatabase(
       parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
@@ -930,7 +944,9 @@ describe('same-workspace workflow duplication through the runtime database role'
     const afterExpiry = await authoring.duplicateWorkflow(input);
     expect(afterExpiry.workflowId).not.toBe(copied.workflowId);
   });
+}
 
+function registerReapsExpiredSourceScopedDuplication(): void {
   it('reaps expired source-scoped duplication receipts, then erases them through bounded workspace purge', async () => {
     const workspace = await identity.createWorkspaceWithOwner({
       id: randomUUID(),
@@ -956,8 +972,7 @@ describe('same-workspace workflow duplication through the runtime database role'
       representationTag: await currentRepresentationTag(
         authoring,
         scopedWorkspace,
-        original.workflowId,
-        actorId,
+        { scopedWorkflowId: original.workflowId, scopedActorId: actorId },
       ),
       idempotencyKey: randomUUID(),
     };
@@ -992,4 +1007,4 @@ describe('same-workspace workflow duplication through the runtime database role'
       WorkflowNotFoundError,
     );
   });
-});
+}

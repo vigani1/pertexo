@@ -2815,14 +2815,19 @@ describe('generic webhook database seam', () => {
         requestFingerprint: hash(randomUUID()),
         idempotencyKeyHash: hash(randomUUID()),
       });
+      let coordinationOutcome;
+      if (mode === 'deduplicate') {
+        coordinationOutcome = 'deduplicated';
+      } else {
+        if (mode === 'debounce') {
+          coordinationOutcome = 'debounced';
+        } else {
+          coordinationOutcome = 'throttled';
+        }
+      }
       expect(second).toMatchObject({
         coordinated: true,
-        outcome:
-          mode === 'deduplicate'
-            ? 'deduplicated'
-            : mode === 'debounce'
-              ? 'debounced'
-              : 'throttled',
+        outcome: coordinationOutcome,
       });
       const history = await webhook.listDeliveries({
         workspaceId,

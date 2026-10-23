@@ -130,9 +130,7 @@ async function firstFacts() {
   if (row === undefined) throw new Error('Expected import fact counts');
   return row;
 }
-afterEach(async () => {
-  await Promise.all(databases.splice(0).map((db) => db.close()));
-});
+afterEach(afterEachFixture1);
 
 function importReceipts(receipt: readonly [string, string]) {
   return queryAsOwner(
@@ -143,6 +141,29 @@ function importReceipts(receipt: readonly [string, string]) {
 }
 
 describe('portable workflow persistence under the API role', () => {
+  registerStoresCuratedTemplateOriginImport();
+
+  registerExportsExactReviewedSavedSource();
+
+  registerPreservesNestedGraphIdentityExpressions();
+
+  registerHoldsOrderedAuthorityCatalogLocks();
+
+  registerSerializesConnectionRevocationBothOrders();
+
+  registerAnswersExactRetryExpiredReceipt();
+});
+
+function inputForPreview(input: ImportWorkflowInput) {
+  return {
+    workspaceId: input.workspaceId,
+    actorId: input.actorId,
+    manifest: input.manifest,
+    bindings: input.bindings,
+  };
+}
+
+function registerStoresCuratedTemplateOriginImport(): void {
   it('stores a curated template origin with its import command digest', async () => {
     const template = CURATED_WORKFLOW_TEMPLATES.find(
       ({ templateId }) => templateId === 'webhook-validation-routing',
@@ -345,7 +366,9 @@ describe('portable workflow persistence under the API role', () => {
     ).rejects.toBeInstanceOf(WorkflowPortabilityValidationError);
     expect(await facts()).toEqual(before);
   });
+}
 
+function registerExportsExactReviewedSavedSource(): void {
   it('exports only the exact reviewed saved source; source changes require a new acknowledgement', async () => {
     const db = database();
     const created = await db.createWorkflow({
@@ -363,12 +386,10 @@ describe('portable workflow persistence under the API role', () => {
       reviewedGraphDigest: await portableGraphDigest(
         parseWorkflowGraphDraft(emptyGraph),
       ),
-      representationTag: await currentRepresentationTag(
-        db,
-        workspaceId,
-        created.workflowId,
-        actorId,
-      ),
+      representationTag: await currentRepresentationTag(db, workspaceId, {
+        scopedWorkflowId: created.workflowId,
+        scopedActorId: actorId,
+      }),
     };
     expect(await db.exportWorkflow(input)).toEqual(command().manifest);
     const publication = await authoring.publishWorkflow({
@@ -378,8 +399,7 @@ describe('portable workflow persistence under the API role', () => {
       representationTag: await currentRepresentationTag(
         authoring,
         workspaceId,
-        created.workflowId,
-        actorId,
+        { scopedWorkflowId: created.workflowId, scopedActorId: actorId },
       ),
       requestHash: 'f'.repeat(64),
       idempotencyKey: randomUUID(),
@@ -413,7 +433,9 @@ describe('portable workflow persistence under the API role', () => {
       db.exportWorkflow({ ...input, actorId: otherActorId }),
     ).rejects.toBeInstanceOf(WorkflowNotFoundError);
   });
+}
 
+function registerPreservesNestedGraphIdentityExpressions(): void {
   it('preserves nested graph identity and expressions, rebinds explicit destination slots and never accesses secret bytes', async () => {
     const connections = createConnectionDatabase(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
@@ -597,7 +619,9 @@ describe('portable workflow persistence under the API role', () => {
       await connections.close();
     }
   });
+}
 
+function registerHoldsOrderedAuthorityCatalogLocks(): void {
   it('holds ordered authority/catalog locks until import commits so later writers lose the race', async () => {
     for (const surface of ['workspace', 'actor', 'membership'] as const) {
       const input = command();
@@ -630,14 +654,17 @@ describe('portable workflow persistence under the API role', () => {
           membership:
             'update app.workspace_memberships set role=role where workspace_id=$1 and user_id=$2',
         }[surface];
-        writer = owner.query(
-          sql,
-          sql.includes('$2')
-            ? [workspaceId, actorId]
-            : sql.includes('$1')
-              ? [surface === 'actor' ? actorId : workspaceId]
-              : [],
-        );
+        let queryValues: string[];
+        if (sql.includes('$2')) {
+          queryValues = [workspaceId, actorId];
+        } else {
+          if (sql.includes('$1')) {
+            queryValues = [surface === 'actor' ? actorId : workspaceId];
+          } else {
+            queryValues = [];
+          }
+        }
+        writer = owner.query(sql, queryValues);
         await waitForPostgresLock(application);
         await hold.release();
         await operation;
@@ -732,7 +759,9 @@ describe('portable workflow persistence under the API role', () => {
       await ownerPool.end();
     }
   });
+}
 
+function registerSerializesConnectionRevocationBothOrders(): void {
   it('serializes connection revocation in both orders and permits accepted replay after health loss', async () => {
     const connectionApplication = `portable-connection-${randomUUID()}`;
     const connections = createConnectionDatabase(
@@ -924,7 +953,9 @@ describe('portable workflow persistence under the API role', () => {
       WorkflowNotFoundError,
     );
   });
+}
 
+function registerAnswersExactRetryExpiredReceipt(): void {
   it('answers an exact retry from an expired receipt until retention removes it after its lock', async () => {
     const db = database();
     const input = command();
@@ -989,13 +1020,8 @@ describe('portable workflow persistence under the API role', () => {
     );
     expect(await facts()).toEqual(before);
   });
-});
+}
 
-function inputForPreview(input: ImportWorkflowInput) {
-  return {
-    workspaceId: input.workspaceId,
-    actorId: input.actorId,
-    manifest: input.manifest,
-    bindings: input.bindings,
-  };
+async function afterEachFixture1() {
+  await Promise.all(databases.splice(0).map((db) => db.close()));
 }

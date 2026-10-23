@@ -73,6 +73,18 @@ async function team(...roles: readonly DelegatedRole[]) {
 }
 
 describe('leaving a workspace (ADR 047)', () => {
+  registerEndsMembershipEverySessionLike();
+});
+
+describe('suspending and reactivating members (ADR 047)', () => {
+  registerBlocksAccessSuspendedRestoresSame();
+});
+
+describe('transferring ownership (ADR 047)', () => {
+  registerSwapsOwnerAdminOneCommit();
+});
+
+function registerEndsMembershipEverySessionLike(): void {
   it('ends the membership and every session like a removal, and replays exactly', async () => {
     const { owner, workspaceId, members } = await team('builder');
     const [leaver = ''] = members;
@@ -166,9 +178,9 @@ describe('leaving a workspace (ADR 047)', () => {
       facts(workspaceId, 'workspace.member_left'),
     ).resolves.toHaveLength(1);
   });
-});
+}
 
-describe('suspending and reactivating members (ADR 047)', () => {
+function registerBlocksAccessSuspendedRestoresSame(): void {
   it('blocks access while suspended and restores the same role', async () => {
     const { owner, workspaceId, members } = await team('builder');
     const [builder = ''] = members;
@@ -294,9 +306,9 @@ describe('suspending and reactivating members (ADR 047)', () => {
         .reactivateWorkspaceMember(command(workspaceId, owner, builder, 3)),
     ).rejects.toMatchObject({ reason: 'target_removed' });
   });
-});
+}
 
-describe('transferring ownership (ADR 047)', () => {
+function registerSwapsOwnerAdminOneCommit(): void {
   it('swaps owner and admin in one commit and keeps exactly one owner', async () => {
     const { owner, workspaceId, members } = await team('builder', 'viewer');
     const [builder = '', viewer = ''] = members;
@@ -424,4 +436,4 @@ describe('transferring ownership (ADR 047)', () => {
     );
     expect(owners).toEqual([{ count: 1 }]);
   });
-});
+}

@@ -32,30 +32,8 @@ let database: ReturnType<typeof createWorkflowAuthoringDatabase>;
 let cases: ReturnType<typeof createWorkflowInputCaseDatabase>;
 let scanner: Awaited<ReturnType<typeof createWorkflowTestSuiteScanner>>;
 let reader: ReturnType<typeof createWorkflowExecutionReader>;
-beforeAll(async () => {
-  database = createWorkflowAuthoringDatabase(config(), {
-    executableCompiler: (graph) => {
-      const executable = buildWorkflowExecutable({ graph, catalog });
-      return {
-        checksum: executable.checksum,
-        executableJson: executable.envelope,
-      };
-    },
-    workflowTestCompiler: (graph, pins) =>
-      buildWorkflowTestExecutable({ graph, pins, catalog }),
-  });
-  cases = createWorkflowInputCaseDatabase(config());
-  scanner = await createWorkflowTestSuiteScanner(config(), maintenance());
-  reader = createWorkflowExecutionReader(config());
-});
-afterAll(() =>
-  Promise.all([
-    database.close(),
-    cases.close(),
-    scanner.close(),
-    reader.close(),
-  ]),
-);
+beforeAll(beforeAllFixture1);
+afterAll(afterAllFixture2);
 const query = <T extends Record<string, unknown>>(
   sql: string,
   values: unknown[] = [],
@@ -167,6 +145,16 @@ function runId(
 }
 
 describe('durable serial draft suites', () => {
+  registerFreezesCasesSharesOneSource();
+
+  registerRequiresExactEffectAcknowledgementAccepts();
+
+  registerFreezesPinsSharesExactOutput();
+
+  registerKeepsSharedSourceFirstRun();
+});
+
+function registerFreezesCasesSharesOneSource(): void {
   it('freezes cases, shares one source and advances once across competing scanners and restarts', async () => {
     const f = await fixture(),
       intent = await command(f),
@@ -270,6 +258,7 @@ describe('durable serial draft suites', () => {
       (await database.workflowTestSuites.list(f.scope)).current.signature,
     ).not.toBe(first.signature);
   });
+
   it('refuses stale cases and mutual standalone/suite overlap before any new run', async () => {
     const f = await fixture(1),
       intent = await command(f),
@@ -309,6 +298,7 @@ describe('durable serial draft suites', () => {
     await due(accepted.suiteId);
     await scanner.scan(25);
   });
+
   it('admits fifty serial tests with one immutable snapshot and bounded history', async () => {
     const f = await fixture(50),
       accepted = await database.workflowTestSuites.start(await command(f));
@@ -334,6 +324,9 @@ describe('durable serial draft suites', () => {
       ),
     ).toHaveLength(1);
   }, 30000);
+}
+
+function registerRequiresExactEffectAcknowledgementAccepts(): void {
   it('requires exact effect acknowledgement and accepts only one concurrent start', async () => {
     const f = await fixture(1);
     const effectCatalog = composeExecutableCatalog({
@@ -395,6 +388,7 @@ describe('durable serial draft suites', () => {
       await effects.close();
     }
   });
+
   it('keeps case reports private and stops future admissions after cancellation', async () => {
     const f = await fixture();
     const accepted = await database.workflowTestSuites.start(await command(f));
@@ -440,6 +434,7 @@ describe('durable serial draft suites', () => {
       ).report,
     ).toMatchObject({ error: 'run_canceled' });
   });
+
   it('stops at the suite deadline after settling the accepted case', async () => {
     const f = await fixture();
     const accepted = await database.workflowTestSuites.start(await command(f));
@@ -463,6 +458,7 @@ describe('durable serial draft suites', () => {
       skipped: 1,
     });
   });
+
   it('retries a full queue without accepting a duplicate or losing the completed report', async () => {
     const f = await fixture();
     const accepted = await database.workflowTestSuites.start(await command(f));
@@ -519,6 +515,9 @@ describe('durable serial draft suites', () => {
       await database.workflowTestSuites.get({ ...f.scope, ...accepted }),
     ).toMatchObject({ status: 'passed' });
   });
+}
+
+function registerFreezesPinsSharesExactOutput(): void {
   it('freezes pins and shares their exact output with every case after the pin is removed', async () => {
     const f = await fixture();
     const pin = await database.stepSamples.put({
@@ -570,6 +569,7 @@ describe('durable serial draft suites', () => {
       await database.workflowTestSuites.get({ ...f.scope, ...accepted }),
     ).toMatchObject({ status: 'failed', failed: 2 });
   });
+
   it('requires ordinary failed outcomes and records unknown and timeout clearly', async () => {
     const f = await fixture(4);
     for (const record of f.records)
@@ -619,6 +619,7 @@ describe('durable serial draft suites', () => {
       ).report,
     ).toMatchObject({ error: 'run_timed_out' });
   });
+
   it('freezes empty and nonempty variable revisions across later cases', async () => {
     const variables = createWorkspaceVariablesStore(config());
     try {
@@ -678,6 +679,7 @@ describe('durable serial draft suites', () => {
       await variables.close();
     }
   });
+
   it('stops future admissions when the starter loses authority', async () => {
     const f = await fixture(),
       accepted = await database.workflowTestSuites.start(await command(f)),
@@ -712,6 +714,9 @@ describe('durable serial draft suites', () => {
       cases: [{ status: 'passed' }, { status: 'skipped', runId: null }],
     });
   });
+}
+
+function registerKeepsSharedSourceFirstRun(): void {
   it('keeps a shared source when its first run expires and purges it after the last reference', async () => {
     const f = await fixture();
     const accepted = await database.workflowTestSuites.start(await command(f));
@@ -776,6 +781,7 @@ describe('durable serial draft suites', () => {
       }),
     ).toBeNull();
   });
+
   it('checks one successful step invocation, missing paths, truncated actuals and repeated-step ambiguity', async () => {
     const f = await fixture(1);
     const record = f.records[0];
@@ -857,6 +863,7 @@ describe('durable serial draft suites', () => {
       ],
     });
   });
+
   it('purges suites and their copied case values with the workspace', async () => {
     const steps = await purgeTestWorkspace(workspaceId, { pageSize: 2 });
     expect(steps).toContain('workflow_test_suites');
@@ -873,4 +880,30 @@ describe('durable serial draft suites', () => {
       ),
     ).toEqual([]);
   }, 30000);
-});
+}
+
+async function beforeAllFixture1() {
+  database = createWorkflowAuthoringDatabase(config(), {
+    executableCompiler: (graph) => {
+      const executable = buildWorkflowExecutable({ graph, catalog });
+      return {
+        checksum: executable.checksum,
+        executableJson: executable.envelope,
+      };
+    },
+    workflowTestCompiler: (graph, pins) =>
+      buildWorkflowTestExecutable({ graph, pins, catalog }),
+  });
+  cases = createWorkflowInputCaseDatabase(config());
+  scanner = await createWorkflowTestSuiteScanner(config(), maintenance());
+  reader = createWorkflowExecutionReader(config());
+}
+
+function afterAllFixture2() {
+  return Promise.all([
+    database.close(),
+    cases.close(),
+    scanner.close(),
+    reader.close(),
+  ]);
+}

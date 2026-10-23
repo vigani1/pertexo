@@ -29,6 +29,12 @@ function recordBenchmarkOperation(name: string, startedAt: number): void {
 }
 
 describe('Coordinator For Each persistence invariants', () => {
+  registerAtomicallyPersistsReloadsScopedEach();
+
+  registerLoadsBodyInputsLoopDeclaration();
+});
+
+function registerAtomicallyPersistsReloadsScopedEach(): void {
   it('atomically persists and reloads a scoped For Each barrier and first body admission', async () => {
     const loopItems = Array.from(
       { length: 128 },
@@ -295,7 +301,9 @@ describe('Coordinator For Each persistence invariants', () => {
       },
     ]);
   });
+}
 
+function registerLoadsBodyInputsLoopDeclaration(): void {
   it('loads body inputs and the loop declaration for an ordinal-scoped attempt', async () => {
     const controlKey = `${versionA}|loop|b:|i:`;
     const first0Key = `${versionA}|body-first|b:|i:loop%3A0`;
@@ -585,4 +593,4 @@ describe('Coordinator For Each persistence invariants', () => {
       }),
     ).rejects.toThrow(NodeAttemptStateCorruptError);
   });
-});
+}

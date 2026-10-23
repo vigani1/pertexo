@@ -66,47 +66,16 @@ async function createOwner() {
   });
   return { workspaceId: workspace.id, ownerUserId: user.id };
 }
-beforeAll(async () => {
-  await fixture.create();
-  await migrateDatabase({
-    appRole: 'pertexo_app',
-    maintenanceRole: 'pertexo_maintenance',
-    ownerRole: 'pertexo_owner',
-    connectionString: fixture.databaseUrl(migrationUrl),
-  });
-  identities = createIdentityWorkspaceDatabase(config);
-  tokens = createApiTokenDatabase(config);
-  ({ workspaceId, ownerUserId } = await createOwner());
-  builderUserId = (
-    await identities.createUser({
-      email: `${randomUUID()}@example.test`,
-      displayName: 'Builder',
-    })
-  ).id;
-  await admin.query(
-    "insert into app.workspace_memberships(workspace_id,user_id,role) values($1,$2,'builder')",
-    [workspaceId, builderUserId],
-  );
-});
-afterAll(async () => {
-  const results = await Promise.allSettled(
-    [() => tokens.close(), () => identities.close(), () => admin.end()].map(
-      (close) => Promise.resolve().then(close),
-    ),
-  );
-  const failures = results.flatMap((result) =>
-    result.status === 'rejected' ? [result.reason as unknown] : [],
-  );
-  try {
-    await fixture.drop();
-  } catch (error) {
-    failures.push(error);
-  }
-  if (failures.length > 0)
-    throw new AggregateError(failures, 'Token fixture cleanup failed');
-});
+beforeAll(beforeAllFixture1);
+afterAll(afterAllFixture2);
 
 describe('persisted personal API tokens', () => {
+  registerRevealsSecretOnceStoresHash();
+
+  registerPurgesTokensBeforeOwningMemberships();
+});
+
+function registerRevealsSecretOnceStoresHash(): void {
   it('reveals the secret once, stores a hash and safe receipt, survives restart, and revokes', async () => {
     const command = {
       ...input(),
@@ -173,6 +142,7 @@ describe('persisted personal API tokens', () => {
     tokens = createApiTokenDatabase(config);
     expect(await tokens.authenticate(credential)).toBeUndefined();
   });
+
   it('keeps owner metadata private and denies current-role escalation', async () => {
     const created = await tokens.create({
       ...input(),
@@ -198,6 +168,7 @@ describe('persisted personal API tokens', () => {
       }),
     ).rejects.toMatchObject({ reason: 'scope_forbidden' });
   });
+
   it('does not revive an earlier grant after role changes back', async () => {
     const created = await tokens.create({
       ...input(),
@@ -236,6 +207,7 @@ describe('persisted personal API tokens', () => {
       ).items.find((token) => token.id === created.token.id)?.status,
     ).toBe('membership_changed');
   });
+
   it('serializes competing issuance at ten usable credentials', async () => {
     const owner = await createOwner();
     const outcomes = await Promise.allSettled(
@@ -257,6 +229,7 @@ describe('persisted personal API tokens', () => {
       (await tokens.list({ ...owner, limit: 6, after: page.nextCursor })).items,
     ).toHaveLength(4);
   });
+
   it('invalidates grants across suspension/reactivation and ownership transfer', async () => {
     const owner = await createOwner();
     const member = await identities.createUser({
@@ -310,6 +283,9 @@ describe('persisted personal API tokens', () => {
     expect(await tokens.authenticate(previousOwner)).toBeUndefined();
     expect(await tokens.authenticate(await create(memberOwner))).toBeDefined();
   });
+}
+
+function registerPurgesTokensBeforeOwningMemberships(): void {
   it('purges tokens before their owning memberships and scrubs their audit facts', async () => {
     const owner = await createOwner();
     await tokens.create({ ...input(), ...owner, idempotencyKey: randomUUID() });
@@ -342,6 +318,7 @@ describe('persisted personal API tokens', () => {
       { actor_user_id: null, metadata: {}, target_id: owner.workspaceId },
     ]);
   });
+
   it('rejects workspace substitution, expiry and deletes terminal metadata through maintenance retention', async () => {
     const created = await tokens.create({
       ...input(),
@@ -376,6 +353,7 @@ describe('persisted personal API tokens', () => {
       ).rowCount,
     ).toBe(0);
   });
+
   it('forces workspace row isolation and refuses credential mutation through the app role', async () => {
     const isolated = await createOwner();
     const created = await tokens.create({
@@ -430,4 +408,45 @@ describe('persisted personal API tokens', () => {
       await app.end();
     }
   });
-});
+}
+
+async function beforeAllFixture1() {
+  await fixture.create();
+  await migrateDatabase({
+    appRole: 'pertexo_app',
+    maintenanceRole: 'pertexo_maintenance',
+    ownerRole: 'pertexo_owner',
+    connectionString: fixture.databaseUrl(migrationUrl),
+  });
+  identities = createIdentityWorkspaceDatabase(config);
+  tokens = createApiTokenDatabase(config);
+  ({ workspaceId, ownerUserId } = await createOwner());
+  builderUserId = (
+    await identities.createUser({
+      email: `${randomUUID()}@example.test`,
+      displayName: 'Builder',
+    })
+  ).id;
+  await admin.query(
+    "insert into app.workspace_memberships(workspace_id,user_id,role) values($1,$2,'builder')",
+    [workspaceId, builderUserId],
+  );
+}
+
+async function afterAllFixture2() {
+  const results = await Promise.allSettled(
+    [() => tokens.close(), () => identities.close(), () => admin.end()].map(
+      (close) => Promise.resolve().then(close),
+    ),
+  );
+  const failures = results.flatMap((result) =>
+    result.status === 'rejected' ? [result.reason as unknown] : [],
+  );
+  try {
+    await fixture.drop();
+  } catch (error) {
+    failures.push(error);
+  }
+  if (failures.length > 0)
+    throw new AggregateError(failures, 'Token fixture cleanup failed');
+}

@@ -37,6 +37,18 @@ function recordBenchmarkOperation(name: string, startedAt: number): void {
 }
 
 describe('workflow publication projections', () => {
+  registerRejectsMalformedNewAdmissionWithout();
+
+  registerUsesCanonicalExecutableIdentityRather();
+
+  registerAtomicallyPersistsInjectedExecutablePublication();
+
+  registerTransactionallyRebuildsDerivedIntegrationUsage();
+
+  registerNamesStepConnectionIsUnknown();
+});
+
+function registerRejectsMalformedNewAdmissionWithout(): void {
   it('rejects malformed new admission without durable effects while replay and 412 precede unavailable parsing', async () => {
     const catalogAuthoring = createWorkflowAuthoringDatabase(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
@@ -57,8 +69,7 @@ describe('workflow publication projections', () => {
       const originalTag = await currentRepresentationTag(
         catalogAuthoring,
         workspaceId,
-        created.workflowId,
-        actorId,
+        { scopedWorkflowId: created.workflowId, scopedActorId: actorId },
       );
       const original = {
         actorId,
@@ -109,8 +120,7 @@ describe('workflow publication projections', () => {
       const currentTag = await currentRepresentationTag(
         catalogAuthoring,
         workspaceId,
-        created.workflowId,
-        actorId,
+        { scopedWorkflowId: created.workflowId, scopedActorId: actorId },
       );
       await expect(
         catalogAuthoring.publishWorkflow({
@@ -141,8 +151,7 @@ describe('workflow publication projections', () => {
       const unavailableTag = await currentRepresentationTag(
         unavailableAuthoring,
         workspaceId,
-        created.workflowId,
-        actorId,
+        { scopedWorkflowId: created.workflowId, scopedActorId: actorId },
       );
       await expect(
         unavailableAuthoring.publishWorkflow({
@@ -185,8 +194,7 @@ describe('workflow publication projections', () => {
       representationTag: await currentRepresentationTag(
         authoring,
         workspaceId,
-        created.workflowId,
-        actorId,
+        { scopedWorkflowId: created.workflowId, scopedActorId: actorId },
       ),
       idempotencyKey,
       requestHash: createHash('sha256').update(idempotencyKey).digest('hex'),
@@ -238,9 +246,11 @@ describe('workflow publication projections', () => {
         representationTag: await currentRepresentationTag(
           catalogAuthoring,
           workspaceId,
-          created.workflowId,
-          actorId,
-          testDefinitionCatalog,
+          {
+            scopedWorkflowId: created.workflowId,
+            scopedActorId: actorId,
+            definitionCatalog: testDefinitionCatalog,
+          },
         ),
         idempotencyKey: 'publish-large',
         requestHash: '7'.repeat(64),
@@ -258,7 +268,9 @@ describe('workflow publication projections', () => {
       await catalogAuthoring.close();
     }
   });
+}
 
+function registerUsesCanonicalExecutableIdentityRather(): void {
   it('uses canonical executable identity rather than JSON or presentation identity', async () => {
     const catalogAuthoring = createWorkflowAuthoringDatabase(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
@@ -294,9 +306,11 @@ describe('workflow publication projections', () => {
       const initialRepresentationTag = await currentRepresentationTag(
         catalogAuthoring,
         workspaceId,
-        created.workflowId,
-        actorId,
-        testDefinitionCatalog,
+        {
+          scopedWorkflowId: created.workflowId,
+          scopedActorId: actorId,
+          definitionCatalog: testDefinitionCatalog,
+        },
       );
       operationStartedAt = performance.now();
       const first = await catalogAuthoring.publishWorkflow({
@@ -353,9 +367,11 @@ describe('workflow publication projections', () => {
         representationTag: await currentRepresentationTag(
           catalogAuthoring,
           workspaceId,
-          created.workflowId,
-          actorId,
-          testDefinitionCatalog,
+          {
+            scopedWorkflowId: created.workflowId,
+            scopedActorId: actorId,
+            definitionCatalog: testDefinitionCatalog,
+          },
         ),
         idempotencyKey: 'publish-canonical-presentation',
         requestHash: '2'.repeat(64),
@@ -380,9 +396,11 @@ describe('workflow publication projections', () => {
       const executableRepresentationTag = await currentRepresentationTag(
         catalogAuthoring,
         workspaceId,
-        created.workflowId,
-        actorId,
-        testDefinitionCatalog,
+        {
+          scopedWorkflowId: created.workflowId,
+          scopedActorId: actorId,
+          definitionCatalog: testDefinitionCatalog,
+        },
       );
       await expect(
         catalogAuthoring.validateDraft(
@@ -453,9 +471,11 @@ describe('workflow publication projections', () => {
         representationTag: await currentRepresentationTag(
           catalogAuthoring,
           workspaceId,
-          created.workflowId,
-          actorId,
-          testDefinitionCatalog,
+          {
+            scopedWorkflowId: created.workflowId,
+            scopedActorId: actorId,
+            definitionCatalog: testDefinitionCatalog,
+          },
         ),
         idempotencyKey: 'publish-canonical-older',
         requestHash: '5'.repeat(64),
@@ -499,8 +519,7 @@ describe('workflow publication projections', () => {
           representationTag: await currentRepresentationTag(
             authoring,
             workspaceId,
-            created.workflowId,
-            actorId,
+            { scopedWorkflowId: created.workflowId, scopedActorId: actorId },
           ),
           idempotencyKey: 'publish-after-unsupported-history',
           requestHash: '4'.repeat(64),
@@ -512,7 +531,9 @@ describe('workflow publication projections', () => {
       await catalogAuthoring.close();
     }
   });
+}
 
+function registerAtomicallyPersistsInjectedExecutablePublication(): void {
   it('atomically persists an injected executable publication projection', async () => {
     const checksum = `wf:sha256:${'a'.repeat(64)}` as const;
     const executableDefinitionCatalog = baselineEmptyDefinitionCatalog;
@@ -540,9 +561,11 @@ describe('workflow publication projections', () => {
       const representationTag = await currentRepresentationTag(
         executableAuthoring,
         workspaceId,
-        created.workflowId,
-        actorId,
-        executableDefinitionCatalog,
+        {
+          scopedWorkflowId: created.workflowId,
+          scopedActorId: actorId,
+          definitionCatalog: executableDefinitionCatalog,
+        },
       );
       const command = {
         actorId,
@@ -668,7 +691,9 @@ describe('workflow publication projections', () => {
       await executableAuthoring.close();
     }
   });
+}
 
+function registerTransactionallyRebuildsDerivedIntegrationUsage(): void {
   it('transactionally rebuilds derived integration usage and serves bounded impact queries', async () => {
     const connectionId = randomUUID();
     const secretVersionId = randomUUID();
@@ -736,9 +761,11 @@ describe('workflow publication projections', () => {
         representationTag: await currentRepresentationTag(
           usageAuthoring,
           workspaceId,
-          created.workflowId,
-          actorId,
-          usageCatalog,
+          {
+            scopedWorkflowId: created.workflowId,
+            scopedActorId: actorId,
+            definitionCatalog: usageCatalog,
+          },
         ),
         idempotencyKey: `publish-usage-${connectionId}`,
         requestHash: createHash('sha256')
@@ -770,9 +797,11 @@ describe('workflow publication projections', () => {
           representationTag: await currentRepresentationTag(
             usageAuthoring,
             workspaceId,
-            additional.workflowId,
-            actorId,
-            usageCatalog,
+            {
+              scopedWorkflowId: additional.workflowId,
+              scopedActorId: actorId,
+              definitionCatalog: usageCatalog,
+            },
           ),
           idempotencyKey: `publish-usage-${connectionId}-${suffix}`,
           requestHash: createHash('sha256')
@@ -873,9 +902,11 @@ describe('workflow publication projections', () => {
         representationTag: await currentRepresentationTag(
           usageAuthoring,
           workspaceId,
-          created.workflowId,
-          actorId,
-          usageCatalog,
+          {
+            scopedWorkflowId: created.workflowId,
+            scopedActorId: actorId,
+            definitionCatalog: usageCatalog,
+          },
         ),
         idempotencyKey: `republish-usage-${connectionId}`,
         requestHash: createHash('sha256')
@@ -906,6 +937,9 @@ describe('workflow publication projections', () => {
       ]);
     }
   });
+}
+
+function registerNamesStepConnectionIsUnknown(): void {
   it('names the step when its connection is unknown or revoked', async () => {
     const connectionId = randomUUID();
     const connectionDatabase = createConnectionDatabase(
@@ -946,9 +980,11 @@ describe('workflow publication projections', () => {
         representationTag: await currentRepresentationTag(
           usageAuthoring,
           workspaceId,
-          created.workflowId,
-          actorId,
-          catalog,
+          {
+            scopedWorkflowId: created.workflowId,
+            scopedActorId: actorId,
+            definitionCatalog: catalog,
+          },
         ),
         idempotencyKey: `publish-${label}-${connectionId}`,
         requestHash: createHash('sha256')
@@ -1002,4 +1038,4 @@ describe('workflow publication projections', () => {
       await Promise.all([connectionDatabase.close(), usageAuthoring.close()]);
     }
   });
-});
+}
