@@ -1,161 +1,52 @@
 import { utf8ByteLength } from '@pertexo/workflow-model';
-import { lockArtifactReferences } from '../artifacts/references.js';
+import { lockArtifactReferences } from '../../artifacts/references.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import {
   canonicalJson,
-  inspectJsonValue,
-  normalizedJson,
   DEFAULT_TEST_EXPECTATIONS,
   workflowTestExpectationsSchema,
   type WorkflowTestExpectations,
 } from '@pertexo/workflow-model';
-import type { DatabaseConfig } from '../config.js';
+import type { DatabaseConfig } from '../../config.js';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
-} from '../platform/pool/runtime.js';
-import { claimCommand, completeCommand } from '../platform/idempotency.js';
-import { generatePersistedId } from '../platform/persisted-id.js';
-import { serializeStoredExecutionJsonValue } from '../platform/stored-execution-value.js';
-import { withTenantScopedClient } from '../tenant-access/transactions.js';
+} from '../../platform/pool/runtime.js';
+import { claimCommand, completeCommand } from '../../platform/idempotency.js';
+import { generatePersistedId } from '../../platform/persisted-id.js';
+
+import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
-import { lockWorkflowAuthoringAuthority } from './workflows/authority.js';
-import { WorkflowNotFoundError } from './workflows/errors.js';
+import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
+import { WorkflowNotFoundError } from '../workflows/errors.js';
+import {
+  type WorkflowInputCaseResult,
+  type Scope,
+  type Command,
+  type WorkflowInputCaseDatabase,
+  scopeSchema,
+  resultSchema,
+  payload,
+  type CaseTransaction,
+} from './contract.js';
+import {
+  metadataColumns,
+  metadata,
+  workflow,
+  quota,
+  lockedCase,
+  lockInputCaseQuota,
+} from './records.js';
 
-export type WorkflowInputCaseMetadata = Readonly<{
-  id: string;
-  workspaceId: string;
-  workflowId: string;
-  workflowVersionId: string;
-  versionChecksum: string;
-  name: string;
-  revision: number;
-  createdAt: Date;
-  updatedAt: Date;
-}>;
-export type WorkflowInputCaseResult = Readonly<{
-  caseId: string;
-  revision: number;
-  replayed: boolean;
-}>;
-type Scope = Readonly<{
-  workspaceId: string;
-  actorId: string;
-  workflowId: string;
-  signal?: AbortSignal;
-}>;
-type Command = Scope &
-  Readonly<{ idempotencyKey: string; requestId?: string; traceId?: string }>;
-export interface WorkflowInputCaseDatabase {
-  listCases(
-    input: Scope & { limit: number; cursor?: { createdAt: Date; id: string } },
-  ): Promise<{
-    items: readonly WorkflowInputCaseMetadata[];
-    nextCursor?: { createdAt: Date; id: string };
-  }>;
-  getCase(input: Scope & { caseId: string }): Promise<{
-    case: WorkflowInputCaseMetadata & {
-      input: unknown;
-      expectations?: WorkflowTestExpectations;
-    };
-  }>;
-  createCase(
-    input: Command & {
-      workflowVersionId: string;
-      name: string;
-      input: unknown;
-      expectations?: WorkflowTestExpectations;
-    },
-  ): Promise<WorkflowInputCaseResult>;
-  updateCase(
-    input: Command & {
-      caseId: string;
-      expectedRevision: number;
-      name: string;
-      input: unknown;
-      expectations?: WorkflowTestExpectations;
-    },
-  ): Promise<WorkflowInputCaseResult>;
-  deleteCase(
-    input: Command & { caseId: string; expectedRevision: number },
-  ): Promise<WorkflowInputCaseResult>;
-  close(): Promise<void>;
-}
-export class WorkflowInputCaseRevisionConflictError extends Error {
-  override readonly name = 'WorkflowInputCaseRevisionConflictError';
-  constructor(readonly currentRevision: number) {
-    super('Run-input case revision changed');
-  }
-}
-export class WorkflowInputCaseLimitError extends Error {
-  override readonly name = 'WorkflowInputCaseLimitError';
-  constructor(
-    readonly kind: 'workflow_count' | 'workspace_count' | 'retained_bytes',
-  ) {
-    super('Run-input case storage limit reached');
-  }
-}
-const scopeSchema = z.object({
-  workspaceId: z.uuid(),
-  actorId: z.uuid(),
-  workflowId: z.uuid(),
-  signal: z.instanceof(AbortSignal).optional(),
-});
-const revisionSchema = z.number().int().positive().max(2_147_483_646);
-const resultSchema = z
-  .object({ caseId: z.uuid(), revision: revisionSchema })
-  .strict();
-const metadataColumns =
-  'id,workspace_id,workflow_id,workflow_version_id,version_checksum,name,revision,created_at,updated_at';
-function metadata(row: Record<string, unknown>): WorkflowInputCaseMetadata {
-  return Object.freeze({
-    id: z.uuid().parse(row.id),
-    workspaceId: z.uuid().parse(row.workspace_id),
-    workflowId: z.uuid().parse(row.workflow_id),
-    workflowVersionId: z.uuid().parse(row.workflow_version_id),
-    versionChecksum: z.string().parse(row.version_checksum),
-    name: z.string().parse(row.name),
-    revision: revisionSchema.parse(row.revision),
-    createdAt: z.coerce.date().parse(row.created_at),
-    updatedAt: z.coerce.date().parse(row.updated_at),
-  });
-}
-function payload(value: unknown): { text: string; bytes: number } {
-  serializeStoredExecutionJsonValue(value);
-  const inspection = inspectJsonValue(value);
-  if (
-    inspection.bytes > 65_536 ||
-    inspection.depth > 64 ||
-    inspection.members > 10_000
-  )
-    throw new TypeError('Run-input case JSON exceeds its bounds');
-  // The case keeps its fields in the order they were written.
-  const text = normalizedJson(value);
-  return { text, bytes: inspection.bytes };
-}
-async function workflow(
-  client: PoolClient,
-  input: Scope,
-  write: boolean,
-): Promise<void> {
-  const row = await client.query<{ lifecycle_status: string }>(
-    'select lifecycle_status from app.workflows where workspace_id=$1 and id=$2 for share',
-    [input.workspaceId, input.workflowId],
-  );
-  if (
-    row.rowCount !== 1 ||
-    (write && row.rows[0]?.lifecycle_status !== 'active')
-  )
-    throw new WorkflowNotFoundError('Workflow is not visible');
-}
-
-type CaseTransaction = <T>(
-  input: Scope,
-  write: boolean,
-  work: (client: PoolClient) => Promise<T>,
-) => Promise<T>;
-
+export {
+  type WorkflowInputCaseMetadata,
+  type WorkflowInputCaseResult,
+  type WorkflowInputCaseDatabase,
+  WorkflowInputCaseRevisionConflictError,
+  WorkflowInputCaseLimitError,
+} from './contract.js';
+export { lockInputCaseQuota } from './records.js';
 async function mutate(
   transact: CaseTransaction,
   input: Command,
@@ -200,46 +91,6 @@ async function mutate(
     await completeCommand(client, command, result);
     return Object.freeze({ ...result, replayed: false });
   });
-}
-async function quota(
-  client: PoolClient,
-  input: Scope,
-  bytes: number,
-  create: boolean,
-): Promise<void> {
-  const result = await client.query<{
-    workflow_count: string;
-    workspace_count: string;
-    retained_bytes: string;
-  }>(
-    `select (select count(*) from app.workflow_input_cases where workspace_id=$1 and workflow_id=$2 and deleted_at is null) workflow_count,(select count(*) from app.workflow_input_cases where workspace_id=$1 and deleted_at is null) workspace_count,(select coalesce(sum(canonical_bytes),0) from app.workflow_input_case_payloads where workspace_id=$1) retained_bytes`,
-    [input.workspaceId, input.workflowId],
-  );
-  const row = result.rows[0];
-  if (!row) throw new Error('Case quota authority unavailable');
-  if (create && Number(row.workflow_count) >= 50)
-    throw new WorkflowInputCaseLimitError('workflow_count');
-  if (create && Number(row.workspace_count) >= 200)
-    throw new WorkflowInputCaseLimitError('workspace_count');
-  if (Number(row.retained_bytes) + bytes > 4_194_304)
-    throw new WorkflowInputCaseLimitError('retained_bytes');
-}
-async function lockedCase(
-  client: PoolClient,
-  input: Scope & { caseId: string; expectedRevision: number },
-): Promise<WorkflowInputCaseMetadata> {
-  z.uuid().parse(input.caseId);
-  revisionSchema.parse(input.expectedRevision);
-  const result = await client.query<Record<string, unknown>>(
-    `select ${metadataColumns} from app.workflow_input_cases where workspace_id=$1 and workflow_id=$2 and id=$3 and deleted_at is null for update`,
-    [input.workspaceId, input.workflowId, input.caseId],
-  );
-  if (!result.rows[0])
-    throw new WorkflowNotFoundError('Run-input case is not visible');
-  const item = metadata(result.rows[0]);
-  if (item.revision !== input.expectedRevision)
-    throw new WorkflowInputCaseRevisionConflictError(item.revision);
-  return item;
 }
 
 /** Durable bounded authoring commands; no caller manages locks or quota counters. */
@@ -486,14 +337,4 @@ export function createWorkflowInputCaseDatabase(
       return closing;
     },
   });
-}
-
-/** Cases and a suite's frozen manifest share one quota/mutation fence. */
-export async function lockInputCaseQuota(
-  client: PoolClient,
-  workspaceId: string,
-): Promise<void> {
-  await client.query('select pg_advisory_xact_lock(hashtextextended($1,0))', [
-    `workflow-input-case-quota:${workspaceId}`,
-  ]);
 }

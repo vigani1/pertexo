@@ -12,7 +12,7 @@ import { migrateDatabase } from '../../../src/migrations.js';
 import { createIdentityWorkspaceDatabase } from '../../../src/tenant-access/database.js';
 import { createDisposableDatabaseFixture } from '../../support/postgres/disposable-database.js';
 import { createWorkflowAuthoringFixtureDatabase } from '../../support/workflow-authoring-admission.fixture.js';
-import { createWorkflowTagDatabase } from '../../../src/authoring/organization/tags.repository.js';
+import { createWorkflowTagDatabase } from '../../../src/authoring/organization/tags/commands.repository.js';
 import {
   createWorkflowFolderDatabase,
   createWorkflowOrganizationBatchDatabase,

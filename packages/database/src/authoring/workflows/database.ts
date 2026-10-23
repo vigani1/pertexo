@@ -34,7 +34,7 @@ import { createWorkflowPortabilityStore } from '../portability/store.js';
 import type { WorkflowAuthoringWriteContext } from './context.js';
 import { createWorkflowAuthoringLifecycleStore } from './commands/lifecycle.js';
 import { createWorkflowAuthoringRenameStore } from './commands/rename.js';
-import { createWorkflowAutoPauseStore } from '../settings/auto-pause.js';
+import { createWorkflowAutoPauseStore } from '../settings/auto-pause/store.js';
 import { createWorkflowConcurrencyStore } from '../settings/concurrency.js';
 export type {
   WorkflowDraftRecord,

@@ -29,7 +29,7 @@ import {
   workflowId,
 } from '../../support/workflow-authoring.js';
 import { parseDatabaseConfig } from '../../../src/config.js';
-import { createWorkflowFolderDatabase } from '../../../src/authoring/organization/folders.repository.js';
+import { createWorkflowFolderDatabase } from '../../../src/authoring/organization/folders/commands.repository.js';
 import { createWorkflowOrganizationReadDatabase } from '../../../src/authoring/organization/workflows.queries.js';
 import { createWorkflowRunDatabase } from '../../../src/runs/runs.repository.js';
 import { WorkflowNotFoundError } from '../../../src/authoring/workflows/errors.js';

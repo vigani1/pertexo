@@ -1,7 +1,7 @@
 import { createConnectionDatabase } from '../../src/connections/database.js';
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
-import { createWorkflowFolderDatabase } from '../../src/authoring/organization/folders.repository.js';
+import { createWorkflowFolderDatabase } from '../../src/authoring/organization/folders/commands.repository.js';
 import {
   createPendingTaskStore,
   PendingTaskNotFoundError,
