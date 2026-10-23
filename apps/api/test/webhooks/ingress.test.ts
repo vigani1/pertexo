@@ -83,8 +83,10 @@ describe('generic webhook ingress', () => {
     'returns a plain 202 skip for verified %s deliveries without opening a workflow-response wait',
     async (mode) => {
       const f = setup({
-        ...verification,
-        authentication: { mode, allowedOrigins: [] },
+        reference: {
+          ...verification,
+          authentication: { mode, allowedOrigins: [] },
+        },
       });
       f.database.acceptVerifiedDelivery.mockResolvedValue({
         skipped: true,
@@ -118,7 +120,9 @@ describe('generic webhook ingress', () => {
         mode === 'secret_url'
           ? { mode, allowedOrigins: [] }
           : { mode, headerName: 'authorization', allowedOrigins: [] };
-      const f = setup({ ...verification, authentication: policy });
+      const f = setup({
+        reference: { ...verification, authentication: policy },
+      });
       const result = await f.application.inject({
         method: 'POST',
         url: `/hooks/${endpointKey}`,
@@ -149,7 +153,9 @@ describe('generic webhook ingress', () => {
         headerName,
         allowedOrigins: [],
       };
-      const f = setup({ ...verification, authentication: policy });
+      const f = setup({
+        reference: { ...verification, authentication: policy },
+      });
       const send = (secret: Uint8Array | undefined) =>
         f.application.inject({
           method: 'POST',
@@ -182,11 +188,13 @@ describe('generic webhook ingress', () => {
     'refuses duplicate and comma-folded %s credentials on the wire',
     async (headerName) => {
       const f = setup({
-        ...verification,
-        authentication: {
-          mode: 'header_secret',
-          headerName,
-          allowedOrigins: [],
+        reference: {
+          ...verification,
+          authentication: {
+            mode: 'header_secret',
+            headerName,
+            allowedOrigins: [],
+          },
         },
       });
       const value = `${headerName === 'authorization' ? 'Bearer ' : ''}${Buffer.from(currentSecret).toString('base64url')}`;
@@ -293,10 +301,12 @@ describe('generic webhook ingress', () => {
   });
   it('adds exact CORS origin to 202 and workflow replies; refuses other browser origins before admission', async () => {
     const f = setup({
-      ...verification,
-      authentication: {
-        mode: 'secret_url',
-        allowedOrigins: ['https://app.example'],
+      reference: {
+        ...verification,
+        authentication: {
+          mode: 'secret_url',
+          allowedOrigins: ['https://app.example'],
+        },
       },
     });
     const send = (origin: string) =>
@@ -349,7 +359,7 @@ describe('generic webhook ingress', () => {
   ])(
     'returns a safe 400 when a signed delivery violates $name',
     async ({ error }) => {
-      const { application, database } = setup();
+      const { application, database } = setup({});
       database.acceptVerifiedDelivery.mockRejectedValue(error);
       const response = await application.inject(
         request('{"private-name":"private-value"}', currentSecret),
@@ -362,7 +372,7 @@ describe('generic webhook ingress', () => {
   );
 
   it('returns the committed JSON response without serializing its bytes again', async () => {
-    const f = setup();
+    const f = setup({});
     f.database.acceptVerifiedDelivery.mockResolvedValue({
       runId: '99999999-9999-4999-8999-999999999999',
       replayed: false,
@@ -394,7 +404,7 @@ describe('generic webhook ingress', () => {
   ])(
     'returns exact text and empty-body responses ($statusCode)',
     async ({ statusCode, body }) => {
-      const f = setup();
+      const f = setup({});
       f.database.acceptVerifiedDelivery.mockResolvedValue({
         runId: '99999999-9999-4999-8999-999999999999',
         replayed: false,
@@ -412,7 +422,7 @@ describe('generic webhook ingress', () => {
   it.each(['text/csv', 'application/xml'] as const)(
     'returns exact UTF-8 bytes with an explicit charset for %s',
     async (contentType) => {
-      const f = setup();
+      const f = setup({});
       f.database.acceptVerifiedDelivery.mockResolvedValueOnce({
         runId: '99999999-9999-4999-8999-999999999999',
         replayed: false,
@@ -436,7 +446,7 @@ describe('generic webhook ingress', () => {
     },
   );
   it('returns only a safe code when the run fails before replying', async () => {
-    const f = setup();
+    const f = setup({});
     f.database.acceptVerifiedDelivery.mockResolvedValue({
       runId: '99999999-9999-4999-8999-999999999999',
       replayed: false,
@@ -449,7 +459,7 @@ describe('generic webhook ingress', () => {
     expect(f.database.recordRejectedDelivery).not.toHaveBeenCalled();
   });
   it('falls back to the accepted receipt on timeout without canceling or rejecting the run', async () => {
-    const f = setup();
+    const f = setup({});
     f.database.acceptVerifiedDelivery.mockResolvedValue({
       runId: '99999999-9999-4999-8999-999999999999',
       replayed: false,
@@ -465,7 +475,7 @@ describe('generic webhook ingress', () => {
     expect(f.database.acceptVerifiedDelivery).toHaveBeenCalledOnce();
   });
   it('keeps a committed admission when the response read fails', async () => {
-    const f = setup();
+    const f = setup({});
     f.database.acceptVerifiedDelivery.mockResolvedValue({
       runId: '99999999-9999-4999-8999-999999999999',
       replayed: false,
@@ -481,7 +491,7 @@ describe('generic webhook ingress', () => {
     expect(f.health).toHaveBeenLastCalledWith('degraded');
   });
   it('does not truncate a one-MiB committed response', async () => {
-    const f = setup();
+    const f = setup({});
     f.database.acceptVerifiedDelivery.mockResolvedValue({
       runId: '99999999-9999-4999-8999-999999999999',
       replayed: true,
@@ -504,7 +514,7 @@ describe('generic webhook ingress', () => {
 
   it('verifies exact raw bytes before parsing and returns strict 202', async () => {
     const { application, database, delivery, deduplication, health, trace } =
-      setup();
+      setup({});
     const body = '{"value": 1}\n';
     const response = await application.inject(request(body, currentSecret));
 
@@ -534,7 +544,12 @@ describe('generic webhook ingress', () => {
   });
 
   it('accepts delivery without optional idempotency or trace context', async () => {
-    const fixture = setup(undefined, undefined, undefined, false);
+    const fixture = setup({
+      reference: undefined,
+      acceptanceError: undefined,
+      acceptance: undefined,
+      includeTraceparent: false,
+    });
     fixture.database.acceptVerifiedDelivery.mockResolvedValueOnce({
       runId: '99999999-9999-4999-8999-999999999999',
       replayed: false,
@@ -589,7 +604,13 @@ describe('generic webhook ingress', () => {
     name: string;
     trace: WebhookIngressTelemetry['trace'];
   }>[])('accepts exactly once through $name', async ({ trace }) => {
-    const fixture = setup(undefined, undefined, undefined, true, { trace });
+    const fixture = setup({
+      reference: undefined,
+      acceptanceError: undefined,
+      acceptance: undefined,
+      includeTraceparent: true,
+      telemetryOverrides: { trace },
+    });
 
     const response = await fixture.application.inject(
       request('{}', currentSecret),
@@ -608,13 +629,19 @@ describe('generic webhook ingress', () => {
 
   it('returns one authoritative acceptance when tracing invokes its callback twice', async () => {
     let firstPromise: Promise<unknown> | undefined;
-    const fixture = setup(undefined, undefined, undefined, true, {
-      trace: <T>(_parent: string | undefined, work: () => Promise<T>) => {
-        const first = work();
-        const second = work();
-        firstPromise = first;
-        expect(second).toBe(first);
-        return first;
+    const fixture = setup({
+      reference: undefined,
+      acceptanceError: undefined,
+      acceptance: undefined,
+      includeTraceparent: true,
+      telemetryOverrides: {
+        trace: <T>(_parent: string | undefined, work: () => Promise<T>) => {
+          const first = work();
+          const second = work();
+          firstPromise = first;
+          expect(second).toBe(first);
+          return first;
+        },
       },
     });
 
@@ -629,9 +656,15 @@ describe('generic webhook ingress', () => {
   });
 
   it('treats unavailable diagnostic trace context as absent', async () => {
-    const fixture = setup(undefined, undefined, undefined, true, {
-      traceparent: () => {
-        throw new Error('active trace context is unavailable');
+    const fixture = setup({
+      reference: undefined,
+      acceptanceError: undefined,
+      acceptance: undefined,
+      includeTraceparent: true,
+      telemetryOverrides: {
+        traceparent: () => {
+          throw new Error('active trace context is unavailable');
+        },
       },
     });
 
@@ -648,10 +681,16 @@ describe('generic webhook ingress', () => {
 
   it('preserves a failed acceptance while the trace promise also rejects', async () => {
     const workFailure = new Error('database unavailable');
-    const fixture = setup(undefined, workFailure, undefined, true, {
-      trace: <T>(_parent: string | undefined, work: () => Promise<T>) => {
-        void work();
-        return Promise.reject(new Error('trace export unavailable'));
+    const fixture = setup({
+      reference: undefined,
+      acceptanceError: workFailure,
+      acceptance: undefined,
+      includeTraceparent: true,
+      telemetryOverrides: {
+        trace: <T>(_parent: string | undefined, work: () => Promise<T>) => {
+          void work();
+          return Promise.reject(new Error('trace export unavailable'));
+        },
       },
     });
 
@@ -667,7 +706,7 @@ describe('generic webhook ingress', () => {
   });
 
   it('consumes the durable endpoint limit before opening a signing secret', async () => {
-    const { application, database, openSecret } = setup();
+    const { application, database, openSecret } = setup({});
     database.consumeIngressLimit.mockRejectedValueOnce(
       new WebhookIngressRateLimitExceededError(17),
     );
@@ -680,7 +719,7 @@ describe('generic webhook ingress', () => {
   });
 
   it('authenticates valid signatures before reporting malformed JSON', async () => {
-    const { application, database } = setup();
+    const { application, database } = setup({});
     const valid = await application.inject(request('{', currentSecret));
     const invalid = await application.inject({
       ...request('{', currentSecret),
@@ -696,7 +735,7 @@ describe('generic webhook ingress', () => {
   });
 
   it('rejects validly signed malformed UTF-8 after authentication', async () => {
-    const { application, database } = setup();
+    const { application, database } = setup({});
     const body = new Uint8Array([0xc3, 0x28]);
 
     const response = await application.inject({
@@ -815,7 +854,7 @@ describe('generic webhook ingress', () => {
   ])(
     'handles $name through raw HTTP headers',
     async ({ headers, status, code }) => {
-      const { application, database } = setup();
+      const { application, database } = setup({});
 
       const response = await sendRawWebhook(application, headers(), '{}');
 
@@ -831,7 +870,7 @@ describe('generic webhook ingress', () => {
   );
 
   it('collapses malformed signatures and stale timestamps into one authentication response', async () => {
-    const malformed = setup();
+    const malformed = setup({});
     const base = request('{}', currentSecret);
     const uppercase = await malformed.application.inject({
       ...base,
@@ -887,7 +926,7 @@ describe('generic webhook ingress', () => {
       'webhook.unsupported_media_type',
     ],
   ])('rejects unsupported representation %#', async (extra, status, code) => {
-    const { application } = setup();
+    const { application } = setup({});
     const base = request('{}', currentSecret);
     const response = await application.inject({
       ...base,
@@ -900,8 +939,10 @@ describe('generic webhook ingress', () => {
   describe('request shapes', () => {
     const open = () =>
       setup({
-        ...verification,
-        authentication: { mode: 'secret_url', allowedOrigins: [] },
+        reference: {
+          ...verification,
+          authentication: { mode: 'secret_url', allowedOrigins: [] },
+        },
       });
     const accepted = (f: ReturnType<typeof setup>) =>
       acceptedInputs(f.database);
@@ -968,7 +1009,7 @@ describe('generic webhook ingress', () => {
     });
 
     it('refuses GET on a signed endpoint, whose signature covers a body', async () => {
-      const f = setup();
+      const f = setup({});
       const response = await f.application.inject({
         method: 'GET',
         url: `/hooks/${endpointKey}?order=A-1`,
@@ -1007,12 +1048,14 @@ describe('generic webhook ingress', () => {
 
     it('leaves credentials, signatures and proxy headers out of the request', async () => {
       const f = setup({
-        ...verification,
-        runInputMode: 'request',
-        authentication: {
-          mode: 'header_secret',
-          headerName: 'x-webhook-secret',
-          allowedOrigins: [],
+        reference: {
+          ...verification,
+          runInputMode: 'request',
+          authentication: {
+            mode: 'header_secret',
+            headerName: 'x-webhook-secret',
+            allowedOrigins: [],
+          },
         },
       });
       const response = await f.application.inject({
@@ -1049,7 +1092,7 @@ describe('generic webhook ingress', () => {
   });
 
   it('accepts case-insensitive JSON media type and UTF-8 parameter', async () => {
-    const { application } = setup();
+    const { application } = setup({});
     const base = request('{}', currentSecret);
     const response = await application.inject({
       ...base,
@@ -1062,7 +1105,7 @@ describe('generic webhook ingress', () => {
   });
 
   it('enforces the exact 256 KiB limit', async () => {
-    const { application } = setup();
+    const { application } = setup({});
     const accepted = '{}'.padEnd(256 * 1024, ' ');
     expect(
       (await application.inject(request(accepted, currentSecret))).statusCode,
@@ -1083,7 +1126,7 @@ describe('generic webhook ingress', () => {
   });
 
   it('accepts the eligible previous secret and rejects it at the persisted boundary', async () => {
-    const first = setup();
+    const first = setup({});
     expect(
       (await first.application.inject(request('{}', previousSecret)))
         .statusCode,
@@ -1092,8 +1135,10 @@ describe('generic webhook ingress', () => {
     if (prior === undefined)
       throw new Error('Previous secret fixture is missing');
     const second = setup({
-      ...verification,
-      previousSecret: { ...prior, validUntil: now },
+      reference: {
+        ...verification,
+        previousSecret: { ...prior, validUntil: now },
+      },
     });
     expect(
       (await second.application.inject(request('{}', previousSecret)))
@@ -1102,7 +1147,7 @@ describe('generic webhook ingress', () => {
   });
 
   it('wipes the current secret when opening the eligible previous secret fails', async () => {
-    const fixture = setup();
+    const fixture = setup({});
     const openedCurrent = Buffer.alloc(32, 4);
     fixture.openSecret
       .mockReset()
@@ -1119,7 +1164,7 @@ describe('generic webhook ingress', () => {
   });
 
   it('wipes both opened secret versions after signature mismatch', async () => {
-    const fixture = setup();
+    const fixture = setup({});
     const base = request('{}', currentSecret);
 
     const response = await fixture.application.inject({
@@ -1138,20 +1183,29 @@ describe('generic webhook ingress', () => {
   });
 
   it('maps replay mismatch and admission limits to stable corrective responses', async () => {
-    const conflict = setup(undefined, new WebhookDeliveryReplayMismatchError());
+    const conflict = setup({
+      reference: undefined,
+      acceptanceError: new WebhookDeliveryReplayMismatchError(),
+    });
     expect(
       (await conflict.application.inject(request('{}', currentSecret))).json<{
         code: string;
       }>().code,
     ).toBe('webhook.idempotency_conflict');
-    const limited = setup(undefined, new WorkspaceRunQuotaExceededError());
+    const limited = setup({
+      reference: undefined,
+      acceptanceError: new WorkspaceRunQuotaExceededError(),
+    });
     const response = await limited.application.inject(
       request('{}', currentSecret),
     );
     expect(response.statusCode).toBe(429);
     expect(response.headers['retry-after']).toBe('5');
 
-    const paused = setup(undefined, new WebhookWorkflowPausedError());
+    const paused = setup({
+      reference: undefined,
+      acceptanceError: new WebhookWorkflowPausedError(),
+    });
     const pausedResponse = await paused.application.inject(
       request('{}', currentSecret),
     );
@@ -1162,7 +1216,7 @@ describe('generic webhook ingress', () => {
   });
 
   it('fails closed for missing verification and malformed timestamp material', async () => {
-    const missing = setup();
+    const missing = setup({});
     missing.database.resolveVerification.mockResolvedValueOnce(null);
     const missingResponse = await missing.application.inject(
       request('{}', currentSecret),
@@ -1170,7 +1224,7 @@ describe('generic webhook ingress', () => {
     expect(missingResponse.statusCode).toBe(401);
     expect(missing.openSecret).not.toHaveBeenCalled();
 
-    const malformed = setup();
+    const malformed = setup({});
     const base = request('{}', currentSecret);
     const malformedResponse = await malformed.application.inject({
       ...base,
@@ -1181,7 +1235,7 @@ describe('generic webhook ingress', () => {
   });
 
   it('rejects malformed idempotency headers before delivery admission', async () => {
-    const { application, database } = setup();
+    const { application, database } = setup({});
     const base = request('{}', currentSecret);
     const response = await application.inject({
       ...base,
@@ -1198,7 +1252,10 @@ describe('generic webhook ingress', () => {
   ])(
     'conceals ineligible delivery admission as authentication failure',
     async (error) => {
-      const { application } = setup(undefined, error);
+      const { application } = setup({
+        reference: undefined,
+        acceptanceError: error,
+      });
       const response = await application.inject(request('{}', currentSecret));
       expect(response.statusCode).toBe(401);
       expect(response.json<{ code: string }>().code).toBe(
@@ -1208,9 +1265,13 @@ describe('generic webhook ingress', () => {
   );
 
   it('returns the original run reference for an exact completed replay', async () => {
-    const replay = setup(undefined, undefined, {
-      runId: '99999999-9999-4999-8999-999999999999',
-      replayed: true,
+    const replay = setup({
+      reference: undefined,
+      acceptanceError: undefined,
+      acceptance: {
+        runId: '99999999-9999-4999-8999-999999999999',
+        replayed: true,
+      },
     });
     const response = await replay.application.inject(
       request('{}', currentSecret),
@@ -1223,7 +1284,7 @@ describe('generic webhook ingress', () => {
   });
 
   it('fails closed with a bounded response when infrastructure is unavailable', async () => {
-    const { application, database } = setup();
+    const { application, database } = setup({});
     database.resolveVerification.mockRejectedValueOnce(
       new Error('sensitive database failure'),
     );
@@ -1239,7 +1300,7 @@ describe('generic webhook ingress', () => {
   });
 
   it('does not persist a delivery after the client socket closes during secret opening', async () => {
-    const { application, database, openSecret } = setup();
+    const { application, database, openSecret } = setup({});
     const secretBarrier = deferred<Uint8Array>();
     let operationSignal: AbortSignal | undefined;
     openSecret.mockImplementationOnce(
@@ -1289,7 +1350,7 @@ describe('generic webhook ingress', () => {
   });
 
   it('propagates accepted-reply serialization failures through the scoped error handler', async () => {
-    const { application, database } = setup();
+    const { application, database } = setup({});
     database.acceptVerifiedDelivery
       .mockResolvedValueOnce({
         runId: '99999999-9999-4999-8999-999999999999',
@@ -1420,7 +1481,10 @@ describe('generic webhook ingress', () => {
       },
     ])('records $name as metadata with the same response', async (scenario) => {
       const body = scenario.body ?? '{}';
-      const fixture = setup(undefined, scenario.acceptanceError);
+      const fixture = setup({
+        reference: undefined,
+        acceptanceError: scenario.acceptanceError,
+      });
       const base = request(body, currentSecret);
       const response = await fixture.application.inject({
         ...base,
@@ -1438,13 +1502,13 @@ describe('generic webhook ingress', () => {
     });
 
     it('records nothing it cannot attribute', async () => {
-      const unknown = setup();
+      const unknown = setup({});
       unknown.database.resolveVerification.mockResolvedValueOnce(null);
-      const limited = setup();
+      const limited = setup({});
       limited.database.consumeIngressLimit.mockRejectedValueOnce(
         new WebhookIngressRateLimitExceededError(3),
       );
-      const accepted = setup();
+      const accepted = setup({});
       const fixtures = [unknown, limited, accepted];
       const responses = await Promise.all(
         fixtures.map(({ application }) =>
@@ -1463,7 +1527,7 @@ describe('generic webhook ingress', () => {
     });
 
     it('keeps the response when the delivery log cannot be written', async () => {
-      const fixture = setup();
+      const fixture = setup({});
       fixture.database.recordRejectedDelivery.mockRejectedValueOnce(
         new Error('delivery log unavailable'),
       );
@@ -1482,7 +1546,7 @@ describe('generic webhook ingress', () => {
   });
 
   async function setupPreflight(reference = verification) {
-    const fixture = setup(reference);
+    const fixture = setup({ reference: reference });
     const consume = vi
       .fn<RateLimitConsumer['consume']>()
       .mockResolvedValue({ allowed: true });
@@ -1505,16 +1569,22 @@ describe('generic webhook ingress', () => {
     return { ...fixture, consume };
   }
 
-  function setup(
+  function setup({
     reference = verification,
-    acceptanceError?: Error,
+    acceptanceError,
     acceptance = {
       runId: '99999999-9999-4999-8999-999999999999',
       replayed: false,
     },
     includeTraceparent = true,
-    telemetryOverrides: Partial<WebhookIngressTelemetry> = {},
-  ) {
+    telemetryOverrides = {},
+  }: Readonly<{
+    reference?: typeof verification | undefined;
+    acceptanceError?: Error | undefined;
+    acceptance?: { runId: string; replayed: boolean } | undefined;
+    includeTraceparent?: boolean | undefined;
+    telemetryOverrides?: Partial<WebhookIngressTelemetry> | undefined;
+  }> = {}) {
     const database = {
       readResponse: vi
         .fn<WebhookTriggerDatabase['readResponse']>()

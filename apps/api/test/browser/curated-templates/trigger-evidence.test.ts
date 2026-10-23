@@ -70,13 +70,13 @@ describe('owned genuine curated trigger qualification', () => {
     async (origin) => {
       const api = {} as ReturnType<typeof useBetterAuthRealApi>;
       await expect(
-        executeCuratedTemplateTriggers(
-          api,
-          {} as Awaited<ReturnType<typeof api.signIn>>,
-          'unused',
-          [],
-          origin,
-        ),
+        executeCuratedTemplateTriggers({
+          api: api,
+          browser: {} as Awaited<ReturnType<typeof api.signIn>>,
+          workspaceId: 'unused',
+          workflowIds: [],
+          apiOrigin: origin,
+        }),
       ).rejects.toThrow('Owned loopback API required');
     },
   );

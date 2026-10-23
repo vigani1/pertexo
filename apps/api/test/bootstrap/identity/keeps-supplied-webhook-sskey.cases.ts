@@ -62,15 +62,15 @@ export function registerKeepsSuppliedWebhookSSKey(): void {
         operation === 'rotate-secret' ? { endpointKey: 'a'.repeat(43) } : {};
       try {
         applicationFixture.application =
-          await createBetterAuthFixtureApplication(
-            config,
-            {
+          await createBetterAuthFixtureApplication({
+            config: config,
+            dependencies: {
               ...dependencies(),
               identityRuntime: identityRuntime(undefined, true),
               webhookRuntime: runtime,
             },
-            owner,
-          );
+            owner: owner,
+          });
         const validHeaders = {
           cookie,
           'x-csrf-token': csrf,

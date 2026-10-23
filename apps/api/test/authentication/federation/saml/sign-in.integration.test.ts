@@ -53,13 +53,13 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
       expect((await api.finish(fixture, test)).headers.location).toContain(
         'ssoTest=passed',
       );
-      await api.command(
-        fixture.workspaceId,
-        fixture.owner,
-        `/domains/${fixture.domainId}/enforcement`,
-        { required: true, expectedRevision: 4 },
-        'PUT',
-      );
+      await api.command({
+        workspaceId: fixture.workspaceId,
+        owner: fixture.owner,
+        path: `/domains/${fixture.domainId}/enforcement`,
+        payload: { required: true, expectedRevision: 4 },
+        method: 'PUT',
+      });
       const journey = await api.start(fixture),
         peer = await api.createIdentityPeer(api.encryption);
       const body = api.form(fixture, journey);
@@ -137,13 +137,13 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
       expect((await api.finish(fixture, tested)).headers.location).toContain(
         'ssoTest=passed',
       );
-      await api.command(
-        fixture.workspaceId,
-        fixture.owner,
-        `/domains/${fixture.domainId}/enforcement`,
-        { required: true, expectedRevision: 4 },
-        'PUT',
-      );
+      await api.command({
+        workspaceId: fixture.workspaceId,
+        owner: fixture.owner,
+        path: `/domains/${fixture.domainId}/enforcement`,
+        payload: { required: true, expectedRevision: 4 },
+        method: 'PUT',
+      });
       const reply = await api.finish(fixture, await api.start(fixture));
       const browser = browserFrom(reply),
         password = 'another secure integration password';

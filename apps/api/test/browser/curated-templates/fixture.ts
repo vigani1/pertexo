@@ -97,13 +97,13 @@ export async function prepareCuratedTemplateBrowserFixture(
       apiOrigin: string,
     ) {
       expect(evidence.workspaceId).toBe(workspaceId);
-      return executeCuratedTemplateTriggers(
-        api,
-        browser,
-        workspaceId,
-        evidence.importedWorkflowIds,
-        apiOrigin,
-      );
+      return executeCuratedTemplateTriggers({
+        api: api,
+        browser: browser,
+        workspaceId: workspaceId,
+        workflowIds: evidence.importedWorkflowIds,
+        apiOrigin: apiOrigin,
+      });
     },
     executeGraphs(
       evidence: z.infer<typeof curatedTemplateBrowserEvidenceSchema>,

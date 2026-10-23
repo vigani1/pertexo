@@ -10,13 +10,19 @@ import { createApiScheduleRuntime } from '../../../src/platform/schedules/schedu
 import type { FixtureResourceOwner } from '../../browser/harness/resource-owner.js';
 
 /** The real API composition used by the disposable Better Auth fixture. */
-export async function createBetterAuthFixtureApplication(
-  config: ApiConfig,
-  dependencies: ApiApplicationDependencies,
-  owner: FixtureResourceOwner,
+export async function createBetterAuthFixtureApplication({
+  config,
+  dependencies,
+  owner,
   schedules = false,
   createSchedules = createApiScheduleRuntime,
-) {
+}: Readonly<{
+  config: ApiConfig;
+  dependencies: ApiApplicationDependencies;
+  owner: FixtureResourceOwner;
+  schedules?: boolean | undefined;
+  createSchedules?: typeof createApiScheduleRuntime | undefined;
+}>) {
   const scheduleRuntime = schedules
     ? owner.acquire(
         'schedule runtime',

@@ -28,18 +28,18 @@ export function registerBindsThroughVerifiedSSOUnprovisionedJITOff(
     const organization = settingsReply.json<{
       organization: { revision: number };
     }>().organization;
-    await api.command(
-      f.workspaceId,
-      f.owner,
-      `/providers/${f.providerId}`,
-      {
+    await api.command({
+      workspaceId: f.workspaceId,
+      browser: f.owner,
+      path: `/providers/${f.providerId}`,
+      payload: {
         name: 'Fixture OIDC',
         configuration: { clientId: 'fixture-client', jitEnabled: false },
         enabled: true,
         expectedRevision: organization.revision,
       },
-      'PUT',
-    );
+      method: 'PUT',
+    });
     const created = await createPerson(f, email);
     expect(created.statusCode, created.payload).toBe(201);
     const userId = created.json<{ id: string }>().id;

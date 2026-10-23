@@ -76,14 +76,21 @@ export function useOrganizationApi(suite: string) {
     restoreDns?.();
     restoreGateway?.();
   });
-  async function command(
-    workspaceId: string,
-    browser: Browser,
-    path: string,
-    payload: object,
-    method: 'POST' | 'PUT' = 'POST',
+  async function command({
+    workspaceId,
+    browser,
+    path,
+    payload,
+    method = 'POST',
     key = randomUUID(),
-  ) {
+  }: Readonly<{
+    workspaceId: string;
+    browser: Browser;
+    path: string;
+    payload: object;
+    method?: 'POST' | 'PUT' | undefined;
+    key?: `${string}-${string}-${string}-${string}-${string}` | undefined;
+  }>) {
     const reply = await api.send(
       method,
       `/v1/workspaces/${workspaceId}/sso${path}`,
@@ -112,26 +119,46 @@ export function useOrganizationApi(suite: string) {
     )
       throw new Error('Workspace missing');
     const workspaceId = value.id;
-    await command(workspaceId, owner, '/organization', {
-      name: 'Fixture organization',
+    await command({
+      workspaceId: workspaceId,
+      browser: owner,
+      path: '/organization',
+      payload: {
+        name: 'Fixture organization',
+      },
     });
-    const added = await command(workspaceId, owner, '/domains', {
-      domain,
-      expectedRevision: 1,
+    const added = await command({
+      workspaceId: workspaceId,
+      browser: owner,
+      path: '/domains',
+      payload: {
+        domain,
+        expectedRevision: 1,
+      },
     });
     const domainId = added.organization?.domains[0]?.id;
     if (domainId === undefined) throw new Error('Domain missing');
-    await command(workspaceId, owner, `/domains/${domainId}/verify`, {
-      expectedRevision: 2,
+    await command({
+      workspaceId: workspaceId,
+      browser: owner,
+      path: `/domains/${domainId}/verify`,
+      payload: {
+        expectedRevision: 2,
+      },
     });
-    const settings = await command(workspaceId, owner, '/providers', {
-      kind: 'oidc',
-      name: 'Fixture OIDC',
-      issuer: 'https://idp.integration.test',
-      configuration: { clientId: 'fixture-client', jitEnabled: true },
-      clientSecret: 'private-provider-secret',
-      enabled: true,
-      expectedRevision: 3,
+    const settings = await command({
+      workspaceId: workspaceId,
+      browser: owner,
+      path: '/providers',
+      payload: {
+        kind: 'oidc',
+        name: 'Fixture OIDC',
+        issuer: 'https://idp.integration.test',
+        configuration: { clientId: 'fixture-client', jitEnabled: true },
+        clientSecret: 'private-provider-secret',
+        enabled: true,
+        expectedRevision: 3,
+      },
     });
     const providerId = settings.organization?.providers[0]?.id;
     if (providerId === undefined) throw new Error('Provider missing');
@@ -217,13 +244,13 @@ export function useOrganizationApi(suite: string) {
     required = true,
     expectedRevision = 4,
   ) {
-    return command(
-      fixture.workspaceId,
-      fixture.owner,
-      `/domains/${fixture.domainId}/enforcement`,
-      { required, expectedRevision },
-      'PUT',
-    );
+    return command({
+      workspaceId: fixture.workspaceId,
+      browser: fixture.owner,
+      path: `/domains/${fixture.domainId}/enforcement`,
+      payload: { required, expectedRevision },
+      method: 'PUT',
+    });
   }
   return {
     ...api,

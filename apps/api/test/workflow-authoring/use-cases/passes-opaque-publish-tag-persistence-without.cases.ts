@@ -104,16 +104,22 @@ export function registerPassesOpaquePublishTagPersistenceWithout(): void {
     const workflowTwoId = '33333333-3333-4333-8333-333333333333';
     const tagTwo = '"draft.1234567890abcdefghijklmnopqrstuvwxyz_-ABCDE"';
     const hashes: string[] = [];
-    const execute = async (
-      inputActor: typeof actor,
-      routeWorkspaceId: string,
-      inputWorkflowId: string,
-      representationTag: string,
+    const execute = async ({
+      inputActor,
+      routeWorkspaceId,
+      inputWorkflowId,
+      representationTag,
       access = authorization({
         actorId: inputActor.actorId,
         workspaceId: routeWorkspaceId,
       }),
-    ) => {
+    }: Readonly<{
+      inputActor: typeof actor;
+      routeWorkspaceId: string;
+      inputWorkflowId: string;
+      representationTag: string;
+      access?: ReturnType<typeof authorization> | undefined;
+    }>) => {
       const publishWorkflow = vi.fn((input: DatabasePublishWorkflowInput) => {
         hashes.push(input.requestHash);
         return Promise.resolve({
@@ -134,31 +140,46 @@ export function registerPassesOpaquePublishTagPersistenceWithout(): void {
       });
     };
 
-    await execute(actor, workspaceId, workflowId, tag);
-    await execute(
-      createActorContext({
+    await execute({
+      inputActor: actor,
+      routeWorkspaceId: workspaceId,
+      inputWorkflowId: workflowId,
+      representationTag: tag,
+    });
+    await execute({
+      inputActor: createActorContext({
         actorId: actorTwoId,
         workspaceId,
         sessionId,
         requestId: 'actor-two',
       }),
-      workspaceId,
-      workflowId,
-      tag,
-    );
-    await execute(
-      createActorContext({
+      routeWorkspaceId: workspaceId,
+      inputWorkflowId: workflowId,
+      representationTag: tag,
+    });
+    await execute({
+      inputActor: createActorContext({
         actorId,
         workspaceId: workspaceTwoId,
         sessionId,
         requestId: 'workspace-two',
       }),
-      workspaceTwoId,
-      workflowId,
-      tag,
-    );
-    await execute(actor, workspaceId, workflowTwoId, tag);
-    await execute(actor, workspaceId, workflowId, tagTwo);
+      routeWorkspaceId: workspaceTwoId,
+      inputWorkflowId: workflowId,
+      representationTag: tag,
+    });
+    await execute({
+      inputActor: actor,
+      routeWorkspaceId: workspaceId,
+      inputWorkflowId: workflowTwoId,
+      representationTag: tag,
+    });
+    await execute({
+      inputActor: actor,
+      routeWorkspaceId: workspaceId,
+      inputWorkflowId: workflowId,
+      representationTag: tagTwo,
+    });
 
     expect(new Set(hashes).size).toBe(5);
   });
