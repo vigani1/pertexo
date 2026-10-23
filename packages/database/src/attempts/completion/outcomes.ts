@@ -12,7 +12,7 @@ import type {
   completionSchema,
   CompleteNodeAttemptResult,
 } from '../contract.js';
-import { completeReceipt } from '../receipts.js';
+import { completeReceipt } from './receipts.js';
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.js';
 import {
   serializeStoredExecutionJsonValue,

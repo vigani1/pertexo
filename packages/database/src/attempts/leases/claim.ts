@@ -11,15 +11,15 @@ import {
   type NodeAttemptClaimResult,
   type NodeAttemptLease,
   type NodeAttemptRunStore,
-} from './contract.js';
+} from '../contract.js';
 import {
   auditMismatch,
   claimReceipt,
   completeReceipt,
   validateDelivery,
-} from './receipts.js';
-import { assertNotAborted, withWorkspaceWriteClient } from './transactions.js';
-import { serializeStoredExecutionJsonValue } from '../platform/stored-execution-value.js';
+} from '../completion/receipts.js';
+import { assertNotAborted, withWorkspaceWriteClient } from '../transactions.js';
+import { serializeStoredExecutionJsonValue } from '../../platform/stored-execution-value.js';
 
 async function appendStartedEvent(
   client: PoolClient,

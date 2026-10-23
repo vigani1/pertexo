@@ -1,4 +1,4 @@
-import { EXECUTION_SOURCE_SQL } from '../runs/queries/execution/source.js';
+import { EXECUTION_SOURCE_SQL } from '../../runs/queries/execution/source.js';
 import type { Pool } from 'pg';
 import type { z } from 'zod';
 
@@ -9,9 +9,9 @@ import {
   NodeAttemptReconciliationRequiredError,
   NodeAttemptStateCorruptError,
   type NodeAttemptRunStore,
-} from './contract.js';
-import { assertNotAborted, withWorkspaceWriteClient } from './transactions.js';
-import { isConnectionFenceCurrent } from '../connections/runtime/dispatch-fence.js';
+} from '../contract.js';
+import { assertNotAborted, withWorkspaceWriteClient } from '../transactions.js';
+import { isConnectionFenceCurrent } from '../../connections/runtime/dispatch-fence.js';
 
 export async function markNodeAttemptDispatched(
   pool: Pool,

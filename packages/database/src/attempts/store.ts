@@ -2,18 +2,18 @@ import { acquireDatabasePool } from '../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../platform/pool/runtime.js';
 
 import type { DatabaseConfig } from '../config.js';
-import { claimNodeAttemptDelivery } from './claim.js';
+import { claimNodeAttemptDelivery } from './leases/claim.js';
 import { completeNodeAttempt } from './completion/complete.js';
-import { markNodeAttemptDispatched } from './dispatch.js';
-import { heartbeatNodeAttempt } from './heartbeat.js';
-import { recordNodeAttemptInput } from './input-record.js';
+import { markNodeAttemptDispatched } from './dispatch/mark.js';
+import { heartbeatNodeAttempt } from './leases/heartbeat.js';
+import { recordNodeAttemptInput } from './inputs/record.js';
 import {
   loadNodeAttemptInputs,
   readNodeAttemptLoopDeclaration,
   readNodeAttemptOutputs,
   listNodeRunOutcomes,
   readNodeRunOutputs,
-} from './inputs.js';
+} from './inputs/load.js';
 
 import {
   NodeAttemptConnectionFenceError,

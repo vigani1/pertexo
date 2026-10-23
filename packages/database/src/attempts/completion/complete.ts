@@ -13,7 +13,7 @@ import {
   auditMismatch,
   nodeAttemptConsumerName as consumerName,
   validateDelivery,
-} from '../receipts.js';
+} from './receipts.js';
 import {
   applyNodeAttemptCompletion,
   type CompletionReceiptRow,
