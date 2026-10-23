@@ -118,26 +118,7 @@ export async function advanceSuite(
     await finish(client, suite);
     return true;
   }
-  await client.query('savepoint suite_case_admission');
-  try {
-    await admitSuiteCase(client, suite, next, now);
-    await client.query('release savepoint suite_case_admission');
-    await client.query(
-      "update app.workflow_test_suites set next_check_at=clock_timestamp()+interval '1 second' where workspace_id=$1 and id=$2",
-      [suite.workspace_id, suite.id],
-    );
-  } catch (error) {
-    await client.query('rollback to savepoint suite_case_admission');
-    if (error instanceof WorkspaceRunQuotaExceededError)
-      await client.query(
-        "update app.workflow_test_suites set next_check_at=clock_timestamp()+interval '5 seconds' where workspace_id=$1 and id=$2",
-        [suite.workspace_id, suite.id],
-      );
-    else if (error instanceof WorkspaceRunAdmissionDeniedError) {
-      await stop(client, suite, 'admission_denied');
-      await finish(client, suite);
-    } else throw error;
-  }
+  await admitNextSuiteCase(client, suite, next, now);
   return true;
 }
 
@@ -202,4 +183,32 @@ async function completeActiveSuiteCase(
   }
 
   return false;
+}
+
+async function admitNextSuiteCase(
+  client: PoolClient,
+  suite: SuiteRow,
+  next: SuiteCaseRow,
+  now: Date,
+): Promise<void> {
+  await client.query('savepoint suite_case_admission');
+  try {
+    await admitSuiteCase(client, suite, next, now);
+    await client.query('release savepoint suite_case_admission');
+    await client.query(
+      "update app.workflow_test_suites set next_check_at=clock_timestamp()+interval '1 second' where workspace_id=$1 and id=$2",
+      [suite.workspace_id, suite.id],
+    );
+  } catch (error) {
+    await client.query('rollback to savepoint suite_case_admission');
+    if (error instanceof WorkspaceRunQuotaExceededError)
+      await client.query(
+        "update app.workflow_test_suites set next_check_at=clock_timestamp()+interval '5 seconds' where workspace_id=$1 and id=$2",
+        [suite.workspace_id, suite.id],
+      );
+    else if (error instanceof WorkspaceRunAdmissionDeniedError) {
+      await stop(client, suite, 'admission_denied');
+      await finish(client, suite);
+    } else throw error;
+  }
 }

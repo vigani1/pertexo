@@ -265,39 +265,10 @@ export async function completePreviewAttempt(
           scope.workspaceId,
           input.delivery,
         );
-        const terminal = await client.query<{ id: string }>(
-          `update app.preview_attempts
-         set status=$6::varchar,
-             output_ref=$7::json,
-             safe_error_code=$8::varchar,
-             code_diagnostics=$9::jsonb,
-             error_summary=$10::varchar,
-             completed_at=clock_timestamp(),
-             lease_owner=null,
-             lease_expires_at=null,
-             updated_at=clock_timestamp()
-         where workspace_id=$1 and id=$2 and preview_run_id=$3
-           and status='running' and lease_owner=$4 and fence_token=$5
-         returning id`,
-          [
-            scope.workspaceId,
-            scope.previewAttemptId,
-            scope.previewRunId,
-            scope.workerId,
-            scope.attemptFenceToken,
-            outcome.status,
-            outcome.status === PREVIEW_STATUS.succeeded
-              ? outcome.outputRef
-              : null,
-            outcome.status === PREVIEW_STATUS.succeeded
-              ? null
-              : outcome.safeErrorCode,
-            diagnostics === undefined ? null : canonicalJson(diagnostics),
-            outcome.status === PREVIEW_STATUS.succeeded
-              ? null
-              : outcome.errorSummary,
-          ],
-        );
+        const terminal = await writePreviewTerminalAttempt(client, scope, {
+          outcome,
+          diagnostics,
+        });
         if (terminal.rowCount !== 1)
           return exactDuplicateCompletion(client, scope, {
             outcome,
@@ -382,4 +353,48 @@ function canonicalPreviewOutcome(
             : errorSummarySchema.parse(outcome.errorSummary),
         status: outcome.status,
       } as const);
+}
+
+async function writePreviewTerminalAttempt(
+  client: PoolClient,
+  scope: PreviewCompletionScope,
+  {
+    outcome,
+    diagnostics,
+  }: Readonly<{
+    outcome: CanonicalCompletionOutcome;
+    diagnostics: CodeDiagnostics | undefined;
+  }>,
+) {
+  const terminal = await client.query<{ id: string }>(
+    `update app.preview_attempts
+         set status=$6::varchar,
+             output_ref=$7::json,
+             safe_error_code=$8::varchar,
+             code_diagnostics=$9::jsonb,
+             error_summary=$10::varchar,
+             completed_at=clock_timestamp(),
+             lease_owner=null,
+             lease_expires_at=null,
+             updated_at=clock_timestamp()
+         where workspace_id=$1 and id=$2 and preview_run_id=$3
+           and status='running' and lease_owner=$4 and fence_token=$5
+         returning id`,
+    [
+      scope.workspaceId,
+      scope.previewAttemptId,
+      scope.previewRunId,
+      scope.workerId,
+      scope.attemptFenceToken,
+      outcome.status,
+      outcome.status === PREVIEW_STATUS.succeeded ? outcome.outputRef : null,
+      outcome.status === PREVIEW_STATUS.succeeded
+        ? null
+        : outcome.safeErrorCode,
+      diagnostics === undefined ? null : canonicalJson(diagnostics),
+      outcome.status === PREVIEW_STATUS.succeeded ? null : outcome.errorSummary,
+    ],
+  );
+
+  return terminal;
 }

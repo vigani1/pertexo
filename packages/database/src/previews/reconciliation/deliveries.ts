@@ -265,53 +265,9 @@ export async function reconcilePreviewDelivery(
             completeReceipt,
           );
 
-        // Fence the expired owner before making the replacement delivery
-        // visible. The stable provider key and prior dispatch marker remain
-        // pinned for safe/idempotent repetition under ADR 007.
-        const reclaimed = await client.query(
-          `update app.preview_attempts
-           set status='queued',
-               lease_owner=null,
-               lease_expires_at=null,
-               fence_token=fence_token+1,
-               reconciliation_ref=$4::jsonb,
-               updated_at=clock_timestamp()
-           where workspace_id=$1 and id=$2 and preview_run_id=$3
-             and status='running' and fence_token=$5`,
-          [
-            scope.workspaceId,
-            scope.previewAttemptId,
-            scope.previewRunId,
-            JSON.stringify({
-              reason: 'lease_expired_redelivery',
-              attemptFenceToken: scope.attemptFenceToken,
-            }),
-            scope.attemptFenceToken,
-          ],
-        );
-        if (reclaimed.rowCount !== 1)
-          throw new PreviewAttemptStateError('reconciliation_lost');
-        const queuedRun = await client.query(
-          `update app.preview_runs
-           set status='queued',updated_at=clock_timestamp()
-           where workspace_id=$1 and id=$2 and status='running'`,
-          [scope.workspaceId, scope.previewRunId],
-        );
-        if (queuedRun.rowCount !== 1)
-          throw new PreviewAttemptStateError('run_sync_lost');
-        const execution = await insertPreviewOutboxDelivery(client, {
-          jobName: 'execute-preview-attempt',
-          previewAttemptId: scope.previewAttemptId,
-          previewRunId: scope.previewRunId,
-          ...(payload.traceparent === undefined
-            ? {}
-            : { traceparent: payload.traceparent }),
-          workspaceId: scope.workspaceId,
-        });
-        await completeReceipt();
-        return Object.freeze({
-          executionOutboxEventId: execution.outboxEventId,
-          kind: 'redelivered',
+        return redeliverExpiredPreview(client, scope, {
+          payload,
+          completeReceipt,
         });
       },
       optionsFor(input.signal),
@@ -372,4 +328,67 @@ async function lockPreviewReconciliationState(
     throw new PreviewAttemptStateError('run_attempt_divergence');
 
   return state;
+}
+
+async function redeliverExpiredPreview(
+  client: PoolClient,
+  scope: PreviewReconciliationScope,
+  {
+    payload,
+    completeReceipt,
+  }: Readonly<{
+    payload: Awaited<ReturnType<typeof validatePreviewReconciliationDelivery>>;
+    completeReceipt: () => Promise<void>;
+  }>,
+): Promise<
+  Extract<PreviewDeliveryReconciliationResult, { kind: 'redelivered' }>
+> {
+  // Fence the expired owner before making the replacement delivery
+  // visible. The stable provider key and prior dispatch marker remain
+  // pinned for safe/idempotent repetition under ADR 007.
+  const reclaimed = await client.query(
+    `update app.preview_attempts
+           set status='queued',
+               lease_owner=null,
+               lease_expires_at=null,
+               fence_token=fence_token+1,
+               reconciliation_ref=$4::jsonb,
+               updated_at=clock_timestamp()
+           where workspace_id=$1 and id=$2 and preview_run_id=$3
+             and status='running' and fence_token=$5`,
+    [
+      scope.workspaceId,
+      scope.previewAttemptId,
+      scope.previewRunId,
+      JSON.stringify({
+        reason: 'lease_expired_redelivery',
+        attemptFenceToken: scope.attemptFenceToken,
+      }),
+      scope.attemptFenceToken,
+    ],
+  );
+  if (reclaimed.rowCount !== 1)
+    throw new PreviewAttemptStateError('reconciliation_lost');
+  const queuedRun = await client.query(
+    `update app.preview_runs
+           set status='queued',updated_at=clock_timestamp()
+           where workspace_id=$1 and id=$2 and status='running'`,
+    [scope.workspaceId, scope.previewRunId],
+  );
+  if (queuedRun.rowCount !== 1)
+    throw new PreviewAttemptStateError('run_sync_lost');
+  const execution = await insertPreviewOutboxDelivery(client, {
+    jobName: 'execute-preview-attempt',
+    previewAttemptId: scope.previewAttemptId,
+    previewRunId: scope.previewRunId,
+    ...(payload.traceparent === undefined
+      ? {}
+      : { traceparent: payload.traceparent }),
+    workspaceId: scope.workspaceId,
+  });
+  await completeReceipt();
+  return Object.freeze({
+    executionOutboxEventId: execution.outboxEventId,
+    kind: 'redelivered',
+  });
 }

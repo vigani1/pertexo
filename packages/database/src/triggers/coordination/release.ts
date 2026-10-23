@@ -57,15 +57,10 @@ export async function releaseCoordinatedEvent(
     return refuseCoordinatedEvent(transaction, id, 'workflow_unavailable');
   if (workflow.published_version_id !== event.workflow_version_id)
     return refuseCoordinatedEvent(transaction, id, 'publication_changed');
-  let webhookTriggerId: string | undefined;
-  if (event.endpoint_id !== null) {
-    const eligible = await transaction.db.execute<{ trigger_id: string }>(
-      sql`select trigger.id trigger_id from app.webhook_trigger_endpoints endpoint join app.workflow_triggers trigger on trigger.workspace_id=endpoint.workspace_id and trigger.id=endpoint.trigger_id where endpoint.workspace_id=${transaction.workspaceId} and endpoint.id=${event.endpoint_id} and endpoint.status='active' and trigger.status='active' and trigger.workflow_version_id=${event.workflow_version_id} for share of endpoint,trigger`,
-    );
-    if (eligible.rows.length !== 1)
-      return refuseCoordinatedEvent(transaction, id, 'endpoint_disabled');
-    webhookTriggerId = eligible.rows[0]?.trigger_id;
-  }
+  const endpoint = await checkPendingEventEndpoint(transaction, event);
+  if (endpoint.kind === 'refused')
+    return refuseCoordinatedEvent(transaction, id, 'endpoint_disabled');
+  const { webhookTriggerId } = endpoint;
   const now = await eventDatabaseTime(transaction);
   if (now >= event.deadline_at)
     return refuseCoordinatedEvent(transaction, id, 'coordination_timeout');
@@ -276,4 +271,20 @@ async function startPendingCoordinatedRun(
     );
     return 'pending';
   }
+}
+
+async function checkPendingEventEndpoint(
+  transaction: WorkspaceTransaction,
+  event: PendingEvent,
+) {
+  let webhookTriggerId: string | undefined;
+  if (event.endpoint_id !== null) {
+    const eligible = await transaction.db.execute<{ trigger_id: string }>(
+      sql`select trigger.id trigger_id from app.webhook_trigger_endpoints endpoint join app.workflow_triggers trigger on trigger.workspace_id=endpoint.workspace_id and trigger.id=endpoint.trigger_id where endpoint.workspace_id=${transaction.workspaceId} and endpoint.id=${event.endpoint_id} and endpoint.status='active' and trigger.status='active' and trigger.workflow_version_id=${event.workflow_version_id} for share of endpoint,trigger`,
+    );
+    if (eligible.rows.length !== 1) return { kind: 'refused' } as const;
+    webhookTriggerId = eligible.rows[0]?.trigger_id;
+  }
+
+  return { kind: 'eligible', webhookTriggerId } as const;
 }
