@@ -48,28 +48,12 @@ export function rebindPromotionTable(
     issue(error.message);
     return node;
   }
-  const bindings: Record<string, string> = {};
-  for (const [alias, name] of Object.entries(names)) {
-    const from = source.columns.find((column) => column.name === name);
-    const to = target.columns.find((column) => column.name === name);
-    const incompatibleColumn =
-      from?.type !== to?.type ||
-      from === undefined ||
-      to === undefined ||
-      (!from.required && to.required);
-    if (incompatibleColumn) {
-      report({
-        nodeId: node.id,
-        kind: 'column',
-        name: `${config.table}.${name}`,
-        status: 'incompatible',
-        detail:
-          'The target column must exist with the same type and compatible requiredness. Output aliases are kept.',
-      });
-      continue;
-    }
-    Object.defineProperty(bindings, alias, { value: to.id, enumerable: true });
-  }
+  const bindings = rebindPromotionColumns(source, target, {
+    names,
+    nodeId: node.id,
+    tableName: config.table,
+    report,
+  });
   if (node.definition.key === 'core.table_upsert') {
     const from = source.columns.find(
       (column) => column.name === source.keyColumn,
@@ -111,4 +95,45 @@ export function rebindPromotionTable(
       'Matched by table and column names and types. Existing output aliases are retained.',
   });
   return { ...node, config: { ...node.config, columnBindings: bindings } };
+}
+
+function rebindPromotionColumns(
+  source: DataTableDefinition,
+  target: DataTableDefinition,
+  {
+    names,
+    nodeId,
+    tableName,
+    report,
+  }: Readonly<{
+    names: Readonly<Record<string, string>>;
+    nodeId: string;
+    tableName: string;
+    report: Parameters<typeof rebindPromotionTable>[3];
+  }>,
+): Record<string, string> {
+  const bindings: Record<string, string> = {};
+  for (const [alias, name] of Object.entries(names)) {
+    const from = source.columns.find((column) => column.name === name);
+    const to = target.columns.find((column) => column.name === name);
+    const incompatibleColumn =
+      from?.type !== to?.type ||
+      from === undefined ||
+      to === undefined ||
+      (!from.required && to.required);
+    if (incompatibleColumn) {
+      report({
+        nodeId: nodeId,
+        kind: 'column',
+        name: `${tableName}.${name}`,
+        status: 'incompatible',
+        detail:
+          'The target column must exist with the same type and compatible requiredness. Output aliases are kept.',
+      });
+      continue;
+    }
+    Object.defineProperty(bindings, alias, { value: to.id, enumerable: true });
+  }
+
+  return bindings;
 }
