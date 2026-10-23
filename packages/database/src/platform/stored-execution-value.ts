@@ -108,7 +108,7 @@ function cloneInlineJson(value: unknown): StoredExecutionJsonValue {
   const pending: CloneFrame[] = [
     { kind: 'value', value, containerDepth: 1, parent: root, key: 'value' },
   ];
-  let members = 0;
+  const budget = { members: 0 };
   let bytes = 0;
   const addBytes = (amount: number): void => {
     bytes += amount;
@@ -151,44 +151,10 @@ function cloneInlineJson(value: unknown): StoredExecutionJsonValue {
     if (frame.containerDepth > STORED_EXECUTION_VALUE_LIMITS.depth) invalid();
     if (active.has(item)) invalid();
 
-    const isArray = Array.isArray(item);
-    const prototype = Object.getPrototypeOf(item) as unknown;
-    if (!isArray && prototype !== Object.prototype && prototype !== null)
-      invalid();
-    if (isArray && item.length > STORED_EXECUTION_VALUE_LIMITS.members)
-      invalid();
-    const children: { key: string | number; value: unknown }[] = [];
-    let enumerableCount = 0;
-    for (const key in item) {
-      if (!Object.hasOwn(item, key)) invalid();
-      const descriptor = Object.getOwnPropertyDescriptor(item, key);
-      if (
-        descriptor === undefined ||
-        !descriptor.enumerable ||
-        !('value' in descriptor)
-      )
-        invalid();
-      members += 1;
-      if (members > STORED_EXECUTION_VALUE_LIMITS.members) invalid();
-      if (isArray && key !== String(enumerableCount)) invalid();
-      if (!isArray) addBytes(jsonStringBytes(key) + 1);
-      children.push({
-        key: isArray ? enumerableCount : key,
-        value: descriptor.value,
-      });
-      enumerableCount += 1;
-    }
-    const ownNames = Object.getOwnPropertyNames(item);
-    if (
-      Object.getOwnPropertySymbols(item).length !== 0 ||
-      (isArray &&
-        (enumerableCount !== item.length ||
-          ownNames.length !== item.length + 1 ||
-          !ownNames.includes('length'))) ||
-      (!isArray && ownNames.length !== enumerableCount)
-    )
-      invalid();
-    addBytes(2 + Math.max(0, enumerableCount - 1));
+    const { isArray, children } = readInlineChildren(item, {
+      budget,
+      addBytes,
+    });
     const result:
       StoredExecutionJsonValue[] | Record<string, StoredExecutionJsonValue> =
       isArray
@@ -213,6 +179,67 @@ function cloneInlineJson(value: unknown): StoredExecutionJsonValue {
   const normalized = root.value;
   if (normalized === undefined) invalid();
   return normalized;
+}
+
+function readInlineChildren(
+  item: object,
+  {
+    budget,
+    addBytes,
+  }: Readonly<{
+    budget: { members: number };
+    addBytes: (amount: number) => void;
+  }>,
+) {
+  const isArray = Array.isArray(item);
+  const prototype = Object.getPrototypeOf(item) as unknown;
+  const invalidPrototype =
+    !isArray && prototype !== Object.prototype && prototype !== null;
+  if (invalidPrototype) invalid();
+  if (isArray && item.length > STORED_EXECUTION_VALUE_LIMITS.members) invalid();
+  const children: { key: string | number; value: unknown }[] = [];
+  let enumerableCount = 0;
+  for (const key in item) {
+    if (!Object.hasOwn(item, key)) invalid();
+    const descriptor = Object.getOwnPropertyDescriptor(item, key);
+    const invalidDescriptor =
+      descriptor === undefined ||
+      !descriptor.enumerable ||
+      !('value' in descriptor);
+    if (invalidDescriptor) invalid();
+    budget.members += 1;
+    if (budget.members > STORED_EXECUTION_VALUE_LIMITS.members) invalid();
+    if (isArray && key !== String(enumerableCount)) invalid();
+    if (!isArray) addBytes(jsonStringBytes(key) + 1);
+    children.push({
+      key: isArray ? enumerableCount : key,
+      value: descriptor.value,
+    });
+    enumerableCount += 1;
+  }
+  const ownNames = Object.getOwnPropertyNames(item);
+  assertInlineOwnProperties(item, { enumerableCount, ownNames });
+  addBytes(2 + Math.max(0, enumerableCount - 1));
+
+  return { isArray, children };
+}
+
+function assertInlineOwnProperties(
+  item: object,
+  {
+    enumerableCount,
+    ownNames,
+  }: Readonly<{ enumerableCount: number; ownNames: readonly string[] }>,
+): void {
+  const isArray = Array.isArray(item);
+  const invalidOwnProperties =
+    Object.getOwnPropertySymbols(item).length !== 0 ||
+    (isArray &&
+      (enumerableCount !== item.length ||
+        ownNames.length !== item.length + 1 ||
+        !ownNames.includes('length'))) ||
+    (!isArray && ownNames.length !== enumerableCount);
+  if (invalidOwnProperties) invalid();
 }
 
 /**
