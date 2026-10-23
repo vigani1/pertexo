@@ -43,13 +43,10 @@ export async function createApiApplication(
   const {
     artifactRuntime,
     callbackRuntime,
-    connectionRuntime,
-    databaseRuntime,
     identityRuntime,
     notificationRuntime,
     scheduleRuntime,
     webhookRuntime,
-    workflowRuntime,
   } = runtimes;
   const fastifyAdapter = new FastifyAdapter({
     trustProxy:
@@ -61,25 +58,7 @@ export async function createApiApplication(
   let application: NestFastifyApplication;
   try {
     application = await NestFactory.create<NestFastifyApplication>(
-      AppModule.register(config, {
-        logger: dependencies.logger,
-        telemetry: dependencies.telemetry,
-        ...(databaseRuntime === undefined ? {} : { databaseRuntime }),
-        ...(dependencies.database === undefined
-          ? {}
-          : { database: dependencies.database }),
-        ...(dependencies.rateLimitConsumer === undefined
-          ? {}
-          : { rateLimitConsumer: dependencies.rateLimitConsumer }),
-        ...(identityRuntime === undefined ? {} : { identityRuntime }),
-        ...(workflowRuntime === undefined ? {} : { workflowRuntime }),
-        ...(connectionRuntime === undefined ? {} : { connectionRuntime }),
-        ...(webhookRuntime === undefined ? {} : { webhookRuntime }),
-        ...(callbackRuntime === undefined ? {} : { callbackRuntime }),
-        ...(scheduleRuntime === undefined ? {} : { scheduleRuntime }),
-        ...(notificationRuntime === undefined ? {} : { notificationRuntime }),
-        ...(artifactRuntime === undefined ? {} : { artifactRuntime }),
-      }),
+      AppModule.register(config, apiModuleDependencies(runtimes, dependencies)),
       fastifyAdapter,
       { abortOnError: false, logger: nestLogger },
     );
@@ -165,4 +144,40 @@ export async function createApiApplication(
   }
 
   return lifecycleApplication;
+}
+
+function apiModuleDependencies(
+  runtimes: Awaited<ReturnType<typeof acquireApiRuntimes>>,
+  dependencies: ApiApplicationDependencies,
+): Parameters<typeof AppModule.register>[1] {
+  const {
+    callbackRuntime,
+    artifactRuntime,
+    connectionRuntime,
+    databaseRuntime,
+    identityRuntime,
+    notificationRuntime,
+    scheduleRuntime,
+    webhookRuntime,
+    workflowRuntime,
+  } = runtimes;
+  return {
+    logger: dependencies.logger,
+    telemetry: dependencies.telemetry,
+    ...(databaseRuntime === undefined ? {} : { databaseRuntime }),
+    ...(dependencies.database === undefined
+      ? {}
+      : { database: dependencies.database }),
+    ...(dependencies.rateLimitConsumer === undefined
+      ? {}
+      : { rateLimitConsumer: dependencies.rateLimitConsumer }),
+    ...(identityRuntime === undefined ? {} : { identityRuntime }),
+    ...(workflowRuntime === undefined ? {} : { workflowRuntime }),
+    ...(connectionRuntime === undefined ? {} : { connectionRuntime }),
+    ...(webhookRuntime === undefined ? {} : { webhookRuntime }),
+    ...(callbackRuntime === undefined ? {} : { callbackRuntime }),
+    ...(scheduleRuntime === undefined ? {} : { scheduleRuntime }),
+    ...(notificationRuntime === undefined ? {} : { notificationRuntime }),
+    ...(artifactRuntime === undefined ? {} : { artifactRuntime }),
+  };
 }

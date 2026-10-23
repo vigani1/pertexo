@@ -80,30 +80,7 @@ export class WorkflowAuthoringModule {
         telemetry,
         portabilityPersistence,
       ),
-      {
-        provide: RestoreWorkflowVersionUseCase,
-        useValue: new RestoreWorkflowVersionUseCase(
-          dependencies.persistence,
-          dependencies.authorization,
-          telemetry,
-        ),
-      },
-      {
-        provide: TransitionWorkflowLifecycleUseCase,
-        useValue: new TransitionWorkflowLifecycleUseCase(
-          dependencies.persistence,
-          dependencies.authorization,
-          telemetry,
-        ),
-      },
-      {
-        provide: RenameWorkflowUseCase,
-        useValue: new RenameWorkflowUseCase(
-          dependencies.persistence,
-          dependencies.authorization,
-          telemetry,
-        ),
-      },
+      ...workflowLifecycleProviders(dependencies, telemetry),
       {
         provide: WORKFLOW_AUTHORING_AUTHORIZATION,
         useValue: dependencies.authorization,
@@ -326,5 +303,37 @@ function workflowFeatureProviders(
           WorkflowPauseDefaultGuard,
           WorkspaceAutoPauseReadGuard,
         ]),
+  ];
+}
+
+function workflowLifecycleProviders(
+  dependencies: WorkflowAuthoringDependencies,
+  telemetry: WorkflowAuthoringTelemetry,
+): Provider[] {
+  return [
+    {
+      provide: RestoreWorkflowVersionUseCase,
+      useValue: new RestoreWorkflowVersionUseCase(
+        dependencies.persistence,
+        dependencies.authorization,
+        telemetry,
+      ),
+    },
+    {
+      provide: TransitionWorkflowLifecycleUseCase,
+      useValue: new TransitionWorkflowLifecycleUseCase(
+        dependencies.persistence,
+        dependencies.authorization,
+        telemetry,
+      ),
+    },
+    {
+      provide: RenameWorkflowUseCase,
+      useValue: new RenameWorkflowUseCase(
+        dependencies.persistence,
+        dependencies.authorization,
+        telemetry,
+      ),
+    },
   ];
 }

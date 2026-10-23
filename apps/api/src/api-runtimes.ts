@@ -115,154 +115,28 @@ export async function acquireApiRuntimes(
   config: ApiConfig,
   dependencies: ApiApplicationDependencies,
 ): Promise<ApiRuntimeSet> {
-  let databaseRuntime: DatabaseRuntime | undefined;
-  let identityRuntime: ApiIdentityRuntime | undefined;
-  let workflowRuntime: ApiWorkflowRuntime | undefined;
-  let connectionRuntime: ApiConnectionRuntime | undefined;
-  let callbackRuntime: ApiCallbackRuntime | undefined;
-  let webhookRuntime: ApiWebhookRuntime | undefined;
-  let scheduleRuntime: ApiScheduleRuntime | undefined;
-  let notificationRuntime: ApiNotificationRuntime | undefined;
-  let artifactRuntime: ApiArtifactRuntime | undefined;
+  const runtimes: ApiRuntimeResources = {
+    callbackRuntime: undefined,
+    artifactRuntime: undefined,
+    connectionRuntime: undefined,
+    databaseRuntime: undefined,
+    identityRuntime: undefined,
+    notificationRuntime: undefined,
+    scheduleRuntime: undefined,
+    webhookRuntime: undefined,
+    workflowRuntime: undefined,
+  };
   try {
-    databaseRuntime = dependencies.databaseRuntime;
-    if (databaseRuntime === undefined && dependencies.database === undefined)
-      databaseRuntime = createDatabaseRuntime(config.database, { role: 'api' });
-
-    identityRuntime = dependencies.identityRuntime;
-    if (identityRuntime === undefined && config.identity !== undefined)
-      identityRuntime = await createApiIdentityRuntime(
-        config.identity,
-        config.database,
-        dependencies.identityOverrides,
-        databaseRuntime,
-      );
-
-    workflowRuntime = dependencies.workflowRuntime;
-    if (workflowRuntime === undefined && identityRuntime !== undefined)
-      workflowRuntime = await createApiWorkflowRuntime(
-        config.database,
-        identityRuntime,
-        {
-          redisUrl: config.redisUrl,
-          overrides: dependencies.workflowOverrides,
-          runtime: databaseRuntime,
-          codeSettings: config.codeSettings,
-        },
-      );
-
-    connectionRuntime = dependencies.connectionRuntime;
-    if (
-      connectionRuntime === undefined &&
-      identityRuntime !== undefined &&
-      config.connections !== undefined
-    ) {
-      if (config.identity === undefined)
-        throw new Error(
-          'Connections require application identity configuration',
-        );
-      connectionRuntime = await createApiConnectionRuntime(
-        config.connections,
-        config.database,
-        {
-          identityRuntime: identityRuntime,
-          applicationSecret: config.identity.betterAuth.secret,
-          overrides: dependencies.connectionOverrides,
-          runtime: databaseRuntime,
-        },
-      );
-    }
-
-    callbackRuntime = dependencies.callbackRuntime;
-    if (
-      callbackRuntime === undefined &&
-      (dependencies.database === undefined || config.callbacks !== undefined)
-    )
-      callbackRuntime = await createApiCallbackRuntime(config, databaseRuntime);
-    webhookRuntime = dependencies.webhookRuntime;
-    if (
-      webhookRuntime === undefined &&
-      identityRuntime !== undefined &&
-      config.webhooks !== undefined
-    )
-      webhookRuntime = await createApiWebhookRuntime(
-        config.webhooks,
-        config.database,
-        { databaseOverride: undefined, runtime: databaseRuntime },
-      );
-
-    scheduleRuntime = dependencies.scheduleRuntime;
-    if (
-      scheduleRuntime === undefined &&
-      identityRuntime !== undefined &&
-      dependencies.database === undefined
-    )
-      scheduleRuntime = await createApiScheduleRuntime(
-        config.database,
-        undefined,
-        databaseRuntime,
-      );
-
-    notificationRuntime = dependencies.notificationRuntime;
-    if (
-      notificationRuntime === undefined &&
-      identityRuntime !== undefined &&
-      dependencies.database === undefined
-    )
-      notificationRuntime = createApiNotificationRuntime(
-        config.database,
-        config.redisUrl,
-        {
-          overrides: {},
-          runtime: databaseRuntime,
-          mail: config.identity?.betterAuth.durableMail,
-        },
-      );
-
-    artifactRuntime = dependencies.artifactRuntime;
-    if (
-      artifactRuntime === undefined &&
-      identityRuntime !== undefined &&
-      config.artifacts !== undefined
-    )
-      artifactRuntime = createApiArtifactRuntime(
-        config.artifacts,
-        config.database,
-        {
-          identityRuntime: identityRuntime,
-          overrides: dependencies.artifactOverrides,
-          databaseRuntime: databaseRuntime,
-        },
-      );
+    await acquireIdentityWorkflows(config, dependencies, runtimes);
+    await acquireFeatureRuntimes(config, dependencies, runtimes);
   } catch (error: unknown) {
-    const runtimes = {
-      callbackRuntime,
-      artifactRuntime,
-      connectionRuntime,
-      databaseRuntime,
-      identityRuntime,
-      notificationRuntime,
-      scheduleRuntime,
-      webhookRuntime,
-      workflowRuntime,
-    };
     const cleanupErrors = await cleanupApiRuntimes(runtimes);
     throwStartupFailure(error, cleanupErrors);
   }
-  return {
-    callbackRuntime,
-    artifactRuntime,
-    connectionRuntime,
-    databaseRuntime,
-    identityRuntime,
-    notificationRuntime,
-    scheduleRuntime,
-    webhookRuntime,
-    workflowRuntime,
-  };
+  return runtimes;
 }
 
-type ApiRuntimeSet = Readonly<{
+interface ApiRuntimeResources {
   callbackRuntime: ApiCallbackRuntime | undefined;
   artifactRuntime: ApiArtifactRuntime | undefined;
   connectionRuntime: ApiConnectionRuntime | undefined;
@@ -272,7 +146,9 @@ type ApiRuntimeSet = Readonly<{
   scheduleRuntime: ApiScheduleRuntime | undefined;
   webhookRuntime: ApiWebhookRuntime | undefined;
   workflowRuntime: ApiWorkflowRuntime | undefined;
-}>;
+}
+
+type ApiRuntimeSet = Readonly<ApiRuntimeResources>;
 
 export async function cleanupApiRuntimes(
   runtimes: ApiRuntimeSet,
@@ -400,5 +276,136 @@ function assertExclusiveRuntime(
   if (runtime !== undefined && overrides !== undefined)
     throw new TypeError(
       `${feature} runtime cannot be provided with ${feature} overrides`,
+    );
+}
+
+async function acquireIdentityWorkflows(
+  config: ApiConfig,
+  dependencies: ApiApplicationDependencies,
+  runtimes: ApiRuntimeResources,
+): Promise<void> {
+  runtimes.databaseRuntime = dependencies.databaseRuntime;
+  if (
+    runtimes.databaseRuntime === undefined &&
+    dependencies.database === undefined
+  )
+    runtimes.databaseRuntime = createDatabaseRuntime(config.database, {
+      role: 'api',
+    });
+
+  runtimes.identityRuntime = dependencies.identityRuntime;
+  if (runtimes.identityRuntime === undefined && config.identity !== undefined)
+    runtimes.identityRuntime = await createApiIdentityRuntime(
+      config.identity,
+      config.database,
+      dependencies.identityOverrides,
+      runtimes.databaseRuntime,
+    );
+
+  runtimes.workflowRuntime = dependencies.workflowRuntime;
+  if (
+    runtimes.workflowRuntime === undefined &&
+    runtimes.identityRuntime !== undefined
+  )
+    runtimes.workflowRuntime = await createApiWorkflowRuntime(
+      config.database,
+      runtimes.identityRuntime,
+      {
+        redisUrl: config.redisUrl,
+        overrides: dependencies.workflowOverrides,
+        runtime: runtimes.databaseRuntime,
+        codeSettings: config.codeSettings,
+      },
+    );
+
+  runtimes.connectionRuntime = dependencies.connectionRuntime;
+  if (
+    runtimes.connectionRuntime === undefined &&
+    runtimes.identityRuntime !== undefined &&
+    config.connections !== undefined
+  ) {
+    if (config.identity === undefined)
+      throw new Error('Connections require application identity configuration');
+    runtimes.connectionRuntime = await createApiConnectionRuntime(
+      config.connections,
+      config.database,
+      {
+        identityRuntime: runtimes.identityRuntime,
+        applicationSecret: config.identity.betterAuth.secret,
+        overrides: dependencies.connectionOverrides,
+        runtime: runtimes.databaseRuntime,
+      },
+    );
+  }
+}
+
+async function acquireFeatureRuntimes(
+  config: ApiConfig,
+  dependencies: ApiApplicationDependencies,
+  runtimes: ApiRuntimeResources,
+): Promise<void> {
+  runtimes.callbackRuntime = dependencies.callbackRuntime;
+  if (
+    runtimes.callbackRuntime === undefined &&
+    (dependencies.database === undefined || config.callbacks !== undefined)
+  )
+    runtimes.callbackRuntime = await createApiCallbackRuntime(
+      config,
+      runtimes.databaseRuntime,
+    );
+  runtimes.webhookRuntime = dependencies.webhookRuntime;
+  if (
+    runtimes.webhookRuntime === undefined &&
+    runtimes.identityRuntime !== undefined &&
+    config.webhooks !== undefined
+  )
+    runtimes.webhookRuntime = await createApiWebhookRuntime(
+      config.webhooks,
+      config.database,
+      { databaseOverride: undefined, runtime: runtimes.databaseRuntime },
+    );
+
+  runtimes.scheduleRuntime = dependencies.scheduleRuntime;
+  if (
+    runtimes.scheduleRuntime === undefined &&
+    runtimes.identityRuntime !== undefined &&
+    dependencies.database === undefined
+  )
+    runtimes.scheduleRuntime = await createApiScheduleRuntime(
+      config.database,
+      undefined,
+      runtimes.databaseRuntime,
+    );
+
+  runtimes.notificationRuntime = dependencies.notificationRuntime;
+  if (
+    runtimes.notificationRuntime === undefined &&
+    runtimes.identityRuntime !== undefined &&
+    dependencies.database === undefined
+  )
+    runtimes.notificationRuntime = createApiNotificationRuntime(
+      config.database,
+      config.redisUrl,
+      {
+        overrides: {},
+        runtime: runtimes.databaseRuntime,
+        mail: config.identity?.betterAuth.durableMail,
+      },
+    );
+
+  runtimes.artifactRuntime = dependencies.artifactRuntime;
+  if (
+    runtimes.artifactRuntime === undefined &&
+    runtimes.identityRuntime !== undefined &&
+    config.artifacts !== undefined
+  )
+    runtimes.artifactRuntime = createApiArtifactRuntime(
+      config.artifacts,
+      config.database,
+      {
+        identityRuntime: runtimes.identityRuntime,
+        overrides: dependencies.artifactOverrides,
+        databaseRuntime: runtimes.databaseRuntime,
+      },
     );
 }

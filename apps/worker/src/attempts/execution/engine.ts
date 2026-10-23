@@ -165,16 +165,7 @@ function prepareNode(
   return Object.freeze({
     ...(substituted ? { testSubstitution: true } : {}),
     ...(disposition?.kind === 'pin_required' ? { testPinRequired: true } : {}),
-    ...(node.definition.key === 'core.wait' &&
-    node.definition.version === 1 &&
-    node.config.mode !== 'callback' &&
-    projection.test === undefined
-      ? {
-          suspensionDurationSeconds: Number(
-            Reflect.get(node.config, 'durationSeconds'),
-          ),
-        }
-      : {}),
+    ...timedWaitFields(node, projection),
     upstreamNodeOutputs,
     forEachUpstreams: deriveForEachUpstreams(graph, upstreamNodeOutputs),
     ...(sourceFailure === undefined ? {} : { sourceFailure }),
@@ -283,4 +274,22 @@ function deriveSourceFailure(
         };
 
   return sourceFailure;
+}
+
+function timedWaitFields(
+  node: WorkflowExecutableNode,
+  projection: WorkflowExecutionProjection,
+): Pick<PreparedNodeAttempt, 'suspensionDurationSeconds'> {
+  const timedWait =
+    node.definition.key === 'core.wait' &&
+    node.definition.version === 1 &&
+    node.config.mode !== 'callback' &&
+    projection.test === undefined;
+  return timedWait
+    ? {
+        suspensionDurationSeconds: Number(
+          Reflect.get(node.config, 'durationSeconds'),
+        ),
+      }
+    : {};
 }

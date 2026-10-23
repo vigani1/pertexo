@@ -112,18 +112,8 @@ export async function createApiConnectionRuntime(
       encryptionOverrides.value ?? encryptionRuntime?.encryption;
     if (encryption === undefined)
       throw new Error('Connection encryption composition is incomplete');
-    const telemetry =
-      telemetryOverrides.value ??
-      (telemetryOverrides.factory ?? productionTelemetry)();
-    const httpClient =
-      clientOverrides.http ??
-      (clientOverrides.httpFactory ?? createNodeSecureHttpClient)();
-    const slackClient =
-      clientOverrides.slack ??
-      (clientOverrides.slackFactory ?? createSlackClient)(httpClient);
-    const emailClient =
-      clientOverrides.email ??
-      (clientOverrides.emailFactory ?? createResendClient)(httpClient);
+    const { telemetry, httpClient, slackClient, emailClient } =
+      connectionClients(clientOverrides, telemetryOverrides);
     const acquiredDatabase = database;
     const acquiredDestinationDatabase = destinationDatabase;
     const acquiredEncryptionRuntime = encryptionRuntime;
@@ -247,4 +237,24 @@ export class ConnectionRuntimeModule {
       providers: [],
     };
   }
+}
+
+function connectionClients(
+  clientOverrides: NonNullable<ApiConnectionRuntimeOverrides['clients']>,
+  telemetryOverrides: NonNullable<ApiConnectionRuntimeOverrides['telemetry']>,
+) {
+  const telemetry =
+    telemetryOverrides.value ??
+    (telemetryOverrides.factory ?? productionTelemetry)();
+  const httpClient =
+    clientOverrides.http ??
+    (clientOverrides.httpFactory ?? createNodeSecureHttpClient)();
+  const slackClient =
+    clientOverrides.slack ??
+    (clientOverrides.slackFactory ?? createSlackClient)(httpClient);
+  const emailClient =
+    clientOverrides.email ??
+    (clientOverrides.emailFactory ?? createResendClient)(httpClient);
+
+  return { telemetry, httpClient, slackClient, emailClient };
 }
