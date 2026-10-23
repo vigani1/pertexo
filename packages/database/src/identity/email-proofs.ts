@@ -25,10 +25,17 @@ export class EmailProofCommands {
   public async issue(
     user: ProofUser,
     purpose: 'initial_verification' | 'change_old',
-    tokenDigest: Buffer,
-    newEmail: string | undefined,
-    expiresAt: Date,
-    prepared: SystemMailInput | undefined,
+    {
+      tokenDigest,
+      newEmail,
+      expiresAt,
+      prepared,
+    }: Readonly<{
+      tokenDigest: Buffer;
+      newEmail: string | undefined;
+      expiresAt: Date;
+      prepared: SystemMailInput | undefined;
+    }>,
   ): Promise<boolean> {
     return withPlatformTransaction(this.pool, async (client) => {
       const db = drizzle(client);

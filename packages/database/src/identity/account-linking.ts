@@ -87,10 +87,17 @@ export class AccountLinkingCommands {
 
   public async updateSource(
     attempt: AccountLinkAttempt,
-    state: string,
-    binding: string,
-    identity: ProviderIdentity,
-    nextState: string,
+    {
+      state,
+      binding,
+      identity,
+      nextState,
+    }: Readonly<{
+      state: string;
+      binding: string;
+      identity: ProviderIdentity;
+      nextState: string;
+    }>,
   ): Promise<boolean> {
     return withPlatformTransaction(this.input.pool, async (client) => {
       const db = drizzle(client);
