@@ -132,6 +132,10 @@ export function ConflictCompareDialog({
 function lineWords(line: Line): string {
   if (line.kind === 'added') return 'only in your copy';
   if (line.kind === 'removed') return 'not in your copy';
+  if (line.target !== 'step' && line.target !== 'note')
+    return line.detail === undefined
+      ? 'different in your copy'
+      : `${line.detail} in your copy`;
   return `your ${line.detail ?? 'setup'} differs`;
 }
 
