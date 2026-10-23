@@ -1,3 +1,4 @@
+import { DELEGATED_ROLES } from '@pertexo/workflow-model';
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
@@ -221,9 +222,7 @@ export function createWorkspaceInvitationDeliveryStore(
           recoveredUnknown: row.attempt_status === 'unknown',
           email: z.email().max(320).parse(row.recipient_email),
           workspaceName: z.string().min(1).max(256).parse(row.workspace_name),
-          role: z
-            .enum(['admin', 'builder', 'operator', 'viewer'])
-            .parse(row.role),
+          role: z.enum(DELEGATED_ROLES).parse(row.role),
           expiresAt: z.coerce.date().parse(row.expires_at),
           sealedToken: sealedToken.parse({
             ciphertext: row.ciphertext,

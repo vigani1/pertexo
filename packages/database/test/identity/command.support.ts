@@ -1,3 +1,4 @@
+import type { Role } from '@pertexo/workflow-model';
 import { randomUUID } from 'node:crypto';
 
 import { Pool } from 'pg';
@@ -12,8 +13,6 @@ import {
 import { createFederationManagementStore } from '../../src/tenant-access/index.js';
 import { migrateDatabase } from '../../src/migrations.js';
 import { createDisposableDatabaseFixture } from '../support/postgres/disposable-database.js';
-
-type Role = 'owner' | 'admin' | 'builder' | 'operator' | 'viewer';
 
 export type IdentityCommandFixture = Readonly<{
   federation: (

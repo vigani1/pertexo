@@ -1,3 +1,4 @@
+import type { DelegatedRole } from '@pertexo/workflow-model';
 import { HttpResponse } from 'msw';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -25,7 +26,7 @@ async function openAction(
 function suspended(
   memberId: string,
   displayName: string,
-  role: 'admin' | 'builder' | 'viewer',
+  role: DelegatedRole,
   revision: number,
 ) {
   return {

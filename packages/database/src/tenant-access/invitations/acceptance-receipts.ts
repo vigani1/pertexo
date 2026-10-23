@@ -1,3 +1,4 @@
+import { ROLES } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
@@ -13,7 +14,7 @@ export const acceptanceReceiptSchema = z
   .object({
     intentId: z.uuid(),
     workspaceId: z.uuid(),
-    role: z.enum(['owner', 'admin', 'builder', 'operator', 'viewer']),
+    role: z.enum(ROLES),
     membershipCreated: z.boolean(),
   })
   .strict();

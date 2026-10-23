@@ -1,3 +1,4 @@
+import { ROLES, ADMINISTRATIVE_ROLES } from '../../workspaces/policy.js';
 import { z } from 'zod';
 
 export const PENDING_TASK_LIMITS = Object.freeze({
@@ -14,9 +15,9 @@ export const PENDING_TASK_LIMITS = Object.freeze({
 export const taskAudienceSchema = z
   .object({
     roles: z
-      .array(z.enum(['owner', 'admin', 'builder', 'operator', 'viewer']))
-      .max(5)
-      .default(['owner', 'admin']),
+      .array(z.enum(ROLES))
+      .max(ROLES.length)
+      .default([...ADMINISTRATIVE_ROLES]),
     memberIds: z
       .array(z.uuid())
       .max(PENDING_TASK_LIMITS.audienceMembers)

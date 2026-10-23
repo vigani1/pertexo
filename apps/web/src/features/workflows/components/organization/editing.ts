@@ -1,3 +1,5 @@
+import { isAdministrativeRole } from '@pertexo/workflow-model';
+import { hasCapability } from '@pertexo/workflow-model';
 import type {
   AccessibleWorkspace,
   WorkflowOrganizationProjectionResponse,
@@ -26,7 +28,7 @@ export function canEditOrganization(
 ) {
   if (
     workspace.status !== 'active' ||
-    !['owner', 'admin', 'builder'].includes(workspace.role) ||
+    !hasCapability(workspace.role, 'workflow:update') ||
     !workspace.capabilities.includes('workflow:update') ||
     workflows.some((item) => item.workflow.resourceAccess?.canEdit === false)
   )
@@ -35,9 +37,7 @@ export function canEditOrganization(
     ({ workflow }) => workflow.lifecycleStatus === 'archived',
   );
   return (
-    !archived ||
-    (operation === 'move' &&
-      (workspace.role === 'owner' || workspace.role === 'admin'))
+    !archived || (operation === 'move' && isAdministrativeRole(workspace.role))
   );
 }
 export function organizationEditAttempt(

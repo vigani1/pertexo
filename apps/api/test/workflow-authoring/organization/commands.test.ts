@@ -1,3 +1,4 @@
+import type { Role } from '@pertexo/workflow-model';
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import {
@@ -47,7 +48,7 @@ const base = {
   idempotencyKey: 'exact-command-key',
 };
 
-function fixture(role: 'owner' | 'admin' | 'builder' | 'viewer' = 'owner') {
+function fixture(role: Role = 'owner') {
   const tags = {
     listTags: vi.fn(),
     listTagAssignments: vi.fn(),

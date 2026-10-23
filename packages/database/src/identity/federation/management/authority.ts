@@ -1,3 +1,5 @@
+import { ADMINISTRATIVE_ROLES } from '@pertexo/workflow-model';
+import type { AdministrativeRole } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 import { withWorkspaceScope } from '../../../tenant-access/transactions.js';
 import { lockWorkspaceAuthority } from '../../../tenant-access/workspaces/authority.js';
@@ -12,7 +14,7 @@ export async function lockFederationWorkspace(
   client: PoolClient,
   scope: FederationScope,
   ownerOnly: boolean,
-): Promise<'owner' | 'admin'> {
+): Promise<AdministrativeRole> {
   await client.query('select id from app.workspaces where id=$1 for update', [
     scope.workspaceId,
   ]);
@@ -21,7 +23,7 @@ export async function lockFederationWorkspace(
       scoped,
       scope.workspaceId,
       scope.actorId,
-      ['owner', 'admin'],
+      ADMINISTRATIVE_ROLES,
     );
     if (ownerOnly && role !== 'owner')
       throw new FederationConflictError(

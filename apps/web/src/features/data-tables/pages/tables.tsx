@@ -1,3 +1,4 @@
+import { isAdministrativeRole } from '@pertexo/workflow-model';
 import { useState } from 'react';
 import { ArrowLeftIcon } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
@@ -41,7 +42,7 @@ export function DataTablesPage({
   const editable =
     workspace.status === 'active' &&
     workspace.capabilities.includes('workflow:update');
-  const admin = editable && ['owner', 'admin'].includes(workspace.role);
+  const admin = editable && isAdministrativeRole(workspace.role);
   const table = query.data?.tables.find((item) => item.id === tableId);
   const quotas = query.data?.quotas;
   return (

@@ -1,3 +1,4 @@
+import type { Role } from '@pertexo/workflow-model';
 import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 import { randomUUID } from 'node:crypto';
 
@@ -65,6 +66,9 @@ export const artifactTransferIntegrationEnabled =
     (value) => value !== undefined && value.trim() !== '',
   );
 
+// Only these fixture accounts are provisioned.
+type ArtifactFixtureRole = Exclude<Role, 'admin' | 'builder'>;
+
 export type SessionCookies = HttpSessionCookies;
 
 export type ArtifactRequestMetadata = Readonly<{
@@ -116,7 +120,7 @@ export type ArtifactTransferApiFixture = Readonly<{
   readDurableTransferEvidence(artifactId: string): Promise<readonly string[]>;
   readLogText(): string;
   readStorageCalls(): ArtifactStorageCallSnapshot;
-  login(subject: 'owner' | 'operator' | 'viewer'): Promise<SessionCookies>;
+  login(subject: ArtifactFixtureRole): Promise<SessionCookies>;
   withOwner<T>(work: (client: PoolClient) => Promise<T>): Promise<T>;
   withApi<T>(work: (client: PoolClient) => Promise<T>): Promise<T>;
   setCapacity(
@@ -412,7 +416,7 @@ export async function createArtifactTransferApiFixture(): Promise<ArtifactTransf
         }),
       readLogText: logs.readText,
       readStorageCalls: () => Object.freeze({ ...storageCalls }),
-      login: (subject: 'owner' | 'operator' | 'viewer') =>
+      login: (subject: ArtifactFixtureRole) =>
         issueBrowserSession(
           identityRuntime.dependencies.sessions,
           subjects[subject].user.id,

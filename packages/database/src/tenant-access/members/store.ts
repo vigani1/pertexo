@@ -1,3 +1,4 @@
+import type { Role } from '@pertexo/workflow-model';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
@@ -11,7 +12,6 @@ import { lockWorkspaceAuthority } from '../workspaces/authority.js';
 import type {
   IdentityWorkspaceDatabase,
   AccessibleWorkspacesPage,
-  MembershipRole,
   WorkspaceAccessRecord,
   WorkspaceMembersPage,
   WorkspaceStatus,
@@ -48,7 +48,7 @@ async function listAccessibleWorkspaces(
         WorkspaceStatus,
         'active' | 'suspended' | 'pending_deletion'
       >;
-      role: MembershipRole;
+      role: Role;
       revision: number;
       created_at: Date;
       updated_at: Date;
@@ -104,7 +104,7 @@ async function findWorkspaceAccess(
       const result = await client.query<{
         actor_id: string;
         workspace_id: string;
-        role: MembershipRole;
+        role: Role;
         role_revision: number;
         membership_status: 'active' | 'suspended' | 'removed';
         workspace_status: WorkspaceStatus;
@@ -183,7 +183,7 @@ async function listWorkspaceMembers(
           user_id: string;
           email: string;
           display_name: string;
-          role: MembershipRole;
+          role: Role;
           role_revision: number;
           membership_status: 'active' | 'suspended';
           created_at: Date;

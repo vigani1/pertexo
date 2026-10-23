@@ -1,3 +1,4 @@
+import type { DelegatedRole } from '@pertexo/workflow-model';
 import { useId, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -36,9 +37,7 @@ export function OrganizationWorkspaces({
       enabled: editable,
     });
   const [target, setTarget] = useState<string | null>(null),
-    [role, setRole] = useState<'admin' | 'builder' | 'operator' | 'viewer'>(
-      'viewer',
-    );
+    [role, setRole] = useState<DelegatedRole>('viewer');
   const validation = useFieldValidation<'workspace'>(),
     command = useFederationCommand(scope, () => {
       setTarget(null);

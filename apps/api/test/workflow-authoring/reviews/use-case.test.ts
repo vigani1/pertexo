@@ -1,3 +1,4 @@
+import type { Role } from '@pertexo/workflow-model';
 import { toProblem } from '../../../src/problems/registry.js';
 import { authoringFailure } from '../../../src/problems/context/normalize.js';
 import { expect, it, vi } from 'vitest';
@@ -35,7 +36,7 @@ const review = {
   versionNumber: null,
   canDecide: false,
 };
-function fixture(role: 'owner' | 'admin' | 'builder' | 'operator' | 'viewer') {
+function fixture(role: Role) {
   const store = {
     overview: vi.fn().mockResolvedValue({ required: true, request: review }),
     read: vi

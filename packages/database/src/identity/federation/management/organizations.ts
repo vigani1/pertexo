@@ -1,3 +1,4 @@
+import type { DelegatedRole } from '@pertexo/workflow-model';
 import { projectDirectoryMemberships } from '../provisioning/projection.js';
 import type { Pool, PoolClient } from 'pg';
 import { FEDERATION_LIMITS, type FederationSettings } from '@pertexo/contracts';
@@ -65,7 +66,7 @@ export function linkOrganizationWorkspace(
   input: FederationCommand &
     Readonly<{
       targetWorkspaceId: string;
-      defaultRole: 'viewer' | 'operator' | 'builder' | 'admin';
+      defaultRole: DelegatedRole;
     }>,
 ): Promise<FederationSettings> {
   return runFederationCommand(

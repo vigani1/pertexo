@@ -549,9 +549,6 @@ export const lastRunEventIdHeaderSchema = z
   .regex(/^(?:0|[1-9][0-9]{0,14})$/u);
 
 export type WorkflowRunSummary = z.output<typeof workflowRunSummarySchema>;
-export type WorkflowRunAdmissionBlockers = z.output<
-  typeof workflowRunAdmissionBlockersSchema
->;
 export type WorkflowRunReadSummary = z.output<
   typeof workflowRunReadSummarySchema
 >;

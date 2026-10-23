@@ -1,3 +1,4 @@
+export type { Role, DelegatedRole } from '@pertexo/workflow-model';
 export {
   AUTHORIZATION_CAPABILITIES,
   capabilitiesForRole,
@@ -5,7 +6,7 @@ export {
   ROLES,
   rolesForCapability,
 } from '@pertexo/workflow-model';
-export type { AuthorizationCapability, Role } from '@pertexo/workflow-model';
+export type { AuthorizationCapability } from '@pertexo/workflow-model';
 export {
   createIdentityWorkspaceDatabase,
   IdentityConflictError,
@@ -26,7 +27,6 @@ export type {
   ChangeWorkspaceMemberRoleInput,
   CompleteInvitationAcceptanceInput,
   CreateWorkspaceInvitationInput,
-  DelegatedMembershipRole,
   IdentityWorkspaceDatabase,
   InvitationAcceptanceIntentRecord,
   InvitationAcceptanceResult,

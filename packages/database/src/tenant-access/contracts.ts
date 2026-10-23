@@ -1,3 +1,4 @@
+import type { Role, DelegatedRole } from '@pertexo/workflow-model';
 import type { DirectoryMembershipSource } from '@pertexo/contracts';
 import type { WorkspaceLifecycleOperation } from '../lifecycle/workspace-deletion.js';
 
@@ -17,16 +18,6 @@ export const WORKSPACE_STATUS = {
 } as const;
 export type WorkspaceStatus =
   (typeof WORKSPACE_STATUS)[keyof typeof WORKSPACE_STATUS];
-
-export const MEMBERSHIP_ROLE = {
-  owner: 'owner',
-  admin: 'admin',
-  builder: 'builder',
-  operator: 'operator',
-  viewer: 'viewer',
-} as const;
-export type MembershipRole =
-  (typeof MEMBERSHIP_ROLE)[keyof typeof MEMBERSHIP_ROLE];
 
 export type UserRecord = Readonly<{
   id: string;
@@ -70,7 +61,7 @@ export type CreateUserInput = Readonly<{
 export type WorkspaceAccessRecord = Readonly<{
   actorId: string;
   workspaceId: string;
-  role: MembershipRole;
+  role: Role;
   membershipStatus: 'active' | 'suspended' | 'removed';
   workspaceStatus: WorkspaceStatus;
 }>;
@@ -78,7 +69,7 @@ export type WorkspaceMemberRecord = Readonly<{
   userId: string;
   email: string;
   displayName: string;
-  role: MembershipRole;
+  role: Role;
   roleRevision: number;
   membershipStatus: 'active' | 'suspended';
   directorySource?: DirectoryMembershipSource;
@@ -89,7 +80,7 @@ export type ChangeWorkspaceMemberRoleInput = Readonly<{
   workspaceId: string;
   actorUserId: string;
   targetUserId: string;
-  role: Exclude<MembershipRole, 'owner'>;
+  role: Exclude<Role, 'owner'>;
   expectedRoleRevision: number;
   idempotencyKey: string;
   requestId?: string;
@@ -97,7 +88,7 @@ export type ChangeWorkspaceMemberRoleInput = Readonly<{
 }>;
 export type WorkspaceMemberRoleChangeResult = Readonly<{
   userId: string;
-  role: Exclude<MembershipRole, 'owner'>;
+  role: Exclude<Role, 'owner'>;
   roleRevision: number;
   changed: boolean;
   replayed: boolean;
@@ -136,7 +127,6 @@ export type WorkspaceMembersPage = Readonly<{
   items: readonly WorkspaceMemberRecord[];
   nextCursor?: Readonly<{ createdAt: string; userId: string }>;
 }>;
-export type DelegatedMembershipRole = Exclude<MembershipRole, 'owner'>;
 export type WorkspaceInvitationStatus =
   'pending' | 'accepted' | 'revoked' | 'expired';
 export type WorkspaceInvitationDeliveryStatus =
@@ -145,7 +135,7 @@ export type WorkspaceInvitationRecord = Readonly<{
   id: string;
   workspaceId: string;
   email: string;
-  role: DelegatedMembershipRole;
+  role: DelegatedRole;
   status: WorkspaceInvitationStatus;
   revision: number;
   deliveryStatus: WorkspaceInvitationDeliveryStatus;
@@ -171,7 +161,7 @@ export type CreateWorkspaceInvitationInput = WorkspaceInvitationCommandInput &
     invitationId?: string;
     deliveryAttemptId?: string;
     email: string;
-    role: DelegatedMembershipRole;
+    role: DelegatedRole;
     tokenDigest: string;
     sealedToken: SealedInvitationToken;
     expiresAt: Date;
@@ -211,13 +201,13 @@ export type InvitationAcceptanceIntentRecord = Readonly<{
   verifiedEmail: string | null;
   verifiedAt: Date | null;
   workspaceName: string | null;
-  invitationRole: DelegatedMembershipRole | null;
+  invitationRole: DelegatedRole | null;
   invitationStatus: WorkspaceInvitationStatus | null;
   acceptedUserId: string | null;
   receipt: Readonly<{
     intentId: string;
     workspaceId: string;
-    role: MembershipRole;
+    role: Role;
     membershipCreated: boolean;
   }> | null;
 }>;
@@ -256,7 +246,7 @@ export type CompleteInvitationAcceptanceInput = Readonly<{
 export type InvitationAcceptanceResult = Readonly<{
   intentId: string;
   workspaceId: string;
-  role: MembershipRole;
+  role: Role;
   membershipCreated: boolean;
   replayed: boolean;
   replacementSessionCreated: boolean;
@@ -267,7 +257,7 @@ export type AccessibleWorkspaceRecord = Readonly<{
   slug: string;
   status: Extract<WorkspaceStatus, 'active' | 'suspended' | 'pending_deletion'>;
   revision: number;
-  role: MembershipRole;
+  role: Role;
   createdAt: Date;
   updatedAt: Date;
 }>;

@@ -1,3 +1,4 @@
+import { ADMINISTRATIVE_ROLES } from '../../workspaces/policy.js';
 import { z } from 'zod';
 import { storageTextSchema } from '../../values/json/text.js';
 import { PENDING_TASK_LIMITS, taskAudienceSchema } from './audience.js';
@@ -22,7 +23,7 @@ export const approvalConfigSchema = z
       .default(PENDING_TASK_LIMITS.defaultExpirySeconds),
     allowStarterToDecide: z.boolean().exactOptional(),
     audience: taskAudienceSchema.default({
-      roles: ['owner', 'admin'],
+      roles: [...ADMINISTRATIVE_ROLES],
       memberIds: [],
     }),
   })

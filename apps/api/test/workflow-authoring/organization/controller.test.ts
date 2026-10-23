@@ -1,3 +1,4 @@
+import type { Role } from '@pertexo/workflow-model';
 import { APPLICATION_ERROR_MAPPERS } from '../../../src/application-errors.js';
 import 'reflect-metadata';
 import { EventEmitter } from 'node:events';
@@ -118,7 +119,7 @@ const routes = [
   },
 ] as const;
 
-function fixture(role: 'owner' | 'admin' | 'builder' | 'viewer' = 'owner') {
+function fixture(role: Role = 'owner') {
   const tags = {
     listTags: vi
       .fn()
@@ -177,9 +178,7 @@ afterEach(async () => {
 
 /** Real Nest/Fastify routes and real workspace/CSRF policy, fake session admission
  * and persistence. This does not qualify production session auth or live SQL. */
-async function httpFixture(
-  role: 'owner' | 'admin' | 'builder' | 'viewer' = 'owner',
-) {
+async function httpFixture(role: Role = 'owner') {
   const f = fixture(role);
   const contexts = new RequestContextStore();
   const module = await Test.createTestingModule({

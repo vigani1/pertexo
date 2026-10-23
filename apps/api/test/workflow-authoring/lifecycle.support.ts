@@ -1,3 +1,4 @@
+import type { Role } from '@pertexo/workflow-model';
 import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 import { randomUUID } from 'node:crypto';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
@@ -58,6 +59,9 @@ export const workflowLifecycleDatabaseConfig = parseDatabaseConfig({
   ownerRole,
 });
 
+// Only these fixture accounts are provisioned.
+type LifecycleFixtureRole = Exclude<Role, 'admin'>;
+
 export type SessionCookies = HttpSessionCookies;
 
 export type LifecycleWorkflowIds = Readonly<{
@@ -108,9 +112,7 @@ export type WorkflowLifecycleApiFixture = Readonly<{
   operatorUserId: string;
   viewerUserId: string;
   ids: LifecycleWorkflowIds;
-  login(
-    subject: 'owner' | 'builder' | 'operator' | 'viewer',
-  ): Promise<SessionCookies>;
+  login(subject: LifecycleFixtureRole): Promise<SessionCookies>;
   withOwner<T>(work: (client: PoolClient) => Promise<T>): Promise<T>;
   setWorkspaceStatus(
     status: 'active' | 'suspended' | 'pending_deletion',
@@ -268,7 +270,7 @@ export async function createWorkflowLifecycleApiFixture(): Promise<WorkflowLifec
       operatorUserId: subjects.operator.user.id,
       viewerUserId: subjects.viewer.user.id,
       ids,
-      login: (subject: 'owner' | 'builder' | 'operator' | 'viewer') =>
+      login: (subject: LifecycleFixtureRole) =>
         issueBrowserSession(
           identityRuntime.dependencies.sessions,
           subjects[subject].user.id,

@@ -1,3 +1,4 @@
+import type { DelegatedRole } from '@pertexo/workflow-model';
 import { Status } from '@/components/ui/status';
 import { useId, useState } from 'react';
 import {
@@ -42,9 +43,7 @@ export function DirectoryMappingsEditor({
     }>(),
     [selectedWorkspaceId, setWorkspaceId] = useState<string>(),
     [groupId, setGroupId] = useState<string | null>(null),
-    [role, setRole] = useState<'viewer' | 'operator' | 'builder' | 'admin'>(
-      'viewer',
-    ),
+    [role, setRole] = useState<DelegatedRole>('viewer'),
     [saved, setSaved] = useState(false);
   const command = useDirectoryCommand(scope, () => {
     setSaved(true);

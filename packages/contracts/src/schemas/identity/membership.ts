@@ -1,12 +1,8 @@
+import { ROLES } from '@pertexo/workflow-model';
+export { isAdministrativeRole } from '@pertexo/workflow-model';
 import { z } from 'zod';
 
-export const workspaceRoleSchema = z.enum([
-  'owner',
-  'admin',
-  'builder',
-  'operator',
-  'viewer',
-]);
+export const workspaceRoleSchema = z.enum(ROLES);
 export const delegatedWorkspaceRoleSchema = workspaceRoleSchema.exclude([
   'owner',
 ]);

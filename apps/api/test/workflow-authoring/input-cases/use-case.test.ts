@@ -1,3 +1,4 @@
+import type { Role } from '@pertexo/workflow-model';
 import { inputCaseFailure } from '../../../src/problems/context/normalize.js';
 import { problemResult } from '../../support/problem.js';
 import { toProblem } from '../../../src/problems/registry.js';
@@ -60,9 +61,7 @@ const item = {
 const context = { actor, routeWorkspaceId: workspaceId, workflowId };
 const representationTag = createWorkflowInputCaseTag(caseId, 1);
 const result = { caseId, revision: 2, replayed: true };
-function fixture(
-  role: 'owner' | 'admin' | 'builder' | 'operator' | 'viewer' = 'owner',
-) {
+function fixture(role: Role = 'owner') {
   const persistence = {
     listCases: vi.fn().mockResolvedValue({
       items: [item],

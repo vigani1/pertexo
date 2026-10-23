@@ -1,6 +1,6 @@
-import type { MembershipRole } from '../../../tenant-access/contracts.js';
+import type { Role } from '@pertexo/workflow-model';
 
-export type DirectoryRole = Exclude<MembershipRole, 'owner'>;
+export type DirectoryRole = Exclude<Role, 'owner'>;
 export type DirectoryEmail = Readonly<{
   value: string;
   type?: string;

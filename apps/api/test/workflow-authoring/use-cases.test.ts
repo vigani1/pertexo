@@ -1,3 +1,4 @@
+import type { Role } from '@pertexo/workflow-model';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -101,7 +102,7 @@ function authorization(
   overrides: Partial<{
     actorId: string;
     workspaceId: string;
-    role: 'owner' | 'builder' | 'operator' | 'viewer';
+    role: Role;
     membershipStatus: 'active' | 'suspended';
     workspaceStatus: 'active' | 'suspended' | 'pending_deletion';
   }> = {},

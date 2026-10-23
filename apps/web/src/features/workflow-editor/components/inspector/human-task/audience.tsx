@@ -1,3 +1,4 @@
+import { ROLES } from '@pertexo/workflow-model';
 import { useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import type { TaskAudience } from '@pertexo/workflow-model';
@@ -12,7 +13,6 @@ import { Button } from '@/components/ui/button';
 import { LoadMore } from '@/components/patterns/lists/load-more';
 import { ReadFailure } from '@/components/patterns/states/read-failure';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
-const roles = ['owner', 'admin', 'builder', 'operator', 'viewer'] as const;
 export function AudienceField({
   scope,
   form,
@@ -33,6 +33,7 @@ export function AudienceField({
   });
   const visible = members.data?.pages.flatMap((page) => page.items) ?? [];
   const selectedIds = new Set(audience.memberIds);
+  const selectedRoles = new Set(audience.roles);
   const names = new Map(
     visible.map((member) => [member.userId, member.displayName]),
   );
@@ -46,10 +47,10 @@ export function AudienceField({
         membership is checked when responding.
       </p>
       <div className="flex flex-wrap gap-x-4 gap-y-3">
-        {roles.map((role) => (
+        {ROLES.map((role) => (
           <label key={role} className="flex items-center gap-2 text-sm">
             <Checkbox
-              checked={audience.roles.includes(role)}
+              checked={selectedRoles.has(role)}
               onCheckedChange={(checked) => {
                 onChange({
                   ...audience,

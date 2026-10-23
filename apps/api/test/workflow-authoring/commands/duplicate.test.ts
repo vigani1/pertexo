@@ -1,3 +1,4 @@
+import type { Role } from '@pertexo/workflow-model';
 import { describe, expect, it, vi } from 'vitest';
 import { DuplicateWorkflowUseCase } from '../../../src/workflow-authoring/commands/duplicate.js';
 import {
@@ -11,7 +12,7 @@ const destinationId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const actorId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const versionId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 const tag = `"draft.${'a'.repeat(43)}"`;
-function fixture(role: 'owner' | 'builder' | 'operator' | 'viewer' = 'owner') {
+function fixture(role: Role = 'owner') {
   const duplicateWorkflow = vi
     .fn()
     .mockResolvedValue({ workflowId: destinationId });

@@ -26,7 +26,7 @@ export class DatabaseIdentityWorkspaceAdapter
 
   public async updateUserProfile(
     input: Parameters<IdentityWorkspaceDatabase['updateUserProfile']>[0],
-  ) {
+  ): ReturnType<IdentityWorkspaceDatabase['updateUserProfile']> {
     const result = await this.database.updateUserProfile(input);
     return Object.freeze({ ...result, user: mapUserProfile(result.user) });
   }

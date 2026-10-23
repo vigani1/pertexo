@@ -1,3 +1,7 @@
+import {
+  ADMINISTRATIVE_ROLES,
+  WORKFLOW_EDITOR_ROLES,
+} from '@pertexo/workflow-model';
 import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority.js';
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
 import type { Role } from '@pertexo/workflow-model';
@@ -113,8 +117,8 @@ export async function authorize(
   manage: boolean,
 ): Promise<void> {
   const roles: readonly Role[] = manage
-    ? ['owner', 'admin']
-    : ['owner', 'admin', 'builder'];
+    ? ADMINISTRATIVE_ROLES
+    : WORKFLOW_EDITOR_ROLES;
   try {
     await lockWorkspaceAuthority(client, workspaceId, actorId, roles);
   } catch (error) {
