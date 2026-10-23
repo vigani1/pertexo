@@ -20,66 +20,16 @@ const enabled = process.env.F45_RELEASE_QUALIFICATION === 'true';
         for (const size of [1048576, 10485760]) {
           const input = dataset(size === 1048576 ? 10000 : 100000, size);
           const receiver = await fileReceiver(input.rows);
-          const runs: {
-            workspaceId: string;
-            runId: string;
-            kind: FileWorkload | 'quiet';
-          }[] = [];
+          const runs: QualificationRun[] = [];
           let worker: Awaited<ReturnType<typeof measuredWorker>> | undefined;
           try {
-            const uploads = new Map<
-              string,
-              {
-                json: Awaited<ReturnType<typeof environment.upload>>;
-                csv: Awaited<ReturnType<typeof environment.upload>>;
-                raw: Awaited<ReturnType<typeof environment.upload>>;
-                multipart: Awaited<ReturnType<typeof environment.upload>>;
-              }
-            >();
-            for (const workspaceId of environment.workspaces.slice(0, 8)) {
-              const raw = Buffer.alloc(size, 97),
-                multipart = raw.subarray(0, size - 32768);
-              uploads.set(workspaceId, {
-                json: await environment.upload(
-                  workspaceId,
-                  input.json,
-                  'application/json',
-                ),
-                csv: await environment.upload(
-                  workspaceId,
-                  input.csv,
-                  'text/csv',
-                ),
-                raw: await environment.upload(
-                  workspaceId,
-                  raw,
-                  'application/octet-stream',
-                ),
-                multipart: await environment.upload(
-                  workspaceId,
-                  multipart,
-                  'application/octet-stream',
-                ),
-              });
-            }
-            const kinds = ['raw', 'multipart', 'csv', 'json', 'http'] as const;
-            for (let index = 0; index < 32; index++) {
-              const workspaceId =
-                environment.workspaces[Math.floor(index / 4)] ?? '';
-              const kind = kinds[index % kinds.length] ?? 'raw';
-              const upload = uploads.get(workspaceId);
-              if (upload === undefined)
-                throw new Error('Missing source upload');
-              const file = kind === 'http' ? undefined : upload[kind];
-              runs.push({
-                ...(await environment.start(
-                  workspaceId,
-                  fileGraph(kind, receiver.origin),
-                  file === undefined ? {} : { file },
-                )),
-                kind,
-              });
-            }
+            await seedFileWorkload({
+              environment,
+              input,
+              receiver,
+              size,
+              runs,
+            });
             const [walBefore] = await environment.fixture.ownerPool
               .query<{
                 lsn: string;
@@ -94,68 +44,13 @@ const enabled = process.env.F45_RELEASE_QUALIFICATION === 'true';
             worker = await measuredWorker(environment);
             await setTimeout(500);
             const quietStarted = Date.now();
-            for (const workspaceId of [
-              environment.workspaces[0],
-              environment.workspaces[8],
-            ]) {
-              if (workspaceId === undefined)
-                throw new Error('Missing quiet workspace');
-              runs.push({
-                ...(await environment.start(workspaceId, quietFileGraph())),
-                kind: 'quiet',
-              });
-            }
-            let quietMillis = 0,
-              maximumCheckpointBytes = 0,
-              maximumWorkspaceSlots = 0;
-            const deadline = Date.now() + 300000;
-            const outcomes = new Map<string, string>();
-            do {
-              for (const workspaceId of environment.workspaces) {
-                const states = await environment.query<{
-                  id: string;
-                  status: string;
-                  bytes: number;
-                }>(
-                  workspaceId,
-                  `select r.id,r.status,coalesce(octet_length(c.scheduler_state::text),0) as bytes from app.workflow_runs r left join app.run_checkpoints c on c.workflow_run_id=r.id where r.workspace_id=$1`,
-                  [workspaceId],
-                );
-                let occupied = 0;
-                for (const state of states) {
-                  outcomes.set(state.id, state.status);
-                  maximumCheckpointBytes = Math.max(
-                    maximumCheckpointBytes,
-                    state.bytes,
-                  );
-                  if (['running', 'waiting'].includes(state.status)) occupied++;
-                }
-                maximumWorkspaceSlots = Math.max(
-                  maximumWorkspaceSlots,
-                  occupied,
-                );
-              }
-              if (
-                quietMillis === 0 &&
-                runs
-                  .filter((run) => run.kind === 'quiet')
-                  .every((run) => outcomes.get(run.runId) === 'succeeded')
-              )
-                quietMillis = Date.now() - quietStarted;
-              if (
-                runs.every((run) =>
-                  [
-                    'succeeded',
-                    'failed',
-                    'timed_out',
-                    'outcome_unknown',
-                    'canceled',
-                  ].includes(outcomes.get(run.runId) ?? ''),
-                )
-              )
-                break;
-              await setTimeout(100);
-            } while (Date.now() < deadline);
+            await startQuietWorkload(environment, runs);
+            const {
+              quietMillis,
+              maximumCheckpointBytes,
+              maximumWorkspaceSlots,
+              outcomes,
+            } = await observeFileWorkload(environment, runs, quietStarted);
             const measurement = await worker.close();
             worker = undefined;
             const [writes] = await environment.fixture.ownerPool
@@ -177,13 +72,7 @@ const enabled = process.env.F45_RELEASE_QUALIFICATION === 'true';
               maximumCheckpointBytes,
               maximumWorkspaceSlots,
               ...measurement,
-              writes: {
-                walBytes: Number(writes?.wal_bytes),
-                inserted:
-                  Number(writes?.inserted) - Number(walBefore?.inserted),
-                updated: Number(writes?.updated) - Number(walBefore?.updated),
-                deleted: Number(writes?.deleted) - Number(walBefore?.deleted),
-              },
+              writes: writeDelta(writes, walBefore),
               outcomes: runs.reduce<Record<string, number>>((counts, run) => {
                 const status = outcomes.get(run.runId) ?? 'missing';
                 counts[status] = (counts[status] ?? 0) + 1;
@@ -260,3 +149,179 @@ const enabled = process.env.F45_RELEASE_QUALIFICATION === 'true';
     }, 900000);
   },
 );
+
+interface QualificationRun {
+  workspaceId: string;
+  runId: string;
+  kind: FileWorkload | 'quiet';
+}
+type FileEnvironment = Awaited<ReturnType<typeof fileEnvironment>>;
+type DatabaseWriteCounters = Readonly<{
+  inserted: string;
+  updated: string;
+  deleted: string;
+}>;
+async function seedFileWorkload(
+  options: Readonly<{
+    environment: FileEnvironment;
+    input: ReturnType<typeof dataset>;
+    receiver: Awaited<ReturnType<typeof fileReceiver>>;
+    size: number;
+    runs: QualificationRun[];
+  }>,
+) {
+  const { environment, input, receiver, size, runs } = options;
+  const uploads = new Map<
+    string,
+    {
+      json: Awaited<ReturnType<typeof environment.upload>>;
+      csv: Awaited<ReturnType<typeof environment.upload>>;
+      raw: Awaited<ReturnType<typeof environment.upload>>;
+      multipart: Awaited<ReturnType<typeof environment.upload>>;
+    }
+  >();
+  for (const workspaceId of environment.workspaces.slice(0, 8)) {
+    const raw = Buffer.alloc(size, 97),
+      multipart = raw.subarray(0, size - 32768);
+    uploads.set(workspaceId, {
+      json: await environment.upload(
+        workspaceId,
+        input.json,
+        'application/json',
+      ),
+      csv: await environment.upload(workspaceId, input.csv, 'text/csv'),
+      raw: await environment.upload(
+        workspaceId,
+        raw,
+        'application/octet-stream',
+      ),
+      multipart: await environment.upload(
+        workspaceId,
+        multipart,
+        'application/octet-stream',
+      ),
+    });
+  }
+  const kinds = ['raw', 'multipart', 'csv', 'json', 'http'] as const;
+  for (let index = 0; index < 32; index++) {
+    const workspaceId = environment.workspaces[Math.floor(index / 4)] ?? '';
+    const kind = kinds[index % kinds.length] ?? 'raw';
+    const upload = uploads.get(workspaceId);
+    if (upload === undefined) throw new Error('Missing source upload');
+    const file = kind === 'http' ? undefined : upload[kind];
+    runs.push({
+      ...(await environment.start(
+        workspaceId,
+        fileGraph(kind, receiver.origin),
+        file === undefined ? {} : { file },
+      )),
+      kind,
+    });
+  }
+}
+async function startQuietWorkload(
+  environment: FileEnvironment,
+  runs: QualificationRun[],
+) {
+  for (const workspaceId of [
+    environment.workspaces[0],
+    environment.workspaces[8],
+  ]) {
+    if (workspaceId === undefined) throw new Error('Missing quiet workspace');
+    runs.push({
+      ...(await environment.start(workspaceId, quietFileGraph())),
+      kind: 'quiet',
+    });
+  }
+}
+async function sampleWorkspaceRuns(
+  input: Readonly<{
+    environment: FileEnvironment;
+    outcomes: Map<string, string>;
+    maximumCheckpointBytes: number;
+    maximumWorkspaceSlots: number;
+  }>,
+) {
+  const { environment, outcomes } = input;
+  let { maximumCheckpointBytes, maximumWorkspaceSlots } = input;
+  for (const workspaceId of environment.workspaces) {
+    const states = await environment.query<{
+      id: string;
+      status: string;
+      bytes: number;
+    }>(
+      workspaceId,
+      `select r.id,r.status,coalesce(octet_length(c.scheduler_state::text),0) as bytes from app.workflow_runs r left join app.run_checkpoints c on c.workflow_run_id=r.id where r.workspace_id=$1`,
+      [workspaceId],
+    );
+    let occupied = 0;
+    for (const state of states) {
+      outcomes.set(state.id, state.status);
+      maximumCheckpointBytes = Math.max(maximumCheckpointBytes, state.bytes);
+      if (['running', 'waiting'].includes(state.status)) occupied++;
+    }
+    maximumWorkspaceSlots = Math.max(maximumWorkspaceSlots, occupied);
+  }
+
+  return { maximumCheckpointBytes, maximumWorkspaceSlots };
+}
+function writeDelta(
+  writes: (DatabaseWriteCounters & Readonly<{ wal_bytes: string }>) | undefined,
+  walBefore: DatabaseWriteCounters | undefined,
+) {
+  return {
+    walBytes: Number(writes?.wal_bytes),
+    inserted: Number(writes?.inserted) - Number(walBefore?.inserted),
+    updated: Number(writes?.updated) - Number(walBefore?.updated),
+    deleted: Number(writes?.deleted) - Number(walBefore?.deleted),
+  };
+}
+
+async function observeFileWorkload(
+  environment: FileEnvironment,
+  runs: QualificationRun[],
+  quietStarted: number,
+) {
+  let quietMillis = 0,
+    maximumCheckpointBytes = 0,
+    maximumWorkspaceSlots = 0;
+  const deadline = Date.now() + 300000;
+  const outcomes = new Map<string, string>();
+  do {
+    const sampled = await sampleWorkspaceRuns({
+      environment,
+      outcomes,
+      maximumCheckpointBytes,
+      maximumWorkspaceSlots,
+    });
+    maximumCheckpointBytes = sampled.maximumCheckpointBytes;
+    maximumWorkspaceSlots = sampled.maximumWorkspaceSlots;
+    if (
+      quietMillis === 0 &&
+      runs
+        .filter((run) => run.kind === 'quiet')
+        .every((run) => outcomes.get(run.runId) === 'succeeded')
+    )
+      quietMillis = Date.now() - quietStarted;
+    if (
+      runs.every((run) =>
+        [
+          'succeeded',
+          'failed',
+          'timed_out',
+          'outcome_unknown',
+          'canceled',
+        ].includes(outcomes.get(run.runId) ?? ''),
+      )
+    )
+      break;
+    await setTimeout(100);
+  } while (Date.now() < deadline);
+
+  return {
+    quietMillis,
+    maximumCheckpointBytes,
+    maximumWorkspaceSlots,
+    outcomes,
+  };
+}
