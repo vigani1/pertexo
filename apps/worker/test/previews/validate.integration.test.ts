@@ -98,6 +98,14 @@ async function createValidateRuntime() {
 }
 
 describeIntegration('core.validate persisted preview execution', () => {
+  registerPersistsMismatchMatchingResultsSurvivesExact();
+});
+
+describeIntegration('core.validate persisted workflow execution', () => {
+  registerExecutesPublishedValidateNodeThroughCoordinator();
+});
+
+function registerPersistsMismatchMatchingResultsSurvivesExact(): void {
   it('persists mismatch and matching results and survives exact redelivery after restart', async () => {
     const config = CORE_VALIDATE_CONFIG_SCHEMA.parse(validateConfigInput);
     const runInput = {
@@ -253,9 +261,9 @@ describeIntegration('core.validate persisted preview execution', () => {
       await runtime.close();
     }
   });
-});
+}
 
-describeIntegration('core.validate persisted workflow execution', () => {
+function registerExecutesPublishedValidateNodeThroughCoordinator(): void {
   it('executes a published Validate node through coordinator and attempt workers', async () => {
     const runInput = {
       profile: { email: 'bad', role: 'member' },
@@ -497,4 +505,4 @@ describeIntegration('core.validate persisted workflow execution', () => {
       ]);
     }
   });
-});
+}

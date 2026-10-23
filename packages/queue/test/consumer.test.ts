@@ -128,17 +128,26 @@ const validJob = {
 const TRACEPARENT = `00-${'a'.repeat(32)}-${'b'.repeat(16)}-01`;
 
 describe('BullMQ queue consumer', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mocks.workerInstances.length = 0;
-    mocks.workerListeners.clear();
-    mocks.redisClient.status = 'ready';
-    mocks.redisClient.quit.mockReset().mockResolvedValue('OK');
-    mocks.redisClient.disconnect
-      .mockReset()
-      .mockImplementation(() => undefined);
-  });
+  beforeEach(resetPackagesQueueTestConsumerTestTsBullMQQueueConsumerFixture);
+  registerMapsQueueDefaultsBullMQWorkerDedicated();
 
+  registerIsolatesObserverAdmissionFailuresWithoutUnpaired();
+
+  registerBecomesReadyAfterBullMQIsReady();
+
+  registerDisconnectsBullMQBlockingOwnedRedisConnections();
+});
+
+function resetPackagesQueueTestConsumerTestTsBullMQQueueConsumerFixture() {
+  vi.clearAllMocks();
+  mocks.workerInstances.length = 0;
+  mocks.workerListeners.clear();
+  mocks.redisClient.status = 'ready';
+  mocks.redisClient.quit.mockReset().mockResolvedValue('OK');
+  mocks.redisClient.disconnect.mockReset().mockImplementation(() => undefined);
+}
+
+function registerMapsQueueDefaultsBullMQWorkerDedicated(): void {
   it('maps queue defaults to BullMQ worker and dedicated blocking Redis options', () => {
     createQueueConsumer({
       queueName: QUEUE_NAME.workflowCoordinator,
@@ -342,7 +351,9 @@ describe('BullMQ queue consumer', () => {
       }),
     );
   });
+}
 
+function registerIsolatesObserverAdmissionFailuresWithoutUnpaired(): void {
   it('isolates observer admission failures without an unpaired finish', async () => {
     const handlerError = new Error('business handler failed');
     const observer = {
@@ -539,7 +550,9 @@ describe('BullMQ queue consumer', () => {
     });
     expect(handler).not.toHaveBeenCalled();
   });
+}
 
+function registerBecomesReadyAfterBullMQIsReady(): void {
   it('becomes ready only after BullMQ is ready and closes gracefully', async () => {
     const consumer = createQueueConsumer({
       queueName: QUEUE_NAME.workflowCoordinator,
@@ -734,7 +747,9 @@ describe('BullMQ queue consumer', () => {
     expect(mocks.workerInstances[0]?.disconnect).toHaveBeenCalledTimes(1);
     expect(mocks.redisClient.disconnect).toHaveBeenCalledTimes(1);
   });
+}
 
+function registerDisconnectsBullMQBlockingOwnedRedisConnections(): void {
   it('disconnects BullMQ blocking and owned Redis connections when close times out', async () => {
     const consumer = createQueueConsumer({
       queueName: QUEUE_NAME.workflowCoordinator,
@@ -774,4 +789,4 @@ describe('BullMQ queue consumer', () => {
       mocks.UnrecoverableError,
     );
   });
-});
+}

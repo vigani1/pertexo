@@ -66,6 +66,14 @@ function sourceWithFake(
 }
 
 describe('Redis run event source', () => {
+  registerUsesStableOpaqueWorkspaceRunSpecific();
+
+  registerTurnsReconnectIntoDurableResyncAfter();
+
+  registerMakesRepeatedCloseIdempotentRemovesListeners();
+});
+
+function registerUsesStableOpaqueWorkspaceRunSpecific(): void {
   it('uses a stable opaque workspace/run-specific channel', () => {
     const channel = runEventChannel(WORKSPACE_ID, RUN_ID);
     expect(channel).toBe(runEventChannel(WORKSPACE_ID, RUN_ID));
@@ -242,7 +250,9 @@ describe('Redis run event source', () => {
     expect(fake.disconnectCalls).toBe(1);
     expectNoListeners(fake);
   });
+}
 
+function registerTurnsReconnectIntoDurableResyncAfter(): void {
   it('turns reconnect into a durable resync only after resubscription', async () => {
     const fake = new FakeRedis();
     const redisTelemetry = {
@@ -445,7 +455,9 @@ describe('Redis run event source', () => {
     );
     await subscription.close();
   });
+}
 
+function registerMakesRepeatedCloseIdempotentRemovesListeners(): void {
   it('makes repeated close idempotent, removes listeners, and completes iterators', async () => {
     const fake = new FakeRedis();
     const subscription = await sourceWithFake(fake).subscribe({
@@ -480,4 +492,4 @@ describe('Redis run event source', () => {
     await expect(pending).resolves.toEqual({ done: true, value: undefined });
     expect(fake.disconnected).toBe(true);
   });
-});
+}

@@ -432,6 +432,14 @@ async function invokePersistence(
 }
 
 describe('PostgreSQL workflow run persistence adapter', () => {
+  registerForwardsCapacityReadsCancellationWithoutChanging();
+
+  registerDoesNotTurnCommittedAcceptanceCancellation();
+
+  registerInitializesCheckpointVerifiedSwitchExecutable();
+});
+
+function registerForwardsCapacityReadsCancellationWithoutChanging(): void {
   it('forwards capacity reads and cancellation without changing exact values', async () => {
     const usageCapacity = vi
       .fn<WorkflowRunDatabase['usageCapacity']>()
@@ -454,6 +462,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
       adapter.persistence.usageCapacity({ workspaceId }),
     ).rejects.toBe(failure);
   });
+
   it('does not disclose capacity when workspace access is lost at the snapshot', async () => {
     const usageCapacity = vi
       .fn<WorkflowRunDatabase['usageCapacity']>()
@@ -638,7 +647,9 @@ describe('PostgreSQL workflow run persistence adapter', () => {
     });
     expect(publish).not.toHaveBeenCalled();
   });
+}
 
+function registerDoesNotTurnCommittedAcceptanceCancellation(): void {
   it('does not turn committed acceptance or cancellation into rejection when hint publication fails', async () => {
     const publishFailure = new Error('Redis unavailable');
     const publish = vi.fn().mockRejectedValue(publishFailure);
@@ -845,7 +856,9 @@ describe('PostgreSQL workflow run persistence adapter', () => {
       branchSelections: [],
     });
   });
+}
 
+function registerInitializesCheckpointVerifiedSwitchExecutable(): void {
   it('initializes the checkpoint for a verified Switch executable', () => {
     const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
     const compiled = buildWorkflowExecutable({
@@ -1059,4 +1072,4 @@ describe('PostgreSQL workflow run persistence adapter', () => {
     await adapter.close();
     expect(close).toHaveBeenCalledOnce();
   });
-});
+}

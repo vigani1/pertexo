@@ -145,6 +145,15 @@ function service(deps: ArtifactDependencies, now = '2026-09-06T00:00:00.000Z') {
 }
 
 describe('ArtifactService', () => {
+  registerAuthorizesBeforeTouchingDatabaseObjectStore();
+
+  registerMapsStoreIntegrityFailureConflict();
+
+  registerArtifactServiceConcealsSArtifactMetadata();
+});
+registerAcceptsExact10MiBCeilingRefuses();
+
+function registerAuthorizesBeforeTouchingDatabaseObjectStore(): void {
   it('authorizes before touching the database or object store', async () => {
     const deps = dependencies({}, {}, () => Promise.resolve(undefined));
     const service = new ArtifactService(deps, {
@@ -346,7 +355,9 @@ describe('ArtifactService', () => {
       expect.objectContaining({ expiresInSeconds: 60 }),
     );
   });
+}
 
+function registerMapsStoreIntegrityFailureConflict(): void {
   it('maps a store integrity failure to a conflict', async () => {
     const deps = dependencies(
       {},
@@ -545,7 +556,9 @@ describe('ArtifactService', () => {
       expect(response).not.toHaveProperty('purpose');
     },
   );
+}
 
+function registerArtifactServiceConcealsSArtifactMetadata(): void {
   it.each([
     ['missing', null],
     ['deleting', record({ status: 'deleting' })],
@@ -583,32 +596,34 @@ describe('ArtifactService', () => {
       service(deps).finalizeUpload({ ...context(), artifactId, request: {} }),
     ).rejects.toBeInstanceOf(ArtifactApiConflictError);
   });
-});
+}
 
-it('accepts the exact 10 MiB ceiling and refuses one byte over before reserving, even with a larger store', async () => {
-  const maximum = 10485760;
-  const deps = dependencies({
-    beginUpload: vi.fn().mockResolvedValue({
-      artifact: record({ byteLength: maximum }),
-      replayed: false,
-    }),
-  });
-  const instance = new ArtifactService(deps, {
-    maxObjectBytes: 100 * 1024 * 1024,
-    now: () => new Date('2026-09-06T00:00:00Z'),
-  });
-  await instance.beginUpload({
-    ...context(),
-    request: { ...uploadRequest, byteLength: maximum },
-    idempotencyKey: randomUUID(),
-  });
-  expect(deps.database.beginUpload).toHaveBeenCalledOnce();
-  await expect(
-    instance.beginUpload({
+function registerAcceptsExact10MiBCeilingRefuses(): void {
+  it('accepts the exact 10 MiB ceiling and refuses one byte over before reserving, even with a larger store', async () => {
+    const maximum = 10485760;
+    const deps = dependencies({
+      beginUpload: vi.fn().mockResolvedValue({
+        artifact: record({ byteLength: maximum }),
+        replayed: false,
+      }),
+    });
+    const instance = new ArtifactService(deps, {
+      maxObjectBytes: 100 * 1024 * 1024,
+      now: () => new Date('2026-09-06T00:00:00Z'),
+    });
+    await instance.beginUpload({
       ...context(),
-      request: { ...uploadRequest, byteLength: maximum + 1 },
+      request: { ...uploadRequest, byteLength: maximum },
       idempotencyKey: randomUUID(),
-    }),
-  ).rejects.toBeInstanceOf(ArtifactUploadTooLargeError);
-  expect(deps.database.beginUpload).toHaveBeenCalledOnce();
-});
+    });
+    expect(deps.database.beginUpload).toHaveBeenCalledOnce();
+    await expect(
+      instance.beginUpload({
+        ...context(),
+        request: { ...uploadRequest, byteLength: maximum + 1 },
+        idempotencyKey: randomUUID(),
+      }),
+    ).rejects.toBeInstanceOf(ArtifactUploadTooLargeError);
+    expect(deps.database.beginUpload).toHaveBeenCalledOnce();
+  });
+}

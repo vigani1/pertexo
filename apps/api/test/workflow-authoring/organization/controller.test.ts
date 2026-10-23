@@ -172,9 +172,7 @@ function fixture(role: Role = 'owner') {
 }
 
 const applications: NestFastifyApplication[] = [];
-afterEach(async () => {
-  await Promise.all(applications.splice(0).map((app) => app.close()));
-});
+afterEach(cleanAppsApiTestWorkflowAuthoringOrganizationControllerTestTsFixture);
 
 /** Real Nest/Fastify routes and real workspace/CSRF policy, fake session admission
  * and persistence. This does not qualify production session auth or live SQL. */
@@ -239,6 +237,12 @@ async function httpFixture(role: Role = 'owner') {
 }
 
 describe('organization controller registered HTTP seam (fake session and persistence)', () => {
+  registerRegistersMethodPathGuardsRateClass();
+
+  registerRejectsPrivatePersistenceResponseExtensionsWithout();
+});
+
+function registerRegistersMethodPathGuardsRateClass(): void {
   it.each(routes)(
     'registers $method $path with guards, rate class and private cache metadata',
     (route) => {
@@ -446,7 +450,9 @@ describe('organization controller registered HTTP seam (fake session and persist
     });
     expect(f.tags.createTag).not.toHaveBeenCalled();
   });
+}
 
+function registerRejectsPrivatePersistenceResponseExtensionsWithout(): void {
   it('rejects private persistence response extensions without exposing them', async () => {
     const f = await httpFixture();
     f.tags.createTag.mockResolvedValueOnce({
@@ -498,4 +504,8 @@ describe('organization controller registered HTTP seam (fake session and persist
     expect(signal?.aborted).toBe(true);
     expect(raw.listenerCount('aborted')).toBe(0);
   });
-});
+}
+
+async function cleanAppsApiTestWorkflowAuthoringOrganizationControllerTestTsFixture() {
+  await Promise.all(applications.splice(0).map((app) => app.close()));
+}

@@ -42,12 +42,7 @@ function createPlatformPreviewNodeInvoker(
   return invoker;
 }
 
-afterEach(async () => {
-  await Promise.all(
-    [...ownedInvokers].map(async (invoker) => invoker.close?.()),
-  );
-  ownedInvokers.clear();
-});
+afterEach(cleanAppsWorkerTestPreviewsRuntimeTestRuntimeTestTsFixture);
 
 function leaseFixture(
   executableNode: PreviewAttemptLease['executableNode'],
@@ -78,6 +73,16 @@ function leaseFixture(
 }
 
 describe('platform preview node invoker', () => {
+  registerRejectsArtifactBackedPreviewInputBefore();
+
+  registerExecutesActiveSlackActionThroughProduction();
+
+  registerPreservesCancellationResolvingPreviewInputMappings();
+
+  registerPlatformPreviewNodeInvokerClassifiesExecutorFailure();
+});
+
+function registerRejectsArtifactBackedPreviewInputBefore(): void {
   it('rejects artifact-backed preview input before execution', async () => {
     const execute = vi.fn();
     const invoker = createPlatformPreviewNodeInvoker({
@@ -254,6 +259,9 @@ describe('platform preview node invoker', () => {
         .digest('hex')}`,
     });
   });
+}
+
+function registerExecutesActiveSlackActionThroughProduction(): void {
   it('executes the active Slack action through the production preview path', async () => {
     const connectionId = randomUUID();
     const secret = new TextEncoder().encode(
@@ -457,7 +465,9 @@ describe('platform preview node invoker', () => {
     });
     await close;
   });
+}
 
+function registerPreservesCancellationResolvingPreviewInputMappings(): void {
   it('preserves cancellation while resolving preview input mappings', async () => {
     const execute = vi.fn();
     const invoker = createPlatformPreviewNodeInvoker({
@@ -580,7 +590,9 @@ describe('platform preview node invoker', () => {
       status: 'outcome_unknown',
     });
   });
+}
 
+function registerPlatformPreviewNodeInvokerClassifiesExecutorFailure(): void {
   it.each([
     [
       new NodeExecutorFailure({
@@ -761,4 +773,11 @@ describe('platform preview node invoker', () => {
       expect(mapPreviewHandlerError(impostor)).toBe(impostor);
     }
   });
-});
+}
+
+async function cleanAppsWorkerTestPreviewsRuntimeTestRuntimeTestTsFixture() {
+  await Promise.all(
+    [...ownedInvokers].map(async (invoker) => invoker.close?.()),
+  );
+  ownedInvokers.clear();
+}

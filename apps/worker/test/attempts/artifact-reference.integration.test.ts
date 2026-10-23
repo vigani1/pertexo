@@ -42,6 +42,14 @@ function sha256Base64(body: Buffer): string {
 }
 
 describeIntegration('artifact direct upload', () => {
+  registerFinalizesVerifiesExpiresDirectUpload();
+});
+
+describeIntegration('Phase 4 worker artifact output capability', () => {
+  registerWritesConsumesIExactBytesThrough();
+});
+
+function registerFinalizesVerifiesExpiresDirectUpload(): void {
   it('finalizes, verifies and expires a direct upload', async () => {
     const databaseEnvironment = createArtifactDatabaseEnvironment();
     const body = Buffer.from('phase-0d finalized artifact');
@@ -259,9 +267,9 @@ describeIntegration('artifact direct upload', () => {
       'Artifact reference delivery',
     );
   });
-});
+}
 
-describeIntegration('Phase 4 worker artifact output capability', () => {
+function registerWritesConsumesIExactBytesThrough(): void {
   it.each([70_000, 1_048_576])(
     'writes and consumes %i exact bytes through real worker, metadata and storage adapters',
     async (size) => {
@@ -488,4 +496,4 @@ describeIntegration('Phase 4 worker artifact output capability', () => {
     },
     30_000,
   );
-});
+}

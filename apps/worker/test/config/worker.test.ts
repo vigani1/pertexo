@@ -30,6 +30,17 @@ const callbackEnvironment = {
 };
 
 describe('parseWorkerConfig', () => {
+  registerPreservesClientDispatcherPoolSettingsOwn();
+
+  registerAppliesSafeDefaultsOptionalEnvironmentValues();
+
+  registerReachesDeployedKMSProtocolPolicyAfter();
+
+  registerAcceptsScheduleOnTimeWindowAt();
+});
+registerDefaultsLocalScratchUnderWorkingDirectory();
+
+function registerPreservesClientDispatcherPoolSettingsOwn(): void {
   it('preserves client and dispatcher pool settings with their own bounds', () => {
     const config = parseWorkerConfig({
       ...requiredEnvironment,
@@ -55,6 +66,7 @@ describe('parseWorkerConfig', () => {
     expect(Object.isFrozen(config.database)).toBe(true);
     expect(Object.isFrozen(config.dispatcherDatabase)).toBe(true);
   });
+
   it.each([
     ['DATABASE_POOL_MAX', '0'],
     ['DATABASE_POOL_MAX', '21'],
@@ -146,7 +158,9 @@ describe('parseWorkerConfig', () => {
       }),
     ).toThrow('Invalid worker configuration');
   });
+}
 
+function registerAppliesSafeDefaultsOptionalEnvironmentValues(): void {
   it('applies safe defaults when optional environment values are absent', () => {
     expect(
       parseWorkerConfig({
@@ -341,7 +355,9 @@ describe('parseWorkerConfig', () => {
       }),
     ).toThrow(/invalid worker configuration/i);
   });
+}
 
+function registerReachesDeployedKMSProtocolPolicyAfter(): void {
   it('reaches the deployed KMS protocol policy after valid production telemetry parsing', () => {
     let thrown: unknown;
     try {
@@ -540,7 +556,9 @@ describe('parseWorkerConfig', () => {
       }),
     ).toThrow(/invalid worker configuration/i);
   });
+}
 
+function registerAcceptsScheduleOnTimeWindowAt(): void {
   it.each([
     ['60', '60000', 60],
     ['3600', '10', 3_600],
@@ -646,44 +664,47 @@ describe('parseWorkerConfig', () => {
     expect(config.invitationDelivery).toBeUndefined();
     expect(config.retention.maintenanceDatabase).toBeDefined();
   });
-});
+}
 
-it('defaults local scratch under the working directory and refuses relative overrides', () => {
-  const { ARTIFACT_SCRATCH_DIRECTORY: _scratch, ...environment } =
-    requiredEnvironment;
-  expect(parseWorkerConfig(environment).artifactScratchDirectory).toBe(
-    path.resolve('.pertexo/worker-scratch'),
-  );
-  expect(() =>
-    parseWorkerConfig({
-      ...environment,
-      ARTIFACT_SCRATCH_DIRECTORY: 'relative/path',
-    }),
-  ).toThrow('Invalid worker configuration');
-});
-it('requires an explicit deployed disk scratch directory before delivery starts', () => {
-  const { ARTIFACT_SCRATCH_DIRECTORY: _scratch, ...environment } =
-    requiredEnvironment;
-  let failure: unknown;
-  try {
-    parseWorkerConfig({
-      ...environment,
-      ...callbackEnvironment,
-      NODE_ENV: 'production',
-      CONNECTION_KMS_KEY_REFERENCE: 'alias/pertexo',
-      CONNECTION_KMS_REGION: 'eu-central-1',
-      ARTIFACT_STORE_ENDPOINT: 'https://files.example.test',
-    });
-  } catch (error) {
-    failure = error;
-  }
-  expect(failure).toBeInstanceOf(Error);
-  if (!(failure instanceof Error))
-    throw new Error('Missing configuration refusal');
-  expect(failure.cause).toBeInstanceOf(ZodError);
-  if (!(failure.cause instanceof ZodError))
-    throw new Error('Missing configuration field');
-  expect(failure.cause.issues.map((issue) => issue.path)).toContainEqual([
-    'ARTIFACT_SCRATCH_DIRECTORY',
-  ]);
-});
+function registerDefaultsLocalScratchUnderWorkingDirectory(): void {
+  it('defaults local scratch under the working directory and refuses relative overrides', () => {
+    const { ARTIFACT_SCRATCH_DIRECTORY: _scratch, ...environment } =
+      requiredEnvironment;
+    expect(parseWorkerConfig(environment).artifactScratchDirectory).toBe(
+      path.resolve('.pertexo/worker-scratch'),
+    );
+    expect(() =>
+      parseWorkerConfig({
+        ...environment,
+        ARTIFACT_SCRATCH_DIRECTORY: 'relative/path',
+      }),
+    ).toThrow('Invalid worker configuration');
+  });
+
+  it('requires an explicit deployed disk scratch directory before delivery starts', () => {
+    const { ARTIFACT_SCRATCH_DIRECTORY: _scratch, ...environment } =
+      requiredEnvironment;
+    let failure: unknown;
+    try {
+      parseWorkerConfig({
+        ...environment,
+        ...callbackEnvironment,
+        NODE_ENV: 'production',
+        CONNECTION_KMS_KEY_REFERENCE: 'alias/pertexo',
+        CONNECTION_KMS_REGION: 'eu-central-1',
+        ARTIFACT_STORE_ENDPOINT: 'https://files.example.test',
+      });
+    } catch (error) {
+      failure = error;
+    }
+    expect(failure).toBeInstanceOf(Error);
+    if (!(failure instanceof Error))
+      throw new Error('Missing configuration refusal');
+    expect(failure.cause).toBeInstanceOf(ZodError);
+    if (!(failure.cause instanceof ZodError))
+      throw new Error('Missing configuration field');
+    expect(failure.cause.issues.map((issue) => issue.path)).toContainEqual([
+      'ARTIFACT_SCRATCH_DIRECTORY',
+    ]);
+  });
+}

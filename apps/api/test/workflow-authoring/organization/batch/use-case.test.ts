@@ -103,6 +103,14 @@ function deferred<T>() {
 }
 
 describe('workflow organization full-parent batch orchestration', () => {
+  registerNormalizesFullParentWithoutReorderingSelection();
+
+  registerRechecksAuthorityAfterSQLNotFound();
+
+  registerRejectsStrictInvalidSParentsBefore();
+});
+
+function registerNormalizesFullParentWithoutReorderingSelection(): void {
   it('normalizes the full parent without reordering selection and passes the same identity to admission and every item', async () => {
     const f = fixture('builder');
     const signal = new AbortController().signal;
@@ -313,7 +321,9 @@ describe('workflow organization full-parent batch orchestration', () => {
     expect(f.batches.admitBatch).not.toHaveBeenCalled();
     expect(f.batches.executeBatchItem).not.toHaveBeenCalled();
   });
+}
 
+function registerRechecksAuthorityAfterSQLNotFound(): void {
   it.each(['invisible', 'lost-role', 'lookup-outage'] as const)(
     'rechecks authority after SQL not-found: %s',
     async (mode) => {
@@ -509,7 +519,9 @@ describe('workflow organization full-parent batch orchestration', () => {
     });
     expect(f.batches.executeBatchItem).not.toHaveBeenCalled();
   });
+}
 
+function registerRejectsStrictInvalidSParentsBefore(): void {
   it.each(['bulk', 'cleanup'] as const)(
     'rejects strict invalid %s parents before authority or admission',
     async (method) => {
@@ -677,4 +689,4 @@ describe('workflow organization full-parent batch orchestration', () => {
       );
     },
   );
-});
+}

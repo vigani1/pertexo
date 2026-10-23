@@ -31,6 +31,16 @@ import {
 } from './support/use-case-fixture.js';
 
 describe('connection testing use case', () => {
+  registerRejectsInvalidConnectionTestBodyBefore();
+
+  registerTestsResendAfterDisclosureOneFixed();
+
+  registerPersistsRedactedSecurityFailureButAbandons();
+
+  registerRejectsDecryptedCredentialNonObjectJSON();
+});
+
+function registerRejectsInvalidConnectionTestBodyBefore(): void {
   it('rejects an invalid connection-test body before claiming work', async () => {
     const testCommand: TestConnectionCommand = {
       actor,
@@ -55,6 +65,7 @@ describe('connection testing use case', () => {
     expect(open).not.toHaveBeenCalled();
     expect(execute).not.toHaveBeenCalled();
   });
+
   it('decrypts just in time, commits dispatch evidence, and stores only a safe test result', async () => {
     const store = connectionTestPersistence();
     const access = authorization();
@@ -223,7 +234,9 @@ describe('connection testing use case', () => {
     expect(authTest).toHaveBeenCalledOnce();
     expect(plaintext.every((byte) => byte === 0)).toBe(true);
   });
+}
 
+function registerTestsResendAfterDisclosureOneFixed(): void {
   it('tests Resend only after disclosure with one fixed message and stable provider key', async () => {
     const controller = new AbortController();
     const emailRecord = record({
@@ -400,7 +413,9 @@ describe('connection testing use case', () => {
     expect(store.startConnectionTest).not.toHaveBeenCalled();
     expect(encryption.open).not.toHaveBeenCalled();
   });
+}
 
+function registerPersistsRedactedSecurityFailureButAbandons(): void {
   it('persists a redacted security failure but abandons a failed dispatch marker', async () => {
     const encryption = {
       seal: vi.fn(),
@@ -615,7 +630,9 @@ describe('connection testing use case', () => {
       expect(plaintext.every((byte) => byte === 0)).toBe(true);
     },
   );
+}
 
+function registerRejectsDecryptedCredentialNonObjectJSON(): void {
   it('rejects a decrypted credential with a non-object JSON shape', async () => {
     const store = connectionTestPersistence();
     const plaintext = new TextEncoder().encode('null');
@@ -698,4 +715,4 @@ describe('connection testing use case', () => {
       expect(plaintext.every((byte) => byte === 0)).toBe(true);
     },
   );
-});
+}

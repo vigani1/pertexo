@@ -37,14 +37,27 @@ function idleRuntime() {
 }
 
 describe('worker readiness lifecycle', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  beforeEach(
+    resetAppsWorkerTestRuntimeReadinessLifecycleWorkerReadinessLifecycleFixture,
+  );
 
-  afterEach(() => {
-    vi.useRealTimers();
-  });
+  afterEach(
+    cleanAppsWorkerTestRuntimeReadinessLifecycleWorkerReadinessLifecycleFixture,
+  );
+  registerDoesNotRecreateReadinessAfterShutdown();
 
+  registerCorrectsReadyWriteCompletesAfterBounded();
+});
+
+function resetAppsWorkerTestRuntimeReadinessLifecycleWorkerReadinessLifecycleFixture() {
+  vi.clearAllMocks();
+}
+
+function cleanAppsWorkerTestRuntimeReadinessLifecycleWorkerReadinessLifecycleFixture() {
+  vi.useRealTimers();
+}
+
+function registerDoesNotRecreateReadinessAfterShutdown(): void {
   it.each(['success', 'failure'] as const)(
     'does not recreate readiness after shutdown during deferred %s',
     async (outcome) => {
@@ -258,7 +271,9 @@ describe('worker readiness lifecycle', () => {
     await expect(observedCheck).resolves.toBeInstanceOf(Error);
     expect(readinessMarker.ready).toBe(false);
   });
+}
 
+function registerCorrectsReadyWriteCompletesAfterBounded(): void {
   it('corrects a ready write that completes after bounded shutdown', async () => {
     vi.useFakeTimers();
     const readyWriteStarted = Promise.withResolvers<undefined>();
@@ -425,4 +440,4 @@ describe('worker readiness lifecycle', () => {
       'mail unavailable',
     );
   });
-});
+}

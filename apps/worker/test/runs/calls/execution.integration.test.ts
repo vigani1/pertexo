@@ -24,6 +24,14 @@ const describeIntegration = fixture.enabled ? describe : describe.skip;
 describeIntegration('Workflow Call execution through real transport', () => {
   beforeAll(fixture.setup, 60_000);
   afterAll(fixture.restoreServicesAndClose);
+  registerResumesTypedCallAfterWorkerRestart();
+
+  registerRecoversDurableCallIdentityAcrossPaused();
+
+  registerExecutesPrunesCallsTwoSerialEach();
+});
+
+function registerResumesTypedCallAfterWorkerRestart(): void {
   it('resumes a typed Call after worker restart and preserves one child across receipt expiry and redelivery', async () => {
     const child = await publishGraph(childGraph(1));
     const parent = await publishGraph(parentGraph(child.pin));
@@ -217,7 +225,9 @@ describeIntegration('Workflow Call execution through real transport', () => {
       await workers.close();
     }
   }, 30_000);
+}
 
+function registerRecoversDurableCallIdentityAcrossPaused(): void {
   it('recovers durable Call identity across paused workers and uncompleted action redelivery', async () => {
     const child = await publishGraph(childGraph());
     const parent = await publishGraph(parentGraph(child.pin));
@@ -415,7 +425,9 @@ describeIntegration('Workflow Call execution through real transport', () => {
       await workers.close();
     }
   }, 30_000);
+}
 
+function registerExecutesPrunesCallsTwoSerialEach(): void {
   it('executes and prunes Calls in two serial For Each iterations', async () => {
     const child = await publishGraph(childGraph());
     const graph = {
@@ -509,4 +521,4 @@ describeIntegration('Workflow Call execution through real transport', () => {
       await workers.close();
     }
   }, 30_000);
-});
+}

@@ -56,7 +56,12 @@ const describeIntegration = enabled ? describe : describe.skip;
 describeIntegration('Retry and Wait outage recovery', () => {
   beforeAll(setup, 60_000);
   afterAll(restoreServicesAndClose);
+  registerRecoversDueRetryWaitWorkThrough();
 
+  registerCommitsSimultaneousCancellationDeadlineFactsAgainst();
+});
+
+function registerRecoversDueRetryWaitWorkThrough(): void {
   it('recovers due retry and Wait work through SQL, Redis outage, BullMQ, and fresh coordination', async () => {
     const coordinatorQueue = new Queue(QUEUE_NAME.workflowCoordinator, {
       connection: redisConnection(),
@@ -528,7 +533,9 @@ describeIntegration('Retry and Wait outage recovery', () => {
       await Promise.all([afterClaim.close(), retryStore.close()]);
     }
   });
+}
 
+function registerCommitsSimultaneousCancellationDeadlineFactsAgainst(): void {
   it('commits simultaneous cancellation and deadline facts against a genuinely suspended Wait', async () => {
     const coordinatorQueue = new Queue(QUEUE_NAME.workflowCoordinator, {
       connection: redisConnection(),
@@ -865,4 +872,4 @@ describeIntegration('Retry and Wait outage recovery', () => {
       ]);
     }
   }, 60_000);
-});
+}

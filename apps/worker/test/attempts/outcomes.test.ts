@@ -85,6 +85,20 @@ function heartbeatCancellationHandler(
 }
 
 describe('NodeAttemptHandler', () => {
+  registerStopsHeartbeatOwnershipAttemptCapabilityConstructor();
+
+  registerGrantsOneDispatchPermissionDurableS();
+
+  registerDoesNotReopenDispatchPermissionAfter();
+
+  registerRecordsDurableSBeforeDispatchingExecutor();
+
+  registerKeepsStepSOwnReasonIt();
+
+  registerPersistsRealHTTPCredentialResolutionOutage();
+});
+
+function registerStopsHeartbeatOwnershipAttemptCapabilityConstructor(): void {
   it('stops heartbeat ownership when an attempt capability constructor fails', async () => {
     vi.useFakeTimers();
     try {
@@ -284,7 +298,9 @@ describe('NodeAttemptHandler', () => {
     ).rejects.toBe(persistenceError);
     expect(complete).toHaveBeenCalledOnce();
   });
+}
 
+function registerGrantsOneDispatchPermissionDurableS(): void {
   it.each([
     ['matching evidence', false],
     ['different evidence', true],
@@ -452,7 +468,9 @@ describe('NodeAttemptHandler', () => {
     expect(executionSignal).not.toBe(contextAbort.signal);
     expect(complete.mock.calls[0]?.[0].signal).toBe(contextAbort.signal);
   });
+}
 
+function registerDoesNotReopenDispatchPermissionAfter(): void {
   it.each([
     [new NodeAttemptConnectionFenceError(), 'provider_connection_fence_failed'],
     [
@@ -608,7 +626,9 @@ describe('NodeAttemptHandler', () => {
     );
     expect(markDispatched).not.toHaveBeenCalled();
   });
+}
 
+function registerRecordsDurableSBeforeDispatchingExecutor(): void {
   it.each([
     ['canceled', 'execution.canceled'],
     ['timed_out', 'execution.deadline_exceeded'],
@@ -807,7 +827,9 @@ describe('NodeAttemptHandler', () => {
       expect(complete.mock.calls[0]?.[0].signal).toBeInstanceOf(AbortSignal);
     },
   );
+}
 
+function registerKeepsStepSOwnReasonIt(): void {
   it("keeps a step's own reason when it refuses its input", async () => {
     const complete = vi
       .fn<NodeAttemptRunStore['complete']>()
@@ -999,7 +1021,9 @@ describe('NodeAttemptHandler', () => {
       }),
     );
   });
+}
 
+function registerPersistsRealHTTPCredentialResolutionOutage(): void {
   it('persists a real HTTP credential-resolution outage as a durable retry', async () => {
     const attemptLease = { ...lease(), sideEffectClass: 'unsafe' as const };
     const complete = vi
@@ -1175,4 +1199,4 @@ describe('NodeAttemptHandler', () => {
       expect(complete.mock.calls[0]?.[0].signal).toBeInstanceOf(AbortSignal);
     },
   );
-});
+}

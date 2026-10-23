@@ -40,6 +40,16 @@ function access(overrides: Partial<WorkspaceAccess> = {}): WorkspaceAccess {
 }
 
 describe('workspace authorization policy', () => {
+  registerExposesCanonicalRolesStatusesFixedCapabilities();
+
+  registerReusesMatchingGuardAuthorizationWithoutSecond();
+});
+
+describe('immutable actor context', () => {
+  registerImmutableActorContextFreezesActorIdentity();
+});
+
+function registerExposesCanonicalRolesStatusesFixedCapabilities(): void {
   it('exposes the canonical roles, statuses, and fixed capabilities', () => {
     expect(ROLES).toEqual(['owner', 'admin', 'builder', 'operator', 'viewer']);
     expect(MEMBERSHIP_STATUSES).toEqual(['active', 'suspended', 'removed']);
@@ -239,7 +249,9 @@ describe('workspace authorization policy', () => {
       }),
     ).toThrow('authorization context does not match the operation');
   });
+}
 
+function registerReusesMatchingGuardAuthorizationWithoutSecond(): void {
   it('reuses a matching guard authorization without a second access lookup', async () => {
     const lookup = vi.fn(() => Promise.resolve(access()));
     const authorized = await authorizeWorkspace({
@@ -400,9 +412,9 @@ describe('workspace authorization policy', () => {
     await expect(denied).rejects.toBeInstanceOf(AuthorizationError);
     await expect(denied).rejects.toMatchObject({ code: 'auth.forbidden' });
   });
-});
+}
 
-describe('immutable actor context', () => {
+function registerImmutableActorContextFreezesActorIdentity(): void {
   it('freezes actor identity', () => {
     const context = actor();
     expect(Object.isFrozen(context)).toBe(true);
@@ -410,4 +422,4 @@ describe('immutable actor context', () => {
       (context as { workspaceId: string }).workspaceId = 'other';
     }).toThrow();
   });
-});
+}

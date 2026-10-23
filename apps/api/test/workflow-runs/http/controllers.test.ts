@@ -148,6 +148,14 @@ function streamController(
 }
 
 describe('workflow runs controller public seam', () => {
+  registerStrictlyParsesForwardsBoundedRunHistory();
+
+  registerParsesExplicitReplayRequestForwardsSource();
+
+  registerReleasesRequestDrainOwnershipSSEResponse();
+});
+
+function registerStrictlyParsesForwardsBoundedRunHistory(): void {
   it('strictly parses and forwards bounded run-history filters', async () => {
     const fixture = controller();
     await fixture.instance.listRuns(
@@ -321,6 +329,7 @@ describe('workflow runs controller public seam', () => {
       }),
     );
   });
+
   it('parses one start request and forwards idempotency and trace context', async () => {
     const fixture = controller();
     await fixture.instance.startRun(
@@ -351,7 +360,9 @@ describe('workflow runs controller public seam', () => {
     ).rejects.toMatchObject({ code: 'request.invalid' });
     expect(fixture.start.execute).not.toHaveBeenCalled();
   });
+}
 
+function registerParsesExplicitReplayRequestForwardsSource(): void {
   it('parses an explicit replay request and forwards the source and version', async () => {
     const fixture = controller();
     await fixture.instance.replayRun(
@@ -540,7 +551,9 @@ describe('workflow runs controller public seam', () => {
       vi.useRealTimers();
     }
   });
+}
 
+function registerReleasesRequestDrainOwnershipSSEResponse(): void {
   it('releases request and drain ownership when SSE response preparation fails before producer acquisition', async () => {
     const preparationFailure = new Error('flush headers failed');
     const iteratorFactory = vi.fn();
@@ -629,4 +642,4 @@ describe('workflow runs controller public seam', () => {
       }),
     );
   });
-});
+}

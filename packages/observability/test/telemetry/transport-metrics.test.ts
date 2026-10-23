@@ -74,6 +74,12 @@ function recordedMeasurements(harness: MetricHarness): readonly Measurement[] {
 }
 
 describe('createTransportMetrics', () => {
+  registerRecordsBoundedOutboxClaimBacklogLease();
+
+  registerRecordsStallsDispatchLatencyLifecycleArtifact();
+});
+
+function registerRecordsBoundedOutboxClaimBacklogLease(): void {
   it('records bounded outbox claim, backlog, and lease measurements', () => {
     const harness = metricHarness();
     const metrics = createTransportMetrics({ meter: harness.meter });
@@ -239,7 +245,9 @@ describe('createTransportMetrics', () => {
       },
     ]);
   });
+}
 
+function registerRecordsStallsDispatchLatencyLifecycleArtifact(): void {
   it('records stalls, dispatch latency, lifecycle, and artifact capacity with bounded labels', () => {
     const harness = metricHarness();
     const metrics = createTransportMetrics({ meter: harness.meter });
@@ -420,4 +428,4 @@ describe('createTransportMetrics', () => {
     }).toThrow(RangeError);
     expect(recordedMeasurements(harness)).toEqual([]);
   });
-});
+}

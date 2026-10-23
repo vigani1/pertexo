@@ -58,7 +58,10 @@ const describeIntegration = enabled ? describe : describe.skip;
 describeIntegration('Failure notification transport resilience', () => {
   beforeAll(setup, 60_000);
   afterAll(restoreServicesAndClose);
+  registerRecoversFailureNotificationDispatchThroughPostgreSQL();
+});
 
+function registerRecoversFailureNotificationDispatchThroughPostgreSQL(): void {
   it('recovers failure notification dispatch through PostgreSQL and BullMQ without changing run truth', async () => {
     const destinationId = randomUUID();
     const connectionId = randomUUID();
@@ -839,4 +842,4 @@ describeIntegration('Failure notification transport resilience', () => {
         'Failure notification scenario and cleanup failed',
       );
   }, 120_000);
-});
+}

@@ -166,6 +166,16 @@ async function capturedHandler(
 }
 
 describe('node-attempt runtime', () => {
+  registerComposesProductionPreviewAttemptsThroughOne();
+
+  registerCleansEveryTransferredResourceCapabilityConstruction();
+
+  registerFailsClosedHeartbeatAbortOmitsDurable();
+
+  registerClosesPreviewStoreConsumerConstructionFails();
+});
+
+function registerComposesProductionPreviewAttemptsThroughOne(): void {
   it('composes production and preview attempts through one shared runtime and transfers preview ownership', async () => {
     const closePreview = vi.fn().mockResolvedValue(undefined);
     const createRuntime = vi.fn().mockResolvedValue({
@@ -335,7 +345,9 @@ describe('node-attempt runtime', () => {
       }
     },
   );
+}
 
+function registerCleansEveryTransferredResourceCapabilityConstruction(): void {
   it('cleans every transferred resource when capability construction fails and preserves cleanup errors', async () => {
     const primary = new Error('capability construction failed');
     const cleanup = new Error('reader close failed');
@@ -546,7 +558,9 @@ describe('node-attempt runtime', () => {
     await closing;
     expect(capabilityClose).toHaveBeenCalledOnce();
   });
+}
 
+function registerFailsClosedHeartbeatAbortOmitsDurable(): void {
   it('fails closed when a heartbeat abort omits its durable reason', async () => {
     vi.useFakeTimers();
     const runStore: NodeAttemptRunStore = {
@@ -755,7 +769,9 @@ describe('node-attempt runtime', () => {
     expect(runStore.close).toHaveBeenCalledOnce();
     expect(notifications.close).toHaveBeenCalledOnce();
   });
+}
 
+function registerClosesPreviewStoreConsumerConstructionFails(): void {
   it('closes the preview store when consumer construction fails', async () => {
     const startupError = new Error('consumer construction failed');
     const closePreview = vi.fn().mockResolvedValue(undefined);
@@ -831,4 +847,4 @@ describe('node-attempt runtime', () => {
     expect(closeReader).toHaveBeenCalledOnce();
     expect(closeNotifications).toHaveBeenCalledOnce();
   });
-});
+}

@@ -45,6 +45,20 @@ function nestedAggregateErrors(error: unknown): readonly unknown[] {
 }
 
 describe('workflow run SSE transport', () => {
+  registerPerformsOneIdleRefreshWithoutSpinning();
+
+  registerWorkflowRunSSETransportRevokesRefreshedSessionLabel();
+
+  registerDoesNotReadAheadTransportIs();
+
+  registerClosesActualNestedStreamAfterFailureSource();
+
+  registerStartsTransportCleanupBudgetAuthorizationCleanup();
+
+  registerRevokesAuthorizationFrameIsBlockedOn();
+});
+
+function registerPerformsOneIdleRefreshWithoutSpinning(): void {
   it.each([
     { label: 'more than five seconds', remainingMs: 60_000, advanceMs: 4_000 },
     { label: 'exactly one second', remainingMs: 1_000, advanceMs: 0 },
@@ -238,7 +252,9 @@ describe('workflow run SSE transport', () => {
       ),
     ).resolves.toEqual({ kind: 'authorization_lost', error: reason });
   });
+}
 
+function registerWorkflowRunSSETransportRevokesRefreshedSessionLabel(): void {
   it.each([
     {
       label: 'different user',
@@ -411,7 +427,9 @@ describe('workflow run SSE transport', () => {
     expect(add).toHaveBeenCalledTimes(10_000);
     expect(remove).toHaveBeenCalledTimes(10_000);
   });
+}
 
+function registerDoesNotReadAheadTransportIs(): void {
   it('does not read ahead while the transport is backpressured', async () => {
     let produced = 0;
     const frames = {
@@ -603,7 +621,9 @@ describe('workflow run SSE transport', () => {
       vi.useRealTimers();
     }
   });
+}
 
+function registerClosesActualNestedStreamAfterFailureSource(): void {
   it.each([
     { failureSource: 'read failure', lateOutcome: 'fulfilled' },
     { failureSource: 'read failure', lateOutcome: 'rejected' },
@@ -786,7 +806,9 @@ describe('workflow run SSE transport', () => {
       }
     },
   );
+}
 
+function registerStartsTransportCleanupBudgetAuthorizationCleanup(): void {
   it('starts the transport cleanup budget when authorization cleanup is noncooperative', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-21T12:00:00.000Z'));
@@ -931,7 +953,9 @@ describe('workflow run SSE transport', () => {
       vi.useRealTimers();
     }
   });
+}
 
+function registerRevokesAuthorizationFrameIsBlockedOn(): void {
   it('revokes authorization while a frame is blocked on transport backpressure', async () => {
     vi.useFakeTimers();
     const controller = new AbortController();
@@ -1061,4 +1085,4 @@ describe('workflow run SSE transport', () => {
       vi.useRealTimers();
     }
   });
-});
+}
