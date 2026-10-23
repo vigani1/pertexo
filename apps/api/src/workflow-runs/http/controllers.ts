@@ -260,13 +260,11 @@ export class WorkflowRunsController {
         signal: controller.signal,
       });
       prepareSseResponse(reply);
-      await writeSseFrames(
-        frames,
-        reply.raw,
-        controller,
-        this.visibilityMetrics,
-        routeLastEventPath(requestedLastEventId),
-      );
+      await writeSseFrames(frames, reply.raw, {
+        controller: controller,
+        visibilityMetrics: this.visibilityMetrics,
+        fallbackPath: routeLastEventPath(requestedLastEventId),
+      });
     } catch (error: unknown) {
       controller.abort();
       releaseAfterCleanup = streamCleanupCompletion(error);

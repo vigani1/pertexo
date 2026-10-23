@@ -11,11 +11,18 @@ import type { HttpRateLimitAdmission } from '../../platform/rate-limit/admission
 import { bearerCredential } from './headers.js';
 
 export class ApiTokenAuthentication {
+  private readonly enabled: boolean;
+  private readonly admission: HttpRateLimitAdmission;
   public constructor(
     private readonly database: ApiTokenDatabase,
-    private readonly enabled: boolean,
-    private readonly admission: HttpRateLimitAdmission,
-  ) {}
+    {
+      enabled,
+      admission,
+    }: Readonly<{ enabled: boolean; admission: HttpRateLimitAdmission }>,
+  ) {
+    this.enabled = enabled;
+    this.admission = admission;
+  }
   public async authenticate(
     input: Readonly<{
       headers: RequestHeaders;

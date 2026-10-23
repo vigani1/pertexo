@@ -198,15 +198,20 @@ describeMeasurement('Real dispatcher step latency (opt-in measurement)', () => {
             return result;
           },
         },
-        new WorkerDrainState(),
         {
-          batchSize: 10,
-          jobNames: [JOB_NAME.advanceWorkflowRun, JOB_NAME.executeNodeAttempt],
-          leaseDurationMillis: 30_000,
-          leaseOwner: `latency-${randomUUID()}`,
-          maxAttempts: 3,
-          retryDelayMillis: 1_000,
-          pollIntervalMillis,
+          drainState: new WorkerDrainState(),
+          options: {
+            batchSize: 10,
+            jobNames: [
+              JOB_NAME.advanceWorkflowRun,
+              JOB_NAME.executeNodeAttempt,
+            ],
+            leaseDurationMillis: 30_000,
+            leaseOwner: `latency-${randomUUID()}`,
+            maxAttempts: 3,
+            retryDelayMillis: 1_000,
+            pollIntervalMillis,
+          },
         },
       );
       owners.splice(-2, 2, () => dispatcher.close());

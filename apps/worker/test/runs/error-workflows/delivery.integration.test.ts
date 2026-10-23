@@ -171,11 +171,9 @@ describe.runIf(fixture.enabled)(
         owners.push(() => outbox.close());
         const producer = createQueueProducer({ redisUrl: fixture.redisUrl });
         owners.push(() => producer.close());
-        const dispatcher = new OutboxDispatcher(
-          outbox,
-          producer,
-          new WorkerDrainState(),
-          {
+        const dispatcher = new OutboxDispatcher(outbox, producer, {
+          drainState: new WorkerDrainState(),
+          options: {
             batchSize: 10,
             jobNames: [
               JOB_NAME.advanceWorkflowRun,
@@ -188,7 +186,7 @@ describe.runIf(fixture.enabled)(
             retryDelayMillis: 1_000,
             pollIntervalMillis: 250,
           },
-        );
+        });
         owners.splice(-2, 2, () => dispatcher.close());
         await Promise.all([
           coordinator.consumer.waitUntilReady(5_000),

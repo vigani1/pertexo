@@ -67,8 +67,14 @@ export class SessionController {
       async () => {
         await this.sessions.revoke(token);
         response.header('set-cookie', [
-          clearCookie(SESSION_COOKIE_NAME, true, this.cookiePolicy),
-          clearCookie(CSRF_COOKIE_NAME, false, this.cookiePolicy),
+          clearCookie(SESSION_COOKIE_NAME, {
+            httpOnly: true,
+            policy: this.cookiePolicy,
+          }),
+          clearCookie(CSRF_COOKIE_NAME, {
+            httpOnly: false,
+            policy: this.cookiePolicy,
+          }),
         ]);
       },
     );
@@ -77,8 +83,10 @@ export class SessionController {
 
 function clearCookie(
   name: string,
-  httpOnly: boolean,
-  policy: SessionCookiePolicy,
+  {
+    httpOnly,
+    policy,
+  }: Readonly<{ httpOnly: boolean; policy: SessionCookiePolicy }>,
 ): string {
   return [
     `${name}=`,

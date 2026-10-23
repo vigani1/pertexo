@@ -123,20 +123,23 @@ export function registerWebhookIngress(
       },
     );
     const accept =
-      (method: WebhookMethod, testEvent = false) =>
+      (
+        method: WebhookMethod,
+        {
+          testEvent = false,
+        }: Readonly<{ testEvent?: boolean | undefined }> = {},
+      ) =>
       (request: FastifyRequest, reply: FastifyReply) =>
         traceAcceptance(telemetry, singleHeader(request, 'traceparent'), () =>
           withRequestOperationSignal(request, (signal) =>
-            acceptWebhook(
-              request,
-              reply,
-              method,
-              dependencies,
-              telemetry,
-              signal,
-              responseWaiter,
-              testEvent,
-            ),
+            acceptWebhook(request, reply, {
+              method: method,
+              dependencies: dependencies,
+              telemetry: telemetry,
+              encryptionSignal: signal,
+              responseWaiter: responseWaiter,
+              testEvent: testEvent,
+            }),
           ),
         );
     scope.post(
@@ -147,12 +150,12 @@ export function registerWebhookIngress(
     scope.post(
       '/hooks/:endpointKey/test',
       { bodyLimit: MAX_BODY + 1 },
-      accept('POST', true),
+      accept('POST', { testEvent: true }),
     );
     scope.get(
       '/hooks/:endpointKey/test',
       { exposeHeadRoute: false },
-      accept('GET', true),
+      accept('GET', { testEvent: true }),
     );
     // A HEAD probe must never start a run.
     scope.get('/hooks/:endpointKey', { exposeHeadRoute: false }, accept('GET'));
@@ -185,12 +188,21 @@ type WebhookMethod = 'GET' | 'POST';
 async function acceptWebhook(
   request: FastifyRequest,
   reply: FastifyReply,
-  method: WebhookMethod,
-  dependencies: WebhookIngressDependencies,
-  telemetry: WebhookIngressTelemetry,
-  encryptionSignal: AbortSignal,
-  responseWaiter: ReturnType<typeof createWebhookResponseWaiter>,
-  testEvent: boolean,
+  {
+    method,
+    dependencies,
+    telemetry,
+    encryptionSignal,
+    responseWaiter,
+    testEvent,
+  }: Readonly<{
+    method: WebhookMethod;
+    dependencies: WebhookIngressDependencies;
+    telemetry: WebhookIngressTelemetry;
+    encryptionSignal: AbortSignal;
+    responseWaiter: ReturnType<typeof createWebhookResponseWaiter>;
+    testEvent: boolean;
+  }>,
 ): Promise<void> {
   const requestId =
     parseRequestId(request.headers['x-request-id']) ?? randomUUID();
@@ -452,16 +464,18 @@ async function acceptWebhook(
     record(() => {
       telemetry.health('healthy');
     });
-    await replyToAcceptedWebhook(
-      request,
-      reply,
-      verification.workspaceId,
-      result,
-      responseWaiter,
-      telemetry,
-    );
+    await replyToAcceptedWebhook(request, reply, {
+      workspaceId: verification.workspaceId,
+      accepted: result,
+      waiter: responseWaiter,
+      telemetry: telemetry,
+    });
   } catch (error) {
-    await rejectAcceptance(error, reply, requestId, telemetry, reject);
+    await rejectAcceptance(error, reply, {
+      requestId: requestId,
+      telemetry: telemetry,
+      reject: reject,
+    });
   }
 }
 

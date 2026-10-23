@@ -86,9 +86,11 @@ export class ConnectionsModule {
         useValue: new CreateConnectionUseCase(
           dependencies.persistence,
           dependencies.authorization,
-          dependencies.encryption,
-          dependencies.applicationSecret,
-          telemetry,
+          {
+            encryption: dependencies.encryption,
+            applicationSecret: dependencies.applicationSecret,
+            telemetry: telemetry,
+          },
         ),
       },
       {
@@ -96,9 +98,11 @@ export class ConnectionsModule {
         useValue: new RotateConnectionSecretUseCase(
           dependencies.persistence,
           dependencies.authorization,
-          dependencies.encryption,
-          dependencies.applicationSecret,
-          telemetry,
+          {
+            encryption: dependencies.encryption,
+            applicationSecret: dependencies.applicationSecret,
+            telemetry: telemetry,
+          },
         ),
       },
       {
@@ -114,12 +118,14 @@ export class ConnectionsModule {
         useValue: new TestConnectionUseCase(
           dependencies.persistence,
           dependencies.authorization,
-          dependencies.encryption,
-          dependencies.httpClient,
-          dependencies.applicationSecret,
-          telemetry,
-          dependencies.slackClient,
-          dependencies.emailClient,
+          {
+            encryption: dependencies.encryption,
+            httpClient: dependencies.httpClient,
+            applicationSecret: dependencies.applicationSecret,
+            telemetry: telemetry,
+            slackClient: dependencies.slackClient,
+            emailClient: dependencies.emailClient,
+          },
         ),
       },
       {
@@ -127,9 +133,11 @@ export class ConnectionsModule {
         useValue: new LookupSlackChannelsUseCase(
           dependencies.persistence,
           dependencies.authorization,
-          dependencies.encryption,
-          dependencies.slackClient,
-          telemetry,
+          {
+            encryption: dependencies.encryption,
+            slackClient: dependencies.slackClient,
+            telemetry: telemetry,
+          },
         ),
       },
     ];

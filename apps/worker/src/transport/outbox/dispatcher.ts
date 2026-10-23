@@ -172,13 +172,24 @@ export class OutboxDispatcher {
   private loopPromise: Promise<void> | undefined;
   private wakeLoop: (() => void) | undefined;
 
+  private readonly drainState: WorkerDrainState;
+  private readonly metrics: TransportMetrics;
   public constructor(
     private readonly database: OutboxDispatcherDatabase,
     private readonly producer: QueueProducer,
-    private readonly drainState: WorkerDrainState,
-    options: OutboxDispatcherOptions,
-    private readonly metrics: TransportMetrics = createTransportMetrics(),
+    {
+      drainState,
+      options,
+      metrics = createTransportMetrics(),
+    }: Readonly<{
+      drainState: WorkerDrainState;
+      options: OutboxDispatcherOptions;
+      metrics?: TransportMetrics | undefined;
+    }>,
   ) {
+    this.drainState = drainState;
+    this.metrics = metrics;
+
     this.options = Object.freeze({
       operationTimeoutMillis: 5_000,
       pollIntervalMillis: 250,

@@ -24,9 +24,15 @@ import type { WebhookIngressTelemetry } from './telemetry.js';
 export async function rejectAcceptance(
   error: unknown,
   reply: FastifyReply,
-  requestId: string,
-  telemetry: WebhookIngressTelemetry,
-  reject: (attempt: RejectedAttempt) => Promise<void>,
+  {
+    requestId,
+    telemetry,
+    reject,
+  }: Readonly<{
+    requestId: string;
+    telemetry: WebhookIngressTelemetry;
+    reject: (attempt: RejectedAttempt) => Promise<void>;
+  }>,
 ): Promise<void> {
   if (error instanceof EventCoordinationUnavailableError) {
     await problem(reply, 503, 'trigger.coordination_unavailable', requestId);

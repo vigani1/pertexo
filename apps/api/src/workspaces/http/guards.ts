@@ -100,15 +100,26 @@ export class CsrfProtectionGuard implements CanActivate {
 }
 
 class WorkspaceCapabilityGuard implements CanActivate {
+  private readonly contexts: RequestContextStore;
+  private readonly disclosure: 'forbidden' | 'not_found';
+  private readonly allowedWorkspaceStatuses: readonly WorkspaceStatus[];
   public constructor(
     private readonly capability: AuthorizationCapability,
     private readonly authorization: WorkspaceAuthorizationSource,
-    private readonly contexts: RequestContextStore,
-    private readonly disclosure: 'forbidden' | 'not_found' = 'not_found',
-    private readonly allowedWorkspaceStatuses: readonly WorkspaceStatus[] = [
-      'active',
-    ],
-  ) {}
+    {
+      contexts,
+      disclosure = 'not_found',
+      allowedWorkspaceStatuses = ['active'],
+    }: Readonly<{
+      contexts: RequestContextStore;
+      disclosure?: ('forbidden' | 'not_found') | undefined;
+      allowedWorkspaceStatuses?: readonly WorkspaceStatus[] | undefined;
+    }>,
+  ) {
+    this.contexts = contexts;
+    this.disclosure = disclosure;
+    this.allowedWorkspaceStatuses = allowedWorkspaceStatuses;
+  }
 
   public async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = requestFrom(context);
@@ -154,13 +165,11 @@ export function capabilityGuard(
       @Inject(token) authorization: WorkspaceAuthorizationSource,
       @Inject(RequestContextStore) contexts: RequestContextStore,
     ) {
-      super(
-        capability,
-        authorization,
+      super(capability, authorization, {
         contexts,
-        options.disclosure,
-        options.allowedWorkspaceStatuses,
-      );
+        disclosure: options.disclosure,
+        allowedWorkspaceStatuses: options.allowedWorkspaceStatuses,
+      });
     }
   }
   return mixin(BoundCapabilityGuard);

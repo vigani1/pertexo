@@ -32,7 +32,7 @@ const invitationDeliveryVariableNames = [
  */
 export function parseInvitationDeliveryConfig(
   environment: Readonly<Record<string, string | undefined>>,
-  deployed: boolean,
+  { deployed }: Readonly<{ deployed: boolean }>,
 ): InvitationDeliveryConfig | undefined {
   if (
     invitationDeliveryVariableNames.every(

@@ -113,13 +113,26 @@ export class GetConnectionUseCase {
 }
 
 export class CreateConnectionUseCase {
+  private readonly encryption: Pick<ConnectionSecretEncryptionPort, 'seal'>;
+  private readonly applicationSecret: string;
+  private readonly telemetry: ConnectionTelemetry;
   public constructor(
     private readonly persistence: ConnectionCommandPersistence,
     private readonly authorization: WorkspaceAuthorizationSource,
-    private readonly encryption: Pick<ConnectionSecretEncryptionPort, 'seal'>,
-    private readonly applicationSecret: string,
-    private readonly telemetry: ConnectionTelemetry = NOOP_CONNECTION_TELEMETRY,
-  ) {}
+    {
+      encryption,
+      applicationSecret,
+      telemetry = NOOP_CONNECTION_TELEMETRY,
+    }: Readonly<{
+      encryption: Pick<ConnectionSecretEncryptionPort, 'seal'>;
+      applicationSecret: string;
+      telemetry?: ConnectionTelemetry | undefined;
+    }>,
+  ) {
+    this.encryption = encryption;
+    this.applicationSecret = applicationSecret;
+    this.telemetry = telemetry;
+  }
 
   public execute(input: CreateConnectionCommand): Promise<ConnectionResponse> {
     return this.telemetry.measure(CONNECTION_OPERATION.create, async () => {
@@ -178,13 +191,26 @@ export class CreateConnectionUseCase {
 }
 
 export class RotateConnectionSecretUseCase {
+  private readonly encryption: Pick<ConnectionSecretEncryptionPort, 'seal'>;
+  private readonly applicationSecret: string;
+  private readonly telemetry: ConnectionTelemetry;
   public constructor(
     private readonly persistence: ConnectionCommandPersistence,
     private readonly authorization: WorkspaceAuthorizationSource,
-    private readonly encryption: Pick<ConnectionSecretEncryptionPort, 'seal'>,
-    private readonly applicationSecret: string,
-    private readonly telemetry: ConnectionTelemetry = NOOP_CONNECTION_TELEMETRY,
-  ) {}
+    {
+      encryption,
+      applicationSecret,
+      telemetry = NOOP_CONNECTION_TELEMETRY,
+    }: Readonly<{
+      encryption: Pick<ConnectionSecretEncryptionPort, 'seal'>;
+      applicationSecret: string;
+      telemetry?: ConnectionTelemetry | undefined;
+    }>,
+  ) {
+    this.encryption = encryption;
+    this.applicationSecret = applicationSecret;
+    this.telemetry = telemetry;
+  }
 
   public execute(
     input: RotateConnectionSecretCommand,

@@ -11,11 +11,15 @@ const configuredEnvironment = {
 
 describe('parseSystemMailDeliveryConfig', () => {
   it('stays absent for a local worker without authentication mail', () => {
-    expect(parseSystemMailDeliveryConfig({}, false)).toBeUndefined();
+    expect(
+      parseSystemMailDeliveryConfig({}, { deployed: false }),
+    ).toBeUndefined();
   });
 
   it('applies bounded defaults and derives a dedicated worker identity', () => {
-    const config = parseSystemMailDeliveryConfig(configuredEnvironment, false);
+    const config = parseSystemMailDeliveryConfig(configuredEnvironment, {
+      deployed: false,
+    });
 
     expect(config).toEqual({
       delivery: { mode: 'resend', apiKey: 'provider-key' },
@@ -46,7 +50,7 @@ describe('parseSystemMailDeliveryConfig', () => {
           ]),
           WORKER_INSTANCE_ID: 'mail-worker-1',
         },
-        true,
+        { deployed: true },
       ),
     ).toMatchObject({
       timeoutMillis: 2_500,
@@ -59,7 +63,7 @@ describe('parseSystemMailDeliveryConfig', () => {
   });
 
   it('requires authentication mail delivery in a deployed worker', () => {
-    expect(() => parseSystemMailDeliveryConfig({}, true)).toThrow(
+    expect(() => parseSystemMailDeliveryConfig({}, { deployed: true })).toThrow(
       'Deployed workers require system mail delivery',
     );
   });
@@ -72,7 +76,7 @@ describe('parseSystemMailDeliveryConfig', () => {
     expect(() =>
       parseSystemMailDeliveryConfig(
         { [name]: configuredEnvironment[name] },
-        false,
+        { deployed: false },
       ),
     ).toThrow();
   });
@@ -92,7 +96,7 @@ describe('parseSystemMailDeliveryConfig', () => {
     expect(() =>
       parseSystemMailDeliveryConfig(
         { ...configuredEnvironment, ...override },
-        false,
+        { deployed: false },
       ),
     ).toThrow();
   });

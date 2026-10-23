@@ -47,7 +47,7 @@ const systemMailSchema = z
  */
 export function parseSystemMailDeliveryConfig(
   environment: Readonly<Record<string, string | undefined>>,
-  deployed: boolean,
+  { deployed }: Readonly<{ deployed: boolean }>,
 ): SystemMailDeliveryConfig | undefined {
   if (credentialNames.every((name) => environment[name] === undefined)) {
     if (deployed)

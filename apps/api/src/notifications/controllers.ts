@@ -198,12 +198,10 @@ export class NotificationsController {
         lifetimeController,
       );
       prepareSseResponse(reply);
-      await writeInboxHintStream(
-        subscription,
-        reply.raw,
-        lifetime,
-        controller.signal,
-      );
+      await writeInboxHintStream(subscription, reply.raw, {
+        authorization: lifetime,
+        signal: controller.signal,
+      });
     } catch (error: unknown) {
       controller.abort();
       if (reply.raw.headersSent) {

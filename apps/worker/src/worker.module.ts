@@ -210,13 +210,12 @@ export class WorkerModule {
           provide: WorkerReadinessMonitor,
           inject: [WorkerReadiness],
           useFactory: (readiness: WorkerReadiness): WorkerReadinessMonitor =>
-            new WorkerReadinessMonitor(
-              readiness,
-              dependencies.logger,
-              dependencies.readinessMarker,
-              undefined,
-              config.outboxDispatcher.operationTimeoutMillis,
-            ),
+            new WorkerReadinessMonitor(readiness, dependencies.logger, {
+              marker: dependencies.readinessMarker,
+              failClosed: undefined,
+              operationTimeoutMillis:
+                config.outboxDispatcher.operationTimeoutMillis,
+            }),
         },
         {
           provide: WorkerResourceMonitor,

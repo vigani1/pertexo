@@ -5,7 +5,7 @@ function abortError(): DOMException {
 function waitForDelay(
   milliseconds: number,
   signal: AbortSignal,
-  rejectOnAbort: boolean,
+  { rejectOnAbort }: Readonly<{ rejectOnAbort: boolean }>,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     if (signal.aborted) {
@@ -15,7 +15,7 @@ function waitForDelay(
     }
 
     let settled = false;
-    const settle = (aborted: boolean): void => {
+    const settle = ({ aborted }: Readonly<{ aborted: boolean }>): void => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
@@ -24,10 +24,10 @@ function waitForDelay(
       else resolve();
     };
     const onAbort = (): void => {
-      settle(true);
+      settle({ aborted: true });
     };
     const timer = setTimeout(() => {
-      settle(false);
+      settle({ aborted: false });
     }, milliseconds);
     signal.addEventListener('abort', onAbort, { once: true });
     // Close the race between the initial check and listener registration.
@@ -41,7 +41,7 @@ export function waitForCancelableDelay(
   milliseconds: number,
   signal: AbortSignal,
 ): Promise<void> {
-  return waitForDelay(milliseconds, signal, true);
+  return waitForDelay(milliseconds, signal, { rejectOnAbort: true });
 }
 
 /** Wait for elapsed time or supervisor cancellation; either ends a loop wait. */
@@ -49,5 +49,5 @@ export function waitForSupervisorDelay(
   milliseconds: number,
   signal: AbortSignal,
 ): Promise<void> {
-  return waitForDelay(milliseconds, signal, false);
+  return waitForDelay(milliseconds, signal, { rejectOnAbort: false });
 }

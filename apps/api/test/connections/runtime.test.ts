@@ -61,12 +61,10 @@ describe('API connection runtime ownership', () => {
     const encryptionClose = vi.fn(() => {
       throw encryptionFailure;
     });
-    const runtime = await createApiConnectionRuntime(
-      config,
-      databaseConfig,
-      identityRuntime,
-      'fixture-application-secret',
-      {
+    const runtime = await createApiConnectionRuntime(config, databaseConfig, {
+      identityRuntime: identityRuntime,
+      applicationSecret: 'fixture-application-secret',
+      overrides: {
         persistence: {
           database: database(databaseClose),
           destinationDatabaseFactory: () =>
@@ -86,7 +84,7 @@ describe('API connection runtime ownership', () => {
           email: emailClient,
         },
       },
-    );
+    });
 
     const first = runtime.close();
     const second = runtime.close();
@@ -162,13 +160,11 @@ describe('API connection runtime ownership', () => {
       };
 
       await expect(
-        createApiConnectionRuntime(
-          config,
-          databaseConfig,
-          identityRuntime,
-          'fixture-application-secret',
-          overrides,
-        ),
+        createApiConnectionRuntime(config, databaseConfig, {
+          identityRuntime: identityRuntime,
+          applicationSecret: 'fixture-application-secret',
+          overrides: overrides,
+        }),
       ).rejects.toBe(constructionFailure);
       expect(closed).toEqual(expectedClosed);
     },
@@ -184,12 +180,10 @@ describe('API connection runtime ownership', () => {
       close: injectedEncryptionClose,
     } as ConnectionSecretEncryptionPort & { close(): void };
 
-    const failure = await createApiConnectionRuntime(
-      config,
-      databaseConfig,
-      identityRuntime,
-      'fixture-application-secret',
-      {
+    const failure = await createApiConnectionRuntime(config, databaseConfig, {
+      identityRuntime: identityRuntime,
+      applicationSecret: 'fixture-application-secret',
+      overrides: {
         persistence: {
           database: database(() => Promise.reject(cleanupFailure)),
           destinationDatabaseFactory: () =>
@@ -205,7 +199,7 @@ describe('API connection runtime ownership', () => {
           },
         },
       },
-    ).catch((error: unknown) => error);
+    }).catch((error: unknown) => error);
 
     expect(failure).toBeInstanceOf(AggregateError);
     expect((failure as AggregateError).errors).toEqual([
@@ -232,12 +226,10 @@ describe('API connection runtime ownership', () => {
         return destinationDatabase(destinationClose);
       },
     );
-    const runtime = await createApiConnectionRuntime(
-      config,
-      databaseConfig,
-      identityRuntime,
-      'fixture-application-secret',
-      {
+    const runtime = await createApiConnectionRuntime(config, databaseConfig, {
+      identityRuntime: identityRuntime,
+      applicationSecret: 'fixture-application-secret',
+      overrides: {
         persistence: {
           databaseFactory,
           destinationDatabaseFactory: destinationFactory,
@@ -250,8 +242,8 @@ describe('API connection runtime ownership', () => {
           email: emailClient,
         },
       },
-      sharedRuntime,
-    );
+      runtime: sharedRuntime,
+    });
 
     await runtime.close();
     expect(databaseFactory).toHaveBeenCalledOnce();

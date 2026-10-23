@@ -30,21 +30,19 @@ export class ApiTokenModule {
         {
           provide: ApiTokenManagement,
           useFactory: () =>
-            new ApiTokenManagement(
-              dependencies.database,
-              dependencies.enabled,
-              dependencies.clock,
-            ),
+            new ApiTokenManagement(dependencies.database, {
+              enabled: dependencies.enabled,
+              clock: dependencies.clock,
+            }),
         },
         {
           provide: ApiTokenAuthentication,
           inject: [HttpRateLimitAdmission],
           useFactory: (limits: HttpRateLimitAdmission) =>
-            new ApiTokenAuthentication(
-              dependencies.database,
-              dependencies.enabled,
-              limits,
-            ),
+            new ApiTokenAuthentication(dependencies.database, {
+              enabled: dependencies.enabled,
+              admission: limits,
+            }),
         },
         AutomationAuthenticationGuard,
       ],

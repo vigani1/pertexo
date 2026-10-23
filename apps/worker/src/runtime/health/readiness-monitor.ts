@@ -53,16 +53,30 @@ export class WorkerReadinessMonitor implements BeforeApplicationShutdown {
   private state: WorkerReadinessMonitorState = 'idle';
   private timer: NodeJS.Timeout | undefined;
 
+  private readonly marker: WorkerReadinessMarker;
+  private readonly failClosed: (
+    phase: ReadinessRevocationPhase,
+    error: unknown,
+  ) => void;
+  private readonly operationTimeoutMillis: number;
   public constructor(
     private readonly readiness: WorkerReadinessProbe,
     private readonly logger: StructuredLogger,
-    private readonly marker: WorkerReadinessMarker = fileReadinessMarker,
-    private readonly failClosed: (
-      phase: ReadinessRevocationPhase,
-      error: unknown,
-    ) => void = markProcessUnhealthy,
-    private readonly operationTimeoutMillis = 5_000,
-  ) {}
+    {
+      marker = fileReadinessMarker,
+      failClosed = markProcessUnhealthy,
+      operationTimeoutMillis = 5_000,
+    }: Readonly<{
+      marker?: WorkerReadinessMarker | undefined;
+      failClosed?:
+        ((phase: ReadinessRevocationPhase, error: unknown) => void) | undefined;
+      operationTimeoutMillis?: number | undefined;
+    }> = {},
+  ) {
+    this.marker = marker;
+    this.failClosed = failClosed;
+    this.operationTimeoutMillis = operationTimeoutMillis;
+  }
 
   public start(): void {
     if (

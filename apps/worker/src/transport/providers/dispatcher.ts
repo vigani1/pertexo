@@ -60,7 +60,10 @@ export function dispatcherProvider(
       drainState: WorkerDrainState,
       metrics: TransportMetrics,
     ): Promise<OutboxDispatcher> =>
-      createOwnedOutboxDispatcher(config, dependencies, drainState, metrics),
+      createOwnedOutboxDispatcher(config, dependencies, {
+        drainState: drainState,
+        metrics: metrics,
+      }),
   };
 }
 
@@ -80,15 +83,25 @@ const productionDispatcherFactories: DispatcherCompositionFactories = {
   database: createOutboxDispatcherDatabase,
   producer: createQueueProducer,
   dispatcher: (database, producer, drainState, options, metrics) =>
-    new OutboxDispatcher(database, producer, drainState, options, metrics),
+    new OutboxDispatcher(database, producer, {
+      drainState: drainState,
+      options: options,
+      metrics: metrics,
+    }),
 };
 
 export async function createOwnedOutboxDispatcher(
   config: WorkerConfig,
   dependencies: TransportModuleDependencies,
-  drainState: WorkerDrainState,
-  metrics: TransportMetrics,
-  factories: DispatcherCompositionFactories = productionDispatcherFactories,
+  {
+    drainState,
+    metrics,
+    factories = productionDispatcherFactories,
+  }: Readonly<{
+    drainState: WorkerDrainState;
+    metrics: TransportMetrics;
+    factories?: DispatcherCompositionFactories | undefined;
+  }>,
 ): Promise<OutboxDispatcher> {
   let database: OutboxDispatcherDatabase | undefined;
   let producer: QueueProducer | undefined;

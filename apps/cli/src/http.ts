@@ -130,7 +130,7 @@ export function createAutomationHttpClient(
             'cli.invalid_response',
             'The server returned an unexpected content type.',
             undefined,
-            mutating,
+            { uncertain: mutating },
           );
         const value = await boundedResponse(response);
         const etag = response.headers.get('etag');
@@ -140,7 +140,7 @@ export function createAutomationHttpClient(
             'cli.invalid_response',
             'The server response contains credential material.',
             undefined,
-            mutating,
+            { uncertain: mutating },
           );
         if (!response.ok) {
           const problem = commonProblem(value);
@@ -149,13 +149,13 @@ export function createAutomationHttpClient(
               'cli.invalid_response',
               'The server returned invalid problem details.',
               undefined,
-              mutating,
+              { uncertain: mutating },
             );
           throw new AutomationCommandError(
             problem.code,
             problem.detail ?? problem.title,
             problem.requestId,
-            mutating && response.status >= 500,
+            { uncertain: mutating && response.status >= 500 },
           );
         }
         return { body: value, etag };
@@ -166,7 +166,7 @@ export function createAutomationHttpClient(
               cause.code,
               cause.message,
               cause.requestId,
-              true,
+              { uncertain: true },
             );
           throw cause;
         }
@@ -179,7 +179,7 @@ export function createAutomationHttpClient(
           'cli.transport_failure',
           message,
           undefined,
-          mutating,
+          { uncertain: mutating },
         );
       }
     },

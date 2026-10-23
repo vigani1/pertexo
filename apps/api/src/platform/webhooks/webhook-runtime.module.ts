@@ -35,9 +35,15 @@ export type ApiWebhookRuntimeFactories = Readonly<{
 export async function createApiWebhookRuntime(
   config: NonNullable<ApiConfig['webhooks']>,
   databaseConfig: ApiConfig['database'],
-  databaseOverride?: WebhookTriggerDatabase,
-  runtime?: DatabaseRuntime,
-  factories: ApiWebhookRuntimeFactories = {},
+  {
+    databaseOverride,
+    runtime,
+    factories = {},
+  }: Readonly<{
+    databaseOverride?: WebhookTriggerDatabase | undefined;
+    runtime?: DatabaseRuntime | undefined;
+    factories?: ApiWebhookRuntimeFactories | undefined;
+  }> = {},
 ): Promise<ApiWebhookRuntime> {
   const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
   let database: WebhookTriggerDatabase | undefined;

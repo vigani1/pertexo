@@ -628,11 +628,9 @@ async function constructRuntimes(
   resources.dispatcherDatabase = dispatcherDatabase;
   const producer = createQueueProducer({ redisUrl: namespace.redisUrl });
   resources.producer = producer;
-  const dispatcher = new OutboxDispatcher(
-    dispatcherDatabase,
-    producer,
-    resources.drain,
-    {
+  const dispatcher = new OutboxDispatcher(dispatcherDatabase, producer, {
+    drainState: resources.drain,
+    options: {
       jobNames: [
         JOB_NAME.advanceWorkflowRun,
         JOB_NAME.executeNodeAttempt,
@@ -648,8 +646,8 @@ async function constructRuntimes(
       pollIntervalMillis: 50,
       retryDelayMillis: 100,
     },
-    createTransportMetrics(),
-  );
+    metrics: createTransportMetrics(),
+  });
   resources.dispatcher = dispatcher;
   dispatcher.start();
   assertSetupActive();

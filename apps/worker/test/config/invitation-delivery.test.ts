@@ -13,14 +13,16 @@ const invitationEnvironment = {
 
 describe('parseInvitationDeliveryConfig', () => {
   it('stays absent when invitation delivery is not configured', () => {
-    expect(parseInvitationDeliveryConfig({}, true)).toBeUndefined();
+    expect(
+      parseInvitationDeliveryConfig({}, { deployed: true }),
+    ).toBeUndefined();
   });
 
   it('ignores the public web origin the API shares with the worker', () => {
     expect(
       parseInvitationDeliveryConfig(
         { PUBLIC_WEB_ORIGIN: 'http://127.0.0.1:5173' },
-        false,
+        { deployed: false },
       ),
     ).toBeUndefined();
   });
@@ -29,7 +31,9 @@ describe('parseInvitationDeliveryConfig', () => {
     const { PUBLIC_WEB_ORIGIN: _origin, ...withoutOrigin } =
       invitationEnvironment;
 
-    expect(() => parseInvitationDeliveryConfig(withoutOrigin, false)).toThrow();
+    expect(() =>
+      parseInvitationDeliveryConfig(withoutOrigin, { deployed: false }),
+    ).toThrow();
   });
 
   it('parses configured delivery into a normalized origin and key ring', () => {
@@ -40,7 +44,7 @@ describe('parseInvitationDeliveryConfig', () => {
           { version: 'invite-v0', key: 'retired-key' },
         ]),
       },
-      true,
+      { deployed: true },
     );
 
     expect(config).toEqual({
@@ -64,7 +68,7 @@ describe('parseInvitationDeliveryConfig', () => {
           ...invitationEnvironment,
           PUBLIC_WEB_ORIGIN: 'https://app.example.test/invitations',
         },
-        false,
+        { deployed: false },
       ),
     ).toThrow('PUBLIC_WEB_ORIGIN must be an origin without a path');
   });
@@ -76,10 +80,11 @@ describe('parseInvitationDeliveryConfig', () => {
     };
 
     expect(
-      parseInvitationDeliveryConfig(localEnvironment, false)?.webOrigin,
+      parseInvitationDeliveryConfig(localEnvironment, { deployed: false })
+        ?.webOrigin,
     ).toBe('http://localhost:5173');
-    expect(() => parseInvitationDeliveryConfig(localEnvironment, true)).toThrow(
-      'HTTPS public web origin is required when deployed',
-    );
+    expect(() =>
+      parseInvitationDeliveryConfig(localEnvironment, { deployed: true }),
+    ).toThrow('HTTPS public web origin is required when deployed');
   });
 });

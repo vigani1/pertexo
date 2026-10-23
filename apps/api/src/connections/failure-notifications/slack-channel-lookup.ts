@@ -64,13 +64,26 @@ export type LookupSlackChannelsQuery = ConnectionCommandInput &
  * failing the request.
  */
 export class LookupSlackChannelsUseCase {
+  private readonly encryption: Pick<ConnectionSecretEncryptionPort, 'open'>;
+  private readonly slackClient: SlackChannelLookupClient | undefined;
+  private readonly telemetry: ConnectionTelemetry;
   public constructor(
     private readonly persistence: ConnectionLookupPersistence,
     private readonly authorization: WorkspaceAuthorizationSource,
-    private readonly encryption: Pick<ConnectionSecretEncryptionPort, 'open'>,
-    private readonly slackClient: SlackChannelLookupClient | undefined,
-    private readonly telemetry: ConnectionTelemetry = NOOP_CONNECTION_TELEMETRY,
-  ) {}
+    {
+      encryption,
+      slackClient,
+      telemetry = NOOP_CONNECTION_TELEMETRY,
+    }: Readonly<{
+      encryption: Pick<ConnectionSecretEncryptionPort, 'open'>;
+      slackClient: SlackChannelLookupClient | undefined;
+      telemetry?: ConnectionTelemetry | undefined;
+    }>,
+  ) {
+    this.encryption = encryption;
+    this.slackClient = slackClient;
+    this.telemetry = telemetry;
+  }
 
   public execute(
     input: LookupSlackChannelsQuery,

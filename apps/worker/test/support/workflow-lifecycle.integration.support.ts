@@ -961,11 +961,9 @@ export function createWorkflowLifecycleWorkerEnvironment(): WorkflowLifecycleWor
       'outbox queue producer',
       createQueueProducer({ redisUrl: redisNamespace.redisUrl }),
     );
-    const dispatcher = new OutboxDispatcher(
-      dispatcherDatabase,
-      producer,
-      new WorkerDrainState(),
-      {
+    const dispatcher = new OutboxDispatcher(dispatcherDatabase, producer, {
+      drainState: new WorkerDrainState(),
+      options: {
         batchSize: 10,
         jobNames: [JOB_NAME.reconcileWorkflowTriggers],
         leaseDurationMillis: 1_000,
@@ -974,7 +972,7 @@ export function createWorkflowLifecycleWorkerEnvironment(): WorkflowLifecycleWor
         operationTimeoutMillis: 5_000,
         retryDelayMillis: 10,
       },
-    );
+    });
     transferResource(dispatcherDatabase);
     transferResource(producer);
     registerCloseable('outbox dispatcher', dispatcher);

@@ -143,10 +143,12 @@ export async function acquireApiRuntimes(
       workflowRuntime = await createApiWorkflowRuntime(
         config.database,
         identityRuntime,
-        config.redisUrl,
-        dependencies.workflowOverrides,
-        databaseRuntime,
-        config.codeSettings,
+        {
+          redisUrl: config.redisUrl,
+          overrides: dependencies.workflowOverrides,
+          runtime: databaseRuntime,
+          codeSettings: config.codeSettings,
+        },
       );
 
     connectionRuntime = dependencies.connectionRuntime;
@@ -162,10 +164,12 @@ export async function acquireApiRuntimes(
       connectionRuntime = await createApiConnectionRuntime(
         config.connections,
         config.database,
-        identityRuntime,
-        config.identity.betterAuth.secret,
-        dependencies.connectionOverrides,
-        databaseRuntime,
+        {
+          identityRuntime: identityRuntime,
+          applicationSecret: config.identity.betterAuth.secret,
+          overrides: dependencies.connectionOverrides,
+          runtime: databaseRuntime,
+        },
       );
     }
 
@@ -184,8 +188,7 @@ export async function acquireApiRuntimes(
       webhookRuntime = await createApiWebhookRuntime(
         config.webhooks,
         config.database,
-        undefined,
-        databaseRuntime,
+        { databaseOverride: undefined, runtime: databaseRuntime },
       );
 
     scheduleRuntime = dependencies.scheduleRuntime;
@@ -209,9 +212,11 @@ export async function acquireApiRuntimes(
       notificationRuntime = createApiNotificationRuntime(
         config.database,
         config.redisUrl,
-        {},
-        databaseRuntime,
-        config.identity?.betterAuth.durableMail,
+        {
+          overrides: {},
+          runtime: databaseRuntime,
+          mail: config.identity?.betterAuth.durableMail,
+        },
       );
 
     artifactRuntime = dependencies.artifactRuntime;
@@ -223,9 +228,11 @@ export async function acquireApiRuntimes(
       artifactRuntime = createApiArtifactRuntime(
         config.artifacts,
         config.database,
-        identityRuntime,
-        dependencies.artifactOverrides,
-        databaseRuntime,
+        {
+          identityRuntime: identityRuntime,
+          overrides: dependencies.artifactOverrides,
+          databaseRuntime: databaseRuntime,
+        },
       );
   } catch (error: unknown) {
     const runtimes = {

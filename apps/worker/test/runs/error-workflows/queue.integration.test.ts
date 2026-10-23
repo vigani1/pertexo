@@ -117,11 +117,9 @@ describe.runIf(fixture.enabled)(
           owners.push(outbox);
           const producer = createQueueProducer({ redisUrl: fixture.redisUrl });
           owners.push(producer);
-          dispatcher = new OutboxDispatcher(
-            outbox,
-            producer,
-            new WorkerDrainState(),
-            {
+          dispatcher = new OutboxDispatcher(outbox, producer, {
+            drainState: new WorkerDrainState(),
+            options: {
               batchSize: 10,
               jobNames: [JOB_NAME.startErrorWorkflow],
               leaseDurationMillis: 1_000,
@@ -130,7 +128,7 @@ describe.runIf(fixture.enabled)(
               retryDelayMillis: 100,
               pollIntervalMillis: 25,
             },
-          );
+          });
           owners.splice(-2, 2, dispatcher);
           await Promise.all([
             maintenance.consumer.waitUntilReady(5_000),

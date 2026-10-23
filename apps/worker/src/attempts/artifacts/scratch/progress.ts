@@ -2,7 +2,9 @@ import { FILE_TRANSFER_NO_PROGRESS_MILLIS } from '@pertexo/node-sdk';
 import { pipeline, Transform, Readable } from 'node:stream';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import { ArtifactSourceCleanupError } from './consume.js';
-function timedOut(deadline: boolean): NodeExecutorFailure {
+function timedOut({
+  deadline,
+}: Readonly<{ deadline: boolean }>): NodeExecutorFailure {
   return new NodeExecutorFailure({
     kind: 'retry',
     errorKind: 'timeout',
@@ -48,7 +50,7 @@ export class ArtifactTransfer {
       this.cancelSource(
         this.signal.reason instanceof Error
           ? this.signal.reason
-          : timedOut(false),
+          : timedOut({ deadline: false }),
       );
   }
   advance(): void {
@@ -61,7 +63,7 @@ export class ArtifactTransfer {
     const deadline = remaining <= FILE_TRANSFER_NO_PROGRESS_MILLIS;
     this.timer = setTimeout(
       () => {
-        this.abort(timedOut(deadline));
+        this.abort(timedOut({ deadline: deadline }));
       },
       Math.max(0, Math.min(FILE_TRANSFER_NO_PROGRESS_MILLIS, remaining)),
     );

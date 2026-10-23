@@ -371,7 +371,7 @@ function stringEnvironment(
 
 function artifactStoreConfig(
   environment: Readonly<Record<string, string | undefined>>,
-  deployed: boolean,
+  { deployed }: Readonly<{ deployed: boolean }>,
 ): ArtifactStoreConfig {
   const parsed = parseArtifactStoreConfig(environment);
   if (deployed && new URL(parsed.endpoint).protocol !== 'https:')
@@ -395,7 +395,7 @@ export function parseWorkerConfig(
     const connectionEncryption = parseConnectionEncryptionConfig(raw, {
       deployed,
     });
-    const artifactStore = artifactStoreConfig(raw, deployed);
+    const artifactStore = artifactStoreConfig(raw, { deployed: deployed });
     const artifactScratchDirectory = z
       .object({
         ARTIFACT_SCRATCH_DIRECTORY: z.string().min(1).max(4096),
@@ -409,8 +409,12 @@ export function parseWorkerConfig(
       throw new Error(
         'ARTIFACT_SCRATCH_DIRECTORY must be an absolute private disk-backed directory',
       );
-    const invitationDelivery = parseInvitationDeliveryConfig(raw, deployed);
-    const systemMailDelivery = parseSystemMailDeliveryConfig(raw, deployed);
+    const invitationDelivery = parseInvitationDeliveryConfig(raw, {
+      deployed: deployed,
+    });
+    const systemMailDelivery = parseSystemMailDeliveryConfig(raw, {
+      deployed: deployed,
+    });
     if (deployed && connectionEncryption === undefined)
       throw new Error('A deployed worker requires connection encryption');
     return Object.freeze({

@@ -106,11 +106,19 @@ export type NodeAttemptHandlerDependencies = Readonly<{
 async function completeControlOutcome(
   dependencies: NodeAttemptHandlerDependencies,
   lease: NodeAttemptLease,
-  reason: 'canceled' | 'timed_out',
-  delivery: AttemptDelivery,
-  signal: AbortSignal,
-  dispatched: boolean,
-  environment?: NodeExecutionEnvironment,
+  {
+    reason,
+    delivery,
+    signal,
+    dispatched,
+    environment,
+  }: Readonly<{
+    reason: 'canceled' | 'timed_out';
+    delivery: AttemptDelivery;
+    signal: AbortSignal;
+    dispatched: boolean;
+    environment?: NodeExecutionEnvironment | undefined;
+  }>,
 ): Promise<NodeAttemptHandlerResult> {
   const outcomeUnknown = lease.sideEffectClass !== 'safe' && dispatched;
   const completed = await dependencies.runStore.complete({
@@ -219,12 +227,21 @@ async function recordAttemptInput(
 async function executePreparedNodeAttempt(
   dependencies: NodeAttemptHandlerDependencies,
   lease: NodeAttemptLease,
-  prepared: PreparedNodeAttempt,
-  inputs: NodeAttemptInputs,
-  delivery: AttemptDelivery,
-  contextSignal: AbortSignal,
-  heartbeat: NodeAttemptHeartbeat,
-  environment: NodeExecutionEnvironment,
+  {
+    prepared,
+    inputs,
+    delivery,
+    contextSignal,
+    heartbeat,
+    environment,
+  }: Readonly<{
+    prepared: PreparedNodeAttempt;
+    inputs: NodeAttemptInputs;
+    delivery: AttemptDelivery;
+    contextSignal: AbortSignal;
+    heartbeat: NodeAttemptHeartbeat;
+    environment: NodeExecutionEnvironment;
+  }>,
 ): Promise<NodeAttemptHandlerResult> {
   const traceContext =
     delivery.data.traceparent === undefined
@@ -249,10 +266,12 @@ async function executePreparedNodeAttempt(
     const interruption = await resolveHeartbeatInterruption(
       dependencies,
       lease,
-      delivery,
-      contextSignal,
-      heartbeat,
-      environment,
+      {
+        delivery: delivery,
+        contextSignal: contextSignal,
+        heartbeat: heartbeat,
+        environment: environment,
+      },
     );
     if (interruption !== undefined) return interruption;
     if (error instanceof NodeExecutorFailure) {
@@ -305,45 +324,48 @@ async function executePreparedNodeAttempt(
     }
     throw error;
   }
-  const interruption = await resolveHeartbeatInterruption(
-    dependencies,
-    lease,
-    delivery,
-    contextSignal,
-    heartbeat,
-    environment,
-  );
+  const interruption = await resolveHeartbeatInterruption(dependencies, lease, {
+    delivery: delivery,
+    contextSignal: contextSignal,
+    heartbeat: heartbeat,
+    environment: environment,
+  });
   if (interruption !== undefined) return interruption;
-  return persistPreparedOutcome(
-    dependencies,
-    lease,
-    prepared,
-    outcome,
-    traceContext,
-    contextSignal,
-    environment,
-  );
+  return persistPreparedOutcome(dependencies, lease, {
+    prepared: prepared,
+    outcome: outcome,
+    traceContext: traceContext,
+    contextSignal: contextSignal,
+    environment: environment,
+  });
 }
 
 async function resolveHeartbeatInterruption(
   dependencies: NodeAttemptHandlerDependencies,
   lease: NodeAttemptLease,
-  delivery: AttemptDelivery,
-  contextSignal: AbortSignal,
-  heartbeat: NodeAttemptHeartbeat,
-  environment: NodeExecutionEnvironment,
+  {
+    delivery,
+    contextSignal,
+    heartbeat,
+    environment,
+  }: Readonly<{
+    delivery: AttemptDelivery;
+    contextSignal: AbortSignal;
+    heartbeat: NodeAttemptHeartbeat;
+    environment: NodeExecutionEnvironment;
+  }>,
 ): Promise<NodeAttemptHandlerResult | undefined> {
   const durableAbortReason = heartbeat.durableAbortReason();
   if (durableAbortReason !== undefined)
-    return completeControlOutcome(
-      dependencies,
-      lease,
-      durableAbortReason,
-      delivery,
-      contextSignal,
-      hasProviderDispatchUncertainty(lease, environment.wasDispatched()),
-      environment,
-    );
+    return completeControlOutcome(dependencies, lease, {
+      reason: durableAbortReason,
+      delivery: delivery,
+      signal: contextSignal,
+      dispatched: hasProviderDispatchUncertainty(lease, {
+        dispatched: environment.wasDispatched(),
+      }),
+      environment: environment,
+    });
   const heartbeatFailure = heartbeat.failure();
   if (!heartbeatFailure.failed) return undefined;
   throw classifyProcessError(heartbeatFailure.error) === 'Error'
@@ -356,11 +378,19 @@ async function resolveHeartbeatInterruption(
 async function persistPreparedOutcome(
   dependencies: NodeAttemptHandlerDependencies,
   lease: NodeAttemptLease,
-  prepared: PreparedNodeAttempt,
-  outcome: NodeAttemptOutcome,
-  traceContext: Readonly<{ traceparent?: string }>,
-  contextSignal: AbortSignal,
-  environment: NodeExecutionEnvironment,
+  {
+    prepared,
+    outcome,
+    traceContext,
+    contextSignal,
+    environment,
+  }: Readonly<{
+    prepared: PreparedNodeAttempt;
+    outcome: NodeAttemptOutcome;
+    traceContext: Readonly<{ traceparent?: string }>;
+    contextSignal: AbortSignal;
+    environment: NodeExecutionEnvironment;
+  }>,
 ): Promise<NodeAttemptHandlerResult> {
   try {
     const completed = await dependencies.runStore.complete({
@@ -449,14 +479,14 @@ export function createNodeAttemptHandler(
       if (inputs.abortRequested) {
         if (inputs.abortReason === undefined)
           throw new NodeAttemptHandlerStateError('control_reason_missing');
-        return completeControlOutcome(
-          dependencies,
-          claimed.lease,
-          inputs.abortReason,
-          delivery,
-          context.signal,
-          hasProviderDispatchUncertainty(claimed.lease, false),
-        );
+        return completeControlOutcome(dependencies, claimed.lease, {
+          reason: inputs.abortReason,
+          delivery: delivery,
+          signal: context.signal,
+          dispatched: hasProviderDispatchUncertainty(claimed.lease, {
+            dispatched: false,
+          }),
+        });
       }
       if (inputs.loopResultsTooLarge === true) {
         // The step's input can't be built: a definite failure of the step,
@@ -519,16 +549,14 @@ export function createNodeAttemptHandler(
             ? {}
             : { runtimeCapabilities: dependencies.runtimeCapabilities }),
         });
-        return await executePreparedNodeAttempt(
-          dependencies,
-          claimed.lease,
-          prepared,
-          inputs,
-          delivery,
-          context.signal,
-          heartbeat,
-          environment,
-        );
+        return await executePreparedNodeAttempt(dependencies, claimed.lease, {
+          prepared: prepared,
+          inputs: inputs,
+          delivery: delivery,
+          contextSignal: context.signal,
+          heartbeat: heartbeat,
+          environment: environment,
+        });
       } finally {
         await heartbeat.stop();
       }
@@ -538,7 +566,7 @@ export function createNodeAttemptHandler(
 
 function hasProviderDispatchUncertainty(
   lease: NodeAttemptLease,
-  dispatched: boolean,
+  { dispatched }: Readonly<{ dispatched: boolean }>,
 ): boolean {
   return lease.providerDispatchUnresolved === true || dispatched;
 }

@@ -34,9 +34,15 @@ export type ApiNotificationRuntimeOverrides = Readonly<{
 export function createApiNotificationRuntime(
   config: DatabaseConfig,
   redisUrl: string,
-  overrides: ApiNotificationRuntimeOverrides = {},
-  runtime?: DatabaseRuntime,
-  mail?: ApiIdentityConfig['betterAuth']['durableMail'],
+  {
+    overrides = {},
+    runtime,
+    mail,
+  }: Readonly<{
+    overrides?: ApiNotificationRuntimeOverrides | undefined;
+    runtime?: DatabaseRuntime | undefined;
+    mail?: ApiIdentityConfig['betterAuth']['durableMail'] | undefined;
+  }> = {},
 ): ApiNotificationRuntime {
   const database =
     overrides.database ?? createWorkspaceInboxDatabase(config, runtime);

@@ -331,22 +331,26 @@ export class StreamRunEventsUseCase {
       includeWorkflowName: false,
     });
     if (run === undefined) throw new WorkflowRunNotFoundError();
-    return authorizedStreamFrames(
-      this.streamer,
-      input,
-      this.authorization,
-      SSE_REAUTHORIZATION_INTERVAL_MS,
-      (identity) => this.persistence.canRead(identity),
-    );
+    return authorizedStreamFrames(this.streamer, input, {
+      authorization: this.authorization,
+      intervalMs: SSE_REAUTHORIZATION_INTERVAL_MS,
+      canRead: (identity) => this.persistence.canRead(identity),
+    });
   }
 }
 
 async function* authorizedStreamFrames(
   streamer: WorkflowRunEventStreamer,
   input: StreamRunEventsInput,
-  authorization: WorkspaceAuthorizationSource,
-  intervalMs: number,
-  canRead: WorkflowRunPersistence['canRead'],
+  {
+    authorization,
+    intervalMs,
+    canRead,
+  }: Readonly<{
+    authorization: WorkspaceAuthorizationSource;
+    intervalMs: number;
+    canRead: WorkflowRunPersistence['canRead'];
+  }>,
 ): AsyncGenerator<WorkflowRunEventFrame> {
   let iterator: AsyncIterator<WorkflowRunEventFrame> | undefined;
   let lifetimeController: AbortController | undefined;

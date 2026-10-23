@@ -31,9 +31,15 @@ export type TaskSlot = Readonly<{
 export async function startTaskSlot(
   config: RunnerConfig,
   policy: ModulePolicy,
-  ordinal: number,
-  lifetime: AbortSignal,
-  language: CodeLanguage = 'javascript',
+  {
+    ordinal,
+    lifetime,
+    language = 'javascript',
+  }: Readonly<{
+    ordinal: number;
+    lifetime: AbortSignal;
+    language?: CodeLanguage | undefined;
+  }>,
 ): Promise<TaskSlot> {
   const boot: ChildBoot = {
     json: NODE_JSON_LIMITS,

@@ -8,13 +8,11 @@ export async function createTaskProcessPool(config: RunnerConfig) {
   const lifetime = new AbortController();
   const policy = await resolveCodePackages(config.settings);
   if (config.settings.enabled && config.settings.pythonPackages.length > 0) {
-    const checked = await startTaskSlot(
-      config,
-      policy,
-      0,
-      lifetime.signal,
-      'python',
-    );
+    const checked = await startTaskSlot(config, policy, {
+      ordinal: 0,
+      lifetime: lifetime.signal,
+      language: 'python',
+    });
     await checked.stop();
   }
   const slots: (TaskSlot | undefined)[] = Array.from({
@@ -23,15 +21,16 @@ export async function createTaskProcessPool(config: RunnerConfig) {
   const owned = new Set<TaskSlot>();
   const preparing = new Set<Promise<void>>();
   let closed = false;
-  const prepare = async (index: number, initial: boolean): Promise<void> => {
+  const prepare = async (
+    index: number,
+    { initial }: Readonly<{ initial: boolean }>,
+  ): Promise<void> => {
     while (!closed) {
       try {
-        const slot = await startTaskSlot(
-          config,
-          policy,
-          index,
-          lifetime.signal,
-        );
+        const slot = await startTaskSlot(config, policy, {
+          ordinal: index,
+          lifetime: lifetime.signal,
+        });
         if (lifetime.signal.aborted) {
           await slot.stop();
           return;
@@ -55,7 +54,7 @@ export async function createTaskProcessPool(config: RunnerConfig) {
     }
   };
   const replenish = (index: number) => {
-    const pending = prepare(index, false);
+    const pending = prepare(index, { initial: false });
     preparing.add(pending);
     void pending.finally(() => preparing.delete(pending));
   };
@@ -67,7 +66,7 @@ export async function createTaskProcessPool(config: RunnerConfig) {
     owned.clear();
   };
   const started = await Promise.allSettled(
-    slots.map((_slot, index) => prepare(index, true)),
+    slots.map((_slot, index) => prepare(index, { initial: true })),
   );
   const errors = started
     .filter(
@@ -98,13 +97,11 @@ export async function createTaskProcessPool(config: RunnerConfig) {
             owned.delete(current);
             lifetime.signal.throwIfAborted();
             args[1].throwIfAborted();
-            current = await startTaskSlot(
-              config,
-              policy,
-              index,
-              AbortSignal.any([lifetime.signal, args[1]]),
-              'python',
-            );
+            current = await startTaskSlot(config, policy, {
+              ordinal: index,
+              lifetime: AbortSignal.any([lifetime.signal, args[1]]),
+              language: 'python',
+            });
             owned.add(current);
           }
           return current.run(...args);

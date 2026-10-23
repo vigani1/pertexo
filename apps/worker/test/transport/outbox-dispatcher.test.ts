@@ -126,11 +126,9 @@ function createDispatcher(
   operationTimeoutMillis = 5_000,
   pollIntervalMillis = 10,
 ): OutboxDispatcher {
-  return new OutboxDispatcher(
-    selected.database,
-    selected.producer,
-    drainState,
-    {
+  return new OutboxDispatcher(selected.database, selected.producer, {
+    drainState: drainState,
+    options: {
       batchSize: 10,
       jobNames: [
         JOB_NAME.advanceWorkflowRun,
@@ -143,8 +141,8 @@ function createDispatcher(
       pollIntervalMillis,
       retryDelayMillis: 1_000,
     },
-    metrics,
-  );
+    metrics: metrics,
+  });
 }
 
 describe('outbox dispatcher', () => {
@@ -157,15 +155,17 @@ describe('outbox dispatcher', () => {
     const dispatcher = new OutboxDispatcher(
       selected.database,
       selected.producer,
-      new WorkerDrainState(),
       {
-        batchSize: 10,
-        jobNames: [],
-        leaseDurationMillis: 30_000,
-        leaseOwner: 'worker-a',
-        maxAttempts: 3,
-        pollIntervalMillis: 10,
-        retryDelayMillis: 1_000,
+        drainState: new WorkerDrainState(),
+        options: {
+          batchSize: 10,
+          jobNames: [],
+          leaseDurationMillis: 30_000,
+          leaseOwner: 'worker-a',
+          maxAttempts: 3,
+          pollIntervalMillis: 10,
+          retryDelayMillis: 1_000,
+        },
       },
     );
 

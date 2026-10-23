@@ -133,11 +133,9 @@ function graph(
           owners.push(() => store.close());
           const producer = createQueueProducer({ redisUrl: fixture.redisUrl });
           owners.push(() => producer.close());
-          const dispatcher = new OutboxDispatcher(
-            store,
-            producer,
-            new WorkerDrainState(),
-            {
+          const dispatcher = new OutboxDispatcher(store, producer, {
+            drainState: new WorkerDrainState(),
+            options: {
               batchSize: 10,
               jobNames: [
                 JOB_NAME.advanceWorkflowRun,
@@ -149,7 +147,7 @@ function graph(
               retryDelayMillis: 1_000,
               pollIntervalMillis: 50,
             },
-          );
+          });
           owners.splice(-2, 2, () => dispatcher.close());
           await Promise.all([
             coordinator.consumer.waitUntilReady(5_000),

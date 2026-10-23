@@ -379,7 +379,9 @@ export class PublishWorkflowUseCase {
             ? {}
             : { traceparent: input.traceparent }),
         });
-        return serializeWorkflowPublication(result.version, result.reused);
+        return serializeWorkflowPublication(result.version, {
+          reused: result.reused,
+        });
       },
     );
   }

@@ -102,11 +102,9 @@ export class AppModule {
           };
     const httpErrorLogger: HttpErrorLogger = Object.freeze({
       log: (entry: HttpErrorLogEntry): void => {
-        logHttpError(
-          dependencies.logger,
-          entry.severity,
-          'http.request_failed',
-          {
+        logHttpError(dependencies.logger, entry.severity, {
+          event: 'http.request_failed',
+          fields: {
             code: entry.code,
             requestId: entry.requestId,
             ...(entry.actorId === undefined ? {} : { actorId: entry.actorId }),
@@ -117,8 +115,8 @@ export class AppModule {
               ? {}
               : { instance: entry.instance }),
           },
-          entry.cause,
-        );
+          cause: entry.cause,
+        });
       },
     });
 
@@ -306,9 +304,15 @@ function registerFeatureModules(
 function logHttpError(
   logger: StructuredLogger,
   severity: HttpErrorLogEntry['severity'],
-  event: string,
-  fields: Readonly<Record<string, unknown>>,
-  cause: unknown,
+  {
+    event,
+    fields,
+    cause,
+  }: Readonly<{
+    event: string;
+    fields: Readonly<Record<string, unknown>>;
+    cause: unknown;
+  }>,
 ): void {
   if (severity === 'error') logger.error(event, fields, cause);
   else if (severity === 'warn') logger.warn(event, fields, cause);

@@ -30,13 +30,26 @@ type Scope = Readonly<{
 type Command = Scope &
   Readonly<{ idempotencyKey: string; expectedRevision: number }>;
 export class FederationManagementService {
+  private readonly secret: string;
+  private readonly publicOrigin: string;
+  private readonly secureCookies: boolean;
   constructor(
     readonly store: FederationManagementStore,
     private readonly envelope: ApplicationSecretEnvelope | undefined,
-    private readonly secret: string,
-    private readonly publicOrigin: string,
-    private readonly secureCookies: boolean,
-  ) {}
+    {
+      secret,
+      publicOrigin,
+      secureCookies,
+    }: Readonly<{
+      secret: string;
+      publicOrigin: string;
+      secureCookies: boolean;
+    }>,
+  ) {
+    this.secret = secret;
+    this.publicOrigin = publicOrigin;
+    this.secureCookies = secureCookies;
+  }
   async settings(scope: Scope) {
     const result = await this.store.settings(scope);
     return this.envelope === undefined
@@ -104,7 +117,11 @@ export class FederationManagementService {
     });
   }
   private requireSamlTransport() {
-    if (!samlTransportAvailable(this.publicOrigin, this.secureCookies))
+    if (
+      !samlTransportAvailable(this.publicOrigin, {
+        secureCookies: this.secureCookies,
+      })
+    )
       throwApplicationError(
         applicationError('request.invalid', {
           safeDetail:

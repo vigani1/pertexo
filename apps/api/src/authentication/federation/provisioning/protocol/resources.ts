@@ -52,17 +52,17 @@ export function parseDirectoryUser(input: unknown): DirectoryUserValues {
     if (primary === undefined) throw new DirectoryError('invalid_value');
     const canonicalEmail = (
       entry: z.infer<typeof email>,
-      isPrimary: boolean,
+      { isPrimary }: Readonly<{ isPrimary: boolean }>,
     ) => ({
       value: entry.value.toLowerCase(),
       primary: isPrimary,
       ...(entry.type === undefined ? {} : { type: entry.type }),
     });
     const emails = [
-      canonicalEmail(primary, true),
+      canonicalEmail(primary, { isPrimary: true }),
       ...user.emails
         .filter((entry) => entry !== primary)
-        .map((entry) => canonicalEmail(entry, false)),
+        .map((entry) => canonicalEmail(entry, { isPrimary: false })),
     ] as const;
     if (new Set(emails.map((entry) => entry.value)).size !== emails.length)
       throw new DirectoryError('invalid_value');

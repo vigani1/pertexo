@@ -124,9 +124,11 @@ export async function createApiIdentityRuntime(
     const federation = new FederationManagementService(
       federationStore,
       federationEnvelope,
-      config.betterAuth.secret,
-      config.publicWebOrigin,
-      config.session.secureCookie,
+      {
+        secret: config.betterAuth.secret,
+        publicOrigin: config.publicWebOrigin,
+        secureCookies: config.session.secureCookie,
+      },
     );
     const persistence = new DatabaseIdentityWorkspaceAdapter(identityDatabase);
     const betterAuth = composeBetterAuthRuntime({

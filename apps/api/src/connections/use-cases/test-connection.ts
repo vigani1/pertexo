@@ -59,19 +59,40 @@ export type TestConnectionCommand = ConnectionCommandInput &
   }>;
 
 export class TestConnectionUseCase {
+  private readonly encryption: ConnectionSecretEncryptionPort;
+  private readonly httpClient: ConnectionHttpClient;
+  private readonly applicationSecret: string;
+  private readonly telemetry: ConnectionTelemetry;
+  private readonly slackClient?:
+    Pick<ConnectionSlackClient, 'authTest' | 'sendMessage'> | undefined;
+  private readonly emailClient?: ConnectionEmailClient | undefined;
   public constructor(
     private readonly persistence: ConnectionTestPersistence,
     private readonly authorization: WorkspaceAuthorizationSource,
-    private readonly encryption: ConnectionSecretEncryptionPort,
-    private readonly httpClient: ConnectionHttpClient,
-    private readonly applicationSecret: string,
-    private readonly telemetry: ConnectionTelemetry = NOOP_CONNECTION_TELEMETRY,
-    private readonly slackClient?: Pick<
-      ConnectionSlackClient,
-      'authTest' | 'sendMessage'
-    >,
-    private readonly emailClient?: ConnectionEmailClient,
-  ) {}
+    {
+      encryption,
+      httpClient,
+      applicationSecret,
+      telemetry = NOOP_CONNECTION_TELEMETRY,
+      slackClient,
+      emailClient,
+    }: Readonly<{
+      encryption: ConnectionSecretEncryptionPort;
+      httpClient: ConnectionHttpClient;
+      applicationSecret: string;
+      telemetry?: ConnectionTelemetry | undefined;
+      slackClient?:
+        Pick<ConnectionSlackClient, 'authTest' | 'sendMessage'> | undefined;
+      emailClient?: ConnectionEmailClient | undefined;
+    }>,
+  ) {
+    this.encryption = encryption;
+    this.httpClient = httpClient;
+    this.applicationSecret = applicationSecret;
+    this.telemetry = telemetry;
+    this.slackClient = slackClient;
+    this.emailClient = emailClient;
+  }
 
   public execute(
     input: TestConnectionCommand,
