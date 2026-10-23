@@ -1,1 +1,1 @@
-export { DIRECTORY_LIMITS } from '@pertexo/contracts';
+export { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
