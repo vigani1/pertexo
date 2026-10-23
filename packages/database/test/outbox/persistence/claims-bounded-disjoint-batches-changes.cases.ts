@@ -1,0 +1,126 @@
+import {
+  apiDatabase,
+  dispatcher,
+  dispatcherUrl,
+  workspaceA,
+  workspaceB,
+} from './fixture.js';
+import { randomUUID } from 'node:crypto';
+
+import { expect, it } from 'vitest';
+import { parseDatabaseConfig } from '../../../src/config.js';
+
+import { createOutboxDispatcherDatabase } from '../../../src/outbox/dispatcher/database.js';
+
+import { insertOutboxEvent } from '../../../src/outbox/events.js';
+
+import { enabledJobNames, outboxInput } from './fixture.js';
+
+export function registerClaimsBoundedDisjointBatchesChanges(): void {
+  it('claims bounded disjoint batches and changes state only with the lease token', async () => {
+    const ids: string[] = Array.from({ length: 4 }, () => randomUUID());
+    await apiDatabase.withWorkspace(workspaceA, async (transaction) => {
+      for (const id of ids) {
+        await insertOutboxEvent(transaction, {
+          ...outboxInput(id),
+          availableAt: new Date(0),
+        });
+      }
+    });
+    const batches = await Promise.all(
+      Array.from({ length: 4 }, (_, index) =>
+        dispatcher.claimBatch({
+          enabledJobNames,
+          leaseDurationMillis: 30_000,
+          leaseOwner: `dispatcher-${String(index)}`,
+          leaseToken: randomUUID(),
+          limit: 2,
+          maxAttempts: 3,
+        }),
+      ),
+    );
+    const claimed = batches
+      .flatMap(({ events }) => events)
+      .filter((event) => ids.includes(event.id));
+    expect(new Set(claimed.map((event) => event.id)).size).toBe(4);
+    const event = claimed[0];
+    if (event === undefined) throw new Error('Expected a claimed outbox event');
+    await expect(
+      dispatcher.markPublished(event.id, randomUUID()),
+    ).resolves.toBe(false);
+    await expect(
+      dispatcher.markPublished(event.id, event.leaseToken),
+    ).resolves.toBe(true);
+  });
+
+  it('persists fair workspace rotation across dispatcher process replacement', async () => {
+    for (const workspaceId of [workspaceA, workspaceB]) {
+      await apiDatabase.withWorkspace(workspaceId, async (transaction) => {
+        for (let index = 0; index < 2; index += 1)
+          await insertOutboxEvent(transaction, {
+            ...outboxInput(),
+            availableAt: new Date(0),
+          });
+      });
+    }
+    const claim = (
+      database: ReturnType<typeof createOutboxDispatcherDatabase>,
+    ) =>
+      database.claimBatch({
+        enabledJobNames,
+        leaseDurationMillis: 30_000,
+        leaseOwner: 'restart-fairness',
+        leaseToken: randomUUID(),
+        limit: 1,
+        maxAttempts: 3,
+      });
+    const firstProcess = createOutboxDispatcherDatabase(
+      parseDatabaseConfig({ connectionString: dispatcherUrl, max: 1 }),
+    );
+    const first = await claim(firstProcess);
+    await firstProcess.close();
+    const secondProcess = createOutboxDispatcherDatabase(
+      parseDatabaseConfig({ connectionString: dispatcherUrl, max: 1 }),
+    );
+    try {
+      const second = await claim(secondProcess);
+      expect(first.events).toHaveLength(1);
+      expect(second.events).toHaveLength(1);
+      expect(second.events[0]?.workspaceId).not.toBe(
+        first.events[0]?.workspaceId,
+      );
+    } finally {
+      await secondProcess.close();
+    }
+  });
+
+  it('observes only due and currently claimable outbox backlog', async () => {
+    const dueId = randomUUID();
+    await apiDatabase.withWorkspace(workspaceA, async (transaction) => {
+      await insertOutboxEvent(transaction, {
+        ...outboxInput(dueId),
+        availableAt: new Date(Date.now() - 2_000),
+      });
+      await insertOutboxEvent(transaction, {
+        ...outboxInput(),
+        availableAt: new Date(Date.now() + 60_000),
+      });
+    });
+
+    const due = await dispatcher.observeBacklog({ enabledJobNames });
+    expect(due.backlog).toBe(1);
+    expect(due.oldestAgeSeconds).toBeGreaterThanOrEqual(1);
+
+    await dispatcher.claimBatch({
+      enabledJobNames,
+      leaseDurationMillis: 30_000,
+      leaseOwner: 'observer-proof',
+      leaseToken: randomUUID(),
+      limit: 1,
+      maxAttempts: 3,
+    });
+    await expect(
+      dispatcher.observeBacklog({ enabledJobNames }),
+    ).resolves.toEqual({ backlog: 0 });
+  });
+}
