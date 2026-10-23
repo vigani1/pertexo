@@ -18,13 +18,11 @@ describe('browser-safe platform catalog projection', () => {
     expect(first.definitions.length).toBeGreaterThan(0);
     expect(first.definitions.map(({ definition }) => definition)).toEqual(
       [...first.definitions]
-        .sort((left, right) =>
-          left.definition.key < right.definition.key
-            ? -1
-            : left.definition.key > right.definition.key
-              ? 1
-              : left.definition.version - right.definition.version,
-        )
+        .sort((left, right) => {
+          if (left.definition.key < right.definition.key) return -1;
+          if (left.definition.key > right.definition.key) return 1;
+          return left.definition.version - right.definition.version;
+        })
         .map(({ definition }) => definition),
     );
     for (const definition of first.definitions) {

@@ -1,4 +1,7 @@
-import { verifyCuratedTemplateManifest } from '@pertexo/templates';
+import {
+  verifyCuratedTemplateManifest,
+  type CuratedTemplateSetupTarget,
+} from '@pertexo/templates';
 import {
   type WorkflowGraph,
   type WorkflowNode,
@@ -27,21 +30,25 @@ export function validateRegisteredCuratedTemplateSetup(
       const matching = nodes.filter((node) => node.id === target.nodeId);
       const node = matching[0];
       if (matching.length !== 1 || node === undefined) return false;
-      const registration = resolvePlatformNodeDefinition(node.definition);
-      if (target.location === 'config') {
-        if (!registration.configSchema.safeParse(node.config).success)
-          return false;
-      } else {
-        const inputs: Record<string, unknown> = {};
-        for (const [key, mapping] of Object.entries(node.inputMappings)) {
-          if (mapping.kind !== 'literal') return false;
-          inputs[key] = mapping.value;
-        }
-        if (!registration.inputSchema.safeParse(inputs).success) return false;
-      }
+      if (!targetSetupIsValid(node, target)) return false;
     }
     return true;
   } catch {
     return false;
   }
+}
+
+function targetSetupIsValid(
+  node: WorkflowNode,
+  target: CuratedTemplateSetupTarget,
+): boolean {
+  const registration = resolvePlatformNodeDefinition(node.definition);
+  if (target.location === 'config')
+    return registration.configSchema.safeParse(node.config).success;
+  const inputs: Record<string, unknown> = {};
+  for (const [key, mapping] of Object.entries(node.inputMappings)) {
+    if (mapping.kind !== 'literal') return false;
+    inputs[key] = mapping.value;
+  }
+  return registration.inputSchema.safeParse(inputs).success;
 }
