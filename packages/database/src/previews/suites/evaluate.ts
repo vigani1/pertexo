@@ -125,7 +125,7 @@ export async function readSuiteRunOutcome(
   return {
     status: row.status,
     output_ref: row.output_ref,
-    pin_required: problem.rows[0]?.found === true,
+    pin_required: problem.rows[0]?.found ?? false,
   };
 }
 

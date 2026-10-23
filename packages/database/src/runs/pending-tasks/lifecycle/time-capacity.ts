@@ -138,7 +138,7 @@ export async function synchronizeHumanWait(
         'select app.workflow_run_active_capacity_available($1,$2,$3) available',
         [workspaceId, run.execution_entitlement_version, runId],
       );
-      available = capacity.rows[0]?.available === true;
+      available = capacity.rows[0]?.available ?? false;
     }
     if (!available) {
       if (!alreadyDeferred) await deferWorkflowRun(client, workspaceId, runId);

@@ -105,8 +105,8 @@ export function createWorkflowRunDatabase(
   const { pool } = lease;
   return Object.freeze({
     canRead: async (input: Parameters<WorkflowRunDatabase['canRead']>[0]) =>
-      (await withResourceRunRead(pool, input, () => Promise.resolve(true))) ===
-      true,
+      (await withResourceRunRead(pool, input, () => Promise.resolve(true))) ??
+      false,
     recovery: async (input: WorkflowRecoveryPreviewInput) => {
       const parsed = recoveryPreviewInputSchema.parse(input);
       return withResourceRunRead(pool, parsed, async (transaction) => {

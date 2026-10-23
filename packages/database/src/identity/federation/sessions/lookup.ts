@@ -73,7 +73,7 @@ export async function isAuthenticationSessionAllowed(
       ? undefined
       : {
           organizationId: facts.provider_organization_id,
-          enabled: facts.provider_enabled === true,
+          enabled: facts.provider_enabled ?? false,
           revision: facts.provider_revision,
           directoryAllowed: facts.directory_allowed,
         },

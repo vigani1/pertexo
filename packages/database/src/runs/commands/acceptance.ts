@@ -113,7 +113,7 @@ export async function acceptWorkflowRun(
   const sourceOrigin =
     parsed.replaySourceRunId === undefined
       ? false
-      : (
+      : ((
           await transaction.db
             .select({ origin: workflowRuns.errorWorkflowOrigin })
             .from(workflowRuns)
@@ -124,7 +124,7 @@ export async function acceptWorkflowRun(
               ),
             )
             .limit(1)
-        )[0]?.origin === true;
+        )[0]?.origin ?? false);
   const variableSetRevision = await variableRevisionForAcceptance(
     transaction,
     parsed.replaySourceRunId,
@@ -219,7 +219,7 @@ export async function acceptWorkflowRun(
             : parsed.absoluteDeadlineAt,
         errorWorkflowOrigin:
           parsed.triggerType === 'workflow_error' ||
-          prepared.errorWorkflowOrigin === true ||
+          (prepared.errorWorkflowOrigin ?? false) ||
           sourceOrigin,
         ...(failureNotificationPolicy === undefined
           ? {}

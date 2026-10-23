@@ -30,7 +30,7 @@ function bindings(graph: WorkflowGraph): Map<string, ConnectionReference> {
   for (const level of pending)
     for (const node of level.graph.nodes) {
       const path = [...level.path, node.id];
-      const enabled = level.enabled && node.disabled !== true;
+      const enabled = level.enabled && !(node.disabled ?? false);
       for (const [slot, id] of Object.entries(node.connectionRefs))
         result.set(
           canonicalJson([path, node.definition, slot, id.toLowerCase()]),

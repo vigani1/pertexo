@@ -45,7 +45,7 @@ async function readAuthenticationPolicy(
   let controlOwner = false;
   let passwordPresent = false;
   if (
-    account.require_sso === true &&
+    (account.require_sso ?? false) &&
     account.control_workspace_id !== null &&
     account.email_verified
   ) {

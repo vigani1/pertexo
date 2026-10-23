@@ -85,7 +85,7 @@ export async function consumeWebhookIngressLimit(
     digestSchema.parse(endpointKeyHashInput),
   ]);
   const decision = result.rows[0];
-  if (decision?.allowed !== true)
+  if (!(decision?.allowed ?? false))
     throw new WebhookIngressRateLimitExceededError(
       z.number().int().min(1).max(60).parse(decision?.retry_after_seconds),
     );

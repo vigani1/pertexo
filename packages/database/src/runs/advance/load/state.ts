@@ -213,7 +213,7 @@ export async function loadRunForAdvance(
   if (
     row.deadline_at !== null &&
     row.deadline_expired &&
-    row.checkpoint_deadline_expired !== true
+    !(row.checkpoint_deadline_expired ?? false)
   )
     observations.push({
       kind: 'deadline_expired',

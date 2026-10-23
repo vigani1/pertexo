@@ -70,7 +70,7 @@ function completionDecision(
   const actuallyDispatched =
     row.status === 'dispatching' && result.possiblyDispatched;
   const deliveryUnresolved =
-    row.possibly_dispatched === true || actuallyDispatched;
+    (row.possibly_dispatched ?? false) || actuallyDispatched;
   const retryRequested =
     result.kind === 'retry' ||
     (row.side_effect_class !== 'unsafe' && result.kind === 'outcome_unknown');
@@ -135,7 +135,7 @@ export function createFailureNotificationCompletionStore(
             row.status === 'claimed' &&
             (result.kind === 'delivered' ||
               (result.kind === 'outcome_unknown' &&
-                row.possibly_dispatched !== true))
+                !(row.possibly_dispatched ?? false)))
           )
             throw new FailureNotificationStateError(
               'Predispatch completion result is incompatible',

@@ -11,7 +11,7 @@ export async function revokeRemovedFormAccess(
     (node) =>
       node.definition.key === 'core.form' &&
       node.definition.version === 1 &&
-      node.disabled !== true,
+      !(node.disabled ?? false),
   );
   await client.query(
     `update app.workflow_forms set access='members',capability_hash=null,revision=revision+1,updated_at=clock_timestamp()

@@ -180,7 +180,7 @@ export async function claimNodeAttemptDelivery(
             : branchContextSchema.safeParse(row.branch_context);
         if (branchContext !== undefined && !branchContext.success)
           throw new NodeAttemptStateCorruptError();
-        const scope = branchContext?.success === true ? branchContext.data : {};
+        const scope = branchContext?.data ?? {};
         const { branchPath, iterationPath } = scope;
 
         const claimed = await client.query<{

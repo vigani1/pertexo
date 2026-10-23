@@ -74,14 +74,14 @@ export async function recoverWorkflowRunInTransaction(
     throw new WorkflowRecoveryUnavailableError('evidence_unavailable');
   if (
     preview.effectRisk === 'possible_effects' &&
-    input.acknowledgePossibleEffects !== true
+    !(input.acknowledgePossibleEffects ?? false)
   )
     throw new WorkflowRecoveryUnavailableError(
       'effects_acknowledgement_required',
     );
   if (
     preview.effectRisk === 'unknown_outcome' &&
-    input.acknowledgeUnknownOutcome !== true
+    !(input.acknowledgeUnknownOutcome ?? false)
   )
     throw new WorkflowRecoveryUnavailableError(
       'unknown_outcome_acknowledgement_required',
@@ -126,8 +126,8 @@ export async function recoverWorkflowRunInTransaction(
         effectRisk: preview.effectRisk,
         effectsAcknowledged:
           preview.effectRisk === 'unknown_outcome'
-            ? input.acknowledgeUnknownOutcome === true
-            : input.acknowledgePossibleEffects === true,
+            ? (input.acknowledgeUnknownOutcome ?? false)
+            : (input.acknowledgePossibleEffects ?? false),
       },
     },
   );
@@ -186,8 +186,8 @@ export async function recoverWorkflowRunInTransaction(
       'workflowId',${metadata.run.workflowId}::text,'workflowVersionId',${metadata.run.workflowVersionId}::text,
       'targetNodeRunId',${preview.nodeRunId}::text,'targetNodeId',${preview.nodeId}::text,
       'reusedCount',${preview.reusedCount}::integer,'effectRisk',${preview.effectRisk}::text,
-      'acknowledgePossibleEffects',${input.acknowledgePossibleEffects === true}::boolean,
-      'acknowledgeUnknownOutcome',${input.acknowledgeUnknownOutcome === true}::boolean)`,
+      'acknowledgePossibleEffects',${input.acknowledgePossibleEffects ?? false}::boolean,
+      'acknowledgeUnknownOutcome',${input.acknowledgeUnknownOutcome ?? false}::boolean)`,
   });
   return {
     run: await requireWorkflowRunRecord(transaction, accepted.runId),

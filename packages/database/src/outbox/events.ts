@@ -121,13 +121,13 @@ function inspectCanonicalContainer(
   label: string,
 ): CanonicalContainer {
   const array = Array.isArray(value);
-  if (!array && constraints?.plainObjectsOnly === true) {
+  if (!array && (constraints?.plainObjectsOnly ?? false)) {
     const prototype = Object.getPrototypeOf(value) as object | null;
     if (prototype !== Object.prototype && prototype !== null)
       throw new BoundedJsonInvalidError(`${label} must contain plain objects`);
   }
   if (
-    constraints?.rejectSymbols === true &&
+    (constraints?.rejectSymbols ?? false) &&
     Object.getOwnPropertySymbols(value).length !== 0
   )
     throw new BoundedJsonInvalidError(

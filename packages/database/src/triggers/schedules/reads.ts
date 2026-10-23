@@ -170,11 +170,13 @@ async function readOccurrencePage(
   });
 }
 
+type ScheduleState = Record<string, unknown> & { fires: boolean | null };
+
 async function readScheduleState(
   client: PoolClient,
   read: TriggerRead,
-): Promise<Record<string, unknown>> {
-  const result = await client.query<Record<string, unknown>>(
+): Promise<ScheduleState> {
+  const result = await client.query<ScheduleState>(
     `select schedule.recurrence_kind,schedule.cron_expression,schedule.timezone,
             schedule.interval_minutes,schedule.anchor_at,schedule.next_fire_at,
             clock_timestamp() observed_at,
@@ -205,12 +207,12 @@ async function readDatabaseTime(client: PoolClient): Promise<Date> {
 
 /** Computed after the read transaction ends, so no connection waits on it. */
 function projectPersistedSchedule(
-  row: Record<string, unknown>,
+  row: ScheduleState,
   count: number,
 ): ScheduleFireTimes {
   const observedAt = z.date().parse(row.observed_at);
   // A schedule the scanner would not claim has no upcoming fire times.
-  if (row.fires !== true)
+  if (!(row.fires ?? false))
     return Object.freeze({ observedAt, items: Object.freeze([]) });
   const nextFireAt = z.date().parse(row.next_fire_at);
   const recurrence = parsePersistedScheduleRecurrence({

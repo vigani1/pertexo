@@ -105,9 +105,9 @@ export async function acceptVerifiedWebhookDelivery(
           transaction,
           verification,
           input.verifiedSecretVersionId,
-          { replaying: replay?.active === true },
+          { replaying: replay?.active ?? false },
         );
-        if (replay?.active === true) {
+        if (replay?.active) {
           const replayed = resolveExactReplay(replay, requestFingerprint);
           await insertWebhookDelivery(transaction, verification, {
             outcome: replayDeliveryOutcome(replayed),

@@ -276,7 +276,7 @@ export async function publishWorkflowDirectly(
   }>('select require_publish_approval from app.workspaces where id=$1', [
     input.workspaceId,
   ]);
-  if (policy.rows[0]?.require_publish_approval === true)
+  if (policy.rows[0]?.require_publish_approval ?? false)
     throw new PublicationReviewError(
       'required',
       'This workspace requires publication review. Request approval for the saved draft.',

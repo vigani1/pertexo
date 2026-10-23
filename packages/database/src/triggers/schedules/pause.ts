@@ -43,5 +43,5 @@ export async function claimedScheduleWorkflowPaused(
       and workflow_id=${workflow.workflow_id}
       and paused_at<=${scheduledAt}
     order by paused_at desc limit 1`);
-  return pauses.rows[0]?.paused === true;
+  return pauses.rows[0]?.paused ?? false;
 }

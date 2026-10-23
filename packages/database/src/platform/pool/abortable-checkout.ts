@@ -18,7 +18,7 @@ export async function acquireAbortablePoolClient(
 ): Promise<PoolClient> {
   // A caller can deliberately preserve a non-Error AbortSignal.reason.
   // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
-  if (signal?.aborted === true) return Promise.reject(abortReason());
+  if (signal?.aborted ?? false) return Promise.reject(abortReason());
   const pending = pool.connect();
   if (signal === undefined) return pending;
 

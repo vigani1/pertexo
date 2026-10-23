@@ -187,7 +187,7 @@ async function select(
     predicates.push(`w.id=${parameter(uuid.parse(input.workflowId))}::uuid`);
   // PostgreSQL text cannot contain NUL: this valid literal query can never
   // match a stored name, and must not be sent as an invalid text parameter.
-  if (filters.query?.includes('\0') === true) predicates.push('false');
+  if (filters.query?.includes('\0') ?? false) predicates.push('false');
   else if (filters.query !== undefined && filters.query !== '') {
     const pattern = `%${filters.query.replace(/[\\%_]/gu, (letter) => `\\${letter}`)}%`;
     // ASCII letters fold, as tag keys do; everything else matches literally.
