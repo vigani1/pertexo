@@ -27,16 +27,7 @@ export async function redispatchFailedOutbox(
     rows.rows[0] === undefined
       ? undefined
       : outboxRowSchema.parse(rows.rows[0]);
-  const outcome =
-    outbox === undefined
-      ? 'not_found'
-      : outbox.published_at !== null
-        ? 'already_published'
-        : outbox.failed_at === null
-          ? 'not_failed'
-          : input.dryRun
-            ? 'would_redispatch'
-            : 'redispatched';
+  const outcome = redispatchOutcome(outbox, input);
   if (outcome === 'redispatched')
     await transaction.db.execute(sql`
       update app.outbox_events
@@ -55,4 +46,14 @@ export async function redispatchFailedOutbox(
     result: { outcome, ...prior },
     auditMetadata: prior,
   };
+}
+
+function redispatchOutcome(
+  outbox: z.output<typeof outboxRowSchema> | undefined,
+  input: Readonly<{ dryRun: boolean }>,
+): string {
+  if (outbox === undefined) return 'not_found';
+  if (outbox.published_at !== null) return 'already_published';
+  if (outbox.failed_at === null) return 'not_failed';
+  return input.dryRun ? 'would_redispatch' : 'redispatched';
 }

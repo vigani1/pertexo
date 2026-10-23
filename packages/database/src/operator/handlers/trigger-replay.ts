@@ -21,14 +21,11 @@ export async function retryTriggerReconciliation(
   `);
   const workflow = rows.rows[0];
   const publishedVersionId = workflow?.published_version_id ?? null;
-  const outcome =
-    workflow === undefined
-      ? 'not_found'
-      : publishedVersionId === null
-        ? 'not_published'
-        : input.dryRun
-          ? 'would_retry'
-          : 'retry_requested';
+  const outcome = triggerReconciliationOutcome(
+    workflow,
+    publishedVersionId,
+    input,
+  );
 
   let outboxEventId: string | undefined;
   if (outcome === 'retry_requested' && publishedVersionId !== null)
@@ -76,16 +73,7 @@ export async function requestRunReplay(
     where run.workspace_id = ${transaction.workspaceId} and run.id = ${input.sourceRunId} and ${sql.raw(ordinaryRunSql('run'))}
   `);
   const found = rows.rows[0];
-  const outcome =
-    found === undefined
-      ? 'source_not_found'
-      : found.target_workflow_id === null
-        ? 'version_not_executable'
-        : found.target_workflow_id !== found.source_workflow_id
-          ? 'workflow_mismatch'
-          : input.dryRun
-            ? 'would_request'
-            : 'replay_requested';
+  const outcome = runReplayOutcome(found, input);
 
   let outboxEventId: string | undefined;
   if (found !== undefined && outcome === 'replay_requested') {
@@ -115,4 +103,29 @@ export async function requestRunReplay(
       workflowVersionId: input.workflowVersionId,
     }),
   };
+}
+
+function triggerReconciliationOutcome(
+  workflow: Readonly<{ published_version_id: string | null }> | undefined,
+  publishedVersionId: string | null,
+  input: Readonly<{ dryRun: boolean }>,
+): string {
+  if (workflow === undefined) return 'not_found';
+  if (publishedVersionId === null) return 'not_published';
+  return input.dryRun ? 'would_retry' : 'retry_requested';
+}
+function runReplayOutcome(
+  source:
+    | Readonly<{
+        source_workflow_id: string;
+        target_workflow_id: string | null;
+      }>
+    | undefined,
+  input: Readonly<{ dryRun: boolean }>,
+): string {
+  if (source === undefined) return 'source_not_found';
+  if (source.target_workflow_id === null) return 'version_not_executable';
+  if (source.target_workflow_id !== source.source_workflow_id)
+    return 'workflow_mismatch';
+  return input.dryRun ? 'would_request' : 'replay_requested';
 }

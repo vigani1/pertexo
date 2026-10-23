@@ -4,8 +4,15 @@ import { canonicalJson, type WorkflowGraph } from '@pertexo/workflow-model';
 
 import type { WorkflowExecutableCompiler } from './workflows/types.js';
 
-const byId = (left: { id: string }, right: { id: string }): number =>
-  left.id < right.id ? -1 : left.id > right.id ? 1 : 0;
+const byId = (left: { id: string }, right: { id: string }): number => {
+  if (left.id < right.id) {
+    return -1;
+  }
+  if (left.id > right.id) {
+    return 1;
+  }
+  return 0;
+};
 
 /** The graph without presentation: positions, labels and list order. */
 function executableShape(graph: WorkflowGraph): unknown {
