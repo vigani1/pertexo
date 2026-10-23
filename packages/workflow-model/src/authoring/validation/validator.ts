@@ -67,11 +67,11 @@ export class WorkflowAuthoringValidator {
     for (const key of limitNames) {
       const value = this.#limits[key];
       const maximum = budget[key];
-      if (
+      const invalidLimit =
         !Number.isSafeInteger(value) ||
         value < (key === 'maxQueued' || key === 'maxQueuedBytes' ? 0 : 1) ||
-        value > maximum
-      )
+        value > maximum;
+      if (invalidLimit)
         throw new RangeError(
           'Authoring validator options exceed operational bounds',
         );
@@ -260,8 +260,6 @@ export class WorkflowAuthoringValidator {
     let finished = false;
     let settled = false;
     let outcomeReason: AuthoringValidationUnavailableReason | undefined;
-    let ready = false;
-    let started = false;
     let deadline: ReturnType<typeof setTimeout>;
     let finishPromise: Promise<void> | undefined;
     const observeTermination = async (): Promise<boolean> => {
@@ -287,13 +285,12 @@ export class WorkflowAuthoringValidator {
       report?: GraphValidationResult,
     ): Promise<void> => {
       // A received report is provisional until termination and caller settlement.
-      if (
+      const cancellationOverridesResult =
         !settled &&
         (reason === 'canceled' || reason === 'closed') &&
         outcomeReason !== 'canceled' &&
-        outcomeReason !== 'closed'
-      )
-        outcomeReason = reason;
+        outcomeReason !== 'closed';
+      if (cancellationOverridesResult) outcomeReason = reason;
       if (finishPromise !== undefined) return finishPromise;
       finished = true;
       outcomeReason ??= reason;
@@ -305,17 +302,21 @@ export class WorkflowAuthoringValidator {
           outcomeReason = 'closed';
         settled = true;
         this.#clearPending(job);
-        if (!terminated)
+        if (!terminated) {
           job.reject(
             new AuthoringValidationUnavailableError('termination_failed'),
           );
-        else if (outcomeReason !== undefined)
+          return;
+        }
+        if (outcomeReason !== undefined) {
           job.reject(new AuthoringValidationUnavailableError(outcomeReason));
-        else if (report !== undefined) job.resolve(report);
-        else
-          job.reject(
-            new AuthoringValidationUnavailableError('invalid_response'),
-          );
+          return;
+        }
+        if (report !== undefined) {
+          job.resolve(report);
+          return;
+        }
+        job.reject(new AuthoringValidationUnavailableError('invalid_response'));
       })();
       return finishPromise;
     };
@@ -328,57 +329,18 @@ export class WorkflowAuthoringValidator {
     const onError = () => {
       if (!finished) void finish('worker_failed');
     };
-    const onMessage = (input: unknown) => {
-      if (finished) return;
-      try {
-        if (utf8ByteLength(JSON.stringify(input)) > budget.reportBytes + 256) {
-          void finish('report_limit');
-          return;
-        }
-        const parsed = replySchema.safeParse(input);
-        if (!parsed.success) {
-          void finish('invalid_response');
-          return;
-        }
-        const message = parsed.data;
-        if (message.kind === 'ready') {
-          if (ready) {
-            void finish('invalid_response');
-            return;
-          }
-          ready = true;
-          clearTimeout(deadline);
-          deadline = setTimeout(() => {
-            void finish('parse_timeout');
-          }, this.#limits.parseMs);
-          worker.postMessage({ id: job.id, ...job.payload });
-          job.payload = undefined;
-          return;
-        }
-        if (message.id !== job.id || !ready) {
-          void finish('invalid_response');
-          return;
-        }
-        if (message.kind === 'started') {
-          if (started) {
-            void finish('invalid_response');
-            return;
-          }
-          started = true;
-        } else if (!started) void finish('invalid_response');
-        else if (message.kind === 'unavailable') void finish(message.reason);
-        else {
-          assertReportBudget(message.report);
-          void finish(undefined, message.report);
-        }
-      } catch (error: unknown) {
-        void finish(
-          error instanceof AuthoringValidationUnavailableError
-            ? error.reason
-            : 'invalid_response',
-        );
-      }
-    };
+    const onMessage = authoringMessageHandler({
+      job,
+      worker,
+      isFinished: () => finished,
+      finish,
+      beginParsing: () => {
+        clearTimeout(deadline);
+        deadline = setTimeout(() => {
+          void finish('parse_timeout');
+        }, this.#limits.parseMs);
+      },
+    });
     worker.on('error', onError);
     worker.on('message', onMessage);
     worker.once('exit', () => {
@@ -399,4 +361,78 @@ export class WorkflowAuthoringValidator {
     job.signal?.addEventListener('abort', job.abort, { once: true });
     if (job.signal?.aborted) void finish('canceled');
   }
+}
+
+function authoringMessageHandler({
+  job,
+  worker,
+  isFinished,
+  beginParsing,
+  finish,
+}: Readonly<{
+  job: PendingBatch;
+  worker: Worker;
+  isFinished: () => boolean;
+  beginParsing: () => void;
+  finish: (
+    reason?: AuthoringValidationUnavailableReason,
+    report?: GraphValidationResult,
+  ) => Promise<void>;
+}>): (input: unknown) => void {
+  let ready = false;
+  let started = false;
+  return (input: unknown): void => {
+    if (isFinished()) return;
+    try {
+      if (utf8ByteLength(JSON.stringify(input)) > budget.reportBytes + 256) {
+        void finish('report_limit');
+        return;
+      }
+      const parsed = replySchema.safeParse(input);
+      if (!parsed.success) {
+        void finish('invalid_response');
+        return;
+      }
+      const message = parsed.data;
+      if (message.kind === 'ready') {
+        if (ready) {
+          void finish('invalid_response');
+          return;
+        }
+        ready = true;
+        beginParsing();
+        worker.postMessage({ id: job.id, ...job.payload });
+        job.payload = undefined;
+        return;
+      }
+      if (message.id !== job.id || !ready) {
+        void finish('invalid_response');
+        return;
+      }
+      if (message.kind === 'started') {
+        if (started) {
+          void finish('invalid_response');
+          return;
+        }
+        started = true;
+        return;
+      }
+      if (!started) {
+        void finish('invalid_response');
+        return;
+      }
+      if (message.kind === 'unavailable') {
+        void finish(message.reason);
+        return;
+      }
+      assertReportBudget(message.report);
+      void finish(undefined, message.report);
+    } catch (error: unknown) {
+      void finish(
+        error instanceof AuthoringValidationUnavailableError
+          ? error.reason
+          : 'invalid_response',
+      );
+    }
+  };
 }

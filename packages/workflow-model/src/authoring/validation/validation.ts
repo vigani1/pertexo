@@ -88,6 +88,82 @@ export function validateAuthoringBatch(
           `${definition.key}\u0000${String(definition.version)}`,
       ),
   );
+  const inspectMapping = mappingInspector(workspaceVariableNames);
+  const issues: GraphValidationIssue[] = [];
+  if (graph.callable !== undefined) {
+    const issue = inspectMapping(graph.callable.result, '$.callable.result', {
+      supportsExpressions: true,
+    });
+    if (issue !== undefined) {
+      admitIssue(issue);
+      issues.push(issue);
+    }
+  }
+  const pending: { graph: WorkflowGraph; path: string }[] = [
+    { graph, path: '$' },
+  ];
+  while (pending.length > 0) {
+    const entry = pending.pop();
+    if (entry === undefined) continue;
+    for (const node of entry.graph.nodes) {
+      const nodePath = `${entry.path}.nodes.${node.id}`;
+      if (node.structured !== undefined)
+        pending.push({
+          graph: node.structured.body,
+          path: `${nodePath}.structured.body`,
+        });
+      const coordinationIssue = inspectCoordination(node, nodePath);
+      if (coordinationIssue !== undefined) {
+        admitIssue(coordinationIssue);
+        issues.push(coordinationIssue);
+        if (issues.length === WORKFLOW_VALIDATION_MAX_ISSUES) break;
+      }
+      const supportsExpressions = expressionDefinitions.has(
+        `${node.definition.key}\u0000${String(node.definition.version)}`,
+      );
+      for (const [key, source] of Object.entries(node.inputMappings)) {
+        const issue = inspectMapping(
+          source,
+          `${nodePath}.inputMappings.${key}`,
+          {
+            supportsExpressions: supportsExpressions,
+            localGraph: entry.graph,
+            nodeId: node.id,
+            externalHttp:
+              policies.definitions
+                .find(
+                  (definition) =>
+                    definition.definition.key === node.definition.key &&
+                    definition.definition.version === node.definition.version,
+                )
+                ?.capabilities?.includes('external_http') ?? false,
+          },
+        );
+        if (issue === undefined) continue;
+        admitIssue(issue);
+        issues.push(issue);
+        if (issues.length === WORKFLOW_VALIDATION_MAX_ISSUES) break;
+      }
+      if (issues.length === WORKFLOW_VALIDATION_MAX_ISSUES) break;
+    }
+    if (issues.length === WORKFLOW_VALIDATION_MAX_ISSUES) break;
+  }
+  const report: GraphValidationResult =
+    issues.length === 0
+      ? structural
+      : {
+          ok: false,
+          issues,
+          expandedInvocations: structural.expandedInvocations,
+          worstCaseLoopIterations: structural.worstCaseLoopIterations,
+        };
+  assertReportBudget(report);
+  return report;
+}
+
+function mappingInspector(
+  workspaceVariableNames: readonly string[] | undefined,
+) {
   const names =
     workspaceVariableNames === undefined
       ? undefined
@@ -124,10 +200,17 @@ export function validateAuthoringBatch(
   function inspectMapping(
     source: ValueSource,
     path: string,
-    supportsExpressions: boolean,
-    localGraph?: WorkflowGraph,
-    nodeId?: string,
-    externalHttp = false,
+    {
+      supportsExpressions,
+      localGraph,
+      nodeId,
+      externalHttp = false,
+    }: Readonly<{
+      supportsExpressions: boolean;
+      localGraph?: WorkflowGraph;
+      nodeId?: string;
+      externalHttp?: boolean;
+    }>,
   ): GraphValidationIssue | undefined {
     let message = '';
     let code: GraphValidationIssue['code'] = 'invalid_mapping';
@@ -145,103 +228,43 @@ export function validateAuthoringBatch(
           code = 'invalid_mapping';
           message = missingVariableMessage(validation.references.requiredNames);
           message ||=
-            callbackReferenceIssue(
-              validation.callbacks,
-              localGraph,
-              nodeId,
-              externalHttp,
-            ) ?? '';
+            callbackReferenceIssue(validation.callbacks, localGraph, nodeId, {
+              externalHttp: externalHttp,
+            }) ?? '';
         }
       }
     }
     return message === '' ? undefined : { code, path, message };
   }
-  const issues: GraphValidationIssue[] = [];
-  if (graph.callable !== undefined) {
-    const issue = inspectMapping(
-      graph.callable.result,
-      '$.callable.result',
-      true,
-    );
-    if (issue !== undefined) {
-      admitIssue(issue);
-      issues.push(issue);
-    }
-  }
-  const pending: { graph: WorkflowGraph; path: string }[] = [
-    { graph, path: '$' },
-  ];
-  while (pending.length > 0) {
-    const entry = pending.pop();
-    if (entry === undefined) continue;
-    for (const node of entry.graph.nodes) {
-      const nodePath = `${entry.path}.nodes.${node.id}`;
-      if (node.structured !== undefined)
-        pending.push({
-          graph: node.structured.body,
-          path: `${nodePath}.structured.body`,
-        });
-      if (
-        isEventCoordinationTrigger(node.definition) &&
-        node.config.coordination !== undefined
-      ) {
-        const coordination = eventCoordinationPolicySchema.safeParse(
-          node.config.coordination,
-        );
-        const message = !coordination.success
-          ? 'Correct the event coordination settings.'
-          : coordination.data.key.kind === 'expression'
-            ? inspectEventCoordinationExpression(
-                coordination.data.key.expression,
-              )
-            : undefined;
-        if (message !== undefined) {
-          const issue = {
-            code: 'invalid_expression' as const,
-            path: `${nodePath}.config.coordination.key`,
-            message,
-          };
-          admitIssue(issue);
-          issues.push(issue);
-          if (issues.length === WORKFLOW_VALIDATION_MAX_ISSUES) break;
-        }
-      }
-      const supportsExpressions = expressionDefinitions.has(
-        `${node.definition.key}\u0000${String(node.definition.version)}`,
-      );
-      for (const [key, source] of Object.entries(node.inputMappings)) {
-        const issue = inspectMapping(
-          source,
-          `${nodePath}.inputMappings.${key}`,
-          supportsExpressions,
-          entry.graph,
-          node.id,
-          policies.definitions
-            .find(
-              (definition) =>
-                definition.definition.key === node.definition.key &&
-                definition.definition.version === node.definition.version,
-            )
-            ?.capabilities?.includes('external_http') === true,
-        );
-        if (issue === undefined) continue;
-        admitIssue(issue);
-        issues.push(issue);
-        if (issues.length === WORKFLOW_VALIDATION_MAX_ISSUES) break;
-      }
-      if (issues.length === WORKFLOW_VALIDATION_MAX_ISSUES) break;
-    }
-    if (issues.length === WORKFLOW_VALIDATION_MAX_ISSUES) break;
-  }
-  const report: GraphValidationResult =
-    issues.length === 0
-      ? structural
-      : {
-          ok: false,
-          issues,
-          expandedInvocations: structural.expandedInvocations,
-          worstCaseLoopIterations: structural.worstCaseLoopIterations,
-        };
-  assertReportBudget(report);
-  return report;
+  return inspectMapping;
+}
+
+function coordinationMessage(
+  coordination: ReturnType<typeof eventCoordinationPolicySchema.safeParse>,
+): string | undefined {
+  if (!coordination.success) return 'Correct the event coordination settings.';
+  if (coordination.data.key.kind === 'expression')
+    return inspectEventCoordinationExpression(coordination.data.key.expression);
+  return undefined;
+}
+
+function inspectCoordination(
+  node: WorkflowGraph['nodes'][number],
+  nodePath: string,
+): GraphValidationIssue | undefined {
+  if (
+    !isEventCoordinationTrigger(node.definition) ||
+    node.config.coordination === undefined
+  )
+    return undefined;
+  const coordination = eventCoordinationPolicySchema.safeParse(
+    node.config.coordination,
+  );
+  const message = coordinationMessage(coordination);
+  if (message === undefined) return undefined;
+  return {
+    code: 'invalid_expression',
+    path: `${nodePath}.config.coordination.key`,
+    message,
+  };
 }

@@ -31,7 +31,8 @@ export type FailureRoutingInspection =
   | Readonly<{ kind: 'ordinary' }>
   | Readonly<{ kind: 'invalid'; message: string }>
   | Readonly<{ kind: 'routed'; value: WorkflowFailureRoutes }>;
-const invalid = (message: string): FailureRoutingInspection => ({
+type InvalidRouting = Extract<FailureRoutingInspection, { kind: 'invalid' }>;
+const invalid = (message: string): InvalidRouting => ({
   kind: 'invalid',
   message,
 });
@@ -80,64 +81,17 @@ export function inspectWorkflowFailureRoutes(
   const owners = new Map<string, string>();
   const routes = new Map<string, WorkflowFailureRoute>();
   for (const failure of failures) {
-    const source = nodes.get(failure.source.nodeId);
-    if (
-      source === undefined ||
-      !isWorkflowFailureSource(source.definition, source.config) ||
-      source.structured !== undefined
-    )
-      return invalid('Only ordinary actions can own a failure link.');
-    if (routes.has(source.id))
-      return invalid('A step can have only one failure link.');
-    const handler: string[] = [];
-    let next: string | undefined = failure.target.nodeId;
-    while (next !== undefined) {
-      const node = nodes.get(next);
-      if (node === undefined || node.id === source.id || owners.has(node.id))
-        return invalid(
-          'Failure handlers cannot share steps, cycle or return to their source.',
-        );
-      if (
-        (!isWorkflowFailureSource(node.definition) &&
-          !(
-            node.definition.key === 'core.terminate' &&
-            node.definition.version === 1
-          )) ||
-        node.structured !== undefined ||
-        isHumanTaskDefinition(node.definition)
-      )
-        return invalid(
-          'Failure handlers contain sequential actions and may end in Stop run.',
-        );
-      if (node.disabled === true)
-        return invalid('Failure handler steps cannot be disabled.');
-      if ((incoming.get(node.id)?.length ?? 0) !== 1)
-        return invalid(
-          'A handler step must have one incoming link, with no normal-path convergence.',
-        );
-      const after = outgoing.get(node.id) ?? [];
-      if (
-        after.length > 1 ||
-        after.some(({ source }) => source.port === WORKFLOW_FAILURE_PORT)
-      )
-        return invalid(
-          'Failure handlers cannot branch or own another handler.',
-        );
-      if (node.definition.key === 'core.terminate' && after.length > 0)
-        return invalid('Stop run must be a leaf.');
-      owners.set(node.id, source.id);
-      handler.push(node.id);
-      next = after[0]?.target.nodeId;
-    }
-    const sink = handler.at(-1);
-    if (sink === undefined) return invalid('A failure link needs a handler.');
-    routes.set(source.id, {
-      sourceNodeId: source.id,
-      entryNodeId: failure.target.nodeId,
-      sinkNodeId: sink,
-      handlerNodeIds: handler,
+    const route = inspectHandler(failure, {
+      nodes,
+      incoming,
+      outgoing,
+      owners,
+      routes,
     });
+    if ('kind' in route) return route;
+    routes.set(route.sourceNodeId, route);
   }
+
   if ([...routes.keys()].some((sourceId) => owners.has(sourceId)))
     return invalid('A failure handler cannot own another failure link.');
   const main = inspectWorkflowDecisionTree({
@@ -153,16 +107,81 @@ export function inspectWorkflowFailureRoutes(
     return invalid(
       'Failure links require a root decision tree with Condition, Approval and leaf Stop run; joins, fan-out, loops, Wait and Calls are unsupported.',
     );
+  const mappingIssue = inspectHandlerMappings(graph, owners, routes);
+  if (mappingIssue !== undefined) return mappingIssue;
+  return { kind: 'routed', value: { main, routes, handlerOwners: owners } };
+}
+
+type RoutingNode = FailureRoutingGraph['nodes'][number];
+interface HandlerContext {
+  nodes: ReadonlyMap<string, RoutingNode>;
+  incoming: ReadonlyMap<string, readonly WorkflowEdge[]>;
+  outgoing: ReadonlyMap<string, readonly WorkflowEdge[]>;
+  owners: Map<string, string>;
+  routes: ReadonlyMap<string, WorkflowFailureRoute>;
+}
+
+function inspectHandler(
+  failure: WorkflowEdge,
+  context: HandlerContext,
+): WorkflowFailureRoute | InvalidRouting {
+  const { nodes, incoming, outgoing, owners, routes } = context;
+  const source = nodes.get(failure.source.nodeId);
+  if (
+    source === undefined ||
+    !isWorkflowFailureSource(source.definition, source.config) ||
+    source.structured !== undefined
+  )
+    return invalid('Only ordinary actions can own a failure link.');
+  if (routes.has(source.id))
+    return invalid('A step can have only one failure link.');
+  const handler: string[] = [];
+  let next: string | undefined = failure.target.nodeId;
+  while (next !== undefined) {
+    const node = nodes.get(next);
+    if (node === undefined || node.id === source.id || owners.has(node.id))
+      return invalid(
+        'Failure handlers cannot share steps, cycle or return to their source.',
+      );
+    const permissionIssue = handlerPermissionIssue(node, incoming);
+    if (permissionIssue !== undefined) return permissionIssue;
+    const after = outgoing.get(node.id) ?? [];
+    if (
+      after.length > 1 ||
+      after.some(({ source }) => source.port === WORKFLOW_FAILURE_PORT)
+    )
+      return invalid('Failure handlers cannot branch or own another handler.');
+    if (node.definition.key === 'core.terminate' && after.length > 0)
+      return invalid('Stop run must be a leaf.');
+    owners.set(node.id, source.id);
+    handler.push(node.id);
+    next = after[0]?.target.nodeId;
+  }
+  const sink = handler.at(-1);
+  if (sink === undefined) return invalid('A failure link needs a handler.');
+  return {
+    sourceNodeId: source.id,
+    entryNodeId: failure.target.nodeId,
+    sinkNodeId: sink,
+    handlerNodeIds: handler,
+  };
+}
+
+function inspectHandlerMappings(
+  graph: FailureRoutingGraph,
+  owners: ReadonlyMap<string, string>,
+  routes: ReadonlyMap<string, WorkflowFailureRoute>,
+): InvalidRouting | undefined {
   for (const node of graph.nodes)
     for (const mapping of Object.values(node.inputMappings)) {
       const sourceId = owners.get(node.id);
       const route = sourceId === undefined ? undefined : routes.get(sourceId);
-      if (
+      const invalidFailureMapping =
         mapping.kind === 'node_failure' &&
         (route?.entryNodeId !== node.id ||
           mapping.nodeId !== sourceId ||
-          !WORKFLOW_FAILURE_PATHS.includes(mapping.path ?? ''))
-      )
+          !WORKFLOW_FAILURE_PATHS.includes(mapping.path ?? ''));
+      if (invalidFailureMapping)
         return invalid(
           'Only the handler entry can read its source’s allowlisted failure fields.',
         );
@@ -175,5 +194,30 @@ export function inspectWorkflowFailureRoutes(
           'A failed source has failure fields, not a successful output.',
         );
     }
-  return { kind: 'routed', value: { main, routes, handlerOwners: owners } };
+  return undefined;
+}
+
+function handlerPermissionIssue(
+  node: RoutingNode,
+  incoming: ReadonlyMap<string, readonly WorkflowEdge[]>,
+): InvalidRouting | undefined {
+  const unsupportedHandler =
+    (!isWorkflowFailureSource(node.definition) &&
+      !(
+        node.definition.key === 'core.terminate' &&
+        node.definition.version === 1
+      )) ||
+    node.structured !== undefined ||
+    isHumanTaskDefinition(node.definition);
+  if (unsupportedHandler)
+    return invalid(
+      'Failure handlers contain sequential actions and may end in Stop run.',
+    );
+  if (node.disabled ?? false)
+    return invalid('Failure handler steps cannot be disabled.');
+  if ((incoming.get(node.id)?.length ?? 0) !== 1)
+    return invalid(
+      'A handler step must have one incoming link, with no normal-path convergence.',
+    );
+  return undefined;
 }

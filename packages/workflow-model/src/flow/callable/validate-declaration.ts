@@ -28,13 +28,13 @@ export function callableDeclarationIssues(
   const entries = graph.nodes.filter(({ definition }) =>
     isWorkflowTriggerKey(definition.key),
   );
-  if (
+  const invalidEntry =
     entries.length !== 1 ||
     !['core.manual', 'core.webhook'].includes(
       entries[0]?.definition.key ?? '',
     ) ||
-    entries[0]?.disabled === true
-  )
+    (entries[0]?.disabled ?? false);
+  if (invalidEntry)
     issues.push({
       code: 'invalid_graph',
       path: '$.callable',

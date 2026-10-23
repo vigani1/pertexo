@@ -46,19 +46,23 @@ it('offers only configured enabled callback Waits reachable on this graph level'
 });
 it('rejects data-step delivery, missing targets and a secret for URL-only authentication', () => {
   const refs = [{ nodeId: 'wait-1', field: 'url' as const }];
-  expect(callbackReferenceIssue(refs, graph, 'send', true)).toBeUndefined();
-  expect(callbackReferenceIssue(refs, graph, 'send', false)).toMatch(
-    /not saved/u,
-  );
   expect(
-    callbackReferenceIssue(refs, { ...graph, edges: [] }, 'send', true),
+    callbackReferenceIssue(refs, graph, 'send', { externalHttp: true }),
+  ).toBeUndefined();
+  expect(
+    callbackReferenceIssue(refs, graph, 'send', { externalHttp: false }),
+  ).toMatch(/not saved/u);
+  expect(
+    callbackReferenceIssue(refs, { ...graph, edges: [] }, 'send', {
+      externalHttp: true,
+    }),
   ).toMatch(/same workflow or loop body/u);
   expect(
     callbackReferenceIssue(
       [{ nodeId: 'wait-1', field: 'secret' }],
       graph,
       'send',
-      true,
+      { externalHttp: true },
     ),
   ).toMatch(/secret URL only/u);
 });
@@ -71,10 +75,10 @@ it('bounds prepared identities per sender and leaves ordinary mappings alone', (
       })),
       graph,
       'send',
-      true,
+      { externalHttp: true },
     ),
   ).toMatch(/at most 16/u);
   expect(
-    callbackReferenceIssue([], undefined, undefined, false),
+    callbackReferenceIssue([], undefined, undefined, { externalHttp: false }),
   ).toBeUndefined();
 });

@@ -67,14 +67,13 @@ export async function resolveValueSource(
       message: 'expression evaluator is not configured',
     };
   const result = await evaluator.evaluate(request);
-  return result.kind === 'error'
-    ? {
-        kind: 'error',
-        code: 'expression_error',
-        message: result.message,
-        expression: result,
-      }
-    : result.kind === 'missing'
-      ? result
-      : { kind: 'value', value: result.value };
+  if (result.kind === 'error')
+    return {
+      kind: 'error',
+      code: 'expression_error',
+      message: result.message,
+      expression: result,
+    };
+  if (result.kind === 'missing') return result;
+  return { kind: 'value', value: result.value };
 }

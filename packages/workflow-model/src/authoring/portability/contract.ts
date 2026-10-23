@@ -36,41 +36,60 @@ function inspectJsonText(text: string): void {
   const stack: JsonFrame[] = [];
   for (let index = 0; index < text.length; index += 1) {
     const character = text[index];
-    if (character === '"') {
-      const start = index;
-      index += 1;
-      while (index < text.length && text[index] !== '"') {
-        if (text[index] === '\\') index += 1;
-        index += 1;
-      }
-      if (index >= text.length)
-        throw new PortableJsonError('portable_json_invalid');
-      const current = stack.at(-1);
-      if (current?.object === true && current.keyExpected) {
-        const key: unknown = JSON.parse(text.slice(start, index + 1));
-        if (typeof key !== 'string' || current.keys.has(key))
+    switch (character) {
+      case '"':
+        index = inspectJsonString(text, index, stack.at(-1));
+        break;
+      case '{':
+      case '[':
+        stack.push({
+          object: character === '{',
+          keys: new Set(),
+          keyExpected: true,
+        });
+        if (stack.length > WORKFLOW_PORTABILITY_LIMITS.inputDepth)
+          throw new PortableJsonError('portable_json_limit');
+        break;
+      case '}':
+      case ']': {
+        const current = stack.pop();
+        if (current?.object !== (character === '}'))
           throw new PortableJsonError('portable_json_invalid');
-        current.keys.add(key);
-        current.keyExpected = false;
+        break;
       }
-    } else if (character === '{' || character === '[') {
-      stack.push({
-        object: character === '{',
-        keys: new Set(),
-        keyExpected: true,
-      });
-      if (stack.length > WORKFLOW_PORTABILITY_LIMITS.inputDepth)
-        throw new PortableJsonError('portable_json_limit');
-    } else if (character === '}' || character === ']') {
-      const current = stack.pop();
-      if (current?.object !== (character === '}'))
-        throw new PortableJsonError('portable_json_invalid');
-    } else if (character === ',') {
-      const current = stack.at(-1);
-      if (current?.object === true) current.keyExpected = true;
+      case ',': {
+        const current = stack.at(-1);
+        if (current?.object) current.keyExpected = true;
+        break;
+      }
+      case undefined:
+      default:
+        break;
     }
   }
   if (stack.length !== 0) throw new PortableJsonError('portable_json_invalid');
+}
+
+function inspectJsonString(
+  text: string,
+  start: number,
+  current: JsonFrame | undefined,
+): number {
+  let index = start + 1;
+  while (index < text.length && text[index] !== '"') {
+    if (text[index] === '\\') index += 1;
+    index += 1;
+  }
+  if (index >= text.length)
+    throw new PortableJsonError('portable_json_invalid');
+  if (current?.object && current.keyExpected) {
+    const key: unknown = JSON.parse(text.slice(start, index + 1));
+    if (typeof key !== 'string' || current.keys.has(key))
+      throw new PortableJsonError('portable_json_invalid');
+    current.keys.add(key);
+    current.keyExpected = false;
+  }
+  return index;
 }
 
 /** Shared browser/HTTP raw-file admission, never a tolerant JSON reader. */

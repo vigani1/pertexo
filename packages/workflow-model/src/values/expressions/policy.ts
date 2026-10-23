@@ -176,51 +176,10 @@ export const JSONATA_EVALUATOR_DIAGNOSTICS = Object.freeze({
  */
 export function projectExpressionContext(
   value: unknown,
-  readsVariables = true,
+  { readsVariables = true }: Readonly<{ readsVariables?: boolean }> = {},
 ): ExpressionContext {
   try {
-    if (value === null || typeof value !== 'object') throw new TypeError();
-    const runInputDescriptor = Object.getOwnPropertyDescriptor(
-      value,
-      'runInput',
-    );
-    const nodeOutputsDescriptor = Object.getOwnPropertyDescriptor(
-      value,
-      'nodeOutputs',
-    );
-    if (
-      runInputDescriptor === undefined ||
-      !('value' in runInputDescriptor) ||
-      nodeOutputsDescriptor === undefined ||
-      !('value' in nodeOutputsDescriptor)
-    )
-      throw new TypeError();
-    const runInputValue: unknown = runInputDescriptor.value;
-    const nodeOutputsValue: unknown = nodeOutputsDescriptor.value;
-    const variablesDescriptor = readsVariables
-      ? Object.getOwnPropertyDescriptor(value, 'variables')
-      : undefined;
-    if (variablesDescriptor !== undefined && !('value' in variablesDescriptor))
-      throw new TypeError();
-    const variablesValue: unknown = variablesDescriptor?.value;
-    const loopDescriptor = Object.getOwnPropertyDescriptor(value, 'loop');
-    if (loopDescriptor !== undefined && !('value' in loopDescriptor))
-      throw new TypeError();
-    const loopValue: unknown = loopDescriptor?.value;
-    const executionDescriptor = Object.getOwnPropertyDescriptor(
-      value,
-      'execution',
-    );
-    if (executionDescriptor !== undefined && !('value' in executionDescriptor))
-      throw new TypeError();
-    const executionValue: unknown = executionDescriptor?.value;
-    const canonical = normalizeJson({
-      ...(executionValue === undefined ? {} : { execution: executionValue }),
-      runInput: runInputValue,
-      nodeOutputs: nodeOutputsValue,
-      ...(variablesValue === undefined ? {} : { variables: variablesValue }),
-      ...(loopValue === undefined ? {} : { loop: loopValue }),
-    });
+    const canonical = readExpressionContext(value, { readsVariables });
     if (!isJsonObject(canonical)) throw new TypeError();
     const variables =
       canonical.variables === undefined
@@ -230,36 +189,15 @@ export function projectExpressionContext(
     const nodeOutputs = canonical.nodeOutputs;
     const loop = canonical.loop;
     const execution = canonical.execution;
-    let executionBinding: ExpressionContext['execution'];
-    if (execution !== undefined) {
-      if (!isJsonObject(execution)) throw new TypeError();
-      const callbacks = execution.callbacks;
-      if (callbacks === undefined || !isJsonObject(callbacks))
-        throw new TypeError();
-      const bindings = Object.entries(callbacks).map(([id, entry]) => {
-        if (
-          !isJsonObject(entry) ||
-          typeof entry.url !== 'string' ||
-          (entry.secret !== undefined && typeof entry.secret !== 'string')
-        )
-          throw new TypeError();
-        return [
-          id,
-          {
-            url: entry.url,
-            ...(entry.secret === undefined ? {} : { secret: entry.secret }),
-          },
-        ] as const;
-      });
-      executionBinding = { callbacks: Object.fromEntries(bindings) };
-    }
-    if (
+    const executionBinding =
+      execution === undefined ? undefined : readExecutionBinding(execution);
+
+    const invalidContext =
       runInput === undefined ||
       nodeOutputs === undefined ||
       !isJsonObject(nodeOutputs) ||
-      (loop !== undefined && !isJsonObject(loop))
-    )
-      throw new TypeError();
+      (loop !== undefined && !isJsonObject(loop));
+    if (invalidContext) throw new TypeError();
     return {
       runInput,
       nodeOutputs,
@@ -277,4 +215,69 @@ export function projectExpressionContext(
 export function validateExpression(source: string): ExpressionValidation {
   const inspected = inspectExpression(source);
   return inspected.kind === 'valid' ? { kind: 'valid' } : inspected;
+}
+
+function readExecutionBinding(
+  execution: JsonValue,
+): NonNullable<ExpressionContext['execution']> {
+  if (!isJsonObject(execution)) throw new TypeError();
+  const callbacks = execution.callbacks;
+  if (callbacks === undefined || !isJsonObject(callbacks))
+    throw new TypeError();
+  const bindings = Object.entries(callbacks).map(
+    ([id, entry]) => [id, readCallbackBinding(entry)] as const,
+  );
+  return { callbacks: Object.fromEntries(bindings) };
+}
+
+function readExpressionContext(
+  value: unknown,
+  { readsVariables }: Readonly<{ readsVariables: boolean }>,
+): JsonValue {
+  if (value === null || typeof value !== 'object') throw new TypeError();
+  const runInputDescriptor = Object.getOwnPropertyDescriptor(value, 'runInput');
+  const nodeOutputsDescriptor = Object.getOwnPropertyDescriptor(
+    value,
+    'nodeOutputs',
+  );
+  const missingInputs =
+    runInputDescriptor === undefined ||
+    !('value' in runInputDescriptor) ||
+    nodeOutputsDescriptor === undefined ||
+    !('value' in nodeOutputsDescriptor);
+  if (missingInputs) throw new TypeError();
+  const runInputValue: unknown = runInputDescriptor.value;
+  const nodeOutputsValue: unknown = nodeOutputsDescriptor.value;
+  const variablesValue = readsVariables
+    ? contextProperty(value, 'variables')
+    : undefined;
+  const loopValue = contextProperty(value, 'loop');
+  const executionValue = contextProperty(value, 'execution');
+  return normalizeJson({
+    ...(executionValue === undefined ? {} : { execution: executionValue }),
+    runInput: runInputValue,
+    nodeOutputs: nodeOutputsValue,
+    ...(variablesValue === undefined ? {} : { variables: variablesValue }),
+    ...(loopValue === undefined ? {} : { loop: loopValue }),
+  });
+}
+
+function contextProperty(value: object, key: string): unknown {
+  const descriptor = Object.getOwnPropertyDescriptor(value, key);
+  if (descriptor !== undefined && !('value' in descriptor))
+    throw new TypeError();
+  return descriptor?.value;
+}
+
+function readCallbackBinding(entry: JsonValue): CallbackBindings[string] {
+  if (
+    !isJsonObject(entry) ||
+    typeof entry.url !== 'string' ||
+    (entry.secret !== undefined && typeof entry.secret !== 'string')
+  )
+    throw new TypeError();
+  return {
+    url: entry.url,
+    ...(entry.secret === undefined ? {} : { secret: entry.secret }),
+  };
 }

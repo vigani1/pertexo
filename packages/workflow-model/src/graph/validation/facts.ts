@@ -67,19 +67,12 @@ export function inspectGraphFacts(
       !Array.isArray(callable)
     ) {
       const result = (callable as Record<string, unknown>).result;
-      if (
-        result !== null &&
-        typeof result === 'object' &&
-        !Array.isArray(result) &&
-        (result as Record<string, unknown>).kind === 'literal'
-      ) {
-        const issue = valueDepthFailure(
-          (result as Record<string, unknown>).value,
-          `${current.path}.callable.result.value`,
-          limits.jsonValueDepth,
-        );
-        if (issue !== undefined) return issue;
-      }
+      const issue = literalDepthFailure(
+        result,
+        `${current.path}.callable.result.value`,
+        limits.jsonValueDepth,
+      );
+      if (issue !== undefined) return issue;
     }
     const graphNodes: unknown = graph.nodes;
     if (!Array.isArray(graphNodes)) continue;
@@ -89,49 +82,85 @@ export function inspectGraphFacts(
       if (node === null || typeof node !== 'object' || Array.isArray(node))
         continue;
       const record = node as Record<string, unknown>;
-      if (record.config !== undefined) {
-        const issue = valueDepthFailure(
-          record.config,
-          `${nodePath}.config`,
-          limits.jsonValueDepth,
-        );
-        if (issue !== undefined) return issue;
-      }
-      const mappings = record.inputMappings;
-      if (
-        mappings !== null &&
-        typeof mappings === 'object' &&
-        !Array.isArray(mappings)
-      )
-        for (const key of Object.keys(mappings)) {
-          const mappingPath = `${nodePath}.inputMappings.${key}`;
-          const mapping = (mappings as Record<string, unknown>)[key];
-          if (
-            mapping !== null &&
-            typeof mapping === 'object' &&
-            !Array.isArray(mapping) &&
-            (mapping as Record<string, unknown>).kind === 'literal'
-          ) {
-            const issue = valueDepthFailure(
-              (mapping as Record<string, unknown>).value,
-              `${mappingPath}.value`,
-              limits.jsonValueDepth,
-            );
-            if (issue !== undefined) return issue;
-          }
-        }
-      const structured = record.structured;
-      if (
-        structured !== null &&
-        typeof structured === 'object' &&
-        !Array.isArray(structured)
-      )
-        graphs.push({
-          value: (structured as Record<string, unknown>).body,
-          path: `${nodePath}.structured.body`,
-          depth: current.depth + 1,
-        });
+      const issue = inspectNodeFacts(record, {
+        nodePath,
+        depth: current.depth,
+        graphs,
+        limits,
+      });
+      if (issue !== undefined) return issue;
     }
   }
+  return undefined;
+}
+
+function inspectNodeFacts(
+  record: Record<string, unknown>,
+  {
+    nodePath,
+    depth,
+    graphs,
+    limits,
+  }: Readonly<{
+    nodePath: string;
+    depth: number;
+    graphs: { value: unknown; path: string; depth: number }[];
+    limits: WorkflowGraphAdmissionLimits;
+  }>,
+): WorkflowGraphAdmissionFailure | undefined {
+  if (record.config !== undefined) {
+    const issue = valueDepthFailure(
+      record.config,
+      `${nodePath}.config`,
+      limits.jsonValueDepth,
+    );
+    if (issue !== undefined) return issue;
+  }
+  const mappings = record.inputMappings;
+  if (
+    mappings !== null &&
+    typeof mappings === 'object' &&
+    !Array.isArray(mappings)
+  )
+    for (const key of Object.keys(mappings)) {
+      const mappingPath = `${nodePath}.inputMappings.${key}`;
+      const mapping = (mappings as Record<string, unknown>)[key];
+      const issue = literalDepthFailure(
+        mapping,
+        `${mappingPath}.value`,
+        limits.jsonValueDepth,
+      );
+      if (issue !== undefined) return issue;
+    }
+  const structured = record.structured;
+  if (
+    structured !== null &&
+    typeof structured === 'object' &&
+    !Array.isArray(structured)
+  )
+    graphs.push({
+      value: (structured as Record<string, unknown>).body,
+      path: `${nodePath}.structured.body`,
+      depth: depth + 1,
+    });
+  return undefined;
+}
+
+function literalDepthFailure(
+  mapping: unknown,
+  path: string,
+  maximum: number,
+): WorkflowGraphAdmissionFailure | undefined {
+  if (
+    mapping !== null &&
+    typeof mapping === 'object' &&
+    !Array.isArray(mapping) &&
+    (mapping as Record<string, unknown>).kind === 'literal'
+  )
+    return valueDepthFailure(
+      (mapping as Record<string, unknown>).value,
+      path,
+      maximum,
+    );
   return undefined;
 }

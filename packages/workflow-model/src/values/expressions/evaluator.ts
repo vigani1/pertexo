@@ -66,7 +66,7 @@ export class JsonataEvaluator implements ExpressionEvaluator {
     this.#workerFactory =
       options.workerFactory ??
       ((runtimeUrl, workerOptions) => new Worker(runtimeUrl, workerOptions));
-    if (
+    const invalidOptions =
       !Number.isSafeInteger(this.#maxActive) ||
       this.#maxActive < 1 ||
       this.#maxActive > EXPRESSION_POLICY.maxActive ||
@@ -75,8 +75,8 @@ export class JsonataEvaluator implements ExpressionEvaluator {
       this.#maxQueued > EXPRESSION_POLICY.maxQueued ||
       !Number.isSafeInteger(this.#startupTimeoutMs) ||
       this.#startupTimeoutMs < 1 ||
-      this.#startupTimeoutMs > EXPRESSION_POLICY.startupTimeoutMs
-    )
+      this.#startupTimeoutMs > EXPRESSION_POLICY.startupTimeoutMs;
+    if (invalidOptions)
       throw new RangeError('evaluator pool options exceed policy v1 bounds');
   }
   diagnostics(): Readonly<{
@@ -104,10 +104,11 @@ export class JsonataEvaluator implements ExpressionEvaluator {
     let context: ExpressionContext;
     let inspection;
     try {
-      context = projectExpressionContext(
-        request.context,
-        validation.references.names.length > 0 || validation.references.dynamic,
-      );
+      context = projectExpressionContext(request.context, {
+        readsVariables:
+          validation.references.names.length > 0 ||
+          validation.references.dynamic,
+      });
       inspection = inspectJsonValue(context);
     } catch (cause) {
       return Promise.resolve(
@@ -281,8 +282,6 @@ export class JsonataEvaluator implements ExpressionEvaluator {
     this.#workers.add(worker);
     this.#peakWorkers = Math.max(this.#peakWorkers, this.#workers.size);
     let settled = false;
-    let handedOff = false;
-    let started = false;
     let timer: ReturnType<typeof setTimeout> | undefined = setTimeout(() => {
       void finish(
         expressionError('evaluation_failed', 'evaluator startup timed out'),
@@ -323,129 +322,149 @@ export class JsonataEvaluator implements ExpressionEvaluator {
               ),
         );
     });
-    worker.on('message', (message: unknown) => {
-      if (!message || typeof message !== 'object') {
-        void finish(
-          expressionError('evaluation_failed', 'invalid evaluator response'),
-        );
-        return;
-      }
-      const response = message as {
-        ready?: boolean;
-        started?: boolean;
-        ok?: boolean;
-        missing?: boolean;
-        value?: unknown;
-        message?: string;
-      };
-      if (response.ready) {
-        if (handedOff) {
-          void finish(
-            expressionError(
-              'evaluation_failed',
-              'duplicate evaluator readiness',
-            ),
-          );
-          return;
-        }
-        handedOff = true;
-        try {
-          worker.postMessage({
-            expression: pending.request.expression,
-            context: pending.request.context,
-          });
-        } catch (cause: unknown) {
-          void finish(
-            expressionError(
-              'evaluation_failed',
-              cause instanceof Error ? cause.message : 'worker handoff failed',
-            ),
-          );
-        }
-        return;
-      }
-      if (response.started) {
-        if (!handedOff) {
-          void finish(
-            expressionError(
-              'evaluation_failed',
-              'evaluator started before readiness',
-            ),
-          );
-          return;
-        }
-        if (started) {
-          void finish(
-            expressionError('evaluation_failed', 'duplicate evaluator start'),
-          );
-          return;
-        }
-        started = true;
-        if (timer) clearTimeout(timer);
-        timer = setTimeout(() => {
-          void finish(
-            expressionError(
-              'timed_out',
-              `evaluation exceeded ${String(EXPRESSION_POLICY.timeoutMs)} ms`,
-            ),
-          );
-        }, EXPRESSION_POLICY.timeoutMs);
-        return;
-      }
-      if (!started) {
-        void finish(
-          expressionError('evaluation_failed', 'evaluator result before start'),
-        );
-        return;
-      }
-      if (!response.ok) {
-        void finish(
-          expressionError(
-            'evaluation_failed',
-            response.message ?? 'evaluation failed',
-          ),
-        );
-        return;
-      }
-      if (response.missing) {
-        void finish(
-          pending.readsVariables
-            ? expressionError(
-                'variable_missing',
-                'This variable expression has no value. Check the captured workspace variables.',
-              )
-            : { kind: 'missing' },
-        );
-        return;
-      }
-      try {
-        const value = normalizeJson(response.value);
-        const output = inspectJsonValue(value);
-        for (const [limit, actual, maximum] of [
-          ['output_bytes', output.bytes, EXPRESSION_POLICY.outputBytes],
-          ['output_depth', output.depth, EXPRESSION_POLICY.outputDepth],
-          ['output_members', output.members, EXPRESSION_POLICY.outputMembers],
-        ] as const)
-          if (actual > maximum) {
+    worker.on(
+      'message',
+      evaluatorMessageHandler({
+        worker,
+        pending,
+        finish,
+        beginEvaluation: () => {
+          if (timer) clearTimeout(timer);
+          timer = setTimeout(() => {
             void finish(
               expressionError(
-                'limit_exceeded',
-                `${limit} exceeds policy`,
-                limit,
+                'timed_out',
+                `evaluation exceeded ${String(EXPRESSION_POLICY.timeoutMs)} ms`,
               ),
             );
-            return;
-          }
-        void finish({ kind: 'value', value, canonicalBytes: output.bytes });
-      } catch (cause) {
+          }, EXPRESSION_POLICY.timeoutMs);
+        },
+      }),
+    );
+
+    return completion;
+  }
+}
+
+function evaluatorMessageHandler({
+  worker,
+  pending,
+  finish,
+  beginEvaluation,
+}: Readonly<{
+  worker: Worker;
+  pending: Pending;
+  finish: (result: ExpressionResult) => Promise<void>;
+  beginEvaluation: () => void;
+}>): (message: unknown) => void {
+  let handedOff = false;
+  let started = false;
+  return (message: unknown): void => {
+    if (!message || typeof message !== 'object') {
+      void finish(
+        expressionError('evaluation_failed', 'invalid evaluator response'),
+      );
+      return;
+    }
+    const response = message as {
+      ready?: boolean;
+      started?: boolean;
+      ok?: boolean;
+      missing?: boolean;
+      value?: unknown;
+      message?: string;
+    };
+    if (response.ready) {
+      if (handedOff) {
+        void finish(
+          expressionError('evaluation_failed', 'duplicate evaluator readiness'),
+        );
+        return;
+      }
+      handedOff = true;
+      try {
+        worker.postMessage({
+          expression: pending.request.expression,
+          context: pending.request.context,
+        });
+      } catch (cause: unknown) {
         void finish(
           expressionError(
             'evaluation_failed',
-            cause instanceof Error ? cause.message : 'non-JSON result',
+            cause instanceof Error ? cause.message : 'worker handoff failed',
           ),
         );
       }
-    });
-    return completion;
-  }
+      return;
+    }
+    if (response.started) {
+      if (!handedOff) {
+        void finish(
+          expressionError(
+            'evaluation_failed',
+            'evaluator started before readiness',
+          ),
+        );
+        return;
+      }
+      if (started) {
+        void finish(
+          expressionError('evaluation_failed', 'duplicate evaluator start'),
+        );
+        return;
+      }
+      started = true;
+      beginEvaluation();
+      return;
+    }
+    if (!started) {
+      void finish(
+        expressionError('evaluation_failed', 'evaluator result before start'),
+      );
+      return;
+    }
+    if (!response.ok) {
+      void finish(
+        expressionError(
+          'evaluation_failed',
+          response.message ?? 'evaluation failed',
+        ),
+      );
+      return;
+    }
+    if (response.missing) {
+      void finish(
+        pending.readsVariables
+          ? expressionError(
+              'variable_missing',
+              'This variable expression has no value. Check the captured workspace variables.',
+            )
+          : { kind: 'missing' },
+      );
+      return;
+    }
+    try {
+      const value = normalizeJson(response.value);
+      const output = inspectJsonValue(value);
+      for (const [limit, actual, maximum] of [
+        ['output_bytes', output.bytes, EXPRESSION_POLICY.outputBytes],
+        ['output_depth', output.depth, EXPRESSION_POLICY.outputDepth],
+        ['output_members', output.members, EXPRESSION_POLICY.outputMembers],
+      ] as const)
+        if (actual > maximum) {
+          void finish(
+            expressionError('limit_exceeded', `${limit} exceeds policy`, limit),
+          );
+          return;
+        }
+      void finish({ kind: 'value', value, canonicalBytes: output.bytes });
+    } catch (cause) {
+      void finish(
+        expressionError(
+          'evaluation_failed',
+          cause instanceof Error ? cause.message : 'non-JSON result',
+        ),
+      );
+    }
+  };
 }

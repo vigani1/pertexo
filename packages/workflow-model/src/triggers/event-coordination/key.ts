@@ -40,15 +40,14 @@ export async function resolveEventCoordinationKey(
     evaluator,
     signal,
   );
-  if (
+  const evaluationUnavailable =
     result.kind === 'error' &&
     result.expression !== undefined &&
     (result.expression.code === 'canceled' ||
       result.expression.code === 'evaluation_failed' ||
       (result.expression.code === 'limit_exceeded' &&
-        result.expression.limit === 'pool_capacity'))
-  )
-    return { kind: 'unavailable' };
+        result.expression.limit === 'pool_capacity'));
+  if (evaluationUnavailable) return { kind: 'unavailable' };
   if (result.kind !== 'value') return { kind: 'invalid' };
   const value = result.value;
   if (typeof value === 'string') {

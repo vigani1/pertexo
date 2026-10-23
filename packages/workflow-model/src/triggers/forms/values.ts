@@ -32,7 +32,7 @@ function valueSchema(field: FormField): z.ZodType {
     case 'number':
       return z.number();
     case 'boolean':
-      return field.mustBeTicked === true ? z.literal(true) : z.boolean();
+      return (field.mustBeTicked ?? false) ? z.literal(true) : z.boolean();
     case 'email':
       return storageTextSchema.pipe(z.email().max(FORM_LIMITS.textCharacters));
     case 'date':
@@ -52,6 +52,8 @@ function valueSchema(field: FormField): z.ZodType {
           (value) => field.options.includes(value),
           'Choose an available option.',
         );
+    case 'text':
+    case 'textarea':
     default:
       return storageTextSchema
         .max(FORM_LIMITS.textCharacters)
@@ -109,12 +111,7 @@ export function parseFormValues(
         const field = fields.find((field) => field.name === issue.path[0]);
         return {
           name: typeof issue.path[0] === 'string' ? issue.path[0] : '',
-          message:
-            issue.code === 'unrecognized_keys'
-              ? 'Remove fields that are not in this form.'
-              : field === undefined
-                ? 'Enter a valid value for this field.'
-                : fieldMessage(field, issue, input),
+          message: validationIssueMessage(field, issue, input),
         };
       }),
     );
@@ -144,16 +141,11 @@ function fieldMessage(
   issue: z.core.$ZodIssue,
   input: unknown,
 ): string {
-  const value =
-    typeof input === 'object' &&
-    input !== null &&
-    Object.hasOwn(input, field.name)
-      ? (input as Record<string, unknown>)[field.name]
-      : undefined;
+  const value = submittedFieldValue(field, input);
   if (field.type === 'multi_select') return selectionMessage(field);
   if (
     field.type === 'boolean' &&
-    field.mustBeTicked === true &&
+    (field.mustBeTicked ?? false) &&
     value === false
   )
     return 'Tick this box to continue.';
@@ -173,7 +165,28 @@ function fieldMessage(
       return 'Choose yes or no.';
     case 'select':
       return 'Choose an available option.';
+    case 'text':
+    case 'textarea':
     default:
       return 'Enter text.';
   }
+}
+
+function validationIssueMessage(
+  field: FormField | undefined,
+  issue: z.core.$ZodIssue,
+  input: unknown,
+): string {
+  if (issue.code === 'unrecognized_keys')
+    return 'Remove fields that are not in this form.';
+  if (field === undefined) return 'Enter a valid value for this field.';
+  return fieldMessage(field, issue, input);
+}
+
+function submittedFieldValue(field: FormField, input: unknown): unknown {
+  return typeof input === 'object' &&
+    input !== null &&
+    Object.hasOwn(input, field.name)
+    ? (input as Record<string, unknown>)[field.name]
+    : undefined;
 }

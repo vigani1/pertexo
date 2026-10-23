@@ -1,3 +1,4 @@
+import { compareOrdinal } from '../../values/ordering.js';
 import type { WorkflowGraph } from '../../graph/contract.js';
 import { parseWorkflowGraphDraft } from '../../graph/validation/preflight.js';
 import type { JsonValue } from '../../values/json/canonical.js';
@@ -139,19 +140,19 @@ function facts(graph: WorkflowGraph, catalog: WorkflowPortabilityCatalog) {
         providerKey: slot.providerKey,
         authType: slot.authType,
       });
-      if (slot.optional !== true)
+      if (!(slot.optional ?? false))
         required.add(JSON.stringify([node.id, slot.slot]));
     }
   }
-  const compare = (left: string, right: string) =>
-    left < right ? -1 : left > right ? 1 : 0;
+
   const selected = [...requirements.values()].sort(
     (left, right) =>
-      compare(left.key, right.key) || left.version - right.version,
+      compareOrdinal(left.key, right.key) || left.version - right.version,
   );
   slots.sort(
     (left, right) =>
-      compare(left.nodeId, right.nodeId) || compare(left.slot, right.slot),
+      compareOrdinal(left.nodeId, right.nodeId) ||
+      compareOrdinal(left.slot, right.slot),
   );
   if (slots.length > WORKFLOW_PORTABILITY_LIMITS.connectionSlots)
     throw new WorkflowPortabilityError('connection_slot_limit');

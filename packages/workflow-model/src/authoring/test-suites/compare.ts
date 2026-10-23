@@ -14,14 +14,13 @@ export function matchesTestAssertion(
   if (typeof actual === 'string')
     return typeof expected === 'string' && actual.includes(expected);
   if (Array.isArray(actual)) return actual.some(equals);
-  if (
+  const incompatibleContainers =
     actual === null ||
     typeof actual !== 'object' ||
     expected === null ||
     typeof expected !== 'object' ||
-    Array.isArray(expected)
-  )
-    return false;
+    Array.isArray(expected);
+  if (incompatibleContainers) return false;
   const object = actual as Readonly<Record<string, JsonValue>>;
   return Object.entries(expected).every(
     ([key, value]) =>

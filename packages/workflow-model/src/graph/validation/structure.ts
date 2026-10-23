@@ -56,9 +56,15 @@ function indexLocalNodes(
 function validateMappings(
   graph: WorkflowGraph,
   path: string,
-  localIds: ReadonlySet<string>,
-  structuredInputPorts: ReadonlySet<string> | undefined,
-  context: ValidationContext,
+  {
+    localIds,
+    structuredInputPorts,
+    context,
+  }: Readonly<{
+    localIds: ReadonlySet<string>;
+    structuredInputPorts: ReadonlySet<string> | undefined;
+    context: ValidationContext;
+  }>,
 ): void {
   const directUpstream = new Map<string, Set<string>>();
   for (const edge of graph.edges) {
@@ -178,12 +184,12 @@ function validateLoopLimits(
     );
     return;
   }
-  if (
+  const invalidConcurrency =
     !Number.isInteger(loop.maxConcurrency) ||
     loop.maxConcurrency < 1 ||
     loop.maxConcurrency > loop.maxIterations ||
-    loop.maxConcurrency > context.limits.maxLoopConcurrency
-  ) {
+    loop.maxConcurrency > context.limits.maxLoopConcurrency;
+  if (invalidConcurrency) {
     context.issue(
       'invalid_loop_limit',
       path,
@@ -322,7 +328,7 @@ export function validateGraphStructure(
     );
   }
   const localIds = indexLocalNodes(graph, path, context);
-  validateMappings(graph, path, localIds, structuredInputPorts, context);
+  validateMappings(graph, path, { localIds, structuredInputPorts, context });
   validateAcyclic(
     validateEdges(graph, path, localIds, context),
     path,

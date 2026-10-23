@@ -55,14 +55,14 @@ export function planWorkflowLifecycleCommand(
       activationStatus: input.activationStatus,
       reconcileTriggers: false,
     });
+  let activationStatus: WorkflowActivationStatus = 'inactive';
+  if (input.hasPublishedVersion)
+    activationStatus =
+      input.command === 'archive' ? 'deactivating' : 'activating';
   return Object.freeze({
     changed: true,
     lifecycleStatus,
-    activationStatus: !input.hasPublishedVersion
-      ? 'inactive'
-      : input.command === 'archive'
-        ? 'deactivating'
-        : 'activating',
+    activationStatus,
     reconcileTriggers: input.hasPublishedVersion,
   });
 }
