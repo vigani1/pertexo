@@ -135,24 +135,7 @@ export async function migrateDatabase(
     }
     throw error;
   }
-  const transaction = async <T>(work: () => Promise<T>): Promise<T> => {
-    await client.query('begin');
-    try {
-      await client.query(`set local role ${quoteIdentifier(config.ownerRole)}`);
-      await client.query("select set_config('lock_timeout',$1,true)", [
-        `${String(lockTimeoutMs)}ms`,
-      ]);
-      await client.query("select set_config('statement_timeout',$1,true)", [
-        `${String(statementTimeoutMs)}ms`,
-      ]);
-      const result = await work();
-      await client.query('commit');
-      return result;
-    } catch (error: unknown) {
-      await client.query('rollback').catch(() => undefined);
-      throw error;
-    }
-  };
+  const transaction = { client, config, lockTimeoutMs, statementTimeoutMs };
 
   let migration = { error: undefined as unknown, failed: false };
   try {
@@ -166,7 +149,7 @@ export async function migrateDatabase(
     ]);
     await client.query('select pg_advisory_lock($1)', [MIGRATION_LOCK_ID]);
     await client.query(`set role ${quoteIdentifier(config.ownerRole)}`);
-    await transaction(async () => {
+    await runMigrationTransaction(transaction, async () => {
       const roleResult = await client.query<{ current_user: string }>(
         'select current_user',
       );
@@ -203,7 +186,7 @@ export async function migrateDatabase(
           throw new Error(`Applied migration checksum changed: ${name}`);
         continue;
       }
-      await transaction(async () => {
+      await runMigrationTransaction(transaction, async () => {
         await client.query(renderMigration(sql, config));
         await client.query(
           'insert into pertexo_internal.schema_migrations(name,checksum) values($1,$2)',
@@ -213,7 +196,7 @@ export async function migrateDatabase(
       applied.push(name);
     }
 
-    await transaction(async () => {
+    await runMigrationTransaction(transaction, async () => {
       await client.query(
         `grant usage on schema pertexo_internal to ${quoteIdentifier(config.appRole)}, ${quoteIdentifier(config.maintenanceRole)}`,
       );
@@ -249,5 +232,37 @@ export async function migrateDatabase(
       cleanupErrors.push(error);
     }
     preserveMigrationFailureDuringCleanup(migration, cleanupErrors);
+  }
+}
+
+async function runMigrationTransaction<T>(
+  {
+    client,
+    config,
+    lockTimeoutMs,
+    statementTimeoutMs,
+  }: Readonly<{
+    client: PoolClient;
+    config: MigrationConfig;
+    lockTimeoutMs: number;
+    statementTimeoutMs: number;
+  }>,
+  work: () => Promise<T>,
+): Promise<T> {
+  await client.query('begin');
+  try {
+    await client.query(`set local role ${quoteIdentifier(config.ownerRole)}`);
+    await client.query("select set_config('lock_timeout',$1,true)", [
+      `${String(lockTimeoutMs)}ms`,
+    ]);
+    await client.query("select set_config('statement_timeout',$1,true)", [
+      `${String(statementTimeoutMs)}ms`,
+    ]);
+    const result = await work();
+    await client.query('commit');
+    return result;
+  } catch (error: unknown) {
+    await client.query('rollback').catch(() => undefined);
+    throw error;
   }
 }

@@ -56,65 +56,8 @@ export async function completeFederationJourney(
     input.identity.email.split('@')[1] !== attempt.domain
   )
     throw new SignInProofRejectedError();
-  if (attempt.purpose === 'test') {
-    const invalidOwnerSession =
-      attempt.ownerUserId === null ||
-      attempt.ownerSessionId === null ||
-      attempt.ownerSessionId !== input.ownerSessionId;
-    if (invalidOwnerSession) throw new SignInProofRejectedError();
-    const source = await readEligibleAuthenticationSession(
-      client,
-      attempt.ownerSessionId,
-    );
-    if (source?.userId !== attempt.ownerUserId)
-      throw new SignInProofRejectedError();
-    await withWorkspaceScope(
-      client,
-      {
-        workspaceId: attempt.provider.controlWorkspaceId,
-        actorId: attempt.ownerUserId,
-      },
-      (scoped) =>
-        lockWorkspaceAuthority(
-          scoped,
-          attempt.provider.controlWorkspaceId,
-          attempt.ownerUserId ?? '',
-          ['owner'],
-        ),
-    );
-    await client.query(
-      `insert into app.auth_provider_checks(organization_id,domain_id,provider_id,provider_revision) values($1,$2,$3,$4)
-   on conflict(organization_id,domain_id,provider_id) do update set provider_revision=excluded.provider_revision,tested_at=clock_timestamp()`,
-      [
-        attempt.provider.organizationId,
-        attempt.domainId,
-        attempt.provider.id,
-        attempt.provider.revision,
-      ],
-    );
-    await withWorkspaceScope(
-      client,
-      { workspaceId: attempt.provider.controlWorkspaceId },
-      (scoped) =>
-        appendAuditFact(scoped, {
-          workspaceId: attempt.provider.controlWorkspaceId,
-          actorId: attempt.ownerUserId,
-          action: 'identity.provider_tested',
-          targetType: 'identity_organization',
-          targetId: attempt.provider.organizationId,
-          metadata: {
-            providerId: attempt.provider.id,
-            domainId: attempt.domainId,
-            providerRevision: attempt.provider.revision,
-          },
-        }),
-    );
-    await client.query(
-      'update app.auth_federation_attempts set consumed_at=clock_timestamp() where id=$1',
-      [attempt.id],
-    );
-    return { kind: 'tested', returnPath: attempt.returnPath };
-  }
+  if (attempt.purpose === 'test')
+    return completeProviderTest(client, input, attempt);
   const directory = await directorySignInCandidate(client, organization.id, {
     email: input.identity.email,
     providerId: attempt.provider.id,
@@ -206,4 +149,68 @@ export async function completeFederationJourney(
     [attempt.id],
   );
   return { kind: 'signed_in', token, returnPath: attempt.returnPath };
+}
+
+async function completeProviderTest(
+  client: PoolClient,
+  input: CompleteFederationJourney,
+  attempt: NonNullable<Awaited<ReturnType<typeof findFederationAttempt>>>,
+): Promise<FederationCompletion> {
+  const invalidOwnerSession =
+    attempt.ownerUserId === null ||
+    attempt.ownerSessionId === null ||
+    attempt.ownerSessionId !== input.ownerSessionId;
+  if (invalidOwnerSession) throw new SignInProofRejectedError();
+  const source = await readEligibleAuthenticationSession(
+    client,
+    attempt.ownerSessionId,
+  );
+  if (source?.userId !== attempt.ownerUserId)
+    throw new SignInProofRejectedError();
+  await withWorkspaceScope(
+    client,
+    {
+      workspaceId: attempt.provider.controlWorkspaceId,
+      actorId: attempt.ownerUserId,
+    },
+    (scoped) =>
+      lockWorkspaceAuthority(
+        scoped,
+        attempt.provider.controlWorkspaceId,
+        attempt.ownerUserId ?? '',
+        ['owner'],
+      ),
+  );
+  await client.query(
+    `insert into app.auth_provider_checks(organization_id,domain_id,provider_id,provider_revision) values($1,$2,$3,$4)
+   on conflict(organization_id,domain_id,provider_id) do update set provider_revision=excluded.provider_revision,tested_at=clock_timestamp()`,
+    [
+      attempt.provider.organizationId,
+      attempt.domainId,
+      attempt.provider.id,
+      attempt.provider.revision,
+    ],
+  );
+  await withWorkspaceScope(
+    client,
+    { workspaceId: attempt.provider.controlWorkspaceId },
+    (scoped) =>
+      appendAuditFact(scoped, {
+        workspaceId: attempt.provider.controlWorkspaceId,
+        actorId: attempt.ownerUserId,
+        action: 'identity.provider_tested',
+        targetType: 'identity_organization',
+        targetId: attempt.provider.organizationId,
+        metadata: {
+          providerId: attempt.provider.id,
+          domainId: attempt.domainId,
+          providerRevision: attempt.provider.revision,
+        },
+      }),
+  );
+  await client.query(
+    'update app.auth_federation_attempts set consumed_at=clock_timestamp() where id=$1',
+    [attempt.id],
+  );
+  return { kind: 'tested', returnPath: attempt.returnPath };
 }

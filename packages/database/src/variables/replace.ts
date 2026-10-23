@@ -42,30 +42,7 @@ export async function replaceWorkspaceVariables(
       .digest('hex'),
   });
   if (replay !== null) return { ...result.parse(replay), replayed: true };
-  const found = await client.query<{ revision: number }>(
-    'select revision from app.workspace_variables where workspace_id=$1 for update',
-    [input.workspaceId],
-  );
-  const row = found.rows[0];
-  const stored =
-    row === undefined
-      ? undefined
-      : (
-          await client.query<{
-            values_json: WorkspaceVariableValues;
-            descriptions_json: Readonly<Record<string, string>>;
-          }>(
-            'select values_json,descriptions_json from app.workspace_variable_set_revisions where workspace_id=$1 and revision=$2',
-            [input.workspaceId, row.revision],
-          )
-        ).rows[0];
-  if (row !== undefined && stored === undefined)
-    throw new Error('Workspace variable revision is missing');
-  const current = {
-    revision: row?.revision ?? 0,
-    values: stored?.values_json ?? {},
-    descriptions: stored?.descriptions_json ?? {},
-  };
+  const current = await readCurrentVariableRevision(client, input.workspaceId);
   if (current.revision !== input.expectedRevision)
     throw new WorkspaceVariablesConflictError();
   // An update without metadata keeps descriptions for the names it retains.
@@ -127,4 +104,36 @@ export async function replaceWorkspaceVariables(
   const accepted = { revision, changed: names.length > 0 };
   await completeCommand(client, identity, accepted);
   return { ...accepted, replayed: false };
+}
+
+async function readCurrentVariableRevision(
+  client: PoolClient,
+  workspaceId: string,
+) {
+  const found = await client.query<{ revision: number }>(
+    'select revision from app.workspace_variables where workspace_id=$1 for update',
+    [workspaceId],
+  );
+  const row = found.rows[0];
+  const stored =
+    row === undefined
+      ? undefined
+      : (
+          await client.query<{
+            values_json: WorkspaceVariableValues;
+            descriptions_json: Readonly<Record<string, string>>;
+          }>(
+            'select values_json,descriptions_json from app.workspace_variable_set_revisions where workspace_id=$1 and revision=$2',
+            [workspaceId, row.revision],
+          )
+        ).rows[0];
+  if (row !== undefined && stored === undefined)
+    throw new Error('Workspace variable revision is missing');
+  const current = {
+    revision: row?.revision ?? 0,
+    values: stored?.values_json ?? {},
+    descriptions: stored?.descriptions_json ?? {},
+  };
+
+  return current;
 }
