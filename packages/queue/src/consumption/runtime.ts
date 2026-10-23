@@ -327,10 +327,10 @@ export class BullMqQueueConsumer implements QueueConsumer {
     this.worker.cancelAllJobs(reason.message);
     return abortedJobs;
   }
-  private async closeWorker(
-    forced: boolean,
-    deadline: number,
-  ): Promise<boolean> {
+  private async closeWorker({
+    forced,
+    deadline,
+  }: Readonly<{ forced: boolean; deadline: number }>): Promise<boolean> {
     try {
       const closeResult = await bounded(
         this.worker.close(forced),
@@ -341,7 +341,9 @@ export class BullMqQueueConsumer implements QueueConsumer {
       return false;
     }
   }
-  private async closeRedis(workerClosed: boolean): Promise<boolean> {
+  private async closeRedis({
+    workerClosed,
+  }: Readonly<{ workerClosed: boolean }>): Promise<boolean> {
     if (!workerClosed) {
       try {
         await bounded(this.worker.disconnect(), 1_000);
@@ -372,9 +374,12 @@ export class BullMqQueueConsumer implements QueueConsumer {
     let forced = await this.pauseForDrain(deadline);
     if (!forced) forced = !(await this.waitForActiveExecutions(deadline));
     const abortedJobs = forced ? this.abortActiveExecutions() : 0;
-    const workerClosed = await this.closeWorker(forced, deadline);
+    const workerClosed = await this.closeWorker({
+      forced: forced,
+      deadline: deadline,
+    });
     if (!workerClosed) forced = true;
-    if (!(await this.closeRedis(workerClosed))) forced = true;
+    if (!(await this.closeRedis({ workerClosed: workerClosed }))) forced = true;
     this.lifecycle = 'closed';
     this.notifyObserver(() => {
       this.observer?.consumerLifecycle?.({

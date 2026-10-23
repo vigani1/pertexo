@@ -73,21 +73,19 @@ export type DispatcherCompositionFactories = Readonly<{
   dispatcher(
     database: OutboxDispatcherDatabase,
     producer: QueueProducer,
-    drainState: WorkerDrainState,
-    options: OutboxDispatcherOptions,
-    metrics: TransportMetrics,
+    input: Readonly<{
+      drainState: WorkerDrainState;
+      options: OutboxDispatcherOptions;
+      metrics: TransportMetrics;
+    }>,
   ): OutboxDispatcher;
 }>;
 
 const productionDispatcherFactories: DispatcherCompositionFactories = {
   database: createOutboxDispatcherDatabase,
   producer: createQueueProducer,
-  dispatcher: (database, producer, drainState, options, metrics) =>
-    new OutboxDispatcher(database, producer, {
-      drainState: drainState,
-      options: options,
-      metrics: metrics,
-    }),
+  dispatcher: (database, producer, input) =>
+    new OutboxDispatcher(database, producer, input),
 };
 
 export async function createOwnedOutboxDispatcher(
@@ -115,16 +113,14 @@ export async function createOwnedOutboxDispatcher(
     producer =
       dependencies.queueProducer ??
       factories.producer({ redisUrl: config.redisUrl });
-    return factories.dispatcher(
-      database,
-      producer,
+    return factories.dispatcher(database, producer, {
       drainState,
-      {
+      options: {
         ...config.outboxDispatcher,
         jobNames: consumedJobNames(config, dependencies),
       },
       metrics,
-    );
+    });
   } catch (error: unknown) {
     const cleanup = await Promise.allSettled([
       Promise.resolve().then(() => database?.close()),

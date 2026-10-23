@@ -141,9 +141,11 @@ async function application(
       NotificationsModule.register(
         new WorkspaceInboxService(database),
         source,
-        access(role),
-        { module: FakeIdentityModule },
-        preferences,
+        {
+          authorization: access(role),
+          identityModule: { module: FakeIdentityModule },
+          preferences: preferences,
+        },
       ),
     ],
   }).compile();

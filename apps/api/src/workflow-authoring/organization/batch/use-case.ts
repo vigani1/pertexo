@@ -117,7 +117,11 @@ export class WorkflowOrganizationBatchesUseCase {
         });
       } catch (error: unknown) {
         input.signal?.throwIfAborted();
-        outcome = await this.failure(input, request, workflowId, role, error);
+        outcome = await this.failure(input, request, {
+          workflowId: workflowId,
+          role: role,
+          error: error,
+        });
       }
       authorityLost = outcome.status === 'forbidden';
       outcomes.push(outcome);
@@ -128,9 +132,15 @@ export class WorkflowOrganizationBatchesUseCase {
   private async failure(
     input: Input,
     request: WorkflowOrganizationBatchRequest,
-    workflowId: string,
-    role: 'admin' | 'editor',
-    error: unknown,
+    {
+      workflowId,
+      role,
+      error,
+    }: Readonly<{
+      workflowId: string;
+      role: 'admin' | 'editor';
+      error: unknown;
+    }>,
   ): Promise<WorkflowOrganizationBulkItemOutcome> {
     if (error instanceof AuthorizationError)
       return { workflowId, status: 'forbidden' };

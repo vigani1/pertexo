@@ -28,7 +28,7 @@ export class StepSamplesUseCase {
     private readonly authorization: WorkspaceAuthorizationSource,
   ) {}
   async list(input: ReadInput) {
-    await this.authorize(input, false);
+    await this.authorize(input, { write: false });
     const result = await this.store.list(this.scope(input));
     return stepSampleListResponseSchema.parse({
       ...result,
@@ -37,7 +37,7 @@ export class StepSamplesUseCase {
     });
   }
   async get(input: NodeInput) {
-    await this.authorize(input, false);
+    await this.authorize(input, { write: false });
     const result = await this.store.get({
       ...this.scope(input),
       nodeId: input.nodeId,
@@ -50,14 +50,14 @@ export class StepSamplesUseCase {
     });
   }
   async put(input: CommandInput) {
-    await this.authorize(input, true);
+    await this.authorize(input, { write: true });
     const request = stepSampleWriteRequestSchema.parse(input.request);
     return stepSampleCommandResponseSchema.parse(
       await this.store.put({ ...this.command(input), ...request }),
     );
   }
   async remove(input: CommandInput) {
-    await this.authorize(input, true);
+    await this.authorize(input, { write: true });
     const request = stepSampleDeleteRequestSchema.parse(input.request);
     return stepSampleCommandResponseSchema.parse(
       await this.store.remove({ ...this.command(input), ...request }),
@@ -82,7 +82,10 @@ export class StepSamplesUseCase {
         : { traceId: input.actor.traceId }),
     };
   }
-  private async authorize(input: ReadInput, write: boolean) {
+  private async authorize(
+    input: ReadInput,
+    { write }: Readonly<{ write: boolean }>,
+  ) {
     input.signal?.throwIfAborted();
     await authorizeWorkspaceOperation({
       access: this.authorization,

@@ -109,7 +109,7 @@ export class ScheduleManagementService {
 
   public setEnabled(
     input: CommandInput,
-    enabled: boolean,
+    { enabled }: Readonly<{ enabled: boolean }>,
   ): Promise<ScheduleManagementCommandResponse> {
     const operation = enabled ? 'schedule.enable' : 'schedule.disable';
     return this.telemetry.measure(operation, async () => {

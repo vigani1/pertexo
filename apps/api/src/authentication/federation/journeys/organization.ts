@@ -87,11 +87,11 @@ export class OrganizationSignIn {
       const prefix = `/v1/auth/federation/${protocol}`;
       if (url.pathname === `${prefix}/start`)
         return request.method === 'POST'
-          ? this.start(request, false, protocol)
+          ? this.start(request, { testing: false, protocol: protocol })
           : failure(404);
       if (url.pathname === `${prefix}/test`)
         return request.method === 'POST'
-          ? this.start(request, true, protocol)
+          ? this.start(request, { testing: true, protocol: protocol })
           : failure(404);
       if (url.pathname === `${prefix}/callback`)
         return request.method === (protocol === 'oidc' ? 'GET' : 'POST')
@@ -115,8 +115,10 @@ export class OrganizationSignIn {
   }
   private async start(
     request: Request,
-    testing: boolean,
-    protocol: FederationProtocol,
+    {
+      testing,
+      protocol,
+    }: Readonly<{ testing: boolean; protocol: FederationProtocol }>,
   ): Promise<Response> {
     if (!this.available(protocol)) return failure(503);
     const raw: unknown = await request.json().catch(() => null);
@@ -169,7 +171,11 @@ export class OrganizationSignIn {
             )
           : await this.input.samlGateway?.authorize(
               material.provider,
-              this.samlProof(id, material.provider, state, browser, new Date()),
+              this.samlProof(id, material.provider, {
+                state: state,
+                browser: browser,
+                createdAt: new Date(),
+              }),
             );
       if (authorizationUrl === undefined) return failure(503);
       await this.commands.start({
@@ -235,7 +241,7 @@ export class OrganizationSignIn {
           current?.userId !== attempt.ownerUserId ||
           current.sessionId !== attempt.ownerSessionId
         )
-          return this.failed(destination, true);
+          return this.failed(destination, { testing: true });
         ownerSessionId = current.sessionId;
       }
       if (testing && protocol === 'saml')
@@ -250,17 +256,16 @@ export class OrganizationSignIn {
       } else if (callback.samlResponse !== undefined) {
         identity = await this.input.samlGateway?.verify(
           attempt.provider,
-          this.samlProof(
-            attempt.id,
-            attempt.provider,
-            state,
-            browser,
-            attempt.createdAt,
-          ),
+          this.samlProof(attempt.id, attempt.provider, {
+            state: state,
+            browser: browser,
+            createdAt: attempt.createdAt,
+          }),
           callback.samlResponse,
         );
       }
-      if (identity === undefined) return this.failed(destination, testing);
+      if (identity === undefined)
+        return this.failed(destination, { testing: testing });
       const result = await this.commands.complete({
         attemptId: attempt.id,
         stateDigest: journeyDigest(state),
@@ -268,7 +273,8 @@ export class OrganizationSignIn {
         identity,
         ...(ownerSessionId === undefined ? {} : { ownerSessionId }),
       });
-      if (result.kind === 'failed') return this.failed(destination, testing);
+      if (result.kind === 'failed')
+        return this.failed(destination, { testing: testing });
       if (result.kind === 'tested')
         return this.land(result.returnPath, 'passed');
       return await landWithReplacementSession(
@@ -278,7 +284,7 @@ export class OrganizationSignIn {
         () => this.failed(destination),
       );
     } catch {
-      return this.failed(destination, testing);
+      return this.failed(destination, { testing: testing });
     }
   }
   private proof(
@@ -298,9 +304,11 @@ export class OrganizationSignIn {
   private samlProof(
     id: string,
     provider: Readonly<{ id: string; organizationId: string }>,
-    state: string,
-    browser: string,
-    createdAt: Date,
+    {
+      state,
+      browser,
+      createdAt,
+    }: Readonly<{ state: string; browser: string; createdAt: Date }>,
   ) {
     return {
       ...samlServiceProviderUrls(this.input.baseUrl, provider.organizationId),
@@ -325,7 +333,10 @@ export class OrganizationSignIn {
       },
     });
   }
-  private failed(path?: string, testing = false): Response {
+  private failed(
+    path?: string,
+    { testing = false }: Readonly<{ testing?: boolean | undefined }> = {},
+  ): Response {
     if (testing && path !== undefined) return this.land(path, 'failed');
     const destination = new URL('/login', this.input.baseUrl);
     destination.searchParams.set('ssoError', 'true');

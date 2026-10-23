@@ -277,9 +277,11 @@ function registerFeatureModules(
       NotificationsModule.register(
         dependencies.notificationRuntime.service,
         dependencies.notificationRuntime.hints,
-        authorization,
-        identityModule,
-        dependencies.notificationRuntime.preferences,
+        {
+          authorization: authorization,
+          identityModule: identityModule,
+          preferences: dependencies.notificationRuntime.preferences,
+        },
       ),
     );
   if (dependencies.artifactRuntime !== undefined)

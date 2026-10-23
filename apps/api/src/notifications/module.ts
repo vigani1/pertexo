@@ -17,9 +17,15 @@ export class NotificationsModule {
   public static register(
     service: WorkspaceInboxService,
     hints: InboxHintSource,
-    authorization: WorkspaceAuthorizationSource,
-    identityModule: DynamicModule,
-    preferences?: NoticePreferencesService,
+    {
+      authorization,
+      identityModule,
+      preferences,
+    }: Readonly<{
+      authorization: WorkspaceAuthorizationSource;
+      identityModule: DynamicModule;
+      preferences?: NoticePreferencesService | undefined;
+    }>,
   ): DynamicModule {
     return {
       module: NotificationsModule,

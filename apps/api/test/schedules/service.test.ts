@@ -38,7 +38,9 @@ describe('schedule management service', () => {
   it('uses the exact actor-scoped request hash and returns safe dates', async () => {
     const database = setup();
     const service = new ScheduleManagementService(database);
-    await expect(service.setEnabled(input, false)).resolves.toMatchObject({
+    await expect(
+      service.setEnabled(input, { enabled: false }),
+    ).resolves.toMatchObject({
       replayed: false,
       trigger: { nextFireAt: '2026-08-25T12:15:00.000Z' },
     });
@@ -57,7 +59,7 @@ describe('schedule management service', () => {
   it('binds command identity only to the intended operation and target fields', async () => {
     const database = setup();
     const service = new ScheduleManagementService(database);
-    await service.setEnabled(input, false);
+    await service.setEnabled(input, { enabled: false });
     await service.setEnabled(
       {
         ...input,
@@ -65,24 +67,24 @@ describe('schedule management service', () => {
         requestId: 'another-request',
         traceId: 'another-trace',
       },
-      false,
+      { enabled: false },
     );
-    await service.setEnabled(input, true);
+    await service.setEnabled(input, { enabled: true });
     await service.setEnabled(
       { ...input, actorId: '11111111-1111-4111-8111-111111111111' },
-      false,
+      { enabled: false },
     );
     await service.setEnabled(
       { ...input, workspaceId: '22222222-2222-4222-8222-222222222222' },
-      false,
+      { enabled: false },
     );
     await service.setEnabled(
       { ...input, workflowId: '33333333-3333-4333-8333-333333333333' },
-      false,
+      { enabled: false },
     );
     await service.setEnabled(
       { ...input, triggerId: '44444444-4444-4444-8444-444444444444' },
-      false,
+      { enabled: false },
     );
 
     const hashes = database.setEnabled.mock.calls.map(
@@ -140,7 +142,7 @@ describe('schedule management service', () => {
       database.setEnabled.mockResolvedValueOnce({ trigger, replayed: true });
       const service = new ScheduleManagementService(database);
 
-      const result = await service.setEnabled(input, enabled);
+      const result = await service.setEnabled(input, { enabled: enabled });
 
       expect(database.setEnabled).toHaveBeenCalledWith(
         expect.objectContaining({ enabled }),
@@ -163,7 +165,7 @@ describe('schedule management service', () => {
       new ScheduleTriggerError('idempotency_conflict'),
     );
     await expect(
-      problemResult(service.setEnabled(input, true)),
+      problemResult(service.setEnabled(input, { enabled: true })),
     ).rejects.toMatchObject({
       code: 'request.idempotency_conflict',
     });
@@ -181,7 +183,9 @@ describe('schedule management service', () => {
     const commandFailure = new Error('command failed');
     commandDatabase.setEnabled.mockRejectedValueOnce(commandFailure);
     await expect(
-      new ScheduleManagementService(commandDatabase).setEnabled(input, true),
+      new ScheduleManagementService(commandDatabase).setEnabled(input, {
+        enabled: true,
+      }),
     ).rejects.toBe(commandFailure);
   });
 });

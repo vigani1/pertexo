@@ -177,7 +177,7 @@ describe('schedule management controller public seam', () => {
         requestId: 'request-1',
         traceId: 'trace-1',
       },
-      enabled,
+      { enabled },
     );
   });
 
