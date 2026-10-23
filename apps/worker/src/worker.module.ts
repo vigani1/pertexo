@@ -2,7 +2,7 @@ import { sealNoticeMail } from './mail/notice-content.js';
 import 'reflect-metadata';
 
 import { Module } from '@nestjs/common';
-import type { DynamicModule } from '@nestjs/common';
+import type { DynamicModule, Provider } from '@nestjs/common';
 import type { OutboxDispatcherDatabase } from '@pertexo/database/outbox';
 import type {
   DatabaseRuntime,
@@ -122,55 +122,7 @@ export class WorkerModule {
         WorkerReadiness,
         WorkerProcessKeepalive,
         WorkerShutdownCoordinator,
-        {
-          provide: SYSTEM_MAIL_RUNTIME,
-          useFactory: (): SystemMailRuntime | undefined => {
-            const mail = config.systemMailDelivery;
-            if (mail === undefined) return undefined;
-            const store = createSystemMailDeliveryStore(
-              config.database,
-              dependencies.databaseRuntime,
-            );
-            const envelope = createApplicationSecretEnvelope(mail.encryption);
-            const sender = mail.noticeSender;
-            const notices =
-              sender === undefined
-                ? undefined
-                : createNoticeMailStore(
-                    config.database,
-                    config.retention.maintenanceDatabase,
-                    (input) =>
-                      sealNoticeMail(
-                        envelope,
-                        sender.fromEmail,
-                        sender.publicWebOrigin,
-                        input,
-                      ),
-                    dependencies.databaseRuntime,
-                  );
-            const handler = createSystemMailDeliveryHandler({
-              ...(notices === undefined ? {} : { notices }),
-              store,
-              envelope,
-              email: createSystemMailClient(mail.delivery),
-              timeoutMillis: mail.timeoutMillis,
-              workerId: mail.workerId,
-            });
-            return createSystemMailRuntime(
-              handler,
-              {
-                close: async () => {
-                  await store.close();
-                  await notices?.close();
-                },
-              },
-              mail.pollIntervalMillis,
-              () => {
-                dependencies.logger.error('system_mail.delivery_cycle_failed');
-              },
-            );
-          },
-        },
+        systemMailProvider(config, dependencies),
         {
           provide: WORKSPACE_INBOX_RUNTIME,
           useFactory: (): WorkspaceInboxRuntime =>
@@ -278,4 +230,59 @@ export class WorkerModule {
       ],
     };
   }
+}
+
+function systemMailProvider(
+  config: WorkerConfig,
+  dependencies: WorkerModuleDependencies,
+): Provider {
+  return {
+    provide: SYSTEM_MAIL_RUNTIME,
+    useFactory: (): SystemMailRuntime | undefined => {
+      const mail = config.systemMailDelivery;
+      if (mail === undefined) return undefined;
+      const store = createSystemMailDeliveryStore(
+        config.database,
+        dependencies.databaseRuntime,
+      );
+      const envelope = createApplicationSecretEnvelope(mail.encryption);
+      const sender = mail.noticeSender;
+      const notices =
+        sender === undefined
+          ? undefined
+          : createNoticeMailStore(
+              config.database,
+              config.retention.maintenanceDatabase,
+              (input) =>
+                sealNoticeMail(
+                  envelope,
+                  sender.fromEmail,
+                  sender.publicWebOrigin,
+                  input,
+                ),
+              dependencies.databaseRuntime,
+            );
+      const handler = createSystemMailDeliveryHandler({
+        ...(notices === undefined ? {} : { notices }),
+        store,
+        envelope,
+        email: createSystemMailClient(mail.delivery),
+        timeoutMillis: mail.timeoutMillis,
+        workerId: mail.workerId,
+      });
+      return createSystemMailRuntime(
+        handler,
+        {
+          close: async () => {
+            await store.close();
+            await notices?.close();
+          },
+        },
+        mail.pollIntervalMillis,
+        () => {
+          dependencies.logger.error('system_mail.delivery_cycle_failed');
+        },
+      );
+    },
+  };
 }

@@ -48,7 +48,10 @@ import {
 } from './portability/use-cases.js';
 import { RestoreWorkflowVersionUseCase } from './commands/restore-version.js';
 import type { WorkflowAuthoringDependencies } from './ports.js';
-import { NOOP_WORKFLOW_AUTHORING_TELEMETRY } from './telemetry.js';
+import {
+  NOOP_WORKFLOW_AUTHORING_TELEMETRY,
+  type WorkflowAuthoringTelemetry,
+} from './telemetry.js';
 import { WORKFLOW_AUTHORING_AUTHORIZATION } from './tokens.js';
 import { WorkflowAutoPauseUseCase } from './settings/auto-pause.js';
 import { WorkflowConcurrencyUseCase } from './settings/concurrency.js';
@@ -72,99 +75,11 @@ export class WorkflowAuthoringModule {
       dependencies.telemetry ?? NOOP_WORKFLOW_AUTHORING_TELEMETRY;
     const portabilityPersistence = dependencies.portabilityPersistence;
     const providers: Provider[] = [
-      ...workflowOrganizationProviders(dependencies),
-      ...workflowPromotionProviders(dependencies),
-      ...(dependencies.collaborationPersistence === undefined
-        ? []
-        : [
-            {
-              provide: WorkflowCollaborationUseCase,
-              useValue: new WorkflowCollaborationUseCase(
-                dependencies.collaborationPersistence,
-                dependencies.authorization,
-              ),
-            },
-          ]),
-      ...(dependencies.publicationReviewPersistence === undefined
-        ? []
-        : [
-            WorkflowReviewGuard,
-            {
-              provide: PublicationReviewUseCase,
-              useValue: new PublicationReviewUseCase(
-                dependencies.publicationReviewPersistence,
-                dependencies.authorization,
-              ),
-            },
-          ]),
-      ...(portabilityPersistence === undefined
-        ? []
-        : [
-            ExportWorkflowUseCase,
-            ImportWorkflowUseCase,
-            PreviewWorkflowImportUseCase,
-          ].map((useCase) => ({
-            provide: useCase,
-            useValue: new useCase(
-              portabilityPersistence,
-              dependencies.authorization,
-              telemetry,
-            ),
-          }))),
-      ...(dependencies.inputCasePersistence === undefined
-        ? []
-        : [
-            {
-              provide: WorkflowInputCasesUseCase,
-              useValue: new WorkflowInputCasesUseCase(
-                dependencies.inputCasePersistence,
-                dependencies.authorization,
-              ),
-            },
-          ]),
-      {
-        provide: DuplicateWorkflowUseCase,
-        useValue: new DuplicateWorkflowUseCase(
-          dependencies.persistence,
-          dependencies.authorization,
-          telemetry,
-        ),
-      },
-      ...(dependencies.errorWorkflowPersistence === undefined
-        ? []
-        : [
-            {
-              provide: WorkflowErrorUseCase,
-              useValue: new WorkflowErrorUseCase(
-                dependencies.errorWorkflowPersistence,
-                dependencies.authorization,
-              ),
-            },
-          ]),
-      ...(dependencies.concurrencyPersistence === undefined
-        ? []
-        : [
-            {
-              provide: WorkflowConcurrencyUseCase,
-              useValue: new WorkflowConcurrencyUseCase(
-                dependencies.concurrencyPersistence,
-                dependencies.authorization,
-              ),
-            },
-          ]),
-      ...(dependencies.autoPausePersistence === undefined
-        ? []
-        : [
-            {
-              provide: WorkflowAutoPauseUseCase,
-              useValue: new WorkflowAutoPauseUseCase(
-                dependencies.autoPausePersistence,
-                dependencies.authorization,
-              ),
-            },
-            WorkflowPauseDefaultGuard,
-            WorkspaceAutoPauseReadGuard,
-          ]),
+      ...workflowFeatureProviders(
+        dependencies,
+        telemetry,
+        portabilityPersistence,
+      ),
       {
         provide: RestoreWorkflowVersionUseCase,
         useValue: new RestoreWorkflowVersionUseCase(
@@ -310,4 +225,106 @@ export class WorkflowAuthoringModule {
       ],
     };
   }
+}
+
+function workflowFeatureProviders(
+  dependencies: WorkflowAuthoringDependencies,
+  telemetry: WorkflowAuthoringTelemetry,
+  portabilityPersistence: WorkflowAuthoringDependencies['portabilityPersistence'],
+): Provider[] {
+  return [
+    ...workflowOrganizationProviders(dependencies),
+    ...workflowPromotionProviders(dependencies),
+    ...(dependencies.collaborationPersistence === undefined
+      ? []
+      : [
+          {
+            provide: WorkflowCollaborationUseCase,
+            useValue: new WorkflowCollaborationUseCase(
+              dependencies.collaborationPersistence,
+              dependencies.authorization,
+            ),
+          },
+        ]),
+    ...(dependencies.publicationReviewPersistence === undefined
+      ? []
+      : [
+          WorkflowReviewGuard,
+          {
+            provide: PublicationReviewUseCase,
+            useValue: new PublicationReviewUseCase(
+              dependencies.publicationReviewPersistence,
+              dependencies.authorization,
+            ),
+          },
+        ]),
+    ...(portabilityPersistence === undefined
+      ? []
+      : [
+          ExportWorkflowUseCase,
+          ImportWorkflowUseCase,
+          PreviewWorkflowImportUseCase,
+        ].map((useCase) => ({
+          provide: useCase,
+          useValue: new useCase(
+            portabilityPersistence,
+            dependencies.authorization,
+            telemetry,
+          ),
+        }))),
+    ...(dependencies.inputCasePersistence === undefined
+      ? []
+      : [
+          {
+            provide: WorkflowInputCasesUseCase,
+            useValue: new WorkflowInputCasesUseCase(
+              dependencies.inputCasePersistence,
+              dependencies.authorization,
+            ),
+          },
+        ]),
+    {
+      provide: DuplicateWorkflowUseCase,
+      useValue: new DuplicateWorkflowUseCase(
+        dependencies.persistence,
+        dependencies.authorization,
+        telemetry,
+      ),
+    },
+    ...(dependencies.errorWorkflowPersistence === undefined
+      ? []
+      : [
+          {
+            provide: WorkflowErrorUseCase,
+            useValue: new WorkflowErrorUseCase(
+              dependencies.errorWorkflowPersistence,
+              dependencies.authorization,
+            ),
+          },
+        ]),
+    ...(dependencies.concurrencyPersistence === undefined
+      ? []
+      : [
+          {
+            provide: WorkflowConcurrencyUseCase,
+            useValue: new WorkflowConcurrencyUseCase(
+              dependencies.concurrencyPersistence,
+              dependencies.authorization,
+            ),
+          },
+        ]),
+    ...(dependencies.autoPausePersistence === undefined
+      ? []
+      : [
+          {
+            provide: WorkflowAutoPauseUseCase,
+            useValue: new WorkflowAutoPauseUseCase(
+              dependencies.autoPausePersistence,
+              dependencies.authorization,
+            ),
+          },
+          WorkflowPauseDefaultGuard,
+          WorkspaceAutoPauseReadGuard,
+        ]),
+  ];
 }

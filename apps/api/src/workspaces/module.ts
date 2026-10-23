@@ -78,73 +78,7 @@ export class IdentityWorkspaceModule {
       now: (): Date => new Date(),
     };
     const providers: Provider[] = [
-      {
-        provide: INVITATION_ALLOWED_ORIGIN,
-        useValue: dependencies.config.publicWebOrigin,
-      },
-      { provide: IDENTITY_CRYPTO, useValue: crypto },
-      { provide: IDENTITY_CLOCK, useValue: clock },
-      {
-        provide: IDENTITY_WORKSPACE_TELEMETRY,
-        useValue: dependencies.telemetry ?? NOOP_IDENTITY_WORKSPACE_TELEMETRY,
-      },
-      {
-        provide: IDENTITY_WORKSPACE_PERSISTENCE,
-        useValue: dependencies.persistence,
-      },
-      {
-        provide: WORKSPACE_AUTHORIZATION,
-        useValue: dependencies.authorization,
-      },
-      {
-        provide: SESSION_COOKIE_POLICY,
-        useValue: {
-          secure: dependencies.config.session?.secureCookie ?? true,
-          sameSite: dependencies.config.session?.sameSite ?? 'lax',
-        },
-      },
-      { provide: SESSION_AUTHORITY, useValue: dependencies.sessions },
-      {
-        provide: CSRF_POLICY,
-        useFactory: (crypto: IdentityCrypto) =>
-          new DoubleSubmitCsrfPolicy(crypto),
-        inject: [IDENTITY_CRYPTO],
-      },
-      {
-        provide: DoubleSubmitCsrfPolicy,
-        useExisting: CSRF_POLICY,
-      },
-      {
-        provide: CreateWorkspaceUseCase,
-        useFactory: (
-          persistence: IdentityWorkspaceDependencies['persistence'],
-          telemetry: IdentityWorkspaceTelemetry,
-        ) => new CreateWorkspaceUseCase(persistence, telemetry),
-        inject: [IDENTITY_WORKSPACE_PERSISTENCE, IDENTITY_WORKSPACE_TELEMETRY],
-      },
-      {
-        provide: RenameWorkspaceUseCase,
-        useFactory: (
-          persistence: IdentityWorkspaceDependencies['persistence'],
-          telemetry: IdentityWorkspaceTelemetry,
-        ) =>
-          new RenameWorkspaceUseCase(renamePersistence(persistence), telemetry),
-        inject: [IDENTITY_WORKSPACE_PERSISTENCE, IDENTITY_WORKSPACE_TELEMETRY],
-      },
-      {
-        provide: WorkspaceLifecycleUseCase,
-        useFactory: (
-          persistence: IdentityWorkspaceDependencies['persistence'],
-          authorization: IdentityWorkspaceDependencies['authorization'],
-          telemetry: IdentityWorkspaceTelemetry,
-        ) =>
-          new WorkspaceLifecycleUseCase(persistence, authorization, telemetry),
-        inject: [
-          IDENTITY_WORKSPACE_PERSISTENCE,
-          WORKSPACE_AUTHORIZATION,
-          IDENTITY_WORKSPACE_TELEMETRY,
-        ],
-      },
+      ...identityCoreProviders(dependencies, crypto, clock),
       ...identityReadProviders(),
       {
         provide: WorkspaceInvitationManagementUseCase,
@@ -320,6 +254,81 @@ function identityReadProviders(): Provider[] {
         telemetry: IdentityWorkspaceTelemetry,
       ) =>
         new ListWorkspaceMembersUseCase(persistence, authorization, telemetry),
+      inject: [
+        IDENTITY_WORKSPACE_PERSISTENCE,
+        WORKSPACE_AUTHORIZATION,
+        IDENTITY_WORKSPACE_TELEMETRY,
+      ],
+    },
+  ];
+}
+
+function identityCoreProviders(
+  dependencies: IdentityWorkspaceDependencies,
+  crypto: IdentityCrypto,
+  clock: IdentityClock,
+): Provider[] {
+  return [
+    {
+      provide: INVITATION_ALLOWED_ORIGIN,
+      useValue: dependencies.config.publicWebOrigin,
+    },
+    { provide: IDENTITY_CRYPTO, useValue: crypto },
+    { provide: IDENTITY_CLOCK, useValue: clock },
+    {
+      provide: IDENTITY_WORKSPACE_TELEMETRY,
+      useValue: dependencies.telemetry ?? NOOP_IDENTITY_WORKSPACE_TELEMETRY,
+    },
+    {
+      provide: IDENTITY_WORKSPACE_PERSISTENCE,
+      useValue: dependencies.persistence,
+    },
+    {
+      provide: WORKSPACE_AUTHORIZATION,
+      useValue: dependencies.authorization,
+    },
+    {
+      provide: SESSION_COOKIE_POLICY,
+      useValue: {
+        secure: dependencies.config.session?.secureCookie ?? true,
+        sameSite: dependencies.config.session?.sameSite ?? 'lax',
+      },
+    },
+    { provide: SESSION_AUTHORITY, useValue: dependencies.sessions },
+    {
+      provide: CSRF_POLICY,
+      useFactory: (crypto: IdentityCrypto) =>
+        new DoubleSubmitCsrfPolicy(crypto),
+      inject: [IDENTITY_CRYPTO],
+    },
+    {
+      provide: DoubleSubmitCsrfPolicy,
+      useExisting: CSRF_POLICY,
+    },
+    {
+      provide: CreateWorkspaceUseCase,
+      useFactory: (
+        persistence: IdentityWorkspaceDependencies['persistence'],
+        telemetry: IdentityWorkspaceTelemetry,
+      ) => new CreateWorkspaceUseCase(persistence, telemetry),
+      inject: [IDENTITY_WORKSPACE_PERSISTENCE, IDENTITY_WORKSPACE_TELEMETRY],
+    },
+    {
+      provide: RenameWorkspaceUseCase,
+      useFactory: (
+        persistence: IdentityWorkspaceDependencies['persistence'],
+        telemetry: IdentityWorkspaceTelemetry,
+      ) =>
+        new RenameWorkspaceUseCase(renamePersistence(persistence), telemetry),
+      inject: [IDENTITY_WORKSPACE_PERSISTENCE, IDENTITY_WORKSPACE_TELEMETRY],
+    },
+    {
+      provide: WorkspaceLifecycleUseCase,
+      useFactory: (
+        persistence: IdentityWorkspaceDependencies['persistence'],
+        authorization: IdentityWorkspaceDependencies['authorization'],
+        telemetry: IdentityWorkspaceTelemetry,
+      ) => new WorkspaceLifecycleUseCase(persistence, authorization, telemetry),
       inject: [
         IDENTITY_WORKSPACE_PERSISTENCE,
         WORKSPACE_AUTHORIZATION,

@@ -136,55 +136,7 @@ export class WorkflowRunsModule {
           dependencies.authorization,
         ),
       },
-      {
-        provide: GetWorkflowRunVariablesUseCase,
-        useValue: new GetWorkflowRunVariablesUseCase(
-          dependencies.persistence,
-          dependencies.authorization,
-        ),
-      },
-      {
-        provide: GetWorkflowRunInputUseCase,
-        useValue: new GetWorkflowRunInputUseCase(
-          dependencies.persistence,
-          dependencies.authorization,
-        ),
-      },
-      {
-        provide: GetWorkflowNodeRunOutputUseCase,
-        useValue: new GetWorkflowNodeRunOutputUseCase(
-          dependencies.persistence,
-          dependencies.authorization,
-        ),
-      },
-      {
-        provide: GetWorkflowNodeRunDiagnosticsUseCase,
-        useValue: new GetWorkflowNodeRunDiagnosticsUseCase(
-          dependencies.persistence,
-          dependencies.authorization,
-        ),
-      },
-      {
-        provide: GetWorkflowNodeRunInputUseCase,
-        useValue: new GetWorkflowNodeRunInputUseCase(
-          dependencies.persistence,
-          dependencies.authorization,
-        ),
-      },
-      {
-        provide: GetWorkflowStepHealthUseCase,
-        useValue: new GetWorkflowStepHealthUseCase(
-          dependencies.persistence,
-          dependencies.authorization,
-        ),
-      },
-      {
-        provide: ListWorkflowStepRunsUseCase,
-        useValue: new ListWorkflowStepRunsUseCase(
-          dependencies.persistence,
-          dependencies.authorization,
-        ),
-      },
+      ...runDataProviders(dependencies),
       {
         provide: GetWorkflowRunStatisticsUseCase,
         useValue: new GetWorkflowRunStatisticsUseCase(
@@ -239,4 +191,58 @@ export class WorkflowRunsModule {
       ],
     };
   }
+}
+
+function runDataProviders(dependencies: WorkflowRunsDependencies): Provider[] {
+  return [
+    {
+      provide: GetWorkflowRunVariablesUseCase,
+      useValue: new GetWorkflowRunVariablesUseCase(
+        dependencies.persistence,
+        dependencies.authorization,
+      ),
+    },
+    {
+      provide: GetWorkflowRunInputUseCase,
+      useValue: new GetWorkflowRunInputUseCase(
+        dependencies.persistence,
+        dependencies.authorization,
+      ),
+    },
+    {
+      provide: GetWorkflowNodeRunOutputUseCase,
+      useValue: new GetWorkflowNodeRunOutputUseCase(
+        dependencies.persistence,
+        dependencies.authorization,
+      ),
+    },
+    {
+      provide: GetWorkflowNodeRunDiagnosticsUseCase,
+      useValue: new GetWorkflowNodeRunDiagnosticsUseCase(
+        dependencies.persistence,
+        dependencies.authorization,
+      ),
+    },
+    {
+      provide: GetWorkflowNodeRunInputUseCase,
+      useValue: new GetWorkflowNodeRunInputUseCase(
+        dependencies.persistence,
+        dependencies.authorization,
+      ),
+    },
+    {
+      provide: GetWorkflowStepHealthUseCase,
+      useValue: new GetWorkflowStepHealthUseCase(
+        dependencies.persistence,
+        dependencies.authorization,
+      ),
+    },
+    {
+      provide: ListWorkflowStepRunsUseCase,
+      useValue: new ListWorkflowStepRunsUseCase(
+        dependencies.persistence,
+        dependencies.authorization,
+      ),
+    },
+  ];
 }
