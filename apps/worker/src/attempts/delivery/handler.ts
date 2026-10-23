@@ -490,7 +490,7 @@ export function createNodeAttemptHandler(
           }),
         });
       }
-      if (inputs.loopResultsTooLarge === true) {
+      if (inputs.loopResultsTooLarge) {
         // The step's input can't be built: a definite failure of the step,
         // which its failure link can take.
         const completed = await dependencies.runStore.complete({
@@ -506,7 +506,7 @@ export function createNodeAttemptHandler(
         });
         return completionResult(dependencies, claimed.lease, completed.kind);
       }
-      if (prepared.testPinRequired === true) {
+      if (prepared.testPinRequired) {
         const completed = await dependencies.runStore.complete({
           lease: claimed.lease,
           outcome: { status: 'failed', safeErrorCode: 'test.pin_required' },
@@ -547,7 +547,7 @@ export function createNodeAttemptHandler(
           registry: dependencies.registry,
           runStore: dependencies.runStore,
           ...(dependencies.runtimeCapabilities === undefined ||
-          prepared.testSubstitution === true
+          (prepared.testSubstitution ?? false)
             ? {}
             : { runtimeCapabilities: dependencies.runtimeCapabilities }),
         });
@@ -570,5 +570,5 @@ function hasProviderDispatchUncertainty(
   lease: NodeAttemptLease,
   { dispatched }: Readonly<{ dispatched: boolean }>,
 ): boolean {
-  return lease.providerDispatchUnresolved === true || dispatched;
+  return (lease.providerDispatchUnresolved ?? false) || dispatched;
 }

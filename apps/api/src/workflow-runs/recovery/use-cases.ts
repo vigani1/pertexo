@@ -64,8 +64,8 @@ export function recoveryRequestHash(input: RecoverRunInput): string {
       sourceRunId: input.runId,
       workflowVersionId: input.workflowVersionId,
       nodeRunId: input.nodeRunId,
-      acknowledgePossibleEffects: input.acknowledgePossibleEffects === true,
-      ...(input.acknowledgeUnknownOutcome === true
+      acknowledgePossibleEffects: input.acknowledgePossibleEffects ?? false,
+      ...(input.acknowledgeUnknownOutcome
         ? { acknowledgeUnknownOutcome: true }
         : {}),
       ...(input.deadlineAt === undefined

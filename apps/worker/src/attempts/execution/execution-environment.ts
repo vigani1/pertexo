@@ -44,7 +44,7 @@ export function createNodeExecutionEnvironment(
   );
   const capabilityContext = Object.freeze({
     ...(input.deadlineAt === undefined ? {} : { deadlineAt: input.deadlineAt }),
-    ...(input.test === true ? { testRun: true } : {}),
+    ...(input.test ? { testRun: true } : {}),
     ...(input.artifactRetentionDeadline === undefined
       ? {}
       : { artifactRetentionDeadline: input.artifactRetentionDeadline }),
@@ -145,8 +145,9 @@ export function createNodeExecutionEnvironment(
     registry,
     runtime,
     wasDispatched: () => dispatchState === 'marked',
-    connectionHealthObservation:
-      input.test === true ? () => undefined : healthCapture.read,
+    connectionHealthObservation: input.test
+      ? () => undefined
+      : healthCapture.read,
     codeDiagnostics: () => diagnostics,
   });
 }

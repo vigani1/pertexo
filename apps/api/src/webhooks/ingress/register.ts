@@ -596,7 +596,7 @@ async function preflightWebhook(
   const requestId = randomUUID();
   const key = (request.params as { endpointKey: string }).endpointKey;
   const origin = singleHeader(request, 'origin');
-  const testEvent = request.routeOptions.url?.endsWith('/test') === true;
+  const testEvent = request.routeOptions.url?.endsWith('/test') ?? false;
   const verification = await preflightVerification(dependencies, key, {
     testEvent,
   });

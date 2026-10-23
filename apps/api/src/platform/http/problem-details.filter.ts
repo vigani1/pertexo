@@ -338,7 +338,8 @@ function abandonedByClient(
   request: HttpRequestLike,
 ): boolean {
   const gone =
-    request.raw?.destroyed === true || request.raw?.socket?.destroyed === true;
+    (request.raw?.destroyed ?? false) ||
+    (request.raw?.socket?.destroyed ?? false);
   if (!gone) return false;
   if (isAbortError(exception)) return true;
   const cause =

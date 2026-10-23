@@ -141,7 +141,7 @@ function errorClass(
   signal?: AbortSignal,
 ): ObjectStoreErrorClass {
   try {
-    if (signal?.aborted === true) {
+    if (signal?.aborted) {
       const reason: unknown = signal.reason;
       return reason instanceof Error && reason.name === 'TimeoutError'
         ? 'timeout'

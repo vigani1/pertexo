@@ -254,7 +254,7 @@ export class AbuseRateLimitPolicy {
     const rule = RULES[endpointClass];
     const dimensions: RateLimitDimension[] = rule.dimensions.flatMap(
       ({ kind, subject: key, limit, optional }) => {
-        if (optional === true && subject[key] === undefined) return [];
+        if ((optional ?? false) && subject[key] === undefined) return [];
         return [{ kind, identifier: requiredSubject(subject, key), limit }];
       },
     );

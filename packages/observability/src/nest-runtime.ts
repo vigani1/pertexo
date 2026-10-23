@@ -199,7 +199,7 @@ export function createNestObservabilityRegistration<ModuleToken>(input: {
     providers: [
       { provide: input.loggerToken, useValue: input.logger },
       { provide: input.telemetryToken, useValue: input.telemetry },
-      ...(input.registerShutdown === false
+      ...(!(input.registerShutdown ?? true)
         ? []
         : [
             {

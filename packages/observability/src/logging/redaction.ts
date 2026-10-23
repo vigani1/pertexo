@@ -269,7 +269,7 @@ function sanitizeRecord(
         state.remainingEntries <= 0;
       if (omitField) continue;
       const descriptor = Object.getOwnPropertyDescriptor(value, key);
-      if (descriptor?.enumerable !== true) continue;
+      if (!descriptor?.enumerable) continue;
       admitted += 1;
       state.remainingEntries -= 1;
       if (isSecretName(key)) {
