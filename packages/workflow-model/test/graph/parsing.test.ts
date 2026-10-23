@@ -206,17 +206,17 @@ describe('graph parsing in the browser schema and the server parser', () => {
       );
       const browser = workflowGraphSchema.safeParse(candidate);
       expect(browser.success).toBe(true);
-      if (!browser.success) throw browser.error;
+      const browserData = requiredParseData(browser);
       expect(
-        Object.hasOwn(browser.data.nodes[0]?.inputMappings ?? {}, key),
+        Object.hasOwn(browserData.nodes[0]?.inputMappings ?? {}, key),
       ).toBe(true);
 
       const server = safeParseWorkflowGraphDraft(candidate);
       expect(server.success).toBe(true);
-      if (!server.success) throw server.error;
-      expect(
-        Object.hasOwn(server.data.nodes[0]?.inputMappings ?? {}, key),
-      ).toBe(true);
+      const serverData = requiredParseData(server);
+      expect(Object.hasOwn(serverData.nodes[0]?.inputMappings ?? {}, key)).toBe(
+        true,
+      );
     }
     const protoValue = Object.create(null) as Record<string, unknown>;
     Object.defineProperty(protoValue, '__proto__', {
@@ -237,8 +237,8 @@ describe('graph parsing in the browser schema and the server parser', () => {
       safeParseWorkflowGraphDraft(specialJson),
     ]) {
       expect(parsed.success).toBe(true);
-      if (!parsed.success) throw parsed.error;
-      const parsedNode = parsed.data.nodes[0];
+      const parsedData = requiredParseData(parsed);
+      const parsedNode = parsedData.nodes[0];
       const configValue = (
         parsedNode?.config.payload as readonly Record<string, unknown>[]
       )[0];
@@ -370,3 +370,10 @@ describe('graph parsing in the browser schema and the server parser', () => {
     expect(indexDescriptorReads).toBe(0);
   });
 });
+
+function requiredParseData<T>(
+  result: { success: true; data: T } | { success: false; error: Error },
+): T {
+  if (!result.success) throw result.error;
+  return result.data;
+}
