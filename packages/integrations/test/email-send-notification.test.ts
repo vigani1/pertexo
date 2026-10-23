@@ -597,7 +597,7 @@ describe('email.send_notification@1', () => {
         kind: 'retry',
         errorKind: 'rate_limit',
         possiblyDispatched: false,
-        retryAfterMillis: 7_000,
+        minimumRetryDelayMillis: 7_000,
       },
     },
     {

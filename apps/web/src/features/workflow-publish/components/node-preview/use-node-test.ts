@@ -1,3 +1,4 @@
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import type {
   NodeValidationResponse,
   PreviewRunSummary,
@@ -5,7 +6,6 @@ import type {
 import { useEffect, useRef, useState } from 'react';
 import { isApiError } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
-import { isUncertainOutcome } from '@/lib/api/error-copy';
 import {
   commandErrorMessage,
   parseCommandJson,
@@ -196,7 +196,7 @@ export function useNodeTest({
           : commandErrorMessage(cause, 'the test'),
       );
       if (!accepted) {
-        if (!isUncertainOutcome(cause)) attempt.current = undefined;
+        if (!isUnconfirmedCommand(cause)) attempt.current = undefined;
         setRecoveryPending(attempt.current !== undefined);
       }
     } finally {
@@ -244,7 +244,7 @@ export function useNodeTest({
 }
 
 function observationErrorMessage(error: unknown): string {
-  if (isUncertainOutcome(error))
+  if (isUnconfirmedCommand(error))
     return 'The test was accepted, but its status couldn’t be refreshed. Check its status again.';
   return commandErrorMessage(error, 'checking the test status');
 }

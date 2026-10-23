@@ -1,3 +1,4 @@
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -6,7 +7,7 @@ import {
   workflowDraftKeys,
 } from '@/features/workflow-editor/draft.public';
 import { isApiError } from '@/lib/api/error';
-import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
+import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import { maxRunDurationOf, withMaxRunDuration } from '../../model/run-duration';
 
@@ -46,7 +47,7 @@ export function useRunDurationChange({
 
   async function recover(cause: unknown, durationMs: number) {
     const conflict = isApiError(cause) && cause.status === 412;
-    if (conflict || isUncertainOutcome(cause)) {
+    if (conflict || isUnconfirmedCommand(cause)) {
       const applied = await draftHas(durationMs).catch(() => undefined);
       if (applied === true) return true;
       setProblem({

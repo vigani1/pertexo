@@ -1,9 +1,6 @@
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import { isApiError } from '@/lib/api/error';
-import {
-  describeCommandError,
-  isForbidden,
-  isUncertainOutcome,
-} from '@/lib/api/error-copy';
+import { describeCommandError, isForbidden } from '@/lib/api/error-copy';
 
 type ConnectionCommand = 'create' | 'rotate' | 'revoke' | 'test';
 
@@ -39,7 +36,7 @@ export function connectionCommandError(
   command: ConnectionCommand,
   name: string,
 ): string {
-  if (isUncertainOutcome(error)) return UNCERTAIN[command](name);
+  if (isUnconfirmedCommand(error)) return UNCERTAIN[command](name);
   if (isForbidden(error)) return FORBIDDEN[command];
   if (isApiError(error)) {
     switch (error.problem?.code) {

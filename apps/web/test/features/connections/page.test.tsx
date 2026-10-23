@@ -1051,3 +1051,55 @@ describe('connections page', () => {
     });
   });
 });
+
+it('retries an accepted-then-503 email test without dispatching a second email', async () => {
+  const current = connection('Notification email', { providerKey: 'email' });
+  const deliveries = new Set<string>();
+  const writes: { key: string | null; body: unknown }[] = [];
+  mockServer.use(
+    ...identityHandlers(),
+    listOf(() => [current]),
+    detailOf(() => current),
+    http.get(`${base}/${connectionId}/sharing`, () =>
+      HttpResponse.json({
+        connectionId,
+        mode: 'workspace',
+        revision: 1,
+        members: [],
+      }),
+    ),
+    http.post(`${base}/${connectionId}/test`, async ({ request }) => {
+      const key = request.headers.get('idempotency-key');
+      writes.push({ key, body: await request.json() });
+      if (key !== null) deliveries.add(key);
+      if (writes.length === 1)
+        return HttpResponse.json(
+          {
+            type: 'urn:pertexo:problem:request.rate_limit_unavailable',
+            title: 'Service unavailable',
+            code: 'request.rate_limit_unavailable',
+            status: 503,
+            requestId: 'accepted-test-request',
+          },
+          {
+            status: 503,
+            headers: { 'content-type': 'application/problem+json' },
+          },
+        );
+      return testedOk(current);
+    }),
+  );
+  const event = userEvent.setup();
+  renderApp(`/w/${workspaceId}/connections?connection=${connectionId}`);
+  await event.click(await screen.findByRole('button', { name: 'Test' }));
+  await event.click(
+    await screen.findByRole('checkbox', { name: 'Send a real test email' }),
+  );
+  await event.click(lens().getByRole('button', { name: 'Send test email' }));
+  await event.click(await lens().findByRole('button', { name: 'Test again' }));
+  await waitFor(() => {
+    expect(writes).toHaveLength(2);
+  });
+  expect(writes[1]).toEqual(writes[0]);
+  expect(deliveries.size).toBe(1);
+});

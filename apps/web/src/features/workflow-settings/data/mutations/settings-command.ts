@@ -1,6 +1,7 @@
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import { useRef } from 'react';
 import { isApiError } from '@/lib/api/error';
-import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
+import { describeCommandError } from '@/lib/api/error-copy';
 
 export type CommandAttemptStore = Readonly<{
   begin: (
@@ -42,11 +43,11 @@ export function useCommandAttemptKeys(): CommandAttemptStore {
 export const unresolvedCommandMessage =
   'An earlier change is still unconfirmed. Retry it, or refresh until its result shows, before making a different change.';
 
-export const isUncertainSettingsCommand = isUncertainOutcome;
+export const isUncertainSettingsCommand = isUnconfirmedCommand;
 
 /** A sentence for a failed settings command, e.g. "turning this schedule off". */
 export function settingsCommandError(error: unknown, action: string): string {
-  if (isUncertainOutcome(error))
+  if (isUnconfirmedCommand(error))
     return `We couldn’t confirm whether ${action} went through. Retrying is safe — it repeats the same request.`;
   if (isApiError(error) && (error.status === 409 || error.status === 412))
     return 'This changed in another session. Refresh, then try again.';

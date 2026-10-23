@@ -1,10 +1,11 @@
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { WorkflowSummary } from '@pertexo/contracts';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { startWorkflowRun } from '@/features/workflow-runs/commands.public';
 import { workflowRunKeys } from '@/features/workflow-runs/queries.public';
-import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
+import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 
 /**
@@ -64,7 +65,7 @@ export function useRunWorkflow({
         onRunStarted(started.id);
       else notifications.success({ title: `${workflow.name} started` });
     } catch (cause) {
-      const uncertain = isUncertainOutcome(cause);
+      const uncertain = isUnconfirmedCommand(cause);
       if (!uncertain) unconfirmed.current.delete(workflow.id);
       notifications.error(
         uncertain

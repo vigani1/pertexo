@@ -220,7 +220,8 @@ jobs:
   # on separate runners; one long sequential job had grown past 25 minutes.
   browser:
     name: browser (${{ matrix.suite }})
-    runs-on: ubuntu-latest
+    # Keep browser OS dependencies stable across ubuntu-latest image rollouts.
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
       fail-fast: false

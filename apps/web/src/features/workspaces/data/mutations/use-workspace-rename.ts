@@ -1,3 +1,4 @@
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import {
   mutationOptions,
   useMutation,
@@ -16,7 +17,7 @@ import {
   isUnauthenticated,
 } from '@/features/auth/session/session-identity.public';
 import { isApiError } from '@/lib/api/error';
-import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
+import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import {
   accessibleWorkspacesQueryOptions,
@@ -82,7 +83,7 @@ const RELOAD_FAILED: RenameError = {
 function classifyFailure(error: unknown): Failure {
   if (isUnauthenticated(error)) return { kind: 'signed-out' };
   if (isApiError(error) && error.status === 403) return { kind: 'forbidden' };
-  if (isUncertainOutcome(error)) return { kind: 'uncertain' };
+  if (isUnconfirmedCommand(error)) return { kind: 'uncertain' };
   const code = isApiError(error) ? error.problem?.code : undefined;
   if (code === 'workspace.revision_conflict')
     return { kind: 'rejected', error: CONFLICT };

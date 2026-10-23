@@ -541,7 +541,7 @@ async function changeInvitation(
       const replay = await claimInvitationCommand(
         client,
         key,
-        { expectedRevision },
+        { invitationId, expectedRevision },
         invitationId,
       );
       if (replay !== null) return replay;

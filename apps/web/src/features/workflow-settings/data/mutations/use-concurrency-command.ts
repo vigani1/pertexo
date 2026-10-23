@@ -1,3 +1,4 @@
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -7,7 +8,7 @@ import {
 } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
-import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
+import { describeCommandError } from '@/lib/api/error-copy';
 import { putWorkflowConcurrency } from '../concurrency.api';
 import { concurrencyKey } from '../concurrency.queries';
 import { settingsCommandError } from './settings-command';
@@ -15,7 +16,7 @@ import { settingsCommandError } from './settings-command';
 function commandProblem(error: unknown, revisionConflict: boolean): string {
   if (revisionConflict)
     return 'This changed in another session. Your edits are kept. Review the refreshed limit, then save again.';
-  if (isUncertainOutcome(error))
+  if (isUnconfirmedCommand(error))
     return settingsCommandError(error, 'saving concurrency settings');
   if (isApiError(error)) {
     const exceeded = workflowConcurrencyLimitExceededProblemSchema.safeParse(
@@ -72,7 +73,7 @@ export function useConcurrencyCommand(
       setUnconfirmed(false);
       return true;
     } catch (error: unknown) {
-      const uncertain = isUncertainOutcome(error);
+      const uncertain = isUnconfirmedCommand(error);
       const revisionConflict =
         isApiError(error) &&
         error.kind === 'problem' &&

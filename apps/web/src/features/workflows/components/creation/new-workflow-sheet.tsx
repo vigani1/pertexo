@@ -1,3 +1,4 @@
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import { useRef, useState, type SyntheticEvent } from 'react';
 import { workflowCreateRequestSchema } from '@pertexo/contracts';
 import { ProgressButton } from '@/components/ui/progress-button';
@@ -18,7 +19,7 @@ import {
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { isApiError } from '@/lib/api/error';
-import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
+import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import { useCreateWorkflow } from '../../data/workflows.mutations';
 import { ExampleCards } from '../templates/example-cards';
@@ -26,7 +27,7 @@ import { ExampleCards } from '../templates/example-cards';
 type Attempt = Readonly<{ name: string; idempotencyKey: string }>;
 
 function createErrorMessage(error: unknown): string {
-  if (isUncertainOutcome(error))
+  if (isUnconfirmedCommand(error))
     return 'We couldn’t confirm whether the workflow was created. Retrying is safe — it won’t make a duplicate.';
   if (isApiError(error) && error.status === 409)
     return 'This conflicts with the workspace’s current state. Refresh the list, then try again.';
@@ -191,7 +192,7 @@ export function NewWorkflowSheet({
               pending={mutation.isPending}
               pendingLabel="Creating…"
             >
-              {mutation.isError && isUncertainOutcome(mutation.error)
+              {mutation.isError && isUnconfirmedCommand(mutation.error)
                 ? 'Retry safely'
                 : 'Create workflow'}
             </ProgressButton>

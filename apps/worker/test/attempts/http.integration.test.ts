@@ -416,6 +416,79 @@ beforeEach(async () => {
 });
 
 describeIntegration('active HTTP node attempt', () => {
+  it.each(['slack', 'email'] as const)(
+    'persists the %s provider delay and schedules its retry no earlier',
+    async (provider) => {
+      const encryption = fixtureEncryption;
+      if (encryption === undefined)
+        throw new Error('Provider fixture encryption is missing');
+      const hint = 7_000;
+      const runtime = await createHttpNodeAttemptProofRuntime(encryption, {
+        sendSlackMessage: () =>
+          Promise.resolve({ kind: 'rate_limited', retryAfterMillis: hint }),
+        sendEmailNotification: () =>
+          Promise.resolve({ kind: 'rate_limited', retryAfterMillis: hint }),
+      });
+      let scenario:
+        Awaited<ReturnType<typeof admitProviderScenario>> | undefined;
+      await runWithCleanup(
+        async () => {
+          scenario = await admitProviderScenario(runtime, provider);
+          await publishAndWaitForCompletion(
+            runtime.producer,
+            runtime.attemptQueue,
+            attemptJob(scenario.accepted.runId, scenario.attempt),
+            'Rate-limited provider attempt',
+          );
+          const stored = await workerQuery<{
+            executor_retry_after_millis: number | null;
+            completed_at: Date;
+          }>(
+            'select executor_retry_after_millis,completed_at from app.node_attempts where workspace_id=$1 and id=$2',
+            [workspaceId, scenario.attempt.attempt_id],
+          );
+          expect(stored[0]?.executor_retry_after_millis).toBe(hint);
+          await advanceScenario(
+            runtime,
+            scenario.accepted.runId,
+            scenario.coordinatorOutboxes,
+            'Provider delay retry decision',
+          );
+          const due = await workerQuery<{
+            retry_due_at: Date;
+            retry_decision: string;
+          }>(
+            `select node.retry_due_at,attempt.retry_decision from app.node_runs node
+         join app.node_attempts attempt on attempt.workspace_id=node.workspace_id and attempt.node_run_id=node.id
+         where attempt.workspace_id=$1 and attempt.id=$2`,
+            [workspaceId, scenario.attempt.attempt_id],
+          );
+          expect(due[0]?.retry_decision).toBe('retry');
+          const completedAt = stored[0]?.completed_at;
+          const dueAt = due[0]?.retry_due_at;
+          if (completedAt === undefined || dueAt === undefined)
+            throw new Error('Provider retry dates are missing');
+          expect(
+            dueAt.getTime() - completedAt.getTime(),
+          ).toBeGreaterThanOrEqual(hint);
+        },
+        async () => {
+          if (scenario !== undefined) {
+            await cancelProviderScenarioRun(scenario.accepted.runId);
+            await advanceScenario(
+              runtime,
+              scenario.accepted.runId,
+              scenario.coordinatorOutboxes,
+              'Cancel rate-limit proof run',
+            );
+          }
+          await closeProofRuntime(runtime);
+        },
+        'Provider retry delay',
+      );
+    },
+  );
+
   it('restores fixture secret versions with a fresh revision and never changes revoked connections', async () => {
     if (connectionDatabase === undefined || fixtureEncryption === undefined)
       throw new Error('Connection fixture missing');
@@ -557,6 +630,7 @@ describeIntegration('active HTTP node attempt', () => {
     let persistedArtifactId: string | undefined;
     let artifactBaseline: Set<string> | undefined;
     let credentialAuditBaseline = 0;
+    let slackAuditBaseline = 0;
     await runWithCleanup(
       async () => {
         artifactBaseline = await readArtifactIds();
@@ -569,6 +643,19 @@ describeIntegration('active HTTP node attempt', () => {
                   and event_type='connection.credential_accessed'
                   and actor_kind='worker'`,
                 [workspaceId, connectionId],
+              ),
+            )
+          ).rows[0]?.count ?? '0',
+        );
+        slackAuditBaseline = Number(
+          (
+            await withOwner((client) =>
+              client.query<{ count: string }>(
+                `select count(*)::text count from app.connection_events
+                where workspace_id=$1 and connection_id=$2
+                  and event_type='connection.credential_accessed'
+                  and actor_kind='worker'`,
+                [workspaceId, slackConnectionId],
               ),
             )
           ).rows[0]?.count ?? '0',
@@ -919,7 +1006,7 @@ describeIntegration('active HTTP node attempt', () => {
             [workspaceId, slackConnectionId],
           ),
         );
-        expect(slackAudit.rows[0]?.count).toBe('1');
+        expect(slackAudit.rows[0]?.count).toBe(String(slackAuditBaseline + 1));
         const completedSlackJob = await waitFor(
           () => attemptQueue.getJob(slackJob.jobId),
           (job) => job !== undefined,

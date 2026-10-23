@@ -552,7 +552,7 @@ describe('slack.send_message@1', () => {
         kind: 'retry',
         errorKind: 'rate_limit',
         possiblyDispatched: false,
-        retryAfterMillis: 300_000,
+        minimumRetryDelayMillis: 60_000,
       },
     ],
     [
@@ -786,7 +786,7 @@ describe('slack.send_message@1', () => {
     ).rejects.toMatchObject({
       kind: 'retry',
       errorKind: 'rate_limit',
-      retryAfterMillis: 7_000,
+      minimumRetryDelayMillis: 7_000,
       possiblyDispatched: false,
     });
     expect(limited.sendMessage).not.toHaveBeenCalled();

@@ -1,3 +1,4 @@
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import type { WorkspaceInvitation } from '@pertexo/contracts';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -8,7 +9,7 @@ import {
   isUnauthenticated,
 } from '@/features/auth/session/session-identity.public';
 import { isApiError } from '@/lib/api/error';
-import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
+import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import type { ManagedRole } from '../../model/workspace-roles';
 import {
@@ -148,8 +149,12 @@ export function useInvitationCommand(
     attempt: Attempt,
     error: unknown,
   ): Promise<InvitationOutcome> {
-    if (isUncertainOutcome(error)) {
-      const message = uncertainMessage(attempt);
+    if (isUnconfirmedCommand(error)) {
+      // An actionable 503 reason does not authorize a new command key.
+      const message =
+        isApiError(error) && error.status === 503
+          ? commandError(error, attempt)
+          : uncertainMessage(attempt);
       transition({ kind: 'uncertain', attempt, message });
       return { kind: 'uncertain', message };
     }

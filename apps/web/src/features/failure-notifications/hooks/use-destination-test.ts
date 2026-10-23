@@ -1,7 +1,7 @@
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import { useRef } from 'react';
 import type { FailureNotificationDestinationResponse } from '@pertexo/contracts';
 import type { TestPhase } from '@/features/connections/provider.public';
-import { isUncertainOutcome } from '@/lib/api/error-copy';
 import {
   useTestFailureNotificationDestinationMutation,
   type DestinationMutationScope,
@@ -24,7 +24,7 @@ function phaseOf(
 ): TestPhase {
   if (mutation.isPending) return 'running';
   if (mutation.isError)
-    return isUncertainOutcome(mutation.error) ? 'unsure' : 'failed';
+    return isUnconfirmedCommand(mutation.error) ? 'unsure' : 'failed';
   if (mutation.isSuccess) {
     if (mutation.data.outcome.ok) return 'ok';
     return UNKNOWN_CODES.has(mutation.data.outcome.errorCode)

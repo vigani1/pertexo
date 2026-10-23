@@ -1,9 +1,10 @@
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import type { WorkspaceMember } from '@pertexo/contracts';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { isUnauthenticated } from '@/features/auth/session/session-identity.public';
 import { isApiError } from '@/lib/api/error';
-import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
+import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import { workspaceKeys, workspaceMemberKeys } from '../../workspaces.queries';
 import { directoryMembershipFeedback } from '../../../model/directory-membership';
@@ -124,7 +125,7 @@ export function useMemberCommand<Attempt extends MemberCommandAttempt>(
     attempt: Attempt,
     cause: unknown,
   ) {
-    if (isUncertainOutcome(cause)) {
+    if (isUnconfirmedCommand(cause)) {
       transition({
         kind: 'uncertain',
         attempt,

@@ -1,5 +1,6 @@
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import { isApiError } from '@/lib/api/error';
-import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
+import { describeCommandError } from '@/lib/api/error-copy';
 
 export type DuplicatePhase = 'authority' | 'mutation' | 'accepted';
 
@@ -32,7 +33,7 @@ export function duplicateFailureState(
     phase === 'accepted' ||
     (!rejected &&
       (current.kind === 'uncertain' ||
-        (phase === 'mutation' && isUncertainOutcome(error))));
+        (phase === 'mutation' && isUnconfirmedCommand(error))));
   if (retainCommand)
     return {
       ...current,

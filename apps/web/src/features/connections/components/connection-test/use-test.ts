@@ -5,7 +5,7 @@ import type {
   ConnectionTestResponse,
 } from '@pertexo/contracts';
 import { useNotifications } from '@/components/ui/use-notifications';
-import { isUncertainOutcome } from '@/lib/api/error-copy';
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import { connectionCommandError } from '../../model/connection-errors';
 import {
   useTestConnectionMutation,
@@ -32,7 +32,7 @@ function phaseOf(
   if (mutation.isPending) return 'running';
   if (mutation.isSuccess) return mutation.data.outcome.ok ? 'ok' : 'failed';
   if (mutation.isError)
-    return isUncertainOutcome(mutation.error) ? 'unsure' : 'failed';
+    return isUnconfirmedCommand(mutation.error) ? 'unsure' : 'failed';
   return 'idle';
 }
 
@@ -72,7 +72,7 @@ export function useConnectionTest(
     const repeat =
       previous !== undefined &&
       mutation.isError &&
-      isUncertainOutcome(mutation.error) &&
+      isUnconfirmedCommand(mutation.error) &&
       previous.connectionId === connection.id &&
       JSON.stringify(previous.request) === JSON.stringify(request);
     const command: TestConnectionCommand = repeat

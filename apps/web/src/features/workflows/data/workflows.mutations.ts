@@ -1,3 +1,4 @@
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import { useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type {
@@ -6,7 +7,7 @@ import type {
 } from '@/components/patterns/actions/inline-rename';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
-import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
+import { describeCommandError } from '@/lib/api/error-copy';
 import {
   createWorkflow,
   renameWorkflow,
@@ -44,7 +45,7 @@ export function useCreateWorkflow(
 
 function lifecycleErrorMessage(error: unknown, action: LifecycleAction) {
   const verb = action === 'archive' ? 'archiving' : 'restoring';
-  if (isUncertainOutcome(error))
+  if (isUnconfirmedCommand(error))
     return `We couldn’t confirm whether ${verb} went through. Retrying is safe — it won’t be applied twice.`;
   if (
     isApiError(error) &&
@@ -106,7 +107,7 @@ export function useWorkflowLifecycleCommand({
       });
       return true;
     } catch (cause) {
-      const exactRetry = isUncertainOutcome(cause);
+      const exactRetry = isUnconfirmedCommand(cause);
       if (!exactRetry) commandRef.current = undefined;
       setError({
         message: lifecycleErrorMessage(cause, exactCommand.command),
@@ -225,7 +226,7 @@ export function useWorkflowRename({
       onRenamed(workflow.name);
       return true;
     } catch (cause) {
-      if (isUncertainOutcome(cause)) {
+      if (isUnconfirmedCommand(cause)) {
         setState({ kind: 'uncertain', attempt, error: RENAME_UNCERTAIN });
         return false;
       }
