@@ -159,12 +159,11 @@ describe('retained recovery values', () => {
       nodes
         .slice(0, -1)
         .map((node, index) =>
-          record(
-            executable,
-            node.id,
-            index + 1,
-            node.id === 'step-4' ? 'failed' : 'succeeded',
-          ),
+          record(executable, {
+            nodeId: node.id,
+            ordinal: index + 1,
+            status: node.id === 'step-4' ? 'failed' : 'succeeded',
+          }),
         ),
     );
     const prefix = candidate({ executable, source: retained });
@@ -233,9 +232,9 @@ describe('fresh recovery seed', () => {
       ),
     });
     const retained = source([
-      record(executable, 'manual', 1, 'succeeded'),
-      record(executable, 'set', 2, 'succeeded'),
-      record(executable, 'terminate', 3, 'failed'),
+      record(executable, { nodeId: 'manual', ordinal: 1, status: 'succeeded' }),
+      record(executable, { nodeId: 'set', ordinal: 2, status: 'succeeded' }),
+      record(executable, { nodeId: 'terminate', ordinal: 3, status: 'failed' }),
     ]);
     const prefix = candidate({ executable, source: retained });
     const plan = planRecovery(prefix, values(prefix));
