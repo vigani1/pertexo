@@ -24,7 +24,7 @@ import {
   invalid,
   budget,
 } from './admission/fixture.js';
-import { registerQualifiesSettingSUnitS } from './admission/qualifies-setting-sunit-s.cases.js';
+import { registerQualifiesSettingSUnitS } from './admission/idle-timeout-setting.cases.js';
 describe('effective authoring idle budget', () => {
   registerQualifiesSettingSUnitS();
 });

@@ -154,8 +154,8 @@ const dialect = new PgDialect();
 
 export const runId = '00000000-0000-4000-8000-000000000008';
 
-export /** A workspace transaction that admits every eligible occurrence. */
-function recordAdmissionTransactions(): RecordedStatement[] {
+/** A workspace transaction that admits every eligible occurrence. */
+export function recordAdmissionTransactions(): RecordedStatement[] {
   const statements: RecordedStatement[] = [];
   seams.workspaceTransaction.mockImplementation(
     (
@@ -177,8 +177,8 @@ function recordAdmissionTransactions(): RecordedStatement[] {
   return statements;
 }
 
-export /** Scheduled instant, disposition, run and next fire the claim completed with. */
-function completion(statements: readonly RecordedStatement[]) {
+/** Scheduled instant, disposition, run and next fire the claim completed with. */
+export function completion(statements: readonly RecordedStatement[]) {
   const recorded = statements.filter(({ sql }) =>
     sql.includes('insert into app.trigger_schedule_occurrences'),
   );
