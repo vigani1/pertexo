@@ -328,3 +328,20 @@ export {
   isWellFormed,
   jsonStringByteLength,
 } from './values/text.js';
+
+export {
+  PROMOTION_LIMITS,
+  COLLABORATION_LIMITS,
+} from './workspaces/authoring-limits.js';
+
+export { AUDIT_RETENTION_MIN_DAYS } from './workspaces/governance.js';
+
+export {
+  FEDERATION_LIMITS,
+  ACCOUNT_SIGN_IN_METHOD_LIMIT,
+  API_TOKEN_SCOPES,
+  API_TOKEN_DEFAULT_LIFETIME_DAYS,
+  API_TOKEN_MAX_LIFETIME_DAYS,
+  API_TOKEN_ACTIVE_LIMIT,
+  apiTokenCredentialSchema,
+} from './workspaces/identity-policy.js';

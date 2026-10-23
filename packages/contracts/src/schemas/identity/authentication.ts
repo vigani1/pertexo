@@ -1,3 +1,5 @@
+import { ACCOUNT_SIGN_IN_METHOD_LIMIT } from '@pertexo/workflow-model';
+export { ACCOUNT_SIGN_IN_METHOD_LIMIT };
 import { authorizationStartedSchema } from './federation/authorization.js';
 import { z } from 'zod';
 
@@ -59,7 +61,7 @@ export const accountSecuritySessionRevokeResponseSchema = z
 export const accountSecurityRevokeOthersResponseSchema = z
   .object({ revokedCount: z.number().int().nonnegative() })
   .strict();
-export const ACCOUNT_SIGN_IN_METHOD_LIMIT = 16;
+
 const accountSecurityMethodSchema = z
   .object({
     id: z.uuid(),

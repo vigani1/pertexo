@@ -1,12 +1,7 @@
+import { PROMOTION_LIMITS } from '@pertexo/workflow-model';
+export { PROMOTION_LIMITS };
 import { z } from 'zod';
 
-export const PROMOTION_LIMITS = Object.freeze({
-  workflows: 20,
-  graphBytes: 2 * 1024 * 1024,
-  responseBytes: 4 * 1024 * 1024,
-  requirements: 1000,
-  page: 50,
-});
 export const promotionIdentifierSchema = z
   .uuid()
   .overwrite((id) => id.toLowerCase());

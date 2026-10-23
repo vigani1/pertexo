@@ -1,3 +1,5 @@
+import { AUDIT_RETENTION_MIN_DAYS } from '@pertexo/workflow-model';
+export { AUDIT_RETENTION_MIN_DAYS };
 import { z } from 'zod';
 
 const identifier = z
@@ -58,7 +60,7 @@ export const auditPageSchema = z
     nextCursor: z.string().max(512).nullable(),
   })
   .strict();
-export const AUDIT_RETENTION_MIN_DAYS = 30;
+
 export const auditRetentionSchema = z
   .number()
   .int()

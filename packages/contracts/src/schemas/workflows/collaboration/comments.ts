@@ -1,16 +1,8 @@
+import { COLLABORATION_LIMITS } from '@pertexo/workflow-model';
+export { COLLABORATION_LIMITS };
 import { z } from 'zod';
 import { isStorageText } from '@pertexo/workflow-model';
 
-export const COLLABORATION_LIMITS = Object.freeze({
-  body: 8000,
-  mentions: 20,
-  page: 20,
-  presence: 100,
-  tabs: 10,
-  leaseSeconds: 45,
-  heartbeatMs: 15000,
-  pollMs: 10000,
-});
 const id = z.uuid().overwrite((value) => value.toLowerCase());
 const revision = z.number().int().positive().max(2147483647);
 export const workflowCommentBodySchema = z
