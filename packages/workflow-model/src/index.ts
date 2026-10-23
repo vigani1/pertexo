@@ -323,3 +323,4 @@ export { remapCallbackReferences } from './flow/callbacks/references.js';
 export { cronHasUnsupportedOperators } from './triggers/schedules/cron.js';
 
 export * from './workspaces/policy.js';
+export { utf8ByteLength } from './values/text.js';
