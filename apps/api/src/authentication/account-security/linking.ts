@@ -144,11 +144,7 @@ export class AccountLinking {
       code.length === 0 ||
       code.length > 4096 ||
       binding === undefined ||
-      url.searchParams.has('error') ||
-      ['state', 'code', 'iss'].some(
-        (name) => url.searchParams.getAll(name).length > 1,
-      ) ||
-      (url.searchParams.get('iss')?.length ?? 0) > 2048;
+      providerRejectedLinkCallback(url);
     if (invalidCallbackProof) return this.landing('failed');
     const session = await this.input.authenticate(request);
     if (session === undefined) return this.landing('sign-in');
@@ -173,25 +169,8 @@ export class AccountLinking {
       .catch(() => undefined);
     if (identity === undefined) return this.landing('failed');
 
-    if (attempt.phase === 'source') {
-      const nextState = newJourneyToken();
-      const nextUrl = await this.authorizationUrl(
-        attempt.id,
-        'target',
-        attempt.targetProvider,
-        nextState,
-      ).catch(() => undefined);
-      if (nextUrl === undefined) return this.landing('failed');
-      const accepted = await this.commands.updateSource(attempt, {
-        state,
-        binding,
-        identity,
-        nextState,
-      });
-      return accepted
-        ? Response.redirect(nextUrl, 302)
-        : this.landing('failed');
-    }
+    if (attempt.phase === 'source')
+      return this.advanceToTarget(attempt, { state, binding, identity });
     const outcome = await this.commands.completeTarget(
       attempt,
       state,
@@ -206,6 +185,34 @@ export class AccountLinking {
       () => this.landing('returned'),
       () => this.landing('sign-in'),
     );
+  }
+
+  private async advanceToTarget(
+    attempt: Parameters<AccountLinkingCommands['updateSource']>[0],
+    {
+      state,
+      binding,
+      identity,
+    }: Pick<
+      Parameters<AccountLinkingCommands['updateSource']>[1],
+      'state' | 'binding' | 'identity'
+    >,
+  ): Promise<Response> {
+    const nextState = newJourneyToken();
+    const nextUrl = await this.authorizationUrl(
+      attempt.id,
+      'target',
+      attempt.targetProvider,
+      nextState,
+    ).catch(() => undefined);
+    if (nextUrl === undefined) return this.landing('failed');
+    const accepted = await this.commands.updateSource(attempt, {
+      state,
+      binding,
+      identity,
+      nextState,
+    });
+    return accepted ? Response.redirect(nextUrl, 302) : this.landing('failed');
   }
 
   private async authorizationUrl(
@@ -278,3 +285,13 @@ const LINK_LANDINGS = {
   returned: '/account/security?linked=true',
   failed: '/account/security?linkError=true',
 } as const;
+
+function providerRejectedLinkCallback(url: URL): boolean {
+  const rejected =
+    url.searchParams.has('error') ||
+    ['state', 'code', 'iss'].some(
+      (name) => url.searchParams.getAll(name).length > 1,
+    ) ||
+    (url.searchParams.get('iss')?.length ?? 0) > 2048;
+  return rejected;
+}

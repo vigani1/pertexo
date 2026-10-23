@@ -10,22 +10,31 @@ export async function readOrganizationCallback(
   protocol: FederationProtocol,
 ): Promise<OrganizationCallback | undefined> {
   const url = new URL(request.url);
-  if (protocol === 'oidc') {
-    const state = url.searchParams.get('state'),
-      code = url.searchParams.get('code');
-    const invalidOidcCallback =
-      state === null ||
-      !isJourneyToken(state) ||
-      code === null ||
-      code.length === 0 ||
-      code.length > 4096 ||
-      url.searchParams.has('error') ||
-      ['state', 'code', 'iss'].some(
-        (name) => url.searchParams.getAll(name).length > 1,
-      );
-    if (invalidOidcCallback) return undefined;
-    return { state };
-  }
+  if (protocol === 'oidc') return readOidcCallback(url);
+  return readSamlCallback(request, url);
+}
+
+function readOidcCallback(url: URL): OrganizationCallback | undefined {
+  const state = url.searchParams.get('state'),
+    code = url.searchParams.get('code');
+  const invalidOidcCallback =
+    state === null ||
+    !isJourneyToken(state) ||
+    code === null ||
+    code.length === 0 ||
+    code.length > 4096 ||
+    url.searchParams.has('error') ||
+    ['state', 'code', 'iss'].some(
+      (name) => url.searchParams.getAll(name).length > 1,
+    );
+  if (invalidOidcCallback) return undefined;
+  return { state };
+}
+
+async function readSamlCallback(
+  request: Request,
+  url: URL,
+): Promise<OrganizationCallback | undefined> {
   if (
     url.search !== '' ||
     request.headers.get('content-type')?.split(';')[0]?.trim().toLowerCase() !==
