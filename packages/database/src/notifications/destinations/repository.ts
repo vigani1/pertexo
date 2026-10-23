@@ -1,7 +1,7 @@
 import { acquireDatabasePool } from '../../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
 
-import type { PoolClient } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 import {
   FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT,
@@ -190,95 +190,143 @@ export function createFailureNotificationDestinationDatabase(
 ): FailureNotificationDestinationDatabase {
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
-  const transaction = <T>(
-    input: CommandMetadata,
-    work: (client: PoolClient) => Promise<T>,
-  ) =>
-    withTenantScopedClient(
-      pool,
-      {
-        workspaceId: z.uuid().parse(input.workspaceId),
-        actorId: z.uuid().parse(input.actorId),
-      },
-      work,
-    );
+
+  const transact: DestinationTransaction = (input, work) =>
+    transaction(pool, input, work);
   return Object.freeze({
     create: (
       input: Parameters<FailureNotificationDestinationDatabase['create']>[0],
-    ) =>
-      transaction(input, async (client) => {
-        await authorize(client, input.workspaceId, input.actorId, {
-          manage: true,
-        });
-        const destinationId = z.uuid().parse(input.destinationId);
-        const parsed = FailureNotificationDestinationConfigSchema.parse(
-          input.config,
-        );
-        const operation = 'failure.notification.destination.create';
-        const scope = input.actorId;
-        const replay = await claimNotificationCommand(client, input, {
-          operation,
-          scope,
-          resourceId: destinationId,
-        });
-        if (replay.kind === 'replay')
-          return decodeFailureNotificationDestinationReplay(replay.result);
-        await assertConnection(client, input.workspaceId, parsed);
-        await client.query(
-          `insert into app.failure_notification_destinations
-           (id,workspace_id,kind,status,current_config_version,created_by)
-         values ($1,$2,$3,'enabled',1,$4)`,
-          [destinationId, input.workspaceId, parsed.kind, input.actorId],
-        );
-        await insertVersion(client, {
-          workspaceId: input.workspaceId,
-          destinationId,
-          version: 1,
-          config: parsed,
-          actorId: input.actorId,
-        });
-        await audit(client, input, {
-          action: 'failure_notification_destination.created',
-          target: {
-            id: destinationId,
-            type: 'failure_notification_destination',
-          },
-          metadata: { kind: parsed.kind, version: 1 },
-        });
-        const created = await readFailureNotificationDestination(
-          client,
-          input.workspaceId,
-          destinationId,
-        );
-        await completeNotificationCommand(client, input, {
-          operation,
-          scope,
-          result: serializeFailureNotificationDestinationRecord(created),
-        });
-        return created;
-      }),
+    ) => createNotificationDestination(transact, input),
     get: (
       input: Parameters<FailureNotificationDestinationDatabase['get']>[0],
-    ) =>
-      transaction(input, async (client) => {
-        await authorize(client, input.workspaceId, input.actorId, {
-          manage: false,
-        });
-        return readFailureNotificationDestination(
-          client,
-          input.workspaceId,
-          input.destinationId,
-        );
-      }),
+    ) => readNotificationDestination(transact, input),
     list: (
       input: Parameters<FailureNotificationDestinationDatabase['list']>[0],
-    ) =>
-      transaction(input, async (client) => {
-        await authorize(client, input.workspaceId, input.actorId, {
-          manage: false,
-        });
-        const result = await client.query<Record<string, unknown>>(
-          `select destination.id,destination.workspace_id,destination.kind,
+    ) => listNotificationDestinations(transact, input),
+    appendVersion: (
+      input: Parameters<
+        FailureNotificationDestinationDatabase['appendVersion']
+      >[0],
+    ) => appendNotificationDestinationVersion(transact, input),
+    setStatus: (
+      input: Parameters<FailureNotificationDestinationDatabase['setStatus']>[0],
+    ) => setDestinationStatus(transact, input),
+    setWorkflowPolicy: (
+      input: Parameters<
+        FailureNotificationDestinationDatabase['setWorkflowPolicy']
+      >[0],
+    ) => setWorkflowFailureNotificationPolicy(transact, input),
+    clearWorkflowPolicy: (
+      input: Parameters<
+        FailureNotificationDestinationDatabase['clearWorkflowPolicy']
+      >[0],
+    ) => clearWorkflowFailureNotificationPolicy(transact, input),
+    getWorkflowPolicy: (
+      input: Parameters<
+        FailureNotificationDestinationDatabase['getWorkflowPolicy']
+      >[0],
+    ) => readWorkflowFailureNotificationPolicy(transact, input),
+    close: () => lease.close(),
+  });
+}
+
+function transaction<T>(
+  pool: Pool,
+  input: CommandMetadata,
+  work: (client: PoolClient) => Promise<T>,
+) {
+  return withTenantScopedClient(
+    pool,
+    {
+      workspaceId: z.uuid().parse(input.workspaceId),
+      actorId: z.uuid().parse(input.actorId),
+    },
+    work,
+  );
+}
+function createNotificationDestination(
+  transact: DestinationTransaction,
+  input: Parameters<FailureNotificationDestinationDatabase['create']>[0],
+): ReturnType<FailureNotificationDestinationDatabase['create']> {
+  return transact(input, async (client) => {
+    await authorize(client, input.workspaceId, input.actorId, {
+      manage: true,
+    });
+    const destinationId = z.uuid().parse(input.destinationId);
+    const parsed = FailureNotificationDestinationConfigSchema.parse(
+      input.config,
+    );
+    const operation = 'failure.notification.destination.create';
+    const scope = input.actorId;
+    const replay = await claimNotificationCommand(client, input, {
+      operation,
+      scope,
+      resourceId: destinationId,
+    });
+    if (replay.kind === 'replay')
+      return decodeFailureNotificationDestinationReplay(replay.result);
+    await assertConnection(client, input.workspaceId, parsed);
+    await client.query(
+      `insert into app.failure_notification_destinations
+           (id,workspace_id,kind,status,current_config_version,created_by)
+         values ($1,$2,$3,'enabled',1,$4)`,
+      [destinationId, input.workspaceId, parsed.kind, input.actorId],
+    );
+    await insertVersion(client, {
+      workspaceId: input.workspaceId,
+      destinationId,
+      version: 1,
+      config: parsed,
+      actorId: input.actorId,
+    });
+    await audit(client, input, {
+      action: 'failure_notification_destination.created',
+      target: {
+        id: destinationId,
+        type: 'failure_notification_destination',
+      },
+      metadata: { kind: parsed.kind, version: 1 },
+    });
+    const created = await readFailureNotificationDestination(
+      client,
+      input.workspaceId,
+      destinationId,
+    );
+    await completeNotificationCommand(client, input, {
+      operation,
+      scope,
+      result: serializeFailureNotificationDestinationRecord(created),
+    });
+    return created;
+  });
+}
+
+function readNotificationDestination(
+  transact: DestinationTransaction,
+  input: Parameters<FailureNotificationDestinationDatabase['get']>[0],
+): ReturnType<FailureNotificationDestinationDatabase['get']> {
+  return transact(input, async (client) => {
+    await authorize(client, input.workspaceId, input.actorId, {
+      manage: false,
+    });
+    return readFailureNotificationDestination(
+      client,
+      input.workspaceId,
+      input.destinationId,
+    );
+  });
+}
+
+function listNotificationDestinations(
+  transact: DestinationTransaction,
+  input: Parameters<FailureNotificationDestinationDatabase['list']>[0],
+): ReturnType<FailureNotificationDestinationDatabase['list']> {
+  return transact(input, async (client) => {
+    await authorize(client, input.workspaceId, input.actorId, {
+      manage: false,
+    });
+    const result = await client.query<Record<string, unknown>>(
+      `select destination.id,destination.workspace_id,destination.kind,
                   destination.status,destination.current_config_version,
                   destination.created_at,destination.updated_at,version.config
            from app.failure_notification_destinations destination
@@ -287,95 +335,76 @@ export function createFailureNotificationDestinationDatabase(
             and version.destination_id=destination.id
             and version.version=destination.current_config_version
           where destination.workspace_id=$1 order by destination.created_at,destination.id limit $2`,
-          [input.workspaceId, FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT],
-        );
-        return Object.freeze(
-          result.rows.map(mapFailureNotificationDestinationRecord),
-        );
-      }),
-    appendVersion: (
-      input: Parameters<
-        FailureNotificationDestinationDatabase['appendVersion']
-      >[0],
-    ) =>
-      transaction(input, async (client) => {
-        await authorize(client, input.workspaceId, input.actorId, {
-          manage: true,
-        });
-        const destinationId = z.uuid().parse(input.destinationId);
-        const operation = 'failure.notification.destination.version.append';
-        const scope = `${input.actorId}:${destinationId}`;
-        const replay = await claimNotificationCommand(client, input, {
-          operation,
-          scope,
-          resourceId: destinationId,
-        });
-        if (replay.kind === 'replay')
-          return decodeFailureNotificationDestinationReplay(replay.result);
-        const current = await readFailureNotificationDestination(
-          client,
-          input.workspaceId,
-          destinationId,
-          { lock: true },
-        );
-        const parsed = FailureNotificationDestinationConfigSchema.parse(
-          input.config,
-        );
-        if (
-          current.currentVersion !== input.expectedVersion ||
-          current.kind !== parsed.kind
-        )
-          throw destinationError('conflict', 'Destination version conflict');
-        await assertConnection(client, input.workspaceId, parsed);
-        const next = current.currentVersion + 1;
-        await insertVersion(client, {
-          workspaceId: input.workspaceId,
-          destinationId: current.id,
-          version: next,
-          config: parsed,
-          actorId: input.actorId,
-        });
-        await client.query(
-          `update app.failure_notification_destinations
+      [input.workspaceId, FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT],
+    );
+    return Object.freeze(
+      result.rows.map(mapFailureNotificationDestinationRecord),
+    );
+  });
+}
+
+function appendNotificationDestinationVersion(
+  transact: DestinationTransaction,
+  input: Parameters<FailureNotificationDestinationDatabase['appendVersion']>[0],
+): ReturnType<FailureNotificationDestinationDatabase['appendVersion']> {
+  return transact(input, async (client) => {
+    await authorize(client, input.workspaceId, input.actorId, {
+      manage: true,
+    });
+    const destinationId = z.uuid().parse(input.destinationId);
+    const operation = 'failure.notification.destination.version.append';
+    const scope = `${input.actorId}:${destinationId}`;
+    const replay = await claimNotificationCommand(client, input, {
+      operation,
+      scope,
+      resourceId: destinationId,
+    });
+    if (replay.kind === 'replay')
+      return decodeFailureNotificationDestinationReplay(replay.result);
+    const current = await readFailureNotificationDestination(
+      client,
+      input.workspaceId,
+      destinationId,
+      { lock: true },
+    );
+    const parsed = FailureNotificationDestinationConfigSchema.parse(
+      input.config,
+    );
+    if (
+      current.currentVersion !== input.expectedVersion ||
+      current.kind !== parsed.kind
+    )
+      throw destinationError('conflict', 'Destination version conflict');
+    await assertConnection(client, input.workspaceId, parsed);
+    const next = current.currentVersion + 1;
+    await insertVersion(client, {
+      workspaceId: input.workspaceId,
+      destinationId: current.id,
+      version: next,
+      config: parsed,
+      actorId: input.actorId,
+    });
+    await client.query(
+      `update app.failure_notification_destinations
             set current_config_version=$3,updated_at=clock_timestamp()
           where workspace_id=$1 and id=$2`,
-          [input.workspaceId, current.id, next],
-        );
-        await audit(client, input, {
-          action: 'failure_notification_destination.version_appended',
-          target: { id: current.id, type: 'failure_notification_destination' },
-          metadata: { version: next },
-        });
-        const appended = await readFailureNotificationDestination(
-          client,
-          input.workspaceId,
-          current.id,
-        );
-        await completeNotificationCommand(client, input, {
-          operation,
-          scope,
-          result: serializeFailureNotificationDestinationRecord(appended),
-        });
-        return appended;
-      }),
-    setStatus: (
-      input: Parameters<FailureNotificationDestinationDatabase['setStatus']>[0],
-    ) => setDestinationStatus(transaction, input),
-    setWorkflowPolicy: (
-      input: Parameters<
-        FailureNotificationDestinationDatabase['setWorkflowPolicy']
-      >[0],
-    ) => setWorkflowFailureNotificationPolicy(transaction, input),
-    clearWorkflowPolicy: (
-      input: Parameters<
-        FailureNotificationDestinationDatabase['clearWorkflowPolicy']
-      >[0],
-    ) => clearWorkflowFailureNotificationPolicy(transaction, input),
-    getWorkflowPolicy: (
-      input: Parameters<
-        FailureNotificationDestinationDatabase['getWorkflowPolicy']
-      >[0],
-    ) => readWorkflowFailureNotificationPolicy(transaction, input),
-    close: () => lease.close(),
+      [input.workspaceId, current.id, next],
+    );
+    await audit(client, input, {
+      action: 'failure_notification_destination.version_appended',
+      target: { id: current.id, type: 'failure_notification_destination' },
+      metadata: { version: next },
+    });
+    const appended = await readFailureNotificationDestination(
+      client,
+      input.workspaceId,
+      current.id,
+    );
+    await completeNotificationCommand(client, input, {
+      operation,
+      scope,
+      result: serializeFailureNotificationDestinationRecord(appended),
+    });
+    return appended;
   });
 }
