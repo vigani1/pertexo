@@ -1,5 +1,5 @@
+import { CORE_WEBHOOK_CONFIG_SCHEMA } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
-import { CORE_WEBHOOK_CONFIG_SCHEMA } from '@pertexo/nodes-core';
 import { rolesForCapability } from '@pertexo/workflow-model';
 import { lockWorkflowAuthoringAuthority } from '../../../authoring/workflows/authority.js';
 import { sampleDraft } from '../../../authoring/step-samples/records.js';

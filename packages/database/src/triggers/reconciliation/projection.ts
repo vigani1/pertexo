@@ -1,10 +1,8 @@
+import { CORE_WEBHOOK_CONFIG_SCHEMA } from '@pertexo/workflow-model';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { createHash } from 'node:crypto';
 
-import {
-  CORE_SCHEDULE_CONFIG_SCHEMA,
-  CORE_WEBHOOK_CONFIG_SCHEMA,
-} from '@pertexo/nodes-core';
+import { CORE_SCHEDULE_CONFIG_SCHEMA } from '@pertexo/nodes-core';
 import { z } from 'zod';
 
 function triggerKind(

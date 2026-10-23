@@ -1,3 +1,4 @@
+import { CORE_WEBHOOK_CONFIG_SCHEMA } from '@pertexo/workflow-model';
 import { appendAuditFact } from '../../governance/audit/append.js';
 import { lockEventCoordination } from '../coordination/keys.js';
 import { coordinateVerifiedWebhook } from './coordinate.js';
@@ -6,11 +7,7 @@ import {
   closeEventCoordinationStore,
 } from '../coordination/prepare.js';
 import type { EventCoordinationReceipt } from '@pertexo/workflow-model';
-import {
-  CORE_WEBHOOK_CONFIG_SCHEMA,
-  webhookRunInput,
-  type WebhookRequest,
-} from '@pertexo/nodes-core';
+import { webhookRunInput, type WebhookRequest } from '@pertexo/nodes-core';
 import { WorkflowAlreadyRunningError } from '../../runs/commands/concurrency.js';
 import { recordWorkflowTriggerSkip } from '../skips.js';
 import {

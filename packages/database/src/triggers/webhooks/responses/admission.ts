@@ -1,4 +1,4 @@
-import { CORE_WEBHOOK_CONFIG_SCHEMA } from '@pertexo/nodes-core';
+import { CORE_WEBHOOK_CONFIG_SCHEMA } from '@pertexo/workflow-model';
 import { sql } from 'drizzle-orm';
 import type { WorkspaceTransaction } from '../../../tenant-access/transactions.js';
 
