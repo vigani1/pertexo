@@ -42,19 +42,22 @@ function textBytes(value: unknown): number {
   const text = Object.is(value, -0) ? '-0' : String(value);
   let bytes = addBytes(0, utf8ByteLength(text));
   for (const match of text.matchAll(/[&<>"']/gu))
-    bytes = addBytes(
-      bytes,
-      match[0] === '&' ? 4 : match[0] === '<' || match[0] === '>' ? 3 : 5,
-    );
+    bytes = addBytes(bytes, escapeExpansion(match[0]));
   return bytes;
 }
 
 function measureElement(
   tagBytes: number,
   value: unknown,
-  depth: number,
-  signal: AbortSignal,
-  counts: { members: number },
+  {
+    depth,
+    signal,
+    counts,
+  }: Readonly<{
+    depth: number;
+    signal: AbortSignal;
+    counts: { members: number };
+  }>,
 ): number {
   signal.throwIfAborted();
   if (Array.isArray(value)) {
@@ -72,7 +75,11 @@ function measureElement(
         );
       bytes = addBytes(
         bytes,
-        measureElement(tagBytes, item, depth, signal, counts),
+        measureElement(tagBytes, item, {
+          depth: depth,
+          signal: signal,
+          counts: counts,
+        }),
       );
     }
     return bytes;
@@ -99,7 +106,11 @@ function measureElement(
       else
         content = addBytes(
           content,
-          measureElement(nameBytes(key), item, depth + 1, signal, counts),
+          measureElement(nameBytes(key), item, {
+            depth: depth + 1,
+            signal: signal,
+            counts: counts,
+          }),
         );
     }
   } else if (value !== null) content = textBytes(value);
@@ -120,17 +131,21 @@ export function buildXml(value: unknown, signal: AbortSignal) {
       'XML needs an object with exactly one root element.',
     );
   const [root] = Object.keys(value);
-  if (
+  const invalidRoot =
     root === undefined ||
     root.startsWith('@_') ||
     root === '#text' ||
-    Array.isArray(value[root])
-  )
+    Array.isArray(value[root]);
+  if (invalidRoot)
     return refuseUtility(
       'xml_root',
       'XML needs exactly one root element, not an array or an attribute.',
     );
-  measureElement(nameBytes(root), value[root], 1, signal, { members: 0 });
+  measureElement(nameBytes(root), value[root], {
+    depth: 1,
+    signal: signal,
+    counts: { members: 0 },
+  });
   const result: unknown = new XMLBuilder({
     ignoreAttributes: false,
     processEntities: true,
@@ -149,4 +164,10 @@ export function buildXml(value: unknown, signal: AbortSignal) {
     );
   parseBoundedXml(result, signal);
   return result;
+}
+
+function escapeExpansion(character: string): number {
+  if (character === '&') return 4;
+  if (character === '<' || character === '>') return 3;
+  return 5;
 }

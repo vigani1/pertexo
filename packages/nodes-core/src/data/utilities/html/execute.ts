@@ -49,7 +49,7 @@ export function extractHtml(
       'The CSS selector is malformed. Use tags, classes, IDs, attributes or combinators.',
     );
   }
-  if (
+  const unsupportedSelection =
     selector.length > 4 ||
     selector.flat().length > 16 ||
     selector.flat().some((token) => !supportedSelector(token)) ||
@@ -58,8 +58,8 @@ export function extractHtml(
         group.filter((token) => token.type === SelectorType.Descendant).length >
           1 ||
         group.filter((token) => token.type === SelectorType.Pseudo).length > 1,
-    )
-  )
+    );
+  if (unsupportedSelection)
     return refuseUtility(
       'html_selector',
       'Use up to four selector groups and 16 tokens, with one descendant and one structural pseudo-class per group. Use child (>) or adjacent (+) links for longer paths; general sibling (~), nested selectors and pseudo-elements are not supported.',
@@ -83,12 +83,7 @@ export function extractHtml(
     signal.throwIfAborted();
     const attribute =
       config.operation === 'attribute' ? config.attribute.toLowerCase() : '';
-    const item =
-      config.operation === 'text'
-        ? textContent(element)
-        : Object.hasOwn(element.attribs, attribute)
-          ? (element.attribs[attribute] ?? '')
-          : '';
+    const item = extractElementValue(config.operation, element, attribute);
     bytes += utf8ByteLength(JSON.stringify(item)) + 1;
     if (bytes > STORED_EXECUTION_VALUE_LIMITS.inlineBytes)
       refuseUtility(
@@ -102,4 +97,15 @@ export function extractHtml(
     matchCount: matches.length,
     truncated: matches.length > config.limit,
   };
+}
+
+function extractElementValue(
+  operation: HtmlConfig['operation'],
+  element: Element,
+  attribute: string,
+): string {
+  if (operation === 'text') return textContent(element);
+  return Object.hasOwn(element.attribs, attribute)
+    ? (element.attribs[attribute] ?? '')
+    : '';
 }

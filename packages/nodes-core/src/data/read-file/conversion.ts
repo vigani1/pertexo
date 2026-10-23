@@ -1,7 +1,7 @@
 const JSON_NUMBER = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/u;
 export function convertCsvValue(
   value: string,
-  enabled: boolean,
+  { enabled }: Readonly<{ enabled: boolean }>,
 ): string | number | boolean {
   if (!enabled) return value;
   if (value === 'true') return true;

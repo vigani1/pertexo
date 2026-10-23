@@ -14,12 +14,12 @@ const boundedItemsSnapshotSchema = z.unknown().transform((items, context) => {
     });
     return z.NEVER;
   }
-  if (
+  const missingItems =
     bounded.data === null ||
     typeof bounded.data !== 'object' ||
     Array.isArray(bounded.data) ||
-    !Object.hasOwn(bounded.data, 'items')
-  ) {
+    !Object.hasOwn(bounded.data, 'items');
+  if (missingItems) {
     context.addIssue({
       code: 'custom',
       message: 'For Each items exceed the bounded node JSON contract',

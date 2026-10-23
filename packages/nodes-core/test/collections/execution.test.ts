@@ -311,14 +311,7 @@ describe('bounded collection execution', () => {
   it.each(['filter', 'sort', 'unique', 'summarize'])(
     'admits exactly 4998 %s items and rejects one over without changing global JSON bounds',
     async (key) => {
-      const config =
-        key === 'filter'
-          ? filter('exists')
-          : key === 'sort'
-            ? sort()
-            : key === 'unique'
-              ? { path: '$', missing: 'error' }
-              : { valuePath: '$', missing: 'error' };
+      const config = collectionConfig(key);
       const items = Array.from({ length: 4998 }, (_, i) => i);
       expect(await run(key, config, { items })).toMatchObject({
         kind: 'succeeded',
@@ -351,3 +344,10 @@ describe('bounded collection execution', () => {
     ).rejects.toMatchObject({ code: 'aborted' });
   });
 });
+
+function collectionConfig(key: string) {
+  if (key === 'filter') return filter('exists');
+  if (key === 'sort') return sort();
+  if (key === 'unique') return { path: '$', missing: 'error' };
+  return { valuePath: '$', missing: 'error' };
+}

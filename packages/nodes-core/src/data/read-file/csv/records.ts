@@ -77,7 +77,9 @@ export async function* readCsvRecords<T>(
         Object.fromEntries(
           headers.map((name, index) => [
             name,
-            convertCsvValue(record[index] ?? '', config.convertValues),
+            convertCsvValue(record[index] ?? '', {
+              enabled: config.convertValues,
+            }),
           ]),
         ),
       );
@@ -131,17 +133,12 @@ export async function* readCsvRecords<T>(
       throw new FileInputFailure({ reason: 'csv_empty' });
   } catch (error) {
     if (signal.aborted || error instanceof NodeExecutorFailure) throw error;
-    if (
-      error instanceof CsvError &&
-      error.code === 'CSV_RECORD_INCONSISTENT_FIELDS_LENGTH' &&
-      headers !== undefined &&
-      Array.isArray(error.record)
-    )
+    const mismatch = columnMismatch(error, headers);
+    if (mismatch !== undefined)
       throw new FileInputFailure({
         reason: 'csv_columns',
         record: count + 2,
-        expected: headers.length,
-        actual: error.record.length,
+        ...mismatch,
       });
     if (error instanceof CsvError && error.code === 'CSV_MAX_RECORD_SIZE')
       throw new FileInputFailure({ reason: 'value_size' });
@@ -158,4 +155,18 @@ export async function* readCsvRecords<T>(
     parser.destroy();
     await pumping;
   }
+}
+
+function columnMismatch(
+  error: unknown,
+  headers: readonly string[] | undefined,
+) {
+  if (
+    error instanceof CsvError &&
+    error.code === 'CSV_RECORD_INCONSISTENT_FIELDS_LENGTH' &&
+    headers !== undefined &&
+    Array.isArray(error.record)
+  )
+    return { expected: headers.length, actual: error.record.length };
+  return undefined;
 }

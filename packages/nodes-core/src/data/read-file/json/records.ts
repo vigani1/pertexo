@@ -60,32 +60,13 @@ function createParser(
         throw new FileInputFailure({ reason: 'page_array' });
       started = true;
     }
-    if (
-      containers.length > 1 ||
-      (containers.length === 1 &&
-        token !== TokenType.COMMA &&
-        token !== TokenType.RIGHT_BRACKET)
-    ) {
-      if (token === TokenType.STRING)
-        encodedBytes += storedExecutionJsonStringBytes(info.value as string);
-      else if (token === TokenType.NUMBER) {
-        if (!Number.isFinite(info.value))
-          throw new FileInputFailure({ reason: 'json_number' });
-        encodedBytes += JSON.stringify(info.value).length;
-      } else if (token === TokenType.NULL || token === TokenType.TRUE)
-        encodedBytes += 4;
-      else if (token === TokenType.FALSE) encodedBytes += 5;
-      else encodedBytes += 1;
+    const insideRecord = tokenIsInsideRecord(containers, token);
+    if (insideRecord) {
+      encodedBytes += tokenJsonBytes(token, info.value);
       if (encodedBytes > FILE_PAGE_LIMITS.bytes - 2) tooLarge();
     }
-    if (
-      token === TokenType.COLON ||
-      (containers.length > 1 &&
-        containers.at(-1) === TokenType.LEFT_BRACKET &&
-        token !== TokenType.COMMA &&
-        token !== TokenType.RIGHT_BRACKET &&
-        (previous === TokenType.LEFT_BRACKET || previous === TokenType.COMMA))
-    ) {
+    const addsMember = tokenAddsMember(containers, token, previous);
+    if (addsMember) {
       members += 1;
       if (members > FILE_PAGE_LIMITS.members) tooLarge();
     }
@@ -134,9 +115,11 @@ function createParser(
       // callback errors. This independent raw-token bound covers both cases.
       // Whitespace between tokens consumes no parser allocation. String
       // whitespace remains covered by the decoded partial-string bound above.
-      for (const byte of chunk)
-        if (byte !== 0x20 && byte !== 0x09 && byte !== 0x0a && byte !== 0x0d)
-          rawTokenBytes += 1;
+      for (const byte of chunk) {
+        const significantByte =
+          byte !== 0x20 && byte !== 0x09 && byte !== 0x0a && byte !== 0x0d;
+        if (significantByte) rawTokenBytes += 1;
+      }
       if (rawTokenBytes > 6 * FILE_PAGE_LIMITS.bytes + INPUT_CHUNK_BYTES)
         tooLarge();
       tokenizer.write(chunk);
@@ -179,4 +162,58 @@ export async function* readJsonRecords(
   signal.throwIfAborted();
   parser.end();
   yield* pending;
+}
+
+function tokenJsonBytes(token: TokenType, value: unknown): number {
+  switch (token) {
+    case TokenType.STRING:
+      return storedExecutionJsonStringBytes(value as string);
+    case TokenType.NUMBER:
+      if (!Number.isFinite(value))
+        throw new FileInputFailure({ reason: 'json_number' });
+      return JSON.stringify(value).length;
+    case TokenType.NULL:
+    case TokenType.TRUE:
+      return 4;
+    case TokenType.FALSE:
+      return 5;
+    case TokenType.COLON:
+    case TokenType.COMMA:
+    case TokenType.LEFT_BRACE:
+    case TokenType.LEFT_BRACKET:
+    case TokenType.RIGHT_BRACE:
+    case TokenType.RIGHT_BRACKET:
+    case TokenType.SEPARATOR:
+      // Container and separator punctuation each occupies one byte.
+      return 1;
+    default:
+      return 1;
+  }
+}
+
+function tokenIsInsideRecord(
+  containers: readonly TokenType[],
+  token: TokenType,
+): boolean {
+  return (
+    containers.length > 1 ||
+    (containers.length === 1 &&
+      token !== TokenType.COMMA &&
+      token !== TokenType.RIGHT_BRACKET)
+  );
+}
+
+function tokenAddsMember(
+  containers: readonly TokenType[],
+  token: TokenType,
+  previous: TokenType | undefined,
+): boolean {
+  return (
+    token === TokenType.COLON ||
+    (containers.length > 1 &&
+      containers.at(-1) === TokenType.LEFT_BRACKET &&
+      token !== TokenType.COMMA &&
+      token !== TokenType.RIGHT_BRACKET &&
+      (previous === TokenType.LEFT_BRACKET || previous === TokenType.COMMA))
+  );
 }

@@ -33,7 +33,7 @@ function parseInstant(value: string): number {
   const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
   const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
   const daysInMonth = days[month - 1];
-  if (
+  const invalidParts =
     month < 1 ||
     month > 12 ||
     day < 1 ||
@@ -43,9 +43,8 @@ function parseInstant(value: string): number {
     minute > 59 ||
     second > 59 ||
     (offset !== 'Z' &&
-      (Number(offset.slice(1, 3)) > 23 || Number(offset.slice(4)) > 59))
-  )
-    return invalidDate();
+      (Number(offset.slice(1, 3)) > 23 || Number(offset.slice(4)) > 59));
+  if (invalidParts) return invalidDate();
   return checkInstant(Date.parse(parts[0]));
 }
 export function transformDateValue(

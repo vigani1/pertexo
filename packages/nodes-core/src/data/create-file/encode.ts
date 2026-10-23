@@ -100,14 +100,15 @@ export function encodeFile(
     }
     return {
       bytes: Buffer.concat(chunks, byteLength),
-      mediaType:
-        config.format === 'json'
-          ? 'application/json'
-          : config.format === 'csv'
-            ? 'text/csv; charset=utf-8'
-            : 'text/plain; charset=utf-8',
+      mediaType: FILE_MEDIA_TYPES[config.format],
     };
   } finally {
     for (const chunk of chunks) chunk.fill(0);
   }
 }
+
+const FILE_MEDIA_TYPES = {
+  json: 'application/json',
+  csv: 'text/csv; charset=utf-8',
+  text: 'text/plain; charset=utf-8',
+} as const;

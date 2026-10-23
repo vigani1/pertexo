@@ -131,7 +131,7 @@ describe('bounded list structure operations', () => {
       await expect(
         run(
           key,
-          key === 'batch' ? { size: 1 } : key === 'take' ? { count: 1 } : {},
+          structureConfig(key),
           { items: [], ...(key === 'concat' ? { otherItems: [] } : {}) },
           controller.signal,
         ),
@@ -139,3 +139,9 @@ describe('bounded list structure operations', () => {
     },
   );
 });
+
+function structureConfig(key: string) {
+  if (key === 'batch') return { size: 1 };
+  if (key === 'take') return { count: 1 };
+  return {};
+}
