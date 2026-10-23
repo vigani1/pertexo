@@ -122,33 +122,7 @@ function databaseCleanupFailure(error: unknown): DatabaseCleanupFailure {
  */
 export function useBetterAuthRealApi(
   suite: string,
-  options: Readonly<{
-    publicWebOrigin?: string;
-    databasePoolMax?: number;
-    authenticationMail?: (local: AuthenticationMail) => AuthenticationMail;
-    automationTokens?: boolean;
-    callbacks?: ApiConfig['callbacks'];
-    artifacts?: ApiConfig['artifacts'];
-    /** F07-owned qualification namespace, never a shared database selection. */
-    databaseNamespace?: 'f07_organization';
-    redisUrl?: string;
-    schedules?: boolean;
-    /** Compose the real workspace inbox runtime (ADR 055). */
-    notifications?: boolean;
-    notificationMail?: ApiIdentityConfig['betterAuth']['durableMail'];
-    federationEncryption?: ApiIdentityConfig['federationEncryption'];
-    secureCookies?: boolean;
-    socialProviders?: ApiIdentityConfig['betterAuth']['providers'];
-    webhookRuntime?: (config: ApiConfig) => Promise<ApiWebhookRuntime>;
-    logger?: StructuredLogger;
-    connections?: Readonly<{
-      config: NonNullable<ApiConfig['connections']>;
-      overrides: ApiConnectionRuntimeOverrides;
-    }>;
-    afterMigration?: (databaseUrl: (base: string) => string) => Promise<void>;
-    beforeClose?: () => Promise<void>;
-    beforeDrop?: () => Promise<void>;
-  }> = {},
+  options: ApiFixtureOptions = {},
 ) {
   const fixtureOrigin = options.publicWebOrigin ?? origin;
   const owner = new FixtureResourceOwner();
@@ -219,39 +193,13 @@ export function useBetterAuthRealApi(
     await options.afterMigration?.(databaseUrl);
     const defaults = apiConfig(databaseConfig);
     if (defaults.identity === undefined) throw new Error('Identity is missing');
-    const identity = {
-      ...defaults.identity,
-      publicWebOrigin: fixtureOrigin,
-      session: {
-        ...defaults.identity.session,
-        secureCookie:
-          options.secureCookies ?? defaults.identity.session.secureCookie,
-      },
-      ...(options.federationEncryption === undefined
-        ? {}
-        : { federationEncryption: options.federationEncryption }),
-      automationTokensEnabled: options.automationTokens ?? false,
-      betterAuth: {
-        ...defaults.identity.betterAuth,
-        providers:
-          options.socialProviders ?? defaults.identity.betterAuth.providers,
-      },
-    };
+    const identity = fixtureIdentityConfiguration(
+      defaults.identity,
+      options,
+      fixtureOrigin,
+    );
     identityConfiguration = identity;
-    const config: ApiConfig = {
-      ...defaults,
-      ...(options.callbacks === undefined
-        ? {}
-        : { callbacks: options.callbacks }),
-      identity,
-      redisUrl: options.redisUrl ?? redisUrl,
-      ...(options.artifacts === undefined
-        ? {}
-        : { artifacts: options.artifacts }),
-      ...(options.connections === undefined
-        ? {}
-        : { connections: options.connections.config }),
-    };
+    const config = fixtureApiConfiguration(defaults, identity, options);
     identityRuntime = owner.acquire(
       'identity runtime',
       await createApiIdentityRuntime(identity, databaseConfig, {
@@ -498,4 +446,75 @@ export function expectProblem(
 ): void {
   expect(reply.statusCode, reply.payload).toBe(status);
   expect(reply.json()).toMatchObject({ status, code });
+}
+
+type ApiFixtureOptions = Readonly<{
+  publicWebOrigin?: string;
+  databasePoolMax?: number;
+  authenticationMail?: (local: AuthenticationMail) => AuthenticationMail;
+  automationTokens?: boolean;
+  callbacks?: ApiConfig['callbacks'];
+  artifacts?: ApiConfig['artifacts'];
+  /** F07-owned qualification namespace, never a shared database selection. */
+  databaseNamespace?: 'f07_organization';
+  redisUrl?: string;
+  schedules?: boolean;
+  /** Compose the real workspace inbox runtime (ADR 055). */
+  notifications?: boolean;
+  notificationMail?: ApiIdentityConfig['betterAuth']['durableMail'];
+  federationEncryption?: ApiIdentityConfig['federationEncryption'];
+  secureCookies?: boolean;
+  socialProviders?: ApiIdentityConfig['betterAuth']['providers'];
+  webhookRuntime?: (config: ApiConfig) => Promise<ApiWebhookRuntime>;
+  logger?: StructuredLogger;
+  connections?: Readonly<{
+    config: NonNullable<ApiConfig['connections']>;
+    overrides: ApiConnectionRuntimeOverrides;
+  }>;
+  afterMigration?: (databaseUrl: (base: string) => string) => Promise<void>;
+  beforeClose?: () => Promise<void>;
+  beforeDrop?: () => Promise<void>;
+}>;
+
+function fixtureIdentityConfiguration(
+  defaults: ApiIdentityConfig,
+  options: ApiFixtureOptions,
+  fixtureOrigin: string,
+): ApiIdentityConfig {
+  return {
+    ...defaults,
+    publicWebOrigin: fixtureOrigin,
+    session: {
+      ...defaults.session,
+      secureCookie: options.secureCookies ?? defaults.session.secureCookie,
+    },
+    ...(options.federationEncryption === undefined
+      ? {}
+      : { federationEncryption: options.federationEncryption }),
+    automationTokensEnabled: options.automationTokens ?? false,
+    betterAuth: {
+      ...defaults.betterAuth,
+      providers: options.socialProviders ?? defaults.betterAuth.providers,
+    },
+  };
+}
+function fixtureApiConfiguration(
+  defaults: ApiConfig,
+  identity: ApiIdentityConfig,
+  options: ApiFixtureOptions,
+): ApiConfig {
+  return {
+    ...defaults,
+    ...(options.callbacks === undefined
+      ? {}
+      : { callbacks: options.callbacks }),
+    identity,
+    redisUrl: options.redisUrl ?? redisUrl,
+    ...(options.artifacts === undefined
+      ? {}
+      : { artifacts: options.artifacts }),
+    ...(options.connections === undefined
+      ? {}
+      : { connections: options.connections.config }),
+  };
 }
