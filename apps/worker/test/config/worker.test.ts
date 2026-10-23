@@ -30,6 +30,48 @@ const callbackEnvironment = {
 };
 
 describe('parseWorkerConfig', () => {
+  it('preserves client and dispatcher pool settings with their own bounds', () => {
+    const config = parseWorkerConfig({
+      ...requiredEnvironment,
+      DATABASE_CONNECTION_TIMEOUT_MILLIS: '12345',
+      DATABASE_IDLE_TIMEOUT_MILLIS: '60000',
+      DATABASE_POOL_MAX: '20',
+      DATABASE_DISPATCHER_POOL_MAX: '10',
+    });
+    expect(config.database).toEqual({
+      connectionString: requiredEnvironment.DATABASE_URL,
+      connectionTimeoutMillis: 12_345,
+      idleTimeoutMillis: 60_000,
+      max: 20,
+      ownerRole: 'pertexo_owner',
+    });
+    expect(config.dispatcherDatabase).toEqual({
+      connectionString: requiredEnvironment.DATABASE_MAINTENANCE_URL,
+      connectionTimeoutMillis: 12_345,
+      idleTimeoutMillis: 60_000,
+      max: 10,
+      ownerRole: 'pertexo_owner',
+    });
+    expect(Object.isFrozen(config.database)).toBe(true);
+    expect(Object.isFrozen(config.dispatcherDatabase)).toBe(true);
+  });
+  it.each([
+    ['DATABASE_POOL_MAX', '0'],
+    ['DATABASE_POOL_MAX', '21'],
+    ['DATABASE_POOL_MAX', '2.5'],
+    ['DATABASE_CONNECTION_TIMEOUT_MILLIS', '0'],
+    ['DATABASE_CONNECTION_TIMEOUT_MILLIS', 'bad'],
+    ['DATABASE_IDLE_TIMEOUT_MILLIS', '-1'],
+    ['DATABASE_IDLE_TIMEOUT_MILLIS', '1.5'],
+  ])('refuses invalid %s=%s at the config boundary', (key, value) => {
+    expect(() =>
+      parseWorkerConfig({
+        ...requiredEnvironment,
+        [key]: value,
+      }),
+    ).toThrow('Invalid worker configuration');
+  });
+
   it('enables the shared local provider only outside deployed environments', () => {
     const local = {
       ...requiredEnvironment,

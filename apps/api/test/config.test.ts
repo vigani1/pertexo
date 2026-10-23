@@ -34,6 +34,40 @@ function validDeployedEnvironment(): Record<string, string> {
 }
 
 describe('parseApiConfig', () => {
+  it('preserves configured client pool settings as a frozen record', () => {
+    const config = parseApiConfig({
+      DATABASE_URL: 'postgresql://app:secret@localhost:5432/pertexo',
+      DATABASE_CONNECTION_TIMEOUT_MILLIS: '12345',
+      DATABASE_IDLE_TIMEOUT_MILLIS: '60000',
+      DATABASE_POOL_MAX: '20',
+      POSTGRES_OWNER_USER: 'custom_owner',
+    });
+    expect(config.database).toEqual({
+      connectionString: 'postgresql://app:secret@localhost:5432/pertexo',
+      connectionTimeoutMillis: 12_345,
+      idleTimeoutMillis: 60_000,
+      max: 20,
+      ownerRole: 'custom_owner',
+    });
+    expect(Object.isFrozen(config.database)).toBe(true);
+  });
+  it.each([
+    ['DATABASE_POOL_MAX', '0'],
+    ['DATABASE_POOL_MAX', '21'],
+    ['DATABASE_POOL_MAX', '2.5'],
+    ['DATABASE_CONNECTION_TIMEOUT_MILLIS', '0'],
+    ['DATABASE_CONNECTION_TIMEOUT_MILLIS', 'bad'],
+    ['DATABASE_IDLE_TIMEOUT_MILLIS', '-1'],
+    ['DATABASE_IDLE_TIMEOUT_MILLIS', '1.5'],
+  ])('refuses invalid %s=%s at the config boundary', (key, value) => {
+    expect(() =>
+      parseApiConfig({
+        DATABASE_URL: 'postgresql://app:secret@localhost:5432/pertexo',
+        [key]: value,
+      }),
+    ).toThrow();
+  });
+
   it('enables connection and webhook secrets from the same explicit development key', () => {
     const config = parseApiConfig({
       DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',

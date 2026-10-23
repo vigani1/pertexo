@@ -252,26 +252,27 @@ export class WorkerModule {
             workspaceInbox.start();
             autoPause.start();
             retention.start();
-            shutdown.register('retention', () => retention.close());
-            shutdown.register('workspace-inbox', () => workspaceInbox.close());
-            shutdown.register('workflow-auto-pause', () => autoPause.close());
-            if (systemMail !== undefined)
-              shutdown.register('authentication-mail', () =>
-                systemMail.close(),
-              );
-            shutdown.register('transport', () => transport.close());
-            shutdown.register('database', () => database.close());
-            if (dependencies.databaseRuntime !== undefined)
-              shutdown.register('database-runtime', () =>
-                dependencies.databaseRuntime?.close(),
-              );
+            // Register dependencies before users; the coordinator unwinds them.
+            shutdown.register('telemetry', () =>
+              dependencies.telemetry.shutdown(),
+            );
             if (dependencies.dispatcherDatabaseRuntime !== undefined)
               shutdown.register('dispatcher-database-runtime', () =>
                 dependencies.dispatcherDatabaseRuntime?.close(),
               );
-            shutdown.register('telemetry', () =>
-              dependencies.telemetry.shutdown(),
-            );
+            if (dependencies.databaseRuntime !== undefined)
+              shutdown.register('database-runtime', () =>
+                dependencies.databaseRuntime?.close(),
+              );
+            shutdown.register('database', () => database.close());
+            shutdown.register('transport', () => transport.close());
+            if (systemMail !== undefined)
+              shutdown.register('authentication-mail', () =>
+                systemMail.close(),
+              );
+            shutdown.register('workspace-inbox', () => workspaceInbox.close());
+            shutdown.register('workflow-auto-pause', () => autoPause.close());
+            shutdown.register('retention', () => retention.close());
             return Object.freeze({ registered: true });
           },
         },

@@ -1,4 +1,9 @@
 import {
+  databaseClientEnvironmentSchema,
+  clientDatabaseConfig,
+  parseObservabilityConfig,
+} from '@pertexo/observability/startup';
+import {
   parseCallbackKeyConfig,
   type CallbackKeyConfig,
 } from '@pertexo/integrations/server';
@@ -14,7 +19,6 @@ import {
   parseArtifactStoreConfig,
   type ArtifactStoreConfig,
 } from '@pertexo/artifact-store';
-import { parseObservabilityConfig } from '@pertexo/observability/startup';
 import type { ObservabilityConfig } from '@pertexo/observability/startup';
 
 import {
@@ -51,21 +55,7 @@ const trustedProxyCidrsSchema = z
       .min(1),
   );
 
-const apiEnvironmentSchema = z.object({
-  DATABASE_URL: z.url().refine((value) => value.startsWith('postgresql://'), {
-    message: 'DATABASE_URL must be a postgresql:// URL',
-  }),
-  DATABASE_CONNECTION_TIMEOUT_MILLIS: z.coerce
-    .number()
-    .int()
-    .positive()
-    .default(5_000),
-  DATABASE_IDLE_TIMEOUT_MILLIS: z.coerce
-    .number()
-    .int()
-    .positive()
-    .default(30_000),
-  DATABASE_POOL_MAX: z.coerce.number().int().positive().max(20).default(5),
+const apiEnvironmentSchema = databaseClientEnvironmentSchema.extend({
   HOST: z.string().trim().min(1).default('0.0.0.0'),
   NODE_ENV: z.enum(API_NODE_ENVIRONMENTS).default('development'),
   LOG_LEVEL: z
@@ -86,10 +76,6 @@ const apiEnvironmentSchema = z.object({
     .optional(),
   SERVICE_VERSION: z.string().trim().min(1).default('0.0.0-dev'),
   TRUST_PROXY_CIDRS: trustedProxyCidrsSchema.optional(),
-  POSTGRES_OWNER_USER: z
-    .string()
-    .regex(/^[a-z_][a-z0-9_]*$/u)
-    .default('pertexo_owner'),
 });
 
 export type ApiNodeEnvironment = (typeof API_NODE_ENVIRONMENTS)[number];
@@ -154,13 +140,7 @@ export function parseApiConfig(
     ...(artifacts === undefined ? {} : { artifacts }),
     ...(connections === undefined ? {} : { connections }),
     ...(connections === undefined ? {} : { webhooks: connections }),
-    database: Object.freeze({
-      connectionString: parsed.DATABASE_URL,
-      connectionTimeoutMillis: parsed.DATABASE_CONNECTION_TIMEOUT_MILLIS,
-      idleTimeoutMillis: parsed.DATABASE_IDLE_TIMEOUT_MILLIS,
-      max: parsed.DATABASE_POOL_MAX,
-      ownerRole: parsed.POSTGRES_OWNER_USER,
-    }),
+    database: clientDatabaseConfig(parsed),
     host: parsed.HOST,
     ...(identity === undefined ? {} : { identity }),
     nodeEnv: parsed.NODE_ENV,

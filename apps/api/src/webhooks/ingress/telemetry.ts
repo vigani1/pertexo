@@ -1,3 +1,4 @@
+import { measureOperation } from '@pertexo/observability';
 import {
   context,
   metrics,
@@ -78,44 +79,15 @@ function createConfiguredWebhookIngressTelemetry(): WebhookIngressTelemetry {
         candidate === undefined || !trace.isSpanContextValid(candidate)
           ? context.active()
           : trace.setSpanContext(context.active(), candidate);
-      let workPromise: Promise<T> | undefined;
-      let owningSpan: Span | undefined;
-      const runOnce = (span?: Span): Promise<T> => {
-        if (workPromise === undefined) {
-          owningSpan = span;
-          workPromise = Promise.resolve()
-            .then(work)
-            .catch((error: unknown) => {
-              safeSpanOperation(() => {
-                span?.setStatus({ code: SpanStatusCode.ERROR });
-              });
-              throw error;
-            })
-            .finally(() => {
-              safeSpanOperation(() => {
-                span?.end();
-              });
-            });
-        } else if (span !== undefined && span !== owningSpan) {
-          safeSpanOperation(() => {
-            span.end();
-          });
-        }
-        return workPromise;
-      };
-      let tracePromise: Promise<T> | undefined;
-      try {
-        tracePromise = tracer.startActiveSpan(
-          'webhook.ingress',
-          {},
-          parent,
-          (span) => runOnce(span),
-        );
-      } catch {
-        return runOnce();
-      }
-      void Promise.resolve(tracePromise).catch(() => undefined);
-      return workPromise ?? runOnce();
+      return measureOperation<T, Span>({
+        work: () => Promise.resolve().then(work),
+        trace: (run) =>
+          tracer.startActiveSpan('webhook.ingress', {}, parent, run),
+        record: ({ outcome, span }) => {
+          if (outcome === 'failed')
+            span?.setStatus({ code: SpanStatusCode.ERROR });
+        },
+      });
     },
   };
   return Object.freeze(telemetry);
@@ -129,11 +101,3 @@ const NOOP_WEBHOOK_INGRESS_TELEMETRY: WebhookIngressTelemetry = Object.freeze({
   trace: <T>(_traceparent: string | undefined, work: () => Promise<T>) =>
     work(),
 });
-
-function safeSpanOperation(operation: () => void): void {
-  try {
-    operation();
-  } catch {
-    // Diagnostics cannot change webhook acceptance truth.
-  }
-}
