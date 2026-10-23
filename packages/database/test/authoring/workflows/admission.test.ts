@@ -24,9 +24,9 @@ import {
   invalid,
   budget,
 } from './admission/fixture.js';
-import { registerQualifiesSettingSUnitS } from './admission/idle-timeout-setting.cases.js';
+import { registerIdleTimeoutSettings } from './admission/idle-timeout-setting.cases.js';
 describe('effective authoring idle budget', () => {
-  registerQualifiesSettingSUnitS();
+  registerIdleTimeoutSettings();
 });
 describe('snapshot validation and publication ordering', () => {
   it('forwards pre-checkout cancellation through the real authoring wrapper', async () => {
