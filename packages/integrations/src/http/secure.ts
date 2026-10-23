@@ -1,81 +1,63 @@
-import { utf8ByteLength } from '@pertexo/workflow-model';
-import { redactText } from '../security/redact-text.js';
-import type { NodeVerifiedByteSource } from '@pertexo/node-sdk/server';
-import { isIP } from 'node:net';
-
-import { boundedRedactedBody } from './stream-redaction.js';
 import {
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,
-  type SecureHttpErrorCode,
   failure,
-  abortFailure,
   inspectSecureHttpError,
-  isTimeoutError,
-} from './secure-error.js';
-export {
-  SECURE_HTTP_ERROR_CODE,
-  SecureHttpError,
-  type SecureHttpErrorCode,
 } from './secure-error.js';
 import {
   assertPublicAddress,
   isAllowedPrivateAddress,
   normalizeUrlHostname,
-  type AllowedPrivateNetwork,
   type ResolvedAddress,
 } from './transport/address-policy.js';
+import { parseRequest } from './secure-request.js';
 
-/**
- * The HTTP request step's policy: the private networks its operator allows
- * (HTTP_ALLOWED_PRIVATE_NETWORKS), and plain http only inside them. Clients
- * without one keep the public-only rule.
- */
-export type SecureHttpAddressPolicy = Readonly<{
-  allowedPrivateNetworks: readonly AllowedPrivateNetwork[];
-}>;
 import {
-  parseRequest,
-  type ParsedSecureHttpRequest,
-} from './secure-request.js';
-import { normalizeUnknownError } from './unknown-error.js';
-
-const MAX_URL_BYTES = 2_048;
-const safeResponseHeaders = new Set([
-  'content-language',
-  'content-type',
-  'etag',
-  'last-modified',
-  'ratelimit-limit',
-  'ratelimit-remaining',
-  'ratelimit-reset',
-  'retry-after',
-  'x-ratelimit-limit',
-  'x-ratelimit-remaining',
-  'x-ratelimit-reset',
-]);
-
-export type SecureHttpFailureStage =
-  | 'admission'
-  | 'cancellation'
-  | 'dns'
-  | 'pre_dispatch'
-  | 'redirect'
-  | 'response'
-  | 'transport';
-
-export type SecureHttpFailureObservation = Readonly<{
-  classification: 'ambiguous' | 'definite_failure';
-  durationSeconds: number;
-  possiblyDispatched: boolean;
-  reason: SecureHttpErrorCode;
-  stage: SecureHttpFailureStage;
-}>;
-
-export interface SecureHttpObserver {
-  observeFailure(observation: SecureHttpFailureObservation): void;
-}
-
+  type SecureHttpAddressPolicy,
+  type SecureHttpObserver,
+  type SecureHttpRequest,
+  type SecureHttpResponse,
+  type SecureHttpBodyConsumer,
+  type SecureHttpResolver,
+  type SecureHttpTransportResponse,
+  type SecureHttpTransport,
+  type RedirectState,
+  type DispatchFailureContext,
+  POST_DISPATCH_AMBIGUITY,
+} from './execution/contract.js';
+import {
+  assertResponseStatus,
+  redirectTransition,
+  parseTargetUrl,
+  literalAddressFamily,
+  redirectLocation,
+} from './execution/routing.js';
+import { consumeFinalResponse, collectBody } from './execution/response.js';
+import {
+  failureStage,
+  assertNotAborted,
+  mapTransportError,
+  raceWithSignal,
+} from './execution/cancellation.js';
+export {
+  SECURE_HTTP_ERROR_CODE,
+  SecureHttpError,
+  type SecureHttpErrorCode,
+} from './secure-error.js';
+export {
+  type SecureHttpAddressPolicy,
+  type SecureHttpFailureStage,
+  type SecureHttpFailureObservation,
+  type SecureHttpObserver,
+  type SecureHttpRequest,
+  type SecureHttpResponse,
+  type SecureHttpStreamingBody,
+  type SecureHttpBodyConsumer,
+  type SecureHttpResolver,
+  type SecureHttpTransportRequest,
+  type SecureHttpTransportResponse,
+  type SecureHttpTransport,
+} from './execution/contract.js';
 export function secureHttpPreDispatchError(
   code:
     | typeof SECURE_HTTP_ERROR_CODE.connectionFenceFailed
@@ -83,208 +65,6 @@ export function secureHttpPreDispatchError(
     | typeof SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed,
 ): SecureHttpError {
   return new SecureHttpError(code, 'definite_failure', false);
-}
-
-export type SecureHttpRequest = Readonly<{
-  url: string;
-  method: 'DELETE' | 'GET' | 'HEAD' | 'PATCH' | 'POST' | 'PUT';
-  headers?: Readonly<Record<string, string>>;
-  body?: Uint8Array | NodeVerifiedByteSource;
-  timeoutMillis: number;
-  maxRedirects: number;
-  maxResponseBytes: number;
-  sensitiveValues?: readonly string[];
-  /** Private page navigation; never returned as step output or observation metadata. */
-  navigation?: Readonly<{ origin: string; link: boolean }>;
-  signal?: AbortSignal;
-  beforeDispatch(): Promise<void>;
-}>;
-
-export type SecureHttpResponse<Body = Uint8Array> = Readonly<{
-  status: number;
-  headers: Readonly<Record<string, string>>;
-  body: Body;
-  bodyEncoding: 'base64' | 'utf8';
-  finalUrl: string;
-  redirectCount: number;
-}>;
-
-export type SecureHttpStreamingBody = Readonly<{
-  navigation?: Readonly<{ url: string; link?: string }>;
-  status: number;
-  headers: Readonly<Record<string, string>>;
-  body: AsyncIterable<Uint8Array>;
-  cancelSource?: (reason: Error) => void;
-  bodyEncoding: 'base64' | 'utf8';
-  finalUrl: string;
-  redirectCount: number;
-  signal: AbortSignal;
-}>;
-
-export type SecureHttpBodyConsumer<Body> = (
-  response: SecureHttpStreamingBody,
-) => Promise<Body>;
-
-export interface SecureHttpResolver {
-  resolve(hostname: string): Promise<readonly ResolvedAddress[]>;
-}
-
-export type SecureHttpTransportRequest = Readonly<{
-  url: URL;
-  address: ResolvedAddress;
-  method: SecureHttpRequest['method'];
-  headers: Readonly<Record<string, string>>;
-  body?: Uint8Array | NodeVerifiedByteSource;
-  timeoutMillis: number;
-  signal?: AbortSignal;
-}>;
-
-export type SecureHttpTransportResponse = Readonly<{
-  status: number;
-  headers: Readonly<Record<string, string | readonly string[] | undefined>>;
-  body: AsyncIterable<Uint8Array>;
-  close(): void;
-}>;
-
-export interface SecureHttpTransport {
-  dispatch(
-    request: SecureHttpTransportRequest,
-  ): Promise<SecureHttpTransportResponse>;
-}
-
-type RedirectState = Readonly<{
-  url: URL;
-  method: SecureHttpRequest['method'];
-  body?: Uint8Array | NodeVerifiedByteSource;
-  headers: Readonly<Record<string, string>>;
-  redirectCount: number;
-}>;
-
-type DispatchFailureContext = Readonly<{
-  possiblyDispatched: boolean;
-  ambiguous: boolean;
-}>;
-
-const POST_DISPATCH_AMBIGUITY: DispatchFailureContext = Object.freeze({
-  possiblyDispatched: true,
-  ambiguous: true,
-});
-
-function assertResponseStatus(response: SecureHttpTransportResponse): void {
-  if (
-    !Number.isInteger(response.status) ||
-    response.status < 100 ||
-    response.status > 599
-  ) {
-    response.close();
-    throw failure(SECURE_HTTP_ERROR_CODE.networkFailed, true, true);
-  }
-}
-
-function redirectTransition(
-  response: SecureHttpTransportResponse,
-  current: RedirectState,
-  request: ParsedSecureHttpRequest,
-  location: string,
-): RedirectState {
-  if (current.redirectCount >= request.maxRedirects)
-    throw failure(SECURE_HTTP_ERROR_CODE.redirectRejected, true, false);
-  const nextUrl = parseRedirectUrl(location, current.url);
-  if (
-    request.navigation !== undefined &&
-    nextUrl.origin !== request.navigation.origin
-  )
-    throw failure(SECURE_HTTP_ERROR_CODE.paginationOriginChanged, true, false);
-  if (current.url.protocol === 'https:' && nextUrl.protocol !== 'https:')
-    throw failure(SECURE_HTTP_ERROR_CODE.redirectRejected, true, false);
-  if (
-    request.sensitiveValues.length > 0 &&
-    nextUrl.origin !== current.url.origin
-  )
-    throw failure(SECURE_HTTP_ERROR_CODE.redirectRejected, true, false);
-  const nextRequest = redirectRequest(
-    response.status,
-    current.method,
-    current.body,
-    current.headers,
-  );
-  return Object.freeze({
-    ...nextRequest,
-    url: nextUrl,
-    redirectCount: current.redirectCount + 1,
-  });
-}
-
-async function consumeFinalResponse<Body>(
-  response: SecureHttpTransportResponse,
-  state: RedirectState,
-  request: ParsedSecureHttpRequest,
-  executionSignal: AbortSignal,
-  deadline: number,
-  consume: SecureHttpBodyConsumer<Body>,
-): Promise<SecureHttpResponse<Body>> {
-  try {
-    const selectedHeaders = selectResponseHeaders(
-      response.headers,
-      request.sensitiveValues,
-    );
-    const contentEncoding = response.headers['content-encoding'];
-    if (
-      contentEncoding !== undefined &&
-      normalizedHeaderValue(contentEncoding).toLowerCase() !== 'identity'
-    )
-      throw failure(
-        SECURE_HTTP_ERROR_CODE.responseEncodingRejected,
-        true,
-        false,
-      );
-    const textual = isTextualContentType(selectedHeaders['content-type'] ?? '');
-    const bodyEncoding = textual ? ('utf8' as const) : ('base64' as const);
-    const finalUrl = safeFinalUrl(state.url);
-    const body = await raceWithSignal(
-      consume(
-        Object.freeze({
-          status: response.status,
-          headers: selectedHeaders,
-          ...(request.navigation === undefined
-            ? {}
-            : {
-                navigation: pageNavigation(
-                  response,
-                  state.url,
-                  request.navigation.link,
-                ),
-              }),
-          body: boundedRedactedBody(
-            response.body,
-            request.maxResponseBytes,
-            executionSignal,
-            request.sensitiveValues,
-            deadline,
-          ),
-          cancelSource: () => {
-            response.close();
-          },
-          bodyEncoding,
-          finalUrl,
-          redirectCount: state.redirectCount,
-          signal: executionSignal,
-        }),
-      ),
-      executionSignal,
-      POST_DISPATCH_AMBIGUITY,
-    );
-    return Object.freeze({
-      status: response.status,
-      headers: selectedHeaders,
-      body,
-      bodyEncoding,
-      finalUrl,
-      redirectCount: state.redirectCount,
-    });
-  } finally {
-    response.close();
-  }
 }
 
 export class SecureHttpClient {
@@ -508,228 +288,4 @@ export class SecureHttpClient {
       );
     return selected;
   }
-}
-
-function failureStage(code: SecureHttpErrorCode): SecureHttpFailureStage {
-  switch (code) {
-    case SECURE_HTTP_ERROR_CODE.invalidRequest:
-    case SECURE_HTTP_ERROR_CODE.ssrfBlocked:
-      return 'admission';
-    case SECURE_HTTP_ERROR_CODE.canceled:
-    case SECURE_HTTP_ERROR_CODE.timedOut:
-      return 'cancellation';
-    case SECURE_HTTP_ERROR_CODE.dnsFailed:
-      return 'dns';
-    case SECURE_HTTP_ERROR_CODE.connectionFenceFailed:
-    case SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch:
-    case SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed:
-      return 'pre_dispatch';
-    case SECURE_HTTP_ERROR_CODE.paginationOriginChanged:
-    case SECURE_HTTP_ERROR_CODE.redirectRejected:
-      return 'redirect';
-    case SECURE_HTTP_ERROR_CODE.paginationNavigationInvalid:
-    case SECURE_HTTP_ERROR_CODE.responseEncodingRejected:
-    case SECURE_HTTP_ERROR_CODE.responseTooLarge:
-      return 'response';
-    case SECURE_HTTP_ERROR_CODE.networkFailed:
-      return 'transport';
-  }
-}
-
-function parseTargetUrl(value: string): URL {
-  try {
-    if (utf8ByteLength(value) > MAX_URL_BYTES) throw new Error('URL too long');
-    const url = new URL(value);
-    if (url.protocol !== 'http:' && url.protocol !== 'https:')
-      throw new Error('unsupported scheme');
-    if (url.username !== '' || url.password !== '' || url.hash !== '')
-      throw new Error('URL credentials and fragments are not allowed');
-    return url;
-  } catch (error: unknown) {
-    throw failure(SECURE_HTTP_ERROR_CODE.invalidRequest, false, false, error);
-  }
-}
-
-function parseRedirectUrl(location: string, current: URL): URL {
-  try {
-    return parseTargetUrl(new URL(location, current).toString());
-  } catch (error: unknown) {
-    throw failure(SECURE_HTTP_ERROR_CODE.redirectRejected, true, false, error);
-  }
-}
-
-function literalAddressFamily(hostname: string): 4 | 6 | undefined {
-  // URL parsing canonicalizes alternate IPv4 spellings before this boundary.
-  // DNS labels may contain only hexadecimal letters without being IP literals.
-  const family = isIP(hostname);
-  return family === 0 ? undefined : family === 4 ? 4 : 6;
-}
-
-function redirectLocation(
-  response: SecureHttpTransportResponse,
-): string | undefined {
-  if (![301, 302, 303, 307, 308].includes(response.status)) return undefined;
-  const location = response.headers.location;
-  return typeof location === 'string' ? location : location?.[0];
-}
-
-function redirectRequest(
-  status: number,
-  method: SecureHttpRequest['method'],
-  body: Uint8Array | NodeVerifiedByteSource | undefined,
-  headers: Readonly<Record<string, string>>,
-): Readonly<{
-  method: SecureHttpRequest['method'];
-  body?: Uint8Array | NodeVerifiedByteSource;
-  headers: Readonly<Record<string, string>>;
-}> {
-  if (status === 307 || status === 308)
-    return {
-      method,
-      ...(body === undefined ? {} : { body }),
-      headers,
-    };
-  if (method !== 'GET' && method !== 'HEAD')
-    throw failure(SECURE_HTTP_ERROR_CODE.redirectRejected, true, false);
-  return { method, headers };
-}
-
-async function collectBody(
-  body: AsyncIterable<Uint8Array>,
-): Promise<Uint8Array> {
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  for await (const chunk of body) {
-    size += chunk.byteLength;
-    chunks.push(new Uint8Array(chunk));
-  }
-  const result = new Uint8Array(size);
-  let offset = 0;
-  for (const chunk of chunks) {
-    result.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return result;
-}
-
-function selectResponseHeaders(
-  headers: SecureHttpTransportResponse['headers'],
-  sensitiveValues: readonly string[],
-): Readonly<Record<string, string>> {
-  const selected: Record<string, string> = {};
-  for (const [rawName, rawValue] of Object.entries(headers)) {
-    const name = rawName.toLowerCase();
-    if (!safeResponseHeaders.has(name) || rawValue === undefined) continue;
-    const value = typeof rawValue === 'string' ? rawValue : rawValue.join(', ');
-    selected[name] = redactText(value, sensitiveValues).slice(0, 2_048);
-  }
-  return Object.freeze(selected);
-}
-
-function isTextualContentType(contentType: string): boolean {
-  const normalized = contentType.toLowerCase();
-  return (
-    normalized.startsWith('text/') ||
-    normalized.includes('json') ||
-    normalized.includes('xml') ||
-    normalized.includes('javascript') ||
-    normalized.includes('x-www-form-urlencoded')
-  );
-}
-
-function safeFinalUrl(url: URL): string {
-  return url.origin.slice(0, MAX_URL_BYTES);
-}
-
-function assertNotAborted(
-  signal: AbortSignal | undefined,
-  failureContext: DispatchFailureContext,
-): void {
-  if (signal?.aborted === true)
-    throw abortFailure(
-      signal,
-      failureContext.possiblyDispatched,
-      failureContext.ambiguous,
-    );
-}
-
-function mapTransportError(
-  error: unknown,
-  signal: AbortSignal | undefined,
-): SecureHttpError {
-  if (signal?.aborted === true) return abortFailure(signal, true, true);
-  if (isTimeoutError(error))
-    return failure(SECURE_HTTP_ERROR_CODE.timedOut, true, true, error);
-  return failure(SECURE_HTTP_ERROR_CODE.networkFailed, true, true, error);
-}
-
-function raceWithSignal<T>(
-  work: Promise<T>,
-  signal: AbortSignal,
-  failureContext: DispatchFailureContext,
-  disposeLateValue?: (value: T) => void,
-): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    let settled = false;
-    const settle = (complete: () => void): boolean => {
-      if (settled) return false;
-      settled = true;
-      signal.removeEventListener('abort', aborted);
-      complete();
-      return true;
-    };
-    const aborted = (): void => {
-      settle(() => {
-        reject(
-          abortFailure(
-            signal,
-            failureContext.possiblyDispatched,
-            failureContext.ambiguous,
-          ),
-        );
-      });
-    };
-    void work.then(
-      (value) => {
-        if (
-          !settle(() => {
-            resolve(value);
-          })
-        ) {
-          try {
-            disposeLateValue?.(value);
-          } catch {
-            // The selected cancellation remains authoritative over disposal.
-          }
-        }
-      },
-      (error: unknown) => {
-        settle(() => {
-          reject(normalizeUnknownError(error, 'Secure HTTP operation failed'));
-        });
-      },
-    );
-    signal.addEventListener('abort', aborted, { once: true });
-    if (signal.aborted) aborted();
-  });
-}
-
-function normalizedHeaderValue(value: string | readonly string[]): string {
-  return typeof value === 'string' ? value : value.join(', ');
-}
-
-function pageNavigation(
-  response: SecureHttpTransportResponse,
-  url: URL,
-  includeLink: boolean,
-): Readonly<{ url: string; link?: string }> {
-  const raw = includeLink ? response.headers.link : undefined;
-  const link = raw === undefined ? undefined : normalizedHeaderValue(raw);
-  if (link !== undefined && utf8ByteLength(link) > 8192)
-    throw failure(
-      SECURE_HTTP_ERROR_CODE.paginationNavigationInvalid,
-      true,
-      false,
-    );
-  return { url: url.toString(), ...(link === undefined ? {} : { link }) };
 }

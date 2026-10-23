@@ -1,269 +1,33 @@
-import { utf8ByteLength } from '@pertexo/workflow-model';
-import { DecryptCommand, GenerateDataKeyCommand } from '@aws-sdk/client-kms';
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
-import { z } from 'zod';
 
-const DATA_KEY_BYTES = 32;
-const GCM_NONCE_BYTES = 12;
-const GCM_TAG_BYTES = 16;
-const MAX_ENCRYPTED_DATA_KEY_BYTES = 8_192;
-const MAX_KEY_REFERENCE_BYTES = 2_048;
+import {
+  DATA_KEY_BYTES,
+  GCM_NONCE_BYTES,
+  GCM_TAG_BYTES,
+  MAX_ENCRYPTED_DATA_KEY_BYTES,
+  type EncodedEnvelope,
+  type FailureFactory,
+  fail,
+  assertNotAborted,
+  boundedBytes,
+  validKeyReference,
+  encode,
+  decode,
+} from './envelope-format.js';
+import type { EnvelopeKeyProviderCore } from './key-provider.js';
 
-export const encodedEnvelopeSchemaFields = Object.freeze({
-  kmsKeyReference: z.string().min(1).max(MAX_KEY_REFERENCE_BYTES),
-  encryptedDataKey: z.string().min(1),
-  ciphertext: z.string().min(1),
-  nonce: z.string().min(1),
-});
-
-export type EnvelopeKeyMaterial = Readonly<{
-  plaintextKey: Uint8Array;
-  encryptedDataKey: Uint8Array;
-  keyReference: string;
-}>;
-
-export interface EnvelopeKeyProviderCore<Context> {
-  generateDataKey(
-    context: Context,
-    signal?: AbortSignal,
-  ): Promise<EnvelopeKeyMaterial>;
-  decryptDataKey(
-    encryptedDataKey: Uint8Array,
-    keyReference: string,
-    context: Context,
-    signal?: AbortSignal,
-  ): Promise<Uint8Array>;
-}
-
-export type EncodedEnvelope = Readonly<{
-  keyReference: string;
-  encryptedDataKey: string;
-  ciphertext: string;
-  nonce: string;
-  authTag: string;
-}>;
-
-export type KmsCommandLike = GenerateDataKeyCommand | DecryptCommand;
-
-export interface KmsSendLike {
-  send(
-    command: KmsCommandLike,
-    options?: Readonly<{ abortSignal?: AbortSignal }>,
-  ): Promise<unknown>;
-}
-
-type FailureFactory = () => Error;
-
-function fail(createFailure: FailureFactory): never {
-  throw createFailure();
-}
-
-function assertNotAborted(
-  signal: AbortSignal | undefined,
-  createFailure: FailureFactory,
-): void {
-  if (signal?.aborted === true) fail(createFailure);
-}
-
-function boundedBytes(
-  value: unknown,
-  minimum: number,
-  maximum: number,
-  createFailure: FailureFactory,
-): Uint8Array {
-  if (
-    !(value instanceof Uint8Array) ||
-    value.byteLength < minimum ||
-    value.byteLength > maximum
-  )
-    fail(createFailure);
-  return new Uint8Array(value);
-}
-
-export function isValidEnvelopeKeyReference(value: unknown): value is string {
-  return (
-    typeof value === 'string' &&
-    value.length > 0 &&
-    utf8ByteLength(value) <= MAX_KEY_REFERENCE_BYTES
-  );
-}
-
-function validKeyReference(
-  value: unknown,
-  createFailure: FailureFactory,
-): string {
-  if (!isValidEnvelopeKeyReference(value)) fail(createFailure);
-  return value;
-}
-
-function responseRecord(
-  value: unknown,
-  createFailure: FailureFactory,
-): Readonly<Record<string, unknown>> {
-  if (value === null || typeof value !== 'object') fail(createFailure);
-  return value as Readonly<Record<string, unknown>>;
-}
-
-function encode(value: Uint8Array): string {
-  return Buffer.from(value).toString('base64url');
-}
-
-function decode(
-  value: string,
-  minimum: number,
-  maximum: number,
-  createFailure: FailureFactory,
-): Uint8Array {
-  const maximumEncodedLength = Math.ceil((maximum * 4) / 3);
-  if (value.length > maximumEncodedLength || !/^[A-Za-z0-9_-]*$/u.test(value))
-    fail(createFailure);
-  const decoded = Buffer.from(value, 'base64url');
-  try {
-    if (
-      decoded.byteLength < minimum ||
-      decoded.byteLength > maximum ||
-      decoded.toString('base64url') !== value
-    )
-      fail(createFailure);
-    return new Uint8Array(decoded);
-  } finally {
-    decoded.fill(0);
-  }
-}
-
-function kmsOptions(
-  signal?: AbortSignal,
-): Readonly<{ abortSignal?: AbortSignal }> | undefined {
-  return signal === undefined ? undefined : { abortSignal: signal };
-}
-
-export class AwsKmsEnvelopeKeyProviderCore<
-  Context,
-> implements EnvelopeKeyProviderCore<Context> {
-  private readonly keyReference: string;
-
-  public constructor(
-    private readonly client: KmsSendLike,
-    keyReference: string,
-    private readonly encryptionContext: (
-      context: Context,
-    ) => Readonly<Record<string, string>>,
-    private readonly createFailure: FailureFactory,
-  ) {
-    this.keyReference = validKeyReference(
-      keyReference,
-      () => new TypeError('KMS key reference is invalid'),
-    );
-  }
-
-  public async generateDataKey(
-    context: Context,
-    signal?: AbortSignal,
-  ): Promise<EnvelopeKeyMaterial> {
-    let providerPlaintext: Uint8Array | undefined;
-    let plaintextKey: Uint8Array | undefined;
-    try {
-      assertNotAborted(signal, this.createFailure);
-      const response = responseRecord(
-        await this.client.send(
-          new GenerateDataKeyCommand({
-            KeyId: this.keyReference,
-            KeySpec: 'AES_256',
-            EncryptionContext: this.encryptionContext(context),
-          }),
-          kmsOptions(signal),
-        ),
-        this.createFailure,
-      );
-      providerPlaintext =
-        response.Plaintext instanceof Uint8Array
-          ? response.Plaintext
-          : undefined;
-      plaintextKey = boundedBytes(
-        response.Plaintext,
-        DATA_KEY_BYTES,
-        DATA_KEY_BYTES,
-        this.createFailure,
-      );
-      providerPlaintext?.fill(0);
-      assertNotAborted(signal, this.createFailure);
-      const encryptedDataKey = boundedBytes(
-        response.CiphertextBlob,
-        1,
-        MAX_ENCRYPTED_DATA_KEY_BYTES,
-        this.createFailure,
-      );
-      const returnedReference =
-        response.KeyId === undefined
-          ? this.keyReference
-          : validKeyReference(response.KeyId, this.createFailure);
-      return Object.freeze({
-        plaintextKey,
-        encryptedDataKey,
-        keyReference: returnedReference,
-      });
-    } catch {
-      providerPlaintext?.fill(0);
-      plaintextKey?.fill(0);
-      throw this.createFailure();
-    }
-  }
-
-  public async decryptDataKey(
-    encryptedDataKey: Uint8Array,
-    keyReference: string,
-    context: Context,
-    signal?: AbortSignal,
-  ): Promise<Uint8Array> {
-    const boundedEncryptedKey = boundedBytes(
-      encryptedDataKey,
-      1,
-      MAX_ENCRYPTED_DATA_KEY_BYTES,
-      this.createFailure,
-    );
-    const boundedReference = validKeyReference(
-      keyReference,
-      this.createFailure,
-    );
-    let providerPlaintext: Uint8Array | undefined;
-    let plaintextKey: Uint8Array | undefined;
-    try {
-      assertNotAborted(signal, this.createFailure);
-      const response = responseRecord(
-        await this.client.send(
-          new DecryptCommand({
-            CiphertextBlob: boundedEncryptedKey,
-            KeyId: boundedReference,
-            EncryptionAlgorithm: 'SYMMETRIC_DEFAULT',
-            EncryptionContext: this.encryptionContext(context),
-          }),
-          kmsOptions(signal),
-        ),
-        this.createFailure,
-      );
-      providerPlaintext =
-        response.Plaintext instanceof Uint8Array
-          ? response.Plaintext
-          : undefined;
-      plaintextKey = boundedBytes(
-        response.Plaintext,
-        DATA_KEY_BYTES,
-        DATA_KEY_BYTES,
-        this.createFailure,
-      );
-      providerPlaintext?.fill(0);
-      assertNotAborted(signal, this.createFailure);
-      return plaintextKey;
-    } catch {
-      providerPlaintext?.fill(0);
-      plaintextKey?.fill(0);
-      throw this.createFailure();
-    } finally {
-      boundedEncryptedKey.fill(0);
-    }
-  }
-}
-
+export {
+  encodedEnvelopeSchemaFields,
+  type EncodedEnvelope,
+  isValidEnvelopeKeyReference,
+} from './envelope-format.js';
+export {
+  type EnvelopeKeyMaterial,
+  type EnvelopeKeyProviderCore,
+  type KmsCommandLike,
+  type KmsSendLike,
+  AwsKmsEnvelopeKeyProviderCore,
+} from './key-provider.js';
 export class EnvelopeCipher<Context> {
   public constructor(
     private readonly keys: EnvelopeKeyProviderCore<Context>,
