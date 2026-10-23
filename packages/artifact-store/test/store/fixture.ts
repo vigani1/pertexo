@@ -102,130 +102,158 @@ export class MemoryS3Client implements S3ClientLike {
   ): Promise<unknown> {
     this.commands.push(command);
     if (command instanceof PutObjectCommand) {
-      if (this.ambiguousPutFailure !== undefined) {
-        throw this.ambiguousPutFailure;
-      }
-      const key = String(command.input.Key);
-      if (command.input.IfNoneMatch === '*' && this.objects.has(key)) {
-        throw Object.assign(new Error('Precondition failed'), {
-          $metadata: { httpStatusCode: 412 },
-          name: 'PreconditionFailed',
-        });
-      }
-      const body = await bufferBody(command.input.Body);
-      this.objects.set(key, {
-        body,
-        ...(command.input.ChecksumSHA256 === undefined
-          ? {}
-          : { checksumSha256: command.input.ChecksumSHA256 }),
-        contentType: String(command.input.ContentType),
-        metadata: { ...command.input.Metadata },
-      });
-      if (this.putFailureAfterStore !== undefined) {
-        throw this.putFailureAfterStore;
-      }
-      return {};
+      return this.putObject(command);
     }
     if (command instanceof HeadObjectCommand) {
-      if (this.headError !== undefined) throw this.headError;
-      if (this.nextHeadNotFound) {
-        this.nextHeadNotFound = false;
-        throw Object.assign(new Error('Not found'), {
-          $metadata: { httpStatusCode: 404 },
-          name: 'NotFound',
-        });
-      }
-      if (this.hangHead)
-        await new Promise<never>((_resolve, reject) => {
-          const abort = () => {
-            const reason: unknown = options?.abortSignal?.reason;
-            reject(
-              reason instanceof Error
-                ? reason
-                : new Error('Head request aborted', { cause: reason }),
-            );
-          };
-          if (options?.abortSignal?.aborted === true) abort();
-          else
-            options?.abortSignal?.addEventListener('abort', abort, {
-              once: true,
-            });
-        });
-      const object = this.object(String(command.input.Key));
-      return {
-        ChecksumSHA256: this.provideProviderChecksum
-          ? (this.checksumSha256Override ?? object.checksumSha256)
-          : undefined,
-        ChecksumType:
-          object.checksumSha256 === undefined
-            ? undefined
-            : (this.checksumTypeOverride ?? 'FULL_OBJECT'),
-        ContentLength: this.contentLengthOverride ?? object.body.byteLength,
-        ContentType: this.contentTypeOverride ?? object.contentType,
-        ETag: 'etag-is-not-a-checksum',
-        Metadata: this.useInvalidHeadMetadata
-          ? {}
-          : (this.headMetadataOverride ?? object.metadata),
-      };
+      return this.headObject(command, options);
     }
     if (command instanceof GetObjectCommand) {
-      this.getCalls += 1;
-      if (this.getError !== undefined) throw this.getError;
-      const object = this.object(String(command.input.Key));
-      const body =
-        this.getBodyFactory?.(object) ?? Readable.from([object.body]);
-      this.lastGetBody = body;
-      return {
-        Body:
-          this.getBodyOverride === USE_STORED_BODY
-            ? body
-            : this.getBodyOverride,
-        ContentLength: object.body.byteLength,
-        ContentType: object.contentType,
-        ETag: 'etag-is-not-a-checksum',
-        Metadata: this.useInvalidGetMetadata
-          ? {}
-          : (this.getMetadataOverride ?? object.metadata),
-      };
+      return this.getObject(command);
     }
     if (command instanceof DeleteObjectCommand) {
-      this.objects.delete(String(command.input.Key));
-      return {};
+      return this.deleteObject(command);
     }
     if (command instanceof ListObjectVersionsCommand) {
-      this.versionListInput = command.input;
-      return this.versionListOutput;
+      return this.listObjectVersions(command);
     }
     if (command instanceof DeleteObjectsCommand) {
-      this.deletedVersions = command.input.Delete?.Objects;
-      return {
-        Deleted:
-          this.deleteVersionsAcknowledgements ?? command.input.Delete?.Objects,
-        Errors: this.deleteVersionsErrors,
-      };
+      return this.deleteObjects(command);
     }
     if (command instanceof HeadBucketCommand) {
-      if (this.hangReadiness) {
-        await new Promise<never>((_resolve, reject) => {
-          options?.abortSignal?.addEventListener(
-            'abort',
-            () => {
-              const reason: unknown = options.abortSignal?.reason;
-              reject(
-                reason instanceof Error
-                  ? reason
-                  : new Error('Readiness aborted'),
-              );
-            },
-            { once: true },
-          );
-        });
-      }
-      return {};
+      return this.headBucket(command, options);
     }
     if (command instanceof GetBucketLocationCommand)
       return { LocationConstraint: this.locationConstraint };
     throw new Error('Unsupported S3 command');
+  }
+  private async putObject(command: PutObjectCommand): Promise<unknown> {
+    if (this.ambiguousPutFailure !== undefined) {
+      throw this.ambiguousPutFailure;
+    }
+    const key = String(command.input.Key);
+    if (command.input.IfNoneMatch === '*' && this.objects.has(key)) {
+      throw Object.assign(new Error('Precondition failed'), {
+        $metadata: { httpStatusCode: 412 },
+        name: 'PreconditionFailed',
+      });
+    }
+    const body = await bufferBody(command.input.Body);
+    this.objects.set(key, {
+      body,
+      ...(command.input.ChecksumSHA256 === undefined
+        ? {}
+        : { checksumSha256: command.input.ChecksumSHA256 }),
+      contentType: String(command.input.ContentType),
+      metadata: { ...command.input.Metadata },
+    });
+    if (this.putFailureAfterStore !== undefined) {
+      throw this.putFailureAfterStore;
+    }
+    return {};
+  }
+
+  private async headObject(
+    command: HeadObjectCommand,
+    options?: { readonly abortSignal?: AbortSignal },
+  ): Promise<unknown> {
+    if (this.headError !== undefined) throw this.headError;
+    if (this.nextHeadNotFound) {
+      this.nextHeadNotFound = false;
+      throw Object.assign(new Error('Not found'), {
+        $metadata: { httpStatusCode: 404 },
+        name: 'NotFound',
+      });
+    }
+    if (this.hangHead)
+      await new Promise<never>((_resolve, reject) => {
+        const abort = () => {
+          const reason: unknown = options?.abortSignal?.reason;
+          reject(
+            reason instanceof Error
+              ? reason
+              : new Error('Head request aborted', { cause: reason }),
+          );
+        };
+        if (options?.abortSignal?.aborted === true) abort();
+        else
+          options?.abortSignal?.addEventListener('abort', abort, {
+            once: true,
+          });
+      });
+    const object = this.object(String(command.input.Key));
+    return {
+      ChecksumSHA256: this.provideProviderChecksum
+        ? (this.checksumSha256Override ?? object.checksumSha256)
+        : undefined,
+      ChecksumType:
+        object.checksumSha256 === undefined
+          ? undefined
+          : (this.checksumTypeOverride ?? 'FULL_OBJECT'),
+      ContentLength: this.contentLengthOverride ?? object.body.byteLength,
+      ContentType: this.contentTypeOverride ?? object.contentType,
+      ETag: 'etag-is-not-a-checksum',
+      Metadata: this.useInvalidHeadMetadata
+        ? {}
+        : (this.headMetadataOverride ?? object.metadata),
+    };
+  }
+
+  private getObject(command: GetObjectCommand): unknown {
+    this.getCalls += 1;
+    if (this.getError !== undefined) throw this.getError;
+    const object = this.object(String(command.input.Key));
+    const body = this.getBodyFactory?.(object) ?? Readable.from([object.body]);
+    this.lastGetBody = body;
+    return {
+      Body:
+        this.getBodyOverride === USE_STORED_BODY ? body : this.getBodyOverride,
+      ContentLength: object.body.byteLength,
+      ContentType: object.contentType,
+      ETag: 'etag-is-not-a-checksum',
+      Metadata: this.useInvalidGetMetadata
+        ? {}
+        : (this.getMetadataOverride ?? object.metadata),
+    };
+  }
+
+  private deleteObject(command: DeleteObjectCommand): unknown {
+    this.objects.delete(String(command.input.Key));
+    return {};
+  }
+
+  private listObjectVersions(command: ListObjectVersionsCommand): unknown {
+    this.versionListInput = command.input;
+    return this.versionListOutput;
+  }
+
+  private deleteObjects(command: DeleteObjectsCommand): unknown {
+    this.deletedVersions = command.input.Delete?.Objects;
+    return {
+      Deleted:
+        this.deleteVersionsAcknowledgements ?? command.input.Delete?.Objects,
+      Errors: this.deleteVersionsErrors,
+    };
+  }
+
+  private async headBucket(
+    command: HeadBucketCommand,
+    options?: { readonly abortSignal?: AbortSignal },
+  ): Promise<unknown> {
+    if (this.hangReadiness) {
+      await new Promise<never>((_resolve, reject) => {
+        options?.abortSignal?.addEventListener(
+          'abort',
+          () => {
+            const reason: unknown = options.abortSignal?.reason;
+            reject(
+              reason instanceof Error ? reason : new Error('Readiness aborted'),
+            );
+          },
+          { once: true },
+        );
+      });
+    }
+    return {};
   }
 
   public destroy(): void {
