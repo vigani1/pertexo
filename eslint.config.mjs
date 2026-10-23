@@ -156,6 +156,13 @@ export default tseslint.config(
         {
           paths: [
             {
+              name: '@pertexo/nodes-core',
+              allowImportNames: ['CORE_SCHEDULE_CONFIG_SCHEMA'],
+              allowTypeImports: true,
+              message:
+                'Storage may read the shared schedule configuration; node execution and request projection belong to callers.',
+            },
+            {
               name: '@pertexo/database',
               message:
                 'Import a database area entry point, such as @pertexo/database/runs.',
@@ -163,10 +170,15 @@ export default tseslint.config(
           ],
           patterns: [
             {
-              group: ['@pertexo/contracts', '@pertexo/contracts/*'],
+              group: [
+                '@pertexo/contracts',
+                '@pertexo/contracts/*',
+                '@pertexo/templates',
+                '@pertexo/templates/*',
+              ],
               allowTypeImports: true,
               message:
-                'Storage may use transport read-model types, never runtime schemas or rules. Import domain rules from their owner.',
+                'Storage may use transport read-model and template types, never their runtime schemas or rules. Import domain rules from their owner.',
             },
             {
               group: [
