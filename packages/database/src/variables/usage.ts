@@ -36,16 +36,7 @@ export async function readVariableUsage(
     workflowScopeSql(resources, sql`later.id`),
     parameters,
   );
-  const found = await client.query<{
-    id: string;
-    name: string;
-    lifecycle_status: string;
-    draft_revision: number | null;
-    draft_graph: unknown;
-    version_id: string | null;
-    published_graph: unknown;
-    has_more: boolean;
-  }>(
+  const found = await client.query<VariableUsageRow>(
     `select workflow.id,workflow.name,workflow.lifecycle_status,draft.revision draft_revision,draft.graph_json draft_graph,version.id version_id,version.graph_json published_graph,
  exists(select 1 from app.workflows later where later.workspace_id=workflow.workspace_id and later.id>workflow.id and ${laterVisible}) has_more
  from app.workflows workflow left join app.workflow_drafts draft on draft.workspace_id=workflow.workspace_id and draft.workflow_id=workflow.id
@@ -56,14 +47,36 @@ export async function readVariableUsage(
   const workflow = found.rows[0];
   if (workflow === undefined)
     return { items: [], next: null, incomplete: false };
-  const digest = (value: unknown) =>
-    createHash('sha256').update(JSON.stringify(value)).digest('hex');
-  const stamp = digest([workflow.draft_revision, workflow.version_id]);
+  const stamp = variableUsageDigest([
+    workflow.draft_revision,
+    workflow.version_id,
+  ]);
   const offset = cursor?.offset ?? 0;
   const staleCursor =
     offset > 0 &&
     (cursor?.workflowId !== workflow.id || cursor.stamp !== stamp);
   if (staleCursor) throw new WorkspaceVariableUsageChangedError();
+  return scanVariableUsage(workflow, input, { offset, stamp });
+}
+
+interface VariableUsageRow {
+  id: string;
+  name: string;
+  lifecycle_status: string;
+  draft_revision: number | null;
+  draft_graph: unknown;
+  version_id: string | null;
+  published_graph: unknown;
+  has_more: boolean;
+}
+function variableUsageDigest(value: unknown): string {
+  return createHash('sha256').update(JSON.stringify(value)).digest('hex');
+}
+function scanVariableUsage(
+  workflow: VariableUsageRow,
+  input: Parameters<WorkspaceVariablesStore['usage']>[0],
+  { offset, stamp }: Readonly<{ offset: number; stamp: string }>,
+): Awaited<ReturnType<WorkspaceVariablesStore['usage']>> {
   let incomplete = false,
     position = 0,
     scanned = 0,
@@ -99,7 +112,7 @@ export async function readVariableUsage(
         (reference.dynamic || reference.names.includes(input.name));
       if (referencesVariable)
         items.push({
-          id: digest([
+          id: variableUsageDigest([
             stage,
             stage === 'draft' ? workflow.draft_revision : workflow.version_id,
             ordinal,

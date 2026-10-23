@@ -60,21 +60,13 @@ async function changeInvitation(
   raw: ChangeWorkspaceInvitationInput,
   operation: 'resend' | 'revoke',
 ): Promise<WorkspaceInvitationCommandResult> {
-  const workspaceId = parseIdentityUuid(raw.workspaceId);
-  const actorUserId = parseIdentityUuid(raw.actorUserId);
-  const invitationId = parseIdentityUuid(raw.invitationId);
-  const expectedRevision = revision.parse(raw.expectedRevision);
-  const nextDelivery =
-    operation === 'resend'
-      ? {
-          tokenDigest: digest.parse(raw.tokenDigest),
-          sealed: sealedToken.parse(raw.sealedToken),
-          deliveryAttemptId: parseIdentityUuid(
-            raw.deliveryAttemptId ?? generatePersistedId(),
-          ),
-          expiresAt: z.date().parse(raw.expiresAt),
-        }
-      : undefined;
+  const {
+    workspaceId,
+    actorUserId,
+    invitationId,
+    expectedRevision,
+    nextDelivery,
+  } = prepareInvitationChange(raw, operation);
   const result = await withTenantScopedClient(
     pool,
     { workspaceId, actorId: actorUserId },
@@ -372,4 +364,33 @@ async function createWorkspaceInvitation(
       return completeInvitationCommand(client, key, invitation);
     },
   );
+}
+
+function prepareInvitationChange(
+  raw: ChangeWorkspaceInvitationInput,
+  operation: 'resend' | 'revoke',
+) {
+  const workspaceId = parseIdentityUuid(raw.workspaceId);
+  const actorUserId = parseIdentityUuid(raw.actorUserId);
+  const invitationId = parseIdentityUuid(raw.invitationId);
+  const expectedRevision = revision.parse(raw.expectedRevision);
+  const nextDelivery =
+    operation === 'resend'
+      ? {
+          tokenDigest: digest.parse(raw.tokenDigest),
+          sealed: sealedToken.parse(raw.sealedToken),
+          deliveryAttemptId: parseIdentityUuid(
+            raw.deliveryAttemptId ?? generatePersistedId(),
+          ),
+          expiresAt: z.date().parse(raw.expiresAt),
+        }
+      : undefined;
+
+  return {
+    workspaceId,
+    actorUserId,
+    invitationId,
+    expectedRevision,
+    nextDelivery,
+  };
 }

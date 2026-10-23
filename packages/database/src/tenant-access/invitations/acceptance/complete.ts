@@ -1,6 +1,6 @@
 import type { Role } from '@pertexo/workflow-model';
 import { readEligibleAuthenticationSession } from '../../../identity/federation/sessions/authority.js';
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 import {
   claimCommand,
@@ -46,6 +46,7 @@ export async function completeAcceptance(
     scope: actorUserId,
     idempotencyKey: key.parse(raw.idempotencyKey),
   };
+  const identity = { workspaceId, intentId, actorUserId, invitationRevision };
   return withPlatformTransaction(pool, async (client) => {
     const preview = await withWorkspaceScope(
       client,
@@ -76,34 +77,11 @@ export async function completeAcceptance(
       client,
       { workspaceId, actorId: actorUserId },
       async (client) => {
-        const membership = await client.query<{
-          role: Role;
-          status: string;
-          role_revision: number;
-        }>(
-          `select role,status,role_revision from app.workspace_memberships
-          where workspace_id=$1 and user_id=$2 for update`,
-          [workspaceId, actorUserId],
-        );
-        const invitation = await client.query<{
-          status: string;
-          revision: number;
-          role: string;
-          normalized_email: string;
-          expires_at: Date;
-        }>(
-          `select status,revision,role,normalized_email,expires_at
-           from app.workspace_invitations where workspace_id=$1 and id=$2 for update`,
-          [workspaceId, preview.invitationId],
-        );
-        const intent = await selectIntent(client, 'intent.id=$1', [intentId], {
-          lock: true,
+        const state = await readScopedAcceptance(client, {
+          ...identity,
+          preview,
         });
-        if (intent === null)
-          throw new InvitationAcceptanceConflictError(
-            'unavailable',
-            'The invitation journey is unavailable',
-          );
+        const { membership, intent } = state;
         const stored = await claimCommand(client, {
           ...command,
           request: { intentId, invitationRevision },
@@ -120,59 +98,14 @@ export async function completeAcceptance(
           await completeCommand(client, command, intent.receipt);
           return replayedAcceptance(intent.receipt);
         }
-        if (user.rows[0]?.status !== 'active')
-          throw new InvitationAcceptanceConflictError(
-            'member_inactive',
-            'The accepting user is not active',
-          );
-        const now = new Date();
-        if (intent.expiresAt.getTime() <= now.getTime())
-          throw new InvitationAcceptanceConflictError(
-            'expired',
-            'The invitation journey expired',
-          );
-        if (intent.status === 'superseded')
-          throw new InvitationAcceptanceConflictError(
-            'superseded',
-            'The invitation journey was superseded',
-          );
-        const verificationUnavailable =
-          sourceSession?.userId !== actorUserId ||
-          intent.verifiedSessionId !== preview.verifiedSessionId ||
-          intent.status !== 'verified' ||
-          intent.verifiedUserId !== actorUserId ||
-          intent.verifiedAt === null ||
-          now.getTime() - intent.verifiedAt.getTime() > 5 * 60_000;
-        if (verificationUnavailable)
-          throw new InvitationAcceptanceConflictError(
-            'proof_expired',
-            'Fresh recipient verification is required',
-          );
-        if (intent.invitationRevision !== invitationRevision)
-          throw new InvitationAcceptanceConflictError(
-            'revision_conflict',
-            'The invitation changed',
-          );
-        if (workspace.rows[0]?.status !== 'active')
-          throw new InvitationAcceptanceConflictError(
-            'workspace_inactive',
-            'The workspace is not active',
-          );
-        const current = invitation.rows[0];
-        const invitationUnavailable =
-          current?.status !== 'pending' ||
-          current.expires_at.getTime() <= now.getTime() ||
-          current.revision !== invitationRevision;
-        if (invitationUnavailable)
-          throw new InvitationAcceptanceConflictError(
-            'superseded',
-            'The invitation is no longer pending',
-          );
-        if (current.normalized_email !== intent.verifiedEmail)
-          throw new InvitationAcceptanceConflictError(
-            'recipient_mismatch',
-            'The verified recipient does not match',
-          );
+        const { current, sourceSession: verifiedSession } =
+          requireAcceptanceProof(identity, {
+            ...state,
+            preview,
+            sourceSession,
+            userStatus: user.rows[0]?.status,
+            workspaceStatus: workspace.rows[0]?.status,
+          });
         const existing = membership.rows[0];
         // ADR 042: a removal ends the membership, so a later invitation starts
         // a new one at the invited role. Suspension stays a conflict.
@@ -218,7 +151,7 @@ export async function completeAcceptance(
             client,
             actorUserId,
             raw.replacementSession,
-            sourceSession.proof,
+            verifiedSession.proof,
           );
         }
         const receipt = acceptanceReceiptSchema.parse({
@@ -244,4 +177,129 @@ export async function completeAcceptance(
       },
     );
   });
+}
+
+type AcceptanceIdentity = Readonly<{
+  workspaceId: string;
+  intentId: string;
+  actorUserId: string;
+  invitationRevision: number;
+}>;
+async function readScopedAcceptance(
+  client: PoolClient,
+  {
+    workspaceId,
+    intentId,
+    actorUserId,
+    preview,
+  }: AcceptanceIdentity &
+    Readonly<{
+      preview: NonNullable<Awaited<ReturnType<typeof selectIntent>>>;
+    }>,
+) {
+  const membership = await client.query<{
+    role: Role;
+    status: string;
+    role_revision: number;
+  }>(
+    `select role,status,role_revision from app.workspace_memberships
+          where workspace_id=$1 and user_id=$2 for update`,
+    [workspaceId, actorUserId],
+  );
+  const invitation = await client.query<{
+    status: string;
+    revision: number;
+    role: string;
+    normalized_email: string;
+    expires_at: Date;
+  }>(
+    `select status,revision,role,normalized_email,expires_at
+           from app.workspace_invitations where workspace_id=$1 and id=$2 for update`,
+    [workspaceId, preview.invitationId],
+  );
+  const intent = await selectIntent(client, 'intent.id=$1', [intentId], {
+    lock: true,
+  });
+  if (intent === null)
+    throw new InvitationAcceptanceConflictError(
+      'unavailable',
+      'The invitation journey is unavailable',
+    );
+
+  return { membership, invitation, intent };
+}
+function requireAcceptanceProof(
+  { actorUserId, invitationRevision }: AcceptanceIdentity,
+  {
+    intent,
+    invitation,
+    preview,
+    sourceSession,
+    userStatus,
+    workspaceStatus,
+  }: Awaited<ReturnType<typeof readScopedAcceptance>> &
+    Readonly<{
+      preview: NonNullable<Awaited<ReturnType<typeof selectIntent>>>;
+      sourceSession: Awaited<
+        ReturnType<typeof readEligibleAuthenticationSession>
+      >;
+      userStatus: string | undefined;
+      workspaceStatus: string | undefined;
+    }>,
+) {
+  if (userStatus !== 'active')
+    throw new InvitationAcceptanceConflictError(
+      'member_inactive',
+      'The accepting user is not active',
+    );
+  const now = new Date();
+  if (intent.expiresAt.getTime() <= now.getTime())
+    throw new InvitationAcceptanceConflictError(
+      'expired',
+      'The invitation journey expired',
+    );
+  if (intent.status === 'superseded')
+    throw new InvitationAcceptanceConflictError(
+      'superseded',
+      'The invitation journey was superseded',
+    );
+  const verificationUnavailable =
+    sourceSession?.userId !== actorUserId ||
+    intent.verifiedSessionId !== preview.verifiedSessionId ||
+    intent.status !== 'verified' ||
+    intent.verifiedUserId !== actorUserId ||
+    intent.verifiedAt === null ||
+    now.getTime() - intent.verifiedAt.getTime() > 5 * 60_000;
+  if (verificationUnavailable)
+    throw new InvitationAcceptanceConflictError(
+      'proof_expired',
+      'Fresh recipient verification is required',
+    );
+  if (intent.invitationRevision !== invitationRevision)
+    throw new InvitationAcceptanceConflictError(
+      'revision_conflict',
+      'The invitation changed',
+    );
+  if (workspaceStatus !== 'active')
+    throw new InvitationAcceptanceConflictError(
+      'workspace_inactive',
+      'The workspace is not active',
+    );
+  const current = invitation.rows[0];
+  const invitationUnavailable =
+    current?.status !== 'pending' ||
+    current.expires_at.getTime() <= now.getTime() ||
+    current.revision !== invitationRevision;
+  if (invitationUnavailable)
+    throw new InvitationAcceptanceConflictError(
+      'superseded',
+      'The invitation is no longer pending',
+    );
+  if (current.normalized_email !== intent.verifiedEmail)
+    throw new InvitationAcceptanceConflictError(
+      'recipient_mismatch',
+      'The verified recipient does not match',
+    );
+
+  return { current, sourceSession };
 }

@@ -134,31 +134,11 @@ async function claimInvitationDelivery(
   const deliveryAttemptId = id.parse(raw.deliveryAttemptId);
   const outboxEventId = id.parse(raw.outboxEventId);
   return transaction(pool, workspaceId, raw.signal, async (client) => {
-    const authoritative = await client.query<{
-      aggregate_id: string;
-      aggregate_type: string;
-      job_name: string;
-      payload: unknown;
-      payload_checksum: string;
-    }>(
-      `select aggregate_id,aggregate_type,job_name,payload,payload_checksum
-             from app.outbox_events where workspace_id=$1 and id=$2`,
-      [workspaceId, outboxEventId],
-    );
-    const outbox = authoritative.rows[0];
-    const checksum =
-      outbox === undefined
-        ? undefined
-        : createHash('sha256')
-            .update(serializeStoredExecutionJsonValue(outbox.payload))
-            .digest('hex');
-    const invalidDelivery =
-      outbox?.aggregate_id !== invitationId ||
-      outbox.aggregate_type !== 'workspace-invitation' ||
-      outbox.job_name !== 'deliver-workspace-invitation' ||
-      outbox.payload_checksum !== checksum;
-    if (invalidDelivery)
-      throw new Error('Workspace invitation delivery identity mismatch');
+    await assertInvitationDeliveryIdentity(client, {
+      workspaceId,
+      invitationId,
+      outboxEventId,
+    });
     await lockDeliveryScope(
       client,
       workspaceId,
@@ -350,4 +330,43 @@ async function completeInvitationDelivery(
       [workspaceId, invitationId, raw.status, deliveryAttemptId],
     );
   });
+}
+
+async function assertInvitationDeliveryIdentity(
+  client: PoolClient,
+  {
+    workspaceId,
+    invitationId,
+    outboxEventId,
+  }: Readonly<{
+    workspaceId: string;
+    invitationId: string;
+    outboxEventId: string;
+  }>,
+): Promise<void> {
+  const authoritative = await client.query<{
+    aggregate_id: string;
+    aggregate_type: string;
+    job_name: string;
+    payload: unknown;
+    payload_checksum: string;
+  }>(
+    `select aggregate_id,aggregate_type,job_name,payload,payload_checksum
+             from app.outbox_events where workspace_id=$1 and id=$2`,
+    [workspaceId, outboxEventId],
+  );
+  const outbox = authoritative.rows[0];
+  const checksum =
+    outbox === undefined
+      ? undefined
+      : createHash('sha256')
+          .update(serializeStoredExecutionJsonValue(outbox.payload))
+          .digest('hex');
+  const invalidDelivery =
+    outbox?.aggregate_id !== invitationId ||
+    outbox.aggregate_type !== 'workspace-invitation' ||
+    outbox.job_name !== 'deliver-workspace-invitation' ||
+    outbox.payload_checksum !== checksum;
+  if (invalidDelivery)
+    throw new Error('Workspace invitation delivery identity mismatch');
 }
