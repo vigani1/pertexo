@@ -1,37 +1,26 @@
 import { z } from 'zod';
 
 import {
+  opaqueCursor,
   decodeOpaqueCursor,
   encodeOpaqueCursor,
 } from '../platform/http/opaque-cursor.js';
 
-const workflowCursorPayloadSchema = z
-  .object({
-    kind: z.literal('workflow'),
-    pinsWorkflowId: z.uuid().optional(),
-    createdAt: z.iso.datetime(),
-    id: z.uuid(),
-  })
-  .strict()
-  .readonly();
+const workflowCursorPayloadSchema = opaqueCursor('workflow', {
+  pinsWorkflowId: z.uuid().optional(),
+  createdAt: z.iso.datetime(),
+  id: z.uuid(),
+}).readonly();
 
-const workflowUpdatedCursorPayloadSchema = z
-  .object({
-    kind: z.literal('workflow_updated'),
-    pinsWorkflowId: z.uuid().optional(),
-    updatedAt: z.iso.datetime(),
-    id: z.uuid(),
-  })
-  .strict()
-  .readonly();
+const workflowUpdatedCursorPayloadSchema = opaqueCursor('workflow_updated', {
+  pinsWorkflowId: z.uuid().optional(),
+  updatedAt: z.iso.datetime(),
+  id: z.uuid(),
+}).readonly();
 
-const versionCursorPayloadSchema = z
-  .object({
-    kind: z.literal('versions'),
-    beforeVersionNumber: z.number().int().positive(),
-  })
-  .strict()
-  .readonly();
+const versionCursorPayloadSchema = opaqueCursor('versions', {
+  beforeVersionNumber: z.number().int().positive(),
+}).readonly();
 
 const cursorPayloadSchema = z.discriminatedUnion('kind', [
   workflowCursorPayloadSchema,

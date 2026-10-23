@@ -1,30 +1,25 @@
 import { z } from 'zod';
 
 import {
+  opaqueCursor,
   decodeOpaqueCursor,
   encodeOpaqueCursor,
 } from '../platform/http/opaque-cursor.js';
 
-const memberCursorPayloadSchema = z
-  .object({
-    kind: z.literal('workspace_members'),
-    createdAt: z.iso
-      .datetime({ precision: 6 })
-      .refine((value) => !value.startsWith('0000-'), {
-        message: 'PostgreSQL timestamps do not support year zero',
-      }),
-    userId: z.uuid(),
-  })
-  .strict();
-const invitationCursorPayloadSchema = z
-  .object({
-    kind: z.literal('workspace_invitations'),
-    createdAt: z.iso
-      .datetime({ precision: 6 })
-      .refine((value) => !value.startsWith('0000-')),
-    invitationId: z.uuid(),
-  })
-  .strict();
+const memberCursorPayloadSchema = opaqueCursor('workspace_members', {
+  createdAt: z.iso
+    .datetime({ precision: 6 })
+    .refine((value) => !value.startsWith('0000-'), {
+      message: 'PostgreSQL timestamps do not support year zero',
+    }),
+  userId: z.uuid(),
+});
+const invitationCursorPayloadSchema = opaqueCursor('workspace_invitations', {
+  createdAt: z.iso
+    .datetime({ precision: 6 })
+    .refine((value) => !value.startsWith('0000-')),
+  invitationId: z.uuid(),
+});
 
 export class InvalidWorkspaceMemberCursorError extends TypeError {
   public override readonly name = 'InvalidWorkspaceMemberCursorError';

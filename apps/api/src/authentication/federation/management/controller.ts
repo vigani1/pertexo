@@ -1,4 +1,10 @@
 import {
+  federationScope,
+  federationCommand,
+  type FederationManagementRequest,
+  type FederationCommandScope,
+} from './request.js';
+import {
   Body,
   Controller,
   Get,
@@ -26,45 +32,28 @@ import {
   CsrfProtectionGuard,
   WorkspaceManageGuard,
   WorkspaceMemberReadGuard,
-  authenticatedSession,
 } from '../../../workspaces/index.js';
-import type { IdentityWorkspaceRequest } from '../../../workspaces/types.js';
-import {
-  requestIdempotencyKey,
-  withRequestOperationSignal,
-} from '../../../platform/http/index.js';
-import type { AbortableRequest } from '../../../platform/http/request-operation-signal.js';
+import { withRequestOperationSignal } from '../../../platform/http/index.js';
 import { RateLimit } from '../../../platform/rate-limit/metadata.js';
 import { FederationManagementService } from './service.js';
 import { domainErrors } from '../../../platform/http/problems/interceptor.js';
 import { resourceFailure } from '../../../problems/context/normalize.js';
 
-type Request = IdentityWorkspaceRequest & AbortableRequest;
+type Request = FederationManagementRequest;
 @UseInterceptors(domainErrors(resourceFailure))
 @Controller('v1/workspaces/:workspaceId/sso')
 @UseGuards(SessionAuthenticationGuard)
 @RateLimit('authenticated_read')
 export class FederationManagementController {
   constructor(private readonly service: FederationManagementService) {}
-  private scope(request: Request, workspace: unknown) {
-    return {
-      workspaceId: workspaceIdentifierSchema.parse(workspace),
-      actorId: authenticatedSession(request).userId,
-    };
-  }
   private command<T>(
     request: Request,
     workspace: unknown,
-    work: (
-      scope: ReturnType<FederationManagementController['scope']> &
-        Readonly<{ idempotencyKey: string; signal: AbortSignal }>,
-    ) => Promise<T>,
+    work: (scope: FederationCommandScope) => Promise<T>,
   ) {
-    const scope = this.scope(request, workspace),
-      idempotencyKey = requestIdempotencyKey(request.headers);
-    return withRequestOperationSignal(request, (signal) => {
+    return federationCommand(request, workspace, (scope) => {
       this.service.requireConfigured();
-      return work({ ...scope, idempotencyKey, signal });
+      return work(scope);
     });
   }
   @Get()
@@ -72,7 +61,7 @@ export class FederationManagementController {
   @Header('Cache-Control', 'private, no-store')
   settings(@Req() request: Request, @Param('workspaceId') workspace: unknown) {
     return withRequestOperationSignal(request, (signal) =>
-      this.service.settings({ ...this.scope(request, workspace), signal }),
+      this.service.settings({ ...federationScope(request, workspace), signal }),
     );
   }
   @Post('organization')
@@ -219,7 +208,7 @@ export class FederationManagementController {
   @Header('Cache-Control', 'private, no-store')
   metadata(@Req() request: Request, @Param('workspaceId') workspace: unknown) {
     return withRequestOperationSignal(request, (signal) =>
-      this.service.metadata({ ...this.scope(request, workspace), signal }),
+      this.service.metadata({ ...federationScope(request, workspace), signal }),
     );
   }
   @Post('providers/:providerId/remove')

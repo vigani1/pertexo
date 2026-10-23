@@ -1,99 +1,41 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { capabilityGuard } from '../../workspaces/http/guards.js';
 
-import { WorkspaceCapabilityGuard } from '../../workspaces/http/guards.js';
-import type { WorkspaceAuthorizationSource } from '../../workspaces/ports.js';
-import { RequestContextStore } from '../../platform/http/index.js';
 import { WORKFLOW_AUTHORING_AUTHORIZATION } from '../tokens.js';
 
-abstract class WorkflowCapabilityGuard extends WorkspaceCapabilityGuard {
-  protected constructor(
-    capability:
-      | 'workflow:create'
-      | 'workflow:publish'
-      | 'workflow:read'
-      | 'workflow:update',
-    authorization: WorkspaceAuthorizationSource,
-    contexts: RequestContextStore,
-  ) {
-    super(capability, authorization, contexts, 'not_found', ['active']);
-  }
-}
+export const WorkflowPauseDefaultGuard = capabilityGuard(
+  WORKFLOW_AUTHORING_AUTHORIZATION,
+  'workspace:manage',
+  { disclosure: 'not_found', allowedWorkspaceStatuses: ['active'] },
+);
 
-@Injectable()
-export class WorkflowPauseDefaultGuard extends WorkspaceCapabilityGuard {
-  public constructor(
-    @Inject(WORKFLOW_AUTHORING_AUTHORIZATION)
-    authorization: WorkspaceAuthorizationSource,
-    contexts: RequestContextStore,
-  ) {
-    super('workspace:manage', authorization, contexts, 'not_found', ['active']);
-  }
-}
+export const WorkspaceAutoPauseReadGuard = capabilityGuard(
+  WORKFLOW_AUTHORING_AUTHORIZATION,
+  'workspace:read',
+  { disclosure: 'not_found', allowedWorkspaceStatuses: ['active'] },
+);
 
-@Injectable()
-export class WorkspaceAutoPauseReadGuard extends WorkspaceCapabilityGuard {
-  public constructor(
-    @Inject(WORKFLOW_AUTHORING_AUTHORIZATION)
-    authorization: WorkspaceAuthorizationSource,
-    contexts: RequestContextStore,
-  ) {
-    super('workspace:read', authorization, contexts, 'not_found', ['active']);
-  }
-}
+export const WorkflowReadGuard = capabilityGuard(
+  WORKFLOW_AUTHORING_AUTHORIZATION,
+  'workflow:read',
+);
 
-@Injectable()
-export class WorkflowReadGuard extends WorkflowCapabilityGuard {
-  public constructor(
-    @Inject(WORKFLOW_AUTHORING_AUTHORIZATION)
-    authorization: WorkspaceAuthorizationSource,
-    contexts: RequestContextStore,
-  ) {
-    super('workflow:read', authorization, contexts);
-  }
-}
+export const WorkflowCreateGuard = capabilityGuard(
+  WORKFLOW_AUTHORING_AUTHORIZATION,
+  'workflow:create',
+);
 
-@Injectable()
-export class WorkflowCreateGuard extends WorkflowCapabilityGuard {
-  public constructor(
-    @Inject(WORKFLOW_AUTHORING_AUTHORIZATION)
-    authorization: WorkspaceAuthorizationSource,
-    contexts: RequestContextStore,
-  ) {
-    super('workflow:create', authorization, contexts);
-  }
-}
+export const WorkflowUpdateGuard = capabilityGuard(
+  WORKFLOW_AUTHORING_AUTHORIZATION,
+  'workflow:update',
+);
 
-@Injectable()
-export class WorkflowUpdateGuard extends WorkflowCapabilityGuard {
-  public constructor(
-    @Inject(WORKFLOW_AUTHORING_AUTHORIZATION)
-    authorization: WorkspaceAuthorizationSource,
-    contexts: RequestContextStore,
-  ) {
-    super('workflow:update', authorization, contexts);
-  }
-}
+export const WorkflowPublishGuard = capabilityGuard(
+  WORKFLOW_AUTHORING_AUTHORIZATION,
+  'workflow:publish',
+);
 
-@Injectable()
-export class WorkflowPublishGuard extends WorkflowCapabilityGuard {
-  public constructor(
-    @Inject(WORKFLOW_AUTHORING_AUTHORIZATION)
-    authorization: WorkspaceAuthorizationSource,
-    contexts: RequestContextStore,
-  ) {
-    super('workflow:publish', authorization, contexts);
-  }
-}
-
-@Injectable()
-export class WorkflowReviewGuard extends WorkspaceCapabilityGuard {
-  constructor(
-    @Inject(WORKFLOW_AUTHORING_AUTHORIZATION)
-    authorization: WorkspaceAuthorizationSource,
-    contexts: RequestContextStore,
-  ) {
-    super('governance:manage', authorization, contexts, 'not_found', [
-      'active',
-    ]);
-  }
-}
+export const WorkflowReviewGuard = capabilityGuard(
+  WORKFLOW_AUTHORING_AUTHORIZATION,
+  'governance:manage',
+  { disclosure: 'not_found', allowedWorkspaceStatuses: ['active'] },
+);

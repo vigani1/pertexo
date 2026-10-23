@@ -1,26 +1,15 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { capabilityGuard } from '../../workspaces/http/guards.js';
 
-import { WorkspaceCapabilityGuard } from '../../workspaces/http/guards.js';
-import type { WorkspaceAuthorizationSource } from '../../workspaces/ports.js';
-import { RequestContextStore } from '../../platform/http/index.js';
 import { WEBHOOK_AUTHORIZATION } from '../tokens.js';
 
-@Injectable()
-export class WebhookReadGuard extends WorkspaceCapabilityGuard {
-  public constructor(
-    @Inject(WEBHOOK_AUTHORIZATION) authorization: WorkspaceAuthorizationSource,
-    contexts: RequestContextStore,
-  ) {
-    super('workflow:read', authorization, contexts, 'not_found', ['active']);
-  }
-}
+export const WebhookReadGuard = capabilityGuard(
+  WEBHOOK_AUTHORIZATION,
+  'workflow:read',
+  { disclosure: 'not_found', allowedWorkspaceStatuses: ['active'] },
+);
 
-@Injectable()
-export class WebhookUpdateGuard extends WorkspaceCapabilityGuard {
-  public constructor(
-    @Inject(WEBHOOK_AUTHORIZATION) authorization: WorkspaceAuthorizationSource,
-    contexts: RequestContextStore,
-  ) {
-    super('workflow:update', authorization, contexts, 'not_found', ['active']);
-  }
-}
+export const WebhookUpdateGuard = capabilityGuard(
+  WEBHOOK_AUTHORIZATION,
+  'workflow:update',
+  { disclosure: 'not_found', allowedWorkspaceStatuses: ['active'] },
+);

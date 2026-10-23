@@ -17,6 +17,7 @@ import { z } from 'zod';
 
 import { SessionAuthenticationGuard } from '../../workspaces/index.js';
 import {
+  opaqueCursor,
   decodeOpaqueCursor,
   encodeOpaqueCursor,
 } from '../../platform/http/opaque-cursor.js';
@@ -37,14 +38,11 @@ import {
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { connectionFailure } from '../../problems/context/normalize.js';
 
-const cursorSchema = z
-  .object({
-    kind: z.literal('connection_usage'),
-    workspaceId: z.uuid(),
-    connectionId: z.uuid(),
-    workflowVersionId: z.uuid(),
-  })
-  .strict();
+const cursorSchema = opaqueCursor('connection_usage', {
+  workspaceId: z.uuid(),
+  connectionId: z.uuid(),
+  workflowVersionId: z.uuid(),
+});
 
 export function encodeConnectionUsageCursor(
   cursor: z.output<typeof cursorSchema>,

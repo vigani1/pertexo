@@ -3,6 +3,7 @@ import { workflowRunStatusSchema } from '@pertexo/contracts';
 import { z } from 'zod';
 
 import {
+  opaqueCursor,
   decodeOpaqueCursor,
   encodeOpaqueCursor,
 } from '../platform/http/opaque-cursor.js';
@@ -21,16 +22,13 @@ const filterSchema = z
   })
   .strict();
 
-const cursorPayloadSchema = z
-  .object({
-    kind: z.literal('workflow-runs'),
-    workspaceId: z.uuid(),
-    order: z.literal('created_at_desc_id_desc'),
-    filters: filterSchema,
-    createdAt: z.iso.datetime({ precision: 6 }),
-    id: z.uuid(),
-  })
-  .strict();
+const cursorPayloadSchema = opaqueCursor('workflow-runs', {
+  workspaceId: z.uuid(),
+  order: z.literal('created_at_desc_id_desc'),
+  filters: filterSchema,
+  createdAt: z.iso.datetime({ precision: 6 }),
+  id: z.uuid(),
+});
 
 export type WorkflowRunCursorContext = Readonly<{
   workspaceId: string;

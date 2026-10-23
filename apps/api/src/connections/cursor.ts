@@ -2,19 +2,16 @@ import { connectionStatusSchema } from '@pertexo/contracts';
 import { z } from 'zod';
 
 import {
+  opaqueCursor,
   decodeOpaqueCursor,
   encodeOpaqueCursor,
 } from '../platform/http/opaque-cursor.js';
 
-const connectionCursorPayloadSchema = z
-  .object({
-    kind: z.literal('connections'),
-    status: connectionStatusSchema,
-    createdAt: z.iso.datetime({ precision: 6 }),
-    id: z.uuid(),
-  })
-  .strict()
-  .readonly();
+const connectionCursorPayloadSchema = opaqueCursor('connections', {
+  status: connectionStatusSchema,
+  createdAt: z.iso.datetime({ precision: 6 }),
+  id: z.uuid(),
+}).readonly();
 
 export class InvalidConnectionCursorError extends TypeError {
   public override readonly name = 'InvalidConnectionCursorError';

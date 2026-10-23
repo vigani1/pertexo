@@ -2,20 +2,18 @@ import type { WorkspaceInboxFilter } from '@pertexo/contracts';
 import { z } from 'zod';
 
 import {
+  opaqueCursor,
   decodeOpaqueCursor,
   encodeOpaqueCursor,
 } from '../platform/http/opaque-cursor.js';
 
-const cursorPayloadSchema = z
-  .object({
-    kind: z.literal('workspace-inbox'),
-    workspaceId: z.uuid(),
-    filter: z.enum(['all', 'unread']),
-    noticeKind: z.string().optional(),
-    latestOccurredAt: z.iso.datetime({ precision: 6 }),
-    threadId: z.uuid(),
-  })
-  .strict();
+const cursorPayloadSchema = opaqueCursor('workspace-inbox', {
+  workspaceId: z.uuid(),
+  filter: z.enum(['all', 'unread']),
+  noticeKind: z.string().optional(),
+  latestOccurredAt: z.iso.datetime({ precision: 6 }),
+  threadId: z.uuid(),
+});
 
 export type WorkspaceInboxPosition = Readonly<{
   latestOccurredAt: string;

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import {
+  opaqueCursor,
   decodeOpaqueCursor,
   encodeOpaqueCursor,
 } from '../../platform/http/opaque-cursor.js';
@@ -12,17 +13,14 @@ import { InvalidWorkflowCursorError } from '../cursor.js';
  * signed (ADR 064 amendment).
  */
 
-const workflowCursorSchema = z
-  .object({
-    kind: z.literal('workflow-organization'),
-    workspaceId: z.uuid(),
-    actorId: z.uuid(),
-    order: z.enum(['created_asc', 'updated_desc']),
-    filterHash: z.string().regex(/^[0-9a-f]{64}$/u),
-    positionAt: z.iso.datetime(),
-    id: z.uuid(),
-  })
-  .strict();
+const workflowCursorSchema = opaqueCursor('workflow-organization', {
+  workspaceId: z.uuid(),
+  actorId: z.uuid(),
+  order: z.enum(['created_asc', 'updated_desc']),
+  filterHash: z.string().regex(/^[0-9a-f]{64}$/u),
+  positionAt: z.iso.datetime(),
+  id: z.uuid(),
+});
 
 const pageCursorSchema = z
   .object({

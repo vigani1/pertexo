@@ -1,19 +1,16 @@
 import { z } from 'zod';
 
 import {
+  opaqueCursor,
   decodeOpaqueCursor,
   encodeOpaqueCursor,
 } from '../platform/http/opaque-cursor.js';
 
-const occurrenceCursorPayloadSchema = z
-  .object({
-    kind: z.literal('schedule_occurrences'),
-    triggerId: z.uuid(),
-    scheduledAt: z.iso.datetime({ precision: 6 }),
-    id: z.uuid(),
-  })
-  .strict()
-  .readonly();
+const occurrenceCursorPayloadSchema = opaqueCursor('schedule_occurrences', {
+  triggerId: z.uuid(),
+  scheduledAt: z.iso.datetime({ precision: 6 }),
+  id: z.uuid(),
+}).readonly();
 
 type ScheduleOccurrencePosition = Readonly<{ scheduledAt: string; id: string }>;
 
