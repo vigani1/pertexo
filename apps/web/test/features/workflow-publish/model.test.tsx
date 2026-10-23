@@ -194,9 +194,20 @@ describe('publish summary', () => {
     expect(summary.nextVersionNumber).toBe(8);
     expect(summary.previousVersionNumber).toBe(7);
     expect(summary.lines).toEqual([
-      { kind: 'added', nodeId: 'post', name: 'Post to ERP' },
-      { kind: 'removed', nodeId: 'old', name: 'Send Slack message' },
-      { kind: 'changed', nodeId: 'check', name: 'Validate', detail: 'setup' },
+      { kind: 'added', nodeId: 'step:post', name: 'Post to ERP' },
+      { kind: 'removed', nodeId: 'step:old', name: 'Send Slack message' },
+      {
+        kind: 'changed',
+        nodeId: 'step:check',
+        name: 'Validate',
+        detail: 'setup',
+      },
+      {
+        kind: 'changed',
+        nodeId: 'links:links',
+        name: 'Links between steps',
+        detail: '1 added, 0 removed',
+      },
     ]);
     expect(summary.linksAdded).toBe(1);
     expect(summary.triggerNames).toEqual(['New invoice']);
