@@ -103,253 +103,287 @@ export function createWorkflowTagDatabase(
 ): WorkflowTagDatabase {
   const session = createOrganizationSession(config, options.runtime);
 
-  function tagCommand(
-    input: Command,
-    operation: string,
-    target: string | null,
-    request: unknown,
-    apply: (client: PoolClient, workspaceId: string) => Promise<TagRow>,
-  ): Promise<WorkflowTagCommandResult> {
-    return session.transact(input, async (client, scope) => {
-      const { result, replayed } = await runOrganizationCommand(client, scope, {
-        operation,
-        target,
-        idempotencyKey: input.idempotencyKey,
-        request,
-        roles: ADMINISTRATORS,
-        apply: async () => {
-          const row = await apply(client, scope.workspaceId);
-          return {
-            result: { tag: tagRecord(row) },
-            audit: {
-              action: `workflow.${operation}`,
-              targetId: row.id,
-              metadata: { revision: Number(row.revision) },
-            },
-          };
-        },
-      });
-      return Object.freeze({ ...tagResult.parse(result), replayed });
-    });
-  }
-
   /** Replacing tags or detaching one from a workflow. */
-  function assignmentCommand<T extends object>(
-    input: AssignmentCommand,
-    operation: 'tags.replace' | 'tag.detach',
-    change: Exclude<OrganizationChange, Readonly<{ kind: 'move' }>>,
-    schema: z.ZodType<T>,
-  ): Promise<T & Readonly<{ replayed: boolean }>> {
-    const workflowId = uuid.parse(input.workflowId);
-    const expectedOrganizationRevision = revision.parse(
-      input.expectedOrganizationRevision,
-    );
-    const request =
-      change.kind === 'replace_tags'
-        ? { tagIds: change.tagIds, expectedOrganizationRevision }
-        : { tagId: change.tagId, expectedOrganizationRevision };
-    return session.transact(input, async (client, scope) => {
-      const { result, replayed } = await runOrganizationCommand(client, scope, {
-        operation,
-        target: workflowId,
-        idempotencyKey: input.idempotencyKey,
-        request,
-        roles: operation === 'tags.replace' ? EDITORS : ADMINISTRATORS,
-        replay: () =>
-          checkOrganizationReplay(client, scope, workflowId, change.kind),
-        apply: async () => {
-          const organizationRevision = await organizeWorkflow(client, scope, {
-            workflowId,
-            change,
-            expectedOrganizationRevision,
-          });
-          return {
-            result: {
-              workflowId,
-              organizationRevision,
-              ...(change.kind === 'replace_tags'
-                ? { tagIds: change.tagIds }
-                : {}),
-            },
-            audit: {
-              action: `workflow.${operation}`,
-              targetId: workflowId,
-              metadata: { organizationRevision },
-            },
-          };
-        },
-      });
-      return Object.freeze({ ...schema.parse(result), replayed });
-    });
-  }
 
   const store: WorkflowTagDatabase = {
-    async listTags(input) {
-      const { limit, after } = page(input);
-      return session.transact(input, async (client, scope) => {
-        await lockWorkflowAuthoringAuthority(
-          client,
-          scope.workspaceId,
-          scope.actorId,
-          ROLES,
-        );
-        const rows = await client.query<{ tag: unknown }>(
-          `select jsonb_build_object('id',id,'key',key,'revision',revision) tag from app.workflow_tags where workspace_id=$1 ${after === null ? '' : 'and id>$2::uuid'} order by id asc limit ${after === null ? '$2' : '$3'}`,
-          after === null
-            ? [scope.workspaceId, limit + 1]
-            : [scope.workspaceId, after, limit + 1],
-        );
-        return pagination(
-          rows.rows.map((row) => tag.parse(row.tag)),
-          limit,
-          (item) => item.id,
-        );
-      });
-    },
-    async listTagAssignments(input) {
-      const { limit, after } = page(input),
-        tagId = uuid.parse(input.tagId);
-      return session.transact(input, async (client, scope) => {
-        await lockWorkflowAuthoringAuthority(
-          client,
-          scope.workspaceId,
-          scope.actorId,
-          ADMINISTRATORS,
-        );
-        // Tag visibility and the assignment page share one statement snapshot.
-        const result = await client.query<{ visible: boolean; items: unknown }>(
-          `select exists(select 1 from app.workflow_tags where workspace_id=$1 and id=$2) visible,
+    listTags: (input) => listTags(session, input),
+    listTagAssignments: (input) => listTagAssignments(session, input),
+
+    createTag: (input) => createTag(session, input),
+
+    renameTag: (input) => renameTag(session, input),
+
+    deleteTag: (input) => deleteTagCommand(session, input),
+
+    replaceTags: (input) => replaceWorkflowTags(session, input),
+
+    detachTag: (input) => detachTag(session, input),
+
+    close: session.close,
+  };
+  return Object.freeze(store);
+}
+
+function tagCommand(
+  session: ReturnType<typeof createOrganizationSession>,
+  input: Command,
+  operation: string,
+  target: string | null,
+  request: unknown,
+  apply: (client: PoolClient, workspaceId: string) => Promise<TagRow>,
+): Promise<WorkflowTagCommandResult> {
+  return session.transact(input, async (client, scope) => {
+    const { result, replayed } = await runOrganizationCommand(client, scope, {
+      operation,
+      target,
+      idempotencyKey: input.idempotencyKey,
+      request,
+      roles: ADMINISTRATORS,
+      apply: async () => {
+        const row = await apply(client, scope.workspaceId);
+        return {
+          result: { tag: tagRecord(row) },
+          audit: {
+            action: `workflow.${operation}`,
+            targetId: row.id,
+            metadata: { revision: Number(row.revision) },
+          },
+        };
+      },
+    });
+    return Object.freeze({ ...tagResult.parse(result), replayed });
+  });
+}
+function assignmentCommand<T extends object>(
+  session: ReturnType<typeof createOrganizationSession>,
+  input: AssignmentCommand,
+  operation: 'tags.replace' | 'tag.detach',
+  change: Exclude<OrganizationChange, Readonly<{ kind: 'move' }>>,
+  schema: z.ZodType<T>,
+): Promise<T & Readonly<{ replayed: boolean }>> {
+  const workflowId = uuid.parse(input.workflowId);
+  const expectedOrganizationRevision = revision.parse(
+    input.expectedOrganizationRevision,
+  );
+  const request =
+    change.kind === 'replace_tags'
+      ? { tagIds: change.tagIds, expectedOrganizationRevision }
+      : { tagId: change.tagId, expectedOrganizationRevision };
+  return session.transact(input, async (client, scope) => {
+    const { result, replayed } = await runOrganizationCommand(client, scope, {
+      operation,
+      target: workflowId,
+      idempotencyKey: input.idempotencyKey,
+      request,
+      roles: operation === 'tags.replace' ? EDITORS : ADMINISTRATORS,
+      replay: () =>
+        checkOrganizationReplay(client, scope, workflowId, change.kind),
+      apply: async () => {
+        const organizationRevision = await organizeWorkflow(client, scope, {
+          workflowId,
+          change,
+          expectedOrganizationRevision,
+        });
+        return {
+          result: {
+            workflowId,
+            organizationRevision,
+            ...(change.kind === 'replace_tags'
+              ? { tagIds: change.tagIds }
+              : {}),
+          },
+          audit: {
+            action: `workflow.${operation}`,
+            targetId: workflowId,
+            metadata: { organizationRevision },
+          },
+        };
+      },
+    });
+    return Object.freeze({ ...schema.parse(result), replayed });
+  });
+}
+async function listTags(
+  session: ReturnType<typeof createOrganizationSession>,
+  input: Parameters<WorkflowTagDatabase['listTags']>[0],
+): ReturnType<WorkflowTagDatabase['listTags']> {
+  const { limit, after } = page(input);
+  return session.transact(input, async (client, scope) => {
+    await lockWorkflowAuthoringAuthority(
+      client,
+      scope.workspaceId,
+      scope.actorId,
+      ROLES,
+    );
+    const rows = await client.query<{ tag: unknown }>(
+      `select jsonb_build_object('id',id,'key',key,'revision',revision) tag from app.workflow_tags where workspace_id=$1 ${after === null ? '' : 'and id>$2::uuid'} order by id asc limit ${after === null ? '$2' : '$3'}`,
+      after === null
+        ? [scope.workspaceId, limit + 1]
+        : [scope.workspaceId, after, limit + 1],
+    );
+    return pagination(
+      rows.rows.map((row) => tag.parse(row.tag)),
+      limit,
+      (item) => item.id,
+    );
+  });
+}
+
+async function listTagAssignments(
+  session: ReturnType<typeof createOrganizationSession>,
+  input: Parameters<WorkflowTagDatabase['listTagAssignments']>[0],
+): ReturnType<WorkflowTagDatabase['listTagAssignments']> {
+  const { limit, after } = page(input),
+    tagId = uuid.parse(input.tagId);
+  return session.transact(input, async (client, scope) => {
+    await lockWorkflowAuthoringAuthority(
+      client,
+      scope.workspaceId,
+      scope.actorId,
+      ADMINISTRATORS,
+    );
+    // Tag visibility and the assignment page share one statement snapshot.
+    const result = await client.query<{ visible: boolean; items: unknown }>(
+      `select exists(select 1 from app.workflow_tags where workspace_id=$1 and id=$2) visible,
           coalesce((select jsonb_agg(page.item order by page.workflow_id) from (
           select a.workflow_id,jsonb_build_object('workflowId',a.workflow_id,'organizationRevision',coalesce(s.revision,1)) item
           from app.workflow_tag_assignments a join app.workflows w on w.workspace_id=a.workspace_id and w.id=a.workflow_id
           left join app.workflow_organization_state s on s.workspace_id=a.workspace_id and s.workflow_id=a.workflow_id
           where a.workspace_id=$1 and a.tag_id=$2 ${after === null ? '' : 'and a.workflow_id>$3::uuid'}
           order by a.workflow_id asc limit ${after === null ? '$3' : '$4'}) page),'[]'::jsonb) items`,
-          after === null
-            ? [scope.workspaceId, tagId, limit + 1]
-            : [scope.workspaceId, tagId, after, limit + 1],
-        );
-        const row = result.rows[0];
-        if (row?.visible !== true)
-          throw new WorkflowNotFoundError('Workflow is not visible');
-        return pagination(
-          z
-            .array(assignment)
-            .max(limit + 1)
-            .parse(row.items),
-          limit,
-          (item) => item.workflowId,
-        );
-      });
-    },
+      after === null
+        ? [scope.workspaceId, tagId, limit + 1]
+        : [scope.workspaceId, tagId, after, limit + 1],
+    );
+    const row = result.rows[0];
+    if (row?.visible !== true)
+      throw new WorkflowNotFoundError('Workflow is not visible');
+    return pagination(
+      z
+        .array(assignment)
+        .max(limit + 1)
+        .parse(row.items),
+      limit,
+      (item) => item.workflowId,
+    );
+  });
+}
 
-    createTag: async (input) => {
-      const request = { key: key.parse(input.key) };
-      return tagCommand(
-        input,
-        'tag.create',
-        null,
-        request,
-        async (client, workspaceId) => {
-          await requireFreeKey(client, workspaceId, request.key, null);
-          const count = await client.query<{ count: number }>(
-            'select count(*)::int count from app.workflow_tags where workspace_id = $1',
-            [workspaceId],
-          );
-          if ((count.rows[0]?.count ?? 0) >= TAG_LIMIT)
-            throw new WorkflowTagConflictError('limit');
-          const created = await client.query<TagRow>(
-            `insert into app.workflow_tags (workspace_id, id, key)
+async function createTag(
+  session: ReturnType<typeof createOrganizationSession>,
+  input: Parameters<WorkflowTagDatabase['createTag']>[0],
+): ReturnType<WorkflowTagDatabase['createTag']> {
+  const request = { key: key.parse(input.key) };
+  return tagCommand(
+    session,
+    input,
+    'tag.create',
+    null,
+    request,
+    async (client, workspaceId) => {
+      await requireFreeKey(client, workspaceId, request.key, null);
+      const count = await client.query<{ count: number }>(
+        'select count(*)::int count from app.workflow_tags where workspace_id = $1',
+        [workspaceId],
+      );
+      if ((count.rows[0]?.count ?? 0) >= TAG_LIMIT)
+        throw new WorkflowTagConflictError('limit');
+      const created = await client.query<TagRow>(
+        `insert into app.workflow_tags (workspace_id, id, key)
              values ($1, uuidv7(), $2) returning id, key, revision`,
-            [workspaceId, request.key],
-          );
-          const row = created.rows[0];
-          if (row === undefined) throw new Error('Tag was not created');
-          return row;
-        },
+        [workspaceId, request.key],
       );
+      const row = created.rows[0];
+      if (row === undefined) throw new Error('Tag was not created');
+      return row;
     },
+  );
+}
 
-    renameTag: async (input) => {
-      const tagId = uuid.parse(input.tagId);
-      const request = {
-        key: key.parse(input.key),
-        expectedTagRevision: revision.parse(input.expectedTagRevision),
-      };
-      return tagCommand(
-        input,
-        'tag.rename',
-        tagId,
-        request,
-        async (client, workspaceId) => {
-          const current = await readTag(client, workspaceId, tagId);
-          requireRevision(current, request.expectedTagRevision);
-          await requireFreeKey(client, workspaceId, request.key, tagId);
-          const renamed = await client.query<TagRow>(
-            `update app.workflow_tags set key = $3, revision = revision + 1
-             where workspace_id = $1 and id = $2 returning id, key, revision`,
-            [workspaceId, tagId, request.key],
-          );
-          return renamed.rows[0] ?? current;
-        },
-      );
-    },
-
-    deleteTag: async (input) => {
-      const tagId = uuid.parse(input.tagId);
-      const request = {
-        expectedTagRevision: revision.parse(input.expectedTagRevision),
-      };
-      return session.transact(input, async (client, scope) => {
-        const { result, replayed } = await runOrganizationCommand(
-          client,
-          scope,
-          {
-            operation: 'tag.delete',
-            target: tagId,
-            idempotencyKey: input.idempotencyKey,
-            request,
-            roles: ADMINISTRATORS,
-            apply: async () => {
-              const current = await readTag(client, scope.workspaceId, tagId);
-              requireRevision(current, request.expectedTagRevision);
-              const detachedWorkflowCount = await deleteTag(
-                client,
-                scope,
-                tagId,
-              );
-              return {
-                result: { tagId, deleted: true, detachedWorkflowCount },
-                audit: {
-                  action: 'workflow.tag.delete',
-                  targetId: tagId,
-                  metadata: { detachedWorkflowCount },
-                },
-              };
-            },
-          },
-        );
-        return Object.freeze({ ...deleteResult.parse(result), replayed });
-      });
-    },
-
-    replaceTags: async (input) =>
-      assignmentCommand(
-        input,
-        'tags.replace',
-        { kind: 'replace_tags', tagIds: tagIds.parse(input.tagIds) },
-        replaceResult,
-      ),
-
-    detachTag: async (input) =>
-      assignmentCommand(
-        input,
-        'tag.detach',
-        { kind: 'detach_tag', tagId: uuid.parse(input.tagId) },
-        assignment,
-      ),
-
-    close: session.close,
+async function renameTag(
+  session: ReturnType<typeof createOrganizationSession>,
+  input: Parameters<WorkflowTagDatabase['renameTag']>[0],
+): ReturnType<WorkflowTagDatabase['renameTag']> {
+  const tagId = uuid.parse(input.tagId);
+  const request = {
+    key: key.parse(input.key),
+    expectedTagRevision: revision.parse(input.expectedTagRevision),
   };
-  return Object.freeze(store);
+  return tagCommand(
+    session,
+    input,
+    'tag.rename',
+    tagId,
+    request,
+    async (client, workspaceId) => {
+      const current = await readTag(client, workspaceId, tagId);
+      requireRevision(current, request.expectedTagRevision);
+      await requireFreeKey(client, workspaceId, request.key, tagId);
+      const renamed = await client.query<TagRow>(
+        `update app.workflow_tags set key = $3, revision = revision + 1
+             where workspace_id = $1 and id = $2 returning id, key, revision`,
+        [workspaceId, tagId, request.key],
+      );
+      return renamed.rows[0] ?? current;
+    },
+  );
+}
+
+async function deleteTagCommand(
+  session: ReturnType<typeof createOrganizationSession>,
+  input: Parameters<WorkflowTagDatabase['deleteTag']>[0],
+): ReturnType<WorkflowTagDatabase['deleteTag']> {
+  const tagId = uuid.parse(input.tagId);
+  const request = {
+    expectedTagRevision: revision.parse(input.expectedTagRevision),
+  };
+  return session.transact(input, async (client, scope) => {
+    const { result, replayed } = await runOrganizationCommand(client, scope, {
+      operation: 'tag.delete',
+      target: tagId,
+      idempotencyKey: input.idempotencyKey,
+      request,
+      roles: ADMINISTRATORS,
+      apply: async () => {
+        const current = await readTag(client, scope.workspaceId, tagId);
+        requireRevision(current, request.expectedTagRevision);
+        const detachedWorkflowCount = await deleteTag(client, scope, tagId);
+        return {
+          result: { tagId, deleted: true, detachedWorkflowCount },
+          audit: {
+            action: 'workflow.tag.delete',
+            targetId: tagId,
+            metadata: { detachedWorkflowCount },
+          },
+        };
+      },
+    });
+    return Object.freeze({ ...deleteResult.parse(result), replayed });
+  });
+}
+
+async function replaceWorkflowTags(
+  session: ReturnType<typeof createOrganizationSession>,
+  input: Parameters<WorkflowTagDatabase['replaceTags']>[0],
+): ReturnType<WorkflowTagDatabase['replaceTags']> {
+  return assignmentCommand(
+    session,
+    input,
+    'tags.replace',
+    { kind: 'replace_tags', tagIds: tagIds.parse(input.tagIds) },
+    replaceResult,
+  );
+}
+
+async function detachTag(
+  session: ReturnType<typeof createOrganizationSession>,
+  input: Parameters<WorkflowTagDatabase['detachTag']>[0],
+): ReturnType<WorkflowTagDatabase['detachTag']> {
+  return assignmentCommand(
+    session,
+    input,
+    'tag.detach',
+    { kind: 'detach_tag', tagId: uuid.parse(input.tagId) },
+    assignment,
+  );
 }
