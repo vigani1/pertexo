@@ -52,29 +52,7 @@ export async function resolveCodePackages(
         cause: error,
       });
     }
-    let root = dirname(entry),
-      manifest: Manifest | undefined;
-    for (;;) {
-      try {
-        const candidate = JSON.parse(
-          await readFile(join(root, 'package.json'), 'utf8'),
-        ) as Manifest;
-        if (candidate.name === item.name) {
-          manifest = candidate;
-          break;
-        }
-      } catch (error: unknown) {
-        if (!(
-          error instanceof Error &&
-          'code' in error &&
-          error.code === 'ENOENT'
-        ))
-          throw error;
-      }
-      if (root === parse(root).root)
-        throw new Error('An allowed Code package has no manifest');
-      root = dirname(root);
-    }
+    const { root, manifest } = await findPackageManifest(entry, item.name);
     if (item.allowed) roots.add(root);
     reads.add(root);
     const resolver = createRequire(item.from);
@@ -107,4 +85,35 @@ export async function resolveCodePackages(
     roots: [...roots],
     readPaths: [...reads],
   });
+}
+
+async function findPackageManifest(
+  entry: string,
+  name: string,
+): Promise<Readonly<{ root: string; manifest: Manifest }>> {
+  let root = dirname(entry),
+    manifest: Manifest | undefined;
+  for (;;) {
+    try {
+      const candidate = JSON.parse(
+        await readFile(join(root, 'package.json'), 'utf8'),
+      ) as Manifest;
+      if (candidate.name === name) {
+        manifest = candidate;
+        break;
+      }
+    } catch (error: unknown) {
+      if (!(
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'ENOENT'
+      ))
+        throw error;
+    }
+    if (root === parse(root).root)
+      throw new Error('An allowed Code package has no manifest');
+    root = dirname(root);
+  }
+
+  return { root, manifest };
 }

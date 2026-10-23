@@ -38,15 +38,7 @@ export function parseTwoFactorRecoveryConfig(
     const deployed =
       values.NODE_ENV === 'production' || values.NODE_ENV === 'staging';
     const origin = new URL(values.PUBLIC_WEB_ORIGIN);
-    const invalidApiOrigin =
-      origin.pathname !== '/' ||
-      origin.search !== '' ||
-      origin.hash !== '' ||
-      origin.username !== '' ||
-      origin.password !== '' ||
-      (deployed && origin.protocol !== 'https:') ||
-      !['https:', 'http:'].includes(origin.protocol);
-    if (invalidApiOrigin) throw new TypeError();
+    assertRecoveryOrigin(origin, { deployed });
     const base = {
       email,
       actorRef: values.OPERATOR_ACTOR_REF,
@@ -98,4 +90,19 @@ export function parseTwoFactorRecoveryConfig(
       'Two-factor recovery configuration is invalid. Use --email and provide DATABASE_URL, operator identity and AUTH_MAIL settings.',
     );
   }
+}
+
+function assertRecoveryOrigin(
+  origin: URL,
+  { deployed }: Readonly<{ deployed: boolean }>,
+): void {
+  const invalidApiOrigin =
+    origin.pathname !== '/' ||
+    origin.search !== '' ||
+    origin.hash !== '' ||
+    origin.username !== '' ||
+    origin.password !== '' ||
+    (deployed && origin.protocol !== 'https:') ||
+    !['https:', 'http:'].includes(origin.protocol);
+  if (invalidApiOrigin) throw new TypeError();
 }

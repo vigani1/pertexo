@@ -117,48 +117,11 @@ export function createAutomationHttpClient(
           },
           ...(body === undefined ? {} : { body }),
         });
-        const media = response.headers
-          .get('content-type')
-          ?.split(';', 1)[0]
-          ?.trim()
-          .toLowerCase();
-        if (
-          media !== 'application/json' &&
-          media !== 'application/problem+json'
-        )
-          throw new AutomationCommandError(
-            'cli.invalid_response',
-            'The server returned an unexpected content type.',
-            undefined,
-            { uncertain: mutating },
-          );
-        const value = await boundedResponse(response);
-        const etag = response.headers.get('etag');
-        const encoded = JSON.stringify({ body: value, etag });
-        if (encoded.includes(config.credential) || encoded.includes(secret))
-          throw new AutomationCommandError(
-            'cli.invalid_response',
-            'The server response contains credential material.',
-            undefined,
-            { uncertain: mutating },
-          );
-        if (!response.ok) {
-          const problem = commonProblem(value);
-          if (problem?.status !== response.status)
-            throw new AutomationCommandError(
-              'cli.invalid_response',
-              'The server returned invalid problem details.',
-              undefined,
-              { uncertain: mutating },
-            );
-          throw new AutomationCommandError(
-            problem.code,
-            problem.detail ?? problem.title,
-            problem.requestId,
-            { uncertain: mutating && response.status >= 500 },
-          );
-        }
-        return { body: value, etag };
+        return await readAutomationResponse(response, {
+          credential: config.credential,
+          secret,
+          mutating,
+        });
       } catch (cause) {
         if (cause instanceof AutomationCommandError) {
           if (mutating && cause.code === 'cli.invalid_response')
@@ -189,4 +152,53 @@ function transportFailureMessage(
   if (signal.aborted) return 'Command interrupted.';
   if (deadline.aborted) return 'The API request timed out.';
   return 'The API could not be reached, or refused a redirect.';
+}
+
+async function readAutomationResponse(
+  response: Response,
+  {
+    credential,
+    secret,
+    mutating,
+  }: Readonly<{ credential: string; secret: string; mutating: boolean }>,
+): Promise<AutomationHttpResponse> {
+  const media = response.headers
+    .get('content-type')
+    ?.split(';', 1)[0]
+    ?.trim()
+    .toLowerCase();
+  if (media !== 'application/json' && media !== 'application/problem+json')
+    throw new AutomationCommandError(
+      'cli.invalid_response',
+      'The server returned an unexpected content type.',
+      undefined,
+      { uncertain: mutating },
+    );
+  const value = await boundedResponse(response);
+  const etag = response.headers.get('etag');
+  const encoded = JSON.stringify({ body: value, etag });
+  if (encoded.includes(credential) || encoded.includes(secret))
+    throw new AutomationCommandError(
+      'cli.invalid_response',
+      'The server response contains credential material.',
+      undefined,
+      { uncertain: mutating },
+    );
+  if (!response.ok) {
+    const problem = commonProblem(value);
+    if (problem?.status !== response.status)
+      throw new AutomationCommandError(
+        'cli.invalid_response',
+        'The server returned invalid problem details.',
+        undefined,
+        { uncertain: mutating },
+      );
+    throw new AutomationCommandError(
+      problem.code,
+      problem.detail ?? problem.title,
+      problem.requestId,
+      { uncertain: mutating && response.status >= 500 },
+    );
+  }
+  return { body: value, etag };
 }

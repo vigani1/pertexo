@@ -37,6 +37,69 @@ export function encodeCodeJson(value: unknown, limits: JsonBounds): string {
       );
     encoded += piece;
   };
+  function walkArray(
+    item: object,
+    properties: readonly PropertyKey[],
+    depth: number,
+    parent: Ancestor,
+  ): void {
+    const length = descriptor(item, 'length');
+    const count: unknown = length?.value;
+    if (
+      typeof count !== 'number' ||
+      count > limits.members ||
+      properties.length !== count + 1
+    )
+      throw new InvalidCodeOutput(
+        'Return a plain JSON array without extra properties or holes.',
+      );
+    append('[');
+    for (let index = 0; index < count; index++) {
+      if (index > 0) append(',');
+      const entry = descriptor(item, string(index));
+      if (entry === undefined || !own(entry, 'value') || !entry.enumerable)
+        throw new InvalidCodeOutput(
+          'Code output contains an accessor or array hole.',
+        );
+      if (++members > limits.members)
+        throw new InvalidCodeOutput(
+          'Code output exceeds the JSON member limit. Return less data.',
+        );
+      walk(entry.value as unknown, depth + 1, parent);
+    }
+    append(']');
+  }
+
+  function walkObject(
+    item: object,
+    properties: readonly PropertyKey[],
+    depth: number,
+    parent: Ancestor,
+  ): void {
+    append('{');
+    let index = 0;
+    while (index < properties.length) {
+      const key = properties[index];
+      if (typeof key !== 'string')
+        throw new InvalidCodeOutput('Code output contains a symbol property.');
+      const entry = descriptor(item, key);
+      if (entry === undefined || !own(entry, 'value') || !entry.enumerable)
+        throw new InvalidCodeOutput(
+          'Code output contains an accessor or hidden property.',
+        );
+      if (index > 0) append(',');
+      append(quote(key));
+      append(':');
+      if (++members > limits.members)
+        throw new InvalidCodeOutput(
+          'Code output exceeds the JSON member limit. Return less data.',
+        );
+      walk(entry.value as unknown, depth + 1, parent);
+      index++;
+    }
+    append('}');
+  }
+
   const walk = (
     item: unknown,
     depth: number,
@@ -86,58 +149,8 @@ export function encodeCodeJson(value: unknown, limits: JsonBounds): string {
     const properties = keys(item);
     if (properties.length > limits.members + 1)
       throw new InvalidCodeOutput('Code output has too many members.');
-    if (isArray) {
-      const length = descriptor(item, 'length');
-      const count: unknown = length?.value;
-      if (
-        typeof count !== 'number' ||
-        count > limits.members ||
-        properties.length !== count + 1
-      )
-        throw new InvalidCodeOutput(
-          'Return a plain JSON array without extra properties or holes.',
-        );
-      append('[');
-      for (let index = 0; index < count; index++) {
-        if (index > 0) append(',');
-        const entry = descriptor(item, string(index));
-        if (entry === undefined || !own(entry, 'value') || !entry.enumerable)
-          throw new InvalidCodeOutput(
-            'Code output contains an accessor or array hole.',
-          );
-        if (++members > limits.members)
-          throw new InvalidCodeOutput(
-            'Code output exceeds the JSON member limit. Return less data.',
-          );
-        walk(entry.value as unknown, depth + 1, parent);
-      }
-      append(']');
-    } else {
-      append('{');
-      let index = 0;
-      while (index < properties.length) {
-        const key = properties[index];
-        if (typeof key !== 'string')
-          throw new InvalidCodeOutput(
-            'Code output contains a symbol property.',
-          );
-        const entry = descriptor(item, key);
-        if (entry === undefined || !own(entry, 'value') || !entry.enumerable)
-          throw new InvalidCodeOutput(
-            'Code output contains an accessor or hidden property.',
-          );
-        if (index > 0) append(',');
-        append(quote(key));
-        append(':');
-        if (++members > limits.members)
-          throw new InvalidCodeOutput(
-            'Code output exceeds the JSON member limit. Return less data.',
-          );
-        walk(entry.value as unknown, depth + 1, parent);
-        index++;
-      }
-      append('}');
-    }
+    if (isArray) walkArray(item, properties, depth, parent);
+    else walkObject(item, properties, depth, parent);
   };
   walk(value, 1, undefined);
   return encoded;

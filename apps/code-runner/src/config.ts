@@ -38,19 +38,7 @@ export async function assertRunnerIsolation(
   config: RunnerConfig,
 ): Promise<void> {
   if (config.mode === 'process') return;
-  if (
-    process.platform !== 'linux' ||
-    process.getuid?.() !== 0 ||
-    process.getgid?.() !== 10001
-  )
-    throw new Error('Hardened Code runner requires its Linux manager identity');
-  for (const name of Object.keys(process.env))
-    if (
-      /DATABASE|REDIS|AUTH|CONNECTION|AWS|SMTP|SECRET|TOKEN|ARTIFACT/u.test(
-        name,
-      )
-    )
-      throw new Error('Code runner refuses shared credential environment');
+  assertManagerEnvironment();
   const [
     status,
     interfaces,
@@ -72,6 +60,29 @@ export async function assertRunnerIsolation(
     readFile('/sys/fs/cgroup/cpu.max', 'utf8'),
     readFile('/sys/fs/cgroup/pids.max', 'utf8'),
   ]);
+  assertManagerPrivileges(status);
+  await assertNetworkIsolation(interfaces);
+  assertFilesystemIsolation(mounts, temp);
+  assertContainerBounds(config, { maximum, oomGroup, score, cpu, pids });
+}
+
+function assertManagerEnvironment(): void {
+  if (
+    process.platform !== 'linux' ||
+    process.getuid?.() !== 0 ||
+    process.getgid?.() !== 10001
+  )
+    throw new Error('Hardened Code runner requires its Linux manager identity');
+  for (const name of Object.keys(process.env))
+    if (
+      /DATABASE|REDIS|AUTH|CONNECTION|AWS|SMTP|SECRET|TOKEN|ARTIFACT/u.test(
+        name,
+      )
+    )
+      throw new Error('Code runner refuses shared credential environment');
+}
+
+function assertManagerPrivileges(status: string): void {
   const capabilities = /^CapEff:\s*(\w+)$/mu.exec(status)?.[1];
   if (
     !/^NoNewPrivs:\s*1$/mu.test(status) ||
@@ -81,6 +92,9 @@ export async function assertRunnerIsolation(
     throw new Error(
       'Code runner requires no-new-privileges and only SETUID, SETGID, KILL',
     );
+}
+
+async function assertNetworkIsolation(interfaces: string): Promise<void> {
   // Docker Desktop can expose DOWN kernel tunnel devices even with network:none.
   // A runnable non-loopback interface is forbidden; tasks additionally cannot
   // create any socket under the launcher's inherited syscall filter.
@@ -95,6 +109,12 @@ export async function assertRunnerIsolation(
     if ((flags & 1) !== 0 && (flags & 8) === 0)
       throw new Error('Code runner requires network_mode: none');
   }
+}
+
+function assertFilesystemIsolation(
+  mounts: string,
+  temp: Readonly<{ uid: number; mode: number }>,
+): void {
   const root = mounts.split('\n').find((line) => line.split(' ')[4] === '/');
   const temporary = mounts
     .split('\n')
@@ -108,6 +128,24 @@ export async function assertRunnerIsolation(
     throw new Error(
       'Code runner requires a read-only root and private noexec tmpfs',
     );
+}
+
+function assertContainerBounds(
+  config: RunnerConfig,
+  {
+    maximum,
+    oomGroup,
+    score,
+    cpu,
+    pids,
+  }: Readonly<{
+    maximum: string;
+    oomGroup: string;
+    score: string;
+    cpu: string;
+    pids: string;
+  }>,
+): void {
   const limits = codeContainerLimits(config.settings);
   const [quota, period] = cpu.trim().split(/\s+/u).map(Number);
   const unsafeProcessLimits =
