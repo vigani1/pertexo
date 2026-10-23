@@ -95,14 +95,7 @@ function findNode(graph: WorkflowGraph, nodeId: string): WorkflowNode | null {
 }
 
 export async function prepareNodeValidation(
-  input: Readonly<{
-    graph: WorkflowGraph;
-    nodeId: string;
-    sampleInput?: JsonValue;
-    deferInput?: boolean;
-    pinnedSample?: boolean;
-    expressionEvaluator?: ExpressionEvaluator;
-  }>,
+  input: NodeValidationInput,
 ): Promise<
   PreparedNodePreview | Readonly<{ issues: readonly NodeValidationIssue[] }>
 > {
@@ -131,78 +124,12 @@ export async function prepareNodeValidation(
 
   const mapped: Record<string, JsonValue> = {};
   if (!input.pinnedSample) {
-    if (node.configVersion !== definition.manifest.configVersion)
-      issue(issues, {
-        path: '$.configVersion',
-        code: 'node.config_version_incompatible',
-        message: 'Selected node configuration version is incompatible',
-      });
-
-    const parsedConfig = definition.configSchema.safeParse(node.config);
-    if (!parsedConfig.success)
-      for (const problem of parsedConfig.error.issues)
-        issue(issues, {
-          path: zodPath('$.config', problem.path),
-          code: 'node.config_invalid',
-          message: problem.message,
-        });
-
-    const requiredSlots = new Set(definition.manifest.connectionRequirements);
-    const optionalSlots = new Set(definition.manifest.optionalConnections);
-    for (const slot of [...requiredSlots].sort()) {
-      const reference = node.connectionRefs[slot];
-      if (reference === undefined && optionalSlots.has(slot)) continue;
-      if (reference === undefined || !UUID_PATTERN.test(reference))
-        issue(issues, {
-          path: `$.connectionRefs.${slot}`,
-          code: 'node.connection_required',
-          message: 'Required connection reference is missing or invalid',
-        });
-    }
-    for (const slot of Object.keys(node.connectionRefs).sort())
-      if (!requiredSlots.has(slot))
-        issue(issues, {
-          path: `$.connectionRefs.${slot}`,
-          code: 'node.connection_unexpected',
-          message: 'Connection reference is not declared by this definition',
-        });
-
-    if (!input.deferInput) {
-      const runInput = normalizeJson(input.sampleInput ?? {});
-      for (const key of Object.keys(node.inputMappings)) {
-        const source = node.inputMappings[key];
-        if (source === undefined) continue;
-        const resolution = await resolveValueSource(
-          source,
-          { runInput, nodeOutputs: {} },
-          input.expressionEvaluator,
-        );
-        if (resolution.kind === 'value') mapped[key] = resolution.value;
-        else
-          issue(issues, {
-            path: `$.inputMappings.${key}`,
-            code:
-              resolution.kind === 'missing'
-                ? 'node.mapping_missing'
-                : 'node.mapping_invalid',
-            message:
-              resolution.kind === 'error'
-                ? resolution.message
-                : 'Sample input does not resolve this mapping',
-          });
-      }
-    }
+    validateNodeSetup(node, definition, issues);
+    if (!input.deferInput)
+      await resolveNodeMappings(node, { input, mapped, issues });
     const resolvedInput = normalizeJson(mapped);
-    if (!input.deferInput) {
-      const parsedInput = definition.inputSchema.safeParse(resolvedInput);
-      if (!parsedInput.success)
-        for (const problem of parsedInput.error.issues)
-          issue(issues, {
-            path: zodPath('$.resolvedInput', problem.path),
-            code: 'node.input_invalid',
-            message: problem.message,
-          });
-    }
+    if (!input.deferInput)
+      validateMappedInput(definition, resolvedInput, issues);
   }
   const resolvedInput = normalizeJson(mapped);
 
@@ -238,4 +165,106 @@ export async function prepareNodeValidation(
     issues: Object.freeze(issues),
     resolvedInput,
   });
+}
+
+type NodeValidationInput = Readonly<{
+  graph: WorkflowGraph;
+  nodeId: string;
+  sampleInput?: JsonValue;
+  deferInput?: boolean;
+  pinnedSample?: boolean;
+  expressionEvaluator?: ExpressionEvaluator;
+}>;
+type PreviewNodeDefinition = ReturnType<typeof resolvePlatformNodeDefinition>;
+
+function validateNodeSetup(
+  node: WorkflowNode,
+  definition: PreviewNodeDefinition,
+  issues: NodeValidationIssue[],
+): void {
+  if (node.configVersion !== definition.manifest.configVersion)
+    issue(issues, {
+      path: '$.configVersion',
+      code: 'node.config_version_incompatible',
+      message: 'Selected node configuration version is incompatible',
+    });
+  const parsedConfig = definition.configSchema.safeParse(node.config);
+  if (!parsedConfig.success)
+    for (const problem of parsedConfig.error.issues)
+      issue(issues, {
+        path: zodPath('$.config', problem.path),
+        code: 'node.config_invalid',
+        message: problem.message,
+      });
+  const requiredSlots = new Set(definition.manifest.connectionRequirements);
+  const optionalSlots = new Set(definition.manifest.optionalConnections);
+  for (const slot of [...requiredSlots].sort()) {
+    const reference = node.connectionRefs[slot];
+    if (reference === undefined && optionalSlots.has(slot)) continue;
+    if (reference === undefined || !UUID_PATTERN.test(reference))
+      issue(issues, {
+        path: `$.connectionRefs.${slot}`,
+        code: 'node.connection_required',
+        message: 'Required connection reference is missing or invalid',
+      });
+  }
+  for (const slot of Object.keys(node.connectionRefs).sort())
+    if (!requiredSlots.has(slot))
+      issue(issues, {
+        path: `$.connectionRefs.${slot}`,
+        code: 'node.connection_unexpected',
+        message: 'Connection reference is not declared by this definition',
+      });
+}
+
+async function resolveNodeMappings(
+  node: WorkflowNode,
+  {
+    input,
+    mapped,
+    issues,
+  }: Readonly<{
+    input: NodeValidationInput;
+    mapped: Record<string, JsonValue>;
+    issues: NodeValidationIssue[];
+  }>,
+): Promise<void> {
+  const runInput = normalizeJson(input.sampleInput ?? {});
+  for (const key of Object.keys(node.inputMappings)) {
+    const source = node.inputMappings[key];
+    if (source === undefined) continue;
+    const resolution = await resolveValueSource(
+      source,
+      { runInput, nodeOutputs: {} },
+      input.expressionEvaluator,
+    );
+    if (resolution.kind === 'value') mapped[key] = resolution.value;
+    else
+      issue(issues, {
+        path: `$.inputMappings.${key}`,
+        code:
+          resolution.kind === 'missing'
+            ? 'node.mapping_missing'
+            : 'node.mapping_invalid',
+        message:
+          resolution.kind === 'error'
+            ? resolution.message
+            : 'Sample input does not resolve this mapping',
+      });
+  }
+}
+
+function validateMappedInput(
+  definition: PreviewNodeDefinition,
+  resolvedInput: JsonValue,
+  issues: NodeValidationIssue[],
+): void {
+  const parsedInput = definition.inputSchema.safeParse(resolvedInput);
+  if (!parsedInput.success)
+    for (const problem of parsedInput.error.issues)
+      issue(issues, {
+        path: zodPath('$.resolvedInput', problem.path),
+        code: 'node.input_invalid',
+        message: problem.message,
+      });
 }

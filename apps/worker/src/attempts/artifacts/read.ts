@@ -62,29 +62,6 @@ export function createArtifactReader(
         download.body.destroy(reason);
       });
       try {
-        async function* checkedBody() {
-          let count = 0;
-          try {
-            for await (const value of download.body) {
-              const chunk: unknown = value;
-              if (!(chunk instanceof Uint8Array))
-                throw new ArtifactIntegrityError('Artifact is not bytes');
-              transfer.advance();
-              count += chunk.byteLength;
-              if (count > reference.byteLength) {
-                chunk.fill(0);
-                throw new ArtifactIntegrityError('Artifact length mismatch');
-              }
-              yield chunk;
-            }
-            if (count !== reference.byteLength)
-              throw new ArtifactIntegrityError('Artifact length mismatch');
-          } catch (error) {
-            if (error instanceof ArtifactIntegrityError)
-              throw new FileInputFailure({ reason: 'file_integrity' });
-            throw error;
-          }
-        }
         const actual = download.metadata;
         const fileMetadataMismatch =
           actual.workspaceId !== input.workspaceId ||
@@ -96,7 +73,7 @@ export function createArtifactReader(
           throw new ArtifactIntegrityError('Artifact metadata changed');
         const handle = await input.scratch.spool({
           attemptId: input.attemptId,
-          body: checkedBody(),
+          body: checkedBody(download, { reference, transfer }),
           maxBytes: Math.max(1, reference.byteLength),
           signal: transfer.signal,
           transfer,
@@ -182,4 +159,37 @@ export function createArtifactReader(
       }
     },
   };
+}
+
+async function* checkedBody(
+  download: Awaited<ReturnType<ArtifactStore['getStream']>>,
+  {
+    reference,
+    transfer,
+  }: Readonly<{
+    reference: OpenInput['reference'];
+    transfer: ArtifactTransfer;
+  }>,
+) {
+  let count = 0;
+  try {
+    for await (const value of download.body) {
+      const chunk: unknown = value;
+      if (!(chunk instanceof Uint8Array))
+        throw new ArtifactIntegrityError('Artifact is not bytes');
+      transfer.advance();
+      count += chunk.byteLength;
+      if (count > reference.byteLength) {
+        chunk.fill(0);
+        throw new ArtifactIntegrityError('Artifact length mismatch');
+      }
+      yield chunk;
+    }
+    if (count !== reference.byteLength)
+      throw new ArtifactIntegrityError('Artifact length mismatch');
+  } catch (error) {
+    if (error instanceof ArtifactIntegrityError)
+      throw new FileInputFailure({ reason: 'file_integrity' });
+    throw error;
+  }
 }

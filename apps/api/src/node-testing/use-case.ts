@@ -39,7 +39,10 @@ import type {
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import { NodeTestRequestError, NodeTestInvalidError } from './errors.js';
 import type { NodeTestingPersistence } from './ports.js';
-import { prepareNodeValidation } from './validation.js';
+import {
+  prepareNodeValidation,
+  type PreparedNodePreview,
+} from './validation.js';
 
 const PREVIEW_RETENTION_MS = 7 * 24 * 60 * 60 * 1_000;
 const PREVIEW_EXECUTION_TIMEOUT_MS = 5 * 60 * 1_000;
@@ -125,21 +128,8 @@ export class TestWorkflowNodeUseCase {
         ? previewExecutionIdentity(input, request)
         : undefined;
     if (executionIdentity !== undefined) {
-      let replay: PreviewRunRecord | null;
-      try {
-        replay = await this.persistence.resolvePreviewReplay({
-          workspaceId: input.routeWorkspaceId,
-          actorUserId: input.actor.actorId,
-          workflowId: input.workflowId,
-          ...executionIdentity,
-        });
-      } catch (error: unknown) {
-        if (error instanceof PreviewIdempotencyConflictError)
-          throw new NodeTestRequestError('idempotency_conflict');
-        throw error;
-      }
-      if (replay !== null)
-        return previewAcceptanceResponse(replay, { replayed: true });
+      const replay = await this.replay(input, executionIdentity);
+      if (replay !== undefined) return replay;
     }
     const draft = await this.currentDraft(input);
     if (draft.revision !== request.expectedRevision)
@@ -153,27 +143,7 @@ export class TestWorkflowNodeUseCase {
         }),
       );
     const graph = parseWorkflowGraphDraft(draft.graphJson);
-    const sample =
-      request.mode === 'test_execute'
-        ? await this.persistence.stepSamples.get({
-            workspaceId: input.routeWorkspaceId,
-            workflowId: input.workflowId,
-            nodeId: input.nodeId,
-            actorId: input.actor.actorId,
-          })
-        : undefined;
-    if (sample !== undefined && sample.draftRevision !== draft.revision)
-      throw new WorkflowStepSampleError('draft_changed');
-    if (sample?.sample?.state === 'expired')
-      throw new WorkflowStepSampleError('expired');
-    if (sample?.sample?.state === 'stale')
-      throw new WorkflowStepSampleError('stale');
-    const pinnedSampleId = sample?.sample?.id;
-    const pinnedSampleChanged =
-      request.mode === 'test_execute' &&
-      request.expectedSampleId !== undefined &&
-      request.expectedSampleId !== (pinnedSampleId ?? null);
-    if (pinnedSampleChanged) throw new WorkflowStepSampleError('changed');
+    const pinnedSampleId = await this.currentSample(input, request, draft);
     const prepared = await prepareNodeValidation({
       graph,
       nodeId: input.nodeId,
@@ -207,6 +177,86 @@ export class TestWorkflowNodeUseCase {
     if (prepared.issues.length > 0)
       throw new NodeTestInvalidError(prepared.issues);
 
+    return this.accept(input, {
+      request,
+      executionIdentity,
+      draft,
+      graph,
+      pinnedSampleId,
+      prepared,
+    });
+  }
+
+  private async replay(
+    input: NodeTestUseCaseInput,
+    executionIdentity: ReturnType<typeof previewExecutionIdentity>,
+  ): Promise<NodeTestExecuteAcceptedResponse | undefined> {
+    let replay: PreviewRunRecord | null;
+    try {
+      replay = await this.persistence.resolvePreviewReplay({
+        workspaceId: input.routeWorkspaceId,
+        actorUserId: input.actor.actorId,
+        workflowId: input.workflowId,
+        ...executionIdentity,
+      });
+    } catch (error: unknown) {
+      if (error instanceof PreviewIdempotencyConflictError)
+        throw new NodeTestRequestError('idempotency_conflict');
+      throw error;
+    }
+    if (replay !== null)
+      return previewAcceptanceResponse(replay, { replayed: true });
+    return undefined;
+  }
+
+  private async currentSample(
+    input: NodeTestUseCaseInput,
+    request: NodeTestRequest,
+    draft: WorkflowDraftRecord,
+  ): Promise<string | undefined> {
+    const sample =
+      request.mode === 'test_execute'
+        ? await this.persistence.stepSamples.get({
+            workspaceId: input.routeWorkspaceId,
+            workflowId: input.workflowId,
+            nodeId: input.nodeId,
+            actorId: input.actor.actorId,
+          })
+        : undefined;
+    if (sample !== undefined && sample.draftRevision !== draft.revision)
+      throw new WorkflowStepSampleError('draft_changed');
+    if (sample?.sample?.state === 'expired')
+      throw new WorkflowStepSampleError('expired');
+    if (sample?.sample?.state === 'stale')
+      throw new WorkflowStepSampleError('stale');
+    const pinnedSampleId = sample?.sample?.id;
+    const pinnedSampleChanged =
+      request.mode === 'test_execute' &&
+      request.expectedSampleId !== undefined &&
+      request.expectedSampleId !== (pinnedSampleId ?? null);
+    if (pinnedSampleChanged) throw new WorkflowStepSampleError('changed');
+
+    return pinnedSampleId;
+  }
+
+  private async accept(
+    input: NodeTestUseCaseInput,
+    {
+      request,
+      executionIdentity,
+      draft,
+      graph,
+      pinnedSampleId,
+      prepared,
+    }: Readonly<{
+      request: Extract<NodeTestRequest, Readonly<{ mode: 'test_execute' }>>;
+      executionIdentity: ReturnType<typeof previewExecutionIdentity>;
+      draft: WorkflowDraftRecord;
+      graph: ReturnType<typeof parseWorkflowGraphDraft>;
+      pinnedSampleId: string | undefined;
+      prepared: PreparedNodePreview;
+    }>,
+  ): Promise<NodeTestExecuteAcceptedResponse> {
     const acceptedAt = this.now();
     const { keyHash, requestHash } = executionIdentity;
     try {
