@@ -214,15 +214,7 @@ function fromApplicationError(error: ApplicationError): NormalizedProblem {
     error.code === 'request.rate_limit_unavailable' ||
     error.code === 'workspace.quota_exceeded' ||
     error.code === 'workflow.validation_unavailable';
-  if (retryableProblem) {
-    const retryAfterSeconds = error.details?.retryAfterSeconds;
-    return typeof retryAfterSeconds === 'number' &&
-      Number.isSafeInteger(retryAfterSeconds) &&
-      retryAfterSeconds >= 1 &&
-      retryAfterSeconds <= 300
-      ? { ...base, retryAfterSeconds }
-      : base;
-  }
+  if (retryableProblem) return retryableApplicationProblem(base, error);
   if (error.code === 'run.recovery_unavailable') {
     const refusal = workflowRecoveryRefusalSchema.safeParse({
       kind: 'refused',
@@ -241,19 +233,7 @@ function fromApplicationError(error: ApplicationError): NormalizedProblem {
   if (metadataConflict === 'invalid') return unexpectedProblem(error);
   if (metadataConflict !== undefined) return { ...base, ...metadataConflict };
   if (error.code !== 'workflow.revision_conflict') return base;
-  const currentRevision = error.details?.currentRevision;
-  const currentEtag = error.details?.currentEtag;
-  const parsedEtag = strongEtagSchema.safeParse(currentEtag);
-  const invalidRevisionConflict =
-    typeof currentRevision !== 'number' ||
-    !Number.isSafeInteger(currentRevision) ||
-    currentRevision < 1 ||
-    !parsedEtag.success;
-  if (invalidRevisionConflict) return unexpectedProblem(error);
-  return {
-    ...base,
-    revisionConflict: { currentRevision, currentEtag: parsedEtag.data },
-  };
+  return revisionConflictProblem(base, error);
 }
 
 function safeApplicationIssues(
@@ -543,4 +523,36 @@ function applicationProblemIssues(
   if (error.code === 'request.invalid' && isRequestBodyError(error.cause))
     return zodIssues(error.cause);
   return undefined;
+}
+
+function retryableApplicationProblem(
+  base: NormalizedProblem,
+  error: ApplicationError,
+): NormalizedProblem {
+  const retryAfterSeconds = error.details?.retryAfterSeconds;
+  return typeof retryAfterSeconds === 'number' &&
+    Number.isSafeInteger(retryAfterSeconds) &&
+    retryAfterSeconds >= 1 &&
+    retryAfterSeconds <= 300
+    ? { ...base, retryAfterSeconds }
+    : base;
+}
+
+function revisionConflictProblem(
+  base: NormalizedProblem,
+  error: ApplicationError,
+): NormalizedProblem {
+  const currentRevision = error.details?.currentRevision;
+  const currentEtag = error.details?.currentEtag;
+  const parsedEtag = strongEtagSchema.safeParse(currentEtag);
+  const invalidRevisionConflict =
+    typeof currentRevision !== 'number' ||
+    !Number.isSafeInteger(currentRevision) ||
+    currentRevision < 1 ||
+    !parsedEtag.success;
+  if (invalidRevisionConflict) return unexpectedProblem(error);
+  return {
+    ...base,
+    revisionConflict: { currentRevision, currentEtag: parsedEtag.data },
+  };
 }

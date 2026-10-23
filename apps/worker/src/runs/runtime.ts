@@ -143,11 +143,11 @@ export async function createCoordinatorRuntime(
   dependencies: CoordinatorRuntimeDependencies = {},
   factories: CoordinatorCompositionFactories = productionFactories,
 ): Promise<CoordinatorRuntime> {
-  const dueWakeupBatchSize = options.dueWakeupBatchSize ?? 25;
-  const dueWakeupPollIntervalMillis =
-    options.dueWakeupPollIntervalMillis ?? 250;
-  const backgroundTaskShutdownTimeoutMillis =
-    options.backgroundTaskShutdownTimeoutMillis ?? 5_000;
+  const {
+    dueWakeupBatchSize,
+    dueWakeupPollIntervalMillis,
+    backgroundTaskShutdownTimeoutMillis,
+  } = coordinatorRuntimeSettings(options);
   const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
   const telemetry = dependencies.telemetry ?? factories.telemetry();
   const traceRunner = factories.traceRunner();
@@ -158,12 +158,8 @@ export async function createCoordinatorRuntime(
   let deadlineWakeupScanner: DeadlineWakeupScanner | undefined;
   let testSuiteScanner: WorkflowTestSuiteScanner | undefined;
   let consumer: QueueConsumer | undefined;
-  const expressionEvaluator =
-    dependencies.advance === undefined ? new JsonataEvaluator() : undefined;
-  const expressionOwner =
-    expressionEvaluator === undefined
-      ? undefined
-      : { close: () => expressionEvaluator.shutdown() };
+  const { expressionEvaluator, expressionOwner } =
+    coordinatorExpression(dependencies);
   try {
     runStore =
       dependencies.runStore ??
@@ -271,4 +267,29 @@ export async function createCoordinatorRuntime(
       );
     },
   });
+}
+
+function coordinatorRuntimeSettings(options: CoordinatorRuntimeOptions) {
+  const dueWakeupBatchSize = options.dueWakeupBatchSize ?? 25;
+  const dueWakeupPollIntervalMillis =
+    options.dueWakeupPollIntervalMillis ?? 250;
+  const backgroundTaskShutdownTimeoutMillis =
+    options.backgroundTaskShutdownTimeoutMillis ?? 5_000;
+
+  return {
+    dueWakeupBatchSize,
+    dueWakeupPollIntervalMillis,
+    backgroundTaskShutdownTimeoutMillis,
+  };
+}
+
+function coordinatorExpression(dependencies: CoordinatorRuntimeDependencies) {
+  const expressionEvaluator =
+    dependencies.advance === undefined ? new JsonataEvaluator() : undefined;
+  const expressionOwner =
+    expressionEvaluator === undefined
+      ? undefined
+      : { close: () => expressionEvaluator.shutdown() };
+
+  return { expressionEvaluator, expressionOwner };
 }

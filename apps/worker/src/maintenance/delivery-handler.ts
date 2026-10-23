@@ -89,6 +89,10 @@ export function maintenanceDeliveryHandler(
           );
         await handlers.workspaceInvitation.handle(delivery, context);
         return;
+      case JOB_NAME.advanceWorkflowRun:
+      case JOB_NAME.executeNodeAttempt:
+      case JOB_NAME.executePreviewAttempt:
+      case JOB_NAME.reconcileWorkflowTriggers:
       default:
         throw new InvalidQueueDeliveryError(
           `Maintenance cannot handle ${delivery.name}`,
