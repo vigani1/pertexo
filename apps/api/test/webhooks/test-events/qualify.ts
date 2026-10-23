@@ -1,33 +1,11 @@
 import { createHmac, randomUUID } from 'node:crypto';
 import Fastify from 'fastify';
 import { expect } from 'vitest';
-import type { Pool, QueryResultRow, QueryResult } from 'pg';
-import type { WorkflowAuthoringDatabase } from '@pertexo/database/authoring';
-import type {
-  WebhookTestEventStore,
-  TestEventScope,
-} from '@pertexo/database/triggers';
-import {
-  registerWebhookIngress,
-  type WebhookIngressDependencies,
-} from '../../../src/webhooks/ingress/register.js';
-import type { HttpSessionCookies } from '../support/browser-session.fixture.js';
 
-interface Fixture {
-  origin: string;
-  scope: TestEventScope;
-  revision: number;
-  session: HttpSessionCookies;
-  store: WebhookTestEventStore;
-  ingress: WebhookIngressDependencies;
-  authoring: WorkflowAuthoringDatabase;
-  apiPool: Pool;
-  issueSession: (userId: string) => Promise<HttpSessionCookies>;
-  query: <Row extends QueryResultRow = QueryResultRow>(
-    sql: string,
-    values?: unknown[],
-  ) => Promise<QueryResult<Row>>;
-}
+import { registerWebhookIngress } from '../../../src/webhooks/ingress/register.js';
+
+import type { Fixture } from './contract.js';
+
 export async function qualifyWebhookTestEvents(f: Fixture) {
   const root = `${f.origin}/v1/workspaces/${f.scope.workspaceId}/workflows/${f.scope.workflowId}/draft/nodes/webhook/webhook-test-events`;
   async function manage(
