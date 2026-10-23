@@ -189,7 +189,7 @@ describe('provider telemetry', () => {
     const recorded = recorder();
     const failure = new HttpRequestExecutorError(
       { kind: 'failed', errorKind: 'provider' },
-      true,
+      { possiblyDispatched: true },
     );
 
     await expect(

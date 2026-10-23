@@ -64,7 +64,9 @@ export function secureHttpPreDispatchError(
     | typeof SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch
     | typeof SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed,
 ): SecureHttpError {
-  return new SecureHttpError(code, 'definite_failure', false);
+  return new SecureHttpError(code, 'definite_failure', {
+    possiblyDispatched: false,
+  });
 }
 
 export class SecureHttpClient {
@@ -156,12 +158,11 @@ export class SecureHttpClient {
         } catch (error: unknown) {
           const secureError = inspectSecureHttpError(error);
           if (secureError !== undefined) throw secureError.error;
-          throw failure(
-            SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed,
-            false,
-            false,
-            error,
-          );
+          throw failure(SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed, {
+            possiblyDispatched: false,
+            ambiguous: false,
+            cause: error,
+          });
         }
       }
       let response: SecureHttpTransportResponse;
@@ -202,14 +203,11 @@ export class SecureHttpClient {
         );
         continue;
       }
-      return await consumeFinalResponse(
-        response,
-        requestState,
-        parsed,
+      return await consumeFinalResponse(response, requestState, parsed, {
         executionSignal,
         deadline,
         consume,
-      );
+      });
     }
   }
 
@@ -233,19 +231,17 @@ export class SecureHttpClient {
     } catch (error: unknown) {
       const secureError = inspectSecureHttpError(error);
       if (secureError !== undefined) throw secureError.error;
-      throw failure(
-        SECURE_HTTP_ERROR_CODE.dnsFailed,
-        failureContext.possiblyDispatched,
-        false,
-        error,
-      );
+      throw failure(SECURE_HTTP_ERROR_CODE.dnsFailed, {
+        possiblyDispatched: failureContext.possiblyDispatched,
+        ambiguous: false,
+        cause: error,
+      });
     }
     if (addresses.length === 0 || addresses.length > 16)
-      throw failure(
-        SECURE_HTTP_ERROR_CODE.dnsFailed,
-        failureContext.possiblyDispatched,
-        false,
-      );
+      throw failure(SECURE_HTTP_ERROR_CODE.dnsFailed, {
+        possiblyDispatched: failureContext.possiblyDispatched,
+        ambiguous: false,
+      });
     const validated: ResolvedAddress[] = [];
     const policy = this.addressPolicy;
     try {
@@ -267,12 +263,11 @@ export class SecureHttpClient {
         validated.push(Object.freeze({ ...candidate }));
       }
     } catch (error: unknown) {
-      throw failure(
-        SECURE_HTTP_ERROR_CODE.ssrfBlocked,
-        failureContext.possiblyDispatched,
-        false,
-        error,
-      );
+      throw failure(SECURE_HTTP_ERROR_CODE.ssrfBlocked, {
+        possiblyDispatched: failureContext.possiblyDispatched,
+        ambiguous: false,
+        cause: error,
+      });
     }
     validated.sort((left, right) =>
       `${String(left.family)}:${left.address}`.localeCompare(
@@ -281,11 +276,10 @@ export class SecureHttpClient {
     );
     const selected = validated[0];
     if (selected === undefined)
-      throw failure(
-        SECURE_HTTP_ERROR_CODE.dnsFailed,
-        failureContext.possiblyDispatched,
-        false,
-      );
+      throw failure(SECURE_HTTP_ERROR_CODE.dnsFailed, {
+        possiblyDispatched: failureContext.possiblyDispatched,
+        ambiguous: false,
+      });
     return selected;
   }
 }

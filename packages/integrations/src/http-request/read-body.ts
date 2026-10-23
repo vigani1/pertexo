@@ -12,9 +12,15 @@ import { requestBody } from './request-material.js';
 export async function readRequestBody(
   input: HttpRequestInput,
   method: HttpRequestConfig['method'],
-  artifacts: NodeArtifactRuntime | undefined,
-  signal: AbortSignal,
-  failure: () => Error,
+  {
+    artifacts,
+    signal,
+    failure,
+  }: Readonly<{
+    artifacts: NodeArtifactRuntime | undefined;
+    signal: AbortSignal;
+    failure: () => Error;
+  }>,
 ): Promise<Uint8Array | NodeVerifiedByteSource | undefined> {
   const body = input.body;
   if (body === undefined || !('kind' in body))

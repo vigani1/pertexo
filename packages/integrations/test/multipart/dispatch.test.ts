@@ -169,7 +169,7 @@ describe('multipart dispatch outcomes', () => {
                 new SecureHttpError(
                   SECURE_HTTP_ERROR_CODE.networkFailed,
                   'ambiguous',
-                  true,
+                  { possiblyDispatched: true },
                 ),
               );
             return Promise.resolve({

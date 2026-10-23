@@ -146,27 +146,30 @@ describe('self-managed connection encryption', () => {
     expect(
       parseConnectionEncryptionConfig(
         { CONNECTION_ENCRYPTION_MODE: 'local', CONNECTION_LOCAL_KEY: key },
-        false,
+        { deployed: false },
       ),
     ).toEqual(config(key, 'local:development'));
     expect(() =>
       parseConnectionEncryptionConfig(
         { CONNECTION_ENCRYPTION_MODE: 'local', CONNECTION_LOCAL_KEY: key },
-        true,
+        { deployed: true },
       ),
     ).toThrow('forbidden when deployed');
     expect(() =>
-      parseConnectionEncryptionConfig({ CONNECTION_LOCAL_KEY: key }, false),
+      parseConnectionEncryptionConfig(
+        { CONNECTION_LOCAL_KEY: key },
+        { deployed: false },
+      ),
     ).toThrow('requires local encryption mode');
   });
 
   it('accepts private deployed keys after deployment verification is available', () => {
-    expect(parseConnectionEncryptionConfig(environment, false)).toEqual(
-      config(),
-    );
-    expect(parseConnectionEncryptionConfig(environment, true)).toEqual(
-      config(),
-    );
+    expect(
+      parseConnectionEncryptionConfig(environment, { deployed: false }),
+    ).toEqual(config());
+    expect(
+      parseConnectionEncryptionConfig(environment, { deployed: true }),
+    ).toEqual(config());
   });
 
   it.each(['base64', 'base64url'] as const)(
@@ -186,13 +189,13 @@ describe('self-managed connection encryption', () => {
         expect(() =>
           parseConnectionEncryptionConfig(
             { ...environment, ...override },
-            true,
+            { deployed: true },
           ),
         ).toThrow('Public development master keys');
         expect(() =>
           parseConnectionEncryptionConfig(
             { ...environment, ...override },
-            false,
+            { deployed: false },
           ),
         ).not.toThrow();
       }
@@ -230,7 +233,10 @@ describe('self-managed connection encryption', () => {
     'refuses incomplete, duplicate, invalid or mixed configuration',
     (override) => {
       expect(() =>
-        parseConnectionEncryptionConfig({ ...environment, ...override }, false),
+        parseConnectionEncryptionConfig(
+          { ...environment, ...override },
+          { deployed: false },
+        ),
       ).toThrow();
     },
   );
@@ -242,26 +248,28 @@ describe('self-managed connection encryption', () => {
           ...environment,
           CONNECTION_SELF_MANAGED_PREVIOUS_KEYS: 'private-invalid-material',
         },
-        false,
+        { deployed: false },
       ),
     ).toThrow('Previous application keys are invalid');
-    expect(parseConnectionEncryptionConfig({}, false)).toBeUndefined();
-    expect(() => parseConnectionEncryptionConfig({}, true)).toThrow(
-      'incomplete',
-    );
+    expect(
+      parseConnectionEncryptionConfig({}, { deployed: false }),
+    ).toBeUndefined();
+    expect(() =>
+      parseConnectionEncryptionConfig({}, { deployed: true }),
+    ).toThrow('incomplete');
     expect(
       parseConnectionEncryptionConfig(
         {
           CONNECTION_KMS_KEY_REFERENCE: 'alias/connections',
           CONNECTION_KMS_REGION: 'eu-central-1',
         },
-        true,
+        { deployed: true },
       ),
     ).toEqual({ keyReference: 'alias/connections', region: 'eu-central-1' });
     expect(() =>
       parseConnectionEncryptionConfig(
         { CONNECTION_ENCRYPTION_MODE: 'kms', CONNECTION_SELF_MANAGED_KEY: key },
-        false,
+        { deployed: false },
       ),
     ).toThrow('require self-managed');
     expect(() =>
@@ -271,7 +279,7 @@ describe('self-managed connection encryption', () => {
           CONNECTION_LOCAL_KEY: key,
           CONNECTION_SELF_MANAGED_KEY: key,
         },
-        false,
+        { deployed: false },
       ),
     ).toThrow('cannot be mixed');
   });

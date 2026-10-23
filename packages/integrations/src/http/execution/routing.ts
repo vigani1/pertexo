@@ -24,7 +24,10 @@ export function assertResponseStatus(
     response.status > 599
   ) {
     response.close();
-    throw failure(SECURE_HTTP_ERROR_CODE.networkFailed, true, true);
+    throw failure(SECURE_HTTP_ERROR_CODE.networkFailed, {
+      possiblyDispatched: true,
+      ambiguous: true,
+    });
   }
 }
 
@@ -35,20 +38,32 @@ export function redirectTransition(
   location: string,
 ): RedirectState {
   if (current.redirectCount >= request.maxRedirects)
-    throw failure(SECURE_HTTP_ERROR_CODE.redirectRejected, true, false);
+    throw failure(SECURE_HTTP_ERROR_CODE.redirectRejected, {
+      possiblyDispatched: true,
+      ambiguous: false,
+    });
   const nextUrl = parseRedirectUrl(location, current.url);
   if (
     request.navigation !== undefined &&
     nextUrl.origin !== request.navigation.origin
   )
-    throw failure(SECURE_HTTP_ERROR_CODE.paginationOriginChanged, true, false);
+    throw failure(SECURE_HTTP_ERROR_CODE.paginationOriginChanged, {
+      possiblyDispatched: true,
+      ambiguous: false,
+    });
   if (current.url.protocol === 'https:' && nextUrl.protocol !== 'https:')
-    throw failure(SECURE_HTTP_ERROR_CODE.redirectRejected, true, false);
+    throw failure(SECURE_HTTP_ERROR_CODE.redirectRejected, {
+      possiblyDispatched: true,
+      ambiguous: false,
+    });
   if (
     request.sensitiveValues.length > 0 &&
     nextUrl.origin !== current.url.origin
   )
-    throw failure(SECURE_HTTP_ERROR_CODE.redirectRejected, true, false);
+    throw failure(SECURE_HTTP_ERROR_CODE.redirectRejected, {
+      possiblyDispatched: true,
+      ambiguous: false,
+    });
   const nextRequest = redirectRequest(
     response.status,
     current.method,
@@ -72,7 +87,11 @@ export function parseTargetUrl(value: string): URL {
       throw new Error('URL credentials and fragments are not allowed');
     return url;
   } catch (error: unknown) {
-    throw failure(SECURE_HTTP_ERROR_CODE.invalidRequest, false, false, error);
+    throw failure(SECURE_HTTP_ERROR_CODE.invalidRequest, {
+      possiblyDispatched: false,
+      ambiguous: false,
+      cause: error,
+    });
   }
 }
 
@@ -80,7 +99,11 @@ function parseRedirectUrl(location: string, current: URL): URL {
   try {
     return parseTargetUrl(new URL(location, current).toString());
   } catch (error: unknown) {
-    throw failure(SECURE_HTTP_ERROR_CODE.redirectRejected, true, false, error);
+    throw failure(SECURE_HTTP_ERROR_CODE.redirectRejected, {
+      possiblyDispatched: true,
+      ambiguous: false,
+      cause: error,
+    });
   }
 }
 
@@ -88,7 +111,8 @@ export function literalAddressFamily(hostname: string): 4 | 6 | undefined {
   // URL parsing canonicalizes alternate IPv4 spellings before this boundary.
   // DNS labels may contain only hexadecimal letters without being IP literals.
   const family = isIP(hostname);
-  return family === 0 ? undefined : family === 4 ? 4 : 6;
+  if (family === 0) return undefined;
+  return family === 4 ? 4 : 6;
 }
 
 export function redirectLocation(
@@ -116,6 +140,9 @@ function redirectRequest(
       headers,
     };
   if (method !== 'GET' && method !== 'HEAD')
-    throw failure(SECURE_HTTP_ERROR_CODE.redirectRejected, true, false);
+    throw failure(SECURE_HTTP_ERROR_CODE.redirectRejected, {
+      possiblyDispatched: true,
+      ambiguous: false,
+    });
   return { method, headers };
 }

@@ -65,7 +65,9 @@ describe('owned curated-template provider transports', () => {
       expect(response.status).toBe(500);
       response.body.fill(0);
       expect(
-        classifySecureHttpResponse(response.status, 'unsafe', false),
+        classifySecureHttpResponse(response.status, 'unsafe', {
+          providerKeyPresent: false,
+        }),
       ).toEqual({ kind: 'outcome_unknown', errorKind: 'provider' });
       expect(fixture.observe()).toEqual({
         observations: [
@@ -142,7 +144,9 @@ describe('owned curated-template provider transports', () => {
       expect(failed.status).toBe(500);
       failed.body.fill(0);
       expect(
-        classifySecureHttpResponse(failed.status, 'unsafe', false),
+        classifySecureHttpResponse(failed.status, 'unsafe', {
+          providerKeyPresent: false,
+        }),
       ).toEqual({ kind: 'outcome_unknown', errorKind: 'provider' });
       const observed = fixture.observe();
       expect(observed.pendingHttpResponses).toBe(0);

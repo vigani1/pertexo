@@ -125,7 +125,7 @@ describe('connection error mapping', () => {
     const failure = new SecureHttpError(
       'dispatch_evidence_failed',
       'definite_failure',
-      false,
+      { possiblyDispatched: false },
     );
     expect(toProblem(connectionFailure(failure))).toEqual({
       code: 'provider.unavailable',

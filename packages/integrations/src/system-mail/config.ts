@@ -25,8 +25,13 @@ const smtp = z.object({
 
 export function parseSystemMailConfig(
   environment: Readonly<Record<string, string | undefined>>,
-  apiKeyName: 'AUTH_MAIL_EMAIL_API_KEY' | 'INVITATION_EMAIL_API_KEY',
-  deployed: boolean,
+  {
+    apiKeyName,
+    deployed,
+  }: Readonly<{
+    apiKeyName: 'AUTH_MAIL_EMAIL_API_KEY' | 'INVITATION_EMAIL_API_KEY';
+    deployed: boolean;
+  }>,
 ): SystemMailConfig {
   const mode = environment.SYSTEM_MAIL_TRANSPORT ?? 'resend';
   if (mode === 'resend') {

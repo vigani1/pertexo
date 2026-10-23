@@ -84,8 +84,13 @@ function failure(
     | 'provider'
     | 'rate_limit'
     | 'timeout',
-  possiblyDispatched: boolean,
-  retryAfterMillis?: number,
+  {
+    possiblyDispatched,
+    retryAfterMillis,
+  }: Readonly<{
+    possiblyDispatched: boolean;
+    retryAfterMillis?: number | undefined;
+  }>,
 ): SlackSendMessageExecutorError {
   return new SlackSendMessageExecutorError({
     kind,
@@ -102,21 +107,34 @@ function classifyResult(
 ): never {
   switch (result.kind) {
     case 'rate_limited':
-      throw failure('retry', 'rate_limit', false, result.retryAfterMillis);
+      throw failure('retry', 'rate_limit', {
+        possiblyDispatched: false,
+        retryAfterMillis: result.retryAfterMillis,
+      });
     case 'http_failure':
       if (result.status === 401 || result.status === 403)
-        throw failure('failed', 'authentication', false);
-      throw failure('outcome_unknown', 'provider', true);
+        throw failure('failed', 'authentication', {
+          possiblyDispatched: false,
+        });
+      throw failure('outcome_unknown', 'provider', {
+        possiblyDispatched: true,
+      });
     case 'invalid_response':
-      throw failure('outcome_unknown', 'provider', true);
+      throw failure('outcome_unknown', 'provider', {
+        possiblyDispatched: true,
+      });
     case 'rejected':
       if (AUTH_ERRORS.has(result.error))
-        throw failure('failed', 'authentication', false);
+        throw failure('failed', 'authentication', {
+          possiblyDispatched: false,
+        });
       if (DEFINITE_ERRORS.has(result.error))
-        throw failure('failed', 'provider', false);
+        throw failure('failed', 'provider', { possiblyDispatched: false });
       if (RETRYABLE_ERRORS.has(result.error))
-        throw failure('retry', 'provider', false);
-      throw failure('outcome_unknown', 'provider', true);
+        throw failure('retry', 'provider', { possiblyDispatched: false });
+      throw failure('outcome_unknown', 'provider', {
+        possiblyDispatched: true,
+      });
   }
 }
 
@@ -131,7 +149,7 @@ async function withSlackCredential<T>(
       resolved.providerKey !== 'slack' ||
       resolved.authType !== 'slack_bot_token'
     )
-      throw failure('failed', 'configuration', false);
+      throw failure('failed', 'configuration', { possiblyDispatched: false });
     let credential: SlackCredential;
     try {
       credential = resolvedSlackBotTokenCredentialSchema.parse(
@@ -140,7 +158,7 @@ async function withSlackCredential<T>(
         ),
       );
     } catch {
-      throw failure('failed', 'authentication', false);
+      throw failure('failed', 'authentication', { possiblyDispatched: false });
     }
     return await work(credential);
   } finally {
@@ -160,7 +178,7 @@ async function execute(
     config = slackSendMessageConfigSchema.parse(invocation.config);
     input = slackSendMessageInputSchema.parse(invocation.input);
   } catch {
-    throw failure('failed', 'configuration', false);
+    throw failure('failed', 'configuration', { possiblyDispatched: false });
   }
   const runtime = invocation.runtime;
   const connections = runtime?.connections;
@@ -174,7 +192,7 @@ async function execute(
     connectionId === undefined ||
     Object.keys(invocation.connectionRefs).length !== 1
   )
-    throw failure('failed', 'configuration', false);
+    throw failure('failed', 'configuration', { possiblyDispatched: false });
   const assertCurrent = connections.assertCurrent;
 
   let resolved;
@@ -188,18 +206,23 @@ async function execute(
     });
   } catch (error: unknown) {
     if (runtime.providerDispatchUnresolved === true)
-      throw failure('outcome_unknown', 'provider', true);
+      throw failure('outcome_unknown', 'provider', {
+        possiblyDispatched: true,
+      });
     if (safeInstanceOf(error, ProviderExecutionRateLimitError)) {
       const retryAfterSeconds = safeNumberProperty(error, 'retryAfterSeconds');
       if (retryAfterSeconds === undefined)
-        throw failure('retry', 'provider', false);
-      throw failure('retry', 'rate_limit', false, retryAfterSeconds * 1_000);
+        throw failure('retry', 'provider', { possiblyDispatched: false });
+      throw failure('retry', 'rate_limit', {
+        possiblyDispatched: false,
+        retryAfterMillis: retryAfterSeconds * 1_000,
+      });
     }
     if (safeInstanceOf(error, ProviderCredentialInvalidError))
-      throw failure('failed', 'authentication', false);
+      throw failure('failed', 'authentication', { possiblyDispatched: false });
     if (invocation.signal.aborted || errorNameIs(error, 'AbortError'))
-      throw failure('canceled', 'canceled', false);
-    throw failure('retry', 'provider', false);
+      throw failure('canceled', 'canceled', { possiblyDispatched: false });
+    throw failure('retry', 'provider', { possiblyDispatched: false });
   }
   return withSlackCredential(resolved, connectionId, async (credential) => {
     let result;
@@ -222,39 +245,7 @@ async function execute(
         }),
       });
     } catch (error: unknown) {
-      if (safeInstanceOf(error, SlackSendMessageExecutorError)) throw error;
-      const secureError = inspectSecureHttpError(error);
-      if (secureError !== undefined) {
-        if (runtime.providerDispatchUnresolved === true)
-          throw failure('outcome_unknown', 'provider', true);
-        if (secureError.code === SECURE_HTTP_ERROR_CODE.connectionFenceFailed)
-          throw failure('failed', 'authentication', false);
-        if (secureError.code === SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch)
-          throw failure('failed', 'configuration', false);
-        if (secureError.code === SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed)
-          throw failure('retry', 'provider', false);
-        if (secureError.code === SECURE_HTTP_ERROR_CODE.canceled) {
-          if (!secureError.possiblyDispatched)
-            throw failure('canceled', 'canceled', false);
-          throw failure('outcome_unknown', 'provider', true);
-        }
-        if (!secureError.possiblyDispatched)
-          throw failure(
-            'retry',
-            secureError.code === SECURE_HTTP_ERROR_CODE.timedOut
-              ? 'timeout'
-              : 'network',
-            false,
-          );
-        throw failure(
-          'outcome_unknown',
-          secureError.code === SECURE_HTTP_ERROR_CODE.timedOut
-            ? 'timeout'
-            : 'network',
-          true,
-        );
-      }
-      throw failure('outcome_unknown', 'network', true);
+      rethrowSlackDispatchError(error, runtime);
     }
     if (result.kind !== 'succeeded') {
       const observation = classifySlackConnectionHealth(result);
@@ -263,7 +254,9 @@ async function execute(
       classifyResult(result);
     }
     if (result.channelId !== input.channelId)
-      throw failure('outcome_unknown', 'provider', true);
+      throw failure('outcome_unknown', 'provider', {
+        possiblyDispatched: true,
+      });
     const output = slackSendMessageOutputSchema.parse({
       channelId: result.channelId,
       messageTs: result.messageTs,
@@ -285,4 +278,53 @@ export function createSlackSendMessageExecutorRegistration(
         execute(dependencies, invocation),
       ),
   });
+}
+
+function rethrowSlackDispatchError(
+  error: unknown,
+  runtime: NodeExecutionRuntime,
+): never {
+  if (safeInstanceOf(error, SlackSendMessageExecutorError)) throw error;
+  const secureError = inspectSecureHttpError(error);
+  if (secureError !== undefined) {
+    if (runtime.providerDispatchUnresolved === true)
+      throw failure('outcome_unknown', 'provider', {
+        possiblyDispatched: true,
+      });
+    if (secureError.code === SECURE_HTTP_ERROR_CODE.connectionFenceFailed)
+      throw failure('failed', 'authentication', {
+        possiblyDispatched: false,
+      });
+    if (secureError.code === SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch)
+      throw failure('failed', 'configuration', {
+        possiblyDispatched: false,
+      });
+    if (secureError.code === SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed)
+      throw failure('retry', 'provider', { possiblyDispatched: false });
+    if (secureError.code === SECURE_HTTP_ERROR_CODE.canceled) {
+      if (!secureError.possiblyDispatched)
+        throw failure('canceled', 'canceled', {
+          possiblyDispatched: false,
+        });
+      throw failure('outcome_unknown', 'provider', {
+        possiblyDispatched: true,
+      });
+    }
+    if (!secureError.possiblyDispatched)
+      throw failure(
+        'retry',
+        secureError.code === SECURE_HTTP_ERROR_CODE.timedOut
+          ? 'timeout'
+          : 'network',
+        { possiblyDispatched: false },
+      );
+    throw failure(
+      'outcome_unknown',
+      secureError.code === SECURE_HTTP_ERROR_CODE.timedOut
+        ? 'timeout'
+        : 'network',
+      { possiblyDispatched: true },
+    );
+  }
+  throw failure('outcome_unknown', 'network', { possiblyDispatched: true });
 }

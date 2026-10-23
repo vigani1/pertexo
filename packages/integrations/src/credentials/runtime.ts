@@ -59,7 +59,7 @@ const environmentSchema = z.object({
 
 export function parseConnectionEncryptionConfig(
   environment: Readonly<Record<string, string | undefined>>,
-  deployed: boolean,
+  { deployed }: Readonly<{ deployed: boolean }>,
 ): ConnectionEnvelopeEncryptionConfig | undefined {
   const parsed = environmentSchema.safeParse(environment);
   if (!parsed.success)

@@ -105,19 +105,7 @@ export async function encodeMultipart(
       }
       const streams: Readable[] = [];
       try {
-        for (const part of parts) {
-          const value = Buffer.isBuffer(part.value)
-            ? part.value
-            : part.value.byteLength === 0
-              ? Buffer.alloc(0)
-              : part.value.open(input.signal);
-          if (!Buffer.isBuffer(value)) streams.push(value);
-          form.append(part.name, value, {
-            ...(part.filename === undefined ? {} : { filename: part.filename }),
-            contentType: part.contentType,
-            knownLength: part.value.byteLength,
-          });
-        }
+        appendMultipartParts(form, parts, input.signal, streams);
         const length = form.getLengthSync();
         if (length > HTTP_REQUEST_LIMITS.maxRequestBodyBytes)
           throw new FileInputFailure({ reason: 'multipart_size' });
@@ -162,4 +150,27 @@ async function releaseParts(
     await encoded?.release();
     throw failed.reason;
   }
+}
+
+function appendMultipartParts(
+  form: FormData,
+  parts: readonly Part[],
+  signal: AbortSignal,
+  streams: Readable[],
+): void {
+  for (const part of parts) {
+    const value = partBody(part, signal);
+    if (!Buffer.isBuffer(value)) streams.push(value);
+    form.append(part.name, value, {
+      ...(part.filename === undefined ? {} : { filename: part.filename }),
+      contentType: part.contentType,
+      knownLength: part.value.byteLength,
+    });
+  }
+}
+
+function partBody(part: Part, signal: AbortSignal): Buffer | Readable {
+  if (Buffer.isBuffer(part.value)) return part.value;
+  if (part.value.byteLength === 0) return Buffer.alloc(0);
+  return part.value.open(signal);
 }

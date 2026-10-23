@@ -85,12 +85,10 @@ async function executeHttpRequest(
       dispatch,
     });
   } finally {
-    await releaseHttpMaterial(
-      prepared.body,
-      resolved?.secret,
+    await releaseHttpMaterial(prepared.body, resolved?.secret, {
       repeatable,
-      dispatch.possiblyDispatched,
-    );
+      possiblyDispatched: dispatch.possiblyDispatched,
+    });
   }
 }
 
@@ -162,19 +160,17 @@ async function prepareRequestBody({
     } else {
       if (Object.keys(input).some((key) => key !== 'body'))
         throw new FileInputFailure({ reason: 'multipart_values' });
-      body = await readRequestBody(
-        input,
-        config.method,
-        runtime.artifacts,
-        invocation.signal,
-        failedConfiguration,
-      );
+      body = await readRequestBody(input, config.method, {
+        artifacts: runtime.artifacts,
+        signal: invocation.signal,
+        failure: failedConfiguration,
+      });
     }
   } catch (error) {
     if (runtime.providerDispatchUnresolved === true)
       throw new HttpRequestExecutorError(
         Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
-        true,
+        { possiblyDispatched: true },
       );
     throw error;
   }
@@ -205,16 +201,14 @@ async function resolveRequestConnection(
         signal: invocation.signal,
       });
     } catch (error: unknown) {
-      await releaseHttpMaterial(
-        body,
-        undefined,
+      await releaseHttpMaterial(body, undefined, {
         repeatable,
-        dispatch.possiblyDispatched,
-      );
+        possiblyDispatched: dispatch.possiblyDispatched,
+      });
       if (!repeatable && runtime.providerDispatchUnresolved === true)
         throw new HttpRequestExecutorError(
           Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
-          true,
+          { possiblyDispatched: true },
         );
       if (safeInstanceOf(error, ProviderExecutionRateLimitError))
         throw new HttpRequestExecutorError(
@@ -223,17 +217,17 @@ async function resolveRequestConnection(
             errorKind: 'rate_limit',
             reuseProviderKey: false,
           }),
-          false,
+          { possiblyDispatched: false },
         );
       if (safeInstanceOf(error, ProviderCredentialInvalidError))
         throw new HttpRequestExecutorError(
           Object.freeze({ kind: 'failed', errorKind: 'authentication' }),
-          false,
+          { possiblyDispatched: false },
         );
       if (invocation.signal.aborted || errorNameIs(error, 'AbortError'))
         throw new HttpRequestExecutorError(
           Object.freeze({ kind: 'canceled', errorKind: 'canceled' }),
-          false,
+          { possiblyDispatched: false },
         );
       throw new HttpRequestExecutorError(
         Object.freeze({
@@ -241,7 +235,7 @@ async function resolveRequestConnection(
           errorKind: 'provider',
           reuseProviderKey: false,
         }),
-        false,
+        { possiblyDispatched: false },
       );
     }
   return resolved;
@@ -325,45 +319,44 @@ async function executeWithMaterial(
             ? {}
             : { deadlineAt: runtime.deadlineAt }),
           checkResponse: (status, responseHeaders) => {
-            const decision = classifySecureHttpResponse(
-              status,
-              sideEffect,
-              false,
-              responseHeaders,
-            );
+            const decision = classifySecureHttpResponse(status, sideEffect, {
+              providerKeyPresent: false,
+              headers: responseHeaders,
+            });
             if (decision.kind !== 'succeeded')
-              throw new HttpRequestExecutorError(decision, false);
+              throw new HttpRequestExecutorError(decision, {
+                possiblyDispatched: false,
+              });
           },
         }),
       );
     response = await dependencies.httpClient.executeStreaming(
       request,
       (stream) =>
-        consumeResponseBody(
-          runtime.artifacts,
-          config.inlineResponseBytes,
-          config.maxResponseBytes,
-          stream,
+        consumeResponseBody(runtime.artifacts, {
+          inlineLimit: config.inlineResponseBytes,
+          maxBytes: config.maxResponseBytes,
+          response: stream,
           repeatable,
-        ),
+        }),
     );
   } catch (error: unknown) {
     rethrowHttpError(error, context);
   }
 
-  const decision = classifySecureHttpResponse(
-    response.status,
-    sideEffect,
-    false,
-    response.headers,
-  );
+  const decision = classifySecureHttpResponse(response.status, sideEffect, {
+    providerKeyPresent: false,
+    headers: response.headers,
+  });
   // Like n8n's "Never error": the service answered, and the person asked
   // to branch on its answer rather than fail.
   if (
     decision.kind !== 'succeeded' &&
     !(config.returnErrorResponses === true && response.status >= 300)
   )
-    throw new HttpRequestExecutorError(decision, !repeatable);
+    throw new HttpRequestExecutorError(decision, {
+      possiblyDispatched: !repeatable,
+    });
   return httpRequestOutputSchema.parse({
     status: response.status,
     headers: response.headers,
@@ -389,7 +382,7 @@ function rethrowHttpError(
   )
     throw new HttpRequestExecutorError(
       { kind: 'canceled', errorKind: 'canceled' },
-      false,
+      { possiblyDispatched: false },
     );
   const secureError = inspectSecureHttpError(error);
   if (secureError === undefined)
@@ -397,23 +390,25 @@ function rethrowHttpError(
       repeatable
         ? Object.freeze({ kind: 'failed', errorKind: 'internal' })
         : Object.freeze({ kind: 'outcome_unknown', errorKind: 'network' }),
-      !repeatable,
+      { possiblyDispatched: !repeatable },
     );
   if (!repeatable && runtime.providerDispatchUnresolved === true)
     throw new HttpRequestExecutorError(
       Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
-      true,
+      { possiblyDispatched: true },
     );
   if (secureError.code === SECURE_HTTP_ERROR_CODE.connectionFenceFailed)
     throw new HttpRequestExecutorError(
       Object.freeze({ kind: 'failed', errorKind: 'authentication' }),
-      false,
+      { possiblyDispatched: false },
     );
   if (secureError.code === SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch)
     throw failedConfiguration();
   throw new HttpRequestExecutorError(
-    classifySecureHttpError(secureError.error, sideEffect, false),
-    !repeatable && secureError.possiblyDispatched,
+    classifySecureHttpError(secureError.error, sideEffect, {
+      providerKeyPresent: false,
+    }),
+    { possiblyDispatched: !repeatable && secureError.possiblyDispatched },
   );
 }
 
@@ -447,7 +442,7 @@ function prepareHeaders(context: RequestContext, material: RequestMaterial) {
           () =>
             new HttpRequestExecutorError(
               Object.freeze({ kind: 'failed', errorKind: 'authentication' }),
-              false,
+              { possiblyDispatched: false },
             ),
         );
   let headers: Readonly<Record<string, string>>;
@@ -465,7 +460,7 @@ function prepareHeaders(context: RequestContext, material: RequestMaterial) {
     )
       throw new HttpRequestExecutorError(
         Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
-        true,
+        { possiblyDispatched: true },
       );
     throw error;
   }

@@ -34,9 +34,15 @@ export async function consumeFinalResponse<Body>(
   response: SecureHttpTransportResponse,
   state: RedirectState,
   request: ParsedSecureHttpRequest,
-  executionSignal: AbortSignal,
-  deadline: number,
-  consume: SecureHttpBodyConsumer<Body>,
+  {
+    executionSignal,
+    deadline,
+    consume,
+  }: Readonly<{
+    executionSignal: AbortSignal;
+    deadline: number;
+    consume: SecureHttpBodyConsumer<Body>;
+  }>,
 ): Promise<SecureHttpResponse<Body>> {
   try {
     const selectedHeaders = selectResponseHeaders(
@@ -48,11 +54,10 @@ export async function consumeFinalResponse<Body>(
       contentEncoding !== undefined &&
       normalizedHeaderValue(contentEncoding).toLowerCase() !== 'identity'
     )
-      throw failure(
-        SECURE_HTTP_ERROR_CODE.responseEncodingRejected,
-        true,
-        false,
-      );
+      throw failure(SECURE_HTTP_ERROR_CODE.responseEncodingRejected, {
+        possiblyDispatched: true,
+        ambiguous: false,
+      });
     const textual = isTextualContentType(selectedHeaders['content-type'] ?? '');
     const bodyEncoding = textual ? ('utf8' as const) : ('base64' as const);
     const finalUrl = safeFinalUrl(state.url);
@@ -64,19 +69,16 @@ export async function consumeFinalResponse<Body>(
           ...(request.navigation === undefined
             ? {}
             : {
-                navigation: pageNavigation(
-                  response,
-                  state.url,
-                  request.navigation.link,
-                ),
+                navigation: pageNavigation(response, state.url, {
+                  includeLink: request.navigation.link,
+                }),
               }),
-          body: boundedRedactedBody(
-            response.body,
-            request.maxResponseBytes,
-            executionSignal,
-            request.sensitiveValues,
+          body: boundedRedactedBody(response.body, {
+            limit: request.maxResponseBytes,
+            signal: executionSignal,
+            sensitiveValues: request.sensitiveValues,
             deadline,
-          ),
+          }),
           cancelSource: () => {
             response.close();
           },
@@ -156,15 +158,14 @@ function normalizedHeaderValue(value: string | readonly string[]): string {
 function pageNavigation(
   response: SecureHttpTransportResponse,
   url: URL,
-  includeLink: boolean,
+  { includeLink }: Readonly<{ includeLink: boolean }>,
 ): Readonly<{ url: string; link?: string }> {
   const raw = includeLink ? response.headers.link : undefined;
   const link = raw === undefined ? undefined : normalizedHeaderValue(raw);
   if (link !== undefined && utf8ByteLength(link) > 8192)
-    throw failure(
-      SECURE_HTTP_ERROR_CODE.paginationNavigationInvalid,
-      true,
-      false,
-    );
+    throw failure(SECURE_HTTP_ERROR_CODE.paginationNavigationInvalid, {
+      possiblyDispatched: true,
+      ambiguous: false,
+    });
   return { url: url.toString(), ...(link === undefined ? {} : { link }) };
 }

@@ -75,12 +75,21 @@ async function writeArtifact(
   artifacts: NonNullable<
     NodeExecutionInvocation<unknown, unknown>['runtime']
   >['artifacts'],
-  body: AsyncIterable<Uint8Array>,
-  mediaType: string,
-  maxBytes: number,
-  signal: AbortSignal,
-  repeatable: boolean,
-  cancelSource?: (reason: Error) => void,
+  {
+    body,
+    mediaType,
+    maxBytes,
+    signal,
+    repeatable,
+    cancelSource,
+  }: Readonly<{
+    body: AsyncIterable<Uint8Array>;
+    mediaType: string;
+    maxBytes: number;
+    signal: AbortSignal;
+    repeatable: boolean;
+    cancelSource?: ((reason: Error) => void) | undefined;
+  }>,
 ) {
   const failure: HttpOutcomeDecision = repeatable
     ? Object.freeze({
@@ -90,7 +99,7 @@ async function writeArtifact(
       })
     : Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' });
   if (artifacts === undefined)
-    throw new HttpRequestExecutorError(failure, true);
+    throw new HttpRequestExecutorError(failure, { possiblyDispatched: true });
   let reference;
   try {
     reference = await artifacts.write({
@@ -102,7 +111,10 @@ async function writeArtifact(
       ...(cancelSource === undefined ? {} : { cancelSource }),
     });
   } catch (error) {
-    throw new HttpRequestExecutorError(failure, true, error);
+    throw new HttpRequestExecutorError(failure, {
+      possiblyDispatched: true,
+      cause: error,
+    });
   }
   return Object.freeze({ kind: 'artifact' as const, ...reference });
 }
@@ -183,10 +195,19 @@ export async function consumeResponseBody(
   artifacts: NonNullable<
     NodeExecutionInvocation<unknown, unknown>['runtime']
   >['artifacts'],
-  inlineLimit: number,
-  maxBytes: number,
-  response: Parameters<Parameters<SecureHttpClient['executeStreaming']>[1]>[0],
-  repeatable: boolean,
+  {
+    inlineLimit,
+    maxBytes,
+    response,
+    repeatable,
+  }: Readonly<{
+    inlineLimit: number;
+    maxBytes: number;
+    response: Parameters<
+      Parameters<SecureHttpClient['executeStreaming']>[1]
+    >[0];
+    repeatable: boolean;
+  }>,
 ) {
   const iterator = response.body[Symbol.asyncIterator]();
   const buffered: Uint8Array[] = [];
@@ -196,33 +217,23 @@ export async function consumeResponseBody(
     for (;;) {
       const next = await iterator.next();
       if (next.done === true) {
-        const bytes = concatenate(buffered, byteLength);
-        try {
-          return inlineBody(
-            bytes,
-            response.bodyEncoding,
-            response.headers['content-type'],
-          );
-        } finally {
-          bytes.fill(0);
-          for (const chunk of buffered) chunk.fill(0);
-        }
+        return finishInlineBody(buffered, byteLength, response);
       }
       const chunk = next.value;
       buffered.push(chunk);
       byteLength += chunk.byteLength;
       if (byteLength > inlineLimit) {
-        return await writeArtifact(
-          artifacts,
-          continueBody(buffered, iterator, () => {
+        return await writeArtifact(artifacts, {
+          body: continueBody(buffered, iterator, () => {
             bodyOwnership.cleanupStarted = true;
           }),
-          response.headers['content-type'] ?? 'application/octet-stream',
+          mediaType:
+            response.headers['content-type'] ?? 'application/octet-stream',
           maxBytes,
-          response.signal,
+          signal: response.signal,
           repeatable,
-          response.cancelSource,
-        );
+          cancelSource: response.cancelSource,
+        });
       }
     }
   } catch (error: unknown) {
@@ -242,8 +253,10 @@ export async function consumeResponseBody(
 export async function releaseHttpMaterial(
   body: Uint8Array | NodeVerifiedByteSource | undefined,
   secret: Uint8Array | undefined,
-  repeatable: boolean,
-  possiblyDispatched: boolean,
+  {
+    repeatable,
+    possiblyDispatched,
+  }: Readonly<{ repeatable: boolean; possiblyDispatched: boolean }>,
 ): Promise<void> {
   try {
     await releaseRequestBody(body);
@@ -251,10 +264,28 @@ export async function releaseHttpMaterial(
     if (!repeatable && possiblyDispatched)
       throw new HttpRequestExecutorError(
         { kind: 'outcome_unknown', errorKind: 'provider' },
-        true,
+        { possiblyDispatched: true },
       );
     throw error;
   } finally {
     secret?.fill(0);
+  }
+}
+
+function finishInlineBody(
+  buffered: readonly Uint8Array[],
+  byteLength: number,
+  response: Parameters<Parameters<SecureHttpClient['executeStreaming']>[1]>[0],
+) {
+  const bytes = concatenate(buffered, byteLength);
+  try {
+    return inlineBody(
+      bytes,
+      response.bodyEncoding,
+      response.headers['content-type'],
+    );
+  } finally {
+    bytes.fill(0);
+    for (const chunk of buffered) chunk.fill(0);
   }
 }

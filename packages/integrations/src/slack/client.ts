@@ -100,18 +100,24 @@ const JSON_CONTENT_TYPE = 'application/json; charset=utf-8';
 export function createSlackClient(
   httpClient: Pick<SecureHttpClient, 'execute'>,
 ): SlackClient {
-  const execute = async <Envelope extends SlackEnvelope>(
-    endpoint: string,
-    token: string,
-    body: SlackRequestBody | undefined,
-    schema: z.ZodType<Envelope>,
+  const execute = async <Envelope extends SlackEnvelope>({
+    endpoint,
+    token,
+    body,
+    schema,
+    options,
+  }: Readonly<{
+    endpoint: string;
+    token: string;
+    body: SlackRequestBody | undefined;
+    schema: z.ZodType<Envelope>;
     options: Readonly<{
       timeoutMillis: number;
       sensitiveValues?: readonly string[];
       signal?: AbortSignal | undefined;
       beforeDispatch: () => Promise<void>;
-    }>,
-  ): Promise<SlackEnvelopeResult<Envelope>> => {
+    }>;
+  }>): Promise<SlackEnvelopeResult<Envelope>> => {
     const request: SecureHttpRequest = {
       url: endpoint,
       method: 'POST',
@@ -171,13 +177,13 @@ export function createSlackClient(
         }),
       );
       try {
-        const result = await execute(
-          SLACK_API_ENDPOINTS.sendMessage,
-          input.botToken,
-          { bytes, contentType: JSON_CONTENT_TYPE },
-          slackResponseSchema,
-          input,
-        );
+        const result = await execute({
+          endpoint: SLACK_API_ENDPOINTS.sendMessage,
+          token: input.botToken,
+          body: { bytes, contentType: JSON_CONTENT_TYPE },
+          schema: slackResponseSchema,
+          options: input,
+        });
         if (result.kind !== 'accepted') return result;
         const { channel, ts } = result.envelope;
         if (channel === undefined || ts === undefined)
@@ -192,13 +198,13 @@ export function createSlackClient(
       }
     },
     authTest: async (input) => {
-      const result = await execute(
-        SLACK_API_ENDPOINTS.authTest,
-        input.botToken,
-        undefined,
-        slackResponseSchema,
-        input,
-      );
+      const result = await execute({
+        endpoint: SLACK_API_ENDPOINTS.authTest,
+        token: input.botToken,
+        body: undefined,
+        schema: slackResponseSchema,
+        options: input,
+      });
       return result.kind === 'accepted'
         ? Object.freeze({ kind: 'succeeded' as const })
         : result;
@@ -209,13 +215,13 @@ export function createSlackClient(
         new URLSearchParams({ channel: input.channelId }).toString(),
       );
       try {
-        const result = await execute(
-          SLACK_API_ENDPOINTS.conversationsInfo,
-          input.botToken,
-          { bytes, contentType: 'application/x-www-form-urlencoded' },
-          slackConversationResponseSchema,
-          input,
-        );
+        const result = await execute({
+          endpoint: SLACK_API_ENDPOINTS.conversationsInfo,
+          token: input.botToken,
+          body: { bytes, contentType: 'application/x-www-form-urlencoded' },
+          schema: slackConversationResponseSchema,
+          options: input,
+        });
         if (result.kind !== 'accepted') return result;
         const { channel } = result.envelope;
         if (channel?.id !== input.channelId)

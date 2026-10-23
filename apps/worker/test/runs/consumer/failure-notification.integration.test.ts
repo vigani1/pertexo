@@ -405,7 +405,7 @@ describeIntegration('Failure notification transport resilience', () => {
         throw new SecureHttpError(
           SECURE_HTTP_ERROR_CODE.canceled,
           'ambiguous',
-          true,
+          { possiblyDispatched: true },
         );
       };
       const blockedDelivery = createProviderFailureNotificationDelivery({

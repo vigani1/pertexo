@@ -1022,7 +1022,7 @@ describe('connections real Nest HTTP stack', () => {
     const providerFailure = new SecureHttpError(
       SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed,
       'definite_failure',
-      false,
+      { possiblyDispatched: false },
     );
     Object.defineProperty(providerFailure, 'cause', {
       value: new Error('provider body with raw-secret'),

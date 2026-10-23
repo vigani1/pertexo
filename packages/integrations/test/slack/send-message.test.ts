@@ -608,7 +608,7 @@ describe('slack.send_message@1', () => {
       new SecureHttpError(
         SECURE_HTTP_ERROR_CODE.dnsFailed,
         'definite_failure',
-        false,
+        { possiblyDispatched: false },
       ),
     );
     await expect(
@@ -621,7 +621,9 @@ describe('slack.send_message@1', () => {
       possiblyDispatched: false,
     });
     const ambiguous = runtime(
-      new SecureHttpError(SECURE_HTTP_ERROR_CODE.timedOut, 'ambiguous', true),
+      new SecureHttpError(SECURE_HTTP_ERROR_CODE.timedOut, 'ambiguous', {
+        possiblyDispatched: true,
+      }),
     );
     await expect(
       createSlackSendMessageExecutorRegistration({
@@ -686,7 +688,7 @@ describe('slack.send_message@1', () => {
         new SecureHttpError(
           code,
           possiblyDispatched ? 'ambiguous' : 'definite_failure',
-          possiblyDispatched,
+          { possiblyDispatched },
         ),
       );
 

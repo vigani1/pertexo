@@ -46,21 +46,29 @@ export function assertNotAborted(
   failureContext: DispatchFailureContext,
 ): void {
   if (signal?.aborted === true)
-    throw abortFailure(
-      signal,
-      failureContext.possiblyDispatched,
-      failureContext.ambiguous,
-    );
+    throw abortFailure(signal, {
+      possiblyDispatched: failureContext.possiblyDispatched,
+      ambiguous: failureContext.ambiguous,
+    });
 }
 
 export function mapTransportError(
   error: unknown,
   signal: AbortSignal | undefined,
 ): SecureHttpError {
-  if (signal?.aborted === true) return abortFailure(signal, true, true);
+  if (signal?.aborted === true)
+    return abortFailure(signal, { possiblyDispatched: true, ambiguous: true });
   if (isTimeoutError(error))
-    return failure(SECURE_HTTP_ERROR_CODE.timedOut, true, true, error);
-  return failure(SECURE_HTTP_ERROR_CODE.networkFailed, true, true, error);
+    return failure(SECURE_HTTP_ERROR_CODE.timedOut, {
+      possiblyDispatched: true,
+      ambiguous: true,
+      cause: error,
+    });
+  return failure(SECURE_HTTP_ERROR_CODE.networkFailed, {
+    possiblyDispatched: true,
+    ambiguous: true,
+    cause: error,
+  });
 }
 
 export function raceWithSignal<T>(
@@ -81,11 +89,10 @@ export function raceWithSignal<T>(
     const aborted = (): void => {
       settle(() => {
         reject(
-          abortFailure(
-            signal,
-            failureContext.possiblyDispatched,
-            failureContext.ambiguous,
-          ),
+          abortFailure(signal, {
+            possiblyDispatched: failureContext.possiblyDispatched,
+            ambiguous: failureContext.ambiguous,
+          }),
         );
       });
     };

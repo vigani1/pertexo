@@ -225,7 +225,9 @@ describe('Slack channel-name lookup use case (ADR 046)', () => {
     [{ kind: 'http_failure', status: 502 }, 'provider_unavailable'],
     [{ kind: 'invalid_response' }, 'provider_unavailable'],
     [
-      new SecureHttpError(SECURE_HTTP_ERROR_CODE.timedOut, 'ambiguous', true),
+      new SecureHttpError(SECURE_HTTP_ERROR_CODE.timedOut, 'ambiguous', {
+        possiblyDispatched: true,
+      }),
       'provider_unavailable',
     ],
   ] as const)(

@@ -426,7 +426,7 @@ describe('connection testing use case', () => {
           new SecureHttpError(
             SECURE_HTTP_ERROR_CODE.ssrfBlocked,
             'definite_failure',
-            false,
+            { possiblyDispatched: false },
           ),
         ),
     };
@@ -458,7 +458,7 @@ describe('connection testing use case', () => {
           new SecureHttpError(
             SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed,
             'definite_failure',
-            false,
+            { possiblyDispatched: false },
           ),
         ),
     };

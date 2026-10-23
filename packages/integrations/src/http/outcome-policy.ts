@@ -38,20 +38,23 @@ export type HttpOutcomeDecision =
 export function classifySecureHttpResponse(
   status: number,
   sideEffectClass: HttpSideEffectClass,
-  providerKeyPresent: boolean,
-  headers: Readonly<Record<string, string>> = {},
+  {
+    providerKeyPresent,
+    headers = {},
+  }: Readonly<{
+    providerKeyPresent: boolean;
+    headers?: Readonly<Record<string, string>> | undefined;
+  }>,
 ): HttpOutcomeDecision {
-  if (!validPolicy(sideEffectClass, providerKeyPresent))
+  if (!validPolicy(sideEffectClass, { providerKeyPresent }))
     return failed('configuration');
   if (status >= 200 && status <= 299)
     return Object.freeze({ kind: 'succeeded' });
   if (status === 401 || status === 403) return failed('authentication');
   if (status === 429) {
-    const decision = retryDefinite(
-      'rate_limit',
-      sideEffectClass,
+    const decision = retryDefinite('rate_limit', sideEffectClass, {
       providerKeyPresent,
-    );
+    });
     return decision.kind === 'retry'
       ? Object.freeze({
           ...decision,
@@ -63,18 +66,22 @@ export function classifySecureHttpResponse(
       : decision;
   }
   if ([408, 425].includes(status))
-    return retryDefinite('timeout', sideEffectClass, providerKeyPresent);
+    return retryDefinite('timeout', sideEffectClass, {
+      providerKeyPresent,
+    });
   if (status >= 500 && status <= 599)
-    return retryAmbiguousProvider(sideEffectClass, providerKeyPresent);
+    return retryAmbiguousProvider(sideEffectClass, {
+      providerKeyPresent,
+    });
   return failed('provider');
 }
 
 export function classifySecureHttpError(
   error: SecureHttpError,
   sideEffectClass: HttpSideEffectClass,
-  providerKeyPresent: boolean,
+  { providerKeyPresent }: Readonly<{ providerKeyPresent: boolean }>,
 ): HttpOutcomeDecision {
-  if (!validPolicy(sideEffectClass, providerKeyPresent))
+  if (!validPolicy(sideEffectClass, { providerKeyPresent }))
     return failed('configuration');
   if (error.code === SECURE_HTTP_ERROR_CODE.canceled)
     return sideEffectClass === 'unsafe' && error.possiblyDispatched
@@ -85,34 +92,46 @@ export function classifySecureHttpError(
     return retryOrUnknown(
       errorKind === 'timeout' ? 'timeout' : 'network',
       sideEffectClass,
-      providerKeyPresent,
+      { providerKeyPresent },
     );
   if (error.code === SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed)
     return error.possiblyDispatched
-      ? retryDefinite('provider', sideEffectClass, providerKeyPresent)
-      : retry('provider', sideEffectClass, providerKeyPresent);
+      ? retryDefinite('provider', sideEffectClass, {
+          providerKeyPresent,
+        })
+      : retry('provider', sideEffectClass, {
+          providerKeyPresent,
+        });
   if (error.code === SECURE_HTTP_ERROR_CODE.dnsFailed)
     return error.possiblyDispatched
-      ? retryDefinite(errorKind, sideEffectClass, providerKeyPresent)
-      : retry(errorKind, sideEffectClass, providerKeyPresent);
+      ? retryDefinite(errorKind, sideEffectClass, {
+          providerKeyPresent,
+        })
+      : retry(errorKind, sideEffectClass, {
+          providerKeyPresent,
+        });
   if (
     !error.possiblyDispatched &&
     (error.code === SECURE_HTTP_ERROR_CODE.networkFailed ||
       error.code === SECURE_HTTP_ERROR_CODE.timedOut)
   )
-    return retry(errorKind, sideEffectClass, providerKeyPresent);
+    return retry(errorKind, sideEffectClass, {
+      providerKeyPresent,
+    });
   if (
     (error.code === SECURE_HTTP_ERROR_CODE.networkFailed ||
       error.code === SECURE_HTTP_ERROR_CODE.timedOut) &&
     error.possiblyDispatched
   )
-    return retryDefinite(errorKind, sideEffectClass, providerKeyPresent);
+    return retryDefinite(errorKind, sideEffectClass, {
+      providerKeyPresent,
+    });
   return failed(errorKind);
 }
 
 function validPolicy(
   sideEffectClass: HttpSideEffectClass,
-  providerKeyPresent: boolean,
+  { providerKeyPresent }: Readonly<{ providerKeyPresent: boolean }>,
 ): boolean {
   return sideEffectClass !== 'idempotent_with_key' || providerKeyPresent;
 }
@@ -120,38 +139,44 @@ function validPolicy(
 function retryDefinite(
   errorKind: HttpExecutionErrorKind,
   sideEffectClass: HttpSideEffectClass,
-  providerKeyPresent: boolean,
+  { providerKeyPresent }: Readonly<{ providerKeyPresent: boolean }>,
 ): HttpOutcomeDecision {
   if (sideEffectClass === 'unsafe') return failed(errorKind);
-  return retry(errorKind, sideEffectClass, providerKeyPresent);
+  return retry(errorKind, sideEffectClass, {
+    providerKeyPresent,
+  });
 }
 
 function retryAmbiguousProvider(
   sideEffectClass: HttpSideEffectClass,
-  providerKeyPresent: boolean,
+  { providerKeyPresent }: Readonly<{ providerKeyPresent: boolean }>,
 ): HttpOutcomeDecision {
   if (sideEffectClass === 'unsafe')
     return Object.freeze({
       kind: 'outcome_unknown',
       errorKind: 'provider',
     });
-  return retry('provider', sideEffectClass, providerKeyPresent);
+  return retry('provider', sideEffectClass, {
+    providerKeyPresent,
+  });
 }
 
 function retryOrUnknown(
   errorKind: 'network' | 'timeout',
   sideEffectClass: HttpSideEffectClass,
-  providerKeyPresent: boolean,
+  { providerKeyPresent }: Readonly<{ providerKeyPresent: boolean }>,
 ): HttpOutcomeDecision {
   if (sideEffectClass === 'unsafe')
     return Object.freeze({ kind: 'outcome_unknown', errorKind });
-  return retry(errorKind, sideEffectClass, providerKeyPresent);
+  return retry(errorKind, sideEffectClass, {
+    providerKeyPresent,
+  });
 }
 
 function retry(
   errorKind: HttpExecutionErrorKind,
   sideEffectClass: HttpSideEffectClass,
-  providerKeyPresent: boolean,
+  { providerKeyPresent }: Readonly<{ providerKeyPresent: boolean }>,
 ): HttpOutcomeDecision {
   return Object.freeze({
     kind: 'retry',

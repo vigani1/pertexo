@@ -8,7 +8,7 @@ import { nextLink } from './link.js';
 function scalar(
   value: JsonValue | undefined,
   page: number,
-  numeric = false,
+  { numeric = false }: Readonly<{ numeric?: boolean | undefined }> = {},
 ): string | undefined {
   if (value === undefined || value === null || value === '') return undefined;
   if (typeof value === 'string' || (numeric && typeof value === 'number'))
@@ -44,14 +44,7 @@ export function hasNextPage(
   current: Readonly<{ value: JsonValue; link?: string }>,
   page: number,
 ): boolean {
-  const value =
-    pagination.mode === 'cursor'
-      ? at(current.value, pagination.cursorPath)
-      : pagination.mode === 'next_link'
-        ? pagination.source.kind === 'body'
-          ? at(current.value, pagination.source.path)
-          : nextLink(current.link, page, true)
-        : true;
+  const value = nextPageValue(pagination, current, page);
   return value !== undefined && value !== null && value !== '';
 }
 
@@ -85,11 +78,9 @@ export function nextPage(
   } else {
     const url = new URL(first);
     if (pagination.mode === 'cursor') {
-      const cursor = scalar(
-        at(current.value, pagination.cursorPath),
-        page,
-        true,
-      );
+      const cursor = scalar(at(current.value, pagination.cursorPath), page, {
+        numeric: true,
+      });
       if (cursor === undefined) return undefined;
       setPaginationParameter(url, pagination.parameter, cursor);
       identity = cursor;
@@ -115,4 +106,23 @@ export function nextPage(
   if (seen.has(identity)) return undefined;
   seen.add(identity);
   return target;
+}
+
+function nextPageValue(
+  pagination: HttpPagination,
+  current: Readonly<{ value: JsonValue; link?: string }>,
+  page: number,
+) {
+  switch (pagination.mode) {
+    case 'cursor':
+      return at(current.value, pagination.cursorPath);
+    case 'next_link':
+      if (pagination.source.kind === 'body')
+        return at(current.value, pagination.source.path);
+      return nextLink(current.link, page, { presenceOnly: true });
+    case 'page':
+    case 'offset':
+    default:
+      return true;
+  }
 }

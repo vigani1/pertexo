@@ -10,8 +10,10 @@ export class HttpRequestExecutorError extends NodeExecutorFailure {
 
   public constructor(
     public readonly decision: HttpOutcomeDecision,
-    possiblyDispatched: boolean,
-    cause?: unknown,
+    {
+      possiblyDispatched,
+      cause,
+    }: Readonly<{ possiblyDispatched: boolean; cause?: unknown }>,
   ) {
     if (decision.kind === 'succeeded')
       throw new TypeError('Successful HTTP outcome');
@@ -45,6 +47,6 @@ export const NOOP_HTTP_REQUEST_EXECUTOR_TELEMETRY: HttpRequestExecutorTelemetry 
 export function failedConfiguration(): HttpRequestExecutorError {
   return new HttpRequestExecutorError(
     Object.freeze({ kind: 'failed', errorKind: 'configuration' }),
-    false,
+    { possiblyDispatched: false },
   );
 }

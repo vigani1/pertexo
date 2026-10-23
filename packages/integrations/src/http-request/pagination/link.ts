@@ -4,7 +4,9 @@ import { HttpPaginationFailure } from './failure.js';
 export function nextLink(
   header: string | undefined,
   page: number,
-  presenceOnly = false,
+  {
+    presenceOnly = false,
+  }: Readonly<{ presenceOnly?: boolean | undefined }> = {},
 ): string | undefined {
   if (header === undefined || header.trim() === '') return undefined;
   const invalid = () =>

@@ -76,8 +76,13 @@ function failure(
     | 'provider'
     | 'rate_limit'
     | 'timeout',
-  possiblyDispatched: boolean,
-  retryAfterMillis?: number,
+  {
+    possiblyDispatched,
+    retryAfterMillis,
+  }: Readonly<{
+    possiblyDispatched: boolean;
+    retryAfterMillis?: number | undefined;
+  }>,
 ) {
   return new EmailSendNotificationExecutorError({
     kind,
@@ -91,8 +96,10 @@ function failure(
 
 function credentialFailure(runtime: NodeExecutionRuntime | undefined) {
   return runtime?.providerDispatchUnresolved !== true
-    ? failure('failed', 'authentication', false)
-    : failure('outcome_unknown', 'authentication', true);
+    ? failure('failed', 'authentication', { possiblyDispatched: false })
+    : failure('outcome_unknown', 'authentication', {
+        possiblyDispatched: true,
+      });
 }
 
 function dispatchIdentityFailure(
@@ -100,8 +107,8 @@ function dispatchIdentityFailure(
   errorKind: 'authentication' | 'configuration',
 ) {
   return runtime?.providerDispatchUnresolved !== true
-    ? failure('failed', errorKind, false)
-    : failure('outcome_unknown', errorKind, true);
+    ? failure('failed', errorKind, { possiblyDispatched: false })
+    : failure('outcome_unknown', errorKind, { possiblyDispatched: true });
 }
 
 function classifyResult(
@@ -109,26 +116,33 @@ function classifyResult(
   runtime: NodeExecutionRuntime,
 ): never {
   if (runtime.providerDispatchUnresolved === true)
-    throw failure('outcome_unknown', 'provider', true);
+    throw failure('outcome_unknown', 'provider', { possiblyDispatched: true });
   switch (result.kind) {
     case 'rate_limited':
-      throw failure('retry', 'rate_limit', false, result.retryAfterMillis);
+      throw failure('retry', 'rate_limit', {
+        possiblyDispatched: false,
+        retryAfterMillis: result.retryAfterMillis,
+      });
     case 'http_failure':
       if (result.status === 401 || result.status === 403)
-        throw failure('failed', 'authentication', false);
+        throw failure('failed', 'authentication', {
+          possiblyDispatched: false,
+        });
       if (result.status === 400 || result.status === 422)
-        throw failure('failed', 'provider', false);
-      throw failure('retry', 'provider', true);
+        throw failure('failed', 'provider', { possiblyDispatched: false });
+      throw failure('retry', 'provider', { possiblyDispatched: true });
     case 'invalid_response':
-      throw failure('retry', 'provider', true);
+      throw failure('retry', 'provider', { possiblyDispatched: true });
     case 'rejected':
       if (result.status === 401 || result.status === 403)
-        throw failure('failed', 'authentication', false);
+        throw failure('failed', 'authentication', {
+          possiblyDispatched: false,
+        });
       if (result.status === 400 || result.status === 422)
-        throw failure('failed', 'provider', false);
+        throw failure('failed', 'provider', { possiblyDispatched: false });
       if (result.error === 'invalid_idempotent_request')
-        throw failure('failed', 'provider', false);
-      throw failure('retry', 'provider', true);
+        throw failure('failed', 'provider', { possiblyDispatched: false });
+      throw failure('retry', 'provider', { possiblyDispatched: true });
   }
 }
 
@@ -173,7 +187,7 @@ async function execute(
     config = emailSendNotificationConfigSchema.parse(invocation.config);
     input = emailSendNotificationInputSchema.parse(invocation.input);
   } catch {
-    throw failure('failed', 'configuration', false);
+    throw failure('failed', 'configuration', { possiblyDispatched: false });
   }
   const runtime = invocation.runtime;
   const connections = runtime?.connections;
@@ -184,7 +198,7 @@ async function execute(
     connectionId === undefined ||
     Object.keys(invocation.connectionRefs).length !== 1
   )
-    throw failure('failed', 'configuration', false);
+    throw failure('failed', 'configuration', { possiblyDispatched: false });
   if (connections?.assertCurrent === undefined)
     throw credentialFailure(runtime);
   const assertCurrent = connections.assertCurrent;
@@ -201,19 +215,26 @@ async function execute(
   } catch (error: unknown) {
     if (safeInstanceOf(error, ProviderExecutionRateLimitError)) {
       if (runtime.providerDispatchUnresolved === true)
-        throw failure('outcome_unknown', 'provider', true);
+        throw failure('outcome_unknown', 'provider', {
+          possiblyDispatched: true,
+        });
       const retryAfterSeconds = safeNumberProperty(error, 'retryAfterSeconds');
       if (retryAfterSeconds === undefined)
-        throw failure('retry', 'provider', false);
-      throw failure('retry', 'rate_limit', false, retryAfterSeconds * 1_000);
+        throw failure('retry', 'provider', { possiblyDispatched: false });
+      throw failure('retry', 'rate_limit', {
+        possiblyDispatched: false,
+        retryAfterMillis: retryAfterSeconds * 1_000,
+      });
     }
     if (safeInstanceOf(error, ProviderCredentialInvalidError))
       throw credentialFailure(runtime);
     if (runtime.providerDispatchUnresolved === true)
-      throw failure('outcome_unknown', 'provider', true);
+      throw failure('outcome_unknown', 'provider', {
+        possiblyDispatched: true,
+      });
     if (invocation.signal.aborted || errorNameIs(error, 'AbortError'))
-      throw failure('canceled', 'canceled', false);
-    throw failure('retry', 'provider', false);
+      throw failure('canceled', 'canceled', { possiblyDispatched: false });
+    throw failure('retry', 'provider', { possiblyDispatched: false });
   }
   return withEmailCredential(
     resolved,
@@ -255,28 +276,28 @@ async function execute(
           if (secureError.code === SECURE_HTTP_ERROR_CODE.connectionFenceFailed)
             throw dispatchIdentityFailure(runtime, 'authentication');
           if (secureError.code === SECURE_HTTP_ERROR_CODE.canceled)
-            throw failure(
-              'canceled',
-              'canceled',
-              secureError.possiblyDispatched,
-            );
+            throw failure('canceled', 'canceled', {
+              possiblyDispatched: secureError.possiblyDispatched,
+            });
           if (runtime.providerDispatchUnresolved === true)
-            throw failure('outcome_unknown', 'provider', true);
+            throw failure('outcome_unknown', 'provider', {
+              possiblyDispatched: true,
+            });
           if (
             secureError.code === SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed
           )
-            throw failure('retry', 'provider', false);
+            throw failure('retry', 'provider', { possiblyDispatched: false });
           throw failure(
             'retry',
             secureError.code === SECURE_HTTP_ERROR_CODE.timedOut
               ? 'timeout'
               : 'network',
-            secureError.possiblyDispatched,
+            { possiblyDispatched: secureError.possiblyDispatched },
           );
         }
         throw runtime.providerDispatchUnresolved === true
-          ? failure('outcome_unknown', 'provider', true)
-          : failure('retry', 'network', true);
+          ? failure('outcome_unknown', 'provider', { possiblyDispatched: true })
+          : failure('retry', 'network', { possiblyDispatched: true });
       }
       if (result.kind !== 'succeeded') classifyResult(result, runtime);
       return emailSendNotificationOutputSchema.parse({

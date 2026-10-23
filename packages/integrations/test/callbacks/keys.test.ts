@@ -15,7 +15,7 @@ function config() {
       CALLBACK_TOKEN_KEY_VERSION: '1',
       PUBLIC_WEB_ORIGIN: 'https://example.test',
     },
-    true,
+    { deployed: true },
   );
   if (parsed === undefined) throw new Error('Keys missing');
   return parsed;
@@ -91,15 +91,18 @@ it('verifies retained hashes with a previous version and refuses missing or wron
   }
 });
 it('follows the invitation key pair and previous-key configuration and refuses the development key when deployed', () => {
-  expect(parseCallbackKeyConfig({}, false)).toBeUndefined();
+  expect(parseCallbackKeyConfig({}, { deployed: false })).toBeUndefined();
   expect(() => {
-    parseCallbackKeyConfig({}, true);
+    parseCallbackKeyConfig({}, { deployed: true });
   }).toThrow('CALLBACK_TOKEN_KEY');
   expect(() => {
-    parseCallbackKeyConfig({ CALLBACK_TOKEN_KEY: key }, false);
+    parseCallbackKeyConfig({ CALLBACK_TOKEN_KEY: key }, { deployed: false });
   }).toThrow('VERSION');
   expect(() => {
-    parseCallbackKeyConfig({ CALLBACK_TOKEN_KEY_VERSION: '1' }, false);
+    parseCallbackKeyConfig(
+      { CALLBACK_TOKEN_KEY_VERSION: '1' },
+      { deployed: false },
+    );
   }).toThrow('CALLBACK_TOKEN_KEY');
   expect(() => {
     parseCallbackKeyConfig(
@@ -108,7 +111,7 @@ it('follows the invitation key pair and previous-key configuration and refuses t
         CALLBACK_TOKEN_KEY_VERSION: '1',
         PUBLIC_WEB_ORIGIN: 'https://example.test',
       },
-      true,
+      { deployed: true },
     );
   }).toThrow('development');
 });
