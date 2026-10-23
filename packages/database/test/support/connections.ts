@@ -20,8 +20,8 @@ import {
 import {
   createFailureNotificationDestinationDatabase,
   FailureNotificationDestinationError,
-  type FailureNotificationDestinationDatabase,
 } from '../../src/notifications/destinations/repository.js';
+import type { FailureNotificationDestinationDatabase } from '../../src/notifications/destinations/contract.js';
 import { createFailureNotificationStore } from '../../src/notifications/store.js';
 import { parseDatabaseConfig } from '../../src/config.js';
 import { migrateDatabase } from '../../src/migrations.js';

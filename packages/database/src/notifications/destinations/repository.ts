@@ -1,14 +1,11 @@
 import { acquireDatabasePool } from '../../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
-
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 import {
   FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT,
-  type FailureNotificationDestinationConfig,
   FailureNotificationDestinationConfigSchema,
 } from '@pertexo/workflow-model';
-
 import type { DatabaseConfig } from '../../config.js';
 import {
   audit,
@@ -18,7 +15,6 @@ import {
   destinationError,
   type CommandMetadata,
   type DestinationTransaction,
-  type IdempotentCommandMetadata,
 } from './commands.js';
 import {
   decodeFailureNotificationDestinationReplay,
@@ -33,56 +29,12 @@ import {
   setWorkflowFailureNotificationPolicy,
 } from '../workflow-policies.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
-
+import type {
+  DestinationConfig,
+  FailureNotificationDestinationDatabase,
+} from './contract.js';
 export { FailureNotificationDestinationError } from './errors.js';
 export type { FailureNotificationDestinationRecord } from './records.js';
-
-type DestinationConfig = FailureNotificationDestinationConfig;
-
-export interface FailureNotificationDestinationDatabase {
-  create(
-    input: IdempotentCommandMetadata &
-      Readonly<{
-        destinationId: string;
-        config: DestinationConfig;
-      }>,
-  ): Promise<FailureNotificationDestinationRecord>;
-  get(
-    input: CommandMetadata & Readonly<{ destinationId: string }>,
-  ): Promise<FailureNotificationDestinationRecord>;
-  list(
-    input: CommandMetadata,
-  ): Promise<readonly FailureNotificationDestinationRecord[]>;
-  appendVersion(
-    input: IdempotentCommandMetadata &
-      Readonly<{
-        destinationId: string;
-        expectedVersion: number;
-        config: DestinationConfig;
-      }>,
-  ): Promise<FailureNotificationDestinationRecord>;
-  setStatus(
-    input: IdempotentCommandMetadata &
-      Readonly<{
-        destinationId: string;
-        status: 'enabled' | 'disabled';
-      }>,
-  ): Promise<FailureNotificationDestinationRecord>;
-  setWorkflowPolicy(
-    input: IdempotentCommandMetadata &
-      Readonly<{
-        workflowId: string;
-        destinationId: string;
-      }>,
-  ): Promise<void>;
-  clearWorkflowPolicy(
-    input: IdempotentCommandMetadata & Readonly<{ workflowId: string }>,
-  ): Promise<void>;
-  getWorkflowPolicy(
-    input: CommandMetadata & Readonly<{ workflowId: string }>,
-  ): Promise<FailureNotificationDestinationRecord | null>;
-  close(): Promise<void>;
-}
 
 async function assertConnection(
   client: PoolClient,
@@ -244,6 +196,7 @@ function transaction<T>(
     work,
   );
 }
+
 function createNotificationDestination(
   transact: DestinationTransaction,
   input: Parameters<FailureNotificationDestinationDatabase['create']>[0],
