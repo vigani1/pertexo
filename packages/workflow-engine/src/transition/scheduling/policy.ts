@@ -73,15 +73,14 @@ export function configuredParallelOutputPorts(
   const ports = branches.map((item): unknown =>
     isRecord(item) ? item.id : undefined,
   );
-  if (
+  const invalidBranches =
     ports.length < 2 ||
     ports.some(
       (port) =>
         typeof port !== 'string' || !/^branch-(?:0[1-9]|1[0-6])$/u.test(port),
     ) ||
-    new Set(ports).size !== ports.length
-  )
-    return undefined;
+    new Set(ports).size !== ports.length;
+  if (invalidBranches) return undefined;
   return ports as string[];
 }
 

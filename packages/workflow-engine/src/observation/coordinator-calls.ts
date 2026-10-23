@@ -46,12 +46,11 @@ export function callDeclarationObservations(
       ({ invocationKey }) => invocationKey === outcome.invocationKey,
     );
     const node = nodes.get(owner?.nodeId ?? '');
-    if (
+    const notCallable =
       owner === undefined ||
       node === undefined ||
-      !isWorkflowCallDefinition(node.definition)
-    )
-      continue;
+      !isWorkflowCallDefinition(node.definition);
+    if (notCallable) continue;
     const input = completedOutputReference(
       outcome,
       outcome.attemptId as string,
@@ -83,19 +82,21 @@ export function callDeclarationObservations(
 
 function parseCallOutcome(value: JsonValue): WorkflowCallOutcome {
   const fact = record(value, 'observation_invalid', 'Call outcome');
+  const { callId, invocationKey, nodeId, reasonCode } = fact;
+
   exactKeys(
     fact,
     ['callId', 'invocationKey', 'nodeId', 'status'],
     ['reasonCode', 'branchPath', 'iterationPath'],
   );
-  if (
-    typeof fact.callId !== 'string' ||
-    !UUID_PATTERN.test(fact.callId) ||
-    typeof fact.invocationKey !== 'string' ||
-    fact.invocationKey.length === 0 ||
-    fact.invocationKey.length > 256 ||
-    typeof fact.nodeId !== 'string' ||
-    fact.nodeId.length === 0 ||
+  const invalidCallIdentity =
+    typeof callId !== 'string' ||
+    !UUID_PATTERN.test(callId) ||
+    typeof invocationKey !== 'string' ||
+    invocationKey.length === 0 ||
+    invocationKey.length > 256 ||
+    typeof nodeId !== 'string' ||
+    nodeId.length === 0 ||
     typeof fact.status !== 'string' ||
     ![
       'succeeded',
@@ -105,19 +106,19 @@ function parseCallOutcome(value: JsonValue): WorkflowCallOutcome {
       'outcome_unknown',
       'refused',
     ].includes(fact.status) ||
-    (fact.reasonCode !== undefined && !isSafeExecutorErrorCode(fact.reasonCode))
-  )
+    (reasonCode !== undefined && !isSafeExecutorErrorCode(reasonCode));
+  if (invalidCallIdentity)
     operationError('observation_invalid', 'Call outcome identity is invalid');
   const branchPath = parseBranchPath(fact.branchPath, 'invocation');
   const iterationPath = parseIterationPath(fact.iterationPath, 'invocation');
   return {
-    callId: fact.callId,
-    invocationKey: fact.invocationKey,
-    nodeId: fact.nodeId,
+    callId: callId,
+    invocationKey: invocationKey,
+    nodeId: nodeId,
     status: fact.status as WorkflowCallOutcome['status'],
     branchPath,
     iterationPath,
-    ...(fact.reasonCode === undefined ? {} : { reasonCode: fact.reasonCode }),
+    ...(reasonCode === undefined ? {} : { reasonCode: reasonCode }),
   };
 }
 
@@ -203,7 +204,7 @@ function assertCallOutcomeScope(
     iterationPath: fact.iterationPath ?? [],
   });
   const context = findExecutableNodeContext(graph, fact.nodeId);
-  if (
+  const invalidCallScope =
     context?.ancestors.length !== (fact.iterationPath?.length ?? 0) ||
     context.ancestors.some(
       (loopNodeId, index) =>
@@ -217,8 +218,8 @@ function assertCallOutcomeScope(
       );
     }) ||
     expectedKey !== fact.invocationKey ||
-    !isWorkflowCallDefinition(nodes.get(fact.nodeId)?.definition)
-  )
+    !isWorkflowCallDefinition(nodes.get(fact.nodeId)?.definition);
+  if (invalidCallScope)
     operationError('observation_invalid', 'Call outcome scope is invalid');
 }
 function callOutcomeStatus(

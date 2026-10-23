@@ -122,14 +122,13 @@ export function isFinishedIterationScope(
 ): boolean {
   for (const loop of loops) {
     const part = scope.iterationPath?.[loop.iterationPath.length];
-    if (
+    const finishedIteration =
       part?.loopNodeId === loop.loopId &&
       iterationPathHasPrefix(scope.iterationPath, loop.iterationPath) &&
       branchPathHasPrefix(scope.branchPath, loop.branchPath) &&
       (part.ordinal < loop.completedPrefix ||
-        loop.terminalOrdinals.includes(part.ordinal))
-    )
-      return true;
+        loop.terminalOrdinals.includes(part.ordinal));
+    if (finishedIteration) return true;
   }
   return false;
 }
@@ -178,21 +177,21 @@ export function declaredJoin(
   if (!observation.joinId)
     throw new WorkflowEngineError('join_invalid', 'join ID is required');
   const branchIds = [...observation.branchIds].sort();
-  if (
+  const invalidBranchIds =
     branchIds.length === 0 ||
     branchIds.some((branchId) => branchId.length === 0) ||
-    new Set(branchIds).size !== branchIds.length
-  )
+    new Set(branchIds).size !== branchIds.length;
+  if (invalidBranchIds)
     throw new WorkflowEngineError(
       'join_invalid',
       'a join requires unique non-empty branches',
     );
-  if (
+  const invalidCountPolicy =
     observation.policy.kind === 'count' &&
     (!Number.isSafeInteger(observation.policy.count) ||
       observation.policy.count <= 0 ||
-      observation.policy.count > branchIds.length)
-  )
+      observation.policy.count > branchIds.length);
+  if (invalidCountPolicy)
     throw new WorkflowEngineError(
       'join_invalid',
       'count join exceeds declared branches',
@@ -272,7 +271,7 @@ export function schedulerNodeDisabled(
   schedulerNodes: SchedulerNodeLookup | undefined,
   nodeId: string,
 ): boolean {
-  return schedulerNodes?.get(nodeId)?.node.disabled === true;
+  return schedulerNodes?.get(nodeId)?.node.disabled ?? false;
 }
 
 export function scopedLoopSinkInvocation(

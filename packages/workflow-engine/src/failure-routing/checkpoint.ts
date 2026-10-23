@@ -104,7 +104,7 @@ function assertSelectedFailure(
 ): void {
   if (
     executable.envelope.graph.nodes.find(({ id }) => id === invocation.nodeId)
-      ?.disabled === true
+      ?.disabled
   )
     operationError(
       'workflow_identity_invalid',
@@ -131,15 +131,15 @@ function assertSelectedFailure(
           checkpoint.workflowVersionId,
         );
   const sink = byKey.get(handling.sinkInvocationKey);
-  if (
+  const sinkMismatch =
     expectedSink !== handling.sinkInvocationKey ||
-    (handling.disposition === 'handled' && sink?.status !== 'succeeded')
-  )
+    (handling.disposition === 'handled' && sink?.status !== 'succeeded');
+  if (sinkMismatch)
     operationError(
       'workflow_identity_invalid',
       'failure handling disagrees with its pinned route or sink',
     );
-  if (
+  const incompleteHandler =
     (sink?.status === 'succeeded' || handling.disposition === 'handled') &&
     (route === undefined ||
       !isCompletedFailureHandler(
@@ -147,8 +147,8 @@ function assertSelectedFailure(
         route.handlerNodeIds,
         checkpoint.workflowVersionId,
         byKey,
-      ))
-  )
+      ));
+  if (incompleteHandler)
     operationError(
       'workflow_identity_invalid',
       'handled failure requires the complete selected handler chain',

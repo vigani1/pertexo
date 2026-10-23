@@ -51,12 +51,12 @@ function validAttempt(
 }
 
 function parseSequencedCursor(observation: ObservationRecord): void {
-  if (
+  const invalidCursor =
     typeof observation.sequence !== 'number' ||
     !Number.isSafeInteger(observation.sequence) ||
     observation.sequence <= 0 ||
-    !isCanonicalTimestamp(observation.occurredAt)
-  ) {
+    !isCanonicalTimestamp(observation.occurredAt);
+  if (invalidCursor) {
     operationError('observation_invalid', 'observation cursor is invalid');
   }
 }
@@ -90,7 +90,7 @@ function parseAttemptFailure(
     'rate_limit',
     'timeout',
   ];
-  if (
+  const invalidFailureIdentity =
     !isCanonicalTimestamp(observation.occurredAt) ||
     typeof observation.invocationKey !== 'string' ||
     !validAttempt(observation.attemptId, observation.attemptNumber) ||
@@ -104,8 +104,8 @@ function parseAttemptFailure(
       (typeof observation.minimumRetryDelayMillis !== 'number' ||
         !Number.isInteger(observation.minimumRetryDelayMillis) ||
         observation.minimumRetryDelayMillis < 0 ||
-        observation.minimumRetryDelayMillis > 60_000))
-  ) {
+        observation.minimumRetryDelayMillis > 60_000));
+  if (invalidFailureIdentity) {
     operationError('observation_invalid', 'attempt failure is invalid');
   }
   return observation as AttemptFailureObservation;
@@ -185,6 +185,8 @@ function parseCursorOnly(
 function parseWait(
   observation: ObservationRecord,
 ): PersistedWorkflowObservation {
+  const { invocationKey, attemptId, resumeAt } = observation;
+
   exactKeys(
     observation,
     [
@@ -211,19 +213,19 @@ function parseWait(
     (typeof observation.output === 'object' &&
       observation.output !== null &&
       Reflect.get(observation.output, 'kind') === 'inline' &&
-      Reflect.get(observation.output, 'attemptId') === observation.attemptId);
+      Reflect.get(observation.output, 'attemptId') === attemptId);
   const validRetryOutput =
     observation.waitKind !== 'retry_backoff' ||
     observation.output === undefined;
-  if (
+  const invalidWait =
     !validEvent ||
-    !validInvocationKey(observation.invocationKey) ||
-    !validAttempt(observation.attemptId, observation.attemptNumber) ||
-    !isCanonicalTimestamp(observation.resumeAt) ||
+    !validInvocationKey(invocationKey) ||
+    !validAttempt(attemptId, observation.attemptNumber) ||
+    !isCanonicalTimestamp(resumeAt) ||
     !validWaitKind ||
     !validNodeWaitOutput ||
-    !validRetryOutput
-  ) {
+    !validRetryOutput;
+  if (invalidWait) {
     operationError('observation_invalid', 'wait observation is invalid');
   }
   return {
@@ -231,15 +233,15 @@ function parseWait(
     eventName: observation.eventName as 'node.waiting' | 'node.retry_scheduled',
     sequence: observation.sequence as number,
     occurredAt: observation.occurredAt as string,
-    invocationKey: observation.invocationKey,
-    attemptId: observation.attemptId,
+    invocationKey: invocationKey,
+    attemptId: attemptId,
     attemptNumber: observation.attemptNumber as number,
-    resumeAt: observation.resumeAt,
+    resumeAt: resumeAt,
     waitKind: observation.waitKind as 'node_wait' | 'retry_backoff',
     ...(observation.output === undefined
       ? {}
       : {
-          output: { kind: 'inline' as const, attemptId: observation.attemptId },
+          output: { kind: 'inline' as const, attemptId: attemptId },
         }),
   };
 }
@@ -250,19 +252,21 @@ function parseOutcomeOutput(
 ): OutcomeOutput {
   if (value === undefined) return undefined;
   const candidate = record(value, 'observation_invalid', 'output reference');
+  const { attemptId: referenceAttemptId } = candidate;
+
   if (candidate.kind === 'inline') {
     exactKeys(candidate, ['kind', 'attemptId']);
-    if (
-      typeof candidate.attemptId !== 'string' ||
-      !UUID_PATTERN.test(candidate.attemptId) ||
-      candidate.attemptId !== attemptId
-    ) {
+    const invalidAttemptReference =
+      typeof referenceAttemptId !== 'string' ||
+      !UUID_PATTERN.test(referenceAttemptId) ||
+      referenceAttemptId !== attemptId;
+    if (invalidAttemptReference) {
       operationError(
         'observation_invalid',
         'inline output must reference the completing attempt',
       );
     }
-    return { kind: 'inline', attemptId: candidate.attemptId };
+    return { kind: 'inline', attemptId: referenceAttemptId };
   }
   if (candidate.kind === 'artifact') {
     exactKeys(candidate, ['kind', 'artifactId']);
@@ -293,6 +297,8 @@ function isOutcomeStatus(value: unknown): boolean {
 function parseOutcome(
   observation: ObservationRecord,
 ): PersistedWorkflowObservation {
+  const { invocationKey, attemptId, reasonCode } = observation;
+
   exactKeys(
     observation,
     [
@@ -306,37 +312,35 @@ function parseOutcome(
     ],
     ['output', 'reasonCode'],
   );
-  if (
-    typeof observation.invocationKey !== 'string' ||
-    !validAttempt(observation.attemptId, observation.attemptNumber) ||
-    !isOutcomeStatus(observation.status)
-  ) {
+  const invalidOutcome =
+    typeof invocationKey !== 'string' ||
+    !validAttempt(attemptId, observation.attemptNumber) ||
+    !isOutcomeStatus(observation.status);
+  if (invalidOutcome) {
     operationError('observation_invalid', 'outcome observation is invalid');
   }
-  if (
-    observation.reasonCode !== undefined &&
-    (typeof observation.reasonCode !== 'string' ||
-      observation.reasonCode.length === 0 ||
-      observation.reasonCode.length > 128)
-  ) {
+  const invalidReasonCode =
+    reasonCode !== undefined &&
+    (typeof reasonCode !== 'string' ||
+      reasonCode.length === 0 ||
+      reasonCode.length > 128);
+  if (invalidReasonCode) {
     operationError('observation_invalid', 'reasonCode is invalid');
   }
-  const output = parseOutcomeOutput(observation.output, observation.attemptId);
+  const output = parseOutcomeOutput(observation.output, attemptId);
   return {
     kind: 'outcome',
     sequence: observation.sequence as number,
     occurredAt: observation.occurredAt as string,
-    attemptId: observation.attemptId,
+    attemptId: attemptId,
     attemptNumber: observation.attemptNumber as number,
-    invocationKey: observation.invocationKey,
+    invocationKey: invocationKey,
     status: observation.status as Extract<
       PersistedWorkflowObservation,
       { kind: 'outcome' }
     >['status'],
     ...(output === undefined ? {} : { output }),
-    ...(observation.reasonCode === undefined
-      ? {}
-      : { reasonCode: observation.reasonCode }),
+    ...(reasonCode === undefined ? {} : { reasonCode: reasonCode }),
   };
 }
 

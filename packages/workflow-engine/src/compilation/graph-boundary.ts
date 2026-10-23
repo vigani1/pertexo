@@ -143,7 +143,7 @@ function validatePin(
   const selectedSideEffectClass = parseSideEffectClass(raw.sideEffectClass);
   const definitionPin = definitionManifest(catalog, definition);
   const executorPin = executorManifest(catalog, executor);
-  if (
+  const definitionPinMismatch =
     !executorPin.definitions.some((value) => sameIdentity(value, definition)) ||
     !sameIdentity(node.definition, definition) ||
     !sameIdentity(definitionPin.executor, executor) ||
@@ -151,9 +151,8 @@ function validatePin(
     raw.executorAbi !== executorPin.abiVersion ||
     selectedSideEffectClass !== sideEffectClass(definitionPin.retryClass) ||
     canonicalJson(policies) !==
-      canonicalJson([...definitionPin.policyReferences].sort(compareIdentity))
-  )
-    fail('node executable pins are incompatible');
+      canonicalJson([...definitionPin.policyReferences].sort(compareIdentity));
+  if (definitionPinMismatch) fail('node executable pins are incompatible');
   assertExpressionPolicies(node, policies, definitionPin.capabilities);
   return {
     id: node.id,

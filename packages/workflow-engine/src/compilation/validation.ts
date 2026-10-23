@@ -20,8 +20,9 @@ import {
 } from './foundation.js';
 
 export function record(value: unknown, label: string): Record<string, unknown> {
-  if (value === null || typeof value !== 'object' || Array.isArray(value))
-    fail(`${label} must be an object`);
+  const invalidRecord =
+    value === null || typeof value !== 'object' || Array.isArray(value);
+  if (invalidRecord) fail(`${label} must be an object`);
   return value as Record<string, unknown>;
 }
 
@@ -136,19 +137,20 @@ export function parseIdentity(
   label: string,
 ): DefinitionIdentity {
   const identity = record(value, label);
+  const { version } = identity;
+
   exactKeys(identity, ['key', 'version']);
   if (
     typeof identity.key !== 'string' ||
     !/^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*$/u.test(identity.key)
   )
     fail(`${label} is invalid`);
-  if (
-    typeof identity.version !== 'number' ||
-    !Number.isSafeInteger(identity.version) ||
-    identity.version < 1
-  )
-    fail(`${label} is invalid`);
-  return { key: identity.key, version: identity.version };
+  const invalidVersion =
+    typeof version !== 'number' ||
+    !Number.isSafeInteger(version) ||
+    version < 1;
+  if (invalidVersion) fail(`${label} is invalid`);
+  return { key: identity.key, version: version };
 }
 
 export function parseGlobals(value: unknown): ExecutableRuntimePolicies {
@@ -239,13 +241,13 @@ function assertExecutableOwnFields(
   const ownNames = Object.getOwnPropertyNames(item);
   if (Object.getOwnPropertySymbols(item).length !== 0)
     fail('executable envelope has symbol fields');
-  if (
+  const hiddenOrSparseFields =
     (arrayLength !== undefined &&
       (enumerableCount !== arrayLength ||
         ownNames.length !== arrayLength + 1 ||
         !ownNames.includes('length'))) ||
-    (arrayLength === undefined && ownNames.length !== enumerableCount)
-  )
+    (arrayLength === undefined && ownNames.length !== enumerableCount);
+  if (hiddenOrSparseFields)
     fail('executable envelope has hidden or sparse fields');
 }
 
@@ -253,11 +255,11 @@ function executableDataField(item: object, key: string): PropertyDescriptor {
   if (!Object.hasOwn(item, key))
     fail('executable envelope has inherited enumerable fields');
   const descriptor = Object.getOwnPropertyDescriptor(item, key);
-  if (
+  const invalidDataField =
     descriptor === undefined ||
     !descriptor.enumerable ||
-    !('value' in descriptor)
-  )
+    !('value' in descriptor);
+  if (invalidDataField)
     fail('executable envelope must contain own data fields');
   return descriptor;
 }

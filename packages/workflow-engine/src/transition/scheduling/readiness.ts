@@ -144,13 +144,13 @@ function validateBranchSelections(indexes: SchedulerIndexes): void {
     const invocation = indexes.invocationByKey.get(selection.invocationKey);
     const outputPorts =
       node === undefined ? undefined : configuredBranchOutputPorts(node);
-    if (
+    const invalidBranchSelection =
       outputPorts === undefined ||
       invocation?.nodeId !== selection.nodeId ||
       invocation.status !== 'succeeded' ||
       invocation.output === undefined ||
-      !outputPorts.includes(selection.selectedOutputPort)
-    )
+      !outputPorts.includes(selection.selectedOutputPort);
+    if (invalidBranchSelection)
       throw new WorkflowEngineError(
         'checkpoint_invalid',
         'branch selection disagrees with the pinned node contract',
@@ -359,9 +359,7 @@ function readyNodeDecision(
     }),
     nodeId: node.id,
     disposition:
-      marks.skipped.has(node.id) || node.disabled === true
-        ? 'skipped'
-        : 'ready',
+      marks.skipped.has(node.id) || node.disabled ? 'skipped' : 'ready',
     ...(branchPath && { branchPath }),
     ...(input.iterationPath && { iterationPath: input.iterationPath }),
   };

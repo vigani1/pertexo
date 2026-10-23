@@ -80,8 +80,9 @@ export function taskDeclarationObservations(
         ? invocations.get(outcome.invocationKey)
         : undefined;
     const node = nodes.get(owner?.nodeId ?? '');
-    if (owner === undefined || node === undefined || !isPendingTaskNode(node))
-      continue;
+    const notPendingTask =
+      owner === undefined || node === undefined || !isPendingTaskNode(node);
+    if (notPendingTask) continue;
     if (!pending.has(identity) || declarations.has(owner.invocationKey))
       operationError(
         'observation_invalid',
@@ -127,19 +128,21 @@ function taskSetup<Setup>(
 
 function parseTaskOutcome(value: JsonValue): PendingTaskOutcome {
   const fact = record(value, 'observation_invalid', 'task outcome');
+  const { taskId, invocationKey, nodeId } = fact;
+
   exactKeys(
     fact,
     ['taskId', 'invocationKey', 'nodeId', 'status'],
     ['branchPath', 'iterationPath'],
   );
-  if (
-    typeof fact.taskId !== 'string' ||
-    !UUID_PATTERN.test(fact.taskId) ||
-    typeof fact.invocationKey !== 'string' ||
-    fact.invocationKey.length === 0 ||
-    fact.invocationKey.length > 256 ||
-    typeof fact.nodeId !== 'string' ||
-    fact.nodeId.length === 0 ||
+  const invalidTaskIdentity =
+    typeof taskId !== 'string' ||
+    !UUID_PATTERN.test(taskId) ||
+    typeof invocationKey !== 'string' ||
+    invocationKey.length === 0 ||
+    invocationKey.length > 256 ||
+    typeof nodeId !== 'string' ||
+    nodeId.length === 0 ||
     typeof fact.status !== 'string' ||
     ![
       'approved',
@@ -148,13 +151,13 @@ function parseTaskOutcome(value: JsonValue): PendingTaskOutcome {
       'expired',
       'refused',
       'canceled',
-    ].includes(fact.status)
-  )
+    ].includes(fact.status);
+  if (invalidTaskIdentity)
     operationError('observation_invalid', 'task outcome identity is invalid');
   return {
-    taskId: fact.taskId,
-    invocationKey: fact.invocationKey,
-    nodeId: fact.nodeId,
+    taskId: taskId,
+    invocationKey: invocationKey,
+    nodeId: nodeId,
     status: fact.status as PendingTaskOutcome['status'],
     branchPath: parseBranchPath(fact.branchPath, 'invocation'),
     iterationPath: parseIterationPath(fact.iterationPath, 'invocation'),
@@ -253,7 +256,7 @@ function assertTaskOutcomeScope(
     ),
     iterationPath: fact.iterationPath ?? [],
   });
-  if (
+  const invalidTaskScope =
     !isPendingTaskNode(nodes.get(fact.nodeId)) ||
     expected !== fact.invocationKey ||
     context?.ancestors.length !== (fact.iterationPath?.length ?? 0) ||
@@ -265,8 +268,8 @@ function assertTaskOutcomeScope(
         !configuredScopedOutputPorts(nodes.get(nodeId) ?? {})?.includes(
           outputPort,
         ),
-    )
-  )
+    );
+  if (invalidTaskScope)
     operationError('observation_invalid', 'task outcome scope is invalid');
 }
 
@@ -279,10 +282,10 @@ function taskResultObservations(
   const inputRequest =
     nodes.get(fact.nodeId)?.definition.key === 'core.request_input' ||
     isCallbackWaitNode(nodes.get(fact.nodeId));
-  if (
+  const incompatibleTaskResult =
     (fact.status === 'submitted' && !inputRequest) ||
-    (['approved', 'rejected'].includes(fact.status) && inputRequest)
-  )
+    (['approved', 'rejected'].includes(fact.status) && inputRequest);
+  if (incompatibleTaskResult)
     operationError('observation_invalid', 'task result kind conflicts');
   const decided = ['approved', 'rejected', 'submitted'].includes(fact.status);
   const reasonCode =

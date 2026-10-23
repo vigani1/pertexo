@@ -11,14 +11,15 @@ export function completedOutputReference(
 ): Exclude<OutputReference, { kind: 'call' | 'reused' | 'task' }> | undefined {
   const output = outcome.output;
   if (!isJsonRecord(output)) return undefined;
+  const { artifactId } = output;
   if (output.kind === 'inline' && output.attemptId === attemptId)
     return { kind: 'inline', attemptId };
-  if (
+  const validArtifactReference =
     output.kind === 'artifact' &&
-    typeof output.artifactId === 'string' &&
-    UUID_PATTERN.test(output.artifactId)
-  )
-    return { kind: 'artifact', artifactId: output.artifactId };
+    typeof artifactId === 'string' &&
+    UUID_PATTERN.test(artifactId);
+  if (validArtifactReference)
+    return { kind: 'artifact', artifactId: artifactId };
   return undefined;
 }
 
@@ -41,11 +42,11 @@ export function indexPersistedSuccessfulOutcomes(
 ): ReadonlyMap<string, Readonly<Record<string, JsonValue>>> {
   const outcomes = new Map<string, Readonly<Record<string, JsonValue>>>();
   for (const candidate of persistedItems) {
-    if (
+    const successfulOutcome =
       isJsonRecord(candidate) &&
       candidate.kind === 'outcome' &&
-      candidate.status === 'succeeded'
-    ) {
+      candidate.status === 'succeeded';
+    if (successfulOutcome) {
       const outcome = candidate as Readonly<{
         sequence: number;
         attemptId: string;

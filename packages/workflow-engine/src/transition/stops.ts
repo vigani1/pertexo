@@ -96,12 +96,11 @@ export function applyWorkflowStops(
       const initialControl = invocations.get(initialLoop.controlInvocationKey);
       // Stopping the run cannot rewrite a loop that already settled. Its
       // successor may not have been admitted by the next coordinator pass yet.
-      if (
+      const alreadySettled =
         initialLoop.activeOrdinals.length === 0 &&
         initialControl !== undefined &&
-        isTerminalNodeStatus(initialControl.status)
-      )
-        continue;
+        isTerminalNodeStatus(initialControl.status);
+      if (alreadySettled) continue;
       let loop = initialLoop;
       for (const ordinal of initialLoop.activeOrdinals) {
         loop = stopLoopIteration(state, loop, ordinal, occurredAt);

@@ -16,22 +16,18 @@ function containsArtifact(value: JsonValue): boolean {
   const pending = [value];
   while (pending.length > 0) {
     const current = pending.pop();
-    if (
-      current === undefined ||
-      current === null ||
-      typeof current !== 'object'
-    )
-      continue;
+    const primitiveValue =
+      current === undefined || current === null || typeof current !== 'object';
+    if (primitiveValue) continue;
     if (Array.isArray(current))
       pending.push(...(current as readonly JsonValue[]));
     else {
       const object = current as Readonly<Record<string, JsonValue>>;
-      if (
+      const artifactReference =
         object.kind === 'artifact' &&
         typeof object.artifactId === 'string' &&
-        UUID_PATTERN.test(object.artifactId)
-      )
-        return true;
+        UUID_PATTERN.test(object.artifactId);
+      if (artifactReference) return true;
       pending.push(...Object.values(object));
     }
   }
@@ -93,14 +89,13 @@ function matchesBranchSelection({
     const selection = candidate.branchSelections.find(
       (choice) => choice.invocationKey === invocation.invocationKey,
     );
-    if (
+    const branchSelectionMismatch =
       value === null ||
       typeof value !== 'object' ||
       Array.isArray(value) ||
       (value as Readonly<Record<string, JsonValue>>).selectedPort !==
-        selection?.selectedOutputPort
-    )
-      return false;
+        selection?.selectedOutputPort;
+    if (branchSelectionMismatch) return false;
   }
   return true;
 }

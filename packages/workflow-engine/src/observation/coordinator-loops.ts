@@ -49,23 +49,8 @@ function terminalOutcomesForLoop(
 ): ReadonlyMap<string, TerminalLoopStatus> {
   const terminalOutcomes = new Map<string, TerminalLoopStatus>();
   for (const candidate of persistedItems) {
-    if (
-      isJsonRecord(candidate) &&
-      candidate.kind === 'outcome' &&
-      typeof candidate.invocationKey === 'string' &&
-      typeof candidate.status === 'string' &&
-      [
-        'succeeded',
-        'failed',
-        'canceled',
-        'timed_out',
-        'outcome_unknown',
-      ].includes(candidate.status)
-    )
-      terminalOutcomes.set(
-        candidate.invocationKey,
-        candidate.status as TerminalLoopStatus,
-      );
+    if (isTerminalOutcome(candidate))
+      terminalOutcomes.set(candidate.invocationKey, candidate.status);
   }
   for (const candidate of derivedObservations) {
     if (candidate.kind === 'outcome' && candidate.status !== 'skipped')
@@ -124,13 +109,12 @@ export function forEachCoordinatorObservations({
       );
     const invocation = invocations.get(material.invocationKey);
     const node = nodes.get(invocation?.nodeId ?? '');
-    if (
+    const notForEach =
       invocation === undefined ||
       node === undefined ||
       workflowControlOutputKind(node.definition) !== 'for_each' ||
-      node.structured?.kind !== 'for_each'
-    )
-      continue;
+      node.structured?.kind !== 'for_each';
+    if (notForEach) continue;
     const canonicalMaterial = canonicalJson(material);
     const previousMaterial = declarationMaterials.get(invocation.invocationKey);
     if (previousMaterial !== undefined) {
@@ -165,22 +149,24 @@ export function forEachCoordinatorObservations({
 
 function parseForEachMaterial(item: JsonValue) {
   const material = record(item, 'observation_invalid', 'completed output');
+  const { sequence, attemptId, invocationKey } = material;
+
   exactKeys(material, ['sequence', 'attemptId', 'invocationKey', 'value']);
-  if (
-    typeof material.sequence !== 'number' ||
-    !Number.isSafeInteger(material.sequence) ||
-    typeof material.attemptId !== 'string' ||
-    !UUID_PATTERN.test(material.attemptId) ||
-    typeof material.invocationKey !== 'string'
-  )
+  const invalidMaterialIdentity =
+    typeof sequence !== 'number' ||
+    !Number.isSafeInteger(sequence) ||
+    typeof attemptId !== 'string' ||
+    !UUID_PATTERN.test(attemptId) ||
+    typeof invocationKey !== 'string';
+  if (invalidMaterialIdentity)
     operationError(
       'observation_invalid',
       'completed output identity is invalid',
     );
   return {
-    sequence: material.sequence,
-    attemptId: material.attemptId,
-    invocationKey: material.invocationKey,
+    sequence: sequence,
+    attemptId: attemptId,
+    invocationKey: invocationKey,
     value: material.value,
   };
 }
@@ -189,15 +175,17 @@ function parseForEachOutput(value: JsonValue | undefined) {
   if (value === undefined)
     operationError('observation_invalid', 'For Each output is missing');
   const output = record(value, 'observation_invalid', 'For Each output');
+  const { items, iterationCount } = output;
+
   exactKeys(output, ['items', 'iterationCount']);
-  if (
-    !Array.isArray(output.items) ||
-    typeof output.iterationCount !== 'number' ||
-    !Number.isSafeInteger(output.iterationCount) ||
-    output.iterationCount !== output.items.length
-  )
+  const invalidCollection =
+    !Array.isArray(items) ||
+    typeof iterationCount !== 'number' ||
+    !Number.isSafeInteger(iterationCount) ||
+    iterationCount !== items.length;
+  if (invalidCollection)
     operationError('observation_invalid', 'For Each output is invalid');
-  return { items: output.items, iterationCount: output.iterationCount };
+  return { items: items, iterationCount: iterationCount };
 }
 
 function startedLoopObservation({
@@ -300,4 +288,23 @@ function completedLoopObservations(
     }
   }
   return observations;
+}
+
+function isTerminalOutcome(
+  candidate: JsonValue,
+): candidate is Readonly<Record<string, JsonValue>> &
+  Readonly<{ invocationKey: string; status: TerminalLoopStatus }> {
+  return (
+    isJsonRecord(candidate) &&
+    candidate.kind === 'outcome' &&
+    typeof candidate.invocationKey === 'string' &&
+    typeof candidate.status === 'string' &&
+    [
+      'succeeded',
+      'failed',
+      'canceled',
+      'timed_out',
+      'outcome_unknown',
+    ].includes(candidate.status)
+  );
 }

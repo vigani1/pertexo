@@ -25,12 +25,12 @@ function deriveRootReadiness(
   input: TransitionInput,
 ): void {
   const { current, graph, invocations, branchSelections } = state;
-  if (
-    graph?.deriveReadiness !== true ||
+  const cannotDeriveReadiness =
+    !graph?.deriveReadiness ||
     state.cancelRequested ||
     state.deadlineExpired ||
-    (state.runStatus !== 'running' && state.runStatus !== 'waiting')
-  ) {
+    (state.runStatus !== 'running' && state.runStatus !== 'waiting');
+  if (cannotDeriveReadiness) {
     return;
   }
   for (const decision of deriveReadyNodes({
@@ -66,11 +66,9 @@ function deriveLoopBodyReadiness(
   input: TransitionInput,
 ): void {
   const { current, graph, invocations, branchSelections, loops } = state;
-  if (
-    graph?.deriveReadiness !== true ||
-    state.cancelRequested ||
-    state.deadlineExpired
-  ) {
+  const cannotMaterializeLoops =
+    !graph?.deriveReadiness || state.cancelRequested || state.deadlineExpired;
+  if (cannotMaterializeLoops) {
     return;
   }
   for (const loop of loops.values()) {

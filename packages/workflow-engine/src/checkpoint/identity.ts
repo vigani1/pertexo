@@ -23,12 +23,11 @@ export function assertCanonicalTimestamp(
     typeof value === 'string' && !value.includes('.')
       ? value.replace(/Z$/u, '.000Z')
       : value;
-  if (
+  const invalidTimestamp =
     typeof value !== 'string' ||
     !canonicalTimestampPattern.test(value) ||
     !Number.isFinite(milliseconds) ||
-    new Date(milliseconds).toISOString() !== expected
-  )
-    invalid(`${label} must be a canonical UTC timestamp`);
+    new Date(milliseconds).toISOString() !== expected;
+  if (invalidTimestamp) invalid(`${label} must be a canonical UTC timestamp`);
   return value;
 }

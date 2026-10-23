@@ -93,14 +93,13 @@ export function deriveTerminalRunStatus(input: {
   )
     return 'failed';
   if (statuses.has('canceled')) return 'canceled';
-  if (
+  const failuresHandled =
     input.invocations.length > 0 &&
     !input.graphIncomplete &&
     [...statuses].every(
       (status) =>
         status === 'succeeded' || status === 'skipped' || status === 'failed',
-    )
-  )
-    return 'succeeded';
+    );
+  if (failuresHandled) return 'succeeded';
   return undefined;
 }
