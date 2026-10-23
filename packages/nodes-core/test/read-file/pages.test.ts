@@ -6,10 +6,17 @@ import { files } from './artifacts.fixture.js';
 const registry = createCoreNodeRegistry();
 function run(
   state: ReturnType<typeof files>,
-  key: string,
-  config: unknown,
-  input: unknown,
-  signal = new AbortController().signal,
+  {
+    key,
+    config,
+    input,
+    signal = new AbortController().signal,
+  }: Readonly<{
+    key: string;
+    config: unknown;
+    input: unknown;
+    signal?: AbortSignal;
+  }>,
 ) {
   const identity = { key: `core.${key}`, version: 1 };
   return registry.execute({
@@ -35,14 +42,17 @@ describe('explicit ordinary file pages', () => {
     );
     expect(file.byteLength).toBeGreaterThan(1048576);
     await expect(
-      run(state, 'read_file', { format: 'csv', delimiter: ',' }, { file }),
+      run(state, {
+        key: 'read_file',
+        config: { format: 'csv', delimiter: ',' },
+        input: { file },
+      }),
     ).rejects.toMatchObject({ diagnostic: { reason: 'inline_file_size' } });
-    const result = await run(
-      state,
-      'read_file',
-      { format: 'csv', delimiter: ',', outputMode: 'pages' },
-      { file },
-    );
+    const result = await run(state, {
+      key: 'read_file',
+      config: { format: 'csv', delimiter: ',', outputMode: 'pages' },
+      input: { file },
+    });
     if (result.kind !== 'succeeded') throw Error('Read failed');
     const bundle = filePageBundleSchema.parse(result.output);
     expect(bundle.itemCount).toBe(100000);
@@ -63,18 +73,17 @@ describe('explicit ordinary file pages', () => {
       currency: 'EUR',
     });
     for (const format of ['json', 'csv']) {
-      const created = await run(
-        state,
-        'create_file',
-        {
+      const created = await run(state, {
+        key: 'create_file',
+        config: {
           format,
           inputMode: 'pages',
           ...(format === 'csv'
             ? { delimiter: ',', columns: ['currency', 'id', 'amount'] }
             : {}),
         },
-        { pages: bundle.pages },
-      );
+        input: { pages: bundle.pages },
+      });
       if (created.kind !== 'succeeded') throw Error('Create failed');
       const ref = (created.output as { file: { artifactId: string } }).file;
       const bytes = state.get(ref.artifactId);
@@ -96,26 +105,24 @@ describe('explicit ordinary file pages', () => {
     async (format) => {
       const state = files();
       const file = state.add(Buffer.from(format === 'json' ? '[]' : 'id\r\n'));
-      const output = await run(
-        state,
-        'read_file',
-        {
+      const output = await run(state, {
+        key: 'read_file',
+        config: {
           format,
           outputMode: 'pages',
           ...(format === 'csv' ? { delimiter: ',' } : {}),
         },
-        { file },
-      );
+        input: { file },
+      });
       expect(output).toMatchObject({
         kind: 'succeeded',
         output: { pages: [], itemCount: 0, pageCount: 0 },
       });
-      const created = await run(
-        state,
-        'create_file',
-        { format: 'json', inputMode: 'pages' },
-        { pages: [] },
-      );
+      const created = await run(state, {
+        key: 'create_file',
+        config: { format: 'json', inputMode: 'pages' },
+        input: { pages: [] },
+      });
       if (created.kind !== 'succeeded') throw Error('Create failed');
       expect(
         state.data
@@ -134,12 +141,11 @@ describe('explicit ordinary file pages', () => {
         '\ufeffid;value;paid;amount\r\n00123;"line\nnext";true;12.5\r\n2;"=SUM(A1)";false;9\r\n',
       ),
     );
-    const output = await run(
-      state,
-      'read_file',
-      { format: 'csv', delimiter: ';', outputMode: 'pages' },
-      { file },
-    );
+    const output = await run(state, {
+      key: 'read_file',
+      config: { format: 'csv', delimiter: ';', outputMode: 'pages' },
+      input: { file },
+    });
     if (output.kind !== 'succeeded') throw Error('Read failed');
     const bundle = filePageBundleSchema.parse(output.output);
     const rows: unknown = JSON.parse(
@@ -149,12 +155,16 @@ describe('explicit ordinary file pages', () => {
       { id: '00123', value: 'line\nnext', paid: true, amount: 12.5 },
       { id: 2, value: '=SUM(A1)', paid: false, amount: 9 },
     ]);
-    const created = await run(
-      state,
-      'create_file',
-      { format: 'csv', inputMode: 'pages', delimiter: ',', columns: ['value'] },
-      { pages: bundle.pages },
-    );
+    const created = await run(state, {
+      key: 'create_file',
+      config: {
+        format: 'csv',
+        inputMode: 'pages',
+        delimiter: ',',
+        columns: ['value'],
+      },
+      input: { pages: bundle.pages },
+    });
     if (created.kind !== 'succeeded') throw Error('Create failed');
     expect(
       state.data
@@ -170,12 +180,11 @@ describe('explicit ordinary file pages', () => {
       const state = files();
       const file = state.add(Buffer.from(text));
       await expect(
-        run(
-          state,
-          'read_file',
-          { format: 'json', outputMode: 'pages' },
-          { file },
-        ),
+        run(state, {
+          key: 'read_file',
+          config: { format: 'json', outputMode: 'pages' },
+          input: { file },
+        }),
       ).rejects.toMatchObject({ possiblyDispatched: false });
       expect(state.release).toHaveBeenCalledOnce();
     },
@@ -184,24 +193,22 @@ describe('explicit ordinary file pages', () => {
     const state = files();
     const file = state.add(Buffer.from('[' + '0,'.repeat(3001) + ']'));
     await expect(
-      run(
-        state,
-        'read_file',
-        { format: 'json', outputMode: 'pages' },
-        { file },
-      ),
+      run(state, {
+        key: 'read_file',
+        config: { format: 'json', outputMode: 'pages' },
+        input: { file },
+      }),
     ).rejects.toMatchObject({ safeErrorCode: 'execution.file_input' });
     expect(state.write).toHaveBeenCalled();
     expect(state.release).toHaveBeenCalledOnce();
     state.write.mockRejectedValueOnce(new Error('storage unavailable'));
     const good = state.add(Buffer.from('[1]'));
     await expect(
-      run(
-        state,
-        'read_file',
-        { format: 'json', outputMode: 'pages' },
-        { file: good },
-      ),
+      run(state, {
+        key: 'read_file',
+        config: { format: 'json', outputMode: 'pages' },
+        input: { file: good },
+      }),
     ).rejects.toThrow('storage unavailable');
     expect(state.release).toHaveBeenCalledTimes(2);
   });
@@ -209,29 +216,36 @@ describe('explicit ordinary file pages', () => {
     const state = files();
     const page = state.add(Buffer.from('{"no":"array"}'));
     await expect(
-      run(
-        state,
-        'create_file',
-        { format: 'json', inputMode: 'pages' },
-        { pages: [page] },
-      ),
+      run(state, {
+        key: 'create_file',
+        config: { format: 'json', inputMode: 'pages' },
+        input: { pages: [page] },
+      }),
     ).rejects.toMatchObject({ safeErrorCode: 'file.create_data' });
     const scalar = state.add(Buffer.from('[1]'));
     await expect(
-      run(
-        state,
-        'create_file',
-        { format: 'csv', inputMode: 'pages', delimiter: ',', columns: ['id'] },
-        { pages: [scalar] },
-      ),
+      run(state, {
+        key: 'create_file',
+        config: {
+          format: 'csv',
+          inputMode: 'pages',
+          delimiter: ',',
+          columns: ['id'],
+        },
+        input: { pages: [scalar] },
+      }),
     ).rejects.toMatchObject({ safeErrorCode: 'file.create_data' });
     await expect(
-      run(
-        state,
-        'create_file',
-        { format: 'csv', inputMode: 'pages', delimiter: ',', columns: [] },
-        { pages: [] },
-      ),
+      run(state, {
+        key: 'create_file',
+        config: {
+          format: 'csv',
+          inputMode: 'pages',
+          delimiter: ',',
+          columns: [],
+        },
+        input: { pages: [] },
+      }),
     ).rejects.toMatchObject({ safeErrorCode: 'file.create_columns' });
   });
 });

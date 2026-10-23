@@ -20,23 +20,23 @@ export function sortItems(
   )) {
     if (value === undefined || value === null)
       entries.push({ item, key: null, ordinal });
-    else if (
-      (config.valueType === 'number' && typeof value === 'number') ||
-      (config.valueType === 'text' && typeof value === 'string')
-    )
+    else {
+      const matchesValueType =
+        (config.valueType === 'number' && typeof value === 'number') ||
+        (config.valueType === 'text' && typeof value === 'string');
+      if (!matchesValueType)
+        return invalidInput('Sort keys must match the configured value type');
       entries.push({ item, key: value, ordinal });
-    else return invalidInput('Sort keys must match the configured value type');
+    }
   }
   const direction = config.direction === 'ascending' ? 1 : -1;
   const missing = config.missing === 'first' ? -1 : 1;
   entries.sort((left, right) => {
-    if (left.key === null || right.key === null)
-      return left.key === right.key
-        ? left.ordinal - right.ordinal
-        : left.key === null
-          ? missing
-          : -missing;
-    const comparison = left.key < right.key ? -1 : left.key > right.key ? 1 : 0;
+    if (left.key === null || right.key === null) {
+      if (left.key === right.key) return left.ordinal - right.ordinal;
+      return left.key === null ? missing : -missing;
+    }
+    const comparison = compareKeys(left.key, right.key);
     return comparison === 0
       ? left.ordinal - right.ordinal
       : direction * comparison;
@@ -46,4 +46,10 @@ export function sortItems(
     items: entries.map((entry) => entry.item),
     inputCount: input.items.length,
   };
+}
+
+function compareKeys(left: string | number, right: string | number): number {
+  if (left < right) return -1;
+  if (left > right) return 1;
+  return 0;
 }

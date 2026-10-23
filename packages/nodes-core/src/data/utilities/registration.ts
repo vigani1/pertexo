@@ -9,14 +9,21 @@ import {
   CORE_JSONATA_POLICY,
 } from '../../policies.js';
 
-export function defineUtility(
-  key: string,
-  configSchema: ZodType,
-  inputSchema: ZodType,
-  outputSchema: ZodType,
-  semantics: readonly [string, ...string[]],
-  connectionSlot?: string,
-): NodeDefinitionRegistration {
+export function defineUtility({
+  key,
+  configSchema,
+  inputSchema,
+  outputSchema,
+  semantics,
+  connectionSlot,
+}: Readonly<{
+  key: string;
+  configSchema: ZodType;
+  inputSchema: ZodType;
+  outputSchema: ZodType;
+  semantics: readonly [string, ...string[]];
+  connectionSlot?: string;
+}>): NodeDefinitionRegistration {
   const identity = Object.freeze({ key, version: 1 });
   return Object.freeze({
     configSchema,

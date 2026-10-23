@@ -111,7 +111,7 @@ function addConstraintTypeIssue(
   });
 }
 
-export const CORE_VALIDATE_RULE_SCHEMA = z
+const ruleSchema = z
   .object({
     id: ruleIdSchema,
     path: CORE_VALIDATE_PATH_SCHEMA,
@@ -129,71 +129,94 @@ export const CORE_VALIDATE_RULE_SCHEMA = z
     minItems: nonnegativeSafeIntegerSchema.optional(),
     maxItems: nonnegativeSafeIntegerSchema.optional(),
   })
-  .strict()
-  .superRefine((rule, context) => {
-    if (rule.enum !== undefined) {
-      const tokens = rule.enum.map(scalarToken);
-      if (new Set(tokens).size !== tokens.length)
-        context.addIssue({
-          code: 'custom',
-          path: ['enum'],
-          message: 'Validate enum values must be distinct',
-        });
-      if (
-        rule.type !== undefined &&
-        rule.enum.some((value) => valueType(value) !== rule.type)
-      )
-        context.addIssue({
-          code: 'custom',
-          path: ['enum'],
-          message: 'Validate enum values must match the declared type',
-        });
-    }
+  .strict();
 
-    if (rule.minimum !== undefined && rule.type !== 'number')
-      addConstraintTypeIssue(context, 'minimum', 'number');
-    if (rule.maximum !== undefined && rule.type !== 'number')
-      addConstraintTypeIssue(context, 'maximum', 'number');
-    if (rule.minLength !== undefined && rule.type !== 'string')
-      addConstraintTypeIssue(context, 'minLength', 'string');
-    if (rule.maxLength !== undefined && rule.type !== 'string')
-      addConstraintTypeIssue(context, 'maxLength', 'string');
-    if (rule.minItems !== undefined && rule.type !== 'array')
-      addConstraintTypeIssue(context, 'minItems', 'array');
-    if (rule.maxItems !== undefined && rule.type !== 'array')
-      addConstraintTypeIssue(context, 'maxItems', 'array');
+export const CORE_VALIDATE_RULE_SCHEMA = ruleSchema.superRefine(
+  (rule, context) => {
+    validateRuleEnum(rule, context);
+    validateRuleBounds(rule, context);
+  },
+);
 
+function validateRuleEnum(
+  rule: z.output<typeof ruleSchema>,
+  context: z.RefinementCtx,
+): void {
+  if (rule.enum !== undefined) {
+    const tokens = rule.enum.map(scalarToken);
+    if (new Set(tokens).size !== tokens.length)
+      context.addIssue({
+        code: 'custom',
+        path: ['enum'],
+        message: 'Validate enum values must be distinct',
+      });
     if (
-      rule.minimum !== undefined &&
-      rule.maximum !== undefined &&
-      rule.minimum > rule.maximum
+      rule.type !== undefined &&
+      rule.enum.some((value) => valueType(value) !== rule.type)
     )
       context.addIssue({
         code: 'custom',
-        path: ['minimum'],
-        message: 'Validate minimum cannot exceed maximum',
+        path: ['enum'],
+        message: 'Validate enum values must match the declared type',
       });
-    if (
-      rule.minLength !== undefined &&
-      rule.maxLength !== undefined &&
-      rule.minLength > rule.maxLength
-    )
-      context.addIssue({
-        code: 'custom',
-        path: ['minLength'],
-        message: 'Validate minLength cannot exceed maxLength',
-      });
-    if (
-      rule.minItems !== undefined &&
-      rule.maxItems !== undefined &&
-      rule.minItems > rule.maxItems
-    )
-      context.addIssue({
-        code: 'custom',
-        path: ['minItems'],
-        message: 'Validate minItems cannot exceed maxItems',
-      });
-  });
+  }
+}
+
+function validateRuleBounds(
+  rule: z.output<typeof ruleSchema>,
+  context: z.RefinementCtx,
+): void {
+  if (rule.minimum !== undefined && rule.type !== 'number')
+    addConstraintTypeIssue(context, 'minimum', 'number');
+  if (rule.maximum !== undefined && rule.type !== 'number')
+    addConstraintTypeIssue(context, 'maximum', 'number');
+  if (rule.minLength !== undefined && rule.type !== 'string')
+    addConstraintTypeIssue(context, 'minLength', 'string');
+  if (rule.maxLength !== undefined && rule.type !== 'string')
+    addConstraintTypeIssue(context, 'maxLength', 'string');
+  if (rule.minItems !== undefined && rule.type !== 'array')
+    addConstraintTypeIssue(context, 'minItems', 'array');
+  if (rule.maxItems !== undefined && rule.type !== 'array')
+    addConstraintTypeIssue(context, 'maxItems', 'array');
+
+  validateConstraintRanges(rule, context);
+}
+
+function validateConstraintRanges(
+  rule: z.output<typeof ruleSchema>,
+  context: z.RefinementCtx,
+): void {
+  if (
+    rule.minimum !== undefined &&
+    rule.maximum !== undefined &&
+    rule.minimum > rule.maximum
+  )
+    context.addIssue({
+      code: 'custom',
+      path: ['minimum'],
+      message: 'Validate minimum cannot exceed maximum',
+    });
+  if (
+    rule.minLength !== undefined &&
+    rule.maxLength !== undefined &&
+    rule.minLength > rule.maxLength
+  )
+    context.addIssue({
+      code: 'custom',
+      path: ['minLength'],
+      message: 'Validate minLength cannot exceed maxLength',
+    });
+  if (
+    rule.minItems !== undefined &&
+    rule.maxItems !== undefined &&
+    rule.minItems > rule.maxItems
+  )
+    context.addIssue({
+      code: 'custom',
+      path: ['minItems'],
+      message: 'Validate minItems cannot exceed maxItems',
+    });
+}
 
 export const CORE_VALIDATE_CONFIG_SCHEMA = z
   .object({

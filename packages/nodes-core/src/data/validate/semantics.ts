@@ -77,6 +77,13 @@ function evaluateRule(
     !rule.enum.some((candidate) => sameScalar(value, candidate))
   )
     return issue(rule, CORE_VALIDATE_ISSUE_CODES.enum);
+  return evaluateValueBounds(rule, value);
+}
+
+function evaluateValueBounds(
+  rule: CoreValidateRule,
+  value: JsonValue,
+): CoreValidateIssue | undefined {
   if (typeof value === 'number') {
     if (rule.minimum !== undefined && value < rule.minimum)
       return issue(rule, CORE_VALIDATE_ISSUE_CODES.minimum);

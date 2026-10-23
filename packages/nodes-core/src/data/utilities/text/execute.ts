@@ -28,40 +28,8 @@ export function transformText(
                 .join('') + (config.ellipsis ? '…' : ''),
       };
     }
-    case 'replace': {
-      if (
-        input.search === undefined ||
-        input.search === '' ||
-        input.replacement === undefined
-      )
-        return refuseUtility(
-          'text_fields',
-          'Replace needs nonempty search text and a replacement value.',
-        );
-      let count = 0;
-      for (let offset = 0; ;) {
-        signal.throwIfAborted();
-        const next = value.indexOf(input.search, offset);
-        if (next < 0) break;
-        count++;
-        offset = next + input.search.length;
-        if (!config.all) break;
-      }
-      const bytes =
-        utf8ByteLength(value) +
-        count *
-          (utf8ByteLength(input.replacement) - utf8ByteLength(input.search));
-      if (bytes > STORED_EXECUTION_VALUE_LIMITS.inlineBytes)
-        return refuseUtility(
-          'result_too_large',
-          'Replacement would exceed the step data limits. Split the text first.',
-        );
-      return {
-        value: config.all
-          ? value.replaceAll(input.search, () => input.replacement ?? '')
-          : value.replace(input.search, () => input.replacement ?? ''),
-      };
-    }
+    case 'replace':
+      return replaceText(config, input, signal);
     case 'split': {
       if (input.delimiter === undefined || input.delimiter === '')
         return refuseUtility(
@@ -84,4 +52,43 @@ export function transformText(
       }
     }
   }
+}
+
+function replaceText(
+  config: Extract<TextConfig, { operation: 'replace' }>,
+  input: TextInput,
+  signal: AbortSignal,
+) {
+  const { value } = input;
+  if (
+    input.search === undefined ||
+    input.search === '' ||
+    input.replacement === undefined
+  )
+    return refuseUtility(
+      'text_fields',
+      'Replace needs nonempty search text and a replacement value.',
+    );
+  let count = 0;
+  for (let offset = 0; ;) {
+    signal.throwIfAborted();
+    const next = value.indexOf(input.search, offset);
+    if (next < 0) break;
+    count++;
+    offset = next + input.search.length;
+    if (!config.all) break;
+  }
+  const bytes =
+    utf8ByteLength(value) +
+    count * (utf8ByteLength(input.replacement) - utf8ByteLength(input.search));
+  if (bytes > STORED_EXECUTION_VALUE_LIMITS.inlineBytes)
+    return refuseUtility(
+      'result_too_large',
+      'Replacement would exceed the step data limits. Split the text first.',
+    );
+  return {
+    value: config.all
+      ? value.replaceAll(input.search, () => input.replacement ?? '')
+      : value.replace(input.search, () => input.replacement ?? ''),
+  };
 }
