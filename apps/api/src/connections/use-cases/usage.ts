@@ -1,4 +1,12 @@
-import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Query,
+  Req,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import {
   connectionListQuerySchema,
   connectionIdParamSchema,
@@ -26,6 +34,8 @@ import {
   NOOP_CONNECTION_TELEMETRY,
   type ConnectionTelemetry,
 } from '../telemetry.js';
+import { domainErrors } from '../../platform/http/problems/interceptor.js';
+import { connectionFailure } from '../../problems/context/normalize.js';
 
 const cursorSchema = z
   .object({
@@ -120,6 +130,7 @@ export class ListConnectionUsageUseCase {
   }
 }
 
+@UseInterceptors(domainErrors(connectionFailure))
 @Controller('v1/workspaces/:workspaceId/connections/:connectionId/usage')
 export class ConnectionUsageController {
   public constructor(private readonly usage: ListConnectionUsageUseCase) {}

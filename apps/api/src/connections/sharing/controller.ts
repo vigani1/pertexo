@@ -7,6 +7,7 @@ import {
   Post,
   Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { connectionIdParamSchema } from '@pertexo/contracts';
 import {
@@ -19,7 +20,10 @@ import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import { ConnectionManageGuard } from '../http/guards.js';
 import type { ConnectionRequest } from '../types.js';
 import { ConnectionSharingUseCases } from './use-case.js';
+import { domainErrors } from '../../platform/http/problems/interceptor.js';
+import { connectionFailure } from '../../problems/context/normalize.js';
 
+@UseInterceptors(domainErrors(connectionFailure))
 @Controller('v1/workspaces/:workspaceId/connections/:connectionId/sharing')
 @RateLimit('connection_mutation')
 export class ConnectionSharingController {

@@ -1,9 +1,11 @@
+import { toProblem } from '../../../src/problems/registry.js';
+import { authoringFailure } from '../../../src/problems/context/normalize.js';
 import { expect, it, vi } from 'vitest';
 import type { PublicationReviewStore } from '@pertexo/database/authoring';
 import { PublicationReviewError } from '@pertexo/database/authoring';
 import { createActorContext } from '../../../src/authorization/index.js';
 import { PublicationReviewUseCase } from '../../../src/workflow-authoring/reviews/use-case.js';
-import { mapWorkflowAuthoringError } from '../../../src/problems/authoring/workflows.js';
+
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
   workflowId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
@@ -131,13 +133,15 @@ it.each(['owner', 'admin'] as const)(
 );
 it('returns explicit policy and review conflicts through the shared authoring error owner', () => {
   expect(
-    mapWorkflowAuthoringError(
-      new PublicationReviewError('required', 'Request review.'),
+    toProblem(
+      authoringFailure(
+        new PublicationReviewError('required', 'Request review.'),
+      ),
     ).code,
   ).toBe('workflow.publish_approval_required');
   expect(
-    mapWorkflowAuthoringError(
-      new PublicationReviewError('stale', 'Draft changed.'),
+    toProblem(
+      authoringFailure(new PublicationReviewError('stale', 'Draft changed.')),
     ).code,
   ).toBe('workflow.publication_review_conflict');
 });

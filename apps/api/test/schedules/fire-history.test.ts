@@ -1,3 +1,4 @@
+import { problemResult } from '../support/problem.js';
 import {
   scheduleFireTimesResponseSchema,
   scheduleOccurrenceListResponseSchema,
@@ -131,7 +132,7 @@ describe('schedule fire history and next runs', () => {
   ])('rejects a %s cursor before reading', async (_label, after) => {
     const { database, service } = reads();
     await expect(
-      service.listOccurrences({ ...read, after }),
+      problemResult(service.listOccurrences({ ...read, after })),
     ).rejects.toMatchObject({
       code: 'request.invalid',
       safeDetail: 'The occurrence cursor is invalid.',
@@ -232,22 +233,26 @@ describe('schedule fire history and next runs', () => {
       new ScheduleTriggerError('invalid_recurrence'),
     );
 
-    await expect(service.listOccurrences(read)).rejects.toMatchObject({
+    await expect(
+      problemResult(service.listOccurrences(read)),
+    ).rejects.toMatchObject({
       code: 'resource.not_found',
     });
-    await expect(service.nextRuns({ ...read, count: 3 })).rejects.toMatchObject(
-      { code: 'resource.not_found' },
-    );
     await expect(
-      service.previewRuns({
-        ...read,
-        config: {
-          kind: 'cron',
-          expression: '0 25 * * *',
-          timezone: 'Europe/Paris',
-        },
-        count: 3,
-      }),
+      problemResult(service.nextRuns({ ...read, count: 3 })),
+    ).rejects.toMatchObject({ code: 'resource.not_found' });
+    await expect(
+      problemResult(
+        service.previewRuns({
+          ...read,
+          config: {
+            kind: 'cron',
+            expression: '0 25 * * *',
+            timezone: 'Europe/Paris',
+          },
+          count: 3,
+        }),
+      ),
     ).rejects.toMatchObject({
       code: 'request.invalid',
       safeDetail: expect.stringContaining('cannot be scheduled') as unknown,

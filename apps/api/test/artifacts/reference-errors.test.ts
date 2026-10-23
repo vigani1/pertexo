@@ -1,18 +1,19 @@
+import { toProblem } from '../../src/problems/registry.js';
 import {
-  mapArtifactError,
-  ArtifactUploadTooLargeError,
-} from '../../src/artifacts/index.js';
+  authoringFailure,
+  runFailure,
+  nodeTestingFailure,
+  artifactFailure,
+} from '../../src/problems/context/normalize.js';
+import { ArtifactUploadTooLargeError } from '../../src/artifacts/index.js';
 import { describe, expect, it } from 'vitest';
 import { ArtifactMetadataNotFoundError } from '@pertexo/database/runs';
-import { mapWorkflowAuthoringError } from '../../src/problems/authoring/workflows.js';
-import { mapWorkflowRunError } from '../../src/workflow-runs/errors.js';
-import { mapNodeTestingError } from '../../src/node-testing/errors.js';
 
 describe('unavailable artifact reference feedback', () => {
   it.each([
-    mapWorkflowAuthoringError,
-    mapWorkflowRunError,
-    mapNodeTestingError,
+    (error: unknown) => toProblem(authoringFailure(error)),
+    (error: unknown) => toProblem(runFailure(error)),
+    (error: unknown) => toProblem(nodeTestingFailure(error)),
   ])(
     'explains the file problem without changing the identity/access problem (%#)',
     (map) => {
@@ -27,7 +28,7 @@ describe('unavailable artifact reference feedback', () => {
 });
 
 it('returns a distinct file-size problem with split-file advice for configured storage limits', () => {
-  const problem = mapArtifactError(new ArtifactUploadTooLargeError());
+  const problem = toProblem(artifactFailure(new ArtifactUploadTooLargeError()));
   expect(problem.code).toBe('artifact.too_large');
   expect(problem.safeDetail).toContain('configured lower storage limit');
   expect(problem.safeDetail).toContain('Split');

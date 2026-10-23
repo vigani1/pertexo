@@ -1,3 +1,4 @@
+import { problemResult } from '../support/problem.js';
 import {
   WebhookTriggerNotFoundError,
   type WebhookDeliveryPage,
@@ -106,7 +107,9 @@ describe('webhook delivery log read', () => {
     const listDeliveries = vi.fn<WebhookTriggerDatabase['listDeliveries']>();
 
     await expect(
-      service(listDeliveries).listDeliveries({ ...scope, after }),
+      problemResult(
+        service(listDeliveries).listDeliveries({ ...scope, after }),
+      ),
     ).rejects.toMatchObject({ code: 'request.invalid' });
     expect(listDeliveries).not.toHaveBeenCalled();
   });
@@ -118,7 +121,9 @@ describe('webhook delivery log read', () => {
         .mockRejectedValue(new WebhookTriggerNotFoundError()),
     );
 
-    await expect(reader.listDeliveries(scope)).rejects.toMatchObject({
+    await expect(
+      problemResult(reader.listDeliveries(scope)),
+    ).rejects.toMatchObject({
       code: 'resource.not_found',
     });
   });

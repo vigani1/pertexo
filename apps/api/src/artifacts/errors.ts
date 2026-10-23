@@ -1,13 +1,3 @@
-import { z } from 'zod';
-
-import {
-  applicationError,
-  isApplicationError,
-  type ApplicationError,
-} from '../platform/http/index.js';
-import { AuthorizationError } from '../authorization/index.js';
-import { InvalidAuthenticatedWorkspaceContextError } from '../workspaces/request/authenticated-context-error.js';
-
 export class ArtifactApiNotFoundError extends Error {
   public constructor() {
     super('Artifact was not found');
@@ -49,43 +39,4 @@ export class ArtifactUploadTooLargeError extends Error {
     super('Artifact exceeds the configured object size limit');
     this.name = 'ArtifactUploadTooLargeError';
   }
-}
-
-export function mapArtifactError(error: unknown): ApplicationError {
-  if (isApplicationError(error)) return error;
-  if (error instanceof InvalidAuthenticatedWorkspaceContextError)
-    return applicationError('request.invalid', { safeDetail: error.message });
-  if (error instanceof ArtifactUploadTooLargeError)
-    return applicationError('artifact.too_large', {
-      safeDetail:
-        'The file exceeds 10 MB or the configured lower storage limit. Split it into smaller files and upload them separately.',
-    });
-  if (error instanceof z.ZodError)
-    return applicationError('request.invalid', {
-      safeDetail: 'The artifact request is invalid.',
-    });
-  if (error instanceof AuthorizationError)
-    return applicationError(error.code, { safeDetail: error.message });
-  if (error instanceof ArtifactApiNotFoundError)
-    return applicationError('resource.not_found');
-  if (error instanceof ArtifactApiCapacityExceededError)
-    return applicationError('workspace.quota_exceeded');
-  if (error instanceof ArtifactApiIdempotencyConflictError)
-    return applicationError('request.idempotency_conflict', {
-      safeDetail: 'The idempotency key was already used for another request.',
-    });
-  if (
-    error instanceof ArtifactApiConflictError ||
-    error instanceof ArtifactUploadDeadlineError
-  )
-    return applicationError('artifact.conflict', {
-      safeDetail: 'The artifact conflicts with its current lifecycle state.',
-    });
-  if (error instanceof ArtifactApiUnavailableError)
-    return applicationError('artifact.unavailable', {
-      safeDetail: 'Artifact storage is temporarily unavailable.',
-      cause: error,
-    });
-
-  return applicationError('internal.unexpected', { cause: error });
 }

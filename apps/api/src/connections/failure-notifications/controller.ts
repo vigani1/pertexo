@@ -9,6 +9,7 @@ import {
   Put,
   Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   failureNotificationDestinationAppendVersionRequestSchema,
@@ -43,6 +44,8 @@ import {
   type ClearWorkflowFailureNotificationPolicyInput,
 } from './destinations.js';
 import type { ConnectionRequest } from '../types.js';
+import { domainErrors } from '../../platform/http/problems/interceptor.js';
+import { connectionFailure } from '../../problems/context/normalize.js';
 
 const workspaceParamsShape = { workspaceId: z.uuid() };
 const workspaceParamsSchema = z
@@ -71,6 +74,7 @@ function requestCommand(
   };
 }
 
+@UseInterceptors(domainErrors(connectionFailure))
 @Controller('v1/workspaces/:workspaceId')
 @RateLimit('ordinary_mutation')
 export class FailureNotificationDestinationsController {

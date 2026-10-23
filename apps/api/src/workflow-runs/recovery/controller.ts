@@ -7,6 +7,7 @@ import {
   Post,
   Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   workflowRecoveryRequestSchema,
@@ -29,7 +30,10 @@ import {
 } from '../http/request-context.js';
 import { WorkflowRunReplayGuard } from '../http/guards.js';
 import { GetRunRecoveryUseCase, RecoverRunUseCase } from './use-cases.js';
+import { domainErrors } from '../../platform/http/problems/interceptor.js';
+import { runFailure } from '../../problems/context/normalize.js';
 
+@UseInterceptors(domainErrors(runFailure))
 @Controller('v1/workspaces/:workspaceId/runs/:runId')
 @UseGuards(SessionAuthenticationGuard, WorkflowRunReplayGuard)
 export class RunRecoveryController {

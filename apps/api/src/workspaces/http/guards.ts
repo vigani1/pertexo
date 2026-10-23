@@ -27,7 +27,7 @@ import type {
   WorkspaceAuthorizationSource,
 } from '../ports.js';
 import type { SignInEvidence } from '../../identity/index.js';
-import { mapIdentityWorkspaceError } from '../../problems/identity/workspaces.js';
+
 import { requestIdentifier, traceIdentifier } from '../request/identifiers.js';
 import { SESSION_AUTHORITY, WORKSPACE_AUTHORIZATION } from '../tokens.js';
 
@@ -51,20 +51,16 @@ export class SessionAuthenticationGuard implements CanActivate {
     if (rawToken === undefined) {
       return throwApplicationError(applicationError('auth.unauthenticated'));
     }
-    try {
-      const session = await this.sessions.authenticate(rawToken);
-      request.identitySession = session;
-      request.reauthorizeIdentitySession = (signal) =>
-        this.sessions.authenticate(rawToken, { signal });
-      this.contexts.setActor({
-        actorId: session.userId,
-        kind: 'user',
-        credentialId: session.sessionId,
-      });
-      return true;
-    } catch (error: unknown) {
-      return throwApplicationError(mapIdentityWorkspaceError(error));
-    }
+    const session = await this.sessions.authenticate(rawToken);
+    request.identitySession = session;
+    request.reauthorizeIdentitySession = (signal) =>
+      this.sessions.authenticate(rawToken, { signal });
+    this.contexts.setActor({
+      actorId: session.userId,
+      kind: 'user',
+      credentialId: session.sessionId,
+    });
+    return true;
   }
 }
 
@@ -93,16 +89,12 @@ export class CsrfProtectionGuard implements CanActivate {
       });
       return true;
     }
-    try {
-      this.csrf.assertMutationAllowed({
-        method: request.method ?? 'GET',
-        ...optionalToken('cookieToken', readCookie(request, CSRF_COOKIE_NAME)),
-        ...optionalToken('headerToken', suppliedToken),
-      });
-      return true;
-    } catch (error: unknown) {
-      return throwApplicationError(mapIdentityWorkspaceError(error));
-    }
+    this.csrf.assertMutationAllowed({
+      method: request.method ?? 'GET',
+      ...optionalToken('cookieToken', readCookie(request, CSRF_COOKIE_NAME)),
+      ...optionalToken('headerToken', suppliedToken),
+    });
+    return true;
   }
 }
 
@@ -125,30 +117,26 @@ export class WorkspaceCapabilityGuard implements CanActivate {
     if (session === undefined && request.apiTokenActor === undefined) {
       return throwApplicationError(applicationError('auth.unauthenticated'));
     }
-    try {
-      const actor =
-        request.apiTokenActor ??
-        createActorContext({
-          actorId: authenticatedSession(request).userId,
-          workspaceId: routeWorkspaceId,
-          sessionId: authenticatedSession(request).sessionId,
-          requestId: requestIdentifier(request),
-          ...traceFields(traceIdentifier(request)),
-        });
-      const authorizedWorkspace = await authorizeWorkspace({
-        actor,
-        routeWorkspaceId,
-        capability: this.capability,
-        access: this.authorization,
-        disclosure: this.disclosure,
-        allowedWorkspaceStatuses: this.allowedWorkspaceStatuses,
+    const actor =
+      request.apiTokenActor ??
+      createActorContext({
+        actorId: authenticatedSession(request).userId,
+        workspaceId: routeWorkspaceId,
+        sessionId: authenticatedSession(request).sessionId,
+        requestId: requestIdentifier(request),
+        ...traceFields(traceIdentifier(request)),
       });
-      request.authorizedWorkspace = authorizedWorkspace;
-      this.contexts.setWorkspace(authorizedWorkspace.workspaceId);
-      return true;
-    } catch (error: unknown) {
-      return throwApplicationError(mapIdentityWorkspaceError(error));
-    }
+    const authorizedWorkspace = await authorizeWorkspace({
+      actor,
+      routeWorkspaceId,
+      capability: this.capability,
+      access: this.authorization,
+      disclosure: this.disclosure,
+      allowedWorkspaceStatuses: this.allowedWorkspaceStatuses,
+    });
+    request.authorizedWorkspace = authorizedWorkspace;
+    this.contexts.setWorkspace(authorizedWorkspace.workspaceId);
+    return true;
   }
 }
 

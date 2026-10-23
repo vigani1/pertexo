@@ -9,6 +9,7 @@ import {
   Req,
   Query,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   formParamsSchema,
@@ -31,7 +32,11 @@ import { authenticatedRequestIdentifiers } from '../workspaces/request/authentic
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { FormMemberGuard, FormManageGuard } from './guards.js';
 import { FormService } from './service.js';
+import { domainErrors } from '../platform/http/problems/interceptor.js';
+import { memberFormFailure } from '../problems/context/normalize.js';
+
 type FormRequest = IdentityWorkspaceRequest & AbortableRequest;
+@UseInterceptors(domainErrors(memberFormFailure))
 @Controller('v1/workspaces/:workspaceId/workflows/:workflowId/form')
 @UseGuards(SessionAuthenticationGuard)
 @RateLimit('authenticated_read')

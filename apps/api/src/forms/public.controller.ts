@@ -7,6 +7,7 @@ import {
   Param,
   Post,
   Req,
+  UseInterceptors,
 } from '@nestjs/common';
 import type { FastifyRequest } from 'fastify';
 import {
@@ -23,7 +24,11 @@ import type { AbortableRequest } from '../platform/http/request-operation-signal
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { HttpRateLimitAdmission } from '../platform/rate-limit/admission.js';
 import { FormService } from './service.js';
+import { domainErrors } from '../platform/http/problems/interceptor.js';
+import { formFailure } from '../problems/context/normalize.js';
+
 type PublicRequest = FastifyRequest & AbortableRequest;
+@UseInterceptors(domainErrors(formFailure))
 @Controller('v1/forms/:publicId')
 @RateLimit('form_read')
 export class PublicFormsController {

@@ -8,6 +8,7 @@ import {
   Req,
   Res,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   nodeTestParamsSchema,
@@ -26,11 +27,14 @@ import { singleRequestHeader } from '../platform/http/request-headers.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { NodeTestingUpdateGuard } from './guards.js';
 import { GetPreviewRunUseCase, TestWorkflowNodeUseCase } from './use-case.js';
+import { domainErrors } from '../platform/http/problems/interceptor.js';
+import { nodeTestingFailure } from '../problems/context/normalize.js';
 
 interface StatusResponse {
   status(code: number): unknown;
 }
 
+@UseInterceptors(domainErrors(nodeTestingFailure))
 @Controller('v1/workspaces/:workspaceId')
 @RateLimit('preview_test')
 export class NodeTestingController {

@@ -8,6 +8,7 @@ import {
   Req,
   UseGuards,
   Header,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   workspaceIdentifierSchema,
@@ -32,7 +33,11 @@ import {
   WorkspaceVariablesManageGuard,
 } from './guards.js';
 import { WorkspaceVariablesService } from './service.js';
+import { domainErrors } from '../platform/http/problems/interceptor.js';
+import { resourceFailure } from '../problems/context/normalize.js';
+
 type Request = IdentityWorkspaceRequest & AbortableRequest;
+@UseInterceptors(domainErrors(resourceFailure))
 @Controller('v1/workspaces/:workspaceId/variables')
 @UseGuards(SessionAuthenticationGuard)
 @RateLimit('authenticated_read')

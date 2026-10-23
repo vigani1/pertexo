@@ -1,3 +1,4 @@
+import { errorRegistration } from '../../platform/http/problems/registry.js';
 import {
   WorkflowFolderConflictError,
   WorkflowOrganizationValidationError,
@@ -5,11 +6,26 @@ import {
   type WorkflowFolderConflictKind,
   type WorkflowTagConflictKind,
 } from '@pertexo/database/authoring';
-
 import {
   applicationError,
   type ApplicationError,
 } from '../../platform/http/application-error.js';
+
+export const organizationProblems = [
+  errorRegistration(WorkflowOrganizationValidationError, () => {
+    return applicationError('request.invalid', {
+      safeDetail: 'The workflow organization request is invalid.',
+    });
+  }),
+  errorRegistration(WorkflowTagConflictError, (error) => {
+    return tagConflicts[error.kind];
+  }),
+  errorRegistration(WorkflowFolderConflictError, (error) => {
+    return Object.hasOwn(folderConflicts, error.kind)
+      ? folderConflicts[error.kind]
+      : undefined;
+  }),
+];
 
 const tagConflicts: Readonly<
   Record<WorkflowTagConflictKind, ApplicationError>
@@ -42,7 +58,6 @@ const tagConflicts: Readonly<
     details: { conflictProjection: 'organization' },
   }),
 };
-
 const folderConflicts: Readonly<
   Record<WorkflowFolderConflictKind, ApplicationError>
 > = {
@@ -73,20 +88,3 @@ const folderConflicts: Readonly<
     safeDetail: 'The folder is not visible in the current workspace.',
   }),
 };
-
-/** Maps only organization failures; shared authoring failures retain their owner. */
-export function mapWorkflowOrganizationError(
-  error: unknown,
-): ApplicationError | undefined {
-  if (error instanceof WorkflowOrganizationValidationError)
-    return applicationError('request.invalid', {
-      safeDetail: 'The workflow organization request is invalid.',
-    });
-  if (error instanceof WorkflowTagConflictError)
-    return tagConflicts[error.kind];
-  if (error instanceof WorkflowFolderConflictError)
-    return Object.hasOwn(folderConflicts, error.kind)
-      ? folderConflicts[error.kind]
-      : undefined;
-  return undefined;
-}

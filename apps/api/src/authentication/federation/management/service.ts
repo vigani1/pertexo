@@ -3,10 +3,9 @@ import { Resolver } from 'node:dns/promises';
 import type { ApplicationSecretEnvelope } from '@pertexo/integrations/server';
 import {
   FederationConflictError,
-  WorkspaceAccessDeniedError,
   type FederationManagementStore,
 } from '@pertexo/database/tenant-access';
-import { IdempotencyConflictError } from '@pertexo/database/platform';
+
 import { canonicalJson } from '@pertexo/workflow-model';
 import {
   applicationError,
@@ -183,27 +182,5 @@ export class FederationManagementService {
         }),
       )
       .digest('hex');
-  }
-  async perform<T>(work: () => Promise<T>): Promise<T> {
-    try {
-      return await work();
-    } catch (error: unknown) {
-      if (error instanceof WorkspaceAccessDeniedError)
-        throwApplicationError(applicationError('resource.not_found'));
-      if (error instanceof IdempotencyConflictError)
-        throwApplicationError(applicationError('request.idempotency_conflict'));
-      if (error instanceof FederationConflictError)
-        throwApplicationError(
-          applicationError(
-            error.reason === 'owner_required'
-              ? 'auth.forbidden'
-              : error.reason === 'dns_unverified'
-                ? 'request.invalid'
-                : 'workspace.conflict',
-            { safeDetail: error.message },
-          ),
-        );
-      throw error;
-    }
   }
 }

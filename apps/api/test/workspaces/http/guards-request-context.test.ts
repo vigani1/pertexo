@@ -149,7 +149,7 @@ describe('identity/workspace guard request correlation', () => {
     await contexts.run('request-rejected-session', async () => {
       await expect(
         guard.canActivate(executionContext(httpRequest)),
-      ).rejects.toMatchObject({ code: 'internal.unexpected' });
+      ).rejects.toThrow('invalid session');
       expect(contexts.get()).toEqual({
         requestId: 'request-rejected-session',
       });

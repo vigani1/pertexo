@@ -9,6 +9,7 @@ import {
   Req,
   Res,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
@@ -28,7 +29,10 @@ import {
   type CookieResponse,
   type IdentityWorkspaceRequest,
 } from '../types.js';
+import { domainErrors } from '../../platform/http/problems/interceptor.js';
+import { workspaceFailure } from '../../problems/context/normalize.js';
 
+@UseInterceptors(domainErrors(workspaceFailure))
 @Controller('v1/workspaces')
 export class WorkspaceInvitationsController {
   public constructor(

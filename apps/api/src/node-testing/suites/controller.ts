@@ -8,6 +8,7 @@ import {
   Post,
   Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   workflowIdParamSchema,
@@ -29,7 +30,11 @@ import type { AbortableRequest } from '../../platform/http/request-operation-sig
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import { NodeTestingUpdateGuard } from '../guards.js';
 import { WorkflowTestSuitesUseCase } from './use-case.js';
+import { domainErrors } from '../../platform/http/problems/interceptor.js';
+import { nodeTestingFailure } from '../../problems/context/normalize.js';
+
 type Request = IdentityWorkspaceRequest & AbortableRequest;
+@UseInterceptors(domainErrors(nodeTestingFailure))
 @Controller(
   'v1/workspaces/:workspaceId/workflows/:workflowId/draft/test-suites',
 )

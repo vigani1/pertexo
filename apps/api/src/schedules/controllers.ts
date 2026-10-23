@@ -8,6 +8,7 @@ import {
   Query,
   Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   SCHEDULE_FIRE_TIME_DEFAULT_COUNT,
@@ -30,6 +31,8 @@ import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { requestIdempotencyKey } from '../platform/http/index.js';
 import { ScheduleReadGuard, ScheduleUpdateGuard } from './guards.js';
 import { ScheduleManagementService } from './service.js';
+import { domainErrors } from '../platform/http/problems/interceptor.js';
+import { authoringFailure } from '../problems/context/normalize.js';
 
 const routeShape = { workspaceId: z.uuid(), workflowId: z.uuid() };
 const routeSchema = z.object(routeShape).strict().readonly();
@@ -39,6 +42,7 @@ const triggerRouteSchema = z
   .readonly();
 type Request = IdentityWorkspaceRequest;
 
+@UseInterceptors(domainErrors(authoringFailure))
 @Controller('v1/workspaces/:workspaceId/workflows/:workflowId/triggers')
 @RateLimit('trigger_mutation')
 export class ScheduleManagementController {

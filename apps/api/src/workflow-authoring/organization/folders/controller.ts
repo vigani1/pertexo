@@ -10,6 +10,7 @@ import {
   Query,
   Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   workflowFolderWorkspaceParamsSchema,
@@ -25,7 +26,10 @@ import { WorkflowReadGuard } from '../../http/guards.js';
 import type { WorkflowAuthoringRequest } from '../../types.js';
 import { WorkflowFoldersUseCase } from './use-case.js';
 import { withWorkflowOrganizationRequest } from '../http.js';
+import { domainErrors } from '../../../platform/http/problems/interceptor.js';
+import { authoringFailure } from '../../../problems/context/normalize.js';
 
+@UseInterceptors(domainErrors(authoringFailure))
 @Controller('v1/workspaces/:workspaceId')
 @RateLimit('authenticated_read')
 export class WorkflowFoldersController {

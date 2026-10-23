@@ -1,3 +1,5 @@
+import { toProblem } from '../../src/problems/registry.js';
+import { authoringFailure } from '../../src/problems/context/normalize.js';
 import { WorkflowEngineError } from '@pertexo/workflow-engine';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
@@ -21,7 +23,7 @@ import {
   type ApplicationError,
 } from '../../src/platform/http/index.js';
 import { InvalidWorkflowCursorError } from '../../src/workflow-authoring/cursor.js';
-import { mapWorkflowAuthoringError } from '../../src/problems/authoring/workflows.js';
+
 import {
   InvalidWorkflowGraphError,
   WorkflowGraphContractError,
@@ -34,7 +36,7 @@ const tag = '"draft.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"';
 describe('workflow authoring error mapping', () => {
   it('maps unsupported historical origin readers to a dedicated sanitized unavailable problem', () => {
     expect(
-      mapWorkflowAuthoringError(new WorkflowTemplateOriginUnavailableError()),
+      toProblem(authoringFailure(new WorkflowTemplateOriginUnavailableError())),
     ).toEqual({
       code: 'workflow.template_origin_unavailable',
       safeDetail: 'Historical template origin is temporarily unavailable.',
@@ -42,24 +44,28 @@ describe('workflow authoring error mapping', () => {
   });
   it('projects operational conflicts without losing bigint revision precision', () => {
     expect(
-      mapWorkflowAuthoringError(
-        new WorkflowPauseRevisionConflictError('9007199254740993'),
+      toProblem(
+        authoringFailure(
+          new WorkflowPauseRevisionConflictError('9007199254740993'),
+        ),
       ),
     ).toMatchObject({
       code: 'workflow.pause_conflict',
       details: { currentPauseRevision: '9007199254740993' },
     });
     expect(
-      mapWorkflowAuthoringError(
-        new WorkflowAutoPauseSettingsRevisionConflictError(2),
+      toProblem(
+        authoringFailure(new WorkflowAutoPauseSettingsRevisionConflictError(2)),
       ),
     ).toMatchObject({
       code: 'workflow.auto_pause_settings_conflict',
       details: { currentSettingsRevision: 2 },
     });
     expect(
-      mapWorkflowAuthoringError(
-        new WorkspaceAutoPauseSettingsRevisionConflictError(3),
+      toProblem(
+        authoringFailure(
+          new WorkspaceAutoPauseSettingsRevisionConflictError(3),
+        ),
       ),
     ).toMatchObject({
       code: 'workspace.auto_pause_settings_conflict',
@@ -166,13 +172,15 @@ describe('workflow authoring error mapping', () => {
   ] as const)(
     'maps %s to its exact bounded application error',
     (_name, failure, expected) => {
-      expect(mapWorkflowAuthoringError(failure)).toEqual(expected);
+      expect(toProblem(authoringFailure(failure))).toEqual(expected);
     },
   );
 
   it('keeps lifecycle concurrency distinct from draft validator concurrency', () => {
     expect(
-      mapWorkflowAuthoringError(new WorkflowLifecycleRevisionConflictError(4)),
+      toProblem(
+        authoringFailure(new WorkflowLifecycleRevisionConflictError(4)),
+      ),
     ).toEqual({
       code: 'workflow.lifecycle_conflict',
       safeDetail:
@@ -180,7 +188,7 @@ describe('workflow authoring error mapping', () => {
       details: { currentLifecycleRevision: 4 },
     });
     expect(
-      mapWorkflowAuthoringError(new WorkflowNameRevisionConflictError(5)),
+      toProblem(authoringFailure(new WorkflowNameRevisionConflictError(5))),
     ).toEqual({
       code: 'workflow.name_conflict',
       safeDetail:
@@ -188,7 +196,7 @@ describe('workflow authoring error mapping', () => {
       details: { currentNameRevision: 5 },
     });
     expect(
-      mapWorkflowAuthoringError(new WorkflowRevisionConflictError(3, tag)),
+      toProblem(authoringFailure(new WorkflowRevisionConflictError(3, tag))),
     ).toEqual({
       code: 'workflow.revision_conflict',
       safeDetail: 'The workflow draft has changed; reload it before retrying.',
@@ -205,7 +213,7 @@ describe('workflow authoring error mapping', () => {
           'Definition core.manual@1 cannot be newly placed in the current compatibility release.',
       },
     ]);
-    expect(mapWorkflowAuthoringError(placement)).toEqual({
+    expect(toProblem(authoringFailure(placement))).toEqual({
       code: 'workflow.invalid',
       safeDetail:
         'The workflow contains a definition that can no longer be added.',
@@ -219,7 +227,7 @@ describe('workflow authoring error mapping', () => {
         message: 'definition is unavailable',
       },
     ]);
-    expect(mapWorkflowAuthoringError(invalid)).toEqual({
+    expect(toProblem(authoringFailure(invalid))).toEqual({
       code: 'workflow.invalid',
       safeDetail: 'The workflow cannot be published in its current form.',
       details: { issues: invalid.issues },
@@ -230,12 +238,12 @@ describe('workflow authoring error mapping', () => {
     const failure = applicationError('provider.unavailable', {
       safeDetail: 'Provider is unavailable.',
     });
-    expect(mapWorkflowAuthoringError(failure)).toBe(failure);
+    expect(toProblem(authoringFailure(failure))).toBe(failure);
   });
 
   it('retains an unknown secret-bearing cause only on the internal error', () => {
     const failure = new Error('database-password');
-    const mapped: ApplicationError = mapWorkflowAuthoringError(failure);
+    const mapped: ApplicationError = toProblem(authoringFailure(failure));
 
     expect(mapped).toMatchObject({
       code: 'internal.unexpected',

@@ -10,6 +10,7 @@ import {
   Req,
   Res,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { z } from 'zod';
 import { SESSION_AUTHORITY } from '../workspaces/tokens.js';
@@ -29,10 +30,13 @@ import { authenticatedRequestIdentifiers } from '../workspaces/request/authentic
 import { requestIdempotencyKey } from '../platform/http/index.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { ApiTokenManagement } from './use-cases.js';
+import { domainErrors } from '../platform/http/problems/interceptor.js';
+import { workspaceFailure } from '../problems/context/normalize.js';
 
 const workspaceParams = z.object({ workspaceId: z.uuid() }).strict();
 const tokenParams = workspaceParams.extend({ tokenId: z.uuid() }).strict();
 
+@UseInterceptors(domainErrors(workspaceFailure))
 @Controller('v1/workspaces/:workspaceId/api-tokens')
 export class ApiTokenController {
   public constructor(

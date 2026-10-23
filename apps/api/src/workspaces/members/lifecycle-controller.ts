@@ -7,6 +7,7 @@ import {
   Post,
   Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
@@ -23,12 +24,15 @@ import { WorkspaceMembershipLifecycleUseCase } from './lifecycle.js';
 import type { IdentitySessionAuthority } from '../ports.js';
 import { SESSION_AUTHORITY } from '../tokens.js';
 import type { IdentityWorkspaceRequest } from '../types.js';
+import { domainErrors } from '../../platform/http/problems/interceptor.js';
+import { workspaceFailure } from '../../problems/context/normalize.js';
 
 /**
  * ADR 047 membership lifecycle: leave a workspace, suspend or reactivate a
  * member, and transfer ownership. Guards authorize the route; persistence
  * rechecks the actor, target and revisions under lock.
  */
+@UseInterceptors(domainErrors(workspaceFailure))
 @Controller('v1/workspaces')
 export class WorkspaceMembershipController {
   public constructor(

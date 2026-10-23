@@ -1,3 +1,4 @@
+import { APPLICATION_ERROR_MAPPERS } from '../../../../src/application-errors.js';
 import { AutomationAuthenticationGuard } from '../../../../src/authentication/automation/guard.js';
 import 'reflect-metadata';
 import type { ExecutionContext } from '@nestjs/common';
@@ -275,7 +276,9 @@ async function setup() {
   open.push(app);
   const middleware = new RequestContextMiddleware(contexts);
   app.use(middleware.use.bind(middleware));
-  app.useGlobalFilters(new ProblemDetailsFilter(contexts));
+  app.useGlobalFilters(
+    new ProblemDetailsFilter(contexts, undefined, APPLICATION_ERROR_MAPPERS),
+  );
   await app.init();
   function inject(route: Route, overrides: object = {}) {
     return app.inject({

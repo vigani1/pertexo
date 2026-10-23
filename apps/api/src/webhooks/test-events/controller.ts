@@ -9,6 +9,7 @@ import {
   Req,
   Res,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
@@ -23,6 +24,9 @@ import { withRequestOperationSignal } from '../../platform/http/index.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import { WebhookUpdateGuard } from '../management/guards.js';
 import { WebhookTestEventService } from './service.js';
+import { domainErrors } from '../../platform/http/problems/interceptor.js';
+import { authoringFailure } from '../../problems/context/normalize.js';
+
 const scope = {
   workspaceId: z.uuid(),
   workflowId: z.uuid(),
@@ -30,6 +34,7 @@ const scope = {
 };
 const route = z.object(scope).strict();
 const sessionRoute = z.object({ ...scope, id: z.uuid() }).strict();
+@UseInterceptors(domainErrors(authoringFailure))
 @Controller(
   'v1/workspaces/:workspaceId/workflows/:workflowId/draft/nodes/:nodeId/webhook-test-events',
 )

@@ -1,9 +1,11 @@
+import { toProblem } from '../../src/problems/registry.js';
+import { nodeTestingFailure } from '../../src/problems/context/normalize.js';
 import { nodeTestingSamples } from './fixture.js';
 import type { AcceptedPreviewRun } from '@pertexo/database/testing';
 import { describe, expect, it, vi } from 'vitest';
 
 import { NodeTestingController } from '../../src/node-testing/controller.js';
-import { mapNodeTestingError } from '../../src/node-testing/errors.js';
+
 import { APPLICATION_ERROR_CATALOG } from '../../src/platform/http/index.js';
 import {
   GetPreviewRunUseCase,
@@ -173,7 +175,7 @@ describe('node testing controller', () => {
     } catch (error) {
       thrown = error;
     }
-    expect(mapNodeTestingError(thrown)).toMatchObject({
+    expect(toProblem(nodeTestingFailure(thrown))).toMatchObject({
       code: 'request.invalid',
     });
     expect(APPLICATION_ERROR_CATALOG['request.invalid'].status).toBe(400);

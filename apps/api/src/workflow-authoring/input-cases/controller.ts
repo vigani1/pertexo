@@ -12,6 +12,7 @@ import {
   Req,
   Res,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   parseWorkflowInputCaseTag,
@@ -30,13 +31,16 @@ import {
 import type { AbortableRequest } from '../../platform/http/request-operation-signal.js';
 import { requestHeaderValue } from '../../platform/http/request-headers.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
-import { throwWorkflowInputCaseApplicationError as throwWorkflowApplicationError } from '../../problems/authoring/workflows.js';
+
 import { WorkflowReadGuard, WorkflowUpdateGuard } from '../http/guards.js';
 import { WorkflowHeaderError } from '../http/preconditions.js';
 import type { WorkflowAuthoringRequest } from '../types.js';
 import { WorkflowInputCasesUseCase } from './use-case.js';
+import { domainErrors } from '../../platform/http/problems/interceptor.js';
+import { inputCaseFailure } from '../../problems/context/normalize.js';
 
 type Request = WorkflowAuthoringRequest & AbortableRequest;
+@UseInterceptors(domainErrors(inputCaseFailure))
 @Controller('v1/workspaces/:workspaceId/workflows/:workflowId/input-cases')
 @RateLimit('authenticated_read')
 export class WorkflowInputCasesController {
@@ -49,19 +53,15 @@ export class WorkflowInputCasesController {
     @Param() params: unknown,
     @Query() query: unknown,
   ) {
-    try {
-      const { workspaceId, workflowId } = workflowIdParamSchema.parse(params);
-      return await withRequestOperationSignal(request, (signal) =>
-        this.cases.list({
-          ...context(request, workspaceId),
-          workflowId,
-          query,
-          signal,
-        }),
-      );
-    } catch (error) {
-      return throwWorkflowApplicationError(error);
-    }
+    const { workspaceId, workflowId } = workflowIdParamSchema.parse(params);
+    return await withRequestOperationSignal(request, (signal) =>
+      this.cases.list({
+        ...context(request, workspaceId),
+        workflowId,
+        query,
+        signal,
+      }),
+    );
   }
   @Get(':caseId')
   @Header('Cache-Control', 'private, no-store')
@@ -72,22 +72,18 @@ export class WorkflowInputCasesController {
     @Res({ passthrough: true })
     response: Readonly<{ header(name: string, value: string): unknown }>,
   ) {
-    try {
-      const { workspaceId, workflowId, caseId } =
-        workflowInputCaseParamSchema.parse(params);
-      const result = await withRequestOperationSignal(request, (signal) =>
-        this.cases.get({
-          ...context(request, workspaceId),
-          workflowId,
-          caseId,
-          signal,
-        }),
-      );
-      response.header('ETag', result.case.representationTag);
-      return result;
-    } catch (error) {
-      return throwWorkflowApplicationError(error);
-    }
+    const { workspaceId, workflowId, caseId } =
+      workflowInputCaseParamSchema.parse(params);
+    const result = await withRequestOperationSignal(request, (signal) =>
+      this.cases.get({
+        ...context(request, workspaceId),
+        workflowId,
+        caseId,
+        signal,
+      }),
+    );
+    response.header('ETag', result.case.representationTag);
+    return result;
   }
   @Post()
   @RateLimit('ordinary_mutation')
@@ -103,21 +99,17 @@ export class WorkflowInputCasesController {
     @Param() params: unknown,
     @Body() body: unknown,
   ) {
-    try {
-      const { workspaceId, workflowId } = workflowIdParamSchema.parse(params);
-      const idempotencyKey = requestIdempotencyKey(request.headers);
-      return await withRequestOperationSignal(request, (signal) =>
-        this.cases.create({
-          ...context(request, workspaceId),
-          workflowId,
-          request: body,
-          idempotencyKey,
-          signal,
-        }),
-      );
-    } catch (error) {
-      return throwWorkflowApplicationError(error);
-    }
+    const { workspaceId, workflowId } = workflowIdParamSchema.parse(params);
+    const idempotencyKey = requestIdempotencyKey(request.headers);
+    return await withRequestOperationSignal(request, (signal) =>
+      this.cases.create({
+        ...context(request, workspaceId),
+        workflowId,
+        request: body,
+        idempotencyKey,
+        signal,
+      }),
+    );
   }
   @Put(':caseId')
   @RateLimit('ordinary_mutation')
@@ -133,27 +125,23 @@ export class WorkflowInputCasesController {
     @Param() params: unknown,
     @Body() body: unknown,
   ) {
-    try {
-      const { workspaceId, workflowId, caseId } =
-        workflowInputCaseParamSchema.parse(params);
-      const representationTag = parseCaseIfMatch(
-        requestHeaderValue(request.headers, 'if-match'),
-      );
-      const idempotencyKey = requestIdempotencyKey(request.headers);
-      return await withRequestOperationSignal(request, (signal) =>
-        this.cases.update({
-          ...context(request, workspaceId),
-          workflowId,
-          caseId,
-          request: body,
-          representationTag,
-          idempotencyKey,
-          signal,
-        }),
-      );
-    } catch (error) {
-      return throwWorkflowApplicationError(error);
-    }
+    const { workspaceId, workflowId, caseId } =
+      workflowInputCaseParamSchema.parse(params);
+    const representationTag = parseCaseIfMatch(
+      requestHeaderValue(request.headers, 'if-match'),
+    );
+    const idempotencyKey = requestIdempotencyKey(request.headers);
+    return await withRequestOperationSignal(request, (signal) =>
+      this.cases.update({
+        ...context(request, workspaceId),
+        workflowId,
+        caseId,
+        request: body,
+        representationTag,
+        idempotencyKey,
+        signal,
+      }),
+    );
   }
   @Delete(':caseId')
   @RateLimit('ordinary_mutation')
@@ -165,26 +153,22 @@ export class WorkflowInputCasesController {
     CsrfProtectionGuard,
   )
   public async delete(@Req() request: Request, @Param() params: unknown) {
-    try {
-      const { workspaceId, workflowId, caseId } =
-        workflowInputCaseParamSchema.parse(params);
-      const representationTag = parseCaseIfMatch(
-        requestHeaderValue(request.headers, 'if-match'),
-      );
-      const idempotencyKey = requestIdempotencyKey(request.headers);
-      return await withRequestOperationSignal(request, (signal) =>
-        this.cases.delete({
-          ...context(request, workspaceId),
-          workflowId,
-          caseId,
-          representationTag,
-          idempotencyKey,
-          signal,
-        }),
-      );
-    } catch (error) {
-      return throwWorkflowApplicationError(error);
-    }
+    const { workspaceId, workflowId, caseId } =
+      workflowInputCaseParamSchema.parse(params);
+    const representationTag = parseCaseIfMatch(
+      requestHeaderValue(request.headers, 'if-match'),
+    );
+    const idempotencyKey = requestIdempotencyKey(request.headers);
+    return await withRequestOperationSignal(request, (signal) =>
+      this.cases.delete({
+        ...context(request, workspaceId),
+        workflowId,
+        caseId,
+        representationTag,
+        idempotencyKey,
+        signal,
+      }),
+    );
   }
 }
 function context(request: WorkflowAuthoringRequest, workspaceId: string) {

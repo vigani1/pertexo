@@ -11,6 +11,7 @@ import {
   Query,
   Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { workflowIdParamSchema } from '@pertexo/contracts';
 import {
@@ -27,6 +28,10 @@ import {
   discussionParamsSchema,
   commentParamsSchema,
 } from './http.js';
+import { domainErrors } from '../../platform/http/problems/interceptor.js';
+import { collaborationFailure } from '../../problems/context/normalize.js';
+
+@UseInterceptors(domainErrors(collaborationFailure))
 @Controller('v1/workspaces/:workspaceId/workflows/:workflowId/comments')
 @RateLimit('authenticated_read')
 @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard)

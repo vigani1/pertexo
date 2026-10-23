@@ -8,6 +8,7 @@ import {
   Post,
   Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   publicationReviewParamsSchema,
@@ -33,10 +34,13 @@ import {
   WorkflowReviewGuard,
 } from '../http/guards.js';
 import { parseStrongIfMatch } from '../http/preconditions.js';
-import { throwWorkflowApplicationError } from '../../problems/authoring/workflows.js';
+
 import type { WorkflowAuthoringRequest } from '../types.js';
 import { PublicationReviewUseCase } from './use-case.js';
+import { domainErrors } from '../../platform/http/problems/interceptor.js';
+import { authoringFailure } from '../../problems/context/normalize.js';
 
+@UseInterceptors(domainErrors(authoringFailure))
 @Controller(
   'v1/workspaces/:workspaceId/workflows/:workflowId/publication-review',
 )
@@ -50,18 +54,14 @@ export class WorkflowPublicationReviewController {
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
   ) {
-    try {
-      const route = workflowIdParamSchema.parse(params);
-      return await withRequestOperationSignal(request, (signal) =>
-        this.controls.overview({
-          ...context(request, route.workspaceId),
-          workflowId: route.workflowId,
-          signal,
-        }),
-      );
-    } catch (error) {
-      return throwWorkflowApplicationError(error);
-    }
+    const route = workflowIdParamSchema.parse(params);
+    return await withRequestOperationSignal(request, (signal) =>
+      this.controls.overview({
+        ...context(request, route.workspaceId),
+        workflowId: route.workflowId,
+        signal,
+      }),
+    );
   }
   @Post()
   @HttpCode(201)
@@ -77,25 +77,22 @@ export class WorkflowPublicationReviewController {
     @Param() params: unknown,
     @Body() body: unknown,
   ) {
-    try {
-      const route = workflowIdParamSchema.parse(params);
-      return await withRequestOperationSignal(request, (signal) =>
-        this.controls.request({
-          ...context(request, route.workspaceId),
-          workflowId: route.workflowId,
-          request: body,
-          representationTag: parseStrongIfMatch(
-            requestHeaderValue(request.headers, 'if-match'),
-          ),
-          idempotencyKey: requestIdempotencyKey(request.headers),
-          signal,
-        }),
-      );
-    } catch (error) {
-      return throwWorkflowApplicationError(error);
-    }
+    const route = workflowIdParamSchema.parse(params);
+    return await withRequestOperationSignal(request, (signal) =>
+      this.controls.request({
+        ...context(request, route.workspaceId),
+        workflowId: route.workflowId,
+        request: body,
+        representationTag: parseStrongIfMatch(
+          requestHeaderValue(request.headers, 'if-match'),
+        ),
+        idempotencyKey: requestIdempotencyKey(request.headers),
+        signal,
+      }),
+    );
   }
 }
+@UseInterceptors(domainErrors(authoringFailure))
 @Controller('v1/workspaces/:workspaceId/publication-requests/:requestId')
 @RateLimit('authenticated_read')
 export class PublicationReviewController {
@@ -107,18 +104,14 @@ export class PublicationReviewController {
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
   ) {
-    try {
-      const route = publicationReviewParamsSchema.parse(params);
-      return await withRequestOperationSignal(request, (signal) =>
-        this.controls.read({
-          ...context(request, route.workspaceId),
-          reviewId: route.requestId,
-          signal,
-        }),
-      );
-    } catch (error) {
-      return throwWorkflowApplicationError(error);
-    }
+    const route = publicationReviewParamsSchema.parse(params);
+    return await withRequestOperationSignal(request, (signal) =>
+      this.controls.read({
+        ...context(request, route.workspaceId),
+        reviewId: route.requestId,
+        signal,
+      }),
+    );
   }
   @Post('decision')
   @HttpCode(200)
@@ -134,20 +127,16 @@ export class PublicationReviewController {
     @Param() params: unknown,
     @Body() body: unknown,
   ) {
-    try {
-      const route = publicationReviewParamsSchema.parse(params);
-      return await withRequestOperationSignal(request, (signal) =>
-        this.controls.decide({
-          ...context(request, route.workspaceId),
-          reviewId: route.requestId,
-          request: body,
-          idempotencyKey: requestIdempotencyKey(request.headers),
-          signal,
-        }),
-      );
-    } catch (error) {
-      return throwWorkflowApplicationError(error);
-    }
+    const route = publicationReviewParamsSchema.parse(params);
+    return await withRequestOperationSignal(request, (signal) =>
+      this.controls.decide({
+        ...context(request, route.workspaceId),
+        reviewId: route.requestId,
+        request: body,
+        idempotencyKey: requestIdempotencyKey(request.headers),
+        signal,
+      }),
+    );
   }
 }
 function context(request: WorkflowAuthoringRequest, workspaceId: string) {

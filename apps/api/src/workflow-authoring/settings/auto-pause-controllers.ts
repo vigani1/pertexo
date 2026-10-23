@@ -9,6 +9,7 @@ import {
   Put,
   Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { workflowIdParamSchema } from '@pertexo/contracts';
 import {
@@ -18,7 +19,7 @@ import {
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import { WorkflowAutoPauseUseCase } from './auto-pause.js';
-import { throwWorkflowApplicationError } from '../../problems/authoring/workflows.js';
+
 import {
   WorkflowReadGuard,
   WorkflowUpdateGuard,
@@ -27,11 +28,14 @@ import {
   WorkspaceAutoPauseReadGuard,
 } from '../http/guards.js';
 import type { WorkflowAuthoringRequest } from '../types.js';
+import { domainErrors } from '../../platform/http/problems/interceptor.js';
+import { authoringFailure } from '../../problems/context/normalize.js';
 
 const workspaceParamsSchema = workflowIdParamSchema
   .pick({ workspaceId: true })
   .strict();
 
+@UseInterceptors(domainErrors(authoringFailure))
 @Controller('v1/workspaces/:workspaceId/workflows/:workflowId')
 @RateLimit('authenticated_read')
 export class WorkflowAutoPauseController {
@@ -43,15 +47,11 @@ export class WorkflowAutoPauseController {
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
   ) {
-    try {
-      const { workspaceId, workflowId } = workflowIdParamSchema.parse(params);
-      return await this.controls.readWorkflow({
-        ...context(request, workspaceId),
-        workflowId,
-      });
-    } catch (error) {
-      return throwWorkflowApplicationError(error);
-    }
+    const { workspaceId, workflowId } = workflowIdParamSchema.parse(params);
+    return await this.controls.readWorkflow({
+      ...context(request, workspaceId),
+      workflowId,
+    });
   }
 
   @Put('auto-pause')
@@ -67,15 +67,11 @@ export class WorkflowAutoPauseController {
     @Param() params: unknown,
     @Body() body: unknown,
   ) {
-    try {
-      const { workspaceId, workflowId } = workflowIdParamSchema.parse(params);
-      return await this.controls.updateWorkflow({
-        ...command(request, workspaceId, body),
-        workflowId,
-      });
-    } catch (error) {
-      return throwWorkflowApplicationError(error);
-    }
+    const { workspaceId, workflowId } = workflowIdParamSchema.parse(params);
+    return await this.controls.updateWorkflow({
+      ...command(request, workspaceId, body),
+      workflowId,
+    });
   }
 
   @Post('resume')
@@ -91,18 +87,15 @@ export class WorkflowAutoPauseController {
     @Param() params: unknown,
     @Body() body: unknown,
   ) {
-    try {
-      const { workspaceId, workflowId } = workflowIdParamSchema.parse(params);
-      return await this.controls.resume({
-        ...command(request, workspaceId, body),
-        workflowId,
-      });
-    } catch (error) {
-      return throwWorkflowApplicationError(error);
-    }
+    const { workspaceId, workflowId } = workflowIdParamSchema.parse(params);
+    return await this.controls.resume({
+      ...command(request, workspaceId, body),
+      workflowId,
+    });
   }
 }
 
+@UseInterceptors(domainErrors(authoringFailure))
 @Controller('v1/workspaces/:workspaceId/auto-pause')
 @RateLimit('authenticated_read')
 export class WorkspaceAutoPauseController {
@@ -114,12 +107,8 @@ export class WorkspaceAutoPauseController {
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
   ) {
-    try {
-      const { workspaceId } = workspaceParamsSchema.parse(params);
-      return await this.controls.readWorkspace(context(request, workspaceId));
-    } catch (error) {
-      return throwWorkflowApplicationError(error);
-    }
+    const { workspaceId } = workspaceParamsSchema.parse(params);
+    return await this.controls.readWorkspace(context(request, workspaceId));
   }
 
   @Put()
@@ -135,14 +124,10 @@ export class WorkspaceAutoPauseController {
     @Param() params: unknown,
     @Body() body: unknown,
   ) {
-    try {
-      const { workspaceId } = workspaceParamsSchema.parse(params);
-      return await this.controls.updateWorkspace(
-        command(request, workspaceId, body),
-      );
-    } catch (error) {
-      return throwWorkflowApplicationError(error);
-    }
+    const { workspaceId } = workspaceParamsSchema.parse(params);
+    return await this.controls.updateWorkspace(
+      command(request, workspaceId, body),
+    );
   }
 }
 

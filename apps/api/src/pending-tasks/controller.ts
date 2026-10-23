@@ -9,6 +9,7 @@ import {
   Query,
   Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { z } from 'zod';
 import {
@@ -35,8 +36,12 @@ import { authenticatedRequestIdentifiers } from '../workspaces/request/authentic
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { PendingTaskReadGuard, ApprovalAudienceGuard } from './guards.js';
 import { PendingTaskService } from './service.js';
+import { domainErrors } from '../platform/http/problems/interceptor.js';
+import { resourceFailure } from '../problems/context/normalize.js';
+
 const workspaceParams = z.object({ workspaceId: z.uuid() }).strict();
 type TaskRequest = IdentityWorkspaceRequest & AbortableRequest;
+@UseInterceptors(domainErrors(resourceFailure))
 @Controller('v1/workspaces/:workspaceId/pending-tasks')
 @RateLimit('authenticated_read')
 @UseGuards(SessionAuthenticationGuard)

@@ -8,25 +8,17 @@ import type {
   WebhookAuthentication,
 } from '@pertexo/contracts';
 import { webhookCredentialSchema } from '@pertexo/contracts';
-import {
-  WebhookTriggerIdempotencyConflictError,
-  WebhookTriggerNotFoundError,
-  WebhookTriggerStateError,
-  type WebhookDeliveryRecord,
-  type WebhookTriggerDatabase,
-  type WorkflowTriggerHealth,
+import type {
+  WebhookDeliveryRecord,
+  WebhookTriggerDatabase,
+  WorkflowTriggerHealth,
 } from '@pertexo/database/triggers';
 import { generatePersistedId } from '@pertexo/database/platform';
 import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
 
 import {
-  applicationError,
-  throwApplicationError,
-} from '../../platform/http/index.js';
-import {
   decodeWebhookDeliveryCursor,
   encodeWebhookDeliveryCursor,
-  InvalidWebhookDeliveryCursorError,
 } from './cursor.js';
 
 export type WebhookCommandInput = Readonly<{
@@ -75,116 +67,102 @@ export class WebhookManagementService {
       workflowId: string;
     }>,
   ): Promise<Readonly<{ items: readonly WebhookTriggerHealthResponse[] }>> {
-    try {
-      const health = await this.database.getHealth(input);
-      return {
-        items: health
-          .filter(({ kind }) => kind === 'webhook')
-          .map(publicHealth),
-      };
-    } catch (error: unknown) {
-      return mapManagementError(error);
-    }
+    const health = await this.database.getHealth(input);
+    return {
+      items: health.filter(({ kind }) => kind === 'webhook').map(publicHealth),
+    };
   }
 
   /** ADR 045: one trigger's retained delivery metadata, newest first. */
   public async listDeliveries(
     input: WebhookDeliveryListInput,
   ): Promise<WebhookDeliveryListResponse> {
-    try {
-      const page = await this.database.listDeliveries({
-        workspaceId: input.workspaceId,
-        actorId: input.actorId,
-        workflowId: input.workflowId,
-        triggerId: input.triggerId,
-        ...(input.limit === undefined ? {} : { limit: input.limit }),
-        ...(input.after === undefined
-          ? {}
-          : {
-              after: decodeWebhookDeliveryCursor(input.after, input.triggerId),
-            }),
-      });
-      return {
-        items: page.items.map(publicDelivery),
-        nextCursor:
-          page.nextCursor === undefined
-            ? null
-            : encodeWebhookDeliveryCursor(input.triggerId, page.nextCursor),
-      };
-    } catch (error: unknown) {
-      return mapManagementError(error);
-    }
+    const page = await this.database.listDeliveries({
+      workspaceId: input.workspaceId,
+      actorId: input.actorId,
+      workflowId: input.workflowId,
+      triggerId: input.triggerId,
+      ...(input.limit === undefined ? {} : { limit: input.limit }),
+      ...(input.after === undefined
+        ? {}
+        : {
+            after: decodeWebhookDeliveryCursor(input.after, input.triggerId),
+          }),
+    });
+    return {
+      items: page.items.map(publicDelivery),
+      nextCursor:
+        page.nextCursor === undefined
+          ? null
+          : encodeWebhookDeliveryCursor(input.triggerId, page.nextCursor),
+    };
   }
 
-  public provision(
+  public async provision(
     input: WebhookCommandInput,
   ): Promise<WebhookManagementCommandResponse> {
-    return this.mapCommandErrors(() => this.provisionWebhook(input));
+    return this.provisionWebhook(input);
   }
 
-  public configureAuthentication(
+  public async configureAuthentication(
     input: WebhookCommandInput &
       Readonly<{ authentication: WebhookAuthentication }>,
   ): Promise<WebhookManagementCommandResponse> {
-    return this.mapCommandErrors(async () => {
-      const signal = commandSignal(input);
-      const endpointBytes = this.generateMaterial();
-      const secretBytes = this.generateMaterial();
-      try {
-        signal.throwIfAborted();
-        const endpointKey = endpointBytes.toString('base64url');
-        const signingSecret = secretBytes.toString('base64url');
-        const id = this.generateId();
-        const sealed = await this.encryption.seal(
-          secretBytes,
-          secretContext(input, id),
-          signal,
-        );
-        signal.throwIfAborted();
-        const result = await this.database.configureAuthentication({
-          ...commandBase(
-            'configureAuthentication',
-            input,
-            JSON.stringify(input.authentication),
-          ),
-          authentication: input.authentication,
-          endpointKeyHash: sha256(endpointKey),
-          secret: { id, ...sealed },
-        });
-        const trigger = publicHealth(result.trigger);
-        if (result.replayed) return { trigger, replayed: true };
-        return {
-          trigger,
-          replayed: false,
-          ...(result.rotated
-            ? {
-                endpointKey,
-                ...(input.authentication.mode === 'secret_url'
-                  ? {}
-                  : { signingSecret }),
-              }
-            : {}),
-        };
-      } finally {
-        endpointBytes.fill(0);
-        secretBytes.fill(0);
-      }
-    });
+    const signal = commandSignal(input);
+    const endpointBytes = this.generateMaterial();
+    const secretBytes = this.generateMaterial();
+    try {
+      signal.throwIfAborted();
+      const endpointKey = endpointBytes.toString('base64url');
+      const signingSecret = secretBytes.toString('base64url');
+      const id = this.generateId();
+      const sealed = await this.encryption.seal(
+        secretBytes,
+        secretContext(input, id),
+        signal,
+      );
+      signal.throwIfAborted();
+      const result = await this.database.configureAuthentication({
+        ...commandBase(
+          'configureAuthentication',
+          input,
+          JSON.stringify(input.authentication),
+        ),
+        authentication: input.authentication,
+        endpointKeyHash: sha256(endpointKey),
+        secret: { id, ...sealed },
+      });
+      const trigger = publicHealth(result.trigger);
+      if (result.replayed) return { trigger, replayed: true };
+      return {
+        trigger,
+        replayed: false,
+        ...(result.rotated
+          ? {
+              endpointKey,
+              ...(input.authentication.mode === 'secret_url'
+                ? {}
+                : { signingSecret }),
+            }
+          : {}),
+      };
+    } finally {
+      endpointBytes.fill(0);
+      secretBytes.fill(0);
+    }
   }
 
-  public rotateEndpoint(
+  public async rotateEndpoint(
     input: WebhookCommandInput,
   ): Promise<WebhookManagementCommandResponse> {
-    return this.mapCommandErrors(() => this.rotateWebhookEndpoint(input));
+    return this.rotateWebhookEndpoint(input);
   }
 
   public rotateSecret(
     input: WebhookRotateSecretInput,
   ): Promise<WebhookManagementCommandResponse> {
     const endpointKey = webhookCredentialSchema.parse(input.endpointKey);
-    return this.mapCommandErrors(() =>
-      this.rotateWebhookSecret(input, endpointKey),
-    );
+    return this.rotateWebhookSecret(input, endpointKey);
   }
 
   private async provisionWebhook(
@@ -300,14 +278,6 @@ export class WebhookManagementService {
       secretBytes?.fill(0);
     }
   }
-
-  private async mapCommandErrors<T>(work: () => Promise<T>): Promise<T> {
-    try {
-      return await work();
-    } catch (error: unknown) {
-      return mapManagementError(error);
-    }
-  }
 }
 
 type Operation =
@@ -340,39 +310,6 @@ function secretContext(input: WebhookCommandInput, secretVersionId: string) {
     triggerId: input.triggerId,
     secretVersionId,
   };
-}
-
-const TRIGGER_STATE_COPY = {
-  setting_up:
-    'This webhook is still being set up after publishing. Try again in a few seconds.',
-  provisioned:
-    'This webhook already has an endpoint. Replace its address to get a new one.',
-  unavailable:
-    'This webhook can’t take an endpoint while its trigger is off or failing.',
-} as const;
-
-function mapManagementError(error: unknown): never {
-  if (error instanceof InvalidWebhookDeliveryCursorError)
-    return throwApplicationError(
-      applicationError('request.invalid', {
-        safeDetail: 'The delivery cursor is invalid.',
-      }),
-    );
-  if (error instanceof WebhookTriggerNotFoundError)
-    return throwApplicationError(applicationError('resource.not_found'));
-  if (error instanceof WebhookTriggerStateError)
-    return throwApplicationError(
-      applicationError('workspace.conflict', {
-        safeDetail: TRIGGER_STATE_COPY[error.reason],
-      }),
-    );
-  if (error instanceof WebhookTriggerIdempotencyConflictError)
-    return throwApplicationError(
-      applicationError('request.idempotency_conflict', {
-        safeDetail: 'The idempotency key was already used for another request.',
-      }),
-    );
-  throw error;
 }
 
 function sha256(value: string): string {

@@ -9,6 +9,7 @@ import {
   Req,
   Res,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { CsrfProtectionGuard } from '../../workspaces/index.js';
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
@@ -26,11 +27,14 @@ import {
   type WorkflowAuthoringRequest,
   type WorkflowResponse,
 } from '../types.js';
+import { domainErrors } from '../../platform/http/problems/interceptor.js';
+import { authoringFailure } from '../../problems/context/normalize.js';
 
 const workspaceParams = workflowIdParamSchema
   .pick({ workspaceId: true })
   .strict();
 
+@UseInterceptors(domainErrors(authoringFailure))
 @Controller('v1/workspaces/:workspaceId/workflows')
 export class WorkflowPortabilityController {
   public constructor(

@@ -1,3 +1,5 @@
+import { resourceFailure } from '../../src/problems/context/normalize.js';
+import { problemResult } from '../support/problem.js';
 import { expect, it, vi } from 'vitest';
 import { WorkspaceVariablesService } from '../../src/workspace-variables/service.js';
 import {
@@ -28,8 +30,11 @@ function fixture() {
 it('refuses an invalid continuation before entering storage', async () => {
   const { service, store } = fixture();
   await expect(
-    Promise.resolve().then(() =>
-      service.usage({ ...scope, name: 'RATE', limit: 25, after: 'e30' }),
+    problemResult(
+      Promise.resolve().then(() =>
+        service.usage({ ...scope, name: 'RATE', limit: 25, after: 'e30' }),
+      ),
+      resourceFailure,
     ),
   ).rejects.toMatchObject({ code: 'request.invalid' });
   expect(store.usage).not.toHaveBeenCalled();
@@ -43,12 +48,15 @@ it.each([
     const { service, store } = fixture();
     store.replace.mockRejectedValue(error);
     await expect(
-      service.replace({
-        ...scope,
-        expectedRevision: 1,
-        values: { RATE: 20 },
-        idempotencyKey: 'test-key',
-      }),
+      problemResult(
+        service.replace({
+          ...scope,
+          expectedRevision: 1,
+          values: { RATE: 20 },
+          idempotencyKey: 'test-key',
+        }),
+        resourceFailure,
+      ),
     ).rejects.toMatchObject({ code });
   },
 );
@@ -56,7 +64,10 @@ it('rejects a stale usage continuation with a restartable problem', async () => 
   const { service, store } = fixture();
   store.usage.mockRejectedValue(new WorkspaceVariableUsageChangedError());
   await expect(
-    service.usage({ ...scope, name: 'RATE', limit: 25 }),
+    problemResult(
+      service.usage({ ...scope, name: 'RATE', limit: 25 }),
+      resourceFailure,
+    ),
   ).rejects.toMatchObject({ code: 'variables.usage_changed' });
 });
 it('keeps a bounded empty page continuation instead of inventing an unused result', async () => {

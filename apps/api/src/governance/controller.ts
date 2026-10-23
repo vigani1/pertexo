@@ -1,5 +1,6 @@
 import {
   Body,
+  Inject,
   Controller,
   Get,
   Header,
@@ -11,6 +12,7 @@ import {
   Req,
   Res,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import {
@@ -35,14 +37,19 @@ import { decodeCsvDownloadRequest } from '../platform/http/csv/request.js';
 import { sendCsvDownload } from '../platform/http/csv/response.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { GovernanceGuard } from './guard.js';
-import { GovernanceService } from './service.js';
+import type { GovernanceStore } from '@pertexo/database/governance';
+import { GOVERNANCE_STORE } from './tokens.js';
+import { domainErrors } from '../platform/http/problems/interceptor.js';
+import { resourceFailure } from '../problems/context/normalize.js';
+
 type Request = IdentityWorkspaceRequest & AbortableRequest;
+@UseInterceptors(domainErrors(resourceFailure))
 @Controller('v1/workspaces/:workspaceId/governance')
 @UseGuards(SessionAuthenticationGuard, GovernanceGuard)
 @RateLimit('authenticated_read')
 export class GovernanceController {
   constructor(
-    private readonly governance: GovernanceService,
+    @Inject(GOVERNANCE_STORE) private readonly governance: GovernanceStore,
     private readonly exports: CsvExportAdmission,
     private readonly csrf: CsrfProtectionGuard,
   ) {}
@@ -61,25 +68,21 @@ export class GovernanceController {
   ) {
     const query = auditQuerySchema.parse(raw);
     return withRequestOperationSignal(request, (signal) =>
-      this.governance.perform(() =>
-        this.governance.store.list({
-          ...this.scope(request, workspace),
-          query,
-          signal,
-        }),
-      ),
+      this.governance.list({
+        ...this.scope(request, workspace),
+        query,
+        signal,
+      }),
     );
   }
   @Get('settings')
   @Header('Cache-Control', 'private, no-store')
   settings(@Req() request: Request, @Param('workspaceId') workspace: unknown) {
     return withRequestOperationSignal(request, (signal) =>
-      this.governance.perform(() =>
-        this.governance.store.settings({
-          ...this.scope(request, workspace),
-          signal,
-        }),
-      ),
+      this.governance.settings({
+        ...this.scope(request, workspace),
+        signal,
+      }),
     );
   }
   @Put('settings')
@@ -93,14 +96,12 @@ export class GovernanceController {
   ) {
     const input = governanceUpdateSchema.parse(raw);
     return withRequestOperationSignal(request, (signal) =>
-      this.governance.perform(() =>
-        this.governance.store.configure({
-          ...this.scope(request, workspace),
-          ...input,
-          idempotencyKey: requestIdempotencyKey(request.headers),
-          signal,
-        }),
-      ),
+      this.governance.configure({
+        ...this.scope(request, workspace),
+        ...input,
+        idempotencyKey: requestIdempotencyKey(request.headers),
+        signal,
+      }),
     );
   }
   @Post('audit/export')
@@ -122,14 +123,12 @@ export class GovernanceController {
     await this.exports.run(scope.workspaceId, () =>
       sendCsvDownload(
         (signal, consume) =>
-          this.governance.perform(() =>
-            this.governance.store.exportCsv({
-              ...scope,
-              query,
-              signal,
-              consume,
-            }),
-          ),
+          this.governance.exportCsv({
+            ...scope,
+            query,
+            signal,
+            consume,
+          }),
         request,
         reply,
       ),

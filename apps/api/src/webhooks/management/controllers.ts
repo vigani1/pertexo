@@ -8,6 +8,7 @@ import {
   Query,
   Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   webhookDeliveryListQuerySchema,
@@ -29,6 +30,8 @@ import {
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import { WebhookReadGuard, WebhookUpdateGuard } from './guards.js';
 import { WebhookManagementService } from './service.js';
+import { domainErrors } from '../../platform/http/problems/interceptor.js';
+import { authoringFailure } from '../../problems/context/normalize.js';
 
 const routeShape = { workspaceId: z.uuid(), workflowId: z.uuid() };
 const routeSchema = z.object(routeShape).strict().readonly();
@@ -45,6 +48,7 @@ type Request = IdentityWorkspaceRequest &
     }>;
   }>;
 
+@UseInterceptors(domainErrors(authoringFailure))
 @Controller('v1/workspaces/:workspaceId/workflows/:workflowId/triggers')
 @RateLimit('trigger_mutation')
 export class WebhookManagementController {

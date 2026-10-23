@@ -1,3 +1,4 @@
+import { problemResult } from '../support/problem.js';
 import {
   ScheduleTriggerError,
   type ScheduleTriggerDatabase,
@@ -155,13 +156,15 @@ describe('schedule management service', () => {
     const database = setup();
     const service = new ScheduleManagementService(database);
     database.list.mockRejectedValueOnce(new ScheduleTriggerError('not_found'));
-    await expect(service.list(input)).rejects.toMatchObject({
+    await expect(problemResult(service.list(input))).rejects.toMatchObject({
       code: 'resource.not_found',
     });
     database.setEnabled.mockRejectedValueOnce(
       new ScheduleTriggerError('idempotency_conflict'),
     );
-    await expect(service.setEnabled(input, true)).rejects.toMatchObject({
+    await expect(
+      problemResult(service.setEnabled(input, true)),
+    ).rejects.toMatchObject({
       code: 'request.idempotency_conflict',
     });
   });

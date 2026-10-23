@@ -1,12 +1,15 @@
+import { toProblem } from '../../src/problems/registry.js';
+import { runFailure } from '../../src/problems/context/normalize.js';
+import { throwApplicationError } from '../../src/platform/http/application-error.js';
 import { applicationError } from '../../src/platform/http/index.js';
-import { throwWorkflowRunError } from '../../src/workflow-runs/errors.js';
+
 import type { ApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
 import type { WorkflowRunPersistence } from '../../src/workflow-runs/ports.js';
 import {
-  WorkflowRunIdempotencyConflictError,
-  WorkflowRunNotCancelableError,
+  IdempotencyRequestConflictError,
+  ExecutionStateConflictError,
   WorkflowRunNotExecutableError,
-} from '../../src/workflow-runs/errors.js';
+} from '@pertexo/database/runs';
 import { WorkflowRunNotFoundError } from '../../src/workflow-runs/use-cases.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -223,10 +226,14 @@ describe('workflow runs real Nest HTTP stack', () => {
     expect(noCsrf.statusCode).toBe(403);
     expect(fixture.recover).not.toHaveBeenCalled();
     fixture.recover.mockImplementation(() =>
-      throwWorkflowRunError(
-        applicationError('run.recovery_unavailable', {
-          details: { reason: 'effects_acknowledgement_required' },
-        }),
+      throwApplicationError(
+        toProblem(
+          runFailure(
+            applicationError('run.recovery_unavailable', {
+              details: { reason: 'effects_acknowledgement_required' },
+            }),
+          ),
+        ),
       ),
     );
     const rejected = await application.inject({
@@ -450,12 +457,12 @@ describe('workflow runs real Nest HTTP stack', () => {
 
   it('maps workflow domain failures to exact public status and problem bodies', async () => {
     const { application, fixture } = await start();
-    fixture.start.mockRejectedValueOnce(
-      new WorkflowRunIdempotencyConflictError(),
-    );
+    fixture.start.mockRejectedValueOnce(new IdempotencyRequestConflictError());
     fixture.replay.mockRejectedValueOnce(new WorkflowRunNotExecutableError());
     fixture.get.mockRejectedValueOnce(new WorkflowRunNotFoundError());
-    fixture.cancel.mockRejectedValueOnce(new WorkflowRunNotCancelableError());
+    fixture.cancel.mockRejectedValueOnce(
+      new ExecutionStateConflictError('execution.run_terminal'),
+    );
 
     const startResponse = await application.inject({
       method: 'POST',

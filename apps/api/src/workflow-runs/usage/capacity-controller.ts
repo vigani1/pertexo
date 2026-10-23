@@ -1,4 +1,12 @@
-import { Controller, Get, Header, Param, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Header,
+  Param,
+  Req,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { workflowRunListParamsSchema } from '@pertexo/contracts';
 
 import { SessionAuthenticationGuard } from '../../workspaces/index.js';
@@ -15,7 +23,10 @@ import {
   type WorkflowRunsRequest,
 } from '../http/request-context.js';
 import { GetUsageCapacityUseCase } from './capacity.js';
+import { domainErrors } from '../../platform/http/problems/interceptor.js';
+import { runFailure } from '../../problems/context/normalize.js';
 
+@UseInterceptors(domainErrors(runFailure))
 @Controller('v1/workspaces/:workspaceId')
 @RateLimit('authenticated_read')
 export class UsageCapacityController {

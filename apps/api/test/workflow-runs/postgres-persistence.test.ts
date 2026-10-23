@@ -1,3 +1,5 @@
+import { problemResult } from '../support/problem.js';
+import { runFailure } from '../../src/problems/context/normalize.js';
 import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
@@ -12,12 +14,7 @@ import { WorkflowPublishedVersionConflictError } from '@pertexo/database/runs';
 import { createInitialCheckpoint } from '@pertexo/execution';
 import { createPostgresWorkflowRunPersistence } from '../../src/workflow-runs/postgres-persistence.js';
 import { usageCapacitySnapshot } from './usage/capacity.fixture.js';
-import {
-  WorkflowRunIdempotencyConflictError,
-  WorkflowRunNotCancelableError,
-  WorkflowRunNotExecutableError,
-} from '../../src/workflow-runs/errors.js';
-import { WorkflowRunNotFoundError } from '../../src/workflow-runs/use-cases.js';
+
 import {
   ExecutionStateConflictError,
   IdempotencyRequestConflictError,
@@ -468,7 +465,10 @@ describe('PostgreSQL workflow run persistence adapter', () => {
       databaseWith({ usageCapacity }),
     );
     await expect(
-      adapter.persistence.usageCapacity({ workspaceId }),
+      problemResult(
+        adapter.persistence.usageCapacity({ workspaceId }),
+        runFailure,
+      ),
     ).rejects.toMatchObject({ code: 'resource.not_found' });
   });
 
@@ -482,7 +482,9 @@ describe('PostgreSQL workflow run persistence adapter', () => {
       adapterConfig,
       databaseWith({ start: vi.fn().mockRejectedValue(failure) }),
     );
-    await expect(invokePersistence(adapter, 'start')).rejects.toMatchObject({
+    await expect(
+      problemResult(invokePersistence(adapter, 'start'), runFailure),
+    ).rejects.toMatchObject({
       code,
     });
   });
@@ -500,8 +502,8 @@ describe('PostgreSQL workflow run persistence adapter', () => {
       );
 
       await expect(
-        invokePersistence(adapter, operation),
-      ).rejects.toBeInstanceOf(WorkflowRunNotFoundError);
+        problemResult(invokePersistence(adapter, operation), runFailure),
+      ).rejects.toMatchObject({ code: 'resource.not_found' });
     },
   );
 
@@ -509,14 +511,8 @@ describe('PostgreSQL workflow run persistence adapter', () => {
     'maps database not-executable and idempotency errors from %s',
     async (operation) => {
       for (const [failure, expected] of [
-        [
-          new DatabaseWorkflowRunNotExecutableError(),
-          WorkflowRunNotExecutableError,
-        ],
-        [
-          new IdempotencyRequestConflictError(),
-          WorkflowRunIdempotencyConflictError,
-        ],
+        [new DatabaseWorkflowRunNotExecutableError(), 'workflow.not_published'],
+        [new IdempotencyRequestConflictError(), 'request.idempotency_conflict'],
       ] as const) {
         const database = databaseWith({
           [operation]: vi.fn().mockRejectedValue(failure),
@@ -527,8 +523,8 @@ describe('PostgreSQL workflow run persistence adapter', () => {
         );
 
         await expect(
-          invokePersistence(adapter, operation),
-        ).rejects.toBeInstanceOf(expected);
+          problemResult(invokePersistence(adapter, operation), runFailure),
+        ).rejects.toMatchObject({ code: expected });
       }
     },
   );
@@ -549,7 +545,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
         );
 
         await expect(
-          invokePersistence(adapter, operation),
+          problemResult(invokePersistence(adapter, operation), runFailure),
         ).rejects.toMatchObject({ code: expected });
       }
     },
@@ -569,9 +565,9 @@ describe('PostgreSQL workflow run persistence adapter', () => {
       database,
     );
 
-    await expect(invokePersistence(adapter, 'cancel')).rejects.toBeInstanceOf(
-      WorkflowRunNotCancelableError,
-    );
+    await expect(
+      problemResult(invokePersistence(adapter, 'cancel'), runFailure),
+    ).rejects.toMatchObject({ code: 'run.not_cancelable' });
   });
 
   it('forwards a statistics read and returns its snapshot unchanged', async () => {
@@ -690,13 +686,16 @@ describe('PostgreSQL workflow run persistence adapter', () => {
     ).resolves.toEqual({ kind: 'inline', value: { rows: 42 } });
     expect(readInput).toHaveBeenCalledWith({ actorId, workspaceId, runId });
     await expect(
-      adapter.persistence.readNodeRunOutput({
-        actorId,
-        workspaceId,
-        runId,
-        nodeRunId: runId,
-      }),
-    ).rejects.toBeInstanceOf(WorkflowRunNotFoundError);
+      problemResult(
+        adapter.persistence.readNodeRunOutput({
+          actorId,
+          workspaceId,
+          runId,
+          nodeRunId: runId,
+        }),
+        runFailure,
+      ),
+    ).rejects.toMatchObject({ code: 'resource.not_found' });
   });
 
   it('forwards an accepted replay and publishes its durable wake-up hint', async () => {

@@ -10,6 +10,7 @@ import {
   Query,
   Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { z } from 'zod';
 import {
@@ -27,10 +28,13 @@ import {
   WorkflowUpdateGuard,
   WorkflowPauseDefaultGuard,
 } from '../http/guards.js';
-import { throwWorkflowApplicationError } from '../../problems/authoring/workflows.js';
+
 import type { WorkflowAuthoringRequest } from '../types.js';
 import { WorkflowPromotionUseCase } from './use-case.js';
+import { domainErrors } from '../../platform/http/problems/interceptor.js';
+import { authoringFailure } from '../../problems/context/normalize.js';
 
+@UseInterceptors(domainErrors(authoringFailure))
 @Controller('v1/workspaces/:workspaceId/promotions')
 @RateLimit('authenticated_read')
 @UseGuards(SessionAuthenticationGuard, WorkflowUpdateGuard)
@@ -42,13 +46,9 @@ export class WorkflowPromotionController {
     @Req() request: WorkflowAuthoringRequest,
     @Param('workspaceId') workspaceId: string,
   ) {
-    try {
-      return await withRequestOperationSignal(request, (signal) =>
-        this.controls.settings({ ...context(request, workspaceId), signal }),
-      );
-    } catch (error) {
-      return throwWorkflowApplicationError(error);
-    }
+    return await withRequestOperationSignal(request, (signal) =>
+      this.controls.settings({ ...context(request, workspaceId), signal }),
+    );
   }
   @Header('Cache-Control', 'private, no-store')
   @Put('settings')
@@ -60,18 +60,14 @@ export class WorkflowPromotionController {
     @Param('workspaceId') workspaceId: string,
     @Body() body: unknown,
   ) {
-    try {
-      return await withRequestOperationSignal(request, (signal) =>
-        this.controls.setTarget({
-          ...context(request, workspaceId),
-          request: body,
-          idempotencyKey: requestIdempotencyKey(request.headers),
-          signal,
-        }),
-      );
-    } catch (error) {
-      return throwWorkflowApplicationError(error);
-    }
+    return await withRequestOperationSignal(request, (signal) =>
+      this.controls.setTarget({
+        ...context(request, workspaceId),
+        request: body,
+        idempotencyKey: requestIdempotencyKey(request.headers),
+        signal,
+      }),
+    );
   }
   @Header('Cache-Control', 'private, no-store')
   @Get('candidates')
@@ -80,17 +76,13 @@ export class WorkflowPromotionController {
     @Param('workspaceId') workspaceId: string,
     @Query() query: unknown,
   ) {
-    try {
-      return await withRequestOperationSignal(request, (signal) =>
-        this.controls.candidates({
-          ...context(request, workspaceId),
-          request: query,
-          signal,
-        }),
-      );
-    } catch (error) {
-      return throwWorkflowApplicationError(error);
-    }
+    return await withRequestOperationSignal(request, (signal) =>
+      this.controls.candidates({
+        ...context(request, workspaceId),
+        request: query,
+        signal,
+      }),
+    );
   }
   @Header('Cache-Control', 'private, no-store')
   @Get('history')
@@ -99,17 +91,13 @@ export class WorkflowPromotionController {
     @Param('workspaceId') workspaceId: string,
     @Query() query: unknown,
   ) {
-    try {
-      return await withRequestOperationSignal(request, (signal) =>
-        this.controls.history({
-          ...context(request, workspaceId),
-          request: query,
-          signal,
-        }),
-      );
-    } catch (error) {
-      return throwWorkflowApplicationError(error);
-    }
+    return await withRequestOperationSignal(request, (signal) =>
+      this.controls.history({
+        ...context(request, workspaceId),
+        request: query,
+        signal,
+      }),
+    );
   }
   @Header('Cache-Control', 'private, no-store')
   @Post('preview')
@@ -121,17 +109,13 @@ export class WorkflowPromotionController {
     @Param('workspaceId') workspaceId: string,
     @Body() body: unknown,
   ) {
-    try {
-      return await withRequestOperationSignal(request, (signal) =>
-        this.controls.preview({
-          ...context(request, workspaceId),
-          request: body,
-          signal,
-        }),
-      );
-    } catch (error) {
-      return throwWorkflowApplicationError(error);
-    }
+    return await withRequestOperationSignal(request, (signal) =>
+      this.controls.preview({
+        ...context(request, workspaceId),
+        request: body,
+        signal,
+      }),
+    );
   }
   @Header('Cache-Control', 'private, no-store')
   @Post('apply')
@@ -143,18 +127,14 @@ export class WorkflowPromotionController {
     @Param('workspaceId') workspaceId: string,
     @Body() body: unknown,
   ) {
-    try {
-      return await withRequestOperationSignal(request, (signal) =>
-        this.controls.apply({
-          ...context(request, workspaceId),
-          request: body,
-          idempotencyKey: requestIdempotencyKey(request.headers),
-          signal,
-        }),
-      );
-    } catch (error) {
-      return throwWorkflowApplicationError(error);
-    }
+    return await withRequestOperationSignal(request, (signal) =>
+      this.controls.apply({
+        ...context(request, workspaceId),
+        request: body,
+        idempotencyKey: requestIdempotencyKey(request.headers),
+        signal,
+      }),
+    );
   }
 }
 function context(request: WorkflowAuthoringRequest, workspaceIdInput: string) {

@@ -1,3 +1,4 @@
+import { errorRegistration } from '../../platform/http/problems/registry.js';
 import {
   ConnectionConflictError,
   ConnectionIdempotencyConflictError,
@@ -12,86 +13,75 @@ import {
   ConnectionSecretEncryptionError,
   SecureHttpError,
 } from '@pertexo/integrations/server';
-import { z } from 'zod';
-
-import {
-  applicationError,
-  isApplicationError,
-  type ApplicationError,
-} from '../../platform/http/index.js';
-import { AuthorizationError } from '../../authorization/index.js';
-import { InvalidAuthenticatedWorkspaceContextError } from '../../workspaces/request/authenticated-context-error.js';
+import { applicationError } from '../../platform/http/index.js';
 import { InvalidConnectionCursorError } from '../../connections/cursor.js';
 
-export function mapConnectionError(error: unknown): ApplicationError {
-  if (error instanceof InvalidAuthenticatedWorkspaceContextError)
-    return applicationError('request.invalid', { safeDetail: error.message });
-  if (error instanceof InvalidConnectionCursorError)
+export const connectionProblems = [
+  errorRegistration(InvalidConnectionCursorError, () => {
     return applicationError('request.invalid', {
       safeDetail: 'The connection cursor is invalid.',
     });
-  if (error instanceof z.ZodError)
-    return applicationError('request.invalid', {
-      safeDetail: 'The connection request is invalid.',
-    });
-  if (error instanceof AuthorizationError)
-    return applicationError(error.code, { safeDetail: error.message });
-  if (error instanceof ConnectionNotFoundError)
+  }),
+  errorRegistration(ConnectionNotFoundError, () => {
     return applicationError('resource.not_found');
-  if (
-    error instanceof FailureNotificationDestinationError &&
-    error.code === 'not_found'
-  )
-    return applicationError('resource.not_found');
-  if (
-    error instanceof FailureNotificationDestinationError &&
-    error.code === 'idempotency_conflict'
-  )
-    return applicationError('request.idempotency_conflict', {
-      safeDetail: 'The idempotency key was already used for another request.',
-    });
-  if (error instanceof FailureNotificationDestinationError)
+  }),
+  errorRegistration(FailureNotificationDestinationError, (error) => {
+    if (error.code === 'not_found') {
+      return applicationError('resource.not_found');
+    }
+    if (error.code === 'idempotency_conflict') {
+      return applicationError('request.idempotency_conflict', {
+        safeDetail: 'The idempotency key was already used for another request.',
+      });
+    }
     return applicationError('connection.conflict', {
       safeDetail: 'The destination conflicts with current state.',
     });
-  if (error instanceof ConnectionIdempotencyConflictError)
+  }),
+  errorRegistration(ConnectionIdempotencyConflictError, () => {
     return applicationError('request.idempotency_conflict', {
       safeDetail: 'The idempotency key was already used for another request.',
     });
-  if (error instanceof ConnectionSharingRevisionConflictError)
+  }),
+  errorRegistration(ConnectionSharingRevisionConflictError, () => {
     return applicationError('connection.conflict', {
       safeDetail:
         'Sharing changed since you opened it. Reload, then try again.',
     });
-  if (error instanceof ConnectionConflictError)
+  }),
+  errorRegistration(ConnectionConflictError, () => {
     return applicationError('connection.conflict', {
       safeDetail:
         'A connection with this name already exists for this service. Choose another name.',
     });
-  if (error instanceof ConnectionSecretVersionConflictError)
+  }),
+  errorRegistration(ConnectionSecretVersionConflictError, () => {
     return applicationError('connection.conflict', {
       safeDetail:
         'The connection’s secret changed since you opened it. Reload, then try again.',
     });
-  if (error instanceof ConnectionTestInProgressError)
+  }),
+  errorRegistration(ConnectionTestInProgressError, () => {
     return applicationError('connection.conflict', {
       safeDetail:
         'A test of this connection is already running. Wait for it to finish.',
     });
-  if (error instanceof ConnectionUnavailableError)
+  }),
+  errorRegistration(ConnectionUnavailableError, () => {
     return applicationError('connection.revoked', {
       safeDetail: 'The connection is not available.',
     });
-  if (error instanceof ConnectionSecretEncryptionError)
+  }),
+  errorRegistration(ConnectionSecretEncryptionError, (error) => {
     return applicationError('provider.unavailable', {
       safeDetail: 'Credential protection is temporarily unavailable.',
       cause: error,
     });
-  if (error instanceof SecureHttpError)
+  }),
+  errorRegistration(SecureHttpError, (error) => {
     return applicationError('provider.unavailable', {
       safeDetail: 'The connection test could not be dispatched safely.',
       cause: error,
     });
-  if (isApplicationError(error)) return error;
-  return applicationError('internal.unexpected', { cause: error });
-}
+  }),
+];

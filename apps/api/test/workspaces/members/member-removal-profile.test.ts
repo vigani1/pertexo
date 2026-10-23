@@ -1,3 +1,5 @@
+import { toProblem } from '../../../src/problems/registry.js';
+import { workspaceFailure } from '../../../src/problems/context/normalize.js';
 import {
   UserProfileCommandConflictError,
   WorkspaceMemberRemovalCommandConflictError,
@@ -13,7 +15,6 @@ import {
   UpdateUserProfileUseCase,
   UserController,
   WorkspaceMembersController,
-  mapIdentityWorkspaceError,
   type ChangeWorkspaceMemberRoleUseCase,
   type CookieResponse,
 } from '../../../src/workspaces/index.js';
@@ -151,8 +152,13 @@ describe('member removal and self profile commands', () => {
     ['actor_inactive', 'auth.forbidden'],
   ] as const)('maps removal %s to %s', (reason, code) => {
     expect(
-      mapIdentityWorkspaceError(
-        new WorkspaceMemberRemovalCommandConflictError(reason, 'unsafe detail'),
+      toProblem(
+        workspaceFailure(
+          new WorkspaceMemberRemovalCommandConflictError(
+            reason,
+            'unsafe detail',
+          ),
+        ),
       ),
     ).toMatchObject({ code });
   });
@@ -163,8 +169,10 @@ describe('member removal and self profile commands', () => {
     ['user_inactive', 'auth.unauthenticated'],
   ] as const)('maps profile %s to %s', (reason, code) => {
     expect(
-      mapIdentityWorkspaceError(
-        new UserProfileCommandConflictError(reason, 'unsafe detail'),
+      toProblem(
+        workspaceFailure(
+          new UserProfileCommandConflictError(reason, 'unsafe detail'),
+        ),
       ),
     ).toMatchObject({ code });
   });

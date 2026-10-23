@@ -1,3 +1,4 @@
+import { throwApplicationError } from '../../platform/http/application-error.js';
 import { AutomationAuthenticationGuard } from '../../authentication/automation/guard.js';
 import {
   Body,
@@ -12,6 +13,7 @@ import {
   Req,
   Res,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   lastRunEventIdHeaderSchema,
@@ -51,7 +53,7 @@ import {
 } from '../../platform/observability/sse-visibility-metrics.js';
 import { prepareSseResponse } from '../../platform/http/sse-response.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
-import { throwWorkflowRunError } from '../errors.js';
+
 import {
   WorkflowRunCancelGuard,
   WorkflowRunReplayGuard,
@@ -69,7 +71,10 @@ import {
   StartWorkflowRunUseCase,
   StreamRunEventsUseCase,
 } from '../use-cases.js';
+import { domainErrors } from '../../platform/http/problems/interceptor.js';
+import { runFailure } from '../../problems/context/normalize.js';
 
+@UseInterceptors(domainErrors(runFailure))
 @Controller('v1/workspaces/:workspaceId')
 @RateLimit('authenticated_read')
 export class WorkflowRunsController {
@@ -318,7 +323,7 @@ function sessionReauthorization(
   request: WorkflowRunsRequest,
 ): NonNullable<WorkflowRunsRequest['reauthorizeIdentitySession']> {
   if (request.reauthorizeIdentitySession === undefined) {
-    return throwWorkflowRunError(applicationError('auth.unauthenticated'));
+    return throwApplicationError(applicationError('auth.unauthenticated'));
   }
   return request.reauthorizeIdentitySession;
 }

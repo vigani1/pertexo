@@ -1,18 +1,8 @@
 import {
-  ExecutionStateConflictError,
-  WorkflowRecoveryUnavailableError,
-  IdempotencyRequestConflictError,
-  WorkspaceRunQuotaExceededError,
-  WorkspaceRunAdmissionDeniedError,
-  RunRequiresFormError,
-  RunVariableSnapshotUnavailableError,
-  WorkflowRunNotExecutableError as DatabaseWorkflowRunNotExecutableError,
-  WorkflowRunNotFoundError as DatabaseWorkflowRunNotFoundError,
-  WorkflowPublishedVersionConflictError,
   createWorkflowRunDatabase,
   type WorkflowRunDatabase,
 } from '@pertexo/database/runs';
-import { WorkspaceAccessDeniedError } from '@pertexo/database/tenant-access';
+
 import type {
   DatabaseConfig,
   DatabaseRuntime,
@@ -22,25 +12,15 @@ import {
   recoveryPreparation,
   initialCheckpointFactory,
 } from '@pertexo/execution';
-import {
-  composeExecutableCatalog,
-  WorkflowEngineError,
-} from '@pertexo/workflow-engine';
+import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 
-import {
-  WorkflowRunIdempotencyConflictError,
-  WorkflowRunNotCancelableError,
-  WorkflowRunNotExecutableError,
-  throwWorkflowRunError,
-} from './errors.js';
-import { applicationError } from '../platform/http/index.js';
 import type {
   CancelWorkflowRunCommand,
   ReplayWorkflowRunCommand,
   StartWorkflowRunCommand,
   WorkflowRunPersistence,
 } from './ports.js';
-import { WorkflowRunNotFoundError } from './use-cases.js';
+
 import type { RunEventNotificationPublisher } from './events/index.js';
 
 export type PostgresWorkflowRunPersistence = Readonly<{
@@ -62,158 +42,98 @@ export function createPostgresWorkflowRunPersistence(
     recovery: async (
       input: Parameters<WorkflowRunPersistence['recovery']>[0],
     ) => {
-      try {
-        return await database.recovery({
-          ...input,
-          prepareRecovery: recoveryPreparation({ catalog }),
-        });
-      } catch (error: unknown) {
-        return mapPersistenceError(error);
-      }
+      return await database.recovery({
+        ...input,
+        prepareRecovery: recoveryPreparation({ catalog }),
+      });
     },
     recover: async (
       input: Parameters<WorkflowRunPersistence['recover']>[0],
     ) => {
-      try {
-        const result = await database.recover({
-          ...input,
-          prepareRecovery: recoveryPreparation({ catalog }),
+      const result = await database.recover({
+        ...input,
+        prepareRecovery: recoveryPreparation({ catalog }),
+      });
+      if (!result.replayed)
+        await publishHint(notifications, {
+          workspaceId: result.run.workspaceId,
+          runId: result.run.id,
+          sequence: 1,
         });
-        if (!result.replayed)
-          await publishHint(notifications, {
-            workspaceId: result.run.workspaceId,
-            runId: result.run.id,
-            sequence: 1,
-          });
-        return result;
-      } catch (error: unknown) {
-        return mapPersistenceError(error);
-      }
+      return result;
     },
     usageTrends: async (
       input: Parameters<WorkflowRunPersistence['usageTrends']>[0],
     ) => {
-      try {
-        return await database.usageTrends(input);
-      } catch (error: unknown) {
-        return mapPersistenceError(error);
-      }
+      return await database.usageTrends(input);
     },
     usageCapacity: async (
       input: Parameters<WorkflowRunPersistence['usageCapacity']>[0],
     ) => {
-      try {
-        return await database.usageCapacity(input);
-      } catch (error: unknown) {
-        return mapPersistenceError(error);
-      }
+      return await database.usageCapacity(input);
     },
     start: (input: StartWorkflowRunCommand) =>
       executeAcceptance(database, input, catalog, notifications),
     replay: (input: ReplayWorkflowRunCommand) =>
       executeAcceptance(database, input, catalog, notifications),
     get: async (input: Parameters<WorkflowRunPersistence['get']>[0]) => {
-      try {
-        return await database.get(input);
-      } catch (error: unknown) {
-        return mapPersistenceError(error);
-      }
+      return await database.get(input);
     },
     list: async (input: Parameters<WorkflowRunPersistence['list']>[0]) => {
-      try {
-        return await database.list(input);
-      } catch (error: unknown) {
-        return mapPersistenceError(error);
-      }
+      return await database.list(input);
     },
     readVariables: async (
       input: Parameters<WorkflowRunPersistence['readVariables']>[0],
     ) => {
-      try {
-        return await database.readVariables(input);
-      } catch (error) {
-        return mapPersistenceError(error);
-      }
+      return await database.readVariables(input);
     },
     readInput: async (
       input: Parameters<WorkflowRunPersistence['readInput']>[0],
     ) => {
-      try {
-        return await database.readInput(input);
-      } catch (error: unknown) {
-        return mapPersistenceError(error);
-      }
+      return await database.readInput(input);
     },
     readNodeRunDiagnostics: async (
       input: Parameters<WorkflowRunPersistence['readNodeRunDiagnostics']>[0],
     ) => {
-      try {
-        return await database.readNodeRunDiagnostics(input);
-      } catch (error: unknown) {
-        return mapPersistenceError(error);
-      }
+      return await database.readNodeRunDiagnostics(input);
     },
     readNodeRunOutput: async (
       input: Parameters<WorkflowRunPersistence['readNodeRunOutput']>[0],
     ) => {
-      try {
-        return await database.readNodeRunOutput(input);
-      } catch (error: unknown) {
-        return mapPersistenceError(error);
-      }
+      return await database.readNodeRunOutput(input);
     },
     readNodeRunInput: async (
       input: Parameters<WorkflowRunPersistence['readNodeRunInput']>[0],
     ) => {
-      try {
-        return await database.readNodeRunInput(input);
-      } catch (error: unknown) {
-        return mapPersistenceError(error);
-      }
+      return await database.readNodeRunInput(input);
     },
     stepHealth: async (
       input: Parameters<WorkflowRunPersistence['stepHealth']>[0],
     ) => {
-      try {
-        return await database.stepHealth(input);
-      } catch (error: unknown) {
-        return mapPersistenceError(error);
-      }
+      return await database.stepHealth(input);
     },
     stepRuns: async (
       input: Parameters<WorkflowRunPersistence['stepRuns']>[0],
     ) => {
-      try {
-        return await database.stepRuns(input);
-      } catch (error: unknown) {
-        return mapPersistenceError(error);
-      }
+      return await database.stepRuns(input);
     },
     statistics: async (
       input: Parameters<WorkflowRunPersistence['statistics']>[0],
     ) => {
-      try {
-        return await database.statistics(input);
-      } catch (error: unknown) {
-        return mapPersistenceError(error);
-      }
+      return await database.statistics(input);
     },
     cancel: async (input: CancelWorkflowRunCommand) => {
-      try {
-        const result = await database.cancel(input);
-        if (result.eventSequence !== null)
-          await publishHint(notifications, {
-            workspaceId: result.run.workspaceId,
-            runId: result.run.id,
-            sequence: result.eventSequence,
-          });
-        return {
-          run: result.run,
-          alreadyRequested: result.alreadyRequested,
-        };
-      } catch (error: unknown) {
-        return mapPersistenceError(error);
-      }
+      const result = await database.cancel(input);
+      if (result.eventSequence !== null)
+        await publishHint(notifications, {
+          workspaceId: result.run.workspaceId,
+          runId: result.run.id,
+          sequence: result.eventSequence,
+        });
+      return {
+        run: result.run,
+        alreadyRequested: result.alreadyRequested,
+      };
     },
   });
   return Object.freeze({
@@ -232,27 +152,23 @@ async function executeAcceptance(
   catalog: ReturnType<typeof composeExecutableCatalog>,
   notifications: RunEventNotificationPublisher | undefined,
 ): Promise<WorkflowRunAcceptanceResult> {
-  try {
-    const result =
-      'workflowId' in input
-        ? await database.start({
-            ...input,
-            checkpointFactory: initialCheckpointFactory({ catalog }),
-          })
-        : await database.replay({
-            ...input,
-            checkpointFactory: initialCheckpointFactory({ catalog }),
-          });
-    if (!result.replayed)
-      await publishHint(notifications, {
-        workspaceId: result.run.workspaceId,
-        runId: result.run.id,
-        sequence: 1,
-      });
-    return result;
-  } catch (error: unknown) {
-    return mapPersistenceError(error);
-  }
+  const result =
+    'workflowId' in input
+      ? await database.start({
+          ...input,
+          checkpointFactory: initialCheckpointFactory({ catalog }),
+        })
+      : await database.replay({
+          ...input,
+          checkpointFactory: initialCheckpointFactory({ catalog }),
+        });
+  if (!result.replayed)
+    await publishHint(notifications, {
+      workspaceId: result.run.workspaceId,
+      runId: result.run.id,
+      sequence: 1,
+    });
+  return result;
 }
 
 async function publishHint(
@@ -266,68 +182,4 @@ async function publishHint(
     // Redis is a wake-up hint only. PostgreSQL already committed the command,
     // and reconnect/backfill reconstructs every authoritative event.
   }
-}
-
-function mapPersistenceError(error: unknown): never {
-  if (error instanceof WorkspaceAccessDeniedError)
-    return throwWorkflowRunError(applicationError('resource.not_found'));
-  if (error instanceof WorkflowRecoveryUnavailableError)
-    return throwWorkflowRunError(
-      applicationError('run.recovery_unavailable', {
-        safeDetail: 'The source run no longer qualifies for recovery.',
-        details: { reason: error.reason },
-      }),
-    );
-
-  if (error instanceof WorkflowPublishedVersionConflictError)
-    return throwWorkflowRunError(
-      applicationError('workflow.published_version_conflict', {
-        safeDetail:
-          'The published version changed. Review the input in the new version context and confirm a new run.',
-      }),
-    );
-  if (error instanceof DatabaseWorkflowRunNotFoundError)
-    throw new WorkflowRunNotFoundError();
-  if (error instanceof DatabaseWorkflowRunNotExecutableError)
-    throw new WorkflowRunNotExecutableError();
-  if (error instanceof WorkflowEngineError)
-    throw new WorkflowRunNotExecutableError();
-  if (error instanceof IdempotencyRequestConflictError)
-    throw new WorkflowRunIdempotencyConflictError();
-  if (error instanceof WorkspaceRunQuotaExceededError)
-    return throwWorkflowRunError(
-      applicationError('workspace.quota_exceeded', {
-        safeDetail: 'The workspace queued-run limit has been reached.',
-        details: { retryAfterSeconds: error.retryAfterSeconds },
-      }),
-    );
-  if (error instanceof RunVariableSnapshotUnavailableError)
-    return throwWorkflowRunError(
-      applicationError('workflow.variable_snapshot_unavailable', {
-        safeDetail: error.message,
-      }),
-    );
-  if (error instanceof RunRequiresFormError)
-    return throwWorkflowRunError(
-      applicationError('form.required', {
-        safeDetail:
-          'Open this workflow’s form to enter its fields and start a run.',
-      }),
-    );
-  if (error instanceof WorkspaceRunAdmissionDeniedError)
-    return throwWorkflowRunError(
-      applicationError('workspace.conflict', {
-        safeDetail: 'The workspace is not accepting new runs.',
-      }),
-    );
-  if (error instanceof ExecutionStateConflictError) {
-    if (error.message === 'execution.run_not_found')
-      throw new WorkflowRunNotFoundError();
-    if (
-      error.message === 'execution.run_terminal' ||
-      error.message === 'execution.cancel_request_conflict'
-    )
-      throw new WorkflowRunNotCancelableError();
-  }
-  throw error;
 }
