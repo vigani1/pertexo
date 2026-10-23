@@ -75,14 +75,15 @@ export function registerBetterAuthHandler(
     },
   };
   const handler = (request: FastifyRequest, reply: FastifyReply) =>
-    dispatchBetterAuthRequest(
-      request,
-      reply,
-      input.handler,
-      origin,
-      input.sessionCookie,
-      { consumer: input.rateLimitConsumer, policies: config.rateLimit },
-    );
+    dispatchBetterAuthRequest(request, reply, {
+      handler: input.handler,
+      publicOrigin: origin,
+      sessionCookie: input.sessionCookie,
+      admission: {
+        consumer: input.rateLimitConsumer,
+        policies: config.rateLimit,
+      },
+    });
   fastify.post(
     '/v1/auth/federation/saml/callback',
     { ...options, config, bodyLimit: SAML_LIMITS.formBytes },
@@ -101,20 +102,24 @@ export function registerAuthenticationCapabilities(
   });
 }
 
-async function dispatchBetterAuthRequest(
-  request: FastifyRequest,
-  reply: FastifyReply,
-  handler: AuthenticationHandler,
-  publicOrigin: string,
+type AuthenticationDispatch = Readonly<{
+  handler: AuthenticationHandler;
+  publicOrigin: string;
   sessionCookie: Readonly<{
     secure: boolean;
     sameSite: 'lax' | 'strict' | 'none';
     maxAgeSeconds: number;
-  }>,
+  }>;
   admission: Readonly<{
     consumer: RateLimitConsumer;
     policies: AuthenticationRateLimits;
-  }>,
+  }>;
+}>;
+
+async function dispatchBetterAuthRequest(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  { handler, publicOrigin, sessionCookie, admission }: AuthenticationDispatch,
 ): Promise<void> {
   const pathname = canonicalAuthPath(
     new URL(request.url, publicOrigin).pathname,
@@ -122,27 +127,25 @@ async function dispatchBetterAuthRequest(
   const requestId = randomUUID();
   const providerFormCallback = isProviderFormCallback(request.method, pathname);
   if (BLOCKED_BROWSER_AUTH_PATHS.has(pathname)) {
-    sendProblem(
-      reply,
+    sendProblem(reply, {
       requestId,
-      404,
-      'resource.not_found',
-      'Resource not found',
-    );
+      status: 404,
+      code: 'resource.not_found',
+      title: 'Resource not found',
+    });
     return;
   }
-  if (
+  const crossOriginWrite =
     isUnsafeMethod(request.method) &&
     request.headers.origin !== publicOrigin &&
-    !providerFormCallback
-  ) {
-    sendProblem(
-      reply,
+    !providerFormCallback;
+  if (crossOriginWrite) {
+    sendProblem(reply, {
       requestId,
-      403,
-      'auth.forbidden',
-      'Authentication request rejected',
-    );
+      status: 403,
+      code: 'auth.forbidden',
+      title: 'Authentication request rejected',
+    });
     return;
   }
   const endpointClass =
@@ -158,26 +161,36 @@ async function dispatchBetterAuthRequest(
     allowed = await admission.consumer.consume(decision);
   } catch {
     reply.header('retry-after', '1');
-    sendProblem(
-      reply,
+    sendProblem(reply, {
       requestId,
-      503,
-      'request.rate_limit_unavailable',
-      'Authentication temporarily unavailable',
-    );
+      status: 503,
+      code: 'request.rate_limit_unavailable',
+      title: 'Authentication temporarily unavailable',
+    });
     return;
   }
   if (!allowed.allowed) {
     reply.header('retry-after', String(Math.max(1, allowed.retryAfterSeconds)));
-    sendProblem(
-      reply,
+    sendProblem(reply, {
       requestId,
-      429,
-      'request.rate_limited',
-      'Too many authentication requests',
-    );
+      status: 429,
+      code: 'request.rate_limited',
+      title: 'Too many authentication requests',
+    });
     return;
   }
+  const response = await handler(authenticationRequest(request, publicOrigin));
+  await sendAuthenticationResponse(reply, response, {
+    pathname,
+    sessionCookie,
+    requestId,
+  });
+}
+
+function authenticationRequest(
+  request: FastifyRequest,
+  publicOrigin: string,
+): Request {
   const headers = new Headers();
   for (const [name, rawValue] of Object.entries(request.headers)) {
     if (rawValue === undefined) continue;
@@ -191,14 +204,23 @@ async function dispatchBetterAuthRequest(
   const method = request.method.toUpperCase();
   const body =
     method === 'GET' || method === 'HEAD' ? undefined : requestBody(request);
-  const response = await handler(
-    new Request(new URL(request.url, publicOrigin), {
-      method,
-      headers,
-      ...(body === undefined ? {} : { body }),
-    }),
-  );
+  return new Request(new URL(request.url, publicOrigin), {
+    method,
+    headers,
+    ...(body === undefined ? {} : { body }),
+  });
+}
 
+async function sendAuthenticationResponse(
+  reply: FastifyReply,
+  response: Response,
+  {
+    pathname,
+    sessionCookie,
+    requestId,
+  }: Pick<AuthenticationDispatch, 'sessionCookie'> &
+    Readonly<{ pathname: string; requestId: string }>,
+): Promise<void> {
   const responseBody = new Uint8Array(await response.arrayBuffer());
   const nativeError =
     response.status >= 400
@@ -213,12 +235,11 @@ async function dispatchBetterAuthRequest(
     setCookies.push(serializeCsrfCookie(sessionCookie));
   }
   for (const [name, value] of response.headers.entries()) {
-    if (
+    const forwardHeader =
       name.toLowerCase() !== 'set-cookie' &&
       name.toLowerCase() !== 'content-length' &&
-      (nativeError === undefined || name.toLowerCase() !== 'content-type')
-    )
-      reply.header(name, value);
+      (nativeError === undefined || name.toLowerCase() !== 'content-type');
+    if (forwardHeader) reply.header(name, value);
   }
   if (setCookies.length > 0) reply.header('set-cookie', setCookies);
   if (nativeError !== undefined) {
@@ -235,10 +256,17 @@ async function dispatchBetterAuthRequest(
 
 function sendProblem(
   reply: FastifyReply,
-  requestId: string,
-  status: number,
-  code: ApiProblemCode,
-  title: string,
+  {
+    requestId,
+    status,
+    code,
+    title,
+  }: Readonly<{
+    requestId: string;
+    status: number;
+    code: ApiProblemCode;
+    title: string;
+  }>,
 ): void {
   reply
     .code(status)
@@ -252,6 +280,120 @@ function sendProblem(
       requestId,
     });
 }
+
+type NativeProblem = Readonly<{
+  status: number;
+  code: ApiProblemCode;
+  title: string;
+}>;
+const NATIVE_PROBLEMS = new Map<string, NativeProblem>([
+  [
+    '403:ALTERNATIVE_SIGN_IN_REQUIRED',
+    {
+      status: 403,
+      code: 'auth.alternative_required',
+      title: 'Another sign-in method required',
+    },
+  ],
+  [
+    '403:ORGANIZATION_EMAIL_MANAGED',
+    {
+      status: 403,
+      code: 'auth.organization_email_managed',
+      title: 'Organization email address is managed',
+    },
+  ],
+  [
+    '400:AUTHENTICATION_METHOD_LIMIT',
+    {
+      status: 400,
+      code: 'auth.method_limit',
+      title: 'Sign-in method limit reached',
+    },
+  ],
+  [
+    '403:RECOVERY_PASSWORD_REQUIRED',
+    {
+      status: 403,
+      code: 'auth.recovery_required',
+      title: 'Recovery password required',
+    },
+  ],
+  [
+    '403:SSO_REQUIRED',
+    {
+      status: 403,
+      code: 'auth.sso_required',
+      title: 'Organization sign-in required',
+    },
+  ],
+  [
+    '403:EMAIL_NOT_VERIFIED',
+    {
+      status: 403,
+      code: 'auth.email_not_verified',
+      title: 'Email verification required',
+    },
+  ],
+  [
+    '400:INVALID_TOKEN',
+    {
+      status: 400,
+      code: 'auth.reset_link_invalid',
+      title: 'Reset link invalid or expired',
+    },
+  ],
+  [
+    '429:ACCOUNT_TEMPORARILY_LOCKED',
+    {
+      status: 429,
+      code: 'auth.two_factor_locked',
+      title: API_PROBLEM_MANIFEST['auth.two_factor_locked'].title,
+    },
+  ],
+]);
+const STATUS_PROBLEMS = new Map<number, NativeProblem>([
+  [
+    401,
+    {
+      status: 401,
+      code: 'auth.unauthenticated',
+      title: 'Authentication required',
+    },
+  ],
+  [403, { status: 403, code: 'auth.forbidden', title: 'Forbidden' }],
+  [
+    404,
+    { status: 404, code: 'resource.not_found', title: 'Resource not found' },
+  ],
+  [
+    409,
+    {
+      status: 409,
+      code: 'auth.conflict',
+      title: 'Authentication change conflict',
+    },
+  ],
+  [
+    429,
+    { status: 429, code: 'request.rate_limited', title: 'Too many requests' },
+  ],
+  [
+    503,
+    {
+      status: 503,
+      code: 'provider.unavailable',
+      title: 'Authentication temporarily unavailable',
+    },
+  ],
+  [400, { status: 400, code: 'request.invalid', title: 'Invalid request' }],
+  [422, { status: 400, code: 'request.invalid', title: 'Invalid request' }],
+]);
+const UNEXPECTED_PROBLEM: NativeProblem = {
+  status: 500,
+  code: 'internal.unexpected',
+  title: 'Authentication unavailable',
+};
 
 function normalizedNativeError(
   status: number,
@@ -268,100 +410,11 @@ function normalizedNativeError(
   } catch {
     nativeCode = undefined;
   }
-  const factorLocked = nativeCode === 'ACCOUNT_TEMPORARILY_LOCKED';
-  const mapped =
-    status === 403 && nativeCode === 'ALTERNATIVE_SIGN_IN_REQUIRED'
-      ? {
-          status: 403,
-          code: 'auth.alternative_required',
-          title: 'Another sign-in method required',
-        }
-      : status === 403 && nativeCode === 'ORGANIZATION_EMAIL_MANAGED'
-        ? {
-            status: 403,
-            code: 'auth.organization_email_managed',
-            title: 'Organization email address is managed',
-          }
-        : status === 400 && nativeCode === 'AUTHENTICATION_METHOD_LIMIT'
-          ? {
-              status: 400,
-              code: 'auth.method_limit',
-              title: 'Sign-in method limit reached',
-            }
-          : status === 403 && nativeCode === 'RECOVERY_PASSWORD_REQUIRED'
-            ? {
-                status: 403,
-                code: 'auth.recovery_required',
-                title: 'Recovery password required',
-              }
-            : status === 403 && nativeCode === 'SSO_REQUIRED'
-              ? {
-                  status: 403,
-                  code: 'auth.sso_required',
-                  title: 'Organization sign-in required',
-                }
-              : status === 403 && nativeCode === 'EMAIL_NOT_VERIFIED'
-                ? {
-                    status: 403,
-                    code: 'auth.email_not_verified',
-                    title: 'Email verification required',
-                  }
-                : status === 400 && nativeCode === 'INVALID_TOKEN'
-                  ? {
-                      status: 400,
-                      code: 'auth.reset_link_invalid',
-                      title: 'Reset link invalid or expired',
-                    }
-                  : status === 401
-                    ? {
-                        status,
-                        code: 'auth.unauthenticated',
-                        title: 'Authentication required',
-                      }
-                    : status === 403
-                      ? { status, code: 'auth.forbidden', title: 'Forbidden' }
-                      : status === 404
-                        ? {
-                            status,
-                            code: 'resource.not_found',
-                            title: 'Resource not found',
-                          }
-                        : status === 409
-                          ? {
-                              status,
-                              code: 'auth.conflict',
-                              title: 'Authentication change conflict',
-                            }
-                          : status === 429
-                            ? {
-                                status,
-                                code: factorLocked
-                                  ? 'auth.two_factor_locked'
-                                  : 'request.rate_limited',
-                                title: factorLocked
-                                  ? API_PROBLEM_MANIFEST[
-                                      'auth.two_factor_locked'
-                                    ].title
-                                  : 'Too many requests',
-                              }
-                            : status === 503
-                              ? {
-                                  status,
-                                  code: 'provider.unavailable',
-                                  title:
-                                    'Authentication temporarily unavailable',
-                                }
-                              : status === 400 || status === 422
-                                ? {
-                                    status: 400,
-                                    code: 'request.invalid',
-                                    title: 'Invalid request',
-                                  }
-                                : {
-                                    status: 500,
-                                    code: 'internal.unexpected',
-                                    title: 'Authentication unavailable',
-                                  };
+  const specific =
+    typeof nativeCode === 'string'
+      ? NATIVE_PROBLEMS.get(`${String(status)}:${nativeCode}`)
+      : undefined;
+  const mapped = specific ?? STATUS_PROBLEMS.get(status) ?? UNEXPECTED_PROBLEM;
   return {
     status: mapped.status,
     body: JSON.stringify({
