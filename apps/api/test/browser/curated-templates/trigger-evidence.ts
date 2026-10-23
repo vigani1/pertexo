@@ -85,16 +85,7 @@ export async function executeCuratedTemplateTriggers({
   apiOrigin: string;
 }>) {
   const origin = new URL(apiOrigin);
-  if (
-    origin.protocol !== 'http:' ||
-    origin.hostname !== '127.0.0.1' ||
-    origin.username !== '' ||
-    origin.password !== '' ||
-    origin.pathname !== '/' ||
-    origin.search !== '' ||
-    origin.hash !== ''
-  )
-    throw new Error('Owned loopback API required');
+  assertOwnedLoopbackApi(origin);
   const [webhookId, scheduleId] = workflowIds;
   if (
     workflowIds.length !== 3 ||
@@ -360,4 +351,17 @@ export async function executeCuratedTemplateTriggers({
     clock: 'actual-database-clock',
     intervalMinutes: 1,
   };
+}
+
+function assertOwnedLoopbackApi(origin: URL): void {
+  if (
+    origin.protocol !== 'http:' ||
+    origin.hostname !== '127.0.0.1' ||
+    origin.username !== '' ||
+    origin.password !== '' ||
+    origin.pathname !== '/' ||
+    origin.search !== '' ||
+    origin.hash !== ''
+  )
+    throw new Error('Owned loopback API required');
 }
