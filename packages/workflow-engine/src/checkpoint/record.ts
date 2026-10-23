@@ -24,8 +24,10 @@ type CheckpointInvocation = WorkflowCheckpoint['invocations'][number];
 function loopParentStatusIsConsistent(
   loop: CheckpointLoop,
   parent: CheckpointInvocation,
-  cancelRequested: boolean,
-  deadlineExpired: boolean,
+  {
+    cancelRequested,
+    deadlineExpired,
+  }: Readonly<{ cancelRequested: boolean; deadlineExpired: boolean }>,
 ): boolean {
   if (loop.terminalStatus !== undefined)
     return parent.status === loop.terminalStatus;
@@ -97,6 +99,122 @@ function parseBranchSelections(
 }
 
 export function parseCheckpointRecord(value: unknown): WorkflowCheckpoint {
+  const fields = parseCheckpointFields(value);
+  const { workflowVersionId } = fields;
+
+  const invocations = [
+    ...parseInvocations(fields.invocations, workflowVersionId),
+  ].sort((left, right) =>
+    compareOrdinal(left.invocationKey, right.invocationKey),
+  );
+  assertCheckpoint(
+    new Set(invocations.map(({ invocationKey }) => invocationKey)).size ===
+      invocations.length,
+    'invocation keys must be unique',
+  );
+  const joins = fields.joins
+    .map(parseJoin)
+    .sort((left, right) => compareOrdinal(left.joinId, right.joinId));
+  assertCheckpoint(
+    new Set(joins.map(({ joinInvocationKey }) => joinInvocationKey)).size ===
+      joins.length,
+    'join invocation keys must be unique',
+  );
+  const loops = fields.loops
+    .map(parseLoop)
+    .sort((left, right) =>
+      compareOrdinal(left.controlInvocationKey, right.controlInvocationKey),
+    );
+  assertCheckpoint(
+    new Set(loops.map(({ controlInvocationKey }) => controlInvocationKey))
+      .size === loops.length,
+    'loop control invocation keys must be unique',
+  );
+  assertCheckpoint(
+    joins.every(({ joinId }) => !loops.some(({ loopId }) => loopId === joinId)),
+    'a node cannot be both a join and a loop',
+  );
+  assertCheckpoint(
+    fields.readySet.every((item) => typeof item === 'string'),
+    'readySet must contain strings',
+  );
+  assertCheckpoint(
+    fields.admittedInvocationKeys.every((item) => typeof item === 'string'),
+    'admittedInvocationKeys must contain strings',
+  );
+  const readySet = sortedUnique(fields.readySet, 'readySet');
+  const reconstructed = invocations
+    .filter(({ status }) => status === 'ready')
+    .map(({ invocationKey }) => invocationKey);
+  assertCheckpoint(
+    readySet.length === reconstructed.length &&
+      readySet.every((key, index) => key === reconstructed[index]),
+    'readySet disagrees with invocation state',
+  );
+  const invocationByKey = new Map(
+    invocations.map((invocation) => [invocation.invocationKey, invocation]),
+  );
+  assertInvocationControls({
+    joins,
+    loops,
+    invocationByKey,
+    cancelRequested: fields.cancelRequested,
+    deadlineExpired: fields.deadlineExpired ?? false,
+    invocations,
+  });
+
+  const initialIterationBudget = fields.initialIterationBudget;
+  const retiredIterationBudget = fields.retiredIterationBudget;
+  assertCheckpoint(
+    retiredIterationBudget === undefined ||
+      (isInteger(retiredIterationBudget) && retiredIterationBudget > 0),
+    'retiredIterationBudget is invalid',
+  );
+  assertCheckpoint(
+    initialIterationBudget === undefined ||
+      (isInteger(initialIterationBudget) && initialIterationBudget >= 0),
+    'initialIterationBudget is invalid',
+  );
+  assertCheckpoint(
+    (loops.length === 0 && retiredIterationBudget === undefined) ||
+      initialIterationBudget !== undefined,
+    'loop checkpoint requires initialIterationBudget',
+  );
+  if (initialIterationBudget !== undefined)
+    assertCheckpoint(
+      fields.remainingIterationBudget +
+        (retiredIterationBudget ?? 0) +
+        loops.reduce((total, loop) => total + loop.collectionSize, 0) ===
+        initialIterationBudget,
+      'iteration budget accounting is inconsistent',
+    );
+
+  return {
+    workflowVersionId,
+    revision: fields.revision,
+    runStatus: fields.runStatus,
+    nextEventSequence: fields.nextEventSequence,
+    admittedInvocationKeys: sortedUnique(
+      fields.admittedInvocationKeys,
+      'admittedInvocationKeys',
+    ),
+    invocations,
+    joins,
+    loops,
+    readySet,
+    remainingIterationBudget: fields.remainingIterationBudget,
+    cancelRequested: fields.cancelRequested,
+    deadlineExpired: fields.deadlineExpired ?? false,
+    branchSelections: parseBranchSelections(
+      fields.branchSelections,
+      invocations,
+    ),
+    ...(initialIterationBudget === undefined ? {} : { initialIterationBudget }),
+    ...(retiredIterationBudget === undefined ? {} : { retiredIterationBudget }),
+  };
+}
+
+function parseCheckpointFields(value: unknown) {
   if (!isRecord(value))
     throw new WorkflowEngineError(
       'checkpoint_invalid',
@@ -158,58 +276,40 @@ export function parseCheckpointRecord(value: unknown): WorkflowCheckpoint {
     'deadlineExpired is invalid',
   );
 
-  const invocations = [
-    ...parseInvocations(value.invocations, workflowVersionId),
-  ].sort((left, right) =>
-    compareOrdinal(left.invocationKey, right.invocationKey),
-  );
-  assertCheckpoint(
-    new Set(invocations.map(({ invocationKey }) => invocationKey)).size ===
-      invocations.length,
-    'invocation keys must be unique',
-  );
-  const joins = value.joins
-    .map(parseJoin)
-    .sort((left, right) => compareOrdinal(left.joinId, right.joinId));
-  assertCheckpoint(
-    new Set(joins.map(({ joinInvocationKey }) => joinInvocationKey)).size ===
-      joins.length,
-    'join invocation keys must be unique',
-  );
-  const loops = value.loops
-    .map(parseLoop)
-    .sort((left, right) =>
-      compareOrdinal(left.controlInvocationKey, right.controlInvocationKey),
-    );
-  assertCheckpoint(
-    new Set(loops.map(({ controlInvocationKey }) => controlInvocationKey))
-      .size === loops.length,
-    'loop control invocation keys must be unique',
-  );
-  assertCheckpoint(
-    joins.every(({ joinId }) => !loops.some(({ loopId }) => loopId === joinId)),
-    'a node cannot be both a join and a loop',
-  );
-  assertCheckpoint(
-    value.readySet.every((item) => typeof item === 'string'),
-    'readySet must contain strings',
-  );
-  assertCheckpoint(
-    value.admittedInvocationKeys.every((item) => typeof item === 'string'),
-    'admittedInvocationKeys must contain strings',
-  );
-  const readySet = sortedUnique(value.readySet, 'readySet');
-  const reconstructed = invocations
-    .filter(({ status }) => status === 'ready')
-    .map(({ invocationKey }) => invocationKey);
-  assertCheckpoint(
-    readySet.length === reconstructed.length &&
-      readySet.every((key, index) => key === reconstructed[index]),
-    'readySet disagrees with invocation state',
-  );
-  const invocationByKey = new Map(
-    invocations.map((invocation) => [invocation.invocationKey, invocation]),
-  );
+  return {
+    workflowVersionId,
+    revision: value.revision,
+    runStatus: value.runStatus,
+    nextEventSequence: value.nextEventSequence,
+    readySet: value.readySet,
+    admittedInvocationKeys: value.admittedInvocationKeys,
+    invocations: value.invocations,
+    joins: value.joins,
+    loops: value.loops,
+    remainingIterationBudget: value.remainingIterationBudget,
+    cancelRequested: value.cancelRequested,
+    deadlineExpired: value.deadlineExpired,
+    initialIterationBudget: value.initialIterationBudget,
+    retiredIterationBudget: value.retiredIterationBudget,
+    branchSelections: value.branchSelections,
+  };
+}
+
+function assertInvocationControls({
+  joins,
+  loops,
+  invocationByKey,
+  cancelRequested,
+  deadlineExpired,
+  invocations,
+}: Readonly<{
+  joins: WorkflowCheckpoint['joins'];
+  loops: WorkflowCheckpoint['loops'];
+  invocationByKey: ReadonlyMap<string, InvocationState>;
+  cancelRequested: boolean;
+  deadlineExpired: boolean;
+  invocations: readonly InvocationState[];
+}>): void {
   for (const join of joins) {
     const joinInvocation = invocationByKey.get(join.joinInvocationKey);
     assertCheckpoint(
@@ -229,9 +329,8 @@ export function parseCheckpointRecord(value: unknown): WorkflowCheckpoint {
     else
       assertCheckpoint(
         joinInvocation.status === 'pending' ||
-          (value.cancelRequested && joinInvocation.status === 'canceled') ||
-          (value.deadlineExpired === true &&
-            joinInvocation.status === 'canceled'),
+          (cancelRequested && joinInvocation.status === 'canceled') ||
+          (deadlineExpired && joinInvocation.status === 'canceled'),
         'unsettled join invocation is inconsistent',
       );
   }
@@ -239,12 +338,10 @@ export function parseCheckpointRecord(value: unknown): WorkflowCheckpoint {
     const parent = invocationByKey.get(loop.controlInvocationKey);
     assertCheckpoint(parent !== undefined, 'loop parent invocation is missing');
     assertCheckpoint(
-      loopParentStatusIsConsistent(
-        loop,
-        parent,
-        value.cancelRequested,
-        value.deadlineExpired === true,
-      ),
+      loopParentStatusIsConsistent(loop, parent, {
+        cancelRequested: cancelRequested,
+        deadlineExpired: deadlineExpired,
+      }),
       'loop parent invocation is inconsistent',
     );
   }
@@ -262,54 +359,4 @@ export function parseCheckpointRecord(value: unknown): WorkflowCheckpoint {
     ),
     'ordinary waiting invocation requires resumeAt',
   );
-
-  const initialIterationBudget = value.initialIterationBudget;
-  const retiredIterationBudget = value.retiredIterationBudget;
-  assertCheckpoint(
-    retiredIterationBudget === undefined ||
-      (isInteger(retiredIterationBudget) && retiredIterationBudget > 0),
-    'retiredIterationBudget is invalid',
-  );
-  assertCheckpoint(
-    initialIterationBudget === undefined ||
-      (isInteger(initialIterationBudget) && initialIterationBudget >= 0),
-    'initialIterationBudget is invalid',
-  );
-  assertCheckpoint(
-    (loops.length === 0 && retiredIterationBudget === undefined) ||
-      initialIterationBudget !== undefined,
-    'loop checkpoint requires initialIterationBudget',
-  );
-  if (initialIterationBudget !== undefined)
-    assertCheckpoint(
-      value.remainingIterationBudget +
-        (retiredIterationBudget ?? 0) +
-        loops.reduce((total, loop) => total + loop.collectionSize, 0) ===
-        initialIterationBudget,
-      'iteration budget accounting is inconsistent',
-    );
-
-  return {
-    workflowVersionId,
-    revision: value.revision,
-    runStatus: value.runStatus,
-    nextEventSequence: value.nextEventSequence,
-    admittedInvocationKeys: sortedUnique(
-      value.admittedInvocationKeys,
-      'admittedInvocationKeys',
-    ),
-    invocations,
-    joins,
-    loops,
-    readySet,
-    remainingIterationBudget: value.remainingIterationBudget,
-    cancelRequested: value.cancelRequested,
-    deadlineExpired: value.deadlineExpired ?? false,
-    branchSelections: parseBranchSelections(
-      value.branchSelections,
-      invocations,
-    ),
-    ...(initialIterationBudget === undefined ? {} : { initialIterationBudget }),
-    ...(retiredIterationBudget === undefined ? {} : { retiredIterationBudget }),
-  };
 }

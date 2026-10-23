@@ -42,7 +42,7 @@ function stopInvocation(
       status === 'timed_out'
         ? (state.deadlineOccurredAt ?? occurredAt)
         : occurredAt,
-      stopped,
+      { invocation: stopped },
     ),
   );
 }
@@ -173,7 +173,7 @@ export function applyWorkflowStops(
                 ? 'node.canceled'
                 : (nodeEventName[stopped.status] ?? 'node.failed'),
             stoppedAt,
-            stopped,
+            { invocation: stopped },
           ),
         );
       }

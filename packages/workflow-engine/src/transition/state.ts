@@ -345,9 +345,15 @@ export function assertLoopInvocations(
 export function transitionEvent(
   name: EngineEventName,
   occurredAt: string,
-  invocation?: InvocationState,
-  reasonCode?: string,
-  dueAt?: string,
+  {
+    invocation,
+    reasonCode,
+    dueAt,
+  }: Readonly<{
+    invocation?: InvocationState | undefined;
+    reasonCode?: string | undefined;
+    dueAt?: string | undefined;
+  }> = {},
 ): Omit<EngineEventPlan, 'sequence'> {
   return {
     name,

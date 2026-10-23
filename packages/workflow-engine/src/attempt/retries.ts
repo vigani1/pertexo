@@ -73,43 +73,30 @@ export type RetryDecision =
       readonly delayMs: number;
     };
 
-export function decideRetry(input: {
+interface RetryInput {
   readonly sideEffectClass: SideEffectClass;
   readonly currentAttemptNumber: number;
   readonly policy: RetryPolicy;
   readonly settings?: StepRetrySettings | undefined;
   readonly observation: AttemptObservation;
   readonly jitterIdentity?: string;
-}): RetryDecision {
+}
+
+export function decideRetry(input: RetryInput): RetryDecision {
   if (input.observation.kind === 'success') return { kind: 'succeeded' };
   if (
     input.observation.kind === 'executor_failure' &&
     input.observation.recommendation === 'canceled'
   )
     return { kind: 'failed', reasonCode: 'canceled' };
-  if (
-    (input.observation.kind === 'ambiguous' ||
-      (input.observation.kind === 'executor_failure' &&
-        (input.observation.recommendation === 'outcome_unknown' ||
-          input.observation.recommendation === 'retry'))) &&
-    input.observation.possiblyDispatched &&
-    input.sideEffectClass === 'unsafe'
-  ) {
+  if (mayHaveUnsafeEffect(input))
     return { kind: 'outcome_unknown', reasonCode: 'unsafe_possible_dispatch' };
-  }
-  const errorCode =
-    input.observation.kind === 'definite_failure'
-      ? input.observation.errorCode
-      : input.observation.kind === 'executor_failure'
-        ? input.observation.errorKind
-        : 'ambiguous';
-  const isRetryable =
-    input.observation.kind === 'ambiguous' ||
-    (input.observation.kind === 'executor_failure'
-      ? (input.observation.recommendation === 'retry' ||
-          input.observation.recommendation === 'outcome_unknown') &&
-        input.policy.retryableErrorCodes.includes(errorCode)
-      : input.policy.retryableErrorCodes.includes(errorCode));
+  const errorCode = retryErrorCode(input.observation);
+  const isRetryable = observationAllowsRetry(
+    input.observation,
+    input.policy,
+    errorCode,
+  );
   const nextAttemptNumber = input.currentAttemptNumber + 1;
   if (
     !isRetryable ||
@@ -175,4 +162,38 @@ export function providerIdempotencyKey(input: {
     )
     .digest('hex');
   return `v1.${digest}`;
+}
+
+function mayHaveUnsafeEffect(input: RetryInput): boolean {
+  const observation = input.observation;
+  const uncertain =
+    observation.kind === 'ambiguous' ||
+    (observation.kind === 'executor_failure' &&
+      (observation.recommendation === 'outcome_unknown' ||
+        observation.recommendation === 'retry'));
+  return (
+    uncertain &&
+    'possiblyDispatched' in observation &&
+    observation.possiblyDispatched &&
+    input.sideEffectClass === 'unsafe'
+  );
+}
+function retryErrorCode(observation: AttemptObservation): string {
+  if (observation.kind === 'definite_failure') return observation.errorCode;
+  if (observation.kind === 'executor_failure') return observation.errorKind;
+  return 'ambiguous';
+}
+function observationAllowsRetry(
+  observation: AttemptObservation,
+  policy: RetryPolicy,
+  errorCode: string,
+): boolean {
+  if (observation.kind === 'ambiguous') return true;
+  if (observation.kind === 'executor_failure') {
+    const recommended =
+      observation.recommendation === 'retry' ||
+      observation.recommendation === 'outcome_unknown';
+    return recommended && policy.retryableErrorCodes.includes(errorCode);
+  }
+  return policy.retryableErrorCodes.includes(errorCode);
 }

@@ -62,12 +62,10 @@ export function selectFailureHandler(
   });
   state.failureValues.push({ value: failure, entryInvocationKey });
   state.eventDrafts.push(
-    transitionEvent(
-      'node.failure_routed',
-      occurredAt,
-      source,
-      failure.safeErrorCode,
-    ),
+    transitionEvent('node.failure_routed', occurredAt, {
+      invocation: source,
+      reasonCode: failure.safeErrorCode,
+    }),
   );
 }
 
@@ -108,7 +106,9 @@ export function settleFailureHandlers(
       failureHandling: { ...handling, disposition: 'handled' },
     });
     state.eventDrafts.push(
-      transitionEvent('node.failure_handled', occurredAt, source),
+      transitionEvent('node.failure_handled', occurredAt, {
+        invocation: source,
+      }),
     );
   }
 }

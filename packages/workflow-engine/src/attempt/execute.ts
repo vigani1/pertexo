@@ -52,15 +52,17 @@ export async function executeNodeAttempt(
     isCoreMergeDefinition(node.definition)
       ? { ...node, inputMappings: {} }
       : node,
-    runInput,
-    completedOutputs,
-    directUpstream,
-    input.signal,
-    input.expressionEvaluator,
-    structuredInputs,
-    sourceFailure,
-    variables,
-    callbacks,
+    {
+      runInput: runInput,
+      completedOutputs: completedOutputs,
+      directUpstream: directUpstream,
+      signal: input.signal,
+      expressionEvaluator: input.expressionEvaluator,
+      structuredInputs: structuredInputs,
+      sourceFailure: sourceFailure,
+      variables: variables,
+      callbacks: callbacks,
+    },
   );
   let executionInput = resolvedInput;
   if (isCoreMergeDefinition(node.definition)) {

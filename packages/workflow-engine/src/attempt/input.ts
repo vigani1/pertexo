@@ -72,10 +72,17 @@ function expectedInvocationKey(
 
 function parseCompletedDescriptor(
   candidate: JsonValue,
-  input: ExecuteNodeAttemptInput,
-  node: WorkflowExecutableNode,
-  graph: WorkflowExecutableGraph,
-  directUpstream: ReadonlySet<string>,
+  {
+    input,
+    node,
+    graph,
+    directUpstream,
+  }: Readonly<{
+    input: ExecuteNodeAttemptInput;
+    node: WorkflowExecutableNode;
+    graph: WorkflowExecutableGraph;
+    directUpstream: ReadonlySet<string>;
+  }>,
 ): readonly [string, JsonValue] {
   const descriptor = record(candidate, 'attempt_invalid', 'completed output');
   exactKeys(
@@ -130,23 +137,29 @@ function parseCompletedDescriptor(
 
 function parseCompletedOutputs(
   completed: JsonValue,
-  input: ExecuteNodeAttemptInput,
-  node: WorkflowExecutableNode,
-  graph: WorkflowExecutableGraph,
-  directUpstream: ReadonlySet<string>,
+  {
+    input,
+    node,
+    graph,
+    directUpstream,
+  }: Readonly<{
+    input: ExecuteNodeAttemptInput;
+    node: WorkflowExecutableNode;
+    graph: WorkflowExecutableGraph;
+    directUpstream: ReadonlySet<string>;
+  }>,
 ): Readonly<Record<string, JsonValue>> {
   if (!Array.isArray(completed))
     operationError('attempt_invalid', 'completed outputs must be a list');
   const outputs = Object.create(null) as Record<string, JsonValue>;
   const canonicalByNodeId = new Map<string, string>();
   for (const candidate of completed as readonly JsonValue[]) {
-    const [nodeId, value] = parseCompletedDescriptor(
-      candidate,
-      input,
-      node,
-      graph,
-      directUpstream,
-    );
+    const [nodeId, value] = parseCompletedDescriptor(candidate, {
+      input: input,
+      node: node,
+      graph: graph,
+      directUpstream: directUpstream,
+    });
     const canonicalValue = canonicalJson(value);
     const existing = canonicalByNodeId.get(nodeId);
     if (existing !== undefined && existing !== canonicalValue)
@@ -270,13 +283,12 @@ export function prepareNodeAttemptInput(
     runInput,
     variables,
     directUpstream,
-    completedOutputs: parseCompletedOutputs(
-      completed,
-      input,
-      node,
-      containingGraph,
-      directUpstream,
-    ),
+    completedOutputs: parseCompletedOutputs(completed, {
+      input: input,
+      node: node,
+      graph: containingGraph,
+      directUpstream: directUpstream,
+    }),
     ...(structuredInputs === undefined ? {} : { structuredInputs }),
     ...(sourceFailure === undefined ? {} : { sourceFailure }),
   };

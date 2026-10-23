@@ -168,13 +168,13 @@ export async function advanceWorkflow(
   const successfulOutcomes = indexPersistedSuccessfulOutcomes(
     persistedObservations.facts,
   );
-  const branchSelections = branchSelectionObservations(
-    completedOutputItems,
-    successfulOutcomes,
-    invocationsByKey,
-    nodesById,
-    input.test !== undefined,
-  );
+  const branchSelections = branchSelectionObservations({
+    completedItems: completedOutputItems,
+    successfulOutcomes: successfulOutcomes,
+    invocations: invocationsByKey,
+    nodes: nodesById,
+    test: input.test !== undefined,
+  });
   const controlCanceled =
     checkpoint.cancelRequested ||
     persistedObservations.observations.some(
@@ -224,9 +224,9 @@ export async function advanceWorkflow(
     nodesById,
     input.executable.envelope.graph,
   );
-  const forEach = forEachCoordinatorObservations(
-    completedOutputItems,
-    persistedObservations.facts.filter((fact) => {
+  const forEach = forEachCoordinatorObservations({
+    completedItems: completedOutputItems,
+    persistedItems: persistedObservations.facts.filter((fact) => {
       const value = record(fact, 'observation_invalid', 'persisted fact');
       return (
         value.kind !== 'outcome' ||
@@ -234,20 +234,25 @@ export async function advanceWorkflow(
           !tasks.declarationInvocationKeys.has(value.invocationKey as string))
       );
     }),
-    successfulOutcomes,
-    checkpoint,
-    invocationsByKey,
-    test === undefined
-      ? nodesById
-      : new Map(
-          [...nodesById].filter(
-            ([, node]) =>
-              node.structured === undefined ||
-              testStepDisposition(node, test).kind !== 'pinned',
+    successfulOutcomes: successfulOutcomes,
+    checkpoint: checkpoint,
+    invocations: invocationsByKey,
+    nodes:
+      test === undefined
+        ? nodesById
+        : new Map(
+            [...nodesById].filter(
+              ([, node]) =>
+                node.structured === undefined ||
+                testStepDisposition(node, test).kind !== 'pinned',
+            ),
           ),
-        ),
-    [...resolvedFailures, ...callOutcomes, ...taskOutcomes],
-  );
+    derivedObservations: [
+      ...resolvedFailures,
+      ...callOutcomes,
+      ...taskOutcomes,
+    ],
+  });
   const executionObservations = persistedObservations.observations.map(
     (observation): WorkflowObservation =>
       observation.kind === 'outcome' &&

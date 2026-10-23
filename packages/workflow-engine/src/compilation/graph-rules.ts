@@ -194,30 +194,7 @@ export function assertBranchesDoNotReconverge(
       fail('Parallel requires exactly one paired Merge');
     const pairedMerge = pairedMerges[0];
     if (pairedMerge !== undefined) {
-      const incoming = index.incomingByNode.get(pairedMerge.id) ?? [];
-      if (
-        incoming.length !== ports.length ||
-        ports.some(
-          (port) =>
-            (index.incomingByNodePort.get(nodePortKey(pairedMerge.id, port))
-              ?.length ?? 0) !== 1,
-        ) ||
-        incoming.some(({ target }) => !ports.includes(target.port))
-      )
-        fail(
-          'paired Merge inputs must match every Parallel branch exactly once',
-        );
-      const policy = pairedMerge.config.policy;
-      if (
-        typeof policy === 'object' &&
-        policy !== null &&
-        (policy as Readonly<Record<string, unknown>>).kind === 'count' &&
-        (typeof (policy as Readonly<Record<string, unknown>>).count !==
-          'number' ||
-          ((policy as Readonly<Record<string, unknown>>).count as number) >
-            ports.length)
-      )
-        fail('Merge count policy exceeds paired Parallel branches');
+      assertPairedMergeInputs(pairedMerge, ports, index);
     }
     const branchRoots = (port: string): string[] =>
       (index.outgoingByNodePort.get(nodePortKey(node.id, port)) ?? []).map(
@@ -268,4 +245,32 @@ export function assertExpressionPolicies(
       !supportsExpressionMappings(policies, capabilities)
     )
       fail('expression policy is not available for the node definition');
+}
+
+function assertPairedMergeInputs(
+  pairedMerge: WorkflowGraph['nodes'][number],
+  ports: readonly string[],
+  index: GraphValidationIndex,
+): void {
+  const incoming = index.incomingByNode.get(pairedMerge.id) ?? [];
+  if (
+    incoming.length !== ports.length ||
+    ports.some(
+      (port) =>
+        (index.incomingByNodePort.get(nodePortKey(pairedMerge.id, port))
+          ?.length ?? 0) !== 1,
+    ) ||
+    incoming.some(({ target }) => !ports.includes(target.port))
+  )
+    fail('paired Merge inputs must match every Parallel branch exactly once');
+  const policy = pairedMerge.config.policy;
+  if (
+    typeof policy === 'object' &&
+    policy !== null &&
+    (policy as Readonly<Record<string, unknown>>).kind === 'count' &&
+    (typeof (policy as Readonly<Record<string, unknown>>).count !== 'number' ||
+      ((policy as Readonly<Record<string, unknown>>).count as number) >
+        ports.length)
+  )
+    fail('Merge count policy exceeds paired Parallel branches');
 }

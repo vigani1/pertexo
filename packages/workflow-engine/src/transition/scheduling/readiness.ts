@@ -171,8 +171,13 @@ function markReachableDescendants(
   roots: readonly string[],
   indexes: SchedulerIndexes,
   marks: SchedulerMarks,
-  branchPath?: readonly BranchScopePart[],
-  skipped = false,
+  {
+    branchPath,
+    skipped = false,
+  }: Readonly<{
+    branchPath?: readonly BranchScopePart[] | undefined;
+    skipped?: boolean | undefined;
+  }> = {},
 ): void {
   const reached = descendants(roots, indexes.adjacency, indexes.mergeNodeIds);
   for (const nodeId of reached) {
@@ -219,8 +224,10 @@ function markConditionalBranches(
           .map(({ target }) => target.nodeId),
         indexes,
         marks,
-        branchPath,
-        port !== selection.selectedOutputPort,
+        {
+          branchPath: branchPath,
+          skipped: port !== selection.selectedOutputPort,
+        },
       );
     }
   }
@@ -228,10 +235,17 @@ function markConditionalBranches(
 
 function markParallelInvocation(
   input: DeriveReadyNodesInput,
-  parallel: SchedulerNode,
-  invocation: InvocationState,
-  indexes: SchedulerIndexes,
-  marks: SchedulerMarks,
+  {
+    parallel,
+    invocation,
+    indexes,
+    marks,
+  }: Readonly<{
+    parallel: SchedulerNode;
+    invocation: InvocationState;
+    indexes: SchedulerIndexes;
+    marks: SchedulerMarks;
+  }>,
 ): void {
   const skipped = invocation.status === 'skipped';
   const basePath =
@@ -250,8 +264,7 @@ function markParallelInvocation(
         .map(({ target }) => target.nodeId),
       indexes,
       marks,
-      branchPath,
-      skipped,
+      { branchPath: branchPath, skipped: skipped },
     );
   }
   if (!skipped) return;
@@ -266,8 +279,7 @@ function markParallelInvocation(
       .map(({ target }) => target.nodeId),
     indexes,
     marks,
-    basePath,
-    true,
+    { branchPath: basePath, skipped: true },
   );
 }
 
@@ -373,7 +385,12 @@ export function deriveReadyNodes(
   )) {
     const invocation = indexes.invocationByNode.get(parallel.id);
     if (invocation?.status === 'skipped' || invocation?.status === 'succeeded')
-      markParallelInvocation(input, parallel, invocation, indexes, marks);
+      markParallelInvocation(input, {
+        parallel: parallel,
+        invocation: invocation,
+        indexes: indexes,
+        marks: marks,
+      });
   }
   return [...input.graph.nodes]
     .sort((left, right) => compareOrdinal(left.id, right.id))

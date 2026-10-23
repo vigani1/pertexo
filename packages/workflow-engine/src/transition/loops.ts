@@ -66,7 +66,10 @@ export function applyLoopStart(
     const failed = { ...control, status: 'failed' as const };
     state.invocations.set(controlInvocationKey, failed);
     state.eventDrafts.push(
-      event('node.failed', occurredAt, failed, 'loop_limit_exceeded'),
+      event('node.failed', occurredAt, {
+        invocation: failed,
+        reasonCode: 'loop_limit_exceeded',
+      }),
     );
     return;
   }
@@ -172,12 +175,10 @@ export function applyLoopCompletion(
     const stopped = { ...control, status };
     state.invocations.set(control.invocationKey, stopped);
     state.eventDrafts.push(
-      event(
-        nodeEventName[status] ?? 'node.failed',
-        occurredAt,
-        stopped,
-        observation.reasonCode,
-      ),
+      event(nodeEventName[status] ?? 'node.failed', occurredAt, {
+        invocation: stopped,
+        reasonCode: observation.reasonCode,
+      }),
     );
   }
   const eventName = nodeEventName[status];
@@ -188,6 +189,9 @@ export function applyLoopCompletion(
     );
   if (!state.externalFactsArePersisted)
     state.eventDrafts.push(
-      event(eventName, occurredAt, completedInvocation, observation.reasonCode),
+      event(eventName, occurredAt, {
+        invocation: completedInvocation,
+        reasonCode: observation.reasonCode,
+      }),
     );
 }

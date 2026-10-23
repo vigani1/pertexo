@@ -23,13 +23,19 @@ type CheckpointInvocation = ReturnType<
   typeof parseCheckpoint
 >['invocations'][number];
 
-export function branchSelectionObservations(
-  completedItems: readonly JsonValue[],
-  successfulOutcomes: ReadonlyMap<string, Readonly<Record<string, JsonValue>>>,
-  invocations: ReadonlyMap<string, CheckpointInvocation>,
-  nodes: ReadonlyMap<string, WorkflowExecutableNode>,
+export function branchSelectionObservations({
+  completedItems,
+  successfulOutcomes,
+  invocations,
+  nodes,
   test = false,
-): readonly WorkflowObservation[] {
+}: Readonly<{
+  completedItems: readonly JsonValue[];
+  successfulOutcomes: ReadonlyMap<string, Readonly<Record<string, JsonValue>>>;
+  invocations: ReadonlyMap<string, CheckpointInvocation>;
+  nodes: ReadonlyMap<string, WorkflowExecutableNode>;
+  test?: boolean | undefined;
+}>): readonly WorkflowObservation[] {
   const seen = new Map<string, string>();
   const verifiedParallelOutputs = new Set<string>();
   const observations = completedItems.flatMap((item): WorkflowObservation[] => {
