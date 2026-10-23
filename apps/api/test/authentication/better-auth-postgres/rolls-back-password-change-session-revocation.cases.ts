@@ -62,13 +62,13 @@ export function registerRollsBackPasswordChangeSessionRevocation(): void {
       await owner.query(`create trigger test_reject_auth_session_delete
         before delete on app.auth_sessions for each row
         execute function app.test_reject_auth_session_delete('${authenticated.userId}')`);
-      const rejected = await authenticatedRequest(
-        '/v1/auth/account-security/password/change',
-        'POST',
-        signedCookie,
-        'test-csrf-token-with-more-than-thirty-two-characters',
-        { currentPassword: originalPassword, newPassword },
-      );
+      const rejected = await authenticatedRequest({
+        path: '/v1/auth/account-security/password/change',
+        method: 'POST',
+        sessionCookie: signedCookie,
+        csrf: 'test-csrf-token-with-more-than-thirty-two-characters',
+        body: { currentPassword: originalPassword, newPassword },
+      });
       expect(rejected.status).toBeGreaterThanOrEqual(500);
       expect(await runtime.sessions.authenticate(signedCookie)).toBeDefined();
     } finally {
@@ -121,24 +121,24 @@ export function registerRollsBackPasswordChangeSessionRevocation(): void {
     const cookie = cookieValue(initial.setCookies) ?? '';
     const csrf = 'test-csrf-token-with-more-than-thirty-two-characters';
     const results = await Promise.all([
-      authenticatedRequest(
-        '/v1/auth/account-security/password/setup',
-        'POST',
-        cookie,
-        csrf,
-        {
+      authenticatedRequest({
+        path: '/v1/auth/account-security/password/setup',
+        method: 'POST',
+        sessionCookie: cookie,
+        csrf: csrf,
+        body: {
           newPassword: 'social setup secure password one',
         },
-      ),
-      authenticatedRequest(
-        '/v1/auth/account-security/password/setup',
-        'POST',
-        cookie,
-        csrf,
-        {
+      }),
+      authenticatedRequest({
+        path: '/v1/auth/account-security/password/setup',
+        method: 'POST',
+        sessionCookie: cookie,
+        csrf: csrf,
+        body: {
           newPassword: 'social setup secure password two',
         },
-      ),
+      }),
     ]);
     expect(results.map((result) => result.status).sort()).toEqual([200, 409]);
     const winner = results.find((result) => result.status === 200);
