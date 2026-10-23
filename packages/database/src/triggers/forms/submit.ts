@@ -114,11 +114,9 @@ export async function submitForm(
       startRun,
     );
     const receipt =
-      'coordinated' in result
+      'coordinated' in result || 'skipped' in result
         ? { accepted: false as const, ...result, replayed: false }
-        : 'skipped' in result
-          ? { accepted: false as const, ...result, replayed: false }
-          : submissionReceipt(form, result, { publicAccess });
+        : submissionReceipt(form, result, { publicAccess });
     await completeCommand(client, command, receipt);
     return receipt;
   }

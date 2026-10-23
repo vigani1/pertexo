@@ -26,12 +26,13 @@ export async function persistTaskIntents(
     workspaceId,
   ]);
   for (const intent of plan.taskIntents ?? []) {
-    const status = terminalRunStatuses.has(plan.checkpoint.runStatus)
-      ? 'canceled'
-      : intent.kind === 'callback' ||
-          hasPendingTaskCapacity(
-            await readPendingTaskAllowance(client, workspaceId),
-          )
+    let status: 'canceled' | 'pending' | 'refused';
+    if (terminalRunStatuses.has(plan.checkpoint.runStatus)) status = 'canceled';
+    else if (intent.kind === 'callback') status = 'pending';
+    else
+      status = hasPendingTaskCapacity(
+        await readPendingTaskAllowance(client, workspaceId),
+      )
         ? 'pending'
         : 'refused';
     const inserted =

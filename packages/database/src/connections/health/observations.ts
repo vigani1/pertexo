@@ -191,12 +191,7 @@ export async function applyConnectionHealthObservation(
       ...(parsed.signal === undefined ? {} : { signal: parsed.signal }),
     },
   });
-  return Object.freeze({
-    kind:
-      consumed.status === 'duplicate'
-        ? 'duplicate'
-        : consumed.value
-          ? 'applied'
-          : 'stale',
-  });
+  if (consumed.status === 'duplicate')
+    return Object.freeze({ kind: 'duplicate' });
+  return Object.freeze({ kind: consumed.value ? 'applied' : 'stale' });
 }

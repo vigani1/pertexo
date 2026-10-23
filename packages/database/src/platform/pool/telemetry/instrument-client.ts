@@ -85,13 +85,7 @@ export function instrumentClient(client: PoolClient, state: MeterState): void {
         transactionStartedAtByClient.has(client) &&
         (operation === 'commit' || operation === 'rollback')
       ) {
-        finishTransaction(
-          outcome === 'error'
-            ? 'connection_error'
-            : operation === 'commit'
-              ? 'committed'
-              : 'rolled_back',
-        );
+        finishTransaction(completedTransactionOutcome(outcome, operation));
       }
     };
 
@@ -141,6 +135,15 @@ export function instrumentClient(client: PoolClient, state: MeterState): void {
   client.once('end', () => {
     finishTransaction('connection_error');
   });
+}
+
+function completedTransactionOutcome(
+  outcome: 'error' | 'success',
+  operation: QueryOperation,
+): 'connection_error' | 'committed' | 'rolled_back' {
+  if (outcome === 'error') return 'connection_error';
+  if (operation === 'commit') return 'committed';
+  return 'rolled_back';
 }
 
 export function instrumentClientRelease(

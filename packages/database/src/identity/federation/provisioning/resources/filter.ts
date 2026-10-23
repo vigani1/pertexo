@@ -166,19 +166,14 @@ export function compileDirectoryFilter(
     const text = field.type !== 'boolean' && !date;
     const left = text && !field.caseExact ? `lower(${field.sql})` : field.sql;
     const parameter = bind(node.compValue);
-    const right = date
-      ? `${parameter}::timestamptz`
-      : text && !field.caseExact
-        ? `lower(${parameter}::text)`
-        : parameter;
+    const right = comparisonParameter(parameter, {
+      date,
+      text,
+      caseExact: field.caseExact,
+    });
     if (['co', 'sw', 'ew'].includes(node.op)) {
       if (!text) throw new DirectoryError('invalid_filter');
-      const comparison =
-        node.op === 'co'
-          ? `strpos(${left},${right})>0`
-          : node.op === 'sw'
-            ? `left(${left},length(${right}))=${right}`
-            : `right(${left},length(${right}))=${right}`;
+      const comparison = substringComparison(node.op, left, right);
       return `coalesce((${comparison}),false)`;
     }
     const operators = {
@@ -194,4 +189,35 @@ export function compileDirectoryFilter(
   };
   // The public boundary parses and bounds this AST before it enters storage.
   return filter === undefined ? 'true' : compile(filter);
+}
+
+function comparisonParameter(
+  parameter: string,
+  {
+    date,
+    text,
+    caseExact,
+  }: Readonly<{ date: boolean; text: boolean; caseExact: boolean | undefined }>,
+): string {
+  if (date) {
+    return `${parameter}::timestamptz`;
+  }
+  if (text && !caseExact) {
+    return `lower(${parameter}::text)`;
+  }
+  return parameter;
+}
+
+function substringComparison(
+  operator: Filter['op'],
+  left: string,
+  right: string,
+): string {
+  if (operator === 'co') {
+    return `strpos(${left},${right})>0`;
+  }
+  if (operator === 'sw') {
+    return `left(${left},length(${right}))=${right}`;
+  }
+  return `right(${left},length(${right}))=${right}`;
 }

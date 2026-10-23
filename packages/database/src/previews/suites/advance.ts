@@ -32,15 +32,7 @@ async function finish(client: PoolClient, suite: SuiteRow): Promise<void> {
     "select count(*)::integer nonpassing from app.workflow_test_suite_cases where workspace_id=$1 and suite_id=$2 and status<>'passed'",
     [suite.workspace_id, suite.id],
   );
-  const status =
-    suite.stop_reason === 'user_canceled' ||
-    suite.stop_reason === 'case_canceled'
-      ? 'canceled'
-      : suite.stop_reason !== null
-        ? 'error'
-        : remaining.rows[0]?.nonpassing === 0
-          ? 'passed'
-          : 'failed';
+  const status = suiteOutcome(suite, remaining.rows[0]?.nonpassing);
   await client.query(
     'update app.workflow_test_suites set status=$3,completed_at=clock_timestamp() where workspace_id=$1 and id=$2',
     [suite.workspace_id, suite.id, status],
@@ -179,4 +171,23 @@ export async function advanceSuite(
     } else throw error;
   }
   return true;
+}
+
+function suiteOutcome(
+  suite: SuiteRow,
+  nonpassing: number | undefined,
+): 'canceled' | 'error' | 'passed' | 'failed' {
+  if (
+    suite.stop_reason === 'user_canceled' ||
+    suite.stop_reason === 'case_canceled'
+  ) {
+    return 'canceled';
+  }
+  if (suite.stop_reason !== null) {
+    return 'error';
+  }
+  if (nonpassing === 0) {
+    return 'passed';
+  }
+  return 'failed';
 }

@@ -179,16 +179,7 @@ export async function acceptPendingCall(
       throw new WorkflowCallRefusedError('call_target_capacity_exceeded');
     await client.query('release savepoint workflow_call_candidate');
   } catch (error) {
-    const refusal =
-      error instanceof WorkflowCallRefusedError
-        ? error.code
-        : error instanceof CallableInputInvalidError
-          ? 'call_input_invalid'
-          : error instanceof WorkspaceRunQuotaExceededError
-            ? 'call_target_capacity_exceeded'
-            : error instanceof WorkspaceRunAdmissionDeniedError
-              ? 'call_target_unavailable'
-              : undefined;
+    const refusal = callAdmissionRefusal(error);
     if (refusal === undefined) throw error;
     await client.query('rollback to savepoint workflow_call_candidate');
     await client.query('release savepoint workflow_call_candidate');
@@ -198,4 +189,20 @@ export async function acceptPendingCall(
     );
     await wakeWorkflowRun(client, workspaceId, parentRunId, input.traceparent);
   }
+}
+
+function callAdmissionRefusal(error: unknown): string | undefined {
+  if (error instanceof WorkflowCallRefusedError) {
+    return error.code;
+  }
+  if (error instanceof CallableInputInvalidError) {
+    return 'call_input_invalid';
+  }
+  if (error instanceof WorkspaceRunQuotaExceededError) {
+    return 'call_target_capacity_exceeded';
+  }
+  if (error instanceof WorkspaceRunAdmissionDeniedError) {
+    return 'call_target_unavailable';
+  }
+  return undefined;
 }

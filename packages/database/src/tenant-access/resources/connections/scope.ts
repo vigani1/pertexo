@@ -31,11 +31,7 @@ export function connectionScope(
       workspaceShared: false,
       restricted: 'none',
     });
-  const restricted = RESOURCE_ADMINISTRATORS.includes(role)
-    ? 'all'
-    : hasCapability(role, 'connection:use')
-      ? 'matching'
-      : 'none';
+  const restricted = restrictedConnectionAudience(role);
   return Object.freeze({ ...identity, workspaceShared: true, restricted });
 }
 
@@ -62,15 +58,32 @@ export function connectionScopeSql(
   connection: SQL = sql`connection`,
 ): SQL {
   if (!scope.workspaceShared) return sql`false`;
-  const audience =
-    scope.restricted === 'all'
-      ? sql`true`
-      : scope.restricted === 'none'
-        ? sql`${connection}.access_mode='workspace'`
-        : sql`(${connection}.access_mode='workspace' or
+  const audience = connectionAudienceSql(scope, connection);
+  return sql`(${connection}.workspace_id=${scope.workspaceId} and ${audience})`;
+}
+
+function restrictedConnectionAudience(
+  role: Role,
+): ConnectionScope['restricted'] {
+  if (RESOURCE_ADMINISTRATORS.includes(role)) {
+    return 'all';
+  }
+  if (hasCapability(role, 'connection:use')) {
+    return 'matching';
+  }
+  return 'none';
+}
+
+function connectionAudienceSql(scope: ConnectionScope, connection: SQL): SQL {
+  if (scope.restricted === 'all') {
+    return sql`true`;
+  }
+  if (scope.restricted === 'none') {
+    return sql`${connection}.access_mode='workspace'`;
+  }
+  return sql`(${connection}.access_mode='workspace' or
       (${connection}.access_mode='restricted' and (${connection}.created_by=${scope.actorId} or exists (
         select 1 from app.connection_shares permission
         where permission.workspace_id=${scope.workspaceId} and permission.connection_id=${connection}.id
           and permission.user_id=${scope.actorId}))))`;
-  return sql`(${connection}.workspace_id=${scope.workspaceId} and ${audience})`;
 }

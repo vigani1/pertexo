@@ -45,13 +45,7 @@ async function preparedInput(
   )
     throw new CoordinatorRunStateCorruptError();
   const checksum = createHash('sha256').update(prepared.json).digest('hex');
-  const refusal =
-    prepared.value.kind === 'artifact'
-      ? 'call_input_artifact_unsupported'
-      : utf8ByteLength(prepared.json) >
-          STORED_EXECUTION_VALUE_LIMITS.inlineBytes
-        ? 'call_input_too_large'
-        : undefined;
+  const refusal = callInputRefusal(prepared);
   return {
     json: refusal === undefined ? prepared.json : null,
     checksum,
@@ -236,4 +230,18 @@ export async function persistConsumedCalls(
   );
   if (continuation.rows[0]?.needed === true)
     await wakeWorkflowRun(client, workspaceId, runId);
+}
+
+function callInputRefusal(
+  prepared: ReturnType<typeof prepareStoredExecutionValue>,
+): string | undefined {
+  if (prepared.value.kind === 'artifact') {
+    return 'call_input_artifact_unsupported';
+  }
+  if (
+    utf8ByteLength(prepared.json) > STORED_EXECUTION_VALUE_LIMITS.inlineBytes
+  ) {
+    return 'call_input_too_large';
+  }
+  return undefined;
 }

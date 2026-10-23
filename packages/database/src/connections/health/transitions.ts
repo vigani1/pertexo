@@ -61,11 +61,7 @@ export async function applyCurrentConnectionTestHealth(
   if (revision.rows[0]?.health_revision !== input.healthRevision)
     return current;
   const definitive = !outcome.ok && outcome.reauthorizationRequired;
-  const nextStatus = outcome.ok
-    ? 'active'
-    : definitive
-      ? 'reauthorization_required'
-      : current.status;
+  const nextStatus = connectionTestStatus(current, { outcome, definitive });
   const updated = await client.query<Record<string, unknown>>(
     `update app.connections
     set status=$1::varchar,last_tested_at=transaction_timestamp(),
@@ -111,4 +107,18 @@ export async function applyCurrentConnectionTestHealth(
     );
   }
   return mapConnection(row);
+}
+
+function connectionTestStatus(
+  current: ConnectionRecord,
+  input: Readonly<{ outcome: ConnectionTestOutcome; definitive: boolean }>,
+): ConnectionRecord['status'] {
+  const { outcome, definitive } = input;
+  if (outcome.ok) {
+    return 'active';
+  }
+  if (definitive) {
+    return 'reauthorization_required';
+  }
+  return current.status;
 }

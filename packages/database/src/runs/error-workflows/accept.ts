@@ -150,17 +150,7 @@ export async function acceptErrorWorkflow(
     );
     await client.query('release savepoint error_workflow_admission');
   } catch (error) {
-    const reason =
-      error instanceof WorkflowAlreadyRunningError
-        ? 'concurrency_limit'
-        : error instanceof WorkspaceRunQuotaExceededError
-          ? 'queue_full'
-          : error instanceof WorkspaceRunAdmissionDeniedError
-            ? 'workspace_unavailable'
-            : error instanceof ErrorWorkflowVersionUnavailableError ||
-                error instanceof CallableInputInvalidError
-              ? 'invalid_target'
-              : undefined;
+    const reason = errorWorkflowRefusal(error);
     if (reason === undefined) throw error;
     await client.query('rollback to savepoint error_workflow_admission');
     await client.query('release savepoint error_workflow_admission');
@@ -180,4 +170,23 @@ export async function acceptErrorWorkflow(
       );
     await refuse(reason);
   }
+}
+
+function errorWorkflowRefusal(error: unknown): string | undefined {
+  if (error instanceof WorkflowAlreadyRunningError) {
+    return 'concurrency_limit';
+  }
+  if (error instanceof WorkspaceRunQuotaExceededError) {
+    return 'queue_full';
+  }
+  if (error instanceof WorkspaceRunAdmissionDeniedError) {
+    return 'workspace_unavailable';
+  }
+  if (
+    error instanceof ErrorWorkflowVersionUnavailableError ||
+    error instanceof CallableInputInvalidError
+  ) {
+    return 'invalid_target';
+  }
+  return undefined;
 }

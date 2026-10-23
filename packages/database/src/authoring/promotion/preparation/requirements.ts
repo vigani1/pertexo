@@ -87,12 +87,7 @@ export async function inspectPromotionRequirements(
         kind: 'connection',
         status: connection?.status === 'active' ? 'ready' : 'missing',
         name: connection?.name ?? 'Published child connection',
-        detail:
-          connection?.status === 'active'
-            ? connection.name === null
-              ? 'Uses the published child’s accepted connection binding.'
-              : 'Uses this target connection.'
-            : 'A retained Call dependency needs an active target connection.',
+        detail: connectionRequirementDetail(connection),
       });
     }
   }
@@ -109,4 +104,16 @@ export async function inspectPromotionRequirements(
       detail: issue.message.slice(0, 512),
     });
   return report;
+}
+
+function connectionRequirementDetail(
+  connection: Readonly<{ name: string | null; status: string }> | undefined,
+): string {
+  if (connection?.status === 'active') {
+    if (connection.name === null) {
+      return 'Uses the published child’s accepted connection binding.';
+    }
+    return 'Uses this target connection.';
+  }
+  return 'A retained Call dependency needs an active target connection.';
 }
