@@ -68,15 +68,17 @@ describe.runIf(fixture.enabled)(
               credential: secret,
             });
             const timestamp = String(Math.floor(Date.now() / 1000));
-            const authentication =
-              mode === 'header_secret'
-                ? { authorization: `Bearer ${secret}` }
-                : mode === 'signed'
-                  ? {
-                      'x-pertexo-timestamp': timestamp,
-                      'x-pertexo-signature': `v1=${createHmac('sha256', Buffer.from(secret, 'base64url')).update(`${timestamp}.`).update(body).digest('hex')}`,
-                    }
-                  : {};
+            let authentication;
+            if (mode === 'header_secret') {
+              authentication = { authorization: `Bearer ${secret}` };
+            } else if (mode === 'signed') {
+              authentication = {
+                'x-pertexo-timestamp': timestamp,
+                'x-pertexo-signature': `v1=${createHmac('sha256', Buffer.from(secret, 'base64url')).update(`${timestamp}.`).update(body).digest('hex')}`,
+              };
+            } else {
+              authentication = {};
+            }
             const reply = await fetch(target, {
               method: 'POST',
               headers: {

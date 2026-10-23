@@ -164,15 +164,20 @@ export function registerDeliversRealPersonalNoticeMailRefuses(): void {
       const bodyStart = raw.indexOf('\r\n\r\n');
       const headers = raw.slice(0, bodyStart),
         encoded = raw.slice(bodyStart + 4);
-      const body = /Content-Transfer-Encoding: base64/iu.test(headers)
-        ? Buffer.from(encoded, 'base64').toString('utf8')
-        : /Content-Transfer-Encoding: quoted-printable/iu.test(headers)
-          ? encoded
-              .replace(/=\r?\n/gu, '')
-              .replace(/=([A-F0-9]{2})/giu, (_match: string, hex: string) =>
-                String.fromCharCode(Number.parseInt(hex, 16)),
-              )
-          : encoded;
+      let body;
+      if (/Content-Transfer-Encoding: base64/iu.test(headers)) {
+        body = Buffer.from(encoded, 'base64').toString('utf8');
+      } else if (
+        /Content-Transfer-Encoding: quoted-printable/iu.test(headers)
+      ) {
+        body = encoded
+          .replace(/=\r?\n/gu, '')
+          .replace(/=([A-F0-9]{2})/giu, (_match: string, hex: string) =>
+            String.fromCharCode(Number.parseInt(hex, 16)),
+          );
+      } else {
+        body = encoded;
+      }
       expect(body).toContain('Only the safe workflow name');
       expect(body).toContain(
         `https://app.example.test/w/${first.workspaceId}/inbox`,

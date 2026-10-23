@@ -37,12 +37,14 @@ export function registerRechecksAuthorityAfterSQLNotFound(): void {
         f.authorization.findAccess.mockRejectedValueOnce(
           new Error('private lookup transport detail'),
         );
-      const status =
-        mode === 'lost-role'
-          ? 'forbidden'
-          : mode === 'lookup-outage'
-            ? 'outcome_unknown'
-            : 'not_visible';
+      let status;
+      if (mode === 'lost-role') {
+        status = 'forbidden';
+      } else if (mode === 'lookup-outage') {
+        status = 'outcome_unknown';
+      } else {
+        status = 'not_visible';
+      }
       expect(await f.useCase.bulk({ ...base, request: move })).toEqual({
         items: [
           { workflowId: firstId, status },

@@ -34,26 +34,28 @@ export function curatedAutomaticScheduleVariation(
     throw new Error('Reviewed schedule graph required');
   return {
     ...graph,
-    nodes: graph.nodes.map((node) =>
-      node.id === 'schedule-start'
-        ? {
-            ...node,
-            config: {
-              kind: 'interval',
-              intervalMinutes: 1,
-              misfirePolicy: 'skip',
-            },
-          }
-        : node.id === 'batch-items'
-          ? {
-              ...node,
-              inputMappings: {
-                ...node.inputMappings,
-                items: { kind: 'literal', value: ['first', 'second'] },
-              },
-            }
-          : node,
-    ),
+    nodes: graph.nodes.map((node) => {
+      if (node.id === 'schedule-start') {
+        return {
+          ...node,
+          config: {
+            kind: 'interval',
+            intervalMinutes: 1,
+            misfirePolicy: 'skip',
+          },
+        };
+      }
+      if (node.id === 'batch-items') {
+        return {
+          ...node,
+          inputMappings: {
+            ...node.inputMappings,
+            items: { kind: 'literal', value: ['first', 'second'] },
+          },
+        };
+      }
+      return node;
+    }),
   };
 }
 

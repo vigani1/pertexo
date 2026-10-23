@@ -205,11 +205,16 @@ const httpMaster =
   scenario === 'webhook-responses'
     ? randomBytes(32)
     : undefined;
-const httpAuthorization = controlledHttpScenario
-  ? scenario === 'artifact-inputs'
-    ? 'Bearer owned-artifact-destination'
-    : `Bearer ${randomUUID()}`
-  : undefined;
+let httpAuthorization;
+if (controlledHttpScenario) {
+  if (scenario === 'artifact-inputs') {
+    httpAuthorization = 'Bearer owned-artifact-destination';
+  } else {
+    httpAuthorization = `Bearer ${randomUUID()}`;
+  }
+} else {
+  httpAuthorization = undefined;
+}
 let httpControl: ReturnType<typeof createEditorHttpControl> | undefined;
 let httpEffects: z.infer<typeof httpEffectsSchema> | undefined;
 let curatedEffects: z.infer<typeof curatedTemplateEffectsSchema> | undefined;

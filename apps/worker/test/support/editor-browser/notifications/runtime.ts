@@ -22,15 +22,17 @@ function textBody(raw: string) {
   const split = raw.indexOf('\r\n\r\n');
   const headers = raw.slice(0, split),
     body = raw.slice(split + 4);
-  return /Content-Transfer-Encoding: base64/iu.test(headers)
-    ? Buffer.from(body, 'base64').toString('utf8')
-    : /Content-Transfer-Encoding: quoted-printable/iu.test(headers)
-      ? body
-          .replace(/=\r?\n/gu, '')
-          .replace(/=([A-F0-9]{2})/giu, (_match: string, hex: string) =>
-            String.fromCharCode(Number.parseInt(hex, 16)),
-          )
-      : body;
+  if (/Content-Transfer-Encoding: base64/iu.test(headers)) {
+    return Buffer.from(body, 'base64').toString('utf8');
+  }
+  if (/Content-Transfer-Encoding: quoted-printable/iu.test(headers)) {
+    return body
+      .replace(/=\r?\n/gu, '')
+      .replace(/=([A-F0-9]{2})/giu, (_match: string, hex: string) =>
+        String.fromCharCode(Number.parseInt(hex, 16)),
+      );
+  }
+  return body;
 }
 /** Owns only the existing production inbox/mail runtimes and a loopback SMTP sink. */
 export async function createEditorNotifications(

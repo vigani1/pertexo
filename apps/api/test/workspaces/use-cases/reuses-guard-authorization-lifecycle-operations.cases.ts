@@ -46,7 +46,6 @@ export function registerReusesGuardAuthorizationLifecycleOperations(): void {
       reason: 'retiring the temporary workspace',
     });
 
-    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(vi.mocked(authorization.findAccess)).toHaveBeenCalledTimes(1);
   });
 
@@ -131,7 +130,6 @@ export function registerReusesGuardAuthorizationLifecycleOperations(): void {
         reason: 'retiring the temporary workspace',
       }),
     ).rejects.toMatchObject({ code: 'auth.forbidden' });
-    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(vi.mocked(authorization.findAccess)).not.toHaveBeenCalled();
     expect(store.requestWorkspaceLifecycleOperation).not.toHaveBeenCalled();
   });

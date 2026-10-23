@@ -241,14 +241,17 @@ export function registerRecoversBoundedEachBatchesCancellationPostgreSQL(): void
           | 'cancel_running'
           | 'deadline_running',
       ) => {
-        const structuredKind =
-          mode === 'condition_complete'
-            ? 'condition'
-            : mode === 'switch_complete'
-              ? 'switch'
-              : mode === 'nested_complete'
-                ? 'nested'
-                : undefined;
+        let structuredKind:
+          Parameters<typeof acceptStructuredForEachRun>[0] | undefined;
+        if (mode === 'condition_complete') {
+          structuredKind = 'condition';
+        } else if (mode === 'switch_complete') {
+          structuredKind = 'switch';
+        } else if (mode === 'nested_complete') {
+          structuredKind = 'nested';
+        } else {
+          structuredKind = undefined;
+        }
         const accepted = await (structuredKind !== undefined
           ? acceptStructuredForEachRun(structuredKind)
           : mode === 'serial_complete'
