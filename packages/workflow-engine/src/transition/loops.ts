@@ -5,6 +5,7 @@ import { assertNodeTransition } from './status-transitions.js';
 import type {
   InvocationState,
   LoopState,
+  LoopState,
   WorkflowObservation,
 } from '../types.js';
 import {
@@ -160,6 +161,39 @@ export function applyLoopCompletion(
           terminalStatus: loop.terminalStatus ?? status,
         },
   );
+  stopFailedLoopControl(state, { status, loop, observation, occurredAt });
+  const eventName = nodeEventName[status];
+  if (eventName === undefined)
+    throw new WorkflowEngineError(
+      'checkpoint_invalid',
+      `missing event mapping for ${status}`,
+    );
+  if (!state.externalFactsArePersisted)
+    state.eventDrafts.push(
+      event(eventName, occurredAt, {
+        invocation: completedInvocation,
+        reasonCode: observation.reasonCode,
+      }),
+    );
+}
+
+function stopFailedLoopControl(
+  state: MutableWorkflowTransition,
+  {
+    status,
+    loop,
+    observation,
+    occurredAt,
+  }: Readonly<{
+    status: InvocationState['status'];
+    loop: LoopState;
+    observation: Extract<
+      WorkflowObservation,
+      { kind: 'loop_iteration_completed' }
+    >;
+    occurredAt: string;
+  }>,
+): void {
   if (
     status !== 'succeeded' &&
     status !== 'skipped' &&
@@ -181,17 +215,4 @@ export function applyLoopCompletion(
       }),
     );
   }
-  const eventName = nodeEventName[status];
-  if (eventName === undefined)
-    throw new WorkflowEngineError(
-      'checkpoint_invalid',
-      `missing event mapping for ${status}`,
-    );
-  if (!state.externalFactsArePersisted)
-    state.eventDrafts.push(
-      event(eventName, occurredAt, {
-        invocation: completedInvocation,
-        reasonCode: observation.reasonCode,
-      }),
-    );
 }

@@ -66,30 +66,12 @@ export function branchSelectionObservations({
       return [];
     const parallelPorts = configuredParallelOutputPorts(node);
     if (parallelPorts !== undefined) {
-      if (
-        completedOutputReference(correspondingOutcome, attemptId)?.kind !==
-        'inline'
-      )
-        operationError(
-          'observation_invalid',
-          'Parallel output reference is invalid',
-        );
-      if (material.value === undefined)
-        operationError('observation_invalid', 'Parallel output is missing');
-      const completedValue = record(
-        material.value,
-        'observation_invalid',
-        'Parallel output',
-      );
-      exactKeys(completedValue, ['branchIds']);
-      if (
-        !Array.isArray(completedValue.branchIds) ||
-        completedValue.branchIds.length !== parallelPorts.length ||
-        completedValue.branchIds.some(
-          (branchId, index) => branchId !== parallelPorts[index],
-        )
-      )
-        operationError('observation_invalid', 'Parallel output is invalid');
+      assertParallelOutput({
+        correspondingOutcome,
+        attemptId,
+        value: material.value,
+        parallelPorts,
+      });
       verifiedParallelOutputs.add(outcomeIdentity);
       return [];
     }
@@ -316,4 +298,40 @@ function settledBranchDisposition(
   if (statuses.has('canceled')) return 'canceled';
   if (statuses.size === 1 && statuses.has('skipped')) return 'skipped';
   return 'arrived';
+}
+
+function assertParallelOutput({
+  correspondingOutcome,
+  attemptId,
+  value,
+  parallelPorts,
+}: Readonly<{
+  correspondingOutcome: Readonly<Record<string, JsonValue>>;
+  attemptId: string;
+  value: JsonValue | undefined;
+  parallelPorts: readonly string[];
+}>): void {
+  if (
+    completedOutputReference(correspondingOutcome, attemptId)?.kind !== 'inline'
+  )
+    operationError(
+      'observation_invalid',
+      'Parallel output reference is invalid',
+    );
+  if (value === undefined)
+    operationError('observation_invalid', 'Parallel output is missing');
+  const completedValue = record(
+    value,
+    'observation_invalid',
+    'Parallel output',
+  );
+  exactKeys(completedValue, ['branchIds']);
+  if (
+    !Array.isArray(completedValue.branchIds) ||
+    completedValue.branchIds.length !== parallelPorts.length ||
+    completedValue.branchIds.some(
+      (branchId, index) => branchId !== parallelPorts[index],
+    )
+  )
+    operationError('observation_invalid', 'Parallel output is invalid');
 }

@@ -131,29 +131,7 @@ function applyInvocationObservation(
 ): void {
   const existing = state.invocations.get(observation.invocationKey);
   if (observation.kind === 'ready') {
-    if (
-      state.cancelRequested ||
-      existing !== undefined ||
-      isFinishedIterationScope(state.loops.values(), observation)
-    )
-      return;
-    const ready: InvocationState = {
-      invocationKey: observation.invocationKey,
-      nodeId: observation.nodeId,
-      status: 'ready',
-      attemptNumber: 0,
-      ...(observation.branchPath === undefined
-        ? {}
-        : { branchPath: observation.branchPath }),
-      ...(observation.iterationPath === undefined
-        ? {}
-        : { iterationPath: observation.iterationPath }),
-    };
-    state.invocations.set(observation.invocationKey, ready);
-    state.nodeRunAdmissionKeys.add(observation.invocationKey);
-    state.eventDrafts.push(
-      event('node.ready', occurredAt, { invocation: ready }),
-    );
+    applyReadyObservation(state, observation, { existing, occurredAt });
     return;
   }
   if (existing === undefined)
@@ -222,43 +200,7 @@ function applyInvocationObservation(
     }
     return;
   }
-  if (isTerminalNodeStatus(existing.status)) {
-    if (
-      existing.status === observation.status &&
-      sameOutputReference(existing.output, observation.output)
-    )
-      return;
-    assertNodeTransition(existing.status, observation.status);
-    return;
-  }
-  if (existing.status === 'waiting' && existing.resumeAt !== undefined)
-    throw new WorkflowEngineError(
-      'transition_invalid',
-      'ordinary waiting invocation must resume before terminal settlement',
-    );
-  assertNodeTransition(existing.status, observation.status);
-  const { waitKind: _waitKind, ...withoutWaitKind } = existing;
-  const completed: InvocationState = {
-    ...withoutWaitKind,
-    status: observation.status,
-    ...(observation.output === undefined ? {} : { output: observation.output }),
-  };
-  state.invocations.set(existing.invocationKey, completed);
-  const eventName = nodeEventName[observation.status];
-  if (eventName === undefined)
-    throw new WorkflowEngineError(
-      'checkpoint_invalid',
-      `missing event mapping for ${observation.status}`,
-    );
-  if (!state.externalFactsArePersisted || observation.coordinatorDerived)
-    state.eventDrafts.push(
-      event(eventName, occurredAt, {
-        invocation: completed,
-        reasonCode: observation.reasonCode,
-      }),
-    );
-  if (observation.status === 'failed' && observation.failure !== undefined)
-    selectFailureHandler(state, completed, observation.failure, occurredAt);
+  applyTerminalObservation(state, existing, observation, occurredAt);
 }
 
 function applyControlFacts(
@@ -351,8 +293,93 @@ export function applyWorkflowObservations(
       case 'loop_iteration_completed':
         applyLoopCompletion(state, observation, input.occurredAt);
         break;
+      case 'call_started':
+      case 'outcome':
+      case 'ready':
+      case 'resume':
+      case 'task_started':
+      case 'wait':
       default:
         applyInvocationObservation(state, observation, input.occurredAt);
     }
   }
+}
+
+function applyTerminalObservation(
+  state: MutableWorkflowTransition,
+  existing: InvocationState,
+  observation: Extract<WorkflowObservation, { kind: 'outcome' }>,
+  occurredAt: string,
+): void {
+  if (isTerminalNodeStatus(existing.status)) {
+    if (
+      existing.status === observation.status &&
+      sameOutputReference(existing.output, observation.output)
+    )
+      return;
+    assertNodeTransition(existing.status, observation.status);
+    return;
+  }
+  if (existing.status === 'waiting' && existing.resumeAt !== undefined)
+    throw new WorkflowEngineError(
+      'transition_invalid',
+      'ordinary waiting invocation must resume before terminal settlement',
+    );
+  assertNodeTransition(existing.status, observation.status);
+  const { waitKind: _waitKind, ...withoutWaitKind } = existing;
+  const completed: InvocationState = {
+    ...withoutWaitKind,
+    status: observation.status,
+    ...(observation.output === undefined ? {} : { output: observation.output }),
+  };
+  state.invocations.set(existing.invocationKey, completed);
+  const eventName = nodeEventName[observation.status];
+  if (eventName === undefined)
+    throw new WorkflowEngineError(
+      'checkpoint_invalid',
+      `missing event mapping for ${observation.status}`,
+    );
+  if (!state.externalFactsArePersisted || observation.coordinatorDerived)
+    state.eventDrafts.push(
+      event(eventName, occurredAt, {
+        invocation: completed,
+        reasonCode: observation.reasonCode,
+      }),
+    );
+  if (observation.status === 'failed' && observation.failure !== undefined)
+    selectFailureHandler(state, completed, observation.failure, occurredAt);
+}
+
+function applyReadyObservation(
+  state: MutableWorkflowTransition,
+  observation: Extract<WorkflowObservation, { kind: 'ready' }>,
+  {
+    existing,
+    occurredAt,
+  }: Readonly<{ existing: InvocationState | undefined; occurredAt: string }>,
+): void {
+  if (
+    state.cancelRequested ||
+    existing !== undefined ||
+    isFinishedIterationScope(state.loops.values(), observation)
+  )
+    return;
+  const ready: InvocationState = {
+    invocationKey: observation.invocationKey,
+    nodeId: observation.nodeId,
+    status: 'ready',
+    attemptNumber: 0,
+    ...(observation.branchPath === undefined
+      ? {}
+      : { branchPath: observation.branchPath }),
+    ...(observation.iterationPath === undefined
+      ? {}
+      : { iterationPath: observation.iterationPath }),
+  };
+  state.invocations.set(observation.invocationKey, ready);
+  state.nodeRunAdmissionKeys.add(observation.invocationKey);
+  state.eventDrafts.push(
+    event('node.ready', occurredAt, { invocation: ready }),
+  );
+  return;
 }

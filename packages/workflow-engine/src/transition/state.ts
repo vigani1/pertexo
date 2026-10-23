@@ -161,6 +161,12 @@ function observationKey(observation: WorkflowObservation): string {
       return `1:loop:${observation.controlInvocationKey}`;
     case 'loop_iteration_completed':
       return `2:loop:${observation.controlInvocationKey}:${String(observation.ordinal).padStart(16, '0')}`;
+    case 'call_started':
+    case 'outcome':
+    case 'ready':
+    case 'resume':
+    case 'task_started':
+    case 'wait':
     default:
       return `3:invocation:${observation.invocationKey}`;
   }

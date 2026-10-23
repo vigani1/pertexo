@@ -113,19 +113,7 @@ export function forEachCoordinatorObservations({
     derivedObservations,
   );
   for (const item of completedItems) {
-    const material = record(item, 'observation_invalid', 'completed output');
-    exactKeys(material, ['sequence', 'attemptId', 'invocationKey', 'value']);
-    if (
-      typeof material.sequence !== 'number' ||
-      !Number.isSafeInteger(material.sequence) ||
-      typeof material.attemptId !== 'string' ||
-      !UUID_PATTERN.test(material.attemptId) ||
-      typeof material.invocationKey !== 'string'
-    )
-      operationError(
-        'observation_invalid',
-        'completed output identity is invalid',
-      );
+    const material = parseForEachMaterial(item);
     const outcome = successfulOutcomes.get(
       `${String(material.sequence)}\u0000${material.attemptId}\u0000${material.invocationKey}`,
     );
@@ -154,59 +142,118 @@ export function forEachCoordinatorObservations({
       continue;
     }
     declarationMaterials.set(invocation.invocationKey, canonicalMaterial);
-    if (material.value === undefined)
-      operationError('observation_invalid', 'For Each output is missing');
-    const output = record(
-      material.value,
-      'observation_invalid',
-      'For Each output',
-    );
-    exactKeys(output, ['items', 'iterationCount']);
-    if (
-      !Array.isArray(output.items) ||
-      typeof output.iterationCount !== 'number' ||
-      !Number.isSafeInteger(output.iterationCount) ||
-      output.iterationCount !== output.items.length
-    )
-      operationError('observation_invalid', 'For Each output is invalid');
-    const body = node.structured.body;
-    const targets = new Set(body.edges.map(({ target }) => target.nodeId));
-    const sources = new Set(body.edges.map(({ source }) => source.nodeId));
-    const roots = body.nodes
-      .map(({ id }) => id)
-      .filter((id) => !targets.has(id))
-      .sort(compareOrdinal);
-    const sinks = body.nodes
-      .map(({ id }) => id)
-      .filter((id) => !sources.has(id));
-    const outputReference = completedOutputReference(
+    const output = parseForEachOutput(material.value);
+    const started = startedLoopObservation({
+      nodeId: node.id,
+      structured: node.structured,
+      invocation,
       outcome,
-      material.attemptId,
-    );
-    if (outputReference === undefined)
-      operationError(
-        'observation_invalid',
-        'For Each output reference is invalid',
-      );
-    declarations.add(invocation.invocationKey);
-    observations.push({
-      kind: 'loop_started',
-      loopId: node.id,
-      controlInvocationKey: invocation.invocationKey,
-      branchPath: invocation.branchPath ?? [],
-      iterationPath: invocation.iterationPath ?? [],
-      bodyRootNodeIds: roots,
-      bodySinkNodeId: sinks[0] ?? '',
-      collection: outputReference,
-      collectionChecksum: createHash('sha256')
-        .update(canonicalJson(output.items))
-        .digest('hex'),
-      collectionSize: output.items.length,
-      maxIterations: node.structured.maxIterations,
-      maxConcurrency: node.structured.maxConcurrency,
-      coordinatorDerived: true,
+      attemptId: material.attemptId,
+      items: output.items,
     });
+    declarations.add(invocation.invocationKey);
+    observations.push(started);
   }
+  observations.push(
+    ...completedLoopObservations(checkpoint, terminalOutcomes, declarations),
+  );
+  observations.sort((left, right) =>
+    compareOrdinal(loopObservationKey(left), loopObservationKey(right)),
+  );
+  return { observations, declarationInvocationKeys: declarations };
+}
+
+function parseForEachMaterial(item: JsonValue) {
+  const material = record(item, 'observation_invalid', 'completed output');
+  exactKeys(material, ['sequence', 'attemptId', 'invocationKey', 'value']);
+  if (
+    typeof material.sequence !== 'number' ||
+    !Number.isSafeInteger(material.sequence) ||
+    typeof material.attemptId !== 'string' ||
+    !UUID_PATTERN.test(material.attemptId) ||
+    typeof material.invocationKey !== 'string'
+  )
+    operationError(
+      'observation_invalid',
+      'completed output identity is invalid',
+    );
+  return {
+    sequence: material.sequence,
+    attemptId: material.attemptId,
+    invocationKey: material.invocationKey,
+    value: material.value,
+  };
+}
+
+function parseForEachOutput(value: JsonValue | undefined) {
+  if (value === undefined)
+    operationError('observation_invalid', 'For Each output is missing');
+  const output = record(value, 'observation_invalid', 'For Each output');
+  exactKeys(output, ['items', 'iterationCount']);
+  if (
+    !Array.isArray(output.items) ||
+    typeof output.iterationCount !== 'number' ||
+    !Number.isSafeInteger(output.iterationCount) ||
+    output.iterationCount !== output.items.length
+  )
+    operationError('observation_invalid', 'For Each output is invalid');
+  return { items: output.items, iterationCount: output.iterationCount };
+}
+
+function startedLoopObservation({
+  nodeId,
+  structured,
+  invocation,
+  outcome,
+  attemptId,
+  items,
+}: Readonly<{
+  nodeId: string;
+  structured: NonNullable<WorkflowExecutableNode['structured']>;
+  invocation: CheckpointInvocation;
+  outcome: Readonly<Record<string, JsonValue>>;
+  attemptId: string;
+  items: readonly JsonValue[];
+}>): WorkflowObservation {
+  const body = structured.body;
+  const targets = new Set(body.edges.map(({ target }) => target.nodeId));
+  const sources = new Set(body.edges.map(({ source }) => source.nodeId));
+  const roots = body.nodes
+    .map(({ id }) => id)
+    .filter((id) => !targets.has(id))
+    .sort(compareOrdinal);
+  const sinks = body.nodes.map(({ id }) => id).filter((id) => !sources.has(id));
+  const outputReference = completedOutputReference(outcome, attemptId);
+  if (outputReference === undefined)
+    operationError(
+      'observation_invalid',
+      'For Each output reference is invalid',
+    );
+  return {
+    kind: 'loop_started',
+    loopId: nodeId,
+    controlInvocationKey: invocation.invocationKey,
+    branchPath: invocation.branchPath ?? [],
+    iterationPath: invocation.iterationPath ?? [],
+    bodyRootNodeIds: roots,
+    bodySinkNodeId: sinks[0] ?? '',
+    collection: outputReference,
+    collectionChecksum: createHash('sha256')
+      .update(canonicalJson(items))
+      .digest('hex'),
+    collectionSize: items.length,
+    maxIterations: structured.maxIterations,
+    maxConcurrency: structured.maxConcurrency,
+    coordinatorDerived: true,
+  };
+}
+
+function completedLoopObservations(
+  checkpoint: ReturnType<typeof parseCheckpoint>,
+  terminalOutcomes: ReadonlyMap<string, TerminalLoopStatus>,
+  declarations: ReadonlySet<string>,
+): readonly WorkflowObservation[] {
+  const observations: WorkflowObservation[] = [];
   for (const loop of checkpoint.loops) {
     for (const ordinal of loop.activeOrdinals) {
       const iterationPath = [
@@ -252,8 +299,5 @@ export function forEachCoordinatorObservations({
       });
     }
   }
-  observations.sort((left, right) =>
-    compareOrdinal(loopObservationKey(left), loopObservationKey(right)),
-  );
-  return { observations, declarationInvocationKeys: declarations };
+  return observations;
 }

@@ -51,60 +51,12 @@ export function assertFailureCheckpoint(
   );
   for (const invocation of checkpoint.invocations) {
     if (invocation.failureHandling !== undefined) {
-      if (
-        executable.envelope.graph.nodes.find(
-          ({ id }) => id === invocation.nodeId,
-        )?.disabled === true
-      )
-        operationError(
-          'workflow_identity_invalid',
-          'disabled source cannot select a handler',
-        );
-      if (
-        !isSelectedFailureScope(
-          invocation,
-          checkpoint.workflowVersionId,
-          byKey,
-          checkpoint.branchSelections,
-        )
-      )
-        operationError(
-          'workflow_identity_invalid',
-          'selected failure is not in its executed choice scope',
-        );
-      const route = routes.get(invocation.nodeId);
-      const expectedSink =
-        route === undefined
-          ? undefined
-          : expectedInvocationKey(
-              { ...invocation, nodeId: route.sinkNodeId },
-              checkpoint.workflowVersionId,
-            );
-      const sink = byKey.get(invocation.failureHandling.sinkInvocationKey);
-      if (
-        expectedSink !== invocation.failureHandling.sinkInvocationKey ||
-        (invocation.failureHandling.disposition === 'handled' &&
-          sink?.status !== 'succeeded')
-      )
-        operationError(
-          'workflow_identity_invalid',
-          'failure handling disagrees with its pinned route or sink',
-        );
-      if (
-        (sink?.status === 'succeeded' ||
-          invocation.failureHandling.disposition === 'handled') &&
-        (route === undefined ||
-          !isCompletedFailureHandler(
-            invocation,
-            route.handlerNodeIds,
-            checkpoint.workflowVersionId,
-            byKey,
-          ))
-      )
-        operationError(
-          'workflow_identity_invalid',
-          'handled failure requires the complete selected handler chain',
-        );
+      assertSelectedFailure(invocation, invocation.failureHandling, {
+        executable,
+        checkpoint,
+        byKey,
+        routes,
+      });
     }
     const ownerNodeId = handlerOwners.get(invocation.nodeId);
     if (ownerNodeId !== undefined && invocation.status === 'skipped') {
@@ -130,4 +82,75 @@ export function assertFailureCheckpoint(
         );
     }
   }
+}
+
+function assertSelectedFailure(
+  invocation: InvocationState,
+  handling: NonNullable<InvocationState['failureHandling']>,
+  {
+    executable,
+    checkpoint,
+    byKey,
+    routes,
+  }: Readonly<{
+    executable: CompiledWorkflowExecutable;
+    checkpoint: WorkflowCheckpoint;
+    byKey: ReadonlyMap<string, InvocationState>;
+    routes: ReadonlyMap<
+      string,
+      ReturnType<typeof executableFailureRoutes>[number]
+    >;
+  }>,
+): void {
+  if (
+    executable.envelope.graph.nodes.find(({ id }) => id === invocation.nodeId)
+      ?.disabled === true
+  )
+    operationError(
+      'workflow_identity_invalid',
+      'disabled source cannot select a handler',
+    );
+  if (
+    !isSelectedFailureScope(
+      invocation,
+      checkpoint.workflowVersionId,
+      byKey,
+      checkpoint.branchSelections,
+    )
+  )
+    operationError(
+      'workflow_identity_invalid',
+      'selected failure is not in its executed choice scope',
+    );
+  const route = routes.get(invocation.nodeId);
+  const expectedSink =
+    route === undefined
+      ? undefined
+      : expectedInvocationKey(
+          { ...invocation, nodeId: route.sinkNodeId },
+          checkpoint.workflowVersionId,
+        );
+  const sink = byKey.get(handling.sinkInvocationKey);
+  if (
+    expectedSink !== handling.sinkInvocationKey ||
+    (handling.disposition === 'handled' && sink?.status !== 'succeeded')
+  )
+    operationError(
+      'workflow_identity_invalid',
+      'failure handling disagrees with its pinned route or sink',
+    );
+  if (
+    (sink?.status === 'succeeded' || handling.disposition === 'handled') &&
+    (route === undefined ||
+      !isCompletedFailureHandler(
+        invocation,
+        route.handlerNodeIds,
+        checkpoint.workflowVersionId,
+        byKey,
+      ))
+  )
+    operationError(
+      'workflow_identity_invalid',
+      'handled failure requires the complete selected handler chain',
+    );
 }

@@ -15,6 +15,7 @@ import {
   deriveTerminalRunStatus,
 } from './decisions.js';
 import type {
+  InvocationState,
   AttemptAdmissionPlan,
   NodeRunAdmissionPlan,
   WorkflowTransitionPlan,
@@ -89,7 +90,6 @@ export function buildWorkflowTransitionPlan(
 ): WorkflowTransitionPlan {
   const {
     current,
-    graph,
     invocations,
     eventDrafts,
     nodeRunAdmissionKeys,
@@ -111,90 +111,13 @@ export function buildWorkflowTransitionPlan(
           readySet,
           schedulerNodes: state.schedulerNodes,
         });
-  const attempts: AttemptAdmissionPlan[] = [];
-  for (const key of admittedKeys) {
-    const invocation = invocations.get(key);
-    if (invocation === undefined)
-      throw new WorkflowEngineError(
-        'checkpoint_invalid',
-        `ready invocation ${key} is missing`,
-      );
-    assertNodeTransition(invocation.status, 'running');
-    const admissionKind =
-      invocation.waitKind === 'node_wait'
-        ? ('wait_resume' as const)
-        : invocation.waitKind === 'retry_backoff'
-          ? ('retry' as const)
-          : ('execute' as const);
-    const { waitKind: _waitKind, ...withoutWaitKind } = invocation;
-    const running = {
-      ...withoutWaitKind,
-      status: 'running' as const,
-      attemptNumber: invocation.attemptNumber + 1,
-    };
-    invocations.set(key, running);
-    attempts.push({
-      invocationKey: key,
-      nodeId: running.nodeId,
-      attemptNumber: running.attemptNumber,
-      admissionKind,
-      sideEffectClass: schedulerNodeSideEffectClass(
-        state.schedulerNodes,
-        running.nodeId,
-      ),
-      ...(running.branchPath === undefined
-        ? {}
-        : { branchPath: running.branchPath }),
-      ...(running.iterationPath === undefined
-        ? {}
-        : { iterationPath: running.iterationPath }),
-    });
-  }
+  const attempts = admitAttempts(state, admittedKeys);
   if (state.runStatus === 'waiting' && attempts.length > 0) {
     assertRunTransition(state.runStatus, 'running');
     state.runStatus = 'running';
   }
 
-  const finalInvocations = [...invocations.values()].sort((left, right) =>
-    compareOrdinal(left.invocationKey, right.invocationKey),
-  );
-  const nonterminal = finalInvocations.filter(({ status }) =>
-    ['pending', 'ready', 'running', 'waiting'].includes(status),
-  );
-  const graphIncomplete =
-    graph?.nodes.some(
-      ({ id }) => !finalInvocations.some(({ nodeId }) => nodeId === id),
-    ) === true;
-  const runIsActive =
-    state.runStatus === 'queued' ||
-    state.runStatus === 'running' ||
-    state.runStatus === 'waiting';
-  if (runIsActive && nonterminal.length === 0) {
-    const terminalStatus = deriveTerminalRunStatus({
-      cancelRequested,
-      deadlineExpired,
-      graphIncomplete,
-      invocations: finalInvocations,
-    });
-    if (terminalStatus !== undefined) {
-      assertRunTransition(state.runStatus, terminalStatus);
-      state.runStatus = terminalStatus;
-      eventDrafts.push(event(`run.${terminalStatus}`, input.occurredAt));
-    }
-  } else if (
-    state.runStatus === 'running' &&
-    nonterminal.length > 0 &&
-    nonterminal.every(
-      ({ status, invocationKey }) =>
-        status === 'waiting' ||
-        (status === 'pending' && state.joins.has(invocationKey)) ||
-        (!input.hasExecutionSlot && status === 'ready'),
-    )
-  ) {
-    assertRunTransition(state.runStatus, 'waiting');
-    state.runStatus = 'waiting';
-    eventDrafts.push(event('run.waiting', input.occurredAt));
-  }
+  settleRunStatus(state, input);
 
   const firstDerivedEventSequence =
     current.nextEventSequence + input.consumedObservationCount;
@@ -273,4 +196,100 @@ export function buildWorkflowTransitionPlan(
       ? { immediateContinuation: true as const }
       : {}),
   };
+}
+
+function admitAttempts(
+  state: MutableWorkflowTransition,
+  admittedKeys: readonly string[],
+): readonly AttemptAdmissionPlan[] {
+  const { invocations } = state;
+  const attempts: AttemptAdmissionPlan[] = [];
+  for (const key of admittedKeys) {
+    const invocation = invocations.get(key);
+    if (invocation === undefined)
+      throw new WorkflowEngineError(
+        'checkpoint_invalid',
+        `ready invocation ${key} is missing`,
+      );
+    assertNodeTransition(invocation.status, 'running');
+    const admissionKind = attemptAdmissionKind(invocation.waitKind);
+    const { waitKind: _waitKind, ...withoutWaitKind } = invocation;
+    const running = {
+      ...withoutWaitKind,
+      status: 'running' as const,
+      attemptNumber: invocation.attemptNumber + 1,
+    };
+    invocations.set(key, running);
+    attempts.push({
+      invocationKey: key,
+      nodeId: running.nodeId,
+      attemptNumber: running.attemptNumber,
+      admissionKind,
+      sideEffectClass: schedulerNodeSideEffectClass(
+        state.schedulerNodes,
+        running.nodeId,
+      ),
+      ...(running.branchPath === undefined
+        ? {}
+        : { branchPath: running.branchPath }),
+      ...(running.iterationPath === undefined
+        ? {}
+        : { iterationPath: running.iterationPath }),
+    });
+  }
+  return attempts;
+}
+function settleRunStatus(
+  state: MutableWorkflowTransition,
+  input: Parameters<typeof buildWorkflowTransitionPlan>[1],
+): void {
+  const { invocations, graph, cancelRequested, deadlineExpired, eventDrafts } =
+    state;
+  const finalInvocations = [...invocations.values()].sort((left, right) =>
+    compareOrdinal(left.invocationKey, right.invocationKey),
+  );
+  const nonterminal = finalInvocations.filter(({ status }) =>
+    ['pending', 'ready', 'running', 'waiting'].includes(status),
+  );
+  const graphIncomplete =
+    graph?.nodes.some(
+      ({ id }) => !finalInvocations.some(({ nodeId }) => nodeId === id),
+    ) === true;
+  const runIsActive =
+    state.runStatus === 'queued' ||
+    state.runStatus === 'running' ||
+    state.runStatus === 'waiting';
+  if (runIsActive && nonterminal.length === 0) {
+    const terminalStatus = deriveTerminalRunStatus({
+      cancelRequested,
+      deadlineExpired,
+      graphIncomplete,
+      invocations: finalInvocations,
+    });
+    if (terminalStatus !== undefined) {
+      assertRunTransition(state.runStatus, terminalStatus);
+      state.runStatus = terminalStatus;
+      eventDrafts.push(event(`run.${terminalStatus}`, input.occurredAt));
+    }
+  } else if (
+    state.runStatus === 'running' &&
+    nonterminal.length > 0 &&
+    nonterminal.every(
+      ({ status, invocationKey }) =>
+        status === 'waiting' ||
+        (status === 'pending' && state.joins.has(invocationKey)) ||
+        (!input.hasExecutionSlot && status === 'ready'),
+    )
+  ) {
+    assertRunTransition(state.runStatus, 'waiting');
+    state.runStatus = 'waiting';
+    eventDrafts.push(event('run.waiting', input.occurredAt));
+  }
+}
+function attemptAdmissionKind(
+  waitKind: InvocationState['waitKind'],
+): AttemptAdmissionPlan['admissionKind'] {
+  if (waitKind === 'node_wait') return 'wait_resume';
+  if (waitKind === 'retry_backoff') return 'retry';
+  return 'execute';
 }

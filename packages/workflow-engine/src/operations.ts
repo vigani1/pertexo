@@ -1,3 +1,4 @@
+import type { WorkflowExecutableNode } from './compilation/foundation.js';
 import type { WorkflowTestPolicy } from './testing/policy.js';
 import {
   testStepDisposition,
@@ -146,7 +147,6 @@ export async function advanceWorkflow(
     );
   const executableNodeList = executableNodes(input.executable.envelope.graph);
   const nodesById = new Map(executableNodeList.map((node) => [node.id, node]));
-  const test = input.test;
   const invocationsByKey = new Map(
     checkpoint.invocations.map((invocation) => [
       invocation.invocationKey,
@@ -158,6 +158,101 @@ export async function advanceWorkflow(
     input.executable,
     executableNodeList,
   );
+  const {
+    persistedObservations,
+    branchSelections,
+    resolvedFailures,
+    calls,
+    callOutcomes,
+    tasks,
+    taskOutcomes,
+    forEach,
+    executionObservations,
+    coordinatorObservations,
+  } = coordinateObservations({
+    input,
+    checkpoint,
+    nodesById,
+    invocationsByKey,
+  });
+  const plan = advanceWorkflowFromSchedulerState({
+    checkpoint,
+    schedulerState: applyWorkflowTestPolicy(
+      schedulerState(input.executable),
+      executableNodeList,
+      input.test,
+    ),
+    observations: [
+      ...executionObservations,
+      ...branchSelections,
+      ...resolvedFailures,
+      ...calls.observations,
+      ...callOutcomes,
+      ...tasks.observations,
+      ...taskOutcomes,
+      ...forEach.observations,
+      ...coordinatorObservations,
+    ],
+    ...(persistedObservations.deadlineExpiration === undefined
+      ? {}
+      : {
+          deadlineExpiration: {
+            occurredAt: persistedObservations.deadlineExpiration.occurredAt,
+          },
+        }),
+    persistedObservationCursor: persistedObservations.cursor,
+    dueResumptions: persistedObservations.dueResumptions,
+    occurredAt: input.occurredAt,
+    maximumAdmissions: input.maximumAdmissions,
+    hasExecutionSlot: input.hasExecutionSlot ?? true,
+  });
+  assertNotAborted(input.signal);
+  return Object.freeze({
+    ...plan,
+    ...(calls.intents.length === 0 ? {} : { callIntents: calls.intents }),
+    ...(tasks.intents.length === 0 ? {} : { taskIntents: tasks.intents }),
+    attempts: plan.attempts.map((attempt) => {
+      const key = nodeProviderIdempotencyKey(
+        nodesById.get(attempt.nodeId),
+        input.runId,
+        attempt.invocationKey,
+        attempt.sideEffectClass,
+      );
+      return Object.freeze({
+        ...attempt,
+        ...(key === undefined ? {} : { providerIdempotencyKey: key }),
+      });
+    }),
+    nodeRunAdmissions: plan.nodeRunAdmissions.map((admission) => {
+      const key = nodeProviderIdempotencyKey(
+        nodesById.get(admission.nodeId),
+        input.runId,
+        admission.invocationKey,
+        admission.sideEffectClass,
+      );
+      return Object.freeze({
+        ...admission,
+        ...(key === undefined ? {} : { providerIdempotencyKey: key }),
+      });
+    }),
+  });
+}
+
+function coordinateObservations({
+  input,
+  checkpoint,
+  nodesById,
+  invocationsByKey,
+}: Readonly<{
+  input: AdvanceWorkflowInput;
+  checkpoint: ReturnType<typeof parseCheckpoint>;
+  nodesById: ReadonlyMap<string, WorkflowExecutableNode>;
+  invocationsByKey: ReadonlyMap<
+    string,
+    ReturnType<typeof parseCheckpoint>['invocations'][number]
+  >;
+}>) {
+  const test = input.test;
   const persistedObservations = parsePersistedObservations(
     input.observations,
     checkpoint,
@@ -273,65 +368,16 @@ export async function advanceWorkflow(
     ],
     nodesById,
   );
-  const plan = advanceWorkflowFromSchedulerState({
-    checkpoint,
-    schedulerState: applyWorkflowTestPolicy(
-      schedulerState(input.executable),
-      executableNodeList,
-      input.test,
-    ),
-    observations: [
-      ...executionObservations,
-      ...branchSelections,
-      ...resolvedFailures,
-      ...calls.observations,
-      ...callOutcomes,
-      ...tasks.observations,
-      ...taskOutcomes,
-      ...forEach.observations,
-      ...coordinatorObservations,
-    ],
-    ...(persistedObservations.deadlineExpiration === undefined
-      ? {}
-      : {
-          deadlineExpiration: {
-            occurredAt: persistedObservations.deadlineExpiration.occurredAt,
-          },
-        }),
-    persistedObservationCursor: persistedObservations.cursor,
-    dueResumptions: persistedObservations.dueResumptions,
-    occurredAt: input.occurredAt,
-    maximumAdmissions: input.maximumAdmissions,
-    hasExecutionSlot: input.hasExecutionSlot ?? true,
-  });
-  assertNotAborted(input.signal);
-  return Object.freeze({
-    ...plan,
-    ...(calls.intents.length === 0 ? {} : { callIntents: calls.intents }),
-    ...(tasks.intents.length === 0 ? {} : { taskIntents: tasks.intents }),
-    attempts: plan.attempts.map((attempt) => {
-      const key = nodeProviderIdempotencyKey(
-        nodesById.get(attempt.nodeId),
-        input.runId,
-        attempt.invocationKey,
-        attempt.sideEffectClass,
-      );
-      return Object.freeze({
-        ...attempt,
-        ...(key === undefined ? {} : { providerIdempotencyKey: key }),
-      });
-    }),
-    nodeRunAdmissions: plan.nodeRunAdmissions.map((admission) => {
-      const key = nodeProviderIdempotencyKey(
-        nodesById.get(admission.nodeId),
-        input.runId,
-        admission.invocationKey,
-        admission.sideEffectClass,
-      );
-      return Object.freeze({
-        ...admission,
-        ...(key === undefined ? {} : { providerIdempotencyKey: key }),
-      });
-    }),
-  });
+  return {
+    persistedObservations,
+    branchSelections,
+    resolvedFailures,
+    calls,
+    callOutcomes,
+    tasks,
+    taskOutcomes,
+    forEach,
+    executionObservations,
+    coordinatorObservations,
+  };
 }

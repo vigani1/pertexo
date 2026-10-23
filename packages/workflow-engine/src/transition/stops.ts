@@ -3,7 +3,7 @@ import { compareOrdinal } from '@pertexo/workflow-model';
 import { sameIterationPath } from '../scope.js';
 import { completeLoopIteration } from './scheduling/loops.js';
 import { assertNodeTransition } from './status-transitions.js';
-import type { InvocationState } from '../types.js';
+import type { InvocationState, LoopState, EngineEventName } from '../types.js';
 import {
   isTerminalNodeStatus,
   nodeEventName,
@@ -81,19 +81,8 @@ export function applyWorkflowStops(
   state: MutableWorkflowTransition,
   occurredAt: string,
 ): void {
-  const {
-    eventDrafts,
-    invocations,
-    loops,
-    cancelRequested,
-    deadlineExpired,
-    deadlineOccurredAt,
-  } = state;
-  const controlStopStatus = cancelRequested
-    ? ('canceled' as const)
-    : deadlineExpired
-      ? ('timed_out' as const)
-      : undefined;
+  const { eventDrafts, invocations, loops, deadlineOccurredAt } = state;
+  const controlStopStatus = requestedControlStop(state);
   if (controlStopStatus !== undefined) {
     const stoppedAt =
       controlStopStatus === 'timed_out'
@@ -115,40 +104,7 @@ export function applyWorkflowStops(
         continue;
       let loop = initialLoop;
       for (const ordinal of initialLoop.activeOrdinals) {
-        const iterationPath = [
-          ...initialLoop.iterationPath,
-          { loopNodeId: initialLoop.loopId, ordinal },
-        ];
-        const iterationInvocations = [...invocations.values()].filter(
-          (invocation) =>
-            sameIterationPath(invocation.iterationPath, iterationPath),
-        );
-        if (iterationInvocations.length === 0)
-          throw new WorkflowEngineError(
-            'loop_state_invalid',
-            `active For Each ordinal ${String(ordinal)} has no body invocation`,
-          );
-        const protectedControls = activeNestedLoopControls(state);
-        for (const invocation of iterationInvocations) {
-          if (
-            isStoppableInvocation(invocation) &&
-            !protectedControls.has(invocation.invocationKey)
-          )
-            stopInvocation(state, invocation, occurredAt);
-        }
-        const iterationKeys = new Set(
-          iterationInvocations.map(({ invocationKey }) => invocationKey),
-        );
-        if (
-          !iterationContainsActiveNestedLoop(state, iterationKeys) &&
-          iterationInvocations.every(({ invocationKey }) => {
-            const current = invocations.get(invocationKey);
-            return (
-              current !== undefined && isTerminalNodeStatus(current.status)
-            );
-          })
-        )
-          loop = completeLoopIteration(loop, ordinal);
+        loop = stopLoopIteration(state, loop, ordinal, occurredAt);
       }
       if (loop.activeOrdinals.length > 0) {
         loops.set(loop.controlInvocationKey, loop);
@@ -166,15 +122,9 @@ export function applyWorkflowStops(
         const stopped = { ...active, status: terminalStatus };
         invocations.set(control.invocationKey, stopped);
         eventDrafts.push(
-          event(
-            stopped.status === 'timed_out'
-              ? 'node.timed_out'
-              : stopped.status === 'canceled'
-                ? 'node.canceled'
-                : (nodeEventName[stopped.status] ?? 'node.failed'),
-            stoppedAt,
-            { invocation: stopped },
-          ),
+          event(stoppedControlEvent(stopped.status), stoppedAt, {
+            invocation: stopped,
+          }),
         );
       }
     }
@@ -187,4 +137,59 @@ export function applyWorkflowStops(
       !protectedControls.has(invocation.invocationKey)
     )
       stopInvocation(state, invocation, occurredAt);
+}
+
+function requestedControlStop(
+  state: MutableWorkflowTransition,
+): StopStatus | undefined {
+  if (state.cancelRequested) return 'canceled';
+  if (state.deadlineExpired) return 'timed_out';
+  return undefined;
+}
+function stoppedControlEvent(
+  status: InvocationState['status'],
+): EngineEventName {
+  if (status === 'timed_out') return 'node.timed_out';
+  if (status === 'canceled') return 'node.canceled';
+  return nodeEventName[status] ?? 'node.failed';
+}
+function stopLoopIteration(
+  state: MutableWorkflowTransition,
+  loop: LoopState,
+  ordinal: number,
+  occurredAt: string,
+): LoopState {
+  const { invocations } = state;
+  const iterationPath = [
+    ...loop.iterationPath,
+    { loopNodeId: loop.loopId, ordinal },
+  ];
+  const iterationInvocations = [...invocations.values()].filter((invocation) =>
+    sameIterationPath(invocation.iterationPath, iterationPath),
+  );
+  if (iterationInvocations.length === 0)
+    throw new WorkflowEngineError(
+      'loop_state_invalid',
+      `active For Each ordinal ${String(ordinal)} has no body invocation`,
+    );
+  const protectedControls = activeNestedLoopControls(state);
+  for (const invocation of iterationInvocations) {
+    if (
+      isStoppableInvocation(invocation) &&
+      !protectedControls.has(invocation.invocationKey)
+    )
+      stopInvocation(state, invocation, occurredAt);
+  }
+  const iterationKeys = new Set(
+    iterationInvocations.map(({ invocationKey }) => invocationKey),
+  );
+  if (
+    !iterationContainsActiveNestedLoop(state, iterationKeys) &&
+    iterationInvocations.every(({ invocationKey }) => {
+      const current = invocations.get(invocationKey);
+      return current !== undefined && isTerminalNodeStatus(current.status);
+    })
+  )
+    return completeLoopIteration(loop, ordinal);
+  return loop;
 }
