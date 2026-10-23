@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { SettingsSection } from '@/components/patterns/settings/section';
+import { ReadFailure } from '@/components/patterns/states/read-failure';
 import { Notice } from '@/components/ui/notice';
 import { Button } from '@/components/ui/button';
 import type { GovernanceScope } from '../data/audit.api';
@@ -13,7 +14,7 @@ export function GovernanceSettings({
   workspace,
 }: Readonly<{ scope: GovernanceScope; workspace: AccessibleWorkspace }>) {
   const settings = useQuery(governanceQueryOptions(scope));
-  if (settings.isError)
+  if (settings.isError && settings.data === undefined)
     return (
       <SettingsSection
         title="Governance settings"
@@ -42,6 +43,16 @@ export function GovernanceSettings({
     workspace.capabilities.includes('governance:manage');
   return (
     <>
+      {settings.isError ? (
+        <ReadFailure
+          resource="Governance settings"
+          error={settings.error}
+          showing
+          retrying={settings.isFetching}
+          updatedAt={settings.dataUpdatedAt}
+          onRetry={() => void settings.refetch()}
+        />
+      ) : null}
       <SettingsSection
         title="Publishing approval"
         description="Require another owner or admin to review each saved draft before it becomes live."

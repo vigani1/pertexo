@@ -1,10 +1,11 @@
 import { HttpResponse, http } from 'msw';
-import { screen, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
 import { renderApp } from '../../support/render-app';
 import { problem, timestamp, user } from '../../support/fixtures/team';
+import { currentUserQueryKey } from '@/features/auth/data/auth.queries';
 
 type Rename = Readonly<{ key: string | null; body: unknown }>;
 
@@ -56,6 +57,60 @@ async function editName(actor: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('account: display name', () => {
+  it('keeps an unsaved edit at its starting revision across refresh and replaces a newer name only after confirmation', async () => {
+    let profile = user;
+    const renames: Rename[] = [];
+    mockServer.use(
+      ...accountHandlers(() => profile),
+      renameHandler(renames, (attempt, body) =>
+        attempt === 1
+          ? problem(412, 'user.profile_revision_conflict')
+          : receipt(body.displayName, 3),
+      ),
+    );
+    const actor = userEvent.setup();
+    const app = renderApp('/account/security');
+    const input = await editName(actor);
+    await actor.clear(input);
+    await actor.type(input, 'Local unsaved name');
+    profile = { ...user, displayName: 'Other tab name', revision: 2 };
+    await act(async () => {
+      await app.queryClient.invalidateQueries({
+        queryKey: currentUserQueryKey,
+      });
+      await app.router.invalidate();
+    });
+    await waitFor(() => {
+      expect(app.queryClient.getQueryData(currentUserQueryKey)).toMatchObject({
+        revision: 2,
+      });
+    });
+    expect(input).toHaveValue('Local unsaved name');
+    await actor.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => {
+      expect(renames).toHaveLength(1);
+    });
+    expect(renames[0]?.body).toEqual({
+      displayName: 'Local unsaved name',
+      expectedRevision: 1,
+    });
+    expect(
+      await screen.findByText(
+        /changed somewhere else and is now “Other tab name”/u,
+      ),
+    ).toBeVisible();
+    expect(input).toHaveValue('Local unsaved name');
+    await actor.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => {
+      expect(renames).toHaveLength(2);
+    });
+    expect(renames[1]?.body).toEqual({
+      displayName: 'Local unsaved name',
+      expectedRevision: 2,
+    });
+    expect(renames[1]?.key).not.toBe(renames[0]?.key);
+  });
+
   it('renames in place at the profile revision and confirms with a toast', async () => {
     let profile = user;
     const renames: Rename[] = [];

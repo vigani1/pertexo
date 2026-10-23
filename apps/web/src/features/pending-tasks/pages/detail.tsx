@@ -21,7 +21,7 @@ export function TaskDetailPage({
 }: Readonly<{ scope: TaskScope; taskId: string }>) {
   const query = useQuery(taskQueryOptions(scope, taskId));
   if (query.isPending) return <Skeleton className="h-48 w-full" />;
-  if (query.isError)
+  if (query.data === undefined)
     return (
       <ReadFailure
         resource="Request"
@@ -36,6 +36,16 @@ export function TaskDetailPage({
   const waiting = task.status === 'pending';
   return (
     <div className="flex max-w-3xl flex-col gap-8">
+      {query.isError ? (
+        <ReadFailure
+          resource="Request"
+          error={query.error}
+          showing
+          retrying={query.isFetching}
+          updatedAt={query.dataUpdatedAt}
+          onRetry={() => void query.refetch()}
+        />
+      ) : null}
       <PageHeader>
         <div className="flex min-w-0 flex-col gap-2">
           <p className="text-sm text-muted-foreground">

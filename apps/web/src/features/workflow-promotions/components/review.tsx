@@ -67,22 +67,17 @@ export function PromotionReview({
               </p>
             ) : (
               <ul className="list-inside list-disc text-sm">
-                {diff.added.map((step) => (
-                  <li key={step.id}>Add {step.label}</li>
+                {diff.lines.map((line) => (
+                  <li key={`${line.target}:${line.id}`}>
+                    {line.kind === 'added'
+                      ? 'Add'
+                      : line.kind === 'removed'
+                        ? 'Remove'
+                        : 'Change'}{' '}
+                    {line.label}
+                    {line.detail === undefined ? '' : ` · ${line.detail}`}
+                  </li>
                 ))}
-                {diff.removed.map((step) => (
-                  <li key={step.id}>Remove {step.label}</li>
-                ))}
-                {diff.changed.map((step) => (
-                  <li key={step.id}>Change {step.label}</li>
-                ))}
-                {diff.linksChanged ? <li>Change links between steps</li> : null}
-                {diff.contractChanged ? (
-                  <li>Change input or callable contract</li>
-                ) : null}
-                {diff.settingsChanged ? (
-                  <li>Change workflow execution settings</li>
-                ) : null}
               </ul>
             )}
             <Disclosure summary="Inspect proposed definition" tone="link">

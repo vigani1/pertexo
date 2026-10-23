@@ -1,8 +1,7 @@
 import { describeStep } from '@/features/catalog/presentation.public';
 import { useId } from 'react';
-import { canonicalJson } from '@pertexo/workflow-model';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
-import { diffWorkflowGraphs } from '@/features/workflow-drafts/public';
+import { diffWorkflowGraphs } from '@/features/workflows/comparison.public';
 import { LabelledField } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
 import { Disclosure } from '@/components/ui/disclosure';
@@ -16,7 +15,7 @@ export function ReviewCandidate({
 }>) {
   const id = useId();
   const before = liveGraph ?? { nodes: [], edges: [], settings: {} };
-  const diff = diffWorkflowGraphs(before, graph, { ignoreLayout: true });
+  const diff = diffWorkflowGraphs(before, graph);
   return (
     <section
       aria-label="Reviewed draft"
@@ -28,10 +27,18 @@ export function ReviewCandidate({
         {diff.added.length} steps added, {diff.changed.length} changed,{' '}
         {diff.removed.length} removed. {diff.linksAdded} links added,{' '}
         {diff.linksRemoved} removed. {diff.notes.length} notes changed.
-        {canonicalJson(before.settings) === canonicalJson(graph.settings)
-          ? ''
-          : ' Workflow settings changed.'}
       </p>
+      <ul
+        className="list-inside list-disc text-sm"
+        aria-label="Definition changes"
+      >
+        {diff.lines.map((line) => (
+          <li key={`${line.target}:${line.id}`}>
+            {line.label}
+            {line.detail === undefined ? '' : ` · ${line.detail}`}
+          </li>
+        ))}
+      </ul>
       <ol className="divide-y divide-border">
         {graph.nodes.map((node) => (
           <li key={node.id} className="py-3">

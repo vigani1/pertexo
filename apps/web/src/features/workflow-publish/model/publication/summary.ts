@@ -3,10 +3,7 @@ import type {
   WorkflowVersionResponse,
 } from '@pertexo/contracts';
 import { describeStep } from '@/features/catalog/presentation.public';
-import {
-  describeStepChange,
-  diffWorkflowGraphs,
-} from '@/features/workflow-drafts/public';
+import { diffWorkflowGraphs } from '@/features/workflows/comparison.public';
 import { triggerKindOf } from '@/features/workflows/shape.public';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
@@ -43,32 +40,20 @@ export function summarizePublish(
     edges: [],
     settings: {},
   };
-  const diff = diffWorkflowGraphs(previous, draft, { ignoreLayout: true });
-  const withLayout = diffWorkflowGraphs(previous, draft);
-  const lines: PublishSummaryLine[] = [
-    ...diff.notes.map((note) => ({
-      kind: note.kind,
-      nodeId: `note:${note.id}`,
-      name: note.label,
-      ...(note.detail === undefined ? {} : { detail: note.detail }),
-    })),
-    ...diff.added.map((node) => line('added', node)),
-    ...diff.removed.map((node) => line('removed', node)),
-    ...diff.changed.map((change) =>
-      line('changed', change.after, describeStepChange(change.aspects)),
-    ),
-  ];
+  const diff = diffWorkflowGraphs(previous, draft);
+  const lines: PublishSummaryLine[] = diff.lines.map((change) => ({
+    kind: change.kind,
+    nodeId: `${change.target}:${change.id}`,
+    name: change.label,
+    ...(change.detail === undefined ? {} : { detail: change.detail }),
+  }));
   return {
     nextVersionNumber: (latest?.versionNumber ?? 0) + 1,
     previousVersionNumber: latest?.versionNumber ?? null,
     lines,
     linksAdded: diff.linksAdded,
     linksRemoved: diff.linksRemoved,
-    layoutOnly:
-      lines.length === 0 &&
-      diff.linksAdded === 0 &&
-      diff.linksRemoved === 0 &&
-      withLayout.changed.length > 0,
+    layoutOnly: diff.layoutOnly,
     // Triggers that start runs on their own; a manual start is a run
     // someone starts, which the dialog already describes.
     triggerNames: draft.nodes
@@ -77,19 +62,6 @@ export function summarizePublish(
         return kind !== undefined && kind !== 'core.manual';
       })
       .map(nodeName),
-  };
-}
-
-function line(
-  kind: PublishSummaryLine['kind'],
-  node: WorkflowNode,
-  detail?: string,
-): PublishSummaryLine {
-  return {
-    kind,
-    nodeId: node.id,
-    name: nodeName(node),
-    ...(detail === undefined ? {} : { detail }),
   };
 }
 

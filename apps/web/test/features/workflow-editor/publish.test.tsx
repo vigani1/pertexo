@@ -293,7 +293,8 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
     expect(within(lens).getByText('Changes since v7')).toBeVisible();
     expect(within(lens).getByText('Target')).toBeVisible();
     expect(within(lens).getByText('Added:')).toBeInTheDocument();
-    expect(within(lens).getByText('1 link added.')).toBeVisible();
+    expect(within(lens).getByText('Links between steps')).toBeVisible();
+    expect(within(lens).getByText('1 added, 0 removed')).toBeVisible();
   });
 
   it('disables Run until something is published and Publish until the draft has a step', async () => {
