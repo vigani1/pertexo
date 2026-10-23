@@ -40,6 +40,17 @@ export async function verifyEditorBrowserOwnership(
   );
   if (manifest.postgres.port === 55435 || manifest.redis.port === 56379)
     throw new Error('The older shared fixture is prohibited');
+  verifyDatabaseUrls(env, manifest);
+  verifyRedisUrl(env, manifest);
+  await verifyArtifactStore(env, manifest, inspect);
+  await verifyServices(manifest, inspect);
+}
+
+type OwnershipManifest = z.output<typeof manifestSchema>;
+function verifyDatabaseUrls(
+  env: Readonly<Record<string, string | undefined>>,
+  manifest: OwnershipManifest,
+): void {
   for (const name of [
     'DATABASE_ADMIN_URL',
     'DATABASE_MIGRATION_URL',
@@ -57,6 +68,12 @@ export async function verifyEditorBrowserOwnership(
     )
       throw new Error('PostgreSQL URLs must match the approved owned manifest');
   }
+}
+
+function verifyRedisUrl(
+  env: Readonly<Record<string, string | undefined>>,
+  manifest: OwnershipManifest,
+): void {
   const redis = new URL(env.REDIS_URL ?? '');
   if (
     redis.protocol !== 'redis:' ||
@@ -64,6 +81,13 @@ export async function verifyEditorBrowserOwnership(
     redis.port !== String(manifest.redis.port)
   )
     throw new Error('Redis URL must match the approved owned manifest');
+}
+
+async function verifyArtifactStore(
+  env: Readonly<Record<string, string | undefined>>,
+  manifest: OwnershipManifest,
+  inspect: (id: string) => Promise<string>,
+): Promise<void> {
   if (
     env.EDITOR_BROWSER_CASE === 'artifact-inputs' &&
     manifest.artifactStore === undefined
@@ -101,6 +125,12 @@ export async function verifyEditorBrowserOwnership(
     )
       throw new Error('Owned object-store preflight failed');
   }
+}
+
+async function verifyServices(
+  manifest: OwnershipManifest,
+  inspect: (id: string) => Promise<string>,
+): Promise<void> {
   for (const [owned, port] of [
     [manifest.postgres, '5432/tcp'],
     [manifest.redis, '6379/tcp'],
