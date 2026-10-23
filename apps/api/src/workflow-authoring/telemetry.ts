@@ -1,3 +1,8 @@
+import {
+  measureOperation,
+  NOOP_OPERATION_TELEMETRY,
+  type OperationTelemetry,
+} from '@pertexo/observability';
 export const WORKFLOW_AUTHORING_OPERATION = Object.freeze({
   list: 'workflow.list',
   create: 'workflow.create',
@@ -58,12 +63,8 @@ export interface WorkflowAuthoringTracer {
   ): Promise<T>;
 }
 
-export interface WorkflowAuthoringTelemetry {
-  measure<T>(
-    operation: WorkflowAuthoringOperation,
-    work: () => Promise<T>,
-  ): Promise<T>;
-}
+export type WorkflowAuthoringTelemetry =
+  OperationTelemetry<WorkflowAuthoringOperation>;
 
 export type WorkflowAuthoringTelemetryOptions = Readonly<{
   meter: WorkflowAuthoringMeter;
@@ -96,110 +97,28 @@ export function createWorkflowAuthoringTelemetry(
   } catch {
     return NOOP_WORKFLOW_AUTHORING_TELEMETRY;
   }
-  const monotonicNow = options.monotonicNow ?? (() => performance.now());
   return Object.freeze({
     measure: <T>(
       operation: WorkflowAuthoringOperation,
       work: () => Promise<T>,
-    ): Promise<T> => {
-      let operationPromise: Promise<T> | undefined;
-      let owningSpan: WorkflowAuthoringSpan | undefined;
-      const measured = async (
-        span: WorkflowAuthoringSpan | undefined,
-      ): Promise<T> => {
-        const startedAt = safeNow(monotonicNow);
-        if (span !== undefined) safeAttribute(span, 'operation', operation);
-        try {
-          const result = await work();
-          record(
-            'succeeded',
-            operation,
-            startedAt,
-            safeNow(monotonicNow),
-            span,
-          );
-          return result;
-        } catch (error: unknown) {
-          record('failed', operation, startedAt, safeNow(monotonicNow), span);
-          throw error;
-        } finally {
-          safeEndSpan(span);
-        }
-      };
-      const runOperationOnce = (span?: WorkflowAuthoringSpan): Promise<T> => {
-        if (operationPromise === undefined) {
-          owningSpan = span;
-          operationPromise = measured(span);
-        } else if (span !== undefined && span !== owningSpan) {
-          safeEndSpan(span);
-        }
-        return operationPromise;
-      };
-      let tracePromise: Promise<T> | undefined;
-      try {
-        tracePromise = options.tracer.startActiveSpan(
-          `pertexo.workflow_authoring.${operation}`,
-          (span): Promise<T> => runOperationOnce(span),
-        );
-      } catch {
-        return runOperationOnce();
-      }
-      void Promise.resolve(tracePromise).catch(() => undefined);
-      return operationPromise ?? runOperationOnce();
-    },
+    ): Promise<T> =>
+      measureOperation<T, WorkflowAuthoringSpan>({
+        operation,
+        work,
+        monotonicNow: options.monotonicNow,
+        trace: (run) =>
+          options.tracer.startActiveSpan(
+            `pertexo.workflow_authoring.${operation}`,
+            run,
+          ),
+        record: ({ outcome, seconds }) => {
+          const attributes = { operation, outcome } as const;
+          operations.add(1, attributes);
+          duration.record(seconds, attributes);
+        },
+      }),
   });
-
-  function record(
-    outcome: WorkflowAuthoringOutcome,
-    operation: WorkflowAuthoringOperation,
-    startedAt: number,
-    finishedAt: number,
-    span: WorkflowAuthoringSpan | undefined,
-  ): void {
-    try {
-      const attributes = { operation, outcome } as const;
-      if (span !== undefined) safeAttribute(span, 'outcome', outcome);
-      operations.add(1, attributes);
-      duration.record(Math.max(0, finishedAt - startedAt) / 1_000, attributes);
-    } catch {
-      // Diagnostics cannot change application truth.
-    }
-  }
-}
-
-function safeEndSpan(span: WorkflowAuthoringSpan | undefined): void {
-  try {
-    span?.end();
-  } catch {
-    // Diagnostics cannot change application truth.
-  }
-}
-
-function safeNow(clock: () => number): number {
-  try {
-    const value = clock();
-    return Number.isFinite(value) ? value : 0;
-  } catch {
-    return 0;
-  }
-}
-
-function safeAttribute(
-  span: WorkflowAuthoringSpan,
-  name: 'operation' | 'outcome',
-  value: WorkflowAuthoringOperation | WorkflowAuthoringOutcome,
-): void {
-  try {
-    span.setAttribute(name, value);
-  } catch {
-    // Diagnostics cannot change application truth.
-  }
 }
 
 export const NOOP_WORKFLOW_AUTHORING_TELEMETRY: WorkflowAuthoringTelemetry =
-  Object.freeze({
-    measure: <T>(
-      _operation: WorkflowAuthoringOperation,
-      work: () => Promise<T>,
-    ): Promise<T> => work(),
-  });
+  NOOP_OPERATION_TELEMETRY;

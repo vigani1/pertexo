@@ -1,4 +1,9 @@
 import {
+  databaseClientEnvironmentSchema,
+  clientDatabaseConfig,
+  parseObservabilityConfig,
+} from '@pertexo/observability/startup';
+import {
   parseCallbackKeyConfig,
   type CallbackKeyConfig,
 } from '@pertexo/integrations/server';
@@ -20,7 +25,6 @@ import {
   parseAllowedPrivateNetworks,
   type SecureHttpAddressPolicy,
 } from '@pertexo/integrations/server';
-import { parseObservabilityConfig } from '@pertexo/observability/startup';
 
 import {
   parseSystemMailDeliveryConfig,
@@ -46,27 +50,13 @@ const workerLogLevels = [
   'trace',
 ] as const;
 
-const workerConfigSchema = z
-  .object({
-    DATABASE_URL: z.url().refine((value) => value.startsWith('postgresql://'), {
-      message: 'DATABASE_URL must be a postgresql:// URL',
-    }),
+const workerConfigSchema = databaseClientEnvironmentSchema
+  .extend({
     DATABASE_MAINTENANCE_URL: z
       .url()
       .refine((value) => value.startsWith('postgresql://'), {
         message: 'DATABASE_MAINTENANCE_URL must be a postgresql:// URL',
       }),
-    DATABASE_CONNECTION_TIMEOUT_MILLIS: z.coerce
-      .number()
-      .int()
-      .positive()
-      .default(5_000),
-    DATABASE_IDLE_TIMEOUT_MILLIS: z.coerce
-      .number()
-      .int()
-      .positive()
-      .default(30_000),
-    DATABASE_POOL_MAX: z.coerce.number().int().positive().max(20).default(5),
     DATABASE_DISPATCHER_POOL_MAX: z.coerce
       .number()
       .int()
@@ -229,10 +219,6 @@ const workerConfigSchema = z
       .min(1)
       .max(12)
       .default(3),
-    POSTGRES_OWNER_USER: z
-      .string()
-      .regex(/^[a-z_][a-z0-9_]*$/u)
-      .default('pertexo_owner'),
   })
   .superRefine((value, context) => {
     if (
@@ -254,13 +240,9 @@ const workerConfigSchema = z
         message: 'Schedule on-time window must not be shorter than its poll',
       });
   })
-  .transform(
-    ({
-      DATABASE_URL,
+  .transform((environment) => {
+    const {
       DATABASE_MAINTENANCE_URL,
-      DATABASE_CONNECTION_TIMEOUT_MILLIS,
-      DATABASE_IDLE_TIMEOUT_MILLIS,
-      DATABASE_POOL_MAX,
       DATABASE_DISPATCHER_POOL_MAX,
       REDIS_URL,
       OUTBOX_DISPATCH_BATCH_SIZE,
@@ -291,8 +273,9 @@ const workerConfigSchema = z
       WORKER_MAX_RSS_BYTES,
       WORKER_RESOURCE_SAMPLE_MILLIS,
       WORKER_RESOURCE_UNHEALTHY_SAMPLES,
-      POSTGRES_OWNER_USER,
-    }) => ({
+    } = environment;
+    const database = clientDatabaseConfig(environment);
+    return {
       nodeEnv: NODE_ENV,
       logLevel: LOG_LEVEL,
       observability: parseObservabilityConfig({
@@ -310,19 +293,11 @@ const workerConfigSchema = z
         sampleIntervalMillis: WORKER_RESOURCE_SAMPLE_MILLIS,
         unhealthySamplesBeforeDrain: WORKER_RESOURCE_UNHEALTHY_SAMPLES,
       },
-      database: {
-        connectionString: DATABASE_URL,
-        connectionTimeoutMillis: DATABASE_CONNECTION_TIMEOUT_MILLIS,
-        idleTimeoutMillis: DATABASE_IDLE_TIMEOUT_MILLIS,
-        max: DATABASE_POOL_MAX,
-        ownerRole: POSTGRES_OWNER_USER,
-      },
+      database,
       dispatcherDatabase: {
+        ...database,
         connectionString: DATABASE_MAINTENANCE_URL,
-        connectionTimeoutMillis: DATABASE_CONNECTION_TIMEOUT_MILLIS,
-        idleTimeoutMillis: DATABASE_IDLE_TIMEOUT_MILLIS,
         max: DATABASE_DISPATCHER_POOL_MAX,
-        ownerRole: POSTGRES_OWNER_USER,
       },
       outboxDispatcher: {
         batchSize: OUTBOX_DISPATCH_BATCH_SIZE,
@@ -359,8 +334,8 @@ const workerConfigSchema = z
         pollIntervalMillis: TRIGGER_SCHEDULE_POLL_MILLIS,
       },
       redisUrl: REDIS_URL,
-    }),
-  );
+    };
+  });
 
 export type WorkerConfig = Readonly<
   z.output<typeof workerConfigSchema> & {

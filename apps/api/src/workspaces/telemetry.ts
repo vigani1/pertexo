@@ -1,3 +1,8 @@
+import {
+  measureOperation,
+  NOOP_OPERATION_TELEMETRY,
+  type OperationTelemetry,
+} from '@pertexo/observability';
 export const IDENTITY_WORKSPACE_OPERATION = Object.freeze({
   sessionLogout: 'session.logout',
   userProfileRead: 'user.profile_read',
@@ -65,12 +70,8 @@ export interface IdentityWorkspaceTracer {
   ): Promise<T>;
 }
 
-export interface IdentityWorkspaceTelemetry {
-  measure<T>(
-    operation: IdentityWorkspaceOperation,
-    work: () => Promise<T>,
-  ): Promise<T>;
-}
+export type IdentityWorkspaceTelemetry =
+  OperationTelemetry<IdentityWorkspaceOperation>;
 
 export type IdentityWorkspaceTelemetryOptions = Readonly<{
   meter: IdentityWorkspaceMeter;
@@ -103,111 +104,28 @@ export function createIdentityWorkspaceTelemetry(
   } catch {
     return NOOP_IDENTITY_WORKSPACE_TELEMETRY;
   }
-  const monotonicNow = options.monotonicNow ?? (() => performance.now());
-
   return Object.freeze({
     measure: <T>(
       operation: IdentityWorkspaceOperation,
       work: () => Promise<T>,
-    ): Promise<T> => {
-      let operationPromise: Promise<T> | undefined;
-      let owningSpan: IdentityWorkspaceSpan | undefined;
-      const measured = async (
-        span: IdentityWorkspaceSpan | undefined,
-      ): Promise<T> => {
-        const startedAt = safeNow(monotonicNow);
-        if (span !== undefined) safeSpanAttribute(span, 'operation', operation);
-        try {
-          const result = await work();
-          record(
-            'succeeded',
-            operation,
-            startedAt,
-            safeNow(monotonicNow),
-            span,
-          );
-          return result;
-        } catch (error: unknown) {
-          record('failed', operation, startedAt, safeNow(monotonicNow), span);
-          throw error;
-        } finally {
-          safeEndSpan(span);
-        }
-      };
-      const runOperationOnce = (span?: IdentityWorkspaceSpan): Promise<T> => {
-        if (operationPromise === undefined) {
-          owningSpan = span;
-          operationPromise = measured(span);
-        } else if (span !== undefined && span !== owningSpan) {
-          safeEndSpan(span);
-        }
-        return operationPromise;
-      };
-      let tracePromise: Promise<T> | undefined;
-      try {
-        tracePromise = options.tracer.startActiveSpan(
-          `pertexo.identity_workspace.${operation}`,
-          (span): Promise<T> => runOperationOnce(span),
-        );
-      } catch {
-        return runOperationOnce();
-      }
-      void Promise.resolve(tracePromise).catch(() => undefined);
-      return operationPromise ?? runOperationOnce();
-    },
+    ): Promise<T> =>
+      measureOperation<T, IdentityWorkspaceSpan>({
+        operation,
+        work,
+        monotonicNow: options.monotonicNow,
+        trace: (run) =>
+          options.tracer.startActiveSpan(
+            `pertexo.identity_workspace.${operation}`,
+            run,
+          ),
+        record: ({ outcome, seconds }) => {
+          const attributes = { operation, outcome } as const;
+          operations.add(1, attributes);
+          duration.record(seconds, attributes);
+        },
+      }),
   });
-
-  function record(
-    outcome: IdentityWorkspaceOutcome,
-    operation: IdentityWorkspaceOperation,
-    startedAt: number,
-    finishedAt: number,
-    span: IdentityWorkspaceSpan | undefined,
-  ): void {
-    try {
-      const attributes = { operation, outcome } as const;
-      if (span !== undefined) safeSpanAttribute(span, 'outcome', outcome);
-      operations.add(1, attributes);
-      duration.record(Math.max(0, finishedAt - startedAt) / 1_000, attributes);
-    } catch {
-      // Telemetry is diagnostic and cannot change command truth.
-    }
-  }
-}
-
-function safeEndSpan(span: IdentityWorkspaceSpan | undefined): void {
-  try {
-    span?.end();
-  } catch {
-    // Telemetry is diagnostic and cannot change command truth.
-  }
-}
-
-function safeNow(monotonicNow: () => number): number {
-  try {
-    const value = monotonicNow();
-    return Number.isFinite(value) ? value : 0;
-  } catch {
-    return 0;
-  }
-}
-
-function safeSpanAttribute(
-  span: IdentityWorkspaceSpan,
-  name: 'operation' | 'outcome',
-  value: IdentityWorkspaceOperation | IdentityWorkspaceOutcome,
-): void {
-  try {
-    span.setAttribute(name, value);
-  } catch {
-    // Telemetry is diagnostic and cannot change command truth.
-  }
 }
 
 export const NOOP_IDENTITY_WORKSPACE_TELEMETRY: IdentityWorkspaceTelemetry =
-  Object.freeze({
-    measure: <T>(
-      _operation: IdentityWorkspaceOperation,
-      work: () => Promise<T>,
-    ): Promise<T> => work(),
-  });
+  NOOP_OPERATION_TELEMETRY;

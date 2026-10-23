@@ -59,6 +59,15 @@ The existing `app.clear_removed_member_notices` storage bridge remains an
 exception: it checks workspace/removal state and clears actor-private rows in
 the same removal transaction without broadening private-row visibility.
 
+## Runtime lifecycle
+
+The API and worker use `observability`'s shutdown coordinator: drain first,
+then close resources in reverse registration order. Each app supplies its drain
+state through its existing Nest adapter. Shared client database environment
+parsing lives in the startup-safe entry point, separate from database drivers.
+Feature telemetry uses `measureOperation`; a failed diagnostic sink or tracer
+cannot replace, repeat or fail the business operation.
+
 ## HTTP problems
 
 The API projects domain failures through `problems/registry.ts`'s

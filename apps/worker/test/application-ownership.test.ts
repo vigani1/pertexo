@@ -150,7 +150,7 @@ describe('worker application construction ownership', () => {
 });
 
 describe('worker shutdown coordinator', () => {
-  it('drains first, settles all owners in order, caches close, and reports every failure', async () => {
+  it('drains first, settles owners in reverse registration order, caches close, and reports every failure', async () => {
     const drain = new WorkerDrainState();
     const coordinator = new WorkerShutdownCoordinator(drain);
     const order: string[] = [];
@@ -169,6 +169,7 @@ describe('worker shutdown coordinator', () => {
       throw secondFailure;
     });
     coordinator.register('telemetry', () => {
+      expect(drain.canAcceptWork()).toBe(false);
       order.push('telemetry');
     });
 
@@ -176,7 +177,7 @@ describe('worker shutdown coordinator', () => {
     const second = coordinator.close();
     expect(second).toBe(first);
     await vi.waitFor(() => {
-      expect(order).toEqual(['transport', 'database:start']);
+      expect(order).toEqual(['telemetry', 'database:start']);
     });
     expect(() => {
       coordinator.register('late', vi.fn());
@@ -185,10 +186,10 @@ describe('worker shutdown coordinator', () => {
     barrier.resolve(undefined);
     await expect(first).resolves.toBeUndefined();
     expect(order).toEqual([
-      'transport',
+      'telemetry',
       'database:start',
       'database:end',
-      'telemetry',
+      'transport',
     ]);
     const failure = (() => {
       try {
@@ -199,8 +200,8 @@ describe('worker shutdown coordinator', () => {
       return undefined;
     })();
     expect((failure as AggregateError).errors).toEqual([
-      firstFailure,
       secondFailure,
+      firstFailure,
     ]);
   });
 });
