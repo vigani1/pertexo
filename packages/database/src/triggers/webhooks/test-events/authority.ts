@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg';
 import { CORE_WEBHOOK_CONFIG_SCHEMA } from '@pertexo/nodes-core';
-import { rolesForCapability } from '../../../tenant-access/policy.js';
+import { rolesForCapability } from '@pertexo/workflow-model';
 import { lockWorkflowAuthoringAuthority } from '../../../authoring/workflows/authority.js';
 import { sampleDraft } from '../../../authoring/step-samples/records.js';
 import { WebhookTestEventError, type TestEventScope } from './contract.js';

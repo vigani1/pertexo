@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg';
-import { hasCapability, type Role } from '../../tenant-access/policy.js';
+import { hasCapability, type Role } from '@pertexo/workflow-model';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import {
   WorkflowCollaborationError,

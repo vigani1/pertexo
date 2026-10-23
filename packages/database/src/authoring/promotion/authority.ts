@@ -3,7 +3,7 @@ import type { WorkspaceScopeRunner } from '../../tenant-access/transactions.js';
 import {
   rolesForCapability,
   type AuthorizationCapability,
-} from '../../tenant-access/policy.js';
+} from '@pertexo/workflow-model';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 import { WorkflowPromotionError, type PromotionScope } from './contract.js';
 

@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
-import { rolesForCapability } from '../../tenant-access/policy.js';
+import { rolesForCapability } from '@pertexo/workflow-model';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import { parseStoredExecutionValue } from '../../platform/stored-execution-value.js';
 import { sampleDatabaseTime, sampleDraft, sampleMetadata } from './records.js';

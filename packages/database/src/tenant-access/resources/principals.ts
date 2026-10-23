@@ -6,7 +6,7 @@ import type {
 import { lockWorkspaceAuthority } from '../workspaces/authority.js';
 import { RESOURCE_ADMINISTRATORS } from './policy.js';
 import type { ResourceActor } from './contract.js';
-import type { Role } from '../policy.js';
+import type { Role } from '@pertexo/workflow-model';
 
 /** Principal discovery is bounded and anchored to this workspace's current identities. */
 export async function readSharingPrincipals(

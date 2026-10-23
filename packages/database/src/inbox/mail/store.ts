@@ -10,7 +10,7 @@ import { insertSystemMail } from '../../platform/mail/store.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority.js';
-import { rolesForCapability } from '../../tenant-access/policy.js';
+import { rolesForCapability } from '@pertexo/workflow-model';
 import {
   projectNoticePreferences,
   type DefaultsRow,

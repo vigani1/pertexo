@@ -14,7 +14,7 @@ import {
   recordMemberCommandAudit,
 } from './command.js';
 import { revokeUserSessions } from '../users/sessions.js';
-import { canRemoveWorkspaceMember } from '../policy.js';
+import { canRemoveWorkspaceMember } from '@pertexo/workflow-model';
 
 type RemovalStore = Pick<IdentityWorkspaceDatabase, 'removeWorkspaceMember'>;
 

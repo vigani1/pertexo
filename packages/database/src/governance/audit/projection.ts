@@ -2,7 +2,7 @@ import {
   workspaceVariableNameSchema,
   WORKSPACE_VARIABLE_LIMITS,
 } from '@pertexo/workflow-model';
-import { ROLES } from '../../tenant-access/policy.js';
+import { ROLES } from '@pertexo/workflow-model';
 import type { AuditEvent } from '@pertexo/contracts';
 
 // Historical writers sometimes stored free text. Expose typed facts only, never

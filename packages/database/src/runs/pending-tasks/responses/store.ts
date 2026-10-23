@@ -13,7 +13,7 @@ import {
   lockWorkspaceAuthority,
   readWorkspaceAuthority,
 } from '../../../tenant-access/workspaces/authority.js';
-import { rolesForCapability } from '../../../tenant-access/policy.js';
+import { rolesForCapability } from '@pertexo/workflow-model';
 import { respondToTask } from './respond.js';
 import { inspectAudience } from './inspect-audience.js';
 import { listTasks, projectTask, readTaskRow } from './queries.js';

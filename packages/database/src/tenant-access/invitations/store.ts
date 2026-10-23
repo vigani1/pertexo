@@ -24,7 +24,7 @@ import {
   parseIdentityUuid,
   readIdentityDatabaseErrorCode,
 } from '../support.js';
-import { canInviteWorkspaceRole } from '../policy.js';
+import { canInviteWorkspaceRole } from '@pertexo/workflow-model';
 import { withTenantScopedClient } from '../transactions.js';
 
 type InvitationStore = Pick<

@@ -13,7 +13,7 @@ import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
-import { rolesForCapability } from '../../tenant-access/policy.js';
+import { rolesForCapability } from '@pertexo/workflow-model';
 import {
   ConnectionNotFoundError,
   uuidSchema,

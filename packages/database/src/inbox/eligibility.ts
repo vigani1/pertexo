@@ -13,7 +13,7 @@ import type { WorkspaceNoticeKind } from '@pertexo/contracts';
 import {
   rolesForCapability,
   type AuthorizationCapability,
-} from '../tenant-access/policy.js';
+} from '@pertexo/workflow-model';
 import { pendingTaskBlockedSql } from '../runs/pending-tasks/responses/eligibility.js';
 
 function capabilityAudienceSql(capability: AuthorizationCapability): string {

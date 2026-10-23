@@ -1,4 +1,4 @@
-import { rolesForCapability } from '../../tenant-access/policy.js';
+import { rolesForCapability } from '@pertexo/workflow-model';
 
 const authors = rolesForCapability('workflow:publish')
   .map((role) => `'${role}'`)

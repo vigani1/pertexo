@@ -1,4 +1,4 @@
-import { hasCapability, type Role } from '../../tenant-access/policy.js';
+import { hasCapability, type Role } from '@pertexo/workflow-model';
 import {
   workflowPromotionTargetResultSchema,
   type WorkflowPromotionSettings,

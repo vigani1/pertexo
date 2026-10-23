@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg';
 import { API_TOKEN_SCOPES } from '@pertexo/contracts';
 import type { ApiTokenScope } from '@pertexo/contracts';
-import { hasCapability, type Role } from '../policy.js';
+import { hasCapability, type Role } from '@pertexo/workflow-model';
 import { ApiTokenPolicyError, type ApiTokenOwner } from './types.js';
 
 export type TokenOwnerAuthority = Readonly<{ revision: number; role: Role }>;

@@ -1,4 +1,4 @@
-import { rolesForCapability } from '../../tenant-access/policy.js';
+import { rolesForCapability } from '@pertexo/workflow-model';
 import { authorizeWorkflowResource } from '../../tenant-access/resources/authority.js';
 import { readFormDefinition } from './definition.js';
 import type { PoolClient } from 'pg';

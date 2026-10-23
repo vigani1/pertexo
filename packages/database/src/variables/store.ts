@@ -14,7 +14,7 @@ import {
   lockWorkspaceAuthority,
   readWorkspaceAuthority,
 } from '../tenant-access/workspaces/authority.js';
-import { rolesForCapability } from '../tenant-access/policy.js';
+import { rolesForCapability } from '@pertexo/workflow-model';
 import { readWorkspaceVariables } from './read.js';
 import { replaceWorkspaceVariables } from './replace.js';
 import { readVariableUsage } from './usage.js';

@@ -11,7 +11,7 @@ import {
   type WorkspaceTransaction,
 } from '../transactions.js';
 import { lockWorkspaceAuthority } from '../workspaces/authority.js';
-import { rolesForCapability } from '../policy.js';
+import { rolesForCapability } from '@pertexo/workflow-model';
 import type {
   FolderScope,
   ResourceActor,

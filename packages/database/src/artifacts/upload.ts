@@ -15,7 +15,7 @@ import {
   checkDatabaseReadiness,
   type DatabaseReadiness,
 } from '../platform/readiness.js';
-import { rolesForCapability } from '../tenant-access/policy.js';
+import { rolesForCapability } from '@pertexo/workflow-model';
 import { canonicalOutboxPayloadChecksum } from '../outbox/events.js';
 import type { ArtifactRecord } from './store.js';
 import { withTenantScopedClient } from '../tenant-access/transactions.js';

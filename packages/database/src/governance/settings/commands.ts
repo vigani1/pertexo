@@ -6,7 +6,7 @@ import {
 } from '@pertexo/contracts';
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 import { appendAuditFact } from '../audit/append.js';
-import { rolesForCapability } from '../../tenant-access/policy.js';
+import { rolesForCapability } from '@pertexo/workflow-model';
 import { GovernanceError, type GovernanceStore } from '../contract.js';
 export async function readGovernanceSettings(
   client: PoolClient,

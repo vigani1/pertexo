@@ -4,7 +4,7 @@ import type {
   ApprovalAudienceInspectionResponse,
 } from '@pertexo/contracts';
 import type { PendingTaskScope } from './contract.js';
-import { rolesForCapability } from '../../../tenant-access/policy.js';
+import { rolesForCapability } from '@pertexo/workflow-model';
 import { taskAudienceSelectionSql } from './eligibility.js';
 
 /** Count the whole current audience; directory pagination and search cannot establish exclusivity. */

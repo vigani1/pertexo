@@ -17,7 +17,7 @@ import {
 } from '../../platform/idempotency.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { withTenantScopedClient } from '../transactions.js';
-import { hasCapability } from '../policy.js';
+import { hasCapability } from '@pertexo/workflow-model';
 import { issueApiTokenCredential } from './credential.js';
 import { apiTokenMetadata, type ApiTokenRow } from './metadata.js';
 import { availableApiTokenScopes, tokenOwnerAuthority } from './authority.js';

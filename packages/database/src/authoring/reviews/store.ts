@@ -5,7 +5,7 @@ import {
 } from '../../tenant-access/resources/query-scope.js';
 import { sql } from 'drizzle-orm';
 import type { PoolClient } from 'pg';
-import { rolesForCapability } from '../../tenant-access/policy.js';
+import { rolesForCapability } from '@pertexo/workflow-model';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 import { WorkflowNotFoundError } from '../workflows/errors.js';
 import type {

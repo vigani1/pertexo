@@ -2,7 +2,7 @@ import type { FolderScope } from '../../tenant-access/resources/contract.js';
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
 import { readFolderScope } from '../../tenant-access/resources/facts.js';
 import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority.js';
-import { ROLES } from '../../tenant-access/policy.js';
+import { ROLES } from '@pertexo/workflow-model';
 import { createWorkflowCollaborationStore } from '../collaboration/store.js';
 import { createWorkflowPromotionStore } from '../promotion/store.js';
 import { createPublicationReviewStore } from '../reviews/store.js';
@@ -52,7 +52,7 @@ import {
   type WorkspaceScopeRunner,
   withWorkspaceTransaction,
 } from '../../tenant-access/transactions.js';
-import { rolesForCapability } from '../../tenant-access/policy.js';
+import { rolesForCapability } from '@pertexo/workflow-model';
 import type { WorkflowAuthoringDatabaseOptions } from './types.js';
 export type { WorkflowAuthoringDatabaseOptions } from './types.js';
 

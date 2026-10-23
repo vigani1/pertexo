@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg';
-import type { Role } from '../policy.js';
+import type { Role } from '@pertexo/workflow-model';
 
 /** Names-only directory; the caller owns its workspace and capability fence. */
 export async function readWorkspacePeople(

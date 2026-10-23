@@ -18,7 +18,7 @@ import {
 import { serializeStoredExecutionValue } from '../../../platform/stored-execution-value.js';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
 import { wakeWorkflowRun } from '../../calls/wakeup.js';
-import type { Role } from '../../../tenant-access/policy.js';
+import type { Role } from '@pertexo/workflow-model';
 import {
   PendingTaskDecisionError,
   PendingTaskNotFoundError,

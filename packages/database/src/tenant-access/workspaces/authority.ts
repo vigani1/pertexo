@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg';
-import type { Role } from '../policy.js';
+import type { Role } from '@pertexo/workflow-model';
 import { WorkspaceAccessDeniedError } from '../errors.js';
 
 /** Ordered current authority fence shared by workspace commands. Call only inside the same tenant transaction as the protected work. */

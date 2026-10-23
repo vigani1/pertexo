@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg';
 import { WorkspaceAccessDeniedError } from '../errors.js';
-import { rolesForCapability, type Role } from '../policy.js';
+import { rolesForCapability, type Role } from '@pertexo/workflow-model';
 import {
   lockWorkspaceAuthority,
   readWorkspaceAuthority,

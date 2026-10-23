@@ -25,7 +25,7 @@ import {
   canTransferWorkspaceOwnership,
   capabilitiesForRole,
   ROLES,
-} from '../../../../../packages/database/src/tenant-access/policy';
+} from '@pertexo/workflow-model';
 
 function member(
   role: WorkspaceMember['role'],

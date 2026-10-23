@@ -14,7 +14,7 @@ import {
   rolesForCapability,
   type AuthorizationCapability,
   type Role,
-} from '../../src/tenant-access/policy.js';
+} from '@pertexo/workflow-model';
 
 const expectedCapabilitiesByRole = {
   owner: AUTHORIZATION_CAPABILITIES,

@@ -13,7 +13,7 @@ import { parseWorkspaceId } from '../../tenant-access/transactions.js';
 import { captureWorkspaceVariableRevision } from '../../variables/read.js';
 import { lockInputCaseQuota } from '../../authoring/input-cases.js';
 import { lockWorkflowAuthoringAuthority } from '../../authoring/workflows/authority.js';
-import { rolesForCapability } from '../../tenant-access/policy.js';
+import { rolesForCapability } from '@pertexo/workflow-model';
 import { lockArtifactReferences } from '../../artifacts/references.js';
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
