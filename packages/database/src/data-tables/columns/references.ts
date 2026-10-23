@@ -52,7 +52,7 @@ function references(graph: ReferenceGraph) {
   const levels = [{ nodes: graph.nodes, path: '$' }];
   for (const level of levels)
     for (const [index, node] of level.nodes.entries()) {
-      if (node.disabled === true) continue;
+      if (node.disabled ?? false) continue;
       const path = `${level.path}.nodes[${String(index)}]`;
       if (node.structured !== undefined)
         levels.push({

@@ -54,7 +54,7 @@ export async function configureGovernance(
   if (
     previous.revision === input.expectedRevision &&
     !previous.requirePublishApproval &&
-    input.requirePublishApproval === true
+    (input.requirePublishApproval ?? false)
   ) {
     const reviewer = await client.query(
       `select member.user_id from app.workspace_memberships member

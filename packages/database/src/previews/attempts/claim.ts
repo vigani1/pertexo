@@ -272,7 +272,7 @@ export async function claimPreviewDelivery(
           );
           return Object.freeze({ kind: 'duplicate' });
         }
-        if (state.attempt_status === 'running' && state.live_lease === true) {
+        if (state.attempt_status === 'running' && (state.live_lease ?? false)) {
           // Another live worker owns the single logical attempt; at-least-once
           // transport makes this delivery a concurrent duplicate.
           return Object.freeze({ kind: 'duplicate' });

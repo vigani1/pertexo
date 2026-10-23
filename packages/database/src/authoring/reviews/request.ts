@@ -46,7 +46,7 @@ export async function requestPublicationReview(
       [input.workspaceId],
     )
   ).rows[0];
-  if (workspace?.require_publish_approval !== true)
+  if (!(workspace?.require_publish_approval ?? false))
     throw new PublicationReviewError(
       'disabled',
       'Publication approval is off. Publish the draft directly.',

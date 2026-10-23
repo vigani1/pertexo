@@ -125,7 +125,7 @@ async function consumeProof(
     .where(eq(authEmailProofs.tokenDigest, tokenDigest))
     .for('update');
   if (
-    row?.usable !== true ||
+    !row?.usable ||
     row.proof.userId !== userId ||
     row.proof.email.toLowerCase() !== user.email.toLowerCase()
   )

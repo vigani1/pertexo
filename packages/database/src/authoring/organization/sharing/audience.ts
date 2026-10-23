@@ -109,7 +109,7 @@ export async function requireMoveAudienceReview(
   if (
     scope.role === null ||
     !RESOURCE_ADMINISTRATORS.includes(scope.role) ||
-    review?.acknowledge !== true ||
+    !review?.acknowledge ||
     review.token !== current.token
   )
     throw new WorkflowFolderConflictError('audience_review');

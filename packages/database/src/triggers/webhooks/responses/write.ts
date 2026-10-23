@@ -78,7 +78,7 @@ function writeWebhookResponse(
           input.fenceToken,
         ],
       );
-      if (fence.rows[0]?.valid !== true)
+      if (!(fence.rows[0]?.valid ?? false))
         throw new NodeAttemptReconciliationRequiredError();
       const row = current.rows[0];
       if (row === undefined)

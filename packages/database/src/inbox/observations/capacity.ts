@@ -69,5 +69,5 @@ export async function readCapacityWarning(
  where workspace.id=$1 and workspace.status='active'`,
     [workspaceId],
   );
-  return found.rows[0]?.[key] === true;
+  return found.rows[0]?.[key] ?? false;
 }

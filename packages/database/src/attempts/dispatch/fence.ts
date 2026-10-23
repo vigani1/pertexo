@@ -89,5 +89,5 @@ export async function assertCapabilityExecution(
     );
     valid = found.rows[0]?.valid;
   }
-  if (valid !== true) throw new ExecutionCapabilityExpiredError();
+  if (!(valid ?? false)) throw new ExecutionCapabilityExpiredError();
 }

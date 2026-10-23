@@ -82,7 +82,7 @@ export async function placeWorkflow(
             targetId: workflowId,
             metadata: {
               organizationRevision,
-              audienceReviewed: request.audienceReview?.acknowledge === true,
+              audienceReviewed: request.audienceReview?.acknowledge ?? false,
             },
           },
         };

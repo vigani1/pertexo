@@ -175,7 +175,7 @@ export function createFailureNotificationStore(
         if (row.delivery_attempts >= maxAttempts) {
           const unresolved =
             row.side_effect_class === 'idempotent_with_key' &&
-            row.possibly_dispatched === true;
+            (row.possibly_dispatched ?? false);
           const terminalStatus = unresolved ? 'outcome_unknown' : 'dead_letter';
           const safeErrorCode = unresolved
             ? 'delivery.attempts_exhausted_unknown'
@@ -241,7 +241,7 @@ export function createFailureNotificationStore(
           sideEffectClass: row.side_effect_class,
           idempotencyKey: `failure-notification:${intentId}`,
           connectionSecretVersionId,
-          deliveryUnresolved: row.possibly_dispatched === true,
+          deliveryUnresolved: row.possibly_dispatched ?? false,
           ...(row.delivery_binding === null
             ? {}
             : {

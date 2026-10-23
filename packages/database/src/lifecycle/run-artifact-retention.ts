@@ -146,7 +146,7 @@ export function createRunArtifactRetentionCoordinator(
           query,
           parameters,
         );
-        if (referenced.rows[0]?.referenced === true) {
+        if (referenced.rows[0]?.referenced ?? false) {
           await retryLater(client, artifact.id, '1 day');
           return { ...artifact, referenced: true };
         }

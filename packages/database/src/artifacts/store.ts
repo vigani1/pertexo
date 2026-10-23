@@ -254,7 +254,7 @@ export async function claimDueUnfinalizedArtifact(
   const expiry = await transaction.db.execute<{ expired: boolean }>(
     sql`select ${artifact.expiresAt}::timestamptz <= clock_timestamp() as expired`,
   );
-  if (expiry.rows[0]?.expired !== true) {
+  if (!(expiry.rows[0]?.expired ?? false)) {
     throw new ArtifactLifecycleConflictError('Pending artifact is not due');
   }
 

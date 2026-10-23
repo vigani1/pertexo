@@ -7,7 +7,7 @@ export function readFormDefinition(graph_json: unknown) {
     (node) =>
       node.definition.key === 'core.form' &&
       node.definition.version === 1 &&
-      node.disabled !== true,
+      !(node.disabled ?? false),
   );
   if (node === undefined) throw new FormUnavailableError();
   return { nodeId: node.id, form: formConfigSchema.parse(node.config) };

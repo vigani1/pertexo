@@ -88,10 +88,10 @@ export function accountPolicy(
   return {
     active: account.status === 'active',
     enforcedOrganizationId:
-      account.require_sso === true ? account.organization_id : null,
+      (account.require_sso ?? false) ? account.organization_id : null,
     verifiedOrganizationId: account.organization_id,
     recoveryOwner:
-      account.require_sso === true &&
+      (account.require_sso ?? false) &&
       account.email_verified &&
       account.control_owner &&
       account.password_present,

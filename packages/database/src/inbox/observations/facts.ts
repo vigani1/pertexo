@@ -106,7 +106,7 @@ export async function readAttentionFact(
         ...base,
         workflowId: row?.workflow_id ?? null,
         publicationRequestId: subject.subjectId,
-        active: row?.active === true,
+        active: row?.active ?? false,
         sourceRevision: subject.subjectId,
       };
     }
@@ -130,7 +130,7 @@ export async function readAttentionFact(
         ...base,
         workflowId: row?.workflow_id ?? null,
         taskId: subject.subjectId,
-        active: row?.pending === true,
+        active: row?.pending ?? false,
         sourceRevision: subject.subjectId,
       };
     }
@@ -162,7 +162,7 @@ export async function readAttentionFact(
       const row = found.rows[0];
       const limits = (
         ['queue', 'artifact_bytes', 'artifact_count'] as const
-      ).filter((key) => row?.[key] === true);
+      ).filter((key) => row?.[key] ?? false);
       return {
         ...base,
         active: limits.length > 0,

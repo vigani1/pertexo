@@ -175,7 +175,7 @@ export async function acceptPendingCall(
       'select app.lend_workflow_run_slot($1,$2,$3,$4) granted',
       [workspaceId, call.id, accepted.runId, accepted.outboxEventId],
     );
-    if (transfer.rows[0]?.granted !== true)
+    if (!(transfer.rows[0]?.granted ?? false))
       throw new WorkflowCallRefusedError('call_target_capacity_exceeded');
     await client.query('release savepoint workflow_call_candidate');
   } catch (error) {

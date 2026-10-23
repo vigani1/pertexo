@@ -58,7 +58,7 @@ export async function listTagAssignments(
         : [scope.workspaceId, tagId, after, limit + 1],
     );
     const row = result.rows[0];
-    if (row?.visible !== true)
+    if (!row?.visible)
       throw new WorkflowNotFoundError('Workflow is not visible');
     return pagination(
       z

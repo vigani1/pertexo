@@ -37,7 +37,7 @@ async function performOutgoingActions(
       'select app.return_workflow_run_slot($1,$2,$3) returned',
       [workspaceId, loan.rows[0].id, input.delivery.outboxEventId],
     );
-    if (result.rows[0]?.returned === true) {
+    if (result.rows[0]?.returned ?? false) {
       const incoming = await client.query<{ parent_run_id: string }>(
         'select parent_run_id from app.workflow_calls where workspace_id=$1 and child_run_id=$2 and slot_lent',
         [workspaceId, runId],
@@ -50,7 +50,7 @@ async function performOutgoingActions(
           input.traceparent,
         );
     }
-    if (result.rows[0]?.returned !== true) {
+    if (!(result.rows[0]?.returned ?? false)) {
       const child = await client.query<{ status: string }>(
         `select child.status from app.workflow_calls call join app.workflow_runs child on child.workspace_id=call.workspace_id and child.id=call.child_run_id where call.workspace_id=$1 and call.id=$2`,
         [workspaceId, loan.rows[0].id],

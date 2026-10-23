@@ -55,11 +55,7 @@ export async function folderDepth(
     [workspaceId, folderId, FOLDER_DEPTH_LIMIT],
   );
   const row = result.rows[0];
-  if (
-    row?.rooted !== true ||
-    row.depth === null ||
-    row.depth > FOLDER_DEPTH_LIMIT
-  )
+  if (!row?.rooted || row.depth === null || row.depth > FOLDER_DEPTH_LIMIT)
     throw new WorkflowFolderConflictError('hierarchy');
   return row.depth;
 }

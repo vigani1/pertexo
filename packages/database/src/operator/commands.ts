@@ -163,7 +163,7 @@ export function createOperatorCommandDatabase(
         }
 
         const decision = await request.decide(transaction, fingerprint);
-        const status = decision.pending === true ? 'pending' : 'completed';
+        const status = (decision.pending ?? false) ? 'pending' : 'completed';
         await transaction.db.insert(operatorCommands).values({
           id: request.commandId,
           workspaceId: transaction.workspaceId,

@@ -68,7 +68,7 @@ export function createRetentionDatabase(
               'select pg_try_advisory_xact_lock($1, $2) locked',
               [RETENTION_LOCK_CLASS, index],
             );
-            if (lock.rows[0]?.locked !== true) return 0;
+            if (!(lock.rows[0]?.locked ?? false)) return 0;
             return 'run' in rule
               ? rule.run(client, options.pageSize)
               : ((await client.query(rule.statement, [options.pageSize]))

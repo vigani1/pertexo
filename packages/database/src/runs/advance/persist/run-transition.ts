@@ -35,7 +35,7 @@ async function persistDerivedContinuation(
   // The engine decides whether its scheduler still has immediate work. Keep
   // that wakeup durable in the same checkpoint/outbox transaction.
   if (
-    input.plan.immediateContinuation !== true ||
+    !(input.plan.immediateContinuation ?? false) ||
     terminalRunStatuses.has(input.plan.checkpoint.runStatus) ||
     input.plan.attempts.length > 0
   )
@@ -200,13 +200,13 @@ export async function persistCoordinatorRunTransition(
   if (
     row.human_wait_started_at !== null ||
     row.has_unconsumed_tasks ||
-    row.has_human_child === true ||
+    (row.has_human_child ?? false) ||
     (plan.taskIntents?.length ?? 0) > 0
   )
     await synchronizeHumanWait(client, workspaceId, {
       runId,
       phase: 'committed',
-      alreadyDeferred: row.human_resume_deferred === true,
+      alreadyDeferred: row.human_resume_deferred ?? false,
     });
   if (row.status === 'queued' && plan.checkpoint.runStatus !== 'queued')
     await wakeErrorWorkflowsForCapacity(client, workspaceId);

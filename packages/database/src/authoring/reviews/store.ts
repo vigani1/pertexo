@@ -97,7 +97,7 @@ export function createPublicationReviewStore(
             )
           ).rows[0];
           return {
-            required: policy?.require_publish_approval === true,
+            required: policy?.require_publish_approval ?? false,
             request:
               latest === undefined
                 ? null

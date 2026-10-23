@@ -58,7 +58,7 @@ export async function consumeInboxMessage<T>(
   const result = await database.withWorkspace(
     workspaceId,
     async (transaction) => {
-      if (options.lockWorkspace === true)
+      if (options.lockWorkspace ?? false)
         await transaction.db.execute(
           sql`select app.lock_workspace_run_admission(${transaction.workspaceId})`,
         );

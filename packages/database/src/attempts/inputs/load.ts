@@ -249,7 +249,7 @@ export async function loadNodeAttemptInputs(
             ? workflowNodeFailureValueSchema.safeParse(stored.value)
             : undefined;
         if (
-          parsed?.success !== true ||
+          !parsed?.success ||
           parsed.data.attemptNumber !== selectedSource.current_attempt_number ||
           parsed.data.nodeId !== input.sourceFailure.nodeId ||
           parsed.data.invocationKey !== input.sourceFailure.invocationKey

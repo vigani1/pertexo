@@ -228,7 +228,7 @@ export async function persistConsumedCalls(
        and not exists(select 1 from app.workflow_calls where workspace_id=$1 and parent_run_id=$2 and slot_lent) as needed`,
     [workspaceId, runId],
   );
-  if (continuation.rows[0]?.needed === true)
+  if (continuation.rows[0]?.needed ?? false)
     await wakeWorkflowRun(client, workspaceId, runId);
 }
 

@@ -142,7 +142,7 @@ export async function completeNodeAttempt(
           row,
           receipt: receiptRow,
           serializedOutput,
-          controlActive: run.rows[0]?.abort_requested === true,
+          controlActive: run.rows[0]?.abort_requested ?? false,
         });
       },
     );

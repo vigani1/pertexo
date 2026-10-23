@@ -19,7 +19,7 @@ function throwableError(value: unknown, fallbackMessage: string): Error {
 export function cancellationFailure(
   signal: AbortSignal | undefined,
 ): Error | undefined {
-  if (signal?.aborted !== true) return undefined;
+  if (!signal?.aborted) return undefined;
   return throwableError(signal.reason, 'Schedule scan aborted');
 }
 
