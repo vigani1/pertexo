@@ -8,7 +8,7 @@ import {
 } from '@pertexo/database/testing';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
 import { createMaintenanceRuntime } from '../../../src/maintenance/runtime.js';
-import { OutboxDispatcher } from '../../../src/transport/outbox/dispatcher.js';
+import { OutboxDispatcher } from '../../../src/transport/outbox/dispatch/runtime.js';
 import { WorkerDrainState } from '../../../src/runtime/shutdown/drain-state.js';
 import {
   fixture,

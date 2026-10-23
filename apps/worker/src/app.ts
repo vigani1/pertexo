@@ -22,7 +22,7 @@ import { observeWorkspaceArtifactCapacity } from './runtime/health/artifact-metr
 import { WorkerReadinessMonitor } from './runtime/health/readiness-monitor.js';
 import { WorkerShutdownCoordinator } from './runtime/shutdown/coordinator.js';
 import { OUTBOX_DISPATCHER, TRANSPORT_METRICS } from './transport/module.js';
-import type { OutboxDispatcher } from './transport/outbox/dispatcher.js';
+import type { OutboxDispatcher } from './transport/outbox/dispatch/runtime.js';
 import {
   WorkerModule,
   type WorkerModuleDependencies,

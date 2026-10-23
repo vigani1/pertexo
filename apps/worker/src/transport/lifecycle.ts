@@ -5,7 +5,7 @@ import type { NodeAttemptRuntime } from '../attempts/delivery/runtime.js';
 import type { MaintenanceRuntime } from '../maintenance/runtime.js';
 import { WorkerDrainState } from '../runtime/shutdown/drain-state.js';
 import type { TriggerRuntime } from '../triggers/runtime.js';
-import { OutboxDispatcher } from './outbox/dispatcher.js';
+import { OutboxDispatcher } from './outbox/dispatch/runtime.js';
 import {
   COORDINATOR_RUNTIME,
   NODE_ATTEMPT_RUNTIME,

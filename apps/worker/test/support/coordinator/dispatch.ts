@@ -7,7 +7,7 @@ import {
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
 
 import { WorkerDrainState } from '../../../src/runtime/shutdown/drain-state.js';
-import { OutboxDispatcher } from '../../../src/transport/outbox/dispatcher.js';
+import { OutboxDispatcher } from '../../../src/transport/outbox/dispatch/runtime.js';
 import { coordinatorFixture } from './consumer.js';
 
 const { databaseUrl, dispatcherUrl, redisUrl } = coordinatorFixture;

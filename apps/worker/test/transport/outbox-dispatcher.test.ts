@@ -10,10 +10,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 /* eslint-disable @typescript-eslint/unbound-method -- assertions target injected boundary fakes */
 
-import {
-  OutboxDispatcher,
-  OutboxPayloadChecksumError,
-} from '../../src/transport/outbox/dispatcher.js';
+import { OutboxDispatcher } from '../../src/transport/outbox/dispatch/runtime.js';
+import { OutboxPayloadChecksumError } from '../../src/transport/outbox/dispatch/errors.js';
 import { TransportOperationTimeoutError } from '../../src/transport/outbox/operation-deadline.js';
 import { WorkerDrainState } from '../../src/runtime/shutdown/drain-state.js';
 

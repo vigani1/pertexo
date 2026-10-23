@@ -18,7 +18,7 @@ import { vi } from 'vitest';
 import { createCoordinatorRuntime } from '../../../src/runs/runtime.js';
 import { createNodeAttemptRuntime } from '../../../src/attempts/delivery/runtime.js';
 import { WorkerDrainState } from '../../../src/runtime/shutdown/drain-state.js';
-import { OutboxDispatcher } from '../../../src/transport/outbox/dispatcher.js';
+import { OutboxDispatcher } from '../../../src/transport/outbox/dispatch/runtime.js';
 import { coordinatorFixture } from '../../support/coordinator/consumer.js';
 import { insertCompiledWorkflow } from '../../support/coordinator/workflows.js';
 import { acceptManualFixtureRun } from '../../support/attempts/manual-start.js';

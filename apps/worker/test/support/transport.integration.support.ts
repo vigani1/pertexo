@@ -19,7 +19,7 @@ import { Redis } from 'ioredis';
 import { Pool, type PoolClient } from 'pg';
 
 import { WorkerDrainState } from '../../src/runtime/shutdown/drain-state.js';
-import { OutboxDispatcher } from '../../src/transport/outbox/dispatcher.js';
+import { OutboxDispatcher } from '../../src/transport/outbox/dispatch/runtime.js';
 import { dropDisconnectedDatabase } from './infrastructure/disposable-database.js';
 
 export function createTransportTestCleanupStack(stage: string) {

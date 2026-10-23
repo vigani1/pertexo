@@ -19,7 +19,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createCoordinatorRuntime } from '../../../dist/runs/runtime.js';
 import { createNodeAttemptRuntime } from '../../../dist/attempts/delivery/runtime.js';
 import { WorkerDrainState } from '../../../dist/runtime/shutdown/drain-state.js';
-import { OutboxDispatcher } from '../../../dist/transport/outbox/dispatcher.js';
+import { OutboxDispatcher } from '../../../dist/transport/outbox/dispatch/runtime.js';
 import { coordinatorFixture as fixture } from '../../support/coordinator/consumer.js';
 import { insertCompiledWorkflow } from '../../support/coordinator/workflows.js';
 
