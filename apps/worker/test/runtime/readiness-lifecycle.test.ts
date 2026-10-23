@@ -7,6 +7,8 @@ import {
 import { WorkerReadiness } from '../../src/runtime/health/readiness.js';
 import { WorkerDrainState } from '../../src/runtime/shutdown/drain-state.js';
 
+type SetReady = WorkerReadinessMarker['setReady'];
+
 const logger = {
   debug: vi.fn(),
   error: vi.fn(),
@@ -18,11 +20,11 @@ const logger = {
 
 function marker(): WorkerReadinessMarker & {
   ready: boolean;
-  setReady: ReturnType<typeof vi.fn<(ready: boolean) => Promise<void>>>;
+  setReady: ReturnType<typeof vi.fn<SetReady>>;
 } {
   const state = {
     ready: false,
-    setReady: vi.fn<(ready: boolean) => Promise<void>>((ready) => {
+    setReady: vi.fn<SetReady>(({ ready }) => {
       state.ready = ready;
       return Promise.resolve();
     }),
@@ -71,7 +73,9 @@ describe('worker readiness lifecycle', () => {
       await stopping;
 
       expect(readinessMarker.ready).toBe(false);
-      expect(readinessMarker.setReady.mock.calls.at(-1)?.[0]).toBe(false);
+      expect(readinessMarker.setReady.mock.calls.at(-1)?.[0]?.ready).toBe(
+        false,
+      );
       expect(monitor.status()).toEqual({
         state: 'stopped',
         checkInFlight: false,
@@ -87,7 +91,7 @@ describe('worker readiness lifecycle', () => {
     const writeStarted = Promise.withResolvers<undefined>();
     const releaseWrite = Promise.withResolvers<undefined>();
     let ready = false;
-    const setReady = vi.fn<(value: boolean) => Promise<void>>(async (value) => {
+    const setReady = vi.fn<SetReady>(async ({ ready: value }) => {
       if (value) {
         writeStarted.resolve(undefined);
         await releaseWrite.promise;
@@ -108,7 +112,11 @@ describe('worker readiness lifecycle', () => {
     releaseWrite.resolve(undefined);
     await Promise.all([checking, stopping]);
 
-    expect(setReady.mock.calls).toEqual([[true], [false], [false]]);
+    expect(setReady.mock.calls).toEqual([
+      [{ ready: true }],
+      [{ ready: false }],
+      [{ ready: false }],
+    ]);
     expect(ready).toBe(false);
     expect(monitor.status().state).toBe('stopped');
   });
@@ -140,7 +148,7 @@ describe('worker readiness lifecycle', () => {
     const dependencyFailure = new Error('postgres unavailable');
     const markerFailure = new Error('readiness marker removal failed');
     let ready = false;
-    const setReady = vi.fn((value: boolean) => {
+    const setReady = vi.fn(({ ready: value }: Parameters<SetReady>[0]) => {
       if (!value) return Promise.reject(markerFailure);
       ready = true;
       return Promise.resolve();
@@ -192,7 +200,9 @@ describe('worker readiness lifecycle', () => {
 
     await expect(monitor.check()).rejects.toBe(dependencyFailure);
     expect(readinessMarker.ready).toBe(false);
-    expect(readinessMarker.setReady.mock.calls).toContainEqual([false]);
+    expect(readinessMarker.setReady.mock.calls).toContainEqual([
+      { ready: false },
+    ]);
   });
 
   it('fails closed without replacing check and marker failures when error diagnostics throw', async () => {
@@ -254,13 +264,15 @@ describe('worker readiness lifecycle', () => {
     const readyWriteStarted = Promise.withResolvers<undefined>();
     const releaseReadyWrite = Promise.withResolvers<undefined>();
     let ready = false;
-    const setReady = vi.fn(async (value: boolean) => {
-      if (value) {
-        readyWriteStarted.resolve(undefined);
-        await releaseReadyWrite.promise;
-      }
-      ready = value;
-    });
+    const setReady = vi.fn(
+      async ({ ready: value }: Parameters<SetReady>[0]) => {
+        if (value) {
+          readyWriteStarted.resolve(undefined);
+          await releaseReadyWrite.promise;
+        }
+        ready = value;
+      },
+    );
     const monitor = new WorkerReadinessMonitor(
       { checkReadiness: vi.fn().mockResolvedValue(undefined) },
       logger,
@@ -279,7 +291,7 @@ describe('worker readiness lifecycle', () => {
     await observedCheck;
     for (let turn = 0; turn < 8; turn += 1) await Promise.resolve();
     expect(ready).toBe(false);
-    expect(setReady.mock.calls.at(-1)?.[0]).toBe(false);
+    expect(setReady.mock.calls.at(-1)?.[0]?.ready).toBe(false);
   });
 
   it('bounds a hung shutdown revocation and reports fail-closed state', async () => {
@@ -291,7 +303,7 @@ describe('worker readiness lifecycle', () => {
       logger,
       {
         marker: {
-          setReady: vi.fn((ready: boolean) =>
+          setReady: vi.fn(({ ready }: Parameters<SetReady>[0]) =>
             ready ? Promise.resolve() : revocation.promise,
           ),
         },
@@ -320,7 +332,7 @@ describe('worker readiness lifecycle', () => {
       logger,
       {
         marker: {
-          setReady: vi.fn((ready: boolean) =>
+          setReady: vi.fn(({ ready }: Parameters<SetReady>[0]) =>
             ready ? Promise.resolve() : Promise.reject(markerFailure),
           ),
         },

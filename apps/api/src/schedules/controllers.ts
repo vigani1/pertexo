@@ -126,7 +126,12 @@ export class ScheduleManagementController {
     @Param() params: unknown,
     @Body() body: unknown,
   ) {
-    return this.command(true, request, params, body);
+    return this.command({
+      enabled: true,
+      request: request,
+      params: params,
+      body: body,
+    });
   }
 
   @Post(':triggerId/schedule/disable')
@@ -141,15 +146,25 @@ export class ScheduleManagementController {
     @Param() params: unknown,
     @Body() body: unknown,
   ) {
-    return this.command(false, request, params, body);
+    return this.command({
+      enabled: false,
+      request: request,
+      params: params,
+      body: body,
+    });
   }
 
-  private command(
-    enabled: boolean,
-    request: Request,
-    params: unknown,
-    body: unknown,
-  ) {
+  private command({
+    enabled,
+    request,
+    params,
+    body,
+  }: Readonly<{
+    enabled: boolean;
+    request: Request;
+    params: unknown;
+    body: unknown;
+  }>) {
     scheduleManagementCommandRequestSchema.parse(body);
     const route = triggerRouteSchema.parse(params);
     const traceId = traceIdentifier(request);
@@ -161,7 +176,7 @@ export class ScheduleManagementController {
         requestId: requestIdentifier(request),
         ...(traceId === undefined ? {} : { traceId }),
       },
-      enabled,
+      { enabled: enabled },
     );
   }
 }

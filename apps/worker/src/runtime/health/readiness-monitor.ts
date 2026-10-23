@@ -13,13 +13,13 @@ interface WorkerReadinessProbe {
 }
 
 export interface WorkerReadinessMarker {
-  setReady(ready: boolean): Promise<void>;
+  setReady(input: Readonly<{ ready: boolean }>): Promise<void>;
 }
 
 type WorkerReadinessMonitorState = 'idle' | 'checking' | 'stopping' | 'stopped';
 
 const fileReadinessMarker: WorkerReadinessMarker = {
-  async setReady(ready: boolean): Promise<void> {
+  async setReady({ ready }: Readonly<{ ready: boolean }>): Promise<void> {
     if (ready) {
       await writeFile(readinessMarker, '', { mode: 0o600 });
       await rm(readinessRevocationMarker, { force: true });
@@ -196,7 +196,9 @@ export class WorkerReadinessMonitor implements BeforeApplicationShutdown {
   }
 
   private async setReady(): Promise<void> {
-    const readyWrite = Promise.resolve().then(() => this.marker.setReady(true));
+    const readyWrite = Promise.resolve().then(() =>
+      this.marker.setReady({ ready: true }),
+    );
     try {
       await boundedBackgroundTask(readyWrite, this.operationTimeoutMillis);
     } catch (error: unknown) {
@@ -213,7 +215,7 @@ export class WorkerReadinessMonitor implements BeforeApplicationShutdown {
 
   private setNotReady(): Promise<void> {
     return boundedBackgroundTask(
-      Promise.resolve().then(() => this.marker.setReady(false)),
+      Promise.resolve().then(() => this.marker.setReady({ ready: false })),
       this.operationTimeoutMillis,
     );
   }

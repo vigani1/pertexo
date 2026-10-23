@@ -190,9 +190,7 @@ describe('transport composition ownership', () => {
       dispatcher: (
         selectedDb,
         selectedQueue,
-        drain,
-        options,
-        selectedMetrics,
+        { drainState: drain, options, metrics: selectedMetrics },
       ) =>
         new OutboxDispatcher(selectedDb, selectedQueue, {
           drainState: drain,

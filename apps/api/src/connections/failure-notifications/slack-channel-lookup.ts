@@ -116,13 +116,11 @@ export class LookupSlackChannelsUseCase {
           );
         return respond(
           channelIds,
-          await this.lookupWithSecret(
-            this.slackClient,
-            input,
-            resolved,
-            named,
-            signal,
-          ),
+          await this.lookupWithSecret(this.slackClient, input, {
+            resolved: resolved,
+            channelIds: named,
+            signal: signal,
+          }),
         );
       },
     );
@@ -155,9 +153,15 @@ export class LookupSlackChannelsUseCase {
   private async lookupWithSecret(
     client: SlackChannelLookupClient,
     input: LookupSlackChannelsQuery,
-    resolved: ResolvedConnectionSecretRecord,
-    channelIds: readonly string[],
-    signal: AbortSignal,
+    {
+      resolved,
+      channelIds,
+      signal,
+    }: Readonly<{
+      resolved: ResolvedConnectionSecretRecord;
+      channelIds: readonly string[];
+      signal: AbortSignal;
+    }>,
   ): Promise<ReadonlyMap<string, SlackChannelLookupItem>> {
     let plaintext: Uint8Array | undefined;
     try {

@@ -159,13 +159,11 @@ export class DurableAuthenticationMail implements AuthenticationMail {
     input: AuthenticationSecurityNotice,
   ): SystemMailInput {
     const disabled = input.purpose === 'two_factor_disabled';
-    return this.prepare(
-      input.purpose,
-      input.recipient,
-      disabled
+    return this.prepare(input.purpose, input.recipient, {
+      subject: disabled
         ? 'Two-factor sign-in was turned off'
         : 'A recovery code was used to sign in',
-      [
+      text: [
         `Hello ${input.displayName},`,
         '',
         disabled
@@ -175,8 +173,8 @@ export class DurableAuthenticationMail implements AuthenticationMail {
         'If this was not you, secure your account and contact your Pertexo operator immediately.',
         input.url,
       ].join('\n'),
-      24 * 60 * 60_000,
-    );
+      validityMillis: 24 * 60 * 60_000,
+    });
   }
 
   public sendVerification(input: {
@@ -184,17 +182,15 @@ export class DurableAuthenticationMail implements AuthenticationMail {
     displayName: string;
     url: string;
   }): Promise<void> {
-    return this.enqueue(
-      'verification',
-      input.recipient,
-      'Verify your Pertexo email',
-      renderAuthenticationMail(
+    return this.enqueue('verification', input.recipient, {
+      subject: 'Verify your Pertexo email',
+      text: renderAuthenticationMail(
         input.displayName,
         'Verify your email to finish creating your Pertexo account.',
         input.url,
       ),
-      60 * 60_000,
-    );
+      validityMillis: 60 * 60_000,
+    });
   }
 
   public sendPasswordReset(input: {
@@ -202,17 +198,15 @@ export class DurableAuthenticationMail implements AuthenticationMail {
     displayName: string;
     url: string;
   }): Promise<void> {
-    return this.enqueue(
-      'password_reset',
-      input.recipient,
-      'Reset your Pertexo password',
-      renderAuthenticationMail(
+    return this.enqueue('password_reset', input.recipient, {
+      subject: 'Reset your Pertexo password',
+      text: renderAuthenticationMail(
         input.displayName,
         'Use this time-limited link to reset your Pertexo password.',
         input.url,
       ),
-      60 * 60_000,
-    );
+      validityMillis: 60 * 60_000,
+    });
   }
 
   public sendEmailChangeConfirmation(input: {
@@ -221,17 +215,15 @@ export class DurableAuthenticationMail implements AuthenticationMail {
     newEmail: string;
     url: string;
   }): Promise<void> {
-    return this.enqueue(
-      'email_change_confirmation',
-      input.recipient,
-      'Confirm your Pertexo email change',
-      renderAuthenticationMail(
+    return this.enqueue('email_change_confirmation', input.recipient, {
+      subject: 'Confirm your Pertexo email change',
+      text: renderAuthenticationMail(
         input.displayName,
         `Confirm changing your Pertexo email to ${input.newEmail}.`,
         input.url,
       ),
-      60 * 60_000,
-    );
+      validityMillis: 60 * 60_000,
+    });
   }
 
   /** Prepare a sealed command for the proof transaction; do not enqueue it yet. */
@@ -247,35 +239,42 @@ export class DurableAuthenticationMail implements AuthenticationMail {
       input.purpose === 'verification'
         ? 'Verify your Pertexo email address.'
         : `Confirm changing your Pertexo email to ${input.newEmail ?? ''}.`;
-    return this.prepare(
-      input.purpose,
-      input.recipient,
-      input.purpose === 'verification'
-        ? 'Verify your Pertexo email'
-        : 'Confirm your Pertexo email change',
-      renderAuthenticationMail(input.displayName, instruction, input.url),
-      input.expiresAt.getTime() - this.now().getTime(),
-    );
+    return this.prepare(input.purpose, input.recipient, {
+      subject:
+        input.purpose === 'verification'
+          ? 'Verify your Pertexo email'
+          : 'Confirm your Pertexo email change',
+      text: renderAuthenticationMail(input.displayName, instruction, input.url),
+      validityMillis: input.expiresAt.getTime() - this.now().getTime(),
+    });
   }
 
   private enqueue(
     purpose: SystemMailPurpose,
     recipient: string,
-    subject: string,
-    text: string,
-    validityMillis: number,
+    {
+      subject,
+      text,
+      validityMillis,
+    }: Readonly<{ subject: string; text: string; validityMillis: number }>,
   ): Promise<void> {
     return this.store.enqueue(
-      this.prepare(purpose, recipient, subject, text, validityMillis),
+      this.prepare(purpose, recipient, {
+        subject: subject,
+        text: text,
+        validityMillis: validityMillis,
+      }),
     );
   }
 
   private prepare<Purpose extends SystemMailPurpose>(
     purpose: Purpose,
     recipient: string,
-    subject: string,
-    text: string,
-    validityMillis: number,
+    {
+      subject,
+      text,
+      validityMillis,
+    }: Readonly<{ subject: string; text: string; validityMillis: number }>,
   ): Readonly<{
     id: string;
     purpose: Purpose;

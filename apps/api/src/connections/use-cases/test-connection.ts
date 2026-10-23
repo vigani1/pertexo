@@ -190,15 +190,17 @@ export class TestConnectionUseCase {
           const outcome = await this.testProvider(
             destination,
             expectedProviderKey,
-            request,
-            credential,
-            input,
-            requestSignal,
-            () =>
-              this.persistence.markConnectionTestDispatched({
-                ...common,
-                secretVersionId: resolved.secretVersionId,
-              }),
+            {
+              request: request,
+              credential: credential,
+              input: input,
+              signal: requestSignal,
+              beforeDispatch: () =>
+                this.persistence.markConnectionTestDispatched({
+                  ...common,
+                  secretVersionId: resolved.secretVersionId,
+                }),
+            },
           );
           return toTestResponse(
             await this.persistence.completeConnectionTest({
@@ -235,11 +237,19 @@ export class TestConnectionUseCase {
   private async testProvider(
     destination: FailureNotificationDestinationResponse | undefined,
     expectedProviderKey: 'email' | 'http' | 'slack' | 'signing',
-    request: ParsedConnectionTestRequest,
-    credential: DecodedConnectionCredential,
-    input: TestConnectionCommand,
-    signal: AbortSignal,
-    beforeDispatch: () => Promise<void>,
+    {
+      request,
+      credential,
+      input,
+      signal,
+      beforeDispatch,
+    }: Readonly<{
+      request: ParsedConnectionTestRequest;
+      credential: DecodedConnectionCredential;
+      input: TestConnectionCommand;
+      signal: AbortSignal;
+      beforeDispatch: () => Promise<void>;
+    }>,
   ): Promise<ConnectionTestOutcome> {
     if (expectedProviderKey === 'email') {
       if (
