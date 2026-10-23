@@ -5,7 +5,9 @@
     "composite": false,
     "noEmit": true,
     "rootDir": ".",
-    "tsBuildInfoFile": "dist/test-types/tsconfig.tsbuildinfo"
+    "tsBuildInfoFile": "dist/test-types/tsconfig.tsbuildinfo",
+    "declaration": false,
+    "declarationMap": false
   },
   "include": [
     "src/**/*.ts",
