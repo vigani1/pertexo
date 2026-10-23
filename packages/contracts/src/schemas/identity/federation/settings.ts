@@ -1,3 +1,5 @@
+import { FEDERATION_LIMITS } from '@pertexo/workflow-model';
+export { FEDERATION_LIMITS };
 import { z } from 'zod';
 import { utf8ByteLength } from '../../shared/text.js';
 import { delegatedWorkspaceRoleSchema } from '../membership.js';
@@ -19,13 +21,6 @@ export const SAML_LIMITS = Object.freeze({
   certificates: 2,
   assertionAgeMillis: 5 * 60000,
   clockSkewMillis: 2 * 60000,
-});
-
-export const FEDERATION_LIMITS = Object.freeze({
-  workspaces: 10,
-  domains: 20,
-  providers: 10,
-  secretBytes: 8192,
 });
 
 export const federationDomainNameSchema = z

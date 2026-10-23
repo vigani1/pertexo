@@ -1,0 +1,1 @@
+export const AUDIT_RETENTION_MIN_DAYS = 30;
