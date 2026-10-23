@@ -22,6 +22,6 @@ export function isWorkflowErrorTarget(graph: unknown): boolean {
     triggers.length === 1 &&
     entry?.definition.key === 'core.workflow_error' &&
     entry.definition.version === 1 &&
-    entry.disabled !== true
+    !(entry.disabled ?? false)
   );
 }

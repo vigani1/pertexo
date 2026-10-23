@@ -98,7 +98,7 @@ export function workflowIntegrationUsage(
         const connectionId = node.connectionRefs[slot];
         if (
           connectionId === undefined &&
-          integration.optionalConnectionSlots?.includes(slot) === true
+          (integration.optionalConnectionSlots?.includes(slot) ?? false)
         )
           continue;
         if (connectionId === undefined) {
@@ -222,7 +222,7 @@ export function workflowDraftRepresentationTag(input: {
 /** A disabled step, and any loop body inside it, uses no connection. */
 function* enabledNodes(graph: WorkflowGraph): Generator<WorkflowNode> {
   for (const node of graph.nodes) {
-    if (node.disabled === true) continue;
+    if (node.disabled ?? false) continue;
     yield node;
     if (node.structured !== undefined)
       yield* enabledNodes(node.structured.body);

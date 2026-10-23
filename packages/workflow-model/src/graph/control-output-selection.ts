@@ -59,47 +59,56 @@ export function workflowControlOutputNodeIds(
         throw new RangeError(
           'Executable control node selection exceeds graph bound',
         );
-      if (typeof value !== 'object' || value === null || Array.isArray(value))
-        throw new TypeError('Executable control node is invalid');
-      const nodeId = Reflect.get(value, 'id') as unknown;
-      const definition = Reflect.get(value, 'definition') as unknown;
-      if (
-        typeof nodeId !== 'string' ||
-        nodeId.length === 0 ||
-        seen.has(nodeId) ||
-        typeof definition !== 'object' ||
-        definition === null ||
-        Array.isArray(definition)
-      )
-        throw new TypeError('Executable control identity is invalid');
-      const key = Reflect.get(definition, 'key') as unknown;
-      const version = Reflect.get(definition, 'version') as unknown;
-      if (
-        typeof key !== 'string' ||
-        key.length === 0 ||
-        typeof version !== 'number' ||
-        !Number.isSafeInteger(version)
-      )
-        throw new TypeError('Executable control definition is invalid');
-      seen.add(nodeId);
-      const config: unknown = Reflect.get(value, 'config');
-      if (
-        workflowControlOutputKind(
-          { key, version },
-          isRecord(config) ? config : undefined,
-        ) !== undefined
-      )
-        ids.add(nodeId);
-      const structured = Reflect.get(value, 'structured') as unknown;
-      if (structured === undefined) continue;
-      if (
-        typeof structured !== 'object' ||
-        structured === null ||
-        Array.isArray(structured)
-      )
-        throw new TypeError('Executable structured body is invalid');
-      pending.push(Reflect.get(structured, 'body'));
+      selectControlNode(value, seen, ids, pending);
     }
   }
   return ids;
+}
+
+function selectControlNode(
+  value: unknown,
+  seen: Set<string>,
+  ids: Set<string>,
+  pending: unknown[],
+): void {
+  if (typeof value !== 'object' || value === null || Array.isArray(value))
+    throw new TypeError('Executable control node is invalid');
+  const nodeId = Reflect.get(value, 'id') as unknown;
+  const definition = Reflect.get(value, 'definition') as unknown;
+  const invalidIdentity =
+    typeof nodeId !== 'string' ||
+    nodeId.length === 0 ||
+    seen.has(nodeId) ||
+    typeof definition !== 'object' ||
+    definition === null ||
+    Array.isArray(definition);
+  if (invalidIdentity)
+    throw new TypeError('Executable control identity is invalid');
+  const key = Reflect.get(definition, 'key') as unknown;
+  const version = Reflect.get(definition, 'version') as unknown;
+  const invalidDefinition =
+    typeof key !== 'string' ||
+    key.length === 0 ||
+    typeof version !== 'number' ||
+    !Number.isSafeInteger(version);
+  if (invalidDefinition)
+    throw new TypeError('Executable control definition is invalid');
+  seen.add(nodeId);
+  const config: unknown = Reflect.get(value, 'config');
+  if (
+    workflowControlOutputKind(
+      { key, version },
+      isRecord(config) ? config : undefined,
+    ) !== undefined
+  )
+    ids.add(nodeId);
+  const structured = Reflect.get(value, 'structured') as unknown;
+  if (structured === undefined) return;
+  if (
+    typeof structured !== 'object' ||
+    structured === null ||
+    Array.isArray(structured)
+  )
+    throw new TypeError('Executable structured body is invalid');
+  pending.push(Reflect.get(structured, 'body'));
 }

@@ -116,44 +116,7 @@ export function astSize(root: JsonataAst): {
     if (typeof type === 'string') {
       nodes += 1;
       depth = Math.max(depth, level);
-      if (DISALLOWED_TYPES.has(type) || !ALLOWED_TYPES.has(type))
-        disallowed = type;
-      if (type === 'function') {
-        const procedure = isRecord(value.procedure)
-          ? value.procedure
-          : undefined;
-        if (
-          procedure?.type !== 'variable' ||
-          typeof procedure.value !== 'string' ||
-          !BUILTINS.has(procedure.value)
-        )
-          disallowed = 'callable';
-      }
-      if (
-        (type === 'path' || type === 'name') &&
-        (Object.hasOwn(value, 'group') ||
-          Object.hasOwn(value, 'focus') ||
-          Object.hasOwn(value, 'index') ||
-          Object.hasOwn(value, 'tuple'))
-      )
-        disallowed = 'path_metadata';
-      if (
-        type === 'variable' &&
-        parentKey !== 'procedure' &&
-        value.value !== '' &&
-        value.value !== 'vars' &&
-        value.value !== 'execution'
-      )
-        disallowed = 'variable';
-      const steps = isUnknownArray(value.steps) ? value.steps : undefined;
-      const firstStep = steps?.[0];
-      if (
-        type === 'path' &&
-        isRecord(firstStep) &&
-        firstStep.type === 'name' &&
-        FORBIDDEN_ROOT_NAMES.has(String(firstStep.value))
-      )
-        disallowed = 'host_identifier';
+      disallowed = classifyAstNode(value, type, parentKey, disallowed);
     }
     for (const [key, child] of Object.entries(value))
       if (!['value', 'position', 'type'].includes(key))
@@ -163,4 +126,69 @@ export function astSize(root: JsonataAst): {
   return disallowed === undefined
     ? { nodes, depth }
     : { nodes, depth, disallowed };
+}
+
+function classifyAstNode(
+  value: Record<string, unknown>,
+  type: string,
+  parentKey: string | undefined,
+  prior: string | undefined,
+): string | undefined {
+  let disallowed = prior;
+  if (DISALLOWED_TYPES.has(type) || !ALLOWED_TYPES.has(type)) disallowed = type;
+  if (type === 'function' && isDisallowedCall(value)) disallowed = 'callable';
+  if (hasPathMetadata(value, type)) disallowed = 'path_metadata';
+  if (isDisallowedVariable(value, type, parentKey)) disallowed = 'variable';
+  if (isHostIdentifier(value, type)) disallowed = 'host_identifier';
+  return disallowed;
+}
+
+function isDisallowedCall(value: Record<string, unknown>): boolean {
+  const procedure = isRecord(value.procedure) ? value.procedure : undefined;
+  return (
+    procedure?.type !== 'variable' ||
+    typeof procedure.value !== 'string' ||
+    !BUILTINS.has(procedure.value)
+  );
+}
+
+function hasPathMetadata(
+  value: Record<string, unknown>,
+  type: string,
+): boolean {
+  return (
+    (type === 'path' || type === 'name') &&
+    (Object.hasOwn(value, 'group') ||
+      Object.hasOwn(value, 'focus') ||
+      Object.hasOwn(value, 'index') ||
+      Object.hasOwn(value, 'tuple'))
+  );
+}
+
+function isDisallowedVariable(
+  value: Record<string, unknown>,
+  type: string,
+  parentKey: string | undefined,
+): boolean {
+  return (
+    type === 'variable' &&
+    parentKey !== 'procedure' &&
+    value.value !== '' &&
+    value.value !== 'vars' &&
+    value.value !== 'execution'
+  );
+}
+
+function isHostIdentifier(
+  value: Record<string, unknown>,
+  type: string,
+): boolean {
+  const steps = isUnknownArray(value.steps) ? value.steps : undefined;
+  const firstStep = steps?.[0];
+  return (
+    type === 'path' &&
+    isRecord(firstStep) &&
+    firstStep.type === 'name' &&
+    FORBIDDEN_ROOT_NAMES.has(String(firstStep.value))
+  );
 }

@@ -35,47 +35,14 @@ export function inspectWorkflowDecisionTree(
   const nodes = new Map(graph.nodes.map((node) => [node.id, node]));
   if (nodes.size === 0 || nodes.size !== graph.nodes.length) return undefined;
   for (const node of graph.nodes)
-    if (
-      (excludedControls.has(node.definition.key) &&
-        !isCallbackWaitNode(node)) ||
-      node.forEach !== undefined ||
-      node.structured !== undefined ||
-      (['core.condition', 'core.approval'].includes(node.definition.key) &&
-        node.disabled === true) ||
-      (['core.condition', 'core.approval', 'core.terminate'].includes(
-        node.definition.key,
-      ) &&
-        node.definition.version !== 1)
-    )
-      return undefined;
+    if (nodePreventsDecisionTree(node)) return undefined;
 
   const incoming = new Set<string>();
   const outgoing = new Map<string, WorkflowEdge[]>();
-  for (const edge of graph.edges) {
-    const source = nodes.get(edge.source.nodeId);
-    if (
-      source === undefined ||
-      !nodes.has(edge.target.nodeId) ||
-      incoming.has(edge.target.nodeId) ||
-      source.definition.key === 'core.terminate'
-    )
+  for (const edge of graph.edges)
+    if (!appendDecisionEdge(edge, { nodes, incoming, outgoing }))
       return undefined;
-    incoming.add(edge.target.nodeId);
-    const siblings = outgoing.get(source.id) ?? [];
-    if (['core.condition', 'core.approval'].includes(source.definition.key)) {
-      const ports =
-        source.definition.key === 'core.approval'
-          ? ['approved', 'rejected']
-          : ['true', 'false'];
-      if (
-        !ports.includes(edge.source.port) ||
-        siblings.some((sibling) => sibling.source.port === edge.source.port)
-      )
-        return undefined;
-    } else if (siblings.length > 0) return undefined;
-    siblings.push(edge);
-    outgoing.set(source.id, siblings);
-  }
+
   const roots = graph.nodes.filter((node) => !incoming.has(node.id));
   const root = roots[0];
   if (
@@ -97,4 +64,52 @@ export function inspectWorkflowDecisionTree(
   }
   if (reached.size !== nodes.size) return undefined;
   return { rootId: root.id, outgoing };
+}
+
+function nodePreventsDecisionTree(node: DecisionTreeNode): boolean {
+  return (
+    (excludedControls.has(node.definition.key) && !isCallbackWaitNode(node)) ||
+    node.forEach !== undefined ||
+    node.structured !== undefined ||
+    (['core.condition', 'core.approval'].includes(node.definition.key) &&
+      (node.disabled ?? false)) ||
+    (['core.condition', 'core.approval', 'core.terminate'].includes(
+      node.definition.key,
+    ) &&
+      node.definition.version !== 1)
+  );
+}
+
+function appendDecisionEdge(
+  edge: WorkflowEdge,
+  context: Readonly<{
+    nodes: ReadonlyMap<string, DecisionTreeNode>;
+    incoming: Set<string>;
+    outgoing: Map<string, WorkflowEdge[]>;
+  }>,
+): boolean {
+  const { nodes, incoming, outgoing } = context;
+  const source = nodes.get(edge.source.nodeId);
+  const invalidEdge =
+    source === undefined ||
+    !nodes.has(edge.target.nodeId) ||
+    incoming.has(edge.target.nodeId) ||
+    source.definition.key === 'core.terminate';
+  if (invalidEdge) return false;
+  incoming.add(edge.target.nodeId);
+  const siblings = outgoing.get(source.id) ?? [];
+  if (['core.condition', 'core.approval'].includes(source.definition.key)) {
+    const ports =
+      source.definition.key === 'core.approval'
+        ? ['approved', 'rejected']
+        : ['true', 'false'];
+    if (
+      !ports.includes(edge.source.port) ||
+      siblings.some((sibling) => sibling.source.port === edge.source.port)
+    )
+      return false;
+  } else if (siblings.length > 0) return false;
+  siblings.push(edge);
+  outgoing.set(source.id, siblings);
+  return true;
 }

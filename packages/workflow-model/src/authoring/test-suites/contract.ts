@@ -21,13 +21,12 @@ export const testExpectationValueSchema: z.ZodType<JsonValue> = z
   .superRefine((value, context) => {
     try {
       const inspected = inspectJsonValue(value);
-      if (
+      const withinExpectationLimits =
         inspected.bytes <= 4096 &&
         inspected.depth <= 64 &&
         inspected.members <= 10000 &&
-        validText(canonicalizeJson(value))
-      )
-        return;
+        validText(canonicalizeJson(value));
+      if (withinExpectationLimits) return;
     } catch {
       /* Invalid JSON is rejected at this boundary. */
     }

@@ -93,7 +93,7 @@ function compileExecutableGraph(
           checked.callbacks,
           graph,
           node.id,
-          manifest.capabilities.includes('external_http'),
+          { externalHttp: manifest.capabilities.includes('external_http') },
         );
         if (issue !== undefined) fail(issue);
       }

@@ -40,7 +40,7 @@ export function callbackTargetNodes<N extends Node>(
     (node) =>
       node.id !== nodeId &&
       reachable.has(node.id) &&
-      node.disabled !== true &&
+      !(node.disabled ?? false) &&
       isCallbackWaitNode(node) &&
       callbackWaitConfigSchema.safeParse(node.config).success,
   );
@@ -56,7 +56,7 @@ export function callbackReferenceIssue(
   references: readonly CallbackReference[],
   graph: Graph | undefined,
   nodeId: string | undefined,
-  externalHttp: boolean,
+  { externalHttp }: Readonly<{ externalHttp: boolean }>,
 ): string | undefined {
   if (references.length === 0) return undefined;
   if (
@@ -69,13 +69,13 @@ export function callbackReferenceIssue(
   const reachable = reachableNodes(graph, nodeId);
   for (const reference of references) {
     const target = graph.nodes.find((node) => node.id === reference.nodeId);
-    if (
+    const invalidTarget =
       target === undefined ||
       !isCallbackWaitNode(target) ||
-      target.disabled === true ||
+      (target.disabled ?? false) ||
       target.id === nodeId ||
-      !reachable.has(target.id)
-    )
+      !reachable.has(target.id);
+    if (invalidTarget)
       return 'Select an enabled callback Wait after this step in the same workflow or loop body.';
     const config = callbackWaitConfigSchema.safeParse(target.config);
     if (!config.success) return 'Correct the selected callback Wait settings.';

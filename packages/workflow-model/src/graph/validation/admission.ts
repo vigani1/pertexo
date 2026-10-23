@@ -68,12 +68,12 @@ function inspectArrayUnsafe(
   limits: WorkflowGraphAdmissionLimits,
 ): WorkflowGraphAdmissionFailure | undefined {
   const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
-  if (
+  const invalidArrayLength =
     lengthDescriptor === undefined ||
     !('value' in lengthDescriptor) ||
     !Number.isSafeInteger(lengthDescriptor.value) ||
-    lengthDescriptor.value < 0
-  )
+    lengthDescriptor.value < 0;
+  if (invalidArrayLength)
     return failure('invalid_json', frame.path, 'array properties are not JSON');
   const length = lengthDescriptor.value as number;
   const minimumBytes = 2 + Math.max(0, length - 1);
@@ -203,13 +203,13 @@ function inspectJsonDocumentUnsafe(
       );
 
     const value = frame.value;
-    if (
+    const acceptedPrimitive =
       value === null ||
       typeof value === 'string' ||
       typeof value === 'boolean' ||
       (typeof value === 'number' &&
-        (Number.isFinite(value) || options.allowNonFiniteNumbers === true))
-    ) {
+        (Number.isFinite(value) || (options.allowNonFiniteNumbers ?? false)));
+    if (acceptedPrimitive) {
       const budget = { stopAfterBytes: limits.graphBytes - state.bytes };
       state.bytes +=
         typeof value === 'string'
