@@ -159,13 +159,12 @@ const EMPTY_RESULT: OutboxDispatchResult = Object.freeze({
 });
 
 export class OutboxDispatcher {
+  private readonly capacitySamples: OutboxCapacitySampler;
   private readonly options: Required<OutboxDispatcherOptions>;
   private readonly enabledQueueNames: ReadonlySet<string>;
-  private readonly capacitySampledAtByWorkspace = new Map<string, number>();
-  private readonly pendingCapacityWorkspaces = new Set<string>();
-  private capacitySamplerPromise: Promise<void> | undefined;
+
   private readonly publicationSettlements: OutboxPublicationSettlements;
-  private runtimeHooks: OutboxDispatcherRuntimeHooks | undefined;
+
   private readonly activeDispatches = new Set<Promise<void>>();
   private lifecycle: 'idle' | 'running' | 'closed' = 'idle';
   private closePromise: Promise<void> | undefined;
@@ -196,6 +195,9 @@ export class OutboxDispatcher {
       ...options,
       jobNames: Object.freeze([...options.jobNames]),
     });
+    this.capacitySamples = new OutboxCapacitySampler(
+      this.options.operationTimeoutMillis,
+    );
     this.publicationSettlements = new OutboxPublicationSettlements(
       database,
       this.options.operationTimeoutMillis,
@@ -215,10 +217,10 @@ export class OutboxDispatcher {
 
   public configureRuntimeHooks(hooks: OutboxDispatcherRuntimeHooks): void {
     this.assertOpen();
-    if (this.lifecycle !== 'idle' || this.runtimeHooks !== undefined) {
+    if (this.lifecycle !== 'idle' || this.capacitySamples.configured) {
       throw new Error('Outbox dispatcher runtime hooks are already configured');
     }
-    this.runtimeHooks = Object.freeze(hooks);
+    this.capacitySamples.configure(Object.freeze(hooks));
   }
 
   public dispatchOnce(): Promise<OutboxDispatchResult> {
@@ -249,13 +251,22 @@ export class OutboxDispatcher {
       maxAttempts: this.options.maxAttempts,
     });
     const { events } = claim;
-    this.observeMetrics(() => {
+    observeDispatchMetrics(() => {
       recordOutboxClaim(this.metrics, events, claim.exhaustedCount);
     });
     const outcomes = await Promise.all(
       events.map((event) => this.publishAndSettle(event)),
     );
-    await Promise.all([this.observeOutbox(), this.observeQueues()]);
+    await Promise.all([
+      observeDispatchBacklog(this.database, this.metrics, {
+        timeoutMillis: this.options.operationTimeoutMillis,
+        jobNames: this.options.jobNames,
+      }),
+      observeDispatchQueues(this.producer, this.metrics, {
+        timeoutMillis: this.options.operationTimeoutMillis,
+        enabledQueueNames: this.enabledQueueNames,
+      }),
+    ]);
     return summarizeDispatchOutcomes(events.length, outcomes);
   }
 
@@ -281,7 +292,7 @@ export class OutboxDispatcher {
 
   private async closeOwned(): Promise<void> {
     this.lifecycle = 'closed';
-    this.pendingCapacityWorkspaces.clear();
+    this.capacitySamples.stop();
     this.wakeLoop?.();
     const drain = this.drainOwnedWork();
     let drainFailures: readonly unknown[];
@@ -289,11 +300,19 @@ export class OutboxDispatcher {
       drainFailures = await bounded(drain, this.options.operationTimeoutMillis);
     } catch (error: unknown) {
       void drain
-        .then((failures) => this.closeDependencies(failures))
+        .then((failures) =>
+          closeDispatcherDependencies(this.database, this.producer, {
+            timeoutMillis: this.options.operationTimeoutMillis,
+            earlierFailures: failures,
+          }),
+        )
         .catch(() => undefined);
       throw error;
     }
-    await this.closeDependencies(drainFailures);
+    await closeDispatcherDependencies(this.database, this.producer, {
+      timeoutMillis: this.options.operationTimeoutMillis,
+      earlierFailures: drainFailures,
+    });
   }
 
   private async drainOwnedWork(): Promise<readonly unknown[]> {
@@ -302,10 +321,9 @@ export class OutboxDispatcher {
       ...this.activeDispatches,
     ];
     const operationResults = await Promise.allSettled(operations);
+    const capacitySample = this.capacitySamples.pending();
     const capacityResults = await Promise.allSettled(
-      this.capacitySamplerPromise === undefined
-        ? []
-        : [this.capacitySamplerPromise],
+      capacitySample === undefined ? [] : [capacitySample],
     );
     const settlementResults = await Promise.allSettled(
       this.publicationSettlements.pendingSettlements(),
@@ -317,29 +335,6 @@ export class OutboxDispatcher {
     ].flatMap((result) =>
       result.status === 'rejected' ? [result.reason as unknown] : [],
     );
-  }
-
-  private async closeDependencies(
-    earlierFailures: readonly unknown[],
-  ): Promise<void> {
-    const results = await Promise.allSettled([
-      bounded(
-        Promise.resolve().then(() => this.database.close()),
-        this.options.operationTimeoutMillis,
-      ),
-      bounded(
-        Promise.resolve().then(() => this.producer.close()),
-        this.options.operationTimeoutMillis,
-      ),
-    ]);
-    const failures = [
-      ...earlierFailures,
-      ...results.flatMap((result) =>
-        result.status === 'rejected' ? [result.reason as unknown] : [],
-      ),
-    ];
-    if (failures.length > 0)
-      throw new AggregateError(failures, 'Outbox dispatcher shutdown failed');
   }
 
   private async publishAndSettle(
@@ -354,7 +349,7 @@ export class OutboxDispatcher {
       jobObservation = currentJob;
       const publication = await this.producer.publish(job);
       if (publication.outcome === 'outcome_unknown') {
-        this.observeMetrics(() => {
+        observeDispatchMetrics(() => {
           this.metrics.recordOutboxPublish({
             ...currentJob,
             errorClass: 'timeout',
@@ -365,7 +360,7 @@ export class OutboxDispatcher {
         return 'outcome_unknown';
       }
       queuePublished = true;
-      this.observeMetrics(() => {
+      observeDispatchMetrics(() => {
         this.metrics.recordOutboxPublish({
           ...currentJob,
           outcome: 'published',
@@ -375,7 +370,7 @@ export class OutboxDispatcher {
     } catch (error: unknown) {
       if (jobObservation !== undefined && !queuePublished) {
         const failedJob = jobObservation;
-        this.observeMetrics(() => {
+        observeDispatchMetrics(() => {
           this.metrics.recordOutboxPublish({
             ...failedJob,
             errorClass: transportErrorClass(error),
@@ -395,7 +390,7 @@ export class OutboxDispatcher {
   ): Promise<OutboxPublicationOutcome> {
     const marked = await this.publicationSettlements.markPublished(event);
     if (marked === 'outcome_unknown') return marked;
-    this.observeMetrics(() => {
+    observeDispatchMetrics(() => {
       this.metrics.recordOutboxDispatchLatency({
         ...job,
         durationSeconds: Math.max(
@@ -406,11 +401,11 @@ export class OutboxDispatcher {
       });
     });
     if (!marked) {
-      this.observeMetrics(() => {
+      observeDispatchMetrics(() => {
         this.metrics.recordOutboxLeaseEvent('expired');
       });
     } else if (jobName === JOB_NAME.advanceWorkflowRun) {
-      this.scheduleWorkspaceCapacityObservation(event.workspaceId);
+      this.capacitySamples.schedule(event.workspaceId);
     }
     return marked ? 'published' : 'stale';
   }
@@ -430,11 +425,11 @@ export class OutboxDispatcher {
       this.options.operationTimeoutMillis,
     );
     if (releaseResult === 'failed') {
-      this.observeMetrics(() => {
+      observeDispatchMetrics(() => {
         this.metrics.recordOutboxLeaseEvent('attempt_exhausted');
       });
     } else if (releaseResult === 'not_leased') {
-      this.observeMetrics(() => {
+      observeDispatchMetrics(() => {
         this.metrics.recordOutboxLeaseEvent('expired');
       });
     }
@@ -445,33 +440,28 @@ export class OutboxDispatcher {
       ACTIVE_POLL_INTERVAL_MILLIS,
       this.options.pollIntervalMillis,
     );
-    let pollIntervalMillis = this.options.pollIntervalMillis;
-    let lastActivityAt = Number.NEGATIVE_INFINITY;
+    let polling: DispatchPollingState = {
+      intervalMillis: this.options.pollIntervalMillis,
+      lastActivityAt: Number.NEGATIVE_INFINITY,
+    };
     while (this.isRunning() && this.drainState.canAcceptWork()) {
       try {
         const result = await this.dispatchOnce();
         const now = performance.now();
         // Successive steps need successive publications. Keep those rounds
         // close together without imposing busy polling on an idle workspace.
-        if (result.published > 0 || result.outcomeUnknown > 0) {
-          lastActivityAt = now;
-          pollIntervalMillis = activePollIntervalMillis;
-        } else if (result.failed > 0) {
-          lastActivityAt = Number.NEGATIVE_INFINITY;
-          pollIntervalMillis = this.options.pollIntervalMillis;
-        } else if (now - lastActivityAt < ACTIVE_WINDOW_MILLIS) {
-          pollIntervalMillis = activePollIntervalMillis;
-        } else {
-          pollIntervalMillis = Math.min(
-            pollIntervalMillis * 2,
-            this.options.pollIntervalMillis,
-          );
-        }
+        polling = nextDispatchPolling(polling, result, {
+          now,
+          activeIntervalMillis: activePollIntervalMillis,
+          idleIntervalMillis: this.options.pollIntervalMillis,
+        });
       } catch {
         // Readiness surfaces boundary health. The loop stays alive so a
         // transient PostgreSQL/Redis failure cannot permanently stop dispatch.
-        lastActivityAt = Number.NEGATIVE_INFINITY;
-        pollIntervalMillis = this.options.pollIntervalMillis;
+        polling = {
+          lastActivityAt: Number.NEGATIVE_INFINITY,
+          intervalMillis: this.options.pollIntervalMillis,
+        };
       }
       if (!this.isRunning() || !this.drainState.canAcceptWork()) break;
       await new Promise<void>((resolve) => {
@@ -480,7 +470,7 @@ export class OutboxDispatcher {
           return;
         }
         let settled = false;
-        const timer = setTimeout(resolve, pollIntervalMillis);
+        const timer = setTimeout(resolve, polling.intervalMillis);
         const wake = () => {
           if (settled) return;
           settled = true;
@@ -501,38 +491,169 @@ export class OutboxDispatcher {
   private isRunning(): boolean {
     return this.lifecycle === 'running';
   }
+}
 
-  private observeMetrics(observe: () => void): void {
-    try {
-      observe();
-    } catch {
-      // Operational telemetry cannot alter durable dispatch behavior.
-    }
+function observeDispatchMetrics(observe: () => void): void {
+  try {
+    observe();
+  } catch {
+    // Operational telemetry cannot alter durable dispatch behavior.
   }
+}
 
-  private async observeWorkspaceCapacity(workspaceId: string): Promise<void> {
-    if (this.runtimeHooks === undefined) return;
-    const controller = new AbortController();
-    const timer = setTimeout(() => {
-      controller.abort(
-        new TransportOperationTimeoutError(this.options.operationTimeoutMillis),
-      );
-    }, this.options.operationTimeoutMillis);
-    timer.unref();
-    try {
-      await this.runtimeHooks.observeWorkspaceCapacity(
-        workspaceId,
-        controller.signal,
-      );
-    } catch {
-      // Capacity telemetry cannot alter durable publication acknowledgement.
-    } finally {
-      clearTimeout(timer);
-    }
+async function observeDispatchQueues(
+  producer: QueueProducer,
+  metrics: TransportMetrics,
+  {
+    timeoutMillis,
+    enabledQueueNames,
+  }: Readonly<{
+    timeoutMillis: number;
+    enabledQueueNames: ReadonlySet<string>;
+  }>,
+): Promise<void> {
+  try {
+    const observations = await bounded(producer.observe(), timeoutMillis);
+    observeDispatchMetrics(() => {
+      for (const observation of observations) {
+        if (enabledQueueNames.has(observation.queueName)) {
+          metrics.observeQueue(observation);
+        }
+      }
+    });
+  } catch {
+    // Queue-state telemetry is best-effort and cannot fail dispatch.
   }
+}
 
-  private scheduleWorkspaceCapacityObservation(workspaceId: string): void {
-    if (this.runtimeHooks === undefined || this.lifecycle === 'closed') return;
+async function observeDispatchBacklog(
+  database: OutboxDispatcherDatabase,
+  metrics: TransportMetrics,
+  {
+    timeoutMillis,
+    jobNames,
+  }: Readonly<{ timeoutMillis: number; jobNames: readonly JobName[] }>,
+): Promise<void> {
+  try {
+    const observation = await bounded(
+      database.observeBacklog({
+        enabledJobNames: jobNames,
+      }),
+      timeoutMillis,
+    );
+    observeDispatchMetrics(() => {
+      metrics.observeOutbox(observation);
+    });
+  } catch {
+    // Backlog telemetry is best-effort and cannot fail dispatch.
+  }
+}
+
+async function observeDispatchCapacity(
+  hooks: OutboxDispatcherRuntimeHooks | undefined,
+  workspaceId: string,
+  timeoutMillis: number,
+): Promise<void> {
+  if (hooks === undefined) return;
+  const controller = new AbortController();
+  const timer = setTimeout(() => {
+    controller.abort(new TransportOperationTimeoutError(timeoutMillis));
+  }, timeoutMillis);
+  timer.unref();
+  try {
+    await hooks.observeWorkspaceCapacity(workspaceId, controller.signal);
+  } catch {
+    // Capacity telemetry cannot alter durable publication acknowledgement.
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function closeDispatcherDependencies(
+  database: OutboxDispatcherDatabase,
+  producer: QueueProducer,
+  {
+    timeoutMillis,
+    earlierFailures,
+  }: Readonly<{ timeoutMillis: number; earlierFailures: readonly unknown[] }>,
+): Promise<void> {
+  const results = await Promise.allSettled([
+    bounded(
+      Promise.resolve().then(() => database.close()),
+      timeoutMillis,
+    ),
+    bounded(
+      Promise.resolve().then(() => producer.close()),
+      timeoutMillis,
+    ),
+  ]);
+  const failures = [
+    ...earlierFailures,
+    ...results.flatMap((result) =>
+      result.status === 'rejected' ? [result.reason as unknown] : [],
+    ),
+  ];
+  if (failures.length > 0)
+    throw new AggregateError(failures, 'Outbox dispatcher shutdown failed');
+}
+
+interface DispatchPollingState {
+  readonly intervalMillis: number;
+  readonly lastActivityAt: number;
+}
+function nextDispatchPolling(
+  previous: DispatchPollingState,
+  result: OutboxDispatchResult,
+  {
+    now,
+    activeIntervalMillis,
+    idleIntervalMillis,
+  }: Readonly<{
+    now: number;
+    activeIntervalMillis: number;
+    idleIntervalMillis: number;
+  }>,
+): DispatchPollingState {
+  if (result.published > 0 || result.outcomeUnknown > 0)
+    return { lastActivityAt: now, intervalMillis: activeIntervalMillis };
+  if (result.failed > 0)
+    return {
+      lastActivityAt: Number.NEGATIVE_INFINITY,
+      intervalMillis: idleIntervalMillis,
+    };
+  if (now - previous.lastActivityAt < ACTIVE_WINDOW_MILLIS)
+    return {
+      lastActivityAt: previous.lastActivityAt,
+      intervalMillis: activeIntervalMillis,
+    };
+  return {
+    lastActivityAt: previous.lastActivityAt,
+    intervalMillis: Math.min(previous.intervalMillis * 2, idleIntervalMillis),
+  };
+}
+
+class OutboxCapacitySampler {
+  private readonly capacitySampledAtByWorkspace = new Map<string, number>();
+  private readonly pendingCapacityWorkspaces = new Set<string>();
+  private capacitySamplerPromise: Promise<void> | undefined;
+  private runtimeHooks: OutboxDispatcherRuntimeHooks | undefined;
+  private closed = false;
+  public constructor(private readonly operationTimeoutMillis: number) {}
+  public get configured(): boolean {
+    return this.runtimeHooks !== undefined;
+  }
+  public configure(hooks: OutboxDispatcherRuntimeHooks): void {
+    this.runtimeHooks = hooks;
+  }
+  public stop(): void {
+    this.closed = true;
+    this.pendingCapacityWorkspaces.clear();
+  }
+  public pending(): Promise<void> | undefined {
+    return this.capacitySamplerPromise;
+  }
+  public schedule(workspaceId: string): void {
+    if (this.runtimeHooks === undefined || this.closed) return;
     const now = Date.now();
     const sampledAt = this.capacitySampledAtByWorkspace.get(workspaceId);
     if (
@@ -560,53 +681,22 @@ export class OutboxDispatcher {
     this.pendingCapacityWorkspaces.add(workspaceId);
     this.capacitySamplerPromise ??= this.drainWorkspaceCapacitySamples();
   }
-
   private async drainWorkspaceCapacitySamples(): Promise<void> {
     try {
-      while (this.lifecycle !== 'closed') {
+      while (!this.closed) {
         const workspaceId = this.pendingCapacityWorkspaces
           .values()
           .next().value;
         if (workspaceId === undefined) return;
         this.pendingCapacityWorkspaces.delete(workspaceId);
-        await this.observeWorkspaceCapacity(workspaceId);
+        await observeDispatchCapacity(
+          this.runtimeHooks,
+          workspaceId,
+          this.operationTimeoutMillis,
+        );
       }
     } finally {
       this.capacitySamplerPromise = undefined;
-    }
-  }
-
-  private async observeQueues(): Promise<void> {
-    try {
-      const observations = await bounded(
-        this.producer.observe(),
-        this.options.operationTimeoutMillis,
-      );
-      this.observeMetrics(() => {
-        for (const observation of observations) {
-          if (this.enabledQueueNames.has(observation.queueName)) {
-            this.metrics.observeQueue(observation);
-          }
-        }
-      });
-    } catch {
-      // Queue-state telemetry is best-effort and cannot fail dispatch.
-    }
-  }
-
-  private async observeOutbox(): Promise<void> {
-    try {
-      const observation = await bounded(
-        this.database.observeBacklog({
-          enabledJobNames: this.options.jobNames,
-        }),
-        this.options.operationTimeoutMillis,
-      );
-      this.observeMetrics(() => {
-        this.metrics.observeOutbox(observation);
-      });
-    } catch {
-      // Backlog telemetry is best-effort and cannot fail dispatch.
     }
   }
 }
