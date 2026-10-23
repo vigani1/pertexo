@@ -1,4 +1,4 @@
-import { requestText } from '../../../support/query-text.js';
+import { requestText } from '../../../support/postgres/query-text.js';
 import { Pool, type Pool as PgPool, type PoolClient } from 'pg';
 import { it, expect } from 'vitest';
 import {

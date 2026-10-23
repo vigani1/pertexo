@@ -3,7 +3,7 @@ import { beforeEachFixture1, beforeEachFixture2 } from './scanner/fixture.js';
 import { beforeEach, describe } from 'vitest';
 
 import { registerPerformsNoClaimWorkPre } from './scanner/performs-no-claim-work-pre.cases.js';
-import { registerDecidesSOccurrenceObservedAt } from './scanner/decides-soccurrence-observed-at.cases.js';
+import { registerDecidesSOccurrenceObservedAt } from './scanner/misfire-disposition.cases.js';
 describe('schedule trigger scanner claim ownership', () => {
   beforeEach(beforeEachFixture1);
   registerPerformsNoClaimWorkPre();
