@@ -110,12 +110,7 @@ function graph(
                     calls.set(runtime.runId, count);
                     if (count <= failures)
                       throw new NodeExecutorFailure({
-                        kind:
-                          mode === 'unknown'
-                            ? 'outcome_unknown'
-                            : mode === 'permanent'
-                              ? 'failed'
-                              : 'retry',
+                        kind: failureKind(mode),
                         errorKind:
                           mode === 'permanent' ? 'authentication' : 'network',
                         possiblyDispatched: false,
@@ -348,3 +343,16 @@ function graph(
     }, 90_000);
   },
 );
+
+function failureKind(
+  mode: 'unknown' | 'permanent' | 'retry',
+): 'outcome_unknown' | 'failed' | 'retry' {
+  switch (mode) {
+    case 'unknown':
+      return 'outcome_unknown';
+    case 'permanent':
+      return 'failed';
+    case 'retry':
+      return 'retry';
+  }
+}
