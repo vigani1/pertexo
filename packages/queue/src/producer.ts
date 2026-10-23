@@ -2,15 +2,9 @@ import { Queue } from 'bullmq';
 import type { JobsOptions } from 'bullmq';
 import { Redis } from 'ioredis';
 import { z } from 'zod';
-
 import { QUEUE_CLASS_DEFAULTS } from './jobs/defaults.js';
 import { parseQueueJob, type QueueJob } from './jobs/contracts.js';
-import {
-  QUEUE_FOR_JOB,
-  QUEUE_NAME,
-  type JobName,
-  type QueueName,
-} from './jobs/names.js';
+import { QUEUE_FOR_JOB, QUEUE_NAME, type QueueName } from './jobs/names.js';
 import {
   instrumentRedisCommands,
   notifyRedisConnectionEvent,
@@ -18,117 +12,31 @@ import {
   type RedisTelemetryObserver,
 } from './redis/telemetry-contracts.js';
 import { createProductionRedisTelemetryObserver } from './redis/telemetry.js';
-import { normalizeRedisEndpoint } from './redis/endpoint.js';
 
-const DEFAULT_READY_TIMEOUT_MS = 5_000;
-const DEFAULT_PUBLISH_TIMEOUT_MS = 5_000;
-const DEFAULT_CLOSE_TIMEOUT_MS = 5_000;
+import type {
+  QueueProducerOptions,
+  QueuePublishResult,
+  QueueStateObservation,
+  QueueProducer,
+  QueueMap,
+} from './publication/contract.js';
+import { parseProducerOptions } from './publication/configuration.js';
+import {
+  QueueConfigurationError,
+  QueueNotReadyError,
+} from './publication/errors.js';
 
-const queueProducerOptionsSchema = z
-  .object({
-    redisUrl: z.string().trim().min(1),
-    readyTimeoutMs: z.number().int().positive().max(120_000).optional(),
-    publishTimeoutMs: z.number().int().positive().max(120_000).optional(),
-    closeTimeoutMs: z.number().int().positive().max(120_000).optional(),
-  })
-  .strict();
-
-export type QueueProducerOptions = Readonly<{
-  readonly redisUrl: string;
-  readonly readyTimeoutMs?: number;
-  readonly publishTimeoutMs?: number;
-  readonly closeTimeoutMs?: number;
-  readonly redisTelemetry?: RedisTelemetryObserver;
-}>;
-
-export type EnqueuedQueueJob = Readonly<{
-  readonly jobId: string;
-  readonly jobName: JobName;
-  readonly queueName: QueueName;
-}>;
-
-export type QueuePublishResult = EnqueuedQueueJob &
-  (
-    | Readonly<{ readonly outcome: 'published' }>
-    | Readonly<{
-        readonly outcome: 'outcome_unknown';
-        /** Never rejects; records how the already-started publication settles. */
-        readonly settlement: Promise<'failed' | 'published'>;
-      }>
-  );
-
-export interface QueueStateObservation {
-  readonly depth: number;
-  /** Age of the oldest waiting job, excluding delayed work; zero when empty. */
-  readonly oldestJobAgeSeconds: number;
-  readonly queueName: QueueName;
-}
-
-export interface QueueProducer {
-  /** Returns within the configured deadline without misclassifying a timeout as failure. */
-  publish(job: QueueJob): Promise<QueuePublishResult>;
-  observe(): Promise<readonly QueueStateObservation[]>;
-  isReady(): boolean;
-  waitUntilReady(timeoutMs?: number): Promise<void>;
-  close(): Promise<void>;
-}
-
-export class QueueConfigurationError extends Error {
-  public override readonly name = 'QueueConfigurationError';
-
-  public constructor(message: string) {
-    super(message);
-  }
-}
-
-export class QueueNotReadyError extends Error {
-  public override readonly name = 'QueueNotReadyError';
-
-  public constructor() {
-    super('Queue producer Redis connection is not ready');
-  }
-}
-
-type QueueMap = Readonly<Record<QueueName, Queue>>;
-
-function parseRedisUrl(value: string): string {
-  return normalizeRedisEndpoint(
-    value,
-    (reason) =>
-      new QueueConfigurationError(
-        reason === 'invalid_url'
-          ? 'Redis URL is invalid'
-          : 'Redis URL must use redis:// or rediss:// with a hostname',
-      ),
-  );
-}
-
-function parseProducerOptions(options: QueueProducerOptions): {
-  readonly redisUrl: string;
-  readonly readyTimeoutMs: number;
-  readonly publishTimeoutMs: number;
-  readonly closeTimeoutMs: number;
-} {
-  const parsed = queueProducerOptionsSchema.safeParse({
-    publishTimeoutMs: options.publishTimeoutMs,
-    closeTimeoutMs: options.closeTimeoutMs,
-    readyTimeoutMs: options.readyTimeoutMs,
-    redisUrl: options.redisUrl,
-  });
-
-  if (!parsed.success) {
-    throw new QueueConfigurationError('Redis URL configuration is invalid');
-  }
-
-  return {
-    redisUrl: parseRedisUrl(parsed.data.redisUrl),
-    readyTimeoutMs: parsed.data.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS,
-    publishTimeoutMs:
-      parsed.data.publishTimeoutMs ?? DEFAULT_PUBLISH_TIMEOUT_MS,
-    closeTimeoutMs: parsed.data.closeTimeoutMs ?? DEFAULT_CLOSE_TIMEOUT_MS,
-  };
-}
-
+export {
+  type QueueProducerOptions,
+  type EnqueuedQueueJob,
+  type QueuePublishResult,
+  type QueueStateObservation,
+  type QueueProducer,
+} from './publication/contract.js';
+export {
+  QueueConfigurationError,
+  QueueNotReadyError,
+} from './publication/errors.js';
 export function jobIdForOutboxEvent(outboxEventId: string): string {
   const parsed = z.uuid().safeParse(outboxEventId);
 

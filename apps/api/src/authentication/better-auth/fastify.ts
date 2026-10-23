@@ -1,5 +1,4 @@
-import { randomBytes, randomUUID } from 'node:crypto';
-
+import { randomUUID } from 'node:crypto';
 import type {
   FastifyInstance,
   FastifyReply,
@@ -7,26 +6,32 @@ import type {
   RouteShorthandOptions,
 } from 'fastify';
 import {
-  API_PROBLEM_MANIFEST,
   SAML_LIMITS,
   authenticationCapabilitiesResponseSchema,
   type AuthenticationCapabilitiesResponse,
 } from '@pertexo/contracts';
-import type { ApiProblemCode } from '@pertexo/contracts';
+
 import {
   AbuseRateLimitPolicy,
   type RateLimitEndpointClass,
 } from '@pertexo/rate-limit';
-
 import type { RateLimitConsumer } from '../../platform/rate-limit/interceptor.js';
 import type { BetterAuthRuntime } from './runtime.js';
 import { isProviderFormCallback } from '../journeys/form-callback.js';
 import { TWO_FACTOR_VERIFICATION_PATHS } from './two-factor.js';
+import { sendProblem, normalizedNativeError } from './transport/problems.js';
+import {
+  tokenFreeAuthenticationBody,
+  establishesPertexoSession,
+  serializeCsrfCookie,
+} from './transport/credentials.js';
 
 type AuthenticationHandler = BetterAuthRuntime['auth']['handler'];
+
 type AuthenticationRateLimits = Readonly<
   Record<'start' | 'callback', RateLimitEndpointClass>
 >;
+
 const rateLimitPolicy = new AbuseRateLimitPolicy();
 
 const BLOCKED_BROWSER_AUTH_PATHS = new Set([
@@ -254,233 +259,8 @@ async function sendAuthenticationResponse(
   );
 }
 
-function sendProblem(
-  reply: FastifyReply,
-  {
-    requestId,
-    status,
-    code,
-    title,
-  }: Readonly<{
-    requestId: string;
-    status: number;
-    code: ApiProblemCode;
-    title: string;
-  }>,
-): void {
-  reply
-    .code(status)
-    .header('x-request-id', requestId)
-    .type('application/problem+json')
-    .send({
-      type: `urn:pertexo:problem:${code}`,
-      title,
-      status,
-      code,
-      requestId,
-    });
-}
-
-type NativeProblem = Readonly<{
-  status: number;
-  code: ApiProblemCode;
-  title: string;
-}>;
-const NATIVE_PROBLEMS = new Map<string, NativeProblem>([
-  [
-    '403:ALTERNATIVE_SIGN_IN_REQUIRED',
-    {
-      status: 403,
-      code: 'auth.alternative_required',
-      title: 'Another sign-in method required',
-    },
-  ],
-  [
-    '403:ORGANIZATION_EMAIL_MANAGED',
-    {
-      status: 403,
-      code: 'auth.organization_email_managed',
-      title: 'Organization email address is managed',
-    },
-  ],
-  [
-    '400:AUTHENTICATION_METHOD_LIMIT',
-    {
-      status: 400,
-      code: 'auth.method_limit',
-      title: 'Sign-in method limit reached',
-    },
-  ],
-  [
-    '403:RECOVERY_PASSWORD_REQUIRED',
-    {
-      status: 403,
-      code: 'auth.recovery_required',
-      title: 'Recovery password required',
-    },
-  ],
-  [
-    '403:SSO_REQUIRED',
-    {
-      status: 403,
-      code: 'auth.sso_required',
-      title: 'Organization sign-in required',
-    },
-  ],
-  [
-    '403:EMAIL_NOT_VERIFIED',
-    {
-      status: 403,
-      code: 'auth.email_not_verified',
-      title: 'Email verification required',
-    },
-  ],
-  [
-    '400:INVALID_TOKEN',
-    {
-      status: 400,
-      code: 'auth.reset_link_invalid',
-      title: 'Reset link invalid or expired',
-    },
-  ],
-  [
-    '429:ACCOUNT_TEMPORARILY_LOCKED',
-    {
-      status: 429,
-      code: 'auth.two_factor_locked',
-      title: API_PROBLEM_MANIFEST['auth.two_factor_locked'].title,
-    },
-  ],
-]);
-const STATUS_PROBLEMS = new Map<number, NativeProblem>([
-  [
-    401,
-    {
-      status: 401,
-      code: 'auth.unauthenticated',
-      title: 'Authentication required',
-    },
-  ],
-  [403, { status: 403, code: 'auth.forbidden', title: 'Forbidden' }],
-  [
-    404,
-    { status: 404, code: 'resource.not_found', title: 'Resource not found' },
-  ],
-  [
-    409,
-    {
-      status: 409,
-      code: 'auth.conflict',
-      title: 'Authentication change conflict',
-    },
-  ],
-  [
-    429,
-    { status: 429, code: 'request.rate_limited', title: 'Too many requests' },
-  ],
-  [
-    503,
-    {
-      status: 503,
-      code: 'provider.unavailable',
-      title: 'Authentication temporarily unavailable',
-    },
-  ],
-  [400, { status: 400, code: 'request.invalid', title: 'Invalid request' }],
-  [422, { status: 400, code: 'request.invalid', title: 'Invalid request' }],
-]);
-const UNEXPECTED_PROBLEM: NativeProblem = {
-  status: 500,
-  code: 'internal.unexpected',
-  title: 'Authentication unavailable',
-};
-
-function normalizedNativeError(
-  status: number,
-  body: Uint8Array,
-  requestId: string,
-): Readonly<{ status: number; body: string }> {
-  let nativeCode: unknown;
-  try {
-    const parsed = JSON.parse(new TextDecoder().decode(body)) as unknown;
-    nativeCode =
-      typeof parsed === 'object' && parsed !== null && 'code' in parsed
-        ? parsed.code
-        : undefined;
-  } catch {
-    nativeCode = undefined;
-  }
-  const specific =
-    typeof nativeCode === 'string'
-      ? NATIVE_PROBLEMS.get(`${String(status)}:${nativeCode}`)
-      : undefined;
-  const mapped = specific ?? STATUS_PROBLEMS.get(status) ?? UNEXPECTED_PROBLEM;
-  return {
-    status: mapped.status,
-    body: JSON.stringify({
-      type: `urn:pertexo:problem:${mapped.code}`,
-      title: mapped.title,
-      status: mapped.status,
-      code: mapped.code,
-      requestId,
-    }),
-  };
-}
-
 function canonicalAuthPath(pathname: string): string {
   return pathname.length > 1 ? pathname.replace(/\/+$/u, '') : pathname;
-}
-
-function tokenFreeAuthenticationBody(
-  body: Uint8Array,
-  headers: Headers,
-): Uint8Array {
-  if (!headers.get('content-type')?.includes('application/json')) return body;
-  try {
-    const value = JSON.parse(new TextDecoder().decode(body)) as unknown;
-    return new TextEncoder().encode(JSON.stringify(removeTokenFields(value)));
-  } catch {
-    return body;
-  }
-}
-
-function removeTokenFields(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(removeTokenFields);
-  if (typeof value !== 'object' || value === null) return value;
-  return Object.fromEntries(
-    Object.entries(value).flatMap(([name, field]) =>
-      isTokenField(name) ? [] : [[name, removeTokenFields(field)]],
-    ),
-  );
-}
-
-function isTokenField(name: string): boolean {
-  return ['token', 'accessToken', 'refreshToken', 'idToken'].includes(name);
-}
-
-function establishesPertexoSession(cookie: string): boolean {
-  return (
-    cookie.startsWith('pertexo_session=') &&
-    !/(?:^|;)\s*Max-Age=0(?:;|$)/iu.test(cookie)
-  );
-}
-
-function serializeCsrfCookie(
-  options: Readonly<{
-    secure: boolean;
-    sameSite: 'lax' | 'strict' | 'none';
-    maxAgeSeconds: number;
-  }>,
-): string {
-  return [
-    `pertexo_csrf=${randomBytes(32).toString('base64url')}`,
-    'Path=/',
-    options.secure ? 'Secure' : undefined,
-    `SameSite=${options.sameSite[0]?.toUpperCase() ?? ''}${options.sameSite.slice(1)}`,
-    `Max-Age=${String(options.maxAgeSeconds)}`,
-  ]
-    .filter((part): part is string => part !== undefined)
-    .join('; ');
 }
 
 function isUnsafeMethod(method: string): boolean {
