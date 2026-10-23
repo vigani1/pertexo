@@ -18,13 +18,16 @@ export function apiTokenStatus(
   membershipRevision: number,
   now: Date,
 ): ApiTokenMetadata['status'] {
-  return row.revoked_at !== null
-    ? 'revoked'
-    : row.membership_revision !== membershipRevision
-      ? 'membership_changed'
-      : row.expires_at <= now
-        ? 'expired'
-        : 'active';
+  if (row.revoked_at !== null) {
+    return 'revoked';
+  }
+  if (row.membership_revision !== membershipRevision) {
+    return 'membership_changed';
+  }
+  if (row.expires_at <= now) {
+    return 'expired';
+  }
+  return 'active';
 }
 
 export function apiTokenMetadata(

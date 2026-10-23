@@ -139,11 +139,13 @@ export function createOutboxDispatcherDatabase(
         ],
       );
       const row = result.rows[0];
-      return row === undefined
-        ? 'not_leased'
-        : row.failed
-          ? 'failed'
-          : 'retry_scheduled';
+      if (row === undefined) {
+        return 'not_leased';
+      }
+      if (row.failed) {
+        return 'failed';
+      }
+      return 'retry_scheduled';
     },
     observeBacklog: async (
       input: ObserveOutboxBacklogInput,

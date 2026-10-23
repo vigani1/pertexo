@@ -61,26 +61,7 @@ export async function reconcileAttempt(
     rows.rows[0] === undefined
       ? undefined
       : attemptRowSchema.parse(rows.rows[0]);
-  const outcome =
-    attempt === undefined
-      ? 'not_found'
-      : attempt.status !== 'running'
-        ? 'not_running'
-        : attempt.fence_token !== fence
-          ? 'fence_conflict'
-          : attempt.lease_expired !== true
-            ? 'lease_active'
-            : action === 'reclaim' &&
-                attempt.dispatch_marked_at !== null &&
-                attempt.side_effect_class === 'unsafe'
-              ? 'reclaim_unsafe'
-              : input.dryRun
-                ? action === 'reclaim'
-                  ? 'would_reclaim'
-                  : 'would_mark_unknown'
-                : action === 'reclaim'
-                  ? 'reclaimed'
-                  : 'marked_unknown';
+  const outcome = attemptReconciliationOutcome(attempt, input);
 
   let outboxEventId: string | undefined;
   if (attempt !== undefined && outcome === 'reclaimed') {
@@ -163,12 +144,7 @@ export async function recordUnknownOutcomeEvidence(
     for update
   `);
   const status = rows.rows[0]?.status;
-  const outcome =
-    status === undefined
-      ? 'not_found'
-      : status !== 'outcome_unknown'
-        ? 'not_unknown'
-        : 'evidence_recorded';
+  const outcome = evidenceOutcome(status);
 
   let outboxEventId: string | null = null;
   if (outcome === 'evidence_recorded') {
@@ -197,4 +173,31 @@ export async function recordUnknownOutcomeEvidence(
       outcome,
     },
   };
+}
+
+function attemptReconciliationOutcome(
+  attempt: z.output<typeof attemptRowSchema> | undefined,
+  input: Readonly<{
+    expectedFenceToken: number;
+    action: 'reclaim' | 'outcome_unknown';
+    dryRun: boolean;
+  }>,
+): string {
+  if (attempt === undefined) return 'not_found';
+  if (attempt.status !== 'running') return 'not_running';
+  if (attempt.fence_token !== input.expectedFenceToken) return 'fence_conflict';
+  if (!(attempt.lease_expired ?? false)) return 'lease_active';
+  const unsafeReclaim =
+    input.action === 'reclaim' &&
+    attempt.dispatch_marked_at !== null &&
+    attempt.side_effect_class === 'unsafe';
+  if (unsafeReclaim) return 'reclaim_unsafe';
+  if (input.dryRun)
+    return input.action === 'reclaim' ? 'would_reclaim' : 'would_mark_unknown';
+  return input.action === 'reclaim' ? 'reclaimed' : 'marked_unknown';
+}
+function evidenceOutcome(status: string | undefined): string {
+  if (status === undefined) return 'not_found';
+  if (status !== 'outcome_unknown') return 'not_unknown';
+  return 'evidence_recorded';
 }

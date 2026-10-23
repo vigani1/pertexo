@@ -80,9 +80,15 @@ export function sameTestSamples(
   right: readonly { nodeId: string; sampleId: string }[],
 ) {
   const sort = (items: typeof left) =>
-    [...items].sort((a, b) =>
-      a.nodeId < b.nodeId ? -1 : a.nodeId > b.nodeId ? 1 : 0,
-    );
+    [...items].sort((a, b) => {
+      if (a.nodeId < b.nodeId) {
+        return -1;
+      }
+      if (a.nodeId > b.nodeId) {
+        return 1;
+      }
+      return 0;
+    });
   return canonicalJson(sort(left)) === canonicalJson(sort(right));
 }
 

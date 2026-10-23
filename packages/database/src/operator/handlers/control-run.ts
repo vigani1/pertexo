@@ -56,13 +56,11 @@ export async function resumeDueWork(
   `);
   const state = dueStateSchema.parse(rows.rows[0]);
   const dueNodeCount = Math.min(state.due_nodes, RESUME_PAGE);
-  const outcome = TERMINAL_RUN_STATUSES.has(run.status)
-    ? 'terminal'
-    : dueNodeCount === 0 && !state.due_wait
-      ? 'not_due'
-      : input.dryRun
-        ? 'would_resume'
-        : 'resumed';
+  const outcome = resumeOutcome(run.status, {
+    dueNodeCount,
+    dueWait: state.due_wait,
+    dryRun: input.dryRun,
+  });
 
   let outboxEventId: string | undefined;
   if (outcome === 'resumed') {
@@ -129,16 +127,7 @@ export async function cancelRun(
     rows.rows[0] === undefined
       ? undefined
       : cancelStateSchema.parse(rows.rows[0]);
-  const outcome =
-    run === undefined
-      ? 'not_found'
-      : TERMINAL_RUN_STATUSES.has(run.status)
-        ? 'terminal'
-        : run.cancel_requested
-          ? 'already_requested'
-          : input.dryRun
-            ? 'would_cancel'
-            : 'cancel_requested';
+  const outcome = cancellationOutcome(run, input);
 
   let eventSequence: number | null = null;
   let outboxEventId: string | undefined;
@@ -158,4 +147,22 @@ export async function cancelRun(
       outcome,
     }),
   };
+}
+
+function resumeOutcome(
+  status: string,
+  input: Readonly<{ dueNodeCount: number; dueWait: boolean; dryRun: boolean }>,
+): string {
+  if (TERMINAL_RUN_STATUSES.has(status)) return 'terminal';
+  if (input.dueNodeCount === 0 && !input.dueWait) return 'not_due';
+  return input.dryRun ? 'would_resume' : 'resumed';
+}
+function cancellationOutcome(
+  run: z.output<typeof cancelStateSchema> | undefined,
+  input: Readonly<{ dryRun: boolean }>,
+): string {
+  if (run === undefined) return 'not_found';
+  if (TERMINAL_RUN_STATUSES.has(run.status)) return 'terminal';
+  if (run.cancel_requested) return 'already_requested';
+  return input.dryRun ? 'would_cancel' : 'cancel_requested';
 }
