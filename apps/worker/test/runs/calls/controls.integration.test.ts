@@ -25,14 +25,23 @@ import {
 
 const describeIntegration = fixture.enabled ? describe : describe.skip;
 describeIntegration('Workflow Call controls and retained public reads', () => {
+  const caseFixture = createCallControlsFixture();
+  registerReturnsValidatedChildOutputThroughOrdinaryRun(caseFixture);
+  registerNarrowsRecordedChildDeadlineFailsRequiredCall(caseFixture);
+});
+
+function createCallControlsFixture() {
   beforeAll(fixture.setup, 60_000);
+
   afterAll(fixture.restoreServicesAndClose);
+
   const runs = createWorkflowRunDatabase(
     parseDatabaseConfig({
       connectionString: fixture.databaseUrl(fixture.apiUrl),
       max: 2,
     }),
   );
+
   afterAll(() => runs.close());
 
   async function activeChild(
@@ -56,6 +65,7 @@ describeIntegration('Workflow Call controls and retained public reads', () => {
     });
     return childId;
   }
+
   async function settled(
     workers: Awaited<ReturnType<typeof runtime>>,
     runId: string,
@@ -74,6 +84,7 @@ describeIntegration('Workflow Call controls and retained public reads', () => {
       ).toBe(status);
     });
   }
+
   async function noLoans() {
     expect(
       await fixture.workerQuery(
@@ -88,6 +99,12 @@ describeIntegration('Workflow Call controls and retained public reads', () => {
       ),
     ).toEqual([]);
   }
+  return { activeChild, runs, settled, noLoans };
+}
+function registerReturnsValidatedChildOutputThroughOrdinaryRun(
+  caseFixture: ReturnType<typeof createCallControlsFixture>,
+): void {
+  const { activeChild, runs, settled, noLoans } = caseFixture;
 
   it('returns validated child output through ordinary run and step reads with a distinct origin and lineage', async () => {
     const child = await publishGraph(childGraph(1));
@@ -255,6 +272,13 @@ describeIntegration('Workflow Call controls and retained public reads', () => {
       await workers.close();
     }
   }, 30_000);
+}
+
+function registerNarrowsRecordedChildDeadlineFailsRequiredCall(
+  caseFixture: ReturnType<typeof createCallControlsFixture>,
+): void {
+  const { activeChild, settled, runs, noLoans } = caseFixture;
+
   it('narrows the recorded child deadline and fails the required Call when the child times out first', async () => {
     const child = await publishGraph(childGraph(60));
     const parent = await publishGraph({
@@ -434,4 +458,4 @@ describeIntegration('Workflow Call controls and retained public reads', () => {
       await workers.close();
     }
   }, 30_000);
-});
+}
