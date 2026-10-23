@@ -131,12 +131,12 @@ export function instrumentRedisCommands(
     const startedAt = performance.now();
     try {
       const result: unknown = sendCommand(...args);
-      if (
+      const isPromiseLike =
         typeof result === 'object' &&
         result !== null &&
         'then' in result &&
-        typeof result.then === 'function'
-      ) {
+        typeof result.then === 'function';
+      if (isPromiseLike) {
         void Promise.resolve(result).then(
           () => {
             notifyRedisOperation(observer, {

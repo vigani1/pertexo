@@ -76,12 +76,12 @@ export class ArtifactScratchSpace {
         throw new Error('File scratch requires a dedicated absolute directory');
       await mkdir(directory, { recursive: true, mode: 0o700 });
       const entry = await lstat(directory);
-      if (
+      const unsafeScratchDirectory =
         !entry.isDirectory() ||
         entry.isSymbolicLink() ||
         (entry.mode & 0o777) !== 0o700 ||
-        (process.getuid !== undefined && entry.uid !== process.getuid())
-      )
+        (process.getuid !== undefined && entry.uid !== process.getuid());
+      if (unsafeScratchDirectory)
         throw new Error(
           'File scratch directory must be private and owned by this worker',
         );

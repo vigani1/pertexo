@@ -112,13 +112,12 @@ function diagnostic(error: unknown) {
   };
 }
 function memoryFailure(error: unknown): boolean {
-  if (
+  const unsafeErrorObject =
     typeof error !== 'object' ||
     error === null ||
     proxy(error) ||
-    !nativeError(error)
-  )
-    return false;
+    !nativeError(error);
+  if (unsafeErrorObject) return false;
   const code = getDescriptor(error, 'code');
   if (
     code !== undefined &&

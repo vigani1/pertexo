@@ -29,7 +29,7 @@ export function registerNoticeUnsubscribeTransport(
     },
   );
   instance.addHook('onRequest', (request, _reply, done) => {
-    if (
+    const unsupportedUnsubscribeMediaType =
       request.method === 'POST' &&
       request.routeOptions.url === path &&
       ![formType, multipartType].includes(
@@ -37,8 +37,8 @@ export function registerNoticeUnsubscribeTransport(
           .split(';', 1)[0]
           ?.trim()
           .toLowerCase() ?? '',
-      )
-    ) {
+      );
+    if (unsupportedUnsubscribeMediaType) {
       done(new UnsupportedMediaTypeException());
       return;
     }

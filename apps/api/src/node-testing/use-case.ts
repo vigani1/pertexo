@@ -169,12 +169,11 @@ export class TestWorkflowNodeUseCase {
     if (sample?.sample?.state === 'stale')
       throw new WorkflowStepSampleError('stale');
     const pinnedSampleId = sample?.sample?.id;
-    if (
+    const pinnedSampleChanged =
       request.mode === 'test_execute' &&
       request.expectedSampleId !== undefined &&
-      request.expectedSampleId !== (pinnedSampleId ?? null)
-    )
-      throw new WorkflowStepSampleError('changed');
+      request.expectedSampleId !== (pinnedSampleId ?? null);
+    if (pinnedSampleChanged) throw new WorkflowStepSampleError('changed');
     const prepared = await prepareNodeValidation({
       graph,
       nodeId: input.nodeId,

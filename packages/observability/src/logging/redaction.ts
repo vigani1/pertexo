@@ -102,7 +102,9 @@ function redactUrlUserInfo(value: string): string {
       authorityEnd += 1;
     const at = value.indexOf('@', authorityStart);
     const colon = value.indexOf(':', authorityStart);
-    if (at >= authorityStart && at < authorityEnd && colon >= 0 && colon < at) {
+    const hasUrlUserInfo =
+      at >= authorityStart && at < authorityEnd && colon >= 0 && colon < at;
+    if (hasUrlUserInfo) {
       result += `${value.slice(copyFrom, colon + 1)}${REDACTED}`;
       copyFrom = at;
       searchFrom = at + 1;
@@ -260,13 +262,12 @@ function sanitizeRecord(
     const sanitized: Record<string, unknown> = {};
     let admitted = 0;
     for (const key of Reflect.ownKeys(value)) {
-      if (
+      const omitField =
         typeof key !== 'string' ||
         excludedNames.has(key) ||
         admitted >= MAX_SANITIZE_ENTRIES ||
-        state.remainingEntries <= 0
-      )
-        continue;
+        state.remainingEntries <= 0;
+      if (omitField) continue;
       const descriptor = Object.getOwnPropertyDescriptor(value, key);
       if (descriptor?.enumerable !== true) continue;
       admitted += 1;

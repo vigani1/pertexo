@@ -282,13 +282,13 @@ export class InvitationAcceptanceUseCase {
       selected.workspaceId,
       digestSha256Hex(selected.bindingSecret, this.crypto),
     );
-    if (
+    const unavailableIntent =
       intent?.id !== selected.intentId ||
       intent.expiresAt.getTime() <= this.clock.now().getTime() ||
       intent.status === 'abandoned' ||
       intent.status === 'superseded' ||
-      (intent.status !== 'completed' && intent.invitationStatus !== 'pending')
-    )
+      (intent.status !== 'completed' && intent.invitationStatus !== 'pending');
+    if (unavailableIntent)
       throw new InvitationAcceptanceConflictError(
         'unavailable',
         'Invitation acceptance is unavailable',
@@ -325,13 +325,12 @@ function parseBinding(value: string | undefined) {
   const match = /^wb1\.([^.]+)\.([^.]+)\.([^.]+)\.([^.]+)$/u.exec(value);
   if (match === null) return null;
   const [, workspaceId, intentId, bindingSecret, csrfToken] = match;
-  if (
+  const incompleteAcceptanceProof =
     workspaceId === undefined ||
     intentId === undefined ||
     bindingSecret === undefined ||
-    csrfToken === undefined
-  )
-    return null;
+    csrfToken === undefined;
+  if (incompleteAcceptanceProof) return null;
   return {
     workspaceId,
     intentId,
@@ -398,12 +397,12 @@ function journey(
       membershipCreated: intent.receipt.membershipCreated,
     });
   }
-  if (
+  const verifiedForCurrentUser =
     intent.status === 'verified' &&
     intent.workspaceName !== null &&
     intent.invitationRole !== null &&
-    authenticatedUserId === intent.verifiedUserId
-  )
+    authenticatedUserId === intent.verifiedUserId;
+  if (verifiedForCurrentUser)
     return invitationAcceptanceJourneySchema.parse({
       ...base,
       state: 'ready',

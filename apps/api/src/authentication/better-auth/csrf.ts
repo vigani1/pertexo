@@ -12,13 +12,13 @@ export function requireDoubleSubmitCsrf(headers: Headers | undefined): void {
     .map((part) => part.trim())
     .find((part) => part.startsWith('pertexo_csrf='))
     ?.slice('pertexo_csrf='.length);
-  if (
+  const invalidCsrfProof =
     supplied === null ||
     supplied === undefined ||
     expected === undefined ||
     supplied.length < 32 ||
-    supplied !== decodeURIComponent(expected)
-  )
+    supplied !== decodeURIComponent(expected);
+  if (invalidCsrfProof)
     throw new APIError('FORBIDDEN', {
       code: 'CSRF_TOKEN_INVALID',
       message: 'The request could not be verified.',

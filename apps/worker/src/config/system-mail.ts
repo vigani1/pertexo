@@ -75,15 +75,15 @@ export function parseSystemMailDeliveryConfig(
         };
   if (noticeSender !== undefined) {
     const origin = new URL(noticeSender.publicWebOrigin);
-    if (
+    const invalidMailOrigin =
       origin.username ||
       origin.password ||
       origin.pathname !== '/' ||
       origin.search ||
       origin.hash ||
       (deployed && origin.protocol !== 'https:') ||
-      !['http:', 'https:'].includes(origin.protocol)
-    )
+      !['http:', 'https:'].includes(origin.protocol);
+    if (invalidMailOrigin)
       throw new Error('Notification mail requires a public web origin');
   }
   return Object.freeze({

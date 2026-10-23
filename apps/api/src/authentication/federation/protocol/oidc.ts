@@ -167,12 +167,12 @@ export function createOidcProofGateway(
         idTokenExpected: true,
       });
       const claims = tokens.claims();
-      if (
+      const unverifiedIdentityClaims =
         claims === undefined ||
         claims.email_verified === false ||
         (claims.email_verified !== undefined &&
-          typeof claims.email_verified !== 'boolean')
-      )
+          typeof claims.email_verified !== 'boolean');
+      if (unverifiedIdentityClaims)
         throw new Error('OIDC identity is unverified');
       return organizationIdentity(
         claims.sub,

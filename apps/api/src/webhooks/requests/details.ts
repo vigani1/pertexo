@@ -53,13 +53,12 @@ export function webhookHeaders(
     policy.mode === 'header_secret' ? policy.headerName : undefined;
   const headers: [string, string][] = [];
   for (const [name, value] of Object.entries(request.headers)) {
-    if (
+    const withheldHeader =
       value === undefined ||
       name === secretHeader ||
       WITHHELD_HEADERS.has(name) ||
-      name.startsWith('x-forwarded-')
-    )
-      continue;
+      name.startsWith('x-forwarded-');
+    if (withheldHeader) continue;
     headers.push([name, Array.isArray(value) ? value.join(', ') : value]);
   }
   return Object.fromEntries(headers);

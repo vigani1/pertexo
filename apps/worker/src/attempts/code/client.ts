@@ -85,7 +85,7 @@ export function createCodeRunnerClient(config: WorkerCodeRunnerConfig) {
               'code.disabled',
               'Code steps are disabled by the administrator.',
             );
-          if (
+          const runnerSettingsMismatch =
             greeting.settings.memoryMiB !== config.settings.memoryMiB ||
             greeting.settings.maximumSeconds !==
               config.settings.maximumSeconds ||
@@ -93,8 +93,8 @@ export function createCodeRunnerClient(config: WorkerCodeRunnerConfig) {
             JSON.stringify(greeting.settings.extraPackages) !==
               JSON.stringify(config.settings.extraPackages) ||
             JSON.stringify(greeting.settings.pythonPackages) !==
-              JSON.stringify(config.settings.pythonPackages)
-          )
+              JSON.stringify(config.settings.pythonPackages);
+          if (runnerSettingsMismatch)
             return failed(
               'code.runner_unavailable',
               'The worker and Code runner settings do not match.',

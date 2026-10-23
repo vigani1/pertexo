@@ -45,13 +45,12 @@ export function parseDirectoryQuery(
     for (const path of [...included, ...excluded]) {
       const [root, child, ...rest] = path.split('.'),
         attribute = descriptors.find((field) => field.name === root);
-      if (
+      const unknownAttributePath =
         attribute === undefined ||
         rest.length !== 0 ||
         (child !== undefined &&
-          !attribute.subAttributes?.some((field) => field.name === child))
-      )
-        throw new DirectoryError('invalid_path');
+          !attribute.subAttributes?.some((field) => field.name === child));
+      if (unknownAttributePath) throw new DirectoryError('invalid_path');
     }
     return {
       query: {
@@ -85,13 +84,12 @@ export function projectDirectoryDocument(
     const paths = projection.included.filter((path) =>
       path.startsWith(`${key}.`),
     );
-    if (
+    const omittedAttribute =
       projection.excluded.includes(key) ||
       (projection.included.length > 0 &&
         !projection.included.includes(key) &&
-        paths.length === 0)
-    )
-      continue;
+        paths.length === 0);
+    if (omittedAttribute) continue;
     const pick = (item: unknown) => {
       if (typeof item !== 'object' || item === null) return item;
       return Object.fromEntries(

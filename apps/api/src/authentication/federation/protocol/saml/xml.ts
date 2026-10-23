@@ -159,13 +159,12 @@ export function requireModernSignature(parent: Element) {
 }
 
 export function decodeResponse(value: string): string {
-  if (
+  const invalidEncodedResponse =
     value.length === 0 ||
     value.length > SAML_LIMITS.encodedCharacters ||
     value.length % 4 !== 0 ||
-    !/^[A-Za-z0-9+/]+={0,2}$/u.test(value)
-  )
-    return invalidSaml();
+    !/^[A-Za-z0-9+/]+={0,2}$/u.test(value);
+  if (invalidEncodedResponse) return invalidSaml();
   const buffer = Buffer.from(value, 'base64');
   if (
     buffer.length > SAML_LIMITS.xmlBytes ||

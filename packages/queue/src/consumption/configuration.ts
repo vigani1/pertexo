@@ -69,7 +69,7 @@ export function parseConsumerOptions(
   };
   const parsed = consumerOptionsSchema.safeParse(candidate);
 
-  if (
+  const invalidConsumerOptions =
     !parsed.success ||
     typeof options.handler !== 'function' ||
     (options.observer !== undefined &&
@@ -78,8 +78,8 @@ export function parseConsumerOptions(
         typeof options.observer.handlerFinished !== 'function')) ||
     (options.traceRunner !== undefined &&
       (typeof options.traceRunner !== 'object' ||
-        typeof options.traceRunner.run !== 'function'))
-  ) {
+        typeof options.traceRunner.run !== 'function'));
+  if (invalidConsumerOptions) {
     throw new QueueConsumerConfigurationError(
       'Queue consumer configuration is invalid',
     );

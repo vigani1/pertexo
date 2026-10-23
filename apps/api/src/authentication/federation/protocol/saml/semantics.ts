@@ -51,7 +51,7 @@ export function verifyResponseSemantics(
 ): string {
   const document = parseXml(xml),
     response = root(document, P, 'Response');
-  if (
+  const responseMismatch =
     requiredAttribute(response, 'Version') !== '2.0' ||
     requiredAttribute(response, 'Destination') !== expected.callbackUrl ||
     requiredAttribute(response, 'InResponseTo') !== expected.requestId ||
@@ -59,9 +59,8 @@ export function verifyResponseSemantics(
     requiredAttribute(
       onlyChild(onlyChild(response, P, 'Status'), P, 'StatusCode'),
       'Value',
-    ) !== `${SAML}:status:Success`
-  )
-    return invalidSaml();
+    ) !== `${SAML}:status:Success`;
+  if (responseMismatch) return invalidSaml();
   fresh(response);
   const assertion = onlyChild(response, A, 'Assertion');
   if (

@@ -211,13 +211,12 @@ export class OrganizationSignIn {
     const url = new URL(request.url),
       callback = await readOrganizationCallback(request, protocol),
       browser = readCookie(request.headers, this.bindingCookie(protocol));
-    if (
+    const unavailableCallback =
       !this.available(protocol) ||
       callback === undefined ||
       browser === undefined ||
-      !isJourneyToken(browser)
-    )
-      return this.failed();
+      !isJourneyToken(browser);
+    if (unavailableCallback) return this.failed();
     const state = callback.state;
     let destination: string | undefined;
     let testing = false;

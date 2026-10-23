@@ -72,12 +72,12 @@ type MembershipLifecyclePersistence = Required<
 export function membershipLifecyclePersistence(
   persistence: IdentityWorkspacePersistence,
 ): MembershipLifecyclePersistence {
-  if (
+  const membershipCommandsUnavailable =
     persistence.leaveWorkspace === undefined ||
     persistence.suspendWorkspaceMember === undefined ||
     persistence.reactivateWorkspaceMember === undefined ||
-    persistence.transferWorkspaceOwnership === undefined
-  )
+    persistence.transferWorkspaceOwnership === undefined;
+  if (membershipCommandsUnavailable)
     return missingMembershipLifecyclePersistence;
   return Object.freeze({
     leaveWorkspace: persistence.leaveWorkspace.bind(persistence),
@@ -135,13 +135,12 @@ type AcceptancePersistence = Required<
 export function invitationPersistence(
   persistence: IdentityWorkspacePersistence,
 ): InvitationPersistence {
-  if (
+  const invitationCommandsUnavailable =
     persistence.listWorkspaceInvitations === undefined ||
     persistence.createWorkspaceInvitation === undefined ||
     persistence.resendWorkspaceInvitation === undefined ||
-    persistence.revokeWorkspaceInvitation === undefined
-  )
-    return missingInvitationPersistence;
+    persistence.revokeWorkspaceInvitation === undefined;
+  if (invitationCommandsUnavailable) return missingInvitationPersistence;
   return Object.freeze({
     listWorkspaceInvitations:
       persistence.listWorkspaceInvitations.bind(persistence),
@@ -168,14 +167,13 @@ const missingInvitationPersistence: InvitationPersistence = Object.freeze({
 export function acceptancePersistence(
   persistence: IdentityWorkspacePersistence,
 ): AcceptancePersistence {
-  if (
+  const acceptanceCommandsUnavailable =
     persistence.resolveInvitationAcceptance === undefined ||
     persistence.readInvitationAcceptance === undefined ||
     persistence.recordInvitationAcceptanceProof === undefined ||
     persistence.completeInvitationAcceptance === undefined ||
-    persistence.abandonInvitationAcceptance === undefined
-  )
-    return missingAcceptancePersistence;
+    persistence.abandonInvitationAcceptance === undefined;
+  if (acceptanceCommandsUnavailable) return missingAcceptancePersistence;
   return Object.freeze({
     resolveInvitationAcceptance:
       persistence.resolveInvitationAcceptance.bind(persistence),

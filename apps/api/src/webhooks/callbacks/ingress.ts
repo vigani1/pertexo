@@ -1,3 +1,4 @@
+import { hasHttpStatus } from '../../platform/http/problems/status.js';
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { CallbackResponseError } from '@pertexo/database/runs';
@@ -46,10 +47,7 @@ export function registerCallbackIngress(
         parseRequestId(request.headers['x-request-id']) ?? randomUUID();
       if (
         error instanceof StoredExecutionValueInvalidError ||
-        (typeof error === 'object' &&
-          error !== null &&
-          'statusCode' in error &&
-          error.statusCode === 413)
+        hasHttpStatus(error, 413)
       ) {
         await problem(reply, 413, 'webhook.payload_too_large', requestId);
       } else await problem(reply, 503, 'callback.unavailable', requestId);

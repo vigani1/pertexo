@@ -83,12 +83,12 @@ export function createUnknownOutcomeReconciliationHandler(
 }
 
 export function mapUnknownOutcomeReconciliationError(error: unknown): unknown {
-  if (
+  const invalidReconciliationEvidence =
     error instanceof UnknownOutcomeReconciliationMismatchError ||
     error instanceof UnknownOutcomeReconciliationStateError ||
     error instanceof InboxChecksumMismatchError ||
-    error instanceof InboxReceiptUnavailableError
-  )
+    error instanceof InboxReceiptUnavailableError;
+  if (invalidReconciliationEvidence)
     return unrecoverableQueueError(
       'Unknown-outcome reconciliation failed durable state verification',
     );

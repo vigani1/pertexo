@@ -68,13 +68,16 @@ export function betterAuthSocialProviders(
         redirectURI: input.redirectUri,
       });
       if (tokens === null) return undefined;
-      if (
+      const invalidIdentityToken =
         provider.idToken !== undefined &&
         (tokens.idToken === undefined ||
           tokens.idToken.length > 16_384 ||
-          !(await verifyProviderIdToken(provider, tokens.idToken, input.nonce)))
-      )
-        return undefined;
+          !(await verifyProviderIdToken(
+            provider,
+            tokens.idToken,
+            input.nonce,
+          )));
+      if (invalidIdentityToken) return undefined;
       const profile = await provider.getUserInfo({
         ...tokens,
         expectedIdTokenNonce: input.nonce,
@@ -106,12 +109,11 @@ export function betterAuthSocialProviders(
 }
 
 function accountSubject(subject: unknown): string | undefined {
-  if (
+  const invalidProviderSubject =
     (typeof subject !== 'string' && typeof subject !== 'number') ||
     String(subject).trim().length === 0 ||
     String(subject).length > 512 ||
-    (typeof subject === 'number' && !Number.isSafeInteger(subject))
-  )
-    return undefined;
+    (typeof subject === 'number' && !Number.isSafeInteger(subject));
+  if (invalidProviderSubject) return undefined;
   return String(subject);
 }

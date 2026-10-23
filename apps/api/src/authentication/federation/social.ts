@@ -108,7 +108,7 @@ export class SocialSignIn {
     const state = query.get('state');
     const browser = readCookie(request.headers, this.cookieName);
     const code = query.get('code');
-    if (
+    const invalidSocialCallback =
       state === null ||
       !isJourneyToken(state) ||
       browser === undefined ||
@@ -117,9 +117,8 @@ export class SocialSignIn {
       code.length === 0 ||
       code.length > 4096 ||
       query.has('error') ||
-      ['state', 'code', 'iss'].some((name) => query.getAll(name).length > 1)
-    )
-      return this.failed();
+      ['state', 'code', 'iss'].some((name) => query.getAll(name).length > 1);
+    if (invalidSocialCallback) return this.failed();
     let returnPath: string | undefined;
     try {
       const attempt = await this.commands.find(

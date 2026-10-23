@@ -44,12 +44,12 @@ export function createArtifactReader(
     try {
       input.assertOpen();
       signal.throwIfAborted();
-      if (
+      const fileExceedsReadBudget =
         !Number.isSafeInteger(maxBytes) ||
         maxBytes < 1 ||
         maxBytes > FILE_PAGE_LIMITS.fileBytes ||
-        reference.byteLength > Math.min(maxBytes, input.maximumBytes)
-      )
+        reference.byteLength > Math.min(maxBytes, input.maximumBytes);
+      if (fileExceedsReadBudget)
         throw new FileInputFailure({ reason: 'file_size' });
       await input.requireReadable(reference, transfer.signal);
       const download = await input.store.getStream({
@@ -86,13 +86,13 @@ export function createArtifactReader(
           }
         }
         const actual = download.metadata;
-        if (
+        const fileMetadataMismatch =
           actual.workspaceId !== input.workspaceId ||
           actual.artifactId !== reference.artifactId ||
           actual.byteLength !== reference.byteLength ||
           actual.mediaType !== reference.mediaType ||
-          actual.sha256 !== reference.sha256
-        )
+          actual.sha256 !== reference.sha256;
+        if (fileMetadataMismatch)
           throw new ArtifactIntegrityError('Artifact metadata changed');
         const handle = await input.scratch.spool({
           attemptId: input.attemptId,

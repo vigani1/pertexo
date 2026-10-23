@@ -18,18 +18,20 @@ export function createConnectionHealthCapture(wasDispatched: () => boolean) {
         let next: NodeConnectionHealthObservation;
         if (value.kind === 'healthy' && keys.length === 1 && keys[0] === 'kind')
           next = Object.freeze({ kind: 'healthy' });
-        else if (
-          value.kind === 'reauthorization_required' &&
-          keys.length === 2 &&
-          keys.includes('kind') &&
-          keys.includes('reasonCode') &&
-          reasons.has(value.reasonCode)
-        )
-          next = Object.freeze({
-            kind: 'reauthorization_required',
-            reasonCode: value.reasonCode,
-          });
-        else return;
+        else {
+          const validReauthorizationObservation =
+            value.kind === 'reauthorization_required' &&
+            keys.length === 2 &&
+            keys.includes('kind') &&
+            keys.includes('reasonCode') &&
+            reasons.has(value.reasonCode);
+          if (validReauthorizationObservation)
+            next = Object.freeze({
+              kind: 'reauthorization_required',
+              reasonCode: value.reasonCode,
+            });
+          else return;
+        }
         if (
           observation !== undefined &&
           JSON.stringify(observation) !== JSON.stringify(next)

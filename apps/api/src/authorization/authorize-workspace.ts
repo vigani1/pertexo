@@ -162,15 +162,15 @@ export function assertAuthorizedWorkspaceContext(
     );
   }
   const authorizedActor = input.context.actor;
-  if (
+  const authorizationContextMismatch =
     input.context.workspaceId !== input.routeWorkspaceId ||
     input.context.capability !== input.capability ||
     authorizedActor.actorId !== input.actor.actorId ||
     authorizedActor.workspaceId !== input.actor.workspaceId ||
     !sameActorCredential(authorizedActor, input.actor) ||
     authorizedActor.requestId !== input.actor.requestId ||
-    authorizedActor.traceId !== input.actor.traceId
-  ) {
+    authorizedActor.traceId !== input.actor.traceId;
+  if (authorizationContextMismatch) {
     throw denied(
       'forbidden',
       'authorization context does not match the operation',
