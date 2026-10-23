@@ -15,9 +15,7 @@ import type {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Readable } from 'node:stream';
-
 import { verifiedBody } from './stream-verification.js';
-import { z } from 'zod';
 
 import { artifactMetadataMatches } from './metadata.js';
 import {
@@ -36,11 +34,10 @@ import {
   createProductionObjectStoreObserver,
   ObservedS3Client,
   observePresign,
-  safelyObserveSafetyViolation,
 } from './s3/telemetry.js';
 import type { ObjectStoreObserver } from './s3/telemetry.js';
 import { sendS3 } from './s3/contract.js';
-import type { ObjectStoreS3Client } from './s3/contract.js';
+
 import { awaitWithSignal, requestSignal } from './s3/request-lifecycle.js';
 import {
   createArtifactDownloadPresigner,
@@ -55,236 +52,60 @@ import {
   validateWorkspaceVersionDeletion,
   workspaceVersionDeleteObjects,
 } from './workspace-purge-validation.js';
+import type {
+  S3ClientLike,
+  ArtifactMetadata,
+  PutArtifactRequest,
+  ArtifactRequest,
+  ArtifactDownload,
+  BeginDirectUploadRequest,
+  ValidateDirectUploadRequest,
+  DirectUpload,
+  PutObjectPresigner,
+  ArtifactStoreReadiness,
+  ArtifactStore,
+  PurgeWorkspaceObjectsRequest,
+  WorkspaceObjectPurgePage,
+  WorkspaceObjectPurgeStore,
+} from './storage/contract.js';
+import {
+  purgeWorkspaceSchema,
+  metadataSchema,
+  beginDirectUploadSchema,
+  DIRECT_UPLOAD_SIGNABLE_HEADERS,
+  DIRECT_UPLOAD_UNHOISTABLE_HEADERS,
+  workspacePrefix,
+  isNotFound,
+  objectMetadata,
+  checksumSha256Base64,
+  metadataFromHead,
+  consume,
+  destroyResponseBody,
+} from './storage/metadata.js';
+import { ObservedArtifactStore } from './storage/observed.js';
 export {
   ArtifactIntegrityError,
   ArtifactNotFoundError,
   ArtifactStoreClosedError,
 } from './errors.js';
-export type S3ClientLike = ObjectStoreS3Client;
 export type { ArtifactIdentity } from './identity.js';
-
-export interface ArtifactMetadata extends ArtifactIdentity {
-  readonly byteLength: number;
-  readonly mediaType: string;
-  readonly sha256: string;
-}
-
-export interface PutArtifactRequest extends ArtifactMetadata {
-  /** Ownership transfers only after the store admits the request preflight. */
-  readonly body: Readable;
-  readonly signal?: AbortSignal;
-}
-
-export interface ArtifactRequest extends ArtifactIdentity {
-  readonly signal?: AbortSignal;
-}
-
-export interface ArtifactDownload {
-  readonly body: Readable;
-  readonly metadata: ArtifactMetadata;
-}
-
-export interface BeginDirectUploadRequest extends ArtifactMetadata {
-  readonly expiresInSeconds: number;
-  readonly signal?: AbortSignal;
-}
-
-export interface ValidateDirectUploadRequest extends ArtifactMetadata {
-  readonly signal?: AbortSignal;
-}
-
-export interface DirectUpload {
-  readonly expiresAt: string;
-  readonly expiresInSeconds: number;
-  readonly headers: Readonly<Record<string, string>>;
-  readonly method: 'PUT';
-  readonly url: string;
-}
-
-export interface PutObjectPresignRequest {
-  readonly command: PutObjectCommand;
-  readonly expiresInSeconds: number;
-  readonly signal: AbortSignal;
-  readonly signableHeaders: ReadonlySet<string>;
-  readonly unhoistableHeaders: ReadonlySet<string>;
-}
-
-export type PutObjectPresigner = (
-  request: PutObjectPresignRequest,
-) => Promise<string>;
-
-export interface ArtifactStoreReadiness {
-  readonly bucket: string;
-  readonly region: string;
-}
-
-export interface ArtifactStore {
-  beginDirectUpload(request: BeginDirectUploadRequest): Promise<DirectUpload>;
-  checkReadiness(signal?: AbortSignal): Promise<ArtifactStoreReadiness>;
-  close(): void;
-  delete(request: ArtifactRequest): Promise<void>;
-  getStream(request: ArtifactRequest): Promise<ArtifactDownload>;
-  head(request: ArtifactRequest): Promise<ArtifactMetadata | null>;
-  put(request: PutArtifactRequest): Promise<ArtifactMetadata>;
-  validateDirectUpload(
-    request: ValidateDirectUploadRequest,
-  ): Promise<ArtifactMetadata>;
-}
-
-export interface PurgeWorkspaceObjectsRequest {
-  readonly maxObjects: number;
-  readonly signal?: AbortSignal;
-  readonly workspaceId: string;
-}
-
-export interface WorkspaceObjectPurgePage {
-  readonly completed: boolean;
-  readonly deletedCount: number;
-}
-
-export interface WorkspaceObjectPurgeStore {
-  purgeWorkspacePage(
-    request: PurgeWorkspaceObjectsRequest,
-  ): Promise<WorkspaceObjectPurgePage>;
-}
-
-const purgeWorkspaceSchema = z.object({
-  maxObjects: z.number().int().min(1).max(500),
-  workspaceId: z.uuid(),
-});
-
-const metadataSchema = artifactIdentitySchema.extend({
-  byteLength: z.number().int().nonnegative(),
-  mediaType: z
-    .string()
-    .trim()
-    .min(3)
-    .max(255)
-    .regex(/^[^\s/;]+\/[^\r\n]+$/u)
-    .regex(/^[\t\x20-\x7e\x80-\xff]+$/u),
-  sha256: z.string().regex(/^[a-f0-9]{64}$/u),
-});
-
-const beginDirectUploadSchema = metadataSchema.extend({
-  expiresInSeconds: z.number().int().min(60).max(900),
-});
-
-const STORAGE_METADATA = {
-  artifactId: 'artifact-id',
-  byteLength: 'byte-length',
-  mediaType: 'media-type',
-  sha256: 'sha256',
-  workspaceId: 'workspace-id',
-} as const;
-
-const USER_METADATA_KEYS = Object.values(STORAGE_METADATA).toSorted();
-const DIRECT_UPLOAD_SIGNABLE_HEADERS = new Set([
-  'content-length',
-  'content-type',
-  'if-none-match',
-]);
-const DIRECT_UPLOAD_UNHOISTABLE_HEADERS = new Set([
-  'x-amz-checksum-sha256',
-  ...USER_METADATA_KEYS.map((key) => `x-amz-meta-${key}`),
-]);
-
-function workspacePrefix(workspaceId: string): string {
-  return `workspaces/${workspaceId}/`;
-}
-
-function isNotFound(error: unknown): boolean {
-  try {
-    if (typeof error !== 'object' || error === null) {
-      return false;
-    }
-
-    const candidate = error as {
-      readonly $metadata?: { readonly httpStatusCode?: number };
-      readonly name?: string;
-    };
-    return (
-      candidate.$metadata?.httpStatusCode === 404 ||
-      candidate.name === 'NoSuchKey' ||
-      candidate.name === 'NotFound'
-    );
-  } catch {
-    return false;
-  }
-}
-
-function objectMetadata(
-  metadata: ArtifactMetadata,
-): Readonly<Record<string, string>> {
-  return Object.freeze({
-    [STORAGE_METADATA.artifactId]: metadata.artifactId,
-    [STORAGE_METADATA.byteLength]: String(metadata.byteLength),
-    [STORAGE_METADATA.mediaType]: metadata.mediaType,
-    [STORAGE_METADATA.sha256]: metadata.sha256,
-    [STORAGE_METADATA.workspaceId]: metadata.workspaceId,
-  });
-}
-
-function checksumSha256Base64(sha256: string): string {
-  return Buffer.from(sha256, 'hex').toString('base64');
-}
-
-function metadataFromHead(
-  identity: ArtifactIdentity,
-  output: HeadObjectCommandOutput | GetObjectCommandOutput,
-  maxObjectBytes: number,
-): ArtifactMetadata {
-  const metadata = output.Metadata ?? {};
-  const metadataKeys = Object.keys(metadata).toSorted();
-  const parsedByteLength = Number(metadata[STORAGE_METADATA.byteLength]);
-  const storedContentType = output.ContentType?.replace(/\s*;\s*/gu, ';');
-  const candidate = metadataSchema.safeParse({
-    artifactId: metadata[STORAGE_METADATA.artifactId],
-    byteLength: parsedByteLength,
-    mediaType: metadata[STORAGE_METADATA.mediaType],
-    sha256: metadata[STORAGE_METADATA.sha256],
-    workspaceId: metadata[STORAGE_METADATA.workspaceId],
-  });
-
-  if (
-    !candidate.success ||
-    metadataKeys.length !== USER_METADATA_KEYS.length ||
-    metadataKeys.some((key, index) => key !== USER_METADATA_KEYS[index]) ||
-    candidate.data.artifactId !== identity.artifactId ||
-    candidate.data.workspaceId !== identity.workspaceId ||
-    candidate.data.byteLength > maxObjectBytes ||
-    output.ContentLength !== candidate.data.byteLength ||
-    storedContentType !== candidate.data.mediaType.replace(/\s*;\s*/gu, ';')
-  ) {
-    throw new ArtifactIntegrityError('Stored artifact metadata is invalid');
-  }
-
-  return Object.freeze(candidate.data);
-}
-
-async function consume(body: Readable): Promise<void> {
-  for await (const _chunk of body) {
-    // Integrity is enforced by the verifier while bytes are discarded.
-  }
-}
-
-function destroyResponseBody(body: unknown): void {
-  if (isDestroyable(body)) {
-    body.destroy();
-  }
-}
-
-interface Destroyable {
-  destroy(): void;
-}
-
-function isDestroyable(value: unknown): value is Destroyable {
-  if (typeof value !== 'object' || value === null) {
-    return false;
-  }
-  const candidate = value as { readonly destroy?: unknown };
-  return typeof candidate.destroy === 'function';
-}
-
+export {
+  type S3ClientLike,
+  type ArtifactMetadata,
+  type PutArtifactRequest,
+  type ArtifactRequest,
+  type ArtifactDownload,
+  type BeginDirectUploadRequest,
+  type ValidateDirectUploadRequest,
+  type DirectUpload,
+  type PutObjectPresignRequest,
+  type PutObjectPresigner,
+  type ArtifactStoreReadiness,
+  type ArtifactStore,
+  type PurgeWorkspaceObjectsRequest,
+  type WorkspaceObjectPurgePage,
+  type WorkspaceObjectPurgeStore,
+} from './storage/contract.js';
 class AwsArtifactStore
   implements
     ArtifactStore,
@@ -679,96 +500,6 @@ class AwsArtifactStore
       }),
       { abortSignal: requestSignal(this.config.requestTimeoutMs, signal) },
     );
-  }
-}
-
-class ObservedArtifactStore
-  implements
-    ArtifactStore,
-    ArtifactDownloadCapability,
-    WorkspaceObjectPurgeStore
-{
-  public constructor(
-    private readonly store: ArtifactStore &
-      ArtifactDownloadCapability &
-      WorkspaceObjectPurgeStore,
-    private readonly observer: ObjectStoreObserver,
-  ) {}
-
-  public beginDirectUpload(
-    request: BeginDirectUploadRequest,
-  ): Promise<DirectUpload> {
-    return this.observe(() => this.store.beginDirectUpload(request));
-  }
-
-  public beginDirectDownload(
-    request: BeginDirectDownloadRequest,
-  ): Promise<DirectDownload> {
-    return this.observe(() => this.store.beginDirectDownload(request));
-  }
-
-  public checkReadiness(signal?: AbortSignal): Promise<ArtifactStoreReadiness> {
-    return this.observe(() => this.store.checkReadiness(signal));
-  }
-
-  public close(): void {
-    this.store.close();
-  }
-
-  public delete(request: ArtifactRequest): Promise<void> {
-    return this.observe(() => this.store.delete(request));
-  }
-
-  public async getStream(request: ArtifactRequest): Promise<ArtifactDownload> {
-    const download = await this.observe(() => this.store.getStream(request));
-    download.body.once('error', (error: unknown) => {
-      this.report(error);
-    });
-    return download;
-  }
-
-  public head(request: ArtifactRequest): Promise<ArtifactMetadata | null> {
-    return this.observe(() => this.store.head(request));
-  }
-
-  public put(request: PutArtifactRequest): Promise<ArtifactMetadata> {
-    return this.observe(() => this.store.put(request));
-  }
-
-  public purgeWorkspacePage(
-    request: PurgeWorkspaceObjectsRequest,
-  ): Promise<WorkspaceObjectPurgePage> {
-    return this.observe(() => this.store.purgeWorkspacePage(request));
-  }
-
-  public validateDirectUpload(
-    request: ValidateDirectUploadRequest,
-  ): Promise<ArtifactMetadata> {
-    return this.observe(() => this.store.validateDirectUpload(request));
-  }
-
-  private async observe<T>(operation: () => Promise<T>): Promise<T> {
-    try {
-      return await operation();
-    } catch (error: unknown) {
-      this.report(error);
-      throw error;
-    }
-  }
-
-  private report(error: unknown): void {
-    try {
-      if (
-        !(error instanceof ArtifactIntegrityError) ||
-        error instanceof ArtifactInputIntegrityError
-      )
-        return;
-    } catch {
-      return;
-    }
-    safelyObserveSafetyViolation(this.observer, {
-      check: 'artifact_integrity',
-    });
   }
 }
 

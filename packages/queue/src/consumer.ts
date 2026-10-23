@@ -1,185 +1,58 @@
 import { performance } from 'node:perf_hooks';
-
 import { UnrecoverableError, Worker } from 'bullmq';
 import type { Job as BullMqJob, Processor } from 'bullmq';
 import { Redis } from 'ioredis';
-import { z } from 'zod';
 
-import type { QueueJob } from './jobs/contracts.js';
 import { admitQueueDelivery } from './jobs/delivery-admission.js';
-export { InvalidQueueDeliveryError } from './jobs/delivery-admission.js';
 import { QUEUE_CLASS_DEFAULTS } from './jobs/defaults.js';
-import { QUEUE_NAME, type QueueName } from './jobs/names.js';
+import type { QueueName } from './jobs/names.js';
 import {
   instrumentRedisCommands,
   notifyRedisConnectionEvent,
   observeRedisOperation,
   type RedisTelemetryObserver,
 } from './redis/telemetry-contracts.js';
-import { createProductionRedisTelemetryObserver } from './redis/telemetry.js';
-import { normalizeRedisEndpoint } from './redis/endpoint.js';
 
-const DEFAULT_READY_TIMEOUT_MS = 5_000;
-const MAX_CONFIGURED_TIMEOUT_MS = 60 * 60_000;
-
-const consumerOptionsSchema = z
-  .object({
-    queueName: z.enum([
-      QUEUE_NAME.workflowCoordinator,
-      QUEUE_NAME.nodeAttempts,
-      QUEUE_NAME.triggerLifecycle,
-      QUEUE_NAME.maintenance,
-    ]),
-    redisUrl: z.string().trim().min(1),
-    readyTimeoutMs: z
-      .number()
-      .int()
-      .positive()
-      .max(MAX_CONFIGURED_TIMEOUT_MS)
-      .optional(),
-    timeoutMs: z
-      .number()
-      .int()
-      .positive()
-      .max(MAX_CONFIGURED_TIMEOUT_MS)
-      .optional(),
-    drainTimeoutMs: z
-      .number()
-      .int()
-      .positive()
-      .max(MAX_CONFIGURED_TIMEOUT_MS)
-      .optional(),
-  })
-  .strict();
-
-export interface QueueDeliveryTransport {
-  readonly attemptsMade: number;
-  readonly jobId: string;
-}
-
-export type QueueDelivery = QueueJob & {
-  readonly transport: QueueDeliveryTransport;
-};
-
-export interface QueueHandlerContext {
-  /**
-   * Aborts when BullMQ cancels the job, the queue-class execution timeout
-   * expires, or bounded worker drain expires. Handlers must propagate it to
-   * cancellable I/O and may not treat an abort as business completion.
-   */
-  readonly signal: AbortSignal;
-}
-
-export type QueueJobHandler = (
-  delivery: QueueDelivery,
-  context: QueueHandlerContext,
-) => Promise<void>;
-
-export type QueueHandlerFailureClass =
-  'drain' | 'handler' | 'timeout' | 'transport';
-
-export interface QueueHandlerObservation {
-  readonly jobName: QueueJob['name'];
-  readonly queueName: QueueName;
-}
-
-/** Activation seam implemented by the observability package with OpenTelemetry. */
-export interface QueueTraceRunner {
-  run<T>(
-    traceparent: string | undefined,
-    observation: QueueHandlerObservation,
-    operation: () => Promise<T>,
-  ): Promise<T>;
-}
-
-export type QueueHandlerFinishedObservation = QueueHandlerObservation &
-  (
-    | {
-        readonly durationSeconds: number;
-        readonly outcome: 'completed';
-      }
-    | {
-        readonly durationSeconds: number;
-        readonly failureClass: QueueHandlerFailureClass;
-        readonly outcome: 'failed';
-      }
-  );
-
-export interface QueueConsumerLifecycleObservation {
-  readonly event: 'drain_forced' | 'drain_graceful' | 'ready';
-  readonly queueName: QueueName;
-}
-
-export interface QueueStallObservation {
-  readonly queueName: QueueName;
-}
-
-/**
- * Dependency-free lifecycle seam for bounded operational instrumentation.
- * It deliberately exposes no message, workspace, run, or transport IDs.
- */
-export interface QueueConsumerObserver {
-  consumerLifecycle?(observation: QueueConsumerLifecycleObservation): void;
-  handlerFinished(observation: QueueHandlerFinishedObservation): void;
-  handlerStarted(observation: QueueHandlerObservation): void;
-  jobStalled?(observation: QueueStallObservation): void;
-}
-
-export type QueueConsumerOptions = Readonly<{
-  readonly queueName: QueueName;
-  readonly redisUrl: string;
-  readonly handler: QueueJobHandler;
-  readonly observer?: QueueConsumerObserver;
-  readonly redisTelemetry?: RedisTelemetryObserver;
-  readonly traceRunner?: QueueTraceRunner;
-  readonly readyTimeoutMs?: number;
-  /** Test/deployment override; defaults to the selected queue class. */
-  readonly timeoutMs?: number;
-  /** Test/deployment override; defaults to the selected queue class. */
-  readonly drainTimeoutMs?: number;
-}>;
-
-export interface QueueConsumerCloseResult {
-  readonly abortedJobs: number;
-  readonly forced: boolean;
-}
-
-export interface QueueConsumer {
-  close(): Promise<QueueConsumerCloseResult>;
-  isReady(): boolean;
-  waitUntilReady(timeoutMs?: number): Promise<void>;
-}
-
-export class QueueConsumerConfigurationError extends Error {
-  public override readonly name = 'QueueConsumerConfigurationError';
-}
-
-export class QueueConsumerNotReadyError extends Error {
-  public override readonly name = 'QueueConsumerNotReadyError';
-
-  public constructor() {
-    super('Queue consumer Redis and BullMQ connections are not ready');
-  }
-}
-
-export class QueueJobTimeoutError extends Error {
-  public override readonly name = 'QueueJobTimeoutError';
-
-  public constructor(timeoutMs: number) {
-    super(
-      `Queue handler exceeded its ${String(timeoutMs)}ms execution timeout`,
-    );
-  }
-}
-
-export class QueueConsumerDrainError extends Error {
-  public override readonly name = 'QueueConsumerDrainError';
-
-  public constructor() {
-    super('Queue handler was aborted because bounded worker drain expired');
-  }
-}
-
+import type {
+  QueueDelivery,
+  QueueJobHandler,
+  QueueHandlerObservation,
+  QueueTraceRunner,
+  QueueConsumerObserver,
+  QueueConsumerOptions,
+  QueueConsumerCloseResult,
+  QueueConsumer,
+  ActiveExecution,
+} from './consumption/contract.js';
+import { parseConsumerOptions } from './consumption/configuration.js';
+import {
+  QueueConsumerNotReadyError,
+  QueueJobTimeoutError,
+  QueueConsumerDrainError,
+} from './consumption/errors.js';
+export { InvalidQueueDeliveryError } from './jobs/delivery-admission.js';
+export {
+  type QueueDeliveryTransport,
+  type QueueDelivery,
+  type QueueHandlerContext,
+  type QueueJobHandler,
+  type QueueHandlerFailureClass,
+  type QueueHandlerObservation,
+  type QueueTraceRunner,
+  type QueueHandlerFinishedObservation,
+  type QueueConsumerLifecycleObservation,
+  type QueueStallObservation,
+  type QueueConsumerObserver,
+  type QueueConsumerOptions,
+  type QueueConsumerCloseResult,
+  type QueueConsumer,
+} from './consumption/contract.js';
+export {
+  QueueConsumerConfigurationError,
+  QueueConsumerNotReadyError,
+  QueueJobTimeoutError,
+  QueueConsumerDrainError,
+} from './consumption/errors.js';
 /**
  * Explicit policy seam for a handler that has already made the authoritative
  * PostgreSQL decision that this delivery must not be retried by BullMQ.
@@ -188,79 +61,7 @@ export function unrecoverableQueueError(message: string): UnrecoverableError {
   return new UnrecoverableError(message);
 }
 
-interface ParsedConsumerOptions {
-  readonly drainTimeoutMs: number;
-  readonly handler: QueueJobHandler;
-  readonly observer: QueueConsumerObserver | undefined;
-  readonly traceRunner: QueueTraceRunner | undefined;
-  readonly queueName: QueueName;
-  readonly readyTimeoutMs: number;
-  readonly redisUrl: string;
-  readonly redisTelemetry: RedisTelemetryObserver | undefined;
-  readonly timeoutMs: number;
-}
-
-interface ActiveExecution {
-  abortFailureClass: QueueHandlerFailureClass | undefined;
-  readonly controller: AbortController;
-}
-
 const TIMED_OUT = Symbol('timed-out');
-
-function parseRedisUrl(value: string): string {
-  return normalizeRedisEndpoint(
-    value,
-    (reason) =>
-      new QueueConsumerConfigurationError(
-        reason === 'invalid_url'
-          ? 'Redis URL is invalid'
-          : 'Redis URL must use redis:// or rediss:// with a hostname',
-      ),
-  );
-}
-
-function parseConsumerOptions(
-  options: QueueConsumerOptions,
-): ParsedConsumerOptions {
-  const candidate = {
-    queueName: options.queueName,
-    redisUrl: options.redisUrl,
-    readyTimeoutMs: options.readyTimeoutMs,
-    timeoutMs: options.timeoutMs,
-    drainTimeoutMs: options.drainTimeoutMs,
-  };
-  const parsed = consumerOptionsSchema.safeParse(candidate);
-
-  if (
-    !parsed.success ||
-    typeof options.handler !== 'function' ||
-    (options.observer !== undefined &&
-      (typeof options.observer !== 'object' ||
-        typeof options.observer.handlerStarted !== 'function' ||
-        typeof options.observer.handlerFinished !== 'function')) ||
-    (options.traceRunner !== undefined &&
-      (typeof options.traceRunner !== 'object' ||
-        typeof options.traceRunner.run !== 'function'))
-  ) {
-    throw new QueueConsumerConfigurationError(
-      'Queue consumer configuration is invalid',
-    );
-  }
-
-  const defaults = QUEUE_CLASS_DEFAULTS[parsed.data.queueName];
-  return {
-    queueName: parsed.data.queueName,
-    redisUrl: parseRedisUrl(parsed.data.redisUrl),
-    handler: options.handler,
-    observer: options.observer,
-    redisTelemetry:
-      options.redisTelemetry ?? createProductionRedisTelemetryObserver(),
-    traceRunner: options.traceRunner,
-    readyTimeoutMs: parsed.data.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS,
-    timeoutMs: parsed.data.timeoutMs ?? defaults.timeoutMs,
-    drainTimeoutMs: parsed.data.drainTimeoutMs ?? defaults.drainTimeoutMs,
-  };
-}
 
 function bounded<T>(
   operation: Promise<T>,
