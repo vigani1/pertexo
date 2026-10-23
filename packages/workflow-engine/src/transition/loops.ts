@@ -5,7 +5,6 @@ import { assertNodeTransition } from './status-transitions.js';
 import type {
   InvocationState,
   LoopState,
-  LoopState,
   WorkflowObservation,
 } from '../types.js';
 import {
