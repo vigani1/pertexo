@@ -1,2 +1,2 @@
-export { diffWorkflowGraphs, isEmptyDiff } from './model/versions/diff';
-export type { VersionDiff } from './model/versions/diff';
+export { diffWorkflowGraphs, isEmptyDiff } from './model/comparison/diff';
+export type { VersionDiff } from './model/comparison/diff';
