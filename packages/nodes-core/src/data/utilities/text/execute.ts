@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/node-sdk';
 import { COLLECTION_MAX_ITEMS } from '../../lists/semantics/validation.js';
 import { refuseUtility } from '../result.js';
@@ -47,10 +48,9 @@ export function transformText(
         if (!config.all) break;
       }
       const bytes =
-        Buffer.byteLength(value) +
+        utf8ByteLength(value) +
         count *
-          (Buffer.byteLength(input.replacement) -
-            Buffer.byteLength(input.search));
+          (utf8ByteLength(input.replacement) - utf8ByteLength(input.search));
       if (bytes > STORED_EXECUTION_VALUE_LIMITS.inlineBytes)
         return refuseUtility(
           'result_too_large',

@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
@@ -75,7 +76,7 @@ export async function mutateStepSample(
         binding,
       );
       const retainedBytes =
-        Buffer.byteLength(binding) + Buffer.byteLength(captured.output);
+        utf8ByteLength(binding) + utf8ByteLength(captured.output);
       const quota = await client.query<{
         bytes: string;
         workflow_count: string;

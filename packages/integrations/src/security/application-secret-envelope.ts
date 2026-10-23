@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import {
@@ -95,7 +96,7 @@ function assertBounded(value: string, maximumBytes: number): void {
   if (
     typeof value !== 'string' ||
     value.length === 0 ||
-    Buffer.byteLength(value, 'utf8') > maximumBytes
+    utf8ByteLength(value) > maximumBytes
   )
     throw new TypeError('Application secret input is invalid');
 }

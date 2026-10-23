@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '../../values/text.js';
 import { canonicalJson, type JsonValue } from '../../values/json/canonical.js';
 import { resolveJsonPath } from '../../values/json/path.js';
 import type { TestAssertion } from './contract.js';
@@ -49,7 +50,7 @@ export function observeTestAssertion(
     assertion.expected,
   );
   const text = canonicalJson(resolved.value);
-  const bytes = new TextEncoder().encode(text).byteLength;
+  const bytes = utf8ByteLength(text);
   return bytes <= 4096
     ? { state: 'value', matched, value: resolved.value }
     : {

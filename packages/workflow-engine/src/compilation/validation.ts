@@ -1,3 +1,4 @@
+import { jsonStringByteLength } from '@pertexo/workflow-model';
 import { types as nodeTypes } from 'node:util';
 import type {
   DefinitionIdentity,
@@ -54,33 +55,6 @@ function assertSafeExecutableJson(value: unknown): void {
     if (bytes > WORKFLOW_EXECUTABLE_LIMITS.bytes)
       fail('executable envelope exceeds maximum bytes');
   };
-  const addString = (input: string): void => {
-    add(2);
-    for (let index = 0; index < input.length; index += 1) {
-      const code = input.charCodeAt(index);
-      if (
-        code === 0x22 ||
-        code === 0x5c ||
-        code === 0x08 ||
-        code === 0x0c ||
-        code === 0x0a ||
-        code === 0x0d ||
-        code === 0x09
-      )
-        add(2);
-      else if (code <= 0x1f) add(6);
-      else if (code <= 0x7f) add(1);
-      else if (code <= 0x7ff) add(2);
-      else if (code >= 0xd800 && code <= 0xdbff) {
-        const next = input.charCodeAt(index + 1);
-        if (next >= 0xdc00 && next <= 0xdfff) {
-          add(4);
-          index += 1;
-        } else add(6);
-      } else if (code >= 0xdc00 && code <= 0xdfff) add(6);
-      else add(3);
-    }
-  };
   while (pending.length > 0) {
     const frame = pending.pop();
     if (frame === undefined) continue;
@@ -94,7 +68,11 @@ function assertSafeExecutableJson(value: unknown): void {
       continue;
     }
     if (typeof item === 'string') {
-      addString(item);
+      add(
+        jsonStringByteLength(item, {
+          stopAfterBytes: WORKFLOW_EXECUTABLE_LIMITS.bytes - bytes,
+        }),
+      );
       continue;
     }
     if (typeof item === 'boolean') {
@@ -140,7 +118,11 @@ function assertSafeExecutableJson(value: unknown): void {
         fail('executable envelope array is sparse or has extra fields');
       if (!isArray) {
         if (enumerableCount > 0) add(1);
-        addString(key);
+        add(
+          jsonStringByteLength(key, {
+            stopAfterBytes: WORKFLOW_EXECUTABLE_LIMITS.bytes - bytes,
+          }),
+        );
         add(1);
       }
       enumerableCount += 1;

@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import type { WorkflowCallIntent } from '@pertexo/workflow-engine';
@@ -47,7 +48,7 @@ async function preparedInput(
   const refusal =
     prepared.value.kind === 'artifact'
       ? 'call_input_artifact_unsupported'
-      : Buffer.byteLength(prepared.json) >
+      : utf8ByteLength(prepared.json) >
           STORED_EXECUTION_VALUE_LIMITS.inlineBytes
         ? 'call_input_too_large'
         : undefined;

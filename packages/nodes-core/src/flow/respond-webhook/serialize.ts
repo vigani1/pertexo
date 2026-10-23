@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import {
   WEBHOOK_RESPONSE_MAX_BYTES,
   type NodeWebhookResponse,
@@ -27,7 +28,7 @@ export function serializeWebhookResponse(
     throw new InvalidBoundedJsonError(
       'A text webhook response cannot contain a null character. Use JSON to encode it.',
     );
-  if (new TextEncoder().encode(body).byteLength > WEBHOOK_RESPONSE_MAX_BYTES)
+  if (utf8ByteLength(body) > WEBHOOK_RESPONSE_MAX_BYTES)
     throw new InvalidBoundedJsonError(
       'The webhook response exceeds 1 MB. Send a smaller response.',
     );

@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '../text.js';
 import { z } from 'zod';
 import { parseJsonPath } from './path.js';
 
@@ -8,7 +9,7 @@ export const collectionPathSchema = z
   .superRefine((path, context) => {
     const segments = parseJsonPath(path);
     if (
-      new TextEncoder().encode(path).byteLength > 512 ||
+      utf8ByteLength(path) > 512 ||
       segments === undefined ||
       segments.length > 64
     )

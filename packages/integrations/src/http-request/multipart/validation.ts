@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import {
   ARTIFACT_INPUT_MAX_BYTES,
@@ -12,7 +13,6 @@ function noControls(value: string): boolean {
     return code >= 32 && (code < 127 || code > 159);
   });
 }
-const bytes = (value: string) => new TextEncoder().encode(value).byteLength;
 export const httpMultipartInputKeySchema = z
   .string()
   .regex(
@@ -23,7 +23,7 @@ const nameSchema = z
   .min(1)
   .max(128)
   .refine(noControls, 'Do not use control characters')
-  .refine((value) => bytes(value) <= 128);
+  .refine((value) => utf8ByteLength(value) <= 128);
 const filenameSchema = z
   .string()
   .min(1)
@@ -31,7 +31,7 @@ const filenameSchema = z
   .refine(noControls, 'Do not use control characters')
   .refine(
     (value) =>
-      bytes(value) <= 255 &&
+      utf8ByteLength(value) <= 255 &&
       !/[\\/]/u.test(value) &&
       value !== '.' &&
       value !== '..',

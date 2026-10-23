@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { sql } from 'drizzle-orm';
 import {
   decideEventCoordination,
@@ -106,7 +107,7 @@ export async function coordinateEvent(
     });
     return coordinatedReceipt(input.eventId, outcome, 'skipped', reason);
   }
-  const bytes = Buffer.byteLength(input.prepared.inputJson);
+  const bytes = utf8ByteLength(input.prepared.inputJson);
   const budget = (
     await transaction.db.execute<{ count: number; bytes: number }>(sql`
     select count(*)::integer count,coalesce(sum(input_bytes),0)::integer bytes from app.trigger_coordinated_events where workspace_id=${transaction.workspaceId} and status='pending'

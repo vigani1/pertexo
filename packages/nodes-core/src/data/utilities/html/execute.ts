@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/node-sdk';
 import type { ChildNode, Element } from 'domhandler';
 import { parse, SelectorType, type Selector } from 'css-what';
@@ -88,7 +89,7 @@ export function extractHtml(
         : Object.hasOwn(element.attribs, attribute)
           ? (element.attribs[attribute] ?? '')
           : '';
-    bytes += Buffer.byteLength(JSON.stringify(item)) + 1;
+    bytes += utf8ByteLength(JSON.stringify(item)) + 1;
     if (bytes > STORED_EXECUTION_VALUE_LIMITS.inlineBytes)
       refuseUtility(
         'result_too_large',

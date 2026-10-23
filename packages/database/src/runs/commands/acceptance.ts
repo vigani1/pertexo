@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { requireRunTableReferences } from '../../data-tables/columns/references.js';
 import { requireWorkflowConcurrency } from './concurrency.js';
 export { WorkflowAlreadyRunningError } from './concurrency.js';
@@ -341,7 +342,7 @@ export async function acceptWorkflowRun(
     preparedRunInput?.value.kind === 'inline'
       ? preparedRunInput.value.value
       : undefined,
-    storedRunInputJson === null ? 0 : Buffer.byteLength(storedRunInputJson),
+    storedRunInputJson === null ? 0 : utf8ByteLength(storedRunInputJson),
   );
 
   const prepared =

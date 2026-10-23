@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { UUID_PATTERN } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 import { WORKFLOW_OBSERVATION_WINDOW_LIMITS } from '@pertexo/workflow-model';
@@ -56,7 +57,7 @@ function canonicalEventPayload(value: unknown): Readonly<{
   } catch {
     throw new CoordinatorRunStateCorruptError();
   }
-  const bytes = Buffer.byteLength(serialized, 'utf8');
+  const bytes = utf8ByteLength(serialized);
   if (bytes > maximumCanonicalEventPayloadBytes)
     throw new CoordinatorRunStateCorruptError();
   const normalized = JSON.parse(serialized) as unknown;

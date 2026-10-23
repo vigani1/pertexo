@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { HttpPaginationFailure } from './failure.js';
 import type { JsonValue } from '@pertexo/node-sdk/server';
 import { resolveJsonPath } from '@pertexo/workflow-model';
@@ -108,7 +109,7 @@ export function nextPage(
     url.username !== '' ||
     url.password !== '' ||
     url.hash !== '' ||
-    new TextEncoder().encode(target).byteLength > 2048
+    utf8ByteLength(target) > 2048
   )
     throw new HttpPaginationFailure('http.pagination_invalid_navigation', page);
   if (seen.has(identity)) return undefined;

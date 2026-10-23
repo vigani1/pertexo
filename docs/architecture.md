@@ -59,6 +59,14 @@ The existing `app.clear_removed_member_notices` storage bridge remains an
 exception: it checks workspace/removal state and clears actor-private rows in
 the same removal transaction without broadening private-row visibility.
 
+UTF-8 sizing and Unicode well-formedness use `workflow-model/src/values/text.ts`.
+Its bounded JSON string measurement preserves escaping and stops on overflow.
+The graph-independent SDK uses the platform Unicode primitive and retains its
+bounded PostgreSQL-compatible string counter in `values/stored-json.ts`:
+importing graph and expression code into the isolated Code runner would weaken
+that package separation. Actual encoders for hashing and transport still
+produce their byte buffers at their existing owners.
+
 ## Runtime lifecycle
 
 The API and worker use `observability`'s shutdown coordinator: drain first,

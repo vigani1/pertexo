@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { redactText } from '../security/redact-text.js';
 import type { NodeVerifiedByteSource } from '@pertexo/node-sdk/server';
 import { isIP } from 'node:net';
@@ -537,8 +538,7 @@ function failureStage(code: SecureHttpErrorCode): SecureHttpFailureStage {
 
 function parseTargetUrl(value: string): URL {
   try {
-    if (new TextEncoder().encode(value).byteLength > MAX_URL_BYTES)
-      throw new Error('URL too long');
+    if (utf8ByteLength(value) > MAX_URL_BYTES) throw new Error('URL too long');
     const url = new URL(value);
     if (url.protocol !== 'http:' && url.protocol !== 'https:')
       throw new Error('unsupported scheme');
@@ -725,7 +725,7 @@ function pageNavigation(
 ): Readonly<{ url: string; link?: string }> {
   const raw = includeLink ? response.headers.link : undefined;
   const link = raw === undefined ? undefined : normalizedHeaderValue(raw);
-  if (link !== undefined && new TextEncoder().encode(link).byteLength > 8192)
+  if (link !== undefined && utf8ByteLength(link) > 8192)
     throw failure(
       SECURE_HTTP_ERROR_CODE.paginationNavigationInvalid,
       true,

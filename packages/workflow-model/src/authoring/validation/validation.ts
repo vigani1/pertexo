@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '../../values/text.js';
 import { supportsExpressionMappings } from '../../values/mapping/policy.js';
 import { callbackReferenceIssue } from '../../flow/callbacks/validation.js';
 import {
@@ -43,11 +44,11 @@ function safeExpressionMessage(result: ExpressionValidation): string {
 
 export function assertReportBudget(report: GraphValidationResult): void {
   if (
-    Buffer.byteLength(JSON.stringify(report)) >
+    utf8ByteLength(JSON.stringify(report)) >
       AUTHORING_VALIDATION_BUDGET.reportBytes ||
     report.issues.some(
       ({ message }) =>
-        Buffer.byteLength(message) > AUTHORING_VALIDATION_BUDGET.messageBytes,
+        utf8ByteLength(message) > AUTHORING_VALIDATION_BUDGET.messageBytes,
     )
   )
     throw new AuthoringValidationUnavailableError('report_limit');
@@ -62,13 +63,13 @@ export function validateAuthoringBatch(
   let issueBytes = 0;
   const admitIssue = (issue: GraphValidationIssue): void => {
     if (
-      Buffer.byteLength(issue.message) >
+      utf8ByteLength(issue.message) >
         AUTHORING_VALIDATION_BUDGET.messageBytes ||
-      Buffer.byteLength(issue.path) + Buffer.byteLength(issue.message) >
+      utf8ByteLength(issue.path) + utf8ByteLength(issue.message) >
         AUTHORING_VALIDATION_BUDGET.reportBytes
     )
       throw new AuthoringValidationUnavailableError('report_limit');
-    issueBytes += Buffer.byteLength(JSON.stringify(issue));
+    issueBytes += utf8ByteLength(JSON.stringify(issue));
     if (issueBytes > AUTHORING_VALIDATION_BUDGET.reportBytes)
       throw new AuthoringValidationUnavailableError('report_limit');
   };

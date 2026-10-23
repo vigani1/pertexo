@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { workflowActions } from '../../tenant-access/resources/workflows.js';
 import { sql } from 'drizzle-orm';
 import { readFolderScope } from '../../tenant-access/resources/facts.js';
@@ -105,7 +106,7 @@ const filterSchema = z.object({
   query: z
     .string()
     .overwrite((value) => value.replace(/^ +| +$(?![\s\S])/gu, ''))
-    .refine((value) => Buffer.byteLength(value, 'utf8') <= 128)
+    .refine((value) => utf8ByteLength(value) <= 128)
     .optional(),
   view: z.enum(['active', 'archived', 'all']).default('all'),
   tagId: uuid.optional(),

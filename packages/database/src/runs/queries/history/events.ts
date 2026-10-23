@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { retainedTestRunSql } from '../../data-policy.js';
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
@@ -105,7 +106,7 @@ export async function appendLockedRunEvent(
   } catch {
     throw new ExecutionStateConflictError('execution.event_payload_invalid');
   }
-  if (Buffer.byteLength(serializedPayload, 'utf8') > 4096)
+  if (utf8ByteLength(serializedPayload) > 4096)
     throw new ExecutionStateConflictError(
       'JSON value must not exceed 4096 UTF-8 bytes',
     );

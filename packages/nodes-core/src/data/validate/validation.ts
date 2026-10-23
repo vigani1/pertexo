@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { boundedNodeJsonSchema } from '@pertexo/node-sdk';
 import { parseJsonPath } from '@pertexo/workflow-model';
 import { z } from 'zod';
@@ -42,9 +43,7 @@ export const CORE_VALIDATE_PATH_SCHEMA = z
   .min(1)
   .max(CORE_VALIDATE_MAX_PATH_BYTES)
   .superRefine((path, context) => {
-    if (
-      new TextEncoder().encode(path).byteLength > CORE_VALIDATE_MAX_PATH_BYTES
-    )
+    if (utf8ByteLength(path) > CORE_VALIDATE_MAX_PATH_BYTES)
       context.addIssue({
         code: 'custom',
         message: 'Validate paths must be at most 512 UTF-8 bytes',
@@ -76,10 +75,7 @@ const enumStringSchema = z
   .string()
   .max(256)
   .superRefine((value, context) => {
-    if (
-      new TextEncoder().encode(value).byteLength >
-      CORE_VALIDATE_MAX_ENUM_STRING_BYTES
-    )
+    if (utf8ByteLength(value) > CORE_VALIDATE_MAX_ENUM_STRING_BYTES)
       context.addIssue({
         code: 'custom',
         message: 'Enum strings must be at most 256 UTF-8 bytes',
@@ -221,9 +217,7 @@ const issueMessageSchema = z
   .string()
   .max(CORE_VALIDATE_MAX_MESSAGE_BYTES)
   .refine(
-    (message) =>
-      new TextEncoder().encode(message).byteLength <=
-      CORE_VALIDATE_MAX_MESSAGE_BYTES,
+    (message) => utf8ByteLength(message) <= CORE_VALIDATE_MAX_MESSAGE_BYTES,
     'Validate issue messages must be at most 128 UTF-8 bytes',
   );
 

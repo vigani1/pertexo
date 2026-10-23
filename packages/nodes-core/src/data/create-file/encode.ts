@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { ARTIFACT_INPUT_MAX_BYTES, escapeCsvValue } from '@pertexo/node-sdk';
 import type { JsonValue } from '@pertexo/node-sdk/server';
 import { COLLECTION_MAX_ITEMS } from '../lists/semantics/validation.js';
@@ -65,7 +66,7 @@ export function encodeFile(
   let byteLength = 0;
   const append = (text: string): void => {
     signal.throwIfAborted();
-    byteLength += Buffer.byteLength(text, 'utf8');
+    byteLength += utf8ByteLength(text);
     if (byteLength > ARTIFACT_INPUT_MAX_BYTES)
       refuseFileCreation(
         'size',

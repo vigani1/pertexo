@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { FILE_PAGE_LIMITS } from '@pertexo/node-sdk';
 import type { NodeVerifiedByteSource } from '@pertexo/node-sdk/server';
 import { z } from 'zod';
@@ -145,7 +146,7 @@ function parseHeaders(
       normalized.has(lower)
     )
       throw new Error('invalid request header');
-    bytes += new TextEncoder().encode(`${lower}:${value}\r\n`).byteLength;
+    bytes += utf8ByteLength(`${lower}:${value}\r\n`);
     normalized.set(lower, value);
   }
   if (normalized.size > MAX_HEADER_COUNT || bytes > MAX_HEADER_BYTES)

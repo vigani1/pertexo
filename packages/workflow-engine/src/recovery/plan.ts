@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import {
   canonicalJson,
   UUID_PATTERN,
@@ -51,7 +52,7 @@ export function planRecovery(
   const input = values.input.kind === 'inline' ? values.input.value : undefined;
   if (input !== undefined && containsArtifact(input))
     return { kind: 'refused', reason: 'artifact_value' };
-  let bytes = input === undefined ? 0 : Buffer.byteLength(canonicalJson(input));
+  let bytes = input === undefined ? 0 : utf8ByteLength(canonicalJson(input));
   const outputs = new Map<string, JsonValue>();
   for (const { source, definition, invocation } of candidate.prefix) {
     const stored = values.outputs.get(source.id);
@@ -85,7 +86,7 @@ export function planRecovery(
       )
         return { kind: 'refused', reason: 'branch_evidence_unavailable' };
     }
-    bytes += Buffer.byteLength(json);
+    bytes += utf8ByteLength(json);
     if (bytes > WORKFLOW_RECOVERY_LIMITS.canonicalBytes)
       return { kind: 'refused', reason: 'reuse_bounds' };
     outputs.set(source.id, value);

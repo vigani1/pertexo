@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { z } from 'zod';
 
 const MAX_SUBJECT_BYTES = 1_024;
@@ -15,10 +16,6 @@ const UNSAFE_MAILBOX_CHARACTERS = [
   '"',
   '\\',
 ] as const;
-
-function utf8Bytes(value: string): number {
-  return new TextEncoder().encode(value).byteLength;
-}
 
 const localPart =
   /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*$/u;
@@ -63,12 +60,12 @@ export const emailSendNotificationInputSchema = z
       .min(1)
       .max(200)
       .refine((value) => !/[\r\n\0]/u.test(value))
-      .refine((value) => utf8Bytes(value) <= MAX_SUBJECT_BYTES),
+      .refine((value) => utf8ByteLength(value) <= MAX_SUBJECT_BYTES),
     text: z
       .string()
       .min(1)
       .max(50_000)
-      .refine((value) => utf8Bytes(value) <= MAX_TEXT_BYTES),
+      .refine((value) => utf8ByteLength(value) <= MAX_TEXT_BYTES),
   })
   .strict()
   .readonly();

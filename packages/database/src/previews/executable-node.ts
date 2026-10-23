@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import { normalizeJson } from '@pertexo/workflow-model';
 
@@ -11,7 +12,7 @@ export const executableNodeSchema = z.unknown().transform((value, context) => {
     )
       throw new TypeError('executable node must be a bounded JSON object');
     const serialized = JSON.stringify(admitted);
-    if (Buffer.byteLength(serialized, 'utf8') > 1_048_576)
+    if (utf8ByteLength(serialized) > 1_048_576)
       throw new TypeError('executable node must be a bounded JSON object');
     // Drizzle inspects the root object's constructor. Materialize the admitted
     // descriptor snapshot as ordinary JSON instead of exposing its null-

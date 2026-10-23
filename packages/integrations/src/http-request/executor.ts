@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { Buffer } from 'node:buffer';
 import { executePagination } from './pagination/execute.js';
 import { JSON_MEDIA_TYPE } from '../http/content-type.js';
@@ -193,8 +194,7 @@ function fillPlaceholders(
   }
   if (
     !safeRequestUrl(filled.url) ||
-    new TextEncoder().encode(filled.url).byteLength >
-      HTTP_REQUEST_LIMITS.maxUrlBytes ||
+    utf8ByteLength(filled.url) > HTTP_REQUEST_LIMITS.maxUrlBytes ||
     new URL(filled.url).origin !== new URL(configured.url).origin
   )
     throw new NodeInputValidationError(

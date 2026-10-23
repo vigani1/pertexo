@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { COLLECTION_MAX_ITEMS } from '../../lists/semantics/validation.js';
 import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/node-sdk';
 import XMLBuilder from 'fast-xml-builder';
@@ -24,7 +25,7 @@ function nameBytes(name: string): number {
       'xml_name',
       'Use valid XML element and attribute names, not reserved object properties.',
     );
-  return Buffer.byteLength(name);
+  return utf8ByteLength(name);
 }
 
 /** Count expansion before the library allocates escaped text or repeated tags. */
@@ -39,7 +40,7 @@ function textBytes(value: unknown): number {
       'XML attributes and #text must be text, numbers or booleans.',
     );
   const text = Object.is(value, -0) ? '-0' : String(value);
-  let bytes = addBytes(0, Buffer.byteLength(text));
+  let bytes = addBytes(0, utf8ByteLength(text));
   for (const match of text.matchAll(/[&<>"']/gu))
     bytes = addBytes(
       bytes,
@@ -141,7 +142,7 @@ export function buildXml(value: unknown, signal: AbortSignal) {
       'xml_data',
       'The value cannot be represented as valid XML. Check names and text characters.',
     );
-  if (Buffer.byteLength(result) > STORED_EXECUTION_VALUE_LIMITS.inlineBytes)
+  if (utf8ByteLength(result) > STORED_EXECUTION_VALUE_LIMITS.inlineBytes)
     refuseUtility(
       'result_too_large',
       'The XML result exceeds the step data limits. Split the input into smaller batches.',

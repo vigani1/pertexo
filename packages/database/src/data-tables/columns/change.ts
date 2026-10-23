@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import type { PoolClient, QueryResult } from 'pg';
 import type { DataTableSchemaChange } from '@pertexo/contracts';
 import {
@@ -186,7 +187,7 @@ export async function editTableSchema(
         JSON.parse(row.values_json) as DataTableValues,
       );
       const text = normalizedJson(values);
-      bytes += Buffer.byteLength(text);
+      bytes += utf8ByteLength(text);
       return {
         id: row.id,
         values_json: text,
