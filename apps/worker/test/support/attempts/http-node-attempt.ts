@@ -130,12 +130,12 @@ export async function workerQuery<T extends Record<string, unknown>>(
   statement: string,
   parameters: readonly unknown[] = [],
 ): Promise<readonly T[]> {
-  return queryAsWorkspaceRole<T>(
-    workerPool,
-    workspaceId,
-    statement,
-    parameters,
-  );
+  return queryAsWorkspaceRole<T>({
+    pool: workerPool,
+    workspaceId: workspaceId,
+    statement: statement,
+    parameters: parameters,
+  });
 }
 
 export async function waitFor<T>(

@@ -26,12 +26,12 @@ export function registerOwnsTimedOutPublicationMarkThrough(): void {
       const selected = boundaries();
       const mark = Promise.withResolvers<boolean>();
       vi.mocked(selected.database.markPublished).mockReturnValue(mark.promise);
-      const dispatcher = createDispatcher(
-        selected,
-        new WorkerDrainState(),
-        transportMetrics(),
-        100,
-      );
+      const dispatcher = createDispatcher({
+        boundaries: selected,
+        drainState: new WorkerDrainState(),
+        metrics: transportMetrics(),
+        operationTimeoutMillis: 100,
+      });
 
       const dispatch = dispatcher.dispatchOnce();
       await vi.advanceTimersByTimeAsync(100);
@@ -67,11 +67,11 @@ export function registerOwnsTimedOutPublicationMarkThrough(): void {
     ]);
     const metrics = transportMetrics();
 
-    await createDispatcher(
-      selected,
-      new WorkerDrainState(),
-      metrics,
-    ).dispatchOnce();
+    await createDispatcher({
+      boundaries: selected,
+      drainState: new WorkerDrainState(),
+      metrics: metrics,
+    }).dispatchOnce();
 
     expect(metrics.observeQueue).toHaveBeenCalledOnce();
     expect(metrics.observeQueue).toHaveBeenCalledWith({
@@ -84,7 +84,7 @@ export function registerOwnsTimedOutPublicationMarkThrough(): void {
   it('samples workspace capacity after durable workflow publication', async () => {
     const selected = boundaries([event()]);
     const observeWorkspaceCapacity = vi.fn().mockResolvedValue(undefined);
-    const dispatcher = createDispatcher(selected);
+    const dispatcher = createDispatcher({ boundaries: selected });
     dispatcher.configureRuntimeHooks({ observeWorkspaceCapacity });
 
     await expect(dispatcher.dispatchOnce()).resolves.toMatchObject({
@@ -104,7 +104,7 @@ export function registerOwnsTimedOutPublicationMarkThrough(): void {
     const selected = boundaries([event()]);
     const sample = Promise.withResolvers<undefined>();
     const observeWorkspaceCapacity = vi.fn(() => sample.promise);
-    const dispatcher = createDispatcher(selected);
+    const dispatcher = createDispatcher({ boundaries: selected });
     dispatcher.configureRuntimeHooks({ observeWorkspaceCapacity });
 
     await expect(dispatcher.dispatchOnce()).resolves.toMatchObject({
@@ -117,7 +117,7 @@ export function registerOwnsTimedOutPublicationMarkThrough(): void {
 
   it('does not change durable publication when capacity sampling fails', async () => {
     const selected = boundaries([event()]);
-    const dispatcher = createDispatcher(selected);
+    const dispatcher = createDispatcher({ boundaries: selected });
     dispatcher.configureRuntimeHooks({
       observeWorkspaceCapacity: vi
         .fn()
@@ -145,7 +145,7 @@ export function registerOwnsTimedOutPublicationMarkThrough(): void {
       .fn<(workspaceId: string) => Promise<void>>()
       .mockImplementationOnce(() => firstSample.promise)
       .mockResolvedValue(undefined);
-    const dispatcher = createDispatcher(selected);
+    const dispatcher = createDispatcher({ boundaries: selected });
     dispatcher.configureRuntimeHooks({ observeWorkspaceCapacity });
 
     for (let index = 0; index < 11; index += 1)
@@ -173,7 +173,7 @@ export function registerOwnsTimedOutPublicationMarkThrough(): void {
       Promise.resolve({ events: claimedEvents, exhaustedCount: 0 }),
     );
     const observeWorkspaceCapacity = vi.fn().mockResolvedValue(undefined);
-    const dispatcher = createDispatcher(selected);
+    const dispatcher = createDispatcher({ boundaries: selected });
     dispatcher.configureRuntimeHooks({ observeWorkspaceCapacity });
 
     for (let batch = 0; batch < 100; batch += 1) {
@@ -205,7 +205,7 @@ export function registerOwnsTimedOutPublicationMarkThrough(): void {
   it('drains an in-flight workspace capacity sample before closing boundaries', async () => {
     const selected = boundaries([event()]);
     const sample = Promise.withResolvers<undefined>();
-    const dispatcher = createDispatcher(selected);
+    const dispatcher = createDispatcher({ boundaries: selected });
     dispatcher.configureRuntimeHooks({
       observeWorkspaceCapacity: vi.fn(() => sample.promise),
     });

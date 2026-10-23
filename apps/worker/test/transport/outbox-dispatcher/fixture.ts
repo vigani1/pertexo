@@ -152,13 +152,19 @@ export function transportMetrics() {
   } satisfies TransportMetrics;
 }
 
-export function createDispatcher(
-  selected = boundaries(),
+export function createDispatcher({
+  boundaries: selected = boundaries(),
   drainState = new WorkerDrainState(),
   metrics = transportMetrics(),
   operationTimeoutMillis = 5_000,
   pollIntervalMillis = 10,
-): OutboxDispatcher {
+}: Readonly<{
+  boundaries?: ReturnType<typeof boundaries> | undefined;
+  drainState?: WorkerDrainState | undefined;
+  metrics?: ReturnType<typeof transportMetrics> | undefined;
+  operationTimeoutMillis?: number | undefined;
+  pollIntervalMillis?: number | undefined;
+}> = {}): OutboxDispatcher {
   return new OutboxDispatcher(selected.database, selected.producer, {
     drainState: drainState,
     options: {

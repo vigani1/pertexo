@@ -206,12 +206,12 @@ async function workerQuery<T extends Record<string, unknown>>(
   statement: string,
   parameters: readonly unknown[] = [],
 ): Promise<readonly T[]> {
-  return queryAsWorkspaceRole<T>(
-    workerPool,
-    workspaceId,
-    statement,
-    parameters,
-  );
+  return queryAsWorkspaceRole<T>({
+    pool: workerPool,
+    workspaceId: workspaceId,
+    statement: statement,
+    parameters: parameters,
+  });
 }
 
 async function apiQuery<T extends Record<string, unknown>>(
@@ -224,13 +224,13 @@ async function apiQuery<T extends Record<string, unknown>>(
     max: 1,
   });
   try {
-    return await queryAsWorkspaceRole<T>(
-      pool,
-      workspaceId,
-      statement,
-      parameters,
-      manualStart,
-    );
+    return await queryAsWorkspaceRole<T>({
+      pool: pool,
+      workspaceId: workspaceId,
+      statement: statement,
+      parameters: parameters,
+      manualStart: manualStart,
+    });
   } finally {
     await pool.end();
   }

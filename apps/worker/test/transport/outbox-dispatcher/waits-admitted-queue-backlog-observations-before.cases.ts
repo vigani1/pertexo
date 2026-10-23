@@ -26,7 +26,7 @@ export function registerWaitsAdmittedQueueBacklogObservationsBefore(): void {
     vi.mocked(selected.database.observeBacklog).mockReturnValue(
       backlogObservation.promise,
     );
-    const dispatcher = createDispatcher(selected);
+    const dispatcher = createDispatcher({ boundaries: selected });
 
     const dispatch = dispatcher.dispatchOnce();
     await vi.waitFor(() => {
@@ -55,7 +55,7 @@ export function registerWaitsAdmittedQueueBacklogObservationsBefore(): void {
     vi.mocked(selected.producer.waitUntilReady).mockReturnValue(
       producerReady.promise,
     );
-    const dispatcher = createDispatcher(selected);
+    const dispatcher = createDispatcher({ boundaries: selected });
 
     const readiness = dispatcher.checkReadiness();
     await dispatcher.close();
@@ -71,7 +71,10 @@ export function registerWaitsAdmittedQueueBacklogObservationsBefore(): void {
       databaseReady.promise,
     );
     const drain = new WorkerDrainState();
-    const dispatcher = createDispatcher(selected, drain);
+    const dispatcher = createDispatcher({
+      boundaries: selected,
+      drainState: drain,
+    });
 
     const readiness = dispatcher.checkReadiness();
     drain.beginDrain();
@@ -84,7 +87,7 @@ export function registerWaitsAdmittedQueueBacklogObservationsBefore(): void {
   it('wakes the polling delay during close without waiting a full interval', async () => {
     vi.useFakeTimers();
     const selected = boundaries([]);
-    const dispatcher = createDispatcher(selected);
+    const dispatcher = createDispatcher({ boundaries: selected });
     dispatcher.start();
     await vi.waitFor(() => {
       expect(selected.database.claimBatch).toHaveBeenCalledOnce();
@@ -101,13 +104,13 @@ export function registerWaitsAdmittedQueueBacklogObservationsBefore(): void {
     vi.mocked(selected.database.claimBatch)
       .mockResolvedValueOnce({ events: [event()], exhaustedCount: 0 })
       .mockResolvedValueOnce({ events: [indexedEvent(2)], exhaustedCount: 0 });
-    const dispatcher = createDispatcher(
-      selected,
-      new WorkerDrainState(),
-      transportMetrics(),
-      5_000,
-      250,
-    );
+    const dispatcher = createDispatcher({
+      boundaries: selected,
+      drainState: new WorkerDrainState(),
+      metrics: transportMetrics(),
+      operationTimeoutMillis: 5_000,
+      pollIntervalMillis: 250,
+    });
     try {
       dispatcher.start();
       await vi.advanceTimersByTimeAsync(0);
@@ -129,13 +132,13 @@ export function registerWaitsAdmittedQueueBacklogObservationsBefore(): void {
       events: [event()],
       exhaustedCount: 0,
     });
-    const dispatcher = createDispatcher(
-      selected,
-      new WorkerDrainState(),
-      transportMetrics(),
-      5_000,
-      250,
-    );
+    const dispatcher = createDispatcher({
+      boundaries: selected,
+      drainState: new WorkerDrainState(),
+      metrics: transportMetrics(),
+      operationTimeoutMillis: 5_000,
+      pollIntervalMillis: 250,
+    });
     try {
       dispatcher.start();
       await vi.advanceTimersByTimeAsync(0);
@@ -159,13 +162,13 @@ export function registerWaitsAdmittedQueueBacklogObservationsBefore(): void {
   it('keeps the configured interval when initially idle', async () => {
     vi.useFakeTimers();
     const selected = boundaries([]);
-    const dispatcher = createDispatcher(
-      selected,
-      new WorkerDrainState(),
-      transportMetrics(),
-      5_000,
-      250,
-    );
+    const dispatcher = createDispatcher({
+      boundaries: selected,
+      drainState: new WorkerDrainState(),
+      metrics: transportMetrics(),
+      operationTimeoutMillis: 5_000,
+      pollIntervalMillis: 250,
+    });
     try {
       dispatcher.start();
       await vi.advanceTimersByTimeAsync(249);
@@ -202,13 +205,13 @@ export function registerWaitsAdmittedQueueBacklogObservationsBefore(): void {
           settlement: Promise.resolve('published'),
         });
       }
-      const dispatcher = createDispatcher(
-        selected,
-        new WorkerDrainState(),
-        transportMetrics(),
-        5_000,
-        250,
-      );
+      const dispatcher = createDispatcher({
+        boundaries: selected,
+        drainState: new WorkerDrainState(),
+        metrics: transportMetrics(),
+        operationTimeoutMillis: 5_000,
+        pollIntervalMillis: 250,
+      });
       try {
         dispatcher.start();
         await vi.advanceTimersByTimeAsync(interval - 1);

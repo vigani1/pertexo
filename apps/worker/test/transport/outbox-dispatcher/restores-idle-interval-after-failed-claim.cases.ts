@@ -21,13 +21,13 @@ export function registerRestoresIdleIntervalAfterFailedClaim(): void {
     vi.mocked(selected.database.claimBatch)
       .mockResolvedValueOnce({ events: [event()], exhaustedCount: 0 })
       .mockRejectedValueOnce(new Error('postgres restarted'));
-    const dispatcher = createDispatcher(
-      selected,
-      new WorkerDrainState(),
-      transportMetrics(),
-      5_000,
-      250,
-    );
+    const dispatcher = createDispatcher({
+      boundaries: selected,
+      drainState: new WorkerDrainState(),
+      metrics: transportMetrics(),
+      operationTimeoutMillis: 5_000,
+      pollIntervalMillis: 250,
+    });
     try {
       dispatcher.start();
       await vi.advanceTimersByTimeAsync(25);
@@ -51,7 +51,7 @@ export function registerRestoresIdleIntervalAfterFailedClaim(): void {
       queueName: 'workflow-coordinator',
       settlement: settlement.promise,
     });
-    const dispatcher = createDispatcher(selected);
+    const dispatcher = createDispatcher({ boundaries: selected });
 
     await expect(dispatcher.dispatchOnce()).resolves.toMatchObject({
       outcomeUnknown: 1,
@@ -78,7 +78,7 @@ export function registerRestoresIdleIntervalAfterFailedClaim(): void {
     });
     vi.mocked(selected.producer.close).mockRejectedValue(producerFailure);
 
-    const failure = await createDispatcher(selected)
+    const failure = await createDispatcher({ boundaries: selected })
       .close()
       .catch((error: unknown) => error);
 
@@ -97,7 +97,10 @@ export function registerRestoresIdleIntervalAfterFailedClaim(): void {
       .mockRejectedValueOnce(new Error('postgres restarted'))
       .mockResolvedValue({ events: [], exhaustedCount: 0 });
     const drainState = new WorkerDrainState();
-    const dispatcher = createDispatcher(selected, drainState);
+    const dispatcher = createDispatcher({
+      boundaries: selected,
+      drainState: drainState,
+    });
 
     dispatcher.start();
     await vi.advanceTimersByTimeAsync(25);
@@ -122,7 +125,10 @@ export function registerRestoresIdleIntervalAfterFailedClaim(): void {
           throw new Error('loop failed');
         }),
     } as unknown as WorkerDrainState;
-    const dispatcher = createDispatcher(selected, drainState);
+    const dispatcher = createDispatcher({
+      boundaries: selected,
+      drainState: drainState,
+    });
     dispatcher.start();
     await new Promise((resolve) => setTimeout(resolve, 0));
 

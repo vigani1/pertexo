@@ -20,11 +20,11 @@ export function registerFailsChecksumMismatchThroughBoundedRelease(): void {
   it('fails a checksum mismatch through the bounded release seam without publishing', async () => {
     const selected = boundaries([event({ payloadChecksum: '0'.repeat(64) })]);
     const metrics = transportMetrics();
-    const dispatcher = createDispatcher(
-      selected,
-      new WorkerDrainState(),
-      metrics,
-    );
+    const dispatcher = createDispatcher({
+      boundaries: selected,
+      drainState: new WorkerDrainState(),
+      metrics: metrics,
+    });
 
     await expect(dispatcher.dispatchOnce()).resolves.toEqual({
       claimed: 1,
@@ -57,8 +57,8 @@ export function registerFailsChecksumMismatchThroughBoundedRelease(): void {
       new Error('redis unavailable'),
     );
 
-    await createDispatcher(invalid).dispatchOnce();
-    await createDispatcher(redisFailure).dispatchOnce();
+    await createDispatcher({ boundaries: invalid }).dispatchOnce();
+    await createDispatcher({ boundaries: redisFailure }).dispatchOnce();
 
     expect(invalid.database.releaseOrFail).toHaveBeenCalledWith(
       expect.objectContaining({ errorCode: 'outbox.invalid_contract' }),
@@ -73,9 +73,9 @@ export function registerFailsChecksumMismatchThroughBoundedRelease(): void {
     async (payload) => {
       const selected = boundaries([event({ payload })]);
 
-      await expect(createDispatcher(selected).dispatchOnce()).resolves.toEqual(
-        expect.objectContaining({ failed: 1, published: 0 }),
-      );
+      await expect(
+        createDispatcher({ boundaries: selected }).dispatchOnce(),
+      ).resolves.toEqual(expect.objectContaining({ failed: 1, published: 0 }));
       expect(selected.producer.publish).not.toHaveBeenCalled();
       expect(selected.database.releaseOrFail).toHaveBeenCalledWith(
         expect.objectContaining({ errorCode: 'outbox.invalid_contract' }),
@@ -86,7 +86,10 @@ export function registerFailsChecksumMismatchThroughBoundedRelease(): void {
   it('stops claiming as soon as drain begins', async () => {
     const selected = boundaries();
     const drainState = new WorkerDrainState();
-    const dispatcher = createDispatcher(selected, drainState);
+    const dispatcher = createDispatcher({
+      boundaries: selected,
+      drainState: drainState,
+    });
     drainState.beginDrain();
 
     await expect(dispatcher.dispatchOnce()).resolves.toEqual({
@@ -101,7 +104,7 @@ export function registerFailsChecksumMismatchThroughBoundedRelease(): void {
 
   it('checks both boundaries and closes them idempotently', async () => {
     const selected = boundaries();
-    const dispatcher = createDispatcher(selected);
+    const dispatcher = createDispatcher({ boundaries: selected });
 
     await expect(dispatcher.checkReadiness()).resolves.toBeUndefined();
     await dispatcher.close();
@@ -118,7 +121,7 @@ export function registerFailsChecksumMismatchThroughBoundedRelease(): void {
     const selected = boundaries([]);
     const databaseClose = Promise.withResolvers<undefined>();
     vi.mocked(selected.database.close).mockReturnValue(databaseClose.promise);
-    const dispatcher = createDispatcher(selected);
+    const dispatcher = createDispatcher({ boundaries: selected });
 
     const first = dispatcher.close();
     const second = dispatcher.close();
@@ -145,7 +148,7 @@ export function registerFailsChecksumMismatchThroughBoundedRelease(): void {
     vi.mocked(selected.database.claimBatch)
       .mockReturnValueOnce(firstClaim.promise)
       .mockReturnValueOnce(secondClaim.promise);
-    const dispatcher = createDispatcher(selected);
+    const dispatcher = createDispatcher({ boundaries: selected });
 
     const firstDispatch = dispatcher.dispatchOnce();
     const secondDispatch = dispatcher.dispatchOnce();
@@ -171,7 +174,7 @@ export function registerFailsChecksumMismatchThroughBoundedRelease(): void {
     const mark = Promise.withResolvers<boolean>();
     vi.mocked(selected.producer.publish).mockReturnValue(publication.promise);
     vi.mocked(selected.database.markPublished).mockReturnValue(mark.promise);
-    const dispatcher = createDispatcher(selected);
+    const dispatcher = createDispatcher({ boundaries: selected });
 
     const dispatch = dispatcher.dispatchOnce();
     await vi.waitFor(() => {
@@ -203,7 +206,7 @@ export function registerFailsChecksumMismatchThroughBoundedRelease(): void {
       new Error('Redis unavailable'),
     );
     vi.mocked(selected.database.releaseOrFail).mockReturnValue(release.promise);
-    const dispatcher = createDispatcher(selected);
+    const dispatcher = createDispatcher({ boundaries: selected });
 
     const dispatch = dispatcher.dispatchOnce();
     await vi.waitFor(() => {
