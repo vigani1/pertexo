@@ -102,14 +102,21 @@ function readOperation(
   };
 }
 
-function commandOperation(
-  operationId: string,
-  description: string,
-  request: SchemaName,
-  response: SchemaName,
-  conflict: SchemaName,
-  parameters: typeof workspaceParameters,
-) {
+function commandOperation({
+  operationId,
+  description,
+  request,
+  response,
+  conflict,
+  parameters,
+}: Readonly<{
+  operationId: string;
+  description: string;
+  request: SchemaName;
+  response: SchemaName;
+  conflict: SchemaName;
+  parameters: typeof workspaceParameters;
+}>) {
   return {
     operationId,
     description,
@@ -151,24 +158,26 @@ export const workflowAutoPauseContractPaths = {
       'WorkflowAutoPauseSettings',
       workflowParameters,
     ),
-    put: commandOperation(
-      'updateWorkflowAutoPauseSettings',
-      'Update override or opt-out at the independent settings revision. Requires workflow:update. Does not resume, publish, enable triggers, or retroactively evaluate outcomes.',
-      'WorkflowAutoPauseSettingsRequest',
-      'WorkflowAutoPauseCommandResponse',
-      'WorkflowAutoPauseSettingsConflictProblem',
-      workflowParameters,
-    ),
+    put: commandOperation({
+      operationId: 'updateWorkflowAutoPauseSettings',
+      description:
+        'Update override or opt-out at the independent settings revision. Requires workflow:update. Does not resume, publish, enable triggers, or retroactively evaluate outcomes.',
+      request: 'WorkflowAutoPauseSettingsRequest',
+      response: 'WorkflowAutoPauseCommandResponse',
+      conflict: 'WorkflowAutoPauseSettingsConflictProblem',
+      parameters: workflowParameters,
+    }),
   },
   '/v1/workspaces/{workspaceId}/workflows/{workflowId}/resume': {
-    post: commandOperation(
-      'resumeWorkflow',
-      'Explicitly clear automatic-trigger pause and reset the failure streak at the expected pause revision. Requires workflow:publish. An already-unpaused workflow is a no-op. Existing trigger disable states and workflow lifecycle are preserved.',
-      'WorkflowResumeRequest',
-      'WorkflowAutoPauseCommandResponse',
-      'WorkflowPauseConflictProblem',
-      workflowParameters,
-    ),
+    post: commandOperation({
+      operationId: 'resumeWorkflow',
+      description:
+        'Explicitly clear automatic-trigger pause and reset the failure streak at the expected pause revision. Requires workflow:publish. An already-unpaused workflow is a no-op. Existing trigger disable states and workflow lifecycle are preserved.',
+      request: 'WorkflowResumeRequest',
+      response: 'WorkflowAutoPauseCommandResponse',
+      conflict: 'WorkflowPauseConflictProblem',
+      parameters: workflowParameters,
+    }),
   },
   '/v1/workspaces/{workspaceId}/auto-pause': {
     get: readOperation(
@@ -177,13 +186,14 @@ export const workflowAutoPauseContractPaths = {
       'WorkspaceAutoPauseSettings',
       workspaceParameters,
     ),
-    put: commandOperation(
-      'updateWorkspaceAutoPauseSettings',
-      'Update the workspace default threshold at the expected workspace revision. Requires workspace:manage (owner only). Does not resume or retroactively evaluate workflows.',
-      'WorkspaceAutoPauseSettingsRequest',
-      'WorkspaceAutoPauseCommandResponse',
-      'WorkspaceAutoPauseSettingsConflictProblem',
-      workspaceParameters,
-    ),
+    put: commandOperation({
+      operationId: 'updateWorkspaceAutoPauseSettings',
+      description:
+        'Update the workspace default threshold at the expected workspace revision. Requires workspace:manage (owner only). Does not resume or retroactively evaluate workflows.',
+      request: 'WorkspaceAutoPauseSettingsRequest',
+      response: 'WorkspaceAutoPauseCommandResponse',
+      conflict: 'WorkspaceAutoPauseSettingsConflictProblem',
+      parameters: workspaceParameters,
+    }),
   },
 };

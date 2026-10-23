@@ -62,7 +62,7 @@ export function manifestProblemResponse(status: number, code: ApiProblemCode) {
 export function queryParameter(
   name: string,
   schema: z.ZodType,
-  required = false,
+  { required = false }: Readonly<{ required?: boolean }> = {},
 ) {
   return {
     name,
@@ -117,7 +117,9 @@ export function automationCsrfHeaderParameter() {
   } as const;
 }
 
-export function idempotencyHeaderParameter(required = true) {
+export function idempotencyHeaderParameter({
+  required = true,
+}: Readonly<{ required?: boolean }> = {}) {
   return {
     name: 'Idempotency-Key',
     in: 'header',
@@ -139,7 +141,11 @@ export function webhookContentTypeHeaderParameter() {
 export function authenticatedComponents<
   Schemas extends Readonly<Record<string, unknown>>,
   Responses extends Readonly<Record<string, unknown>>,
->(schemas: Schemas, responses: Responses, automation = false) {
+>(
+  schemas: Schemas,
+  responses: Responses,
+  { automation = false }: Readonly<{ automation?: boolean }> = {},
+) {
   return {
     schemas,
     responses,

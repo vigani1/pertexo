@@ -35,45 +35,48 @@ function hasBoundedJsonShape(value: unknown): boolean {
 
       ancestors.add(current);
       stack.push({ kind: 'leave', value: current });
-      if (Array.isArray(current)) {
-        if (Object.getOwnPropertySymbols(current).length > 0) return false;
-        const length = current.length;
-        if (Object.getOwnPropertyNames(current).length !== length + 1)
-          return false;
-        for (let index = length - 1; index >= 0; index -= 1) {
-          const descriptor = Object.getOwnPropertyDescriptor(
-            current,
-            String(index),
-          );
-          if (descriptor === undefined || !('value' in descriptor))
-            return false;
-          stack.push({
-            kind: 'value',
-            value: descriptor.value,
-            depth: frame.depth + 1,
-          });
-        }
-        continue;
-      }
-
-      const prototype = Object.getPrototypeOf(current) as object | null;
-      if (prototype !== Object.prototype && prototype !== null) return false;
-      if (Object.getOwnPropertySymbols(current).length > 0) return false;
-      const keys = Object.keys(current).sort();
-      for (let index = keys.length - 1; index >= 0; index -= 1) {
-        const key = keys[index];
-        if (key === undefined) return false;
-        const descriptor = Object.getOwnPropertyDescriptor(current, key);
-        if (descriptor === undefined || !('value' in descriptor)) return false;
-        stack.push({
-          kind: 'value',
-          value: descriptor.value,
-          depth: frame.depth + 1,
-        });
-      }
+      const childrenAdded = Array.isArray(current)
+        ? enqueueArrayChildren(current, frame.depth, stack)
+        : enqueueObjectChildren(current, frame.depth, stack);
+      if (!childrenAdded) return false;
     }
   } catch {
     return false;
+  }
+  return true;
+}
+
+function enqueueArrayChildren(
+  current: unknown[],
+  depth: number,
+  stack: InspectionFrame[],
+): boolean {
+  if (Object.getOwnPropertySymbols(current).length > 0) return false;
+  const length = current.length;
+  if (Object.getOwnPropertyNames(current).length !== length + 1) return false;
+  for (let index = length - 1; index >= 0; index -= 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(current, String(index));
+    if (descriptor === undefined || !('value' in descriptor)) return false;
+    stack.push({ kind: 'value', value: descriptor.value, depth: depth + 1 });
+  }
+  return true;
+}
+
+function enqueueObjectChildren(
+  current: object,
+  depth: number,
+  stack: InspectionFrame[],
+): boolean {
+  const prototype = Object.getPrototypeOf(current) as object | null;
+  if (prototype !== Object.prototype && prototype !== null) return false;
+  if (Object.getOwnPropertySymbols(current).length > 0) return false;
+  const keys = Object.keys(current).sort();
+  for (let index = keys.length - 1; index >= 0; index -= 1) {
+    const key = keys[index];
+    if (key === undefined) return false;
+    const descriptor = Object.getOwnPropertyDescriptor(current, key);
+    if (descriptor === undefined || !('value' in descriptor)) return false;
+    stack.push({ kind: 'value', value: descriptor.value, depth: depth + 1 });
   }
   return true;
 }

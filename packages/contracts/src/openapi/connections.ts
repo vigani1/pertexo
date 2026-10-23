@@ -338,7 +338,7 @@ export const connectionsOpenApiDocument = Object.freeze({
           requiredQueryParameter(
             'channelIds',
             slackChannelLookupChannelIdsSchema,
-            true,
+            { required: true },
           ),
         ],
         responses: {

@@ -62,14 +62,14 @@ const issuer = z
       .max(2048)
       .refine((value) => {
         const url = new URL(value);
-        return (
+        const exactIssuer =
           url.protocol === 'https:' &&
           url.username === '' &&
           url.password === '' &&
           url.search === '' &&
           url.hash === '' &&
-          !/[\s?#]/u.test(value)
-        );
+          !/[\s?#]/u.test(value);
+        return exactIssuer;
       }, 'Use the exact HTTPS issuer without credentials, query or fragment.'),
   );
 const claimName = z.string().trim().min(1).max(256);
@@ -137,13 +137,13 @@ export const samlConfigurationSchema = z
       .pipe(
         z.string().refine((value) => {
           const url = new URL(value);
-          return (
+          const safeSignInUrl =
             url.username === '' &&
             url.password === '' &&
             url.hash === '' &&
             !url.searchParams.has('SAMLRequest') &&
-            !url.searchParams.has('RelayState')
-          );
+            !url.searchParams.has('RelayState');
+          return safeSignInUrl;
         }, 'Use an HTTPS sign-in URL without credentials, fragment or reserved SAML parameters.'),
       ),
     certificates: z

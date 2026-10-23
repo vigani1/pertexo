@@ -34,13 +34,19 @@ export function dataTableContractSchemas(target: 'client' | 'openapi') {
     ]),
   );
 }
-function operation(
-  operationId: string,
-  response: string,
-  request?: string,
+function operation({
+  operationId,
+  response,
+  request,
   table = false,
   write = false,
-) {
+}: Readonly<{
+  operationId: string;
+  response: string;
+  request?: string;
+  table?: boolean;
+  write?: boolean;
+}>) {
   return {
     operationId,
     security: [{ cookieSession: [] }],
@@ -65,50 +71,53 @@ function operation(
 }
 export const dataTableContractPaths = {
   '/v1/workspaces/{workspaceId}/data-tables': {
-    get: operation('listDataTables', 'DataTablesResponse'),
-    post: operation(
-      'createDataTable',
-      'DataTableCreated',
-      'DataTableCreate',
-      false,
-      true,
-    ),
+    get: operation({
+      operationId: 'listDataTables',
+      response: 'DataTablesResponse',
+    }),
+    post: operation({
+      operationId: 'createDataTable',
+      response: 'DataTableCreated',
+      request: 'DataTableCreate',
+      table: false,
+      write: true,
+    }),
   },
   '/v1/workspaces/{workspaceId}/data-tables/limits': {
-    put: operation(
-      'configureDataTableLimits',
-      'DataTableQuotas',
-      'DataTableLimits',
-      false,
-      true,
-    ),
+    put: operation({
+      operationId: 'configureDataTableLimits',
+      response: 'DataTableQuotas',
+      request: 'DataTableLimits',
+      table: false,
+      write: true,
+    }),
   },
   '/v1/workspaces/{workspaceId}/data-tables/{tableId}': {
-    delete: operation(
-      'removeDataTable',
-      'DataTableRemoved',
-      'DataTableRemove',
-      true,
-      true,
-    ),
+    delete: operation({
+      operationId: 'removeDataTable',
+      response: 'DataTableRemoved',
+      request: 'DataTableRemove',
+      table: true,
+      write: true,
+    }),
   },
   '/v1/workspaces/{workspaceId}/data-tables/{tableId}/schema': {
-    put: operation(
-      'editDataTableSchema',
-      'DataTableSchemaEdited',
-      'DataTableSchemaEdit',
-      true,
-      true,
-    ),
+    put: operation({
+      operationId: 'editDataTableSchema',
+      response: 'DataTableSchemaEdited',
+      request: 'DataTableSchemaEdit',
+      table: true,
+      write: true,
+    }),
   },
   '/v1/workspaces/{workspaceId}/data-tables/{tableId}/export': {
     post: {
-      ...operation(
-        'exportDataTableCsv',
-        'DataTablesResponse',
-        'DataTableExportQuery',
-        true,
-      ),
+      ...operation({
+        operationId: 'exportDataTableCsv',
+        response: 'DataTablesResponse',
+        request: 'DataTableExportQuery',
+        table: true,
+      }),
       parameters: [
         uuidPathParameter('workspaceId'),
         uuidPathParameter('tableId'),
@@ -144,7 +153,10 @@ export const dataTableContractPaths = {
         },
       },
       responses: {
-        ...operation('exportDataTableCsv', 'DataTablesResponse').responses,
+        ...operation({
+          operationId: 'exportDataTableCsv',
+          response: 'DataTablesResponse',
+        }).responses,
         '200': {
           description:
             'Complete CSV; formula-protected, without a complete-file size cap',
@@ -156,29 +168,29 @@ export const dataTableContractPaths = {
     },
   },
   '/v1/workspaces/{workspaceId}/data-tables/{tableId}/rows/query': {
-    post: operation(
-      'findDataTableRows',
-      'DataTableResult',
-      'DataTableQuery',
-      true,
-    ),
+    post: operation({
+      operationId: 'findDataTableRows',
+      response: 'DataTableResult',
+      request: 'DataTableQuery',
+      table: true,
+    }),
   },
   '/v1/workspaces/{workspaceId}/data-tables/{tableId}/rows': {
-    post: operation(
-      'writeDataTableRows',
-      'DataTableWriteReceipt',
-      'DataTableWrite',
-      true,
-      true,
-    ),
+    post: operation({
+      operationId: 'writeDataTableRows',
+      response: 'DataTableWriteReceipt',
+      request: 'DataTableWrite',
+      table: true,
+      write: true,
+    }),
   },
   '/v1/workspaces/{workspaceId}/data-tables/{tableId}/import': {
-    post: operation(
-      'importDataTableCsv',
-      'DataTableImported',
-      'DataTableImport',
-      true,
-      true,
-    ),
+    post: operation({
+      operationId: 'importDataTableCsv',
+      response: 'DataTableImported',
+      request: 'DataTableImport',
+      table: true,
+      write: true,
+    }),
   },
 };

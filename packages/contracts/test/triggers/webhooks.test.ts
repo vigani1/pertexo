@@ -189,15 +189,7 @@ describe('webhook public contracts', () => {
         Record<string, Readonly<Record<string, OpenApiOperation>>>
       >;
       const operation = paths[path]?.[route.method.toLowerCase()];
-      expect(operation?.responses).toHaveProperty(
-        route.path.endsWith('/resume') && ['GET', 'HEAD'].includes(route.method)
-          ? '405'
-          : route.method === 'OPTIONS' || route.method === 'DELETE'
-            ? '204'
-            : route.path.startsWith('/hooks/')
-              ? '202'
-              : '200',
-      );
+      expect(operation?.responses).toHaveProperty(expectedStatus(route));
       for (const header of 'requiredHeaders' in route
         ? route.requiredHeaders
         : [])
@@ -278,3 +270,13 @@ it('bounds temporary webhook contracts and never rediscloses a credential in sna
     }).success,
   ).toBe(false);
 });
+
+function expectedStatus(
+  route: Readonly<{ path: string; method: string }>,
+): string {
+  if (route.path.endsWith('/resume') && ['GET', 'HEAD'].includes(route.method))
+    return '405';
+  if (route.method === 'OPTIONS' || route.method === 'DELETE') return '204';
+  if (route.path.startsWith('/hooks/')) return '202';
+  return '200';
+}

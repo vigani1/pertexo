@@ -221,14 +221,21 @@ const folderParameters = [
   ...workspaceParameters,
   uuidPathParameter('folderId', 'Folder identifier'),
 ];
-function folderCommand(
-  operationId: string,
-  description: string,
-  parameters: typeof workspaceParameters,
-  request: keyof typeof definitions,
-  response: keyof typeof definitions,
+function folderCommand({
+  operationId,
+  description,
+  parameters,
+  request,
+  response,
   created = false,
-) {
+}: Readonly<{
+  operationId: string;
+  description: string;
+  parameters: typeof workspaceParameters;
+  request: keyof typeof definitions;
+  response: keyof typeof definitions;
+  created?: boolean;
+}>) {
   return {
     operationId,
     description,
@@ -393,32 +400,35 @@ export const workflowOrganizationContractPaths = {
         ...readProblems,
       },
     },
-    post: folderCommand(
-      'createWorkflowFolder',
-      'Current owner/admin in an active workspace, without broadening workspace:manage. U+0020-trimmed display name; ASCII-only sibling identity is internal. Maximum depth 4 and 256 live folders.',
-      workspaceParameters,
-      'WorkflowFolderCreateRequest',
-      'WorkflowFolderCreateResponse',
-      true,
-    ),
+    post: folderCommand({
+      operationId: 'createWorkflowFolder',
+      description:
+        'Current owner/admin in an active workspace, without broadening workspace:manage. U+0020-trimmed display name; ASCII-only sibling identity is internal. Maximum depth 4 and 256 live folders.',
+      parameters: workspaceParameters,
+      request: 'WorkflowFolderCreateRequest',
+      response: 'WorkflowFolderCreateResponse',
+      created: true,
+    }),
   },
   '/v1/workspaces/{workspaceId}/workflow-folders/{folderId}/rename': {
-    post: folderCommand(
-      'renameWorkflowFolder',
-      'Current owner/admin; expectedFolderRevision checked. New no-op commands advance once; exact authorized replay does not. Descendants, workflow organization revisions and timestamps remain unchanged.',
-      folderParameters,
-      'WorkflowFolderRenameRequest',
-      'WorkflowFolderRenameResponse',
-    ),
+    post: folderCommand({
+      operationId: 'renameWorkflowFolder',
+      description:
+        'Current owner/admin; expectedFolderRevision checked. New no-op commands advance once; exact authorized replay does not. Descendants, workflow organization revisions and timestamps remain unchanged.',
+      parameters: folderParameters,
+      request: 'WorkflowFolderRenameRequest',
+      response: 'WorkflowFolderRenameResponse',
+    }),
   },
   '/v1/workspaces/{workspaceId}/workflow-folders/{folderId}/move': {
-    post: folderCommand(
-      'moveWorkflowFolder',
-      'Current owner/admin; expectedFolderRevision checked. Current destination existence, cycles and entire subtree depth are checked, without a historical destination revision. No-op advances once; replay does not.',
-      folderParameters,
-      'WorkflowFolderMoveRequest',
-      'WorkflowFolderMoveResponse',
-    ),
+    post: folderCommand({
+      operationId: 'moveWorkflowFolder',
+      description:
+        'Current owner/admin; expectedFolderRevision checked. Current destination existence, cycles and entire subtree depth are checked, without a historical destination revision. No-op advances once; replay does not.',
+      parameters: folderParameters,
+      request: 'WorkflowFolderMoveRequest',
+      response: 'WorkflowFolderMoveResponse',
+    }),
   },
   '/v1/workspaces/{workspaceId}/resource-sharing-principals': {
     get: {
@@ -452,13 +462,14 @@ export const workflowOrganizationContractPaths = {
         ...readProblems,
       },
     },
-    post: folderCommand(
-      'replaceWorkflowFolderSharing',
-      'Current owner/admin replaces at most 100 current member or linked directory group grants with expected folder revision and one audit fact.',
-      folderParameters,
-      'FolderSharingRequest',
-      'FolderSharingCommandResponse',
-    ),
+    post: folderCommand({
+      operationId: 'replaceWorkflowFolderSharing',
+      description:
+        'Current owner/admin replaces at most 100 current member or linked directory group grants with expected folder revision and one audit fact.',
+      parameters: folderParameters,
+      request: 'FolderSharingRequest',
+      response: 'FolderSharingCommandResponse',
+    }),
   },
   '/v1/workspaces/{workspaceId}/workflow-folders/review-move': {
     post: {
@@ -478,31 +489,34 @@ export const workflowOrganizationContractPaths = {
     },
   },
   '/v1/workspaces/{workspaceId}/workflow-folders/{folderId}/delete': {
-    post: folderCommand(
-      'deleteWorkflowFolder',
-      'Current owner/admin; expectedFolderRevision checked. Any immediate child or assigned workflow, including archived workflows, conflicts with zero changes. No recursive delete or implicit unfiling. Missing/foreign folders are generic 404.',
-      folderParameters,
-      'WorkflowFolderDeleteRequest',
-      'WorkflowFolderDeleteResponse',
-    ),
+    post: folderCommand({
+      operationId: 'deleteWorkflowFolder',
+      description:
+        'Current owner/admin; expectedFolderRevision checked. Any immediate child or assigned workflow, including archived workflows, conflicts with zero changes. No recursive delete or implicit unfiling. Missing/foreign folders are generic 404.',
+      parameters: folderParameters,
+      request: 'WorkflowFolderDeleteRequest',
+      response: 'WorkflowFolderDeleteResponse',
+    }),
   },
   '/v1/workspaces/{workspaceId}/workflows/{workflowId}/folder': {
-    post: folderCommand(
-      'placeWorkflowInFolder',
-      'Current workflow:update for active workflows; archived placement/unfiling requires owner/admin. Independent expectedOrganizationRevision; new no-op advances once, exact authorized replay does not. Current lifecycle and role are rechecked. Graph and workflow timestamps are unchanged.',
-      workflowParameters,
-      'WorkflowFolderPlacementRequest',
-      'WorkflowFolderPlacementResponse',
-    ),
+    post: folderCommand({
+      operationId: 'placeWorkflowInFolder',
+      description:
+        'Current workflow:update for active workflows; archived placement/unfiling requires owner/admin. Independent expectedOrganizationRevision; new no-op advances once, exact authorized replay does not. Current lifecycle and role are rechecked. Graph and workflow timestamps are unchanged.',
+      parameters: workflowParameters,
+      request: 'WorkflowFolderPlacementRequest',
+      response: 'WorkflowFolderPlacementResponse',
+    }),
   },
   '/v1/workspaces/{workspaceId}/workflows/organization/bulk': {
-    post: folderCommand(
-      'updateWorkflowOrganizationBulk',
-      'One move or replace_tags operation over 1–50 explicit ordered unique workflows, never select-all. Active workflows require workflow:update; archived move requires owner/admin, archived tag replacement is forbidden. Full-parent identity is admitted before independent sequential item transactions; admission is not atomic completion. Retain the entire frozen body/key on unknown outcomes; exact recovery is bounded to 24 hours. Recheck current authority per item/replay; forbidden stops processing and remaining items are not_processed. Historical replay is not current projection; no internal hash, proof or actor selectors.',
-      workspaceParameters,
-      'WorkflowOrganizationBulkRequest',
-      'WorkflowOrganizationBulkResponse',
-    ),
+    post: folderCommand({
+      operationId: 'updateWorkflowOrganizationBulk',
+      description:
+        'One move or replace_tags operation over 1–50 explicit ordered unique workflows, never select-all. Active workflows require workflow:update; archived move requires owner/admin, archived tag replacement is forbidden. Full-parent identity is admitted before independent sequential item transactions; admission is not atomic completion. Retain the entire frozen body/key on unknown outcomes; exact recovery is bounded to 24 hours. Recheck current authority per item/replay; forbidden stops processing and remaining items are not_processed. Historical replay is not current projection; no internal hash, proof or actor selectors.',
+      parameters: workspaceParameters,
+      request: 'WorkflowOrganizationBulkRequest',
+      response: 'WorkflowOrganizationBulkResponse',
+    }),
   },
 };
 

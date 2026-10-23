@@ -23,25 +23,7 @@ function boundedCaseJson(value: unknown): boolean {
       return Object.is(current, -0) ? 0 : current;
     if (typeof current !== 'object' || ancestors.has(current))
       throw new TypeError();
-    if (
-      depth === WORKFLOW_INPUT_CASE_MAX_DEPTH ||
-      Object.getOwnPropertySymbols(current).length > 0
-    )
-      throw new TypeError();
-    const array = Array.isArray(current);
-    if (array && current.length > WORKFLOW_INPUT_CASE_MAX_MEMBERS)
-      throw new TypeError();
-    if (
-      !array &&
-      Object.getPrototypeOf(current) !== Object.prototype &&
-      Object.getPrototypeOf(current) !== null
-    )
-      throw new TypeError();
-    const keys = array
-      ? Array.from({ length: current.length }, (_, index) => String(index))
-      : Object.keys(current).sort();
-    if (array && Object.getOwnPropertyNames(current).length !== keys.length + 1)
-      throw new TypeError();
+    const { array, keys } = caseContainer(current, depth);
     members += keys.length;
     if (members > WORKFLOW_INPUT_CASE_MAX_MEMBERS) throw new TypeError();
     ancestors.add(current);
@@ -75,6 +57,28 @@ function boundedCaseJson(value: unknown): boolean {
   } catch {
     return false;
   }
+}
+
+function caseContainer(current: object, depth: number) {
+  if (
+    depth === WORKFLOW_INPUT_CASE_MAX_DEPTH ||
+    Object.getOwnPropertySymbols(current).length > 0
+  )
+    throw new TypeError();
+  const array = Array.isArray(current);
+  if (array && current.length > WORKFLOW_INPUT_CASE_MAX_MEMBERS)
+    throw new TypeError();
+  const unsupportedPrototype =
+    !array &&
+    Object.getPrototypeOf(current) !== Object.prototype &&
+    Object.getPrototypeOf(current) !== null;
+  if (unsupportedPrototype) throw new TypeError();
+  const keys = array
+    ? Array.from({ length: current.length }, (_, index) => String(index))
+    : Object.keys(current).sort();
+  if (array && Object.getOwnPropertyNames(current).length !== keys.length + 1)
+    throw new TypeError();
+  return { array, keys };
 }
 
 export const workflowInputCaseJsonSchema = z

@@ -527,7 +527,9 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
     ...workflowInputCaseContractPaths,
     ...workflowOrganizationContractPaths,
   },
-  components: authenticatedComponents(openApiSchemas, problemResponses, true),
+  components: authenticatedComponents(openApiSchemas, problemResponses, {
+    automation: true,
+  }),
 });
 
 type SchemaName = keyof typeof openApiSchemas;
