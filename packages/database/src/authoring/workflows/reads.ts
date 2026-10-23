@@ -25,13 +25,8 @@ import type {
   ListWorkflowsInput,
   ListWorkflowVersionsInput,
   WorkflowAuthoringDatabase,
-  WorkflowPage,
-  WorkflowVersionPage,
 } from './contracts.js';
-import type {
-  WorkflowDraftRecord,
-  WorkflowVersionRecord,
-} from './representation/records.js';
+
 import {
   sameWorkflowNotes,
   parseWorkflowGraphDraft,
@@ -74,15 +69,6 @@ const uuidSchema = z.uuid();
 export function createWorkflowAuthoringReadStore(
   context: WorkflowAuthoringReadContext,
 ): ReadStore {
-  async function canReadWorkflow(
-    client: PoolClient,
-    workspaceId: string,
-    actorId: string,
-    workflowId: string,
-  ) {
-    const access = await context.requireReader(client, workspaceId, actorId);
-    return workflowAccessible(client, access, workspaceId, workflowId);
-  }
   return Object.freeze({
     getWorkflowWithTemplateOrigin: createWorkflowTemplateOriginReader(context),
     validateDraft: (
@@ -91,281 +77,357 @@ export function createWorkflowAuthoringReadStore(
       actorId: string,
       options: Readonly<{ signal?: AbortSignal }> = {},
     ) =>
-      context.transact(
+      validateAuthoringDraft(
+        context,
         workspaceId,
+        workflowId,
         actorId,
-        async (client) => {
-          if (
-            !(await canReadWorkflow(client, workspaceId, actorId, workflowId))
-          )
-            return null;
-          const variant = context.catalogs;
-          const result = await client.query<Record<string, unknown>>(
-            'select * from app.workflow_drafts where workspace_id = $1 and workflow_id = $2',
-            [workspaceId, uuidSchema.parse(workflowId)],
-          );
-          const row = result.rows[0];
-          if (row === undefined) return null;
-          const draft = mapDraft(row, variant.definitionCatalog);
-          let validation = await admitWorkflowAuthoring(
-            client,
-            variant.validateAuthoringGraph,
-            parseWorkflowGraphDraft(draft.graphJson),
-            options.signal === undefined ? {} : { signal: options.signal },
-          );
-          if (validation.ok) {
-            const issues = await dataTableReferenceIssues(
-              client,
-              workspaceId,
-              draft.graphJson,
-            );
-            if (issues.length > 0)
-              validation = { ...validation, ok: false, issues };
-          }
-          const publication = await client.query<{
-            versionId: string;
-            versionNumber: number;
-            checksum: string;
-            graphJson: unknown;
-          }>(
-            `select version.id as "versionId", version.version_number as "versionNumber", version.checksum, version.graph_json as "graphJson"
+        options,
+      ),
+    getWorkflow: (workspaceId: string, workflowId: string, actorId: string) =>
+      readAuthoringWorkflow(context, workspaceId, workflowId, actorId),
+    listWorkflows: (input: ListWorkflowsInput) =>
+      listAuthoringWorkflows(context, input),
+    getDraft: (workspaceId: string, workflowId: string, actorId: string) =>
+      readAuthoringDraft(context, workspaceId, workflowId, actorId),
+    getVersion: (
+      workspaceId: string,
+      workflowId: string,
+      versionId: string,
+      actorId: string,
+    ) =>
+      readAuthoringVersion(
+        context,
+        workspaceId,
+        workflowId,
+        versionId,
+        actorId,
+      ),
+    listVersions: (input: ListWorkflowVersionsInput) =>
+      listAuthoringVersions(context, input),
+  });
+}
+
+async function canReadWorkflow(
+  context: WorkflowAuthoringReadContext,
+  client: PoolClient,
+  workspaceId: string,
+  actorId: string,
+  workflowId: string,
+) {
+  const access = await context.requireReader(client, workspaceId, actorId);
+  return workflowAccessible(client, access, workspaceId, workflowId);
+}
+function validateAuthoringDraft(
+  context: WorkflowAuthoringReadContext,
+  workspaceId: Parameters<ReadStore['validateDraft']>[0],
+  workflowId: Parameters<ReadStore['validateDraft']>[1],
+  actorId: Parameters<ReadStore['validateDraft']>[2],
+  options: Parameters<ReadStore['validateDraft']>[3] = {},
+): ReturnType<ReadStore['validateDraft']> {
+  return context.transact(
+    workspaceId,
+    actorId,
+    async (client) => {
+      if (
+        !(await canReadWorkflow(
+          context,
+          client,
+          workspaceId,
+          actorId,
+          workflowId,
+        ))
+      )
+        return null;
+      const variant = context.catalogs;
+      const result = await client.query<Record<string, unknown>>(
+        'select * from app.workflow_drafts where workspace_id = $1 and workflow_id = $2',
+        [workspaceId, uuidSchema.parse(workflowId)],
+      );
+      const row = result.rows[0];
+      if (row === undefined) return null;
+      const draft = mapDraft(row, variant.definitionCatalog);
+      let validation = await admitWorkflowAuthoring(
+        client,
+        variant.validateAuthoringGraph,
+        parseWorkflowGraphDraft(draft.graphJson),
+        options.signal === undefined ? {} : { signal: options.signal },
+      );
+      if (validation.ok) {
+        const issues = await dataTableReferenceIssues(
+          client,
+          workspaceId,
+          draft.graphJson,
+        );
+        if (issues.length > 0)
+          validation = { ...validation, ok: false, issues };
+      }
+      const publication = await client.query<{
+        versionId: string;
+        versionNumber: number;
+        checksum: string;
+        graphJson: unknown;
+      }>(
+        `select version.id as "versionId", version.version_number as "versionNumber", version.checksum, version.graph_json as "graphJson"
              from app.workflows workflow join app.workflow_versions version
                on version.workspace_id = workflow.workspace_id and version.workflow_id = workflow.id
                  and version.id = workflow.published_version_id
              where workflow.workspace_id = $1 and workflow.id = $2`,
-            [workspaceId, workflowId],
-          );
-          const live = publication.rows[0];
-          const currentPublication =
-            live === undefined
-              ? null
-              : Object.freeze({
-                  versionId: live.versionId,
-                  versionNumber: live.versionNumber,
-                  matchesDraft:
-                    validation.ok &&
-                    draft.compatibility.compatible &&
-                    variant.executableCompiler(
-                      parseWorkflowGraphForPublish(
-                        draft.graphJson,
-                        variant.definitionCatalog,
-                      ),
-                    ).checksum === live.checksum &&
-                    sameWorkflowNotes(
-                      draft.graphJson,
-                      parseWorkflowGraphDraft(live.graphJson),
-                    ),
-                });
-          return Object.freeze({ draft, validation, currentPublication });
-        },
-        options.signal,
-      ),
-    getWorkflow: (workspaceId: string, workflowId: string, actorId: string) =>
-      context.transact(workspaceId, actorId, async (client) => {
-        const access = await context.requireReader(
-          client,
-          workspaceId,
-          actorId,
-        );
-        if (
-          !(await workflowAccessible(client, access, workspaceId, workflowId))
-        )
-          return null;
-        const parameters: unknown[] = [
-          workspaceId,
-          uuidSchema.parse(workflowId),
-        ];
-        const result = await client.query<
-          Record<string, unknown> & { resource_folder_id: string | null }
-        >(
-          `select *, ${workflowSetupSelection}, (select state.folder_id from app.workflow_organization_state state where state.workspace_id=app.workflows.workspace_id and state.workflow_id=app.workflows.id) resource_folder_id from app.workflows where workspace_id=$1 and id=$2`,
-          parameters,
-        );
-        const row = result.rows[0];
-        if (row === undefined) return null;
-        const { resource_folder_id, ...workflow } = row;
-        return {
-          ...mapWorkflow(workflow),
-          resourceAccess: workflowActions(access, resource_folder_id),
-        };
-      }),
-    listWorkflows: (input: ListWorkflowsInput): Promise<WorkflowPage> =>
-      context.transact(input.workspaceId, input.actorId, async (client) => {
-        const access = await context.requireReader(
-          client,
-          input.workspaceId,
-          input.actorId,
-        );
-        const limit = z
-          .number()
-          .int()
-          .positive()
-          .max(100)
-          .parse(input.limit ?? 50);
-        const order = input.order ?? 'created_asc';
-        const afterPositionAt =
-          input.after === undefined
-            ? null
-            : z.iso.datetime({ offset: true }).parse(input.after.positionAt);
-        const afterId =
-          input.after === undefined ? null : uuidSchema.parse(input.after.id);
-        const parameters: unknown[] = [
-          input.workspaceId,
-          afterPositionAt,
-          afterId,
-          limit + 1,
-          input.pinsWorkflowId === undefined
-            ? null
-            : uuidSchema.parse(input.pinsWorkflowId),
-        ];
-        const visible = bindResourcePredicate(
-          workflowScopeSql(access, sql`app.workflows.id`),
-          parameters,
-        );
-        const result = await client.query<
-          Record<string, unknown> & { resource_folder_id: string | null }
-        >(
-          order === 'updated_desc'
-            ? `select *, ${workflowSetupSelection}, (select state.folder_id from app.workflow_organization_state state where state.workspace_id=app.workflows.workspace_id and state.workflow_id=app.workflows.id) resource_folder_id, to_char(updated_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as cursor_position_at
+        [workspaceId, workflowId],
+      );
+      const live = publication.rows[0];
+      const currentPublication =
+        live === undefined
+          ? null
+          : Object.freeze({
+              versionId: live.versionId,
+              versionNumber: live.versionNumber,
+              matchesDraft:
+                validation.ok &&
+                draft.compatibility.compatible &&
+                variant.executableCompiler(
+                  parseWorkflowGraphForPublish(
+                    draft.graphJson,
+                    variant.definitionCatalog,
+                  ),
+                ).checksum === live.checksum &&
+                sameWorkflowNotes(
+                  draft.graphJson,
+                  parseWorkflowGraphDraft(live.graphJson),
+                ),
+            });
+      return Object.freeze({ draft, validation, currentPublication });
+    },
+    options.signal,
+  );
+}
+
+function readAuthoringWorkflow(
+  context: WorkflowAuthoringReadContext,
+  workspaceId: Parameters<ReadStore['getWorkflow']>[0],
+  workflowId: Parameters<ReadStore['getWorkflow']>[1],
+  actorId: Parameters<ReadStore['getWorkflow']>[2],
+): ReturnType<ReadStore['getWorkflow']> {
+  return context.transact(workspaceId, actorId, async (client) => {
+    const access = await context.requireReader(client, workspaceId, actorId);
+    if (!(await workflowAccessible(client, access, workspaceId, workflowId)))
+      return null;
+    const parameters: unknown[] = [workspaceId, uuidSchema.parse(workflowId)];
+    const result = await client.query<
+      Record<string, unknown> & { resource_folder_id: string | null }
+    >(
+      `select *, ${workflowSetupSelection}, (select state.folder_id from app.workflow_organization_state state where state.workspace_id=app.workflows.workspace_id and state.workflow_id=app.workflows.id) resource_folder_id from app.workflows where workspace_id=$1 and id=$2`,
+      parameters,
+    );
+    const row = result.rows[0];
+    if (row === undefined) return null;
+    const { resource_folder_id, ...workflow } = row;
+    return {
+      ...mapWorkflow(workflow),
+      resourceAccess: workflowActions(access, resource_folder_id),
+    };
+  });
+}
+
+function listAuthoringWorkflows(
+  context: WorkflowAuthoringReadContext,
+  input: Parameters<ReadStore['listWorkflows']>[0],
+): ReturnType<ReadStore['listWorkflows']> {
+  return context.transact(input.workspaceId, input.actorId, async (client) => {
+    const access = await context.requireReader(
+      client,
+      input.workspaceId,
+      input.actorId,
+    );
+    const limit = z
+      .number()
+      .int()
+      .positive()
+      .max(100)
+      .parse(input.limit ?? 50);
+    const order = input.order ?? 'created_asc';
+    const afterPositionAt =
+      input.after === undefined
+        ? null
+        : z.iso.datetime({ offset: true }).parse(input.after.positionAt);
+    const afterId =
+      input.after === undefined ? null : uuidSchema.parse(input.after.id);
+    const parameters: unknown[] = [
+      input.workspaceId,
+      afterPositionAt,
+      afterId,
+      limit + 1,
+      input.pinsWorkflowId === undefined
+        ? null
+        : uuidSchema.parse(input.pinsWorkflowId),
+    ];
+    const visible = bindResourcePredicate(
+      workflowScopeSql(access, sql`app.workflows.id`),
+      parameters,
+    );
+    const result = await client.query<
+      Record<string, unknown> & { resource_folder_id: string | null }
+    >(
+      order === 'updated_desc'
+        ? `select *, ${workflowSetupSelection}, (select state.folder_id from app.workflow_organization_state state where state.workspace_id=app.workflows.workspace_id and state.workflow_id=app.workflows.id) resource_folder_id, to_char(updated_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as cursor_position_at
                from app.workflows where workspace_id = $1 and ${visible}
                  and ($5::uuid is null or exists(select 1 from app.workflow_version_dependencies dependency
                    where dependency.workspace_id=$1 and dependency.parent_version_id=app.workflows.published_version_id
                      and dependency.target_workflow_id=$5))
                  and ($2::timestamptz is null or (updated_at, id) < ($2::timestamptz, $3::uuid))
                order by updated_at desc, id desc limit $4`
-            : `select *, ${workflowSetupSelection}, (select state.folder_id from app.workflow_organization_state state where state.workspace_id=app.workflows.workspace_id and state.workflow_id=app.workflows.id) resource_folder_id, to_char(created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as cursor_position_at
+        : `select *, ${workflowSetupSelection}, (select state.folder_id from app.workflow_organization_state state where state.workspace_id=app.workflows.workspace_id and state.workflow_id=app.workflows.id) resource_folder_id, to_char(created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as cursor_position_at
                from app.workflows where workspace_id = $1 and ${visible}
                  and ($5::uuid is null or exists(select 1 from app.workflow_version_dependencies dependency
                    where dependency.workspace_id=$1 and dependency.parent_version_id=app.workflows.published_version_id
                      and dependency.target_workflow_id=$5))
                  and ($2::timestamptz is null or (created_at, id) > ($2::timestamptz, $3::uuid))
                order by created_at, id limit $4`,
-          parameters,
-        );
-        const hasMore = result.rows.length > limit;
-        const pageRows = result.rows.slice(0, limit);
-        const items = Object.freeze(
-          pageRows.map((row) => {
-            const workflowRow: Record<string, unknown> = { ...row };
-            delete workflowRow.cursor_position_at;
-            delete workflowRow.resource_folder_id;
-            return {
-              ...mapWorkflow(workflowRow),
-              resourceAccess: workflowActions(access, row.resource_folder_id),
-            };
-          }),
-        );
-        const last = items.at(-1);
-        return Object.freeze({
-          items,
-          ...(hasMore && last !== undefined
-            ? {
-                nextCursor: Object.freeze({
-                  positionAt: z
-                    .string()
-                    .parse(pageRows.at(-1)?.cursor_position_at),
-                  id: last.id,
-                }),
-              }
-            : {}),
-        });
+      parameters,
+    );
+    const hasMore = result.rows.length > limit;
+    const pageRows = result.rows.slice(0, limit);
+    const items = Object.freeze(
+      pageRows.map((row) => {
+        const workflowRow: Record<string, unknown> = { ...row };
+        delete workflowRow.cursor_position_at;
+        delete workflowRow.resource_folder_id;
+        return {
+          ...mapWorkflow(workflowRow),
+          resourceAccess: workflowActions(access, row.resource_folder_id),
+        };
       }),
-    getDraft: (
-      workspaceId: string,
-      workflowId: string,
-      actorId: string,
-    ): Promise<WorkflowDraftRecord | null> =>
-      context.transact(workspaceId, actorId, async (client) => {
-        if (!(await canReadWorkflow(client, workspaceId, actorId, workflowId)))
-          return null;
-        const { definitionCatalog } = context.catalogs;
-        const result = await client.query<Record<string, unknown>>(
-          'select * from app.workflow_drafts where workspace_id = $1 and workflow_id = $2',
-          [workspaceId, uuidSchema.parse(workflowId)],
-        );
-        return result.rows[0] === undefined
-          ? null
-          : mapDraft(result.rows[0], definitionCatalog);
-      }),
-    getVersion: (
-      workspaceId: string,
-      workflowId: string,
-      versionId: string,
-      actorId: string,
-    ): Promise<WorkflowVersionRecord | null> =>
-      context.transact(workspaceId, actorId, async (client) => {
-        if (!(await canReadWorkflow(client, workspaceId, actorId, workflowId)))
-          return null;
-        const result = await client.query<Record<string, unknown>>(
-          `select ${workflowVersionRowSelection} from app.workflow_versions
+    );
+    const last = items.at(-1);
+    return Object.freeze({
+      items,
+      ...(hasMore && last !== undefined
+        ? {
+            nextCursor: Object.freeze({
+              positionAt: z.string().parse(pageRows.at(-1)?.cursor_position_at),
+              id: last.id,
+            }),
+          }
+        : {}),
+    });
+  });
+}
+
+function readAuthoringDraft(
+  context: WorkflowAuthoringReadContext,
+  workspaceId: Parameters<ReadStore['getDraft']>[0],
+  workflowId: Parameters<ReadStore['getDraft']>[1],
+  actorId: Parameters<ReadStore['getDraft']>[2],
+): ReturnType<ReadStore['getDraft']> {
+  return context.transact(workspaceId, actorId, async (client) => {
+    if (
+      !(await canReadWorkflow(
+        context,
+        client,
+        workspaceId,
+        actorId,
+        workflowId,
+      ))
+    )
+      return null;
+    const { definitionCatalog } = context.catalogs;
+    const result = await client.query<Record<string, unknown>>(
+      'select * from app.workflow_drafts where workspace_id = $1 and workflow_id = $2',
+      [workspaceId, uuidSchema.parse(workflowId)],
+    );
+    return result.rows[0] === undefined
+      ? null
+      : mapDraft(result.rows[0], definitionCatalog);
+  });
+}
+
+function readAuthoringVersion(
+  context: WorkflowAuthoringReadContext,
+  workspaceId: Parameters<ReadStore['getVersion']>[0],
+  workflowId: Parameters<ReadStore['getVersion']>[1],
+  versionId: Parameters<ReadStore['getVersion']>[2],
+  actorId: Parameters<ReadStore['getVersion']>[3],
+): ReturnType<ReadStore['getVersion']> {
+  return context.transact(workspaceId, actorId, async (client) => {
+    if (
+      !(await canReadWorkflow(
+        context,
+        client,
+        workspaceId,
+        actorId,
+        workflowId,
+      ))
+    )
+      return null;
+    const result = await client.query<Record<string, unknown>>(
+      `select ${workflowVersionRowSelection} from app.workflow_versions
            where workspace_id = $1 and workflow_id = $2 and id = $3`,
-          [
-            workspaceId,
-            uuidSchema.parse(workflowId),
-            uuidSchema.parse(versionId),
-          ],
-        );
-        return result.rows[0] === undefined ? null : mapVersion(result.rows[0]);
-      }),
-    listVersions: (
-      input: ListWorkflowVersionsInput,
-    ): Promise<WorkflowVersionPage> =>
-      context.transact(input.workspaceId, input.actorId, async (client) => {
-        if (
-          !(await canReadWorkflow(
-            client,
-            input.workspaceId,
-            input.actorId,
-            input.workflowId,
-          ))
-        )
-          throw new WorkflowNotFoundError('Workflow is not visible');
-        const workflowId = uuidSchema.parse(input.workflowId);
-        const visible = await client.query(
-          'select 1 from app.workflows where workspace_id = $1 and id = $2',
-          [input.workspaceId, workflowId],
-        );
-        if (visible.rowCount !== 1)
-          throw new WorkflowNotFoundError('Workflow is not visible');
-        const limit = z
-          .number()
-          .int()
-          .positive()
-          .max(100)
-          .parse(input.limit ?? 50);
-        const beforeVersionNumber =
-          input.beforeVersionNumber === undefined
-            ? null
-            : z.number().int().positive().parse(input.beforeVersionNumber);
-        const result = await client.query<Record<string, unknown>>(
-          `select ${workflowVersionRowSelection} from app.workflow_versions
+      [workspaceId, uuidSchema.parse(workflowId), uuidSchema.parse(versionId)],
+    );
+    return result.rows[0] === undefined ? null : mapVersion(result.rows[0]);
+  });
+}
+
+function listAuthoringVersions(
+  context: WorkflowAuthoringReadContext,
+  input: Parameters<ReadStore['listVersions']>[0],
+): ReturnType<ReadStore['listVersions']> {
+  return context.transact(input.workspaceId, input.actorId, async (client) => {
+    if (
+      !(await canReadWorkflow(
+        context,
+        client,
+        input.workspaceId,
+        input.actorId,
+        input.workflowId,
+      ))
+    )
+      throw new WorkflowNotFoundError('Workflow is not visible');
+    const workflowId = uuidSchema.parse(input.workflowId);
+    const visible = await client.query(
+      'select 1 from app.workflows where workspace_id = $1 and id = $2',
+      [input.workspaceId, workflowId],
+    );
+    if (visible.rowCount !== 1)
+      throw new WorkflowNotFoundError('Workflow is not visible');
+    const limit = z
+      .number()
+      .int()
+      .positive()
+      .max(100)
+      .parse(input.limit ?? 50);
+    const beforeVersionNumber =
+      input.beforeVersionNumber === undefined
+        ? null
+        : z.number().int().positive().parse(input.beforeVersionNumber);
+    const result = await client.query<Record<string, unknown>>(
+      `select ${workflowVersionRowSelection} from app.workflow_versions
            where workspace_id = $1 and workflow_id = $2
              and ($3::integer is null or version_number < $3)
              and ($5::uuid is null or id = $5)
            order by version_number desc limit $4`,
-          [
-            input.workspaceId,
-            workflowId,
-            beforeVersionNumber,
-            limit + 1,
-            input.versionId ?? null,
-          ],
-        );
-        const hasMore = result.rows.length > limit;
-        const items = Object.freeze(
-          result.rows.slice(0, limit).map((row) => mapVersion(row)),
-        );
-        const last = items.at(-1);
-        return Object.freeze({
-          items,
-          ...(hasMore && last !== undefined
-            ? {
-                nextCursor: Object.freeze({
-                  beforeVersionNumber: last.versionNumber,
-                }),
-              }
-            : {}),
-        });
-      }),
+      [
+        input.workspaceId,
+        workflowId,
+        beforeVersionNumber,
+        limit + 1,
+        input.versionId ?? null,
+      ],
+    );
+    const hasMore = result.rows.length > limit;
+    const items = Object.freeze(
+      result.rows.slice(0, limit).map((row) => mapVersion(row)),
+    );
+    const last = items.at(-1);
+    return Object.freeze({
+      items,
+      ...(hasMore && last !== undefined
+        ? {
+            nextCursor: Object.freeze({
+              beforeVersionNumber: last.versionNumber,
+            }),
+          }
+        : {}),
+    });
   });
 }

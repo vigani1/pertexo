@@ -1,7 +1,7 @@
 import { acquireDatabasePool } from '../../platform/pool/runtime.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
-import type { PoolClient } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 import { sha256HexSchema as digestSchema } from '../../platform/persisted-primitives.js';
 
@@ -178,185 +178,184 @@ export function createWorkflowTriggerReconciliationDatabase(
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   return Object.freeze({
-    reconcile: async (
+    reconcile: (
       input: Parameters<WorkflowTriggerReconciliationDatabase['reconcile']>[0],
-    ) => {
-      const outcome = await withTenantScopedClient(
-        pool,
-        { workspaceId: uuidSchema.parse(input.workspaceId) },
-        async (client) => {
-          const workflowId = uuidSchema.parse(input.workflowId);
-          const versionId = uuidSchema.parse(input.publishedVersionId);
-          const outboxEventId = uuidSchema.parse(input.outboxEventId);
-          const verifiedEvent = await readReconciliationEvent(client, input, {
-            outboxEventId,
-            versionId,
-            workflowId,
-          });
-          if (
-            input.delivery !== undefined &&
-            !assertDeliveryIdentity(
-              input.delivery,
-              verifiedEvent,
-              outboxEventId,
-            )
-          )
-            return transportChecksumMismatch;
-
-          if (input.delivery !== undefined) {
-            const inserted = await client.query(
-              `insert into app.inbox_receipts
-                 (consumer_name,message_id,workspace_id,payload_checksum)
-               values($1,$2,$3,$4) on conflict(consumer_name,message_id) do nothing
-               returning message_id`,
-              [
-                reconciliationConsumerName,
-                outboxEventId,
-                input.workspaceId,
-                verifiedEvent.payloadChecksum,
-              ],
-            );
-            if (inserted.rowCount !== 1) {
-              const existing = await client.query<{
-                completed_at: Date | null;
-                payload_checksum: string;
-                workspace_id: string;
-              }>(
-                `select workspace_id,payload_checksum,completed_at from app.inbox_receipts
-                  where consumer_name=$1 and message_id=$2 for update`,
-                [reconciliationConsumerName, outboxEventId],
-              );
-              const receipt = existing.rows[0];
-              if (
-                receipt?.workspace_id !== input.workspaceId ||
-                receipt.completed_at === null
-              )
-                throw new WorkflowTriggerReconciliationMismatchError(
-                  'Reconciliation inbox receipt is inconsistent',
-                );
-              if (receipt.payload_checksum !== verifiedEvent.payloadChecksum)
-                return transportChecksumMismatch;
-              return { kind: 'duplicate' as const };
-            }
-          }
-
-          const authority = await client.query<{ lifecycle_status: string }>(
-            `select lifecycle_status from app.workflows workflow
-              where workflow.workspace_id=$1 and workflow.id=$2
-                and workflow.published_version_id=$3
-              for update`,
-            [input.workspaceId, workflowId, versionId],
-          );
-          if (authority.rowCount !== 1) {
-            if (input.delivery !== undefined)
-              await completeReceipt(
-                client,
-                input.workspaceId,
-                outboxEventId,
-                verifiedEvent.payloadChecksum,
-              );
-            return { kind: 'stale' as const };
-          }
-
-          if (authority.rows[0]?.lifecycle_status === 'archived') {
-            await deactivateArchivedWorkflowTriggers(
-              client,
-              input.workspaceId,
-              workflowId,
-            );
-          } else {
-            await reconcileActiveWorkflowTriggers(client, {
-              workspaceId: input.workspaceId,
-              workflowId,
-              versionId,
-            });
-          }
-          await refreshWorkflowActivation(
-            client,
-            input.workspaceId,
-            workflowId,
-          );
-          const health = await readHealth(
-            client,
-            input.workspaceId,
-            workflowId,
-          );
-          if (input.delivery !== undefined)
-            await completeReceipt(
-              client,
-              input.workspaceId,
-              outboxEventId,
-              verifiedEvent.payloadChecksum,
-            );
-          return { kind: 'reconciled' as const, health };
-        },
-      );
-      if (outcome === transportChecksumMismatch) {
-        await withTenantScopedClient(
-          pool,
-          { workspaceId: uuidSchema.parse(input.workspaceId) },
-          async (client) => {
-            await client.query(
-              `insert into app.transport_security_audit_facts (
-                 id,workspace_id,fact_type,consumer_name,message_id
-               ) values ($1,$2,'inbox_checksum_mismatch',$3,$4)`,
-              [
-                generatePersistedId(),
-                input.workspaceId,
-                reconciliationConsumerName,
-                input.outboxEventId,
-              ],
-            );
-          },
-        );
-        throw new WorkflowTriggerReconciliationMismatchError(
-          'Reconciliation delivery failed durable transport verification',
-        );
-      }
-      if (outcome.kind === 'stale')
-        throw new WorkflowTriggerStalePublicationError(
-          'Reconciliation no longer names the current published workflow version',
-        );
-      if (outcome.kind === 'duplicate') return Object.freeze([]);
-      return outcome.health;
-    },
-    recordFailure: async (
+    ) => reconcileWorkflowTriggers(pool, input),
+    recordFailure: (
       input: Parameters<
         WorkflowTriggerReconciliationDatabase['recordFailure']
       >[0],
-    ) =>
-      withTenantScopedClient(
-        pool,
-        { workspaceId: uuidSchema.parse(input.workspaceId) },
-        async (client) => {
-          const workflowId = uuidSchema.parse(input.workflowId);
-          const versionId = uuidSchema.parse(input.publishedVersionId);
-          const reason = safeReasonSchema.parse(input.reason);
-          const authority = await client.query(
-            `select id from app.workflows where workspace_id=$1 and id=$2
-              and published_version_id=$3 for update`,
-            [input.workspaceId, workflowId, versionId],
-          );
-          if (authority.rowCount !== 1) return;
-          await client.query(
-            `update app.workflow_triggers trigger
-                set status='error',health_status='unhealthy',last_error_code=$4,
-                    reconciled_at=clock_timestamp(),updated_at=clock_timestamp()
-              where trigger.workspace_id=$1 and trigger.workflow_id=$2
-                and trigger.workflow_version_id=$3
-                and trigger.status not in ('active','disabled')`,
-            [input.workspaceId, workflowId, versionId, reason],
-          );
-          await refreshWorkflowActivation(
-            client,
-            input.workspaceId,
-            workflowId,
-            true,
-          );
-        },
-      ),
+    ) => recordTriggerReconciliationFailure(pool, input),
     close: () => lease.close(),
   });
 }
 
 export { refreshWorkflowActivation, readHealth };
+
+async function reconcileWorkflowTriggers(
+  pool: Pool,
+  input: Parameters<WorkflowTriggerReconciliationDatabase['reconcile']>[0],
+): ReturnType<WorkflowTriggerReconciliationDatabase['reconcile']> {
+  const outcome = await withTenantScopedClient(
+    pool,
+    { workspaceId: uuidSchema.parse(input.workspaceId) },
+    async (client) => {
+      const workflowId = uuidSchema.parse(input.workflowId);
+      const versionId = uuidSchema.parse(input.publishedVersionId);
+      const outboxEventId = uuidSchema.parse(input.outboxEventId);
+      const verifiedEvent = await readReconciliationEvent(client, input, {
+        outboxEventId,
+        versionId,
+        workflowId,
+      });
+      if (
+        input.delivery !== undefined &&
+        !assertDeliveryIdentity(input.delivery, verifiedEvent, outboxEventId)
+      )
+        return transportChecksumMismatch;
+
+      if (input.delivery !== undefined) {
+        const inserted = await client.query(
+          `insert into app.inbox_receipts
+                 (consumer_name,message_id,workspace_id,payload_checksum)
+               values($1,$2,$3,$4) on conflict(consumer_name,message_id) do nothing
+               returning message_id`,
+          [
+            reconciliationConsumerName,
+            outboxEventId,
+            input.workspaceId,
+            verifiedEvent.payloadChecksum,
+          ],
+        );
+        if (inserted.rowCount !== 1) {
+          const existing = await client.query<{
+            completed_at: Date | null;
+            payload_checksum: string;
+            workspace_id: string;
+          }>(
+            `select workspace_id,payload_checksum,completed_at from app.inbox_receipts
+                  where consumer_name=$1 and message_id=$2 for update`,
+            [reconciliationConsumerName, outboxEventId],
+          );
+          const receipt = existing.rows[0];
+          if (
+            receipt?.workspace_id !== input.workspaceId ||
+            receipt.completed_at === null
+          )
+            throw new WorkflowTriggerReconciliationMismatchError(
+              'Reconciliation inbox receipt is inconsistent',
+            );
+          if (receipt.payload_checksum !== verifiedEvent.payloadChecksum)
+            return transportChecksumMismatch;
+          return { kind: 'duplicate' as const };
+        }
+      }
+
+      const authority = await client.query<{ lifecycle_status: string }>(
+        `select lifecycle_status from app.workflows workflow
+              where workflow.workspace_id=$1 and workflow.id=$2
+                and workflow.published_version_id=$3
+              for update`,
+        [input.workspaceId, workflowId, versionId],
+      );
+      if (authority.rowCount !== 1) {
+        if (input.delivery !== undefined)
+          await completeReceipt(
+            client,
+            input.workspaceId,
+            outboxEventId,
+            verifiedEvent.payloadChecksum,
+          );
+        return { kind: 'stale' as const };
+      }
+
+      if (authority.rows[0]?.lifecycle_status === 'archived') {
+        await deactivateArchivedWorkflowTriggers(
+          client,
+          input.workspaceId,
+          workflowId,
+        );
+      } else {
+        await reconcileActiveWorkflowTriggers(client, {
+          workspaceId: input.workspaceId,
+          workflowId,
+          versionId,
+        });
+      }
+      await refreshWorkflowActivation(client, input.workspaceId, workflowId);
+      const health = await readHealth(client, input.workspaceId, workflowId);
+      if (input.delivery !== undefined)
+        await completeReceipt(
+          client,
+          input.workspaceId,
+          outboxEventId,
+          verifiedEvent.payloadChecksum,
+        );
+      return { kind: 'reconciled' as const, health };
+    },
+  );
+  if (outcome === transportChecksumMismatch) {
+    await withTenantScopedClient(
+      pool,
+      { workspaceId: uuidSchema.parse(input.workspaceId) },
+      async (client) => {
+        await client.query(
+          `insert into app.transport_security_audit_facts (
+                 id,workspace_id,fact_type,consumer_name,message_id
+               ) values ($1,$2,'inbox_checksum_mismatch',$3,$4)`,
+          [
+            generatePersistedId(),
+            input.workspaceId,
+            reconciliationConsumerName,
+            input.outboxEventId,
+          ],
+        );
+      },
+    );
+    throw new WorkflowTriggerReconciliationMismatchError(
+      'Reconciliation delivery failed durable transport verification',
+    );
+  }
+  if (outcome.kind === 'stale')
+    throw new WorkflowTriggerStalePublicationError(
+      'Reconciliation no longer names the current published workflow version',
+    );
+  if (outcome.kind === 'duplicate') return Object.freeze([]);
+  return outcome.health;
+}
+
+async function recordTriggerReconciliationFailure(
+  pool: Pool,
+  input: Parameters<WorkflowTriggerReconciliationDatabase['recordFailure']>[0],
+): ReturnType<WorkflowTriggerReconciliationDatabase['recordFailure']> {
+  return withTenantScopedClient(
+    pool,
+    { workspaceId: uuidSchema.parse(input.workspaceId) },
+    async (client) => {
+      const workflowId = uuidSchema.parse(input.workflowId);
+      const versionId = uuidSchema.parse(input.publishedVersionId);
+      const reason = safeReasonSchema.parse(input.reason);
+      const authority = await client.query(
+        `select id from app.workflows where workspace_id=$1 and id=$2
+              and published_version_id=$3 for update`,
+        [input.workspaceId, workflowId, versionId],
+      );
+      if (authority.rowCount !== 1) return;
+      await client.query(
+        `update app.workflow_triggers trigger
+                set status='error',health_status='unhealthy',last_error_code=$4,
+                    reconciled_at=clock_timestamp(),updated_at=clock_timestamp()
+              where trigger.workspace_id=$1 and trigger.workflow_id=$2
+                and trigger.workflow_version_id=$3
+                and trigger.status not in ('active','disabled')`,
+        [input.workspaceId, workflowId, versionId, reason],
+      );
+      await refreshWorkflowActivation(
+        client,
+        input.workspaceId,
+        workflowId,
+        true,
+      );
+    },
+  );
+}

@@ -32,8 +32,6 @@ export function createWorkflowTagDatabase(
 ): WorkflowTagDatabase {
   const session = createOrganizationSession(config, options.runtime);
 
-  /** Replacing tags or detaching one from a workflow. */
-
   const store: WorkflowTagDatabase = {
     listTags: (input) => listTags(session, input),
     listTagAssignments: (input) => listTagAssignments(session, input),
