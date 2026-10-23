@@ -85,13 +85,19 @@ export function fixture() {
       },
     ]);
   }
-  async function fail(
+  async function fail({
     nodeId = 'set',
     failureKind = 'failed',
     errorKind = 'authentication',
     attemptNumber = 1,
     safeErrorCode = `execution.${errorKind}`,
-  ) {
+  }: Readonly<{
+    nodeId?: string | undefined;
+    failureKind?: string | undefined;
+    errorKind?: string | undefined;
+    attemptNumber?: number | undefined;
+    safeErrorCode?: string | undefined;
+  }> = {}) {
     return step([
       {
         occurredAt: at,

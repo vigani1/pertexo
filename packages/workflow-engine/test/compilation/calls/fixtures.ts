@@ -22,24 +22,26 @@ export function callGraph(): WorkflowGraph {
   const original = graph();
   return {
     ...original,
-    nodes: original.nodes.map((node) =>
-      node.id === 'set'
-        ? {
-            ...node,
-            id: 'call',
-            definition: { key: 'core.call', version: 1 },
-            config: { target },
-            inputMappings: { input: { kind: 'run_input', path: '$' } },
-          }
-        : node.id === 'terminate'
-          ? {
-              ...node,
-              inputMappings: {
-                result: { kind: 'node_output', nodeId: 'call', path: '$' },
-              },
-            }
-          : node,
-    ),
+    nodes: original.nodes.map((node) => {
+      if (node.id === 'set') {
+        return {
+          ...node,
+          id: 'call',
+          definition: { key: 'core.call', version: 1 },
+          config: { target },
+          inputMappings: { input: { kind: 'run_input', path: '$' } },
+        };
+      }
+      if (node.id === 'terminate') {
+        return {
+          ...node,
+          inputMappings: {
+            result: { kind: 'node_output', nodeId: 'call', path: '$' },
+          },
+        };
+      }
+      return node;
+    }),
     edges: original.edges.map((edge) => ({
       ...edge,
       source: {

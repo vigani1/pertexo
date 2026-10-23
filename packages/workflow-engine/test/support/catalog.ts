@@ -197,18 +197,7 @@ export function nodeCatalog(input?: {
       input?.mutateSet ? [jsonataPolicy] : [boundedPolicy, jsonataPolicy],
     ),
     manifest('core.terminate'),
-    ...(input?.schedule ? [manifest('core.schedule')] : []),
-    ...(input?.webhook ? [manifest('core.webhook')] : []),
-    ...(input?.wait ? [manifest('core.wait')] : []),
-    ...(input?.condition ? [manifest('core.condition')] : []),
-    ...(input?.switch ? [manifest('core.switch')] : []),
-    ...(input?.parallel ? [manifest('core.parallel')] : []),
-    ...(input?.merge ? [manifest('core.merge')] : []),
-    ...(input?.call ? [manifest('core.call')] : []),
-    ...(input?.approval ? [manifest('core.approval')] : []),
-    ...(input?.inputRequest ? [manifest('core.request_input')] : []),
-    ...(input?.forEach ? [manifest('core.foreach')] : []),
-    ...(input?.unrelated ? [manifest('test.unrelated')] : []),
+    ...optionalDefinitions(input),
   ];
   const manual = definitions.find(
     ({ definition }) => definition.key === 'core.manual',
@@ -239,4 +228,26 @@ export function nodeCatalog(input?: {
         : [{ key: 'test.rollout', version: input.extraPolicyVersion }]),
     ],
   });
+}
+
+function optionalDefinitions(
+  input: Parameters<typeof nodeCatalog>[0],
+): readonly NodeManifest[] {
+  const choices = [
+    ['schedule', 'core.schedule'],
+    ['webhook', 'core.webhook'],
+    ['wait', 'core.wait'],
+    ['condition', 'core.condition'],
+    ['switch', 'core.switch'],
+    ['parallel', 'core.parallel'],
+    ['merge', 'core.merge'],
+    ['call', 'core.call'],
+    ['approval', 'core.approval'],
+    ['inputRequest', 'core.request_input'],
+    ['forEach', 'core.foreach'],
+    ['unrelated', 'test.unrelated'],
+  ] as const;
+  return choices.flatMap(([option, key]) =>
+    input?.[option] ? [manifest(key)] : [],
+  );
 }

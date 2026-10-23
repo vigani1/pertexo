@@ -15,7 +15,13 @@ describe('failure routing through public engine transitions', () => {
       const f = fixture();
       await f.step();
       await f.success('manual');
-      const routed = await f.fail('set', 'failed', 'configuration', 1, code);
+      const routed = await f.fail({
+        nodeId: 'set',
+        failureKind: 'failed',
+        errorKind: 'configuration',
+        attemptNumber: 1,
+        safeErrorCode: code,
+      });
       expect(routed.attempts.map((attempt) => attempt.nodeId)).toEqual([
         'handler',
       ]);
@@ -43,7 +49,13 @@ describe('failure routing through public engine transitions', () => {
     const f = fixture();
     await f.step();
     await f.success('manual');
-    const failed = await f.fail('set', 'failed', 'configuration', 1, code);
+    const failed = await f.fail({
+      nodeId: 'set',
+      failureKind: 'failed',
+      errorKind: 'configuration',
+      attemptNumber: 1,
+      safeErrorCode: code,
+    });
     expect(failed.attempts).toEqual([]);
     expect(failed.checkpoint.runStatus).toBe('failed');
     expect(failed.failureValues ?? []).toEqual([]);
@@ -114,7 +126,7 @@ describe('failure routing through public engine transitions', () => {
     await f.step();
     await f.success('manual');
     await f.fail();
-    const failed = await f.fail('handler');
+    const failed = await f.fail({ nodeId: 'handler' });
     expect(failed.checkpoint.runStatus).toBe('failed');
     expect(failed.failureValues).toBeUndefined();
     expect(
@@ -128,7 +140,7 @@ describe('failure routing through public engine transitions', () => {
       const f = fixture();
       await f.step();
       await f.success('manual');
-      const stopped = await f.fail('set', kind);
+      const stopped = await f.fail({ nodeId: 'set', failureKind: kind });
       expect(stopped.failureValues).toBeUndefined();
       expect(stopped.attempts).toEqual([]);
       expect(stopped.checkpoint.runStatus).toBe(kind);
@@ -144,7 +156,13 @@ describe('failure routing through public engine transitions', () => {
       const f = fixture();
       await f.step();
       await f.success('manual');
-      const routed = await f.fail('set', 'failed', errorKind, 1, safeErrorCode);
+      const routed = await f.fail({
+        nodeId: 'set',
+        failureKind: 'failed',
+        errorKind: errorKind,
+        attemptNumber: 1,
+        safeErrorCode: safeErrorCode,
+      });
       expect(routed.attempts.map((a) => a.nodeId)).toEqual(['handler']);
       expect(routed.failureValues?.[0]?.value).toMatchObject({
         errorKind,
@@ -156,7 +174,11 @@ describe('failure routing through public engine transitions', () => {
     const f = fixture();
     await f.step();
     await f.success('manual');
-    const failed = await f.fail('set', 'failed', 'internal');
+    const failed = await f.fail({
+      nodeId: 'set',
+      failureKind: 'failed',
+      errorKind: 'internal',
+    });
     expect(failed.failureValues).toBeUndefined();
     expect(failed.checkpoint.runStatus).toBe('failed');
   });
@@ -198,7 +220,12 @@ describe('failure routing through public engine transitions', () => {
     const f = fixture();
     await f.step();
     await f.success('manual');
-    let retry = await f.fail('set', 'retry', 'network', 1);
+    let retry = await f.fail({
+      nodeId: 'set',
+      failureKind: 'retry',
+      errorKind: 'network',
+      attemptNumber: 1,
+    });
     for (let attempt = 2; attempt <= 3; attempt++) {
       const due = retry.checkpoint.invocations.find(
         (n) => n.nodeId === 'set',
@@ -212,7 +239,12 @@ describe('failure routing through public engine transitions', () => {
         nodeId: 'set',
         attemptNumber: attempt,
       });
-      retry = await f.fail('set', 'retry', 'network', attempt);
+      retry = await f.fail({
+        nodeId: 'set',
+        failureKind: 'retry',
+        errorKind: 'network',
+        attemptNumber: attempt,
+      });
       if (attempt < 3) expect(retry.failureValues).toBeUndefined();
     }
     expect(retry.failureValues?.[0]?.value.attemptNumber).toBe(3);
@@ -222,7 +254,11 @@ describe('failure routing through public engine transitions', () => {
     const f = fixture();
     await f.step();
     await f.success('manual');
-    const retry = await f.fail('set', 'retry', 'network');
+    const retry = await f.fail({
+      nodeId: 'set',
+      failureKind: 'retry',
+      errorKind: 'network',
+    });
     expect(
       retry.checkpoint.invocations.find((n) => n.nodeId === 'set')?.status,
     ).toBe('waiting');

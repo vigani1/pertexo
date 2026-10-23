@@ -22,10 +22,17 @@ export const versionId = id(200);
 
 export function record(
   executable: CompiledWorkflowExecutable,
-  nodeId: string,
-  ordinal: number,
-  status: 'succeeded' | 'failed',
-  branchPath: readonly BranchScopePart[] = [],
+  {
+    nodeId,
+    ordinal,
+    status,
+    branchPath = [],
+  }: Readonly<{
+    nodeId: string;
+    ordinal: number;
+    status: 'succeeded' | 'failed';
+    branchPath?: readonly BranchScopePart[] | undefined;
+  }>,
 ): RecoveryNode {
   const node = executable.envelope.graph.nodes.find(
     (candidate) => candidate.id === nodeId,
@@ -109,8 +116,8 @@ export function linear(unsafe = false) {
   return {
     executable,
     source: source([
-      record(executable, 'manual', 1, 'succeeded'),
-      record(executable, 'set', 2, 'failed'),
+      record(executable, { nodeId: 'manual', ordinal: 1, status: 'succeeded' }),
+      record(executable, { nodeId: 'set', ordinal: 2, status: 'failed' }),
     ]),
   };
 }
@@ -148,13 +155,20 @@ export function conditional(port: 'true' | 'false') {
     graph: branchGraph,
     catalog: composeExecutableCatalog(nodeCatalog({ condition: true })),
   });
-  const condition = record(executable, 'condition', 2, 'succeeded');
+  const condition = record(executable, {
+    nodeId: 'condition',
+    ordinal: 2,
+    status: 'succeeded',
+  });
   const retained = source([
-    record(executable, 'manual', 1, 'succeeded'),
+    record(executable, { nodeId: 'manual', ordinal: 1, status: 'succeeded' }),
     condition,
-    record(executable, 'terminate', 3, 'failed', [
-      { nodeId: 'condition', outputPort: port },
-    ]),
+    record(executable, {
+      nodeId: 'terminate',
+      ordinal: 3,
+      status: 'failed',
+      branchPath: [{ nodeId: 'condition', outputPort: port }],
+    }),
   ]);
   return {
     executable,

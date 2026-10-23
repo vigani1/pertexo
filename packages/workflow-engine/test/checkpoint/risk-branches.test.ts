@@ -90,31 +90,7 @@ describe('checkpoint risk branches', () => {
     ['loop', 'iterationPath', 'loop iteration scope must be an array'],
   ] as const)('preserves the %s %s diagnostic', (subject, field, message) => {
     const scope = { [field]: null };
-    const input =
-      subject === 'invocation'
-        ? {
-            ...createCheckpoint({
-              workflowVersionId,
-              iterationBudget: 100,
-            }),
-            invocations: [
-              {
-                invocationKey: rootKey('node'),
-                nodeId: 'node',
-                status: 'pending',
-                attemptNumber: 0,
-                ...scope,
-              },
-            ],
-          }
-        : subject === 'join'
-          ? pendingJoin({
-              joinId: 'join',
-              policy: { kind: 'all' },
-              ledger: [{ branchId: 'a', disposition: 'pending' }],
-              ...scope,
-            })
-          : loopCheckpoint({ ...emptyLoop, ...scope }, 'succeeded');
+    const input = malformedScopeInput(subject, scope);
     expect(() => parseCheckpoint(input)).toThrow(
       expect.objectContaining({ code: 'checkpoint_invalid', message }),
     );
@@ -387,3 +363,35 @@ describe('checkpoint risk branches', () => {
     }
   });
 });
+
+function malformedScopeInput(
+  subject: 'invocation' | 'join' | 'loop',
+  scope: Readonly<Record<string, unknown>>,
+) {
+  if (subject === 'invocation') {
+    return {
+      ...createCheckpoint({
+        workflowVersionId,
+        iterationBudget: 100,
+      }),
+      invocations: [
+        {
+          invocationKey: rootKey('node'),
+          nodeId: 'node',
+          status: 'pending',
+          attemptNumber: 0,
+          ...scope,
+        },
+      ],
+    };
+  }
+  if (subject === 'join') {
+    return pendingJoin({
+      joinId: 'join',
+      policy: { kind: 'all' },
+      ledger: [{ branchId: 'a', disposition: 'pending' }],
+      ...scope,
+    });
+  }
+  return loopCheckpoint({ ...emptyLoop, ...scope }, 'succeeded');
+}

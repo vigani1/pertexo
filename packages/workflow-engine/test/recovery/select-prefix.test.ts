@@ -39,7 +39,11 @@ describe('recovery prefix selection', () => {
         },
         catalog: composeExecutableCatalog(nodeCatalog()),
       });
-      const target = record(executable, 'set', 2, 'failed');
+      const target = record(executable, {
+        nodeId: 'set',
+        ordinal: 2,
+        status: 'failed',
+      });
       const originalAttempt = target.attempts[0];
       if (originalAttempt === undefined)
         throw new Error('Recovery attempt fixture is missing');
@@ -55,7 +59,11 @@ describe('recovery prefix selection', () => {
           i + 1 === maximumAttempts ? ('failed' as const) : ('retry' as const),
       }));
       const retained = source([
-        record(executable, 'manual', 1, 'succeeded'),
+        record(executable, {
+          nodeId: 'manual',
+          ordinal: 1,
+          status: 'succeeded',
+        }),
         {
           ...target,
           attempts,
@@ -97,8 +105,16 @@ describe('recovery prefix selection', () => {
   it('retries a failed Condition with no frozen choice for that decision', () => {
     const fixture = conditional('true');
     const retained = source([
-      record(fixture.executable, 'manual', 1, 'succeeded'),
-      record(fixture.executable, 'condition', 2, 'failed'),
+      record(fixture.executable, {
+        nodeId: 'manual',
+        ordinal: 1,
+        status: 'succeeded',
+      }),
+      record(fixture.executable, {
+        nodeId: 'condition',
+        ordinal: 2,
+        status: 'failed',
+      }),
     ]);
     expect(
       selectRecoveryPrefix({ ...fixture, source: retained }),
@@ -113,7 +129,11 @@ describe('recovery prefix selection', () => {
     const fixture = linear();
     const retained = source([
       ...fixture.source.nodes,
-      record(fixture.executable, 'terminate', 3, 'succeeded'),
+      record(fixture.executable, {
+        nodeId: 'terminate',
+        ordinal: 3,
+        status: 'succeeded',
+      }),
     ]);
     expect(
       selectRecoveryPrefix({
@@ -270,7 +290,11 @@ describe('recovery prefix selection', () => {
     const fixture = linear();
     const retained = source([
       ...fixture.source.nodes,
-      record(fixture.executable, 'terminate', 3, 'succeeded'),
+      record(fixture.executable, {
+        nodeId: 'terminate',
+        ordinal: 3,
+        status: 'succeeded',
+      }),
     ]);
     expect(selectRecoveryPrefix({ ...fixture, source: retained })).toEqual({
       kind: 'refused',
@@ -341,8 +365,8 @@ it('keeps callback Wait outside step recovery even though it can handle expiry',
     catalog: composeExecutableCatalog(nodeCatalog({ wait: true })),
   });
   const retained = source([
-    record(executable, 'manual', 1, 'succeeded'),
-    record(executable, 'set', 2, 'failed'),
+    record(executable, { nodeId: 'manual', ordinal: 1, status: 'succeeded' }),
+    record(executable, { nodeId: 'set', ordinal: 2, status: 'failed' }),
   ]);
   expect(selectRecoveryPrefix({ executable, source: retained })).toEqual({
     kind: 'refused',

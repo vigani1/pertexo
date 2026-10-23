@@ -96,23 +96,25 @@ function flatGraph(nodes: number): WorkflowGraph {
   );
   return {
     settings: { maxRunDurationMs: 60_000 },
-    nodes: ids.map((id, index) =>
-      index === 0
-        ? { ...manual, id }
-        : index === nodes - 1
-          ? {
-              ...terminate,
-              id,
-              inputMappings: {
-                result: {
-                  kind: 'node_output',
-                  nodeId: ids[index - 1],
-                  path: '$',
-                },
-              },
-            }
-          : { ...set, id, inputMappings: {} },
-    ),
+    nodes: ids.map((id, index) => {
+      if (index === 0) {
+        return { ...manual, id };
+      }
+      if (index === nodes - 1) {
+        return {
+          ...terminate,
+          id,
+          inputMappings: {
+            result: {
+              kind: 'node_output',
+              nodeId: ids[index - 1],
+              path: '$',
+            },
+          },
+        };
+      }
+      return { ...set, id, inputMappings: {} };
+    }),
     edges: ids.slice(1).map((id, index) => ({
       id: `edge-${String(index)}`,
       source: { nodeId: ids[index], port: 'out' },

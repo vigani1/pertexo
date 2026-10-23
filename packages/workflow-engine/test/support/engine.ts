@@ -35,11 +35,7 @@ export function advanceWorkflow(
     throw new Error('provide graph or schedulerState, not both');
   return advanceWorkflowFromSchedulerState({
     checkpoint: parseCheckpoint(input.checkpoint),
-    ...(input.schedulerState !== undefined
-      ? { schedulerState: input.schedulerState }
-      : input.graph !== undefined
-        ? { schedulerState: parseSchedulerGraph(input.graph) }
-        : {}),
+    ...schedulerInput(input),
     ...(input.observations === undefined
       ? {}
       : { observations: input.observations }),
@@ -85,3 +81,13 @@ export {
 } from '../../src/transition/status-transitions.js';
 export { NODE_STATUSES, RUN_STATUSES } from '../../src/types.js';
 export * from '../../src/index.js';
+
+function schedulerInput(
+  input: AdvanceWorkflowInput,
+): Readonly<{ schedulerState?: SchedulerGraph }> {
+  if (input.schedulerState !== undefined)
+    return { schedulerState: input.schedulerState };
+  if (input.graph !== undefined)
+    return { schedulerState: parseSchedulerGraph(input.graph) };
+  return {};
+}

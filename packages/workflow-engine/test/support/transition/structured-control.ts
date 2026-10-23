@@ -79,12 +79,7 @@ export async function drive(
         invocationKey: canceledAttempt.invocationKey,
         attemptId,
         attemptNumber: canceledAttempt.attemptNumber,
-        status:
-          stopKind === 'cancel'
-            ? 'canceled'
-            : stopKind === 'deadline'
-              ? 'timed_out'
-              : 'failed',
+        status: stopStatuses[stopKind],
       });
       continue;
     }
@@ -113,3 +108,9 @@ export async function drive(
   }
   throw new Error('workflow did not settle within its bounded passes');
 }
+
+const stopStatuses = {
+  cancel: 'canceled',
+  deadline: 'timed_out',
+  failure: 'failed',
+} as const;
