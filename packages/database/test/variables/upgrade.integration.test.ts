@@ -152,6 +152,7 @@ it('backfills current and retained historical sets, fixed empty sets and purged 
         '0049_live_callback_keys.sql',
         '0050_folder_access.sql',
         '0051_connection_sharing.sql',
+        '0052_publication_reuse_candidates.sql',
       ]);
       expect(
         (
