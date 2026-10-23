@@ -205,6 +205,14 @@ export function createTransportMetrics(
 }
 
 function createTransportInstruments(meter: Meter) {
+  return {
+    ...createOutboxInstruments(meter),
+    ...createQueueInstruments(meter),
+    ...createStorageInstruments(meter),
+  };
+}
+
+function createOutboxInstruments(meter: Meter) {
   const outboxClaimed = meter.createCounter(
     TRANSPORT_METRIC_NAME.outboxClaimed,
     {
@@ -252,6 +260,18 @@ function createTransportInstruments(meter: Meter) {
       unit: '{event}',
     },
   );
+  return {
+    outboxClaimed,
+    outboxClaimBatchSize,
+    outboxBacklog,
+    outboxOldestAge,
+    outboxPublish,
+    outboxDispatchLatency,
+    outboxLeaseEvents,
+  };
+}
+
+function createQueueInstruments(meter: Meter) {
   const handlerExecutions = meter.createCounter(
     TRANSPORT_METRIC_NAME.handlerExecutions,
     {
@@ -295,6 +315,18 @@ function createTransportInstruments(meter: Meter) {
       unit: '{event}',
     },
   );
+  return {
+    handlerExecutions,
+    handlerDuration,
+    activeConcurrency,
+    queueDepth,
+    queueOldestJobAge,
+    queueStalls,
+    consumerLifecycle,
+  };
+}
+
+function createStorageInstruments(meter: Meter) {
   const artifactCount = meter.createGauge(TRANSPORT_METRIC_NAME.artifactCount, {
     description: 'Artifact metadata rows by lifecycle status',
     unit: '{artifact}',
@@ -326,22 +358,7 @@ function createTransportInstruments(meter: Meter) {
       unit: 's',
     },
   );
-
   return {
-    outboxClaimed,
-    outboxClaimBatchSize,
-    outboxBacklog,
-    outboxOldestAge,
-    outboxPublish,
-    outboxDispatchLatency,
-    outboxLeaseEvents,
-    handlerExecutions,
-    handlerDuration,
-    activeConcurrency,
-    queueDepth,
-    queueOldestJobAge,
-    queueStalls,
-    consumerLifecycle,
     artifactCount,
     artifactBytes,
     executionStorageCount,
