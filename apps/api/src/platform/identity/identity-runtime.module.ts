@@ -1,5 +1,4 @@
 import { DirectoryManagementModule } from '../../authentication/federation/provisioning/management/module.js';
-import { DirectoryManagementService } from '../../authentication/federation/provisioning/management/service.js';
 import {
   createDirectoryStore,
   type DirectoryStore,
@@ -266,7 +265,7 @@ export class IdentityRuntimeModule {
         feature,
         tokens,
         DirectoryManagementModule.register(
-          new DirectoryManagementService(runtime.directory),
+          runtime.directory,
           feature,
           admission,
         ),

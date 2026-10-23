@@ -11,6 +11,7 @@ import {
   Req,
   Res,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   workspaceInboxListQuerySchema,
@@ -37,7 +38,7 @@ import {
 import { prepareSseResponse } from '../platform/http/sse-response.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { createStreamAuthorizationLifetime } from '../workflow-runs/events/sse-authorization-lifetime.js';
-import { mapNotificationError } from '../problems/resources/notifications.js';
+
 import { NotificationReadGuard } from './guards.js';
 import { writeInboxHintStream } from './hint-stream.js';
 import type {
@@ -46,6 +47,8 @@ import type {
 } from './inbox-hint-hub.js';
 import { WorkspaceInboxService } from './service.js';
 import { INBOX_HINT_SOURCE, NOTIFICATION_AUTHORIZATION } from './tokens.js';
+import { domainErrors } from '../platform/http/problems/interceptor.js';
+import { inboxFailure } from '../problems/context/normalize.js';
 
 const workspaceRouteSchema = z
   .object({ workspaceId: z.uuid() })
@@ -64,6 +67,7 @@ type NotificationsRequest = IdentityWorkspaceRequest &
   }>;
 
 /** ADR 055: a reader's failure threads, private read state and live hints. */
+@UseInterceptors(domainErrors(inboxFailure))
 @Controller('v1/workspaces/:workspaceId/notifications')
 @RateLimit('authenticated_read')
 export class NotificationsController {
@@ -78,40 +82,36 @@ export class NotificationsController {
 
   @Get()
   @UseGuards(SessionAuthenticationGuard, NotificationReadGuard)
-  public list(
+  public async list(
     @Req() request: NotificationsRequest,
     @Param() params: unknown,
     @Query() query: unknown,
   ) {
     const { workspaceId } = workspaceRouteSchema.parse(params);
     const input = workspaceInboxListQuerySchema.parse(query ?? {});
-    return mapped(() =>
-      this.service.list({
-        workspaceId,
-        actorId: authenticatedSession(request).userId,
-        ...(input.filter === undefined ? {} : { filter: input.filter }),
-        ...(input.noticeKind === undefined
-          ? {}
-          : { noticeKind: input.noticeKind }),
-        ...(input.limit === undefined ? {} : { limit: input.limit }),
-        ...(input.after === undefined ? {} : { after: input.after }),
-      }),
-    );
+    return this.service.list({
+      workspaceId,
+      actorId: authenticatedSession(request).userId,
+      ...(input.filter === undefined ? {} : { filter: input.filter }),
+      ...(input.noticeKind === undefined
+        ? {}
+        : { noticeKind: input.noticeKind }),
+      ...(input.limit === undefined ? {} : { limit: input.limit }),
+      ...(input.after === undefined ? {} : { after: input.after }),
+    });
   }
 
   @Get('summary')
   @UseGuards(SessionAuthenticationGuard, NotificationReadGuard)
-  public summary(
+  public async summary(
     @Req() request: NotificationsRequest,
     @Param() params: unknown,
   ) {
     const { workspaceId } = workspaceRouteSchema.parse(params);
-    return mapped(() =>
-      this.service.summary({
-        workspaceId,
-        actorId: authenticatedSession(request).userId,
-      }),
-    );
+    return this.service.summary({
+      workspaceId,
+      actorId: authenticatedSession(request).userId,
+    });
   }
 
   @Post('read-all')
@@ -122,20 +122,18 @@ export class NotificationsController {
     NotificationReadGuard,
     CsrfProtectionGuard,
   )
-  public readAll(
+  public async readAll(
     @Req() request: NotificationsRequest,
     @Param() params: unknown,
     @Body() body: unknown,
   ) {
     const { workspaceId } = workspaceRouteSchema.parse(params);
     const { revision } = workspaceInboxReadAllRequestSchema.parse(body);
-    return mapped(() =>
-      this.service.markAllRead({
-        workspaceId,
-        actorId: authenticatedSession(request).userId,
-        revision,
-      }),
-    );
+    return this.service.markAllRead({
+      workspaceId,
+      actorId: authenticatedSession(request).userId,
+      revision,
+    });
   }
 
   @Post(':threadId/read')
@@ -146,21 +144,19 @@ export class NotificationsController {
     NotificationReadGuard,
     CsrfProtectionGuard,
   )
-  public read(
+  public async read(
     @Req() request: NotificationsRequest,
     @Param() params: unknown,
     @Body() body: unknown,
   ) {
     const route = workspaceInboxThreadParamsSchema.parse(params);
     const { revision } = workspaceInboxReadRequestSchema.parse(body);
-    return mapped(() =>
-      this.service.markRead({
-        workspaceId: route.workspaceId,
-        actorId: authenticatedSession(request).userId,
-        threadId: route.threadId,
-        revision,
-      }),
-    );
+    return this.service.markRead({
+      workspaceId: route.workspaceId,
+      actorId: authenticatedSession(request).userId,
+      threadId: route.threadId,
+      revision,
+    });
   }
 
   @Get('events')
@@ -214,21 +210,13 @@ export class NotificationsController {
         reply.raw.destroy();
         return;
       }
-      throwApplicationError(mapNotificationError(error));
+      throw error;
     } finally {
       subscription?.close();
       await lifetime?.stop();
       request.raw?.off('close', onClose);
       releaseDrainRegistration();
     }
-  }
-}
-
-async function mapped<T>(operation: () => Promise<T>): Promise<T> {
-  try {
-    return await operation();
-  } catch (error: unknown) {
-    return throwApplicationError(mapNotificationError(error));
   }
 }
 

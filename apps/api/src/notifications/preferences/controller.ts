@@ -7,6 +7,7 @@ import {
   Req,
   UseGuards,
   Header,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   workspaceIdentifierSchema,
@@ -29,7 +30,11 @@ import type { AbortableRequest } from '../../platform/http/request-operation-sig
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import { NotificationReadGuard } from '../guards.js';
 import { NoticePreferencesService } from './service.js';
+import { domainErrors } from '../../platform/http/problems/interceptor.js';
+import { inboxFailure } from '../../problems/context/normalize.js';
+
 type Request = IdentityWorkspaceRequest & AbortableRequest;
+@UseInterceptors(domainErrors(inboxFailure))
 @Controller('v1/workspaces/:workspaceId/notifications')
 @UseGuards(SessionAuthenticationGuard, NotificationReadGuard)
 @RateLimit('authenticated_read')

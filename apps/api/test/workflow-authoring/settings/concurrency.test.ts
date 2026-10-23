@@ -1,3 +1,6 @@
+import { problemResult } from '../../support/problem.js';
+import { toProblem } from '../../../src/problems/registry.js';
+import { authoringFailure } from '../../../src/problems/context/normalize.js';
 import 'reflect-metadata';
 import { describe, expect, it, vi } from 'vitest';
 import { GUARDS_METADATA, HEADERS_METADATA } from '@nestjs/common/constants.js';
@@ -17,7 +20,7 @@ import {
   SessionAuthenticationGuard,
   CsrfProtectionGuard,
 } from '../../../src/workspaces/index.js';
-import { mapWorkflowAuthoringError } from '../../../src/problems/authoring/workflows.js';
+
 import { createActorContext } from '../../../src/authorization/index.js';
 
 const workspaceId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
@@ -97,7 +100,9 @@ describe('workflow concurrency application boundary', () => {
     async (role) => {
       const { persistence, controls } = fixture(role);
       expect(await controls.read(readInput)).toEqual(settings);
-      await expect(controls.update(commandInput)).rejects.toMatchObject({
+      await expect(
+        problemResult(controls.update(commandInput), authoringFailure),
+      ).rejects.toMatchObject({
         code: 'resource.not_found',
       });
       expect(persistence.updateSettings).not.toHaveBeenCalled();
@@ -114,10 +119,14 @@ describe('workflow concurrency application boundary', () => {
         membershipStatus: 'active',
         workspaceStatus,
       });
-      await expect(controls.read(readInput)).rejects.toMatchObject({
+      await expect(
+        problemResult(controls.read(readInput), authoringFailure),
+      ).rejects.toMatchObject({
         code: 'resource.not_found',
       });
-      await expect(controls.update(commandInput)).rejects.toMatchObject({
+      await expect(
+        problemResult(controls.update(commandInput), authoringFailure),
+      ).rejects.toMatchObject({
         code: 'resource.not_found',
       });
       expect(persistence.readSettings).not.toHaveBeenCalled();
@@ -127,7 +136,9 @@ describe('workflow concurrency application boundary', () => {
   it('denies missing membership and cross-workspace actor without persistence', async () => {
     const { controls, authorization, persistence } = fixture();
     authorization.findAccess.mockResolvedValue(undefined);
-    await expect(controls.read(readInput)).rejects.toMatchObject({
+    await expect(
+      problemResult(controls.read(readInput), authoringFailure),
+    ).rejects.toMatchObject({
       code: 'resource.not_found',
     });
     await expect(
@@ -165,21 +176,23 @@ describe('workflow concurrency application boundary', () => {
   });
   it('maps only typed command conflicts to safe409 metadata', () => {
     expect(
-      mapWorkflowAuthoringError(
-        new WorkflowConcurrencyRevisionConflictError(2),
+      toProblem(
+        authoringFailure(new WorkflowConcurrencyRevisionConflictError(2)),
       ),
     ).toMatchObject({
       code: 'workflow.concurrency_revision_conflict',
       details: { currentRevision: 2 },
     });
     expect(
-      mapWorkflowAuthoringError(new WorkflowConcurrencyLimitExceededError(4)),
+      toProblem(authoringFailure(new WorkflowConcurrencyLimitExceededError(4))),
     ).toMatchObject({
       code: 'workflow.concurrency_limit_exceeded',
       details: { maximum: 4 },
     });
     expect(
-      mapWorkflowAuthoringError(new WorkflowConcurrencyLimitUnavailableError()),
+      toProblem(
+        authoringFailure(new WorkflowConcurrencyLimitUnavailableError()),
+      ),
     ).toMatchObject({ code: 'workflow.concurrency_limit_unavailable' });
   });
 });
@@ -219,14 +232,20 @@ describe('workflow concurrency HTTP boundary', () => {
       requestId: 'concurrency-test',
     };
     await expect(
-      controller.update(
-        request,
-        { workspaceId, workflowId },
-        commandInput.request,
+      problemResult(
+        controller.update(
+          request,
+          { workspaceId, workflowId },
+          commandInput.request,
+        ),
+        authoringFailure,
       ),
     ).rejects.toMatchObject({ code: 'request.invalid' });
     await expect(
-      controller.read(request, { workspaceId, workflowId: 'bad' }),
+      problemResult(
+        controller.read(request, { workspaceId, workflowId: 'bad' }),
+        authoringFailure,
+      ),
     ).rejects.toMatchObject({ code: 'request.invalid' });
     expect(persistence.updateSettings).not.toHaveBeenCalled();
     expect(persistence.readSettings).not.toHaveBeenCalled();

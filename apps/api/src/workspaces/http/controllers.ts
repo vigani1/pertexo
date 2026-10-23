@@ -11,6 +11,7 @@ import {
   Req,
   Res,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 
 import { requestIdempotencyKey } from '../../platform/http/index.js';
@@ -48,7 +49,10 @@ import {
   optionalAuthorizedWorkspace,
   projectAuthenticatedWorkspaceContext,
 } from '../request/authenticated-context.js';
+import { domainErrors } from '../../platform/http/problems/interceptor.js';
+import { workspaceFailure } from '../../problems/context/normalize.js';
 
+@UseInterceptors(domainErrors(workspaceFailure))
 @Controller('v1/users')
 export class UserController {
   public constructor(
@@ -85,6 +89,7 @@ export class UserController {
   }
 }
 
+@UseInterceptors(domainErrors(workspaceFailure))
 @Controller('v1/workspaces')
 export class WorkspaceDiscoveryController {
   public constructor(
@@ -108,6 +113,7 @@ export class WorkspaceDiscoveryController {
   }
 }
 
+@UseInterceptors(domainErrors(workspaceFailure))
 @Controller('v1/workspaces')
 export class WorkspaceMembersController {
   public constructor(
@@ -171,6 +177,7 @@ export class WorkspaceMembersController {
   }
 }
 
+@UseInterceptors(domainErrors(workspaceFailure))
 @Controller('v1/workspaces')
 export class WorkspaceController {
   public constructor(

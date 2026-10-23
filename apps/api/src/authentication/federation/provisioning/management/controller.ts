@@ -1,5 +1,6 @@
 import {
   Body,
+  Inject,
   Controller,
   Get,
   Post,
@@ -10,6 +11,7 @@ import {
   UseGuards,
   Header,
   HttpCode,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   directoryAdoptionQuerySchema,
@@ -34,14 +36,20 @@ import {
 } from '../../../../platform/http/index.js';
 import type { AbortableRequest } from '../../../../platform/http/request-operation-signal.js';
 import { RateLimit } from '../../../../platform/rate-limit/metadata.js';
-import { DirectoryManagementService } from './service.js';
+import type { DirectoryStore } from '@pertexo/database/tenant-access';
+import { DIRECTORY_STORE } from './tokens.js';
+import { domainErrors } from '../../../../platform/http/problems/interceptor.js';
+import { resourceFailure } from '../../../../problems/context/normalize.js';
 
 type Request = IdentityWorkspaceRequest & AbortableRequest;
+@UseInterceptors(domainErrors(resourceFailure))
 @Controller('v1/workspaces/:workspaceId/sso/directory')
 @UseGuards(SessionAuthenticationGuard)
 @RateLimit('authenticated_read')
 export class DirectoryManagementController {
-  constructor(private readonly service: DirectoryManagementService) {}
+  constructor(
+    @Inject(DIRECTORY_STORE) private readonly service: DirectoryStore,
+  ) {}
   private scope(request: Request, workspace: unknown) {
     return {
       workspaceId: workspaceIdentifierSchema.parse(workspace),
@@ -59,7 +67,7 @@ export class DirectoryManagementController {
     const scope = this.scope(request, workspace),
       idempotencyKey = requestIdempotencyKey(request.headers);
     return withRequestOperationSignal(request, (signal) =>
-      this.service.perform(() => work({ ...scope, idempotencyKey, signal })),
+      work({ ...scope, idempotencyKey, signal }),
     );
   }
   @Header('Cache-Control', 'private, no-store')
@@ -67,12 +75,10 @@ export class DirectoryManagementController {
   @UseGuards(WorkspaceMemberReadGuard)
   settings(@Req() request: Request, @Param('workspaceId') workspace: unknown) {
     return withRequestOperationSignal(request, (signal) =>
-      this.service.perform(() =>
-        this.service.store.settings({
-          ...this.scope(request, workspace),
-          signal,
-        }),
-      ),
+      this.service.settings({
+        ...this.scope(request, workspace),
+        signal,
+      }),
     );
   }
   @Header('Cache-Control', 'private, no-store')
@@ -85,12 +91,7 @@ export class DirectoryManagementController {
   ) {
     const query = directoryPeopleQuerySchema.parse(raw);
     return withRequestOperationSignal(request, (signal) =>
-      this.service.perform(() =>
-        this.service.store.people(
-          { ...this.scope(request, workspace), signal },
-          query,
-        ),
-      ),
+      this.service.people({ ...this.scope(request, workspace), signal }, query),
     );
   }
   @Header('Cache-Control', 'private, no-store')
@@ -105,7 +106,7 @@ export class DirectoryManagementController {
   ) {
     const input = directoryCredentialCreateSchema.parse(raw);
     return this.command(request, workspace, (scope) =>
-      this.service.store.createCredential({ ...scope, ...input }),
+      this.service.createCredential({ ...scope, ...input }),
     );
   }
   @Header('Cache-Control', 'private, no-store')
@@ -122,7 +123,7 @@ export class DirectoryManagementController {
     const input = directoryRevisionSchema.parse(raw),
       credentialId = workspaceIdentifierSchema.parse(rawId);
     return this.command(request, workspace, async (scope) => {
-      await this.service.store.revokeCredential({
+      await this.service.revokeCredential({
         ...scope,
         ...input,
         credentialId,
@@ -141,7 +142,7 @@ export class DirectoryManagementController {
   ) {
     const input = directoryMappingsSchema.parse(raw);
     return this.command(request, workspace, async (scope) => {
-      await this.service.store.replaceMappings({ ...scope, ...input });
+      await this.service.replaceMappings({ ...scope, ...input });
       return { changed: true };
     });
   }
@@ -155,11 +156,9 @@ export class DirectoryManagementController {
   ) {
     const query = directoryAdoptionQuerySchema.parse(raw);
     return withRequestOperationSignal(request, (signal) =>
-      this.service.perform(() =>
-        this.service.store.adoption(
-          { ...this.scope(request, workspace), signal },
-          query,
-        ),
+      this.service.adoption(
+        { ...this.scope(request, workspace), signal },
+        query,
       ),
     );
   }
@@ -175,7 +174,7 @@ export class DirectoryManagementController {
   ) {
     const input = directoryAdoptSchema.parse(raw);
     return this.command(request, workspace, async (scope) => {
-      await this.service.store.adopt({ ...scope, ...input });
+      await this.service.adopt({ ...scope, ...input });
       return { changed: true };
     });
   }
@@ -193,7 +192,7 @@ export class DirectoryManagementController {
     const input = directoryRevisionSchema.parse(raw),
       targetWorkspaceId = workspaceIdentifierSchema.parse(rawId);
     return this.command(request, workspace, async (scope) => {
-      await this.service.store.unlink({
+      await this.service.unlink({
         ...scope,
         ...input,
         targetWorkspaceId,

@@ -9,6 +9,7 @@ import {
   Put,
   Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   nodeTestParamsSchema,
@@ -28,8 +29,11 @@ import type { AbortableRequest } from '../../platform/http/request-operation-sig
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import { NodeSamplesReadGuard, NodeTestingUpdateGuard } from '../guards.js';
 import { StepSamplesUseCase } from './use-case.js';
+import { domainErrors } from '../../platform/http/problems/interceptor.js';
+import { nodeTestingFailure } from '../../problems/context/normalize.js';
 
 type Request = IdentityWorkspaceRequest & AbortableRequest;
+@UseInterceptors(domainErrors(nodeTestingFailure))
 @Controller('v1/workspaces/:workspaceId/workflows/:workflowId/draft')
 @RateLimit('authenticated_read')
 export class StepSamplesController {

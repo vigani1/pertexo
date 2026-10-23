@@ -5,7 +5,7 @@ export * from './commands/duplicate.js';
 export * from './commands/lifecycle.js';
 export * from './commands/rename.js';
 export * from './commands/restore-version.js';
-export * from '../problems/authoring/workflows.js';
+
 export * from './http/etag.js';
 export * from './http/guards.js';
 export * from './module.js';

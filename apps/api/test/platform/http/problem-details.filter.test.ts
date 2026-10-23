@@ -1,3 +1,11 @@
+import { toProblem } from '../../../src/problems/registry.js';
+import {
+  workspaceFailure,
+  connectionFailure,
+  runFailure,
+  nodeTestingFailure,
+  authoringFailure,
+} from '../../../src/problems/context/normalize.js';
 import { BadRequestException, HttpException } from '@nestjs/common';
 import type { ArgumentsHost } from '@nestjs/common';
 import {
@@ -18,11 +26,10 @@ import {
   isApplicationError,
 } from '../../../src/platform/http/index.js';
 import { IdentityError } from '../../../src/identity/index.js';
-import { mapIdentityWorkspaceError } from '../../../src/workspaces/index.js';
+
 import { APPLICATION_ERROR_MAPPERS } from '../../../src/application-errors.js';
 import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/server';
 import { WorkflowTagConflictError } from '@pertexo/database/authoring';
-import { mapWorkflowOrganizationError } from '../../../src/problems/authoring/organization.js';
 
 interface ResponseMock {
   body?: unknown;
@@ -64,10 +71,8 @@ function hostFor(
 
 describe('RFC 9457 problem details filter', () => {
   it('renders the accepted generic organization lifecycle conflict without fabricating a lifecycle revision', () => {
-    const mapped = mapWorkflowOrganizationError(
-      new WorkflowTagConflictError('lifecycle'),
-    );
-    expect(mapped?.code).toBe('workflow.lifecycle_conflict');
+    const mapped = toProblem(new WorkflowTagConflictError('lifecycle'));
+    expect(mapped.code).toBe('workflow.lifecycle_conflict');
     const response = responseMock();
     new ProblemDetailsFilter(new RequestContextStore()).catch(
       mapped,
@@ -414,7 +419,7 @@ describe('RFC 9457 problem details filter', () => {
     const response = responseMock();
     const mapper = vi.fn((error: unknown) =>
       error instanceof IdentityError
-        ? mapIdentityWorkspaceError(error)
+        ? toProblem(workspaceFailure(error))
         : undefined,
     );
     const filter = new ProblemDetailsFilter(contexts, undefined, [
@@ -445,64 +450,77 @@ describe('RFC 9457 problem details filter', () => {
     [
       '/v1/workspaces/workspace-a/connections',
       'The connection request is invalid.',
+      connectionFailure,
     ],
     [
       '/v1/workspaces/workspace-a/failure-notification-destinations',
       'The connection request is invalid.',
+      connectionFailure,
     ],
     [
       '/v1/workspaces/workspace-a/workflows/workflow-a/failure-notification-policy',
       'The connection request is invalid.',
+      connectionFailure,
     ],
     [
       '/v1/workspaces/workspace-a/workflows/workflow-a/runs',
       'The workflow run request is invalid.',
+      runFailure,
     ],
     [
       '/v1/workspaces/workspace-a/runs/run-a',
       'The workflow run request is invalid.',
+      runFailure,
     ],
     [
       '/v1/workspaces/workspace-a/run-statistics',
       'The workflow run request is invalid.',
+      runFailure,
     ],
     [
       '/v1/workspaces/workspace-a/workflows/workflow-a/draft/nodes/node-a/test',
       'The step test request is invalid.',
+      nodeTestingFailure,
     ],
     [
       '/v1/workspaces/workspace-a/previews/preview-a',
       'The step test request is invalid.',
+      nodeTestingFailure,
     ],
     [
       '/v1/workspaces/workspace-a/workflows/workflow-a/draft',
       'The workflow request is invalid.',
+      authoringFailure,
     ],
     [
       '/v1/workspaces/workspace-a/workflows/workflow-a/triggers/trigger-a/schedule/disable',
       'The workflow request is invalid.',
+      authoringFailure,
     ],
-    ['/v1/workspaces', 'The request is invalid.'],
-    ['/v1/auth/oidc/callback', 'The request is invalid.'],
-  ])('preserves the feature validation problem for %s', (url, detail) => {
-    const response = responseMock();
-    const validationError = new z.ZodError([
-      { code: 'custom', path: [], message: 'unsafe detail' },
-    ]);
+    ['/v1/workspaces', 'The request is invalid.', workspaceFailure],
+    ['/v1/auth/oidc/callback', 'The request is invalid.', workspaceFailure],
+  ])(
+    'preserves the feature validation problem for %s',
+    (url, detail, normalize) => {
+      const response = responseMock();
+      const validationError = new z.ZodError([
+        { code: 'custom', path: [], message: 'unsafe detail' },
+      ]);
 
-    new ProblemDetailsFilter(
-      new RequestContextStore(),
-      undefined,
-      APPLICATION_ERROR_MAPPERS,
-    ).catch(validationError, hostFor({ url }, response));
+      new ProblemDetailsFilter(
+        new RequestContextStore(),
+        undefined,
+        APPLICATION_ERROR_MAPPERS,
+      ).catch(normalize(validationError), hostFor({ url }, response));
 
-    expect(response.body).toMatchObject({
-      status: 400,
-      code: 'request.invalid',
-      detail,
-    });
-    expect(JSON.stringify(response.body)).not.toContain('unsafe detail');
-  });
+      expect(response.body).toMatchObject({
+        status: 400,
+        code: 'request.invalid',
+        detail,
+      });
+      expect(JSON.stringify(response.body)).not.toContain('unsafe detail');
+    },
+  );
 
   it('converts Zod issues to bounded pointer-addressed validation errors', () => {
     const contexts = new RequestContextStore();

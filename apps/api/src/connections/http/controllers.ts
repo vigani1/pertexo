@@ -10,6 +10,7 @@ import {
   Query,
   Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 
 import {
@@ -42,7 +43,10 @@ import {
   connectionWorkspaceParamSchema,
   type ConnectionRequest,
 } from '../types.js';
+import { domainErrors } from '../../platform/http/problems/interceptor.js';
+import { connectionFailure } from '../../problems/context/normalize.js';
 
+@UseInterceptors(domainErrors(connectionFailure))
 @Controller('v1/workspaces/:workspaceId/connections')
 @RateLimit('connection_mutation')
 export class ConnectionsController {

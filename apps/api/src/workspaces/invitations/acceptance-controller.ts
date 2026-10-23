@@ -9,6 +9,7 @@ import {
   Req,
   Res,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 
 import { DoubleSubmitCsrfPolicy } from '../../identity/index.js';
@@ -40,10 +41,13 @@ import {
   SESSION_COOKIE_POLICY,
 } from '../tokens.js';
 import type { CookieResponse, IdentityWorkspaceRequest } from '../types.js';
+import { domainErrors } from '../../platform/http/problems/interceptor.js';
+import { workspaceFailure } from '../../problems/context/normalize.js';
 
 const INVITATION_BINDING_COOKIE_NAME = 'pertexo_invitation_intent';
 const INVITATION_CSRF_HEADER = 'x-invitation-csrf-token';
 
+@UseInterceptors(domainErrors(workspaceFailure))
 @Controller('v1/invitation-acceptance')
 export class InvitationAcceptanceController {
   public constructor(

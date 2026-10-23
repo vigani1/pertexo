@@ -1,4 +1,12 @@
-import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Query,
+  Req,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import {
   workflowNodeRunParamsSchema,
   workflowRunParamsSchema,
@@ -24,11 +32,14 @@ import {
   GetWorkflowStepHealthUseCase,
   ListWorkflowStepRunsUseCase,
 } from './use-cases.js';
+import { domainErrors } from '../../platform/http/problems/interceptor.js';
+import { runFailure } from '../../problems/context/normalize.js';
 
 /**
  * A run's input and each step's output (ADR 050), and each step across its
  * workflow's recent runs (ADR 051).
  */
+@UseInterceptors(domainErrors(runFailure))
 @Controller('v1/workspaces/:workspaceId')
 @RateLimit('authenticated_read')
 export class WorkflowRunDataController {

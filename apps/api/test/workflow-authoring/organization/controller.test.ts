@@ -1,3 +1,4 @@
+import { APPLICATION_ERROR_MAPPERS } from '../../../src/application-errors.js';
 import 'reflect-metadata';
 import { EventEmitter } from 'node:events';
 import type { ExecutionContext } from '@nestjs/common';
@@ -231,7 +232,9 @@ async function httpFixture(
   applications.push(app);
   const middleware = new RequestContextMiddleware(contexts);
   app.use(middleware.use.bind(middleware));
-  app.useGlobalFilters(new ProblemDetailsFilter(contexts));
+  app.useGlobalFilters(
+    new ProblemDetailsFilter(contexts, undefined, APPLICATION_ERROR_MAPPERS),
+  );
   await app.init();
   return { ...f, app };
 }
@@ -492,7 +495,7 @@ describe('organization controller registered HTTP seam (fake session and persist
         { workspaceId },
         { key: 'release' },
       ),
-    ).rejects.toMatchObject({ code: 'internal.unexpected' });
+    ).rejects.toMatchObject({ name: 'AbortError' });
     expect(signal?.aborted).toBe(true);
     expect(raw.listenerCount('aborted')).toBe(0);
   });

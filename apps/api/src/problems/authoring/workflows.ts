@@ -1,4 +1,4 @@
-import { WorkspaceAccessDeniedError } from '@pertexo/database/tenant-access';
+import { errorRegistration } from '../../platform/http/problems/registry.js';
 import {
   PublicationReviewError,
   WorkflowPromotionError,
@@ -8,7 +8,6 @@ import {
   WorkflowErrorTargetUnavailableError,
 } from '@pertexo/database/authoring';
 import { ArtifactMetadataNotFoundError } from '@pertexo/database/runs';
-import { IdempotencyConflictError } from '@pertexo/database/platform';
 import {
   WorkflowInputCaseRevisionConflictError,
   WorkflowInputCaseLimitError,
@@ -27,29 +26,199 @@ import {
 import { WorkflowEngineError } from '@pertexo/workflow-engine';
 import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/server';
 import { apiProblemIssueSchema } from '@pertexo/contracts';
-import { z } from 'zod';
-
 import {
   applicationError,
-  isApplicationError,
   requestBodyCause,
-  throwApplicationError,
   type ApplicationError,
 } from '../../platform/http/index.js';
-import { AuthorizationError } from '../../authorization/index.js';
+
 import { WorkflowHeaderError } from '../../workflow-authoring/http/preconditions.js';
 import { InvalidWorkflowCursorError } from '../../workflow-authoring/cursor.js';
-import { mapWorkflowOrganizationError } from './organization.js';
-import { mapWorkflowPortabilityError } from './portability.js';
 import {
   InvalidWorkflowGraphError,
   WorkflowGraphContractError,
 } from '../../workflow-authoring/graph.js';
 
-/**
- * Engine compile failures a person can cause and fix, in their words. Any
- * other failure keeps the engine's own sentence.
- */
+export const workflowProblems = [
+  errorRegistration(WorkflowPromotionError, (error) => {
+    return applicationError(
+      error.reason === 'unavailable'
+        ? 'workflow.promotion_unavailable'
+        : 'workflow.promotion_conflict',
+      { safeDetail: error.message },
+    );
+  }),
+  errorRegistration(PublicationReviewError, (error) => {
+    return applicationError(
+      error.reason === 'required'
+        ? 'workflow.publish_approval_required'
+        : 'workflow.publication_review_conflict',
+      { safeDetail: error.message },
+    );
+  }),
+  errorRegistration(ArtifactMetadataNotFoundError, () => {
+    return applicationError('request.invalid', {
+      safeDetail:
+        'An attached file is unavailable or its metadata does not match. Upload the file again before saving or running.',
+    });
+  }),
+  errorRegistration(AuthoringValidationUnavailableError, () => {
+    return validationUnavailable();
+  }),
+
+  errorRegistration(WorkflowHeaderError, (error) => {
+    if (error.code === 'precondition_required') {
+      return applicationError('request.precondition_required', {
+        safeDetail: 'If-Match is required for this operation.',
+      });
+    }
+    return applicationError('request.invalid', {
+      safeDetail: error.message,
+    });
+  }),
+  errorRegistration(InvalidWorkflowCursorError, () => {
+    return applicationError('request.invalid', {
+      safeDetail: 'The workflow cursor is invalid.',
+    });
+  }),
+  errorRegistration(WorkflowNotFoundError, () => {
+    return applicationError('resource.not_found');
+  }),
+  errorRegistration(WorkflowInputCaseRevisionConflictError, () => {
+    return applicationError('workflow.input_case_revision_conflict', {
+      safeDetail:
+        'The case representation has changed; reload it before confirming a new command.',
+    });
+  }),
+  errorRegistration(WorkflowInputCaseLimitError, () => {
+    return applicationError('workflow.input_case_limit_exceeded', {
+      safeDetail:
+        'The run-input case count or retained storage limit has been reached.',
+    });
+  }),
+  errorRegistration(WorkflowErrorSettingsConflictError, () => {
+    return applicationError('workflow.error_policy_conflict', {
+      safeDetail:
+        'The error workflow setting changed. Reload before trying again.',
+    });
+  }),
+  errorRegistration(WorkflowErrorTargetUnavailableError, () => {
+    return applicationError('workflow.error_target_unavailable', {
+      safeDetail:
+        'Choose a different active workflow published with When a workflow fails.',
+    });
+  }),
+  errorRegistration(WorkflowConcurrencyRevisionConflictError, (error) => {
+    return applicationError('workflow.concurrency_revision_conflict', {
+      safeDetail:
+        'The concurrency setting has changed; reload it before retrying.',
+      details: { currentRevision: error.currentRevision },
+    });
+  }),
+  errorRegistration(WorkflowConcurrencyLimitUnavailableError, () => {
+    return applicationError('workflow.concurrency_limit_unavailable', {
+      safeDetail:
+        'A concurrency cap requires an active workspace execution entitlement. Reload the current policy before retrying.',
+    });
+  }),
+  errorRegistration(WorkflowConcurrencyLimitExceededError, (error) => {
+    return applicationError('workflow.concurrency_limit_exceeded', {
+      safeDetail:
+        'The concurrency cap exceeds the current workspace active-run limit. Reload the current policy before retrying.',
+      details: { maximum: error.maximum },
+    });
+  }),
+  errorRegistration(WorkflowPauseRevisionConflictError, (error) => {
+    return applicationError('workflow.pause_conflict', {
+      safeDetail: 'The workflow pause has changed; reload it before retrying.',
+      details: { currentPauseRevision: error.currentRevision },
+    });
+  }),
+  errorRegistration(WorkflowAutoPauseSettingsRevisionConflictError, (error) => {
+    return applicationError('workflow.auto_pause_settings_conflict', {
+      safeDetail:
+        'The automatic pause settings have changed; reload them before retrying.',
+      details: { currentSettingsRevision: error.currentRevision },
+    });
+  }),
+  errorRegistration(
+    WorkspaceAutoPauseSettingsRevisionConflictError,
+    (error) => {
+      return applicationError('workspace.auto_pause_settings_conflict', {
+        safeDetail:
+          'The workspace default has changed; reload it before retrying.',
+        details: { currentRevision: error.currentRevision },
+      });
+    },
+  ),
+  errorRegistration(WorkflowRevisionConflictError, (error) => {
+    return applicationError('workflow.revision_conflict', {
+      safeDetail: 'The workflow draft has changed; reload it before retrying.',
+      details: {
+        currentRevision: error.currentRevision,
+        currentEtag: error.currentEtag,
+      },
+    });
+  }),
+  errorRegistration(WorkflowLifecycleRevisionConflictError, (error) => {
+    return applicationError('workflow.lifecycle_conflict', {
+      safeDetail:
+        'The workflow lifecycle has changed; reload it before retrying.',
+      details: { currentLifecycleRevision: error.currentRevision },
+    });
+  }),
+  errorRegistration(WorkflowNameRevisionConflictError, (error) => {
+    return applicationError('workflow.name_conflict', {
+      safeDetail:
+        'The workflow was renamed meanwhile; reload it before retrying.',
+      details: { currentNameRevision: error.currentRevision },
+    });
+  }),
+  errorRegistration(WorkflowDefinitionPlacementError, (error) => {
+    return applicationError('workflow.invalid', {
+      safeDetail:
+        'The workflow contains a definition that can no longer be added.',
+      details: { issues: error.issues },
+    });
+  }),
+  errorRegistration(InvalidWorkflowGraphError, (error) => {
+    if (
+      error.issues.some(
+        (issue) => !apiProblemIssueSchema.safeParse(issue).success,
+      )
+    )
+      return validationUnavailable();
+    return applicationError('workflow.invalid', {
+      safeDetail: 'The workflow cannot be published in its current form.',
+      details: { issues: error.issues },
+    });
+  }),
+  errorRegistration(WorkflowEngineError, (error) => {
+    if (error.code === 'executable_invalid') {
+      return applicationError('workflow.invalid', {
+        safeDetail:
+          'A step’s setup is incomplete, so the workflow can’t be published yet.',
+        details: {
+          issues: [
+            {
+              path: '$.nodes',
+              code: 'executable_invalid',
+              message: EXECUTABLE_PROBLEMS[error.message] ?? error.message,
+            },
+          ],
+        },
+      });
+    }
+    return undefined;
+  }),
+  errorRegistration(WorkflowGraphContractError, (error) => {
+    return applicationError('request.invalid', {
+      safeDetail: 'The workflow graph is invalid.',
+      ...requestBodyCause(error),
+    });
+  }),
+];
+
 const EXECUTABLE_PROBLEMS: Readonly<Record<string, string>> = {
   'workflow edge source port is not configured':
     'A Switch or Parallel step has a connection from a branch it doesn’t define. Add that branch in its setup, or remove the connection.',
@@ -70,213 +239,10 @@ const EXECUTABLE_PROBLEMS: Readonly<Record<string, string>> = {
   'node config version is incompatible':
     'A step’s setup was saved by an older version. Open it and save its setup again.',
 };
-
-export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
-  if (error instanceof WorkspaceAccessDeniedError)
-    return applicationError('resource.not_found');
-  if (error instanceof WorkflowPromotionError)
-    return applicationError(
-      error.reason === 'unavailable'
-        ? 'workflow.promotion_unavailable'
-        : 'workflow.promotion_conflict',
-      { safeDetail: error.message },
-    );
-  if (error instanceof PublicationReviewError)
-    return applicationError(
-      error.reason === 'required'
-        ? 'workflow.publish_approval_required'
-        : 'workflow.publication_review_conflict',
-      { safeDetail: error.message },
-    );
-  if (error instanceof ArtifactMetadataNotFoundError)
-    return applicationError('request.invalid', {
-      safeDetail:
-        'An attached file is unavailable or its metadata does not match. Upload the file again before saving or running.',
-    });
-  const organization = mapWorkflowOrganizationError(error);
-  if (organization !== undefined) return organization;
-  const portability = mapWorkflowPortabilityError(error);
-  if (portability !== undefined) return portability;
-  if (error instanceof AuthoringValidationUnavailableError)
-    return validationUnavailable();
-  if (error instanceof AuthorizationError)
-    return applicationError(error.code, {
-      safeDetail: error.message,
-    });
-  if (isApplicationError(error)) return error;
-  if (
-    error instanceof WorkflowHeaderError &&
-    error.code === 'precondition_required'
-  )
-    return applicationError('request.precondition_required', {
-      safeDetail: 'If-Match is required for this operation.',
-    });
-  if (error instanceof WorkflowHeaderError)
-    return applicationError('request.invalid', {
-      safeDetail: error.message,
-    });
-  if (error instanceof InvalidWorkflowCursorError)
-    return applicationError('request.invalid', {
-      safeDetail: 'The workflow cursor is invalid.',
-    });
-  if (error instanceof WorkflowNotFoundError)
-    return applicationError('resource.not_found');
-  if (error instanceof WorkflowInputCaseRevisionConflictError)
-    return applicationError('workflow.input_case_revision_conflict', {
-      safeDetail:
-        'The case representation has changed; reload it before confirming a new command.',
-    });
-  if (error instanceof WorkflowInputCaseLimitError)
-    return applicationError('workflow.input_case_limit_exceeded', {
-      safeDetail:
-        'The run-input case count or retained storage limit has been reached.',
-    });
-  if (error instanceof WorkflowErrorSettingsConflictError)
-    return applicationError('workflow.error_policy_conflict', {
-      safeDetail:
-        'The error workflow setting changed. Reload before trying again.',
-    });
-  if (error instanceof WorkflowErrorTargetUnavailableError)
-    return applicationError('workflow.error_target_unavailable', {
-      safeDetail:
-        'Choose a different active workflow published with When a workflow fails.',
-    });
-  if (error instanceof WorkflowConcurrencyRevisionConflictError)
-    return applicationError('workflow.concurrency_revision_conflict', {
-      safeDetail:
-        'The concurrency setting has changed; reload it before retrying.',
-      details: { currentRevision: error.currentRevision },
-    });
-  if (error instanceof WorkflowConcurrencyLimitUnavailableError)
-    return applicationError('workflow.concurrency_limit_unavailable', {
-      safeDetail:
-        'A concurrency cap requires an active workspace execution entitlement. Reload the current policy before retrying.',
-    });
-  if (error instanceof WorkflowConcurrencyLimitExceededError)
-    return applicationError('workflow.concurrency_limit_exceeded', {
-      safeDetail:
-        'The concurrency cap exceeds the current workspace active-run limit. Reload the current policy before retrying.',
-      details: { maximum: error.maximum },
-    });
-  if (error instanceof WorkflowPauseRevisionConflictError)
-    return applicationError('workflow.pause_conflict', {
-      safeDetail: 'The workflow pause has changed; reload it before retrying.',
-      details: { currentPauseRevision: error.currentRevision },
-    });
-  if (error instanceof WorkflowAutoPauseSettingsRevisionConflictError)
-    return applicationError('workflow.auto_pause_settings_conflict', {
-      safeDetail:
-        'The automatic pause settings have changed; reload them before retrying.',
-      details: { currentSettingsRevision: error.currentRevision },
-    });
-  if (error instanceof WorkspaceAutoPauseSettingsRevisionConflictError)
-    return applicationError('workspace.auto_pause_settings_conflict', {
-      safeDetail:
-        'The workspace default has changed; reload it before retrying.',
-      details: { currentRevision: error.currentRevision },
-    });
-  if (error instanceof IdempotencyConflictError)
-    return applicationError('request.idempotency_conflict', {
-      safeDetail: 'The idempotency key was already used for another request.',
-    });
-  if (error instanceof WorkflowRevisionConflictError)
-    return applicationError('workflow.revision_conflict', {
-      safeDetail: 'The workflow draft has changed; reload it before retrying.',
-      details: {
-        currentRevision: error.currentRevision,
-        currentEtag: error.currentEtag,
-      },
-    });
-  if (error instanceof WorkflowLifecycleRevisionConflictError)
-    return applicationError('workflow.lifecycle_conflict', {
-      safeDetail:
-        'The workflow lifecycle has changed; reload it before retrying.',
-      details: { currentLifecycleRevision: error.currentRevision },
-    });
-  if (error instanceof WorkflowNameRevisionConflictError)
-    return applicationError('workflow.name_conflict', {
-      safeDetail:
-        'The workflow was renamed meanwhile; reload it before retrying.',
-      details: { currentNameRevision: error.currentRevision },
-    });
-  if (error instanceof WorkflowDefinitionPlacementError)
-    return applicationError('workflow.invalid', {
-      safeDetail:
-        'The workflow contains a definition that can no longer be added.',
-      details: { issues: error.issues },
-    });
-  if (error instanceof InvalidWorkflowGraphError) {
-    if (
-      error.issues.some(
-        (issue) => !apiProblemIssueSchema.safeParse(issue).success,
-      )
-    )
-      return validationUnavailable();
-    return applicationError('workflow.invalid', {
-      safeDetail: 'The workflow cannot be published in its current form.',
-      details: { issues: error.issues },
-    });
-  }
-  // Compiling the executable finds setup the draft check can't see (a
-  // Parallel or Switch edge on a branch that isn't configured): the
-  // workflow is invalid, not the server broken.
-  if (
-    error instanceof WorkflowEngineError &&
-    error.code === 'executable_invalid'
-  )
-    return applicationError('workflow.invalid', {
-      safeDetail:
-        'A step’s setup is incomplete, so the workflow can’t be published yet.',
-      details: {
-        issues: [
-          {
-            path: '$.nodes',
-            code: 'executable_invalid',
-            message: EXECUTABLE_PROBLEMS[error.message] ?? error.message,
-          },
-        ],
-      },
-    });
-  if (error instanceof WorkflowGraphContractError || isGraphSchemaError(error))
-    return applicationError('request.invalid', {
-      safeDetail: 'The workflow graph is invalid.',
-      ...requestBodyCause(error),
-    });
-  if (error instanceof z.ZodError)
-    return applicationError('request.invalid', {
-      safeDetail: 'The workflow request is invalid.',
-      ...requestBodyCause(error),
-    });
-  return applicationError('internal.unexpected', { cause: error });
-}
-
-/** Folders, tags, triggers and settings share these routes; only a graph is a graph. */
-function isGraphSchemaError(error: unknown): boolean {
-  return (
-    error instanceof z.ZodError &&
-    error.issues.some((issue) => issue.path[0] === 'graph')
-  );
-}
-
 function validationUnavailable(): ApplicationError {
   return applicationError('workflow.validation_unavailable', {
     safeDetail:
       'Workflow validation is temporarily unavailable. Retry explicitly after a short wait.',
     details: { retryAfterSeconds: 1 },
   });
-}
-
-export function throwWorkflowApplicationError(error: unknown): never {
-  return throwApplicationError(mapWorkflowAuthoringError(error));
-}
-
-export function throwWorkflowInputCaseApplicationError(error: unknown): never {
-  if (error instanceof z.ZodError)
-    return throwApplicationError(
-      applicationError('request.invalid', {
-        safeDetail: 'The run-input case request is invalid.',
-        ...requestBodyCause(error),
-      }),
-    );
-  return throwWorkflowApplicationError(error);
 }

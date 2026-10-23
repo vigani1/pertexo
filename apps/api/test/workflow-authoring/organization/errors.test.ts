@@ -1,3 +1,8 @@
+import { toProblem } from '../../../src/problems/registry.js';
+import { createErrorRegistry } from '../../../src/platform/http/problems/registry.js';
+import { organizationProblems } from '../../../src/problems/authoring/organization.js';
+const organizationProblem = createErrorRegistry(organizationProblems);
+import { authoringFailure } from '../../../src/problems/context/normalize.js';
 import {
   WorkflowFolderConflictError,
   WorkflowNotFoundError,
@@ -10,8 +15,7 @@ import { IdempotencyConflictError } from '@pertexo/database/platform';
 import { describe, expect, it } from 'vitest';
 
 import { APPLICATION_ERROR_CATALOG } from '../../../src/platform/http/application-error.js';
-import { mapWorkflowOrganizationError } from '../../../src/problems/authoring/organization.js';
-import { mapWorkflowAuthoringError } from '../../../src/problems/authoring/workflows.js';
+
 import { AuthorizationError } from '../../../src/authorization/index.js';
 
 const cases = [
@@ -72,17 +76,17 @@ const cases = [
 
 describe('workflow organization error mapping', () => {
   it.each(cases)('maps %s to %s with status %i', (error, code, status) => {
-    const mapped = mapWorkflowOrganizationError(error);
+    const mapped = organizationProblem(error);
     expect(mapped?.code).toBe(code);
     expect(typeof mapped?.safeDetail).toBe('string');
     expect(mapped?.safeDetail?.length).toBeGreaterThan(0);
     expect(APPLICATION_ERROR_CATALOG[code].status).toBe(status);
     expect(Object.isFrozen(mapped)).toBe(true);
-    expect(mapWorkflowAuthoringError(error)).toEqual(mapped);
+    expect(toProblem(authoringFailure(error))).toEqual(mapped);
   });
 
   it.each(cases)('does not disclose private properties of %s', (error) => {
-    const expected = mapWorkflowOrganizationError(error);
+    const expected = organizationProblem(error);
     Object.assign(error, {
       message: 'private-actor-generation-token-input',
       actorId: 'private-actor',
@@ -94,7 +98,7 @@ describe('workflow organization error mapping', () => {
       body: { name: 'private-folder', parentId: 'private-parent' },
       cause: new Error('private-cause'),
     });
-    const mapped = mapWorkflowOrganizationError(error);
+    const mapped = organizationProblem(error);
     expect(mapped).toEqual(expected);
     expect(Object.keys(mapped ?? {})).toEqual(
       error instanceof WorkflowTagConflictError && error.kind === 'lifecycle'
@@ -102,7 +106,7 @@ describe('workflow organization error mapping', () => {
         : ['code', 'safeDetail'],
     );
     expect(JSON.stringify(mapped)).not.toContain('private');
-    expect(mapWorkflowAuthoringError(error)).toEqual(mapped);
+    expect(toProblem(authoringFailure(error))).toEqual(mapped);
   });
 
   it.each([
@@ -116,7 +120,7 @@ describe('workflow organization error mapping', () => {
     undefined,
     'unrelated failure',
   ])('leaves unrelated failures to the existing mapper: %s', (error) => {
-    expect(mapWorkflowOrganizationError(error)).toBeUndefined();
+    expect(organizationProblem(error)).toBeUndefined();
   });
 
   it('does not read unrelated error properties', () => {
@@ -125,7 +129,7 @@ describe('workflow organization error mapping', () => {
         throw new Error('must not read private input');
       },
     });
-    expect(mapWorkflowOrganizationError(error)).toBeUndefined();
+    expect(organizationProblem(error)).toBeUndefined();
   });
 
   it('does not mutate conflict instances', () => {
@@ -140,7 +144,7 @@ describe('workflow organization error mapping', () => {
     for (const kind of kinds) {
       const error = Object.freeze(new WorkflowTagConflictError(kind));
       const descriptors = Object.getOwnPropertyDescriptors(error);
-      expect(mapWorkflowOrganizationError(error)).toBeDefined();
+      expect(organizationProblem(error)).toBeDefined();
       expect(Object.getOwnPropertyDescriptors(error)).toEqual(descriptors);
     }
   });
@@ -151,7 +155,7 @@ describe('workflow organization error mapping', () => {
       const error = Object.assign(new WorkflowFolderConflictError('name'), {
         kind,
       });
-      expect(mapWorkflowOrganizationError(error)).toBeUndefined();
+      expect(organizationProblem(error)).toBeUndefined();
     },
   );
 
@@ -167,7 +171,7 @@ describe('workflow organization error mapping', () => {
     for (const kind of kinds) {
       const error = Object.freeze(new WorkflowFolderConflictError(kind));
       const descriptors = Object.getOwnPropertyDescriptors(error);
-      expect(mapWorkflowOrganizationError(error)).toBeDefined();
+      expect(organizationProblem(error)).toBeDefined();
       expect(Object.getOwnPropertyDescriptors(error)).toEqual(descriptors);
     }
   });

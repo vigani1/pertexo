@@ -1,3 +1,5 @@
+import { toProblem } from '../../src/problems/registry.js';
+import { connectionFailure } from '../../src/problems/context/normalize.js';
 import {
   ConnectionConflictError,
   ConnectionIdempotencyConflictError,
@@ -14,7 +16,6 @@ import {
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { mapConnectionError } from '../../src/problems/resources/connections.js';
 import { InvalidAuthenticatedWorkspaceContextError } from '../../src/workspaces/request/authenticated-context-error.js';
 import { applicationError } from '../../src/platform/http/index.js';
 import { AuthorizationError } from '../../src/authorization/index.js';
@@ -104,7 +105,7 @@ describe('connection error mapping', () => {
   ] as const)(
     'maps %s to the exact bounded public problem',
     (_name, failure, code, safeDetail) => {
-      expect(mapConnectionError(failure)).toEqual({
+      expect(toProblem(connectionFailure(failure))).toEqual({
         code,
         ...(safeDetail === undefined ? {} : { safeDetail }),
       });
@@ -113,7 +114,7 @@ describe('connection error mapping', () => {
 
   it('retains KMS failure only as an internal cause of a safe problem', () => {
     const failure = new ConnectionSecretEncryptionError();
-    expect(mapConnectionError(failure)).toEqual({
+    expect(toProblem(connectionFailure(failure))).toEqual({
       code: 'provider.unavailable',
       safeDetail: 'Credential protection is temporarily unavailable.',
       cause: failure,
@@ -126,7 +127,7 @@ describe('connection error mapping', () => {
       'definite_failure',
       false,
     );
-    expect(mapConnectionError(failure)).toEqual({
+    expect(toProblem(connectionFailure(failure))).toEqual({
       code: 'provider.unavailable',
       safeDetail: 'The connection test could not be dispatched safely.',
       cause: failure,
@@ -135,7 +136,7 @@ describe('connection error mapping', () => {
 
   it('maps an unknown failure to an internal problem with exact diagnostic cause', () => {
     const failure = Object.freeze({ secret: 'not-for-the-wire' });
-    expect(mapConnectionError(failure)).toEqual({
+    expect(toProblem(connectionFailure(failure))).toEqual({
       code: 'internal.unexpected',
       cause: failure,
     });

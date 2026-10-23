@@ -1,3 +1,5 @@
+import { authoringFailure } from '../../../src/problems/context/normalize.js';
+import { problemResult } from '../../support/problem.js';
 import { describe, expect, it, vi } from 'vitest';
 import type { WorkflowAutoPauseDatabase } from '@pertexo/database/authoring';
 import { WorkflowAutoPauseUseCase } from '../../../src/workflow-authoring/settings/auto-pause.js';
@@ -93,18 +95,23 @@ describe('workflow automatic pause application boundary', () => {
         idempotencyKey: 'denied',
         request: { expectedPauseRevision: '1' },
       };
-      await expect(controls.resume(input)).rejects.toMatchObject({
+      await expect(
+        problemResult(controls.resume(input), authoringFailure),
+      ).rejects.toMatchObject({
         code: 'resource.not_found',
       });
       await expect(
-        controls.updateWorkflow({
-          ...input,
-          request: {
-            enabled: false,
-            thresholdOverride: null,
-            expectedSettingsRevision: 1,
-          },
-        }),
+        problemResult(
+          controls.updateWorkflow({
+            ...input,
+            request: {
+              enabled: false,
+              thresholdOverride: null,
+              expectedSettingsRevision: 1,
+            },
+          }),
+          authoringFailure,
+        ),
       ).rejects.toMatchObject({ code: 'resource.not_found' });
       expect(persistence.resumeWorkflow).not.toHaveBeenCalled();
       expect(persistence.updateWorkflowSettings).not.toHaveBeenCalled();
@@ -117,12 +124,15 @@ describe('workflow automatic pause application boundary', () => {
     async (role) => {
       const { persistence, controls } = fixture(role);
       await expect(
-        controls.updateWorkspace({
-          actor,
-          routeWorkspaceId: workspaceId,
-          idempotencyKey: 'default',
-          request: { threshold: 12, expectedRevision: 1 },
-        }),
+        problemResult(
+          controls.updateWorkspace({
+            actor,
+            routeWorkspaceId: workspaceId,
+            idempotencyKey: 'default',
+            request: { threshold: 12, expectedRevision: 1 },
+          }),
+          authoringFailure,
+        ),
       ).rejects.toMatchObject({ code: 'resource.not_found' });
       expect(persistence.updateWorkspaceSettings).not.toHaveBeenCalled();
       expect(
@@ -169,11 +179,14 @@ describe('workflow automatic pause application boundary', () => {
     const { controls, authorization, persistence } = fixture();
     authorization.findAccess.mockResolvedValue(undefined);
     await expect(
-      controls.readWorkflow({
-        actor,
-        routeWorkspaceId: workspaceId,
-        workflowId,
-      }),
+      problemResult(
+        controls.readWorkflow({
+          actor,
+          routeWorkspaceId: workspaceId,
+          workflowId,
+        }),
+        authoringFailure,
+      ),
     ).rejects.toMatchObject({ code: 'resource.not_found' });
     expect(persistence.readWorkflowSettings).not.toHaveBeenCalled();
   });
@@ -194,17 +207,23 @@ describe('automatic pause controller commands', () => {
       requestId: 'pause-test',
     };
     await expect(
-      controller.resume(
-        request,
-        { workspaceId, workflowId },
-        { expectedPauseRevision: '1' },
+      problemResult(
+        controller.resume(
+          request,
+          { workspaceId, workflowId },
+          { expectedPauseRevision: '1' },
+        ),
+        authoringFailure,
       ),
     ).rejects.toMatchObject({ code: 'request.invalid' });
     await expect(
-      controller.resume(
-        { ...request, headers: { 'idempotency-key': 'single' } },
-        { workspaceId, workflowId },
-        { expectedPauseRevision: 1 },
+      problemResult(
+        controller.resume(
+          { ...request, headers: { 'idempotency-key': 'single' } },
+          { workspaceId, workflowId },
+          { expectedPauseRevision: 1 },
+        ),
+        authoringFailure,
       ),
     ).rejects.toMatchObject({ code: 'request.invalid' });
     expect(persistence.resumeWorkflow).not.toHaveBeenCalled();

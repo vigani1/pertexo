@@ -2,7 +2,7 @@ import { Module, type DynamicModule } from '@nestjs/common';
 import type { GovernanceStore } from '@pertexo/database/governance';
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import { GovernanceController } from './controller.js';
-import { GovernanceService } from './service.js';
+import { GOVERNANCE_STORE } from './tokens.js';
 import { GOVERNANCE_AUTHORIZATION, GovernanceGuard } from './guard.js';
 @Module({})
 // Nest dynamic modules require a class container.
@@ -19,7 +19,7 @@ export class GovernanceModule {
       imports: [identity, admission],
       controllers: [GovernanceController],
       providers: [
-        { provide: GovernanceService, useValue: new GovernanceService(store) },
+        { provide: GOVERNANCE_STORE, useValue: store },
         { provide: GOVERNANCE_AUTHORIZATION, useValue: authorization },
         GovernanceGuard,
       ],

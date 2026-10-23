@@ -6,6 +6,7 @@ import {
   Query,
   Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   usageTrendsQuerySchema,
@@ -22,7 +23,10 @@ import {
   type WorkflowRunsRequest,
 } from '../http/request-context.js';
 import { GetUsageTrendsUseCase } from './trends.js';
+import { domainErrors } from '../../platform/http/problems/interceptor.js';
+import { runFailure } from '../../problems/context/normalize.js';
 
+@UseInterceptors(domainErrors(runFailure))
 @Controller('v1/workspaces/:workspaceId')
 @RateLimit('authenticated_read')
 export class UsageTrendsController {

@@ -15,6 +15,7 @@ import {
   UseGuards,
   Header,
   HttpCode,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   workspaceIdentifierSchema,
@@ -40,7 +41,11 @@ import type { AbortableRequest } from '../platform/http/request-operation-signal
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { DataTablesReadGuard, DataTablesManageGuard } from './guards.js';
 import { DataTablesService } from './service.js';
+import { domainErrors } from '../platform/http/problems/interceptor.js';
+import { dataTableFailure } from '../problems/context/normalize.js';
+
 type Request = IdentityWorkspaceRequest & AbortableRequest;
+@UseInterceptors(domainErrors(dataTableFailure))
 @Controller('v1/workspaces/:workspaceId/data-tables')
 @UseGuards(SessionAuthenticationGuard)
 @RateLimit('authenticated_read')

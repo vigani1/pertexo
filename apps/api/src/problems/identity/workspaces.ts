@@ -1,3 +1,6 @@
+import { AuthorizationError } from '../../authorization/index.js';
+import { IdempotencyConflictError } from '@pertexo/database/platform';
+import { errorRegistration } from '../../platform/http/problems/registry.js';
 import {
   DirectoryManagedMembershipError,
   IdentityConflictError,
@@ -13,53 +16,32 @@ import {
   type WorkspaceMemberRoleCommandConflictReason,
   type WorkspaceMemberRemovalCommandConflictReason,
 } from '@pertexo/database/tenant-access';
-import { IdempotencyConflictError } from '@pertexo/database/platform';
 import { IdempotencyRequestConflictError } from '@pertexo/database/runs';
 import {
   applicationError,
-  isApplicationError,
-  requestBodyCause,
   type ApplicationError,
 } from '../../platform/http/index.js';
-import { z } from 'zod';
-import {
-  AuthorizationError,
-  type AuthorizationErrorCode,
-} from '../../authorization/index.js';
-import { isIdentityError, type IdentityError } from '../../identity/index.js';
 import { InvalidAuthenticatedWorkspaceContextError } from '../../workspaces/request/authenticated-context-error.js';
+import { IdentityError } from '../../identity/errors.js';
 
-function workspaceApplicationError(
-  code: AuthorizationErrorCode,
-  safeDetail?: string,
-): ApplicationError {
-  return applicationError(code, safeDetail === undefined ? {} : { safeDetail });
-}
-
-export function mapIdentityWorkspaceError(error: unknown): ApplicationError {
-  if (error instanceof DirectoryManagedMembershipError)
+export const identityProblems = [
+  errorRegistration(AuthorizationError, (error) => {
+    return applicationError(error.code, {
+      safeDetail: error.message,
+    });
+  }),
+  errorRegistration(IdempotencyConflictError, () => {
+    return applicationError('request.idempotency_conflict');
+  }),
+  errorRegistration(DirectoryManagedMembershipError, (error) => {
     return applicationError('workspace.member_directory_managed', {
       safeDetail: error.message,
     });
-  if (error instanceof InvalidAuthenticatedWorkspaceContextError)
+  }),
+  errorRegistration(InvalidAuthenticatedWorkspaceContextError, (error) => {
     return applicationError('request.invalid', { safeDetail: error.message });
-  if (error instanceof z.ZodError) {
-    return applicationError('request.invalid', {
-      safeDetail: 'The request is invalid.',
-      ...requestBodyCause(error),
-    });
-  }
-  if (error instanceof AuthorizationError) {
-    return workspaceApplicationError(error.code, error.message);
-  }
-  if (error instanceof IdempotencyConflictError)
-    return applicationError('request.idempotency_conflict', {
-      safeDetail: IDEMPOTENCY_CONFLICT_DETAIL,
-    });
-  if (isIdentityError(error)) {
-    return mapIdentityError(error);
-  }
-  if (error instanceof WorkspaceLifecycleConflictError) {
+  }),
+  errorRegistration(WorkspaceLifecycleConflictError, (error) => {
     if (error.reason === 'invalid_state') {
       return applicationError('workspace.conflict', {
         safeDetail: 'The workspace is not in a valid state for this operation.',
@@ -68,8 +50,8 @@ export function mapIdentityWorkspaceError(error: unknown): ApplicationError {
     return applicationError('auth.forbidden', {
       safeDetail: 'The workspace cannot perform this lifecycle operation.',
     });
-  }
-  if (error instanceof WorkspaceMemberRoleCommandConflictError)
+  }),
+  errorRegistration(WorkspaceMemberRoleCommandConflictError, (error) => {
     return mapMemberCommandConflict(error.reason, {
       revision: 'The member role changed since it was loaded.',
       inactive: applicationError('workspace.member_role_transition_conflict', {
@@ -77,7 +59,8 @@ export function mapIdentityWorkspaceError(error: unknown): ApplicationError {
       }),
       forbidden: 'This member role transition is not allowed.',
     });
-  if (error instanceof WorkspaceMemberRemovalCommandConflictError)
+  }),
+  errorRegistration(WorkspaceMemberRemovalCommandConflictError, (error) => {
     return mapMemberCommandConflict(error.reason, {
       revision: 'The member changed since it was loaded.',
       inactive: applicationError('workspace.member_removal_conflict', {
@@ -85,11 +68,14 @@ export function mapIdentityWorkspaceError(error: unknown): ApplicationError {
       }),
       forbidden: 'This member cannot be removed by you.',
     });
-  if (error instanceof WorkspaceMembershipCommandConflictError)
+  }),
+  errorRegistration(WorkspaceMembershipCommandConflictError, (error) => {
     return mapMembershipConflict(error);
-  if (error instanceof UserProfileCommandConflictError)
+  }),
+  errorRegistration(UserProfileCommandConflictError, (error) => {
     return mapProfileConflict(error);
-  if (error instanceof WorkspaceRenameCommandConflictError) {
+  }),
+  errorRegistration(WorkspaceRenameCommandConflictError, (error) => {
     if (error.reason === 'revision_conflict')
       return applicationError('workspace.revision_conflict', {
         safeDetail: 'The workspace changed since it was loaded.',
@@ -101,8 +87,8 @@ export function mapIdentityWorkspaceError(error: unknown): ApplicationError {
     return applicationError('auth.forbidden', {
       safeDetail: 'The workspace cannot be renamed by this actor.',
     });
-  }
-  if (error instanceof WorkspaceInvitationCommandConflictError) {
+  }),
+  errorRegistration(WorkspaceInvitationCommandConflictError, (error) => {
     if (error.reason === 'invitation_missing')
       return applicationError('workspace.invitation_unavailable');
     if (error.reason === 'revision_conflict')
@@ -124,8 +110,8 @@ export function mapIdentityWorkspaceError(error: unknown): ApplicationError {
     return applicationError('auth.forbidden', {
       safeDetail: 'This invitation command is not allowed.',
     });
-  }
-  if (error instanceof InvitationAcceptanceConflictError) {
+  }),
+  errorRegistration(InvitationAcceptanceConflictError, (error) => {
     if (error.reason === 'unavailable')
       return applicationError('workspace.invitation_unavailable');
     if (error.reason === 'recipient_mismatch')
@@ -139,8 +125,8 @@ export function mapIdentityWorkspaceError(error: unknown): ApplicationError {
     return applicationError('workspace.invitation_conflict', {
       safeDetail: error.message,
     });
-  }
-  if (error instanceof IdentityConflictError) {
+  }),
+  errorRegistration(IdentityConflictError, (error) => {
     if (error.reason === 'workspace_slug') {
       return applicationError('workspace.conflict', {
         safeDetail: 'The workspace slug is already in use.',
@@ -149,25 +135,20 @@ export function mapIdentityWorkspaceError(error: unknown): ApplicationError {
     return applicationError('request.invalid', {
       safeDetail: 'The request conflicts with existing identity data.',
     });
-  }
-  if (error instanceof IdempotencyRequestConflictError) {
+  }),
+  errorRegistration(IdempotencyRequestConflictError, () => {
     return applicationError('request.idempotency_conflict', {
       safeDetail: 'The idempotency key was already used for another request.',
     });
-  }
-  if (error instanceof WorkspaceAccessDeniedError) {
+  }),
+  errorRegistration(WorkspaceAccessDeniedError, () => {
     return applicationError('auth.forbidden', {
       safeDetail: 'The actor is no longer authorized for this workspace.',
     });
-  }
-  if (isApplicationError(error)) return error;
-  return applicationError('internal.unexpected', { cause: error });
-}
+  }),
+  errorRegistration(IdentityError, identityProblem),
+];
 
-const IDEMPOTENCY_CONFLICT_DETAIL =
-  'The idempotency key was already used for another request.';
-
-/** ADR 037 and ADR 042 member commands share one conflict vocabulary. */
 function mapMemberCommandConflict(
   reason:
     | WorkspaceMemberRoleCommandConflictReason
@@ -187,8 +168,6 @@ function mapMemberCommandConflict(
   if (reason === 'target_inactive') return copy.inactive;
   return applicationError('auth.forbidden', { safeDetail: copy.forbidden });
 }
-
-/** ADR 047 leave, suspend, reactivate and ownership transfer. */
 function mapMembershipConflict(
   error: WorkspaceMembershipCommandConflictError,
 ): ApplicationError {
@@ -217,7 +196,6 @@ function mapMembershipConflict(
       });
   }
 }
-
 function mapProfileConflict(
   error: UserProfileCommandConflictError,
 ): ApplicationError {
@@ -231,8 +209,7 @@ function mapProfileConflict(
     });
   return applicationError('auth.unauthenticated');
 }
-
-function mapIdentityError(error: IdentityError): ApplicationError {
+function identityProblem(error: IdentityError): ApplicationError {
   if (error.code === 'identity.session_invalid')
     return applicationError('auth.unauthenticated');
   if (error.code === 'identity.session_not_fresh')
@@ -246,3 +223,5 @@ function mapIdentityError(error: IdentityError): ApplicationError {
   }
   return applicationError('request.invalid', { safeDetail: error.message });
 }
+const IDEMPOTENCY_CONFLICT_DETAIL =
+  'The idempotency key was already used for another request.';

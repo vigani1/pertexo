@@ -1,3 +1,4 @@
+import { throwApplicationError } from '../../platform/http/application-error.js';
 import { AutomationAuthenticationGuard } from '../../authentication/automation/guard.js';
 import {
   Body,
@@ -11,6 +12,7 @@ import {
   Req,
   Res,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { withRequestOperationSignal } from '../../platform/http/request-operation-signal.js';
 
@@ -41,7 +43,7 @@ import {
 import { WorkflowOrganizationReadsUseCase } from '../organization/reads.js';
 import { withWorkflowOrganizationRequest } from '../organization/http.js';
 import { RestoreWorkflowVersionUseCase } from '../commands/restore-version.js';
-import { throwWorkflowApplicationError } from '../../problems/authoring/workflows.js';
+
 import {
   WorkflowCreateGuard,
   WorkflowPublishGuard,
@@ -66,12 +68,15 @@ import {
   type WorkflowAuthoringRequest,
   type WorkflowResponse,
 } from '../types.js';
+import { domainErrors } from '../../platform/http/problems/interceptor.js';
+import { authoringFailure } from '../../problems/context/normalize.js';
 
 const workflowWorkspaceParamSchema = workflowIdParamSchema
   .pick({ workspaceId: true })
   .strict()
   .readonly();
 
+@UseInterceptors(domainErrors(authoringFailure))
 @Controller('v1/workspaces/:workspaceId/workflows')
 @RateLimit('authenticated_read')
 export class WorkflowAuthoringController {
@@ -474,7 +479,7 @@ function requestContext(
   try {
     return projectAuthenticatedWorkspaceContext(request, workspaceId);
   } catch (error: unknown) {
-    return throwWorkflowApplicationError(
+    return throwApplicationError(
       applicationError('request.invalid', {
         safeDetail:
           error instanceof Error ? error.message : 'Invalid actor context',

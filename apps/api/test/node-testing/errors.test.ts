@@ -1,3 +1,5 @@
+import { toProblem } from '../../src/problems/registry.js';
+import { nodeTestingFailure } from '../../src/problems/context/normalize.js';
 import type { ArgumentsHost } from '@nestjs/common';
 import { apiProblemSchema } from '@pertexo/contracts';
 import {
@@ -15,7 +17,6 @@ import { z } from 'zod';
 import { APPLICATION_ERROR_MAPPERS } from '../../src/application-errors.js';
 import { InvalidAuthenticatedWorkspaceContextError } from '../../src/workspaces/request/authenticated-context-error.js';
 import {
-  mapNodeTestingError,
   NodeTestInvalidError,
   NodeTestRequestError,
 } from '../../src/node-testing/errors.js';
@@ -91,7 +92,7 @@ describe('node testing error mapping', () => {
   ] as const)(
     'maps %s to its exact bounded public problem',
     (name, failure, code, safeDetail) => {
-      expect(mapNodeTestingError(failure)).toEqual({
+      expect(toProblem(nodeTestingFailure(failure))).toEqual({
         code,
         ...(safeDetail === undefined ? {} : { safeDetail }),
       });
@@ -100,7 +101,9 @@ describe('node testing error mapping', () => {
 
   it('preserves exact revision metadata', () => {
     expect(
-      mapNodeTestingError(new WorkflowRevisionConflictError(7, 'etag')),
+      toProblem(
+        nodeTestingFailure(new WorkflowRevisionConflictError(7, 'etag')),
+      ),
     ).toEqual({
       code: 'workflow.revision_conflict',
       safeDetail: 'The workflow draft has changed; reload it before retrying.',
@@ -116,7 +119,7 @@ describe('node testing error mapping', () => {
         message: 'Selected node configuration version is incompatible',
       },
     ]);
-    const mapped = mapNodeTestingError(failure);
+    const mapped = toProblem(nodeTestingFailure(failure));
 
     expect(mapped).toEqual({
       code: 'workflow.invalid',
@@ -193,7 +196,7 @@ describe('node testing error mapping', () => {
         message: 'definition is missing',
       },
     ]);
-    expect(mapNodeTestingError(failure)).toEqual({
+    expect(toProblem(nodeTestingFailure(failure))).toEqual({
       code: 'workflow.invalid',
       safeDetail: 'The workflow cannot be tested in its current form.',
       details: { issues: failure.issues },
@@ -204,12 +207,12 @@ describe('node testing error mapping', () => {
     const failure = applicationError('provider.unavailable', {
       safeDetail: 'Provider is unavailable.',
     });
-    expect(mapNodeTestingError(failure)).toBe(failure);
+    expect(toProblem(nodeTestingFailure(failure))).toBe(failure);
   });
 
   it('retains an unknown secret-bearing cause only on the internal error', () => {
     const failure = new Error('credential-secret');
-    const mapped = mapNodeTestingError(failure);
+    const mapped = toProblem(nodeTestingFailure(failure));
 
     expect(mapped).toMatchObject({
       code: 'internal.unexpected',

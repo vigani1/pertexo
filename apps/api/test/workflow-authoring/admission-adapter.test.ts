@@ -1,3 +1,5 @@
+import { toProblem } from '../../src/problems/registry.js';
+import { authoringFailure } from '../../src/problems/context/normalize.js';
 import { describe, expect, it, vi } from 'vitest';
 import { EventEmitter } from 'node:events';
 import {
@@ -13,7 +15,7 @@ import {
   createCoreWorkflowCompatibility,
 } from '../../src/platform/workflow/compatibility.js';
 import { serializeWorkflowValidation } from '../../src/workflow-authoring/http/serializers.js';
-import { mapWorkflowAuthoringError } from '../../src/problems/authoring/workflows.js';
+
 import { createDraftRepresentationTag } from '../../src/workflow-authoring/http/etag.js';
 import { withRequestOperationSignal } from '../../src/platform/http/request-operation-signal.js';
 
@@ -160,8 +162,8 @@ describe('authoring API admission adapter', () => {
           null,
         ),
       ).toThrow(AuthoringValidationUnavailableError);
-      const mapped = mapWorkflowAuthoringError(
-        new InvalidWorkflowGraphError([issue]),
+      const mapped = toProblem(
+        authoringFailure(new InvalidWorkflowGraphError([issue])),
       );
       expect(mapped).toMatchObject({
         code: 'workflow.validation_unavailable',
@@ -173,8 +175,10 @@ describe('authoring API admission adapter', () => {
   );
 
   it('maps operational failure safely before generic input errors', () => {
-    const mapped = mapWorkflowAuthoringError(
-      new AuthoringValidationUnavailableError('database_budget'),
+    const mapped = toProblem(
+      authoringFailure(
+        new AuthoringValidationUnavailableError('database_budget'),
+      ),
     );
     expect(mapped).toMatchObject({
       code: 'workflow.validation_unavailable',

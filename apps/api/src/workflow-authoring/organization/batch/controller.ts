@@ -8,6 +8,7 @@ import {
   Post,
   Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { workflowTagWorkspaceParamsSchema } from '@pertexo/contracts';
 import {
@@ -19,7 +20,10 @@ import { WorkflowReadGuard } from '../../http/guards.js';
 import type { WorkflowAuthoringRequest } from '../../types.js';
 import { WorkflowOrganizationBatchesUseCase } from './use-case.js';
 import { withWorkflowOrganizationRequest } from '../http.js';
+import { domainErrors } from '../../../platform/http/problems/interceptor.js';
+import { authoringFailure } from '../../../problems/context/normalize.js';
 
+@UseInterceptors(domainErrors(authoringFailure))
 @Controller('v1/workspaces/:workspaceId')
 @RateLimit('ordinary_mutation')
 export class WorkflowOrganizationBatchesController {

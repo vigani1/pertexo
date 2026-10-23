@@ -9,6 +9,7 @@ import {
   Query,
   Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { workflowIdParamSchema } from '@pertexo/contracts';
 import {
@@ -23,10 +24,13 @@ import {
 import type { AbortableRequest } from '../../platform/http/request-operation-signal.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import { WorkflowErrorUseCase } from './error-workflow.js';
-import { throwWorkflowApplicationError } from '../../problems/authoring/workflows.js';
+
 import { WorkflowReadGuard, WorkflowUpdateGuard } from '../http/guards.js';
 import type { WorkflowAuthoringRequest } from '../types.js';
+import { domainErrors } from '../../platform/http/problems/interceptor.js';
+import { authoringFailure } from '../../problems/context/normalize.js';
 
+@UseInterceptors(domainErrors(authoringFailure))
 @Controller('v1/workspaces/:workspaceId/workflows/:workflowId/error-workflow')
 @RateLimit('authenticated_read')
 export class WorkflowErrorController {
@@ -39,19 +43,15 @@ export class WorkflowErrorController {
     @Param() params: unknown,
     @Query() query: unknown,
   ) {
-    try {
-      const { workspaceId, workflowId } = workflowIdParamSchema.parse(params);
-      return await withRequestOperationSignal(request, (signal) =>
-        this.controls.targets({
-          ...context(request, workspaceId),
-          workflowId,
-          request: query,
-          signal,
-        }),
-      );
-    } catch (error) {
-      return throwWorkflowApplicationError(error);
-    }
+    const { workspaceId, workflowId } = workflowIdParamSchema.parse(params);
+    return await withRequestOperationSignal(request, (signal) =>
+      this.controls.targets({
+        ...context(request, workspaceId),
+        workflowId,
+        request: query,
+        signal,
+      }),
+    );
   }
   @Get()
   @Header('Cache-Control', 'private, no-store')
@@ -60,18 +60,14 @@ export class WorkflowErrorController {
     @Req() request: WorkflowAuthoringRequest & AbortableRequest,
     @Param() params: unknown,
   ) {
-    try {
-      const { workspaceId, workflowId } = workflowIdParamSchema.parse(params);
-      return await withRequestOperationSignal(request, (signal) =>
-        this.controls.read({
-          ...context(request, workspaceId),
-          workflowId,
-          signal,
-        }),
-      );
-    } catch (error) {
-      return throwWorkflowApplicationError(error);
-    }
+    const { workspaceId, workflowId } = workflowIdParamSchema.parse(params);
+    return await withRequestOperationSignal(request, (signal) =>
+      this.controls.read({
+        ...context(request, workspaceId),
+        workflowId,
+        signal,
+      }),
+    );
   }
   @Put()
   @RateLimit('ordinary_mutation')
@@ -87,21 +83,17 @@ export class WorkflowErrorController {
     @Param() params: unknown,
     @Body() body: unknown,
   ) {
-    try {
-      const { workspaceId, workflowId } = workflowIdParamSchema.parse(params);
-      const idempotencyKey = requestIdempotencyKey(request.headers);
-      return await withRequestOperationSignal(request, (signal) =>
-        this.controls.update({
-          ...context(request, workspaceId),
-          workflowId,
-          request: body,
-          idempotencyKey,
-          signal,
-        }),
-      );
-    } catch (error) {
-      return throwWorkflowApplicationError(error);
-    }
+    const { workspaceId, workflowId } = workflowIdParamSchema.parse(params);
+    const idempotencyKey = requestIdempotencyKey(request.headers);
+    return await withRequestOperationSignal(request, (signal) =>
+      this.controls.update({
+        ...context(request, workspaceId),
+        workflowId,
+        request: body,
+        idempotencyKey,
+        signal,
+      }),
+    );
   }
 }
 function context(request: WorkflowAuthoringRequest, workspaceId: string) {

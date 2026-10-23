@@ -1,3 +1,5 @@
+import { toProblem } from '../../../src/problems/registry.js';
+import { workspaceFailure } from '../../../src/problems/context/normalize.js';
 import { describe, expect, it, vi } from 'vitest';
 import {
   InvitationAcceptanceConflictError,
@@ -12,7 +14,6 @@ import {
 import {
   InvitationAcceptanceController,
   InvitationAcceptanceUseCase,
-  mapIdentityWorkspaceError,
   WorkspaceInvitationManagementUseCase,
   type CookieResponse,
   type IdentityWorkspaceRequest,
@@ -48,10 +49,12 @@ function invitationRecord() {
 describe('workspace invitation use cases', () => {
   it('maps unresolved delivery to a truthful recoverable problem', () => {
     expect(
-      mapIdentityWorkspaceError(
-        new WorkspaceInvitationCommandConflictError(
-          'delivery_unresolved',
-          'delivery remains unknown',
+      toProblem(
+        workspaceFailure(
+          new WorkspaceInvitationCommandConflictError(
+            'delivery_unresolved',
+            'delivery remains unknown',
+          ),
         ),
       ),
     ).toMatchObject({
@@ -281,10 +284,12 @@ describe('workspace invitation use cases', () => {
 
   it('maps expired recipient proof separately from other invitation conflicts', () => {
     expect(
-      mapIdentityWorkspaceError(
-        new InvitationAcceptanceConflictError(
-          'proof_expired',
-          'Fresh recipient verification is required',
+      toProblem(
+        workspaceFailure(
+          new InvitationAcceptanceConflictError(
+            'proof_expired',
+            'Fresh recipient verification is required',
+          ),
         ),
       ),
     ).toMatchObject({

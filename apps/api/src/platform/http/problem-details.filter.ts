@@ -286,7 +286,7 @@ function normalize(
   request: HttpRequestLike,
   applicationErrorMappers: readonly HttpApplicationErrorMapper[],
 ): NormalizedProblem {
-  if (isApplicationError(exception)) {
+  if (!(exception instanceof Error) && isApplicationError(exception)) {
     return fromApplicationError(exception);
   }
 
@@ -304,11 +304,6 @@ function normalize(
     };
   }
 
-  for (const mapper of applicationErrorMappers) {
-    const mapped = mapper(exception, request);
-    if (mapped !== undefined) return fromApplicationError(mapped);
-  }
-
   if (exception instanceof ZodError) {
     const entry = APPLICATION_ERROR_CATALOG['request.invalid'];
     return {
@@ -319,6 +314,12 @@ function normalize(
     };
   }
 
+  for (const mapper of applicationErrorMappers) {
+    const mapped = mapper(exception, request);
+    if (mapped !== undefined) return fromApplicationError(mapped);
+  }
+
+  if (isApplicationError(exception)) return fromApplicationError(exception);
   const entry = APPLICATION_ERROR_CATALOG['internal.unexpected'];
   return {
     code: 'internal.unexpected',

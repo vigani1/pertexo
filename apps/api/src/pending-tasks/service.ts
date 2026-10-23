@@ -6,41 +6,36 @@ import {
   pendingTaskDecisionResponseSchema,
 } from '@pertexo/contracts';
 import type { PendingTaskStore } from '@pertexo/database/runs';
-import { taskOperation } from '../problems/workspace/tasks.js';
 
 /** Transport contracts surround the same transaction-owned task rules. */
 export class PendingTaskService {
   constructor(private readonly store: PendingTaskStore) {}
-  list(input: Parameters<PendingTaskStore['list']>[0]) {
-    return taskOperation(async () =>
-      pendingTaskListResponseSchema.parse(await this.store.list(input)),
+  async list(input: Parameters<PendingTaskStore['list']>[0]) {
+    return pendingTaskListResponseSchema.parse(await this.store.list(input));
+  }
+  async read(input: Parameters<PendingTaskStore['read']>[0]) {
+    return pendingTaskResponseSchema.parse({
+      task: await this.store.read(input),
+    });
+  }
+  async decide(input: Parameters<PendingTaskStore['decide']>[0]) {
+    return pendingTaskDecisionResponseSchema.parse(
+      await this.store.decide(input),
     );
   }
-  read(input: Parameters<PendingTaskStore['read']>[0]) {
-    return taskOperation(async () =>
-      pendingTaskResponseSchema.parse({ task: await this.store.read(input) }),
+  async submit(input: Parameters<PendingTaskStore['submit']>[0]) {
+    return pendingTaskDecisionResponseSchema.parse(
+      await this.store.submit(input),
     );
   }
-  decide(input: Parameters<PendingTaskStore['decide']>[0]) {
-    return taskOperation(async () =>
-      pendingTaskDecisionResponseSchema.parse(await this.store.decide(input)),
+  async inspectAudience(
+    input: Parameters<PendingTaskStore['inspectAudience']>[0],
+  ) {
+    return approvalAudienceInspectionResponseSchema.parse(
+      await this.store.inspectAudience(input),
     );
   }
-  submit(input: Parameters<PendingTaskStore['submit']>[0]) {
-    return taskOperation(async () =>
-      pendingTaskDecisionResponseSchema.parse(await this.store.submit(input)),
-    );
-  }
-  inspectAudience(input: Parameters<PendingTaskStore['inspectAudience']>[0]) {
-    return taskOperation(async () =>
-      approvalAudienceInspectionResponseSchema.parse(
-        await this.store.inspectAudience(input),
-      ),
-    );
-  }
-  audience(input: Parameters<PendingTaskStore['audience']>[0]) {
-    return taskOperation(async () =>
-      approvalAudiencePageSchema.parse(await this.store.audience(input)),
-    );
+  async audience(input: Parameters<PendingTaskStore['audience']>[0]) {
+    return approvalAudiencePageSchema.parse(await this.store.audience(input));
   }
 }

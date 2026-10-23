@@ -1,27 +1,15 @@
-import { z } from 'zod';
-
-import {
-  applicationError,
-  isApplicationError,
-  type ApplicationError,
-} from '../../platform/http/index.js';
-import { AuthorizationError } from '../../authorization/index.js';
+import { errorRegistration } from '../../platform/http/problems/registry.js';
+import { applicationError } from '../../platform/http/index.js';
 import { InvalidWorkspaceInboxCursorError } from '../../notifications/cursor.js';
 import { WorkspaceInboxThreadNotFoundError } from '../../notifications/service.js';
 
-export function mapNotificationError(error: unknown): ApplicationError {
-  if (isApplicationError(error)) return error;
-  if (error instanceof AuthorizationError)
-    return applicationError(error.code, { safeDetail: error.message });
-  if (error instanceof WorkspaceInboxThreadNotFoundError)
+export const inboxProblems = [
+  errorRegistration(WorkspaceInboxThreadNotFoundError, () => {
     return applicationError('resource.not_found');
-  if (error instanceof InvalidWorkspaceInboxCursorError)
+  }),
+  errorRegistration(InvalidWorkspaceInboxCursorError, () => {
     return applicationError('request.invalid', {
       safeDetail: 'The inbox cursor is invalid for this request.',
     });
-  if (error instanceof z.ZodError)
-    return applicationError('request.invalid', {
-      safeDetail: 'The inbox request is invalid.',
-    });
-  return applicationError('internal.unexpected', { cause: error });
-}
+  }),
+];

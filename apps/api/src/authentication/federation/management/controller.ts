@@ -9,6 +9,7 @@ import {
   UseGuards,
   Header,
   HttpCode,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   federationOrganizationCreateSchema,
@@ -35,7 +36,11 @@ import {
 import type { AbortableRequest } from '../../../platform/http/request-operation-signal.js';
 import { RateLimit } from '../../../platform/rate-limit/metadata.js';
 import { FederationManagementService } from './service.js';
+import { domainErrors } from '../../../platform/http/problems/interceptor.js';
+import { resourceFailure } from '../../../problems/context/normalize.js';
+
 type Request = IdentityWorkspaceRequest & AbortableRequest;
+@UseInterceptors(domainErrors(resourceFailure))
 @Controller('v1/workspaces/:workspaceId/sso')
 @UseGuards(SessionAuthenticationGuard)
 @RateLimit('authenticated_read')
@@ -57,21 +62,17 @@ export class FederationManagementController {
   ) {
     const scope = this.scope(request, workspace),
       idempotencyKey = requestIdempotencyKey(request.headers);
-    return withRequestOperationSignal(request, (signal) =>
-      this.service.perform(() => {
-        this.service.requireConfigured();
-        return work({ ...scope, idempotencyKey, signal });
-      }),
-    );
+    return withRequestOperationSignal(request, (signal) => {
+      this.service.requireConfigured();
+      return work({ ...scope, idempotencyKey, signal });
+    });
   }
   @Get()
   @UseGuards(WorkspaceMemberReadGuard)
   @Header('Cache-Control', 'private, no-store')
   settings(@Req() request: Request, @Param('workspaceId') workspace: unknown) {
     return withRequestOperationSignal(request, (signal) =>
-      this.service.perform(() =>
-        this.service.settings({ ...this.scope(request, workspace), signal }),
-      ),
+      this.service.settings({ ...this.scope(request, workspace), signal }),
     );
   }
   @Post('organization')
@@ -218,9 +219,7 @@ export class FederationManagementController {
   @Header('Cache-Control', 'private, no-store')
   metadata(@Req() request: Request, @Param('workspaceId') workspace: unknown) {
     return withRequestOperationSignal(request, (signal) =>
-      this.service.perform(() =>
-        this.service.metadata({ ...this.scope(request, workspace), signal }),
-      ),
+      this.service.metadata({ ...this.scope(request, workspace), signal }),
     );
   }
   @Post('providers/:providerId/remove')

@@ -1,3 +1,5 @@
+import { toProblem } from '../../../src/problems/registry.js';
+import { workspaceFailure } from '../../../src/problems/context/normalize.js';
 import {
   WorkspaceMembershipCommandConflictError,
   type IdentityWorkspaceDatabase,
@@ -9,7 +11,6 @@ import {
   DatabaseIdentityWorkspaceAdapter,
   WorkspaceMembershipController,
   WorkspaceMembershipLifecycleUseCase,
-  mapIdentityWorkspaceError,
   type IdentitySessionAuthority,
 } from '../../../src/workspaces/index.js';
 
@@ -193,16 +194,18 @@ describe('membership lifecycle commands (ADR 047)', () => {
     ['actor_inactive', 'auth.forbidden'],
   ] as const)('maps %s to %s', (reason, code) => {
     expect(
-      mapIdentityWorkspaceError(
-        new WorkspaceMembershipCommandConflictError(reason, 'unsafe detail'),
+      toProblem(
+        workspaceFailure(
+          new WorkspaceMembershipCommandConflictError(reason, 'unsafe detail'),
+        ),
       ),
     ).toMatchObject({ code });
   });
 
   it('asks for a fresh sign-in in its own words', () => {
     expect(
-      mapIdentityWorkspaceError(
-        new IdentityError('identity.session_not_fresh'),
+      toProblem(
+        workspaceFailure(new IdentityError('identity.session_not_fresh')),
       ),
     ).toMatchObject({
       code: 'auth.session_not_fresh',

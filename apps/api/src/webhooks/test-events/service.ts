@@ -1,21 +1,16 @@
 import { randomBytes, createHash } from 'node:crypto';
 import { generatePersistedId } from '@pertexo/database/platform';
-import {
-  WebhookTestEventError,
-  type WebhookTestEventStore,
-  type TestEventScope,
+import type {
+  WebhookTestEventStore,
+  TestEventScope,
 } from '@pertexo/database/triggers';
-import { WorkflowNotFoundError } from '@pertexo/database/authoring';
+
 import {
   webhookTestEventStartedSchema,
   webhookTestEventSnapshotSchema,
   type WebhookAuthentication,
 } from '@pertexo/contracts';
 import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
-import {
-  applicationError,
-  throwApplicationError,
-} from '../../platform/http/index.js';
 
 export class WebhookTestEventService {
   constructor(
@@ -38,14 +33,12 @@ export class WebhookTestEventService {
         { workspaceId: input.workspaceId, triggerId: id, secretVersionId: id },
         input.signal ?? AbortSignal.timeout(30_000),
       );
-      const result = await this.map(() =>
-        this.store.start({
-          ...input,
-          id,
-          endpointKeyHash: createHash('sha256').update(key).digest('hex'),
-          secret: { ...sealed, id },
-        }),
-      );
+      const result = await this.store.start({
+        ...input,
+        id,
+        endpointKeyHash: createHash('sha256').update(key).digest('hex'),
+        secret: { ...sealed, id },
+      });
       return webhookTestEventStartedSchema.parse({
         id,
         path: `/hooks/${key}/test`,
@@ -60,31 +53,9 @@ export class WebhookTestEventService {
     }
   }
   async get(input: TestEventScope & { id: string }) {
-    return webhookTestEventSnapshotSchema.parse(
-      await this.map(() => this.store.get(input)),
-    );
+    return webhookTestEventSnapshotSchema.parse(await this.store.get(input));
   }
   stop(input: TestEventScope & { id: string }) {
-    return this.map(() => this.store.stop(input));
-  }
-  private async map<T>(work: () => Promise<T>): Promise<T> {
-    try {
-      return await work();
-    } catch (error) {
-      if (error instanceof WorkflowNotFoundError)
-        return throwApplicationError(applicationError('resource.not_found'));
-      if (error instanceof WebhookTestEventError)
-        return throwApplicationError(
-          applicationError('workspace.conflict', {
-            safeDetail:
-              error.reason === 'limit_reached'
-                ? 'Ten webhook test listeners are already open in this workspace. Stop one or wait for it to expire.'
-                : error.reason === 'changed'
-                  ? 'Save the current draft and listen again.'
-                  : 'This saved step is no longer an available webhook trigger.',
-          }),
-        );
-      throw error;
-    }
+    return this.store.stop(input);
   }
 }

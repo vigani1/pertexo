@@ -8,22 +8,16 @@ import type {
   ScheduleTriggerHealthResponse,
 } from '@pertexo/contracts';
 
-import {
-  ScheduleTriggerError,
-  type ScheduleFireTimes,
-  type ScheduleOccurrenceRecord,
-  type ScheduleTriggerDatabase,
-  type ScheduleTriggerRecord,
+import type {
+  ScheduleFireTimes,
+  ScheduleOccurrenceRecord,
+  ScheduleTriggerDatabase,
+  ScheduleTriggerRecord,
 } from '@pertexo/database/triggers';
 
 import {
-  applicationError,
-  throwApplicationError,
-} from '../platform/http/index.js';
-import {
   decodeScheduleOccurrenceCursor,
   encodeScheduleOccurrenceCursor,
-  InvalidScheduleOccurrenceCursorError,
 } from './cursor.js';
 import {
   NOOP_SCHEDULE_TELEMETRY,
@@ -44,12 +38,8 @@ export class ScheduleManagementService {
     }>,
   ): Promise<Readonly<{ items: readonly ScheduleTriggerHealthResponse[] }>> {
     return this.telemetry.measure('schedule.list', async () => {
-      try {
-        const items = await this.database.list(input);
-        return { items: items.map(publicSchedule) };
-      } catch (error: unknown) {
-        return this.mapError(error);
-      }
+      const items = await this.database.list(input);
+      return { items: items.map(publicSchedule) };
     });
   }
 
@@ -58,32 +48,25 @@ export class ScheduleManagementService {
     input: TriggerReadInput & Readonly<{ limit?: number; after?: string }>,
   ): Promise<ScheduleOccurrenceListResponse> {
     return this.telemetry.measure('schedule.occurrences', async () => {
-      try {
-        const page = await this.database.listOccurrences({
-          ...triggerRead(input),
-          ...(input.limit === undefined ? {} : { limit: input.limit }),
-          ...(input.after === undefined
-            ? {}
-            : {
-                after: decodeScheduleOccurrenceCursor(
-                  input.after,
-                  input.triggerId,
-                ),
-              }),
-        });
-        return {
-          items: page.items.map(publicOccurrence),
-          nextCursor:
-            page.nextCursor === undefined
-              ? null
-              : encodeScheduleOccurrenceCursor(
-                  input.triggerId,
-                  page.nextCursor,
-                ),
-        };
-      } catch (error: unknown) {
-        return this.mapError(error);
-      }
+      const page = await this.database.listOccurrences({
+        ...triggerRead(input),
+        ...(input.limit === undefined ? {} : { limit: input.limit }),
+        ...(input.after === undefined
+          ? {}
+          : {
+              after: decodeScheduleOccurrenceCursor(
+                input.after,
+                input.triggerId,
+              ),
+            }),
+      });
+      return {
+        items: page.items.map(publicOccurrence),
+        nextCursor:
+          page.nextCursor === undefined
+            ? null
+            : encodeScheduleOccurrenceCursor(input.triggerId, page.nextCursor),
+      };
     });
   }
 
@@ -92,16 +75,12 @@ export class ScheduleManagementService {
     input: TriggerReadInput & Readonly<{ count: number }>,
   ): Promise<ScheduleFireTimesResponse> {
     return this.telemetry.measure('schedule.next_runs', async () => {
-      try {
-        return publicFireTimes(
-          await this.database.nextFireTimes({
-            ...triggerRead(input),
-            count: input.count,
-          }),
-        );
-      } catch (error: unknown) {
-        return this.mapError(error);
-      }
+      return publicFireTimes(
+        await this.database.nextFireTimes({
+          ...triggerRead(input),
+          count: input.count,
+        }),
+      );
     });
   }
 
@@ -116,19 +95,15 @@ export class ScheduleManagementService {
     }>,
   ): Promise<ScheduleFireTimesResponse> {
     return this.telemetry.measure('schedule.preview', async () => {
-      try {
-        return publicFireTimes(
-          await this.database.previewFireTimes({
-            workspaceId: input.workspaceId,
-            actorId: input.actorId,
-            workflowId: input.workflowId,
-            recurrence: recurrenceOf(input.config),
-            count: input.count,
-          }),
-        );
-      } catch (error: unknown) {
-        return this.mapError(error);
-      }
+      return publicFireTimes(
+        await this.database.previewFireTimes({
+          workspaceId: input.workspaceId,
+          actorId: input.actorId,
+          workflowId: input.workflowId,
+          recurrence: recurrenceOf(input.config),
+          count: input.count,
+        }),
+      );
     });
   }
 
@@ -138,54 +113,20 @@ export class ScheduleManagementService {
   ): Promise<ScheduleManagementCommandResponse> {
     const operation = enabled ? 'schedule.enable' : 'schedule.disable';
     return this.telemetry.measure(operation, async () => {
-      try {
-        const result = await this.database.setEnabled({
-          ...input,
-          enabled,
-          requestHash: createHash('sha256')
-            .update(
-              `${operation}\0${input.workspaceId}\0${input.actorId}\0${input.workflowId}\0${input.triggerId}`,
-            )
-            .digest('hex'),
-        });
-        return {
-          trigger: publicSchedule(result.trigger),
-          replayed: result.replayed,
-        };
-      } catch (error: unknown) {
-        return this.mapError(error);
-      }
+      const result = await this.database.setEnabled({
+        ...input,
+        enabled,
+        requestHash: createHash('sha256')
+          .update(
+            `${operation}\0${input.workspaceId}\0${input.actorId}\0${input.workflowId}\0${input.triggerId}`,
+          )
+          .digest('hex'),
+      });
+      return {
+        trigger: publicSchedule(result.trigger),
+        replayed: result.replayed,
+      };
     });
-  }
-
-  private mapError(error: unknown): never {
-    if (error instanceof InvalidScheduleOccurrenceCursorError)
-      return throwApplicationError(
-        applicationError('request.invalid', {
-          safeDetail: 'The occurrence cursor is invalid.',
-        }),
-      );
-    if (error instanceof ScheduleTriggerError) {
-      switch (error.code) {
-        case 'not_found':
-          return throwApplicationError(applicationError('resource.not_found'));
-        case 'invalid_recurrence':
-          return throwApplicationError(
-            applicationError('request.invalid', {
-              safeDetail:
-                'The schedule rule cannot be scheduled. Check the cron fields and the timezone.',
-            }),
-          );
-        case 'idempotency_conflict':
-          return throwApplicationError(
-            applicationError('request.idempotency_conflict', {
-              safeDetail:
-                'The idempotency key was already used for another request.',
-            }),
-          );
-      }
-    }
-    throw error;
   }
 }
 

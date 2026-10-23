@@ -1,3 +1,7 @@
+import { inputCaseFailure } from '../../../src/problems/context/normalize.js';
+import { problemResult } from '../../support/problem.js';
+import { toProblem } from '../../../src/problems/registry.js';
+import { authoringFailure } from '../../../src/problems/context/normalize.js';
 import 'reflect-metadata';
 import { describe, expect, it, vi } from 'vitest';
 import { GUARDS_METADATA, HEADERS_METADATA } from '@nestjs/common/constants.js';
@@ -20,7 +24,7 @@ import {
   SessionAuthenticationGuard,
   CsrfProtectionGuard,
 } from '../../../src/workspaces/index.js';
-import { mapWorkflowAuthoringError } from '../../../src/problems/authoring/workflows.js';
+
 import {
   authorizeWorkspace,
   createActorContext,
@@ -242,15 +246,22 @@ describe('workflow input case application interface', () => {
         request: { name: 'Edit', input: {} },
       };
       await expect(
-        cases.create({
-          ...command,
-          request: { ...command.request, workflowVersionId: versionId },
-        }),
+        problemResult(
+          cases.create({
+            ...command,
+            request: { ...command.request, workflowVersionId: versionId },
+          }),
+          inputCaseFailure,
+        ),
       ).rejects.toMatchObject({ code: 'resource.not_found' });
-      await expect(cases.update(command)).rejects.toMatchObject({
+      await expect(
+        problemResult(cases.update(command), inputCaseFailure),
+      ).rejects.toMatchObject({
         code: 'resource.not_found',
       });
-      await expect(cases.delete(command)).rejects.toMatchObject({
+      await expect(
+        problemResult(cases.delete(command), inputCaseFailure),
+      ).rejects.toMatchObject({
         code: 'resource.not_found',
       });
       expect(persistence.createCase).not.toHaveBeenCalled();
@@ -261,7 +272,9 @@ describe('workflow input case application interface', () => {
   it('denies missing current authority and aborted operations before persistence', async () => {
     const { authorization, cases, persistence } = fixture();
     authorization.findAccess.mockResolvedValue(undefined);
-    await expect(cases.get({ ...context, caseId })).rejects.toMatchObject({
+    await expect(
+      problemResult(cases.get({ ...context, caseId }), inputCaseFailure),
+    ).rejects.toMatchObject({
       code: 'resource.not_found',
     });
     const abort = new AbortController();
@@ -300,10 +313,13 @@ describe('workflow input case application interface', () => {
       cases.delete({ ...command, representationTag: 'bad' }),
     ).rejects.toThrow();
     await expect(
-      cases.delete({
-        ...command,
-        representationTag: createWorkflowInputCaseTag(versionId, 1),
-      }),
+      problemResult(
+        cases.delete({
+          ...command,
+          representationTag: createWorkflowInputCaseTag(versionId, 1),
+        }),
+        inputCaseFailure,
+      ),
     ).rejects.toMatchObject({ code: 'workflow.input_case_revision_conflict' });
     expect(persistence.createCase).not.toHaveBeenCalled();
     expect(persistence.updateCase).not.toHaveBeenCalled();
@@ -311,11 +327,13 @@ describe('workflow input case application interface', () => {
   });
   it('maps safe revision/quota/rollout failures without payload or name', () => {
     expect(
-      mapWorkflowAuthoringError(new WorkflowInputCaseRevisionConflictError(2)),
+      toProblem(
+        authoringFailure(new WorkflowInputCaseRevisionConflictError(2)),
+      ),
     ).toMatchObject({ code: 'workflow.input_case_revision_conflict' });
     expect(
-      mapWorkflowAuthoringError(
-        new WorkflowInputCaseLimitError('retained_bytes'),
+      toProblem(
+        authoringFailure(new WorkflowInputCaseLimitError('retained_bytes')),
       ),
     ).toMatchObject({ code: 'workflow.input_case_limit_exceeded' });
   });
@@ -405,29 +423,38 @@ describe('workflow input case HTTP interface', () => {
       await controller.delete(request, { workspaceId, workflowId, caseId }),
     ).toEqual(result);
     await expect(
-      controller.update(
-        { ...request, headers: { 'idempotency-key': 'case-once' } },
-        { workspaceId, workflowId, caseId },
-        { name: 'x', input: {} },
+      problemResult(
+        controller.update(
+          { ...request, headers: { 'idempotency-key': 'case-once' } },
+          { workspaceId, workflowId, caseId },
+          { name: 'x', input: {} },
+        ),
+        inputCaseFailure,
       ),
     ).rejects.toMatchObject({ code: 'request.precondition_required' });
     await expect(
-      controller.delete(
-        {
-          ...request,
-          headers: {
-            'idempotency-key': 'bad,key',
-            'if-match': representationTag,
+      problemResult(
+        controller.delete(
+          {
+            ...request,
+            headers: {
+              'idempotency-key': 'bad,key',
+              'if-match': representationTag,
+            },
           },
-        },
-        { workspaceId, workflowId, caseId },
+          { workspaceId, workflowId, caseId },
+        ),
+        inputCaseFailure,
       ),
     ).rejects.toMatchObject({ code: 'request.invalid' });
     await expect(
-      controller.get(
-        request,
-        { workspaceId, workflowId, caseId: 'bad' },
-        response,
+      problemResult(
+        controller.get(
+          request,
+          { workspaceId, workflowId, caseId: 'bad' },
+          response,
+        ),
+        inputCaseFailure,
       ),
     ).rejects.toMatchObject({ code: 'request.invalid' });
   });

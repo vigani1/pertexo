@@ -8,6 +8,7 @@ import {
   Post,
   Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   artifactParamsSchema,
@@ -32,6 +33,8 @@ import {
 import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
 import { ArtifactReadGuard, ArtifactUploadGuard } from './guards.js';
 import { ArtifactService } from './service.js';
+import { domainErrors } from '../platform/http/problems/interceptor.js';
+import { artifactFailure } from '../problems/context/normalize.js';
 
 type ArtifactRequest = IdentityWorkspaceRequest & {
   raw?: Readonly<{
@@ -46,6 +49,7 @@ type ArtifactRequest = IdentityWorkspaceRequest & {
   }>;
 };
 
+@UseInterceptors(domainErrors(artifactFailure))
 @Controller('v1/workspaces/:workspaceId/artifacts')
 @RateLimit('ordinary_mutation')
 export class ArtifactsController {
@@ -143,6 +147,7 @@ export class ArtifactsController {
   }
 }
 
+@UseInterceptors(domainErrors(artifactFailure))
 @Controller('v1/workspaces/:workspaceId/artifacts')
 export class UnconfiguredArtifactsController {
   @Post(['uploads', ':artifactId/finalize'])

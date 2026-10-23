@@ -30,7 +30,7 @@ export { WorkspaceMembershipController } from './members/lifecycle-controller.js
 export { UpdateUserProfileUseCase } from './commands/user-profile.js';
 export { InvitationAcceptanceUseCase } from './invitations/acceptance.js';
 export { RenameWorkspaceUseCase } from './commands/rename.js';
-export { mapIdentityWorkspaceError } from '../problems/identity/workspaces.js';
+
 export * from './ports.js';
 export * from './tokens.js';
 export * from './types.js';

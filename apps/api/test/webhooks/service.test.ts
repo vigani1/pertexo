@@ -1,3 +1,4 @@
+import { problemResult } from '../support/problem.js';
 import {
   WebhookTriggerIdempotencyConflictError,
   WebhookTriggerNotFoundError,
@@ -188,9 +189,11 @@ describe('webhook management service', () => {
     database.provision.mockRejectedValueOnce(
       new WebhookTriggerIdempotencyConflictError(),
     );
-    await expect(service.provision(input)).rejects.toMatchObject({
-      code: 'request.idempotency_conflict',
-    });
+    await expect(problemResult(service.provision(input))).rejects.toMatchObject(
+      {
+        code: 'request.idempotency_conflict',
+      },
+    );
   });
 
   it('lists only explicitly projected webhook health fields', async () => {
@@ -370,7 +373,9 @@ describe('webhook management service', () => {
     hidden.database.rotateEndpoint.mockRejectedValueOnce(
       new WebhookTriggerNotFoundError(),
     );
-    await expect(hidden.service.rotateEndpoint(input)).rejects.toMatchObject({
+    await expect(
+      problemResult(hidden.service.rotateEndpoint(input)),
+    ).rejects.toMatchObject({
       code: 'resource.not_found',
     });
 
