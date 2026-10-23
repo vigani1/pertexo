@@ -75,6 +75,17 @@ const workspaceTypeProjects = ['apps', 'packages'].flatMap((area) =>
     }),
 );
 
+const readablePackages = [
+  'workflow-engine',
+  'workflow-model',
+  'node-sdk',
+  'nodes-core',
+  'integrations',
+  'node-catalog',
+  'templates',
+  'contracts',
+];
+
 export default tseslint.config(
   {
     ignores: ['**/dist/**', '**/coverage/**', '**/node_modules/**'],
@@ -650,6 +661,37 @@ export default tseslint.config(
         },
       ],
     },
+  },
+  {
+    files: readablePackages.map((name) => `packages/${name}/**/*.ts`),
+    rules: {
+      'no-nested-ternary': 'error',
+      'no-else-return': 'error',
+      complexity: ['error', 20],
+      'max-depth': ['error', 4],
+      'max-params': ['error', 4],
+      'max-lines-per-function': ['error', 150],
+      'max-lines': ['error', 400],
+      '@typescript-eslint/switch-exhaustiveness-check': 'error',
+    },
+  },
+  {
+    files: readablePackages.map((name) => `packages/${name}/test/**/*.ts`),
+    rules: { 'max-lines-per-function': 'off' },
+  },
+  {
+    // Declarative protocol and OpenAPI tables stay together for review.
+    files: [
+      'packages/contracts/src/errors/api-problem.ts',
+      'packages/contracts/src/openapi/connections.ts',
+      'packages/contracts/src/openapi/execution/runs.ts',
+      'packages/contracts/src/openapi/identity/workspaces.ts',
+      'packages/contracts/src/openapi/workflows/authoring.ts',
+      'packages/contracts/src/openapi/workflows/organization.ts',
+      'packages/contracts/src/schemas/connections.ts',
+      'packages/contracts/src/schemas/execution/runs.ts',
+    ],
+    rules: { 'max-lines': 'off' },
   },
   {
     files: ['**/*.mjs'],
