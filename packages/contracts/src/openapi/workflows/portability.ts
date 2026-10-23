@@ -187,6 +187,6 @@ export const workflowPortabilityOpenApiDocument = Object.freeze({
       PreconditionRequired: problemResponse('Draft If-Match required'),
       PayloadTooLarge: problemResponse('Request exceeds portable byte ceiling'),
     },
-    true,
+    { automation: true },
   ),
 });

@@ -180,7 +180,9 @@ export const federationContractPaths = {
     get: {
       operationId: 'discoverOrganizationSignIn',
       parameters: [
-        queryParameter('domain', settings.federationDomainNameSchema, true),
+        queryParameter('domain', settings.federationDomainNameSchema, {
+          required: true,
+        }),
       ],
       responses: {
         '200': jsonResponse(

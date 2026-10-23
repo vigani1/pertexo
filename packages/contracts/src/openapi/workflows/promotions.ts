@@ -80,13 +80,19 @@ export function workflowPromotionContractSchemas<Projected>(
     ),
   };
 }
-function operation(
-  operationId: string,
-  response: string,
-  request?: string,
+function operation({
+  operationId,
+  response,
+  request,
   idempotent = false,
   paged = false,
-) {
+}: Readonly<{
+  operationId: string;
+  response: string;
+  request?: string | undefined;
+  idempotent?: boolean;
+  paged?: boolean;
+}>) {
   return {
     operationId,
     security: [{ cookieSession: [] }],
@@ -131,22 +137,25 @@ function operation(
     },
   };
 }
-const candidateList = operation(
-  'listWorkflowPromotionCandidates',
-  'WorkflowPromotionCandidates',
-  undefined,
-  false,
-  true,
-);
+const candidateList = operation({
+  operationId: 'listWorkflowPromotionCandidates',
+  response: 'WorkflowPromotionCandidates',
+  request: undefined,
+  idempotent: false,
+  paged: true,
+});
 export const workflowPromotionContractPaths = {
   '/v1/workspaces/{workspaceId}/promotions/settings': {
-    get: operation('getWorkflowPromotionSettings', 'WorkflowPromotionSettings'),
-    put: operation(
-      'setWorkflowPromotionTarget',
-      'WorkflowPromotionTargetResult',
-      'WorkflowPromotionTarget',
-      true,
-    ),
+    get: operation({
+      operationId: 'getWorkflowPromotionSettings',
+      response: 'WorkflowPromotionSettings',
+    }),
+    put: operation({
+      operationId: 'setWorkflowPromotionTarget',
+      response: 'WorkflowPromotionTargetResult',
+      request: 'WorkflowPromotionTarget',
+      idempotent: true,
+    }),
   },
   '/v1/workspaces/{workspaceId}/promotions/candidates': {
     get: {
@@ -169,27 +178,27 @@ export const workflowPromotionContractPaths = {
     },
   },
   '/v1/workspaces/{workspaceId}/promotions/history': {
-    get: operation(
-      'listWorkflowPromotionHistory',
-      'WorkflowPromotionHistory',
-      undefined,
-      false,
-      true,
-    ),
+    get: operation({
+      operationId: 'listWorkflowPromotionHistory',
+      response: 'WorkflowPromotionHistory',
+      request: undefined,
+      idempotent: false,
+      paged: true,
+    }),
   },
   '/v1/workspaces/{workspaceId}/promotions/preview': {
-    post: operation(
-      'previewWorkflowPromotion',
-      'WorkflowPromotionPreview',
-      'WorkflowPromotionPreviewRequest',
-    ),
+    post: operation({
+      operationId: 'previewWorkflowPromotion',
+      response: 'WorkflowPromotionPreview',
+      request: 'WorkflowPromotionPreviewRequest',
+    }),
   },
   '/v1/workspaces/{workspaceId}/promotions/apply': {
-    post: operation(
-      'applyWorkflowPromotion',
-      'WorkflowPromotionResult',
-      'WorkflowPromotionApply',
-      true,
-    ),
+    post: operation({
+      operationId: 'applyWorkflowPromotion',
+      response: 'WorkflowPromotionResult',
+      request: 'WorkflowPromotionApply',
+      idempotent: true,
+    }),
   },
 };

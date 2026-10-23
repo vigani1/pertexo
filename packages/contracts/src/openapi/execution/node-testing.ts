@@ -110,7 +110,7 @@ const previewRunParameter = pathParameter(
 );
 const csrfParameter = csrfHeaderParameter();
 const conditionalIdempotencyParameter = {
-  ...idempotencyHeaderParameter(false),
+  ...idempotencyHeaderParameter({ required: false }),
   description:
     'Required when request mode is test_execute; ignored for validate',
 } as const;

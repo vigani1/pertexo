@@ -188,7 +188,7 @@ export const collaborationContractPaths = {
   },
   [base + '/presence']: {
     get: operation('getWorkflowPresence', 'WorkflowPresence', {
-      query: [queryParameter('tabId', z.uuid(), true)],
+      query: [queryParameter('tabId', z.uuid(), { required: true })],
     }),
   },
   [base + '/presence/{tabId}']: {

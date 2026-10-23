@@ -128,12 +128,12 @@ export const directoryContractPaths = {
         queryParameter(
           'directoryUserId',
           directory.directoryAdoptionQuerySchema.shape.directoryUserId,
-          true,
+          { required: true },
         ),
         queryParameter(
           'targetWorkspaceId',
           directory.directoryAdoptionQuerySchema.shape.targetWorkspaceId,
-          true,
+          { required: true },
         ),
       ],
     },

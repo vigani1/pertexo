@@ -603,6 +603,6 @@ export const workflowRunsOpenApiDocument = Object.freeze({
   components: authenticatedComponents(
     { ...schemas, ...runDataSchemas('openapi') },
     problemResponses,
-    true,
+    { automation: true },
   ),
 });

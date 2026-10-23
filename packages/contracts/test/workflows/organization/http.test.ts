@@ -80,15 +80,8 @@ describe('organization HTTP manifest and generated structural contracts', () => 
         const headers = operation.parameters.filter(
           (parameter) => parameter.in === 'header',
         );
-        // Setting a favorite is idempotent by itself and needs no key.
         expect(headers.map((parameter) => parameter.name)).toEqual(
-          method === 'post' && path.endsWith('/review-move')
-            ? ['x-csrf-token']
-            : method === 'post'
-              ? ['x-csrf-token', 'Idempotency-Key']
-              : method === 'put'
-                ? ['x-csrf-token']
-                : [],
+          expectedCommandHeaders(method, path),
         );
         expect(headers.every((header) => header.required)).toBe(true);
         const success =
@@ -282,15 +275,27 @@ describe('organization HTTP manifest and generated structural contracts', () => 
     ] as const)
       expect(API_PROBLEM_MANIFEST[code]).toEqual({
         status: 409,
-        title:
-          code === 'workflow.concurrency_revision_conflict'
-            ? 'Workflow concurrency revision conflict'
-            : code === 'workflow.concurrency_limit_exceeded'
-              ? 'Workflow concurrency limit exceeded'
-              : 'Workflow concurrency limit unavailable',
+        title: concurrencyTitles[code],
         severity: 'warn',
         exposeDetail: true,
         type: `urn:pertexo:problem:${code}`,
       });
   });
 });
+
+function expectedCommandHeaders(method: string, path: string): string[] {
+  // Setting a favorite is idempotent by itself and needs no key.
+  if (method === 'post' && path.endsWith('/review-move'))
+    return ['x-csrf-token'];
+  if (method === 'post') return ['x-csrf-token', 'Idempotency-Key'];
+  if (method === 'put') return ['x-csrf-token'];
+  return [];
+}
+
+const concurrencyTitles = {
+  'workflow.concurrency_revision_conflict':
+    'Workflow concurrency revision conflict',
+  'workflow.concurrency_limit_exceeded': 'Workflow concurrency limit exceeded',
+  'workflow.concurrency_limit_unavailable':
+    'Workflow concurrency limit unavailable',
+} as const;
