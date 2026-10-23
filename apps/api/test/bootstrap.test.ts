@@ -244,13 +244,43 @@ function artifactRuntime(): ApiArtifactRuntime {
 }
 
 describe('API bootstrap ownership and health', () => {
-  let application: Awaited<ReturnType<typeof createApiApplication>> | undefined;
+  afterEach(cleanAPIBootstrapOwnershipHealthFixture);
+  registerAcceptsBothEmptyPopulatedTrustedProxy();
 
-  afterEach(async () => {
-    await application?.close();
-    application = undefined;
+  registerPreservesConstructionEveryRuntimeCleanupFailure();
+
+  registerDoesNotRestoreReadinessDrainBegins();
+
+  describe('SSE transport shutdown', () => {
+    registerClosesRealOpenSSERequestWithout();
   });
+  registerEntersDrainStateBeforeShutdownResources();
 
+  describe('feature composition', () => {
+    registerRegistersInjectedIdentityRuntimeOwnsClose();
+
+    registerMapsUserRemovedAfterAuthenticationSafe();
+
+    registerKeepsSuppliedWebhookSSKey();
+
+    registerRegistersRequestedSchedulePreviewActualBetter();
+
+    registerEnforcesSessionCSRFOnScheduleRoutes();
+
+    registerRegistersNodeTestingRoutesProvidersProduction();
+
+    registerClosesIdentityArtifactRuntimesArtifactStartup();
+  });
+});
+
+let application: Awaited<ReturnType<typeof createApiApplication>> | undefined;
+
+async function cleanAPIBootstrapOwnershipHealthFixture() {
+  await application?.close();
+  application = undefined;
+}
+
+function registerAcceptsBothEmptyPopulatedTrustedProxy(): void {
   it('accepts both empty and populated trusted-proxy CIDR configuration', async () => {
     application = await createApiApplication(
       { ...config, trustedProxyCidrs: [] },
@@ -450,7 +480,9 @@ describe('API bootstrap ownership and health', () => {
     expect(identityClose).toHaveBeenCalledOnce();
     expect(workflowClose).toHaveBeenCalledOnce();
   });
+}
 
+function registerPreservesConstructionEveryRuntimeCleanupFailure(): void {
   it('preserves construction and every runtime cleanup failure', async () => {
     const identityFailure = new Error('identity close failed');
     const workflowFailure = new Error('workflow close failed');
@@ -643,7 +675,9 @@ describe('API bootstrap ownership and health', () => {
 
     expect(response.statusCode).toBe(503);
   });
+}
 
+function registerDoesNotRestoreReadinessDrainBegins(): void {
   it('does not restore readiness when drain begins during a pending health check', async () => {
     type Readiness = Awaited<ReturnType<WorkspaceDatabase['checkReadiness']>>;
     let resolveReadiness!: (value: Readiness) => void;
@@ -683,138 +717,9 @@ describe('API bootstrap ownership and health', () => {
     release();
     expect(drain.activeStreamCount()).toBe(0);
   });
+}
 
-  describe('SSE transport shutdown', () => {
-    it('closes a real open SSE request without client cooperation', async () => {
-      const selectedIdentityRuntime = identityRuntime(
-        vi.fn().mockResolvedValue(undefined),
-        true,
-      );
-      const baseRuntime = createStubApiWorkflowRuntime(
-        selectedIdentityRuntime.dependencies.authorization,
-      );
-      let producerClosed = false;
-      const selectedWorkflowRuntime: ApiWorkflowRuntime = {
-        ...baseRuntime,
-        runDependencies: {
-          ...baseRuntime.runDependencies,
-          persistence: {
-            ...baseRuntime.runDependencies.persistence,
-            get: () =>
-              Promise.resolve({
-                run: {
-                  id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-                  workspaceId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-                  workflowId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
-                  workflowVersionId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
-                  status: 'running' as const,
-                  triggerType: 'manual' as const,
-                  createdAt: new Date(),
-                  updatedAt: new Date(),
-                  startedAt: new Date(),
-                  completedAt: null,
-                  deadlineAt: null,
-                  cancelRequestedAt: null,
-                },
-                nodes: [],
-              }),
-          },
-          streamer: {
-            stream: ({ signal }) => ({
-              async *[Symbol.asyncIterator]() {
-                try {
-                  yield {
-                    id: 1,
-                    event: 'run.started',
-                    data: JSON.stringify({
-                      sequence: 1,
-                      type: 'run.started',
-                      createdAt: new Date().toISOString(),
-                      payload: {},
-                    }),
-                  };
-                  await new Promise<void>((resolve) => {
-                    if (signal.aborted) resolve();
-                    else
-                      signal.addEventListener(
-                        'abort',
-                        () => {
-                          resolve();
-                        },
-                        { once: true },
-                      );
-                  });
-                } finally {
-                  producerClosed = true;
-                }
-              },
-            }),
-          },
-        },
-      };
-      application = await createApiApplication(config, {
-        ...dependencies(),
-        identityRuntime: selectedIdentityRuntime,
-        workflowRuntime: selectedWorkflowRuntime,
-      });
-      await application.listen(0, '127.0.0.1');
-      const address = application.getHttpServer().address() as {
-        port: number;
-      };
-      const responseStarted = Promise.withResolvers<undefined>();
-      const client = httpRequest({
-        host: '127.0.0.1',
-        port: address.port,
-        path: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/runs/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/events',
-        headers: { cookie: `pertexo_session=${'x'.repeat(40)}` },
-      });
-      const startTimer = setTimeout(() => {
-        responseStarted.reject(new Error('SSE response did not start'));
-      }, 1_000);
-      const rejectStart = (error: Error) => {
-        responseStarted.reject(error);
-      };
-      client.once('error', rejectStart);
-      client.on('response', (response) => {
-        response.once('data', () => {
-          responseStarted.resolve(undefined);
-        });
-        response.once('error', rejectStart);
-        response.once('end', () => {
-          responseStarted.reject(
-            new Error('SSE response ended before a frame'),
-          );
-        });
-        response.resume();
-      });
-      client.end();
-      try {
-        await responseStarted.promise.finally(() => {
-          clearTimeout(startTimer);
-        });
-        const drainState = application.get(ApiDrainState);
-        let closeTimer: NodeJS.Timeout | undefined;
-        const closeDeadline = new Promise<never>((_resolve, reject) => {
-          closeTimer = setTimeout(() => {
-            reject(new Error('SSE application close timed out'));
-          }, 1_000);
-        });
-
-        await Promise.race([application.close(), closeDeadline]).finally(() => {
-          if (closeTimer !== undefined) clearTimeout(closeTimer);
-        });
-        application = undefined;
-
-        expect(producerClosed).toBe(true);
-        expect(drainState.activeStreamCount()).toBe(0);
-        expect(selectedWorkflowRuntime.close).toHaveBeenCalledOnce();
-      } finally {
-        clearTimeout(startTimer);
-        client.destroy();
-      }
-    });
-  });
-
+function registerEntersDrainStateBeforeShutdownResources(): void {
   it('enters drain state before shutdown resources close', async () => {
     const lifecycle: { drainState?: ApiDrainState } = {};
     const close = vi.fn().mockImplementation(() => {
@@ -928,1184 +833,1324 @@ describe('API bootstrap ownership and health', () => {
 
     expect(shutdown).toHaveBeenCalledOnce();
   });
+}
 
-  describe('feature composition', () => {
-    it('registers an injected identity runtime and owns its close lifecycle', async () => {
-      const close = vi.fn().mockResolvedValue(undefined);
-      const selectedIdentityRuntime = identityRuntime(close, true);
-      application = await createApiApplication(config, {
-        ...dependencies(),
-        identityRuntime: selectedIdentityRuntime,
-      });
-      await application.init();
-
-      const response = await application.inject({
-        method: 'GET',
-        url: '/v1/users/me',
-        headers: { cookie: 'pertexo_session=session' },
-      });
-      expect(response.statusCode).toBe(200);
-
-      await application.close();
-      application = undefined;
-      expect(close).toHaveBeenCalledOnce();
-    });
-
-    it('fails a composed protected route closed before application work when the limiter is unavailable', async () => {
-      const selectedIdentityRuntime = identityRuntime(undefined, true);
-      application = await createApiApplication(config, {
-        ...dependencies(),
-        identityRuntime: selectedIdentityRuntime,
-        rateLimitConsumer: {
-          consume: () =>
-            Promise.reject(new Error('redis endpoint unavailable')),
-        },
-      });
-
-      const response = await application.inject({
-        method: 'GET',
-        url: '/v1/invitation-acceptance',
-        headers: { cookie: 'pertexo_session=session' },
-      });
-
-      expect(response.statusCode).toBe(503);
-      expect(response.headers['content-type']).toContain(
-        'application/problem+json',
-      );
-      expect(response.headers['retry-after']).toBe('1');
-      expect(response.json()).toMatchObject({
-        code: 'request.rate_limit_unavailable',
-        status: 503,
-      });
-      expect(response.payload).not.toContain('redis endpoint unavailable');
-      expect(
-        // eslint-disable-next-line @typescript-eslint/unbound-method
-        selectedIdentityRuntime.dependencies.sessions.authenticate,
-      ).not.toHaveBeenCalled();
-    });
-
-    it.each([false, true])(
-      'registers all discovery routes with authentication=%s',
-      async (authenticated) => {
-        application = await createApiApplication(config, {
-          ...dependencies(),
-          identityRuntime: identityRuntime(undefined, authenticated),
-        });
-        await application.init();
-
-        const routes = [
-          '/v1/users/me',
-          '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/members',
-          '/v1/node-definitions',
-          '/v1/integrations',
-        ];
-        for (const url of routes) {
-          const response = await application.inject({
-            method: 'GET',
-            url,
-            ...(authenticated
-              ? { headers: { cookie: `pertexo_session=${'s'.repeat(43)}` } }
-              : {}),
-          });
-          expect(response.statusCode, url).toBe(authenticated ? 200 : 401);
-        }
-      },
+function registerClosesRealOpenSSERequestWithout(): void {
+  it('closes a real open SSE request without client cooperation', async () => {
+    const selectedIdentityRuntime = identityRuntime(
+      vi.fn().mockResolvedValue(undefined),
+      true,
     );
+    const baseRuntime = createStubApiWorkflowRuntime(
+      selectedIdentityRuntime.dependencies.authorization,
+    );
+    let producerClosed = false;
+    const selectedWorkflowRuntime: ApiWorkflowRuntime = {
+      ...baseRuntime,
+      runDependencies: {
+        ...baseRuntime.runDependencies,
+        persistence: {
+          ...baseRuntime.runDependencies.persistence,
+          get: () =>
+            Promise.resolve({
+              run: {
+                id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+                workspaceId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+                workflowId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+                workflowVersionId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+                status: 'running' as const,
+                triggerType: 'manual' as const,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                startedAt: new Date(),
+                completedAt: null,
+                deadlineAt: null,
+                cancelRequestedAt: null,
+              },
+              nodes: [],
+            }),
+        },
+        streamer: {
+          stream: ({ signal }) => ({
+            async *[Symbol.asyncIterator]() {
+              try {
+                yield {
+                  id: 1,
+                  event: 'run.started',
+                  data: JSON.stringify({
+                    sequence: 1,
+                    type: 'run.started',
+                    createdAt: new Date().toISOString(),
+                    payload: {},
+                  }),
+                };
+                await new Promise<void>((resolve) => {
+                  if (signal.aborted) resolve();
+                  else
+                    signal.addEventListener(
+                      'abort',
+                      () => {
+                        resolve();
+                      },
+                      { once: true },
+                    );
+                });
+              } finally {
+                producerClosed = true;
+              }
+            },
+          }),
+        },
+      },
+    };
+    application = await createApiApplication(config, {
+      ...dependencies(),
+      identityRuntime: selectedIdentityRuntime,
+      workflowRuntime: selectedWorkflowRuntime,
+    });
+    await application.listen(0, '127.0.0.1');
+    const address = application.getHttpServer().address() as {
+      port: number;
+    };
+    const responseStarted = Promise.withResolvers<undefined>();
+    const client = httpRequest({
+      host: '127.0.0.1',
+      port: address.port,
+      path: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/runs/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/events',
+      headers: { cookie: `pertexo_session=${'x'.repeat(40)}` },
+    });
+    const startTimer = setTimeout(() => {
+      responseStarted.reject(new Error('SSE response did not start'));
+    }, 1_000);
+    const rejectStart = (error: Error) => {
+      responseStarted.reject(error);
+    };
+    client.once('error', rejectStart);
+    client.on('response', (response) => {
+      response.once('data', () => {
+        responseStarted.resolve(undefined);
+      });
+      response.once('error', rejectStart);
+      response.once('end', () => {
+        responseStarted.reject(new Error('SSE response ended before a frame'));
+      });
+      response.resume();
+    });
+    client.end();
+    try {
+      await responseStarted.promise.finally(() => {
+        clearTimeout(startTimer);
+      });
+      const drainState = application.get(ApiDrainState);
+      let closeTimer: NodeJS.Timeout | undefined;
+      const closeDeadline = new Promise<never>((_resolve, reject) => {
+        closeTimer = setTimeout(() => {
+          reject(new Error('SSE application close timed out'));
+        }, 1_000);
+      });
 
-    it('enforces the member-role mutation HTTP boundary', async () => {
-      const changeWorkspaceMemberRole = vi.fn().mockResolvedValue({
-        userId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-        role: 'operator' as const,
-        roleRevision: 2,
-        changed: true,
-        replayed: false,
+      await Promise.race([application.close(), closeDeadline]).finally(() => {
+        if (closeTimer !== undefined) clearTimeout(closeTimer);
       });
-      application = await createApiApplication(config, {
-        ...dependencies(),
-        identityRuntime: identityRuntime(
-          vi.fn().mockResolvedValue(undefined),
-          true,
-          changeWorkspaceMemberRole,
-        ),
-      });
-      await application.init();
-      const url =
-        '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/members/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/role';
-      const cookie = `pertexo_session=${'s'.repeat(43)}`;
-      const csrf = 'c'.repeat(32);
-      const missingCsrf = await application.inject({
-        method: 'POST',
-        url,
-        headers: { cookie, 'idempotency-key': 'member-role' },
-        payload: { role: 'operator', expectedRoleRevision: 1 },
-      });
-      expect(missingCsrf.statusCode).toBe(403);
-      const invalid = await application.inject({
-        method: 'POST',
-        url,
-        headers: {
-          cookie: `${cookie}; pertexo_csrf=${csrf}`,
-          'x-csrf-token': csrf,
-          'idempotency-key': 'member-role',
-        },
-        payload: { role: 'operator', expectedRoleRevision: 1, extra: true },
-      });
-      expect(invalid.statusCode).toBe(400);
-      const changed = await application.inject({
-        method: 'POST',
-        url,
-        headers: {
-          cookie: `${cookie}; pertexo_csrf=${csrf}`,
-          'x-csrf-token': csrf,
-          'idempotency-key': 'member-role',
-        },
-        payload: { role: 'operator', expectedRoleRevision: 1 },
-      });
-      expect(changed.statusCode).toBe(200);
-      expect(changed.json()).toMatchObject({
-        role: 'operator',
-        roleRevision: 2,
-      });
-      expect(changeWorkspaceMemberRole).toHaveBeenCalledOnce();
+      application = undefined;
+
+      expect(producerClosed).toBe(true);
+      expect(drainState.activeStreamCount()).toBe(0);
+      expect(selectedWorkflowRuntime.close).toHaveBeenCalledOnce();
+    } finally {
+      clearTimeout(startTimer);
+      client.destroy();
+    }
+  });
+}
+
+function registerRegistersInjectedIdentityRuntimeOwnsClose(): void {
+  it('registers an injected identity runtime and owns its close lifecycle', async () => {
+    const close = vi.fn().mockResolvedValue(undefined);
+    const selectedIdentityRuntime = identityRuntime(close, true);
+    application = await createApiApplication(config, {
+      ...dependencies(),
+      identityRuntime: selectedIdentityRuntime,
+    });
+    await application.init();
+
+    const response = await application.inject({
+      method: 'GET',
+      url: '/v1/users/me',
+      headers: { cookie: 'pertexo_session=session' },
+    });
+    expect(response.statusCode).toBe(200);
+
+    await application.close();
+    application = undefined;
+    expect(close).toHaveBeenCalledOnce();
+  });
+
+  it('fails a composed protected route closed before application work when the limiter is unavailable', async () => {
+    const selectedIdentityRuntime = identityRuntime(undefined, true);
+    application = await createApiApplication(config, {
+      ...dependencies(),
+      identityRuntime: selectedIdentityRuntime,
+      rateLimitConsumer: {
+        consume: () => Promise.reject(new Error('redis endpoint unavailable')),
+      },
     });
 
-    it('lists every integration', async () => {
-      application = await createApiApplication(config, {
-        ...dependencies(),
-        identityRuntime: identityRuntime(undefined, true),
-      });
-      await application.init();
-
-      const response = await application.inject({
-        method: 'GET',
-        url: '/v1/integrations',
-        headers: { cookie: `pertexo_session=${'s'.repeat(43)}` },
-      });
-      expect(response.statusCode).toBe(200);
-      expect(response.json()).toMatchObject({
-        items: [
-          {
-            providerKey: 'email',
-            operationKey: 'send_notification',
-          },
-          {
-            providerKey: 'http',
-            operationKey: 'request',
-          },
-          {
-            providerKey: 'slack',
-            operationKey: 'send_message',
-          },
-        ],
-      });
+    const response = await application.inject({
+      method: 'GET',
+      url: '/v1/invitation-acceptance',
+      headers: { cookie: 'pertexo_session=session' },
     });
 
-    it('rejects unsupported catalog query fields with problem details', async () => {
+    expect(response.statusCode).toBe(503);
+    expect(response.headers['content-type']).toContain(
+      'application/problem+json',
+    );
+    expect(response.headers['retry-after']).toBe('1');
+    expect(response.json()).toMatchObject({
+      code: 'request.rate_limit_unavailable',
+      status: 503,
+    });
+    expect(response.payload).not.toContain('redis endpoint unavailable');
+    expect(
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      selectedIdentityRuntime.dependencies.sessions.authenticate,
+    ).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])(
+    'registers all discovery routes with authentication=%s',
+    async (authenticated) => {
       application = await createApiApplication(config, {
         ...dependencies(),
-        identityRuntime: identityRuntime(undefined, true),
+        identityRuntime: identityRuntime(undefined, authenticated),
       });
       await application.init();
-      for (const route of ['node-definitions', 'integrations']) {
+
+      const routes = [
+        '/v1/users/me',
+        '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/members',
+        '/v1/node-definitions',
+        '/v1/integrations',
+      ];
+      for (const url of routes) {
         const response = await application.inject({
           method: 'GET',
-          url: `/v1/${route}?arbitrary=value`,
-          headers: { cookie: `pertexo_session=${'s'.repeat(43)}` },
+          url,
+          ...(authenticated
+            ? { headers: { cookie: `pertexo_session=${'s'.repeat(43)}` } }
+            : {}),
         });
-        expect(response.statusCode).toBe(400);
-        expect(response.headers['content-type']).toContain(
-          'application/problem+json',
-        );
-        expect(response.json()).toMatchObject({ code: 'request.invalid' });
+        expect(response.statusCode, url).toBe(authenticated ? 200 : 401);
       }
+    },
+  );
+
+  it('enforces the member-role mutation HTTP boundary', async () => {
+    const changeWorkspaceMemberRole = vi.fn().mockResolvedValue({
+      userId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      role: 'operator' as const,
+      roleRevision: 2,
+      changed: true,
+      replayed: false,
     });
+    application = await createApiApplication(config, {
+      ...dependencies(),
+      identityRuntime: identityRuntime(
+        vi.fn().mockResolvedValue(undefined),
+        true,
+        changeWorkspaceMemberRole,
+      ),
+    });
+    await application.init();
+    const url =
+      '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/members/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/role';
+    const cookie = `pertexo_session=${'s'.repeat(43)}`;
+    const csrf = 'c'.repeat(32);
+    const missingCsrf = await application.inject({
+      method: 'POST',
+      url,
+      headers: { cookie, 'idempotency-key': 'member-role' },
+      payload: { role: 'operator', expectedRoleRevision: 1 },
+    });
+    expect(missingCsrf.statusCode).toBe(403);
+    const invalid = await application.inject({
+      method: 'POST',
+      url,
+      headers: {
+        cookie: `${cookie}; pertexo_csrf=${csrf}`,
+        'x-csrf-token': csrf,
+        'idempotency-key': 'member-role',
+      },
+      payload: { role: 'operator', expectedRoleRevision: 1, extra: true },
+    });
+    expect(invalid.statusCode).toBe(400);
+    const changed = await application.inject({
+      method: 'POST',
+      url,
+      headers: {
+        cookie: `${cookie}; pertexo_csrf=${csrf}`,
+        'x-csrf-token': csrf,
+        'idempotency-key': 'member-role',
+      },
+      payload: { role: 'operator', expectedRoleRevision: 1 },
+    });
+    expect(changed.statusCode).toBe(200);
+    expect(changed.json()).toMatchObject({
+      role: 'operator',
+      roleRevision: 2,
+    });
+    expect(changeWorkspaceMemberRole).toHaveBeenCalledOnce();
+  });
 
-    it('maps a user removed after authentication to safe profile problem details', async () => {
-      const selectedIdentityRuntime = identityRuntime(undefined, true);
-      application = await createApiApplication(config, {
-        ...dependencies(),
-        identityRuntime: {
-          ...selectedIdentityRuntime,
-          dependencies: {
-            ...selectedIdentityRuntime.dependencies,
-            persistence: {
-              ...selectedIdentityRuntime.dependencies.persistence,
-              findUserById: () => Promise.resolve(null),
-            },
-          },
+  it('lists every integration', async () => {
+    application = await createApiApplication(config, {
+      ...dependencies(),
+      identityRuntime: identityRuntime(undefined, true),
+    });
+    await application.init();
+
+    const response = await application.inject({
+      method: 'GET',
+      url: '/v1/integrations',
+      headers: { cookie: `pertexo_session=${'s'.repeat(43)}` },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      items: [
+        {
+          providerKey: 'email',
+          operationKey: 'send_notification',
         },
-      });
-      await application.init();
+        {
+          providerKey: 'http',
+          operationKey: 'request',
+        },
+        {
+          providerKey: 'slack',
+          operationKey: 'send_message',
+        },
+      ],
+    });
+  });
 
+  it('rejects unsupported catalog query fields with problem details', async () => {
+    application = await createApiApplication(config, {
+      ...dependencies(),
+      identityRuntime: identityRuntime(undefined, true),
+    });
+    await application.init();
+    for (const route of ['node-definitions', 'integrations']) {
       const response = await application.inject({
         method: 'GET',
-        url: '/v1/users/me',
+        url: `/v1/${route}?arbitrary=value`,
         headers: { cookie: `pertexo_session=${'s'.repeat(43)}` },
       });
-      expect(response.statusCode).toBe(401);
+      expect(response.statusCode).toBe(400);
       expect(response.headers['content-type']).toContain(
         'application/problem+json',
       );
-      expect(response.json()).toMatchObject({ code: 'auth.unauthenticated' });
-    });
+      expect(response.json()).toMatchObject({ code: 'request.invalid' });
+    }
+  });
+}
 
-    it('serves checked-snapshot ETag and admission 503 through real HTTP guards without bypassing session CSRF', async () => {
-      const selectedIdentity = identityRuntime(
-        vi.fn().mockResolvedValue(undefined),
-        true,
-      );
-      const baseRuntime = createStubApiWorkflowRuntime(
-        selectedIdentity.dependencies.authorization,
-      );
-      const graph = EMPTY_WORKFLOW_GRAPH;
-      const compatibility = workflowCompatibilityReport(
-        graph,
-        EMPTY_DEFINITION_CATALOG,
-      );
-      const draft = {
-        workflowId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-        workspaceId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-        revision: 11,
-        graphJson: graph,
-        compatibility,
-        updatedBy: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-        updatedAt: new Date(),
-      };
-      const validateDraft = vi.fn().mockResolvedValue({
-        currentPublication: null,
-        draft,
-        validation: {
-          ok: true,
-          issues: [],
-          expandedInvocations: 0,
-          worstCaseLoopIterations: 0,
-        },
-      });
-      application = await createApiApplication(config, {
-        ...dependencies(),
-        identityRuntime: selectedIdentity,
-        workflowRuntime: {
-          ...baseRuntime,
-          dependencies: {
-            ...baseRuntime.dependencies,
-            persistence: {
-              ...baseRuntime.dependencies.persistence,
-              validateDraft,
-            },
+function registerMapsUserRemovedAfterAuthenticationSafe(): void {
+  it('maps a user removed after authentication to safe profile problem details', async () => {
+    const selectedIdentityRuntime = identityRuntime(undefined, true);
+    application = await createApiApplication(config, {
+      ...dependencies(),
+      identityRuntime: {
+        ...selectedIdentityRuntime,
+        dependencies: {
+          ...selectedIdentityRuntime.dependencies,
+          persistence: {
+            ...selectedIdentityRuntime.dependencies.persistence,
+            findUserById: () => Promise.resolve(null),
           },
         },
+      },
+    });
+    await application.init();
+
+    const response = await application.inject({
+      method: 'GET',
+      url: '/v1/users/me',
+      headers: { cookie: `pertexo_session=${'s'.repeat(43)}` },
+    });
+    expect(response.statusCode).toBe(401);
+    expect(response.headers['content-type']).toContain(
+      'application/problem+json',
+    );
+    expect(response.json()).toMatchObject({ code: 'auth.unauthenticated' });
+  });
+
+  it('serves checked-snapshot ETag and admission 503 through real HTTP guards without bypassing session CSRF', async () => {
+    const selectedIdentity = identityRuntime(
+      vi.fn().mockResolvedValue(undefined),
+      true,
+    );
+    const baseRuntime = createStubApiWorkflowRuntime(
+      selectedIdentity.dependencies.authorization,
+    );
+    const graph = EMPTY_WORKFLOW_GRAPH;
+    const compatibility = workflowCompatibilityReport(
+      graph,
+      EMPTY_DEFINITION_CATALOG,
+    );
+    const draft = {
+      workflowId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      workspaceId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      revision: 11,
+      graphJson: graph,
+      compatibility,
+      updatedBy: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      updatedAt: new Date(),
+    };
+    const validateDraft = vi.fn().mockResolvedValue({
+      currentPublication: null,
+      draft,
+      validation: {
+        ok: true,
+        issues: [],
+        expandedInvocations: 0,
+        worstCaseLoopIterations: 0,
+      },
+    });
+    application = await createApiApplication(config, {
+      ...dependencies(),
+      identityRuntime: selectedIdentity,
+      workflowRuntime: {
+        ...baseRuntime,
+        dependencies: {
+          ...baseRuntime.dependencies,
+          persistence: {
+            ...baseRuntime.dependencies.persistence,
+            validateDraft,
+          },
+        },
+      },
+    });
+    const url = `/v1/workspaces/${draft.workspaceId}/workflows/${draft.workflowId}/validate`;
+    const cookie = `pertexo_session=${'s'.repeat(43)}`;
+    const denied = await application.inject({
+      method: 'POST',
+      url,
+      headers: { cookie },
+      payload: {},
+    });
+    expect(denied.statusCode).toBe(403);
+    expect(validateDraft).not.toHaveBeenCalled();
+    const csrf = 'c'.repeat(32);
+    const headers = {
+      cookie: `${cookie}; pertexo_csrf=${csrf}`,
+      'x-csrf-token': csrf,
+    };
+    const checked = await application.inject({
+      method: 'POST',
+      url,
+      headers,
+      payload: {},
+    });
+    expect(checked.statusCode).toBe(200);
+    expect(checked.headers.etag).toBe(
+      createDraftRepresentationTag({
+        workflowId: draft.workflowId,
+        revision: draft.revision,
+        graph,
+        compatibilityFingerprint: compatibility.fingerprint,
+      }),
+    );
+    expect(checked.json()).toMatchObject({
+      valid: true,
+      currentPublication: null,
+      issues: [],
+      compatibility,
+    });
+    validateDraft.mockRejectedValue(
+      new AuthoringValidationUnavailableError('overloaded'),
+    );
+    const unavailable = await application.inject({
+      method: 'POST',
+      url,
+      headers,
+      payload: {},
+    });
+    expect(unavailable.statusCode).toBe(503);
+    expect(unavailable.headers['retry-after']).toBe('1');
+    expect(unavailable.json()).toMatchObject({
+      code: 'workflow.validation_unavailable',
+      status: 503,
+    });
+    expect(validateDraft).toHaveBeenCalledWith(
+      draft.workspaceId,
+      draft.workflowId,
+      draft.updatedBy,
+      expect.anything(),
+    );
+    expect(validateDraft.mock.calls[0]?.[3]).toHaveProperty(
+      'signal',
+      expect.any(AbortSignal),
+    );
+  });
+
+  it('registers workflow routes and closes identity and workflow runtimes together', async () => {
+    const identityClose = vi.fn().mockResolvedValue(undefined);
+    const workflowClose = vi.fn().mockResolvedValue(undefined);
+    const selectedIdentityRuntime = identityRuntime(identityClose);
+    application = await createApiApplication(config, {
+      ...dependencies(),
+      identityRuntime: selectedIdentityRuntime,
+      workflowRuntime: createStubApiWorkflowRuntime(
+        selectedIdentityRuntime.dependencies.authorization,
+        workflowClose,
+      ),
+    });
+    await application.init();
+
+    const response = await application.inject({
+      method: 'GET',
+      url: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/workflows',
+    });
+    expect(response.statusCode).toBe(401);
+
+    const runResponse = await application.inject({
+      method: 'GET',
+      url: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/runs/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    });
+    expect(runResponse.statusCode).toBe(401);
+
+    await application.close();
+    application = undefined;
+    expect(identityClose).toHaveBeenCalledOnce();
+    expect(workflowClose).toHaveBeenCalledOnce();
+  });
+
+  it('registers the encapsulated webhook route and closes its runtime', async () => {
+    const selectedIdentityRuntime = identityRuntime();
+    const webhookClose = vi.fn().mockResolvedValue(undefined);
+    const webhookRuntime = {
+      service: {} as WebhookManagementService,
+      ingress: {
+        database: {
+          resolveVerification: vi.fn().mockResolvedValue(null),
+        },
+        encryption: {},
+        checkpointFactory: () => ({ checkpoint: {} }),
+      },
+      close: webhookClose,
+    } as unknown as ApiWebhookRuntime;
+    application = await createApiApplication(config, {
+      ...dependencies(),
+      identityRuntime: selectedIdentityRuntime,
+      webhookRuntime,
+    });
+
+    const response = await application.inject({
+      method: 'POST',
+      url: `/hooks/${'a'.repeat(43)}`,
+      headers: { 'content-type': 'application/json' },
+      payload: '{}',
+    });
+    expect(response.statusCode).toBe(401);
+    expect(response.json<{ code: string }>().code).toBe(
+      'webhook.authentication_failed',
+    );
+
+    const management = await application.inject({
+      method: 'GET',
+      url: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/workflows/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/triggers',
+    });
+    expect(management.statusCode).toBe(401);
+
+    await application.close();
+    application = undefined;
+    expect(webhookClose).toHaveBeenCalledOnce();
+  });
+}
+
+function registerKeepsSuppliedWebhookSSKey(): void {
+  it.each([
+    ['provision', 'provision', undefined],
+    ['provision', 'provision', 'first,second'],
+    ['rotate-endpoint', 'rotateEndpoint', undefined],
+    ['rotate-endpoint', 'rotateEndpoint', 'first,second'],
+    ['rotate-secret', 'rotateSecret', undefined],
+    ['rotate-secret', 'rotateSecret', 'first,second'],
+  ] as const)(
+    'keeps supplied webhook %s (%s key %s) behind actual fixture session, CSRF, key and tenant guards',
+    async (operation, method, rejectedKey) => {
+      const owner = new FixtureResourceOwner();
+      const close = vi.fn().mockResolvedValue(undefined);
+      const provision = vi.fn().mockResolvedValue({
+        trigger: {
+          id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+          workflowId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+          workflowVersionId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+          nodeId: 'signed-input',
+          kind: 'webhook',
+          status: 'active',
+          healthStatus: 'healthy',
+          lastErrorCode: null,
+          endpointReady: true,
+          authentication: { mode: 'signed', allowedOrigins: [] },
+          reconciledAt: null,
+        },
+        replayed: true,
       });
-      const url = `/v1/workspaces/${draft.workspaceId}/workflows/${draft.workflowId}/validate`;
-      const cookie = `pertexo_session=${'s'.repeat(43)}`;
+      const runtime = {
+        service: {
+          [method]: provision,
+        } as unknown as WebhookManagementService,
+        ingress: {
+          database: { resolveVerification: vi.fn().mockResolvedValue(null) },
+          encryption: {},
+          checkpointFactory: () => ({
+            checkpoint: {},
+          }),
+        },
+        close,
+      } as unknown as ApiWebhookRuntime;
+      const csrf = 'c'.repeat(32);
+      const cookie = `pertexo_session=${'s'.repeat(43)}; pertexo_csrf=${csrf}`;
+      const path = `/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/workflows/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/triggers/cccccccc-cccc-4ccc-8ccc-cccccccccccc/webhook/${operation}`;
+      const payload =
+        operation === 'rotate-secret' ? { endpointKey: 'a'.repeat(43) } : {};
+      try {
+        application = await createBetterAuthFixtureApplication(
+          config,
+          {
+            ...dependencies(),
+            identityRuntime: identityRuntime(undefined, true),
+            webhookRuntime: runtime,
+          },
+          owner,
+        );
+        const validHeaders = {
+          cookie,
+          'x-csrf-token': csrf,
+          'idempotency-key': 'owned-provision',
+        };
+        for (const [url, headers, status] of [
+          [path, {}, 401],
+          [path, { cookie, 'idempotency-key': 'owned-provision' }, 403],
+          [
+            path.replace(
+              'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+              'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+            ),
+            validHeaders,
+            404,
+          ],
+        ] as const) {
+          const response = await application.inject({
+            method: 'POST',
+            url,
+            headers,
+            payload,
+          });
+          expect(response.statusCode).toBe(status);
+          expect(provision).not.toHaveBeenCalled();
+        }
+        const rejected = await application.inject({
+          method: 'POST',
+          url: path,
+          headers: {
+            cookie,
+            'x-csrf-token': csrf,
+            ...(rejectedKey === undefined
+              ? {}
+              : { 'idempotency-key': rejectedKey }),
+          },
+          payload,
+        });
+        expect(rejected.statusCode).toBe(400);
+        expect(rejected.json()).toMatchObject({
+          code: 'request.invalid',
+          status: 400,
+        });
+        expect(provision).not.toHaveBeenCalled();
+        const accepted = await application.inject({
+          method: 'POST',
+          url: path,
+          headers: validHeaders,
+          payload,
+        });
+        expect(accepted.statusCode).toBe(200);
+        expect(provision).toHaveBeenCalledOnce();
+        expect(provision).toHaveBeenCalledWith(
+          expect.objectContaining({
+            actorId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+            workspaceId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+            triggerId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+            idempotencyKey: 'owned-provision',
+          }),
+        );
+        provision.mockRejectedValueOnce(
+          new Error('Unexpected service failure'),
+        );
+        const unexpected = await application.inject({
+          method: 'POST',
+          url: path,
+          headers: validHeaders,
+          payload,
+        });
+        expect(unexpected.statusCode).toBe(500);
+        expect(provision).toHaveBeenCalledTimes(2);
+      } finally {
+        await owner.close();
+        application = undefined;
+      }
+      expect(close).toHaveBeenCalledOnce();
+    },
+  );
+}
+
+function registerRegistersRequestedSchedulePreviewActualBetter(): void {
+  it('registers requested schedule preview in the actual Better Auth fixture composition', async () => {
+    const owner = new FixtureResourceOwner();
+    const previewFireTimes = vi.fn().mockResolvedValue({
+      observedAt: new Date('2026-08-25T12:00:00.000Z'),
+      items: [new Date('2026-08-25T12:01:00.000Z')],
+    });
+    const scheduleDatabase = {
+      list: vi.fn().mockResolvedValue([]),
+      setEnabled: vi.fn().mockRejectedValue(new Error('unused')),
+      listOccurrences: vi.fn().mockResolvedValue({ items: [] }),
+      nextFireTimes: vi.fn().mockRejectedValue(new Error('unused')),
+      previewFireTimes,
+      checkReadiness: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+    };
+    const csrf = 'c'.repeat(32);
+    const cookie = `pertexo_session=${'s'.repeat(43)}; pertexo_csrf=${csrf}`;
+    const path =
+      '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/workflows/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/triggers/schedules/preview';
+    let suppliedRuntime: ApiScheduleRuntime | undefined;
+    try {
+      application = await createBetterAuthFixtureApplication(
+        config,
+        {
+          ...dependencies(),
+          identityRuntime: identityRuntime(undefined, true),
+        },
+        owner,
+        true,
+        async (selected) => {
+          const runtime = await createApiScheduleRuntime(
+            selected,
+            scheduleDatabase,
+          );
+          suppliedRuntime = { ...runtime, close: vi.fn(runtime.close) };
+          return suppliedRuntime;
+        },
+      );
+      const preview = await application.inject({
+        method: 'POST',
+        url: path,
+        headers: { cookie, 'x-csrf-token': csrf },
+        payload: {
+          config: { kind: 'interval', intervalMinutes: 1 },
+          count: 1,
+        },
+      });
+      expect(preview.statusCode).toBe(200);
+      expect(preview.json()).toEqual({
+        observedAt: '2026-08-25T12:00:00.000Z',
+        items: [{ scheduledAt: '2026-08-25T12:01:00.000Z' }],
+      });
+      expect(previewFireTimes).toHaveBeenCalledOnce();
+      expect(scheduleDatabase.checkReadiness).toHaveBeenCalled();
+      const noSession = await application.inject({
+        method: 'POST',
+        url: path,
+        payload: { config: { kind: 'interval', intervalMinutes: 1 } },
+      });
+      expect(noSession.statusCode).toBe(401);
+      const noCsrf = await application.inject({
+        method: 'POST',
+        url: path,
+        headers: { cookie },
+        payload: { config: { kind: 'interval', intervalMinutes: 1 } },
+      });
+      expect(noCsrf.statusCode).toBe(403);
+      const invalid = await application.inject({
+        method: 'POST',
+        url: path,
+        headers: { cookie, 'x-csrf-token': csrf },
+        payload: { config: { kind: 'interval', intervalMinutes: 0 } },
+      });
+      expect(invalid.statusCode).toBe(400);
+      expect(previewFireTimes).toHaveBeenCalledOnce();
       const denied = await application.inject({
         method: 'POST',
-        url,
-        headers: { cookie },
-        payload: {},
+        url: path.replace(
+          'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+          'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+        ),
+        headers: { cookie, 'x-csrf-token': csrf },
+        payload: { config: { kind: 'interval', intervalMinutes: 1 } },
       });
-      expect(denied.statusCode).toBe(403);
-      expect(validateDraft).not.toHaveBeenCalled();
-      const csrf = 'c'.repeat(32);
-      const headers = {
-        cookie: `${cookie}; pertexo_csrf=${csrf}`,
-        'x-csrf-token': csrf,
-      };
-      const checked = await application.inject({
-        method: 'POST',
-        url,
-        headers,
-        payload: {},
-      });
-      expect(checked.statusCode).toBe(200);
-      expect(checked.headers.etag).toBe(
-        createDraftRepresentationTag({
-          workflowId: draft.workflowId,
-          revision: draft.revision,
-          graph,
-          compatibilityFingerprint: compatibility.fingerprint,
-        }),
-      );
-      expect(checked.json()).toMatchObject({
-        valid: true,
-        currentPublication: null,
-        issues: [],
-        compatibility,
-      });
-      validateDraft.mockRejectedValue(
-        new AuthoringValidationUnavailableError('overloaded'),
+      expect(denied.statusCode).toBe(404);
+      expect(previewFireTimes).toHaveBeenCalledOnce();
+      previewFireTimes.mockRejectedValueOnce(
+        new Error('private database failure'),
       );
       const unavailable = await application.inject({
         method: 'POST',
-        url,
-        headers,
-        payload: {},
+        url: path,
+        headers: { cookie, 'x-csrf-token': csrf },
+        payload: { config: { kind: 'interval', intervalMinutes: 1 } },
       });
-      expect(unavailable.statusCode).toBe(503);
-      expect(unavailable.headers['retry-after']).toBe('1');
-      expect(unavailable.json()).toMatchObject({
-        code: 'workflow.validation_unavailable',
-        status: 503,
+      expect(unavailable.statusCode).toBe(500);
+    } finally {
+      await owner.close();
+      application = undefined;
+    }
+    expect(scheduleDatabase.close).toHaveBeenCalledOnce();
+    expect(suppliedRuntime?.close).toHaveBeenCalledOnce();
+  });
+
+  it('keeps schedule composition off for existing Better Auth fixtures by default', async () => {
+    const owner = new FixtureResourceOwner();
+    const createSchedules = vi.fn(createApiScheduleRuntime);
+    try {
+      application = await createBetterAuthFixtureApplication(
+        config,
+        {
+          ...dependencies(),
+          identityRuntime: identityRuntime(undefined, true),
+        },
+        owner,
+        undefined,
+        createSchedules,
+      );
+      const response = await application.inject({
+        method: 'GET',
+        url: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/workflows/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/triggers/schedules',
       });
-      expect(validateDraft).toHaveBeenCalledWith(
-        draft.workspaceId,
-        draft.workflowId,
-        draft.updatedBy,
-        expect.anything(),
-      );
-      expect(validateDraft.mock.calls[0]?.[3]).toHaveProperty(
-        'signal',
-        expect.any(AbortSignal),
-      );
+      expect(response.statusCode).toBe(404);
+      expect(createSchedules).not.toHaveBeenCalled();
+    } finally {
+      await owner.close();
+      application = undefined;
+    }
+  });
+
+  it('retains fixture ownership when schedule readiness fails before application construction', async () => {
+    const owner = new FixtureResourceOwner();
+    const close = vi.fn().mockResolvedValue(undefined);
+    const runtime: ApiScheduleRuntime = {
+      service: {} as ScheduleManagementService,
+      checkReadiness: () =>
+        Promise.reject(new Error('schedule readiness unavailable')),
+      close,
+    };
+    await expect(
+      createBetterAuthFixtureApplication(
+        config,
+        {
+          ...dependencies(),
+          identityRuntime: identityRuntime(undefined, true),
+        },
+        owner,
+        true,
+        () => Promise.resolve(runtime),
+      ),
+    ).rejects.toThrow('schedule readiness unavailable');
+    await owner.close();
+    expect(close).toHaveBeenCalledOnce();
+  });
+
+  it('serves the workspace inbox through a supplied notification runtime and owns its readiness and close', async () => {
+    const inboxDatabase = {
+      listThreads: vi.fn(),
+      readSummary: vi
+        .fn()
+        .mockResolvedValue({ unreadCount: 2, revision: '11' }),
+      markThreadRead: vi.fn(),
+      markAllRead: vi.fn(),
+      close: vi.fn().mockResolvedValue(undefined),
+    };
+    const hints = {
+      checkReadiness: vi.fn().mockResolvedValue(undefined),
+      subscribe: vi.fn(),
+      close: vi.fn().mockResolvedValue(undefined),
+    };
+    const notificationRuntime: ApiNotificationRuntime = {
+      service: new WorkspaceInboxService(inboxDatabase),
+      hints,
+      checkReadiness: hints.checkReadiness,
+      close: vi.fn().mockResolvedValue(undefined),
+    };
+    application = await createApiApplication(config, {
+      ...dependencies(),
+      identityRuntime: identityRuntime(
+        vi.fn().mockResolvedValue(undefined),
+        true,
+      ),
+      notificationRuntime,
+    });
+    expect(hints.checkReadiness).toHaveBeenCalled();
+    const summary =
+      '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/notifications/summary';
+    const cookie = `pertexo_session=${'s'.repeat(43)}`;
+    expect(
+      (await application.inject({ method: 'GET', url: summary })).statusCode,
+    ).toBe(401);
+    expect(
+      (
+        await application.inject({
+          method: 'GET',
+          url: summary.replace(
+            'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+            'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+          ),
+          headers: { cookie },
+        })
+      ).statusCode,
+    ).toBe(404);
+    const read = await application.inject({
+      method: 'GET',
+      url: summary,
+      headers: { cookie },
+    });
+    expect(read.statusCode).toBe(200);
+    expect(read.json()).toEqual({ unreadCount: 2, revision: '11' });
+
+    await application.close();
+    application = undefined;
+    expect(notificationRuntime.close).toHaveBeenCalledOnce();
+  });
+}
+
+function registerEnforcesSessionCSRFOnScheduleRoutes(): void {
+  it('enforces session and CSRF on schedule routes and owns readiness and close', async () => {
+    const selectedIdentityRuntime = identityRuntime(
+      vi.fn().mockResolvedValue(undefined),
+      true,
+    );
+    const record = {
+      id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+      workflowId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      workflowVersionId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+      nodeId: 'schedule',
+      kind: 'schedule' as const,
+      status: 'active' as const,
+      healthStatus: 'healthy' as const,
+      lastErrorCode: null,
+      reconciledAt: null,
+      recurrence: { kind: 'interval' as const, intervalMinutes: 5 },
+      misfirePolicy: 'catch_up_once' as const,
+      nextFireAt: new Date('2026-08-25T12:05:00.000Z'),
+      lastFireAt: null,
+    };
+    const scheduleDatabase = {
+      list: vi.fn().mockResolvedValue([record]),
+      setEnabled: vi
+        .fn()
+        .mockResolvedValue({ trigger: record, replayed: false }),
+      listOccurrences: vi.fn().mockResolvedValue({
+        items: [
+          {
+            id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+            scheduledAt: '2026-08-25T12:00:00.000000Z',
+            recordedAt: '2026-08-25T12:00:00.250000Z',
+            outcome: 'skipped',
+            runId: null,
+          },
+        ],
+      }),
+      nextFireTimes: vi.fn().mockResolvedValue({
+        observedAt: new Date('2026-08-25T12:01:00.000Z'),
+        items: [record.nextFireAt],
+      }),
+      previewFireTimes: vi.fn().mockResolvedValue({
+        observedAt: new Date('2026-08-25T12:01:00.000Z'),
+        items: [new Date('2026-08-25T12:16:00.000Z')],
+      }),
+      checkReadiness: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+    };
+    const scheduleRuntime = {
+      service: new ScheduleManagementService(scheduleDatabase),
+      checkReadiness: scheduleDatabase.checkReadiness,
+      close: scheduleDatabase.close,
+    } as ApiScheduleRuntime;
+    application = await createApiApplication(config, {
+      ...dependencies(),
+      identityRuntime: selectedIdentityRuntime,
+      scheduleRuntime,
+    });
+    const base =
+      '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/workflows/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/triggers';
+    const unauthenticated = await application.inject({
+      method: 'GET',
+      url: `${base}/schedules`,
+    });
+    expect(unauthenticated.statusCode).toBe(401);
+
+    const cookie = `pertexo_session=${'s'.repeat(43)}`;
+    const hidden = await application.inject({
+      method: 'GET',
+      url: `${base.replace('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee')}/schedules`,
+      headers: { cookie },
+    });
+    expect(hidden.statusCode).toBe(404);
+
+    const listed = await application.inject({
+      method: 'GET',
+      url: `${base}/schedules`,
+      headers: { cookie },
+    });
+    expect(listed.statusCode).toBe(200);
+    expect(listed.json()).toMatchObject({ items: [{ kind: 'schedule' }] });
+
+    const missingCsrf = await application.inject({
+      method: 'POST',
+      url: `${base}/${record.id}/schedule/disable`,
+      headers: { cookie, 'idempotency-key': 'disable' },
+      payload: {},
+    });
+    expect(missingCsrf.statusCode).toBe(403);
+
+    const csrf = 'c'.repeat(32);
+    const missingKey = await application.inject({
+      method: 'POST',
+      url: `${base}/${record.id}/schedule/disable`,
+      headers: {
+        cookie: `${cookie}; pertexo_csrf=${csrf}`,
+        'x-csrf-token': csrf,
+      },
+      payload: {},
+    });
+    expect(missingKey.statusCode).toBe(400);
+
+    const disabled = await application.inject({
+      method: 'POST',
+      url: `${base}/${record.id}/schedule/disable`,
+      headers: {
+        cookie: `${cookie}; pertexo_csrf=${csrf}`,
+        'x-csrf-token': csrf,
+        'idempotency-key': 'disable',
+      },
+      payload: {},
+    });
+    expect(disabled.statusCode).toBe(200);
+    expect(scheduleDatabase.setEnabled).toHaveBeenCalledOnce();
+    expect(scheduleDatabase.checkReadiness).toHaveBeenCalled();
+
+    const history = await application.inject({
+      method: 'GET',
+      url: `${base}/${record.id}/schedule/occurrences?limit=5`,
+      headers: { cookie },
+    });
+    expect(history.statusCode).toBe(200);
+    expect(history.json()).toEqual({
+      items: [expect.objectContaining({ outcome: 'skipped', runId: null })],
+      nextCursor: null,
+    });
+    const nextRuns = await application.inject({
+      method: 'GET',
+      url: `${base}/${record.id}/schedule/next-runs`,
+      headers: { cookie },
+    });
+    expect(nextRuns.json()).toEqual({
+      observedAt: '2026-08-25T12:01:00.000Z',
+      items: [{ scheduledAt: '2026-08-25T12:05:00.000Z' }],
+    });
+    expect(scheduleDatabase.nextFireTimes).toHaveBeenCalledWith(
+      expect.objectContaining({ triggerId: record.id, count: 3 }),
+    );
+    const tooMany = await application.inject({
+      method: 'GET',
+      url: `${base}/${record.id}/schedule/next-runs?count=11`,
+      headers: { cookie },
+    });
+    expect(tooMany.statusCode).toBe(400);
+
+    const preview = {
+      config: { kind: 'interval', intervalMinutes: 15 },
+      count: 1,
+    };
+    const unverifiedPreview = await application.inject({
+      method: 'POST',
+      url: `${base}/schedules/preview`,
+      headers: { cookie },
+      payload: preview,
+    });
+    expect(unverifiedPreview.statusCode).toBe(403);
+    const previewHeaders = {
+      cookie: `${cookie}; pertexo_csrf=${csrf}`,
+      'x-csrf-token': csrf,
+    };
+    const invalidPreview = await application.inject({
+      method: 'POST',
+      url: `${base}/schedules/preview`,
+      headers: previewHeaders,
+      payload: { config: { kind: 'interval', intervalMinutes: 0 } },
+    });
+    expect(invalidPreview.statusCode).toBe(400);
+    const previewed = await application.inject({
+      method: 'POST',
+      url: `${base}/schedules/preview`,
+      headers: previewHeaders,
+      payload: preview,
+    });
+    expect(previewed.statusCode).toBe(200);
+    expect(previewed.json()).toEqual({
+      observedAt: '2026-08-25T12:01:00.000Z',
+      items: [{ scheduledAt: '2026-08-25T12:16:00.000Z' }],
+    });
+    expect(scheduleDatabase.previewFireTimes).toHaveBeenCalledOnce();
+
+    await application.close();
+    application = undefined;
+    expect(scheduleDatabase.close).toHaveBeenCalledOnce();
+  });
+}
+
+function registerRegistersNodeTestingRoutesProvidersProduction(): void {
+  it('registers node-testing routes and providers with the production workflow runtime', async () => {
+    const selectedIdentityRuntime = identityRuntime();
+    application = await createApiApplication(config, {
+      ...dependencies(),
+      identityRuntime: selectedIdentityRuntime,
+      workflowOverrides: {
+        authoring: { database: workflowAuthoringDatabase() },
+        persistence: {
+          runs: {
+            canRead: () => Promise.resolve(true),
+            start: () => Promise.reject(new Error('not used')),
+            recovery: () => Promise.reject(new Error('not exercised')),
+            recover: () => Promise.reject(new Error('not exercised')),
+            replay: () => Promise.reject(new Error('not used')),
+            get: () => Promise.resolve(undefined),
+            list: () => Promise.resolve({ items: [] }),
+            readVariables: () => Promise.resolve({ revision: 0, values: {} }),
+            readInput: () => Promise.resolve(undefined),
+            readNodeRunDiagnostics: () => Promise.resolve(undefined),
+            readNodeRunOutput: () => Promise.resolve(undefined),
+            readNodeRunInput: () => Promise.resolve(undefined),
+            stepHealth: () => Promise.resolve(undefined),
+            stepRuns: () => Promise.resolve(undefined),
+            statistics: () => Promise.reject(new Error('not used')),
+            usageTrends: () => Promise.reject(new Error('not used')),
+            usageCapacity: () => Promise.reject(new Error('not used')),
+            cancel: () => Promise.reject(new Error('not used')),
+          },
+        },
+        streaming: {
+          streamer: {
+            stream: () => ({
+              async *[Symbol.asyncIterator]() {
+                await Promise.resolve();
+                yield { id: 1, event: 'run.queued', data: '{}' };
+              },
+            }),
+          },
+        },
+      },
+    });
+    await application.init();
+
+    expect(application.get(TestWorkflowNodeUseCase)).toBeInstanceOf(
+      TestWorkflowNodeUseCase,
+    );
+    expect(application.get(GetPreviewRunUseCase)).toBeInstanceOf(
+      GetPreviewRunUseCase,
+    );
+
+    const testResponse = await application.inject({
+      method: 'POST',
+      url: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/workflows/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/draft/nodes/cccccccc-cccc-4ccc-8ccc-cccccccccccc/test',
+      payload: { mode: 'validate' },
+    });
+    expect(testResponse.statusCode).toBe(401);
+
+    const previewResponse = await application.inject({
+      method: 'GET',
+      url: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/previews/dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+    });
+    expect(previewResponse.statusCode).toBe(401);
+  });
+
+  it('rejects deeply nested authenticated node-test JSON before preview reservation', async () => {
+    const selectedIdentityRuntime = identityRuntime(
+      vi.fn().mockResolvedValue(undefined),
+      true,
+    );
+    const getDraft = vi.fn().mockRejectedValue(new Error('not used'));
+    const acceptPreview = vi.fn().mockRejectedValue(new Error('not used'));
+    application = await createApiApplication(config, {
+      ...dependencies(),
+      identityRuntime: selectedIdentityRuntime,
+      workflowOverrides: {
+        authoring: {
+          database: {
+            ...workflowAuthoringDatabase(),
+            getDraft,
+            acceptPreview,
+          },
+        },
+        persistence: {
+          runs: {
+            canRead: () => Promise.resolve(true),
+            start: () => Promise.reject(new Error('not used')),
+            recovery: () => Promise.reject(new Error('not exercised')),
+            recover: () => Promise.reject(new Error('not exercised')),
+            replay: () => Promise.reject(new Error('not used')),
+            get: () => Promise.resolve(undefined),
+            list: () => Promise.resolve({ items: [] }),
+            readVariables: () => Promise.resolve({ revision: 0, values: {} }),
+            readInput: () => Promise.resolve(undefined),
+            readNodeRunDiagnostics: () => Promise.resolve(undefined),
+            readNodeRunOutput: () => Promise.resolve(undefined),
+            readNodeRunInput: () => Promise.resolve(undefined),
+            stepHealth: () => Promise.resolve(undefined),
+            stepRuns: () => Promise.resolve(undefined),
+            statistics: () => Promise.reject(new Error('not used')),
+            usageTrends: () => Promise.reject(new Error('not used')),
+            usageCapacity: () => Promise.reject(new Error('not used')),
+            cancel: () => Promise.reject(new Error('not used')),
+          },
+        },
+        streaming: {
+          streamer: {
+            stream: () => ({
+              async *[Symbol.asyncIterator]() {
+                await Promise.resolve();
+                yield { id: 1, event: 'run.queued', data: '{}' };
+              },
+            }),
+          },
+        },
+      },
+    });
+    const csrf = 'c'.repeat(32);
+    const payload = `{"mode":"validate","expectedRevision":1,"sampleInput":${'['.repeat(10_000)}null${']'.repeat(10_000)}}`;
+    const response = await application.inject({
+      method: 'POST',
+      url: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/workflows/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/draft/nodes/cccccccc-cccc-4ccc-8ccc-cccccccccccc/test',
+      headers: {
+        cookie: `pertexo_session=${'s'.repeat(43)}; pertexo_csrf=${csrf}`,
+        'content-type': 'application/json',
+        'x-csrf-token': csrf,
+      },
+      payload,
     });
 
-    it('registers workflow routes and closes identity and workflow runtimes together', async () => {
-      const identityClose = vi.fn().mockResolvedValue(undefined);
-      const workflowClose = vi.fn().mockResolvedValue(undefined);
-      const selectedIdentityRuntime = identityRuntime(identityClose);
-      application = await createApiApplication(config, {
-        ...dependencies(),
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ code: 'request.invalid' });
+    expect(getDraft).not.toHaveBeenCalled();
+    expect(acceptPreview).not.toHaveBeenCalled();
+  });
+
+  it('mounts Better Auth on the public web origin', async () => {
+    const selected = betterAuthIdentityRuntime();
+    application = await createApiApplication(
+      {
+        ...config,
+        identity: betterAuthIdentityConfig('https://app.example.test'),
+      },
+      { ...dependencies(), identityRuntime: selected.runtime },
+    );
+    await application.init();
+
+    const capabilities = await application.inject({
+      method: 'GET',
+      url: '/v1/auth/capabilities',
+    });
+    expect(capabilities.json()).toEqual({
+      password: {
+        enabled: true,
+        minimumLength: 12,
+        verificationRequired: true,
+      },
+      socialProviders: ['google'],
+    });
+    const crossOrigin = await application.inject({
+      method: 'POST',
+      url: '/v1/auth/sign-in/email',
+      headers: { origin: 'https://api.example.test' },
+      payload: {},
+    });
+    expect(crossOrigin.statusCode).toBe(403);
+    const accepted = await application.inject({
+      method: 'POST',
+      url: '/v1/auth/sign-in/email',
+      headers: { origin: 'https://app.example.test' },
+      payload: {},
+    });
+    expect(accepted.statusCode).toBe(200);
+    expect(selected.requests).toEqual([
+      'POST https://app.example.test/v1/auth/sign-in/email',
+    ]);
+  });
+
+  it('closes an injected identity runtime when database readiness fails', async () => {
+    const identityClose = vi.fn().mockResolvedValue(undefined);
+    const workflowClose = vi.fn().mockResolvedValue(undefined);
+    const selectedIdentityRuntime = identityRuntime(identityClose);
+    const incompatibleDatabase: WorkspaceDatabase = {
+      ...database,
+      checkReadiness: vi
+        .fn()
+        .mockRejectedValue(new Error('migration mismatch')),
+    };
+
+    await expect(
+      createApiApplication(config, {
+        ...dependencies(incompatibleDatabase),
         identityRuntime: selectedIdentityRuntime,
         workflowRuntime: createStubApiWorkflowRuntime(
           selectedIdentityRuntime.dependencies.authorization,
           workflowClose,
         ),
-      });
-      await application.init();
-
-      const response = await application.inject({
-        method: 'GET',
-        url: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/workflows',
-      });
-      expect(response.statusCode).toBe(401);
-
-      const runResponse = await application.inject({
-        method: 'GET',
-        url: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/runs/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-      });
-      expect(runResponse.statusCode).toBe(401);
-
-      await application.close();
-      application = undefined;
-      expect(identityClose).toHaveBeenCalledOnce();
-      expect(workflowClose).toHaveBeenCalledOnce();
-    });
-
-    it('registers the encapsulated webhook route and closes its runtime', async () => {
-      const selectedIdentityRuntime = identityRuntime();
-      const webhookClose = vi.fn().mockResolvedValue(undefined);
-      const webhookRuntime = {
-        service: {} as WebhookManagementService,
-        ingress: {
-          database: {
-            resolveVerification: vi.fn().mockResolvedValue(null),
-          },
-          encryption: {},
-          checkpointFactory: () => ({ checkpoint: {} }),
-        },
-        close: webhookClose,
-      } as unknown as ApiWebhookRuntime;
-      application = await createApiApplication(config, {
-        ...dependencies(),
-        identityRuntime: selectedIdentityRuntime,
-        webhookRuntime,
-      });
-
-      const response = await application.inject({
-        method: 'POST',
-        url: `/hooks/${'a'.repeat(43)}`,
-        headers: { 'content-type': 'application/json' },
-        payload: '{}',
-      });
-      expect(response.statusCode).toBe(401);
-      expect(response.json<{ code: string }>().code).toBe(
-        'webhook.authentication_failed',
-      );
-
-      const management = await application.inject({
-        method: 'GET',
-        url: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/workflows/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/triggers',
-      });
-      expect(management.statusCode).toBe(401);
-
-      await application.close();
-      application = undefined;
-      expect(webhookClose).toHaveBeenCalledOnce();
-    });
-
-    it.each([
-      ['provision', 'provision', undefined],
-      ['provision', 'provision', 'first,second'],
-      ['rotate-endpoint', 'rotateEndpoint', undefined],
-      ['rotate-endpoint', 'rotateEndpoint', 'first,second'],
-      ['rotate-secret', 'rotateSecret', undefined],
-      ['rotate-secret', 'rotateSecret', 'first,second'],
-    ] as const)(
-      'keeps supplied webhook %s (%s key %s) behind actual fixture session, CSRF, key and tenant guards',
-      async (operation, method, rejectedKey) => {
-        const owner = new FixtureResourceOwner();
-        const close = vi.fn().mockResolvedValue(undefined);
-        const provision = vi.fn().mockResolvedValue({
-          trigger: {
-            id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
-            workflowId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-            workflowVersionId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
-            nodeId: 'signed-input',
-            kind: 'webhook',
-            status: 'active',
-            healthStatus: 'healthy',
-            lastErrorCode: null,
-            endpointReady: true,
-            authentication: { mode: 'signed', allowedOrigins: [] },
-            reconciledAt: null,
-          },
-          replayed: true,
-        });
-        const runtime = {
-          service: {
-            [method]: provision,
-          } as unknown as WebhookManagementService,
-          ingress: {
-            database: { resolveVerification: vi.fn().mockResolvedValue(null) },
-            encryption: {},
-            checkpointFactory: () => ({
-              checkpoint: {},
-            }),
-          },
-          close,
-        } as unknown as ApiWebhookRuntime;
-        const csrf = 'c'.repeat(32);
-        const cookie = `pertexo_session=${'s'.repeat(43)}; pertexo_csrf=${csrf}`;
-        const path = `/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/workflows/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/triggers/cccccccc-cccc-4ccc-8ccc-cccccccccccc/webhook/${operation}`;
-        const payload =
-          operation === 'rotate-secret' ? { endpointKey: 'a'.repeat(43) } : {};
-        try {
-          application = await createBetterAuthFixtureApplication(
-            config,
-            {
-              ...dependencies(),
-              identityRuntime: identityRuntime(undefined, true),
-              webhookRuntime: runtime,
-            },
-            owner,
-          );
-          const validHeaders = {
-            cookie,
-            'x-csrf-token': csrf,
-            'idempotency-key': 'owned-provision',
-          };
-          for (const [url, headers, status] of [
-            [path, {}, 401],
-            [path, { cookie, 'idempotency-key': 'owned-provision' }, 403],
-            [
-              path.replace(
-                'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-                'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
-              ),
-              validHeaders,
-              404,
-            ],
-          ] as const) {
-            const response = await application.inject({
-              method: 'POST',
-              url,
-              headers,
-              payload,
-            });
-            expect(response.statusCode).toBe(status);
-            expect(provision).not.toHaveBeenCalled();
-          }
-          const rejected = await application.inject({
-            method: 'POST',
-            url: path,
-            headers: {
-              cookie,
-              'x-csrf-token': csrf,
-              ...(rejectedKey === undefined
-                ? {}
-                : { 'idempotency-key': rejectedKey }),
-            },
-            payload,
-          });
-          expect(rejected.statusCode).toBe(400);
-          expect(rejected.json()).toMatchObject({
-            code: 'request.invalid',
-            status: 400,
-          });
-          expect(provision).not.toHaveBeenCalled();
-          const accepted = await application.inject({
-            method: 'POST',
-            url: path,
-            headers: validHeaders,
-            payload,
-          });
-          expect(accepted.statusCode).toBe(200);
-          expect(provision).toHaveBeenCalledOnce();
-          expect(provision).toHaveBeenCalledWith(
-            expect.objectContaining({
-              actorId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-              workspaceId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-              triggerId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
-              idempotencyKey: 'owned-provision',
-            }),
-          );
-          provision.mockRejectedValueOnce(
-            new Error('Unexpected service failure'),
-          );
-          const unexpected = await application.inject({
-            method: 'POST',
-            url: path,
-            headers: validHeaders,
-            payload,
-          });
-          expect(unexpected.statusCode).toBe(500);
-          expect(provision).toHaveBeenCalledTimes(2);
-        } finally {
-          await owner.close();
-          application = undefined;
-        }
-        expect(close).toHaveBeenCalledOnce();
-      },
-    );
-
-    it('registers requested schedule preview in the actual Better Auth fixture composition', async () => {
-      const owner = new FixtureResourceOwner();
-      const previewFireTimes = vi.fn().mockResolvedValue({
-        observedAt: new Date('2026-08-25T12:00:00.000Z'),
-        items: [new Date('2026-08-25T12:01:00.000Z')],
-      });
-      const scheduleDatabase = {
-        list: vi.fn().mockResolvedValue([]),
-        setEnabled: vi.fn().mockRejectedValue(new Error('unused')),
-        listOccurrences: vi.fn().mockResolvedValue({ items: [] }),
-        nextFireTimes: vi.fn().mockRejectedValue(new Error('unused')),
-        previewFireTimes,
-        checkReadiness: vi.fn().mockResolvedValue(undefined),
-        close: vi.fn().mockResolvedValue(undefined),
-      };
-      const csrf = 'c'.repeat(32);
-      const cookie = `pertexo_session=${'s'.repeat(43)}; pertexo_csrf=${csrf}`;
-      const path =
-        '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/workflows/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/triggers/schedules/preview';
-      let suppliedRuntime: ApiScheduleRuntime | undefined;
-      try {
-        application = await createBetterAuthFixtureApplication(
-          config,
-          {
-            ...dependencies(),
-            identityRuntime: identityRuntime(undefined, true),
-          },
-          owner,
-          true,
-          async (selected) => {
-            const runtime = await createApiScheduleRuntime(
-              selected,
-              scheduleDatabase,
-            );
-            suppliedRuntime = { ...runtime, close: vi.fn(runtime.close) };
-            return suppliedRuntime;
-          },
-        );
-        const preview = await application.inject({
-          method: 'POST',
-          url: path,
-          headers: { cookie, 'x-csrf-token': csrf },
-          payload: {
-            config: { kind: 'interval', intervalMinutes: 1 },
-            count: 1,
-          },
-        });
-        expect(preview.statusCode).toBe(200);
-        expect(preview.json()).toEqual({
-          observedAt: '2026-08-25T12:00:00.000Z',
-          items: [{ scheduledAt: '2026-08-25T12:01:00.000Z' }],
-        });
-        expect(previewFireTimes).toHaveBeenCalledOnce();
-        expect(scheduleDatabase.checkReadiness).toHaveBeenCalled();
-        const noSession = await application.inject({
-          method: 'POST',
-          url: path,
-          payload: { config: { kind: 'interval', intervalMinutes: 1 } },
-        });
-        expect(noSession.statusCode).toBe(401);
-        const noCsrf = await application.inject({
-          method: 'POST',
-          url: path,
-          headers: { cookie },
-          payload: { config: { kind: 'interval', intervalMinutes: 1 } },
-        });
-        expect(noCsrf.statusCode).toBe(403);
-        const invalid = await application.inject({
-          method: 'POST',
-          url: path,
-          headers: { cookie, 'x-csrf-token': csrf },
-          payload: { config: { kind: 'interval', intervalMinutes: 0 } },
-        });
-        expect(invalid.statusCode).toBe(400);
-        expect(previewFireTimes).toHaveBeenCalledOnce();
-        const denied = await application.inject({
-          method: 'POST',
-          url: path.replace(
-            'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-            'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
-          ),
-          headers: { cookie, 'x-csrf-token': csrf },
-          payload: { config: { kind: 'interval', intervalMinutes: 1 } },
-        });
-        expect(denied.statusCode).toBe(404);
-        expect(previewFireTimes).toHaveBeenCalledOnce();
-        previewFireTimes.mockRejectedValueOnce(
-          new Error('private database failure'),
-        );
-        const unavailable = await application.inject({
-          method: 'POST',
-          url: path,
-          headers: { cookie, 'x-csrf-token': csrf },
-          payload: { config: { kind: 'interval', intervalMinutes: 1 } },
-        });
-        expect(unavailable.statusCode).toBe(500);
-      } finally {
-        await owner.close();
-        application = undefined;
-      }
-      expect(scheduleDatabase.close).toHaveBeenCalledOnce();
-      expect(suppliedRuntime?.close).toHaveBeenCalledOnce();
-    });
-
-    it('keeps schedule composition off for existing Better Auth fixtures by default', async () => {
-      const owner = new FixtureResourceOwner();
-      const createSchedules = vi.fn(createApiScheduleRuntime);
-      try {
-        application = await createBetterAuthFixtureApplication(
-          config,
-          {
-            ...dependencies(),
-            identityRuntime: identityRuntime(undefined, true),
-          },
-          owner,
-          undefined,
-          createSchedules,
-        );
-        const response = await application.inject({
-          method: 'GET',
-          url: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/workflows/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/triggers/schedules',
-        });
-        expect(response.statusCode).toBe(404);
-        expect(createSchedules).not.toHaveBeenCalled();
-      } finally {
-        await owner.close();
-        application = undefined;
-      }
-    });
-
-    it('retains fixture ownership when schedule readiness fails before application construction', async () => {
-      const owner = new FixtureResourceOwner();
-      const close = vi.fn().mockResolvedValue(undefined);
-      const runtime: ApiScheduleRuntime = {
-        service: {} as ScheduleManagementService,
-        checkReadiness: () =>
-          Promise.reject(new Error('schedule readiness unavailable')),
-        close,
-      };
-      await expect(
-        createBetterAuthFixtureApplication(
-          config,
-          {
-            ...dependencies(),
-            identityRuntime: identityRuntime(undefined, true),
-          },
-          owner,
-          true,
-          () => Promise.resolve(runtime),
-        ),
-      ).rejects.toThrow('schedule readiness unavailable');
-      await owner.close();
-      expect(close).toHaveBeenCalledOnce();
-    });
-
-    it('serves the workspace inbox through a supplied notification runtime and owns its readiness and close', async () => {
-      const inboxDatabase = {
-        listThreads: vi.fn(),
-        readSummary: vi
-          .fn()
-          .mockResolvedValue({ unreadCount: 2, revision: '11' }),
-        markThreadRead: vi.fn(),
-        markAllRead: vi.fn(),
-        close: vi.fn().mockResolvedValue(undefined),
-      };
-      const hints = {
-        checkReadiness: vi.fn().mockResolvedValue(undefined),
-        subscribe: vi.fn(),
-        close: vi.fn().mockResolvedValue(undefined),
-      };
-      const notificationRuntime: ApiNotificationRuntime = {
-        service: new WorkspaceInboxService(inboxDatabase),
-        hints,
-        checkReadiness: hints.checkReadiness,
-        close: vi.fn().mockResolvedValue(undefined),
-      };
-      application = await createApiApplication(config, {
-        ...dependencies(),
-        identityRuntime: identityRuntime(
-          vi.fn().mockResolvedValue(undefined),
-          true,
-        ),
-        notificationRuntime,
-      });
-      expect(hints.checkReadiness).toHaveBeenCalled();
-      const summary =
-        '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/notifications/summary';
-      const cookie = `pertexo_session=${'s'.repeat(43)}`;
-      expect(
-        (await application.inject({ method: 'GET', url: summary })).statusCode,
-      ).toBe(401);
-      expect(
-        (
-          await application.inject({
-            method: 'GET',
-            url: summary.replace(
-              'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-              'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
-            ),
-            headers: { cookie },
-          })
-        ).statusCode,
-      ).toBe(404);
-      const read = await application.inject({
-        method: 'GET',
-        url: summary,
-        headers: { cookie },
-      });
-      expect(read.statusCode).toBe(200);
-      expect(read.json()).toEqual({ unreadCount: 2, revision: '11' });
-
-      await application.close();
-      application = undefined;
-      expect(notificationRuntime.close).toHaveBeenCalledOnce();
-    });
-
-    it('enforces session and CSRF on schedule routes and owns readiness and close', async () => {
-      const selectedIdentityRuntime = identityRuntime(
-        vi.fn().mockResolvedValue(undefined),
-        true,
-      );
-      const record = {
-        id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
-        workflowId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-        workflowVersionId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
-        nodeId: 'schedule',
-        kind: 'schedule' as const,
-        status: 'active' as const,
-        healthStatus: 'healthy' as const,
-        lastErrorCode: null,
-        reconciledAt: null,
-        recurrence: { kind: 'interval' as const, intervalMinutes: 5 },
-        misfirePolicy: 'catch_up_once' as const,
-        nextFireAt: new Date('2026-08-25T12:05:00.000Z'),
-        lastFireAt: null,
-      };
-      const scheduleDatabase = {
-        list: vi.fn().mockResolvedValue([record]),
-        setEnabled: vi
-          .fn()
-          .mockResolvedValue({ trigger: record, replayed: false }),
-        listOccurrences: vi.fn().mockResolvedValue({
-          items: [
-            {
-              id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
-              scheduledAt: '2026-08-25T12:00:00.000000Z',
-              recordedAt: '2026-08-25T12:00:00.250000Z',
-              outcome: 'skipped',
-              runId: null,
-            },
-          ],
-        }),
-        nextFireTimes: vi.fn().mockResolvedValue({
-          observedAt: new Date('2026-08-25T12:01:00.000Z'),
-          items: [record.nextFireAt],
-        }),
-        previewFireTimes: vi.fn().mockResolvedValue({
-          observedAt: new Date('2026-08-25T12:01:00.000Z'),
-          items: [new Date('2026-08-25T12:16:00.000Z')],
-        }),
-        checkReadiness: vi.fn().mockResolvedValue(undefined),
-        close: vi.fn().mockResolvedValue(undefined),
-      };
-      const scheduleRuntime = {
-        service: new ScheduleManagementService(scheduleDatabase),
-        checkReadiness: scheduleDatabase.checkReadiness,
-        close: scheduleDatabase.close,
-      } as ApiScheduleRuntime;
-      application = await createApiApplication(config, {
-        ...dependencies(),
-        identityRuntime: selectedIdentityRuntime,
-        scheduleRuntime,
-      });
-      const base =
-        '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/workflows/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/triggers';
-      const unauthenticated = await application.inject({
-        method: 'GET',
-        url: `${base}/schedules`,
-      });
-      expect(unauthenticated.statusCode).toBe(401);
-
-      const cookie = `pertexo_session=${'s'.repeat(43)}`;
-      const hidden = await application.inject({
-        method: 'GET',
-        url: `${base.replace('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee')}/schedules`,
-        headers: { cookie },
-      });
-      expect(hidden.statusCode).toBe(404);
-
-      const listed = await application.inject({
-        method: 'GET',
-        url: `${base}/schedules`,
-        headers: { cookie },
-      });
-      expect(listed.statusCode).toBe(200);
-      expect(listed.json()).toMatchObject({ items: [{ kind: 'schedule' }] });
-
-      const missingCsrf = await application.inject({
-        method: 'POST',
-        url: `${base}/${record.id}/schedule/disable`,
-        headers: { cookie, 'idempotency-key': 'disable' },
-        payload: {},
-      });
-      expect(missingCsrf.statusCode).toBe(403);
-
-      const csrf = 'c'.repeat(32);
-      const missingKey = await application.inject({
-        method: 'POST',
-        url: `${base}/${record.id}/schedule/disable`,
-        headers: {
-          cookie: `${cookie}; pertexo_csrf=${csrf}`,
-          'x-csrf-token': csrf,
-        },
-        payload: {},
-      });
-      expect(missingKey.statusCode).toBe(400);
-
-      const disabled = await application.inject({
-        method: 'POST',
-        url: `${base}/${record.id}/schedule/disable`,
-        headers: {
-          cookie: `${cookie}; pertexo_csrf=${csrf}`,
-          'x-csrf-token': csrf,
-          'idempotency-key': 'disable',
-        },
-        payload: {},
-      });
-      expect(disabled.statusCode).toBe(200);
-      expect(scheduleDatabase.setEnabled).toHaveBeenCalledOnce();
-      expect(scheduleDatabase.checkReadiness).toHaveBeenCalled();
-
-      const history = await application.inject({
-        method: 'GET',
-        url: `${base}/${record.id}/schedule/occurrences?limit=5`,
-        headers: { cookie },
-      });
-      expect(history.statusCode).toBe(200);
-      expect(history.json()).toEqual({
-        items: [expect.objectContaining({ outcome: 'skipped', runId: null })],
-        nextCursor: null,
-      });
-      const nextRuns = await application.inject({
-        method: 'GET',
-        url: `${base}/${record.id}/schedule/next-runs`,
-        headers: { cookie },
-      });
-      expect(nextRuns.json()).toEqual({
-        observedAt: '2026-08-25T12:01:00.000Z',
-        items: [{ scheduledAt: '2026-08-25T12:05:00.000Z' }],
-      });
-      expect(scheduleDatabase.nextFireTimes).toHaveBeenCalledWith(
-        expect.objectContaining({ triggerId: record.id, count: 3 }),
-      );
-      const tooMany = await application.inject({
-        method: 'GET',
-        url: `${base}/${record.id}/schedule/next-runs?count=11`,
-        headers: { cookie },
-      });
-      expect(tooMany.statusCode).toBe(400);
-
-      const preview = {
-        config: { kind: 'interval', intervalMinutes: 15 },
-        count: 1,
-      };
-      const unverifiedPreview = await application.inject({
-        method: 'POST',
-        url: `${base}/schedules/preview`,
-        headers: { cookie },
-        payload: preview,
-      });
-      expect(unverifiedPreview.statusCode).toBe(403);
-      const previewHeaders = {
-        cookie: `${cookie}; pertexo_csrf=${csrf}`,
-        'x-csrf-token': csrf,
-      };
-      const invalidPreview = await application.inject({
-        method: 'POST',
-        url: `${base}/schedules/preview`,
-        headers: previewHeaders,
-        payload: { config: { kind: 'interval', intervalMinutes: 0 } },
-      });
-      expect(invalidPreview.statusCode).toBe(400);
-      const previewed = await application.inject({
-        method: 'POST',
-        url: `${base}/schedules/preview`,
-        headers: previewHeaders,
-        payload: preview,
-      });
-      expect(previewed.statusCode).toBe(200);
-      expect(previewed.json()).toEqual({
-        observedAt: '2026-08-25T12:01:00.000Z',
-        items: [{ scheduledAt: '2026-08-25T12:16:00.000Z' }],
-      });
-      expect(scheduleDatabase.previewFireTimes).toHaveBeenCalledOnce();
-
-      await application.close();
-      application = undefined;
-      expect(scheduleDatabase.close).toHaveBeenCalledOnce();
-    });
-
-    it('registers node-testing routes and providers with the production workflow runtime', async () => {
-      const selectedIdentityRuntime = identityRuntime();
-      application = await createApiApplication(config, {
-        ...dependencies(),
-        identityRuntime: selectedIdentityRuntime,
-        workflowOverrides: {
-          authoring: { database: workflowAuthoringDatabase() },
-          persistence: {
-            runs: {
-              canRead: () => Promise.resolve(true),
-              start: () => Promise.reject(new Error('not used')),
-              recovery: () => Promise.reject(new Error('not exercised')),
-              recover: () => Promise.reject(new Error('not exercised')),
-              replay: () => Promise.reject(new Error('not used')),
-              get: () => Promise.resolve(undefined),
-              list: () => Promise.resolve({ items: [] }),
-              readVariables: () => Promise.resolve({ revision: 0, values: {} }),
-              readInput: () => Promise.resolve(undefined),
-              readNodeRunDiagnostics: () => Promise.resolve(undefined),
-              readNodeRunOutput: () => Promise.resolve(undefined),
-              readNodeRunInput: () => Promise.resolve(undefined),
-              stepHealth: () => Promise.resolve(undefined),
-              stepRuns: () => Promise.resolve(undefined),
-              statistics: () => Promise.reject(new Error('not used')),
-              usageTrends: () => Promise.reject(new Error('not used')),
-              usageCapacity: () => Promise.reject(new Error('not used')),
-              cancel: () => Promise.reject(new Error('not used')),
-            },
-          },
-          streaming: {
-            streamer: {
-              stream: () => ({
-                async *[Symbol.asyncIterator]() {
-                  await Promise.resolve();
-                  yield { id: 1, event: 'run.queued', data: '{}' };
-                },
-              }),
-            },
-          },
-        },
-      });
-      await application.init();
-
-      expect(application.get(TestWorkflowNodeUseCase)).toBeInstanceOf(
-        TestWorkflowNodeUseCase,
-      );
-      expect(application.get(GetPreviewRunUseCase)).toBeInstanceOf(
-        GetPreviewRunUseCase,
-      );
-
-      const testResponse = await application.inject({
-        method: 'POST',
-        url: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/workflows/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/draft/nodes/cccccccc-cccc-4ccc-8ccc-cccccccccccc/test',
-        payload: { mode: 'validate' },
-      });
-      expect(testResponse.statusCode).toBe(401);
-
-      const previewResponse = await application.inject({
-        method: 'GET',
-        url: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/previews/dddddddd-dddd-4ddd-8ddd-dddddddddddd',
-      });
-      expect(previewResponse.statusCode).toBe(401);
-    });
-
-    it('rejects deeply nested authenticated node-test JSON before preview reservation', async () => {
-      const selectedIdentityRuntime = identityRuntime(
-        vi.fn().mockResolvedValue(undefined),
-        true,
-      );
-      const getDraft = vi.fn().mockRejectedValue(new Error('not used'));
-      const acceptPreview = vi.fn().mockRejectedValue(new Error('not used'));
-      application = await createApiApplication(config, {
-        ...dependencies(),
-        identityRuntime: selectedIdentityRuntime,
-        workflowOverrides: {
-          authoring: {
-            database: {
-              ...workflowAuthoringDatabase(),
-              getDraft,
-              acceptPreview,
-            },
-          },
-          persistence: {
-            runs: {
-              canRead: () => Promise.resolve(true),
-              start: () => Promise.reject(new Error('not used')),
-              recovery: () => Promise.reject(new Error('not exercised')),
-              recover: () => Promise.reject(new Error('not exercised')),
-              replay: () => Promise.reject(new Error('not used')),
-              get: () => Promise.resolve(undefined),
-              list: () => Promise.resolve({ items: [] }),
-              readVariables: () => Promise.resolve({ revision: 0, values: {} }),
-              readInput: () => Promise.resolve(undefined),
-              readNodeRunDiagnostics: () => Promise.resolve(undefined),
-              readNodeRunOutput: () => Promise.resolve(undefined),
-              readNodeRunInput: () => Promise.resolve(undefined),
-              stepHealth: () => Promise.resolve(undefined),
-              stepRuns: () => Promise.resolve(undefined),
-              statistics: () => Promise.reject(new Error('not used')),
-              usageTrends: () => Promise.reject(new Error('not used')),
-              usageCapacity: () => Promise.reject(new Error('not used')),
-              cancel: () => Promise.reject(new Error('not used')),
-            },
-          },
-          streaming: {
-            streamer: {
-              stream: () => ({
-                async *[Symbol.asyncIterator]() {
-                  await Promise.resolve();
-                  yield { id: 1, event: 'run.queued', data: '{}' };
-                },
-              }),
-            },
-          },
-        },
-      });
-      const csrf = 'c'.repeat(32);
-      const payload = `{"mode":"validate","expectedRevision":1,"sampleInput":${'['.repeat(10_000)}null${']'.repeat(10_000)}}`;
-      const response = await application.inject({
-        method: 'POST',
-        url: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/workflows/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/draft/nodes/cccccccc-cccc-4ccc-8ccc-cccccccccccc/test',
-        headers: {
-          cookie: `pertexo_session=${'s'.repeat(43)}; pertexo_csrf=${csrf}`,
-          'content-type': 'application/json',
-          'x-csrf-token': csrf,
-        },
-        payload,
-      });
-
-      expect(response.statusCode).toBe(400);
-      expect(response.json()).toMatchObject({ code: 'request.invalid' });
-      expect(getDraft).not.toHaveBeenCalled();
-      expect(acceptPreview).not.toHaveBeenCalled();
-    });
-
-    it('mounts Better Auth on the public web origin', async () => {
-      const selected = betterAuthIdentityRuntime();
-      application = await createApiApplication(
-        {
-          ...config,
-          identity: betterAuthIdentityConfig('https://app.example.test'),
-        },
-        { ...dependencies(), identityRuntime: selected.runtime },
-      );
-      await application.init();
-
-      const capabilities = await application.inject({
-        method: 'GET',
-        url: '/v1/auth/capabilities',
-      });
-      expect(capabilities.json()).toEqual({
-        password: {
-          enabled: true,
-          minimumLength: 12,
-          verificationRequired: true,
-        },
-        socialProviders: ['google'],
-      });
-      const crossOrigin = await application.inject({
-        method: 'POST',
-        url: '/v1/auth/sign-in/email',
-        headers: { origin: 'https://api.example.test' },
-        payload: {},
-      });
-      expect(crossOrigin.statusCode).toBe(403);
-      const accepted = await application.inject({
-        method: 'POST',
-        url: '/v1/auth/sign-in/email',
-        headers: { origin: 'https://app.example.test' },
-        payload: {},
-      });
-      expect(accepted.statusCode).toBe(200);
-      expect(selected.requests).toEqual([
-        'POST https://app.example.test/v1/auth/sign-in/email',
-      ]);
-    });
-
-    it('closes an injected identity runtime when database readiness fails', async () => {
-      const identityClose = vi.fn().mockResolvedValue(undefined);
-      const workflowClose = vi.fn().mockResolvedValue(undefined);
-      const selectedIdentityRuntime = identityRuntime(identityClose);
-      const incompatibleDatabase: WorkspaceDatabase = {
-        ...database,
-        checkReadiness: vi
-          .fn()
-          .mockRejectedValue(new Error('migration mismatch')),
-      };
-
-      await expect(
-        createApiApplication(config, {
-          ...dependencies(incompatibleDatabase),
-          identityRuntime: selectedIdentityRuntime,
-          workflowRuntime: createStubApiWorkflowRuntime(
-            selectedIdentityRuntime.dependencies.authorization,
-            workflowClose,
-          ),
-        }),
-      ).rejects.toThrow('migration mismatch');
-      expect(identityClose).toHaveBeenCalledOnce();
-      expect(workflowClose).toHaveBeenCalledOnce();
-    });
-
-    it('closes identity and artifact runtimes when artifact startup readiness fails', async () => {
-      const selectedIdentity = identityRuntime();
-      const selectedArtifacts = artifactRuntime();
-      vi.mocked(selectedArtifacts.checkReadiness).mockRejectedValue(
-        new Error('artifact readiness failed'),
-      );
-      await expect(
-        createApiApplication(config, {
-          ...dependencies(),
-          identityRuntime: selectedIdentity,
-          artifactRuntime: selectedArtifacts,
-        }),
-      ).rejects.toThrow('artifact readiness failed');
-      expect(selectedIdentity.close).toHaveBeenCalledOnce();
-      expect(selectedArtifacts.close).toHaveBeenCalledOnce();
-    });
-
-    it('includes artifact readiness in health and closes its runtime once', async () => {
-      const selectedArtifacts = artifactRuntime();
-      application = await createApiApplication(config, {
-        ...dependencies(),
-        identityRuntime: identityRuntime(),
-        artifactRuntime: selectedArtifacts,
-      });
-      expect(selectedArtifacts.checkReadiness).toHaveBeenCalledOnce();
-      vi.mocked(selectedArtifacts.checkReadiness).mockRejectedValue(
-        new Error('private bucket detail'),
-      );
-      const response = await application.inject({
-        method: 'GET',
-        url: '/health/ready',
-      });
-      expect(response.statusCode).toBe(503);
-      expect(response.payload).not.toContain('private bucket detail');
-      await application.close();
-      application = undefined;
-      expect(selectedArtifacts.close).toHaveBeenCalledOnce();
-    });
+      }),
+    ).rejects.toThrow('migration mismatch');
+    expect(identityClose).toHaveBeenCalledOnce();
+    expect(workflowClose).toHaveBeenCalledOnce();
   });
-});
+}
+
+function registerClosesIdentityArtifactRuntimesArtifactStartup(): void {
+  it('closes identity and artifact runtimes when artifact startup readiness fails', async () => {
+    const selectedIdentity = identityRuntime();
+    const selectedArtifacts = artifactRuntime();
+    vi.mocked(selectedArtifacts.checkReadiness).mockRejectedValue(
+      new Error('artifact readiness failed'),
+    );
+    await expect(
+      createApiApplication(config, {
+        ...dependencies(),
+        identityRuntime: selectedIdentity,
+        artifactRuntime: selectedArtifacts,
+      }),
+    ).rejects.toThrow('artifact readiness failed');
+    expect(selectedIdentity.close).toHaveBeenCalledOnce();
+    expect(selectedArtifacts.close).toHaveBeenCalledOnce();
+  });
+
+  it('includes artifact readiness in health and closes its runtime once', async () => {
+    const selectedArtifacts = artifactRuntime();
+    application = await createApiApplication(config, {
+      ...dependencies(),
+      identityRuntime: identityRuntime(),
+      artifactRuntime: selectedArtifacts,
+    });
+    expect(selectedArtifacts.checkReadiness).toHaveBeenCalledOnce();
+    vi.mocked(selectedArtifacts.checkReadiness).mockRejectedValue(
+      new Error('private bucket detail'),
+    );
+    const response = await application.inject({
+      method: 'GET',
+      url: '/health/ready',
+    });
+    expect(response.statusCode).toBe(503);
+    expect(response.payload).not.toContain('private bucket detail');
+    await application.close();
+    application = undefined;
+    expect(selectedArtifacts.close).toHaveBeenCalledOnce();
+  });
+}

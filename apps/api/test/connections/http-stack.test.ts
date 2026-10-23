@@ -352,31 +352,42 @@ const destinationPayload = {
 } as const;
 
 describe('connections real Nest HTTP stack', () => {
-  let application: Awaited<ReturnType<typeof createApiApplication>> | undefined;
+  afterEach(cleanConnectionsRealNestHTTPStackFixture);
+  registerGuardsSharingRoutesBeforePersistenceValidates();
 
-  async function start(role: Role = 'owner') {
-    const identity = identityRuntime(role);
-    const connection = connectionRuntime(identity.dependencies.authorization);
-    application = await createApiApplication(config, {
-      database,
-      identityRuntime: identity,
-      workflowRuntime: createStubApiWorkflowRuntime(
-        identity.dependencies.authorization,
-      ),
-      connectionRuntime: connection.runtime,
-      logger,
-      rateLimitConsumer,
-      telemetry,
-    });
-    await application.init();
-    return { application, connection };
-  }
+  registerReportsUnavailableWebhooksAfterAuthenticationWorkspace();
 
-  afterEach(async () => {
-    await application?.close();
-    application = undefined;
+  registerReadsWorkflowFailureAlertPolicyBuilder();
+
+  registerKeepsUsageNondisclosingAcrossAuthenticationWorkspace();
+});
+
+let application: Awaited<ReturnType<typeof createApiApplication>> | undefined;
+
+async function start(role: Role = 'owner') {
+  const identity = identityRuntime(role);
+  const connection = connectionRuntime(identity.dependencies.authorization);
+  application = await createApiApplication(config, {
+    database,
+    identityRuntime: identity,
+    workflowRuntime: createStubApiWorkflowRuntime(
+      identity.dependencies.authorization,
+    ),
+    connectionRuntime: connection.runtime,
+    logger,
+    rateLimitConsumer,
+    telemetry,
   });
+  await application.init();
+  return { application, connection };
+}
 
+async function cleanConnectionsRealNestHTTPStackFixture() {
+  await application?.close();
+  application = undefined;
+}
+
+function registerGuardsSharingRoutesBeforePersistenceValidates(): void {
   it('guards sharing routes before persistence, validates members and maps revision conflicts', async () => {
     const { application, connection } = await start();
     const url = `${connectionUrl}/${destinationId}/sharing`;
@@ -575,7 +586,9 @@ describe('connections real Nest HTTP stack', () => {
     });
     expect(result.statusCode).toBe(404);
   });
+}
 
+function registerReportsUnavailableWebhooksAfterAuthenticationWorkspace(): void {
   it('reports unavailable webhooks only after authentication and workspace authorization', async () => {
     application = await createApiApplication(config, {
       database,
@@ -783,7 +796,9 @@ describe('connections real Nest HTTP stack', () => {
     expect(denied.statusCode).toBe(404);
     expect(connection.appendDestinationVersion).not.toHaveBeenCalled();
   });
+}
 
+function registerReadsWorkflowFailureAlertPolicyBuilder(): void {
   it('reads the workflow failure-alert policy as a builder, never for a viewer', async () => {
     const policyUrl = `/v1/workspaces/${workspaceId}/workflows/ffffffff-ffff-4fff-8fff-ffffffffffff/failure-notification-policy`;
     const builder = await start('builder');
@@ -975,7 +990,9 @@ describe('connections real Nest HTTP stack', () => {
     expect(swapped.statusCode).toBe(400);
     expect(connection.listConnectionUsage).toHaveBeenCalledTimes(1);
   });
+}
 
+function registerKeepsUsageNondisclosingAcrossAuthenticationWorkspace(): void {
   it('keeps usage nondisclosing across authentication, workspace and database authority failures', async () => {
     const { application, connection } = await start();
     const connectionId = '11111111-1111-4111-8111-111111111111';
@@ -1042,4 +1059,4 @@ describe('connections real Nest HTTP stack', () => {
     expect(response.payload).not.toContain('provider body with raw-secret');
     expect(response.payload).not.toContain(credentialValue);
   });
-});
+}

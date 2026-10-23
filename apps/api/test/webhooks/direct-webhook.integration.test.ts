@@ -154,351 +154,492 @@ function contextBytes(context: {
 }
 
 describe.runIf(enabled)('direct webhook HTTP integration', () => {
-  let admin!: Pool;
-  let owner!: Pool;
-  let apiPool!: Pool;
-  let apiConfig!: ReturnType<typeof parseDatabaseConfig>;
-  const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
-  let identity!: ReturnType<typeof createIdentityWorkspaceDatabase>;
-  let identityRuntime!: ApiIdentityRuntime;
-  let authoring!: ReturnType<typeof createCoreWorkflowAuthoringDatabase>;
-  let reconciliation!: ReturnType<
-    typeof createWorkflowTriggerReconciliationDatabase
-  >;
-  let webhookDatabase!: ReturnType<typeof createWebhookTriggerDatabase>;
-  let workspaceDatabase!: ReturnType<typeof createWorkspaceDatabase>;
-  let encryption!: WebhookTriggerEnvelopeEncryption;
-  let service!: WebhookManagementService;
-  let testEvents!: ReturnType<typeof createWebhookTestEventStore>;
-  let ingressDatabase!: WebhookTriggerDatabase;
-  let application!: Awaited<ReturnType<typeof createApiApplication>>;
-  let fixtureOwner: FixtureResourceOwner | undefined;
-  const consume = vi.fn<RedisRateLimitRuntime['consume']>();
-  let failVerification = false;
-  let origin = '';
-  let workspaceId = '';
+  beforeAll(prepareDirectWebhookHTTPIntegrationFixture, 120_000);
 
-  beforeAll(async () => {
-    fixtureOwner = await createFixture();
-  }, 120_000);
+  afterAll(closeDirectWebhookHTTPIntegrationFixture, 30_000);
+  registerCapturesOneRealTestEventBefore();
 
-  afterAll(async () => {
-    await fixtureOwner?.close();
-  }, 30_000);
+  registerConfiguresModesThroughAuthenticatedHTTPQualifies();
 
-  async function createFixture(): Promise<FixtureResourceOwner> {
-    const resources = new FixtureResourceOwner();
-    try {
-      admin = resources.acquire(
-        'admin pool',
-        new Pool({ connectionString: adminBaseUrl, max: 1 }),
-        (pool) => pool.end(),
+  registerProvesAtomicAcceptanceExactReplayReplay();
+
+  registerReadsResumedRunRunningThroughAuthenticated();
+
+  registerReturnsNoEndpointCredentialOnCompleted();
+});
+
+type HttpResponse = BoundedWebhookResponse;
+
+function sha256(value: string): string {
+  return createHash('sha256').update(value).digest('hex');
+}
+
+function requireString(value: unknown): string {
+  if (typeof value !== 'string') throw new Error('Expected secret material');
+  return value;
+}
+
+function expectProblem(
+  response: HttpResponse,
+  status: number,
+  code: string,
+): void {
+  expect(response.status).toBe(status);
+  expect(response.json).toMatchObject({ status, code });
+}
+
+function quoteIdentifier(value: string): string {
+  if (value.length === 0 || value.includes('\0'))
+    throw new Error('PostgreSQL role or database identifier is invalid');
+  return `"${value.replaceAll('"', '""')}"`;
+}
+
+let admin!: Pool;
+
+let owner!: Pool;
+
+let apiPool!: Pool;
+
+let apiConfig!: ReturnType<typeof parseDatabaseConfig>;
+
+const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
+
+let identity!: ReturnType<typeof createIdentityWorkspaceDatabase>;
+
+let identityRuntime!: ApiIdentityRuntime;
+
+let authoring!: ReturnType<typeof createCoreWorkflowAuthoringDatabase>;
+
+let reconciliation!: ReturnType<
+  typeof createWorkflowTriggerReconciliationDatabase
+>;
+
+let webhookDatabase!: ReturnType<typeof createWebhookTriggerDatabase>;
+
+let workspaceDatabase!: ReturnType<typeof createWorkspaceDatabase>;
+
+let encryption!: WebhookTriggerEnvelopeEncryption;
+
+let service!: WebhookManagementService;
+
+let testEvents!: ReturnType<typeof createWebhookTestEventStore>;
+
+let ingressDatabase!: WebhookTriggerDatabase;
+
+let application!: Awaited<ReturnType<typeof createApiApplication>>;
+
+let fixtureOwner: FixtureResourceOwner | undefined;
+
+const consume = vi.fn<RedisRateLimitRuntime['consume']>();
+
+let failVerification = false;
+
+let origin = '';
+
+let workspaceId = '';
+
+async function createFixture(): Promise<FixtureResourceOwner> {
+  const resources = new FixtureResourceOwner();
+  try {
+    admin = resources.acquire(
+      'admin pool',
+      new Pool({ connectionString: adminBaseUrl, max: 1 }),
+      (pool) => pool.end(),
+    );
+    if (!runnerOwnsDatabase) {
+      await admin.query(
+        `create database ${quoteIdentifier(databaseName)} owner ${quoteIdentifier(ownerRole)}`,
       );
-      if (!runnerOwnsDatabase) {
-        await admin.query(
-          `create database ${quoteIdentifier(databaseName)} owner ${quoteIdentifier(ownerRole)}`,
-        );
-        resources.acquire(
-          'disposable database',
-          { name: databaseName },
-          ({ name }) => dropDisconnectedDatabase(admin, name),
-        );
-        await admin.query(
-          `revoke all on database ${quoteIdentifier(databaseName)} from public`,
-        );
-        await admin.query(
-          `grant connect on database ${quoteIdentifier(databaseName)} to ${[
-            migrationRole,
-            appRole,
-            maintenanceRole,
-          ]
-            .map(quoteIdentifier)
-            .join(', ')}`,
-        );
-      }
-      owner = resources.acquire(
-        'owner pool',
-        new Pool({
-          connectionString: configuredDatabaseUrl(migrationBaseUrl),
-          max: 1,
-        }),
-        (pool) => pool.end(),
+      resources.acquire(
+        'disposable database',
+        { name: databaseName },
+        ({ name }) => dropDisconnectedDatabase(admin, name),
       );
-      apiPool = resources.acquire(
-        'API assertion pool',
-        new Pool({
-          connectionString: configuredDatabaseUrl(apiBaseUrl),
-          max: 1,
-        }),
-        (pool) => pool.end(),
+      await admin.query(
+        `revoke all on database ${quoteIdentifier(databaseName)} from public`,
       );
-      apiConfig = parseDatabaseConfig({
-        connectionString: configuredDatabaseUrl(apiBaseUrl),
-        connectionTimeoutMillis: 2_000,
-        idleTimeoutMillis: 2_000,
-        max: 12,
-        ownerRole,
-      });
-      await migrateDatabase({
-        connectionString: configuredDatabaseUrl(migrationBaseUrl),
-        ownerRole,
-        appRole,
-        maintenanceRole,
-      });
-      identity = resources.acquire(
-        'identity database',
-        createIdentityWorkspaceDatabase(apiConfig),
-        (database) => database.close(),
+      await admin.query(
+        `grant connect on database ${quoteIdentifier(databaseName)} to ${[
+          migrationRole,
+          appRole,
+          maintenanceRole,
+        ]
+          .map(quoteIdentifier)
+          .join(', ')}`,
       );
-      identityRuntime = resources.acquire(
-        'identity runtime',
-        await createApiIdentityRuntime(
-          {
-            publicWebOrigin: 'https://app.example.test',
-            session: {
-              ttlMillis: 60_000,
-              secureCookie: false,
-              sameSite: 'lax',
-            },
-            betterAuth: {
-              secret: 'webhook-integration-secret-with-32-plus-characters',
-              mailMode: 'local',
-              providers: {},
-            },
-          },
-          apiConfig,
-          { persistence: { database: identity } },
-        ),
-        (runtime) => runtime.close(),
-      );
-      resources.transfer(identity);
-      authoring = resources.acquire(
-        'workflow authoring database',
-        createCoreWorkflowAuthoringDatabase(apiConfig),
-        (database) => database.close(),
-      );
-      reconciliation = resources.acquire(
-        'trigger reconciliation database',
-        createWorkflowTriggerReconciliationDatabase(apiConfig),
-        (database) => database.close(),
-      );
-      webhookDatabase = resources.acquire(
-        'webhook database',
-        createWebhookTriggerDatabase(apiConfig),
-        (database) => database.close(),
-      );
-      workspaceDatabase = resources.acquire(
-        'workspace database',
-        createWorkspaceDatabase(apiConfig),
-        (database) => database.close(),
-      );
-      encryption = new WebhookTriggerEnvelopeEncryption(
-        new DeterministicEnvelopeKeys(),
-      );
-      service = new WebhookManagementService(webhookDatabase, encryption);
-      testEvents = resources.acquire(
-        'test event store',
-        createWebhookTestEventStore(apiConfig),
-        (store) => store.close(),
-      );
-      ingressDatabase = {
-        configureAuthentication: (input) =>
-          webhookDatabase.configureAuthentication(input),
-        readResponse: (input) => webhookDatabase.readResponse(input),
-        provision: (input) => webhookDatabase.provision(input),
-        rotateEndpoint: (input) => webhookDatabase.rotateEndpoint(input),
-        rotateSecret: (input) => webhookDatabase.rotateSecret(input),
-        getHealth: (input) => webhookDatabase.getHealth(input),
-        resolveVerification: async (endpointKeyHash) => {
-          if (failVerification)
-            throw new Error('forced webhook verification outage');
-          return webhookDatabase.resolveVerification(endpointKeyHash);
-        },
-        consumeIngressLimit: (endpointKeyHash) =>
-          webhookDatabase.consumeIngressLimit(endpointKeyHash),
-        acceptVerifiedDelivery: (input) =>
-          webhookDatabase.acceptVerifiedDelivery(input),
-        listDeliveries: (input) => webhookDatabase.listDeliveries(input),
-        recordRejectedDelivery: (input) =>
-          webhookDatabase.recordRejectedDelivery(input),
-        close: () => Promise.resolve(),
-      };
-      const config: ApiConfig = {
-        codeSettings: DEFAULT_CODE_SETTINGS,
-        database: apiConfig,
-        host: '127.0.0.1',
-        nodeEnv: 'test',
-        observability: {
-          serviceName: 'pertexo-api-webhook-integration',
-          serviceVersion: 'test',
-          environment: 'test',
-          logLevel: 'silent',
-          otlpHeaders: {},
-        },
-        port: 3000,
-        redisUrl: process.env.REDIS_URL ?? 'redis://localhost:6379/0',
-      };
-      const rateLimiter = resources.acquire(
-        'rate limiter',
-        new RedisRateLimitRuntime(config.redisUrl),
-        (value) => value.close(),
-      );
-      consume.mockImplementation((decision) => rateLimiter.consume(decision));
-      application = resources.acquire(
-        'API application',
-        await createApiApplication(config, {
-          database: workspaceDatabase,
-          rateLimitConsumer: { consume },
-          identityRuntime,
-          webhookRuntime: {
-            service,
-            testService: new WebhookTestEventService(testEvents, encryption),
-            ingress: {
-              database: ingressDatabase,
-              testEvents,
-              encryption,
-              checkpointFactory: (projection) =>
-                createInitialCheckpoint(projection, { catalog }),
-            },
-            close: () => Promise.resolve(),
-          },
-          logger,
-          telemetry,
-        }),
-        (value) => value.close(),
-      );
-      await application.listen(0, '127.0.0.1');
-      const address = application.getHttpServer().address();
-      if (address === null || typeof address === 'string')
-        throw new Error('Webhook HTTP listener address is unavailable');
-      origin = `http://127.0.0.1:${String(address.port)}`;
-      return resources;
-    } catch (error: unknown) {
-      return rethrowFixtureSetupFailure(resources, error);
     }
-  }
-
-  async function seedWebhook(
-    label: string,
-    responseConfig: Record<string, unknown> = {},
-  ) {
-    const actorId = randomUUID();
-    workspaceId = randomUUID();
-    await identity.createUser({
-      id: actorId,
-      email: `webhook-http-${actorId}@example.test`,
-      displayName: `Webhook HTTP integration ${label}`,
+    owner = resources.acquire(
+      'owner pool',
+      new Pool({
+        connectionString: configuredDatabaseUrl(migrationBaseUrl),
+        max: 1,
+      }),
+      (pool) => pool.end(),
+    );
+    apiPool = resources.acquire(
+      'API assertion pool',
+      new Pool({
+        connectionString: configuredDatabaseUrl(apiBaseUrl),
+        max: 1,
+      }),
+      (pool) => pool.end(),
+    );
+    apiConfig = parseDatabaseConfig({
+      connectionString: configuredDatabaseUrl(apiBaseUrl),
+      connectionTimeoutMillis: 2_000,
+      idleTimeoutMillis: 2_000,
+      max: 12,
+      ownerRole,
     });
-    await identity.createWorkspaceWithOwner({
-      id: workspaceId,
-      name: `Webhook HTTP integration ${label}`,
-      slug: `webhook-http-${actorId}`,
-      ownerUserId: actorId,
-      idempotencyKey: `webhook-http-${actorId}`,
+    await migrateDatabase({
+      connectionString: configuredDatabaseUrl(migrationBaseUrl),
+      ownerRole,
+      appRole,
+      maintenanceRole,
     });
-
-    const created = await authoring.createWorkflow({
-      actorId,
-      workspaceId,
-      name: 'Direct webhook gate',
-      emptyGraph: { settings: {}, nodes: [], edges: [] },
-      idempotencyKey: `direct-webhook-create-${label}`,
-    });
-    const graph = {
-      settings: {},
-      nodes: [
+    identity = resources.acquire(
+      'identity database',
+      createIdentityWorkspaceDatabase(apiConfig),
+      (database) => database.close(),
+    );
+    identityRuntime = resources.acquire(
+      'identity runtime',
+      await createApiIdentityRuntime(
         {
-          id: 'webhook',
-          definition: { key: 'core.webhook', version: 1 },
-          position: { x: 0, y: 0 },
-          configVersion: 1,
-          config: responseConfig,
-          inputMappings: {},
-          connectionRefs: {},
+          publicWebOrigin: 'https://app.example.test',
+          session: {
+            ttlMillis: 60_000,
+            secureCookie: false,
+            sameSite: 'lax',
+          },
+          betterAuth: {
+            secret: 'webhook-integration-secret-with-32-plus-characters',
+            mailMode: 'local',
+            providers: {},
+          },
         },
-      ],
-      edges: [],
+        apiConfig,
+        { persistence: { database: identity } },
+      ),
+      (runtime) => runtime.close(),
+    );
+    resources.transfer(identity);
+    authoring = resources.acquire(
+      'workflow authoring database',
+      createCoreWorkflowAuthoringDatabase(apiConfig),
+      (database) => database.close(),
+    );
+    reconciliation = resources.acquire(
+      'trigger reconciliation database',
+      createWorkflowTriggerReconciliationDatabase(apiConfig),
+      (database) => database.close(),
+    );
+    webhookDatabase = resources.acquire(
+      'webhook database',
+      createWebhookTriggerDatabase(apiConfig),
+      (database) => database.close(),
+    );
+    workspaceDatabase = resources.acquire(
+      'workspace database',
+      createWorkspaceDatabase(apiConfig),
+      (database) => database.close(),
+    );
+    encryption = new WebhookTriggerEnvelopeEncryption(
+      new DeterministicEnvelopeKeys(),
+    );
+    service = new WebhookManagementService(webhookDatabase, encryption);
+    testEvents = resources.acquire(
+      'test event store',
+      createWebhookTestEventStore(apiConfig),
+      (store) => store.close(),
+    );
+    ingressDatabase = {
+      configureAuthentication: (input) =>
+        webhookDatabase.configureAuthentication(input),
+      readResponse: (input) => webhookDatabase.readResponse(input),
+      provision: (input) => webhookDatabase.provision(input),
+      rotateEndpoint: (input) => webhookDatabase.rotateEndpoint(input),
+      rotateSecret: (input) => webhookDatabase.rotateSecret(input),
+      getHealth: (input) => webhookDatabase.getHealth(input),
+      resolveVerification: async (endpointKeyHash) => {
+        if (failVerification)
+          throw new Error('forced webhook verification outage');
+        return webhookDatabase.resolveVerification(endpointKeyHash);
+      },
+      consumeIngressLimit: (endpointKeyHash) =>
+        webhookDatabase.consumeIngressLimit(endpointKeyHash),
+      acceptVerifiedDelivery: (input) =>
+        webhookDatabase.acceptVerifiedDelivery(input),
+      listDeliveries: (input) => webhookDatabase.listDeliveries(input),
+      recordRejectedDelivery: (input) =>
+        webhookDatabase.recordRejectedDelivery(input),
+      close: () => Promise.resolve(),
     };
-    const draft = await authoring.saveDraft({
-      actorId,
-      workspaceId,
-      workflowId: created.workflowId,
-      representationTag: workflowDraftRepresentationTag({
-        workflowId: created.workflowId,
-        revision: created.draft.revision,
-        graph: created.draft.graphJson,
-        compatibilityFingerprint: created.draft.compatibility.fingerprint,
+    const config: ApiConfig = {
+      codeSettings: DEFAULT_CODE_SETTINGS,
+      database: apiConfig,
+      host: '127.0.0.1',
+      nodeEnv: 'test',
+      observability: {
+        serviceName: 'pertexo-api-webhook-integration',
+        serviceVersion: 'test',
+        environment: 'test',
+        logLevel: 'silent',
+        otlpHeaders: {},
+      },
+      port: 3000,
+      redisUrl: process.env.REDIS_URL ?? 'redis://localhost:6379/0',
+    };
+    const rateLimiter = resources.acquire(
+      'rate limiter',
+      new RedisRateLimitRuntime(config.redisUrl),
+      (value) => value.close(),
+    );
+    consume.mockImplementation((decision) => rateLimiter.consume(decision));
+    application = resources.acquire(
+      'API application',
+      await createApiApplication(config, {
+        database: workspaceDatabase,
+        rateLimitConsumer: { consume },
+        identityRuntime,
+        webhookRuntime: {
+          service,
+          testService: new WebhookTestEventService(testEvents, encryption),
+          ingress: {
+            database: ingressDatabase,
+            testEvents,
+            encryption,
+            checkpointFactory: (projection) =>
+              createInitialCheckpoint(projection, { catalog }),
+          },
+          close: () => Promise.resolve(),
+        },
+        logger,
+        telemetry,
       }),
-      expectedRevision: 1,
-      graphJson: graph,
-    });
-    const published = await authoring.publishWorkflow({
-      actorId,
-      workspaceId,
+      (value) => value.close(),
+    );
+    await application.listen(0, '127.0.0.1');
+    const address = application.getHttpServer().address();
+    if (address === null || typeof address === 'string')
+      throw new Error('Webhook HTTP listener address is unavailable');
+    origin = `http://127.0.0.1:${String(address.port)}`;
+    return resources;
+  } catch (error: unknown) {
+    return rethrowFixtureSetupFailure(resources, error);
+  }
+}
+
+async function seedWebhook(
+  label: string,
+  responseConfig: Record<string, unknown> = {},
+) {
+  const actorId = randomUUID();
+  workspaceId = randomUUID();
+  await identity.createUser({
+    id: actorId,
+    email: `webhook-http-${actorId}@example.test`,
+    displayName: `Webhook HTTP integration ${label}`,
+  });
+  await identity.createWorkspaceWithOwner({
+    id: workspaceId,
+    name: `Webhook HTTP integration ${label}`,
+    slug: `webhook-http-${actorId}`,
+    ownerUserId: actorId,
+    idempotencyKey: `webhook-http-${actorId}`,
+  });
+
+  const created = await authoring.createWorkflow({
+    actorId,
+    workspaceId,
+    name: 'Direct webhook gate',
+    emptyGraph: { settings: {}, nodes: [], edges: [] },
+    idempotencyKey: `direct-webhook-create-${label}`,
+  });
+  const graph = {
+    settings: {},
+    nodes: [
+      {
+        id: 'webhook',
+        definition: { key: 'core.webhook', version: 1 },
+        position: { x: 0, y: 0 },
+        configVersion: 1,
+        config: responseConfig,
+        inputMappings: {},
+        connectionRefs: {},
+      },
+    ],
+    edges: [],
+  };
+  const draft = await authoring.saveDraft({
+    actorId,
+    workspaceId,
+    workflowId: created.workflowId,
+    representationTag: workflowDraftRepresentationTag({
       workflowId: created.workflowId,
-      representationTag: workflowDraftRepresentationTag({
-        workflowId: created.workflowId,
-        revision: draft.revision,
-        graph: draft.graphJson,
-        compatibilityFingerprint: draft.compatibility.fingerprint,
-      }),
-      idempotencyKey: `direct-webhook-publish-${label}`,
-      requestHash: sha256(`direct-webhook-publish-${label}`),
-    });
-    const publication = await ownerQuery<{
-      id: string;
-      payload_checksum: string;
-    }>(
-      `select id,payload_checksum from app.outbox_events
+      revision: created.draft.revision,
+      graph: created.draft.graphJson,
+      compatibilityFingerprint: created.draft.compatibility.fingerprint,
+    }),
+    expectedRevision: 1,
+    graphJson: graph,
+  });
+  const published = await authoring.publishWorkflow({
+    actorId,
+    workspaceId,
+    workflowId: created.workflowId,
+    representationTag: workflowDraftRepresentationTag({
+      workflowId: created.workflowId,
+      revision: draft.revision,
+      graph: draft.graphJson,
+      compatibilityFingerprint: draft.compatibility.fingerprint,
+    }),
+    idempotencyKey: `direct-webhook-publish-${label}`,
+    requestHash: sha256(`direct-webhook-publish-${label}`),
+  });
+  const publication = await ownerQuery<{
+    id: string;
+    payload_checksum: string;
+  }>(
+    `select id,payload_checksum from app.outbox_events
         where workspace_id=$1 and aggregate_id=$2
           and job_name='reconcile-workflow-triggers'`,
-      [workspaceId, created.workflowId],
-    );
-    const publicationRow = publication.rows[0];
-    if (publicationRow === undefined)
-      throw new Error('Webhook publication outbox is unavailable');
-    const health = await reconciliation.reconcile({
-      workspaceId,
-      workflowId: created.workflowId,
-      publishedVersionId: published.version.id,
+    [workspaceId, created.workflowId],
+  );
+  const publicationRow = publication.rows[0];
+  if (publicationRow === undefined)
+    throw new Error('Webhook publication outbox is unavailable');
+  const health = await reconciliation.reconcile({
+    workspaceId,
+    workflowId: created.workflowId,
+    publishedVersionId: published.version.id,
+    outboxEventId: publicationRow.id,
+    delivery: {
       outboxEventId: publicationRow.id,
-      delivery: {
-        outboxEventId: publicationRow.id,
-        payloadChecksum: publicationRow.payload_checksum,
-      },
-    });
-    expect(health).toMatchObject([
-      { kind: 'webhook', nodeId: 'webhook', status: 'configuration_required' },
-    ]);
-    const trigger = health[0];
-    if (trigger === undefined)
-      throw new Error('Webhook trigger is unavailable');
-    const provisioned = await service.provision({
-      workspaceId,
-      workflowId: created.workflowId,
-      actorId,
-      triggerId: trigger.id,
-      idempotencyKey: `direct-webhook-provision-${label}`,
-    });
-    expect(provisioned.trigger).toMatchObject({
-      status: 'active',
-      endpointReady: true,
-    });
-    expect(provisioned.endpointKey).toMatch(/^[A-Za-z0-9_-]{43}$/u);
-    expect(provisioned.signingSecret).toMatch(/^[A-Za-z0-9_-]{43}$/u);
-    const endpointKey = requireString(provisioned.endpointKey);
-    const originalSecret = requireString(provisioned.signingSecret);
-    return {
-      workspaceId,
-      actorId,
-      endpointKey,
-      originalSecret,
-      provisioned,
-      trigger,
-      workflowId: created.workflowId,
-    };
-  }
+      payloadChecksum: publicationRow.payload_checksum,
+    },
+  });
+  expect(health).toMatchObject([
+    { kind: 'webhook', nodeId: 'webhook', status: 'configuration_required' },
+  ]);
+  const trigger = health[0];
+  if (trigger === undefined) throw new Error('Webhook trigger is unavailable');
+  const provisioned = await service.provision({
+    workspaceId,
+    workflowId: created.workflowId,
+    actorId,
+    triggerId: trigger.id,
+    idempotencyKey: `direct-webhook-provision-${label}`,
+  });
+  expect(provisioned.trigger).toMatchObject({
+    status: 'active',
+    endpointReady: true,
+  });
+  expect(provisioned.endpointKey).toMatch(/^[A-Za-z0-9_-]{43}$/u);
+  expect(provisioned.signingSecret).toMatch(/^[A-Za-z0-9_-]{43}$/u);
+  const endpointKey = requireString(provisioned.endpointKey);
+  const originalSecret = requireString(provisioned.signingSecret);
+  return {
+    workspaceId,
+    actorId,
+    endpointKey,
+    originalSecret,
+    provisioned,
+    trigger,
+    workflowId: created.workflowId,
+  };
+}
 
+async function ownerQuery<Row extends QueryResultRow = QueryResultRow>(
+  statement: string,
+  parameters: unknown[] = [],
+) {
+  const client = await owner.connect();
+  try {
+    await client.query('begin');
+    await client.query(`set local role ${quoteIdentifier(ownerRole)}`);
+    if (workspaceId !== '')
+      await client.query("select set_config('app.workspace_id',$1,true)", [
+        workspaceId,
+      ]);
+    const result = await client.query<Row>(statement, parameters);
+    await client.query('commit');
+    return result;
+  } catch (error: unknown) {
+    await client.query('rollback').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function apiQuery<Row extends QueryResultRow = QueryResultRow>(
+  statement: string,
+  parameters: unknown[] = [],
+) {
+  const client = await apiPool.connect();
+  try {
+    await client.query('begin');
+    await client.query("select set_config('app.workspace_id',$1,true)", [
+      workspaceId,
+    ]);
+    const result = await client.query<Row>(statement, parameters);
+    await client.query('commit');
+    return result;
+  } catch (error: unknown) {
+    await client.query('rollback').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function durableCounts() {
+  const result = await apiQuery<{
+    deliveries: number;
+    replay: number;
+    runs: number;
+  }>(
+    `select
+        (select count(*)::int from app.webhook_trigger_deliveries where workspace_id=$1) deliveries,
+        (select count(*)::int from app.webhook_trigger_replay_records where workspace_id=$1) replay,
+        (select count(*)::int from app.workflow_runs where workspace_id=$1) runs`,
+    [workspaceId],
+  );
+  return result.rows[0];
+}
+
+function withOneMoreDelivery(
+  counts: Awaited<ReturnType<typeof durableCounts>>,
+) {
+  if (counts === undefined) throw new Error('Durable counts are missing');
+  return { ...counts, deliveries: counts.deliveries + 1 };
+}
+
+async function sendWebhook(
+  endpointKey: string,
+  secret: string,
+  rawBody: Buffer,
+  idempotencyKey: string,
+): Promise<HttpResponse> {
+  return sendBoundedWebhook({
+    endpointKey,
+    idempotencyKey,
+    origin,
+    rawBody,
+    secret,
+  });
+}
+
+async function prepareDirectWebhookHTTPIntegrationFixture() {
+  fixtureOwner = await createFixture();
+}
+
+async function closeDirectWebhookHTTPIntegrationFixture() {
+  await fixtureOwner?.close();
+}
+
+function registerCapturesOneRealTestEventBefore(): void {
   it('captures one real test event before publication, across replicas, with authentication and pin fences', async () => {
     const seed = await seedWebhook('test-event-editor');
     const created = await authoring.createWorkflow({
@@ -565,7 +706,9 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
       query: ownerQuery,
     });
   }, 20_000);
+}
 
+function registerConfiguresModesThroughAuthenticatedHTTPQualifies(): void {
   it('configures modes through authenticated HTTP and qualifies real CORS, deduplication and rotation', async () => {
     const seeded = await seedWebhook('authentication-modes');
     const session = await issueBrowserSession(
@@ -745,7 +888,9 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
     );
     expect(allowance.rows[0]?.request_count).toBe(6);
   });
+}
 
+function registerProvesAtomicAcceptanceExactReplayReplay(): void {
   it('proves atomic acceptance, exact replay, and replay conflict', async () => {
     const { actorId, endpointKey, originalSecret, trigger, workflowId } =
       await seedWebhook('atomic');
@@ -953,7 +1098,9 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
       ).rows,
     ).toEqual([{ runs: 1, skips: 2 }]);
   });
+}
 
+function registerReadsResumedRunRunningThroughAuthenticated(): void {
   it('reads a resumed run as running through authenticated HTTP', async () => {
     const { actorId, endpointKey, originalSecret } =
       await seedWebhook('run-status-read');
@@ -1168,7 +1315,9 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
       failVerification = false;
     }
   }, 60_000);
+}
 
+function registerReturnsNoEndpointCredentialOnCompleted(): void {
   it('returns no endpoint credential on a completed endpoint-rotation replay', async () => {
     const { actorId, trigger, workflowId } = await seedWebhook('management');
     const endpointRotation = {
@@ -1185,111 +1334,4 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
       replayed: true,
     });
   }, 60_000);
-
-  async function ownerQuery<Row extends QueryResultRow = QueryResultRow>(
-    statement: string,
-    parameters: unknown[] = [],
-  ) {
-    const client = await owner.connect();
-    try {
-      await client.query('begin');
-      await client.query(`set local role ${quoteIdentifier(ownerRole)}`);
-      if (workspaceId !== '')
-        await client.query("select set_config('app.workspace_id',$1,true)", [
-          workspaceId,
-        ]);
-      const result = await client.query<Row>(statement, parameters);
-      await client.query('commit');
-      return result;
-    } catch (error: unknown) {
-      await client.query('rollback').catch(() => undefined);
-      throw error;
-    } finally {
-      client.release();
-    }
-  }
-
-  async function apiQuery<Row extends QueryResultRow = QueryResultRow>(
-    statement: string,
-    parameters: unknown[] = [],
-  ) {
-    const client = await apiPool.connect();
-    try {
-      await client.query('begin');
-      await client.query("select set_config('app.workspace_id',$1,true)", [
-        workspaceId,
-      ]);
-      const result = await client.query<Row>(statement, parameters);
-      await client.query('commit');
-      return result;
-    } catch (error: unknown) {
-      await client.query('rollback').catch(() => undefined);
-      throw error;
-    } finally {
-      client.release();
-    }
-  }
-
-  async function durableCounts() {
-    const result = await apiQuery<{
-      deliveries: number;
-      replay: number;
-      runs: number;
-    }>(
-      `select
-        (select count(*)::int from app.webhook_trigger_deliveries where workspace_id=$1) deliveries,
-        (select count(*)::int from app.webhook_trigger_replay_records where workspace_id=$1) replay,
-        (select count(*)::int from app.workflow_runs where workspace_id=$1) runs`,
-      [workspaceId],
-    );
-    return result.rows[0];
-  }
-
-  function withOneMoreDelivery(
-    counts: Awaited<ReturnType<typeof durableCounts>>,
-  ) {
-    if (counts === undefined) throw new Error('Durable counts are missing');
-    return { ...counts, deliveries: counts.deliveries + 1 };
-  }
-
-  async function sendWebhook(
-    endpointKey: string,
-    secret: string,
-    rawBody: Buffer,
-    idempotencyKey: string,
-  ): Promise<HttpResponse> {
-    return sendBoundedWebhook({
-      endpointKey,
-      idempotencyKey,
-      origin,
-      rawBody,
-      secret,
-    });
-  }
-});
-
-type HttpResponse = BoundedWebhookResponse;
-
-function sha256(value: string): string {
-  return createHash('sha256').update(value).digest('hex');
-}
-
-function requireString(value: unknown): string {
-  if (typeof value !== 'string') throw new Error('Expected secret material');
-  return value;
-}
-
-function expectProblem(
-  response: HttpResponse,
-  status: number,
-  code: string,
-): void {
-  expect(response.status).toBe(status);
-  expect(response.json).toMatchObject({ status, code });
-}
-
-function quoteIdentifier(value: string): string {
-  if (value.length === 0 || value.includes('\0'))
-    throw new Error('PostgreSQL role or database identifier is invalid');
-  return `"${value.replaceAll('"', '""')}"`;
 }

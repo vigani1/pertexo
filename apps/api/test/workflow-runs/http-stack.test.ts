@@ -122,41 +122,50 @@ const mutationHeaders = {
 };
 
 describe('workflow runs real Nest HTTP stack', () => {
-  let application: Awaited<ReturnType<typeof createApiApplication>> | undefined;
+  afterEach(cleanWorkflowRunsRealNestHTTPStack);
+  registerProtectsRecoveryPreviewAcceptanceCurrentCapabilities();
 
-  async function start(
-    role: Role = 'owner',
-    workspaceStatus: WorkspaceStatus = 'active',
-  ) {
-    const identity = identityRuntime(role, workspaceStatus);
-    const fixture = persistenceFixture();
-    const baseRuntime = createStubApiWorkflowRuntime(
-      identity.dependencies.authorization,
-    );
-    application = await createApiApplication(config, {
-      database,
-      identityRuntime: identity,
-      workflowRuntime: {
-        ...baseRuntime,
-        runDependencies: {
-          authorization: identity.dependencies.authorization,
-          persistence: fixture.persistence,
-          streamer: baseRuntime.runDependencies.streamer,
-        },
+  registerReadsExactRunStatisticsBehindRun();
+
+  registerReadsRunInputOneStepOutput();
+});
+
+let application: Awaited<ReturnType<typeof createApiApplication>> | undefined;
+
+async function start(
+  role: Role = 'owner',
+  workspaceStatus: WorkspaceStatus = 'active',
+) {
+  const identity = identityRuntime(role, workspaceStatus);
+  const fixture = persistenceFixture();
+  const baseRuntime = createStubApiWorkflowRuntime(
+    identity.dependencies.authorization,
+  );
+  application = await createApiApplication(config, {
+    database,
+    identityRuntime: identity,
+    workflowRuntime: {
+      ...baseRuntime,
+      runDependencies: {
+        authorization: identity.dependencies.authorization,
+        persistence: fixture.persistence,
+        streamer: baseRuntime.runDependencies.streamer,
       },
-      logger,
-      rateLimitConsumer,
-      telemetry,
-    });
-    await application.init();
-    return { application, fixture };
-  }
-
-  afterEach(async () => {
-    await application?.close();
-    application = undefined;
+    },
+    logger,
+    rateLimitConsumer,
+    telemetry,
   });
+  await application.init();
+  return { application, fixture };
+}
 
+async function cleanWorkflowRunsRealNestHTTPStack() {
+  await application?.close();
+  application = undefined;
+}
+
+function registerProtectsRecoveryPreviewAcceptanceCurrentCapabilities(): void {
   it('protects recovery preview and acceptance with current capabilities and CSRF', async () => {
     const { application, fixture } = await start('viewer');
     for (const method of ['GET', 'POST'] as const) {
@@ -338,7 +347,9 @@ describe('workflow runs real Nest HTTP stack', () => {
     expect(invalid.statusCode).toBe(400);
     expect(fixture.list).toHaveBeenCalledTimes(1);
   });
+}
 
+function registerReadsExactRunStatisticsBehindRun(): void {
   it('reads exact run statistics behind the run-read guards', async () => {
     const { application, fixture } = await start('viewer');
     const byStatus = {
@@ -512,7 +523,9 @@ describe('workflow runs real Nest HTTP stack', () => {
       code: 'run.not_cancelable',
     });
   });
+}
 
+function registerReadsRunInputOneStepOutput(): void {
   it('reads a run input and one step output for a role that reads runs', async () => {
     const { application, fixture } = await start('viewer');
     const nodeRunId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
@@ -670,4 +683,4 @@ describe('workflow runs real Nest HTTP stack', () => {
     expect(hidden.json()).toMatchObject({ code: 'resource.not_found' });
     expect(hidden.statusCode).toBe(404);
   });
-});
+}

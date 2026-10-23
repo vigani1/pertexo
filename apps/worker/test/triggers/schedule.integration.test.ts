@@ -57,56 +57,65 @@ const {
 } = fixture;
 
 describeIntegration('direct Schedule worker integration gate', () => {
-  let queue: Queue;
-  const resources: { close(): Promise<void> }[] = [];
-  let benchmarkScanGate: BenchmarkScanGate | undefined;
+  beforeAll(prepareDirectScheduleWorkerIntegrationGateFixture, 60_000);
 
-  function registerResource<Resource extends { close(): Promise<void> }>(
-    resource: Resource,
-  ): Resource {
-    resources.push(resource);
-    return resource;
-  }
+  afterAll(closeDirectScheduleWorkerIntegrationGateFixture, 60_000);
+  registerKeepsPostgreSQLAuthoritativeThroughReconciliationContention();
+});
 
-  function transferResource(resource: { close(): Promise<void> }): void {
-    const index = resources.indexOf(resource);
-    if (index === -1)
-      throw new Error('Schedule fixture resource ownership is missing');
-    resources.splice(index, 1);
-  }
+let queue: Queue;
 
-  beforeAll(async () => {
-    await fixture.setup();
-    queue = fixture.queue;
-  }, 60_000);
+const resources: { close(): Promise<void> }[] = [];
 
-  afterAll(async () => {
-    benchmarkScanGate?.release();
-    const cleanupErrors: unknown[] = [];
-    const attempt = async (
-      label: string,
-      operation: () => void | Promise<void>,
-    ): Promise<void> => {
-      await Promise.resolve()
-        .then(operation)
-        .catch((cause: unknown) => {
-          cleanupErrors.push(
-            new Error(`Schedule integration cleanup failed: ${label}`, {
-              cause,
-            }),
-          );
-        });
-    };
-    for (const resource of resources.splice(0).reverse())
-      await attempt('runtime resource', () => resource.close());
-    await attempt('fixture', () => fixture.close());
-    if (cleanupErrors.length > 0)
-      throw new AggregateError(
-        cleanupErrors,
-        'Schedule integration cleanup failed',
-      );
-  }, 60_000);
+let benchmarkScanGate: BenchmarkScanGate | undefined;
 
+function registerResource<Resource extends { close(): Promise<void> }>(
+  resource: Resource,
+): Resource {
+  resources.push(resource);
+  return resource;
+}
+
+function transferResource(resource: { close(): Promise<void> }): void {
+  const index = resources.indexOf(resource);
+  if (index === -1)
+    throw new Error('Schedule fixture resource ownership is missing');
+  resources.splice(index, 1);
+}
+
+async function prepareDirectScheduleWorkerIntegrationGateFixture() {
+  await fixture.setup();
+  queue = fixture.queue;
+}
+
+async function closeDirectScheduleWorkerIntegrationGateFixture() {
+  benchmarkScanGate?.release();
+  const cleanupErrors: unknown[] = [];
+  const attempt = async (
+    label: string,
+    operation: () => void | Promise<void>,
+  ): Promise<void> => {
+    await Promise.resolve()
+      .then(operation)
+      .catch((cause: unknown) => {
+        cleanupErrors.push(
+          new Error(`Schedule integration cleanup failed: ${label}`, {
+            cause,
+          }),
+        );
+      });
+  };
+  for (const resource of resources.splice(0).reverse())
+    await attempt('runtime resource', () => resource.close());
+  await attempt('fixture', () => fixture.close());
+  if (cleanupErrors.length > 0)
+    throw new AggregateError(
+      cleanupErrors,
+      'Schedule integration cleanup failed',
+    );
+}
+
+function registerKeepsPostgreSQLAuthoritativeThroughReconciliationContention(): void {
   it('keeps PostgreSQL authoritative through reconciliation, contention, saturation, recovery, and drain', async () => {
     const startedAt = performance.now();
     const scanErrors: unknown[] = [];
@@ -792,4 +801,4 @@ describeIntegration('direct Schedule worker integration gate', () => {
       `Schedule worker integration completed in ${String(Math.round(performance.now() - startedAt))}ms`,
     );
   }, 30_000);
-});
+}

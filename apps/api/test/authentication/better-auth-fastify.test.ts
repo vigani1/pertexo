@@ -19,14 +19,23 @@ const allowingRateLimit = {
 };
 
 describe('Better Auth Fastify bridge', () => {
-  const applications: FastifyInstance[] = [];
+  afterEach(cleanBetterAuthFastifyBridgeFixture);
+  registerPreservesJSONBodiesOriginChecksEvery();
 
-  afterEach(async () => {
-    await Promise.all(
-      applications.splice(0).map((application) => application.close()),
-    );
-  });
+  registerKeepsNativeBrowserResponsesTokenFree();
 
+  registerServesConfiguredCapabilitiesBootstrapsApplicationCSRF();
+});
+
+const applications: FastifyInstance[] = [];
+
+async function cleanBetterAuthFastifyBridgeFixture() {
+  await Promise.all(
+    applications.splice(0).map((application) => application.close()),
+  );
+}
+
+function registerPreservesJSONBodiesOriginChecksEvery(): void {
   it('preserves JSON bodies, origin checks and every Set-Cookie header', async () => {
     const auth = betterAuth({
       appName: 'Pertexo',
@@ -203,7 +212,9 @@ describe('Better Auth Fastify bridge', () => {
       'second=two; Path=/; SameSite=Lax',
     ]);
   });
+}
 
+function registerKeepsNativeBrowserResponsesTokenFree(): void {
   it('keeps native browser responses token-free and blocks unused token endpoints', async () => {
     const application = Fastify();
     applications.push(application);
@@ -383,7 +394,9 @@ describe('Better Auth Fastify bridge', () => {
 
     expect(response.statusCode).toBe(200);
   });
+}
 
+function registerServesConfiguredCapabilitiesBootstrapsApplicationCSRF(): void {
   it('serves configured capabilities and bootstraps application CSRF with a session', async () => {
     const application = Fastify();
     applications.push(application);
@@ -588,4 +601,4 @@ describe('Better Auth Fastify bridge', () => {
     });
     expect(handler).not.toHaveBeenCalled();
   });
-});
+}
