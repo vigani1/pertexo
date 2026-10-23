@@ -54,14 +54,7 @@ export function betterAuthSocialProviders(
         (provider.idToken !== undefined && 'issuer' in provider.idToken
           ? provider.idToken.issuer
           : undefined);
-      if (
-        input.issuer !== null &&
-        expectedIssuer !== undefined &&
-        !(typeof expectedIssuer === 'string'
-          ? input.issuer === expectedIssuer
-          : expectedIssuer.includes(input.issuer))
-      )
-        return undefined;
+      if (unexpectedIssuer(input.issuer, expectedIssuer)) return undefined;
       const tokens = await provider.validateAuthorizationCode({
         code: input.code,
         codeVerifier: input.codeVerifier,
@@ -116,4 +109,17 @@ function accountSubject(subject: unknown): string | undefined {
     (typeof subject === 'number' && !Number.isSafeInteger(subject));
   if (invalidProviderSubject) return undefined;
   return String(subject);
+}
+
+function unexpectedIssuer(
+  actual: string | null,
+  expected: string | readonly string[] | undefined,
+): boolean {
+  const mismatched =
+    actual !== null &&
+    expected !== undefined &&
+    !(typeof expected === 'string'
+      ? actual === expected
+      : expected.includes(actual));
+  return mismatched;
 }
