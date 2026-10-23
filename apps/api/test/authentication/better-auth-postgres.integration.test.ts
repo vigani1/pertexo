@@ -4,15 +4,15 @@ import {
   prepareBetterAuthPostgresIntegrationTestTs,
   closeBetterAuthPostgresIntegrationTestTs,
 } from './better-auth-postgres/fixture.js';
-import { registerLinksFixtureProviderAfterFreshExisting } from './better-auth-postgres/links-fixture-provider-after-fresh-existing.cases.js';
-import { registerCommitsEncryptedAuthenticationMailBeforeAcknowledging } from './better-auth-postgres/commits-encrypted-authentication-mail-before-acknowledging.cases.js';
-import { registerCommitsOwnedProofSealedVerificationMail } from './better-auth-postgres/commits-owned-proof-sealed-verification-mail.cases.js';
-import { registerConsumesInitialVerificationOnceUnderConcurrent } from './better-auth-postgres/consumes-initial-verification-once-under-concurrent.cases.js';
-import { registerUsesStableUserRowVerifiesEmail } from './better-auth-postgres/uses-stable-user-row-verifies-email.cases.js';
-import { registerRollsBackPasswordChangeSessionRevocation } from './better-auth-postgres/rolls-back-password-change-session-revocation.cases.js';
-import { registerConsumesResetProofCredentialChangeRevocation } from './better-auth-postgres/consumes-reset-proof-credential-change-revocation.cases.js';
-import { registerRevokesSessionsAtomicallyCanonicalEmailUpdate } from './better-auth-postgres/revokes-sessions-atomically-canonical-email-update.cases.js';
-import { registerRevokesSameBrowserAuthorityOwnedWorkspace } from './better-auth-postgres/revokes-same-browser-authority-owned-workspace.cases.js';
+import { registerLinksFixtureProviderAfterFreshExisting } from './better-auth-postgres/cases/provider-linking.cases.js';
+import { registerCommitsEncryptedAuthenticationMailBeforeAcknowledging } from './better-auth-postgres/cases/authentication-mail.cases.js';
+import { registerCommitsOwnedProofSealedVerificationMail } from './better-auth-postgres/cases/verification-mail.cases.js';
+import { registerConsumesInitialVerificationOnceUnderConcurrent } from './better-auth-postgres/cases/concurrent-verification.cases.js';
+import { registerUsesStableUserRowVerifiesEmail } from './better-auth-postgres/cases/account-security.cases.js';
+import { registerRollsBackPasswordChangeSessionRevocation } from './better-auth-postgres/cases/password-rollback.cases.js';
+import { registerConsumesResetProofCredentialChangeRevocation } from './better-auth-postgres/cases/reset-consumption.cases.js';
+import { registerRevokesSessionsAtomicallyCanonicalEmailUpdate } from './better-auth-postgres/cases/email-update.cases.js';
+import { registerRevokesSameBrowserAuthorityOwnedWorkspace } from './better-auth-postgres/cases/workspace-removal.cases.js';
 beforeAll(prepareBetterAuthPostgresIntegrationTestTs, 60_000);
 afterAll(closeBetterAuthPostgresIntegrationTestTs);
 describe('Better Auth on PostgreSQL', () => {

@@ -4,9 +4,9 @@ import Fastify from 'fastify';
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
 
-import { registerBetterAuthHandler } from '../../../src/authentication/better-auth/fastify.js';
+import { registerBetterAuthHandler } from '../../../../src/authentication/better-auth/fastify.js';
 
-import * as browserSessionBoundary from '../../../src/authentication/better-auth/trusted-sessions.js';
+import * as browserSessionBoundary from '../../../../src/authentication/better-auth/trusted-sessions.js';
 import {
   adminUrl,
   databaseName,
@@ -16,7 +16,7 @@ import {
   cookieValue,
   callbackOrderings,
   assertSingleProviderLink,
-} from './fixture.js';
+} from '../fixture.js';
 
 export function registerLinksFixtureProviderAfterFreshExisting(): void {
   it.each(callbackOrderings)(

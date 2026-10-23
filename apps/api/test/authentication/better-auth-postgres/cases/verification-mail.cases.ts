@@ -7,11 +7,11 @@ import { createApplicationSecretEnvelope } from '@pertexo/integrations/server';
 
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
-import { createBetterAuthRuntime } from '../../../src/authentication/better-auth/runtime.js';
+import { createBetterAuthRuntime } from '../../../../src/authentication/better-auth/runtime.js';
 
-import { DurableAuthenticationMail } from '../../../src/authentication/mail/delivery.js';
+import { DurableAuthenticationMail } from '../../../../src/authentication/mail/delivery.js';
 
-import { adminUrl, databaseUrl, apiUrl, cookieValue } from './fixture.js';
+import { adminUrl, databaseUrl, apiUrl, cookieValue } from '../fixture.js';
 
 export function registerCommitsOwnedProofSealedVerificationMail(): void {
   it('commits the owned proof and sealed verification mail together', async () => {

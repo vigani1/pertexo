@@ -14,7 +14,7 @@ import {
   cookieName,
   authenticatedRequest,
   followMailLink,
-} from './fixture.js';
+} from '../fixture.js';
 
 export function registerUsesStableUserRowVerifiesEmail(): void {
   it('uses the stable user row, verifies email, issues one durable authority, and rejects suspended users', async () => {
