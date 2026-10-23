@@ -1,28 +1,15 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { capabilityGuard } from '../workspaces/http/guards.js';
 
-import { WorkspaceCapabilityGuard } from '../workspaces/http/guards.js';
-import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
-import { RequestContextStore } from '../platform/http/index.js';
 import { ARTIFACT_AUTHORIZATION } from './tokens.js';
 
-@Injectable()
-export class ArtifactUploadGuard extends WorkspaceCapabilityGuard {
-  public constructor(
-    @Inject(ARTIFACT_AUTHORIZATION)
-    authorization: WorkspaceAuthorizationSource,
-    contexts: RequestContextStore,
-  ) {
-    super('artifact:upload', authorization, contexts, 'not_found', ['active']);
-  }
-}
+export const ArtifactUploadGuard = capabilityGuard(
+  ARTIFACT_AUTHORIZATION,
+  'artifact:upload',
+  { disclosure: 'not_found', allowedWorkspaceStatuses: ['active'] },
+);
 
-@Injectable()
-export class ArtifactReadGuard extends WorkspaceCapabilityGuard {
-  public constructor(
-    @Inject(ARTIFACT_AUTHORIZATION)
-    authorization: WorkspaceAuthorizationSource,
-    contexts: RequestContextStore,
-  ) {
-    super('artifact:read', authorization, contexts, 'not_found', ['active']);
-  }
-}
+export const ArtifactReadGuard = capabilityGuard(
+  ARTIFACT_AUTHORIZATION,
+  'artifact:read',
+  { disclosure: 'not_found', allowedWorkspaceStatuses: ['active'] },
+);

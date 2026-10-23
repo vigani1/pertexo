@@ -1,52 +1,27 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { capabilityGuard } from '../../workspaces/http/guards.js';
 
-import { WorkspaceCapabilityGuard } from '../../workspaces/http/guards.js';
-import type { WorkspaceAuthorizationSource } from '../../workspaces/ports.js';
-import { RequestContextStore } from '../../platform/http/index.js';
 import { CONNECTION_AUTHORIZATION } from '../tokens.js';
 
-@Injectable()
-export class ConnectionManageGuard extends WorkspaceCapabilityGuard {
-  public constructor(
-    @Inject(CONNECTION_AUTHORIZATION)
-    authorization: WorkspaceAuthorizationSource,
-    contexts: RequestContextStore,
-  ) {
-    super('connection:manage', authorization, contexts, 'not_found', [
-      'active',
-    ]);
-  }
-}
+export const ConnectionManageGuard = capabilityGuard(
+  CONNECTION_AUTHORIZATION,
+  'connection:manage',
+  { disclosure: 'not_found', allowedWorkspaceStatuses: ['active'] },
+);
 
-@Injectable()
-export class ConnectionReadGuard extends WorkspaceCapabilityGuard {
-  public constructor(
-    @Inject(CONNECTION_AUTHORIZATION)
-    authorization: WorkspaceAuthorizationSource,
-    contexts: RequestContextStore,
-  ) {
-    super('connection:read', authorization, contexts, 'not_found', ['active']);
-  }
-}
+export const ConnectionReadGuard = capabilityGuard(
+  CONNECTION_AUTHORIZATION,
+  'connection:read',
+  { disclosure: 'not_found', allowedWorkspaceStatuses: ['active'] },
+);
 
-@Injectable()
-export class ConnectionUseGuard extends WorkspaceCapabilityGuard {
-  public constructor(
-    @Inject(CONNECTION_AUTHORIZATION)
-    authorization: WorkspaceAuthorizationSource,
-    contexts: RequestContextStore,
-  ) {
-    super('connection:use', authorization, contexts, 'not_found', ['active']);
-  }
-}
+export const ConnectionUseGuard = capabilityGuard(
+  CONNECTION_AUTHORIZATION,
+  'connection:use',
+  { disclosure: 'not_found', allowedWorkspaceStatuses: ['active'] },
+);
 
-@Injectable()
-export class FailureNotificationWorkflowEditGuard extends WorkspaceCapabilityGuard {
-  public constructor(
-    @Inject(CONNECTION_AUTHORIZATION)
-    authorization: WorkspaceAuthorizationSource,
-    contexts: RequestContextStore,
-  ) {
-    super('workflow:update', authorization, contexts, 'not_found', ['active']);
-  }
-}
+export const FailureNotificationWorkflowEditGuard = capabilityGuard(
+  CONNECTION_AUTHORIZATION,
+  'workflow:update',
+  { disclosure: 'not_found', allowedWorkspaceStatuses: ['active'] },
+);

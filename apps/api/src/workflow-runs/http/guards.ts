@@ -1,69 +1,39 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { capabilityGuard } from '../../workspaces/http/guards.js';
 
-import { WorkspaceCapabilityGuard } from '../../workspaces/http/guards.js';
-import type { WorkspaceAuthorizationSource } from '../../workspaces/ports.js';
-import { RequestContextStore } from '../../platform/http/index.js';
 import { WORKFLOW_RUN_AUTHORIZATION } from '../tokens.js';
 
-@Injectable()
-export class UsageCapacityArtifactReadGuard extends WorkspaceCapabilityGuard {
-  public constructor(
-    @Inject(WORKFLOW_RUN_AUTHORIZATION)
-    authorization: WorkspaceAuthorizationSource,
-    contexts: RequestContextStore,
-  ) {
-    super('artifact:read', authorization, contexts, 'not_found', ['active']);
-  }
-}
+export const UsageCapacityArtifactReadGuard = capabilityGuard(
+  WORKFLOW_RUN_AUTHORIZATION,
+  'artifact:read',
+  { disclosure: 'not_found', allowedWorkspaceStatuses: ['active'] },
+);
 
-@Injectable()
-export class WorkflowRunReadGuard extends WorkspaceCapabilityGuard {
-  public constructor(
-    @Inject(WORKFLOW_RUN_AUTHORIZATION)
-    authorization: WorkspaceAuthorizationSource,
-    contexts: RequestContextStore,
-  ) {
-    super('run:read', authorization, contexts, 'not_found', [
-      'active',
-      'suspended',
-      'pending_deletion',
-    ]);
-  }
-}
+export const WorkflowRunReadGuard = capabilityGuard(
+  WORKFLOW_RUN_AUTHORIZATION,
+  'run:read',
+  {
+    disclosure: 'not_found',
+    allowedWorkspaceStatuses: ['active', 'suspended', 'pending_deletion'],
+  },
+);
 
-@Injectable()
-export class WorkflowRunStartGuard extends WorkspaceCapabilityGuard {
-  public constructor(
-    @Inject(WORKFLOW_RUN_AUTHORIZATION)
-    authorization: WorkspaceAuthorizationSource,
-    contexts: RequestContextStore,
-  ) {
-    super('run:start', authorization, contexts, 'not_found', ['active']);
-  }
-}
+export const WorkflowRunStartGuard = capabilityGuard(
+  WORKFLOW_RUN_AUTHORIZATION,
+  'run:start',
+  { disclosure: 'not_found', allowedWorkspaceStatuses: ['active'] },
+);
 
-@Injectable()
-export class WorkflowRunReplayGuard extends WorkspaceCapabilityGuard {
-  public constructor(
-    @Inject(WORKFLOW_RUN_AUTHORIZATION)
-    authorization: WorkspaceAuthorizationSource,
-    contexts: RequestContextStore,
-  ) {
-    super('run:replay', authorization, contexts, 'not_found', ['active']);
-  }
-}
+export const WorkflowRunReplayGuard = capabilityGuard(
+  WORKFLOW_RUN_AUTHORIZATION,
+  'run:replay',
+  { disclosure: 'not_found', allowedWorkspaceStatuses: ['active'] },
+);
 
-@Injectable()
-export class WorkflowRunCancelGuard extends WorkspaceCapabilityGuard {
-  public constructor(
-    @Inject(WORKFLOW_RUN_AUTHORIZATION)
-    authorization: WorkspaceAuthorizationSource,
-    contexts: RequestContextStore,
-  ) {
-    super('run:cancel', authorization, contexts, 'not_found', [
-      'active',
-      'suspended',
-      'pending_deletion',
-    ]);
-  }
-}
+export const WorkflowRunCancelGuard = capabilityGuard(
+  WORKFLOW_RUN_AUTHORIZATION,
+  'run:cancel',
+  {
+    disclosure: 'not_found',
+    allowedWorkspaceStatuses: ['active', 'suspended', 'pending_deletion'],
+  },
+);

@@ -1,4 +1,3 @@
-import { requestIdempotencyKey } from '../../../platform/http/index.js';
 import {
   Body,
   Controller,
@@ -25,7 +24,10 @@ import { RateLimit } from '../../../platform/rate-limit/metadata.js';
 import { WorkflowReadGuard } from '../../http/guards.js';
 import type { WorkflowAuthoringRequest } from '../../types.js';
 import { WorkflowFoldersUseCase } from './use-case.js';
-import { withWorkflowOrganizationRequest } from '../http.js';
+import {
+  withWorkflowOrganizationRequest,
+  withWorkflowOrganizationCommand,
+} from '../http.js';
 import { domainErrors } from '../../../platform/http/problems/interceptor.js';
 import { authoringFailure } from '../../../problems/context/normalize.js';
 
@@ -90,12 +92,11 @@ export class WorkflowFoldersController {
     @Body() body: unknown,
   ) {
     const { workspaceId, folderId } = workflowFolderParamsSchema.parse(params);
-    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+    return withWorkflowOrganizationCommand(request, workspaceId, (input) =>
       this.folders.replaceSharing({
         ...input,
         folderId,
         request: body,
-        idempotencyKey: commandKey(request),
       }),
     );
   }
@@ -127,11 +128,10 @@ export class WorkflowFoldersController {
     @Body() body: unknown,
   ) {
     const { workspaceId } = workflowFolderWorkspaceParamsSchema.parse(params);
-    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+    return withWorkflowOrganizationCommand(request, workspaceId, (input) =>
       this.folders.create({
         ...input,
         request: body,
-        idempotencyKey: commandKey(request),
       }),
     );
   }
@@ -147,12 +147,11 @@ export class WorkflowFoldersController {
     @Body() body: unknown,
   ) {
     const { workspaceId, folderId } = workflowFolderParamsSchema.parse(params);
-    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+    return withWorkflowOrganizationCommand(request, workspaceId, (input) =>
       this.folders.rename({
         ...input,
         folderId,
         request: body,
-        idempotencyKey: commandKey(request),
       }),
     );
   }
@@ -168,12 +167,11 @@ export class WorkflowFoldersController {
     @Body() body: unknown,
   ) {
     const { workspaceId, folderId } = workflowFolderParamsSchema.parse(params);
-    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+    return withWorkflowOrganizationCommand(request, workspaceId, (input) =>
       this.folders.move({
         ...input,
         folderId,
         request: body,
-        idempotencyKey: commandKey(request),
       }),
     );
   }
@@ -189,12 +187,11 @@ export class WorkflowFoldersController {
     @Body() body: unknown,
   ) {
     const { workspaceId, folderId } = workflowFolderParamsSchema.parse(params);
-    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+    return withWorkflowOrganizationCommand(request, workspaceId, (input) =>
       this.folders.delete({
         ...input,
         folderId,
         request: body,
-        idempotencyKey: commandKey(request),
       }),
     );
   }
@@ -210,17 +207,12 @@ export class WorkflowFoldersController {
     @Body() body: unknown,
   ) {
     const { workspaceId, workflowId } = workflowIdParamSchema.parse(params);
-    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+    return withWorkflowOrganizationCommand(request, workspaceId, (input) =>
       this.folders.place({
         ...input,
         workflowId,
         request: body,
-        idempotencyKey: commandKey(request),
       }),
     );
   }
-}
-
-function commandKey(request: WorkflowAuthoringRequest) {
-  return requestIdempotencyKey(request.headers);
 }

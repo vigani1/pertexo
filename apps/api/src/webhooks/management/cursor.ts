@@ -1,19 +1,16 @@
 import { z } from 'zod';
 
 import {
+  opaqueCursor,
   decodeOpaqueCursor,
   encodeOpaqueCursor,
 } from '../../platform/http/opaque-cursor.js';
 
-const deliveryCursorPayloadSchema = z
-  .object({
-    kind: z.literal('webhook_deliveries'),
-    triggerId: z.uuid(),
-    receivedAt: z.iso.datetime({ precision: 6 }),
-    id: z.uuid(),
-  })
-  .strict()
-  .readonly();
+const deliveryCursorPayloadSchema = opaqueCursor('webhook_deliveries', {
+  triggerId: z.uuid(),
+  receivedAt: z.iso.datetime({ precision: 6 }),
+  id: z.uuid(),
+}).readonly();
 
 type WebhookDeliveryPosition = Readonly<{ receivedAt: string; id: string }>;
 

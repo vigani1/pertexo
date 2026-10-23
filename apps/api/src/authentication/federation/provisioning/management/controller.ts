@@ -1,4 +1,9 @@
 import {
+  federationScope,
+  federationCommand,
+  type FederationManagementRequest,
+} from '../../management/request.js';
+import {
   Body,
   Inject,
   Controller,
@@ -27,21 +32,15 @@ import {
   CsrfProtectionGuard,
   WorkspaceManageGuard,
   WorkspaceMemberReadGuard,
-  authenticatedSession,
 } from '../../../../workspaces/index.js';
-import type { IdentityWorkspaceRequest } from '../../../../workspaces/types.js';
-import {
-  requestIdempotencyKey,
-  withRequestOperationSignal,
-} from '../../../../platform/http/index.js';
-import type { AbortableRequest } from '../../../../platform/http/request-operation-signal.js';
+import { withRequestOperationSignal } from '../../../../platform/http/index.js';
 import { RateLimit } from '../../../../platform/rate-limit/metadata.js';
 import type { DirectoryStore } from '@pertexo/database/tenant-access';
 import { DIRECTORY_STORE } from './tokens.js';
 import { domainErrors } from '../../../../platform/http/problems/interceptor.js';
 import { resourceFailure } from '../../../../problems/context/normalize.js';
 
-type Request = IdentityWorkspaceRequest & AbortableRequest;
+type Request = FederationManagementRequest;
 @UseInterceptors(domainErrors(resourceFailure))
 @Controller('v1/workspaces/:workspaceId/sso/directory')
 @UseGuards(SessionAuthenticationGuard)
@@ -50,33 +49,13 @@ export class DirectoryManagementController {
   constructor(
     @Inject(DIRECTORY_STORE) private readonly service: DirectoryStore,
   ) {}
-  private scope(request: Request, workspace: unknown) {
-    return {
-      workspaceId: workspaceIdentifierSchema.parse(workspace),
-      actorId: authenticatedSession(request).userId,
-    };
-  }
-  private command<T>(
-    request: Request,
-    workspace: unknown,
-    work: (
-      scope: ReturnType<DirectoryManagementController['scope']> &
-        Readonly<{ idempotencyKey: string; signal: AbortSignal }>,
-    ) => Promise<T>,
-  ) {
-    const scope = this.scope(request, workspace),
-      idempotencyKey = requestIdempotencyKey(request.headers);
-    return withRequestOperationSignal(request, (signal) =>
-      work({ ...scope, idempotencyKey, signal }),
-    );
-  }
   @Header('Cache-Control', 'private, no-store')
   @Get()
   @UseGuards(WorkspaceMemberReadGuard)
   settings(@Req() request: Request, @Param('workspaceId') workspace: unknown) {
     return withRequestOperationSignal(request, (signal) =>
       this.service.settings({
-        ...this.scope(request, workspace),
+        ...federationScope(request, workspace),
         signal,
       }),
     );
@@ -91,7 +70,10 @@ export class DirectoryManagementController {
   ) {
     const query = directoryPeopleQuerySchema.parse(raw);
     return withRequestOperationSignal(request, (signal) =>
-      this.service.people({ ...this.scope(request, workspace), signal }, query),
+      this.service.people(
+        { ...federationScope(request, workspace), signal },
+        query,
+      ),
     );
   }
   @Header('Cache-Control', 'private, no-store')
@@ -105,7 +87,7 @@ export class DirectoryManagementController {
     @Body() raw: unknown,
   ) {
     const input = directoryCredentialCreateSchema.parse(raw);
-    return this.command(request, workspace, (scope) =>
+    return federationCommand(request, workspace, (scope) =>
       this.service.createCredential({ ...scope, ...input }),
     );
   }
@@ -122,7 +104,7 @@ export class DirectoryManagementController {
   ) {
     const input = directoryRevisionSchema.parse(raw),
       credentialId = workspaceIdentifierSchema.parse(rawId);
-    return this.command(request, workspace, async (scope) => {
+    return federationCommand(request, workspace, async (scope) => {
       await this.service.revokeCredential({
         ...scope,
         ...input,
@@ -141,7 +123,7 @@ export class DirectoryManagementController {
     @Body() raw: unknown,
   ) {
     const input = directoryMappingsSchema.parse(raw);
-    return this.command(request, workspace, async (scope) => {
+    return federationCommand(request, workspace, async (scope) => {
       await this.service.replaceMappings({ ...scope, ...input });
       return { changed: true };
     });
@@ -157,7 +139,7 @@ export class DirectoryManagementController {
     const query = directoryAdoptionQuerySchema.parse(raw);
     return withRequestOperationSignal(request, (signal) =>
       this.service.adoption(
-        { ...this.scope(request, workspace), signal },
+        { ...federationScope(request, workspace), signal },
         query,
       ),
     );
@@ -173,7 +155,7 @@ export class DirectoryManagementController {
     @Body() raw: unknown,
   ) {
     const input = directoryAdoptSchema.parse(raw);
-    return this.command(request, workspace, async (scope) => {
+    return federationCommand(request, workspace, async (scope) => {
       await this.service.adopt({ ...scope, ...input });
       return { changed: true };
     });
@@ -191,7 +173,7 @@ export class DirectoryManagementController {
   ) {
     const input = directoryRevisionSchema.parse(raw),
       targetWorkspaceId = workspaceIdentifierSchema.parse(rawId);
-    return this.command(request, workspace, async (scope) => {
+    return federationCommand(request, workspace, async (scope) => {
       await this.service.unlink({
         ...scope,
         ...input,

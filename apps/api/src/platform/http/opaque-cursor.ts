@@ -1,4 +1,4 @@
-import type { z } from 'zod';
+import { z } from 'zod';
 
 const MAX_CURSOR_LENGTH = 1_024;
 
@@ -30,4 +30,12 @@ export function decodeOpaqueCursor<T>(
   } catch {
     return undefined;
   }
+}
+
+/** One kind-first strict shape; callers retain their query-binding rules. */
+export function opaqueCursor<Kind extends string, Fields extends z.ZodRawShape>(
+  kind: Kind,
+  fields: Fields,
+) {
+  return z.object({ kind: z.literal(kind), ...fields }).strict();
 }

@@ -1,29 +1,16 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { WorkspaceCapabilityGuard } from '../workspaces/http/guards.js';
-import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
-import { RequestContextStore } from '../platform/http/index.js';
+import { capabilityGuard } from '../workspaces/http/guards.js';
+
 export const VARIABLES_AUTHORIZATION = Symbol('VARIABLES_AUTHORIZATION');
-@Injectable()
-export class WorkspaceVariablesReadGuard extends WorkspaceCapabilityGuard {
-  constructor(
-    @Inject(VARIABLES_AUTHORIZATION)
-    authorization: WorkspaceAuthorizationSource,
-    contexts: RequestContextStore,
-  ) {
-    super('workspace:read', authorization, contexts, 'not_found', [
-      'active',
-      'suspended',
-      'pending_deletion',
-    ]);
-  }
-}
-@Injectable()
-export class WorkspaceVariablesManageGuard extends WorkspaceCapabilityGuard {
-  constructor(
-    @Inject(VARIABLES_AUTHORIZATION)
-    authorization: WorkspaceAuthorizationSource,
-    contexts: RequestContextStore,
-  ) {
-    super('variable:manage', authorization, contexts, 'not_found', ['active']);
-  }
-}
+export const WorkspaceVariablesReadGuard = capabilityGuard(
+  VARIABLES_AUTHORIZATION,
+  'workspace:read',
+  {
+    disclosure: 'not_found',
+    allowedWorkspaceStatuses: ['active', 'suspended', 'pending_deletion'],
+  },
+);
+export const WorkspaceVariablesManageGuard = capabilityGuard(
+  VARIABLES_AUTHORIZATION,
+  'variable:manage',
+  { disclosure: 'not_found', allowedWorkspaceStatuses: ['active'] },
+);

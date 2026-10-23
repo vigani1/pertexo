@@ -1,19 +1,17 @@
 import { z } from 'zod';
 import {
+  opaqueCursor,
   decodeOpaqueCursor,
   encodeOpaqueCursor,
 } from '../../platform/http/opaque-cursor.js';
 import { InvalidWorkflowCursorError } from '../cursor.js';
 
-const payloadSchema = z
-  .object({
-    kind: z.literal('workflow_input_case'),
-    workspaceId: z.uuid(),
-    workflowId: z.uuid(),
-    createdAt: z.iso.datetime(),
-    id: z.uuid(),
-  })
-  .strict();
+const payloadSchema = opaqueCursor('workflow_input_case', {
+  workspaceId: z.uuid(),
+  workflowId: z.uuid(),
+  createdAt: z.iso.datetime(),
+  id: z.uuid(),
+});
 export function encodeInputCaseCursor(
   scope: Readonly<{ workspaceId: string; workflowId: string }>,
   cursor: Readonly<{ createdAt: Date; id: string }>,

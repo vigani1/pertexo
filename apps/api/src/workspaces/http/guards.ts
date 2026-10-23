@@ -1,6 +1,7 @@
 import { hasAuthorizationHeader } from '../../authentication/automation/headers.js';
 import type { AuthorizationHeaderSource } from '../../authentication/automation/headers.js';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, mixin } from '@nestjs/common';
+import type { Type } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 
 import { DoubleSubmitCsrfPolicy } from '../../identity/index.js';
@@ -98,8 +99,7 @@ export class CsrfProtectionGuard implements CanActivate {
   }
 }
 
-@Injectable()
-export class WorkspaceCapabilityGuard implements CanActivate {
+class WorkspaceCapabilityGuard implements CanActivate {
   public constructor(
     private readonly capability: AuthorizationCapability,
     private readonly authorization: WorkspaceAuthorizationSource,
@@ -140,61 +140,62 @@ export class WorkspaceCapabilityGuard implements CanActivate {
   }
 }
 
-/** Fixed-capability guard for the current workspace lifecycle endpoints. */
-@Injectable()
-export class WorkspaceManageGuard extends WorkspaceCapabilityGuard {
-  public constructor(
-    @Inject(WORKSPACE_AUTHORIZATION)
-    authorization: WorkspaceAuthorizationSource,
-    @Inject(RequestContextStore)
-    contexts: RequestContextStore,
-  ) {
-    super('workspace:manage', authorization, contexts, 'forbidden', [
-      'active',
-      'suspended',
-      'pending_deletion',
-    ]);
+/** Bind the existing workspace authorization rule to a feature's provider. */
+export function capabilityGuard(
+  token: symbol,
+  capability: AuthorizationCapability,
+  options: Readonly<{
+    disclosure?: 'forbidden' | 'not_found';
+    allowedWorkspaceStatuses?: readonly WorkspaceStatus[];
+  }> = {},
+): Type<CanActivate> {
+  class BoundCapabilityGuard extends WorkspaceCapabilityGuard {
+    public constructor(
+      @Inject(token) authorization: WorkspaceAuthorizationSource,
+      @Inject(RequestContextStore) contexts: RequestContextStore,
+    ) {
+      super(
+        capability,
+        authorization,
+        contexts,
+        options.disclosure,
+        options.allowedWorkspaceStatuses,
+      );
+    }
   }
+  return mixin(BoundCapabilityGuard);
 }
+
+/** Fixed-capability guard for the current workspace lifecycle endpoints. */
+export const WorkspaceManageGuard = capabilityGuard(
+  WORKSPACE_AUTHORIZATION,
+  'workspace:manage',
+  {
+    disclosure: 'forbidden',
+    allowedWorkspaceStatuses: ['active', 'suspended', 'pending_deletion'],
+  },
+);
 
 /** Fixed-capability guard for the workspace member read endpoint. */
-@Injectable()
-export class WorkspaceMemberReadGuard extends WorkspaceCapabilityGuard {
-  public constructor(
-    @Inject(WORKSPACE_AUTHORIZATION)
-    authorization: WorkspaceAuthorizationSource,
-    @Inject(RequestContextStore)
-    contexts: RequestContextStore,
-  ) {
-    super('member:read', authorization, contexts, 'forbidden', ['active']);
-  }
-}
+export const WorkspaceMemberReadGuard = capabilityGuard(
+  WORKSPACE_AUTHORIZATION,
+  'member:read',
+  { disclosure: 'forbidden', allowedWorkspaceStatuses: ['active'] },
+);
 
 /** Any active member of an active workspace, e.g. to leave it (ADR 047). */
-@Injectable()
-export class WorkspaceMembershipGuard extends WorkspaceCapabilityGuard {
-  public constructor(
-    @Inject(WORKSPACE_AUTHORIZATION)
-    authorization: WorkspaceAuthorizationSource,
-    @Inject(RequestContextStore)
-    contexts: RequestContextStore,
-  ) {
-    super('workspace:read', authorization, contexts, 'forbidden', ['active']);
-  }
-}
+export const WorkspaceMembershipGuard = capabilityGuard(
+  WORKSPACE_AUTHORIZATION,
+  'workspace:read',
+  { disclosure: 'forbidden', allowedWorkspaceStatuses: ['active'] },
+);
 
 /** Coarse route guard; persistence rechecks current roles and the transition. */
-@Injectable()
-export class WorkspaceMemberManageGuard extends WorkspaceCapabilityGuard {
-  public constructor(
-    @Inject(WORKSPACE_AUTHORIZATION)
-    authorization: WorkspaceAuthorizationSource,
-    @Inject(RequestContextStore)
-    contexts: RequestContextStore,
-  ) {
-    super('member:manage', authorization, contexts, 'forbidden', ['active']);
-  }
-}
+export const WorkspaceMemberManageGuard = capabilityGuard(
+  WORKSPACE_AUTHORIZATION,
+  'member:manage',
+  { disclosure: 'forbidden', allowedWorkspaceStatuses: ['active'] },
+);
 
 function requestFrom(
   context: ExecutionContext,

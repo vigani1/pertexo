@@ -1,4 +1,3 @@
-import { requestIdempotencyKey } from '../../platform/http/index.js';
 import {
   Body,
   Controller,
@@ -27,7 +26,10 @@ import { WorkflowReadGuard, WorkflowUpdateGuard } from '../http/guards.js';
 import type { WorkflowAuthoringRequest } from '../types.js';
 import { WorkflowOrganizationCommandsUseCase } from './commands.js';
 import { WorkflowOrganizationReadsUseCase } from './reads.js';
-import { withWorkflowOrganizationRequest } from './http.js';
+import {
+  withWorkflowOrganizationRequest,
+  withWorkflowOrganizationCommand,
+} from './http.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { authoringFailure } from '../../problems/context/normalize.js';
 
@@ -68,11 +70,10 @@ export class WorkflowOrganizationController {
     @Body() body: unknown,
   ) {
     const { workspaceId } = workflowTagWorkspaceParamsSchema.parse(params);
-    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+    return withWorkflowOrganizationCommand(request, workspaceId, (input) =>
       this.commands.createTag({
         ...input,
         request: body,
-        idempotencyKey: commandKey(request),
       }),
     );
   }
@@ -88,12 +89,11 @@ export class WorkflowOrganizationController {
     @Body() body: unknown,
   ) {
     const { workspaceId, tagId } = workflowTagParamsSchema.parse(params);
-    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+    return withWorkflowOrganizationCommand(request, workspaceId, (input) =>
       this.commands.renameTag({
         ...input,
         tagId,
         request: body,
-        idempotencyKey: commandKey(request),
       }),
     );
   }
@@ -109,12 +109,11 @@ export class WorkflowOrganizationController {
     @Body() body: unknown,
   ) {
     const { workspaceId, tagId } = workflowTagParamsSchema.parse(params);
-    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+    return withWorkflowOrganizationCommand(request, workspaceId, (input) =>
       this.commands.deleteTag({
         ...input,
         tagId,
         request: body,
-        idempotencyKey: commandKey(request),
       }),
     );
   }
@@ -152,12 +151,11 @@ export class WorkflowOrganizationController {
     @Body() body: unknown,
   ) {
     const { workspaceId, workflowId } = workflowIdParamSchema.parse(params);
-    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+    return withWorkflowOrganizationCommand(request, workspaceId, (input) =>
       this.commands.replaceTags({
         ...input,
         workflowId,
         request: body,
-        idempotencyKey: commandKey(request),
       }),
     );
   }
@@ -181,7 +179,4 @@ export class WorkflowOrganizationController {
       }),
     );
   }
-}
-function commandKey(request: WorkflowAuthoringRequest) {
-  return requestIdempotencyKey(request.headers);
 }
