@@ -1,35 +1,16 @@
-import { resolveAttemptCallbacks } from './attempt/callbacks.js';
-import type { CallbackBindings } from '@pertexo/workflow-model';
 import type { WorkflowTestPolicy } from './testing/policy.js';
 import {
   testStepDisposition,
   applyWorkflowTestPolicy,
 } from './testing/policy.js';
-import {
-  isWorkflowTriggerDefinition,
-  workspaceVariableValuesSchema,
-  type WorkspaceVariableValues,
-} from '@pertexo/workflow-model';
+
 import {
   taskDeclarationObservations,
   taskOutcomeObservations,
 } from './observation/coordinator-tasks.js';
-import {
-  NodeExecutionAbortedError,
-  NodeExecutorFailure,
-  type NodeExecutionResult,
-} from '@pertexo/node-sdk/server';
-import {
-  type JsonValue,
-  parseWorkflowGraphDraft,
-  resolveValueSource,
-  type ValueResolution,
-  type WorkflowNodeFailureValue,
-} from '@pertexo/workflow-model';
-import type { ExpressionEvaluator } from '@pertexo/workflow-model/server';
 
 import { advanceWorkflowFromSchedulerState } from './transition/advance.js';
-import { WorkflowEngineError } from './errors.js';
+
 import { resolveAttemptFailures } from './observation/coordinator-failures.js';
 import {
   branchSelectionObservations,
@@ -49,25 +30,19 @@ import {
   assertAuthenticExecutableIdentity,
   executableFailureRoutes,
   type CompiledWorkflowExecutable,
-  type WorkflowExecutableNode,
   type WorkflowExecutableGraph,
 } from './compilation/foundation.js';
-import { normalizeBoundedEngineValue } from './compilation/validation.js';
+
 import type { WorkflowObservation } from './types.js';
 import { parseCheckpoint } from './checkpoint/create-and-parse.js';
 import type { SchedulerState } from './transition/scheduling/readiness.js';
 import { operationError, record } from './operation-values.js';
 import { parsePersistedObservations } from './observation/persisted.js';
 import { nodeProviderIdempotencyKey } from './attempt/derive-provider-key.js';
-import { prepareNodeAttemptInput } from './attempt/input.js';
-import type {
-  ExecuteNodeAttemptInput,
-  NodeAttemptOutcome,
-} from './attempt/contract.js';
 import type { WorkflowTransitionPlan } from './types.js';
-import { isCoreMergeDefinition } from './core-definition-identities.js';
-import { assertCheckpointMatchesExecutable } from './checkpoint/matches-executable.js';
 
+import { assertCheckpointMatchesExecutable } from './checkpoint/matches-executable.js';
+import { assertIdentity, assertNotAborted } from './attempt/admission.js';
 export type {
   ExecuteNodeAttemptInput,
   NodeAttemptOutcome,
@@ -79,7 +54,8 @@ export type {
   DueAtObservation,
   PersistedWorkflowObservation,
 } from './observation/persisted.js';
-
+export { resolveSingleNodePreviewInput } from './attempt/mapping.js';
+export { executeNodeAttempt } from './attempt/execute.js';
 export interface AdvanceWorkflowInput {
   readonly test?: WorkflowTestPolicy;
   readonly runId: string;
@@ -94,15 +70,6 @@ export interface AdvanceWorkflowInput {
   readonly callOutcomes?: unknown;
   readonly taskOutcomes?: unknown;
   readonly signal: AbortSignal;
-}
-
-function assertIdentity(
-  value: string,
-  label: string,
-  code: 'attempt_invalid' | 'workflow_identity_invalid',
-): void {
-  if (value.length === 0 || value.length > 256)
-    operationError(code, `${label} is invalid`);
 }
 
 export function projectSchedulerState(
@@ -362,235 +329,4 @@ export async function advanceWorkflow(
       });
     }),
   });
-}
-
-function assertNotAborted(signal: AbortSignal): void {
-  if (signal.aborted)
-    operationError('attempt_aborted', 'node attempt was aborted');
-}
-
-function isAbortError(error: unknown): boolean {
-  try {
-    if (error instanceof NodeExecutionAbortedError) return true;
-    if (!(error instanceof Error)) return false;
-    return error.name === 'AbortError';
-  } catch {
-    return false;
-  }
-}
-
-function isNodeExecutorFailure(error: unknown): error is NodeExecutorFailure {
-  try {
-    return error instanceof NodeExecutorFailure;
-  } catch {
-    return false;
-  }
-}
-
-async function resolveMappedNodeInput(
-  node: Pick<WorkflowExecutableNode, 'definition' | 'inputMappings'>,
-  runInput: JsonValue,
-  completedOutputs: Readonly<Record<string, JsonValue>>,
-  directUpstream: ReadonlySet<string>,
-  signal: AbortSignal,
-  expressionEvaluator?: ExpressionEvaluator,
-  structuredInputs?: Readonly<Record<string, JsonValue>>,
-  sourceFailure?: WorkflowNodeFailureValue,
-  variables?: WorkspaceVariableValues,
-  callbacks?: CallbackBindings,
-): Promise<JsonValue> {
-  if (isWorkflowTriggerDefinition(node.definition)) return runInput;
-  const mapped = Object.create(null) as Record<string, JsonValue>;
-  // Mappings resolve independently; their authored order is the input's.
-  for (const key of Object.keys(node.inputMappings)) {
-    assertNotAborted(signal);
-    const source = node.inputMappings[key];
-    if (source === undefined) continue;
-    if (
-      source.kind === 'node_output' &&
-      (!directUpstream.has(source.nodeId) ||
-        !Object.hasOwn(completedOutputs, source.nodeId))
-    )
-      operationError(
-        'attempt_invalid',
-        'mapping upstream output is incomplete',
-      );
-    if (
-      source.kind === 'node_failure' &&
-      sourceFailure?.nodeId !== source.nodeId
-    )
-      operationError(
-        'attempt_invalid',
-        'mapping selected source failure is incomplete',
-      );
-    let resolution: ValueResolution;
-    try {
-      resolution = await resolveValueSource(
-        source,
-        {
-          runInput,
-          ...(callbacks === undefined ? {} : { execution: { callbacks } }),
-          nodeOutputs: completedOutputs,
-          ...(variables === undefined ? {} : { variables }),
-          ...(sourceFailure === undefined
-            ? {}
-            : { nodeFailure: sourceFailure }),
-          ...(structuredInputs === undefined ? {} : { structuredInputs }),
-        },
-        expressionEvaluator,
-        signal,
-      );
-    } catch (error) {
-      if (signal.aborted || isAbortError(error))
-        operationError('attempt_aborted', 'node attempt was aborted');
-      operationError('attempt_invalid', 'mapping failed');
-    }
-    if (
-      resolution.kind === 'error' &&
-      (resolution.expression?.code === 'canceled' || signal.aborted)
-    )
-      operationError('attempt_aborted', 'node attempt was aborted');
-    if (resolution.kind === 'error')
-      operationError(
-        resolution.code === 'variable_missing' ||
-          resolution.expression?.code === 'variable_missing'
-          ? 'variable_missing'
-          : 'attempt_invalid',
-        'Mapping could not resolve; check its inputs and captured workspace variables.',
-      );
-    if (resolution.kind === 'value') mapped[key] = resolution.value;
-  }
-  try {
-    return normalizeBoundedEngineValue(mapped);
-  } catch {
-    operationError('attempt_invalid', 'mapped input exceeds runtime limits');
-  }
-}
-
-/** Resolve one isolated preview node through the production ValueSource path. */
-export async function resolveSingleNodePreviewInput(
-  input: Readonly<{
-    node: unknown;
-    runInput: unknown;
-    variables?: WorkspaceVariableValues;
-    signal: AbortSignal;
-    expressionEvaluator?: ExpressionEvaluator;
-  }>,
-): Promise<JsonValue> {
-  let node: Pick<WorkflowExecutableNode, 'definition' | 'inputMappings'>;
-  let runInput: JsonValue;
-  try {
-    runInput = normalizeBoundedEngineValue(input.runInput);
-    const rawNode = record(
-      normalizeBoundedEngineValue(input.node),
-      'attempt_invalid',
-      'preview node',
-    );
-    const parsedNode = parseWorkflowGraphDraft({
-      edges: [],
-      nodes: [{ ...rawNode, position: { x: 0, y: 0 } }],
-      settings: {},
-    }).nodes[0];
-    if (parsedNode === undefined)
-      operationError('attempt_invalid', 'preview node is missing');
-    node = parsedNode;
-  } catch (error) {
-    if (error instanceof WorkflowEngineError) throw error;
-    operationError(
-      'attempt_invalid',
-      error instanceof Error ? error.message : 'preview input is invalid',
-    );
-  }
-  return resolveMappedNodeInput(
-    node,
-    runInput,
-    Object.freeze({}),
-    new Set(),
-    input.signal,
-    input.expressionEvaluator,
-    undefined,
-    undefined,
-    workspaceVariableValuesSchema.parse(input.variables ?? {}),
-  );
-}
-
-export async function executeNodeAttempt(
-  input: ExecuteNodeAttemptInput,
-): Promise<NodeAttemptOutcome> {
-  assertAuthenticExecutableIdentity(input.executable);
-  assertIdentity(input.runId, 'runId', 'attempt_invalid');
-  assertIdentity(input.nodeRunId, 'nodeRunId', 'attempt_invalid');
-  assertIdentity(input.attemptId, 'attemptId', 'attempt_invalid');
-  assertIdentity(
-    input.workflowVersionId,
-    'workflowVersionId',
-    'attempt_invalid',
-  );
-  assertNotAborted(input.signal);
-  const {
-    node,
-    runInput,
-    variables,
-    completedOutputs,
-    directUpstream,
-    structuredInputs,
-    sourceFailure,
-  } = prepareNodeAttemptInput(input);
-  const callbacks = await resolveAttemptCallbacks(input, node);
-  const resolvedInput = await resolveMappedNodeInput(
-    isCoreMergeDefinition(node.definition)
-      ? { ...node, inputMappings: {} }
-      : node,
-    runInput,
-    completedOutputs,
-    directUpstream,
-    input.signal,
-    input.expressionEvaluator,
-    structuredInputs,
-    sourceFailure,
-    variables,
-    callbacks,
-  );
-  let executionInput = resolvedInput;
-  if (isCoreMergeDefinition(node.definition)) {
-    if (input.coordinatorInput === undefined)
-      operationError('attempt_invalid', 'settled Merge input is missing');
-    try {
-      executionInput = normalizeBoundedEngineValue(input.coordinatorInput);
-    } catch {
-      operationError('attempt_invalid', 'settled Merge input is invalid');
-    }
-  }
-  // Recorded before the executor runs, so failed attempts keep it (ADR 052).
-  await input.onInputResolved?.(executionInput);
-  assertNotAborted(input.signal);
-  let result: NodeExecutionResult;
-  try {
-    result = await input.registry.execute({
-      definition: node.definition,
-      executor: node.executor,
-      config: node.config,
-      input: executionInput,
-      connectionRefs: node.connectionRefs,
-      signal: input.signal,
-      ...(input.runtime === undefined ? {} : { runtime: input.runtime }),
-    });
-  } catch (error) {
-    if (input.signal.aborted || isAbortError(error))
-      operationError('attempt_aborted', 'node attempt was aborted');
-    if (isNodeExecutorFailure(error)) throw error;
-    // The cause carries the step's own reason, when it gave one.
-    throw new WorkflowEngineError('attempt_invalid', 'node execution failed', {
-      cause: error,
-    });
-  }
-  return {
-    runId: input.runId,
-    nodeRunId: input.nodeRunId,
-    attemptId: input.attemptId,
-    invocationKey: input.invocationKey,
-    nodeId: node.id,
-    kind: result.kind,
-    output: result.output,
-  };
 }
