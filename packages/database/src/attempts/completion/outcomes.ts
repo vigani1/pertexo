@@ -140,15 +140,7 @@ async function duplicateCompletion(
     row.output_ref === null
       ? null
       : serializeStoredExecutionValue(row.output_ref);
-  const executorMismatch =
-    fields.executorOutcome !== undefined &&
-    (row.executor_failure_kind !== fields.executorOutcome.failureKind ||
-      row.executor_error_kind !== fields.executorOutcome.errorKind ||
-      row.executor_possibly_dispatched !==
-        fields.executorOutcome.possiblyDispatched ||
-      row.executor_retry_after_millis !==
-        (fields.executorOutcome.minimumRetryDelayMillis ?? null) ||
-      row.retry_decision === null);
+  const executorMismatch = executorCompletionMismatch(row, fields);
   const completionMismatch =
     row.attempt_status !== fields.durableStatus ||
     (fields.executorOutcome === undefined &&
@@ -409,4 +401,20 @@ export async function applyNodeAttemptCompletion(
       serializedOutput,
     );
   return commitTerminal(client, input, serializedOutput, fields);
+}
+
+function executorCompletionMismatch(
+  row: LockedAttemptRow,
+  fields: CompletionFields,
+): boolean {
+  return (
+    fields.executorOutcome !== undefined &&
+    (row.executor_failure_kind !== fields.executorOutcome.failureKind ||
+      row.executor_error_kind !== fields.executorOutcome.errorKind ||
+      row.executor_possibly_dispatched !==
+        fields.executorOutcome.possiblyDispatched ||
+      row.executor_retry_after_millis !==
+        (fields.executorOutcome.minimumRetryDelayMillis ?? null) ||
+      row.retry_decision === null)
+  );
 }

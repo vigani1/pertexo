@@ -1,5 +1,5 @@
 import SCIMMY from 'scimmy';
-import type { Filter } from 'scim2-parse-filter';
+import type { AttrExp, Compare, Filter } from 'scim2-parse-filter';
 import { DirectoryError } from '../contract.js';
 
 export type DirectoryKind = 'User' | 'Group';
@@ -152,55 +152,11 @@ export function compileDirectoryFilter(
         throw new DirectoryError('invalid_filter');
       return `exists(select 1 from ${source.from} where ${source.scope}${rest.length === 0 ? '' : ` and ${compile({ ...node, attrPath: rest.join('.') }, source.collection)}`})`;
     }
-    const field = directoryField(kind, node.attrPath, collection);
-    if (node.op === 'pr') {
-      if (field.type === 'string' || field.type === 'reference')
-        return `(nullif(${field.sql},'') is not null)`;
-      if (field.type === 'complex')
-        return `(${field.sql} is not null and ${field.sql}<>'{}'::jsonb)`;
-      return `(${field.sql} is not null)`;
-    }
-    if (field.type === 'complex') throw new DirectoryError('invalid_filter');
-    if (node.compValue === null) {
-      if (node.op !== 'eq' && node.op !== 'ne')
-        throw new DirectoryError('invalid_filter');
-      return `(${field.sql} is ${node.op === 'ne' ? 'not ' : ''}null)`;
-    }
-    const invalidBooleanComparison =
-      field.type === 'boolean' &&
-      (typeof node.compValue !== 'boolean' || !['eq', 'ne'].includes(node.op));
-    if (invalidBooleanComparison) throw new DirectoryError('invalid_filter');
-    if (field.type !== 'boolean' && typeof node.compValue !== 'string')
-      throw new DirectoryError('invalid_filter');
-    const date = field.type === 'dateTime';
-    const invalidDateComparison =
-      date &&
-      (typeof node.compValue !== 'string' ||
-        !Number.isFinite(Date.parse(node.compValue)));
-    if (invalidDateComparison) throw new DirectoryError('invalid_filter');
-    const text = field.type !== 'boolean' && !date;
-    const left = text && !field.caseExact ? `lower(${field.sql})` : field.sql;
-    const parameter = bind(node.compValue);
-    const right = comparisonParameter(parameter, {
-      date,
-      text,
-      caseExact: field.caseExact,
-    });
-    if (['co', 'sw', 'ew'].includes(node.op)) {
-      if (!text) throw new DirectoryError('invalid_filter');
-      const comparison = substringComparison(node.op, left, right);
-      return `coalesce((${comparison}),false)`;
-    }
-    const operators = {
-      eq: '=',
-      ne: '<>',
-      gt: '>',
-      lt: '<',
-      ge: '>=',
-      le: '<=',
-    };
-    const operator = operators[node.op as keyof typeof operators];
-    return `coalesce((${left}${operator}${right}),false)`;
+    return compileAttributeComparison(
+      directoryField(kind, node.attrPath, collection),
+      node,
+      bind,
+    );
   };
   // The public boundary parses and bounds this AST before it enters storage.
   return filter === undefined ? 'true' : compile(filter);
@@ -235,4 +191,68 @@ function substringComparison(
     return `left(${left},length(${right}))=${right}`;
   }
   return `right(${left},length(${right}))=${right}`;
+}
+
+function compileAttributeComparison(
+  field: Field,
+  node: AttrExp,
+  bind: (value: unknown) => string,
+): string {
+  if (node.op === 'pr') {
+    if (field.type === 'string' || field.type === 'reference')
+      return `(nullif(${field.sql},'') is not null)`;
+    if (field.type === 'complex')
+      return `(${field.sql} is not null and ${field.sql}<>'{}'::jsonb)`;
+    return `(${field.sql} is not null)`;
+  }
+
+  if (field.type === 'complex') throw new DirectoryError('invalid_filter');
+  if (node.compValue === null) {
+    if (node.op !== 'eq' && node.op !== 'ne')
+      throw new DirectoryError('invalid_filter');
+    return `(${field.sql} is ${node.op === 'ne' ? 'not ' : ''}null)`;
+  }
+
+  return compileValueComparison(field, node, bind);
+}
+function compileValueComparison(
+  field: Field,
+  node: Compare,
+  bind: (value: unknown) => string,
+): string {
+  const invalidBooleanComparison =
+    field.type === 'boolean' &&
+    (typeof node.compValue !== 'boolean' || !['eq', 'ne'].includes(node.op));
+  if (invalidBooleanComparison) throw new DirectoryError('invalid_filter');
+  if (field.type !== 'boolean' && typeof node.compValue !== 'string')
+    throw new DirectoryError('invalid_filter');
+  const date = field.type === 'dateTime';
+  const invalidDateComparison =
+    date &&
+    (typeof node.compValue !== 'string' ||
+      !Number.isFinite(Date.parse(node.compValue)));
+  if (invalidDateComparison) throw new DirectoryError('invalid_filter');
+  const text = field.type !== 'boolean' && !date;
+  const left = text && !field.caseExact ? `lower(${field.sql})` : field.sql;
+  const parameter = bind(node.compValue);
+  const right = comparisonParameter(parameter, {
+    date,
+    text,
+    caseExact: field.caseExact,
+  });
+  if (['co', 'sw', 'ew'].includes(node.op)) {
+    if (!text) throw new DirectoryError('invalid_filter');
+    const comparison = substringComparison(node.op, left, right);
+    return `coalesce((${comparison}),false)`;
+  }
+  const operators = {
+    eq: '=',
+    ne: '<>',
+    gt: '>',
+    lt: '<',
+    ge: '>=',
+    le: '<=',
+  };
+  const operator = operators[node.op as keyof typeof operators];
+  return `coalesce((${left}${operator}${right}),false)`;
 }

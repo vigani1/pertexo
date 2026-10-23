@@ -3,7 +3,7 @@ import {
   workspaceVariableValuesSchema,
   workflowNodeFailureValueSchema,
 } from '@pertexo/workflow-model';
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 import {
   loadInputsSchema,
@@ -213,49 +213,7 @@ export async function loadNodeAttemptInputs(
           outputs.rows,
         );
       }
-      let sourceFailure: NodeAttemptStoredInputs['sourceFailure'];
-      if (input.sourceFailure !== undefined) {
-        const source = await client.query<{
-          failure_ref: unknown;
-          current_attempt_number: number;
-        }>(
-          `select source.failure_ref,source.current_attempt_number from app.node_runs source
-           join app.node_runs handler on handler.workspace_id=source.workspace_id and handler.workflow_run_id=source.workflow_run_id
-             and handler.invocation_key=source.failure_handler_entry_key
-           join app.node_attempts attempt on attempt.workspace_id=handler.workspace_id and attempt.node_run_id=handler.id
-           where source.workspace_id=$1 and source.workflow_run_id=$2 and source.node_id=$3 and source.invocation_key=$4
-             and source.status='failed' and source.failure_handling='pending'
-             and handler.id=$5 and handler.current_attempt_id=$6 and handler.current_attempt_number=$7
-             and attempt.id=$6 and attempt.attempt_number=$7 and attempt.status='running'
-             and attempt.lease_owner=$8 and attempt.fence_token=$9 and attempt.lease_expires_at > clock_timestamp()`,
-          [
-            input.lease.workspaceId,
-            input.lease.runId,
-            input.sourceFailure.nodeId,
-            input.sourceFailure.invocationKey,
-            input.lease.nodeRunId,
-            input.lease.attemptId,
-            input.lease.attemptNumber,
-            input.lease.workerId,
-            input.lease.fenceToken,
-          ],
-        );
-        const selectedSource = source.rows[0];
-        if (source.rows.length !== 1 || selectedSource === undefined)
-          throw new NodeAttemptStateCorruptError();
-        const stored = parseStoredExecutionValue(selectedSource.failure_ref);
-        const parsed =
-          stored.kind === 'inline'
-            ? workflowNodeFailureValueSchema.safeParse(stored.value)
-            : undefined;
-        const invalidSourceFailure =
-          !parsed?.success ||
-          parsed.data.attemptNumber !== selectedSource.current_attempt_number ||
-          parsed.data.nodeId !== input.sourceFailure.nodeId ||
-          parsed.data.invocationKey !== input.sourceFailure.invocationKey;
-        if (invalidSourceFailure) throw new NodeAttemptStateCorruptError();
-        sourceFailure = parsed.data;
-      }
+      const sourceFailure = await readSourceFailure(client, input);
       return Object.freeze({
         ...(sourceFailure === undefined ? {} : { sourceFailure }),
         runInput,
@@ -271,4 +229,55 @@ export async function loadNodeAttemptInputs(
       });
     },
   );
+}
+
+async function readSourceFailure(
+  client: PoolClient,
+  input: z.output<typeof loadInputsSchema>,
+): Promise<NodeAttemptStoredInputs['sourceFailure']> {
+  let sourceFailure: NodeAttemptStoredInputs['sourceFailure'];
+  if (input.sourceFailure !== undefined) {
+    const source = await client.query<{
+      failure_ref: unknown;
+      current_attempt_number: number;
+    }>(
+      `select source.failure_ref,source.current_attempt_number from app.node_runs source
+           join app.node_runs handler on handler.workspace_id=source.workspace_id and handler.workflow_run_id=source.workflow_run_id
+             and handler.invocation_key=source.failure_handler_entry_key
+           join app.node_attempts attempt on attempt.workspace_id=handler.workspace_id and attempt.node_run_id=handler.id
+           where source.workspace_id=$1 and source.workflow_run_id=$2 and source.node_id=$3 and source.invocation_key=$4
+             and source.status='failed' and source.failure_handling='pending'
+             and handler.id=$5 and handler.current_attempt_id=$6 and handler.current_attempt_number=$7
+             and attempt.id=$6 and attempt.attempt_number=$7 and attempt.status='running'
+             and attempt.lease_owner=$8 and attempt.fence_token=$9 and attempt.lease_expires_at > clock_timestamp()`,
+      [
+        input.lease.workspaceId,
+        input.lease.runId,
+        input.sourceFailure.nodeId,
+        input.sourceFailure.invocationKey,
+        input.lease.nodeRunId,
+        input.lease.attemptId,
+        input.lease.attemptNumber,
+        input.lease.workerId,
+        input.lease.fenceToken,
+      ],
+    );
+    const selectedSource = source.rows[0];
+    if (source.rows.length !== 1 || selectedSource === undefined)
+      throw new NodeAttemptStateCorruptError();
+    const stored = parseStoredExecutionValue(selectedSource.failure_ref);
+    const parsed =
+      stored.kind === 'inline'
+        ? workflowNodeFailureValueSchema.safeParse(stored.value)
+        : undefined;
+    const invalidSourceFailure =
+      !parsed?.success ||
+      parsed.data.attemptNumber !== selectedSource.current_attempt_number ||
+      parsed.data.nodeId !== input.sourceFailure.nodeId ||
+      parsed.data.invocationKey !== input.sourceFailure.invocationKey;
+    if (invalidSourceFailure) throw new NodeAttemptStateCorruptError();
+    sourceFailure = parsed.data;
+  }
+
+  return sourceFailure;
 }

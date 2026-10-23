@@ -59,94 +59,12 @@ export function mapEvent(row: EventRow): unknown {
   if (row.type === 'run.cancel_requested')
     return { kind: 'cancel_requested', sequence: row.sequence, occurredAt };
   if (row.type === 'node.started' || row.type === 'node.progress') {
-    const physicalStatusIsCoherent =
-      row.attempt_status === row.node_status ||
-      (row.attempt_status === 'failed' &&
-        row.node_status === 'running' &&
-        row.executor_failure_kind !== null &&
-        row.retry_decision === 'pending') ||
-      (row.node_status === 'waiting' &&
-        (row.attempt_status === 'succeeded' ||
-          row.attempt_status === 'failed'));
-    const invalidAttemptStatus =
-      row.attempt_status === null ||
-      !physicalStatusIsCoherent ||
-      ![
-        'running',
-        'succeeded',
-        'failed',
-        'canceled',
-        'timed_out',
-        'outcome_unknown',
-      ].includes(row.attempt_status);
-    if (invalidAttemptStatus) throw new CoordinatorRunStateCorruptError();
-    return {
-      kind: 'cursor_only',
-      eventName: row.type,
-      sequence: row.sequence,
-      occurredAt,
-      ...attemptFact(row, payload),
-    };
+    return cursorEventFact(row, { payload, occurredAt });
   }
   if (row.type === 'node.waiting' || row.type === 'node.retry_scheduled') {
-    const resumeAt = canonicalTimestamp(payload.dueAt);
-    const persistedDueAt =
-      row.type === 'node.waiting' ? row.resume_at : row.retry_due_at;
-    const invalidWaitingEvidence =
-      row.attempt_status !==
-        (row.type === 'node.waiting' ? 'succeeded' : 'failed') ||
-      row.node_status !== 'waiting' ||
-      !storedExecutionValuesEqual(
-        row.attempt_output_ref,
-        row.node_output_ref,
-      ) ||
-      persistedDueAt?.toISOString() !== resumeAt;
-    if (invalidWaitingEvidence) throw new CoordinatorRunStateCorruptError();
-    return {
-      kind: 'wait',
-      eventName: row.type,
-      sequence: row.sequence,
-      occurredAt,
-      resumeAt,
-      waitKind: row.type === 'node.waiting' ? 'node_wait' : 'retry_backoff',
-      ...(row.type !== 'node.waiting' || row.attempt_id === null
-        ? {}
-        : { output: { kind: 'inline' as const, attemptId: row.attempt_id } }),
-      ...attemptFact(row, payload),
-    };
+    return waitingEventFact(row, { payload, occurredAt });
   }
-  const status = terminalStatus(row.type);
-  if (status === undefined) throw new CoordinatorRunStateCorruptError();
-  const identity = attemptFact(row, payload);
-  const invalidCompletionEvidence =
-    row.attempt_status !== status ||
-    row.node_status !== status ||
-    !storedExecutionValuesEqual(row.attempt_output_ref, row.node_output_ref);
-  if (invalidCompletionEvidence) throw new CoordinatorRunStateCorruptError();
-  let output: unknown;
-  if (row.attempt_output_ref !== null) {
-    let stored;
-    try {
-      stored = parseStoredExecutionValue(row.attempt_output_ref);
-    } catch {
-      throw new CoordinatorRunStateCorruptError();
-    }
-    output =
-      stored.kind === 'inline'
-        ? { kind: 'inline', attemptId: identity.attemptId }
-        : { kind: 'artifact', artifactId: stored.artifactId };
-  }
-  return {
-    kind: 'outcome',
-    sequence: row.sequence,
-    occurredAt,
-    status,
-    ...identity,
-    ...(output === undefined ? {} : { output }),
-    ...(typeof payload.safeErrorCode === 'string'
-      ? { reasonCode: payload.safeErrorCode }
-      : {}),
-  };
+  return outcomeEventFact(row, { payload, occurredAt });
 }
 
 export function completedInlineOutput(
@@ -203,4 +121,105 @@ export async function assertAvailableArtifacts(
   );
   if (available.rows.length !== artifactIds.size)
     throw new CoordinatorRunStateCorruptError();
+}
+
+type EventContext = Readonly<{
+  payload: Readonly<Record<string, unknown>>;
+  occurredAt: string;
+}>;
+function cursorEventFact(
+  row: EventRow,
+  { payload, occurredAt }: EventContext,
+): unknown {
+  const physicalStatusIsCoherent =
+    row.attempt_status === row.node_status ||
+    (row.attempt_status === 'failed' &&
+      row.node_status === 'running' &&
+      row.executor_failure_kind !== null &&
+      row.retry_decision === 'pending') ||
+    (row.node_status === 'waiting' &&
+      (row.attempt_status === 'succeeded' || row.attempt_status === 'failed'));
+  const invalidAttemptStatus =
+    row.attempt_status === null ||
+    !physicalStatusIsCoherent ||
+    ![
+      'running',
+      'succeeded',
+      'failed',
+      'canceled',
+      'timed_out',
+      'outcome_unknown',
+    ].includes(row.attempt_status);
+  if (invalidAttemptStatus) throw new CoordinatorRunStateCorruptError();
+  return {
+    kind: 'cursor_only',
+    eventName: row.type,
+    sequence: row.sequence,
+    occurredAt,
+    ...attemptFact(row, payload),
+  };
+}
+function waitingEventFact(
+  row: EventRow,
+  { payload, occurredAt }: EventContext,
+): unknown {
+  const resumeAt = canonicalTimestamp(payload.dueAt);
+  const persistedDueAt =
+    row.type === 'node.waiting' ? row.resume_at : row.retry_due_at;
+  const invalidWaitingEvidence =
+    row.attempt_status !==
+      (row.type === 'node.waiting' ? 'succeeded' : 'failed') ||
+    row.node_status !== 'waiting' ||
+    !storedExecutionValuesEqual(row.attempt_output_ref, row.node_output_ref) ||
+    persistedDueAt?.toISOString() !== resumeAt;
+  if (invalidWaitingEvidence) throw new CoordinatorRunStateCorruptError();
+  return {
+    kind: 'wait',
+    eventName: row.type,
+    sequence: row.sequence,
+    occurredAt,
+    resumeAt,
+    waitKind: row.type === 'node.waiting' ? 'node_wait' : 'retry_backoff',
+    ...(row.type !== 'node.waiting' || row.attempt_id === null
+      ? {}
+      : { output: { kind: 'inline' as const, attemptId: row.attempt_id } }),
+    ...attemptFact(row, payload),
+  };
+}
+function outcomeEventFact(
+  row: EventRow,
+  { payload, occurredAt }: EventContext,
+): unknown {
+  const status = terminalStatus(row.type);
+  if (status === undefined) throw new CoordinatorRunStateCorruptError();
+  const identity = attemptFact(row, payload);
+  const invalidCompletionEvidence =
+    row.attempt_status !== status ||
+    row.node_status !== status ||
+    !storedExecutionValuesEqual(row.attempt_output_ref, row.node_output_ref);
+  if (invalidCompletionEvidence) throw new CoordinatorRunStateCorruptError();
+  let output: unknown;
+  if (row.attempt_output_ref !== null) {
+    let stored;
+    try {
+      stored = parseStoredExecutionValue(row.attempt_output_ref);
+    } catch {
+      throw new CoordinatorRunStateCorruptError();
+    }
+    output =
+      stored.kind === 'inline'
+        ? { kind: 'inline', attemptId: identity.attemptId }
+        : { kind: 'artifact', artifactId: stored.artifactId };
+  }
+  return {
+    kind: 'outcome',
+    sequence: row.sequence,
+    occurredAt,
+    status,
+    ...identity,
+    ...(output === undefined ? {} : { output }),
+    ...(typeof payload.safeErrorCode === 'string'
+      ? { reasonCode: payload.safeErrorCode }
+      : {}),
+  };
 }

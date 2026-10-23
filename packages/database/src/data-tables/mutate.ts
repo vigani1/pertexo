@@ -42,75 +42,13 @@ export async function mutateRows(
       Readonly<{ rowId: string; expectedRevision: number }> | undefined;
   }>,
 ): Promise<DataTableResult> {
-  let old: StoredRow[] = [];
+  const old = await lockMutationRows(client, workspaceId, {
+    table,
+    command,
+    rowIdentity,
+  });
   let countDelta = 0;
   let byteDelta = 0;
-  if (command.operation === 'upsert') {
-    if (table.keyColumn === null)
-      throw new DataTableError(
-        'invalid_values',
-        'Upsert needs a table with a unique key column.',
-      );
-    // Only the key finds the row; other required columns apply on insert.
-    const values = validateDataTableValues(table.columns, command.values, {
-      partial: true,
-    });
-    if ((values[table.keyColumn] ?? null) === null)
-      throw new DataTableError(
-        'invalid_values',
-        `Column ${table.keyColumn} is required.`,
-      );
-    const key = keyValue(table, values);
-    old = (
-      await client.query<StoredRow>(
-        'select id,revision,values_json from app.workspace_data_table_rows where workspace_id=$1 and table_id=$2 and key_value=$3 for update',
-        [workspaceId, table.id, key],
-      )
-    ).rows;
-  } else if (command.operation === 'update' || command.operation === 'delete') {
-    if (rowIdentity !== undefined) {
-      old = (
-        await client.query<StoredRow>(
-          'select id,revision,values_json from app.workspace_data_table_rows where workspace_id=$1 and table_id=$2 and id=$3 for update',
-          [workspaceId, table.id, rowIdentity.rowId],
-        )
-      ).rows;
-      if (old[0]?.revision !== rowIdentity.expectedRevision)
-        throw new DataTableError(
-          'conflict',
-          'This row changed. Reload before saving.',
-        );
-    } else {
-      if (command.query.filters.length === 0)
-        throw new DataTableError(
-          'unsafe_filter',
-          'Choose at least one filter before updating or deleting rows.',
-        );
-      if (command.query.sort !== undefined)
-        throw new DataTableError(
-          'invalid_values',
-          'Sorting applies to Find rows; writes affect every matching row.',
-        );
-      if (command.query.offset !== 0)
-        throw new DataTableError(
-          'invalid_values',
-          'Writes do not support a row offset.',
-        );
-      const parameters: unknown[] = [workspaceId, table.id];
-      const where = queryClause(table, command.query, parameters);
-      old = (
-        await client.query<StoredRow>(
-          `select id,revision,values_json from app.workspace_data_table_rows where workspace_id=$1 and table_id=$2 and ${where} order by id limit 1001 for update`,
-          parameters,
-        )
-      ).rows;
-      if (old.length > DATA_TABLE_LIMITS.batchRows)
-        throw new DataTableError(
-          'quota_exceeded',
-          'More than 1,000 rows match. Narrow the filter or split the operation.',
-        );
-    }
-  }
   let result: DataTableResult;
   if (command.operation === 'delete') {
     if (old.length > 0)
@@ -280,4 +218,89 @@ export async function insertTableBatch(
     [workspaceId, table.id, JSON.stringify(records)],
   );
   return { affected: records.length };
+}
+
+async function lockMutationRows(
+  client: PoolClient,
+  workspaceId: string,
+  {
+    table,
+    command,
+    rowIdentity,
+  }: Readonly<{
+    table: DataTableDefinition;
+    command: Exclude<DataTableCommand, { operation: 'find' }>;
+    rowIdentity?:
+      Readonly<{ rowId: string; expectedRevision: number }> | undefined;
+  }>,
+): Promise<StoredRow[]> {
+  let old: StoredRow[] = [];
+  if (command.operation === 'upsert') {
+    if (table.keyColumn === null)
+      throw new DataTableError(
+        'invalid_values',
+        'Upsert needs a table with a unique key column.',
+      );
+    // Only the key finds the row; other required columns apply on insert.
+    const values = validateDataTableValues(table.columns, command.values, {
+      partial: true,
+    });
+    if ((values[table.keyColumn] ?? null) === null)
+      throw new DataTableError(
+        'invalid_values',
+        `Column ${table.keyColumn} is required.`,
+      );
+    const key = keyValue(table, values);
+    old = (
+      await client.query<StoredRow>(
+        'select id,revision,values_json from app.workspace_data_table_rows where workspace_id=$1 and table_id=$2 and key_value=$3 for update',
+        [workspaceId, table.id, key],
+      )
+    ).rows;
+  } else if (command.operation === 'update' || command.operation === 'delete') {
+    if (rowIdentity !== undefined) {
+      old = (
+        await client.query<StoredRow>(
+          'select id,revision,values_json from app.workspace_data_table_rows where workspace_id=$1 and table_id=$2 and id=$3 for update',
+          [workspaceId, table.id, rowIdentity.rowId],
+        )
+      ).rows;
+      if (old[0]?.revision !== rowIdentity.expectedRevision)
+        throw new DataTableError(
+          'conflict',
+          'This row changed. Reload before saving.',
+        );
+    } else {
+      if (command.query.filters.length === 0)
+        throw new DataTableError(
+          'unsafe_filter',
+          'Choose at least one filter before updating or deleting rows.',
+        );
+      if (command.query.sort !== undefined)
+        throw new DataTableError(
+          'invalid_values',
+          'Sorting applies to Find rows; writes affect every matching row.',
+        );
+      if (command.query.offset !== 0)
+        throw new DataTableError(
+          'invalid_values',
+          'Writes do not support a row offset.',
+        );
+      const parameters: unknown[] = [workspaceId, table.id];
+      const where = queryClause(table, command.query, parameters);
+      old = (
+        await client.query<StoredRow>(
+          `select id,revision,values_json from app.workspace_data_table_rows where workspace_id=$1 and table_id=$2 and ${where} order by id limit 1001 for update`,
+          parameters,
+        )
+      ).rows;
+      if (old.length > DATA_TABLE_LIMITS.batchRows)
+        throw new DataTableError(
+          'quota_exceeded',
+          'More than 1,000 rows match. Narrow the filter or split the operation.',
+        );
+    }
+  }
+
+  return old;
 }

@@ -104,44 +104,7 @@ function parsePersistedIdentityMetadata(
       members += 1;
       if (members > IDENTITY_METADATA_MAX_MEMBERS)
         metadataError('Identity metadata member limit exceeded');
-      const unsafeKey =
-        key === '__proto__' ||
-        key === 'prototype' ||
-        key === 'constructor' ||
-        unsafeMetadataKey.test(key);
-      if (unsafeKey) metadataError('Unsafe audit metadata key');
-      const descriptor = Object.getOwnPropertyDescriptor(frame.source, key);
-      if (descriptor === undefined || !('value' in descriptor))
-        metadataError('Identity metadata must contain ordinary JSON data');
-      const child: unknown = descriptor.value;
-      const scalarValue =
-        child === null ||
-        typeof child === 'string' ||
-        typeof child === 'boolean' ||
-        (typeof child === 'number' && Number.isFinite(child));
-      if (scalarValue) {
-        assignJsonValue(frame.target, key, child);
-        continue;
-      }
-      if (typeof child !== 'object')
-        metadataError('Identity metadata must contain ordinary JSON data');
-      const childDepth = frame.depth + 1;
-      if (childDepth > IDENTITY_METADATA_MAX_DEPTH)
-        metadataError('Identity metadata depth limit exceeded');
-      if (seen.has(child))
-        metadataError('Identity metadata must not repeat object references');
-      const childIsArray = Array.isArray(child);
-      assertOrdinaryContainer(child, { isArray: childIsArray });
-      const childTarget: JsonContainer = childIsArray ? [] : {};
-      assignJsonValue(frame.target, key, childTarget);
-      seen.add(child);
-      stack.push({
-        source: child,
-        target: childTarget,
-        keys: Object.keys(child),
-        depth: childDepth,
-        index: 0,
-      });
+      copyMetadataMember(frame, key, { seen, stack });
     }
     if (utf8ByteLength(JSON.stringify(root)) > IDENTITY_METADATA_MAX_BYTES)
       metadataError('Identity metadata byte limit exceeded');
@@ -205,4 +168,49 @@ export function throwWorkspaceLifecycleError(error: unknown): never {
       { cause: error },
     );
   throw error;
+}
+
+function copyMetadataMember(
+  frame: MetadataFrame,
+  key: string,
+  { seen, stack }: Readonly<{ seen: Set<object>; stack: MetadataFrame[] }>,
+): void {
+  const unsafeKey =
+    key === '__proto__' ||
+    key === 'prototype' ||
+    key === 'constructor' ||
+    unsafeMetadataKey.test(key);
+  if (unsafeKey) metadataError('Unsafe audit metadata key');
+  const descriptor = Object.getOwnPropertyDescriptor(frame.source, key);
+  if (descriptor === undefined || !('value' in descriptor))
+    metadataError('Identity metadata must contain ordinary JSON data');
+  const child: unknown = descriptor.value;
+  const scalarValue =
+    child === null ||
+    typeof child === 'string' ||
+    typeof child === 'boolean' ||
+    (typeof child === 'number' && Number.isFinite(child));
+  if (scalarValue) {
+    assignJsonValue(frame.target, key, child);
+    return;
+  }
+  if (typeof child !== 'object')
+    metadataError('Identity metadata must contain ordinary JSON data');
+  const childDepth = frame.depth + 1;
+  if (childDepth > IDENTITY_METADATA_MAX_DEPTH)
+    metadataError('Identity metadata depth limit exceeded');
+  if (seen.has(child))
+    metadataError('Identity metadata must not repeat object references');
+  const childIsArray = Array.isArray(child);
+  assertOrdinaryContainer(child, { isArray: childIsArray });
+  const childTarget: JsonContainer = childIsArray ? [] : {};
+  assignJsonValue(frame.target, key, childTarget);
+  seen.add(child);
+  stack.push({
+    source: child,
+    target: childTarget,
+    keys: Object.keys(child),
+    depth: childDepth,
+    index: 0,
+  });
 }
