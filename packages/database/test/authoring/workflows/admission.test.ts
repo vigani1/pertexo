@@ -1,23 +1,11 @@
 import { folderScope } from '../../../src/tenant-access/resources/policy.js';
 import { createHash } from 'node:crypto';
-
 import { describe, expect, it, vi } from 'vitest';
 import type { PoolClient } from 'pg';
 import { Pool } from 'pg';
-import {
-  EMPTY_WORKFLOW_GRAPH,
-  InvalidWorkflowGraphError,
-} from '@pertexo/workflow-model';
-import {
-  AuthoringValidationUnavailableError,
-  EMPTY_DEFINITION_CATALOG,
-  workflowCompatibilityReport,
-  workflowDraftRepresentationTag,
-} from '@pertexo/workflow-model/server';
-import {
-  admitWorkflowAuthoring,
-  authoringIdleBudgetIsSafe,
-} from '../../../src/authoring/workflows/admission.js';
+import { InvalidWorkflowGraphError } from '@pertexo/workflow-model';
+import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/server';
+
 import { createWorkflowAuthoringReadStore } from '../../../src/authoring/workflows/reads.js';
 import { createWorkflowPublisher } from '../../../src/authoring/publication/publisher.js';
 import { WorkflowRevisionConflictError } from '../../../src/authoring/workflows/errors.js';
@@ -25,59 +13,21 @@ import { IdempotencyConflictError } from '../../../src/platform/idempotency.js';
 import { createWorkflowAuthoringDatabase } from '../../../src/authoring/workflows/database.js';
 import { createDatabaseRuntime } from '../../../src/platform/pool/runtime.js';
 import { testExecutableCompiler } from '../../../src/authoring/test-executable-compiler.js';
-
-const workspaceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-const workflowId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
-const actorId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
-const graph = EMPTY_WORKFLOW_GRAPH;
-const catalog = EMPTY_DEFINITION_CATALOG;
-const row = {
-  workspace_id: workspaceId,
-  workflow_id: workflowId,
-  revision: 7,
-  graph_json: graph,
-  updated_by: actorId,
-  updated_at: new Date('2026-09-28T00:00:00Z'),
-};
-const tag = workflowDraftRepresentationTag({
-  workflowId,
-  revision: 7,
-  graph,
-  compatibilityFingerprint: workflowCompatibilityReport(graph, catalog)
-    .fingerprint,
-});
-const command = {
+import {
   workspaceId,
   workflowId,
   actorId,
-  representationTag: tag,
-  idempotencyKey: 'original-key',
-  requestHash: 'a'.repeat(64),
-};
-const valid = {
-  ok: true as const,
-  issues: [] as const,
-  expandedInvocations: 0,
-  worstCaseLoopIterations: 0,
-};
-const invalid = {
-  ok: false as const,
-  issues: [
-    {
-      code: 'invalid_expression' as const,
-      path: '$.nodes.action.inputMappings.value',
-      message: 'The expression cannot be parsed.',
-    },
-  ],
-  expandedInvocations: 0,
-  worstCaseLoopIterations: 0,
-};
-const budget = { rows: [{ setting: '35000', unit: 'ms' }] };
-
+  graph,
+  catalog,
+  row,
+  command,
+  invalid,
+  budget,
+} from './admission/fixture.js';
+import { registerQualifiesSettingSUnitS } from './admission/qualifies-setting-sunit-s.cases.js';
 describe('effective authoring idle budget', () => {
   registerQualifiesSettingSUnitS();
 });
-
 describe('snapshot validation and publication ordering', () => {
   it('forwards pre-checkout cancellation through the real authoring wrapper', async () => {
     const config = {
@@ -426,75 +376,3 @@ describe('snapshot validation and publication ordering', () => {
     expect(fixture.executableCompiler).not.toHaveBeenCalled();
   });
 });
-
-function registerQualifiesSettingSUnitS(): void {
-  it.each([
-    ['35000', 'ms', true],
-    ['2251', 'ms', true],
-    ['2250', 'ms', false],
-    ['2', 's', false],
-    ['3', 's', true],
-    ['1', 'min', true],
-    ['2250001', 'us', true],
-    ['0', 'ms', false],
-    ['-1', 'ms', false],
-    ['NaN', 'ms', false],
-    ['2.5', 's', false],
-    ['99999999999999999999', 'ms', false],
-    ['35000', 'unknown', false],
-    [undefined, 'ms', false],
-    ['35000', null, false],
-  ])('qualifies setting %s unit %s as %s', (setting, unit, expected) => {
-    expect(authoringIdleBudgetIsSafe(setting, unit)).toBe(expected);
-  });
-
-  it('fails closed before dispatch without wiring, with unknown/unlimited or too-small effective settings', async () => {
-    const validator = vi.fn().mockResolvedValue(valid);
-    const query = vi.fn().mockResolvedValue(budget);
-    await expect(
-      admitWorkflowAuthoring({ query }, undefined, graph),
-    ).rejects.toMatchObject({ reason: 'not_configured' });
-    expect(query).not.toHaveBeenCalled();
-    for (const rows of [
-      [],
-      [{ setting: '0', unit: 'ms' }],
-      [{ setting: '2250', unit: 'ms' }],
-    ]) {
-      query.mockResolvedValue({ rows });
-      await expect(
-        admitWorkflowAuthoring({ query }, validator, graph),
-      ).rejects.toMatchObject({ reason: 'database_budget' });
-    }
-    expect(validator).not.toHaveBeenCalled();
-  });
-
-  it('rechecks the actual connection each admission and forwards cancellation', async () => {
-    const query = vi
-      .fn()
-      .mockResolvedValueOnce(budget)
-      .mockResolvedValueOnce({ rows: [{ setting: '1000', unit: 'ms' }] });
-    const validator = vi.fn().mockResolvedValue(valid);
-    const controller = new AbortController();
-    await expect(
-      admitWorkflowAuthoring({ query }, validator, graph, {
-        signal: controller.signal,
-      }),
-    ).resolves.toBe(valid);
-    expect(validator).toHaveBeenCalledWith(graph, {
-      signal: controller.signal,
-    });
-    await expect(
-      admitWorkflowAuthoring({ query }, validator, graph),
-    ).rejects.toMatchObject({ reason: 'database_budget' });
-    expect(query).toHaveBeenCalledTimes(2);
-    expect(validator).toHaveBeenCalledOnce();
-    query.mockResolvedValue(budget);
-    controller.abort();
-    await expect(
-      admitWorkflowAuthoring({ query }, validator, graph, {
-        signal: controller.signal,
-      }),
-    ).rejects.toMatchObject({ name: 'AbortError' });
-    expect(validator).toHaveBeenCalledOnce();
-  });
-}
