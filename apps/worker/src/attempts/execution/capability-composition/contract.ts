@@ -75,16 +75,16 @@ export type WorkerNodeRuntimeCapabilities = Readonly<{
 }>;
 
 interface OwnedCapabilityResources {
-  ownedCallbacks?: CallbackStore | undefined;
-  callbackKeys?: CallbackTokenKeys | undefined;
-  ownedDataTables?: WorkerDataTablesStore | undefined;
-  ownedRunValues?: RunValuesStore | undefined;
-  ownedWebhookResponses?: WebhookResponseStore | undefined;
-  encryptionRuntime?: ConnectionEnvelopeEncryptionRuntime | undefined;
-  ownedConnectionDatabase?: WorkerConnectionResolutionDatabase | undefined;
-  ownedArtifactDatabase?: WorkspaceDatabase | undefined;
-  ownedArtifactStore?: ArtifactStore | undefined;
-  ownedProviderRateLimiter?: RedisRateLimitRuntime | undefined;
+  ownedCallbacks: CallbackStore | undefined;
+  callbackKeys: CallbackTokenKeys | undefined;
+  ownedDataTables: WorkerDataTablesStore | undefined;
+  ownedRunValues: RunValuesStore | undefined;
+  ownedWebhookResponses: WebhookResponseStore | undefined;
+  encryptionRuntime: ConnectionEnvelopeEncryptionRuntime | undefined;
+  ownedConnectionDatabase: WorkerConnectionResolutionDatabase | undefined;
+  ownedArtifactDatabase: WorkspaceDatabase | undefined;
+  ownedArtifactStore: ArtifactStore | undefined;
+  ownedProviderRateLimiter: RedisRateLimitRuntime | undefined;
 }
 
 export interface CapabilityAssembly {
