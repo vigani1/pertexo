@@ -4,7 +4,7 @@ import {
 } from '../../src/artifacts/index.js';
 import { describe, expect, it } from 'vitest';
 import { ArtifactMetadataNotFoundError } from '@pertexo/database/runs';
-import { mapWorkflowAuthoringError } from '../../src/workflow-authoring/errors.js';
+import { mapWorkflowAuthoringError } from '../../src/problems/authoring/workflows.js';
 import { mapWorkflowRunError } from '../../src/workflow-runs/errors.js';
 import { mapNodeTestingError } from '../../src/node-testing/errors.js';
 

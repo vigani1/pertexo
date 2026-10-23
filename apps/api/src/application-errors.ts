@@ -1,15 +1,15 @@
-import { mapDataTableError } from './data-tables/errors.js';
-import { mapApiTokenError } from './api-tokens/errors.js';
-import { mapConnectionError } from './connections/errors.js';
+import { mapDataTableError } from './problems/resources/tables.js';
+import { mapApiTokenError } from './problems/resources/tokens.js';
+import { mapConnectionError } from './problems/resources/connections.js';
 import { mapArtifactError } from './artifacts/errors.js';
-import { mapIdentityWorkspaceError } from './workspaces/errors.js';
+import { mapIdentityWorkspaceError } from './problems/identity/workspaces.js';
 import { mapNodeTestingError } from './node-testing/errors.js';
-import { mapNotificationError } from './notifications/errors.js';
+import { mapNotificationError } from './problems/resources/notifications.js';
 import type {
   ApplicationError,
   HttpApplicationErrorMapper,
 } from './platform/http/index.js';
-import { mapWorkflowAuthoringError } from './workflow-authoring/errors.js';
+import { mapWorkflowAuthoringError } from './problems/authoring/workflows.js';
 import { mapWorkflowRunError } from './workflow-runs/errors.js';
 
 type RouteErrorMapper = Readonly<{

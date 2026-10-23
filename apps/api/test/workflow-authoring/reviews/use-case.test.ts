@@ -3,7 +3,7 @@ import type { PublicationReviewStore } from '@pertexo/database/authoring';
 import { PublicationReviewError } from '@pertexo/database/authoring';
 import { createActorContext } from '../../../src/authorization/index.js';
 import { PublicationReviewUseCase } from '../../../src/workflow-authoring/reviews/use-case.js';
-import { mapWorkflowAuthoringError } from '../../../src/workflow-authoring/errors.js';
+import { mapWorkflowAuthoringError } from '../../../src/problems/authoring/workflows.js';
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
   workflowId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',

@@ -2,8 +2,8 @@ import { ApiTokenPolicyError } from '@pertexo/database/tenant-access';
 import {
   applicationError,
   type ApplicationError,
-} from '../platform/http/index.js';
-import { mapIdentityWorkspaceError } from '../workspaces/errors.js';
+} from '../../platform/http/index.js';
+import { mapIdentityWorkspaceError } from '../identity/workspaces.js';
 
 export function mapApiTokenError(error: unknown): ApplicationError {
   if (!(error instanceof ApiTokenPolicyError))

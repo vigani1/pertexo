@@ -41,7 +41,7 @@ import {
 import { WorkflowOrganizationReadsUseCase } from '../organization/reads.js';
 import { withWorkflowOrganizationRequest } from '../organization/http.js';
 import { RestoreWorkflowVersionUseCase } from '../commands/restore-version.js';
-import { throwWorkflowApplicationError } from '../errors.js';
+import { throwWorkflowApplicationError } from '../../problems/authoring/workflows.js';
 import {
   WorkflowCreateGuard,
   WorkflowPublishGuard,

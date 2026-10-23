@@ -4,7 +4,7 @@ import {
 } from '@pertexo/database/runs';
 import { z } from 'zod';
 import { DataTableError } from '@pertexo/node-sdk';
-import { mapDataTableError } from '../data-tables/errors.js';
+import { mapDataTableError } from '../problems/resources/tables.js';
 import { CallableInputInvalidError } from '@pertexo/workflow-model';
 
 import {

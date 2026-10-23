@@ -33,7 +33,7 @@ import {
   WorkflowReviewGuard,
 } from '../http/guards.js';
 import { parseStrongIfMatch } from '../http/preconditions.js';
-import { throwWorkflowApplicationError } from '../errors.js';
+import { throwWorkflowApplicationError } from '../../problems/authoring/workflows.js';
 import type { WorkflowAuthoringRequest } from '../types.js';
 import { PublicationReviewUseCase } from './use-case.js';
 

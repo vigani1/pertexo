@@ -8,7 +8,7 @@ import {
 } from '../../platform/http/index.js';
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 import type { WorkflowAuthoringRequest } from '../types.js';
-import { throwWorkflowApplicationError } from '../errors.js';
+import { throwWorkflowApplicationError } from '../../problems/authoring/workflows.js';
 export const discussionParamsSchema = workflowIdParamSchema
   .extend({ threadId: z.uuid() })
   .strict();

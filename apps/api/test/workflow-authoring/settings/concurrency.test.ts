@@ -17,7 +17,7 @@ import {
   SessionAuthenticationGuard,
   CsrfProtectionGuard,
 } from '../../../src/workspaces/index.js';
-import { mapWorkflowAuthoringError } from '../../../src/workflow-authoring/errors.js';
+import { mapWorkflowAuthoringError } from '../../../src/problems/authoring/workflows.js';
 import { createActorContext } from '../../../src/authorization/index.js';
 
 const workspaceId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';

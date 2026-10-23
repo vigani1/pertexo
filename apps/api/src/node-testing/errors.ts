@@ -6,7 +6,7 @@ import {
 } from '@pertexo/database/runs';
 import { WorkflowTestError } from '@pertexo/database/authoring';
 import { IdempotencyConflictError } from '@pertexo/database/platform';
-import { sampleApplicationError } from './samples/errors.js';
+import { sampleApplicationError } from '../problems/authoring/samples.js';
 import { ArtifactMetadataNotFoundError } from '@pertexo/database/runs';
 import { PriorPreviewInputUnavailableError } from '@pertexo/database/previews';
 import {

@@ -14,7 +14,7 @@ import { FormValuesInvalidError } from '@pertexo/workflow-model';
 import {
   applicationError,
   throwApplicationError,
-} from '../platform/http/index.js';
+} from '../../platform/http/index.js';
 export async function formOperation<T>(
   operation: () => Promise<T>,
 ): Promise<T> {

@@ -11,7 +11,7 @@ import {
 } from '@pertexo/integrations/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { APPLICATION_ERROR_MAPPERS } from '../../../src/application-error-mappers.js';
+import { APPLICATION_ERROR_MAPPERS } from '../../../src/application-errors.js';
 import { IdentityWorkspaceModule } from '../../../src/workspaces/module.js';
 import { IdentityError } from '../../../src/identity/index.js';
 import type {

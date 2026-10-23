@@ -13,7 +13,7 @@ import {
   createCoreWorkflowCompatibility,
 } from '../../src/platform/workflow/compatibility.js';
 import { serializeWorkflowValidation } from '../../src/workflow-authoring/http/serializers.js';
-import { mapWorkflowAuthoringError } from '../../src/workflow-authoring/errors.js';
+import { mapWorkflowAuthoringError } from '../../src/problems/authoring/workflows.js';
 import { createDraftRepresentationTag } from '../../src/workflow-authoring/http/etag.js';
 import { withRequestOperationSignal } from '../../src/platform/http/request-operation-signal.js';
 

@@ -14,7 +14,7 @@ import {
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { mapConnectionError } from '../../src/connections/errors.js';
+import { mapConnectionError } from '../../src/problems/resources/connections.js';
 import { InvalidAuthenticatedWorkspaceContextError } from '../../src/workspaces/request/authenticated-context-error.js';
 import { applicationError } from '../../src/platform/http/index.js';
 import { AuthorizationError } from '../../src/authorization/index.js';

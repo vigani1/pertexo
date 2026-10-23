@@ -6,7 +6,7 @@ import {
   applicationError,
   isApplicationError,
   type ApplicationError,
-} from '../platform/http/index.js';
+} from '../../platform/http/index.js';
 export function mapDataTableError(error: unknown): ApplicationError {
   if (isApplicationError(error)) return error;
   if (error instanceof WorkspaceAccessDeniedError)

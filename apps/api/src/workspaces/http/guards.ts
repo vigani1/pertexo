@@ -27,7 +27,7 @@ import type {
   WorkspaceAuthorizationSource,
 } from '../ports.js';
 import type { SignInEvidence } from '../../identity/index.js';
-import { mapIdentityWorkspaceError } from '../errors.js';
+import { mapIdentityWorkspaceError } from '../../problems/identity/workspaces.js';
 import { requestIdentifier, traceIdentifier } from '../request/identifiers.js';
 import { SESSION_AUTHORITY, WORKSPACE_AUTHORIZATION } from '../tokens.js';
 
