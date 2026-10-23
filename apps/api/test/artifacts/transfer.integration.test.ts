@@ -207,18 +207,116 @@ function uploadUrl(fixture: ArtifactTransferApiFixture): string {
 }
 
 integrationDescribe('authenticated artifact transfer HTTP', () => {
-  let fixture!: ArtifactTransferApiFixture;
-  let closeFixture: (() => Promise<void>) | undefined;
+  beforeAll(prepareAuthenticatedArtifactTransferHTTPFixture);
 
-  beforeAll(async () => {
-    fixture = await createArtifactTransferApiFixture();
-    closeFixture = fixture.close;
+  afterAll(closeAuthenticatedArtifactTransferHTTPFixture);
+  registerRejectsNameBeforePersistenceStorage();
+
+  registerClaimsOneExactConcurrentUploadEnforces();
+
+  registerRejectsImmutableSignedPUTMetadataName();
+
+  registerDoesNotReleasePendingChargeOn();
+});
+
+function requestMetadata(body: Uint8Array): Readonly<{
+  byteLength: number;
+  mediaType: string;
+  sha256: string;
+}> {
+  return {
+    byteLength: body.byteLength,
+    mediaType: 'text/plain',
+    sha256: createHash('sha256').update(body).digest('hex'),
+  };
+}
+
+async function begin(
+  fixture: ArtifactTransferApiFixture,
+  cookies: SessionCookies,
+  metadata: Readonly<{
+    byteLength: number;
+    mediaType: string;
+    sha256: string;
+  }>,
+): Promise<ArtifactUploadResponse> {
+  const response = await fixture.application.inject({
+    method: 'POST',
+    url: `/v1/workspaces/${fixture.workspaceId}/artifacts/uploads`,
+    headers: mutationHeaders(cookies, `begin-${randomUUID()}`),
+    payload: metadata,
   });
+  expect(response.statusCode, response.payload).toBe(201);
+  return parseResponse(response, artifactUploadResponseSchema);
+}
 
-  afterAll(async () => {
-    await closeFixture?.();
+async function signedPut(
+  capability: UploadCapability,
+  body: Uint8Array,
+  headerChanges: Readonly<Record<string, string>> = {},
+): Promise<Readonly<{ ok: boolean; status: number }>> {
+  const response = await fetch(capability.url, {
+    method: capability.method,
+    body: new Uint8Array(body),
+    headers: { ...capability.headers, ...headerChanges },
+    signal: AbortSignal.timeout(5_000),
   });
+  await response.body?.cancel();
+  return { ok: response.ok, status: response.status };
+}
 
+function parseResponse<T>(
+  response: Readonly<{ json(): unknown }>,
+  schema: ZodType<T>,
+): T {
+  return schema.parse(response.json());
+}
+
+async function expectInvalidPutOrFinalization(
+  fixture: ArtifactTransferApiFixture,
+  owner: SessionCookies,
+  uploadsUrl: string,
+  artifactId: string,
+  result: Readonly<{ ok: boolean; status: number }>,
+  idempotencyKey: string,
+): Promise<void> {
+  if (!result.ok) {
+    expect(result.status).toBeGreaterThanOrEqual(400);
+    return;
+  }
+
+  // Some S3-compatible test services accept a changed signed header. In that
+  // case the API's independent metadata/checksum verification must still
+  // reject finalization and leave the reservation pending.
+  const artifactsUrl = uploadsUrl.replace(/\/uploads$/u, '');
+  const finalize = await fixture.application.inject({
+    method: 'POST',
+    url: `${artifactsUrl}/${artifactId}/finalize`,
+    headers: mutationHeaders(owner, idempotencyKey),
+    payload: {},
+  });
+  expectProblem(finalize, 409, 'artifact.conflict');
+  expect((await fixture.readArtifact(artifactId))?.status).toBe('pending');
+  await fixture.verificationStore.delete({
+    artifactId,
+    workspaceId: fixture.workspaceId,
+  });
+}
+
+let fixture!: ArtifactTransferApiFixture;
+
+let closeFixture: (() => Promise<void>) | undefined;
+
+async function prepareAuthenticatedArtifactTransferHTTPFixture() {
+  fixture = await createArtifactTransferApiFixture();
+  closeFixture = fixture.close;
+}
+
+async function closeAuthenticatedArtifactTransferHTTPFixture() {
+  await closeFixture?.();
+}
+
+function registerRejectsNameBeforePersistenceStorage(): void {
   it.each(denialCases)(
     'rejects $name before persistence or storage',
     async ({ execute, status, code }) => {
@@ -289,7 +387,9 @@ integrationDescribe('authenticated artifact transfer HTTP', () => {
     expect(await fixture.readCapacity()).toEqual(baseline);
     expect(fixture.readStorageCalls()).toEqual(storageBefore);
   });
+}
 
+function registerClaimsOneExactConcurrentUploadEnforces(): void {
   it('claims one exact concurrent upload, enforces immutable signed PUT metadata, and finalizes', async () => {
     const owner = await fixture.login('owner');
     const body = Buffer.alloc(1_048_576, 0x61);
@@ -490,7 +590,9 @@ integrationDescribe('authenticated artifact transfer HTTP', () => {
     expect(Number.isSafeInteger(capacity.chargedBytes)).toBe(true);
     expect(Number.isSafeInteger(capacity.chargedCount)).toBe(true);
   });
+}
 
+function registerRejectsImmutableSignedPUTMetadataName(): void {
   it.each([
     {
       name: 'changed content type',
@@ -678,7 +780,9 @@ integrationDescribe('authenticated artifact transfer HTTP', () => {
     );
     expect(await fixture.readCapacity()).toEqual(charged);
   });
+}
 
+function registerDoesNotReleasePendingChargeOn(): void {
   it('does not release a pending charge on expiry and releases exactly once after deletion', async () => {
     const owner = await fixture.login('owner');
     const body = Buffer.from('retention charge proof');
@@ -741,89 +845,5 @@ integrationDescribe('authenticated artifact transfer HTTP', () => {
       workspaceId: fixture.workspaceId,
     });
     expect(await fixture.readCapacity()).toEqual(released);
-  });
-});
-
-function requestMetadata(body: Uint8Array): Readonly<{
-  byteLength: number;
-  mediaType: string;
-  sha256: string;
-}> {
-  return {
-    byteLength: body.byteLength,
-    mediaType: 'text/plain',
-    sha256: createHash('sha256').update(body).digest('hex'),
-  };
-}
-
-async function begin(
-  fixture: ArtifactTransferApiFixture,
-  cookies: SessionCookies,
-  metadata: Readonly<{
-    byteLength: number;
-    mediaType: string;
-    sha256: string;
-  }>,
-): Promise<ArtifactUploadResponse> {
-  const response = await fixture.application.inject({
-    method: 'POST',
-    url: `/v1/workspaces/${fixture.workspaceId}/artifacts/uploads`,
-    headers: mutationHeaders(cookies, `begin-${randomUUID()}`),
-    payload: metadata,
-  });
-  expect(response.statusCode, response.payload).toBe(201);
-  return parseResponse(response, artifactUploadResponseSchema);
-}
-
-async function signedPut(
-  capability: UploadCapability,
-  body: Uint8Array,
-  headerChanges: Readonly<Record<string, string>> = {},
-): Promise<Readonly<{ ok: boolean; status: number }>> {
-  const response = await fetch(capability.url, {
-    method: capability.method,
-    body: new Uint8Array(body),
-    headers: { ...capability.headers, ...headerChanges },
-    signal: AbortSignal.timeout(5_000),
-  });
-  await response.body?.cancel();
-  return { ok: response.ok, status: response.status };
-}
-
-function parseResponse<T>(
-  response: Readonly<{ json(): unknown }>,
-  schema: ZodType<T>,
-): T {
-  return schema.parse(response.json());
-}
-
-async function expectInvalidPutOrFinalization(
-  fixture: ArtifactTransferApiFixture,
-  owner: SessionCookies,
-  uploadsUrl: string,
-  artifactId: string,
-  result: Readonly<{ ok: boolean; status: number }>,
-  idempotencyKey: string,
-): Promise<void> {
-  if (!result.ok) {
-    expect(result.status).toBeGreaterThanOrEqual(400);
-    return;
-  }
-
-  // Some S3-compatible test services accept a changed signed header. In that
-  // case the API's independent metadata/checksum verification must still
-  // reject finalization and leave the reservation pending.
-  const artifactsUrl = uploadsUrl.replace(/\/uploads$/u, '');
-  const finalize = await fixture.application.inject({
-    method: 'POST',
-    url: `${artifactsUrl}/${artifactId}/finalize`,
-    headers: mutationHeaders(owner, idempotencyKey),
-    payload: {},
-  });
-  expectProblem(finalize, 409, 'artifact.conflict');
-  expect((await fixture.readArtifact(artifactId))?.status).toBe('pending');
-  await fixture.verificationStore.delete({
-    artifactId,
-    workspaceId: fixture.workspaceId,
   });
 }

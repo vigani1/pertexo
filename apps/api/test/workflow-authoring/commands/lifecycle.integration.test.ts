@@ -18,16 +18,152 @@ const describeIntegration = workflowLifecycleIntegrationEnabled
 type LifecycleResponse = WorkflowLifecycleResponse;
 
 describeIntegration('authenticated workflow lifecycle HTTP commands', () => {
-  let fixture: WorkflowLifecycleApiFixture;
+  beforeEach(resetAuthenticatedWorkflowLifecycleHTTPCommandsFixture);
 
-  beforeEach(async () => {
-    fixture = await createWorkflowLifecycleApiFixture();
+  afterEach(cleanAuthenticatedWorkflowLifecycleHTTPCommandsFixture);
+  registerRequiresAuthenticationCSRFEachLifecycleCommand();
+
+  registerInactiveWorkspaceDenials();
+  registerArchivesRestoresUnpublishedWorkflowExactConcurrent();
+
+  registerArchivesRestoresPublishedWorkflowWithoutChanging();
+});
+
+function lifecyclePath(
+  workspaceId: string,
+  workflowId: string,
+  command: 'archive' | 'restore',
+): string {
+  return `/v1/workspaces/${workspaceId}/workflows/${workflowId}/${command}`;
+}
+
+function expectLifecycleResponse(
+  response: Readonly<{
+    statusCode: number;
+    payload: string;
+    json(): unknown;
+  }>,
+  expected: Readonly<{
+    workspaceId: string;
+    name: string;
+    id: string;
+    lifecycleStatus: 'active' | 'archived';
+    lifecycleRevision: number;
+    activationStatus: LifecycleResponse['workflow']['activationStatus'];
+    webhookSetupRequired: boolean;
+    publishedVersionId: string | null;
+    replayed: boolean;
+  }>,
+): void {
+  expect(response.statusCode, response.payload).toBe(202);
+  const body = response.json() as LifecycleResponse;
+  expect(Object.keys(body).sort()).toEqual(['replayed', 'workflow']);
+  expect(Object.keys(body.workflow).sort()).toEqual([
+    'activationStatus',
+    'createdAt',
+    'id',
+    'lifecycleRevision',
+    'lifecycleStatus',
+    'name',
+    'nameRevision',
+    'publishedVersionId',
+    'updatedAt',
+    'webhookSetupRequired',
+    'workspaceId',
+  ]);
+  expect(body.workflow.createdAt).toMatch(
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/,
+  );
+  expect(body.workflow.updatedAt).toMatch(
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/,
+  );
+  expect(body).toEqual({
+    replayed: expected.replayed,
+    workflow: {
+      activationStatus: expected.activationStatus,
+      webhookSetupRequired: expected.webhookSetupRequired,
+      createdAt: body.workflow.createdAt,
+      id: expected.id,
+      lifecycleRevision: expected.lifecycleRevision,
+      lifecycleStatus: expected.lifecycleStatus,
+      name: expected.name,
+      nameRevision: 1,
+      publishedVersionId: expected.publishedVersionId,
+      updatedAt: body.workflow.updatedAt,
+      workspaceId: expected.workspaceId,
+    },
   });
+}
 
-  afterEach(async () => {
-    await closeWorkflowLifecycleApiFixture(fixture);
+async function expectHistoryUnchanged(
+  fixture: WorkflowLifecycleApiFixture,
+  workflowId: string,
+  before: WorkflowHistory,
+): Promise<void> {
+  expect(await fixture.readHistory(workflowId)).toEqual(before);
+}
+
+async function lifecycleFacts(
+  fixture: WorkflowLifecycleApiFixture,
+  workflowId: string,
+): Promise<Readonly<{ audit: number; reconciliationOutbox: number }>> {
+  return fixture.withOwner(async (client) => {
+    const result = await client.query<{
+      audit: string;
+      reconciliation_outbox: string;
+    }>(
+      `select
+         (select count(*)::text from app.audit_events
+           where workspace_id=$1 and target_type='workflow' and target_id=$2
+             and action in ('workflow.archived','workflow.restored')) as audit,
+         (select count(*)::text from app.outbox_events
+           where workspace_id=$1 and aggregate_id=$2
+             and job_name='reconcile-workflow-triggers') as reconciliation_outbox`,
+      [fixture.workspaceId, workflowId],
+    );
+    const row = result.rows[0];
+    if (row === undefined) throw new Error('workflow lifecycle facts missing');
+    return {
+      audit: Number(row.audit),
+      reconciliationOutbox: Number(row.reconciliation_outbox),
+    };
   });
+}
 
+let fixture: WorkflowLifecycleApiFixture;
+
+function registerInactiveWorkspaceDenials(): void {
+  for (const status of ['suspended', 'pending_deletion'] as const) {
+    it(`hides lifecycle commands while the workspace is ${status}`, async () => {
+      const { application, ids, workspaceId } = fixture;
+      await fixture.setWorkspaceStatus(status);
+      try {
+        const owner = await fixture.login('owner');
+        for (const command of ['archive', 'restore'] as const) {
+          const denied = await application.inject({
+            method: 'POST',
+            url: lifecyclePath(workspaceId, ids.unpublished, command),
+            headers: mutationHeaders(owner),
+            payload: { expectedLifecycleRevision: 1 },
+          });
+          expectProblem(denied, 404, 'resource.not_found');
+        }
+      } finally {
+        await fixture.setWorkspaceStatus('active');
+      }
+    });
+  }
+}
+
+async function resetAuthenticatedWorkflowLifecycleHTTPCommandsFixture() {
+  fixture = await createWorkflowLifecycleApiFixture();
+}
+
+async function cleanAuthenticatedWorkflowLifecycleHTTPCommandsFixture() {
+  await closeWorkflowLifecycleApiFixture(fixture);
+}
+
+function registerRequiresAuthenticationCSRFEachLifecycleCommand(): void {
   it('requires authentication and CSRF for each lifecycle command', async () => {
     const { application, ids, workspaceId } = fixture;
     const owner = await fixture.login('owner');
@@ -145,28 +281,9 @@ describeIntegration('authenticated workflow lifecycle HTTP commands', () => {
     });
     expectProblem(wrongTenant, 404, 'resource.not_found');
   });
+}
 
-  for (const status of ['suspended', 'pending_deletion'] as const) {
-    it(`hides lifecycle commands while the workspace is ${status}`, async () => {
-      const { application, ids, workspaceId } = fixture;
-      await fixture.setWorkspaceStatus(status);
-      try {
-        const owner = await fixture.login('owner');
-        for (const command of ['archive', 'restore'] as const) {
-          const denied = await application.inject({
-            method: 'POST',
-            url: lifecyclePath(workspaceId, ids.unpublished, command),
-            headers: mutationHeaders(owner),
-            payload: { expectedLifecycleRevision: 1 },
-          });
-          expectProblem(denied, 404, 'resource.not_found');
-        }
-      } finally {
-        await fixture.setWorkspaceStatus('active');
-      }
-    });
-  }
-
+function registerArchivesRestoresUnpublishedWorkflowExactConcurrent(): void {
   it('archives and restores an unpublished workflow with exact concurrent idempotency and CAS', async () => {
     const { application, ids, workspaceId } = fixture;
     const owner = await fixture.login('owner');
@@ -317,7 +434,9 @@ describeIntegration('authenticated workflow lifecycle HTTP commands', () => {
     expectProblem(stale, 409, 'workflow.lifecycle_conflict');
     expect(stale.json()).toMatchObject({ currentLifecycleRevision: 3 });
   });
+}
 
+function registerArchivesRestoresPublishedWorkflowWithoutChanging(): void {
   it('archives and restores a published workflow without changing draft, version, or run history', async () => {
     const { application, ids, workspaceId } = fixture;
     const owner = await fixture.login('owner');
@@ -433,106 +552,5 @@ describeIntegration('authenticated workflow lifecycle HTTP commands', () => {
       audit: beforeRaceFacts.audit + 1,
       reconciliationOutbox: beforeRaceFacts.reconciliationOutbox + 1,
     });
-  });
-});
-
-function lifecyclePath(
-  workspaceId: string,
-  workflowId: string,
-  command: 'archive' | 'restore',
-): string {
-  return `/v1/workspaces/${workspaceId}/workflows/${workflowId}/${command}`;
-}
-
-function expectLifecycleResponse(
-  response: Readonly<{
-    statusCode: number;
-    payload: string;
-    json(): unknown;
-  }>,
-  expected: Readonly<{
-    workspaceId: string;
-    name: string;
-    id: string;
-    lifecycleStatus: 'active' | 'archived';
-    lifecycleRevision: number;
-    activationStatus: LifecycleResponse['workflow']['activationStatus'];
-    webhookSetupRequired: boolean;
-    publishedVersionId: string | null;
-    replayed: boolean;
-  }>,
-): void {
-  expect(response.statusCode, response.payload).toBe(202);
-  const body = response.json() as LifecycleResponse;
-  expect(Object.keys(body).sort()).toEqual(['replayed', 'workflow']);
-  expect(Object.keys(body.workflow).sort()).toEqual([
-    'activationStatus',
-    'createdAt',
-    'id',
-    'lifecycleRevision',
-    'lifecycleStatus',
-    'name',
-    'nameRevision',
-    'publishedVersionId',
-    'updatedAt',
-    'webhookSetupRequired',
-    'workspaceId',
-  ]);
-  expect(body.workflow.createdAt).toMatch(
-    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/,
-  );
-  expect(body.workflow.updatedAt).toMatch(
-    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/,
-  );
-  expect(body).toEqual({
-    replayed: expected.replayed,
-    workflow: {
-      activationStatus: expected.activationStatus,
-      webhookSetupRequired: expected.webhookSetupRequired,
-      createdAt: body.workflow.createdAt,
-      id: expected.id,
-      lifecycleRevision: expected.lifecycleRevision,
-      lifecycleStatus: expected.lifecycleStatus,
-      name: expected.name,
-      nameRevision: 1,
-      publishedVersionId: expected.publishedVersionId,
-      updatedAt: body.workflow.updatedAt,
-      workspaceId: expected.workspaceId,
-    },
-  });
-}
-
-async function expectHistoryUnchanged(
-  fixture: WorkflowLifecycleApiFixture,
-  workflowId: string,
-  before: WorkflowHistory,
-): Promise<void> {
-  expect(await fixture.readHistory(workflowId)).toEqual(before);
-}
-
-async function lifecycleFacts(
-  fixture: WorkflowLifecycleApiFixture,
-  workflowId: string,
-): Promise<Readonly<{ audit: number; reconciliationOutbox: number }>> {
-  return fixture.withOwner(async (client) => {
-    const result = await client.query<{
-      audit: string;
-      reconciliation_outbox: string;
-    }>(
-      `select
-         (select count(*)::text from app.audit_events
-           where workspace_id=$1 and target_type='workflow' and target_id=$2
-             and action in ('workflow.archived','workflow.restored')) as audit,
-         (select count(*)::text from app.outbox_events
-           where workspace_id=$1 and aggregate_id=$2
-             and job_name='reconcile-workflow-triggers') as reconciliation_outbox`,
-      [fixture.workspaceId, workflowId],
-    );
-    const row = result.rows[0];
-    if (row === undefined) throw new Error('workflow lifecycle facts missing');
-    return {
-      audit: Number(row.audit),
-      reconciliationOutbox: Number(row.reconciliation_outbox),
-    };
   });
 }
