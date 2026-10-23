@@ -20,14 +20,13 @@ export function createSystemMailClient(
         });
         if (result.kind === 'succeeded')
           return { kind: 'submitted', reference: result.emailId };
-        if (
+        const permanentRejection =
           result.kind === 'rejected' &&
           result.status >= 400 &&
           result.status < 500 &&
           ![408, 409, 425, 429].includes(result.status) &&
-          result.error !== 'concurrent_idempotent_requests'
-        )
-          return { kind: 'failed' };
+          result.error !== 'concurrent_idempotent_requests';
+        if (permanentRejection) return { kind: 'failed' };
         return { kind: 'retryable' };
       } catch {
         // Resend accepts the same command identity again after an uncertain request.

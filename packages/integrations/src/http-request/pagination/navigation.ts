@@ -96,12 +96,12 @@ export function nextPage(
   const url = new URL(target);
   if (url.origin !== first.origin)
     throw new HttpPaginationFailure('http.pagination_origin_changed', page);
-  if (
+  const unsafeTarget =
     url.username !== '' ||
     url.password !== '' ||
     url.hash !== '' ||
-    utf8ByteLength(target) > 2048
-  )
+    utf8ByteLength(target) > 2048;
+  if (unsafeTarget)
     throw new HttpPaginationFailure('http.pagination_invalid_navigation', page);
   if (seen.has(identity)) return undefined;
   seen.add(identity);

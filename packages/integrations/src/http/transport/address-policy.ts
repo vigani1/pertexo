@@ -76,11 +76,10 @@ function ipv6Words(address: string): readonly number[] {
   const left = parseIpv6Half(halves[0] ?? '');
   const right = parseIpv6Half(halves[1] ?? '');
   const missing = 8 - left.length - right.length;
-  if (
+  const invalidCompression =
     (halves.length === 1 && missing !== 0) ||
-    (halves.length === 2 && missing < 1)
-  )
-    throw new Error('invalid IPv6 address');
+    (halves.length === 2 && missing < 1);
+  if (invalidCompression) throw new Error('invalid IPv6 address');
   return [
     ...left,
     ...new Array<number>(Math.max(0, missing)).fill(0),
@@ -159,11 +158,11 @@ export function parseAllowedPrivateNetworks(
       const [address = '', prefixText = ''] = entry.trim().split('/');
       const family = isIP(address);
       const prefix = Number(prefixText);
-      if (
+      const invalidNetwork =
         (family !== 4 && family !== 6) ||
         !/^\d{1,3}$/u.test(prefixText) ||
-        prefix > (family === 4 ? 32 : 128)
-      )
+        prefix > (family === 4 ? 32 : 128);
+      if (invalidNetwork)
         throw new Error(
           `HTTP_ALLOWED_PRIVATE_NETWORKS has an invalid entry "${entry.trim()}"; use CIDRs such as 10.0.0.0/8.`,
         );

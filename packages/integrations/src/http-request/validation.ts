@@ -205,7 +205,10 @@ export const httpRequestConfigSchema = z
         path: ['pagination'],
         message: 'Pagination supports GET requests only',
       });
-    if (config.pagination !== undefined && config.returnErrorResponses === true)
+    if (
+      config.pagination !== undefined &&
+      (config.returnErrorResponses ?? false)
+    )
       context.addIssue({
         code: 'custom',
         path: ['returnErrorResponses'],
@@ -276,18 +279,17 @@ export const httpRequestInputSchema = z
     for (const [key, value] of Object.entries(input)) {
       if (key === 'body') continue;
       // A value for a {placeholder} in the address or a header.
-      if (
+      const placeholderValue =
         HTTP_PLACEHOLDER_NAME.test(key) &&
         (typeof value === 'string' ||
           typeof value === 'boolean' ||
-          (typeof value === 'number' && Number.isFinite(value)))
-      )
-        continue;
-      if (
+          (typeof value === 'number' && Number.isFinite(value)));
+      if (placeholderValue) continue;
+      const invalidMultipartValue =
         !httpMultipartInputKeySchema.safeParse(key).success ||
         (typeof value !== 'string' &&
-          (typeof value !== 'object' || !('kind' in value)))
-      )
+          (typeof value !== 'object' || !('kind' in value)));
+      if (invalidMultipartValue)
         context.addIssue({
           code: 'custom',
           path: [key],

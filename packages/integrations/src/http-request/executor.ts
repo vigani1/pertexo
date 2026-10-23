@@ -70,7 +70,7 @@ async function executeHttpRequest(
   const context = prepareInvocation(invocation);
   const { runtime, repeatable } = context;
   const dispatch = {
-    possiblyDispatched: runtime.providerDispatchUnresolved === true,
+    possiblyDispatched: runtime.providerDispatchUnresolved ?? false,
   };
   const prepared = await prepareRequestBody(context);
   const resolved = await resolveRequestConnection(
@@ -111,15 +111,14 @@ function prepareInvocation(
   const connections = runtime.connections;
   // The connection is optional: a public API needs no auth headers.
   const connectionId = invocation.connectionRefs[HTTP_REQUEST_CONNECTION_SLOT];
-  if (
+  const invalidDispatchRuntime =
     (connectionId !== undefined && connections?.assertCurrent === undefined) ||
     runtime.sideEffectClass !== 'unsafe' ||
     runtime.providerIdempotencyKey !== undefined ||
     Object.keys(invocation.connectionRefs).some(
       (slot) => slot !== HTTP_REQUEST_CONNECTION_SLOT,
-    )
-  )
-    throw failedConfiguration();
+    );
+  if (invalidDispatchRuntime) throw failedConfiguration();
   // GET and HEAD only read (RFC 9110 §9.2.1), so a repeat can't cause a side
   // effect: their failures retry and can follow a failure link instead of
   // leaving the outcome unknown.
@@ -167,7 +166,7 @@ async function prepareRequestBody({
       });
     }
   } catch (error) {
-    if (runtime.providerDispatchUnresolved === true)
+    if (runtime.providerDispatchUnresolved ?? false)
       throw new HttpRequestExecutorError(
         Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
         { possiblyDispatched: true },
@@ -205,7 +204,7 @@ async function resolveRequestConnection(
         repeatable,
         possiblyDispatched: dispatch.possiblyDispatched,
       });
-      if (!repeatable && runtime.providerDispatchUnresolved === true)
+      if (!repeatable && (runtime.providerDispatchUnresolved ?? false))
         throw new HttpRequestExecutorError(
           Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
           { possiblyDispatched: true },
@@ -352,7 +351,7 @@ async function executeWithMaterial(
   // to branch on its answer rather than fail.
   if (
     decision.kind !== 'succeeded' &&
-    !(config.returnErrorResponses === true && response.status >= 300)
+    !((config.returnErrorResponses ?? false) && response.status >= 300)
   )
     throw new HttpRequestExecutorError(decision, {
       possiblyDispatched: !repeatable,
@@ -392,7 +391,7 @@ function rethrowHttpError(
         : Object.freeze({ kind: 'outcome_unknown', errorKind: 'network' }),
       { possiblyDispatched: !repeatable },
     );
-  if (!repeatable && runtime.providerDispatchUnresolved === true)
+  if (!repeatable && (runtime.providerDispatchUnresolved ?? false))
     throw new HttpRequestExecutorError(
       Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
       { possiblyDispatched: true },
@@ -427,13 +426,12 @@ export function createHttpRequestExecutorRegistration(
 function prepareHeaders(context: RequestContext, material: RequestMaterial) {
   const { config, input, runtime, connectionId } = context;
   const { resolved, multipartContentType } = material;
-  if (
+  const credentialBindingMismatch =
     resolved !== undefined &&
     (resolved.connectionId !== connectionId ||
       resolved.providerKey !== 'http' ||
-      resolved.authType !== 'http_headers')
-  )
-    throw failedConfiguration();
+      resolved.authType !== 'http_headers');
+  if (credentialBindingMismatch) throw failedConfiguration();
   const credential =
     resolved === undefined
       ? { headers: Object.freeze({}) }
@@ -456,7 +454,7 @@ function prepareHeaders(context: RequestContext, material: RequestMaterial) {
   } catch (error) {
     if (
       multipartContentType !== undefined &&
-      runtime.providerDispatchUnresolved === true
+      (runtime.providerDispatchUnresolved ?? false)
     )
       throw new HttpRequestExecutorError(
         Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),

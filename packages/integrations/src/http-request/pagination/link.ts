@@ -47,12 +47,25 @@ function tokenizeLinks(
       escaped = true;
       continue;
     }
-    if (!angle && char === '"') quoted = !quoted;
-    else if (!quoted && char === '<') angle = true;
-    else if (!quoted && char === '>') angle = false;
-    else if (!quoted && !angle && char === ',') {
-      links.push(header.slice(start, index));
-      start = index + 1;
+    switch (char) {
+      case '"':
+        if (!angle) quoted = !quoted;
+        break;
+      case '<':
+        if (!quoted) angle = true;
+        break;
+      case '>':
+        if (!quoted) angle = false;
+        break;
+      case ',':
+        if (!quoted && !angle) {
+          links.push(header.slice(start, index));
+          start = index + 1;
+        }
+        break;
+      case undefined:
+      default:
+        break;
     }
   }
   if (quoted || angle || escaped) throw invalid();

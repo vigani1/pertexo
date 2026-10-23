@@ -172,7 +172,7 @@ async function* continueBody(
     }
     for (;;) {
       const next = await iterator.next();
-      if (next.done === true) break;
+      if (next.done) break;
       const chunk = next.value;
       try {
         yield chunk;
@@ -216,7 +216,7 @@ export async function consumeResponseBody(
   try {
     for (;;) {
       const next = await iterator.next();
-      if (next.done === true) {
+      if (next.done) {
         return finishInlineBody(buffered, byteLength, response);
       }
       const chunk = next.value;

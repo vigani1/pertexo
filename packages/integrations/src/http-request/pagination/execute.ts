@@ -146,12 +146,15 @@ export async function executePagination(input: PaginationExecutionInput) {
         finalOrigin: response.finalUrl,
       };
       const envelope = inspectJsonValue({ ...output, items: [] });
-      if (
+      const outputTooLarge =
         !paged &&
-        (envelope.bytes + itemBytes > NODE_EXECUTION_LIMITS.bytes ||
-          envelope.members + itemMembers > NODE_EXECUTION_LIMITS.members ||
-          Math.max(envelope.depth, itemDepth + 1) > NODE_EXECUTION_LIMITS.depth)
-      )
+        exceedsInlinePageEnvelope({
+          envelope,
+          itemBytes,
+          itemMembers,
+          itemDepth,
+        });
+      if (outputTooLarge)
         throw new HttpPaginationFailure('http.pagination_too_large', page);
       for (const item of pageItems) {
         if (paged) yield encodeFilePageRecord(item);
@@ -221,4 +224,22 @@ async function fetchPage(
       throw new HttpPaginationFailure('http.pagination_invalid_page', page);
     throw error;
   }
+}
+
+function exceedsInlinePageEnvelope({
+  envelope,
+  itemBytes,
+  itemMembers,
+  itemDepth,
+}: Readonly<{
+  envelope: ReturnType<typeof inspectJsonValue>;
+  itemBytes: number;
+  itemMembers: number;
+  itemDepth: number;
+}>): boolean {
+  return (
+    envelope.bytes + itemBytes > NODE_EXECUTION_LIMITS.bytes ||
+    envelope.members + itemMembers > NODE_EXECUTION_LIMITS.members ||
+    Math.max(envelope.depth, itemDepth + 1) > NODE_EXECUTION_LIMITS.depth
+  );
 }

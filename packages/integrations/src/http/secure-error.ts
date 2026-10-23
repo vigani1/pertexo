@@ -53,13 +53,12 @@ export function inspectSecureHttpError(
     const code: unknown = error.code;
     const classification: unknown = error.classification;
     const possiblyDispatched: unknown = error.possiblyDispatched;
-    if (
+    const invalidErrorDetails =
       !SECURE_HTTP_ERROR_CODES.has(code) ||
       (classification !== 'ambiguous' &&
         classification !== 'definite_failure') ||
-      typeof possiblyDispatched !== 'boolean'
-    )
-      return undefined;
+      typeof possiblyDispatched !== 'boolean';
+    if (invalidErrorDetails) return undefined;
     return Object.freeze({
       classification,
       code: code as SecureHttpErrorCode,

@@ -106,7 +106,7 @@ export class EnvelopeCipher<Context> {
     } catch {
       throw this.options.createFailure();
     } finally {
-      if (this.options.clearCallerPlaintext === true) plaintext.fill(0);
+      if (this.options.clearCallerPlaintext ?? false) plaintext.fill(0);
       ownedPlaintext?.fill(0);
       authTag?.fill(0);
       nonce?.fill(0);
