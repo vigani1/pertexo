@@ -7,9 +7,9 @@ import { createApplicationSecretEnvelope } from '@pertexo/integrations/server';
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
 
-import { DurableAuthenticationMail } from '../../../src/authentication/mail/delivery.js';
+import { DurableAuthenticationMail } from '../../../../src/authentication/mail/delivery.js';
 
-import { adminUrl, databaseUrl, apiUrl } from './fixture.js';
+import { adminUrl, databaseUrl, apiUrl } from '../fixture.js';
 
 export function registerCommitsEncryptedAuthenticationMailBeforeAcknowledging(): void {
   it('commits encrypted authentication mail before acknowledging enqueue', async () => {

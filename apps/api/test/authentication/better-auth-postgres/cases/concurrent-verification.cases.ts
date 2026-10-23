@@ -9,7 +9,7 @@ import {
   mailedMessages,
   authRequest,
   followMailLink,
-} from './fixture.js';
+} from '../fixture.js';
 
 export function registerConsumesInitialVerificationOnceUnderConcurrent(): void {
   it('consumes initial verification once under concurrent clicks and rejects expiry', async () => {

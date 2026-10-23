@@ -10,7 +10,7 @@ import {
   runtime,
   authRequest,
   cookieValue,
-} from './fixture.js';
+} from '../fixture.js';
 
 export function registerConsumesResetProofCredentialChangeRevocation(): void {
   it('consumes reset proof with credential change and revocation in one commit', async () => {

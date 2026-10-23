@@ -12,7 +12,7 @@ import {
   authRequest,
   cookieValue,
   authenticatedRequest,
-} from './fixture.js';
+} from '../fixture.js';
 
 export function registerRollsBackPasswordChangeSessionRevocation(): void {
   it('rolls back a password change when session revocation fails', async () => {

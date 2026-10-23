@@ -9,7 +9,7 @@ import {
   apiUrl,
   runtime,
   signInVerifiedUser,
-} from './fixture.js';
+} from '../fixture.js';
 
 export function registerRevokesSameBrowserAuthorityOwnedWorkspace(): void {
   it('revokes the same browser authority when an owned workspace becomes unavailable', async () => {

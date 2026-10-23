@@ -6,7 +6,7 @@ import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
 
-import { BetterAuthSessionService } from '../../../src/authentication/better-auth/session-service.js';
+import { BetterAuthSessionService } from '../../../../src/authentication/better-auth/session-service.js';
 
 import {
   adminUrl,
@@ -17,7 +17,7 @@ import {
   cookieValue,
   sha256Hex,
   createInvitationProofSession,
-} from './fixture.js';
+} from '../fixture.js';
 
 export function registerRevokesSessionsAtomicallyCanonicalEmailUpdate(): void {
   it('revokes sessions atomically with a canonical email update under the API role', async () => {
