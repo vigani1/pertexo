@@ -1,0 +1,28 @@
+import { coordinatorFixture } from '../consumer.js';
+
+export const {
+  actorId,
+  conditionWorkflowId,
+  conditionWorkflowVersionId,
+  databaseUrl,
+  dispatcherUrl,
+  forEachWorkflowId,
+  forEachWorkflowVersionId,
+  apiUrl,
+  nestedParallelWorkflowId,
+  nestedParallelWorkflowVersionId,
+  parallelWorkflowId,
+  parallelWorkflowVersionId,
+  redisConnection,
+  redisUrl,
+  switchWorkflowId,
+  switchWorkflowVersionId,
+  waitFor,
+  waitWorkflowId,
+  waitWorkflowVersionId,
+  workerQuery,
+  workerUrl,
+  workflowId,
+  workflowVersionId,
+  workspaceId,
+} = coordinatorFixture;
