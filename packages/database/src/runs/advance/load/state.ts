@@ -106,37 +106,7 @@ export async function loadRunForAdvance(
   }>,
 ): Promise<LoadedRunAdvance> {
   const { workspaceId, runId } = input;
-  const locked = await client.query<LockedRow>(
-    `select checkpoint.revision, checkpoint.scheduler_state,
-            checkpoint.workflow_version_id,
-            (checkpoint.scheduler_state->>'nextEventSequence')::int
-              as next_event_sequence,
-            (checkpoint.scheduler_state->>'deadlineExpired')::boolean
-              as checkpoint_deadline_expired,
-            run.status, run.cancel_requested_at, run.workflow_id,
-            run.trigger_type, run.started_at, run.created_at,
-            run.failure_notification_destination_id,
-            run.failure_notification_destination_config_version,
-            run.failure_notification_side_effect_class,
-            run.execution_entitlement_version, run.input_ref, run.variable_set_revision, run.deadline_at,run.human_wait_started_at,
-            exists(select 1 from app.pending_run_tasks task where task.workspace_id=run.workspace_id and task.run_id=run.id and task.consumed_at is null) has_unconsumed_tasks,
-            run.deadline_at is not null
-              and run.deadline_at <= clock_timestamp() as deadline_expired,
-            version.id as version_id, version.workspace_id as version_workspace_id,
-            version.workflow_id as version_workflow_id, version.version_number,
-            version.checksum, version.executable_json, version.test_dispositions, version.test_expires_at
-       from app.workflow_runs run
-       join app.run_checkpoints checkpoint
-         on checkpoint.workspace_id = run.workspace_id
-        and checkpoint.workflow_run_id = run.id
-        and checkpoint.workflow_version_id = run.workflow_version_id
-       left join (${EXECUTION_SOURCE_SQL}) version
-         on version.workspace_id = run.workspace_id
-        and version.id = run.workflow_version_id
-       where run.workspace_id = $1 and run.id = $2
-       for no key update of run, checkpoint`,
-    [workspaceId, runId],
-  );
+  const locked = await lockRunForAdvance(client, workspaceId, runId);
   let row = locked.rows[0];
   if (row === undefined) return Object.freeze({ kind: 'not_found' });
   const taskOutcomes = row.has_unconsumed_tasks
@@ -288,4 +258,44 @@ async function readPendingFailures(
     [workspaceId, runId],
   );
   return pendingFailures.rows;
+}
+
+async function lockRunForAdvance(
+  client: PoolClient,
+  workspaceId: string,
+  runId: string,
+) {
+  const locked = await client.query<LockedRow>(
+    `select checkpoint.revision, checkpoint.scheduler_state,
+            checkpoint.workflow_version_id,
+            (checkpoint.scheduler_state->>'nextEventSequence')::int
+              as next_event_sequence,
+            (checkpoint.scheduler_state->>'deadlineExpired')::boolean
+              as checkpoint_deadline_expired,
+            run.status, run.cancel_requested_at, run.workflow_id,
+            run.trigger_type, run.started_at, run.created_at,
+            run.failure_notification_destination_id,
+            run.failure_notification_destination_config_version,
+            run.failure_notification_side_effect_class,
+            run.execution_entitlement_version, run.input_ref, run.variable_set_revision, run.deadline_at,run.human_wait_started_at,
+            exists(select 1 from app.pending_run_tasks task where task.workspace_id=run.workspace_id and task.run_id=run.id and task.consumed_at is null) has_unconsumed_tasks,
+            run.deadline_at is not null
+              and run.deadline_at <= clock_timestamp() as deadline_expired,
+            version.id as version_id, version.workspace_id as version_workspace_id,
+            version.workflow_id as version_workflow_id, version.version_number,
+            version.checksum, version.executable_json, version.test_dispositions, version.test_expires_at
+       from app.workflow_runs run
+       join app.run_checkpoints checkpoint
+         on checkpoint.workspace_id = run.workspace_id
+        and checkpoint.workflow_run_id = run.id
+        and checkpoint.workflow_version_id = run.workflow_version_id
+       left join (${EXECUTION_SOURCE_SQL}) version
+         on version.workspace_id = run.workspace_id
+        and version.id = run.workflow_version_id
+       where run.workspace_id = $1 and run.id = $2
+       for no key update of run, checkpoint`,
+    [workspaceId, runId],
+  );
+
+  return locked;
 }
