@@ -35,24 +35,24 @@ export function maintenanceDeliveryHandler(
   return async (delivery, context): Promise<void> => {
     switch (delivery.name) {
       case JOB_NAME.startErrorWorkflow:
-        if (handlers.errorWorkflow === undefined)
-          throw new InvalidQueueDeliveryError(
-            'Error workflow delivery is not enabled',
-          );
+        assertMaintenanceHandlerEnabled(
+          handlers.errorWorkflow,
+          'Error workflow delivery is not enabled',
+        );
         await handlers.errorWorkflow.handle(delivery, context);
         return;
       case JOB_NAME.applyConnectionHealthObservation:
-        if (handlers.connectionHealth === undefined)
-          throw new InvalidQueueDeliveryError(
-            'Connection health application is not enabled',
-          );
+        assertMaintenanceHandlerEnabled(
+          handlers.connectionHealth,
+          'Connection health application is not enabled',
+        );
         await handlers.connectionHealth.handle(delivery, context);
         return;
       case JOB_NAME.reconcilePreviewAttempt:
-        if (handlers.reconciliation === undefined)
-          throw new InvalidQueueDeliveryError(
-            'Preview reconciliation is not enabled',
-          );
+        assertMaintenanceHandlerEnabled(
+          handlers.reconciliation,
+          'Preview reconciliation is not enabled',
+        );
         try {
           await handlers.reconciliation.handle(delivery, context);
         } catch (error: unknown) {
@@ -60,10 +60,10 @@ export function maintenanceDeliveryHandler(
         }
         return;
       case JOB_NAME.reconcileUnknownOutcome:
-        if (handlers.unknownOutcome === undefined)
-          throw new InvalidQueueDeliveryError(
-            'Unknown-outcome reconciliation is not enabled',
-          );
+        assertMaintenanceHandlerEnabled(
+          handlers.unknownOutcome,
+          'Unknown-outcome reconciliation is not enabled',
+        );
         try {
           await handlers.unknownOutcome.handle(delivery, context);
         } catch (error: unknown) {
@@ -71,22 +71,24 @@ export function maintenanceDeliveryHandler(
         }
         return;
       case JOB_NAME.replayWorkflowRun:
-        if (handlers.replay === undefined)
-          throw new InvalidQueueDeliveryError('Run replay is not enabled');
+        assertMaintenanceHandlerEnabled(
+          handlers.replay,
+          'Run replay is not enabled',
+        );
         await handlers.replay.handle(delivery, context);
         return;
       case JOB_NAME.deliverRunFailureNotification:
-        if (handlers.failureNotification === undefined)
-          throw new InvalidQueueDeliveryError(
-            'Failure notification delivery is not enabled',
-          );
+        assertMaintenanceHandlerEnabled(
+          handlers.failureNotification,
+          'Failure notification delivery is not enabled',
+        );
         await handlers.failureNotification.handle(delivery, context);
         return;
       case JOB_NAME.deliverWorkspaceInvitation:
-        if (handlers.workspaceInvitation === undefined)
-          throw new InvalidQueueDeliveryError(
-            'Workspace invitation delivery is not enabled',
-          );
+        assertMaintenanceHandlerEnabled(
+          handlers.workspaceInvitation,
+          'Workspace invitation delivery is not enabled',
+        );
         await handlers.workspaceInvitation.handle(delivery, context);
         return;
       case JOB_NAME.advanceWorkflowRun:
@@ -99,4 +101,11 @@ export function maintenanceDeliveryHandler(
         );
     }
   };
+}
+
+function assertMaintenanceHandlerEnabled<Handler>(
+  handler: Handler | undefined,
+  message: string,
+): asserts handler is Handler {
+  if (handler === undefined) throw new InvalidQueueDeliveryError(message);
 }
