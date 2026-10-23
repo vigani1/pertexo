@@ -42,11 +42,11 @@ export function createWorkerDataTablesStore(
             const table = await requireTable(client, input.workspaceId, {
               name: input.command.table,
             });
-            const names = resolveDataTableBindings(
-              table.columns,
-              input.columnBindings,
-              table.hasRemovedColumns,
-            );
+            const names = resolveDataTableBindings({
+              columns: table.columns,
+              bindings: input.columnBindings,
+              hasRemovedColumns: table.hasRemovedColumns,
+            });
             const command = bindDataTableCommand(input.command, names);
             if (command.operation !== 'find')
               throw new Error('Read operation changed');
@@ -89,11 +89,11 @@ export function createWorkerDataTablesStore(
             { name: input.command.table },
             true,
           );
-          const names = resolveDataTableBindings(
-            table.columns,
-            input.columnBindings,
-            table.hasRemovedColumns,
-          );
+          const names = resolveDataTableBindings({
+            columns: table.columns,
+            bindings: input.columnBindings,
+            hasRemovedColumns: table.hasRemovedColumns,
+          });
           const command = bindDataTableCommand(input.command, names);
           if (command.operation === 'find')
             throw new Error('Write operation changed');

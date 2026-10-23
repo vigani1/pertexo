@@ -15,11 +15,9 @@ export function compareIdentity(
   left: CompatibilityIdentity,
   right: CompatibilityIdentity,
 ): number {
-  return left.key < right.key
-    ? -1
-    : left.key > right.key
-      ? 1
-      : left.version - right.version;
+  if (left.key < right.key) return -1;
+  if (left.key > right.key) return 1;
+  return left.version - right.version;
 }
 
 export function sameIdentity(

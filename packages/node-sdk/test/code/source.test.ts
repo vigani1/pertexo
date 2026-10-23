@@ -65,15 +65,29 @@ describe('Code authoring boundary', () => {
       expect(() => parseCodeSettings(env)).toThrow();
   });
   it('uses a private absolute socket path with a Unix path length bound', () => {
-    expect(codeRunnerSocketPath(undefined, true, 1)).toBe(
-      '/run/pertexo-code/runner.sock',
-    );
-    expect(codeRunnerSocketPath(undefined, false, 501)).toBe(
-      '/tmp/pertexo-code-501/runner.sock',
-    );
-    expect(() => codeRunnerSocketPath('relative', false, 501)).toThrow();
+    expect(
+      codeRunnerSocketPath({ configured: undefined, hardened: true, uid: 1 }),
+    ).toBe('/run/pertexo-code/runner.sock');
+    expect(
+      codeRunnerSocketPath({
+        configured: undefined,
+        hardened: false,
+        uid: 501,
+      }),
+    ).toBe('/tmp/pertexo-code-501/runner.sock');
     expect(() =>
-      codeRunnerSocketPath('/' + 'x'.repeat(101), false, 501),
+      codeRunnerSocketPath({
+        configured: 'relative',
+        hardened: false,
+        uid: 501,
+      }),
+    ).toThrow();
+    expect(() =>
+      codeRunnerSocketPath({
+        configured: '/' + 'x'.repeat(101),
+        hardened: false,
+        uid: 501,
+      }),
     ).toThrow();
   });
 });

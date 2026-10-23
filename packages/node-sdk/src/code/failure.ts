@@ -10,16 +10,19 @@ export class NodeCodeFailure extends NodeExecutorFailure {
   ) {
     super({
       kind: code === 'code.runner_unavailable' ? 'retry' : 'failed',
-      errorKind:
-        code === 'code.timeout'
-          ? 'timeout'
-          : code === 'code.runtime_error' ||
-              code === 'code.memory_limit' ||
-              code === 'code.runner_unavailable'
-            ? 'internal'
-            : 'configuration',
+      errorKind: errorKind(code),
       possiblyDispatched: false,
       safeErrorCode: code,
     });
   }
+}
+
+function errorKind(code: CodeErrorCode) {
+  if (code === 'code.timeout') return 'timeout';
+  const runtimeFailed =
+    code === 'code.runtime_error' ||
+    code === 'code.memory_limit' ||
+    code === 'code.runner_unavailable';
+  if (runtimeFailed) return 'internal';
+  return 'configuration';
 }

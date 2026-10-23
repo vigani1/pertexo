@@ -10,8 +10,9 @@ import { inspectBoundedJson } from '../values/bounds.js';
 export function validateDataTableValues(
   columns: readonly DataTableNewColumn[],
   values: DataTableValues,
-  partial = false,
+  options: Readonly<{ partial?: boolean }> = {},
 ): DataTableValues {
+  const partial = options.partial ?? false;
   const known = new Set(columns.map((column) => column.name));
   if (Object.keys(values).some((key) => !known.has(key)))
     throw new DataTableError(
@@ -33,39 +34,7 @@ export function validateDataTableValues(
       result[column.name] = null;
       continue;
     }
-    // A required text column needs words, not an empty or blank cell.
-    if (column.required && typeof value === 'string' && value.trim() === '')
-      throw new DataTableError(
-        'invalid_values',
-        `Column ${column.name} is required.`,
-      );
-    let valid: boolean;
-    switch (column.type) {
-      case 'text':
-        valid = typeof value === 'string';
-        break;
-      case 'number':
-        valid = typeof value === 'number' && Number.isFinite(value);
-        break;
-      case 'boolean':
-        valid = typeof value === 'boolean';
-        break;
-      case 'date':
-        valid =
-          typeof value === 'string' &&
-          /^\d{4}-\d{2}-\d{2}$/u.test(value) &&
-          Number.isFinite(Date.parse(value)) &&
-          new Date(value).toISOString().slice(0, 10) === value;
-        break;
-      case 'json':
-        valid = true;
-        break;
-    }
-    if (!valid)
-      throw new DataTableError(
-        'invalid_values',
-        `Column ${column.name} needs ${column.type}.`,
-      );
+    assertColumnValue(column, value);
     Object.defineProperty(result, column.name, {
       value,
       enumerable: true,
@@ -83,29 +52,7 @@ export function validateDataTableValues(
       'invalid_values',
       'A row must fit 64 KiB. Split large values.',
     );
-  // PostgreSQL text requires valid Unicode without null characters.
-  const pending: unknown[] = [result];
-  while (pending.length > 0) {
-    const item = pending.pop();
-    if (
-      typeof item === 'string' &&
-      (!item.isWellFormed() || item.includes('\u0000'))
-    )
-      throw new DataTableError(
-        'invalid_values',
-        'Values must use valid UTF-8 text without null characters.',
-      );
-    if (item !== null && typeof item === 'object') {
-      for (const [key, value] of Object.entries(item)) {
-        if (!key.isWellFormed() || key.includes('\u0000'))
-          throw new DataTableError(
-            'invalid_values',
-            'Column and JSON property names must use valid text.',
-          );
-        pending.push(value);
-      }
-    }
-  }
+  assertStoredRowText(result);
   return result;
 }
 export function validateDataTableQuery(
@@ -143,7 +90,7 @@ export function validateDataTableQuery(
     validateDataTableValues(
       [{ ...column, required: false }],
       { [column.name]: filter.value },
-      true,
+      { partial: true },
     );
   }
   if (
@@ -179,4 +126,74 @@ export function dataTableCsvValue(
     }
   }
   return text;
+}
+
+function assertColumnValue(
+  column: DataTableNewColumn,
+  value: Exclude<DataTableValues[string], null>,
+): void {
+  // A required text column needs words, not an empty or blank cell.
+  if (column.required && typeof value === 'string' && value.trim() === '')
+    throw new DataTableError(
+      'invalid_values',
+      `Column ${column.name} is required.`,
+    );
+  let valid: boolean;
+  switch (column.type) {
+    case 'text':
+      valid = typeof value === 'string';
+      break;
+    case 'number':
+      valid = typeof value === 'number' && Number.isFinite(value);
+      break;
+    case 'boolean':
+      valid = typeof value === 'boolean';
+      break;
+    case 'date':
+      valid = isDateOnly(value);
+      break;
+    case 'json':
+      valid = true;
+      break;
+  }
+  if (!valid)
+    throw new DataTableError(
+      'invalid_values',
+      `Column ${column.name} needs ${column.type}.`,
+    );
+}
+
+function assertStoredRowText(result: DataTableValues): void {
+  // PostgreSQL text requires valid Unicode without null characters.
+  const pending: unknown[] = [result];
+  while (pending.length > 0) {
+    const item = pending.pop();
+    if (
+      typeof item === 'string' &&
+      (!item.isWellFormed() || item.includes('\u0000'))
+    )
+      throw new DataTableError(
+        'invalid_values',
+        'Values must use valid UTF-8 text without null characters.',
+      );
+    if (item !== null && typeof item === 'object') {
+      for (const [key, value] of Object.entries(item)) {
+        if (!key.isWellFormed() || key.includes('\u0000'))
+          throw new DataTableError(
+            'invalid_values',
+            'Column and JSON property names must use valid text.',
+          );
+        pending.push(value);
+      }
+    }
+  }
+}
+
+function isDateOnly(value: unknown): boolean {
+  const validDate =
+    typeof value === 'string' &&
+    /^\d{4}-\d{2}-\d{2}$/u.test(value) &&
+    Number.isFinite(Date.parse(value)) &&
+    new Date(value).toISOString().slice(0, 10) === value;
+  return validDate;
 }

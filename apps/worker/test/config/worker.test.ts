@@ -157,11 +157,11 @@ describe('parseWorkerConfig', () => {
       httpRequest: { allowedPrivateNetworks: [] },
       codeRunner: {
         settings: DEFAULT_CODE_SETTINGS,
-        socketPath: codeRunnerSocketPath(
-          undefined,
-          false,
-          process.getuid?.() ?? 'local',
-        ),
+        socketPath: codeRunnerSocketPath({
+          configured: undefined,
+          hardened: false,
+          uid: process.getuid?.() ?? 'local',
+        }),
         requireHardened: false,
       },
       artifactStore: {

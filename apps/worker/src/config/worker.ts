@@ -421,11 +421,11 @@ export function parseWorkerConfig(
       }),
       codeRunner: {
         settings: parseCodeSettings(raw),
-        socketPath: codeRunnerSocketPath(
-          raw.CODE_RUNNER_SOCKET,
-          deployed,
-          process.getuid?.() ?? 'local',
-        ),
+        socketPath: codeRunnerSocketPath({
+          configured: raw.CODE_RUNNER_SOCKET,
+          hardened: deployed,
+          uid: process.getuid?.() ?? 'local',
+        }),
         requireHardened: deployed,
       },
       ...(connectionEncryption === undefined ? {} : { connectionEncryption }),

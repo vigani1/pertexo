@@ -21,14 +21,14 @@ export function canonicalizeBoundedJson(
   value: unknown,
   limits: BoundedJsonLimits = NODE_EXECUTION_LIMITS,
 ): JsonValue {
-  if (
+  const invalidLimits =
     !Number.isSafeInteger(limits.bytes) ||
     limits.bytes <= 0 ||
     !Number.isSafeInteger(limits.depth) ||
     limits.depth <= 0 ||
     !Number.isSafeInteger(limits.members) ||
-    limits.members <= 0
-  )
+    limits.members <= 0;
+  if (invalidLimits)
     throw new InvalidBoundedJsonError(
       'JSON limits must be positive safe integers',
     );

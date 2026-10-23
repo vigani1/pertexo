@@ -38,11 +38,11 @@ export function rebindPromotionTable(
   }
   let names: Readonly<Record<string, string>>;
   try {
-    names = resolveDataTableBindings(
-      source.columns,
-      config.columnBindings,
-      source.hasRemovedColumns,
-    );
+    names = resolveDataTableBindings({
+      columns: source.columns,
+      bindings: config.columnBindings,
+      hasRemovedColumns: source.hasRemovedColumns,
+    });
   } catch (error) {
     if (!(error instanceof DataTableError)) throw error;
     issue(error.message);
