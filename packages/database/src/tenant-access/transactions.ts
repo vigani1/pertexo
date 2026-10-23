@@ -47,10 +47,15 @@ export async function withTenantScopedClient<T>(
     ...scopeInput,
     workspaceId: parseWorkspaceId(scopeInput.workspaceId),
   };
-  return runTransaction(pool, scope, operation, options, 'read_write', {
-    abort: 'Workspace transaction aborted',
-    cleanup: 'Tenant context cleanup failed',
-    rollback: 'Tenant-scoped transaction rollback failed',
+  return runTransaction(pool, scope, {
+    operation,
+    options,
+    mode: 'read_write',
+    messages: {
+      abort: 'Workspace transaction aborted',
+      cleanup: 'Tenant context cleanup failed',
+      rollback: 'Tenant-scoped transaction rollback failed',
+    },
   });
 }
 
@@ -69,13 +74,15 @@ export async function withActorScopedClient<T>(
   return runTransaction(
     pool,
     { actorId, discoveryScope: 'workspace_memberships' },
-    operation,
-    options,
-    'repeatable_read_only',
     {
-      abort: 'Actor-scoped transaction aborted',
-      cleanup: 'Actor context cleanup failed',
-      rollback: 'Actor-scoped transaction rollback failed',
+      operation,
+      options,
+      mode: 'repeatable_read_only',
+      messages: {
+        abort: 'Actor-scoped transaction aborted',
+        cleanup: 'Actor context cleanup failed',
+        rollback: 'Actor-scoped transaction rollback failed',
+      },
     },
   );
 }
@@ -91,18 +98,16 @@ export async function withTenantScopedReadClient<T>(
     ...scopeInput,
     workspaceId: parseWorkspaceId(scopeInput.workspaceId),
   };
-  return runTransaction(
-    pool,
-    scope,
+  return runTransaction(pool, scope, {
     operation,
     options,
-    'repeatable_read_only',
-    {
+    mode: 'repeatable_read_only',
+    messages: {
       abort: 'Workspace transaction aborted',
       cleanup: 'Tenant context cleanup failed',
       rollback: 'Tenant-scoped transaction rollback failed',
     },
-  );
+  });
 }
 
 /**
@@ -116,10 +121,15 @@ export async function withPlatformTransaction<T>(
   operation: (client: PoolClient) => Promise<T>,
   options: WorkspaceTransactionOptions = {},
 ): Promise<T> {
-  return runTransaction(pool, undefined, operation, options, 'read_write', {
-    abort: 'Platform transaction aborted',
-    cleanup: 'Platform context cleanup failed',
-    rollback: 'Platform transaction rollback failed',
+  return runTransaction(pool, undefined, {
+    operation,
+    options,
+    mode: 'read_write',
+    messages: {
+      abort: 'Platform transaction aborted',
+      cleanup: 'Platform context cleanup failed',
+      rollback: 'Platform transaction rollback failed',
+    },
   });
 }
 
@@ -129,21 +139,19 @@ export function withMultiWorkspaceTransaction<T>(
   operation: (inWorkspace: WorkspaceScopeRunner) => Promise<T>,
   options: WorkspaceTransactionOptions = {},
 ): Promise<T> {
-  return runTransaction(
-    pool,
-    undefined,
-    (client) =>
+  return runTransaction(pool, undefined, {
+    operation: (client) =>
       operation((scope, scopedOperation) =>
         withWorkspaceScope(client, scope, scopedOperation),
       ),
     options,
-    'read_write',
-    {
+    mode: 'read_write',
+    messages: {
       abort: 'Multi-workspace transaction aborted',
       cleanup: 'Multi-workspace context cleanup failed',
       rollback: 'Multi-workspace transaction rollback failed',
     },
-  );
+  });
 }
 
 /** Installs one fence inside an outer transaction, restoring no-context hygiene between scopes. */

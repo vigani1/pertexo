@@ -100,20 +100,20 @@ export async function readWorkflowRun(
 ): Promise<WorkflowRunReadModel | undefined> {
   const parsed = getInputSchema.parse(input);
   return withResourceRunRead(pool, parsed, async (transaction) =>
-    readRunModel(transaction, parsed.runId, parsed.includeWorkflowName),
+    readRunModel(transaction, parsed.runId, {
+      includeWorkflowName: parsed.includeWorkflowName,
+    }),
   );
 }
 
 async function readRunModel(
   transaction: ResourceTransaction,
   runId: string,
-  includeWorkflowName: boolean,
+  { includeWorkflowName }: Readonly<{ includeWorkflowName: boolean }>,
 ): Promise<WorkflowRunReadModel | undefined> {
-  const run = await readWorkflowRunReadRecord(
-    transaction,
-    runId,
+  const run = await readWorkflowRunReadRecord(transaction, runId, {
     includeWorkflowName,
-  );
+  });
   if (run === undefined) return undefined;
   const nodes = await transaction.db.execute(sql`
     select

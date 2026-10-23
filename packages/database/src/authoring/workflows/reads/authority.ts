@@ -10,10 +10,15 @@ export const uuidSchema = z.uuid();
 export async function canReadWorkflow(
   context: WorkflowAuthoringReadContext,
   client: PoolClient,
-  workspaceId: string,
-  actorId: string,
-  workflowId: string,
+  {
+    workspaceId,
+    actorId,
+    workflowId,
+  }: Readonly<{ workspaceId: string; actorId: string; workflowId: string }>,
 ) {
   const access = await context.requireReader(client, workspaceId, actorId);
-  return workflowAccessible(client, access, workspaceId, workflowId);
+  return workflowAccessible(client, access, {
+    workspaceId,
+    workflowId,
+  });
 }

@@ -28,13 +28,11 @@ export async function persistCoordinatorExecutionTransitions(
   }>,
 ): Promise<ReadonlyMap<string, CoordinatorExecutionIdentity>> {
   const { pendingFailures, plan, runId, traceparent, workspaceId } = input;
-  await persistPendingFailureDecisions(
-    client,
-    plan,
+  await persistPendingFailureDecisions(client, plan, {
     pendingFailures,
     workspaceId,
     runId,
-  );
+  });
   const physical = await persistNodeAdmissions(
     client,
     plan,
@@ -48,13 +46,11 @@ export async function persistCoordinatorExecutionTransitions(
     ...(traceparent === undefined ? {} : { traceparent }),
     workspaceId,
   });
-  await loadEventExecutionIdentities(
-    client,
-    physical,
+  await loadEventExecutionIdentities(client, physical, {
     plan,
     workspaceId,
     runId,
-  );
+  });
   await persistRunEvents(client, {
     pendingFailures,
     physical,

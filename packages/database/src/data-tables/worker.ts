@@ -55,8 +55,12 @@ export function createWorkerDataTablesStore(
               names,
             );
           }
-          const quotas = await readQuotas(client, input.workspaceId, true);
-          await assertCapabilityExecution(client, input, true);
+          const quotas = await readQuotas(client, input.workspaceId, {
+            lock: true,
+          });
+          await assertCapabilityExecution(client, input, {
+            requireDispatch: true,
+          });
           const requestHash = createHash('sha256')
             .update(
               canonicalJson(
@@ -87,7 +91,7 @@ export function createWorkerDataTablesStore(
             client,
             input.workspaceId,
             { name: input.command.table },
-            true,
+            { lock: true },
           );
           const names = resolveDataTableBindings({
             columns: table.columns,
@@ -98,10 +102,16 @@ export function createWorkerDataTablesStore(
           if (command.operation === 'find')
             throw new Error('Write operation changed');
           const result = projectBoundDataTableResult(
-            await mutateRows(client, input.workspaceId, table, quotas, command),
+            await mutateRows(client, input.workspaceId, {
+              table,
+              quotas,
+              command,
+            }),
             names,
           );
-          await assertCapabilityExecution(client, input, true);
+          await assertCapabilityExecution(client, input, {
+            requireDispatch: true,
+          });
           await client.query(
             'insert into app.data_table_write_receipts(workspace_id,execution_id,invocation_id,run_id,preview_run_id,request_hash,result_json) values($1,$2,$3,$4,$5,$6,$7)',
             [

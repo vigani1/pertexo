@@ -252,15 +252,17 @@ export async function publishWorkflowCandidate(
     workflowId,
     publication,
   );
-  await persistPublicationProjections(
-    client,
-    input,
+  await persistPublicationProjections(client, input, {
     workflowId,
     publication,
     version,
-  );
+  });
   await recordPromotedPublication(client, version);
-  await finalizePublication(client, input, workflowId, version, reused);
+  await finalizePublication(client, input, {
+    workflowId,
+    version,
+    reused,
+  });
   return Object.freeze({ replayed: false, reused, version });
 }
 
@@ -290,12 +292,10 @@ export function createWorkflowPublisher(
       input.workspaceId,
       input.actorId,
       async (client) => {
-        await dependencies.requireAuthor(
-          client,
-          input.workspaceId,
-          input.actorId,
-          input.workflowId,
-        );
+        await dependencies.requireAuthor(client, input.workspaceId, {
+          actorId: input.actorId,
+          workflowId: input.workflowId,
+        });
         const claim = await claimPublication(client, input);
         if (claim.replay !== null) return claim.replay;
         const result = await publishWorkflowDirectly(

@@ -9,9 +9,11 @@ import { withWorkspaceScope } from '../../../tenant-access/transactions.js';
 export async function directorySignInCandidate(
   client: PoolClient,
   organizationId: string,
-  email: string,
-  providerId: string,
-  subject: string,
+  {
+    email,
+    providerId,
+    subject,
+  }: Readonly<{ email: string; providerId: string; subject: string }>,
 ): Promise<DirectoryUserRow | undefined> {
   const rows = (
     await client.query<DirectoryUserRow>(

@@ -45,7 +45,7 @@ export async function mutateStepSample(
     });
     if (stored !== null)
       return { ...resultSchema.parse(stored), replayed: true };
-    const draft = await sampleDraft(client, input, true);
+    const draft = await sampleDraft(client, input, { write: true });
     if (draft.revision !== input.expectedDraftRevision)
       throw new WorkflowStepSampleError('draft_changed');
     const binding = draft.bindings.get(input.nodeId);
@@ -68,13 +68,11 @@ export async function mutateStepSample(
         [input.workspaceId, current.id],
       );
     } else {
-      const captured = await captureSampleSource(
-        client,
-        input,
+      const captured = await captureSampleSource(client, input, {
         source,
         current,
         binding,
-      );
+      });
       const retainedBytes =
         utf8ByteLength(binding) + utf8ByteLength(captured.output);
       const quota = await client.query<{

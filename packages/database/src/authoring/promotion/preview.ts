@@ -25,25 +25,21 @@ export async function preparePromotion(
   const sources = await inWorkspace(
     { workspaceId: input.workspaceId, actorId: input.actorId },
     (client) =>
-      readPromotionSources(
-        client,
-        input.workspaceId,
-        input.actorId,
-        input.selections,
+      readPromotionSources(client, input.workspaceId, {
+        actorId: input.actorId,
+        selections: input.selections,
         budget,
-      ),
+      }),
   );
   const prepared = await inWorkspace(
     { workspaceId: pair.target.workspaceId, actorId: input.actorId },
     (client) =>
-      preparePromotionTarget(
-        client,
-        context,
-        { ...input, workspaceId: pair.target.workspaceId },
-        input.workspaceId,
+      preparePromotionTarget(client, context, {
+        input: { ...input, workspaceId: pair.target.workspaceId },
+        sourceWorkspaceId: input.workspaceId,
         sources,
         budget,
-      ),
+      }),
   );
   const policyIssue =
     input.mode === 'publish' && pair.target.requireApproval

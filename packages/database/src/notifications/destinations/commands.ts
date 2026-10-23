@@ -75,9 +75,11 @@ function commandIdentity(
 export async function claimNotificationCommand(
   client: PoolClient,
   input: IdempotentCommandMetadata,
-  operation: string,
-  scope: string,
-  resourceId: string,
+  {
+    operation,
+    scope,
+    resourceId,
+  }: Readonly<{ operation: string; scope: string; resourceId: string }>,
 ): Promise<
   Readonly<{ kind: 'new' }> | Readonly<{ kind: 'replay'; result: unknown }>
 > {
@@ -101,9 +103,11 @@ export async function claimNotificationCommand(
 export async function completeNotificationCommand(
   client: PoolClient,
   input: IdempotentCommandMetadata,
-  operation: string,
-  scope: string,
-  result: unknown,
+  {
+    operation,
+    scope,
+    result,
+  }: Readonly<{ operation: string; scope: string; result: unknown }>,
 ): Promise<void> {
   await completeCommand(client, commandIdentity(input, operation, scope), {
     result,
@@ -114,7 +118,7 @@ export async function authorize(
   client: PoolClient,
   workspaceId: string,
   actorId: string,
-  manage: boolean,
+  { manage }: Readonly<{ manage: boolean }>,
 ): Promise<void> {
   const roles: readonly Role[] = manage
     ? ADMINISTRATIVE_ROLES
@@ -131,9 +135,15 @@ export async function authorize(
 export async function audit(
   client: PoolClient,
   input: CommandMetadata,
-  action: string,
-  target: DestinationAuditTarget,
-  metadata: Readonly<Record<string, unknown>>,
+  {
+    action,
+    target,
+    metadata,
+  }: Readonly<{
+    action: string;
+    target: DestinationAuditTarget;
+    metadata: Readonly<Record<string, unknown>>;
+  }>,
 ): Promise<void> {
   await client.query(
     `insert into app.audit_events

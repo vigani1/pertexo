@@ -117,6 +117,8 @@ export function payload(value: unknown): { text: string; bytes: number } {
 
 export type CaseTransaction = <T>(
   input: Scope,
-  write: boolean,
-  work: (client: PoolClient) => Promise<T>,
+  options: Readonly<{
+    write: boolean;
+    work: (client: PoolClient) => Promise<T>;
+  }>,
 ) => Promise<T>;

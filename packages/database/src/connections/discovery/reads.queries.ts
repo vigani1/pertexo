@@ -42,11 +42,9 @@ export function createConnectionReadPersistence(
       const actorId = uuidSchema.parse(input.actorId);
       const limit = pageLimitSchema.parse(input.limit ?? 50);
       const after = parseCursor(input.after);
-      return withConnectionTransaction(
-        pool,
-        input.workspaceId,
+      return withConnectionTransaction(pool, input.workspaceId, {
         actorId,
-        async (client, workspaceId) => {
+        operation: async (client, workspaceId) => {
           const role = await requireConnectionReader(
             client,
             workspaceId,
@@ -108,15 +106,13 @@ export function createConnectionReadPersistence(
               : {}),
           });
         },
-      );
+      });
     },
     readConnection: (input) => {
       const actorId = uuidSchema.parse(input.actorId);
-      return withConnectionTransaction(
-        pool,
-        input.workspaceId,
+      return withConnectionTransaction(pool, input.workspaceId, {
         actorId,
-        async (client, workspaceId) => {
+        operation: async (client, workspaceId) => {
           const role = await requireConnectionReader(
             client,
             workspaceId,
@@ -143,7 +139,7 @@ export function createConnectionReadPersistence(
           ).rows[0];
           return row === undefined ? null : mapConnection(row);
         },
-      );
+      });
     },
   });
 }

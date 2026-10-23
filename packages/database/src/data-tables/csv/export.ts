@@ -19,9 +19,15 @@ type ExportRead = <T>(work: (client: PoolClient) => Promise<T>) => Promise<T>;
 export function exportTableCsv(
   read: ExportRead,
   workspaceId: string,
-  table: DataTableDefinition,
-  query: DataTableExportQuery,
-  signal?: AbortSignal,
+  {
+    table,
+    query,
+    signal,
+  }: Readonly<{
+    table: DataTableDefinition;
+    query: DataTableExportQuery;
+    signal?: AbortSignal | undefined;
+  }>,
 ): AsyncGenerator<string> {
   const parameters: unknown[] = [workspaceId, table.id];
   // Reject stale filters before the consumer starts a download.

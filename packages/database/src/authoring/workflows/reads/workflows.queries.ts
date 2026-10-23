@@ -24,7 +24,12 @@ export function readAuthoringWorkflow(
 ): ReturnType<ReadStore['getWorkflow']> {
   return context.transact(workspaceId, actorId, async (client) => {
     const access = await context.requireReader(client, workspaceId, actorId);
-    if (!(await workflowAccessible(client, access, workspaceId, workflowId)))
+    if (
+      !(await workflowAccessible(client, access, {
+        workspaceId,
+        workflowId,
+      }))
+    )
       return null;
     const parameters: unknown[] = [workspaceId, uuidSchema.parse(workflowId)];
     const result = await client.query<

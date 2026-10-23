@@ -47,6 +47,7 @@ export class WorkflowPortabilityReviewConflictError extends Error {
 }
 
 export class WorkflowPortabilityValidationError extends Error {
+  public readonly truncated: boolean;
   public override readonly name = 'WorkflowPortabilityValidationError';
   public constructor(
     public readonly issues: readonly Readonly<{
@@ -54,8 +55,9 @@ export class WorkflowPortabilityValidationError extends Error {
       path: string;
       message: string;
     }>[],
-    public readonly truncated = false,
+    { truncated = false }: Readonly<{ truncated?: boolean | undefined }> = {},
   ) {
     super('Workflow portability input is not compatible');
+    this.truncated = truncated;
   }
 }

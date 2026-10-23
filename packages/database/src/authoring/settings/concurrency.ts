@@ -170,13 +170,11 @@ async function readConcurrencySettings(
     workspaceId,
     actorId,
     async (client) => {
-      await lockWorkflowAuthoringAuthority(
-        client,
-        workspaceId,
+      await lockWorkflowAuthoringAuthority(client, workspaceId, {
         actorId,
-        ROLES,
-        { workflowId, capability: 'workflow:read' },
-      );
+        roles: ROLES,
+        resource: { workflowId, capability: 'workflow:read' },
+      });
       await requireWorkflow(client, workspaceId, workflowId);
       const policy = settingsOf(
         await readPolicy(client, workspaceId, workflowId),
@@ -231,13 +229,11 @@ async function updateConcurrencySettings(
     workspaceId,
     actorId,
     async (client) => {
-      await lockWorkflowAuthoringAuthority(
-        client,
-        workspaceId,
+      await lockWorkflowAuthoringAuthority(client, workspaceId, {
         actorId,
-        EDITORS,
-        { workflowId, capability: 'workflow:update' },
-      );
+        roles: EDITORS,
+        resource: { workflowId, capability: 'workflow:update' },
+      });
       await requireWorkflow(client, workspaceId, workflowId);
       const identity = {
         workspaceId,

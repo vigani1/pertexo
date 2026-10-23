@@ -41,9 +41,15 @@ export async function settleRejectedForEachDeclarations(
 export async function persistLoopBarrierTransitions(
   client: PoolClient,
   workspaceId: string,
-  runId: string,
-  current: WorkflowCheckpoint,
-  next: WorkflowCheckpoint,
+  {
+    runId,
+    current,
+    next,
+  }: Readonly<{
+    runId: string;
+    current: WorkflowCheckpoint;
+    next: WorkflowCheckpoint;
+  }>,
 ): Promise<void> {
   const currentLoops = new Set(
     current.loops.map(({ controlInvocationKey }) => controlInvocationKey),
@@ -72,9 +78,15 @@ export async function persistLoopBarrierTransitions(
 export async function persistDueReadyTransitions(
   client: PoolClient,
   workspaceId: string,
-  runId: string,
-  current: WorkflowCheckpoint,
-  next: WorkflowCheckpoint,
+  {
+    runId,
+    current,
+    next,
+  }: Readonly<{
+    runId: string;
+    current: WorkflowCheckpoint;
+    next: WorkflowCheckpoint;
+  }>,
 ): Promise<void> {
   const currentInvocations = new Map(
     current.invocations.map((invocation) => [

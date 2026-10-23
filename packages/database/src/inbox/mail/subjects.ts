@@ -45,9 +45,15 @@ export type MailSubjectRow = Readonly<{
 export async function readMailSubjects(
   client: PoolClient,
   workspaceId: string,
-  actorId: string,
-  cut: Date,
-  onlyIds?: readonly string[],
+  {
+    actorId,
+    cut,
+    onlyIds,
+  }: Readonly<{
+    actorId: string;
+    cut: Date;
+    onlyIds?: readonly string[] | undefined;
+  }>,
 ): Promise<readonly MailSubjectRow[]> {
   const resources = await readFolderScope(client, { workspaceId, actorId });
   const parameters: unknown[] = [workspaceId, actorId, cut, onlyIds ?? null];

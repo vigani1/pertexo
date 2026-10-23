@@ -93,12 +93,10 @@ export async function sync(f: Awaited<ReturnType<typeof taskFixture>>) {
         'select id from app.workflow_runs where id=$1 for no key update',
         [f.parentRunId],
       );
-      return synchronizeHumanWait(
-        client,
-        f.workspaceId,
-        f.parentRunId,
-        'loading',
-      );
+      return synchronizeHumanWait(client, f.workspaceId, {
+        runId: f.parentRunId,
+        phase: 'loading',
+      });
     },
   );
 }

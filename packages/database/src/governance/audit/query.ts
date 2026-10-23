@@ -93,10 +93,17 @@ function auditWhere(
 export async function readAuditBatch(
   client: PoolClient,
   workspaceId: string,
-  query: AuditFilter,
-  limit: number,
-  after?: AuditCursor,
-  upper?: AuditCursor,
+  {
+    query,
+    limit,
+    after,
+    upper,
+  }: Readonly<{
+    query: AuditFilter;
+    limit: number;
+    after?: AuditCursor | undefined;
+    upper?: AuditCursor | undefined;
+  }>,
 ): Promise<AuditRow[]> {
   const { parameters, where } = auditWhere(workspaceId, query, after, upper);
   parameters.push(limit);

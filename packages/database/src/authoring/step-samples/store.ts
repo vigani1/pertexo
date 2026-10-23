@@ -22,23 +22,21 @@ export function createWorkflowStepSampleStore(
       pool,
       { workspaceId: input.workspaceId, actorId: input.actorId },
       async (client) => {
-        await lockWorkflowAuthoringAuthority(
-          client,
-          input.workspaceId,
-          input.actorId,
-          rolesForCapability(write ? 'workflow:update' : 'workflow:read'),
-          {
+        await lockWorkflowAuthoringAuthority(client, input.workspaceId, {
+          actorId: input.actorId,
+          roles: rolesForCapability(
+            write ? 'workflow:update' : 'workflow:read',
+          ),
+          resource: {
             workflowId: input.workflowId,
             capability: write ? 'workflow:update' : 'workflow:read',
           },
-        );
+        });
         if (!write)
-          await lockWorkflowAuthoringAuthority(
-            client,
-            input.workspaceId,
-            input.actorId,
-            rolesForCapability('run:read'),
-          );
+          await lockWorkflowAuthoringAuthority(client, input.workspaceId, {
+            actorId: input.actorId,
+            roles: rolesForCapability('run:read'),
+          });
         return work(client);
       },
       input.signal === undefined ? {} : { signal: input.signal },
@@ -46,7 +44,7 @@ export function createWorkflowStepSampleStore(
   return {
     list: (input) =>
       transact(input, false, async (client) => {
-        const draft = await sampleDraft(client, input, false);
+        const draft = await sampleDraft(client, input, { write: false });
         const rows = await client.query<SampleMetadataRow>(
           `select ${SAMPLE_METADATA_COLUMNS} from app.workflow_step_samples where workspace_id=$1 and workflow_id=$2 order by node_id limit 200`,
           [input.workspaceId, input.workflowId],
@@ -61,7 +59,7 @@ export function createWorkflowStepSampleStore(
       }),
     get: (input) =>
       transact(input, false, async (client) => {
-        const draft = await sampleDraft(client, input, false);
+        const draft = await sampleDraft(client, input, { write: false });
         const rows = await client.query<SampleRow>(
           `select ${SAMPLE_COLUMNS} from app.workflow_step_samples where workspace_id=$1 and workflow_id=$2 and node_id=$3`,
           [input.workspaceId, input.workflowId, input.nodeId],

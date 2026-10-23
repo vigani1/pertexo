@@ -67,9 +67,15 @@ export async function folderDepth(
 export async function requireFreeName(
   client: PoolClient,
   workspaceId: string,
-  parentId: string | null,
-  folderName: string,
-  folderId: string | null,
+  {
+    parentId,
+    folderName,
+    folderId,
+  }: Readonly<{
+    parentId: string | null;
+    folderName: string;
+    folderId: string | null;
+  }>,
 ): Promise<void> {
   const taken = await client.query(
     `select 1 from app.workflow_folders

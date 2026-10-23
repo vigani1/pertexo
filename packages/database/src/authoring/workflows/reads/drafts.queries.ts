@@ -15,22 +15,26 @@ import { uuidSchema, canReadWorkflow } from './authority.js';
 export function validateAuthoringDraft(
   context: WorkflowAuthoringReadContext,
   workspaceId: Parameters<ReadStore['validateDraft']>[0],
-  workflowId: Parameters<ReadStore['validateDraft']>[1],
-  actorId: Parameters<ReadStore['validateDraft']>[2],
-  options: Parameters<ReadStore['validateDraft']>[3] = {},
+  {
+    workflowId,
+    actorId,
+    options = {},
+  }: Readonly<{
+    workflowId: Parameters<ReadStore['validateDraft']>[1];
+    actorId: Parameters<ReadStore['validateDraft']>[2];
+    options?: Parameters<ReadStore['validateDraft']>[3] | undefined;
+  }>,
 ): ReturnType<ReadStore['validateDraft']> {
   return context.transact(
     workspaceId,
     actorId,
     async (client) => {
       if (
-        !(await canReadWorkflow(
-          context,
-          client,
+        !(await canReadWorkflow(context, client, {
           workspaceId,
           actorId,
           workflowId,
-        ))
+        }))
       )
         return null;
       const variant = context.catalogs;
@@ -104,13 +108,11 @@ export function readAuthoringDraft(
 ): ReturnType<ReadStore['getDraft']> {
   return context.transact(workspaceId, actorId, async (client) => {
     if (
-      !(await canReadWorkflow(
-        context,
-        client,
+      !(await canReadWorkflow(context, client, {
         workspaceId,
         actorId,
         workflowId,
-      ))
+      }))
     )
       return null;
     const { definitionCatalog } = context.catalogs;

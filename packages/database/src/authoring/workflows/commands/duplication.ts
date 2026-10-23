@@ -103,13 +103,11 @@ export function createWorkflowDuplicationStore(
         input.workspaceId,
         input.actorId,
         async (client) => {
-          await context.requireAuthor(
-            client,
-            input.workspaceId,
-            input.actorId,
-            input.workflowId,
-            'workflow:read',
-          );
+          await context.requireAuthor(client, input.workspaceId, {
+            actorId: input.actorId,
+            workflowId: input.workflowId,
+            capability: 'workflow:read',
+          });
           // Workflow precedes draft, consistent with restore/publication/lifecycle.
           const source = await client.query<{ lifecycle_status: string }>(
             `select lifecycle_status from app.workflows where workspace_id=$1 and id=$2 for update`,
@@ -139,13 +137,11 @@ export function createWorkflowDuplicationStore(
           });
           if (stored !== null) {
             const replay = resultSchema.parse(stored);
-            await context.requireAuthor(
-              client,
-              input.workspaceId,
-              input.actorId,
-              replay.workflowId,
-              'workflow:read',
-            );
+            await context.requireAuthor(client, input.workspaceId, {
+              actorId: input.actorId,
+              workflowId: replay.workflowId,
+              capability: 'workflow:read',
+            });
             const destination = await client.query(
               'select id from app.workflows where workspace_id=$1 and id=$2 for share',
               [input.workspaceId, replay.workflowId],

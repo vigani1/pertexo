@@ -35,7 +35,9 @@ export type ConnectionHealthApplicationResult = Readonly<{
   kind: 'applied' | 'stale' | 'duplicate';
 }>;
 
-type Transaction = Parameters<Parameters<typeof consumeInboxMessage>[3]>[0];
+type Transaction = Parameters<
+  Parameters<typeof consumeInboxMessage>[2]['operation']
+>[0];
 
 /**
  * Applies one run's observation once. Only an observation about the exact
@@ -142,15 +144,13 @@ export async function applyConnectionHealthObservation(
 ): Promise<ConnectionHealthApplicationResult> {
   const parsed = inputSchema.parse(input);
   parsed.signal?.throwIfAborted();
-  const consumed = await consumeInboxMessage(
-    database,
-    parsed.workspaceId,
-    {
+  const consumed = await consumeInboxMessage(database, parsed.workspaceId, {
+    message: {
       consumerName: 'connection-health-worker',
       messageId: parsed.delivery.outboxEventId,
       payloadChecksum: parsed.delivery.payloadChecksum,
     },
-    async (transaction) => {
+    operation: async (transaction) => {
       const outbox = await transaction.db.execute<{
         aggregate_id: string;
         aggregate_type: string;
@@ -186,11 +186,11 @@ export async function applyConnectionHealthObservation(
         throw new InboxReceiptUnavailableError();
       return applyObservation(transaction, parsed);
     },
-    {
+    options: {
       lockWorkspace: true,
       ...(parsed.signal === undefined ? {} : { signal: parsed.signal }),
     },
-  );
+  });
   return Object.freeze({
     kind:
       consumed.status === 'duplicate'

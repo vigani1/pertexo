@@ -34,12 +34,10 @@ export function requirePromotionAuthority(
   input: PromotionScope,
   capability: AuthorizationCapability = 'workflow:update',
 ) {
-  return lockWorkflowAuthoringAuthority(
-    client,
-    input.workspaceId,
-    input.actorId,
-    rolesForCapability(capability),
-  );
+  return lockWorkflowAuthoringAuthority(client, input.workspaceId, {
+    actorId: input.actorId,
+    roles: rolesForCapability(capability),
+  });
 }
 /** Both directions acquire workspace locks in the same order before membership or workflow locks. */
 export async function lockPromotionWorkspaces(

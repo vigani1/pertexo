@@ -87,16 +87,14 @@ describe('transactional inbox duplicate proof', () => {
     'allows the %s role to complete receipts but not rewrite immutable identity',
     async (_role, selectedDatabase) => {
       const messageId = randomUUID();
-      await consumeInboxMessage(
-        selectedDatabase,
-        workspaceA,
-        {
+      await consumeInboxMessage(selectedDatabase, workspaceA, {
+        message: {
           consumerName: 'least-privilege-proof',
           messageId,
           payloadChecksum: checksumA,
         },
-        () => Promise.resolve(undefined),
-      );
+        operation: () => Promise.resolve(undefined),
+      });
 
       await expect(
         selectedDatabase.withWorkspace(workspaceA, ({ db }) =>
@@ -120,11 +118,13 @@ describe('transactional inbox duplicate proof', () => {
     const providerChecksum = canonicalOutboxPayloadChecksum(providerPayload);
     let callbacks = 0;
     const consume = () =>
-      consumeInboxMessage(
-        workerDatabase,
-        workspaceA,
-        { consumerName: 'phase0-proof', messageId, payloadChecksum: checksumA },
-        async (transaction) => {
+      consumeInboxMessage(workerDatabase, workspaceA, {
+        message: {
+          consumerName: 'phase0-proof',
+          messageId,
+          payloadChecksum: checksumA,
+        },
+        operation: async (transaction) => {
           const { db, workspaceId } = transaction;
           callbacks += 1;
           await db.execute(sql`
@@ -169,7 +169,7 @@ describe('transactional inbox duplicate proof', () => {
           `);
           return logicalAttemptId;
         },
-      );
+      });
 
     const [first, second] = await Promise.all([consume(), consume()]);
     expect([first.status, second.status].sort()).toEqual([
@@ -180,15 +180,13 @@ describe('transactional inbox duplicate proof', () => {
 
     let providerCallbacks = 0;
     const consumeProvider = () =>
-      consumeInboxMessage(
-        workerDatabase,
-        workspaceA,
-        {
+      consumeInboxMessage(workerDatabase, workspaceA, {
+        message: {
           consumerName: 'phase0-provider-proof',
           messageId: providerOutboxId,
           payloadChecksum: providerChecksum,
         },
-        async ({ db }) => {
+        operation: async ({ db }) => {
           providerCallbacks += 1;
           await db.execute(sql`
             update app.queue_duplicate_probe_provider_intents
@@ -197,7 +195,7 @@ describe('transactional inbox duplicate proof', () => {
               and outcome = 'pending'
           `);
         },
-      );
+      });
     const [providerFirst, providerSecond] = await Promise.all([
       consumeProvider(),
       consumeProvider(),
@@ -232,23 +230,23 @@ describe('transactional inbox duplicate proof', () => {
 
   it('rejects a changed checksum and an invisible cross-workspace receipt', async () => {
     const messageId = randomUUID();
-    await consumeInboxMessage(
-      workerDatabase,
-      workspaceA,
-      { consumerName: 'checksum-proof', messageId, payloadChecksum: checksumA },
-      () => Promise.resolve(undefined),
-    );
+    await consumeInboxMessage(workerDatabase, workspaceA, {
+      message: {
+        consumerName: 'checksum-proof',
+        messageId,
+        payloadChecksum: checksumA,
+      },
+      operation: () => Promise.resolve(undefined),
+    });
     await expect(
-      consumeInboxMessage(
-        workerDatabase,
-        workspaceA,
-        {
+      consumeInboxMessage(workerDatabase, workspaceA, {
+        message: {
           consumerName: 'checksum-proof',
           messageId,
           payloadChecksum: checksumB,
         },
-        () => Promise.resolve(undefined),
-      ),
+        operation: () => Promise.resolve(undefined),
+      }),
     ).rejects.toBeInstanceOf(InboxChecksumMismatchError);
     await workerDatabase.withWorkspace(workspaceA, async ({ db }) => {
       const facts = await db
@@ -268,16 +266,14 @@ describe('transactional inbox duplicate proof', () => {
       ]);
     });
     await expect(
-      consumeInboxMessage(
-        workerDatabase,
-        workspaceB,
-        {
+      consumeInboxMessage(workerDatabase, workspaceB, {
+        message: {
           consumerName: 'checksum-proof',
           messageId,
           payloadChecksum: checksumA,
         },
-        () => Promise.resolve(undefined),
-      ),
+        operation: () => Promise.resolve(undefined),
+      }),
     ).rejects.toBeInstanceOf(InboxReceiptUnavailableError);
   });
 
@@ -296,19 +292,17 @@ describe('transactional inbox duplicate proof', () => {
     );
     let callbacks = 0;
     await expect(
-      consumeInboxMessage(
-        workerDatabase,
-        workspaceA,
-        {
+      consumeInboxMessage(workerDatabase, workspaceA, {
+        message: {
           consumerName: 'incomplete-proof',
           messageId,
           payloadChecksum: checksumA,
         },
-        () => {
+        operation: () => {
           callbacks += 1;
           return Promise.resolve(undefined);
         },
-      ),
+      }),
     ).rejects.toBeInstanceOf(InboxReceiptUnavailableError);
     expect(callbacks).toBe(0);
   });
@@ -317,15 +311,13 @@ describe('transactional inbox duplicate proof', () => {
     const messageId = randomUUID();
     const logicalAttemptId = randomUUID();
     await expect(
-      consumeInboxMessage(
-        workerDatabase,
-        workspaceA,
-        {
+      consumeInboxMessage(workerDatabase, workspaceA, {
+        message: {
           consumerName: 'rollback-proof',
           messageId,
           payloadChecksum: checksumA,
         },
-        async ({ db, workspaceId }) => {
+        operation: async ({ db, workspaceId }) => {
           await db.execute(sql`
             insert into app.queue_duplicate_probe_attempts
               (id, workspace_id, logical_attempt_id)
@@ -333,7 +325,7 @@ describe('transactional inbox duplicate proof', () => {
           `);
           throw new Error('injected failure');
         },
-      ),
+      }),
     ).rejects.toThrow('injected failure');
 
     await workerDatabase.withWorkspace(workspaceA, async ({ db }) => {
@@ -351,31 +343,27 @@ describe('transactional inbox duplicate proof', () => {
     });
 
     await expect(
-      consumeInboxMessage(
-        workerDatabase,
-        workspaceA,
-        {
+      consumeInboxMessage(workerDatabase, workspaceA, {
+        message: {
           consumerName: 'rollback-proof',
           messageId,
           payloadChecksum: checksumA,
         },
-        () => Promise.resolve('recovered'),
-      ),
+        operation: () => Promise.resolve('recovered'),
+      }),
     ).resolves.toEqual({ status: 'processed', value: 'recovered' });
   });
 
   it('stores completed receipts only in the active workspace', async () => {
     const messageId = randomUUID();
-    await consumeInboxMessage(
-      workerDatabase,
-      workspaceA,
-      {
+    await consumeInboxMessage(workerDatabase, workspaceA, {
+      message: {
         consumerName: 'workspace-proof',
         messageId,
         payloadChecksum: checksumA,
       },
-      () => Promise.resolve(undefined),
-    );
+      operation: () => Promise.resolve(undefined),
+    });
     const receipts = await workerDatabase.withWorkspace(
       workspaceA,
       async ({ db }) =>

@@ -131,18 +131,16 @@ describe('SCIM resources with existing membership authority', () => {
       },
     ]);
     await db.sessions(person.id);
-    await changeDirectoryUser(
-      f.pool,
-      f.principal,
-      created.id,
-      2,
-      (current) => ({
+    await changeDirectoryUser(f.pool, f.principal, {
+      id: created.id,
+      expectedRevision: 2,
+      transform: (current) => ({
         userName: current.user_name,
         externalId: null,
         active: false,
         profile: current.profile,
       }),
-    );
+    });
     expect(await member(f.workspaceId, person.id)).toEqual([
       { role: 'viewer', status: 'removed', role_revision: 2 },
     ]);
@@ -157,13 +155,11 @@ describe('SCIM resources with existing membership authority', () => {
     ).toBe(false);
     await expect(
       withPlatformTransaction(f.pool, (client) =>
-        directorySignInCandidate(
-          client,
-          f.organizationId,
-          person.email,
-          randomUUID(),
-          'subject',
-        ),
+        directorySignInCandidate(client, f.organizationId, {
+          email: person.email,
+          providerId: randomUUID(),
+          subject: 'subject',
+        }),
       ),
     ).rejects.toHaveProperty('name', 'SignInProofRejectedError');
   });
@@ -218,17 +214,15 @@ describe('SCIM resources with existing membership authority', () => {
       'insert into app.auth_directory_group_mappings(organization_id,workspace_id,group_id,role,priority) values($1,$2,$3,$4,0)',
       [f.organizationId, f.workspaceId, group.id, 'builder'],
     );
-    const updated = await changeDirectoryGroup(
-      f.pool,
-      f.principal,
-      group.id,
-      1,
-      (current) => ({
+    const updated = await changeDirectoryGroup(f.pool, f.principal, {
+      id: group.id,
+      expectedRevision: 1,
+      transform: (current) => ({
         displayName: current.display_name,
         externalId: current.external_id,
         memberIds: [user.id],
       }),
-    );
+    });
     expect(updated.memberIds).toEqual([user.id]);
     expect(await member(f.workspaceId, person.id)).toEqual([
       { role: 'builder', status: 'active', role_revision: 2 },
@@ -301,12 +295,18 @@ describe('SCIM resources with existing membership authority', () => {
       other = await setup();
     const user = await createDirectoryUser(f.pool, f.principal, values());
     await expect(
-      changeDirectoryUser(other.pool, other.principal, user.id, 1, () =>
-        values(),
-      ),
+      changeDirectoryUser(other.pool, other.principal, {
+        id: user.id,
+        expectedRevision: 1,
+        transform: () => values(),
+      }),
     ).rejects.toHaveProperty('reason', 'not_found');
     await expect(
-      changeDirectoryUser(f.pool, f.principal, user.id, 99, () => values()),
+      changeDirectoryUser(f.pool, f.principal, {
+        id: user.id,
+        expectedRevision: 99,
+        transform: () => values(),
+      }),
     ).rejects.toHaveProperty('reason', 'stale');
     const group = await createDirectoryGroup(f.pool, f.principal, {
       displayName: 'Atomic',
@@ -314,11 +314,15 @@ describe('SCIM resources with existing membership authority', () => {
       memberIds: [],
     });
     await expect(
-      changeDirectoryGroup(f.pool, f.principal, group.id, 1, () => ({
-        displayName: 'Changed',
-        externalId: null,
-        memberIds: [user.id, randomUUID()],
-      })),
+      changeDirectoryGroup(f.pool, f.principal, {
+        id: group.id,
+        expectedRevision: 1,
+        transform: () => ({
+          displayName: 'Changed',
+          externalId: null,
+          memberIds: [user.id, randomUUID()],
+        }),
+      }),
     ).rejects.toHaveProperty('reason', 'invalid_value');
     expect(
       await db.asAdmin(

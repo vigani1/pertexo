@@ -14,9 +14,15 @@ export function directoryRole(
 export async function readDirectoryRole(
   client: PoolClient,
   organizationId: string,
-  workspaceId: string,
-  directoryUserId: string,
-  fallback: DirectoryRole,
+  {
+    workspaceId,
+    directoryUserId,
+    fallback,
+  }: Readonly<{
+    workspaceId: string;
+    directoryUserId: string;
+    fallback: DirectoryRole;
+  }>,
 ): Promise<DirectoryRole> {
   const mappings = (
     await client.query<DirectoryMapping>(

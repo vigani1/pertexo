@@ -20,9 +20,15 @@ export const promotionReceiptSchema = z
 async function readPromotionReceipt(
   client: PoolClient,
   workspaceId: string,
-  actorId: string,
-  receipt: z.output<typeof promotionReceiptSchema>,
-  workflowIds: readonly string[],
+  {
+    actorId,
+    receipt,
+    workflowIds,
+  }: Readonly<{
+    actorId: string;
+    receipt: z.output<typeof promotionReceiptSchema>;
+    workflowIds: readonly string[];
+  }>,
 ) {
   const parameters: unknown[] = [
     workspaceId,
@@ -76,13 +82,11 @@ export async function readAuthorizedPromotionReceipt(
   workflowIds: readonly string[],
 ) {
   const result = await inWorkspace(input, (client) =>
-    readPromotionReceipt(
-      client,
-      input.workspaceId,
-      input.actorId,
+    readPromotionReceipt(client, input.workspaceId, {
+      actorId: input.actorId,
       receipt,
       workflowIds,
-    ),
+    }),
   );
   await inWorkspace(
     { workspaceId: receipt.targetWorkspaceId, actorId: input.actorId },

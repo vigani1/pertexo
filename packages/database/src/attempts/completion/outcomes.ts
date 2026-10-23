@@ -112,10 +112,17 @@ function completionFields(input: CompletionInput): CompletionFields {
 async function duplicateCompletion(
   client: PoolClient,
   input: CompletionInput,
-  row: LockedAttemptRow,
-  receipt: CompletionReceiptRow,
-  serializedOutput: string | null,
-  fields: CompletionFields,
+  {
+    row,
+    receipt,
+    serializedOutput,
+    fields,
+  }: Readonly<{
+    row: LockedAttemptRow;
+    receipt: CompletionReceiptRow;
+    serializedOutput: string | null;
+    fields: CompletionFields;
+  }>,
 ): Promise<CompleteNodeAttemptResult | undefined> {
   if (
     ![
@@ -366,20 +373,25 @@ async function commitTerminal(
 export async function applyNodeAttemptCompletion(
   client: PoolClient,
   input: CompletionInput,
-  row: LockedAttemptRow,
-  receipt: CompletionReceiptRow,
-  serializedOutput: string | null,
-  controlActive: boolean,
+  {
+    row,
+    receipt,
+    serializedOutput,
+    controlActive,
+  }: Readonly<{
+    row: LockedAttemptRow;
+    receipt: CompletionReceiptRow;
+    serializedOutput: string | null;
+    controlActive: boolean;
+  }>,
 ): Promise<CompleteNodeAttemptResult> {
   const fields = completionFields(input);
-  const duplicate = await duplicateCompletion(
-    client,
-    input,
+  const duplicate = await duplicateCompletion(client, input, {
     row,
     receipt,
     serializedOutput,
     fields,
-  );
+  });
   if (duplicate !== undefined) return duplicate;
   if (fields.suspendedOutcome !== undefined && controlActive)
     throw new NodeAttemptReconciliationRequiredError();

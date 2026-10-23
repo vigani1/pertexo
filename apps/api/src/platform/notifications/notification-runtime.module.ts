@@ -47,11 +47,10 @@ export function createApiNotificationRuntime(
     void database.close().catch(() => undefined);
     throw error;
   }
-  const preferences = createNoticePreferencesStore(
-    config,
-    mail !== undefined,
+  const preferences = createNoticePreferencesStore(config, {
+    emailAvailable: mail !== undefined,
     runtime,
-  );
+  });
   const preferenceService = new NoticePreferencesService(
     preferences,
     mail === undefined

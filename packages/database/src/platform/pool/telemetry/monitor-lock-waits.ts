@@ -14,10 +14,17 @@ export const cleanupError = (cause: unknown): Error =>
 function startLockWaitMonitor(
   config: PoolConfig,
   state: MeterState,
-  intervalMs: number,
-  backendPids: Set<number>,
-  role: DatabasePoolRole,
-  diagnostics: DatabasePoolDiagnostics | undefined,
+  {
+    intervalMs,
+    backendPids,
+    role,
+    diagnostics,
+  }: Readonly<{
+    intervalMs: number;
+    backendPids: Set<number>;
+    role: DatabasePoolRole;
+    diagnostics: DatabasePoolDiagnostics | undefined;
+  }>,
 ): LockWaitMonitor {
   const monitorPool = new Pool({ ...config, max: 1 });
   const observations = new Map<
@@ -116,21 +123,25 @@ function monitorKey(
 export function acquireLockWaitMonitor(
   config: PoolConfig,
   state: MeterState,
-  intervalMs: number,
-  role: DatabasePoolRole,
-  diagnostics: DatabasePoolDiagnostics | undefined,
+  {
+    intervalMs,
+    role,
+    diagnostics,
+  }: Readonly<{
+    intervalMs: number;
+    role: DatabasePoolRole;
+    diagnostics: DatabasePoolDiagnostics | undefined;
+  }>,
 ): Pick<LockWaitMonitor, 'backendPids' | 'close'> {
   const key = monitorKey(config, intervalMs, role);
   let monitor = state.monitors.get(key);
   if (monitor === undefined) {
-    monitor = startLockWaitMonitor(
-      config,
-      state,
+    monitor = startLockWaitMonitor(config, state, {
       intervalMs,
-      new Set(),
+      backendPids: new Set(),
       role,
       diagnostics,
-    );
+    });
     state.monitors.set(key, monitor);
   } else {
     monitor.references += 1;

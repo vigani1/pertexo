@@ -6,7 +6,7 @@ export function classifyConnectionTestCompletion(
   currentStatus: ConnectionRecord['status'],
   outcome: ConnectionTestResult['outcome'],
   secretVersionId: string,
-  currentSecretWasTested: boolean,
+  { currentSecretWasTested }: Readonly<{ currentSecretWasTested: boolean }>,
 ) {
   const sharedMetadata = { secretVersionId, currentSecretWasTested };
   if (outcome.ok)

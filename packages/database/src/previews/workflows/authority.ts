@@ -22,13 +22,11 @@ export async function lockTestAuthority(
   client: PoolClient,
   input: SampleScope,
 ): Promise<void> {
-  await lockWorkflowAuthoringAuthority(
-    client,
-    input.workspaceId,
-    input.actorId,
-    testRoles,
-    { workflowId: input.workflowId, capability: 'workflow:update' },
-  );
+  await lockWorkflowAuthoringAuthority(client, input.workspaceId, {
+    actorId: input.actorId,
+    roles: testRoles,
+    resource: { workflowId: input.workflowId, capability: 'workflow:update' },
+  });
 }
 export function withTestAuthority<T>(
   pool: Pool,
@@ -58,20 +56,16 @@ export function withTestRead<T>(
     { workspaceId: input.workspaceId, actorId: input.actorId },
     async (client) => {
       try {
-        const role = await readWorkspaceAuthority(
-          client,
-          input.workspaceId,
-          input.actorId,
-          testRoles,
-        );
+        const role = await readWorkspaceAuthority(client, input.workspaceId, {
+          actorId: input.actorId,
+          roles: testRoles,
+        });
         const access = await readFolderScope(client, input, role);
         if (
-          !(await workflowAccessible(
-            client,
-            access,
-            input.workspaceId,
-            input.workflowId,
-          ))
+          !(await workflowAccessible(client, access, {
+            workspaceId: input.workspaceId,
+            workflowId: input.workflowId,
+          }))
         )
           throw new WorkflowNotFoundError('Workflow is not visible');
       } catch (error) {

@@ -55,10 +55,17 @@ interface Origin {
 export async function preparePromotionTarget(
   client: PoolClient,
   context: PromotionContext,
-  input: PromotionScope,
-  sourceWorkspaceId: string,
-  sources: PromotionSourceSet,
-  budget: PromotionGraphBudget,
+  {
+    input,
+    sourceWorkspaceId,
+    sources,
+    budget,
+  }: Readonly<{
+    input: PromotionScope;
+    sourceWorkspaceId: string;
+    sources: PromotionSourceSet;
+    budget: PromotionGraphBudget;
+  }>,
 ) {
   const workflows: ReviewedWorkflow[] = [];
   const scope = await readFolderScope(client, input);
@@ -98,13 +105,11 @@ export async function preparePromotionTarget(
       ).rows[0] ?? null;
     if (
       origin !== null &&
-      !(await workflowAccessible(
-        client,
-        scope,
-        input.workspaceId,
-        origin.workflow_id,
-        'workflow:update',
-      ))
+      !(await workflowAccessible(client, scope, {
+        workspaceId: input.workspaceId,
+        workflowId: origin.workflow_id,
+        capability: 'workflow:update',
+      }))
     )
       throw new WorkflowNotFoundError('The target workflow is unavailable.');
     if (origin === null && !scope.permits(null, 'workflow:create'))
@@ -175,29 +180,25 @@ export async function preparePromotionTarget(
           'This version contains a workspace file reference. Replace it with a runtime file mapping before promotion.',
       });
     try {
-      graph = await rebindPromotionConnections(
-        client,
-        input.workspaceId,
-        connections,
+      graph = await rebindPromotionConnections(client, input.workspaceId, {
+        scope: connections,
         source,
         sources,
-        context.catalogs,
+        catalogs: context.catalogs,
         report,
-      );
+      });
       graph = mapPromotionNodes(graph, (node) =>
         rebindPromotionTable(node, sources.tables, tables, (requirement) => {
           report({ workflowId: source.workflowId, ...requirement });
         }),
       );
-      graph = await rebindPromotionCalls(
-        client,
-        sourceWorkspaceId,
-        input.workspaceId,
-        scope,
+      graph = await rebindPromotionCalls(client, sourceWorkspaceId, {
+        targetWorkspaceId: input.workspaceId,
+        resources: scope,
         source,
         graph,
         report,
-      );
+      });
       context.requirePlaceable(
         targetGraph ?? EMPTY_WORKFLOW_GRAPH,
         graph,
@@ -206,9 +207,7 @@ export async function preparePromotionTarget(
       for (const requirement of await inspectPromotionRequirements(
         client,
         input.workspaceId,
-        source.workflowId,
-        graph,
-        connections,
+        { workflowId: source.workflowId, graph, scope: connections },
       ))
         report(requirement);
       const validation = await admitWorkflowAuthoring(
@@ -239,17 +238,15 @@ export async function preparePromotionTarget(
             item.status === 'missing',
         )
       )
-        await inspectPromotionCallDependencies(
-          client,
-          input.workspaceId,
+        await inspectPromotionCallDependencies(client, input.workspaceId, {
           source,
-          origin?.workflow_id ?? null,
-          scope,
+          targetWorkflowId: origin?.workflow_id ?? null,
+          resources: scope,
           connections,
           graph,
           budget,
           report,
-        );
+        });
     } catch (error) {
       if (
         !(error instanceof WorkflowPortabilityError) &&

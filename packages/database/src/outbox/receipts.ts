@@ -44,9 +44,15 @@ const CHECKSUM_MISMATCH = Symbol('checksum-mismatch');
 export async function consumeInboxMessage<T>(
   database: WorkspaceDatabase,
   workspaceId: string,
-  message: InboxMessage,
-  operation: (transaction: WorkspaceTransaction) => Promise<T>,
-  options: InboxConsumeOptions = {},
+  {
+    message,
+    operation,
+    options = {},
+  }: Readonly<{
+    message: InboxMessage;
+    operation: (transaction: WorkspaceTransaction) => Promise<T>;
+    options?: InboxConsumeOptions | undefined;
+  }>,
 ): Promise<InboxConsumeResult<T>> {
   const parsed = inboxMessageSchema.parse(message);
   const result = await database.withWorkspace(

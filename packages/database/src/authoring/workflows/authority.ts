@@ -11,11 +11,19 @@ import { WorkflowNotFoundError } from './errors.js';
 export async function lockWorkflowAuthoringAuthority(
   client: PoolClient,
   workspaceId: string,
-  actorId: string,
-  roles: readonly Role[],
-  resource?: Readonly<{
-    workflowId: string;
-    capability: WorkflowResourceCapability;
+  {
+    actorId,
+    roles,
+    resource,
+  }: Readonly<{
+    actorId: string;
+    roles: readonly Role[];
+    resource?:
+      | Readonly<{
+          workflowId: string;
+          capability: WorkflowResourceCapability;
+        }>
+      | undefined;
   }>,
 ): Promise<void> {
   try {
@@ -32,13 +40,11 @@ export async function lockWorkflowAuthoringAuthority(
         role,
       );
       if (
-        !(await workflowAccessible(
-          client,
-          access,
+        !(await workflowAccessible(client, access, {
           workspaceId,
-          resource.workflowId,
-          resource.capability,
-        ))
+          workflowId: resource.workflowId,
+          capability: resource.capability,
+        }))
       )
         throw new WorkflowNotFoundError('Workflow is not visible');
     }

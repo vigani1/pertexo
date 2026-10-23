@@ -128,9 +128,15 @@ export function createDirectoryGroup(
 export function changeDirectoryGroup(
   pool: Pool,
   principal: DirectoryPrincipal,
-  id: string,
-  expectedRevision: number | undefined,
-  transform: (current: DirectoryGroup) => DirectoryGroupValues,
+  {
+    id,
+    expectedRevision,
+    transform,
+  }: Readonly<{
+    id: string;
+    expectedRevision: number | undefined;
+    transform: (current: DirectoryGroup) => DirectoryGroupValues;
+  }>,
 ): Promise<DirectoryGroup> {
   return withDirectoryConstraintErrors(() =>
     withDirectoryTransaction(pool, principal, async (client, organization) => {

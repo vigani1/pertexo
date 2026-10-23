@@ -12,9 +12,15 @@ import {
 export async function authorizeForm(
   client: PoolClient,
   input: FormScope,
-  grant: PublicFormGrant | undefined,
-  write: boolean,
-  manage = false,
+  {
+    grant,
+    write,
+    manage = false,
+  }: Readonly<{
+    grant: PublicFormGrant | undefined;
+    write: boolean;
+    manage?: boolean | undefined;
+  }>,
 ): Promise<void> {
   if (grant !== undefined) {
     if (
@@ -39,9 +45,13 @@ export async function authorizeForm(
       !(await authorizeWorkflowResource(
         client,
         { ...input, actorId: input.actorId },
-        manage && write ? 'workflow:update' : 'workflow:read',
-        write,
-        rolesForCapability(manage ? 'workflow:update' : 'workspace:read'),
+        {
+          capability: manage && write ? 'workflow:update' : 'workflow:read',
+          locking: write,
+          roles: rolesForCapability(
+            manage ? 'workflow:update' : 'workspace:read',
+          ),
+        },
       ))
     )
       throw new FormUnavailableError();
@@ -51,7 +61,7 @@ export async function readFormVersion(
   client: PoolClient,
   input: FormScope,
   locking: 'read' | 'share' | 'update',
-  allowPaused = false,
+  { allowPaused = false }: Readonly<{ allowPaused?: boolean | undefined }> = {},
 ) {
   // Lock before reading the version: a locked join waiting on a concurrent
   // publication re-checks against the old version row and finds no form.

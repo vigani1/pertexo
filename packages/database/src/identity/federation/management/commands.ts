@@ -30,7 +30,7 @@ export async function requireControlOrganization(
   const organization = await organizationForWorkspace(
     client,
     scope.workspaceId,
-    true,
+    { locking: true },
   );
   if (organization?.control_workspace_id !== scope.workspaceId)
     throw new FederationConflictError(
@@ -52,10 +52,17 @@ export function assertOrganizationRevision(
 export async function runFederationCommand(
   pool: Pool,
   input: FederationScope & Readonly<{ idempotencyKey: string }>,
-  operation: string,
-  request: unknown,
-  change: (client: PoolClient) => Promise<OrganizationRow>,
-  additionalWorkspaceIds: readonly string[] = [],
+  {
+    operation,
+    request,
+    change,
+    additionalWorkspaceIds = [],
+  }: Readonly<{
+    operation: string;
+    request: unknown;
+    change: (client: PoolClient) => Promise<OrganizationRow>;
+    additionalWorkspaceIds?: readonly string[] | undefined;
+  }>,
 ): Promise<FederationSettings> {
   return withPlatformTransaction(
     pool,
@@ -71,11 +78,15 @@ export async function runFederationCommand(
       const organization = await organizationForWorkspace(
         client,
         input.workspaceId,
-        true,
+        { locking: true },
       );
       await lockDirectoryParticipants(client, organization?.id, input.actorId);
       for (const workspaceId of workspaceIds)
-        await lockFederationWorkspace(client, { ...input, workspaceId }, true);
+        await lockFederationWorkspace(
+          client,
+          { ...input, workspaceId },
+          { ownerOnly: true },
+        );
       const identity = {
         workspaceId: input.workspaceId,
         scope: input.actorId,

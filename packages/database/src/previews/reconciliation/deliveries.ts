@@ -356,13 +356,11 @@ export async function reconcilePreviewDelivery(
       error instanceof PreviewDeliveryMismatchError &&
       !input.signal?.aborted
     ) {
-      await auditPreviewDeliveryMismatch(
-        pool,
-        previewReconcilerConsumerName,
-        scope.workspaceId,
-        input.delivery,
-        input.signal ?? new AbortController().signal,
-      );
+      await auditPreviewDeliveryMismatch(pool, previewReconcilerConsumerName, {
+        workspaceId: scope.workspaceId,
+        delivery: input.delivery,
+        signal: input.signal ?? new AbortController().signal,
+      });
     }
     throw error;
   }

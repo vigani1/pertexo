@@ -147,9 +147,11 @@ export async function authorizeWebhookTriggerReader(
     !(await authorizeWorkflowResource(
       client,
       { workspaceId, actorId, workflowId },
-      'workflow:read',
-      false,
-      WORKFLOW_EDITOR_ROLES,
+      {
+        capability: 'workflow:read',
+        locking: false,
+        roles: WORKFLOW_EDITOR_ROLES,
+      },
     ))
   )
     throw new WebhookTriggerNotFoundError();

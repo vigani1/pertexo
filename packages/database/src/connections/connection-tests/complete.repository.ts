@@ -33,11 +33,9 @@ export async function completePersistedConnectionTest(
   const scope = connectionTestScope(actorId, connectionId);
   const metadata = parseRequestMetadata(input);
   const outcome = connectionTestOutcomeSchema.parse(input.outcome);
-  return withConnectionTransaction(
-    pool,
-    input.workspaceId,
+  return withConnectionTransaction(pool, input.workspaceId, {
     actorId,
-    async (client, workspaceId) => {
+    operation: async (client, workspaceId) => {
       const claim = await client.query<{ result_ref: unknown }>(
         `select result_ref from app.idempotency_records
              where workspace_id = $1 and operation = 'connection.test'
@@ -73,7 +71,7 @@ export async function completePersistedConnectionTest(
         client,
         workspaceId,
         connectionId,
-        true,
+        { lock: true },
       );
       if (current === null)
         throw new ConnectionNotFoundError('Connection is not visible');
@@ -84,7 +82,7 @@ export async function completePersistedConnectionTest(
         current.status,
         outcome,
         secretVersionId,
-        currentSecretWasTested,
+        { currentSecretWasTested },
       );
       const connection = await applyCurrentConnectionTestHealth(client, {
         current,
@@ -128,5 +126,5 @@ export async function completePersistedConnectionTest(
       );
       return result;
     },
-  );
+  });
 }

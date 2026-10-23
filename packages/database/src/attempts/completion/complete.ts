@@ -138,14 +138,12 @@ export async function completeNodeAttempt(
         );
         const row = locked.rows[0];
         if (row === undefined) throw new NodeAttemptStateCorruptError();
-        return applyNodeAttemptCompletion(
-          client,
-          input,
+        return applyNodeAttemptCompletion(client, input, {
           row,
-          receiptRow,
+          receipt: receiptRow,
           serializedOutput,
-          run.rows[0]?.abort_requested === true,
-        );
+          controlActive: run.rows[0]?.abort_requested === true,
+        });
       },
     );
   } catch (error: unknown) {

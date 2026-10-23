@@ -46,11 +46,9 @@ export function createConnectionResolutionPersistence(
         .regex(/^[a-z][a-z0-9._:-]{0,127}$/u)
         .parse(input.purpose);
       const traceId = safeOptionalIdentifier(input.traceId);
-      return withConnectionTransaction(
-        pool,
-        input.workspaceId,
-        undefined,
-        async (client, workspaceId) => {
+      return withConnectionTransaction(pool, input.workspaceId, {
+        actorId: undefined,
+        operation: async (client, workspaceId) => {
           const result = await client.query<Record<string, unknown>>(
             `select connection.*,
                     secret.id as secret_id,
@@ -104,8 +102,8 @@ export function createConnectionResolutionPersistence(
             sealed: mapSealed(row),
           });
         },
-        input.signal === undefined ? {} : { signal: input.signal },
-      );
+        options: input.signal === undefined ? {} : { signal: input.signal },
+      });
     },
   });
 }

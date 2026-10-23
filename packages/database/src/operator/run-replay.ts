@@ -107,15 +107,13 @@ export function createOperatorRunReplayStore(
     replay: async (input: z.input<typeof inputSchema>) => {
       const parsed = inputSchema.parse(input);
       parsed.signal?.throwIfAborted();
-      const consumed = await consumeInboxMessage(
-        database,
-        parsed.workspaceId,
-        {
+      const consumed = await consumeInboxMessage(database, parsed.workspaceId, {
+        message: {
           consumerName: 'operator-run-replay',
           messageId: parsed.delivery.outboxEventId,
           payloadChecksum: parsed.delivery.payloadChecksum,
         },
-        async (transaction) => {
+        operation: async (transaction) => {
           const outbox = await transaction.db.execute<{
             aggregate_id: string;
             aggregate_type: string;
@@ -203,8 +201,8 @@ export function createOperatorRunReplayStore(
           });
           return accepted.runId;
         },
-        parsed.signal === undefined ? {} : { signal: parsed.signal },
-      );
+        options: parsed.signal === undefined ? {} : { signal: parsed.signal },
+      });
       return consumed.status === 'duplicate'
         ? Object.freeze({ kind: 'duplicate' as const })
         : Object.freeze({ kind: 'processed' as const, runId: consumed.value });

@@ -22,9 +22,15 @@ export type DefaultsRow = Readonly<{
 export async function readNoticePreferences(
   client: PoolClient,
   workspaceId: string,
-  actorId: string,
-  canManageDefaults: boolean,
-  emailAvailable: boolean,
+  {
+    actorId,
+    canManageDefaults,
+    emailAvailable,
+  }: Readonly<{
+    actorId: string;
+    canManageDefaults: boolean;
+    emailAvailable: boolean;
+  }>,
 ): Promise<NoticePreferencesResponse> {
   const pref = await client.query<PreferenceRow>(
     'select * from app.notice_preferences where workspace_id=$1 and user_id=$2',
@@ -34,18 +40,18 @@ export async function readNoticePreferences(
     'select * from app.notice_workspace_settings where workspace_id=$1',
     [workspaceId],
   );
-  return projectNoticePreferences(
-    pref.rows[0],
-    defs.rows[0],
+  return projectNoticePreferences(pref.rows[0], defs.rows[0], {
     canManageDefaults,
     emailAvailable,
-  );
+  });
 }
 export function projectNoticePreferences(
   pref: PreferenceRow | undefined,
   defs: DefaultsRow | undefined,
-  canManageDefaults: boolean,
-  emailAvailable: boolean,
+  {
+    canManageDefaults,
+    emailAvailable,
+  }: Readonly<{ canManageDefaults: boolean; emailAvailable: boolean }>,
 ): NoticePreferencesResponse {
   const defaults = {
     revision: defs?.revision ?? 0,

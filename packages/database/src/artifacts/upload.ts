@@ -199,9 +199,15 @@ async function beginUpload(
 async function readUploadArtifact(
   pool: Pool,
   input: ArtifactUploadAuthorization,
-  access: 'upload' | 'read',
-  statuses: readonly ArtifactRecord['status'][] = ['pending', 'available'],
-  signal?: AbortSignal,
+  {
+    access,
+    statuses = ['pending', 'available'],
+    signal,
+  }: Readonly<{
+    access: 'upload' | 'read';
+    statuses?: readonly ArtifactRecord['status'][] | undefined;
+    signal?: AbortSignal | undefined;
+  }>,
 ): Promise<ArtifactRecord | null> {
   const parsed = normalizeIdentity(input);
   return withTenantScopedClient(
@@ -311,9 +317,11 @@ async function finalizeUpload(
   const artifact = await readUploadArtifact(
     pool,
     { actor: input.actor, identity: input.identity },
-    'upload',
-    ['pending', 'available', 'deleting', 'deleted'],
-    input.signal,
+    {
+      access: 'upload',
+      statuses: ['pending', 'available', 'deleting', 'deleted'],
+      signal: input.signal,
+    },
   );
   if (artifact === null) throw new ArtifactUploadNotFoundError();
   if (!artifactMetadataMatches(artifact, parsed.expectedMetadata))
@@ -339,11 +347,11 @@ export function createArtifactUploadDatabase(
   return Object.freeze({
     beginUpload: (input: BeginArtifactUploadInput) => beginUpload(pool, input),
     getForUpload: (input: ArtifactUploadAuthorization) =>
-      readUploadArtifact(pool, input, 'upload'),
+      readUploadArtifact(pool, input, { access: 'upload' }),
     finalizeUpload: (input: FinalizeArtifactUploadInput) =>
       finalizeUpload(pool, input),
     getMetadata: (input: ArtifactUploadAuthorization) =>
-      readUploadArtifact(pool, input, 'read'),
+      readUploadArtifact(pool, input, { access: 'read' }),
     checkReadiness: (): Promise<DatabaseReadiness> =>
       checkDatabaseReadiness(pool),
     close: lease.close,

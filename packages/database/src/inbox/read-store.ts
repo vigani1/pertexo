@@ -67,7 +67,7 @@ export interface WorkspaceInboxDatabase {
 async function noticeAccess(
   client: PoolClient,
   input: ReaderScope,
-  write: boolean,
+  { write }: Readonly<{ write: boolean }>,
 ) {
   if (!write) return readFolderScope(client, input);
   try {
@@ -105,7 +105,7 @@ export function createWorkspaceInboxDatabase(
         lease.pool,
         scope(input),
         async (client) => {
-          const resources = await noticeAccess(client, input, false);
+          const resources = await noticeAccess(client, input, { write: false });
 
           const pageParameters: unknown[] = [
             input.workspaceId,
@@ -153,7 +153,7 @@ export function createWorkspaceInboxDatabase(
         lease.pool,
         scope(input),
         async (client) => {
-          const resources = await noticeAccess(client, input, false);
+          const resources = await noticeAccess(client, input, { write: false });
 
           const summaryParameters: unknown[] = [
             input.workspaceId,
@@ -178,7 +178,7 @@ export function createWorkspaceInboxDatabase(
         lease.pool,
         scope(input),
         async (client) => {
-          const resources = await noticeAccess(client, input, true);
+          const resources = await noticeAccess(client, input, { write: true });
 
           const markParameters: unknown[] = [
             input.workspaceId,
@@ -211,7 +211,7 @@ export function createWorkspaceInboxDatabase(
         lease.pool,
         scope(input),
         async (client) => {
-          const resources = await noticeAccess(client, input, true);
+          const resources = await noticeAccess(client, input, { write: true });
 
           const allParameters: unknown[] = [
             input.workspaceId,

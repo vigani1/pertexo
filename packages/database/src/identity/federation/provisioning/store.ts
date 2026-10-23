@@ -87,7 +87,12 @@ export function createDirectoryStore(
       id: string,
       expectedRevision: number | undefined,
       transform: (current: DirectoryUser) => DirectoryUserValues,
-    ) => changeDirectoryUser(pool, principal, id, expectedRevision, transform),
+    ) =>
+      changeDirectoryUser(pool, principal, {
+        id,
+        expectedRevision,
+        transform,
+      }),
     deleteUser: (
       principal: DirectoryPrincipal,
       id: string,
@@ -102,15 +107,26 @@ export function createDirectoryStore(
       id: string,
       expectedRevision: number | undefined,
       transform: (current: DirectoryGroup) => DirectoryGroupValues,
-    ) => changeDirectoryGroup(pool, principal, id, expectedRevision, transform),
+    ) =>
+      changeDirectoryGroup(pool, principal, {
+        id,
+        expectedRevision,
+        transform,
+      }),
     deleteGroup: (
       principal: DirectoryPrincipal,
       id: string,
       expectedRevision: number | undefined,
     ) => deleteDirectoryGroup(pool, principal, id, expectedRevision),
     adoption: (scope: FederationScope, query: DirectoryAdoptionQuery) =>
-      readDirectoryManagement(pool, scope, (client, organization, canManage) =>
-        previewDirectoryAdoption(client, organization, canManage, query),
+      readDirectoryManagement(
+        pool,
+        scope,
+        (client, organization, { canManage }) =>
+          previewDirectoryAdoption(client, organization, {
+            canManage,
+            query,
+          }),
       ),
     settings: (scope: FederationScope) =>
       readDirectoryManagement(pool, scope, projectDirectorySettings),

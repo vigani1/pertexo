@@ -35,7 +35,7 @@ export async function prepareFormEvent(
       ...(input.actorId === undefined ? {} : { actorId: input.actorId }),
     },
     async (client) => {
-      await authorizeForm(client, input, grant, false);
+      await authorizeForm(client, input, { grant, write: false });
       const { identity, command } = formSubmissionIdentity(input);
       if (
         (await findCommandResult(client, {

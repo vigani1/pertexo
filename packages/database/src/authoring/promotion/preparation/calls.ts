@@ -24,11 +24,19 @@ import { inspectPromotionRequirements } from './requirements.js';
 export async function rebindPromotionCalls(
   client: PoolClient,
   sourceWorkspaceId: string,
-  targetWorkspaceId: string,
-  resources: FolderScope,
-  source: PromotionSource,
-  graph: WorkflowGraph,
-  report: (requirement: WorkflowPromotionRequirement) => void,
+  {
+    targetWorkspaceId,
+    resources,
+    source,
+    graph,
+    report,
+  }: Readonly<{
+    targetWorkspaceId: string;
+    resources: FolderScope;
+    source: PromotionSource;
+    graph: WorkflowGraph;
+    report: (requirement: WorkflowPromotionRequirement) => void;
+  }>,
 ): Promise<WorkflowGraph> {
   const replacements = new Map<
     string,
@@ -102,13 +110,23 @@ export async function rebindPromotionCalls(
 export async function inspectPromotionCallDependencies(
   client: PoolClient,
   workspaceId: string,
-  source: PromotionSource,
-  targetWorkflowId: string | null,
-  resources: FolderScope,
-  connections: ConnectionScope,
-  graph: WorkflowGraph,
-  budget: PromotionGraphBudget,
-  report: (requirement: WorkflowPromotionRequirement) => void,
+  {
+    source,
+    targetWorkflowId,
+    resources,
+    connections,
+    graph,
+    budget,
+    report,
+  }: Readonly<{
+    source: PromotionSource;
+    targetWorkflowId: string | null;
+    resources: FolderScope;
+    connections: ConnectionScope;
+    graph: WorkflowGraph;
+    budget: PromotionGraphBudget;
+    report: (requirement: WorkflowPromotionRequirement) => void;
+  }>,
 ): Promise<void> {
   const validation = validateWorkflowGraph(graph);
   if (!validation.ok) return;
@@ -154,9 +172,7 @@ export async function inspectPromotionCallDependencies(
         for (const requirement of await inspectPromotionRequirements(
           client,
           workspaceId,
-          source.workflowId,
-          child,
-          connections,
+          { workflowId: source.workflowId, graph: child, scope: connections },
         ))
           report({
             ...requirement,

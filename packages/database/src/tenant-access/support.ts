@@ -37,7 +37,10 @@ function metadataError(message: string): never {
   throw new IdentityMetadataValidationError(message);
 }
 
-function assertOrdinaryContainer(value: object, isArray: boolean): void {
+function assertOrdinaryContainer(
+  value: object,
+  { isArray }: Readonly<{ isArray: boolean }>,
+): void {
   if (Object.getOwnPropertySymbols(value).length > 0)
     metadataError('Identity metadata must contain ordinary JSON data');
   if (isArray) {
@@ -72,7 +75,7 @@ function parsePersistedIdentityMetadata(
   try {
     if (typeof value !== 'object' || value === null || Array.isArray(value))
       metadataError('Identity metadata must be a JSON object');
-    assertOrdinaryContainer(value, false);
+    assertOrdinaryContainer(value, { isArray: false });
     const root: Record<string, unknown> = {};
     const seen = new Set<object>([value]);
     const stack: MetadataFrame[] = [
@@ -127,7 +130,7 @@ function parsePersistedIdentityMetadata(
       if (seen.has(child))
         metadataError('Identity metadata must not repeat object references');
       const childIsArray = Array.isArray(child);
-      assertOrdinaryContainer(child, childIsArray);
+      assertOrdinaryContainer(child, { isArray: childIsArray });
       const childTarget: JsonContainer = childIsArray ? [] : {};
       assignJsonValue(frame.target, key, childTarget);
       seen.add(child);

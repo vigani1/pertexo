@@ -29,26 +29,25 @@ export function setWorkflowFailureNotificationPolicy(
     Readonly<{ destinationId: string }>,
 ): Promise<void> {
   return transaction(input, async (client) => {
-    await authorize(client, input.workspaceId, input.actorId, false);
+    await authorize(client, input.workspaceId, input.actorId, {
+      manage: false,
+    });
     const workflowId = z.uuid().parse(input.workflowId);
     if (
       !(await authorizeWorkflowResource(
         client,
         { ...input, workflowId },
-        'workflow:update',
-        true,
+        { capability: 'workflow:update', locking: true },
       ))
     )
       throw destinationError('not_found', 'Workflow is not visible');
     const operation = 'workflow.failure.notification.policy.set';
     const scope = `${input.actorId}:${workflowId}`;
-    const replay = await claimNotificationCommand(
-      client,
-      input,
+    const replay = await claimNotificationCommand(client, input, {
       operation,
       scope,
-      workflowId,
-    );
+      resourceId: workflowId,
+    });
     if (replay.kind === 'replay') return;
     await readFailureNotificationDestination(
       client,
@@ -71,14 +70,16 @@ export function setWorkflowFailureNotificationPolicy(
         'not_found',
         'Workflow or destination is not visible',
       );
-    await audit(
-      client,
-      input,
-      'workflow.failure_notification_policy_set',
-      { id: workflowId, type: 'workflow' },
-      { destinationId: input.destinationId },
-    );
-    await completeNotificationCommand(client, input, operation, scope, null);
+    await audit(client, input, {
+      action: 'workflow.failure_notification_policy_set',
+      target: { id: workflowId, type: 'workflow' },
+      metadata: { destinationId: input.destinationId },
+    });
+    await completeNotificationCommand(client, input, {
+      operation,
+      scope,
+      result: null,
+    });
   });
 }
 
@@ -87,7 +88,9 @@ export function clearWorkflowFailureNotificationPolicy(
   input: IdempotentCommandMetadata & WorkflowPolicyScope,
 ): Promise<void> {
   return transaction(input, async (client) => {
-    await authorize(client, input.workspaceId, input.actorId, false);
+    await authorize(client, input.workspaceId, input.actorId, {
+      manage: false,
+    });
     const workflowId = z.uuid().parse(input.workflowId);
     const existing = await client.query(
       'select id from app.workflows where workspace_id=$1 and id=$2 for share',
@@ -99,20 +102,17 @@ export function clearWorkflowFailureNotificationPolicy(
       !(await authorizeWorkflowResource(
         client,
         { ...input, workflowId },
-        'workflow:update',
-        true,
+        { capability: 'workflow:update', locking: true },
       ))
     )
       throw destinationError('not_found', 'Workflow is not visible');
     const operation = 'workflow.failure.notification.policy.clear';
     const scope = `${input.actorId}:${workflowId}`;
-    const replay = await claimNotificationCommand(
-      client,
-      input,
+    const replay = await claimNotificationCommand(client, input, {
       operation,
       scope,
-      workflowId,
-    );
+      resourceId: workflowId,
+    });
     if (replay.kind === 'replay') return;
     if (existing.rowCount !== 1)
       throw destinationError('not_found', 'Workflow is not visible');
@@ -121,14 +121,16 @@ export function clearWorkflowFailureNotificationPolicy(
       [input.workspaceId, workflowId],
     );
     if (result.rowCount === 1)
-      await audit(
-        client,
-        input,
-        'workflow.failure_notification_policy_cleared',
-        { id: workflowId, type: 'workflow' },
-        {},
-      );
-    await completeNotificationCommand(client, input, operation, scope, null);
+      await audit(client, input, {
+        action: 'workflow.failure_notification_policy_cleared',
+        target: { id: workflowId, type: 'workflow' },
+        metadata: {},
+      });
+    await completeNotificationCommand(client, input, {
+      operation,
+      scope,
+      result: null,
+    });
   });
 }
 
@@ -142,14 +144,15 @@ export function readWorkflowFailureNotificationPolicy(
   input: CommandMetadata & WorkflowPolicyScope,
 ): Promise<FailureNotificationDestinationRecord | null> {
   return transaction(input, async (client) => {
-    await authorize(client, input.workspaceId, input.actorId, false);
+    await authorize(client, input.workspaceId, input.actorId, {
+      manage: false,
+    });
     const workflowId = z.uuid().parse(input.workflowId);
     if (
       !(await authorizeWorkflowResource(
         client,
         { ...input, workflowId },
-        'workflow:read',
-        true,
+        { capability: 'workflow:read', locking: true },
       ))
     )
       throw destinationError('not_found', 'Workflow is not visible');

@@ -14,9 +14,15 @@ import {
 export async function captureSampleSource(
   client: PoolClient,
   input: SampleCommand,
-  source: SampleSource,
-  current: SampleRow | undefined,
-  binding: string,
+  {
+    source,
+    current,
+    binding,
+  }: Readonly<{
+    source: SampleSource;
+    current: SampleRow | undefined;
+    binding: string;
+  }>,
 ) {
   if (source.kind === 'confirm') {
     if (current === undefined) throw new WorkflowStepSampleError('changed');

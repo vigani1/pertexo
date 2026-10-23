@@ -22,12 +22,10 @@ export function reviewFolderMove(
   input: Parameters<WorkflowFolderDatabase['reviewMove']>[0],
 ): ReturnType<WorkflowFolderDatabase['reviewMove']> {
   return session.transact(input, async (client, scope) => {
-    await lockWorkflowAuthoringAuthority(
-      client,
-      scope.workspaceId,
-      scope.actorId,
-      EDITORS,
-    );
+    await lockWorkflowAuthoringAuthority(client, scope.workspaceId, {
+      actorId: scope.actorId,
+      roles: EDITORS,
+    });
     return reviewMoveAudience(client, scope, input.request);
   });
 }
@@ -56,13 +54,11 @@ export async function placeWorkflow(
       request,
       roles: EDITORS,
       replay: () =>
-        checkOrganizationReplay(
-          client,
-          scope,
+        checkOrganizationReplay(client, scope, {
           workflowId,
-          'move',
-          request.folderId,
-        ),
+          kind: 'move',
+          destinationFolderId: request.folderId,
+        }),
       apply: async () => {
         const organizationRevision = await organizeWorkflow(client, scope, {
           workflowId,

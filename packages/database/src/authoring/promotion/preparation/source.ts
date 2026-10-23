@@ -45,9 +45,15 @@ export type PromotionSourceSet = Readonly<{
 export async function readPromotionSources(
   client: PoolClient,
   workspaceId: string,
-  actorId: string,
-  selections: WorkflowPromotionPreviewRequest['selections'],
-  budget: PromotionGraphBudget,
+  {
+    actorId,
+    selections,
+    budget,
+  }: Readonly<{
+    actorId: string;
+    selections: WorkflowPromotionPreviewRequest['selections'];
+    budget: PromotionGraphBudget;
+  }>,
 ): Promise<PromotionSourceSet> {
   const workflows: PromotionSource[] = [];
   const scope = await readFolderScope(client, { workspaceId, actorId });
@@ -55,12 +61,10 @@ export async function readPromotionSources(
     a.workflowId < b.workflowId ? -1 : 1,
   )) {
     if (
-      !(await workflowAccessible(
-        client,
-        scope,
+      !(await workflowAccessible(client, scope, {
         workspaceId,
-        selection.workflowId,
-      ))
+        workflowId: selection.workflowId,
+      }))
     )
       throw new WorkflowNotFoundError(
         'A selected published workflow version is unavailable.',

@@ -30,12 +30,10 @@ export async function createInputCase(
       ? null
       : canonicalJson(workflowTestExpectationsSchema.parse(input.expectations));
   const caseId = generatePersistedId();
-  return mutate(
-    transact,
-    input,
-    'create',
+  return mutate(transact, input, {
+    kind: 'create',
     caseId,
-    {
+    intent: {
       workflowVersionId: input.workflowVersionId,
       name,
       input: JSON.parse(json.text),
@@ -43,7 +41,7 @@ export async function createInputCase(
         ? {}
         : { expectations: input.expectations }),
     },
-    async (client) => {
+    work: async (client) => {
       const version = await client.query<{ checksum: string }>(
         'select checksum from app.workflow_versions where workspace_id=$1 and workflow_id=$2 and id=$3',
         [input.workspaceId, input.workflowId, input.workflowVersionId],
@@ -54,7 +52,7 @@ export async function createInputCase(
         client,
         input,
         json.bytes + (expectations === null ? 0 : utf8ByteLength(expectations)),
-        true,
+        { create: true },
       );
       await lockArtifactReferences(
         client,
@@ -86,7 +84,7 @@ export async function createInputCase(
       );
       return { caseId, revision: 1 };
     },
-  );
+  });
 }
 
 export async function updateInputCase(
@@ -95,12 +93,10 @@ export async function updateInputCase(
 ): ReturnType<WorkflowInputCaseDatabase['updateCase']> {
   const name = z.string().trim().min(1).max(128).parse(input.name);
   const json = payload(input.input);
-  return mutate(
-    transact,
-    input,
-    'update',
-    z.uuid().parse(input.caseId),
-    {
+  return mutate(transact, input, {
+    kind: 'update',
+    caseId: z.uuid().parse(input.caseId),
+    intent: {
       caseId: input.caseId,
       expectedRevision: input.expectedRevision,
       name,
@@ -109,7 +105,7 @@ export async function updateInputCase(
         ? {}
         : { expectations: input.expectations }),
     },
-    async (client) => {
+    work: async (client) => {
       const item = await lockedCase(client, input);
       const previous = await client.query<{ expectations: string | null }>(
         'select expectations from app.workflow_input_case_payloads where workspace_id=$1 and case_id=$2 and revision=$3',
@@ -123,7 +119,7 @@ export async function updateInputCase(
             );
       const bytes =
         json.bytes + (expectations === null ? 0 : utf8ByteLength(expectations));
-      await quota(client, input, bytes, false);
+      await quota(client, input, bytes, { create: false });
       await lockArtifactReferences(
         client,
         input.workspaceId,
@@ -148,20 +144,18 @@ export async function updateInputCase(
       );
       return { caseId: input.caseId, revision };
     },
-  );
+  });
 }
 
 export async function deleteInputCase(
   transact: CaseTransaction,
   input: Parameters<WorkflowInputCaseDatabase['deleteCase']>[0],
 ): ReturnType<WorkflowInputCaseDatabase['deleteCase']> {
-  return mutate(
-    transact,
-    input,
-    'delete',
-    z.uuid().parse(input.caseId),
-    { caseId: input.caseId, expectedRevision: input.expectedRevision },
-    async (client) => {
+  return mutate(transact, input, {
+    kind: 'delete',
+    caseId: z.uuid().parse(input.caseId),
+    intent: { caseId: input.caseId, expectedRevision: input.expectedRevision },
+    work: async (client) => {
       const item = await lockedCase(client, input);
       const revision = item.revision + 1;
       await client.query(
@@ -170,5 +164,5 @@ export async function deleteInputCase(
       );
       return { caseId: input.caseId, revision };
     },
-  );
+  });
 }

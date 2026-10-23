@@ -51,12 +51,10 @@ export async function requestPublicationReview(
       'disabled',
       'Publication approval is off. Publish the draft directly.',
     );
-  const { draft } = await readReviewDraft(
-    client,
-    dependencies,
+  const { draft } = await readReviewDraft(client, dependencies, {
     input,
-    input.representationTag,
-  );
+    expectedTag: input.representationTag,
+  });
   await requireConnectionBindings(client, input, draft.graphJson);
   await client.query(
     `update app.workflow_publication_requests current set status='stale' where current.workspace_id=$1 and current.workflow_id=$2 and current.status='pending'

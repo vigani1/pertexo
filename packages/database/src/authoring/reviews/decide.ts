@@ -56,21 +56,17 @@ export async function decidePublicationReview(
         : 'stale',
       'This publication request is no longer pending. Review the latest draft and request approval again.',
     );
-  await lockWorkflowAuthoringAuthority(
-    client,
-    input.workspaceId,
-    row.requested_by,
-    rolesForCapability('workflow:publish'),
-    { workflowId: row.workflow_id, capability: 'workflow:publish' },
-  );
+  await lockWorkflowAuthoringAuthority(client, input.workspaceId, {
+    actorId: row.requested_by,
+    roles: rolesForCapability('workflow:publish'),
+    resource: { workflowId: row.workflow_id, capability: 'workflow:publish' },
+  });
   // Approval uses the publisher's tag check; rejection has no publication.
   if (input.decision === 'reject')
-    await readReviewDraft(
-      client,
-      dependencies,
-      { ...input, workflowId: row.workflow_id },
-      row.representation_tag,
-    );
+    await readReviewDraft(client, dependencies, {
+      input: { ...input, workflowId: row.workflow_id },
+      expectedTag: row.representation_tag,
+    });
   const published =
     input.decision === 'approve'
       ? await publishWorkflowCandidate(dependencies, client, {

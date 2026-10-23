@@ -50,13 +50,11 @@ export function createConnectionManagementPersistence(
       readConnectionCreateReplay(pool, input),
 
     getConnection: (workspaceId, connectionId) => {
-      return withConnectionTransaction(
-        pool,
-        workspaceId,
-        undefined,
-        (client, parsedWorkspaceId) =>
+      return withConnectionTransaction(pool, workspaceId, {
+        actorId: undefined,
+        operation: (client, parsedWorkspaceId) =>
           selectConnection(client, parsedWorkspaceId, connectionId),
-      );
+      });
     },
 
     revokeConnection: (input) => persistRevokedConnection(pool, input),
@@ -76,11 +74,9 @@ async function persistCreatedConnection(
   const sealed = sealedSecretSchema.parse(input.sealed);
   const metadata = parseRequestMetadata(input);
   try {
-    return await withConnectionTransaction(
-      pool,
-      input.workspaceId,
+    return await withConnectionTransaction(pool, input.workspaceId, {
       actorId,
-      async (client, workspaceId) => {
+      operation: async (client, workspaceId) => {
         await requireConnectionManager(client, workspaceId, actorId);
         const command = connectionCommand(
           input,
@@ -179,7 +175,7 @@ async function persistCreatedConnection(
         );
         return connection;
       },
-    );
+    });
   } catch (error: unknown) {
     if (databaseConstraint(error, 'connections_active_name_provider_unique'))
       throw new ConnectionConflictError(
@@ -196,11 +192,9 @@ async function readConnectionCreateReplay(
   >[0],
 ): ReturnType<ConnectionManagementPersistence['findConnectionCreateReplay']> {
   const actorId = uuidSchema.parse(input.actorId);
-  return withConnectionTransaction(
-    pool,
-    input.workspaceId,
+  return withConnectionTransaction(pool, input.workspaceId, {
     actorId,
-    async (client, workspaceId) => {
+    operation: async (client, workspaceId) => {
       await requireConnectionManager(client, workspaceId, actorId);
       const stored = await findCommandResult(
         client,
@@ -212,7 +206,7 @@ async function readConnectionCreateReplay(
         throw new Error('Connection idempotency result is corrupt');
       return replay;
     },
-  );
+  });
 }
 
 async function persistRevokedConnection(
@@ -222,17 +216,15 @@ async function persistRevokedConnection(
   const actorId = uuidSchema.parse(input.actorId);
   const connectionId = uuidSchema.parse(input.connectionId);
   const metadata = parseRequestMetadata(input);
-  return withConnectionTransaction(
-    pool,
-    input.workspaceId,
+  return withConnectionTransaction(pool, input.workspaceId, {
     actorId,
-    async (client, workspaceId) => {
+    operation: async (client, workspaceId) => {
       await requireConnectionManager(client, workspaceId, actorId);
       const connection = await selectConnection(
         client,
         workspaceId,
         connectionId,
-        true,
+        { lock: true },
       );
       if (connection === null)
         throw new ConnectionNotFoundError('Connection is not visible');
@@ -271,5 +263,5 @@ async function persistRevokedConnection(
         throw new Error('Connection revocation returned no row');
       return mapConnection(row);
     },
-  );
+  });
 }

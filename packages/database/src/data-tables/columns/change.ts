@@ -121,12 +121,12 @@ export async function editTableSchema(
   client: PoolClient,
   input: Parameters<DataTablesStore['editSchema']>[0],
 ): Promise<{ revision: number }> {
-  const quota = await readQuotas(client, input.workspaceId, true);
+  const quota = await readQuotas(client, input.workspaceId, { lock: true });
   const table = await requireTable(
     client,
     input.workspaceId,
     { id: input.tableId },
-    true,
+    { lock: true },
   );
   if (table.revision !== input.expectedRevision)
     throw new DataTableError(

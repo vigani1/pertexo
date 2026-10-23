@@ -35,12 +35,10 @@ export function createDomain(
   pool: Pool,
   input: FederationCommand & Readonly<{ domain: string }>,
 ): Promise<FederationSettings> {
-  return runFederationCommand(
-    pool,
-    input,
-    'identity.domain.create',
-    { domain: input.domain, expectedRevision: input.expectedRevision },
-    async (client) => {
+  return runFederationCommand(pool, input, {
+    operation: 'identity.domain.create',
+    request: { domain: input.domain, expectedRevision: input.expectedRevision },
+    change: async (client) => {
       const organization = await requireControlOrganization(client, input);
       assertOrganizationRevision(organization, input.expectedRevision);
       await requireResourceCapacity(client, organization.id, 'domains');
@@ -66,27 +64,26 @@ export function createDomain(
           randomBytes(32).toString('base64url'),
         ],
       );
-      await recordFederationAudit(
-        client,
-        input,
-        'identity.domain_challenge_created',
-        organization.id,
-        { domainId: id, domain: input.domain },
-      );
+      await recordFederationAudit(client, input, {
+        action: 'identity.domain_challenge_created',
+        targetId: organization.id,
+        metadata: { domainId: id, domain: input.domain },
+      });
       return advanceOrganization(client, organization);
     },
-  );
+  });
 }
 export function renewDomainChallenge(
   pool: Pool,
   input: FederationCommand & Readonly<{ domainId: string }>,
 ): Promise<FederationSettings> {
-  return runFederationCommand(
-    pool,
-    input,
-    'identity.domain.renew',
-    { domainId: input.domainId, expectedRevision: input.expectedRevision },
-    async (client) => {
+  return runFederationCommand(pool, input, {
+    operation: 'identity.domain.renew',
+    request: {
+      domainId: input.domainId,
+      expectedRevision: input.expectedRevision,
+    },
+    change: async (client) => {
       const organization = await requireControlOrganization(client, input);
       assertOrganizationRevision(organization, input.expectedRevision);
       const domain = await requireOrganizationDomain(
@@ -103,16 +100,14 @@ export function renewDomainChallenge(
         "update app.auth_domains set challenge=$2,challenge_expires_at=clock_timestamp()+interval '7 days',revision=revision+1 where id=$1",
         [domain.id, randomBytes(32).toString('base64url')],
       );
-      await recordFederationAudit(
-        client,
-        input,
-        'identity.domain_challenge_created',
-        organization.id,
-        { domainId: domain.id, domain: domain.domain },
-      );
+      await recordFederationAudit(client, input, {
+        action: 'identity.domain_challenge_created',
+        targetId: organization.id,
+        metadata: { domainId: domain.id, domain: domain.domain },
+      });
       return advanceOrganization(client, organization);
     },
-  );
+  });
 }
 /** DNS is resolved before this transaction; the exact observed challenge is consumed under lock. */
 export function verifyDomain(
@@ -120,12 +115,13 @@ export function verifyDomain(
   input: FederationCommand &
     Readonly<{ domainId: string; observedChallenge: string }>,
 ): Promise<FederationSettings> {
-  return runFederationCommand(
-    pool,
-    input,
-    'identity.domain.verify',
-    { domainId: input.domainId, expectedRevision: input.expectedRevision },
-    async (client) => {
+  return runFederationCommand(pool, input, {
+    operation: 'identity.domain.verify',
+    request: {
+      domainId: input.domainId,
+      expectedRevision: input.expectedRevision,
+    },
+    change: async (client) => {
       const organization = await requireControlOrganization(client, input);
       assertOrganizationRevision(organization, input.expectedRevision);
       const domain = await requireOrganizationDomain(
@@ -165,27 +161,26 @@ export function verifyDomain(
         'update app.auth_domains set verified_at=clock_timestamp(),challenge=null,challenge_expires_at=null,revision=revision+1 where id=$1',
         [domain.id],
       );
-      await recordFederationAudit(
-        client,
-        input,
-        'identity.domain_verified',
-        organization.id,
-        { domainId: domain.id, domain: domain.domain },
-      );
+      await recordFederationAudit(client, input, {
+        action: 'identity.domain_verified',
+        targetId: organization.id,
+        metadata: { domainId: domain.id, domain: domain.domain },
+      });
       return advanceOrganization(client, organization);
     },
-  );
+  });
 }
 export function removeDomain(
   pool: Pool,
   input: FederationCommand & Readonly<{ domainId: string }>,
 ): Promise<FederationSettings> {
-  return runFederationCommand(
-    pool,
-    input,
-    'identity.domain.remove',
-    { domainId: input.domainId, expectedRevision: input.expectedRevision },
-    async (client) => {
+  return runFederationCommand(pool, input, {
+    operation: 'identity.domain.remove',
+    request: {
+      domainId: input.domainId,
+      expectedRevision: input.expectedRevision,
+    },
+    change: async (client) => {
       const organization = await requireControlOrganization(client, input);
       assertOrganizationRevision(organization, input.expectedRevision);
       const domain = await requireOrganizationDomain(
@@ -201,14 +196,12 @@ export function removeDomain(
       await client.query('delete from app.auth_domains where id=$1', [
         domain.id,
       ]);
-      await recordFederationAudit(
-        client,
-        input,
-        'identity.domain_removed',
-        organization.id,
-        { domainId: domain.id, domain: domain.domain },
-      );
+      await recordFederationAudit(client, input, {
+        action: 'identity.domain_removed',
+        targetId: organization.id,
+        metadata: { domainId: domain.id, domain: domain.domain },
+      });
       return advanceOrganization(client, organization);
     },
-  );
+  });
 }

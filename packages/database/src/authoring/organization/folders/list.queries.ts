@@ -14,12 +14,10 @@ export function listFolders(
   input: Parameters<WorkflowFolderDatabase['listFolders']>[0],
 ): ReturnType<WorkflowFolderDatabase['listFolders']> {
   return session.transact(input, async (client, scope) => {
-    await lockWorkflowAuthoringAuthority(
-      client,
-      scope.workspaceId,
-      scope.actorId,
-      ROLES,
-    );
+    await lockWorkflowAuthoringAuthority(client, scope.workspaceId, {
+      actorId: scope.actorId,
+      roles: ROLES,
+    });
     // One statement derives the whole hierarchy. Count parity fails
     // closed for missing roots, cycles or excessive depth.
     const result = await client.query<{ items: unknown; total: number }>(

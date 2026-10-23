@@ -162,12 +162,10 @@ async function select(
     WorkflowOrganizationFilters,
 ) {
   // Any active member reads organization, rechecked on every page.
-  await lockWorkflowAuthoringAuthority(
-    client,
-    scope.workspaceId,
-    scope.actorId,
-    ROLES,
-  );
+  await lockWorkflowAuthoringAuthority(client, scope.workspaceId, {
+    actorId: scope.actorId,
+    roles: ROLES,
+  });
   const values: unknown[] = [scope.workspaceId, scope.actorId];
   const parameter = (value: unknown) => {
     values.push(value);

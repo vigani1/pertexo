@@ -389,10 +389,8 @@ describeIntegration(
                 'Provider delivery must follow the committed intent',
               );
             }
-            await consumeInboxMessage(
-              workerDatabase,
-              workspaceId,
-              {
+            await consumeInboxMessage(workerDatabase, workspaceId, {
+              message: {
                 consumerName: 'worker.phase0-provider-proof',
                 messageId: providerOutboxId,
                 payloadChecksum: checksum({
@@ -401,7 +399,7 @@ describeIntegration(
                   runId: providerRunId,
                 }),
               },
-              async ({ db, workspaceId: activeWorkspaceId }) => {
+              operation: async ({ db, workspaceId: activeWorkspaceId }) => {
                 await db.execute(sql`
               update app.queue_duplicate_probe_provider_intents
               set outcome = 'accepted', completed_at = clock_timestamp()
@@ -419,7 +417,7 @@ describeIntegration(
               )
             `);
               },
-            );
+            });
             providerCompleted.resolve();
           },
           observer: consumerObserver,
@@ -533,16 +531,14 @@ describeIntegration(
           ),
         ).resolves.toEqual([]);
         await expect(
-          consumeInboxMessage(
-            workerDatabase,
-            otherWorkspace,
-            {
+          consumeInboxMessage(workerDatabase, otherWorkspace, {
+            message: {
               consumerName: 'worker.phase0-proof',
               messageId: id,
               payloadChecksum: checksum({ logicalAttemptId }),
             },
-            () => Promise.resolve(undefined),
-          ),
+            operation: () => Promise.resolve(undefined),
+          }),
         ).rejects.toBeInstanceOf(InboxReceiptUnavailableError);
       } finally {
         await cleanup.close();

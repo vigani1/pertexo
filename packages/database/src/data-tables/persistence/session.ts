@@ -29,13 +29,11 @@ export function read<T>(
     pool,
     scope,
     async (client) => {
-      await readWorkspaceAuthority(
-        client,
-        scope.workspaceId,
-        scope.actorId,
-        rolesForCapability('workspace:read'),
-        ['active', 'suspended', 'pending_deletion'],
-      );
+      await readWorkspaceAuthority(client, scope.workspaceId, {
+        actorId: scope.actorId,
+        roles: rolesForCapability('workspace:read'),
+        allowedStatuses: ['active', 'suspended', 'pending_deletion'],
+      });
       return work(client);
     },
     scope.signal === undefined ? {} : { signal: scope.signal },
@@ -46,7 +44,7 @@ export function write<T>(
   pool: Pool,
   scope: DataTableScope,
   work: (client: PoolClient) => Promise<T>,
-  admin = false,
+  { admin = false }: Readonly<{ admin?: boolean | undefined }> = {},
 ) {
   return withTenantScopedClient(
     pool,
@@ -67,16 +65,23 @@ export function write<T>(
 export async function command<T extends object>(
   client: PoolClient,
   input: DataTableScope & { idempotencyKey: string },
-  operation: string,
-  audit:
-    | ((result: T) => Readonly<{
-        targetId: string;
-        targetType: 'workspace' | 'data_table';
-        metadata?: Readonly<Record<string, unknown>>;
-      }>)
-    | null,
-  request: unknown,
-  work: () => Promise<T>,
+  {
+    operation,
+    audit,
+    request,
+    work,
+  }: Readonly<{
+    operation: string;
+    audit:
+      | ((result: T) => Readonly<{
+          targetId: string;
+          targetType: 'workspace' | 'data_table';
+          metadata?: Readonly<Record<string, unknown>>;
+        }>)
+      | null;
+    request: unknown;
+    work: () => Promise<T>;
+  }>,
 ): Promise<T> {
   const identity = {
     workspaceId: input.workspaceId,

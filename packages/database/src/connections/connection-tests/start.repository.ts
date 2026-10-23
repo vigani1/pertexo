@@ -36,11 +36,9 @@ export async function startPersistedConnectionTest(
   const digest = keyDigest(input.idempotencyKey);
   const dispatchToken = uuidSchema.parse(input.dispatchToken);
   const scope = connectionTestScope(actorId, connectionId);
-  return withConnectionTransaction(
-    pool,
-    input.workspaceId,
+  return withConnectionTransaction(pool, input.workspaceId, {
     actorId,
-    async (client, workspaceId) => {
+    operation: async (client, workspaceId) => {
       await requireConnectionUser(client, workspaceId, actorId, connectionId);
       const inserted = await client.query(
         `insert into app.idempotency_records
@@ -136,5 +134,5 @@ export async function startPersistedConnectionTest(
         dispatchToken,
       });
     },
-  );
+  });
 }

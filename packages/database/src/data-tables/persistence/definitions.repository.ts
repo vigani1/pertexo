@@ -15,22 +15,22 @@ export function createTable(
   input: Parameters<DataTablesStore['create']>[0],
 ): ReturnType<DataTablesStore['create']> {
   return write(pool, input, (client) =>
-    command(
-      client,
-      input,
-      'data.tables.create',
-      (result) => ({
+    command(client, input, {
+      operation: 'data.tables.create',
+      audit: (result) => ({
         targetType: 'data_table',
         targetId: result.id,
         metadata: { columnCount: input.columns.length },
       }),
-      {
+      request: {
         name: input.name,
         columns: input.columns,
         keyColumn: input.keyColumn ?? null,
       },
-      async () => {
-        const quota = await readQuotas(client, input.workspaceId, true);
+      work: async () => {
+        const quota = await readQuotas(client, input.workspaceId, {
+          lock: true,
+        });
         if (
           quota.tableCount >= quota.tableLimit ||
           input.columns.length > quota.columnLimit
@@ -75,7 +75,7 @@ export function createTable(
         );
         return { id };
       },
-    ),
+    }),
   );
 }
 
@@ -84,18 +84,16 @@ export function editSchema(
   input: Parameters<DataTablesStore['editSchema']>[0],
 ): ReturnType<DataTablesStore['editSchema']> {
   return write(pool, input, (client) =>
-    command(
-      client,
-      input,
-      'data.tables.schema.edit',
-      null,
-      {
+    command(client, input, {
+      operation: 'data.tables.schema.edit',
+      audit: null,
+      request: {
         tableId: input.tableId,
         expectedRevision: input.expectedRevision,
         change: input.change,
       },
-      () => editTableSchema(client, input),
-    ),
+      work: () => editTableSchema(client, input),
+    }),
   );
 }
 
@@ -104,19 +102,20 @@ export function removeTable(
   input: Parameters<DataTablesStore['remove']>[0],
 ): ReturnType<DataTablesStore['remove']> {
   return write(pool, input, (client) =>
-    command(
-      client,
-      input,
-      'data.tables.remove',
-      () => ({ targetType: 'data_table', targetId: input.tableId }),
-      { tableId: input.tableId, expectedRevision: input.expectedRevision },
-      async () => {
-        await readQuotas(client, input.workspaceId, true);
+    command(client, input, {
+      operation: 'data.tables.remove',
+      audit: () => ({ targetType: 'data_table', targetId: input.tableId }),
+      request: {
+        tableId: input.tableId,
+        expectedRevision: input.expectedRevision,
+      },
+      work: async () => {
+        await readQuotas(client, input.workspaceId, { lock: true });
         const table = await requireTable(
           client,
           input.workspaceId,
           { id: input.tableId },
-          true,
+          { lock: true },
         );
         if (table.revision !== input.expectedRevision)
           throw new DataTableError(
@@ -133,7 +132,7 @@ export function removeTable(
         );
         return { removed: true as const };
       },
-    ),
+    }),
   );
 }
 
@@ -145,11 +144,9 @@ export function configureTables(
     pool,
     input,
     (client) =>
-      command(
-        client,
-        input,
-        'data.tables.configure',
-        () => ({
+      command(client, input, {
+        operation: 'data.tables.configure',
+        audit: () => ({
           targetType: 'workspace',
           targetId: input.workspaceId,
           metadata: {
@@ -159,14 +156,16 @@ export function configureTables(
             byteLimit: input.byteLimit,
           },
         }),
-        {
+        request: {
           tableLimit: input.tableLimit,
           columnLimit: input.columnLimit,
           rowLimit: input.rowLimit,
           byteLimit: input.byteLimit,
         },
-        async () => {
-          const current = await readQuotas(client, input.workspaceId, true);
+        work: async () => {
+          const current = await readQuotas(client, input.workspaceId, {
+            lock: true,
+          });
           const max = (
             await client.query<{ columns: number; rows: number }>(
               'select coalesce(max(jsonb_array_length(columns_json)),0)::int columns,coalesce(max(row_count),0)::int rows from app.workspace_data_tables where workspace_id=$1',
@@ -195,7 +194,7 @@ export function configureTables(
           );
           return readQuotas(client, input.workspaceId);
         },
-      ),
-    true,
+      }),
+    { admin: true },
   );
 }

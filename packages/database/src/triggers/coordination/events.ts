@@ -36,9 +36,15 @@ export async function recordCoordinatedEvent(
 export async function finishCoordinatedEvent(
   transaction: WorkspaceTransaction,
   id: string,
-  status: Exclude<EventCoordinationStatus, 'pending'>,
-  reason: EventCoordinationReason | null,
-  runId?: string,
+  {
+    status,
+    reason,
+    runId,
+  }: Readonly<{
+    status: Exclude<EventCoordinationStatus, 'pending'>;
+    reason: EventCoordinationReason | null;
+    runId?: string | undefined;
+  }>,
 ): Promise<void> {
   await transaction.db.execute(sql`
     update app.trigger_coordinated_events set status=${status},reason=${reason},run_id=${runId ?? null},finished_at=clock_timestamp(),key_id=null,workflow_version_id=null,endpoint_id=null,policy=null,input_ref=null,input_bytes=0,due_at=null,deadline_at=null,capacity_wait_started_at=null,started_by=null where workspace_id=${transaction.workspaceId} and id=${id} and status='pending'

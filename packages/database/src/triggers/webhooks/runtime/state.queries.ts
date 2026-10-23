@@ -75,7 +75,7 @@ export async function lockEligibleEndpoint(
   transaction: WorkspaceTransaction,
   verification: WebhookVerificationReference,
   verifiedSecretVersionId: string,
-  replaying = false,
+  { replaying = false }: Readonly<{ replaying?: boolean | undefined }> = {},
 ): Promise<void> {
   const eligible = await transaction.db.execute<{
     workflow_version_id: string;

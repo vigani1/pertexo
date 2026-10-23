@@ -22,7 +22,9 @@ export async function prepareAuditExport(
         'invalid',
         'This export exceeds 100,000 events. Choose a narrower date range.',
       );
-    const first = (await readAuditBatch(client, workspaceId, query, 1))[0];
+    const first = (
+      await readAuditBatch(client, workspaceId, { query, limit: 1 })
+    )[0];
     return {
       count,
       upper:
@@ -39,7 +41,12 @@ export async function prepareAuditExport(
     for (;;) {
       signal?.throwIfAborted();
       const batch = await read((client) =>
-        readAuditBatch(client, workspaceId, query, 256, after, count.upper),
+        readAuditBatch(client, workspaceId, {
+          query,
+          limit: 256,
+          after,
+          upper: count.upper,
+        }),
       );
       if (batch.length === 0) return;
       for (const row of batch) {

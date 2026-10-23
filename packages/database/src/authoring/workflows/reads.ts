@@ -34,13 +34,11 @@ export function createWorkflowAuthoringReadStore(
       actorId: string,
       options: Readonly<{ signal?: AbortSignal }> = {},
     ) =>
-      validateAuthoringDraft(
-        context,
-        workspaceId,
+      validateAuthoringDraft(context, workspaceId, {
         workflowId,
         actorId,
         options,
-      ),
+      }),
     getWorkflow: (workspaceId: string, workflowId: string, actorId: string) =>
       readAuthoringWorkflow(context, workspaceId, workflowId, actorId),
     listWorkflows: (input: ListWorkflowsInput) =>
@@ -53,13 +51,11 @@ export function createWorkflowAuthoringReadStore(
       versionId: string,
       actorId: string,
     ) =>
-      readAuthoringVersion(
-        context,
-        workspaceId,
+      readAuthoringVersion(context, workspaceId, {
         workflowId,
         versionId,
         actorId,
-      ),
+      }),
     listVersions: (input: ListWorkflowVersionsInput) =>
       listAuthoringVersions(context, input),
   });

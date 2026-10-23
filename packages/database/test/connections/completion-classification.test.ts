@@ -83,7 +83,7 @@ describe('connection test completion classification', () => {
           status,
           outcome.value,
           secretVersionId,
-          currentSecretWasTested,
+          { currentSecretWasTested },
         );
         expect(result).toMatchObject({
           eventType: outcome.eventType,

@@ -22,10 +22,17 @@ export const EDITORS = WORKFLOW_EDITOR_ROLES;
 export function folderCommand(
   session: ReturnType<typeof createOrganizationSession>,
   input: Command,
-  operation: string,
-  target: string | null,
-  request: unknown,
-  apply: (client: PoolClient, workspaceId: string) => Promise<FolderRow>,
+  {
+    operation,
+    target,
+    request,
+    apply,
+  }: Readonly<{
+    operation: string;
+    target: string | null;
+    request: unknown;
+    apply: (client: PoolClient, workspaceId: string) => Promise<FolderRow>;
+  }>,
 ): Promise<WorkflowFolderCommandResult> {
   return session.transact(input, async (client, scope) => {
     const { result, replayed } = await runOrganizationCommand(client, scope, {

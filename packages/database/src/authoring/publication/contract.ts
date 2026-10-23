@@ -1,3 +1,4 @@
+import type { WorkflowAuthoringWriteContext } from '../workflows/context.js';
 import type { CommandIdentity } from '../../platform/idempotency.js';
 
 import type {
@@ -6,7 +7,6 @@ import type {
 } from '@pertexo/workflow-model';
 import type { WorkflowDefinitionCatalog } from '@pertexo/workflow-model/server';
 
-import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { sha256HexSchema } from '../../platform/persisted-primitives.js';
 
@@ -14,8 +14,6 @@ import type {
   PublishWorkflowInput,
   PublishWorkflowResult,
 } from '../workflows/contracts.js';
-
-import type { AuthoringCatalogs } from '../workflows/catalogs.js';
 
 export const uuidSchema = z.uuid();
 
@@ -44,22 +42,10 @@ export const executableSchema = z
   })
   .strict();
 
-export type WorkflowPublicationDependencies = Readonly<{
-  requireAuthor(
-    client: PoolClient,
-    workspaceId: string,
-    actorId: string,
-    workflowId?: string,
-    capability?: 'workflow:read' | 'workflow:update',
-  ): Promise<void>;
-  catalogs: AuthoringCatalogs;
-  transact<T>(
-    workspaceId: string,
-    actorId: string,
-    operation: (client: PoolClient) => Promise<T>,
-    signal?: AbortSignal,
-  ): Promise<T>;
-}>;
+export type WorkflowPublicationDependencies = Pick<
+  WorkflowAuthoringWriteContext,
+  'requireAuthor' | 'catalogs' | 'transact'
+>;
 
 export type PublicationCandidateInput = Omit<
   PublishWorkflowInput,

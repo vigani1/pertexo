@@ -124,12 +124,10 @@ it('keeps populated folders workspace-shared and forces isolation on grant rows 
           ).toEqual([{ workspace_id: workspaceId }]);
           const scope = await readFolderScope(client, { workspaceId, actorId });
           expect(
-            await workflowAccessible(
-              client,
-              scope,
+            await workflowAccessible(client, scope, {
               workspaceId,
-              workflows[index] ?? '',
-            ),
+              workflowId: workflows[index] ?? '',
+            }),
           ).toBe(true);
           expect(scope.permits(folders[index] ?? '', 'workflow:update')).toBe(
             true,

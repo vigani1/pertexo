@@ -72,30 +72,26 @@ describeIntegration(
         'processed',
       ]);
       await expect(
-        consumeInboxMessage(
-          workerDatabase,
-          workspaceId,
-          {
+        consumeInboxMessage(workerDatabase, workspaceId, {
+          message: {
             consumerName: 'worker.phase0-proof',
             messageId,
             payloadChecksum: '0'.repeat(64),
           },
-          () => Promise.resolve(undefined),
-        ),
+          operation: () => Promise.resolve(undefined),
+        }),
       ).rejects.toBeInstanceOf(InboxChecksumMismatchError);
 
       const rollbackMessageId = randomUUID();
       const rolledBackAttemptId = randomUUID();
       await expect(
-        consumeInboxMessage(
-          workerDatabase,
-          workspaceId,
-          {
+        consumeInboxMessage(workerDatabase, workspaceId, {
+          message: {
             consumerName: 'worker.rollback-proof',
             messageId: rollbackMessageId,
             payloadChecksum: checksum('rollback'),
           },
-          async ({ db, workspaceId: activeWorkspaceId }) => {
+          operation: async ({ db, workspaceId: activeWorkspaceId }) => {
             await db.execute(sql`
             insert into app.queue_duplicate_probe_attempts
               (id, workspace_id, logical_attempt_id)
@@ -103,7 +99,7 @@ describeIntegration(
           `);
             throw new Error('injected rollback');
           },
-        ),
+        }),
       ).rejects.toThrow('injected rollback');
       await expect(
         workerDatabase.withWorkspace(workspaceId, ({ db }) =>
@@ -115,16 +111,14 @@ describeIntegration(
         ),
       ).resolves.toMatchObject({ rows: [] });
       await expect(
-        consumeInboxMessage(
-          workerDatabase,
-          workspaceId,
-          {
+        consumeInboxMessage(workerDatabase, workspaceId, {
+          message: {
             consumerName: 'worker.rollback-proof',
             messageId: rollbackMessageId,
             payloadChecksum: checksum('rollback'),
           },
-          () => Promise.resolve('recovered'),
-        ),
+          operation: () => Promise.resolve('recovered'),
+        }),
       ).resolves.toEqual({ status: 'processed', value: 'recovered' });
     });
 
@@ -180,10 +174,8 @@ describeIntegration(
                 signal: AbortSignal.timeout(5_000),
               });
             } catch (error: unknown) {
-              await consumeInboxMessage(
-                workerDatabase,
-                workspaceId,
-                {
+              await consumeInboxMessage(workerDatabase, workspaceId, {
+                message: {
                   consumerName: 'worker.phase0-unsafe-provider-proof',
                   messageId: providerOutboxId,
                   payloadChecksum: checksum({
@@ -192,7 +184,7 @@ describeIntegration(
                     runId: providerRunId,
                   }),
                 },
-                async ({ db, workspaceId: activeWorkspaceId }) => {
+                operation: async ({ db, workspaceId: activeWorkspaceId }) => {
                   await db.execute(sql`
                 update app.queue_duplicate_probe_provider_intents
                 set outcome = 'outcome_unknown', completed_at = clock_timestamp()
@@ -210,7 +202,7 @@ describeIntegration(
                 )
               `);
                 },
-              );
+              });
               ambiguityPersisted.resolve();
               throw unrecoverableQueueError(
                 `unsafe provider outcome is ambiguous: ${error instanceof Error ? error.name : 'unknown'}`,

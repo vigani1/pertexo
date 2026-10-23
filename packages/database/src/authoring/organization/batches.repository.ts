@@ -126,12 +126,10 @@ export function createWorkflowOrganizationBatchDatabase(
     admitBatch: async (input: WorkflowOrganizationBatchInput) => {
       const body = parseRequest(input.request);
       return session.transact(input, async (client, scope) => {
-        await lockWorkflowAuthoringAuthority(
-          client,
-          scope.workspaceId,
-          scope.actorId,
-          rolesFor(body),
-        );
+        await lockWorkflowAuthoringAuthority(client, scope.workspaceId, {
+          actorId: scope.actorId,
+          roles: rolesFor(body),
+        });
         const identity = {
           workspaceId: scope.workspaceId,
           operation: 'organization.batch',
@@ -179,13 +177,12 @@ export function createWorkflowOrganizationBatchDatabase(
             },
             roles: rolesFor(body),
             replay: () =>
-              checkOrganizationReplay(
-                client,
-                scope,
+              checkOrganizationReplay(client, scope, {
                 workflowId,
-                change.kind,
-                change.kind === 'move' ? change.folderId : undefined,
-              ),
+                kind: change.kind,
+                destinationFolderId:
+                  change.kind === 'move' ? change.folderId : undefined,
+              }),
             apply: async () => {
               const organizationRevision = await organizeWorkflow(
                 client,

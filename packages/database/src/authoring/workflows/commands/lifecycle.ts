@@ -62,7 +62,10 @@ async function transitionWorkflowLifecycle(
       : requestIdSchema.parse(input.traceId);
 
   return context.transact(workspaceId, actorId, async (client) => {
-    await context.requireAuthor(client, workspaceId, actorId, workflowId);
+    await context.requireAuthor(client, workspaceId, {
+      actorId,
+      workflowId,
+    });
     const claim: WorkflowCommand = {
       workspaceId,
       workflowId,

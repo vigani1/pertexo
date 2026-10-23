@@ -42,19 +42,22 @@ export function createFederationManagementStore(
   const lease = acquireDatabasePool(config, runtime);
   const read = <T>(
     scope: FederationScope,
-    ownerOnly: boolean,
-    operation: (client: PoolClient) => Promise<T>,
+    {
+      ownerOnly,
+      operation,
+    }: Readonly<{
+      ownerOnly: boolean;
+      operation: (client: PoolClient) => Promise<T>;
+    }>,
   ) =>
     withPlatformTransaction(
       lease.pool,
       async (client) => {
         const role = await withWorkspaceScope(client, scope, (scoped) =>
-          readWorkspaceAuthority(
-            scoped,
-            scope.workspaceId,
-            scope.actorId,
-            ADMINISTRATIVE_ROLES,
-          ),
+          readWorkspaceAuthority(scoped, scope.workspaceId, {
+            actorId: scope.actorId,
+            roles: ADMINISTRATIVE_ROLES,
+          }),
         );
         if (ownerOnly && role !== 'owner')
           throw new FederationConflictError(
@@ -68,60 +71,66 @@ export function createFederationManagementStore(
   return {
     close: () => lease.close(),
     settings: (scope: FederationScope): Promise<FederationSettings> =>
-      read(scope, false, async (client) => {
-        const organization = await organizationForWorkspace(
-          client,
-          scope.workspaceId,
-        );
-        const isOwner = await withWorkspaceScope(
-          client,
-          scope,
-          async (scoped) =>
-            (
-              await scoped.query(
-                "select 1 from app.workspace_memberships where workspace_id=$1 and user_id=$2 and role='owner' and status='active'",
-                [scope.workspaceId, scope.actorId],
-              )
-            ).rowCount === 1,
-        );
-        return {
-          configured: true,
-          reason: null,
-          canManage:
-            isOwner &&
-            (organization === undefined ||
-              organization.control_workspace_id === scope.workspaceId),
-          organization:
-            organization === undefined
-              ? null
-              : await projectOrganization(client, organization),
-        };
+      read(scope, {
+        ownerOnly: false,
+        operation: async (client) => {
+          const organization = await organizationForWorkspace(
+            client,
+            scope.workspaceId,
+          );
+          const isOwner = await withWorkspaceScope(
+            client,
+            scope,
+            async (scoped) =>
+              (
+                await scoped.query(
+                  "select 1 from app.workspace_memberships where workspace_id=$1 and user_id=$2 and role='owner' and status='active'",
+                  [scope.workspaceId, scope.actorId],
+                )
+              ).rowCount === 1,
+          );
+          return {
+            configured: true,
+            reason: null,
+            canManage:
+              isOwner &&
+              (organization === undefined ||
+                organization.control_workspace_id === scope.workspaceId),
+            organization:
+              organization === undefined
+                ? null
+                : await projectOrganization(client, organization),
+          };
+        },
       }),
     domainChallenge: (
       scope: FederationScope & Readonly<{ domainId: string }>,
     ) =>
-      read(scope, true, async (client) => {
-        const organization = await organizationForWorkspace(
-          client,
-          scope.workspaceId,
-        );
-        if (organization?.control_workspace_id !== scope.workspaceId)
-          throw new FederationConflictError(
-            'owner_required',
-            'Manage domains from the control workspace.',
+      read(scope, {
+        ownerOnly: true,
+        operation: async (client) => {
+          const organization = await organizationForWorkspace(
+            client,
+            scope.workspaceId,
           );
-        const row = (
-          await client.query<{ domain: string; challenge: string | null }>(
-            'select domain,challenge from app.auth_domains where id=$1 and organization_id=$2 and verified_at is null and challenge_expires_at>clock_timestamp()',
-            [scope.domainId, organization.id],
-          )
-        ).rows[0];
-        if (row?.challenge === null || row === undefined)
-          throw new FederationConflictError(
-            'dns_unverified',
-            'The DNS challenge is unavailable or expired.',
-          );
-        return { domain: row.domain, challenge: row.challenge };
+          if (organization?.control_workspace_id !== scope.workspaceId)
+            throw new FederationConflictError(
+              'owner_required',
+              'Manage domains from the control workspace.',
+            );
+          const row = (
+            await client.query<{ domain: string; challenge: string | null }>(
+              'select domain,challenge from app.auth_domains where id=$1 and organization_id=$2 and verified_at is null and challenge_expires_at>clock_timestamp()',
+              [scope.domainId, organization.id],
+            )
+          ).rows[0];
+          if (row?.challenge === null || row === undefined)
+            throw new FederationConflictError(
+              'dns_unverified',
+              'The DNS challenge is unavailable or expired.',
+            );
+          return { domain: row.domain, challenge: row.challenge };
+        },
       }),
     checkStoredSecrets: async (
       check: (sealed: unknown, workspaceId: string, providerId: string) => void,
@@ -143,29 +152,32 @@ export function createFederationManagementStore(
     verificationResult: (
       input: FederationCommand & Readonly<{ domainId: string }>,
     ) =>
-      read(input, true, async (client) => {
-        const organization = await organizationForWorkspace(
-          client,
-          input.workspaceId,
-        );
-        if (organization?.control_workspace_id !== input.workspaceId)
-          throw new FederationConflictError(
-            'owner_required',
-            'Manage domains from the control workspace.',
+      read(input, {
+        ownerOnly: true,
+        operation: async (client) => {
+          const organization = await organizationForWorkspace(
+            client,
+            input.workspaceId,
           );
-        const stored = await withWorkspaceScope(client, input, (scoped) =>
-          findCommandResult<FederationSettings>(scoped, {
-            workspaceId: input.workspaceId,
-            scope: input.actorId,
-            operation: 'identity.domain.verify',
-            idempotencyKey: input.idempotencyKey,
-            request: {
-              domainId: input.domainId,
-              expectedRevision: input.expectedRevision,
-            },
-          }),
-        );
-        return stored;
+          if (organization?.control_workspace_id !== input.workspaceId)
+            throw new FederationConflictError(
+              'owner_required',
+              'Manage domains from the control workspace.',
+            );
+          const stored = await withWorkspaceScope(client, input, (scoped) =>
+            findCommandResult<FederationSettings>(scoped, {
+              workspaceId: input.workspaceId,
+              scope: input.actorId,
+              operation: 'identity.domain.verify',
+              idempotencyKey: input.idempotencyKey,
+              request: {
+                domainId: input.domainId,
+                expectedRevision: input.expectedRevision,
+              },
+            }),
+          );
+          return stored;
+        },
       }),
     createOrganization: (input: Parameters<typeof createOrganization>[1]) =>
       createOrganization(lease.pool, input),

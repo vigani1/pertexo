@@ -33,13 +33,11 @@ export function createWorkflowFavoriteDatabase(
     setFavorite: async (input: WorkflowFavoriteCommand) => {
       const workflowId = uuid.parse(input.workflowId);
       return session.transact(input, async (client, scope) => {
-        await lockWorkflowAuthoringAuthority(
-          client,
-          scope.workspaceId,
-          scope.actorId,
-          ROLES,
-          { workflowId, capability: 'workflow:read' },
-        );
+        await lockWorkflowAuthoringAuthority(client, scope.workspaceId, {
+          actorId: scope.actorId,
+          roles: ROLES,
+          resource: { workflowId, capability: 'workflow:read' },
+        });
         const workflow = await client.query(
           'select 1 from app.workflows where workspace_id = $1 and id = $2 for share',
           [scope.workspaceId, workflowId],

@@ -57,11 +57,9 @@ export function createConnectionLookupPersistence(
       );
       const purpose = lookupPurposeSchema.parse(input.purpose);
       const metadata = parseRequestMetadata(input);
-      return withConnectionTransaction(
-        pool,
-        input.workspaceId,
+      return withConnectionTransaction(pool, input.workspaceId, {
         actorId,
-        async (client, workspaceId) => {
+        operation: async (client, workspaceId) => {
           await requireConnectionUser(
             client,
             workspaceId,
@@ -129,8 +127,8 @@ export function createConnectionLookupPersistence(
             sealed: mapSealed(row),
           });
         },
-        input.signal === undefined ? {} : { signal: input.signal },
-      );
+        options: input.signal === undefined ? {} : { signal: input.signal },
+      });
     },
   });
 }

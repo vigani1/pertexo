@@ -38,13 +38,11 @@ export async function persistTaskIntents(
       intent.kind === 'callback'
         ? {
             rows: [
-              await bindCallbackTask(
-                client,
-                workspaceId,
+              await bindCallbackTask(client, workspaceId, {
                 runId,
                 intent,
-                terminalRunStatuses.has(plan.checkpoint.runStatus),
-              ),
+                closed: terminalRunStatuses.has(plan.checkpoint.runStatus),
+              }),
             ],
           }
         : await client.query<{ id: string; expires_at: Date; status: string }>(

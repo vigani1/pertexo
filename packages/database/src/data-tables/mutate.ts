@@ -28,10 +28,18 @@ export function keyValue(
 export async function mutateRows(
   client: PoolClient,
   workspaceId: string,
-  table: DataTableDefinition,
-  quotas: DataTableQuotas,
-  command: Exclude<DataTableCommand, { operation: 'find' }>,
-  rowIdentity?: Readonly<{ rowId: string; expectedRevision: number }>,
+  {
+    table,
+    quotas,
+    command,
+    rowIdentity,
+  }: Readonly<{
+    table: DataTableDefinition;
+    quotas: DataTableQuotas;
+    command: Exclude<DataTableCommand, { operation: 'find' }>;
+    rowIdentity?:
+      Readonly<{ rowId: string; expectedRevision: number }> | undefined;
+  }>,
 ): Promise<DataTableResult> {
   let old: StoredRow[] = [];
   let countDelta = 0;
@@ -156,14 +164,12 @@ export async function mutateRows(
     result = boundedResult(outputs, old.length);
   }
   if (result.affected === 0) return result;
-  await chargeMutation(
-    client,
-    workspaceId,
+  await chargeMutation(client, workspaceId, {
     table,
     quotas,
     countDelta,
     byteDelta,
-  );
+  });
   return result;
 }
 function isUniqueViolation(
@@ -209,10 +215,17 @@ function rowKeyConflict(
 async function chargeMutation(
   client: PoolClient,
   workspaceId: string,
-  table: DataTableDefinition,
-  quotas: DataTableQuotas,
-  countDelta: number,
-  byteDelta: number,
+  {
+    table,
+    quotas,
+    countDelta,
+    byteDelta,
+  }: Readonly<{
+    table: DataTableDefinition;
+    quotas: DataTableQuotas;
+    countDelta: number;
+    byteDelta: number;
+  }>,
 ): Promise<void> {
   if (
     table.rowCount + countDelta > quotas.rowLimit ||
@@ -234,9 +247,15 @@ async function chargeMutation(
 export async function insertTableBatch(
   client: PoolClient,
   workspaceId: string,
-  table: DataTableDefinition,
-  quotas: DataTableQuotas,
-  rows: readonly DataTableValues[],
+  {
+    table,
+    quotas,
+    rows,
+  }: Readonly<{
+    table: DataTableDefinition;
+    quotas: DataTableQuotas;
+    rows: readonly DataTableValues[];
+  }>,
 ): Promise<{ affected: number }> {
   const records = rows.map((input, index) => {
     try {
@@ -256,14 +275,12 @@ export async function insertTableBatch(
     (sum, row) => sum + utf8ByteLength(row.values_json),
     0,
   );
-  await chargeMutation(
-    client,
-    workspaceId,
+  await chargeMutation(client, workspaceId, {
     table,
     quotas,
-    records.length,
-    bytes,
-  );
+    countDelta: records.length,
+    byteDelta: bytes,
+  });
   await client.query(
     `insert into app.workspace_data_table_rows(workspace_id,table_id,id,values_json,key_value)
  select $1,$2,row.id,row.values_json,row.key_value from jsonb_to_recordset($3::jsonb) as row(id uuid,values_json text,key_value text)`,

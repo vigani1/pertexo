@@ -28,8 +28,7 @@ export async function canManageWorkflowTrigger(
     !(await authorizeWorkflowResource(
       client,
       { workspaceId, actorId, workflowId: target },
-      'workflow:update',
-      true,
+      { capability: 'workflow:update', locking: true },
     ))
   )
     return false;

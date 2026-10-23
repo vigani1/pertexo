@@ -93,7 +93,7 @@ export async function readFailureNotificationDestination(
   client: PoolClient,
   workspaceId: string,
   destinationId: string,
-  lock = false,
+  { lock = false }: Readonly<{ lock?: boolean | undefined }> = {},
 ): Promise<FailureNotificationDestinationRecord> {
   const parsedDestinationId = z.uuid().parse(destinationId);
   if (lock) {

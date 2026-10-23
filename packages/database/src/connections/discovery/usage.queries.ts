@@ -98,11 +98,9 @@ export function createConnectionUsagePersistence(
         input.after === undefined
           ? undefined
           : uuidSchema.parse(input.after.workflowVersionId);
-      return withConnectionTransaction(
-        pool,
-        input.workspaceId,
+      return withConnectionTransaction(pool, input.workspaceId, {
         actorId,
-        async (client, workspaceId) => {
+        operation: async (client, workspaceId) => {
           let role;
           try {
             role = await lockWorkspaceAuthority(
@@ -195,7 +193,7 @@ export function createConnectionUsagePersistence(
               : {}),
           });
         },
-      );
+      });
     },
   });
 }

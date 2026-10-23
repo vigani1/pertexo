@@ -11,7 +11,7 @@ export async function replacePreference(
   input:
     | Parameters<NoticePreferencesStore['replace']>[0]
     | Parameters<NoticePreferencesStore['replaceDefaults']>[0],
-  defaults: boolean,
+  { defaults }: Readonly<{ defaults: boolean }>,
 ) {
   const identity = {
     workspaceId: input.workspaceId,

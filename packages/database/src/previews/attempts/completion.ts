@@ -140,9 +140,15 @@ export async function appendPreviewTerminalFacts(
 async function exactDuplicateCompletion(
   client: PoolClient,
   scope: PreviewCompletionScope,
-  outcome: CanonicalCompletionOutcome,
-  receipt: 'completed' | 'open',
-  diagnostics: CodeDiagnostics | undefined,
+  {
+    outcome,
+    receipt,
+    diagnostics,
+  }: Readonly<{
+    outcome: CanonicalCompletionOutcome;
+    receipt: 'completed' | 'open';
+    diagnostics: CodeDiagnostics | undefined;
+  }>,
 ): Promise<PreviewCompletionResult> {
   const current = await client.query<{
     attempt_output_ref: unknown;
@@ -307,13 +313,11 @@ export async function completePreviewAttempt(
           ],
         );
         if (terminal.rowCount !== 1)
-          return exactDuplicateCompletion(
-            client,
-            scope,
+          return exactDuplicateCompletion(client, scope, {
             outcome,
             receipt,
             diagnostics,
-          );
+          });
         if (receipt !== 'open')
           throw new PreviewAttemptStateError('receipt_already_completed');
         const syncedRuns = await client.query<{ id: string }>(
@@ -366,13 +370,11 @@ export async function completePreviewAttempt(
       error instanceof PreviewDeliveryMismatchError &&
       !input.signal?.aborted
     ) {
-      await auditPreviewDeliveryMismatch(
-        pool,
-        previewConsumerName,
-        scope.workspaceId,
-        input.delivery,
-        input.signal ?? new AbortController().signal,
-      );
+      await auditPreviewDeliveryMismatch(pool, previewConsumerName, {
+        workspaceId: scope.workspaceId,
+        delivery: input.delivery,
+        signal: input.signal ?? new AbortController().signal,
+      });
     }
     throw error;
   }

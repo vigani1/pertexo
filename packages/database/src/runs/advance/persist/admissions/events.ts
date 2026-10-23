@@ -10,9 +10,11 @@ import type { ExecutionIdentityMap } from './contract.js';
 export async function loadEventExecutionIdentities(
   client: PoolClient,
   physical: ExecutionIdentityMap,
-  plan: RunTransitionPlan,
-  workspaceId: string,
-  runId: string,
+  {
+    plan,
+    workspaceId,
+    runId,
+  }: Readonly<{ plan: RunTransitionPlan; workspaceId: string; runId: string }>,
 ): Promise<void> {
   const missingInvocationKeys = [
     ...new Set(

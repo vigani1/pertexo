@@ -31,13 +31,11 @@ export function createWorkspaceVariablesStore(
         lease.pool,
         { workspaceId: input.workspaceId, actorId: input.actorId },
         async (client) => {
-          await readWorkspaceAuthority(
-            client,
-            input.workspaceId,
-            input.actorId,
-            rolesForCapability('workspace:read'),
-            ['active', 'suspended', 'pending_deletion'],
-          );
+          await readWorkspaceAuthority(client, input.workspaceId, {
+            actorId: input.actorId,
+            roles: rolesForCapability('workspace:read'),
+            allowedStatuses: ['active', 'suspended', 'pending_deletion'],
+          });
           return readWorkspaceVariables({
             db: drizzle(client, { schema: databaseSchema }),
             workspaceId: parseWorkspaceId(input.workspaceId),
@@ -65,13 +63,11 @@ export function createWorkspaceVariablesStore(
         lease.pool,
         { workspaceId: input.workspaceId, actorId: input.actorId },
         async (client) => {
-          await readWorkspaceAuthority(
-            client,
-            input.workspaceId,
-            input.actorId,
-            rolesForCapability('workflow:read'),
-            ['active', 'suspended', 'pending_deletion'],
-          );
+          await readWorkspaceAuthority(client, input.workspaceId, {
+            actorId: input.actorId,
+            roles: rolesForCapability('workflow:read'),
+            allowedStatuses: ['active', 'suspended', 'pending_deletion'],
+          });
           return readVariableUsage(client, input);
         },
         input.signal === undefined ? {} : { signal: input.signal },

@@ -20,11 +20,9 @@ export async function abandonPersistedConnectionTest(
   const dispatchToken = uuidSchema.parse(input.dispatchToken);
   const digest = keyDigest(input.idempotencyKey);
   const scope = connectionTestScope(actorId, connectionId);
-  await withConnectionTransaction(
-    pool,
-    input.workspaceId,
+  await withConnectionTransaction(pool, input.workspaceId, {
     actorId,
-    async (client, workspaceId) => {
+    operation: async (client, workspaceId) => {
       await client.query(
         `update app.idempotency_records
              set status = 'failed',
@@ -38,5 +36,5 @@ export async function abandonPersistedConnectionTest(
         [workspaceId, scope, digest, requestHash, dispatchToken],
       );
     },
-  );
+  });
 }

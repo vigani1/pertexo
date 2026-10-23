@@ -57,12 +57,10 @@ export async function runOrganizationCommand<T>(
   await client.query('select id from app.workspaces where id=$1 for update', [
     scope.workspaceId,
   ]);
-  await lockWorkflowAuthoringAuthority(
-    client,
-    scope.workspaceId,
-    scope.actorId,
-    command.roles,
-  );
+  await lockWorkflowAuthoringAuthority(client, scope.workspaceId, {
+    actorId: scope.actorId,
+    roles: command.roles,
+  });
   const identity = {
     workspaceId: scope.workspaceId,
     operation: command.operation,

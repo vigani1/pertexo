@@ -6,9 +6,15 @@ import { callbackScopeHash } from './identity.js';
 export async function bindCallbackTask(
   client: PoolClient,
   workspaceId: string,
-  runId: string,
-  intent: Extract<PendingTaskIntent, { kind: 'callback' }>,
-  closed: boolean,
+  {
+    runId,
+    intent,
+    closed,
+  }: Readonly<{
+    runId: string;
+    intent: Extract<PendingTaskIntent, { kind: 'callback' }>;
+    closed: boolean;
+  }>,
 ): Promise<Readonly<{ id: string; expires_at: Date; status: string }>> {
   const node = await client.query<{
     id: string;

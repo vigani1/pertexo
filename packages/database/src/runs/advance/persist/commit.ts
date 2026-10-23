@@ -86,20 +86,16 @@ export async function saveRunTransition(
     runId,
     plan,
   );
-  await persistLoopBarrierTransitions(
-    client,
-    workspaceId,
+  await persistLoopBarrierTransitions(client, workspaceId, {
     runId,
-    previous,
-    plan.checkpoint,
-  );
-  await persistDueReadyTransitions(
-    client,
-    workspaceId,
+    current: previous,
+    next: plan.checkpoint,
+  });
+  await persistDueReadyTransitions(client, workspaceId, {
     runId,
-    previous,
-    plan.checkpoint,
-  );
+    current: previous,
+    next: plan.checkpoint,
+  });
   const physical = await persistCoordinatorExecutionTransitions(client, {
     pendingFailures: input.pendingFailures,
     rejectedForEachDeclarations,

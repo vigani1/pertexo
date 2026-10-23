@@ -284,7 +284,9 @@ it('delivers real personal notice mail, refuses revoked content before DATA, and
     ),
   );
   const identity = createIdentityWorkspaceDatabase(apiConfig);
-  const preferences = createNoticePreferencesStore(apiConfig, true);
+  const preferences = createNoticePreferencesStore(apiConfig, {
+    emailAvailable: true,
+  });
   const fold = createWorkspaceInboxFoldStore(apiConfig);
   const envelope = createApplicationSecretEnvelope({
     current: {

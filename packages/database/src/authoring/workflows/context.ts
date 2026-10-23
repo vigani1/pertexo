@@ -9,9 +9,11 @@ export type WorkflowAuthoringWriteContext = Readonly<{
   requireAuthor(
     client: PoolClient,
     workspaceId: string,
-    actorId: string,
-    workflowId?: string,
-    capability?: 'workflow:read' | 'workflow:update',
+    options: Readonly<{
+      actorId: string;
+      workflowId?: string | undefined;
+      capability?: 'workflow:read' | 'workflow:update' | undefined;
+    }>,
   ): Promise<void>;
   requirePlaceable(
     previous: WorkflowGraph,

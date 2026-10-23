@@ -42,13 +42,11 @@ export function createGovernanceStore(
       lease.pool,
       input,
       async (client) => {
-        await readWorkspaceAuthority(
-          client,
-          input.workspaceId,
-          input.actorId,
-          rolesForCapability(capability),
-          ['active', 'suspended', 'pending_deletion'],
-        );
+        await readWorkspaceAuthority(client, input.workspaceId, {
+          actorId: input.actorId,
+          roles: rolesForCapability(capability),
+          allowedStatuses: ['active', 'suspended', 'pending_deletion'],
+        });
         return work(client);
       },
       input.signal === undefined ? {} : { signal: input.signal },
@@ -58,13 +56,11 @@ export function createGovernanceStore(
     list: async (input) => {
       const after = decodeAuditCursor(input.query.after);
       return read(input, 'audit:read', async (client) => {
-        const rows = await readAuditBatch(
-          client,
-          input.workspaceId,
-          input.query,
-          input.query.limit + 1,
+        const rows = await readAuditBatch(client, input.workspaceId, {
+          query: input.query,
+          limit: input.query.limit + 1,
           after,
-        );
+        });
         const items = rows.slice(0, input.query.limit);
         const last = items.at(-1);
         return {

@@ -15,12 +15,10 @@ export async function listTags(
 ): ReturnType<WorkflowTagDatabase['listTags']> {
   const { limit, after } = page(input);
   return session.transact(input, async (client, scope) => {
-    await lockWorkflowAuthoringAuthority(
-      client,
-      scope.workspaceId,
-      scope.actorId,
-      ROLES,
-    );
+    await lockWorkflowAuthoringAuthority(client, scope.workspaceId, {
+      actorId: scope.actorId,
+      roles: ROLES,
+    });
     const rows = await client.query<{ tag: unknown }>(
       `select jsonb_build_object('id',id,'key',key,'revision',revision) tag from app.workflow_tags where workspace_id=$1 ${after === null ? '' : 'and id>$2::uuid'} order by id asc limit ${after === null ? '$2' : '$3'}`,
       after === null
@@ -42,12 +40,10 @@ export async function listTagAssignments(
   const { limit, after } = page(input),
     tagId = uuid.parse(input.tagId);
   return session.transact(input, async (client, scope) => {
-    await lockWorkflowAuthoringAuthority(
-      client,
-      scope.workspaceId,
-      scope.actorId,
-      ADMINISTRATORS,
-    );
+    await lockWorkflowAuthoringAuthority(client, scope.workspaceId, {
+      actorId: scope.actorId,
+      roles: ADMINISTRATORS,
+    });
     // Tag visibility and the assignment page share one statement snapshot.
     const result = await client.query<{ visible: boolean; items: unknown }>(
       `select exists(select 1 from app.workflow_tags where workspace_id=$1 and id=$2) visible,

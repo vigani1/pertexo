@@ -116,9 +116,15 @@ export function mapSealed(row: Readonly<Record<string, unknown>>) {
 export async function withConnectionTransaction<T>(
   pool: Pool,
   workspaceIdInput: string,
-  actorId: string | undefined,
-  operation: (client: PoolClient, workspaceId: string) => Promise<T>,
-  options: WorkspaceTransactionOptions = {},
+  {
+    actorId,
+    operation,
+    options = {},
+  }: Readonly<{
+    actorId: string | undefined;
+    operation: (client: PoolClient, workspaceId: string) => Promise<T>;
+    options?: WorkspaceTransactionOptions | undefined;
+  }>,
 ): Promise<T> {
   const workspaceId = uuidSchema.parse(workspaceIdInput);
   return withTenantScopedClient(
@@ -140,7 +146,7 @@ export async function selectConnection(
   client: PoolClient,
   workspaceId: string,
   connectionId: string,
-  lock = false,
+  { lock = false }: Readonly<{ lock?: boolean | undefined }> = {},
 ): Promise<ConnectionRecord | null> {
   const result = await client.query<Record<string, unknown>>(
     `select * from app.connections

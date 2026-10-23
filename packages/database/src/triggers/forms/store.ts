@@ -55,7 +55,7 @@ export function createFormStore(
           ...(input.actorId === undefined ? {} : { actorId: input.actorId }),
         },
         async (client) => {
-          await authorizeForm(client, input, grant, false);
+          await authorizeForm(client, input, { grant, write: false });
           const { version, nodeId, form } = await readFormVersion(
             client,
             input,
@@ -98,20 +98,21 @@ export function createFormStore(
           )
             await lockEventCoordination(input.workspaceId, drizzle(client));
           if (grant === undefined)
-            await authorizeForm(client, input, undefined, true);
+            await authorizeForm(client, input, {
+              grant: undefined,
+              write: true,
+            });
           const loaded = await readFormVersion(client, input, 'share');
           if (grant !== undefined && grant.nodeId !== loaded.nodeId)
             throw new FormUnavailableError();
           if (grant !== undefined)
-            await authorizeForm(client, input, grant, true);
-          return submitForm(
-            client,
-            input,
+            await authorizeForm(client, input, { grant, write: true });
+          return submitForm(client, input, {
             prepare,
-            grant !== undefined,
+            publicAccess: grant !== undefined,
             loaded,
             prepared,
-          );
+          });
         },
         input.signal === undefined ? {} : { signal: input.signal },
       );
@@ -122,7 +123,11 @@ export function createFormStore(
         { workspaceId: input.workspaceId, actorId: input.actorId },
         async (client) => {
           try {
-            await authorizeForm(client, input, undefined, false, true);
+            await authorizeForm(client, input, {
+              grant: undefined,
+              write: false,
+              manage: true,
+            });
           } catch (error) {
             if (!(error instanceof FormUnavailableError)) throw error;
             // History is a list: unavailable workflow identities disclose no events.
@@ -137,8 +142,12 @@ export function createFormStore(
         lease.pool,
         { workspaceId: input.workspaceId, actorId: input.actorId },
         async (client) => {
-          await authorizeForm(client, input, undefined, false, true);
-          await readFormVersion(client, input, 'read', true);
+          await authorizeForm(client, input, {
+            grant: undefined,
+            write: false,
+            manage: true,
+          });
+          await readFormVersion(client, input, 'read', { allowPaused: true });
           return readFormAccess(client, input);
         },
         input.signal === undefined ? {} : { signal: input.signal },
@@ -148,13 +157,14 @@ export function createFormStore(
         lease.pool,
         { workspaceId: input.workspaceId, actorId: input.actorId },
         async (client) => {
-          await authorizeForm(client, input, undefined, true, true);
-          const { nodeId } = await readFormVersion(
-            client,
-            input,
-            'update',
-            true,
-          );
+          await authorizeForm(client, input, {
+            grant: undefined,
+            write: true,
+            manage: true,
+          });
+          const { nodeId } = await readFormVersion(client, input, 'update', {
+            allowPaused: true,
+          });
           return changeFormAccess(client, input, nodeId);
         },
         input.signal === undefined ? {} : { signal: input.signal },

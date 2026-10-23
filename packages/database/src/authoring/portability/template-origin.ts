@@ -19,7 +19,12 @@ export function createWorkflowTemplateOriginReader(
   return (workspaceId: string, workflowId: string, actorId: string) =>
     context.transact(workspaceId, actorId, async (client) => {
       const access = await context.requireReader(client, workspaceId, actorId);
-      if (!(await workflowAccessible(client, access, workspaceId, workflowId)))
+      if (
+        !(await workflowAccessible(client, access, {
+          workspaceId,
+          workflowId,
+        }))
+      )
         return null;
       const id = z.uuid().parse(workflowId);
       const parameters: unknown[] = [workspaceId, id];
