@@ -144,9 +144,7 @@ const routes = [
 ] as const;
 type Route = (typeof routes)[number];
 const open: NestFastifyApplication[] = [];
-afterEach(async () => {
-  await Promise.all(open.splice(0).map((app) => app.close()));
-});
+afterEach(cleanAppsApiTestWorkflowAuthoringOrganizationControllerTestTsFixture);
 
 /** Real HTTP/CSRF/problem handling with fake session admission and persistence.
  * This fixture is not evidence for production session authentication or SQL. */
@@ -298,6 +296,11 @@ async function setup() {
 }
 
 describe('folder and batch HTTP routes with controlled session/persistence', () => {
+  registerGuardedRouteMatrix();
+  registerRejectsInvalidWorkspaceFolderWorkflowParams();
+});
+
+function registerGuardedRouteMatrix(): void {
   for (const route of routes) {
     it(`${route.method}: preserves guard, cache and rate metadata`, () => {
       const controller =
@@ -430,7 +433,9 @@ describe('folder and batch HTTP routes with controlled session/persistence', () 
         expect(f.port(route)).not.toHaveBeenCalled();
       });
   }
+}
 
+function registerRejectsInvalidWorkspaceFolderWorkflowParams(): void {
   it('rejects invalid workspace/folder/workflow params and any nonempty read query', async () => {
     const f = await setup();
     for (const url of [
@@ -543,4 +548,8 @@ describe('folder and batch HTTP routes with controlled session/persistence', () 
     expect(response.body).not.toContain('folderId');
     expect(response.body).not.toContain('private');
   });
-});
+}
+
+async function cleanAppsApiTestWorkflowAuthoringOrganizationControllerTestTsFixture() {
+  await Promise.all(open.splice(0).map((app) => app.close()));
+}
