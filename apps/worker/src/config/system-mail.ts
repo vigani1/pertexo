@@ -88,11 +88,10 @@ export function parseSystemMailDeliveryConfig(
   }
   return Object.freeze({
     ...(noticeSender === undefined ? {} : { noticeSender }),
-    delivery: parseSystemMailConfig(
-      environment,
-      'AUTH_MAIL_EMAIL_API_KEY',
+    delivery: parseSystemMailConfig(environment, {
+      apiKeyName: 'AUTH_MAIL_EMAIL_API_KEY',
       deployed,
-    ),
+    }),
     timeoutMillis: parsed.timeoutMillis,
     pollIntervalMillis: parsed.pollIntervalMillis,
     workerId: parsed.workerId,

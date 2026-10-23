@@ -133,7 +133,7 @@ export function parseApiConfig(
   }
   const artifacts = parseArtifactsConfig(parsed.NODE_ENV, environment);
 
-  const callbacks = parseCallbackKeyConfig(environment, deployed);
+  const callbacks = parseCallbackKeyConfig(environment, { deployed });
   return Object.freeze({
     ...(callbacks === undefined ? {} : { callbacks }),
     codeSettings: parseCodeSettings(environment),
@@ -155,10 +155,11 @@ function parseConnectionsConfig(
   environment: ParsedApiEnvironment,
   rawEnvironment: Record<string, string | undefined>,
 ): ApiConfig['connections'] {
-  const parsed = parseConnectionEncryptionConfig(
-    rawEnvironment,
-    environment.NODE_ENV === 'staging' || environment.NODE_ENV === 'production',
-  );
+  const parsed = parseConnectionEncryptionConfig(rawEnvironment, {
+    deployed:
+      environment.NODE_ENV === 'staging' ||
+      environment.NODE_ENV === 'production',
+  });
   if (parsed === undefined || 'mode' in parsed) return parsed;
   return Object.freeze({
     kmsKeyReference: parsed.keyReference,

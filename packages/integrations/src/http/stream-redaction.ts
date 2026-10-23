@@ -23,14 +23,24 @@ const REDACTED_BYTES = new TextEncoder().encode('[Redacted]');
 async function redactAvailable(
   value: Uint8Array,
   patterns: readonly Uint8Array[],
-  final: boolean,
-  outputBudget: number,
-  signal: AbortSignal,
-  deadline: number,
+  {
+    final,
+    outputBudget,
+    signal,
+    deadline,
+  }: Readonly<{
+    final: boolean;
+    outputBudget: number;
+    signal: AbortSignal;
+    deadline: number;
+  }>,
 ): Promise<Readonly<{ emitted: Uint8Array; remaining: Uint8Array }>> {
   if (patterns.length === 0) {
     if (value.byteLength > outputBudget)
-      throw failure(SECURE_HTTP_ERROR_CODE.responseTooLarge, true, false);
+      throw failure(SECURE_HTTP_ERROR_CODE.responseTooLarge, {
+        possiblyDispatched: true,
+        ambiguous: false,
+      });
     return Object.freeze({
       emitted: new Uint8Array(value),
       remaining: new Uint8Array(),
@@ -43,7 +53,10 @@ async function redactAvailable(
   let emittedLength = 0;
   const append = (bytes: Uint8Array): void => {
     if (emittedLength + bytes.byteLength > outputBudget)
-      throw failure(SECURE_HTTP_ERROR_CODE.responseTooLarge, true, false);
+      throw failure(SECURE_HTTP_ERROR_CODE.responseTooLarge, {
+        possiblyDispatched: true,
+        ambiguous: false,
+      });
     emitted.set(bytes, emittedLength);
     emittedLength += bytes.byteLength;
   };
@@ -88,21 +101,26 @@ async function redactAvailable(
 async function redactAndClear(
   value: Uint8Array,
   patterns: readonly Uint8Array[],
-  final: boolean,
-  outputBudget: number,
-  signal: AbortSignal,
-  deadline: number,
+  {
+    final,
+    outputBudget,
+    signal,
+    deadline,
+  }: Readonly<{
+    final: boolean;
+    outputBudget: number;
+    signal: AbortSignal;
+    deadline: number;
+  }>,
 ): ReturnType<typeof redactAvailable> {
   try {
     assertBodyDeadline(signal, deadline);
-    return await redactAvailable(
-      value,
-      patterns,
+    return await redactAvailable(value, patterns, {
       final,
       outputBudget,
       signal,
       deadline,
-    );
+    });
   } finally {
     value.fill(0);
   }
@@ -110,10 +128,17 @@ async function redactAndClear(
 
 export async function* boundedRedactedBody(
   body: AsyncIterable<Uint8Array>,
-  limit: number,
-  signal: AbortSignal,
-  sensitiveValues: readonly string[],
-  deadline: number,
+  {
+    limit,
+    signal,
+    sensitiveValues,
+    deadline,
+  }: Readonly<{
+    limit: number;
+    signal: AbortSignal;
+    sensitiveValues: readonly string[];
+    deadline: number;
+  }>,
 ): AsyncGenerator<Uint8Array> {
   const patterns = sensitiveValues
     .map((value) => new TextEncoder().encode(value))
@@ -125,7 +150,10 @@ export async function* boundedRedactedBody(
     if (value.byteLength === 0) return undefined;
     emittedBytes += value.byteLength;
     if (emittedBytes > limit)
-      throw failure(SECURE_HTTP_ERROR_CODE.responseTooLarge, true, false);
+      throw failure(SECURE_HTTP_ERROR_CODE.responseTooLarge, {
+        possiblyDispatched: true,
+        ambiguous: false,
+      });
     return value;
   };
   try {
@@ -135,10 +163,17 @@ export async function* boundedRedactedBody(
       };
       signal.addEventListener('abort', clearChunk, { once: true });
       try {
-        if (signal.aborted) throw abortFailure(signal, true, false);
+        if (signal.aborted)
+          throw abortFailure(signal, {
+            possiblyDispatched: true,
+            ambiguous: false,
+          });
         rawBytes += chunk.byteLength;
         if (rawBytes > limit)
-          throw failure(SECURE_HTTP_ERROR_CODE.responseTooLarge, true, false);
+          throw failure(SECURE_HTTP_ERROR_CODE.responseTooLarge, {
+            possiblyDispatched: true,
+            ambiguous: false,
+          });
         const previous = pending;
         try {
           pending = concatenateBytes(previous, chunk);
@@ -149,14 +184,12 @@ export async function* boundedRedactedBody(
         // chunks so caller cancellation and timeout timers can make progress.
         await yieldToEventLoop();
         const candidate = pending;
-        const redacted = await redactAndClear(
-          candidate,
-          patterns,
-          false,
-          limit - emittedBytes,
+        const redacted = await redactAndClear(candidate, patterns, {
+          final: false,
+          outputBudget: limit - emittedBytes,
           signal,
           deadline,
-        );
+        });
         pending = redacted.remaining;
         const output = emit(redacted.emitted);
         if (output !== undefined) yield output;
@@ -166,14 +199,12 @@ export async function* boundedRedactedBody(
       }
     }
     const candidate = pending;
-    const redacted = await redactAndClear(
-      candidate,
-      patterns,
-      true,
-      limit - emittedBytes,
+    const redacted = await redactAndClear(candidate, patterns, {
+      final: true,
+      outputBudget: limit - emittedBytes,
       signal,
       deadline,
-    );
+    });
     pending = redacted.remaining;
     const output = emit(redacted.emitted);
     if (output !== undefined) yield output;
@@ -187,17 +218,30 @@ export async function* boundedRedactedBody(
 }
 
 function assertBodyDeadline(signal: AbortSignal, deadline: number): void {
-  if (signal.aborted) throw abortFailure(signal, true, true);
+  if (signal.aborted)
+    throw abortFailure(signal, { possiblyDispatched: true, ambiguous: true });
   if (performance.now() >= deadline)
-    throw failure(SECURE_HTTP_ERROR_CODE.timedOut, true, true);
+    throw failure(SECURE_HTTP_ERROR_CODE.timedOut, {
+      possiblyDispatched: true,
+      ambiguous: true,
+    });
 }
 
 function mapResponseStreamError(
   error: unknown,
   signal: AbortSignal | undefined,
 ): SecureHttpError {
-  if (signal?.aborted === true) return abortFailure(signal, true, true);
+  if (signal?.aborted === true)
+    return abortFailure(signal, { possiblyDispatched: true, ambiguous: true });
   if (isTimeoutError(error))
-    return failure(SECURE_HTTP_ERROR_CODE.timedOut, true, true, error);
-  return failure(SECURE_HTTP_ERROR_CODE.networkFailed, true, true, error);
+    return failure(SECURE_HTTP_ERROR_CODE.timedOut, {
+      possiblyDispatched: true,
+      ambiguous: true,
+      cause: error,
+    });
+  return failure(SECURE_HTTP_ERROR_CODE.networkFailed, {
+    possiblyDispatched: true,
+    ambiguous: true,
+    cause: error,
+  });
 }

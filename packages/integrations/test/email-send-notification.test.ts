@@ -1065,16 +1065,20 @@ describe('email.send_notification@1', () => {
         new SecureHttpError(
           SECURE_HTTP_ERROR_CODE.dnsFailed,
           'definite_failure',
-          false,
+          { possiblyDispatched: false },
         ),
         { kind: 'retry', errorKind: 'network', possiblyDispatched: false },
       ],
       [
-        new SecureHttpError(SECURE_HTTP_ERROR_CODE.timedOut, 'ambiguous', true),
+        new SecureHttpError(SECURE_HTTP_ERROR_CODE.timedOut, 'ambiguous', {
+          possiblyDispatched: true,
+        }),
         { kind: 'retry', errorKind: 'timeout', possiblyDispatched: true },
       ],
       [
-        new SecureHttpError(SECURE_HTTP_ERROR_CODE.canceled, 'ambiguous', true),
+        new SecureHttpError(SECURE_HTTP_ERROR_CODE.canceled, 'ambiguous', {
+          possiblyDispatched: true,
+        }),
         { kind: 'canceled', errorKind: 'canceled', possiblyDispatched: true },
       ],
     ] as const) {
@@ -1117,7 +1121,7 @@ describe('email.send_notification@1', () => {
       new SecureHttpError(
         SECURE_HTTP_ERROR_CODE.dnsFailed,
         'definite_failure',
-        false,
+        { possiblyDispatched: false },
       ),
     );
     state.value = Object.freeze({

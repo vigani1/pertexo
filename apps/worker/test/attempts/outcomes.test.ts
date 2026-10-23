@@ -967,7 +967,7 @@ describe('NodeAttemptHandler', () => {
                 errorKind: 'rate_limit',
                 reuseProviderKey: false,
               },
-              false,
+              { possiblyDispatched: false },
             ),
           ),
         }),

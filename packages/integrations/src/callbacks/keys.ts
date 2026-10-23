@@ -14,7 +14,7 @@ export type CallbackKeyConfig = Readonly<{
 }>;
 export function parseCallbackKeyConfig(
   environment: Readonly<Record<string, string | undefined>>,
-  deployed: boolean,
+  { deployed }: Readonly<{ deployed: boolean }>,
 ): CallbackKeyConfig | undefined {
   const key = environment.CALLBACK_TOKEN_KEY;
   if (key === undefined) {

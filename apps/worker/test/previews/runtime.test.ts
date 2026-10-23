@@ -491,7 +491,7 @@ describe('platform preview node invoker', () => {
       .mockRejectedValue(
         new HttpRequestExecutorError(
           { kind: 'outcome_unknown', errorKind: 'provider' },
-          true,
+          { possiblyDispatched: true },
         ),
       );
     const invoker = createPlatformPreviewNodeInvoker({

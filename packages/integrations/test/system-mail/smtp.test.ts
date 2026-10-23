@@ -288,7 +288,10 @@ describe('SMTP configuration', () => {
   };
   it('needs no Resend key and requires STARTTLS by default', () => {
     expect(
-      parseSystemMailConfig(environment, 'AUTH_MAIL_EMAIL_API_KEY', true),
+      parseSystemMailConfig(environment, {
+        apiKeyName: 'AUTH_MAIL_EMAIL_API_KEY',
+        deployed: true,
+      }),
     ).toEqual({
       mode: 'smtp',
       host: 'smtp.example.test',
@@ -298,8 +301,7 @@ describe('SMTP configuration', () => {
     expect(
       parseSystemMailConfig(
         { ...environment, SYSTEM_MAIL_SMTP_TLS: 'implicit' },
-        'INVITATION_EMAIL_API_KEY',
-        true,
+        { apiKeyName: 'INVITATION_EMAIL_API_KEY', deployed: true },
       ),
     ).toMatchObject({ port: 465, tls: 'implicit' });
   });
@@ -314,8 +316,7 @@ describe('SMTP configuration', () => {
     expect(() =>
       parseSystemMailConfig(
         { ...environment, ...extra },
-        'AUTH_MAIL_EMAIL_API_KEY',
-        true,
+        { apiKeyName: 'AUTH_MAIL_EMAIL_API_KEY', deployed: true },
       ),
     ).toThrow();
   });
@@ -327,15 +328,13 @@ describe('SMTP configuration', () => {
           SYSTEM_MAIL_SMTP_HOST: '127.0.0.1',
           SYSTEM_MAIL_SMTP_TLS: 'none',
         },
-        'AUTH_MAIL_EMAIL_API_KEY',
-        false,
+        { apiKeyName: 'AUTH_MAIL_EMAIL_API_KEY', deployed: false },
       ),
     ).toMatchObject({ tls: 'none' });
     expect(() =>
       parseSystemMailConfig(
         { ...environment, SYSTEM_MAIL_SMTP_TLS: 'none' },
-        'AUTH_MAIL_EMAIL_API_KEY',
-        false,
+        { apiKeyName: 'AUTH_MAIL_EMAIL_API_KEY', deployed: false },
       ),
     ).toThrow();
   });

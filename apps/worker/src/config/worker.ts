@@ -391,8 +391,10 @@ export function parseWorkerConfig(
     const raw = stringEnvironment(environment);
     const deployed =
       result.data.nodeEnv === 'staging' || result.data.nodeEnv === 'production';
-    const callbacks = parseCallbackKeyConfig(raw, deployed);
-    const connectionEncryption = parseConnectionEncryptionConfig(raw, deployed);
+    const callbacks = parseCallbackKeyConfig(raw, { deployed });
+    const connectionEncryption = parseConnectionEncryptionConfig(raw, {
+      deployed,
+    });
     const artifactStore = artifactStoreConfig(raw, deployed);
     const artifactScratchDirectory = z
       .object({

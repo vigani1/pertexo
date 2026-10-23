@@ -210,6 +210,10 @@ export function parseRequest(
   } catch (error: unknown) {
     const secureError = inspectSecureHttpError(error);
     if (secureError !== undefined) throw secureError.error;
-    throw failure(SECURE_HTTP_ERROR_CODE.invalidRequest, false, false, error);
+    throw failure(SECURE_HTTP_ERROR_CODE.invalidRequest, {
+      possiblyDispatched: false,
+      ambiguous: false,
+      cause: error,
+    });
   }
 }

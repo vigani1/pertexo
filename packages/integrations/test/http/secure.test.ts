@@ -292,7 +292,9 @@ describe('secure HTTP client', () => {
     [SECURE_HTTP_ERROR_CODE.networkFailed, 'transport'],
   ] as const)('maps diagnostic reason %s to stage %s', async (code, stage) => {
     const observations: SecureHttpFailureObservation[] = [];
-    const injected = new SecureHttpError(code, 'definite_failure', false);
+    const injected = new SecureHttpError(code, 'definite_failure', {
+      possiblyDispatched: false,
+    });
     const client = new SecureHttpClient(
       { resolve: () => Promise.reject(injected) },
       new FakeTransport(() => Promise.reject(new Error('must not dispatch'))),

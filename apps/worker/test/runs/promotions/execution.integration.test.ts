@@ -103,7 +103,7 @@ describe.runIf(fixture.enabled)(
           ),
           CONNECTION_SELF_MANAGED_KEY_VERSION: 'promotion-v1',
         },
-        false,
+        { deployed: false },
       );
       if (encryptionConfig === undefined)
         throw new Error('Fixture encryption missing');

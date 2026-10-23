@@ -70,11 +70,10 @@ export function parseInvitationDeliveryConfig(
     throw new Error('HTTPS public web origin is required when deployed');
   const previous = parseApplicationPreviousKeys(parsed.previous);
   return Object.freeze({
-    delivery: parseSystemMailConfig(
-      environment,
-      'INVITATION_EMAIL_API_KEY',
+    delivery: parseSystemMailConfig(environment, {
+      apiKeyName: 'INVITATION_EMAIL_API_KEY',
       deployed,
-    ),
+    }),
     fromEmail: parsed.fromEmail,
     webOrigin: url.origin,
     timeoutMillis: parsed.timeoutMillis,

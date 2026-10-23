@@ -350,7 +350,7 @@ describe('provider failure notification delivery', () => {
         throw new SecureHttpError(
           SECURE_HTTP_ERROR_CODE.networkFailed,
           'ambiguous',
-          true,
+          { possiblyDispatched: true },
         );
       };
       const delivery = createProviderFailureNotificationDelivery({
@@ -935,7 +935,9 @@ describe('provider failure notification delivery', () => {
           sendMessage: vi
             .fn()
             .mockRejectedValue(
-              new SecureHttpError(code, 'definite_failure', false),
+              new SecureHttpError(code, 'definite_failure', {
+                possiblyDispatched: false,
+              }),
             ),
         },
         email: { sendNotification: vi.fn() },

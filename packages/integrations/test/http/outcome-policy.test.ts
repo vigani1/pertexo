@@ -170,22 +170,24 @@ function expectedErrorDecision(
 describe('ADR 007 HTTP outcome policy', () => {
   it.each(CLASSES)('accepts 2xx truth for %s operations', (sideEffectClass) => {
     expect(
-      classifySecureHttpResponse(
-        204,
-        sideEffectClass,
-        sideEffectClass === 'idempotent_with_key',
-      ),
+      classifySecureHttpResponse(204, sideEffectClass, {
+        providerKeyPresent: sideEffectClass === 'idempotent_with_key',
+      }),
     ).toEqual({ kind: 'succeeded' });
   });
 
   it('retries safe and keyed work but preserves the same provider key', () => {
-    expect(classifySecureHttpResponse(503, 'safe', false)).toEqual({
+    expect(
+      classifySecureHttpResponse(503, 'safe', { providerKeyPresent: false }),
+    ).toEqual({
       kind: 'retry',
       errorKind: 'provider',
       reuseProviderKey: false,
     });
     expect(
-      classifySecureHttpResponse(503, 'idempotent_with_key', true),
+      classifySecureHttpResponse(503, 'idempotent_with_key', {
+        providerKeyPresent: true,
+      }),
     ).toEqual({
       kind: 'retry',
       errorKind: 'provider',
@@ -193,9 +195,11 @@ describe('ADR 007 HTTP outcome policy', () => {
     });
     expect(
       classifySecureHttpError(
-        new SecureHttpError('network_failed', 'ambiguous', true),
+        new SecureHttpError('network_failed', 'ambiguous', {
+          possiblyDispatched: true,
+        }),
         'idempotent_with_key',
-        true,
+        { providerKeyPresent: true },
       ),
     ).toEqual({
       kind: 'retry',
@@ -205,46 +209,60 @@ describe('ADR 007 HTTP outcome policy', () => {
   });
 
   it('makes unsafe ambiguous transport and provider outcomes explicitly unknown', () => {
-    expect(classifySecureHttpResponse(500, 'unsafe', false)).toEqual({
+    expect(
+      classifySecureHttpResponse(500, 'unsafe', { providerKeyPresent: false }),
+    ).toEqual({
       kind: 'outcome_unknown',
       errorKind: 'provider',
     });
     expect(
       classifySecureHttpError(
-        new SecureHttpError('timed_out', 'ambiguous', true),
+        new SecureHttpError('timed_out', 'ambiguous', {
+          possiblyDispatched: true,
+        }),
         'unsafe',
-        false,
+        { providerKeyPresent: false },
       ),
     ).toEqual({ kind: 'outcome_unknown', errorKind: 'timeout' });
     expect(
       classifySecureHttpError(
-        new SecureHttpError('canceled', 'definite_failure', true),
+        new SecureHttpError('canceled', 'definite_failure', {
+          possiblyDispatched: true,
+        }),
         'unsafe',
-        false,
+        { providerKeyPresent: false },
       ),
     ).toEqual({ kind: 'outcome_unknown', errorKind: 'provider' });
   });
 
   it('does not retry definite unsafe failures or accept a missing provider key', () => {
-    expect(classifySecureHttpResponse(429, 'unsafe', false)).toEqual({
+    expect(
+      classifySecureHttpResponse(429, 'unsafe', { providerKeyPresent: false }),
+    ).toEqual({
       kind: 'failed',
       errorKind: 'rate_limit',
     });
     expect(
-      classifySecureHttpResponse(503, 'idempotent_with_key', false),
+      classifySecureHttpResponse(503, 'idempotent_with_key', {
+        providerKeyPresent: false,
+      }),
     ).toEqual({ kind: 'failed', errorKind: 'configuration' });
     expect(
       classifySecureHttpError(
-        new SecureHttpError('network_failed', 'definite_failure', false),
+        new SecureHttpError('network_failed', 'definite_failure', {
+          possiblyDispatched: false,
+        }),
         'idempotent_with_key',
-        false,
+        { providerKeyPresent: false },
       ),
     ).toEqual({ kind: 'failed', errorKind: 'configuration' });
     expect(
       classifySecureHttpError(
-        new SecureHttpError('response_too_large', 'definite_failure', true),
+        new SecureHttpError('response_too_large', 'definite_failure', {
+          possiblyDispatched: true,
+        }),
         'unsafe',
-        false,
+        { providerKeyPresent: false },
       ),
     ).toEqual({ kind: 'failed', errorKind: 'configuration' });
   });
@@ -252,13 +270,11 @@ describe('ADR 007 HTTP outcome policy', () => {
   it('maps a pre-dispatch provider-runtime outage into the immutable retry policy', () => {
     expect(
       classifySecureHttpError(
-        new SecureHttpError(
-          'dispatch_evidence_failed',
-          'definite_failure',
-          false,
-        ),
+        new SecureHttpError('dispatch_evidence_failed', 'definite_failure', {
+          possiblyDispatched: false,
+        }),
         'unsafe',
-        false,
+        { providerKeyPresent: false },
       ),
     ).toEqual({
       kind: 'retry',
@@ -268,22 +284,28 @@ describe('ADR 007 HTTP outcome policy', () => {
   });
 
   it('keeps auth, cancellation, and pre-dispatch DNS truth distinct', () => {
-    expect(classifySecureHttpResponse(401, 'safe', false)).toEqual({
+    expect(
+      classifySecureHttpResponse(401, 'safe', { providerKeyPresent: false }),
+    ).toEqual({
       kind: 'failed',
       errorKind: 'authentication',
     });
     expect(
       classifySecureHttpError(
-        new SecureHttpError('canceled', 'definite_failure', false),
+        new SecureHttpError('canceled', 'definite_failure', {
+          possiblyDispatched: false,
+        }),
         'safe',
-        false,
+        { providerKeyPresent: false },
       ),
     ).toEqual({ kind: 'canceled', errorKind: 'canceled' });
     expect(
       classifySecureHttpError(
-        new SecureHttpError('dns_failed', 'definite_failure', false),
+        new SecureHttpError('dns_failed', 'definite_failure', {
+          possiblyDispatched: false,
+        }),
         'safe',
-        false,
+        { providerKeyPresent: false },
       ),
     ).toEqual({
       kind: 'retry',
@@ -292,9 +314,11 @@ describe('ADR 007 HTTP outcome policy', () => {
     });
     expect(
       classifySecureHttpError(
-        new SecureHttpError('dns_failed', 'definite_failure', false),
+        new SecureHttpError('dns_failed', 'definite_failure', {
+          possiblyDispatched: false,
+        }),
         'unsafe',
-        false,
+        { providerKeyPresent: false },
       ),
     ).toEqual({
       kind: 'retry',
@@ -312,11 +336,9 @@ describe('ADR 007 HTTP outcome policy', () => {
   it('classifies every admitted response family exactly for every side-effect policy', () => {
     for (const { name, status, expected } of RESPONSE_CASES)
       for (const sideEffectClass of CLASSES) {
-        const decision = classifySecureHttpResponse(
-          status,
-          sideEffectClass,
-          sideEffectClass === 'idempotent_with_key',
-        );
+        const decision = classifySecureHttpResponse(status, sideEffectClass, {
+          providerKeyPresent: sideEffectClass === 'idempotent_with_key',
+        });
         expect({ name, sideEffectClass, decision }).toEqual({
           name,
           sideEffectClass,
@@ -340,9 +362,11 @@ describe('ADR 007 HTTP outcome policy', () => {
           ['ambiguous', true],
         ] as const) {
           const decision = classifySecureHttpError(
-            new SecureHttpError(code, classification, possiblyDispatched),
+            new SecureHttpError(code, classification, {
+              possiblyDispatched,
+            }),
             sideEffectClass,
-            sideEffectClass === 'idempotent_with_key',
+            { providerKeyPresent: sideEffectClass === 'idempotent_with_key' },
           );
           expect({
             code,

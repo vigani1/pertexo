@@ -60,7 +60,7 @@ export function createProviderBeforeDispatch(input: {
         throw new SecureHttpError(
           SECURE_HTTP_ERROR_CODE.canceled,
           'definite_failure',
-          false,
+          { possiblyDispatched: false },
         );
       throw secureHttpPreDispatchError(
         SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed,

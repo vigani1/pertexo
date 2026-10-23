@@ -767,7 +767,7 @@ describe('http.request@1 server executor', () => {
           new SecureHttpError(
             SECURE_HTTP_ERROR_CODE.dnsFailed,
             'definite_failure',
-            false,
+            { possiblyDispatched: false },
           ),
         ),
       ),
@@ -856,7 +856,7 @@ describe('http.request@1 server executor', () => {
           throw new SecureHttpError(
             SECURE_HTTP_ERROR_CODE.timedOut,
             'ambiguous',
-            true,
+            { possiblyDispatched: true },
           );
         }),
       }).execute(
@@ -950,7 +950,7 @@ describe('http.request@1 server executor', () => {
           throw new SecureHttpError(
             SECURE_HTTP_ERROR_CODE.timedOut,
             'ambiguous',
-            true,
+            { possiblyDispatched: true },
           );
         }),
       }).execute(invocation(runtime().value)),
@@ -969,7 +969,7 @@ describe('http.request@1 server executor', () => {
             new SecureHttpError(
               SECURE_HTTP_ERROR_CODE.timedOut,
               'definite_failure',
-              false,
+              { possiblyDispatched: false },
             ),
           ),
         ),
@@ -992,7 +992,7 @@ describe('http.request@1 server executor', () => {
           throw new SecureHttpError(
             SECURE_HTTP_ERROR_CODE.canceled,
             'ambiguous',
-            true,
+            { possiblyDispatched: true },
           );
         }),
       }).execute(invocation(runtime().value)),
@@ -1190,7 +1190,7 @@ describe('http.request@1 server executor', () => {
     ).rejects.toEqual(
       new HttpRequestExecutorError(
         { kind: 'retry', errorKind: 'rate_limit', reuseProviderKey: false },
-        false,
+        { possiblyDispatched: false },
       ),
     );
     expect(noLimitedDispatch).not.toHaveBeenCalled();
@@ -1212,7 +1212,7 @@ describe('http.request@1 server executor', () => {
     ).rejects.toEqual(
       new HttpRequestExecutorError(
         { kind: 'retry', errorKind: 'provider', reuseProviderKey: false },
-        false,
+        { possiblyDispatched: false },
       ),
     );
     expect(neverCalled).not.toHaveBeenCalled();
@@ -1230,7 +1230,7 @@ describe('http.request@1 server executor', () => {
     ).rejects.toEqual(
       new HttpRequestExecutorError(
         { kind: 'outcome_unknown', errorKind: 'network' },
-        true,
+        { possiblyDispatched: true },
       ),
     );
   });
@@ -1270,7 +1270,7 @@ describe('http.request@1 server executor', () => {
             new SecureHttpError(
               SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch,
               'definite_failure',
-              false,
+              { possiblyDispatched: false },
             ),
           ),
         ),
@@ -1314,7 +1314,7 @@ describe('http.request@1 server executor', () => {
     ).rejects.toEqual(
       new HttpRequestExecutorError(
         { kind: 'outcome_unknown', errorKind: 'provider' },
-        true,
+        { possiblyDispatched: true },
       ),
     );
   });

@@ -21,14 +21,16 @@ export type SecureHttpErrorCode =
   (typeof SECURE_HTTP_ERROR_CODE)[keyof typeof SECURE_HTTP_ERROR_CODE];
 
 export class SecureHttpError extends Error {
+  public readonly possiblyDispatched: boolean;
   public override readonly name = 'SecureHttpError';
 
   public constructor(
     public readonly code: SecureHttpErrorCode,
     public readonly classification: 'ambiguous' | 'definite_failure',
-    public readonly possiblyDispatched: boolean,
+    { possiblyDispatched }: Readonly<{ possiblyDispatched: boolean }>,
   ) {
     super(`Secure HTTP request failed: ${code}`);
+    this.possiblyDispatched = possiblyDispatched;
   }
 }
 
@@ -78,28 +80,35 @@ export function isTimeoutError(error: unknown): boolean {
 
 export function failure(
   code: SecureHttpErrorCode,
-  possiblyDispatched: boolean,
-  ambiguous: boolean,
-  _cause?: unknown,
+  {
+    possiblyDispatched,
+    ambiguous,
+    cause: _cause,
+  }: Readonly<{
+    possiblyDispatched: boolean;
+    ambiguous: boolean;
+    cause?: unknown;
+  }>,
 ): SecureHttpError {
   return new SecureHttpError(
     code,
     ambiguous ? 'ambiguous' : 'definite_failure',
-    possiblyDispatched,
+    { possiblyDispatched },
   );
 }
 
 export function abortFailure(
   signal: AbortSignal,
-  possiblyDispatched: boolean,
-  ambiguous: boolean,
+  {
+    possiblyDispatched,
+    ambiguous,
+  }: Readonly<{ possiblyDispatched: boolean; ambiguous: boolean }>,
 ): SecureHttpError {
   const timedOut = errorNameIs(signal.reason, 'TimeoutError');
   return failure(
     timedOut
       ? SECURE_HTTP_ERROR_CODE.timedOut
       : SECURE_HTTP_ERROR_CODE.canceled,
-    possiblyDispatched,
-    ambiguous,
+    { possiblyDispatched, ambiguous },
   );
 }
