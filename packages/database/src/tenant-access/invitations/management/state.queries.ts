@@ -77,11 +77,11 @@ async function lockAuthorizedActor(
     [actorUserId, workspaceId],
   );
   const row = actor.rows[0];
-  if (
+  const managerUnavailable =
     row?.user_status !== 'active' ||
     row.membership_status !== 'active' ||
-    (row.role !== 'owner' && row.role !== 'admin')
-  )
+    (row.role !== 'owner' && row.role !== 'admin');
+  if (managerUnavailable)
     throw new WorkspaceInvitationCommandConflictError(
       'actor_inactive',
       'The actor is no longer allowed to manage invitations',

@@ -62,11 +62,11 @@ export async function saveRunTransition(
     plan.checkpoint.workflowVersionId !== row.workflow_version_id
   )
     throw new CoordinatorRunStateCorruptError();
-  if (
+  const startsRun =
     row.status === 'queued' &&
     (plan.checkpoint.runStatus === 'running' ||
-      plan.checkpoint.runStatus === 'waiting')
-  ) {
+      plan.checkpoint.runStatus === 'waiting');
+  if (startsRun) {
     const deferred = await deferCoordinatorForActiveCapacity(client, {
       workspaceId,
       runId,

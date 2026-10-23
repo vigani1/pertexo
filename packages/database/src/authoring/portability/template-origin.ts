@@ -40,12 +40,12 @@ export function createWorkflowTemplateOriginReader(
         );
       } catch (error) {
         // Missing/incompatible storage is unsupported projection, never authoritative null.
-        if (
+        const originStorageUnavailable =
           typeof error === 'object' &&
           error !== null &&
           'code' in error &&
-          ['42P01', '42703', '42501'].includes(String(error.code))
-        )
+          ['42P01', '42703', '42501'].includes(String(error.code));
+        if (originStorageUnavailable)
           throw new WorkflowTemplateOriginUnavailableError();
         throw error;
       }

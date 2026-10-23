@@ -166,20 +166,18 @@ export function compileDirectoryFilter(
         throw new DirectoryError('invalid_filter');
       return `(${field.sql} is ${node.op === 'ne' ? 'not ' : ''}null)`;
     }
-    if (
+    const invalidBooleanComparison =
       field.type === 'boolean' &&
-      (typeof node.compValue !== 'boolean' || !['eq', 'ne'].includes(node.op))
-    )
-      throw new DirectoryError('invalid_filter');
+      (typeof node.compValue !== 'boolean' || !['eq', 'ne'].includes(node.op));
+    if (invalidBooleanComparison) throw new DirectoryError('invalid_filter');
     if (field.type !== 'boolean' && typeof node.compValue !== 'string')
       throw new DirectoryError('invalid_filter');
     const date = field.type === 'dateTime';
-    if (
+    const invalidDateComparison =
       date &&
       (typeof node.compValue !== 'string' ||
-        !Number.isFinite(Date.parse(node.compValue)))
-    )
-      throw new DirectoryError('invalid_filter');
+        !Number.isFinite(Date.parse(node.compValue)));
+    if (invalidDateComparison) throw new DirectoryError('invalid_filter');
     const text = field.type !== 'boolean' && !date;
     const left = text && !field.caseExact ? `lower(${field.sql})` : field.sql;
     const parameter = bind(node.compValue);

@@ -39,7 +39,7 @@ export function createTable(
             'quota_exceeded',
             'Table or column limit reached. Ask an admin to raise it.',
           );
-        if (
+        const invalidKeyColumn =
           input.keyColumn !== undefined &&
           input.keyColumn !== null &&
           !input.columns.some(
@@ -47,8 +47,8 @@ export function createTable(
               column.name === input.keyColumn &&
               column.required &&
               ['text', 'number', 'date'].includes(column.type),
-          )
-        )
+          );
+        if (invalidKeyColumn)
           throw new DataTableError(
             'invalid_values',
             'The unique key must be a required text, number or date column.',
@@ -172,12 +172,12 @@ export function configureTables(
               [input.workspaceId],
             )
           ).rows[0];
-          if (
+          const quotasBelowCurrentUsage =
             current.tableCount > input.tableLimit ||
             current.storedBytes > input.byteLimit ||
             (max?.columns ?? 0) > input.columnLimit ||
-            (max?.rows ?? 0) > input.rowLimit
-          )
+            (max?.rows ?? 0) > input.rowLimit;
+          if (quotasBelowCurrentUsage)
             throw new DataTableError(
               'quota_exceeded',
               'Limits cannot be lower than current table use.',

@@ -96,13 +96,12 @@ export async function replacementLineageIsLive(
     const identity = `${current.workspaceId}:${current.intentId}`;
     if (visited.has(identity)) return true;
     visited.add(identity);
-    if (
+    const intentStillUsable =
       current.intent !== undefined &&
       current.intent.status !== 'abandoned' &&
       current.intent.status !== 'superseded' &&
-      current.intent.expires_at.getTime() > now.getTime()
-    )
-      return true;
+      current.intent.expires_at.getTime() > now.getTime();
+    if (intentStillUsable) return true;
     const claimResult = await client.query<ReplacementClaimRow>(
       `select successor_workspace_id,successor_intent_id,
               successor_invitation_id,successor_invitation_revision,

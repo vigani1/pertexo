@@ -57,11 +57,11 @@ function parseMigrationTimeout(
   label: string,
 ): number {
   const selected = value ?? fallback;
-  if (
+  const invalidTimeout =
     !Number.isSafeInteger(selected) ||
     selected < minimum ||
-    selected > maximumPostgresTimeoutMs
-  )
+    selected > maximumPostgresTimeoutMs;
+  if (invalidTimeout)
     throw new TypeError(
       `Migration ${label} timeout must be between ${String(minimum)}ms and ${String(maximumPostgresTimeoutMs)}ms`,
     );

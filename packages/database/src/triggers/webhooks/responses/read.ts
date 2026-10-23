@@ -31,12 +31,12 @@ export function readWebhookResponse(
       );
       const row = result.rows[0];
       if (row === undefined) return { state: 'finished' };
-      if (
+      const responseAvailable =
         row.status_code !== null &&
         row.content_type !== null &&
         row.headers !== null &&
-        row.body !== null
-      )
+        row.body !== null;
+      if (responseAvailable)
         return {
           state: 'responded',
           response: {

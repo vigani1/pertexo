@@ -58,12 +58,11 @@ export async function synchronizeHumanWait(
     deadline_expired: run.deadline_expired,
     human_resume_deferred: alreadyDeferred,
   };
-  if (
+  const runUnavailable =
     !['running', 'waiting'].includes(run.status) ||
     run.cancel_requested_at !== null ||
-    run.deadline_expired
-  )
-    return unchanged;
+    run.deadline_expired;
+  if (runUnavailable) return unchanged;
   const state = await client.query<{
     all_human_waiting: boolean;
     has_human_wait: boolean;

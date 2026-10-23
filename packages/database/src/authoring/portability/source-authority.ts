@@ -129,13 +129,13 @@ export async function inspectPortableConnections(
   return bindings.flatMap((binding) => {
     const row = rows.get(binding.connectionId);
     const slot = slots.get(`${binding.nodeId}\u0000${binding.slot}`);
-    if (
+    const connectionUnavailable =
       row === undefined ||
       slot === undefined ||
       row.status !== 'active' ||
       row.provider_key !== slot.providerKey ||
-      row.auth_type !== slot.authType
-    )
+      row.auth_type !== slot.authType;
+    if (connectionUnavailable)
       return [
         {
           code: 'connection_unavailable',

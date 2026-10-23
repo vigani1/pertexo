@@ -1,3 +1,4 @@
+import { isUniqueConstraintFailure } from '../platform/query-errors.js';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 import { canonicalJson, normalizedJson } from '@pertexo/workflow-model';
@@ -123,45 +124,47 @@ export async function mutateRows(
       0,
     );
     result = boundedResult([], old.length);
-  } else if (
-    command.operation === 'insert' ||
-    (command.operation === 'upsert' && old.length === 0)
-  ) {
-    const values = validateDataTableValues(table.columns, command.values);
-    const text = normalizedJson(values);
-    const id = generatePersistedId();
-    countDelta = 1;
-    byteDelta = utf8ByteLength(text);
-    result = boundedResult([{ id, revision: 1, values }], 1);
-    await client
-      .query(
-        'insert into app.workspace_data_table_rows(workspace_id,table_id,id,values_json,key_value) values($1,$2,$3,$4,$5)',
-        [workspaceId, table.id, id, text, keyValue(table, values)],
-      )
-      .catch((error: unknown) => rowKeyConflict(error, table, values));
   } else {
-    // An existing row keeps every column the command doesn't name.
-    const patch = validateDataTableValues(table.columns, command.values, {
-      partial: true,
-    });
-    const outputs = [];
-    for (const row of old) {
-      const values = validateDataTableValues(table.columns, {
-        ...(JSON.parse(row.values_json) as DataTableValues),
-        ...patch,
-      });
+    const insertsRow =
+      command.operation === 'insert' ||
+      (command.operation === 'upsert' && old.length === 0);
+    if (insertsRow) {
+      const values = validateDataTableValues(table.columns, command.values);
       const text = normalizedJson(values);
-      byteDelta += utf8ByteLength(text) - utf8ByteLength(row.values_json);
+      const id = generatePersistedId();
+      countDelta = 1;
+      byteDelta = utf8ByteLength(text);
+      result = boundedResult([{ id, revision: 1, values }], 1);
       await client
         .query(
-          'update app.workspace_data_table_rows set values_json=$4,key_value=$5,revision=revision+1 where workspace_id=$1 and table_id=$2 and id=$3',
-          [workspaceId, table.id, row.id, text, keyValue(table, values)],
+          'insert into app.workspace_data_table_rows(workspace_id,table_id,id,values_json,key_value) values($1,$2,$3,$4,$5)',
+          [workspaceId, table.id, id, text, keyValue(table, values)],
         )
         .catch((error: unknown) => rowKeyConflict(error, table, values));
-      if (command.operation === 'upsert')
-        outputs.push({ id: row.id, revision: row.revision + 1, values });
+    } else {
+      // An existing row keeps every column the command doesn't name.
+      const patch = validateDataTableValues(table.columns, command.values, {
+        partial: true,
+      });
+      const outputs = [];
+      for (const row of old) {
+        const values = validateDataTableValues(table.columns, {
+          ...(JSON.parse(row.values_json) as DataTableValues),
+          ...patch,
+        });
+        const text = normalizedJson(values);
+        byteDelta += utf8ByteLength(text) - utf8ByteLength(row.values_json);
+        await client
+          .query(
+            'update app.workspace_data_table_rows set values_json=$4,key_value=$5,revision=revision+1 where workspace_id=$1 and table_id=$2 and id=$3',
+            [workspaceId, table.id, row.id, text, keyValue(table, values)],
+          )
+          .catch((error: unknown) => rowKeyConflict(error, table, values));
+        if (command.operation === 'upsert')
+          outputs.push({ id: row.id, revision: row.revision + 1, values });
+      }
+      result = boundedResult(outputs, old.length);
     }
-    result = boundedResult(outputs, old.length);
   }
   if (result.affected === 0) return result;
   await chargeMutation(client, workspaceId, {
@@ -172,19 +175,8 @@ export async function mutateRows(
   });
   return result;
 }
-function isUniqueViolation(
-  error: unknown,
-): error is Readonly<{ code: string; constraint?: string }> {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    error.code === '23505'
-  );
-}
-
 export function translateTableConstraint(error: unknown): never {
-  if (isUniqueViolation(error))
+  if (isUniqueConstraintFailure(error))
     throw new DataTableError(
       'key_conflict',
       error.constraint === 'workspace_data_tables_name'
@@ -200,7 +192,8 @@ function rowKeyConflict(
   table: DataTableDefinition,
   values: DataTableValues,
 ): never {
-  if (!isUniqueViolation(error) || table.keyColumn === null) throw error;
+  if (!isUniqueConstraintFailure(error) || table.keyColumn === null)
+    throw error;
   const key = values[table.keyColumn];
   const shown =
     typeof key === 'string'

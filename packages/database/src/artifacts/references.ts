@@ -31,13 +31,13 @@ export function collectArtifactReferences(
       const children: readonly unknown[] = current;
       pending.push(...children);
     } else if (isRecord(current)) {
-      if (
+      const artifactReference =
         current.kind === 'artifact' &&
         'artifactId' in current &&
         'byteLength' in current &&
         'mediaType' in current &&
-        'sha256' in current
-      ) {
+        'sha256' in current;
+      if (artifactReference) {
         const { kind: _kind, ...descriptor } = current;
         found.push(nodeArtifactReferenceSchema.parse(descriptor));
       } else pending.push(...Object.values(current));
@@ -54,7 +54,7 @@ function assertRows(
   const byId = new Map(rows.map((row) => [row.id, row]));
   for (const reference of references) {
     const row = byId.get(reference.artifactId.toLowerCase());
-    if (
+    const invalidArtifactAuthority =
       row === undefined ||
       (row.preview_run_id !== null && previewRunId === undefined) ||
       !artifactMetadataMatches(
@@ -64,9 +64,8 @@ function assertRows(
           sha256: row.sha256,
         },
         reference,
-      )
-    )
-      throw new ArtifactMetadataNotFoundError();
+      );
+    if (invalidArtifactAuthority) throw new ArtifactMetadataNotFoundError();
   }
 }
 

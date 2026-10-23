@@ -272,16 +272,18 @@ export async function claimPreviewDelivery(
           );
           return Object.freeze({ kind: 'duplicate' });
         }
-        if (state.attempt_status === 'running' && (state.live_lease ?? false)) {
+        const leaseStillLive =
+          state.attempt_status === 'running' && (state.live_lease ?? false);
+        if (leaseStillLive) {
           // Another live worker owns the single logical attempt; at-least-once
           // transport makes this delivery a concurrent duplicate.
           return Object.freeze({ kind: 'duplicate' });
         }
-        if (
+        const unsafeDispatch =
           state.attempt_status === 'running' &&
           state.dispatch_marked_at !== null &&
-          state.side_effect_class === 'unsafe'
-        )
+          state.side_effect_class === 'unsafe';
+        if (unsafeDispatch)
           throw new PreviewAttemptStateError('expired_after_dispatch');
 
         if (state.run_deadline_expired) {

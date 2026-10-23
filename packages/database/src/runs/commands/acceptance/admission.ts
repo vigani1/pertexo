@@ -13,18 +13,18 @@ function inspectAdmissionSqlState(error: unknown): AdmissionSqlState | null {
   const visited = new Set<object>();
   let current = error;
   for (let depth = 0; depth < 16; depth += 1) {
-    if (
-      (typeof current !== 'object' && typeof current !== 'function') ||
-      current === null
-    )
-      return null;
-    if (visited.has(current)) return null;
-    visited.add(current);
+    const candidate = current;
+    const invalidStoredValue =
+      (typeof candidate !== 'object' && typeof candidate !== 'function') ||
+      candidate === null;
+    if (invalidStoredValue) return null;
+    if (visited.has(candidate)) return null;
+    visited.add(candidate);
     try {
-      if (!(current instanceof Error)) return null;
-      const code = Reflect.get(current, 'code') as unknown;
+      if (!(candidate instanceof Error)) return null;
+      const code = Reflect.get(candidate, 'code') as unknown;
       if (code === 'PTA01' || code === 'PTA02') return code;
-      current = Reflect.get(current, 'cause');
+      current = Reflect.get(candidate, 'cause');
     } catch {
       return null;
     }

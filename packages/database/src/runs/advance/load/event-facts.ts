@@ -38,15 +38,14 @@ function attemptFact(
   const payload = eventIdentity(
     eventPayload ?? eventPayloadRecord(row.payload),
   );
-  if (
+  const invalidAttemptIdentity =
     row.attempt_id !== payload.attemptId ||
     row.node_run_id !== payload.nodeRunId ||
     row.current_attempt_id !== payload.attemptId ||
     row.attempt_number === null ||
     row.attempt_number <= 0 ||
-    row.invocation_key === null
-  )
-    throw new CoordinatorRunStateCorruptError();
+    row.invocation_key === null;
+  if (invalidAttemptIdentity) throw new CoordinatorRunStateCorruptError();
   return {
     attemptId: payload.attemptId,
     attemptNumber: row.attempt_number,
@@ -69,7 +68,7 @@ export function mapEvent(row: EventRow): unknown {
       (row.node_status === 'waiting' &&
         (row.attempt_status === 'succeeded' ||
           row.attempt_status === 'failed'));
-    if (
+    const invalidAttemptStatus =
       row.attempt_status === null ||
       !physicalStatusIsCoherent ||
       ![
@@ -79,9 +78,8 @@ export function mapEvent(row: EventRow): unknown {
         'canceled',
         'timed_out',
         'outcome_unknown',
-      ].includes(row.attempt_status)
-    )
-      throw new CoordinatorRunStateCorruptError();
+      ].includes(row.attempt_status);
+    if (invalidAttemptStatus) throw new CoordinatorRunStateCorruptError();
     return {
       kind: 'cursor_only',
       eventName: row.type,
@@ -94,7 +92,7 @@ export function mapEvent(row: EventRow): unknown {
     const resumeAt = canonicalTimestamp(payload.dueAt);
     const persistedDueAt =
       row.type === 'node.waiting' ? row.resume_at : row.retry_due_at;
-    if (
+    const invalidWaitingEvidence =
       row.attempt_status !==
         (row.type === 'node.waiting' ? 'succeeded' : 'failed') ||
       row.node_status !== 'waiting' ||
@@ -102,9 +100,8 @@ export function mapEvent(row: EventRow): unknown {
         row.attempt_output_ref,
         row.node_output_ref,
       ) ||
-      persistedDueAt?.toISOString() !== resumeAt
-    )
-      throw new CoordinatorRunStateCorruptError();
+      persistedDueAt?.toISOString() !== resumeAt;
+    if (invalidWaitingEvidence) throw new CoordinatorRunStateCorruptError();
     return {
       kind: 'wait',
       eventName: row.type,
@@ -121,12 +118,11 @@ export function mapEvent(row: EventRow): unknown {
   const status = terminalStatus(row.type);
   if (status === undefined) throw new CoordinatorRunStateCorruptError();
   const identity = attemptFact(row, payload);
-  if (
+  const invalidCompletionEvidence =
     row.attempt_status !== status ||
     row.node_status !== status ||
-    !storedExecutionValuesEqual(row.attempt_output_ref, row.node_output_ref)
-  )
-    throw new CoordinatorRunStateCorruptError();
+    !storedExecutionValuesEqual(row.attempt_output_ref, row.node_output_ref);
+  if (invalidCompletionEvidence) throw new CoordinatorRunStateCorruptError();
   let output: unknown;
   if (row.attempt_output_ref !== null) {
     let stored;
@@ -157,13 +153,12 @@ export function completedInlineOutput(
   row: EventRow,
   controlOutputNodeIds: ReadonlySet<string>,
 ): readonly unknown[] {
-  if (
+  const ignoresControlOutput =
     row.type !== 'node.succeeded' ||
     row.attempt_output_ref === null ||
     row.node_id === null ||
-    !controlOutputNodeIds.has(row.node_id)
-  )
-    return [];
+    !controlOutputNodeIds.has(row.node_id);
+  if (ignoresControlOutput) return [];
   const identity = attemptFact(row);
   let stored;
   try {

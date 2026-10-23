@@ -75,12 +75,11 @@ export async function changePasswordAndRevokeSessions(
         ),
       )
       .for('update');
-    if (
+    const passwordRefused =
       credential?.password === null ||
       credential?.password === undefined ||
-      !(await input.verify(credential.password, input.currentPassword))
-    )
-      return 'invalid';
+      !(await input.verify(credential.password, input.currentPassword));
+    if (passwordRefused) return 'invalid';
     await db
       .update(authAccounts)
       .set({

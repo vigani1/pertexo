@@ -68,11 +68,11 @@ export async function markNodeAttemptDispatched(
       const existingBinding = lockedNode.rows[0]?.provider_dispatch_binding;
       if (existingBinding === undefined)
         throw new NodeAttemptReconciliationRequiredError();
-      if (
+      const dispatchBindingChanged =
         input.providerDispatchBinding !== undefined &&
         existingBinding !== null &&
-        existingBinding !== input.providerDispatchBinding
-      )
+        existingBinding !== input.providerDispatchBinding;
+      if (dispatchBindingChanged)
         throw new NodeAttemptDispatchBindingMismatchError();
       if (
         input.providerDispatchBinding !== undefined &&
@@ -183,13 +183,12 @@ function publishesSlackBinding(
     const nodes = pending.pop();
     if (!Array.isArray(nodes)) continue;
     for (const node of nodes as PublishedNode[]) {
-      if (
+      const matchesConnectionUse =
         node.id === nodeId &&
         node.definition?.key === 'slack.send_message' &&
         node.definition.version === 1 &&
-        node.connectionRefs?.slack_bot_token === connectionId
-      )
-        return true;
+        node.connectionRefs?.slack_bot_token === connectionId;
+      if (matchesConnectionUse) return true;
       pending.push(node.structured?.body?.nodes);
     }
   }

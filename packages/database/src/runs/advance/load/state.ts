@@ -144,11 +144,11 @@ export async function loadRunForAdvance(
     : [];
   const calls = await readCallFacts(client, workspaceId, runId);
   row = { ...row, has_human_child: calls.hasHumanChild };
-  if (
+  const hasHumanWait =
     row.human_wait_started_at !== null ||
     row.has_unconsumed_tasks ||
-    calls.hasHumanChild
-  )
+    calls.hasHumanChild;
+  if (hasHumanWait)
     row = {
       ...row,
       ...(await synchronizeHumanWait(client, workspaceId, {
@@ -210,14 +210,15 @@ export async function loadRunForAdvance(
   );
   observations.push(...pendingFailureObservations(pendingFailures.rows));
   await assertAvailableArtifacts(client, workspaceId, observations);
-  if (
-    row.deadline_at !== null &&
+  const deadlineAt = row.deadline_at;
+  const deadlineExpired =
+    deadlineAt !== null &&
     row.deadline_expired &&
-    !(row.checkpoint_deadline_expired ?? false)
-  )
+    !(row.checkpoint_deadline_expired ?? false);
+  if (deadlineExpired)
     observations.push({
       kind: 'deadline_expired',
-      occurredAt: row.deadline_at.toISOString(),
+      occurredAt: deadlineAt.toISOString(),
     });
   // Only invocations already waiting in the stored checkpoint can come due;
   // a wait recorded by a new fact comes due on the next advance.

@@ -51,11 +51,11 @@ export async function configureGovernance(
   });
   if (replay !== null) return replay;
   const previous = await readGovernanceSettings(client, input.workspaceId);
-  if (
+  const enablesPublishApproval =
     previous.revision === input.expectedRevision &&
     !previous.requirePublishApproval &&
-    (input.requirePublishApproval ?? false)
-  ) {
+    (input.requirePublishApproval ?? false);
+  if (enablesPublishApproval) {
     const reviewer = await client.query(
       `select member.user_id from app.workspace_memberships member
        join app.users account on account.id=member.user_id

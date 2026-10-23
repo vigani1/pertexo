@@ -161,15 +161,14 @@ function startTestSuite(
       throw new WorkflowTestError('draft_changed');
     if (!sameTestSamples(current.samples, input.request.expectedSamples))
       throw new WorkflowTestError('samples_changed');
-    if (
+    const suiteChanged =
       current.variableSetRevision !==
         input.request.expectedVariableSetRevision ||
       current.signature !== input.request.signature ||
       canonicalJson(
         current.cases.map(({ id, revision }) => ({ id, revision })),
-      ) !== canonicalJson(input.request.expectedCases)
-    )
-      throw new WorkflowTestError('cases_changed');
+      ) !== canonicalJson(input.request.expectedCases);
+    if (suiteChanged) throw new WorkflowTestError('cases_changed');
     if (
       canonicalJson([...input.request.expectedEffectfulSteps].sort()) !==
       canonicalJson(

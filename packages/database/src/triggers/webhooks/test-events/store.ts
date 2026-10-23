@@ -303,13 +303,12 @@ async function captureTestEvent(
         throw error;
       }
       const row = await find(client, scopeOf(candidate), candidate.id);
-      if (
+      const listenerUnavailable =
         row === undefined ||
         row.expired ||
         row.output_ref !== null ||
-        row.binding !== draft.binding
-      )
-        return false;
+        row.binding !== draft.binding;
+      if (listenerUnavailable) return false;
       let output;
       try {
         output = inlineSampleOutput({

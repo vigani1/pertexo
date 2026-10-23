@@ -46,7 +46,7 @@ export async function validateDelivery(
   } catch {
     throw new DeliveryMismatch();
   }
-  if (
+  const invalidDelivery =
     row?.aggregate_id !== input.attemptId ||
     row.aggregate_type !== 'node-attempt' ||
     row.job_name !== 'execute-node-attempt' ||
@@ -56,9 +56,8 @@ export async function validateDelivery(
     payload.runId !== input.runId ||
     payload.nodeRunId !== input.nodeRunId ||
     payload.attemptId !== input.attemptId ||
-    payload.outboxEventId !== input.delivery.outboxEventId
-  )
-    throw new DeliveryMismatch();
+    payload.outboxEventId !== input.delivery.outboxEventId;
+  if (invalidDelivery) throw new DeliveryMismatch();
 }
 
 export async function claimReceipt(

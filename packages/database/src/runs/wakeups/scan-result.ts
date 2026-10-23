@@ -5,12 +5,11 @@ export function parseClaimedWakeups(
   limit: number,
 ): number {
   const claimed = rows.length === 1 ? rows[0]?.claimed : undefined;
-  if (
+  const invalidClaimCount =
     typeof claimed !== 'number' ||
     !Number.isSafeInteger(claimed) ||
     claimed < 0 ||
-    claimed > limit
-  )
-    throw new CoordinatorRunStateCorruptError();
+    claimed > limit;
+  if (invalidClaimCount) throw new CoordinatorRunStateCorruptError();
   return claimed;
 }

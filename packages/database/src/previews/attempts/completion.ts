@@ -204,12 +204,11 @@ async function exactDuplicateCompletion(
       row.run_safe_error_code === outcome.safeErrorCode &&
       row.error_summary === outcome.errorSummary;
   }
-  if (
+  const completionMismatch =
     !statusesMatch ||
     !valuesMatch ||
-    canonicalJson(row.code_diagnostics) !== canonicalJson(diagnostics ?? null)
-  )
-    throw new PreviewAttemptStateError('completion_lost');
+    canonicalJson(row.code_diagnostics) !== canonicalJson(diagnostics ?? null);
+  if (completionMismatch) throw new PreviewAttemptStateError('completion_lost');
   return Object.freeze({ kind: 'duplicate' });
 }
 

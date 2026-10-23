@@ -49,14 +49,13 @@ export async function validateAuthoritativeAdvanceDelivery(
   } catch {
     throw new DeliveryMismatch();
   }
-  if (
+  const invalidDelivery =
     row?.aggregate_id !== runId ||
     row.aggregate_type !== 'workflow-run' ||
     row.job_name !== 'advance-workflow-run' ||
     row.payload_checksum !== delivery.payloadChecksum ||
-    storedChecksum !== row.payload_checksum
-  )
-    throw new DeliveryMismatch();
+    storedChecksum !== row.payload_checksum;
+  if (invalidDelivery) throw new DeliveryMismatch();
 }
 
 export async function claimCoordinatorReceipt(

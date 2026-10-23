@@ -144,13 +144,12 @@ export async function resolveInvitationAcceptance(
         );
         const successor = claimedIntent.rows[0];
         if (exactClaim) {
-          if (
+          const successorUnavailable =
             successor === undefined ||
             successor.status === 'abandoned' ||
             successor.status === 'superseded' ||
-            successor.expires_at.getTime() <= now.getTime()
-          )
-            return null;
+            successor.expires_at.getTime() <= now.getTime();
+          if (successorUnavailable) return null;
           return selectIntent(client, 'intent.id=$1', [intentId]);
         }
         if (

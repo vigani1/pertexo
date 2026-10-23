@@ -16,13 +16,12 @@ interface PoolClientWithStream {
 
 function requestWireCancellation(client: PoolClientWithStream): void {
   const activeQuery = client._getActiveQuery?.();
-  if (
+  const cannotCancelActiveQuery =
     activeQuery === undefined ||
     activeQuery === null ||
     client.processID === undefined ||
-    client.secretKey === undefined
-  )
-    return;
+    client.secretKey === undefined;
+  if (cannotCancelActiveQuery) return;
   const processId = client.processID;
   const secretKey = client.secretKey;
   const canceler = new Client({

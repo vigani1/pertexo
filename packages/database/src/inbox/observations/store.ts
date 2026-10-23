@@ -98,12 +98,16 @@ export function createAttentionObserver(pool: Pool, maintenance: Pool) {
           );
           const row = current.rows[0];
           if (row === undefined && !fact.active) return null;
-          if (
+          const alreadyObserved =
             row?.active === fact.active &&
-            (!fact.active || row.source_revision === fact.sourceRevision)
-          )
-            return null;
+            (!fact.active || row.source_revision === fact.sourceRevision);
+          if (alreadyObserved) return null;
           const threadId = row?.id ?? generatePersistedId();
+          const countsNewOccurrence =
+            fact.active &&
+            (row === undefined ||
+              !row.active ||
+              candidate.notice_kind !== 'limit_reached');
           const result = await client.query<{ revision: string }>(
             `insert into app.workspace_inbox_threads as thread(workspace_id,id,notice_kind,subject_id,workflow_id,connection_id,task_id,active,source_revision,revision,occurrence_count,first_occurred_at,latest_occurred_at,capacity_limit,publication_request_id,comment_mention_id)
  values($1,$2,$3,$4,$5,$6,$7,$8,$9,nextval('app.workspace_inbox_revision_seq'),1,coalesce($14::timestamptz,clock_timestamp()),coalesce($14::timestamptz,clock_timestamp()),$11,$12,$13)
@@ -120,12 +124,7 @@ export function createAttentionObserver(pool: Pool, maintenance: Pool) {
               fact.taskId,
               fact.active,
               fact.sourceRevision,
-              fact.active &&
-              (row === undefined ||
-                !row.active ||
-                candidate.notice_kind !== 'limit_reached')
-                ? 1
-                : 0,
+              countsNewOccurrence ? 1 : 0,
               candidate.capacity_limit,
               fact.publicationRequestId,
               fact.commentMentionId,

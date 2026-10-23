@@ -61,11 +61,11 @@ export async function markConnectionTestDispatched(
         connectionId,
         { lock: true },
       );
-      if (
+      const connectionUnavailable =
         connection === null ||
         connection.status === CONNECTION_STATUS.revoked ||
-        connection.currentSecretVersionId !== secretVersionId
-      )
+        connection.currentSecretVersionId !== secretVersionId;
+      if (connectionUnavailable)
         throw new ConnectionUnavailableError(
           'Connection changed before test dispatch',
         );

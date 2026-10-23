@@ -38,10 +38,13 @@ export async function readCallFacts(
   return {
     hasExecutionSlot: !rows.rows.some(({ slot_lent }) => slot_lent),
     hasHumanChild: rows.rows.some(({ child_wait }) => child_wait !== null),
-    callOutcomes: rows.rows.flatMap((row) =>
-      row.consumed_at !== null ||
-      row.status === 'pending' ||
-      row.status === 'accepted'
+    callOutcomes: rows.rows.flatMap((row) => {
+      const status = row.status;
+      const ignoresCallOutcome =
+        row.consumed_at !== null ||
+        status === 'pending' ||
+        status === 'accepted';
+      return ignoresCallOutcome
         ? []
         : [
             {
@@ -49,12 +52,12 @@ export async function readCallFacts(
               callId: row.id,
               invocationKey: row.invocation_key,
               nodeId: row.node_id,
-              status: row.status,
+              status,
               ...(row.safe_error_code === null
                 ? {}
                 : { reasonCode: row.safe_error_code }),
             },
-          ],
-    ),
+          ];
+    }),
   };
 }

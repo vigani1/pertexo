@@ -64,12 +64,13 @@ export async function readExistingAcceptance(
   }
   const resultRef = resultRefSchema.safeParse(row.resultRef);
   const runStatus = workflowRunStatusSchema.safeParse(row.runStatus);
-  if (
+  const { acceptedAt } = row;
+  const incompleteReceipt =
     row.idempotencyStatus !== IDEMPOTENCY_STATUS.completed ||
-    row.acceptedAt === null ||
+    acceptedAt === null ||
     !resultRef.success ||
-    !runStatus.success
-  ) {
+    !runStatus.success;
+  if (incompleteReceipt) {
     throw new IdempotencyRecordCorruptError();
   }
   if (
@@ -80,7 +81,7 @@ export async function readExistingAcceptance(
   }
 
   return Object.freeze({
-    acceptedAt: row.acceptedAt,
+    acceptedAt,
     duplicate: true,
     outboxEventId: resultRef.data.outboxEventId,
     runId: row.resourceId,

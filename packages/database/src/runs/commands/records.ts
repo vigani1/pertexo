@@ -267,6 +267,12 @@ export function toWorkflowRunReadRecord(value: unknown): WorkflowRunReadRecord {
     recovery_effects_acknowledged: effectsAcknowledged,
     ...runRow
   } = row;
+  const incompleteRecovery =
+    targetNodeRunId === null ||
+    targetNodeId === null ||
+    reusedCount === null ||
+    effectRisk === null ||
+    effectsAcknowledged === null;
   return Object.freeze({
     ...toWorkflowRunRecord(runRow),
     workflowName,
@@ -282,11 +288,7 @@ export function toWorkflowRunReadRecord(value: unknown): WorkflowRunReadRecord {
         }),
     replaySourceRunId,
     ...(handledFailureCount === 0 ? {} : { handledFailureCount }),
-    ...(targetNodeRunId === null ||
-    targetNodeId === null ||
-    reusedCount === null ||
-    effectRisk === null ||
-    effectsAcknowledged === null
+    ...(incompleteRecovery
       ? {}
       : {
           recovery: {

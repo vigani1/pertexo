@@ -26,10 +26,10 @@ export async function sampleDraft(
     'select lifecycle_status from app.workflows where workspace_id=$1 and id=$2 for share',
     [input.workspaceId, input.workflowId],
   );
-  if (
+  const workflowUnavailable =
     workflow.rows[0] === undefined ||
-    (write && workflow.rows[0].lifecycle_status !== 'active')
-  )
+    (write && workflow.rows[0].lifecycle_status !== 'active');
+  if (workflowUnavailable)
     throw new WorkflowNotFoundError('Workflow is not visible');
   const result = await client.query<{ revision: number; graph_json: unknown }>(
     `select revision,graph_json from app.workflow_drafts where workspace_id=$1 and workflow_id=$2 for ${write ? 'update' : 'share'}`,

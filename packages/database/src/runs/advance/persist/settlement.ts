@@ -18,12 +18,11 @@ export async function settleRejectedForEachDeclarations(
 ): Promise<ReadonlySet<string>> {
   const settled = new Set<string>();
   for (const event of plan.events) {
-    if (
+    const ignoresIterationFailure =
       event.name !== 'node.failed' ||
       event.reasonCode !== 'loop_limit_exceeded' ||
-      event.invocationKey === undefined
-    )
-      continue;
+      event.invocationKey === undefined;
+    if (ignoresIterationFailure) continue;
     const updated = await client.query(
       `update app.node_runs
        set status='failed',output_ref=null,safe_error_code='loop_limit_exceeded',

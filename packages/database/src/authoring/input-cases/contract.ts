@@ -104,11 +104,11 @@ export const resultSchema = z
 export function payload(value: unknown): { text: string; bytes: number } {
   serializeStoredExecutionJsonValue(value);
   const inspection = inspectJsonValue(value);
-  if (
+  const inputExceedsLimits =
     inspection.bytes > 65_536 ||
     inspection.depth > 64 ||
-    inspection.members > 10_000
-  )
+    inspection.members > 10_000;
+  if (inputExceedsLimits)
     throw new TypeError('Run-input case JSON exceeds its bounds');
   // The case keeps its fields in the order they were written.
   const text = normalizedJson(value);

@@ -20,13 +20,10 @@ const transactionStartedAtByClient = new WeakMap<PoolClient, number>();
 
 function queryText(query: unknown): string | undefined {
   if (typeof query === 'string') return query;
-  if (
-    typeof query === 'object' &&
-    query !== null &&
-    'text' in query &&
-    typeof query.text === 'string'
-  )
-    return query.text;
+  if (typeof query !== 'object' || query === null) return undefined;
+  if (!('text' in query)) return undefined;
+  const text = query.text;
+  if (typeof text === 'string') return text;
   return undefined;
 }
 
@@ -35,7 +32,7 @@ function queryOperation(query: unknown): QueryOperation {
     .exec(queryText(query) ?? '')?.[1]
     ?.toLowerCase();
   if (keyword === 'start') return 'begin';
-  if (
+  const knownOperation =
     keyword === 'begin' ||
     keyword === 'call' ||
     keyword === 'commit' ||
@@ -44,9 +41,8 @@ function queryOperation(query: unknown): QueryOperation {
     keyword === 'insert' ||
     keyword === 'rollback' ||
     keyword === 'select' ||
-    keyword === 'update'
-  )
-    return keyword;
+    keyword === 'update';
+  if (knownOperation) return keyword;
   return 'other';
 }
 
@@ -81,11 +77,13 @@ export function instrumentClient(client: PoolClient, state: MeterState): void {
 
       if (operation === 'begin' && outcome === 'success') {
         transactionStartedAtByClient.set(client, startedAt);
-      } else if (
-        transactionStartedAtByClient.has(client) &&
-        (operation === 'commit' || operation === 'rollback')
-      ) {
-        finishTransaction(completedTransactionOutcome(outcome, operation));
+      } else {
+        const settlesTransaction =
+          transactionStartedAtByClient.has(client) &&
+          (operation === 'commit' || operation === 'rollback');
+        if (settlesTransaction) {
+          finishTransaction(completedTransactionOutcome(outcome, operation));
+        }
       }
     };
 
@@ -106,12 +104,12 @@ export function instrumentClient(client: PoolClient, state: MeterState): void {
         ...args,
       );
       if (callbackIndex !== undefined) return result;
-      if (
+      const promiseResult =
         typeof result === 'object' &&
         result !== null &&
         'then' in result &&
-        typeof result.then === 'function'
-      ) {
+        typeof result.then === 'function';
+      if (promiseResult) {
         return Promise.resolve(result).then(
           (value: unknown) => {
             finish('success');

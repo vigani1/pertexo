@@ -48,12 +48,11 @@ export async function applyCurrentConnectionTestHealth(
   }>,
 ): Promise<ConnectionRecord> {
   const { current, outcome } = input;
-  if (
+  const staleObservation =
     current.status === 'revoked' ||
     current.currentSecretVersionId !== input.secretVersionId ||
-    input.healthRevision === undefined
-  )
-    return current;
+    input.healthRevision === undefined;
+  if (staleObservation) return current;
   const revision = await client.query<{ health_revision: string }>(
     'select health_revision::text from app.connections where workspace_id=$1 and id=$2',
     [current.workspaceId, current.id],

@@ -33,13 +33,12 @@ export async function tokenOwnerAuthority(
     mode === 'create'
       ? ['active']
       : ['active', 'suspended', 'pending_deletion'];
-  if (
+  const actorUnavailable =
     workspace.rows[0] === undefined ||
     !allowedWorkspaceStatuses.includes(workspace.rows[0].status) ||
     user.rows[0]?.status !== 'active' ||
-    membership?.status !== 'active'
-  )
-    throw new ApiTokenPolicyError('authority_inactive');
+    membership?.status !== 'active';
+  if (actorUnavailable) throw new ApiTokenPolicyError('authority_inactive');
   return { revision: membership.role_revision, role: membership.role };
 }
 export function availableApiTokenScopes(role: Role): ApiTokenScope[] {

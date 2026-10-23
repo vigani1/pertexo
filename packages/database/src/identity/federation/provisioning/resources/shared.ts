@@ -1,3 +1,4 @@
+import { isUniqueConstraintFailure } from '../../../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import { appendAuditFact } from '../../../../governance/audit/append.js';
 import { withWorkspaceScope } from '../../../../tenant-access/transactions.js';
@@ -39,13 +40,8 @@ export async function withDirectoryConstraintErrors<T>(
   try {
     return await operation();
   } catch (error: unknown) {
-    if (
-      typeof error === 'object' &&
-      error !== null &&
-      'code' in error &&
-      error.code === '23505'
-    )
-      throw new DirectoryError('uniqueness');
+    const uniqueConstraintFailure = isUniqueConstraintFailure(error);
+    if (uniqueConstraintFailure) throw new DirectoryError('uniqueness');
     throw error;
   }
 }

@@ -1,3 +1,4 @@
+import { isIntegerInRange } from '../../platform/persisted-primitives.js';
 import { acquireDatabasePool } from '../../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
 
@@ -21,7 +22,8 @@ export function createDeadlineWakeupScanner(
       limit: number,
       signal?: AbortSignal,
     ): Promise<number> => {
-      if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100)
+      const invalidLimit = !isIntegerInRange(limit, 1, 100);
+      if (invalidLimit)
         throw new TypeError('Deadline wakeup limit must be between 1 and 100');
       return withPlatformTransaction(
         pool,

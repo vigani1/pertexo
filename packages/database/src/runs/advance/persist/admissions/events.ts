@@ -114,12 +114,12 @@ export async function persistRunEvents(
   }
   for (const event of plan.events) {
     const terminalNodeStatus = terminalStatus(event.name);
-    if (
+    const settlesInvocation =
       terminalNodeStatus !== undefined &&
       event.invocationKey !== undefined &&
       !pendingFailureInvocations.has(event.invocationKey) &&
-      !input.rejectedForEachDeclarations.has(event.invocationKey)
-    ) {
+      !input.rejectedForEachDeclarations.has(event.invocationKey);
+    if (settlesInvocation) {
       const updatedNode = await client.query(
         `update app.node_runs
            set status=$1, completed_at=clock_timestamp(),

@@ -18,12 +18,11 @@ function normalizedJson(value: unknown): unknown {
 
 export function record(value: unknown): Readonly<Record<string, unknown>> {
   const normalized = normalizedJson(value);
-  if (
+  const invalidPayload =
     normalized === null ||
     typeof normalized !== 'object' ||
-    Array.isArray(normalized)
-  )
-    throw new CoordinatorRunStateCorruptError();
+    Array.isArray(normalized);
+  if (invalidPayload) throw new CoordinatorRunStateCorruptError();
   return normalized as Readonly<Record<string, unknown>>;
 }
 
@@ -41,12 +40,11 @@ export function canonicalEventPayload(value: unknown): Readonly<{
   if (bytes > maximumCanonicalEventPayloadBytes)
     throw new CoordinatorRunStateCorruptError();
   const normalized = JSON.parse(serialized) as unknown;
-  if (
+  const invalidPayload =
     normalized === null ||
     typeof normalized !== 'object' ||
-    Array.isArray(normalized)
-  )
-    throw new CoordinatorRunStateCorruptError();
+    Array.isArray(normalized);
+  if (invalidPayload) throw new CoordinatorRunStateCorruptError();
   return Object.freeze({
     bytes,
     payload: normalized as Readonly<Record<string, unknown>>,
@@ -76,12 +74,12 @@ export function eventIdentity(
   attemptId: string;
   nodeRunId: string;
 }> {
-  if (
-    typeof payload.attemptId !== 'string' ||
-    !UUID_PATTERN.test(payload.attemptId) ||
-    typeof payload.nodeRunId !== 'string' ||
-    !UUID_PATTERN.test(payload.nodeRunId)
-  )
-    throw new CoordinatorRunStateCorruptError();
-  return { attemptId: payload.attemptId, nodeRunId: payload.nodeRunId };
+  const { attemptId, nodeRunId } = payload;
+  const invalidAttemptIdentity =
+    typeof attemptId !== 'string' ||
+    !UUID_PATTERN.test(attemptId) ||
+    typeof nodeRunId !== 'string' ||
+    !UUID_PATTERN.test(nodeRunId);
+  if (invalidAttemptIdentity) throw new CoordinatorRunStateCorruptError();
+  return { attemptId, nodeRunId };
 }

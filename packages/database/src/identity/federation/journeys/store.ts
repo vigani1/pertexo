@@ -1,3 +1,4 @@
+import { isUniqueConstraintFailure } from '../../../platform/query-errors.js';
 import { FEDERATION_LIMITS } from '@pertexo/workflow-model';
 import { FEDERATION_WORKSPACE_STATUSES } from '../sessions/policy.js';
 import type { Pool } from 'pg';
@@ -40,11 +41,11 @@ export class OrganizationSignInCommands {
     );
     return {
       required: result.rows[0]?.require_sso ?? false,
-      providers: result.rows.flatMap((row) =>
-        row.id === null || row.name === null || row.kind === null
-          ? []
-          : [{ id: row.id, name: row.name, kind: row.kind }],
-      ),
+      providers: result.rows.flatMap(({ id, name, kind }) => {
+        const providerUnavailable =
+          id === null || name === null || kind === null;
+        return providerUnavailable ? [] : [{ id, name, kind }];
+      }),
     };
   }
   provider(providerId: string, domain: string) {
@@ -157,14 +158,10 @@ export class OrganizationSignInCommands {
       completeFederationJourney(client, input, this.input.sessionTtlSeconds),
     ).catch((error: unknown) => {
       const cause = identityQueryFailure(error);
-      if (
+      const proofRefused =
         error instanceof SignInProofRejectedError ||
-        (typeof cause === 'object' &&
-          cause !== null &&
-          'code' in cause &&
-          cause.code === '23505')
-      )
-        return { kind: 'failed' } as const;
+        isUniqueConstraintFailure(cause);
+      if (proofRefused) return { kind: 'failed' } as const;
       throw error;
     });
   }

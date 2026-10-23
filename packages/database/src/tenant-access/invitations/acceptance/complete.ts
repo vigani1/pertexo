@@ -136,14 +136,14 @@ export async function completeAcceptance(
             'superseded',
             'The invitation journey was superseded',
           );
-        if (
+        const verificationUnavailable =
           sourceSession?.userId !== actorUserId ||
           intent.verifiedSessionId !== preview.verifiedSessionId ||
           intent.status !== 'verified' ||
           intent.verifiedUserId !== actorUserId ||
           intent.verifiedAt === null ||
-          now.getTime() - intent.verifiedAt.getTime() > 5 * 60_000
-        )
+          now.getTime() - intent.verifiedAt.getTime() > 5 * 60_000;
+        if (verificationUnavailable)
           throw new InvitationAcceptanceConflictError(
             'proof_expired',
             'Fresh recipient verification is required',
@@ -159,11 +159,11 @@ export async function completeAcceptance(
             'The workspace is not active',
           );
         const current = invitation.rows[0];
-        if (
+        const invitationUnavailable =
           current?.status !== 'pending' ||
           current.expires_at.getTime() <= now.getTime() ||
-          current.revision !== invitationRevision
-        )
+          current.revision !== invitationRevision;
+        if (invitationUnavailable)
           throw new InvitationAcceptanceConflictError(
             'superseded',
             'The invitation is no longer pending',
@@ -177,11 +177,9 @@ export async function completeAcceptance(
         // ADR 042: a removal ends the membership, so a later invitation starts
         // a new one at the invited role. Suspension stays a conflict.
         const rejoining = existing?.status === 'removed';
-        if (
-          existing !== undefined &&
-          existing.status !== 'active' &&
-          !rejoining
-        )
+        const membershipUnavailable =
+          existing !== undefined && existing.status !== 'active' && !rejoining;
+        if (membershipUnavailable)
           throw new InvitationAcceptanceConflictError(
             'member_inactive',
             'Inactive membership cannot be restored by invitation',

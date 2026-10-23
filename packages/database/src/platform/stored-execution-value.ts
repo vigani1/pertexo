@@ -41,24 +41,23 @@ function ownDataRecord(
   value: unknown,
   maximumFields: number,
 ): Map<string, unknown> {
-  if (value === null || typeof value !== 'object' || nodeTypes.isProxy(value))
-    invalid();
+  const invalidObject =
+    value === null || typeof value !== 'object' || nodeTypes.isProxy(value);
+  if (invalidObject) invalid();
   const prototype = Object.getPrototypeOf(value) as unknown;
-  if (
+  const invalidPrototype =
     Array.isArray(value) ||
-    (prototype !== Object.prototype && prototype !== null)
-  )
-    invalid();
+    (prototype !== Object.prototype && prototype !== null);
+  if (invalidPrototype) invalid();
   const fields = new Map<string, unknown>();
   for (const key in value) {
     if (!Object.hasOwn(value, key)) invalid();
     const descriptor = Object.getOwnPropertyDescriptor(value, key);
-    if (
+    const invalidDataProperty =
       descriptor === undefined ||
       !descriptor.enumerable ||
-      !('value' in descriptor)
-    )
-      invalid();
+      !('value' in descriptor);
+    if (invalidDataProperty) invalid();
     fields.set(key, descriptor.value);
     if (fields.size > maximumFields) invalid();
   }

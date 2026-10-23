@@ -61,7 +61,7 @@ export async function persistedFactCapacity(
   const count = row?.fact_count;
   const storageBytes = Number(row?.storage_bytes);
   const maximumStorageBytes = Number(row?.maximum_storage_bytes);
-  if (
+  const invalidCapacityObservation =
     count === undefined ||
     !Number.isSafeInteger(count) ||
     !Number.isSafeInteger(storageBytes) ||
@@ -69,9 +69,8 @@ export async function persistedFactCapacity(
     count < 0 ||
     storageBytes < 0 ||
     maximumStorageBytes < 0 ||
-    maximumStorageBytes > storageBytes
-  )
-    throw new CoordinatorRunStateCorruptError();
+    maximumStorageBytes > storageBytes;
+  if (invalidCapacityObservation) throw new CoordinatorRunStateCorruptError();
   return Object.freeze({
     count,
     lastSequence: row?.last_sequence ?? firstSequence - 1,

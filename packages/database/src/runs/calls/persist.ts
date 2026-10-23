@@ -35,15 +35,14 @@ async function preparedInput(
   const row = result.rows[0];
   if (row === undefined) throw new CoordinatorRunStateCorruptError();
   const prepared = prepareStoredExecutionValue(row.output_ref);
-  if (
+  const inputMismatch =
     (intent.input.kind === 'inline' &&
       (intent.input.attemptId !== row.id ||
         prepared.value.kind !== 'inline')) ||
     (intent.input.kind === 'artifact' &&
       (prepared.value.kind !== 'artifact' ||
-        intent.input.artifactId !== prepared.value.artifactId))
-  )
-    throw new CoordinatorRunStateCorruptError();
+        intent.input.artifactId !== prepared.value.artifactId));
+  if (inputMismatch) throw new CoordinatorRunStateCorruptError();
   const checksum = createHash('sha256').update(prepared.json).digest('hex');
   const refusal = callInputRefusal(prepared);
   return {
@@ -143,12 +142,11 @@ export async function persistCallCompletion(
       failure ?? null,
     ],
   );
-  if (
+  const missingCallResult =
     rows.rows.length > 0 &&
     input.plan.checkpoint.runStatus === 'succeeded' &&
-    input.plan.runResult === undefined
-  )
-    throw new CoordinatorRunStateCorruptError();
+    input.plan.runResult === undefined;
+  if (missingCallResult) throw new CoordinatorRunStateCorruptError();
   for (const row of rows.rows)
     await wakeWorkflowRun(
       client,

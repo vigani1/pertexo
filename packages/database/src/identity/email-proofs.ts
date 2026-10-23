@@ -37,12 +37,11 @@ export class EmailProofCommands {
         .from(users)
         .where(eq(users.id, user.id))
         .for('update');
-      if (
+      const proofUserChanged =
         current?.status !== 'active' ||
         current.email.toLowerCase() !== user.email.toLowerCase() ||
-        current.emailVerified !== (purpose === 'change_old')
-      )
-        return false;
+        current.emailVerified !== (purpose === 'change_old');
+      if (proofUserChanged) return false;
       if (purpose === 'change_old') {
         if (
           (await readIdentityEmailChangeEligibility(client, user.id)) !==
@@ -124,12 +123,11 @@ async function consumeProof(
     .from(authEmailProofs)
     .where(eq(authEmailProofs.tokenDigest, tokenDigest))
     .for('update');
-  if (
+  const proofUnavailable =
     !row?.usable ||
     row.proof.userId !== userId ||
-    row.proof.email.toLowerCase() !== user.email.toLowerCase()
-  )
-    return 'invalid';
+    row.proof.email.toLowerCase() !== user.email.toLowerCase();
+  if (proofUnavailable) return 'invalid';
   const proof = row.proof;
   if (proof.purpose !== 'initial_verification') {
     if (
@@ -156,8 +154,9 @@ async function consumeProof(
       break;
     }
     case 'change_old': {
-      if (!user.emailVerified || next === undefined || proof.newEmail === null)
-        return 'invalid';
+      const cannotIssueSuccessor =
+        !user.emailVerified || next === undefined || proof.newEmail === null;
+      if (cannotIssueSuccessor) return 'invalid';
       await db.insert(authEmailProofs).values({
         id: randomUUID(),
         tokenDigest: next.digest,

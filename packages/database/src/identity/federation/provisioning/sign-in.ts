@@ -27,11 +27,10 @@ export async function directorySignInCandidate(
   const live = rows.filter((row) => row.deleted_at === null);
   if (live.length > 1) throw new SignInProofRejectedError();
   const candidate = live[0] ?? rows[0];
-  if (
+  const directoryUserInactive =
     candidate !== undefined &&
-    (!candidate.active || candidate.deleted_at !== null)
-  )
-    throw new SignInProofRejectedError();
+    (!candidate.active || candidate.deleted_at !== null);
+  if (directoryUserInactive) throw new SignInProofRejectedError();
   return candidate;
 }
 

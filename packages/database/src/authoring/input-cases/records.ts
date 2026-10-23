@@ -38,10 +38,9 @@ export async function workflow(
     'select lifecycle_status from app.workflows where workspace_id=$1 and id=$2 for share',
     [input.workspaceId, input.workflowId],
   );
-  if (
-    row.rowCount !== 1 ||
-    (write && row.rows[0]?.lifecycle_status !== 'active')
-  )
+  const workflowUnavailable =
+    row.rowCount !== 1 || (write && row.rows[0]?.lifecycle_status !== 'active');
+  if (workflowUnavailable)
     throw new WorkflowNotFoundError('Workflow is not visible');
 }
 

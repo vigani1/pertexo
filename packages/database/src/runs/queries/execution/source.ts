@@ -78,12 +78,11 @@ export function createWorkflowExecutionReader(
             sql`select * from (${sql.raw(EXECUTION_SOURCE_SQL)}) source where workspace_id=${input.workspaceId} and id=${input.workflowVersionId} limit 1`,
           );
           const projection = parseExecutionSource(rows.rows[0]);
-          if (
+          const sampleUnavailable =
             projection === null ||
             input.nodeId === undefined ||
-            !projection.test?.pinnedNodeIds.includes(input.nodeId)
-          )
-            return projection;
+            !projection.test?.pinnedNodeIds.includes(input.nodeId);
+          if (sampleUnavailable) return projection;
           const pin = await transaction.db.execute<{
             sample: FrozenWorkflowTestPins[string] | null;
           }>(

@@ -128,7 +128,7 @@ export function createOperatorRunReplayStore(
           `);
           const row = outbox.rows[0];
           const payload = payloadSchema.safeParse(row?.payload);
-          if (
+          const invalidDelivery =
             row === undefined ||
             !payload.success ||
             row.aggregate_id !== parsed.commandId ||
@@ -139,9 +139,8 @@ export function createOperatorRunReplayStore(
               row.payload_checksum ||
             payload.data.commandId !== parsed.commandId ||
             payload.data.outboxEventId !== parsed.delivery.outboxEventId ||
-            payload.data.workspaceId !== transaction.workspaceId
-          )
-            throw new OperatorRunReplayMismatchError();
+            payload.data.workspaceId !== transaction.workspaceId;
+          if (invalidDelivery) throw new OperatorRunReplayMismatchError();
 
           const requests = await transaction.db.execute(sql`
             select request.request_fingerprint,request.run_input,request.source_run_id,request.status,

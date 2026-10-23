@@ -34,12 +34,11 @@ async function persistDerivedContinuation(
 ): Promise<void> {
   // The engine decides whether its scheduler still has immediate work. Keep
   // that wakeup durable in the same checkpoint/outbox transaction.
-  if (
+  const cannotContinueImmediately =
     !(input.plan.immediateContinuation ?? false) ||
     terminalRunStatuses.has(input.plan.checkpoint.runStatus) ||
-    input.plan.attempts.length > 0
-  )
-    return;
+    input.plan.attempts.length > 0;
+  if (cannotContinueImmediately) return;
   const outboxEventId = generatePersistedId();
   const payload = {
     workspaceId: input.workspaceId,
@@ -197,12 +196,12 @@ export async function persistCoordinatorRunTransition(
       ).length,
     ],
   );
-  if (
+  const hasHumanWait =
     row.human_wait_started_at !== null ||
     row.has_unconsumed_tasks ||
     (row.has_human_child ?? false) ||
-    (plan.taskIntents?.length ?? 0) > 0
-  )
+    (plan.taskIntents?.length ?? 0) > 0;
+  if (hasHumanWait)
     await synchronizeHumanWait(client, workspaceId, {
       runId,
       phase: 'committed',

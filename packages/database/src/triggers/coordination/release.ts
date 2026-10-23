@@ -98,12 +98,11 @@ export async function releaseCoordinatedEvent(
     });
     return 'refused' as const;
   };
-  if (
+  const workflowUnavailable =
     workspace?.status !== 'active' ||
     workflow?.lifecycle_status !== 'active' ||
-    workflow.trigger_pause_state !== 'none'
-  )
-    return refuse('workflow_unavailable');
+    workflow.trigger_pause_state !== 'none';
+  if (workflowUnavailable) return refuse('workflow_unavailable');
   if (workflow.published_version_id !== event.workflow_version_id)
     return refuse('publication_changed');
   let webhookTriggerId: string | undefined;
@@ -200,12 +199,11 @@ export async function releaseCoordinatedEvent(
     });
     return 'started';
   } catch (error) {
-    if (
+    const unexpectedAdmissionFailure =
       !(error instanceof WorkspaceRunQuotaExceededError) &&
       !(error instanceof WorkflowAlreadyRunningError) &&
-      !(error instanceof WorkspaceRunAdmissionDeniedError)
-    )
-      throw error;
+      !(error instanceof WorkspaceRunAdmissionDeniedError);
+    if (unexpectedAdmissionFailure) throw error;
     await transaction.db.execute(
       sql`rollback to savepoint release_coordinated_run`,
     );

@@ -93,11 +93,11 @@ export async function appendLockedRunEvent(
   } catch {
     throw new ExecutionStateConflictError('execution.event_payload_invalid');
   }
-  if (
+  const invalidPayload =
     normalizedPayload === null ||
     typeof normalizedPayload !== 'object' ||
-    Array.isArray(normalizedPayload)
-  )
+    Array.isArray(normalizedPayload);
+  if (invalidPayload)
     throw new ExecutionStateConflictError('execution.event_payload_invalid');
 
   let serializedPayload: string;

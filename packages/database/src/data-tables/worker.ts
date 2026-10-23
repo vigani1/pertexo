@@ -142,7 +142,7 @@ export function createWorkerDataTablesStore(
       ).catch((error: unknown) => {
         if (error instanceof ExecutionCapabilityExpiredError)
           throw new DataTableError('attempt_expired', error.message);
-        if (
+        const transientStorageFailure =
           typeof error === 'object' &&
           error !== null &&
           'code' in error &&
@@ -157,8 +157,8 @@ export function createWorkerDataTablesStore(
               'ECONNREFUSED',
               'ETIMEDOUT',
               'EPIPE',
-            ].includes(error.code))
-        )
+            ].includes(error.code));
+        if (transientStorageFailure)
           throw new DataTableError(
             'unavailable',
             'Data table storage is temporarily unavailable. The same write can be retried safely.',
