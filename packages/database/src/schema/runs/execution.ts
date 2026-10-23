@@ -114,6 +114,7 @@ export const workflowRuns = appSchema.table(
       .defaultNow()
       .notNull(),
   },
+  // eslint-disable-next-line max-lines-per-function -- Keep this table's ordered constraints in one declaration.
   (table): PgTableExtraConfigValue[] => [
     foreignKey({
       name: 'workflow_runs_variable_set_fk',
