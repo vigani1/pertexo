@@ -51,12 +51,7 @@ export async function waitForQ11OverlapBarrier(
       await inspect(release);
       return;
     } catch (error: unknown) {
-      if (
-        !(error instanceof Error) ||
-        !('code' in error) ||
-        error.code !== 'ENOENT'
-      )
-        throw error;
+      if (!isMissingBarrierFile(error)) throw error;
     }
     if (now() >= deadline)
       throw new Error('Timed out waiting for the Q11 overlap release');
@@ -109,4 +104,8 @@ export async function readQ11DatabaseIdentity(
   } finally {
     await pool.end();
   }
+}
+
+function isMissingBarrierFile(error: unknown): boolean {
+  return error instanceof Error && 'code' in error && error.code === 'ENOENT';
 }

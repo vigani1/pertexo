@@ -575,13 +575,7 @@ async function insertRun(input: {
       [workspaceId, runId],
     );
     const state = input.schedulerState ?? checkpoint({ workflowVersionId });
-    const stateRevision =
-      typeof input.schedulerState === 'object' &&
-      input.schedulerState !== null &&
-      'revision' in input.schedulerState &&
-      typeof input.schedulerState.revision === 'number'
-        ? input.schedulerState.revision
-        : 0;
+    const stateRevision = schedulerRevision(input.schedulerState);
     await client.query(
       `insert into app.run_checkpoints (
          workflow_run_id,workspace_id,workflow_version_id,revision,scheduler_state
@@ -709,3 +703,12 @@ export {
   workspaceB,
   zeroDatabaseName,
 };
+
+function schedulerRevision(schedulerState: unknown): number {
+  return typeof schedulerState === 'object' &&
+    schedulerState !== null &&
+    'revision' in schedulerState &&
+    typeof schedulerState.revision === 'number'
+    ? schedulerState.revision
+    : 0;
+}

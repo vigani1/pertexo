@@ -70,28 +70,7 @@ export async function* checkpoints(
         status: 'succeeded',
         output: { kind: 'inline', attemptId },
       });
-      const size = scenario.collections[attempt.nodeId];
-      // About 255 KiB of retained collection data; the checkpoint must contain references only.
-      let value;
-      if (attempt.nodeId === scenario.parallelNodeId) {
-        value = { branchIds: ['branch-01', 'branch-02'] };
-      } else {
-        if (attempt.nodeId === scenario.mergeNodeId) {
-          value = {
-            branches: { 'branch-01': {}, 'branch-02': {} },
-            selectedBranchIds: ['branch-01', 'branch-02'],
-          };
-        } else {
-          if (size === undefined) {
-            value = {};
-          } else {
-            value = {
-              items: collectionItems(size),
-              iterationCount: size,
-            };
-          }
-        }
-      }
+      const value = completedAttemptValue(scenario, attempt.nodeId);
       completedOutputs.push({
         sequence,
         attemptId,
@@ -135,4 +114,31 @@ export async function* checkpoints(
     });
   }
   throw new Error(`Scenario exceeded transition bound: ${scenario.name}`);
+}
+
+function completedAttemptValue(scenario: LoopScenario, nodeId: string) {
+  const size = scenario.collections[nodeId];
+  // About 255 KiB of retained collection data; the checkpoint must contain references only.
+  let value;
+  if (nodeId === scenario.parallelNodeId) {
+    value = { branchIds: ['branch-01', 'branch-02'] };
+  } else {
+    if (nodeId === scenario.mergeNodeId) {
+      value = {
+        branches: { 'branch-01': {}, 'branch-02': {} },
+        selectedBranchIds: ['branch-01', 'branch-02'],
+      };
+    } else {
+      if (size === undefined) {
+        value = {};
+      } else {
+        value = {
+          items: collectionItems(size),
+          iterationCount: size,
+        };
+      }
+    }
+  }
+
+  return value;
 }
