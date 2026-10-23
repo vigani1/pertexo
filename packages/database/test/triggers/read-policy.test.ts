@@ -2,20 +2,19 @@ import { describe, expect, it } from 'vitest';
 
 import {
   ROLES,
-  SCHEDULE_TRIGGER_READ_ROLES,
-  WEBHOOK_TRIGGER_READ_ROLES,
+  WORKFLOW_EDITOR_ROLES,
   hasCapability,
 } from '@pertexo/workflow-model';
 
 describe('trigger read policy', () => {
   it('keeps schedule metadata readable by every role', () => {
-    expect(SCHEDULE_TRIGGER_READ_ROLES).toEqual(ROLES);
+    expect(ROLES).toEqual(['owner', 'admin', 'builder', 'operator', 'viewer']);
   });
 
   it('keeps webhook delivery metadata narrower than schedule and distinct from mutation access', () => {
-    expect(WEBHOOK_TRIGGER_READ_ROLES).toEqual(['owner', 'admin', 'builder']);
-    expect(WEBHOOK_TRIGGER_READ_ROLES).not.toContain('operator');
-    expect(WEBHOOK_TRIGGER_READ_ROLES).not.toContain('viewer');
+    expect(WORKFLOW_EDITOR_ROLES).toEqual(['owner', 'admin', 'builder']);
+    expect(WORKFLOW_EDITOR_ROLES).not.toContain('operator');
+    expect(WORKFLOW_EDITOR_ROLES).not.toContain('viewer');
     expect(hasCapability('builder', 'connection:manage')).toBe(false);
   });
 });

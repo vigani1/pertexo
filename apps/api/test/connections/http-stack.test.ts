@@ -1,3 +1,4 @@
+import type { Role } from '@pertexo/workflow-model';
 import type {
   ConnectionRecord,
   FailureNotificationDestinationDatabase,
@@ -36,9 +37,7 @@ const destinationId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const { config, database, logger, rateLimitConsumer, telemetry } =
   createApiPlatformFixture('0021_workflow_integration_usage.sql');
 
-function identityRuntime(
-  role: 'admin' | 'builder' | 'owner' | 'viewer' = 'owner',
-): ApiIdentityRuntime {
+function identityRuntime(role: Role = 'owner'): ApiIdentityRuntime {
   return createStubIdentityRuntime(actorId, {
     findAccess: (query: Readonly<{ actorId: string; workspaceId: string }>) =>
       Promise.resolve(
@@ -355,9 +354,7 @@ const destinationPayload = {
 describe('connections real Nest HTTP stack', () => {
   let application: Awaited<ReturnType<typeof createApiApplication>> | undefined;
 
-  async function start(
-    role: 'admin' | 'builder' | 'owner' | 'viewer' = 'owner',
-  ) {
+  async function start(role: Role = 'owner') {
     const identity = identityRuntime(role);
     const connection = connectionRuntime(identity.dependencies.authorization);
     application = await createApiApplication(config, {

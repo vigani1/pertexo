@@ -1,3 +1,4 @@
+import { isAdministrativeRole } from '@pertexo/workflow-model';
 import type { AudienceReview } from '@pertexo/contracts';
 import { requireMoveAudienceReview } from './sharing/audience.js';
 import { readFolderScope } from '../../tenant-access/resources/facts.js';
@@ -31,7 +32,7 @@ function checkLifecycle(
   kind: OrganizationChange['kind'],
 ): void {
   if (lifecycleStatus === 'active' || kind === 'detach_tag') return;
-  if (kind === 'move' && (role === 'owner' || role === 'admin')) return;
+  if (kind === 'move' && role !== null && isAdministrativeRole(role)) return;
   throw new WorkflowTagConflictError('lifecycle');
 }
 

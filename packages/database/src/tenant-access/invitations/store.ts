@@ -1,3 +1,5 @@
+import { DELEGATED_ROLES } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/workflow-model';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
@@ -13,7 +15,6 @@ import type {
   ChangeWorkspaceInvitationInput,
   CreateWorkspaceInvitationInput,
   IdentityWorkspaceDatabase,
-  MembershipRole,
   WorkspaceInvitationCommandResult,
   WorkspaceInvitationRecord,
 } from '../contracts.js';
@@ -35,7 +36,7 @@ type InvitationStore = Pick<
   | 'revokeWorkspaceInvitation'
 >;
 
-const delegatedRole = z.enum(['admin', 'builder', 'operator', 'viewer']);
+const delegatedRole = z.enum(DELEGATED_ROLES);
 const revision = z.number().int().positive();
 const idempotencyKey = z
   .string()
@@ -127,7 +128,7 @@ async function lockAuthorizedActor(
   workspaceId: string,
   actorUserId: string,
   strength: 'update' | 'share' = 'update',
-): Promise<MembershipRole> {
+): Promise<Role> {
   const workspace = await client.query<{ status: string }>(
     `select status from app.workspaces where id=$1 for ${strength}`,
     [workspaceId],
@@ -138,7 +139,7 @@ async function lockAuthorizedActor(
       'The workspace is not active',
     );
   const actor = await client.query<{
-    role: MembershipRole;
+    role: Role;
     membership_status: string;
     user_status: string;
   }>(

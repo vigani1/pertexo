@@ -1,3 +1,4 @@
+import { isAdministrativeRole } from '@pertexo/workflow-model';
 import { useAudienceMove } from '../../hooks/use-audience-move';
 import { AudienceMoveReview } from './folders/audience-review';
 import { useEffect, useId, useRef, useState } from 'react';
@@ -289,7 +290,7 @@ export function WorkflowOrganizationDialog(props: Props) {
                 .map((item) => item.token)
                 .join(':')}
               report={editor.audience.review.report}
-              administrator={['owner', 'admin'].includes(workspace.role)}
+              administrator={isAdministrativeRole(workspace.role)}
               pending={command.pending}
               onConfirm={() => {
                 void editor.audience.confirm();

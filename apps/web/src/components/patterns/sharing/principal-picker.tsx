@@ -1,3 +1,4 @@
+import { isAdministrativeRole } from '@pertexo/contracts';
 import { useDeferredValue, useId, useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { CheckIcon, PlusIcon, SearchIcon } from 'lucide-react';
@@ -190,8 +191,7 @@ function PrincipalChoice({
   onAdd: (principal: Principal) => void;
 }>) {
   const administrator =
-    principal.kind === 'member' &&
-    (principal.role === 'owner' || principal.role === 'admin');
+    principal.kind === 'member' && isAdministrativeRole(principal.role);
   return (
     <SharingEntry
       kind={principal.kind}

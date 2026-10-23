@@ -1,3 +1,4 @@
+import type { Role } from '@pertexo/workflow-model';
 import { describe, expect, it, vi } from 'vitest';
 import type { WorkflowErrorDatabase } from '@pertexo/database/authoring';
 import { WorkflowErrorUseCase } from '../../../src/workflow-authoring/settings/error-workflow.js';
@@ -13,7 +14,7 @@ const actor = createActorContext({
   requestId: 'error-policy-test',
 });
 const input = { actor, routeWorkspaceId: workspaceId, workflowId };
-function fixture(role: 'owner' | 'builder' | 'viewer' | 'operator' = 'owner') {
+function fixture(role: Role = 'owner') {
   const settings = { targetWorkflowId: null, revision: 1 };
   const persistence = {
     readSettings: vi.fn().mockResolvedValue(settings),

@@ -1,11 +1,4 @@
-/**
- * The platform-owned workspace authorization policy.
- *
- * This module is deliberately free of database, HTTP, and framework imports so
- * persistence and API authorization can evaluate the same role/capability
- * mapping without depending on one another.
- */
-
+/** Workspace grants shared by authoring, storage, the API and browser presentation. */
 export const ROLES = Object.freeze([
   'owner',
   'admin',
@@ -13,136 +6,116 @@ export const ROLES = Object.freeze([
   'operator',
   'viewer',
 ] as const);
-
 export type Role = (typeof ROLES)[number];
+export const DELEGATED_ROLES = Object.freeze(
+  ROLES.filter((role) => role !== 'owner'),
+);
+export type DelegatedRole = (typeof DELEGATED_ROLES)[number];
 
-export const AUTHORIZATION_CAPABILITIES = Object.freeze([
-  'workspace:read',
-  'workspace:manage',
-  'audit:read',
-  'governance:manage',
-  'variable:manage',
-  'artifact:read',
-  'artifact:upload',
-  'workflow:read',
-  'workflow:create',
-  'workflow:update',
-  'workflow:publish',
-  'run:read',
-  'run:start',
-  'run:cancel',
-  'run:replay',
-  'connection:read',
-  'connection:use',
-  'connection:manage',
-  'member:read',
-  'member:manage',
-  'notification:read',
-  'notification:manage_defaults',
-] as const);
+export const ADMINISTRATIVE_ROLES = Object.freeze([
+  'owner',
+  'admin',
+] as const satisfies readonly Role[]);
+export type AdministrativeRole = (typeof ADMINISTRATIVE_ROLES)[number];
+export function isAdministrativeRole(role: Role): role is AdministrativeRole {
+  return ADMINISTRATIVE_ROLES.some((candidate) => candidate === role);
+}
 
-export type AuthorizationCapability =
-  (typeof AUTHORIZATION_CAPABILITIES)[number];
+export const WORKFLOW_EDITOR_ROLES = Object.freeze([
+  ...ADMINISTRATIVE_ROLES,
+  'builder',
+] as const satisfies readonly Role[]);
+const operationalRoles = Object.freeze([
+  ...ADMINISTRATIVE_ROLES,
+  'operator',
+] as const satisfies readonly Role[]);
+const executionRoles = Object.freeze([
+  ...WORKFLOW_EDITOR_ROLES,
+  'operator',
+] as const satisfies readonly Role[]);
+const ownerRole = Object.freeze(['owner'] as const satisfies readonly Role[]);
 
-const readCapabilities = Object.freeze([
-  'artifact:read',
-  'workspace:read',
-  'workflow:read',
-  'run:read',
-  'connection:read',
-] as const satisfies readonly AuthorizationCapability[]);
-
-const ownerCapabilities = Object.freeze([
-  ...AUTHORIZATION_CAPABILITIES,
-] as const satisfies readonly AuthorizationCapability[]);
-
-const adminCapabilities = Object.freeze([
-  'audit:read',
-  'governance:manage',
-  'variable:manage',
-  ...readCapabilities,
-  'artifact:upload',
-  'workflow:create',
-  'workflow:update',
-  'workflow:publish',
-  'run:start',
-  'run:cancel',
-  'run:replay',
-  'connection:use',
-  'connection:manage',
-  'member:read',
-  'member:manage',
-  'notification:read',
-  'notification:manage_defaults',
-] as const satisfies readonly AuthorizationCapability[]);
-
-const builderCapabilities = Object.freeze([
-  ...readCapabilities,
-  'artifact:upload',
-  'workflow:create',
-  'workflow:update',
-  'workflow:publish',
-  'run:start',
-  'connection:use',
-] as const satisfies readonly AuthorizationCapability[]);
-
-const operatorCapabilities = Object.freeze([
-  ...readCapabilities,
-  'artifact:upload',
-  'run:start',
-  'run:cancel',
-  'run:replay',
-  'connection:use',
-  // ADR 055: people who act on failed runs see the workspace inbox.
-  'notification:read',
-] as const satisfies readonly AuthorizationCapability[]);
-
-const roleCapabilities: Readonly<
-  Record<Role, readonly AuthorizationCapability[]>
-> = Object.freeze({
-  owner: ownerCapabilities,
-  admin: adminCapabilities,
-  builder: builderCapabilities,
-  operator: operatorCapabilities,
-  viewer: readCapabilities,
-});
+/** The only capability-to-roles grant decisions. Other views derive from this table. */
+const capabilityRoles = Object.freeze({
+  'workspace:read': ROLES,
+  'workspace:manage': ownerRole,
+  'audit:read': ADMINISTRATIVE_ROLES,
+  'governance:manage': ADMINISTRATIVE_ROLES,
+  'variable:manage': ADMINISTRATIVE_ROLES,
+  'artifact:read': ROLES,
+  'artifact:upload': executionRoles,
+  'workflow:read': ROLES,
+  'workflow:create': WORKFLOW_EDITOR_ROLES,
+  'workflow:update': WORKFLOW_EDITOR_ROLES,
+  'workflow:publish': WORKFLOW_EDITOR_ROLES,
+  'run:read': ROLES,
+  'run:start': executionRoles,
+  'run:cancel': operationalRoles,
+  'run:replay': operationalRoles,
+  'connection:read': ROLES,
+  'connection:use': executionRoles,
+  'connection:manage': ADMINISTRATIVE_ROLES,
+  'member:read': ADMINISTRATIVE_ROLES,
+  'member:manage': ADMINISTRATIVE_ROLES,
+  'notification:read': operationalRoles,
+  'notification:manage_defaults': ADMINISTRATIVE_ROLES,
+} satisfies Readonly<Record<string, readonly Role[]>>);
+export type AuthorizationCapability = keyof typeof capabilityRoles;
+export const AUTHORIZATION_CAPABILITIES = Object.freeze(
+  Object.keys(capabilityRoles) as AuthorizationCapability[],
+);
 
 export function hasCapability(
   role: Role,
   capability: AuthorizationCapability,
 ): boolean {
-  return roleCapabilities[role].includes(capability);
+  const permitted: readonly Role[] = capabilityRoles[capability];
+  return permitted.includes(role);
+}
+export function rolesForCapability(
+  capability: AuthorizationCapability,
+): readonly Role[] {
+  return capabilityRoles[capability];
 }
 
+// Preserve the published capability presentation order independently of grants.
+const memberCapabilityOrder = Object.freeze([
+  ...new Set<AuthorizationCapability>([
+    'audit:read',
+    'governance:manage',
+    'variable:manage',
+    'artifact:read',
+    'workspace:read',
+    'workflow:read',
+    'run:read',
+    'connection:read',
+    ...AUTHORIZATION_CAPABILITIES,
+  ]),
+]);
+function orderedCapabilities(
+  role: Role,
+  order: readonly AuthorizationCapability[],
+): readonly AuthorizationCapability[] {
+  return Object.freeze(
+    order.filter((capability) => hasCapability(role, capability)),
+  );
+}
+const roleCapabilities = Object.freeze({
+  owner: orderedCapabilities('owner', AUTHORIZATION_CAPABILITIES),
+  admin: orderedCapabilities('admin', memberCapabilityOrder),
+  builder: orderedCapabilities('builder', memberCapabilityOrder),
+  operator: orderedCapabilities('operator', memberCapabilityOrder),
+  viewer: orderedCapabilities('viewer', memberCapabilityOrder),
+} satisfies Readonly<Record<Role, readonly AuthorizationCapability[]>>);
 export function capabilitiesForRole(
   role: Role,
 ): readonly AuthorizationCapability[] {
   return roleCapabilities[role];
 }
 
-export function rolesForCapability(
-  capability: AuthorizationCapability,
-): readonly Role[] {
-  return Object.freeze(ROLES.filter((role) => hasCapability(role, capability)));
-}
-
-/** ADR 048: schedule state is readable by every active workspace member. */
-export const SCHEDULE_TRIGGER_READ_ROLES: readonly Role[] = Object.freeze([
-  ...ROLES,
-]);
-
-/** ADR 045: webhook delivery state is narrower than schedule state. */
-export const WEBHOOK_TRIGGER_READ_ROLES: readonly Role[] = Object.freeze([
-  'owner',
-  'admin',
-  'builder',
-]);
-
-const delegatedRoles = Object.freeze([
-  'builder',
-  'operator',
-  'viewer',
-] as const satisfies readonly Role[]);
+const administratorManagedRoles = DELEGATED_ROLES.filter(
+  (role) => role !== 'admin',
+);
 
 /** ADR 037 role-transition policy, shared by UI projection and the database command. */
 export function canChangeWorkspaceMemberRole(
@@ -154,8 +127,8 @@ export function canChangeWorkspaceMemberRole(
   if (actorRole === 'owner') return true;
   return (
     actorRole === 'admin' &&
-    delegatedRoles.includes(targetRole as (typeof delegatedRoles)[number]) &&
-    delegatedRoles.includes(nextRole as (typeof delegatedRoles)[number])
+    administratorManagedRoles.some((role) => role === targetRole) &&
+    administratorManagedRoles.some((role) => role === nextRole)
   );
 }
 
@@ -172,7 +145,7 @@ export function canRemoveWorkspaceMember(
   if (actorRole === 'owner') return true;
   return (
     actorRole === 'admin' &&
-    delegatedRoles.includes(targetRole as (typeof delegatedRoles)[number])
+    administratorManagedRoles.some((role) => role === targetRole)
   );
 }
 
@@ -209,6 +182,6 @@ export function canInviteWorkspaceRole(
   if (actorRole === 'owner') return true;
   return (
     actorRole === 'admin' &&
-    delegatedRoles.includes(invitedRole as (typeof delegatedRoles)[number])
+    administratorManagedRoles.some((role) => role === invitedRole)
   );
 }

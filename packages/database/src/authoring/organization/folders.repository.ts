@@ -1,3 +1,7 @@
+import {
+  ADMINISTRATIVE_ROLES,
+  WORKFLOW_EDITOR_ROLES,
+} from '@pertexo/workflow-model';
 import { readSharingPrincipals } from '../../tenant-access/resources/principals.js';
 import type {
   SharingPrincipalsQuery,
@@ -111,8 +115,8 @@ export interface WorkflowFolderDatabase {
   close(): Promise<void>;
 }
 
-const ADMINISTRATORS = ['owner', 'admin'] as const;
-const EDITORS = ['owner', 'admin', 'builder'] as const;
+const ADMINISTRATORS = ADMINISTRATIVE_ROLES;
+const EDITORS = WORKFLOW_EDITOR_ROLES;
 
 const uuid = z.uuid().overwrite((value) => value.toLowerCase());
 const revision = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);

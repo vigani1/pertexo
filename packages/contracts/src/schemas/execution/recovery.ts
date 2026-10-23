@@ -68,9 +68,6 @@ export const workflowNodeReuseSchema = z
 export type WorkflowRecoveryPreview = z.infer<
   typeof workflowRecoveryPreviewSchema
 >;
-export type WorkflowRecoverySummary = z.infer<
-  typeof workflowRecoverySummarySchema
->;
 export type WorkflowRecoveryRequest = z.infer<
   typeof workflowRecoveryRequestSchema
 >;

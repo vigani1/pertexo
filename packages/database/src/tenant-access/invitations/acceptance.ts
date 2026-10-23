@@ -1,3 +1,5 @@
+import { DELEGATED_ROLES } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/workflow-model';
 import { readEligibleAuthenticationSession } from '../../identity/federation/sessions/authority.js';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
@@ -12,7 +14,6 @@ import type {
   IdentityWorkspaceDatabase,
   InvitationAcceptanceIntentRecord,
   InvitationAcceptanceResult,
-  MembershipRole,
   ResolveInvitationAcceptanceInput,
 } from '../contracts.js';
 import { InvitationAcceptanceConflictError } from '../errors.js';
@@ -46,7 +47,7 @@ const key = z
   .min(1)
   .max(128)
   .regex(/^[\x21-\x7e]+$/u);
-const delegatedRole = z.enum(['admin', 'builder', 'operator', 'viewer']);
+const delegatedRole = z.enum(DELEGATED_ROLES);
 
 type IntentRow = Readonly<{
   id: string;
@@ -616,7 +617,7 @@ async function completeAcceptance(
       { workspaceId, actorId: actorUserId },
       async (client) => {
         const membership = await client.query<{
-          role: MembershipRole;
+          role: Role;
           status: string;
           role_revision: number;
         }>(

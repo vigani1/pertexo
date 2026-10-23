@@ -1,3 +1,4 @@
+import { ADMINISTRATIVE_ROLES } from '@pertexo/workflow-model';
 import type { PoolClient, QueryResult } from 'pg';
 import { findCommandResult } from '../../../platform/idempotency.js';
 import { federationSettingsSchema } from '@pertexo/contracts';
@@ -48,10 +49,12 @@ export function createFederationManagementStore(
       lease.pool,
       async (client) => {
         const role = await withWorkspaceScope(client, scope, (scoped) =>
-          readWorkspaceAuthority(scoped, scope.workspaceId, scope.actorId, [
-            'owner',
-            'admin',
-          ]),
+          readWorkspaceAuthority(
+            scoped,
+            scope.workspaceId,
+            scope.actorId,
+            ADMINISTRATIVE_ROLES,
+          ),
         );
         if (ownerOnly && role !== 'owner')
           throw new FederationConflictError(

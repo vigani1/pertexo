@@ -1,3 +1,4 @@
+import type { Role } from '@pertexo/workflow-model';
 import { describe, expect, it, vi } from 'vitest';
 import {
   ExportWorkflowUseCase,
@@ -72,7 +73,7 @@ const context = {
   }),
   routeWorkspaceId: workspaceId,
 };
-function fixture(role: 'owner' | 'builder' | 'operator' | 'viewer' = 'owner') {
+function fixture(role: Role = 'owner') {
   const persistence = {
     exportWorkflow: vi.fn().mockResolvedValue(manifest),
     previewWorkflowImport: vi.fn().mockResolvedValue({

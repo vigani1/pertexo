@@ -1,3 +1,4 @@
+import { ADMINISTRATIVE_ROLES } from '@pertexo/workflow-model';
 import { hasCapability, type Role } from '@pertexo/workflow-model';
 import type {
   FolderAccess,
@@ -13,10 +14,7 @@ export const RETAINED_RESOURCE_WORKSPACE_STATUSES = Object.freeze([
   'pending_deletion',
 ] as const);
 
-export const RESOURCE_ADMINISTRATORS: readonly Role[] = Object.freeze([
-  'owner',
-  'admin',
-]);
+export const RESOURCE_ADMINISTRATORS: readonly Role[] = ADMINISTRATIVE_ROLES;
 
 const isEditing = (capability: string) =>
   ['workflow:create', 'workflow:update', 'workflow:publish'].includes(

@@ -1,3 +1,4 @@
+import type { DelegatedRole } from '@pertexo/workflow-model';
 import {
   accessibleWorkspacesResponseSchema,
   type AccessibleWorkspacesResponse,
@@ -120,7 +121,7 @@ export function createWorkspaceInvitation(
   workspaceId: string,
   input: Readonly<{
     email: string;
-    role: 'admin' | 'builder' | 'operator' | 'viewer';
+    role: DelegatedRole;
     idempotencyKey: string;
   }>,
 ): Promise<WorkspaceInvitationCommandResponse> {
@@ -197,7 +198,7 @@ export function changeWorkspaceMemberRole(
   workspaceId: string,
   userId: string,
   input: Readonly<{
-    role: 'admin' | 'builder' | 'operator' | 'viewer';
+    role: DelegatedRole;
     expectedRoleRevision: number;
     idempotencyKey: string;
   }>,

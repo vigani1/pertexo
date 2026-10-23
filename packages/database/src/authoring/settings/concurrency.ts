@@ -1,3 +1,4 @@
+import { WORKFLOW_EDITOR_ROLES } from '@pertexo/workflow-model';
 import { workflowConcurrencySettingsSchema as settings } from '@pertexo/contracts';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
@@ -59,7 +60,7 @@ type Transact = <T>(
   signal?: AbortSignal,
 ) => Promise<T>;
 
-const EDITORS: readonly Role[] = ['owner', 'admin', 'builder'];
+const EDITORS: readonly Role[] = WORKFLOW_EDITOR_ROLES;
 
 /** The workspace's current execution entitlement, as the settings show it. */
 async function readEntitlement(client: PoolClient, workspaceId: string) {

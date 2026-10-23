@@ -1,4 +1,4 @@
-import { WEBHOOK_TRIGGER_READ_ROLES } from '@pertexo/workflow-model';
+import { WORKFLOW_EDITOR_ROLES } from '@pertexo/workflow-model';
 import type { CoordinatedEvent } from '@pertexo/contracts';
 import { COORDINATED_EVENT_METADATA_SQL } from '../coordination/history.js';
 import { sql } from 'drizzle-orm';
@@ -149,7 +149,7 @@ export async function authorizeWebhookTriggerReader(
       { workspaceId, actorId, workflowId },
       'workflow:read',
       false,
-      WEBHOOK_TRIGGER_READ_ROLES,
+      WORKFLOW_EDITOR_ROLES,
     ))
   )
     throw new WebhookTriggerNotFoundError();

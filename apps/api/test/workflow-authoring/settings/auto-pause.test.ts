@@ -1,3 +1,4 @@
+import type { Role } from '@pertexo/workflow-model';
 import { authoringFailure } from '../../../src/problems/context/normalize.js';
 import { problemResult } from '../../support/problem.js';
 import { describe, expect, it, vi } from 'vitest';
@@ -33,9 +34,7 @@ const settings = {
   pausedLastRunId: null,
 };
 
-function fixture(
-  role: 'owner' | 'admin' | 'builder' | 'operator' | 'viewer' = 'owner',
-) {
+function fixture(role: Role = 'owner') {
   const persistence = {
     readWorkflowSettings: vi.fn().mockResolvedValue(settings),
     updateWorkflowSettings: vi

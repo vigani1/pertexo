@@ -1,3 +1,4 @@
+import type { Role } from '@pertexo/workflow-model';
 import { describe, expect, it, vi } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { createActorContext } from '../../src/authorization/index.js';
@@ -13,7 +14,7 @@ const actor = createActorContext({
   requestId: 'suite-test',
 });
 const input = { actor, routeWorkspaceId: workspaceId, workflowId };
-function fixture(role: 'owner' | 'viewer' = 'owner') {
+function fixture(role: Role = 'owner') {
   const store = {
     prepare: vi.fn(),
     list: vi.fn(),

@@ -1,10 +1,11 @@
+import type { IdentityWorkspaceDatabase } from '@pertexo/database/tenant-access';
 import type { ApiTokenScope } from '@pertexo/contracts';
 import {
   AUTHORIZATION_CAPABILITIES,
   ROLES,
   type AuthorizationCapability,
   type Role,
-} from '@pertexo/database/tenant-access';
+} from '@pertexo/workflow-model';
 
 export { AUTHORIZATION_CAPABILITIES, ROLES };
 export type { AuthorizationCapability };
@@ -14,8 +15,6 @@ export const MEMBERSHIP_STATUSES = Object.freeze([
   'suspended',
   'removed',
 ] as const);
-
-export type MembershipStatus = (typeof MEMBERSHIP_STATUSES)[number];
 
 export const WORKSPACE_STATUSES = Object.freeze([
   'active',
@@ -45,13 +44,9 @@ export type ApiTokenActorContext = ActorIdentity &
   }>;
 export type ActorContext = UserActorContext | ApiTokenActorContext;
 
-export type WorkspaceAccess = Readonly<{
-  actorId: string;
-  workspaceId: WorkspaceId;
-  role: Role;
-  membershipStatus: MembershipStatus;
-  workspaceStatus: WorkspaceStatus;
-}>;
+export type WorkspaceAccess = NonNullable<
+  Awaited<ReturnType<IdentityWorkspaceDatabase['findWorkspaceAccess']>>
+>;
 
 export type DisclosurePolicy = 'forbidden' | 'not_found';
 

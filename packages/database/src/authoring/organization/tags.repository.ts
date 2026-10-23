@@ -1,3 +1,7 @@
+import {
+  ADMINISTRATIVE_ROLES,
+  WORKFLOW_EDITOR_ROLES,
+} from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
@@ -81,8 +85,8 @@ export interface WorkflowTagDatabase {
 const TAG_LIMIT = 256;
 /** A tag on more workflows is detached through bounded cleanup first. */
 const TAG_DELETE_WORKFLOW_LIMIT = 50;
-const ADMINISTRATORS = ['owner', 'admin'] as const;
-const EDITORS = ['owner', 'admin', 'builder'] as const;
+const ADMINISTRATORS = ADMINISTRATIVE_ROLES;
+const EDITORS = WORKFLOW_EDITOR_ROLES;
 
 const uuid = z.uuid().overwrite((value) => value.toLowerCase());
 const revision = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);

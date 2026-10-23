@@ -1,16 +1,21 @@
-import type { AccessibleWorkspace, WorkspaceMember } from '@pertexo/contracts';
+import {
+  ROLES,
+  hasCapability,
+  rolesForCapability as rolesAllowedTo,
+  canInviteWorkspaceRole,
+  canRemoveWorkspaceMember,
+  canTransferWorkspaceOwnership,
+  type Role,
+  type DelegatedRole,
+  type AuthorizationCapability,
+} from '@pertexo/workflow-model';
+export { rolesAllowedTo, ROLES as WORKSPACE_ROLES };
+export { canLeaveWorkspace } from '@pertexo/workflow-model';
+import type { WorkspaceMember } from '@pertexo/contracts';
 
-export type WorkspaceRole = AccessibleWorkspace['role'];
-export type ManagedRole = Exclude<WorkspaceRole, 'owner'>;
-type Capability = AccessibleWorkspace['capabilities'][number];
-
-export const WORKSPACE_ROLES = [
-  'owner',
-  'admin',
-  'builder',
-  'operator',
-  'viewer',
-] as const satisfies readonly WorkspaceRole[];
+export type WorkspaceRole = Role;
+export type ManagedRole = DelegatedRole;
+type Capability = AuthorizationCapability;
 
 export const ROLE_NAMES: Readonly<Record<WorkspaceRole, string>> = {
   owner: 'Owner',
@@ -30,16 +35,12 @@ export const ROLE_SUMMARIES: Readonly<Record<WorkspaceRole, string>> = {
   viewer: 'Sees workflows, runs and connections, and changes nothing.',
 };
 
-/**
- * The roles matrix, in words. Mirrors `workspace-policy.ts` in
- * packages/database: a role has a row when it holds every listed capability.
- * A test pins this table to that policy.
- */
-export const ROLE_MATRIX: readonly Readonly<{
+/** Presentation rows select capabilities; the shared policy supplies their roles. */
+type RoleAbility = Readonly<{
   ability: string;
   capabilities: readonly Capability[];
-  roles: readonly WorkspaceRole[];
-}>[] = [
+}>;
+const roleAbilities: readonly RoleAbility[] = [
   {
     ability: 'See workflows, runs and connections',
     capabilities: [
@@ -49,78 +50,58 @@ export const ROLE_MATRIX: readonly Readonly<{
       'connection:read',
       'artifact:read',
     ],
-    roles: ['owner', 'admin', 'builder', 'operator', 'viewer'],
   },
   {
     ability: 'Start runs',
     capabilities: ['run:start'],
-    roles: ['owner', 'admin', 'builder', 'operator'],
   },
   {
     ability: 'Cancel and replay runs',
     capabilities: ['run:cancel', 'run:replay'],
-    roles: ['owner', 'admin', 'operator'],
   },
   {
     ability: 'Manage notification email defaults',
     capabilities: ['notification:manage_defaults'],
-    roles: ['owner', 'admin'],
   },
   {
     ability: 'Get operational notices by default',
     capabilities: ['notification:read'],
-    roles: ['owner', 'admin', 'operator'],
   },
   {
     ability: 'Build, test and publish workflows',
     capabilities: ['workflow:create', 'workflow:update', 'workflow:publish'],
-    roles: ['owner', 'admin', 'builder'],
   },
   {
     ability: 'Read the audit log and manage audit retention',
     capabilities: ['audit:read', 'governance:manage'],
-    roles: ['owner', 'admin'],
   },
   {
     ability: 'Manage workspace variables',
     capabilities: ['variable:manage'],
-    roles: ['owner', 'admin'],
   },
   {
     ability: 'Manage connections',
     capabilities: ['connection:manage'],
-    roles: ['owner', 'admin'],
   },
   {
     ability: 'Manage members and invitations',
     capabilities: ['member:manage'],
-    roles: ['owner', 'admin'],
   },
   {
     ability: 'Rename, delete or hand over the workspace',
     capabilities: ['workspace:manage'],
-    roles: ['owner'],
   },
 ];
 
-// Capabilities the matrix doesn't draw as a row of their own.
-const UNLISTED_CAPABILITY_ROLES: Readonly<
-  Partial<Record<Capability, readonly WorkspaceRole[]>>
-> = {
-  'artifact:upload': ['owner', 'admin', 'builder', 'operator'],
-  'connection:use': ['owner', 'admin', 'builder', 'operator'],
-  'member:read': ['owner', 'admin'],
-};
-
-/** The roles that hold a capability, most powerful first like the matrix. */
-export function rolesAllowedTo(
-  capability: Capability,
-): readonly WorkspaceRole[] {
-  const row = ROLE_MATRIX.find((candidate) =>
-    candidate.capabilities.includes(capability),
-  );
-  return row?.roles ?? UNLISTED_CAPABILITY_ROLES[capability] ?? ['owner'];
-}
+export const ROLE_MATRIX: readonly (RoleAbility &
+  Readonly<{ roles: readonly WorkspaceRole[] }>)[] = roleAbilities.map(
+  (row) => ({
+    ...row,
+    roles: ROLES.filter((role) =>
+      row.capabilities.every((capability) => hasCapability(role, capability)),
+    ),
+  }),
+);
 
 const ROLE_PLURALS: Readonly<Record<WorkspaceRole, string>> = {
   owner: 'owners',
@@ -149,19 +130,14 @@ export function roleLimitSentence(
   return `Your role (${ROLE_NAMES[role]}) can’t ${action}. ${who.charAt(0).toUpperCase()}${who.slice(1)} can.`;
 }
 
-const DELEGATED_ROLES = [
-  'builder',
-  'operator',
-  'viewer',
-] as const satisfies readonly ManagedRole[];
-
 /** Roles this person may give others, by invitation or role change. */
 export function assignableRoles(
   actorRole: WorkspaceRole,
 ): readonly ManagedRole[] {
-  if (actorRole === 'owner') return ['admin', ...DELEGATED_ROLES];
-  if (actorRole === 'admin') return DELEGATED_ROLES;
-  return [];
+  return ROLES.filter(
+    (role): role is ManagedRole =>
+      role !== 'owner' && canInviteWorkspaceRole(actorRole, role),
+  );
 }
 
 /**
@@ -173,17 +149,9 @@ export function canRemoveMember(
   actor: Readonly<{ role: WorkspaceRole; userId: string }>,
   member: WorkspaceMember,
 ): boolean {
-  if (
-    member.directorySource !== undefined ||
-    member.userId === actor.userId ||
-    member.role === 'owner'
-  )
-    return false;
-  if (actor.role === 'owner') return true;
-  return (
-    actor.role === 'admin' &&
-    DELEGATED_ROLES.some((role) => role === member.role)
-  );
+  const otherManualMember =
+    member.directorySource === undefined && member.userId !== actor.userId;
+  return otherManualMember && canRemoveWorkspaceMember(actor.role, member.role);
 }
 
 /** Role changes also need an active membership. */
@@ -207,18 +175,13 @@ export function canTransferOwnershipTo(
   actor: Readonly<{ role: WorkspaceRole; userId: string }>,
   member: WorkspaceMember,
 ): boolean {
-  return (
+  const eligibleTarget =
     member.directorySource === undefined &&
-    actor.role === 'owner' &&
-    member.role !== 'owner' &&
     member.userId !== actor.userId &&
-    member.membershipStatus === 'active'
+    member.membershipStatus === 'active';
+  return (
+    eligibleTarget && canTransferWorkspaceOwnership(actor.role, member.role)
   );
-}
-
-/** Everyone but the owner may leave; the owner hands the workspace over first. */
-export function canLeaveWorkspace(role: WorkspaceRole): boolean {
-  return role !== 'owner';
 }
 
 /** How confirmations address a member: their first name, or "They". */

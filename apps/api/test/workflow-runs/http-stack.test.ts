@@ -1,3 +1,4 @@
+import type { Role } from '@pertexo/workflow-model';
 import { toProblem } from '../../src/problems/registry.js';
 import { runFailure } from '../../src/problems/context/normalize.js';
 import { throwApplicationError } from '../../src/platform/http/application-error.js';
@@ -34,7 +35,7 @@ const { config, database, logger, rateLimitConsumer, telemetry } =
   createApiPlatformFixture('0021_workflow_integration_usage.sql');
 
 function identityRuntime(
-  role: 'builder' | 'owner' | 'viewer' = 'owner',
+  role: Role = 'owner',
   workspaceStatus: WorkspaceStatus = 'active',
 ): ApiIdentityRuntime {
   return createStubIdentityRuntime(actorId, {
@@ -124,7 +125,7 @@ describe('workflow runs real Nest HTTP stack', () => {
   let application: Awaited<ReturnType<typeof createApiApplication>> | undefined;
 
   async function start(
-    role: 'builder' | 'owner' | 'viewer' = 'owner',
+    role: Role = 'owner',
     workspaceStatus: WorkspaceStatus = 'active',
   ) {
     const identity = identityRuntime(role, workspaceStatus);

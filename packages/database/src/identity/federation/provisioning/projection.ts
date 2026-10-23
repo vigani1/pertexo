@@ -1,3 +1,4 @@
+import type { Role } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 import {
   appendAuditFacts,
@@ -9,7 +10,7 @@ import {
   type MembershipChange,
   type MembershipAddition,
 } from '../../../tenant-access/members/storage.js';
-import type { MembershipRole } from '../../../tenant-access/contracts.js';
+
 import { withWorkspaceScope } from '../../../tenant-access/transactions.js';
 import { revokeSessionsForUsers } from '../../../tenant-access/users/sessions.js';
 import type { DirectoryOrganization } from './authority.js';
@@ -24,7 +25,7 @@ type BoundUser = Readonly<{
 }>;
 type ExistingMember = Readonly<{
   user_id: string;
-  role: MembershipRole;
+  role: Role;
   status: 'active' | 'suspended' | 'removed';
   role_revision: number;
   directory_user_id: string | null;

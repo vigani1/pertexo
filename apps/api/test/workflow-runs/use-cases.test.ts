@@ -1,3 +1,4 @@
+import type { Role } from '@pertexo/workflow-model';
 import { createHash } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -41,7 +42,7 @@ const actor = createActorContext({
   traceId: 'trace-42',
 });
 
-function authorization(role: 'owner' | 'builder' | 'viewer' = 'owner') {
+function authorization(role: Role = 'owner') {
   return {
     findAccess: vi.fn().mockResolvedValue({
       actorId,
@@ -332,10 +333,8 @@ describe('workflow run application seams', () => {
         ],
       }),
     );
-    const runOnlyPolicy = (
-      _role: 'owner' | 'admin' | 'builder' | 'operator' | 'viewer',
-      capability: string,
-    ) => capability === 'run:read';
+    const runOnlyPolicy = (_role: Role, capability: string) =>
+      capability === 'run:read';
     const access = authorization();
     const detail = await new GetWorkflowRunUseCase(
       fixture.store,

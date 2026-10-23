@@ -49,6 +49,16 @@ SDK definitions and executors; browser code gets live catalog metadata from the
 API and imports only browser-safe packages. `pnpm architecture:check` verifies
 workspace dependencies, TypeScript references and source import cycles.
 
+Workspace roles, capability grants and membership-role transitions live in the
+browser-safe `workflow-model/src/workspaces/policy.ts`. Database and API
+consumers share those rules; contracts derive role schemas and the web derives
+its role matrix from them. API persistence ports import stored record types,
+with `Pick`/`Partial` only for deliberately narrower projections and test fakes.
+Notice audiences are selected by the TypeScript inbox reader before pagination.
+The existing `app.clear_removed_member_notices` storage bridge remains an
+exception: it checks workspace/removal state and clears actor-private rows in
+the same removal transaction without broadening private-row visibility.
+
 ## HTTP problems
 
 The API projects domain failures through `problems/registry.ts`'s

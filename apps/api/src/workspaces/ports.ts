@@ -1,4 +1,16 @@
-import type { DirectoryMembershipSource } from '@pertexo/contracts';
+import type {
+  IdentityWorkspaceDatabase,
+  WorkspaceInvitationRecord,
+  CreateWorkspaceInvitationInput,
+  InvitationAcceptanceIntentRecord,
+  ResolveInvitationAcceptanceInput,
+  InvitationAcceptanceResult,
+  UserRecord,
+  WorkspaceMemberRecord,
+  WorkspaceRenameResult,
+  SealedInvitationToken as StoredInvitationToken,
+} from '@pertexo/database/tenant-access';
+
 import type {
   IdentityClock,
   IdentityCrypto,
@@ -12,7 +24,7 @@ import type {
   WorkspaceAccessQuery,
   WorkspaceAuthorizationSource,
 } from '../authorization/index.js';
-import type { WorkspaceAccess, WorkspaceId } from '../authorization/index.js';
+import type { WorkspaceAccess } from '../authorization/index.js';
 import type { IdentityWorkspaceTelemetry } from './telemetry.js';
 
 export type IdentityWorkspaceConfig = Readonly<{
@@ -24,301 +36,60 @@ export type IdentityWorkspaceConfig = Readonly<{
   }>;
 }>;
 
-export interface IdentityWorkspacePersistence {
-  findUserById(userId: string): Promise<UserProfilePersistenceRecord | null>;
-  createWorkspaceWithOwner(
-    input: Readonly<{
-      name: string;
-      slug: string;
-      ownerUserId: string;
-      idempotencyKey: string;
-      requestId?: string;
-      traceId?: string;
-      metadata?: Record<string, unknown>;
-    }>,
-  ): Promise<WorkspacePersistenceRecord>;
-  renameWorkspace?(
-    input: Readonly<{
-      workspaceId: string;
-      actorUserId: string;
-      name: string;
-      expectedRevision: number;
-      idempotencyKey: string;
-      requestId?: string;
-      traceId?: string;
-    }>,
-  ): Promise<WorkspaceRenamePersistenceResult>;
-  listWorkspaceMembers(
-    workspaceId: string,
-    actorId: string,
-    input?: Readonly<{
-      limit?: number;
-      after?: Readonly<{ createdAt: string; userId: string }>;
-    }>,
-  ): Promise<
-    Readonly<{
-      items: readonly WorkspaceMemberPersistenceRecord[];
-      nextCursor?: Readonly<{ createdAt: string; userId: string }>;
-    }>
-  >;
-  changeWorkspaceMemberRole(
-    input: Readonly<{
-      workspaceId: string;
-      actorUserId: string;
-      targetUserId: string;
-      role: 'admin' | 'builder' | 'operator' | 'viewer';
-      expectedRoleRevision: number;
-      idempotencyKey: string;
-      requestId?: string;
-      traceId?: string;
-    }>,
-  ): Promise<
-    Readonly<{
-      userId: string;
-      role: 'admin' | 'builder' | 'operator' | 'viewer';
-      roleRevision: number;
-      changed: boolean;
-      replayed: boolean;
-    }>
-  >;
-  removeWorkspaceMember?(
-    input: Readonly<{
-      workspaceId: string;
-      actorUserId: string;
-      targetUserId: string;
-      expectedRoleRevision: number;
-      idempotencyKey: string;
-      requestId?: string;
-      traceId?: string;
-    }>,
-  ): Promise<
-    Readonly<{ userId: string; roleRevision: number; replayed: boolean }>
-  >;
-  leaveWorkspace?(
-    input: Readonly<{
-      workspaceId: string;
-      actorUserId: string;
-      idempotencyKey: string;
-      requestId?: string;
-      traceId?: string;
-    }>,
-  ): Promise<
-    Readonly<{ userId: string; roleRevision: number; replayed: boolean }>
-  >;
-  suspendWorkspaceMember?(
-    input: MemberRevisionCommand,
-  ): Promise<MemberStatusReceipt>;
-  reactivateWorkspaceMember?(
-    input: MemberRevisionCommand,
-  ): Promise<MemberStatusReceipt>;
-  transferWorkspaceOwnership?(
-    input: MemberRevisionCommand &
-      Readonly<{ expectedOwnerRoleRevision: number }>,
-  ): Promise<
-    Readonly<{
-      ownerUserId: string;
-      ownerRoleRevision: number;
-      previousOwnerUserId: string;
-      previousOwnerRoleRevision: number;
-      replayed: boolean;
-    }>
-  >;
-  updateUserProfile?(
-    input: Readonly<{
-      actorUserId: string;
-      displayName: string;
-      expectedRevision: number;
-      idempotencyKey: string;
-    }>,
-  ): Promise<
-    Readonly<{
-      user: UserProfilePersistenceRecord;
-      changed: boolean;
-      replayed: boolean;
-    }>
-  >;
-  listWorkspaceInvitations?(
-    workspaceId: string,
-    actorId: string,
-    input?: Readonly<{
-      limit?: number;
-      after?: Readonly<{ createdAt: string; invitationId: string }>;
-    }>,
-  ): Promise<WorkspaceInvitationsPersistencePage>;
-  createWorkspaceInvitation?(
-    input: WorkspaceInvitationCreatePersistenceInput,
-  ): Promise<WorkspaceInvitationCommandPersistenceResult>;
-  resendWorkspaceInvitation?(
-    input: WorkspaceInvitationChangePersistenceInput,
-  ): Promise<WorkspaceInvitationCommandPersistenceResult>;
-  revokeWorkspaceInvitation?(
-    input: WorkspaceInvitationChangePersistenceInput,
-  ): Promise<WorkspaceInvitationCommandPersistenceResult>;
-  resolveInvitationAcceptance?(
-    input: InvitationAcceptanceResolvePersistenceInput,
-  ): Promise<InvitationAcceptanceIntentPersistenceRecord | null>;
-  readInvitationAcceptance?(
-    workspaceId: string,
-    bindingDigest: string,
-  ): Promise<InvitationAcceptanceIntentPersistenceRecord | null>;
-  recordInvitationAcceptanceProof?(
-    input: Readonly<{
-      workspaceId: string;
-      intentId: string;
-      bindingDigest: string;
-      userId: string;
-      sessionId: string;
-      verifiedEmail: string;
-      verifiedAt: Date;
-    }>,
-  ): Promise<InvitationAcceptanceIntentPersistenceRecord | null>;
-  completeInvitationAcceptance?(
-    input: InvitationAcceptanceCompletePersistenceInput,
-  ): Promise<InvitationAcceptancePersistenceResult>;
-  abandonInvitationAcceptance?(
-    workspaceId: string,
-    intentId: string,
-    bindingDigest: string,
-  ): Promise<boolean>;
-  listAccessibleWorkspaces(
-    actorId: string,
-    input?: Readonly<{ limit?: number; after?: string }>,
-  ): Promise<
-    Readonly<{
-      items: readonly AccessibleWorkspacePersistenceRecord[];
-      nextCursor?: string;
-    }>
-  >;
-  requestWorkspaceLifecycleOperation(input: {
-    workspaceId: WorkspaceId;
-    actorUserId: string;
-    commandType: WorkspaceLifecycleOperationRecord['commandType'];
-    reason: string;
-    idempotencyKey: string;
-  }): Promise<WorkspaceLifecycleOperationRecord>;
-}
+/** Optional commands keep test fakes narrow; persisted shapes have one owner. */
+export type IdentityWorkspacePersistence = Pick<
+  IdentityWorkspaceDatabase,
+  | 'findUserById'
+  | 'listWorkspaceMembers'
+  | 'changeWorkspaceMemberRole'
+  | 'listAccessibleWorkspaces'
+> &
+  Partial<
+    Pick<
+      IdentityWorkspaceDatabase,
+      | 'removeWorkspaceMember'
+      | 'leaveWorkspace'
+      | 'suspendWorkspaceMember'
+      | 'reactivateWorkspaceMember'
+      | 'transferWorkspaceOwnership'
+      | 'updateUserProfile'
+      | 'listWorkspaceInvitations'
+      | 'createWorkspaceInvitation'
+      | 'resendWorkspaceInvitation'
+      | 'revokeWorkspaceInvitation'
+      | 'resolveInvitationAcceptance'
+      | 'readInvitationAcceptance'
+      | 'recordInvitationAcceptanceProof'
+      | 'completeInvitationAcceptance'
+      | 'abandonInvitationAcceptance'
+    >
+  > &
+  Readonly<{
+    createWorkspaceWithOwner(
+      input: Parameters<
+        IdentityWorkspaceDatabase['createWorkspaceWithOwner']
+      >[0] & { idempotencyKey: string },
+    ): Promise<WorkspacePersistenceRecord>;
+    renameWorkspace?(
+      input: Parameters<IdentityWorkspaceDatabase['renameWorkspace']>[0],
+    ): Promise<WorkspaceRenamePersistenceResult>;
+    requestWorkspaceLifecycleOperation(
+      input: Parameters<
+        IdentityWorkspaceDatabase['requestWorkspaceLifecycleOperation']
+      >[0],
+    ): Promise<WorkspaceLifecycleOperationRecord>;
+  }>;
 
-export type WorkspaceInvitationPersistenceRecord = Readonly<{
-  id: string;
-  workspaceId: string;
-  email: string;
-  role: 'admin' | 'builder' | 'operator' | 'viewer';
-  status: 'pending' | 'accepted' | 'revoked' | 'expired';
-  revision: number;
-  deliveryStatus: 'queued' | 'submitted' | 'failed' | 'canceled';
-  expiresAt: Date;
-  createdAt: Date;
-  updatedAt: Date;
-}>;
-export type WorkspaceInvitationsPersistencePage = Readonly<{
-  items: readonly WorkspaceInvitationPersistenceRecord[];
-  nextCursor?: Readonly<{ createdAt: string; invitationId: string }>;
-}>;
-export type SealedInvitationToken = Readonly<{
-  ciphertext: string;
-  nonce: string;
-  tag: string;
-  keyVersion: string;
-}>;
-type WorkspaceInvitationCommandPersistenceBase = Readonly<{
-  workspaceId: string;
-  actorUserId: string;
-  idempotencyKey: string;
-  requestId?: string;
-  traceId?: string;
-}>;
+export type WorkspaceInvitationPersistenceRecord = WorkspaceInvitationRecord;
+export type SealedInvitationToken = StoredInvitationToken;
+
 export type WorkspaceInvitationCreatePersistenceInput =
-  WorkspaceInvitationCommandPersistenceBase &
-    Readonly<{
-      invitationId: string;
-      deliveryAttemptId: string;
-      email: string;
-      role: 'admin' | 'builder' | 'operator' | 'viewer';
-      tokenDigest: string;
-      sealedToken: SealedInvitationToken;
-      expiresAt: Date;
-    }>;
-export type WorkspaceInvitationChangePersistenceInput =
-  WorkspaceInvitationCommandPersistenceBase &
-    Readonly<{
-      invitationId: string;
-      expectedRevision: number;
-      tokenDigest?: string;
-      sealedToken?: SealedInvitationToken;
-      deliveryAttemptId?: string;
-      expiresAt?: Date;
-    }>;
-export type WorkspaceInvitationCommandPersistenceResult = Readonly<{
-  invitation: WorkspaceInvitationPersistenceRecord;
-  replayed: boolean;
-}>;
-export type InvitationAcceptanceIntentPersistenceRecord = Readonly<{
-  id: string;
-  workspaceId: string;
-  invitationId: string;
-  invitationRevision: number;
-  status:
-    | 'pending'
-    | 'verified'
-    | 'wrong_account'
-    | 'completed'
-    | 'abandoned'
-    | 'superseded';
-  expiresAt: Date;
-  verifiedUserId: string | null;
-  verifiedSessionId: string | null;
-  verifiedEmail: string | null;
-  verifiedAt: Date | null;
-  workspaceName: string | null;
-  invitationRole: 'admin' | 'builder' | 'operator' | 'viewer' | null;
-  invitationStatus: 'pending' | 'accepted' | 'revoked' | 'expired' | null;
-  acceptedUserId: string | null;
-  receipt: Readonly<{
-    intentId: string;
-    workspaceId: string;
-    role: 'owner' | 'admin' | 'builder' | 'operator' | 'viewer';
-    membershipCreated: boolean;
-  }> | null;
-}>;
-export type InvitationAcceptanceResolvePersistenceInput = Readonly<{
-  workspaceId: string;
-  invitationId: string;
-  tokenDigest: string;
-  intentId: string;
-  bindingDigest: string;
-  csrfDigest: string;
-  expiresAt: Date;
-  priorBinding?: Readonly<{
-    workspaceId: string;
-    intentId: string;
-    bindingDigest: string;
-  }>;
-}>;
-export type InvitationAcceptanceCompletePersistenceInput = Readonly<{
-  workspaceId: string;
-  intentId: string;
-  invitationRevision: number;
-  actorUserId: string;
-  idempotencyKey: string;
-  /** The Better Auth session that replaces the actor's sessions. */
-  replacementSession: Readonly<{
-    id: string;
-    token: string;
-    expiresAt: Date;
-    userAgent?: string | null;
-    ipAddress?: string | null;
-  }>;
-  requestId?: string;
-  traceId?: string;
-}>;
-export type InvitationAcceptancePersistenceResult = Readonly<{
-  intentId: string;
-  workspaceId: string;
-  role: 'owner' | 'admin' | 'builder' | 'operator' | 'viewer';
-  membershipCreated: boolean;
-  replayed: boolean;
-  replacementSessionCreated: boolean;
-}>;
+  CreateWorkspaceInvitationInput;
+export type InvitationAcceptanceIntentPersistenceRecord =
+  InvitationAcceptanceIntentRecord;
+export type InvitationAcceptanceResolvePersistenceInput =
+  ResolveInvitationAcceptanceInput;
+export type InvitationAcceptancePersistenceResult = InvitationAcceptanceResult;
 
 export interface InvitationTokenProtector {
   seal(
@@ -327,79 +98,27 @@ export interface InvitationTokenProtector {
   ): Promise<SealedInvitationToken> | SealedInvitationToken;
 }
 
-/** An existing-member command fenced by the target's role revision. */
-type MemberRevisionCommand = Readonly<{
-  workspaceId: string;
-  actorUserId: string;
-  targetUserId: string;
-  expectedRoleRevision: number;
-  idempotencyKey: string;
-  requestId?: string;
-  traceId?: string;
-}>;
+export type UserProfilePersistenceRecord = UserRecord;
 
-type MemberStatusReceipt = Readonly<{
-  userId: string;
-  roleRevision: number;
-  membershipStatus: 'active' | 'suspended';
-  replayed: boolean;
-}>;
+export type WorkspaceMemberPersistenceRecord = WorkspaceMemberRecord;
 
-export type UserProfilePersistenceRecord = Readonly<{
-  id: string;
-  email: string;
-  displayName: string;
-  status: 'active' | 'suspended' | 'deleted';
-  profileRevision: number;
-  createdAt: Date;
-  updatedAt: Date;
-}>;
-
-export type WorkspaceMemberPersistenceRecord = Readonly<{
-  userId: string;
-  email: string;
-  displayName: string;
-  role: 'owner' | 'admin' | 'builder' | 'operator' | 'viewer';
-  roleRevision: number;
-  membershipStatus: 'active' | 'suspended';
-  directorySource?: DirectoryMembershipSource;
-  createdAt: Date;
-  updatedAt: Date;
-}>;
-
-export type AccessibleWorkspacePersistenceRecord = Readonly<{
-  id: string;
-  name: string;
-  slug: string;
-  status: 'active' | 'suspended' | 'pending_deletion';
-  revision: number;
-  role: 'owner' | 'admin' | 'builder' | 'operator' | 'viewer';
-  createdAt: Date;
-  updatedAt: Date;
-}>;
-
-export type WorkspacePersistenceRecord = Readonly<{
-  id: string;
-  name: string;
-  slug: string;
-  status: 'active' | 'suspended' | 'pending_deletion' | 'purging' | 'deleted';
-  revision: number;
-  createdAt: Date;
-  updatedAt: Date;
-}>;
-export type WorkspaceRenamePersistenceResult = Readonly<{
-  workspace: WorkspacePersistenceRecord;
-  changed: boolean;
-  replayed: boolean;
-}>;
+export type WorkspacePersistenceRecord = Pick<
+  Awaited<ReturnType<IdentityWorkspaceDatabase['createWorkspaceWithOwner']>>,
+  'id' | 'name' | 'slug' | 'status' | 'revision' | 'createdAt' | 'updatedAt'
+>;
+export type WorkspaceRenamePersistenceResult = Omit<
+  WorkspaceRenameResult,
+  'workspace'
+> &
+  Readonly<{ workspace: WorkspacePersistenceRecord }>;
 
 /** The receipt of a deletion or restore request, applied when submitted. */
-export type WorkspaceLifecycleOperationRecord = Readonly<{
-  id: string;
-  workspaceId: string;
-  commandType: 'deletion_requested' | 'deletion_restored';
-  submittedAt: Date;
-}>;
+export type WorkspaceLifecycleOperationRecord = Pick<
+  Awaited<
+    ReturnType<IdentityWorkspaceDatabase['requestWorkspaceLifecycleOperation']>
+  >,
+  'id' | 'workspaceId' | 'commandType' | 'submittedAt'
+>;
 
 export interface WorkspaceAuthorizationReader {
   findAccess(query: WorkspaceAccessQuery): Promise<WorkspaceAccess | undefined>;

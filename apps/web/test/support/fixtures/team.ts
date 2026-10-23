@@ -1,3 +1,4 @@
+import type { Role } from '@pertexo/workflow-model';
 import { HttpResponse, http } from 'msw';
 import { screen, within } from '@testing-library/react';
 
@@ -35,8 +36,6 @@ export const ownerWorkspace = {
   role: 'owner',
   capabilities: ['workspace:read', 'member:read', 'member:manage'],
 };
-
-type Role = 'owner' | 'admin' | 'builder' | 'operator' | 'viewer';
 
 export function member(
   userIdValue: string,

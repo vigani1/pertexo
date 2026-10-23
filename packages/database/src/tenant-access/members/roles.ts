@@ -1,3 +1,4 @@
+import { DELEGATED_ROLES } from '@pertexo/workflow-model';
 import { updateMembership } from './storage.js';
 import type { Pool } from 'pg';
 import { z } from 'zod';
@@ -22,7 +23,7 @@ type RoleCommandStore = Pick<
   'changeWorkspaceMemberRole'
 >;
 
-const inputRole = z.enum(['admin', 'builder', 'operator', 'viewer']);
+const inputRole = z.enum(DELEGATED_ROLES);
 const durableResult = z
   .object({
     userId: z.uuid(),

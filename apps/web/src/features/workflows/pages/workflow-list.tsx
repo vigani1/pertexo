@@ -1,3 +1,4 @@
+import { isAdministrativeRole } from '@pertexo/workflow-model';
 import { useCallback, useRef, useState, type ComponentProps } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type {
@@ -132,8 +133,7 @@ function WorkflowFolders({
   const [action, setAction] = useState<FolderAction>();
   const items = folders.data?.items ?? [];
   const canManage =
-    workspace.status === 'active' &&
-    (workspace.role === 'owner' || workspace.role === 'admin');
+    workspace.status === 'active' && isAdministrativeRole(workspace.role);
   const close = useCallback(() => {
     setAction(undefined);
   }, []);

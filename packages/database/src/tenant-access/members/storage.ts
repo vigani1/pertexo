@@ -1,10 +1,11 @@
+import type { Role } from '@pertexo/workflow-model';
 import { removeMemberResourceGrants } from '../resources/revocation.js';
 import type { PoolClient } from 'pg';
-import type { MembershipRole } from '../contracts.js';
+
 import { appendAuditFacts } from '../../governance/audit/append.js';
 
 export type MembershipAddition = Readonly<
-  { userId: string; role: MembershipRole } & (
+  { userId: string; role: Role } & (
     | { source: 'workspace_creation' }
     | { source: 'invitation'; invitationId: string }
     | { source: 'jit'; organizationId: string }
@@ -75,7 +76,7 @@ export async function createMemberships(
 
 export type MembershipChange = Readonly<{
   userId: string;
-  role: MembershipRole;
+  role: Role;
   status: 'active' | 'suspended' | 'removed';
   roleRevision: number;
 }>;
@@ -106,6 +107,8 @@ export async function updateMemberships(
     .filter((change) => change.status === 'removed')
     .map((change) => change.userId);
   if (removed.length === 0) return;
+  // Private notice rows remain actor-fenced. This narrow storage bridge checks
+  // removal and workspace scope instead of granting cross-user read/delete access.
   await client.query(
     `select app.clear_removed_member_notices($1,removed.user_id)
      from unnest($2::uuid[]) as removed(user_id)`,

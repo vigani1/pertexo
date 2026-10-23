@@ -1,3 +1,4 @@
+import { ADMINISTRATIVE_ROLES } from '@pertexo/workflow-model';
 import type { Pool, PoolClient } from 'pg';
 import {
   claimCommand,
@@ -39,10 +40,12 @@ export async function readDirectoryManagement<T>(
     pool,
     async (client) => {
       const role = await withWorkspaceScope(client, scope, (scoped) =>
-        readWorkspaceAuthority(scoped, scope.workspaceId, scope.actorId, [
-          'owner',
-          'admin',
-        ]),
+        readWorkspaceAuthority(
+          scoped,
+          scope.workspaceId,
+          scope.actorId,
+          ADMINISTRATIVE_ROLES,
+        ),
       );
       const preview = await organizationForWorkspace(client, scope.workspaceId);
       if (preview === undefined) throw new DirectoryError('not_found');

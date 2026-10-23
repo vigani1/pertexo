@@ -1,3 +1,4 @@
+import type { Role } from '@pertexo/workflow-model';
 import { randomUUID } from 'node:crypto';
 
 import { Pool } from 'pg';
@@ -17,7 +18,6 @@ import { createDisposableDatabaseFixture } from '../support/postgres/disposable-
 import { enforceRetention } from '../support/retention.js';
 import { purgeWorkspace } from '../support/workspace-purge.js';
 
-type Role = 'owner' | 'admin' | 'builder' | 'operator' | 'viewer';
 type Kind = 'failed' | 'timed_out' | 'outcome_unknown';
 
 const adminUrl =

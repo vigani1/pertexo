@@ -1,3 +1,4 @@
+export type { Role, DelegatedRole } from '@pertexo/workflow-model';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { createHash, randomUUID } from 'node:crypto';
 import { acquireDatabasePool } from '../platform/pool/runtime.js';
@@ -70,7 +71,6 @@ import {
   type WorkspaceWithOwnerInput,
 } from './contracts.js';
 export {
-  MEMBERSHIP_ROLE,
   USER_STATUS,
   WORKSPACE_STATUS,
   type AccessibleWorkspaceRecord,
@@ -78,7 +78,6 @@ export {
   type ChangeWorkspaceMemberRoleInput,
   type CreateUserInput,
   type IdentityWorkspaceDatabase,
-  type MembershipRole,
   type RequestWorkspaceLifecycleOperationInput,
   type UserRecord,
   type UserStatus,
@@ -97,7 +96,6 @@ export {
   type UserProfileUpdateResult,
   type ChangeWorkspaceInvitationInput,
   type CreateWorkspaceInvitationInput,
-  type DelegatedMembershipRole,
   type SealedInvitationToken,
   type WorkspaceInvitationCommandResult,
   type WorkspaceInvitationRecord,

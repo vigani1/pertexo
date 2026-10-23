@@ -1,4 +1,1 @@
-export {
-  capabilitiesForRole,
-  hasCapability,
-} from '@pertexo/database/tenant-access';
+export { capabilitiesForRole, hasCapability } from '@pertexo/workflow-model';

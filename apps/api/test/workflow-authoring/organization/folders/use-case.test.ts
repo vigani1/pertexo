@@ -1,3 +1,4 @@
+import type { Role } from '@pertexo/workflow-model';
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import {
@@ -85,7 +86,6 @@ const operations = [
   },
 ] as const;
 type Operation = (typeof operations)[number];
-type Role = 'owner' | 'admin' | 'builder' | 'viewer';
 
 function setup(role: Role = 'owner') {
   const access = {

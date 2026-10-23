@@ -1,3 +1,4 @@
+import type { DelegatedRole } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 import type {
   OrganizationRow,
@@ -13,7 +14,7 @@ export async function projectOrganization(
   const workspaces = await client.query<{
     workspace_id: string;
     name: string;
-    default_role: 'admin' | 'builder' | 'operator' | 'viewer';
+    default_role: DelegatedRole;
   }>(
     `select link.workspace_id,workspace.name,link.default_role from app.auth_organization_workspaces link
      join app.workspaces workspace on workspace.id=link.workspace_id where link.organization_id=$1 order by workspace.name,link.workspace_id`,

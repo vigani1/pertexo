@@ -1,3 +1,4 @@
+import type { Role } from '@pertexo/workflow-model';
 import { problemResult } from '../../support/problem.js';
 import { toProblem } from '../../../src/problems/registry.js';
 import { authoringFailure } from '../../../src/problems/context/normalize.js';
@@ -41,9 +42,7 @@ const settings = {
   workspacePolicyState: 'unavailable' as const,
   overflow: 'queue' as const,
 };
-function fixture(
-  role: 'owner' | 'admin' | 'builder' | 'operator' | 'viewer' = 'owner',
-) {
+function fixture(role: Role = 'owner') {
   const persistence = {
     readSettings: vi.fn().mockResolvedValue(settings),
     updateSettings: vi.fn().mockResolvedValue({ settings, replayed: true }),

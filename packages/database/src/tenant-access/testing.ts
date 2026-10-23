@@ -1,9 +1,9 @@
+export type { Role } from '@pertexo/workflow-model';
 export {
   createIdentityWorkspaceDatabase,
   IdentityConflictError,
   IdentityNotFoundError,
   WorkspaceAccessDeniedError,
-  MEMBERSHIP_ROLE,
   USER_STATUS,
   WORKSPACE_STATUS,
   WorkspaceLifecycleConflictError,
@@ -17,7 +17,6 @@ export type {
   CreateUserInput,
   IdentityWorkspaceDatabase,
   IdentityConflictReason,
-  MembershipRole,
   RequestWorkspaceLifecycleOperationInput,
   UserStatus,
   UserRecord,

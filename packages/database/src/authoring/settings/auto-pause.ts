@@ -1,3 +1,4 @@
+import { WORKFLOW_EDITOR_ROLES } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
@@ -108,7 +109,7 @@ type Transact = <T>(
   operation: (client: PoolClient) => Promise<T>,
 ) => Promise<T>;
 
-const EDITORS: readonly Role[] = ['owner', 'admin', 'builder'];
+const EDITORS: readonly Role[] = WORKFLOW_EDITOR_ROLES;
 const OWNERS: readonly Role[] = ['owner'];
 
 type WorkspaceRow = Readonly<{

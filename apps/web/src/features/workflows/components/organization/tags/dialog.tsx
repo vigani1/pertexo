@@ -1,3 +1,4 @@
+import { isAdministrativeRole } from '@pertexo/workflow-model';
 import { useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import type { AccessibleWorkspace, WorkflowTag } from '@pertexo/contracts';
@@ -26,7 +27,7 @@ type Props = Readonly<{
 export function WorkflowTagsDialog(props: Props) {
   if (
     props.workspace.status !== 'active' ||
-    !['owner', 'admin'].includes(props.workspace.role)
+    !isAdministrativeRole(props.workspace.role)
   )
     return (
       <ActionDialog

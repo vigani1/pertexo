@@ -1,3 +1,4 @@
+import type { DelegatedRole } from '@pertexo/workflow-model';
 import { randomUUID } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
@@ -59,7 +60,7 @@ async function facts(workspaceId: string, action: string) {
   );
 }
 
-async function team(...roles: readonly ('admin' | 'builder' | 'viewer')[]) {
+async function team(...roles: readonly DelegatedRole[]) {
   const owner = await database.user('Lifecycle owner');
   const workspaceId = await database.workspace(owner.id);
   const members = [];

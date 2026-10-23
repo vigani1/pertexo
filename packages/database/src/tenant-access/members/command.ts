@@ -1,3 +1,5 @@
+import { isAdministrativeRole } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/workflow-model';
 import type { Pool, PoolClient } from 'pg';
 import type { z } from 'zod';
 
@@ -8,7 +10,7 @@ import {
 } from '../../platform/idempotency.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { commandKeySchema } from '../command-keys.js';
-import type { MembershipRole } from '../contracts.js';
+
 import { parseIdentityUuid } from '../support.js';
 import { withTenantScopedClient } from '../transactions.js';
 import { DirectoryManagedMembershipError } from '../errors.js';
@@ -30,7 +32,7 @@ type MemberCommandOperation =
 
 export type LockedMember = Readonly<{
   user_id: string;
-  role: MembershipRole;
+  role: Role;
   status: string;
   role_revision: number;
   user_status: string;
@@ -84,7 +86,7 @@ export function isActiveMemberManager(
   return (
     actor?.status === 'active' &&
     actor.user_status === 'active' &&
-    (actor.role === 'owner' || actor.role === 'admin')
+    isAdministrativeRole(actor.role)
   );
 }
 

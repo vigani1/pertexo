@@ -1,3 +1,4 @@
+import { isAdministrativeRole } from '@pertexo/workflow-model';
 import {
   useState,
   useOptimistic,
@@ -165,7 +166,7 @@ export function WorkflowOrganizationFilters({
                   }),
                 );
               }}
-              {...(workspace.role === 'owner' || workspace.role === 'admin'
+              {...(isAdministrativeRole(workspace.role)
                 ? {
                     onManage: () => {
                       setOpen(false);

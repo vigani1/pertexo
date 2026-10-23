@@ -1,3 +1,4 @@
+import type { Role } from '@pertexo/workflow-model';
 import {
   ConnectionNotFoundError,
   ConnectionUnavailableError,
@@ -34,7 +35,7 @@ function fixture(
     persistenceError?: Error;
     plaintext?: unknown;
     withoutSlack?: boolean;
-    role?: 'owner' | 'viewer';
+    role?: Role;
   }> = {},
 ) {
   let plaintext: Uint8Array | undefined;

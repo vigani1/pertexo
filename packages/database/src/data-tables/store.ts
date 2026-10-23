@@ -1,3 +1,4 @@
+import { ADMINISTRATIVE_ROLES } from '@pertexo/workflow-model';
 import { appendAuditFact } from '../governance/audit/append.js';
 import { createHash } from 'node:crypto';
 import { canonicalJson } from '@pertexo/workflow-model';
@@ -72,7 +73,7 @@ export function createDataTablesStore(
           client,
           scope.workspaceId,
           scope.actorId,
-          admin ? ['owner', 'admin'] : rolesForCapability('workflow:update'),
+          admin ? ADMINISTRATIVE_ROLES : rolesForCapability('workflow:update'),
         );
         return work(client);
       },

@@ -1,3 +1,4 @@
+import type { DelegatedRole } from '@pertexo/workflow-model';
 import {
   expect,
   type APIRequestContext,
@@ -351,7 +352,7 @@ async function invitedActor(input: {
   request: APIRequestContext;
   mailOrigin: string;
   workspaceId: string;
-  role: 'viewer' | 'builder' | 'admin';
+  role: DelegatedRole;
 }) {
   const context = await input.browser.newContext({
     baseURL: new URL(input.owner.url()).origin,
@@ -458,7 +459,7 @@ async function qualifyExtended(input: {
   beta: string;
   folderId: string;
   phase: (value: string) => Promise<void>;
-  role: 'viewer' | 'builder' | 'admin';
+  role: DelegatedRole;
 }) {
   const { page, workspaceId, alpha, beta, phase } = input;
   const alphaName = 'Organization Alpha';

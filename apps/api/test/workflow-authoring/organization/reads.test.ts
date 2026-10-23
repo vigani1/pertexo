@@ -1,3 +1,4 @@
+import type { Role } from '@pertexo/workflow-model';
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
@@ -13,7 +14,7 @@ import {
 import { WorkflowOrganizationReadsUseCase } from '../../../src/workflow-authoring/organization/reads.js';
 import { InvalidWorkflowCursorError } from '../../../src/workflow-authoring/cursor.js';
 
-function fixture(role: 'owner' | 'admin' | 'builder' | 'viewer' = 'viewer') {
+function fixture(role: Role = 'viewer') {
   const workspaceId = randomUUID(),
     actorId = randomUUID(),
     workflowId = randomUUID();

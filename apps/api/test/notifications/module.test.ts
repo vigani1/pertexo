@@ -1,3 +1,4 @@
+import type { Role } from '@pertexo/workflow-model';
 import { registerWorkflowPortabilityJsonParser } from '../../src/workflow-authoring/portability/json-parser.js';
 import { registerNoticeUnsubscribeTransport } from '../../src/notifications/preferences/transport.js';
 import { NoticePreferencesService } from '../../src/notifications/preferences/service.js';
@@ -102,7 +103,7 @@ function inboxDatabase() {
   } satisfies WorkspaceInboxDatabase;
 }
 
-function access(role: 'owner' | 'operator' | 'builder' | 'viewer') {
+function access(role: Role) {
   return {
     findAccess: vi.fn().mockResolvedValue({
       actorId,
