@@ -1,0 +1,217 @@
+import type { WorkspaceDatabase } from '@pertexo/database/testing';
+
+import { expect, it, vi } from 'vitest';
+import { createApiApplication } from '../../../src/app.js';
+
+import { ApiDrainState } from '../../../src/platform/health/drain-state.js';
+
+import { createStubApiWorkflowRuntime } from '../../support/api-platform.fixture.js';
+import {
+  config,
+  database,
+  dependencies,
+  identityRuntime,
+  betterAuthIdentityConfig,
+  applicationFixture,
+} from '../fixture.js';
+
+export function registerPreservesConstructionEveryRuntimeCleanupFailure(): void {
+  it('preserves construction and every runtime cleanup failure', async () => {
+    const identityFailure = new Error('identity close failed');
+    const workflowFailure = new Error('workflow close failed');
+    const selectedIdentity = identityRuntime(
+      vi.fn().mockRejectedValue(identityFailure),
+    );
+    const selectedWorkflow = createStubApiWorkflowRuntime(
+      selectedIdentity.dependencies.authorization,
+      vi.fn().mockRejectedValue(workflowFailure),
+    );
+    const constructionFailure = new Error('connection construction failed');
+    const connectionOverrides = Object.defineProperty({}, 'persistence', {
+      enumerable: true,
+      get: () => {
+        throw constructionFailure;
+      },
+    });
+
+    const failure = await createApiApplication(
+      {
+        ...config,
+        identity: betterAuthIdentityConfig('https://app.example.test'),
+        connections: { kmsKeyReference: 'test-key', region: 'test-region' },
+      },
+      {
+        ...dependencies(),
+        connectionOverrides,
+        identityRuntime: selectedIdentity,
+        workflowRuntime: selectedWorkflow,
+      },
+    ).catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(AggregateError);
+    expect((failure as AggregateError).errors).toEqual([
+      constructionFailure,
+      identityFailure,
+      workflowFailure,
+    ]);
+  });
+
+  it('rejects artifact overrides when configured artifacts have no identity source', async () => {
+    await expect(
+      createApiApplication(
+        {
+          ...config,
+          artifacts: {
+            accessKeyId: 'artifacts',
+            bucket: 'artifacts-bucket',
+            endpoint: 'https://artifacts.example.test',
+            forcePathStyle: true,
+            maxObjectBytes: 100,
+            region: 'eu-central-1',
+            requestTimeoutMs: 1_000,
+            secretAccessKey: 'secret',
+          },
+        },
+        {
+          ...dependencies(),
+          artifactOverrides: {},
+        },
+      ),
+    ).rejects.toThrow(
+      'artifact overrides require configured artifact runtime creation',
+    );
+  });
+
+  it('preserves readiness and cleanup failures when application close rejects', async () => {
+    const startupFailure = new Error('database compatibility failed');
+    const cleanupFailure = new Error('identity cleanup failed');
+    const selectedDatabase: WorkspaceDatabase = {
+      ...database,
+      checkReadiness: vi.fn().mockRejectedValue(startupFailure),
+    };
+    const selectedIdentity = identityRuntime(
+      vi.fn().mockRejectedValue(cleanupFailure),
+    );
+
+    const failure = await createApiApplication(config, {
+      ...dependencies(selectedDatabase),
+      identityRuntime: selectedIdentity,
+    }).catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(AggregateError);
+    expect((failure as AggregateError).errors).toEqual([
+      startupFailure,
+      cleanupFailure,
+    ]);
+  });
+
+  it('serves a stable bounded liveness response without dependency claims', async () => {
+    applicationFixture.application = await createApiApplication(
+      config,
+      dependencies(),
+    );
+    await applicationFixture.application.init();
+
+    const response = await applicationFixture.application.inject({
+      method: 'GET',
+      url: '/health/live',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['content-type']).toContain('application/json');
+    expect(response.payload).toBe('{"status":"ok"}');
+    expect(response.payload.length).toBeLessThanOrEqual(64);
+  });
+
+  it('checks the database at startup and again when asked for readiness', async () => {
+    const checkReadiness = vi.fn(() => database.checkReadiness());
+    const selectedDatabase: WorkspaceDatabase = {
+      ...database,
+      checkReadiness,
+    };
+    applicationFixture.application = await createApiApplication(
+      config,
+      dependencies(selectedDatabase),
+    );
+    await applicationFixture.application.init();
+
+    const response = await applicationFixture.application.inject({
+      method: 'GET',
+      url: '/health/ready',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ status: 'ready' });
+    expect(checkReadiness).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns 503 without exposing a database readiness failure', async () => {
+    const readiness = {
+      migrationHead: '0000_rls_probe.sql',
+      postgresMajor: 18,
+      role: 'pertexo_app',
+    } as const;
+    const unavailableDatabase: WorkspaceDatabase = {
+      ...database,
+      // Ready at startup, then unavailable.
+      checkReadiness: vi
+        .fn()
+        .mockResolvedValueOnce(readiness)
+        .mockRejectedValue(new Error('secret database detail')),
+    };
+    applicationFixture.application = await createApiApplication(
+      config,
+      dependencies(unavailableDatabase),
+    );
+    await applicationFixture.application.init();
+
+    const response = await applicationFixture.application.inject({
+      method: 'GET',
+      url: '/health/ready',
+    });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.payload).not.toContain('secret database detail');
+    expect(response.headers['content-type']).toContain(
+      'application/problem+json',
+    );
+    expect(response.headers['x-request-id']).toBeTypeOf('string');
+    expect(response.json()).toMatchObject({
+      code: 'internal.unexpected',
+      requestId: response.headers['x-request-id'],
+      status: 503,
+    });
+  });
+
+  it('refuses to start and closes resources against an incompatible database', async () => {
+    const close = vi.fn().mockResolvedValue(undefined);
+    const incompatibleDatabase: WorkspaceDatabase = {
+      ...database,
+      checkReadiness: vi
+        .fn()
+        .mockRejectedValue(new Error('migration mismatch')),
+      close,
+    };
+
+    await expect(
+      createApiApplication(config, dependencies(incompatibleDatabase)),
+    ).rejects.toThrow('migration mismatch');
+    expect(close).toHaveBeenCalledOnce();
+  });
+
+  it('becomes unready before graceful drain', async () => {
+    applicationFixture.application = await createApiApplication(
+      config,
+      dependencies(),
+    );
+    await applicationFixture.application.init();
+    applicationFixture.application.get(ApiDrainState).beginDrain();
+
+    const response = await applicationFixture.application.inject({
+      method: 'GET',
+      url: '/health/ready',
+    });
+
+    expect(response.statusCode).toBe(503);
+  });
+}
