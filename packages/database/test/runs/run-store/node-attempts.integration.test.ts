@@ -1902,85 +1902,7 @@ function registerAtomicallySuspendsAttemptDatabaseTime(): void {
       inputRef: { kind: 'inline', value: { held: true } },
     });
     const invocationKey = `${versionA}|wait|b:|i:`;
-    const committed = await ownedDeliveryStore.commitAdvancePlan({
-      workspaceId: workspaceA,
-      runId,
-      workflowVersionId: versionA,
-      signal: new AbortController().signal,
-      plan: {
-        expectedRevision: 0,
-        expectedNextEventSequence: 2,
-        consumedThroughEventSequence: 1,
-        checkpoint: checkpoint({
-          revision: 1,
-          runStatus: 'running',
-          nextEventSequence: 4,
-          admittedInvocationKeys: [invocationKey],
-          invocations: [
-            {
-              invocationKey,
-              nodeId: 'wait',
-              status: 'running',
-              attemptNumber: 1,
-            },
-          ],
-        }),
-        events: [
-          {
-            sequence: 2,
-            name: 'run.started',
-            occurredAt: '2026-08-21T00:00:00.000Z',
-          },
-          {
-            sequence: 3,
-            name: 'node.ready',
-            occurredAt: '2026-08-21T00:00:00.000Z',
-            invocationKey,
-            nodeId: 'wait',
-            attemptNumber: 0,
-          },
-        ],
-        nodeRunAdmissions: [
-          { invocationKey, nodeId: 'wait', sideEffectClass: 'safe' },
-        ],
-        attempts: [
-          {
-            admissionKind: 'execute',
-            invocationKey,
-            nodeId: 'wait',
-            attemptNumber: 1,
-            sideEffectClass: 'safe',
-          },
-        ],
-      },
-    });
-    if (committed.kind !== 'committed')
-      throw new Error('fixture did not commit');
-    const admission = committed.admittedAttempts[0];
-    if (admission === undefined) throw new Error('fixture attempt missing');
-    const outbox = await asRuntime(workerBaseUrl, workspaceA, (client) =>
-      client.query<{ id: string; payload_checksum: string }>(
-        `select id,payload_checksum from app.outbox_events
-           where workspace_id=$1 and aggregate_id=$2 and job_name='execute-node-attempt'`,
-        [workspaceA, admission.attemptId],
-      ),
-    );
-    const delivery = outbox.rows[0];
-    if (delivery === undefined) throw new Error('fixture delivery missing');
-    const claimed = await nodeAttemptStore.claimDelivery({
-      workspaceId: workspaceA,
-      runId,
-      nodeRunId: admission.nodeRunId,
-      attemptId: admission.attemptId,
-      delivery: {
-        outboxEventId: delivery.id,
-        payloadChecksum: delivery.payload_checksum,
-      },
-      leaseDurationSeconds: 30,
-      workerId: 'attempt-worker-wait',
-      signal: new AbortController().signal,
-    });
-    if (claimed.kind !== 'claimed') throw new Error('attempt was not claimed');
+    const { admission, claimed } = await admitWaitAttempt(runId, invocationKey);
     const storedInput = () => storedNodeRunInput(admission.nodeRunId);
     await expect(
       nodeAttemptStore.recordInput?.({
@@ -2508,4 +2430,87 @@ function registerLetsOperatorRecordCommandsReplays(): void {
       await operator.close();
     }
   });
+}
+
+async function admitWaitAttempt(runId: string, invocationKey: string) {
+  const committed = await ownedDeliveryStore.commitAdvancePlan({
+    workspaceId: workspaceA,
+    runId,
+    workflowVersionId: versionA,
+    signal: new AbortController().signal,
+    plan: {
+      expectedRevision: 0,
+      expectedNextEventSequence: 2,
+      consumedThroughEventSequence: 1,
+      checkpoint: checkpoint({
+        revision: 1,
+        runStatus: 'running',
+        nextEventSequence: 4,
+        admittedInvocationKeys: [invocationKey],
+        invocations: [
+          {
+            invocationKey,
+            nodeId: 'wait',
+            status: 'running',
+            attemptNumber: 1,
+          },
+        ],
+      }),
+      events: [
+        {
+          sequence: 2,
+          name: 'run.started',
+          occurredAt: '2026-08-21T00:00:00.000Z',
+        },
+        {
+          sequence: 3,
+          name: 'node.ready',
+          occurredAt: '2026-08-21T00:00:00.000Z',
+          invocationKey,
+          nodeId: 'wait',
+          attemptNumber: 0,
+        },
+      ],
+      nodeRunAdmissions: [
+        { invocationKey, nodeId: 'wait', sideEffectClass: 'safe' },
+      ],
+      attempts: [
+        {
+          admissionKind: 'execute',
+          invocationKey,
+          nodeId: 'wait',
+          attemptNumber: 1,
+          sideEffectClass: 'safe',
+        },
+      ],
+    },
+  });
+  if (committed.kind !== 'committed') throw new Error('fixture did not commit');
+  const admission = committed.admittedAttempts[0];
+  if (admission === undefined) throw new Error('fixture attempt missing');
+  const outbox = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+    client.query<{ id: string; payload_checksum: string }>(
+      `select id,payload_checksum from app.outbox_events
+           where workspace_id=$1 and aggregate_id=$2 and job_name='execute-node-attempt'`,
+      [workspaceA, admission.attemptId],
+    ),
+  );
+  const delivery = outbox.rows[0];
+  if (delivery === undefined) throw new Error('fixture delivery missing');
+  const claimed = await nodeAttemptStore.claimDelivery({
+    workspaceId: workspaceA,
+    runId,
+    nodeRunId: admission.nodeRunId,
+    attemptId: admission.attemptId,
+    delivery: {
+      outboxEventId: delivery.id,
+      payloadChecksum: delivery.payload_checksum,
+    },
+    leaseDurationSeconds: 30,
+    workerId: 'attempt-worker-wait',
+    signal: new AbortController().signal,
+  });
+  if (claimed.kind !== 'claimed') throw new Error('attempt was not claimed');
+
+  return { admission, claimed };
 }
