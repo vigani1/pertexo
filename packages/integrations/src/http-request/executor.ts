@@ -52,10 +52,51 @@ export {
   type HttpRequestExecutorTelemetry,
   NOOP_HTTP_REQUEST_EXECUTOR_TELEMETRY,
 } from './execution/contract.js';
+type RequestContext = ReturnType<typeof prepareInvocation>;
+interface DispatchState {
+  possiblyDispatched: boolean;
+}
+type PreparedBody = Awaited<ReturnType<typeof prepareRequestBody>>;
+type RequestMaterial = PreparedBody &
+  Readonly<{
+    resolved: Awaited<ReturnType<typeof resolveRequestConnection>>;
+    dispatch: DispatchState;
+  }>;
+
 async function executeHttpRequest(
   dependencies: HttpRequestExecutorDependencies,
   invocation: NodeExecutionInvocation<unknown, unknown>,
 ): Promise<HttpRequestOutput> {
+  const context = prepareInvocation(invocation);
+  const { runtime, repeatable } = context;
+  const dispatch = {
+    possiblyDispatched: runtime.providerDispatchUnresolved === true,
+  };
+  const prepared = await prepareRequestBody(context);
+  const resolved = await resolveRequestConnection(
+    context,
+    prepared.body,
+    dispatch,
+  );
+  try {
+    return await executeWithMaterial(dependencies, context, {
+      ...prepared,
+      resolved,
+      dispatch,
+    });
+  } finally {
+    await releaseHttpMaterial(
+      prepared.body,
+      resolved?.secret,
+      repeatable,
+      dispatch.possiblyDispatched,
+    );
+  }
+}
+
+function prepareInvocation(
+  invocation: NodeExecutionInvocation<unknown, unknown>,
+) {
   let configured: HttpRequestConfig;
   let mapped: HttpRequestInput;
   try {
@@ -88,9 +129,26 @@ async function executeHttpRequest(
   const sideEffect = repeatable
     ? HTTP_SIDE_EFFECT_CLASS.safe
     : HTTP_SIDE_EFFECT_CLASS.unsafe;
+  return {
+    config,
+    input,
+    runtime,
+    connections,
+    connectionId,
+    repeatable,
+    sideEffect,
+    invocation,
+  };
+}
+
+async function prepareRequestBody({
+  config,
+  input,
+  runtime,
+  invocation,
+}: RequestContext) {
   let body: Uint8Array | NodeVerifiedByteSource | undefined;
   let multipartContentType: string | undefined;
-  let possiblyDispatched = runtime.providerDispatchUnresolved === true;
   try {
     if (config.multipart !== undefined) {
       const encoded = await encodeMultipart({
@@ -121,6 +179,20 @@ async function executeHttpRequest(
     throw error;
   }
 
+  return { body, multipartContentType };
+}
+
+async function resolveRequestConnection(
+  {
+    connections,
+    connectionId,
+    invocation,
+    runtime,
+    repeatable,
+  }: RequestContext,
+  body: PreparedBody['body'],
+  dispatch: DispatchState,
+) {
   let resolved:
     Awaited<ReturnType<NonNullable<typeof connections>['resolve']>> | undefined;
   if (connectionId !== undefined && connections !== undefined)
@@ -137,7 +209,7 @@ async function executeHttpRequest(
         body,
         undefined,
         repeatable,
-        possiblyDispatched,
+        dispatch.possiblyDispatched,
       );
       if (!repeatable && runtime.providerDispatchUnresolved === true)
         throw new HttpRequestExecutorError(
@@ -172,196 +244,177 @@ async function executeHttpRequest(
         false,
       );
     }
+  return resolved;
+}
+
+async function executeWithMaterial(
+  dependencies: HttpRequestExecutorDependencies,
+  context: RequestContext,
+  material: RequestMaterial,
+): Promise<HttpRequestOutput> {
+  const {
+    config,
+    runtime,
+    connections,
+    connectionId,
+    repeatable,
+    sideEffect,
+    invocation,
+  } = context;
+  const { body, resolved, dispatch } = material;
+  const { credential, headers } = prepareHeaders(context, material);
+  let marked = false;
+  const dispatchRuntime =
+    config.pagination === undefined
+      ? runtime
+      : {
+          ...runtime,
+          beforeDispatch: async (
+            evidence?: Parameters<typeof runtime.beforeDispatch>[0],
+          ) => {
+            if (marked) return;
+            await runtime.beforeDispatch(evidence);
+            marked = true;
+          },
+        };
+  let response;
   try {
-    if (
-      resolved !== undefined &&
-      (resolved.connectionId !== connectionId ||
-        resolved.providerKey !== 'http' ||
-        resolved.authType !== 'http_headers')
-    )
-      throw failedConfiguration();
-    const credential =
-      resolved === undefined
-        ? { headers: Object.freeze({}) }
-        : decodeCredential(
-            resolved.secret,
-            () =>
-              new HttpRequestExecutorError(
-                Object.freeze({ kind: 'failed', errorKind: 'authentication' }),
-                false,
-              ),
-          );
-    let headers: Readonly<Record<string, string>>;
-    try {
-      headers = requestHeaders(
-        input,
-        config.headers,
-        credential.headers,
-        multipartContentType,
+    const beforeDispatch =
+      resolved === undefined ||
+      connectionId === undefined ||
+      connections?.assertCurrent === undefined
+        ? createUnauthenticatedBeforeDispatch(dispatchRuntime)
+        : createProviderBeforeDispatch({
+            assertCurrent: connections.assertCurrent,
+            connectionId,
+            expectedProviderKey: 'http',
+            expectedAuthType: 'http_headers',
+            secretVersionId: resolved.secretVersionId,
+            signal: invocation.signal,
+            runtime: dispatchRuntime,
+          });
+    const request = {
+      url: config.url,
+      method: config.method,
+      headers,
+      ...(body === undefined ? {} : { body }),
+      timeoutMillis: config.timeoutMillis,
+      maxRedirects: config.maxRedirects,
+      maxResponseBytes: config.maxResponseBytes,
+      sensitiveValues: [
+        ...Object.values(credential.headers),
+        ...(invocation.runtime?.callbacks?.sensitiveValues() ?? []),
+      ],
+      signal: invocation.signal,
+      beforeDispatch: async () => {
+        await beforeDispatch();
+        dispatch.possiblyDispatched = true;
+      },
+    };
+    if (config.pagination !== undefined)
+      return httpRequestOutputSchema.parse(
+        await executePagination({
+          client: dependencies.httpClient,
+          request,
+          pagination: config.pagination,
+          ...(runtime.artifacts === undefined
+            ? {}
+            : { artifacts: runtime.artifacts }),
+          inlineBytes: config.inlineResponseBytes,
+          ...(runtime.deadlineAt === undefined
+            ? {}
+            : { deadlineAt: runtime.deadlineAt }),
+          checkResponse: (status, responseHeaders) => {
+            const decision = classifySecureHttpResponse(
+              status,
+              sideEffect,
+              false,
+              responseHeaders,
+            );
+            if (decision.kind !== 'succeeded')
+              throw new HttpRequestExecutorError(decision, false);
+          },
+        }),
       );
-    } catch (error) {
-      if (
-        multipartContentType !== undefined &&
-        runtime.providerDispatchUnresolved === true
-      )
-        throw new HttpRequestExecutorError(
-          Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
-          true,
-        );
-      throw error;
-    }
-    let marked = false;
-    const dispatchRuntime =
-      config.pagination === undefined
-        ? runtime
-        : {
-            ...runtime,
-            beforeDispatch: async (
-              evidence?: Parameters<typeof runtime.beforeDispatch>[0],
-            ) => {
-              if (marked) return;
-              await runtime.beforeDispatch(evidence);
-              marked = true;
-            },
-          };
-    let response;
-    try {
-      const beforeDispatch =
-        resolved === undefined ||
-        connectionId === undefined ||
-        connections?.assertCurrent === undefined
-          ? createUnauthenticatedBeforeDispatch(dispatchRuntime)
-          : createProviderBeforeDispatch({
-              assertCurrent: connections.assertCurrent,
-              connectionId,
-              expectedProviderKey: 'http',
-              expectedAuthType: 'http_headers',
-              secretVersionId: resolved.secretVersionId,
-              signal: invocation.signal,
-              runtime: dispatchRuntime,
-            });
-      const request = {
-        url: config.url,
-        method: config.method,
-        headers,
-        ...(body === undefined ? {} : { body }),
-        timeoutMillis: config.timeoutMillis,
-        maxRedirects: config.maxRedirects,
-        maxResponseBytes: config.maxResponseBytes,
-        sensitiveValues: [
-          ...Object.values(credential.headers),
-          ...(invocation.runtime?.callbacks?.sensitiveValues() ?? []),
-        ],
-        signal: invocation.signal,
-        beforeDispatch: async () => {
-          await beforeDispatch();
-          possiblyDispatched = true;
-        },
-      };
-      if (config.pagination !== undefined)
-        return httpRequestOutputSchema.parse(
-          await executePagination({
-            client: dependencies.httpClient,
-            request,
-            pagination: config.pagination,
-            ...(runtime.artifacts === undefined
-              ? {}
-              : { artifacts: runtime.artifacts }),
-            inlineBytes: config.inlineResponseBytes,
-            ...(runtime.deadlineAt === undefined
-              ? {}
-              : { deadlineAt: runtime.deadlineAt }),
-            checkResponse: (status, responseHeaders) => {
-              const decision = classifySecureHttpResponse(
-                status,
-                sideEffect,
-                false,
-                responseHeaders,
-              );
-              if (decision.kind !== 'succeeded')
-                throw new HttpRequestExecutorError(decision, false);
-            },
-          }),
-        );
-      response = await dependencies.httpClient.executeStreaming(
-        request,
-        (stream) =>
-          consumeResponseBody(
-            runtime.artifacts,
-            config.inlineResponseBytes,
-            config.maxResponseBytes,
-            stream,
-            repeatable,
-          ),
-      );
-    } catch (error: unknown) {
-      if (
-        safeInstanceOf(error, HttpRequestExecutorError) ||
-        (config.pagination !== undefined &&
-          safeInstanceOf(error, NodeExecutorFailure))
-      )
-        throw error;
-      if (
-        config.pagination !== undefined &&
-        (invocation.signal.aborted || errorNameIs(error, 'AbortError'))
-      )
-        throw new HttpRequestExecutorError(
-          { kind: 'canceled', errorKind: 'canceled' },
-          false,
-        );
-      const secureError = inspectSecureHttpError(error);
-      if (secureError === undefined)
-        throw new HttpRequestExecutorError(
-          repeatable
-            ? Object.freeze({ kind: 'failed', errorKind: 'internal' })
-            : Object.freeze({ kind: 'outcome_unknown', errorKind: 'network' }),
-          !repeatable,
-        );
-      if (!repeatable && runtime.providerDispatchUnresolved === true)
-        throw new HttpRequestExecutorError(
-          Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
-          true,
-        );
-      if (secureError.code === SECURE_HTTP_ERROR_CODE.connectionFenceFailed)
-        throw new HttpRequestExecutorError(
-          Object.freeze({ kind: 'failed', errorKind: 'authentication' }),
-          false,
-        );
-      if (secureError.code === SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch)
-        throw failedConfiguration();
-      throw new HttpRequestExecutorError(
-        classifySecureHttpError(secureError.error, sideEffect, false),
-        !repeatable && secureError.possiblyDispatched,
-      );
-    }
-    const decision = classifySecureHttpResponse(
-      response.status,
-      sideEffect,
-      false,
-      response.headers,
+    response = await dependencies.httpClient.executeStreaming(
+      request,
+      (stream) =>
+        consumeResponseBody(
+          runtime.artifacts,
+          config.inlineResponseBytes,
+          config.maxResponseBytes,
+          stream,
+          repeatable,
+        ),
     );
-    // Like n8n's "Never error": the service answered, and the person asked
-    // to branch on its answer rather than fail.
-    if (
-      decision.kind !== 'succeeded' &&
-      !(config.returnErrorResponses === true && response.status >= 300)
-    )
-      throw new HttpRequestExecutorError(decision, !repeatable);
-    return httpRequestOutputSchema.parse({
-      status: response.status,
-      headers: response.headers,
-      body: response.body,
-      finalOrigin: response.finalUrl,
-      redirectCount: response.redirectCount,
-    });
-  } finally {
-    await releaseHttpMaterial(
-      body,
-      resolved?.secret,
-      repeatable,
-      possiblyDispatched,
-    );
+  } catch (error: unknown) {
+    rethrowHttpError(error, context);
   }
+
+  const decision = classifySecureHttpResponse(
+    response.status,
+    sideEffect,
+    false,
+    response.headers,
+  );
+  // Like n8n's "Never error": the service answered, and the person asked
+  // to branch on its answer rather than fail.
+  if (
+    decision.kind !== 'succeeded' &&
+    !(config.returnErrorResponses === true && response.status >= 300)
+  )
+    throw new HttpRequestExecutorError(decision, !repeatable);
+  return httpRequestOutputSchema.parse({
+    status: response.status,
+    headers: response.headers,
+    body: response.body,
+    finalOrigin: response.finalUrl,
+    redirectCount: response.redirectCount,
+  });
+}
+
+function rethrowHttpError(
+  error: unknown,
+  { config, invocation, runtime, repeatable, sideEffect }: RequestContext,
+): never {
+  if (
+    safeInstanceOf(error, HttpRequestExecutorError) ||
+    (config.pagination !== undefined &&
+      safeInstanceOf(error, NodeExecutorFailure))
+  )
+    throw error;
+  if (
+    config.pagination !== undefined &&
+    (invocation.signal.aborted || errorNameIs(error, 'AbortError'))
+  )
+    throw new HttpRequestExecutorError(
+      { kind: 'canceled', errorKind: 'canceled' },
+      false,
+    );
+  const secureError = inspectSecureHttpError(error);
+  if (secureError === undefined)
+    throw new HttpRequestExecutorError(
+      repeatable
+        ? Object.freeze({ kind: 'failed', errorKind: 'internal' })
+        : Object.freeze({ kind: 'outcome_unknown', errorKind: 'network' }),
+      !repeatable,
+    );
+  if (!repeatable && runtime.providerDispatchUnresolved === true)
+    throw new HttpRequestExecutorError(
+      Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
+      true,
+    );
+  if (secureError.code === SECURE_HTTP_ERROR_CODE.connectionFenceFailed)
+    throw new HttpRequestExecutorError(
+      Object.freeze({ kind: 'failed', errorKind: 'authentication' }),
+      false,
+    );
+  if (secureError.code === SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch)
+    throw failedConfiguration();
+  throw new HttpRequestExecutorError(
+    classifySecureHttpError(secureError.error, sideEffect, false),
+    !repeatable && secureError.possiblyDispatched,
+  );
 }
 
 export function createHttpRequestExecutorRegistration(
@@ -374,4 +427,47 @@ export function createHttpRequestExecutorRegistration(
         () => executeHttpRequest(dependencies, invocation),
       ),
   });
+}
+
+function prepareHeaders(context: RequestContext, material: RequestMaterial) {
+  const { config, input, runtime, connectionId } = context;
+  const { resolved, multipartContentType } = material;
+  if (
+    resolved !== undefined &&
+    (resolved.connectionId !== connectionId ||
+      resolved.providerKey !== 'http' ||
+      resolved.authType !== 'http_headers')
+  )
+    throw failedConfiguration();
+  const credential =
+    resolved === undefined
+      ? { headers: Object.freeze({}) }
+      : decodeCredential(
+          resolved.secret,
+          () =>
+            new HttpRequestExecutorError(
+              Object.freeze({ kind: 'failed', errorKind: 'authentication' }),
+              false,
+            ),
+        );
+  let headers: Readonly<Record<string, string>>;
+  try {
+    headers = requestHeaders(
+      input,
+      config.headers,
+      credential.headers,
+      multipartContentType,
+    );
+  } catch (error) {
+    if (
+      multipartContentType !== undefined &&
+      runtime.providerDispatchUnresolved === true
+    )
+      throw new HttpRequestExecutorError(
+        Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
+        true,
+      );
+    throw error;
+  }
+  return { credential, headers };
 }

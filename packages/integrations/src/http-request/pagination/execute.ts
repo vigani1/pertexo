@@ -64,20 +64,20 @@ async function readPage(
   }
 }
 
-export async function executePagination(
-  input: Readonly<{
-    client: Pick<SecureHttpClient, 'executeStreaming'>;
-    request: SecureHttpRequest;
-    pagination: HttpPagination;
-    inlineBytes: number;
-    artifacts?: NodeArtifactRuntime;
-    deadlineAt?: Date;
-    checkResponse(
-      status: number,
-      headers: Readonly<Record<string, string>>,
-    ): void;
-  }>,
-) {
+type PaginationExecutionInput = Readonly<{
+  client: Pick<SecureHttpClient, 'executeStreaming'>;
+  request: SecureHttpRequest;
+  pagination: HttpPagination;
+  inlineBytes: number;
+  artifacts?: NodeArtifactRuntime;
+  deadlineAt?: Date;
+  checkResponse(
+    status: number,
+    headers: Readonly<Record<string, string>>,
+  ): void;
+}>;
+
+export async function executePagination(input: PaginationExecutionInput) {
   const { pagination, request } = input;
   request.signal?.throwIfAborted();
   if (
@@ -117,44 +117,7 @@ export async function executePagination(
   async function* records(): AsyncGenerator<EncodedFilePageRecord> {
     for (let page = 1; page <= pagination.maxPages; page += 1) {
       request.signal?.throwIfAborted();
-      let response;
-      try {
-        response = await input.client.executeStreaming(
-          {
-            ...request,
-            url,
-            maxResponseBytes: input.inlineBytes,
-            navigation: {
-              origin: first.origin,
-              link:
-                pagination.mode === 'next_link' &&
-                pagination.source.kind === 'link_header',
-            },
-          },
-          async (stream) => {
-            input.checkResponse(stream.status, stream.headers);
-            return readPage(stream, page);
-          },
-        );
-      } catch (error) {
-        const code = inspectSecureHttpError(error)?.code;
-        if (code === 'pagination_origin_changed')
-          throw new HttpPaginationFailure(
-            'http.pagination_origin_changed',
-            page,
-          );
-        if (code === 'pagination_navigation_invalid')
-          throw new HttpPaginationFailure(
-            'http.pagination_invalid_navigation',
-            page,
-          );
-        if (
-          code === 'response_too_large' ||
-          code === 'response_encoding_rejected'
-        )
-          throw new HttpPaginationFailure('http.pagination_invalid_page', page);
-        throw error;
-      }
+      const response = await fetchPage(input, url, first.origin, page);
       const found = resolveJsonPath(response.body.value, pagination.itemsPath);
       if (found.kind !== 'value' || !Array.isArray(found.value))
         throw new HttpPaginationFailure('http.pagination_invalid_page', page);
@@ -218,4 +181,44 @@ export async function executePagination(
   }
   if (metadata === undefined) throw new Error('Pagination result missing');
   return { items, ...metadata };
+}
+
+async function fetchPage(
+  input: PaginationExecutionInput,
+  url: string,
+  origin: string,
+  page: number,
+) {
+  const { pagination, request } = input;
+  try {
+    return await input.client.executeStreaming(
+      {
+        ...request,
+        url,
+        maxResponseBytes: input.inlineBytes,
+        navigation: {
+          origin,
+          link:
+            pagination.mode === 'next_link' &&
+            pagination.source.kind === 'link_header',
+        },
+      },
+      async (stream) => {
+        input.checkResponse(stream.status, stream.headers);
+        return readPage(stream, page);
+      },
+    );
+  } catch (error) {
+    const code = inspectSecureHttpError(error)?.code;
+    if (code === 'pagination_origin_changed')
+      throw new HttpPaginationFailure('http.pagination_origin_changed', page);
+    if (code === 'pagination_navigation_invalid')
+      throw new HttpPaginationFailure(
+        'http.pagination_invalid_navigation',
+        page,
+      );
+    if (code === 'response_too_large' || code === 'response_encoding_rejected')
+      throw new HttpPaginationFailure('http.pagination_invalid_page', page);
+    throw error;
+  }
 }
