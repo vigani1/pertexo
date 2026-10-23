@@ -1,15 +1,20 @@
+import {
+  replySchema,
+  type Limits,
+  type PendingBatch,
+  type ActiveBatch,
+} from './worker-contract.js';
 import { utf8ByteLength } from '../../values/text.js';
 import { Worker, type WorkerOptions } from 'node:worker_threads';
-import { z } from 'zod';
+
 import { canonicalizeJson } from '../../values/json/canonical.js';
 import { parseWorkflowGraphDraft } from '../../graph/validation/preflight.js';
-import type { WorkflowGraph } from '../../graph/contract.js';
+
 import type { GraphValidationResult } from '../../graph/validation/contract.js';
 import {
   AUTHORING_VALIDATION_BUDGET as budget,
   AuthoringValidationUnavailableError,
   policyProjectionSchema,
-  validationReportSchema,
   type AuthoringValidationUnavailableReason,
   type WorkflowExpressionPolicyProjection,
   type WorkflowAuthoringValidationOptions,
@@ -22,58 +27,6 @@ const runtimeUrl = new URL(
     : './validation-thread.js',
   import.meta.url,
 );
-const replySchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('ready') }).strict(),
-  z
-    .object({ kind: z.literal('started'), id: z.number().int().positive() })
-    .strict(),
-  z
-    .object({
-      kind: z.literal('result'),
-      id: z.number().int().positive(),
-      report: validationReportSchema,
-    })
-    .strict(),
-  z
-    .object({
-      kind: z.literal('unavailable'),
-      id: z.number().int().positive(),
-      reason: z.enum(['report_limit', 'worker_failed']),
-    })
-    .strict(),
-]);
-
-type Limits = Readonly<{
-  maxActive: number;
-  maxQueued: number;
-  maxQueuedBytes: number;
-  queueMs: number;
-  startupMs: number;
-  parseMs: number;
-  terminationMs: number;
-}>;
-interface PendingBatch {
-  id: number;
-  bytes: number;
-  payload:
-    | {
-        graph: WorkflowGraph;
-        policies: WorkflowExpressionPolicyProjection;
-        workspaceVariableNames?: readonly string[];
-      }
-    | undefined;
-  signal: AbortSignal | undefined;
-  abort: (() => void) | undefined;
-  timer: ReturnType<typeof setTimeout> | undefined;
-  queueDeadline: number | undefined;
-  resolve: (report: GraphValidationResult) => void;
-  reject: (error: AuthoringValidationUnavailableError) => void;
-}
-interface ActiveBatch {
-  worker: Worker;
-  exited: boolean;
-  stop: (reason: AuthoringValidationUnavailableReason) => Promise<void>;
-}
 
 /** One runtime-owned, bounded authoring parser. Never evaluates expressions. */
 export class WorkflowAuthoringValidator {
