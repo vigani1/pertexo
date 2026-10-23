@@ -252,11 +252,7 @@ export function registerRecoversBoundedEachBatchesCancellationPostgreSQL(): void
         } else {
           structuredKind = undefined;
         }
-        const accepted = await (structuredKind !== undefined
-          ? acceptStructuredForEachRun(structuredKind)
-          : mode === 'serial_complete'
-            ? acceptSerialForEachRun()
-            : acceptForEachRun());
+        const accepted = await acceptScenarioRun({ structuredKind, mode });
         const coordinatorOutboxes = [accepted.outboxEventId];
         const attemptOutboxes: string[] = [];
         const publishCoordinator = async (
@@ -1100,4 +1096,17 @@ export function registerRecoversBoundedEachBatchesCancellationPostgreSQL(): void
         );
     }
   }, 120_000);
+}
+
+function acceptScenarioRun(
+  input: Readonly<{
+    structuredKind:
+      Parameters<typeof acceptStructuredForEachRun>[0] | undefined;
+    mode: string;
+  }>,
+) {
+  if (input.structuredKind !== undefined)
+    return acceptStructuredForEachRun(input.structuredKind);
+  if (input.mode === 'serial_complete') return acceptSerialForEachRun();
+  return acceptForEachRun();
 }

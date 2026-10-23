@@ -149,25 +149,17 @@ describe('FixtureResourceOwner', () => {
         }),
       ] as const;
 
-      owner.acquire(identityDatabase.name, identityDatabase, (value) =>
-        value.close(),
-      );
-      if (failurePoint !== identityDatabase.name) {
-        owner.acquire(transactions.name, transactions, (value) =>
-          value.close(),
-        );
-        if (failurePoint !== transactions.name) {
-          owner.transfer(identityDatabase);
-          owner.transfer(transactions);
-          owner.acquire(identityRuntime.name, identityRuntime, (value) =>
-            value.close(),
-          );
-          if (failurePoint !== identityRuntime.name) {
-            for (const selected of remaining) {
-              owner.acquire(selected.name, selected, (value) => value.close());
-              if (failurePoint === selected.name) break;
-            }
-          }
+      const continueAcquisition = acquireIdentityChain({
+        owner,
+        failurePoint,
+        identityDatabase,
+        transactions,
+        identityRuntime,
+      });
+      if (continueAcquisition) {
+        for (const selected of remaining) {
+          owner.acquire(selected.name, selected, (value) => value.close());
+          if (failurePoint === selected.name) break;
         }
       }
 
@@ -196,15 +188,7 @@ describe('FixtureResourceOwner', () => {
         ).includes(failurePoint)
           ? ['workspace database']
           : []),
-        ...(failurePoint === 'identity database'
-          ? ['identity database']
-          : failurePoint === 'OIDC transaction store'
-            ? ['OIDC transaction store', 'identity database']
-            : [
-                'identity runtime',
-                'OIDC transaction store',
-                'identity database',
-              ]),
+        ...identityCleanupNames(failurePoint),
       ];
       expect(closed).toEqual(expected);
     },
@@ -267,3 +251,47 @@ describe('FixtureResourceOwner', () => {
     expect(second.close).toHaveBeenCalledOnce();
   });
 });
+
+function acquireIdentityChain(
+  input: Readonly<{
+    owner: FixtureResourceOwner;
+    failurePoint: string;
+    identityDatabase: ReturnType<typeof resource>;
+    transactions: ReturnType<typeof resource>;
+    identityRuntime: ReturnType<typeof resource>;
+  }>,
+): boolean {
+  const {
+    owner,
+    failurePoint,
+    identityDatabase,
+    transactions,
+    identityRuntime,
+  } = input;
+  owner.acquire(identityDatabase.name, identityDatabase, (value) =>
+    value.close(),
+  );
+  if (failurePoint === identityDatabase.name) return false;
+  owner.acquire(transactions.name, transactions, (value) => value.close());
+  if (failurePoint === transactions.name) return false;
+  owner.transfer(identityDatabase);
+  owner.transfer(transactions);
+  owner.acquire(identityRuntime.name, identityRuntime, (value) =>
+    value.close(),
+  );
+  return failurePoint !== identityRuntime.name;
+}
+function identityCleanupNames(failurePoint: string): string[] {
+  switch (failurePoint) {
+    case 'identity database':
+      return ['identity database'];
+    case 'OIDC transaction store':
+      return ['OIDC transaction store', 'identity database'];
+    default:
+      return [
+        'identity runtime',
+        'OIDC transaction store',
+        'identity database',
+      ];
+  }
+}
