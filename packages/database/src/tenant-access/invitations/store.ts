@@ -1,22 +1,11 @@
-import { DELEGATED_ROLES } from '@pertexo/workflow-model';
-import type { Role } from '@pertexo/workflow-model';
-import { canonicalJson } from '@pertexo/workflow-model';
-import { createHash } from 'node:crypto';
-import type { Pool, PoolClient } from 'pg';
+import type { Pool } from 'pg';
 import { z } from 'zod';
 
-import {
-  claimCommand,
-  completeCommand,
-  type CommandIdentity,
-} from '../../platform/idempotency.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import type {
   ChangeWorkspaceInvitationInput,
   CreateWorkspaceInvitationInput,
-  IdentityWorkspaceDatabase,
   WorkspaceInvitationCommandResult,
-  WorkspaceInvitationRecord,
 } from '../contracts.js';
 import { WorkspaceInvitationCommandConflictError } from '../errors.js';
 import { cancelOpenInvitationDeliveries } from './delivery-cancellation.js';
@@ -27,280 +16,27 @@ import {
 } from '../support.js';
 import { canInviteWorkspaceRole } from '@pertexo/workflow-model';
 import { withTenantScopedClient } from '../transactions.js';
-
-type InvitationStore = Pick<
-  IdentityWorkspaceDatabase,
-  | 'listWorkspaceInvitations'
-  | 'createWorkspaceInvitation'
-  | 'resendWorkspaceInvitation'
-  | 'revokeWorkspaceInvitation'
->;
-
-const delegatedRole = z.enum(DELEGATED_ROLES);
-const revision = z.number().int().positive();
-const idempotencyKey = z
-  .string()
-  .min(1)
-  .max(128)
-  .regex(/^[\x21-\x7e]+$/u)
-  .refine((value) => !value.includes(','));
-const digest = z.string().regex(/^[0-9a-f]{64}$/u);
-const sealedToken = z
-  .object({
-    ciphertext: z.string().min(1).max(16_384),
-    nonce: z.string().min(1).max(128),
-    tag: z.string().min(1).max(256),
-    keyVersion: z.string().min(1).max(64),
-  })
-  .strict();
-const durableInvitation = z
-  .object({
-    id: z.uuid(),
-    workspaceId: z.uuid(),
-    email: z.email().max(320),
-    role: delegatedRole,
-    status: z.enum(['pending', 'accepted', 'revoked', 'expired']),
-    revision,
-    deliveryStatus: z.enum(['queued', 'submitted', 'failed', 'canceled']),
-    expiresAt: z.iso.datetime(),
-    createdAt: z.iso.datetime(),
-    updatedAt: z.iso.datetime(),
-  })
-  .strict();
-const durableResult = z.object({ invitation: durableInvitation }).strict();
-
-type InvitationRow = Readonly<{
-  id: string;
-  workspace_id: string;
-  recipient_email: string;
-  role: string;
-  status: string;
-  revision: number;
-  delivery_status: string;
-  expires_at: Date;
-  created_at: Date;
-  updated_at: Date;
-  created_at_cursor?: string;
-}>;
-
-function sha256(value: string): string {
-  return createHash('sha256').update(value).digest('hex');
-}
-
-function normalizeEmail(value: string): string {
-  return z.email().max(320).parse(value.trim()).normalize('NFKC').toLowerCase();
-}
-
-function mapInvitation(row: InvitationRow): WorkspaceInvitationRecord {
-  return Object.freeze({
-    id: z.uuid().parse(row.id),
-    workspaceId: z.uuid().parse(row.workspace_id),
-    email: z.email().parse(row.recipient_email),
-    role: delegatedRole.parse(row.role),
-    status: z
-      .enum(['pending', 'accepted', 'revoked', 'expired'])
-      .parse(row.status),
-    revision: revision.parse(row.revision),
-    deliveryStatus: z
-      .enum(['queued', 'submitted', 'failed', 'canceled'])
-      .parse(row.delivery_status),
-    expiresAt: z.coerce.date().parse(row.expires_at),
-    createdAt: z.coerce.date().parse(row.created_at),
-    updatedAt: z.coerce.date().parse(row.updated_at),
-  });
-}
-
-function serializeInvitation(invitation: WorkspaceInvitationRecord) {
-  return durableInvitation.parse({
-    ...invitation,
-    expiresAt: invitation.expiresAt.toISOString(),
-    createdAt: invitation.createdAt.toISOString(),
-    updatedAt: invitation.updatedAt.toISOString(),
-  });
-}
-
-// Locks always go workspace first, then the actor's user and membership,
-// as the member store does, so no two transactions can wait on each other in
-// a cycle. Reads take share locks: listing invitations while the members list
-// loads must not deadlock; commands take update locks and still serialize.
-async function lockAuthorizedActor(
-  client: PoolClient,
-  workspaceId: string,
-  actorUserId: string,
-  strength: 'update' | 'share' = 'update',
-): Promise<Role> {
-  const workspace = await client.query<{ status: string }>(
-    `select status from app.workspaces where id=$1 for ${strength}`,
-    [workspaceId],
-  );
-  if (workspace.rows[0]?.status !== 'active')
-    throw new WorkspaceInvitationCommandConflictError(
-      'actor_inactive',
-      'The workspace is not active',
-    );
-  const actor = await client.query<{
-    role: Role;
-    membership_status: string;
-    user_status: string;
-  }>(
-    `select membership.role,membership.status membership_status,users.status user_status
-       from app.users users
-       join app.workspace_memberships membership on membership.user_id=users.id
-      where users.id=$1 and membership.workspace_id=$2
-      for ${strength} of users,membership`,
-    [actorUserId, workspaceId],
-  );
-  const row = actor.rows[0];
-  if (
-    row?.user_status !== 'active' ||
-    row.membership_status !== 'active' ||
-    (row.role !== 'owner' && row.role !== 'admin')
-  )
-    throw new WorkspaceInvitationCommandConflictError(
-      'actor_inactive',
-      'The actor is no longer allowed to manage invitations',
-    );
-  return row.role;
-}
-
-/** An invitation command's key, per actor and workspace. */
-function invitationKey(
-  workspaceId: string,
-  actorUserId: string,
-  operation: 'create' | 'resend' | 'revoke',
-  key: string,
-): CommandIdentity {
-  return {
-    workspaceId,
-    operation: `workspace.invitation.${operation}`,
-    scope: actorUserId,
-    idempotencyKey: idempotencyKey.parse(key),
-  };
-}
-
-/** Claims the key; returns the invitation an exact retry replays. */
-async function claimInvitationCommand(
-  client: PoolClient,
-  key: CommandIdentity,
-  request: Record<string, unknown>,
-  invitationId: string,
-): Promise<WorkspaceInvitationCommandResult | null> {
-  const stored = await claimCommand(client, {
-    ...key,
-    request,
-    resourceId: invitationId,
-  });
-  if (stored === null) return null;
-  return Object.freeze({
-    invitation: mapDurableInvitation(durableResult.parse(stored).invitation),
-    replayed: true,
-  });
-}
-
-function mapDurableInvitation(
-  invitation: z.output<typeof durableInvitation>,
-): WorkspaceInvitationRecord {
-  return Object.freeze({
-    ...invitation,
-    expiresAt: new Date(invitation.expiresAt),
-    createdAt: new Date(invitation.createdAt),
-    updatedAt: new Date(invitation.updatedAt),
-  });
-}
-
-async function completeInvitationCommand(
-  client: PoolClient,
-  key: CommandIdentity,
-  invitation: WorkspaceInvitationRecord,
-): Promise<WorkspaceInvitationCommandResult> {
-  await completeCommand(client, key, {
-    invitation: serializeInvitation(invitation),
-  });
-  return Object.freeze({ invitation, replayed: false });
-}
-
-async function insertDelivery(
-  client: PoolClient,
-  input: Readonly<{
-    workspaceId: string;
-    invitationId: string;
-    revision: number;
-    deliveryAttemptId: string;
-    sealed: z.output<typeof sealedToken>;
-  }>,
-): Promise<void> {
-  await client.query(
-    `insert into app.workspace_invitation_delivery_attempts
-       (id,workspace_id,invitation_id,invitation_revision,status,
-        token_ciphertext,token_nonce,token_tag,token_key_version,workspace_name)
-     select $1,$2,$3,$4,'queued',$5,$6,$7,$8,workspace.name
-       from app.workspaces workspace where workspace.id=$2`,
-    [
-      input.deliveryAttemptId,
-      input.workspaceId,
-      input.invitationId,
-      input.revision,
-      input.sealed.ciphertext,
-      input.sealed.nonce,
-      input.sealed.tag,
-      input.sealed.keyVersion,
-    ],
-  );
-  const outboxEventId = generatePersistedId();
-  const payload = {
-    deliveryAttemptId: input.deliveryAttemptId,
-    invitationId: input.invitationId,
-    outboxEventId,
-    workspaceId: input.workspaceId,
-  };
-  const payloadJson = canonicalJson(payload);
-  await client.query(
-    `insert into app.outbox_events
-       (id,workspace_id,job_name,aggregate_type,aggregate_id,
-        payload,payload_checksum)
-     values($1,$2,'deliver-workspace-invitation','workspace-invitation',$3,$4::jsonb,$5)`,
-    [
-      outboxEventId,
-      input.workspaceId,
-      input.invitationId,
-      payloadJson,
-      sha256(payloadJson),
-    ],
-  );
-}
-
-async function recordAudit(
-  client: PoolClient,
-  input: Readonly<{
-    workspaceId: string;
-    actorUserId: string;
-    invitationId: string;
-    action: string;
-    revision: number;
-    role: string;
-    requestId?: string;
-    traceId?: string;
-  }>,
-): Promise<void> {
-  await client.query(
-    `insert into app.audit_events
-       (id,workspace_id,actor_user_id,action,target_type,target_id,request_id,trace_id,metadata)
-     values($1,$2,$3,$4,'workspace_invitation',$5,$6,$7,$8::jsonb)`,
-    [
-      generatePersistedId(),
-      input.workspaceId,
-      input.actorUserId,
-      input.action,
-      input.invitationId,
-      input.requestId ?? null,
-      input.traceId ?? null,
-      JSON.stringify({ revision: input.revision, role: input.role }),
-    ],
-  );
-}
-
-const invitationSelection = `id,workspace_id,recipient_email,role,status,revision,
-  delivery_status,expires_at,created_at,updated_at`;
+import {
+  type InvitationStore,
+  delegatedRole,
+  revision,
+  digest,
+  sealedToken,
+  type InvitationRow,
+} from './management/contract.js';
+import {
+  normalizeEmail,
+  mapInvitation,
+  lockAuthorizedActor,
+  invitationSelection,
+} from './management/state.queries.js';
+import {
+  invitationKey,
+  claimInvitationCommand,
+  completeInvitationCommand,
+  insertDelivery,
+  recordAudit,
+} from './management/receipts.js';
 
 export function createIdentityWorkspaceInvitationStore(
   pool: Pool,
