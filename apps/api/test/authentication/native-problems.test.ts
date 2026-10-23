@@ -8,93 +8,153 @@ const mappings = [
   [
     403,
     'ALTERNATIVE_SIGN_IN_REQUIRED',
-    403,
-    'auth.alternative_required',
-    'Another sign-in method required',
+    {
+      status: 403,
+      code: 'auth.alternative_required',
+      title: 'Another sign-in method required',
+    },
   ],
   [
     403,
     'ORGANIZATION_EMAIL_MANAGED',
-    403,
-    'auth.organization_email_managed',
-    'Organization email address is managed',
+    {
+      status: 403,
+      code: 'auth.organization_email_managed',
+      title: 'Organization email address is managed',
+    },
   ],
   [
     400,
     'AUTHENTICATION_METHOD_LIMIT',
-    400,
-    'auth.method_limit',
-    'Sign-in method limit reached',
+    {
+      status: 400,
+      code: 'auth.method_limit',
+      title: 'Sign-in method limit reached',
+    },
   ],
   [
     403,
     'RECOVERY_PASSWORD_REQUIRED',
-    403,
-    'auth.recovery_required',
-    'Recovery password required',
+    {
+      status: 403,
+      code: 'auth.recovery_required',
+      title: 'Recovery password required',
+    },
   ],
   [
     403,
     'SSO_REQUIRED',
-    403,
-    'auth.sso_required',
-    'Organization sign-in required',
+    {
+      status: 403,
+      code: 'auth.sso_required',
+      title: 'Organization sign-in required',
+    },
   ],
   [
     403,
     'EMAIL_NOT_VERIFIED',
+    {
+      status: 403,
+      code: 'auth.email_not_verified',
+      title: 'Email verification required',
+    },
+  ],
+  [
+    400,
+    'INVALID_TOKEN',
+    {
+      status: 400,
+      code: 'auth.reset_link_invalid',
+      title: 'Reset link invalid or expired',
+    },
+  ],
+  [
+    401,
+    'INVALID_TOKEN',
+    {
+      status: 401,
+      code: 'auth.unauthenticated',
+      title: 'Authentication required',
+    },
+  ],
+  [
     403,
-    'auth.email_not_verified',
-    'Email verification required',
+    'INVALID_TOKEN',
+    { status: 403, code: 'auth.forbidden', title: 'Forbidden' },
   ],
   [
-    400,
-    'INVALID_TOKEN',
-    400,
-    'auth.reset_link_invalid',
-    'Reset link invalid or expired',
+    404,
+    'UNKNOWN',
+    { status: 404, code: 'resource.not_found', title: 'Resource not found' },
   ],
   [
-    401,
-    'INVALID_TOKEN',
-    401,
-    'auth.unauthenticated',
-    'Authentication required',
+    409,
+    'UNKNOWN',
+    {
+      status: 409,
+      code: 'auth.conflict',
+      title: 'Authentication change conflict',
+    },
   ],
-  [403, 'INVALID_TOKEN', 403, 'auth.forbidden', 'Forbidden'],
-  [404, 'UNKNOWN', 404, 'resource.not_found', 'Resource not found'],
-  [409, 'UNKNOWN', 409, 'auth.conflict', 'Authentication change conflict'],
   [
     429,
     'ACCOUNT_TEMPORARILY_LOCKED',
-    429,
-    'auth.two_factor_locked',
-    'Two-factor sign-in temporarily locked',
+    {
+      status: 429,
+      code: 'auth.two_factor_locked',
+      title: 'Two-factor sign-in temporarily locked',
+    },
   ],
-  [429, 'UNKNOWN', 429, 'request.rate_limited', 'Too many requests'],
+  [
+    429,
+    'UNKNOWN',
+    { status: 429, code: 'request.rate_limited', title: 'Too many requests' },
+  ],
   [
     503,
     'UNKNOWN',
-    503,
-    'provider.unavailable',
-    'Authentication temporarily unavailable',
+    {
+      status: 503,
+      code: 'provider.unavailable',
+      title: 'Authentication temporarily unavailable',
+    },
   ],
-  [400, 'UNKNOWN', 400, 'request.invalid', 'Invalid request'],
-  [422, 'INVALID_TOKEN', 400, 'request.invalid', 'Invalid request'],
-  [418, 'UNKNOWN', 500, 'internal.unexpected', 'Authentication unavailable'],
+  [
+    400,
+    'UNKNOWN',
+    { status: 400, code: 'request.invalid', title: 'Invalid request' },
+  ],
+  [
+    422,
+    'INVALID_TOKEN',
+    { status: 400, code: 'request.invalid', title: 'Invalid request' },
+  ],
+  [
+    418,
+    'UNKNOWN',
+    {
+      status: 500,
+      code: 'internal.unexpected',
+      title: 'Authentication unavailable',
+    },
+  ],
   [
     500,
     'EMAIL_NOT_VERIFIED',
-    500,
-    'internal.unexpected',
-    'Authentication unavailable',
+    {
+      status: 500,
+      code: 'internal.unexpected',
+      title: 'Authentication unavailable',
+    },
   ],
 ] as const;
 
 describe('native authentication problem transport', () => {
   it.each(mappings)(
     'maps HTTP %i / %s without exposing provider details',
-    async (status, nativeCode, expectedStatus, code, title) => {
+    async (status, nativeCode, expected) => {
+      const { status: expectedStatus, code, title } = expected;
+
       const application = Fastify();
       registerBetterAuthHandler(application, {
         publicOrigin: 'https://pertexo.test',

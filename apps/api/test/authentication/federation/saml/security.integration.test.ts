@@ -97,19 +97,19 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
         owner: await api.signIn(fixture.ownerEmail),
       };
       const pending = await api.start(current, true);
-      await api.command(
-        current.workspaceId,
-        current.owner,
-        `/providers/${current.provider.id}`,
-        {
+      await api.command({
+        workspaceId: current.workspaceId,
+        owner: current.owner,
+        path: `/providers/${current.provider.id}`,
+        payload: {
           kind: 'saml',
           name: 'Changed provider',
           configuration: current.provider.configuration,
           enabled: false,
           expectedRevision: 4,
         },
-        'PUT',
-      );
+        method: 'PUT',
+      });
       expect((await api.finish(current, pending)).headers.location).toContain(
         'ssoError=true',
       );

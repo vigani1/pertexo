@@ -64,14 +64,21 @@ export function useSamlApi(suite: string) {
   afterAll(() => {
     restoreDns?.();
   });
-  async function command(
-    workspaceId: string,
-    owner: Browser,
-    path: string,
-    payload: object,
-    method: 'POST' | 'PUT' = 'POST',
+  async function command({
+    workspaceId,
+    owner,
+    path,
+    payload,
+    method = 'POST',
     key = randomUUID(),
-  ) {
+  }: Readonly<{
+    workspaceId: string;
+    owner: Browser;
+    path: string;
+    payload: object;
+    method?: 'POST' | 'PUT' | undefined;
+    key?: `${string}-${string}-${string}-${string}-${string}` | undefined;
+  }>) {
     const response = await api.send(
       method,
       `/v1/workspaces/${workspaceId}/sso${path}`,
@@ -92,31 +99,51 @@ export function useSamlApi(suite: string) {
     });
     expect(workspace.statusCode, workspace.payload).toBe(201);
     const workspaceId = workspace.json<{ id: string }>().id;
-    await command(workspaceId, owner, '/organization', {
-      name: 'SAML organization',
+    await command({
+      workspaceId: workspaceId,
+      owner: owner,
+      path: '/organization',
+      payload: {
+        name: 'SAML organization',
+      },
     });
-    const added = await command(workspaceId, owner, '/domains', {
-      domain,
-      expectedRevision: 1,
+    const added = await command({
+      workspaceId: workspaceId,
+      owner: owner,
+      path: '/domains',
+      payload: {
+        domain,
+        expectedRevision: 1,
+      },
     });
     const domainId = added.organization?.domains[0]?.id;
     if (domainId === undefined) throw new Error('Domain missing');
-    await command(workspaceId, owner, `/domains/${domainId}/verify`, {
-      expectedRevision: 2,
-    });
-    const settings = await command(workspaceId, owner, '/providers', {
-      kind: 'saml',
-      name: 'Owned SAML',
-      issuer: 'http://www.okta.com/owned-idp',
-      configuration: {
-        signInUrl: 'https://idp.example.test/sso',
-        certificates: [material.certificate],
-        emailAttribute: 'email',
-        nameAttribute: 'name',
-        jitEnabled: true,
+    await command({
+      workspaceId: workspaceId,
+      owner: owner,
+      path: `/domains/${domainId}/verify`,
+      payload: {
+        expectedRevision: 2,
       },
-      enabled,
-      expectedRevision: 3,
+    });
+    const settings = await command({
+      workspaceId: workspaceId,
+      owner: owner,
+      path: '/providers',
+      payload: {
+        kind: 'saml',
+        name: 'Owned SAML',
+        issuer: 'http://www.okta.com/owned-idp',
+        configuration: {
+          signInUrl: 'https://idp.example.test/sso',
+          certificates: [material.certificate],
+          emailAttribute: 'email',
+          nameAttribute: 'name',
+          jitEnabled: true,
+        },
+        enabled,
+        expectedRevision: 3,
+      },
     });
     const organization = settings.organization;
     if (organization === null) throw new Error('Organization missing');

@@ -241,14 +241,21 @@ export function parseResponse<T>(
   return schema.parse(response.json());
 }
 
-export async function expectInvalidPutOrFinalization(
-  fixture: ArtifactTransferApiFixture,
-  owner: SessionCookies,
-  uploadsUrl: string,
-  artifactId: string,
-  result: Readonly<{ ok: boolean; status: number }>,
-  idempotencyKey: string,
-): Promise<void> {
+export async function expectInvalidPutOrFinalization({
+  fixture,
+  owner,
+  uploadsUrl,
+  artifactId,
+  result,
+  idempotencyKey,
+}: Readonly<{
+  fixture: ArtifactTransferApiFixture;
+  owner: SessionCookies;
+  uploadsUrl: string;
+  artifactId: string;
+  result: Readonly<{ ok: boolean; status: number }>;
+  idempotencyKey: string;
+}>): Promise<void> {
   if (!result.ok) {
     expect(result.status).toBeGreaterThanOrEqual(400);
     return;

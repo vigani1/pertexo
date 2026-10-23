@@ -71,13 +71,19 @@ export function curatedScheduleTimestamp(value: string) {
 /** Disposable fixture only. Real ingress and database-clock scanner delivery;
  * the one-minute schedule is an independently edited variation, not asset v1.
  */
-export async function executeCuratedTemplateTriggers(
-  api: Api,
-  browser: Awaited<ReturnType<Api['signIn']>>,
-  workspaceId: string,
-  workflowIds: readonly string[],
-  apiOrigin: string,
-) {
+export async function executeCuratedTemplateTriggers({
+  api,
+  browser,
+  workspaceId,
+  workflowIds,
+  apiOrigin,
+}: Readonly<{
+  api: Api;
+  browser: Awaited<ReturnType<Api['signIn']>>;
+  workspaceId: string;
+  workflowIds: readonly string[];
+  apiOrigin: string;
+}>) {
   const origin = new URL(apiOrigin);
   if (
     origin.protocol !== 'http:' ||
@@ -111,13 +117,19 @@ export async function executeCuratedTemplateTriggers(
     expect(response.statusCode).toBe(200);
     return response.json();
   }
-  async function terminal(
-    runId: string,
-    versionId: string,
-    triggerType: string,
-    succeeded: string,
-    skipped?: string,
-  ) {
+  async function terminal({
+    runId,
+    versionId,
+    triggerType,
+    succeeded,
+    skipped,
+  }: Readonly<{
+    runId: string;
+    versionId: string;
+    triggerType: string;
+    succeeded: string;
+    skipped?: string | undefined;
+  }>) {
     let observedStatus = 'queued';
     await expect
       .poll(
@@ -214,13 +226,13 @@ export async function executeCuratedTemplateTriggers(
       if (!('runId' in accepted))
         throw new Error('Expected a template webhook run');
       expect(accepted.replayed).toBe(false);
-      await terminal(
-        accepted.runId,
-        webhook.workflowVersionId,
-        'webhook',
-        name === 'accepted' ? 'accepted' : 'rejected',
-        name === 'accepted' ? 'rejected' : 'accepted',
-      );
+      await terminal({
+        runId: accepted.runId,
+        versionId: webhook.workflowVersionId,
+        triggerType: 'webhook',
+        succeeded: name === 'accepted' ? 'accepted' : 'rejected',
+        skipped: name === 'accepted' ? 'rejected' : 'accepted',
+      });
       const deliveries = webhookDeliveryListResponseSchema.parse(
         await get(
           `${path(webhookId)}/triggers/${webhook.id}/webhook/deliveries`,
@@ -332,12 +344,12 @@ export async function executeCuratedTemplateTriggers(
   expect(leases.rows).toEqual([
     { lease_owner: null, lease_token: null, lease_expires_at: null },
   ]);
-  const nodes = await terminal(
-    occurrence.runId,
-    versionId,
-    'schedule',
-    'batch-complete',
-  );
+  const nodes = await terminal({
+    runId: occurrence.runId,
+    versionId: versionId,
+    triggerType: 'schedule',
+    succeeded: 'batch-complete',
+  });
   expect(
     nodes.filter((node) => node.node_id === 'batch-body-result'),
   ).toHaveLength(2);

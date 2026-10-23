@@ -40,20 +40,22 @@ export function registerRegistersRequestedSchedulePreviewActualBetter(): void {
     let suppliedRuntime: ApiScheduleRuntime | undefined;
     try {
       applicationFixture.application = await createBetterAuthFixtureApplication(
-        config,
         {
-          ...dependencies(),
-          identityRuntime: identityRuntime(undefined, true),
-        },
-        owner,
-        true,
-        async (selected) => {
-          const runtime = await createApiScheduleRuntime(
-            selected,
-            scheduleDatabase,
-          );
-          suppliedRuntime = { ...runtime, close: vi.fn(runtime.close) };
-          return suppliedRuntime;
+          config: config,
+          dependencies: {
+            ...dependencies(),
+            identityRuntime: identityRuntime(undefined, true),
+          },
+          owner: owner,
+          schedules: true,
+          createSchedules: async (selected) => {
+            const runtime = await createApiScheduleRuntime(
+              selected,
+              scheduleDatabase,
+            );
+            suppliedRuntime = { ...runtime, close: vi.fn(runtime.close) };
+            return suppliedRuntime;
+          },
         },
       );
       const preview = await applicationFixture.application.inject({
@@ -127,14 +129,16 @@ export function registerRegistersRequestedSchedulePreviewActualBetter(): void {
     const createSchedules = vi.fn(createApiScheduleRuntime);
     try {
       applicationFixture.application = await createBetterAuthFixtureApplication(
-        config,
         {
-          ...dependencies(),
-          identityRuntime: identityRuntime(undefined, true),
+          config: config,
+          dependencies: {
+            ...dependencies(),
+            identityRuntime: identityRuntime(undefined, true),
+          },
+          owner: owner,
+          schedules: undefined,
+          createSchedules: createSchedules,
         },
-        owner,
-        undefined,
-        createSchedules,
       );
       const response = await applicationFixture.application.inject({
         method: 'GET',
@@ -158,16 +162,16 @@ export function registerRegistersRequestedSchedulePreviewActualBetter(): void {
       close,
     };
     await expect(
-      createBetterAuthFixtureApplication(
-        config,
-        {
+      createBetterAuthFixtureApplication({
+        config: config,
+        dependencies: {
           ...dependencies(),
           identityRuntime: identityRuntime(undefined, true),
         },
-        owner,
-        true,
-        () => Promise.resolve(runtime),
-      ),
+        owner: owner,
+        schedules: true,
+        createSchedules: () => Promise.resolve(runtime),
+      }),
     ).rejects.toThrow('schedule readiness unavailable');
     await owner.close();
     expect(close).toHaveBeenCalledOnce();

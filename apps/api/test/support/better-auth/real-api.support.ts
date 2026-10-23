@@ -284,9 +284,9 @@ export function useBetterAuthRealApi(
             (runtime) => runtime.close(),
           )
         : undefined;
-    application = await createBetterAuthFixtureApplication(
-      config,
-      {
+    application = await createBetterAuthFixtureApplication({
+      config: config,
+      dependencies: {
         database: workspaceDatabase,
         identityRuntime,
         logger: options.logger ?? silent,
@@ -297,9 +297,9 @@ export function useBetterAuthRealApi(
           ? {}
           : { connectionOverrides: options.connections.overrides }),
       },
-      owner,
-      options.schedules,
-    );
+      owner: owner,
+      schedules: options.schedules,
+    });
     if (webhookRuntime !== undefined) owner.transfer(webhookRuntime);
     if (notificationRuntime !== undefined) owner.transfer(notificationRuntime);
     await application.init();

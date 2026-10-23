@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as Vitest from 'vitest';
-import type { FixtureResourceOwner } from '../../browser/harness/resource-owner.js';
+import type { createBetterAuthFixtureApplication } from './fixture-application.js';
 
 const fixture = vi.hoisted(() => ({
   setup: undefined as (() => Promise<void>) | undefined,
@@ -55,11 +55,9 @@ vi.mock('../disposable-database.js', () => ({
   dropDisconnectedDatabase: () => close('database drop'),
 }));
 vi.mock('./fixture-application.js', () => ({
-  createBetterAuthFixtureApplication: (
-    _config: unknown,
-    _dependencies: unknown,
-    owner: FixtureResourceOwner,
-  ) =>
+  createBetterAuthFixtureApplication: ({
+    owner,
+  }: Parameters<typeof createBetterAuthFixtureApplication>[0]) =>
     owner.acquire('API application', { init: vi.fn() }, () =>
       close('application'),
     ),

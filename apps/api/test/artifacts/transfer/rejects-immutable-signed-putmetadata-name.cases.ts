@@ -47,14 +47,14 @@ export function registerRejectsImmutableSignedPUTMetadataName(): void {
         headers(body),
       );
 
-      await expectInvalidPutOrFinalization(
-        fixture,
-        owner,
-        uploadUrl(fixture),
-        started.artifact.id,
-        result,
-        `${name.replaceAll(' ', '-')}-${started.artifact.id}`,
-      );
+      await expectInvalidPutOrFinalization({
+        fixture: fixture,
+        owner: owner,
+        uploadsUrl: uploadUrl(fixture),
+        artifactId: started.artifact.id,
+        result: result,
+        idempotencyKey: `${name.replaceAll(' ', '-')}-${started.artifact.id}`,
+      });
     },
   );
 
