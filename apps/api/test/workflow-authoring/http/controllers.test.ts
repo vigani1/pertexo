@@ -148,6 +148,14 @@ function makeController() {
 }
 
 describe('workflow authoring controller public seam', () => {
+  registerPassesExactVersionFilterUnderNormal();
+
+  registerDelegatesPinnedParentReadRejectsOrganization();
+
+  registerDelegatesOneValidCreateCommandMaps();
+});
+
+function registerPassesExactVersionFilterUnderNormal(): void {
   it('passes an exact version filter under the normal workspace read authority', async () => {
     const { versions: controller, listVersions } = makeController();
     await controller.versions(
@@ -277,6 +285,7 @@ describe('workflow authoring controller public seam', () => {
     ).rejects.toThrow();
     expect(duplicateWorkflow.execute).not.toHaveBeenCalled();
   });
+
   it('returns the checked snapshot tag and forwards the request signal for validate and publish', async () => {
     const {
       authoring: controller,
@@ -315,6 +324,7 @@ describe('workflow authoring controller public seam', () => {
       expect.any(AbortSignal),
     );
   });
+
   it('delegates bounded list input and rejects empty or oversized cursors before delegation', async () => {
     const { authoring: controller, listWorkflows } = makeController();
     await expect(
@@ -348,7 +358,9 @@ describe('workflow authoring controller public seam', () => {
     }
     expect(listWorkflows.execute).toHaveBeenCalledOnce();
   });
+}
 
+function registerDelegatesPinnedParentReadRejectsOrganization(): void {
   it('delegates a pinned-parent read and rejects organization filters mixed with it', async () => {
     const { authoring: controller, listWorkflows } = makeController();
     await controller.list(
@@ -457,6 +469,7 @@ describe('workflow authoring controller public seam', () => {
     );
     expect(response.header).toHaveBeenCalledWith('ETag', tag);
   });
+
   it.each(['archive', 'restore'] as const)(
     'forwards one %s command and requires idempotency',
     async (command) => {
@@ -485,6 +498,7 @@ describe('workflow authoring controller public seam', () => {
       );
     },
   );
+
   it('forwards one rename command and requires idempotency before delegation', async () => {
     const { lifecycle: controller, renameWorkflow } = makeController();
     const renameBody = { name: 'Invoices', expectedNameRevision: 1 };
@@ -516,6 +530,7 @@ describe('workflow authoring controller public seam', () => {
       }),
     );
   });
+
   it('parses and delegates a draft read once, then maps the representation ETag', async () => {
     const { authoring: controller, getDraft } = makeController();
     const response = { header: vi.fn() };
@@ -555,7 +570,9 @@ describe('workflow authoring controller public seam', () => {
     });
     expect(saveDraft.execute).not.toHaveBeenCalled();
   });
+}
 
+function registerDelegatesOneValidCreateCommandMaps(): void {
   it('delegates one valid create command and maps its draft ETag', async () => {
     const { authoring: controller, createWorkflow } = makeController();
     const response = { header: vi.fn() };
@@ -696,4 +713,4 @@ describe('workflow authoring controller public seam', () => {
     ).rejects.toMatchObject({ name: 'ZodError' });
     expect(createWorkflow.execute).not.toHaveBeenCalled();
   });
-});
+}

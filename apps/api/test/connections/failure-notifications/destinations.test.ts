@@ -78,6 +78,14 @@ function persistence(): FailureNotificationDestinationDatabase {
 }
 
 describe('failure notification destination API seams', () => {
+  registerAcceptsTypedApplicationCommandsAllSeven();
+
+  registerRejectsInvalidDuplicateIdempotencyHeaderValues();
+
+  registerAppendsVersionPropagatesOptimisticIdempotencyConflicts();
+});
+
+function registerAcceptsTypedApplicationCommandsAllSeven(): void {
   it('accepts typed application commands for all seven operations', async () => {
     const database = persistence();
     const useCases = new FailureNotificationDestinationUseCases(
@@ -292,7 +300,9 @@ describe('failure notification destination API seams', () => {
       }),
     );
   });
+}
 
+function registerRejectsInvalidDuplicateIdempotencyHeaderValues(): void {
   it.each([[['duplicate-one', 'duplicate-two']], ['contains,comma'], ['']])(
     'rejects invalid or duplicate idempotency header values %j',
     async (value) => {
@@ -469,7 +479,9 @@ describe('failure notification destination API seams', () => {
       controller.getPolicy(request(), { workspaceId, workflowId: 'nope' }),
     ).rejects.toMatchObject({ name: 'ZodError' });
   });
+}
 
+function registerAppendsVersionPropagatesOptimisticIdempotencyConflicts(): void {
   it('appends a version and propagates optimistic and idempotency conflicts', async () => {
     const database = persistence();
     const controller = new FailureNotificationDestinationsController(
@@ -622,4 +634,4 @@ describe('failure notification destination API seams', () => {
       name: 'FailureNotificationDestinationError',
     });
   });
-});
+}

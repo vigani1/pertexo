@@ -144,10 +144,27 @@ function createDispatcher(
 }
 
 describe('outbox dispatcher', () => {
-  afterEach(() => {
-    vi.useRealTimers();
-  });
+  afterEach(
+    cleanAppsWorkerTestTransportOutboxDispatcherOutboxDispatcherFixture,
+  );
+  registerHoldsEveryRowWorkerConsumesNo();
 
+  registerOwnsTimedOutPublicationMarkThrough();
+
+  registerSerializesAbortRespectingCapacitySamplesAt();
+
+  registerFailsChecksumMismatchThroughBoundedRelease();
+
+  registerWaitsAdmittedQueueBacklogObservationsBefore();
+
+  registerRestoresIdleIntervalAfterFailedClaim();
+});
+
+function cleanAppsWorkerTestTransportOutboxDispatcherOutboxDispatcherFixture() {
+  vi.useRealTimers();
+}
+
+function registerHoldsEveryRowWorkerConsumesNo(): void {
   it('holds every row when the worker consumes no job kind', async () => {
     const selected = boundaries([event()]);
     const dispatcher = new OutboxDispatcher(
@@ -356,7 +373,9 @@ describe('outbox dispatcher', () => {
     expect(selected.database.markPublished).not.toHaveBeenCalled();
     expect(selected.database.releaseOrFail).not.toHaveBeenCalled();
   });
+}
 
+function registerOwnsTimedOutPublicationMarkThrough(): void {
   it.each([
     { kind: 'success', late: true },
     { kind: 'stale', late: false },
@@ -563,7 +582,9 @@ describe('outbox dispatcher', () => {
     expect(selected.database.close).toHaveBeenCalledOnce();
     expect(selected.producer.close).toHaveBeenCalledOnce();
   });
+}
 
+function registerSerializesAbortRespectingCapacitySamplesAt(): void {
   it('serializes abort-respecting capacity samples at the operation deadline', async () => {
     vi.useFakeTimers();
     const selected = boundaries([indexedEvent(0), indexedEvent(1)]);
@@ -767,7 +788,9 @@ describe('outbox dispatcher', () => {
       expect.objectContaining({ published: 1 }),
     );
   });
+}
 
+function registerFailsChecksumMismatchThroughBoundedRelease(): void {
   it('fails a checksum mismatch through the bounded release seam without publishing', async () => {
     const selected = boundaries([event({ payloadChecksum: '0'.repeat(64) })]);
     const metrics = transportMetrics();
@@ -970,7 +993,9 @@ describe('outbox dispatcher', () => {
     expect(selected.database.close).toHaveBeenCalledOnce();
     expect(selected.producer.close).toHaveBeenCalledOnce();
   });
+}
 
+function registerWaitsAdmittedQueueBacklogObservationsBefore(): void {
   it('waits for admitted queue and backlog observations before dependency close', async () => {
     const selected = boundaries([event()]);
     const queueObservation =
@@ -1180,7 +1205,9 @@ describe('outbox dispatcher', () => {
       expect(vi.getTimerCount()).toBe(0);
     },
   );
+}
 
+function registerRestoresIdleIntervalAfterFailedClaim(): void {
   it('restores the idle interval after a failed claim during activity', async () => {
     vi.useFakeTimers();
     const selected = boundaries([]);
@@ -1303,4 +1330,4 @@ describe('outbox dispatcher', () => {
     expect(error.message).toContain(EVENT_ID);
     expect(error.message).not.toContain(RUN_ID);
   });
-});
+}

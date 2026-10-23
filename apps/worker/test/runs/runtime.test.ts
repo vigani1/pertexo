@@ -75,6 +75,14 @@ function runtimeDependencies(
 }
 
 describe('coordinator runtime', () => {
+  registerRollsBackEveryOwnerAcquiredBefore();
+
+  registerAttemptsEverySynchronousRejectedCloserPreserves();
+
+  registerReportsBoundedShutdownFailureDefersAdapters();
+});
+
+function registerRollsBackEveryOwnerAcquiredBefore(): void {
   it.each([
     ['telemetry', []],
     ['traceRunner', []],
@@ -271,7 +279,9 @@ describe('coordinator runtime', () => {
     );
     await runtime.close();
   });
+}
 
+function registerAttemptsEverySynchronousRejectedCloserPreserves(): void {
   it('attempts every synchronous or rejected closer and preserves all failures', async () => {
     const failures = {
       consumer: new Error('consumer close failed'),
@@ -461,7 +471,9 @@ describe('coordinator runtime', () => {
         expect(idleScanner.claimDueWakeups).not.toHaveBeenCalled();
     },
   );
+}
 
+function registerReportsBoundedShutdownFailureDefersAdapters(): void {
   it('reports a bounded shutdown failure and defers adapters until raw scanning settles', async () => {
     const scan = Promise.withResolvers<number>();
     const blockingScanner = {
@@ -602,4 +614,4 @@ describe('coordinator runtime', () => {
     expect(consumer.close).toHaveBeenCalledOnce();
     expect(runStore.close).toHaveBeenCalledOnce();
   });
-});
+}

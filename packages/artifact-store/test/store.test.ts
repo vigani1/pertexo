@@ -302,6 +302,22 @@ async function readAll(body: Readable): Promise<Buffer> {
 }
 
 describe('ArtifactStore', () => {
+  registerRejectsHTTPUnsafeArtifactMediaType();
+
+  registerFailsClosedSuccessfulPUTIsNot();
+
+  registerPresignsAttachmentGETCanonicalWorkspaceArtifact();
+
+  registerPreservesCallerCancellationThroughPostUpload();
+
+  registerDestroysS3ResponseBodyGetMetadata();
+
+  registerDeletesIdempotentlyReportsMissingDownload();
+
+  registerArtifactStoreRejectsDeleteAcknowledgementsS();
+});
+
+function registerRejectsHTTPUnsafeArtifactMediaType(): void {
   it.each([
     'application/js\u000bon',
     'application/js\u001fon',
@@ -498,7 +514,9 @@ describe('ArtifactStore', () => {
       store.head({ artifactId: ARTIFACT_ID, workspaceId: WORKSPACE_ID }),
     ).resolves.toMatchObject({ sha256: HELLO_SHA256 });
   });
+}
 
+function registerFailsClosedSuccessfulPUTIsNot(): void {
   it('fails closed when a successful PUT is not visible to its verification HEAD', async () => {
     const { client, store } = createStore();
     client.nextHeadNotFound = true;
@@ -696,7 +714,9 @@ describe('ArtifactStore', () => {
       'x-amz-checksum-sha256',
     );
   });
+}
 
+function registerPresignsAttachmentGETCanonicalWorkspaceArtifact(): void {
   it('presigns an attachment GET for the canonical workspace artifact key', async () => {
     const fixture = createStore();
     const hostileRequest = {
@@ -901,7 +921,9 @@ describe('ArtifactStore', () => {
       cause: 'caller-stopped',
     });
   });
+}
 
+function registerPreservesCallerCancellationThroughPostUpload(): void {
   it('preserves caller cancellation through post-upload verification', async () => {
     const client = new MemoryS3Client();
     client.hangHead = true;
@@ -1102,7 +1124,9 @@ describe('ArtifactStore', () => {
     );
     expect(client.lastGetBody?.destroyed).toBe(true);
   });
+}
 
+function registerDestroysS3ResponseBodyGetMetadata(): void {
   it('destroys the S3 response body when get metadata is invalid', async () => {
     const { client, store } = createStore();
     await store.put({
@@ -1313,7 +1337,9 @@ describe('ArtifactStore', () => {
       ArtifactIntegrityError,
     );
   });
+}
 
+function registerDeletesIdempotentlyReportsMissingDownload(): void {
   it('deletes idempotently and reports a missing download', async () => {
     const { store } = createStore();
     const identity = { artifactId: ARTIFACT_ID, workspaceId: WORKSPACE_ID };
@@ -1493,7 +1519,9 @@ describe('ArtifactStore', () => {
       store.purgeWorkspacePage({ maxObjects: 1, workspaceId: WORKSPACE_ID }),
     ).rejects.toThrow('Object version deletion reported one or more failures');
   });
+}
 
+function registerArtifactStoreRejectsDeleteAcknowledgementsS(): void {
   it.each([
     ['missing acknowledgement', [], ['version-1']],
     [
@@ -1615,4 +1643,4 @@ describe('ArtifactStore', () => {
     client.locationConstraint = 'eu-west-1';
     await expect(store.checkReadiness()).rejects.toThrow(/region/u);
   });
-});
+}

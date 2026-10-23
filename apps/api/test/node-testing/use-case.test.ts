@@ -130,6 +130,20 @@ function requestInput() {
 }
 
 describe('node test application use case', () => {
+  registerUsesPinnedOutputWithoutEvaluatingMappings();
+
+  registerPreservesUnknownDraftReadFailureBy();
+
+  registerRequiresIdempotencyBeforeAcceptingAcknowledgedExecution();
+
+  registerAcceptsOneIdentifierDurablePreview();
+});
+
+describe('preview status application use case', () => {
+  registerDeniesBeforeReadingCallerLacksWorkflow();
+});
+
+function registerUsesPinnedOutputWithoutEvaluatingMappings(): void {
   it('uses pinned output without evaluating mappings or authorizing credentials, while setup validation stays real', async () => {
     const store = persistence({
       getDraft: vi
@@ -342,7 +356,9 @@ describe('node test application use case', () => {
       currentEtag: '"draft.8TzCes2UynZ5w_QC7b_vUnsZkX8j-vonJu1MhXrf27o"',
     });
   });
+}
 
+function registerPreservesUnknownDraftReadFailureBy(): void {
   it('preserves an unknown draft-read failure by identity', async () => {
     const failure = new Error('draft store unavailable');
     const store = persistence({
@@ -539,7 +555,9 @@ describe('node test application use case', () => {
     expect(store.getDraft).toHaveBeenCalledOnce();
     expect(store.acceptPreview).not.toHaveBeenCalled();
   });
+}
 
+function registerRequiresIdempotencyBeforeAcceptingAcknowledgedExecution(): void {
   it('requires idempotency before accepting acknowledged execution', async () => {
     const useCase = new TestWorkflowNodeUseCase(persistence(), authorization());
     await expect(
@@ -731,7 +749,9 @@ describe('node test application use case', () => {
     expect(store.resolvePreviewReplay).toHaveBeenCalledOnce();
     expect(store.acceptPreview).not.toHaveBeenCalled();
   });
+}
 
+function registerAcceptsOneIdentifierDurablePreview(): void {
   it('accepts one identifier-only durable preview', async () => {
     const result = accepted();
     const store = persistence({
@@ -901,9 +921,9 @@ describe('node test application use case', () => {
       }),
     );
   });
-});
+}
 
-describe('preview status application use case', () => {
+function registerDeniesBeforeReadingCallerLacksWorkflow(): void {
   it('denies before reading when the caller lacks workflow update authority', async () => {
     const readPreview = vi.fn().mockResolvedValue(nodeTestingPreview());
     const access = authorization();
@@ -1033,4 +1053,4 @@ describe('preview status application use case', () => {
     expect(Object.isFrozen(authorizedWorkspace)).toBe(true);
     expect(access.findAccess).not.toHaveBeenCalled();
   });
-});
+}

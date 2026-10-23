@@ -90,13 +90,20 @@ function redisClient(index = mocks.redisClients.length - 1) {
 }
 
 describe('BullMQ queue producer', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mocks.queueInstances.length = 0;
-    mocks.redisClients.length = 0;
-    mocks.redisFactoryState.nextStatus = 'ready';
-  });
+  beforeEach(resetPackagesQueueTestProducerTestTsBullMQQueueProducerFixture);
+  registerDerivesStableNonnumericColonFreeJob();
 
+  registerRejectsDeferredQueueReadinessAfterClose();
+});
+
+function resetPackagesQueueTestProducerTestTsBullMQQueueProducerFixture() {
+  vi.clearAllMocks();
+  mocks.queueInstances.length = 0;
+  mocks.redisClients.length = 0;
+  mocks.redisFactoryState.nextStatus = 'ready';
+}
+
+function registerDerivesStableNonnumericColonFreeJob(): void {
   it('derives a stable nonnumeric, colon-free job ID from the outbox event', () => {
     const jobId = jobIdForOutboxEvent(IDS.outboxEventId);
 
@@ -296,7 +303,9 @@ describe('BullMQ queue producer', () => {
       expect(producer.isReady()).toBe(false);
     },
   );
+}
 
+function registerRejectsDeferredQueueReadinessAfterClose(): void {
   it('rejects deferred queue readiness after close fully wins', async () => {
     const producer = createQueueProducer({
       redisUrl: 'redis://localhost:6379/0',
@@ -509,4 +518,4 @@ describe('BullMQ queue producer', () => {
     expect(redisClient().disconnect).toHaveBeenCalledOnce();
     expect(producer.isReady()).toBe(false);
   });
-});
+}

@@ -96,6 +96,12 @@ const options = {
 };
 
 describe('trigger runtime', () => {
+  registerRollsBackOwnersAcquiredBeforeS();
+
+  registerOwnsTriggerLifecycleConsumerPollsPostgreSQL();
+});
+
+function registerRollsBackOwnersAcquiredBeforeS(): void {
   it.each([
     ['telemetry', []],
     ['traceRunner', []],
@@ -296,7 +302,9 @@ describe('trigger runtime', () => {
       expect(selected.reconciliation.close).toHaveBeenCalledOnce();
     });
   });
+}
 
+function registerOwnsTriggerLifecycleConsumerPollsPostgreSQL(): void {
   it('owns the trigger lifecycle consumer and polls PostgreSQL without overlap', async () => {
     const selected = dependencies();
     const runtime = await createTriggerRuntime(options, {
@@ -454,4 +462,4 @@ describe('trigger runtime', () => {
     ).rejects.toMatchObject({ name: 'InvalidQueueDeliveryError' });
     await runtime.close();
   });
-});
+}

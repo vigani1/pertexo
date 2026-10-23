@@ -61,15 +61,32 @@ async function createOwnedCapabilities(
   });
 }
 
-afterEach(async () => {
-  await Promise.all(
-    temporaryDirectories
-      .splice(0)
-      .map((directory) => rm(directory, { recursive: true, force: true })),
-  );
-});
+afterEach(cleanRuntimeCapabilitiesTestTsFixture);
 
 describe('worker node runtime capabilities', () => {
+  registerWebhookResponseBindings();
+
+  registerCapabilityShutdownFailures();
+
+  registerAdmissionCancellation();
+
+  registerConnectionSecretCleanup();
+
+  registerHttpFailureClassification();
+
+  registerVerifiedArtifactReads();
+
+  registerArtifactSourceCleanup();
+
+  registerSpoolCancellation();
+
+  registerScratchCleanupFailures();
+
+  registerGeneratedArtifactIdentities();
+});
+registerConcurrentScratchCleanup();
+
+function registerWebhookResponseBindings(): void {
   it('binds webhook responses to the current attempt and keeps previews out of persistence', async () => {
     const respond = vi
       .fn()
@@ -281,7 +298,9 @@ describe('worker node runtime capabilities', () => {
     await runtime.close();
     await databaseRuntime.close();
   });
+}
 
+function registerCapabilityShutdownFailures(): void {
   it('reports failures while closing owned capability resources', async () => {
     const close = vi
       .spyOn(RedisRateLimitRuntime.prototype, 'close')
@@ -455,7 +474,9 @@ describe('worker node runtime capabilities', () => {
     expect(resolveConnectionSecret).not.toHaveBeenCalled();
     await runtime.close();
   });
+}
 
+function registerAdmissionCancellation(): void {
   it.each([true, false])(
     'gives cancellation precedence when rate admission settles late with allowed=%s',
     async (allowed) => {
@@ -651,7 +672,9 @@ describe('worker node runtime capabilities', () => {
     );
     await runtime.close();
   });
+}
 
+function registerConnectionSecretCleanup(): void {
   it('checks cancellation before lookup and zeroes a secret canceled after decryption', async () => {
     const secret = new TextEncoder().encode('secret');
     const controller = new AbortController();
@@ -843,7 +866,9 @@ describe('worker node runtime capabilities', () => {
     ).rejects.toMatchObject({ name: 'AbortError' });
     await runtime.close();
   });
+}
 
+function registerHttpFailureClassification(): void {
   it.each([
     ['resolution', 'resolve', new Error('postgres unavailable'), false],
     [
@@ -997,7 +1022,9 @@ describe('worker node runtime capabilities', () => {
     expect(await readdir(spoolDirectory)).toEqual([]);
     await runtime.close();
   });
+}
 
+function registerVerifiedArtifactReads(): void {
   it.each([
     ['empty', [] as number[]],
     ['short writes', [1, 2, 3]],
@@ -1174,7 +1201,9 @@ describe('worker node runtime capabilities', () => {
     expect(await readdir(spoolDirectory)).toEqual([]);
     await runtime.close();
   });
+}
 
+function registerArtifactSourceCleanup(): void {
   it('preserves source and return failures after clearing an overflowing chunk', async () => {
     const spoolDirectory = await mkdtemp(
       path.join(tmpdir(), 'pertexo-capability-test-'),
@@ -1340,7 +1369,9 @@ describe('worker node runtime capabilities', () => {
     expect(await readdir(spoolDirectory)).toEqual([]);
     await runtime.close();
   });
+}
 
+function registerSpoolCancellation(): void {
   it('awaits an in-flight spool write after cancellation and then clears its chunk', async () => {
     const spoolDirectory = await mkdtemp(
       path.join(tmpdir(), 'pertexo-capability-test-'),
@@ -1516,7 +1547,9 @@ describe('worker node runtime capabilities', () => {
     expect(await readdir(spoolDirectory)).toEqual([]);
     await runtime.close();
   });
+}
 
+function registerScratchCleanupFailures(): void {
   it('normalizes a non-Error spool cleanup rejection', async () => {
     const spoolDirectory = await mkdtemp(
       path.join(tmpdir(), 'pertexo-capability-test-'),
@@ -1727,7 +1760,9 @@ describe('worker node runtime capabilities', () => {
     expect(await readdir(spoolDirectory)).toEqual([]);
     await runtime.close();
   });
+}
 
+function registerGeneratedArtifactIdentities(): void {
   it('generates UUIDv7 identities for persisted artifacts by default', async () => {
     const spoolDirectory = await mkdtemp(
       path.join(tmpdir(), 'pertexo-capability-test-'),
@@ -1895,56 +1930,66 @@ describe('worker node runtime capabilities', () => {
     ).rejects.toBeInstanceOf(RangeError);
     await runtime.close();
   });
-});
+}
 
-it('cleans after simultaneous metadata and directory-removal failures and reports no private adapter details', async () => {
-  const spoolDirectory = await mkdtemp(
-    path.join(tmpdir(), 'pertexo-capability-test-'),
+async function cleanRuntimeCapabilitiesTestTsFixture() {
+  await Promise.all(
+    temporaryDirectories
+      .splice(0)
+      .map((directory) => rm(directory, { recursive: true, force: true })),
   );
-  temporaryDirectories.push(spoolDirectory);
-  const createPending = vi
-    .fn()
-    .mockRejectedValue(new Error('private metadata failure'));
-  const removeDirectory = vi
-    .fn()
-    .mockRejectedValue(new Error('private directory path'));
-  const put = vi.fn();
-  const runtime = await createOwnedCapabilities(
-    { database: databaseConfig },
-    {
-      artifactPersistence: { createPending, finalize: vi.fn() },
-      artifactStore: { put },
-      spoolDirectory,
-      artifactSpoolOperations: {
-        openFile: (file) => open(file, 'wx', 0o600),
-        removeDirectory,
+}
+
+function registerConcurrentScratchCleanup(): void {
+  it('cleans after simultaneous metadata and directory-removal failures and reports no private adapter details', async () => {
+    const spoolDirectory = await mkdtemp(
+      path.join(tmpdir(), 'pertexo-capability-test-'),
+    );
+    temporaryDirectories.push(spoolDirectory);
+    const createPending = vi
+      .fn()
+      .mockRejectedValue(new Error('private metadata failure'));
+    const removeDirectory = vi
+      .fn()
+      .mockRejectedValue(new Error('private directory path'));
+    const put = vi.fn();
+    const runtime = await createOwnedCapabilities(
+      { database: databaseConfig },
+      {
+        artifactPersistence: { createPending, finalize: vi.fn() },
+        artifactStore: { put },
+        spoolDirectory,
+        artifactSpoolOperations: {
+          openFile: (file) => open(file, 'wx', 0o600),
+          removeDirectory,
+        },
       },
-    },
-  );
-  try {
-    const artifacts = runtime.factories.artifacts?.(context);
-    if (artifacts === undefined) throw new Error('Artifacts missing');
-    const bytes = new Uint8Array([1]);
-    const result: unknown = await artifacts
-      .write({
-        body: (async function* () {
-          yield await Promise.resolve(bytes);
-        })(),
-        maxBytes: 1,
-        mediaType: 'text/plain',
-        purpose: 'node-output',
-        signal: new AbortController().signal,
-      })
-      .catch((error: unknown) => error);
-    expect(result).toMatchObject({
-      safeErrorCode: 'execution.file_scratch_cleanup',
-    });
-    expect(createPending).toHaveBeenCalledTimes(1);
-    expect(removeDirectory).toHaveBeenCalledTimes(1);
-    expect(put).not.toHaveBeenCalled();
-    expect(bytes).toEqual(new Uint8Array([0]));
-    expect(JSON.stringify(result)).not.toContain('private');
-  } finally {
-    await runtime.close();
-  }
-});
+    );
+    try {
+      const artifacts = runtime.factories.artifacts?.(context);
+      if (artifacts === undefined) throw new Error('Artifacts missing');
+      const bytes = new Uint8Array([1]);
+      const result: unknown = await artifacts
+        .write({
+          body: (async function* () {
+            yield await Promise.resolve(bytes);
+          })(),
+          maxBytes: 1,
+          mediaType: 'text/plain',
+          purpose: 'node-output',
+          signal: new AbortController().signal,
+        })
+        .catch((error: unknown) => error);
+      expect(result).toMatchObject({
+        safeErrorCode: 'execution.file_scratch_cleanup',
+      });
+      expect(createPending).toHaveBeenCalledTimes(1);
+      expect(removeDirectory).toHaveBeenCalledTimes(1);
+      expect(put).not.toHaveBeenCalled();
+      expect(bytes).toEqual(new Uint8Array([0]));
+      expect(JSON.stringify(result)).not.toContain('private');
+    } finally {
+      await runtime.close();
+    }
+  });
+}

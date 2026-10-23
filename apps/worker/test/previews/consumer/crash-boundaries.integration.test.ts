@@ -37,6 +37,10 @@ const describeIntegration = workerTransportIntegrationEnabled
   : describe.skip;
 
 describeIntegration('preview dispatch crash boundaries', () => {
+  registerPreservesFourPreviewDispatchAcknowledgementCrash();
+});
+
+function registerPreservesFourPreviewDispatchAcknowledgementCrash(): void {
   it('preserves the four preview dispatch and acknowledgement crash boundaries', async () => {
     const cases = [
       {
@@ -472,4 +476,4 @@ describeIntegration('preview dispatch crash boundaries', () => {
       'Preview crash-boundary fixture',
     );
   }, 90_000);
-});
+}

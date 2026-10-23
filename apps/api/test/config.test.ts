@@ -34,6 +34,35 @@ function validDeployedEnvironment(): Record<string, string> {
 }
 
 describe('parseApiConfig', () => {
+  registerPreservesConfiguredClientPoolSettingsFrozen();
+
+  registerParsesValidEnvironmentValuesIntoTyped();
+});
+
+function standaloneBetterAuthEnvironment(): Record<string, string> {
+  return {
+    DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
+    BETTER_AUTH_SECRET: 'standalone-better-auth-secret-at-least-32-characters',
+    AUTH_MAIL_MODE: 'local',
+    PUBLIC_WEB_ORIGIN: 'https://app.example.test',
+  };
+}
+
+function deployedEnvironmentWithout(
+  ...names: readonly string[]
+): Record<string, string> {
+  const environment = validDeployedEnvironment();
+  for (const name of names) Reflect.deleteProperty(environment, name);
+  return environment;
+}
+
+describe('parseApiConfig identity boundary', () => {
+  registerRejectsSStandaloneBetterAuth();
+
+  registerSecuresCookiesOnHTTPSOrigin();
+});
+
+function registerPreservesConfiguredClientPoolSettingsFrozen(): void {
   it('preserves configured client pool settings as a frozen record', () => {
     const config = parseApiConfig({
       DATABASE_URL: 'postgresql://app:secret@localhost:5432/pertexo',
@@ -51,6 +80,7 @@ describe('parseApiConfig', () => {
     });
     expect(Object.isFrozen(config.database)).toBe(true);
   });
+
   it.each([
     ['DATABASE_POOL_MAX', '0'],
     ['DATABASE_POOL_MAX', '21'],
@@ -237,7 +267,9 @@ describe('parseApiConfig', () => {
       }),
     ).toThrow('REDIS_URL must use redis:// or rediss:// with a hostname');
   });
+}
 
+function registerParsesValidEnvironmentValuesIntoTyped(): void {
   it('parses valid environment values into the typed public config', () => {
     const config = parseApiConfig({
       DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
@@ -437,26 +469,9 @@ describe('parseApiConfig', () => {
       }),
     ).toThrow('HTTPS connection KMS endpoint is required when deployed');
   });
-});
-
-function standaloneBetterAuthEnvironment(): Record<string, string> {
-  return {
-    DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
-    BETTER_AUTH_SECRET: 'standalone-better-auth-secret-at-least-32-characters',
-    AUTH_MAIL_MODE: 'local',
-    PUBLIC_WEB_ORIGIN: 'https://app.example.test',
-  };
 }
 
-function deployedEnvironmentWithout(
-  ...names: readonly string[]
-): Record<string, string> {
-  const environment = validDeployedEnvironment();
-  for (const name of names) Reflect.deleteProperty(environment, name);
-  return environment;
-}
-
-describe('parseApiConfig identity boundary', () => {
+function registerRejectsSStandaloneBetterAuth(): void {
   it.each([
     [
       'an invitation key without its version',
@@ -624,6 +639,7 @@ describe('parseApiConfig identity boundary', () => {
       previous: [previous],
     });
   });
+
   it.each([
     { AUTH_FEDERATION_KEY: 'private-invalid-key' },
     { AUTH_FEDERATION_KEY_VERSION: 'organization-v1' },
@@ -651,7 +667,9 @@ describe('parseApiConfig identity boundary', () => {
       parseApiConfig(deployedEnvironmentWithout('PUBLIC_WEB_ORIGIN')),
     ).toThrow('PUBLIC_WEB_ORIGIN is required for Better Auth');
   });
+}
 
+function registerSecuresCookiesOnHTTPSOrigin(): void {
   it('secures cookies on an HTTPS origin', () => {
     const config = parseApiConfig({
       ...standaloneBetterAuthEnvironment(),
@@ -704,4 +722,4 @@ describe('parseApiConfig identity boundary', () => {
     expect(config.webhooks).toMatchObject({ mode: 'self-managed' });
     expect(config.artifacts?.bucket).toBeDefined();
   });
-});
+}

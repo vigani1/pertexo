@@ -98,6 +98,16 @@ import {
 } from '../../src/workspaces/index.js';
 
 describe('identity/workspace generated contracts', () => {
+  registerKeepsIdentityClientSchemasMechanicallyAligned();
+
+  registerDocumentsAllPublicRouteTemplatesRequest();
+});
+
+function generated(schema: z.ZodType, io: 'input' | 'output') {
+  return z.toJSONSchema(schema, { io, target: 'draft-2020-12' });
+}
+
+function registerKeepsIdentityClientSchemasMechanicallyAligned(): void {
   it('keeps identity client schemas mechanically aligned with their owning Zod contracts', () => {
     const identitySchemas = Object.fromEntries(
       Object.entries(identityWorkspaceClientContract.schemas).filter(
@@ -361,7 +371,9 @@ describe('identity/workspace generated contracts', () => {
       },
     });
   });
+}
 
+function registerDocumentsAllPublicRouteTemplatesRequest(): void {
   it('documents all public route templates and their request/response schemas', () => {
     expect(identityWorkspaceOpenApiDocument.openapi).toBe('3.1.0');
     expect(Object.keys(identityWorkspaceOpenApiDocument.paths)).toEqual([
@@ -527,8 +539,4 @@ describe('identity/workspace generated contracts', () => {
       properties: { reason: { maxLength: 512, minLength: 1 } },
     });
   });
-});
-
-function generated(schema: z.ZodType, io: 'input' | 'output') {
-  return z.toJSONSchema(schema, { io, target: 'draft-2020-12' });
 }

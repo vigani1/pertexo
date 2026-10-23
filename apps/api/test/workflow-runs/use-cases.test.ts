@@ -185,6 +185,20 @@ async function replayCommand(overrides: Partial<ReplayWorkflowRunInput> = {}) {
 }
 
 describe('workflow run application seams', () => {
+  registerPassesExactRunValuePairThrough();
+
+  registerReusesGuardAuthorizationWithoutRepeatingAccess();
+
+  registerKeepsStartReplayCapabilitiesDistinct();
+
+  registerAuthorizesCancellationForwardsCanonicalActorRequest();
+
+  registerDoesNotAcquireProducerStartAuthorization();
+
+  registerStopsBeforeLaterFrameAfterS();
+});
+
+function registerPassesExactRunValuePairThrough(): void {
   it('passes an exact run-value pair through paging without changing other filters', async () => {
     const fixture = persistence();
     fixture.list.mockResolvedValue({ items: [run()] });
@@ -383,7 +397,9 @@ describe('workflow run application seams', () => {
       }),
     );
   });
+}
 
+function registerReusesGuardAuthorizationWithoutRepeatingAccess(): void {
   it('reuses guard authorization without repeating the access lookup', async () => {
     const fixture = persistence();
     const access = authorization();
@@ -586,7 +602,9 @@ describe('workflow run application seams', () => {
     ).rejects.toMatchObject({ code: 'resource.not_found' });
     expect(fixture.start).toHaveBeenCalledTimes(1);
   });
+}
 
+function registerKeepsStartReplayCapabilitiesDistinct(): void {
   it('keeps start and replay capabilities distinct', async () => {
     const fixture = persistence();
     const access = authorization('builder');
@@ -788,7 +806,9 @@ describe('workflow run application seams', () => {
       includeWorkflowName: true,
     });
   });
+}
 
+function registerAuthorizesCancellationForwardsCanonicalActorRequest(): void {
   it('authorizes cancellation and forwards canonical actor/request context', async () => {
     const fixture = persistence();
     await new CancelWorkflowRunUseCase(fixture.store, authorization()).execute({
@@ -997,7 +1017,9 @@ describe('workflow run application seams', () => {
     });
     expect(streamer.stream.mock.calls[0]?.[0].signal).not.toBe(signal);
   });
+}
 
+function registerDoesNotAcquireProducerStartAuthorization(): void {
   it('does not acquire the producer or start authorization when returned before the first read', async () => {
     const fixture = persistence();
     const stream = vi.fn<WorkflowRunEventStreamer['stream']>();
@@ -1174,7 +1196,9 @@ describe('workflow run application seams', () => {
     expect(access.findAccess).toHaveBeenCalledTimes(3);
     expect(cleanedUp).toBe(true);
   });
+}
 
+function registerStopsBeforeLaterFrameAfterS(): void {
   it.each(['revoked', 'expired', 'workspace_lifecycle'] as const)(
     'stops before a later frame after %s access loss',
     async (transition) => {
@@ -1366,4 +1390,4 @@ describe('workflow run application seams', () => {
       vi.useRealTimers();
     }
   });
-});
+}

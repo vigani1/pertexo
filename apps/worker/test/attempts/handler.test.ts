@@ -33,6 +33,16 @@ const STORED_CHECKPOINT = createCheckpoint({
 });
 
 describe('NodeAttemptHandler', () => {
+  registerNodeAttemptHandlerRejectsUnavailablePublishedWorkflow();
+
+  registerCommitsResumedWaitOutputOptionalTrace();
+
+  registerCommitsPreparedSuspensionExactDuration();
+
+  registerHandsResolvedInputStoreBeforeExecuting();
+});
+
+function registerNodeAttemptHandlerRejectsUnavailablePublishedWorkflow(): void {
   it('rejects an unavailable published workflow', async () => {
     const handler = createNodeAttemptHandler({
       engine: { prepare: vi.fn() },
@@ -221,7 +231,9 @@ describe('NodeAttemptHandler', () => {
       handler.handle(delivery(), { signal: new AbortController().signal }),
     ).rejects.toMatchObject({ code: 'wait_resume_output_missing' });
   });
+}
 
+function registerCommitsResumedWaitOutputOptionalTrace(): void {
   it.each([undefined, TRACEPARENT])(
     'commits a resumed Wait output with optional trace context %s',
     async (traceparent) => {
@@ -428,7 +440,9 @@ describe('NodeAttemptHandler', () => {
       runId: RUN_ID,
     });
   });
+}
 
+function registerCommitsPreparedSuspensionExactDuration(): void {
   it('commits a prepared suspension with its exact duration', async () => {
     const complete = vi
       .fn<NodeAttemptRunStore['complete']>()
@@ -610,7 +624,9 @@ describe('NodeAttemptHandler', () => {
       }),
     );
   });
+}
 
+function registerHandsResolvedInputStoreBeforeExecuting(): void {
   it.each([
     ['records', () => Promise.resolve({ recorded: true })],
     ['fails to record', () => Promise.reject(new Error('database is down'))],
@@ -679,4 +695,4 @@ describe('NodeAttemptHandler', () => {
       expect(complete).toHaveBeenCalledOnce();
     },
   );
-});
+}

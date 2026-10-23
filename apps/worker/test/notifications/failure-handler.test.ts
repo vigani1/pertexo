@@ -67,6 +67,22 @@ function store(kind: 'ready' | 'terminal' = 'ready'): FailureNotificationStore {
 }
 
 describe('failure notification handler', () => {
+  registerDeliversLoadedImmutableContextPersistsBounded();
+
+  registerDoesNotWriteCompletionQueueCancellation();
+
+  registerSettlesQueueCancellationDuringIgnoredCompletion();
+});
+
+function readyDeliveryResult() {
+  return {
+    kind: 'delivered' as const,
+    possiblyDispatched: true as const,
+    providerReference: 'late-provider-reference',
+  };
+}
+
+function registerDeliversLoadedImmutableContextPersistsBounded(): void {
   it('delivers loaded immutable context and persists a bounded result', async () => {
     const repository = store();
     const deliver = vi.fn().mockResolvedValue({
@@ -262,7 +278,9 @@ describe('failure notification handler', () => {
       }),
     );
   });
+}
 
+function registerDoesNotWriteCompletionQueueCancellation(): void {
   it('does not write completion when queue cancellation follows provider settlement', async () => {
     const repository = store();
     const controller = new AbortController();
@@ -464,7 +482,9 @@ describe('failure notification handler', () => {
       vi.mocked(repository.completeDelivery).mock.calls[0]?.[0].signal,
     ).toBe(controller.signal);
   });
+}
 
+function registerSettlesQueueCancellationDuringIgnoredCompletion(): void {
   it.each(['resolve', 'reject'] as const)(
     'settles queue cancellation during an ignored completion and observes its late %s',
     async (outcome) => {
@@ -497,12 +517,4 @@ describe('failure notification handler', () => {
       expect(repository.completeDelivery).toHaveBeenCalledOnce();
     },
   );
-});
-
-function readyDeliveryResult() {
-  return {
-    kind: 'delivered' as const,
-    possiblyDispatched: true as const,
-    providerReference: 'late-provider-reference',
-  };
 }

@@ -105,6 +105,14 @@ function actor() {
 }
 
 describe('identity/workspace application use cases', () => {
+  registerValidatesForwardsExactMemberRoleCommand();
+
+  registerReusesGuardAuthorizationLifecycleOperations();
+
+  registerDeniesLifecycleAccessDeletedWorkspaceBefore();
+});
+
+function registerValidatesForwardsExactMemberRoleCommand(): void {
   it('validates and forwards the exact member role command', async () => {
     const store = persistence();
     const targetUserId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
@@ -307,6 +315,9 @@ describe('identity/workspace application use cases', () => {
       expect(store.listWorkspaceMembers).not.toHaveBeenCalled();
     },
   );
+}
+
+function registerReusesGuardAuthorizationLifecycleOperations(): void {
   it('reuses guard authorization for lifecycle operations', async () => {
     const store = persistence();
     const authorization: WorkspaceAuthorizationReader = {
@@ -513,7 +524,9 @@ describe('identity/workspace application use cases', () => {
       occurredAt: '2026-08-20T12:00:00.000Z',
     });
   });
+}
 
+function registerDeniesLifecycleAccessDeletedWorkspaceBefore(): void {
   it('denies lifecycle access to a deleted workspace before persistence', async () => {
     const store = persistence();
     const authorization: WorkspaceAuthorizationReader = {
@@ -569,4 +582,4 @@ describe('identity/workspace application use cases', () => {
       }),
     ).rejects.toBe(failure);
   });
-});
+}

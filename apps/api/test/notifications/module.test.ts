@@ -122,9 +122,7 @@ const hints: InboxHintSource = {
 };
 
 const openApplications: { close(): Promise<void> }[] = [];
-afterEach(async () => {
-  await Promise.all(openApplications.splice(0).map((app) => app.close()));
-});
+afterEach(cleanAppsApiTestNotificationsModuleTestModuleTestTsFixture);
 
 async function application(
   database: WorkspaceInboxDatabase,
@@ -162,6 +160,47 @@ async function application(
 const session = { cookie: 'pertexo_session=session-token' };
 
 describe('notifications HTTP surface', () => {
+  registerListsThreadsOpaqueCursorThisList();
+});
+
+function preferenceStore() {
+  const schedule = { mode: 'off' as const, hour: 9, timeZone: 'UTC' };
+  return {
+    read: vi.fn<NoticePreferencesStore['read']>().mockResolvedValue({
+      revision: 0,
+      mode: null,
+      hour: 9,
+      timeZone: 'UTC',
+      defaults: { ...schedule, revision: 0 },
+      effective: schedule,
+      canManageDefaults: true,
+      emailAvailable: false,
+      emailUnavailableReason: 'Durable system mail is not configured.',
+    }),
+    replace: vi
+      .fn<NoticePreferencesStore['replace']>()
+      .mockResolvedValue({ revision: 1, changed: true, replayed: false }),
+    replaceDefaults: vi
+      .fn<NoticePreferencesStore['replaceDefaults']>()
+      .mockResolvedValue({ revision: 1, changed: true, replayed: false }),
+    readSubscription: vi
+      .fn<NoticePreferencesStore['readSubscription']>()
+      .mockResolvedValue({ revision: 0, followed: false, muted: false }),
+    replaceSubscription: vi
+      .fn<NoticePreferencesStore['replaceSubscription']>()
+      .mockResolvedValue({ revision: 1, changed: true, replayed: false }),
+    unsubscribe: vi
+      .fn<NoticePreferencesStore['unsubscribe']>()
+      .mockResolvedValue(true),
+    close: () => Promise.resolve(),
+  } satisfies NoticePreferencesStore;
+}
+describe('personal notification HTTP boundaries', () => {
+  registerReturnsAvailabilityPlainlyValidatesExactPersonal();
+});
+registerAuthorizesAnonymousOneClickPOSTBy();
+
+function registerListsThreadsOpaqueCursorThisList(): void {
   it('lists threads with an opaque cursor that only this list accepts', async () => {
     const database = inboxDatabase();
     const server = await application(database);
@@ -316,41 +355,9 @@ describe('notifications HTTP surface', () => {
     );
     expect(closed).toBe(true);
   });
-});
-
-function preferenceStore() {
-  const schedule = { mode: 'off' as const, hour: 9, timeZone: 'UTC' };
-  return {
-    read: vi.fn<NoticePreferencesStore['read']>().mockResolvedValue({
-      revision: 0,
-      mode: null,
-      hour: 9,
-      timeZone: 'UTC',
-      defaults: { ...schedule, revision: 0 },
-      effective: schedule,
-      canManageDefaults: true,
-      emailAvailable: false,
-      emailUnavailableReason: 'Durable system mail is not configured.',
-    }),
-    replace: vi
-      .fn<NoticePreferencesStore['replace']>()
-      .mockResolvedValue({ revision: 1, changed: true, replayed: false }),
-    replaceDefaults: vi
-      .fn<NoticePreferencesStore['replaceDefaults']>()
-      .mockResolvedValue({ revision: 1, changed: true, replayed: false }),
-    readSubscription: vi
-      .fn<NoticePreferencesStore['readSubscription']>()
-      .mockResolvedValue({ revision: 0, followed: false, muted: false }),
-    replaceSubscription: vi
-      .fn<NoticePreferencesStore['replaceSubscription']>()
-      .mockResolvedValue({ revision: 1, changed: true, replayed: false }),
-    unsubscribe: vi
-      .fn<NoticePreferencesStore['unsubscribe']>()
-      .mockResolvedValue(true),
-    close: () => Promise.resolve(),
-  } satisfies NoticePreferencesStore;
 }
-describe('personal notification HTTP boundaries', () => {
+
+function registerReturnsAvailabilityPlainlyValidatesExactPersonal(): void {
   it('returns availability plainly and validates an exact personal save at the boundary', async () => {
     const store = preferenceStore();
     const server = await application(
@@ -411,6 +418,7 @@ describe('personal notification HTTP boundaries', () => {
     expect(conflict.statusCode).toBe(409);
     expect(conflict.json()).toMatchObject({ code: 'notifications.changed' });
   });
+
   it('uses explicit subscribe commands and refuses unknown subject types', async () => {
     const store = preferenceStore();
     const server = await application(
@@ -444,6 +452,7 @@ describe('personal notification HTTP boundaries', () => {
     expect(invalid.statusCode).toBe(400);
     expect(store.readSubscription).not.toHaveBeenCalled();
   });
+
   it('keeps scanner GET inert and scopes explicit public unsubscribe to a sealed capability', async () => {
     const envelope = createApplicationSecretEnvelope({
       current: { version: 'v1', key: Buffer.alloc(32, 11).toString('base64') },
@@ -487,128 +496,134 @@ describe('personal notification HTTP boundaries', () => {
     expect(bad.statusCode).toBe(404);
     expect(store.unsubscribe).toHaveBeenCalledTimes(1);
   });
-});
+}
 
-it('authorizes anonymous one-click POST by URL alone, ignores bounded form bodies and keeps GET inert', async () => {
-  const envelope = createApplicationSecretEnvelope({
-    current: { version: 'v1', key: Buffer.alloc(32, 11).toString('base64') },
-  });
-  const store = preferenceStore();
-  const server = await application(
-    inboxDatabase(),
-    'owner',
-    hints,
-    new NoticePreferencesService(store, envelope),
-  );
-  const claims = {
-    workspaceId,
-    actorId,
-    revision: 3,
-    memberRevision: 5,
-    expiresAt: new Date(Date.now() + 86400000).toISOString(),
-  };
-  const token = sealNoticeUnsubscribe(envelope, claims);
-  const url = `/v1/notifications/unsubscribe/one-click?token=${token}`;
-  const get = await server.inject({ method: 'GET', url });
-  expect(get.statusCode, get.payload).toBe(303);
-  expect(get.headers.location).toBe(`/notifications/unsubscribe#${token}`);
-  expect(get.headers['cache-control']).toBe('no-store');
-  expect(store.unsubscribe).not.toHaveBeenCalled();
-  const submit = (
-    payload: string,
-    type = 'application/x-www-form-urlencoded',
-    target = url,
-  ) =>
-    server.inject({
-      method: 'POST',
-      url: target,
-      headers: { 'content-type': type },
-      payload,
+async function cleanAppsApiTestNotificationsModuleTestModuleTestTsFixture() {
+  await Promise.all(openApplications.splice(0).map((app) => app.close()));
+}
+
+function registerAuthorizesAnonymousOneClickPOSTBy(): void {
+  it('authorizes anonymous one-click POST by URL alone, ignores bounded form bodies and keeps GET inert', async () => {
+    const envelope = createApplicationSecretEnvelope({
+      current: { version: 'v1', key: Buffer.alloc(32, 11).toString('base64') },
     });
-  const accepted = await submit('List-Unsubscribe=One-Click');
-  expect(accepted.statusCode, accepted.payload).toBe(200);
-  expect(accepted.headers.location).toBeUndefined();
-  expect(accepted.json()).toEqual({ unsubscribed: true });
-  expect(store.unsubscribe).toHaveBeenLastCalledWith(claims);
-  const multipart =
-    '--mail-boundary\r\nContent-Disposition: form-data; name="List-Unsubscribe"\r\n\r\nOne-Click\r\n--mail-boundary--\r\n';
-  expect(
-    (await submit(multipart, 'multipart/form-data; boundary=mail-boundary'))
-      .statusCode,
-  ).toBe(200);
-  expect(store.unsubscribe).toHaveBeenCalledTimes(2);
-  for (const type of [
-    'application/x-www-form-urlencoded',
-    'multipart/form-data',
-    'multipart/form-data; boundary=unused',
-  ]) {
-    for (const body of [
-      '',
-      'unparsed',
-      'List-Unsubscribe=wrong',
-      'List-Unsubscribe=One-Click&List-Unsubscribe=One-Click',
-      '__proto__=value',
-      'x'.repeat(8192),
+    const store = preferenceStore();
+    const server = await application(
+      inboxDatabase(),
+      'owner',
+      hints,
+      new NoticePreferencesService(store, envelope),
+    );
+    const claims = {
+      workspaceId,
+      actorId,
+      revision: 3,
+      memberRevision: 5,
+      expiresAt: new Date(Date.now() + 86400000).toISOString(),
+    };
+    const token = sealNoticeUnsubscribe(envelope, claims);
+    const url = `/v1/notifications/unsubscribe/one-click?token=${token}`;
+    const get = await server.inject({ method: 'GET', url });
+    expect(get.statusCode, get.payload).toBe(303);
+    expect(get.headers.location).toBe(`/notifications/unsubscribe#${token}`);
+    expect(get.headers['cache-control']).toBe('no-store');
+    expect(store.unsubscribe).not.toHaveBeenCalled();
+    const submit = (
+      payload: string,
+      type = 'application/x-www-form-urlencoded',
+      target = url,
+    ) =>
+      server.inject({
+        method: 'POST',
+        url: target,
+        headers: { 'content-type': type },
+        payload,
+      });
+    const accepted = await submit('List-Unsubscribe=One-Click');
+    expect(accepted.statusCode, accepted.payload).toBe(200);
+    expect(accepted.headers.location).toBeUndefined();
+    expect(accepted.json()).toEqual({ unsubscribed: true });
+    expect(store.unsubscribe).toHaveBeenLastCalledWith(claims);
+    const multipart =
+      '--mail-boundary\r\nContent-Disposition: form-data; name="List-Unsubscribe"\r\n\r\nOne-Click\r\n--mail-boundary--\r\n';
+    expect(
+      (await submit(multipart, 'multipart/form-data; boundary=mail-boundary'))
+        .statusCode,
+    ).toBe(200);
+    expect(store.unsubscribe).toHaveBeenCalledTimes(2);
+    for (const type of [
+      'application/x-www-form-urlencoded',
+      'multipart/form-data',
+      'multipart/form-data; boundary=unused',
     ]) {
-      const response = await submit(body, type);
-      expect(response.statusCode, `${type}: ${response.payload}`).toBe(200);
-      expect(store.unsubscribe).toHaveBeenLastCalledWith(claims);
+      for (const body of [
+        '',
+        'unparsed',
+        'List-Unsubscribe=wrong',
+        'List-Unsubscribe=One-Click&List-Unsubscribe=One-Click',
+        '__proto__=value',
+        'x'.repeat(8192),
+      ]) {
+        const response = await submit(body, type);
+        expect(response.statusCode, `${type}: ${response.payload}`).toBe(200);
+        expect(store.unsubscribe).toHaveBeenLastCalledWith(claims);
+      }
+      expect((await submit('x'.repeat(8193), type)).statusCode).toBe(413);
     }
-    expect((await submit('x'.repeat(8193), type)).statusCode).toBe(413);
-  }
-  const acceptedCount = store.unsubscribe.mock.calls.length;
-  expect(
-    (await submit('List-Unsubscribe=One-Click&extra=' + 'x'.repeat(8192)))
-      .statusCode,
-  ).toBe(413);
-  expect(
-    (await submit('{"List-Unsubscribe":"One-Click"}', 'application/json'))
-      .statusCode,
-  ).toBe(415);
-  expect(
-    (
-      await submit(
-        multipart,
-        'multipart/form-data; boundary=mail-boundary',
-        '/v1/notifications/unsubscribe',
-      )
-    ).statusCode,
-  ).toBe(415);
-  expect(
-    (
-      await submit(
-        'List-Unsubscribe=One-Click',
-        undefined,
-        '/v1/notifications/unsubscribe/one-click?token=invalid',
-      )
-    ).statusCode,
-  ).toBe(404);
-  const expired = sealNoticeUnsubscribe(envelope, {
-    ...claims,
-    expiresAt: new Date(Date.now() - 1).toISOString(),
+    const acceptedCount = store.unsubscribe.mock.calls.length;
+    expect(
+      (await submit('List-Unsubscribe=One-Click&extra=' + 'x'.repeat(8192)))
+        .statusCode,
+    ).toBe(413);
+    expect(
+      (await submit('{"List-Unsubscribe":"One-Click"}', 'application/json'))
+        .statusCode,
+    ).toBe(415);
+    expect(
+      (
+        await submit(
+          multipart,
+          'multipart/form-data; boundary=mail-boundary',
+          '/v1/notifications/unsubscribe',
+        )
+      ).statusCode,
+    ).toBe(415);
+    expect(
+      (
+        await submit(
+          'List-Unsubscribe=One-Click',
+          undefined,
+          '/v1/notifications/unsubscribe/one-click?token=invalid',
+        )
+      ).statusCode,
+    ).toBe(404);
+    const expired = sealNoticeUnsubscribe(envelope, {
+      ...claims,
+      expiresAt: new Date(Date.now() - 1).toISOString(),
+    });
+    expect(
+      (
+        await submit(
+          'List-Unsubscribe=One-Click',
+          undefined,
+          `/v1/notifications/unsubscribe/one-click?token=${expired}`,
+        )
+      ).statusCode,
+    ).toBe(404);
+    expect(
+      (
+        await server.inject({
+          method: 'GET',
+          url: '/v1/notifications/unsubscribe/one-click?token=%0d%0a',
+        })
+      ).statusCode,
+    ).toBe(400);
+    const oversized = await submit(
+      'List-Unsubscribe=One-Click&extra=' + 'x'.repeat(8192),
+    );
+    expect(oversized.statusCode).toBe(413);
+    expect(oversized.headers['cache-control']).toBe('no-store');
+    expect(oversized.headers['referrer-policy']).toBe('no-referrer');
+    expect(store.unsubscribe).toHaveBeenCalledTimes(acceptedCount);
   });
-  expect(
-    (
-      await submit(
-        'List-Unsubscribe=One-Click',
-        undefined,
-        `/v1/notifications/unsubscribe/one-click?token=${expired}`,
-      )
-    ).statusCode,
-  ).toBe(404);
-  expect(
-    (
-      await server.inject({
-        method: 'GET',
-        url: '/v1/notifications/unsubscribe/one-click?token=%0d%0a',
-      })
-    ).statusCode,
-  ).toBe(400);
-  const oversized = await submit(
-    'List-Unsubscribe=One-Click&extra=' + 'x'.repeat(8192),
-  );
-  expect(oversized.statusCode).toBe(413);
-  expect(oversized.headers['cache-control']).toBe('no-store');
-  expect(oversized.headers['referrer-policy']).toBe('no-referrer');
-  expect(store.unsubscribe).toHaveBeenCalledTimes(acceptedCount);
-});
+}

@@ -324,6 +324,12 @@ function fixture(nodeId: 'manual' | 'terminate') {
 }
 
 describe('node attempt execution engine', () => {
+  registerSubstitutesTestPinBeforeMappingsInput();
+
+  registerKeepsNestedBranchAncestryRemovesIntroducing();
+});
+
+function registerSubstitutesTestPinBeforeMappingsInput(): void {
   it('substitutes a test pin before mappings, input capture or executor dispatch', async () => {
     const { catalog, projection, lease } = fixture('terminate');
     const execute = vi.fn();
@@ -353,6 +359,7 @@ describe('node attempt execution engine', () => {
     expect(execute).not.toHaveBeenCalled();
     expect(onInputResolved).not.toHaveBeenCalled();
   });
+
   it('keeps normal Wait suspension but completes it immediately in a draft test', async () => {
     const { catalog, lease } = fixture('manual');
     const source = graph();
@@ -517,7 +524,9 @@ describe('node attempt execution engine', () => {
       ]);
     },
   );
+}
 
+function registerKeepsNestedBranchAncestryRemovesIntroducing(): void {
   it('keeps nested branch ancestry and removes only the introducing scope', () => {
     const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
     const projection = compiledProjection(nestedBranchGraph(), catalog);
@@ -725,4 +734,4 @@ describe('node attempt execution engine', () => {
       }),
     ).resolves.toMatchObject({ nodeId: 'body-sink', kind: 'succeeded' });
   });
-});
+}

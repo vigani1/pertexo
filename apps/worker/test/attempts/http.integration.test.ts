@@ -406,16 +406,33 @@ async function closeProofRuntime(runtime: ProofRuntime): Promise<void> {
     );
 }
 
-beforeAll(async () => {
-  fixtureEncryption = await seedFixture();
-});
+beforeAll(prepareHttpIntegrationTestTsFixture);
 
-beforeEach(async () => {
-  if (!httpNodeAttemptIntegrationEnabled) return;
-  await resetProviderScenarioIsolation();
-});
+beforeEach(resetHttpIntegrationTestTsFixture);
 
 describeIntegration('active HTTP node attempt', () => {
+  registerProviderRetryDelays();
+
+  registerArtifactAttemptPersistence();
+
+  registerDispatchSecretFences();
+
+  registerAcceptedHttpBindings();
+
+  registerDispatchEvidenceFailures();
+
+  registerUnsafeUnknownOutcomes();
+
+  registerEmailDispatchBindings();
+
+  registerEmailRecoveryAmbiguity();
+
+  registerHeartbeatRecovery();
+
+  registerReplayProviderIdentities();
+});
+
+function registerProviderRetryDelays(): void {
   it.each(['slack', 'email'] as const)(
     'persists the %s provider delay and schedules its retry no earlier',
     async (provider) => {
@@ -598,7 +615,9 @@ describeIntegration('active HTTP node attempt', () => {
     await resetProviderScenarioIsolation(seeds);
     expect(await read()).toEqual(revoked);
   });
+}
 
+function registerArtifactAttemptPersistence(): void {
   it('commits artifact, attempt truth, audit, bounded telemetry, and inert exact redelivery without leaking credentials', async () => {
     const encryption = fixtureEncryption;
     if (encryption === undefined)
@@ -1488,7 +1507,9 @@ describeIntegration('active HTTP node attempt', () => {
       'HTTP artifact scenario',
     );
   }, 30_000);
+}
 
+function registerDispatchSecretFences(): void {
   it.each(['http', 'slack'] as const)(
     'rejects a %s dispatch when its resolved secret rotates after the current-version assertion',
     async (target) => {
@@ -1763,7 +1784,9 @@ describeIntegration('active HTTP node attempt', () => {
     },
     30_000,
   );
+}
 
+function registerAcceptedHttpBindings(): void {
   it('uses an already accepted HTTP binding after connection sharing becomes restricted', async () => {
     if (!fixtureEncryption)
       throw new Error('HTTP attempt fixture encryption is missing');
@@ -1956,7 +1979,9 @@ describeIntegration('active HTTP node attempt', () => {
       await closeProofRuntime(runtime);
     }
   }, 30_000);
+}
 
+function registerDispatchEvidenceFailures(): void {
   it('keeps an internal HTTP dispatch-evidence failure non-retryable through persisted coordinator policy', async () => {
     const encryption = fixtureEncryption;
     if (encryption === undefined)
@@ -2128,7 +2153,9 @@ describeIntegration('active HTTP node attempt', () => {
     },
     30_000,
   );
+}
 
+function registerUnsafeUnknownOutcomes(): void {
   it.each(['canceled', 'timed_out'] as const)(
     'persists unsafe outcome_unknown when durable %s arrives during a heartbeat-controlled provider request',
     async (reason) => {
@@ -2237,7 +2264,9 @@ describeIntegration('active HTTP node attempt', () => {
     },
     30_000,
   );
+}
 
+function registerEmailDispatchBindings(): void {
   it('keeps an email dispatch key and prior ambiguity when credential resolution fails before the retry can redispatch', async () => {
     const encryption = fixtureEncryption;
     if (encryption === undefined)
@@ -2393,7 +2422,9 @@ describeIntegration('active HTTP node attempt', () => {
       await closeProofRuntime(runtime);
     }
   }, 30_000);
+}
 
+function registerEmailRecoveryAmbiguity(): void {
   it.each([
     ['canceled', 'early'],
     ['timed_out', 'early'],
@@ -2569,7 +2600,9 @@ describeIntegration('active HTTP node attempt', () => {
     },
     30_000,
   );
+}
 
+function registerHeartbeatRecovery(): void {
   it('recovers a keyed provider attempt after heartbeat ownership is lost without accepting stale completion or exact redelivery', async () => {
     const encryption = fixtureEncryption;
     if (encryption === undefined)
@@ -2834,7 +2867,9 @@ describeIntegration('active HTTP node attempt', () => {
       await closeProofRuntime(firstRuntime);
     }
   }, 30_000);
+}
 
+function registerReplayProviderIdentities(): void {
   it('derives a new provider identity when replaying an intentionally seeded terminal source without rewriting its history', async () => {
     const encryption = fixtureEncryption;
     if (encryption === undefined)
@@ -3003,4 +3038,13 @@ describeIntegration('active HTTP node attempt', () => {
       'HTTP replay scenario',
     );
   }, 30_000);
-});
+}
+
+async function prepareHttpIntegrationTestTsFixture() {
+  fixtureEncryption = await seedFixture();
+}
+
+async function resetHttpIntegrationTestTsFixture() {
+  if (!httpNodeAttemptIntegrationEnabled) return;
+  await resetProviderScenarioIsolation();
+}

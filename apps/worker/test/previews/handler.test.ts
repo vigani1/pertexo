@@ -163,6 +163,16 @@ function deps(
 }
 
 describe('preview attempt handler', () => {
+  registerRetainsCodeDiagnosticsSafePreviewWithout();
+
+  registerReturnsDuplicatesWithoutInvokingExecutor();
+
+  registerPropagatesInfrastructureFailuresBoundedQueueRetries();
+
+  registerCommitsDeadlineTruthBeforeDrainingCancellation();
+});
+
+function registerRetainsCodeDiagnosticsSafePreviewWithout(): void {
   it('retains Code diagnostics for a safe preview without an external dispatch', async () => {
     const { store, calls } = fakeStore({
       lease: {
@@ -376,7 +386,9 @@ describe('preview attempt handler', () => {
       status: 'succeeded',
     });
   });
+}
 
+function registerReturnsDuplicatesWithoutInvokingExecutor(): void {
   it('returns duplicates without invoking the executor', async () => {
     const { calls, store } = fakeStore({ claimKind: 'duplicate' });
     const invoke = vi.fn();
@@ -585,7 +597,9 @@ describe('preview attempt handler', () => {
       expect.objectContaining({ usesConnection: true }),
     );
   });
+}
 
+function registerPropagatesInfrastructureFailuresBoundedQueueRetries(): void {
   it('propagates infrastructure failures for bounded queue retries', async () => {
     const { calls, store } = fakeStore();
     const invoker: PreviewNodeInvoker = {
@@ -791,7 +805,9 @@ describe('preview attempt handler', () => {
     await expect(pending).rejects.toBe(reason);
     expect(calls.completions).toHaveLength(0);
   });
+}
 
+function registerCommitsDeadlineTruthBeforeDrainingCancellation(): void {
   it('commits deadline truth before draining cancellation-ignoring invocation work', async () => {
     vi.useFakeTimers();
     try {
@@ -965,4 +981,4 @@ describe('preview attempt handler', () => {
     expect(calls.dispatches).toBe(1);
     expect(calls.completions).toHaveLength(0);
   });
-});
+}

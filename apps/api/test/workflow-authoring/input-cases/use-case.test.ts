@@ -91,6 +91,15 @@ function fixture(role: Role = 'owner') {
   };
 }
 describe('workflow input case application interface', () => {
+  registerSerializesDatesValidatorsPaginatesMetadataScopes();
+
+  registerDeniesRebindingOversizedJSONWrongCase();
+});
+describe('workflow input case HTTP interface', () => {
+  registerEnforcesExactStrongIfMatchGrammar();
+});
+
+function registerSerializesDatesValidatorsPaginatesMetadataScopes(): void {
   it('serializes dates/validators, paginates metadata only and scopes opaque cursors', async () => {
     const { persistence, cases } = fixture('viewer');
     const page = await cases.list({ ...context, query: { limit: '5' } });
@@ -139,6 +148,7 @@ describe('workflow input case application interface', () => {
       ),
     ).toEqual({ createdAt: item.createdAt, id: caseId });
   });
+
   it('forwards the guarded authority snapshot and trace attribution without retaining payload', async () => {
     const { persistence, cases, authorization } = fixture();
     const tracedActor = createActorContext({
@@ -170,6 +180,7 @@ describe('workflow input case application interface', () => {
     );
     expect(authorization.findAccess).toHaveBeenCalledTimes(1);
   });
+
   it.each(['owner', 'admin', 'builder'] as const)(
     'allows %s writes with signal/attribution and identifier-only recovery',
     async (role) => {
@@ -232,6 +243,7 @@ describe('workflow input case application interface', () => {
       });
     },
   );
+
   it.each(['operator', 'viewer'] as const)(
     'allows %s load but denies every mutation independently of run:start',
     async (role) => {
@@ -268,6 +280,7 @@ describe('workflow input case application interface', () => {
       expect(persistence.deleteCase).not.toHaveBeenCalled();
     },
   );
+
   it('denies missing current authority and aborted operations before persistence', async () => {
     const { authorization, cases, persistence } = fixture();
     authorization.findAccess.mockResolvedValue(undefined);
@@ -284,6 +297,9 @@ describe('workflow input case application interface', () => {
     expect(persistence.getCase).not.toHaveBeenCalled();
     expect(persistence.listCases).not.toHaveBeenCalled();
   });
+}
+
+function registerDeniesRebindingOversizedJSONWrongCase(): void {
   it('denies rebinding, oversized JSON and wrong-case or malformed validators before persistence', async () => {
     const { cases, persistence } = fixture();
     const command = {
@@ -324,6 +340,7 @@ describe('workflow input case application interface', () => {
     expect(persistence.updateCase).not.toHaveBeenCalled();
     expect(persistence.deleteCase).not.toHaveBeenCalled();
   });
+
   it('maps safe revision/quota/rollout failures without payload or name', () => {
     expect(
       toProblem(
@@ -336,8 +353,9 @@ describe('workflow input case application interface', () => {
       ),
     ).toMatchObject({ code: 'workflow.input_case_limit_exceeded' });
   });
-});
-describe('workflow input case HTTP interface', () => {
+}
+
+function registerEnforcesExactStrongIfMatchGrammar(): void {
   it('enforces exact strong If-Match grammar', () => {
     expect(parseCaseIfMatch([representationTag])).toBe(representationTag);
     for (const value of [undefined, []])
@@ -356,6 +374,7 @@ describe('workflow input case HTTP interface', () => {
         expect.objectContaining({ code: 'invalid' }),
       );
   });
+
   it('declares session/read, update/CSRF, ordinary mutations and no-store on every route', () => {
     for (const name of ['list', 'get', 'create', 'update', 'delete'] as const) {
       // Metadata inspection does not invoke unbound controller methods.
@@ -376,6 +395,7 @@ describe('workflow input case HTTP interface', () => {
       });
     }
   });
+
   it('passes commands and emits current GET ETag while rejecting malformed routes/headers', async () => {
     const { cases } = fixture();
     const controller = new WorkflowInputCasesController(cases);
@@ -457,4 +477,4 @@ describe('workflow input case HTTP interface', () => {
       ),
     ).rejects.toMatchObject({ code: 'request.invalid' });
   });
-});
+}

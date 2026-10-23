@@ -99,6 +99,18 @@ function successfulSlackDelivery(persistence: FailureNotificationStore) {
 }
 
 describe('provider failure notification delivery', () => {
+  registerClassifiesPreFenceSDestinationStore();
+
+  registerClassifiesMalformedSCredentialsBeforeProvider();
+
+  registerBindsEveryResendDispatchIdentityField();
+
+  registerClassifiesSlackSWithoutUnsafeAmbiguous();
+
+  registerPinsRemainingEmailProviderResultPolicy();
+});
+
+function registerClassifiesPreFenceSDestinationStore(): void {
   it.each(['slack', 'email'] as const)(
     'classifies pre-fence %s destination-store loss without provider bytes',
     async (kind) => {
@@ -306,7 +318,9 @@ describe('provider failure notification delivery', () => {
       expect(sendNotification).not.toHaveBeenCalled();
     },
   );
+}
 
+function registerClassifiesMalformedSCredentialsBeforeProvider(): void {
   it.each(['slack', 'email'] as const)(
     'classifies malformed %s credentials before provider bytes',
     async (kind) => {
@@ -391,6 +405,7 @@ describe('provider failure notification delivery', () => {
       });
     },
   );
+
   it('sends deterministic Slack text only after the durable fence', async () => {
     const persistence = store('slack');
     const { delivery, sendMessage } = successfulSlackDelivery(persistence);
@@ -474,7 +489,9 @@ describe('provider failure notification delivery', () => {
       expect.objectContaining({ idempotencyKey: identity.idempotencyKey }),
     );
   });
+}
 
+function registerBindsEveryResendDispatchIdentityField(): void {
   it('binds every Resend dispatch identity field deterministically', async () => {
     const bindingFor = async (
       overrides: {
@@ -649,7 +666,9 @@ describe('provider failure notification delivery', () => {
         }),
       ).resolves.toMatchObject({ kind: 'retry', possiblyDispatched: false });
   });
+}
 
+function registerClassifiesSlackSWithoutUnsafeAmbiguous(): void {
   it.each([
     [
       'HTTP 5xx',
@@ -866,7 +885,9 @@ describe('provider failure notification delivery', () => {
       ).resolves.toMatchObject({ kind });
     },
   );
+}
 
+function registerPinsRemainingEmailProviderResultPolicy(): void {
   it.each([
     [{ kind: 'succeeded' as const, emailId: 'email-1' }, 'delivered'],
     [
@@ -999,4 +1020,4 @@ describe('provider failure notification delivery', () => {
       safeErrorCode: 'delivery.identity_changed',
     });
   });
-});
+}

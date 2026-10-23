@@ -134,6 +134,16 @@ async function nextFrame(
 }
 
 describe('run event SSE reconstruction', () => {
+  registerPreservesIteratorSRejectionWithoutLeaving();
+
+  registerPreservesUndefinedReadRejectionTogetherSubscription();
+
+  registerRepairsGapsSuppressesDuplicateLiveDelivery();
+
+  registerRejectsPersistedPayloadAbove256KiB();
+});
+
+function registerPreservesIteratorSRejectionWithoutLeaving(): void {
   it.each([
     ['Error', new Error('iterator rejected')],
     ['string', 'iterator rejected'],
@@ -331,7 +341,9 @@ describe('run event SSE reconstruction', () => {
       return true;
     });
   });
+}
 
+function registerPreservesUndefinedReadRejectionTogetherSubscription(): void {
   it('preserves an undefined read rejection together with subscription cleanup failure', async () => {
     const closeError = new Error('subscription close failed');
     const subscription: LiveRunEventSubscription = {
@@ -515,7 +527,9 @@ describe('run event SSE reconstruction', () => {
     expect(reader.calls).toEqual([1, 3]);
     await iterator.return(undefined);
   });
+}
 
+function registerRepairsGapsSuppressesDuplicateLiveDelivery(): void {
   it('repairs gaps and suppresses duplicate live delivery from PostgreSQL', async () => {
     const reader = new MutableReader();
     reader.events = [event(1)];
@@ -709,7 +723,9 @@ describe('run event SSE reconstruction', () => {
       expect(subscription.closed).toBe(true);
     },
   );
+}
 
+function registerRejectsPersistedPayloadAbove256KiB(): void {
   it('rejects a persisted payload above the 256 KiB SSE bound', async () => {
     const subscription = new ControlledSubscription();
     const oversized = {
@@ -820,4 +836,4 @@ describe('run event SSE reconstruction', () => {
     expect(close).toHaveBeenCalledOnce();
     expect(returnIterator).toHaveBeenCalledOnce();
   });
-});
+}

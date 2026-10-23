@@ -284,6 +284,12 @@ function dependencies(
 }
 
 describe('worker application bootstrap', () => {
+  registerForwardsWorkspaceTransactionIdentityOptionsWithout();
+
+  registerSharesOneApplicationCloseSettlementCloses();
+});
+
+function registerForwardsWorkspaceTransactionIdentityOptionsWithout(): void {
   it('forwards workspace transaction identity and options without adding a transaction', async () => {
     const signal = new AbortController().signal;
     const options = { signal, statementTimeoutMillis: 1_234 } as const;
@@ -487,7 +493,9 @@ describe('worker application bootstrap', () => {
     expect(telemetryShutdown).toHaveBeenCalledOnce();
     expect(order).toEqual(['transport', 'database', 'telemetry']);
   });
+}
 
+function registerSharesOneApplicationCloseSettlementCloses(): void {
   it('shares one application close settlement and closes each owner once', async () => {
     const databaseClose = vi.fn().mockResolvedValue(undefined);
     const selected = dependencies({ ...database, close: databaseClose });
@@ -557,4 +565,4 @@ describe('worker application bootstrap', () => {
 
     expect(shutdown).toHaveBeenCalledOnce();
   });
-});
+}

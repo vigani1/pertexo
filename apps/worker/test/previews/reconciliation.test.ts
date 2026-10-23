@@ -117,6 +117,16 @@ const idleErrorWorkflows = {
 };
 
 describe('preview reconciliation handler', () => {
+  registerRollsBackOptionalOwnersAcquiredBefore();
+
+  registerRoutesEveryEnabledMaintenanceJobDistinct();
+
+  registerContainsThrowingSTelemetryCallbackWithout();
+
+  registerReportsBoundedRecoveryShutdownFailureCloses();
+});
+
+function registerRollsBackOptionalOwnersAcquiredBefore(): void {
   it.each([
     ['traceRunner', []],
     [
@@ -264,7 +274,9 @@ describe('preview reconciliation handler', () => {
       expect(closed).toHaveLength(expectedClosed.length);
     },
   );
+}
 
+function registerRoutesEveryEnabledMaintenanceJobDistinct(): void {
   it('routes every enabled maintenance job to its distinct handler', async () => {
     let consumerOptions: QueueConsumerOptions | undefined;
     const handles = {
@@ -470,7 +482,9 @@ describe('preview reconciliation handler', () => {
       usesConnection: true,
     });
   });
+}
 
+function registerContainsThrowingSTelemetryCallbackWithout(): void {
   it.each(['reconciliation', 'terminal'] as const)(
     'contains a throwing %s telemetry callback without changing a committed result',
     async (failingCallback) => {
@@ -678,7 +692,9 @@ describe('preview reconciliation handler', () => {
       vi.useRealTimers();
     }
   });
+}
 
+function registerReportsBoundedRecoveryShutdownFailureCloses(): void {
   it('reports a bounded recovery shutdown failure and closes stores after late settlement', async () => {
     const events: string[] = [];
     const recovery = Promise.withResolvers<number>();
@@ -783,4 +799,4 @@ describe('preview reconciliation handler', () => {
       expect(notificationClose).toHaveBeenCalledOnce();
     });
   });
-});
+}

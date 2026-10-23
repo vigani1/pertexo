@@ -147,7 +147,10 @@ async function discardSpares(spares: Promise<StartableChild>[]): Promise<void> {
 describeIntegration('For Each cancellation recovery', () => {
   beforeAll(setup, 60_000);
   afterAll(restoreServicesAndClose);
+  registerRecoversBoundedEachBatchesCancellationPostgreSQL();
+});
 
+function registerRecoversBoundedEachBatchesCancellationPostgreSQL(): void {
   it('recovers bounded For Each batches and cancellation from PostgreSQL on fresh workers', async () => {
     let producer: ReturnType<typeof createQueueProducer> | undefined;
     let coordinatorQueue: Queue | undefined;
@@ -1206,4 +1209,4 @@ describeIntegration('For Each cancellation recovery', () => {
         );
     }
   }, 120_000);
-});
+}

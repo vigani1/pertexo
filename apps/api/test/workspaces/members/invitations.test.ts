@@ -47,6 +47,62 @@ function invitationRecord() {
 }
 
 describe('workspace invitation use cases', () => {
+  registerMapsUnresolvedDeliveryTruthfulRecoverableProblem();
+
+  registerReturnsSameReplacementSetCookieBrowser();
+});
+
+function pendingIntent() {
+  return {
+    id: intentId,
+    workspaceId,
+    invitationId,
+    invitationRevision: 1,
+    status: 'pending' as const,
+    expiresAt: new Date('2026-09-19T12:15:00.000Z'),
+    verifiedUserId: null,
+    verifiedSessionId: null,
+    verifiedEmail: null,
+    verifiedAt: null,
+    workspaceName: 'Control Operations',
+    invitationRole: 'viewer' as const,
+    invitationStatus: 'pending' as const,
+    acceptedUserId: null,
+    receipt: null,
+  };
+}
+
+function acceptanceUseCase(
+  overrides: Partial<
+    Pick<
+      IdentityWorkspacePersistence,
+      | 'resolveInvitationAcceptance'
+      | 'readInvitationAcceptance'
+      | 'recordInvitationAcceptanceProof'
+      | 'completeInvitationAcceptance'
+      | 'abandonInvitationAcceptance'
+    >
+  >,
+) {
+  return new InvitationAcceptanceUseCase(
+    {
+      resolveInvitationAcceptance: vi.fn(),
+      readInvitationAcceptance: vi.fn(),
+      recordInvitationAcceptanceProof: vi.fn(),
+      completeInvitationAcceptance: vi.fn(),
+      abandonInvitationAcceptance: vi.fn(),
+      ...overrides,
+    },
+    nodeIdentityCrypto,
+    { now: () => now },
+    {
+      publicWebOrigin: 'https://web.example.test',
+      session: { ttlMillis: 60_000 },
+    },
+  );
+}
+
+function registerMapsUnresolvedDeliveryTruthfulRecoverableProblem(): void {
   it('maps unresolved delivery to a truthful recoverable problem', () => {
     expect(
       toProblem(
@@ -205,7 +261,9 @@ describe('workspace invitation use cases', () => {
     expect(commands).toHaveLength(2);
     expect(commands[1]).toEqual(commands[0]);
   });
+}
 
+function registerReturnsSameReplacementSetCookieBrowser(): void {
   it('returns the same replacement Set-Cookie when the browser retries with its stale binding', async () => {
     const resolveInvitationAcceptance = vi.fn(
       (input: InvitationAcceptanceResolvePersistenceInput) =>
@@ -399,54 +457,4 @@ describe('workspace invitation use cases', () => {
       }),
     ).rejects.toBeInstanceOf(IdentityError);
   });
-});
-
-function pendingIntent() {
-  return {
-    id: intentId,
-    workspaceId,
-    invitationId,
-    invitationRevision: 1,
-    status: 'pending' as const,
-    expiresAt: new Date('2026-09-19T12:15:00.000Z'),
-    verifiedUserId: null,
-    verifiedSessionId: null,
-    verifiedEmail: null,
-    verifiedAt: null,
-    workspaceName: 'Control Operations',
-    invitationRole: 'viewer' as const,
-    invitationStatus: 'pending' as const,
-    acceptedUserId: null,
-    receipt: null,
-  };
-}
-
-function acceptanceUseCase(
-  overrides: Partial<
-    Pick<
-      IdentityWorkspacePersistence,
-      | 'resolveInvitationAcceptance'
-      | 'readInvitationAcceptance'
-      | 'recordInvitationAcceptanceProof'
-      | 'completeInvitationAcceptance'
-      | 'abandonInvitationAcceptance'
-    >
-  >,
-) {
-  return new InvitationAcceptanceUseCase(
-    {
-      resolveInvitationAcceptance: vi.fn(),
-      readInvitationAcceptance: vi.fn(),
-      recordInvitationAcceptanceProof: vi.fn(),
-      completeInvitationAcceptance: vi.fn(),
-      abandonInvitationAcceptance: vi.fn(),
-      ...overrides,
-    },
-    nodeIdentityCrypto,
-    { now: () => now },
-    {
-      publicWebOrigin: 'https://web.example.test',
-      session: { ttlMillis: 60_000 },
-    },
-  );
 }
