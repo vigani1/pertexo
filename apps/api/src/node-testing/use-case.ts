@@ -1,13 +1,8 @@
-import { createHash } from 'node:crypto';
-
 import {
-  nodeTestExecuteAcceptedResponseSchema,
   nodeValidationResponseSchema,
-  previewRunResponseSchema,
   type NodeTestRequest,
   type NodeTestExecuteAcceptedResponse,
   type NodeValidationResponse,
-  type PreviewRunResponse,
 } from '@pertexo/contracts';
 import { PreviewIdempotencyConflictError } from '@pertexo/database/previews';
 import {
@@ -16,17 +11,11 @@ import {
   WorkflowRevisionConflictError,
   type WorkflowDraftRecord,
 } from '@pertexo/database/authoring';
-import {
-  canonicalJson,
-  normalizedJson,
-  type JsonValue,
-  parseWorkflowGraphDraft,
-} from '@pertexo/workflow-model';
+import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import {
   type ExpressionEvaluator,
   workflowDraftRepresentationTag,
 } from '@pertexo/workflow-model/server';
-import { z } from 'zod';
 
 import {
   authorizeWorkspace,
@@ -43,11 +32,20 @@ import {
   prepareNodeValidation,
   type PreparedNodePreview,
 } from './validation.js';
+import {
+  type PreviewRunRecord,
+  previewAcceptanceResponse,
+} from './previews/response.js';
+import {
+  PREVIEW_RETENTION_MS,
+  PREVIEW_EXECUTION_TIMEOUT_MS,
+  validationInputFields,
+  digest,
+  previewExecutionIdentity,
+  normalizedExecutableNode,
+} from './previews/request.js';
 
-const PREVIEW_RETENTION_MS = 7 * 24 * 60 * 60 * 1_000;
-const PREVIEW_EXECUTION_TIMEOUT_MS = 5 * 60 * 1_000;
-const executableNodeSchema = z.record(z.string(), z.json());
-
+export { GetPreviewRunUseCase } from './previews/read.js';
 export type NodeTestUseCaseInput = Readonly<{
   actor: ActorContext;
   routeWorkspaceId: string;
@@ -61,51 +59,7 @@ export type NodeTestUseCaseInput = Readonly<{
   traceparent?: string;
 }>;
 
-type Authorization = WorkspaceAuthorizationSource;
-type PreviewOutput = NonNullable<
-  Awaited<ReturnType<NodeTestingPersistence['readPreview']>>
->['output'];
-type PreviewRunRecord = NonNullable<
-  Awaited<ReturnType<NodeTestingPersistence['resolvePreviewReplay']>>
->;
-type PreviewAcceptanceView = Pick<
-  PreviewRunRecord,
-  | 'id'
-  | 'workspaceId'
-  | 'workflowId'
-  | 'draftRevision'
-  | 'nodeId'
-  | 'status'
-  | 'sideEffectClass'
-  | 'mayContactProvider'
-  | 'mayCauseExternalSideEffect'
-  | 'dryRun'
-  | 'createdAt'
-  | 'expiresAt'
-  | 'pinnedSampleId'
-  | 'output'
-  | 'completedAt'
-  | 'codeDiagnostics'
->;
-
-function validationInputFields(
-  request: NodeTestRequest,
-): Readonly<{ sampleInput?: JsonValue }> | Readonly<{ deferInput: true }> {
-  if (request.mode === 'validate')
-    return request.sampleInput === undefined
-      ? {}
-      : { sampleInput: request.sampleInput as JsonValue };
-  if (request.input.kind === 'manual')
-    return { sampleInput: request.input.value as JsonValue };
-  return { deferInput: true };
-}
-
-function previewOutputResponse(output: PreviewOutput) {
-  if (output === null) return null;
-  if (output.kind === 'inline')
-    return { kind: 'inline' as const, value: output.value };
-  return { kind: 'artifact' as const, artifactId: output.artifactId };
-}
+export type Authorization = WorkspaceAuthorizationSource;
 
 export class TestWorkflowNodeUseCase {
   public constructor(
@@ -377,137 +331,4 @@ export class TestWorkflowNodeUseCase {
         : {}),
     });
   }
-}
-
-export class GetPreviewRunUseCase {
-  public constructor(
-    private readonly persistence: Pick<NodeTestingPersistence, 'readPreview'>,
-    private readonly authorization: Authorization,
-  ) {}
-
-  public async execute(
-    input: Readonly<{
-      actor: ActorContext;
-      routeWorkspaceId: string;
-      authorizedWorkspace?: AuthorizedWorkspaceContext;
-      previewRunId: string;
-    }>,
-  ): Promise<PreviewRunResponse> {
-    await authorizeWorkspaceOperation({
-      actor: input.actor,
-      routeWorkspaceId: input.routeWorkspaceId,
-      capability: 'workflow:update',
-      access: this.authorization,
-      disclosure: 'not_found',
-      allowedWorkspaceStatuses: ['active'],
-      ...(input.authorizedWorkspace === undefined
-        ? {}
-        : { authorizedWorkspace: input.authorizedWorkspace }),
-    });
-    const preview = await this.persistence.readPreview({
-      workspaceId: input.routeWorkspaceId,
-      actorUserId: input.actor.actorId,
-      previewRunId: input.previewRunId,
-    });
-    if (preview === null)
-      throw new WorkflowNotFoundError('Preview is not visible');
-    return previewRunResponseSchema.parse({
-      preview: {
-        id: preview.id,
-        workspaceId: preview.workspaceId,
-        workflowId: preview.workflowId,
-        draftRevision: preview.draftRevision,
-        nodeId: preview.nodeId,
-        status: preview.status,
-        disclosure: {
-          sideEffectClass: preview.sideEffectClass,
-          mayContactProvider: preview.mayContactProvider,
-          mayCauseExternalSideEffect: preview.mayCauseExternalSideEffect,
-          dryRun: preview.dryRun,
-        },
-        output: previewOutputResponse(preview.output),
-        ...(preview.codeDiagnostics === undefined
-          ? {}
-          : { codeDiagnostics: preview.codeDiagnostics }),
-        ...(preview.errorSummary === undefined
-          ? {}
-          : { errorSummary: preview.errorSummary }),
-        ...(preview.pinnedSampleId == null
-          ? {}
-          : { pinnedSampleId: preview.pinnedSampleId }),
-        safeErrorCode: preview.safeErrorCode,
-        createdAt: preview.createdAt.toISOString(),
-        startedAt: preview.startedAt?.toISOString() ?? null,
-        completedAt: preview.completedAt?.toISOString() ?? null,
-        expiresAt: preview.expiresAt.toISOString(),
-      },
-    });
-  }
-}
-
-function digest(value: unknown): string {
-  return createHash('sha256').update(canonicalJson(value)).digest('hex');
-}
-
-function previewExecutionIdentity(
-  input: NodeTestUseCaseInput,
-  request: Extract<NodeTestRequest, Readonly<{ mode: 'test_execute' }>>,
-): Readonly<{ keyHash: string; requestHash: string }> {
-  if (input.idempotencyKey === undefined)
-    throw new NodeTestRequestError('idempotency_required');
-  return Object.freeze({
-    keyHash: createHash('sha256').update(input.idempotencyKey).digest('hex'),
-    requestHash: digest({
-      domain: 'pertexo.preview.execute-request',
-      actorId: input.actor.actorId,
-      workspaceId: input.routeWorkspaceId,
-      workflowId: input.workflowId,
-      nodeId: input.nodeId,
-      request,
-    }),
-  });
-}
-
-function previewAcceptanceResponse(
-  preview: PreviewAcceptanceView,
-  { replayed }: Readonly<{ replayed: boolean }>,
-): NodeTestExecuteAcceptedResponse {
-  return nodeTestExecuteAcceptedResponseSchema.parse({
-    mode: 'test_execute',
-    replayed,
-    preview: {
-      id: preview.id,
-      workspaceId: preview.workspaceId,
-      workflowId: preview.workflowId,
-      draftRevision: preview.draftRevision,
-      nodeId: preview.nodeId,
-      status: preview.status,
-      disclosure: {
-        sideEffectClass: preview.sideEffectClass,
-        mayContactProvider: preview.mayContactProvider,
-        mayCauseExternalSideEffect: preview.mayCauseExternalSideEffect,
-        dryRun: preview.dryRun,
-      },
-      output:
-        preview.output === undefined || preview.output === null
-          ? null
-          : previewOutputResponse(preview.output),
-      ...(preview.codeDiagnostics === undefined
-        ? {}
-        : { codeDiagnostics: preview.codeDiagnostics }),
-      ...(preview.pinnedSampleId == null
-        ? {}
-        : { pinnedSampleId: preview.pinnedSampleId }),
-      safeErrorCode: null,
-      createdAt: preview.createdAt.toISOString(),
-      startedAt: null,
-      completedAt: preview.completedAt?.toISOString() ?? null,
-      expiresAt: preview.expiresAt.toISOString(),
-    },
-  });
-}
-
-function normalizedExecutableNode(value: unknown) {
-  const parsed: unknown = JSON.parse(normalizedJson(value));
-  return executableNodeSchema.parse(parsed);
 }

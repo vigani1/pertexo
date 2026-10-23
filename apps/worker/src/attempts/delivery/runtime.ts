@@ -2,9 +2,7 @@ import type { CallbackKeyConfig } from '@pertexo/integrations/server';
 import type { WorkerCodeRunnerConfig } from '../code/client.js';
 import {
   createNodeAttemptRunStore,
-  NodeAttemptDeliveryMismatchError,
   type NodeAttemptRunStore,
-  NodeAttemptStateCorruptError,
 } from '@pertexo/database/attempts';
 import {
   createWorkflowExecutionReader,
@@ -20,15 +18,11 @@ import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import { createQueueTraceRunner } from '@pertexo/observability';
 import {
   createQueueConsumer,
-  InvalidQueueDeliveryError,
-  JOB_NAME,
   QUEUE_NAME,
   RedisRunEventNotificationPublisher,
   type QueueConsumer,
   type QueueConsumerObserver,
-  type QueueJobHandler,
   type RunEventNotificationPublisher,
-  unrecoverableQueueError,
 } from '@pertexo/queue';
 import {
   composeExecutableCatalog,
@@ -57,7 +51,6 @@ import {
   createNodeAttemptHandler,
   type NodeAttemptExecutionEngine,
   type NodeAttemptHandler,
-  NodeAttemptHandlerStateError,
 } from './handler.js';
 import type { NodeExecutionCapabilityFactories } from '../execution/capabilities.js';
 import {
@@ -70,10 +63,14 @@ import {
   createWorkerNodeRuntimeCapabilities,
   type WorkerNodeRuntimeCapabilities,
 } from '../execution/runtime-capabilities.js';
+
 import {
-  mapPreviewHandlerError,
-  type PreviewAttemptHandler,
-} from '../../previews/runtime.js';
+  type OwnedNodeAttemptResource,
+  assertNodeAttemptRuntimeOpen,
+  closeNodeAttemptResources,
+  type OwnNodeAttemptResource,
+} from './runtime/ownership.js';
+import { queueHandler } from './runtime/queue-handler.js';
 
 export interface NodeAttemptRuntime {
   readonly consumer: QueueConsumer;
@@ -124,94 +121,6 @@ export type NodeAttemptRuntimeDependencies = Readonly<{
   previewTelemetry?: PreviewTelemetry;
   previewHandlerFactory?: typeof createPreviewAttemptHandler;
 }>;
-
-type OwnedNodeAttemptResource = Readonly<{
-  close: () => Promise<unknown>;
-  name: string;
-  phase: 'drain' | 'release';
-}>;
-
-function assertNodeAttemptRuntimeOpen(lifecycle: { terminal: boolean }): void {
-  if (lifecycle.terminal) throw new Error('Node-attempt runtime is closed');
-}
-
-async function closeNodeAttemptResources(
-  resources: readonly OwnedNodeAttemptResource[],
-  primary?: Readonly<{ error: unknown }>,
-): Promise<void> {
-  const drainSettled = await Promise.allSettled(
-    resources
-      .filter(({ phase }) => phase === 'drain')
-      .map(({ close }) => Promise.resolve().then(close)),
-  );
-  const releaseSettled = await Promise.allSettled(
-    resources
-      .filter(({ phase }) => phase === 'release')
-      .map(({ close }) => Promise.resolve().then(close)),
-  );
-  const cleanupFailures: unknown[] = [];
-  for (const result of [...drainSettled, ...releaseSettled])
-    if (result.status === 'rejected')
-      cleanupFailures.push(result.reason as unknown);
-  const failures: unknown[] = [
-    ...(primary === undefined ? [] : [primary.error]),
-    ...cleanupFailures,
-  ];
-  if (failures.length === 1) throw failures[0];
-  if (failures.length > 1)
-    throw new AggregateError(
-      failures,
-      primary === undefined
-        ? 'Node-attempt runtime cleanup failed'
-        : 'Node-attempt runtime construction failed and cleanup was incomplete',
-    );
-}
-
-function queueHandler(
-  handler: NodeAttemptHandler,
-  previewHandler: PreviewAttemptHandler | undefined,
-): QueueJobHandler {
-  return async (delivery, context): Promise<void> => {
-    if (
-      delivery.name !== JOB_NAME.executeNodeAttempt &&
-      delivery.name !== JOB_NAME.executePreviewAttempt
-    )
-      throw new InvalidQueueDeliveryError(
-        `Node-attempt consumer cannot handle ${delivery.name}`,
-      );
-    try {
-      if (
-        previewHandler !== undefined &&
-        delivery.name === JOB_NAME.executePreviewAttempt
-      ) {
-        await previewHandler.handle(delivery, context);
-        return;
-      }
-      if (delivery.name !== JOB_NAME.executeNodeAttempt)
-        throw new InvalidQueueDeliveryError(
-          `Node-attempt consumer cannot handle ${delivery.name}`,
-        );
-      await handler.handle(delivery, context);
-    } catch (error: unknown) {
-      if (
-        error instanceof NodeAttemptDeliveryMismatchError ||
-        error instanceof NodeAttemptStateCorruptError ||
-        error instanceof NodeAttemptHandlerStateError
-      )
-        throw unrecoverableQueueError(
-          error instanceof NodeAttemptHandlerStateError
-            ? `Node-attempt delivery is not recoverable: ${error.code}`
-            : 'Node-attempt delivery failed durable state verification',
-        );
-      throw mapPreviewHandlerError(error);
-    }
-  };
-}
-
-type OwnNodeAttemptResource = (
-  name: string,
-  close: (() => Promise<unknown>) | undefined,
-) => void;
 
 interface ProductionNodeAttemptRuntime {
   capabilityRuntime?: WorkerNodeRuntimeCapabilities;
