@@ -130,13 +130,7 @@ export function parseAutomationArguments(
   args: string[],
 ): AutomationArguments | 'help' {
   const flags = parseFlags(args);
-  const seen = new Set<string>();
-  for (const token of flags.tokens)
-    if (token.kind === 'option') {
-      if (seen.has(token.name))
-        return invalidArgument('Each option can be supplied only once.');
-      seen.add(token.name);
-    }
+  assertUniqueOptions(flags);
   if ((flags.values.help ?? false) || args.length === 0) return 'help';
   if (flags.positionals.length !== 2)
     return invalidArgument(
@@ -170,4 +164,14 @@ export function parseAutomationArguments(
       'The command needs valid workspace/target UUIDs and only its documented options. Writes require their stable --key, reviewed --etag and/or --body file. Run automation --help.',
     );
   return parsed.data;
+}
+
+function assertUniqueOptions(flags: ReturnType<typeof parseFlags>): void {
+  const seen = new Set<string>();
+  for (const token of flags.tokens)
+    if (token.kind === 'option') {
+      if (seen.has(token.name))
+        return invalidArgument('Each option can be supplied only once.');
+      seen.add(token.name);
+    }
 }

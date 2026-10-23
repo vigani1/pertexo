@@ -69,12 +69,7 @@ export async function executeAutomationCommand(
     !('bodyFile' in command) || command.bodyFile === undefined
       ? {}
       : await readCommandJson(command.bodyFile);
-  const headers = {
-    ...(!('key' in command) ? {} : { 'Idempotency-Key': command.key }),
-    ...(!('etag' in command) || command.etag === undefined
-      ? {}
-      : { 'If-Match': command.etag }),
-  };
+  const headers = commandHeaders(command);
   const get = (path: `/v1/${string}`) =>
     client.request({ path, signal, effect: 'read' });
   const post = (
@@ -188,4 +183,13 @@ export async function executeAutomationCommand(
         { uncertain: true },
       );
   }
+}
+
+function commandHeaders(command: AutomationArguments) {
+  return {
+    ...(!('key' in command) ? {} : { 'Idempotency-Key': command.key }),
+    ...(!('etag' in command) || command.etag === undefined
+      ? {}
+      : { 'If-Match': command.etag }),
+  };
 }
