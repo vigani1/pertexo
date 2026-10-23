@@ -14,7 +14,19 @@ export type VersionStepChange = Readonly<{
   detail?: string;
 }>;
 
+export type GraphChange = Readonly<{
+  id: string;
+  target: 'step' | 'note' | 'links' | 'settings' | 'callable';
+  kind: 'added' | 'removed' | 'changed';
+  label: string;
+  detail?: string;
+}>;
+
 export type VersionDiff = Readonly<{
+  lines: readonly GraphChange[];
+  linksAdded: number;
+  linksRemoved: number;
+  layoutOnly: boolean;
   added: readonly VersionStepChange[];
   removed: readonly VersionStepChange[];
   changed: readonly VersionStepChange[];
@@ -39,32 +51,82 @@ export function diffWorkflowGraphs(
     id: node.id,
     label: stepLabel(node),
   });
-  return {
-    added: diff.added.map(step),
-    removed: diff.removed.map(step),
-    changed: diff.changed.map((change) => ({
-      ...step(change.after),
-      detail: describeStepChange(change.aspects),
+  const added = diff.added.map(step);
+  const removed = diff.removed.map(step);
+  const changed = diff.changed.map((change) => ({
+    ...step(change.after),
+    detail: describeStepChange(change.aspects),
+  }));
+  const contractChanged =
+    canonicalizeJson(previous.callable ?? null) !==
+    canonicalizeJson(current.callable ?? null);
+  const settingsChanged =
+    canonicalizeJson(previous.settings) !== canonicalizeJson(current.settings);
+  const lines: GraphChange[] = [
+    ...diff.notes.map((note) => ({ ...note, target: 'note' as const })),
+    ...added.map((item) => ({
+      ...item,
+      target: 'step' as const,
+      kind: 'added' as const,
     })),
+    ...removed.map((item) => ({
+      ...item,
+      target: 'step' as const,
+      kind: 'removed' as const,
+    })),
+    ...changed.map((item) => ({
+      ...item,
+      target: 'step' as const,
+      kind: 'changed' as const,
+    })),
+    ...(diff.linksAdded + diff.linksRemoved > 0
+      ? [
+          {
+            id: 'links',
+            target: 'links' as const,
+            kind: 'changed' as const,
+            label: 'Links between steps',
+            detail: `${String(diff.linksAdded)} added, ${String(diff.linksRemoved)} removed`,
+          },
+        ]
+      : []),
+    ...(settingsChanged
+      ? [
+          {
+            id: 'settings',
+            target: 'settings' as const,
+            kind: 'changed' as const,
+            label: 'Workflow execution settings',
+          },
+        ]
+      : []),
+    ...(contractChanged
+      ? [
+          {
+            id: 'callable',
+            target: 'callable' as const,
+            kind: 'changed' as const,
+            label: 'Input or callable contract',
+          },
+        ]
+      : []),
+  ];
+  return {
+    lines,
+    linksAdded: diff.linksAdded,
+    linksRemoved: diff.linksRemoved,
+    layoutOnly:
+      lines.length === 0 && diffGraphs(previous, current).changed.length > 0,
+    added,
+    removed,
+    changed,
     notes: diff.notes,
     linksChanged: diff.linksAdded + diff.linksRemoved > 0,
-    contractChanged:
-      canonicalizeJson({ callable: previous.callable ?? null }) !==
-      canonicalizeJson({ callable: current.callable ?? null }),
-    settingsChanged:
-      canonicalizeJson(previous.settings) !==
-      canonicalizeJson(current.settings),
+    contractChanged,
+    settingsChanged,
   };
 }
 
 export function isEmptyDiff(diff: VersionDiff): boolean {
-  return (
-    diff.notes.length === 0 &&
-    diff.added.length === 0 &&
-    diff.removed.length === 0 &&
-    diff.changed.length === 0 &&
-    !diff.linksChanged &&
-    !diff.contractChanged &&
-    !diff.settingsChanged
-  );
+  return diff.lines.length === 0;
 }

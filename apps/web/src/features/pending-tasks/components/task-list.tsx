@@ -29,7 +29,7 @@ export function TaskList({
   const nowMs = useNow(60_000);
   if (query.isPending)
     return <SkeletonRows label="Loading requests" rows={compact ? 2 : 4} />;
-  if (query.isError)
+  if (query.data === undefined)
     return (
       <ReadFailure
         resource="Requests"
@@ -43,6 +43,16 @@ export function TaskList({
   const items = query.data.pages.flatMap((page) => page.items);
   return (
     <div>
+      {query.isError && !query.isFetchNextPageError ? (
+        <ReadFailure
+          resource="Requests"
+          error={query.error}
+          showing
+          retrying={query.isFetching}
+          updatedAt={query.dataUpdatedAt}
+          onRetry={() => void query.refetch()}
+        />
+      ) : null}
       {items.length === 0 ? (
         compact ? (
           <p className="py-4 text-sm text-muted-foreground">

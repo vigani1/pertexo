@@ -51,17 +51,13 @@ export function PublishChanges({
         <p className="mt-2 text-sm text-muted-foreground">
           {summary.layoutOnly
             ? 'Only the layout changed. Runs behave exactly as before.'
-            : (linkSentence(summary) ??
-              'No step changes. Publishing makes the same steps live again.')}
+            : 'No definition changes. Publishing makes the same version live again.'}
         </p>
       ) : (
         <ul className="mt-2 flex flex-col gap-1 text-sm">
           {summary.lines.map((line) => (
             <ChangeLine key={`${line.kind}:${line.nodeId}`} line={line} />
           ))}
-          {linkSentence(summary) === undefined ? null : (
-            <li className="text-muted-foreground">{linkSentence(summary)}</li>
-          )}
         </ul>
       )}
     </section>
@@ -85,16 +81,4 @@ function ChangeLine({ line }: Readonly<{ line: PublishSummaryLine }>) {
       )}
     </li>
   );
-}
-
-function linkSentence(summary: PublishSummary): string | undefined {
-  const parts = [
-    summary.linksAdded > 0
-      ? `${String(summary.linksAdded)} ${summary.linksAdded === 1 ? 'link' : 'links'} added`
-      : undefined,
-    summary.linksRemoved > 0
-      ? `${String(summary.linksRemoved)} ${summary.linksRemoved === 1 ? 'link' : 'links'} removed`
-      : undefined,
-  ].filter((part) => part !== undefined);
-  return parts.length === 0 ? undefined : `${parts.join(', ')}.`;
 }

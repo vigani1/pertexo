@@ -1,9 +1,11 @@
 import { HttpResponse, http } from 'msw';
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
 import { renderApp } from '../../support/render-app';
+import { problem } from '../../support/fixtures/team';
+import { connectionKeys } from '@/features/connections/data/connections.queries';
 
 // Each page loads its lazy route on first render; under a busy machine that
 // can outlast the default one-second wait without anything being wrong.
@@ -785,6 +787,77 @@ describe('connections page', () => {
     expect(await lens().findByText('Slack accepted the token.')).toBeVisible();
     expect(keys).toHaveLength(2);
     expect(keys[1]).toBe(keys[0]);
+  });
+
+  it('keeps a credential edit at its original version across refresh until a newer replacement is explicitly chosen', async () => {
+    const nextVersion = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+    const nextToken = 'xoxb-1234567890-refresh-retained';
+    let current = connection('Operations Slack');
+    const keys: string[] = [];
+    const bodies: unknown[] = [];
+    mockServer.use(
+      ...identityHandlers(),
+      listOf(() => [current]),
+      detailOf(() => current),
+      http.put(`${base}/${connectionId}/secret`, async ({ request }) => {
+        keys.push(request.headers.get('idempotency-key') ?? '');
+        bodies.push(await request.json());
+        if (keys.length === 1) return problem(409, 'connection.conflict');
+        current = connection('Operations Slack', {
+          secretVersionId: '99999999-9999-4999-8999-999999999999',
+        });
+        return HttpResponse.json(current);
+      }),
+    );
+    const { queryClient } = renderApp(
+      `/w/${workspaceId}/connections?connection=${connectionId}`,
+    );
+    const actor = userEvent.setup();
+    await actor.click(
+      await screen.findByRole('button', { name: 'Replace credential' }),
+    );
+    const token = lens().getByLabelText('Slack bot token');
+    await actor.type(token, nextToken);
+    current = connection('Operations Slack', { secretVersionId: nextVersion });
+    await act(async () => {
+      await queryClient.invalidateQueries({
+        queryKey: connectionKeys.scope(userId, workspaceId),
+      });
+    });
+    await waitFor(() => {
+      expect(
+        queryClient.getQueryData(
+          connectionKeys.detail(userId, workspaceId, connectionId),
+        ),
+      ).toMatchObject({ secretVersionId: nextVersion });
+    });
+    expect(token).toHaveValue(nextToken);
+    await actor.click(
+      lens().getByRole('button', { name: 'Replace credential' }),
+    );
+    await waitFor(() => {
+      expect(bodies).toHaveLength(1);
+    });
+    expect(bodies[0]).toEqual({
+      expectedSecretVersionId: secretVersionId,
+      credential: { type: 'slack_bot_token', botToken: nextToken },
+    });
+    expect(
+      await lens().findByText(/different credential was saved/u),
+    ).toBeVisible();
+    expect(token).toHaveValue(nextToken);
+    await actor.click(
+      lens().getByRole('button', { name: 'Use my credential' }),
+    );
+    expect(
+      await screen.findByText('Replaced the bot token for Operations Slack'),
+    ).toBeVisible();
+    expect(bodies[1]).toEqual({
+      expectedSecretVersionId: nextVersion,
+      credential: { type: 'slack_bot_token', botToken: nextToken },
+    });
+    expect(keys[1]).not.toBe(keys[0]);
+    expect(mutationVariables(queryClient)).not.toContain(nextToken);
   });
 
   it('replaces a credential with its original secret version and command key', async () => {

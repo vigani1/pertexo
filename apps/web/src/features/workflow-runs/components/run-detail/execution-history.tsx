@@ -151,7 +151,13 @@ export function StepExecutionHistory({
               entry={entry}
               nowMs={nowMs}
               workspace={workspace}
-              errorSummary={row.errorSummary}
+              errorSummary={
+                entry.kind === 'attempt' &&
+                entry.attemptNumber === row.currentAttemptNumber &&
+                entry.safeErrorCode === row.safeErrorCode
+                  ? row.errorSummary
+                  : undefined
+              }
               definitionKey={row.definitionKey}
             />
           ))}

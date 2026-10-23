@@ -10,6 +10,7 @@ import type {
   ConnectionTestRequest,
 } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
+import { isApiError } from '@/lib/api/error';
 import {
   createConnection,
   revokeConnection,
@@ -152,7 +153,11 @@ function useSecretConnectionMutation<Command>(
     mutationFn: execute,
     onMutate: captureResultScope,
     onSuccess: (result, _command, owner) => owner.store(result),
-    onError: (error, _command, owner) => owner?.denied(error),
+    onError: async (error, _command, owner) => {
+      await owner?.denied(error);
+      if (isApiError(error) && error.problem?.code === 'connection.conflict')
+        await owner?.invalidate();
+    },
   });
   const reset = mutation.reset;
   const clearSensitiveState = useCallback(() => {
