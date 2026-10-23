@@ -142,7 +142,7 @@ export async function verifyEditorConflictAndImmutableRun(
       .getByRole('button', { name: 'Compare', exact: true })
       .click();
     await compare
-      .getByRole('tab', { name: 'Steps and notes', exact: true })
+      .getByRole('tab', { name: 'Changes', exact: true })
       .click();
     await compare
       .getByRole('button', {
