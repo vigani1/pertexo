@@ -1,3 +1,4 @@
+import type { WorkflowGraphContract } from '@pertexo/contracts';
 import type { WorkflowNote } from '@pertexo/workflow-model';
 import { expect, type BrowserContext, type Page } from '@playwright/test';
 import { unpausedWorkflowSettings } from '../../test/support/fixtures/auto-pause';
@@ -105,6 +106,7 @@ export async function openWorkflowAction(page: Page, name: string) {
 }
 
 export type Graph = Readonly<{
+  callable?: WorkflowGraphContract['callable'];
   notes?: readonly WorkflowNote[] | undefined;
   nodes: readonly unknown[];
   edges: readonly unknown[];
