@@ -123,7 +123,7 @@ export function registerRegistersMethodPathGuardsRateClass(): void {
           ...(route.body === undefined ? {} : { payload: route.body }),
         });
         expect(response.statusCode).toBe(
-          allowed ? route.status : route.name === 'replaceTags' ? 404 : 403,
+          allowed ? route.status : deniedRouteStatus(route.name),
         );
       }
     }
@@ -241,4 +241,8 @@ export function registerRegistersMethodPathGuardsRateClass(): void {
     });
     expect(f.tags.createTag).not.toHaveBeenCalled();
   });
+}
+
+function deniedRouteStatus(name: string) {
+  return name === 'replaceTags' ? 404 : 403;
 }

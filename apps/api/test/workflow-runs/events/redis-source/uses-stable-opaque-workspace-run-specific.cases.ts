@@ -158,12 +158,7 @@ export function registerUsesStableOpaqueWorkspaceRunSpecific(): void {
         expectNoListeners(fake);
         expect(redisTelemetry.operationFinished).toHaveBeenCalledWith(
           expect.objectContaining({
-            errorClass:
-              outcome === 'rejection'
-                ? 'connection'
-                : outcome === 'abort'
-                  ? 'aborted'
-                  : 'timeout',
+            errorClass: expectedSubscriptionError(outcome),
             operation: 'subscribe',
             outcome: 'failure',
           }),
@@ -191,4 +186,10 @@ export function registerUsesStableOpaqueWorkspaceRunSpecific(): void {
     expect(fake.disconnectCalls).toBe(1);
     expectNoListeners(fake);
   });
+}
+
+function expectedSubscriptionError(outcome: string) {
+  if (outcome === 'rejection') return 'connection';
+  if (outcome === 'abort') return 'aborted';
+  return 'timeout';
 }

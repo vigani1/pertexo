@@ -245,12 +245,7 @@ export async function verifyHttpEvidence(
     expect(row).toMatchObject({
       http_status: row.outcome === 'conflict' ? 409 : 202,
       signature_check: 'verified',
-      replay_check:
-        row.outcome === 'accepted'
-          ? 'new'
-          : row.outcome === 'replayed'
-            ? 'duplicate'
-            : 'conflict',
+      replay_check: expectedReplayCheck(row.outcome),
     });
   expect(
     deliveries.rows
@@ -491,4 +486,10 @@ async function verifyFailedStepRecovery(
   expect(receipt.rows).toEqual([
     { resource_id: recoveryRunId, status: 'completed' },
   ]);
+}
+
+function expectedReplayCheck(outcome: string) {
+  if (outcome === 'accepted') return 'new';
+  if (outcome === 'replayed') return 'duplicate';
+  return 'conflict';
 }

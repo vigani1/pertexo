@@ -460,14 +460,12 @@ export async function assertSingleProviderLink(
         mismatchEvidence = {
           outcomes: responses.map((response) => ({
             status: response.status,
-            kind:
-              response.headers.get('location') === acceptedLanding
-                ? 'linked'
-                : response.headers.get('location') === linkErrorLanding
-                  ? 'link-error'
-                  : response.headers.get('location') === reauthenticateLanding
-                    ? 'reauthenticate'
-                    : 'other',
+            kind: providerLinkOutcome({
+              response,
+              acceptedLanding,
+              linkErrorLanding,
+              reauthenticateLanding,
+            }),
             sessionCookieIssued:
               cookieValue(response.headers.getSetCookie()) !== undefined,
           })),
@@ -637,4 +635,23 @@ export async function closeBetterAuthPostgresIntegrationTestTs() {
   } finally {
     await admin.end();
   }
+}
+
+function providerLinkOutcome({
+  response,
+  acceptedLanding,
+  linkErrorLanding,
+  reauthenticateLanding,
+}: Readonly<{
+  response: Response;
+  acceptedLanding: string;
+  linkErrorLanding: string;
+  reauthenticateLanding: string;
+}>) {
+  if (response.headers.get('location') === acceptedLanding) return 'linked';
+  if (response.headers.get('location') === linkErrorLanding)
+    return 'link-error';
+  if (response.headers.get('location') === reauthenticateLanding)
+    return 'reauthenticate';
+  return 'other';
 }
