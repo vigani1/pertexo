@@ -90,15 +90,7 @@ function assertSafeExecutableJson(value: unknown): void {
     pending.push({ kind: 'exit', value: item });
     let enumerableCount = 0;
     for (const key in item) {
-      if (!Object.hasOwn(item, key))
-        fail('executable envelope has inherited enumerable fields');
-      const descriptor = Object.getOwnPropertyDescriptor(item, key);
-      if (
-        descriptor === undefined ||
-        !descriptor.enumerable ||
-        !('value' in descriptor)
-      )
-        fail('executable envelope must contain own data fields');
+      const descriptor = executableDataField(item, key);
       members += 1;
       if (members > WORKFLOW_EXECUTABLE_LIMITS.members)
         fail('executable envelope exceeds maximum members');
@@ -255,4 +247,17 @@ function assertExecutableOwnFields(
     (arrayLength === undefined && ownNames.length !== enumerableCount)
   )
     fail('executable envelope has hidden or sparse fields');
+}
+
+function executableDataField(item: object, key: string): PropertyDescriptor {
+  if (!Object.hasOwn(item, key))
+    fail('executable envelope has inherited enumerable fields');
+  const descriptor = Object.getOwnPropertyDescriptor(item, key);
+  if (
+    descriptor === undefined ||
+    !descriptor.enumerable ||
+    !('value' in descriptor)
+  )
+    fail('executable envelope must contain own data fields');
+  return descriptor;
 }

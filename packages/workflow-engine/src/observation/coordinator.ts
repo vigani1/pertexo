@@ -39,20 +39,7 @@ export function branchSelectionObservations({
   const seen = new Map<string, string>();
   const verifiedParallelOutputs = new Set<string>();
   const observations = completedItems.flatMap((item): WorkflowObservation[] => {
-    const material = record(item, 'observation_invalid', 'completed output');
-    exactKeys(material, ['sequence', 'attemptId', 'invocationKey', 'value']);
-    if (
-      typeof material.sequence !== 'number' ||
-      !Number.isSafeInteger(material.sequence) ||
-      material.sequence < 1 ||
-      typeof material.attemptId !== 'string' ||
-      !UUID_PATTERN.test(material.attemptId) ||
-      typeof material.invocationKey !== 'string'
-    )
-      operationError(
-        'observation_invalid',
-        'completed output identity is invalid',
-      );
+    const material = parseBranchMaterial(item);
     const attemptId = material.attemptId;
     const identity = `${String(material.sequence)}\u0000${material.attemptId}`;
     const canonicalMaterial = canonicalJson(material);
@@ -269,16 +256,8 @@ export function mergeCoordinatorObservations(
               if (source === undefined && mergeSourceNodeId !== parallelNodeId)
                 return [];
               const statuses = new Set(scoped.map(({ status }) => status));
-              const disposition =
-                statuses.has('failed') ||
-                statuses.has('timed_out') ||
-                statuses.has('outcome_unknown')
-                  ? 'failed'
-                  : statuses.has('canceled')
-                    ? 'canceled'
-                    : statuses.size === 1 && statuses.has('skipped')
-                      ? 'skipped'
-                      : 'arrived';
+              const disposition = settledBranchDisposition(statuses);
+
               return [
                 {
                   kind: 'branch_disposition',
@@ -301,4 +280,40 @@ export function mergeCoordinatorObservations(
         },
       );
     });
+}
+
+function parseBranchMaterial(item: JsonValue) {
+  const material = record(item, 'observation_invalid', 'completed output');
+  exactKeys(material, ['sequence', 'attemptId', 'invocationKey', 'value']);
+  if (
+    typeof material.sequence !== 'number' ||
+    !Number.isSafeInteger(material.sequence) ||
+    material.sequence < 1 ||
+    typeof material.attemptId !== 'string' ||
+    !UUID_PATTERN.test(material.attemptId) ||
+    typeof material.invocationKey !== 'string'
+  )
+    operationError(
+      'observation_invalid',
+      'completed output identity is invalid',
+    );
+  return {
+    value: material.value,
+    sequence: material.sequence,
+    attemptId: material.attemptId,
+    invocationKey: material.invocationKey,
+  };
+}
+
+function settledBranchDisposition(
+  statuses: ReadonlySet<string>,
+): 'failed' | 'canceled' | 'skipped' | 'arrived' {
+  const failed =
+    statuses.has('failed') ||
+    statuses.has('timed_out') ||
+    statuses.has('outcome_unknown');
+  if (failed) return 'failed';
+  if (statuses.has('canceled')) return 'canceled';
+  if (statuses.size === 1 && statuses.has('skipped')) return 'skipped';
+  return 'arrived';
 }

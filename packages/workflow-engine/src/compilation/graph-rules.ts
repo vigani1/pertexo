@@ -163,16 +163,7 @@ export function assertBranchesDoNotReconverge(
   for (const merge of graph.nodes.filter(({ definition }) =>
     isCoreMergeDefinition(definition),
   )) {
-    const parallelNodeId = merge.config.parallelNodeId;
-    const parallel =
-      typeof parallelNodeId === 'string'
-        ? index.nodesById.get(parallelNodeId)
-        : undefined;
-    if (
-      !isCoreParallelDefinition(parallel?.definition) ||
-      parallel?.definition.version !== merge.definition.version
-    )
-      fail('Merge must reference a pinned Parallel node');
+    assertMergeParallel(merge, index);
   }
 
   for (const node of graph.nodes) {
@@ -273,4 +264,20 @@ function assertPairedMergeInputs(
         ports.length)
   )
     fail('Merge count policy exceeds paired Parallel branches');
+}
+
+function assertMergeParallel(
+  merge: WorkflowGraph['nodes'][number],
+  index: GraphValidationIndex,
+): void {
+  const parallelNodeId = merge.config.parallelNodeId;
+  const parallel =
+    typeof parallelNodeId === 'string'
+      ? index.nodesById.get(parallelNodeId)
+      : undefined;
+  if (
+    !isCoreParallelDefinition(parallel?.definition) ||
+    parallel?.definition.version !== merge.definition.version
+  )
+    fail('Merge must reference a pinned Parallel node');
 }

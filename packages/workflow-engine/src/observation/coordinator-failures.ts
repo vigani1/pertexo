@@ -48,11 +48,10 @@ export function resolveAttemptFailures(
       return {
         kind: 'outcome',
         invocationKey: failure.invocationKey,
-        status: nonSafeUnknown
-          ? 'outcome_unknown'
-          : input.controlCanceled
-            ? 'canceled'
-            : 'timed_out',
+        status: interruptedFailureStatus({
+          nonSafeUnknown,
+          controlCanceled: input.controlCanceled,
+        }),
         reasonCode: failure.safeErrorCode,
         coordinatorDerived: true,
       };
@@ -125,4 +124,13 @@ export function resolveAttemptFailures(
       coordinatorDerived: true,
     };
   });
+}
+
+function interruptedFailureStatus({
+  nonSafeUnknown,
+  controlCanceled,
+}: Readonly<{ nonSafeUnknown: boolean; controlCanceled: boolean }>):
+  'outcome_unknown' | 'canceled' | 'timed_out' {
+  if (nonSafeUnknown) return 'outcome_unknown';
+  return controlCanceled ? 'canceled' : 'timed_out';
 }
