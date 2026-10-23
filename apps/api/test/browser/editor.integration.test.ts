@@ -1220,83 +1220,7 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
             'test',
             '--config',
             'playwright.live.config.ts',
-            scenario === 'run-values'
-              ? 'editor/run-values/journey.spec.ts'
-              : scenario === 'http-pagination'
-                ? 'editor/http-pagination.spec.ts'
-                : scenario === 'federation' || scenario === 'two-factor'
-                  ? scenario === 'two-factor'
-                    ? 'authentication/two-factor.spec.ts'
-                    : 'editor/federation/sign-in.spec.ts'
-                  : scenario === 'organization-oidc'
-                    ? 'editor/federation/organization.spec.ts'
-                    : scenario === 'collaboration'
-                      ? 'editor/collaboration'
-                      : scenario === 'promotion'
-                        ? 'editor/promotions'
-                        : scenario === 'governance'
-                          ? 'editor/governance'
-                          : scenario === 'code'
-                            ? 'editor/code.spec.ts'
-                            : scenario === 'webhook-responses'
-                              ? 'editor/webhook-responses.spec.ts'
-                              : scenario === 'pinned-samples'
-                                ? 'editor/pinned-samples.spec.ts'
-                                : scenario === 'notifications'
-                                  ? 'editor/notifications/attention.spec.ts'
-                                  : scenario === 'variables'
-                                    ? 'editor/variables/snapshots.spec.ts'
-                                    : scenario === 'forms'
-                                      ? 'editor/forms/submission.spec.ts'
-                                      : scenario === 'approvals'
-                                        ? 'editor/approvals.spec.ts'
-                                        : scenario === 'error-workflows'
-                                          ? 'editor/error-workflows.spec.ts'
-                                          : scenario === 'artifact-inputs'
-                                            ? process.env
-                                                .F45_RELEASE_QUALIFICATION ===
-                                              'true'
-                                              ? 'editor/files/maximum-upload.spec.ts'
-                                              : 'editor/files/'
-                                            : scenario === 'api-tokens'
-                                              ? 'api-tokens.spec.ts'
-                                              : scenario === 'callable'
-                                                ? 'editor/callable.spec.ts'
-                                                : scenario ===
-                                                    'curated-templates'
-                                                  ? 'curated-templates.spec.ts'
-                                                  : scenario === 'portability'
-                                                    ? 'workflow-portability.spec.ts'
-                                                    : scenario === 'input-cases'
-                                                      ? 'workflow-input-cases.spec.ts'
-                                                      : scenario ===
-                                                          'duplication'
-                                                        ? 'workflow-duplication.spec.ts'
-                                                        : scenario ===
-                                                            'nested-conflict'
-                                                          ? 'editor/execution.spec.ts'
-                                                          : scenario ===
-                                                              'receipts'
-                                                            ? 'editor/receipts.spec.ts'
-                                                            : scenario ===
-                                                                'run-recovery'
-                                                              ? 'editor/run-recovery.spec.ts'
-                                                              : scenario ===
-                                                                  'expression-admission'
-                                                                ? 'editor/expression-admission.spec.ts'
-                                                                : scenario ===
-                                                                    'readonly'
-                                                                  ? 'editor/readonly.spec.ts'
-                                                                  : scenario ===
-                                                                      'schedule'
-                                                                    ? 'editor/schedule.spec.ts'
-                                                                    : scenario ===
-                                                                        'failure-routing'
-                                                                      ? 'editor/failure-routing.spec.ts'
-                                                                      : scenario ===
-                                                                          'transforms'
-                                                                        ? 'editor/transforms.spec.ts'
-                                                                        : 'editor/webhook-controlled-http.spec.ts',
+            editorJourneyPath(scenario),
           ],
           {
             cwd: webDirectory,
@@ -1731,3 +1655,44 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
     );
   }, 180_000);
 });
+
+function editorJourneyPath(selected: typeof scenario): string {
+  if (selected === 'artifact-inputs')
+    return process.env.F45_RELEASE_QUALIFICATION === 'true'
+      ? 'editor/files/maximum-upload.spec.ts'
+      : 'editor/files/';
+  return EDITOR_JOURNEY_PATHS[selected];
+}
+const EDITOR_JOURNEY_PATHS = {
+  'run-values': 'editor/run-values/journey.spec.ts',
+  'http-pagination': 'editor/http-pagination.spec.ts',
+  'two-factor': 'authentication/two-factor.spec.ts',
+  federation: 'editor/federation/sign-in.spec.ts',
+  'organization-oidc': 'editor/federation/organization.spec.ts',
+  collaboration: 'editor/collaboration',
+  promotion: 'editor/promotions',
+  governance: 'editor/governance',
+  code: 'editor/code.spec.ts',
+  'webhook-responses': 'editor/webhook-responses.spec.ts',
+  'pinned-samples': 'editor/pinned-samples.spec.ts',
+  notifications: 'editor/notifications/attention.spec.ts',
+  variables: 'editor/variables/snapshots.spec.ts',
+  forms: 'editor/forms/submission.spec.ts',
+  approvals: 'editor/approvals.spec.ts',
+  'error-workflows': 'editor/error-workflows.spec.ts',
+  'api-tokens': 'api-tokens.spec.ts',
+  callable: 'editor/callable.spec.ts',
+  'curated-templates': 'curated-templates.spec.ts',
+  portability: 'workflow-portability.spec.ts',
+  'input-cases': 'workflow-input-cases.spec.ts',
+  duplication: 'workflow-duplication.spec.ts',
+  'nested-conflict': 'editor/execution.spec.ts',
+  receipts: 'editor/receipts.spec.ts',
+  'run-recovery': 'editor/run-recovery.spec.ts',
+  'expression-admission': 'editor/expression-admission.spec.ts',
+  readonly: 'editor/readonly.spec.ts',
+  schedule: 'editor/schedule.spec.ts',
+  'failure-routing': 'editor/failure-routing.spec.ts',
+  transforms: 'editor/transforms.spec.ts',
+  'webhook-controlled-http': 'editor/webhook-controlled-http.spec.ts',
+} satisfies Record<Exclude<typeof scenario, 'artifact-inputs'>, string>;

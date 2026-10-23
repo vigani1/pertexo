@@ -178,12 +178,7 @@ describe('the pinned SCIM schema/filter/patch boundary', () => {
               {
                 op: 'replace',
                 path,
-                value:
-                  path === 'groups'
-                    ? [{ value: user.id }]
-                    : path === 'schemas'
-                      ? []
-                      : 'changed',
+                value: readOnlyPatchValue(path),
               },
             ]),
             'User',
@@ -218,3 +213,9 @@ describe('the pinned SCIM schema/filter/patch boundary', () => {
       expect(() => parseDirectoryFilter(source)).toThrow();
   });
 });
+
+function readOnlyPatchValue(path: string) {
+  if (path === 'groups') return [{ value: user.id }];
+  if (path === 'schemas') return [];
+  return 'changed';
+}

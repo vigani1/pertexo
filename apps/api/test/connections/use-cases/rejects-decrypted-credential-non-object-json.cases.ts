@@ -80,19 +80,18 @@ export function registerRejectsDecryptedCredentialNonObjectJSON(): void {
           routeWorkspaceId: workspaceId,
           connectionId,
           idempotencyKey: `mismatched-${provider}`,
-          request:
-            provider === 'http'
-              ? { url: 'https://provider.example.test/health' }
-              : provider === 'slack'
-                ? { providerKey: 'slack' }
-                : {
-                    providerKey: 'email',
-                    sideEffectDisclosureAccepted: true,
-                  },
+          request: mismatchedConnectionTestRequest(provider),
         }),
       ).rejects.toBeInstanceOf(ConnectionSecretEncryptionError);
       expect(store.abandonConnectionTest).toHaveBeenCalledOnce();
       expect(plaintext.every((byte) => byte === 0)).toBe(true);
     },
   );
+}
+
+function mismatchedConnectionTestRequest(provider: string) {
+  if (provider === 'http')
+    return { url: 'https://provider.example.test/health' };
+  if (provider === 'slack') return { providerKey: 'slack' };
+  return { providerKey: 'email', sideEffectDisclosureAccepted: true };
 }
