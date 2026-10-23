@@ -5,7 +5,7 @@ import {
 import type { WorkflowAuthoringDatabase } from '../workflows/contracts.js';
 import type { WorkflowAuthoringReadContext } from '../workflows/reads.js';
 import { WorkflowTemplateOriginUnavailableError } from '../workflows/errors.js';
-import { workflowTemplateOriginSchema } from '@pertexo/templates';
+import { workflowTemplateOriginSchema } from '@pertexo/workflow-model';
 import {
   mapWorkflow,
   workflowRowSelection,
