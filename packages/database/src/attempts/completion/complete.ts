@@ -14,11 +14,8 @@ import {
   nodeAttemptConsumerName as consumerName,
   validateDelivery,
 } from './receipts.js';
-import {
-  applyNodeAttemptCompletion,
-  type CompletionReceiptRow,
-  type LockedAttemptRow,
-} from './outcomes.js';
+import { applyNodeAttemptCompletion } from './outcomes.js';
+import type { CompletionReceiptRow, LockedAttemptRow } from './contract.js';
 import { assertNotAborted, withWorkspaceWriteClient } from '../transactions.js';
 import { serializeStoredExecutionValue } from '../../platform/stored-execution-value.js';
 

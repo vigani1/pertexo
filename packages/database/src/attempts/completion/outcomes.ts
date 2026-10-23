@@ -1,72 +1,24 @@
 import { canonicalJson } from '@pertexo/workflow-model';
 import { generatePersistedId } from '../../platform/persisted-id.js';
-
 import type { PoolClient } from 'pg';
-import type { z } from 'zod';
 
 import {
   NodeAttemptReconciliationRequiredError,
   NodeAttemptStateCorruptError,
 } from '../contract.js';
-import type {
-  completionSchema,
-  CompleteNodeAttemptResult,
-} from '../contract.js';
+import type { CompleteNodeAttemptResult } from '../contract.js';
 import { completeReceipt } from './receipts.js';
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.js';
-import {
-  serializeStoredExecutionJsonValue,
-  serializeStoredExecutionValue,
-} from '../../platform/stored-execution-value.js';
-
-import {
-  assertConnectionHealthReplay,
-  persistConnectionHealthObservation,
-} from './connection-health.js';
-
-type CompletionInput = z.output<typeof completionSchema>;
-type ExecutorOutcome = Extract<
-  CompletionInput['outcome'],
-  { status: 'executor_failure' }
->;
-type SuspendedOutcome = Extract<
-  CompletionInput['outcome'],
-  { status: 'suspended' }
->;
-
-export interface CompletionReceiptRow {
-  readonly completed_at: Date | null;
-  readonly payload_checksum: string;
-}
-
-export interface LockedAttemptRow {
-  readonly current_attempt: boolean;
-  readonly attempt_status: string;
-  readonly error_summary: string | null;
-  readonly code_diagnostics: unknown;
-  readonly executor_error_kind: string | null;
-  readonly executor_retry_after_millis: number | null;
-  readonly executor_failure_kind: string | null;
-  readonly executor_possibly_dispatched: boolean | null;
-  readonly fence_token: string;
-  readonly lease_valid: boolean;
-  readonly lease_expires_at: Date | null;
-  readonly lease_owner: string | null;
-  readonly node_status: string;
-  readonly output_ref: unknown;
-  readonly safe_error_code: string | null;
-  readonly retry_decision: string | null;
-  readonly suspension_recorded: boolean;
-  readonly wait_kind: string | null;
-}
-
-interface CompletionFields {
-  readonly durableStatus: string;
-  readonly errorSummary: string | null;
-  readonly executorOutcome: ExecutorOutcome | undefined;
-  readonly safeErrorCode: string | null;
-  readonly suspendedOutcome: SuspendedOutcome | undefined;
-}
+import { serializeStoredExecutionJsonValue } from '../../platform/stored-execution-value.js';
+import { persistConnectionHealthObservation } from './connection-health.js';
+import type {
+  CompletionInput,
+  SuspendedOutcome,
+  CompletionReceiptRow,
+  LockedAttemptRow,
+  CompletionFields,
+} from './contract.js';
+import { duplicateCompletion } from './replay.js';
 
 function completionFields(input: CompletionInput): CompletionFields {
   const outcome = input.outcome;
@@ -107,63 +59,6 @@ function completionFields(input: CompletionInput): CompletionFields {
         suspendedOutcome: undefined,
       };
   }
-}
-
-async function duplicateCompletion(
-  client: PoolClient,
-  input: CompletionInput,
-  {
-    row,
-    receipt,
-    serializedOutput,
-    fields,
-  }: Readonly<{
-    row: LockedAttemptRow;
-    receipt: CompletionReceiptRow;
-    serializedOutput: string | null;
-    fields: CompletionFields;
-  }>,
-): Promise<CompleteNodeAttemptResult | undefined> {
-  if (
-    ![
-      'succeeded',
-      'failed',
-      'canceled',
-      'timed_out',
-      'outcome_unknown',
-    ].includes(row.attempt_status)
-  ) {
-    return undefined;
-  }
-  await assertConnectionHealthReplay(client, input);
-  const persistedOutput =
-    row.output_ref === null
-      ? null
-      : serializeStoredExecutionValue(row.output_ref);
-  const executorMismatch = executorCompletionMismatch(row, fields);
-  const completionMismatch =
-    row.attempt_status !== fields.durableStatus ||
-    (fields.executorOutcome === undefined &&
-      input.outcome.status !== 'suspended' &&
-      row.node_status !== fields.durableStatus) ||
-    (input.outcome.status === 'suspended' && !row.suspension_recorded) ||
-    persistedOutput !== serializedOutput ||
-    row.safe_error_code !== fields.safeErrorCode ||
-    row.error_summary !== fields.errorSummary ||
-    canonicalJson(row.code_diagnostics) !==
-      canonicalJson(input.codeDiagnostics ?? null) ||
-    executorMismatch;
-  if (completionMismatch) {
-    throw new NodeAttemptStateCorruptError();
-  }
-  if (receipt.completed_at === null) {
-    await completeReceipt(
-      client,
-      input.lease.workspaceId,
-      input.lease.delivery,
-    );
-  }
-  return Object.freeze({ kind: 'duplicate' as const, outboxEventId: null });
 }
 
 function assertActiveLease(
@@ -401,20 +296,4 @@ export async function applyNodeAttemptCompletion(
       serializedOutput,
     );
   return commitTerminal(client, input, serializedOutput, fields);
-}
-
-function executorCompletionMismatch(
-  row: LockedAttemptRow,
-  fields: CompletionFields,
-): boolean {
-  return (
-    fields.executorOutcome !== undefined &&
-    (row.executor_failure_kind !== fields.executorOutcome.failureKind ||
-      row.executor_error_kind !== fields.executorOutcome.errorKind ||
-      row.executor_possibly_dispatched !==
-        fields.executorOutcome.possiblyDispatched ||
-      row.executor_retry_after_millis !==
-        (fields.executorOutcome.minimumRetryDelayMillis ?? null) ||
-      row.retry_decision === null)
-  );
 }
