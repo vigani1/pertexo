@@ -9,6 +9,27 @@ export function nextLink(
   if (header === undefined || header.trim() === '') return undefined;
   const invalid = () =>
     new HttpPaginationFailure('http.pagination_invalid_navigation', page);
+  const links = tokenizeLinks(header, invalid);
+  let result: string | undefined;
+  for (const link of links) {
+    const { target, rel, anchored } = parseLink(link, invalid);
+    // A link with another context is not a next page of this response.
+    if (
+      anchored ||
+      !rel?.split(/\s+/u).some((value) => value.toLowerCase() === 'next')
+    )
+      continue;
+    if (presenceOnly && target !== '') return target;
+    if (result !== undefined && result !== target) throw invalid();
+    result = target;
+  }
+  return result === '' ? undefined : result;
+}
+
+function tokenizeLinks(
+  header: string,
+  invalid: () => Error,
+): readonly string[] {
   const links: string[] = [];
   let start = 0;
   let quoted = false;
@@ -34,38 +55,27 @@ export function nextLink(
   }
   if (quoted || angle || escaped) throw invalid();
   links.push(header.slice(start));
-  let result: string | undefined;
-  for (const link of links) {
-    const match = /^\s*<([^<>]*)>(.*)$/u.exec(link);
-    if (match === null) throw invalid();
-    const target = match[1];
-    let rest = match[2] ?? '';
-    let rel: string | undefined;
-    let anchored = false;
-    while (rest.trim() !== '') {
-      const parameter =
-        /^\s*;\s*([!#$%&'*+.^_`|~0-9A-Za-z-]+)\s*(?:=\s*(?:"((?:[^"\\]|\\.)*)"|([!#$%&'*+.^_`|~0-9A-Za-z:/-]+)))?/u.exec(
-          rest,
-        );
-      if (parameter === null) throw invalid();
-      const name = parameter[1]?.toLowerCase();
-      const value = (parameter[2] ?? parameter[3] ?? '').replace(
-        /\\(.)/gu,
-        '$1',
+  return links;
+}
+
+function parseLink(link: string, invalid: () => Error) {
+  const match = /^\s*<([^<>]*)>(.*)$/u.exec(link);
+  if (match === null) throw invalid();
+  const target = match[1];
+  let rest = match[2] ?? '';
+  let rel: string | undefined;
+  let anchored = false;
+  while (rest.trim() !== '') {
+    const parameter =
+      /^\s*;\s*([!#$%&'*+.^_`|~0-9A-Za-z-]+)\s*(?:=\s*(?:"((?:[^"\\]|\\.)*)"|([!#$%&'*+.^_`|~0-9A-Za-z:/-]+)))?/u.exec(
+        rest,
       );
-      if (name === 'rel' && rel === undefined) rel = value;
-      if (name === 'anchor') anchored = true;
-      rest = rest.slice(parameter[0].length);
-    }
-    // A link with another context is not a next page of this response.
-    if (
-      anchored ||
-      !rel?.split(/\s+/u).some((value) => value.toLowerCase() === 'next')
-    )
-      continue;
-    if (presenceOnly && target !== '') return target;
-    if (result !== undefined && result !== target) throw invalid();
-    result = target;
+    if (parameter === null) throw invalid();
+    const name = parameter[1]?.toLowerCase();
+    const value = (parameter[2] ?? parameter[3] ?? '').replace(/\\(.)/gu, '$1');
+    if (name === 'rel' && rel === undefined) rel = value;
+    if (name === 'anchor') anchored = true;
+    rest = rest.slice(parameter[0].length);
   }
-  return result === '' ? undefined : result;
+  return { target, rel, anchored };
 }
