@@ -125,7 +125,7 @@ export function serializeWorkflowValidation(
 
 export function serializeWorkflowPublication(
   version: WorkflowVersionRecord,
-  reused: boolean,
+  { reused }: Readonly<{ reused: boolean }>,
 ): WorkflowPublishResponse {
   return workflowPublishResponseSchema.parse({
     version: workflowVersion(version),

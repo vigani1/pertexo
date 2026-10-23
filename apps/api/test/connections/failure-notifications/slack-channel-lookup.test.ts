@@ -89,12 +89,10 @@ function fixture(
       membershipStatus: 'active',
       workspaceStatus: 'active',
     });
-  const useCase = new LookupSlackChannelsUseCase(
-    persistence,
-    access,
-    encryption,
-    options.withoutSlack === true ? undefined : { lookupChannel },
-  );
+  const useCase = new LookupSlackChannelsUseCase(persistence, access, {
+    encryption: encryption,
+    slackClient: options.withoutSlack === true ? undefined : { lookupChannel },
+  });
   return {
     persistence,
     encryption,

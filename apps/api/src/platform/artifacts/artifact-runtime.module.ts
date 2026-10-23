@@ -33,9 +33,15 @@ export type ApiArtifactRuntimeOverrides = Readonly<{
 export function createApiArtifactRuntime(
   config: NonNullable<ApiConfig['artifacts']>,
   databaseConfig: DatabaseConfig,
-  identityRuntime: ApiIdentityRuntime,
-  overrides: ApiArtifactRuntimeOverrides = {},
-  databaseRuntime?: DatabaseRuntime,
+  {
+    identityRuntime,
+    overrides = {},
+    databaseRuntime,
+  }: Readonly<{
+    identityRuntime: ApiIdentityRuntime;
+    overrides?: ApiArtifactRuntimeOverrides | undefined;
+    databaseRuntime?: DatabaseRuntime | undefined;
+  }>,
 ): ApiArtifactRuntime {
   const store = overrides.store ?? createArtifactStore(config);
   let database: ArtifactUploadDatabase;

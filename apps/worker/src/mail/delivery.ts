@@ -59,7 +59,11 @@ export function createSystemMailDeliveryHandler(
       }
       for (const claim of claims) {
         if (signal?.aborted === true) break;
-        await deliverClaim(dependencies, claim, now, random, signal);
+        await deliverClaim(dependencies, claim, {
+          now: now,
+          random: random,
+          signal: signal,
+        });
       }
       return claims.length;
     },
@@ -69,9 +73,15 @@ export function createSystemMailDeliveryHandler(
 async function deliverClaim(
   dependencies: Parameters<typeof createSystemMailDeliveryHandler>[0],
   claim: SystemMailDeliveryClaim,
-  now: () => Date,
-  random: () => number,
-  signal?: AbortSignal,
+  {
+    now,
+    random,
+    signal,
+  }: Readonly<{
+    now: () => Date;
+    random: () => number;
+    signal?: AbortSignal | undefined;
+  }>,
 ): Promise<void> {
   if (claim.recoveredUnknown && !dependencies.email.deduplicates) {
     await dependencies.store.settle({
@@ -142,13 +152,11 @@ async function deliverClaim(
       });
       return;
     }
-    await settleRetry(
-      dependencies.store,
-      claim,
-      now,
-      random,
-      'delivery.transport',
-    );
+    await settleRetry(dependencies.store, claim, {
+      now: now,
+      random: random,
+      failureCode: 'delivery.transport',
+    });
     return;
   }
   if (authorization.superseded) {
@@ -183,21 +191,21 @@ async function deliverClaim(
     });
     return;
   }
-  await settleRetry(
-    dependencies.store,
-    claim,
-    now,
-    random,
-    'delivery.outcome_unknown',
-  );
+  await settleRetry(dependencies.store, claim, {
+    now: now,
+    random: random,
+    failureCode: 'delivery.outcome_unknown',
+  });
 }
 
 function settleRetry(
   store: SystemMailDeliveryStore,
   claim: SystemMailDeliveryClaim,
-  now: () => Date,
-  random: () => number,
-  failureCode: string,
+  {
+    now,
+    random,
+    failureCode,
+  }: Readonly<{ now: () => Date; random: () => number; failureCode: string }>,
 ): Promise<boolean> {
   const base = Math.min(3_600_000, 1_000 * 2 ** (claim.attemptCount - 1));
   const delay = Math.round(base + base * 0.25 * random());

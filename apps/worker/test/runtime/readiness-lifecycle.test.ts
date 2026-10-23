@@ -55,11 +55,9 @@ describe('worker readiness lifecycle', () => {
         ),
       };
       const readinessMarker = marker();
-      const monitor = new WorkerReadinessMonitor(
-        readiness,
-        logger,
-        readinessMarker,
-      );
+      const monitor = new WorkerReadinessMonitor(readiness, logger, {
+        marker: readinessMarker,
+      });
       const checking = monitor.check();
 
       expect(monitor.status()).toMatchObject({
@@ -101,7 +99,7 @@ describe('worker readiness lifecycle', () => {
         checkReadiness: vi.fn().mockResolvedValue(undefined),
       },
       logger,
-      { setReady },
+      { marker: { setReady } },
     );
     const checking = monitor.check();
     await writeStarted.promise;
@@ -120,7 +118,7 @@ describe('worker readiness lifecycle', () => {
     const monitor = new WorkerReadinessMonitor(
       { checkReadiness: vi.fn(() => deferred.promise) },
       logger,
-      marker(),
+      { marker: marker() },
     );
     const checking = monitor.check();
 
@@ -154,12 +152,10 @@ describe('worker readiness lifecycle', () => {
         .mockResolvedValueOnce(undefined)
         .mockRejectedValueOnce(dependencyFailure),
     };
-    const monitor = new WorkerReadinessMonitor(
-      readiness,
-      logger,
-      { setReady },
-      failClosed,
-    );
+    const monitor = new WorkerReadinessMonitor(readiness, logger, {
+      marker: { setReady },
+      failClosed: failClosed,
+    });
     await monitor.check();
     expect(ready).toBe(true);
 
@@ -191,7 +187,7 @@ describe('worker readiness lifecycle', () => {
           throw new Error('warning sink unavailable');
         }),
       },
-      readinessMarker,
+      { marker: readinessMarker },
     );
 
     await expect(monitor.check()).rejects.toBe(dependencyFailure);
@@ -211,8 +207,10 @@ describe('worker readiness lifecycle', () => {
           throw new Error('error sink unavailable');
         }),
       },
-      { setReady: vi.fn().mockRejectedValue(markerFailure) },
-      failClosed,
+      {
+        marker: { setReady: vi.fn().mockRejectedValue(markerFailure) },
+        failClosed: failClosed,
+      },
     );
 
     await expect(monitor.check()).rejects.toMatchObject({
@@ -229,9 +227,11 @@ describe('worker readiness lifecycle', () => {
     const monitor = new WorkerReadinessMonitor(
       { checkReadiness: vi.fn(() => probe.promise) },
       logger,
-      readinessMarker,
-      vi.fn(),
-      10,
+      {
+        marker: readinessMarker,
+        failClosed: vi.fn(),
+        operationTimeoutMillis: 10,
+      },
     );
     const checking = monitor.check();
     const observedCheck = checking.catch((error: unknown) => error);
@@ -264,9 +264,7 @@ describe('worker readiness lifecycle', () => {
     const monitor = new WorkerReadinessMonitor(
       { checkReadiness: vi.fn().mockResolvedValue(undefined) },
       logger,
-      { setReady },
-      vi.fn(),
-      10,
+      { marker: { setReady }, failClosed: vi.fn(), operationTimeoutMillis: 10 },
     );
     const checking = monitor.check();
     const observedCheck = checking.catch((error: unknown) => error);
@@ -292,12 +290,14 @@ describe('worker readiness lifecycle', () => {
       { checkReadiness: vi.fn().mockResolvedValue(undefined) },
       logger,
       {
-        setReady: vi.fn((ready: boolean) =>
-          ready ? Promise.resolve() : revocation.promise,
-        ),
+        marker: {
+          setReady: vi.fn((ready: boolean) =>
+            ready ? Promise.resolve() : revocation.promise,
+          ),
+        },
+        failClosed: failClosed,
+        operationTimeoutMillis: 10,
       },
-      failClosed,
-      10,
     );
 
     const stopping = monitor.beforeApplicationShutdown();
@@ -319,11 +319,13 @@ describe('worker readiness lifecycle', () => {
       { checkReadiness: vi.fn().mockResolvedValue(undefined) },
       logger,
       {
-        setReady: vi.fn((ready: boolean) =>
-          ready ? Promise.resolve() : Promise.reject(markerFailure),
-        ),
+        marker: {
+          setReady: vi.fn((ready: boolean) =>
+            ready ? Promise.resolve() : Promise.reject(markerFailure),
+          ),
+        },
+        failClosed: failClosed,
       },
-      failClosed,
     );
     await monitor.check();
 

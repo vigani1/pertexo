@@ -140,7 +140,7 @@ export function createPertexoBetterAuth(input: PertexoBetterAuthInput) {
     ],
     databaseHooks: identityChangeHooks(pool, input.transactions),
     disabledPaths: [...DISABLED_NATIVE_PATHS],
-    advanced: cookiePolicy(input.secureCookies),
+    advanced: cookiePolicy({ secureCookies: input.secureCookies }),
     telemetry: { enabled: false },
   });
 }
@@ -254,7 +254,7 @@ function identityChangeHooks(
   } satisfies BetterAuthOptions['databaseHooks'];
 }
 
-function cookiePolicy(secureCookies: boolean) {
+function cookiePolicy({ secureCookies }: Readonly<{ secureCookies: boolean }>) {
   return {
     database: { generateId: () => randomUUID() },
     cookiePrefix: 'pertexo-auth',

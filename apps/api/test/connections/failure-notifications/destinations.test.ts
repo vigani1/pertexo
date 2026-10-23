@@ -196,13 +196,11 @@ describe('failure notification destination API seams', () => {
         database,
         'fixture-application-secret',
       ),
-      new TestConnectionUseCase(
-        connectionTests,
-        authorization(),
-        { seal: vi.fn(), open },
-        { execute: vi.fn() },
-        'fixture-application-secret',
-      ),
+      new TestConnectionUseCase(connectionTests, authorization(), {
+        encryption: { seal: vi.fn(), open },
+        httpClient: { execute: vi.fn() },
+        applicationSecret: 'fixture-application-secret',
+      }),
     );
     await expect(
       controller.test(
@@ -232,13 +230,11 @@ describe('failure notification destination API seams', () => {
           database,
           'fixture-application-secret',
         ),
-        new TestConnectionUseCase(
-          connectionTests,
-          authorization(),
-          { seal: vi.fn(), open: vi.fn() },
-          { execute: vi.fn() },
-          'fixture-application-secret',
-        ),
+        new TestConnectionUseCase(connectionTests, authorization(), {
+          encryption: { seal: vi.fn(), open: vi.fn() },
+          httpClient: { execute: vi.fn() },
+          applicationSecret: 'fixture-application-secret',
+        }),
       );
       await expect(
         controller.test(
@@ -259,13 +255,11 @@ describe('failure notification destination API seams', () => {
         database,
         'fixture-application-secret',
       ),
-      new TestConnectionUseCase(
-        connectionTestPersistence(),
-        authorization(),
-        { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
-        { execute: vi.fn() },
-        'fixture-application-secret',
-      ),
+      new TestConnectionUseCase(connectionTestPersistence(), authorization(), {
+        encryption: { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
+        httpClient: { execute: vi.fn() },
+        applicationSecret: 'fixture-application-secret',
+      }),
     );
     const guardedActor = createActorContext({
       actorId: '99999999-9999-4999-8999-999999999999',
@@ -310,9 +304,14 @@ describe('failure notification destination API seams', () => {
         new TestConnectionUseCase(
           connectionTestPersistence(),
           authorization(),
-          { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
-          { execute: vi.fn() },
-          'fixture-application-secret',
+          {
+            encryption: {
+              seal: vi.fn().mockResolvedValue(sealed),
+              open: vi.fn(),
+            },
+            httpClient: { execute: vi.fn() },
+            applicationSecret: 'fixture-application-secret',
+          },
         ),
       );
 
@@ -333,13 +332,11 @@ describe('failure notification destination API seams', () => {
         database,
         'fixture-application-secret',
       ),
-      new TestConnectionUseCase(
-        connectionTestPersistence(),
-        authorization(),
-        { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
-        { execute: vi.fn() },
-        'fixture-application-secret',
-      ),
+      new TestConnectionUseCase(connectionTestPersistence(), authorization(), {
+        encryption: { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
+        httpClient: { execute: vi.fn() },
+        applicationSecret: 'fixture-application-secret',
+      }),
     );
 
     await expect(
@@ -403,13 +400,11 @@ describe('failure notification destination API seams', () => {
         database,
         'fixture-application-secret',
       ),
-      new TestConnectionUseCase(
-        connectionTestPersistence(),
-        authorization(),
-        { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
-        { execute: vi.fn() },
-        'fixture-application-secret',
-      ),
+      new TestConnectionUseCase(connectionTestPersistence(), authorization(), {
+        encryption: { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
+        httpClient: { execute: vi.fn() },
+        applicationSecret: 'fixture-application-secret',
+      }),
     );
 
     await expect(
@@ -434,13 +429,11 @@ describe('failure notification destination API seams', () => {
         database,
         'fixture-application-secret',
       ),
-      new TestConnectionUseCase(
-        connectionTestPersistence(),
-        authorization(),
-        { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
-        { execute: vi.fn() },
-        'fixture-application-secret',
-      ),
+      new TestConnectionUseCase(connectionTestPersistence(), authorization(), {
+        encryption: { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
+        httpClient: { execute: vi.fn() },
+        applicationSecret: 'fixture-application-secret',
+      }),
     );
 
     const current = await controller.getPolicy(request(), {
@@ -484,13 +477,11 @@ describe('failure notification destination API seams', () => {
         database,
         'fixture-application-secret',
       ),
-      new TestConnectionUseCase(
-        connectionTestPersistence(),
-        authorization(),
-        { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
-        { execute: vi.fn() },
-        'fixture-application-secret',
-      ),
+      new TestConnectionUseCase(connectionTestPersistence(), authorization(), {
+        encryption: { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
+        httpClient: { execute: vi.fn() },
+        applicationSecret: 'fixture-application-secret',
+      }),
     );
     const body = {
       expectedVersion: 1,
@@ -550,13 +541,11 @@ describe('failure notification destination API seams', () => {
         database,
         'fixture-application-secret',
       ),
-      new TestConnectionUseCase(
-        connectionTestPersistence(),
-        authorization(),
-        { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
-        { execute: vi.fn() },
-        'fixture-application-secret',
-      ),
+      new TestConnectionUseCase(connectionTestPersistence(), authorization(), {
+        encryption: { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
+        httpClient: { execute: vi.fn() },
+        applicationSecret: 'fixture-application-secret',
+      }),
     );
     const setRequest = request({ 'idempotency-key': 'policy-set-42' });
     const clearRequest = request({ 'idempotency-key': 'policy-clear-42' });
@@ -600,13 +589,11 @@ describe('failure notification destination API seams', () => {
         database,
         'fixture-application-secret',
       ),
-      new TestConnectionUseCase(
-        connectionTestPersistence(),
-        authorization(),
-        { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
-        { execute: vi.fn() },
-        'fixture-application-secret',
-      ),
+      new TestConnectionUseCase(connectionTestPersistence(), authorization(), {
+        encryption: { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
+        httpClient: { execute: vi.fn() },
+        applicationSecret: 'fixture-application-secret',
+      }),
     );
     vi.mocked(database.get).mockRejectedValueOnce(
       new FailureNotificationDestinationError('not_found'),

@@ -119,11 +119,9 @@ qualified('business values through the real worker', () => {
         config(fixture.dispatcherUrl, 2),
       );
       const producer = createQueueProducer({ redisUrl: fixture.redisUrl });
-      const dispatcher = new OutboxDispatcher(
-        store,
-        producer,
-        new WorkerDrainState(),
-        {
+      const dispatcher = new OutboxDispatcher(store, producer, {
+        drainState: new WorkerDrainState(),
+        options: {
           batchSize: 10,
           jobNames: [JOB_NAME.advanceWorkflowRun, JOB_NAME.executeNodeAttempt],
           leaseDurationMillis: 30_000,
@@ -132,7 +130,7 @@ qualified('business values through the real worker', () => {
           retryDelayMillis: 250,
           pollIntervalMillis: 100,
         },
-      );
+      });
       owners.push(() => dispatcher.close());
       await Promise.all([
         coordinator.consumer.waitUntilReady(5000),

@@ -110,13 +110,11 @@ describe('connection testing security and cleanup regressions', () => {
     };
 
     await expect(
-      new TestConnectionUseCase(
-        store,
-        authorization,
-        { seal: vi.fn(), open },
-        { execute },
-        'fixture-application-secret',
-      ).execute(
+      new TestConnectionUseCase(store, authorization, {
+        encryption: { seal: vi.fn(), open },
+        httpClient: { execute },
+        applicationSecret: 'fixture-application-secret',
+      }).execute(
         command({
           url: `https://provider.example.test/${'😀'.repeat(700)}`,
         }),
@@ -154,13 +152,11 @@ describe('connection testing security and cleanup regressions', () => {
       const execute = vi.fn();
 
       await expect(
-        new TestConnectionUseCase(
-          store,
-          authorization,
-          { seal: vi.fn(), open },
-          { execute },
-          'fixture-application-secret',
-        ).execute(command({ url: 'https://provider.example.test/health' })),
+        new TestConnectionUseCase(store, authorization, {
+          encryption: { seal: vi.fn(), open },
+          httpClient: { execute },
+          applicationSecret: 'fixture-application-secret',
+        }).execute(command({ url: 'https://provider.example.test/health' })),
       ).rejects.toMatchObject({ code: 'resource.not_found' });
       expect(authorization.findAccess).toHaveBeenCalledTimes(2);
       expect(store.startConnectionTest).toHaveBeenCalledOnce();
@@ -195,13 +191,14 @@ describe('connection testing security and cleanup regressions', () => {
       };
 
       await expect(
-        new TestConnectionUseCase(
-          store,
-          authorization,
-          { seal: vi.fn(), open: vi.fn(() => Promise.resolve(plaintext)) },
-          { execute: vi.fn(() => Promise.reject(providerFailure)) },
-          'fixture-application-secret',
-        ).execute(command({ url: 'https://provider.example.test/health' })),
+        new TestConnectionUseCase(store, authorization, {
+          encryption: {
+            seal: vi.fn(),
+            open: vi.fn(() => Promise.resolve(plaintext)),
+          },
+          httpClient: { execute: vi.fn(() => Promise.reject(providerFailure)) },
+          applicationSecret: 'fixture-application-secret',
+        }).execute(command({ url: 'https://provider.example.test/health' })),
       ).rejects.toBe(providerFailure);
       expect(abandonConnectionTest).toHaveBeenCalledOnce();
       expect(plaintext.every((byte) => byte === 0)).toBe(true);
@@ -237,9 +234,14 @@ describe('connection testing security and cleanup regressions', () => {
       new TestConnectionUseCase(
         store,
         { findAccess: vi.fn().mockResolvedValue(activeAccess()) },
-        { seal: vi.fn(), open: vi.fn(() => Promise.resolve(plaintext)) },
-        { execute },
-        'fixture-application-secret',
+        {
+          encryption: {
+            seal: vi.fn(),
+            open: vi.fn(() => Promise.resolve(plaintext)),
+          },
+          httpClient: { execute },
+          applicationSecret: 'fixture-application-secret',
+        },
       ).execute(command({ url: 'https://provider.example.test/health' })),
     ).rejects.toBe(markerFailure);
     expect(execute).toHaveBeenCalledOnce();
@@ -358,12 +360,17 @@ describe('connection testing security and cleanup regressions', () => {
         new TestConnectionUseCase(
           store,
           { findAccess: vi.fn().mockResolvedValue(activeAccess()) },
-          { seal: vi.fn(), open: vi.fn(() => Promise.resolve(plaintext)) },
-          { execute },
-          'fixture-application-secret',
-          undefined,
-          slackClient,
-          emailClient,
+          {
+            encryption: {
+              seal: vi.fn(),
+              open: vi.fn(() => Promise.resolve(plaintext)),
+            },
+            httpClient: { execute },
+            applicationSecret: 'fixture-application-secret',
+            telemetry: undefined,
+            slackClient: slackClient,
+            emailClient: emailClient,
+          },
         ).execute(command(request)),
       ).rejects.toBeInstanceOf(ConnectionSecretEncryptionError);
       expect(execute).not.toHaveBeenCalled();
@@ -452,9 +459,14 @@ describe('connection provider outcome projection', () => {
       const result = await new TestConnectionUseCase(
         store,
         { findAccess: vi.fn().mockResolvedValue(activeAccess()) },
-        { seal: vi.fn(), open: vi.fn(() => Promise.resolve(plaintext)) },
-        httpClient,
-        'fixture-application-secret',
+        {
+          encryption: {
+            seal: vi.fn(),
+            open: vi.fn(() => Promise.resolve(plaintext)),
+          },
+          httpClient: httpClient,
+          applicationSecret: 'fixture-application-secret',
+        },
       ).execute(command({ url: 'https://provider.example.test/health' }));
 
       expect(store.completeConnectionTest).toHaveBeenCalledWith(
@@ -598,11 +610,16 @@ describe('connection provider outcome projection', () => {
       const result = await new TestConnectionUseCase(
         store,
         { findAccess: vi.fn().mockResolvedValue(activeAccess()) },
-        { seal: vi.fn(), open: vi.fn(() => Promise.resolve(plaintext)) },
-        { execute: vi.fn() },
-        'fixture-application-secret',
-        undefined,
-        slackClient,
+        {
+          encryption: {
+            seal: vi.fn(),
+            open: vi.fn(() => Promise.resolve(plaintext)),
+          },
+          httpClient: { execute: vi.fn() },
+          applicationSecret: 'fixture-application-secret',
+          telemetry: undefined,
+          slackClient: slackClient,
+        },
       ).execute(command({ providerKey: 'slack' }));
 
       expect(store.completeConnectionTest).toHaveBeenCalledWith(
@@ -697,12 +714,17 @@ describe('connection provider outcome projection', () => {
       const result = await new TestConnectionUseCase(
         store,
         { findAccess: vi.fn().mockResolvedValue(activeAccess()) },
-        { seal: vi.fn(), open: vi.fn(() => Promise.resolve(plaintext)) },
-        { execute: vi.fn() },
-        'fixture-application-secret',
-        undefined,
-        undefined,
-        emailClient,
+        {
+          encryption: {
+            seal: vi.fn(),
+            open: vi.fn(() => Promise.resolve(plaintext)),
+          },
+          httpClient: { execute: vi.fn() },
+          applicationSecret: 'fixture-application-secret',
+          telemetry: undefined,
+          slackClient: undefined,
+          emailClient: emailClient,
+        },
       ).execute(
         command({
           providerKey: 'email',
@@ -755,22 +777,24 @@ describe('alert destination tests', () => {
       store,
       { findAccess: vi.fn().mockResolvedValue(activeAccess()) },
       {
-        seal: vi.fn(),
-        open: vi.fn().mockImplementation(() =>
-          Promise.resolve(
-            Buffer.from(
-              JSON.stringify({
-                type: 'slack_bot_token',
-                botToken: 'xoxb-local-test',
-              }),
+        encryption: {
+          seal: vi.fn(),
+          open: vi.fn().mockImplementation(() =>
+            Promise.resolve(
+              Buffer.from(
+                JSON.stringify({
+                  type: 'slack_bot_token',
+                  botToken: 'xoxb-local-test',
+                }),
+              ),
             ),
           ),
-        ),
+        },
+        httpClient: { execute: vi.fn() },
+        applicationSecret: 'fixture-application-secret',
+        telemetry: undefined,
+        slackClient: { authTest, sendMessage },
       },
-      { execute: vi.fn() },
-      'fixture-application-secret',
-      undefined,
-      { authTest, sendMessage },
     );
     expect(
       (await useCase.executeDestination(input, destination)).outcome.ok,
@@ -802,22 +826,24 @@ describe('alert destination tests', () => {
       store,
       { findAccess: vi.fn().mockResolvedValue(activeAccess()) },
       {
-        seal: vi.fn(),
-        open: vi.fn().mockResolvedValue(
-          Buffer.from(
-            JSON.stringify({
-              type: 'resend_api_key',
-              apiKey: 're_local',
-              fromEmail: 'alerts@example.test',
-            }),
+        encryption: {
+          seal: vi.fn(),
+          open: vi.fn().mockResolvedValue(
+            Buffer.from(
+              JSON.stringify({
+                type: 'resend_api_key',
+                apiKey: 're_local',
+                fromEmail: 'alerts@example.test',
+              }),
+            ),
           ),
-        ),
+        },
+        httpClient: { execute: vi.fn() },
+        applicationSecret: 'fixture-application-secret',
+        telemetry: undefined,
+        slackClient: undefined,
+        emailClient: { sendNotification },
       },
-      { execute: vi.fn() },
-      'fixture-application-secret',
-      undefined,
-      undefined,
-      { sendNotification },
     );
     await useCase.executeDestination(input, {
       ...destination,
@@ -849,11 +875,13 @@ describe('alert destination tests', () => {
     const useCase = new TestConnectionUseCase(
       store,
       { findAccess: vi.fn().mockResolvedValue(activeAccess()) },
-      { seal: vi.fn(), open },
-      { execute: vi.fn() },
-      'fixture-application-secret',
-      undefined,
-      { authTest: vi.fn(), sendMessage },
+      {
+        encryption: { seal: vi.fn(), open },
+        httpClient: { execute: vi.fn() },
+        applicationSecret: 'fixture-application-secret',
+        telemetry: undefined,
+        slackClient: { authTest: vi.fn(), sendMessage },
+      },
     );
     expect(
       (await useCase.executeDestination(input, destination)).outcome.ok,

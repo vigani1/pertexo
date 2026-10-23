@@ -71,7 +71,9 @@ export class WorkflowOrganizationBatchesUseCase {
     request: WorkflowOrganizationBatchRequest,
   ) {
     const role = request.operation === 'tag_cleanup' ? 'admin' : 'editor';
-    await authorizeWorkflowOrganization(input, this.authorization, role, true);
+    await authorizeWorkflowOrganization(input, this.authorization, role, {
+      fresh: true,
+    });
     const command = {
       ...workflowOrganizationContext(input),
       idempotencyKey: input.idempotencyKey,
@@ -90,12 +92,9 @@ export class WorkflowOrganizationBatchesUseCase {
       }
       let outcome: WorkflowOrganizationBulkItemOutcome;
       try {
-        await authorizeWorkflowOrganization(
-          input,
-          this.authorization,
-          role,
-          true,
-        );
+        await authorizeWorkflowOrganization(input, this.authorization, role, {
+          fresh: true,
+        });
         const result = await this.batches.executeBatchItem({
           ...command,
           workflowId,
@@ -140,12 +139,9 @@ export class WorkflowOrganizationBatchesUseCase {
       // and invisible resources. A fresh application lookup distinguishes loss
       // of authority without revealing whether the selected workflow exists.
       try {
-        await authorizeWorkflowOrganization(
-          input,
-          this.authorization,
-          role,
-          true,
-        );
+        await authorizeWorkflowOrganization(input, this.authorization, role, {
+          fresh: true,
+        });
         return { workflowId, status: 'not_visible' };
       } catch (authorityError: unknown) {
         input.signal?.throwIfAborted();

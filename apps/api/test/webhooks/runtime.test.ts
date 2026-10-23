@@ -47,7 +47,7 @@ describe('API webhook runtime ownership', () => {
         },
       },
       databaseConfig,
-      database(databaseClose),
+      { databaseOverride: database(databaseClose) },
     );
     const context = {
       workspaceId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
@@ -72,13 +72,11 @@ describe('API webhook runtime ownership', () => {
       throw envelopeFailure;
     });
     const databaseClose = vi.fn().mockRejectedValue(databaseFailure);
-    const runtime = await createApiWebhookRuntime(
-      config,
-      databaseConfig,
-      database(databaseClose),
-      undefined,
-      { envelope: () => envelope(envelopeClose) },
-    );
+    const runtime = await createApiWebhookRuntime(config, databaseConfig, {
+      databaseOverride: database(databaseClose),
+      runtime: undefined,
+      factories: { envelope: () => envelope(envelopeClose) },
+    });
 
     const first = runtime.close();
     const second = runtime.close();
@@ -100,17 +98,15 @@ describe('API webhook runtime ownership', () => {
     const databaseClose = vi.fn();
 
     await expect(
-      createApiWebhookRuntime(
-        config,
-        databaseConfig,
-        database(databaseClose),
-        undefined,
-        {
+      createApiWebhookRuntime(config, databaseConfig, {
+        databaseOverride: database(databaseClose),
+        runtime: undefined,
+        factories: {
           envelope: () => {
             throw constructionFailure;
           },
         },
-      ),
+      }),
     ).rejects.toBe(constructionFailure);
     expect(databaseClose).toHaveBeenCalledOnce();
   });
@@ -118,17 +114,15 @@ describe('API webhook runtime ownership', () => {
   it('preserves envelope construction and database cleanup failures', async () => {
     const constructionFailure = new Error('envelope construction failed');
     const cleanupFailure = new Error('database cleanup failed');
-    const failure = await createApiWebhookRuntime(
-      config,
-      databaseConfig,
-      database(() => Promise.reject(cleanupFailure)),
-      undefined,
-      {
+    const failure = await createApiWebhookRuntime(config, databaseConfig, {
+      databaseOverride: database(() => Promise.reject(cleanupFailure)),
+      runtime: undefined,
+      factories: {
         envelope: () => {
           throw constructionFailure;
         },
       },
-    ).catch((error: unknown) => error);
+    }).catch((error: unknown) => error);
 
     expect(failure).toBeInstanceOf(AggregateError);
     expect((failure as AggregateError).errors).toEqual([
@@ -148,13 +142,11 @@ describe('API webhook runtime ownership', () => {
     });
 
     await expect(
-      createApiWebhookRuntime(
-        config,
-        databaseConfig,
-        database(databaseClose),
-        undefined,
-        { envelope: () => invalidEnvelope },
-      ),
+      createApiWebhookRuntime(config, databaseConfig, {
+        databaseOverride: database(databaseClose),
+        runtime: undefined,
+        factories: { envelope: () => invalidEnvelope },
+      }),
     ).rejects.toThrow('encryption projection failed');
     expect(envelopeClose).toHaveBeenCalledOnce();
     expect(databaseClose).toHaveBeenCalledOnce();
@@ -170,12 +162,10 @@ describe('API webhook runtime ownership', () => {
         return database(databaseClose);
       },
     ) as unknown as typeof createWebhookTriggerDatabase;
-    const runtime = await createApiWebhookRuntime(
-      config,
-      databaseConfig,
-      undefined,
-      sharedRuntime,
-      {
+    const runtime = await createApiWebhookRuntime(config, databaseConfig, {
+      databaseOverride: undefined,
+      runtime: sharedRuntime,
+      factories: {
         database: factory,
         testEvents: (_config, selectedRuntime) => {
           expect(selectedRuntime).toBe(sharedRuntime);
@@ -183,7 +173,7 @@ describe('API webhook runtime ownership', () => {
         },
         envelope: () => envelope(envelopeClose),
       },
-    );
+    });
 
     await runtime.close();
     expect(factory).toHaveBeenCalledOnce();

@@ -14,7 +14,7 @@ export async function authorizeWorkflowOrganization(
   input: WorkflowOrganizationInput,
   authorization: WorkspaceAuthorizationSource,
   role: 'read' | 'admin' | 'editor',
-  fresh = false,
+  { fresh = false }: Readonly<{ fresh?: boolean | undefined }> = {},
 ) {
   input.signal?.throwIfAborted();
   const access = await authorizeWorkspaceOperation({

@@ -344,8 +344,7 @@ export async function createArtifactTransferApiFixture(): Promise<ArtifactTransf
     const createdArtifactRuntime = createApiArtifactRuntime(
       config.artifacts,
       config.database,
-      identityRuntime,
-      { store: apiStore },
+      { identityRuntime: identityRuntime, overrides: { store: apiStore } },
     );
     // S3Mock reports its own bucket region. The store remains real; this
     // fixture bypasses only the startup region probe.

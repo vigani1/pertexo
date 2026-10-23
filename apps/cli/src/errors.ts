@@ -1,11 +1,13 @@
 export class AutomationCommandError extends Error {
+  public readonly uncertain: boolean;
   public constructor(
     public readonly code: string,
     message: string,
     public readonly requestId?: string,
-    public readonly uncertain = false,
+    { uncertain = false }: Readonly<{ uncertain?: boolean | undefined }> = {},
   ) {
     super(message);
+    this.uncertain = uncertain;
   }
 }
 

@@ -214,11 +214,9 @@ export async function runtime(
     owners.push(outbox);
     const producer = createQueueProducer({ redisUrl: fixture.redisUrl });
     owners.push(producer);
-    const dispatcher = new OutboxDispatcher(
-      outbox,
-      producer,
-      new WorkerDrainState(),
-      {
+    const dispatcher = new OutboxDispatcher(outbox, producer, {
+      drainState: new WorkerDrainState(),
+      options: {
         batchSize: 20,
         jobNames: [JOB_NAME.advanceWorkflowRun, JOB_NAME.executeNodeAttempt],
         leaseDurationMillis: 1_000,
@@ -228,7 +226,7 @@ export async function runtime(
         pollIntervalMillis: 25,
         retryDelayMillis: 25,
       },
-    );
+    });
     owners.splice(0, 2, dispatcher);
     const deadlines = createDeadlineWakeupScanner(database);
     owners.push(deadlines);

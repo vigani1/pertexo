@@ -35,7 +35,7 @@ function requestValue<Value>(schema: z.ZodType<Value>, input: unknown): Value {
 function responseValue<Value>(
   schema: z.ZodType<Value>,
   input: unknown,
-  uncertain = false,
+  { uncertain = false }: Readonly<{ uncertain?: boolean | undefined }> = {},
 ): Value {
   const parsed = schema.safeParse(input);
   if (!parsed.success)
@@ -43,7 +43,7 @@ function responseValue<Value>(
       'cli.invalid_response',
       'The server response does not match its API contract.',
       undefined,
-      uncertain,
+      { uncertain: uncertain },
     );
   return parsed.data;
 }
@@ -147,13 +147,13 @@ export async function executeAutomationCommand(
             requestValue(workflowImportRequestSchema, body),
           )
         ).body,
-        true,
+        { uncertain: true },
       );
     case 'workflows publish':
       return responseValue(
         workflowPublishResponseSchema,
         (await post(`${workflow(command.workflowId)}/publish`, 'write')).body,
-        true,
+        { uncertain: true },
       );
     case 'runs start':
       return responseValue(
@@ -165,7 +165,7 @@ export async function executeAutomationCommand(
             requestValue(workflowRunStartRequestSchema, body),
           )
         ).body,
-        true,
+        { uncertain: true },
       );
     case 'runs list':
       response = await get(`${base}/runs?${query(command.query)}`);
@@ -185,7 +185,7 @@ export async function executeAutomationCommand(
             requestValue(workflowRunCancelRequestSchema, body),
           )
         ).body,
-        true,
+        { uncertain: true },
       );
   }
 }

@@ -25,9 +25,11 @@ export function stubFederationService(): FederationManagementService {
       configureEnforcement: unused,
     },
     undefined,
-    'test-only-sign-in-secret-with-at-least-thirty-two-characters',
-    'https://pertexo.test',
-    true,
+    {
+      secret: 'test-only-sign-in-secret-with-at-least-thirty-two-characters',
+      publicOrigin: 'https://pertexo.test',
+      secureCookies: true,
+    },
   );
 }
 

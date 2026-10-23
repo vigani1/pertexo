@@ -138,7 +138,8 @@ export class TestWorkflowNodeUseCase {
           throw new NodeTestRequestError('idempotency_conflict');
         throw error;
       }
-      if (replay !== null) return previewAcceptanceResponse(replay, true);
+      if (replay !== null)
+        return previewAcceptanceResponse(replay, { replayed: true });
     }
     const draft = await this.currentDraft(input);
     if (draft.revision !== request.expectedRevision)
@@ -284,7 +285,7 @@ export class TestWorkflowNodeUseCase {
           createdAt: accepted.acceptedAt,
           expiresAt: accepted.expiresAt,
         },
-        accepted.duplicate,
+        { replayed: accepted.duplicate },
       );
     } catch (error: unknown) {
       if (error instanceof PreviewIdempotencyConflictError)
@@ -420,7 +421,7 @@ function previewExecutionIdentity(
 
 function previewAcceptanceResponse(
   preview: PreviewAcceptanceView,
-  replayed: boolean,
+  { replayed }: Readonly<{ replayed: boolean }>,
 ): NodeTestExecuteAcceptedResponse {
   return nodeTestExecuteAcceptedResponseSchema.parse({
     mode: 'test_execute',

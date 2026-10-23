@@ -18,7 +18,7 @@ export type SamlProof = Readonly<{
 
 export function samlTransportAvailable(
   publicOrigin: string,
-  secureCookies: boolean,
+  { secureCookies }: Readonly<{ secureCookies: boolean }>,
 ): boolean {
   return secureCookies && new URL(publicOrigin).protocol === 'https:';
 }

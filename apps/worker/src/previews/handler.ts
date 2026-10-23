@@ -79,7 +79,7 @@ export class PreviewAttemptHandlerStateError extends Error {
 
 function deadlineExceededOutcome(
   lease: PreviewAttemptLease,
-  dispatched: boolean,
+  { dispatched }: Readonly<{ dispatched: boolean }>,
 ): PreviewTerminalOutcome {
   return lease.sideEffectClass !== 'safe' && dispatched
     ? Object.freeze({
@@ -95,11 +95,19 @@ function deadlineExceededOutcome(
 async function completeOutcome(
   dependencies: PreviewAttemptHandlerDependencies,
   lease: PreviewAttemptLease,
-  outcome: PreviewInvocationOutcome,
-  delivery: { outboxEventId: string; payloadChecksum: string },
-  dispatched: boolean,
-  completionSignal: AbortSignal,
-  codeDiagnostics?: CodeDiagnostics,
+  {
+    outcome,
+    delivery,
+    dispatched,
+    completionSignal,
+    codeDiagnostics,
+  }: Readonly<{
+    outcome: PreviewInvocationOutcome;
+    delivery: { outboxEventId: string; payloadChecksum: string };
+    dispatched: boolean;
+    completionSignal: AbortSignal;
+    codeDiagnostics?: CodeDiagnostics | undefined;
+  }>,
 ): Promise<PreviewAttemptHandlerResult> {
   let terminalOutcome: PreviewTerminalOutcome;
   if (
@@ -131,21 +139,25 @@ async function completeOutcome(
     signal: completionSignal,
     workerId: dependencies.workerId,
   });
-  return committedTerminal(
-    dependencies,
-    lease,
-    terminalOutcome.status,
-    dispatched,
-    result,
-  );
+  return committedTerminal(dependencies, lease, {
+    status: terminalOutcome.status,
+    dispatched: dispatched,
+    result: result,
+  });
 }
 
 function committedTerminal(
   dependencies: PreviewAttemptHandlerDependencies,
   lease: PreviewAttemptLease,
-  status: PreviewTerminalStatus,
-  dispatched: boolean,
-  result: PreviewCompletionResult,
+  {
+    status,
+    dispatched,
+    result,
+  }: Readonly<{
+    status: PreviewTerminalStatus;
+    dispatched: boolean;
+    result: PreviewCompletionResult;
+  }>,
 ): PreviewAttemptHandlerResult {
   if (result.kind === 'committed') {
     const connectionRefs = lease.executableNode.connectionRefs;
@@ -312,20 +324,20 @@ export function createPreviewAttemptHandler(
         payloadChecksum: canonicalOutboxPayloadChecksum(delivery.data),
       };
       if (Date.now() >= lease.executionDeadlineAt.getTime()) {
-        const deadlineOutcome = deadlineExceededOutcome(lease, false);
-        return committedTerminal(
-          dependencies,
-          lease,
-          deadlineOutcome.status,
-          false,
-          await dependencies.runStore.complete({
+        const deadlineOutcome = deadlineExceededOutcome(lease, {
+          dispatched: false,
+        });
+        return committedTerminal(dependencies, lease, {
+          status: deadlineOutcome.status,
+          dispatched: false,
+          result: await dependencies.runStore.complete({
             delivery: claimDelivery,
             lease,
             outcome: deadlineOutcome,
             signal: context.signal,
             workerId: dependencies.workerId,
           }),
-        );
+        });
       }
 
       const supervisor =
@@ -353,34 +365,32 @@ export function createPreviewAttemptHandler(
         );
         const dispatched = environment.wasDispatched();
         if (raced === 'deadline') {
-          const deadlineOutcome = deadlineExceededOutcome(lease, dispatched);
-          return committedTerminal(
-            dependencies,
-            lease,
-            deadlineOutcome.status,
-            dispatched,
-            await dependencies.runStore.complete({
+          const deadlineOutcome = deadlineExceededOutcome(lease, {
+            dispatched: dispatched,
+          });
+          return committedTerminal(dependencies, lease, {
+            status: deadlineOutcome.status,
+            dispatched: dispatched,
+            result: await dependencies.runStore.complete({
               delivery: claimDelivery,
               lease,
               outcome: deadlineOutcome,
               signal: context.signal,
               workerId: dependencies.workerId,
             }),
-          );
+          });
         }
         if (raced.kind === 'error' || raced.kind === 'lease_failure')
           throw raced.error;
         // A result that resolved before the deadline remains truthful even
         // if the heartbeat observed expiry moments later.
-        return await completeOutcome(
-          dependencies,
-          lease,
-          raced.outcome,
-          claimDelivery,
-          dispatched,
-          context.signal,
-          environment.codeDiagnostics(),
-        );
+        return await completeOutcome(dependencies, lease, {
+          outcome: raced.outcome,
+          delivery: claimDelivery,
+          dispatched: dispatched,
+          completionSignal: context.signal,
+          codeDiagnostics: environment.codeDiagnostics(),
+        });
       } finally {
         await supervisor.stop();
       }

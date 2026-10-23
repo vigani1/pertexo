@@ -103,7 +103,9 @@ export class OrganizationSignIn {
     return protocol === 'oidc'
       ? this.input.gateway !== undefined
       : this.input.samlGateway !== undefined &&
-          samlTransportAvailable(this.input.baseUrl, this.input.secureCookies);
+          samlTransportAvailable(this.input.baseUrl, {
+            secureCookies: this.input.secureCookies,
+          });
   }
   private bindingCookie(protocol: FederationProtocol) {
     return protocol === 'oidc'

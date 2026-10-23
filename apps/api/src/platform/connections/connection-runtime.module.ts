@@ -63,10 +63,17 @@ export type ApiConnectionRuntimeOverrides = Readonly<{
 export async function createApiConnectionRuntime(
   config: NonNullable<ApiConfig['connections']>,
   databaseConfig: DatabaseConfig,
-  identityRuntime: ApiIdentityRuntime,
-  applicationSecret: string,
-  overrides: ApiConnectionRuntimeOverrides = {},
-  runtime?: DatabaseRuntime,
+  {
+    identityRuntime,
+    applicationSecret,
+    overrides = {},
+    runtime,
+  }: Readonly<{
+    identityRuntime: ApiIdentityRuntime;
+    applicationSecret: string;
+    overrides?: ApiConnectionRuntimeOverrides | undefined;
+    runtime?: DatabaseRuntime | undefined;
+  }>,
 ): Promise<ApiConnectionRuntime> {
   const persistenceOverrides = overrides.persistence ?? {};
   const encryptionOverrides = overrides.encryption ?? {};

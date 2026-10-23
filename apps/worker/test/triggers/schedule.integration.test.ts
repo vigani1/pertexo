@@ -265,17 +265,20 @@ describeIntegration('direct Schedule worker integration gate', () => {
       createQueueProducer({ redisUrl }),
     );
     const dispatcher = registerResource(
-      new OutboxDispatcher(dispatcherDatabase, dispatcherProducer, drain, {
-        batchSize: 10,
-        jobNames: [
-          JOB_NAME.reconcileWorkflowTriggers,
-          JOB_NAME.advanceWorkflowRun,
-        ],
-        leaseDurationMillis: 1_000,
-        leaseOwner: 'schedule-publication-dispatcher',
-        maxAttempts: 3,
-        operationTimeoutMillis: 5_000,
-        retryDelayMillis: 10,
+      new OutboxDispatcher(dispatcherDatabase, dispatcherProducer, {
+        drainState: drain,
+        options: {
+          batchSize: 10,
+          jobNames: [
+            JOB_NAME.reconcileWorkflowTriggers,
+            JOB_NAME.advanceWorkflowRun,
+          ],
+          leaseDurationMillis: 1_000,
+          leaseOwner: 'schedule-publication-dispatcher',
+          maxAttempts: 3,
+          operationTimeoutMillis: 5_000,
+          retryDelayMillis: 10,
+        },
       }),
     );
     transferResource(dispatcherDatabase);
@@ -578,11 +581,9 @@ describeIntegration('direct Schedule worker integration gate', () => {
       createQueueProducer({ redisUrl }),
     );
     const recoveryDispatcher = registerResource(
-      new OutboxDispatcher(
-        recoveryDatabase,
-        recoveryProducer,
-        new WorkerDrainState(),
-        {
+      new OutboxDispatcher(recoveryDatabase, recoveryProducer, {
+        drainState: new WorkerDrainState(),
+        options: {
           batchSize: 10,
           jobNames: [JOB_NAME.reconcileWorkflowTriggers],
           leaseDurationMillis: 1_000,
@@ -591,7 +592,7 @@ describeIntegration('direct Schedule worker integration gate', () => {
           operationTimeoutMillis: 5_000,
           retryDelayMillis: 10,
         },
-      ),
+      }),
     );
     transferResource(recoveryDatabase);
     transferResource(recoveryProducer);

@@ -48,7 +48,7 @@ export class NestLoggerAdapter {
     const { context, stack } = classifyNestOptionalStrings(
       strings,
       onlyString,
-      onlyStringIsStack,
+      { onlyStringIsStack: onlyStringIsStack },
     );
     const summary =
       typeof message === 'string' ? boundedNestText(message) : undefined;
@@ -68,7 +68,7 @@ const MAX_NEST_TEXT_LENGTH = 1_024;
 function classifyNestOptionalStrings(
   strings: readonly string[],
   onlyString: string | undefined,
-  onlyStringIsStack: boolean,
+  { onlyStringIsStack }: Readonly<{ onlyStringIsStack: boolean }>,
 ): Readonly<{ context?: string; stack?: string }> {
   if (strings.length > 1) {
     const context = strings.at(-1);

@@ -77,12 +77,10 @@ describe('inbox hint stream', () => {
     const destination = new FakeDestination();
     const controller = new AbortController();
     const access = authorization();
-    const streaming = writeInboxHintStream(
-      hints.source,
-      destination,
-      access,
-      controller.signal,
-    );
+    const streaming = writeInboxHintStream(hints.source, destination, {
+      authorization: access,
+      signal: controller.signal,
+    });
     hints.push({ kind: 'changed', revision: '12' });
     hints.push({ kind: 'resync' });
     await vi.waitFor(() => {
@@ -105,15 +103,13 @@ describe('inbox hint stream', () => {
     const destination = new FakeDestination();
     const lost = new AbortController();
     const failure = new Error('membership revoked');
-    const streaming = writeInboxHintStream(
-      hints.source,
-      destination,
-      {
+    const streaming = writeInboxHintStream(hints.source, destination, {
+      authorization: {
         authorizationLost: lost.signal,
         reauthorize: () => Promise.reject(failure),
       },
-      new AbortController().signal,
-    );
+      signal: new AbortController().signal,
+    });
     hints.push({ kind: 'changed', revision: '3' });
     await expect(streaming).rejects.toBe(failure);
     expect(events(destination)).toHaveLength(1);
@@ -123,12 +119,10 @@ describe('inbox hint stream', () => {
     const revocation = new Error('session expired');
     lost.abort(revocation);
     await expect(
-      writeInboxHintStream(
-        revoked.source,
-        revokedDestination,
-        { authorizationLost: lost.signal, reauthorize: vi.fn() },
-        new AbortController().signal,
-      ),
+      writeInboxHintStream(revoked.source, revokedDestination, {
+        authorization: { authorizationLost: lost.signal, reauthorize: vi.fn() },
+        signal: new AbortController().signal,
+      }),
     ).rejects.toBe(revocation);
     expect(revoked.close).toHaveBeenCalled();
   });
@@ -137,12 +131,10 @@ describe('inbox hint stream', () => {
     const hints = subscription();
     const destination = new FakeDestination();
     const controller = new AbortController();
-    const streaming = writeInboxHintStream(
-      hints.source,
-      destination,
-      authorization(),
-      controller.signal,
-    );
+    const streaming = writeInboxHintStream(hints.source, destination, {
+      authorization: authorization(),
+      signal: controller.signal,
+    });
     destination.writableNeedDrain = true;
     hints.push({ kind: 'changed', revision: '4' });
     await new Promise((resolve) => setImmediate(resolve));
@@ -162,13 +154,11 @@ describe('inbox hint stream', () => {
       const hints = subscription();
       const destination = new FakeDestination();
       const controller = new AbortController();
-      const streaming = writeInboxHintStream(
-        hints.source,
-        destination,
-        authorization(),
-        controller.signal,
-        1_000,
-      );
+      const streaming = writeInboxHintStream(hints.source, destination, {
+        authorization: authorization(),
+        signal: controller.signal,
+        heartbeatIntervalMs: 1_000,
+      });
       await vi.advanceTimersByTimeAsync(1_000);
       destination.writableNeedDrain = true;
       await vi.advanceTimersByTimeAsync(1_000);

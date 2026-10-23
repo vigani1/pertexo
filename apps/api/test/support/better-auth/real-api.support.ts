@@ -276,13 +276,11 @@ export function useBetterAuthRealApi(
       options.notifications === true
         ? owner.acquire(
             'notification runtime',
-            createApiNotificationRuntime(
-              databaseConfig,
-              config.redisUrl,
-              {},
-              undefined,
-              options.notificationMail,
-            ),
+            createApiNotificationRuntime(databaseConfig, config.redisUrl, {
+              overrides: {},
+              runtime: undefined,
+              mail: options.notificationMail,
+            }),
             (runtime) => runtime.close(),
           )
         : undefined;

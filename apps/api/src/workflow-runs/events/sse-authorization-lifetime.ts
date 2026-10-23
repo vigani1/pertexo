@@ -71,7 +71,7 @@ export function createStreamAuthorizationLifetime(
   };
   const armAuthorizationDeadline = (
     sessionExpiresAt: Date,
-    afterRefresh: boolean,
+    { afterRefresh }: Readonly<{ afterRefresh: boolean }>,
   ): void => {
     clearDeadlineTimer();
     const previousDeadline = authorizationDeadline;
@@ -119,7 +119,7 @@ export function createStreamAuthorizationLifetime(
     signal.throwIfAborted();
     await input.reauthorizeResource?.(signal);
     signal.throwIfAborted();
-    armAuthorizationDeadline(session.expiresAt, true);
+    armAuthorizationDeadline(session.expiresAt, { afterRefresh: true });
   };
   const reauthorize = (): Promise<void> => {
     if (pendingAuthorization !== undefined) return pendingAuthorization;
@@ -144,7 +144,7 @@ export function createStreamAuthorizationLifetime(
     pendingAuthorization = current;
     return current;
   };
-  armAuthorizationDeadline(input.sessionExpiresAt, false);
+  armAuthorizationDeadline(input.sessionExpiresAt, { afterRefresh: false });
   const streamStopped = (): boolean => watchdogSignal.aborted;
   const watchdog = (async (): Promise<void> => {
     while (!watchdogSignal.aborted) {

@@ -477,15 +477,17 @@ export function createWorkerTransportTestEnvironment() {
         parseDatabaseConfig({ connectionString: dispatcherUrl, max: 1 }),
       ),
       createQueueProducer({ redisUrl }),
-      new WorkerDrainState(),
       {
-        batchSize,
-        jobNames,
-        leaseDurationMillis: 1_000,
-        leaseOwner: owner,
-        maxAttempts: 3,
-        operationTimeoutMillis: 5_000,
-        retryDelayMillis: 100,
+        drainState: new WorkerDrainState(),
+        options: {
+          batchSize,
+          jobNames,
+          leaseDurationMillis: 1_000,
+          leaseOwner: owner,
+          maxAttempts: 3,
+          operationTimeoutMillis: 5_000,
+          retryDelayMillis: 100,
+        },
       },
     );
 

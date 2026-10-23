@@ -19,11 +19,15 @@ import {
 } from '../platform/http/index.js';
 
 export class ApiTokenManagement {
+  private readonly enabled: boolean;
+  private readonly clock: IdentityClock;
   public constructor(
     private readonly database: ApiTokenDatabase,
-    private readonly enabled: boolean,
-    private readonly clock: IdentityClock,
-  ) {}
+    { enabled, clock }: Readonly<{ enabled: boolean; clock: IdentityClock }>,
+  ) {
+    this.enabled = enabled;
+    this.clock = clock;
+  }
   public async list(
     input: ApiTokenOwner & { query: unknown },
   ): Promise<ApiTokenListResponse> {

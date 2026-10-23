@@ -12,10 +12,17 @@ type Acceptance = Readonly<{
 export async function replyToAcceptedWebhook(
   request: FastifyRequest,
   reply: FastifyReply,
-  workspaceId: string,
-  accepted: Acceptance,
-  waiter: WebhookResponseWaiter,
-  telemetry: WebhookIngressTelemetry,
+  {
+    workspaceId,
+    accepted,
+    waiter,
+    telemetry,
+  }: Readonly<{
+    workspaceId: string;
+    accepted: Acceptance;
+    waiter: WebhookResponseWaiter;
+    telemetry: WebhookIngressTelemetry;
+  }>,
 ): Promise<void> {
   const receipt = { runId: accepted.runId, replayed: accepted.replayed };
   const seconds = accepted.responseWaitSeconds;

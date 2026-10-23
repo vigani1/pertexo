@@ -26,12 +26,10 @@ describe('connection management use cases', () => {
     const store = commandPersistence();
     const encryption = { seal: vi.fn() };
     await expect(
-      new CreateConnectionUseCase(
-        store,
-        authorization(),
-        encryption,
-        'fixture-application-secret',
-      ).execute({
+      new CreateConnectionUseCase(store, authorization(), {
+        encryption: encryption,
+        applicationSecret: 'fixture-application-secret',
+      }).execute({
         actor,
         routeWorkspaceId: workspaceId,
         idempotencyKey: 'create-invalid',
@@ -84,12 +82,10 @@ describe('connection management use cases', () => {
       }),
     };
     const signal = new AbortController().signal;
-    const result = await new CreateConnectionUseCase(
-      store,
-      authorization(),
-      encryption,
-      'fixture-application-secret',
-    ).execute({
+    const result = await new CreateConnectionUseCase(store, authorization(), {
+      encryption: encryption,
+      applicationSecret: 'fixture-application-secret',
+    }).execute({
       actor,
       routeWorkspaceId: workspaceId,
       idempotencyKey: 'create-42',
@@ -134,12 +130,10 @@ describe('connection management use cases', () => {
     };
 
     await expect(
-      new CreateConnectionUseCase(
-        store,
-        authorization(),
-        encryption,
-        'fixture-application-secret',
-      ).execute({
+      new CreateConnectionUseCase(store, authorization(), {
+        encryption: encryption,
+        applicationSecret: 'fixture-application-secret',
+      }).execute({
         actor,
         routeWorkspaceId: workspaceId,
         idempotencyKey: 'create-canceled',
@@ -159,12 +153,10 @@ describe('connection management use cases', () => {
       seal: vi.fn().mockRejectedValue(new Error('KMS down')),
     };
 
-    const result = await new CreateConnectionUseCase(
-      store,
-      authorization(),
-      encryption,
-      'fixture-application-secret',
-    ).execute({
+    const result = await new CreateConnectionUseCase(store, authorization(), {
+      encryption: encryption,
+      applicationSecret: 'fixture-application-secret',
+    }).execute({
       actor,
       routeWorkspaceId: workspaceId,
       idempotencyKey: 'create-replay',
@@ -191,8 +183,10 @@ describe('connection management use cases', () => {
     const result = await new RotateConnectionSecretUseCase(
       store,
       authorization(),
-      encryption,
-      'fixture-application-secret',
+      {
+        encryption: encryption,
+        applicationSecret: 'fixture-application-secret',
+      },
     ).execute({
       actor,
       routeWorkspaceId: workspaceId,
@@ -230,8 +224,10 @@ describe('connection management use cases', () => {
     const rotated = await new RotateConnectionSecretUseCase(
       store,
       authorization(),
-      encryption,
-      'fixture-application-secret',
+      {
+        encryption: encryption,
+        applicationSecret: 'fixture-application-secret',
+      },
     ).execute({
       actor,
       routeWorkspaceId: workspaceId,
@@ -264,12 +260,10 @@ describe('connection management use cases', () => {
     const encryption = { seal: vi.fn() };
 
     await expect(
-      new CreateConnectionUseCase(
-        store,
-        authorization(),
-        encryption,
-        'fixture-application-secret',
-      ).execute({
+      new CreateConnectionUseCase(store, authorization(), {
+        encryption: encryption,
+        applicationSecret: 'fixture-application-secret',
+      }).execute({
         actor,
         routeWorkspaceId: '11111111-1111-4111-8111-111111111111',
         idempotencyKey: 'create-42',

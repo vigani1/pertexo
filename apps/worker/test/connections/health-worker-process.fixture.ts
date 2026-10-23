@@ -265,18 +265,20 @@ async function abandonHealthPublication() {
           return producer.publish(job);
         },
       },
-      new WorkerDrainState(),
       {
-        jobNames: [JOB_NAME.applyConnectionHealthObservation],
-        batchSize: 1,
-        leaseDurationMillis: PUBLICATION_LEASE_MILLIS,
-        leaseOwner: `health-abandoned-${randomUUID()}`,
-        maxAttempts: 10,
-        operationTimeoutMillis: 5000,
-        pollIntervalMillis: 50,
-        retryDelayMillis: 100,
+        drainState: new WorkerDrainState(),
+        options: {
+          jobNames: [JOB_NAME.applyConnectionHealthObservation],
+          batchSize: 1,
+          leaseDurationMillis: PUBLICATION_LEASE_MILLIS,
+          leaseOwner: `health-abandoned-${randomUUID()}`,
+          maxAttempts: 10,
+          operationTimeoutMillis: 5000,
+          pollIntervalMillis: 50,
+          retryDelayMillis: 100,
+        },
+        metrics: createTransportMetrics(),
       },
-      createTransportMetrics(),
     );
     cleanup.splice(1, 2, () => dispatcher.close());
     await maintenance.consumer.waitUntilReady(5000);
@@ -463,11 +465,9 @@ async function construct(
     maintenance === undefined
       ? []
       : [JOB_NAME.applyConnectionHealthObservation];
-  const dispatcher = new OutboxDispatcher(
-    dispatcherDatabase,
-    producer,
-    resources.drain,
-    {
+  const dispatcher = new OutboxDispatcher(dispatcherDatabase, producer, {
+    drainState: resources.drain,
+    options: {
       jobNames: [
         JOB_NAME.advanceWorkflowRun,
         JOB_NAME.executeNodeAttempt,
@@ -481,8 +481,8 @@ async function construct(
       pollIntervalMillis: 50,
       retryDelayMillis: 100,
     },
-    createTransportMetrics(),
-  );
+    metrics: createTransportMetrics(),
+  });
   resources.dispatcher = dispatcher;
   dispatcher.start();
   active();

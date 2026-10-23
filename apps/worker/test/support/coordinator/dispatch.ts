@@ -24,15 +24,18 @@ export async function createCoordinatorDispatcher(
   let producer: ReturnType<typeof createQueueProducer> | undefined;
   try {
     producer = createQueueProducer({ redisUrl: dispatcherRedisUrl });
-    return new OutboxDispatcher(database, producer, new WorkerDrainState(), {
-      batchSize: 10,
-      jobNames: [JOB_NAME.advanceWorkflowRun],
-      leaseDurationMillis: 1_000,
-      leaseOwner: `due-wakeup-${randomUUID()}`,
-      maxAttempts: 3,
-      operationTimeoutMillis: 2_000,
-      pollIntervalMillis: 25,
-      retryDelayMillis: 25,
+    return new OutboxDispatcher(database, producer, {
+      drainState: new WorkerDrainState(),
+      options: {
+        batchSize: 10,
+        jobNames: [JOB_NAME.advanceWorkflowRun],
+        leaseDurationMillis: 1_000,
+        leaseOwner: `due-wakeup-${randomUUID()}`,
+        maxAttempts: 3,
+        operationTimeoutMillis: 2_000,
+        pollIntervalMillis: 25,
+        retryDelayMillis: 25,
+      },
     });
   } catch (startupError: unknown) {
     const errors: unknown[] = [startupError];
@@ -56,15 +59,18 @@ export async function createFailureNotificationDispatcher(
   let producer: ReturnType<typeof createQueueProducer> | undefined;
   try {
     producer = createQueueProducer({ redisUrl });
-    return new OutboxDispatcher(database, producer, drainState, {
-      batchSize: 10,
-      jobNames: [JOB_NAME.deliverRunFailureNotification],
-      leaseDurationMillis: 1_000,
-      leaseOwner: `failure-notification-${randomUUID()}`,
-      maxAttempts: 3,
-      operationTimeoutMillis: 2_000,
-      pollIntervalMillis: 25,
-      retryDelayMillis: 25,
+    return new OutboxDispatcher(database, producer, {
+      drainState: drainState,
+      options: {
+        batchSize: 10,
+        jobNames: [JOB_NAME.deliverRunFailureNotification],
+        leaseDurationMillis: 1_000,
+        leaseOwner: `failure-notification-${randomUUID()}`,
+        maxAttempts: 3,
+        operationTimeoutMillis: 2_000,
+        pollIntervalMillis: 25,
+        retryDelayMillis: 25,
+      },
     });
   } catch (startupError: unknown) {
     const errors: unknown[] = [startupError];

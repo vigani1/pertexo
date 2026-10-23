@@ -436,13 +436,11 @@ describe('workflow run SSE transport', () => {
     destination.end = vi.fn<() => void>();
     destination.destroy = vi.fn<(error?: Error) => void>();
     destination.destroyed = false;
-    const writing = writeSseFrames(
-      frames,
-      destination,
-      new AbortController(),
-      { recordFirstEligibleFrame: vi.fn() },
-      'initial_backfill',
-    );
+    const writing = writeSseFrames(frames, destination, {
+      controller: new AbortController(),
+      visibilityMetrics: { recordFirstEligibleFrame: vi.fn() },
+      fallbackPath: 'initial_backfill',
+    });
 
     await vi.waitFor(() => {
       expect(destination.write).toHaveBeenCalledOnce();
@@ -492,13 +490,11 @@ describe('workflow run SSE transport', () => {
     destination.destroy = vi.fn<(error?: Error) => void>();
     destination.destroyed = false;
     const controller = new AbortController();
-    const writing = writeSseFrames(
-      frames,
-      destination,
-      controller,
-      { recordFirstEligibleFrame: vi.fn() },
-      'reconnect_backfill',
-    );
+    const writing = writeSseFrames(frames, destination, {
+      controller: controller,
+      visibilityMetrics: { recordFirstEligibleFrame: vi.fn() },
+      fallbackPath: 'reconnect_backfill',
+    });
     await vi.waitFor(() => {
       expect(destination.listenerCount('drain')).toBe(1);
     });
@@ -539,13 +535,11 @@ describe('workflow run SSE transport', () => {
     destination.destroy = vi.fn();
     destination.destroyed = false;
 
-    const failure = await writeSseFrames(
-      frames,
-      destination,
-      new AbortController(),
-      { recordFirstEligibleFrame: vi.fn() },
-      'live_wakeup',
-    ).catch((error: unknown) => error);
+    const failure = await writeSseFrames(frames, destination, {
+      controller: new AbortController(),
+      visibilityMetrics: { recordFirstEligibleFrame: vi.fn() },
+      fallbackPath: 'live_wakeup',
+    }).catch((error: unknown) => error);
 
     expect(failure).toBeInstanceOf(AggregateError);
     expect((failure as AggregateError).errors).toEqual([
@@ -580,14 +574,12 @@ describe('workflow run SSE transport', () => {
     const controller = new AbortController();
     let failure: StreamCleanupIncompleteError | undefined;
     try {
-      const writing = writeSseFrames(
-        frames,
-        destination,
-        controller,
-        { recordFirstEligibleFrame: vi.fn() },
-        'live_wakeup',
-        25,
-      );
+      const writing = writeSseFrames(frames, destination, {
+        controller: controller,
+        visibilityMetrics: { recordFirstEligibleFrame: vi.fn() },
+        fallbackPath: 'live_wakeup',
+        cleanupBudgetMs: 25,
+      });
       const observed = writing.catch((error: unknown) => error);
       await vi.advanceTimersByTimeAsync(25);
       const result = await observed;
@@ -716,14 +708,12 @@ describe('workflow run SSE transport', () => {
           abortStream,
           signal: controller.signal,
         });
-        const writing = writeSseFrames(
-          frames,
-          destination,
-          controller,
-          { recordFirstEligibleFrame: vi.fn() },
-          'initial_backfill',
-          25,
-        );
+        const writing = writeSseFrames(frames, destination, {
+          controller: controller,
+          visibilityMetrics: { recordFirstEligibleFrame: vi.fn() },
+          fallbackPath: 'initial_backfill',
+          cleanupBudgetMs: 25,
+        });
         observed = writing.catch((error: unknown) => {
           const completion = streamCleanupCompletion(error);
           if (completion === undefined) releaseDrainRegistration();
@@ -858,14 +848,12 @@ describe('workflow run SSE transport', () => {
         },
         signal: controller.signal,
       });
-      observed = writeSseFrames(
-        frames,
-        destination,
-        controller,
-        { recordFirstEligibleFrame: vi.fn() },
-        'live_wakeup',
-        25,
-      ).catch((error: unknown) => error);
+      observed = writeSseFrames(frames, destination, {
+        controller: controller,
+        visibilityMetrics: { recordFirstEligibleFrame: vi.fn() },
+        fallbackPath: 'live_wakeup',
+        cleanupBudgetMs: 25,
+      }).catch((error: unknown) => error);
       let settled: unknown;
       void observed.then((value) => {
         settled = value;
@@ -1033,13 +1021,11 @@ describe('workflow run SSE transport', () => {
     let writing: Promise<void> | undefined;
     try {
       const frames = await useCase.execute(streamInput);
-      writing = writeSseFrames(
-        frames,
-        destination,
-        controller,
-        { recordFirstEligibleFrame: vi.fn() },
-        'live_wakeup',
-      );
+      writing = writeSseFrames(frames, destination, {
+        controller: controller,
+        visibilityMetrics: { recordFirstEligibleFrame: vi.fn() },
+        fallbackPath: 'live_wakeup',
+      });
       await vi.waitFor(() => {
         expect(destination.listenerCount('drain')).toBe(1);
       });

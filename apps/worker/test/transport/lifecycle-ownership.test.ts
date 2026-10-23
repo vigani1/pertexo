@@ -107,9 +107,11 @@ describe('transport composition ownership', () => {
       createOwnedOutboxDispatcher(
         config(),
         {},
-        new WorkerDrainState(),
-        metrics,
-        factories,
+        {
+          drainState: new WorkerDrainState(),
+          metrics: metrics,
+          factories: factories,
+        },
       ),
     ).rejects.toBe(constructionFailure);
     expect(producerFactory).not.toHaveBeenCalled();
@@ -131,9 +133,11 @@ describe('transport composition ownership', () => {
       createOwnedOutboxDispatcher(
         config(),
         {},
-        new WorkerDrainState(),
-        metrics,
-        factories,
+        {
+          drainState: new WorkerDrainState(),
+          metrics: metrics,
+          factories: factories,
+        },
       ),
     ).rejects.toBe(constructionFailure);
     expect(close).toHaveBeenCalledOnce();
@@ -158,9 +162,11 @@ describe('transport composition ownership', () => {
     const failure = await createOwnedOutboxDispatcher(
       config(),
       {},
-      new WorkerDrainState(),
-      metrics,
-      factories,
+      {
+        drainState: new WorkerDrainState(),
+        metrics: metrics,
+        factories: factories,
+      },
     ).catch((error: unknown) => error);
 
     expect(failure).toBeInstanceOf(AggregateError);
@@ -188,20 +194,20 @@ describe('transport composition ownership', () => {
         options,
         selectedMetrics,
       ) =>
-        new OutboxDispatcher(
-          selectedDb,
-          selectedQueue,
-          drain,
-          options,
-          selectedMetrics,
-        ),
+        new OutboxDispatcher(selectedDb, selectedQueue, {
+          drainState: drain,
+          options: options,
+          metrics: selectedMetrics,
+        }),
     } as DispatcherCompositionFactories;
     const dispatcher = await createOwnedOutboxDispatcher(
       config(),
       {},
-      new WorkerDrainState(),
-      metrics,
-      factories,
+      {
+        drainState: new WorkerDrainState(),
+        metrics: metrics,
+        factories: factories,
+      },
     );
 
     const first = dispatcher.close();

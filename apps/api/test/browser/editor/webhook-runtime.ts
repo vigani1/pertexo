@@ -14,21 +14,23 @@ export function createEditorWebhookRuntime(
   return createApiWebhookRuntime(
     { kmsKeyReference: 'owned-editor-webhook', region: 'us-east-1' },
     database,
-    undefined,
-    undefined,
     {
-      envelope: () => {
-        const keys =
-          createEditorBrowserEnvelopeKeys<WebhookTriggerSecretContext>(
-            masterKey,
-            'webhook',
-          );
-        return {
-          encryption: new WebhookTriggerEnvelopeEncryption(keys),
-          close: () => {
-            keys.close();
-          },
-        };
+      databaseOverride: undefined,
+      runtime: undefined,
+      factories: {
+        envelope: () => {
+          const keys =
+            createEditorBrowserEnvelopeKeys<WebhookTriggerSecretContext>(
+              masterKey,
+              'webhook',
+            );
+          return {
+            encryption: new WebhookTriggerEnvelopeEncryption(keys),
+            close: () => {
+              keys.close();
+            },
+          };
+        },
       },
     },
   );

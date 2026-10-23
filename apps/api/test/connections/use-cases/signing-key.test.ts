@@ -35,14 +35,12 @@ it('seals exact signing keys and tests local access without any provider request
     });
     return Promise.resolve(sealed);
   });
-  const created = await new CreateConnectionUseCase(
-    store,
-    authorization(),
-    {
+  const created = await new CreateConnectionUseCase(store, authorization(), {
+    encryption: {
       seal,
     },
-    'fixture-application-secret',
-  ).execute({
+    applicationSecret: 'fixture-application-secret',
+  }).execute({
     actor,
     routeWorkspaceId: workspaceId,
     idempotencyKey: 'signing-create',
@@ -79,13 +77,11 @@ it('seals exact signing keys and tests local access without any provider request
     ),
   });
   const execute = vi.fn<ConnectionHttpClient['execute']>();
-  const tested = await new TestConnectionUseCase(
-    tests,
-    authorization(),
-    { seal, open: () => Promise.resolve(secret) },
-    { execute },
-    'fixture-application-secret',
-  ).execute({
+  const tested = await new TestConnectionUseCase(tests, authorization(), {
+    encryption: { seal, open: () => Promise.resolve(secret) },
+    httpClient: { execute },
+    applicationSecret: 'fixture-application-secret',
+  }).execute({
     actor,
     routeWorkspaceId: workspaceId,
     connectionId,

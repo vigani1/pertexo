@@ -106,13 +106,13 @@ export function parseIdentityConfig(
   const secret = environment.BETTER_AUTH_SECRET;
   if (secret === undefined)
     throw new Error('Better Auth configuration is incomplete');
-  requireInvitationKeyPair(environment, scope.deployed);
-  const publicWebOrigin = parsePublicWebOrigin(environment, scope.deployed);
-  const session = parseSessionPolicy(
-    environment,
-    publicWebOrigin,
-    scope.deployed,
-  );
+  requireInvitationKeyPair(environment, { deployed: scope.deployed });
+  const publicWebOrigin = parsePublicWebOrigin(environment, {
+    deployed: scope.deployed,
+  });
+  const session = parseSessionPolicy(environment, publicWebOrigin, {
+    deployed: scope.deployed,
+  });
   if (scope.deployed && environment.AUTH_MAIL_MODE !== 'durable')
     throw new Error('Durable authentication mail is required when deployed');
   try {
@@ -157,7 +157,7 @@ function identityScope(
 
 function requireInvitationKeyPair(
   environment: IdentityEnvironment,
-  deployed: boolean,
+  { deployed }: Readonly<{ deployed: boolean }>,
 ): void {
   const keyMissing = environment.INVITATION_TOKEN_KEY === undefined;
   const versionMissing = environment.INVITATION_TOKEN_KEY_VERSION === undefined;
@@ -171,7 +171,7 @@ function requireInvitationKeyPair(
 /** The browser origin is required and must be HTTPS when deployed. */
 function parsePublicWebOrigin(
   environment: IdentityEnvironment,
-  deployed: boolean,
+  { deployed }: Readonly<{ deployed: boolean }>,
 ): string {
   if (environment.PUBLIC_WEB_ORIGIN === undefined)
     throw new Error('PUBLIC_WEB_ORIGIN is required for Better Auth');
@@ -185,7 +185,7 @@ function parsePublicWebOrigin(
 function parseSessionPolicy(
   environment: IdentityEnvironment,
   publicWebOrigin: string,
-  deployed: boolean,
+  { deployed }: Readonly<{ deployed: boolean }>,
 ): ApiIdentityConfig['session'] {
   const protocol = new URL(publicWebOrigin).protocol;
   const secureCookie =

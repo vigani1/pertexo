@@ -67,7 +67,7 @@ function localFailure(
 }
 function settleUnresolvedDelivery(
   result: FailureNotificationDeliveryResult,
-  deliveryUnresolved: boolean,
+  { deliveryUnresolved }: Readonly<{ deliveryUnresolved: boolean }>,
 ): FailureNotificationDeliveryResult {
   if (!deliveryUnresolved || result.kind === 'delivered') return result;
   return {
@@ -237,7 +237,7 @@ function canceled(input: DeliveryInput): FailureNotificationDeliveryResult {
       safeErrorCode: 'delivery.canceled',
       possiblyDispatched: false,
     },
-    input.deliveryUnresolved,
+    { deliveryUnresolved: input.deliveryUnresolved },
   );
 }
 
@@ -259,10 +259,9 @@ async function deliverSlack(
     );
   } catch (error: unknown) {
     if (input.signal.aborted) return canceled(input);
-    return settleUnresolvedDelivery(
-      localFailure(error, 'slack'),
-      input.deliveryUnresolved,
-    );
+    return settleUnresolvedDelivery(localFailure(error, 'slack'), {
+      deliveryUnresolved: input.deliveryUnresolved,
+    });
   }
 
   try {
@@ -277,7 +276,7 @@ async function deliverSlack(
           safeErrorCode: 'delivery.credential_invalid',
           possiblyDispatched: false,
         },
-        input.deliveryUnresolved,
+        { deliveryUnresolved: input.deliveryUnresolved },
       );
     }
     const message = render(input.context);
@@ -330,10 +329,9 @@ async function deliverEmail(
     );
   } catch (error: unknown) {
     if (input.signal.aborted) return canceled(input);
-    return settleUnresolvedDelivery(
-      localFailure(error, 'email'),
-      input.deliveryUnresolved,
-    );
+    return settleUnresolvedDelivery(localFailure(error, 'email'), {
+      deliveryUnresolved: input.deliveryUnresolved,
+    });
   }
 
   try {
@@ -348,7 +346,7 @@ async function deliverEmail(
           safeErrorCode: 'delivery.credential_invalid',
           possiblyDispatched: false,
         },
-        input.deliveryUnresolved,
+        { deliveryUnresolved: input.deliveryUnresolved },
       );
     }
     const message = render(input.context);
@@ -386,7 +384,7 @@ async function deliverEmail(
               }),
           }),
         ),
-        input.deliveryUnresolved,
+        { deliveryUnresolved: input.deliveryUnresolved },
       );
     } catch (error: unknown) {
       if (error instanceof FailureNotificationStateError)
@@ -401,10 +399,9 @@ async function deliverEmail(
               safeErrorCode: 'delivery.dispatch_fence_failed',
               possiblyDispatched: false,
             };
-      return settleUnresolvedDelivery(
-        localFailure(error, 'email'),
-        input.deliveryUnresolved,
-      );
+      return settleUnresolvedDelivery(localFailure(error, 'email'), {
+        deliveryUnresolved: input.deliveryUnresolved,
+      });
     }
   } finally {
     bytes.fill(0);
@@ -449,7 +446,7 @@ export function createProviderFailureNotificationDelivery(
             safeErrorCode: 'delivery.destination_unavailable',
             possiblyDispatched: false,
           },
-          input.deliveryUnresolved,
+          { deliveryUnresolved: input.deliveryUnresolved },
         );
       }
       if (destination.secretVersionId !== input.connectionSecretVersionId)
@@ -459,7 +456,7 @@ export function createProviderFailureNotificationDelivery(
             safeErrorCode: 'delivery.identity_changed',
             possiblyDispatched: false,
           },
-          input.deliveryUnresolved,
+          { deliveryUnresolved: input.deliveryUnresolved },
         );
       switch (destination.kind) {
         case 'slack':

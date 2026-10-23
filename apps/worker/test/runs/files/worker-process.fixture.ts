@@ -166,10 +166,12 @@ try {
       maintenanceDatabaseRuntime,
     ),
     createQueueProducer({ redisUrl: config.redisUrl }),
-    drain,
     {
-      ...config.outboxDispatcher,
-      jobNames: [JOB_NAME.advanceWorkflowRun, JOB_NAME.executeNodeAttempt],
+      drainState: drain,
+      options: {
+        ...config.outboxDispatcher,
+        jobNames: [JOB_NAME.advanceWorkflowRun, JOB_NAME.executeNodeAttempt],
+      },
     },
   );
   owners.push(dispatcher);

@@ -91,15 +91,17 @@ describe('API workflow runtime ownership', () => {
     const runtime = await createApiWorkflowRuntime(
       databaseConfig,
       identityRuntime,
-      'redis://unused',
       {
-        authoring: {
-          database: authoringDatabase(() => Promise.resolve()),
-          inputCasePersistenceFactory: factory,
-          telemetry,
+        redisUrl: 'redis://unused',
+        overrides: {
+          authoring: {
+            database: authoringDatabase(() => Promise.resolve()),
+            inputCasePersistenceFactory: factory,
+            telemetry,
+          },
+          persistence: { runs: persistence },
+          streaming: { streamer },
         },
-        persistence: { runs: persistence },
-        streaming: { streamer },
       },
     );
     expect(factory).toHaveBeenCalledWith(databaseConfig, {});
@@ -114,15 +116,17 @@ describe('API workflow runtime ownership', () => {
     const runtime = await createApiWorkflowRuntime(
       databaseConfig,
       identityRuntime,
-      'redis://unused',
       {
-        authoring: {
-          database: authoringDatabase(close),
-          inputCasePersistence: cases,
-          telemetry,
+        redisUrl: 'redis://unused',
+        overrides: {
+          authoring: {
+            database: authoringDatabase(close),
+            inputCasePersistence: cases,
+            telemetry,
+          },
+          persistence: { runs: persistence },
+          streaming: { streamer },
         },
-        persistence: { runs: persistence },
-        streaming: { streamer },
       },
     );
     expect(runtime.dependencies.inputCasePersistence).toBe(cases);
@@ -136,11 +140,9 @@ describe('API workflow runtime ownership', () => {
     const caseClose = vi.fn().mockResolvedValue(undefined);
     const cases = { close: caseClose } as unknown as WorkflowInputCaseDatabase;
     await expect(
-      createApiWorkflowRuntime(
-        databaseConfig,
-        identityRuntime,
-        'redis://unused',
-        {
+      createApiWorkflowRuntime(databaseConfig, identityRuntime, {
+        redisUrl: 'redis://unused',
+        overrides: {
           authoring: {
             database: authoringDatabase(() => Promise.resolve()),
             inputCasePersistence: cases,
@@ -154,7 +156,7 @@ describe('API workflow runtime ownership', () => {
           },
           streaming: { streamer },
         },
-      ),
+      }),
     ).rejects.toThrow('runs failed');
     expect(caseClose).toHaveBeenCalledOnce();
   });
@@ -172,15 +174,17 @@ describe('API workflow runtime ownership', () => {
     const runtime = await createApiWorkflowRuntime(
       databaseConfig,
       identityRuntime,
-      'redis://unused',
       {
-        authoring: {
-          databaseFactory,
-          telemetry,
-          authoringValidatorFactory: () => ({ validate, shutdown }),
+        redisUrl: 'redis://unused',
+        overrides: {
+          authoring: {
+            databaseFactory,
+            telemetry,
+            authoringValidatorFactory: () => ({ validate, shutdown }),
+          },
+          persistence: { runs: persistence },
+          streaming: { streamer },
         },
-        persistence: { runs: persistence },
-        streaming: { streamer },
       },
     );
     const first = runtime.close();
@@ -200,11 +204,9 @@ describe('API workflow runtime ownership', () => {
       shutdown,
     }));
     await expect(
-      createApiWorkflowRuntime(
-        databaseConfig,
-        identityRuntime,
-        'redis://unused',
-        {
+      createApiWorkflowRuntime(databaseConfig, identityRuntime, {
+        redisUrl: 'redis://unused',
+        overrides: {
           authoring: {
             databaseFactory: () => {
               throw new Error('construction failed');
@@ -212,21 +214,23 @@ describe('API workflow runtime ownership', () => {
             authoringValidatorFactory: factory,
           },
         },
-      ),
+      }),
     ).rejects.toThrow('construction failed');
     expect(shutdown).toHaveBeenCalledOnce();
     const runtime = await createApiWorkflowRuntime(
       databaseConfig,
       identityRuntime,
-      'redis://unused',
       {
-        authoring: {
-          database: authoringDatabase(vi.fn().mockResolvedValue(undefined)),
-          telemetry,
-          authoringValidatorFactory: factory,
+        redisUrl: 'redis://unused',
+        overrides: {
+          authoring: {
+            database: authoringDatabase(vi.fn().mockResolvedValue(undefined)),
+            telemetry,
+            authoringValidatorFactory: factory,
+          },
+          persistence: { runs: persistence },
+          streaming: { streamer },
         },
-        persistence: { runs: persistence },
-        streaming: { streamer },
       },
     );
     await runtime.close();
@@ -248,22 +252,26 @@ describe('API workflow runtime ownership', () => {
     const runtime = await createApiWorkflowRuntime(
       databaseConfig,
       identityRuntime,
-      'redis://localhost:6379/0',
       {
-        authoring: {
-          databaseFactory: () => authoringDatabase(authoringClose),
-          telemetry,
-          expressionEvaluatorFactory: () =>
-            ({ shutdown: evaluatorShutdown }) as unknown as JsonataEvaluator,
-        },
-        persistence: {
-          notificationsFactory: () => notifications(notificationClose),
-          runsFactory: () => ({ persistence, close: runClose }),
-        },
-        streaming: {
-          databaseFactory: () => eventDatabase(eventClose),
-          liveSource: { subscribe: () => Promise.reject(new Error('unused')) },
-          streamerFactory: () => streamer,
+        redisUrl: 'redis://localhost:6379/0',
+        overrides: {
+          authoring: {
+            databaseFactory: () => authoringDatabase(authoringClose),
+            telemetry,
+            expressionEvaluatorFactory: () =>
+              ({ shutdown: evaluatorShutdown }) as unknown as JsonataEvaluator,
+          },
+          persistence: {
+            notificationsFactory: () => notifications(notificationClose),
+            runsFactory: () => ({ persistence, close: runClose }),
+          },
+          streaming: {
+            databaseFactory: () => eventDatabase(eventClose),
+            liveSource: {
+              subscribe: () => Promise.reject(new Error('unused')),
+            },
+            streamerFactory: () => streamer,
+          },
         },
       },
     );
@@ -295,21 +303,25 @@ describe('API workflow runtime ownership', () => {
     const construction = createApiWorkflowRuntime(
       databaseConfig,
       identityRuntime,
-      'redis://localhost:6379/0',
       {
-        authoring: {
-          databaseFactory: () => authoringDatabase(authoringClose),
-          telemetry,
-        },
-        persistence: {
-          notificationsFactory: () => notifications(notificationClose),
-          runsFactory: () => ({ persistence, close: runClose }),
-        },
-        streaming: {
-          databaseFactory: () => eventDatabase(eventClose),
-          liveSource: { subscribe: () => Promise.reject(new Error('unused')) },
-          streamerFactory: () => {
-            throw startupFailure;
+        redisUrl: 'redis://localhost:6379/0',
+        overrides: {
+          authoring: {
+            databaseFactory: () => authoringDatabase(authoringClose),
+            telemetry,
+          },
+          persistence: {
+            notificationsFactory: () => notifications(notificationClose),
+            runsFactory: () => ({ persistence, close: runClose }),
+          },
+          streaming: {
+            databaseFactory: () => eventDatabase(eventClose),
+            liveSource: {
+              subscribe: () => Promise.reject(new Error('unused')),
+            },
+            streamerFactory: () => {
+              throw startupFailure;
+            },
           },
         },
       },

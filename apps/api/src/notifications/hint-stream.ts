@@ -61,9 +61,15 @@ function frame(
 export async function writeInboxHintStream(
   subscription: InboxHintSubscription,
   destination: InboxStreamDestination,
-  authorization: InboxStreamAuthorization,
-  signal: AbortSignal,
-  heartbeatIntervalMs = HEARTBEAT_INTERVAL_MS,
+  {
+    authorization,
+    signal,
+    heartbeatIntervalMs = HEARTBEAT_INTERVAL_MS,
+  }: Readonly<{
+    authorization: InboxStreamAuthorization;
+    signal: AbortSignal;
+    heartbeatIntervalMs?: number | undefined;
+  }>,
 ): Promise<void> {
   const iterator = subscription[Symbol.asyncIterator]();
   const onAbort = (): void => {

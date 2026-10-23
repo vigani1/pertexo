@@ -442,15 +442,18 @@ function createDispatcher(
   });
   return {
     database,
-    dispatcher: new OutboxDispatcher(database, producer, drainState, {
-      batchSize: 100,
-      jobNames: [JOB_NAME.deliverRunFailureNotification],
-      leaseDurationMillis: 1_000,
-      leaseOwner,
-      maxAttempts: 5,
-      operationTimeoutMillis: 1_000,
-      pollIntervalMillis: 25,
-      retryDelayMillis: 100,
+    dispatcher: new OutboxDispatcher(database, producer, {
+      drainState: drainState,
+      options: {
+        batchSize: 100,
+        jobNames: [JOB_NAME.deliverRunFailureNotification],
+        leaseDurationMillis: 1_000,
+        leaseOwner,
+        maxAttempts: 5,
+        operationTimeoutMillis: 1_000,
+        pollIntervalMillis: 25,
+        retryDelayMillis: 100,
+      },
     }),
     producer,
   };

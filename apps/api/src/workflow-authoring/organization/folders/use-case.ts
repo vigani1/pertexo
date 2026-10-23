@@ -81,12 +81,9 @@ export class WorkflowFoldersUseCase {
       workflowMoveReviewRequestSchema,
       input.request,
     );
-    await authorizeWorkflowOrganization(
-      input,
-      this.authorization,
-      'editor',
-      true,
-    );
+    await authorizeWorkflowOrganization(input, this.authorization, 'editor', {
+      fresh: true,
+    });
     return workflowMoveReviewResponseSchema.parse(
       await this.folders.reviewMove({
         ...workflowOrganizationContext(input),
@@ -181,12 +178,9 @@ export class WorkflowFoldersUseCase {
   }
 
   private async command(input: Command, role: 'admin' | 'editor') {
-    await authorizeWorkflowOrganization(
-      input,
-      this.authorization,
-      role,
-      role === 'editor',
-    );
+    await authorizeWorkflowOrganization(input, this.authorization, role, {
+      fresh: role === 'editor',
+    });
     input.signal?.throwIfAborted();
     return {
       ...workflowOrganizationContext(input),

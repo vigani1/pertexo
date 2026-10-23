@@ -119,10 +119,17 @@ export type ApiWorkflowRuntimeOverrides = Readonly<{
 export async function createApiWorkflowRuntime(
   databaseConfig: DatabaseConfig,
   identityRuntime: ApiIdentityRuntime,
-  redisUrl: string,
-  overrides: ApiWorkflowRuntimeOverrides = {},
-  runtime?: DatabaseRuntime,
-  codeSettings: CodeSettings = DEFAULT_CODE_SETTINGS,
+  {
+    redisUrl,
+    overrides = {},
+    runtime,
+    codeSettings = DEFAULT_CODE_SETTINGS,
+  }: Readonly<{
+    redisUrl: string;
+    overrides?: ApiWorkflowRuntimeOverrides | undefined;
+    runtime?: DatabaseRuntime | undefined;
+    codeSettings?: CodeSettings | undefined;
+  }>,
 ): Promise<ApiWorkflowRuntime> {
   const authoring = overrides.authoring ?? {};
   const persistence = overrides.persistence ?? {};
@@ -275,13 +282,15 @@ export async function createApiWorkflowRuntime(
         closePromise ??= closeWorkflowResources(
           acquiredDatabase,
           acquiredRunAdapter,
-          acquiredEventDatabase,
-          acquiredNotifications,
-          acquiredExpressionEvaluator,
-          acquiredAuthoringValidator,
-          acquiredMetadataRuntime,
-          acquiredPendingTasks,
-          acquiredForms,
+          {
+            events: acquiredEventDatabase,
+            notifications: acquiredNotifications,
+            expressionEvaluator: acquiredExpressionEvaluator,
+            authoringValidator: acquiredAuthoringValidator,
+            metadata: acquiredMetadataRuntime,
+            pendingTasks: acquiredPendingTasks,
+            forms: acquiredForms,
+          },
         );
         return closePromise;
       },
@@ -290,13 +299,15 @@ export async function createApiWorkflowRuntime(
     const cleanupFailures = await collectWorkflowCloseFailures(
       database,
       runAdapter,
-      eventDatabase,
-      notifications,
-      expressionEvaluator,
-      authoringValidator,
-      metadataRuntime,
-      pendingTasks,
-      forms,
+      {
+        events: eventDatabase,
+        notifications: notifications,
+        expressionEvaluator: expressionEvaluator,
+        authoringValidator: authoringValidator,
+        metadata: metadataRuntime,
+        pendingTasks: pendingTasks,
+        forms: forms,
+      },
     );
     if (cleanupFailures.length > 0)
       throw new AggregateError(
@@ -310,17 +321,7 @@ export async function createApiWorkflowRuntime(
 async function closeWorkflowResources(
   authoring: WorkflowAuthoringDatabase,
   runs: ReturnType<typeof createPostgresWorkflowRunPersistence> | undefined,
-  events: WorkspaceDatabase | undefined,
-  notifications: RunEventNotificationPublisher | undefined,
-  expressionEvaluator: JsonataEvaluator,
-  authoringValidator: Pick<WorkflowAuthoringValidator, 'shutdown'> | undefined,
-  metadata: ApiWorkflowMetadataRuntime | undefined,
-  pendingTasks: PendingTaskStore | undefined,
-  forms: FormStore | undefined,
-): Promise<void> {
-  const failures = await collectWorkflowCloseFailures(
-    authoring,
-    runs,
+  {
     events,
     notifications,
     expressionEvaluator,
@@ -328,7 +329,26 @@ async function closeWorkflowResources(
     metadata,
     pendingTasks,
     forms,
-  );
+  }: Readonly<{
+    events: WorkspaceDatabase | undefined;
+    notifications: RunEventNotificationPublisher | undefined;
+    expressionEvaluator: JsonataEvaluator;
+    authoringValidator:
+      Pick<WorkflowAuthoringValidator, 'shutdown'> | undefined;
+    metadata: ApiWorkflowMetadataRuntime | undefined;
+    pendingTasks: PendingTaskStore | undefined;
+    forms: FormStore | undefined;
+  }>,
+): Promise<void> {
+  const failures = await collectWorkflowCloseFailures(authoring, runs, {
+    events: events,
+    notifications: notifications,
+    expressionEvaluator: expressionEvaluator,
+    authoringValidator: authoringValidator,
+    metadata: metadata,
+    pendingTasks: pendingTasks,
+    forms: forms,
+  });
   if (failures.length > 0)
     throw new AggregateError(failures, 'Workflow resource shutdown failed');
 }
@@ -336,13 +356,24 @@ async function closeWorkflowResources(
 async function collectWorkflowCloseFailures(
   authoring: WorkflowAuthoringDatabase | undefined,
   runs: ReturnType<typeof createPostgresWorkflowRunPersistence> | undefined,
-  events: WorkspaceDatabase | undefined,
-  notifications: RunEventNotificationPublisher | undefined,
-  expressionEvaluator: JsonataEvaluator | undefined,
-  authoringValidator: Pick<WorkflowAuthoringValidator, 'shutdown'> | undefined,
-  metadata: ApiWorkflowMetadataRuntime | undefined,
-  pendingTasks: PendingTaskStore | undefined,
-  forms: FormStore | undefined,
+  {
+    events,
+    notifications,
+    expressionEvaluator,
+    authoringValidator,
+    metadata,
+    pendingTasks,
+    forms,
+  }: Readonly<{
+    events: WorkspaceDatabase | undefined;
+    notifications: RunEventNotificationPublisher | undefined;
+    expressionEvaluator: JsonataEvaluator | undefined;
+    authoringValidator:
+      Pick<WorkflowAuthoringValidator, 'shutdown'> | undefined;
+    metadata: ApiWorkflowMetadataRuntime | undefined;
+    pendingTasks: PendingTaskStore | undefined;
+    forms: FormStore | undefined;
+  }>,
 ): Promise<unknown[]> {
   const failures: unknown[] = [];
   try {

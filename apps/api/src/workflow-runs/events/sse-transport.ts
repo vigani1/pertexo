@@ -31,10 +31,17 @@ interface SseDestination {
 export async function writeSseFrames(
   frames: AsyncIterable<WorkflowRunEventFrame>,
   destination: SseDestination,
-  controller: AbortController,
-  visibilityMetrics: SseVisibilityMetrics,
-  fallbackPath: SseVisibilityPath,
-  cleanupBudgetMs: number = STREAM_CLEANUP_BUDGET_MS,
+  {
+    controller,
+    visibilityMetrics,
+    fallbackPath,
+    cleanupBudgetMs = STREAM_CLEANUP_BUDGET_MS,
+  }: Readonly<{
+    controller: AbortController;
+    visibilityMetrics: SseVisibilityMetrics;
+    fallbackPath: SseVisibilityPath;
+    cleanupBudgetMs?: number | undefined;
+  }>,
 ): Promise<void> {
   let iterator: AsyncIterator<WorkflowRunEventFrame> | undefined;
   let abandonedPull: Promise<IteratorResult<WorkflowRunEventFrame>> | undefined;
@@ -156,18 +163,18 @@ function waitForDrain(
       destination.off('error', onError);
       signal.removeEventListener('abort', onAbort);
     };
-    const finish = (value: boolean): void => {
+    const finish = ({ value }: Readonly<{ value: boolean }>): void => {
       cleanup();
       resolve(value);
     };
     const onDrain = (): void => {
-      finish(true);
+      finish({ value: true });
     };
     const onClose = (): void => {
-      finish(false);
+      finish({ value: false });
     };
     const onAbort = (): void => {
-      finish(false);
+      finish({ value: false });
     };
     const onError = (...args: unknown[]): void => {
       cleanup();

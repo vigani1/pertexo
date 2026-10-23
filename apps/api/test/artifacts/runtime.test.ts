@@ -81,13 +81,11 @@ describe('API artifact runtime', () => {
     const databaseFactory = vi.fn(createArtifactUploadDatabase);
     let runtime: ReturnType<typeof createApiArtifactRuntime> | undefined;
     try {
-      runtime = createApiArtifactRuntime(
-        config,
-        databaseConfig,
-        identityRuntime,
-        { databaseFactory, store: store() },
-        sharedRuntime,
-      );
+      runtime = createApiArtifactRuntime(config, databaseConfig, {
+        identityRuntime: identityRuntime,
+        overrides: { databaseFactory, store: store() },
+        databaseRuntime: sharedRuntime,
+      });
       expect(databaseFactory).toHaveBeenCalledExactlyOnceWith(
         databaseConfig,
         sharedRuntime,
@@ -103,8 +101,10 @@ describe('API artifact runtime', () => {
     const runtime = createApiArtifactRuntime(
       config,
       { connectionString: 'postgresql://unused' } as never,
-      identityRuntime,
-      { database: selectedDatabase, store: selectedStore },
+      {
+        identityRuntime: identityRuntime,
+        overrides: { database: selectedDatabase, store: selectedStore },
+      },
     );
 
     await runtime.checkReadiness();
@@ -128,8 +128,10 @@ describe('API artifact runtime', () => {
     const runtime = createApiArtifactRuntime(
       config,
       { connectionString: 'postgresql://unused' } as never,
-      identityRuntime,
-      { database: selectedDatabase, store: selectedStore },
+      {
+        identityRuntime: identityRuntime,
+        overrides: { database: selectedDatabase, store: selectedStore },
+      },
     );
     const firstClose = runtime.close();
     const secondClose = runtime.close();
@@ -155,8 +157,10 @@ describe('API artifact runtime', () => {
     const runtime = createApiArtifactRuntime(
       config,
       { connectionString: 'postgresql://unused' } as never,
-      identityRuntime,
-      { database: selectedDatabase, store: selectedStore },
+      {
+        identityRuntime: identityRuntime,
+        overrides: { database: selectedDatabase, store: selectedStore },
+      },
     );
 
     const firstClose = runtime.close();
@@ -183,12 +187,14 @@ describe('API artifact runtime', () => {
       createApiArtifactRuntime(
         config,
         { connectionString: 'postgresql://unused' } as never,
-        identityRuntime,
         {
-          databaseFactory: () => {
-            throw composition;
+          identityRuntime: identityRuntime,
+          overrides: {
+            databaseFactory: () => {
+              throw composition;
+            },
+            store: selectedStore,
           },
-          store: selectedStore,
         },
       ),
     ).toThrow(expect.objectContaining({ errors: [composition, cleanup] }));
@@ -206,8 +212,7 @@ describe('API artifact runtime', () => {
       createApiArtifactRuntime(
         config,
         { connectionString: 'postgresql://unused' } as never,
-        identityRuntime,
-        overrides,
+        { identityRuntime: identityRuntime, overrides: overrides },
       ),
     ).toThrow('database construction failed');
     expect(selectedStore.close).toHaveBeenCalledOnce();
