@@ -13,12 +13,7 @@ export async function expireWorkspaceInvitations(
   client: PoolClient,
   scope: ExpirationScope,
 ): Promise<number> {
-  const column =
-    scope.invitationId !== undefined
-      ? 'id'
-      : scope.normalizedEmail !== undefined
-        ? 'normalized_email'
-        : undefined;
+  const column = invitationExpirationColumn(scope);
   const filter = column === undefined ? '' : `and ${column}=$2`;
   const qualifiedFilter =
     column === undefined ? '' : `and invitation.${column}=$2`;
@@ -75,4 +70,16 @@ export async function expireWorkspaceInvitations(
     );
   }
   return newlyExpired.rowCount ?? 0;
+}
+
+function invitationExpirationColumn(
+  scope: ExpirationScope,
+): 'id' | 'normalized_email' | undefined {
+  if (scope.invitationId !== undefined) {
+    return 'id';
+  }
+  if (scope.normalizedEmail !== undefined) {
+    return 'normalized_email';
+  }
+  return undefined;
 }

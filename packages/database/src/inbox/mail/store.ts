@@ -125,13 +125,7 @@ async function preparePerson(
     [person.workspace_id, person.user_id],
   );
   if (pending.rowCount !== 0) return 0;
-  const due =
-    pref.next_due_at !== null &&
-    pref.schedule_default_revision === current.defaultRevision
-      ? pref.next_due_at
-      : current.effective.mode === 'immediate'
-        ? current.cut
-        : nextNoticeDue(current.effective, current.cut);
+  const due = nextPersonNoticeDue(pref, current);
   if (due === null) return 0;
   if (due > to.now) {
     await client.query(
@@ -338,4 +332,20 @@ export function createNoticeMailStore(
       }
     },
   };
+}
+
+function nextPersonNoticeDue(
+  pref: PreferenceRow,
+  current: Awaited<ReturnType<typeof settings>>,
+): Date | null {
+  if (
+    pref.next_due_at !== null &&
+    pref.schedule_default_revision === current.defaultRevision
+  ) {
+    return pref.next_due_at;
+  }
+  if (current.effective.mode === 'immediate') {
+    return current.cut;
+  }
+  return nextNoticeDue(current.effective, current.cut);
 }

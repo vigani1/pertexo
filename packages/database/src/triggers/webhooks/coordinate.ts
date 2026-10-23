@@ -60,12 +60,7 @@ export async function coordinateVerifiedWebhook(
   const runId = 'runId' in result ? result.runId : undefined;
   await insertWebhookDelivery(transaction, verification, {
     id: deliveryId,
-    outcome:
-      'coordinated' in result
-        ? 'coordinated'
-        : 'skipped' in result
-          ? 'skipped'
-          : 'accepted',
+    outcome: coordinatedDeliveryOutcome(result),
     signatureCheck: 'verified',
     replayCheck: 'new',
     bodyBytes: input.bodyBytes,
@@ -86,4 +81,16 @@ export async function coordinateVerifiedWebhook(
     ...result,
     ...(seconds === undefined ? {} : { responseWaitSeconds: seconds }),
   };
+}
+
+function coordinatedDeliveryOutcome(
+  result: Awaited<ReturnType<typeof coordinateEvent>>,
+): Parameters<typeof insertWebhookDelivery>[2]['outcome'] {
+  if ('coordinated' in result) {
+    return 'coordinated';
+  }
+  if ('skipped' in result) {
+    return 'skipped';
+  }
+  return 'accepted';
 }

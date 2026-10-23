@@ -29,12 +29,7 @@ export async function persistNodeAdmissions(
     const attempt = attempts.get(admission.invocationKey);
     const nodeRunId = generatePersistedId();
     const attemptId = attempt === undefined ? undefined : generatePersistedId();
-    const status =
-      invocation.status === 'pending'
-        ? 'pending'
-        : invocation.status === 'skipped'
-          ? 'skipped'
-          : 'ready';
+    const status = admittedNodeStatus(invocation);
     rows.push({
       id: nodeRunId,
       node_id: admission.nodeId,
@@ -189,4 +184,16 @@ export async function persistAttemptAdmissions(
     if (insertedOutbox.rowCount !== outboxRows.length)
       throw new CoordinatorRunStateCorruptError();
   }
+}
+
+function admittedNodeStatus(
+  invocation: RunTransitionPlan['checkpoint']['invocations'][number],
+): 'pending' | 'skipped' | 'ready' {
+  if (invocation.status === 'pending') {
+    return 'pending';
+  }
+  if (invocation.status === 'skipped') {
+    return 'skipped';
+  }
+  return 'ready';
 }

@@ -58,30 +58,13 @@ export function sampleMetadata(
   binding: string | undefined,
   now: Date,
 ): SampleMetadata {
-  const state =
-    row.expires_at <= now
-      ? 'expired'
-      : binding !== row.binding
-        ? 'stale'
-        : 'pinned';
+  const state = sampleState(row, binding, now);
   return {
     id: row.id,
     nodeId: row.node_id,
     binding: state === 'expired' ? '' : row.binding,
     state,
-    source:
-      row.source_kind === 'json' || row.source_kind === 'webhook_test'
-        ? { kind: row.source_kind }
-        : row.source_kind === 'preview'
-          ? {
-              kind: 'preview',
-              previewRunId: requiredSourceId(row.source_preview_id),
-            }
-          : {
-              kind: 'run',
-              runId: requiredSourceId(row.source_run_id),
-              nodeRunId: requiredSourceId(row.source_node_run_id),
-            },
+    source: sampleProvenance(row),
     createdAt: row.created_at,
     expiresAt: row.expires_at,
   };
@@ -115,4 +98,35 @@ export async function pruneStepSamples(
     'delete from app.workflow_step_samples where workspace_id=$1 and workflow_id=$2 and not (node_id=any($3::text[]))',
     [workspaceId, workflowId, [...stepSampleBindings(graph).keys()]],
   );
+}
+
+function sampleState(
+  row: SampleMetadataRow,
+  binding: string | undefined,
+  now: Date,
+): SampleMetadata['state'] {
+  if (row.expires_at <= now) {
+    return 'expired';
+  }
+  if (binding !== row.binding) {
+    return 'stale';
+  }
+  return 'pinned';
+}
+
+function sampleProvenance(row: SampleMetadataRow): SampleMetadata['source'] {
+  if (row.source_kind === 'json' || row.source_kind === 'webhook_test') {
+    return { kind: row.source_kind };
+  }
+  if (row.source_kind === 'preview') {
+    return {
+      kind: 'preview',
+      previewRunId: requiredSourceId(row.source_preview_id),
+    };
+  }
+  return {
+    kind: 'run',
+    runId: requiredSourceId(row.source_run_id),
+    nodeRunId: requiredSourceId(row.source_node_run_id),
+  };
 }

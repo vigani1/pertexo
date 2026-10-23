@@ -41,12 +41,10 @@ export async function preparePromotion(
         budget,
       }),
   );
-  const policyIssue =
-    input.mode === 'publish' && pair.target.requireApproval
-      ? 'This target requires publication approval. Choose Request approval or Create drafts.'
-      : input.mode === 'request_approval' && !pair.target.requireApproval
-        ? 'Publication approval is off in the target. Choose Publish or Create drafts.'
-        : null;
+  const policyIssue = promotionPolicyIssue({
+    mode: input.mode,
+    requireApproval: pair.target.requireApproval,
+  });
   const requirements = [...prepared.requirements];
   if (policyIssue !== null)
     requirements.push({
@@ -82,4 +80,20 @@ export async function preparePromotion(
       'This promotion review exceeds 4 MB. Select fewer workflows.',
     );
   return result;
+}
+
+function promotionPolicyIssue({
+  mode,
+  requireApproval,
+}: Readonly<{
+  mode: WorkflowPromotionPreviewRequest['mode'];
+  requireApproval: boolean;
+}>): string | null {
+  if (mode === 'publish' && requireApproval) {
+    return 'This target requires publication approval. Choose Request approval or Create drafts.';
+  }
+  if (mode === 'request_approval' && !requireApproval) {
+    return 'Publication approval is off in the target. Choose Publish or Create drafts.';
+  }
+  return null;
 }

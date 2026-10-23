@@ -32,19 +32,7 @@ export function errorWorkflowInput(
 ): WorkflowErrorInput {
   const status = input.plan.checkpoint.runStatus;
   const failed = errorWorkflowFailure(input.plan);
-  const error =
-    status === 'outcome_unknown'
-      ? {
-          code: 'execution.outcome_unknown',
-          message:
-            'A step may have taken effect. Check the service before repeating it.',
-        }
-      : status === 'timed_out'
-        ? {
-            code: 'execution.timed_out',
-            message: 'The workflow exceeded its deadline.',
-          }
-        : { code: 'execution.failed', message: 'The workflow failed.' };
+  const error = safeRunFailureSummary(status);
   return workflowErrorInputSchema.parse({
     workflow: {
       id: input.workflowId,
@@ -60,4 +48,23 @@ export function errorWorkflowInput(
       failed === undefined ? null : { id: failed.nodeId, ...input.step },
     error,
   });
+}
+
+function safeRunFailureSummary(
+  status: RunTransitionPlan['checkpoint']['runStatus'],
+): WorkflowErrorInput['error'] {
+  if (status === 'outcome_unknown') {
+    return {
+      code: 'execution.outcome_unknown',
+      message:
+        'A step may have taken effect. Check the service before repeating it.',
+    };
+  }
+  if (status === 'timed_out') {
+    return {
+      code: 'execution.timed_out',
+      message: 'The workflow exceeded its deadline.',
+    };
+  }
+  return { code: 'execution.failed', message: 'The workflow failed.' };
 }

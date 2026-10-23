@@ -110,23 +110,14 @@ export async function acceptVerifiedWebhookDelivery(
         if (replay?.active === true) {
           const replayed = resolveExactReplay(replay, requestFingerprint);
           await insertWebhookDelivery(transaction, verification, {
-            outcome:
-              'skipped' in replayed
-                ? 'skipped'
-                : 'coordinated' in replayed
-                  ? 'coordinated'
-                  : 'replayed',
+            outcome: replayDeliveryOutcome(replayed),
             signatureCheck: 'verified',
             replayCheck: 'duplicate',
             bodyBytes: input.bodyBytes,
             ...(replay.coordination_event_id === null
               ? {}
               : { coordinationEventId: replay.coordination_event_id }),
-            ...('runId' in replayed
-              ? { runId: replayed.runId }
-              : 'coordinated' in replayed
-                ? { coordinationEventId: replayed.eventId }
-                : {}),
+            ...replayDeliveryReference(replayed),
             dedupeKind,
           });
           if ('skipped' in replayed || 'coordinated' in replayed)
@@ -246,4 +237,31 @@ export async function acceptVerifiedWebhookDelivery(
     // Prepare once outside locks; the next pass always has fresh event input.
     candidate = await readCandidate({ checkReplay: false });
   }
+}
+
+function replayDeliveryOutcome(
+  replayed: ReturnType<typeof resolveExactReplay>,
+): Parameters<typeof insertWebhookDelivery>[2]['outcome'] {
+  if ('skipped' in replayed) {
+    return 'skipped';
+  }
+  if ('coordinated' in replayed) {
+    return 'coordinated';
+  }
+  return 'replayed';
+}
+
+function replayDeliveryReference(
+  replayed: ReturnType<typeof resolveExactReplay>,
+): Pick<
+  Parameters<typeof insertWebhookDelivery>[2],
+  'runId' | 'coordinationEventId'
+> {
+  if ('runId' in replayed) {
+    return { runId: replayed.runId };
+  }
+  if ('coordinated' in replayed) {
+    return { coordinationEventId: replayed.eventId };
+  }
+  return {};
 }

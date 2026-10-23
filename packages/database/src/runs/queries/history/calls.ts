@@ -87,14 +87,7 @@ export async function readWorkflowCalls(
       targetWorkflowId: row.target_workflow_id,
       targetVersionId: row.target_version_id,
       childRunId: row.child_visible ? row.child_run_id : null,
-      childHistory:
-        row.child_run_id === null
-          ? 'not_started'
-          : !row.child_visible
-            ? 'unavailable'
-            : row.live_child_run_id === null
-              ? 'expired'
-              : 'retained',
+      childHistory: callHistoryState(row),
       status: row.status,
       slotLent: row.slot_lent,
       detailsRetired: row.details_retired,
@@ -107,4 +100,19 @@ export async function readWorkflowCalls(
     ...(calls.length === 0 ? {} : { calls }),
     ...(parentCall === undefined ? {} : { parentCall }),
   };
+}
+
+function callHistoryState(
+  row: z.output<typeof callRow>,
+): WorkflowCallReadRecord['childHistory'] {
+  if (row.child_run_id === null) {
+    return 'not_started';
+  }
+  if (!row.child_visible) {
+    return 'unavailable';
+  }
+  if (row.live_child_run_id === null) {
+    return 'expired';
+  }
+  return 'retained';
 }

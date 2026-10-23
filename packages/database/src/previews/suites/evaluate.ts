@@ -29,15 +29,7 @@ export async function evaluateSuiteCase(
   const outcomeMatched =
     run.status ===
     (expectations.outcome === 'succeeds' ? 'succeeded' : 'failed');
-  const error = run.pin_required
-    ? 'test_pin_required'
-    : run.status === 'timed_out'
-      ? 'run_timed_out'
-      : run.status === 'outcome_unknown'
-        ? 'run_outcome_unknown'
-        : run.status === 'canceled'
-          ? 'run_canceled'
-          : undefined;
+  const error = suiteRunError(run);
   const outputs = new Map<
     string,
     | { state: 'value'; value: JsonValue }
@@ -70,12 +62,9 @@ export async function evaluateSuiteCase(
           [entry.workspace_id, entry.run_id, assertion.source.nodeId],
         );
         const one = rows.rows[0];
-        output =
-          rows.rows.length > 1
-            ? { state: 'ambiguous' }
-            : one?.status === 'succeeded'
-              ? inline(one.output_ref)
-              : { state: 'unavailable' };
+        if (rows.rows.length > 1) output = { state: 'ambiguous' };
+        else if (one?.status === 'succeeded') output = inline(one.output_ref);
+        else output = { state: 'unavailable' };
       }
       outputs.set(key, output);
     }
@@ -93,12 +82,7 @@ export async function evaluateSuiteCase(
     assertions,
   };
   return {
-    status:
-      error !== undefined
-        ? 'error'
-        : outcomeMatched && assertions.every((item) => item.actual.matched)
-          ? 'passed'
-          : 'failed',
+    status: suiteCaseStatus({ error, outcomeMatched, assertions }),
     report,
   };
 }
@@ -143,4 +127,37 @@ export async function readSuiteRunOutcome(
     output_ref: row.output_ref,
     pin_required: problem.rows[0]?.found === true,
   };
+}
+
+function suiteRunError(run: SuiteRunOutcome): WorkflowTestSuiteReport['error'] {
+  if (run.pin_required) {
+    return 'test_pin_required';
+  }
+  if (run.status === 'timed_out') {
+    return 'run_timed_out';
+  }
+  if (run.status === 'outcome_unknown') {
+    return 'run_outcome_unknown';
+  }
+  if (run.status === 'canceled') {
+    return 'run_canceled';
+  }
+  return undefined;
+}
+
+function suiteCaseStatus(
+  input: Readonly<{
+    error: WorkflowTestSuiteReport['error'];
+    outcomeMatched: boolean;
+    assertions: WorkflowTestSuiteReport['assertions'];
+  }>,
+): 'error' | 'passed' | 'failed' {
+  const { error, outcomeMatched, assertions } = input;
+  if (error !== undefined) {
+    return 'error';
+  }
+  if (outcomeMatched && assertions.every((item) => item.actual.matched)) {
+    return 'passed';
+  }
+  return 'failed';
 }

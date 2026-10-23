@@ -131,11 +131,7 @@ export function scheduleHealthTransition(
     target.admission_deferred_until !== null &&
     target.admission_deferred_until.getTime() > target.observed_at.getTime();
   return Object.freeze({
-    healthStatus: input.enabled
-      ? retainsAdmissionBackoff
-        ? 'degraded'
-        : 'healthy'
-      : 'disabled',
+    healthStatus: scheduleHealthStatus(input, { retainsAdmissionBackoff }),
     lastErrorCode: retainsAdmissionBackoff
       ? 'schedule.admission_throttled'
       : null,
@@ -143,4 +139,17 @@ export function scheduleHealthTransition(
     scheduleStatus: input.enabled ? 'enabled' : 'disabled',
     triggerStatus: input.enabled ? 'active' : 'disabled',
   });
+}
+
+function scheduleHealthStatus(
+  input: Pick<SetEnabledInput, 'enabled'>,
+  { retainsAdmissionBackoff }: Readonly<{ retainsAdmissionBackoff: boolean }>,
+): ScheduleHealthTransition['healthStatus'] {
+  if (input.enabled) {
+    if (retainsAdmissionBackoff) {
+      return 'degraded';
+    }
+    return 'healthy';
+  }
+  return 'disabled';
 }
