@@ -1,25 +1,9 @@
+import { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
+export { DIRECTORY_LIMITS };
 import { FEDERATION_LIMITS } from './settings.js';
 import { z } from 'zod';
 import { delegatedWorkspaceRoleSchema } from '../membership.js';
 
-export const DIRECTORY_LIMITS = Object.freeze({
-  credentials: 5,
-  users: 5000,
-  groups: 200,
-  membersPerGroup: 500,
-  mappingsPerWorkspace: 200,
-  patchOperations: 100,
-  page: 100,
-  requestBytes: 1024 * 1024,
-  responseBytes: 4 * 1024 * 1024,
-  profileBytes: 16 * 1024,
-  jsonDepth: 16,
-  jsonMembers: 4096,
-  filterCharacters: 1024,
-  filterDepth: 16,
-  filterNodes: 256,
-  emailsPerUser: 5,
-});
 const revision = z.number().int().positive().max(2147483647);
 export const directoryCredentialSchema = z
   .object({
