@@ -26,15 +26,27 @@ import { assertNotAborted, isAbortError } from './admission.js';
 
 export async function resolveMappedNodeInput(
   node: Pick<WorkflowExecutableNode, 'definition' | 'inputMappings'>,
-  runInput: JsonValue,
-  completedOutputs: Readonly<Record<string, JsonValue>>,
-  directUpstream: ReadonlySet<string>,
-  signal: AbortSignal,
-  expressionEvaluator?: ExpressionEvaluator,
-  structuredInputs?: Readonly<Record<string, JsonValue>>,
-  sourceFailure?: WorkflowNodeFailureValue,
-  variables?: WorkspaceVariableValues,
-  callbacks?: CallbackBindings,
+  {
+    runInput,
+    completedOutputs,
+    directUpstream,
+    signal,
+    expressionEvaluator,
+    structuredInputs,
+    sourceFailure,
+    variables,
+    callbacks,
+  }: Readonly<{
+    runInput: JsonValue;
+    completedOutputs: Readonly<Record<string, JsonValue>>;
+    directUpstream: ReadonlySet<string>;
+    signal: AbortSignal;
+    expressionEvaluator?: ExpressionEvaluator | undefined;
+    structuredInputs?: Readonly<Record<string, JsonValue>> | undefined;
+    sourceFailure?: WorkflowNodeFailureValue | undefined;
+    variables?: WorkspaceVariableValues | undefined;
+    callbacks?: CallbackBindings | undefined;
+  }>,
 ): Promise<JsonValue> {
   if (isWorkflowTriggerDefinition(node.definition)) return runInput;
   const mapped = Object.create(null) as Record<string, JsonValue>;
@@ -138,15 +150,14 @@ export async function resolveSingleNodePreviewInput(
       error instanceof Error ? error.message : 'preview input is invalid',
     );
   }
-  return resolveMappedNodeInput(
-    node,
-    runInput,
-    Object.freeze({}),
-    new Set(),
-    input.signal,
-    input.expressionEvaluator,
-    undefined,
-    undefined,
-    workspaceVariableValuesSchema.parse(input.variables ?? {}),
-  );
+  return resolveMappedNodeInput(node, {
+    runInput: runInput,
+    completedOutputs: Object.freeze({}),
+    directUpstream: new Set(),
+    signal: input.signal,
+    expressionEvaluator: input.expressionEvaluator,
+    structuredInputs: undefined,
+    sourceFailure: undefined,
+    variables: workspaceVariableValuesSchema.parse(input.variables ?? {}),
+  });
 }

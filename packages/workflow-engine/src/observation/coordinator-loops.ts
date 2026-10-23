@@ -85,15 +85,23 @@ function loopObservationKey(observation: WorkflowObservation): string {
   return `${controlKey}:1:${String(observation.ordinal).padStart(16, '0')}`;
 }
 
-export function forEachCoordinatorObservations(
-  completedItems: readonly JsonValue[],
-  persistedItems: readonly JsonValue[],
-  successfulOutcomes: ReadonlyMap<string, Readonly<Record<string, JsonValue>>>,
-  checkpoint: ReturnType<typeof parseCheckpoint>,
-  invocations: ReadonlyMap<string, CheckpointInvocation>,
-  nodes: ReadonlyMap<string, WorkflowExecutableNode>,
-  derivedObservations: readonly WorkflowObservation[] = [],
-): Readonly<{
+export function forEachCoordinatorObservations({
+  completedItems,
+  persistedItems,
+  successfulOutcomes,
+  checkpoint,
+  invocations,
+  nodes,
+  derivedObservations = [],
+}: Readonly<{
+  completedItems: readonly JsonValue[];
+  persistedItems: readonly JsonValue[];
+  successfulOutcomes: ReadonlyMap<string, Readonly<Record<string, JsonValue>>>;
+  checkpoint: ReturnType<typeof parseCheckpoint>;
+  invocations: ReadonlyMap<string, CheckpointInvocation>;
+  nodes: ReadonlyMap<string, WorkflowExecutableNode>;
+  derivedObservations?: readonly WorkflowObservation[] | undefined;
+}>): Readonly<{
   observations: readonly WorkflowObservation[];
   declarationInvocationKeys: ReadonlySet<string>;
 }> {

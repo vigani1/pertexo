@@ -67,34 +67,22 @@ function assertSafeExecutableJson(value: unknown): void {
       add(4);
       continue;
     }
-    if (typeof item === 'string') {
-      add(
-        jsonStringByteLength(item, {
-          stopAfterBytes: WORKFLOW_EXECUTABLE_LIMITS.bytes - bytes,
-        }),
-      );
-      continue;
-    }
-    if (typeof item === 'boolean') {
-      add(item ? 4 : 5);
-      continue;
-    }
-    if (typeof item === 'number' && Number.isFinite(item)) {
-      add(Object.is(item, -0) ? 1 : String(item).length);
+    const primitiveBytes = executablePrimitiveBytes(
+      item,
+      WORKFLOW_EXECUTABLE_LIMITS.bytes - bytes,
+    );
+    if (primitiveBytes !== undefined) {
+      add(primitiveBytes);
       continue;
     }
     if (typeof item !== 'object') fail('executable envelope must contain JSON');
-    if (nodeTypes.isProxy(item))
-      fail('executable envelope must not contain proxies');
-    if (frame.depth > WORKFLOW_EXECUTABLE_LIMITS.depth)
-      fail('executable envelope exceeds maximum depth');
-    if (ancestors.has(item))
-      fail('executable envelope must not contain cycles');
+    assertExecutableContainer(item, frame.depth, ancestors);
     const isArray = Array.isArray(item);
     const prototype: object | null = Object.getPrototypeOf(item) as
       object | null;
-    if (!isArray && prototype !== Object.prototype && prototype !== null)
-      fail('executable envelope must contain plain objects');
+    const plainContainer =
+      isArray || prototype === Object.prototype || prototype === null;
+    if (!plainContainer) fail('executable envelope must contain plain objects');
     if (isArray && item.length > WORKFLOW_EXECUTABLE_LIMITS.members)
       fail('executable envelope array is oversized');
     add(2 + (isArray ? Math.max(0, item.length - 1) : 0));
@@ -132,17 +120,10 @@ function assertSafeExecutableJson(value: unknown): void {
         depth: frame.depth + 1,
       });
     }
-    const ownNames = Object.getOwnPropertyNames(item);
-    if (Object.getOwnPropertySymbols(item).length !== 0)
-      fail('executable envelope has symbol fields');
-    if (
-      (isArray &&
-        (enumerableCount !== item.length ||
-          ownNames.length !== item.length + 1 ||
-          !ownNames.includes('length'))) ||
-      (!isArray && ownNames.length !== enumerableCount)
-    )
-      fail('executable envelope has hidden or sparse fields');
+    assertExecutableOwnFields(item, {
+      arrayLength: isArray ? item.length : undefined,
+      enumerableCount,
+    });
   }
 }
 
@@ -232,4 +213,46 @@ export function sideEffectClass(
 
 function unreachableRetryClass(value: never): never {
   fail(`unsupported retry class ${String(value)}`);
+}
+
+function executablePrimitiveBytes(
+  item: unknown,
+  remainingBytes: number,
+): number | undefined {
+  if (typeof item === 'string')
+    return jsonStringByteLength(item, { stopAfterBytes: remainingBytes });
+  if (typeof item === 'boolean') return item ? 4 : 5;
+  if (typeof item === 'number' && Number.isFinite(item))
+    return Object.is(item, -0) ? 1 : String(item).length;
+  return undefined;
+}
+function assertExecutableContainer(
+  item: object,
+  depth: number,
+  ancestors: ReadonlySet<object>,
+): void {
+  if (nodeTypes.isProxy(item))
+    fail('executable envelope must not contain proxies');
+  if (depth > WORKFLOW_EXECUTABLE_LIMITS.depth)
+    fail('executable envelope exceeds maximum depth');
+  if (ancestors.has(item)) fail('executable envelope must not contain cycles');
+}
+function assertExecutableOwnFields(
+  item: object,
+  {
+    arrayLength,
+    enumerableCount,
+  }: Readonly<{ arrayLength: number | undefined; enumerableCount: number }>,
+): void {
+  const ownNames = Object.getOwnPropertyNames(item);
+  if (Object.getOwnPropertySymbols(item).length !== 0)
+    fail('executable envelope has symbol fields');
+  if (
+    (arrayLength !== undefined &&
+      (enumerableCount !== arrayLength ||
+        ownNames.length !== arrayLength + 1 ||
+        !ownNames.includes('length'))) ||
+    (arrayLength === undefined && ownNames.length !== enumerableCount)
+  )
+    fail('executable envelope has hidden or sparse fields');
 }

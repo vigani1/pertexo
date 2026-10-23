@@ -14,7 +14,7 @@ import {
   type RetryPolicy,
 } from '../attempt/retries.js';
 import { invocationKey } from '../transition/scheduling/loops.js';
-import type { BranchScopePart } from '../types.js';
+import type { BranchScopePart, InvocationState } from '../types.js';
 import type {
   RecoveryAttempt,
   RecoveryCandidate,
@@ -23,7 +23,10 @@ import type {
   RecoveryRefused,
   RecoverySource,
 } from './contract.js';
-import type { CompiledWorkflowExecutable } from '../compilation/foundation.js';
+import type {
+  CompiledWorkflowExecutable,
+  WorkflowExecutableNode,
+} from '../compilation/foundation.js';
 
 function completeFailure(
   attempt: RecoveryAttempt,
@@ -137,6 +140,49 @@ export function selectRecoveryPrefix(
   )
     return { kind: 'refused', reason: 'evidence_unavailable' };
   const policy = resolveRetryPolicy(executable.envelope.runtimePolicies.retry);
+  const context = { source, nodes, records, invocations, policy };
+  const evidenceFailure = verifyRecoveryRecords(context);
+  if (evidenceFailure !== undefined) return evidenceFailure;
+  const selectedTarget = selectRecoveryTarget(context);
+  if ('kind' in selectedTarget) return selectedTarget;
+  const target = selectedTarget;
+
+  const selectedPath = selectExecutedPath(context, tree, target);
+  if ('kind' in selectedPath) return selectedPath;
+  const { prefix, choices } = selectedPath;
+  const prefixIds = new Set(prefix.map((node) => node.source.id));
+  for (const record of source.nodes)
+    if (
+      record.id !== target.id &&
+      !prefixIds.has(record.id) &&
+      (record.status !== 'skipped' || record.attempts.length > 0)
+    )
+      return { kind: 'refused', reason: 'suffix_already_executed' };
+
+  return {
+    kind: 'candidate',
+    source,
+    executable,
+    target,
+    prefix,
+    branchSelections: choices,
+    effectRisk: recoveryEffectRisk(target),
+  };
+}
+
+interface RecoveryContext {
+  readonly source: RecoverySource;
+  readonly nodes: ReadonlyMap<string, WorkflowExecutableNode>;
+  readonly records: ReadonlyMap<string, RecoveryNode>;
+  readonly invocations: ReadonlyMap<string, InvocationState>;
+  readonly policy: RetryPolicy;
+}
+function verifyRecoveryRecords({
+  source,
+  nodes,
+  invocations,
+  policy,
+}: RecoveryContext): RecoveryRefused | undefined {
   for (const record of source.nodes) {
     const node = nodes.get(record.nodeId);
     const invocation = invocations.get(record.nodeId);
@@ -168,6 +214,13 @@ export function selectRecoveryPrefix(
         return { kind: 'refused', reason: 'evidence_unavailable' };
     }
   }
+  return undefined;
+}
+function selectRecoveryTarget({
+  source,
+  nodes,
+  policy,
+}: RecoveryContext): RecoveryNode | RecoveryRefused {
   const failures = source.nodes.filter(
     (node) => node.status === 'failed' || node.status === 'outcome_unknown',
   );
@@ -187,7 +240,30 @@ export function selectRecoveryPrefix(
       ?.kind !== target.status
   )
     return { kind: 'refused', reason: 'evidence_unavailable' };
-
+  return target;
+}
+function recoveryEffectRisk(
+  target: RecoveryNode,
+): RecoveryCandidate['effectRisk'] {
+  if (target.status === 'outcome_unknown') return 'unknown_outcome';
+  const possibleEffects =
+    target.sideEffectClass !== 'safe' &&
+    target.attempts.some(
+      (attempt) =>
+        (attempt.possiblyDispatched ?? false) || attempt.dispatchMarked,
+    );
+  return possibleEffects ? 'possible_effects' : 'ordinary';
+}
+function selectExecutedPath(
+  { source, nodes, invocations, records }: RecoveryContext,
+  tree: NonNullable<ReturnType<typeof inspectWorkflowDecisionTree>>,
+  target: RecoveryNode,
+):
+  | Readonly<{
+      prefix: readonly RecoveryPrefixNode[];
+      choices: RecoveryCandidate['branchSelections'];
+    }>
+  | RecoveryRefused {
   const prefix: RecoveryPrefixNode[] = [];
   const choices: RecoveryCandidate['branchSelections'][number][] = [];
   const branchPath: BranchScopePart[] = [];
@@ -213,38 +289,10 @@ export function selectRecoveryPrefix(
         return { kind: 'refused', reason: 'evidence_unavailable' };
       break;
     }
-    if (node.disabled) {
-      if (
-        node.definition.key === 'core.condition' ||
-        invocation.status !== 'skipped' ||
-        (record?.attempts.length ?? 0) !== 0
-      )
-        return { kind: 'refused', reason: 'branch_evidence_unavailable' };
-    } else {
-      if (record?.status !== 'succeeded' || invocation.output === undefined)
-        return { kind: 'refused', reason: 'prefix_incomplete' };
-      if (invocation.output.kind === 'artifact')
-        return { kind: 'refused', reason: 'artifact_value' };
-      if (record.reused !== undefined) {
-        if (
-          record.currentAttemptId !== null ||
-          record.currentAttemptNumber !== null ||
-          record.attempts.length !== 0 ||
-          invocation.attemptNumber !== 0 ||
-          invocation.output.kind !== 'reused' ||
-          invocation.output.nodeRunId !== record.id
-        )
-          return { kind: 'refused', reason: 'evidence_unavailable' };
-      } else if (
-        !completeAttempts(record) ||
-        record.completedAt === null ||
-        invocation.attemptNumber !== record.currentAttemptNumber ||
-        invocation.output.kind !== 'inline' ||
-        invocation.output.attemptId !== record.currentAttemptId
-      ) {
-        return { kind: 'refused', reason: 'evidence_unavailable' };
-      }
-      prefix.push({ source: record, invocation, definition: node });
+    const completedPrefix = verifyPrefixOutput({ node, invocation, record });
+    if (completedPrefix !== undefined) {
+      if ('kind' in completedPrefix) return completedPrefix;
+      prefix.push(completedPrefix);
     }
     const outgoing: readonly WorkflowEdge[] = tree.outgoing.get(nodeId) ?? [];
     if (node.definition.key === 'core.condition') {
@@ -265,31 +313,50 @@ export function selectRecoveryPrefix(
   }
   if (nodeId !== target.nodeId)
     return { kind: 'refused', reason: 'branch_evidence_unavailable' };
-  const prefixIds = new Set(prefix.map((node) => node.source.id));
-  for (const record of source.nodes)
-    if (
-      record.id !== target.id &&
-      !prefixIds.has(record.id) &&
-      (record.status !== 'skipped' || record.attempts.length > 0)
-    )
-      return { kind: 'refused', reason: 'suffix_already_executed' };
+  return { prefix, choices };
+}
 
-  return {
-    kind: 'candidate',
-    source,
-    executable,
-    target,
-    prefix,
-    branchSelections: choices,
-    effectRisk:
-      target.status === 'outcome_unknown'
-        ? 'unknown_outcome'
-        : target.sideEffectClass !== 'safe' &&
-            target.attempts.some(
-              (attempt) =>
-                attempt.possiblyDispatched === true || attempt.dispatchMarked,
-            )
-          ? 'possible_effects'
-          : 'ordinary',
-  };
+function verifyPrefixOutput({
+  node,
+  invocation,
+  record,
+}: Readonly<{
+  node: WorkflowExecutableNode;
+  invocation: InvocationState;
+  record: RecoveryNode | undefined;
+}>): RecoveryPrefixNode | RecoveryRefused | undefined {
+  if (node.disabled) {
+    if (
+      node.definition.key === 'core.condition' ||
+      invocation.status !== 'skipped' ||
+      (record?.attempts.length ?? 0) !== 0
+    )
+      return { kind: 'refused', reason: 'branch_evidence_unavailable' };
+  } else {
+    if (record?.status !== 'succeeded' || invocation.output === undefined)
+      return { kind: 'refused', reason: 'prefix_incomplete' };
+    if (invocation.output.kind === 'artifact')
+      return { kind: 'refused', reason: 'artifact_value' };
+    if (record.reused !== undefined) {
+      if (
+        record.currentAttemptId !== null ||
+        record.currentAttemptNumber !== null ||
+        record.attempts.length !== 0 ||
+        invocation.attemptNumber !== 0 ||
+        invocation.output.kind !== 'reused' ||
+        invocation.output.nodeRunId !== record.id
+      )
+        return { kind: 'refused', reason: 'evidence_unavailable' };
+    } else if (
+      !completeAttempts(record) ||
+      record.completedAt === null ||
+      invocation.attemptNumber !== record.currentAttemptNumber ||
+      invocation.output.kind !== 'inline' ||
+      invocation.output.attemptId !== record.currentAttemptId
+    ) {
+      return { kind: 'refused', reason: 'evidence_unavailable' };
+    }
+    return { source: record, invocation, definition: node };
+  }
+  return undefined;
 }

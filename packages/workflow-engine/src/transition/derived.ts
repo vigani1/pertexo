@@ -55,7 +55,7 @@ function deriveRootReadiness(
       event(
         decision.disposition === 'ready' ? 'node.ready' : 'node.skipped',
         input.occurredAt,
-        invocation,
+        { invocation: invocation },
       ),
     );
   }
@@ -110,7 +110,7 @@ function deriveLoopBodyReadiness(
           event(
             decision.disposition === 'ready' ? 'node.ready' : 'node.skipped',
             input.occurredAt,
-            invocation,
+            { invocation: invocation },
           ),
         );
       }
@@ -152,7 +152,9 @@ function settlePendingJoins(
         assertNodeTransition(invocation.status, 'ready');
         const ready = { ...invocation, status: 'ready' as const };
         invocations.set(joinKey, ready);
-        eventDrafts.push(event('node.ready', input.occurredAt, ready));
+        eventDrafts.push(
+          event('node.ready', input.occurredAt, { invocation: ready }),
+        );
       }
       continue;
     }
@@ -164,14 +166,19 @@ function settlePendingJoins(
     if (invocation.status !== 'pending') continue;
     assertNodeTransition(invocation.status, 'ready');
     const ready = { ...invocation, status: 'ready' as const };
-    eventDrafts.push(event('node.ready', input.occurredAt, ready));
+    eventDrafts.push(
+      event('node.ready', input.occurredAt, { invocation: ready }),
+    );
     assertNodeTransition(ready.status, 'running');
     const running = { ...ready, status: 'running' as const };
     assertNodeTransition(running.status, 'failed');
     const failed = { ...running, status: 'failed' as const };
     invocations.set(joinKey, failed);
     eventDrafts.push(
-      event('node.failed', input.occurredAt, failed, decision.reasonCode),
+      event('node.failed', input.occurredAt, {
+        invocation: failed,
+        reasonCode: decision.reasonCode,
+      }),
     );
   }
 }
@@ -201,16 +208,18 @@ function completeExhaustedLoop(
     const succeeded = { ...parent, status: 'succeeded' as const };
     state.invocations.set(loop.controlInvocationKey, succeeded);
     state.eventDrafts.push(
-      event('node.succeeded', input.occurredAt, succeeded),
+      event('node.succeeded', input.occurredAt, { invocation: succeeded }),
     );
   } else if (parent.status === 'pending') {
     const ready = { ...parent, status: 'ready' as const };
     const running = { ...ready, status: 'running' as const };
     const succeeded = { ...running, status: 'succeeded' as const };
     state.invocations.set(loop.controlInvocationKey, succeeded);
-    state.eventDrafts.push(event('node.ready', input.occurredAt, ready));
     state.eventDrafts.push(
-      event('node.succeeded', input.occurredAt, succeeded),
+      event('node.ready', input.occurredAt, { invocation: ready }),
+    );
+    state.eventDrafts.push(
+      event('node.succeeded', input.occurredAt, { invocation: succeeded }),
     );
   }
 }
@@ -265,7 +274,7 @@ function advanceLoopIterations(
           event(
             ready.status === 'skipped' ? 'node.skipped' : 'node.ready',
             input.occurredAt,
-            ready,
+            { invocation: ready },
           ),
         );
       }

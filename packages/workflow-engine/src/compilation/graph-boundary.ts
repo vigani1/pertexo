@@ -46,7 +46,7 @@ export interface RawExecutableGraph {
 
 export function readRawExecutableGraph(
   value: unknown,
-  body: boolean,
+  { body }: Readonly<{ body: boolean }>,
 ): RawExecutableGraph {
   const raw = record(
     value,
@@ -86,7 +86,7 @@ export function readRawExecutableGraph(
       raw: node,
       structured: {
         raw: structured,
-        body: readRawExecutableGraph(structured.body, true),
+        body: readRawExecutableGraph(structured.body, { body: true }),
       },
     };
   });

@@ -91,10 +91,17 @@ function expectedInvocationKey(
 
 function assertInvocationBelongsToExecutable(
   invocation: CheckpointInvocation,
-  checkpoint: ParsedCheckpoint,
-  executable: CompiledWorkflowExecutable,
-  nodeIds: ReadonlySet<string>,
-  nodesById: ReadonlyMap<string, WorkflowExecutableNode>,
+  {
+    checkpoint,
+    executable,
+    nodeIds,
+    nodesById,
+  }: Readonly<{
+    checkpoint: ParsedCheckpoint;
+    executable: CompiledWorkflowExecutable;
+    nodeIds: ReadonlySet<string>;
+    nodesById: ReadonlyMap<string, WorkflowExecutableNode>;
+  }>,
 ): void {
   const invalidInvocationIdentity = (): never =>
     operationError(
@@ -226,13 +233,12 @@ export function assertCheckpointMatchesExecutable(
     assertCheckpointJoinIdentity(join, checkpoint, nodesById);
   const invocationKeys = new Set<string>();
   for (const invocation of checkpoint.invocations) {
-    assertInvocationBelongsToExecutable(
-      invocation,
-      checkpoint,
-      executable,
-      nodeIds,
-      nodesById,
-    );
+    assertInvocationBelongsToExecutable(invocation, {
+      checkpoint: checkpoint,
+      executable: executable,
+      nodeIds: nodeIds,
+      nodesById: nodesById,
+    });
     assertInvocationIterationScopes(invocation, checkpoint);
     invocationKeys.add(invocation.invocationKey);
   }

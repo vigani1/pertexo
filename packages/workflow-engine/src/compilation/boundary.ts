@@ -36,7 +36,7 @@ export function parseBoundary(input: {
   const catalog = parseNodeCatalog(input.catalog);
   const runtimePolicies = parseGlobals(envelope.runtimePolicies);
   validateGlobals(runtimePolicies, catalog);
-  const rawGraph = readRawExecutableGraph(envelope.graph, false);
+  const rawGraph = readRawExecutableGraph(envelope.graph, { body: false });
   const graph = parseWorkflowGraphForPublish(authoringGraph(rawGraph), {
     definitions: catalog.definitions.map(({ definition }) => definition),
   });

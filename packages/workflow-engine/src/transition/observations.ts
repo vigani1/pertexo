@@ -151,7 +151,9 @@ function applyInvocationObservation(
     };
     state.invocations.set(observation.invocationKey, ready);
     state.nodeRunAdmissionKeys.add(observation.invocationKey);
-    state.eventDrafts.push(event('node.ready', occurredAt, ready));
+    state.eventDrafts.push(
+      event('node.ready', occurredAt, { invocation: ready }),
+    );
     return;
   }
   if (existing === undefined)
@@ -173,7 +175,9 @@ function applyInvocationObservation(
       status: 'waiting',
       waitKind,
     });
-    state.eventDrafts.push(event('node.waiting', occurredAt, existing));
+    state.eventDrafts.push(
+      event('node.waiting', occurredAt, { invocation: existing }),
+    );
     return;
   }
   if (observation.kind === 'wait') {
@@ -194,9 +198,11 @@ function applyInvocationObservation(
             ? 'node.retry_scheduled'
             : 'node.waiting',
           occurredAt,
-          existing,
-          undefined,
-          observation.resumeAt,
+          {
+            invocation: existing,
+            reasonCode: undefined,
+            dueAt: observation.resumeAt,
+          },
         ),
       );
     return;
@@ -207,7 +213,9 @@ function applyInvocationObservation(
     const resumed = { ...rest, status: 'ready' as const };
     state.invocations.set(existing.invocationKey, resumed);
     if (!state.externalFactsArePersisted)
-      state.eventDrafts.push(event('node.ready', occurredAt, resumed));
+      state.eventDrafts.push(
+        event('node.ready', occurredAt, { invocation: resumed }),
+      );
     if (state.runStatus === 'waiting') {
       assertRunTransition(state.runStatus, 'running');
       state.runStatus = 'running';
@@ -244,7 +252,10 @@ function applyInvocationObservation(
     );
   if (!state.externalFactsArePersisted || observation.coordinatorDerived)
     state.eventDrafts.push(
-      event(eventName, occurredAt, completed, observation.reasonCode),
+      event(eventName, occurredAt, {
+        invocation: completed,
+        reasonCode: observation.reasonCode,
+      }),
     );
   if (observation.status === 'failed' && observation.failure !== undefined)
     selectFailureHandler(state, completed, observation.failure, occurredAt);
@@ -287,7 +298,9 @@ function applyDueResumptions(
     const { resumeAt: _, ...rest } = existing;
     const resumed = { ...rest, status: 'ready' as const };
     state.invocations.set(existing.invocationKey, resumed);
-    state.eventDrafts.push(event('node.ready', due.occurredAt, resumed));
+    state.eventDrafts.push(
+      event('node.ready', due.occurredAt, { invocation: resumed }),
+    );
     if (state.runStatus === 'waiting') {
       assertRunTransition(state.runStatus, 'running');
       state.runStatus = 'running';

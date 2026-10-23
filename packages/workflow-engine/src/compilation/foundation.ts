@@ -159,15 +159,14 @@ export function executableFailureRoutes(
 export const token = (
   value: DefinitionIdentity | ExecutorIdentity | PolicyReference,
 ): string => `${value.key}\u0000${String(value.version)}`;
-export const compareIdentity = (
+export function compareIdentity(
   left: DefinitionIdentity | ExecutorIdentity | PolicyReference,
   right: DefinitionIdentity | ExecutorIdentity | PolicyReference,
-): number =>
-  left.key < right.key
-    ? -1
-    : left.key > right.key
-      ? 1
-      : left.version - right.version;
+): number {
+  if (left.key < right.key) return -1;
+  if (left.key > right.key) return 1;
+  return left.version - right.version;
+}
 export const sameIdentity = (
   left: DefinitionIdentity | ExecutorIdentity | PolicyReference,
   right: DefinitionIdentity | ExecutorIdentity | PolicyReference,
