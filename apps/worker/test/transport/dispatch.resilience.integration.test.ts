@@ -29,7 +29,7 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import { WorkerDrainState } from '../../src/runtime/shutdown/drain-state.js';
-import { OutboxDispatcher } from '../../src/transport/outbox/dispatcher.js';
+import { OutboxDispatcher } from '../../src/transport/outbox/dispatch/runtime.js';
 import { createDockerComposeServiceController } from '../support/infrastructure/compose-service-control.js';
 import { dropDisconnectedDatabase } from '../support/infrastructure/disposable-database.js';
 import { createRedisTestNamespace } from '../support/infrastructure/redis-test-namespace.js';

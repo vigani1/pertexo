@@ -24,7 +24,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { WorkerDrainState } from '../../src/runtime/shutdown/drain-state.js';
 import { createCoordinatorRuntime } from '../../src/runs/runtime.js';
 import { createTriggerRuntime } from '../../src/triggers/runtime.js';
-import { OutboxDispatcher } from '../../src/transport/outbox/dispatcher.js';
+import { OutboxDispatcher } from '../../src/transport/outbox/dispatch/runtime.js';
 import {
   createBenchmarkScanGate,
   type BenchmarkScanGate,

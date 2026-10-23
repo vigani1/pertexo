@@ -26,7 +26,7 @@ import {
   TRIGGER_RUNTIME,
 } from '../../transport/module.js';
 import type { TriggerRuntime } from '../../triggers/runtime.js';
-import type { OutboxDispatcher } from '../../transport/outbox/dispatcher.js';
+import type { OutboxDispatcher } from '../../transport/outbox/dispatch/runtime.js';
 import type { NodeAttemptRuntime } from '../../attempts/delivery/runtime.js';
 import type { CoordinatorRuntime } from '../../runs/runtime.js';
 import type { MaintenanceRuntime } from '../../maintenance/runtime.js';

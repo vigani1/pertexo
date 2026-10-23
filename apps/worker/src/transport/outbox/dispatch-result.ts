@@ -37,3 +37,11 @@ export function recordOutboxClaim(
   for (const event of events)
     if (event.publishAttempts > 1) metrics.recordOutboxLeaseEvent('reclaimed');
 }
+
+export const EMPTY_RESULT: OutboxDispatchResult = Object.freeze({
+  claimed: 0,
+  failed: 0,
+  outcomeUnknown: 0,
+  published: 0,
+  stale: 0,
+});

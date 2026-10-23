@@ -14,7 +14,7 @@ import {
   createOwnedOutboxDispatcher,
   type DispatcherCompositionFactories,
 } from '../../src/transport/providers/dispatcher.js';
-import { OutboxDispatcher } from '../../src/transport/outbox/dispatcher.js';
+import { OutboxDispatcher } from '../../src/transport/outbox/dispatch/runtime.js';
 import { OutboxDispatcherLifecycle } from '../../src/transport/lifecycle.js';
 import { workerEnvironment } from '../support/worker-environment.js';
 

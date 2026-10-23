@@ -30,7 +30,7 @@ import {
 
 import { dropDisconnectedDatabase } from './infrastructure/disposable-database.js';
 import { WorkerDrainState } from '../../src/runtime/shutdown/drain-state.js';
-import { OutboxDispatcher } from '../../src/transport/outbox/dispatcher.js';
+import { OutboxDispatcher } from '../../src/transport/outbox/dispatch/runtime.js';
 import {
   createTriggerRuntime,
   type TriggerRuntime,

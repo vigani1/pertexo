@@ -19,7 +19,7 @@ import { createCoordinatorRuntime } from '../../src/runs/runtime.js';
 import { createNodeAttemptRuntime } from '../../src/attempts/delivery/runtime.js';
 import { createWorkerNodeRuntimeCapabilities } from '../../src/attempts/execution/runtime-capabilities.js';
 import { createMaintenanceRuntime } from '../../src/maintenance/runtime.js';
-import { OutboxDispatcher } from '../../src/transport/outbox/dispatcher.js';
+import { OutboxDispatcher } from '../../src/transport/outbox/dispatch/runtime.js';
 import { createRedisTestNamespace } from '../support/infrastructure/redis-test-namespace.js';
 import { WorkerDrainState } from '../../src/runtime/shutdown/drain-state.js';
 import {

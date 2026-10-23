@@ -29,7 +29,7 @@ import {
   createTriggerRuntime,
   type TriggerRuntime,
 } from '../../../src/triggers/runtime.js';
-import { OutboxDispatcher } from '../../../src/transport/outbox/dispatcher.js';
+import { OutboxDispatcher } from '../../../src/transport/outbox/dispatch/runtime.js';
 import { createTransportMetrics } from '@pertexo/observability';
 import { createRedisTestNamespace } from '../infrastructure/redis-test-namespace.js';
 import { EditorBrowserWorkerShutdownError } from './cleanup.js';
