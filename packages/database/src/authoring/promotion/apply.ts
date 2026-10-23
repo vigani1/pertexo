@@ -1,3 +1,4 @@
+import type { WorkspaceScopeRunner } from '../../tenant-access/transactions.js';
 import {
   promotionReceiptSchema,
   readAuthorizedPromotionReceipt,
@@ -258,86 +259,12 @@ export async function applyPromotion(
         'conflict',
         'A target workflow was edited directly. Review and explicitly acknowledge replacing its changes.',
       );
-    const items = await inWorkspace(targetScope, async (client) => {
-      const result: WorkflowPromotionResult['items'] = [];
-      for (const workflow of review.workflows)
-        result.push(
-          await writePromotedDraft(client, context, {
-            input,
-            review,
-            workflow,
-            promotionId,
-          }),
-        );
-      for (const item of result) {
-        const source = review.workflows.find(
-          (workflow) => workflow.sourceWorkflowId === item.sourceWorkflowId,
-        );
-        if (source === undefined)
-          throw new Error('Promoted source was not reviewed');
-        await appendAuditFact(client, {
-          workspaceId: review.targetWorkspaceId,
-          actorId: input.actorId,
-          action: 'workflow.promoted',
-          targetType: 'workflow',
-          targetId: item.targetWorkflowId,
-          requestId: input.requestId ?? null,
-          traceId: input.traceId ?? null,
-          metadata: {
-            promotionId,
-            sourceWorkspaceId: input.workspaceId,
-            sourceWorkflowId: item.sourceWorkflowId,
-            sourceVersionId: source.sourceVersionId,
-            targetWorkspaceId: review.targetWorkspaceId,
-            targetWorkflowId: item.targetWorkflowId,
-            targetVersionId: item.publishedVersionId,
-            publicationRequestId: item.publicationRequestId,
-            workflowName: source.sourceName,
-            mode: input.mode,
-            revision: item.revision,
-            acknowledgedTargetChanges: input.acknowledgeTargetChanges.includes(
-              item.sourceWorkflowId,
-            ),
-          },
-        });
-      }
-      return result;
+    const items = await writeReviewedPromotion(inWorkspace, context, {
+      input,
+      review,
+      promotionId,
+      targetScope,
     });
-    await inWorkspace(
-      { workspaceId: input.workspaceId, actorId: input.actorId },
-      async (client) => {
-        for (const item of items) {
-          const source = review.workflows.find(
-            (workflow) => workflow.sourceWorkflowId === item.sourceWorkflowId,
-          );
-          if (source === undefined)
-            throw new Error('Promoted source was not reviewed');
-          await appendAuditFact(client, {
-            workspaceId: input.workspaceId,
-            actorId: input.actorId,
-            action: 'workflow.promotion_sent',
-            targetType: 'workflow',
-            targetId: item.sourceWorkflowId,
-            requestId: input.requestId ?? null,
-            traceId: input.traceId ?? null,
-            metadata: {
-              promotionId,
-              sourceWorkspaceId: input.workspaceId,
-              sourceWorkflowId: item.sourceWorkflowId,
-              sourceVersionId: source.sourceVersionId,
-              targetWorkspaceId: review.targetWorkspaceId,
-              targetWorkflowId: item.targetWorkflowId,
-              targetVersionId: item.publishedVersionId,
-              publicationRequestId: item.publicationRequestId,
-              workflowName: source.sourceName,
-              mode: input.mode,
-              revision: item.revision,
-              versionNumber: item.versionNumber,
-            },
-          });
-        }
-      },
-    );
     const result = {
       promotionId,
       sourceWorkspaceId: input.workspaceId,
@@ -355,4 +282,103 @@ export async function applyPromotion(
     );
     return result;
   }, input.signal);
+}
+
+async function writeReviewedPromotion(
+  inWorkspace: WorkspaceScopeRunner,
+  context: PromotionContext,
+  {
+    input,
+    review,
+    promotionId,
+    targetScope,
+  }: Readonly<{
+    input: Parameters<WorkflowPromotionStore['apply']>[0];
+    review: WorkflowPromotionPreview;
+    promotionId: string;
+    targetScope: Readonly<{ workspaceId: string; actorId: string }>;
+  }>,
+): Promise<WorkflowPromotionResult['items']> {
+  const items = await inWorkspace(targetScope, async (client) => {
+    const result: WorkflowPromotionResult['items'] = [];
+    for (const workflow of review.workflows)
+      result.push(
+        await writePromotedDraft(client, context, {
+          input,
+          review,
+          workflow,
+          promotionId,
+        }),
+      );
+    for (const item of result) {
+      const source = review.workflows.find(
+        (workflow) => workflow.sourceWorkflowId === item.sourceWorkflowId,
+      );
+      if (source === undefined)
+        throw new Error('Promoted source was not reviewed');
+      await appendAuditFact(client, {
+        workspaceId: review.targetWorkspaceId,
+        actorId: input.actorId,
+        action: 'workflow.promoted',
+        targetType: 'workflow',
+        targetId: item.targetWorkflowId,
+        requestId: input.requestId ?? null,
+        traceId: input.traceId ?? null,
+        metadata: {
+          promotionId,
+          sourceWorkspaceId: input.workspaceId,
+          sourceWorkflowId: item.sourceWorkflowId,
+          sourceVersionId: source.sourceVersionId,
+          targetWorkspaceId: review.targetWorkspaceId,
+          targetWorkflowId: item.targetWorkflowId,
+          targetVersionId: item.publishedVersionId,
+          publicationRequestId: item.publicationRequestId,
+          workflowName: source.sourceName,
+          mode: input.mode,
+          revision: item.revision,
+          acknowledgedTargetChanges: input.acknowledgeTargetChanges.includes(
+            item.sourceWorkflowId,
+          ),
+        },
+      });
+    }
+    return result;
+  });
+  await inWorkspace(
+    { workspaceId: input.workspaceId, actorId: input.actorId },
+    async (client) => {
+      for (const item of items) {
+        const source = review.workflows.find(
+          (workflow) => workflow.sourceWorkflowId === item.sourceWorkflowId,
+        );
+        if (source === undefined)
+          throw new Error('Promoted source was not reviewed');
+        await appendAuditFact(client, {
+          workspaceId: input.workspaceId,
+          actorId: input.actorId,
+          action: 'workflow.promotion_sent',
+          targetType: 'workflow',
+          targetId: item.sourceWorkflowId,
+          requestId: input.requestId ?? null,
+          traceId: input.traceId ?? null,
+          metadata: {
+            promotionId,
+            sourceWorkspaceId: input.workspaceId,
+            sourceWorkflowId: item.sourceWorkflowId,
+            sourceVersionId: source.sourceVersionId,
+            targetWorkspaceId: review.targetWorkspaceId,
+            targetWorkflowId: item.targetWorkflowId,
+            targetVersionId: item.publishedVersionId,
+            publicationRequestId: item.publicationRequestId,
+            workflowName: source.sourceName,
+            mode: input.mode,
+            revision: item.revision,
+            versionNumber: item.versionNumber,
+          },
+        });
+      }
+    },
+  );
+
+  return items;
 }

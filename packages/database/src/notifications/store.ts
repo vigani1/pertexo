@@ -117,47 +117,12 @@ async function claimFailureNotificationDelivery(
   return withFailureNotificationClient<
     Awaited<ReturnType<FailureNotificationStore['claimDelivery']>>
   >(transaction, async (client) => {
-    const authoritative = await client.query<{
-      aggregate_id: string;
-      aggregate_type: string;
-      job_name: string;
-      payload: unknown;
-      payload_checksum: string;
-    }>(
-      `select aggregate_id,aggregate_type,job_name,payload,payload_checksum
-           from app.outbox_events where workspace_id=$1 and id=$2`,
-      [workspaceId, delivery.outboxEventId],
-    );
-    const outbox = authoritative.rows[0];
-    const actualChecksum =
-      outbox === undefined
-        ? undefined
-        : createHash('sha256')
-            .update(serializeStoredExecutionJsonValue(outbox.payload))
-            .digest('hex');
-    const invalidDelivery =
-      outbox?.aggregate_id !== intentId ||
-      outbox.aggregate_type !== 'run-failure-notification' ||
-      outbox.job_name !== 'deliver-run-failure-notification' ||
-      outbox.payload_checksum !== delivery.payloadChecksum ||
-      actualChecksum !== delivery.payloadChecksum;
-    if (invalidDelivery)
-      throw new FailureNotificationStateError('Delivery identity mismatch');
-    const result = await client.query<{
-      context: unknown;
-      context_checksum: string;
-      delivery_attempts: number;
-      destination_config_version: number;
-      destination_id: string;
-      recovery_at: Date | null;
-      next_delivery_at: Date | null;
-      retry_due: boolean;
-      side_effect_class: 'safe' | 'idempotent_with_key' | 'unsafe';
-      connection_secret_version_id: string | null;
-      delivery_binding: string | null;
-      possibly_dispatched: boolean | null;
-      status: string;
-    }>(
+    await assertNotificationDelivery(client, {
+      workspaceId,
+      intentId,
+      delivery,
+    });
+    const result = await client.query<FailureIntentRow>(
       `select context,context_checksum,delivery_attempts,destination_id,
                    destination_config_version,side_effect_class,status,recovery_at,next_delivery_at,
                     connection_secret_version_id,delivery_binding,possibly_dispatched,
@@ -208,16 +173,8 @@ async function claimFailureNotificationDelivery(
       (row.status === 'pending' && row.delivery_attempts !== 0);
     if (invalidPendingAttempt)
       throw new FailureNotificationStateError('Intent lifecycle is corrupt');
-    const context = FailureNotificationContextSchema.parse(row.context);
-    const checksum = createHash('sha256')
-      .update(serializeStoredExecutionJsonValue(context))
-      .digest('hex');
-    if (checksum !== row.context_checksum)
-      throw new FailureNotificationStateError('Intent checksum mismatch');
-    const attemptNumber = row.delivery_attempts + 1;
-    const connectionSecretVersionId = identitySchema.parse(
-      row.connection_secret_version_id,
-    );
+    const prepared = prepareNotificationClaim(row);
+    const { attemptNumber } = prepared;
     const marked = await client.query(
       `update app.run_failure_notification_intents
            set status='claimed',delivery_attempts=$3,
@@ -228,24 +185,109 @@ async function claimFailureNotificationDelivery(
       [workspaceId, intentId, attemptNumber, raw.recoverySeconds, row.status],
     );
     if (marked.rowCount !== 1) return Object.freeze({ kind: 'busy' as const });
-    return Object.freeze({
-      kind: 'ready' as const,
-      attemptNumber,
-      context,
-      destinationId: row.destination_id,
-      destinationConfigVersion: row.destination_config_version,
-      sideEffectClass: row.side_effect_class,
-      idempotencyKey: `failure-notification:${intentId}`,
-      connectionSecretVersionId,
-      deliveryUnresolved: row.possibly_dispatched ?? false,
-      ...(row.delivery_binding === null
-        ? {}
-        : {
-            deliveryBinding: z
-              .string()
-              .regex(/^email:sha256:[0-9a-f]{64}$/u)
-              .parse(row.delivery_binding),
-          }),
-    });
+    return readyNotificationClaim(row, intentId, prepared);
+  });
+}
+
+interface FailureIntentRow {
+  context: unknown;
+  context_checksum: string;
+  delivery_attempts: number;
+  destination_config_version: number;
+  destination_id: string;
+  recovery_at: Date | null;
+  next_delivery_at: Date | null;
+  retry_due: boolean;
+  side_effect_class: 'safe' | 'idempotent_with_key' | 'unsafe';
+  connection_secret_version_id: string | null;
+  delivery_binding: string | null;
+  possibly_dispatched: boolean | null;
+  status: string;
+}
+async function assertNotificationDelivery(
+  client: PoolClient,
+  {
+    workspaceId,
+    intentId,
+    delivery,
+  }: Readonly<{
+    workspaceId: string;
+    intentId: string;
+    delivery: Parameters<
+      FailureNotificationStore['claimDelivery']
+    >[0]['delivery'];
+  }>,
+): Promise<void> {
+  const authoritative = await client.query<{
+    aggregate_id: string;
+    aggregate_type: string;
+    job_name: string;
+    payload: unknown;
+    payload_checksum: string;
+  }>(
+    `select aggregate_id,aggregate_type,job_name,payload,payload_checksum
+           from app.outbox_events where workspace_id=$1 and id=$2`,
+    [workspaceId, delivery.outboxEventId],
+  );
+  const outbox = authoritative.rows[0];
+  const actualChecksum =
+    outbox === undefined
+      ? undefined
+      : createHash('sha256')
+          .update(serializeStoredExecutionJsonValue(outbox.payload))
+          .digest('hex');
+  const invalidDelivery =
+    outbox?.aggregate_id !== intentId ||
+    outbox.aggregate_type !== 'run-failure-notification' ||
+    outbox.job_name !== 'deliver-run-failure-notification' ||
+    outbox.payload_checksum !== delivery.payloadChecksum ||
+    actualChecksum !== delivery.payloadChecksum;
+  if (invalidDelivery)
+    throw new FailureNotificationStateError('Delivery identity mismatch');
+}
+function prepareNotificationClaim(row: FailureIntentRow) {
+  const context = FailureNotificationContextSchema.parse(row.context);
+  const checksum = createHash('sha256')
+    .update(serializeStoredExecutionJsonValue(context))
+    .digest('hex');
+  if (checksum !== row.context_checksum)
+    throw new FailureNotificationStateError('Intent checksum mismatch');
+  const attemptNumber = row.delivery_attempts + 1;
+  const connectionSecretVersionId = identitySchema.parse(
+    row.connection_secret_version_id,
+  );
+
+  return { context, attemptNumber, connectionSecretVersionId };
+}
+function readyNotificationClaim(
+  row: FailureIntentRow,
+  intentId: string,
+  {
+    context,
+    attemptNumber,
+    connectionSecretVersionId,
+  }: ReturnType<typeof prepareNotificationClaim>,
+): Extract<
+  Awaited<ReturnType<FailureNotificationStore['claimDelivery']>>,
+  { kind: 'ready' }
+> {
+  return Object.freeze({
+    kind: 'ready' as const,
+    attemptNumber,
+    context,
+    destinationId: row.destination_id,
+    destinationConfigVersion: row.destination_config_version,
+    sideEffectClass: row.side_effect_class,
+    idempotencyKey: `failure-notification:${intentId}`,
+    connectionSecretVersionId,
+    deliveryUnresolved: row.possibly_dispatched ?? false,
+    ...(row.delivery_binding === null
+      ? {}
+      : {
+          deliveryBinding: z
+            .string()
+            .regex(/^email:sha256:[0-9a-f]{64}$/u)
+            .parse(row.delivery_binding),
+        }),
   });
 }

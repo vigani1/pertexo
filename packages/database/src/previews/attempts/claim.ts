@@ -231,38 +231,7 @@ export async function claimPreviewDelivery(
         )
           return Object.freeze({ kind: 'duplicate' });
 
-        const locked = await client.query<{
-          attempt_status: string;
-          dispatch_marked_at: Date | null;
-          live_lease: boolean | null;
-          run_deadline_expired: boolean;
-          run_status: string;
-          side_effect_class: string;
-        }>(
-          `select attempt.status as attempt_status,
-                attempt.dispatch_marked_at,
-                attempt.side_effect_class,
-                (attempt.lease_expires_at is not null
-                   and attempt.lease_expires_at > clock_timestamp())
-                  as live_lease,
-                (run.execution_deadline_at <= clock_timestamp())
-                  as run_deadline_expired,
-                run.status as run_status
-         from app.preview_attempts attempt
-         join app.preview_runs run
-           on run.workspace_id = attempt.workspace_id
-          and run.id = attempt.preview_run_id
-         where attempt.workspace_id=$1
-           and attempt.id=$2
-           and attempt.preview_run_id=$3
-         for update of attempt, run`,
-          [parsed.workspaceId, parsed.previewAttemptId, parsed.previewRunId],
-        );
-        const state = locked.rows[0];
-        if (state === undefined)
-          throw new PreviewAttemptStateError('attempt_not_found');
-        if (!previewPairConsistent(state.attempt_status, state.run_status))
-          throw new PreviewAttemptStateError('run_attempt_divergence');
+        const state = await lockPreviewClaimState(client, parsed);
         if (TERMINAL_PREVIEW_STATUSES.has(state.attempt_status)) {
           await completePreviewReceipt(
             client,
@@ -382,4 +351,47 @@ export async function claimPreviewDelivery(
     }
     throw error;
   }
+}
+
+async function lockPreviewClaimState(
+  client: PoolClient,
+  parsed: Pick<
+    PreviewAttemptLease,
+    'workspaceId' | 'previewAttemptId' | 'previewRunId'
+  >,
+) {
+  const locked = await client.query<{
+    attempt_status: string;
+    dispatch_marked_at: Date | null;
+    live_lease: boolean | null;
+    run_deadline_expired: boolean;
+    run_status: string;
+    side_effect_class: string;
+  }>(
+    `select attempt.status as attempt_status,
+                attempt.dispatch_marked_at,
+                attempt.side_effect_class,
+                (attempt.lease_expires_at is not null
+                   and attempt.lease_expires_at > clock_timestamp())
+                  as live_lease,
+                (run.execution_deadline_at <= clock_timestamp())
+                  as run_deadline_expired,
+                run.status as run_status
+         from app.preview_attempts attempt
+         join app.preview_runs run
+           on run.workspace_id = attempt.workspace_id
+          and run.id = attempt.preview_run_id
+         where attempt.workspace_id=$1
+           and attempt.id=$2
+           and attempt.preview_run_id=$3
+         for update of attempt, run`,
+    [parsed.workspaceId, parsed.previewAttemptId, parsed.previewRunId],
+  );
+  const state = locked.rows[0];
+  if (state === undefined)
+    throw new PreviewAttemptStateError('attempt_not_found');
+  if (!previewPairConsistent(state.attempt_status, state.run_status))
+    throw new PreviewAttemptStateError('run_attempt_divergence');
+
+  return state;
 }

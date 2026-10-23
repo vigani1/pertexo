@@ -1,4 +1,4 @@
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
 import { claimQueryResultSchema, toLeasedEvent } from './rows.js';
@@ -52,8 +52,34 @@ export async function claimOutboxBatch(
     await client.query(
       `select app.recover_due_workflow_run_active_admissions(100)`,
     );
-    const result = await client.query<Record<string, unknown>>(
-      `
+    const claim = await leaseFairOutboxBatch(client, parsed);
+    transactionState = 'committing';
+    releaseError = true;
+    await client.query('commit');
+    transactionState = 'closed';
+    releaseError = undefined;
+    return claim;
+  } catch (error: unknown) {
+    if (transactionState === 'open') {
+      try {
+        await client.query('rollback');
+        transactionState = 'closed';
+      } catch {
+        releaseError = true;
+      }
+    }
+    throw error;
+  } finally {
+    client.release(releaseError);
+  }
+}
+
+async function leaseFairOutboxBatch(
+  client: PoolClient,
+  parsed: z.output<typeof claimInputSchema>,
+): Promise<ClaimOutboxBatchResult> {
+  const result = await client.query<Record<string, unknown>>(
+    `
         with cursor_state as materialized (
           select last_workspace_id
           from app.outbox_fair_dispatch_cursor
@@ -166,37 +192,20 @@ export async function claimOutboxBatch(
           (select count(*)::integer from released_exhausted_admissions) as released_admission_count
         from leased
       `,
-      [
-        parsed.limit,
-        parsed.leaseOwner,
-        parsed.leaseToken,
-        parsed.leaseDurationMillis,
-        parsed.enabledJobNames,
-        parsed.maxAttempts,
-      ],
-    );
-    const row = claimQueryResultSchema.parse(result.rows[0]);
-    const claim = Object.freeze({
-      events: Object.freeze(row.events.map(toLeasedEvent)),
-      exhaustedCount: row.exhausted_count,
-    });
-    transactionState = 'committing';
-    releaseError = true;
-    await client.query('commit');
-    transactionState = 'closed';
-    releaseError = undefined;
-    return claim;
-  } catch (error: unknown) {
-    if (transactionState === 'open') {
-      try {
-        await client.query('rollback');
-        transactionState = 'closed';
-      } catch {
-        releaseError = true;
-      }
-    }
-    throw error;
-  } finally {
-    client.release(releaseError);
-  }
+    [
+      parsed.limit,
+      parsed.leaseOwner,
+      parsed.leaseToken,
+      parsed.leaseDurationMillis,
+      parsed.enabledJobNames,
+      parsed.maxAttempts,
+    ],
+  );
+  const row = claimQueryResultSchema.parse(result.rows[0]);
+  const claim = Object.freeze({
+    events: Object.freeze(row.events.map(toLeasedEvent)),
+    exhaustedCount: row.exhausted_count,
+  });
+
+  return claim;
 }

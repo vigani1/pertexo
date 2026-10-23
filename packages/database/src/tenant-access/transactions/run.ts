@@ -115,13 +115,13 @@ export async function runTransaction<T>(
     if (options.signal?.aborted) throw abortError;
     if (clientReleased) throw error;
     if (transactionOpen) {
-      try {
-        await client.query('rollback');
-      } catch (rollbackError: unknown) {
-        destroyClient();
-        if (options.signal?.aborted) throw abortError;
-        throw new AggregateError([error, rollbackError], messages.rollback);
-      }
+      await rollbackTransaction(client, {
+        error,
+        abortError,
+        signal: options.signal,
+        destroyClient,
+        message: messages.rollback,
+      });
     }
 
     try {
@@ -136,5 +136,30 @@ export async function runTransaction<T>(
     throw error;
   } finally {
     options.signal?.removeEventListener('abort', releaseForAbort);
+  }
+}
+
+async function rollbackTransaction(
+  client: PoolClient,
+  {
+    error,
+    abortError,
+    signal,
+    destroyClient,
+    message,
+  }: Readonly<{
+    error: unknown;
+    abortError: Error;
+    signal: AbortSignal | undefined;
+    destroyClient: () => void;
+    message: string;
+  }>,
+): Promise<void> {
+  try {
+    await client.query('rollback');
+  } catch (rollbackError: unknown) {
+    destroyClient();
+    if (signal?.aborted) throw abortError;
+    throw new AggregateError([error, rollbackError], message);
   }
 }
