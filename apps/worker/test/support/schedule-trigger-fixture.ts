@@ -201,14 +201,21 @@ export function createScheduleTriggerFixture(
       throw new Error('Schedule worker evidence pool is not initialized');
     return workerEvidence;
   };
-  const queryIn = async <Row extends QueryResultRow>(
-    pool: Pool,
-    scopedWorkspaceId: string,
-    statement: string,
-    parameters: unknown[] = [],
-    ownerRole = false,
-    manualStart?: Readonly<{ workflowId: string; keyHash: string }>,
-  ): Promise<QueryResult<Row>> => {
+  const queryIn = async <Row extends QueryResultRow>({
+    pool,
+    scopedWorkspaceId,
+    statement,
+    parameters = [],
+    useOwnerRole: ownerRole = false,
+    manualStart,
+  }: Readonly<{
+    pool: Pool;
+    scopedWorkspaceId: string;
+    statement: string;
+    parameters?: unknown[] | undefined;
+    useOwnerRole?: boolean | undefined;
+    manualStart?: Readonly<{ workflowId: string; keyHash: string }> | undefined;
+  }>): Promise<QueryResult<Row>> => {
     const client = await pool.connect();
     try {
       await client.query('begin');
@@ -238,13 +245,13 @@ export function createScheduleTriggerFixture(
     statement: string,
     parameters: unknown[] = [],
   ) =>
-    queryIn<Row>(
-      requireOwner(),
-      scopedWorkspaceId,
-      statement,
-      parameters,
-      true,
-    );
+    queryIn<Row>({
+      pool: requireOwner(),
+      scopedWorkspaceId: scopedWorkspaceId,
+      statement: statement,
+      parameters: parameters,
+      useOwnerRole: true,
+    });
   const ownerQuery = <Row extends QueryResultRow = QueryResultRow>(
     statement: string,
     parameters: unknown[] = [],
@@ -253,20 +260,25 @@ export function createScheduleTriggerFixture(
     statement: string,
     parameters: unknown[] = [],
   ) =>
-    queryIn<Row>(requireWorkerEvidence(), workspaceId, statement, parameters);
+    queryIn<Row>({
+      pool: requireWorkerEvidence(),
+      scopedWorkspaceId: workspaceId,
+      statement: statement,
+      parameters: parameters,
+    });
   const apiQuery = <Row extends QueryResultRow = QueryResultRow>(
     statement: string,
     parameters: unknown[] = [],
     manualStart?: Readonly<{ workflowId: string; keyHash: string }>,
   ) =>
-    queryIn<Row>(
-      requireApiEvidence(),
-      workspaceId,
-      statement,
-      parameters,
-      false,
-      manualStart,
-    );
+    queryIn<Row>({
+      pool: requireApiEvidence(),
+      scopedWorkspaceId: workspaceId,
+      statement: statement,
+      parameters: parameters,
+      useOwnerRole: false,
+      manualStart: manualStart,
+    });
 
   const dropDatabase = async (): Promise<void> => {
     if (!databaseCreated || runnerOwnsDatabase) return;

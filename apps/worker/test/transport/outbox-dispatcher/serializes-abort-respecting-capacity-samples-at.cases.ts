@@ -34,12 +34,12 @@ export function registerSerializesAbortRespectingCapacitySamplesAt(): void {
           );
         }),
     );
-    const dispatcher = createDispatcher(
-      selected,
-      new WorkerDrainState(),
-      transportMetrics(),
-      100,
-    );
+    const dispatcher = createDispatcher({
+      boundaries: selected,
+      drainState: new WorkerDrainState(),
+      metrics: transportMetrics(),
+      operationTimeoutMillis: 100,
+    });
     dispatcher.configureRuntimeHooks({ observeWorkspaceCapacity });
 
     await expect(dispatcher.dispatchOnce()).resolves.toMatchObject({
@@ -68,12 +68,12 @@ export function registerSerializesAbortRespectingCapacitySamplesAt(): void {
         return sample.promise;
       },
     );
-    const dispatcher = createDispatcher(
-      selected,
-      new WorkerDrainState(),
-      transportMetrics(),
-      100,
-    );
+    const dispatcher = createDispatcher({
+      boundaries: selected,
+      drainState: new WorkerDrainState(),
+      metrics: transportMetrics(),
+      operationTimeoutMillis: 100,
+    });
     dispatcher.configureRuntimeHooks({ observeWorkspaceCapacity });
 
     await expect(dispatcher.dispatchOnce()).resolves.toMatchObject({
@@ -103,12 +103,12 @@ export function registerSerializesAbortRespectingCapacitySamplesAt(): void {
     vi.useFakeTimers();
     const selected = boundaries([event()]);
     const sample = Promise.withResolvers<undefined>();
-    const dispatcher = createDispatcher(
-      selected,
-      new WorkerDrainState(),
-      transportMetrics(),
-      100,
-    );
+    const dispatcher = createDispatcher({
+      boundaries: selected,
+      drainState: new WorkerDrainState(),
+      metrics: transportMetrics(),
+      operationTimeoutMillis: 100,
+    });
     dispatcher.configureRuntimeHooks({
       observeWorkspaceCapacity: vi.fn(() => sample.promise),
     });
@@ -130,11 +130,11 @@ export function registerSerializesAbortRespectingCapacitySamplesAt(): void {
     vi.mocked(retried.database.markPublished).mockResolvedValue(false);
     const staleMetrics = transportMetrics();
 
-    await createDispatcher(
-      retried,
-      new WorkerDrainState(),
-      staleMetrics,
-    ).dispatchOnce();
+    await createDispatcher({
+      boundaries: retried,
+      drainState: new WorkerDrainState(),
+      metrics: staleMetrics,
+    }).dispatchOnce();
 
     expect(staleMetrics.recordOutboxLeaseEvent).toHaveBeenCalledWith(
       'reclaimed',
@@ -148,11 +148,11 @@ export function registerSerializesAbortRespectingCapacitySamplesAt(): void {
     vi.mocked(exhausted.database.releaseOrFail).mockResolvedValue('failed');
     const exhaustedMetrics = transportMetrics();
 
-    await createDispatcher(
-      exhausted,
-      new WorkerDrainState(),
-      exhaustedMetrics,
-    ).dispatchOnce();
+    await createDispatcher({
+      boundaries: exhausted,
+      drainState: new WorkerDrainState(),
+      metrics: exhaustedMetrics,
+    }).dispatchOnce();
 
     expect(exhaustedMetrics.recordOutboxPublish).toHaveBeenCalledWith({
       errorClass: 'redis',
@@ -173,11 +173,11 @@ export function registerSerializesAbortRespectingCapacitySamplesAt(): void {
     });
     const metrics = transportMetrics();
 
-    await createDispatcher(
-      selected,
-      new WorkerDrainState(),
-      metrics,
-    ).dispatchOnce();
+    await createDispatcher({
+      boundaries: selected,
+      drainState: new WorkerDrainState(),
+      metrics: metrics,
+    }).dispatchOnce();
 
     expect(metrics.recordOutboxLeaseEvent).toHaveBeenCalledWith(
       'attempt_exhausted',
@@ -193,11 +193,11 @@ export function registerSerializesAbortRespectingCapacitySamplesAt(): void {
     });
 
     await expect(
-      createDispatcher(
-        selected,
-        new WorkerDrainState(),
-        metrics,
-      ).dispatchOnce(),
+      createDispatcher({
+        boundaries: selected,
+        drainState: new WorkerDrainState(),
+        metrics: metrics,
+      }).dispatchOnce(),
     ).resolves.toEqual(expect.objectContaining({ published: 1 }));
     expect(selected.database.markPublished).toHaveBeenCalledOnce();
   });
@@ -213,8 +213,8 @@ export function registerSerializesAbortRespectingCapacitySamplesAt(): void {
       }),
     ]);
 
-    await expect(createDispatcher(selected).dispatchOnce()).resolves.toEqual(
-      expect.objectContaining({ published: 1 }),
-    );
+    await expect(
+      createDispatcher({ boundaries: selected }).dispatchOnce(),
+    ).resolves.toEqual(expect.objectContaining({ published: 1 }));
   });
 }

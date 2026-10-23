@@ -1,16 +1,26 @@
 import type { Pool } from 'pg';
 import { lockManualFixtureClient } from './attempts/manual-start.js';
 
-export async function queryAsWorkspaceRole<Row extends Record<string, unknown>>(
-  pool: Pool,
-  workspaceId: string,
-  statement: string,
-  parameters: readonly unknown[] = [],
-  manualStart?: Readonly<{
-    workflowId: string;
-    keyHash: string;
-  }>,
-): Promise<readonly Row[]> {
+export async function queryAsWorkspaceRole<
+  Row extends Record<string, unknown>,
+>({
+  pool,
+  workspaceId,
+  statement,
+  parameters = [],
+  manualStart,
+}: Readonly<{
+  pool: Pool;
+  workspaceId: string;
+  statement: string;
+  parameters?: readonly unknown[] | undefined;
+  manualStart?:
+    | Readonly<{
+        workflowId: string;
+        keyHash: string;
+      }>
+    | undefined;
+}>): Promise<readonly Row[]> {
   const client = await pool.connect();
   try {
     await client.query('begin');

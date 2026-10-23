@@ -49,11 +49,11 @@ export function registerHoldsEveryRowWorkerConsumesNo(): void {
   it('publishes a validated queue contract and conditionally marks its lease', async () => {
     const selected = boundaries();
     const metrics = transportMetrics();
-    const dispatcher = createDispatcher(
-      selected,
-      new WorkerDrainState(),
-      metrics,
-    );
+    const dispatcher = createDispatcher({
+      boundaries: selected,
+      drainState: new WorkerDrainState(),
+      metrics: metrics,
+    });
 
     await expect(dispatcher.dispatchOnce()).resolves.toEqual({
       claimed: 1,
@@ -118,7 +118,7 @@ export function registerHoldsEveryRowWorkerConsumesNo(): void {
     const selected = boundaries();
     const mark = Promise.withResolvers<boolean>();
     vi.mocked(selected.database.markPublished).mockReturnValue(mark.promise);
-    const dispatcher = createDispatcher(selected);
+    const dispatcher = createDispatcher({ boundaries: selected });
 
     const dispatch = dispatcher.dispatchOnce();
     await vi.advanceTimersByTimeAsync(5_000);
@@ -154,11 +154,11 @@ export function registerHoldsEveryRowWorkerConsumesNo(): void {
     });
 
     await expect(
-      createDispatcher(
-        selected,
-        new WorkerDrainState(),
-        metrics,
-      ).dispatchOnce(),
+      createDispatcher({
+        boundaries: selected,
+        drainState: new WorkerDrainState(),
+        metrics: metrics,
+      }).dispatchOnce(),
     ).resolves.toEqual({
       claimed: 1,
       failed: 0,
@@ -194,7 +194,7 @@ export function registerHoldsEveryRowWorkerConsumesNo(): void {
       queueName: 'workflow-coordinator',
       settlement: settlement.promise,
     });
-    const dispatcher = createDispatcher(selected);
+    const dispatcher = createDispatcher({ boundaries: selected });
 
     await dispatcher.dispatchOnce();
     const closing = dispatcher.close();
@@ -214,7 +214,7 @@ export function registerHoldsEveryRowWorkerConsumesNo(): void {
       queueName: 'workflow-coordinator',
       settlement: settlement.promise,
     });
-    const dispatcher = createDispatcher(selected);
+    const dispatcher = createDispatcher({ boundaries: selected });
 
     await dispatcher.dispatchOnce();
     const closing = dispatcher.close();
