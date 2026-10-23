@@ -37,7 +37,7 @@ export function assertNotAborted(
   signal: AbortSignal | undefined,
   createFailure: FailureFactory,
 ): void {
-  if (signal?.aborted === true) fail(createFailure);
+  if (signal?.aborted) fail(createFailure);
 }
 
 export function boundedBytes(

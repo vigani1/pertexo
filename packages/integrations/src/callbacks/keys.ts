@@ -50,12 +50,12 @@ export function parseCallbackKeyConfig(
   if (origin === undefined)
     throw new Error('Configure PUBLIC_WEB_ORIGIN for callback URLs.');
   const parsed = new URL(origin);
-  if (
+  const invalidOrigin =
     origin.length > 512 ||
     parsed.origin !== origin ||
     !['http:', 'https:'].includes(parsed.protocol) ||
-    (deployed && parsed.protocol !== 'https:')
-  )
+    (deployed && parsed.protocol !== 'https:');
+  if (invalidOrigin)
     throw new Error(
       'PUBLIC_WEB_ORIGIN must be an origin, using HTTPS when deployed.',
     );

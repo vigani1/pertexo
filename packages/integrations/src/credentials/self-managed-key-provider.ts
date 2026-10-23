@@ -65,14 +65,13 @@ export class SelfManagedEnvelopeKeyProvider<
       const sealed: unknown = JSON.parse(
         Buffer.from(encryptedDataKey).toString('utf8'),
       );
-      if (
+      const invalidLegacyEnvelope =
         keyReference === LEGACY_REFERENCE &&
         (typeof sealed !== 'object' ||
           sealed === null ||
           !('keyVersion' in sealed) ||
-          sealed.keyVersion !== LEGACY_REFERENCE)
-      )
-        throw this.failure();
+          sealed.keyVersion !== LEGACY_REFERENCE);
+      if (invalidLegacyEnvelope) throw this.failure();
       // The envelope validates its opaque stored representation at this boundary.
       const encoded = this.envelope.open(
         sealed,

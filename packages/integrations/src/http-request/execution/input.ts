@@ -47,16 +47,16 @@ function fillPlaceholders(
 ): Readonly<{ config: HttpRequestConfig; input: HttpRequestInput }> {
   const values: Record<string, HttpPlaceholderValue> = {};
   const input: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(mapped))
-    if (
+  for (const [key, value] of Object.entries(mapped)) {
+    const placeholderValue =
       key !== 'body' &&
       HTTP_PLACEHOLDER_NAME.test(key) &&
       (typeof value === 'string' ||
         typeof value === 'number' ||
-        typeof value === 'boolean')
-    )
-      values[key] = value;
+        typeof value === 'boolean');
+    if (placeholderValue) values[key] = value;
     else input[key] = value;
+  }
   let filled;
   try {
     filled = fillHttpTemplate(configured, values);

@@ -21,7 +21,7 @@ async function send(
   config: Extract<SystemMailConfig, { mode: 'smtp' }>,
   message: SystemMailMessage,
 ): Promise<SystemMailResult> {
-  if (message.signal?.aborted === true) return { kind: 'retryable' };
+  if (message.signal?.aborted) return { kind: 'retryable' };
   const reference = `<${createHash('sha256').update(message.idempotencyKey).digest('hex')}@${message.fromEmail.slice(message.fromEmail.lastIndexOf('@') + 1)}>`;
   const bytes = await new MailComposer({
     from: { address: message.fromEmail, name: '' },
@@ -114,7 +114,7 @@ async function send(
             else void dispatch();
           });
       });
-      if (message.signal?.aborted === true) aborted();
+      if (message.signal?.aborted) aborted();
     });
   } finally {
     bytes.fill(0);

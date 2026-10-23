@@ -184,14 +184,14 @@ async function execute(
   const connections = runtime?.connections;
   const connectionId =
     invocation.connectionRefs[SLACK_BOT_TOKEN_CONNECTION_SLOT];
-  if (
+  const invalidDispatchRuntime =
     runtime === undefined ||
     connections?.assertCurrent === undefined ||
     runtime.sideEffectClass !== 'unsafe' ||
     runtime.providerIdempotencyKey !== undefined ||
     connectionId === undefined ||
-    Object.keys(invocation.connectionRefs).length !== 1
-  )
+    Object.keys(invocation.connectionRefs).length !== 1;
+  if (invalidDispatchRuntime)
     throw failure('failed', 'configuration', { possiblyDispatched: false });
   const assertCurrent = connections.assertCurrent;
 
@@ -205,7 +205,7 @@ async function execute(
       signal: invocation.signal,
     });
   } catch (error: unknown) {
-    if (runtime.providerDispatchUnresolved === true)
+    if (runtime.providerDispatchUnresolved ?? false)
       throw failure('outcome_unknown', 'provider', {
         possiblyDispatched: true,
       });
@@ -287,7 +287,7 @@ function rethrowSlackDispatchError(
   if (safeInstanceOf(error, SlackSendMessageExecutorError)) throw error;
   const secureError = inspectSecureHttpError(error);
   if (secureError !== undefined) {
-    if (runtime.providerDispatchUnresolved === true)
+    if (runtime.providerDispatchUnresolved ?? false)
       throw failure('outcome_unknown', 'provider', {
         possiblyDispatched: true,
       });

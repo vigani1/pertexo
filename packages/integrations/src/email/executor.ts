@@ -95,7 +95,7 @@ function failure(
 }
 
 function credentialFailure(runtime: NodeExecutionRuntime | undefined) {
-  return runtime?.providerDispatchUnresolved !== true
+  return !(runtime?.providerDispatchUnresolved ?? false)
     ? failure('failed', 'authentication', { possiblyDispatched: false })
     : failure('outcome_unknown', 'authentication', {
         possiblyDispatched: true,
@@ -106,7 +106,7 @@ function dispatchIdentityFailure(
   runtime: NodeExecutionRuntime | undefined,
   errorKind: 'authentication' | 'configuration',
 ) {
-  return runtime?.providerDispatchUnresolved !== true
+  return !(runtime?.providerDispatchUnresolved ?? false)
     ? failure('failed', errorKind, { possiblyDispatched: false })
     : failure('outcome_unknown', errorKind, { possiblyDispatched: true });
 }
@@ -115,7 +115,7 @@ function classifyResult(
   result: Exclude<ResendApiResult, { kind: 'succeeded' }>,
   runtime: NodeExecutionRuntime,
 ): never {
-  if (runtime.providerDispatchUnresolved === true)
+  if (runtime.providerDispatchUnresolved ?? false)
     throw failure('outcome_unknown', 'provider', { possiblyDispatched: true });
   switch (result.kind) {
     case 'rate_limited':
@@ -214,7 +214,7 @@ async function execute(
     });
   } catch (error: unknown) {
     if (safeInstanceOf(error, ProviderExecutionRateLimitError)) {
-      if (runtime.providerDispatchUnresolved === true)
+      if (runtime.providerDispatchUnresolved ?? false)
         throw failure('outcome_unknown', 'provider', {
           possiblyDispatched: true,
         });
@@ -228,7 +228,7 @@ async function execute(
     }
     if (safeInstanceOf(error, ProviderCredentialInvalidError))
       throw credentialFailure(runtime);
-    if (runtime.providerDispatchUnresolved === true)
+    if (runtime.providerDispatchUnresolved ?? false)
       throw failure('outcome_unknown', 'provider', {
         possiblyDispatched: true,
       });
@@ -279,7 +279,7 @@ async function execute(
             throw failure('canceled', 'canceled', {
               possiblyDispatched: secureError.possiblyDispatched,
             });
-          if (runtime.providerDispatchUnresolved === true)
+          if (runtime.providerDispatchUnresolved ?? false)
             throw failure('outcome_unknown', 'provider', {
               possiblyDispatched: true,
             });
@@ -295,7 +295,7 @@ async function execute(
             { possiblyDispatched: secureError.possiblyDispatched },
           );
         }
-        throw runtime.providerDispatchUnresolved === true
+        throw (runtime.providerDispatchUnresolved ?? false)
           ? failure('outcome_unknown', 'provider', { possiblyDispatched: true })
           : failure('retry', 'network', { possiblyDispatched: true });
       }

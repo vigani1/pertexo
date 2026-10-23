@@ -137,15 +137,14 @@ function parseHeaders(
   let bytes = 0;
   for (const [name, value] of Object.entries(input)) {
     const lower = name.toLowerCase();
-    if (
+    const invalidHeader =
       !headerNamePattern.test(name) ||
       blockedRequestHeaders.has(lower) ||
       value.length < 1 ||
       value.length > MAX_HEADER_VALUE_LENGTH ||
       !isSerializableHttpHeaderValue(value) ||
-      normalized.has(lower)
-    )
-      throw new Error('invalid request header');
+      normalized.has(lower);
+    if (invalidHeader) throw new Error('invalid request header');
     bytes += utf8ByteLength(`${lower}:${value}\r\n`);
     normalized.set(lower, value);
   }

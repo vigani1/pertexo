@@ -45,7 +45,7 @@ export function assertNotAborted(
   signal: AbortSignal | undefined,
   failureContext: DispatchFailureContext,
 ): void {
-  if (signal?.aborted === true)
+  if (signal?.aborted)
     throw abortFailure(signal, {
       possiblyDispatched: failureContext.possiblyDispatched,
       ambiguous: failureContext.ambiguous,
@@ -56,7 +56,7 @@ export function mapTransportError(
   error: unknown,
   signal: AbortSignal | undefined,
 ): SecureHttpError {
-  if (signal?.aborted === true)
+  if (signal?.aborted)
     return abortFailure(signal, { possiblyDispatched: true, ambiguous: true });
   if (isTimeoutError(error))
     return failure(SECURE_HTTP_ERROR_CODE.timedOut, {

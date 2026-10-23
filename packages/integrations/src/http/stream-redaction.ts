@@ -231,7 +231,7 @@ function mapResponseStreamError(
   error: unknown,
   signal: AbortSignal | undefined,
 ): SecureHttpError {
-  if (signal?.aborted === true)
+  if (signal?.aborted)
     return abortFailure(signal, { possiblyDispatched: true, ambiguous: true });
   if (isTimeoutError(error))
     return failure(SECURE_HTTP_ERROR_CODE.timedOut, {
