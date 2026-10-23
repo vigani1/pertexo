@@ -362,12 +362,14 @@ describe('connections real Nest HTTP stack', () => {
   registerKeepsUsageNondisclosingAcrossAuthenticationWorkspace();
 });
 
-let application: Awaited<ReturnType<typeof createApiApplication>> | undefined;
+const applicationFixture: {
+  application: Awaited<ReturnType<typeof createApiApplication>> | undefined;
+} = { application: undefined };
 
 async function start(role: Role = 'owner') {
   const identity = identityRuntime(role);
   const connection = connectionRuntime(identity.dependencies.authorization);
-  application = await createApiApplication(config, {
+  applicationFixture.application = await createApiApplication(config, {
     database,
     identityRuntime: identity,
     workflowRuntime: createStubApiWorkflowRuntime(
@@ -378,13 +380,13 @@ async function start(role: Role = 'owner') {
     rateLimitConsumer,
     telemetry,
   });
-  await application.init();
-  return { application, connection };
+  await applicationFixture.application.init();
+  return { application: applicationFixture.application, connection };
 }
 
 async function cleanConnectionsRealNestHTTPStackFixture() {
-  await application?.close();
-  application = undefined;
+  await applicationFixture.application?.close();
+  applicationFixture.application = undefined;
 }
 
 function registerGuardsSharingRoutesBeforePersistenceValidates(): void {
@@ -478,23 +480,24 @@ function registerGuardsSharingRoutesBeforePersistenceValidates(): void {
   );
 
   it('reports unconfigured connections only to an eligible workspace reader', async () => {
-    application = await createApiApplication(config, {
+    applicationFixture.application = await createApiApplication(config, {
       database,
       identityRuntime: identityRuntime(),
       logger,
       rateLimitConsumer,
       telemetry,
     });
-    await application.init();
+    await applicationFixture.application.init();
     for (const resource of [
       'connections',
       'failure-notification-destinations',
     ]) {
       const url = `/v1/workspaces/${workspaceId}/${resource}`;
       expect(
-        (await application.inject({ method: 'GET', url })).statusCode,
+        (await applicationFixture.application.inject({ method: 'GET', url }))
+          .statusCode,
       ).toBe(401);
-      const configured = await application.inject({
+      const configured = await applicationFixture.application.inject({
         method: 'GET',
         url,
         headers: authenticatedHeaders,
@@ -503,7 +506,7 @@ function registerGuardsSharingRoutesBeforePersistenceValidates(): void {
       expect(configured.json()).toMatchObject({
         code: 'connection.not_configured',
       });
-      const foreign = await application.inject({
+      const foreign = await applicationFixture.application.inject({
         method: 'GET',
         url: `/v1/workspaces/11111111-1111-4111-8111-111111111111/${resource}`,
         headers: authenticatedHeaders,
@@ -513,14 +516,14 @@ function registerGuardsSharingRoutesBeforePersistenceValidates(): void {
   });
 
   it('reports disabled file storage after session, workspace, upload-role and CSRF checks', async () => {
-    application = await createApiApplication(config, {
+    applicationFixture.application = await createApiApplication(config, {
       database,
       identityRuntime: identityRuntime(),
       logger,
       rateLimitConsumer,
       telemetry,
     });
-    await application.init();
+    await applicationFixture.application.init();
     for (const [method, suffix] of [
       ['GET', destinationId],
       ['GET', `${destinationId}/download`],
@@ -531,14 +534,14 @@ function registerGuardsSharingRoutesBeforePersistenceValidates(): void {
       const payload = method === 'POST' ? {} : undefined;
       expect(
         (
-          await application.inject({
+          await applicationFixture.application.inject({
             method,
             url,
             ...(payload ? { payload } : {}),
           })
         ).statusCode,
       ).toBe(401);
-      const result = await application.inject({
+      const result = await applicationFixture.application.inject({
         method,
         url,
         headers: authenticatedHeaders,
@@ -551,7 +554,7 @@ function registerGuardsSharingRoutesBeforePersistenceValidates(): void {
       expect(result.body).toContain('ARTIFACT_STORE_*');
       expect(
         (
-          await application.inject({
+          await applicationFixture.application.inject({
             method,
             url: `/v1/workspaces/11111111-1111-4111-8111-111111111111/artifacts/${suffix}`,
             headers: authenticatedHeaders,
@@ -560,7 +563,7 @@ function registerGuardsSharingRoutesBeforePersistenceValidates(): void {
         ).statusCode,
       ).toBe(404);
     }
-    const noCsrf = await application.inject({
+    const noCsrf = await applicationFixture.application.inject({
       method: 'POST',
       url: `/v1/workspaces/${workspaceId}/artifacts/uploads`,
       headers: { cookie: authenticatedHeaders.cookie },
@@ -570,15 +573,15 @@ function registerGuardsSharingRoutesBeforePersistenceValidates(): void {
   });
 
   it('keeps disabled-storage upload routes denied to viewers', async () => {
-    application = await createApiApplication(config, {
+    applicationFixture.application = await createApiApplication(config, {
       database,
       identityRuntime: identityRuntime('viewer'),
       logger,
       rateLimitConsumer,
       telemetry,
     });
-    await application.init();
-    const result = await application.inject({
+    await applicationFixture.application.init();
+    const result = await applicationFixture.application.inject({
       method: 'POST',
       url: `/v1/workspaces/${workspaceId}/artifacts/uploads`,
       headers: authenticatedHeaders,
@@ -590,19 +593,24 @@ function registerGuardsSharingRoutesBeforePersistenceValidates(): void {
 
 function registerReportsUnavailableWebhooksAfterAuthenticationWorkspace(): void {
   it('reports unavailable webhooks only after authentication and workspace authorization', async () => {
-    application = await createApiApplication(config, {
+    applicationFixture.application = await createApiApplication(config, {
       database,
       identityRuntime: identityRuntime(),
       logger,
       rateLimitConsumer,
       telemetry,
     });
-    await application.init();
+    await applicationFixture.application.init();
     const parent = `/v1/workspaces/${workspaceId}/workflows/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/triggers`;
     expect(
-      (await application.inject({ method: 'GET', url: parent })).statusCode,
+      (
+        await applicationFixture.application.inject({
+          method: 'GET',
+          url: parent,
+        })
+      ).statusCode,
     ).toBe(401);
-    const unavailable = await application.inject({
+    const unavailable = await applicationFixture.application.inject({
       method: 'GET',
       url: parent,
       headers: authenticatedHeaders,
@@ -611,13 +619,13 @@ function registerReportsUnavailableWebhooksAfterAuthenticationWorkspace(): void 
     expect(unavailable.json()).toMatchObject({
       code: 'webhook.not_configured',
     });
-    const foreign = await application.inject({
+    const foreign = await applicationFixture.application.inject({
       method: 'GET',
       url: parent.replace(workspaceId, '11111111-1111-4111-8111-111111111111'),
       headers: authenticatedHeaders,
     });
     expect(foreign.statusCode).toBe(404);
-    const mutation = await application.inject({
+    const mutation = await applicationFixture.application.inject({
       method: 'POST',
       url: `${parent}/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/webhook/provision`,
       headers: authenticatedHeaders,
@@ -838,7 +846,7 @@ function registerReadsWorkflowFailureAlertPolicyBuilder(): void {
     expect(hidden.statusCode).toBe(404);
     expect(hidden.payload).not.toContain('raw hidden workflow detail');
     await builder.application.close();
-    application = undefined;
+    applicationFixture.application = undefined;
 
     const viewer = await start('viewer');
     const denied = await viewer.application.inject({

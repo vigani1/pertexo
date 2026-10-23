@@ -273,27 +273,33 @@ describe('API bootstrap ownership and health', () => {
   });
 });
 
-let application: Awaited<ReturnType<typeof createApiApplication>> | undefined;
+const applicationFixture: {
+  application: Awaited<ReturnType<typeof createApiApplication>> | undefined;
+} = { application: undefined };
 
 async function cleanAPIBootstrapOwnershipHealthFixture() {
-  await application?.close();
-  application = undefined;
+  await applicationFixture.application?.close();
+  applicationFixture.application = undefined;
 }
 
 function registerAcceptsBothEmptyPopulatedTrustedProxy(): void {
   it('accepts both empty and populated trusted-proxy CIDR configuration', async () => {
-    application = await createApiApplication(
+    applicationFixture.application = await createApiApplication(
       { ...config, trustedProxyCidrs: [] },
       dependencies(),
     );
-    await application.close();
-    application = await createApiApplication(
+    await applicationFixture.application.close();
+    applicationFixture.application = await createApiApplication(
       { ...config, trustedProxyCidrs: ['127.0.0.1/32'] },
       dependencies(),
     );
     expect(
-      (await application.inject({ method: 'GET', url: '/health/live' }))
-        .statusCode,
+      (
+        await applicationFixture.application.inject({
+          method: 'GET',
+          url: '/health/live',
+        })
+      ).statusCode,
     ).toBe(200);
   });
 
@@ -301,10 +307,16 @@ function registerAcceptsBothEmptyPopulatedTrustedProxy(): void {
     '/v1/workspaces/nonexistent',
     '/v1/workspaces/workspace-a/workflows/nonexistent/nested',
   ])('keeps an unknown feature-family route at 404: %s', async (url) => {
-    application = await createApiApplication(config, dependencies());
-    await application.init();
+    applicationFixture.application = await createApiApplication(
+      config,
+      dependencies(),
+    );
+    await applicationFixture.application.init();
 
-    const response = await application.inject({ method: 'GET', url });
+    const response = await applicationFixture.application.inject({
+      method: 'GET',
+      url,
+    });
 
     expect(response.statusCode).toBe(404);
     expect(response.headers['content-type']).toContain(
@@ -573,10 +585,13 @@ function registerPreservesConstructionEveryRuntimeCleanupFailure(): void {
   });
 
   it('serves a stable bounded liveness response without dependency claims', async () => {
-    application = await createApiApplication(config, dependencies());
-    await application.init();
+    applicationFixture.application = await createApiApplication(
+      config,
+      dependencies(),
+    );
+    await applicationFixture.application.init();
 
-    const response = await application.inject({
+    const response = await applicationFixture.application.inject({
       method: 'GET',
       url: '/health/live',
     });
@@ -593,13 +608,13 @@ function registerPreservesConstructionEveryRuntimeCleanupFailure(): void {
       ...database,
       checkReadiness,
     };
-    application = await createApiApplication(
+    applicationFixture.application = await createApiApplication(
       config,
       dependencies(selectedDatabase),
     );
-    await application.init();
+    await applicationFixture.application.init();
 
-    const response = await application.inject({
+    const response = await applicationFixture.application.inject({
       method: 'GET',
       url: '/health/ready',
     });
@@ -623,13 +638,13 @@ function registerPreservesConstructionEveryRuntimeCleanupFailure(): void {
         .mockResolvedValueOnce(readiness)
         .mockRejectedValue(new Error('secret database detail')),
     };
-    application = await createApiApplication(
+    applicationFixture.application = await createApiApplication(
       config,
       dependencies(unavailableDatabase),
     );
-    await application.init();
+    await applicationFixture.application.init();
 
-    const response = await application.inject({
+    const response = await applicationFixture.application.inject({
       method: 'GET',
       url: '/health/ready',
     });
@@ -664,11 +679,14 @@ function registerPreservesConstructionEveryRuntimeCleanupFailure(): void {
   });
 
   it('becomes unready before graceful drain', async () => {
-    application = await createApiApplication(config, dependencies());
-    await application.init();
-    application.get(ApiDrainState).beginDrain();
+    applicationFixture.application = await createApiApplication(
+      config,
+      dependencies(),
+    );
+    await applicationFixture.application.init();
+    applicationFixture.application.get(ApiDrainState).beginDrain();
 
-    const response = await application.inject({
+    const response = await applicationFixture.application.inject({
       method: 'GET',
       url: '/health/ready',
     });
@@ -732,9 +750,9 @@ function registerEntersDrainStateBeforeShutdownResources(): void {
       dependencies(selectedDatabase),
     );
     lifecycle.drainState = selectedApplication.get(ApiDrainState);
-    application = selectedApplication;
-    await application.close();
-    application = undefined;
+    applicationFixture.application = selectedApplication;
+    await applicationFixture.application.close();
+    applicationFixture.application = undefined;
 
     expect(close).toHaveBeenCalledOnce();
   });
@@ -787,17 +805,22 @@ function registerEntersDrainStateBeforeShutdownResources(): void {
         start: vi.fn(),
         shutdown: telemetryClose,
       };
-      application = await createApiApplication(config, {
+      applicationFixture.application = await createApiApplication(config, {
         ...dependencies(selectedDatabase, selectedTelemetry),
         identityRuntime: selectedIdentity,
         workflowRuntime: selectedWorkflow,
       });
-      lifecycle.application = application;
-      lifecycle.drain = application.get(ApiDrainState);
-      await application.listen({ host: '127.0.0.1', port: 0 });
+      lifecycle.application = applicationFixture.application;
+      lifecycle.drain = applicationFixture.application.get(ApiDrainState);
+      await applicationFixture.application.listen({
+        host: '127.0.0.1',
+        port: 0,
+      });
 
-      const result = await application.close().catch((error: unknown) => error);
-      application = undefined;
+      const result = await applicationFixture.application
+        .close()
+        .catch((error: unknown) => error);
+      applicationFixture.application = undefined;
 
       expect(result).toBeInstanceOf(AggregateError);
       expect((result as AggregateError).errors).toEqual(
@@ -823,13 +846,13 @@ function registerEntersDrainStateBeforeShutdownResources(): void {
       start: vi.fn(),
       shutdown,
     };
-    application = await createApiApplication(
+    applicationFixture.application = await createApiApplication(
       config,
       dependencies(database, selectedTelemetry),
     );
-    await application.init();
-    await application.close();
-    application = undefined;
+    await applicationFixture.application.init();
+    await applicationFixture.application.close();
+    applicationFixture.application = undefined;
 
     expect(shutdown).toHaveBeenCalledOnce();
   });
@@ -903,13 +926,15 @@ function registerClosesRealOpenSSERequestWithout(): void {
         },
       },
     };
-    application = await createApiApplication(config, {
+    applicationFixture.application = await createApiApplication(config, {
       ...dependencies(),
       identityRuntime: selectedIdentityRuntime,
       workflowRuntime: selectedWorkflowRuntime,
     });
-    await application.listen(0, '127.0.0.1');
-    const address = application.getHttpServer().address() as {
+    await applicationFixture.application.listen(0, '127.0.0.1');
+    const address = applicationFixture.application
+      .getHttpServer()
+      .address() as {
       port: number;
     };
     const responseStarted = Promise.withResolvers<undefined>();
@@ -941,7 +966,7 @@ function registerClosesRealOpenSSERequestWithout(): void {
       await responseStarted.promise.finally(() => {
         clearTimeout(startTimer);
       });
-      const drainState = application.get(ApiDrainState);
+      const drainState = applicationFixture.application.get(ApiDrainState);
       let closeTimer: NodeJS.Timeout | undefined;
       const closeDeadline = new Promise<never>((_resolve, reject) => {
         closeTimer = setTimeout(() => {
@@ -949,10 +974,13 @@ function registerClosesRealOpenSSERequestWithout(): void {
         }, 1_000);
       });
 
-      await Promise.race([application.close(), closeDeadline]).finally(() => {
+      await Promise.race([
+        applicationFixture.application.close(),
+        closeDeadline,
+      ]).finally(() => {
         if (closeTimer !== undefined) clearTimeout(closeTimer);
       });
-      application = undefined;
+      applicationFixture.application = undefined;
 
       expect(producerClosed).toBe(true);
       expect(drainState.activeStreamCount()).toBe(0);
@@ -968,27 +996,27 @@ function registerRegistersInjectedIdentityRuntimeOwnsClose(): void {
   it('registers an injected identity runtime and owns its close lifecycle', async () => {
     const close = vi.fn().mockResolvedValue(undefined);
     const selectedIdentityRuntime = identityRuntime(close, true);
-    application = await createApiApplication(config, {
+    applicationFixture.application = await createApiApplication(config, {
       ...dependencies(),
       identityRuntime: selectedIdentityRuntime,
     });
-    await application.init();
+    await applicationFixture.application.init();
 
-    const response = await application.inject({
+    const response = await applicationFixture.application.inject({
       method: 'GET',
       url: '/v1/users/me',
       headers: { cookie: 'pertexo_session=session' },
     });
     expect(response.statusCode).toBe(200);
 
-    await application.close();
-    application = undefined;
+    await applicationFixture.application.close();
+    applicationFixture.application = undefined;
     expect(close).toHaveBeenCalledOnce();
   });
 
   it('fails a composed protected route closed before application work when the limiter is unavailable', async () => {
     const selectedIdentityRuntime = identityRuntime(undefined, true);
-    application = await createApiApplication(config, {
+    applicationFixture.application = await createApiApplication(config, {
       ...dependencies(),
       identityRuntime: selectedIdentityRuntime,
       rateLimitConsumer: {
@@ -996,7 +1024,7 @@ function registerRegistersInjectedIdentityRuntimeOwnsClose(): void {
       },
     });
 
-    const response = await application.inject({
+    const response = await applicationFixture.application.inject({
       method: 'GET',
       url: '/v1/invitation-acceptance',
       headers: { cookie: 'pertexo_session=session' },
@@ -1021,11 +1049,11 @@ function registerRegistersInjectedIdentityRuntimeOwnsClose(): void {
   it.each([false, true])(
     'registers all discovery routes with authentication=%s',
     async (authenticated) => {
-      application = await createApiApplication(config, {
+      applicationFixture.application = await createApiApplication(config, {
         ...dependencies(),
         identityRuntime: identityRuntime(undefined, authenticated),
       });
-      await application.init();
+      await applicationFixture.application.init();
 
       const routes = [
         '/v1/users/me',
@@ -1034,7 +1062,7 @@ function registerRegistersInjectedIdentityRuntimeOwnsClose(): void {
         '/v1/integrations',
       ];
       for (const url of routes) {
-        const response = await application.inject({
+        const response = await applicationFixture.application.inject({
           method: 'GET',
           url,
           ...(authenticated
@@ -1054,7 +1082,7 @@ function registerRegistersInjectedIdentityRuntimeOwnsClose(): void {
       changed: true,
       replayed: false,
     });
-    application = await createApiApplication(config, {
+    applicationFixture.application = await createApiApplication(config, {
       ...dependencies(),
       identityRuntime: identityRuntime(
         vi.fn().mockResolvedValue(undefined),
@@ -1062,19 +1090,19 @@ function registerRegistersInjectedIdentityRuntimeOwnsClose(): void {
         changeWorkspaceMemberRole,
       ),
     });
-    await application.init();
+    await applicationFixture.application.init();
     const url =
       '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/members/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/role';
     const cookie = `pertexo_session=${'s'.repeat(43)}`;
     const csrf = 'c'.repeat(32);
-    const missingCsrf = await application.inject({
+    const missingCsrf = await applicationFixture.application.inject({
       method: 'POST',
       url,
       headers: { cookie, 'idempotency-key': 'member-role' },
       payload: { role: 'operator', expectedRoleRevision: 1 },
     });
     expect(missingCsrf.statusCode).toBe(403);
-    const invalid = await application.inject({
+    const invalid = await applicationFixture.application.inject({
       method: 'POST',
       url,
       headers: {
@@ -1085,7 +1113,7 @@ function registerRegistersInjectedIdentityRuntimeOwnsClose(): void {
       payload: { role: 'operator', expectedRoleRevision: 1, extra: true },
     });
     expect(invalid.statusCode).toBe(400);
-    const changed = await application.inject({
+    const changed = await applicationFixture.application.inject({
       method: 'POST',
       url,
       headers: {
@@ -1104,13 +1132,13 @@ function registerRegistersInjectedIdentityRuntimeOwnsClose(): void {
   });
 
   it('lists every integration', async () => {
-    application = await createApiApplication(config, {
+    applicationFixture.application = await createApiApplication(config, {
       ...dependencies(),
       identityRuntime: identityRuntime(undefined, true),
     });
-    await application.init();
+    await applicationFixture.application.init();
 
-    const response = await application.inject({
+    const response = await applicationFixture.application.inject({
       method: 'GET',
       url: '/v1/integrations',
       headers: { cookie: `pertexo_session=${'s'.repeat(43)}` },
@@ -1135,13 +1163,13 @@ function registerRegistersInjectedIdentityRuntimeOwnsClose(): void {
   });
 
   it('rejects unsupported catalog query fields with problem details', async () => {
-    application = await createApiApplication(config, {
+    applicationFixture.application = await createApiApplication(config, {
       ...dependencies(),
       identityRuntime: identityRuntime(undefined, true),
     });
-    await application.init();
+    await applicationFixture.application.init();
     for (const route of ['node-definitions', 'integrations']) {
-      const response = await application.inject({
+      const response = await applicationFixture.application.inject({
         method: 'GET',
         url: `/v1/${route}?arbitrary=value`,
         headers: { cookie: `pertexo_session=${'s'.repeat(43)}` },
@@ -1158,7 +1186,7 @@ function registerRegistersInjectedIdentityRuntimeOwnsClose(): void {
 function registerMapsUserRemovedAfterAuthenticationSafe(): void {
   it('maps a user removed after authentication to safe profile problem details', async () => {
     const selectedIdentityRuntime = identityRuntime(undefined, true);
-    application = await createApiApplication(config, {
+    applicationFixture.application = await createApiApplication(config, {
       ...dependencies(),
       identityRuntime: {
         ...selectedIdentityRuntime,
@@ -1171,9 +1199,9 @@ function registerMapsUserRemovedAfterAuthenticationSafe(): void {
         },
       },
     });
-    await application.init();
+    await applicationFixture.application.init();
 
-    const response = await application.inject({
+    const response = await applicationFixture.application.inject({
       method: 'GET',
       url: '/v1/users/me',
       headers: { cookie: `pertexo_session=${'s'.repeat(43)}` },
@@ -1217,7 +1245,7 @@ function registerMapsUserRemovedAfterAuthenticationSafe(): void {
         worstCaseLoopIterations: 0,
       },
     });
-    application = await createApiApplication(config, {
+    applicationFixture.application = await createApiApplication(config, {
       ...dependencies(),
       identityRuntime: selectedIdentity,
       workflowRuntime: {
@@ -1233,7 +1261,7 @@ function registerMapsUserRemovedAfterAuthenticationSafe(): void {
     });
     const url = `/v1/workspaces/${draft.workspaceId}/workflows/${draft.workflowId}/validate`;
     const cookie = `pertexo_session=${'s'.repeat(43)}`;
-    const denied = await application.inject({
+    const denied = await applicationFixture.application.inject({
       method: 'POST',
       url,
       headers: { cookie },
@@ -1246,7 +1274,7 @@ function registerMapsUserRemovedAfterAuthenticationSafe(): void {
       cookie: `${cookie}; pertexo_csrf=${csrf}`,
       'x-csrf-token': csrf,
     };
-    const checked = await application.inject({
+    const checked = await applicationFixture.application.inject({
       method: 'POST',
       url,
       headers,
@@ -1270,7 +1298,7 @@ function registerMapsUserRemovedAfterAuthenticationSafe(): void {
     validateDraft.mockRejectedValue(
       new AuthoringValidationUnavailableError('overloaded'),
     );
-    const unavailable = await application.inject({
+    const unavailable = await applicationFixture.application.inject({
       method: 'POST',
       url,
       headers,
@@ -1298,7 +1326,7 @@ function registerMapsUserRemovedAfterAuthenticationSafe(): void {
     const identityClose = vi.fn().mockResolvedValue(undefined);
     const workflowClose = vi.fn().mockResolvedValue(undefined);
     const selectedIdentityRuntime = identityRuntime(identityClose);
-    application = await createApiApplication(config, {
+    applicationFixture.application = await createApiApplication(config, {
       ...dependencies(),
       identityRuntime: selectedIdentityRuntime,
       workflowRuntime: createStubApiWorkflowRuntime(
@@ -1306,22 +1334,22 @@ function registerMapsUserRemovedAfterAuthenticationSafe(): void {
         workflowClose,
       ),
     });
-    await application.init();
+    await applicationFixture.application.init();
 
-    const response = await application.inject({
+    const response = await applicationFixture.application.inject({
       method: 'GET',
       url: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/workflows',
     });
     expect(response.statusCode).toBe(401);
 
-    const runResponse = await application.inject({
+    const runResponse = await applicationFixture.application.inject({
       method: 'GET',
       url: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/runs/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
     });
     expect(runResponse.statusCode).toBe(401);
 
-    await application.close();
-    application = undefined;
+    await applicationFixture.application.close();
+    applicationFixture.application = undefined;
     expect(identityClose).toHaveBeenCalledOnce();
     expect(workflowClose).toHaveBeenCalledOnce();
   });
@@ -1340,13 +1368,13 @@ function registerMapsUserRemovedAfterAuthenticationSafe(): void {
       },
       close: webhookClose,
     } as unknown as ApiWebhookRuntime;
-    application = await createApiApplication(config, {
+    applicationFixture.application = await createApiApplication(config, {
       ...dependencies(),
       identityRuntime: selectedIdentityRuntime,
       webhookRuntime,
     });
 
-    const response = await application.inject({
+    const response = await applicationFixture.application.inject({
       method: 'POST',
       url: `/hooks/${'a'.repeat(43)}`,
       headers: { 'content-type': 'application/json' },
@@ -1357,14 +1385,14 @@ function registerMapsUserRemovedAfterAuthenticationSafe(): void {
       'webhook.authentication_failed',
     );
 
-    const management = await application.inject({
+    const management = await applicationFixture.application.inject({
       method: 'GET',
       url: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/workflows/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/triggers',
     });
     expect(management.statusCode).toBe(401);
 
-    await application.close();
-    application = undefined;
+    await applicationFixture.application.close();
+    applicationFixture.application = undefined;
     expect(webhookClose).toHaveBeenCalledOnce();
   });
 }
@@ -1417,15 +1445,16 @@ function registerKeepsSuppliedWebhookSSKey(): void {
       const payload =
         operation === 'rotate-secret' ? { endpointKey: 'a'.repeat(43) } : {};
       try {
-        application = await createBetterAuthFixtureApplication(
-          config,
-          {
-            ...dependencies(),
-            identityRuntime: identityRuntime(undefined, true),
-            webhookRuntime: runtime,
-          },
-          owner,
-        );
+        applicationFixture.application =
+          await createBetterAuthFixtureApplication(
+            config,
+            {
+              ...dependencies(),
+              identityRuntime: identityRuntime(undefined, true),
+              webhookRuntime: runtime,
+            },
+            owner,
+          );
         const validHeaders = {
           cookie,
           'x-csrf-token': csrf,
@@ -1443,7 +1472,7 @@ function registerKeepsSuppliedWebhookSSKey(): void {
             404,
           ],
         ] as const) {
-          const response = await application.inject({
+          const response = await applicationFixture.application.inject({
             method: 'POST',
             url,
             headers,
@@ -1452,7 +1481,7 @@ function registerKeepsSuppliedWebhookSSKey(): void {
           expect(response.statusCode).toBe(status);
           expect(provision).not.toHaveBeenCalled();
         }
-        const rejected = await application.inject({
+        const rejected = await applicationFixture.application.inject({
           method: 'POST',
           url: path,
           headers: {
@@ -1470,7 +1499,7 @@ function registerKeepsSuppliedWebhookSSKey(): void {
           status: 400,
         });
         expect(provision).not.toHaveBeenCalled();
-        const accepted = await application.inject({
+        const accepted = await applicationFixture.application.inject({
           method: 'POST',
           url: path,
           headers: validHeaders,
@@ -1489,7 +1518,7 @@ function registerKeepsSuppliedWebhookSSKey(): void {
         provision.mockRejectedValueOnce(
           new Error('Unexpected service failure'),
         );
-        const unexpected = await application.inject({
+        const unexpected = await applicationFixture.application.inject({
           method: 'POST',
           url: path,
           headers: validHeaders,
@@ -1499,7 +1528,7 @@ function registerKeepsSuppliedWebhookSSKey(): void {
         expect(provision).toHaveBeenCalledTimes(2);
       } finally {
         await owner.close();
-        application = undefined;
+        applicationFixture.application = undefined;
       }
       expect(close).toHaveBeenCalledOnce();
     },
@@ -1528,7 +1557,7 @@ function registerRegistersRequestedSchedulePreviewActualBetter(): void {
       '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/workflows/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/triggers/schedules/preview';
     let suppliedRuntime: ApiScheduleRuntime | undefined;
     try {
-      application = await createBetterAuthFixtureApplication(
+      applicationFixture.application = await createBetterAuthFixtureApplication(
         config,
         {
           ...dependencies(),
@@ -1545,7 +1574,7 @@ function registerRegistersRequestedSchedulePreviewActualBetter(): void {
           return suppliedRuntime;
         },
       );
-      const preview = await application.inject({
+      const preview = await applicationFixture.application.inject({
         method: 'POST',
         url: path,
         headers: { cookie, 'x-csrf-token': csrf },
@@ -1561,20 +1590,20 @@ function registerRegistersRequestedSchedulePreviewActualBetter(): void {
       });
       expect(previewFireTimes).toHaveBeenCalledOnce();
       expect(scheduleDatabase.checkReadiness).toHaveBeenCalled();
-      const noSession = await application.inject({
+      const noSession = await applicationFixture.application.inject({
         method: 'POST',
         url: path,
         payload: { config: { kind: 'interval', intervalMinutes: 1 } },
       });
       expect(noSession.statusCode).toBe(401);
-      const noCsrf = await application.inject({
+      const noCsrf = await applicationFixture.application.inject({
         method: 'POST',
         url: path,
         headers: { cookie },
         payload: { config: { kind: 'interval', intervalMinutes: 1 } },
       });
       expect(noCsrf.statusCode).toBe(403);
-      const invalid = await application.inject({
+      const invalid = await applicationFixture.application.inject({
         method: 'POST',
         url: path,
         headers: { cookie, 'x-csrf-token': csrf },
@@ -1582,7 +1611,7 @@ function registerRegistersRequestedSchedulePreviewActualBetter(): void {
       });
       expect(invalid.statusCode).toBe(400);
       expect(previewFireTimes).toHaveBeenCalledOnce();
-      const denied = await application.inject({
+      const denied = await applicationFixture.application.inject({
         method: 'POST',
         url: path.replace(
           'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
@@ -1596,7 +1625,7 @@ function registerRegistersRequestedSchedulePreviewActualBetter(): void {
       previewFireTimes.mockRejectedValueOnce(
         new Error('private database failure'),
       );
-      const unavailable = await application.inject({
+      const unavailable = await applicationFixture.application.inject({
         method: 'POST',
         url: path,
         headers: { cookie, 'x-csrf-token': csrf },
@@ -1605,7 +1634,7 @@ function registerRegistersRequestedSchedulePreviewActualBetter(): void {
       expect(unavailable.statusCode).toBe(500);
     } finally {
       await owner.close();
-      application = undefined;
+      applicationFixture.application = undefined;
     }
     expect(scheduleDatabase.close).toHaveBeenCalledOnce();
     expect(suppliedRuntime?.close).toHaveBeenCalledOnce();
@@ -1615,7 +1644,7 @@ function registerRegistersRequestedSchedulePreviewActualBetter(): void {
     const owner = new FixtureResourceOwner();
     const createSchedules = vi.fn(createApiScheduleRuntime);
     try {
-      application = await createBetterAuthFixtureApplication(
+      applicationFixture.application = await createBetterAuthFixtureApplication(
         config,
         {
           ...dependencies(),
@@ -1625,7 +1654,7 @@ function registerRegistersRequestedSchedulePreviewActualBetter(): void {
         undefined,
         createSchedules,
       );
-      const response = await application.inject({
+      const response = await applicationFixture.application.inject({
         method: 'GET',
         url: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/workflows/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/triggers/schedules',
       });
@@ -1633,7 +1662,7 @@ function registerRegistersRequestedSchedulePreviewActualBetter(): void {
       expect(createSchedules).not.toHaveBeenCalled();
     } finally {
       await owner.close();
-      application = undefined;
+      applicationFixture.application = undefined;
     }
   });
 
@@ -1683,7 +1712,7 @@ function registerRegistersRequestedSchedulePreviewActualBetter(): void {
       checkReadiness: hints.checkReadiness,
       close: vi.fn().mockResolvedValue(undefined),
     };
-    application = await createApiApplication(config, {
+    applicationFixture.application = await createApiApplication(config, {
       ...dependencies(),
       identityRuntime: identityRuntime(
         vi.fn().mockResolvedValue(undefined),
@@ -1696,11 +1725,16 @@ function registerRegistersRequestedSchedulePreviewActualBetter(): void {
       '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/notifications/summary';
     const cookie = `pertexo_session=${'s'.repeat(43)}`;
     expect(
-      (await application.inject({ method: 'GET', url: summary })).statusCode,
+      (
+        await applicationFixture.application.inject({
+          method: 'GET',
+          url: summary,
+        })
+      ).statusCode,
     ).toBe(401);
     expect(
       (
-        await application.inject({
+        await applicationFixture.application.inject({
           method: 'GET',
           url: summary.replace(
             'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
@@ -1710,7 +1744,7 @@ function registerRegistersRequestedSchedulePreviewActualBetter(): void {
         })
       ).statusCode,
     ).toBe(404);
-    const read = await application.inject({
+    const read = await applicationFixture.application.inject({
       method: 'GET',
       url: summary,
       headers: { cookie },
@@ -1718,8 +1752,8 @@ function registerRegistersRequestedSchedulePreviewActualBetter(): void {
     expect(read.statusCode).toBe(200);
     expect(read.json()).toEqual({ unreadCount: 2, revision: '11' });
 
-    await application.close();
-    application = undefined;
+    await applicationFixture.application.close();
+    applicationFixture.application = undefined;
     expect(notificationRuntime.close).toHaveBeenCalledOnce();
   });
 }
@@ -1777,28 +1811,28 @@ function registerEnforcesSessionCSRFOnScheduleRoutes(): void {
       checkReadiness: scheduleDatabase.checkReadiness,
       close: scheduleDatabase.close,
     } as ApiScheduleRuntime;
-    application = await createApiApplication(config, {
+    applicationFixture.application = await createApiApplication(config, {
       ...dependencies(),
       identityRuntime: selectedIdentityRuntime,
       scheduleRuntime,
     });
     const base =
       '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/workflows/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/triggers';
-    const unauthenticated = await application.inject({
+    const unauthenticated = await applicationFixture.application.inject({
       method: 'GET',
       url: `${base}/schedules`,
     });
     expect(unauthenticated.statusCode).toBe(401);
 
     const cookie = `pertexo_session=${'s'.repeat(43)}`;
-    const hidden = await application.inject({
+    const hidden = await applicationFixture.application.inject({
       method: 'GET',
       url: `${base.replace('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee')}/schedules`,
       headers: { cookie },
     });
     expect(hidden.statusCode).toBe(404);
 
-    const listed = await application.inject({
+    const listed = await applicationFixture.application.inject({
       method: 'GET',
       url: `${base}/schedules`,
       headers: { cookie },
@@ -1806,7 +1840,7 @@ function registerEnforcesSessionCSRFOnScheduleRoutes(): void {
     expect(listed.statusCode).toBe(200);
     expect(listed.json()).toMatchObject({ items: [{ kind: 'schedule' }] });
 
-    const missingCsrf = await application.inject({
+    const missingCsrf = await applicationFixture.application.inject({
       method: 'POST',
       url: `${base}/${record.id}/schedule/disable`,
       headers: { cookie, 'idempotency-key': 'disable' },
@@ -1815,7 +1849,7 @@ function registerEnforcesSessionCSRFOnScheduleRoutes(): void {
     expect(missingCsrf.statusCode).toBe(403);
 
     const csrf = 'c'.repeat(32);
-    const missingKey = await application.inject({
+    const missingKey = await applicationFixture.application.inject({
       method: 'POST',
       url: `${base}/${record.id}/schedule/disable`,
       headers: {
@@ -1826,7 +1860,7 @@ function registerEnforcesSessionCSRFOnScheduleRoutes(): void {
     });
     expect(missingKey.statusCode).toBe(400);
 
-    const disabled = await application.inject({
+    const disabled = await applicationFixture.application.inject({
       method: 'POST',
       url: `${base}/${record.id}/schedule/disable`,
       headers: {
@@ -1840,7 +1874,7 @@ function registerEnforcesSessionCSRFOnScheduleRoutes(): void {
     expect(scheduleDatabase.setEnabled).toHaveBeenCalledOnce();
     expect(scheduleDatabase.checkReadiness).toHaveBeenCalled();
 
-    const history = await application.inject({
+    const history = await applicationFixture.application.inject({
       method: 'GET',
       url: `${base}/${record.id}/schedule/occurrences?limit=5`,
       headers: { cookie },
@@ -1850,7 +1884,7 @@ function registerEnforcesSessionCSRFOnScheduleRoutes(): void {
       items: [expect.objectContaining({ outcome: 'skipped', runId: null })],
       nextCursor: null,
     });
-    const nextRuns = await application.inject({
+    const nextRuns = await applicationFixture.application.inject({
       method: 'GET',
       url: `${base}/${record.id}/schedule/next-runs`,
       headers: { cookie },
@@ -1862,7 +1896,7 @@ function registerEnforcesSessionCSRFOnScheduleRoutes(): void {
     expect(scheduleDatabase.nextFireTimes).toHaveBeenCalledWith(
       expect.objectContaining({ triggerId: record.id, count: 3 }),
     );
-    const tooMany = await application.inject({
+    const tooMany = await applicationFixture.application.inject({
       method: 'GET',
       url: `${base}/${record.id}/schedule/next-runs?count=11`,
       headers: { cookie },
@@ -1873,7 +1907,7 @@ function registerEnforcesSessionCSRFOnScheduleRoutes(): void {
       config: { kind: 'interval', intervalMinutes: 15 },
       count: 1,
     };
-    const unverifiedPreview = await application.inject({
+    const unverifiedPreview = await applicationFixture.application.inject({
       method: 'POST',
       url: `${base}/schedules/preview`,
       headers: { cookie },
@@ -1884,14 +1918,14 @@ function registerEnforcesSessionCSRFOnScheduleRoutes(): void {
       cookie: `${cookie}; pertexo_csrf=${csrf}`,
       'x-csrf-token': csrf,
     };
-    const invalidPreview = await application.inject({
+    const invalidPreview = await applicationFixture.application.inject({
       method: 'POST',
       url: `${base}/schedules/preview`,
       headers: previewHeaders,
       payload: { config: { kind: 'interval', intervalMinutes: 0 } },
     });
     expect(invalidPreview.statusCode).toBe(400);
-    const previewed = await application.inject({
+    const previewed = await applicationFixture.application.inject({
       method: 'POST',
       url: `${base}/schedules/preview`,
       headers: previewHeaders,
@@ -1904,8 +1938,8 @@ function registerEnforcesSessionCSRFOnScheduleRoutes(): void {
     });
     expect(scheduleDatabase.previewFireTimes).toHaveBeenCalledOnce();
 
-    await application.close();
-    application = undefined;
+    await applicationFixture.application.close();
+    applicationFixture.application = undefined;
     expect(scheduleDatabase.close).toHaveBeenCalledOnce();
   });
 }
@@ -1913,7 +1947,7 @@ function registerEnforcesSessionCSRFOnScheduleRoutes(): void {
 function registerRegistersNodeTestingRoutesProvidersProduction(): void {
   it('registers node-testing routes and providers with the production workflow runtime', async () => {
     const selectedIdentityRuntime = identityRuntime();
-    application = await createApiApplication(config, {
+    applicationFixture.application = await createApiApplication(config, {
       ...dependencies(),
       identityRuntime: selectedIdentityRuntime,
       workflowOverrides: {
@@ -1952,23 +1986,23 @@ function registerRegistersNodeTestingRoutesProvidersProduction(): void {
         },
       },
     });
-    await application.init();
+    await applicationFixture.application.init();
 
-    expect(application.get(TestWorkflowNodeUseCase)).toBeInstanceOf(
-      TestWorkflowNodeUseCase,
-    );
-    expect(application.get(GetPreviewRunUseCase)).toBeInstanceOf(
-      GetPreviewRunUseCase,
-    );
+    expect(
+      applicationFixture.application.get(TestWorkflowNodeUseCase),
+    ).toBeInstanceOf(TestWorkflowNodeUseCase);
+    expect(
+      applicationFixture.application.get(GetPreviewRunUseCase),
+    ).toBeInstanceOf(GetPreviewRunUseCase);
 
-    const testResponse = await application.inject({
+    const testResponse = await applicationFixture.application.inject({
       method: 'POST',
       url: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/workflows/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/draft/nodes/cccccccc-cccc-4ccc-8ccc-cccccccccccc/test',
       payload: { mode: 'validate' },
     });
     expect(testResponse.statusCode).toBe(401);
 
-    const previewResponse = await application.inject({
+    const previewResponse = await applicationFixture.application.inject({
       method: 'GET',
       url: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/previews/dddddddd-dddd-4ddd-8ddd-dddddddddddd',
     });
@@ -1982,7 +2016,7 @@ function registerRegistersNodeTestingRoutesProvidersProduction(): void {
     );
     const getDraft = vi.fn().mockRejectedValue(new Error('not used'));
     const acceptPreview = vi.fn().mockRejectedValue(new Error('not used'));
-    application = await createApiApplication(config, {
+    applicationFixture.application = await createApiApplication(config, {
       ...dependencies(),
       identityRuntime: selectedIdentityRuntime,
       workflowOverrides: {
@@ -2029,7 +2063,7 @@ function registerRegistersNodeTestingRoutesProvidersProduction(): void {
     });
     const csrf = 'c'.repeat(32);
     const payload = `{"mode":"validate","expectedRevision":1,"sampleInput":${'['.repeat(10_000)}null${']'.repeat(10_000)}}`;
-    const response = await application.inject({
+    const response = await applicationFixture.application.inject({
       method: 'POST',
       url: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/workflows/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/draft/nodes/cccccccc-cccc-4ccc-8ccc-cccccccccccc/test',
       headers: {
@@ -2048,16 +2082,16 @@ function registerRegistersNodeTestingRoutesProvidersProduction(): void {
 
   it('mounts Better Auth on the public web origin', async () => {
     const selected = betterAuthIdentityRuntime();
-    application = await createApiApplication(
+    applicationFixture.application = await createApiApplication(
       {
         ...config,
         identity: betterAuthIdentityConfig('https://app.example.test'),
       },
       { ...dependencies(), identityRuntime: selected.runtime },
     );
-    await application.init();
+    await applicationFixture.application.init();
 
-    const capabilities = await application.inject({
+    const capabilities = await applicationFixture.application.inject({
       method: 'GET',
       url: '/v1/auth/capabilities',
     });
@@ -2069,14 +2103,14 @@ function registerRegistersNodeTestingRoutesProvidersProduction(): void {
       },
       socialProviders: ['google'],
     });
-    const crossOrigin = await application.inject({
+    const crossOrigin = await applicationFixture.application.inject({
       method: 'POST',
       url: '/v1/auth/sign-in/email',
       headers: { origin: 'https://api.example.test' },
       payload: {},
     });
     expect(crossOrigin.statusCode).toBe(403);
-    const accepted = await application.inject({
+    const accepted = await applicationFixture.application.inject({
       method: 'POST',
       url: '/v1/auth/sign-in/email',
       headers: { origin: 'https://app.example.test' },
@@ -2134,7 +2168,7 @@ function registerClosesIdentityArtifactRuntimesArtifactStartup(): void {
 
   it('includes artifact readiness in health and closes its runtime once', async () => {
     const selectedArtifacts = artifactRuntime();
-    application = await createApiApplication(config, {
+    applicationFixture.application = await createApiApplication(config, {
       ...dependencies(),
       identityRuntime: identityRuntime(),
       artifactRuntime: selectedArtifacts,
@@ -2143,14 +2177,14 @@ function registerClosesIdentityArtifactRuntimesArtifactStartup(): void {
     vi.mocked(selectedArtifacts.checkReadiness).mockRejectedValue(
       new Error('private bucket detail'),
     );
-    const response = await application.inject({
+    const response = await applicationFixture.application.inject({
       method: 'GET',
       url: '/health/ready',
     });
     expect(response.statusCode).toBe(503);
     expect(response.payload).not.toContain('private bucket detail');
-    await application.close();
-    application = undefined;
+    await applicationFixture.application.close();
+    applicationFixture.application = undefined;
     expect(selectedArtifacts.close).toHaveBeenCalledOnce();
   });
 }

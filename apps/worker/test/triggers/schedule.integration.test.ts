@@ -67,7 +67,9 @@ let queue: Queue;
 
 const resources: { close(): Promise<void> }[] = [];
 
-let benchmarkScanGate: BenchmarkScanGate | undefined;
+const benchmark: { benchmarkScanGate: BenchmarkScanGate | undefined } = {
+  benchmarkScanGate: undefined,
+};
 
 function registerResource<Resource extends { close(): Promise<void> }>(
   resource: Resource,
@@ -89,7 +91,7 @@ async function prepareDirectScheduleWorkerIntegrationGateFixture() {
 }
 
 async function closeDirectScheduleWorkerIntegrationGateFixture() {
-  benchmarkScanGate?.release();
+  benchmark.benchmarkScanGate?.release();
   const cleanupErrors: unknown[] = [];
   const attempt = async (
     label: string,
@@ -224,7 +226,7 @@ function registerKeepsPostgreSQLAuthoritativeThroughReconciliationContention(): 
     const runtimeScanner = registerResource(
       createScheduleTriggerScanner(workerConfig, workerConfig),
     );
-    benchmarkScanGate = createBenchmarkScanGate(
+    benchmark.benchmarkScanGate = createBenchmarkScanGate(
       process.env.PERTEXO_Q11_OPERATION_TIMING === '1',
     );
     let runtime = registerResource(
@@ -245,7 +247,7 @@ function registerKeepsPostgreSQLAuthoritativeThroughReconciliationContention(): 
               return runtimeScanner.close();
             },
             scanDue: async (input) => {
-              await benchmarkScanGate?.wait(input.signal);
+              await benchmark.benchmarkScanGate?.wait(input.signal);
               if (input.signal?.aborted === true) throw input.signal.reason;
               const result = await runtimeScanner.scanDue(input);
               scanResults.push(result);
@@ -395,7 +397,7 @@ function registerKeepsPostgreSQLAuthoritativeThroughReconciliationContention(): 
       trigger_status: 'active',
     });
     const operationStartedAt = performance.now();
-    benchmarkScanGate.release();
+    benchmark.benchmarkScanGate.release();
     await vi.waitFor(
       async () => {
         const occurrences = await ownerQuery<{ count: string }>(
