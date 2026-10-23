@@ -38,14 +38,8 @@ export function selectOutputVariant(
   for (const override of selection.overrides ?? []) {
     let current: unknown = config;
     const present = override.configPath.every((key) => {
-      if (
-        current === null ||
-        typeof current !== 'object' ||
-        Array.isArray(current) ||
-        !Object.hasOwn(current, key)
-      )
-        return false;
-      current = (current as Readonly<Record<string, unknown>>)[key];
+      if (!hasOwnConfigProperty(current, key)) return false;
+      current = current[key];
       return true;
     });
     if (present) return override.variant;
@@ -53,4 +47,16 @@ export function selectOutputVariant(
   return Object.hasOwn(config, selection.configProperty)
     ? selection.whenPresent
     : selection.whenAbsent;
+}
+
+function hasOwnConfigProperty(
+  value: unknown,
+  key: string,
+): value is Readonly<Record<string, unknown>> {
+  const readable =
+    value !== null &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    Object.hasOwn(value, key);
+  return readable;
 }

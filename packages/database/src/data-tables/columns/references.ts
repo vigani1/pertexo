@@ -82,11 +82,11 @@ function issuesFor(
           'not_found',
           `Table ${ref.config.table} is unavailable. Select an existing table.`,
         );
-      const names = resolveDataTableBindings(
-        table.columns,
-        ref.config.columnBindings,
-        table.hasRemovedColumns,
-      );
+      const names = resolveDataTableBindings({
+        columns: table.columns,
+        bindings: ref.config.columnBindings,
+        hasRemovedColumns: table.hasRemovedColumns,
+      });
       for (const alias of literalAliases(ref.node))
         if (!Object.hasOwn(names, alias))
           throw new DataTableError(

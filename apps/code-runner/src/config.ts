@@ -23,11 +23,11 @@ export function parseRunnerConfig(
     (deployed && mode !== 'hardened')
   )
     throw new Error('Deployed Code runners require hardened mode');
-  const socketPath = codeRunnerSocketPath(
-    environment.CODE_RUNNER_SOCKET,
-    mode === 'hardened',
-    process.getuid?.() ?? 'local',
-  );
+  const socketPath = codeRunnerSocketPath({
+    configured: environment.CODE_RUNNER_SOCKET,
+    hardened: mode === 'hardened',
+    uid: process.getuid?.() ?? 'local',
+  });
   return Object.freeze({
     settings: parseCodeSettings(environment),
     mode,

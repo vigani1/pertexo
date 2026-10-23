@@ -9,11 +9,15 @@ import {
 } from './contract.js';
 
 /** Stable workflow aliases resolve to the current names used by table rows. */
-export function resolveDataTableBindings(
-  columns: readonly DataTableColumn[],
-  bindings: DataTableBindings | undefined,
-  hasRemovedColumns: boolean,
-): Readonly<Record<string, string>> {
+export function resolveDataTableBindings({
+  columns,
+  bindings,
+  hasRemovedColumns,
+}: Readonly<{
+  columns: readonly DataTableColumn[];
+  bindings: DataTableBindings | undefined;
+  hasRemovedColumns: boolean;
+}>): Readonly<Record<string, string>> {
   if (bindings === undefined && hasRemovedColumns)
     throw new DataTableError(
       'invalid_values',

@@ -60,13 +60,12 @@ export async function writeFilePages(
     signal.throwIfAborted();
     if (itemCount >= FILE_PAGE_LIMITS.totalItems) refuseFilePages('items');
     const separator = pending.length > 0 ? 1 : 0;
-    if (
+    const pageWouldOverflow =
       pending.length > 0 &&
       (pending.length >= FILE_PAGE_LIMITS.items ||
         pendingBytes + record.bytes + separator > FILE_PAGE_LIMITS.bytes ||
-        pendingMembers + record.members > FILE_PAGE_LIMITS.members)
-    )
-      await flush();
+        pendingMembers + record.members > FILE_PAGE_LIMITS.members);
+    if (pageWouldOverflow) await flush();
     const addition = record.bytes + (pending.length > 0 ? 1 : 0);
     if (storedBytes + pendingBytes + addition > FILE_PAGE_LIMITS.totalBytes)
       refuseFilePages('bytes');

@@ -139,11 +139,15 @@ export function codeContainerLimits(settings: CodeSettings) {
 }
 
 /** Shared Unix socket configuration; no process or credential access. */
-export function codeRunnerSocketPath(
-  configured: string | undefined,
-  hardened: boolean,
-  uid: number | string,
-): string {
+export function codeRunnerSocketPath({
+  configured,
+  hardened,
+  uid,
+}: Readonly<{
+  configured: string | undefined;
+  hardened: boolean;
+  uid: number | string;
+}>): string {
   const path =
     configured ??
     (hardened

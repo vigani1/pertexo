@@ -13,11 +13,11 @@ const columns = dataTableColumnsSchema.parse([
 ]);
 
 it('keeps original workflow aliases across column renames for values, filters, sort and output paths', () => {
-  const names = resolveDataTableBindings(
-    columns,
-    { key: 'key', amount: 'amount' },
-    false,
-  );
+  const names = resolveDataTableBindings({
+    columns: columns,
+    bindings: { key: 'key', amount: 'amount' },
+    hasRemovedColumns: false,
+  });
   expect(
     bindDataTableCommand(
       {
@@ -60,13 +60,19 @@ it('keeps original workflow aliases across column renames for values, filters, s
       names,
     ).rows[0]?.values,
   ).toEqual({ key: 'a', amount: 2 });
-  expect(resolveDataTableBindings(columns, undefined, false)).toEqual(names);
+  expect(
+    resolveDataTableBindings({
+      columns: columns,
+      bindings: undefined,
+      hasRemovedColumns: false,
+    }),
+  ).toEqual(names);
 });
 
 it('refuses removed bindings and unverifiable legacy steps without retargeting a recreated name', () => {
   expect(() =>
-    resolveDataTableBindings(
-      [
+    resolveDataTableBindings({
+      columns: [
         {
           ...columns[0],
           id: 'new_key',
@@ -75,14 +81,22 @@ it('refuses removed bindings and unverifiable legacy steps without retargeting a
           required: true,
         },
       ],
-      { key: 'key' },
-      true,
-    ),
+      bindings: { key: 'key' },
+      hasRemovedColumns: true,
+    }),
   ).toThrow('removed');
-  expect(() => resolveDataTableBindings(columns, undefined, true)).toThrow(
-    'legacy',
-  );
-  const names = resolveDataTableBindings(columns, { key: 'key' }, true);
+  expect(() =>
+    resolveDataTableBindings({
+      columns: columns,
+      bindings: undefined,
+      hasRemovedColumns: true,
+    }),
+  ).toThrow('legacy');
+  const names = resolveDataTableBindings({
+    columns: columns,
+    bindings: { key: 'key' },
+    hasRemovedColumns: true,
+  });
   expect(() =>
     bindDataTableCommand(
       { operation: 'insert', table: 'Orders', values: { amount: 2 } },

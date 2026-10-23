@@ -80,21 +80,7 @@ export function generateSchemaDocument(
     throw new TypeError(
       'runtime-only schema semantics must be non-empty bounded descriptions',
     );
-  const projection =
-    schema === boundedNodeJsonSchema
-      ? BOUNDED_NODE_JSON_SCHEMA_DOCUMENT
-      : schema === boundedNodeJsonRecordSchema
-        ? BOUNDED_NODE_JSON_RECORD_SCHEMA_DOCUMENT
-        : schemaDocumentSchema.parse(
-            z.toJSONSchema(schema, {
-              // Only the existing bounded-value transform has a structural
-              // projection. Every other unrepresentable schema remains refused.
-              unrepresentable: ({ zodSchema }) =>
-                zodSchema === boundedValueSchema.out
-                  ? BOUNDED_NODE_JSON_SCHEMA_DOCUMENT
-                  : 'throw',
-            }),
-          );
+  const projection = structuralProjection(schema);
   return cloneAndFreeze(
     schemaDocumentSchema.parse({
       ...projection,
@@ -105,6 +91,23 @@ export function generateSchemaDocument(
               ...options.runtimeOnlySemantics,
             ],
           }),
+    }),
+  );
+}
+
+function structuralProjection(schema: z.ZodType): SchemaDocument {
+  if (schema === boundedNodeJsonSchema)
+    return BOUNDED_NODE_JSON_SCHEMA_DOCUMENT;
+  if (schema === boundedNodeJsonRecordSchema)
+    return BOUNDED_NODE_JSON_RECORD_SCHEMA_DOCUMENT;
+  return schemaDocumentSchema.parse(
+    z.toJSONSchema(schema, {
+      // Only the existing bounded-value transform has a structural
+      // projection. Every other unrepresentable schema remains refused.
+      unrepresentable: ({ zodSchema }) =>
+        zodSchema === boundedValueSchema.out
+          ? BOUNDED_NODE_JSON_SCHEMA_DOCUMENT
+          : 'throw',
     }),
   );
 }

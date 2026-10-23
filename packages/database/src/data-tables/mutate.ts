@@ -43,7 +43,9 @@ export async function mutateRows(
         'Upsert needs a table with a unique key column.',
       );
     // Only the key finds the row; other required columns apply on insert.
-    const values = validateDataTableValues(table.columns, command.values, true);
+    const values = validateDataTableValues(table.columns, command.values, {
+      partial: true,
+    });
     if ((values[table.keyColumn] ?? null) === null)
       throw new DataTableError(
         'invalid_values',
@@ -131,7 +133,9 @@ export async function mutateRows(
       .catch((error: unknown) => rowKeyConflict(error, table, values));
   } else {
     // An existing row keeps every column the command doesn't name.
-    const patch = validateDataTableValues(table.columns, command.values, true);
+    const patch = validateDataTableValues(table.columns, command.values, {
+      partial: true,
+    });
     const outputs = [];
     for (const row of old) {
       const values = validateDataTableValues(table.columns, {

@@ -31,13 +31,13 @@ const RESERVED_RESPONSE_PREFIXES = [
 /** Response-control and proxy headers cannot be supplied by workflow data. */
 export function isWebhookResponseHeaderAllowed(name: string): boolean {
   const lower = name.toLowerCase();
-  return (
+  const allowed =
     WEBHOOK_RESPONSE_HEADER_NAMES.some((value) => value === lower) ||
     (lower.length <= 64 &&
       /^x-[!#$%&'*+.^_`|~0-9a-z-]+$/u.test(lower) &&
       !RESERVED_RESPONSE_HEADERS.has(lower) &&
-      !RESERVED_RESPONSE_PREFIXES.some((prefix) => lower.startsWith(prefix)))
-  );
+      !RESERVED_RESPONSE_PREFIXES.some((prefix) => lower.startsWith(prefix)));
+  return allowed;
 }
 
 /** Already validated and serialized by the Respond to webhook step. */

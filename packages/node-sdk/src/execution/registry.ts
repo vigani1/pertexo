@@ -82,7 +82,11 @@ function stableComparable(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(stableComparable);
   return Object.fromEntries(
     Object.entries(value)
-      .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+      .sort(([left], [right]) => {
+        if (left < right) return -1;
+        if (left > right) return 1;
+        return 0;
+      })
       .map(([key, item]) => [key, stableComparable(item)]),
   );
 }

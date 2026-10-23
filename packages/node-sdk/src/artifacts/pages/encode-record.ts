@@ -24,28 +24,9 @@ export function encodeFilePageRecord(value: unknown): EncodedFilePageRecord {
   } catch {
     refuseFilePages('record');
   }
-  let members = 1;
-  const pending: JsonValue[] = [snapshot];
+  let members: number;
   try {
-    while (pending.length > 0) {
-      const current = pending.pop();
-      if (typeof current === 'string') storedExecutionJsonStringBytes(current);
-      else if (current !== null && typeof current === 'object') {
-        if (Array.isArray(current)) {
-          const items = current as readonly JsonValue[];
-          members += items.length;
-          for (const item of items) pending.push(item);
-        } else {
-          const object = current as Readonly<Record<string, JsonValue>>;
-          const keys = Object.keys(object);
-          members += keys.length;
-          for (const key of keys) {
-            storedExecutionJsonStringBytes(key);
-            pending.push(object[key] ?? null);
-          }
-        }
-      }
-    }
+    members = countRecordMembers(snapshot);
   } catch (error) {
     if (error instanceof StoredExecutionValueInvalidError)
       refuseFilePages('text');
@@ -57,4 +38,29 @@ export function encodeFilePageRecord(value: unknown): EncodedFilePageRecord {
     bytes: Buffer.byteLength(json, 'utf8'),
     members,
   });
+}
+
+function countRecordMembers(snapshot: JsonValue): number {
+  let members = 1;
+  const pending: JsonValue[] = [snapshot];
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (typeof current === 'string') storedExecutionJsonStringBytes(current);
+    else if (current !== null && typeof current === 'object') {
+      if (Array.isArray(current)) {
+        const items = current as readonly JsonValue[];
+        members += items.length;
+        for (const item of items) pending.push(item);
+      } else {
+        const object = current as Readonly<Record<string, JsonValue>>;
+        const keys = Object.keys(object);
+        members += keys.length;
+        for (const key of keys) {
+          storedExecutionJsonStringBytes(key);
+          pending.push(object[key] ?? null);
+        }
+      }
+    }
+  }
+  return members;
 }

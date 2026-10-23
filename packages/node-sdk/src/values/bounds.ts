@@ -73,22 +73,12 @@ function primitiveJson(value: unknown): BoundedJsonValue | undefined {
 
 function arrayLength(value: object): number | undefined {
   const descriptor = Object.getOwnPropertyDescriptor(value, 'length');
-  return descriptor !== undefined &&
+  const validLength =
+    descriptor !== undefined &&
     'value' in descriptor &&
     Number.isSafeInteger(descriptor.value) &&
-    descriptor.value >= 0
-    ? (descriptor.value as number)
-    : undefined;
-}
-
-function objectKeys(
-  value: object,
-  isArray: boolean,
-  length?: number,
-): readonly string[] {
-  return isArray
-    ? Array.from({ length: length ?? 0 }, (_, index) => String(index))
-    : Object.keys(value);
+    descriptor.value >= 0;
+  return validLength ? (descriptor.value as number) : undefined;
 }
 
 function inspectContainer(
@@ -113,7 +103,9 @@ function inspectContainer(
 
   return {
     ok: true,
-    keys: objectKeys(value, isArray, length),
+    keys: isArray
+      ? Array.from({ length: length ?? 0 }, (_, index) => String(index))
+      : Object.keys(value),
     target: isArray ? [] : {},
   };
 }

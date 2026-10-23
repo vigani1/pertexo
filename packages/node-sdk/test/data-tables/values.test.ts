@@ -47,16 +47,18 @@ describe('typed data table boundary', () => {
     ).toThrow();
   });
   it('validates partial updates without clearing other required cells', () => {
-    expect(validateDataTableValues(columns, { amount: 3 }, true)).toEqual({
+    expect(
+      validateDataTableValues(columns, { amount: 3 }, { partial: true }),
+    ).toEqual({
       amount: 3,
     });
-    expect(() => validateDataTableValues(columns, { id: null }, true)).toThrow(
-      'required',
-    );
+    expect(() =>
+      validateDataTableValues(columns, { id: null }, { partial: true }),
+    ).toThrow('required');
     // Blank text in a required column is missing too, from any writer.
-    expect(() => validateDataTableValues(columns, { id: '  ' }, true)).toThrow(
-      'required',
-    );
+    expect(() =>
+      validateDataTableValues(columns, { id: '  ' }, { partial: true }),
+    ).toThrow('required');
   });
   it('converts CSV by the declared column type and escapes formulas for export', () => {
     expect(dataTableCsvValue(required(columns[0]), '00123')).toBe('00123');
@@ -120,7 +122,9 @@ it.each(['toString', 'constructor', 'valueOf', 'hasOwnProperty'])(
   (name) => {
     const optional = dataTableNewColumnsSchema.parse([{ name, type: 'text' }]);
     expect(validateDataTableValues(optional, {})).toEqual({ [name]: null });
-    expect(validateDataTableValues(optional, {}, true)).toEqual({});
+    expect(validateDataTableValues(optional, {}, { partial: true })).toEqual(
+      {},
+    );
     expect(validateDataTableValues(optional, { [name]: 'supplied' })).toEqual({
       [name]: 'supplied',
     });
