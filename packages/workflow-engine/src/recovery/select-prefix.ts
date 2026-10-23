@@ -111,15 +111,7 @@ export function selectRecoveryPrefix(
     graph.edges.some((edge) => edge.source.port === WORKFLOW_FAILURE_PORT)
   )
     return { kind: 'refused', reason: 'unsupported_graph' };
-  if (
-    source.completedAt === null ||
-    source.workflowVersionId !== source.checkpoint.workflowVersionId ||
-    source.checkpoint.runStatus !== source.status ||
-    source.checkpoint.cancelRequested ||
-    source.checkpoint.deadlineExpired ||
-    source.checkpoint.joins.length > 0 ||
-    source.checkpoint.loops.length > 0
-  )
+  if (!sourceEvidenceComplete(source))
     return { kind: 'refused', reason: 'evidence_unavailable' };
   assertCheckpointMatchesExecutable(source.checkpoint, executable, graph.nodes);
   const nodes = new Map(graph.nodes.map((node) => [node.id, node]));
@@ -197,22 +189,8 @@ function verifyRecoveryRecords({
       (invocation.iterationPath?.length ?? 0) !== 0
     )
       return { kind: 'refused', reason: 'evidence_unavailable' };
-    for (const attempt of record.attempts) {
-      if (
-        (attempt.status === 'outcome_unknown' ||
-          attempt.failureKind === 'outcome_unknown') &&
-        record.status !== 'outcome_unknown'
-      )
-        return { kind: 'refused', reason: 'unknown_effect' };
-      const decision = retryOutcome(record, attempt, policy, node.retry);
-      if (
-        decision?.kind === 'outcome_unknown' &&
-        record.status !== 'outcome_unknown'
-      )
-        return { kind: 'refused', reason: 'unknown_effect' };
-      if (attempt.retryDecision === 'retry' && decision?.kind !== 'retry')
-        return { kind: 'refused', reason: 'evidence_unavailable' };
-    }
+    const retryFailure = verifyRetryHistory(record, node, policy);
+    if (retryFailure !== undefined) return retryFailure;
   }
   return undefined;
 }
@@ -337,26 +315,78 @@ function verifyPrefixOutput({
       return { kind: 'refused', reason: 'prefix_incomplete' };
     if (invocation.output.kind === 'artifact')
       return { kind: 'refused', reason: 'artifact_value' };
-    if (record.reused !== undefined) {
-      if (
-        record.currentAttemptId !== null ||
-        record.currentAttemptNumber !== null ||
-        record.attempts.length !== 0 ||
-        invocation.attemptNumber !== 0 ||
-        invocation.output.kind !== 'reused' ||
-        invocation.output.nodeRunId !== record.id
-      )
-        return { kind: 'refused', reason: 'evidence_unavailable' };
-    } else if (
-      !completeAttempts(record) ||
-      record.completedAt === null ||
-      invocation.attemptNumber !== record.currentAttemptNumber ||
-      invocation.output.kind !== 'inline' ||
-      invocation.output.attemptId !== record.currentAttemptId
-    ) {
-      return { kind: 'refused', reason: 'evidence_unavailable' };
-    }
+    const outputFailure = verifyPrefixAttempt(
+      record,
+      invocation,
+      invocation.output,
+    );
+    if (outputFailure !== undefined) return outputFailure;
     return { source: record, invocation, definition: node };
+  }
+  return undefined;
+}
+
+function verifyRetryHistory(
+  record: RecoveryNode,
+  node: WorkflowExecutableNode,
+  policy: RetryPolicy,
+): RecoveryRefused | undefined {
+  for (const attempt of record.attempts) {
+    if (
+      (attempt.status === 'outcome_unknown' ||
+        attempt.failureKind === 'outcome_unknown') &&
+      record.status !== 'outcome_unknown'
+    )
+      return { kind: 'refused', reason: 'unknown_effect' };
+    const decision = retryOutcome(record, attempt, policy, node.retry);
+    if (
+      decision?.kind === 'outcome_unknown' &&
+      record.status !== 'outcome_unknown'
+    )
+      return { kind: 'refused', reason: 'unknown_effect' };
+    if (attempt.retryDecision === 'retry' && decision?.kind !== 'retry')
+      return { kind: 'refused', reason: 'evidence_unavailable' };
+  }
+  return undefined;
+}
+
+function sourceEvidenceComplete(source: RecoverySource): boolean {
+  if (
+    source.completedAt === null ||
+    source.workflowVersionId !== source.checkpoint.workflowVersionId ||
+    source.checkpoint.runStatus !== source.status ||
+    source.checkpoint.cancelRequested ||
+    source.checkpoint.deadlineExpired ||
+    source.checkpoint.joins.length > 0 ||
+    source.checkpoint.loops.length > 0
+  )
+    return false;
+  return true;
+}
+
+function verifyPrefixAttempt(
+  record: RecoveryNode,
+  invocation: InvocationState,
+  output: NonNullable<InvocationState['output']>,
+): RecoveryRefused | undefined {
+  if (record.reused !== undefined) {
+    if (
+      record.currentAttemptId !== null ||
+      record.currentAttemptNumber !== null ||
+      record.attempts.length !== 0 ||
+      invocation.attemptNumber !== 0 ||
+      output.kind !== 'reused' ||
+      output.nodeRunId !== record.id
+    )
+      return { kind: 'refused', reason: 'evidence_unavailable' };
+  } else if (
+    !completeAttempts(record) ||
+    record.completedAt === null ||
+    invocation.attemptNumber !== record.currentAttemptNumber ||
+    output.kind !== 'inline' ||
+    output.attemptId !== record.currentAttemptId
+  ) {
+    return { kind: 'refused', reason: 'evidence_unavailable' };
   }
   return undefined;
 }

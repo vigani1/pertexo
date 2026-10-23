@@ -73,19 +73,8 @@ export function planRecovery(
     const value = stored.node.value;
     if (containsArtifact(value))
       return { kind: 'refused', reason: 'artifact_value' };
-    if (definition.definition.key === 'core.condition') {
-      const selection = candidate.branchSelections.find(
-        (choice) => choice.invocationKey === invocation.invocationKey,
-      );
-      if (
-        value === null ||
-        typeof value !== 'object' ||
-        Array.isArray(value) ||
-        (value as Readonly<Record<string, JsonValue>>).selectedPort !==
-          selection?.selectedOutputPort
-      )
-        return { kind: 'refused', reason: 'branch_evidence_unavailable' };
-    }
+    if (!matchesBranchSelection({ definition, invocation, value, candidate }))
+      return { kind: 'refused', reason: 'branch_evidence_unavailable' };
     bytes += utf8ByteLength(json);
     if (bytes > WORKFLOW_RECOVERY_LIMITS.canonicalBytes)
       return { kind: 'refused', reason: 'reuse_bounds' };
@@ -94,4 +83,31 @@ export function planRecovery(
   if (bytes > WORKFLOW_RECOVERY_LIMITS.canonicalBytes)
     return { kind: 'refused', reason: 'reuse_bounds' };
   return { ...candidate, kind: 'eligible', input, outputs };
+}
+
+function matchesBranchSelection({
+  definition,
+  invocation,
+  value,
+  candidate,
+}: Readonly<{
+  definition: RecoveryCandidate['prefix'][number]['definition'];
+  invocation: RecoveryCandidate['prefix'][number]['invocation'];
+  value: JsonValue;
+  candidate: RecoveryCandidate;
+}>): boolean {
+  if (definition.definition.key === 'core.condition') {
+    const selection = candidate.branchSelections.find(
+      (choice) => choice.invocationKey === invocation.invocationKey,
+    );
+    if (
+      value === null ||
+      typeof value !== 'object' ||
+      Array.isArray(value) ||
+      (value as Readonly<Record<string, JsonValue>>).selectedPort !==
+        selection?.selectedOutputPort
+    )
+      return false;
+  }
+  return true;
 }

@@ -92,20 +92,7 @@ export function taskDeclarationObservations(
     intents.push({
       invocationKey: owner.invocationKey,
       ...(context === undefined ? {} : { context }),
-      ...(isCallbackWaitNode(node)
-        ? {
-            kind: 'callback' as const,
-            config: taskSetup(callbackWaitConfigSchema, node.config),
-          }
-        : node.definition.key === 'core.approval'
-          ? {
-              kind: 'approval' as const,
-              config: taskSetup(approvalConfigSchema, node.config),
-            }
-          : {
-              kind: 'input_request' as const,
-              config: taskSetup(inputRequestConfigSchema, node.config),
-            }),
+      ...pendingTaskSetup(node),
     });
   }
   return {
@@ -207,30 +194,7 @@ export function taskOutcomeObservations(
       continue;
     }
     seen.set(fact.invocationKey, canonical);
-    const context = findExecutableNodeContext(graph, fact.nodeId);
-    const expected = invocationKey({
-      workflowVersionId: checkpoint.workflowVersionId,
-      nodeId: fact.nodeId,
-      branchPath: (fact.branchPath ?? []).map(
-        ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
-      ),
-      iterationPath: fact.iterationPath ?? [],
-    });
-    if (
-      !isPendingTaskNode(nodes.get(fact.nodeId)) ||
-      expected !== fact.invocationKey ||
-      context?.ancestors.length !== (fact.iterationPath?.length ?? 0) ||
-      context.ancestors.some(
-        (id, index) => fact.iterationPath?.[index]?.loopNodeId !== id,
-      ) ||
-      (fact.branchPath ?? []).some(
-        ({ nodeId, outputPort }) =>
-          !configuredScopedOutputPorts(nodes.get(nodeId) ?? {})?.includes(
-            outputPort,
-          ),
-      )
-    )
-      operationError('observation_invalid', 'task outcome scope is invalid');
+    assertTaskOutcomeScope(fact, { checkpoint, nodes, graph });
     const owner = invocations.get(fact.invocationKey);
     if (owner === undefined) {
       if (isFinishedIterationScope(checkpoint.loops, fact)) continue;
@@ -246,56 +210,124 @@ export function taskOutcomeObservations(
     }
     if (owner.status !== 'waiting' || owner.waitKind !== 'human_task')
       operationError('observation_invalid', 'task outcome has no durable wait');
-    const inputRequest =
-      nodes.get(fact.nodeId)?.definition.key === 'core.request_input' ||
-      isCallbackWaitNode(nodes.get(fact.nodeId));
-    if (
-      (fact.status === 'submitted' && !inputRequest) ||
-      (['approved', 'rejected'].includes(fact.status) && inputRequest)
-    )
-      operationError('observation_invalid', 'task result kind conflicts');
-    const decided = ['approved', 'rejected', 'submitted'].includes(fact.status);
-    const reasonCode =
-      fact.status === 'refused'
-        ? 'pending_task.capacity_exceeded'
-        : 'pending_task.expired';
-    observations.push({
-      kind: 'outcome',
-      invocationKey: fact.invocationKey,
-      status: decided
-        ? 'succeeded'
-        : fact.status === 'canceled'
-          ? 'canceled'
-          : 'failed',
-      ...(decided
-        ? {
-            output: { kind: 'task', taskId: fact.taskId } as const,
-            ...(isCallbackWaitNode(nodes.get(fact.nodeId))
-              ? { reasonCode: 'callback.received' }
-              : {}),
-          }
-        : { reasonCode }),
-      ...(!decided && fact.status !== 'canceled'
-        ? {
-            failure: {
-              nodeId: fact.nodeId,
-              invocationKey: fact.invocationKey,
-              attemptNumber: owner.attemptNumber,
-              errorKind: 'human_task' as const,
-              safeErrorCode: reasonCode,
-            },
-          }
-        : {}),
-      coordinatorDerived: true,
-    });
-    if (decided && !inputRequest)
-      observations.push({
-        kind: 'branch_selected',
-        invocationKey: fact.invocationKey,
-        nodeId: fact.nodeId,
-        selectedOutputPort: fact.status,
-        coordinatorDerived: true,
-      });
+    observations.push(...taskResultObservations(fact, owner, nodes));
   }
   return observations;
+}
+
+function pendingTaskSetup(node: WorkflowExecutableNode) {
+  if (isCallbackWaitNode(node))
+    return {
+      kind: 'callback' as const,
+      config: taskSetup(callbackWaitConfigSchema, node.config),
+    };
+  if (node.definition.key === 'core.approval')
+    return {
+      kind: 'approval' as const,
+      config: taskSetup(approvalConfigSchema, node.config),
+    };
+  return {
+    kind: 'input_request' as const,
+    config: taskSetup(inputRequestConfigSchema, node.config),
+  };
+}
+
+function assertTaskOutcomeScope(
+  fact: PendingTaskOutcome,
+  {
+    checkpoint,
+    nodes,
+    graph,
+  }: Readonly<{
+    checkpoint: WorkflowCheckpoint;
+    nodes: ReadonlyMap<string, WorkflowExecutableNode>;
+    graph: WorkflowExecutableGraph;
+  }>,
+): void {
+  const context = findExecutableNodeContext(graph, fact.nodeId);
+  const expected = invocationKey({
+    workflowVersionId: checkpoint.workflowVersionId,
+    nodeId: fact.nodeId,
+    branchPath: (fact.branchPath ?? []).map(
+      ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
+    ),
+    iterationPath: fact.iterationPath ?? [],
+  });
+  if (
+    !isPendingTaskNode(nodes.get(fact.nodeId)) ||
+    expected !== fact.invocationKey ||
+    context?.ancestors.length !== (fact.iterationPath?.length ?? 0) ||
+    context.ancestors.some(
+      (id, index) => fact.iterationPath?.[index]?.loopNodeId !== id,
+    ) ||
+    (fact.branchPath ?? []).some(
+      ({ nodeId, outputPort }) =>
+        !configuredScopedOutputPorts(nodes.get(nodeId) ?? {})?.includes(
+          outputPort,
+        ),
+    )
+  )
+    operationError('observation_invalid', 'task outcome scope is invalid');
+}
+
+function taskResultObservations(
+  fact: PendingTaskOutcome,
+  owner: InvocationState,
+  nodes: ReadonlyMap<string, WorkflowExecutableNode>,
+): readonly WorkflowObservation[] {
+  const observations: WorkflowObservation[] = [];
+  const inputRequest =
+    nodes.get(fact.nodeId)?.definition.key === 'core.request_input' ||
+    isCallbackWaitNode(nodes.get(fact.nodeId));
+  if (
+    (fact.status === 'submitted' && !inputRequest) ||
+    (['approved', 'rejected'].includes(fact.status) && inputRequest)
+  )
+    operationError('observation_invalid', 'task result kind conflicts');
+  const decided = ['approved', 'rejected', 'submitted'].includes(fact.status);
+  const reasonCode =
+    fact.status === 'refused'
+      ? 'pending_task.capacity_exceeded'
+      : 'pending_task.expired';
+  observations.push({
+    kind: 'outcome',
+    invocationKey: fact.invocationKey,
+    status: taskOutcomeStatus(fact.status, { decided }),
+    ...(decided
+      ? {
+          output: { kind: 'task', taskId: fact.taskId } as const,
+          ...(isCallbackWaitNode(nodes.get(fact.nodeId))
+            ? { reasonCode: 'callback.received' }
+            : {}),
+        }
+      : { reasonCode }),
+    ...(!decided && fact.status !== 'canceled'
+      ? {
+          failure: {
+            nodeId: fact.nodeId,
+            invocationKey: fact.invocationKey,
+            attemptNumber: owner.attemptNumber,
+            errorKind: 'human_task' as const,
+            safeErrorCode: reasonCode,
+          },
+        }
+      : {}),
+    coordinatorDerived: true,
+  });
+  if (decided && !inputRequest)
+    observations.push({
+      kind: 'branch_selected',
+      invocationKey: fact.invocationKey,
+      nodeId: fact.nodeId,
+      selectedOutputPort: fact.status,
+      coordinatorDerived: true,
+    });
+  return observations;
+}
+function taskOutcomeStatus(
+  status: PendingTaskOutcome['status'],
+  { decided }: Readonly<{ decided: boolean }>,
+): 'succeeded' | 'canceled' | 'failed' {
+  if (decided) return 'succeeded';
+  return status === 'canceled' ? 'canceled' : 'failed';
 }

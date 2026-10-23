@@ -11,6 +11,7 @@ import {
   parseWorkflowGraphDraft,
   resolveValueSource,
   type ValueResolution,
+  type ValueSource,
   type WorkflowNodeFailureValue,
 } from '@pertexo/workflow-model';
 import type { ExpressionEvaluator } from '@pertexo/workflow-model/server';
@@ -72,41 +73,17 @@ export async function resolveMappedNodeInput(
         'attempt_invalid',
         'mapping selected source failure is incomplete',
       );
-    let resolution: ValueResolution;
-    try {
-      resolution = await resolveValueSource(
-        source,
-        {
-          runInput,
-          ...(callbacks === undefined ? {} : { execution: { callbacks } }),
-          nodeOutputs: completedOutputs,
-          ...(variables === undefined ? {} : { variables }),
-          ...(sourceFailure === undefined
-            ? {}
-            : { nodeFailure: sourceFailure }),
-          ...(structuredInputs === undefined ? {} : { structuredInputs }),
-        },
-        expressionEvaluator,
-        signal,
-      );
-    } catch (error) {
-      if (signal.aborted || isAbortError(error))
-        operationError('attempt_aborted', 'node attempt was aborted');
-      operationError('attempt_invalid', 'mapping failed');
-    }
-    if (
-      resolution.kind === 'error' &&
-      (resolution.expression?.code === 'canceled' || signal.aborted)
-    )
-      operationError('attempt_aborted', 'node attempt was aborted');
-    if (resolution.kind === 'error')
-      operationError(
-        resolution.code === 'variable_missing' ||
-          resolution.expression?.code === 'variable_missing'
-          ? 'variable_missing'
-          : 'attempt_invalid',
-        'Mapping could not resolve; check its inputs and captured workspace variables.',
-      );
+    const resolution = await resolveMappingValue(source, {
+      runInput,
+      completedOutputs,
+      directUpstream,
+      signal,
+      expressionEvaluator,
+      structuredInputs,
+      sourceFailure,
+      variables,
+      callbacks,
+    });
     if (resolution.kind === 'value') mapped[key] = resolution.value;
   }
   try {
@@ -121,9 +98,9 @@ export async function resolveSingleNodePreviewInput(
   input: Readonly<{
     node: unknown;
     runInput: unknown;
-    variables?: WorkspaceVariableValues;
+    variables?: WorkspaceVariableValues | undefined;
     signal: AbortSignal;
-    expressionEvaluator?: ExpressionEvaluator;
+    expressionEvaluator?: ExpressionEvaluator | undefined;
   }>,
 ): Promise<JsonValue> {
   let node: Pick<WorkflowExecutableNode, 'definition' | 'inputMappings'>;
@@ -160,4 +137,53 @@ export async function resolveSingleNodePreviewInput(
     sourceFailure: undefined,
     variables: workspaceVariableValuesSchema.parse(input.variables ?? {}),
   });
+}
+
+async function resolveMappingValue(
+  source: ValueSource,
+  {
+    runInput,
+    callbacks,
+    completedOutputs,
+    variables,
+    sourceFailure,
+    structuredInputs,
+    expressionEvaluator,
+    signal,
+  }: Parameters<typeof resolveMappedNodeInput>[1],
+): Promise<ValueResolution> {
+  let resolution: ValueResolution;
+  try {
+    resolution = await resolveValueSource(
+      source,
+      {
+        runInput,
+        ...(callbacks === undefined ? {} : { execution: { callbacks } }),
+        nodeOutputs: completedOutputs,
+        ...(variables === undefined ? {} : { variables }),
+        ...(sourceFailure === undefined ? {} : { nodeFailure: sourceFailure }),
+        ...(structuredInputs === undefined ? {} : { structuredInputs }),
+      },
+      expressionEvaluator,
+      signal,
+    );
+  } catch (error) {
+    if (signal.aborted || isAbortError(error))
+      operationError('attempt_aborted', 'node attempt was aborted');
+    operationError('attempt_invalid', 'mapping failed');
+  }
+  if (
+    resolution.kind === 'error' &&
+    (resolution.expression?.code === 'canceled' || signal.aborted)
+  )
+    operationError('attempt_aborted', 'node attempt was aborted');
+  if (resolution.kind === 'error')
+    operationError(
+      resolution.code === 'variable_missing' ||
+        resolution.expression?.code === 'variable_missing'
+        ? 'variable_missing'
+        : 'attempt_invalid',
+      'Mapping could not resolve; check its inputs and captured workspace variables.',
+    );
+  return resolution;
 }

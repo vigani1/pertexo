@@ -151,32 +151,7 @@ export function callOutcomeObservations(
       continue;
     }
     seen.set(fact.invocationKey, canonical);
-    const expectedKey = invocationKey({
-      workflowVersionId: checkpoint.workflowVersionId,
-      nodeId: fact.nodeId,
-      branchPath: (fact.branchPath ?? []).map(
-        ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
-      ),
-      iterationPath: fact.iterationPath ?? [],
-    });
-    const context = findExecutableNodeContext(graph, fact.nodeId);
-    if (
-      context?.ancestors.length !== (fact.iterationPath?.length ?? 0) ||
-      context.ancestors.some(
-        (loopNodeId, index) =>
-          fact.iterationPath?.[index]?.loopNodeId !== loopNodeId,
-      ) ||
-      (fact.branchPath ?? []).some(({ nodeId, outputPort }) => {
-        const node = nodes.get(nodeId);
-        return (
-          node === undefined ||
-          !configuredScopedOutputPorts(node)?.includes(outputPort)
-        );
-      }) ||
-      expectedKey !== fact.invocationKey ||
-      !isWorkflowCallDefinition(nodes.get(fact.nodeId)?.definition)
-    )
-      operationError('observation_invalid', 'Call outcome scope is invalid');
+    assertCallOutcomeScope(fact, { checkpoint, nodes, graph });
     const owner = checkpoint.invocations.find(
       ({ invocationKey }) => invocationKey === fact.invocationKey,
     );
@@ -197,12 +172,7 @@ export function callOutcomeObservations(
     observations.push({
       kind: 'outcome',
       invocationKey: fact.invocationKey,
-      status:
-        fact.status === 'succeeded'
-          ? 'succeeded'
-          : fact.status === 'outcome_unknown'
-            ? 'outcome_unknown'
-            : 'failed',
+      status: callOutcomeStatus(fact.status),
       ...(fact.status === 'succeeded'
         ? { output: { kind: 'call', callId: fact.callId } as const }
         : { reasonCode: fact.reasonCode ?? `call_child_${fact.status}` }),
@@ -210,4 +180,51 @@ export function callOutcomeObservations(
     });
   }
   return observations;
+}
+
+function assertCallOutcomeScope(
+  fact: WorkflowCallOutcome,
+  {
+    checkpoint,
+    nodes,
+    graph,
+  }: Readonly<{
+    checkpoint: WorkflowCheckpoint;
+    nodes: ReadonlyMap<string, WorkflowExecutableNode>;
+    graph: WorkflowExecutableGraph;
+  }>,
+): void {
+  const expectedKey = invocationKey({
+    workflowVersionId: checkpoint.workflowVersionId,
+    nodeId: fact.nodeId,
+    branchPath: (fact.branchPath ?? []).map(
+      ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
+    ),
+    iterationPath: fact.iterationPath ?? [],
+  });
+  const context = findExecutableNodeContext(graph, fact.nodeId);
+  if (
+    context?.ancestors.length !== (fact.iterationPath?.length ?? 0) ||
+    context.ancestors.some(
+      (loopNodeId, index) =>
+        fact.iterationPath?.[index]?.loopNodeId !== loopNodeId,
+    ) ||
+    (fact.branchPath ?? []).some(({ nodeId, outputPort }) => {
+      const node = nodes.get(nodeId);
+      return (
+        node === undefined ||
+        !configuredScopedOutputPorts(node)?.includes(outputPort)
+      );
+    }) ||
+    expectedKey !== fact.invocationKey ||
+    !isWorkflowCallDefinition(nodes.get(fact.nodeId)?.definition)
+  )
+    operationError('observation_invalid', 'Call outcome scope is invalid');
+}
+function callOutcomeStatus(
+  status: WorkflowCallOutcome['status'],
+): 'succeeded' | 'outcome_unknown' | 'failed' {
+  if (status === 'succeeded') return 'succeeded';
+  if (status === 'outcome_unknown') return 'outcome_unknown';
+  return 'failed';
 }
