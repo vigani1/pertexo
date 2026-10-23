@@ -42,15 +42,22 @@ function fixture(
       (absent === 'connection' && sql.startsWith('select id')) ||
       (absent === 'anchor' &&
         sql.startsWith('select 1 from app.workflow_integration_usage'));
+    let queryRows: unknown[];
+    if (missing || sql.includes('from app.workflow_folders')) {
+      queryRows = [];
+    } else {
+      if (sql.includes('workspace_memberships')) {
+        queryRows = [{ role: 'owner' }];
+      } else {
+        if (sql.startsWith('with page')) {
+          queryRows = rows;
+        } else {
+          queryRows = [{}];
+        }
+      }
+    }
     return Promise.resolve({
-      rows:
-        missing || sql.includes('from app.workflow_folders')
-          ? []
-          : sql.includes('workspace_memberships')
-            ? [{ role: 'owner' }]
-            : sql.startsWith('with page')
-              ? rows
-              : [{}],
+      rows: queryRows,
       rowCount: missing ? 0 : 1,
     });
   });

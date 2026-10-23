@@ -55,43 +55,9 @@ let inbox: ReturnType<typeof createWorkspaceInboxDatabase>;
 let admin: Pool;
 let worker: Pool;
 
-beforeAll(async () => {
-  await fixture.create();
-  await migrateDatabase({
-    appRole: 'pertexo_app',
-    connectionString: migrationUrl,
-    maintenanceRole: 'pertexo_maintenance',
-    ownerRole: 'pertexo_owner',
-  });
-  identity = createIdentityWorkspaceDatabase(
-    parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
-  );
-  tenant = createWorkspaceDatabase(
-    parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
-  );
-  fold = createWorkspaceInboxFoldStore(
-    parseDatabaseConfig({ connectionString: workerUrl, max: 6 }),
-  );
-  inbox = createWorkspaceInboxDatabase(
-    parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
-  );
-  admin = new Pool({ connectionString: fixture.databaseUrl(adminUrl), max: 2 });
-  worker = new Pool({ connectionString: workerUrl, max: 2 });
-}, 60_000);
+beforeAll(beforeAllFixture1, 60_000);
 
-afterAll(async () => {
-  const closing = await Promise.allSettled([
-    identity.close(),
-    tenant.close(),
-    fold.close(),
-    inbox.close(),
-    admin.end(),
-    worker.end(),
-  ]);
-  await fixture.drop();
-  const failure = closing.find((result) => result.status === 'rejected');
-  if (failure?.status === 'rejected') throw failure.reason;
-});
+afterAll(afterAllFixture2);
 
 async function threadId(workspaceId: string, workflowId: string) {
   const found = await admin.query<{ id: string }>(
@@ -260,6 +226,14 @@ const reader = (workspaceId: string, actorId: string) => ({
 });
 
 describe('workspace inbox threads (ADR 055)', () => {
+  registerAcceptsReviewedFoldCommandsAt();
+
+  registerKeepsThreadUnreadFailuresReader();
+
+  registerExpiresIdleThreadsReads();
+});
+
+function registerAcceptsReviewedFoldCommandsAt(): void {
   it('accepts the reviewed fold commands at startup', async () => {
     await expect(fold.checkReadiness()).resolves.toBeUndefined();
   });
@@ -445,7 +419,9 @@ describe('workspace inbox threads (ADR 055)', () => {
       inbox.readSummary(reader(workspaceId, members.owner)),
     ).resolves.toMatchObject({ unreadCount: 0 });
   });
+}
 
+function registerKeepsThreadUnreadFailuresReader(): void {
   it('keeps a thread unread for failures its reader has not seen', async () => {
     const { workspaceId, first, second, members } = await seed();
     await fail(workspaceId, first);
@@ -635,7 +611,9 @@ describe('workspace inbox threads (ADR 055)', () => {
     );
     expect(read?.read_revision).toBe(revision);
   });
+}
 
+function registerExpiresIdleThreadsReads(): void {
   it('expires idle threads with their reads', async () => {
     const idle = await seed();
     await fail(idle.workspaceId, idle.first);
@@ -712,4 +690,42 @@ describe('workspace inbox threads (ADR 055)', () => {
       { events: 0, threads: 1, reads: 0 },
     ]);
   });
-});
+}
+
+async function beforeAllFixture1() {
+  await fixture.create();
+  await migrateDatabase({
+    appRole: 'pertexo_app',
+    connectionString: migrationUrl,
+    maintenanceRole: 'pertexo_maintenance',
+    ownerRole: 'pertexo_owner',
+  });
+  identity = createIdentityWorkspaceDatabase(
+    parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
+  );
+  tenant = createWorkspaceDatabase(
+    parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
+  );
+  fold = createWorkspaceInboxFoldStore(
+    parseDatabaseConfig({ connectionString: workerUrl, max: 6 }),
+  );
+  inbox = createWorkspaceInboxDatabase(
+    parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
+  );
+  admin = new Pool({ connectionString: fixture.databaseUrl(adminUrl), max: 2 });
+  worker = new Pool({ connectionString: workerUrl, max: 2 });
+}
+
+async function afterAllFixture2() {
+  const closing = await Promise.allSettled([
+    identity.close(),
+    tenant.close(),
+    fold.close(),
+    inbox.close(),
+    admin.end(),
+    worker.end(),
+  ]);
+  await fixture.drop();
+  const failure = closing.find((result) => result.status === 'rejected');
+  if (failure?.status === 'rejected') throw failure.reason;
+}

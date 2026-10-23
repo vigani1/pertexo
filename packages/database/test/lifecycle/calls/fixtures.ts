@@ -85,6 +85,16 @@ export async function createFamily(
     [childRunId, childWorkflowId, childVersionId, input.childDays],
   ] as const) {
     const createdAt = daysAgo((age ?? 0) + 40);
+    let runStatus: 'queued' | 'waiting' | 'succeeded';
+    if (age === undefined) {
+      if (runId === childRunId && input.childQueued === true) {
+        runStatus = 'queued';
+      } else {
+        runStatus = 'waiting';
+      }
+    } else {
+      runStatus = 'succeeded';
+    }
     await admin.query(
       `insert into app.workflow_runs
        (id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,input_ref,
@@ -95,11 +105,7 @@ export async function createFamily(
         workspaceId,
         workflowId,
         versionId,
-        age === undefined
-          ? runId === childRunId && input.childQueued === true
-            ? 'queued'
-            : 'waiting'
-          : 'succeeded',
+        runStatus,
         inline({ input: runId }),
         new Date(createdAt.getTime() + 30 * 86_400_000),
         age === undefined ? null : inline({ result: runId }),

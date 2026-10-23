@@ -28,6 +28,12 @@ import {
 installExecutionAcceptanceFixture();
 
 describe('workflow run capacity admission', () => {
+  registerAtomicallyAdmitsExactlyOneHundred();
+
+  registerResolvesExactReplayBeforeLater();
+});
+
+function registerAtomicallyAdmitsExactlyOneHundred(): void {
   it('atomically admits exactly one hundred of one hundred and one concurrent queued runs', async () => {
     const outcomes = await Promise.allSettled(
       Array.from({ length: 101 }, (_, index) =>
@@ -236,7 +242,9 @@ describe('workflow run capacity admission', () => {
       accepted.some(({ runId }) => runId === released.events[0]?.aggregateId),
     ).toBe(true);
   });
+}
 
+function registerResolvesExactReplayBeforeLater(): void {
   it('resolves an exact replay before a later entitlement suspension', async () => {
     const first = await apiDatabase.withWorkspace(workspaceA, (transaction) =>
       acceptWorkflowRun(transaction, acceptanceInput()),
@@ -439,4 +447,4 @@ describe('workflow run capacity admission', () => {
     );
     expect(counters.rows).toEqual([{ active_runs: 5, queued_runs: 0 }]);
   });
-});
+}

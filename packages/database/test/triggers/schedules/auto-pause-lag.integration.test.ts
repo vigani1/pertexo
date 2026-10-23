@@ -22,32 +22,14 @@ const { actorId, workspaceId, workflowId, ownerQuery, checkpointFactory } =
 const triggerId = randomUUID();
 let authoring: ReturnType<typeof createWorkflowAuthoringDatabase>;
 let observer: Pool;
-beforeAll(async () => {
-  await fixture.initialize();
-  authoring = createWorkflowAuthoringDatabase(
-    parseDatabaseConfig({
-      connectionString: fixture.apiConnectionString,
-      max: 2,
-    }),
-    { executableCompiler: testExecutableCompiler },
-  );
-  const adminUrl = new URL(
-    process.env.DATABASE_ADMIN_URL ??
-      'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres',
-  );
-  adminUrl.pathname = new URL(fixture.apiConnectionString).pathname;
-  observer = new Pool({ connectionString: adminUrl.toString(), max: 2 });
-}, 60_000);
+beforeAll(beforeAllFixture1, 60_000);
 function closeAuthoring(value: { close(): Promise<void> } | undefined) {
   return value?.close();
 }
 function closeObserver(value: Pool | undefined) {
   return value?.end();
 }
-afterAll(async () => {
-  await Promise.all([closeAuthoring(authoring), closeObserver(observer)]);
-  await fixture.close();
-});
+afterAll(afterAllFixture2);
 const scope = { actorId, workspaceId, workflowId };
 type Lease = Readonly<{ trigger_id: string; lease_token: string }>;
 /** Whether admission sees the instant as paused, in a new transaction. */
@@ -213,6 +195,10 @@ async function waitBlocked(blockerPid: number) {
 }
 
 describe('paused schedule admission after resume and scanner lag', () => {
+  registerNeverAdmitsHourlySOccurrence();
+});
+
+function registerNeverAdmitsHourlySOccurrence(): void {
   it.each(['catch_up_once', 'skip'] as const)(
     'never admits an hourly %s occurrence that fell due during a completed pause',
     async (policy) => {
@@ -368,6 +354,7 @@ describe('paused schedule admission after resume and scanner lag', () => {
       await release(lease);
     }
   });
+
   it('sees the committed interval after admission waits on an in-progress resume', async () => {
     const due = await configure(randomUUID());
     const revision = await pause();
@@ -418,4 +405,26 @@ describe('paused schedule admission after resume and scanner lag', () => {
       await release(lease);
     }
   });
-});
+}
+
+async function beforeAllFixture1() {
+  await fixture.initialize();
+  authoring = createWorkflowAuthoringDatabase(
+    parseDatabaseConfig({
+      connectionString: fixture.apiConnectionString,
+      max: 2,
+    }),
+    { executableCompiler: testExecutableCompiler },
+  );
+  const adminUrl = new URL(
+    process.env.DATABASE_ADMIN_URL ??
+      'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres',
+  );
+  adminUrl.pathname = new URL(fixture.apiConnectionString).pathname;
+  observer = new Pool({ connectionString: adminUrl.toString(), max: 2 });
+}
+
+async function afterAllFixture2() {
+  await Promise.all([closeAuthoring(authoring), closeObserver(observer)]);
+  await fixture.close();
+}

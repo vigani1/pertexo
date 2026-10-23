@@ -91,59 +91,113 @@ async function executeAsOwner(statement: string): Promise<void> {
   }
 }
 
-beforeAll(async () => {
-  await fixture.create();
-  await migrateDatabase(migrationConfig);
-  ownerPool = new Pool({ connectionString: migrationUrl, max: 1 });
-  database = createWorkspaceDatabase(
-    parseDatabaseConfig({
-      connectionString: apiUrl,
-      max: 1,
-      ownerRole: 'pertexo_owner',
-    }),
-  );
-  await database.withWorkspace(workspaceA, async ({ db, workspaceId }) => {
-    await db.insert(rlsProbeRecords).values({
-      id: recordA,
-      workspaceId,
-      label: 'workspace-a',
-    });
-  });
-  await database.withWorkspace(workspaceB, async ({ db, workspaceId }) => {
-    await db.insert(rlsProbeRecords).values({
-      id: recordB,
-      workspaceId,
-      label: 'workspace-b',
-    });
-  });
-}, 60_000);
+beforeAll(beforeAllFixture1, 60_000);
 
-afterAll(async () => {
-  const failures: unknown[] = [];
-  const cleanup: (() => Promise<void>)[] = [];
-  // beforeAll can fail before these runtime owners are assigned.
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  if (database !== undefined) cleanup.push(() => database.close());
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  if (ownerPool !== undefined) cleanup.push(() => ownerPool.end());
-  cleanup.push(() => databaseAdminPool.end());
-  cleanup.push(() => fixture.drop());
-  cleanup.push(async () => {
-    await adminPool.query(`drop role if exists "${inheritedRole}"`);
-  });
-  cleanup.push(() => adminPool.end());
-  for (const close of cleanup) {
-    try {
-      await close();
-    } catch (error: unknown) {
-      failures.push(error);
-    }
-  }
-  if (failures.length > 0)
-    throw new AggregateError(failures, 'RLS fixture cleanup failed');
-});
+afterAll(afterAllFixture2);
 
 describe('workspace transaction boundary', () => {
+  registerKeepsReviewedMigrationsIdempotentAfter();
+
+  registerClearsTransactionLocalContextBefore();
+});
+
+describe.each([
+  ['api', apiUrl],
+  ['worker', workerUrl],
+])('%s runtime database role', (_roleName, connectionString) => {
+  it('fails closed without workspace context', async () => {
+    const pool = new Pool({ connectionString, max: 1 });
+    try {
+      const read = await pool.query('select id from app.rls_probe_records');
+      expect(read.rows).toEqual([]);
+      await expect(
+        pool.query(
+          'insert into app.rls_probe_records (id, workspace_id, label) values ($1, $2, $3)',
+          [randomUUID(), workspaceA, 'unscoped'],
+        ),
+      ).rejects.toSatisfy(expectPgCode('42501'));
+    } finally {
+      await pool.end();
+    }
+  });
+
+  it('is neither privileged nor a member of the owner role', async () => {
+    const pool = new Pool({ connectionString });
+    try {
+      const result = await pool.query<{
+        owner_member: boolean;
+        rolbypassrls: boolean;
+        rolsuper: boolean;
+      }>(`
+        select
+          role.rolsuper,
+          role.rolbypassrls,
+          exists (
+            select 1
+            from pg_auth_members membership
+            join pg_roles owner_role on owner_role.oid = membership.roleid
+            where membership.member = role.oid
+              and owner_role.rolname = 'pertexo_owner'
+          ) as owner_member
+        from pg_roles role
+        where role.rolname = current_user
+      `);
+      expect(result.rows[0]).toEqual({
+        owner_member: false,
+        rolbypassrls: false,
+        rolsuper: false,
+      });
+    } finally {
+      await pool.end();
+    }
+  });
+
+  it('cannot disable row security at query time', async () => {
+    const pool = new Pool({ connectionString });
+    const client = await pool.connect();
+    try {
+      await client.query('begin');
+      await client.query('set local row_security = off');
+      await expect(
+        client.query('select id from app.rls_probe_records'),
+      ).rejects.toSatisfy(expectPgCode('42501'));
+      await client.query('rollback');
+    } finally {
+      client.release();
+      await pool.end();
+    }
+  });
+
+  it.each([
+    ['truncate table app.rls_probe_records', '42501'],
+    ['alter table app.rls_probe_records disable row level security', '42501'],
+    [
+      'drop policy rls_probe_records_workspace_scope on app.rls_probe_records',
+      '42501',
+    ],
+    ['set role pertexo_owner', '42501'],
+    ['set role pertexo_migration', '42501'],
+    ['set role pertexo_maintenance', '42501'],
+  ])(
+    'cannot execute privileged statement: %s',
+    async (statement, expectedCode) => {
+      const pool = new Pool({ connectionString });
+      try {
+        await expect(pool.query(statement)).rejects.toSatisfy(
+          expectPgCode(expectedCode),
+        );
+      } finally {
+        await pool.end();
+      }
+    },
+  );
+});
+
+describe('database compatibility and readiness', () => {
+  registerVerifiesBoundedSteadyStateMigration();
+});
+
+function registerKeepsReviewedMigrationsIdempotentAfter(): void {
   it('keeps reviewed migrations idempotent after reaching head', async () => {
     await expect(migrateDatabase(migrationConfig)).resolves.toEqual([]);
   });
@@ -335,7 +389,9 @@ describe('workspace transaction boundary', () => {
       await concurrentDatabase.close();
     }
   });
+}
 
+function registerClearsTransactionLocalContextBefore(): void {
   it('clears transaction-local context before the same client is reused', async () => {
     const pool = new Pool({ connectionString: apiUrl, max: 1 });
     const client = await pool.connect();
@@ -383,101 +439,9 @@ describe('workspace transaction boundary', () => {
       await pool.end();
     }
   });
-});
+}
 
-describe.each([
-  ['api', apiUrl],
-  ['worker', workerUrl],
-])('%s runtime database role', (_roleName, connectionString) => {
-  it('fails closed without workspace context', async () => {
-    const pool = new Pool({ connectionString, max: 1 });
-    try {
-      const read = await pool.query('select id from app.rls_probe_records');
-      expect(read.rows).toEqual([]);
-      await expect(
-        pool.query(
-          'insert into app.rls_probe_records (id, workspace_id, label) values ($1, $2, $3)',
-          [randomUUID(), workspaceA, 'unscoped'],
-        ),
-      ).rejects.toSatisfy(expectPgCode('42501'));
-    } finally {
-      await pool.end();
-    }
-  });
-
-  it('is neither privileged nor a member of the owner role', async () => {
-    const pool = new Pool({ connectionString });
-    try {
-      const result = await pool.query<{
-        owner_member: boolean;
-        rolbypassrls: boolean;
-        rolsuper: boolean;
-      }>(`
-        select
-          role.rolsuper,
-          role.rolbypassrls,
-          exists (
-            select 1
-            from pg_auth_members membership
-            join pg_roles owner_role on owner_role.oid = membership.roleid
-            where membership.member = role.oid
-              and owner_role.rolname = 'pertexo_owner'
-          ) as owner_member
-        from pg_roles role
-        where role.rolname = current_user
-      `);
-      expect(result.rows[0]).toEqual({
-        owner_member: false,
-        rolbypassrls: false,
-        rolsuper: false,
-      });
-    } finally {
-      await pool.end();
-    }
-  });
-
-  it('cannot disable row security at query time', async () => {
-    const pool = new Pool({ connectionString });
-    const client = await pool.connect();
-    try {
-      await client.query('begin');
-      await client.query('set local row_security = off');
-      await expect(
-        client.query('select id from app.rls_probe_records'),
-      ).rejects.toSatisfy(expectPgCode('42501'));
-      await client.query('rollback');
-    } finally {
-      client.release();
-      await pool.end();
-    }
-  });
-
-  it.each([
-    ['truncate table app.rls_probe_records', '42501'],
-    ['alter table app.rls_probe_records disable row level security', '42501'],
-    [
-      'drop policy rls_probe_records_workspace_scope on app.rls_probe_records',
-      '42501',
-    ],
-    ['set role pertexo_owner', '42501'],
-    ['set role pertexo_migration', '42501'],
-    ['set role pertexo_maintenance', '42501'],
-  ])(
-    'cannot execute privileged statement: %s',
-    async (statement, expectedCode) => {
-      const pool = new Pool({ connectionString });
-      try {
-        await expect(pool.query(statement)).rejects.toSatisfy(
-          expectPgCode(expectedCode),
-        );
-      } finally {
-        await pool.end();
-      }
-    },
-  );
-});
-
-describe('database compatibility and readiness', () => {
+function registerVerifiesBoundedSteadyStateMigration(): void {
   it('verifies bounded steady-state migration, PostgreSQL, and role readiness', async () => {
     await expect(database.checkReadiness()).resolves.toEqual({
       migrationHead: EXPECTED_MIGRATION_HEAD,
@@ -502,4 +466,56 @@ describe('database compatibility and readiness', () => {
         `);
     }
   });
-});
+}
+
+async function beforeAllFixture1() {
+  await fixture.create();
+  await migrateDatabase(migrationConfig);
+  ownerPool = new Pool({ connectionString: migrationUrl, max: 1 });
+  database = createWorkspaceDatabase(
+    parseDatabaseConfig({
+      connectionString: apiUrl,
+      max: 1,
+      ownerRole: 'pertexo_owner',
+    }),
+  );
+  await database.withWorkspace(workspaceA, async ({ db, workspaceId }) => {
+    await db.insert(rlsProbeRecords).values({
+      id: recordA,
+      workspaceId,
+      label: 'workspace-a',
+    });
+  });
+  await database.withWorkspace(workspaceB, async ({ db, workspaceId }) => {
+    await db.insert(rlsProbeRecords).values({
+      id: recordB,
+      workspaceId,
+      label: 'workspace-b',
+    });
+  });
+}
+
+async function afterAllFixture2() {
+  const failures: unknown[] = [];
+  const cleanup: (() => Promise<void>)[] = [];
+  // beforeAll can fail before these runtime owners are assigned.
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  if (database !== undefined) cleanup.push(() => database.close());
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  if (ownerPool !== undefined) cleanup.push(() => ownerPool.end());
+  cleanup.push(() => databaseAdminPool.end());
+  cleanup.push(() => fixture.drop());
+  cleanup.push(async () => {
+    await adminPool.query(`drop role if exists "${inheritedRole}"`);
+  });
+  cleanup.push(() => adminPool.end());
+  for (const close of cleanup) {
+    try {
+      await close();
+    } catch (error: unknown) {
+      failures.push(error);
+    }
+  }
+  if (failures.length > 0)
+    throw new AggregateError(failures, 'RLS fixture cleanup failed');
+}

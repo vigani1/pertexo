@@ -76,38 +76,19 @@ const coordinator = (objectStore = emptyObjectStore) =>
     objectStore,
   );
 
-beforeAll(async () => {
-  const admin = new Pool({ connectionString: adminBaseUrl, max: 1 });
-  try {
-    await admin.query(`create database "${databaseName}" owner pertexo_owner`);
-    await admin.query(`revoke all on database "${databaseName}" from public`);
-    await admin.query(
-      `grant connect on database "${databaseName}" to pertexo_migration,
-       pertexo_maintenance,pertexo_app`,
-    );
-  } finally {
-    await admin.end();
-  }
-  await migrateDatabase({
-    connectionString: databaseUrl,
-    ownerRole: 'pertexo_owner',
-    appRole: 'pertexo_app',
-    maintenanceRole: 'pertexo_maintenance',
-  });
-  owner = new Pool({ connectionString: databaseUrl, max: 1 });
-});
+beforeAll(beforeAllFixture1);
 
-afterAll(async () => {
-  await owner?.end();
-  const admin = new Pool({ connectionString: adminBaseUrl, max: 1 });
-  try {
-    await dropDisconnectedDatabase(admin, databaseName);
-  } finally {
-    await admin.end();
-  }
-});
+afterAll(afterAllFixture2);
 
 describe('workspace purge', () => {
+  registerRemovesDirectoryManagedGrantsOther();
+
+  registerPurgesEveryWorkspaceTableKeeps();
+
+  registerNamesEveryWorkspaceTablePurged();
+});
+
+function registerRemovesDirectoryManagedGrantsOther(): void {
   it('removes directory-managed grants in other linked workspaces before deleting the control organization', async () => {
     const control = await createWorkspace(),
       linked = await createWorkspace();
@@ -208,6 +189,7 @@ describe('workspace purge', () => {
       await inspector.end();
     }
   });
+
   it.each(['oidc', 'saml'] as const)(
     'purges %s organization identities in bounded pages without removing ordinary credentials or another workspace',
     async (kind) => {
@@ -310,7 +292,9 @@ describe('workspace purge', () => {
       }
     },
   );
+}
 
+function registerPurgesEveryWorkspaceTableKeeps(): void {
   it('purges every workspace table, keeps scrubbed facts and leaves a tombstone', async () => {
     if (owner === undefined) throw new Error('Owner pool unavailable');
     const workspaceId = randomUUID();
@@ -766,7 +750,9 @@ describe('workspace purge', () => {
       await admin.end();
     }
   }, 30_000);
+}
 
+function registerNamesEveryWorkspaceTablePurged(): void {
   it('names every workspace table as purged or kept', async () => {
     if (owner === undefined) throw new Error('Owner pool unavailable');
     const tables = await owner.query<{ name: string }>(
@@ -883,4 +869,35 @@ describe('workspace purge', () => {
       await purge.close();
     }
   });
-});
+}
+
+async function beforeAllFixture1() {
+  const admin = new Pool({ connectionString: adminBaseUrl, max: 1 });
+  try {
+    await admin.query(`create database "${databaseName}" owner pertexo_owner`);
+    await admin.query(`revoke all on database "${databaseName}" from public`);
+    await admin.query(
+      `grant connect on database "${databaseName}" to pertexo_migration,
+       pertexo_maintenance,pertexo_app`,
+    );
+  } finally {
+    await admin.end();
+  }
+  await migrateDatabase({
+    connectionString: databaseUrl,
+    ownerRole: 'pertexo_owner',
+    appRole: 'pertexo_app',
+    maintenanceRole: 'pertexo_maintenance',
+  });
+  owner = new Pool({ connectionString: databaseUrl, max: 1 });
+}
+
+async function afterAllFixture2() {
+  await owner?.end();
+  const admin = new Pool({ connectionString: adminBaseUrl, max: 1 });
+  try {
+    await dropDisconnectedDatabase(admin, databaseName);
+  } finally {
+    await admin.end();
+  }
+}

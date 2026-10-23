@@ -10,7 +10,9 @@ import { seedApproval, seedNoticeWorkspace } from '../notices.fixture.js';
 
 it('lets an approval decision finish while its notice waits for the same run', async () => {
   const f = await seedNoticeWorkspace();
-  const task = await seedApproval(f.workspaceId, f.workflowId, f.members.owner);
+  const task = await seedApproval(f.workspaceId, f.workflowId, {
+    starter: f.members.owner,
+  });
   const pool = new Pool({ connectionString: apiUrl, max: 3 });
   let observerPid: number | undefined;
   let observed:

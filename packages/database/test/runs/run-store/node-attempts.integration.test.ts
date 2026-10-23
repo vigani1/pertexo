@@ -260,6 +260,30 @@ async function seedSlackDispatchPublication(connectionId: string) {
 }
 
 describe('Coordinator node-attempt persistence invariants', () => {
+  registerLeasesAdmittedButUnstartedWork();
+
+  registerReconcilesDurableUnknownOutcomeEvidence();
+
+  registerRecordsAttemptInputUnderLive();
+
+  registerRollsBackFullCompletionTransaction();
+
+  registerMatchesExecutorFailureReplayFields();
+
+  registerClaimsOneTransportBoundReady();
+
+  registerCommitsReplaysOneExactTerminal();
+
+  registerLoadsImmutablePersistedUpstreamValue();
+
+  registerKeepsHTTPSlackDispatchMarkers();
+
+  registerAtomicallySuspendsAttemptDatabaseTime();
+
+  registerLetsOperatorRecordCommandsReplays();
+});
+
+function registerLeasesAdmittedButUnstartedWork(): void {
   it.each(['canceled', 'timed_out'] as const)(
     'leases admitted but unstarted work solely to settle %s',
     async (control) => {
@@ -391,7 +415,9 @@ describe('Coordinator node-attempt persistence invariants', () => {
       await pool.end();
     }
   });
+}
 
+function registerReconcilesDurableUnknownOutcomeEvidence(): void {
   it('reconciles durable unknown-outcome evidence exactly once and rejects mismatches and stale state', async () => {
     const workerDatabase = createWorkspaceDatabase(
       parseDatabaseConfig({
@@ -603,7 +629,9 @@ describe('Coordinator node-attempt persistence invariants', () => {
       ],
     });
   });
+}
 
+function registerRecordsAttemptInputUnderLive(): void {
   it('records an attempt input under its live lease, and nothing once it is lost', async () => {
     const lease = await claimDispatchAttempt(`record-input-${randomUUID()}`);
     const signal = new AbortController().signal;
@@ -745,7 +773,9 @@ describe('Coordinator node-attempt persistence invariants', () => {
       ]);
     }
   });
+}
 
+function registerRollsBackFullCompletionTransaction(): void {
   it('rolls back the full completion transaction after attempt update and after outbox insert', async () => {
     const completionState = (
       lease: Awaited<ReturnType<typeof claimDispatchAttempt>>,
@@ -959,7 +989,9 @@ describe('Coordinator node-attempt persistence invariants', () => {
       expect(stored.rows).toEqual([{ error_summary: outcome.errorSummary }]);
     },
   );
+}
 
+function registerMatchesExecutorFailureReplayFields(): void {
   it.each([undefined, 30_000])(
     'matches executor-failure replay fields before and after coordinator decision (hint %s)',
     async (minimumRetryDelayMillis) => {
@@ -1168,7 +1200,9 @@ describe('Coordinator node-attempt persistence invariants', () => {
       rows: [{ code: 'Provider.Failure', run_status: 'failed' }],
     });
   });
+}
 
+function registerClaimsOneTransportBoundReady(): void {
   it('claims one transport-bound ready attempt with a durable fence', async () => {
     const lease = await claimDispatchAttempt('manual', {
       runInput: { hello: 'world' },
@@ -1384,7 +1418,9 @@ describe('Coordinator node-attempt persistence invariants', () => {
     expect(heartbeat.abortRequested).toBe(false);
     expect(heartbeat.leaseExpiresAt).toBeInstanceOf(Date);
   });
+}
 
+function registerCommitsReplaysOneExactTerminal(): void {
   it('commits and replays one exact terminal value and audits a mismatched delivery once', async () => {
     const lease = await claimDispatchAttempt('manual-completion', {
       sideEffectClass: 'safe',
@@ -1553,7 +1589,9 @@ describe('Coordinator node-attempt persistence invariants', () => {
       ),
     ).resolves.toMatchObject({ rows: [{ count: 1 }] });
   });
+}
 
+function registerLoadsImmutablePersistedUpstreamValue(): void {
   it('loads the immutable persisted upstream value for an independent downstream attempt', async () => {
     const lease = await claimDispatchAttempt('manual-upstream', {
       sideEffectClass: 'safe',
@@ -1722,7 +1760,9 @@ describe('Coordinator node-attempt persistence invariants', () => {
       ],
     });
   });
+}
 
+function registerKeepsHTTPSlackDispatchMarkers(): void {
   it('keeps HTTP and Slack dispatch markers fenced across credential rotation', async () => {
     for (const target of [
       { providerKey: 'http', authType: 'http_headers' },
@@ -1854,7 +1894,9 @@ describe('Coordinator node-attempt persistence invariants', () => {
       expect(verified.rows[0]?.provider_dispatch_binding).toBe(rotatedBinding);
     }
   }, 30_000);
+}
 
+function registerAtomicallySuspendsAttemptDatabaseTime(): void {
   it('atomically suspends an attempt from database time without an early wakeup', async () => {
     const runId = await insertRun({
       inputRef: { kind: 'inline', value: { held: true } },
@@ -2265,7 +2307,9 @@ describe('Coordinator node-attempt persistence invariants', () => {
       wait_kind: null,
     });
   });
+}
 
+function registerLetsOperatorRecordCommandsReplays(): void {
   it('lets only the operator record commands and replays a fence dry run', async () => {
     const operatorBaseUrl =
       process.env.DATABASE_MAINTENANCE_URL ??
@@ -2464,4 +2508,4 @@ describe('Coordinator node-attempt persistence invariants', () => {
       await operator.close();
     }
   });
-});
+}

@@ -164,6 +164,16 @@ it.each(['publication', 'archive', 'pause', 'expiry'] as const)(
     await due(f);
     await scan();
     expect((await counts(f))?.runs).toBe(change === 'pause' ? 1 : 0);
+    let refusalReason;
+    if (change === 'publication') {
+      refusalReason = 'publication_changed';
+    } else {
+      if (change === 'expiry') {
+        refusalReason = 'coordination_timeout';
+      } else {
+        refusalReason = 'workflow_unavailable';
+      }
+    }
     expect(
       await f.query(
         'select status,reason,input_ref from app.trigger_coordinated_events',
@@ -171,12 +181,7 @@ it.each(['publication', 'archive', 'pause', 'expiry'] as const)(
     ).toEqual([
       {
         status: 'refused',
-        reason:
-          change === 'publication'
-            ? 'publication_changed'
-            : change === 'expiry'
-              ? 'coordination_timeout'
-              : 'workflow_unavailable',
+        reason: refusalReason,
         input_ref: null,
       },
     ]);

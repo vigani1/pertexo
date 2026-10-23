@@ -631,9 +631,15 @@ export function importWrite(
 export async function currentRepresentationTag(
   database: WorkflowAuthoringDatabase,
   scopedWorkspaceId: string,
-  scopedWorkflowId: string,
-  scopedActorId: string,
-  definitionCatalog?: WorkflowDefinitionCatalog,
+  {
+    scopedWorkflowId,
+    scopedActorId,
+    definitionCatalog,
+  }: Readonly<{
+    scopedWorkflowId: string;
+    scopedActorId: string;
+    definitionCatalog?: WorkflowDefinitionCatalog | undefined;
+  }>,
 ): Promise<string> {
   const draft = await database.getDraft(
     scopedWorkspaceId,
@@ -665,8 +671,7 @@ export async function saveCurrentDraft(
     representationTag: await currentRepresentationTag(
       database,
       input.workspaceId,
-      input.workflowId,
-      input.actorId,
+      { scopedWorkflowId: input.workflowId, scopedActorId: input.actorId },
     ),
   });
 }
@@ -806,8 +811,7 @@ beforeAll(async () => {
       representationTag: await currentRepresentationTag(
         authoring,
         otherWorkspaceId,
-        otherWorkflowId,
-        otherActorId,
+        { scopedWorkflowId: otherWorkflowId, scopedActorId: otherActorId },
       ),
       idempotencyKey: 'publish-other-workflow',
       requestHash: '0'.repeat(64),

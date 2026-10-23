@@ -18,46 +18,20 @@ const {
 } = schedule;
 const quotaTriggerId = randomUUID();
 
-beforeAll(async () => {
-  await schedule.initialize();
-  const interruptedClaim = await schedule.worker.query<{ trigger_id: string }>(
-    'select * from app.claim_due_trigger_schedules($1,1,1)',
-    ['initial-interrupted-scanner'],
-  );
-  if (interruptedClaim.rows[0]?.trigger_id !== triggerId) {
-    throw new Error('Expected schedule prerequisite claim was not established');
-  }
-  const skippedScan = await schedule.scannerOne.scanDue({
-    leaseOwner: 'initial-skip-scanner',
-    limit: 1,
-    leaseSeconds: 30,
-    onTimeWindowSeconds: 300,
-    checkpointFactory,
-  });
-  if (skippedScan.skipped !== 1) {
-    throw new Error('Skipped schedule prerequisite was not established');
-  }
-  await ownerQuery(
-    `update app.trigger_schedules
-        set lease_acquired_at=clock_timestamp()-interval '2 seconds',
-            lease_expires_at=clock_timestamp()-interval '1 second'
-      where trigger_id=$1`,
-    [triggerId],
-  );
-  const acceptedScan = await schedule.scannerOne.scanDue({
-    leaseOwner: 'initial-acceptance-scanner',
-    limit: 1,
-    leaseSeconds: 30,
-    onTimeWindowSeconds: 300,
-    checkpointFactory,
-  });
-  if (acceptedScan.accepted !== 1) {
-    throw new Error('Accepted schedule prerequisite was not established');
-  }
-}, 60_000);
+beforeAll(beforeAllFixture1, 60_000);
 afterAll(schedule.close);
 
 describe('schedule trigger PostgreSQL slice', () => {
+  registerDeduplicatesOccurrencePreservesSaturatedOccurrence();
+
+  registerRetainsLiveQuotaBackoffAcross();
+
+  registerRecordsSkipSupersedesPublicationOperates();
+
+  registerRecordsDurableSecurityFactReconciliation();
+});
+
+function registerDeduplicatesOccurrencePreservesSaturatedOccurrence(): void {
   it('deduplicates an occurrence and preserves a saturated occurrence until capacity recovers', async () => {
     const dedupeWorkflowId = randomUUID();
     const dedupeVersionId = randomUUID();
@@ -252,7 +226,9 @@ describe('schedule trigger PostgreSQL slice', () => {
       rows: [{ health_status: 'healthy', last_error_code: null }],
     });
   });
+}
 
+function registerRetainsLiveQuotaBackoffAcross(): void {
   it('retains live quota backoff across commands and clears resolved health evidence', async () => {
     const healthWorkflowId = randomUUID();
     const healthVersionId = randomUUID();
@@ -381,7 +357,9 @@ describe('schedule trigger PostgreSQL slice', () => {
       ),
     ).resolves.toMatchObject({ rows: [{ resolved: true }] });
   });
+}
 
+function registerRecordsSkipSupersedesPublicationOperates(): void {
   it('records skip, supersedes publication, and operates on only the resulting current schedule', async () => {
     const skipped = await ownerQuery(
       `select disposition,workflow_run_id from app.trigger_schedule_occurrences
@@ -581,7 +559,9 @@ describe('schedule trigger PostgreSQL slice', () => {
     });
     expect(enabled.trigger.nextFireAt).toEqual(first.trigger.nextFireAt);
   });
+}
 
+function registerRecordsDurableSecurityFactReconciliation(): void {
   it('records a durable security fact for reconciliation checksum mismatches without reapplying the trigger', async () => {
     const current = await ownerQuery<{ published_version_id: string }>(
       'select published_version_id from app.workflows where id=$1',
@@ -699,4 +679,42 @@ describe('schedule trigger PostgreSQL slice', () => {
     );
     expect(second.rows[0]?.facts).toBe('1');
   });
-});
+}
+
+async function beforeAllFixture1() {
+  await schedule.initialize();
+  const interruptedClaim = await schedule.worker.query<{ trigger_id: string }>(
+    'select * from app.claim_due_trigger_schedules($1,1,1)',
+    ['initial-interrupted-scanner'],
+  );
+  if (interruptedClaim.rows[0]?.trigger_id !== triggerId) {
+    throw new Error('Expected schedule prerequisite claim was not established');
+  }
+  const skippedScan = await schedule.scannerOne.scanDue({
+    leaseOwner: 'initial-skip-scanner',
+    limit: 1,
+    leaseSeconds: 30,
+    onTimeWindowSeconds: 300,
+    checkpointFactory,
+  });
+  if (skippedScan.skipped !== 1) {
+    throw new Error('Skipped schedule prerequisite was not established');
+  }
+  await ownerQuery(
+    `update app.trigger_schedules
+        set lease_acquired_at=clock_timestamp()-interval '2 seconds',
+            lease_expires_at=clock_timestamp()-interval '1 second'
+      where trigger_id=$1`,
+    [triggerId],
+  );
+  const acceptedScan = await schedule.scannerOne.scanDue({
+    leaseOwner: 'initial-acceptance-scanner',
+    limit: 1,
+    leaseSeconds: 30,
+    onTimeWindowSeconds: 300,
+    checkpointFactory,
+  });
+  if (acceptedScan.accepted !== 1) {
+    throw new Error('Accepted schedule prerequisite was not established');
+  }
+}

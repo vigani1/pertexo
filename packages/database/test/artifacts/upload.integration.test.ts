@@ -183,86 +183,25 @@ async function cleanupFixture(): Promise<void> {
   });
 }
 
-beforeAll(async () => {
-  try {
-    await fixture.create();
-    databaseCreated = true;
-    await migrateDatabase(migrationConfig);
-    database = createArtifactUploadDatabase(
-      parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
-    );
-    databaseAcquired = true;
-    apiProbePool = new Pool({ connectionString: apiUrl, max: 1 });
-    apiProbePoolAcquired = true;
-    ownerPool = new Pool({ connectionString: migrationUrl, max: 2 });
-    ownerPoolAcquired = true;
-  } catch (error: unknown) {
-    const cleanup = await Promise.allSettled([
-      ...(databaseAcquired ? [database.close()] : []),
-      ...(apiProbePoolAcquired ? [apiProbePool.end()] : []),
-      ...(ownerPoolAcquired ? [ownerPool.end()] : []),
-      ...(databaseCreated ? [fixture.drop()] : []),
-    ]);
-    const failures: unknown[] = [error];
-    for (const result of cleanup)
-      if (result.status === 'rejected') failures.push(result.reason);
-    throw new AggregateError(failures, 'Artifact upload fixture setup failed');
-  }
-});
+beforeAll(beforeAllFixture1);
 
-beforeEach(async () => {
-  workspaceId = randomUUID();
-  actorId = randomUUID();
-  sessionId = randomUUID();
-  await ownerTransaction(async (client) => {
-    await client.query(
-      `insert into app.users(id,email,display_name,status)
-       values($1,$2,'Artifact upload actor','active')`,
-      [actorId, `${actorId}@artifact-upload.integration.test`],
-    );
-    await client.query(
-      `insert into app.workspaces(id,name,slug,status,created_by)
-       values($1,'Artifact upload workspace',$2,'active',$3)`,
-      [workspaceId, `artifact-upload-${workspaceId.slice(0, 12)}`, actorId],
-    );
-    await client.query(
-      `insert into app.workspace_memberships(workspace_id,user_id,role,status)
-       values($1,$2,'owner','active')`,
-      [workspaceId, actorId],
-    );
-  });
-  await setCapacity(1_000, 100);
-});
+beforeEach(beforeEachFixture2);
 
-afterEach(async () => {
-  await cleanupFixture();
-});
+afterEach(afterEachFixture3);
 
-afterAll(async () => {
-  const failures: unknown[] = [];
-  const closed = await Promise.allSettled([
-    ...(databaseAcquired ? [database.close()] : []),
-    ...(apiProbePoolAcquired ? [apiProbePool.end()] : []),
-    ...(ownerPoolAcquired ? [ownerPool.end()] : []),
-  ]);
-  for (const result of closed)
-    if (result.status === 'rejected') failures.push(result.reason);
-  if (databaseCreated) {
-    try {
-      await fixture.drop();
-      databaseCreated = false;
-    } catch (error: unknown) {
-      failures.push(error);
-    }
-  }
-  if (failures.length > 0)
-    throw new AggregateError(
-      failures,
-      'Artifact upload fixture cleanup failed',
-    );
-});
+afterAll(afterAllFixture4);
 
 describe('artifact upload database authority', () => {
+  registerRejectsHTTPUnsafeMediaType();
+
+  registerAppliesSharedCapabilityPolicyArtifact();
+
+  registerFinalizesExactMetadataSupportsNested();
+
+  registerRejectsFinalizationAfterExpiryDuring();
+});
+
+function registerRejectsHTTPUnsafeMediaType(): void {
   it.each([
     'application/js\u000bon',
     'application/js\u001fon',
@@ -439,7 +378,9 @@ describe('artifact upload database authority', () => {
       chargedCount: 0,
     });
   });
+}
 
+function registerAppliesSharedCapabilityPolicyArtifact(): void {
   it('applies the shared capability policy to artifact reads and uploads', async () => {
     const existing = await database.beginUpload({
       actor: actor(),
@@ -622,7 +563,9 @@ describe('artifact upload database authority', () => {
       });
     }
   });
+}
 
+function registerFinalizesExactMetadataSupportsNested(): void {
   it('finalizes exact metadata, supports nested actor context and reads only live rows', async () => {
     const created = await database.beginUpload({
       actor: actor(),
@@ -792,7 +735,9 @@ describe('artifact upload database authority', () => {
       name: 'ArtifactUploadConflictError',
     });
   });
+}
 
+function registerRejectsFinalizationAfterExpiryDuring(): void {
   it('rejects finalization after expiry and during deletion', async () => {
     const expired = await database.beginUpload({
       actor: actor(),
@@ -946,4 +891,83 @@ describe('artifact upload database authority', () => {
       chargedCount: 0,
     });
   });
-});
+}
+
+async function beforeAllFixture1() {
+  try {
+    await fixture.create();
+    databaseCreated = true;
+    await migrateDatabase(migrationConfig);
+    database = createArtifactUploadDatabase(
+      parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
+    );
+    databaseAcquired = true;
+    apiProbePool = new Pool({ connectionString: apiUrl, max: 1 });
+    apiProbePoolAcquired = true;
+    ownerPool = new Pool({ connectionString: migrationUrl, max: 2 });
+    ownerPoolAcquired = true;
+  } catch (error: unknown) {
+    const cleanup = await Promise.allSettled([
+      ...(databaseAcquired ? [database.close()] : []),
+      ...(apiProbePoolAcquired ? [apiProbePool.end()] : []),
+      ...(ownerPoolAcquired ? [ownerPool.end()] : []),
+      ...(databaseCreated ? [fixture.drop()] : []),
+    ]);
+    const failures: unknown[] = [error];
+    for (const result of cleanup)
+      if (result.status === 'rejected') failures.push(result.reason);
+    throw new AggregateError(failures, 'Artifact upload fixture setup failed');
+  }
+}
+
+async function beforeEachFixture2() {
+  workspaceId = randomUUID();
+  actorId = randomUUID();
+  sessionId = randomUUID();
+  await ownerTransaction(async (client) => {
+    await client.query(
+      `insert into app.users(id,email,display_name,status)
+       values($1,$2,'Artifact upload actor','active')`,
+      [actorId, `${actorId}@artifact-upload.integration.test`],
+    );
+    await client.query(
+      `insert into app.workspaces(id,name,slug,status,created_by)
+       values($1,'Artifact upload workspace',$2,'active',$3)`,
+      [workspaceId, `artifact-upload-${workspaceId.slice(0, 12)}`, actorId],
+    );
+    await client.query(
+      `insert into app.workspace_memberships(workspace_id,user_id,role,status)
+       values($1,$2,'owner','active')`,
+      [workspaceId, actorId],
+    );
+  });
+  await setCapacity(1_000, 100);
+}
+
+async function afterEachFixture3() {
+  await cleanupFixture();
+}
+
+async function afterAllFixture4() {
+  const failures: unknown[] = [];
+  const closed = await Promise.allSettled([
+    ...(databaseAcquired ? [database.close()] : []),
+    ...(apiProbePoolAcquired ? [apiProbePool.end()] : []),
+    ...(ownerPoolAcquired ? [ownerPool.end()] : []),
+  ]);
+  for (const result of closed)
+    if (result.status === 'rejected') failures.push(result.reason);
+  if (databaseCreated) {
+    try {
+      await fixture.drop();
+      databaseCreated = false;
+    } catch (error: unknown) {
+      failures.push(error);
+    }
+  }
+  if (failures.length > 0)
+    throw new AggregateError(
+      failures,
+      'Artifact upload fixture cleanup failed',
+    );
+}

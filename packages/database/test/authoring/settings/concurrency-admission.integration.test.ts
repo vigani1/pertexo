@@ -30,6 +30,16 @@ import {
 installExecutionAcceptanceFixture();
 
 describe('current workflow concurrency and ordered production admission', () => {
+  registerPersistsAcceptanceTicketsOnceExact();
+
+  registerReservationRecoveryReplacesTransportIdentity();
+
+  registerSkipsWorkspaceLifecycleLockBefore();
+
+  registerExpiresCommandReceiptsAfterTwenty();
+});
+
+function registerPersistsAcceptanceTicketsOnceExact(): void {
   it('persists acceptance tickets once for exact replay and preserves gaps after rollback', async () => {
     const first = await acceptRun();
     const before = await readTickets();
@@ -232,7 +242,9 @@ describe('current workflow concurrency and ordered production admission', () => 
     await transitionRun(cancelled.runId, 'canceled');
     await transitionRun(expired.runId, 'failed');
   });
+}
 
+function registerReservationRecoveryReplacesTransportIdentity(): void {
   it('reservation recovery replaces transport identity but retains ticket and capacity exactly once', async () => {
     await setLimit(1);
     const run = await acceptRun();
@@ -420,7 +432,9 @@ describe('current workflow concurrency and ordered production admission', () => 
       ),
     ).resolves.toBeUndefined();
   });
+}
 
+function registerSkipsWorkspaceLifecycleLockBefore(): void {
   it('skips a workspace lifecycle lock before grants while settings wait without holding the counter', async () => {
     await setLimit(1);
     const run = await acceptRun();
@@ -605,7 +619,9 @@ describe('current workflow concurrency and ordered production admission', () => 
       });
     });
   });
+}
 
+function registerExpiresCommandReceiptsAfterTwenty(): void {
   it('expires command receipts after twenty-four hours and reaps only expired rows in bounded existing retention', async () => {
     await withConcurrencyControls(async (controls, scope) => {
       const expiredKey = randomUUID(),
@@ -667,4 +683,4 @@ describe('current workflow concurrency and ordered production admission', () => 
       });
     });
   });
-});
+}

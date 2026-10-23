@@ -52,7 +52,9 @@ describe('current operational notice episodes', () => {
   });
   it('ignores occupied active slots and coalesces actual queue/storage saturation, resolution and a new episode', async () => {
     const f = await seedNoticeWorkspace();
-    await seedApproval(f.workspaceId, f.workflowId, f.members.owner);
+    await seedApproval(f.workspaceId, f.workflowId, {
+      starter: f.members.owner,
+    });
     const fold = observer(),
       read = inbox();
     const list = () =>

@@ -25,9 +25,15 @@ const valid: GraphValidationResult = {
 async function compare(
   validation = valid,
   currentChecksum = checksum,
-  published = true,
-  draftGraph = graph,
-  liveGraph = graph,
+  {
+    published = true,
+    draftGraph = graph,
+    liveGraph = graph,
+  }: Readonly<{
+    published?: boolean | undefined;
+    draftGraph?: typeof graph | undefined;
+    liveGraph?: typeof graph | undefined;
+  }> = {},
 ) {
   const client = {
     query: vi
@@ -87,12 +93,21 @@ describe('current publication comparison', () => {
       ],
     };
     expect(
-      (await compare(valid, checksum, true, documented)).result
-        ?.currentPublication?.matchesDraft,
+      (
+        await compare(valid, checksum, {
+          published: true,
+          draftGraph: documented,
+        })
+      ).result?.currentPublication?.matchesDraft,
     ).toBe(false);
     expect(
-      (await compare(valid, checksum, true, documented, documented)).result
-        ?.currentPublication?.matchesDraft,
+      (
+        await compare(valid, checksum, {
+          published: true,
+          draftGraph: documented,
+          liveGraph: documented,
+        })
+      ).result?.currentPublication?.matchesDraft,
     ).toBe(true);
   });
   it('uses the injected publication compiler, including changes in runtime/catalog identity', async () => {
@@ -118,7 +133,7 @@ describe('current publication comparison', () => {
     });
     expect(invalid.result?.currentPublication?.matchesDraft).toBe(false);
     expect(invalid.compiler).not.toHaveBeenCalled();
-    const unpublished = await compare(valid, checksum, false);
+    const unpublished = await compare(valid, checksum, { published: false });
     expect(unpublished.result?.currentPublication).toBeNull();
     expect(unpublished.compiler).not.toHaveBeenCalled();
   });

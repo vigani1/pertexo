@@ -42,33 +42,8 @@ let workspaceDatabase: ReturnType<typeof createWorkspaceDatabase>;
 let database: ReturnType<typeof createWorkflowAuthoringDatabase>;
 let reader: ReturnType<typeof createWorkflowExecutionReader>;
 let publications: ReturnType<typeof createPublishedWorkflowReader>;
-beforeAll(() => {
-  const config = parseDatabaseConfig({ connectionString: apiUrl, max: 4 });
-  runs = createWorkflowRunDatabase(config);
-  workspaceDatabase = createWorkspaceDatabase(config);
-  database = createWorkflowAuthoringDatabase(config, {
-    executableCompiler: (graph) => {
-      const executable = buildWorkflowExecutable({ graph, catalog });
-      return {
-        checksum: executable.checksum,
-        executableJson: executable.envelope,
-      };
-    },
-    workflowTestCompiler: (graph, pins) =>
-      buildWorkflowTestExecutable({ graph, pins, catalog }),
-  });
-  reader = createWorkflowExecutionReader(config);
-  publications = createPublishedWorkflowReader(config);
-});
-afterAll(async () => {
-  await Promise.all([
-    database.close(),
-    reader.close(),
-    publications.close(),
-    runs.close(),
-    workspaceDatabase.close(),
-  ]);
-});
+beforeAll(beforeAllFixture1);
+afterAll(afterAllFixture2);
 async function fixture() {
   const workflowId = randomUUID();
   const node = (id: string, key: string) => ({
@@ -119,6 +94,14 @@ async function command(f: Awaited<ReturnType<typeof fixture>>) {
 }
 
 describe('whole-draft test admission', () => {
+  registerFreezesUnpublishedDraftWithoutCreating();
+
+  registerRequiresAcknowledgementExactCurrentEffectful();
+
+  registerPurgesFrozenTestPayloadsWorkspace();
+});
+
+function registerFreezesUnpublishedDraftWithoutCreating(): void {
   it('freezes an unpublished draft without creating a publication and uses ordinary capacity', async () => {
     const f = await fixture();
     const intent = await command(f);
@@ -176,6 +159,7 @@ describe('whole-draft test admission', () => {
       }),
     ).rejects.toBeInstanceOf(IdempotencyConflictError);
   });
+
   it('serializes two starts for the same person/workflow and preserves both command intents correctly', async () => {
     const f = await fixture();
     const first = await command(f);
@@ -192,6 +176,7 @@ describe('whole-draft test admission', () => {
     ).toMatchObject([{ reason: { reason: 'already_running' } }]);
     expect((await database.workflowTests.list(f.scope)).items).toHaveLength(1);
   });
+
   it('refuses stale revisions and changed/expired pins before accepting a run', async () => {
     const f = await fixture();
     const intent = await command(f);
@@ -253,6 +238,7 @@ describe('whole-draft test admission', () => {
       { reason: 'stale_sample' },
     );
   });
+
   it('keeps test reads workspace-bound and cancellation durable/idempotent', async () => {
     const f = await fixture();
     const accepted = await database.workflowTests.start(await command(f));
@@ -285,6 +271,9 @@ describe('whole-draft test admission', () => {
     );
     expect(wakeups[0]?.count).toBe('2');
   });
+}
+
+function registerRequiresAcknowledgementExactCurrentEffectful(): void {
   it('requires acknowledgement of the exact current effectful steps under the admission locks', async () => {
     const f = await fixture();
     const effectCatalog = composeExecutableCatalog({
@@ -347,6 +336,7 @@ describe('whole-draft test admission', () => {
       await effects.close();
     }
   });
+
   it('hides expired tests before maintenance and removes their frozen payloads and execution details', async () => {
     const f = await fixture();
     const accepted = await database.workflowTests.start(await command(f));
@@ -411,6 +401,7 @@ describe('whole-draft test admission', () => {
       )[0]?.input_ref ?? null,
     ).toBeNull();
   });
+
   it('refuses a draft test as the source of published replay or recovery', async () => {
     const f = await fixture();
     const accepted = await database.workflowTests.start(await command(f));
@@ -420,6 +411,7 @@ describe('whole-draft test admission', () => {
       ),
     ).rejects.toBeInstanceOf(WorkflowRunNotExecutableError);
   });
+
   it('uses the existing queued-run quota and rolls back a refused test atomically', async () => {
     const f = await fixture();
     const intent = await command(f);
@@ -451,6 +443,7 @@ describe('whole-draft test admission', () => {
       );
     }
   });
+
   it('freezes dense numeric pins without JSONB expansion and reads back their exact value', async () => {
     const f = await fixture();
     const output = { values: Array.from({ length: 9990 }, () => 1e300) };
@@ -480,6 +473,9 @@ describe('whole-draft test admission', () => {
       )?.testSample?.output,
     ).toEqual(output);
   });
+}
+
+function registerPurgesFrozenTestPayloadsWorkspace(): void {
   it('purges frozen test payloads with their workspace through maintenance', async () => {
     expect(
       (
@@ -503,4 +499,33 @@ describe('whole-draft test admission', () => {
       ]),
     ).toEqual([]);
   });
-});
+}
+
+function beforeAllFixture1() {
+  const config = parseDatabaseConfig({ connectionString: apiUrl, max: 4 });
+  runs = createWorkflowRunDatabase(config);
+  workspaceDatabase = createWorkspaceDatabase(config);
+  database = createWorkflowAuthoringDatabase(config, {
+    executableCompiler: (graph) => {
+      const executable = buildWorkflowExecutable({ graph, catalog });
+      return {
+        checksum: executable.checksum,
+        executableJson: executable.envelope,
+      };
+    },
+    workflowTestCompiler: (graph, pins) =>
+      buildWorkflowTestExecutable({ graph, pins, catalog }),
+  });
+  reader = createWorkflowExecutionReader(config);
+  publications = createPublishedWorkflowReader(config);
+}
+
+async function afterAllFixture2() {
+  await Promise.all([
+    database.close(),
+    reader.close(),
+    publications.close(),
+    runs.close(),
+    workspaceDatabase.close(),
+  ]);
+}

@@ -19,10 +19,17 @@ import {
 async function add(
   workspaceId: string,
   workflowId: string,
-  status: string,
-  age: string,
-  seconds: number | null,
-  test = false,
+  {
+    status,
+    age,
+    seconds,
+    test = false,
+  }: Readonly<{
+    status: string;
+    age: string;
+    seconds: number | null;
+    test?: boolean | undefined;
+  }>,
 ) {
   await withTenantScopedClient(apiPool, { workspaceId }, (client) =>
     client.query(
@@ -75,11 +82,32 @@ describe('retained usage trends', () => {
   it('counts actual runs, excludes tests, weights elapsed durations and ranks distinct periods', async () => {
     const f = await seedNoticeWorkspace();
     const other = await seedNoticeWorkflow(f.workspaceId, f.members.owner);
-    await add(f.workspaceId, f.workflowId, 'succeeded', '1 hour', 20);
-    await add(f.workspaceId, f.workflowId, 'failed', '2 hours', 40);
-    await add(f.workspaceId, f.workflowId, 'queued', '3 hours', null);
-    await add(f.workspaceId, other, 'outcome_unknown', '45 days', 80);
-    await add(f.workspaceId, other, 'succeeded', '1 hour', 1000, true);
+    await add(f.workspaceId, f.workflowId, {
+      status: 'succeeded',
+      age: '1 hour',
+      seconds: 20,
+    });
+    await add(f.workspaceId, f.workflowId, {
+      status: 'failed',
+      age: '2 hours',
+      seconds: 40,
+    });
+    await add(f.workspaceId, f.workflowId, {
+      status: 'queued',
+      age: '3 hours',
+      seconds: null,
+    });
+    await add(f.workspaceId, other, {
+      status: 'outcome_unknown',
+      age: '45 days',
+      seconds: 80,
+    });
+    await add(f.workspaceId, other, {
+      status: 'succeeded',
+      age: '1 hour',
+      seconds: 1000,
+      test: true,
+    });
     const recent = usageTrendsResponseSchema.parse(await read(f));
     expect(recent).toMatchObject({
       total: 3,
@@ -100,8 +128,16 @@ describe('retained usage trends', () => {
   it('preserves tenant and name fences and survives expired execution details', async () => {
     const f = await seedNoticeWorkspace(),
       foreign = await seedNoticeWorkspace();
-    await add(f.workspaceId, f.workflowId, 'succeeded', '40 days', 10);
-    await add(foreign.workspaceId, foreign.workflowId, 'failed', '1 hour', 10);
+    await add(f.workspaceId, f.workflowId, {
+      status: 'succeeded',
+      age: '40 days',
+      seconds: 10,
+    });
+    await add(foreign.workspaceId, foreign.workflowId, {
+      status: 'failed',
+      age: '1 hour',
+      seconds: 10,
+    });
     await queryAsOwner(
       'update app.workflow_runs set details_purged_at=statement_timestamp(),input_ref=null,output_ref=null,error_summary=null where workspace_id=$1',
       [f.workspaceId],

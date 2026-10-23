@@ -19,13 +19,8 @@ import {
 type Family = Awaited<ReturnType<typeof createFamily>>;
 let maintenance!: Pool;
 let application!: Pool;
-beforeAll(() => {
-  maintenance = new Pool({ connectionString: maintenanceUrl, max: 2 });
-  application = new Pool({ connectionString: apiUrl, max: 1 });
-});
-afterAll(async () => {
-  await Promise.all([maintenance.end(), application.end()]);
-});
+beforeAll(beforeAllFixture1);
+afterAll(afterAllFixture2);
 const scoped = <T>(
   workspaceId: string,
   work: (client: PoolClient) => Promise<T>,
@@ -99,6 +94,14 @@ async function incomingOwner(family: Family) {
 }
 
 describe('Call workspace slot transfer', () => {
+  registerLendsOneSlotKeepsTerminal();
+
+  registerKeepsLendingParentSWorkflow();
+
+  registerReturnsCapacityWithoutAcquiringLock();
+});
+
+function registerLendsOneSlotKeepsTerminal(): void {
   it('lends one slot, keeps its terminal return right, and returns exactly once', async () => {
     const family = await createFamily({ childQueued: true });
     await lowerLimit(family.workspaceId, 2, 1);
@@ -296,7 +299,9 @@ describe('Call workspace slot transfer', () => {
     expect(await takeBack(family)).toBe(true);
     expect((await usage(family.workspaceId)).activeCapacityConsumed).toBe(0);
   });
+}
 
+function registerKeepsLendingParentSWorkflow(): void {
   it('keeps a lending parent’s workflow claim and refuses a full target without a loan', async () => {
     const family = await createFamily({ childQueued: true });
     const workflow = (
@@ -382,6 +387,7 @@ describe('Call workspace slot transfer', () => {
       { workflow_run_id: family.childRunId, borrowed_call_id: family.callId },
     ]);
   });
+
   it.each(['published', 'failed'] as const)(
     'recovers a %s child hint without dropping or duplicating the borrowed slot',
     async (delivery) => {
@@ -469,6 +475,7 @@ describe('Call workspace slot transfer', () => {
     expect(await takeBack(family)).toBe(true);
     expect(await incomingOwner(family)).toEqual([]);
   });
+
   it.each(['running', 'unpublished'] as const)(
     'moves a %s borrower behind another due terminal return in a bounded poll',
     async (state) => {
@@ -506,7 +513,9 @@ describe('Call workspace slot transfer', () => {
       expect(await takeBack(finished)).toBe(true);
     },
   );
+}
 
+function registerReturnsCapacityWithoutAcquiringLock(): void {
   it('returns capacity without acquiring a lock on the existing terminal child', async () => {
     const family = await createFamily({ childQueued: true });
     expect(await lend(family)).toBe(true);
@@ -574,4 +583,13 @@ describe('Call workspace slot transfer', () => {
     }
     expect((await usage(family.workspaceId)).activeCapacityConsumed).toBe(1);
   });
-});
+}
+
+function beforeAllFixture1() {
+  maintenance = new Pool({ connectionString: maintenanceUrl, max: 2 });
+  application = new Pool({ connectionString: apiUrl, max: 1 });
+}
+
+async function afterAllFixture2() {
+  await Promise.all([maintenance.end(), application.end()]);
+}

@@ -123,6 +123,12 @@ async function sessionId(token: string) {
   return session.id;
 }
 describe('durable organization sign-in', () => {
+  registerBoundsAttachedMethodsRollsBack();
+
+  registerNeverTakesOverUnverifiedExisting();
+});
+
+function registerBoundsAttachedMethodsRollsBack(): void {
   it('bounds attached methods and rolls back a refused attachment before JIT or session revocation', async () => {
     const fixture = await setup(true),
       member = await verifiedUser(fixture.domain);
@@ -205,6 +211,7 @@ describe('durable organization sign-in', () => {
       }),
     ).resolves.toEqual({ kind: 'failed' });
   });
+
   it('requires the initiating current owner session to complete a readiness test', async () => {
     const fixture = await setup(),
       source = await ownerSession(fixture);
@@ -239,6 +246,7 @@ describe('durable organization sign-in', () => {
       ),
     ).resolves.toHaveLength(0);
   });
+
   it('does not create an account when JIT is off and the identity is new', async () => {
     const fixture = await setup(),
       attempt = await begin(fixture);
@@ -253,6 +261,7 @@ describe('durable organization sign-in', () => {
       db.asAdmin('select id from app.users where email=$1', [email]),
     ).resolves.toHaveLength(0);
   });
+
   it('grants only the configured non-owner default, saves immutable provider identity and records the session proof', async () => {
     const fixture = await setup(true),
       attempt = await begin(fixture);
@@ -306,6 +315,7 @@ describe('durable organization sign-in', () => {
       },
     ]);
   });
+
   it('links verified existing accounts and keeps a stable subject across provider email changes', async () => {
     const fixture = await setup(),
       user = await verifiedUser(fixture.domain);
@@ -333,6 +343,9 @@ describe('durable organization sign-in', () => {
       db.asAdmin('select email from app.users where id=$1', [user.id]),
     ).resolves.toEqual([{ email: user.email }]);
   });
+}
+
+function registerNeverTakesOverUnverifiedExisting(): void {
   it('never takes over an unverified existing email', async () => {
     const fixture = await setup(true),
       user = await verifiedUser(fixture.domain);
@@ -356,6 +369,7 @@ describe('durable organization sign-in', () => {
       ),
     ).resolves.toHaveLength(0);
   });
+
   it.each(['suspended', 'removed'] as const)(
     'skips a %s membership without refusing sign-in or grants in another linked workspace',
     async (status) => {
@@ -440,6 +454,7 @@ describe('durable organization sign-in', () => {
       ]);
     },
   );
+
   it('consumes one callback across two instances and refuses replay, wrong browser, wrong domain and stale provider revisions', async () => {
     const fixture = await setup(true),
       attempt = await begin(fixture);
@@ -481,6 +496,7 @@ describe('durable organization sign-in', () => {
       fixture.commands.complete({ ...stale, identity }),
     ).resolves.toEqual({ kind: 'failed' });
   });
+
   it('enforces current SSO on old sessions and reserves password recovery for the owner of that organization', async () => {
     const fixture = await setup();
     const member = await verifiedUser(fixture.domain),
@@ -549,4 +565,4 @@ describe('durable organization sign-in', () => {
     });
     expect(enforced.kind).toBe('signed_in');
   });
-});
+}

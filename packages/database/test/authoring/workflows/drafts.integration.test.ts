@@ -21,6 +21,14 @@ import {
 } from '../../support/workflow-authoring.js';
 
 describe('workflow draft persistence', () => {
+  registerRequiresFullCurrentRepresentationTag();
+
+  registerAtomicallyCreatesWorkflowExactlyOne();
+
+  registerRejectsAbsentContextCrossTenant();
+});
+
+function registerRequiresFullCurrentRepresentationTag(): void {
   it('requires the full current representation tag while revision CAS remains authoritative', async () => {
     const created = await authoring.createWorkflow({
       actorId,
@@ -36,12 +44,10 @@ describe('workflow draft persistence', () => {
       workflowId: created.workflowId,
       workspaceId,
     } as const;
-    const currentTag = await currentRepresentationTag(
-      authoring,
-      workspaceId,
-      created.workflowId,
-      actorId,
-    );
+    const currentTag = await currentRepresentationTag(authoring, workspaceId, {
+      scopedWorkflowId: created.workflowId,
+      scopedActorId: actorId,
+    });
 
     await expect(
       authoring.saveDraft({ ...input, representationTag: 'not-a-draft-tag' }),
@@ -66,12 +72,10 @@ describe('workflow draft persistence', () => {
       representationTag: currentTag,
     });
     expect(saved.revision).toBe(2);
-    const savedTag = await currentRepresentationTag(
-      authoring,
-      workspaceId,
-      created.workflowId,
-      actorId,
-    );
+    const savedTag = await currentRepresentationTag(authoring, workspaceId, {
+      scopedWorkflowId: created.workflowId,
+      scopedActorId: actorId,
+    });
     await expect(
       authoring.saveDraft({ ...input, representationTag: currentTag }),
     ).rejects.toEqual(
@@ -132,7 +136,9 @@ describe('workflow draft persistence', () => {
       JSON.stringify(inputMappings),
     );
   });
+}
 
+function registerAtomicallyCreatesWorkflowExactlyOne(): void {
   it('atomically creates a workflow with exactly one revision-1 draft', async () => {
     let workflowId = '';
     const createInput = {
@@ -340,7 +346,9 @@ describe('workflow draft persistence', () => {
       transactionOpen: apiOpen,
     });
   });
+}
 
+function registerRejectsAbsentContextCrossTenant(): void {
   it('rejects absent-context and cross-tenant writes for every publication relation', async () => {
     const attempts: readonly (readonly [string, unknown[]])[] = [
       [
@@ -524,4 +532,4 @@ describe('workflow draft persistence', () => {
       authoring.getDraft(workspaceId, corrupted.workflowId, actorId),
     ).rejects.toThrow();
   });
-});
+}

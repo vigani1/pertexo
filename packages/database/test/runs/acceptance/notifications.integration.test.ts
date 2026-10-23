@@ -41,6 +41,12 @@ function hasPostgresConstraint(expected: string): (error: unknown) => boolean {
 }
 
 describe('workflow run notification pinning', () => {
+  registerRejectsRunsSuspendedWorkspaceMalformed();
+
+  registerPinsManualRunDestinationOnce();
+});
+
+function registerRejectsRunsSuspendedWorkspaceMalformed(): void {
   it('rejects runs in a suspended workspace and malformed pins by constraint', async () => {
     const valid = await createNotificationFixture();
     const validPin = {
@@ -208,7 +214,9 @@ describe('workflow run notification pinning', () => {
       await pool.end();
     }
   });
+}
 
+function registerPinsManualRunDestinationOnce(): void {
   it('pins a manual-run destination once and replays after config, status, and credential changes', async () => {
     const connectionId = randomUUID();
     const secretVersionId = randomUUID();
@@ -411,4 +419,4 @@ describe('workflow run notification pinning', () => {
       await expectAcceptanceRecordCounts(0);
     },
   );
-});
+}

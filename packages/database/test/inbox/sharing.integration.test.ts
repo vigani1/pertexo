@@ -57,12 +57,10 @@ it('revokes followed notices, waiting approvals and already prepared mail throug
     idempotencyKey: randomUUID(),
   });
   await seedFailure(f.workspaceId, f.workflowId);
-  const { taskId } = await seedApproval(
-    f.workspaceId,
-    f.workflowId,
-    f.members.owner,
-    scope.actorId,
-  );
+  const { taskId } = await seedApproval(f.workspaceId, f.workflowId, {
+    starter: f.members.owner,
+    named: scope.actorId,
+  });
   const fold = observer();
   await fold.foldPending(100);
   await fold.observeCurrent?.();

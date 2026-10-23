@@ -30,14 +30,8 @@ import {
 } from '../../support/workflow-authoring.js';
 
 let database: ReturnType<typeof createWorkflowInputCaseDatabase>;
-beforeAll(() => {
-  database = createWorkflowInputCaseDatabase(
-    parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
-  );
-});
-afterAll(async () => {
-  await database.close();
-});
+beforeAll(beforeAllFixture1);
+afterAll(afterAllFixture2);
 async function fixture(selectedWorkspaceId = workspaceId) {
   const created = await authoring.createWorkflow({
     actorId,
@@ -54,8 +48,7 @@ async function fixture(selectedWorkspaceId = workspaceId) {
     representationTag: await currentRepresentationTag(
       authoring,
       selectedWorkspaceId,
-      workflowId,
-      actorId,
+      { scopedWorkflowId: workflowId, scopedActorId: actorId },
     ),
     idempotencyKey: randomUUID(),
     requestHash: '0'.repeat(64),
@@ -68,6 +61,14 @@ async function fixture(selectedWorkspaceId = workspaceId) {
   };
 }
 describe('bounded version-contextual run-input cases', () => {
+  registerListsMetadataGetsDetachedCanonical();
+
+  registerRejectsBoundsCyclesPostgreSQLInvalid();
+
+  registerRemovesExpiredReceiptsRejectionsSo();
+});
+
+function registerListsMetadataGetsDetachedCanonical(): void {
   it('lists metadata only, gets detached canonical input and replays identifiers without names or JSON in receipts/audits', async () => {
     const scope = await fixture();
     const command = {
@@ -119,6 +120,7 @@ describe('bounded version-contextual run-input cases', () => {
       ).items,
     ).toEqual([]);
   });
+
   it('serializes duplicate creation and strong CAS, exact retries precede stale revision, deletion never resurrects', async () => {
     const scope = await fixture();
     const command = {
@@ -175,6 +177,7 @@ describe('bounded version-contextual run-input cases', () => {
       WorkflowNotFoundError,
     );
   });
+
   it('makes concurrent active-count admission atomic and deletion only releases counts, not retained bytes', async () => {
     const scope = await fixture();
     const created = await Promise.all(
@@ -229,6 +232,7 @@ describe('bounded version-contextual run-input cases', () => {
       Number(retainedBefore[0]?.bytes) + 4,
     );
   });
+
   it('retains replacement bytes until paged cleanup and charges update churn', async () => {
     const scope = await fixture();
     const created = await database.createCase({
@@ -276,6 +280,9 @@ describe('bounded version-contextual run-input cases', () => {
         .revision,
     ).toBe(revision);
   });
+}
+
+function registerRejectsBoundsCyclesPostgreSQLInvalid(): void {
   it('rejects bounds, cycles and PostgreSQL-invalid unicode before any persistence', async () => {
     const scope = await fixture();
     for (const input of [
@@ -314,6 +321,7 @@ describe('bounded version-contextual run-input cases', () => {
       }),
     ).rejects.toBeInstanceOf(TypeError);
   });
+
   it('forces tenant RLS, keeps a case on its workflow version and denies app physical erasure', async () => {
     const scope = await fixture();
     const created = await database.createCase({
@@ -346,6 +354,7 @@ describe('bounded version-contextual run-input cases', () => {
       apiPool.query('delete from app.workflow_input_cases'),
     ).rejects.toMatchObject({ code: '42501' });
   });
+
   it('rechecks current authority even for retained exact receipts', async () => {
     const scope = await fixture();
     const command = {
@@ -376,6 +385,7 @@ describe('bounded version-contextual run-input cases', () => {
     }
     expect((await database.createCase(command)).replayed).toBe(true);
   });
+
   it('locks workspace before membership and rejects a revocation that wins admission', async () => {
     const scope = await fixture();
     const appName = `case-revocation-${randomUUID()}`;
@@ -423,6 +433,7 @@ describe('bounded version-contextual run-input cases', () => {
       );
     }
   });
+
   // This proof deliberately commits 200 independent commands through the real
   // authority, receipt and quota transactions; coverage instrumentation adds
   // fixture cost. Keep a bounded test budget, not a production timeout change.
@@ -458,6 +469,9 @@ describe('bounded version-contextual run-input cases', () => {
       }),
     ).rejects.toMatchObject({ kind: 'workspace_count' });
   }, 20_000);
+}
+
+function registerRemovesExpiredReceiptsRejectionsSo(): void {
   it('removes expired receipts and rejections so a key can be reused', async () => {
     const scope = await fixture();
     const key = randomUUID();
@@ -495,6 +509,7 @@ describe('bounded version-contextual run-input cases', () => {
     expect(next.caseId).not.toBe(created.caseId);
     expect(next.replayed).toBe(false);
   });
+
   it('purges case receipts and bounded payload pages before versions, including unexpired manual rejection receipts', async () => {
     const id = randomUUID();
     const ownWorkspace = await identity.createWorkspaceWithOwner({
@@ -573,6 +588,7 @@ describe('bounded version-contextual run-input cases', () => {
       versions: '0',
     });
   });
+
   it('allows viewer/operator reads but independently denies authoring, and keeps archived cases inspect-only', async () => {
     const scope = await fixture();
     const command = {
@@ -636,4 +652,14 @@ describe('bounded version-contextual run-input cases', () => {
       await restarted.close();
     }
   });
-});
+}
+
+function beforeAllFixture1() {
+  database = createWorkflowInputCaseDatabase(
+    parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
+  );
+}
+
+async function afterAllFixture2() {
+  await database.close();
+}

@@ -31,8 +31,7 @@ describe('persisted workflow activation projection', () => {
       representationTag: await currentRepresentationTag(
         authoring,
         workspaceId,
-        created.workflowId,
-        actorId,
+        { scopedWorkflowId: created.workflowId, scopedActorId: actorId },
       ),
       idempotencyKey: randomUUID(),
       requestHash: 'a'.repeat(64),

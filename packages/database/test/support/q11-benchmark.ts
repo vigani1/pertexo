@@ -67,9 +67,15 @@ export async function waitForQ11OverlapBarrier(
 export function recordQ11Operation(
   name: string,
   startedAt: number,
-  population: number,
-  boundary: string,
-  databaseIdentity?: Q11DatabaseIdentity,
+  {
+    population,
+    boundary,
+    databaseIdentity,
+  }: Readonly<{
+    population: number;
+    boundary: string;
+    databaseIdentity?: Q11DatabaseIdentity | undefined;
+  }>,
 ): void {
   if (process.env.PERTEXO_Q11_OPERATION_TIMING !== '1') return;
   const endedAt = performance.now();

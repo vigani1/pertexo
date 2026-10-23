@@ -33,6 +33,18 @@ import {
 import { withTenantScopedClient } from '../../src/tenant-access/transactions.js';
 
 describe('preview worker attempt lifecycle', () => {
+  registerRetainsPrivateCodeDiagnosticsUnder();
+
+  registerClaimsQueuedAttemptPinnedIdentity();
+
+  registerRejectsChangedTerminalReplayValues();
+
+  registerFencesStaleWorkersHeartbeatsCurrent();
+
+  registerBoundsClaimOwnershipByImmutable();
+});
+
+function registerRetainsPrivateCodeDiagnosticsUnder(): void {
   it('retains private Code diagnostics under the same completion fence and preview expiry', async () => {
     const claimed = await claimFixture(
       await acceptFixture(),
@@ -133,7 +145,9 @@ describe('preview worker attempt lifecycle', () => {
       errorSummary: 'Use a date like 2026-10-19.',
     });
   });
+}
 
+function registerClaimsQueuedAttemptPinnedIdentity(): void {
   it('claims a queued attempt with pinned identity and completes truthfully', async () => {
     const claimed = await claimFixture(
       await acceptFixture(),
@@ -327,7 +341,9 @@ describe('preview worker attempt lifecycle', () => {
     expect(facts.audit).toHaveLength(1);
     expect(facts.usage).toHaveLength(1);
   });
+}
 
+function registerRejectsChangedTerminalReplayValues(): void {
   it('rejects changed terminal replay values and identities without new facts', async () => {
     const success = await claimFixture(
       await acceptFixture(),
@@ -486,7 +502,9 @@ describe('preview worker attempt lifecycle', () => {
     );
     expect(facts.rows[0]).toEqual({ count: '1' });
   });
+}
 
+function registerFencesStaleWorkersHeartbeatsCurrent(): void {
   it('fences stale workers and heartbeats only the current owner', async () => {
     const first = await claimFixture(
       await acceptFixture(),
@@ -699,7 +717,9 @@ describe('preview worker attempt lifecycle', () => {
       }),
     ).resolves.toEqual({ kind: 'committed' });
   });
+}
 
+function registerBoundsClaimOwnershipByImmutable(): void {
   it('bounds claim ownership by the immutable execution deadline', async () => {
     const executionDeadlineAt = new Date(Date.now() + 2_000);
     const claimed = await claimFixture(
@@ -802,4 +822,4 @@ describe('preview worker attempt lifecycle', () => {
       quantity: '1',
     });
   });
-});
+}

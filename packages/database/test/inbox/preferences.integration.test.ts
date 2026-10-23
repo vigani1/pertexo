@@ -137,12 +137,10 @@ describe('personal notice preferences and audience fences', () => {
   });
   it('shows waiting approvals to the existing exact audience, including unlimited runs, and excludes the starter', async () => {
     const f = await seedNoticeWorkspace();
-    const task = await seedApproval(
-      f.workspaceId,
-      f.workflowId,
-      f.members.owner,
-      f.members.viewer,
-    );
+    const task = await seedApproval(f.workspaceId, f.workflowId, {
+      starter: f.members.owner,
+      named: f.members.viewer,
+    });
     const fold = observer();
     const read = inbox();
     await queryAsOwner(

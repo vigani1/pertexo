@@ -72,20 +72,26 @@ export async function* checkpoints(
       });
       const size = scenario.collections[attempt.nodeId];
       // About 255 KiB of retained collection data; the checkpoint must contain references only.
-      const value =
-        attempt.nodeId === scenario.parallelNodeId
-          ? { branchIds: ['branch-01', 'branch-02'] }
-          : attempt.nodeId === scenario.mergeNodeId
-            ? {
-                branches: { 'branch-01': {}, 'branch-02': {} },
-                selectedBranchIds: ['branch-01', 'branch-02'],
-              }
-            : size === undefined
-              ? {}
-              : {
-                  items: collectionItems(size),
-                  iterationCount: size,
-                };
+      let value;
+      if (attempt.nodeId === scenario.parallelNodeId) {
+        value = { branchIds: ['branch-01', 'branch-02'] };
+      } else {
+        if (attempt.nodeId === scenario.mergeNodeId) {
+          value = {
+            branches: { 'branch-01': {}, 'branch-02': {} },
+            selectedBranchIds: ['branch-01', 'branch-02'],
+          };
+        } else {
+          if (size === undefined) {
+            value = {};
+          } else {
+            value = {
+              items: collectionItems(size),
+              iterationCount: size,
+            };
+          }
+        }
+      }
       completedOutputs.push({
         sequence,
         attemptId,

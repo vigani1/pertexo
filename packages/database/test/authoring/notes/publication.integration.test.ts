@@ -35,8 +35,7 @@ it('publishes immutable documentation versions with one executable identity, the
       representationTag: await currentRepresentationTag(
         authoring,
         workspaceId,
-        workflowId,
-        actorId,
+        { scopedWorkflowId: workflowId, scopedActorId: actorId },
       ),
       idempotencyKey: randomUUID(),
       requestHash: 'a'.repeat(64),
@@ -86,12 +85,10 @@ it('publishes immutable documentation versions with one executable identity, the
     workflowId,
     name: 'Documented copy',
     source: { kind: 'draft' },
-    representationTag: await currentRepresentationTag(
-      authoring,
-      workspaceId,
-      workflowId,
-      actorId,
-    ),
+    representationTag: await currentRepresentationTag(authoring, workspaceId, {
+      scopedWorkflowId: workflowId,
+      scopedActorId: actorId,
+    }),
     idempotencyKey: randomUUID(),
   });
   expect(
@@ -113,12 +110,10 @@ it('publishes immutable documentation versions with one executable identity, the
     workspaceId,
     workflowId,
     versionId: second.version.id,
-    representationTag: await currentRepresentationTag(
-      authoring,
-      workspaceId,
-      workflowId,
-      actorId,
-    ),
+    representationTag: await currentRepresentationTag(authoring, workspaceId, {
+      scopedWorkflowId: workflowId,
+      scopedActorId: actorId,
+    }),
   });
   expect(
     (await authoring.getDraft(workspaceId, workflowId, actorId))?.graphJson

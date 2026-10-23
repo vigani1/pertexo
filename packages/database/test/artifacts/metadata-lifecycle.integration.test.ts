@@ -97,58 +97,19 @@ async function waitForMilestone(
   }
 }
 
-beforeAll(async () => {
-  try {
-    await fixture.create();
-    databaseCreated = true;
-    await migrateDatabase(migrationConfig);
-    database = createWorkspaceDatabase(
-      parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
-    );
-    databaseAcquired = true;
-  } catch (error: unknown) {
-    const cleanup = await Promise.allSettled([
-      ...(databaseAcquired ? [database.close()] : []),
-      ...(databaseCreated ? [fixture.drop()] : []),
-    ]);
-    const failures: unknown[] = [error];
-    for (const result of cleanup)
-      if (result.status === 'rejected') failures.push(result.reason);
-    throw new AggregateError(
-      failures,
-      'Artifact metadata fixture setup failed',
-    );
-  }
-});
+beforeAll(beforeAllFixture1);
 
-beforeEach(() => {
-  workspaceA = randomUUID();
-  workspaceB = randomUUID();
-});
+beforeEach(beforeEachFixture2);
 
-afterAll(async () => {
-  const failures: unknown[] = [];
-  try {
-    if (databaseAcquired) await database.close();
-  } catch (error: unknown) {
-    failures.push(error);
-  }
-  if (databaseCreated) {
-    try {
-      await fixture.drop();
-      databaseCreated = false;
-    } catch (error: unknown) {
-      failures.push(error);
-    }
-  }
-  if (failures.length > 0)
-    throw new AggregateError(
-      failures,
-      'Artifact metadata fixture cleanup failed',
-    );
-});
+afterAll(afterAllFixture3);
 
 describe('artifact metadata lifecycle', () => {
+  registerForcesRLSWithholdsDestructiveTable();
+
+  registerRejectsLateFinalizeAfterPending();
+});
+
+function registerForcesRLSWithholdsDestructiveTable(): void {
   it('forces RLS and withholds destructive table privileges from serving roles', async () => {
     const pool = new Pool({ connectionString: migrationUrl, max: 1 });
     const client = await pool.connect();
@@ -351,7 +312,9 @@ describe('artifact metadata lifecycle', () => {
       ),
     ).rejects.toBeInstanceOf(ArtifactFinalizeConflictError);
   });
+}
 
+function registerRejectsLateFinalizeAfterPending(): void {
   it('rejects a late finalize after pending metadata has expired', async () => {
     const input = pendingInput({ expiresAt: new Date(Date.now() - 1_000) });
     await database.withWorkspace(workspaceA, (transaction) =>
@@ -473,4 +436,55 @@ describe('artifact metadata lifecycle', () => {
       await first;
     }
   });
-});
+}
+
+async function beforeAllFixture1() {
+  try {
+    await fixture.create();
+    databaseCreated = true;
+    await migrateDatabase(migrationConfig);
+    database = createWorkspaceDatabase(
+      parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
+    );
+    databaseAcquired = true;
+  } catch (error: unknown) {
+    const cleanup = await Promise.allSettled([
+      ...(databaseAcquired ? [database.close()] : []),
+      ...(databaseCreated ? [fixture.drop()] : []),
+    ]);
+    const failures: unknown[] = [error];
+    for (const result of cleanup)
+      if (result.status === 'rejected') failures.push(result.reason);
+    throw new AggregateError(
+      failures,
+      'Artifact metadata fixture setup failed',
+    );
+  }
+}
+
+function beforeEachFixture2() {
+  workspaceA = randomUUID();
+  workspaceB = randomUUID();
+}
+
+async function afterAllFixture3() {
+  const failures: unknown[] = [];
+  try {
+    if (databaseAcquired) await database.close();
+  } catch (error: unknown) {
+    failures.push(error);
+  }
+  if (databaseCreated) {
+    try {
+      await fixture.drop();
+      databaseCreated = false;
+    } catch (error: unknown) {
+      failures.push(error);
+    }
+  }
+  if (failures.length > 0)
+    throw new AggregateError(
+      failures,
+      'Artifact metadata fixture cleanup failed',
+    );
+}

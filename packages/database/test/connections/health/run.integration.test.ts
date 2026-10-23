@@ -41,6 +41,14 @@ import {
 } from './run.fixture.js';
 
 describe('durable revision-fenced Slack run health (ADR059)', () => {
+  registerRejectsLegacyPrimarySlotInstead();
+
+  registerSBeforeDispatchForbidsEvidence();
+
+  registerRejectsStaleLeasesUnmarkedDispatch();
+});
+
+function registerRejectsLegacyPrimarySlotInstead(): void {
   it('rejects a legacy primary slot instead of the published Slack bot-token contract', async () => {
     const connection = await createHealthConnection('primary');
     const lease = await claimHealthAttempt(connection);
@@ -70,6 +78,7 @@ describe('durable revision-fenced Slack run health (ADR059)', () => {
       health_revision: '1',
     });
   });
+
   it('accepts completion once and applies from persisted ID after store reopen/redelivery', async () => {
     const connection = await createHealthConnection();
     const lease = await claimHealthAttempt(connection);
@@ -234,7 +243,9 @@ describe('durable revision-fenced Slack run health (ADR059)', () => {
       last_error_code: null,
     });
   });
+}
 
+function registerSBeforeDispatchForbidsEvidence(): void {
   it.each(['rotate', 'revoke'] as const)(
     '%s before dispatch forbids evidence and does not replace accepted dispatch identity',
     async (mutation) => {
@@ -429,7 +440,9 @@ describe('durable revision-fenced Slack run health (ADR059)', () => {
       expect(await countHealthTransitions(connection.connectionId)).toBe(0);
     },
   );
+}
 
+function registerRejectsStaleLeasesUnmarkedDispatch(): void {
   it('rejects stale leases and unmarked dispatch without committing evidence/outcome', async () => {
     const connection = await createHealthConnection();
     const lease = await claimHealthAttempt(connection);
@@ -631,4 +644,4 @@ describe('durable revision-fenced Slack run health (ADR059)', () => {
     expect(await countHealthTransitions(connection.connectionId)).toBe(1);
     expect(await readAcceptedHealthExecution(lease)).toEqual(accepted);
   });
-});
+}

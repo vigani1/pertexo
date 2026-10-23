@@ -131,9 +131,15 @@ function startInput(
 function replayInput(
   sourceRunId: string,
   requestHash = digest('replay-request-1'),
-  idempotencyKeyHash = digest('replay-key-1'),
-  selectedWorkflowVersionId = workflowVersionId,
-  deadlineAt?: Date,
+  {
+    idempotencyKeyHash = digest('replay-key-1'),
+    selectedWorkflowVersionId = workflowVersionId,
+    deadlineAt,
+  }: Readonly<{
+    idempotencyKeyHash?: string | undefined;
+    selectedWorkflowVersionId?: string | undefined;
+    deadlineAt?: Date | undefined;
+  }> = {},
 ) {
   return {
     actorId,
@@ -337,40 +343,33 @@ async function resetFixture(): Promise<void> {
   );
 }
 
-beforeAll(async () => {
-  await disposableDatabase.create();
-  try {
-    await migrateDatabase(migrationConfig);
-  } catch (error: unknown) {
-    await disposableDatabase.drop().catch(() => undefined);
-    throw error;
-  }
-});
+beforeAll(beforeAllFixture1);
 
 beforeEach(resetFixture);
 
-afterAll(async () => {
-  const outcomes = await Promise.allSettled([
-    database.close(),
-    api.end(),
-    owner.end(),
-  ]);
-  const failures = outcomes.flatMap((outcome) =>
-    outcome.status === 'rejected' ? [outcome.reason as unknown] : [],
-  );
-  try {
-    await disposableDatabase.drop();
-  } catch (error: unknown) {
-    failures.push(error);
-  }
-  if (failures.length > 0)
-    throw new AggregateError(
-      failures,
-      'Workflow-run API fixture cleanup failed',
-    );
-});
+afterAll(afterAllFixture2);
 
 describe('workflow run API persistence', () => {
+  registerCountsFilteredRowsPlanWork();
+
+  registerRecordsProductionShapedNameFilter();
+
+  registerRecoversAcceptedCheckedDuplicateRequests();
+
+  registerReportsVersionConflictPublicationCommits();
+
+  registerDistinguishesExactConflictingAbsentReason();
+
+  registerReplaysAgainstExplicitlySelectedRetained();
+
+  registerKeepsReplayLocksBehindOwner();
+
+  registerReadsNodeRunOutputThrough();
+
+  registerReadsEachStepAcrossWorkflow();
+});
+
+function registerCountsFilteredRowsPlanWork(): void {
   it('counts filtered rows as plan work even when a scan emits no rows', () => {
     expect(
       explainWork({
@@ -573,7 +572,9 @@ describe('workflow run API persistence', () => {
       'workflow_runs_workspace_created_idx',
     );
   });
+}
 
+function registerRecordsProductionShapedNameFilter(): void {
   it('records production-shaped name-filter work under normal planner settings', async () => {
     await ownerQuery(
       `insert into app.workflows
@@ -777,7 +778,9 @@ describe('workflow run API persistence', () => {
       { runs: 0, checkpoints: 0, outbox: 0, rejections: 1 },
     ]);
   });
+}
 
+function registerRecoversAcceptedCheckedDuplicateRequests(): void {
   it('recovers accepted checked duplicate requests before publication change', async () => {
     const input = {
       ...startInput(),
@@ -955,7 +958,9 @@ describe('workflow run API persistence', () => {
         .rows,
     ).toEqual([{ count: 0 }]);
   });
+}
 
+function registerReportsVersionConflictPublicationCommits(): void {
   it('reports a version conflict when publication commits while the command waits for its lock', async () => {
     const publishing = await owner.connect();
     let attempted: ReturnType<typeof database.start> | undefined;
@@ -1143,7 +1148,9 @@ describe('workflow run API persistence', () => {
       database.get({ actorId: actorId, workspaceId, runId: started.run.id }),
     ).rejects.toBeInstanceOf(WorkflowRunReadCapacityError);
   });
+}
 
+function registerDistinguishesExactConflictingAbsentReason(): void {
   it('distinguishes exact, conflicting, absent-reason, and terminal cancellation', async () => {
     const started = await database.start(startInput());
     const first = await database.cancel({
@@ -1286,18 +1293,14 @@ describe('workflow run API persistence', () => {
     );
     const outcomes = await Promise.all([
       database.replay(
-        replayInput(
-          source.run.id,
-          digest('race-replay-request'),
-          digest('race-replay-key'),
-        ),
+        replayInput(source.run.id, digest('race-replay-request'), {
+          idempotencyKeyHash: digest('race-replay-key'),
+        }),
       ),
       database.replay(
-        replayInput(
-          source.run.id,
-          digest('race-replay-request'),
-          digest('race-replay-key'),
-        ),
+        replayInput(source.run.id, digest('race-replay-request'), {
+          idempotencyKeyHash: digest('race-replay-key'),
+        }),
       ),
     ]);
 
@@ -1326,7 +1329,9 @@ describe('workflow run API persistence', () => {
       },
     ]);
   });
+}
 
+function registerReplaysAgainstExplicitlySelectedRetained(): void {
   it('replays against an explicitly selected retained version without republishing it', async () => {
     const source = await database.start(
       startInput(
@@ -1335,12 +1340,10 @@ describe('workflow run API persistence', () => {
       ),
     );
     const replay = await database.replay(
-      replayInput(
-        source.run.id,
-        digest('retained-replay-request'),
-        digest('retained-replay-key'),
-        retainedWorkflowVersionId,
-      ),
+      replayInput(source.run.id, digest('retained-replay-request'), {
+        idempotencyKeyHash: digest('retained-replay-key'),
+        selectedWorkflowVersionId: retainedWorkflowVersionId,
+      }),
     );
 
     expect(replay.run).toMatchObject({
@@ -1350,12 +1353,10 @@ describe('workflow run API persistence', () => {
     });
     expect(source.run.deadlineAt).toBeNull();
     const duplicate = await database.replay(
-      replayInput(
-        source.run.id,
-        digest('retained-replay-request'),
-        digest('retained-replay-key'),
-        retainedWorkflowVersionId,
-      ),
+      replayInput(source.run.id, digest('retained-replay-request'), {
+        idempotencyKeyHash: digest('retained-replay-key'),
+        selectedWorkflowVersionId: retainedWorkflowVersionId,
+      }),
     );
     expect(duplicate.run.deadlineAt).toEqual(replay.run.deadlineAt);
     const state = await apiQuery(
@@ -1403,11 +1404,9 @@ describe('workflow run API persistence', () => {
 
     await expect(
       database.replay(
-        replayInput(
-          source.run.id,
-          digest('admission-replay-request'),
-          digest('admission-replay-key'),
-        ),
+        replayInput(source.run.id, digest('admission-replay-request'), {
+          idempotencyKeyHash: digest('admission-replay-key'),
+        }),
       ),
     ).rejects.toBeInstanceOf(WorkspaceRunAdmissionDeniedError);
     const effects = await apiQuery(
@@ -1441,11 +1440,9 @@ describe('workflow run API persistence', () => {
     );
     await expect(
       database.replay(
-        replayInput(
-          otherSource.run.id,
-          digest('cross-source-request'),
-          digest('cross-source-key'),
-        ),
+        replayInput(otherSource.run.id, digest('cross-source-request'), {
+          idempotencyKeyHash: digest('cross-source-key'),
+        }),
       ),
     ).rejects.toBeInstanceOf(WorkflowRunNotFoundError);
 
@@ -1454,12 +1451,10 @@ describe('workflow run API persistence', () => {
     );
     await expect(
       database.replay(
-        replayInput(
-          source.run.id,
-          digest('cross-version-request'),
-          digest('cross-version-replay-key'),
-          otherWorkflowVersionId,
-        ),
+        replayInput(source.run.id, digest('cross-version-request'), {
+          idempotencyKeyHash: digest('cross-version-replay-key'),
+          selectedWorkflowVersionId: otherWorkflowVersionId,
+        }),
       ),
     ).rejects.toBeInstanceOf(WorkflowRunNotFoundError);
 
@@ -1494,13 +1489,11 @@ describe('workflow run API persistence', () => {
 
     await expect(
       database.replay(
-        replayInput(
-          source.run.id,
-          digest('rollback-replay-request'),
-          digest('rollback-replay-key'),
-          workflowVersionId,
-          new Date(0),
-        ),
+        replayInput(source.run.id, digest('rollback-replay-request'), {
+          idempotencyKeyHash: digest('rollback-replay-key'),
+          selectedWorkflowVersionId: workflowVersionId,
+          deadlineAt: new Date(0),
+        }),
       ),
     ).rejects.toMatchObject({ cause: { code: '23514' } });
     const effects = await apiQuery(
@@ -1523,7 +1516,9 @@ describe('workflow run API persistence', () => {
       },
     ]);
   });
+}
 
+function registerKeepsReplayLocksBehindOwner(): void {
   it('keeps replay locks behind owner-defined reads and API insert-only grants', async () => {
     const source = await database.start(
       startInput(digest('lock-request'), digest('lock-key')),
@@ -1662,7 +1657,9 @@ describe('workflow run API persistence', () => {
       }),
     ).resolves.toEqual({ kind: 'expired' });
   });
+}
 
+function registerReadsNodeRunOutputThrough(): void {
   it('reads a node run output only through its own run', async () => {
     const started = await database.start(startInput());
     const other = await database.start(
@@ -1794,12 +1791,10 @@ describe('workflow run API persistence', () => {
     );
     const source = await database.start(startInput());
     const replay = await database.replay(
-      replayInput(
-        source.run.id,
-        digest('replay-request-1'),
-        digest('replay-key-1'),
-        loopVersionId,
-      ),
+      replayInput(source.run.id, digest('replay-request-1'), {
+        idempotencyKeyHash: digest('replay-key-1'),
+        selectedWorkflowVersionId: loopVersionId,
+      }),
     );
     await ownerQuery(
       `update app.workflow_runs
@@ -1843,7 +1838,9 @@ describe('workflow run API persistence', () => {
       database.get({ actorId: actorId, workspaceId, runId: replay.run.id }),
     ).resolves.toMatchObject({ run: { replaySourceRunId: source.run.id } });
   });
+}
 
+function registerReadsEachStepAcrossWorkflow(): void {
   it('reads each step across the workflow’s recent runs, and one step’s runs', async () => {
     const first = await database.start(startInput());
     const second = await database.start(
@@ -1944,4 +1941,35 @@ describe('workflow run API persistence', () => {
       }),
     ).resolves.toBeUndefined();
   });
-});
+}
+
+async function beforeAllFixture1() {
+  await disposableDatabase.create();
+  try {
+    await migrateDatabase(migrationConfig);
+  } catch (error: unknown) {
+    await disposableDatabase.drop().catch(() => undefined);
+    throw error;
+  }
+}
+
+async function afterAllFixture2() {
+  const outcomes = await Promise.allSettled([
+    database.close(),
+    api.end(),
+    owner.end(),
+  ]);
+  const failures = outcomes.flatMap((outcome) =>
+    outcome.status === 'rejected' ? [outcome.reason as unknown] : [],
+  );
+  try {
+    await disposableDatabase.drop();
+  } catch (error: unknown) {
+    failures.push(error);
+  }
+  if (failures.length > 0)
+    throw new AggregateError(
+      failures,
+      'Workflow-run API fixture cleanup failed',
+    );
+}

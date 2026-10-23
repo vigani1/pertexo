@@ -136,32 +136,19 @@ type ArtifactStoreInput = Readonly<{
   workspaceId: string;
 }>;
 
-beforeEach(async () => {
-  await withOwnerTransaction(async (client) => {
-    await client.query(
-      `update app.workflow_runs
-         set input_ref=null,input_ref_expires_at=null,output_ref=null
-       where workspace_id=$1`,
-      [workspaceId],
-    );
-    await client.query('delete from app.artifact_links where workspace_id=$1', [
-      workspaceId,
-    ]);
-    await client.query('alter table app.artifacts disable trigger user');
-    await client.query('delete from app.artifacts where workspace_id=$1', [
-      workspaceId,
-    ]);
-    await client.query('alter table app.artifacts enable trigger user');
-    await client.query(
-      `update app.workspace_artifact_capacity
-         set charged_bytes=0,charged_count=0,updated_at=clock_timestamp()
-       where workspace_id=$1`,
-      [workspaceId],
-    );
-  });
-});
+beforeEach(beforeEachFixture1);
 
 describe('retention artifact reclamation', () => {
+  registerRetainsEveryOrdinaryPageNested();
+
+  registerKeepsExpiredPendingUploadDeleting();
+
+  registerRetainsReferencedArtifactsDeletesUnreferenced();
+
+  registerFailsLateUploadFinalizationOnce();
+});
+
+function registerRetainsEveryOrdinaryPageNested(): void {
   it('retains every ordinary page in a nested output bundle, then reclaims each physical file', async () => {
     const pages = [randomUUID(), randomUUID()].map((artifactId) => ({
       kind: 'artifact',
@@ -244,6 +231,7 @@ describe('retention artifact reclamation', () => {
       await coordinator.close();
     }
   });
+
   it('deletes expired pending user uploads before releasing capacity', async () => {
     const artifactId = randomUUID();
     await insertExpiredPendingUserUpload(artifactId, 'd');
@@ -289,7 +277,9 @@ describe('retention artifact reclamation', () => {
       chargedCount: 0,
     });
   });
+}
 
+function registerKeepsExpiredPendingUploadDeleting(): void {
   it('keeps an expired pending upload deleting and charged across a store failure', async () => {
     const artifactId = randomUUID();
     const before = await readCapacity();
@@ -382,7 +372,9 @@ describe('retention artifact reclamation', () => {
     expect(artifacts.head).toHaveBeenCalledTimes(2);
     await expect(readCapacity()).resolves.toEqual(before);
   });
+}
 
+function registerRetainsReferencedArtifactsDeletesUnreferenced(): void {
   it('retains referenced artifacts and deletes unreferenced bytes before metadata', async () => {
     const coordinatorApplication = `retention-artifacts-${workspaceId}`;
     const referencedArtifactId = '00000000-0000-4000-8000-000000000101';
@@ -599,7 +591,9 @@ describe('retention artifact reclamation', () => {
       throw error;
     }
   });
+}
 
+function registerFailsLateUploadFinalizationOnce(): void {
   it('fails a late upload finalization once expiry cleanup erased it', async () => {
     const apiUrl = new URL(
       process.env.DATABASE_URL ??
@@ -689,4 +683,29 @@ describe('retention artifact reclamation', () => {
       await uploadDatabase.close();
     }
   });
-});
+}
+
+async function beforeEachFixture1() {
+  await withOwnerTransaction(async (client) => {
+    await client.query(
+      `update app.workflow_runs
+         set input_ref=null,input_ref_expires_at=null,output_ref=null
+       where workspace_id=$1`,
+      [workspaceId],
+    );
+    await client.query('delete from app.artifact_links where workspace_id=$1', [
+      workspaceId,
+    ]);
+    await client.query('alter table app.artifacts disable trigger user');
+    await client.query('delete from app.artifacts where workspace_id=$1', [
+      workspaceId,
+    ]);
+    await client.query('alter table app.artifacts enable trigger user');
+    await client.query(
+      `update app.workspace_artifact_capacity
+         set charged_bytes=0,charged_count=0,updated_at=clock_timestamp()
+       where workspace_id=$1`,
+      [workspaceId],
+    );
+  });
+}

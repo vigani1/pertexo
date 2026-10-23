@@ -23,18 +23,8 @@ import { declarationFixture } from './storage-fixtures.js';
 let runs: ReturnType<typeof createRunAdvanceStore>;
 let calls: ReturnType<typeof createWorkflowCallStore>;
 let maintenance: Pool;
-beforeAll(() => {
-  runs = createRunAdvanceStore(
-    parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
-  );
-  calls = createWorkflowCallStore(
-    parseDatabaseConfig({ connectionString: maintenanceUrl, max: 1 }),
-  );
-  maintenance = new Pool({ connectionString: maintenanceUrl, max: 1 });
-});
-afterAll(async () => {
-  await Promise.all([runs.close(), calls.close(), maintenance.end()]);
-});
+beforeAll(beforeAllFixture1);
+afterAll(afterAllFixture2);
 
 async function pending(keepExistingChild = false) {
   const fixture = await declarationFixture();
@@ -97,6 +87,15 @@ async function outcome(parentRunId: string) {
 }
 
 describe('ordinary run acceptance as a durable Call action', () => {
+  registerDoesNotSpawnAfterOpposing();
+
+  registerCancelsChildThroughOwnOrdinary();
+
+  registerDoesNotSpawnOrdinaryParent();
+});
+registerPassesErrorWorkflowOriginChild();
+
+function registerDoesNotSpawnAfterOpposing(): void {
   it.each(['request', 'settlement'] as const)(
     'does not spawn after an opposing parent cancellation %s commits',
     async (kind) => {
@@ -242,7 +241,9 @@ describe('ordinary run acceptance as a durable Call action', () => {
       slot_lent: true,
     });
   });
+}
 
+function registerCancelsChildThroughOwnOrdinary(): void {
   it('cancels the child through its own ordinary control and releases the closed parent loan exactly once', async () => {
     const fixture = await pending();
     await calls.performActions(fixture.input, initial);
@@ -441,7 +442,9 @@ describe('ordinary run acceptance as a durable Call action', () => {
       ).toEqual([]);
     },
   );
+}
 
+function registerDoesNotSpawnOrdinaryParent(): void {
   it('does not spawn while ordinary parent work is still dispatched', async () => {
     const fixture = await pending();
     await admin.query(
@@ -522,26 +525,42 @@ describe('ordinary run acceptance as a durable Call action', () => {
       child_run_id: null,
     });
   });
-});
+}
 
-it('passes an error-workflow origin to its child so failure cannot start another error workflow', async () => {
-  const f = await pending();
-  await admin.query(
-    'update app.workflow_runs set error_workflow_origin=true where id=$1',
-    [f.parentRunId],
+function beforeAllFixture1() {
+  runs = createRunAdvanceStore(
+    parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
   );
-  await calls.performActions(f.input, initial);
-  const result = await outcome(f.parentRunId);
-  if (result.child_run_id === null) throw new Error('Child was not accepted');
-  const child = await admin.query<{
-    error_workflow_origin: boolean;
-    trigger_type: string;
-  }>(
-    'select error_workflow_origin,trigger_type from app.workflow_runs where id=$1',
-    [result.child_run_id],
+  calls = createWorkflowCallStore(
+    parseDatabaseConfig({ connectionString: maintenanceUrl, max: 1 }),
   );
-  expect(child.rows[0]).toEqual({
-    error_workflow_origin: true,
-    trigger_type: 'workflow_call',
+  maintenance = new Pool({ connectionString: maintenanceUrl, max: 1 });
+}
+
+async function afterAllFixture2() {
+  await Promise.all([runs.close(), calls.close(), maintenance.end()]);
+}
+
+function registerPassesErrorWorkflowOriginChild(): void {
+  it('passes an error-workflow origin to its child so failure cannot start another error workflow', async () => {
+    const f = await pending();
+    await admin.query(
+      'update app.workflow_runs set error_workflow_origin=true where id=$1',
+      [f.parentRunId],
+    );
+    await calls.performActions(f.input, initial);
+    const result = await outcome(f.parentRunId);
+    if (result.child_run_id === null) throw new Error('Child was not accepted');
+    const child = await admin.query<{
+      error_workflow_origin: boolean;
+      trigger_type: string;
+    }>(
+      'select error_workflow_origin,trigger_type from app.workflow_runs where id=$1',
+      [result.child_run_id],
+    );
+    expect(child.rows[0]).toEqual({
+      error_workflow_origin: true,
+      trigger_type: 'workflow_call',
+    });
   });
-});
+}

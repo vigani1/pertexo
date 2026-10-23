@@ -53,8 +53,7 @@ export async function save(
     representationTag: await currentRepresentationTag(
       authoring,
       f.scope.workspaceId,
-      f.scope.workflowId,
-      actorId,
+      { scopedWorkflowId: f.scope.workflowId, scopedActorId: actorId },
     ),
   });
 }

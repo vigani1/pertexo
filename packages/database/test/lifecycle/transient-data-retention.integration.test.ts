@@ -37,6 +37,33 @@ async function asOwner<Row extends QueryResultRow = QueryResultRow>(
 }
 
 describe('transient data retention', () => {
+  registerPrunesExpiredWebhookCapturesPages();
+
+  registerExpiresUnansweredInvitationsRemovesEnded();
+
+  registerObservesLineageBoundaryIClaim();
+});
+
+async function insertReplacement(id: string, next: string): Promise<void> {
+  await asOwner(
+    `insert into app.workspace_invitation_binding_replacement_claims
+    (prior_workspace_id,prior_intent_id,prior_binding_digest,
+     successor_workspace_id,successor_intent_id,successor_invitation_id,
+     successor_invitation_revision,successor_binding_digest,successor_csrf_digest)
+    values($1,$2,$3,$1,$4,$5,1,$6,$7)`,
+    [
+      workspaceId,
+      id,
+      digest(`binding:${id}`),
+      next,
+      randomUUID(),
+      digest(`binding:${next}`),
+      digest(`csrf:${next}`),
+    ],
+  );
+}
+
+function registerPrunesExpiredWebhookCapturesPages(): void {
   it('prunes expired webhook captures in pages and leaves a live listener', async () => {
     const ids = [randomUUID(), randomUUID(), randomUUID()];
     const active = randomUUID();
@@ -235,7 +262,9 @@ describe('transient data retention', () => {
       recipient_email: `minimized+${invitationId}@invalid.pertexo`,
     });
   });
+}
 
+function registerExpiresUnansweredInvitationsRemovesEnded(): void {
   it('expires unanswered invitations and removes ended acceptances and their claims', async () => {
     const invitationId = randomUUID();
     const attemptId = randomUUID();
@@ -411,6 +440,7 @@ describe('transient data retention', () => {
       ),
     ).resolves.toMatchObject({ rows: [{ count: 0 }] });
   });
+
   it('keeps cyclic claims while seeking past them to fill a cleanup page', async () => {
     const cycle = [
       '00000000-0000-4000-8000-000000000001',
@@ -443,7 +473,9 @@ describe('transient data retention', () => {
       );
     }
   });
+}
 
+function registerObservesLineageBoundaryIClaim(): void {
   it.each([32, 33])(
     'observes the lineage boundary for a %i-claim chain',
     async (length) => {
@@ -479,24 +511,5 @@ describe('transient data retention', () => {
         );
       }
     },
-  );
-});
-
-async function insertReplacement(id: string, next: string): Promise<void> {
-  await asOwner(
-    `insert into app.workspace_invitation_binding_replacement_claims
-    (prior_workspace_id,prior_intent_id,prior_binding_digest,
-     successor_workspace_id,successor_intent_id,successor_invitation_id,
-     successor_invitation_revision,successor_binding_digest,successor_csrf_digest)
-    values($1,$2,$3,$1,$4,$5,1,$6,$7)`,
-    [
-      workspaceId,
-      id,
-      digest(`binding:${id}`),
-      next,
-      randomUUID(),
-      digest(`binding:${next}`),
-      digest(`csrf:${next}`),
-    ],
   );
 }

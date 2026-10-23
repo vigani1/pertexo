@@ -19,29 +19,33 @@ async function setup() {
   const people = await Promise.all(
     ['Invited', 'JIT', 'Directory'].map((name) => db.user(name)),
   );
-  const additions: MembershipAddition[] = people.map((person, index) =>
-    index === 0
-      ? {
+  const additions: MembershipAddition[] = people.map(
+    (person, index): MembershipAddition => {
+      if (index === 0) {
+        return {
           userId: person.id,
           role: 'builder',
           source: 'invitation',
           invitationId: randomUUID(),
-        }
-      : index === 1
-        ? {
-            userId: person.id,
-            role: 'viewer',
-            source: 'jit',
-            organizationId: randomUUID(),
-          }
-        : {
-            userId: person.id,
-            role: 'operator',
-            source: 'directory',
-            organizationId: randomUUID(),
-            directoryUserId: randomUUID(),
-            credentialId: randomUUID(),
-          },
+        };
+      }
+      if (index === 1) {
+        return {
+          userId: person.id,
+          role: 'viewer',
+          source: 'jit',
+          organizationId: randomUUID(),
+        };
+      }
+      return {
+        userId: person.id,
+        role: 'operator',
+        source: 'directory',
+        organizationId: randomUUID(),
+        directoryUserId: randomUUID(),
+        credentialId: randomUUID(),
+      };
+    },
   );
   return { owner, workspaceId, additions };
 }

@@ -71,6 +71,12 @@ async function publicationFacts(scopedWorkflowId: string) {
 }
 
 describe('workflow publication atomicity', () => {
+  registerRollsBackEveryMaterialPublication();
+
+  registerPublishesAtomicallyReplaysExactlyRejects();
+});
+
+function registerRollsBackEveryMaterialPublication(): void {
   it('rolls back every material publication step and locked-validator failure', async () => {
     const steps = [
       'version',
@@ -155,9 +161,11 @@ describe('workflow publication atomicity', () => {
           const representationTag = await currentRepresentationTag(
             rollbackAuthoring,
             workspaceId,
-            created.workflowId,
-            actorId,
-            rollbackCatalog,
+            {
+              scopedWorkflowId: created.workflowId,
+              scopedActorId: actorId,
+              definitionCatalog: rollbackCatalog,
+            },
           );
           await expect(
             rollbackAuthoring.publishWorkflow({
@@ -232,9 +240,11 @@ describe('workflow publication atomicity', () => {
         representationTag: await currentRepresentationTag(
           rollbackAuthoring,
           workspaceId,
-          reused.workflowId,
-          actorId,
-          rollbackCatalog,
+          {
+            scopedWorkflowId: reused.workflowId,
+            scopedActorId: actorId,
+            definitionCatalog: rollbackCatalog,
+          },
         ),
         idempotencyKey: 'publish-reused-projection-baseline',
         requestHash: 'a'.repeat(64),
@@ -268,9 +278,11 @@ describe('workflow publication atomicity', () => {
               representationTag: await currentRepresentationTag(
                 rollbackAuthoring,
                 workspaceId,
-                reused.workflowId,
-                actorId,
-                rollbackCatalog,
+                {
+                  scopedWorkflowId: reused.workflowId,
+                  scopedActorId: actorId,
+                  definitionCatalog: rollbackCatalog,
+                },
               ),
               idempotencyKey: `publish-reused-projection-${step}`,
               requestHash: createHash('sha256').update(step).digest('hex'),
@@ -318,8 +330,7 @@ describe('workflow publication atomicity', () => {
         representationTag: await currentRepresentationTag(
           authoring,
           workspaceId,
-          invalid.workflowId,
-          actorId,
+          { scopedWorkflowId: invalid.workflowId, scopedActorId: actorId },
         ),
         idempotencyKey: 'publish-validator-failure',
         requestHash: '8'.repeat(64),
@@ -352,7 +363,9 @@ describe('workflow publication atomicity', () => {
       { audits: 0, commands: 0, outbox: 0, pointer: null, versions: 0 },
     ]);
   });
+}
 
+function registerPublishesAtomicallyReplaysExactlyRejects(): void {
   it('publishes atomically, replays exactly, and rejects changed key reuse', async () => {
     const draft = await authoring.getDraft(workspaceId, workflowId, actorId);
     expect(draft).not.toBeNull();
@@ -482,4 +495,4 @@ describe('workflow publication atomicity', () => {
       transactionOpen: apiOpen,
     });
   });
-});
+}

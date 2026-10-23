@@ -26,6 +26,12 @@ import { EXPECTED_MIGRATION_HEAD } from '../../src/platform/readiness.js';
 const connections = registerCurrentConnectionsFixture();
 
 describe('connection concurrency and security', () => {
+  registerListsReadsActorScopedMetadata();
+
+  registerSerializesConcurrentSameNameCreations();
+});
+
+function registerListsReadsActorScopedMetadata(): void {
   it('lists and reads actor-scoped metadata with deterministic keyset pagination', async () => {
     const first = createInput({ name: `Readable ${randomUUID().slice(0, 8)}` });
     const second = createInput({
@@ -243,7 +249,9 @@ describe('connection concurrency and security', () => {
       await authorityPool.end();
     }
   });
+}
 
+function registerSerializesConcurrentSameNameCreations(): void {
   it('serializes concurrent same-name creations so exactly one wins atomically', async () => {
     const sharedName = `HTTP concurrent ${randomUUID().slice(0, 8)}`;
     const first = createInput({ name: sharedName });
@@ -459,4 +467,4 @@ describe('connection concurrency and security', () => {
       await migration.end();
     }
   });
-});
+}

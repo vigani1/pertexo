@@ -24,6 +24,14 @@ import {
 const connections = registerCurrentConnectionsFixture();
 
 describe('connection lifecycle persistence', () => {
+  registerFailsClosedOnImpossibleRetained();
+
+  registerCreatesResolvesFencesRotatesAudits();
+
+  registerUsesCompareSwapRotationRejects();
+});
+
+function registerFailsClosedOnImpossibleRetained(): void {
   it('fails closed on impossible retained create and rotation claim states', async () => {
     const create = createInput();
     const existing = createInput();
@@ -159,7 +167,9 @@ describe('connection lifecycle persistence', () => {
       await owner.end();
     }
   });
+}
 
+function registerCreatesResolvesFencesRotatesAudits(): void {
   it('creates, resolves, fences, rotates, audits, and revokes a Slack bot token connection', async () => {
     const input = createInput({
       providerKey: 'slack',
@@ -360,7 +370,9 @@ describe('connection lifecycle persistence', () => {
       await owner.end();
     }
   });
+}
 
+function registerUsesCompareSwapRotationRejects(): void {
   it('uses a compare-and-swap rotation and rejects cross-connection pointers', async () => {
     const first = createInput();
     const second = createInput();
@@ -549,4 +561,4 @@ describe('connection lifecycle persistence', () => {
       }),
     ).rejects.toBeInstanceOf(ConnectionUnavailableError);
   });
-});
+}
