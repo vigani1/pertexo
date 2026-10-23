@@ -168,14 +168,34 @@ const MUTATION_DENIALS = [
 ] as const;
 
 describe('workflow authoring application seams', () => {
-  const templateOrigin = {
-    templateId: 'controlled-http-notification',
-    templateVersion: 1,
-    baseManifestDigest: 'a'.repeat(64),
-    creationCommandDigest: 'b'.repeat(64),
-    derivation: 'direct',
-  } as const;
+  registerReadsAuthoritativeHistoricalOriginThroughOpt();
 
+  registerRejectsMalformedVersionRestoreBodyJ();
+
+  registerWorkflowAuthoringApplicationSeamsDeniesRenameJ();
+
+  registerPassesOpaquePublishTagPersistenceWithout();
+
+  registerUsesNamedReadCapabilityListValidate();
+
+  registerKeepsRecentlyUpdatedCursorsDistinctCreated();
+
+  registerProjectsOneCreateCommandReturnedWorkflow();
+});
+
+function encodedCursor(payload: unknown): string {
+  return Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+}
+
+const templateOrigin = {
+  templateId: 'controlled-http-notification',
+  templateVersion: 1,
+  baseManifestDigest: 'a'.repeat(64),
+  creationCommandDigest: 'b'.repeat(64),
+  derivation: 'direct',
+} as const;
+
+function registerReadsAuthoritativeHistoricalOriginThroughOpt(): void {
   it.each([null, templateOrigin])(
     'reads authoritative historical origin only through the opt-in persistence snapshot (%j)',
     async (origin) => {
@@ -387,7 +407,9 @@ describe('workflow authoring application seams', () => {
       }),
     );
   });
+}
 
+function registerRejectsMalformedVersionRestoreBodyJ(): void {
   it.each(
     [null, [], { graph }, { expectedRevision: 1 }].map((request) => ({
       request,
@@ -600,7 +622,9 @@ describe('workflow authoring application seams', () => {
       expect(store.renameWorkflow).not.toHaveBeenCalled();
     },
   );
+}
 
+function registerWorkflowAuthoringApplicationSeamsDeniesRenameJ(): void {
   it.each(MUTATION_DENIALS)('denies a rename with %j', async (denial) => {
     const store = persistence();
     const access = authorization();
@@ -810,7 +834,9 @@ describe('workflow authoring application seams', () => {
     expect(failure.currentEtag).toMatch(/^"draft\./u);
     expect(store.saveDraft).not.toHaveBeenCalled();
   });
+}
 
+function registerPassesOpaquePublishTagPersistenceWithout(): void {
   it('passes the opaque publish tag to persistence without pre-rejecting it', async () => {
     let publishInput: DatabasePublishWorkflowInput | undefined;
     const store = persistence({
@@ -1012,7 +1038,9 @@ describe('workflow authoring application seams', () => {
     expect(failure.currentEtag).toBe(currentEtag);
     expect(getDraft).toHaveBeenCalledOnce();
   });
+}
 
+function registerUsesNamedReadCapabilityListValidate(): void {
   it('uses named read capability for list, validate, and version listing', async () => {
     const access = authorization();
     const store = persistence();
@@ -1221,7 +1249,9 @@ describe('workflow authoring application seams', () => {
       expect.objectContaining({ after: cursor }),
     );
   });
+}
 
+function registerKeepsRecentlyUpdatedCursorsDistinctCreated(): void {
   it('keeps recently-updated cursors distinct from created-order cursors', async () => {
     const cursor = {
       positionAt: '2026-08-21T12:00:00.000900Z',
@@ -1435,7 +1465,9 @@ describe('workflow authoring application seams', () => {
     ).rejects.toBeInstanceOf(InvalidWorkflowCursorError);
     expect(listVersions).not.toHaveBeenCalled();
   });
+}
 
+function registerProjectsOneCreateCommandReturnedWorkflow(): void {
   it('projects one create command and its returned workflow plus empty draft', async () => {
     const store = persistence();
     const result = await new CreateWorkflowUseCase(
@@ -1459,8 +1491,4 @@ describe('workflow authoring application seams', () => {
       }),
     );
   });
-});
-
-function encodedCursor(payload: unknown): string {
-  return Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
 }

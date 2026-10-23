@@ -70,6 +70,73 @@ function hostFor(
 }
 
 describe('RFC 9457 problem details filter', () => {
+  registerRendersAcceptedGenericOrganizationLifecycleConflict();
+
+  registerMapsKnownApplicationErrorSafeProblem();
+
+  registerPreservesFeatureValidationProblemS();
+
+  registerOmitsNestValidationIssueListContaining();
+
+  registerPreservesExplicitUnmappedHTTPStatusI();
+
+  registerExposesBoundedTypedWorkflowValidationIssues();
+
+  registerStillSendsSafeProblemExactlyOnce();
+});
+
+const revisionConflicts = [
+  {
+    code: 'workflow.lifecycle_conflict',
+    field: 'currentLifecycleRevision',
+    command: 'archive',
+  },
+  {
+    code: 'workflow.name_conflict',
+    field: 'currentNameRevision',
+    command: 'rename',
+  },
+] as const;
+
+const autoPauseConflicts = [
+  {
+    code: 'workflow.concurrency_revision_conflict',
+    field: 'currentRevision',
+    value: 7,
+    schema: workflowConcurrencyRevisionConflictProblemSchema,
+    invalid: [undefined, 0, -1, 1.5, '2', 2_147_483_648],
+  },
+  {
+    code: 'workflow.concurrency_limit_exceeded',
+    field: 'maximum',
+    value: 4,
+    schema: workflowConcurrencyLimitExceededProblemSchema,
+    invalid: [undefined, 0, -1, 1.5, '2', 10_001],
+  },
+  {
+    code: 'workflow.pause_conflict',
+    field: 'currentPauseRevision',
+    value: '9223372036854775807',
+    schema: workflowPauseConflictProblemSchema,
+    invalid: [undefined, 1, '0', '01', '-1', '1.5', '9223372036854775808'],
+  },
+  {
+    code: 'workflow.auto_pause_settings_conflict',
+    field: 'currentSettingsRevision',
+    value: 7,
+    schema: workflowAutoPauseSettingsConflictProblemSchema,
+    invalid: [undefined, 0, -1, 1.5, '2', Number.MAX_SAFE_INTEGER + 1],
+  },
+  {
+    code: 'workspace.auto_pause_settings_conflict',
+    field: 'currentRevision',
+    value: 7,
+    schema: workspaceAutoPauseSettingsConflictProblemSchema,
+    invalid: [undefined, 0, -1, 1.5, '2', Number.MAX_SAFE_INTEGER + 1],
+  },
+] as const;
+
+function registerRendersAcceptedGenericOrganizationLifecycleConflict(): void {
   it('renders the accepted generic organization lifecycle conflict without fabricating a lifecycle revision', () => {
     const mapped = toProblem(new WorkflowTagConflictError('lifecycle'));
     expect(mapped.code).toBe('workflow.lifecycle_conflict');
@@ -89,6 +156,7 @@ describe('RFC 9457 problem details filter', () => {
     expect(response.body).not.toHaveProperty('currentLifecycleRevision');
     expect(response.body).not.toHaveProperty('details');
   });
+
   it('retains lifecycle revision validation even with an organization discriminator', () => {
     const response = responseMock();
     new ProblemDetailsFilter(new RequestContextStore()).catch(
@@ -102,6 +170,7 @@ describe('RFC 9457 problem details filter', () => {
     );
     expect(response.status).toHaveBeenCalledWith(500);
   });
+
   it('renders authoring admission failures as safe 503 with Retry-After, never raw causes or graph input', () => {
     const contexts = new RequestContextStore();
     const filter = new ProblemDetailsFilter(
@@ -129,6 +198,7 @@ describe('RFC 9457 problem details filter', () => {
     expect(response.body).not.toHaveProperty('cause');
     expect(response.body).not.toHaveProperty('errors');
   });
+
   it.each([null, undefined, false, 0, 'request.invalid'])(
     'does not classify primitive value %j as an application error',
     (value) => {
@@ -136,18 +206,6 @@ describe('RFC 9457 problem details filter', () => {
     },
   );
 
-  const revisionConflicts = [
-    {
-      code: 'workflow.lifecycle_conflict',
-      field: 'currentLifecycleRevision',
-      command: 'archive',
-    },
-    {
-      code: 'workflow.name_conflict',
-      field: 'currentNameRevision',
-      command: 'rename',
-    },
-  ] as const;
   it.each(revisionConflicts)(
     'exposes only the current revision for $code without a draft ETag or untrusted details',
     ({ code, field, command }) => {
@@ -176,6 +234,7 @@ describe('RFC 9457 problem details filter', () => {
       );
     },
   );
+
   it.each(
     revisionConflicts.flatMap((conflict) =>
       [undefined, 0, -1, 1.5, '2', Number.MAX_SAFE_INTEGER + 1].map(
@@ -195,43 +254,6 @@ describe('RFC 9457 problem details filter', () => {
       expect(response.body).not.toHaveProperty(field);
     },
   );
-  const autoPauseConflicts = [
-    {
-      code: 'workflow.concurrency_revision_conflict',
-      field: 'currentRevision',
-      value: 7,
-      schema: workflowConcurrencyRevisionConflictProblemSchema,
-      invalid: [undefined, 0, -1, 1.5, '2', 2_147_483_648],
-    },
-    {
-      code: 'workflow.concurrency_limit_exceeded',
-      field: 'maximum',
-      value: 4,
-      schema: workflowConcurrencyLimitExceededProblemSchema,
-      invalid: [undefined, 0, -1, 1.5, '2', 10_001],
-    },
-    {
-      code: 'workflow.pause_conflict',
-      field: 'currentPauseRevision',
-      value: '9223372036854775807',
-      schema: workflowPauseConflictProblemSchema,
-      invalid: [undefined, 1, '0', '01', '-1', '1.5', '9223372036854775808'],
-    },
-    {
-      code: 'workflow.auto_pause_settings_conflict',
-      field: 'currentSettingsRevision',
-      value: 7,
-      schema: workflowAutoPauseSettingsConflictProblemSchema,
-      invalid: [undefined, 0, -1, 1.5, '2', Number.MAX_SAFE_INTEGER + 1],
-    },
-    {
-      code: 'workspace.auto_pause_settings_conflict',
-      field: 'currentRevision',
-      value: 7,
-      schema: workspaceAutoPauseSettingsConflictProblemSchema,
-      invalid: [undefined, 0, -1, 1.5, '2', Number.MAX_SAFE_INTEGER + 1],
-    },
-  ] as const;
 
   it.each(autoPauseConflicts)(
     'projects a strict $code problem, preserving only its current revision',
@@ -305,7 +327,9 @@ describe('RFC 9457 problem details filter', () => {
 
     expect(response.body).not.toHaveProperty('detail');
   });
+}
 
+function registerMapsKnownApplicationErrorSafeProblem(): void {
   it('maps a known application error to a safe problem document', () => {
     const contexts = new RequestContextStore();
     const filter = new ProblemDetailsFilter(contexts);
@@ -445,7 +469,9 @@ describe('RFC 9457 problem details filter', () => {
     });
     expect(JSON.stringify(response.body)).not.toContain('secret');
   });
+}
 
+function registerPreservesFeatureValidationProblemS(): void {
   it.each([
     [
       '/v1/workspaces/workspace-a/connections',
@@ -651,7 +677,9 @@ describe('RFC 9457 problem details filter', () => {
       }),
     );
   });
+}
 
+function registerOmitsNestValidationIssueListContaining(): void {
   it('omits a Nest validation issue list containing no safe strings', () => {
     const response = responseMock();
     new ProblemDetailsFilter(new RequestContextStore()).catch(
@@ -854,7 +882,9 @@ describe('RFC 9457 problem details filter', () => {
       status: 500,
     });
   });
+}
 
+function registerPreservesExplicitUnmappedHTTPStatusI(): void {
   it.each([418, 504])(
     'preserves an explicit unmapped HTTP status %i without inventing a domain code',
     (status) => {
@@ -1038,7 +1068,9 @@ describe('RFC 9457 problem details filter', () => {
       );
     },
   );
+}
 
+function registerExposesBoundedTypedWorkflowValidationIssues(): void {
   it('exposes only bounded typed workflow validation issues', () => {
     const contexts = new RequestContextStore();
     const filter = new ProblemDetailsFilter(contexts);
@@ -1238,7 +1270,9 @@ describe('RFC 9457 problem details filter', () => {
       code: 'internal.unexpected',
     });
   });
+}
 
+function registerStillSendsSafeProblemExactlyOnce(): void {
   it('still sends the safe problem exactly once when logging throws synchronously', () => {
     const response = responseMock();
     const logger = {
@@ -1259,4 +1293,4 @@ describe('RFC 9457 problem details filter', () => {
       code: 'internal.unexpected',
     });
   });
-});
+}

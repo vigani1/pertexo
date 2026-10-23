@@ -110,6 +110,187 @@ function spansFor(
 }
 
 describe('HTTP telemetry URL privacy', () => {
+  registerSanitizesExceptionsStatusMessagesThroughConfigured();
+
+  describe('configured HTTP and Undici export scenarios', () => {
+    beforeAll(prepareConfiguredHTTPUndiciExportScenariosFixture);
+    registerRetainsSafeServerNodeHTTPClient();
+  });
+});
+
+async function captureConfiguredHttpExport() {
+  const exporter = new node.InMemorySpanExporter();
+  const provider = new node.NodeTracerProvider({
+    spanProcessors: [new node.SimpleSpanProcessor(exporter)],
+  });
+  const instrumentations = createNodeInstrumentations();
+  const httpInstrumentation = instrumentations.find(
+    (instrumentation) =>
+      instrumentation.instrumentationName ===
+      '@opentelemetry/instrumentation-http',
+  );
+  const undiciInstrumentation = instrumentations.find(
+    (instrumentation) =>
+      instrumentation.instrumentationName ===
+      '@opentelemetry/instrumentation-undici',
+  );
+
+  if (
+    httpInstrumentation === undefined ||
+    undiciInstrumentation === undefined
+  ) {
+    throw new Error('Expected HTTP and Undici instrumentation');
+  }
+
+  const require = createRequire(import.meta.url);
+  const http = require('http') as HttpModule;
+  const server = http.createServer((request, response) => {
+    if (request.url?.startsWith('/undici-client')) {
+      response.statusCode = 503;
+    }
+    response.end('ok');
+  });
+  let closedServer: HttpServer | undefined;
+
+  const capture = await settle(async () => {
+    httpInstrumentation.setTracerProvider(provider);
+    undiciInstrumentation.setTracerProvider(provider);
+    httpInstrumentation.enable();
+    undiciInstrumentation.enable();
+
+    const port = await listen(server);
+    const portText = String(port);
+    const origin = `http://127.0.0.1:${portText}`;
+
+    await request(
+      http,
+      `http://user:password@127.0.0.1:${portText}/http-client?code=${QUERY_SECRET}&state=${STATE_SECRET}&arbitrary=${ARBITRARY_SECRET}`,
+    );
+    const fetchResponse = await fetch(
+      `${origin}/undici-client?code=${QUERY_SECRET}&state=${STATE_SECRET}&arbitrary=${ARBITRARY_SECRET}`,
+    );
+    await fetchResponse.arrayBuffer();
+    const webhookUrl = `${origin}/hooks/${WEBHOOK_PATH_SECRET}`;
+    await request(http, webhookUrl, {
+      headers: { 'x-webhook-secret': WEBHOOK_HEADER_SECRET },
+    });
+    await (
+      await fetch(webhookUrl, {
+        headers: { authorization: `Bearer ${WEBHOOK_HEADER_SECRET}` },
+      })
+    ).arrayBuffer();
+
+    closedServer = http.createServer();
+    const closedPort = await listen(closedServer);
+    await close(closedServer);
+    const closedPortText = String(closedPort);
+    const closedOrigin = `http://127.0.0.1:${closedPortText}`;
+
+    await expect(
+      request(
+        http,
+        `http://user:password@127.0.0.1:${closedPortText}/http-error?code=${ERROR_QUERY_SECRET}&state=${STATE_SECRET}&arbitrary=${ARBITRARY_SECRET}`,
+      ),
+    ).rejects.toBeDefined();
+    await expect(
+      request(
+        http,
+        `http://user:password@example.test:${portText}/http-error-hook?code=${HOOK_ERROR_QUERY_SECRET}&state=${STATE_SECRET}&arbitrary=${ARBITRARY_SECRET}`,
+        {
+          lookup: (_hostname, _options, callback) => {
+            const error = Object.assign(
+              new Error(
+                `lookup failed for http://user:password@${MULTI_USERINFO_SECRET}@example.test:${portText}/http-error-hook?code=${HOOK_ERROR_QUERY_SECRET} trailing=${SPACED_QUERY_SECRET}#${FRAGMENT_SECRET}`,
+              ),
+              {
+                code: `http://user:password@${MULTI_USERINFO_SECRET}@example.test:${portText}/error?code=${ERROR_CODE_SECRET} trailing=${SPACED_QUERY_SECRET}#${FRAGMENT_SECRET}`,
+              },
+            );
+            callback(error, '', 4);
+          },
+        },
+      ),
+    ).rejects.toBeDefined();
+    await expect(
+      fetch(
+        `${closedOrigin}/undici-error?code=${ERROR_QUERY_SECRET}&state=${STATE_SECRET}&arbitrary=${ARBITRARY_SECRET}`,
+      ),
+    ).rejects.toBeDefined();
+    await expect(
+      request(
+        http,
+        `http://user:password@[bad-host#${MALFORMED_CREDENTIAL_SECRET}`,
+      ),
+    ).rejects.toBeDefined();
+
+    const spans = exporter.getFinishedSpans();
+    const serverSpans = spansFor(spans, SpanKind.SERVER, '/http-client');
+    const httpClientSpans = spansFor(spans, SpanKind.CLIENT, '/http-client');
+    const undiciClientSpans = spansFor(
+      spans,
+      SpanKind.CLIENT,
+      '/undici-client',
+    );
+    const httpErrorSpans = spansFor(spans, SpanKind.CLIENT, '/http-error');
+    const hookErrorSpans = spansFor(spans, SpanKind.CLIENT, '/http-error-hook');
+    const undiciErrorSpans = spansFor(spans, SpanKind.CLIENT, '/undici-error');
+    const malformedSpans = spans.filter(
+      (span) =>
+        span.kind === SpanKind.CLIENT &&
+        span.attributes['url.full'] === 'http://localhost/',
+    );
+
+    return Object.freeze({
+      closedOrigin,
+      hookErrorSpans,
+      httpClientSpans,
+      httpErrorSpans,
+      malformedSpans,
+      origin,
+      portText,
+      serverSpans,
+      spans,
+      undiciClientSpans,
+      undiciErrorSpans,
+    });
+  });
+  const cleanupResults = await Promise.allSettled([
+    close(server),
+    closedServer === undefined ? Promise.resolve() : close(closedServer),
+    Promise.resolve().then(() => {
+      httpInstrumentation.disable();
+    }),
+    Promise.resolve().then(() => {
+      undiciInstrumentation.disable();
+    }),
+    provider.shutdown(),
+  ]);
+  const cleanupFailures = cleanupResults
+    .filter(
+      (result): result is PromiseRejectedResult => result.status === 'rejected',
+    )
+    .map(({ reason }): unknown => reason as unknown);
+  if (!capture.ok) {
+    if (cleanupFailures.length > 0) {
+      throw new AggregateError(
+        [capture.error, ...cleanupFailures],
+        'HTTP telemetry capture and cleanup failed',
+      );
+    }
+    throw capture.error;
+  }
+  if (cleanupFailures.length > 0) {
+    throw new AggregateError(
+      cleanupFailures,
+      'HTTP telemetry test cleanup failed',
+    );
+  }
+  return capture.value;
+}
+
+let captured!: Awaited<ReturnType<typeof captureConfiguredHttpExport>>;
+
+function registerSanitizesExceptionsStatusMessagesThroughConfigured(): void {
   it('sanitizes exceptions and status messages through the configured HTTP hook', () => {
     const instrumentation = createNodeInstrumentations().find(
       (candidate) => candidate instanceof HttpInstrumentation,
@@ -267,351 +448,170 @@ describe('HTTP telemetry URL privacy', () => {
       expect(JSON.stringify(attributes)).not.toContain('secret');
     },
   );
+}
 
-  async function captureConfiguredHttpExport() {
-    const exporter = new node.InMemorySpanExporter();
-    const provider = new node.NodeTracerProvider({
-      spanProcessors: [new node.SimpleSpanProcessor(exporter)],
-    });
-    const instrumentations = createNodeInstrumentations();
-    const httpInstrumentation = instrumentations.find(
-      (instrumentation) =>
-        instrumentation.instrumentationName ===
-        '@opentelemetry/instrumentation-http',
-    );
-    const undiciInstrumentation = instrumentations.find(
-      (instrumentation) =>
-        instrumentation.instrumentationName ===
-        '@opentelemetry/instrumentation-undici',
-    );
+async function prepareConfiguredHTTPUndiciExportScenariosFixture() {
+  captured = await captureConfiguredHttpExport();
+}
 
-    if (
-      httpInstrumentation === undefined ||
-      undiciInstrumentation === undefined
-    ) {
-      throw new Error('Expected HTTP and Undici instrumentation');
-    }
+function registerRetainsSafeServerNodeHTTPClient(): void {
+  it('retains safe server and Node HTTP client data', () => {
+    const { httpClientSpans, origin, serverSpans } = captured;
 
-    const require = createRequire(import.meta.url);
-    const http = require('http') as HttpModule;
-    const server = http.createServer((request, response) => {
-      if (request.url?.startsWith('/undici-client')) {
-        response.statusCode = 503;
-      }
-      response.end('ok');
-    });
-    let closedServer: HttpServer | undefined;
-
-    const capture = await settle(async () => {
-      httpInstrumentation.setTracerProvider(provider);
-      undiciInstrumentation.setTracerProvider(provider);
-      httpInstrumentation.enable();
-      undiciInstrumentation.enable();
-
-      const port = await listen(server);
-      const portText = String(port);
-      const origin = `http://127.0.0.1:${portText}`;
-
-      await request(
-        http,
-        `http://user:password@127.0.0.1:${portText}/http-client?code=${QUERY_SECRET}&state=${STATE_SECRET}&arbitrary=${ARBITRARY_SECRET}`,
-      );
-      const fetchResponse = await fetch(
-        `${origin}/undici-client?code=${QUERY_SECRET}&state=${STATE_SECRET}&arbitrary=${ARBITRARY_SECRET}`,
-      );
-      await fetchResponse.arrayBuffer();
-      const webhookUrl = `${origin}/hooks/${WEBHOOK_PATH_SECRET}`;
-      await request(http, webhookUrl, {
-        headers: { 'x-webhook-secret': WEBHOOK_HEADER_SECRET },
-      });
-      await (
-        await fetch(webhookUrl, {
-          headers: { authorization: `Bearer ${WEBHOOK_HEADER_SECRET}` },
-        })
-      ).arrayBuffer();
-
-      closedServer = http.createServer();
-      const closedPort = await listen(closedServer);
-      await close(closedServer);
-      const closedPortText = String(closedPort);
-      const closedOrigin = `http://127.0.0.1:${closedPortText}`;
-
-      await expect(
-        request(
-          http,
-          `http://user:password@127.0.0.1:${closedPortText}/http-error?code=${ERROR_QUERY_SECRET}&state=${STATE_SECRET}&arbitrary=${ARBITRARY_SECRET}`,
-        ),
-      ).rejects.toBeDefined();
-      await expect(
-        request(
-          http,
-          `http://user:password@example.test:${portText}/http-error-hook?code=${HOOK_ERROR_QUERY_SECRET}&state=${STATE_SECRET}&arbitrary=${ARBITRARY_SECRET}`,
-          {
-            lookup: (_hostname, _options, callback) => {
-              const error = Object.assign(
-                new Error(
-                  `lookup failed for http://user:password@${MULTI_USERINFO_SECRET}@example.test:${portText}/http-error-hook?code=${HOOK_ERROR_QUERY_SECRET} trailing=${SPACED_QUERY_SECRET}#${FRAGMENT_SECRET}`,
-                ),
-                {
-                  code: `http://user:password@${MULTI_USERINFO_SECRET}@example.test:${portText}/error?code=${ERROR_CODE_SECRET} trailing=${SPACED_QUERY_SECRET}#${FRAGMENT_SECRET}`,
-                },
-              );
-              callback(error, '', 4);
-            },
-          },
-        ),
-      ).rejects.toBeDefined();
-      await expect(
-        fetch(
-          `${closedOrigin}/undici-error?code=${ERROR_QUERY_SECRET}&state=${STATE_SECRET}&arbitrary=${ARBITRARY_SECRET}`,
-        ),
-      ).rejects.toBeDefined();
-      await expect(
-        request(
-          http,
-          `http://user:password@[bad-host#${MALFORMED_CREDENTIAL_SECRET}`,
-        ),
-      ).rejects.toBeDefined();
-
-      const spans = exporter.getFinishedSpans();
-      const serverSpans = spansFor(spans, SpanKind.SERVER, '/http-client');
-      const httpClientSpans = spansFor(spans, SpanKind.CLIENT, '/http-client');
-      const undiciClientSpans = spansFor(
-        spans,
-        SpanKind.CLIENT,
-        '/undici-client',
-      );
-      const httpErrorSpans = spansFor(spans, SpanKind.CLIENT, '/http-error');
-      const hookErrorSpans = spansFor(
-        spans,
-        SpanKind.CLIENT,
-        '/http-error-hook',
-      );
-      const undiciErrorSpans = spansFor(
-        spans,
-        SpanKind.CLIENT,
-        '/undici-error',
-      );
-      const malformedSpans = spans.filter(
-        (span) =>
-          span.kind === SpanKind.CLIENT &&
-          span.attributes['url.full'] === 'http://localhost/',
-      );
-
-      return Object.freeze({
-        closedOrigin,
-        hookErrorSpans,
-        httpClientSpans,
-        httpErrorSpans,
-        malformedSpans,
-        origin,
-        portText,
-        serverSpans,
-        spans,
-        undiciClientSpans,
-        undiciErrorSpans,
-      });
-    });
-    const cleanupResults = await Promise.allSettled([
-      close(server),
-      closedServer === undefined ? Promise.resolve() : close(closedServer),
-      Promise.resolve().then(() => {
-        httpInstrumentation.disable();
+    expect(serverSpans).toHaveLength(1);
+    expect(httpClientSpans).toHaveLength(1);
+    expect(serverSpans[0]?.attributes).toEqual(
+      expect.objectContaining({
+        'http.request.method': 'GET',
+        'http.response.status_code': 200,
+        'url.path': '/http-client',
       }),
-      Promise.resolve().then(() => {
-        undiciInstrumentation.disable();
+    );
+    expect(httpClientSpans[0]?.attributes).toEqual(
+      expect.objectContaining({
+        'http.request.method': 'GET',
+        'http.response.status_code': 200,
+        'server.address': '127.0.0.1',
+        'url.full': `${origin}/http-client`,
       }),
-      provider.shutdown(),
-    ]);
-    const cleanupFailures = cleanupResults
-      .filter(
-        (result): result is PromiseRejectedResult =>
-          result.status === 'rejected',
-      )
-      .map(({ reason }): unknown => reason as unknown);
-    if (!capture.ok) {
-      if (cleanupFailures.length > 0) {
-        throw new AggregateError(
-          [capture.error, ...cleanupFailures],
-          'HTTP telemetry capture and cleanup failed',
-        );
-      }
-      throw capture.error;
-    }
-    if (cleanupFailures.length > 0) {
-      throw new AggregateError(
-        cleanupFailures,
-        'HTTP telemetry test cleanup failed',
-      );
-    }
-    return capture.value;
-  }
-
-  describe('configured HTTP and Undici export scenarios', () => {
-    let captured!: Awaited<ReturnType<typeof captureConfiguredHttpExport>>;
-
-    beforeAll(async () => {
-      captured = await captureConfiguredHttpExport();
-    });
-
-    it('retains safe server and Node HTTP client data', () => {
-      const { httpClientSpans, origin, serverSpans } = captured;
-
-      expect(serverSpans).toHaveLength(1);
-      expect(httpClientSpans).toHaveLength(1);
-      expect(serverSpans[0]?.attributes).toEqual(
-        expect.objectContaining({
-          'http.request.method': 'GET',
-          'http.response.status_code': 200,
-          'url.path': '/http-client',
-        }),
-      );
-      expect(httpClientSpans[0]?.attributes).toEqual(
-        expect.objectContaining({
-          'http.request.method': 'GET',
-          'http.response.status_code': 200,
-          'server.address': '127.0.0.1',
-          'url.full': `${origin}/http-client`,
-        }),
-      );
-    });
-
-    it('retains safe Undici response data', () => {
-      const { origin, undiciClientSpans } = captured;
-
-      expect(undiciClientSpans).toHaveLength(1);
-      expect(undiciClientSpans[0]?.attributes).toEqual(
-        expect.objectContaining({
-          'http.request.method': 'GET',
-          'http.response.status_code': 503,
-          'server.address': '127.0.0.1',
-          'url.full': `${origin}/undici-client`,
-        }),
-      );
-    });
-
-    it('sanitizes a refused Node HTTP connection', () => {
-      const { closedOrigin, httpErrorSpans } = captured;
-
-      expect(httpErrorSpans).toHaveLength(1);
-      expect(httpErrorSpans[0]?.status.code).toBe(SpanStatusCode.ERROR);
-      expect(httpErrorSpans[0]?.events[0]?.attributes).toEqual(
-        expect.objectContaining({ 'exception.type': 'Error' }),
-      );
-      expect(httpErrorSpans[0]?.status.message).toBeUndefined();
-      expect(httpErrorSpans[0]?.attributes).toEqual(
-        expect.objectContaining({
-          'http.request.method': 'GET',
-          'server.address': '127.0.0.1',
-          'url.full': `${closedOrigin}/http-error`,
-        }),
-      );
-    });
-
-    it('sanitizes a custom lookup failure with hostile URL-shaped text', () => {
-      const { hookErrorSpans, portText } = captured;
-
-      expect(hookErrorSpans).toHaveLength(1);
-      expect(hookErrorSpans[0]?.status.code).toBe(SpanStatusCode.ERROR);
-      expect(hookErrorSpans[0]?.events[0]?.attributes).toEqual(
-        expect.objectContaining({ 'exception.type': 'Error' }),
-      );
-      expect(hookErrorSpans[0]?.events[0]?.attributes).not.toHaveProperty(
-        'exception.message',
-      );
-      expect(hookErrorSpans[0]?.events[0]?.attributes).not.toHaveProperty(
-        'exception.stacktrace',
-      );
-      expect(hookErrorSpans[0]?.status.message).toBeUndefined();
-      expect(hookErrorSpans[0]?.attributes).toEqual(
-        expect.objectContaining({
-          'http.request.method': 'GET',
-          'server.address': 'example.test',
-          'url.full': `http://example.test:${portText}/http-error-hook`,
-        }),
-      );
-    });
-
-    it('sanitizes a refused Undici connection', () => {
-      const { closedOrigin, undiciErrorSpans } = captured;
-
-      expect(undiciErrorSpans).toHaveLength(1);
-      expect(undiciErrorSpans[0]?.status.code).toBe(SpanStatusCode.ERROR);
-      expect(undiciErrorSpans[0]?.events[0]?.attributes).toEqual(
-        expect.objectContaining({ 'exception.type': 'Error' }),
-      );
-      expect(undiciErrorSpans[0]?.status.message).toBeUndefined();
-      expect(undiciErrorSpans[0]?.attributes).toEqual(
-        expect.objectContaining({
-          'http.request.method': 'GET',
-          'server.address': '127.0.0.1',
-          'url.full': `${closedOrigin}/undici-error`,
-        }),
-      );
-    });
-
-    it('uses a safe fallback for a malformed credential-bearing URL', () => {
-      const { malformedSpans } = captured;
-
-      expect(malformedSpans).toHaveLength(1);
-      expect(malformedSpans[0]?.status.code).toBe(SpanStatusCode.ERROR);
-      expect(malformedSpans[0]?.events[0]?.attributes).toEqual(
-        expect.objectContaining({ 'exception.type': 'ERR_INVALID_URL' }),
-      );
-      expect(malformedSpans[0]?.attributes).toEqual(
-        expect.objectContaining({
-          'http.request.method': 'GET',
-          'url.full': 'http://localhost/',
-        }),
-      );
-    });
-
-    it('exports only redacted webhook paths without named-header or Bearer credentials', () => {
-      const webhooks = captured.spans.filter(
-        (span) => span.attributes['url.path'] === '/hooks/[Redacted]',
-      );
-      expect(webhooks).toHaveLength(4);
-      expect(
-        webhooks.filter((span) => span.kind === SpanKind.SERVER),
-      ).toHaveLength(2);
-      expect(
-        webhooks.filter((span) => span.kind === SpanKind.CLIENT),
-      ).toHaveLength(2);
-    });
-
-    it('removes all query and credential sentinels from every exported span', () => {
-      const { spans } = captured;
-      const secrets = [
-        WEBHOOK_PATH_SECRET,
-        WEBHOOK_HEADER_SECRET,
-        QUERY_SECRET,
-        STATE_SECRET,
-        ARBITRARY_SECRET,
-        ERROR_QUERY_SECRET,
-        HOOK_ERROR_QUERY_SECRET,
-        FRAGMENT_SECRET,
-        MALFORMED_CREDENTIAL_SECRET,
-        ERROR_CODE_SECRET,
-        MULTI_USERINFO_SECRET,
-        SPACED_QUERY_SECRET,
-        'user:password@',
-      ];
-
-      for (const span of spans) {
-        const serializedSpan = JSON.stringify({
-          attributes: span.attributes,
-          events: span.events,
-          instrumentationLibrary: span.instrumentationScope,
-          links: span.links,
-          name: span.name,
-          resource: span.resource.attributes,
-          status: span.status,
-        });
-        for (const secret of secrets) {
-          expect(serializedSpan).not.toContain(secret);
-        }
-        expect(span.attributes['url.query']).toBeUndefined();
-      }
-    });
+    );
   });
-});
+
+  it('retains safe Undici response data', () => {
+    const { origin, undiciClientSpans } = captured;
+
+    expect(undiciClientSpans).toHaveLength(1);
+    expect(undiciClientSpans[0]?.attributes).toEqual(
+      expect.objectContaining({
+        'http.request.method': 'GET',
+        'http.response.status_code': 503,
+        'server.address': '127.0.0.1',
+        'url.full': `${origin}/undici-client`,
+      }),
+    );
+  });
+
+  it('sanitizes a refused Node HTTP connection', () => {
+    const { closedOrigin, httpErrorSpans } = captured;
+
+    expect(httpErrorSpans).toHaveLength(1);
+    expect(httpErrorSpans[0]?.status.code).toBe(SpanStatusCode.ERROR);
+    expect(httpErrorSpans[0]?.events[0]?.attributes).toEqual(
+      expect.objectContaining({ 'exception.type': 'Error' }),
+    );
+    expect(httpErrorSpans[0]?.status.message).toBeUndefined();
+    expect(httpErrorSpans[0]?.attributes).toEqual(
+      expect.objectContaining({
+        'http.request.method': 'GET',
+        'server.address': '127.0.0.1',
+        'url.full': `${closedOrigin}/http-error`,
+      }),
+    );
+  });
+
+  it('sanitizes a custom lookup failure with hostile URL-shaped text', () => {
+    const { hookErrorSpans, portText } = captured;
+
+    expect(hookErrorSpans).toHaveLength(1);
+    expect(hookErrorSpans[0]?.status.code).toBe(SpanStatusCode.ERROR);
+    expect(hookErrorSpans[0]?.events[0]?.attributes).toEqual(
+      expect.objectContaining({ 'exception.type': 'Error' }),
+    );
+    expect(hookErrorSpans[0]?.events[0]?.attributes).not.toHaveProperty(
+      'exception.message',
+    );
+    expect(hookErrorSpans[0]?.events[0]?.attributes).not.toHaveProperty(
+      'exception.stacktrace',
+    );
+    expect(hookErrorSpans[0]?.status.message).toBeUndefined();
+    expect(hookErrorSpans[0]?.attributes).toEqual(
+      expect.objectContaining({
+        'http.request.method': 'GET',
+        'server.address': 'example.test',
+        'url.full': `http://example.test:${portText}/http-error-hook`,
+      }),
+    );
+  });
+
+  it('sanitizes a refused Undici connection', () => {
+    const { closedOrigin, undiciErrorSpans } = captured;
+
+    expect(undiciErrorSpans).toHaveLength(1);
+    expect(undiciErrorSpans[0]?.status.code).toBe(SpanStatusCode.ERROR);
+    expect(undiciErrorSpans[0]?.events[0]?.attributes).toEqual(
+      expect.objectContaining({ 'exception.type': 'Error' }),
+    );
+    expect(undiciErrorSpans[0]?.status.message).toBeUndefined();
+    expect(undiciErrorSpans[0]?.attributes).toEqual(
+      expect.objectContaining({
+        'http.request.method': 'GET',
+        'server.address': '127.0.0.1',
+        'url.full': `${closedOrigin}/undici-error`,
+      }),
+    );
+  });
+
+  it('uses a safe fallback for a malformed credential-bearing URL', () => {
+    const { malformedSpans } = captured;
+
+    expect(malformedSpans).toHaveLength(1);
+    expect(malformedSpans[0]?.status.code).toBe(SpanStatusCode.ERROR);
+    expect(malformedSpans[0]?.events[0]?.attributes).toEqual(
+      expect.objectContaining({ 'exception.type': 'ERR_INVALID_URL' }),
+    );
+    expect(malformedSpans[0]?.attributes).toEqual(
+      expect.objectContaining({
+        'http.request.method': 'GET',
+        'url.full': 'http://localhost/',
+      }),
+    );
+  });
+
+  it('exports only redacted webhook paths without named-header or Bearer credentials', () => {
+    const webhooks = captured.spans.filter(
+      (span) => span.attributes['url.path'] === '/hooks/[Redacted]',
+    );
+    expect(webhooks).toHaveLength(4);
+    expect(
+      webhooks.filter((span) => span.kind === SpanKind.SERVER),
+    ).toHaveLength(2);
+    expect(
+      webhooks.filter((span) => span.kind === SpanKind.CLIENT),
+    ).toHaveLength(2);
+  });
+
+  it('removes all query and credential sentinels from every exported span', () => {
+    const { spans } = captured;
+    const secrets = [
+      WEBHOOK_PATH_SECRET,
+      WEBHOOK_HEADER_SECRET,
+      QUERY_SECRET,
+      STATE_SECRET,
+      ARBITRARY_SECRET,
+      ERROR_QUERY_SECRET,
+      HOOK_ERROR_QUERY_SECRET,
+      FRAGMENT_SECRET,
+      MALFORMED_CREDENTIAL_SECRET,
+      ERROR_CODE_SECRET,
+      MULTI_USERINFO_SECRET,
+      SPACED_QUERY_SECRET,
+      'user:password@',
+    ];
+
+    for (const span of spans) {
+      const serializedSpan = JSON.stringify({
+        attributes: span.attributes,
+        events: span.events,
+        instrumentationLibrary: span.instrumentationScope,
+        links: span.links,
+        name: span.name,
+        resource: span.resource.attributes,
+        status: span.status,
+      });
+      for (const secret of secrets) {
+        expect(serializedSpan).not.toContain(secret);
+      }
+      expect(span.attributes['url.query']).toBeUndefined();
+    }
+  });
+}
