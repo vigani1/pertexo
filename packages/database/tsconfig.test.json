@@ -3,6 +3,8 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "composite": false,
+    "declaration": false,
+    "declarationMap": false,
     "noEmit": true,
     "rootDir": ".",
     "tsBuildInfoFile": "dist/test-types/tsconfig.tsbuildinfo"
