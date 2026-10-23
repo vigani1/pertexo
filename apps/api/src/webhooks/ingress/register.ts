@@ -179,100 +179,19 @@ type WebhookMethod = 'GET' | 'POST';
 async function acceptWebhook(
   request: FastifyRequest,
   reply: FastifyReply,
-  {
-    method,
-    dependencies,
-    telemetry,
-    encryptionSignal,
-    responseWaiter,
-    testEvent,
-  }: Readonly<{
-    method: WebhookMethod;
-    dependencies: WebhookIngressDependencies;
-    telemetry: WebhookIngressTelemetry;
-    encryptionSignal: AbortSignal;
-    responseWaiter: ReturnType<typeof createWebhookResponseWaiter>;
-    testEvent: boolean;
-  }>,
+  options: WebhookAcceptanceOptions,
 ): Promise<void> {
-  const requestId =
-    parseRequestId(request.headers['x-request-id']) ?? randomUUID();
-  // Fastify leaves the body unset when a request carries none.
-  const body =
-    method === 'GET' || request.body === undefined
-      ? new Uint8Array()
-      : request.body;
-  if (!(body instanceof Uint8Array)) {
-    record(() => {
-      telemetry.delivery('invalid_request');
-    });
-    await problem(reply, 400, 'webhook.invalid_json', requestId);
-    return;
-  }
-  if (body.byteLength > MAX_BODY) {
-    record(() => {
-      telemetry.delivery('invalid_request');
-    });
-    await problem(reply, 413, 'webhook.payload_too_large', requestId);
-    return;
-  }
-  const contentType = singleHeader(request, 'content-type');
-  const mediaType =
-    method === 'GET'
-      ? ''
-      : requestMediaType(request, contentType, body.byteLength);
-  if (
-    mediaType === undefined ||
-    (method === 'POST' && headerPresent(request, 'content-encoding'))
-  ) {
-    record(() => {
-      telemetry.delivery('invalid_request');
-    });
-    await problem(reply, 415, 'webhook.unsupported_media_type', requestId);
-    return;
-  }
+  const { method, dependencies, telemetry, testEvent } = options;
+  const prepared = await prepareWebhookRequest(request, reply, options);
+  if (prepared === undefined) return;
+  const { requestId, body, mediaType } = prepared;
+  const references = await resolveIngressReference(reply, {
+    prepared,
+    options,
+  });
+  if (references === undefined) return;
+  const { verification, productionReference } = references;
 
-  const timestamp = singleHeader(request, 'x-pertexo-timestamp');
-  const signature = singleHeader(request, 'x-pertexo-signature');
-  const endpointKey = (request.params as { endpointKey?: unknown }).endpointKey;
-  if (
-    typeof endpointKey !== 'string' ||
-    !/^[A-Za-z0-9_-]{43}$/u.test(endpointKey)
-  ) {
-    await authenticationFailed(reply, requestId, telemetry);
-    return;
-  }
-  const productionReference = testEvent
-    ? null
-    : await dependencies.database.resolveVerification(sha256(endpointKey));
-  const verification = testEvent
-    ? ((await dependencies.testEvents?.resolve(sha256(endpointKey))) ?? null)
-    : productionReference;
-  if (verification === null) {
-    await authenticationFailed(reply, requestId, telemetry);
-    return;
-  }
-  try {
-    if (testEvent) await dependencies.testEvents?.consume(verification);
-    else
-      await dependencies.database.consumeIngressLimit(
-        verification.endpointKeyHash,
-      );
-  } catch (error) {
-    if (testEvent && error instanceof WebhookTestEventError) {
-      await authenticationFailed(reply, requestId, telemetry);
-      return;
-    }
-    if (error instanceof WebhookIngressRateLimitExceededError) {
-      record(() => {
-        telemetry.delivery('rate_limited');
-      });
-      reply.header('retry-after', String(error.retryAfterSeconds));
-      await problem(reply, 429, 'webhook.rate_limited', requestId);
-      return;
-    }
-    throw error;
-  }
   // ADR 045: from here on every rejection is attributed to this endpoint.
   const reject = (attempt: RejectedAttempt) =>
     productionReference === null
@@ -283,82 +202,12 @@ async function acceptWebhook(
           body,
           attempt,
         );
-  // A signature covers the body, and a GET has none to cover.
-  if (method === 'GET' && verification.authentication.mode === 'signed') {
-    await reject(REJECTED_ATTEMPT.invalidRequest);
-    record(() => {
-      telemetry.delivery('invalid_request');
-    });
-    reply.header('allow', 'POST');
-    await problem(reply, 405, 'webhook.method_not_allowed', requestId);
-    return;
-  }
-  const origin = singleHeader(request, 'origin');
-  if (
-    verification.authentication.mode !== 'signed' &&
-    headerPresent(request, 'origin')
-  ) {
-    if (
-      origin === undefined ||
-      !webhookOriginAllowed(verification.authentication, origin)
-    ) {
-      await reject(REJECTED_ATTEMPT.signatureMismatch);
-      await authenticationFailed(reply, requestId, telemetry);
-      return;
-    }
-    allowWebhookOrigin(reply, origin);
-  }
-  const policy = verification.authentication;
-  let verifiedSecretVersionId: string | undefined;
-  if (policy.mode === 'secret_url')
-    verifiedSecretVersionId = verification.currentSecret.id;
-  else if (policy.mode === 'header_secret') {
-    const header = singleHeader(request, policy.headerName);
-    const supplied =
-      policy.headerName === 'authorization'
-        ? header?.match(/^Bearer ([A-Za-z0-9_-]{43})$/iu)?.[1]
-        : header;
-    if (supplied !== undefined && /^[A-Za-z0-9_-]{43}$/u.test(supplied))
-      verifiedSecretVersionId = await verifyWebhookSecrets(
-        dependencies.encryption,
-        verification,
-        { headerSecret: supplied },
-        encryptionSignal,
-      );
-  } else {
-    if (
-      timestamp === undefined ||
-      signature === undefined ||
-      !/^\d{1,16}$/u.test(timestamp)
-    ) {
-      await reject(REJECTED_ATTEMPT.signatureMismatch);
-      await authenticationFailed(reply, requestId, telemetry);
-      return;
-    }
-    const seconds = Number(timestamp);
-    if (
-      !Number.isSafeInteger(seconds) ||
-      Math.abs(verification.databaseTime.getTime() / 1000 - seconds) >
-        WEBHOOK_FRESHNESS_ALLOWANCE_SECONDS
-    ) {
-      await reject(REJECTED_ATTEMPT.staleTimestamp);
-      await authenticationFailed(reply, requestId, telemetry);
-      return;
-    }
-    verifiedSecretVersionId = await verifyWebhookSecrets(
-      dependencies.encryption,
-      verification,
-      { body, signature, timestamp },
-      encryptionSignal,
-    );
-  }
-
-  if (verifiedSecretVersionId === undefined) {
-    await reject(REJECTED_ATTEMPT.signatureMismatch);
-    await authenticationFailed(reply, requestId, telemetry);
-    return;
-  }
-
+  const verifiedSecretVersionId = await authenticateIngressRequest(
+    request,
+    reply,
+    { prepared, references, options, reject },
+  );
+  if (verifiedSecretVersionId === undefined) return;
   const parsed = parseWebhookBody(mediaType, body);
   if (!parsed.ok) {
     await reject(REJECTED_ATTEMPT.invalidRequest);
@@ -375,97 +224,24 @@ async function acceptWebhook(
     headers: webhookHeaders(request, verification.authentication),
   };
   if (testEvent) {
-    try {
-      if (
-        await dependencies.testEvents?.capture(
-          verification,
-          webhookRunInput(verification.runInputMode, requestData),
-        )
-      ) {
-        await reply
-          .header('cache-control', 'no-store')
-          .code(202)
-          .send({ captured: true });
-      } else await authenticationFailed(reply, requestId, telemetry);
-    } catch (error) {
-      if (
-        error instanceof WebhookTestEventError &&
-        error.reason === 'value_invalid'
-      )
-        await problem(reply, 413, 'webhook.payload_too_large', requestId);
-      else throw error;
-    }
+    await captureIngressTestEvent(reply, {
+      options,
+      verification,
+      requestId,
+      requestData,
+    });
     return;
   }
   if (productionReference === null)
     throw new Error('Production webhook reference is unavailable');
-  const idempotency = optionalIdempotencyKey(request);
-  if (idempotency === null) {
-    await reject(REJECTED_ATTEMPT.invalidRequest);
-    record(() => {
-      telemetry.delivery('invalid_request');
-    });
-    await problem(reply, 400, 'request.invalid', requestId);
-    return;
-  }
-  const query = rawWebhookQuery(request);
-  const fingerprint = sha256(
-    method === 'GET'
-      ? `${verification.endpointId}\0GET\0${sha256(query)}`
-      : `${verification.endpointId}\0${sha256(body)}\0${mediaType}${query === '' ? '' : `\0${sha256(query)}`}`,
-  );
-  try {
-    const traceparent = diagnosticTraceparent(telemetry);
-    encryptionSignal.throwIfAborted();
-    const result = await dependencies.database.acceptVerifiedDelivery({
-      verification: productionReference,
-      verifiedSecretVersionId,
-      requestFingerprint: fingerprint,
-      bodyBytes: body.byteLength,
-      ...(idempotency === undefined
-        ? {}
-        : { idempotencyKeyHash: sha256(idempotency) }),
-      runInput: webhookRunInput(productionReference.runInputMode, requestData),
-      signal: encryptionSignal,
-      checkpointFactory: dependencies.checkpointFactory,
-      ...(traceparent === undefined ? {} : { traceparent }),
-    });
-    if ('coordinated' in result) {
-      record(() => {
-        telemetry.delivery('accepted');
-      });
-      await reply.code(202).send(result);
-      return;
-    }
-    if ('skipped' in result) {
-      record(() => {
-        telemetry.delivery('skipped');
-      });
-      await reply.code(202).send(result);
-      return;
-    }
-    record(() => {
-      telemetry.delivery(result.replayed ? 'replayed' : 'accepted');
-    });
-    record(() => {
-      telemetry.deduplication(result.replayed ? 'replayed' : 'new');
-    });
-    record(() => {
-      telemetry.health('healthy');
-    });
-    await replyToAcceptedWebhook(request, reply, {
-      workspaceId: verification.workspaceId,
-      accepted: result,
-      waiter: responseWaiter,
-      telemetry: telemetry,
-    });
-  } catch (error) {
-    await rejectAcceptance(error, reply, {
-      requestId: requestId,
-      telemetry: telemetry,
-      reject: reject,
-    });
-  }
+  await admitIngressDelivery(request, reply, {
+    options,
+    prepared,
+    references: { productionReference, verification },
+    verifiedSecretVersionId,
+    requestData,
+    reject,
+  });
 }
 
 function diagnosticTraceparent(
@@ -654,4 +430,353 @@ async function preflightVerification(
   if (testEvent)
     return (await dependencies.testEvents?.resolve(sha256(key))) ?? null;
   return dependencies.database.resolveVerification(sha256(key));
+}
+
+type WebhookAcceptanceOptions = Readonly<{
+  method: WebhookMethod;
+  dependencies: WebhookIngressDependencies;
+  telemetry: WebhookIngressTelemetry;
+  encryptionSignal: AbortSignal;
+  responseWaiter: ReturnType<typeof createWebhookResponseWaiter>;
+  testEvent: boolean;
+}>;
+interface PreparedWebhookRequest {
+  readonly requestId: string;
+  readonly body: Uint8Array;
+  readonly mediaType: string;
+  readonly timestamp: string | undefined;
+  readonly signature: string | undefined;
+  readonly endpointKey: string;
+}
+interface IngressReferences {
+  readonly productionReference: WebhookVerificationReference | null;
+  readonly verification: TestEventReference;
+}
+type IngressRejectionRecorder = (attempt: RejectedAttempt) => Promise<void>;
+type WebhookRequestData = Parameters<typeof webhookRunInput>[1];
+
+async function prepareWebhookRequest(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  { method, telemetry }: Pick<WebhookAcceptanceOptions, 'method' | 'telemetry'>,
+): Promise<PreparedWebhookRequest | undefined> {
+  const requestId =
+    parseRequestId(request.headers['x-request-id']) ?? randomUUID();
+  const body =
+    method === 'GET' || request.body === undefined
+      ? new Uint8Array()
+      : request.body;
+  if (!(body instanceof Uint8Array)) {
+    record(() => {
+      telemetry.delivery('invalid_request');
+    });
+    await problem(reply, 400, 'webhook.invalid_json', requestId);
+    return;
+  }
+  if (body.byteLength > MAX_BODY) {
+    record(() => {
+      telemetry.delivery('invalid_request');
+    });
+    await problem(reply, 413, 'webhook.payload_too_large', requestId);
+    return;
+  }
+  const contentType = singleHeader(request, 'content-type');
+  const mediaType =
+    method === 'GET'
+      ? ''
+      : requestMediaType(request, contentType, body.byteLength);
+  if (
+    mediaType === undefined ||
+    (method === 'POST' && headerPresent(request, 'content-encoding'))
+  ) {
+    record(() => {
+      telemetry.delivery('invalid_request');
+    });
+    await problem(reply, 415, 'webhook.unsupported_media_type', requestId);
+    return;
+  }
+  const timestamp = singleHeader(request, 'x-pertexo-timestamp');
+  const signature = singleHeader(request, 'x-pertexo-signature');
+  const endpointKey = (request.params as { endpointKey?: unknown }).endpointKey;
+  if (
+    typeof endpointKey !== 'string' ||
+    !/^[A-Za-z0-9_-]{43}$/u.test(endpointKey)
+  ) {
+    await authenticationFailed(reply, requestId, telemetry);
+    return;
+  }
+  return { requestId, body, mediaType, timestamp, signature, endpointKey };
+}
+
+async function resolveIngressReference(
+  reply: FastifyReply,
+  {
+    prepared,
+    options,
+  }: Readonly<{
+    prepared: PreparedWebhookRequest;
+    options: WebhookAcceptanceOptions;
+  }>,
+): Promise<IngressReferences | undefined> {
+  const { endpointKey, requestId } = prepared;
+  const { dependencies, testEvent, telemetry } = options;
+  const productionReference = testEvent
+    ? null
+    : await dependencies.database.resolveVerification(sha256(endpointKey));
+  const verification = testEvent
+    ? ((await dependencies.testEvents?.resolve(sha256(endpointKey))) ?? null)
+    : productionReference;
+  if (verification === null) {
+    await authenticationFailed(reply, requestId, telemetry);
+    return;
+  }
+  try {
+    if (testEvent) await dependencies.testEvents?.consume(verification);
+    else
+      await dependencies.database.consumeIngressLimit(
+        verification.endpointKeyHash,
+      );
+  } catch (error) {
+    if (testEvent && error instanceof WebhookTestEventError) {
+      await authenticationFailed(reply, requestId, telemetry);
+      return;
+    }
+    if (error instanceof WebhookIngressRateLimitExceededError) {
+      record(() => {
+        telemetry.delivery('rate_limited');
+      });
+      reply.header('retry-after', String(error.retryAfterSeconds));
+      await problem(reply, 429, 'webhook.rate_limited', requestId);
+      return;
+    }
+    throw error;
+  }
+  return { productionReference, verification };
+}
+
+async function authenticateIngressRequest(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  {
+    prepared,
+    references,
+    options,
+    reject,
+  }: Readonly<{
+    prepared: PreparedWebhookRequest;
+    references: IngressReferences;
+    options: WebhookAcceptanceOptions;
+    reject: IngressRejectionRecorder;
+  }>,
+): Promise<string | undefined> {
+  const { method, dependencies, telemetry, encryptionSignal } = options;
+  const { requestId, body, timestamp, signature } = prepared;
+  const { verification } = references;
+  if (method === 'GET' && verification.authentication.mode === 'signed') {
+    await reject(REJECTED_ATTEMPT.invalidRequest);
+    record(() => {
+      telemetry.delivery('invalid_request');
+    });
+    reply.header('allow', 'POST');
+    await problem(reply, 405, 'webhook.method_not_allowed', requestId);
+    return;
+  }
+  const origin = singleHeader(request, 'origin');
+  if (
+    verification.authentication.mode !== 'signed' &&
+    headerPresent(request, 'origin')
+  ) {
+    if (
+      origin === undefined ||
+      !webhookOriginAllowed(verification.authentication, origin)
+    ) {
+      await reject(REJECTED_ATTEMPT.signatureMismatch);
+      await authenticationFailed(reply, requestId, telemetry);
+      return;
+    }
+    allowWebhookOrigin(reply, origin);
+  }
+  const policy = verification.authentication;
+  let verifiedSecretVersionId: string | undefined;
+  if (policy.mode === 'secret_url')
+    verifiedSecretVersionId = verification.currentSecret.id;
+  else if (policy.mode === 'header_secret') {
+    const header = singleHeader(request, policy.headerName);
+    const supplied =
+      policy.headerName === 'authorization'
+        ? header?.match(/^Bearer ([A-Za-z0-9_-]{43})$/iu)?.[1]
+        : header;
+    if (supplied !== undefined && /^[A-Za-z0-9_-]{43}$/u.test(supplied))
+      verifiedSecretVersionId = await verifyWebhookSecrets(
+        dependencies.encryption,
+        verification,
+        { headerSecret: supplied },
+        encryptionSignal,
+      );
+  } else {
+    if (
+      timestamp === undefined ||
+      signature === undefined ||
+      !/^\d{1,16}$/u.test(timestamp)
+    ) {
+      await reject(REJECTED_ATTEMPT.signatureMismatch);
+      await authenticationFailed(reply, requestId, telemetry);
+      return;
+    }
+    const seconds = Number(timestamp);
+    if (
+      !Number.isSafeInteger(seconds) ||
+      Math.abs(verification.databaseTime.getTime() / 1000 - seconds) >
+        WEBHOOK_FRESHNESS_ALLOWANCE_SECONDS
+    ) {
+      await reject(REJECTED_ATTEMPT.staleTimestamp);
+      await authenticationFailed(reply, requestId, telemetry);
+      return;
+    }
+    verifiedSecretVersionId = await verifyWebhookSecrets(
+      dependencies.encryption,
+      verification,
+      { body, signature, timestamp },
+      encryptionSignal,
+    );
+  }
+  if (verifiedSecretVersionId === undefined) {
+    await reject(REJECTED_ATTEMPT.signatureMismatch);
+    await authenticationFailed(reply, requestId, telemetry);
+    return;
+  }
+  return verifiedSecretVersionId;
+}
+
+async function captureIngressTestEvent(
+  reply: FastifyReply,
+  {
+    options,
+    verification,
+    requestId,
+    requestData,
+  }: Readonly<{
+    options: WebhookAcceptanceOptions;
+    verification: TestEventReference;
+    requestId: string;
+    requestData: WebhookRequestData;
+  }>,
+): Promise<void> {
+  const { dependencies, telemetry } = options;
+  try {
+    if (
+      await dependencies.testEvents?.capture(
+        verification,
+        webhookRunInput(verification.runInputMode, requestData),
+      )
+    ) {
+      await reply
+        .header('cache-control', 'no-store')
+        .code(202)
+        .send({ captured: true });
+    } else await authenticationFailed(reply, requestId, telemetry);
+  } catch (error) {
+    if (
+      error instanceof WebhookTestEventError &&
+      error.reason === 'value_invalid'
+    )
+      await problem(reply, 413, 'webhook.payload_too_large', requestId);
+    else throw error;
+  }
+  return;
+}
+
+async function admitIngressDelivery(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  {
+    options,
+    prepared,
+    references,
+    verifiedSecretVersionId,
+    requestData,
+    reject,
+  }: Readonly<{
+    options: WebhookAcceptanceOptions;
+    prepared: PreparedWebhookRequest;
+    references: Readonly<{
+      verification: TestEventReference;
+      productionReference: WebhookVerificationReference;
+    }>;
+    verifiedSecretVersionId: string;
+    requestData: WebhookRequestData;
+    reject: IngressRejectionRecorder;
+  }>,
+): Promise<void> {
+  const { method, dependencies, telemetry, encryptionSignal, responseWaiter } =
+    options;
+  const { requestId, body, mediaType } = prepared;
+  const { verification, productionReference } = references;
+  const idempotency = optionalIdempotencyKey(request);
+  if (idempotency === null) {
+    await reject(REJECTED_ATTEMPT.invalidRequest);
+    record(() => {
+      telemetry.delivery('invalid_request');
+    });
+    await problem(reply, 400, 'request.invalid', requestId);
+    return;
+  }
+  const query = rawWebhookQuery(request);
+  const fingerprint = sha256(
+    method === 'GET'
+      ? `${verification.endpointId}\0GET\0${sha256(query)}`
+      : `${verification.endpointId}\0${sha256(body)}\0${mediaType}${query === '' ? '' : `\0${sha256(query)}`}`,
+  );
+  try {
+    const traceparent = diagnosticTraceparent(telemetry);
+    encryptionSignal.throwIfAborted();
+    const result = await dependencies.database.acceptVerifiedDelivery({
+      verification: productionReference,
+      verifiedSecretVersionId,
+      requestFingerprint: fingerprint,
+      bodyBytes: body.byteLength,
+      ...(idempotency === undefined
+        ? {}
+        : { idempotencyKeyHash: sha256(idempotency) }),
+      runInput: webhookRunInput(productionReference.runInputMode, requestData),
+      signal: encryptionSignal,
+      checkpointFactory: dependencies.checkpointFactory,
+      ...(traceparent === undefined ? {} : { traceparent }),
+    });
+    if ('coordinated' in result) {
+      record(() => {
+        telemetry.delivery('accepted');
+      });
+      await reply.code(202).send(result);
+      return;
+    }
+    if ('skipped' in result) {
+      record(() => {
+        telemetry.delivery('skipped');
+      });
+      await reply.code(202).send(result);
+      return;
+    }
+    record(() => {
+      telemetry.delivery(result.replayed ? 'replayed' : 'accepted');
+    });
+    record(() => {
+      telemetry.deduplication(result.replayed ? 'replayed' : 'new');
+    });
+    record(() => {
+      telemetry.health('healthy');
+    });
+    await replyToAcceptedWebhook(request, reply, {
+      workspaceId: verification.workspaceId,
+      accepted: result,
+      waiter: responseWaiter,
+      telemetry: telemetry,
+    });
+  } catch (error) {
+    await rejectAcceptance(error, reply, {
+      requestId: requestId,
+      telemetry: telemetry,
+      reject: reject,
+    });
+  }
 }
