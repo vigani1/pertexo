@@ -10,28 +10,7 @@ import {
   parseTaskPrefill,
   DEFAULT_FORM_THANK_YOU_MESSAGE,
 } from '../../src/index.js';
-const fields = formFieldsSchema.parse(
-  [
-    { name: 'name', label: 'Name', type: 'text' },
-    { name: 'notes', label: 'Notes', type: 'textarea', required: false },
-    { name: 'amount', label: 'Amount', type: 'number' },
-    { name: 'checked', label: 'Checked', type: 'boolean' },
-    {
-      name: 'currency',
-      label: 'Currency',
-      type: 'select',
-      options: ['USD', 'EUR'],
-    },
-    { name: 'date', label: 'Date', type: 'date' },
-  ].map((field, index) => ({ ...field, id: `field-${String(index)}` })),
-);
-const values = {
-  name: '  Alice  ',
-  amount: 0,
-  checked: false,
-  currency: 'EUR',
-  date: '2024-02-29',
-};
+import { fields, values, multiple } from '../support/form-values.js';
 it('preserves text, zero and false, omitting optional blank fields', () => {
   expect(parseFormValues(fields, { ...values, notes: '   ' })).toEqual(values);
   expect(formConfigSchema.parse({}).fields[0]?.required).toBe(true);
@@ -163,7 +142,6 @@ it('rejects duplicate and unsafe field names and options', () => {
     ]).success,
   ).toBe(false);
 });
-
 it('keeps field identities unique and bounds escaped task configuration', () => {
   expect(
     formFieldsSchema.safeParse([
@@ -197,7 +175,6 @@ it('keeps field identities unique and bounds escaped task configuration', () => 
     }).success,
   ).toBe(false);
 });
-
 it('accepts emoji and refuses text PostgreSQL JSON cannot store before admission', () => {
   expect(parseFormValues(fields, { ...values, name: '😀' }).name).toBe('😀');
   for (const name of ['bad\u0000text', '\ud800'])
@@ -205,7 +182,6 @@ it('accepts emoji and refuses text PostgreSQL JSON cannot store before admission
       FormValuesInvalidError,
     );
 });
-
 it('preserves legacy setup and bounds an optional plain acceptance message', () => {
   expect(DEFAULT_FORM_THANK_YOU_MESSAGE).toBe('Thanks for your response.');
   expect(formConfigSchema.parse({})).not.toHaveProperty('thankYouMessage');
@@ -221,24 +197,6 @@ it('preserves legacy setup and bounds an optional plain acceptance message', () 
       .success,
   ).toBe(false);
 });
-const multiple = formFieldsSchema.parse([
-  {
-    id: 'required',
-    name: 'channels',
-    label: 'Channels',
-    type: 'multi_select',
-    options: ['Email', 'SMS'],
-  },
-  {
-    id: 'optional',
-    name: 'extras',
-    label: 'Extras',
-    type: 'multi_select',
-    required: false,
-    options: ['A', 'B'],
-  },
-  { id: 'text', name: 'note', label: 'Note', type: 'text', required: false },
-]);
 it('keeps ordered unique choices and omits optional empty arrays, including partial prefills', () => {
   const values = { channels: ['SMS', 'Email'] };
   expect(parseFormValues(multiple, { ...values, extras: [] })).toEqual(values);
@@ -307,7 +265,6 @@ it('retains the response budget with multiple choices and otherwise valid text',
     }),
   ).toThrow('Keep the form response within 64 KB.');
 });
-
 it('enforces per-field selection bounds while allowing partial requested prefills', () => {
   const bounded = formFieldsSchema.parse([
     {
@@ -373,7 +330,6 @@ it('retains old form configuration exactly and accepts only credential-free HTTP
       .success,
   ).toBe(false);
 });
-
 it.each(['toString', 'valueOf', 'hasOwnProperty'])(
   'reads only own submitted values for form field %s',
   (name) => {
