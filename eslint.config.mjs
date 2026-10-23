@@ -84,6 +84,7 @@ const readablePackages = [
   'node-catalog',
   'templates',
   'contracts',
+  'database',
 ];
 
 export default tseslint.config(
@@ -680,8 +681,11 @@ export default tseslint.config(
     rules: { 'max-lines-per-function': 'off' },
   },
   {
-    // Declarative protocol and OpenAPI tables stay together for review.
+    // Declarative protocol, schema, retention and OpenAPI tables stay together.
     files: [
+      'packages/database/src/lifecycle/retention-rules.ts',
+      'packages/database/src/schema/foundation.ts',
+      'packages/database/src/schema/runs/execution.ts',
       'packages/contracts/src/errors/api-problem.ts',
       'packages/contracts/src/openapi/connections.ts',
       'packages/contracts/src/openapi/execution/runs.ts',
