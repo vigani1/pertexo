@@ -209,9 +209,7 @@ function bindingChildren(
   return undefined;
 }
 
-function isCallbackField(
-  value: unknown,
-): value is Record<string, unknown> & {
+function isCallbackField(value: unknown): value is Record<string, unknown> & {
   type: 'name';
   value: 'url' | 'secret';
 } {

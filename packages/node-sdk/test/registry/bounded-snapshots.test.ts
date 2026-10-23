@@ -13,11 +13,7 @@ import {
   NODE_EXECUTION_LIMITS,
   canonicalizeBoundedJson,
 } from '../../src/server.js';
-import {
-  policy,
-  manifest,
-  catalog,
-} from '../support/registry.js';
+import { policy, manifest, catalog } from '../support/registry.js';
 
 describe('node-sdk bounded JSON contracts', () => {
   it('keeps browser and server bounded JSON admission in parity', () => {

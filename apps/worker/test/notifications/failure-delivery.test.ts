@@ -932,13 +932,11 @@ describe('provider failure notification delivery', () => {
           ),
         },
         slack: {
-          sendMessage: vi
-            .fn()
-            .mockRejectedValue(
-              new SecureHttpError(code, 'definite_failure', {
-                possiblyDispatched: false,
-              }),
-            ),
+          sendMessage: vi.fn().mockRejectedValue(
+            new SecureHttpError(code, 'definite_failure', {
+              possiblyDispatched: false,
+            }),
+          ),
         },
         email: { sendNotification: vi.fn() },
         workerId: 'worker-1',

@@ -156,15 +156,13 @@ describe('retained recovery values', () => {
       catalog: composeExecutableCatalog(nodeCatalog()),
     });
     const retained = source(
-      nodes
-        .slice(0, -1)
-        .map((node, index) =>
-          record(executable, {
-            nodeId: node.id,
-            ordinal: index + 1,
-            status: node.id === 'step-4' ? 'failed' : 'succeeded',
-          }),
-        ),
+      nodes.slice(0, -1).map((node, index) =>
+        record(executable, {
+          nodeId: node.id,
+          ordinal: index + 1,
+          status: node.id === 'step-4' ? 'failed' : 'succeeded',
+        }),
+      ),
     );
     const prefix = candidate({ executable, source: retained });
     const small = {
