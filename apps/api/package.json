@@ -29,6 +29,7 @@
     "@pertexo/observability": "workspace:*",
     "@pertexo/queue": "workspace:*",
     "@pertexo/rate-limit": "workspace:*",
+    "@pertexo/templates": "workspace:*",
     "@pertexo/workflow-engine": "workspace:*",
     "@pertexo/workflow-model": "workspace:*",
     "@xmldom/xmldom": "0.8.15",
@@ -49,7 +50,6 @@
   "devDependencies": {
     "@nestjs/testing": "11.2.7",
     "@opentelemetry/sdk-node": "0.223.0",
-    "@pertexo/templates": "workspace:*",
     "@types/pg": "8.23.1",
     "xml-crypto": "6.4.0"
   }
