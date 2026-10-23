@@ -130,7 +130,6 @@ export async function acceptWorkflowRun(
     parsed.replaySourceRunId,
     prepared.variableSetRevision,
   );
-  const { failureNotificationPolicy } = prepared;
   const idempotencyRecordId = generatePersistedId();
   const runId = prepared.runId ?? generatePersistedId();
   const outboxEventId = generatePersistedId();
@@ -171,6 +170,58 @@ export async function acceptWorkflowRun(
     return racedAcceptance;
   }
 
+  const insertedRun = await insertAcceptedWorkflowRun(transaction, parsed, {
+    prepared,
+    runId,
+    storedRunInputJson,
+    variableSetRevision,
+    sourceOrigin,
+  });
+  await persistRunStart(transaction, parsed, {
+    runId,
+    outboxEventId,
+    initialCheckpointJson,
+  });
+  const completedClaims = await transaction.db
+    .update(idempotencyRecords)
+    .set({
+      resultRef,
+      status: IDEMPOTENCY_STATUS.completed,
+      updatedAt: sql`now()`,
+    })
+    .where(
+      and(
+        eq(idempotencyRecords.id, idempotencyRecordId),
+        eq(idempotencyRecords.status, IDEMPOTENCY_STATUS.inProgress),
+      ),
+    )
+    .returning({ id: idempotencyRecords.id });
+  if (completedClaims.length !== 1) {
+    throw new IdempotencyRecordCorruptError();
+  }
+
+  return Object.freeze({
+    acceptedAt: insertedRun.acceptedAt,
+    duplicate: false,
+    outboxEventId,
+    runId,
+    status: RUN_STATUS.queued,
+  });
+}
+
+type ParsedRunInput = ReturnType<typeof acceptWorkflowRunInputSchema.parse>;
+type RunAdmissionState = Readonly<{
+  prepared: PreparedWorkflowRunAcceptance;
+  runId: string;
+  storedRunInputJson: string | null;
+  variableSetRevision: number | null;
+  sourceOrigin: boolean;
+}>;
+async function insertAcceptedWorkflowRun(
+  transaction: WorkspaceTransaction,
+  parsed: ParsedRunInput,
+  state: RunAdmissionState,
+) {
   let insertedRuns;
   await lockExecutionArtifactReferences(transaction, parsed.runInput);
   try {
@@ -183,61 +234,85 @@ export async function acceptWorkflowRun(
       await requireRunTableReferences(transaction, parsed.workflowVersionId);
     insertedRuns = await transaction.db
       .insert(workflowRuns)
-      .values({
-        id: runId,
-        workspaceId: transaction.workspaceId,
-        workflowId: parsed.workflowId,
-        workflowVersionId: parsed.workflowVersionId,
-        ...(prepared.recovery === undefined
-          ? {}
-          : {
-              recoveryTargetNodeRunId: prepared.recovery.targetNodeRunId,
-              recoveryTargetNodeId: prepared.recovery.targetNodeId,
-              recoveryReusedCount: prepared.recovery.reusedCount,
-              recoveryEffectRisk: prepared.recovery.effectRisk,
-              recoveryEffectsAcknowledged:
-                prepared.recovery.effectsAcknowledged,
-            }),
-        ...(parsed.replayCommandId === undefined
-          ? {}
-          : {
-              replayCommandId: parsed.replayCommandId,
-              replaySourceRunId: parsed.replaySourceRunId,
-            }),
-        inputRef:
-          storedRunInputJson === null ? null : sql`${storedRunInputJson}::json`,
-        inputRefExpiresAt:
-          storedRunInputJson === null
-            ? null
-            : sql`now() + ${sql.raw(runInputRetentionSql(parsed.triggerType))}`,
-        variableSetRevision,
-        triggerType: parsed.triggerType,
-        startedBy: parsed.startedBy ?? null,
-        absoluteDeadlineAt:
-          parsed.absoluteDeadlineAt === undefined
-            ? (parsed.deadlineAt ?? null)
-            : parsed.absoluteDeadlineAt,
-        errorWorkflowOrigin:
-          parsed.triggerType === 'workflow_error' ||
-          (prepared.errorWorkflowOrigin ?? false) ||
-          sourceOrigin,
-        ...(failureNotificationPolicy === undefined
-          ? {}
-          : {
-              failureNotificationDestinationId:
-                failureNotificationPolicy.destinationId,
-              failureNotificationDestinationConfigVersion:
-                failureNotificationPolicy.destinationConfigVersion,
-              failureNotificationSideEffectClass:
-                failureNotificationPolicy.sideEffectClass,
-              failureNotificationConnectionSecretVersionId:
-                failureNotificationPolicy.connectionSecretVersionId,
-            }),
-        // Match created_at's PostgreSQL transaction clock, so queueing and
-        // durable waits consume the published run budget too. LEAST ignores
-        // null operands: an absent limit preserves the caller's deadline,
-        // while a later caller deadline cannot extend the version's limit.
-        deadlineAt: sql`least(
+      .values(acceptedWorkflowRunValues(transaction, parsed, state))
+      .returning({ acceptedAt: workflowRuns.createdAt });
+  } catch (error: unknown) {
+    throwWorkflowRunAdmissionError(error);
+  }
+  const insertedRun = insertedRuns[0];
+  if (insertedRun === undefined) {
+    throw new IdempotencyRecordCorruptError();
+  }
+
+  return insertedRun;
+}
+
+function acceptedWorkflowRunValues(
+  transaction: WorkspaceTransaction,
+  parsed: ParsedRunInput,
+  {
+    prepared,
+    runId,
+    storedRunInputJson,
+    variableSetRevision,
+    sourceOrigin,
+  }: RunAdmissionState,
+) {
+  const { failureNotificationPolicy } = prepared;
+  return {
+    id: runId,
+    workspaceId: transaction.workspaceId,
+    workflowId: parsed.workflowId,
+    workflowVersionId: parsed.workflowVersionId,
+    ...(prepared.recovery === undefined
+      ? {}
+      : {
+          recoveryTargetNodeRunId: prepared.recovery.targetNodeRunId,
+          recoveryTargetNodeId: prepared.recovery.targetNodeId,
+          recoveryReusedCount: prepared.recovery.reusedCount,
+          recoveryEffectRisk: prepared.recovery.effectRisk,
+          recoveryEffectsAcknowledged: prepared.recovery.effectsAcknowledged,
+        }),
+    ...(parsed.replayCommandId === undefined
+      ? {}
+      : {
+          replayCommandId: parsed.replayCommandId,
+          replaySourceRunId: parsed.replaySourceRunId,
+        }),
+    inputRef:
+      storedRunInputJson === null ? null : sql`${storedRunInputJson}::json`,
+    inputRefExpiresAt:
+      storedRunInputJson === null
+        ? null
+        : sql`now() + ${sql.raw(runInputRetentionSql(parsed.triggerType))}`,
+    variableSetRevision,
+    triggerType: parsed.triggerType,
+    startedBy: parsed.startedBy ?? null,
+    absoluteDeadlineAt:
+      parsed.absoluteDeadlineAt === undefined
+        ? (parsed.deadlineAt ?? null)
+        : parsed.absoluteDeadlineAt,
+    errorWorkflowOrigin:
+      parsed.triggerType === 'workflow_error' ||
+      (prepared.errorWorkflowOrigin ?? false) ||
+      sourceOrigin,
+    ...(failureNotificationPolicy === undefined
+      ? {}
+      : {
+          failureNotificationDestinationId:
+            failureNotificationPolicy.destinationId,
+          failureNotificationDestinationConfigVersion:
+            failureNotificationPolicy.destinationConfigVersion,
+          failureNotificationSideEffectClass:
+            failureNotificationPolicy.sideEffectClass,
+          failureNotificationConnectionSecretVersionId:
+            failureNotificationPolicy.connectionSecretVersionId,
+        }),
+    // Match created_at's PostgreSQL transaction clock, so queueing and
+    // durable waits consume the published run budget too. LEAST ignores
+    // null operands: an absent limit preserves the caller's deadline,
+    // while a later caller deadline cannot extend the version's limit.
+    deadlineAt: sql`least(
           ${parsed.deadlineAt?.toISOString() ?? null}::timestamptz,
           (select now() +
              (version.executable_json #>> '{graph,settings,maxRunDurationMs}')::integer
@@ -247,16 +322,23 @@ export async function acceptWorkflowRun(
              and version.workflow_id = ${parsed.workflowId}
              and version.id = ${parsed.workflowVersionId})
         )`,
-        status: RUN_STATUS.queued,
-      })
-      .returning({ acceptedAt: workflowRuns.createdAt });
-  } catch (error: unknown) {
-    throwWorkflowRunAdmissionError(error);
-  }
-  const insertedRun = insertedRuns[0];
-  if (insertedRun === undefined) {
-    throw new IdempotencyRecordCorruptError();
-  }
+    status: RUN_STATUS.queued,
+  };
+}
+
+async function persistRunStart(
+  transaction: WorkspaceTransaction,
+  parsed: ParsedRunInput,
+  {
+    runId,
+    outboxEventId,
+    initialCheckpointJson,
+  }: Readonly<{
+    runId: string;
+    outboxEventId: string;
+    initialCheckpointJson: string;
+  }>,
+): Promise<void> {
   await transaction.db.insert(runEvents).values({
     workspaceId: transaction.workspaceId,
     workflowRunId: runId,
@@ -287,31 +369,5 @@ export async function acceptWorkflowRun(
     aggregateId: runId,
     payload,
     payloadChecksum: canonicalOutboxPayloadChecksum(payload),
-  });
-
-  const completedClaims = await transaction.db
-    .update(idempotencyRecords)
-    .set({
-      resultRef,
-      status: IDEMPOTENCY_STATUS.completed,
-      updatedAt: sql`now()`,
-    })
-    .where(
-      and(
-        eq(idempotencyRecords.id, idempotencyRecordId),
-        eq(idempotencyRecords.status, IDEMPOTENCY_STATUS.inProgress),
-      ),
-    )
-    .returning({ id: idempotencyRecords.id });
-  if (completedClaims.length !== 1) {
-    throw new IdempotencyRecordCorruptError();
-  }
-
-  return Object.freeze({
-    acceptedAt: insertedRun.acceptedAt,
-    duplicate: false,
-    outboxEventId,
-    runId,
-    status: RUN_STATUS.queued,
   });
 }

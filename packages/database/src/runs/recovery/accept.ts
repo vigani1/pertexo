@@ -43,53 +43,8 @@ export async function recoverWorkflowRunInTransaction(
       run: await requireWorkflowRunRecord(transaction, replay.runId),
       replayed: true,
     };
-  // Same order as coordinator writes: workspace, source run/details, then admission counter.
-  await transaction.db.execute(
-    sql`select app.lock_workspace_run_admission(${transaction.workspaceId})`,
-  );
-  const metadata = await readRecoveryMetadata(
-    transaction,
-    input.sourceRunId,
-    'locked',
-  );
-  if ('kind' in metadata)
-    throw new WorkflowRecoveryUnavailableError(metadata.reason);
-  if (metadata.run.workflowVersionId !== input.workflowVersionId)
-    throw new WorkflowRecoveryUnavailableError('version_unavailable');
-  const candidate = input.prepareRecovery(metadata);
-  if (candidate.kind === 'refused')
-    throw new WorkflowRecoveryUnavailableError(candidate.reason);
-  const values = await readRecoveryValues(
-    transaction,
-    input.sourceRunId,
-    candidate.nodeRunIds,
-  );
-  if ('kind' in values)
-    throw new WorkflowRecoveryUnavailableError(values.reason);
-  const prepared = candidate.complete(values);
-  if (prepared.kind === 'refused')
-    throw new WorkflowRecoveryUnavailableError(prepared.reason);
-  const preview = prepared.preview;
-  if (preview.nodeRunId !== input.nodeRunId)
-    throw new WorkflowRecoveryUnavailableError('evidence_unavailable');
-  if (
-    preview.effectRisk === 'possible_effects' &&
-    !(input.acknowledgePossibleEffects ?? false)
-  )
-    throw new WorkflowRecoveryUnavailableError(
-      'effects_acknowledgement_required',
-    );
-  if (
-    preview.effectRisk === 'unknown_outcome' &&
-    !(input.acknowledgeUnknownOutcome ?? false)
-  )
-    throw new WorkflowRecoveryUnavailableError(
-      'unknown_outcome_acknowledgement_required',
-    );
-  const identity = allocateRecoveryIdentity(candidate.nodeRunIds);
-  const seed = prepared.seed(identity);
-  if (seed.kind === 'refused')
-    throw new WorkflowRecoveryUnavailableError(seed.reason);
+  const { metadata, prepared, preview, identity, seed } =
+    await prepareRecoveryEvidence(transaction, input);
   const acceptance = await prepareWorkflowRunAcceptance(
     transaction,
     metadata.run.workflowId,
@@ -193,4 +148,59 @@ export async function recoverWorkflowRunInTransaction(
     run: await requireWorkflowRunRecord(transaction, accepted.runId),
     replayed: false,
   };
+}
+
+async function prepareRecoveryEvidence(
+  transaction: WorkspaceTransaction,
+  input: RecoverWorkflowRunInput,
+) {
+  // Same order as coordinator writes: workspace, source run/details, then admission counter.
+  await transaction.db.execute(
+    sql`select app.lock_workspace_run_admission(${transaction.workspaceId})`,
+  );
+  const metadata = await readRecoveryMetadata(
+    transaction,
+    input.sourceRunId,
+    'locked',
+  );
+  if ('kind' in metadata)
+    throw new WorkflowRecoveryUnavailableError(metadata.reason);
+  if (metadata.run.workflowVersionId !== input.workflowVersionId)
+    throw new WorkflowRecoveryUnavailableError('version_unavailable');
+  const candidate = input.prepareRecovery(metadata);
+  if (candidate.kind === 'refused')
+    throw new WorkflowRecoveryUnavailableError(candidate.reason);
+  const values = await readRecoveryValues(
+    transaction,
+    input.sourceRunId,
+    candidate.nodeRunIds,
+  );
+  if ('kind' in values)
+    throw new WorkflowRecoveryUnavailableError(values.reason);
+  const prepared = candidate.complete(values);
+  if (prepared.kind === 'refused')
+    throw new WorkflowRecoveryUnavailableError(prepared.reason);
+  const preview = prepared.preview;
+  if (preview.nodeRunId !== input.nodeRunId)
+    throw new WorkflowRecoveryUnavailableError('evidence_unavailable');
+  if (
+    preview.effectRisk === 'possible_effects' &&
+    !(input.acknowledgePossibleEffects ?? false)
+  )
+    throw new WorkflowRecoveryUnavailableError(
+      'effects_acknowledgement_required',
+    );
+  if (
+    preview.effectRisk === 'unknown_outcome' &&
+    !(input.acknowledgeUnknownOutcome ?? false)
+  )
+    throw new WorkflowRecoveryUnavailableError(
+      'unknown_outcome_acknowledgement_required',
+    );
+  const identity = allocateRecoveryIdentity(candidate.nodeRunIds);
+  const seed = prepared.seed(identity);
+  if (seed.kind === 'refused')
+    throw new WorkflowRecoveryUnavailableError(seed.reason);
+
+  return { metadata, prepared, preview, identity, seed };
 }

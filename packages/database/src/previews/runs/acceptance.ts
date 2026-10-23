@@ -74,17 +74,7 @@ export async function acceptPreviewRun(
   if (existing !== null) return existing;
 
   const now = new Date();
-  if (
-    parsed.expiresAt.getTime() <= now.getTime() ||
-    parsed.expiresAt.getTime() - now.getTime() > PREVIEW_RETENTION_MAX_MS
-  )
-    throw new PreviewAdmissionDeniedError('retention');
-  const invalidDeadline =
-    parsed.executionDeadlineAt.getTime() <= now.getTime() ||
-    parsed.executionDeadlineAt.getTime() - now.getTime() >
-      PREVIEW_EXECUTION_TIMEOUT_MAX_MS ||
-    parsed.executionDeadlineAt.getTime() > parsed.expiresAt.getTime();
-  if (invalidDeadline) throw new PreviewAdmissionDeniedError('deadline');
+  assertPreviewDeadlines(parsed, now);
   const draftGraph = await assertAdmission(
     transaction,
     parsed.workflowId,
@@ -109,34 +99,11 @@ export async function acceptPreviewRun(
           stored: serializeStoredExecutionValue({ kind: 'inline', value: {} }),
         };
 
-  if (sample === undefined) {
-    await requireTransactionConnectionBindings(
-      transaction,
-      connectionScope(
-        { workspaceId: transaction.workspaceId, actorId: parsed.actorUserId },
-        resources.role,
-        'connection:use',
-      ),
-      Object.entries(parsed.executableNode.connectionRefs ?? {}).map(
-        ([slot, id]) => ({
-          id,
-          path: `$.nodes.${parsed.nodeId}.connectionRefs.${slot}`,
-        }),
-      ),
-    );
-    await lockActorArtifactReferences(
-      transaction,
-      parsed.actorUserId,
-      JSON.parse(resolvedInput.stored) as unknown,
-      resolvedInput.priorPreviewRunId ?? undefined,
-    );
-    await lockActorArtifactReferences(
-      transaction,
-      parsed.actorUserId,
-      parsed.executableNode,
-      resolvedInput.priorPreviewRunId ?? undefined,
-    );
-  }
+  await assertPreviewInputAuthority(transaction, parsed, {
+    resources,
+    sample,
+    resolvedInput,
+  });
   const idempotencyRecordId = uuidv7();
   const previewRunId = uuidv7();
   const dispatch =
@@ -185,6 +152,116 @@ export async function acceptPreviewRun(
     return raced;
   }
 
+  const insertedRun = await insertAcceptedPreviewRun(transaction, parsed, {
+    previewRunId,
+    sample,
+    resolvedInput,
+  });
+  if (dispatch.kind === 'execution')
+    await persistPreviewAttempt(transaction, parsed, {
+      previewRunId,
+      previewAttemptId: dispatch.previewAttemptId,
+      outboxEventId: dispatch.outboxEventId,
+    });
+  await recordAcceptedPreview(transaction, parsed, { previewRunId, sample });
+  const completedClaims = await transaction.db
+    .update(idempotencyRecords)
+    .set({ resultRef, status: 'completed', updatedAt: sql`now()` })
+    .where(
+      and(
+        eq(idempotencyRecords.id, idempotencyRecordId),
+        eq(idempotencyRecords.status, 'in_progress'),
+      ),
+    )
+    .returning({ id: idempotencyRecords.id });
+  if (completedClaims.length !== 1) throw new PreviewAcceptanceCorruptError();
+
+  return Object.freeze({
+    acceptedAt: insertedRun.acceptedAt,
+    completedAt: insertedRun.completedAt,
+    duplicate: false,
+    expiresAt: parsed.expiresAt,
+    outboxEventId,
+    previewAttemptId,
+    previewRunId,
+    status:
+      sample === undefined ? PREVIEW_STATUS.queued : PREVIEW_STATUS.succeeded,
+    ...(sample === undefined
+      ? {}
+      : { pinnedSampleId: sample.id, pinnedOutput: sample.output }),
+  });
+}
+
+type ParsedPreviewInput = ReturnType<typeof acceptPreviewRunInputSchema.parse>;
+type PreviewSample = Awaited<ReturnType<typeof resolvePreviewSample>>;
+function assertPreviewDeadlines(parsed: ParsedPreviewInput, now: Date): void {
+  if (
+    parsed.expiresAt.getTime() <= now.getTime() ||
+    parsed.expiresAt.getTime() - now.getTime() > PREVIEW_RETENTION_MAX_MS
+  )
+    throw new PreviewAdmissionDeniedError('retention');
+  const invalidDeadline =
+    parsed.executionDeadlineAt.getTime() <= now.getTime() ||
+    parsed.executionDeadlineAt.getTime() - now.getTime() >
+      PREVIEW_EXECUTION_TIMEOUT_MAX_MS ||
+    parsed.executionDeadlineAt.getTime() > parsed.expiresAt.getTime();
+  if (invalidDeadline) throw new PreviewAdmissionDeniedError('deadline');
+}
+async function assertPreviewInputAuthority(
+  transaction: WorkspaceTransaction,
+  parsed: ParsedPreviewInput,
+  {
+    resources,
+    sample,
+    resolvedInput,
+  }: Readonly<{
+    resources: Awaited<ReturnType<typeof assertPreviewWorkflow>>;
+    sample: PreviewSample;
+    resolvedInput: Awaited<ReturnType<typeof resolveInput>>;
+  }>,
+): Promise<void> {
+  if (sample === undefined) {
+    await requireTransactionConnectionBindings(
+      transaction,
+      connectionScope(
+        { workspaceId: transaction.workspaceId, actorId: parsed.actorUserId },
+        resources.role,
+        'connection:use',
+      ),
+      Object.entries(parsed.executableNode.connectionRefs ?? {}).map(
+        ([slot, id]) => ({
+          id,
+          path: `$.nodes.${parsed.nodeId}.connectionRefs.${slot}`,
+        }),
+      ),
+    );
+    await lockActorArtifactReferences(
+      transaction,
+      parsed.actorUserId,
+      JSON.parse(resolvedInput.stored) as unknown,
+      resolvedInput.priorPreviewRunId ?? undefined,
+    );
+    await lockActorArtifactReferences(
+      transaction,
+      parsed.actorUserId,
+      parsed.executableNode,
+      resolvedInput.priorPreviewRunId ?? undefined,
+    );
+  }
+}
+async function insertAcceptedPreviewRun(
+  transaction: WorkspaceTransaction,
+  parsed: ParsedPreviewInput,
+  {
+    previewRunId,
+    sample,
+    resolvedInput,
+  }: Readonly<{
+    previewRunId: string;
+    sample: PreviewSample;
+    resolvedInput: Awaited<ReturnType<typeof resolveInput>>;
+  }>,
+) {
   const insertedRuns = await transaction.db
     .insert(previewRuns)
     .values({
@@ -237,35 +314,16 @@ export async function acceptPreviewRun(
   const insertedRun = insertedRuns[0];
   if (insertedRun === undefined) throw new PreviewAcceptanceCorruptError();
 
-  if (dispatch.kind === 'execution') {
-    const { previewAttemptId, outboxEventId } = dispatch;
-    await transaction.db.insert(previewAttempts).values({
-      id: previewAttemptId,
-      workspaceId: transaction.workspaceId,
-      previewRunId,
-      status: PREVIEW_STATUS.queued,
-      sideEffectClass: parsed.sideEffectClass,
-      providerIdempotencyKey: parsed.providerIdempotencyKey ?? null,
-    });
-
-    const payload = {
-      workspaceId: transaction.workspaceId,
-      outboxEventId,
-      previewRunId,
-      previewAttemptId,
-      ...(parsed.traceparent === undefined
-        ? {}
-        : { traceparent: parsed.traceparent }),
-    } as const;
-    await insertOutboxEvent(transaction, {
-      id: outboxEventId,
-      jobName: 'execute-preview-attempt',
-      aggregateType: 'preview-run',
-      aggregateId: previewRunId,
-      payload,
-      payloadChecksum: canonicalOutboxPayloadChecksum(payload),
-    });
-  }
+  return insertedRun;
+}
+async function recordAcceptedPreview(
+  transaction: WorkspaceTransaction,
+  parsed: ParsedPreviewInput,
+  {
+    previewRunId,
+    sample,
+  }: Readonly<{ previewRunId: string; sample: PreviewSample }>,
+): Promise<void> {
   await transaction.db.insert(auditEvents).values({
     id: uuidv7(),
     workspaceId: transaction.workspaceId,
@@ -287,31 +345,46 @@ export async function acceptPreviewRun(
       expiresAt: parsed.expiresAt.toISOString(),
     },
   });
+}
 
-  const completedClaims = await transaction.db
-    .update(idempotencyRecords)
-    .set({ resultRef, status: 'completed', updatedAt: sql`now()` })
-    .where(
-      and(
-        eq(idempotencyRecords.id, idempotencyRecordId),
-        eq(idempotencyRecords.status, 'in_progress'),
-      ),
-    )
-    .returning({ id: idempotencyRecords.id });
-  if (completedClaims.length !== 1) throw new PreviewAcceptanceCorruptError();
-
-  return Object.freeze({
-    acceptedAt: insertedRun.acceptedAt,
-    completedAt: insertedRun.completedAt,
-    duplicate: false,
-    expiresAt: parsed.expiresAt,
-    outboxEventId,
-    previewAttemptId,
+async function persistPreviewAttempt(
+  transaction: WorkspaceTransaction,
+  parsed: ParsedPreviewInput,
+  {
     previewRunId,
-    status:
-      sample === undefined ? PREVIEW_STATUS.queued : PREVIEW_STATUS.succeeded,
-    ...(sample === undefined
+    previewAttemptId,
+    outboxEventId,
+  }: Readonly<{
+    previewRunId: string;
+    previewAttemptId: string;
+    outboxEventId: string;
+  }>,
+): Promise<void> {
+  await transaction.db.insert(previewAttempts).values({
+    id: previewAttemptId,
+    workspaceId: transaction.workspaceId,
+    previewRunId,
+    status: PREVIEW_STATUS.queued,
+    sideEffectClass: parsed.sideEffectClass,
+    providerIdempotencyKey: parsed.providerIdempotencyKey ?? null,
+  });
+
+  const payload = {
+    workspaceId: transaction.workspaceId,
+    outboxEventId,
+    previewRunId,
+    previewAttemptId,
+    ...(parsed.traceparent === undefined
       ? {}
-      : { pinnedSampleId: sample.id, pinnedOutput: sample.output }),
+      : { traceparent: parsed.traceparent }),
+  } as const;
+
+  await insertOutboxEvent(transaction, {
+    id: outboxEventId,
+    jobName: 'execute-preview-attempt',
+    aggregateType: 'preview-run',
+    aggregateId: previewRunId,
+    payload,
+    payloadChecksum: canonicalOutboxPayloadChecksum(payload),
   });
 }

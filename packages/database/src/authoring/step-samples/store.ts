@@ -17,7 +17,7 @@ import {
 export function createWorkflowStepSampleStore(
   pool: Pool,
 ): WorkflowStepSampleStore {
-  const transact: SampleTransaction = (input, write, work) =>
+  const transact: SampleTransaction = (input, { write, work }) =>
     withTenantScopedClient(
       pool,
       { workspaceId: input.workspaceId, actorId: input.actorId },
@@ -43,41 +43,47 @@ export function createWorkflowStepSampleStore(
     );
   return {
     list: (input) =>
-      transact(input, false, async (client) => {
-        const draft = await sampleDraft(client, input, { write: false });
-        const rows = await client.query<SampleMetadataRow>(
-          `select ${SAMPLE_METADATA_COLUMNS} from app.workflow_step_samples where workspace_id=$1 and workflow_id=$2 order by node_id limit 200`,
-          [input.workspaceId, input.workflowId],
-        );
-        const now = await sampleDatabaseTime(client);
-        return {
-          items: rows.rows.map((row) =>
-            sampleMetadata(row, draft.bindings.get(row.node_id), now),
-          ),
-          draftRevision: draft.revision,
-        };
+      transact(input, {
+        write: false,
+        work: async (client) => {
+          const draft = await sampleDraft(client, input, { write: false });
+          const rows = await client.query<SampleMetadataRow>(
+            `select ${SAMPLE_METADATA_COLUMNS} from app.workflow_step_samples where workspace_id=$1 and workflow_id=$2 order by node_id limit 200`,
+            [input.workspaceId, input.workflowId],
+          );
+          const now = await sampleDatabaseTime(client);
+          return {
+            items: rows.rows.map((row) =>
+              sampleMetadata(row, draft.bindings.get(row.node_id), now),
+            ),
+            draftRevision: draft.revision,
+          };
+        },
       }),
     get: (input) =>
-      transact(input, false, async (client) => {
-        const draft = await sampleDraft(client, input, { write: false });
-        const rows = await client.query<SampleRow>(
-          `select ${SAMPLE_COLUMNS} from app.workflow_step_samples where workspace_id=$1 and workflow_id=$2 and node_id=$3`,
-          [input.workspaceId, input.workflowId, input.nodeId],
-        );
-        const row = rows.rows[0];
-        const now = await sampleDatabaseTime(client);
-        const sample =
-          row === undefined
-            ? null
-            : sampleMetadata(row, draft.bindings.get(row.node_id), now);
-        return {
-          sample,
-          output:
-            row === undefined || sample?.state === 'expired'
+      transact(input, {
+        write: false,
+        work: async (client) => {
+          const draft = await sampleDraft(client, input, { write: false });
+          const rows = await client.query<SampleRow>(
+            `select ${SAMPLE_COLUMNS} from app.workflow_step_samples where workspace_id=$1 and workflow_id=$2 and node_id=$3`,
+            [input.workspaceId, input.workflowId, input.nodeId],
+          );
+          const row = rows.rows[0];
+          const now = await sampleDatabaseTime(client);
+          const sample =
+            row === undefined
               ? null
-              : parseStoredExecutionValue(row.output_ref),
-          draftRevision: draft.revision,
-        };
+              : sampleMetadata(row, draft.bindings.get(row.node_id), now);
+          return {
+            sample,
+            output:
+              row === undefined || sample?.state === 'expired'
+                ? null
+                : parseStoredExecutionValue(row.output_ref),
+            draftRevision: draft.revision,
+          };
+        },
       }),
     put: (input) => mutateStepSample(transact, input, input.source),
     remove: (input) => mutateStepSample(transact, input, 'remove'),
