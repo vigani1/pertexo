@@ -182,426 +182,32 @@ export async function assertSingleProviderLink(
   ordering: (typeof callbackOrderings)[number],
   firstCallbackFailure?: 'early-return' | 'early-rejection',
 ): Promise<void> {
-  const email = `linked-${randomUUID()}@example.test`;
-  const password = 'correct horse battery staple';
-  const signup = await authRequest('/v1/auth/sign-up/email', {
-    name: 'Linking Test',
-    email,
-    password,
-  });
-  expect(signup.status).toBe(200);
-  const verification = mailedMessages(email).find(
-    (item) => item.purpose === 'verification',
-  );
-  expect(verification).toBeDefined();
-  expect(
-    (
-      await runtime.auth.handler(
-        new Request(verification?.url ?? 'http://invalid'),
-      )
-    ).status,
-  ).toBe(302);
-  const signIn = await authRequest('/v1/auth/sign-in/email', {
-    email,
-    password,
-  });
-  expect(signIn.status).toBe(200);
-  const originalCookie = cookieValue(signIn.headers.getSetCookie());
-  expect(originalCookie).toBeDefined();
-
-  const authorizations = new Map<
-    string,
-    { codeVerifier: string; nonce: string; redirectUri: string }
-  >();
-  const bothProviderProofs = Promise.withResolvers<undefined>();
-  let providerProofs = 0;
-  let gateProviderProofs = false;
-  const gateway: SocialProviderGateway = {
-    available: ['google', 'github'],
-    authorize: (input) => {
-      authorizations.set(`${input.provider}:${input.state}`, input);
-      return Promise.resolve(
-        `https://provider.test/authorize?state=${input.state}`,
-      );
-    },
-    verify: (input) => {
-      const state = input.code.split(':', 2)[1] ?? '';
-      const expected = authorizations.get(`${input.provider}:${state}`);
-      if (
-        expected?.codeVerifier !== input.codeVerifier ||
-        expected.nonce !== input.nonce ||
-        expected.redirectUri !== input.redirectUri ||
-        input.issuer !== null
-      )
-        return Promise.resolve(undefined);
-      const identity = {
-        accountId: `${input.provider}-subject-${email}`,
-        email,
-        emailVerified: true,
-      };
-      if (gateProviderProofs) {
-        providerProofs += 1;
-        if (providerProofs === 2) bothProviderProofs.resolve(undefined);
-        return bothProviderProofs.promise.then(() => identity);
-      }
-      return Promise.resolve(identity);
-    },
-  };
-  const linkingRuntime = createBetterAuthRuntime({
-    baseUrl: 'http://pertexo.test',
-    secret: 'postgres-integration-secret-with-at-least-32-characters',
-    database: {
-      connectionString: apiUrl,
-      connectionTimeoutMillis: 5_000,
-      idleTimeoutMillis: 5_000,
-      max: 2,
-    },
-    secureCookies: false,
-    sessionTtlSeconds: 3_600,
-    trustedOrigins: ['http://pertexo.test'],
-    mail,
-    linkProviderGateway: gateway,
-  });
-  const csrf = 'link-csrf-token-with-more-than-thirty-two-characters';
-  const linkRequest = ({
-    path,
-    method,
-    session,
-    binding,
-    body,
-  }: Readonly<{
-    path: string;
-    method: 'GET' | 'POST';
-    session: string;
-    binding?: string | undefined;
-    body?: object | undefined;
-  }>) =>
-    linkingRuntime.auth.handler(
-      new Request(`http://pertexo.test${path}`, {
-        method,
-        headers: {
-          origin: 'http://pertexo.test',
-          cookie: `pertexo_session=${session}; pertexo_csrf=${csrf}${binding === undefined ? '' : `; pertexo_link=${binding}`}`,
-          'x-csrf-token': csrf,
-          ...(body === undefined ? {} : { 'content-type': 'application/json' }),
-        },
-        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-      }),
-    );
+  const browser = await createVerifiedLinkingBrowser();
+  const scenario = createProviderLinkScenario(browser);
   try {
-    const wrongPassword = await linkRequest({
-      path: '/v1/auth/account-security/methods/link/start',
-      method: 'POST',
-      session: originalCookie ?? '',
-      binding: undefined,
-      body: {
-        provider: 'google',
-        existingMethod: { kind: 'password', password: 'wrong' },
-      },
+    const started = await startProviderLink(scenario);
+    const callbacks = await dispatchProviderLinkCallbacks({
+      scenario,
+      started,
+      ordering,
+      firstCallbackFailure,
     });
-    expect(wrongPassword.status).toBe(403);
-    const started = await linkRequest({
-      path: '/v1/auth/account-security/methods/link/start',
-      method: 'POST',
-      session: originalCookie ?? '',
-      binding: undefined,
-      body: {
-        provider: 'google',
-        existingMethod: { kind: 'password', password },
-      },
-    });
-    expect(started.status).toBe(200);
-    const binding = started.headers
-      .getSetCookie()
-      .find((cookie) => cookie.startsWith('pertexo_link='))
-      ?.slice('pertexo_link='.length)
-      .split(';', 1)[0];
-    expect(binding).toBeDefined();
-    const startedBody = (await started.json()) as {
-      authorizationUrl: string;
-    };
-    const state = required(
-      new URL(startedBody.authorizationUrl).searchParams.get('state'),
-    );
-    expect(state).toBeTruthy();
-    const callback = `/v1/auth/account-security/methods/link/callback/google?state=${state}&code=valid:${state}`;
-    const otherBrowser = await linkRequest({
-      path: callback,
-      method: 'GET',
-      session: originalCookie ?? '',
-      binding: 'wrong-binding',
-    });
-    expect(otherBrowser.headers.get('location')).toContain('linkError=true');
-
-    const loserEnteredAuthentication = Promise.withResolvers<undefined>();
-    const winnerCommitted = Promise.withResolvers<undefined>();
-    const originalAuthenticate =
-      browserSessionBoundary.authenticateBrowserRequest;
-    let authenticationCalls = 0;
-    const authenticationProbe =
-      ordering === 'loser authentication after commit'
-        ? vi
-            .spyOn(browserSessionBoundary, 'authenticateBrowserRequest')
-            .mockImplementation(async (...args) => {
-              authenticationCalls += 1;
-              if (authenticationCalls === 1) {
-                await loserEnteredAuthentication.promise;
-              } else if (authenticationCalls === 2) {
-                loserEnteredAuthentication.resolve(undefined);
-                await winnerCommitted.promise;
-              }
-              return originalAuthenticate(...args);
-            })
-        : undefined;
-    gateProviderProofs = ordering === 'both provider proofs before commit';
-    const pendingCallbacks: Promise<Response>[] = [];
-    let first: Response;
-    let second: Response;
-    try {
-      let firstCallback;
-      if (firstCallbackFailure === 'early-return') {
-        firstCallback = Promise.resolve(new Response(null, { status: 401 }));
-      } else if (firstCallbackFailure === 'early-rejection') {
-        firstCallback = Promise.reject(
-          new Error('Fixture callback rejected before authentication'),
-        );
-      } else {
-        firstCallback = linkRequest({
-          path: callback,
-          method: 'GET',
-          session: originalCookie ?? '',
-          binding: binding,
-        });
-      }
-      pendingCallbacks.push(
-        firstCallback.finally(() => {
-          loserEnteredAuthentication.resolve(undefined);
-          winnerCommitted.resolve(undefined);
-          bothProviderProofs.resolve(undefined);
-        }),
-        linkRequest({
-          path: callback,
-          method: 'GET',
-          session: originalCookie ?? '',
-          binding: binding,
-        }).finally(() => {
-          loserEnteredAuthentication.resolve(undefined);
-          winnerCommitted.resolve(undefined);
-          bothProviderProofs.resolve(undefined);
-        }),
-      );
-      [first, second] = await Promise.all([
-        required(pendingCallbacks[0]),
-        required(pendingCallbacks[1]),
-      ]);
-    } finally {
-      loserEnteredAuthentication.resolve(undefined);
-      winnerCommitted.resolve(undefined);
-      bothProviderProofs.resolve(undefined);
-      try {
-        const settled = await Promise.allSettled(pendingCallbacks);
-        if (firstCallbackFailure !== undefined) {
-          const survivingCallback = required(settled[1]);
-          expect(survivingCallback.status).toBe('fulfilled');
-          if (survivingCallback.status === 'fulfilled') {
-            expect(survivingCallback.value.status).toBe(302);
-            expect(survivingCallback.value.headers.get('location')).toBe(
-              'http://pertexo.test/account/security?linked=true',
-            );
-          }
-        }
-      } finally {
-        authenticationProbe?.mockRestore();
-        gateProviderProofs = false;
-      }
-    }
+    const { first, authenticationCalls } = callbacks;
     if (firstCallbackFailure === 'early-return') {
       expect(first.status).toBe(401);
       expect(authenticationCalls).toBe(1);
       return;
     }
-    if (ordering === 'loser authentication after commit')
-      expect(authenticationCalls).toBe(2);
-    if (ordering === 'both provider proofs before commit')
-      expect(providerProofs).toBe(2);
-    const responses = [first, second];
-    const acceptedLanding = 'http://pertexo.test/account/security?linked=true';
-    const linkErrorLanding =
-      'http://pertexo.test/account/security?linkError=true';
-    const reauthenticateLanding =
-      'http://pertexo.test/login?error=link_reauthenticate';
-    const linked = responses.filter(
-      (response) =>
-        response.status === 302 &&
-        response.headers.get('location') === acceptedLanding,
-    );
-    const rejected = responses.filter(
-      (response) =>
-        response.status === 302 &&
-        [linkErrorLanding, reauthenticateLanding].includes(
-          response.headers.get('location') ?? '',
-        ) &&
-        response.headers.getSetCookie().length === 0,
-    );
-    const validCallbackPair =
-      linked.length === 1 &&
-      rejected.length === 1 &&
-      cookieValue(required(linked[0]).headers.getSetCookie()) !== undefined;
-    let mismatchEvidence: unknown;
-    if (!validCallbackPair) {
-      const admin = new Pool({
-        connectionString: databaseUrl(adminUrl),
-        max: 1,
-      });
-      try {
-        const state = await admin.query<{
-          phase: string;
-          accounts: number;
-          audits: number;
-          sessions: number;
-        }>(
-          `select attempt.phase,
-                    (select count(*)::integer from app.auth_accounts account
-                      where account.user_id=users.id and account.provider_id='google') accounts,
-                    (select count(*)::integer from app.identity_security_audit_facts audit
-                      where audit.user_id=users.id and audit.event_type='method.linked') audits,
-                    (select count(*)::integer from app.auth_sessions session
-                      where session.user_id=users.id) sessions
-               from app.users users
-               join app.auth_method_link_attempts attempt on attempt.user_id=users.id
-              where users.email=$1`,
-          [email],
-        );
-        mismatchEvidence = {
-          outcomes: responses.map((response) => ({
-            status: response.status,
-            kind: providerLinkOutcome({
-              response,
-              acceptedLanding,
-              linkErrorLanding,
-              reauthenticateLanding,
-            }),
-            sessionCookieIssued:
-              cookieValue(response.headers.getSetCookie()) !== undefined,
-          })),
-          durable: state.rows,
-        };
-      } finally {
-        await admin.end();
-      }
-    }
-    if (!validCallbackPair)
-      throw new Error(
-        `Expected one accepted and one safely rejected account-link callback: ${JSON.stringify(mismatchEvidence)}`,
-      );
-    expect(linked).toHaveLength(1);
-    expect(rejected).toHaveLength(1);
-    if (ordering === 'loser authentication after commit') {
-      expect(first.headers.get('location')).toBe(acceptedLanding);
-      expect(second.headers.get('location')).toBe(reauthenticateLanding);
-    }
-    if (ordering === 'both provider proofs before commit')
-      expect(required(rejected[0]).headers.get('location')).toBe(
-        linkErrorLanding,
-      );
-    const accepted = required(linked[0]);
-    const replacementCookie = cookieValue(accepted.headers.getSetCookie());
-    expect(replacementCookie).toBeDefined();
-    expect(
-      await runtime.sessions.authenticate(originalCookie ?? ''),
-    ).toBeUndefined();
-    expect(
-      await runtime.sessions.authenticate(replacementCookie ?? ''),
-    ).toBeDefined();
-    const replay = await linkRequest({
-      path: callback,
-      method: 'GET',
-      session: replacementCookie ?? '',
-      binding: binding,
-    });
-    expect(replay.status).toBe(302);
-    expect(replay.headers.get('location')).toBe(linkErrorLanding);
-    expect(replay.headers.getSetCookie()).toEqual([]);
 
-    const admin = new Pool({
-      connectionString: databaseUrl(adminUrl),
-      max: 1,
+    const replacementCookie = await assertProviderLinkResult({
+      scenario,
+      started,
+      callbacks,
+      ordering,
     });
-    try {
-      const state = await admin.query<{
-        accounts: number;
-        audits: number;
-        sessions: number;
-      }>(
-        `select
-             (select count(*)::integer from app.auth_accounts account
-               join app.users users on users.id=account.user_id
-               where users.email=$1 and account.provider_id='google') accounts,
-             (select count(*)::integer from app.identity_security_audit_facts audit
-               join app.users users on users.id=audit.user_id
-               where users.email=$1 and audit.event_type='method.linked') audits,
-             (select count(*)::integer from app.auth_sessions session
-               join app.users users on users.id=session.user_id
-               where users.email=$1) sessions`,
-        [email],
-      );
-      expect(state.rows).toEqual([{ accounts: 1, audits: 1, sessions: 1 }]);
-    } finally {
-      await admin.end();
-    }
-
-    const secondStart = await linkRequest({
-      path: '/v1/auth/account-security/methods/link/start',
-      method: 'POST',
-      session: replacementCookie ?? '',
-      binding: undefined,
-      body: {
-        provider: 'github',
-        existingMethod: { kind: 'social', provider: 'google' },
-      },
-    });
-    expect(secondStart.status).toBe(200);
-    const secondBinding = secondStart.headers
-      .getSetCookie()
-      .find((cookie) => cookie.startsWith('pertexo_link='))
-      ?.slice('pertexo_link='.length)
-      .split(';', 1)[0];
-    const sourceUrl = new URL(
-      ((await secondStart.json()) as { authorizationUrl: string })
-        .authorizationUrl,
-    );
-    const sourceState = required(sourceUrl.searchParams.get('state'));
-    const sourceCallback = await linkRequest({
-      path: `/v1/auth/account-security/methods/link/callback/google?state=${sourceState}&code=valid:${sourceState}`,
-      method: 'GET',
-      session: replacementCookie ?? '',
-      binding: secondBinding,
-    });
-    expect(sourceCallback.status).toBe(302);
-    const targetUrl = new URL(
-      sourceCallback.headers.get('location') ?? 'http://invalid',
-    );
-    expect(targetUrl.hostname).toBe('provider.test');
-    const targetState = required(targetUrl.searchParams.get('state'));
-    const targetCallback = await linkRequest({
-      path: `/v1/auth/account-security/methods/link/callback/github?state=${targetState}&code=valid:${targetState}`,
-      method: 'GET',
-      session: replacementCookie ?? '',
-      binding: secondBinding,
-    });
-    expect(targetCallback.headers.get('location')).toContain('linked=true');
-    const secondReplacementCookie = cookieValue(
-      targetCallback.headers.getSetCookie(),
-    );
-    expect(secondReplacementCookie).toBeDefined();
-    expect(
-      await runtime.sessions.authenticate(replacementCookie ?? ''),
-    ).toBeUndefined();
-    expect(
-      await runtime.sessions.authenticate(secondReplacementCookie ?? ''),
-    ).toBeDefined();
+    await linkSecondProvider(scenario, replacementCookie);
   } finally {
-    await linkingRuntime.close();
+    await scenario.linkingRuntime.close();
   }
 }
 
@@ -669,4 +275,485 @@ function providerLinkOutcome({
   if (response.headers.get('location') === reauthenticateLanding)
     return 'reauthenticate';
   return 'other';
+}
+
+async function createVerifiedLinkingBrowser() {
+  const email = `linked-${randomUUID()}@example.test`;
+  const password = 'correct horse battery staple';
+  const signup = await authRequest('/v1/auth/sign-up/email', {
+    name: 'Linking Test',
+    email,
+    password,
+  });
+  expect(signup.status).toBe(200);
+  const verification = mailedMessages(email).find(
+    (item) => item.purpose === 'verification',
+  );
+  expect(verification).toBeDefined();
+  expect(
+    (
+      await runtime.auth.handler(
+        new Request(verification?.url ?? 'http://invalid'),
+      )
+    ).status,
+  ).toBe(302);
+  const signIn = await authRequest('/v1/auth/sign-in/email', {
+    email,
+    password,
+  });
+  expect(signIn.status).toBe(200);
+  const originalCookie = cookieValue(signIn.headers.getSetCookie());
+  expect(originalCookie).toBeDefined();
+
+  return { email, password, originalCookie };
+}
+function createProviderLinkScenario({
+  email,
+  password,
+  originalCookie,
+}: Awaited<ReturnType<typeof createVerifiedLinkingBrowser>>) {
+  const authorizations = new Map<
+    string,
+    { codeVerifier: string; nonce: string; redirectUri: string }
+  >();
+  const bothProviderProofs = Promise.withResolvers<undefined>();
+  const proofState = { count: 0, gated: false };
+  const gateway: SocialProviderGateway = {
+    available: ['google', 'github'],
+    authorize: (input) => {
+      authorizations.set(`${input.provider}:${input.state}`, input);
+      return Promise.resolve(
+        `https://provider.test/authorize?state=${input.state}`,
+      );
+    },
+    verify: (input) => {
+      const state = input.code.split(':', 2)[1] ?? '';
+      const expected = authorizations.get(`${input.provider}:${state}`);
+      if (
+        expected?.codeVerifier !== input.codeVerifier ||
+        expected.nonce !== input.nonce ||
+        expected.redirectUri !== input.redirectUri ||
+        input.issuer !== null
+      )
+        return Promise.resolve(undefined);
+      const identity = {
+        accountId: `${input.provider}-subject-${email}`,
+        email,
+        emailVerified: true,
+      };
+      if (proofState.gated) {
+        proofState.count += 1;
+        if (proofState.count === 2) bothProviderProofs.resolve(undefined);
+        return bothProviderProofs.promise.then(() => identity);
+      }
+      return Promise.resolve(identity);
+    },
+  };
+  const linkingRuntime = createBetterAuthRuntime({
+    baseUrl: 'http://pertexo.test',
+    secret: 'postgres-integration-secret-with-at-least-32-characters',
+    database: {
+      connectionString: apiUrl,
+      connectionTimeoutMillis: 5_000,
+      idleTimeoutMillis: 5_000,
+      max: 2,
+    },
+    secureCookies: false,
+    sessionTtlSeconds: 3_600,
+    trustedOrigins: ['http://pertexo.test'],
+    mail,
+    linkProviderGateway: gateway,
+  });
+  const csrf = 'link-csrf-token-with-more-than-thirty-two-characters';
+  const linkRequest = ({
+    path,
+    method,
+    session,
+    binding,
+    body,
+  }: Readonly<{
+    path: string;
+    method: 'GET' | 'POST';
+    session: string;
+    binding?: string | undefined;
+    body?: object | undefined;
+  }>) =>
+    linkingRuntime.auth.handler(
+      new Request(`http://pertexo.test${path}`, {
+        method,
+        headers: {
+          origin: 'http://pertexo.test',
+          cookie: `pertexo_session=${session}; pertexo_csrf=${csrf}${binding === undefined ? '' : `; pertexo_link=${binding}`}`,
+          'x-csrf-token': csrf,
+          ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+        },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      }),
+    );
+
+  return {
+    email,
+    password,
+    originalCookie,
+    bothProviderProofs,
+    proofState,
+    linkingRuntime,
+    linkRequest,
+  };
+}
+type ProviderLinkScenario = ReturnType<typeof createProviderLinkScenario>;
+type ProviderLinkStart = Awaited<ReturnType<typeof startProviderLink>>;
+type ProviderLinkCallbacks = Awaited<
+  ReturnType<typeof dispatchProviderLinkCallbacks>
+>;
+type CallbackOrdering = (typeof callbackOrderings)[number];
+type CallbackFailure = 'early-return' | 'early-rejection';
+async function startProviderLink(scenario: ProviderLinkScenario) {
+  const { password, originalCookie, linkRequest } = scenario;
+  const wrongPassword = await linkRequest({
+    path: '/v1/auth/account-security/methods/link/start',
+    method: 'POST',
+    session: originalCookie ?? '',
+    binding: undefined,
+    body: {
+      provider: 'google',
+      existingMethod: { kind: 'password', password: 'wrong' },
+    },
+  });
+  expect(wrongPassword.status).toBe(403);
+  const started = await linkRequest({
+    path: '/v1/auth/account-security/methods/link/start',
+    method: 'POST',
+    session: originalCookie ?? '',
+    binding: undefined,
+    body: {
+      provider: 'google',
+      existingMethod: { kind: 'password', password },
+    },
+  });
+  expect(started.status).toBe(200);
+  const binding = started.headers
+    .getSetCookie()
+    .find((cookie) => cookie.startsWith('pertexo_link='))
+    ?.slice('pertexo_link='.length)
+    .split(';', 1)[0];
+  expect(binding).toBeDefined();
+  const startedBody = (await started.json()) as {
+    authorizationUrl: string;
+  };
+  const state = required(
+    new URL(startedBody.authorizationUrl).searchParams.get('state'),
+  );
+  expect(state).toBeTruthy();
+  const callback = `/v1/auth/account-security/methods/link/callback/google?state=${state}&code=valid:${state}`;
+  const otherBrowser = await linkRequest({
+    path: callback,
+    method: 'GET',
+    session: originalCookie ?? '',
+    binding: 'wrong-binding',
+  });
+  expect(otherBrowser.headers.get('location')).toContain('linkError=true');
+
+  return { binding, callback };
+}
+async function dispatchProviderLinkCallbacks({
+  scenario,
+  started,
+  ordering,
+  firstCallbackFailure,
+}: Readonly<{
+  scenario: ProviderLinkScenario;
+  started: ProviderLinkStart;
+  ordering: CallbackOrdering;
+  firstCallbackFailure?: CallbackFailure | undefined;
+}>) {
+  const { bothProviderProofs, proofState, originalCookie, linkRequest } =
+    scenario;
+  const { binding, callback } = started;
+  const loserEnteredAuthentication = Promise.withResolvers<undefined>();
+  const winnerCommitted = Promise.withResolvers<undefined>();
+  const originalAuthenticate =
+    browserSessionBoundary.authenticateBrowserRequest;
+  let authenticationCalls = 0;
+  const authenticationProbe =
+    ordering === 'loser authentication after commit'
+      ? vi
+          .spyOn(browserSessionBoundary, 'authenticateBrowserRequest')
+          .mockImplementation(async (...args) => {
+            authenticationCalls += 1;
+            if (authenticationCalls === 1) {
+              await loserEnteredAuthentication.promise;
+            } else if (authenticationCalls === 2) {
+              loserEnteredAuthentication.resolve(undefined);
+              await winnerCommitted.promise;
+            }
+            return originalAuthenticate(...args);
+          })
+      : undefined;
+  proofState.gated = ordering === 'both provider proofs before commit';
+  const pendingCallbacks: Promise<Response>[] = [];
+  let first: Response;
+  let second: Response;
+  try {
+    let firstCallback;
+    if (firstCallbackFailure === 'early-return') {
+      firstCallback = Promise.resolve(new Response(null, { status: 401 }));
+    } else if (firstCallbackFailure === 'early-rejection') {
+      firstCallback = Promise.reject(
+        new Error('Fixture callback rejected before authentication'),
+      );
+    } else {
+      firstCallback = linkRequest({
+        path: callback,
+        method: 'GET',
+        session: originalCookie ?? '',
+        binding: binding,
+      });
+    }
+    pendingCallbacks.push(
+      firstCallback.finally(() => {
+        loserEnteredAuthentication.resolve(undefined);
+        winnerCommitted.resolve(undefined);
+        bothProviderProofs.resolve(undefined);
+      }),
+      linkRequest({
+        path: callback,
+        method: 'GET',
+        session: originalCookie ?? '',
+        binding: binding,
+      }).finally(() => {
+        loserEnteredAuthentication.resolve(undefined);
+        winnerCommitted.resolve(undefined);
+        bothProviderProofs.resolve(undefined);
+      }),
+    );
+    [first, second] = await Promise.all([
+      required(pendingCallbacks[0]),
+      required(pendingCallbacks[1]),
+    ]);
+  } finally {
+    loserEnteredAuthentication.resolve(undefined);
+    winnerCommitted.resolve(undefined);
+    bothProviderProofs.resolve(undefined);
+    try {
+      const settled = await Promise.allSettled(pendingCallbacks);
+      if (firstCallbackFailure !== undefined) {
+        const survivingCallback = required(settled[1]);
+        expect(survivingCallback.status).toBe('fulfilled');
+        if (survivingCallback.status === 'fulfilled') {
+          expect(survivingCallback.value.status).toBe(302);
+          expect(survivingCallback.value.headers.get('location')).toBe(
+            'http://pertexo.test/account/security?linked=true',
+          );
+        }
+      }
+    } finally {
+      authenticationProbe?.mockRestore();
+      proofState.gated = false;
+    }
+  }
+
+  return { first, second, authenticationCalls };
+}
+async function assertProviderLinkResult({
+  scenario,
+  started,
+  callbacks,
+  ordering,
+}: Readonly<{
+  scenario: ProviderLinkScenario;
+  started: ProviderLinkStart;
+  callbacks: ProviderLinkCallbacks;
+  ordering: CallbackOrdering;
+}>) {
+  const { email, originalCookie, linkRequest, proofState } = scenario;
+  const { binding, callback } = started;
+  const { first, second, authenticationCalls } = callbacks;
+  if (ordering === 'loser authentication after commit')
+    expect(authenticationCalls).toBe(2);
+  if (ordering === 'both provider proofs before commit')
+    expect(proofState.count).toBe(2);
+  const responses = [first, second];
+  const acceptedLanding = 'http://pertexo.test/account/security?linked=true';
+  const linkErrorLanding =
+    'http://pertexo.test/account/security?linkError=true';
+  const reauthenticateLanding =
+    'http://pertexo.test/login?error=link_reauthenticate';
+  const linked = responses.filter(
+    (response) =>
+      response.status === 302 &&
+      response.headers.get('location') === acceptedLanding,
+  );
+  const rejected = responses.filter(
+    (response) =>
+      response.status === 302 &&
+      [linkErrorLanding, reauthenticateLanding].includes(
+        response.headers.get('location') ?? '',
+      ) &&
+      response.headers.getSetCookie().length === 0,
+  );
+  const validCallbackPair =
+    linked.length === 1 &&
+    rejected.length === 1 &&
+    cookieValue(required(linked[0]).headers.getSetCookie()) !== undefined;
+  let mismatchEvidence: unknown;
+  if (!validCallbackPair) {
+    const admin = new Pool({
+      connectionString: databaseUrl(adminUrl),
+      max: 1,
+    });
+    try {
+      const state = await admin.query<{
+        phase: string;
+        accounts: number;
+        audits: number;
+        sessions: number;
+      }>(
+        `select attempt.phase,
+                    (select count(*)::integer from app.auth_accounts account
+                      where account.user_id=users.id and account.provider_id='google') accounts,
+                    (select count(*)::integer from app.identity_security_audit_facts audit
+                      where audit.user_id=users.id and audit.event_type='method.linked') audits,
+                    (select count(*)::integer from app.auth_sessions session
+                      where session.user_id=users.id) sessions
+               from app.users users
+               join app.auth_method_link_attempts attempt on attempt.user_id=users.id
+              where users.email=$1`,
+        [email],
+      );
+      mismatchEvidence = {
+        outcomes: responses.map((response) => ({
+          status: response.status,
+          kind: providerLinkOutcome({
+            response,
+            acceptedLanding,
+            linkErrorLanding,
+            reauthenticateLanding,
+          }),
+          sessionCookieIssued:
+            cookieValue(response.headers.getSetCookie()) !== undefined,
+        })),
+        durable: state.rows,
+      };
+    } finally {
+      await admin.end();
+    }
+  }
+  if (!validCallbackPair)
+    throw new Error(
+      `Expected one accepted and one safely rejected account-link callback: ${JSON.stringify(mismatchEvidence)}`,
+    );
+  expect(linked).toHaveLength(1);
+  expect(rejected).toHaveLength(1);
+  if (ordering === 'loser authentication after commit') {
+    expect(first.headers.get('location')).toBe(acceptedLanding);
+    expect(second.headers.get('location')).toBe(reauthenticateLanding);
+  }
+  if (ordering === 'both provider proofs before commit')
+    expect(required(rejected[0]).headers.get('location')).toBe(
+      linkErrorLanding,
+    );
+  const accepted = required(linked[0]);
+  const replacementCookie = cookieValue(accepted.headers.getSetCookie());
+  expect(replacementCookie).toBeDefined();
+  expect(
+    await runtime.sessions.authenticate(originalCookie ?? ''),
+  ).toBeUndefined();
+  expect(
+    await runtime.sessions.authenticate(replacementCookie ?? ''),
+  ).toBeDefined();
+  const replay = await linkRequest({
+    path: callback,
+    method: 'GET',
+    session: replacementCookie ?? '',
+    binding: binding,
+  });
+  expect(replay.status).toBe(302);
+  expect(replay.headers.get('location')).toBe(linkErrorLanding);
+  expect(replay.headers.getSetCookie()).toEqual([]);
+
+  const admin = new Pool({
+    connectionString: databaseUrl(adminUrl),
+    max: 1,
+  });
+  try {
+    const state = await admin.query<{
+      accounts: number;
+      audits: number;
+      sessions: number;
+    }>(
+      `select
+             (select count(*)::integer from app.auth_accounts account
+               join app.users users on users.id=account.user_id
+               where users.email=$1 and account.provider_id='google') accounts,
+             (select count(*)::integer from app.identity_security_audit_facts audit
+               join app.users users on users.id=audit.user_id
+               where users.email=$1 and audit.event_type='method.linked') audits,
+             (select count(*)::integer from app.auth_sessions session
+               join app.users users on users.id=session.user_id
+               where users.email=$1) sessions`,
+      [email],
+    );
+    expect(state.rows).toEqual([{ accounts: 1, audits: 1, sessions: 1 }]);
+  } finally {
+    await admin.end();
+  }
+
+  return replacementCookie;
+}
+async function linkSecondProvider(
+  scenario: ProviderLinkScenario,
+  replacementCookie: string | undefined,
+) {
+  const { linkRequest } = scenario;
+  const secondStart = await linkRequest({
+    path: '/v1/auth/account-security/methods/link/start',
+    method: 'POST',
+    session: replacementCookie ?? '',
+    binding: undefined,
+    body: {
+      provider: 'github',
+      existingMethod: { kind: 'social', provider: 'google' },
+    },
+  });
+  expect(secondStart.status).toBe(200);
+  const secondBinding = secondStart.headers
+    .getSetCookie()
+    .find((cookie) => cookie.startsWith('pertexo_link='))
+    ?.slice('pertexo_link='.length)
+    .split(';', 1)[0];
+  const sourceUrl = new URL(
+    ((await secondStart.json()) as { authorizationUrl: string })
+      .authorizationUrl,
+  );
+  const sourceState = required(sourceUrl.searchParams.get('state'));
+  const sourceCallback = await linkRequest({
+    path: `/v1/auth/account-security/methods/link/callback/google?state=${sourceState}&code=valid:${sourceState}`,
+    method: 'GET',
+    session: replacementCookie ?? '',
+    binding: secondBinding,
+  });
+  expect(sourceCallback.status).toBe(302);
+  const targetUrl = new URL(
+    sourceCallback.headers.get('location') ?? 'http://invalid',
+  );
+  expect(targetUrl.hostname).toBe('provider.test');
+  const targetState = required(targetUrl.searchParams.get('state'));
+  const targetCallback = await linkRequest({
+    path: `/v1/auth/account-security/methods/link/callback/github?state=${targetState}&code=valid:${targetState}`,
+    method: 'GET',
+    session: replacementCookie ?? '',
+    binding: secondBinding,
+  });
+  expect(targetCallback.headers.get('location')).toContain('linked=true');
+  const secondReplacementCookie = cookieValue(
+    targetCallback.headers.getSetCookie(),
+  );
+  expect(secondReplacementCookie).toBeDefined();
+  expect(
+    await runtime.sessions.authenticate(replacementCookie ?? ''),
+  ).toBeUndefined();
+  expect(
+    await runtime.sessions.authenticate(secondReplacementCookie ?? ''),
+  ).toBeDefined();
 }
