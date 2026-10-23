@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '../text.js';
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue =
   JsonPrimitive | readonly JsonValue[] | { readonly [key: string]: JsonValue };
@@ -158,8 +159,7 @@ export function inspectJsonValue(value: unknown): JsonInspection {
   };
   visit(normalized, 0);
   return {
-    bytes: new TextEncoder().encode(serializeNormalizedJson(normalized))
-      .byteLength,
+    bytes: utf8ByteLength(serializeNormalizedJson(normalized)),
     depth,
     members,
   };

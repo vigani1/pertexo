@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '../../values/text.js';
 import { canonicalJson, type JsonValue } from '../../values/json/canonical.js';
 import { resolveValueSource } from '../../values/mapping/resolve.js';
 import {
@@ -53,7 +54,7 @@ export async function resolveEventCoordinationKey(
   if (typeof value === 'string') {
     if (
       value.length === 0 ||
-      Buffer.byteLength(value) > EVENT_COORDINATION_LIMITS.keyBytes
+      utf8ByteLength(value) > EVENT_COORDINATION_LIMITS.keyBytes
     )
       return { kind: 'invalid' };
   } else if (

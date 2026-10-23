@@ -17,6 +17,13 @@ function invalid(): never {
 }
 
 export function storedExecutionJsonStringBytes(value: string): number {
+  // JSON needs at least its quotes plus one byte per UTF-16 code unit.
+  // Bound the native Unicode check and keep the SDK graph-independent.
+  if (
+    value.length > STORED_EXECUTION_VALUE_LIMITS.inlineBytes - 2 ||
+    !value.isWellFormed()
+  )
+    invalid();
   let bytes = 2;
   const add = (amount: number): void => {
     bytes += amount;
@@ -24,7 +31,7 @@ export function storedExecutionJsonStringBytes(value: string): number {
   };
   for (let index = 0; index < value.length; index += 1) {
     const code = value.charCodeAt(index);
-    if (code === 0 || (code >= 0xdc00 && code <= 0xdfff)) invalid();
+    if (code === 0) invalid();
     if (
       code === 0x22 ||
       code === 0x5c ||
@@ -39,8 +46,6 @@ export function storedExecutionJsonStringBytes(value: string): number {
     else if (code <= 0x7f) add(1);
     else if (code <= 0x7ff) add(2);
     else if (code >= 0xd800 && code <= 0xdbff) {
-      const next = value.charCodeAt(index + 1);
-      if (!(next >= 0xdc00 && next <= 0xdfff)) invalid();
       add(4);
       index += 1;
     } else add(3);

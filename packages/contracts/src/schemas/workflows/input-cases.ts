@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import {
   isStorageText,
@@ -67,15 +68,10 @@ function boundedCaseJson(value: unknown): boolean {
   }
   try {
     const text = JSON.stringify(normalize(value, 0));
-    let bytes = 0;
-    // Shared browser/server contract: no Node Buffer or DOM runtime dependency.
-    for (const character of text) {
-      const point = character.charCodeAt(0);
-      bytes +=
-        character.length === 2 ? 4 : point <= 0x7f ? 1 : point <= 0x7ff ? 2 : 3;
-      if (bytes > WORKFLOW_INPUT_CASE_MAX_BYTES) return false;
-    }
-    return true;
+    return (
+      utf8ByteLength(text, { stopAfterBytes: WORKFLOW_INPUT_CASE_MAX_BYTES }) <=
+      WORKFLOW_INPUT_CASE_MAX_BYTES
+    );
   } catch {
     return false;
   }

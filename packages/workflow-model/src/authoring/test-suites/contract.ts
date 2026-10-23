@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '../../values/text.js';
 import { z } from 'zod';
 import {
   canonicalJson,
@@ -84,8 +85,7 @@ export const workflowTestExpectationsSchema = z
   })
   .strict()
   .refine(
-    (value) =>
-      new TextEncoder().encode(canonicalJson(value)).byteLength <= 16384,
+    (value) => utf8ByteLength(canonicalJson(value)) <= 16384,
     'Expectations must fit within 16 KiB per case.',
   );
 export const DEFAULT_TEST_EXPECTATIONS: WorkflowTestExpectations =

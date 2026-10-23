@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import {
   STORED_EXECUTION_VALUE_LIMITS,
   StoredExecutionValueInvalidError,
@@ -275,9 +276,7 @@ export function parseStoredExecutionValue(
 ): StoredExecutionValue {
   let input = value;
   if (typeof input === 'string') {
-    if (
-      Buffer.byteLength(input, 'utf8') > EXECUTION_JSONB_DATABASE_BACKSTOP_BYTES
-    )
+    if (utf8ByteLength(input) > EXECUTION_JSONB_DATABASE_BACKSTOP_BYTES)
       invalid();
     try {
       input = JSON.parse(input) as unknown;

@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { setImmediate } from 'node:timers/promises';
@@ -57,7 +58,7 @@ export async function* readCsvRecords<T>(
         headers = record;
         // A short CSV row can expand to long repeated keys. Bound one parse
         // window by header bytes before allowing the producer to read ahead.
-        const headerBytes = Buffer.byteLength(JSON.stringify(headers));
+        const headerBytes = utf8ByteLength(JSON.stringify(headers));
         chunkBytes = Math.max(
           1,
           Math.min(4096, Math.floor(32768 / Math.max(1, headerBytes))),

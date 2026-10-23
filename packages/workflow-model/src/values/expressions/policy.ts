@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '../text.js';
 import {
   callbackReferences,
   type CallbackReference,
@@ -282,7 +283,7 @@ export function inspectExpression(source: string):
       references: ExpressionVariableReferences;
       callbacks: readonly CallbackReference[];
     }> {
-  if (Buffer.byteLength(source, 'utf8') > EXPRESSION_POLICY.expressionBytes)
+  if (utf8ByteLength(source) > EXPRESSION_POLICY.expressionBytes)
     return expressionError(
       'limit_exceeded',
       'expression bytes exceed policy',

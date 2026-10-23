@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import { httpPaginationSchema } from './pagination/validation.js';
 import {
@@ -65,10 +66,6 @@ const blockedCredentialHeaders = new Set([
 ]);
 const credentialLikeHeader = /(?:auth|credential|secret|token|api[-_]?key)/iu;
 
-function utf8Bytes(value: string): number {
-  return new TextEncoder().encode(value).byteLength;
-}
-
 function safeConfiguredHeader(name: string): boolean {
   const normalized = name.toLowerCase();
   return (
@@ -105,7 +102,7 @@ export const httpRequestHeadersSchema = z
     let bytes = 0;
     for (const [name, value] of Object.entries(headers)) {
       const canonicalName = name.toLowerCase();
-      bytes += utf8Bytes(`${canonicalName}:${value}\r\n`);
+      bytes += utf8ByteLength(`${canonicalName}:${value}\r\n`);
       if (normalized.has(canonicalName))
         context.addIssue({
           code: 'custom',
@@ -144,7 +141,7 @@ export const resolvedHttpHeadersCredentialSchema = z
         let bytes = 0;
         for (const [name, value] of entries) {
           const canonicalName = name.toLowerCase();
-          bytes += utf8Bytes(`${canonicalName}:${value}\r\n`);
+          bytes += utf8ByteLength(`${canonicalName}:${value}\r\n`);
           if (
             normalized.has(canonicalName) ||
             blockedCredentialHeaders.has(canonicalName)
@@ -180,7 +177,7 @@ export const httpRequestConfigSchema = z
     url: z
       .url()
       .max(MAX_URL_BYTES)
-      .refine((value) => utf8Bytes(value) <= MAX_URL_BYTES)
+      .refine((value) => utf8ByteLength(value) <= MAX_URL_BYTES)
       .refine(safeRequestUrl)
       .meta({
         title: 'URL',

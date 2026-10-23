@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { lockArtifactReferences } from '../artifacts/references.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
@@ -368,7 +369,7 @@ export function createWorkflowInputCaseDatabase(
             client,
             input,
             json.bytes +
-              (expectations === null ? 0 : Buffer.byteLength(expectations)),
+              (expectations === null ? 0 : utf8ByteLength(expectations)),
             true,
           );
           await lockArtifactReferences(
@@ -395,7 +396,7 @@ export function createWorkflowInputCaseDatabase(
               caseId,
               json.text,
               json.bytes +
-                (expectations === null ? 0 : Buffer.byteLength(expectations)),
+                (expectations === null ? 0 : utf8ByteLength(expectations)),
               expectations,
             ],
           );
@@ -434,7 +435,7 @@ export function createWorkflowInputCaseDatabase(
                 );
           const bytes =
             json.bytes +
-            (expectations === null ? 0 : Buffer.byteLength(expectations));
+            (expectations === null ? 0 : utf8ByteLength(expectations));
           await quota(client, input, bytes, false);
           await lockArtifactReferences(
             client,

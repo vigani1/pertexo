@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { DecryptCommand, GenerateDataKeyCommand } from '@aws-sdk/client-kms';
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import { z } from 'zod';
@@ -83,7 +84,7 @@ export function isValidEnvelopeKeyReference(value: unknown): value is string {
   return (
     typeof value === 'string' &&
     value.length > 0 &&
-    Buffer.byteLength(value, 'utf8') <= MAX_KEY_REFERENCE_BYTES
+    utf8ByteLength(value) <= MAX_KEY_REFERENCE_BYTES
   );
 }
 

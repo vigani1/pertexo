@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 import { canonicalJson, normalizedJson } from '@pertexo/workflow-model';
 import {
@@ -17,7 +18,7 @@ export function keyValue(
 ): string | null {
   if (table.keyColumn === null) return null;
   const key = canonicalJson(values[table.keyColumn]);
-  if (Buffer.byteLength(key) > 1024)
+  if (utf8ByteLength(key) > 1024)
     throw new DataTableError(
       'invalid_values',
       'A unique key must fit 1 KiB. Use a shorter identifier.',
@@ -108,7 +109,7 @@ export async function mutateRows(
       );
     countDelta = -old.length;
     byteDelta = -old.reduce(
-      (sum, row) => sum + Buffer.byteLength(row.values_json),
+      (sum, row) => sum + utf8ByteLength(row.values_json),
       0,
     );
     result = boundedResult([], old.length);
@@ -120,7 +121,7 @@ export async function mutateRows(
     const text = normalizedJson(values);
     const id = generatePersistedId();
     countDelta = 1;
-    byteDelta = Buffer.byteLength(text);
+    byteDelta = utf8ByteLength(text);
     result = boundedResult([{ id, revision: 1, values }], 1);
     await client
       .query(
@@ -138,7 +139,7 @@ export async function mutateRows(
         ...patch,
       });
       const text = normalizedJson(values);
-      byteDelta += Buffer.byteLength(text) - Buffer.byteLength(row.values_json);
+      byteDelta += utf8ByteLength(text) - utf8ByteLength(row.values_json);
       await client
         .query(
           'update app.workspace_data_table_rows set values_json=$4,key_value=$5,revision=revision+1 where workspace_id=$1 and table_id=$2 and id=$3',
@@ -248,7 +249,7 @@ export async function insertTableBatch(
     }
   });
   const bytes = records.reduce(
-    (sum, row) => sum + Buffer.byteLength(row.values_json),
+    (sum, row) => sum + utf8ByteLength(row.values_json),
     0,
   );
   await chargeMutation(

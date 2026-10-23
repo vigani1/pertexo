@@ -9,7 +9,7 @@ export const signingKeyCredentialSchema = z
       .min(1)
       .max(4_096)
       .refine(
-        (value) => !/[\uD800-\uDFFF]/u.test(value),
+        (value) => value.isWellFormed(),
         'Signing keys must be valid Unicode text',
       )
       .refine(

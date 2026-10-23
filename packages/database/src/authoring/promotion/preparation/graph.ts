@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { createHash } from 'node:crypto';
 import {
   canonicalJson,
@@ -44,7 +45,7 @@ export function mapPromotionNodes(
 export class PromotionGraphBudget {
   private bytes = 0;
   add(graph: WorkflowGraph): void {
-    this.bytes += Buffer.byteLength(JSON.stringify(graph));
+    this.bytes += utf8ByteLength(JSON.stringify(graph));
     if (this.bytes > PROMOTION_LIMITS.graphBytes)
       throw new WorkflowPromotionError(
         'limit',

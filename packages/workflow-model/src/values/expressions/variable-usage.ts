@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '../text.js';
 import type { WorkflowGraph, ValueSource } from '../../graph/contract.js';
 import { inspectExpression, EXPRESSION_POLICY } from './policy.js';
 export type WorkflowVariableReference = Readonly<{
@@ -30,7 +31,7 @@ function sourceEntry(
     costBytes:
       source.kind === 'expression'
         ? Math.min(
-            Buffer.byteLength(source.expression),
+            utf8ByteLength(source.expression),
             EXPRESSION_POLICY.expressionBytes + 1,
           )
         : source.name.length,

@@ -1,10 +1,7 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { z } from 'zod';
 
 const MAX_TEXT_BYTES = 16_384;
-
-function utf8Bytes(value: string): number {
-  return new TextEncoder().encode(value).byteLength;
-}
 
 export const slackSendMessageConfigSchema = z
   .object({ timeoutMillis: z.number().int().min(1).max(30_000) })
@@ -21,7 +18,7 @@ export const slackMessageTextSchema = z
   .string()
   .min(1)
   .max(4_000)
-  .refine((value) => utf8Bytes(value) <= MAX_TEXT_BYTES);
+  .refine((value) => utf8ByteLength(value) <= MAX_TEXT_BYTES);
 
 export const slackSendMessageInputSchema = z
   .object({ channelId: slackChannelIdSchema, text: slackMessageTextSchema })

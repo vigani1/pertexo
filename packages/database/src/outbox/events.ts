@@ -1,3 +1,4 @@
+import { isWellFormed, utf8ByteLength } from '@pertexo/workflow-model';
 import { createHash } from 'node:crypto';
 import { types as nodeTypes } from 'node:util';
 
@@ -65,12 +66,12 @@ class CanonicalJsonWriter {
   ) {}
 
   public append(token: string, databaseToken = token): void {
-    this.#bytes += Buffer.byteLength(token, 'utf8');
+    this.#bytes += utf8ByteLength(token);
     if (this.#bytes > this.maximumBytes)
       throw new BoundedJsonInvalidError(
         `${this.label} must not exceed ${String(this.maximumBytes)} UTF-8 bytes`,
       );
-    this.#databaseBytes += Buffer.byteLength(databaseToken, 'utf8');
+    this.#databaseBytes += utf8ByteLength(databaseToken);
     if (
       this.maximumDatabaseBytes !== undefined &&
       this.#databaseBytes > this.maximumDatabaseBytes
@@ -227,17 +228,8 @@ function canonicalJson(
 }
 
 function assertPostgresJsonString(value: string): void {
-  for (let index = 0; index < value.length; index += 1) {
-    const code = value.charCodeAt(index);
-    if (code === 0 || (code >= 0xdc00 && code <= 0xdfff))
-      throw new BoundedJsonInvalidError();
-    if (code >= 0xd800 && code <= 0xdbff) {
-      const next = value.charCodeAt(index + 1);
-      if (!(next >= 0xdc00 && next <= 0xdfff))
-        throw new BoundedJsonInvalidError();
-      index += 1;
-    }
-  }
+  if (value.includes('\0') || !isWellFormed(value))
+    throw new BoundedJsonInvalidError();
 }
 
 function expandJsonNumber(value: string): string {

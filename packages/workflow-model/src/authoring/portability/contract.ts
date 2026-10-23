@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '../../values/text.js';
 import { z } from 'zod';
 
 import {
@@ -74,10 +75,7 @@ function inspectJsonText(text: string): void {
 
 /** Shared browser/HTTP raw-file admission, never a tolerant JSON reader. */
 export function parsePortableJson(text: string): unknown {
-  if (
-    new TextEncoder().encode(text).byteLength >
-    WORKFLOW_PORTABILITY_LIMITS.bytes
-  )
+  if (utf8ByteLength(text) > WORKFLOW_PORTABILITY_LIMITS.bytes)
     throw new PortableJsonError('portable_json_limit');
   try {
     inspectJsonText(text);

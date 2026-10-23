@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import {
   ADMINISTRATIVE_ROLES,
   WORKFLOW_EDITOR_ROLES,
@@ -127,8 +128,8 @@ const canonicalName = z
   .refine(
     (value) =>
       value === value.replace(/^ +| +$(?![\s\S])/gu, '') &&
-      Buffer.byteLength(value, 'utf8') >= 1 &&
-      Buffer.byteLength(value, 'utf8') <= 128 &&
+      utf8ByteLength(value) >= 1 &&
+      utf8ByteLength(value) <= 128 &&
       !Array.from(value).some(
         (character) =>
           character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127,

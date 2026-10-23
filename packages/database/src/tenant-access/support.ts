@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { z } from 'zod';
 
 import { IdempotencyRequestConflictError } from '../runs/commands/acceptance.js';
@@ -138,10 +139,7 @@ function parsePersistedIdentityMetadata(
         index: 0,
       });
     }
-    if (
-      Buffer.byteLength(JSON.stringify(root), 'utf8') >
-      IDENTITY_METADATA_MAX_BYTES
-    )
+    if (utf8ByteLength(JSON.stringify(root)) > IDENTITY_METADATA_MAX_BYTES)
       metadataError('Identity metadata byte limit exceeded');
     return root;
   } catch (error: unknown) {

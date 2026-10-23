@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { FILE_PAGE_LIMITS, escapeCsvValue } from '@pertexo/node-sdk';
 import {
   canonicalizeBoundedJson,
@@ -96,7 +97,7 @@ export function createFileFromPages(
       first = true;
     async function* append(text: string) {
       signal.throwIfAborted();
-      size += Buffer.byteLength(text, 'utf8');
+      size += utf8ByteLength(text);
       if (size > FILE_PAGE_LIMITS.fileBytes)
         refuseFileCreation(
           'size',

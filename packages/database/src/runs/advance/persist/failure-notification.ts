@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { createHash } from 'node:crypto';
 
 import { generatePersistedId } from '../../../platform/persisted-id.js';
@@ -116,10 +117,7 @@ export async function persistFailureNotificationIntent(
     totalFailureCount: Math.max(1, failures.length),
   });
   const contextJson = serializeStoredExecutionJsonValue(context);
-  if (
-    Buffer.byteLength(contextJson, 'utf8') >
-    FAILURE_NOTIFICATION_CONTEXT_MAX_BYTES
-  )
+  if (utf8ByteLength(contextJson) > FAILURE_NOTIFICATION_CONTEXT_MAX_BYTES)
     throw new CoordinatorRunStateCorruptError();
   const contextChecksum = createHash('sha256')
     .update(contextJson)

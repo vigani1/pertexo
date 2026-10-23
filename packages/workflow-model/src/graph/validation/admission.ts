@@ -1,3 +1,4 @@
+import { jsonStringByteLength, utf8ByteLength } from '../../values/text.js';
 export interface WorkflowGraphAdmissionLimits {
   readonly graphBytes: number;
   readonly inputDepth: number;
@@ -50,10 +51,6 @@ function failure(
   message: string,
 ): WorkflowGraphAdmissionFailure {
   return { ok: false, code, path, message };
-}
-
-function utf8JsonBytes(value: string | number | boolean | null): number {
-  return new TextEncoder().encode(JSON.stringify(value)).byteLength;
 }
 
 function assign(
@@ -159,7 +156,10 @@ function inspectObjectUnsafe(
   for (let index = keys.length - 1; index >= 0; index -= 1) {
     const key = keys[index];
     if (key === undefined) continue;
-    state.bytes += utf8JsonBytes(key) + 1;
+    state.bytes +=
+      jsonStringByteLength(key, {
+        stopAfterBytes: limits.graphBytes - state.bytes - 1,
+      }) + 1;
     if (state.bytes > limits.graphBytes)
       return failure('graph_limit', '$', 'graph bytes exceed the graph limit');
     const path = `${frame.path}.${key}`;
@@ -228,7 +228,11 @@ function inspectJsonDocumentUnsafe(
       (typeof value === 'number' &&
         (Number.isFinite(value) || options.allowNonFiniteNumbers === true))
     ) {
-      state.bytes += utf8JsonBytes(value);
+      const budget = { stopAfterBytes: limits.graphBytes - state.bytes };
+      state.bytes +=
+        typeof value === 'string'
+          ? jsonStringByteLength(value, budget)
+          : utf8ByteLength(JSON.stringify(value), budget);
       if (state.bytes > limits.graphBytes)
         return failure(
           'graph_limit',

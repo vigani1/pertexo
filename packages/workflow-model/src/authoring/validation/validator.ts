@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '../../values/text.js';
 import { Worker, type WorkerOptions } from 'node:worker_threads';
 import { z } from 'zod';
 import { canonicalizeJson } from '../../values/json/canonical.js';
@@ -173,7 +174,7 @@ export class WorkflowAuthoringValidator {
         ? {}
         : { workspaceVariableNames: [...options.workspaceVariableNames] }),
     };
-    const bytes = Buffer.byteLength(JSON.stringify(payload));
+    const bytes = utf8ByteLength(JSON.stringify(payload));
     if (bytes > budget.envelopeBytes)
       throw new AuthoringValidationUnavailableError('payload_limit');
     if (options.signal?.aborted)
@@ -377,10 +378,7 @@ export class WorkflowAuthoringValidator {
     const onMessage = (input: unknown) => {
       if (finished) return;
       try {
-        if (
-          Buffer.byteLength(JSON.stringify(input)) >
-          budget.reportBytes + 256
-        ) {
+        if (utf8ByteLength(JSON.stringify(input)) > budget.reportBytes + 256) {
           void finish('report_limit');
           return;
         }

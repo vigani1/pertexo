@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { FileInputFailure } from '@pertexo/node-sdk/server';
 import { HTTP_REQUEST_LIMITS, type HttpRequestInput } from '../validation.js';
 import type {
@@ -28,7 +29,7 @@ export function multipartValues(
     if (part.kind === 'text') {
       if (typeof value !== 'string')
         throw new FileInputFailure({ reason: 'multipart_values' });
-      bytes += Buffer.byteLength(value, 'utf8');
+      bytes += utf8ByteLength(value);
     } else {
       if (typeof value !== 'object' || !('kind' in value))
         throw new FileInputFailure({ reason: 'multipart_values' });

@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { NODE_JSON_LIMITS } from '@pertexo/node-sdk';
 import { FileInputFailure, type JsonValue } from '@pertexo/node-sdk/server';
 import { COLLECTION_MAX_ITEMS } from '../../lists/semantics/validation.js';
@@ -31,8 +32,7 @@ export async function parseCsvFile(
       members += 1 + Object.keys(row).length;
       if (members > NODE_JSON_LIMITS.members)
         throw new FileInputFailure({ reason: 'value_size' });
-      bytes +=
-        Buffer.byteLength(JSON.stringify(row)) + (rows.length > 0 ? 1 : 0);
+      bytes += utf8ByteLength(JSON.stringify(row)) + (rows.length > 0 ? 1 : 0);
       if (bytes > NODE_JSON_LIMITS.bytes)
         throw new FileInputFailure({ reason: 'value_size' });
       rows.push(row);

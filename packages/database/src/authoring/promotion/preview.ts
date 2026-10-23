@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import {
   PROMOTION_LIMITS,
   type WorkflowPromotionPreview,
@@ -79,9 +80,7 @@ export async function preparePromotion(
     ...prepared.fingerprintFacts,
   });
   const result = { ...data, fingerprint };
-  if (
-    Buffer.byteLength(JSON.stringify(result)) > PROMOTION_LIMITS.responseBytes
-  )
+  if (utf8ByteLength(JSON.stringify(result)) > PROMOTION_LIMITS.responseBytes)
     throw new WorkflowPromotionError(
       'limit',
       'This promotion review exceeds 4 MB. Select fewer workflows.',

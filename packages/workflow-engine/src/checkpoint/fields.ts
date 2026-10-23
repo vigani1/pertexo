@@ -1,3 +1,4 @@
+import { jsonStringByteLength } from '@pertexo/workflow-model';
 import { UUID_PATTERN } from '@pertexo/workflow-model';
 import { isRecord } from '@pertexo/workflow-model';
 import { WorkflowEngineError } from '../errors.js';
@@ -95,33 +96,6 @@ export function assertBoundedCheckpointJson(value: unknown): void {
     );
     return next;
   };
-  const stringBytes = (input: string): number => {
-    let bytes = 2;
-    for (let index = 0; index < input.length; index += 1) {
-      const code = input.charCodeAt(index);
-      const escaped =
-        code === 0x22 ||
-        code === 0x5c ||
-        code === 0x08 ||
-        code === 0x0c ||
-        code === 0x0a ||
-        code === 0x0d ||
-        code === 0x09;
-      if (escaped) bytes = addBytes(bytes, 2);
-      else if (code <= 0x1f) bytes = addBytes(bytes, 6);
-      else if (code <= 0x7f) bytes = addBytes(bytes, 1);
-      else if (code <= 0x7ff) bytes = addBytes(bytes, 2);
-      else if (code >= 0xd800 && code <= 0xdbff) {
-        const next = input.charCodeAt(index + 1);
-        if (next >= 0xdc00 && next <= 0xdfff) {
-          bytes = addBytes(bytes, 4);
-          index += 1;
-        } else bytes = addBytes(bytes, 6);
-      } else if (code >= 0xdc00 && code <= 0xdfff) bytes = addBytes(bytes, 6);
-      else bytes = addBytes(bytes, 3);
-    }
-    return bytes;
-  };
   type Frame =
     | {
         readonly kind: 'value';
@@ -146,7 +120,12 @@ export function assertBoundedCheckpointJson(value: unknown): void {
       continue;
     }
     if (typeof item === 'string') {
-      bytes = addBytes(bytes, stringBytes(item));
+      bytes = addBytes(
+        bytes,
+        jsonStringByteLength(item, {
+          stopAfterBytes: WORKFLOW_CHECKPOINT_LIMITS.bytes,
+        }),
+      );
       continue;
     }
     if (typeof item === 'boolean') {
@@ -211,7 +190,12 @@ export function assertBoundedCheckpointJson(value: unknown): void {
         );
       else {
         if (enumerableCount > 0) bytes = addBytes(bytes, 1);
-        bytes = addBytes(bytes, stringBytes(key) + 1);
+        bytes = addBytes(
+          bytes,
+          jsonStringByteLength(key, {
+            stopAfterBytes: WORKFLOW_CHECKPOINT_LIMITS.bytes,
+          }) + 1,
+        );
       }
       enumerableCount += 1;
       pending.push({
