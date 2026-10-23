@@ -147,9 +147,11 @@ export async function readWorkflowRunRecord(
 export async function readWorkflowRunReadRecord(
   transaction: WorkspaceTransaction,
   runId: string,
-  includeWorkflowName: boolean,
+  { includeWorkflowName }: Readonly<{ includeWorkflowName: boolean }>,
 ): Promise<WorkflowRunReadRecord | undefined> {
-  const [row] = await workflowRunReadQuery(transaction, includeWorkflowName)
+  const [row] = await workflowRunReadQuery(transaction, {
+    includeWorkflowName,
+  })
     .where(
       and(
         eq(workflowRuns.workspaceId, transaction.workspaceId),

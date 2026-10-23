@@ -32,7 +32,7 @@ import { replacePreference, replaceSubscription } from './commands.js';
 async function subjectExists(
   client: PoolClient,
   input: NoticeReader & NoticeSubject,
-  locking = false,
+  { locking = false }: Readonly<{ locking?: boolean | undefined }> = {},
 ) {
   const table = input.subjectKind === 'workflow' ? 'workflows' : 'connections';
   const parameters: unknown[] = [input.workspaceId, input.subjectId];
@@ -55,8 +55,13 @@ async function subjectExists(
 }
 export function createNoticePreferencesStore(
   config: DatabaseConfig,
-  emailAvailable: boolean,
-  runtime?: DatabaseRuntime,
+  {
+    emailAvailable,
+    runtime,
+  }: Readonly<{
+    emailAvailable: boolean;
+    runtime?: DatabaseRuntime | undefined;
+  }>,
 ): NoticePreferencesStore {
   const lease = acquireDatabasePool(config, runtime);
   const scope = (input: NoticeReader) => ({
@@ -72,19 +77,18 @@ export function createNoticePreferencesStore(
         lease.pool,
         scope(input),
         async (client) => {
-          const role = await readWorkspaceAuthority(
-            client,
-            input.workspaceId,
-            input.actorId,
-            rolesForCapability('workspace:read'),
-          );
-          return readNoticePreferences(
-            client,
-            input.workspaceId,
-            input.actorId,
-            hasCapability(role, 'notification:manage_defaults'),
+          const role = await readWorkspaceAuthority(client, input.workspaceId, {
+            actorId: input.actorId,
+            roles: rolesForCapability('workspace:read'),
+          });
+          return readNoticePreferences(client, input.workspaceId, {
+            actorId: input.actorId,
+            canManageDefaults: hasCapability(
+              role,
+              'notification:manage_defaults',
+            ),
             emailAvailable,
-          );
+          });
         },
         options(input),
       ),
@@ -103,16 +107,21 @@ export function createNoticePreferencesStore(
             const current = await readNoticePreferences(
               client,
               input.workspaceId,
-              input.actorId,
-              hasCapability(role, 'notification:manage_defaults'),
-              emailAvailable,
+              {
+                actorId: input.actorId,
+                canManageDefaults: hasCapability(
+                  role,
+                  'notification:manage_defaults',
+                ),
+                emailAvailable,
+              },
             );
             if (input.mode !== null || current.defaults.mode !== 'off')
               throw new NoticeUnavailableError(
                 current.emailUnavailableReason ?? 'Email is unavailable.',
               );
           }
-          return replacePreference(client, input, false);
+          return replacePreference(client, input, { defaults: false });
         },
         options(input),
       ),
@@ -131,7 +140,7 @@ export function createNoticePreferencesStore(
             throw new NoticeUnavailableError(
               'Durable system mail is not configured.',
             );
-          return replacePreference(client, input, true);
+          return replacePreference(client, input, { defaults: true });
         },
         options(input),
       ),
@@ -140,12 +149,10 @@ export function createNoticePreferencesStore(
         lease.pool,
         scope(input),
         async (client) => {
-          await readWorkspaceAuthority(
-            client,
-            input.workspaceId,
-            input.actorId,
-            rolesForCapability('run:read'),
-          );
+          await readWorkspaceAuthority(client, input.workspaceId, {
+            actorId: input.actorId,
+            roles: rolesForCapability('run:read'),
+          });
           await subjectExists(client, input);
           const found = await client.query<NoticeSubscription>(
             'select revision,followed,muted from app.notice_subscriptions where workspace_id=$1 and user_id=$2 and subject_kind=$3 and subject_id=$4',
@@ -173,7 +180,7 @@ export function createNoticePreferencesStore(
             input.actorId,
             rolesForCapability('run:read'),
           );
-          await subjectExists(client, input, true);
+          await subjectExists(client, input, { locking: true });
           if (input.subjectKind === 'connection' && input.followed)
             throw new NoticeUnavailableError('Only workflows can be followed.');
           return replaceSubscription(client, input);

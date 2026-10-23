@@ -267,9 +267,15 @@ export async function readPreviewReceipt(
 export async function auditPreviewDeliveryMismatch(
   pool: Pool,
   consumerName: string,
-  workspaceId: string,
-  delivery: PreviewDelivery,
-  signal: AbortSignal,
+  {
+    workspaceId,
+    delivery,
+    signal,
+  }: Readonly<{
+    workspaceId: string;
+    delivery: PreviewDelivery;
+    signal: AbortSignal;
+  }>,
 ): Promise<never> {
   await withTenantScopedClient(
     pool,

@@ -10,7 +10,7 @@ import type { DirectoryMapping } from '../contract.js';
 export async function projectDirectorySettings(
   client: PoolClient,
   organization: DirectoryOrganization,
-  canManage: boolean,
+  { canManage }: Readonly<{ canManage: boolean }>,
 ): Promise<DirectorySettings> {
   const counts = (
     await client.query<{ users: number; activeUsers: number; groups: number }>(

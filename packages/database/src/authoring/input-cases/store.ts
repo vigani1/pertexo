@@ -42,8 +42,10 @@ export function createWorkflowInputCaseDatabase(
   let closing: Promise<void> | undefined;
   async function transact<T>(
     input: Scope,
-    write: boolean,
-    work: (client: PoolClient) => Promise<T>,
+    {
+      write,
+      work,
+    }: Readonly<{ write: boolean; work: (client: PoolClient) => Promise<T> }>,
   ): Promise<T> {
     scopeSchema.parse(input);
     if (closed) throw new Error('Run-input case database is closed');
@@ -51,16 +53,16 @@ export function createWorkflowInputCaseDatabase(
       lease.pool,
       { workspaceId: input.workspaceId, actorId: input.actorId },
       async (client) => {
-        await lockWorkflowAuthoringAuthority(
-          client,
-          input.workspaceId,
-          input.actorId,
-          rolesForCapability(write ? 'workflow:update' : 'workflow:read'),
-          {
+        await lockWorkflowAuthoringAuthority(client, input.workspaceId, {
+          actorId: input.actorId,
+          roles: rolesForCapability(
+            write ? 'workflow:update' : 'workflow:read',
+          ),
+          resource: {
             workflowId: input.workflowId,
             capability: write ? 'workflow:update' : 'workflow:read',
           },
-        );
+        });
         return work(client);
       },
       input.signal === undefined ? {} : { signal: input.signal },

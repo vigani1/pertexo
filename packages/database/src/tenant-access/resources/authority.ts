@@ -13,20 +13,36 @@ import { workflowAccessible } from './workflows.js';
 export async function authorizeWorkflowResource(
   client: PoolClient,
   input: ResourceActor & Readonly<{ workflowId: string }>,
-  capability: WorkflowResourceCapability,
-  locking: boolean,
-  roles: readonly Role[] = rolesForCapability(capability),
+  {
+    capability,
+    locking,
+    roles = rolesForCapability(capability),
+  }: Readonly<{
+    capability: WorkflowResourceCapability;
+    locking: boolean;
+    roles?: readonly Role[] | undefined;
+  }>,
 ): Promise<boolean> {
   try {
-    const role = await (
-      locking ? lockWorkspaceAuthority : readWorkspaceAuthority
-    )(client, input.workspaceId, input.actorId, roles);
+    const role = locking
+      ? await lockWorkspaceAuthority(
+          client,
+          input.workspaceId,
+          input.actorId,
+          roles,
+        )
+      : await readWorkspaceAuthority(client, input.workspaceId, {
+          actorId: input.actorId,
+          roles,
+        });
     return await workflowAccessible(
       client,
       await readFolderScope(client, input, role),
-      input.workspaceId,
-      input.workflowId,
-      capability,
+      {
+        workspaceId: input.workspaceId,
+        workflowId: input.workflowId,
+        capability,
+      },
     );
   } catch (error) {
     if (error instanceof WorkspaceAccessDeniedError) return false;

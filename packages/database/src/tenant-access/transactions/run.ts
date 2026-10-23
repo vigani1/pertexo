@@ -17,13 +17,20 @@ import {
 export async function runTransaction<T>(
   pool: Pool,
   scope: TransactionScope | undefined,
-  operation: (client: PoolClient) => Promise<T>,
-  options: WorkspaceTransactionOptions,
-  mode: 'read_write' | 'repeatable_read_only',
-  messages: Readonly<{
-    abort: string;
-    rollback: string;
-    cleanup: string;
+  {
+    operation,
+    options,
+    mode,
+    messages,
+  }: Readonly<{
+    operation: (client: PoolClient) => Promise<T>;
+    options: WorkspaceTransactionOptions;
+    mode: 'read_write' | 'repeatable_read_only';
+    messages: Readonly<{
+      abort: string;
+      rollback: string;
+      cleanup: string;
+    }>;
   }>,
 ): Promise<T> {
   const statementTimeoutMillis = parseStatementTimeout(

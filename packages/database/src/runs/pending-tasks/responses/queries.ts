@@ -122,9 +122,15 @@ export function projectTask(row: TaskRow): PendingTaskDetail {
 export async function readTaskRow(
   client: PoolClient,
   input: PendingTaskScope & Readonly<{ taskId: string }>,
-  role: Role,
-  resources: FolderScope,
-  locking = false,
+  {
+    role,
+    resources,
+    locking = false,
+  }: Readonly<{
+    role: Role;
+    resources: FolderScope;
+    locking?: boolean | undefined;
+  }>,
 ): Promise<TaskRow> {
   const parameters: unknown[] = [
     input.workspaceId,

@@ -61,12 +61,9 @@ export function collaborationPresence(
         input.workspaceId,
         input.actorId,
         async (client) => {
-          await requireCollaborationAuthority(
-            client,
-            input,
-            'update',
-            input.editing,
-          );
+          await requireCollaborationAuthority(client, input, 'update', {
+            editing: input.editing,
+          });
           await client.query(
             'delete from app.workflow_presence_leases where workspace_id=$1 and workflow_id=$2 and expires_at<=clock_timestamp()',
             [input.workspaceId, input.workflowId],

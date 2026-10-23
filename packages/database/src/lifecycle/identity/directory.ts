@@ -72,8 +72,7 @@ export async function purgeDirectoryMemberships(
   const changed = await detachDirectoryMemberships(
     client,
     source.organization_id,
-    source.workspace_id,
-    limit,
+    { workspaceId: source.workspace_id, limit },
   );
   await client.query("select set_config('app.workspace_id',$1,true)", [
     workspaceId,

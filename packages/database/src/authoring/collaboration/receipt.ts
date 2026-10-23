@@ -7,10 +7,17 @@ import type { CollaborationCommand, CollaborationContext } from './contract.js';
 export function runCommentCommand(
   context: CollaborationContext,
   input: CollaborationCommand,
-  action: string,
-  request: unknown,
-  write: (client: PoolClient) => Promise<WorkflowCommentCommandResult>,
-  status?: 'open' | 'resolved',
+  {
+    action,
+    request,
+    write,
+    status,
+  }: Readonly<{
+    action: string;
+    request: unknown;
+    write: (client: PoolClient) => Promise<WorkflowCommentCommandResult>;
+    status?: ('open' | 'resolved') | undefined;
+  }>,
 ) {
   return context.transact(
     input.workspaceId,

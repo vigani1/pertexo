@@ -115,8 +115,11 @@ function storeWith(results = validResults()) {
     async (
       _database: unknown,
       _workspaceId: string,
-      _delivery: unknown,
-      operation: (value: typeof transaction) => Promise<unknown>,
+      {
+        operation,
+      }: Readonly<{
+        operation: (value: typeof transaction) => Promise<unknown>;
+      }>,
     ) => ({ status: 'processed', value: await operation(transaction) }),
   );
   const checkpointFactory = vi.fn(() => ({
@@ -164,8 +167,11 @@ function reconciliationWith(
     async (
       _database: unknown,
       _workspaceId: string,
-      _delivery: unknown,
-      operation: (value: typeof transaction) => Promise<unknown>,
+      {
+        operation,
+      }: Readonly<{
+        operation: (value: typeof transaction) => Promise<unknown>;
+      }>,
     ) => ({ status: 'processed', value: await operation(transaction) }),
   );
   return {

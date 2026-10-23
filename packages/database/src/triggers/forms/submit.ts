@@ -32,10 +32,17 @@ import type { readFormVersion } from './read.js';
 export async function submitForm(
   client: PoolClient,
   input: Parameters<FormStore['submit']>[0],
-  prepare: InitialCheckpointFactory,
-  publicAccess: boolean,
-  loaded: Awaited<ReturnType<typeof readFormVersion>>,
-  prepared: PreparedFormEvent | undefined,
+  {
+    prepare,
+    publicAccess,
+    loaded,
+    prepared,
+  }: Readonly<{
+    prepare: InitialCheckpointFactory;
+    publicAccess: boolean;
+    loaded: Awaited<ReturnType<typeof readFormVersion>>;
+    prepared: PreparedFormEvent | undefined;
+  }>,
 ) {
   // Match ordinary admission: workspace precedes workflow/publication locks.
   const { version, form, nodeId } = loaded;
@@ -70,7 +77,7 @@ export async function submitForm(
     const receipt = submissionReceipt(
       acceptedForm,
       { runId: replay.runId, replayed: true },
-      publicAccess,
+      { publicAccess },
     );
     await completeCommand(client, command, receipt);
     return receipt;
@@ -111,7 +118,7 @@ export async function submitForm(
         ? { accepted: false as const, ...result, replayed: false }
         : 'skipped' in result
           ? { accepted: false as const, ...result, replayed: false }
-          : submissionReceipt(form, result, publicAccess);
+          : submissionReceipt(form, result, { publicAccess });
     await completeCommand(client, command, receipt);
     return receipt;
   }
@@ -137,7 +144,7 @@ export async function submitForm(
   const receipt = submissionReceipt(
     form,
     { runId: accepted.runId, replayed: accepted.duplicate },
-    publicAccess,
+    { publicAccess },
   );
   await completeCommand(client, command, receipt);
   return receipt;
@@ -145,7 +152,7 @@ export async function submitForm(
 function submissionReceipt(
   form: FormConfig,
   result: Readonly<{ runId: string; replayed: boolean }>,
-  publicAccess: boolean,
+  { publicAccess }: Readonly<{ publicAccess: boolean }>,
 ) {
   return {
     accepted: true as const,

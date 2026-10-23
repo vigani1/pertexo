@@ -31,7 +31,7 @@ export const config = () =>
 export const maintenance = () =>
   parseDatabaseConfig({ connectionString: dispatcherUrl, max: 1 });
 export const preferences = (available = true) =>
-  own(createNoticePreferencesStore(config(), available));
+  own(createNoticePreferencesStore(config(), { emailAvailable: available }));
 export const inbox = () => own(createWorkspaceInboxDatabase(config()));
 export const observer = () =>
   own(createWorkspaceInboxFoldStore(config(), undefined, maintenance()));

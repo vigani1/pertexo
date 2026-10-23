@@ -136,58 +136,50 @@ async function setDestinationStatus(
   input: Parameters<FailureNotificationDestinationDatabase['setStatus']>[0],
 ): Promise<FailureNotificationDestinationRecord> {
   return transaction(input, async (client) => {
-    await authorize(client, input.workspaceId, input.actorId, true);
+    await authorize(client, input.workspaceId, input.actorId, { manage: true });
     const destinationId = z.uuid().parse(input.destinationId);
     const operation = 'failure.notification.destination.status';
     const scope = `${input.actorId}:${destinationId}`;
-    const replay = await claimNotificationCommand(
-      client,
-      input,
+    const replay = await claimNotificationCommand(client, input, {
       operation,
       scope,
-      destinationId,
-    );
+      resourceId: destinationId,
+    });
     if (replay.kind === 'replay')
       return decodeFailureNotificationDestinationReplay(replay.result);
     const current = await readFailureNotificationDestination(
       client,
       input.workspaceId,
       destinationId,
-      true,
+      { lock: true },
     );
     if (current.status === input.status) {
-      await completeNotificationCommand(
-        client,
-        input,
+      await completeNotificationCommand(client, input, {
         operation,
         scope,
-        serializeFailureNotificationDestinationRecord(current),
-      );
+        result: serializeFailureNotificationDestinationRecord(current),
+      });
       return current;
     }
     await client.query(
       `update app.failure_notification_destinations set status=$3,updated_at=clock_timestamp() where workspace_id=$1 and id=$2`,
       [input.workspaceId, current.id, input.status],
     );
-    await audit(
-      client,
-      input,
-      `failure_notification_destination.${input.status}`,
-      { id: current.id, type: 'failure_notification_destination' },
-      {},
-    );
+    await audit(client, input, {
+      action: `failure_notification_destination.${input.status}`,
+      target: { id: current.id, type: 'failure_notification_destination' },
+      metadata: {},
+    });
     const updated = await readFailureNotificationDestination(
       client,
       input.workspaceId,
       current.id,
     );
-    await completeNotificationCommand(
-      client,
-      input,
+    await completeNotificationCommand(client, input, {
       operation,
       scope,
-      serializeFailureNotificationDestinationRecord(updated),
-    );
+      result: serializeFailureNotificationDestinationRecord(updated),
+    });
     return updated;
   });
 }
@@ -215,20 +207,20 @@ export function createFailureNotificationDestinationDatabase(
       input: Parameters<FailureNotificationDestinationDatabase['create']>[0],
     ) =>
       transaction(input, async (client) => {
-        await authorize(client, input.workspaceId, input.actorId, true);
+        await authorize(client, input.workspaceId, input.actorId, {
+          manage: true,
+        });
         const destinationId = z.uuid().parse(input.destinationId);
         const parsed = FailureNotificationDestinationConfigSchema.parse(
           input.config,
         );
         const operation = 'failure.notification.destination.create';
         const scope = input.actorId;
-        const replay = await claimNotificationCommand(
-          client,
-          input,
+        const replay = await claimNotificationCommand(client, input, {
           operation,
           scope,
-          destinationId,
-        );
+          resourceId: destinationId,
+        });
         if (replay.kind === 'replay')
           return decodeFailureNotificationDestinationReplay(replay.result);
         await assertConnection(client, input.workspaceId, parsed);
@@ -245,32 +237,33 @@ export function createFailureNotificationDestinationDatabase(
           config: parsed,
           actorId: input.actorId,
         });
-        await audit(
-          client,
-          input,
-          'failure_notification_destination.created',
-          { id: destinationId, type: 'failure_notification_destination' },
-          { kind: parsed.kind, version: 1 },
-        );
+        await audit(client, input, {
+          action: 'failure_notification_destination.created',
+          target: {
+            id: destinationId,
+            type: 'failure_notification_destination',
+          },
+          metadata: { kind: parsed.kind, version: 1 },
+        });
         const created = await readFailureNotificationDestination(
           client,
           input.workspaceId,
           destinationId,
         );
-        await completeNotificationCommand(
-          client,
-          input,
+        await completeNotificationCommand(client, input, {
           operation,
           scope,
-          serializeFailureNotificationDestinationRecord(created),
-        );
+          result: serializeFailureNotificationDestinationRecord(created),
+        });
         return created;
       }),
     get: (
       input: Parameters<FailureNotificationDestinationDatabase['get']>[0],
     ) =>
       transaction(input, async (client) => {
-        await authorize(client, input.workspaceId, input.actorId, false);
+        await authorize(client, input.workspaceId, input.actorId, {
+          manage: false,
+        });
         return readFailureNotificationDestination(
           client,
           input.workspaceId,
@@ -281,7 +274,9 @@ export function createFailureNotificationDestinationDatabase(
       input: Parameters<FailureNotificationDestinationDatabase['list']>[0],
     ) =>
       transaction(input, async (client) => {
-        await authorize(client, input.workspaceId, input.actorId, false);
+        await authorize(client, input.workspaceId, input.actorId, {
+          manage: false,
+        });
         const result = await client.query<Record<string, unknown>>(
           `select destination.id,destination.workspace_id,destination.kind,
                   destination.status,destination.current_config_version,
@@ -304,24 +299,24 @@ export function createFailureNotificationDestinationDatabase(
       >[0],
     ) =>
       transaction(input, async (client) => {
-        await authorize(client, input.workspaceId, input.actorId, true);
+        await authorize(client, input.workspaceId, input.actorId, {
+          manage: true,
+        });
         const destinationId = z.uuid().parse(input.destinationId);
         const operation = 'failure.notification.destination.version.append';
         const scope = `${input.actorId}:${destinationId}`;
-        const replay = await claimNotificationCommand(
-          client,
-          input,
+        const replay = await claimNotificationCommand(client, input, {
           operation,
           scope,
-          destinationId,
-        );
+          resourceId: destinationId,
+        });
         if (replay.kind === 'replay')
           return decodeFailureNotificationDestinationReplay(replay.result);
         const current = await readFailureNotificationDestination(
           client,
           input.workspaceId,
           destinationId,
-          true,
+          { lock: true },
         );
         const parsed = FailureNotificationDestinationConfigSchema.parse(
           input.config,
@@ -346,25 +341,21 @@ export function createFailureNotificationDestinationDatabase(
           where workspace_id=$1 and id=$2`,
           [input.workspaceId, current.id, next],
         );
-        await audit(
-          client,
-          input,
-          'failure_notification_destination.version_appended',
-          { id: current.id, type: 'failure_notification_destination' },
-          { version: next },
-        );
+        await audit(client, input, {
+          action: 'failure_notification_destination.version_appended',
+          target: { id: current.id, type: 'failure_notification_destination' },
+          metadata: { version: next },
+        });
         const appended = await readFailureNotificationDestination(
           client,
           input.workspaceId,
           current.id,
         );
-        await completeNotificationCommand(
-          client,
-          input,
+        await completeNotificationCommand(client, input, {
           operation,
           scope,
-          serializeFailureNotificationDestinationRecord(appended),
-        );
+          result: serializeFailureNotificationDestinationRecord(appended),
+        });
         return appended;
       }),
     setStatus: (

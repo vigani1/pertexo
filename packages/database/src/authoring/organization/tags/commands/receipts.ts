@@ -30,10 +30,17 @@ const EDITORS = WORKFLOW_EDITOR_ROLES;
 export function tagCommand(
   session: ReturnType<typeof createOrganizationSession>,
   input: Command,
-  operation: string,
-  target: string | null,
-  request: unknown,
-  apply: (client: PoolClient, workspaceId: string) => Promise<TagRow>,
+  {
+    operation,
+    target,
+    request,
+    apply,
+  }: Readonly<{
+    operation: string;
+    target: string | null;
+    request: unknown;
+    apply: (client: PoolClient, workspaceId: string) => Promise<TagRow>;
+  }>,
 ): Promise<WorkflowTagCommandResult> {
   return session.transact(input, async (client, scope) => {
     const { result, replayed } = await runOrganizationCommand(client, scope, {
@@ -62,9 +69,15 @@ export function tagCommand(
 export function assignmentCommand<T extends object>(
   session: ReturnType<typeof createOrganizationSession>,
   input: AssignmentCommand,
-  operation: 'tags.replace' | 'tag.detach',
-  change: Exclude<OrganizationChange, Readonly<{ kind: 'move' }>>,
-  schema: z.ZodType<T>,
+  {
+    operation,
+    change,
+    schema,
+  }: Readonly<{
+    operation: 'tags.replace' | 'tag.detach';
+    change: Exclude<OrganizationChange, Readonly<{ kind: 'move' }>>;
+    schema: z.ZodType<T>;
+  }>,
 ): Promise<T & Readonly<{ replayed: boolean }>> {
   const workflowId = uuid.parse(input.workflowId);
   const expectedOrganizationRevision = revision.parse(
@@ -82,7 +95,10 @@ export function assignmentCommand<T extends object>(
       request,
       roles: operation === 'tags.replace' ? EDITORS : ADMINISTRATORS,
       replay: () =>
-        checkOrganizationReplay(client, scope, workflowId, change.kind),
+        checkOrganizationReplay(client, scope, {
+          workflowId,
+          kind: change.kind,
+        }),
       apply: async () => {
         const organizationRevision = await organizeWorkflow(client, scope, {
           workflowId,

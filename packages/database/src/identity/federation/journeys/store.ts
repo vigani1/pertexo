@@ -54,7 +54,7 @@ export class OrganizationSignInCommands {
     input: FederationScope & Readonly<{ providerId: string; domainId: string }>,
   ) {
     return withPlatformTransaction(this.input.pool, async (client) => {
-      await lockFederationWorkspace(client, input, true);
+      await lockFederationWorkspace(client, input, { ownerOnly: true });
       const organization = await organizationForWorkspace(
         client,
         input.workspaceId,
@@ -79,7 +79,7 @@ export class OrganizationSignInCommands {
         client,
         input.providerId,
         domain.domain,
-        true,
+        { testing: true },
       );
       if (material?.provider.organizationId !== organization.id)
         throw new FederationConflictError(
@@ -110,7 +110,7 @@ export class OrganizationSignInCommands {
             workspaceId: provider.control_workspace_id,
             actorId: input.ownerUserId,
           },
-          true,
+          { ownerOnly: true },
         );
         if (
           (

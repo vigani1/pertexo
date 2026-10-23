@@ -72,13 +72,11 @@ export async function readReviewRow(
       actorId: row.requested_by,
     };
     const resources = await readFolderScope(client, requester);
-    const canPublish = await workflowAccessible(
-      client,
-      resources,
-      input.workspaceId,
-      row.workflow_id,
-      'workflow:publish',
-    );
+    const canPublish = await workflowAccessible(client, resources, {
+      workspaceId: input.workspaceId,
+      workflowId: row.workflow_id,
+      capability: 'workflow:publish',
+    });
     const issues = canPublish
       ? await connectionUseIssues(
           { db: drizzle(client) },
@@ -119,9 +117,15 @@ export function projectReview(row: ReviewRow): PublicationReview {
 export async function readReviewDraft(
   client: PoolClient,
   dependencies: ReviewDependencies,
-  input: ReviewScope & { workflowId: string },
-  expectedTag?: string,
-  lock: 'share' | 'update' = 'update',
+  {
+    input,
+    expectedTag,
+    lock = 'update',
+  }: Readonly<{
+    input: ReviewScope & { workflowId: string };
+    expectedTag?: string | undefined;
+    lock?: ('share' | 'update') | undefined;
+  }>,
 ) {
   const row = (
     await client.query<Record<string, unknown>>(
@@ -150,13 +154,11 @@ async function readReviewedCandidate(
   const row = await readReviewRow(client, input);
   let graph = null;
   if (row.state === 'pending') {
-    const candidate = await readReviewDraft(
-      client,
-      dependencies,
-      { ...input, workflowId: row.workflow_id },
-      undefined,
-      'share',
-    );
+    const candidate = await readReviewDraft(client, dependencies, {
+      input: { ...input, workflowId: row.workflow_id },
+      expectedTag: undefined,
+      lock: 'share',
+    });
     if (candidate.tag === row.representation_tag)
       graph = candidate.draft.graphJson;
     else {

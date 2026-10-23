@@ -23,8 +23,13 @@ export function createPublicationReviewStore(
   const transact = <T>(
     input: ReviewScope,
     capability: 'workflow:read' | 'workflow:publish' | 'governance:manage',
-    exclusive: boolean,
-    work: (client: PoolClient) => Promise<T>,
+    {
+      exclusive,
+      work,
+    }: Readonly<{
+      exclusive: boolean;
+      work: (client: PoolClient) => Promise<T>;
+    }>,
   ) =>
     dependencies.transact(
       input.workspaceId,
@@ -35,12 +40,10 @@ export function createPublicationReviewStore(
             'select id from app.workspaces where id=$1 for update',
             [input.workspaceId],
           );
-        await lockWorkflowAuthoringAuthority(
-          client,
-          input.workspaceId,
-          input.actorId,
-          rolesForCapability(capability),
-        );
+        await lockWorkflowAuthoringAuthority(client, input.workspaceId, {
+          actorId: input.actorId,
+          roles: rolesForCapability(capability),
+        });
         return work(client);
       },
       input.signal,
@@ -49,7 +52,7 @@ export function createPublicationReviewStore(
     client: PoolClient,
     input: ReviewScope,
     identity: { workflowId: string } | { reviewId: string },
-    write: boolean,
+    { write }: Readonly<{ write: boolean }>,
   ) => {
     const predicate =
       'workflowId' in identity
@@ -77,45 +80,57 @@ export function createPublicationReviewStore(
   };
   return {
     overview: (input) =>
-      transact(input, 'workflow:read', false, async (client) => {
-        await lockWorkflow(client, input, input, false);
-        const policy = (
-          await client.query<{ require_publish_approval: boolean }>(
-            'select require_publish_approval from app.workspaces where id=$1',
-            [input.workspaceId],
-          )
-        ).rows[0];
-        const latest = (
-          await client.query<{ id: string }>(
-            'select id from app.workflow_publication_requests where workspace_id=$1 and workflow_id=$2 order by created_at desc,id desc limit 1',
-            [input.workspaceId, input.workflowId],
-          )
-        ).rows[0];
-        return {
-          required: policy?.require_publish_approval === true,
-          request:
-            latest === undefined
-              ? null
-              : await readReviewSummary(client, dependencies, {
-                  ...input,
-                  reviewId: latest.id,
-                }),
-        };
+      transact(input, 'workflow:read', {
+        exclusive: false,
+        work: async (client) => {
+          await lockWorkflow(client, input, input, { write: false });
+          const policy = (
+            await client.query<{ require_publish_approval: boolean }>(
+              'select require_publish_approval from app.workspaces where id=$1',
+              [input.workspaceId],
+            )
+          ).rows[0];
+          const latest = (
+            await client.query<{ id: string }>(
+              'select id from app.workflow_publication_requests where workspace_id=$1 and workflow_id=$2 order by created_at desc,id desc limit 1',
+              [input.workspaceId, input.workflowId],
+            )
+          ).rows[0];
+          return {
+            required: policy?.require_publish_approval === true,
+            request:
+              latest === undefined
+                ? null
+                : await readReviewSummary(client, dependencies, {
+                    ...input,
+                    reviewId: latest.id,
+                  }),
+          };
+        },
       }),
     read: (input) =>
-      transact(input, 'workflow:read', false, async (client) => {
-        await lockWorkflow(client, input, input, false);
-        return readReviewDetail(client, dependencies, input);
+      transact(input, 'workflow:read', {
+        exclusive: false,
+        work: async (client) => {
+          await lockWorkflow(client, input, input, { write: false });
+          return readReviewDetail(client, dependencies, input);
+        },
       }),
     request: (input) =>
-      transact(input, 'workflow:publish', true, async (client) => {
-        await lockWorkflow(client, input, input, true);
-        return requestPublicationReview(client, dependencies, input);
+      transact(input, 'workflow:publish', {
+        exclusive: true,
+        work: async (client) => {
+          await lockWorkflow(client, input, input, { write: true });
+          return requestPublicationReview(client, dependencies, input);
+        },
       }),
     decide: (input) =>
-      transact(input, 'governance:manage', false, async (client) => {
-        await lockWorkflow(client, input, input, true);
-        return decidePublicationReview(client, dependencies, input);
+      transact(input, 'governance:manage', {
+        exclusive: false,
+        work: async (client) => {
+          await lockWorkflow(client, input, input, { write: true });
+          return decidePublicationReview(client, dependencies, input);
+        },
       }),
   };
 }

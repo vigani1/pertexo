@@ -37,12 +37,10 @@ export async function createDirectoryCredential(
   pool: Pool,
   input: DirectoryCommand & Readonly<{ name: string }>,
 ): Promise<DirectoryCredentialResult> {
-  const result = await runDirectoryCommand(
-    pool,
-    input,
-    'identity.directory.credential.create',
-    { name: input.name, expectedRevision: input.expectedRevision },
-    async (client, organization) => {
+  const result = await runDirectoryCommand(pool, input, {
+    operation: 'identity.directory.credential.create',
+    request: { name: input.name, expectedRevision: input.expectedRevision },
+    change: async (client, organization) => {
       const count =
         (
           await client.query<{ count: number }>(
@@ -69,19 +67,17 @@ export async function createDirectoryCredential(
       ).rows[0];
       if (row === undefined)
         throw new Error('Credential creation returned no row');
-      await auditDirectoryManagement(
-        client,
-        input,
-        organization.id,
-        'identity.directory_credential_created',
-        id,
-      );
+      await auditDirectoryManagement(client, input, {
+        organizationId: organization.id,
+        action: 'identity.directory_credential_created',
+        targetId: id,
+      });
       return {
         receipt: { credentialId: id },
         value: { credential: publicCredential(row), secret },
       };
     },
-  );
+  });
   if (!result.replayed) return { replayed: false, ...result.value };
   const { credentialId } = credentialReceipt.parse(result.receipt);
   const credential = await withPlatformTransaction(pool, async (client) => {
@@ -115,31 +111,27 @@ export async function revokeDirectoryCredential(
   pool: Pool,
   input: DirectoryCommand & Readonly<{ credentialId: string }>,
 ): Promise<void> {
-  await runDirectoryCommand(
-    pool,
-    input,
-    'identity.directory.credential.revoke',
-    {
+  await runDirectoryCommand(pool, input, {
+    operation: 'identity.directory.credential.revoke',
+    request: {
       credentialId: input.credentialId,
       expectedRevision: input.expectedRevision,
     },
-    async (client, organization) => {
+    change: async (client, organization) => {
       const result = await client.query(
         'update app.auth_provisioning_credentials set revoked_at=coalesce(revoked_at,clock_timestamp()) where organization_id=$1 and id=$2 returning id',
         [organization.id, input.credentialId],
       );
       if (result.rowCount !== 1) throw new DirectoryError('not_found');
-      await auditDirectoryManagement(
-        client,
-        input,
-        organization.id,
-        'identity.directory_credential_revoked',
-        input.credentialId,
-      );
+      await auditDirectoryManagement(client, input, {
+        organizationId: organization.id,
+        action: 'identity.directory_credential_revoked',
+        targetId: input.credentialId,
+      });
       return {
         receipt: { credentialId: input.credentialId },
         value: undefined,
       };
     },
-  );
+  });
 }

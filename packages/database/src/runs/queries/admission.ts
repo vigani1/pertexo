@@ -11,7 +11,7 @@ import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 /** Reads the run and its admission facts in one statement and snapshot. */
 export function workflowRunReadQuery(
   transaction: WorkspaceTransaction,
-  includeWorkflowName: boolean,
+  { includeWorkflowName }: Readonly<{ includeWorkflowName: boolean }>,
 ) {
   const { db, workspaceId } = transaction;
   const earlier = alias(workflowRuns, 'admission_earlier_run');

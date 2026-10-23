@@ -7,9 +7,15 @@ import { bindResourcePredicate, workflowScopeSql } from './query-scope.js';
 export async function workflowAccessible(
   client: PoolClient,
   scope: FolderScope,
-  workspaceId: string,
-  workflowId: string,
-  capability: WorkflowResourceCapability = 'workflow:read',
+  {
+    workspaceId,
+    workflowId,
+    capability = 'workflow:read',
+  }: Readonly<{
+    workspaceId: string;
+    workflowId: string;
+    capability?: WorkflowResourceCapability | undefined;
+  }>,
 ): Promise<boolean> {
   const parameters: unknown[] = [workspaceId, workflowId];
   const visible = bindResourcePredicate(

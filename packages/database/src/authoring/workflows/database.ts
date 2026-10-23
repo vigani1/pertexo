@@ -129,9 +129,15 @@ function requirePlaceableDefinitionAdditions(
 async function withAuthorTransaction<T>(
   pool: Pool,
   workspaceIdInput: string,
-  actorIdInput: string,
-  operation: (client: PoolClient) => Promise<T>,
-  signal?: AbortSignal,
+  {
+    actorIdInput,
+    operation,
+    signal,
+  }: Readonly<{
+    actorIdInput: string;
+    operation: (client: PoolClient) => Promise<T>;
+    signal?: AbortSignal | undefined;
+  }>,
 ): Promise<T> {
   return withTenantScopedClient(
     pool,
@@ -147,17 +153,21 @@ async function withAuthorTransaction<T>(
 async function requireWorkspaceAuthor(
   client: PoolClient,
   workspaceId: string,
-  actorId: string,
-  workflowId?: string,
-  capability: 'workflow:read' | 'workflow:update' = 'workflow:update',
-): Promise<void> {
-  await lockWorkflowAuthoringAuthority(
-    client,
-    workspaceId,
+  {
     actorId,
-    rolesForCapability('workflow:update'),
-    workflowId === undefined ? undefined : { workflowId, capability },
-  );
+    workflowId,
+    capability = 'workflow:update',
+  }: Readonly<{
+    actorId: string;
+    workflowId?: string | undefined;
+    capability?: ('workflow:read' | 'workflow:update') | undefined;
+  }>,
+): Promise<void> {
+  await lockWorkflowAuthoringAuthority(client, workspaceId, {
+    actorId,
+    roles: rolesForCapability('workflow:update'),
+    resource: workflowId === undefined ? undefined : { workflowId, capability },
+  });
 }
 
 async function requireWorkspaceReader(
@@ -229,7 +239,11 @@ export function createWorkflowAuthoringDatabase(
     signal?: AbortSignal,
   ): Promise<T> {
     return tracked(() =>
-      withAuthorTransaction(pool, workspaceId, actorId, operation, signal),
+      withAuthorTransaction(pool, workspaceId, {
+        actorIdInput: actorId,
+        operation,
+        signal,
+      }),
     );
   }
   function transactScopes<T>(

@@ -27,9 +27,15 @@ import {
 export async function persistPublicationProjections(
   client: PoolClient,
   input: PublicationCandidateInput,
-  workflowId: string,
-  publication: CompiledPublication,
-  version: WorkflowVersionRecord,
+  {
+    workflowId,
+    publication,
+    version,
+  }: Readonly<{
+    workflowId: string;
+    publication: CompiledPublication;
+    version: WorkflowVersionRecord;
+  }>,
 ): Promise<void> {
   await revokeRemovedFormAccess(
     client,
@@ -75,9 +81,15 @@ export async function persistPublicationProjections(
 export async function finalizePublication(
   client: PoolClient,
   input: PublicationCandidateInput,
-  workflowId: string,
-  version: WorkflowVersionRecord,
-  reused: boolean,
+  {
+    workflowId,
+    version,
+    reused,
+  }: Readonly<{
+    workflowId: string;
+    version: WorkflowVersionRecord;
+    reused: boolean;
+  }>,
 ): Promise<void> {
   await client.query(
     `update app.workflows set published_version_id=$1,
@@ -89,7 +101,7 @@ export async function finalizePublication(
   const payload = reconcileWorkflowTriggersPayload({
     workspaceId: input.workspaceId,
     outboxEventId: eventId,
-    workflowId: workflowId,
+    workflowId,
     publishedVersionId: version.id,
     ...(input.traceparent === undefined
       ? {}

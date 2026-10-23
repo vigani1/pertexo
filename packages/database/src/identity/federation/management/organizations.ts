@@ -25,12 +25,10 @@ export function createOrganization(
   pool: Pool,
   input: FederationScope & Readonly<{ name: string; idempotencyKey: string }>,
 ): Promise<FederationSettings> {
-  return runFederationCommand(
-    pool,
-    input,
-    'identity.organization.create',
-    { name: input.name },
-    async (client) => {
+  return runFederationCommand(pool, input, {
+    operation: 'identity.organization.create',
+    request: { name: input.name },
+    change: async (client) => {
       if (
         (await organizationForWorkspace(client, input.workspaceId)) !==
         undefined
@@ -52,15 +50,13 @@ export function createOrganization(
         'insert into app.auth_organization_workspaces(workspace_id,organization_id) values($1,$2)',
         [input.workspaceId, id],
       );
-      await recordFederationAudit(
-        client,
-        input,
-        'identity.organization_created',
-        id,
-      );
+      await recordFederationAudit(client, input, {
+        action: 'identity.organization_created',
+        targetId: id,
+      });
       return row;
     },
-  );
+  });
 }
 export function linkOrganizationWorkspace(
   pool: Pool,
@@ -70,16 +66,14 @@ export function linkOrganizationWorkspace(
       defaultRole: DelegatedRole;
     }>,
 ): Promise<FederationSettings> {
-  return runFederationCommand(
-    pool,
-    input,
-    'identity.organization.link.workspace',
-    {
+  return runFederationCommand(pool, input, {
+    operation: 'identity.organization.link.workspace',
+    request: {
       workspaceId: input.targetWorkspaceId,
       defaultRole: input.defaultRole,
       expectedRevision: input.expectedRevision,
     },
-    async (client) => {
+    change: async (client) => {
       const organization = await requireControlOrganization(client, input);
       assertOrganizationRevision(organization, input.expectedRevision);
       const existing = await organizationForWorkspace(
@@ -122,31 +116,31 @@ export function linkOrganizationWorkspace(
         },
         { actorId: input.actorId },
       );
-      await recordFederationAudit(
-        client,
-        input,
-        'identity.workspace_linked',
-        organization.id,
-        {
+      await recordFederationAudit(client, input, {
+        action: 'identity.workspace_linked',
+        targetId: organization.id,
+        metadata: {
           workspaceId: input.targetWorkspaceId,
           defaultRole: input.defaultRole,
         },
-      );
+      });
       if (input.targetWorkspaceId !== input.workspaceId)
         await recordFederationAudit(
           client,
           { ...input, workspaceId: input.targetWorkspaceId },
-          'identity.workspace_linked',
-          organization.id,
           {
-            controlWorkspaceId: input.workspaceId,
-            defaultRole: input.defaultRole,
+            action: 'identity.workspace_linked',
+            targetId: organization.id,
+            metadata: {
+              controlWorkspaceId: input.workspaceId,
+              defaultRole: input.defaultRole,
+            },
           },
         );
       return advanceOrganization(client, organization);
     },
-    [input.targetWorkspaceId],
-  );
+    additionalWorkspaceIds: [input.targetWorkspaceId],
+  });
 }
 export async function requireResourceCapacity(
   client: PoolClient,

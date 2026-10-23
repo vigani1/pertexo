@@ -350,12 +350,9 @@ async function recordTriggerReconciliationFailure(
                 and trigger.status not in ('active','disabled')`,
         [input.workspaceId, workflowId, versionId, reason],
       );
-      await refreshWorkflowActivation(
-        client,
-        input.workspaceId,
-        workflowId,
-        true,
-      );
+      await refreshWorkflowActivation(client, input.workspaceId, workflowId, {
+        failed: true,
+      });
     },
   );
 }

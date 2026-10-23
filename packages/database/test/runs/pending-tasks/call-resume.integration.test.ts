@@ -34,12 +34,10 @@ it('keeps an ancestor awake while a descendant has an unconsumed Call result', a
           'select id from app.workflow_runs where id=$1 for no key update',
           [root.parentRunId],
         );
-        return synchronizeHumanWait(
-          client,
-          root.workspaceId,
-          root.parentRunId,
-          'loading',
-        );
+        return synchronizeHumanWait(client, root.workspaceId, {
+          runId: root.parentRunId,
+          phase: 'loading',
+        });
       },
     );
   expect((await observe()).human_wait_started_at).toBeNull();

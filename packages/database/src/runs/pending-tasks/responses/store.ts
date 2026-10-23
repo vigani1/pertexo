@@ -36,12 +36,10 @@ export function createPendingTaskStore(
         lease.pool,
         { workspaceId: input.workspaceId, actorId: input.actorId },
         async (client) => {
-          const role = await readWorkspaceAuthority(
-            client,
-            input.workspaceId,
-            input.actorId,
-            rolesForCapability('run:read'),
-          );
+          const role = await readWorkspaceAuthority(client, input.workspaceId, {
+            actorId: input.actorId,
+            roles: rolesForCapability('run:read'),
+          });
           return listTasks(
             client,
             input,
@@ -56,19 +54,15 @@ export function createPendingTaskStore(
         lease.pool,
         { workspaceId: input.workspaceId, actorId: input.actorId },
         async (client) => {
-          const role = await readWorkspaceAuthority(
-            client,
-            input.workspaceId,
-            input.actorId,
-            rolesForCapability('run:read'),
-          );
+          const role = await readWorkspaceAuthority(client, input.workspaceId, {
+            actorId: input.actorId,
+            roles: rolesForCapability('run:read'),
+          });
           return projectTask(
-            await readTaskRow(
-              client,
-              input,
+            await readTaskRow(client, input, {
               role,
-              await readFolderScope(client, input, role),
-            ),
+              resources: await readFolderScope(client, input, role),
+            }),
           );
         },
         input.signal === undefined ? {} : { signal: input.signal },
@@ -118,12 +112,10 @@ export function createPendingTaskStore(
         lease.pool,
         { workspaceId: input.workspaceId, actorId: input.actorId },
         async (client) => {
-          await readWorkspaceAuthority(
-            client,
-            input.workspaceId,
-            input.actorId,
-            rolesForCapability('workflow:update'),
-          );
+          await readWorkspaceAuthority(client, input.workspaceId, {
+            actorId: input.actorId,
+            roles: rolesForCapability('workflow:update'),
+          });
           return inspectAudience(client, input);
         },
         input.signal === undefined ? {} : { signal: input.signal },
@@ -133,12 +125,10 @@ export function createPendingTaskStore(
         lease.pool,
         { workspaceId: input.workspaceId, actorId: input.actorId },
         async (client) => {
-          await readWorkspaceAuthority(
-            client,
-            input.workspaceId,
-            input.actorId,
-            rolesForCapability('workflow:update'),
-          );
+          await readWorkspaceAuthority(client, input.workspaceId, {
+            actorId: input.actorId,
+            roles: rolesForCapability('workflow:update'),
+          });
           return readWorkspacePeople(client, input);
         },
         input.signal === undefined ? {} : { signal: input.signal },

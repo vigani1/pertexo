@@ -31,7 +31,7 @@ export type WorkflowRow = Readonly<{
 export async function lockWorkspace(
   client: PoolClient,
   workspaceId: string,
-  exclusive: boolean,
+  { exclusive }: Readonly<{ exclusive: boolean }>,
 ): Promise<WorkspaceRow> {
   await client.query(
     `select ${exclusive ? 'pg_advisory_xact_lock' : 'pg_advisory_xact_lock_shared'}(hashtextextended($1, 0))`,

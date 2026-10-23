@@ -17,9 +17,15 @@ import { promotionNodes } from './graph.js';
 export async function inspectPromotionRequirements(
   client: PoolClient,
   workspaceId: string,
-  workflowId: string,
-  graph: WorkflowGraph,
-  scope: ConnectionScope,
+  {
+    workflowId,
+    graph,
+    scope,
+  }: Readonly<{
+    workflowId: string;
+    graph: WorkflowGraph;
+    scope: ConnectionScope;
+  }>,
 ): Promise<WorkflowPromotionRequirement[]> {
   const report: WorkflowPromotionRequirement[] = [];
   const variableNames = await lockWorkspaceVariableNames(client, workspaceId);

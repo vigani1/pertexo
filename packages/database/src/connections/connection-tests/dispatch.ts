@@ -32,11 +32,9 @@ export async function markConnectionTestDispatched(
   const digest = keyDigest(input.idempotencyKey);
   const scope = connectionTestScope(actorId, connectionId);
   const metadata = parseRequestMetadata(input);
-  await withConnectionTransaction(
-    pool,
-    input.workspaceId,
+  await withConnectionTransaction(pool, input.workspaceId, {
     actorId,
-    async (client, workspaceId) => {
+    operation: async (client, workspaceId) => {
       await requireConnectionUser(client, workspaceId, actorId, connectionId);
       const claim = await client.query<{ result_ref: unknown }>(
         `select result_ref from app.idempotency_records
@@ -61,7 +59,7 @@ export async function markConnectionTestDispatched(
         client,
         workspaceId,
         connectionId,
-        true,
+        { lock: true },
       );
       if (
         connection === null ||
@@ -125,5 +123,5 @@ export async function markConnectionTestDispatched(
         ],
       );
     },
-  );
+  });
 }

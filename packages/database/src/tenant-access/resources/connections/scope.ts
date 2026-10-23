@@ -46,12 +46,10 @@ export async function readConnectionScope(
 ): Promise<ConnectionScope> {
   let role: Role | null = null;
   try {
-    role = await readWorkspaceAuthority(
-      client,
-      actor.workspaceId,
-      actor.actorId,
-      rolesForCapability(capability),
-    );
+    role = await readWorkspaceAuthority(client, actor.workspaceId, {
+      actorId: actor.actorId,
+      roles: rolesForCapability(capability),
+    });
   } catch (error) {
     if (!(error instanceof WorkspaceAccessDeniedError)) throw error;
   }

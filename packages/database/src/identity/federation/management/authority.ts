@@ -13,7 +13,7 @@ import {
 export async function lockFederationWorkspace(
   client: PoolClient,
   scope: FederationScope,
-  ownerOnly: boolean,
+  { ownerOnly }: Readonly<{ ownerOnly: boolean }>,
 ): Promise<AdministrativeRole> {
   await client.query('select id from app.workspaces where id=$1 for update', [
     scope.workspaceId,
@@ -36,7 +36,7 @@ export async function lockFederationWorkspace(
 export async function organizationForWorkspace(
   client: PoolClient,
   workspaceId: string,
-  locking = false,
+  { locking = false }: Readonly<{ locking?: boolean | undefined }> = {},
 ): Promise<OrganizationRow | undefined> {
   return (
     await client.query<OrganizationRow>(
@@ -49,9 +49,15 @@ export async function organizationForWorkspace(
 export async function recordFederationAudit(
   client: PoolClient,
   scope: FederationScope,
-  action: string,
-  targetId: string,
-  metadata: Readonly<Record<string, string | number | boolean>> = {},
+  {
+    action,
+    targetId,
+    metadata = {},
+  }: Readonly<{
+    action: string;
+    targetId: string;
+    metadata?: Readonly<Record<string, string | number | boolean>> | undefined;
+  }>,
 ): Promise<void> {
   await withWorkspaceScope(client, scope, (scoped) =>
     appendAuditFact(scoped, {

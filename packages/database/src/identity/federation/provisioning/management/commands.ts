@@ -33,19 +33,17 @@ export async function readDirectoryManagement<T>(
   read: (
     client: PoolClient,
     organization: DirectoryOrganization,
-    canManage: boolean,
+    options: Readonly<{ canManage: boolean }>,
   ) => Promise<T>,
 ): Promise<T> {
   return withPlatformTransaction(
     pool,
     async (client) => {
       const role = await withWorkspaceScope(client, scope, (scoped) =>
-        readWorkspaceAuthority(
-          scoped,
-          scope.workspaceId,
-          scope.actorId,
-          ADMINISTRATIVE_ROLES,
-        ),
+        readWorkspaceAuthority(scoped, scope.workspaceId, {
+          actorId: scope.actorId,
+          roles: ADMINISTRATIVE_ROLES,
+        }),
       );
       const preview = await organizationForWorkspace(client, scope.workspaceId);
       if (preview === undefined) throw new DirectoryError('not_found');
@@ -65,7 +63,10 @@ export async function readDirectoryManagement<T>(
       return read(
         client,
         { ...row, workspaces },
-        role === 'owner' && row.control_workspace_id === scope.workspaceId,
+        {
+          canManage:
+            role === 'owner' && row.control_workspace_id === scope.workspaceId,
+        },
       );
     },
     scope.signal === undefined ? {} : { signal: scope.signal },
@@ -76,14 +77,20 @@ export async function readDirectoryManagement<T>(
 export function runDirectoryCommand<T>(
   pool: Pool,
   input: DirectoryCommand,
-  operation: string,
-  request: unknown,
-  change: (
-    client: PoolClient,
-    organization: DirectoryOrganization,
-  ) => Promise<
-    Readonly<{ receipt: Readonly<Record<string, unknown>>; value: T }>
-  >,
+  {
+    operation,
+    request,
+    change,
+  }: Readonly<{
+    operation: string;
+    request: unknown;
+    change: (
+      client: PoolClient,
+      organization: DirectoryOrganization,
+    ) => Promise<
+      Readonly<{ receipt: Readonly<Record<string, unknown>>; value: T }>
+    >;
+  }>,
 ): Promise<
   | Readonly<{ replayed: true; receipt: unknown }>
   | Readonly<{ replayed: false; value: T }>
@@ -134,11 +141,17 @@ export function runDirectoryCommand<T>(
 export async function auditDirectoryManagement(
   client: PoolClient,
   input: FederationScope,
-  organizationId: string,
-  action: string,
-  targetId: string,
+  {
+    organizationId,
+    action,
+    targetId,
+  }: Readonly<{ organizationId: string; action: string; targetId: string }>,
 ): Promise<void> {
-  await recordFederationAudit(client, input, action, organizationId, {
-    resourceId: targetId,
+  await recordFederationAudit(client, input, {
+    action,
+    targetId: organizationId,
+    metadata: {
+      resourceId: targetId,
+    },
   });
 }

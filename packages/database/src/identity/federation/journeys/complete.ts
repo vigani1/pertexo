@@ -49,7 +49,7 @@ export async function completeFederationJourney(
     client,
     input.stateDigest,
     input.browserDigest,
-    true,
+    { locking: true },
   );
   if (
     attempt?.id !== input.attemptId ||
@@ -116,13 +116,11 @@ export async function completeFederationJourney(
     );
     return { kind: 'tested', returnPath: attempt.returnPath };
   }
-  const directory = await directorySignInCandidate(
-    client,
-    organization.id,
-    input.identity.email,
-    attempt.provider.id,
-    input.identity.subject,
-  );
+  const directory = await directorySignInCandidate(client, organization.id, {
+    email: input.identity.email,
+    providerId: attempt.provider.id,
+    subject: input.identity.subject,
+  });
   const user = await resolveVerifiedSignInUser(client, {
     provider: attempt.provider.id,
     identity: {

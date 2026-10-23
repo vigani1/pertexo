@@ -88,13 +88,11 @@ it('retains an early response and binds it through the existing app-role task ow
     apiPool,
     { workspaceId },
     (client) =>
-      bindCallbackTask(
-        client,
-        workspaceId,
-        scope.runId,
-        { kind: 'callback', invocationKey: 'wait', config },
-        false,
-      ),
+      bindCallbackTask(client, workspaceId, {
+        runId: scope.runId,
+        intent: { kind: 'callback', invocationKey: 'wait', config },
+        closed: false,
+      }),
   );
   expect(bound.id).toBe(callback.id);
   expect(bound.status).toBe('submitted');
@@ -222,13 +220,11 @@ it('refuses an expired bound callback without storing a response', async () => {
     workspaceId,
   );
   await withTenantScopedClient(apiPool, { workspaceId }, (client) =>
-    bindCallbackTask(
-      client,
-      workspaceId,
-      scope.runId,
-      { kind: 'callback', invocationKey: 'wait', config },
-      false,
-    ),
+    bindCallbackTask(client, workspaceId, {
+      runId: scope.runId,
+      intent: { kind: 'callback', invocationKey: 'wait', config },
+      closed: false,
+    }),
   );
   await queryAsOwner(
     "update app.pending_run_tasks set created_at=clock_timestamp()-interval '3 seconds',opened_at=clock_timestamp()-interval '2 seconds',expires_at=clock_timestamp()-interval '1 second' where id=$1",

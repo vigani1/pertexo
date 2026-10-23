@@ -53,13 +53,11 @@ export async function organizeWorkflow(
   const { change, workflowId } = input;
   const access = await readFolderScope(client, scope);
   if (
-    !(await workflowAccessible(
-      client,
-      access,
-      scope.workspaceId,
+    !(await workflowAccessible(client, access, {
+      workspaceId: scope.workspaceId,
       workflowId,
-      'workflow:update',
-    ))
+      capability: 'workflow:update',
+    }))
   )
     throw new WorkflowNotFoundError('Workflow is not visible');
   if (
@@ -161,19 +159,23 @@ export async function organizeWorkflow(
 export async function checkOrganizationReplay(
   client: PoolClient,
   scope: OrganizationScope,
-  workflowId: string,
-  kind: OrganizationChange['kind'],
-  destinationFolderId?: string | null,
+  {
+    workflowId,
+    kind,
+    destinationFolderId,
+  }: Readonly<{
+    workflowId: string;
+    kind: OrganizationChange['kind'];
+    destinationFolderId?: (string | null) | undefined;
+  }>,
 ): Promise<void> {
   const access = await readFolderScope(client, scope);
   if (
-    !(await workflowAccessible(
-      client,
-      access,
-      scope.workspaceId,
+    !(await workflowAccessible(client, access, {
+      workspaceId: scope.workspaceId,
       workflowId,
-      'workflow:update',
-    ))
+      capability: 'workflow:update',
+    }))
   )
     throw new WorkflowNotFoundError('Workflow is not visible');
   if (

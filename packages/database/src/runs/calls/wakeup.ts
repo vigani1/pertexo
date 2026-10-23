@@ -5,9 +5,15 @@ import { generatePersistedId } from '../../platform/persisted-id.js';
 async function enqueueWorkflowRun(
   client: PoolClient,
   workspaceId: string,
-  runId: string,
-  traceparent: string | undefined,
-  delaySeconds: number,
+  {
+    runId,
+    traceparent,
+    delaySeconds,
+  }: Readonly<{
+    runId: string;
+    traceparent: string | undefined;
+    delaySeconds: number;
+  }>,
 ): Promise<string> {
   const id = generatePersistedId();
   const payload = {
@@ -38,7 +44,11 @@ export function wakeWorkflowRun(
   runId: string,
   traceparent?: string,
 ): Promise<string> {
-  return enqueueWorkflowRun(client, workspaceId, runId, traceparent, 0);
+  return enqueueWorkflowRun(client, workspaceId, {
+    runId,
+    traceparent,
+    delaySeconds: 0,
+  });
 }
 export function deferWorkflowRun(
   client: PoolClient,
@@ -46,5 +56,9 @@ export function deferWorkflowRun(
   runId: string,
   traceparent?: string,
 ): Promise<string> {
-  return enqueueWorkflowRun(client, workspaceId, runId, traceparent, 5);
+  return enqueueWorkflowRun(client, workspaceId, {
+    runId,
+    traceparent,
+    delaySeconds: 5,
+  });
 }

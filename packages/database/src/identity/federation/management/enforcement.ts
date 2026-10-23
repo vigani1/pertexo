@@ -64,16 +64,14 @@ export function configureDomainEnforcement(
   pool: Pool,
   input: FederationCommand & Readonly<{ domainId: string; required: boolean }>,
 ): Promise<FederationSettings> {
-  return runFederationCommand(
-    pool,
-    input,
-    'identity.domain.enforcement',
-    {
+  return runFederationCommand(pool, input, {
+    operation: 'identity.domain.enforcement',
+    request: {
       domainId: input.domainId,
       required: input.required,
       expectedRevision: input.expectedRevision,
     },
-    async (client) => {
+    change: async (client) => {
       const organization = await requireControlOrganization(client, input);
       assertOrganizationRevision(organization, input.expectedRevision);
       const domain = await requireOrganizationDomain(
@@ -111,16 +109,14 @@ export function configureDomainEnforcement(
           "delete from app.auth_sessions session using app.users users where session.user_id=users.id and lower(split_part(users.email,'@',2))=$1",
           [domain.domain],
         );
-        await recordFederationAudit(
-          client,
-          input,
-          'identity.domain_enforcement_changed',
-          organization.id,
-          { domainId: domain.id, required: input.required },
-        );
+        await recordFederationAudit(client, input, {
+          action: 'identity.domain_enforcement_changed',
+          targetId: organization.id,
+          metadata: { domainId: domain.id, required: input.required },
+        });
         return advanceOrganization(client, organization);
       }
       return organization;
     },
-  );
+  });
 }

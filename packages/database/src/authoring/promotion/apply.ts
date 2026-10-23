@@ -36,10 +36,17 @@ import { promotionDigest } from './preparation/graph.js';
 async function writePromotedDraft(
   client: PoolClient,
   context: PromotionContext,
-  input: Parameters<WorkflowPromotionStore['apply']>[0],
-  review: WorkflowPromotionPreview,
-  workflow: WorkflowPromotionPreview['workflows'][number],
-  promotionId: string,
+  {
+    input,
+    review,
+    workflow,
+    promotionId,
+  }: Readonly<{
+    input: Parameters<WorkflowPromotionStore['apply']>[0];
+    review: WorkflowPromotionPreview;
+    workflow: WorkflowPromotionPreview['workflows'][number];
+    promotionId: string;
+  }>,
 ) {
   const workspaceId = review.targetWorkspaceId;
   const workflowId = workflow.targetWorkflowId ?? generatePersistedId();
@@ -255,14 +262,12 @@ export async function applyPromotion(
       const result: WorkflowPromotionResult['items'] = [];
       for (const workflow of review.workflows)
         result.push(
-          await writePromotedDraft(
-            client,
-            context,
+          await writePromotedDraft(client, context, {
             input,
             review,
             workflow,
             promotionId,
-          ),
+          }),
         );
       for (const item of result) {
         const source = review.workflows.find(

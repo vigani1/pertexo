@@ -63,11 +63,9 @@ export function createProvider(
         }>
     ),
 ): Promise<FederationSettings> {
-  return runFederationCommand(
-    pool,
-    input,
-    'identity.provider.create',
-    {
+  return runFederationCommand(pool, input, {
+    operation: 'identity.provider.create',
+    request: {
       name: input.name,
       issuer: input.issuer,
       configuration: input.configuration,
@@ -75,7 +73,7 @@ export function createProvider(
       secretFingerprint: input.kind === 'saml' ? null : input.secretFingerprint,
       expectedRevision: input.expectedRevision,
     },
-    async (client) => {
+    change: async (client) => {
       const organization = await requireControlOrganization(client, input);
       assertOrganizationRevision(organization, input.expectedRevision);
       await requireResourceCapacity(client, organization.id, 'providers');
@@ -95,16 +93,18 @@ export function createProvider(
           input.kind ?? 'oidc',
         ],
       );
-      await recordFederationAudit(
-        client,
-        input,
-        'identity.provider_created',
-        organization.id,
-        { providerId, kind: input.kind ?? 'oidc', enabled: input.enabled },
-      );
+      await recordFederationAudit(client, input, {
+        action: 'identity.provider_created',
+        targetId: organization.id,
+        metadata: {
+          providerId,
+          kind: input.kind ?? 'oidc',
+          enabled: input.enabled,
+        },
+      });
       return advanceOrganization(client, organization);
     },
-  );
+  });
 }
 export function updateProvider(
   pool: Pool,
@@ -116,11 +116,9 @@ export function updateProvider(
       secretFingerprint?: string;
     }>,
 ): Promise<FederationSettings> {
-  return runFederationCommand(
-    pool,
-    input,
-    'identity.provider.update',
-    {
+  return runFederationCommand(pool, input, {
+    operation: 'identity.provider.update',
+    request: {
       providerId: input.providerId,
       name: input.name,
       configuration: input.configuration,
@@ -128,7 +126,7 @@ export function updateProvider(
       secretFingerprint: input.secretFingerprint ?? null,
       expectedRevision: input.expectedRevision,
     },
-    async (client) => {
+    change: async (client) => {
       const organization = await requireControlOrganization(client, input);
       assertOrganizationRevision(organization, input.expectedRevision);
       const provider = await requireOrganizationProvider(
@@ -162,31 +160,30 @@ export function updateProvider(
         'delete from app.auth_sessions where federation_provider_id=$1',
         [provider.id],
       );
-      await recordFederationAudit(
-        client,
-        input,
-        'identity.provider_changed',
-        organization.id,
-        {
+      await recordFederationAudit(client, input, {
+        action: 'identity.provider_changed',
+        targetId: organization.id,
+        metadata: {
           providerId: provider.id,
           enabled: input.enabled,
           secretChanged: input.sealedSecret !== undefined,
         },
-      );
+      });
       return advanceOrganization(client, organization);
     },
-  );
+  });
 }
 export function removeProvider(
   pool: Pool,
   input: FederationCommand & Readonly<{ providerId: string }>,
 ): Promise<FederationSettings> {
-  return runFederationCommand(
-    pool,
-    input,
-    'identity.provider.remove',
-    { providerId: input.providerId, expectedRevision: input.expectedRevision },
-    async (client) => {
+  return runFederationCommand(pool, input, {
+    operation: 'identity.provider.remove',
+    request: {
+      providerId: input.providerId,
+      expectedRevision: input.expectedRevision,
+    },
+    change: async (client) => {
       const organization = await requireControlOrganization(client, input);
       assertOrganizationRevision(organization, input.expectedRevision);
       const provider = await requireOrganizationProvider(
@@ -201,14 +198,12 @@ export function removeProvider(
       await client.query('delete from app.auth_accounts where provider_id=$1', [
         provider.id,
       ]);
-      await recordFederationAudit(
-        client,
-        input,
-        'identity.provider_removed',
-        organization.id,
-        { providerId: provider.id },
-      );
+      await recordFederationAudit(client, input, {
+        action: 'identity.provider_removed',
+        targetId: organization.id,
+        metadata: { providerId: provider.id },
+      });
       return advanceOrganization(client, organization);
     },
-  );
+  });
 }

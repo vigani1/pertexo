@@ -122,12 +122,10 @@ export async function coordinateEvent(
   )
     return refuse('coordination_full');
   if (replaced !== undefined)
-    await finishCoordinatedEvent(
-      transaction,
-      replaced.id,
-      'coalesced',
-      'newer_event',
-    );
+    await finishCoordinatedEvent(transaction, replaced.id, {
+      status: 'coalesced',
+      reason: 'newer_event',
+    });
   const deadline =
     (replaced === undefined ? undefined : new Date(replaced.deadline_at)) ??
     new Date(now.getTime() + EVENT_COORDINATION_LIMITS.pendingMillis);

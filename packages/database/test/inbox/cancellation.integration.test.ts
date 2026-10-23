@@ -109,15 +109,13 @@ describe('inbox PostgreSQL cancellation', () => {
     const payload = { aggregateId, outboxEventId: outboxId };
     const controller = new AbortController();
     const queryStarted = Promise.withResolvers<undefined>();
-    const consuming = consumeInboxMessage(
-      workerDatabase,
-      workspaceId,
-      {
+    const consuming = consumeInboxMessage(workerDatabase, workspaceId, {
+      message: {
         consumerName: 'inbox-cancel-proof',
         messageId,
         payloadChecksum: checksum,
       },
-      async (transaction) => {
+      operation: async (transaction) => {
         await insertOutboxEvent(transaction, {
           aggregateId,
           aggregateType: 'inbox-cancel-proof',
@@ -129,8 +127,8 @@ describe('inbox PostgreSQL cancellation', () => {
         queryStarted.resolve(undefined);
         await transaction.db.execute(sql`select pg_sleep(30)`);
       },
-      { signal: controller.signal },
-    );
+      options: { signal: controller.signal },
+    });
     const consumingOutcome = consuming.then(
       (value) => ({ status: 'fulfilled' as const, value }),
       (error: unknown) => ({ error, status: 'rejected' as const }),
@@ -186,30 +184,26 @@ describe('inbox PostgreSQL cancellation', () => {
     }
 
     const commitController = new AbortController();
-    const committed = await consumeInboxMessage(
-      workerDatabase,
-      workspaceId,
-      {
+    const committed = await consumeInboxMessage(workerDatabase, workspaceId, {
+      message: {
         consumerName: 'inbox-cancel-proof',
         messageId,
         payloadChecksum: checksum,
       },
-      () => Promise.resolve('committed'),
-      { signal: commitController.signal },
-    );
+      operation: () => Promise.resolve('committed'),
+      options: { signal: commitController.signal },
+    });
     expect(committed).toEqual({ status: 'processed', value: 'committed' });
     commitController.abort(new Error('commit is already authoritative'));
     await expect(
-      consumeInboxMessage(
-        workerDatabase,
-        workspaceId,
-        {
+      consumeInboxMessage(workerDatabase, workspaceId, {
+        message: {
           consumerName: 'inbox-cancel-proof',
           messageId,
           payloadChecksum: checksum,
         },
-        () => Promise.reject(new Error('duplicate operation ran')),
-      ),
+        operation: () => Promise.reject(new Error('duplicate operation ran')),
+      }),
     ).resolves.toEqual({ status: 'duplicate' });
   });
 });

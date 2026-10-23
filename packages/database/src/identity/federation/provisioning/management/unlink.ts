@@ -79,13 +79,11 @@ export async function unlinkDirectoryWorkspace(
       throw new DirectoryError('not_found');
     if (organization.revision !== input.expectedRevision)
       throw new DirectoryError('stale');
-    await detachDirectoryMemberships(
-      client,
-      organization.id,
-      input.targetWorkspaceId,
-      DIRECTORY_LIMITS.users,
-      input.actorId,
-    );
+    await detachDirectoryMemberships(client, organization.id, {
+      workspaceId: input.targetWorkspaceId,
+      limit: DIRECTORY_LIMITS.users,
+      actorId: input.actorId,
+    });
     await removeDirectoryFolderGrants(client, organization.id, [
       input.targetWorkspaceId,
     ]);
@@ -104,9 +102,11 @@ export async function unlinkDirectoryWorkspace(
       await recordFederationAudit(
         client,
         { ...input, workspaceId },
-        'identity.workspace_unlinked',
-        organization.id,
-        { workspaceId: input.targetWorkspaceId },
+        {
+          action: 'identity.workspace_unlinked',
+          targetId: organization.id,
+          metadata: { workspaceId: input.targetWorkspaceId },
+        },
       );
     await withWorkspaceScope(client, input, (scoped) =>
       completeCommand(scoped, identity, { organizationId: organization.id }),

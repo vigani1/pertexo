@@ -96,12 +96,9 @@ export async function completeAcceptance(
            from app.workspace_invitations where workspace_id=$1 and id=$2 for update`,
           [workspaceId, preview.invitationId],
         );
-        const intent = await selectIntent(
-          client,
-          'intent.id=$1',
-          [intentId],
-          true,
-        );
+        const intent = await selectIntent(client, 'intent.id=$1', [intentId], {
+          lock: true,
+        });
         if (intent === null)
           throw new InvitationAcceptanceConflictError(
             'unavailable',

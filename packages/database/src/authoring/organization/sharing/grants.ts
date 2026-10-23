@@ -17,12 +17,10 @@ export async function readFolderSharing(
   scope: OrganizationScope,
   folderId: string,
 ): Promise<FolderSharing> {
-  await lockWorkflowAuthoringAuthority(
-    client,
-    scope.workspaceId,
-    scope.actorId,
-    RESOURCE_ADMINISTRATORS,
-  );
+  await lockWorkflowAuthoringAuthority(client, scope.workspaceId, {
+    actorId: scope.actorId,
+    roles: RESOURCE_ADMINISTRATORS,
+  });
   const folder = (
     await client.query<{
       revision: string;

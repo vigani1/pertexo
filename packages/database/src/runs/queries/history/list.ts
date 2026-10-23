@@ -138,10 +138,9 @@ async function listWorkflowRunsInTransaction(
     input.workflowNamePrefix === undefined
       ? null
       : escapeLikePattern(input.workflowNamePrefix);
-  const result = await workflowRunReadQuery(
-    transaction,
-    input.includeWorkflowName ?? false,
-  )
+  const result = await workflowRunReadQuery(transaction, {
+    includeWorkflowName: input.includeWorkflowName ?? false,
+  })
     .where(
       and(
         eq(workflowRuns.workspaceId, transaction.workspaceId),

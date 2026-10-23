@@ -65,15 +65,13 @@ export async function reconcileUnknownOutcomeEvidence(
     .parse(input);
   parsed.signal?.throwIfAborted();
 
-  const consumed = await consumeInboxMessage(
-    database,
-    parsed.workspaceId,
-    {
+  const consumed = await consumeInboxMessage(database, parsed.workspaceId, {
+    message: {
       consumerName: 'unknown-outcome-reconciler',
       messageId: parsed.delivery.outboxEventId,
       payloadChecksum: parsed.delivery.payloadChecksum,
     },
-    async (transaction) => {
+    operation: async (transaction) => {
       const outbox = await transaction.db.execute<{
         aggregate_id: string;
         aggregate_type: string;
@@ -121,7 +119,7 @@ export async function reconcileUnknownOutcomeEvidence(
       if (evidence.rows[0]?.status !== 'outcome_unknown')
         throw new UnknownOutcomeReconciliationStateError();
     },
-    parsed.signal === undefined ? {} : { signal: parsed.signal },
-  );
+    options: parsed.signal === undefined ? {} : { signal: parsed.signal },
+  });
   return Object.freeze({ kind: consumed.status });
 }

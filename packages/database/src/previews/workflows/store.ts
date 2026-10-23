@@ -85,12 +85,10 @@ export function createWorkflowTestStore(
         )
           throw new WorkflowTestError('effects_acknowledgement_required');
         if (snapshot.usesConnections)
-          await lockWorkflowAuthoringAuthority(
-            client,
-            input.workspaceId,
-            input.actorId,
-            rolesForCapability('connection:use'),
-          );
+          await lockWorkflowAuthoringAuthority(client, input.workspaceId, {
+            actorId: input.actorId,
+            roles: rolesForCapability('connection:use'),
+          });
         await requireNoActiveSuite(client, input);
         await requireNoActiveTest(client, input);
         await requireWorkflowCallTargets(client, input, snapshot.graph);
@@ -126,13 +124,13 @@ export function createWorkflowTestStore(
             request: input.request,
           },
         });
-        await saveTestSnapshot(
-          client,
-          input,
-          runId,
+        await saveTestSnapshot(client, input, {
+          id: runId,
           snapshot,
-          new Date(accepted.acceptedAt.getTime() + TEST_RUN_RETENTION_MILLIS),
-        );
+          expiresAt: new Date(
+            accepted.acceptedAt.getTime() + TEST_RUN_RETENTION_MILLIS,
+          ),
+        });
         const result = { runId };
         await completeCommand(client, command, result);
         return result;
@@ -145,12 +143,10 @@ export function createWorkflowTestStore(
       transact(input, async (client) => {
         const test = await readTestDetail(client, input);
         if (!['queued', 'running', 'waiting'].includes(test.status)) return;
-        await lockWorkflowAuthoringAuthority(
-          client,
-          input.workspaceId,
-          input.actorId,
-          rolesForCapability('run:cancel'),
-        );
+        await lockWorkflowAuthoringAuthority(client, input.workspaceId, {
+          actorId: input.actorId,
+          roles: rolesForCapability('run:cancel'),
+        });
         // The ordinary cancel command appends the fenced observation and outbox wakeup.
         const transaction = {
           db: drizzle(client, { schema: databaseSchema }),

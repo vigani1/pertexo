@@ -59,12 +59,10 @@ export function createWorkflowTestSuiteStore(
       withTestRead(pool, input, (client) => readCaseReport(client, input)),
     cancel: (input) =>
       withTestAuthority(pool, input, async (client) => {
-        await lockWorkflowAuthoringAuthority(
-          client,
-          input.workspaceId,
-          input.actorId,
-          rolesForCapability('run:cancel'),
-        );
+        await lockWorkflowAuthoringAuthority(client, input.workspaceId, {
+          actorId: input.actorId,
+          roles: rolesForCapability('run:cancel'),
+        });
         const found = await client.query<SuiteRow>(
           'select * from app.workflow_test_suites where workspace_id=$1 and workflow_id=$2 and id=$3 and expires_at>clock_timestamp() for update',
           [input.workspaceId, input.workflowId, input.suiteId],
@@ -185,12 +183,10 @@ function startTestSuite(
     )
       throw new WorkflowTestError('effects_acknowledgement_required');
     if (snapshot.usesConnections)
-      await lockWorkflowAuthoringAuthority(
-        client,
-        input.workspaceId,
-        input.actorId,
-        rolesForCapability('connection:use'),
-      );
+      await lockWorkflowAuthoringAuthority(client, input.workspaceId, {
+        actorId: input.actorId,
+        roles: rolesForCapability('connection:use'),
+      });
     await requireNoActiveSuite(client, input);
     await requireNoActiveTest(client, input);
     const cases = await client.query<{
@@ -238,13 +234,11 @@ function startTestSuite(
       input.actorId,
     );
     const snapshotId = generatePersistedId();
-    await saveTestSnapshot(
-      client,
-      input,
-      snapshotId,
+    await saveTestSnapshot(client, input, {
+      id: snapshotId,
       snapshot,
-      new Date(snapshot.now.getTime() + TEST_RUN_RETENTION_MILLIS),
-    );
+      expiresAt: new Date(snapshot.now.getTime() + TEST_RUN_RETENTION_MILLIS),
+    });
     const inserted = await client.query<SuiteRow>(
       `insert into app.workflow_test_suites(id,workspace_id,workflow_id,started_by,snapshot_id,signature,variable_set_revision,uses_connections,case_duration_ms,initial_checkpoint,created_at,deadline_at,expires_at)
     values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,$12,$13) returning *`,

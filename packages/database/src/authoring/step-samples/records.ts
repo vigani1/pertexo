@@ -20,7 +20,7 @@ import {
 export async function sampleDraft(
   client: PoolClient,
   input: SampleScope,
-  write: boolean,
+  { write }: Readonly<{ write: boolean }>,
 ) {
   const workflow = await client.query<{ lifecycle_status: string }>(
     'select lifecycle_status from app.workflows where workspace_id=$1 and id=$2 for share',

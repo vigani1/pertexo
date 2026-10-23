@@ -42,13 +42,11 @@ export function createDatabasePool(
   const monitor =
     options.monitorLockWaits === false
       ? undefined
-      : acquireLockWaitMonitor(
-          boundedConfig,
-          state,
+      : acquireLockWaitMonitor(boundedConfig, state, {
           intervalMs,
           role,
-          options.diagnostics,
-        );
+          diagnostics: options.diagnostics,
+        });
   const backendPids = monitor?.backendPids;
   state.pools.set(pool, role);
   pool.on('connect', (client) => {

@@ -39,9 +39,7 @@ export async function exportCsv(
   const csv = exportTableCsv(
     (work) => read(pool, input, work),
     input.workspaceId,
-    table,
-    input.query,
-    input.signal,
+    { table, query: input.query, signal: input.signal },
   );
   await input.consume(csv, table);
 }

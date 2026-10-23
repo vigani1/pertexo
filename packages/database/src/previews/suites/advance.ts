@@ -85,12 +85,10 @@ export async function advanceSuite(
   if (suite === undefined) return false;
   if (allowed && suite.uses_connections)
     try {
-      await lockWorkflowAuthoringAuthority(
-        client,
-        suite.workspace_id,
-        suite.started_by,
-        rolesForCapability('connection:use'),
-      );
+      await lockWorkflowAuthoringAuthority(client, suite.workspace_id, {
+        actorId: suite.started_by,
+        roles: rolesForCapability('connection:use'),
+      });
     } catch (error) {
       if (error instanceof WorkflowNotFoundError) allowed = false;
       else throw error;

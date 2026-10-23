@@ -56,7 +56,7 @@ export async function acceptVerifiedWebhookDelivery(
     dedupeKind,
     dedupeKeyHash,
   };
-  const readCandidate = (checkReplay: boolean) =>
+  const readCandidate = ({ checkReplay }: Readonly<{ checkReplay: boolean }>) =>
     withWorkspaceReadTransaction(
       pool,
       verification.workspaceId,
@@ -80,7 +80,7 @@ export async function acceptVerifiedWebhookDelivery(
         };
       },
     );
-  let candidate = await readCandidate(true);
+  let candidate = await readCandidate({ checkReplay: true });
   for (;;) {
     const runInput = candidate.replay ? undefined : candidate.runInput;
     const prepared = candidate.replay
@@ -105,7 +105,7 @@ export async function acceptVerifiedWebhookDelivery(
           transaction,
           verification,
           input.verifiedSecretVersionId,
-          replay?.active === true,
+          { replaying: replay?.active === true },
         );
         if (replay?.active === true) {
           const replayed = resolveExactReplay(replay, requestFingerprint);
@@ -156,15 +156,13 @@ export async function acceptVerifiedWebhookDelivery(
           verification.workflowVersionId,
         );
         if (prepared !== undefined)
-          return coordinateVerifiedWebhook(
-            transaction,
-            input,
+          return coordinateVerifiedWebhook(transaction, input, {
             runInput,
             prepared,
             projection,
             deliveryId,
             dedupeKind,
-          );
+          });
         const initial = input.checkpointFactory(projection);
         let accepted;
         await transaction.db.execute(sql`savepoint webhook_run_admission`);
@@ -246,6 +244,6 @@ export async function acceptVerifiedWebhookDelivery(
     if (receipt !== undefined) return receipt;
     // The preliminary live receipt expired behind the admission fence.
     // Prepare once outside locks; the next pass always has fresh event input.
-    candidate = await readCandidate(false);
+    candidate = await readCandidate({ checkReplay: false });
   }
 }

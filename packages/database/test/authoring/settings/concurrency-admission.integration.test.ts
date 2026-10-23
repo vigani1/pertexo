@@ -397,8 +397,11 @@ describe('current workflow concurrency and ordered production admission', () => 
       apiDatabase.withWorkspace(
         workspaceA,
         async (transaction) =>
-          (await readWorkflowRunReadRecord(transaction, second.runId, false))
-            ?.admissionBlockers ?? null,
+          (
+            await readWorkflowRunReadRecord(transaction, second.runId, {
+              includeWorkflowName: false,
+            })
+          )?.admissionBlockers ?? null,
       );
     expect(await projection()).toMatchObject({
       reasons: ['workflow_capacity', 'workflow_order'],
@@ -411,7 +414,9 @@ describe('current workflow concurrency and ordered production admission', () => 
     expect(await projection()).toMatchObject({ reasons: [] });
     await expect(
       apiDatabase.withWorkspace(workspaceB, (transaction) =>
-        readWorkflowRunReadRecord(transaction, second.runId, false),
+        readWorkflowRunReadRecord(transaction, second.runId, {
+          includeWorkflowName: false,
+        }),
       ),
     ).resolves.toBeUndefined();
   });

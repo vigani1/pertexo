@@ -35,9 +35,15 @@ async function wakeRelations(
 export async function synchronizeHumanWait(
   client: PoolClient,
   workspaceId: string,
-  runId: string,
-  phase: 'loading' | 'committed',
-  alreadyDeferred = false,
+  {
+    runId,
+    phase,
+    alreadyDeferred = false,
+  }: Readonly<{
+    runId: string;
+    phase: 'loading' | 'committed';
+    alreadyDeferred?: boolean | undefined;
+  }>,
 ): Promise<HumanWaitState> {
   const result = await client.query<RunClock>(
     `select status,cancel_requested_at,human_wait_started_at,deadline_at,absolute_deadline_at,execution_entitlement_version,

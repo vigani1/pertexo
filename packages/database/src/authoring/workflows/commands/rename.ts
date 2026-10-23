@@ -141,12 +141,10 @@ async function renameWorkflow(
     command.workspaceId,
     command.actorId,
     async (client) => {
-      await context.requireAuthor(
-        client,
-        command.workspaceId,
-        command.actorId,
-        command.workflowId,
-      );
+      await context.requireAuthor(client, command.workspaceId, {
+        actorId: command.actorId,
+        workflowId: command.workflowId,
+      });
       const claim: WorkflowCommand = {
         workspaceId: command.workspaceId,
         workflowId: command.workflowId,

@@ -47,14 +47,12 @@ import { selectedPolicy, inspectImport, portableFailure } from './admission.js';
 async function requirePortabilityAuthority(
   client: Parameters<typeof lockWorkflowAuthoringAuthority>[0],
   input: Readonly<{ workspaceId: string; actorId: string }>,
-  write: boolean,
+  { write }: Readonly<{ write: boolean }>,
 ): Promise<void> {
-  await lockWorkflowAuthoringAuthority(
-    client,
-    input.workspaceId,
-    input.actorId,
-    rolesForCapability(write ? 'workflow:create' : 'workflow:read'),
-  );
+  await lockWorkflowAuthoringAuthority(client, input.workspaceId, {
+    actorId: input.actorId,
+    roles: rolesForCapability(write ? 'workflow:create' : 'workflow:read'),
+  });
 }
 
 /** The import command's digest, which a template origin records. */
@@ -83,7 +81,7 @@ function exportPortableWorkflow(
     input.workspaceId,
     input.actorId,
     async (client) => {
-      await requirePortabilityAuthority(client, input, false);
+      await requirePortabilityAuthority(client, input, { write: false });
       const row = await lockPortableSource(client, input);
       const selection = context.catalogs;
       const graph = reviewedSourceGraph(input, row, selection);
@@ -125,7 +123,10 @@ function exportPortableWorkflow(
                 message:
                   'The graph is not valid under the serving authoring policy.',
               })),
-            admission.issues.length > WORKFLOW_PORTABILITY_LIMITS.issues,
+            {
+              truncated:
+                admission.issues.length > WORKFLOW_PORTABILITY_LIMITS.issues,
+            },
           );
         return manifest;
       } catch (error) {
@@ -159,7 +160,7 @@ function previewPortableWorkflow(
     input.workspaceId,
     input.actorId,
     async (client) => {
-      await requirePortabilityAuthority(client, input, true);
+      await requirePortabilityAuthority(client, input, { write: true });
       const selection = context.catalogs;
       try {
         const report = await inspectImport(client, context, input, selection);
@@ -205,7 +206,7 @@ function importPortableWorkflow(
     input.workspaceId,
     input.actorId,
     async (client) => {
-      await requirePortabilityAuthority(client, input, true);
+      await requirePortabilityAuthority(client, input, { write: true });
       const destinationId = generatePersistedId();
       const commandDigest = workflowImportCommandDigest(input);
       const command = {
@@ -245,7 +246,10 @@ function importPortableWorkflow(
         if (report.hard.length !== 0)
           throw new WorkflowPortabilityValidationError(
             report.issues.slice(0, WORKFLOW_PORTABILITY_LIMITS.issues),
-            report.issues.length > WORKFLOW_PORTABILITY_LIMITS.issues,
+            {
+              truncated:
+                report.issues.length > WORKFLOW_PORTABILITY_LIMITS.issues,
+            },
           );
         graph = report.graph;
       } catch (error) {

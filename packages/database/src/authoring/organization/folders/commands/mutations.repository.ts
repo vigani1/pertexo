@@ -31,22 +31,18 @@ export async function createFolder(
     name: name.parse(input.name),
     parentId: uuid.nullable().parse(input.parentId),
   };
-  return folderCommand(
-    session,
-    input,
-    'folder.create',
-    null,
+  return folderCommand(session, input, {
+    operation: 'folder.create',
+    target: null,
     request,
-    async (client, workspaceId) => {
+    apply: async (client, workspaceId) => {
       if (request.parentId !== null)
         await readFolder(client, workspaceId, request.parentId);
-      await requireFreeName(
-        client,
-        workspaceId,
-        request.parentId,
-        request.name,
-        null,
-      );
+      await requireFreeName(client, workspaceId, {
+        parentId: request.parentId,
+        folderName: request.name,
+        folderId: null,
+      });
       const count = await client.query<{ count: number }>(
         'select count(*)::int count from app.workflow_folders where workspace_id = $1',
         [workspaceId],
@@ -68,7 +64,7 @@ export async function createFolder(
       if (row === undefined) throw new Error('Folder was not created');
       return row;
     },
-  );
+  });
 }
 
 export async function renameFolder(
@@ -80,22 +76,18 @@ export async function renameFolder(
     name: name.parse(input.name),
     expectedFolderRevision: revision.parse(input.expectedFolderRevision),
   };
-  return folderCommand(
-    session,
-    input,
-    'folder.rename',
-    folderId,
+  return folderCommand(session, input, {
+    operation: 'folder.rename',
+    target: folderId,
     request,
-    async (client, workspaceId) => {
+    apply: async (client, workspaceId) => {
       const current = await readFolder(client, workspaceId, folderId);
       requireRevision(current, request.expectedFolderRevision);
-      await requireFreeName(
-        client,
-        workspaceId,
-        current.parent_id,
-        request.name,
+      await requireFreeName(client, workspaceId, {
+        parentId: current.parent_id,
+        folderName: request.name,
         folderId,
-      );
+      });
       const renamed = await client.query<FolderRow>(
         `update app.workflow_folders
              set name = $3, name_key = $4, revision = revision + 1
@@ -105,7 +97,7 @@ export async function renameFolder(
       );
       return renamed.rows[0] ?? current;
     },
-  );
+  });
 }
 
 export async function moveFolder(
@@ -122,13 +114,11 @@ export async function moveFolder(
         }),
     expectedFolderRevision: revision.parse(input.expectedFolderRevision),
   };
-  return folderCommand(
-    session,
-    input,
-    'folder.move',
-    folderId,
+  return folderCommand(session, input, {
+    operation: 'folder.move',
+    target: folderId,
     request,
-    async (client, workspaceId) => {
+    apply: async (client, workspaceId) => {
       if (request.parentId !== null)
         await readFolder(client, workspaceId, request.parentId);
       await requireMoveAudienceReview(
@@ -139,13 +129,11 @@ export async function moveFolder(
       );
       const current = await readFolder(client, workspaceId, folderId);
       requireRevision(current, request.expectedFolderRevision);
-      await requireFreeName(
-        client,
-        workspaceId,
-        request.parentId,
-        current.name,
+      await requireFreeName(client, workspaceId, {
+        parentId: request.parentId,
+        folderName: current.name,
         folderId,
-      );
+      });
       // The moved folder and everything under it must stay within the
       // depth limit, and it cannot move under itself.
       const subtree = await client.query<{
@@ -182,7 +170,7 @@ export async function moveFolder(
       );
       return moved.rows[0] ?? current;
     },
-  );
+  });
 }
 
 export async function deleteFolder(

@@ -11,11 +11,19 @@ import { openWebhookResponse } from './responses/admission.js';
 export async function coordinateVerifiedWebhook(
   transaction: WorkspaceTransaction,
   input: AcceptVerifiedWebhookDeliveryInput,
-  runInput: unknown,
-  prepared: PreparedEventCoordination,
-  projection: PublishedWorkflow,
-  deliveryId: string,
-  dedupeKind: 'keyed' | 'fingerprint',
+  {
+    runInput,
+    prepared,
+    projection,
+    deliveryId,
+    dedupeKind,
+  }: Readonly<{
+    runInput: unknown;
+    prepared: PreparedEventCoordination;
+    projection: PublishedWorkflow;
+    deliveryId: string;
+    dedupeKind: 'keyed' | 'fingerprint';
+  }>,
 ) {
   const initial = input.checkpointFactory(projection);
   const verification = input.verification;

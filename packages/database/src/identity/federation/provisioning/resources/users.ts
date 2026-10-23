@@ -81,9 +81,15 @@ export function createDirectoryUser(
 export function changeDirectoryUser(
   pool: Pool,
   principal: DirectoryPrincipal,
-  id: string,
-  expectedRevision: number | undefined,
-  transform: (current: DirectoryUser) => DirectoryUserValues,
+  {
+    id,
+    expectedRevision,
+    transform,
+  }: Readonly<{
+    id: string;
+    expectedRevision: number | undefined;
+    transform: (current: DirectoryUser) => DirectoryUserValues;
+  }>,
 ): Promise<DirectoryUser> {
   return withDirectoryConstraintErrors(() =>
     withDirectoryTransaction(pool, principal, async (client, organization) => {

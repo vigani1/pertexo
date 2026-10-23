@@ -12,8 +12,10 @@ import type {
 export async function previewDirectoryAdoption(
   client: PoolClient,
   organization: DirectoryOrganization,
-  canManage: boolean,
-  query: DirectoryAdoptionQuery,
+  {
+    canManage,
+    query,
+  }: Readonly<{ canManage: boolean; query: DirectoryAdoptionQuery }>,
 ): Promise<DirectoryAdoptionPreview> {
   if (!canManage) throw new DirectoryError('forbidden');
   const workspace = organization.workspaces.find(
@@ -68,13 +70,11 @@ export async function previewDirectoryAdoption(
       eligible: false,
       reason: 'This membership is already directory-managed.',
     };
-  const role = await readDirectoryRole(
-    client,
-    organization.id,
-    workspace.workspace_id,
-    query.directoryUserId,
-    workspace.default_role,
-  );
+  const role = await readDirectoryRole(client, organization.id, {
+    workspaceId: workspace.workspace_id,
+    directoryUserId: query.directoryUserId,
+    fallback: workspace.default_role,
+  });
   return {
     eligible: true,
     displayName: member.display_name,

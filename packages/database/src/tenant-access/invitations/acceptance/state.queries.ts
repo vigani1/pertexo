@@ -67,7 +67,7 @@ export async function selectIntent(
   client: PoolClient,
   clause: string,
   values: readonly unknown[],
-  lock = false,
+  { lock = false }: Readonly<{ lock?: boolean | undefined }> = {},
 ): Promise<InvitationAcceptanceIntentRecord | null> {
   const result = await client.query<IntentRow>(
     `select ${intentSelection}

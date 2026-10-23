@@ -18,7 +18,7 @@ export async function loadTestSnapshot(
   input: SampleScope,
   catalogs: AuthoringCatalogs,
 ) {
-  const draft = await sampleDraft(client, input, true);
+  const draft = await sampleDraft(client, input, { write: true });
   const { graph, bindings } = draft;
   const samples = await client.query<SampleRow>(
     `select ${SAMPLE_COLUMNS} from app.workflow_step_samples where workspace_id=$1 and workflow_id=$2 order by node_id for share`,
@@ -90,9 +90,15 @@ export function sameTestSamples(
 export async function saveTestSnapshot(
   client: PoolClient,
   input: SampleScope,
-  id: string,
-  snapshot: Awaited<ReturnType<typeof loadTestSnapshot>>,
-  expiresAt: Date,
+  {
+    id,
+    snapshot,
+    expiresAt,
+  }: Readonly<{
+    id: string;
+    snapshot: Awaited<ReturnType<typeof loadTestSnapshot>>;
+    expiresAt: Date;
+  }>,
 ): Promise<void> {
   await client.query(
     `insert into app.workflow_test_snapshots(id,workspace_id,workflow_id,draft_revision,graph_json,executable_json,pins,expires_at,checksum,dispositions)

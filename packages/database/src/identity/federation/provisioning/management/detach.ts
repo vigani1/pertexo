@@ -12,9 +12,15 @@ import type { DirectoryRole } from '../contract.js';
 export async function detachDirectoryMemberships(
   client: PoolClient,
   organizationId: string,
-  workspaceId: string,
-  limit: number,
-  actorId?: string,
+  {
+    workspaceId,
+    limit,
+    actorId,
+  }: Readonly<{
+    workspaceId: string;
+    limit: number;
+    actorId?: string | undefined;
+  }>,
 ): Promise<number> {
   return withWorkspaceScope(client, { workspaceId }, async (scoped) => {
     const ids = (

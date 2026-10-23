@@ -52,7 +52,11 @@ export async function respondToTask(
     'select id from app.workflow_runs where workspace_id=$1 and id=$2 for no key update',
     [input.workspaceId, runId],
   );
-  const row = await readTaskRow(client, input, role, resources, true);
+  const row = await readTaskRow(client, input, {
+    role,
+    resources,
+    locking: true,
+  });
   if (row.kind !== input.kind)
     throw new PendingTaskNotFoundError('Task is not visible.');
   const values =
@@ -145,7 +149,7 @@ export async function respondToTask(
   await wakeWorkflowRun(client, input.workspaceId, runId);
   await wakeTaskAncestors(client, input.workspaceId, runId);
   return {
-    task: projectTask(await readTaskRow(client, input, role, resources)),
+    task: projectTask(await readTaskRow(client, input, { role, resources })),
     replayed: false,
   };
 }

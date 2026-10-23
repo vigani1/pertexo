@@ -40,8 +40,10 @@ type TerminalCompletionStatus = Extract<
 function terminalCompletionStatus(
   row: LockedIntent,
   result: DeliveryResult,
-  actuallyDispatched: boolean,
-  deliveryUnresolved: boolean,
+  {
+    actuallyDispatched,
+    deliveryUnresolved,
+  }: Readonly<{ actuallyDispatched: boolean; deliveryUnresolved: boolean }>,
 ): TerminalCompletionStatus {
   if (result.kind === 'delivered') return 'delivered';
   if (actuallyDispatched || result.kind === 'outcome_unknown')
@@ -81,12 +83,10 @@ function completionDecision(
     attemptNumber < maxAttempts
   )
     return { kind: 'retry', deliveryUnresolved };
-  const status = terminalCompletionStatus(
-    row,
-    result,
+  const status = terminalCompletionStatus(row, result, {
     actuallyDispatched,
     deliveryUnresolved,
-  );
+  });
   return { kind: 'terminal', deliveryUnresolved, status };
 }
 

@@ -19,11 +19,19 @@ import { promotionNodes } from './graph.js';
 export async function rebindPromotionConnections(
   client: PoolClient,
   workspaceId: string,
-  scope: ConnectionScope,
-  source: PromotionSource,
-  sources: PromotionSourceSet,
-  catalogs: AuthoringCatalogs,
-  report: (requirement: WorkflowPromotionRequirement) => void,
+  {
+    scope,
+    source,
+    sources,
+    catalogs,
+    report,
+  }: Readonly<{
+    scope: ConnectionScope;
+    source: PromotionSource;
+    sources: PromotionSourceSet;
+    catalogs: AuthoringCatalogs;
+    report: (requirement: WorkflowPromotionRequirement) => void;
+  }>,
 ): Promise<WorkflowGraph> {
   const catalog = catalogs.portableCatalog;
   if (catalog === undefined)

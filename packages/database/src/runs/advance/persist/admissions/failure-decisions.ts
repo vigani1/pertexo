@@ -7,9 +7,15 @@ import type { RunTransitionPlan } from '../../plan.js';
 export async function persistPendingFailureDecisions(
   client: PoolClient,
   plan: RunTransitionPlan,
-  pendingFailures: readonly PendingCoordinatorFailure[],
-  workspaceId: string,
-  runId: string,
+  {
+    pendingFailures,
+    workspaceId,
+    runId,
+  }: Readonly<{
+    pendingFailures: readonly PendingCoordinatorFailure[];
+    workspaceId: string;
+    runId: string;
+  }>,
 ): Promise<void> {
   const invocations = new Map(
     [...plan.checkpoint.invocations, ...(plan.prunedInvocations ?? [])].map(

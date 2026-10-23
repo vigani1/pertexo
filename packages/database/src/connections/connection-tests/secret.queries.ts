@@ -34,11 +34,9 @@ export async function resolvePersistedConnectionTestSecret(
   const digest = keyDigest(input.idempotencyKey);
   const scope = connectionTestScope(actorId, connectionId);
   const metadata = parseRequestMetadata(input);
-  return withConnectionTransaction(
-    pool,
-    input.workspaceId,
+  return withConnectionTransaction(pool, input.workspaceId, {
     actorId,
-    async (client, workspaceId) => {
+    operation: async (client, workspaceId) => {
       await requireConnectionUser(client, workspaceId, actorId, connectionId);
       const claim = await client.query(
         `select 1 from app.idempotency_records
@@ -130,5 +128,5 @@ export async function resolvePersistedConnectionTestSecret(
         sealed: mapSealed(row),
       });
     },
-  );
+  });
 }

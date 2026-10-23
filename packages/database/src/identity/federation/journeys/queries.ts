@@ -61,7 +61,7 @@ export async function findFederationAttempt(
   client: Pick<PoolClient, 'query'> | Pool,
   stateDigest: Buffer,
   browserDigest: Buffer,
-  locking = false,
+  { locking = false }: Readonly<{ locking?: boolean | undefined }> = {},
 ): Promise<FederationAttempt | undefined> {
   const row = (
     await client.query<Row>(
@@ -79,7 +79,7 @@ export async function readFederationProvider(
   client: Pick<PoolClient, 'query'> | Pool,
   providerId: string,
   domain: string,
-  testing = false,
+  { testing = false }: Readonly<{ testing?: boolean | undefined }> = {},
 ) {
   const row = (
     await client.query<ProviderRow>(

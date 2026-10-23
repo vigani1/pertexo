@@ -57,7 +57,7 @@ export async function refreshWorkflowActivation(
   client: PoolClient,
   workspaceId: string,
   workflowId: string,
-  failed = false,
+  { failed = false }: Readonly<{ failed?: boolean | undefined }> = {},
 ): Promise<void> {
   const authority = await client.query<{
     lifecycle_status: unknown;

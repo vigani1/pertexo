@@ -151,7 +151,10 @@ export async function loadRunForAdvance(
   )
     row = {
       ...row,
-      ...(await synchronizeHumanWait(client, workspaceId, runId, 'loading')),
+      ...(await synchronizeHumanWait(client, workspaceId, {
+        runId,
+        phase: 'loading',
+      })),
     };
   // A run's version is immutable; one that is gone went with its run.
   const version = parseExecutionSource(

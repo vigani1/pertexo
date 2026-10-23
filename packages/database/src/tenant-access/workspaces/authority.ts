@@ -6,10 +6,17 @@ import { WorkspaceAccessDeniedError } from '../errors.js';
 async function workspaceAuthority(
   client: PoolClient,
   workspaceId: string,
-  actorId: string,
-  roles: readonly Role[],
-  locking: boolean,
-  allowedStatuses: readonly string[] = ['active'],
+  {
+    actorId,
+    roles,
+    locking,
+    allowedStatuses = ['active'],
+  }: Readonly<{
+    actorId: string;
+    roles: readonly Role[];
+    locking: boolean;
+    allowedStatuses?: readonly string[] | undefined;
+  }>,
 ): Promise<Role> {
   const lock = locking ? 'for share' : '';
   const workspace = await client.query(
@@ -42,23 +49,31 @@ export function lockWorkspaceAuthority(
   actorId: string,
   roles: readonly Role[],
 ): Promise<Role> {
-  return workspaceAuthority(client, workspaceId, actorId, roles, true);
+  return workspaceAuthority(client, workspaceId, {
+    actorId,
+    roles,
+    locking: true,
+  });
 }
 
 /** The caller owns a repeatable-read snapshot; decision commands use the lock. */
 export function readWorkspaceAuthority(
   client: PoolClient,
   workspaceId: string,
-  actorId: string,
-  roles: readonly Role[],
-  allowedStatuses: readonly string[] = ['active'],
-): Promise<Role> {
-  return workspaceAuthority(
-    client,
-    workspaceId,
+  {
     actorId,
     roles,
-    false,
+    allowedStatuses = ['active'],
+  }: Readonly<{
+    actorId: string;
+    roles: readonly Role[];
+    allowedStatuses?: readonly string[] | undefined;
+  }>,
+): Promise<Role> {
+  return workspaceAuthority(client, workspaceId, {
+    actorId,
+    roles,
+    locking: false,
     allowedStatuses,
-  );
+  });
 }

@@ -57,7 +57,9 @@ export async function lockCapabilityExecution(
 export async function assertCapabilityExecution(
   client: PoolClient,
   input: ExecutionCapabilityScope,
-  requireDispatch = false,
+  {
+    requireDispatch = false,
+  }: Readonly<{ requireDispatch?: boolean | undefined }> = {},
 ): Promise<void> {
   const parameters: unknown[] = [
     input.workspaceId,

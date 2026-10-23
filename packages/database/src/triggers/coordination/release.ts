@@ -92,7 +92,10 @@ export async function releaseCoordinatedEvent(
         : new Date(row.capacity_wait_started_at),
   };
   const refuse = async (reason: EventCoordinationReason) => {
-    await finishCoordinatedEvent(transaction, id, 'refused', reason);
+    await finishCoordinatedEvent(transaction, id, {
+      status: 'refused',
+      reason,
+    });
     return 'refused' as const;
   };
   if (
@@ -190,13 +193,11 @@ export async function releaseCoordinatedEvent(
       event.policy,
       decision.window,
     );
-    await finishCoordinatedEvent(
-      transaction,
-      id,
-      'started',
-      null,
-      accepted.runId,
-    );
+    await finishCoordinatedEvent(transaction, id, {
+      status: 'started',
+      reason: null,
+      runId: accepted.runId,
+    });
     return 'started';
   } catch (error) {
     if (
@@ -217,12 +218,10 @@ export async function releaseCoordinatedEvent(
         event.workflow_id,
         event.source,
       );
-      await finishCoordinatedEvent(
-        transaction,
-        id,
-        'skipped',
-        'concurrency_limit',
-      );
+      await finishCoordinatedEvent(transaction, id, {
+        status: 'skipped',
+        reason: 'concurrency_limit',
+      });
       return 'refused';
     }
     if (error instanceof WorkspaceRunAdmissionDeniedError)

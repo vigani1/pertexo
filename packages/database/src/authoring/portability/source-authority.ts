@@ -26,7 +26,12 @@ export async function lockPortableSource(
   client: PoolClient,
   input: ExportWorkflowInput,
 ) {
-  if (!(await authorizeWorkflowResource(client, input, 'workflow:read', true)))
+  if (
+    !(await authorizeWorkflowResource(client, input, {
+      capability: 'workflow:read',
+      locking: true,
+    }))
+  )
     throw new WorkflowNotFoundError('Workflow source is not visible');
   const workflow = await client.query(
     "select id from app.workflows where workspace_id=$1 and id=$2 and lifecycle_status='active' for share",
@@ -78,9 +83,15 @@ export function reviewedSourceGraph(
 export async function inspectPortableConnections(
   client: PoolClient,
   workspaceId: string,
-  actorId: string,
-  manifest: WorkflowPortableManifest,
-  bindings: readonly PortableConnectionBinding[],
+  {
+    actorId,
+    manifest,
+    bindings,
+  }: Readonly<{
+    actorId: string;
+    manifest: WorkflowPortableManifest;
+    bindings: readonly PortableConnectionBinding[];
+  }>,
 ) {
   const ids = [
     ...new Set(

@@ -83,13 +83,11 @@ export async function inspectImport(
     })),
   ];
   issues.push(
-    ...(await inspectPortableConnections(
-      client,
-      input.workspaceId,
-      input.actorId,
-      input.manifest,
-      input.bindings,
-    )),
+    ...(await inspectPortableConnections(client, input.workspaceId, {
+      actorId: input.actorId,
+      manifest: input.manifest,
+      bindings: input.bindings,
+    })),
   );
   const hard = issues.filter(
     ({ code }) =>
@@ -107,7 +105,7 @@ export function portableFailure(error: unknown): never {
   if (error instanceof WorkflowPortabilityError)
     throw new WorkflowPortabilityValidationError(
       error.issues.slice(0, WORKFLOW_PORTABILITY_LIMITS.issues),
-      error.issues.length > WORKFLOW_PORTABILITY_LIMITS.issues,
+      { truncated: error.issues.length > WORKFLOW_PORTABILITY_LIMITS.issues },
     );
   throw error;
 }

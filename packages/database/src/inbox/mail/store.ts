@@ -43,7 +43,7 @@ async function settings(
   client: PoolClient,
   workspaceId: string,
   actorId: string,
-  create: boolean,
+  { create }: Readonly<{ create: boolean }>,
 ) {
   const defs = await client.query<DefaultsRow>(
     'select * from app.notice_workspace_settings where workspace_id=$1 for share',
@@ -60,7 +60,10 @@ async function settings(
   );
   const pref = prefs.rows[0];
   const defaults = defs.rows[0];
-  const projected = projectNoticePreferences(pref, defaults, false, true);
+  const projected = projectNoticePreferences(pref, defaults, {
+    canManageDefaults: false,
+    emailAvailable: true,
+  });
   const cut = new Date(
     Math.max(
       pref?.revision === 0 ? 0 : (pref?.changed_at.getTime() ?? 0),
@@ -78,10 +81,17 @@ async function settings(
 async function advance(
   client: PoolClient,
   workspaceId: string,
-  actorId: string,
-  schedule: NoticeSchedule,
-  now: Date,
-  defaultRevision: number,
+  {
+    actorId,
+    schedule,
+    now,
+    defaultRevision,
+  }: Readonly<{
+    actorId: string;
+    schedule: NoticeSchedule;
+    now: Date;
+    defaultRevision: number;
+  }>,
 ) {
   await client.query(
     'update app.notice_preferences set next_due_at=$3,schedule_default_revision=$4 where workspace_id=$1 and user_id=$2',
@@ -101,12 +111,9 @@ async function preparePerson(
   );
   const to = await recipient(client, person.workspace_id, person.user_id);
   if (!to?.email_verified) return 0;
-  const current = await settings(
-    client,
-    person.workspace_id,
-    person.user_id,
-    true,
-  );
+  const current = await settings(client, person.workspace_id, person.user_id, {
+    create: true,
+  });
   const pref = current.pref;
   if (pref === undefined || current.effective.mode === 'off') return 0;
   await client.query(
@@ -139,22 +146,18 @@ async function preparePerson(
     [person.workspace_id, person.user_id, window],
   );
   if (reserved.rowCount !== 0) {
-    await advance(
-      client,
-      person.workspace_id,
-      person.user_id,
-      current.effective,
-      to.now,
-      current.defaultRevision,
-    );
+    await advance(client, person.workspace_id, {
+      actorId: person.user_id,
+      schedule: current.effective,
+      now: to.now,
+      defaultRevision: current.defaultRevision,
+    });
     return 0;
   }
-  const subjects = await readMailSubjects(
-    client,
-    person.workspace_id,
-    person.user_id,
-    new Date(Math.max(current.cut.getTime(), to.created_at.getTime())),
-  );
+  const subjects = await readMailSubjects(client, person.workspace_id, {
+    actorId: person.user_id,
+    cut: new Date(Math.max(current.cut.getTime(), to.created_at.getTime())),
+  });
   if (subjects.length === 0 && current.effective.mode === 'immediate') {
     await client.query(
       'update app.notice_preferences set next_due_at=$3,schedule_default_revision=$4 where workspace_id=$1 and user_id=$2',
@@ -162,14 +165,12 @@ async function preparePerson(
     );
     return 0;
   }
-  await advance(
-    client,
-    person.workspace_id,
-    person.user_id,
-    current.effective,
-    to.now,
-    current.defaultRevision,
-  );
+  await advance(client, person.workspace_id, {
+    actorId: person.user_id,
+    schedule: current.effective,
+    now: to.now,
+    defaultRevision: current.defaultRevision,
+  });
   if (subjects.length === 0) return 0;
   const id = generatePersistedId();
   const expiresAt = new Date(to.now.getTime() + 24 * 3_600_000);
@@ -242,7 +243,9 @@ async function authorizeBatch(
     to.role_revision !== batch.member_revision
   )
     return false;
-  const current = await settings(client, workspaceId, actorId, false);
+  const current = await settings(client, workspaceId, actorId, {
+    create: false,
+  });
   if (
     current.pref?.revision !== batch.preference_revision ||
     current.defaultRevision !== batch.default_revision ||
@@ -254,13 +257,11 @@ async function authorizeBatch(
     [workspaceId, deliveryId],
   );
   if (items.rows.length !== batch.item_count) return false;
-  const subjects = await readMailSubjects(
-    client,
-    workspaceId,
+  const subjects = await readMailSubjects(client, workspaceId, {
     actorId,
-    new Date(Math.max(current.cut.getTime(), to.created_at.getTime())),
-    items.rows.map((row) => row.thread_id),
-  );
+    cut: new Date(Math.max(current.cut.getTime(), to.created_at.getTime())),
+    onlyIds: items.rows.map((row) => row.thread_id),
+  });
   return subjects.length === batch.item_count;
 }
 export function createNoticeMailStore(

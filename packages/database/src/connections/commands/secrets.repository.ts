@@ -63,11 +63,9 @@ async function readConnectionRotateReplay(
 ): ReturnType<ConnectionSecretPersistence['findConnectionRotateReplay']> {
   const actorId = uuidSchema.parse(input.actorId);
   const connectionId = uuidSchema.parse(input.connectionId);
-  return withConnectionTransaction(
-    pool,
-    input.workspaceId,
+  return withConnectionTransaction(pool, input.workspaceId, {
     actorId,
-    async (client, workspaceId) => {
+    operation: async (client, workspaceId) => {
       await requireConnectionManager(client, workspaceId, actorId);
       const stored = await findCommandResult(
         client,
@@ -84,7 +82,7 @@ async function readConnectionRotateReplay(
         throw new Error('Connection rotation idempotency result is corrupt');
       return replay;
     },
-  );
+  });
 }
 
 async function persistRotatedConnectionSecret(
@@ -97,11 +95,9 @@ async function persistRotatedConnectionSecret(
   const expected = uuidSchema.parse(input.expectedCurrentSecretVersionId);
   const sealed = sealedSecretSchema.parse(input.sealed);
   const metadata = parseRequestMetadata(input);
-  return withConnectionTransaction(
-    pool,
-    input.workspaceId,
+  return withConnectionTransaction(pool, input.workspaceId, {
     actorId,
-    async (client, workspaceId) => {
+    operation: async (client, workspaceId) => {
       await requireConnectionManager(client, workspaceId, actorId);
       const command = connectionCommand(
         input,
@@ -123,7 +119,7 @@ async function persistRotatedConnectionSecret(
         client,
         workspaceId,
         connectionId,
-        true,
+        { lock: true },
       );
       if (connection === null)
         throw new ConnectionNotFoundError('Connection is not visible');
@@ -203,7 +199,7 @@ async function persistRotatedConnectionSecret(
       );
       return rotated;
     },
-  );
+  });
 }
 
 async function assertPersistedConnectionSecretCurrent(
@@ -218,11 +214,9 @@ async function assertPersistedConnectionSecretCurrent(
   );
   const expectedAuthType = parseConnectionAuthType(input.expectedAuthType);
   const secretVersionId = uuidSchema.parse(input.secretVersionId);
-  await withConnectionTransaction(
-    pool,
-    input.workspaceId,
-    undefined,
-    async (client, workspaceId) => {
+  await withConnectionTransaction(pool, input.workspaceId, {
+    actorId: undefined,
+    operation: async (client, workspaceId) => {
       const result = await client.query(
         `select 1
              from app.connections connection
@@ -244,6 +238,6 @@ async function assertPersistedConnectionSecretCurrent(
           'Connection is not current for credential use',
         );
     },
-    input.signal === undefined ? {} : { signal: input.signal },
-  );
+    options: input.signal === undefined ? {} : { signal: input.signal },
+  });
 }

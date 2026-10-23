@@ -378,15 +378,13 @@ export function createWorkerTransportTestEnvironment() {
       traceparent?: string;
     }>,
   ) =>
-    consumeInboxMessage(
-      requireWorkerDatabase(),
-      workspaceId,
-      {
+    consumeInboxMessage(requireWorkerDatabase(), workspaceId, {
+      message: {
         consumerName: 'worker.phase0-proof',
         messageId,
         payloadChecksum: checksum({ logicalAttemptId }),
       },
-      async (transaction) => {
+      operation: async (transaction) => {
         const { db, workspaceId: activeWorkspaceId } = transaction;
         await db.execute(sql`
           insert into app.queue_duplicate_probe_attempts
@@ -440,7 +438,7 @@ export function createWorkerTransportTestEnvironment() {
         }
         return logicalAttemptId;
       },
-    );
+    });
 
   const dispatchFairRounds = async (
     dispatchers: readonly OutboxDispatcher[],

@@ -63,7 +63,7 @@ export function queryClause(
 export function boundedResult(
   rows: readonly DataTableRow[],
   affected: number,
-  hasMore = false,
+  { hasMore = false }: Readonly<{ hasMore?: boolean | undefined }> = {},
 ): DataTableResult {
   const result = { rows: [...rows], affected, hasMore };
   if (!isDataTableResultBounded(result))
@@ -96,6 +96,6 @@ export async function findRows(
   return boundedResult(
     result.rows.slice(0, query.limit).map((row) => projectRow(table, row)),
     Math.min(result.rows.length, query.limit),
-    result.rows.length > query.limit,
+    { hasMore: result.rows.length > query.limit },
   );
 }

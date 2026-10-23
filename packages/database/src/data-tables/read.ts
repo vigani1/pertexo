@@ -33,7 +33,7 @@ export async function requireTable(
   client: PoolClient,
   workspaceId: string,
   identity: { id: string } | { name: string },
-  lock = false,
+  { lock = false }: Readonly<{ lock?: boolean | undefined }> = {},
 ): Promise<DataTableDefinition> {
   const byId = 'id' in identity;
   const result = await client.query<StoredTable>(
@@ -51,7 +51,7 @@ export async function requireTable(
 export async function readQuotas(
   client: PoolClient,
   workspaceId: string,
-  lock = false,
+  { lock = false }: Readonly<{ lock?: boolean | undefined }> = {},
 ): Promise<DataTableQuotas> {
   if (lock)
     await client.query(

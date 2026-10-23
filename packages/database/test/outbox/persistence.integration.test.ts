@@ -196,11 +196,9 @@ describe('transactional outbox persistence', () => {
       event: ReturnType<typeof outboxInput>,
       failBeforeCommit = false,
     ) =>
-      consumeInboxMessage(
-        proxiedDatabase,
-        workspaceA,
-        { consumerName, messageId, payloadChecksum: checksumA },
-        async (transaction) => {
+      consumeInboxMessage(proxiedDatabase, workspaceA, {
+        message: { consumerName, messageId, payloadChecksum: checksumA },
+        operation: async (transaction) => {
           if (messageId === lostAckMessageId) lostAckWorkCalls += 1;
           await insertOutboxEvent(transaction, event);
           await transaction.db.execute(sql`
@@ -217,7 +215,7 @@ describe('transactional outbox persistence', () => {
           if (failBeforeCommit) throw new Error('pre-commit control failure');
           return event.id;
         },
-      );
+      });
 
     const inspect = async (
       acceptanceId: string,

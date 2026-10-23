@@ -203,13 +203,11 @@ export async function persistCoordinatorRunTransition(
     row.has_human_child === true ||
     (plan.taskIntents?.length ?? 0) > 0
   )
-    await synchronizeHumanWait(
-      client,
-      workspaceId,
+    await synchronizeHumanWait(client, workspaceId, {
       runId,
-      'committed',
-      row.human_resume_deferred === true,
-    );
+      phase: 'committed',
+      alreadyDeferred: row.human_resume_deferred === true,
+    });
   if (row.status === 'queued' && plan.checkpoint.runStatus !== 'queued')
     await wakeErrorWorkflowsForCapacity(client, workspaceId);
   await persistCallCompletion(client, input);

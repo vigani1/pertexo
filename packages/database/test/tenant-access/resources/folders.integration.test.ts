@@ -703,21 +703,19 @@ it('keeps delegated private child requirements out of promotion reviews', async 
           workspaceId,
           actorId: reader,
         });
-        await inspectPromotionCallDependencies(
-          client,
-          workspaceId,
+        await inspectPromotionCallDependencies(client, workspaceId, {
           source,
-          publicId,
+          targetWorkflowId: publicId,
           resources,
-          connectionScope(
+          connections: connectionScope(
             { workspaceId, actorId: reader },
             resources.role,
             'connection:use',
           ),
           graph,
-          new PromotionGraphBudget(),
-          (item) => requirements.push(item),
-        );
+          budget: new PromotionGraphBudget(),
+          report: (item) => requirements.push(item),
+        });
         return requirements;
       },
     );

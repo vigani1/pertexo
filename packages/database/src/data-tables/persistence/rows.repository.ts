@@ -13,11 +13,9 @@ export function writeTableRows(
 ): ReturnType<DataTablesStore['write']> {
   return write(pool, input, async (client) => {
     // HTTP receipts retain identities/counts only; row payloads follow table access.
-    const receipt = await command(
-      client,
-      input,
-      'data.tables.rows.write',
-      (result) => ({
+    const receipt = await command(client, input, {
+      operation: 'data.tables.rows.write',
+      audit: (result) => ({
         targetType: 'data_table',
         targetId: input.tableId,
         metadata: {
@@ -25,38 +23,39 @@ export function writeTableRows(
           affected: result.affected,
         },
       }),
-      {
+      request: {
         tableId: input.tableId,
         command: input.command,
         rowId: input.rowId ?? null,
         expectedRevision: input.expectedRevision ?? null,
       },
-      async () => {
-        const quotas = await readQuotas(client, input.workspaceId, true);
+      work: async () => {
+        const quotas = await readQuotas(client, input.workspaceId, {
+          lock: true,
+        });
         const table = await requireTable(
           client,
           input.workspaceId,
           { id: input.tableId },
-          true,
+          { lock: true },
         );
         if (input.command.table !== table.name)
           throw new DataTableError(
             'conflict',
             'The table name does not match this command. Reload before writing.',
           );
-        const result = await mutateRows(
-          client,
-          input.workspaceId,
+        const result = await mutateRows(client, input.workspaceId, {
           table,
           quotas,
-          input.command,
-          input.rowId === undefined
-            ? undefined
-            : {
-                rowId: input.rowId,
-                expectedRevision: input.expectedRevision ?? 0,
-              },
-        );
+          command: input.command,
+          rowIdentity:
+            input.rowId === undefined
+              ? undefined
+              : {
+                  rowId: input.rowId,
+                  expectedRevision: input.expectedRevision ?? 0,
+                },
+        });
         return {
           rows: result.rows.map((row) => ({
             id: row.id,
@@ -65,7 +64,7 @@ export function writeTableRows(
           affected: result.affected,
         };
       },
-    );
+    });
     return receipt;
   });
 }
@@ -75,34 +74,33 @@ export function importTableRows(
   input: Parameters<DataTablesStore['importRows']>[0],
 ): ReturnType<DataTablesStore['importRows']> {
   return write(pool, input, (client) =>
-    command(
-      client,
-      input,
-      'data.tables.rows.import',
-      (result) => ({
+    command(client, input, {
+      operation: 'data.tables.rows.import',
+      audit: (result) => ({
         targetType: 'data_table',
         targetId: input.tableId,
         metadata: { affected: result.affected },
       }),
-      'prepareRows' in input
-        ? { tableId: input.tableId, csv: input.csv }
-        : { tableId: input.tableId, rows: input.rows },
-      async () => {
-        const quota = await readQuotas(client, input.workspaceId, true);
+      request:
+        'prepareRows' in input
+          ? { tableId: input.tableId, csv: input.csv }
+          : { tableId: input.tableId, rows: input.rows },
+      work: async () => {
+        const quota = await readQuotas(client, input.workspaceId, {
+          lock: true,
+        });
         const table = await requireTable(
           client,
           input.workspaceId,
           { id: input.tableId },
-          true,
+          { lock: true },
         );
-        return insertTableBatch(
-          client,
-          input.workspaceId,
+        return insertTableBatch(client, input.workspaceId, {
           table,
-          quota,
-          'prepareRows' in input ? input.prepareRows(table) : input.rows,
-        );
+          quotas: quota,
+          rows: 'prepareRows' in input ? input.prepareRows(table) : input.rows,
+        });
       },
-    ),
+    }),
   );
 }

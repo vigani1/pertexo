@@ -182,9 +182,15 @@ function pushCanonicalContainer(
 function canonicalJson(
   value: unknown,
   maximumBytes: number,
-  maximumDatabaseBytes?: number,
-  label = 'canonical JSON payload',
-  constraints?: CanonicalJsonConstraints,
+  {
+    maximumDatabaseBytes,
+    label = 'canonical JSON payload',
+    constraints,
+  }: Readonly<{
+    maximumDatabaseBytes?: number | undefined;
+    label?: string | undefined;
+    constraints?: CanonicalJsonConstraints | undefined;
+  }> = {},
 ): string {
   const frames: CanonicalFrame[] = [{ depth: 0, kind: 'value', value }];
   const active = new Set<object>();
@@ -254,12 +260,10 @@ function expandJsonNumber(value: string): string {
 export function canonicalOutboxPayloadChecksum(payload: unknown): string {
   return createHash('sha256')
     .update(
-      canonicalJson(
-        payload,
-        OUTBOX_PAYLOAD_BYTES,
-        OUTBOX_PAYLOAD_BYTES,
-        'outbox payload',
-      ),
+      canonicalJson(payload, OUTBOX_PAYLOAD_BYTES, {
+        maximumDatabaseBytes: OUTBOX_PAYLOAD_BYTES,
+        label: 'outbox payload',
+      }),
     )
     .digest('hex');
 }
@@ -273,11 +277,15 @@ export function serializeBoundedPlainJson(
   if (!Number.isSafeInteger(maximumBytes) || maximumBytes < 1)
     throw new TypeError(`${label} byte limit is invalid`);
   try {
-    return canonicalJson(payload, maximumBytes, undefined, label, {
-      maximumDepth: 64,
-      maximumMembers: 10_000,
-      plainObjectsOnly: true,
-      rejectSymbols: true,
+    return canonicalJson(payload, maximumBytes, {
+      maximumDatabaseBytes: undefined,
+      label,
+      constraints: {
+        maximumDepth: 64,
+        maximumMembers: 10_000,
+        plainObjectsOnly: true,
+        rejectSymbols: true,
+      },
     });
   } catch (error: unknown) {
     let boundedFailure = false;
@@ -303,12 +311,10 @@ export async function insertOutboxEvent(
   input: OutboxEventInput,
 ): Promise<InsertedOutboxEvent> {
   const parsed = outboxEventInputSchema.parse(input);
-  const canonicalPayload = canonicalJson(
-    parsed.payload,
-    OUTBOX_PAYLOAD_BYTES,
-    OUTBOX_PAYLOAD_BYTES,
-    'outbox payload',
-  );
+  const canonicalPayload = canonicalJson(parsed.payload, OUTBOX_PAYLOAD_BYTES, {
+    maximumDatabaseBytes: OUTBOX_PAYLOAD_BYTES,
+    label: 'outbox payload',
+  });
   if (
     createHash('sha256').update(canonicalPayload).digest('hex') !==
     parsed.payloadChecksum

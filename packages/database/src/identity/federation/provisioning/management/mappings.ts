@@ -14,12 +14,13 @@ export async function replaceDirectoryMappings(
   pool: Pool,
   input: DirectoryCommand & DirectoryMappings,
 ): Promise<void> {
-  await runDirectoryCommand(
-    pool,
-    input,
-    'identity.directory.mappings.replace',
-    { mappings: input.mappings, expectedRevision: input.expectedRevision },
-    async (client, organization) => {
+  await runDirectoryCommand(pool, input, {
+    operation: 'identity.directory.mappings.replace',
+    request: {
+      mappings: input.mappings,
+      expectedRevision: input.expectedRevision,
+    },
+    change: async (client, organization) => {
       const workspaces = new Set(
         organization.workspaces.map((workspace) => workspace.workspace_id),
       );
@@ -60,27 +61,23 @@ export async function replaceDirectoryMappings(
       await projectDirectoryMemberships(client, organization, {
         actorId: input.actorId,
       });
-      await auditDirectoryManagement(
-        client,
-        input,
-        organization.id,
-        'identity.directory_mappings_changed',
-        organization.id,
-      );
+      await auditDirectoryManagement(client, input, {
+        organizationId: organization.id,
+        action: 'identity.directory_mappings_changed',
+        targetId: organization.id,
+      });
       return { receipt: { organizationId: organization.id }, value: undefined };
     },
-  );
+  });
 }
 
 export async function adoptDirectoryMembership(
   pool: Pool,
   input: DirectoryCommand & DirectoryAdopt,
 ): Promise<void> {
-  await runDirectoryCommand(
-    pool,
-    input,
-    'identity.directory.membership.adopt',
-    {
+  await runDirectoryCommand(pool, input, {
+    operation: 'identity.directory.membership.adopt',
+    request: {
       workspaceId: input.targetWorkspaceId,
       directoryUserId: input.directoryUserId,
       directoryRevision: input.directoryRevision,
@@ -88,7 +85,7 @@ export async function adoptDirectoryMembership(
       role: input.role,
       expectedRevision: input.expectedRevision,
     },
-    async (client, organization) => {
+    change: async (client, organization) => {
       const workspace = organization.workspaces.find(
         (entry) => entry.workspace_id === input.targetWorkspaceId,
       );
@@ -106,13 +103,11 @@ export async function adoptDirectoryMembership(
       await client.query('select id from app.users where id=$1 for update', [
         user.user_id,
       ]);
-      const mapped = await readDirectoryRole(
-        client,
-        organization.id,
-        workspace.workspace_id,
-        input.directoryUserId,
-        workspace.default_role,
-      );
+      const mapped = await readDirectoryRole(client, organization.id, {
+        workspaceId: workspace.workspace_id,
+        directoryUserId: input.directoryUserId,
+        fallback: workspace.default_role,
+      });
       if (mapped !== input.role) throw new DirectoryError('stale');
       await withWorkspaceScope(
         client,
@@ -163,11 +158,13 @@ export async function adoptDirectoryMembership(
       await auditDirectoryManagement(
         client,
         { ...input, workspaceId: workspace.workspace_id },
-        organization.id,
-        'identity.directory_membership_adopted',
-        input.directoryUserId,
+        {
+          organizationId: organization.id,
+          action: 'identity.directory_membership_adopted',
+          targetId: input.directoryUserId,
+        },
       );
       return { receipt: { organizationId: organization.id }, value: undefined };
     },
-  );
+  });
 }

@@ -60,9 +60,15 @@ async function requireOwnComment(
 const commandResult = (
   threadId: string,
   commentId: string | null,
-  revision: number,
-  deleted = false,
-  threadDeleted = false,
+  {
+    revision,
+    deleted = false,
+    threadDeleted = false,
+  }: Readonly<{
+    revision: number;
+    deleted?: boolean | undefined;
+    threadDeleted?: boolean | undefined;
+  }>,
 ) => ({
   threadId,
   commentId,
@@ -102,16 +108,14 @@ function createCommentThread(
   context: CollaborationContext,
   input: Parameters<WorkflowCollaborationStore['create']>[0],
 ): ReturnType<WorkflowCollaborationStore['create']> {
-  return runCommentCommand(
-    context,
-    input,
-    'workflow.comment.created',
-    {
+  return runCommentCommand(context, input, {
+    action: 'workflow.comment.created',
+    request: {
       body: input.body,
       mentionUserIds: input.mentionUserIds,
       stepId: input.stepId,
     },
-    async (client) => {
+    write: async (client) => {
       let stepLabel: string | null = null;
       if (input.stepId !== null) {
         const draft = (
@@ -147,25 +151,23 @@ function createCommentThread(
         ],
       );
       const commentId = await insertComment(client, { ...input, threadId });
-      return commandResult(threadId, commentId, 1);
+      return commandResult(threadId, commentId, { revision: 1 });
     },
-  );
+  });
 }
 
 function replyToCommentThread(
   context: CollaborationContext,
   input: Parameters<WorkflowCollaborationStore['reply']>[0],
 ): ReturnType<WorkflowCollaborationStore['reply']> {
-  return runCommentCommand(
-    context,
-    input,
-    'workflow.comment.replied',
-    {
+  return runCommentCommand(context, input, {
+    action: 'workflow.comment.replied',
+    request: {
       threadId: input.threadId,
       body: input.body,
       mentionUserIds: input.mentionUserIds,
     },
-    async (client) => {
+    write: async (client) => {
       const thread = await lockCommentThread(client, input);
       if (thread.status !== 'open')
         throw new WorkflowCollaborationError(
@@ -177,27 +179,25 @@ function replyToCommentThread(
         'update app.workflow_comment_threads set comment_count=comment_count+1,revision=revision+1,updated_at=clock_timestamp() where workspace_id=$1 and id=$2',
         [input.workspaceId, input.threadId],
       );
-      return commandResult(input.threadId, commentId, 1);
+      return commandResult(input.threadId, commentId, { revision: 1 });
     },
-  );
+  });
 }
 
 function editComment(
   context: CollaborationContext,
   input: Parameters<WorkflowCollaborationStore['edit']>[0],
 ): ReturnType<WorkflowCollaborationStore['edit']> {
-  return runCommentCommand(
-    context,
-    input,
-    'workflow.comment.edited',
-    {
+  return runCommentCommand(context, input, {
+    action: 'workflow.comment.edited',
+    request: {
       threadId: input.threadId,
       commentId: input.commentId,
       body: input.body,
       mentionUserIds: input.mentionUserIds,
       expectedRevision: input.expectedRevision,
     },
-    async (client) => {
+    write: async (client) => {
       await lockCommentThread(client, input);
       await requireOwnComment(client, input);
       await client.query(
@@ -220,29 +220,25 @@ function editComment(
         'update app.workflow_comment_threads set revision=revision+1,updated_at=clock_timestamp() where workspace_id=$1 and id=$2',
         [input.workspaceId, input.threadId],
       );
-      return commandResult(
-        input.threadId,
-        input.commentId,
-        input.expectedRevision + 1,
-      );
+      return commandResult(input.threadId, input.commentId, {
+        revision: input.expectedRevision + 1,
+      });
     },
-  );
+  });
 }
 
 function removeComment(
   context: CollaborationContext,
   input: Parameters<WorkflowCollaborationStore['remove']>[0],
 ): ReturnType<WorkflowCollaborationStore['remove']> {
-  return runCommentCommand(
-    context,
-    input,
-    'workflow.comment.deleted',
-    {
+  return runCommentCommand(context, input, {
+    action: 'workflow.comment.deleted',
+    request: {
       threadId: input.threadId,
       commentId: input.commentId,
       expectedRevision: input.expectedRevision,
     },
-    async (client) => {
+    write: async (client) => {
       const thread = await lockCommentThread(client, input);
       await requireOwnComment(client, input);
       await client.query(
@@ -265,31 +261,27 @@ function removeComment(
           'update app.workflow_comment_threads set comment_count=comment_count-1,revision=revision+1,updated_at=clock_timestamp() where workspace_id=$1 and id=$2',
           [input.workspaceId, input.threadId],
         );
-      return commandResult(
-        input.threadId,
-        input.commentId,
-        input.expectedRevision + 1,
-        true,
-        empty,
-      );
+      return commandResult(input.threadId, input.commentId, {
+        revision: input.expectedRevision + 1,
+        deleted: true,
+        threadDeleted: empty,
+      });
     },
-  );
+  });
 }
 
 function setCommentThreadStatus(
   context: CollaborationContext,
   input: Parameters<WorkflowCollaborationStore['setStatus']>[0],
 ): ReturnType<WorkflowCollaborationStore['setStatus']> {
-  return runCommentCommand(
-    context,
-    input,
-    'workflow.comment.thread.changed',
-    {
+  return runCommentCommand(context, input, {
+    action: 'workflow.comment.thread.changed',
+    request: {
       threadId: input.threadId,
       status: input.status,
       expectedRevision: input.expectedRevision,
     },
-    async (client) => {
+    write: async (client) => {
       const thread = await lockCommentThread(client, input);
       if (thread.revision !== input.expectedRevision)
         throw new WorkflowCollaborationError(
@@ -305,8 +297,10 @@ function setCommentThreadStatus(
           input.expectedRevision,
         ],
       );
-      return commandResult(input.threadId, null, input.expectedRevision + 1);
+      return commandResult(input.threadId, null, {
+        revision: input.expectedRevision + 1,
+      });
     },
-    input.status,
-  );
+    status: input.status,
+  });
 }

@@ -103,21 +103,17 @@ function listErrorWorkflowTargets(
     input.workspaceId,
     input.actorId,
     async (client) => {
-      await lockWorkflowAuthoringAuthority(
-        client,
-        input.workspaceId,
-        input.actorId,
-        rolesForCapability('workflow:update'),
-      );
+      await lockWorkflowAuthoringAuthority(client, input.workspaceId, {
+        actorId: input.actorId,
+        roles: rolesForCapability('workflow:update'),
+      });
       const access = await readFolderScope(client, input);
       if (
-        !(await workflowAccessible(
-          client,
-          access,
-          input.workspaceId,
-          input.workflowId,
-          'workflow:update',
-        ))
+        !(await workflowAccessible(client, access, {
+          workspaceId: input.workspaceId,
+          workflowId: input.workflowId,
+          capability: 'workflow:update',
+        }))
       )
         throw new WorkflowNotFoundError('Workflow is not visible');
       const source = await client.query(
@@ -167,21 +163,17 @@ function readErrorWorkflowSettings(
     input.workspaceId,
     input.actorId,
     async (client) => {
-      await lockWorkflowAuthoringAuthority(
-        client,
-        input.workspaceId,
-        input.actorId,
-        rolesForCapability('workflow:read'),
-      );
+      await lockWorkflowAuthoringAuthority(client, input.workspaceId, {
+        actorId: input.actorId,
+        roles: rolesForCapability('workflow:read'),
+      });
       const access = await readFolderScope(client, input);
       if (
-        !(await workflowAccessible(
-          client,
-          access,
-          input.workspaceId,
-          input.workflowId,
-          'workflow:read',
-        ))
+        !(await workflowAccessible(client, access, {
+          workspaceId: input.workspaceId,
+          workflowId: input.workflowId,
+          capability: 'workflow:read',
+        }))
       )
         throw new WorkflowNotFoundError('Workflow is not visible');
       const source = await client.query(
@@ -204,32 +196,26 @@ function updateErrorWorkflowSettings(
     input.workspaceId,
     input.actorId,
     async (client) => {
-      await lockWorkflowAuthoringAuthority(
-        client,
-        input.workspaceId,
-        input.actorId,
-        rolesForCapability('workflow:update'),
-      );
+      await lockWorkflowAuthoringAuthority(client, input.workspaceId, {
+        actorId: input.actorId,
+        roles: rolesForCapability('workflow:update'),
+      });
       const access = await readFolderScope(client, input);
       if (
-        !(await workflowAccessible(
-          client,
-          access,
-          input.workspaceId,
-          input.workflowId,
-          'workflow:update',
-        ))
+        !(await workflowAccessible(client, access, {
+          workspaceId: input.workspaceId,
+          workflowId: input.workflowId,
+          capability: 'workflow:update',
+        }))
       )
         throw new WorkflowNotFoundError('Workflow is not visible');
       if (
         input.targetWorkflowId !== null &&
-        !(await workflowAccessible(
-          client,
-          access,
-          input.workspaceId,
-          input.targetWorkflowId,
-          'workflow:update',
-        ))
+        !(await workflowAccessible(client, access, {
+          workspaceId: input.workspaceId,
+          workflowId: input.targetWorkflowId,
+          capability: 'workflow:update',
+        }))
       )
         throw new WorkflowNotFoundError('Workflow is not visible');
       // Stable order also covers two editors choosing each other's workflows.

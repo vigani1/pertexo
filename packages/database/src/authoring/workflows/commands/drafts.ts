@@ -54,7 +54,9 @@ async function createWorkflow(
   return context.transact(input.workspaceId, input.actorId, async (client) => {
     const workflowId = uuidSchema.parse(input.id ?? generatePersistedId());
     const graph = parseWorkflowGraphDraft(input.emptyGraph);
-    await context.requireAuthor(client, input.workspaceId, input.actorId);
+    await context.requireAuthor(client, input.workspaceId, {
+      actorId: input.actorId,
+    });
     const { definitionCatalog, placementDefinitionCatalog } = context.catalogs;
     context.requirePlaceable(
       EMPTY_WORKFLOW_GRAPH,
@@ -93,13 +95,11 @@ async function createWorkflow(
     let createdId = workflowId;
     if (stored !== null) {
       createdId = createdResultSchema.parse(stored).workflowId;
-      await context.requireAuthor(
-        client,
-        input.workspaceId,
-        input.actorId,
-        createdId,
-        'workflow:read',
-      );
+      await context.requireAuthor(client, input.workspaceId, {
+        actorId: input.actorId,
+        workflowId: createdId,
+        capability: 'workflow:read',
+      });
     } else {
       await requireWorkflowCallTargets(client, input, graph);
       await requireConnectionBindings(client, input, graph);
@@ -172,12 +172,10 @@ async function saveDraft(
     input.representationTag,
   );
   return context.transact(input.workspaceId, input.actorId, async (client) => {
-    await context.requireAuthor(
-      client,
-      input.workspaceId,
-      input.actorId,
-      input.workflowId,
-    );
+    await context.requireAuthor(client, input.workspaceId, {
+      actorId: input.actorId,
+      workflowId: input.workflowId,
+    });
     const { definitionCatalog, placementDefinitionCatalog } = context.catalogs;
     const graph = parseWorkflowGraphDraft(input.graphJson);
     const expected = z.number().int().positive().parse(input.expectedRevision);

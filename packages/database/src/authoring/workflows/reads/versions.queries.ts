@@ -12,19 +12,23 @@ import { uuidSchema, canReadWorkflow } from './authority.js';
 export function readAuthoringVersion(
   context: WorkflowAuthoringReadContext,
   workspaceId: Parameters<ReadStore['getVersion']>[0],
-  workflowId: Parameters<ReadStore['getVersion']>[1],
-  versionId: Parameters<ReadStore['getVersion']>[2],
-  actorId: Parameters<ReadStore['getVersion']>[3],
+  {
+    workflowId,
+    versionId,
+    actorId,
+  }: Readonly<{
+    workflowId: Parameters<ReadStore['getVersion']>[1];
+    versionId: Parameters<ReadStore['getVersion']>[2];
+    actorId: Parameters<ReadStore['getVersion']>[3];
+  }>,
 ): ReturnType<ReadStore['getVersion']> {
   return context.transact(workspaceId, actorId, async (client) => {
     if (
-      !(await canReadWorkflow(
-        context,
-        client,
+      !(await canReadWorkflow(context, client, {
         workspaceId,
         actorId,
         workflowId,
-      ))
+      }))
     )
       return null;
     const result = await client.query<Record<string, unknown>>(
@@ -42,13 +46,11 @@ export function listAuthoringVersions(
 ): ReturnType<ReadStore['listVersions']> {
   return context.transact(input.workspaceId, input.actorId, async (client) => {
     if (
-      !(await canReadWorkflow(
-        context,
-        client,
-        input.workspaceId,
-        input.actorId,
-        input.workflowId,
-      ))
+      !(await canReadWorkflow(context, client, {
+        workspaceId: input.workspaceId,
+        actorId: input.actorId,
+        workflowId: input.workflowId,
+      }))
     )
       throw new WorkflowNotFoundError('Workflow is not visible');
     const workflowId = uuidSchema.parse(input.workflowId);

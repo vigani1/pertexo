@@ -32,7 +32,7 @@ export function metadata(
 export async function workflow(
   client: PoolClient,
   input: Scope,
-  write: boolean,
+  { write }: Readonly<{ write: boolean }>,
 ): Promise<void> {
   const row = await client.query<{ lifecycle_status: string }>(
     'select lifecycle_status from app.workflows where workspace_id=$1 and id=$2 for share',
@@ -49,7 +49,7 @@ export async function quota(
   client: PoolClient,
   input: Scope,
   bytes: number,
-  create: boolean,
+  { create }: Readonly<{ create: boolean }>,
 ): Promise<void> {
   const result = await client.query<{
     workflow_count: string;

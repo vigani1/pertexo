@@ -69,13 +69,11 @@ export async function createTag(
   input: Parameters<WorkflowTagDatabase['createTag']>[0],
 ): ReturnType<WorkflowTagDatabase['createTag']> {
   const request = { key: key.parse(input.key) };
-  return tagCommand(
-    session,
-    input,
-    'tag.create',
-    null,
+  return tagCommand(session, input, {
+    operation: 'tag.create',
+    target: null,
     request,
-    async (client, workspaceId) => {
+    apply: async (client, workspaceId) => {
       await requireFreeKey(client, workspaceId, request.key, null);
       const count = await client.query<{ count: number }>(
         'select count(*)::int count from app.workflow_tags where workspace_id = $1',
@@ -92,7 +90,7 @@ export async function createTag(
       if (row === undefined) throw new Error('Tag was not created');
       return row;
     },
-  );
+  });
 }
 
 export async function renameTag(
@@ -104,13 +102,11 @@ export async function renameTag(
     key: key.parse(input.key),
     expectedTagRevision: revision.parse(input.expectedTagRevision),
   };
-  return tagCommand(
-    session,
-    input,
-    'tag.rename',
-    tagId,
+  return tagCommand(session, input, {
+    operation: 'tag.rename',
+    target: tagId,
     request,
-    async (client, workspaceId) => {
+    apply: async (client, workspaceId) => {
       const current = await readTag(client, workspaceId, tagId);
       requireRevision(current, request.expectedTagRevision);
       await requireFreeKey(client, workspaceId, request.key, tagId);
@@ -121,7 +117,7 @@ export async function renameTag(
       );
       return renamed.rows[0] ?? current;
     },
-  );
+  });
 }
 
 export async function deleteTagCommand(
@@ -161,24 +157,20 @@ export async function replaceWorkflowTags(
   session: ReturnType<typeof createOrganizationSession>,
   input: Parameters<WorkflowTagDatabase['replaceTags']>[0],
 ): ReturnType<WorkflowTagDatabase['replaceTags']> {
-  return assignmentCommand(
-    session,
-    input,
-    'tags.replace',
-    { kind: 'replace_tags', tagIds: tagIds.parse(input.tagIds) },
-    replaceResult,
-  );
+  return assignmentCommand(session, input, {
+    operation: 'tags.replace',
+    change: { kind: 'replace_tags', tagIds: tagIds.parse(input.tagIds) },
+    schema: replaceResult,
+  });
 }
 
 export async function detachTag(
   session: ReturnType<typeof createOrganizationSession>,
   input: Parameters<WorkflowTagDatabase['detachTag']>[0],
 ): ReturnType<WorkflowTagDatabase['detachTag']> {
-  return assignmentCommand(
-    session,
-    input,
-    'tag.detach',
-    { kind: 'detach_tag', tagId: uuid.parse(input.tagId) },
-    assignment,
-  );
+  return assignmentCommand(session, input, {
+    operation: 'tag.detach',
+    change: { kind: 'detach_tag', tagId: uuid.parse(input.tagId) },
+    schema: assignment,
+  });
 }

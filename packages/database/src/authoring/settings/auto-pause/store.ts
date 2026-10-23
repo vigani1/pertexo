@@ -95,20 +95,17 @@ function command<T>(
   const workspaceId = z.uuid().parse(input.workspaceId);
   const actorId = z.uuid().parse(input.actorId);
   return transact(workspaceId, actorId, async (client) => {
-    const workspace = await lockWorkspace(
-      client,
-      workspaceId,
-      options.exclusive,
-    );
-    await lockWorkflowAuthoringAuthority(
-      client,
-      workspaceId,
+    const workspace = await lockWorkspace(client, workspaceId, {
+      exclusive: options.exclusive,
+    });
+    await lockWorkflowAuthoringAuthority(client, workspaceId, {
       actorId,
-      options.roles,
-      options.workflowId === undefined
-        ? undefined
-        : { workflowId: options.workflowId, capability: 'workflow:update' },
-    );
+      roles: options.roles,
+      resource:
+        options.workflowId === undefined
+          ? undefined
+          : { workflowId: options.workflowId, capability: 'workflow:update' },
+    });
     const identity = {
       workspaceId,
       operation: options.operation,
@@ -156,10 +153,16 @@ async function readWorkflowPauseSettings(
     actorId = z.uuid().parse(input.actorId),
     workflowId = z.uuid().parse(input.workflowId);
   return transact(workspaceId, actorId, async (client) => {
-    const workspace = await lockWorkspace(client, workspaceId, false);
-    await lockWorkflowAuthoringAuthority(client, workspaceId, actorId, ROLES, {
-      workflowId,
-      capability: 'workflow:read',
+    const workspace = await lockWorkspace(client, workspaceId, {
+      exclusive: false,
+    });
+    await lockWorkflowAuthoringAuthority(client, workspaceId, {
+      actorId,
+      roles: ROLES,
+      resource: {
+        workflowId,
+        capability: 'workflow:read',
+      },
     });
     return workflowSettingsOf(
       await lockWorkflow(client, workspaceId, workflowId),
@@ -175,8 +178,13 @@ async function readWorkspacePauseSettings(
   const workspaceId = z.uuid().parse(input.workspaceId),
     actorId = z.uuid().parse(input.actorId);
   return transact(workspaceId, actorId, async (client) => {
-    const workspace = await lockWorkspace(client, workspaceId, false);
-    await lockWorkflowAuthoringAuthority(client, workspaceId, actorId, ROLES);
+    const workspace = await lockWorkspace(client, workspaceId, {
+      exclusive: false,
+    });
+    await lockWorkflowAuthoringAuthority(client, workspaceId, {
+      actorId,
+      roles: ROLES,
+    });
     return workspaceSettings.parse({
       threshold: workspace.auto_pause_threshold,
       revision: workspace.revision,

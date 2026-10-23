@@ -372,13 +372,11 @@ export async function claimPreviewDelivery(
       // A mismatched delivery is a durable tenant-scoped security fact. It
       // is written in its own transaction because the business transaction
       // above rolled back with the failure.
-      await auditPreviewDeliveryMismatch(
-        pool,
-        previewConsumerName,
-        parsed.workspaceId,
-        input.delivery,
-        input.signal ?? new AbortController().signal,
-      );
+      await auditPreviewDeliveryMismatch(pool, previewConsumerName, {
+        workspaceId: parsed.workspaceId,
+        delivery: input.delivery,
+        signal: input.signal ?? new AbortController().signal,
+      });
     }
     throw error;
   }
