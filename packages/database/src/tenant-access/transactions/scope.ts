@@ -16,22 +16,26 @@ export async function installTransactionScope(
 ): Promise<void> {
   if (scope === undefined) {
     // Platform-global transactions deliberately install no tenant context.
-  } else if (scope.workspaceId === undefined) {
+    return;
+  }
+  if (scope.workspaceId === undefined) {
     await client.query(
       `select set_config('app.actor_id', $1, true),
               set_config('app.discovery_scope', $2, true)`,
       [scope.actorId, scope.discoveryScope],
     );
-  } else if (scope.actorId === undefined) {
+    return;
+  }
+  if (scope.actorId === undefined) {
     await client.query("select set_config('app.workspace_id', $1, true)", [
       scope.workspaceId,
     ]);
-  } else {
-    await client.query(
-      "select set_config('app.workspace_id', $1, true), set_config('app.actor_id', $2, true)",
-      [scope.workspaceId, scope.actorId],
-    );
+    return;
   }
+  await client.query(
+    "select set_config('app.workspace_id', $1, true), set_config('app.actor_id', $2, true)",
+    [scope.workspaceId, scope.actorId],
+  );
 }
 
 export async function assertNoTenantContext(client: PoolClient): Promise<void> {

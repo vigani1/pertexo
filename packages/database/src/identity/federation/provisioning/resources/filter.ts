@@ -5,7 +5,7 @@ import { DirectoryError } from '../contract.js';
 export type DirectoryKind = 'User' | 'Group';
 type Field = Readonly<{ sql: string; type: string; caseExact: boolean }>;
 type Collection = 'emails' | 'members' | 'groups';
-const scalarColumns = {
+const scalarColumns: Readonly<Record<string, string>> = {
   id: 'resource.id::text',
   externalid: 'resource.external_id',
   'meta.created': 'resource.created_at',
@@ -33,40 +33,7 @@ export function directoryField(
     collection === undefined ? normalized : `${collection}.${normalized}`;
   try {
     const attribute = schema.definition.attribute(fullPath);
-    let sql: string | undefined;
-    if (collection === 'emails') {
-      const fields: Readonly<Record<string, string>> = {
-        value: "item.value->>'value'",
-        type: "item.value->>'type'",
-        primary: "(item.value->>'primary')::boolean",
-      };
-      sql = fields[normalized];
-    } else if (collection !== undefined) {
-      if (normalized === 'value')
-        sql =
-          collection === 'groups'
-            ? 'item.group_id::text'
-            : 'item.directory_user_id::text';
-    } else if (kind === 'User' && normalized === 'displayname')
-      sql = "resource.profile->>'displayName'";
-    else if (kind === 'User' && normalized === 'name')
-      sql = "resource.profile->'name'";
-    else if (kind === 'User' && normalized.startsWith('name.')) {
-      const names: Readonly<Record<string, string>> = {
-        formatted: 'formatted',
-        familyname: 'familyName',
-        givenname: 'givenName',
-        middlename: 'middleName',
-        honorificprefix: 'honorificPrefix',
-        honorificsuffix: 'honorificSuffix',
-      };
-      const key = names[normalized.slice(5)];
-      if (key !== undefined) sql = `resource.profile->'name'->>'${key}'`;
-    } else if (
-      (normalized !== 'username' && normalized !== 'active') ||
-      kind === 'User'
-    )
-      sql = scalarColumns[normalized as keyof typeof scalarColumns];
+    const sql = directoryFieldSql(kind, normalized, collection);
     if (sql === undefined) throw new DirectoryError('invalid_filter');
     return {
       sql,
@@ -75,6 +42,56 @@ export function directoryField(
     };
   } catch {
     throw new DirectoryError('invalid_filter');
+  }
+}
+const emailColumns: Readonly<Record<string, string>> = {
+  value: "item.value->>'value'",
+  type: "item.value->>'type'",
+  primary: "(item.value->>'primary')::boolean",
+};
+const nameColumns: Readonly<Record<string, string>> = {
+  formatted: 'formatted',
+  familyname: 'familyName',
+  givenname: 'givenName',
+  middlename: 'middleName',
+  honorificprefix: 'honorificPrefix',
+  honorificsuffix: 'honorificSuffix',
+};
+function directoryFieldSql(
+  kind: DirectoryKind,
+  normalized: string,
+  collection: Collection | undefined,
+): string | undefined {
+  switch (collection) {
+    case 'emails':
+      return emailColumns[normalized];
+    case 'groups':
+      return normalized === 'value' ? 'item.group_id::text' : undefined;
+    case 'members':
+      return normalized === 'value'
+        ? 'item.directory_user_id::text'
+        : undefined;
+    case undefined:
+      if (kind === 'User') return userFieldSql(normalized);
+      if (normalized === 'username' || normalized === 'active')
+        return undefined;
+      return scalarColumns[normalized];
+  }
+}
+function userFieldSql(normalized: string): string | undefined {
+  switch (normalized) {
+    case 'displayname':
+      return "resource.profile->>'displayName'";
+    case 'name':
+      return "resource.profile->'name'";
+    default:
+      if (normalized.startsWith('name.')) {
+        const key = nameColumns[normalized.slice(5)];
+        return key === undefined
+          ? undefined
+          : `resource.profile->'name'->>'${key}'`;
+      }
+      return scalarColumns[normalized];
   }
 }
 function collectionSource(

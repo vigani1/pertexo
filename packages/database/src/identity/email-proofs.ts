@@ -139,43 +139,56 @@ async function consumeProof(
   }
 
   let outcome: ProofPurpose;
-  if (proof.purpose === 'initial_verification') {
-    if (user.emailVerified) return 'invalid';
-    await db
-      .update(users)
-      .set({ emailVerified: true, updatedAt: sql`clock_timestamp()` })
-      .where(eq(users.id, userId));
-    await db.delete(authSessions).where(eq(authSessions.userId, userId));
-    await recordIdentitySecurityFact(client, userId, 'email.initial_verified');
-    outcome = proof.purpose;
-  } else if (proof.purpose === 'change_old') {
-    if (!user.emailVerified || next === undefined || proof.newEmail === null)
+  switch (proof.purpose) {
+    case 'initial_verification': {
+      if (user.emailVerified) return 'invalid';
+      await db
+        .update(users)
+        .set({ emailVerified: true, updatedAt: sql`clock_timestamp()` })
+        .where(eq(users.id, userId));
+      await db.delete(authSessions).where(eq(authSessions.userId, userId));
+      await recordIdentitySecurityFact(
+        client,
+        userId,
+        'email.initial_verified',
+      );
+      outcome = proof.purpose;
+      break;
+    }
+    case 'change_old': {
+      if (!user.emailVerified || next === undefined || proof.newEmail === null)
+        return 'invalid';
+      await db.insert(authEmailProofs).values({
+        id: randomUUID(),
+        tokenDigest: next.digest,
+        userId,
+        purpose: 'change_new',
+        email: proof.email,
+        newEmail: proof.newEmail,
+        expiresAt: next.expiresAt.toISOString(),
+      });
+      if (nextMail !== undefined) await insertSystemMail(client, nextMail);
+      await recordIdentitySecurityFact(client, userId, 'email.old_confirmed');
+      outcome = proof.purpose;
+      break;
+    }
+    case 'change_new': {
+      if (proof.newEmail === null || !user.emailVerified) return 'invalid';
+      await db
+        .update(users)
+        .set({
+          email: proof.newEmail,
+          emailVerified: true,
+          updatedAt: sql`clock_timestamp()`,
+        })
+        .where(eq(users.id, userId));
+      await recordIdentitySecurityFact(client, userId, 'email.change_verified');
+      outcome = proof.purpose;
+      break;
+    }
+    default:
       return 'invalid';
-    await db.insert(authEmailProofs).values({
-      id: randomUUID(),
-      tokenDigest: next.digest,
-      userId,
-      purpose: 'change_new',
-      email: proof.email,
-      newEmail: proof.newEmail,
-      expiresAt: next.expiresAt.toISOString(),
-    });
-    if (nextMail !== undefined) await insertSystemMail(client, nextMail);
-    await recordIdentitySecurityFact(client, userId, 'email.old_confirmed');
-    outcome = proof.purpose;
-  } else if (proof.purpose === 'change_new') {
-    if (proof.newEmail === null || !user.emailVerified) return 'invalid';
-    await db
-      .update(users)
-      .set({
-        email: proof.newEmail,
-        emailVerified: true,
-        updatedAt: sql`clock_timestamp()`,
-      })
-      .where(eq(users.id, userId));
-    await recordIdentitySecurityFact(client, userId, 'email.change_verified');
-    outcome = proof.purpose;
-  } else return 'invalid';
+  }
   await db
     .update(authEmailProofs)
     .set({ consumedAt: sql`clock_timestamp()` })
