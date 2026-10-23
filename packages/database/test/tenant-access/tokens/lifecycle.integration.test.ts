@@ -110,8 +110,7 @@ function registerRevealsSecretOnceStoresHash(): void {
     expect(JSON.stringify([receipts.rows, audit.rows])).not.toContain(
       credential.digest,
     );
-    await tokens.close();
-    tokens = createApiTokenDatabase(config);
+    await restartTokenRepository();
     expect(await tokens.authenticate(credential)).toMatchObject({
       ownerUserId,
       workspaceId,
@@ -138,8 +137,7 @@ function registerRevealsSecretOnceStoresHash(): void {
     expect((await tokens.revoke(revoke)).token.status).toBe('revoked');
     expect((await tokens.revoke(revoke)).replayed).toBe(true);
     expect(await tokens.authenticate(credential)).toBeUndefined();
-    await tokens.close();
-    tokens = createApiTokenDatabase(config);
+    await restartTokenRepository();
     expect(await tokens.authenticate(credential)).toBeUndefined();
   });
 
@@ -449,4 +447,9 @@ async function afterAllFixture2() {
   }
   if (failures.length > 0)
     throw new AggregateError(failures, 'Token fixture cleanup failed');
+}
+
+async function restartTokenRepository(): Promise<void> {
+  await tokens.close();
+  tokens = createApiTokenDatabase(config);
 }

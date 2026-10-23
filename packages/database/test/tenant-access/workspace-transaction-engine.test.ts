@@ -26,6 +26,18 @@ function poolWith(
 }
 
 describe('shared workspace transaction engine', () => {
+  registerRejectsInvalidPostgreSQLStatementTimeout();
+
+  registerRejectsDestroysClientRetainingActor();
+
+  registerExposesImmutableWorkspaceTransactionParsed();
+
+  registerStartsNoCallbackLaterSQL();
+
+  registerReleasesAcquiredClientAbortWins();
+});
+
+function registerRejectsInvalidPostgreSQLStatementTimeout(): void {
   it.each([0, 2_147_483_648, 1.5])(
     'rejects invalid PostgreSQL statement timeout %s before checkout',
     async (statementTimeoutMillis) => {
@@ -225,7 +237,9 @@ describe('shared workspace transaction engine', () => {
     ).rejects.toMatchObject({ message: 'Tenant context cleanup failed' });
     expect(release).toHaveBeenCalledWith(true);
   });
+}
 
+function registerRejectsDestroysClientRetainingActor(): void {
   it('rejects and destroys a client retaining actor context before use', async () => {
     const release = vi.fn();
     const client = {
@@ -427,7 +441,9 @@ describe('shared workspace transaction engine', () => {
     ).toBe(false);
     expect(release).toHaveBeenCalledWith();
   });
+}
 
+function registerExposesImmutableWorkspaceTransactionParsed(): void {
   it('exposes an immutable workspace transaction with a parsed identifier', async () => {
     let transactionActive = false;
     const release = vi.fn();
@@ -612,7 +628,9 @@ describe('shared workspace transaction engine', () => {
     expect(query).toHaveBeenCalledWith('rollback');
     expect(release).toHaveBeenCalledWith();
   });
+}
 
+function registerStartsNoCallbackLaterSQL(): void {
   it('starts no callback or later SQL when cancellation follows context verification', async () => {
     const controller = new AbortController();
     let transactionActive = false;
@@ -813,7 +831,9 @@ describe('shared workspace transaction engine', () => {
       expect.objectContaining({ name: 'AbortError' }),
     );
   });
+}
 
+function registerReleasesAcquiredClientAbortWins(): void {
   it('releases an acquired client when abort wins before transaction setup', async () => {
     let resolveConnection: ((client: PoolClient) => void) | undefined;
     const connection = new Promise<PoolClient>((resolve) => {
@@ -922,4 +942,4 @@ describe('shared workspace transaction engine', () => {
     rejectConnection?.(new Error('late pool failure'));
     await expect(connection).rejects.toThrow('late pool failure');
   });
-});
+}

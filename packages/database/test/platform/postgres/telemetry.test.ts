@@ -275,15 +275,26 @@ function telemetryClient(outcomes: ClientQueryOutcome[]) {
 }
 
 describe('PostgreSQL telemetry pool', () => {
-  beforeEach(() => {
-    pg.FakePool.instances.length = 0;
-    pg.FakePool.connectOutcomes.length = 0;
-    pg.FakePool.endFailures.length = 0;
-    pg.FakePool.queryErrors.length = 0;
-    pg.FakePool.queryResults.length = 0;
-    pg.FakePool.queryOutcomes.length = 0;
-  });
+  beforeEach(beforeEachFixture1);
+  registerDoesNotMistakeUndefinedPool();
 
+  registerPreservesCallbackQueryReceiverResult();
+
+  registerPreservesCallbackCheckoutReceiverValues();
+
+  registerSamplesLockWaitsOnDedicated();
+});
+
+function beforeEachFixture1() {
+  pg.FakePool.instances.length = 0;
+  pg.FakePool.connectOutcomes.length = 0;
+  pg.FakePool.endFailures.length = 0;
+  pg.FakePool.queryErrors.length = 0;
+  pg.FakePool.queryResults.length = 0;
+  pg.FakePool.queryOutcomes.length = 0;
+}
+
+function registerDoesNotMistakeUndefinedPool(): void {
   it('does not mistake an undefined pool-end rejection for success', async () => {
     pg.FakePool.endFailures.push({ error: undefined });
     const pool = createDatabasePool(
@@ -452,7 +463,9 @@ describe('PostgreSQL telemetry pool', () => {
 
     await pool.end();
   });
+}
 
+function registerPreservesCallbackQueryReceiverResult(): void {
   it('preserves callback query receiver, result, error and synchronous return', async () => {
     const telemetry = fakeMeter();
     const callbackReceiver = {};
@@ -630,7 +643,9 @@ describe('PostgreSQL telemetry pool', () => {
 
     await pool.end();
   });
+}
 
+function registerPreservesCallbackCheckoutReceiverValues(): void {
   it('preserves callback checkout receiver, values and release behavior', async () => {
     const telemetry = fakeMeter();
     const originalRelease = vi.fn();
@@ -836,7 +851,9 @@ describe('PostgreSQL telemetry pool', () => {
 
     await pool.end();
   });
+}
 
+function registerSamplesLockWaitsOnDedicated(): void {
   it('samples lock waits on a dedicated uninstrumented pool', async () => {
     const telemetry = fakeMeter();
     pg.FakePool.queryResults.push({ rows: [{ pid: 17 }] }, { rows: [] });
@@ -1004,4 +1021,4 @@ describe('PostgreSQL telemetry pool', () => {
     await first.end();
     await second.end();
   });
-});
+}

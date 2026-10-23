@@ -147,11 +147,77 @@ const scanInput = {
 } as const;
 
 describe('schedule trigger scanner claim ownership', () => {
-  beforeEach(() => {
-    seams.pools.length = 0;
-    seams.workspaceTransaction.mockReset();
-  });
+  beforeEach(beforeEachFixture1);
+  registerPerformsNoClaimWorkPre();
+});
 
+type RecordedStatement = Readonly<{ sql: string; params: unknown[] }>;
+
+const dialect = new PgDialect();
+const runId = '00000000-0000-4000-8000-000000000008';
+
+/** A workspace transaction that admits every eligible occurrence. */
+function recordAdmissionTransactions(): RecordedStatement[] {
+  const statements: RecordedStatement[] = [];
+  seams.workspaceTransaction.mockImplementation(
+    (
+      _pool: unknown,
+      workspaceId: unknown,
+      operation: (transaction: unknown) => Promise<unknown>,
+    ) =>
+      operation({
+        workspaceId,
+        db: {
+          execute: (statement: SQL) => {
+            const query = dialect.sqlToQuery(statement);
+            statements.push(query);
+            return Promise.resolve({ rows: [{}] });
+          },
+        },
+      }),
+  );
+  return statements;
+}
+
+/** Scheduled instant, disposition, run and next fire the claim completed with. */
+function completion(statements: readonly RecordedStatement[]) {
+  const recorded = statements.filter(({ sql }) =>
+    sql.includes('insert into app.trigger_schedule_occurrences'),
+  );
+  const moved = statements.filter(({ sql }) =>
+    sql.includes('update app.trigger_schedules'),
+  );
+  expect(recorded).toHaveLength(1);
+  expect(moved).toHaveLength(1);
+  const [, , , scheduledAt, disposition, completedRunId] =
+    recorded[0]?.params ?? [];
+  const [, nextAt] = moved[0]?.params ?? [];
+  return { scheduledAt, disposition, runId: completedRunId, nextAt };
+}
+
+const eligibilityCheck = 'published_version_id=trigger.workflow_version_id';
+
+function hourlyClaim(policy: 'catch_up_once' | 'skip', observedAt: string) {
+  return claim(ids.triggerOne, ids.leaseOne, {
+    interval_minutes: 60,
+    misfire_policy: policy,
+    anchor_at: new Date('2026-01-01T00:00:00.000Z'),
+    next_fire_at: new Date('2026-01-01T01:00:00.000Z'),
+    observed_at: new Date(observedAt),
+  });
+}
+
+describe('schedule misfire disposition (ADR 049)', () => {
+  beforeEach(beforeEachFixture2);
+  registerDecidesSOccurrenceObservedAt();
+});
+
+function beforeEachFixture1() {
+  seams.pools.length = 0;
+  seams.workspaceTransaction.mockReset();
+}
+
+function registerPerformsNoClaimWorkPre(): void {
   it('performs no claim work for a pre-aborted scan', async () => {
     const reason = new Error('stop before checkout');
     const controller = new AbortController();
@@ -272,72 +338,16 @@ describe('schedule trigger scanner claim ownership', () => {
     ).toEqual(['fail', 'release']);
     expect(seams.workspaceTransaction).toHaveBeenCalledOnce();
   });
-});
-
-type RecordedStatement = Readonly<{ sql: string; params: unknown[] }>;
-
-const dialect = new PgDialect();
-const runId = '00000000-0000-4000-8000-000000000008';
-
-/** A workspace transaction that admits every eligible occurrence. */
-function recordAdmissionTransactions(): RecordedStatement[] {
-  const statements: RecordedStatement[] = [];
-  seams.workspaceTransaction.mockImplementation(
-    (
-      _pool: unknown,
-      workspaceId: unknown,
-      operation: (transaction: unknown) => Promise<unknown>,
-    ) =>
-      operation({
-        workspaceId,
-        db: {
-          execute: (statement: SQL) => {
-            const query = dialect.sqlToQuery(statement);
-            statements.push(query);
-            return Promise.resolve({ rows: [{}] });
-          },
-        },
-      }),
-  );
-  return statements;
 }
 
-/** Scheduled instant, disposition, run and next fire the claim completed with. */
-function completion(statements: readonly RecordedStatement[]) {
-  const recorded = statements.filter(({ sql }) =>
-    sql.includes('insert into app.trigger_schedule_occurrences'),
-  );
-  const moved = statements.filter(({ sql }) =>
-    sql.includes('update app.trigger_schedules'),
-  );
-  expect(recorded).toHaveLength(1);
-  expect(moved).toHaveLength(1);
-  const [, , , scheduledAt, disposition, completedRunId] =
-    recorded[0]?.params ?? [];
-  const [, nextAt] = moved[0]?.params ?? [];
-  return { scheduledAt, disposition, runId: completedRunId, nextAt };
+function beforeEachFixture2() {
+  seams.pools.length = 0;
+  seams.workspaceTransaction.mockReset();
+  seams.acceptWorkflowRun.mockReset();
+  seams.acceptWorkflowRun.mockResolvedValue({ runId });
 }
 
-const eligibilityCheck = 'published_version_id=trigger.workflow_version_id';
-
-function hourlyClaim(policy: 'catch_up_once' | 'skip', observedAt: string) {
-  return claim(ids.triggerOne, ids.leaseOne, {
-    interval_minutes: 60,
-    misfire_policy: policy,
-    anchor_at: new Date('2026-01-01T00:00:00.000Z'),
-    next_fire_at: new Date('2026-01-01T01:00:00.000Z'),
-    observed_at: new Date(observedAt),
-  });
-}
-
-describe('schedule misfire disposition (ADR 049)', () => {
-  beforeEach(() => {
-    seams.pools.length = 0;
-    seams.workspaceTransaction.mockReset();
-    seams.acceptWorkflowRun.mockReset();
-    seams.acceptWorkflowRun.mockResolvedValue({ runId });
-  });
-
+function registerDecidesSOccurrenceObservedAt(): void {
   it.each([
     ['skip', '2026-01-01T01:05:00.000Z', 'accepted'],
     ['skip', '2026-01-01T01:05:00.001Z', 'skipped'],
@@ -477,4 +487,4 @@ describe('schedule misfire disposition (ADR 049)', () => {
       expect(seams.workspaceTransaction).not.toHaveBeenCalled();
     },
   );
-});
+}

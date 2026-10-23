@@ -67,23 +67,32 @@ function completionHarness(row: LockedIntent | undefined) {
 }
 
 describe('failure notification completion policy', () => {
-  beforeEach(() => {
-    auditFailureNotification.mockReset();
-    insertFailureNotificationDeliveryOutbox.mockReset();
-    withTenantScopedClient.mockReset();
-    withTenantScopedClient.mockImplementation(
-      async (
-        _pool: unknown,
-        _context: unknown,
-        work: (client: unknown) => Promise<unknown>,
-        options: Readonly<{ signal?: AbortSignal }> = {},
-      ) => {
-        options.signal?.throwIfAborted();
-        return work(tenantState.client);
-      },
-    );
-  });
+  beforeEach(beforeEachFixture1);
+  registerScenario();
 
+  registerRejectsInvalid02Before();
+
+  registerRejectsPreAbortedCompletionBefore();
+});
+
+function beforeEachFixture1() {
+  auditFailureNotification.mockReset();
+  insertFailureNotificationDeliveryOutbox.mockReset();
+  withTenantScopedClient.mockReset();
+  withTenantScopedClient.mockImplementation(
+    async (
+      _pool: unknown,
+      _context: unknown,
+      work: (client: unknown) => Promise<unknown>,
+      options: Readonly<{ signal?: AbortSignal }> = {},
+    ) => {
+      options.signal?.throwIfAborted();
+      return work(tenantState.client);
+    },
+  );
+}
+
+function registerScenario(): void {
   it.each([
     {
       scenario: 'safe retry with attempts remaining',
@@ -331,7 +340,9 @@ describe('failure notification completion policy', () => {
       }
     },
   );
+}
 
+function registerRejectsInvalid02Before(): void {
   it.each([
     ['attempt number', 'attemptNumber', 0],
     ['attempt number', 'attemptNumber', -1],
@@ -527,7 +538,9 @@ describe('failure notification completion policy', () => {
       expect(insertFailureNotificationDeliveryOutbox).not.toHaveBeenCalled();
     },
   );
+}
 
+function registerRejectsPreAbortedCompletionBefore(): void {
   it('rejects a pre-aborted completion before client work', async () => {
     const controller = new AbortController();
     const reason = new Error('completion canceled');
@@ -616,4 +629,4 @@ describe('failure notification completion policy', () => {
     expect(withTenantScopedClient).not.toHaveBeenCalled();
     expect(query).not.toHaveBeenCalled();
   });
-});
+}

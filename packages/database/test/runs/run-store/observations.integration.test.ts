@@ -233,6 +233,40 @@ function observedKinds(
 }
 
 describe('Coordinator observation integrity invariants', () => {
+  registerRejectsPersistedInvalidExecutableControl();
+
+  registerMapsOrderedStartedTerminalFacts();
+
+  registerFailsClosedEventGapsCorrupt();
+
+  registerChunkLoadsApplicationValidFacts();
+
+  registerFailsClosedStartedTerminalPhysical();
+
+  registerFailsClosedTerminalArtifactLocator();
+});
+
+async function seedAvailableArtifact(): Promise<string> {
+  const artifactId = generatePersistedId();
+  await asRuntime(workerBaseUrl, workspaceA, (client) =>
+    client.query(
+      `insert into app.artifacts (
+           id,workspace_id,purpose,storage_key,media_type,byte_length,sha256,
+           status,expires_at,finalized_at
+         ) values ($1,$2,'node-output',$3,'application/json',1,$4,
+           'available',now()+interval '1 day',now())`,
+      [
+        artifactId,
+        workspaceA,
+        `workspaces/${workspaceA}/artifacts/${artifactId}`,
+        'f'.repeat(64),
+      ],
+    ),
+  );
+  return artifactId;
+}
+
+function registerRejectsPersistedInvalidExecutableControl(): void {
   it.each([{}, { graph: {} }])(
     'rejects persisted invalid executable control metadata %j',
     async (executableJson) => {
@@ -266,25 +300,6 @@ describe('Coordinator observation integrity invariants', () => {
       ).rejects.toBeInstanceOf(CoordinatorRunStateCorruptError);
     },
   );
-  async function seedAvailableArtifact(): Promise<string> {
-    const artifactId = generatePersistedId();
-    await asRuntime(workerBaseUrl, workspaceA, (client) =>
-      client.query(
-        `insert into app.artifacts (
-           id,workspace_id,purpose,storage_key,media_type,byte_length,sha256,
-           status,expires_at,finalized_at
-         ) values ($1,$2,'node-output',$3,'application/json',1,$4,
-           'available',now()+interval '1 day',now())`,
-        [
-          artifactId,
-          workspaceA,
-          `workspaces/${workspaceA}/artifacts/${artifactId}`,
-          'f'.repeat(64),
-        ],
-      ),
-    );
-    return artifactId;
-  }
 
   it('loads a fresh artifact completion', async () => {
     const invocationKey = 'version-a/fresh-artifact';
@@ -458,7 +473,9 @@ describe('Coordinator observation integrity invariants', () => {
       }),
     ).resolves.toEqual({ kind: 'not_found' });
   });
+}
 
+function registerMapsOrderedStartedTerminalFacts(): void {
   it('maps ordered started and terminal facts using exact physical attempt ownership', async () => {
     const invocationKey = 'version-a/manual';
     const state = checkpoint({
@@ -663,7 +680,9 @@ describe('Coordinator observation integrity invariants', () => {
     },
     30_000,
   );
+}
 
+function registerFailsClosedEventGapsCorrupt(): void {
   it('fails closed for event gaps and corrupt physical event identities', async () => {
     const gapRun = await insertRun({});
     await asRuntime(workerBaseUrl, workspaceA, (client) =>
@@ -847,7 +866,9 @@ describe('Coordinator observation integrity invariants', () => {
       }),
     ).rejects.toBeInstanceOf(CoordinatorRunStateCorruptError);
   });
+}
 
+function registerChunkLoadsApplicationValidFacts(): void {
   it('chunk-loads application-valid facts beyond 64 MiB of PostgreSQL text expansion', async () => {
     const invocationKey = 'version-a/exponent-heavy-progress';
     const runId = await insertRun({
@@ -962,7 +983,9 @@ describe('Coordinator observation integrity invariants', () => {
       }),
     ).resolves.toMatchObject({ kind: 'committed', revision: 1 });
   });
+}
 
+function registerFailsClosedStartedTerminalPhysical(): void {
   it('fails closed for started and terminal physical status or output divergence', async () => {
     for (const variant of [
       {
@@ -1127,7 +1150,9 @@ describe('Coordinator observation integrity invariants', () => {
       }),
     ).rejects.toBeInstanceOf(CoordinatorRunStateCorruptError);
   });
+}
 
+function registerFailsClosedTerminalArtifactLocator(): void {
   it('fails closed when a terminal artifact locator is not available in the run workspace', async () => {
     const invocationKey = 'version-a/artifact';
     const runId = await insertRun({
@@ -1292,4 +1317,4 @@ describe('Coordinator observation integrity invariants', () => {
       hasConstraint('workflow_runs_deadline_wakeup_consistent'),
     );
   });
-});
+}
