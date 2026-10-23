@@ -345,3 +345,5 @@ export {
   API_TOKEN_ACTIVE_LIMIT,
   apiTokenCredentialSchema,
 } from './workspaces/identity-policy.js';
+
+export { CORE_WEBHOOK_CONFIG_SCHEMA } from './triggers/webhook.js';
