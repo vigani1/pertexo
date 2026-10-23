@@ -290,7 +290,7 @@ function nativeRouteGuards(pool: Pool): BeforeHooks {
     {
       matcher: (context) =>
         (context.path === '/account-security' ||
-          context.path?.startsWith('/account-security/') === true) &&
+          (context.path?.startsWith('/account-security/') ?? false)) &&
         context.path !== '/account-security/password/reset',
       handler: createAuthMiddleware(async (context) => {
         const session = await getAuthoritativeSessionFromCtx(context);

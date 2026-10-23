@@ -137,7 +137,7 @@ export function parseAutomationArguments(
         return invalidArgument('Each option can be supplied only once.');
       seen.add(token.name);
     }
-  if (flags.values.help === true || args.length === 0) return 'help';
+  if ((flags.values.help ?? false) || args.length === 0) return 'help';
   if (flags.positionals.length !== 2)
     return invalidArgument(
       'Use one command group and action. Run automation --help.',

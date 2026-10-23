@@ -58,7 +58,7 @@ export function createSystemMailDeliveryHandler(
         });
       }
       for (const claim of claims) {
-        if (signal?.aborted === true) break;
+        if (signal?.aborted) break;
         await deliverClaim(dependencies, claim, {
           now: now,
           random: random,

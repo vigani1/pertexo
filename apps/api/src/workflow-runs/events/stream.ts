@@ -266,7 +266,7 @@ export async function* streamRunEventFrames(
       }
 
       const next = await nextOrAbort(iterator, input.signal);
-      if (next === ABORTED || next.done === true) {
+      if (next === ABORTED || (next.done ?? false)) {
         return;
       }
 

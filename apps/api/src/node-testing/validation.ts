@@ -130,7 +130,7 @@ export async function prepareNodeValidation(
   }
 
   const mapped: Record<string, JsonValue> = {};
-  if (input.pinnedSample !== true) {
+  if (!input.pinnedSample) {
     if (node.configVersion !== definition.manifest.configVersion)
       issue(issues, {
         path: '$.configVersion',
@@ -167,7 +167,7 @@ export async function prepareNodeValidation(
           message: 'Connection reference is not declared by this definition',
         });
 
-    if (input.deferInput !== true) {
+    if (!input.deferInput) {
       const runInput = normalizeJson(input.sampleInput ?? {});
       for (const key of Object.keys(node.inputMappings)) {
         const source = node.inputMappings[key];
@@ -193,7 +193,7 @@ export async function prepareNodeValidation(
       }
     }
     const resolvedInput = normalizeJson(mapped);
-    if (input.deferInput !== true) {
+    if (!input.deferInput) {
       const parsedInput = definition.inputSchema.safeParse(resolvedInput);
       if (!parsedInput.success)
         for (const problem of parsedInput.error.issues)
@@ -208,19 +208,18 @@ export async function prepareNodeValidation(
 
   return Object.freeze({
     definition: Object.freeze({ ...definition.manifest.definition }),
-    disclosure:
-      input.pinnedSample === true
-        ? {
-            sideEffectClass: 'safe',
-            mayContactProvider: false,
-            mayCauseExternalSideEffect: false,
-            dryRun: 'not_supported',
-          }
-        : disclosure(
-            definition.manifest.retryClass,
-            definition.manifest.integration,
-            definition.manifest.capabilities,
-          ),
+    disclosure: input.pinnedSample
+      ? {
+          sideEffectClass: 'safe',
+          mayContactProvider: false,
+          mayCauseExternalSideEffect: false,
+          dryRun: 'not_supported',
+        }
+      : disclosure(
+          definition.manifest.retryClass,
+          definition.manifest.integration,
+          definition.manifest.capabilities,
+        ),
     executableNode: Object.freeze(
       normalizeJson({
         id: node.id,
@@ -232,7 +231,7 @@ export async function prepareNodeValidation(
       }) as Readonly<Record<string, JsonValue>>,
     ),
     executor: Object.freeze({ ...definition.manifest.executor }),
-    ...(input.pinnedSample === true ||
+    ...((input.pinnedSample ?? false) ||
     definition.manifest.integration === undefined
       ? {}
       : { integration: Object.freeze({ ...definition.manifest.integration }) }),

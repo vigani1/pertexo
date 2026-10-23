@@ -58,7 +58,7 @@ export async function writeSseFrames(
         },
       );
       if (next === undefined) break;
-      if (next.done === true) break;
+      if (next.done) break;
       const event = workflowRunEventSchema.parse(JSON.parse(next.value.data));
       const accepted = destination.write(
         encodeSseFrame(String(next.value.id), next.value.event, event),
@@ -132,7 +132,7 @@ async function nextFrameOrAbort<T>(
     if (!streamAborted(signal)) return outcome;
     retainAbandonedPull(pull);
     const failure = streamProducerFailureFromReason(signal.reason);
-    if (failure?.failed === true) {
+    if (failure?.failed) {
       // Producer adapters may reject with arbitrary values; identity is part
       // of the stream error contract.
       throw failure.error;

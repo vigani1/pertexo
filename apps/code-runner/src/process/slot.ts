@@ -289,7 +289,7 @@ export async function startTaskSlot(
         diagnostics: {
           ...result.diagnostics,
           logs: console.logs,
-          truncated: console.truncated || retainedError?.truncated === true,
+          truncated: console.truncated || (retainedError?.truncated ?? false),
           ...(error === undefined || retainedError === undefined
             ? {}
             : { error: { ...error, message: retainedError.message } }),

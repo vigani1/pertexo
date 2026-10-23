@@ -192,7 +192,7 @@ export class BullMqQueueConsumer implements QueueConsumer {
         bullMqSignal?.reason ?? new Error('BullMQ cancelled the queue job'),
       );
     };
-    if (bullMqSignal?.aborted === true) {
+    if (bullMqSignal?.aborted) {
       propagateBullMqAbort();
     } else {
       bullMqSignal?.addEventListener('abort', propagateBullMqAbort, {

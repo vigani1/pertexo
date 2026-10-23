@@ -89,7 +89,7 @@ export async function writeInboxHintStream(
         authorization.authorizationLost,
       );
       if (next.kind === 'authorization_lost') throw next.error;
-      if (next.result.done === true) return;
+      if (next.result.done) return;
       await authorization.reauthorize();
       // A slow client gets the newest hint once it catches up.
       if (destination.writableNeedDrain) {

@@ -74,7 +74,7 @@ function selectAuthenticationMail(
   if (input.authenticationMail !== undefined) return input.authenticationMail;
   if (input.betterAuth.mailMode === 'local')
     return new LocalAuthenticationMailSink(
-      input.betterAuth.printLocalMailLinks === true
+      input.betterAuth.printLocalMailLinks
         ? printLocalAuthenticationMail
         : undefined,
     );

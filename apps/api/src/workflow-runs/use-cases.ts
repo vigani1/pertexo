@@ -398,7 +398,7 @@ async function* authorizedStreamFrames(
         authorizationLifetime.authorizationLost,
       );
       if (outcome.kind === 'authorization_lost') throw outcome.error;
-      if (outcome.result.done === true) return;
+      if (outcome.result.done) return;
       await authorizationLifetime.reauthorize();
       yield outcome.result.value;
     }
