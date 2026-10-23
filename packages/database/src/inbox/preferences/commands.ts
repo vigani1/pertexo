@@ -1,5 +1,6 @@
+import type { NoticeCommandResponse } from '@pertexo/contracts';
 import type { PoolClient } from 'pg';
-import { noticeCommandResponseSchema } from '@pertexo/contracts';
+
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 import {
   NoticeConflictError,
@@ -26,14 +27,17 @@ export async function replacePreference(
     timeZone: input.timeZone,
     expectedRevision: input.expectedRevision,
   };
-  const replay = await claimCommand(client, {
-    ...identity,
-    resourceId: input.workspaceId,
-    request,
-  });
+  const replay = await claimCommand<Omit<NoticeCommandResponse, 'replayed'>>(
+    client,
+    {
+      ...identity,
+      resourceId: input.workspaceId,
+      request,
+    },
+  );
   if (replay !== null)
     return {
-      ...noticeCommandResponseSchema.omit({ replayed: true }).parse(replay),
+      ...replay,
       replayed: true,
     };
   if (defaults)
@@ -94,14 +98,17 @@ export async function replaceSubscription(
     followed: input.followed,
     muted: input.muted,
   };
-  const replay = await claimCommand(client, {
-    ...identity,
-    resourceId: input.subjectId,
-    request,
-  });
+  const replay = await claimCommand<Omit<NoticeCommandResponse, 'replayed'>>(
+    client,
+    {
+      ...identity,
+      resourceId: input.subjectId,
+      request,
+    },
+  );
   if (replay !== null)
     return {
-      ...noticeCommandResponseSchema.omit({ replayed: true }).parse(replay),
+      ...replay,
       replayed: true,
     };
   await client.query(

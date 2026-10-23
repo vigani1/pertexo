@@ -1,5 +1,5 @@
 import { WORKFLOW_EDITOR_ROLES } from '@pertexo/workflow-model';
-import { workflowConcurrencySettingsSchema as settings } from '@pertexo/contracts';
+import type { WorkflowConcurrencySettings as ConcurrencySettings } from '@pertexo/contracts';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
@@ -12,7 +12,7 @@ import { WorkflowNotFoundError } from '../workflows/errors.js';
 
 const revision = z.number().int().min(1).max(2_147_483_647);
 const limit = z.number().int().min(1).max(10_000).nullable();
-export type WorkflowConcurrencySettings = z.infer<typeof settings>;
+export type WorkflowConcurrencySettings = ConcurrencySettings;
 type Scope = Readonly<{
   workspaceId: string;
   workflowId: string;
@@ -138,14 +138,14 @@ function settingsOf(
   }>,
   entitlement: Awaited<ReturnType<typeof readEntitlement>>,
 ): WorkflowConcurrencySettings {
-  return settings.parse({
+  return {
     asOf: entitlement.asOf,
     limit: policy.limit,
     revision: policy.revision,
     workspaceActiveRunLimit: entitlement.maximum,
     workspacePolicyState: entitlement.state,
     overflow: policy.overflow,
-  });
+  };
 }
 
 /** Workflow active-run limits, sharing the authoring factory's transactions. */
@@ -176,8 +176,12 @@ export function createWorkflowConcurrencyStore(
           const history = await client.query<{
             id: string;
             at: string;
-            trigger_type: string;
-            reason: string;
+            trigger_type: NonNullable<
+              WorkflowConcurrencySettings['recentSkips']
+            >[number]['triggerType'];
+            reason: NonNullable<
+              WorkflowConcurrencySettings['recentSkips']
+            >[number]['reason'];
           }>(
             `select id,to_char(occurred_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') at,
                     metadata->>'triggerType' trigger_type,metadata->>'reason' reason
@@ -186,7 +190,7 @@ export function createWorkflowConcurrencyStore(
              order by occurred_at desc nulls last,id limit 20`,
             [workspaceId, workflowId],
           );
-          return settings.parse({
+          return {
             ...policy,
             recentSkips: history.rows.map((row) => ({
               id: row.id,
@@ -194,7 +198,7 @@ export function createWorkflowConcurrencyStore(
               triggerType: row.trigger_type,
               reason: row.reason,
             })),
-          });
+          };
         },
         input.signal,
       );
@@ -229,14 +233,17 @@ export function createWorkflowConcurrencyStore(
             scope: `${actorId}:${workflowId}`,
             idempotencyKey: input.idempotencyKey,
           };
-          const stored = await claimCommand(client, {
-            ...identity,
-            request,
-            resourceId: workflowId,
-          });
+          const stored = await claimCommand<WorkflowConcurrencySettings>(
+            client,
+            {
+              ...identity,
+              request,
+              resourceId: workflowId,
+            },
+          );
           if (stored !== null)
             return Object.freeze({
-              settings: settings.parse(stored),
+              settings: stored,
               replayed: true,
             });
           // Run grants read the limit under the workspace's admission counter.

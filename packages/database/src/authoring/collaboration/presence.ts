@@ -1,8 +1,6 @@
+import { COLLABORATION_LIMITS } from '@pertexo/workflow-model';
 import { rolesForCapability } from '@pertexo/workflow-model';
-import {
-  COLLABORATION_LIMITS,
-  type WorkflowPresence,
-} from '@pertexo/contracts';
+import type { WorkflowPresence } from '@pertexo/contracts';
 import type { PoolClient } from 'pg';
 import { requireCollaborationAuthority } from './authority.js';
 import {

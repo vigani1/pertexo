@@ -1,3 +1,9 @@
+export const AUTHENTICATION_PROVIDERS = [
+  'google',
+  'microsoft',
+  'github',
+  'apple',
+] as const;
 import { z } from 'zod';
 import { UUID_PATTERN } from '../values/identifiers.js';
 

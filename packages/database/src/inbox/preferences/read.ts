@@ -1,8 +1,7 @@
 import type { PoolClient } from 'pg';
-import {
-  noticePreferencesResponseSchema,
-  type NoticePreferencesResponse,
-  type NoticeEmailMode,
+import type {
+  NoticePreferencesResponse,
+  NoticeEmailMode,
 } from '@pertexo/contracts';
 export type PreferenceRow = Readonly<{
   revision: number;
@@ -60,7 +59,7 @@ export function projectNoticePreferences(
     hour: pref?.hour ?? 9,
     timeZone: pref?.time_zone ?? 'UTC',
   };
-  return noticePreferencesResponseSchema.parse({
+  return {
     ...personal,
     defaults,
     effective:
@@ -80,5 +79,5 @@ export function projectNoticePreferences(
     emailUnavailableReason: emailAvailable
       ? null
       : 'Email notifications need durable system mail. Ask the server operator to configure it. Your Inbox still works.',
-  });
+  };
 }

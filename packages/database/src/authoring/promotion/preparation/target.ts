@@ -1,12 +1,12 @@
+import { PROMOTION_LIMITS } from '@pertexo/workflow-model';
 import { connectionScope } from '../../../tenant-access/resources/connections/scope.js';
 import { readFolderScope } from '../../../tenant-access/resources/facts.js';
 import { workflowAccessible } from '../../../tenant-access/resources/workflows.js';
 import { WorkflowNotFoundError } from '../../workflows/errors.js';
 import type { PoolClient } from 'pg';
-import {
-  PROMOTION_LIMITS,
-  type WorkflowPromotionPreview,
-  type WorkflowPromotionRequirement,
+import type {
+  WorkflowPromotionPreview,
+  WorkflowPromotionRequirement,
 } from '@pertexo/contracts';
 import {
   canonicalJson,

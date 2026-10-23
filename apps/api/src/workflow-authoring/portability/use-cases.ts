@@ -1,3 +1,4 @@
+import { verifyCuratedTemplateManifest } from '@pertexo/templates';
 import {
   workflowExportRequestSchema,
   workflowImportPreviewRequestSchema,
@@ -125,7 +126,15 @@ export class PreviewWorkflowImportUseCase extends PortabilityAuthority {
         await this.persistence.previewWorkflowImport({
           ...this.context(input),
           ...portableCommand,
-          ...(templateOrigin === undefined ? {} : { templateOrigin }),
+          ...(templateOrigin === undefined
+            ? {}
+            : {
+                templateOrigin,
+                templateIssues: templateIssues(
+                  command.manifest,
+                  templateOrigin,
+                ),
+              }),
         }),
       );
     });
@@ -141,11 +150,24 @@ export class ImportWorkflowUseCase extends PortabilityAuthority {
         await this.persistence.importWorkflow({
           ...this.context(input),
           ...portableCommand,
-          ...(templateOrigin === undefined ? {} : { templateOrigin }),
+          ...(templateOrigin === undefined
+            ? {}
+            : {
+                templateOrigin,
+                templateIssues: templateIssues(
+                  command.manifest,
+                  templateOrigin,
+                ),
+              }),
           idempotencyKey: input.idempotencyKey,
           ...commandCredential(input.actor),
         }),
       );
     });
   }
+}
+
+function templateIssues(manifest: unknown, origin: unknown) {
+  const verified = verifyCuratedTemplateManifest(manifest, origin);
+  return verified.ok ? [] : verified.issues;
 }

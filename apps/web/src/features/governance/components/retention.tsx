@@ -2,6 +2,7 @@ import { useId, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   auditRetentionSchema,
+  AUDIT_RETENTION_MIN_DAYS,
   type GovernanceSettings,
 } from '@pertexo/contracts';
 import { LabelledField } from '@/components/ui/field';
@@ -72,7 +73,7 @@ export function AuditRetention({
             {...control}
             {...fields.control('days')}
             type="number"
-            min={30}
+            min={AUDIT_RETENTION_MIN_DAYS}
             max={2555}
             step={1}
             disabled={locked}

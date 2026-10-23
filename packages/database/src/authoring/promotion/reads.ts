@@ -1,10 +1,11 @@
+import type { WorkflowPromotionHistory } from '@pertexo/contracts';
 import { sql } from 'drizzle-orm';
 import { readFolderScope } from '../../tenant-access/resources/facts.js';
 import {
   bindResourcePredicate,
   workflowScopeSql,
 } from '../../tenant-access/resources/query-scope.js';
-import { workflowPromotionHistorySchema } from '@pertexo/contracts';
+
 import { requirePromotionAuthority } from './authority.js';
 import type { PromotionContext, WorkflowPromotionStore } from './contract.js';
 
@@ -116,7 +117,10 @@ export function promotionReads(
             actor_name: string;
             occurred_at: Date;
             target_id: string;
-            metadata: Record<string, unknown>;
+            metadata: Omit<
+              WorkflowPromotionHistory['items'][number],
+              'id' | 'occurredAt' | 'actorId' | 'actorName' | 'workflowId'
+            >;
           }>(
             `select event.id,event.actor_user_id,coalesce(actor.display_name,'Former member') actor_name,event.occurred_at,event.target_id,event.metadata from app.audit_events event left join app.users actor on actor.id=event.actor_user_id
          where event.workspace_id=$1 and ${visible} and event.action in ('workflow.promoted','workflow.promotion_sent') and ($2::uuid is null or event.id<$2)
@@ -140,13 +144,13 @@ export function promotionReads(
             publicationRequestId: row.metadata.publicationRequestId,
             mode: row.metadata.mode,
           }));
-          return workflowPromotionHistorySchema.parse({
+          return {
             items,
             nextCursor:
               result.rows.length > input.limit
                 ? (items.at(-1)?.id ?? null)
                 : null,
-          });
+          };
         },
         input.signal,
       ),

@@ -1,7 +1,7 @@
+import type { WebhookAuthentication } from '@pertexo/contracts';
 import { appendAuditFact } from '../../../governance/audit/append.js';
 import type { PoolClient } from 'pg';
-import { webhookAuthenticationSchema } from '@pertexo/contracts';
-import { webhookRunInput } from '@pertexo/nodes-core';
+
 import type { DatabaseConfig } from '../../../config.js';
 import {
   acquireDatabasePool,
@@ -28,7 +28,7 @@ interface Row {
   created_by: string;
   endpoint_key_hash: string;
   binding: string;
-  authentication: unknown;
+  authentication: WebhookAuthentication;
   kms_key_reference: string;
   encrypted_data_key: string;
   ciphertext: string;
@@ -188,9 +188,10 @@ export function createWebhookTestEventStore(
               workflowId: row.workflow_id,
               nodeId: row.node_id,
               databaseTime: row.database_time,
-              authentication: webhookAuthenticationSchema.parse(
-                row.authentication,
-              ),
+              authentication: row.authentication,
+              ...(draft.config.runInput === undefined
+                ? {}
+                : { runInputMode: draft.config.runInput }),
               currentSecret: {
                 id: row.id,
                 kmsKeyReference: row.kms_key_reference,
@@ -236,7 +237,7 @@ export function createWebhookTestEventStore(
         throw new WebhookTestEventError('unavailable');
       }
     },
-    capture: async (reference, request) =>
+    capture: async (reference, runInput) =>
       withTenantScopedClient(
         lease.pool,
         { workspaceId: reference.workspaceId },
@@ -272,7 +273,7 @@ export function createWebhookTestEventStore(
           try {
             output = inlineSampleOutput({
               kind: 'inline',
-              value: webhookRunInput(draft.config.runInput, request),
+              value: runInput,
             });
           } catch (error) {
             if (error instanceof WorkflowStepSampleError)

@@ -1,8 +1,5 @@
 import type { PoolClient } from 'pg';
-import {
-  workflowCommentCommandResultSchema,
-  type WorkflowCommentCommandResult,
-} from '@pertexo/contracts';
+import type { WorkflowCommentCommandResult } from '@pertexo/contracts';
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 import { appendAuditFact } from '../../governance/audit/append.js';
 import { requireCollaborationAuthority } from './authority.js';
@@ -26,14 +23,14 @@ export function runCommentCommand(
         operation: action,
         idempotencyKey: input.idempotencyKey,
       };
-      const stored = await claimCommand(client, {
+      const stored = await claimCommand<WorkflowCommentCommandResult>(client, {
         ...command,
         resourceId: input.workflowId,
         request,
       });
       if (stored !== null)
         return {
-          ...workflowCommentCommandResultSchema.parse(stored),
+          ...stored,
           replayed: true,
         };
       const result = await write(client);

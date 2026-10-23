@@ -1,5 +1,6 @@
+import { ACCOUNT_SIGN_IN_METHOD_LIMIT } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
-import { ACCOUNT_SIGN_IN_METHOD_LIMIT } from '@pertexo/contracts';
+
 /** The caller locks the user, so every attachment observes the same account bound. */
 export async function hasSignInMethodCapacity(
   client: PoolClient,

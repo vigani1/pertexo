@@ -110,7 +110,7 @@ describe('workflow portability application authority and exact commands', () => 
     baseManifestDigest: 'a'.repeat(64),
   } as const;
 
-  it('forwards origin exactly and leaves retained replay before descriptor/writer checks to persistence', async () => {
+  it('prepares origin issues and leaves retained replay decisions to persistence', async () => {
     const f = fixture();
     const request = {
       manifest,
@@ -124,7 +124,15 @@ describe('workflow portability application authority and exact commands', () => 
       request: { manifest, bindings: [], templateOrigin },
     });
     expect(f.persistence.previewWorkflowImport).toHaveBeenCalledWith(
-      expect.objectContaining({ templateOrigin }),
+      expect.objectContaining({
+        templateOrigin,
+        templateIssues: [
+          expect.objectContaining({
+            code: 'template_origin_unknown',
+            path: 'templateOrigin',
+          }),
+        ],
+      }),
     );
     await f.import.execute({
       ...context,

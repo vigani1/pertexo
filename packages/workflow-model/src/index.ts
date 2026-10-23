@@ -347,5 +347,7 @@ export {
 } from './workspaces/identity-policy.js';
 
 export { CORE_WEBHOOK_CONFIG_SCHEMA } from './triggers/webhook.js';
-
-export { DIRECTORY_LIMITS } from './workspaces/identity-policy.js';
+export {
+  DIRECTORY_LIMITS,
+  AUTHENTICATION_PROVIDERS,
+} from './workspaces/identity-policy.js';

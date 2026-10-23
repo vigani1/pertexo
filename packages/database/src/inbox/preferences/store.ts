@@ -1,3 +1,4 @@
+import type { NoticeSubscription } from '@pertexo/contracts';
 import { sql } from 'drizzle-orm';
 import { readFolderScope } from '../../tenant-access/resources/facts.js';
 import {
@@ -5,7 +6,7 @@ import {
   workflowScopeSql,
 } from '../../tenant-access/resources/query-scope.js';
 import type { PoolClient } from 'pg';
-import { noticeSubscriptionSchema } from '@pertexo/contracts';
+
 import type { DatabaseConfig } from '../../config.js';
 import {
   acquireDatabasePool,
@@ -146,7 +147,7 @@ export function createNoticePreferencesStore(
             rolesForCapability('run:read'),
           );
           await subjectExists(client, input);
-          const found = await client.query(
+          const found = await client.query<NoticeSubscription>(
             'select revision,followed,muted from app.notice_subscriptions where workspace_id=$1 and user_id=$2 and subject_kind=$3 and subject_id=$4',
             [
               input.workspaceId,
@@ -155,8 +156,8 @@ export function createNoticePreferencesStore(
               input.subjectId,
             ],
           );
-          return noticeSubscriptionSchema.parse(
-            found.rows[0] ?? { revision: 0, followed: false, muted: false },
+          return (
+            found.rows[0] ?? { revision: 0, followed: false, muted: false }
           );
         },
         options(input),

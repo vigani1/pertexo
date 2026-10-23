@@ -44,7 +44,8 @@ limiting are server-side packages despite having a single root door.
 The model supplies the engine's data contracts; execution connects pure engine
 decisions to database stores; the API and worker assemble those dependencies.
 The database uses engine plan/checkpoint types and the built-in schedule config
-schema from `nodes-core`, without running node executors. The catalog combines
+schema from `nodes-core`, without running node executors. The webhook configuration
+contract lives in `workflow-model` and is re-exported by its node definition. The catalog combines
 SDK definitions and executors; browser code gets live catalog metadata from the
 API and imports only browser-safe packages. `pnpm architecture:check` verifies
 workspace dependencies, TypeScript references and source import cycles.
@@ -165,6 +166,14 @@ notifications and trigger outcomes for tests. Authoring owns admission and the
 editor owns test history; lifecycle retention expires their data after seven days.
 
 ## Database boundaries
+
+Storage may import `@pertexo/contracts` types for read models; it never loads
+runtime HTTP schemas or limits. ESLint enforces that boundary. Shared workspace
+identity, governance and authoring rules live in `workflow-model`; contracts
+re-export them and derive transport schemas. Stored command receipts and query
+records are typed at their reads. The API prepares webhook run input and verifies
+curated template manifests before calling storage; acceptance still locks and
+rechecks the exact endpoint/version or draft binding in its transaction.
 
 All application tables are declared once under `packages/database/src/schema/`. Typed
 Drizzle reads/writes and typed `sql` statements share those definitions. Runtime

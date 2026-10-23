@@ -1,35 +1,65 @@
+import type {
+  WorkspaceCapacityLimit,
+  WorkspaceNoticeKind,
+} from '@pertexo/contracts';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
-import {
-  workspaceInboxThreadSchema,
-  type WorkspaceInboxThread,
-} from '@pertexo/contracts';
+import type { WorkspaceInboxThread } from '@pertexo/contracts';
 import { databaseSchema } from '../schema.js';
 import { parseWorkspaceId } from '../tenant-access/transactions.js';
 import { readWorkflowRunFailedSteps } from '../runs/queries/history/details.js';
 import { readFailureDays } from './failure-days.js';
-export type NoticeRow = Readonly<{
+type Attention = Exclude<
+  WorkspaceInboxThread,
+  { noticeKind: 'workflow_failure' }
+>;
+type NoticeFields = Readonly<{
   id: string;
-  notice_kind: string;
   subject_id: string;
   workflow_id: string | null;
   workflow_name: string | null;
   connection_name: string | null;
   workspace_name: string;
-  latest_kind: string | null;
   occurrence_count: string;
   first_occurred_at: string;
   latest_occurred_at: string;
   latest_run_id: string | null;
+  latest_kind: string | null;
   revision: string;
   unread: boolean;
-  source_revision: string | null;
-  task_details: unknown;
-  capacity_limit: string | null;
+  task_details: Attention['details'] | null;
+  capacity_limit: WorkspaceCapacityLimit | null;
+  capacity_limits: WorkspaceCapacityLimit[] | null;
   comment_id: string | null;
   comment_thread_id: string | null;
 }>;
-export const noticeColumns = `thread.id,thread.notice_kind,thread.subject_id,thread.workflow_id,workflow.name workflow_name,connection.name connection_name,workspace.name workspace_name,thread.latest_kind,thread.occurrence_count::text,thread.source_revision,thread.capacity_limit,comment.id comment_id,comment.thread_id comment_thread_id,
+export type NoticeRow = NoticeFields &
+  (
+    | {
+        notice_kind: 'workflow_failure';
+        workflow_id: string;
+        workflow_name: string;
+        latest_run_id: string;
+        latest_kind: 'failed' | 'timed_out' | 'outcome_unknown';
+      }
+    | {
+        notice_kind: 'workflow_mention';
+        workflow_id: string;
+        comment_id: string;
+        comment_thread_id: string;
+      }
+    | {
+        notice_kind: Exclude<
+          WorkspaceNoticeKind,
+          'workflow_failure' | 'workflow_mention' | 'limit_approaching'
+        >;
+      }
+    | {
+        notice_kind: 'limit_approaching';
+        capacity_limit: WorkspaceCapacityLimit;
+      }
+  );
+export const noticeColumns = `thread.id,thread.notice_kind,thread.subject_id,thread.workflow_id,workflow.name workflow_name,connection.name connection_name,workspace.name workspace_name,thread.latest_kind,thread.occurrence_count::text,string_to_array(thread.source_revision,',') capacity_limits,thread.capacity_limit,comment.id comment_id,comment.thread_id comment_thread_id,
  task.context->'details' task_details,to_char(thread.first_occurred_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') first_occurred_at,
  to_char(thread.latest_occurred_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') latest_occurred_at,
  thread.latest_run_id,thread.revision::text,(seen.read_revision is null or seen.read_revision<thread.revision) unread`;
@@ -47,9 +77,7 @@ export async function projectNotices(
   rows: readonly NoticeRow[],
 ): Promise<readonly WorkspaceInboxThread[]> {
   const failures = rows.filter((row) => row.notice_kind === 'workflow_failure');
-  const runIds = failures.flatMap((row) =>
-    row.latest_run_id === null ? [] : [row.latest_run_id],
-  );
+  const runIds = failures.map((row) => row.latest_run_id);
   const db = drizzle(client, { schema: databaseSchema });
   const steps = await readWorkflowRunFailedSteps(
     { db, workspaceId: parseWorkspaceId(workspaceId) },
@@ -58,51 +86,53 @@ export async function projectNotices(
   const days = await readFailureDays(
     db,
     workspaceId,
-    failures.flatMap((row) =>
-      row.workflow_id === null ? [] : [row.workflow_id],
-    ),
+    failures.map((row) => row.workflow_id),
   );
-  return rows.map((row) => {
+  return rows.map((row): WorkspaceInboxThread => {
     const common = {
       id: row.id,
-      noticeKind: row.notice_kind,
       occurrenceCount: Number(row.occurrence_count),
       firstOccurredAt: row.first_occurred_at,
       latestOccurredAt: row.latest_occurred_at,
       revision: row.revision,
       unread: row.unread,
     };
-    return workspaceInboxThreadSchema.parse(
-      row.notice_kind === 'workflow_failure'
-        ? {
-            ...common,
-            workflowId: row.workflow_id,
-            workflowName: row.workflow_name,
-            kind: row.latest_kind,
-            latestRunId: row.latest_run_id,
-            latestFailedStep: steps.get(row.latest_run_id ?? '') ?? null,
-            failureDays: days.get(row.workflow_id ?? '') ?? [],
-          }
-        : {
-            ...common,
-            subjectId: row.subject_id,
-            ...(row.notice_kind === 'workflow_mention'
-              ? { threadId: row.comment_thread_id, commentId: row.comment_id }
-              : {}),
-            workflowId: row.workflow_id,
-            details:
-              row.notice_kind === 'approval_waiting'
-                ? (row.task_details ?? {})
-                : {},
-            name:
-              row.workflow_name ?? row.connection_name ?? row.workspace_name,
-            limits:
-              row.notice_kind === 'limit_approaching'
-                ? [row.capacity_limit]
-                : row.notice_kind === 'limit_reached'
-                  ? (row.source_revision?.split(',') ?? [])
-                  : [],
-          },
-    );
+    if (row.notice_kind === 'workflow_failure')
+      return {
+        ...common,
+        noticeKind: row.notice_kind,
+        workflowId: row.workflow_id,
+        workflowName: row.workflow_name,
+        kind: row.latest_kind,
+        latestRunId: row.latest_run_id,
+        latestFailedStep: steps.get(row.latest_run_id) ?? null,
+        failureDays: [...(days.get(row.workflow_id) ?? [])],
+      };
+    const attention = {
+      ...common,
+      subjectId: row.subject_id,
+      name: row.workflow_name ?? row.connection_name ?? row.workspace_name,
+    };
+    if (row.notice_kind === 'workflow_mention')
+      return {
+        ...attention,
+        noticeKind: row.notice_kind,
+        workflowId: row.workflow_id,
+        threadId: row.comment_thread_id,
+        commentId: row.comment_id,
+        details: {},
+        limits: [],
+      };
+    let limits: WorkspaceCapacityLimit[] = [];
+    if (row.notice_kind === 'limit_approaching') limits = [row.capacity_limit];
+    if (row.notice_kind === 'limit_reached') limits = row.capacity_limits ?? [];
+    return {
+      ...attention,
+      noticeKind: row.notice_kind,
+      workflowId: row.workflow_id,
+      details:
+        row.notice_kind === 'approval_waiting' ? (row.task_details ?? {}) : {},
+      limits,
+    };
   });
 }

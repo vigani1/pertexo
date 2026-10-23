@@ -1,7 +1,8 @@
+import { FEDERATION_LIMITS } from '@pertexo/workflow-model';
 import type { DelegatedRole } from '@pertexo/workflow-model';
 import { projectDirectoryMemberships } from '../provisioning/projection.js';
 import type { Pool, PoolClient } from 'pg';
-import { FEDERATION_LIMITS, type FederationSettings } from '@pertexo/contracts';
+import type { FederationSettings } from '@pertexo/contracts';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
 import {
   FederationConflictError,

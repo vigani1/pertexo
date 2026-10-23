@@ -1,3 +1,4 @@
+import type { WorkspaceVariableValues } from '@pertexo/workflow-model';
 import { sql } from 'drizzle-orm';
 import {
   check,
@@ -16,8 +17,9 @@ export const workspaceVariableSetRevisions = appSchema.table(
   {
     workspaceId: uuid('workspace_id').notNull(),
     revision: integer('revision').notNull(),
-    values: jsonb('values_json').notNull(),
+    values: jsonb('values_json').$type<WorkspaceVariableValues>().notNull(),
     descriptions: jsonb('descriptions_json')
+      .$type<Readonly<Record<string, string>>>()
       .notNull()
       .default(sql`'{}'::jsonb`),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })

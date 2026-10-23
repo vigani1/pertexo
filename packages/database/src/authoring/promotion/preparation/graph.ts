@@ -1,3 +1,4 @@
+import { PROMOTION_LIMITS } from '@pertexo/workflow-model';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { createHash } from 'node:crypto';
 import {
@@ -5,7 +6,7 @@ import {
   type WorkflowGraph,
   type WorkflowNode,
 } from '@pertexo/workflow-model';
-import { PROMOTION_LIMITS } from '@pertexo/contracts';
+
 import { WorkflowPromotionError } from '../contract.js';
 
 export function promotionDigest(value: unknown): string {

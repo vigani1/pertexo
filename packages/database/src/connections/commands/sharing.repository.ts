@@ -1,5 +1,5 @@
 import type { Pool, PoolClient } from 'pg';
-import { connectionSharingResponseSchema } from '@pertexo/contracts';
+
 import type {
   ConnectionSharing,
   ConnectionSharingRequest,
@@ -120,13 +120,13 @@ export function createConnectionSharingPersistence(
           'connection.sharing',
           `${actor.actorId}:${connectionId}`,
         );
-        const replay = await claimCommand(client, {
+        const replay = await claimCommand<ConnectionSharing>(client, {
           ...command,
           resourceId: connectionId,
         });
         if (replay !== null)
           return {
-            ...connectionSharingResponseSchema.parse(replay),
+            ...replay,
             replayed: true,
           };
         if (current.revision !== request.expectedSharingRevision)

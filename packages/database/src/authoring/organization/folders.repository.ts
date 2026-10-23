@@ -8,13 +8,12 @@ import type {
   SharingPrincipalsQuery,
   SharingPrincipals,
 } from '@pertexo/contracts';
-import {
-  audienceReviewSchema,
-  type AudienceReview,
-  type FolderSharing,
-  type FolderSharingRequest,
-  type WorkflowMoveReviewRequest,
-  type WorkflowMoveReview,
+import type {
+  AudienceReview,
+  FolderSharing,
+  FolderSharingRequest,
+  WorkflowMoveReviewRequest,
+  WorkflowMoveReview,
 } from '@pertexo/contracts';
 import { readFolderSharing, replaceFolderSharing } from './sharing/grants.js';
 import {
@@ -453,7 +452,7 @@ export function createWorkflowFolderDatabase(
         ...(input.audienceReview === undefined
           ? {}
           : {
-              audienceReview: audienceReviewSchema.parse(input.audienceReview),
+              audienceReview: input.audienceReview,
             }),
         expectedFolderRevision: revision.parse(input.expectedFolderRevision),
       };
@@ -574,7 +573,7 @@ export function createWorkflowFolderDatabase(
         ...(input.audienceReview === undefined
           ? {}
           : {
-              audienceReview: audienceReviewSchema.parse(input.audienceReview),
+              audienceReview: input.audienceReview,
             }),
         expectedOrganizationRevision: revision.parse(
           input.expectedOrganizationRevision,

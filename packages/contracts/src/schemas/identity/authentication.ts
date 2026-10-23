@@ -1,3 +1,4 @@
+import { AUTHENTICATION_PROVIDERS } from '@pertexo/workflow-model';
 import { ACCOUNT_SIGN_IN_METHOD_LIMIT } from '@pertexo/workflow-model';
 export { ACCOUNT_SIGN_IN_METHOD_LIMIT };
 import { authorizationStartedSchema } from './federation/authorization.js';
@@ -20,12 +21,7 @@ export const authenticationReturnPathSchema = z
   .refine((path) =>
     AUTHENTICATION_RETURN_PATHS.some((pattern) => pattern.test(path)),
   );
-export const authenticationProviderSchema = z.enum([
-  'google',
-  'microsoft',
-  'github',
-  'apple',
-]);
+export const authenticationProviderSchema = z.enum(AUTHENTICATION_PROVIDERS);
 export const authenticationCapabilitiesResponseSchema = z
   .object({
     password: z

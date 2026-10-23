@@ -1,3 +1,4 @@
+import type { WorkspaceVariableValues } from '@pertexo/workflow-model';
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
@@ -5,7 +6,7 @@ import {
   canonicalJson,
   WORKSPACE_VARIABLE_LIMITS,
 } from '@pertexo/workflow-model';
-import { workspaceVariablesResponseSchema } from '@pertexo/contracts';
+
 import { claimCommand, completeCommand } from '../platform/idempotency.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
 import {
@@ -51,18 +52,20 @@ export async function replaceWorkspaceVariables(
       ? undefined
       : (
           await client.query<{
-            values_json: unknown;
-            descriptions_json: unknown;
+            values_json: WorkspaceVariableValues;
+            descriptions_json: Readonly<Record<string, string>>;
           }>(
             'select values_json,descriptions_json from app.workspace_variable_set_revisions where workspace_id=$1 and revision=$2',
             [input.workspaceId, row.revision],
           )
         ).rows[0];
-  const current = workspaceVariablesResponseSchema.parse({
+  if (row !== undefined && stored === undefined)
+    throw new Error('Workspace variable revision is missing');
+  const current = {
     revision: row?.revision ?? 0,
-    values: row === undefined ? {} : stored?.values_json,
-    descriptions: row === undefined ? {} : stored?.descriptions_json,
-  });
+    values: stored?.values_json ?? {},
+    descriptions: stored?.descriptions_json ?? {},
+  };
   if (current.revision !== input.expectedRevision)
     throw new WorkspaceVariablesConflictError();
   // An update without metadata keeps descriptions for the names it retains.

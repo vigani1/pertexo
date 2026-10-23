@@ -8,11 +8,10 @@ import {
 import type { FolderScope } from '../../tenant-access/resources/contract.js';
 import type { PoolClient } from 'pg';
 import { isWorkflowErrorTarget } from '@pertexo/workflow-model';
-import {
-  workflowErrorSettingsSchema,
-  type WorkflowErrorSettings,
-  type WorkflowErrorSettingsRequest,
-  type WorkflowErrorTargetsPage,
+import type {
+  WorkflowErrorSettings,
+  WorkflowErrorSettingsRequest,
+  WorkflowErrorTargetsPage,
 } from '@pertexo/contracts';
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
@@ -248,14 +247,14 @@ export function createWorkflowErrorStore(
             targetWorkflowId: input.targetWorkflowId,
             expectedRevision: input.expectedRevision,
           };
-          const replay = await claimCommand(client, {
+          const replay = await claimCommand<WorkflowErrorSettings>(client, {
             ...identity,
             request,
             resourceId: input.workflowId,
           });
           if (replay !== null)
             return {
-              settings: workflowErrorSettingsSchema.parse(replay),
+              settings: replay,
               replayed: true,
             };
           const policy = await readPolicy(

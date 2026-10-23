@@ -48,11 +48,17 @@ export type PreviewWorkflowImportInput = Readonly<{
   actorId: string;
   manifest: WorkflowPortableManifest;
   bindings: readonly PortableConnectionBinding[];
-  templateOrigin?: WorkflowTemplateOriginRequest;
   requestId?: string;
   traceId?: string;
   signal?: AbortSignal;
-}>;
+}> &
+  TemplateVerification;
+type TemplateVerification =
+  | Readonly<{ templateOrigin?: undefined; templateIssues?: never }>
+  | Readonly<{
+      templateOrigin: WorkflowTemplateOriginRequest;
+      templateIssues: readonly PortableIssue[];
+    }>;
 export type PreviewWorkflowImportResult = Readonly<{
   manifestDigest: string;
   compatibilityFingerprint: string;

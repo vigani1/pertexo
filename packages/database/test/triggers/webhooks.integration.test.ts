@@ -1,3 +1,4 @@
+import { webhookRunInput } from '@pertexo/nodes-core';
 import { createTriggerEventScanner } from '../../src/triggers/coordination/scanner.js';
 import { createHash, randomUUID } from 'node:crypto';
 import type { WebhookRequest } from '@pertexo/nodes-core';
@@ -1102,7 +1103,10 @@ describe('generic webhook database seam', () => {
         verification,
         verifiedSecretVersionId: verification.currentSecret.id,
         requestFingerprint: hash('archived-webhook-admission'),
-        request: post({ archived: true }),
+        runInput: webhookRunInput(
+          verification.runInputMode,
+          post({ archived: true }),
+        ),
         bodyBytes: 64,
         checkpointFactory,
       }),
@@ -1655,7 +1659,10 @@ describe('generic webhook database seam', () => {
       verifiedSecretVersionId: verification.currentSecret.id,
       requestFingerprint: hash('skip-payload'),
       idempotencyKeyHash: hash('skip-first'),
-      request: post({ private: 'not in skip metadata' }),
+      runInput: webhookRunInput(
+        verification.runInputMode,
+        post({ private: 'not in skip metadata' }),
+      ),
       bodyBytes: 64,
       checkpointFactory,
     };
@@ -1737,7 +1744,7 @@ describe('generic webhook database seam', () => {
       verifiedSecretVersionId: verification.currentSecret.id,
       requestFingerprint: hash('response-policy'),
       idempotencyKeyHash: hash(randomUUID()),
-      request: post({}),
+      runInput: webhookRunInput(verification.runInputMode, post({})),
       bodyBytes: 2,
       checkpointFactory,
     };
@@ -1781,7 +1788,10 @@ describe('generic webhook database seam', () => {
       verifiedSecretVersionId: verification.currentSecret.id,
       requestFingerprint: hash('payload-one'),
       idempotencyKeyHash: hash('sender-key'),
-      request: post({ event: 'one' }),
+      runInput: webhookRunInput(
+        verification.runInputMode,
+        post({ event: 'one' }),
+      ),
       bodyBytes: 64,
       checkpointFactory,
     } as const;
@@ -1843,7 +1853,10 @@ describe('generic webhook database seam', () => {
       verifiedSecretVersionId: verification.currentSecret.id,
       requestFingerprint: hash('before-pause'),
       idempotencyKeyHash: hash('before-pause-key'),
-      request: post({ event: 'before-pause' }),
+      runInput: webhookRunInput(
+        verification.runInputMode,
+        post({ event: 'before-pause' }),
+      ),
       bodyBytes: 64,
       checkpointFactory,
     } as const;
@@ -1868,7 +1881,7 @@ describe('generic webhook database seam', () => {
         ...input,
         requestFingerprint: hash('during-pause'),
         idempotencyKeyHash: hash('during-pause-key'),
-        request: post({ event: 'during-pause' }),
+        runInput: { event: 'during-pause' },
       }),
     ).rejects.toBeInstanceOf(WebhookWorkflowPausedError);
     const runs = await ownerQuery<{ count: number }>(
@@ -1911,7 +1924,7 @@ describe('generic webhook database seam', () => {
         ...input,
         requestFingerprint: hash('after-resume'),
         idempotencyKeyHash: hash('after-resume-key'),
-        request: post({ event: 'after-resume' }),
+        runInput: { event: 'after-resume' },
       }),
     ).resolves.toMatchObject({ replayed: false });
     const resumedClaim = await workerQuery<{
@@ -1986,7 +1999,7 @@ describe('generic webhook database seam', () => {
         ...input,
         requestFingerprint: hash('still-disabled'),
         idempotencyKeyHash: hash('still-disabled-key'),
-        request: post({ event: 'still-disabled' }),
+        runInput: { event: 'still-disabled' },
       }),
     ).rejects.toBeInstanceOf(WebhookDeliveryIneligibleError);
   });
@@ -2010,7 +2023,10 @@ describe('generic webhook database seam', () => {
         verifiedSecretVersionId: verification.currentSecret.id,
         requestFingerprint: hash(randomUUID()),
         idempotencyKeyHash: hash(randomUUID()),
-        request: post({ orderId: 'order-42', amount: 19 }),
+        runInput: webhookRunInput(
+          verification.runInputMode,
+          post({ orderId: 'order-42', amount: 19 }),
+        ),
         bodyBytes: 34,
         checkpointFactory,
       };
@@ -2092,7 +2108,10 @@ describe('generic webhook database seam', () => {
         ...(dedupeKind === 'keyed'
           ? { idempotencyKeyHash: dedupeKeyHash }
           : {}),
-        request: post({ dedupeKind }),
+        runInput: webhookRunInput(
+          verification.runInputMode,
+          post({ dedupeKind }),
+        ),
         bodyBytes: 64,
         checkpointFactory,
       } as const;
@@ -2166,7 +2185,10 @@ describe('generic webhook database seam', () => {
         verification,
         verifiedSecretVersionId: verification.currentSecret.id,
         requestFingerprint: hash('post-replay-rollback'),
-        request: post({ event: 'post-replay-rollback' }),
+        runInput: webhookRunInput(
+          verification.runInputMode,
+          post({ event: 'post-replay-rollback' }),
+        ),
         bodyBytes: 64,
         checkpointFactory: () => {
           throw failure;
@@ -2206,7 +2228,10 @@ describe('generic webhook database seam', () => {
         verification,
         verifiedSecretVersionId: verification.currentSecret.id,
         requestFingerprint: hash('graph-disabled-ingress'),
-        request: post({ event: 'graph-disabled-ingress' }),
+        runInput: webhookRunInput(
+          verification.runInputMode,
+          post({ event: 'graph-disabled-ingress' }),
+        ),
         bodyBytes: 64,
         checkpointFactory,
       }),
@@ -2238,7 +2263,7 @@ describe('generic webhook database seam', () => {
       verifiedSecretVersionId: verification.currentSecret.id,
       requestFingerprint: hash('auth-before'),
       idempotencyKeyHash: hash('auth-before'),
-      request: post({}),
+      runInput: webhookRunInput(verification.runInputMode, post({})),
       bodyBytes: 2,
       checkpointFactory,
     };
@@ -2358,7 +2383,10 @@ describe('generic webhook database seam', () => {
       verifiedSecretVersionId: oldVerification.currentSecret.id,
       requestFingerprint: hash('accepted-before-rotation'),
       idempotencyKeyHash: hash('accepted-before-rotation-key'),
-      request: post({ event: 'accepted-before-rotation' }),
+      runInput: webhookRunInput(
+        oldVerification.runInputMode,
+        post({ event: 'accepted-before-rotation' }),
+      ),
       bodyBytes: 64,
       checkpointFactory,
     } as const;
@@ -2389,7 +2417,10 @@ describe('generic webhook database seam', () => {
         verification: oldVerification,
         verifiedSecretVersionId: oldVerification.currentSecret.id,
         requestFingerprint: hash('rotation-race'),
-        request: post({ event: 'rotation-race' }),
+        runInput: webhookRunInput(
+          oldVerification.runInputMode,
+          post({ event: 'rotation-race' }),
+        ),
         bodyBytes: 64,
         checkpointFactory,
       }),
@@ -2454,7 +2485,10 @@ describe('generic webhook database seam', () => {
         verification: after,
         verifiedSecretVersionId: after.previousSecret.id,
         requestFingerprint: hash('previous-secret-before-expiry'),
-        request: post({ event: 'previous-secret-before-expiry' }),
+        runInput: webhookRunInput(
+          after.runInputMode,
+          post({ event: 'previous-secret-before-expiry' }),
+        ),
         bodyBytes: 64,
         checkpointFactory,
       }),
@@ -2487,7 +2521,10 @@ describe('generic webhook database seam', () => {
         verification: expiredReference,
         verifiedSecretVersionId: after.previousSecret.id,
         requestFingerprint: hash('previous-secret-after-expiry'),
-        request: post({ event: 'previous-secret-after-expiry' }),
+        runInput: webhookRunInput(
+          expiredReference.runInputMode,
+          post({ event: 'previous-secret-after-expiry' }),
+        ),
         bodyBytes: 64,
         checkpointFactory,
       }),
@@ -2505,7 +2542,10 @@ describe('generic webhook database seam', () => {
       verifiedSecretVersionId: verification.currentSecret.id,
       requestFingerprint: hash('rollback-payload'),
       idempotencyKeyHash: hash('rollback-key'),
-      request: post({ event: 'rollback' }),
+      runInput: webhookRunInput(
+        verification.runInputMode,
+        post({ event: 'rollback' }),
+      ),
       bodyBytes: 64,
       checkpointFactory,
     } as const;
@@ -2528,7 +2568,10 @@ describe('generic webhook database seam', () => {
       verifiedSecretVersionId: verification.currentSecret.id,
       requestFingerprint: hash('delivery-log-payload'),
       idempotencyKeyHash: hash('delivery-log-key'),
-      request: post({ event: 'delivery-log' }),
+      runInput: webhookRunInput(
+        verification.runInputMode,
+        post({ event: 'delivery-log' }),
+      ),
       bodyBytes: 321,
       checkpointFactory,
     } as const;
@@ -2701,12 +2744,12 @@ describe('generic webhook database seam', () => {
         verification,
         verifiedSecretVersionId: verification.currentSecret.id,
         requestFingerprint: hash(randomUUID()),
-        request: {
+        runInput: webhookRunInput(verification.runInputMode, {
           method: 'POST',
           body: { orderId: 'A-1' },
           query: { source: 'shop' },
           headers: { 'x-shop-event': 'order.paid' },
-        },
+        }),
         bodyBytes: 17,
         checkpointFactory,
       });
@@ -2755,7 +2798,10 @@ describe('generic webhook database seam', () => {
         verifiedSecretVersionId: verification.currentSecret.id,
         requestFingerprint: hash(randomUUID()),
         idempotencyKeyHash: hash(randomUUID()),
-        request: post({ orderId: 'order-42' }),
+        runInput: webhookRunInput(
+          verification.runInputMode,
+          post({ orderId: 'order-42' }),
+        ),
         bodyBytes: 22,
         checkpointFactory,
       };
@@ -2809,7 +2855,10 @@ describe('generic webhook database seam', () => {
         verifiedSecretVersionId: verification.currentSecret.id,
         requestFingerprint: hash(randomUUID()),
         idempotencyKeyHash: hash(randomUUID()),
-        request: post({ orderId: 'order-42' }),
+        runInput: webhookRunInput(
+          verification.runInputMode,
+          post({ orderId: 'order-42' }),
+        ),
         bodyBytes: 22,
         checkpointFactory,
       };

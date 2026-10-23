@@ -1,3 +1,4 @@
+import { webhookRunInput } from '@pertexo/nodes-core';
 import {
   headerPresent,
   singleHeader,
@@ -374,7 +375,12 @@ async function acceptWebhook(
   };
   if (testEvent) {
     try {
-      if (await dependencies.testEvents?.capture(verification, requestData)) {
+      if (
+        await dependencies.testEvents?.capture(
+          verification,
+          webhookRunInput(verification.runInputMode, requestData),
+        )
+      ) {
         await reply
           .header('cache-control', 'no-store')
           .code(202)
@@ -418,7 +424,7 @@ async function acceptWebhook(
       ...(idempotency === undefined
         ? {}
         : { idempotencyKeyHash: sha256(idempotency) }),
-      request: requestData,
+      runInput: webhookRunInput(productionReference.runInputMode, requestData),
       signal: encryptionSignal,
       checkpointFactory: dependencies.checkpointFactory,
       ...(traceparent === undefined ? {} : { traceparent }),

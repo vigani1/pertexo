@@ -1,9 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
-import {
-  governanceSettingsSchema,
-  type GovernanceSettings,
-} from '@pertexo/contracts';
+import type { GovernanceSettings } from '@pertexo/contracts';
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 import { appendAuditFact } from '../audit/append.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
@@ -43,7 +40,7 @@ export async function configureGovernance(
     operation: 'workspace.governance.configure',
     idempotencyKey: input.idempotencyKey,
   };
-  const replay = await claimCommand(client, {
+  const replay = await claimCommand<GovernanceSettings>(client, {
     ...identity,
     resourceId: input.workspaceId,
     requestHash: createHash('sha256')
@@ -52,7 +49,7 @@ export async function configureGovernance(
       )
       .digest('hex'),
   });
-  if (replay !== null) return governanceSettingsSchema.parse(replay);
+  if (replay !== null) return replay;
   const previous = await readGovernanceSettings(client, input.workspaceId);
   if (
     previous.revision === input.expectedRevision &&

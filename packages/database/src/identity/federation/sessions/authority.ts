@@ -1,5 +1,5 @@
 import { directorySessionAllowed } from '../provisioning/session.js';
-import { authenticationProviderSchema } from '@pertexo/contracts';
+import { AUTHENTICATION_PROVIDERS } from '@pertexo/workflow-model';
 import type { Pool, PoolClient } from 'pg';
 import { appendAuditFact } from '../../../governance/audit/append.js';
 import {
@@ -193,9 +193,7 @@ export async function readIdentityEmailChangeEligibility(
     )
   ).rows;
   const isSocial = (providerId: string) =>
-    authenticationProviderSchema.options.some(
-      (provider) => provider === providerId,
-    );
+    AUTHENTICATION_PROVIDERS.some((provider) => provider === providerId);
   const organizationOnly =
     methods.some(
       (method) =>

@@ -149,7 +149,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['packages/database/**/*.ts'],
+    files: ['packages/database/src/**/*.ts'],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -162,6 +162,12 @@ export default tseslint.config(
             },
           ],
           patterns: [
+            {
+              group: ['@pertexo/contracts', '@pertexo/contracts/*'],
+              allowTypeImports: true,
+              message:
+                'Storage may use transport read-model types, never runtime schemas or rules. Import domain rules from their owner.',
+            },
             {
               group: [
                 '**/apps/**',

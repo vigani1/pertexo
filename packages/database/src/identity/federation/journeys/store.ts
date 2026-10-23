@@ -1,9 +1,7 @@
+import { FEDERATION_LIMITS } from '@pertexo/workflow-model';
 import { FEDERATION_WORKSPACE_STATUSES } from '../sessions/policy.js';
 import type { Pool } from 'pg';
-import {
-  FEDERATION_LIMITS,
-  type FederationDiscovery,
-} from '@pertexo/contracts';
+import type { FederationDiscovery } from '@pertexo/contracts';
 import { withPlatformTransaction } from '../../../tenant-access/transactions.js';
 import {
   lockFederationWorkspace,
