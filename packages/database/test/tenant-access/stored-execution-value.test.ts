@@ -51,6 +51,14 @@ function seededJsonCases(seed: number, count: number): unknown[] {
 }
 
 describe('StoredExecutionValue', () => {
+  registerPreservesFormatLikeFieldNames();
+
+  registerSerializesTrustedDataWithoutInherited();
+
+  registerRoundTripsArtifactReferenceRejects();
+});
+
+function registerPreservesFormatLikeFieldNames(): void {
   it('preserves format-like field names in user JSON', () => {
     const value = {
       schemaVersion: 17,
@@ -63,6 +71,7 @@ describe('StoredExecutionValue', () => {
       parseStoredExecutionValue(serializeStoredExecutionValue(stored)),
     ).toEqual(stored);
   });
+
   it('round-trips inline JSON at the exact encoded-value byte limit', () => {
     const value = 'x'.repeat(STORED_EXECUTION_VALUE_LIMITS.inlineBytes - 2);
     const stored = parseStoredExecutionValue({
@@ -253,7 +262,9 @@ describe('StoredExecutionValue', () => {
       '{"kind":"inline","value":0}',
     );
   });
+}
 
+function registerSerializesTrustedDataWithoutInherited(): void {
   it('serializes trusted data without inherited toJSON hooks', () => {
     const objectDescriptor = Object.getOwnPropertyDescriptor(
       Object.prototype,
@@ -452,7 +463,9 @@ describe('StoredExecutionValue', () => {
       ).toBe(`{"kind":"inline","value":${canonicalJsonOracle(value)}}`);
     }
   });
+}
 
+function registerRoundTripsArtifactReferenceRejects(): void {
   it('round-trips an artifact reference and rejects malformed envelopes', () => {
     const artifactId = randomUUID();
     expect(
@@ -496,4 +509,4 @@ describe('StoredExecutionValue', () => {
       StoredExecutionValueInvalidError,
     );
   });
-});
+}

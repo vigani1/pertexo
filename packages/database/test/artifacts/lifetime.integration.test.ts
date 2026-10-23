@@ -172,6 +172,14 @@ async function addVersion(
 }
 const shapes = ['literal', 'multipart'] as const;
 describe.each(shapes)('artifact lifetime and cleanup (%s)', (shape) => {
+  registerKeepsFileSOwnerExists(shape);
+
+  registerKeepsPreviewOutputReadableLive(shape);
+});
+
+function registerKeepsFileSOwnerExists(
+  shape: Parameters<typeof fixture>[0],
+): void {
   it.each(['draft', 'version', 'input-case'] as const)(
     'keeps a file while its %s owner exists, then erases it after reference release',
     async (kind) => {
@@ -236,6 +244,7 @@ describe.each(shapes)('artifact lifetime and cleanup (%s)', (shape) => {
       }
     },
   );
+
   it('lets an accepted writer win without exposing its file to concurrent deletion', async () => {
     const state = await fixture(shape);
     const held = gate();
@@ -273,6 +282,7 @@ describe.each(shapes)('artifact lifetime and cleanup (%s)', (shape) => {
       await state.close();
     }
   });
+
   it('refuses a new owner after cleanup wins, including while physical deletion is pending', async () => {
     const state = await fixture(shape);
     const deleting = gate();
@@ -309,6 +319,7 @@ describe.each(shapes)('artifact lifetime and cleanup (%s)', (shape) => {
       await state.close();
     }
   });
+
   it('rejects unavailable identity and tampered metadata', async () => {
     const state = await fixture(shape);
     try {
@@ -327,6 +338,11 @@ describe.each(shapes)('artifact lifetime and cleanup (%s)', (shape) => {
       await state.close();
     }
   });
+}
+
+function registerKeepsPreviewOutputReadableLive(
+  shape: Parameters<typeof fixture>[0],
+): void {
   it('keeps preview output readable only in a live preview context and refuses durable promotion', async () => {
     const state = await fixture(shape);
     const previewRunId = randomUUID();
@@ -399,6 +415,7 @@ describe.each(shapes)('artifact lifetime and cleanup (%s)', (shape) => {
       await state.close();
     }
   });
+
   it('refuses an existing artifact in a different active workspace', async () => {
     const state = await fixture(shape);
     const foreignWorkspaceId = randomUUID();
@@ -430,4 +447,4 @@ describe.each(shapes)('artifact lifetime and cleanup (%s)', (shape) => {
       await state.close();
     }
   });
-});
+}

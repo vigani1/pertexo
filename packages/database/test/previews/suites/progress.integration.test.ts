@@ -230,8 +230,7 @@ function registerFreezesCasesSharesOneSource(): void {
     ).toBe('{"amount":2}');
     await complete(runId(next, 1), { amount: 2 });
     await due(accepted.suiteId);
-    await scanner.close();
-    scanner = await createWorkflowTestSuiteScanner(config(), maintenance());
+    await restartSuiteScanner();
     await scanner.scan(25);
     expect(
       await database.workflowTestSuites.get({ ...f.scope, ...accepted }),
@@ -906,4 +905,9 @@ function afterAllFixture2() {
     scanner.close(),
     reader.close(),
   ]);
+}
+
+async function restartSuiteScanner(): Promise<void> {
+  await scanner.close();
+  scanner = await createWorkflowTestSuiteScanner(config(), maintenance());
 }

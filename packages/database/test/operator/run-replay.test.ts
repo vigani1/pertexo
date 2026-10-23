@@ -190,13 +190,23 @@ function reconciliationWith(
 }
 
 describe('operator run replay validation', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mocks.close.mockResolvedValue(undefined);
-    mocks.parsePublishedWorkflowRow.mockReturnValue({ workflowId });
-    mocks.acceptWorkflowRun.mockResolvedValue({ runId: randomUUID() });
-  });
+  beforeEach(beforeEachFixture1);
+  registerValidatesAbortSignalPublicInputBefore();
+});
 
+describe('unknown-outcome reconciliation validation', () => {
+  beforeEach(beforeEachFixture2);
+  registerProcessesExactEvidenceDeliveryIdentity();
+});
+
+function beforeEachFixture1() {
+  vi.clearAllMocks();
+  mocks.close.mockResolvedValue(undefined);
+  mocks.parsePublishedWorkflowRow.mockReturnValue({ workflowId });
+  mocks.acceptWorkflowRun.mockResolvedValue({ runId: randomUUID() });
+}
+
+function registerValidatesAbortSignalPublicInputBefore(): void {
   it('validates the AbortSignal public input before entering the inbox transaction', async () => {
     const fixture = storeWith();
     await expect(
@@ -338,14 +348,14 @@ describe('operator run replay validation', () => {
     expect(fixture.execute).not.toHaveBeenCalled();
     expect(mocks.acceptWorkflowRun).not.toHaveBeenCalled();
   });
-});
+}
 
-describe('unknown-outcome reconciliation validation', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mocks.close.mockResolvedValue(undefined);
-  });
+function beforeEachFixture2() {
+  vi.clearAllMocks();
+  mocks.close.mockResolvedValue(undefined);
+}
 
+function registerProcessesExactEvidenceDeliveryIdentity(): void {
   it('processes exact evidence delivery identity and validates its public signal', async () => {
     const fixture = reconciliationWith();
     await expect(
@@ -412,4 +422,4 @@ describe('unknown-outcome reconciliation validation', () => {
     ).resolves.toEqual({ kind: 'duplicate' });
     expect(fixture.execute).not.toHaveBeenCalled();
   });
-});
+}
