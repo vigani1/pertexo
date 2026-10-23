@@ -63,8 +63,8 @@ describe('email.send_notification@1', () => {
     });
   });
   it.each(providerCredentialFailureCases)(
-    'preserves %s without sending provider bytes',
-    async (_name, stage, error, kind, errorKind) => {
+    'preserves $name without sending provider bytes',
+    async ({ stage, error, kind, errorKind }) => {
       const state = runtime({
         kind: 'succeeded',
         emailId: '49b9a1e5-3f0c-4e68-882d-fbc91c0d4ec2',

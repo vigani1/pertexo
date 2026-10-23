@@ -89,60 +89,90 @@ describe('Slack conversations.info channel lookup (ADR 046)', () => {
   const invalid = { kind: 'invalid_response' } as const;
 
   it.each<
-    readonly [string, number, string, Readonly<Record<string, string>>, unknown]
+    Readonly<{
+      label: string;
+      status: number;
+      payload: string;
+      headers: Readonly<Record<string, string>>;
+      expected: unknown;
+    }>
   >([
-    [
-      'missing scope',
-      200,
-      '{"ok":false,"error":"missing_scope"}',
-      {},
-      { kind: 'rejected', error: 'missing_scope' },
-    ],
-    [
-      'unknown channel',
-      200,
-      '{"ok":false,"error":"channel_not_found"}',
-      {},
-      { kind: 'rejected', error: 'channel_not_found' },
-    ],
-    ['a failure without a reason', 200, '{"ok":false}', {}, invalid],
-    ['success without a channel', 200, '{"ok":true}', {}, invalid],
-    [
-      'another channel',
-      200,
-      '{"ok":true,"channel":{"id":"C9999","name":"elsewhere"}}',
-      {},
-      invalid,
-    ],
-    [
-      'an unbounded name',
-      200,
-      JSON.stringify({
+    {
+      label: 'missing scope',
+      status: 200,
+      payload: '{"ok":false,"error":"missing_scope"}',
+      headers: {},
+      expected: { kind: 'rejected', error: 'missing_scope' },
+    },
+    {
+      label: 'unknown channel',
+      status: 200,
+      payload: '{"ok":false,"error":"channel_not_found"}',
+      headers: {},
+      expected: { kind: 'rejected', error: 'channel_not_found' },
+    },
+    {
+      label: 'a failure without a reason',
+      status: 200,
+      payload: '{"ok":false}',
+      headers: {},
+      expected: invalid,
+    },
+    {
+      label: 'success without a channel',
+      status: 200,
+      payload: '{"ok":true}',
+      headers: {},
+      expected: invalid,
+    },
+    {
+      label: 'another channel',
+      status: 200,
+      payload: '{"ok":true,"channel":{"id":"C9999","name":"elsewhere"}}',
+      headers: {},
+      expected: invalid,
+    },
+    {
+      label: 'an unbounded name',
+      status: 200,
+      payload: JSON.stringify({
         ok: true,
         channel: { id: 'C0123ABCD', name: 'x'.repeat(81) },
       }),
-      {},
-      invalid,
-    ],
-    [
-      'a name with markup',
-      200,
-      '{"ok":true,"channel":{"id":"C0123ABCD","name":"<b>ops</b>"}}',
-      {},
-      invalid,
-    ],
-    ['malformed JSON', 200, '{', {}, invalid],
-    [
-      'throttling',
-      429,
-      '{}',
-      { 'retry-after': '7' },
-      { kind: 'rate_limited', retryAfterMillis: 7_000 },
-    ],
-    ['a provider outage', 503, '{}', {}, { kind: 'http_failure', status: 503 }],
+      headers: {},
+      expected: invalid,
+    },
+    {
+      label: 'a name with markup',
+      status: 200,
+      payload: '{"ok":true,"channel":{"id":"C0123ABCD","name":"<b>ops</b>"}}',
+      headers: {},
+      expected: invalid,
+    },
+    {
+      label: 'malformed JSON',
+      status: 200,
+      payload: '{',
+      headers: {},
+      expected: invalid,
+    },
+    {
+      label: 'throttling',
+      status: 429,
+      payload: '{}',
+      headers: { 'retry-after': '7' },
+      expected: { kind: 'rate_limited', retryAfterMillis: 7_000 },
+    },
+    {
+      label: 'a provider outage',
+      status: 503,
+      payload: '{}',
+      headers: {},
+      expected: { kind: 'http_failure', status: 503 },
+    },
   ])(
-    'classifies %s without keeping provider bytes',
-    async (_label, status, payload, headers, expected) => {
+    'classifies $label without keeping provider bytes',
+    async ({ status, payload, headers, expected }) => {
       const call = lookup(status, payload, headers);
 
       await expect(call.result).resolves.toEqual(expected);

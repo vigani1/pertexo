@@ -14,30 +14,30 @@ import {
 } from '../../support/slack-execution.js';
 describe('slack.send_message@1', () => {
   it.each([
-    [
-      'account_inactive',
-      'connection.slack_account_inactive',
-      'failed',
-      'authentication',
-      false,
-    ],
-    [
-      'token_revoked',
-      'connection.slack_token_revoked',
-      'failed',
-      'authentication',
-      false,
-    ],
-    [
-      'token_expired',
-      'connection.slack_token_expired',
-      'outcome_unknown',
-      'provider',
-      true,
-    ],
+    {
+      error: 'account_inactive',
+      reasonCode: 'connection.slack_account_inactive',
+      kind: 'failed',
+      errorKind: 'authentication',
+      possiblyDispatched: false,
+    },
+    {
+      error: 'token_revoked',
+      reasonCode: 'connection.slack_token_revoked',
+      kind: 'failed',
+      errorKind: 'authentication',
+      possiblyDispatched: false,
+    },
+    {
+      error: 'token_expired',
+      reasonCode: 'connection.slack_token_expired',
+      kind: 'outcome_unknown',
+      errorKind: 'provider',
+      possiblyDispatched: true,
+    },
   ] as const)(
-    'captures %s without changing the provider outcome',
-    async (error, reasonCode, kind, errorKind, possiblyDispatched) => {
+    'captures $error without changing the provider outcome',
+    async ({ error, reasonCode, kind, errorKind, possiblyDispatched }) => {
       const state = runtime({ kind: 'rejected', error });
       await expect(
         createSlackSendMessageExecutorRegistration({

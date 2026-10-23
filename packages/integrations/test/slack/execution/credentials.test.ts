@@ -87,8 +87,8 @@ describe('slack.send_message@1', () => {
     expect(mismatched.sendMessage).not.toHaveBeenCalled();
   });
   it.each(providerCredentialFailureCases)(
-    'preserves %s without sending provider bytes',
-    async (_name, stage, error, kind, errorKind) => {
+    'preserves $name without sending provider bytes',
+    async ({ stage, error, kind, errorKind }) => {
       const state = runtime({
         kind: 'succeeded',
         channelId: 'C123ABC',
