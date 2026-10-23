@@ -130,7 +130,9 @@ describe('workflow runs real Nest HTTP stack', () => {
   registerReadsRunInputOneStepOutput();
 });
 
-let application: Awaited<ReturnType<typeof createApiApplication>> | undefined;
+const applicationFixture: {
+  application: Awaited<ReturnType<typeof createApiApplication>> | undefined;
+} = { application: undefined };
 
 async function start(
   role: Role = 'owner',
@@ -141,7 +143,7 @@ async function start(
   const baseRuntime = createStubApiWorkflowRuntime(
     identity.dependencies.authorization,
   );
-  application = await createApiApplication(config, {
+  applicationFixture.application = await createApiApplication(config, {
     database,
     identityRuntime: identity,
     workflowRuntime: {
@@ -156,13 +158,13 @@ async function start(
     rateLimitConsumer,
     telemetry,
   });
-  await application.init();
-  return { application, fixture };
+  await applicationFixture.application.init();
+  return { application: applicationFixture.application, fixture };
 }
 
 async function cleanWorkflowRunsRealNestHTTPStack() {
-  await application?.close();
-  application = undefined;
+  await applicationFixture.application?.close();
+  applicationFixture.application = undefined;
 }
 
 function registerProtectsRecoveryPreviewAcceptanceCurrentCapabilities(): void {

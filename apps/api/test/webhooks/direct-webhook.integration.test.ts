@@ -232,7 +232,7 @@ let fixtureOwner: FixtureResourceOwner | undefined;
 
 const consume = vi.fn<RedisRateLimitRuntime['consume']>();
 
-let failVerification = false;
+const verificationControl = { failVerification: false };
 
 let origin = '';
 
@@ -362,7 +362,7 @@ async function createFixture(): Promise<FixtureResourceOwner> {
       rotateSecret: (input) => webhookDatabase.rotateSecret(input),
       getHealth: (input) => webhookDatabase.getHealth(input),
       resolveVerification: async (endpointKeyHash) => {
-        if (failVerification)
+        if (verificationControl.failVerification)
           throw new Error('forced webhook verification outage');
         return webhookDatabase.resolveVerification(endpointKeyHash);
       },
@@ -1302,7 +1302,7 @@ function registerReadsResumedRunRunningThroughAuthenticated(): void {
 
   it('maps an injected verification-adapter outage without claiming a database timeout', async () => {
     const { endpointKey, originalSecret } = await seedWebhook('outage');
-    failVerification = true;
+    verificationControl.failVerification = true;
     try {
       const unavailable = await sendWebhook(
         endpointKey,
@@ -1312,7 +1312,7 @@ function registerReadsResumedRunRunningThroughAuthenticated(): void {
       );
       expectProblem(unavailable, 503, 'webhook.unavailable');
     } finally {
-      failVerification = false;
+      verificationControl.failVerification = false;
     }
   }, 60_000);
 }
