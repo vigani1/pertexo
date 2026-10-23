@@ -151,17 +151,78 @@ export function signedResponse(
     options.notBefore ?? new Date(Date.now() - 60000).toISOString(),
   );
   const expiry = options.omitExpiry ? '' : ` NotOnOrAfter="${expiresAt}"`;
-  const confirmation = options.omitConfirmation
-    ? ''
-    : `<saml:SubjectConfirmation Method="${base}:cm:bearer"><saml:SubjectConfirmationData InResponseTo="${escape(options.subjectRequestId ?? proof.requestId)}" Recipient="${escape(options.recipient ?? proof.redirectUri)}"${expiry}/></saml:SubjectConfirmation>`;
-  const conditions = options.omitConditions
-    ? ''
-    : `<saml:Conditions NotBefore="${notBefore}"${expiry}><saml:AudienceRestriction><saml:Audience>${escape(options.audience ?? proof.entityId)}</saml:Audience></saml:AudienceRestriction></saml:Conditions>`;
-  let assertion = `<saml:Assertion xmlns:saml="${assertionNamespace}" ID="_assertion" Version="2.0" IssueInstant="${issuedAt}"><saml:Issuer>${escape(options.assertionIssuer ?? provider.issuer)}</saml:Issuer><saml:Subject><saml:NameID Format="${escape(options.nameIdFormat ?? `${base}:nameid-format:persistent`)}">${escape(options.subject ?? 'immutable-person')}</saml:NameID>${confirmation}</saml:Subject>${conditions}<saml:AuthnStatement AuthnInstant="${escape(options.authnInstant ?? new Date().toISOString())}"><saml:AuthnContext><saml:AuthnContextClassRef>${base}:ac:classes:PasswordProtectedTransport</saml:AuthnContextClassRef></saml:AuthnContext></saml:AuthnStatement><saml:AttributeStatement><saml:Attribute Name="email"><saml:AttributeValue>${escape(options.email ?? 'person@example.test')}</saml:AttributeValue></saml:Attribute><saml:Attribute Name="name"><saml:AttributeValue>Example Person</saml:AttributeValue></saml:Attribute>${options.additionalAttributes ?? ''}</saml:AttributeStatement></saml:Assertion>`;
+  const confirmation = subjectConfirmation({ proof, options, expiry });
+  const conditions = assertionConditions({ proof, options, notBefore, expiry });
+  let assertion = unsignedAssertion({
+    provider,
+    options,
+    issuedAt,
+    confirmation,
+    conditions,
+  });
   if (options.signAssertion !== false)
     assertion = sign(assertion, '_assertion', material, options.sha1 ?? false);
-  let response = `<samlp:Response xmlns:samlp="${protocolNamespace}" xmlns:saml="${assertionNamespace}" ID="_response" Version="2.0" IssueInstant="${issuedAt}" Destination="${escape(options.destination ?? proof.redirectUri)}" InResponseTo="${escape(options.requestId ?? proof.requestId)}"><saml:Issuer>${escape(options.responseIssuer ?? provider.issuer)}</saml:Issuer><samlp:Status><samlp:StatusCode Value="${escape(options.status ?? `${base}:status:Success`)}"/></samlp:Status>${assertion}${options.duplicateAssertion ? assertion : ''}</samlp:Response>`;
+  let response = unsignedResponse({
+    provider,
+    proof,
+    options,
+    issuedAt,
+    assertion,
+  });
   if (options.signResponse !== false)
     response = sign(response, '_response', material, options.sha1 ?? false);
   return Buffer.from(response).toString('base64');
+}
+
+function subjectConfirmation(
+  input: Readonly<{
+    proof: SamlProof;
+    options: ResponseOptions;
+    expiry: string;
+  }>,
+): string {
+  const { proof, options, expiry } = input;
+  return options.omitConfirmation
+    ? ''
+    : `<saml:SubjectConfirmation Method="${base}:cm:bearer"><saml:SubjectConfirmationData InResponseTo="${escape(options.subjectRequestId ?? proof.requestId)}" Recipient="${escape(options.recipient ?? proof.redirectUri)}"${expiry}/></saml:SubjectConfirmation>`;
+}
+
+function assertionConditions(
+  input: Readonly<{
+    proof: SamlProof;
+    options: ResponseOptions;
+    notBefore: string;
+    expiry: string;
+  }>,
+): string {
+  const { proof, options, notBefore, expiry } = input;
+  return options.omitConditions
+    ? ''
+    : `<saml:Conditions NotBefore="${notBefore}"${expiry}><saml:AudienceRestriction><saml:Audience>${escape(options.audience ?? proof.entityId)}</saml:Audience></saml:AudienceRestriction></saml:Conditions>`;
+}
+
+function unsignedAssertion(
+  input: Readonly<{
+    provider: SamlProviderMaterial;
+    options: ResponseOptions;
+    issuedAt: string;
+    confirmation: string;
+    conditions: string;
+  }>,
+): string {
+  const { provider, options, issuedAt, confirmation, conditions } = input;
+  return `<saml:Assertion xmlns:saml="${assertionNamespace}" ID="_assertion" Version="2.0" IssueInstant="${issuedAt}"><saml:Issuer>${escape(options.assertionIssuer ?? provider.issuer)}</saml:Issuer><saml:Subject><saml:NameID Format="${escape(options.nameIdFormat ?? `${base}:nameid-format:persistent`)}">${escape(options.subject ?? 'immutable-person')}</saml:NameID>${confirmation}</saml:Subject>${conditions}<saml:AuthnStatement AuthnInstant="${escape(options.authnInstant ?? new Date().toISOString())}"><saml:AuthnContext><saml:AuthnContextClassRef>${base}:ac:classes:PasswordProtectedTransport</saml:AuthnContextClassRef></saml:AuthnContext></saml:AuthnStatement><saml:AttributeStatement><saml:Attribute Name="email"><saml:AttributeValue>${escape(options.email ?? 'person@example.test')}</saml:AttributeValue></saml:Attribute><saml:Attribute Name="name"><saml:AttributeValue>Example Person</saml:AttributeValue></saml:Attribute>${options.additionalAttributes ?? ''}</saml:AttributeStatement></saml:Assertion>`;
+}
+
+function unsignedResponse(
+  input: Readonly<{
+    provider: SamlProviderMaterial;
+    proof: SamlProof;
+    options: ResponseOptions;
+    issuedAt: string;
+    assertion: string;
+  }>,
+): string {
+  const { provider, proof, options, issuedAt, assertion } = input;
+  return `<samlp:Response xmlns:samlp="${protocolNamespace}" xmlns:saml="${assertionNamespace}" ID="_response" Version="2.0" IssueInstant="${issuedAt}" Destination="${escape(options.destination ?? proof.redirectUri)}" InResponseTo="${escape(options.requestId ?? proof.requestId)}"><saml:Issuer>${escape(options.responseIssuer ?? provider.issuer)}</saml:Issuer><samlp:Status><samlp:StatusCode Value="${escape(options.status ?? `${base}:status:Success`)}"/></samlp:Status>${assertion}${options.duplicateAssertion ? assertion : ''}</samlp:Response>`;
 }
