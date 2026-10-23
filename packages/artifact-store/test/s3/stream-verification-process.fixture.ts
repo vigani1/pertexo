@@ -14,19 +14,18 @@ const reason =
         'TimeoutError',
       )
     : new Error('transfer stopped before its reader attached');
-const body = verifiedBody(
-  upstream,
-  {
+const body = verifiedBody(upstream, {
+  metadata: {
     artifactId: '018f47a0-7b5c-7e2d-8c3f-12ad4e8b9c02',
     workspaceId: '018f47a0-7b5c-7e2d-8c3f-12ad4e8b9c01',
     byteLength: 5,
     mediaType: 'text/plain',
     sha256: createHash('sha256').update('hello').digest('hex'),
   },
-  5,
-  'stored',
-  controller.signal,
-);
+  maxObjectBytes: 5,
+  source: 'stored',
+  signal: controller.signal,
+});
 
 if (mode === 'abort') controller.abort(reason);
 else if (mode === 'upstream') upstream.destroy(reason);

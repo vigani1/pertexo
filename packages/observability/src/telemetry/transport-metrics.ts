@@ -1,4 +1,4 @@
-import { metrics, type Attributes } from '@opentelemetry/api';
+import { metrics, type Attributes, type Meter } from '@opentelemetry/api';
 import type {
   TransportLeaseEvent,
   TransportJob,
@@ -93,6 +93,118 @@ export function createTransportMetrics(
   const meter =
     options.meter ??
     metrics.getMeter('@pertexo/observability.transport', '0.0.0');
+  const {
+    outboxClaimed,
+    outboxClaimBatchSize,
+    outboxBacklog,
+    outboxOldestAge,
+    outboxPublish,
+    outboxDispatchLatency,
+    outboxLeaseEvents,
+    handlerExecutions,
+    handlerDuration,
+    activeConcurrency,
+    queueDepth,
+    queueOldestJobAge,
+    queueStalls,
+    consumerLifecycle,
+    artifactCount,
+    artifactBytes,
+    executionStorageCount,
+    executionStorageBytes,
+    workerProcessStartTime,
+  } = createTransportInstruments(meter);
+
+  return Object.freeze({
+    addActiveConcurrency(change: ActiveConcurrencyChange): void {
+      const delta: number = change.delta;
+      if (delta !== 1 && delta !== -1) {
+        throw new RangeError('delta must be exactly 1 or -1');
+      }
+      activeConcurrency.add(delta, transportAttributes(change));
+    },
+    observeArtifacts(observation: ArtifactObservation): void {
+      requireNonNegativeInteger(observation.count, 'count');
+      requireNonNegativeInteger(observation.bytes, 'bytes');
+      const attributes = { status: observation.status };
+      artifactCount.record(observation.count, attributes);
+      artifactBytes.record(observation.bytes, attributes);
+    },
+    observeExecutionStorage(observation: ExecutionStorageObservation): void {
+      requireNonNegativeInteger(observation.count, 'count');
+      requireNonNegativeInteger(observation.bytes, 'bytes');
+      const attributes = { surface: observation.surface };
+      executionStorageCount.record(observation.count, attributes);
+      executionStorageBytes.record(observation.bytes, attributes);
+    },
+    observeOutbox(observation: OutboxObservation): void {
+      requireNonNegativeInteger(observation.backlog, 'backlog');
+      if (observation.oldestAgeSeconds !== undefined) {
+        requireNonNegativeFinite(
+          observation.oldestAgeSeconds,
+          'oldestAgeSeconds',
+        );
+      }
+      outboxBacklog.record(observation.backlog);
+      if (observation.oldestAgeSeconds !== undefined) {
+        outboxOldestAge.record(observation.oldestAgeSeconds);
+      }
+    },
+    observeQueue(observation: QueueObservation): void {
+      requireNonNegativeInteger(observation.depth, 'depth');
+      requireNonNegativeFinite(
+        observation.oldestJobAgeSeconds,
+        'oldestJobAgeSeconds',
+      );
+      const attributes = { queue_name: observation.queueName };
+      queueDepth.record(observation.depth, attributes);
+      queueOldestJobAge.record(observation.oldestJobAgeSeconds, attributes);
+    },
+    recordHandlerFinished(measurement: TransportHandlerMeasurement): void {
+      requireNonNegativeFinite(measurement.durationSeconds, 'durationSeconds');
+      const attributes = outcomeAttributes(measurement);
+      handlerExecutions.add(1, attributes);
+      handlerDuration.record(measurement.durationSeconds, attributes);
+    },
+    recordConsumerLifecycle(measurement: ConsumerLifecycleMeasurement): void {
+      consumerLifecycle.add(1, {
+        event: measurement.event,
+        queue_name: measurement.queueName,
+      });
+    },
+    recordOutboxClaim(measurement: OutboxClaimMeasurement): void {
+      requireNonNegativeInteger(measurement.batchSize, 'batchSize');
+      outboxClaimed.add(measurement.batchSize);
+      outboxClaimBatchSize.record(measurement.batchSize);
+    },
+    recordOutboxLeaseEvent(event: TransportLeaseEvent, count = 1): void {
+      if (!Number.isSafeInteger(count) || count <= 0) {
+        throw new RangeError('count must be a positive safe integer');
+      }
+      outboxLeaseEvents.add(count, { event });
+    },
+    recordOutboxPublish(measurement: TransportPublishMeasurement): void {
+      outboxPublish.add(1, outcomeAttributes(measurement));
+    },
+    recordOutboxDispatchLatency(
+      measurement: OutboxDispatchLatencyMeasurement,
+    ): void {
+      requireNonNegativeFinite(measurement.durationSeconds, 'durationSeconds');
+      outboxDispatchLatency.record(measurement.durationSeconds, {
+        ...transportAttributes(measurement),
+        outcome: measurement.outcome,
+      });
+    },
+    recordQueueStall(queueName: TransportJob['queueName']): void {
+      queueStalls.add(1, { queue_name: queueName });
+    },
+    recordWorkerProcessStart(): void {
+      workerProcessStartTime.record((options.now ?? Date.now)() / 1_000);
+    },
+  });
+}
+
+function createTransportInstruments(meter: Meter) {
   const outboxClaimed = meter.createCounter(
     TRANSPORT_METRIC_NAME.outboxClaimed,
     {
@@ -215,91 +327,25 @@ export function createTransportMetrics(
     },
   );
 
-  return Object.freeze({
-    addActiveConcurrency(change: ActiveConcurrencyChange): void {
-      const delta: number = change.delta;
-      if (delta !== 1 && delta !== -1) {
-        throw new RangeError('delta must be exactly 1 or -1');
-      }
-      activeConcurrency.add(delta, transportAttributes(change));
-    },
-    observeArtifacts(observation: ArtifactObservation): void {
-      requireNonNegativeInteger(observation.count, 'count');
-      requireNonNegativeInteger(observation.bytes, 'bytes');
-      const attributes = { status: observation.status };
-      artifactCount.record(observation.count, attributes);
-      artifactBytes.record(observation.bytes, attributes);
-    },
-    observeExecutionStorage(observation: ExecutionStorageObservation): void {
-      requireNonNegativeInteger(observation.count, 'count');
-      requireNonNegativeInteger(observation.bytes, 'bytes');
-      const attributes = { surface: observation.surface };
-      executionStorageCount.record(observation.count, attributes);
-      executionStorageBytes.record(observation.bytes, attributes);
-    },
-    observeOutbox(observation: OutboxObservation): void {
-      requireNonNegativeInteger(observation.backlog, 'backlog');
-      if (observation.oldestAgeSeconds !== undefined) {
-        requireNonNegativeFinite(
-          observation.oldestAgeSeconds,
-          'oldestAgeSeconds',
-        );
-      }
-      outboxBacklog.record(observation.backlog);
-      if (observation.oldestAgeSeconds !== undefined) {
-        outboxOldestAge.record(observation.oldestAgeSeconds);
-      }
-    },
-    observeQueue(observation: QueueObservation): void {
-      requireNonNegativeInteger(observation.depth, 'depth');
-      requireNonNegativeFinite(
-        observation.oldestJobAgeSeconds,
-        'oldestJobAgeSeconds',
-      );
-      const attributes = { queue_name: observation.queueName };
-      queueDepth.record(observation.depth, attributes);
-      queueOldestJobAge.record(observation.oldestJobAgeSeconds, attributes);
-    },
-    recordHandlerFinished(measurement: TransportHandlerMeasurement): void {
-      requireNonNegativeFinite(measurement.durationSeconds, 'durationSeconds');
-      const attributes = outcomeAttributes(measurement);
-      handlerExecutions.add(1, attributes);
-      handlerDuration.record(measurement.durationSeconds, attributes);
-    },
-    recordConsumerLifecycle(measurement: ConsumerLifecycleMeasurement): void {
-      consumerLifecycle.add(1, {
-        event: measurement.event,
-        queue_name: measurement.queueName,
-      });
-    },
-    recordOutboxClaim(measurement: OutboxClaimMeasurement): void {
-      requireNonNegativeInteger(measurement.batchSize, 'batchSize');
-      outboxClaimed.add(measurement.batchSize);
-      outboxClaimBatchSize.record(measurement.batchSize);
-    },
-    recordOutboxLeaseEvent(event: TransportLeaseEvent, count = 1): void {
-      if (!Number.isSafeInteger(count) || count <= 0) {
-        throw new RangeError('count must be a positive safe integer');
-      }
-      outboxLeaseEvents.add(count, { event });
-    },
-    recordOutboxPublish(measurement: TransportPublishMeasurement): void {
-      outboxPublish.add(1, outcomeAttributes(measurement));
-    },
-    recordOutboxDispatchLatency(
-      measurement: OutboxDispatchLatencyMeasurement,
-    ): void {
-      requireNonNegativeFinite(measurement.durationSeconds, 'durationSeconds');
-      outboxDispatchLatency.record(measurement.durationSeconds, {
-        ...transportAttributes(measurement),
-        outcome: measurement.outcome,
-      });
-    },
-    recordQueueStall(queueName: TransportJob['queueName']): void {
-      queueStalls.add(1, { queue_name: queueName });
-    },
-    recordWorkerProcessStart(): void {
-      workerProcessStartTime.record((options.now ?? Date.now)() / 1_000);
-    },
-  });
+  return {
+    outboxClaimed,
+    outboxClaimBatchSize,
+    outboxBacklog,
+    outboxOldestAge,
+    outboxPublish,
+    outboxDispatchLatency,
+    outboxLeaseEvents,
+    handlerExecutions,
+    handlerDuration,
+    activeConcurrency,
+    queueDepth,
+    queueOldestJobAge,
+    queueStalls,
+    consumerLifecycle,
+    artifactCount,
+    artifactBytes,
+    executionStorageCount,
+    executionStorageBytes,
+    workerProcessStartTime,
+  };
 }

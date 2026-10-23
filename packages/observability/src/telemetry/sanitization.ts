@@ -57,14 +57,12 @@ function safeOrigin(
 }
 
 function safePort(value: unknown): string | undefined {
-  const port =
-    typeof value === 'number'
-      ? Number.isInteger(value)
-        ? String(value)
-        : undefined
-      : typeof value === 'string'
-        ? value
-        : undefined;
+  let port: string | undefined;
+  if (typeof value === 'number') {
+    port = Number.isInteger(value) ? String(value) : undefined;
+  } else if (typeof value === 'string') {
+    port = value;
+  }
 
   if (port === undefined || !/^\d{1,5}$/u.test(port)) {
     return undefined;

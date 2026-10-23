@@ -68,10 +68,17 @@ class VerifyingTransform extends Transform {
 
 export function verifiedBody(
   body: Readable,
-  metadata: ArtifactMetadata,
-  maxObjectBytes: number,
-  source: 'input' | 'stored',
-  signal?: AbortSignal,
+  {
+    metadata,
+    maxObjectBytes,
+    source,
+    signal,
+  }: Readonly<{
+    metadata: ArtifactMetadata;
+    maxObjectBytes: number;
+    source: 'input' | 'stored';
+    signal?: AbortSignal | undefined;
+  }>,
 ): Readable {
   const verifier = new VerifyingTransform(
     metadata.byteLength,

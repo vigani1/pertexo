@@ -106,6 +106,12 @@ export {
   type WorkspaceObjectPurgePage,
   type WorkspaceObjectPurgeStore,
 } from './storage/contract.js';
+const BUCKET_REGION_ALIASES = new Map([
+  ['', 'us-east-1'],
+  ['null', 'us-east-1'],
+  ['EU', 'eu-west-1'],
+]);
+
 class AwsArtifactStore
   implements
     ArtifactStore,
@@ -114,13 +120,27 @@ class AwsArtifactStore
 {
   private closed = false;
 
+  private readonly config: ArtifactStoreConfig;
+  private readonly client: S3ClientLike;
+  private readonly presignPutObject: PutObjectPresigner;
+  private readonly presignGetObject: GetObjectPresigner;
+  private readonly ownsClient: boolean;
+
   public constructor(
-    private readonly config: ArtifactStoreConfig,
-    private readonly client: S3ClientLike,
-    private readonly presignPutObject: PutObjectPresigner,
-    private readonly presignGetObject: GetObjectPresigner,
-    private readonly ownsClient: boolean,
-  ) {}
+    options: Readonly<{
+      config: ArtifactStoreConfig;
+      client: S3ClientLike;
+      presignPutObject: PutObjectPresigner;
+      presignGetObject: GetObjectPresigner;
+      ownsClient: boolean;
+    }>,
+  ) {
+    this.config = options.config;
+    this.client = options.client;
+    this.presignPutObject = options.presignPutObject;
+    this.presignGetObject = options.presignGetObject;
+    this.ownsClient = options.ownsClient;
+  }
 
   public async beginDirectUpload(
     request: BeginDirectUploadRequest,
@@ -202,11 +222,7 @@ class AwsArtifactStore
     );
     const reportedRegion: string = location.LocationConstraint ?? '';
     const actualRegion =
-      reportedRegion === '' || reportedRegion === 'null'
-        ? 'us-east-1'
-        : reportedRegion === 'EU'
-          ? 'eu-west-1'
-          : reportedRegion;
+      BUCKET_REGION_ALIASES.get(reportedRegion) ?? reportedRegion;
     if (actualRegion !== this.config.region)
       throw new ArtifactIntegrityError(
         'Artifact bucket region does not match the configured region',
@@ -284,13 +300,12 @@ class AwsArtifactStore
       throw error;
     }
     return Object.freeze({
-      body: verifiedBody(
-        output.Body,
-        expected ?? metadata,
-        this.config.maxObjectBytes,
-        'stored',
-        signal,
-      ),
+      body: verifiedBody(output.Body, {
+        metadata: expected ?? metadata,
+        maxObjectBytes: this.config.maxObjectBytes,
+        source: 'stored',
+        signal: signal,
+      }),
       metadata,
     });
   }
@@ -335,13 +350,12 @@ class AwsArtifactStore
 
     const key = artifactStorageKey(metadata);
     const signal = requestSignal(this.config.requestTimeoutMs, request.signal);
-    const body = verifiedBody(
-      request.body,
-      metadata,
-      this.config.maxObjectBytes,
-      'input',
-      signal,
-    );
+    const body = verifiedBody(request.body, {
+      metadata: metadata,
+      maxObjectBytes: this.config.maxObjectBytes,
+      source: 'input',
+      signal: signal,
+    });
     try {
       await sendS3(
         this.client,
@@ -380,45 +394,10 @@ class AwsArtifactStore
     request: PurgeWorkspaceObjectsRequest,
   ): Promise<WorkspaceObjectPurgePage> {
     this.assertOpen();
-    const input = purgeWorkspaceSchema.parse(request);
-    const prefix = workspacePrefix(input.workspaceId);
-    const signal = requestSignal(this.config.requestTimeoutMs, request.signal);
-    const listed = await sendS3(
-      this.client,
-      new ListObjectVersionsCommand({
-        Bucket: this.config.bucket,
-        MaxKeys: input.maxObjects,
-        Prefix: prefix,
-      }),
-      { abortSignal: signal },
+    return purgeWorkspaceObjects(
+      { config: this.config, client: this.client },
+      request,
     );
-    const entries = [
-      ...(listed.Versions ?? []),
-      ...(listed.DeleteMarkers ?? []),
-    ];
-    assertWorkspaceVersionListing(listed, entries, input.maxObjects);
-    if (entries.length === 0) {
-      return Object.freeze({ completed: true, deletedCount: 0 });
-    }
-    const seen = new Set<string>();
-    const objects = workspaceVersionDeleteObjects(entries, prefix, seen);
-    const deleted = await sendS3(
-      this.client,
-      new DeleteObjectsCommand({
-        Bucket: this.config.bucket,
-        Delete: { Objects: objects, Quiet: false },
-      }),
-      { abortSignal: signal },
-    );
-    const deletedCount = validateWorkspaceVersionDeletion(
-      deleted,
-      seen,
-      objects.length,
-    );
-    return Object.freeze({
-      completed: false,
-      deletedCount,
-    });
   }
 
   public async validateDirectUpload(
@@ -538,16 +517,61 @@ export function createArtifactStore(
       }));
   const presignPutObject: PutObjectPresigner = (request) =>
     observePresign(observer, () => rawPresignPutObject(request));
-  const store = new AwsArtifactStore(
+  const store = new AwsArtifactStore({
     config,
     client,
     presignPutObject,
-    createArtifactDownloadPresigner(
+    presignGetObject: createArtifactDownloadPresigner(
       rawClient as S3Client,
       observer,
       options.presignGetObject,
     ),
     ownsClient,
-  );
+  });
   return new ObservedArtifactStore(store, observer);
+}
+
+async function purgeWorkspaceObjects(
+  {
+    config,
+    client,
+  }: Readonly<{ config: ArtifactStoreConfig; client: S3ClientLike }>,
+  request: PurgeWorkspaceObjectsRequest,
+): Promise<WorkspaceObjectPurgePage> {
+  const input = purgeWorkspaceSchema.parse(request);
+  const prefix = workspacePrefix(input.workspaceId);
+  const signal = requestSignal(config.requestTimeoutMs, request.signal);
+  const listed = await sendS3(
+    client,
+    new ListObjectVersionsCommand({
+      Bucket: config.bucket,
+      MaxKeys: input.maxObjects,
+      Prefix: prefix,
+    }),
+    { abortSignal: signal },
+  );
+  const entries = [...(listed.Versions ?? []), ...(listed.DeleteMarkers ?? [])];
+  assertWorkspaceVersionListing(listed, entries, input.maxObjects);
+  if (entries.length === 0) {
+    return Object.freeze({ completed: true, deletedCount: 0 });
+  }
+  const seen = new Set<string>();
+  const objects = workspaceVersionDeleteObjects(entries, prefix, seen);
+  const deleted = await sendS3(
+    client,
+    new DeleteObjectsCommand({
+      Bucket: config.bucket,
+      Delete: { Objects: objects, Quiet: false },
+    }),
+    { abortSignal: signal },
+  );
+  const deletedCount = validateWorkspaceVersionDeletion(
+    deleted,
+    seen,
+    objects.length,
+  );
+  return Object.freeze({
+    completed: false,
+    deletedCount,
+  });
 }
