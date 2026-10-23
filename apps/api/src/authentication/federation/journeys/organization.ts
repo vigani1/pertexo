@@ -1,18 +1,12 @@
 import type { OrganizationIdentity } from '../protocol/identity.js';
 import { randomUUID } from 'node:crypto';
 import type { Pool } from 'pg';
-import {
-  OrganizationSignInCommands,
-  FederationConflictError,
-  WorkspaceAccessDeniedError,
-} from '@pertexo/database/tenant-access';
+import { OrganizationSignInCommands } from '@pertexo/database/tenant-access';
 import {
   federationProtocolSchema,
   samlServiceProviderUrls,
   type FederationProtocol,
   federationDiscoveryQuerySchema,
-  federationSignInStartSchema,
-  federationTestStartSchema,
 } from '@pertexo/contracts';
 import type { OidcProofGateway } from '../protocol/oidc.js';
 import type { SamlProofGateway } from '../protocol/saml/gateway.js';
@@ -21,7 +15,6 @@ import {
   readOrganizationCallback,
   type OrganizationCallback,
 } from './callback.js';
-import { requireDoubleSubmitCsrf } from '../../better-auth/csrf.js';
 import {
   newJourneyToken,
   journeyDigest,
@@ -31,8 +24,11 @@ import {
   deriveJourneySecret,
   landWithReplacementSession,
 } from '../../journeys/browser-proof.js';
+import { type BrowserSession, prepareOrganizationStart } from './start.js';
+import { failure } from './reply.js';
+
 const callbackPath = '/v1/auth/federation/oidc/callback';
-type BrowserSession = Readonly<{ userId: string; sessionId: string }>;
+
 export class OrganizationSignIn {
   private readonly commands: OrganizationSignInCommands;
   private readonly cookieName: string;
@@ -338,66 +334,4 @@ export class OrganizationSignIn {
       destination.searchParams.set('returnTo', path);
     return this.land(destination.pathname + destination.search);
   }
-}
-function failure(status: number) {
-  return Response.json(
-    { code: 'ORGANIZATION_SIGN_IN_UNAVAILABLE' },
-    { status, headers: { 'cache-control': 'no-store' } },
-  );
-}
-
-type OrganizationStartMaterial = Readonly<{
-  material: Awaited<ReturnType<OrganizationSignInCommands['provider']>>;
-  owner: BrowserSession | undefined;
-  returnPath: string;
-}>;
-
-async function prepareOrganizationStart(
-  request: Request,
-  raw: unknown,
-  input: Readonly<{
-    testing: boolean;
-    commands: OrganizationSignInCommands;
-    authenticate(request: Request): Promise<BrowserSession | undefined>;
-  }>,
-): Promise<OrganizationStartMaterial | Response> {
-  const { testing } = input;
-  let material: Awaited<ReturnType<OrganizationSignInCommands['provider']>>;
-  let owner: BrowserSession | undefined;
-  let returnPath = '/workspaces';
-  if (testing) {
-    try {
-      requireDoubleSubmitCsrf(request.headers);
-    } catch {
-      return failure(403);
-    }
-    const parsed = federationTestStartSchema.safeParse(raw);
-    if (!parsed.success) return failure(400);
-    owner = await input.authenticate(request);
-    if (owner === undefined) return failure(401);
-    try {
-      material = await input.commands.testProvider({
-        ...parsed.data,
-        actorId: owner.userId,
-      });
-    } catch (cause: unknown) {
-      if (
-        cause instanceof FederationConflictError ||
-        cause instanceof WorkspaceAccessDeniedError
-      )
-        return failure(403);
-      throw cause;
-    }
-    returnPath = `/w/${parsed.data.workspaceId}/settings/sso`;
-  } else {
-    const parsed = federationSignInStartSchema.safeParse(raw);
-    if (!parsed.success) return failure(400);
-    material = await input.commands.provider(
-      parsed.data.providerId,
-      parsed.data.domain,
-    );
-    returnPath = parsed.data.returnPath ?? returnPath;
-  }
-
-  return { material, owner, returnPath };
 }
