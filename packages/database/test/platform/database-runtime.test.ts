@@ -5,7 +5,7 @@ const pool = vi.hoisted(() => ({
   end: vi.fn(() => Promise.resolve()),
 }));
 
-vi.mock('../../src/platform/pool/telemetry.js', () => ({
+vi.mock('../../src/platform/pool/telemetry/create-pool.js', () => ({
   createDatabasePool: pool.create,
 }));
 

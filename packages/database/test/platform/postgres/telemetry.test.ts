@@ -142,7 +142,7 @@ vi.mock('pg', () => ({ Pool: pg.FakePool }));
 import {
   createDatabasePool,
   DATABASE_METRIC_NAME,
-} from '../../../src/platform/pool/telemetry.js';
+} from '../../../src/platform/pool/telemetry/create-pool.js';
 
 interface Measurement {
   readonly attributes?: Record<string, string>;

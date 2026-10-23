@@ -1,7 +1,10 @@
 import type { Pool } from 'pg';
 
 import type { DatabaseConfig } from '../../config.js';
-import { createDatabasePool, type DatabasePoolOptions } from './telemetry.js';
+import {
+  createDatabasePool,
+  type DatabasePoolOptions,
+} from './telemetry/create-pool.js';
 
 export interface DatabaseRuntime {
   close(): Promise<void>;
