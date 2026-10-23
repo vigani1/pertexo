@@ -58,7 +58,7 @@ async function expectUnobstructedControl(control: Locator) {
     .toBe(true);
 }
 
-test('ordinary verified viewer can inspect the real editor at four widths but cannot write', async ({
+test('ordinary verified viewer can inspect the real editor at four widths but cannot change the workflow', async ({
   browser,
   page,
   request,
@@ -196,9 +196,18 @@ test('ordinary verified viewer can inspect the real editor at four widths but ca
         .items.map((run) => run.id),
     ).toEqual([runId]);
 
-    // UI zero-write observation is independent of intentional API denial probes.
+    // Presence heartbeats are allowed; definition and execution writes are not.
     const uiWrites: string[] = [];
+    const presenceWrites: string[] = [];
     viewer.on('request', (outgoing) => {
+      const pathname = new URL(outgoing.url()).pathname;
+      if (
+        outgoing.method() === 'PUT' &&
+        pathname.startsWith(`${workflowPath}/presence/`)
+      ) {
+        presenceWrites.push(pathname);
+        return;
+      }
       if (
         new URL(outgoing.url()).pathname.startsWith(workflowPath) &&
         !['GET', 'HEAD'].includes(outgoing.method())
@@ -286,7 +295,7 @@ test('ordinary verified viewer can inspect the real editor at four widths but ca
         inputs.getByLabel('Run input path', { exact: true }),
       ).toBeDisabled();
       await viewer.screenshot({
-        path: `/tmp/pertexo-live-readonly-${String(width)}-inspector.png`,
+        path: test.info().outputPath(`readonly-${String(width)}-inspector.png`),
       });
       const canvas = viewer.getByRole('region', {
         name: 'Workflow canvas',
@@ -378,10 +387,11 @@ test('ordinary verified viewer can inspect the real editor at four widths but ca
         })
         .toBe(true);
       await viewer.screenshot({
-        path: `/tmp/pertexo-live-readonly-${String(width)}-canvas.png`,
+        path: test.info().outputPath(`readonly-${String(width)}-canvas.png`),
       });
     }
     expect(uiWrites).toEqual([]);
+    expect(presenceWrites.length).toBeGreaterThan(0);
 
     const csrf = (await context.cookies()).find(
       (cookie) => cookie.name === 'pertexo_csrf',

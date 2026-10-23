@@ -148,6 +148,11 @@ for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
       ...config.services.worker.environment,
       WORKER_INSTANCE_ID: 'fixture',
     });
+    assert.equal(worker.resourceSafety.maximumRssBytes, 768 * 1024 * 1024);
+    assert.equal(
+      config.services.worker.environment.NODE_OPTIONS,
+      `--max-old-space-size=${String(worker.resourceSafety.maximumRssBytes / (2 * 1024 * 1024))}`,
+    );
     const scratchPath = '/var/lib/pertexo/artifact-scratch';
     assert.equal(worker.artifactScratchDirectory, scratchPath);
     const scratch = config.services.worker.volumes.find(

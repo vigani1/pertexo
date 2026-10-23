@@ -397,7 +397,10 @@ test.describe('touch canvas documentation', () => {
     const touchBounds = await page
       .getByRole('button', { name: 'Canvas notes', exact: true })
       .boundingBox();
-    expect(touchBounds?.width).toBeGreaterThanOrEqual(40);
+    // Firefox may report 39.999992 for a 40 CSS px control.
+    expect(
+      Math.round((touchBounds?.width ?? 0) * 1000) / 1000,
+    ).toBeGreaterThanOrEqual(40);
   });
 });
 

@@ -161,7 +161,7 @@ The image can run with a read-only root and writable `/tmp` and
 | `src/features/workflow-versions/`     | Paged immutable-version reads, exact lookup and restore transport.                                                                |
 | `src/features/workflow-runs/`         | Workspace history, run commands, authoritative detail and bounded live-event recovery.                                            |
 | `src/features/workflow-settings/`     | Versions and compare, lifecycle, published triggers and the current failure-alert choice.                                         |
-| `src/features/artifacts/`             | Safe artifact metadata and expiring download-link preparation; no upload UI.                                                      |
+| `src/features/artifacts/`             | Checked input-local uploads, retained file references, metadata and expiring download links.                                      |
 | `src/features/usage/`                 | Read-only current capacity and separate bounded retained activity; no billing or quota editor.                                    |
 | `src/components/ui/`                  | Weft primitives on Base UI: field and validation timing, notice, status, copy, progress button.                                   |
 | `src/components/patterns/`            | Shared compositions: confirm dialog, inline rename, stale line, load more, Core orb, page header, settings section, how it works. |
@@ -213,15 +213,11 @@ chunks.
 
 ## Browser contract and transport foundation
 
-Stage 1 of the frontend delivery plan is complete. Browser code consumes runtime
-validators through schema-only `@pertexo/contracts/schemas/<domain>` package
-exports. These exports point directly to the existing schema definitions and do
-not initialize client/OpenAPI projection code. Stage 1 publishes catalog,
-errors, identity/workspace and transport schema paths; stage 3 adds the reviewed
-workflow-authoring and connection schema paths; later delivered slices add the
-reviewed run, trigger, notification and artifact schema paths. The web allowlist
-permits only those browser-safe paths; future slices must review and allow their
-exact contract paths when needed.
+Browser code imports runtime validators and types from the browser-safe
+`@pertexo/contracts` root. Its `/server` entry point is Node-only; the old
+`/schemas/<domain>` exports no longer exist. Endpoint modules use the shared
+contracts and own their paths and decoding. Review package exports and the
+browser import allowlist when adding a contract.
 
 `src/lib/api/client.ts` exposes one injected request interface. It owns
 same-origin `/v1` paths, cookie credentials, fresh CSRF headers for mutations,
@@ -243,11 +239,14 @@ credential commands retain their scope and late-response fences.
 
 The editor, workflow operations, versions, run history, replay, members,
 invitations, workspace lifecycle, inbox, read-only capacity/activity and curated
-templates use current API contracts. Subworkflows remain a plan awaiting review.
-Artifact upload UI needs its supported input contract and real signing/CORS/
-checksum/finalize proof. Payments and billing remain future product work. Follow
-the [definition of done](ARCHITECTURE.md#14-definition-of-done-for-each-feature)
-and feature plans when adding a surface.
+templates use current API contracts. Workflow Calls include published-version
+pinning, durable parent/child execution and linked run history. File controls
+upload and finalize checked files up to 10 MiB, with scoped references reused by
+Read file, Create file and HTTP raw/multipart bodies. Larger data travels
+through explicit pages; ordinary inline, collection and loop bounds still apply.
+Payments and billing remain future product work. Follow the
+[definition of done](ARCHITECTURE.md#14-definition-of-done-for-each-feature) and
+feature plans when adding a surface.
 
 ## Appearance
 

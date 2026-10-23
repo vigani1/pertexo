@@ -99,3 +99,34 @@ remain unchanged until the next slices.
 ## Later
 
 Files above 10 MiB, unbounded provider pages, arbitrary huge mapped values, lazy transparent arrays, parallel chunk uploads, compression/archives, spreadsheets, public file browser, malware scanning, email attachments, integrations F21 and AI F22. No implementation begins until owner review of this plan.
+
+## Heap qualification follow-up (2026-10-23)
+
+Single-server worker Node options now cap V8 old space at 384 MiB: half the
+unchanged 768 MiB RSS safety ceiling, leaving room for buffers, young space and
+native memory. Attempt concurrency remains 32, workspace slots remain 5, scratch
+remains 1 GiB, and checkpoints remain 256 KiB. No file/data limit increases.
+
+The existing whole-worker release test was run before and after the heap option:
+
+| Platform and heap | 1 MiB batch peak RSS | 10 MiB / 100,000-record batch peak RSS | Result |
+| --- | ---: | ---: | --- |
+| Darwin ARM64, Node 24.15.0, default | 823,902,208 bytes | Not reached | Fails the unchanged 805,306,368-byte assertion, despite 34 completed runs |
+| Darwin ARM64, Node 24.15.0, 384 MiB | 563,560,448 bytes | 657,752,064 bytes | Both batches complete 34/34; no resource drain |
+| Linux ARM64, Node 24.22.0, default | 490,405,888 bytes | 539,938,816 bytes | Both batches complete 34/34; the default-heap failure does **not** reproduce here |
+| Linux ARM64, Node 24.22.0, 384 MiB | 461,201,408 bytes | 494,862,336 bytes | Both batches complete 34/34; no resource drain |
+
+Linux used the already-cached production runtime image, with a read-only root
+filesystem and private disk scratch; no image download. The temporary test
+harness plus worker container had a 2 GiB cgroup bound and two CPUs within the
+existing Docker 4 GB cap. Worker RSS is measured separately and its safety
+ceiling stayed 768 MiB. The runtime image ID and raw reports accompany the audit
+fix evidence. A compiler-only setup OOM was resolved before qualification by
+giving TypeScript 1,536 MiB; this was not a worker result or runtime heap change.
+
+At the Linux 10 MiB control: 32 maximum active attempts, five maximum occupied
+workspace slots, 1,434-byte maximum checkpoint, 263,013,319 scratch bytes, zero
+failed attempts and no resource drain. The two short runs finished within 8,672
+ms; 10,573,888 WAL bytes were observed. Timings include cold/warm host variation
+and are not a claimed speedup. The explicit heap budget bounds GC headroom
+across runtimes; the Linux baseline already met the original safety gate.
