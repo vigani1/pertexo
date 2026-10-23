@@ -142,17 +142,7 @@ function parseInvocation(value: unknown): InvocationState {
     value.resumeAt === undefined || value.status === 'waiting',
     'resumeAt must exist only for a waiting invocation',
   );
-  assertCheckpoint(
-    value.waitKind === undefined ||
-      ((value.status === 'waiting' || value.status === 'ready') &&
-        (value.waitKind === 'node_wait' ||
-          value.waitKind === 'retry_backoff' ||
-          ((value.waitKind === 'workflow_call' ||
-            value.waitKind === 'human_task') &&
-            value.status === 'waiting' &&
-            value.resumeAt === undefined))),
-    'waitKind must identify delayed work only',
-  );
+  const waitKind = parseInvocationWaitKind(value);
   const output =
     value.output === undefined
       ? undefined
@@ -165,34 +155,17 @@ function parseInvocation(value: unknown): InvocationState {
         resumeAt === undefined),
     'reused output must belong to a completed invocation without attempts',
   );
-  let failureHandling: InvocationState['failureHandling'];
-  if (value.failureHandling !== undefined) {
-    const handling = value.failureHandling;
-    assertCheckpoint(
-      isRecord(handling) &&
-        value.status === 'failed' &&
-        value.attemptNumber > 0,
-      'handling requires an executed failed source',
-    );
-    assertExactKeys(handling, ['sinkInvocationKey', 'disposition']);
-    assertCheckpoint(
-      typeof handling.sinkInvocationKey === 'string' &&
-        handling.sinkInvocationKey.length > 0 &&
-        ['pending', 'handled'].includes(String(handling.disposition)),
-      'handling identity or disposition is invalid',
-    );
-    failureHandling = {
-      sinkInvocationKey: handling.sinkInvocationKey,
-      disposition: handling.disposition as 'pending' | 'handled',
-    };
-  }
+  const failureHandling = parseFailureHandling(value.failureHandling, {
+    status: value.status,
+    attemptNumber: value.attemptNumber,
+  });
   return {
     invocationKey: value.invocationKey,
     nodeId: value.nodeId,
     status: value.status,
     attemptNumber: value.attemptNumber,
     ...(resumeAt === undefined ? {} : { resumeAt }),
-    ...(value.waitKind === undefined ? {} : { waitKind: value.waitKind }),
+    ...(waitKind === undefined ? {} : { waitKind }),
     ...(output === undefined ? {} : { output }),
     ...(failureHandling === undefined ? {} : { failureHandling }),
   };
@@ -343,4 +316,47 @@ export function parseLedger(value: unknown): readonly BranchLedgerEntry[] {
   return [...ledger].sort((left, right) =>
     compareOrdinal(left.branchId, right.branchId),
   );
+}
+
+function parseInvocationWaitKind(
+  value: Record<string, unknown>,
+): InvocationState['waitKind'] {
+  assertCheckpoint(
+    value.waitKind === undefined ||
+      ((value.status === 'waiting' || value.status === 'ready') &&
+        (value.waitKind === 'node_wait' ||
+          value.waitKind === 'retry_backoff' ||
+          ((value.waitKind === 'workflow_call' ||
+            value.waitKind === 'human_task') &&
+            value.status === 'waiting' &&
+            value.resumeAt === undefined))),
+    'waitKind must identify delayed work only',
+  );
+  return value.waitKind;
+}
+
+function parseFailureHandling(
+  raw: unknown,
+  {
+    status,
+    attemptNumber,
+  }: Readonly<{ status: InvocationState['status']; attemptNumber: number }>,
+): InvocationState['failureHandling'] {
+  if (raw === undefined) return undefined;
+  const handling = raw;
+  assertCheckpoint(
+    isRecord(handling) && status === 'failed' && attemptNumber > 0,
+    'handling requires an executed failed source',
+  );
+  assertExactKeys(handling, ['sinkInvocationKey', 'disposition']);
+  assertCheckpoint(
+    typeof handling.sinkInvocationKey === 'string' &&
+      handling.sinkInvocationKey.length > 0 &&
+      ['pending', 'handled'].includes(String(handling.disposition)),
+    'handling identity or disposition is invalid',
+  );
+  return {
+    sinkInvocationKey: handling.sinkInvocationKey,
+    disposition: handling.disposition as 'pending' | 'handled',
+  };
 }
