@@ -70,11 +70,24 @@ for (const width of [1280, 375])
     await expect(page).toHaveURL(/period=90d/u);
     await expect.poll(() => periods.at(-1)).toBe('90d');
     const chart = page.getByRole('img', { name: /Daily runs by outcome/u });
-    expect(
-      await chart.evaluate(
-        (element) => element.scrollWidth <= element.clientWidth,
-      ),
-    ).toBe(true);
+    await expect(chart.locator('svg')).toHaveCount(90);
+    const geometry = await chart.evaluate((element) => {
+      const viewport = element.getBoundingClientRect();
+      const days = [...element.querySelectorAll('svg')].map((day) =>
+        day.getBoundingClientRect(),
+      );
+      return {
+        leftOverflow: viewport.left - Math.min(...days.map((day) => day.left)),
+        rightOverflow:
+          Math.max(...days.map((day) => day.right)) - viewport.right,
+        smallestDay: Math.min(...days.map((day) => day.width)),
+      };
+    });
+    // Fractional grid tracks round scroll/client widths differently in Firefox.
+    // All 90 days must fit with strictly less than one CSS pixel of rounding.
+    expect(geometry.smallestDay).toBeGreaterThan(0);
+    expect(geometry.leftOverflow).toBeLessThan(1);
+    expect(geometry.rightOverflow).toBeLessThan(1);
     await page.getByText('Daily data', { exact: true }).click();
     await expect(page.getByRole('table').getByRole('row')).toHaveCount(91);
     const data = page.getByRole('region', {
@@ -96,7 +109,7 @@ for (const width of [1280, 375])
     ).toBe(true);
     expect(failedReads).toEqual([]);
     await page.screenshot({
-      path: `/tmp/pertexo-f12-trends-${String(width)}.png`,
+      path: test.info().outputPath(`trends-${String(width)}.png`),
       fullPage: true,
     });
   });

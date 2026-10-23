@@ -213,11 +213,11 @@ only after its gate is resolved.
 | F01 | Complete and qualify the existing editor surface | Frontend-led parity, not a rebuild | M | PR verified/merged: bounded local gates closed; external qualification open |
 | [F02](feature-plans/02-workflow-test-workspace.md) | Saved test cases, pinned samples and workflow regression runs | New product over existing previews | L | ADR061 first slice released with F05 through PR145 on natural main `c8a59b09`; natural CI36949789113 and CodeQL36949789141 pass; historical combined database evidence retained; slice 2 shared bounded pins implemented (2026-10-16), with stale-setting fences, pinned preview history and no published-run overrides; whole-draft test execution and editor history implemented; slice 3 serial suites with up to 50 cases, bounded JSON-path expectations, private reports and advisory publish freshness implemented (2026-10-17) |
 | [F03](feature-plans/03-workspace-notifications.md) | Durable in-app notifications and live inbox | New frontend + backend product | L | Delivered: ADR055 database (PR118), worker (PR119), API (PR120) and web (PR123) slices merged; local acceptance recorded; producer on |
-| [F04](feature-plans/04-artifact-inputs-and-files.md) | File inputs, parsing and artifact lifecycle | Read JSON/CSV, raw and multipart HTTP, input-local uploads and retained references | L | Delivered (2026-10-15): first release #291–#294; default-on CSV/JSON Read file #296 and bounded multipart forms #297, both merged green. The closing guide PR records CI/merge and final natural-main/ARM evidence. Files stay bounded to 1 MiB with rough row limits and split-file advice; F09 restrictions unchanged. Next file improvement: bigger files, tracked as F45 |
+| [F04](feature-plans/04-artifact-inputs-and-files.md) | File inputs, parsing and artifact lifecycle | Read JSON/CSV, raw and multipart HTTP, input-local uploads and retained references | L | Delivered (2026-10-15): first release #291–#294; default-on CSV/JSON Read file #296 and bounded multipart forms #297, both merged green. The closing guide PR records CI/merge and final natural-main/ARM evidence. F45 now provides checked files and encoded HTTP file bodies up to 10 MiB, plus explicit paged results up to 100,000 records within 10 MiB and 256 pages. Ordinary inline, collection, recovery and retention rules remain in place; multipart framing counts toward its total budget |
 | F05 | Workflow duplicate, safe import and export | New cross-stack authoring slice | M–L | Duplicate released through PR142 on natural main `5f78e155`; ADR062 import/export released with F02 through PR145 on natural main `c8a59b09`; natural CI36949789113 and CodeQL36949789141 pass; historical qualification/repair evidence retained; production activation unauthorized |
 | F06 | Curated workflow templates and guided setup | Frontend-led over portable authoring | M | Released on main: turned on in the web app with F07 (`433edad9`, 2026-10-10); examples open from New workflow and Import. External qualification open |
 | F07 | Folders, tags, favorites and workspace discovery | Metadata backend + frontend | M | Released on main: folders, tags, favorites and bulk organize, turned on in the web app (`433edad9`, 2026-10-10) |
-| [F08](feature-plans/08-subworkflows.md) | Reusable subworkflows with durable parent/child runs | New execution capability across both stacks | XL | Slices 1–4 released on main: authoring, execution and run history of workflow Calls (through `4d3cae4a`). Slice 5, a measured limit change, waits for owner review |
+| [F08](feature-plans/08-subworkflows.md) | Reusable subworkflows with durable parent/child runs | New execution capability across both stacks | XL | All five slices delivered: published-version Calls, durable parent/child execution, linked history and measured For Each limits of 4,998 items within the existing 5,000 total weighted-invocation budget. The 256 KiB checkpoint cap and ordinary capacity remain unchanged |
 | [F09](feature-plans/09-failure-paths-and-recovery.md) | Workflow-authored failure paths and explicit recovery UX | Existing recovery foundation + new graph behavior | XL | Approved for implementation (2026-10-13), baseline measured: polling fix before engine work; recovery with explicit effects acknowledgement and Condition/leaf Stop run, then failure routes; loop/join/Call/artifact scope deferred; recovery ADR 072 accepted; recovery runtime/API merged green in #275; recovery UI merged green in #276 with owned HTTP/browser evidence; routing ADR 073 accepted; failure-route runtime locally qualified with durable selection, safe evidence and restart; runtime merged green in #277; supported first release implemented and locally qualified through slice 5: authoring, handled history, safe fields and owned browser/API/worker evidence; merge status and CI are recorded on the slice PR; error-workflow follow-up implemented and locally qualified (2026-10-15), with safe summaries, normal admission and recursion prevention; [#300](https://github.com/vigani1/pertexo/pull/300) merged; PR and natural main CI green; broader loop/join/Call/artifact scope stays deferred |
 | [F10](feature-plans/10-human-approvals.md) | Durable human approvals and resume decisions | New cross-stack durable interaction | XL | Implemented in #301; durable authenticated decisions, task expiry and capacity/budget suspension |
 | [F11](feature-plans/11-forms-and-resume-input.md) | Hosted forms and structured human input | New trigger/frontend product | L–XL | Complete, merged #302; natural main CI green: published member/public forms and durable member input |
@@ -332,8 +332,8 @@ For each selected slice record:
 7. Remaining external gates: provider/OIDC/mail/object-store access, production
    load/recovery and security qualification where applicable.
 
-Use the feature plans to record delivery status. The reset tracker records
-architecture reset work.
+Use the feature plans to record delivery status. The completed architecture
+reset plan is historical evidence, not an active tracker.
 
 ## First selected planning session
 
@@ -342,9 +342,9 @@ release gates; it is delivered, and wave 1 starts with F26 auto-pause. [ADR055](
 [ADR054](adr/054-durable-workspace-inbox.md)'s per-recipient delivery, whose
 increments merged inactive, with per-workflow threads computed on read. The
 database, worker, API and frontend slices merged in that order, and the local
-acceptance run is recorded with the producer on. Separately make
-the F04 consumer decision and F08 input/output/pinning design; those are planning
-tasks, not permission to start three large implementations at once.
+acceptance run is recorded with the producer on. At that checkpoint the F04
+consumer and F08 input/output/pinning decisions were still planning work; both
+features are now delivered as recorded in the register and their plans.
 
 The initial roadmap inventory was recorded at the 2026-09-29 foundation
 verification checkpoint. Current ownership follows the completed reset;

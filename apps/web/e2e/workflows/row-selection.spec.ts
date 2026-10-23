@@ -195,12 +195,12 @@ for (const screen of [
       await selection.press('Space');
       await expect(selection).toBeChecked();
       await expect(betaSelection).toHaveCSS('opacity', '1');
-      expect((await box(alphaRow)).height).toBe(before.height);
-      expect((await box(betaRow)).height).toBe(betaBefore.height);
+      expect((await box(alphaRow)).height).toBeCloseTo(before.height, 2);
+      expect((await box(betaRow)).height).toBeCloseTo(betaBefore.height, 2);
       await page
         .getByRole('button', { name: 'Clear selection', exact: true })
         .click();
-      expect((await box(alphaRow)).height).toBe(before.height);
+      expect((await box(alphaRow)).height).toBeCloseTo(before.height, 2);
       tagged = true;
       await page.reload();
       await expect(
@@ -210,7 +210,7 @@ for (const screen of [
         betaRow.getByText('Manual input → Target', { exact: true }),
       ).toBeVisible();
       await expect(betaRow.getByText('ops', { exact: true })).toBeVisible();
-      expect((await box(alphaRow)).height).toBe(before.height);
+      expect((await box(alphaRow)).height).toBeCloseTo(before.height, 2);
       expect((await box(betaRow)).height).toBeGreaterThan(betaBefore.height);
       await testInfo.attach('selection and tagged rows', {
         body: await page.screenshot(),
@@ -237,7 +237,7 @@ for (const screen of [
         alphaRow.getByText('Manual input → Target', { exact: true }),
       ).toBeVisible();
       await expect(selection).toHaveCount(0);
-      expect((await box(alphaRow)).height).toBe(before.height);
+      expect((await box(alphaRow)).height).toBeCloseTo(before.height, 2);
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth),
       ).toBeLessThanOrEqual(screen.width);

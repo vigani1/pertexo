@@ -110,3 +110,15 @@ Add note is a labelled action in the main canvas toolbar, separate from zoom.
 Publish review, version diffs and the note list use a shared plain-text Markdown
 excerpt (the existing Markdown parser grammar), without formatting markers or
 link destinations. Stored note text and execution identity are unchanged.
+
+## Publication lookup follow-up (2026-10-23)
+
+Publication reuse queries only retained versions of this workflow with the
+same executable checksum, using a workspace/workflow/checksum/version index,
+preserving the existing version order. It validates all matching candidates and
+reuses the newest with identical notes. It does
+not scan or validate unrelated historical graphs. A corrupt version with a
+different checksum therefore does not block publication; matching candidates,
+exact-version reads, replay and restore retain their integrity checks. This
+owner-approved change narrows the earlier corrupt-history refusal policy; no
+execution identity, stored format or note comparison changes.

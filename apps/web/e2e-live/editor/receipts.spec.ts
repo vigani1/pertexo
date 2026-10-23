@@ -171,10 +171,14 @@ test('committed publish and run responses recover their exact original commands'
     runLens.getByRole('button', { name: 'Retry same run', exact: true }),
   ).toBeVisible();
   expect(runs).toHaveLength(1);
-  await runLens
-    .getByLabel('Run input (JSON)', { exact: true })
-    .fill('{"proof":"different-scratch"}');
-  await runLens.getByRole('button', { name: 'None', exact: true }).click();
+  const lockedInput = runLens.getByLabel('Run input (JSON)', { exact: true });
+  await expect(lockedInput).toBeDisabled();
+  expect(JSON.parse(await lockedInput.inputValue())).toEqual({
+    proof: 'original-run-input',
+  });
+  await expect(
+    runLens.getByRole('button', { name: 'None', exact: true }),
+  ).toBeDisabled();
   await runLens
     .getByRole('button', { name: 'Retry same run', exact: true })
     .click();

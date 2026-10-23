@@ -137,6 +137,8 @@ services:
         apps/worker/dist/main.js',
       ]
     environment:
+      # Half the unchanged 768 MiB worker ceiling leaves room for buffers and native memory.
+      NODE_OPTIONS: '--max-old-space-size=384'
       ARTIFACT_SCRATCH_DIRECTORY: /var/lib/pertexo/artifact-scratch
       <<: [*environment, *code-settings]
       DATABASE_MAINTENANCE_URL: ${DATABASE_MAINTENANCE_URL:?}

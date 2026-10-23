@@ -620,7 +620,11 @@ describe('workflow publication projections', () => {
           idempotencyKey: 'publish-v2-corrupt-retained-graph',
           requestHash: 'a'.repeat(64),
         }),
-      ).rejects.toThrow();
+      ).resolves.toMatchObject({
+        reused: true,
+        replayed: false,
+        version: { id: published.version.id },
+      });
       await expect(
         queryAsOwner<{ versions: string }>(
           `select count(*)::text versions from app.workflow_versions
@@ -629,6 +633,37 @@ describe('workflow publication projections', () => {
           workspaceId,
         ),
       ).resolves.toEqual([{ versions: '2' }]);
+      // Matching candidates still cross the retained-graph integrity boundary.
+      await queryAsOwner(
+        `insert into app.workflow_versions
+           (id,workspace_id,workflow_id,version_number,
+            graph_json,checksum,executable_json,published_by)
+         values($1,$2,$3,3,'{}'::json,$4,$5::json,$6)`,
+        [
+          randomUUID(),
+          workspaceId,
+          created.workflowId,
+          checksum,
+          JSON.stringify(executableJson),
+          actorId,
+        ],
+        workspaceId,
+      );
+      await expect(
+        executableAuthoring.publishWorkflow({
+          ...command,
+          idempotencyKey: 'publish-v2-corrupt-matching-graph',
+          requestHash: 'b'.repeat(64),
+        }),
+      ).rejects.toThrow();
+      await expect(
+        queryAsOwner<{ versions: string }>(
+          `select count(*)::text versions from app.workflow_versions
+          where workspace_id=$1 and workflow_id=$2`,
+          [workspaceId, created.workflowId],
+          workspaceId,
+        ),
+      ).resolves.toEqual([{ versions: '3' }]);
     } finally {
       await executableAuthoring.close();
     }

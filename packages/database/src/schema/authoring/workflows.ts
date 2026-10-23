@@ -232,6 +232,12 @@ export const workflowVersions = appSchema.table(
       columns: [table.workspaceId, table.workflowId],
       foreignColumns: [workflows.workspaceId, workflows.id],
     }).onDelete('restrict'),
+    index('workflow_versions_reuse_idx').on(
+      table.workspaceId,
+      table.workflowId,
+      table.checksum,
+      table.versionNumber.desc().nullsFirst(),
+    ),
     index('workflow_versions_workspace_workflow_idx').on(
       table.workspaceId,
       table.workflowId,
