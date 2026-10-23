@@ -61,12 +61,12 @@ export function registerUsesStableUserRowVerifiesEmail(): void {
     const secondCookie = cookieValue(secondSession.setCookies);
     expect(secondCookie).toBeDefined();
     const csrf = 'test-csrf-token-with-more-than-thirty-two-characters';
-    const list = await authenticatedRequest(
-      '/v1/auth/account-security/sessions',
-      'GET',
-      signedCookie ?? '',
-      csrf,
-    );
+    const list = await authenticatedRequest({
+      path: '/v1/auth/account-security/sessions',
+      method: 'GET',
+      sessionCookie: signedCookie ?? '',
+      csrf: csrf,
+    });
     expect(list.status).toBe(200);
     const listed = (await list.json()) as {
       items: { id: string; current: boolean; token?: string }[];
@@ -77,37 +77,37 @@ export function registerUsesStableUserRowVerifiesEmail(): void {
     );
     expect(listed.items.some((session) => session.current)).toBe(true);
 
-    const missingCsrf = await authenticatedRequest(
-      '/v1/auth/account-security/sessions/revoke',
-      'POST',
-      signedCookie ?? '',
-      undefined,
-      { sessionId: secondSession.sessionId },
-    );
+    const missingCsrf = await authenticatedRequest({
+      path: '/v1/auth/account-security/sessions/revoke',
+      method: 'POST',
+      sessionCookie: signedCookie ?? '',
+      csrf: undefined,
+      body: { sessionId: secondSession.sessionId },
+    });
     expect(missingCsrf.status).toBe(403);
     expect(
       await runtime.sessions.authenticate(secondCookie ?? ''),
     ).toBeDefined();
 
-    const revoke = await authenticatedRequest(
-      '/v1/auth/account-security/sessions/revoke',
-      'POST',
-      signedCookie ?? '',
-      csrf,
-      { sessionId: secondSession.sessionId },
-    );
+    const revoke = await authenticatedRequest({
+      path: '/v1/auth/account-security/sessions/revoke',
+      method: 'POST',
+      sessionCookie: signedCookie ?? '',
+      csrf: csrf,
+      body: { sessionId: secondSession.sessionId },
+    });
     expect(revoke.status).toBe(200);
     expect(await revoke.json()).toEqual({ revoked: true });
     expect(
       await runtime.sessions.authenticate(secondCookie ?? ''),
     ).toBeUndefined();
 
-    const methods = await authenticatedRequest(
-      '/v1/auth/account-security',
-      'GET',
-      signedCookie ?? '',
-      csrf,
-    );
+    const methods = await authenticatedRequest({
+      path: '/v1/auth/account-security',
+      method: 'GET',
+      sessionCookie: signedCookie ?? '',
+      csrf: csrf,
+    });
     expect(methods.status).toBe(200);
     const methodsBody = (await methods.json()) as {
       methods: { id: string; kind: string; provider: string | null }[];
@@ -119,38 +119,38 @@ export function registerUsesStableUserRowVerifiesEmail(): void {
     });
     const passwordMethodId = methodsBody.methods[0]?.id;
 
-    const blockedLink = await authenticatedRequest(
-      '/v1/auth/link-social',
-      'POST',
-      signedCookie ?? '',
-      csrf,
-      {
+    const blockedLink = await authenticatedRequest({
+      path: '/v1/auth/link-social',
+      method: 'POST',
+      sessionCookie: signedCookie ?? '',
+      csrf: csrf,
+      body: {
         provider: 'google',
         callbackURL: '/account/security',
         disableRedirect: true,
       },
-    );
+    });
     expect(blockedLink.status).toBe(403);
-    const afterBlockedLink = await authenticatedRequest(
-      '/v1/auth/account-security',
-      'GET',
-      signedCookie ?? '',
-      csrf,
-    );
+    const afterBlockedLink = await authenticatedRequest({
+      path: '/v1/auth/account-security',
+      method: 'GET',
+      sessionCookie: signedCookie ?? '',
+      csrf: csrf,
+    });
     expect(
       ((await afterBlockedLink.json()) as { methods: unknown[] }).methods,
     ).toHaveLength(1);
 
-    const passwordChange = await authenticatedRequest(
-      '/v1/auth/account-security/password/change',
-      'POST',
-      signedCookie ?? '',
-      csrf,
-      {
+    const passwordChange = await authenticatedRequest({
+      path: '/v1/auth/account-security/password/change',
+      method: 'POST',
+      sessionCookie: signedCookie ?? '',
+      csrf: csrf,
+      body: {
         currentPassword: 'correct horse battery staple',
         newPassword: 'another correct horse battery staple',
       },
-    );
+    });
     expect(passwordChange.status).toBe(200);
     const replacementCookie = cookieValue(
       passwordChange.headers.getSetCookie(),
@@ -177,13 +177,13 @@ export function registerUsesStableUserRowVerifiesEmail(): void {
     });
     expect(newPassword.status).toBe(200);
 
-    const lastMethod = await authenticatedRequest(
-      '/v1/auth/account-security/methods/unlink',
-      'POST',
-      replacementCookie ?? '',
-      csrf,
-      { methodId: passwordMethodId },
-    );
+    const lastMethod = await authenticatedRequest({
+      path: '/v1/auth/account-security/methods/unlink',
+      method: 'POST',
+      sessionCookie: replacementCookie ?? '',
+      csrf: csrf,
+      body: { methodId: passwordMethodId },
+    });
     expect(lastMethod.status).toBe(400);
 
     const socialMethodId = randomUUID();
@@ -198,13 +198,13 @@ export function registerUsesStableUserRowVerifiesEmail(): void {
     } finally {
       await setup.end();
     }
-    const unlink = await authenticatedRequest(
-      '/v1/auth/account-security/methods/unlink',
-      'POST',
-      replacementCookie ?? '',
-      csrf,
-      { methodId: socialMethodId },
-    );
+    const unlink = await authenticatedRequest({
+      path: '/v1/auth/account-security/methods/unlink',
+      method: 'POST',
+      sessionCookie: replacementCookie ?? '',
+      csrf: csrf,
+      body: { methodId: socialMethodId },
+    });
     expect(unlink.status).toBe(200);
     expect(await unlink.json()).toEqual({ unlinked: true });
     const auditReader = new Pool({
@@ -238,16 +238,16 @@ export function registerUsesStableUserRowVerifiesEmail(): void {
       await runtime.sessions.authenticate(unlinkCookie ?? ''),
     ).toBeDefined();
 
-    const changeEmail = await authenticatedRequest(
-      '/v1/auth/change-email',
-      'POST',
-      unlinkCookie ?? '',
-      csrf,
-      {
+    const changeEmail = await authenticatedRequest({
+      path: '/v1/auth/change-email',
+      method: 'POST',
+      sessionCookie: unlinkCookie ?? '',
+      csrf: csrf,
+      body: {
         newEmail: 'ada.new@example.test',
         callbackURL: '/login?emailChanged=true',
       },
-    );
+    });
     expect(changeEmail.status).toBe(200);
     const oldAddressConfirmation = mailedMessages('ada@example.test').find(
       (message) => message.purpose === 'email_change_confirmation',

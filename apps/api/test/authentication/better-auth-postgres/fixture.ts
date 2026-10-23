@@ -102,13 +102,19 @@ export function cookieName(cookie: string): string {
   return cookie.split('=', 1)[0] ?? '';
 }
 
-export function authenticatedRequest(
-  path: string,
-  method: 'GET' | 'POST',
-  sessionCookie: string,
-  csrf: string | undefined,
-  body?: object,
-): Promise<Response> {
+export function authenticatedRequest({
+  path,
+  method,
+  sessionCookie,
+  csrf,
+  body,
+}: Readonly<{
+  path: string;
+  method: 'GET' | 'POST';
+  sessionCookie: string;
+  csrf: string | undefined;
+  body?: object | undefined;
+}>): Promise<Response> {
   const cookie = [
     `pertexo_session=${sessionCookie}`,
     ...(csrf === undefined ? [] : [`pertexo_csrf=${encodeURIComponent(csrf)}`]),
@@ -257,13 +263,19 @@ export async function assertSingleProviderLink(
     linkProviderGateway: gateway,
   });
   const csrf = 'link-csrf-token-with-more-than-thirty-two-characters';
-  const linkRequest = (
-    path: string,
-    method: 'GET' | 'POST',
-    session: string,
-    binding?: string,
-    body?: object,
-  ) =>
+  const linkRequest = ({
+    path,
+    method,
+    session,
+    binding,
+    body,
+  }: Readonly<{
+    path: string;
+    method: 'GET' | 'POST';
+    session: string;
+    binding?: string | undefined;
+    body?: object | undefined;
+  }>) =>
     linkingRuntime.auth.handler(
       new Request(`http://pertexo.test${path}`, {
         method,
@@ -277,27 +289,27 @@ export async function assertSingleProviderLink(
       }),
     );
   try {
-    const wrongPassword = await linkRequest(
-      '/v1/auth/account-security/methods/link/start',
-      'POST',
-      originalCookie ?? '',
-      undefined,
-      {
+    const wrongPassword = await linkRequest({
+      path: '/v1/auth/account-security/methods/link/start',
+      method: 'POST',
+      session: originalCookie ?? '',
+      binding: undefined,
+      body: {
         provider: 'google',
         existingMethod: { kind: 'password', password: 'wrong' },
       },
-    );
+    });
     expect(wrongPassword.status).toBe(403);
-    const started = await linkRequest(
-      '/v1/auth/account-security/methods/link/start',
-      'POST',
-      originalCookie ?? '',
-      undefined,
-      {
+    const started = await linkRequest({
+      path: '/v1/auth/account-security/methods/link/start',
+      method: 'POST',
+      session: originalCookie ?? '',
+      binding: undefined,
+      body: {
         provider: 'google',
         existingMethod: { kind: 'password', password },
       },
-    );
+    });
     expect(started.status).toBe(200);
     const binding = started.headers
       .getSetCookie()
@@ -313,12 +325,12 @@ export async function assertSingleProviderLink(
     );
     expect(state).toBeTruthy();
     const callback = `/v1/auth/account-security/methods/link/callback/google?state=${state}&code=valid:${state}`;
-    const otherBrowser = await linkRequest(
-      callback,
-      'GET',
-      originalCookie ?? '',
-      'wrong-binding',
-    );
+    const otherBrowser = await linkRequest({
+      path: callback,
+      method: 'GET',
+      session: originalCookie ?? '',
+      binding: 'wrong-binding',
+    });
     expect(otherBrowser.headers.get('location')).toContain('linkError=true');
 
     const loserEnteredAuthentication = Promise.withResolvers<undefined>();
@@ -354,12 +366,12 @@ export async function assertSingleProviderLink(
           new Error('Fixture callback rejected before authentication'),
         );
       } else {
-        firstCallback = linkRequest(
-          callback,
-          'GET',
-          originalCookie ?? '',
-          binding,
-        );
+        firstCallback = linkRequest({
+          path: callback,
+          method: 'GET',
+          session: originalCookie ?? '',
+          binding: binding,
+        });
       }
       pendingCallbacks.push(
         firstCallback.finally(() => {
@@ -367,13 +379,16 @@ export async function assertSingleProviderLink(
           winnerCommitted.resolve(undefined);
           bothProviderProofs.resolve(undefined);
         }),
-        linkRequest(callback, 'GET', originalCookie ?? '', binding).finally(
-          () => {
-            loserEnteredAuthentication.resolve(undefined);
-            winnerCommitted.resolve(undefined);
-            bothProviderProofs.resolve(undefined);
-          },
-        ),
+        linkRequest({
+          path: callback,
+          method: 'GET',
+          session: originalCookie ?? '',
+          binding: binding,
+        }).finally(() => {
+          loserEnteredAuthentication.resolve(undefined);
+          winnerCommitted.resolve(undefined);
+          bothProviderProofs.resolve(undefined);
+        }),
       );
       [first, second] = await Promise.all([
         required(pendingCallbacks[0]),
@@ -498,12 +513,12 @@ export async function assertSingleProviderLink(
     expect(
       await runtime.sessions.authenticate(replacementCookie ?? ''),
     ).toBeDefined();
-    const replay = await linkRequest(
-      callback,
-      'GET',
-      replacementCookie ?? '',
-      binding,
-    );
+    const replay = await linkRequest({
+      path: callback,
+      method: 'GET',
+      session: replacementCookie ?? '',
+      binding: binding,
+    });
     expect(replay.status).toBe(302);
     expect(replay.headers.get('location')).toBe(linkErrorLanding);
     expect(replay.headers.getSetCookie()).toEqual([]);
@@ -535,16 +550,16 @@ export async function assertSingleProviderLink(
       await admin.end();
     }
 
-    const secondStart = await linkRequest(
-      '/v1/auth/account-security/methods/link/start',
-      'POST',
-      replacementCookie ?? '',
-      undefined,
-      {
+    const secondStart = await linkRequest({
+      path: '/v1/auth/account-security/methods/link/start',
+      method: 'POST',
+      session: replacementCookie ?? '',
+      binding: undefined,
+      body: {
         provider: 'github',
         existingMethod: { kind: 'social', provider: 'google' },
       },
-    );
+    });
     expect(secondStart.status).toBe(200);
     const secondBinding = secondStart.headers
       .getSetCookie()
@@ -556,24 +571,24 @@ export async function assertSingleProviderLink(
         .authorizationUrl,
     );
     const sourceState = required(sourceUrl.searchParams.get('state'));
-    const sourceCallback = await linkRequest(
-      `/v1/auth/account-security/methods/link/callback/google?state=${sourceState}&code=valid:${sourceState}`,
-      'GET',
-      replacementCookie ?? '',
-      secondBinding,
-    );
+    const sourceCallback = await linkRequest({
+      path: `/v1/auth/account-security/methods/link/callback/google?state=${sourceState}&code=valid:${sourceState}`,
+      method: 'GET',
+      session: replacementCookie ?? '',
+      binding: secondBinding,
+    });
     expect(sourceCallback.status).toBe(302);
     const targetUrl = new URL(
       sourceCallback.headers.get('location') ?? 'http://invalid',
     );
     expect(targetUrl.hostname).toBe('provider.test');
     const targetState = required(targetUrl.searchParams.get('state'));
-    const targetCallback = await linkRequest(
-      `/v1/auth/account-security/methods/link/callback/github?state=${targetState}&code=valid:${targetState}`,
-      'GET',
-      replacementCookie ?? '',
-      secondBinding,
-    );
+    const targetCallback = await linkRequest({
+      path: `/v1/auth/account-security/methods/link/callback/github?state=${targetState}&code=valid:${targetState}`,
+      method: 'GET',
+      session: replacementCookie ?? '',
+      binding: secondBinding,
+    });
     expect(targetCallback.headers.get('location')).toContain('linked=true');
     const secondReplacementCookie = cookieValue(
       targetCallback.headers.getSetCookie(),
