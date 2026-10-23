@@ -64,20 +64,173 @@ const acceptedInputs = (
   vi.mocked(database.acceptVerifiedDelivery).mock.calls.map(([input]) => input);
 
 describe('generic webhook ingress', () => {
-  const applications: FastifyInstance[] = [];
-  const nestApplications: INestApplication[] = [];
-  beforeEach(() => {
-    currentSecret.fill(4);
-    previousSecret.fill(5);
+  const scopeFixture = createIngressFixture();
+  const { setup } = scopeFixture;
+
+  registerReturnsPlain202SkipVerifiedSDeliveries(scopeFixture);
+
+  registerKeepsPreflightStorageReadRefusesUnknownEndpoints(scopeFixture);
+
+  registerFallsBackAcceptedReceiptOnTimeoutWithout(scopeFixture);
+
+  registerReturnsOneAuthoritativeAcceptanceTracingInvokesCallback(scopeFixture);
+
+  registerHandlesNameThroughRawHTTPHeaders(scopeFixture);
+
+  describe('request shapes', () => {
+    const scopeFixture = createRequestShapeFixture({ setup });
+
+    registerReadsFormFieldsPlainTextJsonEmpty(scopeFixture);
   });
-  afterEach(async () => {
-    await Promise.all(
-      nestApplications.splice(0).map((application) => application.close()),
-    );
-    await Promise.all(
-      applications.splice(0).map((application) => application.close()),
-    );
+  registerAcceptsCaseInsensitiveJSONMediaTypeUTF(scopeFixture);
+
+  registerReturnsOriginalRunReferenceExactCompletedReplay(scopeFixture);
+
+  describe('delivery log (ADR 045)', () => {
+    const scopeFixture = createDeliveryLogFixture({ setup });
+
+    registerRecordsNameMetadataSameResponse(scopeFixture);
   });
+});
+
+function request(body: string, secret: Uint8Array) {
+  return {
+    method: 'POST' as const,
+    url: `/hooks/${endpointKey}`,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'x-pertexo-timestamp': timestamp,
+      'x-pertexo-signature': signature(body, secret),
+      'idempotency-key': 'delivery-1',
+    },
+    payload: body,
+  };
+}
+
+function signature(body: string | Uint8Array, secret: Uint8Array): string {
+  return `v1=${createHmac('sha256', secret)
+    .update(timestamp)
+    .update('.')
+    .update(body)
+    .digest('hex')}`;
+}
+
+function rawHeaders(body: string): string[] {
+  return [
+    'host',
+    '127.0.0.1',
+    'content-type',
+    'application/json',
+    'x-pertexo-timestamp',
+    timestamp,
+    'x-pertexo-signature',
+    signature(body, currentSecret),
+    'idempotency-key',
+    'delivery-1',
+    'content-length',
+    String(Buffer.byteLength(body)),
+  ];
+}
+
+function removeRawHeader(headers: readonly string[], name: string): string[] {
+  const output: string[] = [];
+  for (let index = 0; index < headers.length; index += 2) {
+    if (headers[index]?.toLowerCase() === name) continue;
+    output.push(headers[index] ?? '', headers[index + 1] ?? '');
+  }
+  return output;
+}
+
+function replaceRawHeader(
+  headers: readonly string[],
+  name: string,
+  value: string,
+): string[] {
+  const output = [...headers];
+  const index = output.findIndex(
+    (entry, position) => position % 2 === 0 && entry.toLowerCase() === name,
+  );
+  if (index < 0) throw new Error(`Raw header ${name} is missing`);
+  output[index + 1] = value;
+  return output;
+}
+
+async function sendRawWebhook(
+  application: FastifyInstance,
+  headers: readonly string[],
+  body: string,
+): Promise<Readonly<{ statusCode: number; body: string }>> {
+  if (!application.server.listening)
+    await application.listen({ host: '127.0.0.1', port: 0 });
+  const address = application.server.address();
+  if (address === null || typeof address === 'string')
+    throw new Error('Expected a TCP listening address');
+  return new Promise((resolve, reject) => {
+    const client = sendHttpRequest(
+      {
+        host: '127.0.0.1',
+        port: address.port,
+        method: 'POST',
+        path: `/hooks/${endpointKey}`,
+        headers: [...headers],
+      },
+      (response) => {
+        const chunks: Buffer[] = [];
+        response.on('data', (chunk: Buffer) => {
+          chunks.push(chunk);
+        });
+        response.once('error', reject);
+        response.once('end', () => {
+          resolve({
+            statusCode: response.statusCode ?? 0,
+            body: Buffer.concat(chunks).toString('utf8'),
+          });
+        });
+      },
+    );
+    client.once('error', reject);
+    client.end(body);
+  });
+}
+
+function sealed(id: string) {
+  return {
+    id,
+    kmsKeyReference: 'key',
+    encryptedDataKey: 'key',
+    ciphertext: 'ciphertext',
+    nonce: 'nonce',
+    authTag: 'tag',
+  };
+}
+
+function deferred<T>() {
+  let settle: ((value: T) => void) | undefined;
+  const promise = new Promise<T>((resolve) => {
+    settle = resolve;
+  });
+  return {
+    promise,
+    resolve: (value: T): void => {
+      settle?.(value);
+      settle = undefined;
+    },
+  };
+}
+
+type Scenario = Readonly<{
+  name: string;
+  headers?: Readonly<Record<string, string>>;
+  body?: string;
+  acceptanceError?: Error;
+  status: number;
+  fact: Readonly<Record<string, string>>;
+}>;
+
+function registerReturnsPlain202SkipVerifiedSDeliveries(
+  caseFixture: ReturnType<typeof createIngressFixture>,
+): void {
+  const { setup, setupPreflight } = caseFixture;
 
   it.each(['signed', 'secret_url'] as const)(
     'returns a plain 202 skip for verified %s deliveries without opening a workflow-response wait',
@@ -113,6 +266,7 @@ describe('generic webhook ingress', () => {
       expect(f.delivery).toHaveBeenCalledWith('skipped');
     },
   );
+
   it.each(['secret_url', 'header_secret'] as const)(
     'authenticates %s without a Pertexo signature',
     async (mode) => {
@@ -145,6 +299,7 @@ describe('generic webhook ingress', () => {
         ).toBe(true);
     },
   );
+
   it.each(['authorization', 'x-webhook-secret'])(
     'accepts current and overlapping previous header secrets in %s, refusing missing/wrong/expired ones',
     async (headerName) => {
@@ -184,6 +339,7 @@ describe('generic webhook ingress', () => {
       expect((await send(previousSecret)).statusCode).toBe(401);
     },
   );
+
   it.each(['authorization', 'x-webhook-secret'])(
     'refuses duplicate and comma-folded %s credentials on the wire',
     async (headerName) => {
@@ -208,6 +364,7 @@ describe('generic webhook ingress', () => {
       expect(f.database.acceptVerifiedDelivery).not.toHaveBeenCalled();
     },
   );
+
   it('handles endpoint-only preflight without decrypting, logging a delivery or starting a run', async () => {
     const f = await setupPreflight({
       ...verification,
@@ -246,6 +403,7 @@ describe('generic webhook ingress', () => {
     expect(f.database.recordRejectedDelivery).not.toHaveBeenCalled();
     expect(f.openedSecrets).toHaveLength(0);
   });
+
   it('returns a safe unavailable response when preflight discovery fails', async () => {
     const f = await setupPreflight();
     f.database.resolveVerification.mockRejectedValueOnce(
@@ -265,6 +423,13 @@ describe('generic webhook ingress', () => {
     expect(result.headers['access-control-allow-origin']).toBeUndefined();
     expect(f.database.acceptVerifiedDelivery).not.toHaveBeenCalled();
   });
+}
+
+function registerKeepsPreflightStorageReadRefusesUnknownEndpoints(
+  caseFixture: ReturnType<typeof createIngressFixture>,
+): void {
+  const { setupPreflight, setup } = caseFixture;
+
   it('keeps preflight storage read-only and refuses unknown endpoints, origins, methods and unsupported headers', async () => {
     const f = await setupPreflight({
       ...verification,
@@ -299,6 +464,7 @@ describe('generic webhook ingress', () => {
     expect((await f.application.inject(base)).statusCode).toBe(401);
     expect(f.database.acceptVerifiedDelivery).not.toHaveBeenCalled();
   });
+
   it('adds exact CORS origin to 202 and workflow replies; refuses other browser origins before admission', async () => {
     const f = setup({
       reference: {
@@ -344,6 +510,7 @@ describe('generic webhook ingress', () => {
     expect((await send('https://evil.example')).statusCode).toBe(401);
     expect(f.database.acceptVerifiedDelivery).toHaveBeenCalledTimes(2);
   });
+
   it.each([
     {
       name: 'callable input contract',
@@ -398,6 +565,7 @@ describe('generic webhook ingress', () => {
     });
     expect(f.database.acceptVerifiedDelivery).toHaveBeenCalledOnce();
   });
+
   it.each([
     { statusCode: 200, body: 'hello 👋\n' },
     { statusCode: 204, body: '' },
@@ -419,6 +587,7 @@ describe('generic webhook ingress', () => {
       expect(result.body).toBe(body);
     },
   );
+
   it.each(['text/csv', 'application/xml'] as const)(
     'returns exact UTF-8 bytes with an explicit charset for %s',
     async (contentType) => {
@@ -445,6 +614,7 @@ describe('generic webhook ingress', () => {
       expect(result.body).toBe('héllo');
     },
   );
+
   it('returns only a safe code when the run fails before replying', async () => {
     const f = setup({});
     f.database.acceptVerifiedDelivery.mockResolvedValue({
@@ -458,6 +628,13 @@ describe('generic webhook ingress', () => {
     expect(result.json()).toEqual({ code: 'webhook.workflow_failed' });
     expect(f.database.recordRejectedDelivery).not.toHaveBeenCalled();
   });
+}
+
+function registerFallsBackAcceptedReceiptOnTimeoutWithout(
+  caseFixture: ReturnType<typeof createIngressFixture>,
+): void {
+  const { setup } = caseFixture;
+
   it('falls back to the accepted receipt on timeout without canceling or rejecting the run', async () => {
     const f = setup({});
     f.database.acceptVerifiedDelivery.mockResolvedValue({
@@ -474,6 +651,7 @@ describe('generic webhook ingress', () => {
     expect(f.database.recordRejectedDelivery).not.toHaveBeenCalled();
     expect(f.database.acceptVerifiedDelivery).toHaveBeenCalledOnce();
   });
+
   it('keeps a committed admission when the response read fails', async () => {
     const f = setup({});
     f.database.acceptVerifiedDelivery.mockResolvedValue({
@@ -490,6 +668,7 @@ describe('generic webhook ingress', () => {
     expect(f.database.recordRejectedDelivery).not.toHaveBeenCalled();
     expect(f.health).toHaveBeenLastCalledWith('degraded');
   });
+
   it('does not truncate a one-MiB committed response', async () => {
     const f = setup({});
     f.database.acceptVerifiedDelivery.mockResolvedValue({
@@ -626,6 +805,12 @@ describe('generic webhook ingress', () => {
     for (const secret of fixture.openedSecrets)
       expect(secret).toEqual(new Uint8Array(32));
   });
+}
+
+function registerReturnsOneAuthoritativeAcceptanceTracingInvokesCallback(
+  caseFixture: ReturnType<typeof createIngressFixture>,
+): void {
+  const { setup } = caseFixture;
 
   it('returns one authoritative acceptance when tracing invokes its callback twice', async () => {
     let firstPromise: Promise<unknown> | undefined;
@@ -753,6 +938,12 @@ describe('generic webhook ingress', () => {
     expect(response.json<{ code: string }>().code).toBe('webhook.invalid_json');
     expect(database.acceptVerifiedDelivery).not.toHaveBeenCalled();
   });
+}
+
+function registerHandlesNameThroughRawHTTPHeaders(
+  caseFixture: ReturnType<typeof createIngressFixture>,
+): void {
+  const { setup } = caseFixture;
 
   it.each([
     {
@@ -935,161 +1126,12 @@ describe('generic webhook ingress', () => {
     expect(response.statusCode).toBe(status);
     expect(response.json<{ code: string }>().code).toBe(code);
   });
+}
 
-  describe('request shapes', () => {
-    const open = () =>
-      setup({
-        reference: {
-          ...verification,
-          authentication: { mode: 'secret_url', allowedOrigins: [] },
-        },
-      });
-    const accepted = (f: ReturnType<typeof setup>) =>
-      acceptedInputs(f.database);
-
-    it('reads form fields, plain text, +json and an empty POST', async () => {
-      const f = open();
-      const send = (headers: Record<string, string>, payload: string) =>
-        f.application.inject({
-          method: 'POST',
-          url: `/hooks/${endpointKey}`,
-          headers,
-          payload,
-        });
-      for (const [headers, payload] of [
-        [
-          { 'content-type': 'application/x-www-form-urlencoded' },
-          'name=Ada+L&tag=a&tag=b&note=%E2%9C%93',
-        ],
-        [{ 'content-type': 'text/plain; charset=utf-8' }, 'hello\nthere'],
-        [{ 'content-type': 'application/cloudevents+json' }, '{"id":"e1"}'],
-        [{}, ''],
-      ] as const)
-        expect((await send(headers, payload)).statusCode).toBe(202);
-      expect(accepted(f).map((input) => input.runInput)).toEqual([
-        { name: 'Ada L', tag: ['a', 'b'], note: '✓' },
-        'hello\nthere',
-        { id: 'e1' },
-        {},
-      ]);
-      expect((await send({}, '{}')).statusCode).toBe(415);
-      const latin = await f.application.inject({
-        method: 'POST',
-        url: `/hooks/${endpointKey}`,
-        headers: { 'content-type': 'text/plain' },
-        payload: Buffer.from([0xff, 0xfe]),
-      });
-      expect(latin.statusCode).toBe(400);
-      expect(latin.json<{ code: string }>().code).toBe('request.invalid');
-    });
-
-    it('starts a GET run from the query and keeps queries apart', async () => {
-      const f = open();
-      const get = (query: string) =>
-        f.application.inject({
-          method: 'GET',
-          url: `/hooks/${endpointKey}${query}`,
-        });
-      expect((await get('?order=A-1&tag=x&tag=y')).statusCode).toBe(202);
-      expect((await get('?order=A-2')).statusCode).toBe(202);
-      expect((await get('?order=A-1&tag=x&tag=y')).statusCode).toBe(202);
-      const [first, second, third] = accepted(f);
-      expect(first?.runInput).toEqual({ order: 'A-1', tag: ['x', 'y'] });
-      expect(first?.requestFingerprint).not.toBe(second?.requestFingerprint);
-      expect(first?.requestFingerprint).toBe(third?.requestFingerprint);
-      expect(
-        (
-          await f.application.inject({
-            method: 'HEAD',
-            url: `/hooks/${endpointKey}`,
-          })
-        ).statusCode,
-      ).toBe(404);
-      expect(accepted(f)).toHaveLength(3);
-    });
-
-    it('refuses GET on a signed endpoint, whose signature covers a body', async () => {
-      const f = setup({});
-      const response = await f.application.inject({
-        method: 'GET',
-        url: `/hooks/${endpointKey}?order=A-1`,
-      });
-      expect(response.statusCode).toBe(405);
-      expect(response.headers.allow).toBe('POST');
-      expect(response.json<{ code: string }>().code).toBe(
-        'webhook.method_not_allowed',
-      );
-      expect(f.database.recordRejectedDelivery).toHaveBeenCalledOnce();
-      expect(f.database.acceptVerifiedDelivery).not.toHaveBeenCalled();
-    });
-
-    it('keeps the fingerprint of a JSON POST as it was', async () => {
-      const f = open();
-      await f.application.inject({
-        method: 'POST',
-        url: `/hooks/${endpointKey}`,
-        headers: { 'content-type': 'Application/JSON' },
-        payload: '{"a":1}',
-      });
-      await f.application.inject({
-        method: 'POST',
-        url: `/hooks/${endpointKey}?source=shop`,
-        headers: { 'content-type': 'application/json' },
-        payload: '{"a":1}',
-      });
-      const sha = (value: string) =>
-        createHash('sha256').update(value).digest('hex');
-      const [plain, withQuery] = accepted(f);
-      expect(plain?.requestFingerprint).toBe(
-        sha(`${verification.endpointId}\0${sha('{"a":1}')}\0application/json`),
-      );
-      expect(withQuery?.requestFingerprint).not.toBe(plain?.requestFingerprint);
-    });
-
-    it('leaves credentials, signatures and proxy headers out of the request', async () => {
-      const f = setup({
-        reference: {
-          ...verification,
-          runInputMode: 'request',
-          authentication: {
-            mode: 'header_secret',
-            headerName: 'x-webhook-secret',
-            allowedOrigins: [],
-          },
-        },
-      });
-      const response = await f.application.inject({
-        method: 'POST',
-        url: `/hooks/${endpointKey}`,
-        headers: {
-          'content-type': 'application/json',
-          'x-webhook-secret': Buffer.from(currentSecret).toString('base64url'),
-          authorization: 'Bearer other',
-          cookie: 'session=1',
-          'x-forwarded-for': '203.0.113.9',
-          'x-shop-event': 'order.paid',
-          'user-agent': 'shop/1',
-        },
-        payload: '{}',
-      });
-      expect(response.statusCode).toBe(202);
-      const input = accepted(f)[0]?.runInput;
-      expect(input).toMatchObject({
-        headers: {
-          'x-shop-event': 'order.paid',
-          'user-agent': 'shop/1',
-          'content-type': 'application/json',
-        },
-      });
-      for (const name of [
-        'x-webhook-secret',
-        'authorization',
-        'cookie',
-        'x-forwarded-for',
-      ])
-        expect(input).not.toHaveProperty(`headers.${name}`);
-    });
-  });
+function registerAcceptsCaseInsensitiveJSONMediaTypeUTF(
+  caseFixture: ReturnType<typeof createIngressFixture>,
+): void {
+  const { setup } = caseFixture;
 
   it('accepts case-insensitive JSON media type and UTF-8 parameter', async () => {
     const { application } = setup({});
@@ -1263,6 +1305,12 @@ describe('generic webhook ingress', () => {
       );
     },
   );
+}
+
+function registerReturnsOriginalRunReferenceExactCompletedReplay(
+  caseFixture: ReturnType<typeof createIngressFixture>,
+): void {
+  const { setup, applications } = caseFixture;
 
   it('returns the original run reference for an exact completed replay', async () => {
     const replay = setup({
@@ -1383,166 +1431,25 @@ describe('generic webhook ingress', () => {
     });
     expect(database.acceptVerifiedDelivery).toHaveBeenCalledTimes(2);
   });
+}
 
-  describe('delivery log (ADR 045)', () => {
-    const endpoint = {
-      workspaceId: verification.workspaceId,
-      triggerId: verification.triggerId,
-      endpointId: verification.endpointId,
-    };
-    const stale = String(Number(timestamp) - 301);
-    const staleSignature = `v1=${createHmac('sha256', currentSecret)
-      .update(stale)
-      .update('.')
-      .update('{}')
-      .digest('hex')}`;
-    const mismatch = `v1=${'0'.repeat(64)}`;
-    const verified = { signatureCheck: 'verified' } as const;
-    type Scenario = Readonly<{
-      name: string;
-      headers?: Readonly<Record<string, string>>;
-      body?: string;
-      acceptanceError?: Error;
-      status: number;
-      fact: Readonly<Record<string, string>>;
-    }>;
+function createIngressFixture() {
+  const applications: FastifyInstance[] = [];
 
-    it.each<Scenario>([
-      {
-        name: 'a stale timestamp',
-        headers: {
-          'x-pertexo-timestamp': stale,
-          'x-pertexo-signature': staleSignature,
-        },
-        status: 401,
-        fact: {
-          outcome: 'authentication_failed',
-          signatureCheck: 'not_checked',
-          replayCheck: 'stale_timestamp',
-        },
-      },
-      {
-        name: 'a signature mismatch',
-        headers: { 'x-pertexo-signature': mismatch },
-        status: 401,
-        fact: {
-          outcome: 'authentication_failed',
-          signatureCheck: 'mismatch',
-          replayCheck: 'not_checked',
-        },
-      },
-      {
-        name: 'malformed JSON',
-        body: '{',
-        status: 400,
-        fact: {
-          ...verified,
-          outcome: 'invalid_request',
-          replayCheck: 'not_checked',
-        },
-      },
-      {
-        name: 'a malformed idempotency key',
-        headers: { 'idempotency-key': 'one,two' },
-        status: 400,
-        fact: {
-          ...verified,
-          outcome: 'invalid_request',
-          replayCheck: 'not_checked',
-        },
-      },
-      {
-        name: 'an idempotency conflict',
-        acceptanceError: new WebhookDeliveryReplayMismatchError(),
-        status: 409,
-        fact: { ...verified, outcome: 'conflict', replayCheck: 'conflict' },
-      },
-      {
-        name: 'run admission throttling',
-        acceptanceError: new WorkspaceRunQuotaExceededError(),
-        status: 429,
-        fact: { ...verified, outcome: 'rate_limited', replayCheck: 'new' },
-      },
-      {
-        name: 'a paused workflow',
-        acceptanceError: new WebhookWorkflowPausedError(),
-        status: 423,
-        fact: { ...verified, outcome: 'paused', replayCheck: 'new' },
-      },
-      {
-        name: 'an endpoint that stopped accepting',
-        acceptanceError: new WebhookDeliveryIneligibleError(),
-        status: 401,
-        fact: {
-          ...verified,
-          outcome: 'authentication_failed',
-          replayCheck: 'new',
-        },
-      },
-    ])('records $name as metadata with the same response', async (scenario) => {
-      const body = scenario.body ?? '{}';
-      const fixture = setup({
-        reference: undefined,
-        acceptanceError: scenario.acceptanceError,
-      });
-      const base = request(body, currentSecret);
-      const response = await fixture.application.inject({
-        ...base,
-        headers: { ...base.headers, ...scenario.headers },
-      });
+  const nestApplications: INestApplication[] = [];
 
-      expect(response.statusCode).toBe(scenario.status);
-      expect(
-        fixture.database.recordRejectedDelivery,
-      ).toHaveBeenCalledExactlyOnceWith({
-        endpoint,
-        ...scenario.fact,
-        bodyBytes: Buffer.byteLength(body),
-      });
-    });
+  beforeEach(() => {
+    currentSecret.fill(4);
+    previousSecret.fill(5);
+  });
 
-    it('records nothing it cannot attribute', async () => {
-      const unknown = setup({});
-      unknown.database.resolveVerification.mockResolvedValueOnce(null);
-      const limited = setup({});
-      limited.database.consumeIngressLimit.mockRejectedValueOnce(
-        new WebhookIngressRateLimitExceededError(3),
-      );
-      const accepted = setup({});
-      const fixtures = [unknown, limited, accepted];
-      const responses = await Promise.all(
-        fixtures.map(({ application }) =>
-          application.inject(request('{"size":1}', currentSecret)),
-        ),
-      );
-
-      expect(responses.map(({ statusCode }) => statusCode)).toEqual([
-        401, 429, 202,
-      ]);
-      for (const fixture of fixtures)
-        expect(fixture.database.recordRejectedDelivery).not.toHaveBeenCalled();
-      expect(accepted.database.acceptVerifiedDelivery).toHaveBeenCalledWith(
-        expect.objectContaining({ bodyBytes: 10 }),
-      );
-    });
-
-    it('keeps the response when the delivery log cannot be written', async () => {
-      const fixture = setup({});
-      fixture.database.recordRejectedDelivery.mockRejectedValueOnce(
-        new Error('delivery log unavailable'),
-      );
-      const base = request('{}', currentSecret);
-      const response = await fixture.application.inject({
-        ...base,
-        headers: { ...base.headers, 'x-pertexo-signature': mismatch },
-      });
-
-      expect(response.statusCode).toBe(401);
-      expect(response.json<{ code: string }>().code).toBe(
-        'webhook.authentication_failed',
-      );
-      expect(response.body).not.toContain('delivery log unavailable');
-    });
+  afterEach(async () => {
+    await Promise.all(
+      nestApplications.splice(0).map((application) => application.close()),
+    );
+    await Promise.all(
+      applications.splice(0).map((application) => application.close()),
+    );
   });
 
   async function setupPreflight(reference = verification) {
@@ -1653,129 +1560,340 @@ describe('generic webhook ingress', () => {
       trace,
     };
   }
-});
-
-function request(body: string, secret: Uint8Array) {
-  return {
-    method: 'POST' as const,
-    url: `/hooks/${endpointKey}`,
-    headers: {
-      'content-type': 'application/json; charset=utf-8',
-      'x-pertexo-timestamp': timestamp,
-      'x-pertexo-signature': signature(body, secret),
-      'idempotency-key': 'delivery-1',
-    },
-    payload: body,
-  };
+  return { setup, setupPreflight, applications };
 }
 
-function signature(body: string | Uint8Array, secret: Uint8Array): string {
-  return `v1=${createHmac('sha256', secret)
-    .update(timestamp)
-    .update('.')
-    .update(body)
-    .digest('hex')}`;
-}
+function registerReadsFormFieldsPlainTextJsonEmpty(
+  caseFixture: ReturnType<typeof createRequestShapeFixture>,
+): void {
+  const { open, accepted, setup } = caseFixture;
 
-function rawHeaders(body: string): string[] {
-  return [
-    'host',
-    '127.0.0.1',
-    'content-type',
-    'application/json',
-    'x-pertexo-timestamp',
-    timestamp,
-    'x-pertexo-signature',
-    signature(body, currentSecret),
-    'idempotency-key',
-    'delivery-1',
-    'content-length',
-    String(Buffer.byteLength(body)),
-  ];
-}
-
-function removeRawHeader(headers: readonly string[], name: string): string[] {
-  const output: string[] = [];
-  for (let index = 0; index < headers.length; index += 2) {
-    if (headers[index]?.toLowerCase() === name) continue;
-    output.push(headers[index] ?? '', headers[index + 1] ?? '');
-  }
-  return output;
-}
-
-function replaceRawHeader(
-  headers: readonly string[],
-  name: string,
-  value: string,
-): string[] {
-  const output = [...headers];
-  const index = output.findIndex(
-    (entry, position) => position % 2 === 0 && entry.toLowerCase() === name,
-  );
-  if (index < 0) throw new Error(`Raw header ${name} is missing`);
-  output[index + 1] = value;
-  return output;
-}
-
-async function sendRawWebhook(
-  application: FastifyInstance,
-  headers: readonly string[],
-  body: string,
-): Promise<Readonly<{ statusCode: number; body: string }>> {
-  if (!application.server.listening)
-    await application.listen({ host: '127.0.0.1', port: 0 });
-  const address = application.server.address();
-  if (address === null || typeof address === 'string')
-    throw new Error('Expected a TCP listening address');
-  return new Promise((resolve, reject) => {
-    const client = sendHttpRequest(
-      {
-        host: '127.0.0.1',
-        port: address.port,
+  it('reads form fields, plain text, +json and an empty POST', async () => {
+    const f = open();
+    const send = (headers: Record<string, string>, payload: string) =>
+      f.application.inject({
         method: 'POST',
-        path: `/hooks/${endpointKey}`,
-        headers: [...headers],
-      },
-      (response) => {
-        const chunks: Buffer[] = [];
-        response.on('data', (chunk: Buffer) => {
-          chunks.push(chunk);
-        });
-        response.once('error', reject);
-        response.once('end', () => {
-          resolve({
-            statusCode: response.statusCode ?? 0,
-            body: Buffer.concat(chunks).toString('utf8'),
-          });
-        });
-      },
+        url: `/hooks/${endpointKey}`,
+        headers,
+        payload,
+      });
+    for (const [headers, payload] of [
+      [
+        { 'content-type': 'application/x-www-form-urlencoded' },
+        'name=Ada+L&tag=a&tag=b&note=%E2%9C%93',
+      ],
+      [{ 'content-type': 'text/plain; charset=utf-8' }, 'hello\nthere'],
+      [{ 'content-type': 'application/cloudevents+json' }, '{"id":"e1"}'],
+      [{}, ''],
+    ] as const)
+      expect((await send(headers, payload)).statusCode).toBe(202);
+    expect(accepted(f).map((input) => input.runInput)).toEqual([
+      { name: 'Ada L', tag: ['a', 'b'], note: '✓' },
+      'hello\nthere',
+      { id: 'e1' },
+      {},
+    ]);
+    expect((await send({}, '{}')).statusCode).toBe(415);
+    const latin = await f.application.inject({
+      method: 'POST',
+      url: `/hooks/${endpointKey}`,
+      headers: { 'content-type': 'text/plain' },
+      payload: Buffer.from([0xff, 0xfe]),
+    });
+    expect(latin.statusCode).toBe(400);
+    expect(latin.json<{ code: string }>().code).toBe('request.invalid');
+  });
+
+  it('starts a GET run from the query and keeps queries apart', async () => {
+    const f = open();
+    const get = (query: string) =>
+      f.application.inject({
+        method: 'GET',
+        url: `/hooks/${endpointKey}${query}`,
+      });
+    expect((await get('?order=A-1&tag=x&tag=y')).statusCode).toBe(202);
+    expect((await get('?order=A-2')).statusCode).toBe(202);
+    expect((await get('?order=A-1&tag=x&tag=y')).statusCode).toBe(202);
+    const [first, second, third] = accepted(f);
+    expect(first?.runInput).toEqual({ order: 'A-1', tag: ['x', 'y'] });
+    expect(first?.requestFingerprint).not.toBe(second?.requestFingerprint);
+    expect(first?.requestFingerprint).toBe(third?.requestFingerprint);
+    expect(
+      (
+        await f.application.inject({
+          method: 'HEAD',
+          url: `/hooks/${endpointKey}`,
+        })
+      ).statusCode,
+    ).toBe(404);
+    expect(accepted(f)).toHaveLength(3);
+  });
+
+  it('refuses GET on a signed endpoint, whose signature covers a body', async () => {
+    const f = setup({});
+    const response = await f.application.inject({
+      method: 'GET',
+      url: `/hooks/${endpointKey}?order=A-1`,
+    });
+    expect(response.statusCode).toBe(405);
+    expect(response.headers.allow).toBe('POST');
+    expect(response.json<{ code: string }>().code).toBe(
+      'webhook.method_not_allowed',
     );
-    client.once('error', reject);
-    client.end(body);
+    expect(f.database.recordRejectedDelivery).toHaveBeenCalledOnce();
+    expect(f.database.acceptVerifiedDelivery).not.toHaveBeenCalled();
+  });
+
+  it('keeps the fingerprint of a JSON POST as it was', async () => {
+    const f = open();
+    await f.application.inject({
+      method: 'POST',
+      url: `/hooks/${endpointKey}`,
+      headers: { 'content-type': 'Application/JSON' },
+      payload: '{"a":1}',
+    });
+    await f.application.inject({
+      method: 'POST',
+      url: `/hooks/${endpointKey}?source=shop`,
+      headers: { 'content-type': 'application/json' },
+      payload: '{"a":1}',
+    });
+    const sha = (value: string) =>
+      createHash('sha256').update(value).digest('hex');
+    const [plain, withQuery] = accepted(f);
+    expect(plain?.requestFingerprint).toBe(
+      sha(`${verification.endpointId}\0${sha('{"a":1}')}\0application/json`),
+    );
+    expect(withQuery?.requestFingerprint).not.toBe(plain?.requestFingerprint);
+  });
+
+  it('leaves credentials, signatures and proxy headers out of the request', async () => {
+    const f = setup({
+      reference: {
+        ...verification,
+        runInputMode: 'request',
+        authentication: {
+          mode: 'header_secret',
+          headerName: 'x-webhook-secret',
+          allowedOrigins: [],
+        },
+      },
+    });
+    const response = await f.application.inject({
+      method: 'POST',
+      url: `/hooks/${endpointKey}`,
+      headers: {
+        'content-type': 'application/json',
+        'x-webhook-secret': Buffer.from(currentSecret).toString('base64url'),
+        authorization: 'Bearer other',
+        cookie: 'session=1',
+        'x-forwarded-for': '203.0.113.9',
+        'x-shop-event': 'order.paid',
+        'user-agent': 'shop/1',
+      },
+      payload: '{}',
+    });
+    expect(response.statusCode).toBe(202);
+    const input = accepted(f)[0]?.runInput;
+    expect(input).toMatchObject({
+      headers: {
+        'x-shop-event': 'order.paid',
+        'user-agent': 'shop/1',
+        'content-type': 'application/json',
+      },
+    });
+    for (const name of [
+      'x-webhook-secret',
+      'authorization',
+      'cookie',
+      'x-forwarded-for',
+    ])
+      expect(input).not.toHaveProperty(`headers.${name}`);
   });
 }
 
-function sealed(id: string) {
-  return {
-    id,
-    kmsKeyReference: 'key',
-    encryptedDataKey: 'key',
-    ciphertext: 'ciphertext',
-    nonce: 'nonce',
-    authTag: 'tag',
-  };
+function createRequestShapeFixture(
+  parent: Readonly<{ setup: ReturnType<typeof createIngressFixture>['setup'] }>,
+) {
+  const { setup } = parent;
+
+  const open = () =>
+    setup({
+      reference: {
+        ...verification,
+        authentication: { mode: 'secret_url', allowedOrigins: [] },
+      },
+    });
+
+  const accepted = (f: ReturnType<typeof setup>) => acceptedInputs(f.database);
+  return { open, accepted, setup };
 }
 
-function deferred<T>() {
-  let settle: ((value: T) => void) | undefined;
-  const promise = new Promise<T>((resolve) => {
-    settle = resolve;
-  });
-  return {
-    promise,
-    resolve: (value: T): void => {
-      settle?.(value);
-      settle = undefined;
+function registerRecordsNameMetadataSameResponse(
+  caseFixture: ReturnType<typeof createDeliveryLogFixture>,
+): void {
+  const { stale, staleSignature, mismatch, verified, setup, endpoint } =
+    caseFixture;
+
+  it.each<Scenario>([
+    {
+      name: 'a stale timestamp',
+      headers: {
+        'x-pertexo-timestamp': stale,
+        'x-pertexo-signature': staleSignature,
+      },
+      status: 401,
+      fact: {
+        outcome: 'authentication_failed',
+        signatureCheck: 'not_checked',
+        replayCheck: 'stale_timestamp',
+      },
     },
+    {
+      name: 'a signature mismatch',
+      headers: { 'x-pertexo-signature': mismatch },
+      status: 401,
+      fact: {
+        outcome: 'authentication_failed',
+        signatureCheck: 'mismatch',
+        replayCheck: 'not_checked',
+      },
+    },
+    {
+      name: 'malformed JSON',
+      body: '{',
+      status: 400,
+      fact: {
+        ...verified,
+        outcome: 'invalid_request',
+        replayCheck: 'not_checked',
+      },
+    },
+    {
+      name: 'a malformed idempotency key',
+      headers: { 'idempotency-key': 'one,two' },
+      status: 400,
+      fact: {
+        ...verified,
+        outcome: 'invalid_request',
+        replayCheck: 'not_checked',
+      },
+    },
+    {
+      name: 'an idempotency conflict',
+      acceptanceError: new WebhookDeliveryReplayMismatchError(),
+      status: 409,
+      fact: { ...verified, outcome: 'conflict', replayCheck: 'conflict' },
+    },
+    {
+      name: 'run admission throttling',
+      acceptanceError: new WorkspaceRunQuotaExceededError(),
+      status: 429,
+      fact: { ...verified, outcome: 'rate_limited', replayCheck: 'new' },
+    },
+    {
+      name: 'a paused workflow',
+      acceptanceError: new WebhookWorkflowPausedError(),
+      status: 423,
+      fact: { ...verified, outcome: 'paused', replayCheck: 'new' },
+    },
+    {
+      name: 'an endpoint that stopped accepting',
+      acceptanceError: new WebhookDeliveryIneligibleError(),
+      status: 401,
+      fact: {
+        ...verified,
+        outcome: 'authentication_failed',
+        replayCheck: 'new',
+      },
+    },
+  ])('records $name as metadata with the same response', async (scenario) => {
+    const body = scenario.body ?? '{}';
+    const fixture = setup({
+      reference: undefined,
+      acceptanceError: scenario.acceptanceError,
+    });
+    const base = request(body, currentSecret);
+    const response = await fixture.application.inject({
+      ...base,
+      headers: { ...base.headers, ...scenario.headers },
+    });
+
+    expect(response.statusCode).toBe(scenario.status);
+    expect(
+      fixture.database.recordRejectedDelivery,
+    ).toHaveBeenCalledExactlyOnceWith({
+      endpoint,
+      ...scenario.fact,
+      bodyBytes: Buffer.byteLength(body),
+    });
+  });
+
+  it('records nothing it cannot attribute', async () => {
+    const unknown = setup({});
+    unknown.database.resolveVerification.mockResolvedValueOnce(null);
+    const limited = setup({});
+    limited.database.consumeIngressLimit.mockRejectedValueOnce(
+      new WebhookIngressRateLimitExceededError(3),
+    );
+    const accepted = setup({});
+    const fixtures = [unknown, limited, accepted];
+    const responses = await Promise.all(
+      fixtures.map(({ application }) =>
+        application.inject(request('{"size":1}', currentSecret)),
+      ),
+    );
+
+    expect(responses.map(({ statusCode }) => statusCode)).toEqual([
+      401, 429, 202,
+    ]);
+    for (const fixture of fixtures)
+      expect(fixture.database.recordRejectedDelivery).not.toHaveBeenCalled();
+    expect(accepted.database.acceptVerifiedDelivery).toHaveBeenCalledWith(
+      expect.objectContaining({ bodyBytes: 10 }),
+    );
+  });
+
+  it('keeps the response when the delivery log cannot be written', async () => {
+    const fixture = setup({});
+    fixture.database.recordRejectedDelivery.mockRejectedValueOnce(
+      new Error('delivery log unavailable'),
+    );
+    const base = request('{}', currentSecret);
+    const response = await fixture.application.inject({
+      ...base,
+      headers: { ...base.headers, 'x-pertexo-signature': mismatch },
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json<{ code: string }>().code).toBe(
+      'webhook.authentication_failed',
+    );
+    expect(response.body).not.toContain('delivery log unavailable');
+  });
+}
+
+function createDeliveryLogFixture(
+  parent: Readonly<{ setup: ReturnType<typeof createIngressFixture>['setup'] }>,
+) {
+  const { setup } = parent;
+
+  const endpoint = {
+    workspaceId: verification.workspaceId,
+    triggerId: verification.triggerId,
+    endpointId: verification.endpointId,
   };
+
+  const stale = String(Number(timestamp) - 301);
+
+  const staleSignature = `v1=${createHmac('sha256', currentSecret)
+    .update(stale)
+    .update('.')
+    .update('{}')
+    .digest('hex')}`;
+
+  const mismatch = `v1=${'0'.repeat(64)}`;
+
+  const verified = { signatureCheck: 'verified' } as const;
+  return { stale, staleSignature, mismatch, verified, setup, endpoint };
 }
