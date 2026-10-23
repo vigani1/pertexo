@@ -1,36 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import type { WorkflowGraph } from '../../src/graph/contract.js';
+
 import { validateWorkflowGraph } from '../../src/graph/validation/index.js';
 import { WORKFLOW_VALIDATION_MAX_ISSUES } from '../../src/graph/contract.js';
-
-const node = (id: string) => ({
-  id,
-  definition: { key: 'core.set', version: 1 },
-  position: { x: 0, y: 0 },
-  configVersion: 1,
-  config: {},
-  inputMappings: {},
-  connectionRefs: {},
-});
-const forEachNode = (id: string, bodyNodes = [node(`${id}-body`)]) => ({
-  ...node(id),
-  definition: { key: 'core.foreach', version: 1 },
-  structured: {
-    kind: 'for_each' as const,
-    maxIterations: 10,
-    maxConcurrency: 2,
-    body: {
-      ...graph(bodyNodes),
-      inputPorts: ['item', 'ordinal'],
-      outputPorts: ['result'],
-    },
-  },
-});
-const graph = (
-  nodes: WorkflowGraph['nodes'],
-  edges: WorkflowGraph['edges'] = [],
-): WorkflowGraph => ({ nodes, edges, settings: {} });
-
+import { node, forEachNode, graph } from '../support/graph-aggregate.js';
 describe('workflow graph validation', () => {
   it('accepts a DAG and rejects duplicate IDs, dangling edges, and arbitrary cycles', () => {
     expect(
