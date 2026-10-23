@@ -351,3 +351,10 @@ export {
   DIRECTORY_LIMITS,
   AUTHENTICATION_PROVIDERS,
 } from './workspaces/identity-policy.js';
+
+export {
+  workflowTemplateOriginRequestSchema,
+  workflowTemplateOriginSchema,
+  type WorkflowTemplateOriginRequest,
+  type WorkflowTemplateOrigin,
+} from './authoring/portability/origin.js';
