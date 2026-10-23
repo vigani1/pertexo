@@ -6,8 +6,8 @@ import {
   NodeAttemptReconciliationRequiredError,
   NodeAttemptStateCorruptError,
   type NodeAttemptRunStore,
-} from './contract.js';
-import { assertNotAborted, withWorkspaceWriteClient } from './transactions.js';
+} from '../contract.js';
+import { assertNotAborted, withWorkspaceWriteClient } from '../transactions.js';
 
 export async function heartbeatNodeAttempt(
   pool: Pool,

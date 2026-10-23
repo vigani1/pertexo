@@ -1,182 +1,48 @@
 import { and, asc, eq, lte, sql } from 'drizzle-orm';
-import { z } from 'zod';
-
-import {
-  artifactLinks,
-  artifacts,
-  previewRuns,
-  runCheckpoints,
-  runEvents,
-} from '../schema.js';
+import type { z } from 'zod';
+import { artifactLinks, artifacts, previewRuns } from '../schema.js';
 import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
+import { artifactMetadataMatches } from './metadata-contract.js';
 import {
-  artifactByteLengthSchema,
-  artifactMediaTypeSchema,
-  artifactMetadataMatches,
-  artifactSha256Schema,
-} from './metadata-contract.js';
+  ARTIFACT_STATUS,
+  type ArtifactRecord,
+  pendingArtifactSchema,
+  pendingPreviewArtifactSchema,
+  finalizeArtifactSchema,
+  claimInputSchema,
+  claimOneInputSchema,
+  removalInputSchema,
+  type CreatePendingArtifactInput,
+  type CreatePendingPreviewArtifactInput,
+  type FinalizeArtifactInput,
+  type ClaimDueUnfinalizedArtifactsInput,
+  type ClaimDueUnfinalizedArtifactInput,
+  type CompleteArtifactRemovalInput,
+  ArtifactFinalizeConflictError,
+  ArtifactLifecycleConflictError,
+  ArtifactMetadataNotFoundError,
+} from './contract.js';
 
-export const ARTIFACT_STATUS = {
-  available: 'available',
-  deleted: 'deleted',
-  deleting: 'deleting',
-  pending: 'pending',
-} as const;
-
-export type ArtifactStatus =
-  (typeof ARTIFACT_STATUS)[keyof typeof ARTIFACT_STATUS];
-export type ArtifactRecord = typeof artifacts.$inferSelect;
-export type ArtifactCapacityObservation = Readonly<{
-  bytes: number;
-  count: number;
-  status: ArtifactStatus;
-}>;
-export type ExecutionStorageObservation = Readonly<{
-  bytes: number;
-  count: number;
-  surface: 'checkpoint' | 'event';
-}>;
-
-const metadataSchema = z.object({
-  artifactId: z.uuid(),
-  byteLength: artifactByteLengthSchema,
-  mediaType: artifactMediaTypeSchema,
-  sha256: artifactSha256Schema,
-  storageKey: z.string().min(1).max(512),
-});
-const pendingArtifactSchema = metadataSchema.extend({
-  expiresAt: z.date(),
-  purpose: z
-    .string()
-    .min(1)
-    .max(64)
-    .regex(/^[a-z][a-z0-9-]{0,63}$/u),
-});
-const pendingPreviewArtifactSchema = pendingArtifactSchema.extend({
-  previewRunId: z.uuid(),
-});
-const finalizeArtifactSchema = metadataSchema.extend({ workspaceId: z.uuid() });
-const claimInputSchema = z.object({
-  limit: z.number().int().min(1).max(100),
-});
-const claimOneInputSchema = z.object({ artifactId: z.uuid() });
-const removalInputSchema = z.object({ artifactId: z.uuid() });
-
-export type CreatePendingArtifactInput = z.input<typeof pendingArtifactSchema>;
-export type CreatePendingPreviewArtifactInput = z.input<
-  typeof pendingPreviewArtifactSchema
->;
-export type FinalizeArtifactInput = z.input<typeof finalizeArtifactSchema>;
-export type ClaimDueUnfinalizedArtifactsInput = z.input<
-  typeof claimInputSchema
->;
-export type ClaimDueUnfinalizedArtifactInput = z.input<
-  typeof claimOneInputSchema
->;
-export type CompleteArtifactRemovalInput = z.input<typeof removalInputSchema>;
-
-export class ArtifactFinalizeConflictError extends Error {
-  public constructor() {
-    super('Validated object metadata does not match the pending artifact');
-    this.name = 'ArtifactFinalizeConflictError';
-  }
-}
-
-export class ArtifactLifecycleConflictError extends Error {
-  public constructor(message: string) {
-    super(message);
-    this.name = 'ArtifactLifecycleConflictError';
-  }
-}
-
-export class ArtifactMetadataNotFoundError extends Error {
-  public constructor() {
-    super('Artifact metadata was not found in the workspace');
-    this.name = 'ArtifactMetadataNotFoundError';
-  }
-}
-
-function safeAggregateInteger(value: string, field: string): number {
-  const parsed = Number(value);
-  if (!Number.isSafeInteger(parsed) || parsed < 0) {
-    throw new RangeError(`${field} exceeds the safe metric integer range`);
-  }
-  return parsed;
-}
-
-export async function readArtifactCapacity(
-  transaction: WorkspaceTransaction,
-): Promise<readonly ArtifactCapacityObservation[]> {
-  const rows = await transaction.db
-    .select({
-      bytes: sql<string>`coalesce(sum(${artifacts.byteLength}), 0)::text`,
-      count: sql<string>`count(*)::text`,
-      status: artifacts.status,
-    })
-    .from(artifacts)
-    .groupBy(artifacts.status);
-  const byStatus = new Map(
-    rows.map((row) => [
-      row.status,
-      Object.freeze({
-        bytes: safeAggregateInteger(row.bytes, 'artifact bytes'),
-        count: safeAggregateInteger(row.count, 'artifact count'),
-      }),
-    ]),
-  );
-
-  return Object.freeze(
-    Object.values(ARTIFACT_STATUS)
-      .sort()
-      .map((status) =>
-        Object.freeze({
-          bytes: byStatus.get(status)?.bytes ?? 0,
-          count: byStatus.get(status)?.count ?? 0,
-          status,
-        }),
-      ),
-  );
-}
-
-export async function readExecutionStorageCapacity(
-  transaction: WorkspaceTransaction,
-): Promise<readonly ExecutionStorageObservation[]> {
-  const [eventRows, checkpointRows] = await Promise.all([
-    transaction.db
-      .select({
-        bytes: sql<string>`coalesce(sum(pg_column_size(${runEvents.payload})), 0)::text`,
-        count: sql<string>`count(*)::text`,
-      })
-      .from(runEvents),
-    transaction.db
-      .select({
-        bytes: sql<string>`coalesce(sum(pg_column_size(${runCheckpoints.schedulerState})), 0)::text`,
-        count: sql<string>`count(*)::text`,
-      })
-      .from(runCheckpoints),
-  ]);
-  const event = eventRows[0];
-  const checkpoint = checkpointRows[0];
-  return Object.freeze([
-    Object.freeze({
-      bytes: safeAggregateInteger(event?.bytes ?? '0', 'run event bytes'),
-      count: safeAggregateInteger(event?.count ?? '0', 'run event count'),
-      surface: 'event' as const,
-    }),
-    Object.freeze({
-      bytes: safeAggregateInteger(
-        checkpoint?.bytes ?? '0',
-        'run checkpoint bytes',
-      ),
-      count: safeAggregateInteger(
-        checkpoint?.count ?? '0',
-        'run checkpoint count',
-      ),
-      surface: 'checkpoint' as const,
-    }),
-  ]);
-}
-
+export {
+  ARTIFACT_STATUS,
+  type ArtifactStatus,
+  type ArtifactRecord,
+  type CreatePendingArtifactInput,
+  type CreatePendingPreviewArtifactInput,
+  type FinalizeArtifactInput,
+  type ClaimDueUnfinalizedArtifactsInput,
+  type ClaimDueUnfinalizedArtifactInput,
+  type CompleteArtifactRemovalInput,
+  ArtifactFinalizeConflictError,
+  ArtifactLifecycleConflictError,
+  ArtifactMetadataNotFoundError,
+} from './contract.js';
+export {
+  type ArtifactCapacityObservation,
+  type ExecutionStorageObservation,
+  readArtifactCapacity,
+  readExecutionStorageCapacity,
+} from './capacity.js';
 export function artifactStorageKey(
   workspaceId: string,
   artifactId: string,

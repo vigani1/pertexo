@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { generatePersistedId } from '../platform/persisted-id.js';
+import { generatePersistedId } from '../../platform/persisted-id.js';
 
 import type { Pool, PoolClient } from 'pg';
 import type { z } from 'zod';
@@ -12,9 +12,9 @@ import {
   attemptJobPayloadSchema,
   type claimDeliverySchema,
   type NodeAttemptDelivery,
-} from './contract.js';
-import { withWorkspaceWriteClient } from './transactions.js';
-import { serializeStoredExecutionJsonValue } from '../platform/stored-execution-value.js';
+} from '../contract.js';
+import { withWorkspaceWriteClient } from '../transactions.js';
+import { serializeStoredExecutionJsonValue } from '../../platform/stored-execution-value.js';
 
 export const nodeAttemptConsumerName = 'node-attempt-worker';
 

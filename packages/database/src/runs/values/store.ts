@@ -9,7 +9,7 @@ import { withWorkspaceWriteClient } from '../../attempts/transactions.js';
 import {
   lockCapabilityExecution,
   assertCapabilityExecution,
-} from '../../attempts/capability-fence.js';
+} from '../../attempts/dispatch/fence.js';
 import { RunValuesLimitError, type RunValuesStore } from './records.js';
 
 export function createRunValuesStore(

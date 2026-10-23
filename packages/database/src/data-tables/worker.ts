@@ -22,7 +22,7 @@ import {
   lockCapabilityExecution,
   assertCapabilityExecution,
   ExecutionCapabilityExpiredError,
-} from '../attempts/capability-fence.js';
+} from '../attempts/dispatch/fence.js';
 export function createWorkerDataTablesStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
