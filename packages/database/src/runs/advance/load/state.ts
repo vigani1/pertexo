@@ -189,26 +189,8 @@ export async function loadRunForAdvance(
     throw new CoordinatorRunStateCorruptError();
 
   const observations: unknown[] = facts.map(mapEvent);
-  const pendingFailures = await client.query<PendingCoordinatorFailure>(
-    `select attempt.id attempt_id, attempt.attempt_number,
-            coalesce(attempt.completed_at, attempt.updated_at) completed_at,
-            attempt.executor_failure_kind, attempt.executor_retry_after_millis,
-            attempt.executor_error_kind, attempt.executor_possibly_dispatched,
-            attempt.safe_error_code, node.invocation_key
-       from app.node_attempts attempt
-       join app.node_runs node
-         on node.workspace_id = attempt.workspace_id
-        and node.id = attempt.node_run_id
-       where attempt.workspace_id = $1 and node.workflow_run_id = $2
-         and node.current_attempt_id = attempt.id
-         and node.current_attempt_number = attempt.attempt_number
-         and node.status = 'running' and attempt.status = 'failed'
-         and attempt.retry_decision = 'pending'
-       order by node.invocation_key, attempt.id
-       for update of node, attempt`,
-    [workspaceId, runId],
-  );
-  observations.push(...pendingFailureObservations(pendingFailures.rows));
+  const pendingFailures = await readPendingFailures(client, workspaceId, runId);
+  observations.push(...pendingFailureObservations(pendingFailures));
   await assertAvailableArtifacts(client, workspaceId, observations);
   const deadlineAt = row.deadline_at;
   const deadlineExpired =
@@ -253,7 +235,7 @@ export async function loadRunForAdvance(
   return Object.freeze({
     kind: 'loaded',
     row,
-    pendingFailures: pendingFailures.rows,
+    pendingFailures,
     state: Object.freeze({
       hasExecutionSlot:
         calls.hasExecutionSlot && row.human_wait_started_at === null,
@@ -279,4 +261,31 @@ export async function loadRunForAdvance(
         }),
     }),
   });
+}
+
+async function readPendingFailures(
+  client: PoolClient,
+  workspaceId: string,
+  runId: string,
+): Promise<PendingCoordinatorFailure[]> {
+  const pendingFailures = await client.query<PendingCoordinatorFailure>(
+    `select attempt.id attempt_id, attempt.attempt_number,
+            coalesce(attempt.completed_at, attempt.updated_at) completed_at,
+            attempt.executor_failure_kind, attempt.executor_retry_after_millis,
+            attempt.executor_error_kind, attempt.executor_possibly_dispatched,
+            attempt.safe_error_code, node.invocation_key
+       from app.node_attempts attempt
+       join app.node_runs node
+         on node.workspace_id = attempt.workspace_id
+        and node.id = attempt.node_run_id
+       where attempt.workspace_id = $1 and node.workflow_run_id = $2
+         and node.current_attempt_id = attempt.id
+         and node.current_attempt_number = attempt.attempt_number
+         and node.status = 'running' and attempt.status = 'failed'
+         and attempt.retry_decision = 'pending'
+       order by node.invocation_key, attempt.id
+       for update of node, attempt`,
+    [workspaceId, runId],
+  );
+  return pendingFailures.rows;
 }

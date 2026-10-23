@@ -131,14 +131,11 @@ export async function synchronizeHumanWait(
     );
     await wakeRelations(client, workspaceId, runId);
   } else if (!quiescent) {
-    let available = false;
-    if (!facts.ancestor_waiting) {
-      const capacity = await client.query<{ available: boolean }>(
-        'select app.workflow_run_active_capacity_available($1,$2,$3) available',
-        [workspaceId, run.execution_entitlement_version, runId],
-      );
-      available = capacity.rows[0]?.available ?? false;
-    }
+    const available = await humanWaitCapacityAvailable(client, workspaceId, {
+      runId,
+      run,
+      ancestorWaiting: facts.ancestor_waiting,
+    });
     if (!available) {
       if (!alreadyDeferred) await deferWorkflowRun(client, workspaceId, runId);
       return { ...unchanged, human_resume_deferred: true };
@@ -174,4 +171,25 @@ export async function synchronizeHumanWait(
   const row = updated.rows[0];
   if (row === undefined) throw new Error('Human wait clock is unavailable');
   return { ...row, human_resume_deferred: alreadyDeferred };
+}
+
+async function humanWaitCapacityAvailable(
+  client: PoolClient,
+  workspaceId: string,
+  {
+    runId,
+    run,
+    ancestorWaiting,
+  }: Readonly<{ runId: string; run: RunClock; ancestorWaiting: boolean }>,
+): Promise<boolean> {
+  let available = false;
+  if (!ancestorWaiting) {
+    const capacity = await client.query<{ available: boolean }>(
+      'select app.workflow_run_active_capacity_available($1,$2,$3) available',
+      [workspaceId, run.execution_entitlement_version, runId],
+    );
+    available = capacity.rows[0]?.available ?? false;
+  }
+
+  return available;
 }

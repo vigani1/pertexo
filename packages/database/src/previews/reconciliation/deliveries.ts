@@ -215,42 +215,7 @@ export async function reconcilePreviewDelivery(
         )
           return Object.freeze({ kind: 'duplicate' });
 
-        const locked = await client.query<LockedPreviewReconciliationState>(
-          `select attempt.status as attempt_status,
-                  attempt.dispatch_marked_at,
-                  attempt.fence_token,
-                  attempt.lease_expires_at,
-                  (attempt.lease_expires_at is not null and
-                   attempt.lease_expires_at > clock_timestamp()) as lease_live,
-                   attempt.side_effect_class,
-                   run.may_contact_provider,
-                   run.may_cause_external_side_effect,
-                   run.operation_key,
-                   run.provider_key,
-                   coalesce(
-                     jsonb_typeof(run.executable_node_json::jsonb->'connectionRefs') = 'object'
-                     and run.executable_node_json::jsonb->'connectionRefs' <> '{}'::jsonb,
-                     false
-                   )
-                     as uses_connection,
-                   run.status as run_status,
-                  (run.execution_deadline_at <= clock_timestamp()) as run_deadline_expired
-           from app.preview_attempts attempt
-           join app.preview_runs run
-             on run.workspace_id=attempt.workspace_id
-            and run.id=attempt.preview_run_id
-           where attempt.workspace_id=$1
-             and attempt.id=$2
-             and attempt.preview_run_id=$3
-           for update of attempt,run`,
-          [scope.workspaceId, scope.previewAttemptId, scope.previewRunId],
-        );
-        const state = locked.rows[0];
-        if (state === undefined)
-          throw new PreviewAttemptStateError('attempt_not_found');
-        if (!previewPairConsistent(state.attempt_status, state.run_status))
-          throw new PreviewAttemptStateError('run_attempt_divergence');
-
+        const state = await lockPreviewReconciliationState(client, scope);
         const completeReceipt = async (): Promise<void> =>
           completePreviewReceipt(
             client,
@@ -364,4 +329,47 @@ export async function reconcilePreviewDelivery(
     }
     throw error;
   }
+}
+
+async function lockPreviewReconciliationState(
+  client: PoolClient,
+  scope: PreviewReconciliationScope,
+): Promise<LockedPreviewReconciliationState> {
+  const locked = await client.query<LockedPreviewReconciliationState>(
+    `select attempt.status as attempt_status,
+                  attempt.dispatch_marked_at,
+                  attempt.fence_token,
+                  attempt.lease_expires_at,
+                  (attempt.lease_expires_at is not null and
+                   attempt.lease_expires_at > clock_timestamp()) as lease_live,
+                   attempt.side_effect_class,
+                   run.may_contact_provider,
+                   run.may_cause_external_side_effect,
+                   run.operation_key,
+                   run.provider_key,
+                   coalesce(
+                     jsonb_typeof(run.executable_node_json::jsonb->'connectionRefs') = 'object'
+                     and run.executable_node_json::jsonb->'connectionRefs' <> '{}'::jsonb,
+                     false
+                   )
+                     as uses_connection,
+                   run.status as run_status,
+                  (run.execution_deadline_at <= clock_timestamp()) as run_deadline_expired
+           from app.preview_attempts attempt
+           join app.preview_runs run
+             on run.workspace_id=attempt.workspace_id
+            and run.id=attempt.preview_run_id
+           where attempt.workspace_id=$1
+             and attempt.id=$2
+             and attempt.preview_run_id=$3
+           for update of attempt,run`,
+    [scope.workspaceId, scope.previewAttemptId, scope.previewRunId],
+  );
+  const state = locked.rows[0];
+  if (state === undefined)
+    throw new PreviewAttemptStateError('attempt_not_found');
+  if (!previewPairConsistent(state.attempt_status, state.run_status))
+    throw new PreviewAttemptStateError('run_attempt_divergence');
+
+  return state;
 }

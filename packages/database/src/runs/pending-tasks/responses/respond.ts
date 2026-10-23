@@ -97,20 +97,7 @@ export async function respondToTask(
   if (observation === undefined)
     throw new Error('Decision identity and time unavailable');
   const { now, display_name } = observation;
-  const output =
-    input.kind === 'approval'
-      ? approvalOutputSchema.parse({
-          decision: input.decision,
-          comment: input.comment === '' ? null : (input.comment ?? null),
-          decidedBy: input.actorId,
-          decidedByName: display_name,
-          decidedAt: now.toISOString(),
-        })
-      : formSubmissionSchema.parse({
-          values,
-          submittedBy: input.actorId,
-          submittedAt: now.toISOString(),
-        });
+  const output = taskResponseOutput(input, { values, now, display_name });
   const changed = await client.query(
     `update app.pending_run_tasks set status=$3,output_ref=$4::json,decided_by=$5,completed_at=$6 where workspace_id=$1 and id=$2 and status='pending' and expires_at>clock_timestamp()`,
     [
@@ -169,4 +156,31 @@ export async function wakeTaskAncestors(
   );
   for (const row of ancestors.rows)
     await wakeWorkflowRun(client, workspaceId, row.id);
+}
+
+function taskResponseOutput(
+  input: Parameters<typeof respondToTask>[1],
+  {
+    values,
+    now,
+    display_name,
+  }: Readonly<{
+    values: ReturnType<typeof parseFormValues> | undefined;
+    now: Date;
+    display_name: string;
+  }>,
+) {
+  return input.kind === 'approval'
+    ? approvalOutputSchema.parse({
+        decision: input.decision,
+        comment: input.comment === '' ? null : (input.comment ?? null),
+        decidedBy: input.actorId,
+        decidedByName: display_name,
+        decidedAt: now.toISOString(),
+      })
+    : formSubmissionSchema.parse({
+        values,
+        submittedBy: input.actorId,
+        submittedAt: now.toISOString(),
+      });
 }

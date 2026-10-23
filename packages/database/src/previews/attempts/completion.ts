@@ -247,20 +247,7 @@ export async function completePreviewAttempt(
     input.codeDiagnostics === undefined
       ? undefined
       : codeDiagnosticsSchema.parse(input.codeDiagnostics);
-  const outcome =
-    input.outcome.status === PREVIEW_STATUS.succeeded
-      ? ({
-          status: PREVIEW_STATUS.succeeded,
-          outputRef: serializeStoredExecutionValue(input.outcome.output),
-        } as const)
-      : ({
-          safeErrorCode: safeErrorCodeSchema.parse(input.outcome.safeErrorCode),
-          errorSummary:
-            input.outcome.errorSummary === undefined
-              ? null
-              : errorSummarySchema.parse(input.outcome.errorSummary),
-          status: input.outcome.status,
-        } as const);
+  const outcome = canonicalPreviewOutcome(input.outcome);
   try {
     return await withTenantScopedClient(
       pool,
@@ -377,4 +364,22 @@ export async function completePreviewAttempt(
     }
     throw error;
   }
+}
+
+function canonicalPreviewOutcome(
+  outcome: PreviewTerminalOutcome,
+): CanonicalCompletionOutcome {
+  return outcome.status === PREVIEW_STATUS.succeeded
+    ? ({
+        status: PREVIEW_STATUS.succeeded,
+        outputRef: serializeStoredExecutionValue(outcome.output),
+      } as const)
+    : ({
+        safeErrorCode: safeErrorCodeSchema.parse(outcome.safeErrorCode),
+        errorSummary:
+          outcome.errorSummary === undefined
+            ? null
+            : errorSummarySchema.parse(outcome.errorSummary),
+        status: outcome.status,
+      } as const);
 }

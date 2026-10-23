@@ -100,43 +100,11 @@ export async function advanceSuite(
     [suite.workspace_id, suite.id],
   );
   const entry = active.rows[0];
-  if (entry !== undefined) {
-    const run =
-      entry.run_id === null
-        ? undefined
-        : await readSuiteRunOutcome(
-            client,
-            suite.workspace_id,
-            entry.run_id,
-            suite.snapshot_id,
-          );
-    if (run === undefined) {
-      await stop(client, suite, 'run_unavailable');
-      await client.query(
-        "update app.workflow_test_suite_cases set status='error' where workspace_id=$1 and suite_id=$2 and ordinal=$3",
-        [suite.workspace_id, suite.id, entry.ordinal],
-      );
-    } else if (['queued', 'running', 'waiting'].includes(run.status)) {
-      await client.query(
-        "update app.workflow_test_suites set next_check_at=clock_timestamp()+interval '1 second' where workspace_id=$1 and id=$2",
-        [suite.workspace_id, suite.id],
-      );
-      return true;
-    } else {
-      const result = await evaluateSuiteCase(client, entry, run);
-      await client.query(
-        'update app.workflow_test_suite_cases set status=$4,report=$5 where workspace_id=$1 and suite_id=$2 and ordinal=$3',
-        [
-          suite.workspace_id,
-          suite.id,
-          entry.ordinal,
-          result.status,
-          canonicalJson(result.report),
-        ],
-      );
-      if (run.status === 'canceled') await stop(client, suite, 'case_canceled');
-    }
-  }
+  if (
+    entry !== undefined &&
+    (await completeActiveSuiteCase(client, suite, entry))
+  )
+    return true;
   if (suite.stop_reason !== null) {
     await finish(client, suite);
     return true;
@@ -190,4 +158,48 @@ function suiteOutcome(
     return 'passed';
   }
   return 'failed';
+}
+
+async function completeActiveSuiteCase(
+  client: PoolClient,
+  suite: SuiteRow,
+  entry: SuiteCaseRow,
+): Promise<boolean> {
+  const run =
+    entry.run_id === null
+      ? undefined
+      : await readSuiteRunOutcome(
+          client,
+          suite.workspace_id,
+          entry.run_id,
+          suite.snapshot_id,
+        );
+  if (run === undefined) {
+    await stop(client, suite, 'run_unavailable');
+    await client.query(
+      "update app.workflow_test_suite_cases set status='error' where workspace_id=$1 and suite_id=$2 and ordinal=$3",
+      [suite.workspace_id, suite.id, entry.ordinal],
+    );
+  } else if (['queued', 'running', 'waiting'].includes(run.status)) {
+    await client.query(
+      "update app.workflow_test_suites set next_check_at=clock_timestamp()+interval '1 second' where workspace_id=$1 and id=$2",
+      [suite.workspace_id, suite.id],
+    );
+    return true;
+  } else {
+    const result = await evaluateSuiteCase(client, entry, run);
+    await client.query(
+      'update app.workflow_test_suite_cases set status=$4,report=$5 where workspace_id=$1 and suite_id=$2 and ordinal=$3',
+      [
+        suite.workspace_id,
+        suite.id,
+        entry.ordinal,
+        result.status,
+        canonicalJson(result.report),
+      ],
+    );
+    if (run.status === 'canceled') await stop(client, suite, 'case_canceled');
+  }
+
+  return false;
 }
