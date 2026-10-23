@@ -3,6 +3,7 @@ import type { FileInputDiagnostic } from './diagnostic.js';
 const split = 'Split the file into smaller files and run them separately.';
 
 /** Only closed reasons and numeric locations reach stored attempt summaries. */
+// eslint-disable-next-line complexity -- Keep the exhaustive diagnostic-to-copy table together; splitting it obscures missing cases.
 export function describeFileInputFailure(
   diagnostic: FileInputDiagnostic,
 ): string {
