@@ -216,15 +216,15 @@ function requestFrom(
 
 function routeWorkspace(request: IdentityWorkspaceRequest): string {
   const params = request.params;
-  if (
-    typeof params !== 'object' ||
-    params === null ||
-    !('workspaceId' in params) ||
-    !isCanonicalUuid(params.workspaceId)
-  ) {
+  const invalidWorkspaceParams =
+    typeof params !== 'object' || params === null || !('workspaceId' in params);
+  if (invalidWorkspaceParams) {
     return throwApplicationError(applicationError('request.invalid'));
   }
-  return params.workspaceId;
+  const workspaceId = params.workspaceId;
+  if (!isCanonicalUuid(workspaceId))
+    return throwApplicationError(applicationError('request.invalid'));
+  return workspaceId;
 }
 
 export function readCookie(

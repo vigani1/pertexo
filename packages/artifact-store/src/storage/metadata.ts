@@ -111,7 +111,7 @@ export function metadataFromHead(
     workspaceId: metadata[STORAGE_METADATA.workspaceId],
   });
 
-  if (
+  const invalidStoredMetadata =
     !candidate.success ||
     metadataKeys.length !== USER_METADATA_KEYS.length ||
     metadataKeys.some((key, index) => key !== USER_METADATA_KEYS[index]) ||
@@ -119,8 +119,8 @@ export function metadataFromHead(
     candidate.data.workspaceId !== identity.workspaceId ||
     candidate.data.byteLength > maxObjectBytes ||
     output.ContentLength !== candidate.data.byteLength ||
-    storedContentType !== candidate.data.mediaType.replace(/\s*;\s*/gu, ';')
-  ) {
+    storedContentType !== candidate.data.mediaType.replace(/\s*;\s*/gu, ';');
+  if (invalidStoredMetadata) {
     throw new ArtifactIntegrityError('Stored artifact metadata is invalid');
   }
 

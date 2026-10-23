@@ -106,14 +106,14 @@ export class WorkflowAuthoringController {
   ) {
     const { workspaceId } = workspaceParams(params);
     const input = workflowOrganizationListQuerySchema.parse(query ?? {});
-    if (
+    const hasOrganizationFilters =
       input.query !== undefined ||
       input.view !== undefined ||
       input.tagId !== undefined ||
       input.folderId !== undefined ||
       input.favoritesOnly !== undefined ||
-      input.include !== undefined
-    ) {
+      input.include !== undefined;
+    if (hasOrganizationFilters) {
       response?.header('Cache-Control', 'private, no-store');
       return withWorkflowOrganizationRequest(request, workspaceId, (context) =>
         this.organization.list({

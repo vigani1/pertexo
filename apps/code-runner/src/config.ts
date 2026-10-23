@@ -18,10 +18,10 @@ export function parseRunnerConfig(
     environment.NODE_ENV === 'production' || environment.NODE_ENV === 'staging';
   const mode =
     environment.CODE_RUNNER_MODE ?? (deployed ? 'hardened' : 'process');
-  if (
+  const invalidRunnerMode =
     (mode !== 'hardened' && mode !== 'process') ||
-    (deployed && mode !== 'hardened')
-  )
+    (deployed && mode !== 'hardened');
+  if (invalidRunnerMode)
     throw new Error('Deployed Code runners require hardened mode');
   const socketPath = codeRunnerSocketPath({
     configured: environment.CODE_RUNNER_SOCKET,
@@ -99,18 +99,18 @@ export async function assertRunnerIsolation(
   const temporary = mounts
     .split('\n')
     .find((line) => line.split(' ')[4] === '/tmp');
-  if (
+  const unsafeFilesystemIsolation =
     !root?.split(' ')[5]?.split(',').includes('ro') ||
     !temporary?.split(' ')[5]?.split(',').includes('noexec') ||
     temp.uid !== 0 ||
-    (temp.mode & 0o777) !== 0o700
-  )
+    (temp.mode & 0o777) !== 0o700;
+  if (unsafeFilesystemIsolation)
     throw new Error(
       'Code runner requires a read-only root and private noexec tmpfs',
     );
   const limits = codeContainerLimits(config.settings);
   const [quota, period] = cpu.trim().split(/\s+/u).map(Number);
-  if (
+  const unsafeProcessLimits =
     quota === undefined ||
     period === undefined ||
     !Number.isFinite(quota) ||
@@ -121,8 +121,8 @@ export async function assertRunnerIsolation(
     Number(maximum) <
       codeContainerLimits(config.settings).memoryMiB * 1_048_576 ||
     oomGroup.trim() !== '0' ||
-    score.trim() !== '-1000'
-  )
+    score.trim() !== '-1000';
+  if (unsafeProcessLimits)
     throw new Error(
       'Code runner requires derived container bounds and manager OOM protection',
     );

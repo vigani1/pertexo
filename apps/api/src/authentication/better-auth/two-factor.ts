@@ -61,12 +61,12 @@ export function twoFactorRouteGuard(
       isTwoFactorVerificationPath(context.path),
     handler: createAuthMiddleware(async (context) => {
       const body: unknown = context.body;
-      if (
+      const trustDeviceRequested =
         typeof body === 'object' &&
         body !== null &&
         'trustDevice' in body &&
-        body.trustDevice === true
-      )
+        body.trustDevice === true;
+      if (trustDeviceRequested)
         throw new APIError('BAD_REQUEST', {
           code: 'TRUST_DEVICE_DISABLED',
           message:

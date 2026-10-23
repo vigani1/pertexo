@@ -71,13 +71,12 @@ export function decodeWorkflowOrganizationCursor(
   context: WorkflowOrganizationCursorContext,
 ): WorkflowOrganizationCursorPosition {
   const cursor = decode(value, workflowCursorSchema);
-  if (
+  const workflowCursorMismatch =
     cursor.workspaceId !== context.workspaceId ||
     cursor.actorId !== context.actorId ||
     cursor.order !== context.order ||
-    cursor.filterHash !== context.filterHash
-  )
-    throw new InvalidWorkflowCursorError();
+    cursor.filterHash !== context.filterHash;
+  if (workflowCursorMismatch) throw new InvalidWorkflowCursorError();
   return Object.freeze({ positionAt: cursor.positionAt, id: cursor.id });
 }
 
@@ -99,12 +98,11 @@ export function decodeOrganizationPageCursor(
   context: OrganizationPageCursorContext,
 ): string {
   const cursor = decode(value, pageCursorSchema);
-  if (
+  const pickerCursorMismatch =
     cursor.kind !== context.purpose ||
     cursor.workspaceId !== context.workspaceId ||
     cursor.actorId !== context.actorId ||
-    cursor.selectedTagId !== context.selectedTagId
-  )
-    throw new InvalidWorkflowCursorError();
+    cursor.selectedTagId !== context.selectedTagId;
+  if (pickerCursorMismatch) throw new InvalidWorkflowCursorError();
   return cursor.id;
 }

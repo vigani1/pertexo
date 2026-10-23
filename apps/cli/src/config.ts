@@ -36,14 +36,14 @@ export function parseAutomationHttpConfig(
     url.hostname === 'localhost' ||
     url.hostname === '127.0.0.1' ||
     url.hostname === '[::1]';
-  if (
+  const invalidApiOrigin =
     (url.protocol !== 'https:' && !(url.protocol === 'http:' && loopback)) ||
     url.username !== '' ||
     url.password !== '' ||
     url.search !== '' ||
     url.hash !== '' ||
-    url.pathname !== '/'
-  )
+    url.pathname !== '/';
+  if (invalidApiOrigin)
     throw new AutomationCommandError(
       'cli.invalid_config',
       'Use an HTTPS origin without credentials, path, query or fragment. HTTP is allowed only on loopback.',

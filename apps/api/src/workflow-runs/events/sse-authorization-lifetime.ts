@@ -94,13 +94,13 @@ export function createStreamAuthorizationLifetime(
   const performAuthorization = async (signal: AbortSignal): Promise<void> => {
     const session = await input.reauthorizeSession(signal);
     signal.throwIfAborted();
-    if (
+    const invalidRefreshedSession =
       input.actor.kind !== 'user' ||
       session.userId !== input.actor.actorId ||
       session.sessionId !== input.actor.sessionId ||
       !Number.isFinite(session.expiresAt.getTime()) ||
-      session.expiresAt.getTime() <= Date.now()
-    ) {
+      session.expiresAt.getTime() <= Date.now();
+    if (invalidRefreshedSession) {
       throw new Error('SSE session is no longer authorized');
     }
     await authorizeWorkspaceOperation({

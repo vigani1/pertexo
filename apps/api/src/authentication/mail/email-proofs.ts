@@ -200,17 +200,17 @@ export class OwnedEmailProofs {
         ? undefined
         : { digest: digest(nextToken), expiresAt: nextExpiresAt };
     const outcome = await this.commands.consume(tokenDigest, next, nextMail);
-    if (
-      outcome === 'change_old' &&
-      nextMail === undefined &&
-      proof.newEmail !== null &&
-      nextUrl !== undefined
-    ) {
-      await this.mail.sendVerification({
-        recipient: proof.newEmail,
-        displayName: proof.displayName,
-        url: nextUrl,
-      });
+    const sendConfirmationImmediately =
+      outcome === 'change_old' && nextMail === undefined;
+    if (sendConfirmationImmediately) {
+      const recipient = proof.newEmail;
+      if (recipient !== null && nextUrl !== undefined) {
+        await this.mail.sendVerification({
+          recipient,
+          displayName: proof.displayName,
+          url: nextUrl,
+        });
+      }
     }
     return outcome;
   }

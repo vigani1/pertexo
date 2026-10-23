@@ -1,3 +1,4 @@
+import { hasHttpStatus } from '../../platform/http/problems/status.js';
 import { webhookRunInput } from '@pertexo/nodes-core';
 import {
   headerPresent,
@@ -82,24 +83,14 @@ export function registerWebhookIngress(
     scope.setErrorHandler(async (error, request, reply) => {
       const requestId =
         parseRequestId(request.headers['x-request-id']) ?? randomUUID();
-      if (
-        typeof error === 'object' &&
-        error !== null &&
-        'statusCode' in error &&
-        error.statusCode === 413
-      ) {
+      if (hasHttpStatus(error, 413)) {
         record(() => {
           telemetry.delivery('invalid_request');
         });
         await problem(reply, 413, 'webhook.payload_too_large', requestId);
         return;
       }
-      if (
-        typeof error === 'object' &&
-        error !== null &&
-        'statusCode' in error &&
-        error.statusCode === 415
-      ) {
+      if (hasHttpStatus(error, 415)) {
         record(() => {
           telemetry.delivery('invalid_request');
         });
@@ -613,13 +604,13 @@ async function preflightWebhook(
     await authenticationFailed(reply, requestId, telemetry);
     return;
   }
-  if (
+  const invalidPreflight =
     origin === undefined ||
     !webhookOriginAllowed(verification.authentication, origin) ||
     !['GET', 'POST'].includes(
       singleHeader(request, 'access-control-request-method') ?? '',
-    )
-  ) {
+    );
+  if (invalidPreflight) {
     await authenticationFailed(reply, requestId, telemetry);
     return;
   }

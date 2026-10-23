@@ -281,15 +281,14 @@ function publicMetadata(artifact: ArtifactRecord): ArtifactMetadataResponse {
 }
 
 function mapDatabaseError(error: unknown): Error {
-  if (
+  const knownArtifactFailure =
     error instanceof AuthorizationError ||
     error instanceof ArtifactApiNotFoundError ||
     error instanceof ArtifactApiConflictError ||
     error instanceof ArtifactApiIdempotencyConflictError ||
     error instanceof ArtifactApiCapacityExceededError ||
-    error instanceof ArtifactApiUnavailableError
-  )
-    return error;
+    error instanceof ArtifactApiUnavailableError;
+  if (knownArtifactFailure) return error;
   if (error instanceof ArtifactQuotaExceededError)
     return new ArtifactApiCapacityExceededError();
   if (error instanceof ArtifactUploadNotFoundError)

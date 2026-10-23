@@ -161,10 +161,10 @@ function requireInvitationKeyPair(
 ): void {
   const keyMissing = environment.INVITATION_TOKEN_KEY === undefined;
   const versionMissing = environment.INVITATION_TOKEN_KEY_VERSION === undefined;
-  if (
+  const invalidInvitationKeyPair =
     (deployed && (keyMissing || versionMissing)) ||
-    keyMissing !== versionMissing
-  )
+    keyMissing !== versionMissing;
+  if (invalidInvitationKeyPair)
     throw new Error('Invitation token encryption configuration is incomplete');
 }
 
@@ -242,12 +242,12 @@ function betterAuthConfig(
 
 function normalizedOrigin(value: string): string {
   const parsed = new URL(value);
-  if (
+  const invalidWebOrigin =
     parsed.origin === 'null' ||
     parsed.pathname !== '/' ||
     parsed.search !== '' ||
-    parsed.hash !== ''
-  )
+    parsed.hash !== '';
+  if (invalidWebOrigin)
     throw new Error('PUBLIC_WEB_ORIGIN must be an origin without a path');
   return parsed.origin;
 }

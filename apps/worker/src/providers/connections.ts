@@ -96,13 +96,12 @@ export function createProviderConnectionRuntimeFactory(
         >[0],
       ): Promise<void> => {
         assertNotAborted(input.signal);
-        if (
+        const unsupportedAuthType =
           input.expectedAuthType !== CONNECTION_AUTH_TYPE.signingKey &&
           input.expectedAuthType !== CONNECTION_AUTH_TYPE.httpHeaders &&
           input.expectedAuthType !== CONNECTION_AUTH_TYPE.slackBotToken &&
-          input.expectedAuthType !== CONNECTION_AUTH_TYPE.resendApiKey
-        )
-          throw new ProviderCredentialInvalidError();
+          input.expectedAuthType !== CONNECTION_AUTH_TYPE.resendApiKey;
+        if (unsupportedAuthType) throw new ProviderCredentialInvalidError();
         try {
           await database.assertConnectionSecretCurrent({
             workspaceId: context.workspaceId,

@@ -139,7 +139,7 @@ export class AccountLinking {
     const state = url.searchParams.get('state') ?? '';
     const code = url.searchParams.get('code') ?? '';
     const binding = readCookie(request.headers, LINK_COOKIE);
-    if (
+    const invalidCallbackProof =
       !isJourneyToken(state) ||
       code.length === 0 ||
       code.length > 4096 ||
@@ -148,21 +148,19 @@ export class AccountLinking {
       ['state', 'code', 'iss'].some(
         (name) => url.searchParams.getAll(name).length > 1,
       ) ||
-      (url.searchParams.get('iss')?.length ?? 0) > 2048
-    )
-      return this.landing('failed');
+      (url.searchParams.get('iss')?.length ?? 0) > 2048;
+    if (invalidCallbackProof) return this.landing('failed');
     const session = await this.input.authenticate(request);
     if (session === undefined) return this.landing('sign-in');
     const attempt = await this.commands.find(journeyDigest(state));
-    if (
+    const journeyMismatch =
       attempt?.userId !== session.userId ||
       attempt.sessionId !== session.sessionId ||
       !journeyDigest(binding).equals(attempt.browserDigest) ||
       (attempt.phase === 'source'
         ? attempt.sourceProvider
-        : attempt.targetProvider) !== provider
-    )
-      return this.landing('failed');
+        : attempt.targetProvider) !== provider;
+    if (journeyMismatch) return this.landing('failed');
     const identity = await this.input.providers
       .verify({
         provider,

@@ -13,7 +13,7 @@ export async function readOrganizationCallback(
   if (protocol === 'oidc') {
     const state = url.searchParams.get('state'),
       code = url.searchParams.get('code');
-    if (
+    const invalidOidcCallback =
       state === null ||
       !isJourneyToken(state) ||
       code === null ||
@@ -22,9 +22,8 @@ export async function readOrganizationCallback(
       url.searchParams.has('error') ||
       ['state', 'code', 'iss'].some(
         (name) => url.searchParams.getAll(name).length > 1,
-      )
-    )
-      return undefined;
+      );
+    if (invalidOidcCallback) return undefined;
     return { state };
   }
   if (
@@ -38,7 +37,7 @@ export async function readOrganizationCallback(
   const fields = new URLSearchParams(body),
     state = fields.get('RelayState'),
     response = fields.get('SAMLResponse');
-  if (
+  const invalidSamlCallback =
     fields.size !== 2 ||
     fields.getAll('RelayState').length !== 1 ||
     fields.getAll('SAMLResponse').length !== 1 ||
@@ -46,8 +45,7 @@ export async function readOrganizationCallback(
     !isJourneyToken(state) ||
     response === null ||
     response.length === 0 ||
-    response.length > SAML_LIMITS.encodedCharacters
-  )
-    return undefined;
+    response.length > SAML_LIMITS.encodedCharacters;
+  if (invalidSamlCallback) return undefined;
   return { state, samlResponse: response };
 }

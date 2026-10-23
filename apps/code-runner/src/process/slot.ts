@@ -179,12 +179,12 @@ export async function startTaskSlot(
       1024,
       AbortSignal.any([signal, startup]),
     );
-    if (
+    const invalidChildGreeting =
       typeof greeting !== 'object' ||
       greeting === null ||
       !('kind' in greeting) ||
-      greeting.kind !== 'ready'
-    )
+      greeting.kind !== 'ready';
+    if (invalidChildGreeting)
       throw new Error('Code task process failed to start');
     if (signal.aborted)
       throw new Error('Code task process exited during startup');
@@ -213,13 +213,12 @@ export async function startTaskSlot(
       const memory =
         config.mode === 'hardened'
           ? setInterval(() => {
-              if (
+              const childUnavailableForMemoryCheck =
                 checking ||
                 child.pid === undefined ||
                 child.exitCode !== null ||
-                child.signalCode !== null
-              )
-                return;
+                child.signalCode !== null;
+              if (childUnavailableForMemoryCheck) return;
               checking = true;
               void readFile(`/proc/${String(child.pid)}/status`, 'utf8')
                 .then((status) => {

@@ -33,24 +33,25 @@ export function workspaceVersionDeleteObjects(
   identities: Set<string>,
 ): ObjectIdentifier[] {
   return entries.map((entry) => {
-    if (
-      typeof entry.Key !== 'string' ||
-      !entry.Key.startsWith(prefix) ||
-      typeof entry.VersionId !== 'string' ||
-      entry.VersionId.length === 0
-    ) {
+    const { Key: key, VersionId: versionId } = entry;
+    const invalidVersionIdentity =
+      typeof key !== 'string' ||
+      !key.startsWith(prefix) ||
+      typeof versionId !== 'string' ||
+      versionId.length === 0;
+    if (invalidVersionIdentity) {
       throw new ArtifactIntegrityError(
         'Object version listing contained an invalid workspace entry',
       );
     }
-    const identity = `${entry.Key}\u0000${entry.VersionId}`;
+    const identity = `${key}\u0000${versionId}`;
     if (identities.has(identity)) {
       throw new ArtifactIntegrityError(
         'Object version listing contained a duplicate entry',
       );
     }
     identities.add(identity);
-    return { Key: entry.Key, VersionId: entry.VersionId };
+    return { Key: key, VersionId: versionId };
   });
 }
 

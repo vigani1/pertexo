@@ -209,12 +209,12 @@ function fromApplicationError(error: ApplicationError): NormalizedProblem {
     cause: error.cause,
     ...(issues === undefined ? {} : { errors: issues }),
   };
-  if (
+  const retryableProblem =
     error.code === 'request.rate_limited' ||
     error.code === 'request.rate_limit_unavailable' ||
     error.code === 'workspace.quota_exceeded' ||
-    error.code === 'workflow.validation_unavailable'
-  ) {
+    error.code === 'workflow.validation_unavailable';
+  if (retryableProblem) {
     const retryAfterSeconds = error.details?.retryAfterSeconds;
     return typeof retryAfterSeconds === 'number' &&
       Number.isSafeInteger(retryAfterSeconds) &&
@@ -244,13 +244,12 @@ function fromApplicationError(error: ApplicationError): NormalizedProblem {
   const currentRevision = error.details?.currentRevision;
   const currentEtag = error.details?.currentEtag;
   const parsedEtag = strongEtagSchema.safeParse(currentEtag);
-  if (
+  const invalidRevisionConflict =
     typeof currentRevision !== 'number' ||
     !Number.isSafeInteger(currentRevision) ||
     currentRevision < 1 ||
-    !parsedEtag.success
-  )
-    return unexpectedProblem(error);
+    !parsedEtag.success;
+  if (invalidRevisionConflict) return unexpectedProblem(error);
   return {
     ...base,
     revisionConflict: { currentRevision, currentEtag: parsedEtag.data },
