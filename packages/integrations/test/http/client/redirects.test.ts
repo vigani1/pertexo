@@ -1,6 +1,5 @@
 import { inlineBytes } from '../../support/artifact-runtime.js';
 
-
 import { describe, expect, it, vi } from 'vitest';
 
 import {

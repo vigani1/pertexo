@@ -126,12 +126,13 @@ describe('HTTP pagination through the real secure transport and registry', () =>
         `${root}/?q=a%20b~&escaped=%2f&position=old&repeated=1&repeated=2`,
         { ...pagination, maxPages: 2 },
       ).run();
+      const [firstPosition, secondPosition] = expectedPositions(mode);
       expect(received).toHaveLength(2);
       expect(received[0]).toBe(
-        `/?q=a%20b~&escaped=%2f&position=${mode === 'cursor' ? 'old' : mode === 'page' ? '1' : '0'}&repeated=1&repeated=2`,
+        `/?q=a%20b~&escaped=%2f&position=${firstPosition}&repeated=1&repeated=2`,
       );
       expect(received[1]).toBe(
-        `/?q=a%20b~&escaped=%2f&position=${mode === 'cursor' ? 'a+b%7E' : mode === 'page' ? '2' : '10'}&repeated=1&repeated=2`,
+        `/?q=a%20b~&escaped=%2f&position=${secondPosition}&repeated=1&repeated=2`,
       );
     },
   );
@@ -214,3 +215,9 @@ describe('HTTP pagination through the real secure transport and registry', () =>
     },
   );
 });
+
+function expectedPositions(mode: string): readonly [string, string] {
+  if (mode === 'cursor') return ['old', 'a+b%7E'];
+  if (mode === 'page') return ['1', '2'];
+  return ['0', '10'];
+}

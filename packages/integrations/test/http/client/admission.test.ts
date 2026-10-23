@@ -1,7 +1,6 @@
 import { inlineBytes } from '../../support/artifact-runtime.js';
 import { validateHeaderValue } from 'node:http';
 
-
 import { describe, expect, it, vi } from 'vitest';
 
 import {

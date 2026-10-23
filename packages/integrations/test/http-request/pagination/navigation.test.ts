@@ -34,16 +34,7 @@ describe('HTTP pagination through the real secure transport and registry', () =>
             : {}),
         });
       });
-      const pagination =
-        mode === 'link_header'
-          ? { mode: 'next_link', source: { kind: 'link_header' } }
-          : mode === 'next_link'
-            ? { mode, source: { kind: 'body', path: '$.next' } }
-            : mode === 'cursor'
-              ? { mode, cursorPath: '$.next', parameter: 'cursor' }
-              : mode === 'offset'
-                ? { mode, parameter: 'offset', step: 2 }
-                : { mode, parameter: 'page' };
+      const pagination = paginationFor(mode);
       const execution = setup(`${root}/items`, pagination, {
         credentials: true,
       });
@@ -192,15 +183,7 @@ describe('HTTP pagination through the real secure transport and registry', () =>
           'content-type',
           kind === 'text' ? 'text/plain' : 'application/json',
         );
-        response.end(
-          kind === 'malformed'
-            ? '{bad'
-            : kind === 'missing_list'
-              ? '{}'
-              : JSON.stringify({
-                  data: ['x'.repeat(kind === 'large' ? 2000 : 1)],
-                }),
-        );
+        response.end(invalidPageBody(kind));
       });
       const execution = setup(
         root,
@@ -234,3 +217,24 @@ describe('HTTP pagination through the real secure transport and registry', () =>
     ).rejects.toMatchObject({ code: 'http.pagination_too_large', page: 2 });
   });
 });
+
+function paginationFor(mode: string) {
+  switch (mode) {
+    case 'link_header':
+      return { mode: 'next_link', source: { kind: 'link_header' } };
+    case 'next_link':
+      return { mode, source: { kind: 'body', path: '$.next' } };
+    case 'cursor':
+      return { mode, cursorPath: '$.next', parameter: 'cursor' };
+    case 'offset':
+      return { mode, parameter: 'offset', step: 2 };
+    default:
+      return { mode, parameter: 'page' };
+  }
+}
+
+function invalidPageBody(kind: string): string {
+  if (kind === 'malformed') return '{bad';
+  if (kind === 'missing_list') return '{}';
+  return JSON.stringify({ data: ['x'.repeat(kind === 'large' ? 2000 : 1)] });
+}
