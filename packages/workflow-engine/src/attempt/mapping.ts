@@ -1,0 +1,152 @@
+import type { CallbackBindings } from '@pertexo/workflow-model';
+
+import {
+  isWorkflowTriggerDefinition,
+  workspaceVariableValuesSchema,
+  type WorkspaceVariableValues,
+} from '@pertexo/workflow-model';
+
+import {
+  type JsonValue,
+  parseWorkflowGraphDraft,
+  resolveValueSource,
+  type ValueResolution,
+  type WorkflowNodeFailureValue,
+} from '@pertexo/workflow-model';
+import type { ExpressionEvaluator } from '@pertexo/workflow-model/server';
+
+import { WorkflowEngineError } from '../errors.js';
+
+import type { WorkflowExecutableNode } from '../compilation/foundation.js';
+import { normalizeBoundedEngineValue } from '../compilation/validation.js';
+
+import { operationError, record } from '../operation-values.js';
+
+import { assertNotAborted, isAbortError } from './admission.js';
+
+export async function resolveMappedNodeInput(
+  node: Pick<WorkflowExecutableNode, 'definition' | 'inputMappings'>,
+  runInput: JsonValue,
+  completedOutputs: Readonly<Record<string, JsonValue>>,
+  directUpstream: ReadonlySet<string>,
+  signal: AbortSignal,
+  expressionEvaluator?: ExpressionEvaluator,
+  structuredInputs?: Readonly<Record<string, JsonValue>>,
+  sourceFailure?: WorkflowNodeFailureValue,
+  variables?: WorkspaceVariableValues,
+  callbacks?: CallbackBindings,
+): Promise<JsonValue> {
+  if (isWorkflowTriggerDefinition(node.definition)) return runInput;
+  const mapped = Object.create(null) as Record<string, JsonValue>;
+  // Mappings resolve independently; their authored order is the input's.
+  for (const key of Object.keys(node.inputMappings)) {
+    assertNotAborted(signal);
+    const source = node.inputMappings[key];
+    if (source === undefined) continue;
+    if (
+      source.kind === 'node_output' &&
+      (!directUpstream.has(source.nodeId) ||
+        !Object.hasOwn(completedOutputs, source.nodeId))
+    )
+      operationError(
+        'attempt_invalid',
+        'mapping upstream output is incomplete',
+      );
+    if (
+      source.kind === 'node_failure' &&
+      sourceFailure?.nodeId !== source.nodeId
+    )
+      operationError(
+        'attempt_invalid',
+        'mapping selected source failure is incomplete',
+      );
+    let resolution: ValueResolution;
+    try {
+      resolution = await resolveValueSource(
+        source,
+        {
+          runInput,
+          ...(callbacks === undefined ? {} : { execution: { callbacks } }),
+          nodeOutputs: completedOutputs,
+          ...(variables === undefined ? {} : { variables }),
+          ...(sourceFailure === undefined
+            ? {}
+            : { nodeFailure: sourceFailure }),
+          ...(structuredInputs === undefined ? {} : { structuredInputs }),
+        },
+        expressionEvaluator,
+        signal,
+      );
+    } catch (error) {
+      if (signal.aborted || isAbortError(error))
+        operationError('attempt_aborted', 'node attempt was aborted');
+      operationError('attempt_invalid', 'mapping failed');
+    }
+    if (
+      resolution.kind === 'error' &&
+      (resolution.expression?.code === 'canceled' || signal.aborted)
+    )
+      operationError('attempt_aborted', 'node attempt was aborted');
+    if (resolution.kind === 'error')
+      operationError(
+        resolution.code === 'variable_missing' ||
+          resolution.expression?.code === 'variable_missing'
+          ? 'variable_missing'
+          : 'attempt_invalid',
+        'Mapping could not resolve; check its inputs and captured workspace variables.',
+      );
+    if (resolution.kind === 'value') mapped[key] = resolution.value;
+  }
+  try {
+    return normalizeBoundedEngineValue(mapped);
+  } catch {
+    operationError('attempt_invalid', 'mapped input exceeds runtime limits');
+  }
+}
+
+/** Resolve one isolated preview node through the production ValueSource path. */
+export async function resolveSingleNodePreviewInput(
+  input: Readonly<{
+    node: unknown;
+    runInput: unknown;
+    variables?: WorkspaceVariableValues;
+    signal: AbortSignal;
+    expressionEvaluator?: ExpressionEvaluator;
+  }>,
+): Promise<JsonValue> {
+  let node: Pick<WorkflowExecutableNode, 'definition' | 'inputMappings'>;
+  let runInput: JsonValue;
+  try {
+    runInput = normalizeBoundedEngineValue(input.runInput);
+    const rawNode = record(
+      normalizeBoundedEngineValue(input.node),
+      'attempt_invalid',
+      'preview node',
+    );
+    const parsedNode = parseWorkflowGraphDraft({
+      edges: [],
+      nodes: [{ ...rawNode, position: { x: 0, y: 0 } }],
+      settings: {},
+    }).nodes[0];
+    if (parsedNode === undefined)
+      operationError('attempt_invalid', 'preview node is missing');
+    node = parsedNode;
+  } catch (error) {
+    if (error instanceof WorkflowEngineError) throw error;
+    operationError(
+      'attempt_invalid',
+      error instanceof Error ? error.message : 'preview input is invalid',
+    );
+  }
+  return resolveMappedNodeInput(
+    node,
+    runInput,
+    Object.freeze({}),
+    new Set(),
+    input.signal,
+    input.expressionEvaluator,
+    undefined,
+    undefined,
+    workspaceVariableValuesSchema.parse(input.variables ?? {}),
+  );
+}
