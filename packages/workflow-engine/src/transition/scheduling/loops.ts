@@ -79,11 +79,11 @@ function requiredArrivals(
 ): number {
   if (policy.kind === 'all') return 0;
   if (policy.kind === 'any') return 1;
-  if (
+  const invalidCountPolicy =
     !Number.isSafeInteger(policy.count) ||
     policy.count <= 0 ||
-    policy.count > declaredBranches
-  ) {
+    policy.count > declaredBranches;
+  if (invalidCountPolicy) {
     throw new WorkflowEngineError(
       'join_invalid',
       'count join exceeds declared branches',
@@ -156,11 +156,11 @@ export function createLoopState(input: {
       );
     }
   }
-  if (
+  const iterationBudgetExceeded =
     input.maxConcurrency > input.maxIterations ||
     input.collectionSize > input.maxIterations ||
-    input.collectionSize > input.remainingIterationBudget
-  ) {
+    input.collectionSize > input.remainingIterationBudget;
+  if (iterationBudgetExceeded) {
     throw new WorkflowEngineError(
       'loop_limit_exceeded',
       'collection exceeds pinned loop limits',

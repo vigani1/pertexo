@@ -62,8 +62,9 @@ export function branchSelectionObservations({
       );
     const invocation = invocations.get(material.invocationKey);
     const node = nodes.get(invocation?.nodeId ?? '');
-    if (node === undefined || (!test && isHumanTaskDefinition(node.definition)))
-      return [];
+    const ignoresBranchMaterial =
+      node === undefined || (!test && isHumanTaskDefinition(node.definition));
+    if (ignoresBranchMaterial) return [];
     const parallelPorts = configuredParallelOutputPorts(node);
     if (parallelPorts !== undefined) {
       assertParallelOutput({
@@ -110,11 +111,11 @@ export function branchSelectionObservations({
         ? invocations.get(outcome.invocationKey)
         : undefined;
     const node = nodes.get(invocation?.nodeId ?? '');
-    if (
+    const missingParallelMaterial =
       node !== undefined &&
       configuredParallelOutputPorts(node) !== undefined &&
-      !verifiedParallelOutputs.has(identity)
-    )
+      !verifiedParallelOutputs.has(identity);
+    if (missingParallelMaterial)
       operationError('observation_invalid', 'Parallel output is missing');
   }
   return observations;
@@ -156,11 +157,11 @@ export function mergeCoordinatorObservations(
     .flatMap((merge): WorkflowObservation[] => {
       const parallelNodeId = merge.config.parallelNodeId;
       const policy = merge.config.policy;
-      if (
+      const invalidMergeConfig =
         typeof parallelNodeId !== 'string' ||
         typeof policy !== 'object' ||
-        policy === null
-      )
+        policy === null;
+      if (invalidMergeConfig)
         operationError('workflow_identity_invalid', 'Merge config is invalid');
       const parallel = nodes.get(parallelNodeId);
       const branchIds =
@@ -266,24 +267,26 @@ export function mergeCoordinatorObservations(
 
 function parseBranchMaterial(item: JsonValue) {
   const material = record(item, 'observation_invalid', 'completed output');
+  const { sequence, attemptId, invocationKey } = material;
+
   exactKeys(material, ['sequence', 'attemptId', 'invocationKey', 'value']);
-  if (
-    typeof material.sequence !== 'number' ||
-    !Number.isSafeInteger(material.sequence) ||
-    material.sequence < 1 ||
-    typeof material.attemptId !== 'string' ||
-    !UUID_PATTERN.test(material.attemptId) ||
-    typeof material.invocationKey !== 'string'
-  )
+  const invalidMaterialIdentity =
+    typeof sequence !== 'number' ||
+    !Number.isSafeInteger(sequence) ||
+    sequence < 1 ||
+    typeof attemptId !== 'string' ||
+    !UUID_PATTERN.test(attemptId) ||
+    typeof invocationKey !== 'string';
+  if (invalidMaterialIdentity)
     operationError(
       'observation_invalid',
       'completed output identity is invalid',
     );
   return {
     value: material.value,
-    sequence: material.sequence,
-    attemptId: material.attemptId,
-    invocationKey: material.invocationKey,
+    sequence: sequence,
+    attemptId: attemptId,
+    invocationKey: invocationKey,
   };
 }
 
@@ -326,12 +329,12 @@ function assertParallelOutput({
     'Parallel output',
   );
   exactKeys(completedValue, ['branchIds']);
-  if (
+  const invalidParallelOutput =
     !Array.isArray(completedValue.branchIds) ||
     completedValue.branchIds.length !== parallelPorts.length ||
     completedValue.branchIds.some(
       (branchId, index) => branchId !== parallelPorts[index],
-    )
-  )
+    );
+  if (invalidParallelOutput)
     operationError('observation_invalid', 'Parallel output is invalid');
 }

@@ -31,11 +31,11 @@ export function selectFailureHandler(
       'observation_invalid',
       'failure source is not in its executed choice scope',
     );
-  if (
+  const failureIdentityMismatch =
     failure.invocationKey !== source.invocationKey ||
     failure.nodeId !== source.nodeId ||
-    failure.attemptNumber !== source.attemptNumber
-  )
+    failure.attemptNumber !== source.attemptNumber;
+  if (failureIdentityMismatch)
     throw new WorkflowEngineError(
       'observation_invalid',
       'failure evidence disagrees with its source',
@@ -75,12 +75,11 @@ export function settleFailureHandlers(
 ): void {
   for (const source of state.invocations.values()) {
     const handling = source.failureHandling;
-    if (
+    const cannotSettleHandler =
       handling?.disposition !== 'pending' ||
       state.cancelRequested ||
-      state.deadlineExpired
-    )
-      continue;
+      state.deadlineExpired;
+    if (cannotSettleHandler) continue;
     if (
       state.invocations.get(handling.sinkInvocationKey)?.status !== 'succeeded'
     )

@@ -87,13 +87,13 @@ export function assertGraphPorts(
     )
       fail('workflow edge source port is unavailable');
     const sourceNode = index.nodesById.get(edge.source.nodeId);
-    if (
+    const invalidStructuredPort =
       sourceNode !== undefined &&
       ((sourceNode.definition.key === 'core.switch' &&
         sourceNode.definition.version === 1) ||
         isCoreParallelDefinition(sourceNode.definition)) &&
-      !configuredStructuredOutputPorts(sourceNode).includes(edge.source.port)
-    )
+      !configuredStructuredOutputPorts(sourceNode).includes(edge.source.port);
+    if (invalidStructuredPort)
       fail('workflow edge source port is not configured');
     if (!target.ports.inputs.includes(edge.target.port))
       fail('workflow edge target port is unavailable');
@@ -111,8 +111,9 @@ function configuredBranchPorts(
   if (!Array.isArray(cases)) return ['default'];
   return [
     ...cases.flatMap((item) => {
-      if (typeof item !== 'object' || item === null || Array.isArray(item))
-        return [];
+      const invalidCase =
+        typeof item !== 'object' || item === null || Array.isArray(item);
+      if (invalidCase) return [];
       const id = (item as Readonly<Record<string, unknown>>).id;
       return typeof id === 'string' ? [id] : [];
     }),
@@ -127,8 +128,9 @@ function configuredParallelPorts(
   const branches = node.config.branches;
   if (!Array.isArray(branches)) return [];
   return branches.flatMap((item) => {
-    if (typeof item !== 'object' || item === null || Array.isArray(item))
-      return [];
+    const invalidBranch =
+      typeof item !== 'object' || item === null || Array.isArray(item);
+    if (invalidBranch) return [];
     const id = (item as Readonly<Record<string, unknown>>).id;
     return typeof id === 'string' ? [id] : [];
   });
@@ -215,11 +217,11 @@ export function assertBranchesDoNotReconverge(
       for (let right = left + 1; right < reachedByPort.length; right += 1) {
         const leftReached = reachedByPort[left];
         const rightReached = reachedByPort[right];
-        if (
+        const branchesReconverge =
           leftReached !== undefined &&
           rightReached !== undefined &&
-          [...leftReached].some((nodeId) => rightReached.has(nodeId))
-        )
+          [...leftReached].some((nodeId) => rightReached.has(nodeId));
+        if (branchesReconverge)
           fail('branches cannot reconverge before Merge is available');
       }
   }
@@ -244,25 +246,25 @@ function assertPairedMergeInputs(
   index: GraphValidationIndex,
 ): void {
   const incoming = index.incomingByNode.get(pairedMerge.id) ?? [];
-  if (
+  const mergeInputsMismatch =
     incoming.length !== ports.length ||
     ports.some(
       (port) =>
         (index.incomingByNodePort.get(nodePortKey(pairedMerge.id, port))
           ?.length ?? 0) !== 1,
     ) ||
-    incoming.some(({ target }) => !ports.includes(target.port))
-  )
+    incoming.some(({ target }) => !ports.includes(target.port));
+  if (mergeInputsMismatch)
     fail('paired Merge inputs must match every Parallel branch exactly once');
   const policy = pairedMerge.config.policy;
-  if (
+  const invalidCountPolicy =
     typeof policy === 'object' &&
     policy !== null &&
     (policy as Readonly<Record<string, unknown>>).kind === 'count' &&
     (typeof (policy as Readonly<Record<string, unknown>>).count !== 'number' ||
       ((policy as Readonly<Record<string, unknown>>).count as number) >
-        ports.length)
-  )
+        ports.length);
+  if (invalidCountPolicy)
     fail('Merge count policy exceeds paired Parallel branches');
 }
 

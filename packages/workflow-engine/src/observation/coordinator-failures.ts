@@ -36,11 +36,11 @@ export function resolveAttemptFailures(
   return input.failures.map((failure) => {
     const invocation = input.invocations.get(failure.invocationKey);
     const node = input.nodes.get(invocation?.nodeId ?? '');
-    if (
+    const staleFailure =
       invocation?.status !== 'running' ||
       invocation.attemptNumber !== failure.attemptNumber ||
-      node === undefined
-    )
+      node === undefined;
+    if (staleFailure)
       operationError('observation_invalid', 'attempt failure is stale');
     const nonSafeUnknown =
       node.sideEffectClass !== 'safe' && failure.possiblyDispatched;

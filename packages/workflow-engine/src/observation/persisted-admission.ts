@@ -29,12 +29,11 @@ function admitObservationArray(value: unknown): readonly unknown[] {
           admittedArray,
           String(index),
         );
-        if (
+        const invalidArrayItem =
           descriptor === undefined ||
           !descriptor.enumerable ||
-          !('value' in descriptor)
-        )
-          break;
+          !('value' in descriptor);
+        if (invalidArrayItem) break;
         admitted.push(descriptor.value);
       }
       if (admitted.length === admittedLength) return admitted;
@@ -85,13 +84,13 @@ function admittedObservationArrayLength(value: unknown) {
   try {
     if (!nodeTypes.isProxy(value) && Array.isArray(value)) {
       const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
-      if (
+      const plainArrayLength =
         Object.getPrototypeOf(value) === Array.prototype &&
         lengthDescriptor !== undefined &&
         'value' in lengthDescriptor &&
         Number.isSafeInteger(lengthDescriptor.value) &&
-        lengthDescriptor.value >= 0
-      ) {
+        lengthDescriptor.value >= 0;
+      if (plainArrayLength) {
         admittedArray = value;
         admittedLength = lengthDescriptor.value as number;
       }

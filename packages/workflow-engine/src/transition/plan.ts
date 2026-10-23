@@ -30,12 +30,9 @@ import {
 
 function hasUnsettledSchedulerWork(state: MutableWorkflowTransition): boolean {
   const { current, graph, invocations, branchSelections, loops } = state;
-  if (
-    graph?.deriveReadiness !== true ||
-    state.cancelRequested ||
-    state.deadlineExpired
-  )
-    return false;
+  const cannotDeriveReadiness =
+    !graph?.deriveReadiness || state.cancelRequested || state.deadlineExpired;
+  if (cannotDeriveReadiness) return false;
   const allInvocations = [...invocations.values()];
   if (
     deriveReadyNodes({
@@ -254,7 +251,7 @@ function settleRunStatus(
   const graphIncomplete =
     graph?.nodes.some(
       ({ id }) => !finalInvocations.some(({ nodeId }) => nodeId === id),
-    ) === true;
+    ) ?? false;
   const runIsActive =
     state.runStatus === 'queued' ||
     state.runStatus === 'running' ||
@@ -271,19 +268,21 @@ function settleRunStatus(
       state.runStatus = terminalStatus;
       eventDrafts.push(event(`run.${terminalStatus}`, input.occurredAt));
     }
-  } else if (
-    state.runStatus === 'running' &&
-    nonterminal.length > 0 &&
-    nonterminal.every(
-      ({ status, invocationKey }) =>
-        status === 'waiting' ||
-        (status === 'pending' && state.joins.has(invocationKey)) ||
-        (!input.hasExecutionSlot && status === 'ready'),
-    )
-  ) {
-    assertRunTransition(state.runStatus, 'waiting');
-    state.runStatus = 'waiting';
-    eventDrafts.push(event('run.waiting', input.occurredAt));
+  } else {
+    const allWorkWaiting =
+      state.runStatus === 'running' &&
+      nonterminal.length > 0 &&
+      nonterminal.every(
+        ({ status, invocationKey }) =>
+          status === 'waiting' ||
+          (status === 'pending' && state.joins.has(invocationKey)) ||
+          (!input.hasExecutionSlot && status === 'ready'),
+      );
+    if (allWorkWaiting) {
+      assertRunTransition(state.runStatus, 'waiting');
+      state.runStatus = 'waiting';
+      eventDrafts.push(event('run.waiting', input.occurredAt));
+    }
   }
 }
 function attemptAdmissionKind(

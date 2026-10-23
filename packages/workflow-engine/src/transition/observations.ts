@@ -79,11 +79,11 @@ function applyBranchSelection(
 ): void {
   if (state.cancelRequested) return;
   const invocation = state.invocations.get(observation.invocationKey);
-  if (
+  const invalidBranchInvocation =
     invocation?.nodeId !== observation.nodeId ||
     invocation.status !== 'succeeded' ||
-    invocation.output === undefined
-  )
+    invocation.output === undefined;
+  if (invalidBranchInvocation)
     throw new WorkflowEngineError(
       'checkpoint_invalid',
       'branch selection requires a succeeded output-bearing invocation',
@@ -263,11 +263,11 @@ export function applyWorkflowObservations(
 ): void {
   applyControlFacts(state, input.observations, input.occurredAt);
   applyDueResumptions(state, input.dueResumptions);
-  if (
+  const canStartRun =
     state.runStatus === 'queued' &&
     !state.cancelRequested &&
-    !state.deadlineExpired
-  ) {
+    !state.deadlineExpired;
+  if (canStartRun) {
     assertRunTransition(state.runStatus, 'running');
     state.runStatus = 'running';
     state.eventDrafts.push(event('run.started', input.occurredAt));
@@ -358,12 +358,11 @@ function applyReadyObservation(
     occurredAt,
   }: Readonly<{ existing: InvocationState | undefined; occurredAt: string }>,
 ): void {
-  if (
+  const cannotAdmitReady =
     state.cancelRequested ||
     existing !== undefined ||
-    isFinishedIterationScope(state.loops.values(), observation)
-  )
-    return;
+    isFinishedIterationScope(state.loops.values(), observation);
+  if (cannotAdmitReady) return;
   const ready: InvocationState = {
     invocationKey: observation.invocationKey,
     nodeId: observation.nodeId,

@@ -46,21 +46,19 @@ function completeFailure(
 }
 
 function completeAttempts(node: RecoveryNode): boolean {
-  if (
+  const incompleteAttemptCount =
     node.currentAttemptNumber === null ||
     node.currentAttemptNumber < 1 ||
-    node.attempts.length !== node.currentAttemptNumber
-  )
-    return false;
+    node.attempts.length !== node.currentAttemptNumber;
+  if (incompleteAttemptCount) return false;
   for (const [index, attempt] of node.attempts.entries()) {
     if (attempt.number !== index + 1) return false;
-    if (
+    const invalidPriorAttempt =
       index < node.attempts.length - 1 &&
       (!completeFailure(attempt) ||
         attempt.status !== 'failed' ||
-        attempt.retryDecision !== 'retry')
-    )
-      return false;
+        attempt.retryDecision !== 'retry');
+    if (invalidPriorAttempt) return false;
   }
   const current = node.attempts.at(-1);
   return (
@@ -122,14 +120,14 @@ export function selectRecoveryPrefix(
       invocation,
     ]),
   );
-  if (
+  const incompleteRecordSet =
     records.size !== source.nodes.length ||
     invocations.size !== source.checkpoint.invocations.length ||
     source.checkpoint.invocations.some(
       (invocation) =>
         invocation.status !== 'skipped' && !records.has(invocation.nodeId),
-    )
-  )
+    );
+  if (incompleteRecordSet)
     return { kind: 'refused', reason: 'evidence_unavailable' };
   const policy = resolveRetryPolicy(executable.envelope.runtimePolicies.retry);
   const context = { source, nodes, records, invocations, policy };
@@ -143,13 +141,14 @@ export function selectRecoveryPrefix(
   if ('kind' in selectedPath) return selectedPath;
   const { prefix, choices } = selectedPath;
   const prefixIds = new Set(prefix.map((node) => node.source.id));
-  for (const record of source.nodes)
-    if (
+  for (const record of source.nodes) {
+    const executedSuffix =
       record.id !== target.id &&
       !prefixIds.has(record.id) &&
-      (record.status !== 'skipped' || record.attempts.length > 0)
-    )
+      (record.status !== 'skipped' || record.attempts.length > 0);
+    if (executedSuffix)
       return { kind: 'refused', reason: 'suffix_already_executed' };
+  }
 
   return {
     kind: 'candidate',
@@ -178,7 +177,7 @@ function verifyRecoveryRecords({
   for (const record of source.nodes) {
     const node = nodes.get(record.nodeId);
     const invocation = invocations.get(record.nodeId);
-    if (
+    const recordMismatch =
       node?.sideEffectClass !== record.sideEffectClass ||
       invocation?.invocationKey !== record.invocationKey ||
       invocation.status !== record.status ||
@@ -186,8 +185,8 @@ function verifyRecoveryRecords({
       canonicalJson(invocation.branchPath ?? []) !==
         canonicalJson(record.branchPath ?? []) ||
       (record.iterationPath?.length ?? 0) !== 0 ||
-      (invocation.iterationPath?.length ?? 0) !== 0
-    )
+      (invocation.iterationPath?.length ?? 0) !== 0;
+    if (recordMismatch)
       return { kind: 'refused', reason: 'evidence_unavailable' };
     const retryFailure = verifyRetryHistory(record, node, policy);
     if (retryFailure !== undefined) return retryFailure;
@@ -208,15 +207,15 @@ function selectRecoveryTarget({
   if (target === undefined || !completeAttempts(target))
     return { kind: 'refused', reason: 'evidence_unavailable' };
   const final = target.attempts.at(-1);
-  if (
+  const incompleteFinalFailure =
     final === undefined ||
     !completeFailure(final) ||
     target.status !== source.status ||
     final.retryDecision !== target.status ||
     target.completedAt === null ||
     retryOutcome(target, final, policy, nodes.get(target.nodeId)?.retry)
-      ?.kind !== target.status
-  )
+      ?.kind !== target.status;
+  if (incompleteFinalFailure)
     return { kind: 'refused', reason: 'evidence_unavailable' };
   return target;
 }
@@ -304,11 +303,11 @@ function verifyPrefixOutput({
   record: RecoveryNode | undefined;
 }>): RecoveryPrefixNode | RecoveryRefused | undefined {
   if (node.disabled) {
-    if (
+    const invalidDisabledPrefix =
       node.definition.key === 'core.condition' ||
       invocation.status !== 'skipped' ||
-      (record?.attempts.length ?? 0) !== 0
-    )
+      (record?.attempts.length ?? 0) !== 0;
+    if (invalidDisabledPrefix)
       return { kind: 'refused', reason: 'branch_evidence_unavailable' };
   } else {
     if (record?.status !== 'succeeded' || invocation.output === undefined)
@@ -332,11 +331,11 @@ function verifyRetryHistory(
   policy: RetryPolicy,
 ): RecoveryRefused | undefined {
   for (const attempt of record.attempts) {
-    if (
+    const unknownPriorEffect =
       (attempt.status === 'outcome_unknown' ||
         attempt.failureKind === 'outcome_unknown') &&
-      record.status !== 'outcome_unknown'
-    )
+      record.status !== 'outcome_unknown';
+    if (unknownPriorEffect)
       return { kind: 'refused', reason: 'unknown_effect' };
     const decision = retryOutcome(record, attempt, policy, node.retry);
     if (
@@ -351,16 +350,15 @@ function verifyRetryHistory(
 }
 
 function sourceEvidenceComplete(source: RecoverySource): boolean {
-  if (
+  const missingSourceEvidence =
     source.completedAt === null ||
     source.workflowVersionId !== source.checkpoint.workflowVersionId ||
     source.checkpoint.runStatus !== source.status ||
     source.checkpoint.cancelRequested ||
     source.checkpoint.deadlineExpired ||
     source.checkpoint.joins.length > 0 ||
-    source.checkpoint.loops.length > 0
-  )
-    return false;
+    source.checkpoint.loops.length > 0;
+  if (missingSourceEvidence) return false;
   return true;
 }
 
@@ -370,23 +368,25 @@ function verifyPrefixAttempt(
   output: NonNullable<InvocationState['output']>,
 ): RecoveryRefused | undefined {
   if (record.reused !== undefined) {
-    if (
+    const invalidReusedPrefix =
       record.currentAttemptId !== null ||
       record.currentAttemptNumber !== null ||
       record.attempts.length !== 0 ||
       invocation.attemptNumber !== 0 ||
       output.kind !== 'reused' ||
-      output.nodeRunId !== record.id
-    )
+      output.nodeRunId !== record.id;
+    if (invalidReusedPrefix)
       return { kind: 'refused', reason: 'evidence_unavailable' };
-  } else if (
-    !completeAttempts(record) ||
-    record.completedAt === null ||
-    invocation.attemptNumber !== record.currentAttemptNumber ||
-    output.kind !== 'inline' ||
-    output.attemptId !== record.currentAttemptId
-  ) {
-    return { kind: 'refused', reason: 'evidence_unavailable' };
+  } else {
+    const invalidAttemptPrefix =
+      !completeAttempts(record) ||
+      record.completedAt === null ||
+      invocation.attemptNumber !== record.currentAttemptNumber ||
+      output.kind !== 'inline' ||
+      output.attemptId !== record.currentAttemptId;
+    if (invalidAttemptPrefix) {
+      return { kind: 'refused', reason: 'evidence_unavailable' };
+    }
   }
   return undefined;
 }

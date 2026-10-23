@@ -109,18 +109,16 @@ function assertInvocationBelongsToExecutable(
       'checkpoint invocation does not belong to the executable graph',
     );
   if (!nodeIds.has(invocation.nodeId)) invalidInvocationIdentity();
-  if (
+  const invalidCallOwner =
     (invocation.waitKind === 'workflow_call' ||
       invocation.output?.kind === 'call') &&
-    !isWorkflowCallDefinition(nodesById.get(invocation.nodeId)?.definition)
-  )
-    invalidInvocationIdentity();
-  if (
+    !isWorkflowCallDefinition(nodesById.get(invocation.nodeId)?.definition);
+  if (invalidCallOwner) invalidInvocationIdentity();
+  const invalidTaskOwner =
     (invocation.waitKind === 'human_task' ||
       invocation.output?.kind === 'task') &&
-    !isPendingTaskNode(nodesById.get(invocation.nodeId))
-  )
-    invalidInvocationIdentity();
+    !isPendingTaskNode(nodesById.get(invocation.nodeId));
+  if (invalidTaskOwner) invalidInvocationIdentity();
   const branchPath = invocation.branchPath ?? [];
   const ancestors = findExecutableNodeContext(
     executable.envelope.graph,
@@ -208,13 +206,13 @@ function assertCheckpointLoopIdentity(
     .filter((id) => !targets.has(id))
     .sort(compareOrdinal);
   const expectedSink = body.nodes.find(({ id }) => !sources.has(id))?.id;
-  if (
+  const loopTopologyMismatch =
     loop.maxIterations !== node.structured.maxIterations ||
     loop.maxConcurrency !== node.structured.maxConcurrency ||
     loop.bodyRootNodeIds.length !== expectedRoots.length ||
     loop.bodyRootNodeIds.some((id, index) => id !== expectedRoots[index]) ||
-    loop.bodySinkNodeId !== expectedSink
-  )
+    loop.bodySinkNodeId !== expectedSink;
+  if (loopTopologyMismatch)
     operationError(
       'workflow_identity_invalid',
       'checkpoint loop topology or bounds disagree with the executable',

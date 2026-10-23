@@ -110,12 +110,11 @@ function samePersistedFact(
   left: PersistedWorkflowObservation,
   right: PersistedWorkflowObservation,
 ): boolean {
-  if (
+  const differentIdentity =
     left.sequence !== right.sequence ||
     left.occurredAt !== right.occurredAt ||
-    left.kind !== right.kind
-  )
-    return false;
+    left.kind !== right.kind;
+  if (differentIdentity) return false;
   if (left.kind === 'cancel_requested')
     return right.kind === 'cancel_requested';
   switch (left.kind) {
@@ -368,12 +367,11 @@ function freshSequencedObservations(
     fresh.push(observation);
   }
   for (const observation of fresh) {
-    if (
+    const hasNoAttempt =
       observation.kind !== 'outcome' &&
       observation.kind !== 'wait' &&
-      observation.kind !== 'cursor_only'
-    )
-      continue;
+      observation.kind !== 'cursor_only';
+    if (hasNoAttempt) continue;
     const invocation = checkpoint.invocations.find(
       ({ invocationKey }) => invocationKey === observation.invocationKey,
     );

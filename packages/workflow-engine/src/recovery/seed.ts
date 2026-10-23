@@ -46,7 +46,9 @@ export function seedRecovery(
     const id = identity.nodeRunIds.get(source.id);
     const value = plan.outputs.get(source.id);
     const sourceCompletedAt = source.reused?.completedAt ?? source.completedAt;
-    if (id === undefined || value === undefined || sourceCompletedAt === null)
+    const missingPrefixValue =
+      id === undefined || value === undefined || sourceCompletedAt === null;
+    if (missingPrefixValue)
       return { kind: 'refused', reason: 'evidence_unavailable' };
     const key = nodeProviderIdempotencyKey(
       definition,

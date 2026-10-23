@@ -117,14 +117,13 @@ export function applyLoopCompletion(
   const iteration = state.invocations.get(iterationKey);
   // Only coordinator decisions reach this seam; physical outcome conflicts are
   // checked before deriving them. A compact frontier owns replay after pruning.
-  if (
+  const retiredCompletion =
     observation.ordinal >= 0 &&
-    observation.coordinatorDerived === true &&
+    observation.coordinatorDerived &&
     (observation.ordinal < loop.completedPrefix ||
       (loop.terminalOrdinals.includes(observation.ordinal) &&
-        iteration === undefined))
-  )
-    return;
+        iteration === undefined));
+  if (retiredCompletion) return;
   if (iteration === undefined)
     throw new WorkflowEngineError(
       'loop_state_invalid',
@@ -193,11 +192,11 @@ function stopFailedLoopControl(
     occurredAt: string;
   }>,
 ): void {
-  if (
+  const firstTerminalCause =
     status !== 'succeeded' &&
     status !== 'skipped' &&
-    loop.terminalStatus === undefined
-  ) {
+    loop.terminalStatus === undefined;
+  if (firstTerminalCause) {
     const control = state.invocations.get(loop.controlInvocationKey);
     if (control === undefined || isTerminalNodeStatus(control.status))
       throw new WorkflowEngineError(

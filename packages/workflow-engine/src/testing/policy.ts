@@ -23,12 +23,11 @@ export function testStepDisposition(
     isWorkflowCallDefinition(node.definition)
   )
     return { kind: 'pin_required' as const };
-  if (
+  const ordinaryWait =
     node.definition.key === 'core.wait' &&
     node.definition.version === 1 &&
-    !isCallbackWaitNode(node)
-  )
-    return { kind: 'wait_skipped' as const };
+    !isCallbackWaitNode(node);
+  if (ordinaryWait) return { kind: 'wait_skipped' as const };
   if (
     node.definition.key === 'core.respond_webhook' &&
     node.definition.version === 1

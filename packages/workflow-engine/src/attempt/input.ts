@@ -85,6 +85,8 @@ function parseCompletedDescriptor(
   }>,
 ): readonly [string, JsonValue] {
   const descriptor = record(candidate, 'attempt_invalid', 'completed output');
+  const { nodeId, invocationKey } = descriptor;
+
   exactKeys(
     descriptor,
     ['invocationKey', 'nodeId', 'value'],
@@ -93,21 +95,21 @@ function parseCompletedDescriptor(
   );
   const upstreamEdge = graph.edges.find(
     ({ source, target }) =>
-      source.nodeId === descriptor.nodeId && target.nodeId === node.id,
+      source.nodeId === nodeId && target.nodeId === node.id,
   );
   const branchPath = input.branchPath ?? [];
   const nearestBranch = branchPath.at(-1);
   const upstreamBranchPath =
     upstreamEdge !== undefined &&
-    nearestBranch?.nodeId === descriptor.nodeId &&
+    nearestBranch?.nodeId === nodeId &&
     nearestBranch?.outputPort === upstreamEdge.source.port
       ? branchPath.slice(0, -1)
       : branchPath;
   const expectedKey =
-    typeof descriptor.nodeId === 'string'
+    typeof nodeId === 'string'
       ? createInvocationKey({
           workflowVersionId: input.workflowVersionId,
-          nodeId: descriptor.nodeId,
+          nodeId: nodeId,
           branchPath: upstreamBranchPath.map(
             ({ nodeId: branchNodeId, outputPort }) =>
               `${branchNodeId}:${outputPort}`,
@@ -117,13 +119,13 @@ function parseCompletedDescriptor(
             : { iterationPath: input.iterationPath }),
         })
       : undefined;
-  if (
-    typeof descriptor.nodeId !== 'string' ||
-    typeof descriptor.invocationKey !== 'string' ||
-    !directUpstream.has(descriptor.nodeId) ||
+  const invalidUpstreamIdentity =
+    typeof nodeId !== 'string' ||
+    typeof invocationKey !== 'string' ||
+    !directUpstream.has(nodeId) ||
     upstreamEdge === undefined ||
-    descriptor.invocationKey !== expectedKey
-  ) {
+    invocationKey !== expectedKey;
+  if (invalidUpstreamIdentity) {
     operationError(
       'attempt_invalid',
       'completed output invocation is not exact upstream',
@@ -132,7 +134,7 @@ function parseCompletedDescriptor(
   if (descriptor.value === undefined) {
     operationError('attempt_invalid', 'completed output value is missing');
   }
-  return [descriptor.nodeId, descriptor.value];
+  return [nodeId, descriptor.value];
 }
 
 function parseCompletedOutputs(
@@ -261,12 +263,12 @@ export function prepareNodeAttemptInput(
     const parsed = workflowNodeFailureValueSchema.safeParse(
       input.sourceFailure,
     );
-    if (
+    const invalidFailureEvidence =
       !parsed.success ||
       parsed.data.nodeId !== route.sourceNodeId ||
       parsed.data.invocationKey !==
-        expectedInvocationKey(input, route.sourceNodeId)
-    )
+        expectedInvocationKey(input, route.sourceNodeId);
+    if (invalidFailureEvidence)
       operationError(
         'attempt_invalid',
         'selected source failure evidence is missing or mismatched',

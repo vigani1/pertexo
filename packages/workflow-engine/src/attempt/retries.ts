@@ -143,12 +143,12 @@ export function providerIdempotencyKey(input: {
   readonly invocationKey: string;
   readonly operationIdentity: string;
 }): string {
-  if (
+  const missingIdempotencyIdentity =
     !input.namespace ||
     !input.runId ||
     !input.invocationKey ||
-    !input.operationIdentity
-  )
+    !input.operationIdentity;
+  if (missingIdempotencyIdentity)
     throw new TypeError('provider idempotency identity must be non-empty');
   const digest = createHash('sha256')
     .update(
@@ -173,7 +173,6 @@ function mayHaveUnsafeEffect(input: RetryInput): boolean {
         observation.recommendation === 'retry'));
   return (
     uncertain &&
-    'possiblyDispatched' in observation &&
     observation.possiblyDispatched &&
     input.sideEffectClass === 'unsafe'
   );

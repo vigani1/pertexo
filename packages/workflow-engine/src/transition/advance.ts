@@ -63,7 +63,7 @@ export function advanceWorkflowFromSchedulerState(
     current.nextEventSequence - 1;
   const consumedObservationCount =
     consumedThroughEventSequence - current.nextEventSequence + 1;
-  if (
+  const invalidCursor =
     consumedObservationCount < 0 ||
     (externalFactsArePersisted &&
       consumedObservationCount !==
@@ -71,8 +71,8 @@ export function advanceWorkflowFromSchedulerState(
           (observation) =>
             !('coordinatorDerived' in observation) ||
             !observation.coordinatorDerived,
-        ).length)
-  )
+        ).length);
+  if (invalidCursor)
     throw new WorkflowEngineError(
       'observation_invalid',
       'persisted observation cursor is invalid',

@@ -56,11 +56,11 @@ export async function resolveMappedNodeInput(
     assertNotAborted(signal);
     const source = node.inputMappings[key];
     if (source === undefined) continue;
-    if (
+    const missingUpstreamOutput =
       source.kind === 'node_output' &&
       (!directUpstream.has(source.nodeId) ||
-        !Object.hasOwn(completedOutputs, source.nodeId))
-    )
+        !Object.hasOwn(completedOutputs, source.nodeId));
+    if (missingUpstreamOutput)
       operationError(
         'attempt_invalid',
         'mapping upstream output is incomplete',
@@ -172,10 +172,10 @@ async function resolveMappingValue(
       operationError('attempt_aborted', 'node attempt was aborted');
     operationError('attempt_invalid', 'mapping failed');
   }
-  if (
+  const mappingCanceled =
     resolution.kind === 'error' &&
-    (resolution.expression?.code === 'canceled' || signal.aborted)
-  )
+    (resolution.expression?.code === 'canceled' || signal.aborted);
+  if (mappingCanceled)
     operationError('attempt_aborted', 'node attempt was aborted');
   if (resolution.kind === 'error')
     operationError(
