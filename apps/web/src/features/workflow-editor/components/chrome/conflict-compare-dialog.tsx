@@ -14,19 +14,12 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   diffWorkflowGraphs,
-  describeStepChange,
-} from '@/features/workflow-drafts/public';
+  type GraphChange,
+} from '@/features/workflows/comparison.public';
 import { useEditorStore } from '../../model/state/context';
-import { stepTitle } from '../../model/graph/adapter';
 import { adoptStepFrom } from '../../model/graph/copies';
 
-type Line = Readonly<{
-  nodeId: string;
-  noteId?: string;
-  name: string;
-  kind: 'added' | 'removed' | 'changed';
-  detail?: string;
-}>;
+type Line = GraphChange;
 
 /**
  * What differs between your copy and theirs, step by step, with the raw
@@ -43,10 +36,11 @@ export function ConflictCompareDialog({
   const graph = useEditorStore((state) => state.graph);
   const transact = useEditorStore((state) => state.transact);
   if (conflict === null) return null;
-  const lines = compareLines(
+  const comparison = diffWorkflowGraphs(
     inConflict ? conflict.remote : graph,
     conflict.local,
   );
+  const lines = comparison.lines;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
@@ -58,47 +52,47 @@ export function ConflictCompareDialog({
         </DialogDescription>
         <Tabs defaultValue="steps" className="mt-4">
           <TabsList>
-            <TabsTrigger value="steps">Steps and notes</TabsTrigger>
+            <TabsTrigger value="steps">Changes</TabsTrigger>
             <TabsTrigger value="json">JSON</TabsTrigger>
           </TabsList>
           <TabsContent value="steps" className="pt-4">
             {lines.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No step or note differences: only step layout differs.
+                {comparison.layoutOnly
+                  ? 'Only step layout differs.'
+                  : 'No definition differences.'}
               </p>
             ) : (
               <ul className="flex max-h-80 flex-col gap-2 overflow-y-auto pr-1">
                 {lines.map((line) => (
                   <li
-                    key={line.nodeId}
+                    key={`${line.target}:${line.id}`}
                     className="flex items-center gap-3 text-sm"
                   >
                     <LineIcon kind={line.kind} />
                     <span className="min-w-0 flex-1 truncate">
-                      <span className="font-medium">{line.name}</span>
+                      <span className="font-medium">{line.label}</span>
                       <span className="text-subtle-foreground">
                         {' '}
                         · {lineWords(line)}
                       </span>
                     </span>
-                    {inConflict ? null : (
+                    {inConflict ||
+                    (line.target !== 'step' &&
+                      line.target !== 'note') ? null : (
                       <Button
                         type="button"
                         size="xs"
                         variant="outline"
-                        aria-label={`Use your copy of ${line.name}`}
+                        aria-label={`Use your copy of ${line.label}`}
                         onClick={() => {
                           const next =
-                            line.noteId === undefined
-                              ? adoptStepFrom(
-                                  graph,
-                                  conflict.local,
-                                  line.nodeId,
-                                )
+                            line.target === 'step'
+                              ? adoptStepFrom(graph, conflict.local, line.id)
                               : adoptWorkflowNote(
                                   graph,
                                   conflict.local,
-                                  line.noteId,
+                                  line.id,
                                 );
                           if (next === null)
                             notifications.error({
@@ -135,41 +129,13 @@ export function ConflictCompareDialog({
   );
 }
 
-function compareLines(
-  theirs: WorkflowGraphContract,
-  mine: WorkflowGraphContract,
-): readonly Line[] {
-  const diff = diffWorkflowGraphs(theirs, mine, { ignoreLayout: true });
-  return [
-    ...diff.notes.map((note) => ({
-      nodeId: `note:${note.id}`,
-      noteId: note.id,
-      name: note.label,
-      kind: note.kind,
-      ...(note.detail === undefined ? {} : { detail: note.detail }),
-    })),
-    ...diff.added.map((node) => ({
-      nodeId: node.id,
-      name: stepTitle(node),
-      kind: 'added' as const,
-    })),
-    ...diff.removed.map((node) => ({
-      nodeId: node.id,
-      name: stepTitle(node),
-      kind: 'removed' as const,
-    })),
-    ...diff.changed.map((change) => ({
-      nodeId: change.after.id,
-      name: stepTitle(change.after),
-      kind: 'changed' as const,
-      detail: describeStepChange(change.aspects),
-    })),
-  ];
-}
-
 function lineWords(line: Line): string {
   if (line.kind === 'added') return 'only in your copy';
   if (line.kind === 'removed') return 'not in your copy';
+  if (line.target !== 'step' && line.target !== 'note')
+    return line.detail === undefined
+      ? 'different in your copy'
+      : `${line.detail} in your copy`;
   return `your ${line.detail ?? 'setup'} differs`;
 }
 

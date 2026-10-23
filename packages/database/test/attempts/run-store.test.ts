@@ -68,6 +68,33 @@ async function withNoCheckoutStore(
 
 describe('NodeAttemptRunStore', () => {
   it.each([
+    'execution.provider',
+    'utility.unreviewed',
+    'file.create_unreviewed',
+  ])(
+    'refuses an unapproved private summary for %s before checkout',
+    async (safeErrorCode) => {
+      await withNoCheckoutStore(async (store, checkout) => {
+        await expect(
+          store.complete({
+            lease,
+            outcome: {
+              status: 'executor_failure',
+              failureKind: 'failed',
+              errorKind: 'configuration',
+              possiblyDispatched: false,
+              safeErrorCode,
+              errorSummary: 'Unreviewed provider text',
+            },
+            signal: new AbortController().signal,
+          }),
+        ).rejects.toBeInstanceOf(NodeAttemptStateCorruptError);
+        expect(checkout).not.toHaveBeenCalled();
+      });
+    },
+  );
+
+  it.each([
     [
       'claim',
       (store: Store, signal: AbortSignal) =>

@@ -249,7 +249,7 @@ test('commits one undoable change for each pointer drag and resize', async ({
   expect(remote.graph.nodes).toEqual(mappingGraph().nodes);
 });
 
-test('compares and reapplies a note-only conflict without replacing steps', async ({
+test('compares every change category and reapplies a note without replacing steps', async ({
   page,
 }) => {
   const initial = {
@@ -273,21 +273,44 @@ test('compares and reapplies a note-only conflict without replacing steps', asyn
   remote.graph = {
     ...remote.graph,
     notes: [{ ...initial, text: 'Their documented change' }],
+    edges: [],
+    settings: { maxRunDurationMs: 60_000 },
+    callable: {
+      input: { type: 'string' },
+      resultType: { type: 'string' },
+      result: { kind: 'run_input', path: '$' },
+    },
   };
   remote.revision++;
   await form.getByRole('button', { name: 'Save note' }).click();
   const conflict = page.getByRole('region', { name: 'Draft conflict' });
   await expect(conflict).toContainText('Changed elsewhere');
   await conflict.getByRole('button', { name: 'Compare' }).click();
-  await page.getByRole('tab', { name: 'Steps and notes', exact: true }).click();
+  await page.getByRole('tab', { name: 'Changes', exact: true }).click();
   await expect(page.getByRole('dialog')).toContainText(
     'Note: My documented change',
   );
+  await expect(page.getByRole('dialog')).toContainText('Links between steps');
+  await expect(page.getByRole('dialog')).toContainText(
+    'Workflow execution settings',
+  );
+  await expect(page.getByRole('dialog')).toContainText(
+    'Input or callable contract',
+  );
+  await page.screenshot({
+    path: test.info().outputPath('complete-conflict-review.png'),
+    fullPage: true,
+  });
   await page.getByRole('button', { name: 'Close', exact: true }).click();
   await conflict
     .getByRole('button', { name: 'Keep mine', exact: true })
     .click();
   await conflict.getByRole('button', { name: 'Compare' }).click();
+  await expect(
+    page.getByRole('button', {
+      name: /Use your copy of (Links|Workflow|Input)/u,
+    }),
+  ).toHaveCount(0);
   await page
     .getByRole('button', {
       name: 'Use your copy of Note: My documented change',

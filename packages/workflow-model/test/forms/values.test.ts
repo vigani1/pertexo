@@ -373,3 +373,30 @@ it('retains old form configuration exactly and accepts only credential-free HTTP
       .success,
   ).toBe(false);
 });
+
+it.each(['toString', 'valueOf', 'hasOwnProperty'])(
+  'reads only own submitted values for form field %s',
+  (name) => {
+    const optional = formFieldsSchema.parse([
+      { id: 'field', name, label: 'Value', type: 'text', required: false },
+    ]);
+    expect(parseFormValues(optional, {})).toEqual({});
+    expect(parseFormValues(optional, { [name]: 'supplied' })).toEqual({
+      [name]: 'supplied',
+    });
+    expect(parseFormValues(optional, { [name]: '' })).toEqual({});
+    const required = formFieldsSchema.parse([
+      { id: 'field', name, label: 'Value', type: 'text', required: true },
+    ]);
+    let failure: unknown;
+    try {
+      parseFormValues(required, {});
+    } catch (error) {
+      failure = error;
+    }
+    expect(failure).toBeInstanceOf(FormValuesInvalidError);
+    expect((failure as FormValuesInvalidError).fields).toEqual([
+      { name, message: 'This field is required.' },
+    ]);
+  },
+);

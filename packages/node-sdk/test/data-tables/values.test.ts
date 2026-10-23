@@ -114,3 +114,21 @@ it('rejects adversarial depth and cycles before recursive JSON parsing', () => {
   cyclic.next = cyclic;
   expect(dataTableValuesSchema.safeParse(cyclic).success).toBe(false);
 });
+
+it.each(['toString', 'constructor', 'valueOf', 'hasOwnProperty'])(
+  'treats %s as an ordinary column name, never an inherited value',
+  (name) => {
+    const optional = dataTableNewColumnsSchema.parse([{ name, type: 'text' }]);
+    expect(validateDataTableValues(optional, {})).toEqual({ [name]: null });
+    expect(validateDataTableValues(optional, {}, true)).toEqual({});
+    expect(validateDataTableValues(optional, { [name]: 'supplied' })).toEqual({
+      [name]: 'supplied',
+    });
+    const required = dataTableNewColumnsSchema.parse([
+      { name, type: 'text', required: true },
+    ]);
+    expect(() => validateDataTableValues(required, {})).toThrow(
+      `Column ${name} is required.`,
+    );
+  },
+);

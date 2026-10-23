@@ -77,6 +77,27 @@ describe('version changes', () => {
       [edge('hook', 'call')],
     );
     expect(diffWorkflowGraphs(before, after)).toEqual({
+      lines: [
+        { target: 'step', kind: 'added', id: 'mail', label: 'Send email' },
+        { target: 'step', kind: 'removed', id: 'old', label: 'Tidy' },
+        {
+          target: 'step',
+          kind: 'changed',
+          id: 'call',
+          label: 'Call API',
+          detail: 'setup',
+        },
+        {
+          target: 'links',
+          kind: 'changed',
+          id: 'links',
+          label: 'Links between steps',
+          detail: '1 added, 1 removed',
+        },
+      ],
+      linksAdded: 1,
+      linksRemoved: 1,
+      layoutOnly: false,
       added: [{ id: 'mail', label: 'Send email' }],
       removed: [{ id: 'old', label: 'Tidy' }],
       changed: [{ id: 'call', label: 'Call API', detail: 'setup' }],

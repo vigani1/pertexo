@@ -3,7 +3,7 @@ import {
   userDisplayNameSchema,
   type UserProfileResponse,
 } from '@pertexo/contracts';
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -43,6 +43,7 @@ export function DisplayNameForm({
   const id = useId();
   const notifications = useNotifications();
   const [name, setName] = useState(user.displayName);
+  const baseRevision = useRef(user.revision);
   const validation = useFieldValidation<'name'>();
   const command = useDisplayNameChange({
     apiClient,
@@ -65,7 +66,11 @@ export function DisplayNameForm({
     if (!validation.submit({ name: nameProblem(name) })) return;
     const next = name.trim();
     if (next === user.displayName) onClose();
-    else command.save(next, user.revision);
+    else {
+      // Only the explicit Save after a conflict adopts the displayed revision.
+      if (command.conflict) baseRevision.current = user.revision;
+      command.save(next, baseRevision.current);
+    }
   }
 
   return (

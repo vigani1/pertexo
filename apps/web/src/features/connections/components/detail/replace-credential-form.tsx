@@ -1,11 +1,11 @@
-import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
-import { useId, useRef } from 'react';
+import { useId, useRef, useState } from 'react';
 import type { ConnectionResponse } from '@pertexo/contracts';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { isApiError } from '@/lib/api/error';
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import { connectionCommandError } from '../../model/connection-errors';
 import {
   useRotateConnectionMutation,
@@ -32,6 +32,7 @@ export function ReplaceCredentialForm({
   const id = useId();
   const notifications = useNotifications();
   const credential = useCredentialForm(connection.providerKey);
+  const [baseVersion, setBaseVersion] = useState(connection.secretVersionId);
   const { mutation, clearSensitiveState } = useRotateConnectionMutation(scope);
   const attempt = useRef<
     | Readonly<{ signature: string; command: RotateConnectionCommand }>
@@ -50,13 +51,20 @@ export function ReplaceCredentialForm({
     if (mutation.isPending) return;
     const value = credential.validate();
     if (value === undefined) return;
+    const expectedVersion = replacingNewer
+      ? connection.secretVersionId
+      : baseVersion;
+    if (replacingNewer) {
+      setBaseVersion(expectedVersion);
+      attempt.current = undefined;
+    }
     const signature = JSON.stringify(value);
     const command =
       attempt.current?.signature === signature
         ? attempt.current.command
         : {
             connectionId: connection.id,
-            expectedSecretVersionId: connection.secretVersionId,
+            expectedSecretVersionId: expectedVersion,
             credential: value,
             idempotencyKey: crypto.randomUUID(),
           };
@@ -75,6 +83,12 @@ export function ReplaceCredentialForm({
   }
 
   const uncertain = mutation.isError && isUnconfirmedCommand(mutation.error);
+  const replacingNewer =
+    mutation.isError &&
+    !uncertain &&
+    isApiError(mutation.error) &&
+    mutation.error.problem?.code === 'connection.conflict' &&
+    connection.secretVersionId !== baseVersion;
   return (
     <form
       noValidate
@@ -102,7 +116,9 @@ export function ReplaceCredentialForm({
       />
       {mutation.isError ? (
         <Notice role="alert" tone={uncertain ? 'warning' : 'destructive'}>
-          {connectionCommandError(mutation.error, 'rotate', connection.name)}
+          {replacingNewer
+            ? 'A different credential was saved while you were editing. Use my credential replaces that latest version with what you entered.'
+            : connectionCommandError(mutation.error, 'rotate', connection.name)}
         </Notice>
       ) : null}
       <div className="flex justify-end gap-2">
@@ -120,7 +136,11 @@ export function ReplaceCredentialForm({
           pending={mutation.isPending}
           pendingLabel="Replacing…"
         >
-          {uncertain ? 'Try again' : 'Replace credential'}
+          {uncertain
+            ? 'Try again'
+            : replacingNewer
+              ? 'Use my credential'
+              : 'Replace credential'}
         </ProgressButton>
       </div>
     </form>
