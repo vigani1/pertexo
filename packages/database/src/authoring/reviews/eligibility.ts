@@ -40,8 +40,13 @@ export function reviewDecisionAllowedSql(actor: SQL, role: SQL): SQL {
 }
 export function reviewRecords(db: Pick<NodePgDatabase, 'select'>) {
   return db
-    .select({ id: review.id, workflowId: review.workflowId, active: sql<boolean>`((${reviewStateSql})='pending')` })
-    .from(review).$dynamic()
+    .select({
+      id: review.id,
+      workflowId: review.workflowId,
+      active: sql<boolean>`((${reviewStateSql})='pending')`,
+    })
+    .from(review)
+    .$dynamic()
     .innerJoin(workspace, eq(workspace.id, review.workspaceId))
     .innerJoin(
       workflow,
