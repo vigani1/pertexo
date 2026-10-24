@@ -8,7 +8,7 @@ import {
   type InputMappingDraftRow,
   type PredecessorOption,
 } from '../../../model/inspector/input-mappings/draft';
-import { type SchemaValueType } from '../../../model/inspector/input-mappings/schema';
+import type { SchemaValueType } from '../../../model/inspector/input-mappings/schema';
 import { MappingSourceEditor } from './mapping-source-editor';
 
 type KindOption = Readonly<{ kind: EditableInputMappingKind; label: string }>;

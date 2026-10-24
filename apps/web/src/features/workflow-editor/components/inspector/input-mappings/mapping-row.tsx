@@ -10,7 +10,7 @@ import {
   type InputMappingRowErrors,
   type PredecessorOption,
 } from '../../../model/inspector/input-mappings/draft';
-import { type InputKeySuggestion } from '../../../model/inspector/input-mappings/schema';
+import type { InputKeySuggestion } from '../../../model/inspector/input-mappings/schema';
 import { MappingValueEditor } from './value-editor';
 import { MappingSummary } from './mapping-summary';
 
