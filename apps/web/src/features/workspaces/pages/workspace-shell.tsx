@@ -24,9 +24,6 @@ const moreLinkClass =
   'flex w-full items-center gap-3 rounded-md px-2 py-2.5 text-sm text-muted-foreground hover:bg-surface-ink/5 hover:text-foreground [&_svg]:size-4';
 
 type WorkspaceShellProps = Readonly<{
-  user: UserProfileResponse;
-  workspace: AccessibleWorkspace;
-  workspaces: readonly AccessibleWorkspace[];
   /** Runs running right now; undefined when the role can't read runs. */
   liveRunCount: number | undefined;
   /** Unread inbox notices; undefined when the role has no inbox. */
@@ -38,10 +35,14 @@ type WorkspaceShellProps = Readonly<{
   }>;
   /** Steps after the workspace in the breadcrumb, outermost first. */
   crumbs: readonly Readonly<{ key: string; label: ReactNode }>[];
-  logoutPending: boolean;
-  onLogout: () => void;
   onOpenSearch: () => void;
   children: ReactNode;
+  scope: Readonly<{
+    user: UserProfileResponse;
+    workspace: AccessibleWorkspace;
+    workspaces: readonly AccessibleWorkspace[];
+  }>;
+  session: Readonly<{ logoutPending: boolean; onLogout: () => void }>;
 }>;
 
 /**
@@ -50,18 +51,19 @@ type WorkspaceShellProps = Readonly<{
  * page. It stays mounted while people move between pages.
  */
 export function WorkspaceShell({
-  user,
-  workspace,
-  workspaces,
   liveRunCount,
   unreadNoticeCount,
   inboxRefs,
   crumbs,
-  logoutPending,
-  onLogout,
   onOpenSearch,
   children,
+  scope,
+  session,
 }: WorkspaceShellProps) {
+  const { user, workspace, workspaces } = scope;
+
+  const { logoutPending, onLogout } = session;
+
   return (
     <div className="relative min-h-svh bg-background">
       <div className="ambient ambient-still fixed" aria-hidden="true" />

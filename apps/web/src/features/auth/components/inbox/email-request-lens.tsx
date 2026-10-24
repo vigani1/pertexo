@@ -18,25 +18,26 @@ import { AuthForm } from '../../forms/auth-form';
  */
 export function EmailRequestLens({
   id,
-  title,
-  description,
-  submitLabel,
-  pendingLabel,
   send,
   describeFailure,
   onSent,
   footer,
+  copy,
 }: Readonly<{
   id: string;
-  title: string;
-  description: ReactNode;
-  submitLabel: string;
-  pendingLabel: string;
   send: (email: string, signal: AbortSignal) => Promise<unknown>;
   describeFailure: (error: unknown) => string;
   onSent: (email: string) => void;
   footer?: ReactNode;
+  copy: Readonly<{
+    title: string;
+    description: ReactNode;
+    submitLabel: string;
+    pendingLabel: string;
+  }>;
 }>) {
+  const { title, description, submitLabel, pendingLabel } = copy;
+
   const fields = useFieldValues({ email: emailProblem }, { email: '' });
   const request = useAuthRequest(describeFailure);
   const { pending, failure } = request;
@@ -48,19 +49,20 @@ export function EmailRequestLens({
       <AuthForm
         className="mt-6"
         failure={failure}
-        pending={pending}
-        pendingLabel={pendingLabel}
-        submitLabel={submitLabel}
-        waitSeconds={request.waitSeconds}
-        onSubmit={() =>
-          void request.submit(
-            fields.validate,
-            (values, signal) => send(values.email.trim(), signal),
-            (values) => {
-              onSent(values.email.trim());
-            },
-          )
-        }
+        submission={{
+          pending,
+          pendingLabel,
+          submitLabel,
+          waitSeconds: request.waitSeconds,
+          onSubmit: () =>
+            void request.submit(
+              fields.validate,
+              (values, signal) => send(values.email.trim(), signal),
+              (values) => {
+                onSent(values.email.trim());
+              },
+            ),
+        }}
       >
         <LabelledField
           id={`${id}-email`}

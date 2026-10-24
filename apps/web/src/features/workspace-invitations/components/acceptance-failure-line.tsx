@@ -94,12 +94,12 @@ function NextSteps({
 export function AcceptanceFailureLine({
   error,
   journey,
-  ...handlers
-}: Handlers &
-  Readonly<{
-    error: AcceptanceFailure;
-    journey: InvitationAcceptanceJourney | undefined;
-  }>) {
+  recovery,
+}: Readonly<{
+  recovery: Handlers;
+  error: AcceptanceFailure;
+  journey: InvitationAcceptanceJourney | undefined;
+}>) {
   const steps = failureNextSteps(
     error,
     journey === undefined
@@ -123,7 +123,7 @@ export function AcceptanceFailureLine({
           : 'destructive'
       }
       className="mt-5"
-      action={hasSteps ? <NextSteps steps={steps} {...handlers} /> : undefined}
+      action={hasSteps ? <NextSteps steps={steps} {...recovery} /> : undefined}
     >
       {error.message}
     </Notice>

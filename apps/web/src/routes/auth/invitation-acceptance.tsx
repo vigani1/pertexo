@@ -32,18 +32,20 @@ export function InvitationAcceptanceRoute() {
       apiClient={apiClient}
       {...(initialToken === undefined ? {} : { initialToken })}
       clearFragment={clearFragment}
-      openWorkspace={openWorkspace}
-      openSignIn={() => {
-        void navigate({ to: '/login', search: RETURN_HERE });
-      }}
-      openFreshSignIn={() => {
-        void navigate({ to: '/logout', search: RETURN_HERE });
-      }}
-      openSignUp={() => {
-        void navigate({ to: '/sign-up', search: RETURN_HERE });
-      }}
-      openWorkspaceDiscovery={() => {
-        void navigate({ to: '/workspaces' });
+      navigation={{
+        openWorkspace,
+        openSignIn: () => {
+          void navigate({ to: '/login', search: RETURN_HERE });
+        },
+        openFreshSignIn: () => {
+          void navigate({ to: '/logout', search: RETURN_HERE });
+        },
+        openSignUp: () => {
+          void navigate({ to: '/sign-up', search: RETURN_HERE });
+        },
+        openWorkspaceDiscovery: () => {
+          void navigate({ to: '/workspaces' });
+        },
       }}
     />
   );

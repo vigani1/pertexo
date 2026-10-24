@@ -55,25 +55,26 @@ export function ResetPasswordLens({
       <AuthForm
         className="mt-6"
         failure={failure}
-        pending={pending}
-        pendingLabel="Saving…"
-        submitLabel="Reset password"
-        waitSeconds={request.waitSeconds}
-        onSubmit={() =>
-          void request.submit(
-            fields.validate,
-            (values, signal) =>
-              resetPassword(
-                apiClient,
-                { token, password: values.password },
-                signal,
-              ),
-            () => {
-              fields.reset();
-              onReset();
-            },
-          )
-        }
+        submission={{
+          pending,
+          pendingLabel: 'Saving…',
+          submitLabel: 'Reset password',
+          waitSeconds: request.waitSeconds,
+          onSubmit: () =>
+            void request.submit(
+              fields.validate,
+              (values, signal) =>
+                resetPassword(
+                  apiClient,
+                  { token, password: values.password },
+                  signal,
+                ),
+              () => {
+                fields.reset();
+                onReset();
+              },
+            ),
+        }}
       >
         <PasswordField
           id="reset-password"

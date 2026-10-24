@@ -28,25 +28,31 @@ export function SignInLens({
   apiClient,
   capabilities,
   notice,
-  navigateToProvider,
-  onAuthenticated,
-  onTwoFactor,
-  onUnverified,
-  onRequestVerificationLink,
-  onOrganizationSignIn,
   returnTo,
+  navigation,
 }: Readonly<{
   apiClient: ApiClient;
   capabilities: AuthenticationCapabilitiesResponse;
   notice: LoginNotice | undefined;
-  navigateToProvider: (authorizationUrl: string) => void;
-  onAuthenticated: () => void;
-  onTwoFactor: () => void;
-  onUnverified: (email: string) => void;
-  onRequestVerificationLink: () => void;
-  onOrganizationSignIn?: () => void;
   returnTo: string | undefined;
+  navigation: Readonly<{
+    navigateToProvider: (authorizationUrl: string) => void;
+    onAuthenticated: () => void;
+    onTwoFactor: () => void;
+    onUnverified: (email: string) => void;
+    onRequestVerificationLink: () => void;
+    onOrganizationSignIn?: () => void;
+  }>;
 }>) {
+  const {
+    navigateToProvider,
+    onAuthenticated,
+    onTwoFactor,
+    onUnverified,
+    onRequestVerificationLink,
+    onOrganizationSignIn,
+  } = navigation;
+
   const signIn = useSignIn({
     apiClient,
     navigateToProvider,
@@ -186,11 +192,13 @@ function PasswordSignIn({
             </Link>
           ) : undefined
         }
-        pending={signIn.pending}
-        pendingLabel="Signing in…"
-        submitLabel="Sign in"
-        waitSeconds={signIn.waitSeconds}
-        onSubmit={onSubmit}
+        submission={{
+          pending: signIn.pending,
+          pendingLabel: 'Signing in…',
+          submitLabel: 'Sign in',
+          waitSeconds: signIn.waitSeconds,
+          onSubmit,
+        }}
       >
         <LabelledField
           id="login-email"

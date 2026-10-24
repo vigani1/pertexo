@@ -54,19 +54,12 @@ export function LoginPage({
   const [view, setView] = useState<LoginView>({ kind: 'sign-in' });
   const verificationCooldown = useCountdown();
   const backToSignIn = (label: string) => (
-    <AuthLensFooter>
-      <Button
-        type="button"
-        variant="link"
-        size="sm"
-        className="h-auto px-0"
-        onClick={() => {
-          setView({ kind: 'sign-in' });
-        }}
-      >
-        {label}
-      </Button>
-    </AuthLensFooter>
+    <BackToSignIn
+      label={label}
+      onBack={() => {
+        setView({ kind: 'sign-in' });
+      }}
+    />
   );
 
   switch (view.kind) {
@@ -105,10 +98,6 @@ export function LoginPage({
       return (
         <EmailRequestLens
           id="verification-request"
-          title="Get a new link"
-          description="Enter your email and we’ll send a fresh verification link if the address still needs one."
-          submitLabel="Send link"
-          pendingLabel="Sending…"
           send={(email, signal) =>
             resendVerificationEmail(apiClient, { email, returnTo }, signal)
           }
@@ -118,6 +107,13 @@ export function LoginPage({
             setView({ kind: 'verify', email });
           }}
           footer={backToSignIn('Back to sign in')}
+          copy={{
+            title: 'Get a new link',
+            description:
+              'Enter your email and we’ll send a fresh verification link if the address still needs one.',
+            submitLabel: 'Send link',
+            pendingLabel: 'Sending…',
+          }}
         />
       );
     case 'organization':
@@ -164,21 +160,23 @@ export function LoginPage({
                 apiClient={apiClient}
                 capabilities={options}
                 notice={notice}
-                navigateToProvider={navigateToProvider}
-                onAuthenticated={onAuthenticated}
-                onTwoFactor={() => {
-                  setView({ kind: 'two-factor' });
-                }}
-                onUnverified={(email) => {
-                  setView({ kind: 'verify', email });
-                }}
-                onOrganizationSignIn={() => {
-                  setView({ kind: 'organization' });
-                }}
-                onRequestVerificationLink={() => {
-                  setView({ kind: 'request-verification' });
-                }}
                 returnTo={returnTo}
+                navigation={{
+                  navigateToProvider,
+                  onAuthenticated,
+                  onTwoFactor: () => {
+                    setView({ kind: 'two-factor' });
+                  },
+                  onUnverified: (email) => {
+                    setView({ kind: 'verify', email });
+                  },
+                  onOrganizationSignIn: () => {
+                    setView({ kind: 'organization' });
+                  },
+                  onRequestVerificationLink: () => {
+                    setView({ kind: 'request-verification' });
+                  },
+                }}
               />
             )
           }
@@ -200,5 +198,24 @@ function LoginUnavailable({
     >
       Sign-in isn’t available right now. Try again in a moment.
     </LensUnavailable>
+  );
+}
+
+function BackToSignIn({
+  label,
+  onBack,
+}: Readonly<{ label: string; onBack: () => void }>) {
+  return (
+    <AuthLensFooter>
+      <Button
+        type="button"
+        variant="link"
+        size="sm"
+        className="h-auto px-0"
+        onClick={onBack}
+      >
+        {label}
+      </Button>
+    </AuthLensFooter>
   );
 }

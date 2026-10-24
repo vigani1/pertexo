@@ -10,25 +10,31 @@ import { cn } from '@/lib/utils';
 export function AuthForm({
   failure,
   failureAction,
-  pending,
-  pendingLabel,
-  submitLabel,
-  waitSeconds = 0,
   className,
-  onSubmit,
   children,
+  submission,
 }: Readonly<{
   failure: string | undefined;
   /** One way out of the failure, e.g. a link to reset the password. */
   failureAction?: ReactNode;
-  pending: boolean;
-  pendingLabel: string;
-  submitLabel: string;
-  waitSeconds?: number;
   className?: string;
-  onSubmit: () => void;
   children: ReactNode;
+  submission: Readonly<{
+    pending: boolean;
+    pendingLabel: string;
+    submitLabel: string;
+    waitSeconds?: number;
+    onSubmit: () => void;
+  }>;
 }>) {
+  const {
+    pending,
+    pendingLabel,
+    submitLabel,
+    waitSeconds = 0,
+    onSubmit,
+  } = submission;
+
   return (
     <form
       noValidate

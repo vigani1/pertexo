@@ -57,30 +57,31 @@ export function SignUpLens({
       <AuthForm
         className="mt-6"
         failure={failure}
-        pending={pending}
-        pendingLabel="Creating account…"
-        submitLabel="Create account"
-        waitSeconds={request.waitSeconds}
-        onSubmit={() =>
-          void request.submit(
-            fields.validate,
-            (values, signal) =>
-              signUpWithEmail(
-                apiClient,
-                {
-                  displayName: values.name.trim(),
-                  email: values.email.trim(),
-                  password: values.password,
-                  returnTo,
-                },
-                signal,
-              ),
-            (values) => {
-              fields.reset({ ...values, password: '' });
-              onCreated(values.email.trim());
-            },
-          )
-        }
+        submission={{
+          pending,
+          pendingLabel: 'Creating account…',
+          submitLabel: 'Create account',
+          waitSeconds: request.waitSeconds,
+          onSubmit: () =>
+            void request.submit(
+              fields.validate,
+              (values, signal) =>
+                signUpWithEmail(
+                  apiClient,
+                  {
+                    displayName: values.name.trim(),
+                    email: values.email.trim(),
+                    password: values.password,
+                    returnTo,
+                  },
+                  signal,
+                ),
+              (values) => {
+                fields.reset({ ...values, password: '' });
+                onCreated(values.email.trim());
+              },
+            ),
+        }}
       >
         <LabelledField
           id="sign-up-name"

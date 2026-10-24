@@ -22,15 +22,17 @@ type InvitationAcceptancePageProps = Readonly<{
   apiClient: ApiClient;
   initialToken?: string;
   clearFragment: () => void;
-  openWorkspace: (workspaceId: string) => void;
-  /** Sign in and come back to this invitation. */
-  openSignIn: () => void;
-  /** Sign in again with a fresh session and come back. */
-  openFreshSignIn?: () => void;
-  openSignUp?: () => void;
-  openWorkspaceDiscovery: () => void;
   /** How long "Opening…" waits after joining; injectable for tests. */
   autoOpenAfterMs?: number;
+  navigation: Readonly<{
+    openWorkspace: (workspaceId: string) => void;
+    /** Sign in and come back to this invitation. */
+    openSignIn: () => void;
+    /** Sign in again with a fresh session and come back. */
+    openFreshSignIn?: () => void;
+    openSignUp?: () => void;
+    openWorkspaceDiscovery: () => void;
+  }>;
 }>;
 
 /**
@@ -59,13 +61,17 @@ function InvitationJourneyPage({
   apiClient,
   initialToken,
   clearFragment,
-  openWorkspace,
-  openSignIn,
-  openFreshSignIn = openSignIn,
-  openSignUp = openSignIn,
-  openWorkspaceDiscovery,
   autoOpenAfterMs = 3_000,
+  navigation,
 }: InvitationAcceptancePageProps) {
+  const {
+    openWorkspace,
+    openSignIn,
+    openFreshSignIn = openSignIn,
+    openSignUp = openSignIn,
+    openWorkspaceDiscovery,
+  } = navigation;
+
   const journey = useInvitationJourney({
     apiClient,
     routeToken: initialToken,
@@ -100,28 +106,32 @@ function InvitationJourneyPage({
             journey={current}
             pending={journey.pending}
             cleanupFailed={journey.error?.kind === 'cleanup'}
-            onAccept={journey.accept}
-            onNotNow={journey.setAside}
-            onSignIn={journey.signIn}
-            onSwitchAccount={journey.switchAccount}
-            onCreateAccount={openSignUp}
-            onOpenCompleted={journey.openCompleted}
             autoOpenAfterMs={autoOpenAfterMs}
-            onSignInNormally={openSignIn}
-            onDiscover={openWorkspaceDiscovery}
+            actions={{
+              onAccept: journey.accept,
+              onNotNow: journey.setAside,
+              onSignIn: journey.signIn,
+              onSwitchAccount: journey.switchAccount,
+              onCreateAccount: openSignUp,
+              onOpenCompleted: journey.openCompleted,
+              onSignInNormally: openSignIn,
+              onDiscover: openWorkspaceDiscovery,
+            }}
           />
         )}
         {journey.error === undefined ? null : (
           <AcceptanceFailureLine
             error={journey.error}
             journey={current}
-            pending={journey.pending}
-            tokenAvailable={journey.tokenAvailable}
-            onReconcile={journey.reconcile}
-            onSignIn={journey.signIn}
-            onOpenWorkspace={openWorkspace}
-            onDiscover={openWorkspaceDiscovery}
-            onRetry={journey.retry}
+            recovery={{
+              pending: journey.pending,
+              tokenAvailable: journey.tokenAvailable,
+              onReconcile: journey.reconcile,
+              onSignIn: journey.signIn,
+              onOpenWorkspace: openWorkspace,
+              onDiscover: openWorkspaceDiscovery,
+              onRetry: journey.retry,
+            }}
           />
         )}
       </AuthLens>
@@ -134,30 +144,36 @@ function JourneyContent({
   journey,
   pending,
   cleanupFailed,
-  onAccept,
-  onNotNow,
-  onSignIn,
-  onSwitchAccount,
-  onCreateAccount,
-  onOpenCompleted,
   autoOpenAfterMs,
-  onSignInNormally,
-  onDiscover,
+  actions,
 }: Readonly<{
   apiClient: ApiClient;
   journey: InvitationAcceptanceJourney;
   pending: boolean;
   cleanupFailed: boolean;
-  onAccept: () => void;
-  onNotNow: () => void;
-  onSignIn: () => void;
-  onSwitchAccount: () => void;
-  onCreateAccount: () => void;
-  onOpenCompleted: (workspaceId: string, csrfToken: string) => void;
   autoOpenAfterMs: number;
-  onSignInNormally: () => void;
-  onDiscover: () => void;
+  actions: Readonly<{
+    onAccept: () => void;
+    onNotNow: () => void;
+    onSignIn: () => void;
+    onSwitchAccount: () => void;
+    onCreateAccount: () => void;
+    onOpenCompleted: (workspaceId: string, csrfToken: string) => void;
+    onSignInNormally: () => void;
+    onDiscover: () => void;
+  }>;
 }>) {
+  const {
+    onAccept,
+    onNotNow,
+    onSignIn,
+    onSwitchAccount,
+    onCreateAccount,
+    onOpenCompleted,
+    onSignInNormally,
+    onDiscover,
+  } = actions;
+
   switch (journey.state) {
     case 'ready':
       return (

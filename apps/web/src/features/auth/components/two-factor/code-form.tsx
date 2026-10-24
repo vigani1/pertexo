@@ -16,12 +16,14 @@ export function TwoFactorCodeForm({
   }, [pending, method]);
   return (
     <AuthForm
-      pending={verification.pending}
-      pendingLabel="Checking…"
-      submitLabel="Verify code"
       failure={verification.failure}
-      waitSeconds={verification.waitSeconds}
-      onSubmit={() => void verification.submit()}
+      submission={{
+        pending: verification.pending,
+        pendingLabel: 'Checking…',
+        submitLabel: 'Verify code',
+        waitSeconds: verification.waitSeconds,
+        onSubmit: () => void verification.submit(),
+      }}
     >
       <LabelledField
         id="two-factor-code"

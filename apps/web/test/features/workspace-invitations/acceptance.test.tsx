@@ -117,9 +117,11 @@ describe('invitation acceptance', () => {
       apiClient,
       initialToken: token,
       clearFragment: vi.fn(),
-      openWorkspace: vi.fn(),
-      openSignIn: vi.fn(),
-      openWorkspaceDiscovery: vi.fn(),
+      navigation: {
+        openWorkspace: vi.fn(),
+        openSignIn: vi.fn(),
+        openWorkspaceDiscovery: vi.fn(),
+      },
     };
     const view = render(
       <Activity mode="visible">
@@ -351,9 +353,11 @@ describe('invitation acceptance', () => {
       <InvitationAcceptancePage
         apiClient={componentApiClient()}
         clearFragment={vi.fn()}
-        openWorkspace={vi.fn()}
-        openSignIn={openSignIn}
-        openWorkspaceDiscovery={openWorkspaceDiscovery}
+        navigation={{
+          openWorkspace: vi.fn(),
+          openSignIn,
+          openWorkspaceDiscovery,
+        }}
       />,
     );
 
@@ -379,9 +383,11 @@ describe('invitation acceptance', () => {
       <InvitationAcceptancePage
         apiClient={componentApiClient()}
         clearFragment={vi.fn()}
-        openWorkspace={vi.fn()}
-        openSignIn={vi.fn()}
-        openWorkspaceDiscovery={vi.fn()}
+        navigation={{
+          openWorkspace: vi.fn(),
+          openSignIn: vi.fn(),
+          openWorkspaceDiscovery: vi.fn(),
+        }}
       />,
     );
 
@@ -704,10 +710,12 @@ describe('invitation acceptance', () => {
         apiClient={componentApiClient()}
         initialToken={`wi1.${workspaceId}.${intentId}.${'a'.repeat(43)}`}
         clearFragment={vi.fn()}
-        openWorkspace={vi.fn()}
-        openSignIn={vi.fn()}
-        openFreshSignIn={openFreshSignIn}
-        openWorkspaceDiscovery={vi.fn()}
+        navigation={{
+          openWorkspace: vi.fn(),
+          openSignIn: vi.fn(),
+          openFreshSignIn,
+          openWorkspaceDiscovery: vi.fn(),
+        }}
       />,
     );
     await browser.click(
@@ -762,9 +770,11 @@ describe('invitation acceptance', () => {
       <InvitationAcceptancePage
         apiClient={componentApiClient(fetchImplementation)}
         clearFragment={vi.fn()}
-        openWorkspace={openWorkspace}
-        openSignIn={vi.fn()}
-        openWorkspaceDiscovery={vi.fn()}
+        navigation={{
+          openWorkspace,
+          openSignIn: vi.fn(),
+          openWorkspaceDiscovery: vi.fn(),
+        }}
       />,
     );
     await browser.click(
@@ -811,9 +821,11 @@ describe('invitation acceptance', () => {
       <InvitationAcceptancePage
         apiClient={componentApiClient(fetchImplementation)}
         clearFragment={vi.fn()}
-        openWorkspace={openWorkspace}
-        openSignIn={vi.fn()}
-        openWorkspaceDiscovery={vi.fn()}
+        navigation={{
+          openWorkspace,
+          openSignIn: vi.fn(),
+          openWorkspaceDiscovery: vi.fn(),
+        }}
       />,
     );
     await browser.click(
@@ -884,9 +896,11 @@ describe('invitation acceptance', () => {
       <InvitationAcceptancePage
         apiClient={componentApiClient(fetchImplementation)}
         clearFragment={vi.fn()}
-        openWorkspace={openWorkspace}
-        openSignIn={vi.fn()}
-        openWorkspaceDiscovery={vi.fn()}
+        navigation={{
+          openWorkspace,
+          openSignIn: vi.fn(),
+          openWorkspaceDiscovery: vi.fn(),
+        }}
       />,
     );
     await browser.click(
@@ -942,9 +956,11 @@ describe('invitation acceptance', () => {
       <InvitationAcceptancePage
         apiClient={componentApiClient(fetchImplementation)}
         clearFragment={vi.fn()}
-        openWorkspace={openWorkspace}
-        openSignIn={vi.fn()}
-        openWorkspaceDiscovery={vi.fn()}
+        navigation={{
+          openWorkspace,
+          openSignIn: vi.fn(),
+          openWorkspaceDiscovery: vi.fn(),
+        }}
       />,
     );
     await browser.click(
@@ -978,9 +994,11 @@ describe('invitation acceptance', () => {
         <InvitationAcceptancePage
           apiClient={componentApiClient()}
           clearFragment={vi.fn()}
-          openWorkspace={vi.fn()}
-          openSignIn={vi.fn()}
-          openWorkspaceDiscovery={openWorkspaceDiscovery}
+          navigation={{
+            openWorkspace: vi.fn(),
+            openSignIn: vi.fn(),
+            openWorkspaceDiscovery,
+          }}
         />,
       );
       expect(await screen.findByRole('heading', { name: title })).toBeVisible();
@@ -1062,9 +1080,11 @@ describe('invitation acceptance', () => {
       <InvitationAcceptancePage
         apiClient={componentApiClient()}
         clearFragment={vi.fn()}
-        openWorkspace={vi.fn()}
-        openSignIn={vi.fn()}
-        openWorkspaceDiscovery={openWorkspaceDiscovery}
+        navigation={{
+          openWorkspace: vi.fn(),
+          openSignIn: vi.fn(),
+          openWorkspaceDiscovery,
+        }}
       />,
     );
     expect(
@@ -1106,10 +1126,12 @@ describe('invitation acceptance', () => {
       <InvitationAcceptancePage
         apiClient={componentApiClient()}
         clearFragment={vi.fn()}
-        openWorkspace={openWorkspace}
-        openSignIn={vi.fn()}
-        openWorkspaceDiscovery={vi.fn()}
         autoOpenAfterMs={60}
+        navigation={{
+          openWorkspace,
+          openSignIn: vi.fn(),
+          openWorkspaceDiscovery: vi.fn(),
+        }}
       />,
     );
     expect(
@@ -1125,10 +1147,12 @@ describe('invitation acceptance', () => {
       <InvitationAcceptancePage
         apiClient={componentApiClient()}
         clearFragment={vi.fn()}
-        openWorkspace={stayed}
-        openSignIn={vi.fn()}
-        openWorkspaceDiscovery={vi.fn()}
         autoOpenAfterMs={200}
+        navigation={{
+          openWorkspace: stayed,
+          openSignIn: vi.fn(),
+          openWorkspaceDiscovery: vi.fn(),
+        }}
       />,
     );
     await userEvent
