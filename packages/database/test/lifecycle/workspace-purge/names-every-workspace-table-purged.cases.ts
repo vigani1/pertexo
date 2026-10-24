@@ -137,4 +137,49 @@ export function registerNamesEveryWorkspaceTablePurged(): void {
       await purge.close();
     }
   });
+  it('refuses a tombstone while an unlisted workspace table still holds rows', async () => {
+    const workspaceId = await createWorkspace();
+    await makeWorkspaceDueForPurge(adminUrl, workspaceId);
+    const purge = coordinator();
+    const admin = new Client({ connectionString: adminUrl });
+    await admin.connect();
+    try {
+      await admin.query(
+        'create table app.purge_guard_probe (workspace_id uuid not null)',
+      );
+      await admin.query(
+        'grant select on app.purge_guard_probe to pertexo_maintenance',
+      );
+      await admin.query(
+        'insert into app.purge_guard_probe(workspace_id) values($1)',
+        [workspaceId],
+      );
+      const finish = async () => {
+        for (let call = 0; call < 100; call += 1) {
+          const result = await purge.processNext();
+          if (
+            result.status === 'completed' &&
+            result.workspaceId === workspaceId
+          )
+            return;
+        }
+        throw new Error('Purge did not reach its completion proof');
+      };
+      await expect(finish()).rejects.toThrow(
+        'Workspace purge left rows in purge_guard_probe',
+      );
+      const stored = await admin.query(
+        'select status from app.workspaces where id=$1',
+        [workspaceId],
+      );
+      expect(stored.rows).toEqual([{ status: 'purging' }]);
+    } finally {
+      try {
+        await admin.query('drop table if exists app.purge_guard_probe');
+      } finally {
+        await Promise.all([admin.end(), purge.close()]);
+      }
+      await purgeWorkspace({ adminUrl, maintenanceUrl, workspaceId });
+    }
+  });
 }
