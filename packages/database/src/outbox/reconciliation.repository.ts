@@ -1,4 +1,7 @@
-import { sql } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
+import { outboxEvents } from '../schema/transport.js';
+import { nodeAttempts } from '../schema/runs/execution.js';
+import { operatorUnknownOutcomeEvidence } from '../schema/runs/operator.js';
 import { z } from 'zod';
 import { sha256HexSchema } from '../platform/persisted-primitives.js';
 
@@ -72,19 +75,21 @@ export async function reconcileUnknownOutcomeEvidence(
       payloadChecksum: parsed.delivery.payloadChecksum,
     },
     operation: async (transaction) => {
-      const outbox = await transaction.db.execute<{
-        aggregate_id: string;
-        aggregate_type: string;
-        job_name: string;
-        payload: unknown;
-        payload_checksum: string;
-      }>(sql`
-        select aggregate_id,aggregate_type,job_name,payload,payload_checksum
-        from app.outbox_events
-        where workspace_id=${transaction.workspaceId}
-          and id=${parsed.delivery.outboxEventId}
-      `);
-      const row = outbox.rows[0];
+      const [row] = await transaction.db
+        .select({
+          aggregateId: outboxEvents.aggregateId,
+          aggregateType: outboxEvents.aggregateType,
+          jobName: outboxEvents.jobName,
+          payload: outboxEvents.payload,
+          payloadChecksum: outboxEvents.payloadChecksum,
+        })
+        .from(outboxEvents)
+        .where(
+          and(
+            eq(outboxEvents.workspaceId, transaction.workspaceId),
+            eq(outboxEvents.id, parsed.delivery.outboxEventId),
+          ),
+        );
       let payload: z.output<typeof payloadSchema>;
       try {
         payload = payloadSchema.parse(row?.payload);
@@ -94,11 +99,11 @@ export async function reconcileUnknownOutcomeEvidence(
       if (row === undefined)
         throw new UnknownOutcomeReconciliationMismatchError();
       const invalidDelivery =
-        row.aggregate_id !== parsed.attemptId ||
-        row.aggregate_type !== 'node-attempt' ||
-        row.job_name !== 'reconcile-unknown-outcome' ||
-        row.payload_checksum !== parsed.delivery.payloadChecksum ||
-        canonicalOutboxPayloadChecksum(payload) !== row.payload_checksum ||
+        row.aggregateId !== parsed.attemptId ||
+        row.aggregateType !== 'node-attempt' ||
+        row.jobName !== 'reconcile-unknown-outcome' ||
+        row.payloadChecksum !== parsed.delivery.payloadChecksum ||
+        canonicalOutboxPayloadChecksum(payload) !== row.payloadChecksum ||
         payload.workspaceId !== transaction.workspaceId ||
         payload.attemptId !== parsed.attemptId ||
         payload.evidenceCommandId !== parsed.evidenceCommandId ||
@@ -106,17 +111,33 @@ export async function reconcileUnknownOutcomeEvidence(
       if (invalidDelivery)
         throw new UnknownOutcomeReconciliationMismatchError();
 
-      const evidence = await transaction.db.execute<{ status: string }>(sql`
-        select attempt.status
-        from app.operator_unknown_outcome_evidence evidence
-        join app.node_attempts attempt
-          on attempt.workspace_id=evidence.workspace_id
-          and attempt.id=evidence.attempt_id
-        where evidence.workspace_id=${transaction.workspaceId}
-          and evidence.command_id=${parsed.evidenceCommandId}
-          and evidence.attempt_id=${parsed.attemptId}
-      `);
-      if (evidence.rows[0]?.status !== 'outcome_unknown')
+      const [evidence] = await transaction.db
+        .select({ status: nodeAttempts.status })
+        .from(operatorUnknownOutcomeEvidence)
+        .innerJoin(
+          nodeAttempts,
+          and(
+            eq(
+              nodeAttempts.workspaceId,
+              operatorUnknownOutcomeEvidence.workspaceId,
+            ),
+            eq(nodeAttempts.id, operatorUnknownOutcomeEvidence.attemptId),
+          ),
+        )
+        .where(
+          and(
+            eq(
+              operatorUnknownOutcomeEvidence.workspaceId,
+              transaction.workspaceId,
+            ),
+            eq(
+              operatorUnknownOutcomeEvidence.commandId,
+              parsed.evidenceCommandId,
+            ),
+            eq(operatorUnknownOutcomeEvidence.attemptId, parsed.attemptId),
+          ),
+        );
+      if (evidence?.status !== 'outcome_unknown')
         throw new UnknownOutcomeReconciliationStateError();
     },
     options: parsed.signal === undefined ? {} : { signal: parsed.signal },

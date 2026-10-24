@@ -23,7 +23,7 @@ vi.mock('../../src/platform/pool/telemetry/create-pool.js', () => ({
 import type { DatabaseConfig } from '../../src/config.js';
 import { createDatabaseRuntime } from '../../src/platform/pool/runtime.js';
 import { createPublishedWorkflowReader } from '../../src/runs/queries/execution/published.js';
-import {createOutboxDispatcherDatabase} from '../../src/outbox/dispatcher/repository.js';
+import { createOutboxDispatcherDatabase } from '../../src/outbox/dispatcher/repository.js';
 import { createWorkflowRunDatabase } from '../../src/runs/runs.repository.js';
 import { createScheduleTriggerScanner } from '../../src/triggers/schedules/scanner.js';
 import { createWebhookTriggerDatabase } from '../../src/triggers/webhooks/database.js';
@@ -117,15 +117,16 @@ describe('trigger repository construction ownership', () => {
     await dispatcher.close();
   });
 
-  it('rolls back a malformed claim projection before COMMIT', async () => {
+  it('rolls back a failed claim before COMMIT', async () => {
     const dispatcher = createOutboxDispatcherDatabase(config);
     const releaseClient = vi.fn();
     const queries: string[] = [];
     const client = {
-      query: vi.fn((statement: string) => {
+      query: vi.fn((query: string | { text: string }) => {
+        const statement = typeof query === 'string' ? query : query.text;
         queries.push(statement.trim().toLowerCase());
-        if (statement.includes('coalesce('))
-          return Promise.resolve({ rows: [{ events: [{}] }] });
+        if (statement.includes('with cursor_state'))
+          return Promise.reject(new Error('claim statement failed'));
         return Promise.resolve({ rows: [] });
       }),
       release: releaseClient,
@@ -148,14 +149,15 @@ describe('trigger repository construction ownership', () => {
     await dispatcher.close();
   });
 
-  it('disposes a client when rollback of an invalid claim also fails', async () => {
+  it('disposes a client when rollback of a failed claim also fails', async () => {
     const dispatcher = createOutboxDispatcherDatabase(config);
     const rollbackFailure = new Error('rollback failed');
     const releaseClient = vi.fn();
     const client = {
-      query: vi.fn((statement: string) => {
-        if (statement.includes('coalesce('))
-          return Promise.resolve({ rows: [{ events: [{}] }] });
+      query: vi.fn((query: string | { text: string }) => {
+        const statement = typeof query === 'string' ? query : query.text;
+        if (statement.includes('with cursor_state'))
+          return Promise.reject(new Error('claim statement failed'));
         if (statement.trim().toLowerCase() === 'rollback')
           return Promise.reject(rollbackFailure);
         return Promise.resolve({ rows: [] });
@@ -183,32 +185,33 @@ describe('trigger repository construction ownership', () => {
     const commitFailure = new Error('commit acknowledgement lost');
     const releaseClient = vi.fn();
     const event = {
-      aggregate_id: '22222222-2222-4222-8222-222222222222',
-      aggregate_type: 'workflow-run',
-      available_at: new Date('2026-01-01T00:00:00.000Z'),
+      aggregateId: '22222222-2222-4222-8222-222222222222',
+      aggregateType: 'workflow-run',
+      availableAt: '2026-01-01T00:00:00.000Z',
       id: '11111111-1111-4111-8111-111111111111',
-      job_name: 'job',
-      lease_expires_at: new Date('2026-01-01T00:00:30.000Z'),
-      lease_owner: 'construction-test',
-      lease_token: '33333333-3333-4333-8333-333333333333',
+      jobName: 'job',
+      leaseExpiresAt: '2026-01-01T00:00:30.000Z',
+      leaseOwner: 'construction-test',
+      leaseToken: '33333333-3333-4333-8333-333333333333',
       payload: {},
-      payload_checksum: 'a'.repeat(64),
-      publish_attempts: 1,
-      workspace_id: '44444444-4444-4444-8444-444444444444',
+      payloadChecksum: 'a'.repeat(64),
+      publishAttempts: 1,
+      workspaceId: '44444444-4444-4444-8444-444444444444',
     };
     const queries: string[] = [];
     const client = {
-      query: vi.fn((statement: string) => {
+      query: vi.fn((query: string | { text: string }) => {
+        const statement = typeof query === 'string' ? query : query.text;
         const normalized = statement.trim().toLowerCase();
         queries.push(normalized);
-        if (statement.includes('coalesce('))
+        if (statement.includes('with cursor_state'))
           return Promise.resolve({
             rows: [
               {
-                events: [event],
-                exhausted_count: 0,
-                cursor_update_count: 1,
-                released_admission_count: 0,
+                ...event,
+                exhaustedCount: 0,
+                cursorUpdateCount: 1,
+                releasedAdmissionCount: 0,
               },
             ],
           });

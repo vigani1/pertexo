@@ -41,6 +41,18 @@ function interruptibleDatabase() {
   const completionUpdate = vi.fn();
   const state = { rolledBack: false };
   const drizzle = {
+    select: vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => {
+          operationStarted.resolve(undefined);
+          return heldOperation.promise
+            .then(({ rows }) => rows)
+            .finally(() => {
+              operationSettled.resolve(undefined);
+            });
+        }),
+      })),
+    })),
     execute: vi.fn(() => {
       operationStarted.resolve(undefined);
       return heldOperation.promise.finally(() => {
