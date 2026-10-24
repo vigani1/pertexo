@@ -60,6 +60,11 @@ export function registerIdempotentlyManagesImmutableFailureNotification(): void 
     };
     const created = await connections.destinations.create(create);
     expect(created.config).toMatchObject({ toEmail: 'Ops@example.test' });
+    expect(created.createdAt).toBeInstanceOf(Date);
+    expect(created.updatedAt).toBeInstanceOf(Date);
+    expect(Object.isFrozen(created)).toBe(true);
+    expect(created).not.toHaveProperty('createdBy');
+    expect(created.config.kind).toBe('email');
     await expect(
       connections.destinations.get({
         workspaceId: workspaceA,
