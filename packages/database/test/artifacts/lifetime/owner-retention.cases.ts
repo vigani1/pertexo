@@ -13,6 +13,42 @@ import { gate, ownerTransaction, fixture, addVersion } from './fixture.js';
 export function registerArtifactOwnerRetention(
   shape: Parameters<typeof fixture>[0],
 ): void {
+  it('conservatively retains nested artifactId values without an artifact-kind marker', async () => {
+    const state = await fixture(shape);
+    try {
+      const graph = {
+        ...state.graph,
+        nodes: state.graph.nodes.map((node) => ({
+          ...node,
+          inputMappings: {
+            payload: {
+              kind: 'literal',
+              value: { nested: [{ artifactId: state.reference.artifactId }] },
+            },
+          },
+        })),
+      };
+      await ownerTransaction((client) =>
+        client.query(
+          'update app.workflow_drafts set graph_json=$3::jsonb where workspace_id=$1 and workflow_id=$2',
+          [workspaceId, state.workflowId, JSON.stringify(graph)],
+        ),
+      );
+      await expect(state.coordinator.processNext()).resolves.toMatchObject({
+        status: 'referenced',
+        artifactId: state.reference.artifactId,
+      });
+      expect(state.store.delete).not.toHaveBeenCalled();
+      await state.clear();
+      await expect(state.coordinator.processNext()).resolves.toMatchObject({
+        status: 'completed',
+        artifactId: state.reference.artifactId,
+      });
+    } finally {
+      await state.close();
+    }
+  });
+
   it.each(['draft', 'version', 'input-case'] as const)(
     'keeps a file while its %s owner exists, then erases it after reference release',
     async (kind) => {
