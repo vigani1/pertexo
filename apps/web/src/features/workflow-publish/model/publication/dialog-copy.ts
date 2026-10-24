@@ -13,26 +13,23 @@ export function publicationDialogCopy({
 }>) {
   const review = mode === 'review';
   const action = review ? 'Request review' : `Publish ${versionLabel}`;
+  const idleTitle = review ? 'Request publication review' : action;
+  const busyTitle = review
+    ? 'Requesting publication review…'
+    : `Publishing ${versionLabel}…`;
+  const description = review
+    ? 'A different owner or admin will review this exact saved draft. Saving another edit makes the request stale.'
+    : 'Publishing makes the saved draft the version that runs. The draft stays editable.';
+  const retryLabel = review
+    ? 'Retry original request'
+    : 'Retry original publish';
+  const freshConfirmLabel = failed ? 'Try again' : action;
   return {
-    title: review
-      ? pending
-        ? 'Requesting publication review…'
-        : 'Request publication review'
-      : pending
-        ? `Publishing ${versionLabel}…`
-        : action,
+    title: pending ? busyTitle : idleTitle,
     description: recoveryPending
       ? 'Retrying sends the same command again, for the same saved draft. It can’t create two versions or requests, and newer edits aren’t included.'
-      : review
-        ? 'A different owner or admin will review this exact saved draft. Saving another edit makes the request stale.'
-        : 'Publishing makes the saved draft the version that runs. The draft stays editable.',
+      : description,
     pendingLabel: review ? 'Requesting review…' : 'Publishing…',
-    confirmLabel: recoveryPending
-      ? review
-        ? 'Retry original request'
-        : 'Retry original publish'
-      : failed
-        ? 'Try again'
-        : action,
+    confirmLabel: recoveryPending ? retryLabel : freshConfirmLabel,
   };
 }

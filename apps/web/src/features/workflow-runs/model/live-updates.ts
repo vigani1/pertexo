@@ -42,6 +42,10 @@ export function describeLiveUpdates({
       return { tone: 'waiting', label: 'Reconnecting…', paused: false };
     case 'stopped':
       return undefined;
+    case 'access-denied':
+    case 'authentication-required':
+    case 'failed':
+    case 'unavailable':
     default:
       return { tone: 'attention', label: 'Updates paused', paused: true };
   }

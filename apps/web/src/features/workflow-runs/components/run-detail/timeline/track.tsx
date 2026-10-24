@@ -90,6 +90,7 @@ function SegmentEnd({ segment }: Readonly<{ segment: RunTimelineSegment }>) {
           )}
         />
       );
+    case undefined:
     default:
       return null;
   }

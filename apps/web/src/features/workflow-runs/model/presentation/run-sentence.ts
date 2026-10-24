@@ -135,6 +135,10 @@ export function describeRunSentence(
     }
     case 'canceled':
       return withDuration('Canceled', durationMs);
+    case 'outcome_unknown':
+    case 'queued':
+    case 'running':
+    case 'waiting':
     default: {
       const step = lastWith(rows, 'outcome_unknown');
       return step === undefined

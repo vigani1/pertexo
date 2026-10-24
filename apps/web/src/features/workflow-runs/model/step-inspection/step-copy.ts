@@ -56,6 +56,10 @@ export function stepTag(row: RunTimelineRow, nowMs: number): string {
     case 'pending':
     case 'ready':
       return 'waiting to start';
+    case 'canceled':
+    case 'not_started':
+    case 'outcome_unknown':
+    case 'timed_out':
     default:
       return row.statusLabel.toLocaleLowerCase();
   }

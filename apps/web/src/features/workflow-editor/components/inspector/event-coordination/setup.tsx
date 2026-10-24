@@ -94,6 +94,8 @@ export function EventCoordinationSetup({
                   onExcess: 'skip',
                 });
                 break;
+              case null:
+                break;
             }
           }}
         />

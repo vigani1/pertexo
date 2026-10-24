@@ -71,6 +71,23 @@ function attemptSuffix(attemptNumber: number | undefined): string {
     : ` · attempt ${String(attemptNumber)}`;
 }
 
+const dynamicSentences: Readonly<
+  Partial<Record<EventType, (event: WorkflowRunEvent) => string>>
+> = {
+  'node.started': (event) =>
+    `started${attemptSuffix(event.payload.attemptNumber)}`,
+  'node.retry_scheduled': (event) => {
+    const { dueAt, attemptNumber } = event.payload;
+    return dueAt === undefined
+      ? `retry scheduled${attemptSuffix(attemptNumber)}`
+      : `retry scheduled in ${formatDurationMs(Date.parse(dueAt) - Date.parse(event.createdAt))}${attemptSuffix(attemptNumber)}`;
+  },
+  'node.waiting': (event) =>
+    event.payload.dueAt === undefined
+      ? 'waiting'
+      : `waiting until ${formatClock(event.payload.dueAt)}`,
+};
+
 function describeSentence(event: WorkflowRunEvent): string {
   if (
     event.type === 'node.succeeded' &&
@@ -79,25 +96,12 @@ function describeSentence(event: WorkflowRunEvent): string {
     return 'resumed after callback';
   const fixed = fixedSentences[event.type];
   if (fixed !== undefined) return fixed;
-  const { dueAt, attemptNumber } = event.payload;
-  switch (event.type) {
-    case 'node.started':
-      return `started${attemptSuffix(attemptNumber)}`;
-    case 'node.retry_scheduled':
-      return dueAt === undefined
-        ? `retry scheduled${attemptSuffix(attemptNumber)}`
-        : `retry scheduled in ${formatDurationMs(
-            Date.parse(dueAt) - Date.parse(event.createdAt),
-          )}${attemptSuffix(attemptNumber)}`;
-    case 'node.waiting':
-      return dueAt === undefined
-        ? 'waiting'
-        : `waiting until ${formatClock(dueAt)}`;
-    default:
-      return dueAt === undefined
-        ? 'Run is waiting'
-        : `Run is waiting until ${formatClock(dueAt)}`;
-  }
+  const describeDynamic = dynamicSentences[event.type];
+  if (describeDynamic !== undefined) return describeDynamic(event);
+  const { dueAt } = event.payload;
+  return dueAt === undefined
+    ? 'Run is waiting'
+    : `Run is waiting until ${formatClock(dueAt)}`;
 }
 
 /**

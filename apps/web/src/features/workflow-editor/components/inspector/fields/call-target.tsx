@@ -338,6 +338,10 @@ function typeLabel(type: CallableType): string {
             .join(
               '; ',
             )}${type.properties.length > 5 ? `; ${String(type.properties.length - 5)} more properties` : ''}`;
+    case 'boolean':
+    case 'null':
+    case 'number':
+    case 'string':
     default:
       return type.type;
   }

@@ -115,6 +115,7 @@ export class StepReplayBuilder {
       this.addOutput(payload.outputRef, payload.attemptNumber);
       return;
     }
+    // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check -- Finishes use the table above; other event types do not change step replay.
     switch (event.type) {
       case 'node.ready':
         this.status = 'ready';

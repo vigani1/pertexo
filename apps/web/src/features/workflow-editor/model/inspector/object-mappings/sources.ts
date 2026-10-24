@@ -21,6 +21,8 @@ export function valueExpression(source: ValueSource): string | undefined {
         `nodeOutputs.${JSON.stringify(source.nodeId)}`,
         source.path,
       );
+    case 'node_failure':
+    case 'structured_input':
     default:
       return undefined;
   }

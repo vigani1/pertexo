@@ -91,6 +91,7 @@ export function useTwoFactorVerification({
             'That code wasn’t accepted. Check it and try again. If the sign-in expired, go back and sign in again.',
           );
           break;
+        case undefined:
         default:
           setFailure(
             'We couldn’t confirm the code. Reload to check whether you’re signed in before trying again.',
