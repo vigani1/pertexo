@@ -7,6 +7,7 @@ import { expect, it } from 'vitest';
 import {
   claimCommand,
   completeCommand,
+  findCommandResult,
   IdempotencyConflictError,
 } from '../../../../src/platform/idempotency.js';
 import { withTenantScopedClient } from '../../../../src/tenant-access/transactions.js';
@@ -35,13 +36,22 @@ export function registerReplaysCommandReorderedNestedObject(): void {
           values: [{ first: true, second: false }],
         };
         expect(
+          await findCommandResult(client, { ...identity, request }),
+        ).toBeNull();
+        expect(
           await claimCommand(client, {
             ...identity,
             request,
             resourceId: workspaceId,
           }),
         ).toBeNull();
+        expect(
+          await findCommandResult(client, { ...identity, request }),
+        ).toBeNull();
         await completeCommand(client, identity, { receipt: 'first-command' });
+        expect(
+          await findCommandResult(client, { ...identity, request }),
+        ).toEqual({ receipt: 'first-command' });
         expect(
           await claimCommand(client, {
             ...identity,

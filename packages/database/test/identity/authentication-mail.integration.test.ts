@@ -80,6 +80,9 @@ describe('durable authentication mail', () => {
       const claim = [...first, ...competing][0];
       if (claim === undefined) throw new Error('Mail claim was not returned');
       expect(claim.recoveredUnknown).toBe(false);
+      expect(claim.expiresAt).toBeInstanceOf(Date);
+      expect(claim.leaseGeneration).toBe(1);
+      expect(Object.isFrozen(claim)).toBe(true);
       expect(claim.sealedPayload.ciphertext).toBe(
         'sealed-without-recipient-or-url',
       );
@@ -107,6 +110,7 @@ describe('durable authentication mail', () => {
       expect(retry?.id).toBe(id);
       expect(retry?.sealedPayload).toEqual(claim.sealedPayload);
       if (retry === undefined) throw new Error('Mail retry was not returned');
+      expect(retry.leaseGeneration).toBe(2);
       await expect(
         worker.settle({
           id,
