@@ -15,12 +15,7 @@ function TargetLink({
   event,
 }: Readonly<{ workspaceId: string; event: AuditEvent }>) {
   const className = 'inline-link py-0.5 text-xs';
-  const workflowId =
-    event.targetType === 'workflow'
-      ? event.targetId
-      : typeof event.metadata.workflowId === 'string'
-        ? event.metadata.workflowId
-        : null;
+  const workflowId = workflowTarget(event);
   if (workflowId !== null)
     return (
       <Link
@@ -175,4 +170,11 @@ export function AuditEntry({
       }
     />
   );
+}
+
+function workflowTarget(event: AuditEvent): string | null {
+  if (event.targetType === 'workflow') return event.targetId;
+  return typeof event.metadata.workflowId === 'string'
+    ? event.metadata.workflowId
+    : null;
 }

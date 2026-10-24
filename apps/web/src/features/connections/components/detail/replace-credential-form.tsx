@@ -136,13 +136,17 @@ export function ReplaceCredentialForm({
           pending={mutation.isPending}
           pendingLabel="Replacing…"
         >
-          {uncertain
-            ? 'Try again'
-            : replacingNewer
-              ? 'Use my credential'
-              : 'Replace credential'}
+          {replaceLabel({ uncertain, replacingNewer })}
         </ProgressButton>
       </div>
     </form>
   );
+}
+
+function replaceLabel({
+  uncertain,
+  replacingNewer,
+}: Readonly<{ uncertain: boolean; replacingNewer: boolean }>): string {
+  if (uncertain) return 'Try again';
+  return replacingNewer ? 'Use my credential' : 'Replace credential';
 }

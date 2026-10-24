@@ -54,12 +54,7 @@ export function readVariableRows(rows: readonly VariableRow[]):
       return {
         error: `Enter a finite number for ${row.name || 'this variable'}.`,
       };
-    values[row.name] =
-      row.type === 'number'
-        ? Number(row.value)
-        : row.type === 'boolean'
-          ? row.value === 'true'
-          : row.value;
+    values[row.name] = rowValue(row);
   }
   const parsed = workspaceVariableValuesSchema.safeParse(values);
   if (!parsed.success) {
@@ -126,4 +121,10 @@ export function variableUnsaved(
     String(value) !== row.value ||
     (saved.descriptions[row.name] ?? '') !== row.description
   );
+}
+
+function rowValue(row: VariableRow): string | number | boolean {
+  if (row.type === 'number') return Number(row.value);
+  if (row.type === 'boolean') return row.value === 'true';
+  return row.value;
 }

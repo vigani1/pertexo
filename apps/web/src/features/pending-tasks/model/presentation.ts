@@ -64,14 +64,7 @@ export function taskStatusLabel(status: PendingTaskSummary['status']) {
 export function taskOutcome(
   task: Pick<PendingTaskSummary, 'status' | 'completedByName'>,
 ) {
-  const verb =
-    task.status === 'approved'
-      ? 'approved'
-      : task.status === 'rejected'
-        ? 'rejected'
-        : task.status === 'submitted'
-          ? 'answered'
-          : undefined;
+  const verb = OUTCOME_VERBS[task.status];
   return verb === undefined || task.completedByName === null
     ? taskStatusLabel(task.status)
     : `${task.completedByName} ${verb}`;
@@ -110,3 +103,11 @@ export function blockedSentence(reason: PendingTaskSummary['blockedReason']) {
       return null;
   }
 }
+
+const OUTCOME_VERBS: Readonly<
+  Partial<Record<PendingTaskSummary['status'], string>>
+> = {
+  approved: 'approved',
+  rejected: 'rejected',
+  submitted: 'answered',
+};
