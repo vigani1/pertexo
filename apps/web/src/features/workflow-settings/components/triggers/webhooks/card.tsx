@@ -95,12 +95,7 @@ export function WebhookCard({
         </Notice>
       )}
       <p className="text-sm text-muted-foreground">
-        Authentication:{' '}
-        {trigger.authentication.mode === 'signed'
-          ? 'Signed'
-          : trigger.authentication.mode === 'secret_url'
-            ? 'Secret URL'
-            : `Header secret (${trigger.authentication.headerName})`}
+        Authentication: {authenticationLabel(trigger.authentication)}
       </p>
       {editable ? (
         <div className="flex flex-wrap gap-2">
@@ -178,4 +173,12 @@ export function WebhookCard({
       <WebhookGuide authentication={trigger.authentication} />
     </article>
   );
+}
+
+function authenticationLabel(
+  authentication: WebhookTriggerHealthResponse['authentication'],
+): string {
+  if (authentication.mode === 'signed') return 'Signed';
+  if (authentication.mode === 'secret_url') return 'Secret URL';
+  return `Header secret (${authentication.headerName})`;
 }

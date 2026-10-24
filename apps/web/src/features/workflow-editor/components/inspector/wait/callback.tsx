@@ -57,11 +57,7 @@ export function CallbackSetup({
           }}
         />
         <FieldDescription>
-          {authentication.mode === 'secret_url'
-            ? 'Anyone with the URL can resume the run, so send it only to a service you trust.'
-            : authentication.mode === 'signed'
-              ? 'The service signs each call with a shared secret, using the same signature headers as Pertexo webhooks.'
-              : 'The service sends a shared secret in a header, Authorization: Bearer by default.'}
+          {callbackAuthenticationDescription(authentication.mode)}
         </FieldDescription>
       </Field>
       {authentication.mode === 'header_secret' ? (
@@ -85,4 +81,12 @@ export function CallbackSetup({
       </p>
     </>
   );
+}
+
+function callbackAuthenticationDescription(mode: unknown): string {
+  if (mode === 'secret_url')
+    return 'Anyone with the URL can resume the run, so send it only to a service you trust.';
+  if (mode === 'signed')
+    return 'The service signs each call with a shared secret, using the same signature headers as Pertexo webhooks.';
+  return 'The service sends a shared secret in a header, Authorization: Bearer by default.';
 }

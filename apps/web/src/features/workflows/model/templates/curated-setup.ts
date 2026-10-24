@@ -37,11 +37,11 @@ export function templateUnavailableReasons(
 }
 
 export function setupValueError(target: SetupTarget, value: string) {
-  return validateCuratedTemplateSetupValue(target.valueKind, value).ok
-    ? undefined
-    : target.valueKind === 'https_endpoint'
-      ? 'Use lowercase https://, a lowercase ASCII DNS host and an explicit /path (at most 2,048 bytes). No ports, punycode, userinfo, fragments, dot segments or credential query names; escapes must be uppercase %HH.'
-      : 'Use a Slack channel ID of 2–128 characters beginning C, D, G or U, followed by uppercase letters or digits.';
+  if (validateCuratedTemplateSetupValue(target.valueKind, value).ok)
+    return undefined;
+  return target.valueKind === 'https_endpoint'
+    ? 'Use lowercase https://, a lowercase ASCII DNS host and an explicit /path (at most 2,048 bytes). No ports, punycode, userinfo, fragments, dot segments or credential query names; escapes must be uppercase %HH.'
+    : 'Use a Slack channel ID of 2–128 characters beginning C, D, G or U, followed by uppercase letters or digits.';
 }
 
 /** Only reviewed graph-node properties; never traverse arbitrary literal data. */
