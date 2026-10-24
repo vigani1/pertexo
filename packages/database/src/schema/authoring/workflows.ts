@@ -49,13 +49,16 @@ export const workflows = appSchema.table(
       .default(1)
       .notNull(),
     triggerPauseState: varchar('trigger_pause_state', { length: 16 })
+      .$type<'none' | 'paused'>()
       .default('none')
       .notNull(),
     triggerPausedAt: timestamp('trigger_paused_at', {
       withTimezone: true,
       mode: 'date',
     }),
-    triggerPauseReason: varchar('trigger_pause_reason', { length: 32 }),
+    triggerPauseReason: varchar('trigger_pause_reason', {
+      length: 32,
+    }).$type<'consecutive_failures'>(),
     triggerPauseFailures: integer('trigger_pause_failures'),
     triggerPauseLastRunId: uuid('trigger_pause_last_run_id'),
     triggerPauseRevision: bigint('trigger_pause_revision', { mode: 'bigint' })

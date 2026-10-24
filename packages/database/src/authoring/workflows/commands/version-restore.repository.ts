@@ -1,3 +1,13 @@
+import type { PoolClient } from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { and, eq, exists, sql } from 'drizzle-orm';
+import {
+  workflows,
+  workflowDrafts,
+  workflowVersions,
+} from '../../../schema/authoring/workflows.js';
+import { auditEvents } from '../../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { requireConnectionBindings } from '../../../tenant-access/resources/connections/bindings.queries.js';
 import { requireWorkflowCallTargets } from '../../../tenant-access/resources/bindings.queries.js';
 import { pruneStepSamples } from '../../step-samples/records.repository.js';
@@ -17,11 +27,10 @@ import type {
 import type { WorkflowDraftRecord } from '../representation/contract.js';
 import type { WorkflowAuthoringWriteContext } from '../context.js';
 import {
-  mapDraft,
-  mapVersion,
-  mapWorkflow,
-  workflowRowSelection,
-  workflowVersionRowSelection,
+  projectDraft,
+  projectVersion,
+  draftProjection,
+  versionProjection,
 } from '../representation/records.queries.js';
 
 type VersionRestoreStore = Pick<
@@ -53,27 +62,35 @@ async function restoreWorkflowVersion(
     });
     const { definitionCatalog, placementDefinitionCatalog } = context.catalogs;
 
-    const workflowResult = await client.query<Record<string, unknown>>(
-      `select ${workflowRowSelection} from app.workflows
-       where workspace_id=$1 and id=$2 and lifecycle_status='active'
-       for update`,
-      [workspaceId, workflowId],
-    );
-    const workflowRow = workflowResult.rows[0];
-    if (workflowRow === undefined)
+    const db = drizzle(client);
+    const [workflow] = await db
+      .select({ id: workflows.id })
+      .from(workflows)
+      .where(
+        and(
+          eq(workflows.workspaceId, workspaceId),
+          eq(workflows.id, workflowId),
+          eq(workflows.lifecycleStatus, 'active'),
+        ),
+      )
+      .for('update')
+      .catch(rethrowQueryFailure);
+    if (workflow === undefined)
       throw new WorkflowNotFoundError('Workflow is not visible');
-    mapWorkflow(workflowRow);
-
-    const draftResult = await client.query<Record<string, unknown>>(
-      `select * from app.workflow_drafts
-       where workspace_id=$1 and workflow_id=$2
-       for update`,
-      [workspaceId, workflowId],
-    );
-    const draftRow = draftResult.rows[0];
+    const [draftRow] = await db
+      .select(draftProjection)
+      .from(workflowDrafts)
+      .where(
+        and(
+          eq(workflowDrafts.workspaceId, workspaceId),
+          eq(workflowDrafts.workflowId, workflowId),
+        ),
+      )
+      .for('update')
+      .catch(rethrowQueryFailure);
     if (draftRow === undefined)
       throw new WorkflowNotFoundError('Workflow is not visible');
-    const currentDraft = mapDraft(draftRow, definitionCatalog);
+    const currentDraft = projectDraft(draftRow, definitionCatalog);
     const currentTag = workflowDraftRepresentationTag({
       workflowId,
       revision: currentDraft.revision,
@@ -86,15 +103,11 @@ async function restoreWorkflowVersion(
         currentTag,
       );
 
-    const sourceResult = await client.query<Record<string, unknown>>(
-      `select ${workflowVersionRowSelection} from app.workflow_versions
-       where workspace_id=$1 and workflow_id=$2 and id=$3`,
-      [workspaceId, workflowId, versionId],
-    );
-    const sourceRow = sourceResult.rows[0];
-    if (sourceRow === undefined)
-      throw new WorkflowNotFoundError('Workflow version is not visible');
-    const sourceVersion = mapVersion(sourceRow);
+    const sourceVersion = await readRestorationSource(client, {
+      workspaceId,
+      workflowId,
+      versionId,
+    });
     context.requirePlaceable(
       currentDraft.graphJson,
       sourceVersion.graphJson,
@@ -117,32 +130,40 @@ async function restoreWorkflowVersion(
       sourceVersion.graphJson,
       actorId,
     );
-    const updatedResult = await client.query<Record<string, unknown>>(
-      `update app.workflow_drafts set graph_json=$1::json,
-         revision=revision+1,updated_by=$2,
-         updated_at=transaction_timestamp()
-       where workspace_id=$3 and workflow_id=$4 and revision=$5
-         and exists (
-           select 1 from app.workflows workflow
-           where workflow.workspace_id=$3 and workflow.id=$4
-             and workflow.lifecycle_status='active'
-         )
-       returning *`,
-      [
-        JSON.stringify(sourceVersion.graphJson),
-        actorId,
-        workspaceId,
-        workflowId,
-        currentDraft.revision,
-      ],
-    );
-    const updatedRow = updatedResult.rows[0];
+    const visible = db
+      .select({ id: workflows.id })
+      .from(workflows)
+      .where(
+        and(
+          eq(workflows.workspaceId, workspaceId),
+          eq(workflows.id, workflowId),
+          eq(workflows.lifecycleStatus, 'active'),
+        ),
+      );
+    const [updatedRow] = await db
+      .update(workflowDrafts)
+      .set({
+        graphJson: sql`${JSON.stringify(sourceVersion.graphJson)}::json`,
+        revision: sql`${workflowDrafts.revision}+1`,
+        updatedBy: actorId,
+        updatedAt: sql`transaction_timestamp()`,
+      })
+      .where(
+        and(
+          eq(workflowDrafts.workspaceId, workspaceId),
+          eq(workflowDrafts.workflowId, workflowId),
+          eq(workflowDrafts.revision, currentDraft.revision),
+          exists(visible),
+        ),
+      )
+      .returning(draftProjection)
+      .catch(rethrowQueryFailure);
     if (updatedRow === undefined)
       throw new WorkflowRevisionConflictError(
         currentDraft.revision,
         currentTag,
       );
-    const restoredDraft = mapDraft(updatedRow, definitionCatalog);
+    const restoredDraft = projectDraft(updatedRow, definitionCatalog);
     await pruneStepSamples(
       client,
       workspaceId,
@@ -150,25 +171,24 @@ async function restoreWorkflowVersion(
       sourceVersion.graphJson,
     );
 
-    await client.query(
-      `insert into app.audit_events
-         (id,workspace_id,actor_user_id,action,target_type,target_id,
-          request_id,trace_id,metadata)
-       values($1,$2,$3,'workflow.version_restored','workflow',$4,$5,$6,$7::jsonb)`,
-      [
-        generatePersistedId(),
+    await db
+      .insert(auditEvents)
+      .values({
+        id: generatePersistedId(),
         workspaceId,
-        actorId,
-        workflowId,
-        input.requestId ?? null,
-        input.traceId ?? null,
-        JSON.stringify({
+        actorUserId: actorId,
+        action: 'workflow.version_restored',
+        targetType: 'workflow',
+        targetId: workflowId,
+        requestId: input.requestId ?? null,
+        traceId: input.traceId ?? null,
+        metadata: {
           previousRevision: currentDraft.revision,
           revision: restoredDraft.revision,
           sourceVersionId: sourceVersion.id,
-        }),
-      ],
-    );
+        },
+      })
+      .catch(rethrowQueryFailure);
     return restoredDraft;
   });
 }
@@ -179,4 +199,32 @@ export function createWorkflowVersionRestoreStore(
   return Object.freeze({
     restoreWorkflowVersion: (input) => restoreWorkflowVersion(context, input),
   });
+}
+
+async function readRestorationSource(
+  client: PoolClient,
+  {
+    workspaceId,
+    workflowId,
+    versionId,
+  }: Pick<
+    RestoreWorkflowVersionInput,
+    'workspaceId' | 'workflowId' | 'versionId'
+  >,
+) {
+  const db = drizzle(client);
+  const [sourceRow] = await db
+    .select(versionProjection)
+    .from(workflowVersions)
+    .where(
+      and(
+        eq(workflowVersions.workspaceId, workspaceId),
+        eq(workflowVersions.workflowId, workflowId),
+        eq(workflowVersions.id, versionId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  if (sourceRow === undefined)
+    throw new WorkflowNotFoundError('Workflow version is not visible');
+  return projectVersion(sourceRow);
 }

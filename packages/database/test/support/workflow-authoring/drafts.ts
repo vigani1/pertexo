@@ -82,3 +82,23 @@ export async function saveCurrentDraft(
     ),
   });
 }
+
+export function draftWireRow(
+  row: Readonly<{
+    workflow_id: string;
+    workspace_id: string;
+    revision: number;
+    graph_json: unknown;
+    updated_by: string;
+    updated_at: Date;
+  }>,
+) {
+  return [
+    row.workflow_id,
+    row.workspace_id,
+    row.revision,
+    row.graph_json,
+    row.updated_by,
+    row.updated_at.toISOString(),
+  ];
+}

@@ -1,3 +1,4 @@
+import { draftWireRow } from '../../support/workflow-authoring/drafts.js';
 import { folderScope } from '../../../src/tenant-access/resources/policy.js';
 import { createHash } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
@@ -124,8 +125,8 @@ describe('snapshot validation and publication ordering', () => {
           return Promise.resolve({ rows: [{}], rowCount: 1 });
         if (sql.startsWith('select role from app.workspace_memberships'))
           return Promise.resolve({ rows: [{ role: 'owner' }], rowCount: 1 });
-        if (sql.includes('select * from app.workflow_drafts'))
-          return Promise.resolve({ rows: [row] });
+        if (sql.includes('from app.workflow_drafts'))
+          return Promise.resolve({ rows: [draftWireRow(row)] });
         if (sql.includes('pg_settings')) return Promise.resolve(budget);
         return Promise.resolve({ rows: [] });
       },
@@ -181,7 +182,7 @@ describe('snapshot validation and publication ordering', () => {
     const query = vi
       .fn()
       .mockResolvedValueOnce({ rows: [{ id: workflowId }], rowCount: 1 })
-      .mockResolvedValueOnce({ rows: [row] })
+      .mockResolvedValueOnce({ rows: [draftWireRow(row)] })
       .mockResolvedValueOnce(budget)
       .mockResolvedValueOnce({ rows: [] });
     const client = { query } as unknown as PoolClient;

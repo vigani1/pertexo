@@ -1,3 +1,13 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import type { PoolClient } from 'pg';
+import { and, eq, exists, sql } from 'drizzle-orm';
+import {
+  workflows,
+  workflowDrafts,
+} from '../../../schema/authoring/workflows.js';
+import { workflowOrganizationState } from '../../../schema/authoring/organization.js';
+import { auditEvents } from '../../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { requireConnectionBindings } from '../../../tenant-access/resources/connections/bindings.queries.js';
 import { readFolderScope } from '../../../tenant-access/resources/facts.queries.js';
 import { requireWorkflowCallTargets } from '../../../tenant-access/resources/bindings.queries.js';
@@ -21,10 +31,9 @@ import {
   WorkflowRevisionConflictError,
 } from '../errors.js';
 import {
-  createdWorkflowRowSchema,
-  mapDraft,
-  mapWorkflow,
-  workflowRowSelection,
+  projectDraft,
+  draftProjection,
+  workflowProjection,
 } from '../representation/records.queries.js';
 import type {
   CreateWorkflowInput,
@@ -109,57 +118,77 @@ async function createWorkflow(
         graph,
         input.actorId,
       );
-      await client.query(
-        `insert into app.workflows
-           (id, workspace_id, name, lifecycle_status, activation_status, created_by)
-         values ($1, $2, $3, 'active', 'inactive', $4)`,
-        [workflowId, input.workspaceId, name, input.actorId],
-      );
+      const db = drizzle(client);
+      await db
+        .insert(workflows)
+        .values({
+          id: workflowId,
+          workspaceId: input.workspaceId,
+          name,
+          lifecycleStatus: 'active',
+          activationStatus: 'inactive',
+          createdBy: input.actorId,
+        })
+        .catch(rethrowQueryFailure);
       if (folderId !== null)
-        await client.query(
-          `insert into app.workflow_organization_state(workspace_id,workflow_id,folder_id,revision) values($1,$2,$3,1)`,
-          [input.workspaceId, workflowId, folderId],
-        );
-      await client.query(
-        `insert into app.workflow_drafts
-           (workflow_id, workspace_id, revision, graph_json, updated_by)
-         values ($1, $2, 1, $3::json, $4)`,
-        [workflowId, input.workspaceId, JSON.stringify(graph), input.actorId],
-      );
-      await client.query(
-        `insert into app.audit_events
-           (id, workspace_id, actor_user_id, action, target_type, target_id,
-            request_id, trace_id, metadata)
-         values ($1, $2, $3, 'workflow.created', 'workflow', $4, $5, $6,
-                 '{"revision":1}'::jsonb)`,
-        [
-          generatePersistedId(),
-          input.workspaceId,
-          input.actorId,
+        await db
+          .insert(workflowOrganizationState)
+          .values({
+            workspaceId: input.workspaceId,
+            workflowId,
+            folderId,
+            revision: 1,
+          })
+          .catch(rethrowQueryFailure);
+      await db
+        .insert(workflowDrafts)
+        .values({
           workflowId,
-          input.requestId ?? null,
-          input.traceId ?? null,
-        ],
-      );
+          workspaceId: input.workspaceId,
+          revision: 1,
+          graphJson: sql`${JSON.stringify(graph)}::json`,
+          updatedBy: input.actorId,
+        })
+        .catch(rethrowQueryFailure);
+      await db
+        .insert(auditEvents)
+        .values({
+          id: generatePersistedId(),
+          workspaceId: input.workspaceId,
+          actorUserId: input.actorId,
+          action: 'workflow.created',
+          targetType: 'workflow',
+          targetId: workflowId,
+          requestId: input.requestId ?? null,
+          traceId: input.traceId ?? null,
+          metadata: { revision: 1 },
+        })
+        .catch(rethrowQueryFailure);
       await completeCommand(client, command, { workflowId });
     }
-    const created = await client.query<Record<string, unknown>>(
-      `select row_to_json(workflow.*) as workflow,
-              row_to_json(draft.*) as draft
-       from (select ${workflowRowSelection} from app.workflows) workflow
-       join app.workflow_drafts draft
-         on draft.workspace_id = workflow.workspace_id
-        and draft.workflow_id = workflow.id
-       where workflow.workspace_id = $1 and workflow.id = $2`,
-      [input.workspaceId, createdId],
-    );
-    if (created.rows[0] === undefined)
+    const [row] = await drizzle(client)
+      .select({ workflow: workflowProjection, draft: draftProjection })
+      .from(workflows)
+      .innerJoin(
+        workflowDrafts,
+        and(
+          eq(workflowDrafts.workspaceId, workflows.workspaceId),
+          eq(workflowDrafts.workflowId, workflows.id),
+        ),
+      )
+      .where(
+        and(
+          eq(workflows.workspaceId, input.workspaceId),
+          eq(workflows.id, createdId),
+        ),
+      )
+      .catch(rethrowQueryFailure);
+    if (row === undefined)
       throw new WorkflowNotFoundError('Workflow is not visible');
-    const row = createdWorkflowRowSchema.parse(created.rows[0]);
     return Object.freeze({
       workflowId: createdId,
-      workflow: mapWorkflow(row.workflow),
-      draft: mapDraft(row.draft, definitionCatalog),
+      workflow: Object.freeze(row.workflow),
+      draft: projectDraft(row.draft, definitionCatalog),
     });
   });
 }
@@ -180,19 +209,13 @@ async function saveDraft(
     const graph = parseWorkflowGraphDraft(input.graphJson);
     const expected = z.number().int().positive().parse(input.expectedRevision);
     const workflowId = uuidSchema.parse(input.workflowId);
-    const current = await client.query<Record<string, unknown>>(
-      `select draft.* from app.workflow_drafts draft
-       join app.workflows workflow
-         on workflow.workspace_id = draft.workspace_id
-        and workflow.id = draft.workflow_id
-       where draft.workspace_id = $1 and draft.workflow_id = $2
-         and workflow.lifecycle_status = 'active'`,
-      [input.workspaceId, workflowId],
-    );
-    const currentRow = current.rows[0];
+    const [currentRow] = await readActiveDraft(client, {
+      workspaceId: input.workspaceId,
+      workflowId,
+    });
     if (currentRow === undefined)
       throw new WorkflowNotFoundError('Workflow is not visible');
-    const currentDraft = mapDraft(currentRow, definitionCatalog);
+    const currentDraft = projectDraft(currentRow, definitionCatalog);
     const currentTag = draftRepresentationTag(workflowId, currentDraft);
     if (currentTag !== representationTag || currentDraft.revision !== expected)
       throwRevisionConflict(workflowId, currentDraft);
@@ -219,58 +242,64 @@ async function saveDraft(
       graph,
       input.actorId,
     );
-    const result = await client.query<Record<string, unknown>>(
-      `update app.workflow_drafts set graph_json = $1::json,
-       revision = revision + 1, updated_by = $2, updated_at = transaction_timestamp()
-       where workspace_id = $3 and workflow_id = $4 and revision = $5
-         and exists (
-           select 1 from (select ${workflowRowSelection} from app.workflows) workflow
-           where workflow.workspace_id = $3 and workflow.id = $4
-             and workflow.lifecycle_status = 'active'
-         )
-       returning *`,
-      [
-        JSON.stringify(graph),
-        input.actorId,
-        input.workspaceId,
-        workflowId,
-        expected,
-      ],
-    );
-    if (result.rows[0] === undefined) {
-      const latest = await client.query<Record<string, unknown>>(
-        `select draft.* from app.workflow_drafts draft
-         join app.workflows workflow
-           on workflow.workspace_id = draft.workspace_id
-          and workflow.id = draft.workflow_id
-         where draft.workspace_id = $1 and draft.workflow_id = $2
-           and workflow.lifecycle_status = 'active'`,
-        [input.workspaceId, workflowId],
+    const db = drizzle(client);
+    const visible = db
+      .select({ id: workflows.id })
+      .from(workflows)
+      .where(
+        and(
+          eq(workflows.workspaceId, input.workspaceId),
+          eq(workflows.id, workflowId),
+          eq(workflows.lifecycleStatus, 'active'),
+        ),
       );
-      const latestRow = latest.rows[0];
-      if (latestRow === undefined)
+    const [row] = await db
+      .update(workflowDrafts)
+      .set({
+        graphJson: sql`${JSON.stringify(graph)}::json`,
+        revision: sql`${workflowDrafts.revision}+1`,
+        updatedBy: input.actorId,
+        updatedAt: sql`transaction_timestamp()`,
+      })
+      .where(
+        and(
+          eq(workflowDrafts.workspaceId, input.workspaceId),
+          eq(workflowDrafts.workflowId, workflowId),
+          eq(workflowDrafts.revision, expected),
+          exists(visible),
+        ),
+      )
+      .returning(draftProjection)
+      .catch(rethrowQueryFailure);
+    if (row === undefined) {
+      const [latest] = await readActiveDraft(client, {
+        workspaceId: input.workspaceId,
+        workflowId,
+      });
+      if (latest === undefined)
         throw new WorkflowNotFoundError('Workflow is not visible');
-      throwRevisionConflict(workflowId, mapDraft(latestRow, definitionCatalog));
+      throwRevisionConflict(
+        workflowId,
+        projectDraft(latest, definitionCatalog),
+      );
     }
-    const saved = mapDraft(result.rows[0], definitionCatalog);
+    const saved = projectDraft(row, definitionCatalog);
     await pruneStepSamples(client, input.workspaceId, workflowId, graph);
 
-    await client.query(
-      `insert into app.audit_events (id, workspace_id, actor_user_id, action, target_type, target_id, request_id, trace_id, metadata)
-       values ($1, $2, $3, 'workflow.draft_saved', 'workflow', $4, $5, $6, $7::jsonb)`,
-      [
-        generatePersistedId(),
-        input.workspaceId,
-        input.actorId,
-        input.workflowId,
-        input.requestId ?? null,
-        input.traceId ?? null,
-        JSON.stringify({
-          previousRevision: expected,
-          revision: saved.revision,
-        }),
-      ],
-    );
+    await db
+      .insert(auditEvents)
+      .values({
+        id: generatePersistedId(),
+        workspaceId: input.workspaceId,
+        actorUserId: input.actorId,
+        action: 'workflow.draft_saved',
+        targetType: 'workflow',
+        targetId: input.workflowId,
+        requestId: input.requestId ?? null,
+        traceId: input.traceId ?? null,
+        metadata: { previousRevision: expected, revision: saved.revision },
+      })
+      .catch(rethrowQueryFailure);
     return saved;
   });
 }
@@ -304,4 +333,28 @@ export function createWorkflowAuthoringDraftStore(
     createWorkflow: (input) => createWorkflow(context, input),
     saveDraft: (input) => saveDraft(context, input),
   });
+}
+
+function readActiveDraft(
+  client: PoolClient,
+  input: Readonly<{ workspaceId: string; workflowId: string }>,
+) {
+  return drizzle(client)
+    .select(draftProjection)
+    .from(workflowDrafts)
+    .innerJoin(
+      workflows,
+      and(
+        eq(workflows.workspaceId, workflowDrafts.workspaceId),
+        eq(workflows.id, workflowDrafts.workflowId),
+      ),
+    )
+    .where(
+      and(
+        eq(workflowDrafts.workspaceId, input.workspaceId),
+        eq(workflowDrafts.workflowId, input.workflowId),
+        eq(workflows.lifecycleStatus, 'active'),
+      ),
+    )
+    .catch(rethrowQueryFailure);
 }
