@@ -26,6 +26,33 @@ describe.skipIf(!organizationFixtureEnabled)(
       await closeFixture?.();
     });
 
+    it('refuses a stored hierarchy deeper than the four-level limit', async () => {
+      const scope = await fixture.scope();
+      await fixture.transaction(
+        fixture.owner,
+        scope.workspace,
+        scope.actor,
+        async (client) => {
+          let parentId: string | null = null;
+          for (let depth = 0; depth < 5; depth += 1) {
+            const id = randomUUID(),
+              name = `level-${String(depth)}`;
+            await client.query(
+              'insert into app.workflow_folders(workspace_id,id,parent_id,name,name_key) values($1,$2,$3,$4,$4)',
+              [scope.workspace, id, parentId, name],
+            );
+            parentId = id;
+          }
+        },
+      );
+      await expect(
+        stores.folders.listFolders({
+          workspaceId: scope.workspace,
+          actorId: scope.actor,
+        }),
+      ).rejects.toThrow();
+    });
+
     it('executes strict folder CRUD, member reads and shared placement CAS', async () => {
       const scope = await fixture.scope();
       const context = { workspaceId: scope.workspace, actorId: scope.actor };

@@ -4,7 +4,7 @@ import { workflowFolders } from '../../../schema/authoring/organization.js';
 import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { folderProjection, type FolderRow } from './hierarchy.queries.js';
 import { readFolderScope } from '../../../tenant-access/resources/facts.queries.js';
-import { FOLDER_LIMIT } from '../limits.js';
+import { FOLDER_LIMIT, FOLDER_DEPTH_LIMIT } from '../limits.js';
 
 import { ROLES } from '@pertexo/workflow-model';
 import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
@@ -36,7 +36,7 @@ export function listFolders(
       with recursive bounded as materialized (${bounded}),tree as (
         select *,1 depth,array[id] path from bounded where parent_id is null
         union all select f.*,t.depth+1,t.path||f.id from bounded f join tree t on f.parent_id=t.id
-          where t.depth<5 and not f.id=any(t.path)
+          where t.depth<${FOLDER_DEPTH_LIMIT + 1} and not f.id=any(t.path)
       ) select (select count(*)::int from bounded) total,
         coalesce(jsonb_agg(jsonb_build_object('id',id,'name',name,'parentId',parent_id,'revision',revision,'depth',depth,'accessMode',access_mode) order by id),'[]'::jsonb) items from tree
     `,
@@ -45,9 +45,11 @@ export function listFolders(
     const row = result.rows[0];
     const access = await readFolderScope(client, scope);
     const items = row?.items ?? [];
-    if (items.length > FOLDER_LIMIT)
-      throw new Error('Workflow folder hierarchy is incompatible');
-    if (row?.total !== items.length)
+    const hierarchyCompatible =
+      items.length <= FOLDER_LIMIT &&
+      row?.total === items.length &&
+      items.every((item) => item.depth <= FOLDER_DEPTH_LIMIT);
+    if (!hierarchyCompatible)
       throw new Error('Workflow folder hierarchy is incompatible');
     return Object.freeze({
       items: Object.freeze(
