@@ -94,7 +94,7 @@ export async function recoverWorkflowRunInTransaction(
   if (seed.copies.length > 0) {
     await copyRecoveryRunValues(transaction, input.sourceRunId, accepted.runId);
     await transaction.db.insert(nodeRuns).values(
-      seed.copies.map((copy) => ({
+      seed.copies.map<typeof nodeRuns.$inferInsert>((copy) => ({
         id: copy.id,
         workspaceId: transaction.workspaceId,
         workflowRunId: accepted.runId,
