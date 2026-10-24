@@ -125,14 +125,7 @@ function RowTitle({
       {/* One line tall in every state, so a row never grows when its path
           arrives: first load and every filter change keep the list still. */}
       <div className="mt-0.5 flex h-4 items-center">
-        {graph !== undefined ? (
-          <p className="truncate text-xs/4 text-subtle-foreground">
-            {describeWorkflowPath(graph)}
-          </p>
-        ) : shapeFailed ? null : (
-          // The path is still being read: a thread spools where it will be.
-          <SkeletonThread className="w-40 max-w-full" />
-        )}
+        <RowPath graph={graph} failed={shapeFailed} />
       </div>
     </div>
   );
@@ -336,4 +329,19 @@ export function WorkflowRow({
       )}
     </li>
   );
+}
+
+function RowPath({
+  graph,
+  failed,
+}: Readonly<{ graph: WorkflowGraphContract | undefined; failed: boolean }>) {
+  if (graph !== undefined)
+    return (
+      <p className="truncate text-xs/4 text-subtle-foreground">
+        {describeWorkflowPath(graph)}
+      </p>
+    );
+  if (failed) return null;
+  // The path is still being read: a thread spools where it will be.
+  return <SkeletonThread className="w-40 max-w-full" />;
 }
