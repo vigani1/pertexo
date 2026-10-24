@@ -1,4 +1,11 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type RefObject,
+  type KeyboardEvent,
+} from 'react';
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
 import {
   formatCalendarDay,
@@ -59,16 +66,6 @@ export function Calendar({
   const moveFocus = useRef(false);
   const days = useRef(new Map<LocalDate, HTMLButtonElement>());
   const visible = dateOf(focused) ?? new Date();
-  const outOfBounds = (day: LocalDate) =>
-    (min !== undefined && day < min) || (max !== undefined && day > max);
-  const chosen = (day: LocalDate) =>
-    day === value || day === range?.from || day === range?.to;
-  const between = (day: LocalDate) =>
-    range?.from !== undefined &&
-    range.to !== undefined &&
-    day > range.from &&
-    day < range.to;
-
   useEffect(() => {
     if (!moveFocus.current) return;
     moveFocus.current = false;
@@ -87,16 +84,6 @@ export function Calendar({
     event.preventDefault();
     moveFocus.current = true;
     go(step(focused));
-  }
-
-  /** Where a day sits on the range's band, if it's on it at all. */
-  function band(day: LocalDate): 'start' | 'middle' | 'end' | undefined {
-    const from = range?.from;
-    const to = range?.to;
-    if (from === undefined || to === undefined || from === to) return undefined;
-    if (day === from) return 'start';
-    if (day === to) return 'end';
-    return between(day) ? 'middle' : undefined;
   }
 
   return (
@@ -122,7 +109,8 @@ export function Calendar({
           <span className="sr-only">{formatMonthYear(visible)}</span>
         </p>
         <div className="flex items-center gap-1">
-          {sameMonth(focused, today) || outOfBounds(today) ? null : (
+          {sameMonth(focused, today) ||
+          outsideBounds(today, { min, max }) ? null : (
             <Button
               type="button"
               variant="ghost"
@@ -163,96 +151,159 @@ export function Calendar({
           </Button>
         </div>
       </div>
-      <table
-        role="grid"
-        aria-labelledby={headingId}
-        className="w-full border-separate border-spacing-y-1"
+      <CalendarGrid
+        headingId={headingId}
+        focused={focused}
+        selection={{ value, min, max, range, today }}
+        days={days}
         onKeyDown={onKeyDown}
-      >
-        <thead>
-          <tr>
-            {weekdayNames().map((name) => (
-              <th
-                key={name}
-                scope="col"
-                className="pb-1 text-[0.68rem] font-semibold tracking-wide text-subtle-foreground uppercase"
-              >
-                {name}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {monthWeeks(focused).map((week) => (
-            <tr key={week[0]}>
-              {week.map((day, column) => {
-                const date = dateOf(day) ?? new Date();
-                const outside = !sameMonth(day, focused);
-                const onBand = band(day);
-                const isToday = day === today;
-                return (
-                  <td
-                    key={day}
-                    className={cn(
-                      'relative p-0 text-center',
-                      // The range is one band across the week, rounded where
-                      // it starts, ends or wraps to the next row.
-                      onBand !== undefined &&
-                        "before:absolute before:inset-y-0.5 before:bg-action/14 before:content-['']",
-                      onBand === 'middle' && 'before:inset-x-0',
-                      onBand === 'start' && 'before:right-0 before:left-1/2',
-                      onBand === 'end' && 'before:right-1/2 before:left-0',
-                      onBand === 'middle' &&
-                        column === 0 &&
-                        'before:left-1 before:rounded-l-full',
-                      onBand === 'middle' &&
-                        column === week.length - 1 &&
-                        'before:right-1 before:rounded-r-full',
-                    )}
-                  >
-                    <button
-                      ref={(element) => {
-                        if (element === null) days.current.delete(day);
-                        else days.current.set(day, element);
-                      }}
-                      type="button"
-                      tabIndex={day === focused ? 0 : -1}
-                      disabled={outOfBounds(day)}
-                      aria-label={formatCalendarDay(date)}
-                      aria-pressed={chosen(day)}
-                      aria-current={isToday ? 'date' : undefined}
-                      className={cn(
-                        'relative mx-auto grid size-9 place-items-center rounded-full border border-transparent font-mono text-[0.8rem] tabular-nums outline-none transition-[background-color,border-color,box-shadow,color] duration-150 focus-ring disabled:pointer-events-none disabled:opacity-25 motion-reduce:transition-none',
-                        outside && 'text-subtle-foreground/70',
-                        isToday && !chosen(day) && 'text-accent-foreground',
-                        onBand === 'middle' && 'text-foreground',
-                        chosen(day)
-                          ? // Opaque under the wash, so the band stops at its
-                            // edge; lit from its centre, like a small orb.
-                            'neon bg-popover [--neon-wash:radial-gradient(circle_at_50%_38%,color-mix(in_oklab,var(--primary)_18%,transparent),color-mix(in_oklab,var(--primary)_6%,transparent)_72%)] [--neon-wash-hover:radial-gradient(circle_at_50%_38%,color-mix(in_oklab,var(--primary)_26%,transparent),color-mix(in_oklab,var(--primary)_10%,transparent)_72%)] font-semibold'
-                          : 'hover:border-surface-ink/12 hover:bg-surface-ink/[0.06]',
-                      )}
-                      onClick={() => {
-                        setFocused(day);
-                        onSelect(day);
-                      }}
-                    >
-                      {date.getDate()}
-                      {isToday ? (
-                        // Today: a bead of light under the number.
-                        <span
-                          aria-hidden="true"
-                          className="absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full bg-primary shadow-[0_0_6px_var(--primary)]"
-                        />
-                      ) : null}
-                    </button>
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+        onSelect={(day) => {
+          setFocused(day);
+          onSelect(day);
+        }}
+      />
     </div>
+  );
+}
+
+type CalendarSelection = Readonly<{
+  value: LocalDate | undefined;
+  min: LocalDate | undefined;
+  max: LocalDate | undefined;
+  range: Readonly<{ from?: LocalDate; to?: LocalDate }> | undefined;
+  today: LocalDate;
+}>;
+
+function outsideBounds(
+  day: LocalDate,
+  { min, max }: Pick<CalendarSelection, 'min' | 'max'>,
+) {
+  return (min !== undefined && day < min) || (max !== undefined && day > max);
+}
+
+function CalendarGrid({
+  headingId,
+  focused,
+  selection,
+  days,
+  onKeyDown,
+  onSelect,
+}: Readonly<{
+  headingId: string;
+  focused: LocalDate;
+  selection: CalendarSelection;
+  days: RefObject<Map<LocalDate, HTMLButtonElement>>;
+  onKeyDown: (event: KeyboardEvent<HTMLTableElement>) => void;
+  onSelect: (day: LocalDate) => void;
+}>) {
+  const { value, range, today } = selection;
+  const chosen = (day: LocalDate) =>
+    day === value || day === range?.from || day === range?.to;
+  const between = (day: LocalDate) =>
+    range?.from !== undefined &&
+    range.to !== undefined &&
+    day > range.from &&
+    day < range.to;
+
+  /** Where a day sits on the range's band, if it's on it at all. */
+  function band(day: LocalDate): 'start' | 'middle' | 'end' | undefined {
+    const from = range?.from;
+    const to = range?.to;
+    if (from === undefined || to === undefined || from === to) return undefined;
+    if (day === from) return 'start';
+    if (day === to) return 'end';
+    return between(day) ? 'middle' : undefined;
+  }
+
+  return (
+    <table
+      role="grid"
+      aria-labelledby={headingId}
+      className="w-full border-separate border-spacing-y-1"
+      onKeyDown={onKeyDown}
+    >
+      <thead>
+        <tr>
+          {weekdayNames().map((name) => (
+            <th
+              key={name}
+              scope="col"
+              className="pb-1 text-[0.68rem] font-semibold tracking-wide text-subtle-foreground uppercase"
+            >
+              {name}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {monthWeeks(focused).map((week) => (
+          <tr key={week[0]}>
+            {week.map((day, column) => {
+              const date = dateOf(day) ?? new Date();
+              const outside = !sameMonth(day, focused);
+              const onBand = band(day);
+              const isToday = day === today;
+              return (
+                <td
+                  key={day}
+                  className={cn(
+                    'relative p-0 text-center',
+                    // The range is one band across the week, rounded where
+                    // it starts, ends or wraps to the next row.
+                    onBand !== undefined &&
+                      "before:absolute before:inset-y-0.5 before:bg-action/14 before:content-['']",
+                    onBand === 'middle' && 'before:inset-x-0',
+                    onBand === 'start' && 'before:right-0 before:left-1/2',
+                    onBand === 'end' && 'before:right-1/2 before:left-0',
+                    onBand === 'middle' &&
+                      column === 0 &&
+                      'before:left-1 before:rounded-l-full',
+                    onBand === 'middle' &&
+                      column === week.length - 1 &&
+                      'before:right-1 before:rounded-r-full',
+                  )}
+                >
+                  <button
+                    ref={(element) => {
+                      if (element === null) days.current.delete(day);
+                      else days.current.set(day, element);
+                    }}
+                    type="button"
+                    tabIndex={day === focused ? 0 : -1}
+                    disabled={outsideBounds(day, selection)}
+                    aria-label={formatCalendarDay(date)}
+                    aria-pressed={chosen(day)}
+                    aria-current={isToday ? 'date' : undefined}
+                    className={cn(
+                      'relative mx-auto grid size-9 place-items-center rounded-full border border-transparent font-mono text-[0.8rem] tabular-nums outline-none transition-[background-color,border-color,box-shadow,color] duration-150 focus-ring disabled:pointer-events-none disabled:opacity-25 motion-reduce:transition-none',
+                      outside && 'text-subtle-foreground/70',
+                      isToday && !chosen(day) && 'text-accent-foreground',
+                      onBand === 'middle' && 'text-foreground',
+                      chosen(day)
+                        ? // Opaque under the wash, so the band stops at its
+                          // edge; lit from its centre, like a small orb.
+                          'neon bg-popover [--neon-wash:radial-gradient(circle_at_50%_38%,color-mix(in_oklab,var(--primary)_18%,transparent),color-mix(in_oklab,var(--primary)_6%,transparent)_72%)] [--neon-wash-hover:radial-gradient(circle_at_50%_38%,color-mix(in_oklab,var(--primary)_26%,transparent),color-mix(in_oklab,var(--primary)_10%,transparent)_72%)] font-semibold'
+                        : 'hover:border-surface-ink/12 hover:bg-surface-ink/[0.06]',
+                    )}
+                    onClick={() => {
+                      onSelect(day);
+                    }}
+                  >
+                    {date.getDate()}
+                    {isToday ? (
+                      // Today: a bead of light under the number.
+                      <span
+                        aria-hidden="true"
+                        className="absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full bg-primary shadow-[0_0_6px_var(--primary)]"
+                      />
+                    ) : null}
+                  </button>
+                </td>
+              );
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
