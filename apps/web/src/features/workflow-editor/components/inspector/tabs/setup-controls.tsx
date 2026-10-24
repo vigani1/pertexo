@@ -1,4 +1,4 @@
-import { useInspectorSession } from '../../../hooks/use-inspector-session';
+import { useInspectorSession } from '../use-session';
 import { WaitSetup } from '../wait/setup';
 import { UtilitySetup } from '../builders/utility-setup';
 import { UTILITY_OPERATION_KEYS } from '../../../model/inspector/transforms/utility-config';

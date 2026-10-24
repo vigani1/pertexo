@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useEditorSession } from '../model/state/context';
+import { useEditorSession } from '../../model/state/context';
 
 export function useInspectorSession() {
   const { scope, catalog } = useEditorSession();
