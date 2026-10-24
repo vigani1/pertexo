@@ -9,10 +9,8 @@ import {
 } from '../../src/artifacts/repository.js';
 import { ArtifactLifecycleConflictError } from '../../src/artifacts/input.js';
 import { parseDatabaseConfig } from '../../src/config.js';
-import {
-  completePreviewAttempt,
-  PREVIEW_STATUS,
-} from '../../src/previews/repository.js';
+import { completePreviewAttempt } from '../../src/previews/attempts/completion.repository.js';
+import { PREVIEW_STATUS } from '../../src/previews/state.js';
 import { createPreviewRetentionCoordinator } from '../../src/lifecycle/previews/repository.js';
 import { databaseSchema } from '../../src/schema.js';
 import {

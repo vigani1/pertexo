@@ -2,7 +2,7 @@ import { and, eq, gt } from 'drizzle-orm';
 
 import type { z } from 'zod';
 
-import { PREVIEW_STATUS } from '../../contract.js';
+import { PREVIEW_STATUS } from '../../state.js';
 import { idempotencyRecords, previewRuns } from '../../../schema.js';
 import {
   parseStoredExecutionValue,
@@ -13,14 +13,14 @@ import type { WorkspaceTransaction } from '../../../tenant-access/transactions.j
 import type {
   inputSourceSchema,
   acceptPreviewRunInputSchema,
-} from './contract.js';
+} from './input.js';
+import { resultRefSchema } from './input.js';
+import type { AcceptedPreviewRun } from './contract.js';
 import {
-  resultRefSchema,
-  type AcceptedPreviewRun,
   PreviewIdempotencyConflictError,
   PreviewAcceptanceCorruptError,
   PriorPreviewInputUnavailableError,
-} from './contract.js';
+} from '../../errors.js';
 
 export async function readExistingAcceptance(
   transaction: WorkspaceTransaction,

@@ -9,9 +9,11 @@ import type {
   AcceptedPreviewRun,
   AcceptPreviewRunInput,
   PreviewRunRecord,
+} from '../../previews/runs/acceptance/contract.js';
+import type {
   PreviewReplayRecord,
   ResolvePreviewReplayInput,
-} from '../../previews/repository.js';
+} from '../../previews/runs/contract.js';
 import type {
   WorkflowDraftRecord,
   WorkflowRecord,

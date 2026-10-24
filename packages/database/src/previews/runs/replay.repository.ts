@@ -1,4 +1,8 @@
-import type { CodeDiagnostics } from '@pertexo/node-sdk';
+import type {
+  ResolvePreviewReplayInput,
+  PreviewReplayRecord,
+} from './contract.js';
+
 import { parseStoredExecutionValue } from '../../platform/stored-execution-value.js';
 import { and, eq, gt } from 'drizzle-orm';
 import { z } from 'zod';
@@ -6,39 +10,13 @@ import { z } from 'zod';
 import {
   assertPreviewActor,
   previewWorkflowVisible,
-  PreviewAcceptanceCorruptError,
-  readExistingAcceptance,
-  type PreviewStatus,
-} from './acceptance.repository.js';
+} from './acceptance/authority.queries.js';
+import { PreviewAcceptanceCorruptError } from '../errors.js';
+import { readExistingAcceptance } from './acceptance/replay.queries.js';
+
 import { previewRuns, previewAttempts } from '../../schema.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { sha256HexSchema } from '../../platform/persisted-primitives.js';
-
-export type ResolvePreviewReplayInput = Readonly<{
-  actorUserId: string;
-  workflowId: string;
-  keyHash: string;
-  requestHash: string;
-}>;
-
-export type PreviewReplayRecord = Readonly<{
-  codeDiagnostics?: CodeDiagnostics;
-  id: string;
-  workspaceId: string;
-  workflowId: string;
-  draftRevision: number;
-  nodeId: string;
-  status: PreviewStatus;
-  sideEffectClass: 'safe' | 'idempotent_with_key' | 'unsafe';
-  mayContactProvider: boolean;
-  mayCauseExternalSideEffect: boolean;
-  dryRun: 'not_supported' | 'provider_supported';
-  pinnedSampleId?: string | null;
-  output?: ReturnType<typeof parseStoredExecutionValue> | null;
-  completedAt?: Date | null;
-  createdAt: Date;
-  expiresAt: Date;
-}>;
 
 export async function resolvePreviewReplay(
   transaction: WorkspaceTransaction,

@@ -1,4 +1,4 @@
-import type { PreviewDelivery } from '../../../src/previews/repository.js';
+import type { PreviewDelivery } from '../../../src/previews/contract.js';
 
 import { withTenantScopedClient } from '../../../src/tenant-access/transactions.js';
 

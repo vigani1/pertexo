@@ -5,7 +5,7 @@ import { Pool } from 'pg';
 import { parseDatabaseConfig } from '../../../src/config.js';
 import { createWorkspaceDatabase } from '../../../src/database.js';
 import { migrateDatabase } from '../../../src/migrations.js';
-import type { acceptPreviewRun } from '../../../src/previews/repository.js';
+import type { acceptPreviewRun } from '../../../src/previews/runs/acceptance.repository.js';
 
 import { createDisposableDatabaseFixture } from '../../support/postgres/disposable-database.js';
 

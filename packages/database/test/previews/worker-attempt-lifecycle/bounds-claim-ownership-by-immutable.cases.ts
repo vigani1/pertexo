@@ -1,8 +1,6 @@
 import { expect, it } from 'vitest';
-import {
-  claimPreviewDelivery,
-  PREVIEW_STATUS,
-} from '../../../src/previews/repository.js';
+import { claimPreviewDelivery } from '../../../src/previews/attempts/claim.repository.js';
+import { PREVIEW_STATUS } from '../../../src/previews/state.js';
 import {
   acceptFixture,
   claimFixture,

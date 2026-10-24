@@ -15,7 +15,7 @@ import {
 
 import type { WorkspaceTransaction } from '../../../tenant-access/transactions.js';
 
-import { PreviewAdmissionDeniedError } from './contract.js';
+import { PreviewAdmissionDeniedError } from '../../errors.js';
 
 export async function assertAdmission(
   transaction: WorkspaceTransaction,

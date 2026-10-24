@@ -87,37 +87,43 @@ export {
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
 } from './runs/commands/acceptance.js';
+export { acceptPreviewRun } from './previews/runs/acceptance.repository.js';
+export { readPreviewRun } from './previews/runs/records.queries.js';
+export { resolvePreviewReplay } from './previews/runs/replay.repository.js';
+export { claimPreviewDelivery } from './previews/attempts/claim.repository.js';
+export { markPreviewDispatched } from './previews/attempts/dispatch.repository.js';
+export { heartbeatPreviewLease } from './previews/attempts/heartbeat.repository.js';
+export { completePreviewAttempt } from './previews/attempts/completion.repository.js';
+export { reconcilePreviewDelivery } from './previews/reconciliation/deliveries.repository.js';
 export {
-  acceptPreviewRun,
-  readPreviewRun,
-  resolvePreviewReplay,
-  claimPreviewDelivery,
-  markPreviewDispatched,
-  heartbeatPreviewLease,
-  completePreviewAttempt,
-  reconcilePreviewDelivery,
   PreviewAcceptanceCorruptError,
   PreviewAdmissionDeniedError,
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
   PreviewIdempotencyConflictError,
   PriorPreviewInputUnavailableError,
-} from './previews/repository.js';
+} from './previews/errors.js';
 export type {
   AcceptedPreviewRun,
   AcceptPreviewRunInput,
+  PreviewRunRecord,
+} from './previews/runs/acceptance/contract.js';
+export type {
   PreviewReplayRecord,
   ResolvePreviewReplayInput,
+} from './previews/runs/contract.js';
+export type {
   PreviewStatus,
-  PreviewRunRecord,
   PreviewDelivery,
   PreviewAttemptLease,
-  PreviewClaimResult,
   PreviewTerminalOutcome,
+} from './previews/contract.js';
+export type {
+  PreviewClaimResult,
   PreviewCompletionResult,
   PreviewHeartbeatResult,
-  PreviewDeliveryReconciliationResult,
-} from './previews/repository.js';
+} from './previews/attempts/contract.js';
+export type { PreviewDeliveryReconciliationResult } from './previews/reconciliation/contract.js';
 export type {
   AcceptedWorkflowRun,
   AcceptWorkflowRunInput,
@@ -179,15 +185,10 @@ export {
   parseStoredExecutionValue,
   serializeStoredExecutionValue,
 } from './platform/stored-execution-value.js';
-export {
-  isValidStoredExecutionOutput,
-  PREVIEW_RETENTION_MAX_MS,
-  PREVIEW_STATUS,
-} from './previews/repository.js';
-export type {
-  InsertedOutboxEvent,
-  OutboxEventInput,
-} from './outbox/events.repository.js';
+export { isValidStoredExecutionOutput } from './previews/reconciliation/deliveries.repository.js';
+export { PREVIEW_RETENTION_MAX_MS } from './previews/runs/acceptance/limits.js';
+export { PREVIEW_STATUS } from './previews/state.js';
+export type { InsertedOutboxEvent, OutboxEventInput } from './outbox/events.repository.js';
 export { createNodeAttemptRunStore } from './attempts/repository.js';
 export {
   NodeAttemptConnectionFenceError,

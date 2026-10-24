@@ -1,3 +1,7 @@
+import type {
+  PreviewDeliveryReconciliationResult,
+  PreviewReconciliationScope,
+} from './contract.js';
 import { lockPreviewReconciliationState } from './state.queries.js';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 
@@ -7,16 +11,16 @@ import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
-import { PREVIEW_STATUS } from '../runs/acceptance.repository.js';
+import { PREVIEW_STATUS } from '../state.js';
 import { appendPreviewTerminalFacts } from '../attempts/facts.repository.js';
+import { TERMINAL_PREVIEW_STATUSES } from '../state.js';
 import {
-  TERMINAL_PREVIEW_STATUSES,
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
-  optionsFor,
-  previewReconcilerConsumerName,
-  type PreviewDelivery,
-} from '../contract.js';
+} from '../errors.js';
+import { optionsFor } from '../input.js';
+import { previewReconcilerConsumerName } from '../delivery.js';
+import type { PreviewDelivery } from '../contract.js';
 import {
   auditPreviewDeliveryMismatch,
   claimPreviewReceipt,
@@ -30,36 +34,6 @@ import {
   type StoredExecutionValue,
 } from '../../platform/stored-execution-value.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
-
-export type PreviewDeliveryReconciliationResult =
-  | Readonly<{ kind: 'duplicate' }>
-  | Readonly<{
-      kind: 'rescheduled';
-      reconciliationOutboxEventId: string;
-    }>
-  | Readonly<{
-      executionOutboxEventId: string;
-      kind: 'redelivered';
-    }>
-  | Readonly<{
-      kind: 'completed';
-      mayContactProvider: boolean;
-      mayCauseExternalSideEffect: boolean;
-      operationKey?: string;
-      possiblyDispatched: boolean;
-      providerKey?: string;
-      sideEffectClass: 'safe' | 'idempotent_with_key' | 'unsafe';
-      status:
-        typeof PREVIEW_STATUS.outcomeUnknown | typeof PREVIEW_STATUS.timedOut;
-      usesConnection: boolean;
-    }>;
-
-type PreviewReconciliationScope = Readonly<{
-  attemptFenceToken: number;
-  previewAttemptId: string;
-  previewRunId: string;
-  workspaceId: string;
-}>;
 
 type LockedPreviewReconciliationState = Awaited<
   ReturnType<typeof lockPreviewReconciliationState>

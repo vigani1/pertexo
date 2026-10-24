@@ -4,11 +4,9 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { previewRuns, previewAttempts } from '../../schema/runs/execution.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import {
-  PreviewAttemptStateError,
-  previewPairConsistent,
-  type PreviewAttemptLease,
-} from '../contract.js';
+import { PreviewAttemptStateError } from '../errors.js';
+import { previewPairConsistent } from '../state.js';
+import type { PreviewAttemptLease } from '../contract.js';
 
 export async function lockPreviewReconciliationState(
   client: PoolClient,

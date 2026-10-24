@@ -2,10 +2,8 @@ import { withWorkspaceTransaction } from '../../../src/tenant-access/transaction
 import { readPreviewRun } from '../../../src/previews/runs/records.queries.js';
 
 import { expect, it } from 'vitest';
-import {
-  completePreviewAttempt,
-  PreviewAttemptStateError,
-} from '../../../src/previews/repository.js';
+import { completePreviewAttempt } from '../../../src/previews/attempts/completion.repository.js';
+import { PreviewAttemptStateError } from '../../../src/previews/errors.js';
 import {
   acceptFixture,
   actorUserId,

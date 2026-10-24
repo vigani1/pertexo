@@ -1,15 +1,10 @@
+import type { PreviewReconciliationStore } from './contract.js';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '../../platform/pool/runtime.js';
 import type { DatabaseConfig } from '../../config.js';
 import { reconcilePreviewDelivery } from './deliveries.repository.js';
-
-export interface PreviewReconciliationStore {
-  reconcile(
-    input: Parameters<typeof reconcilePreviewDelivery>[1],
-  ): ReturnType<typeof reconcilePreviewDelivery>;
-}
 
 export function createDatabasePreviewReconciliationStore(
   config: DatabaseConfig,

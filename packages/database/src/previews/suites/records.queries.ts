@@ -15,7 +15,7 @@ import {
 import { workflowTestSnapshots } from '../../schema/runs/tests.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { SampleScope } from '../../authoring/step-samples/contract.js';
-import { WorkflowTestError } from '../workflows/contract.js';
+import { WorkflowTestError } from '../workflows/errors.js';
 
 const suite = alias(workflowTestSuites, 'suite');
 const historyFields = {

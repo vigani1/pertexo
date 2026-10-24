@@ -13,7 +13,7 @@ import type { PoolClient } from 'pg';
 import type { WorkflowTestSuiteCurrent } from '@pertexo/contracts';
 import { canonicalJson } from '@pertexo/workflow-model';
 import type { SampleScope } from '../../authoring/step-samples/contract.js';
-import { WorkflowTestError } from '../workflows/contract.js';
+import { WorkflowTestError } from '../workflows/errors.js';
 /** The same metadata signature prepares suites and labels publish freshness. */
 export async function readSuiteCurrent(
   client: PoolClient,

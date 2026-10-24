@@ -1,10 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
-import {
-  markPreviewDispatched,
-  PREVIEW_STATUS,
-  reconcilePreviewDelivery,
-} from '../../../src/previews/repository.js';
+import { markPreviewDispatched } from '../../../src/previews/attempts/dispatch.repository.js';
+import { PREVIEW_STATUS } from '../../../src/previews/state.js';
+import { reconcilePreviewDelivery } from '../../../src/previews/reconciliation/deliveries.repository.js';
 import {
   acceptFixture,
   claimFixture,

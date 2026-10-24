@@ -1,3 +1,4 @@
+import type { PreviewClaimResult } from './contract.js';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { previewRuns, previewAttempts } from '../../schema/runs/execution.js';
@@ -6,15 +7,14 @@ import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
 import { appendPreviewTerminalFacts } from './facts.repository.js';
+import { TERMINAL_PREVIEW_STATUSES } from '../state.js';
 import {
-  TERMINAL_PREVIEW_STATUSES,
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
-  optionsFor,
-  previewConsumerName,
-  type PreviewAttemptLease,
-  type PreviewDelivery,
-} from '../contract.js';
+} from '../errors.js';
+import { optionsFor } from '../input.js';
+import { previewConsumerName } from '../delivery.js';
+import type { PreviewDelivery } from '../contract.js';
 import {
   auditPreviewDeliveryMismatch,
   claimPreviewReceipt,
@@ -28,10 +28,6 @@ import {
   loadPreviewLease,
   lockPreviewClaimState,
 } from './claim/state.queries.js';
-
-export type PreviewClaimResult =
-  | Readonly<{ kind: 'claimed'; lease: PreviewAttemptLease }>
-  | Readonly<{ kind: 'duplicate' }>;
 
 async function terminalizeExpiredPreview(
   client: PoolClient,

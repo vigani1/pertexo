@@ -5,10 +5,8 @@ import { sql } from 'drizzle-orm';
 import { and, eq, gt } from 'drizzle-orm';
 import { z } from 'zod';
 
-import {
-  assertPreviewActor,
-  type PreviewRunRecord,
-} from './acceptance.repository.js';
+import { assertPreviewActor } from './acceptance/authority.queries.js';
+import type { PreviewRunRecord } from './acceptance/contract.js';
 import { parseStoredExecutionValue } from '../../platform/stored-execution-value.js';
 import { previewRuns, previewAttempts } from '../../schema.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';

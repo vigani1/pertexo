@@ -12,11 +12,8 @@ import {
 import type { PoolClient } from 'pg';
 
 import type { SampleScope } from '../../authoring/step-samples/contract.js';
-import {
-  WorkflowTestError,
-  type WorkflowTestDetail,
-  type WorkflowTestSummary,
-} from './contract.js';
+import { WorkflowTestError } from './errors.js';
+import type { WorkflowTestDetail, WorkflowTestSummary } from './contract.js';
 
 const run = alias(workflowRuns, 'run');
 const testSummarySelection = {
