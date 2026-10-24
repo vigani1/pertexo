@@ -189,7 +189,7 @@ export async function inboxEvents(runId: string) {
 }
 
 type FailureNotificationQueryFailure = Readonly<{
-  matches(sql: string): boolean;
+  matches(sql: string, parameters: readonly unknown[]): boolean;
   message: string;
 }>;
 
@@ -268,7 +268,10 @@ export function createTestFailureNotificationStore(
         const request = queryArguments[0];
         const text = requestText(request);
         const query = originalQuery(...queryArguments);
-        if (armed && failure.matches(text)) {
+        const parameters = Array.isArray(queryArguments[1])
+          ? queryArguments[1]
+          : [];
+        if (armed && failure.matches(text, parameters)) {
           armed = false;
           return Promise.resolve(query).then(() => {
             throw new Error(failure.message);

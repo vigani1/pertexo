@@ -1,3 +1,10 @@
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
+import {
+  failureNotificationDestinations as destination,
+  failureNotificationDestinationVersions as version,
+} from '../../schema/notifications.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import {
@@ -63,30 +70,33 @@ export function decodeFailureNotificationDestinationReplay(
   });
 }
 
-export function mapFailureNotificationDestinationRecord(
-  row: Readonly<Record<string, unknown>>,
-): FailureNotificationDestinationRecord {
-  const kind = z.enum(['slack', 'email']).parse(row.kind);
-  const stored = z.record(z.string(), z.unknown()).parse(row.config);
-  if (stored.kind !== undefined && stored.kind !== kind)
-    throw new Error('Destination kind does not match persisted configuration');
-  return Object.freeze({
-    id: z.uuid().parse(row.id),
-    workspaceId: z.uuid().parse(row.workspace_id),
-    kind,
-    status: z.enum(['enabled', 'disabled']).parse(row.status),
-    currentVersion: z
-      .number()
-      .int()
-      .positive()
-      .parse(row.current_config_version),
-    config: FailureNotificationDestinationConfigSchema.parse({
-      ...stored,
-      kind,
-    }),
-    createdAt: z.date().parse(row.created_at),
-    updatedAt: z.date().parse(row.updated_at),
-  });
+/** The FK and strict JSON check correlate the canonical kind with its config. */
+export const destinationConfigSql = sql<FailureNotificationDestinationConfig>`${version.config} || jsonb_build_object('kind',${version.kind})`;
+export function destinationRecords(db: Pick<NodePgDatabase, 'select'>) {
+  return db
+    .select({
+      id: destination.id,
+      workspaceId: destination.workspaceId,
+      kind: destination.kind,
+      status: destination.status,
+      currentVersion: destination.currentConfigVersion,
+      config: destinationConfigSql,
+      createdAt: sql<Date>`${destination.createdAt}`.mapWith(
+        (value: string) => new Date(value),
+      ),
+      updatedAt: sql<Date>`${destination.updatedAt}`.mapWith(
+        (value: string) => new Date(value),
+      ),
+    })
+    .from(destination)
+    .innerJoin(
+      version,
+      and(
+        eq(version.workspaceId, destination.workspaceId),
+        eq(version.destinationId, destination.id),
+        eq(version.version, destination.currentConfigVersion),
+      ),
+    );
 }
 
 export async function readFailureNotificationDestination(
@@ -96,27 +106,23 @@ export async function readFailureNotificationDestination(
   { lock = false }: Readonly<{ lock?: boolean | undefined }> = {},
 ): Promise<FailureNotificationDestinationRecord> {
   const parsedDestinationId = z.uuid().parse(destinationId);
-  if (lock) {
-    const locked = await client.query(
-      `select id from app.failure_notification_destinations
-        where workspace_id=$1 and id=$2 for update`,
-      [workspaceId, parsedDestinationId],
-    );
-    if (locked.rowCount !== 1) throw destinationNotFound();
-  }
-  const result = await client.query<Record<string, unknown>>(
-    `select destination.id,destination.workspace_id,destination.kind,
-            destination.status,destination.current_config_version,
-            destination.created_at,destination.updated_at,version.config
-       from app.failure_notification_destinations destination
-       join app.failure_notification_destination_versions version
-         on version.workspace_id=destination.workspace_id
-        and version.destination_id=destination.id
-        and version.version=destination.current_config_version
-      where destination.workspace_id=$1 and destination.id=$2`,
-    [workspaceId, parsedDestinationId],
+  const db = drizzle(client);
+  const predicate = and(
+    eq(destination.workspaceId, workspaceId),
+    eq(destination.id, parsedDestinationId),
   );
-  const row = result.rows[0];
+  if (lock) {
+    const locked = await db
+      .select({ id: destination.id })
+      .from(destination)
+      .where(predicate)
+      .for('update')
+      .catch(rethrowQueryFailure);
+    if (locked.length !== 1) throw destinationNotFound();
+  }
+  const [row] = await destinationRecords(db)
+    .where(predicate)
+    .catch(rethrowQueryFailure);
   if (row === undefined) throw destinationNotFound();
-  return mapFailureNotificationDestinationRecord(row);
+  return Object.freeze(row);
 }

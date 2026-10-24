@@ -52,3 +52,7 @@ export interface FailureNotificationDestinationDatabase {
   ): Promise<FailureNotificationDestinationRecord | null>;
   close(): Promise<void>;
 }
+
+export type StoredDestinationConfig =
+  | Omit<Extract<DestinationConfig, { kind: 'email' }>, 'kind'>
+  | Omit<Extract<DestinationConfig, { kind: 'slack' }>, 'kind'>;

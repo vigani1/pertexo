@@ -1,6 +1,14 @@
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { and, eq, exists, getTableName, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workspaces } from '../../schema/foundation.js';
+import { runFailureNotificationIntents as intent } from '../../schema/runs/completion/notifications.js';
+import { failureNotificationDestinations as destination } from '../../schema/notifications.js';
+import { connectionSecretVersions as secret } from '../../schema/connections.js';
+import { deliverySources, currentDestinationSql } from './delivery.queries.js';
 import type { Pool } from 'pg';
 import { z } from 'zod';
-import { FailureNotificationDestinationConfigSchema } from '@pertexo/workflow-model';
 
 import { FailureNotificationStateError } from '../errors.js';
 import {
@@ -44,52 +52,53 @@ async function loadNotificationDestination(
     pool,
     { workspaceId },
     async (client) => {
-      const result = await client.query<Record<string, unknown>>(
-        `select version.kind, version.config, intent.connection_secret_version_id,
-                  secret.kms_key_reference,
-                  secret.encrypted_data_key, secret.ciphertext, secret.nonce,
-                  secret.auth_tag
-             from app.run_failure_notification_intents intent
-             join app.failure_notification_destinations destination
-               on destination.workspace_id=intent.workspace_id
-              and destination.id=intent.destination_id
-             join app.failure_notification_destination_versions version
-               on version.workspace_id=intent.workspace_id
-              and version.destination_id=intent.destination_id
-              and version.version=intent.destination_config_version
-             join app.connections connection
-               on connection.workspace_id=intent.workspace_id
-              and connection.id=(version.config->>'connectionId')::uuid
-             join app.connection_secret_versions secret
-               on secret.workspace_id=connection.workspace_id
-              and secret.connection_id=connection.id
-              and secret.id=intent.connection_secret_version_id
-              where intent.workspace_id=$1 and intent.id=$2
-                and intent.status='claimed' and intent.delivery_attempts=$3
-                and destination.status='enabled'
-                and destination.kind=version.kind
-               and version.side_effect_class=intent.side_effect_class
-               and connection.provider_key=version.kind
-               and connection.auth_type=case version.kind
-                 when 'slack' then 'slack_bot_token' else 'resend_api_key' end
-               and connection.status='active'
-              and connection.current_secret_version_id=intent.connection_secret_version_id`,
-        [workspaceId, intentId, attemptNumber],
-      );
-      const row = result.rows[0];
+      const db = drizzle(client);
+      const source = db
+        .$with('source')
+        .as(
+          deliverySources(db).where(
+            and(
+              eq(intent.workspaceId, workspaceId),
+              eq(intent.id, intentId),
+              eq(intent.status, 'claimed'),
+              eq(intent.deliveryAttempts, attemptNumber),
+              currentDestinationSql,
+            ),
+          ),
+        );
+      const [row] = await db
+        .with(source)
+        .select({
+          config: source.config,
+          secretVersionId: secret.id,
+          sealed: {
+            kmsKeyReference: secret.kmsKeyReference,
+            encryptedDataKey: secret.encryptedDataKey,
+            ciphertext: secret.ciphertext,
+            nonce: secret.nonce,
+            tag: secret.authTag,
+          },
+        })
+        .from(source)
+        .innerJoin(
+          secret,
+          and(
+            eq(secret.workspaceId, workspaceId),
+            eq(
+              secret.connectionId,
+              sql`(${source.config}->>'connectionId')::uuid`,
+            ),
+            eq(secret.id, source.secretVersionId),
+          ),
+        )
+        .catch(rethrowQueryFailure);
       if (row === undefined)
         throw new FailureNotificationStateError(
           'Delivery destination is unavailable',
         );
-      const kind = z.enum(['slack', 'email']).parse(row.kind);
-      const config = FailureNotificationDestinationConfigSchema.parse({
-        ...z.record(z.string(), z.unknown()).parse(row.config),
-        kind,
-      });
+      const config = row.config;
       const connectionId = config.connectionId;
-      const secretVersionId = failureNotificationIdentitySchema.parse(
-        row.connection_secret_version_id,
-      );
+      const secretVersionId = row.secretVersionId;
       await recordCredentialAccess(client, {
         workspaceId,
         connectionId,
@@ -101,13 +110,7 @@ async function loadNotificationDestination(
       const resolved = {
         connectionId,
         secretVersionId,
-        sealed: Object.freeze({
-          kmsKeyReference: z.string().parse(row.kms_key_reference),
-          encryptedDataKey: z.string().parse(row.encrypted_data_key),
-          ciphertext: z.string().parse(row.ciphertext),
-          nonce: z.string().parse(row.nonce),
-          tag: z.string().parse(row.auth_tag),
-        }),
+        sealed: Object.freeze(row.sealed),
       };
       return config.kind === 'slack'
         ? Object.freeze({
@@ -147,61 +150,76 @@ async function fenceNotificationDispatch(
               .parse(raw.deliveryBinding);
       // The workspace must be active and the claimed intent's destination
       // enabled; both stay locked until the dispatch is marked.
-      const workspace = await client.query(
-        "select 1 from app.workspaces where id=$1 and status='active' for share",
-        [workspaceId],
+      const db = drizzle(client);
+      const scope = and(
+        eq(intent.workspaceId, workspaceId),
+        eq(intent.id, intentId),
+        eq(intent.status, 'claimed'),
+        eq(intent.deliveryAttempts, attemptNumber),
       );
-      const destination =
-        workspace.rowCount === 1
-          ? await client.query(
-              `select 1 from app.run_failure_notification_intents intent
-                   join app.failure_notification_destinations destination
-                     on destination.workspace_id=intent.workspace_id
-                    and destination.id=intent.destination_id
-                   where intent.workspace_id=$1 and intent.id=$2
-                     and intent.status='claimed' and intent.delivery_attempts=$3
-                     and destination.status='enabled'
-                   for share of destination`,
-              [workspaceId, intentId, attemptNumber],
-            )
+      const workspace = await db
+        .select({ id: workspaces.id })
+        .from(workspaces)
+        .where(
+          and(eq(workspaces.id, workspaceId), eq(workspaces.status, 'active')),
+        )
+        .for('share')
+        .catch(rethrowQueryFailure);
+      const destinations =
+        workspace.length === 1
+          ? await db
+              .select({ id: destination.id })
+              .from(intent)
+              .innerJoin(
+                destination,
+                and(
+                  eq(destination.workspaceId, intent.workspaceId),
+                  eq(destination.id, intent.destinationId),
+                ),
+              )
+              .where(and(scope, eq(destination.status, 'enabled')))
+              .for('share', {
+                of: alias(destination, getTableName(destination)),
+              })
+              .catch(rethrowQueryFailure)
           : undefined;
-      if (destination?.rowCount !== 1)
+      if (destinations?.length !== 1)
         throw new FailureNotificationStateError(
           'Delivery dispatch fence failed',
         );
-      const fenced = await client.query(
-        `update app.run_failure_notification_intents intent
-              set status='dispatching',dispatch_marked_at=clock_timestamp(),
-                  delivery_binding=coalesce(intent.delivery_binding,$4),
-                  updated_at=clock_timestamp()
-             from app.failure_notification_destinations destination,
-                  app.failure_notification_destination_versions version,
-                  app.connections connection
-            where intent.workspace_id=$1 and intent.id=$2
-              and intent.status='claimed' and intent.delivery_attempts=$3
-               and destination.workspace_id=intent.workspace_id
-               and destination.id=intent.destination_id
-               and destination.status='enabled'
-               and destination.kind=version.kind
-              and version.workspace_id=intent.workspace_id
-              and version.destination_id=intent.destination_id
-              and version.version=intent.destination_config_version
-              and version.side_effect_class=intent.side_effect_class
-              and connection.workspace_id=intent.workspace_id
-              and connection.id=(version.config->>'connectionId')::uuid
-              and connection.provider_key=version.kind
-              and connection.auth_type=case version.kind
-                when 'slack' then 'slack_bot_token' else 'resend_api_key' end
-              and connection.status='active'
-              and connection.current_secret_version_id=intent.connection_secret_version_id
-              and (($4::text is null and intent.delivery_binding is null)
-                or ($4 is not null and (intent.delivery_binding is null or intent.delivery_binding=$4)))
-              and exists (select 1 from app.workspaces workspace
-                where workspace.id=intent.workspace_id and workspace.status='active')
-            returning intent.id`,
-        [workspaceId, intentId, attemptNumber, parsedBinding],
+      const activeWorkspace = exists(
+        db
+          .select({ id: workspaces.id })
+          .from(workspaces)
+          .where(
+            and(
+              eq(workspaces.id, workspaceId),
+              eq(workspaces.status, 'active'),
+            ),
+          ),
       );
-      if (fenced.rowCount !== 1)
+      const available = exists(
+        deliverySources(db).where(and(scope, currentDestinationSql)),
+      );
+      const fenced = await db
+        .update(intent)
+        .set({
+          status: 'dispatching',
+          dispatchMarkedAt: sql`clock_timestamp()`,
+          deliveryBinding: sql`coalesce(${intent.deliveryBinding},${parsedBinding})`,
+          updatedAt: sql`clock_timestamp()`,
+        })
+        .where(
+          and(
+            scope,
+            available,
+            activeWorkspace,
+            sql`((${parsedBinding}::text is null and ${intent.deliveryBinding} is null) or (${parsedBinding}::text is not null and (${intent.deliveryBinding} is null or ${intent.deliveryBinding}=${parsedBinding})))`,
+          ),
+        )
+        .returning({ id: intent.id })
+        .catch(rethrowQueryFailure);
+      if (fenced.length !== 1)
         throw new FailureNotificationStateError(
           'Delivery dispatch fence failed',
         );
@@ -214,5 +232,5 @@ async function fenceNotificationDispatch(
       });
     },
     raw.signal === undefined ? {} : { signal: raw.signal },
-  );
+  ).catch(rethrowQueryFailure);
 }

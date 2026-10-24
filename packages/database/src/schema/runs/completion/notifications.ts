@@ -1,3 +1,4 @@
+import type { FailureNotificationClaimResult } from '../../../notifications/contract.js';
 import {
   type PgTableExtraConfigValue,
   boolean,
@@ -26,7 +27,14 @@ export const runFailureNotificationIntents = appSchema.table(
     terminalEventSequence: integer('terminal_event_sequence').notNull(),
     destinationId: uuid('destination_id').notNull(),
     destinationConfigVersion: integer('destination_config_version').notNull(),
-    sideEffectClass: varchar('side_effect_class', { length: 32 }).notNull(),
+    sideEffectClass: varchar('side_effect_class', { length: 32 })
+      .$type<
+        Extract<
+          FailureNotificationClaimResult,
+          { kind: 'ready' }
+        >['sideEffectClass']
+      >()
+      .notNull(),
     context: jsonb().notNull(),
     contextChecksum: char('context_checksum', { length: 64 }).notNull(),
     status: varchar({ length: 32 }).default('pending').notNull(),

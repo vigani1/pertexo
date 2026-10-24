@@ -1,3 +1,8 @@
+import { rethrowQueryFailure } from '../platform/query-errors.js';
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { runFailureNotificationIntents as intents } from '../schema/runs/completion/notifications.js';
+import { outboxEvents } from '../schema/transport.js';
 import { isIntegerInRange } from '../platform/persisted-primitives.js';
 import { acquireDatabasePool } from '../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../platform/pool/runtime.js';
@@ -67,9 +72,8 @@ function createFailureNotificationRecovery(
       return withPlatformTransaction(
         pool,
         async (client) => {
-          const result = await client.query<{ recovered: number }>(
-            'select app.recover_due_run_failure_notifications($1,$2) as recovered',
-            [limit, parsedMaxAttempts],
+          const result = await drizzle(client).execute<{ recovered: number }>(
+            sql`select app.recover_due_run_failure_notifications(${limit},${parsedMaxAttempts}) as recovered`,
           );
           return result.rows[0]?.recovered ?? 0;
         },
@@ -122,16 +126,12 @@ async function claimFailureNotificationDelivery(
       intentId,
       delivery,
     });
-    const result = await client.query<FailureIntentRow>(
-      `select context,context_checksum,delivery_attempts,destination_id,
-                   destination_config_version,side_effect_class,status,recovery_at,next_delivery_at,
-                    connection_secret_version_id,delivery_binding,possibly_dispatched,
-                  (next_delivery_at is not null and next_delivery_at<=clock_timestamp()) retry_due
-           from app.run_failure_notification_intents
-           where workspace_id=$1 and id=$2 for update`,
-      [workspaceId, intentId],
+    const db = drizzle(client);
+    const predicate = and(
+      eq(intents.workspaceId, workspaceId),
+      eq(intents.id, intentId),
     );
-    const row = result.rows[0];
+    const row = await readFailureIntent(client, { workspaceId, intentId });
     if (row === undefined)
       throw new FailureNotificationStateError('Intent not found');
     if (['delivered', 'dead_letter', 'outcome_unknown'].includes(row.status))
@@ -150,14 +150,20 @@ async function claimFailureNotificationDelivery(
       const safeErrorCode = unresolved
         ? 'delivery.attempts_exhausted_unknown'
         : 'delivery.attempts_exhausted';
-      await client.query(
-        `update app.run_failure_notification_intents
-             set status=$3,dispatch_marked_at=null,recovery_at=null,
-                  next_delivery_at=null,safe_error_code=$4,
-                  possibly_dispatched=$5,completed_at=clock_timestamp(),updated_at=clock_timestamp()
-              where workspace_id=$1 and id=$2`,
-        [workspaceId, intentId, terminalStatus, safeErrorCode, unresolved],
-      );
+      await db
+        .update(intents)
+        .set({
+          status: terminalStatus,
+          dispatchMarkedAt: null,
+          recoveryAt: null,
+          nextDeliveryAt: null,
+          safeErrorCode,
+          possiblyDispatched: unresolved,
+          completedAt: sql`clock_timestamp()`,
+          updatedAt: sql`clock_timestamp()`,
+        })
+        .where(predicate)
+        .catch(rethrowQueryFailure);
       await audit(client, {
         workspaceId,
         intentId,
@@ -175,34 +181,56 @@ async function claimFailureNotificationDelivery(
       throw new FailureNotificationStateError('Intent lifecycle is corrupt');
     const prepared = prepareNotificationClaim(row);
     const { attemptNumber } = prepared;
-    const marked = await client.query(
-      `update app.run_failure_notification_intents
-           set status='claimed',delivery_attempts=$3,
-                dispatch_marked_at=null,
-               recovery_at=clock_timestamp()+make_interval(secs=>$4),
-               next_delivery_at=null,updated_at=clock_timestamp()
-           where workspace_id=$1 and id=$2 and status=$5`,
-      [workspaceId, intentId, attemptNumber, raw.recoverySeconds, row.status],
-    );
-    if (marked.rowCount !== 1) return Object.freeze({ kind: 'busy' as const });
+    const marked = await db
+      .update(intents)
+      .set({
+        status: 'claimed',
+        deliveryAttempts: attemptNumber,
+        dispatchMarkedAt: null,
+        recoveryAt: sql`clock_timestamp()+make_interval(secs=>${raw.recoverySeconds})`,
+        nextDeliveryAt: null,
+        updatedAt: sql`clock_timestamp()`,
+      })
+      .where(and(predicate, eq(intents.status, row.status)))
+      .returning({ id: intents.id })
+      .catch(rethrowQueryFailure);
+    if (marked.length !== 1) return Object.freeze({ kind: 'busy' as const });
     return readyNotificationClaim(row, intentId, prepared);
   });
 }
 
-interface FailureIntentRow {
-  context: unknown;
-  context_checksum: string;
-  delivery_attempts: number;
-  destination_config_version: number;
-  destination_id: string;
-  recovery_at: Date | null;
-  next_delivery_at: Date | null;
-  retry_due: boolean;
-  side_effect_class: 'safe' | 'idempotent_with_key' | 'unsafe';
-  connection_secret_version_id: string | null;
-  delivery_binding: string | null;
-  possibly_dispatched: boolean | null;
-  status: string;
+type FailureIntentRow = NonNullable<
+  Awaited<ReturnType<typeof readFailureIntent>>
+>;
+async function readFailureIntent(
+  client: PoolClient,
+  input: Readonly<{ workspaceId: string; intentId: string }>,
+) {
+  const [row] = await drizzle(client)
+    .select({
+      context: intents.context,
+      context_checksum: intents.contextChecksum,
+      delivery_attempts: intents.deliveryAttempts,
+      destination_id: intents.destinationId,
+      destination_config_version: intents.destinationConfigVersion,
+      side_effect_class: intents.sideEffectClass,
+      status: intents.status,
+      next_delivery_at: intents.nextDeliveryAt,
+      connection_secret_version_id: intents.connectionSecretVersionId,
+      delivery_binding: intents.deliveryBinding,
+      possibly_dispatched: intents.possiblyDispatched,
+      retry_due: sql<boolean>`(${intents.nextDeliveryAt} is not null and ${intents.nextDeliveryAt}<=clock_timestamp())`,
+    })
+    .from(intents)
+    .where(
+      and(
+        eq(intents.workspaceId, input.workspaceId),
+        eq(intents.id, input.intentId),
+      ),
+    )
+    .for('update')
+    .catch(rethrowQueryFailure);
+  return row;
 }
 async function assertNotificationDelivery(
   client: PoolClient,
@@ -218,18 +246,22 @@ async function assertNotificationDelivery(
     >[0]['delivery'];
   }>,
 ): Promise<void> {
-  const authoritative = await client.query<{
-    aggregate_id: string;
-    aggregate_type: string;
-    job_name: string;
-    payload: unknown;
-    payload_checksum: string;
-  }>(
-    `select aggregate_id,aggregate_type,job_name,payload,payload_checksum
-           from app.outbox_events where workspace_id=$1 and id=$2`,
-    [workspaceId, delivery.outboxEventId],
-  );
-  const outbox = authoritative.rows[0];
+  const [outbox] = await drizzle(client)
+    .select({
+      aggregate_id: outboxEvents.aggregateId,
+      aggregate_type: outboxEvents.aggregateType,
+      job_name: outboxEvents.jobName,
+      payload: outboxEvents.payload,
+      payload_checksum: outboxEvents.payloadChecksum,
+    })
+    .from(outboxEvents)
+    .where(
+      and(
+        eq(outboxEvents.workspaceId, workspaceId),
+        eq(outboxEvents.id, delivery.outboxEventId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
   const actualChecksum =
     outbox === undefined
       ? undefined

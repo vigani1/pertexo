@@ -1,3 +1,7 @@
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { runFailureNotificationIntents as intents } from '../../schema/runs/completion/notifications.js';
 import type { Pool } from 'pg';
 import { FailureNotificationDeliveryResultSchema } from '@pertexo/workflow-model';
 
@@ -19,12 +23,27 @@ type CompletionStore = Pick<FailureNotificationStore, 'completeDelivery'>;
 type DeliveryResult = ReturnType<
   typeof FailureNotificationDeliveryResultSchema.parse
 >;
-type LockedIntent = Readonly<{
-  delivery_attempts: number;
-  possibly_dispatched: boolean | null;
-  side_effect_class: 'safe' | 'idempotent_with_key' | 'unsafe';
-  status: string;
-}>;
+type LockedIntent = Awaited<ReturnType<typeof lockedCompletion>>[number];
+function lockedCompletion(
+  db: Pick<NodePgDatabase, 'select'>,
+  input: Readonly<{ workspaceId: string; intentId: string }>,
+) {
+  return db
+    .select({
+      status: intents.status,
+      delivery_attempts: intents.deliveryAttempts,
+      side_effect_class: intents.sideEffectClass,
+      possibly_dispatched: intents.possiblyDispatched,
+    })
+    .from(intents)
+    .where(
+      and(
+        eq(intents.workspaceId, input.workspaceId),
+        eq(intents.id, input.intentId),
+      ),
+    )
+    .for('update');
+}
 type CompletionDecision =
   | Readonly<{ kind: 'retry'; deliveryUnresolved: boolean }>
   | Readonly<{
@@ -118,13 +137,12 @@ export function createFailureNotificationCompletionStore(
         pool,
         { workspaceId },
         async (client) => {
-          const locked = await client.query<LockedIntent>(
-            `select status,delivery_attempts,side_effect_class,possibly_dispatched
-           from app.run_failure_notification_intents
-           where workspace_id=$1 and id=$2 for update`,
-            [workspaceId, intentId],
+          const db = drizzle(client);
+          const predicate = and(
+            eq(intents.workspaceId, workspaceId),
+            eq(intents.id, intentId),
           );
-          const row = locked.rows[0];
+          const [row] = await lockedCompletion(db, { workspaceId, intentId });
           const staleDeliveryAttempt =
             (row?.status !== 'claimed' && row?.status !== 'dispatching') ||
             row.delivery_attempts !== attemptNumber;
@@ -149,22 +167,25 @@ export function createFailureNotificationCompletionStore(
               throw new FailureNotificationStateError(
                 'Retry delay must be positive when scheduling a retry',
               );
-            const scheduled = await client.query<{ next_delivery_at: Date }>(
-              `update app.run_failure_notification_intents
-             set status='retry',dispatch_marked_at=null,recovery_at=null,
-                  next_delivery_at=clock_timestamp()+make_interval(secs=>$3),
-                  safe_error_code=$4,possibly_dispatched=$5,updated_at=clock_timestamp()
-             where workspace_id=$1 and id=$2
-             returning next_delivery_at`,
-              [
-                workspaceId,
-                intentId,
-                retryDelaySeconds,
-                safeErrorCode ?? null,
-                decision.deliveryUnresolved,
-              ],
-            );
-            const due = scheduled.rows[0]?.next_delivery_at;
+            const [scheduled] = await db
+              .update(intents)
+              .set({
+                status: 'retry',
+                dispatchMarkedAt: null,
+                recoveryAt: null,
+                nextDeliveryAt: sql`clock_timestamp()+make_interval(secs=>${retryDelaySeconds})`,
+                safeErrorCode: safeErrorCode ?? null,
+                possiblyDispatched: decision.deliveryUnresolved,
+                updatedAt: sql`clock_timestamp()`,
+              })
+              .where(predicate)
+              .returning({
+                nextDeliveryAt: sql<Date>`${intents.nextDeliveryAt}`.mapWith(
+                  (value: string) => new Date(value),
+                ),
+              })
+              .catch(rethrowQueryFailure);
+            const due = scheduled?.nextDeliveryAt;
             if (due === undefined)
               throw new FailureNotificationStateError(
                 'Retry schedule was not persisted',
@@ -185,21 +206,21 @@ export function createFailureNotificationCompletionStore(
             });
             return 'completed' as const;
           }
-          await client.query(
-            `update app.run_failure_notification_intents
-           set status=$3,dispatch_marked_at=null,recovery_at=null,next_delivery_at=null,
-               safe_error_code=$4,possibly_dispatched=$5,provider_reference=$6,
-               completed_at=clock_timestamp(),updated_at=clock_timestamp()
-           where workspace_id=$1 and id=$2`,
-            [
-              workspaceId,
-              intentId,
-              decision.status,
-              safeErrorCode ?? null,
-              decision.deliveryUnresolved,
-              providerReference ?? null,
-            ],
-          );
+          await db
+            .update(intents)
+            .set({
+              status: decision.status,
+              dispatchMarkedAt: null,
+              recoveryAt: null,
+              nextDeliveryAt: null,
+              safeErrorCode: safeErrorCode ?? null,
+              possiblyDispatched: decision.deliveryUnresolved,
+              providerReference: providerReference ?? null,
+              completedAt: sql`clock_timestamp()`,
+              updatedAt: sql`clock_timestamp()`,
+            })
+            .where(predicate)
+            .catch(rethrowQueryFailure);
           await auditFailureNotification(client, {
             workspaceId,
             intentId,

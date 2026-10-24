@@ -1,3 +1,12 @@
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { notificationProviderRequirements } from '../policies/admission.queries.js';
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { connections } from '../../schema/connections.js';
+import {
+  failureNotificationDestinations as destination,
+  failureNotificationDestinationVersions as version,
+} from '../../schema/notifications.js';
 import { acquireDatabasePool } from '../../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
 import type { Pool, PoolClient } from 'pg';
@@ -18,7 +27,7 @@ import {
 } from './commands.repository.js';
 import {
   decodeFailureNotificationDestinationReplay,
-  mapFailureNotificationDestinationRecord,
+  destinationRecords,
   readFailureNotificationDestination,
   serializeFailureNotificationDestinationRecord,
   type FailureNotificationDestinationRecord,
@@ -41,18 +50,24 @@ async function assertConnection(
   workspaceId: string,
   config: DestinationConfig,
 ): Promise<void> {
-  const result = await client.query(
-    `select 1 from app.connections
-      where workspace_id=$1 and id=$2 and status='active'
-        and provider_key=$3 and auth_type=$4 for share`,
-    [
-      workspaceId,
-      config.connectionId,
-      config.kind,
-      config.kind === 'slack' ? 'slack_bot_token' : 'resend_api_key',
-    ],
-  );
-  if (result.rowCount !== 1)
+  const result = await drizzle(client)
+    .select({ id: connections.id })
+    .from(connections)
+    .where(
+      and(
+        eq(connections.workspaceId, workspaceId),
+        eq(connections.id, config.connectionId),
+        eq(connections.status, 'active'),
+        eq(connections.providerKey, config.kind),
+        eq(
+          connections.authType,
+          notificationProviderRequirements[config.kind].authType,
+        ),
+      ),
+    )
+    .for('share')
+    .catch(rethrowQueryFailure);
+  if (result.length !== 1)
     throw destinationError('not_found', 'Connection is not visible');
 }
 
@@ -67,20 +82,18 @@ async function insertVersion(
   }>,
 ): Promise<void> {
   const { kind, ...config } = input.config;
-  await client.query(
-    `insert into app.failure_notification_destination_versions
-       (workspace_id,destination_id,version,kind,side_effect_class,config,created_by)
-     values ($1,$2,$3,$4,$5,$6::jsonb,$7)`,
-    [
-      input.workspaceId,
-      input.destinationId,
-      input.version,
+  await drizzle(client)
+    .insert(version)
+    .values({
+      workspaceId: input.workspaceId,
+      destinationId: input.destinationId,
+      version: input.version,
       kind,
-      kind === 'slack' ? 'unsafe' : 'idempotent_with_key',
-      JSON.stringify(config),
-      input.actorId,
-    ],
-  );
+      sideEffectClass: notificationProviderRequirements[kind].sideEffectClass,
+      config,
+      createdBy: input.actorId,
+    })
+    .catch(rethrowQueryFailure);
 }
 
 async function setDestinationStatus(
@@ -113,10 +126,16 @@ async function setDestinationStatus(
       });
       return current;
     }
-    await client.query(
-      `update app.failure_notification_destinations set status=$3,updated_at=clock_timestamp() where workspace_id=$1 and id=$2`,
-      [input.workspaceId, current.id, input.status],
-    );
+    await drizzle(client)
+      .update(destination)
+      .set({ status: input.status, updatedAt: sql`clock_timestamp()` })
+      .where(
+        and(
+          eq(destination.workspaceId, input.workspaceId),
+          eq(destination.id, current.id),
+        ),
+      )
+      .catch(rethrowQueryFailure);
     await audit(client, input, {
       action: `failure_notification_destination.${input.status}`,
       target: { id: current.id, type: 'failure_notification_destination' },
@@ -219,12 +238,17 @@ function createNotificationDestination(
     if (replay.kind === 'replay')
       return decodeFailureNotificationDestinationReplay(replay.result);
     await assertConnection(client, input.workspaceId, parsed);
-    await client.query(
-      `insert into app.failure_notification_destinations
-           (id,workspace_id,kind,status,current_config_version,created_by)
-         values ($1,$2,$3,'enabled',1,$4)`,
-      [destinationId, input.workspaceId, parsed.kind, input.actorId],
-    );
+    await drizzle(client)
+      .insert(destination)
+      .values({
+        id: destinationId,
+        workspaceId: input.workspaceId,
+        kind: parsed.kind,
+        status: 'enabled',
+        currentConfigVersion: 1,
+        createdBy: input.actorId,
+      })
+      .catch(rethrowQueryFailure);
     await insertVersion(client, {
       workspaceId: input.workspaceId,
       destinationId,
@@ -278,21 +302,12 @@ function listNotificationDestinations(
     await authorize(client, input.workspaceId, input.actorId, {
       manage: false,
     });
-    const result = await client.query<Record<string, unknown>>(
-      `select destination.id,destination.workspace_id,destination.kind,
-                  destination.status,destination.current_config_version,
-                  destination.created_at,destination.updated_at,version.config
-           from app.failure_notification_destinations destination
-           join app.failure_notification_destination_versions version
-             on version.workspace_id=destination.workspace_id
-            and version.destination_id=destination.id
-            and version.version=destination.current_config_version
-          where destination.workspace_id=$1 order by destination.created_at,destination.id limit $2`,
-      [input.workspaceId, FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT],
-    );
-    return Object.freeze(
-      result.rows.map(mapFailureNotificationDestinationRecord),
-    );
+    const result = await destinationRecords(drizzle(client))
+      .where(eq(destination.workspaceId, input.workspaceId))
+      .orderBy(destination.createdAt, destination.id)
+      .limit(FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT)
+      .catch(rethrowQueryFailure);
+    return Object.freeze(result.map((row) => Object.freeze(row)));
   });
 }
 
@@ -337,12 +352,16 @@ function appendNotificationDestinationVersion(
       config: parsed,
       actorId: input.actorId,
     });
-    await client.query(
-      `update app.failure_notification_destinations
-            set current_config_version=$3,updated_at=clock_timestamp()
-          where workspace_id=$1 and id=$2`,
-      [input.workspaceId, current.id, next],
-    );
+    await drizzle(client)
+      .update(destination)
+      .set({ currentConfigVersion: next, updatedAt: sql`clock_timestamp()` })
+      .where(
+        and(
+          eq(destination.workspaceId, input.workspaceId),
+          eq(destination.id, current.id),
+        ),
+      )
+      .catch(rethrowQueryFailure);
     await audit(client, input, {
       action: 'failure_notification_destination.version_appended',
       target: { id: current.id, type: 'failure_notification_destination' },

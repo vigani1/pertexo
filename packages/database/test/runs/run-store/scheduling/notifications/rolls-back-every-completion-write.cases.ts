@@ -13,18 +13,23 @@ export function registerRollsBackEveryCompletionWrite(): void {
   it.each([
     {
       boundary: 'intent update',
-      matches: (sql: string) =>
-        sql.includes('update app.run_failure_notification_intents') &&
-        sql.includes("set status='retry'"),
+      matches: (sql: string, parameters: readonly unknown[]) =>
+        sql
+          .replaceAll('"', '')
+          .includes('update app.run_failure_notification_intents') &&
+        parameters.includes('retry'),
     },
     {
       boundary: 'retry outbox insert',
-      matches: (sql: string) => sql.includes('insert into app.outbox_events'),
+      matches: (sql: string) =>
+        sql.replaceAll('"', '').includes('insert into app.outbox_events'),
     },
     {
       boundary: 'completion audit insert',
       matches: (sql: string) =>
-        sql.includes('insert into app.run_failure_notification_audit_facts'),
+        sql
+          .replaceAll('"', '')
+          .includes('insert into app.run_failure_notification_audit_facts'),
     },
   ])(
     'rolls back every completion write after an injected $boundary failure',
