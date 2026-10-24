@@ -24,13 +24,19 @@ export function getErrorWorkflow(
     },
   });
 }
-export function getErrorTargets(
-  client: ApiClient,
-  workspaceId: string,
-  workflowId: string,
-  after: string | undefined,
-  signal: AbortSignal,
-) {
+export function getErrorTargets({
+  client,
+  workspaceId,
+  workflowId,
+  after,
+  signal,
+}: Readonly<{
+  client: ApiClient;
+  workspaceId: string;
+  workflowId: string;
+  after: string | undefined;
+  signal: AbortSignal;
+}>) {
   const cursor =
     after === undefined ? '' : `?after=${encodeURIComponent(after)}`;
   return client.request({
@@ -42,13 +48,19 @@ export function getErrorTargets(
     },
   });
 }
-export function putErrorWorkflow(
-  client: ApiClient,
-  workspaceId: string,
-  workflowId: string,
-  body: WorkflowErrorSettingsRequest,
-  key: string,
-) {
+export function putErrorWorkflow({
+  client,
+  workspaceId,
+  workflowId,
+  body,
+  key,
+}: Readonly<{
+  client: ApiClient;
+  workspaceId: string;
+  workflowId: string;
+  body: WorkflowErrorSettingsRequest;
+  key: string;
+}>) {
   return client.request({
     path: path(workspaceId, workflowId),
     method: 'PUT',

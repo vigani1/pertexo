@@ -67,13 +67,13 @@ export function callPinnedVersionQueryOptions(
       pin === undefined
         ? skipToken
         : ({ signal }) =>
-            findWorkflowVersion(
-              scope.apiClient,
-              scope.workspaceId,
-              pin.workflowId,
-              pin.workflowVersionId,
+            findWorkflowVersion({
+              apiClient: scope.apiClient,
+              workspaceId: scope.workspaceId,
+              workflowId: pin.workflowId,
+              versionId: pin.workflowVersionId,
               signal,
-            ),
+            }),
     staleTime: Infinity,
   });
 }

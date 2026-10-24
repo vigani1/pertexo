@@ -27,7 +27,13 @@ export function WebhookTestEventPanel({
   binding: string | undefined;
   ensureSaved: () => Promise<{ revision: number }>;
 }) {
-  const test = useWebhookListener(scope, nodeId, binding, ensureSaved, active);
+  const test = useWebhookListener({
+    scope,
+    nodeId,
+    binding,
+    ensureSaved,
+    active,
+  });
   const { listener, query } = test;
   const heading = useRef<HTMLHeadingElement>(null);
   const listenerId = listener?.id;

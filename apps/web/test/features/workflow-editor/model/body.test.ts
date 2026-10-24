@@ -107,26 +107,36 @@ describe('body graph commands', () => {
         },
       ],
     };
-    const next = addBodyStep(
-      bare,
-      'loop',
-      bodyStepDefinition,
-      { x: 0, y: 0 },
-      {
+    const next = addBodyStep({
+      graph: bare,
+      loopId: 'loop',
+      definition: bodyStepDefinition,
+      position: { x: 0, y: 0 },
+      ids: {
         nodeId: 'first',
         edgeId: 'unused',
       },
-    );
+    });
     if (next === null) throw new Error('expected a body step');
     expect(ids(bodyOf(next).nodes)).toEqual(['first']);
     expect(bodyOf(next).inputPorts).toEqual(['item', 'ordinal']);
     expect(
-      addBodyStep(bare, 'nope', bodyStepDefinition, { x: 0, y: 0 }),
+      addBodyStep({
+        graph: bare,
+        loopId: 'nope',
+        definition: bodyStepDefinition,
+        position: { x: 0, y: 0 },
+      }),
     ).toBeNull();
     expect(
-      addBodyStep(orderLoopGraph(), 'start', bodyStepDefinition, {
-        x: 0,
-        y: 0,
+      addBodyStep({
+        graph: orderLoopGraph(),
+        loopId: 'start',
+        definition: bodyStepDefinition,
+        position: {
+          x: 0,
+          y: 0,
+        },
       }),
     ).toBeNull();
   });
@@ -144,13 +154,13 @@ describe('body graph commands', () => {
         { ...step('far', 'Far'), position: { x: 2400, y: 900 } },
       ],
     };
-    const next = addBodyStep(
+    const next = addBodyStep({
       graph,
-      'loop',
-      bodyStepDefinition,
-      { x: 400, y: 0 },
-      { nodeId: 'wide', edgeId: 'unused' },
-    );
+      loopId: 'loop',
+      definition: bodyStepDefinition,
+      position: { x: 400, y: 0 },
+      ids: { nodeId: 'wide', edgeId: 'unused' },
+    });
     if (next === null) throw new Error('expected a body step');
     const after = next.nodes.find((node) => node.id === 'next');
     // The body step 400px in widens the frame by far more than the gap.
@@ -165,14 +175,14 @@ describe('body graph commands', () => {
 
   it('adds after a body step inside the same body, never outside it', () => {
     const graph = orderLoopGraph();
-    const after = addBodyStep(
+    const after = addBodyStep({
       graph,
-      'loop',
-      bodyStepDefinition,
-      { x: 400, y: 0 },
-      { nodeId: 'notify', edgeId: 'reserve-notify' },
-      { nodeId: 'reserve', port: 'out' },
-    );
+      loopId: 'loop',
+      definition: bodyStepDefinition,
+      position: { x: 400, y: 0 },
+      ids: { nodeId: 'notify', edgeId: 'reserve-notify' },
+      from: { nodeId: 'reserve', port: 'out' },
+    });
     if (after === null) throw new Error('expected a body step');
     expect(ids(bodyOf(after).nodes)).toEqual(['check', 'reserve', 'notify']);
     expect(bodyOf(after).edges.at(-1)).toEqual(
@@ -181,25 +191,25 @@ describe('body graph commands', () => {
     expect(ids(after.nodes)).toEqual(ids(graph.nodes));
     expect(after.edges).toBe(graph.edges);
     // Quick add from a body step's port stays in its body too.
-    const dropped = addStepAfter(
+    const dropped = addStepAfter({
       graph,
-      bodyStepDefinition,
-      { x: 0, y: 200 },
-      { nodeId: 'check', port: 'out' },
-      { nodeId: 'side', edgeId: 'check-side' },
-    );
+      definition: bodyStepDefinition,
+      position: { x: 0, y: 200 },
+      from: { nodeId: 'check', port: 'out' },
+      ids: { nodeId: 'side', edgeId: 'check-side' },
+    });
     expect(ids(dropped === null ? [] : bodyOf(dropped).nodes)).toContain(
       'side',
     );
     expect(
-      addBodyStep(
+      addBodyStep({
         graph,
-        'loop',
-        bodyStepDefinition,
-        { x: 0, y: 0 },
-        undefined,
-        { nodeId: 'start', port: 'out' },
-      ),
+        loopId: 'loop',
+        definition: bodyStepDefinition,
+        position: { x: 0, y: 0 },
+        ids: undefined,
+        from: { nodeId: 'start', port: 'out' },
+      }),
     ).toBeNull();
   });
 

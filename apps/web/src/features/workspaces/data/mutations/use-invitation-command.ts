@@ -199,13 +199,13 @@ export function useInvitationCommand(
   function executeRequest(attempt: Attempt) {
     return attempt.kind === 'create'
       ? createWorkspaceInvitation(input.apiClient, input.workspaceId, attempt)
-      : changeWorkspaceInvitation(
-          input.apiClient,
-          input.workspaceId,
-          attempt.invitation.id,
-          attempt.kind,
-          attempt,
-        );
+      : changeWorkspaceInvitation({
+          apiClient: input.apiClient,
+          workspaceId: input.workspaceId,
+          invitationId: attempt.invitation.id,
+          operation: attempt.kind,
+          input: attempt,
+        });
   }
 
   const activeAttempt =

@@ -119,16 +119,17 @@ function CaseRunInputDialog(
     Readonly<{ caseScope: NonNullable<RunInputDialogProps['caseScope']> }>,
 ) {
   const { apiClient, userId, workspace, workflow } = props.caseScope;
-  const cases = useInputCases(
-    apiClient,
+  const cases = useInputCases({
+    api: apiClient,
     userId,
-    workspace.id,
-    workflow.id,
-    workspace.status === 'active' &&
+    workspaceId: workspace.id,
+    workflowId: workflow.id,
+    canWrite:
+      workspace.status === 'active' &&
       workflow.lifecycleStatus === 'active' &&
       workspace.capabilities.includes('workflow:update'),
-    props.open,
-  );
+    enabled: props.open,
+  });
   return <RunInputDialogContent {...props} cases={cases} />;
 }
 

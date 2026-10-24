@@ -48,17 +48,27 @@ function evictCases(cache: QueryClient, key: ReturnType<typeof inputCasesKey>) {
   cache.removeQueries({ queryKey: key });
 }
 
-function useCaseOwner(
-  api: ApiClient,
-  cache: QueryClient,
-  userId: string,
-  workspaceId: string,
-  workflowId: string,
-  canWrite: boolean,
-  enabled: boolean,
-  onClose: () => void,
-  onRetire: () => void,
-) {
+function useCaseOwner({
+  api,
+  cache,
+  userId,
+  workspaceId,
+  workflowId,
+  canWrite,
+  enabled,
+  onClose,
+  onRetire,
+}: Readonly<{
+  api: ApiClient;
+  cache: QueryClient;
+  userId: string;
+  workspaceId: string;
+  workflowId: string;
+  canWrite: boolean;
+  enabled: boolean;
+  onClose: () => void;
+  onRetire: () => void;
+}>) {
   const ownerRef = useRef<symbol | undefined>(undefined);
   const controllerRef = useRef<AbortController | undefined>(undefined);
   const retainedRef = useRef<
@@ -91,11 +101,11 @@ function useCaseOwner(
     previousWrite.current = canWrite;
     // Missing optional projections and other workflows do not revoke this
     // case browser. Session/workspace loss and its own authoritative reads do.
-    const unsubscribe = watchWorkspaceReadDenial(
-      cache,
+    const unsubscribe = watchWorkspaceReadDenial({
+      queryClient: cache,
       userId,
       workspaceId,
-      ({ key: read, error }) =>
+      counts: ({ key: read, error }) =>
         ownerRef.current === token &&
         (error.status === 401 ||
           read.length === 0 ||
@@ -105,8 +115,8 @@ function useCaseOwner(
             (error.status === 403 ||
               read.length === 3 ||
               read[3] === 'input-cases'))),
-      retire,
-    );
+      denied: retire,
+    });
     return () => {
       unsubscribe();
       if (ownerRef.current === token) ownerRef.current = undefined;
@@ -128,14 +138,21 @@ function useCaseOwner(
 }
 
 /** Metadata in Query, opened payload and exact command only in this owner. */
-export function useInputCases(
-  api: ApiClient,
-  userId: string,
-  workspaceId: string,
-  workflowId: string,
-  canWrite: boolean,
+export function useInputCases({
+  api,
+  userId,
+  workspaceId,
+  workflowId,
+  canWrite,
   enabled = true,
-) {
+}: Readonly<{
+  api: ApiClient;
+  userId: string;
+  workspaceId: string;
+  workflowId: string;
+  canWrite: boolean;
+  enabled?: boolean | undefined;
+}>) {
   const cache = useQueryClient();
   const query = useInfiniteQuery({
     ...inputCasesQueryOptions(api, userId, workspaceId, workflowId),
@@ -162,7 +179,7 @@ export function useInputCases(
     setAccessLost(true);
     setPending(false);
   }, []);
-  const { ownerRef, controllerRef, retainedRef, retire } = useCaseOwner(
+  const { ownerRef, controllerRef, retainedRef, retire } = useCaseOwner({
     api,
     cache,
     userId,
@@ -172,7 +189,7 @@ export function useInputCases(
     enabled,
     onClose,
     onRetire,
-  );
+  });
 
   async function read(caseId: string) {
     if (controllerRef.current !== undefined || uncertain || accessLost)
@@ -184,13 +201,13 @@ export function useInputCases(
     setPending(true);
     setError(undefined);
     try {
-      const result = await getInputCase(
+      const result = await getInputCase({
         api,
         workspaceId,
         workflowId,
         caseId,
-        abort.signal,
-      );
+        signal: abort.signal,
+      });
       if (ownerRef.current !== token) return undefined;
       setSelected(result);
       setConflict(false);

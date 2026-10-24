@@ -45,13 +45,13 @@ export function useRunFailures({
   const versionReads = [...ran.values()];
   const versions = useQueries({
     queries: versionReads.map((run) => ({
-      ...workflowRunVersionQueryOptions(
+      ...workflowRunVersionQueryOptions({
         apiClient,
         userId,
-        workspace.id,
-        run.workflowId,
-        run.workflowVersionId,
-      ),
+        workspaceId: workspace.id,
+        workflowId: run.workflowId,
+        versionId: run.workflowVersionId,
+      }),
       enabled: canReadVersions,
     })),
   });

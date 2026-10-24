@@ -55,7 +55,13 @@ export function errorTargetsQuery(
     queryKey: [...errorWorkflowKey(userId, workspaceId, workflowId), 'targets'],
     initialPageParam: undefined as string | undefined,
     queryFn: ({ signal, pageParam }) =>
-      getErrorTargets(apiClient, workspaceId, workflowId, pageParam, signal),
+      getErrorTargets({
+        client: apiClient,
+        workspaceId,
+        workflowId,
+        after: pageParam,
+        signal,
+      }),
     getNextPageParam: (page) => page.nextCursor ?? undefined,
     staleTime: 0,
   });

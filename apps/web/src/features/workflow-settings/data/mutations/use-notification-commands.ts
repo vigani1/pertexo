@@ -57,13 +57,13 @@ export function useFailureNotificationCommands({
           attempt.key,
         );
       else
-        await setFailureNotificationPolicy(
+        await setFailureNotificationPolicy({
           apiClient,
           workspaceId,
           workflowId,
           destinationId,
-          attempt.key,
-        );
+          idempotencyKey: attempt.key,
+        });
       commands.complete(scope, intent);
       return true;
     } catch (cause) {

@@ -242,13 +242,13 @@ export function WorkflowRow({
 }>) {
   const [observe, seen] = useHasBeenVisible<HTMLLIElement>();
   const showRuns = workspace.capabilities.includes('run:read');
-  const runs = useWorkflowRunTicks(
+  const runs = useWorkflowRunTicks({
     apiClient,
     userId,
-    workspace.id,
-    workflow.id,
-    showRuns && seen,
-  );
+    workspaceId: workspace.id,
+    workflowId: workflow.id,
+    enabled: showRuns && seen,
+  });
   const shape = useQuery({
     ...workflowShapeQueryOptions(apiClient, userId, workspace.id, workflow.id),
     enabled: seen,

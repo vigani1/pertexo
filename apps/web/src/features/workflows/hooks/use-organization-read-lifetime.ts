@@ -26,13 +26,13 @@ export function useOrganizationReadLifetime(
       void cache.cancelQueries({ queryKey: key });
       cache.removeQueries({ queryKey: key });
     };
-    const unsubscribe = watchWorkspaceReadDenial(
-      cache,
+    const unsubscribe = watchWorkspaceReadDenial({
+      queryClient: cache,
       userId,
       workspaceId,
-      ({ key: read }) => read[0] === 'workflow-organization',
-      retire,
-    );
+      counts: ({ key: read }) => read[0] === 'workflow-organization',
+      denied: retire,
+    });
     for (const query of cache.getQueryCache().findAll({ queryKey: key })) {
       if (isOrganizationReadDenied(query.state.error))
         retire(query.state.error);

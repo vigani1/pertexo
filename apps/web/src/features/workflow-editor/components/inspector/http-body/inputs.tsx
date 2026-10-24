@@ -74,13 +74,19 @@ function BodyInputs({
   const parts = draft.text.mode === 'multipart' ? draft.text.parts : [];
   const bodyAllowed =
     node.config.method !== 'GET' && node.config.method !== 'HEAD';
-  function request(
-    apply: () => void,
-    destructive: boolean,
-    title: string,
-    description: string,
+  function request({
+    apply,
+    destructive,
+    title,
+    description,
     confirmLabel = 'Replace',
-  ) {
+  }: Readonly<{
+    apply: () => void;
+    destructive: boolean;
+    title: string;
+    description: string;
+    confirmLabel?: string | undefined;
+  }>) {
     if (destructive)
       setConfirmation({ signature, title, description, confirmLabel, apply });
     else apply();
@@ -98,14 +104,15 @@ function BodyInputs({
       draft.text.mode === 'raw'
         ? Object.keys(draft.text.mappings).length > 0
         : draft.text.parts.length > 0;
-    request(
-      () => {
+    request({
+      apply: () => {
         change(nextDraft, `mode:${crypto.randomUUID()}`);
       },
-      populated,
-      'Replace the current body?',
-      'Switching body type replaces its current mappings and form parts. Cancel keeps them; Undo restores a completed change. Shared files are kept.',
-    );
+      destructive: populated,
+      title: 'Replace the current body?',
+      description:
+        'Switching body type replaces its current mappings and form parts. Cancel keeps them; Undo restores a completed change. Shared files are kept.',
+    });
   }
   function changePart(next: FormPartDraft, field: string): string | undefined {
     if (field === 'upload') {
@@ -124,8 +131,8 @@ function BodyInputs({
     if (previous === undefined) return 'The form part is no longer available.';
     const changedKind =
       previous.kind !== next.kind || previous.source.kind !== next.source.kind;
-    request(
-      () => {
+    request({
+      apply: () => {
         change(
           {
             mode: 'multipart',
@@ -138,10 +145,12 @@ function BodyInputs({
             : `${next.inputKey}:${field}`,
         );
       },
-      field !== 'upload' && changedKind && populatedSource(previous.source),
-      'Replace this part’s value?',
-      'The new value source replaces the current value. Cancel keeps it; Undo restores the change.',
-    );
+      destructive:
+        field !== 'upload' && changedKind && populatedSource(previous.source),
+      title: 'Replace this part’s value?',
+      description:
+        'The new value source replaces the current value. Cancel keeps it; Undo restores the change.',
+    });
     return undefined;
   }
   return (
@@ -184,8 +193,8 @@ function BodyInputs({
             change={change}
             onChangePart={changePart}
             onRemove={(part) => {
-              request(
-                () => {
+              request({
+                apply: () => {
                   const index = parts.findIndex(
                     ({ inputKey }) => inputKey === part.inputKey,
                   );
@@ -203,11 +212,12 @@ function BodyInputs({
                     parts[index + 1]?.inputKey ?? parts[index - 1]?.inputKey,
                   );
                 },
-                populatedSource(part.source),
-                'Remove this form part?',
-                'This removes the part and its mapping. Shared file bytes are kept. Undo restores the part.',
-                'Remove',
-              );
+                destructive: populatedSource(part.source),
+                title: 'Remove this form part?',
+                description:
+                  'This removes the part and its mapping. Shared file bytes are kept. Undo restores the part.',
+                confirmLabel: 'Remove',
+              });
             }}
           />
           {links}

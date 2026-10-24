@@ -42,13 +42,19 @@ export function inboxSummaryQueryOptions(
   });
 }
 
-export function inboxThreadsInfiniteQueryOptions(
-  apiClient: ApiClient,
-  userId: string,
-  workspaceId: string,
-  filter: WorkspaceInboxFilter,
-  noticeKind?: WorkspaceNoticeKind,
-) {
+export function inboxThreadsInfiniteQueryOptions({
+  apiClient,
+  userId,
+  workspaceId,
+  filter,
+  noticeKind,
+}: Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspaceId: string;
+  filter: WorkspaceInboxFilter;
+  noticeKind?: WorkspaceNoticeKind | undefined;
+}>) {
   return infiniteQueryOptions({
     queryKey: inboxKeys.threads(userId, workspaceId, filter, noticeKind),
     queryFn: ({ pageParam, signal }) =>

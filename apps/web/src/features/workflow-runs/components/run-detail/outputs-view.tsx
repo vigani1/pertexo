@@ -21,13 +21,13 @@ function ResultSummary({
   scope,
 }: Readonly<{ row: RunTimelineRow; scope: RunDataScope }>) {
   const query = useQuery(
-    nodeRunOutputQueryOptions(
-      scope.apiClient,
-      scope.userId,
-      scope.workspace.id,
-      scope.runId,
-      { nodeRunId: row.nodeRunId ?? '', status: row.status },
-    ),
+    nodeRunOutputQueryOptions({
+      apiClient: scope.apiClient,
+      userId: scope.userId,
+      workspaceId: scope.workspace.id,
+      runId: scope.runId,
+      step: { nodeRunId: row.nodeRunId ?? '', status: row.status },
+    }),
   );
   const data = query.data;
   if (data === undefined) return query.isError ? 'couldn’t load' : '…';

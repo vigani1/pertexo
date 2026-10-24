@@ -39,7 +39,13 @@ export function useRunRecovery({
     send: async (intent, key) => {
       try {
         return (
-          await recoverRun(apiClient, workspaceId, sourceRunId, intent, key)
+          await recoverRun({
+            client: apiClient,
+            workspaceId,
+            runId: sourceRunId,
+            body: intent,
+            key,
+          })
         ).run.id;
       } catch (cause) {
         void client.invalidateQueries({

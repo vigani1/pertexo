@@ -127,13 +127,13 @@ export function useRunEvents(
                 ? 'degraded'
                 : 'reconnecting',
           );
-          stream = await openWorkflowRunEvents(
+          stream = await openWorkflowRunEvents({
             apiClient,
             workspaceId,
             runId,
-            cursor,
-            controller.signal,
-          );
+            lastEventId: cursor,
+            signal: controller.signal,
+          });
           activeStream = stream;
           openedAt = Date.now();
           if (!isCurrent()) return;

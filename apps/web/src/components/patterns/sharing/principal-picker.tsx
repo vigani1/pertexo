@@ -51,13 +51,13 @@ export function SharingPrincipalPicker({
   const [search, setSearch] = useState('');
   const deferred = useDeferredValue(search.trim());
   const principals = useInfiniteQuery(
-    sharingPrincipalsQueryOptions(
-      apiClient,
+    sharingPrincipalsQueryOptions({
+      api: apiClient,
       userId,
       workspaceId,
       kind,
-      deferred,
-    ),
+      search: deferred,
+    }),
   );
   const items = principals.data?.pages.flatMap((page) => page.items) ?? [];
   const selectedIds = new Set(selected);

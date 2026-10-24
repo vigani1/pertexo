@@ -183,13 +183,13 @@ export function InboxPage({
   const canRead = workspace.capabilities.includes('workspace:read');
   const scope = { apiClient, userId: user.id, workspaceId: workspace.id };
   const threads = useInfiniteQuery({
-    ...inboxThreadsInfiniteQueryOptions(
+    ...inboxThreadsInfiniteQueryOptions({
       apiClient,
-      user.id,
-      workspace.id,
+      userId: user.id,
+      workspaceId: workspace.id,
       filter,
       noticeKind,
-    ),
+    }),
     enabled: canRead,
   });
   const summary = useQuery({

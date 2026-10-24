@@ -38,14 +38,14 @@ export function WorkflowTestDialog({
   const input = useRunInput();
   const [acknowledged, setAcknowledged] = useState(false);
   const [editingCase, setEditingCase] = useState(false);
-  const cases = useInputCases(
-    tests.scope.apiClient,
-    tests.scope.userId,
-    workspace.id,
-    tests.scope.workflowId,
-    false,
-    tests.open && tests.enabled,
-  );
+  const cases = useInputCases({
+    api: tests.scope.apiClient,
+    userId: tests.scope.userId,
+    workspaceId: workspace.id,
+    workflowId: tests.scope.workflowId,
+    canWrite: false,
+    enabled: tests.open && tests.enabled,
+  });
   const locked = tests.start.pending || tests.start.uncertain;
   const trigger = graph.nodes.find(
     (node) =>

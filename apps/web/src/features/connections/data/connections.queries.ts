@@ -49,13 +49,19 @@ export const connectionKeys = {
  * Channel names change rarely and each lookup spends the connection's
  * provider-test allowance, so names stay fresh for five minutes.
  */
-export function slackChannelNamesQueryOptions(
-  apiClient: ApiClient,
-  userId: string,
-  workspaceId: string,
-  connectionId: string,
-  channelIds: readonly string[],
-) {
+export function slackChannelNamesQueryOptions({
+  apiClient,
+  userId,
+  workspaceId,
+  connectionId,
+  channelIds,
+}: Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspaceId: string;
+  connectionId: string;
+  channelIds: readonly string[];
+}>) {
   return queryOptions({
     queryKey: connectionKeys.slackChannels(
       userId,
@@ -64,13 +70,13 @@ export function slackChannelNamesQueryOptions(
       channelIds,
     ),
     queryFn: ({ signal }) =>
-      getSlackChannelNames(
+      getSlackChannelNames({
         apiClient,
         workspaceId,
         connectionId,
         channelIds,
         signal,
-      ),
+      }),
     staleTime: 5 * 60_000,
   });
 }

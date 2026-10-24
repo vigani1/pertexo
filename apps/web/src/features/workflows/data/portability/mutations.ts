@@ -49,13 +49,13 @@ export function useWorkflowImportCommand(
       if (!request.current()) return;
       if (command.workflowId === undefined) {
         phase = 'mutation';
-        const result = await importWorkflow(
+        const result = await importWorkflow({
           apiClient,
           workspaceId,
-          command.body,
-          command.key,
-          request.signal,
-        );
+          body: command.body,
+          idempotencyKey: command.key,
+          signal: request.signal,
+        });
         command.workflowId = result.workflowId;
       }
       phase = 'accepted';

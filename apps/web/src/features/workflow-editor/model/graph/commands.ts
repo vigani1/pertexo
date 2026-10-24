@@ -96,13 +96,19 @@ export function addDefinitionNode(
  * it has one (a Merge pairs `branch-03` with `branch-03`), otherwise its
  * first input. Returns null when that isn't possible.
  */
-export function addStepAfter(
-  graph: WorkflowGraphContract,
-  definition: NodeDefinitionCatalogItem,
-  position: Position,
-  from: PortRef,
-  ids: NewIds = { nodeId: crypto.randomUUID(), edgeId: crypto.randomUUID() },
-): WorkflowGraphContract | null {
+export function addStepAfter({
+  graph,
+  definition,
+  position,
+  from,
+  ids = { nodeId: crypto.randomUUID(), edgeId: crypto.randomUUID() },
+}: Readonly<{
+  graph: WorkflowGraphContract;
+  definition: NodeDefinitionCatalogItem;
+  position: Position;
+  from: PortRef;
+  ids?: NewIds | undefined;
+}>): WorkflowGraphContract | null {
   const inputs = definition.ports.inputs;
   const targetPort = inputs.includes(from.port) ? from.port : inputs[0];
   const scope = scopeOf(graph, from.nodeId);
@@ -126,14 +132,21 @@ export function addStepAfter(
  * Adds a step inside a For each's body, linked from `from` when given
  * (a step already in that body). A For each without a body gets one.
  */
-export function addBodyStep(
-  graph: WorkflowGraphContract,
-  loopId: string,
-  definition: NodeDefinitionCatalogItem,
-  position: Position,
-  ids: NewIds = { nodeId: crypto.randomUUID(), edgeId: crypto.randomUUID() },
-  from?: PortRef,
-): WorkflowGraphContract | null {
+export function addBodyStep({
+  graph,
+  loopId,
+  definition,
+  position,
+  ids = { nodeId: crypto.randomUUID(), edgeId: crypto.randomUUID() },
+  from,
+}: Readonly<{
+  graph: WorkflowGraphContract;
+  loopId: string;
+  definition: NodeDefinitionCatalogItem;
+  position: Position;
+  ids?: NewIds | undefined;
+  from?: PortRef | undefined;
+}>): WorkflowGraphContract | null {
   const loop = findStep(graph, loopId);
   const loopScope = scopeOf(graph, loopId);
   if (loop === undefined || loopScope === undefined || !isForEach(loop))
@@ -155,7 +168,7 @@ export function addBodyStep(
     const fromScope = scopeOf(withBody, from.nodeId);
     added =
       fromScope !== undefined && sameScope(fromScope, bodyScope)
-        ? addStepAfter(withBody, definition, position, from, ids)
+        ? addStepAfter({ graph: withBody, definition, position, from, ids })
         : null;
   } else {
     added = changeLevel(withBody, bodyScope, (level) => ({

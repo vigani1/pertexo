@@ -67,13 +67,13 @@ export function WorkflowPromotionPage({
   });
   const locked = command.pending || command.uncertain;
   const busy = locked || review.isPending;
-  const compatibleReview = promotionReviewIsCurrent(
-    review.data,
-    review.variables,
-    settings.data,
+  const compatibleReview = promotionReviewIsCurrent({
+    review: review.data,
+    context: review.variables,
+    settings: settings.data,
     selections,
     mode,
-  );
+  });
   const ready = promotionCanApply({
     review: review.data,
     current: compatibleReview,

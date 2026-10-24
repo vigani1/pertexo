@@ -615,13 +615,13 @@ describe('workflow organization transport', () => {
     expect(url.searchParams.get('include')).toBe('organization');
     expect(url.searchParams.has('actorId')).toBe(false);
     await getWorkflowTagsPage(client(fetch), workspaceId, {}, signal());
-    await getWorkflowTagAssignmentsPage(
-      client(fetch),
+    await getWorkflowTagAssignmentsPage({
+      api: client(fetch),
       workspaceId,
-      'tag/path',
-      {},
-      signal(),
-    );
+      tagId: 'tag/path',
+      input: {},
+      signal: signal(),
+    });
     expect(requestUrl(fetch.mock.calls[2]?.[0])).toContain(
       'tag%2Fpath/workflows',
     );
@@ -655,33 +655,33 @@ describe('workflow organization transport', () => {
     ).rejects.toMatchObject({ kind: 'protocol' });
     fetch.mockResolvedValueOnce(json(projection));
     await expect(
-      getWorkflowOrganizationProjection(
+      getWorkflowOrganizationProjection({
         api,
         workspaceId,
         workflowId,
-        { include: 'organization' },
-        signal(),
-      ),
+        input: { include: 'organization' },
+        signal: signal(),
+      }),
     ).resolves.toEqual(projection);
     fetch.mockResolvedValueOnce(json({ ...projection, templateOrigin: null }));
     await expect(
-      getWorkflowOrganizationProjection(
+      getWorkflowOrganizationProjection({
         api,
         workspaceId,
         workflowId,
-        { include: 'templateOrigin,organization' },
-        signal(),
-      ),
+        input: { include: 'templateOrigin,organization' },
+        signal: signal(),
+      }),
     ).resolves.toMatchObject({ templateOrigin: null });
     fetch.mockResolvedValueOnce(json({ ...projection, actorId: userId }));
     await expect(
-      getWorkflowOrganizationProjection(
+      getWorkflowOrganizationProjection({
         api,
         workspaceId,
         workflowId,
-        { include: 'organization' },
-        signal(),
-      ),
+        input: { include: 'organization' },
+        signal: signal(),
+      }),
     ).rejects.toMatchObject({ kind: 'protocol' });
   });
 
@@ -824,13 +824,13 @@ describe('workflow organization transport', () => {
         }),
     );
     const queries = new QueryClient();
-    const options = workflowOrganizationProjectionQueryOptions(
-      client(fetch),
+    const options = workflowOrganizationProjectionQueryOptions({
+      api: client(fetch),
       userId,
       workspaceId,
       workflowId,
-      { include: 'organization' },
-    );
+      input: { include: 'organization' },
+    });
     const pending = queries.query(options).catch(() => undefined);
     await vi.waitFor(() => {
       expect(fetch).toHaveBeenCalledTimes(1);

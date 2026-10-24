@@ -29,13 +29,19 @@ export function getApiTokensPage(
 }
 
 /** The caller owns the one-time response; never pass this through a mutation cache. */
-export function createApiToken(
-  apiClient: ApiClient,
-  workspaceId: string,
-  body: ApiTokenCreateRequest,
-  idempotencyKey: string,
-  signal: AbortSignal,
-) {
+export function createApiToken({
+  apiClient,
+  workspaceId,
+  body,
+  idempotencyKey,
+  signal,
+}: Readonly<{
+  apiClient: ApiClient;
+  workspaceId: string;
+  body: ApiTokenCreateRequest;
+  idempotencyKey: string;
+  signal: AbortSignal;
+}>) {
   return apiClient.request({
     path: path(workspaceId),
     method: 'POST',

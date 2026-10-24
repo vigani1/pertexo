@@ -25,13 +25,13 @@ export function LiveVersion({
   const versionId =
     workflow?.lifecycleStatus === 'active' ? workflow.publishedVersionId : null;
   const version = useQuery({
-    ...liveVersionQueryOptions(
+    ...liveVersionQueryOptions({
       apiClient,
       userId,
       workspaceId,
-      workflow?.id ?? '',
-      versionId ?? '',
-    ),
+      workflowId: workflow?.id ?? '',
+      versionId: versionId ?? '',
+    }),
     enabled: versionId !== null,
   });
   if (

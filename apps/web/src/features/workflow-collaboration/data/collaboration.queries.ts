@@ -51,7 +51,7 @@ export function discussionQuery(
     ],
     initialPageParam: null as string | null,
     queryFn: ({ signal, pageParam }) =>
-      readDiscussion(scope, threadId, pageParam, anchor, signal),
+      readDiscussion({ scope, threadId, before: pageParam, anchor, signal }),
     getNextPageParam: (page) => page.nextCursor,
     refetchInterval: COLLABORATION_LIMITS.pollMs,
     gcTime: 0,

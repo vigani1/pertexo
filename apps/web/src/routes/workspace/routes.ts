@@ -308,13 +308,13 @@ export const inboxRoute = createRoute({
     if (!workspace.capabilities.includes('workspace:read')) return;
     warmPrefetches(context, [
       queryClient.infiniteQuery(
-        inboxThreadsInfiniteQueryOptions(
+        inboxThreadsInfiniteQueryOptions({
           apiClient,
-          user.id,
-          workspace.id,
-          deps.filter,
-          deps.noticeKind,
-        ),
+          userId: user.id,
+          workspaceId: workspace.id,
+          filter: deps.filter,
+          noticeKind: deps.noticeKind,
+        }),
       ),
       queryClient.query(
         inboxSummaryQueryOptions(apiClient, user.id, workspace.id),

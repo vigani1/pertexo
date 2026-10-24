@@ -49,13 +49,13 @@ export function ScheduleOccurrences({
   triggerId: string;
 }>) {
   const occurrences = useInfiniteQuery(
-    scheduleOccurrencesInfiniteQueryOptions(
+    scheduleOccurrencesInfiniteQueryOptions({
       apiClient,
       userId,
       workspaceId,
       workflowId,
       triggerId,
-    ),
+    }),
   );
   return (
     <RecentLog

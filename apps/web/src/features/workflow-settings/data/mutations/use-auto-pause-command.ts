@@ -41,13 +41,13 @@ export function useAutoPauseCommand(
     setProblem(undefined);
     setConflict(false);
     try {
-      await commandAutoPause(
+      await commandAutoPause({
         apiClient,
         workspaceId,
         workflowId,
-        request.command,
-        request.key,
-      );
+        command: request.command,
+        key: request.key,
+      });
       attempt.current = undefined;
       setUnconfirmed(false);
       return true;

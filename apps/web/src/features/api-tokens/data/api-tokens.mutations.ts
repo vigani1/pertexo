@@ -5,13 +5,19 @@ import type { ApiClient } from '@/lib/api/client';
 import { revokeApiToken } from './api-tokens.api';
 import { apiTokenKeys } from './api-tokens.queries';
 
-export function useTokenRevocation(
-  apiClient: ApiClient,
-  userId: string,
-  workspaceId: string,
-  tokenId: string,
-  key: string,
-) {
+export function useTokenRevocation({
+  apiClient,
+  userId,
+  workspaceId,
+  tokenId,
+  key,
+}: Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspaceId: string;
+  tokenId: string;
+  key: string;
+}>) {
   const queryClient = useQueryClient();
   const queryKey = apiTokenKeys.list(userId, workspaceId);
   return useMutation({

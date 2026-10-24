@@ -104,13 +104,13 @@ function TestOutputValue({
   status,
 }: Readonly<TestOutputProps>) {
   const output = useQuery(
-    nodeRunOutputQueryOptions(
-      tests.scope.apiClient,
-      tests.scope.userId,
-      tests.scope.workspaceId,
+    nodeRunOutputQueryOptions({
+      apiClient: tests.scope.apiClient,
+      userId: tests.scope.userId,
+      workspaceId: tests.scope.workspaceId,
       runId,
-      { nodeRunId, status },
-    ),
+      step: { nodeRunId, status },
+    }),
   );
   return (
     <QueryView query={output} resource="Test step output">

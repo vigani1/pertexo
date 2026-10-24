@@ -18,21 +18,27 @@ function base(workspaceId: string): `/v1${string}` {
   return `/v1/workspaces/${encodeURIComponent(workspaceId)}/workflows`;
 }
 
-export async function readWorkflowExportSource(
-  apiClient: ApiClient,
-  workspaceId: string,
-  workflowId: string,
-  source: WorkflowExportRequest['source'],
-  signal: AbortSignal,
-) {
+export async function readWorkflowExportSource({
+  apiClient,
+  workspaceId,
+  workflowId,
+  source,
+  signal,
+}: Readonly<{
+  apiClient: ApiClient;
+  workspaceId: string;
+  workflowId: string;
+  source: WorkflowExportRequest['source'];
+  signal: AbortSignal;
+}>) {
   if (source.kind === 'version') {
-    const version = await findWorkflowVersion(
+    const version = await findWorkflowVersion({
       apiClient,
       workspaceId,
       workflowId,
-      source.versionId,
+      versionId: source.versionId,
       signal,
-    );
+    });
     return {
       graph: version.graph,
       label: `Exports v${String(version.versionNumber)} exactly as it was published`,
@@ -55,14 +61,21 @@ export async function readWorkflowExportSource(
   });
 }
 
-export function exportWorkflow(
-  apiClient: ApiClient,
-  workspaceId: string,
-  workflowId: string,
-  body: WorkflowExportRequest,
-  etag: string | undefined,
-  signal: AbortSignal,
-) {
+export function exportWorkflow({
+  apiClient,
+  workspaceId,
+  workflowId,
+  body,
+  etag,
+  signal,
+}: Readonly<{
+  apiClient: ApiClient;
+  workspaceId: string;
+  workflowId: string;
+  body: WorkflowExportRequest;
+  etag: string | undefined;
+  signal: AbortSignal;
+}>) {
   return apiClient.request({
     path: `${base(workspaceId)}/${encodeURIComponent(workflowId)}/export`,
     method: 'POST',
@@ -97,13 +110,19 @@ export function previewWorkflowImport(
   });
 }
 
-export function importWorkflow(
-  apiClient: ApiClient,
-  workspaceId: string,
-  body: WorkflowImportRequest,
-  idempotencyKey: string,
-  signal: AbortSignal,
-) {
+export function importWorkflow({
+  apiClient,
+  workspaceId,
+  body,
+  idempotencyKey,
+  signal,
+}: Readonly<{
+  apiClient: ApiClient;
+  workspaceId: string;
+  body: WorkflowImportRequest;
+  idempotencyKey: string;
+  signal: AbortSignal;
+}>) {
   return apiClient.request({
     path: `${base(workspaceId)}/import`,
     method: 'POST',

@@ -33,23 +33,30 @@ export async function verifyDuplicateAuthority(
   );
 }
 
-export function observeDuplicateAccessLoss(
-  queryClient: QueryClient,
-  userId: string,
-  workspaceId: string,
-  workflowId: string,
-  isCurrent: () => boolean,
-  retire: () => void,
-) {
-  return watchWorkspaceReadDenial(
+export function observeDuplicateAccessLoss({
+  queryClient,
+  userId,
+  workspaceId,
+  workflowId,
+  isCurrent,
+  retire,
+}: Readonly<{
+  queryClient: QueryClient;
+  userId: string;
+  workspaceId: string;
+  workflowId: string;
+  isCurrent: () => boolean;
+  retire: () => void;
+}>) {
+  return watchWorkspaceReadDenial({
     queryClient,
     userId,
     workspaceId,
-    ({ key, error }) =>
+    counts: ({ key, error }) =>
       isCurrent() &&
       (error.status === 401 ||
         key[0] === 'workflows' ||
         (key[0] === 'workflow' && key[1] === workflowId)),
-    retire,
-  );
+    denied: retire,
+  });
 }

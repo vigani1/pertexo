@@ -39,14 +39,14 @@ export function usePortabilityLifetime(
     const unsubscribe = subscribeSessionChanges(retire);
     // An unrelated feature's denial or not-found is not workspace authority
     // loss; an ended session still retires the whole scoped lifetime.
-    const unsubscribeCache = watchWorkspaceReadDenial(
+    const unsubscribeCache = watchWorkspaceReadDenial({
       queryClient,
       userId,
       workspaceId,
-      ({ key, error }) =>
+      counts: ({ key, error }) =>
         error.status === 401 || key.length === 0 || key[0] === 'workflows',
-      retire,
-    );
+      denied: retire,
+    });
     return () => {
       unsubscribe();
       unsubscribeCache();

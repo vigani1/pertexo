@@ -55,13 +55,13 @@ export function WebhookDeliveries({
   endpointReady: boolean;
 }>) {
   const deliveries = useInfiniteQuery(
-    webhookDeliveriesInfiniteQueryOptions(
+    webhookDeliveriesInfiniteQueryOptions({
       apiClient,
       userId,
       workspaceId,
       workflowId,
       triggerId,
-    ),
+    }),
   );
   return (
     <RecentLog

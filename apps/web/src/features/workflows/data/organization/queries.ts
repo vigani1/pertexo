@@ -144,13 +144,19 @@ export function workflowOrganizationInfiniteQueryOptions(
   });
 }
 
-export function workflowOrganizationProjectionQueryOptions(
-  api: ApiClient,
-  userId: string,
-  workspaceId: string,
-  workflowId: string,
-  input: unknown,
-) {
+export function workflowOrganizationProjectionQueryOptions({
+  api,
+  userId,
+  workspaceId,
+  workflowId,
+  input,
+}: Readonly<{
+  api: ApiClient;
+  userId: string;
+  workspaceId: string;
+  workflowId: string;
+  input: unknown;
+}>) {
   const query = normalizeWorkflowOrganizationProjectionQuery(input);
   return queryOptions({
     queryKey: workflowOrganizationKeys.detail(
@@ -160,13 +166,13 @@ export function workflowOrganizationProjectionQueryOptions(
       query,
     ),
     queryFn: ({ signal }) =>
-      getWorkflowOrganizationProjection(
+      getWorkflowOrganizationProjection({
         api,
         workspaceId,
         workflowId,
-        query,
+        input: query,
         signal,
-      ),
+      }),
     retry: false,
   });
 }
@@ -193,13 +199,19 @@ export function workflowTagsInfiniteQueryOptions(
   });
 }
 
-export function workflowTagAssignmentsInfiniteQueryOptions(
-  api: ApiClient,
-  userId: string,
-  workspaceId: string,
-  tagId: string,
-  input: unknown = {},
-) {
+export function workflowTagAssignmentsInfiniteQueryOptions({
+  api,
+  userId,
+  workspaceId,
+  tagId,
+  input = {},
+}: Readonly<{
+  api: ApiClient;
+  userId: string;
+  workspaceId: string;
+  tagId: string;
+  input?: unknown;
+}>) {
   const query = workflowTagAssignmentsQuerySchema.parse(input);
   return infiniteQueryOptions({
     queryKey: workflowOrganizationKeys.assignments(
@@ -209,13 +221,13 @@ export function workflowTagAssignmentsInfiniteQueryOptions(
       query,
     ),
     queryFn: ({ pageParam, signal }) =>
-      getWorkflowTagAssignmentsPage(
+      getWorkflowTagAssignmentsPage({
         api,
         workspaceId,
         tagId,
-        { ...query, after: pageParam ?? undefined },
+        input: { ...query, after: pageParam ?? undefined },
         signal,
-      ),
+      }),
     initialPageParam: query.after ?? null,
     getNextPageParam: (page) => page.nextCursor ?? undefined,
     retry: false,

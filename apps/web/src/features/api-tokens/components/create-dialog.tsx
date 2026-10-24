@@ -47,13 +47,13 @@ export function CreateTokenDialog({
     const attempt = request.begin();
     setView({ kind: 'form' });
     try {
-      const result = await createApiToken(
+      const result = await createApiToken({
         apiClient,
         workspaceId,
         body,
-        crypto.randomUUID(),
-        attempt.signal,
-      );
+        idempotencyKey: crypto.randomUUID(),
+        signal: attempt.signal,
+      });
       if (!attempt.isCurrent()) return;
       setView(
         result.replayed

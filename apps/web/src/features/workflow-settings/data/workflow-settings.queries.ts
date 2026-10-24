@@ -80,13 +80,19 @@ const initialPageParam: string | null = null;
 const MAX_TIMER_MS = 2_147_483_647;
 
 /** A webhook's retained delivery log, one page of ten at a time. */
-export function webhookDeliveriesInfiniteQueryOptions(
-  apiClient: ApiClient,
-  userId: string,
-  workspaceId: string,
-  workflowId: string,
-  triggerId: string,
-) {
+export function webhookDeliveriesInfiniteQueryOptions({
+  apiClient,
+  userId,
+  workspaceId,
+  workflowId,
+  triggerId,
+}: Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspaceId: string;
+  workflowId: string;
+  triggerId: string;
+}>) {
   return infiniteQueryOptions({
     queryKey: workflowSettingsKeys.webhookDeliveries(
       userId,
@@ -95,9 +101,15 @@ export function webhookDeliveriesInfiniteQueryOptions(
       triggerId,
     ),
     queryFn: ({ pageParam, signal }) =>
-      getWebhookDeliveriesPage(apiClient, workspaceId, workflowId, triggerId, {
-        ...(pageParam === null ? {} : { after: pageParam }),
-        signal,
+      getWebhookDeliveriesPage({
+        apiClient,
+        workspaceId,
+        workflowId,
+        triggerId,
+        input: {
+          ...(pageParam === null ? {} : { after: pageParam }),
+          signal,
+        },
       }),
     initialPageParam,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
@@ -105,13 +117,19 @@ export function webhookDeliveriesInfiniteQueryOptions(
 }
 
 /** The next three times a published schedule fires; under its schedule key. */
-export function scheduleNextRunsQueryOptions(
-  apiClient: ApiClient,
-  userId: string,
-  workspaceId: string,
-  workflowId: string,
-  triggerId: string,
-) {
+export function scheduleNextRunsQueryOptions({
+  apiClient,
+  userId,
+  workspaceId,
+  workflowId,
+  triggerId,
+}: Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspaceId: string;
+  workflowId: string;
+  triggerId: string;
+}>) {
   return queryOptions({
     queryKey: workflowSettingsKeys.scheduleNextRuns(
       userId,
@@ -120,13 +138,13 @@ export function scheduleNextRunsQueryOptions(
       triggerId,
     ),
     queryFn: ({ signal }) =>
-      getScheduleNextRuns(
+      getScheduleNextRuns({
         apiClient,
         workspaceId,
         workflowId,
         triggerId,
         signal,
-      ),
+      }),
     // Ask again once the first run time has passed, but no more than twice
     // a minute while a due run waits for the scheduler.
     refetchInterval: (query) => {
@@ -139,13 +157,19 @@ export function scheduleNextRunsQueryOptions(
 }
 
 /** A schedule's retained occurrences, one page of ten at a time. */
-export function scheduleOccurrencesInfiniteQueryOptions(
-  apiClient: ApiClient,
-  userId: string,
-  workspaceId: string,
-  workflowId: string,
-  triggerId: string,
-) {
+export function scheduleOccurrencesInfiniteQueryOptions({
+  apiClient,
+  userId,
+  workspaceId,
+  workflowId,
+  triggerId,
+}: Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspaceId: string;
+  workflowId: string;
+  triggerId: string;
+}>) {
   return infiniteQueryOptions({
     queryKey: workflowSettingsKeys.scheduleOccurrences(
       userId,
@@ -154,13 +178,13 @@ export function scheduleOccurrencesInfiniteQueryOptions(
       triggerId,
     ),
     queryFn: ({ pageParam, signal }) =>
-      getScheduleOccurrencesPage(
+      getScheduleOccurrencesPage({
         apiClient,
         workspaceId,
         workflowId,
         triggerId,
-        { ...(pageParam === null ? {} : { after: pageParam }), signal },
-      ),
+        input: { ...(pageParam === null ? {} : { after: pageParam }), signal },
+      }),
     initialPageParam,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });

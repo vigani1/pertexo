@@ -50,13 +50,19 @@ function triggerPath(
 }
 
 /** When a published schedule fires next, by the scheduler's own rules. */
-export function getScheduleNextRuns(
-  apiClient: ApiClient,
-  workspaceId: string,
-  workflowId: string,
-  triggerId: string,
-  signal?: AbortSignal,
-): Promise<ScheduleFireTimesResponse> {
+export function getScheduleNextRuns({
+  apiClient,
+  workspaceId,
+  workflowId,
+  triggerId,
+  signal,
+}: Readonly<{
+  apiClient: ApiClient;
+  workspaceId: string;
+  workflowId: string;
+  triggerId: string;
+  signal?: AbortSignal | undefined;
+}>): Promise<ScheduleFireTimesResponse> {
   return apiClient.request({
     path: `${triggerPath(workspaceId, workflowId, triggerId)}/schedule/next-runs?${searchParams({ count: 3 })}`,
     ...(signal === undefined ? {} : { signal }),
@@ -68,13 +74,19 @@ export function getScheduleNextRuns(
 }
 
 /** One page of a schedule's retained occurrences, newest first. */
-export function getScheduleOccurrencesPage(
-  apiClient: ApiClient,
-  workspaceId: string,
-  workflowId: string,
-  triggerId: string,
-  input: Readonly<{ after?: string; signal?: AbortSignal }> = {},
-): Promise<ScheduleOccurrenceListResponse> {
+export function getScheduleOccurrencesPage({
+  apiClient,
+  workspaceId,
+  workflowId,
+  triggerId,
+  input = {},
+}: Readonly<{
+  apiClient: ApiClient;
+  workspaceId: string;
+  workflowId: string;
+  triggerId: string;
+  input?: Readonly<{ after?: string; signal?: AbortSignal }> | undefined;
+}>): Promise<ScheduleOccurrenceListResponse> {
   const query = searchParams({ limit: 10, after: input.after });
   return apiClient.request({
     path: `${triggerPath(workspaceId, workflowId, triggerId)}/schedule/occurrences?${query}`,
@@ -86,14 +98,21 @@ export function getScheduleOccurrencesPage(
   });
 }
 
-export function setScheduleEnabled(
-  apiClient: ApiClient,
-  workspaceId: string,
-  workflowId: string,
-  triggerId: string,
-  enabled: boolean,
-  idempotencyKey: string,
-): Promise<ScheduleManagementCommandResponse> {
+export function setScheduleEnabled({
+  apiClient,
+  workspaceId,
+  workflowId,
+  triggerId,
+  enabled,
+  idempotencyKey,
+}: Readonly<{
+  apiClient: ApiClient;
+  workspaceId: string;
+  workflowId: string;
+  triggerId: string;
+  enabled: boolean;
+  idempotencyKey: string;
+}>): Promise<ScheduleManagementCommandResponse> {
   return apiClient.request({
     path: `${workflowPath(workspaceId, workflowId)}/triggers/${encodeURIComponent(triggerId)}/schedule/${enabled ? 'enable' : 'disable'}`,
     method: 'POST',
@@ -123,13 +142,19 @@ export function getWebhookTriggers(
 }
 
 /** One page of a webhook's retained delivery metadata, newest first. */
-export function getWebhookDeliveriesPage(
-  apiClient: ApiClient,
-  workspaceId: string,
-  workflowId: string,
-  triggerId: string,
-  input: Readonly<{ after?: string; signal?: AbortSignal }> = {},
-): Promise<WebhookDeliveryListResponse> {
+export function getWebhookDeliveriesPage({
+  apiClient,
+  workspaceId,
+  workflowId,
+  triggerId,
+  input = {},
+}: Readonly<{
+  apiClient: ApiClient;
+  workspaceId: string;
+  workflowId: string;
+  triggerId: string;
+  input?: Readonly<{ after?: string; signal?: AbortSignal }> | undefined;
+}>): Promise<WebhookDeliveryListResponse> {
   const query = searchParams({ limit: 10, after: input.after });
   return apiClient.request({
     path: `${workflowPath(workspaceId, workflowId)}/triggers/${encodeURIComponent(triggerId)}/webhook/deliveries?${query}`,
@@ -141,11 +166,17 @@ export function getWebhookDeliveriesPage(
   });
 }
 
-export function commandWebhook(
-  apiClient: ApiClient,
-  workspaceId: string,
-  workflowId: string,
-  triggerId: string,
+export function commandWebhook({
+  apiClient,
+  workspaceId,
+  workflowId,
+  triggerId,
+  input,
+}: Readonly<{
+  apiClient: ApiClient;
+  workspaceId: string;
+  workflowId: string;
+  triggerId: string;
   input:
     | Readonly<{
         command: 'provision' | 'rotate-endpoint';
@@ -160,8 +191,8 @@ export function commandWebhook(
         command: 'rotate-secret';
         endpointKey: string;
         idempotencyKey: string;
-      }>,
-): Promise<WebhookManagementCommandResponse> {
+      }>;
+}>): Promise<WebhookManagementCommandResponse> {
   const body =
     input.command === 'authentication'
       ? webhookAuthenticationSchema.parse(input.authentication)
@@ -200,13 +231,19 @@ export function getFailureNotificationPolicy(
   });
 }
 
-export function setFailureNotificationPolicy(
-  apiClient: ApiClient,
-  workspaceId: string,
-  workflowId: string,
-  destinationId: string,
-  idempotencyKey: string,
-): Promise<void> {
+export function setFailureNotificationPolicy({
+  apiClient,
+  workspaceId,
+  workflowId,
+  destinationId,
+  idempotencyKey,
+}: Readonly<{
+  apiClient: ApiClient;
+  workspaceId: string;
+  workflowId: string;
+  destinationId: string;
+  idempotencyKey: string;
+}>): Promise<void> {
   return apiClient.request({
     path: `${workflowPath(workspaceId, workflowId)}/failure-notification-policy`,
     method: 'PUT',

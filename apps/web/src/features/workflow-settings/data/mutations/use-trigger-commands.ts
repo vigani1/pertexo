@@ -49,14 +49,14 @@ export function useScheduleCommand({
     setPendingTriggerId(triggerId);
     setError(undefined);
     try {
-      await setScheduleEnabled(
+      await setScheduleEnabled({
         apiClient,
         workspaceId,
         workflowId,
         triggerId,
         enabled,
-        attempt.key,
-      );
+        idempotencyKey: attempt.key,
+      });
       commands.complete(scope, String(enabled));
       await queryClient.invalidateQueries({
         queryKey: workflowSettingsKeys.schedules(
@@ -183,7 +183,7 @@ export function useWebhookCommand({
     setPending({ triggerId: attempt.triggerId, command: attempt.command });
     setError(undefined);
     try {
-      let input: Parameters<typeof commandWebhook>[4];
+      let input: Parameters<typeof commandWebhook>[0]['input'];
       if (attempt.command === 'authentication') {
         if (attempt.authentication === undefined)
           throw new Error('Webhook authentication intent is missing');
@@ -203,13 +203,13 @@ export function useWebhookCommand({
           command: attempt.command,
           idempotencyKey: attempt.idempotencyKey,
         };
-      const response = await commandWebhook(
+      const response = await commandWebhook({
         apiClient,
         workspaceId,
         workflowId,
-        attempt.triggerId,
+        triggerId: attempt.triggerId,
         input,
-      );
+      });
       commands.complete(scope, attempt.intent);
       unresolvedAttemptRef.current = undefined;
       setUnresolvedAttempt(undefined);

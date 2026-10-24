@@ -9,13 +9,19 @@ interface ReviewContext {
   body: WorkflowPromotionPreviewRequest;
   linkRevision: number;
 }
-export function promotionReviewIsCurrent(
-  review: WorkflowPromotionPreview | undefined,
-  context: ReviewContext | undefined,
-  settings: WorkflowPromotionSettings | undefined,
-  selections: WorkflowPromotionPreviewRequest['selections'],
-  mode: WorkflowPromotionMode,
-): boolean {
+export function promotionReviewIsCurrent({
+  review,
+  context,
+  settings,
+  selections,
+  mode,
+}: Readonly<{
+  review: WorkflowPromotionPreview | undefined;
+  context: ReviewContext | undefined;
+  settings: WorkflowPromotionSettings | undefined;
+  selections: WorkflowPromotionPreviewRequest['selections'];
+  mode: WorkflowPromotionMode;
+}>): boolean {
   if (
     review === undefined ||
     context === undefined ||

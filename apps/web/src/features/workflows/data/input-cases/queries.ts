@@ -23,7 +23,13 @@ export function inputCasesQueryOptions(
     queryKey: inputCasesKey(userId, workspaceId, workflowId),
     initialPageParam: undefined as string | undefined,
     queryFn: ({ signal, pageParam }) =>
-      listInputCases(api, workspaceId, workflowId, signal, pageParam),
+      listInputCases({
+        api,
+        workspaceId,
+        workflowId,
+        signal,
+        after: pageParam,
+      }),
     getNextPageParam: (page, _pages, _pageParam, pageParams) =>
       page.nextCursor !== undefined && !pageParams.includes(page.nextCursor)
         ? page.nextCursor

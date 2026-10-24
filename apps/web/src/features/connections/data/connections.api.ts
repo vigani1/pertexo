@@ -162,13 +162,19 @@ export function rotateConnectionSecret(
 }
 
 /** ADR 046: display names for up to ten Slack channel IDs. */
-export function getSlackChannelNames(
-  apiClient: ApiClient,
-  workspaceId: string,
-  connectionId: string,
-  channelIds: readonly string[],
-  signal?: AbortSignal,
-): Promise<SlackChannelLookupResponse> {
+export function getSlackChannelNames({
+  apiClient,
+  workspaceId,
+  connectionId,
+  channelIds,
+  signal,
+}: Readonly<{
+  apiClient: ApiClient;
+  workspaceId: string;
+  connectionId: string;
+  channelIds: readonly string[];
+  signal?: AbortSignal | undefined;
+}>): Promise<SlackChannelLookupResponse> {
   const query = searchParams({ channelIds: channelIds.join(',') });
   return apiClient.request({
     path: `${connectionPath(workspaceId, connectionId)}/slack/channels?${query}`,

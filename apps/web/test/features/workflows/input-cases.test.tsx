@@ -57,13 +57,13 @@ function CaseBrowser(
   props: Omit<React.ComponentProps<typeof InputCasesPanel>, 'cases'> &
     Readonly<{ apiClient: ReturnType<typeof createApiClient>; userId: string }>,
 ) {
-  const cases = useInputCases(
-    props.apiClient,
-    props.userId,
-    props.workspace.id,
-    props.workflow.id,
-    props.workspace.capabilities.includes('workflow:update'),
-  );
+  const cases = useInputCases({
+    api: props.apiClient,
+    userId: props.userId,
+    workspaceId: props.workspace.id,
+    workflowId: props.workflow.id,
+    canWrite: props.workspace.capabilities.includes('workflow:update'),
+  });
   return <InputCasesPanel {...props} cases={cases} />;
 }
 
@@ -149,7 +149,14 @@ describe('shared workflow input cases', () => {
     );
     function ClosedCaseBrowser() {
       const [revision, setRevision] = useState(0);
-      useInputCases(apiClient, userId, workspaceId, workflowId, true, false);
+      useInputCases({
+        api: apiClient,
+        userId,
+        workspaceId,
+        workflowId,
+        canWrite: true,
+        enabled: false,
+      });
       return (
         <button
           onClick={() => {

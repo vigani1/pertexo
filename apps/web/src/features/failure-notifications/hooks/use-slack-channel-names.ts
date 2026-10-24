@@ -29,13 +29,13 @@ export function useSlackChannelNames({
   const lookups = channelLookups(channels);
   const results = useQueries({
     queries: lookups.map(({ connectionId, channelIds }) => ({
-      ...slackChannelNamesQueryOptions(
+      ...slackChannelNamesQueryOptions({
         apiClient,
         userId,
         workspaceId,
         connectionId,
         channelIds,
-      ),
+      }),
       enabled,
     })),
   });

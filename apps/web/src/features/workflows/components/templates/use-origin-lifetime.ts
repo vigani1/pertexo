@@ -37,18 +37,18 @@ export function useTemplateOriginLifetime(
     const exact = (key: readonly unknown[], candidate: readonly unknown[]) =>
       key.length === candidate.length - 4 &&
       candidate.slice(4).every((part, index) => part === key[index]);
-    const unsubscribeCache = watchWorkspaceReadDenial(
+    const unsubscribeCache = watchWorkspaceReadDenial({
       queryClient,
       userId,
       workspaceId,
-      ({ key, error }) =>
+      counts: ({ key, error }) =>
         error.status === 401 ||
         key.length === 0 ||
         exact(key, scopeKey) ||
         exact(key, detailKey) ||
         exact(key, originKey),
-      retire,
-    );
+      denied: retire,
+    });
     if (!allowed) queueMicrotask(retire);
     return () => {
       unsubscribeSession();

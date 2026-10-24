@@ -226,13 +226,13 @@ export function StepRunOutput({
   emptyText?: string;
 }>) {
   const query = useQuery({
-    ...nodeRunOutputQueryOptions(
-      scope.apiClient,
-      scope.userId,
-      scope.workspace.id,
-      scope.runId,
-      { nodeRunId: nodeRunId ?? '', status },
-    ),
+    ...nodeRunOutputQueryOptions({
+      apiClient: scope.apiClient,
+      userId: scope.userId,
+      workspaceId: scope.workspace.id,
+      runId: scope.runId,
+      step: { nodeRunId: nodeRunId ?? '', status },
+    }),
     enabled: nodeRunId !== undefined,
   });
   const nothingYet =
@@ -343,17 +343,17 @@ function RecordedStepInput({
   children: ReactNode;
 }>) {
   const recorded = useQuery({
-    ...nodeRunInputQueryOptions(
-      scope.apiClient,
-      scope.userId,
-      scope.workspace.id,
-      scope.runId,
-      {
+    ...nodeRunInputQueryOptions({
+      apiClient: scope.apiClient,
+      userId: scope.userId,
+      workspaceId: scope.workspace.id,
+      runId: scope.runId,
+      step: {
         nodeRunId,
         attemptNumber: row.currentAttemptNumber,
         status: row.status,
       },
-    ),
+    }),
   });
   return (
     <QueryView

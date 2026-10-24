@@ -81,13 +81,19 @@ export function getWorkflowOrganizationPage(
   });
 }
 
-export function getWorkflowOrganizationProjection(
-  api: ApiClient,
-  workspaceId: string,
-  workflowId: string,
-  input: unknown,
-  signal: AbortSignal,
-) {
+export function getWorkflowOrganizationProjection({
+  api,
+  workspaceId,
+  workflowId,
+  input,
+  signal,
+}: Readonly<{
+  api: ApiClient;
+  workspaceId: string;
+  workflowId: string;
+  input: unknown;
+  signal: AbortSignal;
+}>) {
   const query = normalizeWorkflowOrganizationProjectionQuery(input);
   return api.request({
     path: `${workspacePath(workspaceId)}/workflows/${encodeURIComponent(workflowId)}?${queryString(query)}`,
@@ -119,13 +125,19 @@ export function getWorkflowTagsPage(
   });
 }
 
-export function getWorkflowTagAssignmentsPage(
-  api: ApiClient,
-  workspaceId: string,
-  tagId: string,
-  input: unknown,
-  signal: AbortSignal,
-) {
+export function getWorkflowTagAssignmentsPage({
+  api,
+  workspaceId,
+  tagId,
+  input,
+  signal,
+}: Readonly<{
+  api: ApiClient;
+  workspaceId: string;
+  tagId: string;
+  input: unknown;
+  signal: AbortSignal;
+}>) {
   const query = workflowTagAssignmentsQuerySchema.parse(input);
   return api.request({
     path: `${workspacePath(workspaceId)}/workflow-tags/${encodeURIComponent(tagId)}/workflows?${queryString({ limit: 25, ...query })}`,

@@ -126,13 +126,13 @@ export function useWorkflowVersionRestore({
       delete attempt.replacementEtag;
       attempt.uncertain = false;
     }
-    await restoreWorkflowVersion(
+    await restoreWorkflowVersion({
       apiClient,
       workspaceId,
       workflowId,
-      attempt.version.id,
-      attempt.expectedEtag,
-    );
+      versionId: attempt.version.id,
+      etag: attempt.expectedEtag,
+    });
     return complete();
   }
 

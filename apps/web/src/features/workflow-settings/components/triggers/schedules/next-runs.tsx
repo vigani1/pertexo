@@ -26,13 +26,13 @@ export function ScheduleNextRuns({
 }>) {
   const headingId = useId();
   const nextRuns = useQuery(
-    scheduleNextRunsQueryOptions(
+    scheduleNextRunsQueryOptions({
       apiClient,
       userId,
       workspaceId,
       workflowId,
-      trigger.id,
-    ),
+      triggerId: trigger.id,
+    }),
   );
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-2">

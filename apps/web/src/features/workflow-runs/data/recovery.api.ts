@@ -24,13 +24,19 @@ export function getRunRecovery(
     },
   });
 }
-export function recoverRun(
-  client: ApiClient,
-  workspaceId: string,
-  runId: string,
-  body: WorkflowRecoveryRequest,
-  key: string,
-) {
+export function recoverRun({
+  client,
+  workspaceId,
+  runId,
+  body,
+  key,
+}: Readonly<{
+  client: ApiClient;
+  workspaceId: string;
+  runId: string;
+  body: WorkflowRecoveryRequest;
+  key: string;
+}>) {
   return client.request({
     path: `${path(workspaceId, runId)}/recover`,
     method: 'POST',

@@ -13,13 +13,19 @@ function casesPath(workspaceId: string, workflowId: string): `/v1${string}` {
   return `/v1/workspaces/${encodeURIComponent(workspaceId)}/workflows/${encodeURIComponent(workflowId)}/input-cases`;
 }
 
-export function listInputCases(
-  api: ApiClient,
-  workspaceId: string,
-  workflowId: string,
-  signal: AbortSignal,
-  after?: string,
-) {
+export function listInputCases({
+  api,
+  workspaceId,
+  workflowId,
+  signal,
+  after,
+}: Readonly<{
+  api: ApiClient;
+  workspaceId: string;
+  workflowId: string;
+  signal: AbortSignal;
+  after?: string | undefined;
+}>) {
   const query = new URLSearchParams({
     limit: '20',
     ...(after === undefined ? {} : { after }),
@@ -34,13 +40,19 @@ export function listInputCases(
   });
 }
 
-export async function getInputCase(
-  api: ApiClient,
-  workspaceId: string,
-  workflowId: string,
-  caseId: string,
-  signal: AbortSignal,
-) {
+export async function getInputCase({
+  api,
+  workspaceId,
+  workflowId,
+  caseId,
+  signal,
+}: Readonly<{
+  api: ApiClient;
+  workspaceId: string;
+  workflowId: string;
+  caseId: string;
+  signal: AbortSignal;
+}>) {
   const response = await api.request({
     path: `${casesPath(workspaceId, workflowId)}/${encodeURIComponent(caseId)}`,
     signal,

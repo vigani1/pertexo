@@ -1,13 +1,19 @@
 import { infiniteQueryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '../api/client';
 import { readSharingPrincipals } from './principals.api';
-export function sharingPrincipalsQueryOptions(
-  api: ApiClient,
-  userId: string,
-  workspaceId: string,
-  kind: 'member' | 'group',
-  search: string,
-) {
+export function sharingPrincipalsQueryOptions({
+  api,
+  userId,
+  workspaceId,
+  kind,
+  search,
+}: Readonly<{
+  api: ApiClient;
+  userId: string;
+  workspaceId: string;
+  kind: 'member' | 'group';
+  search: string;
+}>) {
   return infiniteQueryOptions({
     queryKey: [
       'identity',

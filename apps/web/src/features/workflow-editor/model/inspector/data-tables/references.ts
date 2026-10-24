@@ -99,13 +99,19 @@ export function tableColumnReferences(
   const aliases = new Set(oldNames);
   const later = laterSteps(graph, nodeId);
   const result: ColumnNameReference[] = [];
-  function inspect(
-    source: Source,
-    consumerId: string | null,
-    step: string,
-    input: string,
-    downstream: boolean,
-  ) {
+  function inspect({
+    source,
+    consumerId,
+    step,
+    input,
+    downstream,
+  }: Readonly<{
+    source: Source;
+    consumerId: string | null;
+    step: string;
+    input: string;
+    downstream: boolean;
+  }>) {
     if (source.kind === 'node_output' && source.nodeId === nodeId) {
       if (tableFieldPath(source.path, aliases))
         result.push({
@@ -153,7 +159,13 @@ export function tableColumnReferences(
     if (node.id === nodeId) continue;
     const downstream = later.has(node.id);
     for (const [input, source] of Object.entries(node.inputMappings))
-      inspect(source, node.id, stepTitle(node), input, downstream);
+      inspect({
+        source,
+        consumerId: node.id,
+        step: stepTitle(node),
+        input,
+        downstream,
+      });
     if (!downstream) continue;
     for (const path of new Set(embeddedPaths(node.config, aliases)))
       result.push({
@@ -171,6 +183,12 @@ export function tableColumnReferences(
       });
   }
   if (graph.callable !== undefined)
-    inspect(graph.callable.result, null, 'Workflow result', 'result', true);
+    inspect({
+      source: graph.callable.result,
+      consumerId: null,
+      step: 'Workflow result',
+      input: 'result',
+      downstream: true,
+    });
   return result;
 }

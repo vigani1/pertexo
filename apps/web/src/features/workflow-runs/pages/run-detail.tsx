@@ -116,13 +116,13 @@ export function RunDetailPage({
   const { run } = snapshot;
   const canViewWorkflow = workspace.capabilities.includes('workflow:read');
   const version = useQuery({
-    ...workflowRunVersionQueryOptions(
+    ...workflowRunVersionQueryOptions({
       apiClient,
-      user.id,
-      workspace.id,
-      run.workflowId,
-      run.workflowVersionId,
-    ),
+      userId: user.id,
+      workspaceId: workspace.id,
+      workflowId: run.workflowId,
+      versionId: run.workflowVersionId,
+    }),
     enabled: canViewWorkflow,
   });
   const active = isActiveRunStatus(run.status);

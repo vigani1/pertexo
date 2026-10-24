@@ -68,13 +68,19 @@ export async function getAllWorkflowVersions(
   return { items: [...items], nextCursor: null };
 }
 
-export async function findWorkflowVersion(
-  apiClient: ApiClient,
-  workspaceId: string,
-  workflowId: string,
-  versionId: string,
-  signal?: AbortSignal,
-): Promise<WorkflowVersionResponse> {
+export async function findWorkflowVersion({
+  apiClient,
+  workspaceId,
+  workflowId,
+  versionId,
+  signal,
+}: Readonly<{
+  apiClient: ApiClient;
+  workspaceId: string;
+  workflowId: string;
+  versionId: string;
+  signal?: AbortSignal | undefined;
+}>): Promise<WorkflowVersionResponse> {
   const page = await getWorkflowVersionsPage(
     apiClient,
     workspaceId,
@@ -90,13 +96,19 @@ export async function findWorkflowVersion(
   return version;
 }
 
-export function restoreWorkflowVersion(
-  apiClient: ApiClient,
-  workspaceId: string,
-  workflowId: string,
-  versionId: string,
-  etag: string,
-): Promise<WorkflowDraftSnapshot> {
+export function restoreWorkflowVersion({
+  apiClient,
+  workspaceId,
+  workflowId,
+  versionId,
+  etag,
+}: Readonly<{
+  apiClient: ApiClient;
+  workspaceId: string;
+  workflowId: string;
+  versionId: string;
+  etag: string;
+}>): Promise<WorkflowDraftSnapshot> {
   return apiClient.request({
     path: `${versionsPath(workspaceId, workflowId)}/${encodeURIComponent(versionId)}/restore`,
     method: 'POST',

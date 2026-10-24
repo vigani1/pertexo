@@ -21,22 +21,28 @@ import type { WorkflowValidationTarget } from '../model/validation/target';
 import type { PublicationReceipt } from '../data/mutations/use-workflow-publication';
 import type { WorkflowCommandSession } from '../hooks/use-workflow-command-session';
 
-function usePublishedFormEntry(
-  apiClient: ApiClient,
-  userId: string,
-  workspaceId: string,
-  workflowId: string,
-  activeVersionId: string | undefined,
-) {
+function usePublishedFormEntry({
+  apiClient,
+  userId,
+  workspaceId,
+  workflowId,
+  activeVersionId,
+}: Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspaceId: string;
+  workflowId: string;
+  activeVersionId: string | undefined;
+}>) {
   const navigate = useNavigate();
   const liveVersion = useQuery({
-    ...workflowRunVersionQueryOptions(
+    ...workflowRunVersionQueryOptions({
       apiClient,
       userId,
       workspaceId,
       workflowId,
-      activeVersionId ?? '',
-    ),
+      versionId: activeVersionId ?? '',
+    }),
     enabled: activeVersionId !== undefined,
   });
   const liveIsForm =
@@ -141,13 +147,13 @@ export function WorkflowCommandActions({
   const queryClient = useQueryClient();
   const { publication, runSubmission } = commandSession;
   const receipt = publication.publicationReceipt;
-  const { liveVersion, liveIsForm, openForm } = usePublishedFormEntry(
+  const { liveVersion, liveIsForm, openForm } = usePublishedFormEntry({
     apiClient,
     userId,
-    workspace.id,
+    workspaceId: workspace.id,
     workflowId,
-    workflow?.publishedVersionId ?? receipt?.versionId,
-  );
+    activeVersionId: workflow?.publishedVersionId ?? receipt?.versionId,
+  });
   const everPublished =
     receipt !== undefined || (workflow?.publishedVersionId ?? null) !== null;
   const canPublish = workspace.capabilities.includes('workflow:publish');

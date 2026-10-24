@@ -37,18 +37,25 @@ describe('organization editing presentation model', () => {
     ).toBe(false);
     expect(validOrganizationSelection([row()])).toBe(true);
     expect(() =>
-      organizationEditAttempt(workspaceId, [], 'move', null, [], 'key'),
+      organizationEditAttempt({
+        workspaceId,
+        workflows: [],
+        operation: 'move',
+        folderId: null,
+        tagIds: [],
+        idempotencyKey: 'key',
+      }),
     ).toThrow();
   });
   it('normalizes replacement IDs and freezes the ordered full parent', () => {
-    const attempt = organizationEditAttempt(
+    const attempt = organizationEditAttempt({
       workspaceId,
-      [row(secondWorkflowId, 8), row(workflowId, 4)],
-      'replace_tags',
-      null,
-      [thirdWorkflowId, secondWorkflowId, secondWorkflowId],
-      'parent-key',
-    );
+      workflows: [row(secondWorkflowId, 8), row(workflowId, 4)],
+      operation: 'replace_tags',
+      folderId: null,
+      tagIds: [thirdWorkflowId, secondWorkflowId, secondWorkflowId],
+      idempotencyKey: 'parent-key',
+    });
     expect(attempt).toEqual({
       kind: 'bulk',
       workspaceId,
@@ -72,14 +79,14 @@ describe('organization editing presentation model', () => {
         `${String(index).padStart(8, '0')}-aaaa-4aaa-8aaa-aaaaaaaaaaaa`,
     );
     expect(() =>
-      organizationEditAttempt(
+      organizationEditAttempt({
         workspaceId,
-        [row()],
-        'replace_tags',
-        null,
-        ids,
-        'key',
-      ),
+        workflows: [row()],
+        operation: 'replace_tags',
+        folderId: null,
+        tagIds: ids,
+        idempotencyKey: 'key',
+      }),
     ).toThrow();
   });
   it('does not broaden editing permission from a viewer capability snapshot', () => {

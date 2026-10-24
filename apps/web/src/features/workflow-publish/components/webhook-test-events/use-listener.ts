@@ -13,13 +13,19 @@ import { webhookTestQuery } from '../../data/webhook-test-events/queries';
 import { describeCommandError } from '@/lib/api/error-copy';
 import { isApiError } from '@/lib/api/error';
 
-export function useWebhookListener(
-  scope: SampleScope,
-  nodeId: string,
-  binding: string | undefined,
-  ensureSaved: () => Promise<{ revision: number }>,
-  active: boolean,
-) {
+export function useWebhookListener({
+  scope,
+  nodeId,
+  binding,
+  ensureSaved,
+  active,
+}: Readonly<{
+  scope: SampleScope;
+  nodeId: string;
+  binding: string | undefined;
+  ensureSaved: () => Promise<{ revision: number }>;
+  active: boolean;
+}>) {
   const client = useQueryClient();
   const [listener, setListener] = useState<
     WebhookTestEventStarted & {

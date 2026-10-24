@@ -131,14 +131,14 @@ export function useWorkflowDuplicate({
       else setState({ kind: 'ready' });
     });
     const unsubscribe = subscribeSessionChanges(retire);
-    const unsubscribeCache = observeDuplicateAccessLoss(
+    const unsubscribeCache = observeDuplicateAccessLoss({
       queryClient,
       userId,
       workspaceId,
       workflowId,
-      () => owner.current === token,
+      isCurrent: () => owner.current === token,
       retire,
-    );
+    });
     return () => {
       unsubscribe();
       unsubscribeCache();
@@ -173,13 +173,13 @@ export function useWorkflowDuplicate({
       phase = command.result === undefined ? 'mutation' : 'accepted';
       const result =
         command.result ??
-        (await duplicateWorkflow(
+        (await duplicateWorkflow({
           apiClient,
           workspaceId,
           workflowId,
-          command,
-          controller.signal,
-        ));
+          attempt: command,
+          signal: controller.signal,
+        }));
       command.result = result;
       phase = 'accepted';
       if (

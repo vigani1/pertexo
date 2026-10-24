@@ -33,13 +33,19 @@ export function workflowRunInputQueryOptions(
  * A step run's output. It only changes when the step does, so the step's
  * status is part of the key: a step that finishes is read again.
  */
-export function nodeRunOutputQueryOptions(
-  apiClient: ApiClient,
-  userId: string,
-  workspaceId: string,
-  runId: string,
-  step: Readonly<{ nodeRunId: string; status: string }>,
-) {
+export function nodeRunOutputQueryOptions({
+  apiClient,
+  userId,
+  workspaceId,
+  runId,
+  step,
+}: Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspaceId: string;
+  runId: string;
+  step: Readonly<{ nodeRunId: string; status: string }>;
+}>) {
   return queryOptions({
     queryKey: [
       ...workflowRunKeys.data(userId, workspaceId, runId),
@@ -48,13 +54,13 @@ export function nodeRunOutputQueryOptions(
       step.status,
     ],
     queryFn: ({ signal }) =>
-      getWorkflowNodeRunOutput(
+      getWorkflowNodeRunOutput({
         apiClient,
         workspaceId,
         runId,
-        step.nodeRunId,
+        nodeRunId: step.nodeRunId,
         signal,
-      ),
+      }),
     staleTime: Number.POSITIVE_INFINITY,
   });
 }
@@ -69,17 +75,23 @@ const INPUT_RECORDING_READS = 5;
  * attempt starts, so while it runs with nothing recorded, the read repeats a
  * few times at a widening interval, then waits for the next status.
  */
-export function nodeRunInputQueryOptions(
-  apiClient: ApiClient,
-  userId: string,
-  workspaceId: string,
-  runId: string,
+export function nodeRunInputQueryOptions({
+  apiClient,
+  userId,
+  workspaceId,
+  runId,
+  step,
+}: Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspaceId: string;
+  runId: string;
   step: Readonly<{
     nodeRunId: string;
     attemptNumber: number | undefined;
     status: string;
-  }>,
-) {
+  }>;
+}>) {
   return queryOptions({
     queryKey: [
       ...workflowRunKeys.data(userId, workspaceId, runId),
@@ -89,13 +101,13 @@ export function nodeRunInputQueryOptions(
       step.status,
     ],
     queryFn: ({ signal }) =>
-      getWorkflowNodeRunInput(
+      getWorkflowNodeRunInput({
         apiClient,
         workspaceId,
         runId,
-        step.nodeRunId,
+        nodeRunId: step.nodeRunId,
         signal,
-      ),
+      }),
     staleTime: Number.POSITIVE_INFINITY,
     refetchInterval: (query) => {
       // A failed refetch retains the last empty response. Stop here so the
@@ -131,17 +143,23 @@ export function workflowRunVariablesQueryOptions(
 }
 
 /** A terminal attempt's private diagnostics; a new attempt or status reads again. */
-export function nodeRunDiagnosticsQueryOptions(
-  apiClient: ApiClient,
-  userId: string,
-  workspaceId: string,
-  runId: string,
+export function nodeRunDiagnosticsQueryOptions({
+  apiClient,
+  userId,
+  workspaceId,
+  runId,
+  step,
+}: Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspaceId: string;
+  runId: string;
   step: Readonly<{
     nodeRunId: string;
     attemptNumber: number | undefined;
     status: string;
-  }>,
-) {
+  }>;
+}>) {
   return queryOptions({
     queryKey: [
       ...workflowRunKeys.data(userId, workspaceId, runId),
@@ -151,13 +169,13 @@ export function nodeRunDiagnosticsQueryOptions(
       step.status,
     ],
     queryFn: ({ signal }) =>
-      getWorkflowNodeRunDiagnostics(
+      getWorkflowNodeRunDiagnostics({
         apiClient,
         workspaceId,
         runId,
-        step.nodeRunId,
+        nodeRunId: step.nodeRunId,
         signal,
-      ),
+      }),
     staleTime: Infinity,
   });
 }

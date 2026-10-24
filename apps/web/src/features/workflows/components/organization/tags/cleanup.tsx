@@ -40,29 +40,29 @@ export function WorkflowTagCleanup({
   onBack: () => void;
 }>) {
   const assignments = useInfiniteQuery(
-    workflowTagAssignmentsInfiniteQueryOptions(
-      apiClient,
+    workflowTagAssignmentsInfiniteQueryOptions({
+      api: apiClient,
       userId,
       workspaceId,
-      tag.id,
-      { limit: 25 },
-    ),
+      tagId: tag.id,
+      input: { limit: 25 },
+    }),
   );
   const [selection, setSelection] = useState<WorkflowOrganizationBulkItem[]>(
     [],
   );
   const id = useId();
   const rows = assignments.data?.pages.flatMap((page) => page.items) ?? [];
-  const names = useOrganizationWorkflowNames(
+  const names = useOrganizationWorkflowNames({
     apiClient,
     userId,
     workspaceId,
-    [
+    workflowIds: [
       ...selection.map((item) => item.workflowId),
       ...rows.map((row) => row.workflowId),
     ],
-    command.denied,
-  );
+    denied: command.denied,
+  });
   const settled = command.result !== undefined;
   const disabled =
     locked || settled || !assignments.isSuccess || assignments.isFetching;

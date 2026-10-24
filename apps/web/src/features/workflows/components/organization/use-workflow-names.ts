@@ -5,13 +5,19 @@ import { getWorkflowOrganizationProjection } from '../../data/organization/api';
 import { workflowOrganizationKeys } from '../../data/organization/queries';
 
 /** Presentation-only labels for explicit assignments, never projection authority. */
-export function useOrganizationWorkflowNames(
-  apiClient: ApiClient,
-  userId: string,
-  workspaceId: string,
-  workflowIds: readonly string[],
-  denied: boolean,
-) {
+export function useOrganizationWorkflowNames({
+  apiClient,
+  userId,
+  workspaceId,
+  workflowIds,
+  denied,
+}: Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspaceId: string;
+  workflowIds: readonly string[];
+  denied: boolean;
+}>) {
   const ids = [...new Set(workflowIds)].slice(0, 50);
   const reads = useQueries({
     queries: ids.map((workflowId) => ({
@@ -29,13 +35,13 @@ export function useOrganizationWorkflowNames(
         signal: AbortSignal;
       }): Promise<string | null> => {
         try {
-          const projection = await getWorkflowOrganizationProjection(
-            apiClient,
+          const projection = await getWorkflowOrganizationProjection({
+            api: apiClient,
             workspaceId,
             workflowId,
-            { include: 'organization' },
+            input: { include: 'organization' },
             signal,
-          );
+          });
           return projection.workflow.name;
         } catch (error) {
           if (error instanceof ApiError && error.status === 404) return null;
