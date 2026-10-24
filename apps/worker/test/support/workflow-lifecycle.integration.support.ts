@@ -523,37 +523,8 @@ export function createWorkflowLifecycleWorkerEnvironment(): WorkflowLifecycleWor
   let initializingPromise: Promise<void> | undefined;
   let closePromise: Promise<void> | undefined;
 
-  const registerResource = <Resource extends object>(
-    label: string,
-    resource: Resource,
-    close: (resource: Resource) => unknown,
-  ): Resource => {
-    let resourceClosePromise: Promise<void> | undefined;
-    resources.push({
-      label,
-      resource,
-      close: () => {
-        resourceClosePromise ??= Promise.resolve()
-          .then(() => close(resource))
-          .then(() => undefined);
-        return resourceClosePromise;
-      },
-    });
-    return resource;
-  };
-
-  const registerCloseable = <Resource extends Closeable>(
-    label: string,
-    resource: Resource,
-  ): Resource => registerResource(label, resource, (owned) => owned.close());
-
-  const transferResource = (resource: object): void => {
-    const index = resources.findIndex((owner) => owner.resource === resource);
-    if (index === -1)
-      throw new Error('Workflow lifecycle fixture resource owner is missing');
-    resources.splice(index, 1);
-  };
-
+  const { registerResource, registerCloseable, transferResource } =
+    createLifecycleResourceOwners(resources);
   const requireOwner = (): Pool => {
     if (owner === undefined)
       throw new Error('Workflow lifecycle fixture is not initialized');
@@ -742,6 +713,148 @@ export function createWorkflowLifecycleWorkerEnvironment(): WorkflowLifecycleWor
     return initializingPromise;
   };
 
+  const { readProjection, readRunSnapshot, readOutboxEvent } =
+    createLifecycleReads({ requireOwner, requireWorker, workspaceId, ids });
+  const { createRuntime, createDispatcher } = createLifecycleRuntimes({
+    registerCloseable,
+    transferResource,
+    workerConfig,
+    dispatcherConfig,
+    redisNamespace,
+  });
+  const close = (): Promise<void> => {
+    closePromise ??= (async () => {
+      const errors: unknown[] = [];
+      for (const resource of resources.splice(0).reverse())
+        await resource.close().catch((cause: unknown) => {
+          errors.push(
+            new Error(
+              `Workflow lifecycle fixture cleanup failed: ${resource.label}`,
+              { cause },
+            ),
+          );
+        });
+      if (databaseCreated) {
+        const admin = new Pool({ connectionString: adminUrl, max: 1 });
+        await dropDisconnectedDatabase(admin, databaseName).catch(
+          (cause: unknown) => {
+            errors.push(
+              new Error(
+                'Workflow lifecycle fixture cleanup failed: drop database',
+                { cause },
+              ),
+            );
+          },
+        );
+        await admin.end().catch((cause: unknown) => {
+          errors.push(
+            new Error('Workflow lifecycle fixture cleanup failed: admin pool', {
+              cause,
+            }),
+          );
+        });
+        databaseCreated = false;
+      }
+      if (errors.length > 0)
+        throw new AggregateError(
+          errors,
+          'Workflow lifecycle fixture cleanup failed',
+        );
+    })();
+    return closePromise;
+  };
+
+  return Object.freeze({
+    apiConfig,
+    workerConfig,
+    dispatcherConfig,
+    actorId,
+    workspaceId,
+    ids,
+    get authoring() {
+      return requireAuthoring();
+    },
+    get queue() {
+      return requireQueue();
+    },
+    initialize,
+    ownerQuery,
+    workerQuery,
+    transition: (
+      command: 'archive' | 'restore',
+      expectedLifecycleRevision: number,
+      idempotencyKey: string,
+    ) =>
+      requireAuthoring().transitionWorkflowLifecycle({
+        actorId,
+        command,
+        expectedLifecycleRevision,
+        idempotencyKey,
+        workflowId: ids.workflow,
+        workspaceId,
+      }),
+    readProjection,
+    readRunSnapshot,
+    readOutboxEvent,
+    makeDue: async (id: string) => {
+      await ownerQuery(
+        `update app.outbox_events set available_at=clock_timestamp() where id=$1`,
+        [id],
+      );
+    },
+    createRuntime,
+    createDispatcher,
+    close,
+  });
+}
+
+export { JOB_NAME, jobIdForOutboxEvent };
+export type { QueueConsumer };
+
+function createLifecycleResourceOwners(resources: OwnedResource[]) {
+  const registerResource = <Resource extends object>(
+    label: string,
+    resource: Resource,
+    close: (resource: Resource) => unknown,
+  ): Resource => {
+    let resourceClosePromise: Promise<void> | undefined;
+    resources.push({
+      label,
+      resource,
+      close: () => {
+        resourceClosePromise ??= Promise.resolve()
+          .then(() => close(resource))
+          .then(() => undefined);
+        return resourceClosePromise;
+      },
+    });
+    return resource;
+  };
+
+  const registerCloseable = <Resource extends Closeable>(
+    label: string,
+    resource: Resource,
+  ): Resource => registerResource(label, resource, (owned) => owned.close());
+
+  const transferResource = (resource: object): void => {
+    const index = resources.findIndex((owner) => owner.resource === resource);
+    if (index === -1)
+      throw new Error('Workflow lifecycle fixture resource owner is missing');
+    resources.splice(index, 1);
+  };
+
+  return { registerResource, registerCloseable, transferResource };
+}
+
+function createLifecycleReads(
+  context: Readonly<{
+    requireOwner: () => Pool;
+    requireWorker: () => Pool;
+    workspaceId: string;
+    ids: LifecycleIds;
+  }>,
+) {
+  const { requireOwner, requireWorker, workspaceId, ids } = context;
   const readProjection = async (): Promise<LifecycleProjection> =>
     withTransaction(
       requireOwner(),
@@ -928,6 +1041,29 @@ export function createWorkflowLifecycleWorkerEnvironment(): WorkflowLifecycleWor
       ownerRole,
     );
 
+  return { readProjection, readRunSnapshot, readOutboxEvent };
+}
+
+function createLifecycleRuntimes(
+  context: Readonly<{
+    registerCloseable: ReturnType<
+      typeof createLifecycleResourceOwners
+    >['registerCloseable'];
+    transferResource: ReturnType<
+      typeof createLifecycleResourceOwners
+    >['transferResource'];
+    workerConfig: Parameters<typeof createTriggerRuntime>[0]['database'];
+    dispatcherConfig: Parameters<typeof createOutboxDispatcherDatabase>[0];
+    redisNamespace: ReturnType<typeof createRedisTestNamespace>;
+  }>,
+) {
+  const {
+    registerCloseable,
+    transferResource,
+    workerConfig,
+    dispatcherConfig,
+    redisNamespace,
+  } = context;
   const createRuntime = async (leaseOwner: string): Promise<TriggerRuntime> => {
     const reconciliation = registerCloseable(
       'trigger reconciliation database',
@@ -979,91 +1115,5 @@ export function createWorkflowLifecycleWorkerEnvironment(): WorkflowLifecycleWor
     return dispatcher;
   };
 
-  const close = (): Promise<void> => {
-    closePromise ??= (async () => {
-      const errors: unknown[] = [];
-      for (const resource of resources.splice(0).reverse())
-        await resource.close().catch((cause: unknown) => {
-          errors.push(
-            new Error(
-              `Workflow lifecycle fixture cleanup failed: ${resource.label}`,
-              { cause },
-            ),
-          );
-        });
-      if (databaseCreated) {
-        const admin = new Pool({ connectionString: adminUrl, max: 1 });
-        await dropDisconnectedDatabase(admin, databaseName).catch(
-          (cause: unknown) => {
-            errors.push(
-              new Error(
-                'Workflow lifecycle fixture cleanup failed: drop database',
-                { cause },
-              ),
-            );
-          },
-        );
-        await admin.end().catch((cause: unknown) => {
-          errors.push(
-            new Error('Workflow lifecycle fixture cleanup failed: admin pool', {
-              cause,
-            }),
-          );
-        });
-        databaseCreated = false;
-      }
-      if (errors.length > 0)
-        throw new AggregateError(
-          errors,
-          'Workflow lifecycle fixture cleanup failed',
-        );
-    })();
-    return closePromise;
-  };
-
-  return Object.freeze({
-    apiConfig,
-    workerConfig,
-    dispatcherConfig,
-    actorId,
-    workspaceId,
-    ids,
-    get authoring() {
-      return requireAuthoring();
-    },
-    get queue() {
-      return requireQueue();
-    },
-    initialize,
-    ownerQuery,
-    workerQuery,
-    transition: (
-      command: 'archive' | 'restore',
-      expectedLifecycleRevision: number,
-      idempotencyKey: string,
-    ) =>
-      requireAuthoring().transitionWorkflowLifecycle({
-        actorId,
-        command,
-        expectedLifecycleRevision,
-        idempotencyKey,
-        workflowId: ids.workflow,
-        workspaceId,
-      }),
-    readProjection,
-    readRunSnapshot,
-    readOutboxEvent,
-    makeDue: async (id: string) => {
-      await ownerQuery(
-        `update app.outbox_events set available_at=clock_timestamp() where id=$1`,
-        [id],
-      );
-    },
-    createRuntime,
-    createDispatcher,
-    close,
-  });
+  return { createRuntime, createDispatcher };
 }
-
-export { JOB_NAME, jobIdForOutboxEvent };
-export type { QueueConsumer };
