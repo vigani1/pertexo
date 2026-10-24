@@ -33,9 +33,10 @@ export function ProgressButton({
   ...props
 }: ProgressButtonProps) {
   const waiting = waitSeconds > 0;
+  const blocked = (disabled ?? false) || pending || waiting;
   return (
     <Button
-      disabled={(disabled ?? false) || pending || waiting}
+      disabled={blocked}
       data-pending={pending ? '' : undefined}
       {...props}
     >
@@ -77,16 +78,18 @@ function ProgressButtonLabel({
   waitSeconds: number;
   children: ReactNode;
 }>) {
-  return pending ? (
-    pendingLabel
-  ) : waiting ? (
-    <span>
-      {waitLabel}{' '}
-      <span className="font-mono tabular-nums">
-        {formatCountdown(waitSeconds)}
+  if (pending) {
+    return pendingLabel;
+  }
+  if (waiting) {
+    return (
+      <span>
+        {waitLabel}{' '}
+        <span className="font-mono tabular-nums">
+          {formatCountdown(waitSeconds)}
+        </span>
       </span>
-    </span>
-  ) : (
-    children
-  );
+    );
+  }
+  return children;
 }

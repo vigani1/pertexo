@@ -164,11 +164,13 @@ function RenameSaveIcon({
   retryAvailable,
   accepted,
 }: Readonly<{ pending: boolean; retryAvailable: boolean; accepted: boolean }>) {
-  return pending ? (
-    <LoadingOrb />
-  ) : retryAvailable || accepted ? (
-    <RotateCwIcon aria-hidden="true" />
-  ) : (
+  if (pending) {
+    return <LoadingOrb />;
+  }
+  if (retryAvailable || accepted) {
+    return <RotateCwIcon aria-hidden="true" />;
+  }
+  return (
     <>
       <span aria-hidden="true" className="pointer-coarse:hidden">
         ↵

@@ -68,11 +68,11 @@ function SharingAvatarMark({
   kind,
   label,
 }: Readonly<{ kind: 'member' | 'group' | 'administrators'; label: string }>) {
-  return kind === 'member' ? (
-    formatInitials(label)
-  ) : kind === 'group' ? (
-    <UsersRoundIcon className="size-3.5" />
-  ) : (
-    <ShieldCheckIcon className="size-3.5" />
-  );
+  if (kind === 'member') {
+    return formatInitials(label);
+  }
+  if (kind === 'group') {
+    return <UsersRoundIcon className="size-3.5" />;
+  }
+  return <ShieldCheckIcon className="size-3.5" />;
 }
