@@ -8,8 +8,8 @@ import {
   escapeCsvValue,
   type DataTableValues,
 } from '@pertexo/node-sdk';
-import { queryClause } from '../queries.js';
-import { requireTable } from '../read.js';
+import { queryClause } from '../rows.queries.js';
+import { requireTable } from '../definitions.queries.js';
 
 const BATCH_ROWS = 256;
 const BATCH_BYTES = 4 * 1024 * 1024;

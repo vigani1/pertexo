@@ -1,5 +1,5 @@
-export { createDataTablesStore } from './store.js';
-export { createWorkerDataTablesStore } from './worker.js';
+export { createDataTablesStore } from './tables.repository.js';
+export { createWorkerDataTablesStore } from './execution.repository.js';
 export type {
   DataTablesStore,
   DataTableDefinition,

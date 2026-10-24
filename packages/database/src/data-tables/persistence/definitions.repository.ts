@@ -4,9 +4,9 @@ import type { Pool } from 'pg';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 
 import type { DataTablesStore } from '../contract.js';
-import { readQuotas, requireTable } from '../read.js';
+import { readQuotas, requireTable } from '../definitions.queries.js';
 
-import { editTableSchema } from '../columns/change.js';
+import { editTableSchema } from '../columns/schema.repository.js';
 
 import { write, command } from './session.js';
 

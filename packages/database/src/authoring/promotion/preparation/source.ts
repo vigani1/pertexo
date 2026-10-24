@@ -16,7 +16,7 @@ import {
   TABLE_COLUMNS,
   projectTable,
   type StoredTable,
-} from '../../../data-tables/read.js';
+} from '../../../data-tables/definitions.queries.js';
 import type { DataTableDefinition } from '../../../data-tables/contract.js';
 import { WorkflowNotFoundError } from '../../workflows/errors.js';
 import { promotionNodes, type PromotionGraphBudget } from './graph.js';

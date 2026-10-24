@@ -9,8 +9,8 @@ import {
 } from '@pertexo/node-sdk';
 import { canonicalJson, normalizedJson } from '@pertexo/workflow-model';
 import { generatePersistedId } from '../../platform/persisted-id.js';
-import { readQuotas, requireTable } from '../read.js';
-import { keyValue } from '../mutate.js';
+import { readQuotas, requireTable } from '../definitions.queries.js';
+import { keyValue } from '../rows.repository.js';
 import type { DataTablesStore, DataTableDefinition } from '../contract.js';
 
 function changedDefinition(

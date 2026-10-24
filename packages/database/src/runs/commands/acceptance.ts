@@ -1,5 +1,5 @@
 import { utf8ByteLength } from '@pertexo/workflow-model';
-import { requireRunTableReferences } from '../../data-tables/columns/references.js';
+import { requireRunTableReferences } from '../../data-tables/columns/references.queries.js';
 import { requireWorkflowConcurrency } from './concurrency.js';
 import { runInputRetentionSql } from '../data-policy.js';
 import { variableRevisionForAcceptance } from './variables.js';

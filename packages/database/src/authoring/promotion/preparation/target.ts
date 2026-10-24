@@ -11,7 +11,7 @@ import {
   TABLE_COLUMNS,
   projectTable,
   type StoredTable,
-} from '../../../data-tables/read.js';
+} from '../../../data-tables/definitions.queries.js';
 
 import {
   WorkflowPromotionError,
