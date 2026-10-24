@@ -1,3 +1,10 @@
+import { and, eq, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import {
+  previewRuns,
+  previewAttempts,
+} from '../../../schema/runs/execution.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { readVariableSetValues } from '../../../variables/values.queries.js';
 import type { PoolClient } from 'pg';
@@ -22,100 +29,96 @@ export async function loadPreviewLease(
     workspaceId: string;
   }>,
 ): Promise<PreviewAttemptLease> {
-  const runs = await client.query<
-    Readonly<{
-      definition_key: string;
-      definition_version: number;
-      dry_run: string;
-      executable_node_json: unknown;
-      executor_key: string;
-      executor_version: number;
-      input_ref: unknown;
-      variable_set_revision: number | null;
-      may_contact_provider: boolean;
-      may_cause_external_side_effect: boolean;
-      node_id: string;
-      operation_key: string | null;
-      provider_key: string | null;
-      side_effect_class: string;
-      traceparent: string | null;
-      workflow_id: string;
-    }> & { execution_deadline_at: Date; retention_expires_at: Date }
-  >(
-    `select definition_key,definition_version,dry_run,executable_node_json,
-            executor_key,executor_version,input_ref,preview.variable_set_revision,may_contact_provider,
-             may_cause_external_side_effect,node_id,operation_key,provider_key,
-             side_effect_class,
-            traceparent,workflow_id,
-            execution_deadline_at,
-            expires_at as retention_expires_at
-     from app.preview_runs preview
-     where preview.workspace_id=$1 and preview.id=$2`,
-    [input.workspaceId, input.previewRunId],
-  );
-  const attempts = await client.query<{
-    dispatch_marked_at: Date | null;
-    provider_dispatch_binding: string | null;
-    provider_idempotency_key: string | null;
-    side_effect_class: string;
-  }>(
-    `select dispatch_marked_at,provider_idempotency_key,
-            provider_dispatch_binding,side_effect_class
-     from app.preview_attempts
-     where workspace_id=$1 and id=$2`,
-    [input.workspaceId, input.previewAttemptId],
-  );
-  const run = runs.rows[0];
-  const attempt = attempts.rows[0];
+  const db = drizzle(client);
+  const runs = await db
+    .select({
+      definitionKey: previewRuns.definitionKey,
+      definitionVersion: previewRuns.definitionVersion,
+      dryRun: previewRuns.dryRun,
+      executableNodeJson: previewRuns.executableNodeJson,
+      executorKey: previewRuns.executorKey,
+      executorVersion: previewRuns.executorVersion,
+      inputRef: previewRuns.inputRef,
+      variableSetRevision: previewRuns.variableSetRevision,
+      mayContactProvider: previewRuns.mayContactProvider,
+      mayCauseExternalSideEffect: previewRuns.mayCauseExternalSideEffect,
+      nodeId: previewRuns.nodeId,
+      operationKey: previewRuns.operationKey,
+      providerKey: previewRuns.providerKey,
+      traceparent: previewRuns.traceparent,
+      workflowId: previewRuns.workflowId,
+      executionDeadlineAt: previewRuns.executionDeadlineAt,
+      retentionExpiresAt: previewRuns.expiresAt,
+    })
+    .from(previewRuns)
+    .where(
+      and(
+        eq(previewRuns.workspaceId, input.workspaceId),
+        eq(previewRuns.id, input.previewRunId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  const attempts = await db
+    .select({
+      dispatchMarkedAt: previewAttempts.dispatchMarkedAt,
+      providerDispatchBinding: previewAttempts.providerDispatchBinding,
+      providerIdempotencyKey: previewAttempts.providerIdempotencyKey,
+      sideEffectClass: previewAttempts.sideEffectClass,
+    })
+    .from(previewAttempts)
+    .where(
+      and(
+        eq(previewAttempts.workspaceId, input.workspaceId),
+        eq(previewAttempts.id, input.previewAttemptId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  const run = runs[0];
+  const attempt = attempts[0];
   if (run === undefined || attempt === undefined)
     throw new PreviewAttemptStateError('pins_missing');
-  const sideEffectClass = z
-    .enum(['safe', 'idempotent_with_key', 'unsafe'])
-    .parse(attempt.side_effect_class);
+  const {
+    executableNodeJson,
+    inputRef,
+    variableSetRevision,
+    operationKey,
+    providerKey,
+    traceparent,
+    ...identity
+  } = run;
   return Object.freeze({
-    // PostgreSQL bigint arrives as a string through node-postgres; coerce
-    // at this boundary before the numeric contract applies.
-    attemptFenceToken: z.coerce
+    ...identity,
+    // Native bigint decoding still needs the public lease's safe integer bound.
+    attemptFenceToken: z
       .number()
       .int()
       .nonnegative()
       .parse(input.attemptFenceToken),
     workspaceId: input.workspaceId,
-    definitionKey: run.definition_key,
-    definitionVersion: run.definition_version,
-    dryRun: z.enum(['not_supported', 'provider_supported']).parse(run.dry_run),
     executableNode: Object.freeze(
-      executableNodeSchema.parse(run.executable_node_json),
+      executableNodeSchema.parse(executableNodeJson),
     ),
-    executorKey: run.executor_key,
-    executorVersion: run.executor_version,
-    executionDeadlineAt: run.execution_deadline_at,
-    retentionExpiresAt: run.retention_expires_at,
-    input: parseStoredExecutionValue(run.input_ref),
+    input: parseStoredExecutionValue(inputRef),
     variables: await readVariableSetValues(
-      drizzle(client),
+      db,
       input.workspaceId,
-      run.variable_set_revision,
+      variableSetRevision,
     ),
-    mayContactProvider: run.may_contact_provider,
-    mayCauseExternalSideEffect: run.may_cause_external_side_effect,
-    nodeId: run.node_id,
-    ...(run.operation_key === null ? {} : { operationKey: run.operation_key }),
+    ...(operationKey === null ? {} : { operationKey }),
     previewAttemptId: input.previewAttemptId,
     previewRunId: input.previewRunId,
-    ...(run.provider_key === null ? {} : { providerKey: run.provider_key }),
-    ...(attempt.provider_idempotency_key === null
+    ...(providerKey === null ? {} : { providerKey }),
+    ...(attempt.providerIdempotencyKey === null
       ? {}
-      : { providerIdempotencyKey: attempt.provider_idempotency_key }),
-    ...(attempt.provider_dispatch_binding === null
+      : { providerIdempotencyKey: attempt.providerIdempotencyKey }),
+    ...(attempt.providerDispatchBinding === null
       ? {}
-      : { providerDispatchBinding: attempt.provider_dispatch_binding }),
-    ...(attempt.dispatch_marked_at === null
+      : { providerDispatchBinding: attempt.providerDispatchBinding }),
+    ...(attempt.dispatchMarkedAt === null
       ? {}
       : { providerDispatchUnresolved: true as const }),
-    sideEffectClass,
-    ...(run.traceparent === null ? {} : { traceparent: run.traceparent }),
-    workflowId: run.workflow_id,
+    sideEffectClass: attempt.sideEffectClass,
+    ...(traceparent === null ? {} : { traceparent }),
   });
 }
 
@@ -126,37 +129,38 @@ export async function lockPreviewClaimState(
     'workspaceId' | 'previewAttemptId' | 'previewRunId'
   >,
 ) {
-  const locked = await client.query<{
-    attempt_status: string;
-    dispatch_marked_at: Date | null;
-    live_lease: boolean | null;
-    run_deadline_expired: boolean;
-    run_status: string;
-    side_effect_class: string;
-  }>(
-    `select attempt.status as attempt_status,
-                attempt.dispatch_marked_at,
-                attempt.side_effect_class,
-                (attempt.lease_expires_at is not null
-                   and attempt.lease_expires_at > clock_timestamp())
-                  as live_lease,
-                (run.execution_deadline_at <= clock_timestamp())
-                  as run_deadline_expired,
-                run.status as run_status
-         from app.preview_attempts attempt
-         join app.preview_runs run
-           on run.workspace_id = attempt.workspace_id
-          and run.id = attempt.preview_run_id
-         where attempt.workspace_id=$1
-           and attempt.id=$2
-           and attempt.preview_run_id=$3
-         for update of attempt, run`,
-    [parsed.workspaceId, parsed.previewAttemptId, parsed.previewRunId],
-  );
-  const state = locked.rows[0];
+  const attempt = alias(previewAttempts, 'attempt');
+  const run = alias(previewRuns, 'run');
+  const locked = await drizzle(client)
+    .select({
+      attemptStatus: attempt.status,
+      dispatchMarkedAt: attempt.dispatchMarkedAt,
+      sideEffectClass: attempt.sideEffectClass,
+      liveLease: sql<boolean>`${attempt.leaseExpiresAt} is not null and ${attempt.leaseExpiresAt}>clock_timestamp()`,
+      runDeadlineExpired: sql<boolean>`${run.executionDeadlineAt}<=clock_timestamp()`,
+      runStatus: run.status,
+    })
+    .from(attempt)
+    .innerJoin(
+      run,
+      and(
+        eq(run.workspaceId, attempt.workspaceId),
+        eq(run.id, attempt.previewRunId),
+      ),
+    )
+    .where(
+      and(
+        eq(attempt.workspaceId, parsed.workspaceId),
+        eq(attempt.id, parsed.previewAttemptId),
+        eq(attempt.previewRunId, parsed.previewRunId),
+      ),
+    )
+    .for('update', { of: [attempt, run] })
+    .catch(rethrowQueryFailure);
+  const state = locked[0];
   if (state === undefined)
     throw new PreviewAttemptStateError('attempt_not_found');
-  if (!previewPairConsistent(state.attempt_status, state.run_status))
+  if (!previewPairConsistent(state.attemptStatus, state.runStatus))
     throw new PreviewAttemptStateError('run_attempt_divergence');
 
   return state;

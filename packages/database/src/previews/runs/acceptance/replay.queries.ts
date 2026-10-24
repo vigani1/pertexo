@@ -15,7 +15,6 @@ import type {
   acceptPreviewRunInputSchema,
 } from './contract.js';
 import {
-  previewStatusSchema,
   resultRefSchema,
   type AcceptedPreviewRun,
   PreviewIdempotencyConflictError,
@@ -65,19 +64,19 @@ export async function readExistingAcceptance(
   if (row.requestHash !== input.requestHash)
     throw new PreviewIdempotencyConflictError();
   const resultRef = resultRefSchema.safeParse(row.resultRef);
-  const status = previewStatusSchema.safeParse(row.previewStatus);
+  const status = row.previewStatus;
   const { acceptedAt, expiresAt } = row;
   const incompleteReceipt =
     row.idempotencyStatus !== 'completed' ||
     acceptedAt === null ||
     expiresAt === null ||
     !resultRef.success ||
-    !status.success;
+    status === null;
   if (incompleteReceipt) throw new PreviewAcceptanceCorruptError();
   const invalidPinnedReceipt =
     'pinnedSampleId' in resultRef.data &&
     (row.pinnedSampleId !== resultRef.data.pinnedSampleId ||
-      status.data !== PREVIEW_STATUS.succeeded ||
+      status !== PREVIEW_STATUS.succeeded ||
       row.outputRef === null);
   if (invalidPinnedReceipt) throw new PreviewAcceptanceCorruptError();
   return Object.freeze({
@@ -98,7 +97,7 @@ export async function readExistingAcceptance(
         }
       : {}),
     previewRunId: row.resourceId,
-    status: status.data,
+    status: status,
   });
 }
 

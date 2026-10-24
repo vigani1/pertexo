@@ -4,11 +4,7 @@ import { definitionIdentitySchema } from '@pertexo/node-sdk';
 import { z } from 'zod';
 
 import { executableNodeSchema } from '../../executable-node.js';
-import {
-  PREVIEW_STATUS,
-  traceparentSchema,
-  type PreviewStatus,
-} from '../../contract.js';
+import { traceparentSchema, type PreviewStatus } from '../../contract.js';
 
 import type { parseStoredExecutionValue } from '../../../platform/stored-execution-value.js';
 
@@ -21,10 +17,6 @@ const integrationKeySchema = z.string().regex(/^[a-z][a-z0-9._:-]*$/u);
 export const PREVIEW_RETENTION_MAX_MS = 7 * 24 * 60 * 60 * 1_000;
 
 export const PREVIEW_EXECUTION_TIMEOUT_MAX_MS = 5 * 60 * 1_000;
-
-export const previewStatusSchema = z.enum(
-  Object.values(PREVIEW_STATUS) as [PreviewStatus, ...PreviewStatus[]],
-);
 
 export const inputSourceSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('manual'), value: z.unknown() }).strict(),

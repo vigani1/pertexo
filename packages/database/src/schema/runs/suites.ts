@@ -1,3 +1,7 @@
+import type {
+  WorkflowTestSuiteSummary,
+  WorkflowTestSuiteDetail,
+} from '@pertexo/contracts';
 import { sql } from 'drizzle-orm';
 import {
   boolean,
@@ -30,7 +34,10 @@ export const workflowTestSuites = appSchema.table(
     usesConnections: boolean('uses_connections').notNull(),
     caseDurationMs: integer('case_duration_ms').notNull(),
     initialCheckpoint: jsonb('initial_checkpoint').notNull(),
-    status: varchar('status', { length: 16 }).notNull().default('running'),
+    status: varchar('status', { length: 16 })
+      .$type<WorkflowTestSuiteSummary['status']>()
+      .notNull()
+      .default('running'),
     stopReason: varchar('stop_reason', { length: 64 }),
     cancelRequested: boolean('cancel_requested').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
@@ -119,7 +126,10 @@ export const workflowTestSuiteCases = appSchema.table(
     input: text('input').notNull(),
     expectations: text('expectations').notNull(),
     runId: uuid('run_id'),
-    status: varchar('status', { length: 16 }).notNull().default('pending'),
+    status: varchar('status', { length: 16 })
+      .$type<WorkflowTestSuiteDetail['cases'][number]['status']>()
+      .notNull()
+      .default('pending'),
     report: text('report'),
   },
   (table) => [

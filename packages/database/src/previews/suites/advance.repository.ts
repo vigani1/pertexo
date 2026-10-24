@@ -1,3 +1,12 @@
+import { and, asc, eq, ne, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  workflowTestSuites,
+  workflowTestSuiteCases,
+} from '../../schema/runs/suites.js';
+import { workspaces } from '../../schema/foundation.js';
+import { workflows } from '../../schema/authoring/workflows.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { WorkflowNotFoundError } from '../../authoring/workflows/errors.js';
@@ -17,47 +26,73 @@ async function stop(
   suite: SuiteRow,
   reason: string,
 ): Promise<void> {
-  await client.query(
-    'update app.workflow_test_suites set stop_reason=coalesce(stop_reason,$3) where workspace_id=$1 and id=$2',
-    [suite.workspace_id, suite.id, reason],
-  );
-  suite.stop_reason ??= reason;
-  await client.query(
-    "update app.workflow_test_suite_cases set status='skipped' where workspace_id=$1 and suite_id=$2 and status='pending'",
-    [suite.workspace_id, suite.id],
-  );
+  await drizzle(client)
+    .update(workflowTestSuites)
+    .set({
+      stopReason: sql`coalesce(${workflowTestSuites.stopReason},${reason})`,
+    })
+    .where(
+      and(
+        eq(workflowTestSuites.workspaceId, suite.workspaceId),
+        eq(workflowTestSuites.id, suite.id),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  suite.stopReason ??= reason;
+  await drizzle(client)
+    .update(workflowTestSuiteCases)
+    .set({ status: 'skipped' })
+    .where(
+      and(
+        eq(workflowTestSuiteCases.workspaceId, suite.workspaceId),
+        eq(workflowTestSuiteCases.suiteId, suite.id),
+        eq(workflowTestSuiteCases.status, 'pending'),
+      ),
+    )
+    .catch(rethrowQueryFailure);
 }
 async function finish(client: PoolClient, suite: SuiteRow): Promise<void> {
-  const remaining = await client.query<{ nonpassing: number }>(
-    "select count(*)::integer nonpassing from app.workflow_test_suite_cases where workspace_id=$1 and suite_id=$2 and status<>'passed'",
-    [suite.workspace_id, suite.id],
-  );
-  const status = suiteOutcome(suite, remaining.rows[0]?.nonpassing);
-  await client.query(
-    'update app.workflow_test_suites set status=$3,completed_at=clock_timestamp() where workspace_id=$1 and id=$2',
-    [suite.workspace_id, suite.id, status],
-  );
+  const remaining = await drizzle(client)
+    .select({ nonpassing: sql<number>`count(*)::integer` })
+    .from(workflowTestSuiteCases)
+    .where(
+      and(
+        eq(workflowTestSuiteCases.workspaceId, suite.workspaceId),
+        eq(workflowTestSuiteCases.suiteId, suite.id),
+        ne(workflowTestSuiteCases.status, 'passed'),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  const status = suiteOutcome(suite, remaining[0]?.nonpassing);
+  await drizzle(client)
+    .update(workflowTestSuites)
+    .set({ status, completedAt: sql`clock_timestamp()` })
+    .where(
+      and(
+        eq(workflowTestSuites.workspaceId, suite.workspaceId),
+        eq(workflowTestSuites.id, suite.id),
+      ),
+    )
+    .catch(rethrowQueryFailure);
 }
 /** Called after the workspace fence; never from a transaction holding a run row. */
 export async function advanceSuite(
   client: PoolClient,
-  candidate: {
-    workspace_id: string;
-    workflow_id: string;
-    started_by: string;
-    id: string;
-  },
+  candidate: Pick<SuiteRow, 'workspaceId' | 'workflowId' | 'startedBy' | 'id'>,
 ): Promise<boolean> {
-  const workspace = await client.query(
-    'select id from app.workspaces where id=$1 for share',
-    [candidate.workspace_id],
-  );
-  if (workspace.rowCount !== 1) return false;
+  const db = drizzle(client);
+  const workspace = await db
+    .select({ id: workspaces.id })
+    .from(workspaces)
+    .where(eq(workspaces.id, candidate.workspaceId))
+    .for('share')
+    .catch(rethrowQueryFailure);
+  if (workspace.length !== 1) return false;
   let allowed = true;
   const scope = {
-    workspaceId: candidate.workspace_id,
-    workflowId: candidate.workflow_id,
-    actorId: candidate.started_by,
+    workspaceId: candidate.workspaceId,
+    workflowId: candidate.workflowId,
+    actorId: candidate.startedBy,
   };
   try {
     await lockTestAuthority(client, scope);
@@ -65,55 +100,91 @@ export async function advanceSuite(
     if (error instanceof WorkflowNotFoundError) allowed = false;
     else throw error;
   }
-  const workflow = await client.query<{ lifecycle_status: string }>(
-    'select lifecycle_status from app.workflows where workspace_id=$1 and id=$2 for share',
-    [candidate.workspace_id, candidate.workflow_id],
-  );
-  const found = await client.query<SuiteRow>(
-    "select * from app.workflow_test_suites where workspace_id=$1 and id=$2 and status='running' and expires_at>clock_timestamp() and next_check_at<=clock_timestamp() for update skip locked",
-    [candidate.workspace_id, candidate.id],
-  );
-  const suite = found.rows[0];
+  const workflow = await db
+    .select({ lifecycleStatus: workflows.lifecycleStatus })
+    .from(workflows)
+    .where(
+      and(
+        eq(workflows.workspaceId, candidate.workspaceId),
+        eq(workflows.id, candidate.workflowId),
+      ),
+    )
+    .for('share')
+    .catch(rethrowQueryFailure);
+  const found = await db
+    .select()
+    .from(workflowTestSuites)
+    .where(
+      and(
+        eq(workflowTestSuites.workspaceId, candidate.workspaceId),
+        eq(workflowTestSuites.id, candidate.id),
+        eq(workflowTestSuites.status, 'running'),
+        sql`${workflowTestSuites.expiresAt}>clock_timestamp()`,
+        sql`${workflowTestSuites.nextCheckAt}<=clock_timestamp()`,
+      ),
+    )
+    .for('update', { skipLocked: true })
+    .catch(rethrowQueryFailure);
+  const suite = found[0];
   if (suite === undefined) return false;
-  if (allowed && suite.uses_connections)
+  if (allowed && suite.usesConnections)
     try {
-      await lockWorkflowAuthoringAuthority(client, suite.workspace_id, {
-        actorId: suite.started_by,
+      await lockWorkflowAuthoringAuthority(client, suite.workspaceId, {
+        actorId: suite.startedBy,
         roles: rolesForCapability('connection:use'),
       });
     } catch (error) {
       if (error instanceof WorkflowNotFoundError) allowed = false;
       else throw error;
     }
-  const clock = await client.query<{ now: Date }>(
-    'select clock_timestamp() now',
-  );
-  const now = clock.rows[0]?.now;
-  if (now === undefined) throw new Error('Suite clock is unavailable');
+  const clock = await db
+    .execute<{ now: string }>(sql`select clock_timestamp() now`)
+    .catch(rethrowQueryFailure);
+  const databaseTime = clock.rows[0]?.now;
+  if (databaseTime === undefined) throw new Error('Suite clock is unavailable');
+  const now = new Date(databaseTime);
   if (!allowed) await stop(client, suite, 'authority_lost');
-  else if (workflow.rows[0]?.lifecycle_status !== 'active')
+  else if (workflow[0]?.lifecycleStatus !== 'active')
     await stop(client, suite, 'workflow_archived');
-  if (now >= suite.deadline_at) await stop(client, suite, 'deadline_exceeded');
-  if (suite.cancel_requested) await stop(client, suite, 'user_canceled');
-  const active = await client.query<SuiteCaseRow>(
-    "select * from app.workflow_test_suite_cases where workspace_id=$1 and suite_id=$2 and status='running' order by ordinal limit 1",
-    [suite.workspace_id, suite.id],
-  );
-  const entry = active.rows[0];
+  if (now >= suite.deadlineAt) await stop(client, suite, 'deadline_exceeded');
+  if (suite.cancelRequested) await stop(client, suite, 'user_canceled');
+  const active = await db
+    .select()
+    .from(workflowTestSuiteCases)
+    .where(
+      and(
+        eq(workflowTestSuiteCases.workspaceId, suite.workspaceId),
+        eq(workflowTestSuiteCases.suiteId, suite.id),
+        eq(workflowTestSuiteCases.status, 'running'),
+      ),
+    )
+    .orderBy(asc(workflowTestSuiteCases.ordinal))
+    .limit(1)
+    .catch(rethrowQueryFailure);
+  const entry = active[0];
   if (
     entry !== undefined &&
     (await completeActiveSuiteCase(client, suite, entry))
   )
     return true;
-  if (suite.stop_reason !== null) {
+  if (suite.stopReason !== null) {
     await finish(client, suite);
     return true;
   }
-  const pending = await client.query<SuiteCaseRow>(
-    "select * from app.workflow_test_suite_cases where workspace_id=$1 and suite_id=$2 and status='pending' order by ordinal limit 1",
-    [suite.workspace_id, suite.id],
-  );
-  const next = pending.rows[0];
+  const pending = await db
+    .select()
+    .from(workflowTestSuiteCases)
+    .where(
+      and(
+        eq(workflowTestSuiteCases.workspaceId, suite.workspaceId),
+        eq(workflowTestSuiteCases.suiteId, suite.id),
+        eq(workflowTestSuiteCases.status, 'pending'),
+      ),
+    )
+    .orderBy(asc(workflowTestSuiteCases.ordinal))
+    .limit(1)
+    .catch(rethrowQueryFailure);
+  const next = pending[0];
   if (next === undefined) {
     await finish(client, suite);
     return true;
@@ -127,12 +198,12 @@ function suiteOutcome(
   nonpassing: number | undefined,
 ): 'canceled' | 'error' | 'passed' | 'failed' {
   if (
-    suite.stop_reason === 'user_canceled' ||
-    suite.stop_reason === 'case_canceled'
+    suite.stopReason === 'user_canceled' ||
+    suite.stopReason === 'case_canceled'
   ) {
     return 'canceled';
   }
-  if (suite.stop_reason !== null) {
+  if (suite.stopReason !== null) {
     return 'error';
   }
   if (nonpassing === 0) {
@@ -147,38 +218,52 @@ async function completeActiveSuiteCase(
   entry: SuiteCaseRow,
 ): Promise<boolean> {
   const run =
-    entry.run_id === null
+    entry.runId === null
       ? undefined
       : await readSuiteRunOutcome(
           client,
-          suite.workspace_id,
-          entry.run_id,
-          suite.snapshot_id,
+          suite.workspaceId,
+          entry.runId,
+          suite.snapshotId,
         );
   if (run === undefined) {
     await stop(client, suite, 'run_unavailable');
-    await client.query(
-      "update app.workflow_test_suite_cases set status='error' where workspace_id=$1 and suite_id=$2 and ordinal=$3",
-      [suite.workspace_id, suite.id, entry.ordinal],
-    );
+    await drizzle(client)
+      .update(workflowTestSuiteCases)
+      .set({ status: 'error' })
+      .where(
+        and(
+          eq(workflowTestSuiteCases.workspaceId, suite.workspaceId),
+          eq(workflowTestSuiteCases.suiteId, suite.id),
+          eq(workflowTestSuiteCases.ordinal, entry.ordinal),
+        ),
+      )
+      .catch(rethrowQueryFailure);
   } else if (['queued', 'running', 'waiting'].includes(run.status)) {
-    await client.query(
-      "update app.workflow_test_suites set next_check_at=clock_timestamp()+interval '1 second' where workspace_id=$1 and id=$2",
-      [suite.workspace_id, suite.id],
-    );
+    await drizzle(client)
+      .update(workflowTestSuites)
+      .set({ nextCheckAt: sql`clock_timestamp()+interval '1 second'` })
+      .where(
+        and(
+          eq(workflowTestSuites.workspaceId, suite.workspaceId),
+          eq(workflowTestSuites.id, suite.id),
+        ),
+      )
+      .catch(rethrowQueryFailure);
     return true;
   } else {
     const result = await evaluateSuiteCase(client, entry, run);
-    await client.query(
-      'update app.workflow_test_suite_cases set status=$4,report=$5 where workspace_id=$1 and suite_id=$2 and ordinal=$3',
-      [
-        suite.workspace_id,
-        suite.id,
-        entry.ordinal,
-        result.status,
-        canonicalJson(result.report),
-      ],
-    );
+    await drizzle(client)
+      .update(workflowTestSuiteCases)
+      .set({ status: result.status, report: canonicalJson(result.report) })
+      .where(
+        and(
+          eq(workflowTestSuiteCases.workspaceId, suite.workspaceId),
+          eq(workflowTestSuiteCases.suiteId, suite.id),
+          eq(workflowTestSuiteCases.ordinal, entry.ordinal),
+        ),
+      )
+      .catch(rethrowQueryFailure);
     if (run.status === 'canceled') await stop(client, suite, 'case_canceled');
   }
 
@@ -191,21 +276,39 @@ async function admitNextSuiteCase(
   next: SuiteCaseRow,
   now: Date,
 ): Promise<void> {
-  await client.query('savepoint suite_case_admission');
+  await drizzle(client)
+    .execute(sql`savepoint suite_case_admission`)
+    .catch(rethrowQueryFailure);
   try {
     await admitSuiteCase(client, suite, next, now);
-    await client.query('release savepoint suite_case_admission');
-    await client.query(
-      "update app.workflow_test_suites set next_check_at=clock_timestamp()+interval '1 second' where workspace_id=$1 and id=$2",
-      [suite.workspace_id, suite.id],
-    );
+    await drizzle(client)
+      .execute(sql`release savepoint suite_case_admission`)
+      .catch(rethrowQueryFailure);
+    await drizzle(client)
+      .update(workflowTestSuites)
+      .set({ nextCheckAt: sql`clock_timestamp()+interval '1 second'` })
+      .where(
+        and(
+          eq(workflowTestSuites.workspaceId, suite.workspaceId),
+          eq(workflowTestSuites.id, suite.id),
+        ),
+      )
+      .catch(rethrowQueryFailure);
   } catch (error) {
-    await client.query('rollback to savepoint suite_case_admission');
+    await drizzle(client)
+      .execute(sql`rollback to savepoint suite_case_admission`)
+      .catch(rethrowQueryFailure);
     if (error instanceof WorkspaceRunQuotaExceededError)
-      await client.query(
-        "update app.workflow_test_suites set next_check_at=clock_timestamp()+interval '5 seconds' where workspace_id=$1 and id=$2",
-        [suite.workspace_id, suite.id],
-      );
+      await drizzle(client)
+        .update(workflowTestSuites)
+        .set({ nextCheckAt: sql`clock_timestamp()+interval '5 seconds'` })
+        .where(
+          and(
+            eq(workflowTestSuites.workspaceId, suite.workspaceId),
+            eq(workflowTestSuites.id, suite.id),
+          ),
+        )
+        .catch(rethrowQueryFailure);
     else if (error instanceof WorkspaceRunAdmissionDeniedError) {
       await stop(client, suite, 'admission_denied');
       await finish(client, suite);

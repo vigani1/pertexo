@@ -1,3 +1,4 @@
+import type { WorkflowGraph } from '@pertexo/workflow-model';
 import { sql } from 'drizzle-orm';
 import {
   check,
@@ -26,7 +27,7 @@ export const workflowTestSnapshots = appSchema.table(
     workflowId: uuid('workflow_id').notNull(),
     workspaceId: uuid('workspace_id').notNull(),
     draftRevision: integer('draft_revision').notNull(),
-    graphJson: json('graph_json').notNull(),
+    graphJson: json('graph_json').$type<WorkflowGraph>().notNull(),
     checksum: varchar('checksum', { length: 74 }).notNull(),
     executableJson: json('executable_json').notNull(),
     dispositions: jsonb('dispositions')

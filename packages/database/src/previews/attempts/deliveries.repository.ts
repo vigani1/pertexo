@@ -1,3 +1,11 @@
+import { and, eq, isNull, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  outboxEvents,
+  inboxReceipts,
+  transportSecurityAuditFacts,
+} from '../../schema/transport.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { Pool } from 'pg';
 import { v7 as uuidv7 } from 'uuid';
 import type { z } from 'zod';
@@ -60,27 +68,47 @@ export async function insertPreviewOutboxDelivery(
             : { traceparent: input.traceparent }),
         });
   const payloadChecksum = canonicalOutboxPayloadChecksum(payload);
-  const inserted = await client.query(
-    `insert into app.outbox_events (
-       id,workspace_id,job_name,aggregate_type,aggregate_id,
-       payload,payload_checksum,available_at
-     ) values (
-       $1,$2,$3,'preview-run',$4,$5::jsonb,$6,
-       coalesce($7::timestamptz,clock_timestamp())
-     )`,
-    [
-      outboxEventId,
-      input.workspaceId,
-      input.jobName,
-      input.previewRunId,
-      JSON.stringify(payload),
+  const inserted = await drizzle(client)
+    .insert(outboxEvents)
+    .values({
+      id: outboxEventId,
+      workspaceId: input.workspaceId,
+      jobName: input.jobName,
+      aggregateType: 'preview-run',
+      aggregateId: input.previewRunId,
+      payload: sql`${JSON.stringify(payload)}::jsonb`,
       payloadChecksum,
-      input.availableAt ?? null,
-    ],
-  );
-  if (inserted.rowCount !== 1)
+      availableAt: sql`coalesce(${input.availableAt ?? null}::timestamptz,clock_timestamp())`,
+    })
+    .returning({ id: outboxEvents.id })
+    .catch(rethrowQueryFailure);
+  if (inserted.length !== 1)
     throw new PreviewAttemptStateError('reconciliation_schedule_lost');
   return Object.freeze({ outboxEventId, payloadChecksum });
+}
+
+async function readDelivery(
+  client: PreviewOutboxClient,
+  workspaceId: string,
+  outboxEventId: string,
+) {
+  const rows = await drizzle(client)
+    .select({
+      aggregateId: outboxEvents.aggregateId,
+      aggregateType: outboxEvents.aggregateType,
+      jobName: outboxEvents.jobName,
+      payload: outboxEvents.payload,
+      payloadChecksum: outboxEvents.payloadChecksum,
+    })
+    .from(outboxEvents)
+    .where(
+      and(
+        eq(outboxEvents.workspaceId, workspaceId),
+        eq(outboxEvents.id, outboxEventId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  return rows[0];
 }
 
 export async function validatePreviewDelivery(
@@ -92,20 +120,11 @@ export async function validatePreviewDelivery(
     workspaceId: string;
   }>,
 ): Promise<void> {
-  const result = await client.query<{
-    aggregate_id: string;
-    aggregate_type: string;
-    job_name: string;
-    payload: unknown;
-    payload_checksum: string;
-  }>(
-    `select aggregate_id,aggregate_type,job_name,payload,
-            payload_checksum
-     from app.outbox_events
-     where workspace_id=$1 and id=$2`,
-    [input.workspaceId, input.delivery.outboxEventId],
+  const row = await readDelivery(
+    client,
+    input.workspaceId,
+    input.delivery.outboxEventId,
   );
-  const row = result.rows[0];
   if (row === undefined) {
     // Under this workspace scope the aggregate does not exist: forced RLS
     // hides foreign work, so this is a scope violation, not tampering.
@@ -120,11 +139,11 @@ export async function validatePreviewDelivery(
     throw new PreviewDeliveryMismatchError();
   }
   const invalidExecutionDelivery =
-    row.aggregate_id !== input.previewRunId ||
-    row.aggregate_type !== 'preview-run' ||
-    row.job_name !== 'execute-preview-attempt' ||
-    row.payload_checksum !== input.delivery.payloadChecksum ||
-    checksum !== row.payload_checksum ||
+    row.aggregateId !== input.previewRunId ||
+    row.aggregateType !== 'preview-run' ||
+    row.jobName !== 'execute-preview-attempt' ||
+    row.payloadChecksum !== input.delivery.payloadChecksum ||
+    checksum !== row.payloadChecksum ||
     payload.workspaceId !== input.workspaceId ||
     payload.previewRunId !== input.previewRunId ||
     payload.previewAttemptId !== input.previewAttemptId ||
@@ -142,20 +161,11 @@ export async function validatePreviewReconciliationDelivery(
     workspaceId: string;
   }>,
 ): Promise<z.output<typeof previewReconciliationPayloadSchema>> {
-  const result = await client.query<{
-    aggregate_id: string;
-    aggregate_type: string;
-    job_name: string;
-    payload: unknown;
-    payload_checksum: string;
-  }>(
-    `select aggregate_id,aggregate_type,job_name,payload,
-            payload_checksum
-     from app.outbox_events
-     where workspace_id=$1 and id=$2`,
-    [input.workspaceId, input.delivery.outboxEventId],
+  const row = await readDelivery(
+    client,
+    input.workspaceId,
+    input.delivery.outboxEventId,
   );
-  const row = result.rows[0];
   if (row === undefined)
     throw new PreviewAttemptStateError('delivery_not_found');
   let payload: z.output<typeof previewReconciliationPayloadSchema>;
@@ -167,11 +177,11 @@ export async function validatePreviewReconciliationDelivery(
     throw new PreviewDeliveryMismatchError();
   }
   const invalidReconciliationDelivery =
-    row.aggregate_id !== input.previewRunId ||
-    row.aggregate_type !== 'preview-run' ||
-    row.job_name !== 'reconcile-preview-attempt' ||
-    row.payload_checksum !== input.delivery.payloadChecksum ||
-    checksum !== row.payload_checksum ||
+    row.aggregateId !== input.previewRunId ||
+    row.aggregateType !== 'preview-run' ||
+    row.jobName !== 'reconcile-preview-attempt' ||
+    row.payloadChecksum !== input.delivery.payloadChecksum ||
+    checksum !== row.payloadChecksum ||
     payload.workspaceId !== input.workspaceId ||
     payload.previewRunId !== input.previewRunId ||
     payload.previewAttemptId !== input.previewAttemptId ||
@@ -187,18 +197,21 @@ export async function completePreviewReceipt(
   workspaceId: string,
   delivery: PreviewDelivery,
 ): Promise<void> {
-  const result = await client.query(
-    `update app.inbox_receipts set completed_at=clock_timestamp()
-     where consumer_name=$1 and message_id=$2 and workspace_id=$3
-       and payload_checksum=$4 and completed_at is null`,
-    [
-      consumerName,
-      delivery.outboxEventId,
-      workspaceId,
-      delivery.payloadChecksum,
-    ],
-  );
-  if (result.rowCount !== 1)
+  const result = await drizzle(client)
+    .update(inboxReceipts)
+    .set({ completedAt: sql`clock_timestamp()` })
+    .where(
+      and(
+        eq(inboxReceipts.consumerName, consumerName),
+        eq(inboxReceipts.messageId, delivery.outboxEventId),
+        eq(inboxReceipts.workspaceId, workspaceId),
+        eq(inboxReceipts.payloadChecksum, delivery.payloadChecksum),
+        isNull(inboxReceipts.completedAt),
+      ),
+    )
+    .returning({ messageId: inboxReceipts.messageId })
+    .catch(rethrowQueryFailure);
+  if (result.length !== 1)
     throw new PreviewAttemptStateError('receipt_completion_lost');
 }
 
@@ -208,26 +221,30 @@ async function loadPreviewReceipt(
   workspaceId: string,
   delivery: PreviewDelivery,
 ): Promise<'completed' | 'open'> {
-  const existing = await client.query<{
-    completed_at: Date | null;
-    payload_checksum: string;
-    workspace_id: string;
-  }>(
-    `select workspace_id,payload_checksum,completed_at
-     from app.inbox_receipts
-     where consumer_name=$1 and message_id=$2
-     for update`,
-    [consumerName, delivery.outboxEventId],
-  );
-  const receipt = existing.rows[0];
+  const existing = await drizzle(client)
+    .select({
+      workspaceId: inboxReceipts.workspaceId,
+      payloadChecksum: inboxReceipts.payloadChecksum,
+      completedAt: inboxReceipts.completedAt,
+    })
+    .from(inboxReceipts)
+    .where(
+      and(
+        eq(inboxReceipts.consumerName, consumerName),
+        eq(inboxReceipts.messageId, delivery.outboxEventId),
+      ),
+    )
+    .for('update')
+    .catch(rethrowQueryFailure);
+  const receipt = existing[0];
   if (receipt === undefined)
     throw new PreviewAttemptStateError('receipt_missing');
   if (
-    receipt.workspace_id !== workspaceId ||
-    receipt.payload_checksum !== delivery.payloadChecksum
+    receipt.workspaceId !== workspaceId ||
+    receipt.payloadChecksum !== delivery.payloadChecksum
   )
     throw new PreviewDeliveryMismatchError();
-  return receipt.completed_at === null ? 'open' : 'completed';
+  return receipt.completedAt === null ? 'open' : 'completed';
 }
 
 export async function claimPreviewReceipt(
@@ -236,20 +253,20 @@ export async function claimPreviewReceipt(
   workspaceId: string,
   delivery: PreviewDelivery,
 ): Promise<'completed' | 'open'> {
-  const inserted = await client.query(
-    `insert into app.inbox_receipts (
-       consumer_name,message_id,workspace_id,payload_checksum
-     ) values ($1,$2,$3,$4)
-     on conflict (consumer_name,message_id) do nothing
-     returning message_id`,
-    [
+  const inserted = await drizzle(client)
+    .insert(inboxReceipts)
+    .values({
       consumerName,
-      delivery.outboxEventId,
+      messageId: delivery.outboxEventId,
       workspaceId,
-      delivery.payloadChecksum,
-    ],
-  );
-  if (inserted.rowCount === 1) return 'open';
+      payloadChecksum: delivery.payloadChecksum,
+    })
+    .onConflictDoNothing({
+      target: [inboxReceipts.consumerName, inboxReceipts.messageId],
+    })
+    .returning({ messageId: inboxReceipts.messageId })
+    .catch(rethrowQueryFailure);
+  if (inserted.length === 1) return 'open';
   return loadPreviewReceipt(client, consumerName, workspaceId, delivery);
 }
 
@@ -279,12 +296,16 @@ export async function auditPreviewDeliveryMismatch(
     pool,
     { workspaceId },
     async (client) => {
-      await client.query(
-        `insert into app.transport_security_audit_facts (
-           id,workspace_id,fact_type,consumer_name,message_id
-         ) values ($1,$2,'inbox_checksum_mismatch',$3,$4)`,
-        [uuidv7(), workspaceId, consumerName, delivery.outboxEventId],
-      );
+      await drizzle(client)
+        .insert(transportSecurityAuditFacts)
+        .values({
+          id: uuidv7(),
+          workspaceId,
+          factType: 'inbox_checksum_mismatch',
+          consumerName,
+          messageId: delivery.outboxEventId,
+        })
+        .catch(rethrowQueryFailure);
     },
     { signal },
   );

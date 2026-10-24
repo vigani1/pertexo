@@ -108,10 +108,16 @@ async function previewWorkflowScope(
     actorId,
   });
   const visible = await transaction.db
-    .execute(sql`select 1 from app.workflows workflow
-    where workflow.workspace_id=${transaction.workspaceId} and workflow.id=${workflowId}
-      and ${workflowScopeSql(scope, sql`workflow.id`, capability)}`);
-  return visible.rows.length === 1 ? scope : undefined;
+    .select({ one: sql`1` })
+    .from(workflows)
+    .where(
+      and(
+        eq(workflows.workspaceId, transaction.workspaceId),
+        eq(workflows.id, workflowId),
+        workflowScopeSql(scope, sql`${workflows.id}`, capability),
+      ),
+    );
+  return visible.length === 1 ? scope : undefined;
 }
 
 export async function previewWorkflowVisible(

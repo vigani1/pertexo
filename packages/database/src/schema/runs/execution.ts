@@ -1,4 +1,9 @@
 import type { NodeAttemptLease } from '../../attempts/contract.js';
+import type { RunStatus } from '@pertexo/workflow-engine';
+import type {
+  PreviewAttemptLease,
+  PreviewStatus,
+} from '../../previews/contract.js';
 import {
   NODE_IDENTITY_KEY_PATTERN,
   type CodeDiagnostics,
@@ -78,7 +83,7 @@ export const workflowRuns = appSchema.table(
     admissionTicket: bigint('admission_ticket', { mode: 'bigint' })
       .notNull()
       .$defaultFn(() => sql`null`),
-    status: varchar('status', { length: 32 }).notNull(),
+    status: varchar('status', { length: 32 }).$type<RunStatus>().notNull(),
     deadlineAt: timestamp('deadline_at', { withTimezone: true, mode: 'date' }),
     deadlineWakeupAt: timestamp('deadline_wakeup_at', {
       withTimezone: true,
@@ -742,13 +747,20 @@ export const previewRuns = appSchema.table(
     variableSetRevision: integer('variable_set_revision'),
     inputRef: json('input_ref').notNull(),
     priorPreviewRunId: uuid('prior_preview_run_id'),
-    sideEffectClass: varchar('side_effect_class', { length: 32 }).notNull(),
+    sideEffectClass: varchar('side_effect_class', { length: 32 })
+      .$type<PreviewAttemptLease['sideEffectClass']>()
+      .notNull(),
     mayContactProvider: boolean('may_contact_provider').notNull(),
     mayCauseExternalSideEffect: boolean(
       'may_cause_external_side_effect',
     ).notNull(),
-    dryRun: varchar('dry_run', { length: 32 }).notNull(),
-    status: varchar('status', { length: 32 }).default('queued').notNull(),
+    dryRun: varchar('dry_run', { length: 32 })
+      .$type<PreviewAttemptLease['dryRun']>()
+      .notNull(),
+    status: varchar('status', { length: 32 })
+      .$type<PreviewStatus>()
+      .default('queued')
+      .notNull(),
     outputRef: json('output_ref'),
     pinnedSampleId: uuid('pinned_sample_id'),
     safeErrorCode: varchar('safe_error_code', { length: 128 }),
@@ -915,8 +927,13 @@ export const previewAttempts = appSchema.table(
     id: uuid('id').primaryKey(),
     workspaceId: uuid('workspace_id').notNull(),
     previewRunId: uuid('preview_run_id').notNull(),
-    status: varchar('status', { length: 32 }).default('queued').notNull(),
-    sideEffectClass: varchar('side_effect_class', { length: 32 }).notNull(),
+    status: varchar('status', { length: 32 })
+      .$type<PreviewStatus>()
+      .default('queued')
+      .notNull(),
+    sideEffectClass: varchar('side_effect_class', { length: 32 })
+      .$type<PreviewAttemptLease['sideEffectClass']>()
+      .notNull(),
     providerIdempotencyKey: varchar('provider_idempotency_key', {
       length: 256,
     }),

@@ -1,4 +1,9 @@
-import { bindResourcePredicate } from '../../tenant-access/resources/query-scope.js';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { nodeRuns, workflowRuns } from '../../schema/runs/execution.js';
+import { workflowTestSnapshots } from '../../schema/runs/tests.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { testRunSql } from '../../runs/data-policy.js';
 import type { PoolClient } from 'pg';
 import {
@@ -12,8 +17,8 @@ import { parseStoredExecutionValue } from '../../platform/stored-execution-value
 import type { SuiteCaseRow } from './contract.js';
 export interface SuiteRunOutcome {
   status: WorkflowTestSuiteReport['actualOutcome'];
-  output_ref: unknown;
-  pin_required: boolean;
+  outputRef: unknown;
+  pinRequired: boolean;
 }
 /** Fetch only selected outputs; repeated steps are reported rather than guessed. */
 export async function evaluateSuiteCase(
@@ -53,18 +58,24 @@ export async function evaluateSuiteCase(
         : `step:${assertion.source.nodeId}`;
     let output = outputs.get(key);
     if (output === undefined) {
-      if (assertion.source.kind === 'final') output = inline(run.output_ref);
+      if (assertion.source.kind === 'final') output = inline(run.outputRef);
       else {
-        const rows = await client.query<{
-          status: string;
-          output_ref: unknown;
-        }>(
-          'select status,output_ref from app.node_runs where workspace_id=$1 and workflow_run_id=$2 and node_id=$3 order by id limit 2',
-          [entry.workspace_id, entry.run_id, assertion.source.nodeId],
-        );
-        const one = rows.rows[0];
-        if (rows.rows.length > 1) output = { state: 'ambiguous' };
-        else if (one?.status === 'succeeded') output = inline(one.output_ref);
+        const rows = await drizzle(client)
+          .select({ status: nodeRuns.status, outputRef: nodeRuns.outputRef })
+          .from(nodeRuns)
+          .where(
+            and(
+              eq(nodeRuns.workspaceId, entry.workspaceId),
+              sql`${nodeRuns.workflowRunId}=${entry.runId}`,
+              eq(nodeRuns.nodeId, assertion.source.nodeId),
+            ),
+          )
+          .orderBy(asc(nodeRuns.id))
+          .limit(2)
+          .catch(rethrowQueryFailure);
+        const one = rows[0];
+        if (rows.length > 1) output = { state: 'ambiguous' };
+        else if (one?.status === 'succeeded') output = inline(one.outputRef);
         else output = { state: 'unavailable' };
       }
       outputs.set(key, output);
@@ -95,17 +106,31 @@ export async function readSuiteRunOutcome(
   runId: string,
   snapshotId: string,
 ): Promise<SuiteRunOutcome | undefined> {
-  const found = await client.query<{
-    status: SuiteRunOutcome['status'];
-    output_ref: unknown;
-    dispositions: Record<string, string>;
-  }>(
-    `select run.status,run.output_ref,snapshot.dispositions from app.workflow_runs run
- join app.workflow_test_snapshots snapshot on snapshot.workspace_id=run.workspace_id and snapshot.id=run.workflow_version_id
- where run.workspace_id=$1 and run.id=$2 and snapshot.id=$3 and ${bindResourcePredicate(testRunSql('run').inlineParams(), [])}`,
-    [workspaceId, runId, snapshotId],
-  );
-  const row = found.rows[0];
+  const run = alias(workflowRuns, 'run');
+  const found = await drizzle(client)
+    .select({
+      status: run.status,
+      outputRef: run.outputRef,
+      dispositions: workflowTestSnapshots.dispositions,
+    })
+    .from(run)
+    .innerJoin(
+      workflowTestSnapshots,
+      and(
+        eq(workflowTestSnapshots.workspaceId, run.workspaceId),
+        eq(workflowTestSnapshots.id, run.workflowVersionId),
+      ),
+    )
+    .where(
+      and(
+        eq(run.workspaceId, workspaceId),
+        eq(run.id, runId),
+        eq(workflowTestSnapshots.id, snapshotId),
+        testRunSql('run'),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  const row = found[0];
   if (row === undefined) return undefined;
   const required = Object.entries(row.dispositions)
     .filter(([, kind]) => kind === 'pin_required')
@@ -116,22 +141,31 @@ export async function readSuiteRunOutcome(
   )
     return {
       status: row.status,
-      output_ref: row.output_ref,
-      pin_required: false,
+      outputRef: row.outputRef,
+      pinRequired: false,
     };
-  const problem = await client.query<{ found: boolean }>(
-    `select exists(select 1 from app.node_runs where workspace_id=$1 and workflow_run_id=$2 and node_id=any($3::varchar[]) and safe_error_code='test.pin_required') found`,
-    [workspaceId, runId, required],
-  );
+  const problem = await drizzle(client)
+    .select({ id: nodeRuns.id })
+    .from(nodeRuns)
+    .where(
+      and(
+        eq(nodeRuns.workspaceId, workspaceId),
+        eq(nodeRuns.workflowRunId, runId),
+        inArray(nodeRuns.nodeId, required),
+        eq(nodeRuns.safeErrorCode, 'test.pin_required'),
+      ),
+    )
+    .limit(1)
+    .catch(rethrowQueryFailure);
   return {
     status: row.status,
-    output_ref: row.output_ref,
-    pin_required: problem.rows[0]?.found ?? false,
+    outputRef: row.outputRef,
+    pinRequired: problem.length !== 0,
   };
 }
 
 function suiteRunError(run: SuiteRunOutcome): WorkflowTestSuiteReport['error'] {
-  if (run.pin_required) {
+  if (run.pinRequired) {
     return 'test_pin_required';
   }
   if (run.status === 'timed_out') {

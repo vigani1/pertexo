@@ -1,4 +1,7 @@
-import { bindResourcePredicate } from '../../tenant-access/resources/query-scope.js';
+import { and, eq, inArray, sql } from 'drizzle-orm';
+import { workflowRuns } from '../../schema/runs/execution.js';
+import { workflowTestSuites } from '../../schema/runs/suites.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -17,21 +20,40 @@ export async function requireNoActiveTest(
   client: PoolClient,
   input: SampleScope,
 ): Promise<void> {
-  const active = await client.query(
-    `select id from app.workflow_runs where workspace_id=$1 and workflow_id=$2 and started_by=$3 and ${bindResourcePredicate(testRunSql().inlineParams(), [])} and status in ('queued','running','waiting') limit 1`,
-    [input.workspaceId, input.workflowId, input.actorId],
-  );
-  if (active.rowCount !== 0) throw new WorkflowTestError('already_running');
+  const active = await drizzle(client)
+    .select({ id: workflowRuns.id })
+    .from(workflowRuns)
+    .where(
+      and(
+        eq(workflowRuns.workspaceId, input.workspaceId),
+        eq(workflowRuns.workflowId, input.workflowId),
+        eq(workflowRuns.startedBy, input.actorId),
+        testRunSql(),
+        inArray(workflowRuns.status, ['queued', 'running', 'waiting']),
+      ),
+    )
+    .limit(1)
+    .catch(rethrowQueryFailure);
+  if (active.length !== 0) throw new WorkflowTestError('already_running');
 }
 export async function requireNoActiveSuite(
   client: PoolClient,
   input: SampleScope,
 ): Promise<void> {
-  const active = await client.query(
-    "select id from app.workflow_test_suites where workspace_id=$1 and workflow_id=$2 and started_by=$3 and status='running' limit 1",
-    [input.workspaceId, input.workflowId, input.actorId],
-  );
-  if (active.rowCount !== 0) throw new WorkflowTestError('already_running');
+  const active = await drizzle(client)
+    .select({ id: workflowTestSuites.id })
+    .from(workflowTestSuites)
+    .where(
+      and(
+        eq(workflowTestSuites.workspaceId, input.workspaceId),
+        eq(workflowTestSuites.workflowId, input.workflowId),
+        eq(workflowTestSuites.startedBy, input.actorId),
+        eq(workflowTestSuites.status, 'running'),
+      ),
+    )
+    .limit(1)
+    .catch(rethrowQueryFailure);
+  if (active.length !== 0) throw new WorkflowTestError('already_running');
 }
 /** Every suite case is an ordinary draft test, with one acceptance/outbox owner. */
 export async function admitTestRun(

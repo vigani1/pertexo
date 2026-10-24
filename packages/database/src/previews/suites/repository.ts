@@ -1,3 +1,11 @@
+import { and, eq, sql } from 'drizzle-orm';
+import {
+  workflowTestSuites,
+  workflowTestSuiteCases,
+} from '../../schema/runs/suites.js';
+
+import { WorkflowRunNotFoundError } from '../../runs/errors.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { requireConnectionBindings } from '../../tenant-access/resources/connections/bindings.js';
 import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.js';
 import type { Pool } from 'pg';
@@ -38,12 +46,8 @@ import {
 } from '../workflows/snapshot.repository.js';
 import type { AuthoringCatalogs } from '../../authoring/workflows/catalogs.js';
 import type { SampleScope } from '../../authoring/step-samples/contract.js';
-import type {
-  WorkflowTestSuiteStore,
-  SuiteRow,
-  SuiteCaseRow,
-} from './contract.js';
-import { readSuiteCurrent } from './current.queries.js';
+import type { WorkflowTestSuiteStore } from './contract.js';
+import { readSuiteCurrent, readSuiteCasePayloads } from './current.queries.js';
 import { listSuites, readSuite, readCaseReport } from './records.queries.js';
 import { admitSuiteCase } from './admit.repository.js';
 
@@ -69,31 +73,72 @@ export function createWorkflowTestSuiteStore(
           actorId: input.actorId,
           roles: rolesForCapability('run:cancel'),
         });
-        const found = await client.query<SuiteRow>(
-          'select * from app.workflow_test_suites where workspace_id=$1 and workflow_id=$2 and id=$3 and expires_at>clock_timestamp() for update',
-          [input.workspaceId, input.workflowId, input.suiteId],
-        );
-        const suite = found.rows[0];
+        const db = drizzle(client);
+        const found = await db
+          .select()
+          .from(workflowTestSuites)
+          .where(
+            and(
+              eq(workflowTestSuites.workspaceId, input.workspaceId),
+              eq(workflowTestSuites.workflowId, input.workflowId),
+              eq(workflowTestSuites.id, input.suiteId),
+              sql`${workflowTestSuites.expiresAt}>clock_timestamp()`,
+            ),
+          )
+          .for('update')
+          .catch(rethrowQueryFailure);
+        const suite = found[0];
         if (suite === undefined) throw new WorkflowTestError('not_found');
         if (suite.status !== 'running') return;
-        await client.query(
-          "update app.workflow_test_suites set cancel_requested=true,stop_reason='user_canceled',next_check_at=clock_timestamp() where workspace_id=$1 and id=$2",
-          [input.workspaceId, input.suiteId],
-        );
-        await client.query(
-          "update app.workflow_test_suite_cases set status='skipped' where workspace_id=$1 and suite_id=$2 and status='pending'",
-          [input.workspaceId, input.suiteId],
-        );
-        const active = await client.query<{ run_id: string }>(
-          "select run_id from app.workflow_test_suite_cases where workspace_id=$1 and suite_id=$2 and status='running'",
-          [input.workspaceId, input.suiteId],
-        );
-        const runId = active.rows[0]?.run_id;
+        await db
+          .update(workflowTestSuites)
+          .set({
+            cancelRequested: true,
+            stopReason: 'user_canceled',
+            nextCheckAt: sql`clock_timestamp()`,
+          })
+          .where(
+            and(
+              eq(workflowTestSuites.workspaceId, input.workspaceId),
+              eq(workflowTestSuites.id, input.suiteId),
+            ),
+          )
+          .catch(rethrowQueryFailure);
+        await db
+          .update(workflowTestSuiteCases)
+          .set({ status: 'skipped' })
+          .where(
+            and(
+              eq(workflowTestSuiteCases.workspaceId, input.workspaceId),
+              eq(workflowTestSuiteCases.suiteId, input.suiteId),
+              eq(workflowTestSuiteCases.status, 'pending'),
+            ),
+          )
+          .catch(rethrowQueryFailure);
+        const active = await db
+          .select({ runId: workflowTestSuiteCases.runId })
+          .from(workflowTestSuiteCases)
+          .where(
+            and(
+              eq(workflowTestSuiteCases.workspaceId, input.workspaceId),
+              eq(workflowTestSuiteCases.suiteId, input.suiteId),
+              eq(workflowTestSuiteCases.status, 'running'),
+            ),
+          )
+          .catch(rethrowQueryFailure);
+        const runId = active[0]?.runId;
         if (runId === undefined)
-          await client.query(
-            "update app.workflow_test_suites set status='canceled',completed_at=clock_timestamp() where workspace_id=$1 and id=$2",
-            [input.workspaceId, input.suiteId],
-          );
+          await db
+            .update(workflowTestSuites)
+            .set({ status: 'canceled', completedAt: sql`clock_timestamp()` })
+            .where(
+              and(
+                eq(workflowTestSuites.workspaceId, input.workspaceId),
+                eq(workflowTestSuites.id, input.suiteId),
+              ),
+            )
+            .catch(rethrowQueryFailure);
+        else if (runId === null) throw new WorkflowRunNotFoundError();
         else
           await cancelInTransaction(
             {
@@ -161,32 +206,7 @@ function startTestSuite(
     });
     if (replay !== null) return replay as { suiteId: string };
     const { snapshot, current } = await preparation(catalogs, client, input);
-    if (current.cases.length === 0)
-      throw new WorkflowTestError('cases_required');
-    if (current.draftRevision !== input.request.expectedRevision)
-      throw new WorkflowTestError('draft_changed');
-    if (!sameTestSamples(current.samples, input.request.expectedSamples))
-      throw new WorkflowTestError('samples_changed');
-    const suiteChanged =
-      current.variableSetRevision !==
-        input.request.expectedVariableSetRevision ||
-      current.signature !== input.request.signature ||
-      canonicalJson(
-        current.cases.map(({ id, revision }) => ({ id, revision })),
-      ) !== canonicalJson(input.request.expectedCases);
-    if (suiteChanged) throw new WorkflowTestError('cases_changed');
-    if (
-      canonicalJson([...input.request.expectedEffectfulSteps].sort()) !==
-      canonicalJson(
-        snapshot.preparation.effectfulSteps.map((step) => step.nodeId).sort(),
-      )
-    )
-      throw new WorkflowTestError('effects_changed');
-    if (
-      snapshot.preparation.effectfulSteps.length > 0 &&
-      !input.request.acknowledgeSideEffects
-    )
-      throw new WorkflowTestError('effects_acknowledgement_required');
+    assertPreparedSuite(input, { snapshot, current });
     if (snapshot.usesConnections)
       await lockWorkflowAuthoringAuthority(client, input.workspaceId, {
         actorId: input.actorId,
@@ -194,19 +214,11 @@ function startTestSuite(
       });
     await requireNoActiveSuite(client, input);
     await requireNoActiveTest(client, input);
-    const cases = await client.query<{
-      id: string;
-      revision: number;
-      name: string;
-      input: string;
-      expectations: string | null;
-    }>(
-      `select record.id,record.revision,record.name,payload.input,payload.expectations from app.workflow_input_cases record join app.workflow_input_case_payloads payload on payload.workspace_id=record.workspace_id and payload.case_id=record.id and payload.revision=record.revision where record.workspace_id=$1 and record.workflow_id=$2 and record.deleted_at is null order by record.created_at,record.id limit 50`,
-      [input.workspaceId, input.workflowId],
-    );
-    if (cases.rowCount !== current.cases.length)
+    const db = drizzle(client);
+    const cases = await readSuiteCasePayloads(client, input);
+    if (cases.length !== current.cases.length)
       throw new WorkflowTestError('cases_changed');
-    for (const entry of cases.rows) {
+    for (const entry of cases) {
       const expectations = (
         entry.expectations === null
           ? DEFAULT_TEST_EXPECTATIONS
@@ -244,50 +256,94 @@ function startTestSuite(
       snapshot,
       expiresAt: new Date(snapshot.now.getTime() + TEST_RUN_RETENTION_MILLIS),
     });
-    const inserted = await client.query<SuiteRow>(
-      `insert into app.workflow_test_suites(id,workspace_id,workflow_id,started_by,snapshot_id,signature,variable_set_revision,uses_connections,case_duration_ms,initial_checkpoint,created_at,deadline_at,expires_at)
-    values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,$12,$13) returning *`,
-      [
-        suiteId,
-        input.workspaceId,
-        input.workflowId,
-        input.actorId,
+    const inserted = await db
+      .insert(workflowTestSuites)
+      .values({
+        id: suiteId,
+        workspaceId: input.workspaceId,
+        workflowId: input.workflowId,
+        startedBy: input.actorId,
         snapshotId,
-        current.signature,
-        current.variableSetRevision,
-        snapshot.usesConnections,
-        Math.min(300000, snapshot.graph.settings.maxRunDurationMs ?? 300000),
-        JSON.stringify(snapshot.compiled.initialCheckpoint(snapshotId)),
-        snapshot.now,
-        new Date(snapshot.now.getTime() + 5 * 60 * 60 * 1000),
-        new Date(snapshot.now.getTime() + TEST_RUN_RETENTION_MILLIS),
-      ],
-    );
-    const suite = inserted.rows[0];
+        signature: current.signature,
+        variableSetRevision: current.variableSetRevision,
+        usesConnections: snapshot.usesConnections,
+        caseDurationMs: Math.min(
+          300000,
+          snapshot.graph.settings.maxRunDurationMs ?? 300000,
+        ),
+        initialCheckpoint: sql`${JSON.stringify(snapshot.compiled.initialCheckpoint(snapshotId))}::jsonb`,
+        createdAt: snapshot.now,
+        deadlineAt: new Date(snapshot.now.getTime() + 5 * 60 * 60 * 1000),
+        expiresAt: new Date(snapshot.now.getTime() + TEST_RUN_RETENTION_MILLIS),
+      })
+      .returning()
+      .catch(rethrowQueryFailure);
+    const suite = inserted[0];
     if (suite === undefined) throw new Error('Suite admission is missing');
-    const manifest = cases.rows.map((entry, ordinal) => ({
+    const manifest = cases.map((entry, ordinal) => ({
+      workspaceId: input.workspaceId,
+      suiteId,
       ordinal,
-      case_id: entry.id,
-      case_revision: entry.revision,
+      caseId: entry.id,
+      caseRevision: entry.revision,
       name: entry.name,
       input: entry.input,
       expectations:
         entry.expectations ?? canonicalJson(DEFAULT_TEST_EXPECTATIONS),
     }));
-    await client.query(
-      `insert into app.workflow_test_suite_cases(workspace_id,suite_id,ordinal,case_id,case_revision,name,input,expectations)
-    select $1,$2,entry.ordinal,entry.case_id,entry.case_revision,entry.name,entry.input,entry.expectations from jsonb_to_recordset($3::jsonb) entry(ordinal integer,case_id uuid,case_revision integer,name text,input text,expectations text)`,
-      [input.workspaceId, suiteId, JSON.stringify(manifest)],
-    );
-    const first = await client.query<SuiteCaseRow>(
-      'select * from app.workflow_test_suite_cases where workspace_id=$1 and suite_id=$2 and ordinal=0',
-      [input.workspaceId, suiteId],
-    );
-    const entry = first.rows[0];
+    await db
+      .insert(workflowTestSuiteCases)
+      .values(manifest)
+      .catch(rethrowQueryFailure);
+    const first = await db
+      .select()
+      .from(workflowTestSuiteCases)
+      .where(
+        and(
+          eq(workflowTestSuiteCases.workspaceId, input.workspaceId),
+          eq(workflowTestSuiteCases.suiteId, suiteId),
+          eq(workflowTestSuiteCases.ordinal, 0),
+        ),
+      )
+      .catch(rethrowQueryFailure);
+    const entry = first[0];
     if (entry === undefined) throw new Error('Suite has no first case');
     await admitSuiteCase(client, suite, entry, snapshot.now);
     const result = { suiteId };
     await completeCommand(client, command, result);
     return result;
   });
+}
+
+function assertPreparedSuite(
+  input: Parameters<WorkflowTestSuiteStore['start']>[0],
+  {
+    snapshot,
+    current,
+  }: Pick<Awaited<ReturnType<typeof preparation>>, 'snapshot' | 'current'>,
+): void {
+  if (current.cases.length === 0) throw new WorkflowTestError('cases_required');
+  if (current.draftRevision !== input.request.expectedRevision)
+    throw new WorkflowTestError('draft_changed');
+  if (!sameTestSamples(current.samples, input.request.expectedSamples))
+    throw new WorkflowTestError('samples_changed');
+  const suiteChanged =
+    current.variableSetRevision !== input.request.expectedVariableSetRevision ||
+    current.signature !== input.request.signature ||
+    canonicalJson(
+      current.cases.map(({ id, revision }) => ({ id, revision })),
+    ) !== canonicalJson(input.request.expectedCases);
+  if (suiteChanged) throw new WorkflowTestError('cases_changed');
+  if (
+    canonicalJson([...input.request.expectedEffectfulSteps].sort()) !==
+    canonicalJson(
+      snapshot.preparation.effectfulSteps.map((step) => step.nodeId).sort(),
+    )
+  )
+    throw new WorkflowTestError('effects_changed');
+  if (
+    snapshot.preparation.effectfulSteps.length > 0 &&
+    !input.request.acknowledgeSideEffects
+  )
+    throw new WorkflowTestError('effects_acknowledgement_required');
 }

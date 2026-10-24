@@ -1,3 +1,7 @@
+import { and, asc, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workflowTestSuites } from '../../schema/runs/suites.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { isIntegerInRange } from '../../platform/persisted-primitives.js';
 import type { DatabaseConfig } from '../../config.js';
 import {
@@ -38,25 +42,40 @@ export async function createWorkflowTestSuiteScanner(
       const invalidLimit = !isIntegerInRange(limit, 1, 100);
       if (invalidLimit)
         throw new RangeError('Suite scan limit must be between 1 and 100');
-      const candidates = await discovery.pool.query<{
-        id: string;
-        workspace_id: string;
-        workflow_id: string;
-        started_by: string;
-        next_check_at: Date;
-      }>(
-        "select id,workspace_id,workflow_id,started_by,next_check_at from app.workflow_test_suites where status='running' and expires_at>clock_timestamp() and next_check_at<=clock_timestamp() and ($1::timestamptz is null or (next_check_at,id)>($1,$2::uuid)) order by next_check_at,id limit $3",
-        [after?.at ?? null, after?.id ?? null, limit],
-      );
+      const candidates = await drizzle(discovery.pool)
+        .select({
+          id: workflowTestSuites.id,
+          workspaceId: workflowTestSuites.workspaceId,
+          workflowId: workflowTestSuites.workflowId,
+          startedBy: workflowTestSuites.startedBy,
+          nextCheckAt: workflowTestSuites.nextCheckAt,
+        })
+        .from(workflowTestSuites)
+        .where(
+          and(
+            eq(workflowTestSuites.status, 'running'),
+            sql`${workflowTestSuites.expiresAt}>clock_timestamp()`,
+            sql`${workflowTestSuites.nextCheckAt}<=clock_timestamp()`,
+            after === undefined
+              ? undefined
+              : sql`(${workflowTestSuites.nextCheckAt},${workflowTestSuites.id})>(${after.at},${after.id}::uuid)`,
+          ),
+        )
+        .orderBy(
+          asc(workflowTestSuites.nextCheckAt),
+          asc(workflowTestSuites.id),
+        )
+        .limit(limit)
+        .catch(rethrowQueryFailure);
       let advanced = 0;
-      for (const candidate of candidates.rows) {
+      for (const candidate of candidates) {
         signal?.throwIfAborted();
         if (
           await withTenantScopedClient(
             writes.pool,
             {
-              workspaceId: candidate.workspace_id,
-              actorId: candidate.started_by,
+              workspaceId: candidate.workspaceId,
+              actorId: candidate.startedBy,
             },
             (client) => advanceSuite(client, candidate),
             {
@@ -66,9 +85,9 @@ export async function createWorkflowTestSuiteScanner(
           )
         )
           advanced++;
-        after = { at: candidate.next_check_at, id: candidate.id };
+        after = { at: candidate.nextCheckAt, id: candidate.id };
       }
-      if (candidates.rows.length < limit) after = undefined;
+      if (candidates.length < limit) after = undefined;
       return advanced;
     },
     close: async () => {
