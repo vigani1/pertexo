@@ -16,6 +16,14 @@ import {
   queryAsOwner,
 } from '../inbox/notices.fixture.js';
 
+function queryText(request: unknown): string | undefined {
+  if (typeof request === 'string') return request;
+  if (request === null || typeof request !== 'object') return undefined;
+  if (!('text' in request) || typeof request.text !== 'string')
+    return undefined;
+  return request.text;
+}
+
 async function add(
   workspaceId: string,
   workflowId: string,
@@ -260,13 +268,12 @@ describe('retained usage trends', () => {
           (a, b) => b.runs - a.runs || a.workflowId.localeCompare(b.workflowId),
         ),
       );
-      statements = capture.mock.calls.flatMap(([text, values]) =>
-        typeof text === 'string' &&
-        text.startsWith('with window_runs') &&
-        Array.isArray(values)
-          ? [{ text, values }]
-          : [],
-      );
+      statements = capture.mock.calls.flatMap(([request, values]) => {
+        const text = queryText(request);
+        if (text === undefined || !Array.isArray(values)) return [];
+        if (!text.replaceAll('"', '').startsWith('with window_runs')) return [];
+        return [{ text, values }];
+      });
     } finally {
       capture.mockRestore();
     }

@@ -13,7 +13,6 @@ import {
   runAdmissionBlockers,
 } from '../queries/admission.queries.js';
 import { and, eq, sql } from 'drizzle-orm';
-import { z } from 'zod';
 
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
@@ -23,16 +22,6 @@ import {
 } from './acceptance.repository.js';
 import { WorkflowRunNotFoundError } from '../errors.js';
 
-export const runStatusSchema = z.enum([
-  'queued',
-  'running',
-  'waiting',
-  'succeeded',
-  'failed',
-  'canceled',
-  'timed_out',
-  'outcome_unknown',
-]);
 export type WorkflowRunRecord = Readonly<WorkflowRunRow>;
 
 export type WorkflowRunReadRecord = WorkflowRunRecord &
@@ -147,19 +136,17 @@ export async function insertWorkflowRunAudit(
     metadata: ReturnType<typeof sql>;
   }>,
 ): Promise<void> {
-  await transaction.db
-    .insert(auditEvents)
-    .values({
-      id: generatePersistedId(),
-      workspaceId: transaction.workspaceId,
-      actorUserId: input.actorId,
-      action: input.action,
-      targetType: 'workflow_run',
-      targetId: input.runId,
-      requestId: input.requestId ?? null,
-      traceId: input.traceId ?? null,
-      metadata: input.metadata,
-    });
+  await transaction.db.insert(auditEvents).values({
+    id: generatePersistedId(),
+    workspaceId: transaction.workspaceId,
+    actorUserId: input.actorId,
+    action: input.action,
+    targetType: 'workflow_run',
+    targetId: input.runId,
+    requestId: input.requestId ?? null,
+    traceId: input.traceId ?? null,
+    metadata: input.metadata,
+  });
 }
 
 type ReadRow = Awaited<

@@ -4,6 +4,7 @@ import type {
   PreviewAttemptLease,
   PreviewStatus,
 } from '../../previews/contract.js';
+import type { RecoveryNode } from '@pertexo/workflow-engine';
 import type { WorkflowRecoveryEffectRisk } from '@pertexo/workflow-model';
 import type { z } from 'zod';
 import type { acceptWorkflowRunInputSchema } from '../../runs/commands/acceptance/contract.js';
@@ -417,8 +418,12 @@ export const nodeRuns = appSchema.table(
     branchContext: jsonb('branch_context')
       .notNull()
       .default(sql`'{}'::jsonb`),
-    status: varchar('status', { length: 32 }).notNull(),
-    sideEffectClass: varchar('side_effect_class', { length: 32 }).notNull(),
+    status: varchar('status', { length: 32 })
+      .$type<RecoveryNode['status']>()
+      .notNull(),
+    sideEffectClass: varchar('side_effect_class', { length: 32 })
+      .$type<RecoveryNode['sideEffectClass']>()
+      .notNull(),
     providerIdempotencyKey: varchar('provider_idempotency_key', {
       length: 256,
     }),
@@ -432,7 +437,9 @@ export const nodeRuns = appSchema.table(
       length: 256,
     }),
     failureHandlerSinkKey: varchar('failure_handler_sink_key', { length: 256 }),
-    failureHandling: varchar('failure_handling', { length: 16 }),
+    failureHandling: varchar('failure_handling', { length: 16 }).$type<
+      'pending' | 'handled'
+    >(),
     currentAttemptId: uuid('current_attempt_id'),
     currentAttemptNumber: integer('current_attempt_number'),
     // No source-node FK: copied values outlive independently retired source details.
@@ -595,7 +602,9 @@ export const nodeAttempts = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     nodeRunId: uuid('node_run_id').notNull(),
     attemptNumber: integer('attempt_number').notNull(),
-    status: varchar('status', { length: 32 }).notNull(),
+    status: varchar('status', { length: 32 })
+      .$type<RecoveryNode['status']>()
+      .notNull(),
     sideEffectClass: varchar('side_effect_class', { length: 32 })
       .$type<NodeAttemptLease['sideEffectClass']>()
       .notNull(),
@@ -617,8 +626,12 @@ export const nodeAttempts = appSchema.table(
     safeErrorCode: varchar('safe_error_code', { length: 128 }),
     errorSummary: varchar('error_summary', { length: 2048 }),
     executorRetryAfterMillis: integer('executor_retry_after_millis'),
-    executorFailureKind: varchar('executor_failure_kind', { length: 32 }),
-    executorErrorKind: varchar('executor_error_kind', { length: 32 }),
+    executorFailureKind: varchar('executor_failure_kind', { length: 32 }).$type<
+      NonNullable<RecoveryNode['attempts'][number]['failureKind']>
+    >(),
+    executorErrorKind: varchar('executor_error_kind', { length: 32 }).$type<
+      NonNullable<RecoveryNode['attempts'][number]['errorKind']>
+    >(),
     executorPossiblyDispatched: boolean('executor_possibly_dispatched'),
     retryDecision: varchar('retry_decision', { length: 32 }),
     admissionKind: varchar('admission_kind', { length: 32 })
