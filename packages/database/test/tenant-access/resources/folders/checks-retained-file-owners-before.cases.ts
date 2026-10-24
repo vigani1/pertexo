@@ -1,6 +1,6 @@
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
-import { createArtifactUploadDatabase } from '../../../../src/artifacts/upload.js';
-import { ArtifactMetadataNotFoundError } from '../../../../src/artifacts/store.js';
+import { createArtifactUploadDatabase } from '../../../../src/artifacts/uploads/repository.js';
+import { ArtifactMetadataNotFoundError } from '../../../../src/artifacts/repository.js';
 
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';

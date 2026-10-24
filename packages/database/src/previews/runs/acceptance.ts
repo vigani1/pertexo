@@ -4,7 +4,7 @@ import { connectionScope } from '../../tenant-access/resources/connections/scope
 import { resolvePreviewSample } from './samples.js';
 
 import { captureWorkspaceVariableRevision } from '../../variables/settings.queries.js';
-import { lockActorArtifactReferences } from '../../artifacts/references.js';
+import { lockActorArtifactReferences } from '../../artifacts/references/repository.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
 

@@ -1,4 +1,7 @@
-import { visibleArtifactIds, visibleTransactionArtifactIds } from './access.js';
+import {
+  visibleArtifactIds,
+  visibleTransactionArtifactIds,
+} from './access.queries.js';
 import type { PoolClient } from 'pg';
 import { sql } from 'drizzle-orm';
 import {
@@ -6,9 +9,9 @@ import {
   type NodeArtifactReference,
 } from '@pertexo/node-sdk';
 import { isRecord } from '@pertexo/workflow-model';
-import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
-import { artifactMetadataMatches } from './metadata-contract.js';
-import { ArtifactMetadataNotFoundError } from './store.js';
+import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
+import { artifactMetadataMatches } from '../metadata/contract.js';
+import { ArtifactMetadataNotFoundError } from '../repository.js';
 
 type ArtifactRow = Record<string, unknown> & {
   id: string;

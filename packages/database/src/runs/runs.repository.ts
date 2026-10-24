@@ -1,4 +1,4 @@
-import { lockActorArtifactReferences } from '../artifacts/references.js';
+import { lockActorArtifactReferences } from '../artifacts/references/repository.js';
 import { withResourceRunRead } from '../tenant-access/resources/transactions.js';
 import {
   withRunCommand,

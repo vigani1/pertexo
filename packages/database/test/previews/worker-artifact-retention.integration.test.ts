@@ -7,7 +7,7 @@ import {
   artifactStorageKey,
   ArtifactLifecycleConflictError,
   createPendingPreviewArtifact,
-} from '../../src/artifacts/store.js';
+} from '../../src/artifacts/repository.js';
 import { parseDatabaseConfig } from '../../src/config.js';
 import {
   completePreviewAttempt,

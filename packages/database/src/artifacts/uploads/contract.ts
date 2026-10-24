@@ -1,12 +1,12 @@
 import { z } from 'zod';
 
-import type { ArtifactRecord } from './store.js';
-import type { DatabaseReadiness } from '../platform/readiness.js';
+import type { ArtifactRecord } from '../repository.js';
+import type { DatabaseReadiness } from '../../platform/readiness.js';
 import {
   artifactByteLengthSchema,
   artifactMediaTypeSchema,
   artifactSha256Schema,
-} from './metadata-contract.js';
+} from '../metadata/contract.js';
 
 export const ARTIFACT_UPLOAD_PENDING_MS = 15 * 60 * 1_000;
 export const ARTIFACT_UPLOAD_PURPOSE = 'user-upload';

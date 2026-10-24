@@ -7,7 +7,7 @@ import {
   WorkflowCallDependencyError,
 } from '@pertexo/workflow-model';
 
-import { collectArtifactReferences } from '../../../../artifacts/references.js';
+import { collectArtifactReferences } from '../../../../artifacts/references/repository.js';
 
 import { admitWorkflowAuthoring } from '../../../workflows/admission.js';
 import { lockWorkspaceVariableNames } from '../../../../variables/settings.queries.js';
