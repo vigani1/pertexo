@@ -1,3 +1,4 @@
+import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { HttpResponse, http } from 'msw';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -18,7 +19,11 @@ import {
 
 const { workspace: workspaceId, workflow: workflowId } = fixtureIds;
 const { firstRun: firstRunId, secondRun: secondRunId } = fixtureIds;
-const readerCapabilities = ['workspace:read', 'run:read', 'workflow:read'];
+const readerCapabilities: AccessibleWorkspace['capabilities'] = [
+  'workspace:read',
+  'run:read',
+  'workflow:read',
+];
 
 function workflowReads() {
   return [

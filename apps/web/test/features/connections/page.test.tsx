@@ -1,3 +1,7 @@
+import {
+  createUserFixture,
+  createWorkspaceFixture,
+} from '../../support/fixtures/identity';
 import { HttpResponse, http } from 'msw';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -15,22 +19,15 @@ const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const connectionId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const secretVersionId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 const base = `http://pertexo.test/v1/workspaces/${workspaceId}/connections`;
-const user = {
+const user = createUserFixture({
   id: userId,
   email: 'owner@example.test',
   displayName: 'Workspace Owner',
-  status: 'active',
-  revision: 1,
   createdAt: '2026-09-14T10:00:00.000Z',
   updatedAt: '2026-09-14T10:00:00.000Z',
-};
-const workspace = {
+});
+const workspace = createWorkspaceFixture({
   id: workspaceId,
-  name: 'Control Operations',
-  slug: 'control-operations',
-  status: 'active',
-  revision: 1,
-  role: 'owner',
   capabilities: [
     'workspace:read',
     'workflow:read',
@@ -40,7 +37,7 @@ const workspace = {
   ],
   createdAt: '2026-09-14T10:00:00.000Z',
   updatedAt: '2026-09-14T10:00:00.000Z',
-};
+});
 
 type Provider = 'slack' | 'http' | 'email';
 const authTypes = {

@@ -1,3 +1,8 @@
+import type { AccessibleWorkspace } from '@pertexo/contracts';
+import {
+  createUserFixture,
+  createWorkspaceFixture,
+} from '../test/support/fixtures/identity';
 import { expect, test, type Page } from './support/fixtures';
 
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -43,7 +48,10 @@ function thread(workflowId: string, workflowName: string): Thread {
 }
 
 /** An operator's workspace whose inbox holds two unread failing workflows. */
-async function mockInbox(page: Page, extraCapabilities: string[] = []) {
+async function mockInbox(
+  page: Page,
+  extraCapabilities: AccessibleWorkspace['capabilities'] = [],
+) {
   const state = {
     threads: [
       thread(importId, 'Nightly import'),
@@ -58,27 +66,20 @@ async function mockInbox(page: Page, extraCapabilities: string[] = []) {
     ]);
   await page.route('**/v1/users/me', (route) =>
     route.fulfill({
-      json: {
+      json: createUserFixture({
         id: userId,
-        email: 'operator@example.test',
         displayName: 'Workspace Operator',
-        status: 'active',
-        revision: 1,
         createdAt: timestamp,
         updatedAt: timestamp,
-      },
+      }),
     }),
   );
   await page.route('**/v1/workspaces?**', (route) =>
     route.fulfill({
       json: {
         items: [
-          {
+          createWorkspaceFixture({
             id: workspaceId,
-            name: 'Control Operations',
-            slug: 'control-operations',
-            status: 'active',
-            revision: 1,
             role: 'operator',
             capabilities: [
               'workspace:read',
@@ -88,7 +89,7 @@ async function mockInbox(page: Page, extraCapabilities: string[] = []) {
             ],
             createdAt: timestamp,
             updatedAt: timestamp,
-          },
+          }),
         ],
         nextCursor: null,
       },

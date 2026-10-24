@@ -1,3 +1,4 @@
+import { createUserFixture } from '../../../support/fixtures/identity';
 import { HttpResponse, http } from 'msw';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -39,15 +40,14 @@ describe('workflow list', () => {
       http.get('http://pertexo.test/v1/users/me', () => {
         userReads += 1;
         if (userReads === 1)
-          return HttpResponse.json({
-            id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-            email: 'owner@example.test',
-            displayName: 'Workspace Owner',
-            status: 'active',
-            revision: 1,
-            createdAt: '2026-09-14T10:00:00.000Z',
-            updatedAt: '2026-09-14T10:00:00.000Z',
-          });
+          return HttpResponse.json(
+            createUserFixture({
+              email: 'owner@example.test',
+              displayName: 'Workspace Owner',
+              createdAt: '2026-09-14T10:00:00.000Z',
+              updatedAt: '2026-09-14T10:00:00.000Z',
+            }),
+          );
         return problem(401, 'auth.unauthenticated');
       }),
       http.get(`${api}/workflows`, () => problem(401, 'auth.unauthenticated')),

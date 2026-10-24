@@ -1,6 +1,7 @@
+import { readCsrfToken } from '../../../test/support/browser/csrf';
 import { mkdir } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
-import { expect, type Page } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { test } from '../../support/browser-fixture';
 import {
   registerEditorUser,
@@ -12,13 +13,7 @@ import {
   addSingleStep,
   readEditorDraft,
 } from '../../support/authoring/single-step';
-async function csrf(page: Page) {
-  const cookie = (await page.context().cookies()).find(
-    (value) => value.name === 'pertexo_csrf',
-  );
-  if (cookie === undefined) throw new Error('CSRF missing');
-  return decodeURIComponent(cookie.value);
-}
+
 test('discusses steps, delivers private mentions, preserves refreshes, and warns before a real stale-save race', async ({
   page,
   browser,
@@ -204,7 +199,7 @@ test('discusses steps, delivers private mentions, preserves refreshes, and warns
       `/v1/workspaces/${workspaceId}/members/${viewerId}/role`,
       {
         headers: {
-          'x-csrf-token': await csrf(page),
+          'x-csrf-token': await readCsrfToken(page),
           'Idempotency-Key': randomUUID(),
         },
         data: { role: 'builder', expectedRoleRevision: 1 },

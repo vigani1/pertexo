@@ -1,3 +1,7 @@
+import {
+  createUserFixture,
+  createWorkspaceFixture,
+} from '../../test/support/fixtures/identity';
 import { expect, test, type Page } from '../support/fixtures';
 
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -10,32 +14,27 @@ async function installRoutes(page: Page, renameName = 'Incident Operations') {
   let workspaceRevision = 1;
   await page.route('**/v1/users/me', (route) =>
     route.fulfill({
-      json: {
+      json: createUserFixture({
         id: userId,
         email: 'owner@example.test',
         displayName: 'Workspace Owner',
-        status: 'active',
-        revision: 1,
         createdAt: timestamp,
         updatedAt: timestamp,
-      },
+      }),
     }),
   );
   await page.route('**/v1/workspaces?**', (route) =>
     route.fulfill({
       json: {
         items: [
-          {
+          createWorkspaceFixture({
             id: workspaceId,
             name: workspaceName,
-            slug: 'control-operations',
-            status: 'active',
             revision: workspaceRevision,
-            role: 'owner',
             capabilities: ['workspace:read', 'workspace:manage', 'member:read'],
             createdAt: timestamp,
             updatedAt: timestamp,
-          },
+          }),
         ],
         nextCursor: null,
       },

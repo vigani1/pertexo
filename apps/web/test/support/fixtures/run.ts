@@ -1,3 +1,5 @@
+import type { AccessibleWorkspace } from '@pertexo/contracts';
+import { createUserFixture, createWorkspaceFixture } from './identity';
 import { HttpResponse, http } from 'msw';
 
 // Contract-valid people, workspaces and runs shared by the Home, Runs and
@@ -26,28 +28,22 @@ export function minutesAgo(minutes: number): string {
   return new Date(Date.now() - minutes * 60_000).toISOString();
 }
 
-export const fixtureUser = {
+export const fixtureUser = createUserFixture({
   id: fixtureIds.user,
-  email: 'operator@example.test',
-  displayName: 'Pertexo Operator',
-  status: 'active',
-  revision: 1,
   createdAt: fixtureTimestamp,
   updatedAt: fixtureTimestamp,
-};
+});
 
-export function fixtureWorkspace(capabilities: readonly string[]) {
-  return {
+export function fixtureWorkspace(
+  capabilities: Readonly<AccessibleWorkspace['capabilities']>,
+) {
+  return createWorkspaceFixture({
     id: fixtureIds.workspace,
-    name: 'Control Operations',
-    slug: 'control-operations',
-    status: 'active',
-    revision: 1,
     role: 'operator',
     capabilities,
     createdAt: fixtureTimestamp,
     updatedAt: fixtureTimestamp,
-  };
+  });
 }
 
 export type RunFixtureStatus =
@@ -178,7 +174,9 @@ export const emptyGraph = {
   settings: {},
 };
 
-export function identityHandlers(capabilities: readonly string[]) {
+export function identityHandlers(
+  capabilities: Readonly<AccessibleWorkspace['capabilities']>,
+) {
   return [
     http.get('http://pertexo.test/v1/users/me', () =>
       HttpResponse.json(fixtureUser),

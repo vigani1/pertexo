@@ -1,6 +1,7 @@
+import { readCsrfToken } from '../../../test/support/browser/csrf';
 import { mkdir } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
-import { expect, type Page } from '@playwright/test';
+import { expect } from '@playwright/test';
 import {
   formConfigSchema,
   inputRequestConfigSchema,
@@ -17,13 +18,7 @@ import {
   readEditorDraft,
   waitForRun,
 } from '../../support/authoring/single-step';
-async function csrf(page: Page) {
-  const cookie = (await page.context().cookies()).find(
-    (value) => value.name === 'pertexo_csrf',
-  );
-  if (cookie === undefined) throw new Error('CSRF missing');
-  return decodeURIComponent(cookie.value);
-}
+
 const node = (id: string, key: string, x: number) => ({
   id,
   definition: { key, version: 1 },
@@ -127,7 +122,7 @@ test('published member and public forms start real runs; captured member input c
   const saved = await page.request.put(`${workflowPath}/draft`, {
     headers: {
       'If-Match': draft.headers().etag ?? '',
-      'x-csrf-token': await csrf(page),
+      'x-csrf-token': await readCsrfToken(page),
     },
     data: { graph },
   });
@@ -214,7 +209,7 @@ test('published member and public forms start real runs; captured member input c
   // Manual start cannot forge server-owned Form metadata.
   const manual = await page.request.post(`${workflowPath}/runs`, {
     headers: {
-      'x-csrf-token': await csrf(page),
+      'x-csrf-token': await readCsrfToken(page),
       'Idempotency-Key': randomUUID(),
     },
     data: {
@@ -238,7 +233,7 @@ test('published member and public forms start real runs; captured member input c
   const invalid = await page.request.post(`${workflowPath}/form/submit`, {
     headers: {
       'Idempotency-Key': randomUUID(),
-      'x-csrf-token': await csrf(page),
+      'x-csrf-token': await readCsrfToken(page),
     },
     data: {
       versionId: version.id,

@@ -1,7 +1,8 @@
+import { readCsrfToken } from '../../test/support/browser/csrf';
 import './callbacks/journey.case';
 import { mkdir } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
-import { expect, type Page } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { approvalConfigSchema } from '@pertexo/workflow-model';
 import {
   apiProblemSchema,
@@ -20,13 +21,7 @@ import {
   waitForRun,
   readEditorDraft,
 } from '../support/authoring/single-step';
-async function csrf(page: Page) {
-  const cookie = (await page.context().cookies()).find(
-    (value) => value.name === 'pertexo_csrf',
-  );
-  if (cookie === undefined) throw new Error('CSRF missing');
-  return decodeURIComponent(cookie.value);
-}
+
 const node = (id: string, key: string, x: number) => ({
   id,
   definition: { key, version: 1 },
@@ -116,7 +111,7 @@ test('a starter cannot decide; a named viewer approves and rejects real runs thr
     const saved = await page.request.put(`${workflowPath}/draft`, {
       headers: {
         'If-Match': draft.headers().etag ?? '',
-        'x-csrf-token': await csrf(page),
+        'x-csrf-token': await readCsrfToken(page),
       },
       data: { graph },
     });
@@ -190,7 +185,7 @@ test('a starter cannot decide; a named viewer approves and rejects real runs thr
         `/v1/workspaces/${workspaceId}/pending-tasks/${task.id}/decide`,
         {
           headers: {
-            'x-csrf-token': await csrf(page),
+            'x-csrf-token': await readCsrfToken(page),
             'Idempotency-Key': randomUUID(),
           },
           data: { decision },

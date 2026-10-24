@@ -1,3 +1,7 @@
+import {
+  createUserFixture,
+  createWorkspaceFixture,
+} from '../../support/fixtures/identity';
 import { HttpResponse, http } from 'msw';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -17,26 +21,17 @@ import { renderInRouter } from '../../support/render-in-router';
 
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
-const user = {
+const user = createUserFixture({
   id: userId,
-  email: 'operator@example.test',
-  displayName: 'Pertexo Operator',
-  status: 'active',
-  revision: 1,
   createdAt: '2026-09-14T10:00:00.000Z',
   updatedAt: '2026-09-14T10:00:00.000Z',
-};
-const workspace = {
+});
+const workspace = createWorkspaceFixture({
   id: workspaceId,
-  name: 'Control Operations',
-  slug: 'control-operations',
-  status: 'active',
-  revision: 1,
-  role: 'owner',
   capabilities: ['workspace:read', 'workspace:manage'],
   createdAt: '2026-09-14T10:00:00.000Z',
   updatedAt: '2026-09-14T10:00:00.000Z',
-};
+});
 
 function problem(status: number, code: string, title: string) {
   return HttpResponse.json(

@@ -1,3 +1,5 @@
+import type { AccessibleWorkspace } from '@pertexo/contracts';
+import { createWorkspaceFixture } from '../../support/fixtures/identity';
 import { HttpResponse, http } from 'msw';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -194,17 +196,20 @@ describe('account: display name', () => {
   });
 
   it('lists every workspace with the person’s role, and the account’s own facts', async () => {
-    const workspaceOf = (id: string, name: string, role: string) => ({
-      id,
-      name,
-      slug: name.toLowerCase().replaceAll(' ', '-'),
-      status: 'active',
-      revision: 1,
-      role,
-      capabilities: ['workspace:read'],
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    });
+    const workspaceOf = (
+      id: string,
+      name: string,
+      role: AccessibleWorkspace['role'],
+    ) =>
+      createWorkspaceFixture({
+        id,
+        name,
+        slug: name.toLowerCase().replaceAll(' ', '-'),
+        role,
+        capabilities: ['workspace:read'],
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
     // Before the account handlers, whose own list is empty: the first
     // matching handler answers.
     mockServer.use(

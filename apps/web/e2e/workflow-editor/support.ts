@@ -1,3 +1,7 @@
+import {
+  createUserFixture,
+  createWorkspaceFixture,
+} from '../../test/support/fixtures/identity';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import type { WorkflowNote } from '@pertexo/workflow-model';
 import { expect, type BrowserContext, type Page } from '@playwright/test';
@@ -15,22 +19,13 @@ export const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 export const workflowId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 export const editorUrl = `/w/${workspaceId}/workflows/${workflowId}`;
 const csrfToken = 'csrf-token-for-editor-tests-123456789012345678901234';
-export const user = {
+export const user = createUserFixture({
   id: userId,
-  email: 'operator@example.test',
-  displayName: 'Pertexo Operator',
-  status: 'active',
-  revision: 1,
   createdAt: '2026-09-14T10:00:00.000Z',
   updatedAt: '2026-09-14T10:00:00.000Z',
-};
-export const workspace = {
+});
+export const workspace = createWorkspaceFixture({
   id: workspaceId,
-  name: 'Control Operations',
-  slug: 'control-operations',
-  status: 'active',
-  revision: 1,
-  role: 'owner',
   capabilities: [
     'workspace:read',
     'workflow:read',
@@ -43,7 +38,7 @@ export const workspace = {
   ],
   createdAt: '2026-09-14T10:00:00.000Z',
   updatedAt: '2026-09-14T10:00:00.000Z',
-};
+});
 export const definition = {
   definition: { key: 'core.set', version: 1 },
   family: 'transform',

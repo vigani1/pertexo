@@ -1,3 +1,7 @@
+import {
+  createUserFixture,
+  createWorkspaceFixture,
+} from '../../test/support/fixtures/identity';
 import { test, expect, type Page } from '../support/fixtures';
 import {
   routeEmptyWorkflowOrganization,
@@ -7,22 +11,13 @@ import {
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const csrfToken = 'csrf-token-for-browser-tests-123456789012345678901234';
-const user = {
+const user = createUserFixture({
   id: userId,
-  email: 'operator@example.test',
-  displayName: 'Pertexo Operator',
-  status: 'active',
-  revision: 1,
   createdAt: '2026-09-14T10:00:00.000Z',
   updatedAt: '2026-09-14T10:00:00.000Z',
-};
-const workspace = {
+});
+const workspace = createWorkspaceFixture({
   id: workspaceId,
-  name: 'Control Operations',
-  slug: 'control-operations',
-  status: 'active',
-  revision: 1,
-  role: 'owner',
   capabilities: [
     'workspace:read',
     'workspace:manage',
@@ -32,7 +27,7 @@ const workspace = {
   ],
   createdAt: '2026-09-14T10:00:00.000Z',
   updatedAt: '2026-09-14T10:00:00.000Z',
-};
+});
 
 function unauthenticatedProblem() {
   return JSON.stringify({

@@ -1,3 +1,7 @@
+import {
+  createUserFixture,
+  createWorkspaceFixture,
+} from '../../support/fixtures/identity';
 import { HttpResponse, http } from 'msw';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -14,22 +18,15 @@ const connectionId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const destinationId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const timestamp = '2026-09-15T10:00:00.000Z';
 const destinationsUrl = `http://pertexo.test/v1/workspaces/${workspaceId}/failure-notification-destinations`;
-const user = {
+const user = createUserFixture({
   id: userId,
   email: 'owner@example.test',
   displayName: 'Workspace Owner',
-  status: 'active',
-  revision: 1,
   createdAt: timestamp,
   updatedAt: timestamp,
-};
-const workspace = {
+});
+const workspace = createWorkspaceFixture({
   id: workspaceId,
-  name: 'Control Operations',
-  slug: 'control-operations',
-  status: 'active',
-  revision: 1,
-  role: 'owner',
   capabilities: [
     'workspace:read',
     'workflow:update',
@@ -38,7 +35,7 @@ const workspace = {
   ],
   createdAt: timestamp,
   updatedAt: timestamp,
-};
+});
 const connection = {
   id: connectionId,
   workspaceId,

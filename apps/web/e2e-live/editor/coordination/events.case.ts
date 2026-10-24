@@ -1,3 +1,4 @@
+import { readCsrfToken } from '../../../test/support/browser/csrf';
 import { createHmac, randomUUID } from 'node:crypto';
 import { expect, type Page } from '@playwright/test';
 import {
@@ -29,13 +30,7 @@ const node = (id: string, key: string, x: number) => ({
   inputMappings: {},
   connectionRefs: {},
 });
-async function csrf(page: Page) {
-  const cookie = (await page.context().cookies()).find(
-    (c) => c.name === 'pertexo_csrf',
-  );
-  if (cookie === undefined) throw new Error('CSRF missing');
-  return decodeURIComponent(cookie.value);
-}
+
 async function save(
   page: Page,
   path: string,
@@ -83,7 +78,7 @@ async function save(
   const result = await page.request.put(`${path}/draft`, {
     headers: {
       'If-Match': draft.headers().etag ?? '',
-      'x-csrf-token': await csrf(page),
+      'x-csrf-token': await readCsrfToken(page),
     },
     data: { graph },
   });
@@ -334,7 +329,7 @@ test('a public coordinated form shows pending without redirect and editor histor
   ).toString('base64url');
   const result = await page.request.post(`${path}/form/access`, {
     headers: {
-      'x-csrf-token': await csrf(page),
+      'x-csrf-token': await readCsrfToken(page),
       'Idempotency-Key': randomUUID(),
     },
     data: { access: 'public', capability, expectedRevision: 0 },

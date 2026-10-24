@@ -1,3 +1,7 @@
+import {
+  createUserFixture,
+  createWorkspaceFixture,
+} from '../../support/fixtures/identity';
 import { HttpResponse, http } from 'msw';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -10,15 +14,13 @@ const existingWorkspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const createdWorkspaceId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const timestamp = '2026-09-21T10:00:00.000Z';
 const csrfToken = 'csrf-token-for-component-tests-12345678901234567890';
-const user = {
+const user = createUserFixture({
   id: userId,
   email: 'owner@example.test',
   displayName: 'Workspace Owner',
-  status: 'active',
-  revision: 1,
   createdAt: timestamp,
   updatedAt: timestamp,
-};
+});
 const existingWorkspace = accessibleWorkspace(
   existingWorkspaceId,
   'Existing Operations',
@@ -31,13 +33,10 @@ const createdWorkspace = accessibleWorkspace(
 );
 
 function accessibleWorkspace(id: string, name: string, slug: string) {
-  return {
+  return createWorkspaceFixture({
     id,
     name,
     slug,
-    status: 'active',
-    revision: 1,
-    role: 'owner',
     capabilities: [
       'workspace:read',
       'workspace:manage',
@@ -46,7 +45,7 @@ function accessibleWorkspace(id: string, name: string, slug: string) {
     ],
     createdAt: timestamp,
     updatedAt: timestamp,
-  };
+  });
 }
 
 function workspaceResponse() {

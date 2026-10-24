@@ -1,3 +1,4 @@
+import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { HttpResponse, http } from 'msw';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -23,7 +24,7 @@ const {
 } = fixtureIds;
 const fetchRunId = '33333333-3333-4333-8333-333333333333';
 const sendRunId = '44444444-4444-4444-8444-444444444444';
-const capabilities = [
+const capabilities: AccessibleWorkspace['capabilities'] = [
   'workspace:read',
   'workflow:read',
   'run:read',

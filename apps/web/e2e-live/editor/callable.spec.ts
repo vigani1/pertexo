@@ -1,3 +1,4 @@
+import { csrfHeaders } from '../../test/support/browser/csrf';
 import { randomUUID } from 'node:crypto';
 import { expect, type Page } from '@playwright/test';
 import {
@@ -19,14 +20,6 @@ import {
   readEditorDraft,
   waitForRun,
 } from '../support/authoring/single-step';
-
-async function csrf(page: Page) {
-  const cookie = (await page.context().cookies()).find(
-    (item) => item.name === 'pertexo_csrf',
-  );
-  if (cookie === undefined) throw new Error('Ordinary CSRF cookie missing');
-  return { 'x-csrf-token': decodeURIComponent(cookie.value) };
-}
 
 test('authors a callable contract with keyboard controls and validates standalone HTTP input/results', async ({
   page,
@@ -118,7 +111,7 @@ test('authors a callable contract with keyboard controls and validates standalon
     .toBe('string');
   await page.setViewportSize({ width: 1280, height: 900 });
   const published = await publishSingleStep(page, path);
-  const headers = await csrf(page);
+  const headers = await csrfHeaders(page);
   for (const inputValue of [
     undefined,
     { customer: 7 },
@@ -220,7 +213,7 @@ async function saveGraph(page: Page, path: string, graph: unknown) {
   const response = await page.request.get(`${path}/draft`);
   const saved = await page.request.put(`${path}/draft`, {
     headers: {
-      ...(await csrf(page)),
+      ...(await csrfHeaders(page)),
       'If-Match': response.headers().etag ?? '',
     },
     data: { graph },
@@ -229,7 +222,7 @@ async function saveGraph(page: Page, path: string, graph: unknown) {
 }
 async function publishGraph(page: Page, path: string) {
   const checked = await page.request.post(`${path}/validate`, {
-    headers: await csrf(page),
+    headers: await csrfHeaders(page),
     data: {},
   });
   expect(checked.status()).toBe(200);
@@ -238,7 +231,7 @@ async function publishGraph(page: Page, path: string) {
   );
   const published = await page.request.post(`${path}/publish`, {
     headers: {
-      ...(await csrf(page)),
+      ...(await csrfHeaders(page)),
       'If-Match': checked.headers().etag ?? '',
       'Idempotency-Key': randomUUID(),
     },
@@ -345,7 +338,10 @@ test('pins and upgrades a callable child, renders linked history, and warns befo
   const parentVersion = await publishGraph(page, parentPath);
   async function start(status: 'succeeded' | 'failed') {
     const response = await page.request.post(`${parentPath}/runs`, {
-      headers: { ...(await csrf(page)), 'Idempotency-Key': randomUUID() },
+      headers: {
+        ...(await csrfHeaders(page)),
+        'Idempotency-Key': randomUUID(),
+      },
       data: { input: { customer: 'Ada' } },
     });
     expect(response.status()).toBe(202);

@@ -1,3 +1,4 @@
+import { createUserFixture } from '../../support/fixtures/identity';
 import { Activity } from 'react';
 import { HttpResponse, http } from 'msw';
 import { act, render, screen, waitFor } from '@testing-library/react';
@@ -1026,15 +1027,14 @@ describe('invitation acceptance', () => {
         }),
       ),
       http.get('http://pertexo.test/v1/users/me', () =>
-        HttpResponse.json({
-          id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-          email: 'someone-else@example.test',
-          displayName: 'Someone Else',
-          status: 'active',
-          revision: 1,
-          createdAt: '2026-09-14T10:00:00.000Z',
-          updatedAt: '2026-09-14T10:00:00.000Z',
-        }),
+        HttpResponse.json(
+          createUserFixture({
+            email: 'someone-else@example.test',
+            displayName: 'Someone Else',
+            createdAt: '2026-09-14T10:00:00.000Z',
+            updatedAt: '2026-09-14T10:00:00.000Z',
+          }),
+        ),
       ),
     );
     renderApp('/invitations/accept');

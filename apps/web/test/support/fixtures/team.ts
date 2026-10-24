@@ -1,3 +1,4 @@
+import { createUserFixture, createWorkspaceFixture } from './identity';
 import type { Role } from '@pertexo/workflow-model';
 import { HttpResponse, http } from 'msw';
 import { screen, within } from '@testing-library/react';
@@ -11,26 +12,19 @@ export const firstMemberId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 export const secondMemberId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 export const timestamp = '2026-09-15T10:00:00.000Z';
 export const api = `http://pertexo.test/v1/workspaces/${workspaceId}`;
-export const user = {
+export const user = createUserFixture({
   id: userId,
-  email: 'operator@example.test',
-  displayName: 'Pertexo Operator',
-  status: 'active',
-  revision: 1,
   createdAt: timestamp,
   updatedAt: timestamp,
-};
-export const workspace = {
+});
+export const workspace = createWorkspaceFixture({
   id: workspaceId,
   name: 'Control Operations With A Deliberately Long Workspace Name',
-  slug: 'control-operations',
-  status: 'active',
-  revision: 1,
   role: 'viewer',
   capabilities: ['workspace:read', 'member:read'],
   createdAt: timestamp,
   updatedAt: timestamp,
-};
+});
 export const ownerWorkspace = {
   ...workspace,
   role: 'owner',

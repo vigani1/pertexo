@@ -1,4 +1,3 @@
-import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { HttpResponse, http } from 'msw';
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
@@ -27,7 +26,7 @@ const workspace = fixtureWorkspace([
   'workflow:read',
   'run:read',
   'artifact:read',
-]) as AccessibleWorkspace;
+]);
 
 const now = Date.now();
 const ago = (seconds: number) => new Date(now - seconds * 1_000).toISOString();

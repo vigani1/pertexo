@@ -1,3 +1,4 @@
+import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { HttpResponse, http } from 'msw';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -18,7 +19,7 @@ import { usageCapacityQueryOptions } from '@/features/usage/data/usage.queries';
 import { createApiClient } from '@/lib/api/client';
 
 const path = `/w/${fixtureIds.workspace}/settings/usage`;
-const capabilities = [
+const capabilities: AccessibleWorkspace['capabilities'] = [
   'workspace:read',
   'run:read',
   'artifact:read',
@@ -49,7 +50,7 @@ const capacity = {
 
 function install(
   options: Readonly<{
-    caps?: readonly string[];
+    caps?: Readonly<AccessibleWorkspace['capabilities']>;
     state?: string;
     snapshot?: unknown;
     capacityResponse?: () => Response;

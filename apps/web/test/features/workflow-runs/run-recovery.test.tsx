@@ -1,3 +1,4 @@
+import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { HttpResponse, http } from 'msw';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -31,7 +32,13 @@ function acceptedRun() {
   const { workflowName: _, ...run } = fixtureRun(newRunId, 'queued');
   return run;
 }
-function install(capabilities = ['workspace:read', 'run:read', 'run:replay']) {
+function install(
+  capabilities: Readonly<AccessibleWorkspace['capabilities']> = [
+    'workspace:read',
+    'run:read',
+    'run:replay',
+  ],
+) {
   mockServer.use(
     ...identityHandlers(capabilities),
     statisticsHandler(),

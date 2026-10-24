@@ -1,3 +1,4 @@
+import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { HttpResponse, http } from 'msw';
 import { renderHook, screen, waitFor, within } from '@testing-library/react';
@@ -24,7 +25,11 @@ import {
 
 const { workspace: workspaceId, workflow: workflowId } = fixtureIds;
 const failedRunId = fixtureIds.secondRun;
-const capabilities = ['workspace:read', 'workflow:read', 'run:read'];
+const capabilities: AccessibleWorkspace['capabilities'] = [
+  'workspace:read',
+  'workflow:read',
+  'run:read',
+];
 
 const graph = {
   ...emptyGraph,
@@ -205,9 +210,7 @@ describe('home run failures', () => {
         useRunFailures({
           apiClient,
           userId: fixtureIds.user,
-          workspace: fixtureWorkspace(capabilities) as Parameters<
-            typeof useRunFailures
-          >[0]['workspace'],
+          workspace: fixtureWorkspace(capabilities),
           runIds: runs,
         }),
       {

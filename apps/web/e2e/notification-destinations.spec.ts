@@ -1,3 +1,7 @@
+import {
+  createWorkspaceFixture,
+  createUserFixture,
+} from '../test/support/fixtures/identity';
 import { expect, test } from './support/fixtures';
 
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -23,13 +27,8 @@ test('creates, versions and disables a notification destination', async ({
         updatedAt: string;
       }
     | undefined;
-  const workspace = {
+  const workspace = createWorkspaceFixture({
     id: workspaceId,
-    name: 'Control Operations',
-    slug: 'control-operations',
-    status: 'active',
-    revision: 1,
-    role: 'owner',
     capabilities: [
       'workspace:read',
       'workflow:update',
@@ -38,7 +37,7 @@ test('creates, versions and disables a notification destination', async ({
     ],
     createdAt: timestamp,
     updatedAt: timestamp,
-  };
+  });
   const connection = {
     id: connectionId,
     workspaceId,
@@ -57,15 +56,13 @@ test('creates, versions and disables a notification destination', async ({
   ]);
   await page.route('**/v1/users/me', (route) =>
     route.fulfill({
-      json: {
+      json: createUserFixture({
         id: userId,
         email: 'owner@example.test',
         displayName: 'Workspace Owner',
-        status: 'active',
-        revision: 1,
         createdAt: timestamp,
         updatedAt: timestamp,
-      },
+      }),
     }),
   );
   await page.route('**/v1/workspaces?**', (route) =>

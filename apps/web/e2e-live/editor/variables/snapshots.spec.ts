@@ -1,8 +1,9 @@
+import { readCsrfToken } from '../../../test/support/browser/csrf';
 import '../data-tables/effects.case';
 import '../data-tables/table.case';
 import { mkdir } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
-import { expect, type Page } from '@playwright/test';
+import { expect } from '@playwright/test';
 import {
   pendingTaskListResponseSchema,
   workspaceVariablesResponseSchema,
@@ -20,13 +21,7 @@ import {
   startSingleStep,
   waitForRun,
 } from '../../support/authoring/single-step';
-async function csrf(page: Page) {
-  const cookie = (await page.context().cookies()).find(
-    (item) => item.name === 'pertexo_csrf',
-  );
-  if (cookie === undefined) throw new Error('CSRF missing');
-  return decodeURIComponent(cookie.value);
-}
+
 const node = (id: string, key: string, x: number) => ({
   id,
   definition: { key, version: 1 },
@@ -125,7 +120,7 @@ test('real variables save once after a lost acknowledgement and retain old run v
   const saved = await page.request.put(`${workflowPath}/draft`, {
     headers: {
       'If-Match': draft.headers().etag ?? '',
-      'x-csrf-token': await csrf(page),
+      'x-csrf-token': await readCsrfToken(page),
     },
     data: { graph },
   });
@@ -228,7 +223,7 @@ test('real variables save once after a lost acknowledgement and retain old run v
     `/v1/workspaces/${workspaceId}/runs/${source}/replay`,
     {
       headers: {
-        'x-csrf-token': await csrf(page),
+        'x-csrf-token': await readCsrfToken(page),
         'Idempotency-Key': randomUUID(),
       },
       data: { workflowVersionId: version.id, input: {} },

@@ -1,5 +1,6 @@
+import { readCsrfToken } from '../../../test/support/browser/csrf';
 import { mkdir } from 'node:fs/promises';
-import { expect, type Page } from '@playwright/test';
+import { expect } from '@playwright/test';
 import {
   noticePreferencesResponseSchema,
   workspaceInboxListResponseSchema,
@@ -15,13 +16,7 @@ import {
   startSingleStep,
   waitForRun,
 } from '../../support/authoring/single-step';
-async function csrf(page: Page) {
-  const cookie = (await page.context().cookies()).find(
-    (item) => item.name === 'pertexo_csrf',
-  );
-  if (cookie === undefined) throw new Error('CSRF missing');
-  return decodeURIComponent(cookie.value);
-}
+
 const node = (id: string, key: string, x: number) => ({
   id,
   definition: { key, version: 1 },
@@ -141,7 +136,7 @@ test('personal schedules survive exact retry, real failures reach Inbox and SMTP
   const saved = await page.request.put(`${workflowPath}/draft`, {
     headers: {
       'If-Match': draft.headers().etag ?? '',
-      'x-csrf-token': await csrf(page),
+      'x-csrf-token': await readCsrfToken(page),
     },
     data: { graph },
   });
