@@ -30,13 +30,7 @@ export async function readPortableWorkflowFile(
   try {
     value = parsePortableJson(text);
   } catch (error) {
-    throw new Error(
-      error instanceof PortableJsonError && error.code === 'portable_json_limit'
-        ? TOO_LARGE
-        : looksLikeJson(text)
-          ? 'This file is nested too deeply or holds content a workflow file can’t, such as repeated keys.'
-          : NOT_JSON,
-    );
+    throw new Error(portableJsonFailure(error, text));
   }
   const parsed = workflowPortableManifestSchema.safeParse(value);
   if (parsed.success) return parsed.data;
@@ -115,4 +109,13 @@ export function optionalConnectionSlots(
 
 export function connectionSlotKey(nodeId: string, slot: string): string {
   return JSON.stringify([nodeId, slot]);
+}
+
+function portableJsonFailure(error: unknown, text: string): string {
+  const overLimit =
+    error instanceof PortableJsonError && error.code === 'portable_json_limit';
+  if (overLimit) return TOO_LARGE;
+  return looksLikeJson(text)
+    ? 'This file is nested too deeply or holds content a workflow file can’t, such as repeated keys.'
+    : NOT_JSON;
 }
