@@ -89,6 +89,7 @@ const readablePackages = [
   'queue',
   'observability',
   'rate-limit',
+  'execution',
 ];
 
 const readableWorkspaces = [
@@ -97,6 +98,17 @@ const readableWorkspaces = [
     (name) => `apps/${name}`,
   ),
 ];
+
+export const readabilityRules = {
+  'no-nested-ternary': 'error',
+  'no-else-return': 'error',
+  complexity: ['error', 20],
+  'max-depth': ['error', 4],
+  'max-params': ['error', 4],
+  'max-lines-per-function': ['error', 150],
+  'max-lines': ['error', 400],
+  '@typescript-eslint/switch-exhaustiveness-check': 'error',
+};
 
 export default tseslint.config(
   {
@@ -675,20 +687,16 @@ export default tseslint.config(
     },
   },
   {
-    files: readableWorkspaces.map((workspace) => `${workspace}/**/*.ts`),
-    rules: {
-      'no-nested-ternary': 'error',
-      'no-else-return': 'error',
-      complexity: ['error', 20],
-      'max-depth': ['error', 4],
-      'max-params': ['error', 4],
-      'max-lines-per-function': ['error', 150],
-      'max-lines': ['error', 400],
-      '@typescript-eslint/switch-exhaustiveness-check': 'error',
-    },
+    files: [
+      ...readableWorkspaces.map((workspace) => `${workspace}/**/*.{ts,tsx}`),
+      'apps/web/src/**/*.{ts,tsx}',
+    ],
+    rules: readabilityRules,
   },
   {
-    files: readableWorkspaces.map((workspace) => `${workspace}/test/**/*.ts`),
+    files: readableWorkspaces.map(
+      (workspace) => `${workspace}/test/**/*.{ts,tsx}`,
+    ),
     rules: { 'max-lines-per-function': 'off' },
   },
   {
