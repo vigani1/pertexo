@@ -11,18 +11,7 @@ export function editTableValues(
   return Object.fromEntries(
     columns.map((column) => {
       const value = values?.[column.name];
-      return [
-        column.name,
-        value === null || value === undefined
-          ? ''
-          : typeof value === 'string'
-            ? value
-            : JSON.stringify(
-                value,
-                null,
-                column.type === 'json' ? 2 : undefined,
-              ),
-      ];
+      return [column.name, editableCellValue(value, column.type)];
     }),
   );
 }
@@ -106,4 +95,13 @@ export function tableCellText(value: unknown): string | undefined {
   if (typeof value === 'boolean') return value ? 'Yes' : 'No';
   if (typeof value === 'number') return String(value);
   return JSON.stringify(value);
+}
+
+function editableCellValue(
+  value: DataTableValues[string] | undefined,
+  type: DataTableColumn['type'],
+): string {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') return value;
+  return JSON.stringify(value, null, type === 'json' ? 2 : undefined);
 }

@@ -67,6 +67,8 @@ export function RolesMatrix({
                 </th>
                 {WORKSPACE_ROLES.map((role) => {
                   const allowed = row.roles.includes(role);
+                  const permittedClass =
+                    role === yourRole ? 'bg-action' : 'bg-action/45';
                   return (
                     <td
                       key={role}
@@ -83,9 +85,7 @@ export function RolesMatrix({
                           // Your column's beads are lit; the others are
                           // softer, so the grid isn't the brightest thing here.
                           allowed
-                            ? role === yourRole
-                              ? 'bg-action'
-                              : 'bg-action/45'
+                            ? permittedClass
                             : 'border border-surface-ink/18 bg-card',
                         )}
                       />
