@@ -31,14 +31,14 @@ export function workflowRunQueryOptions(
     refetchInterval: (query) => {
       const snapshot = query.state.data;
       if (snapshot?.errorWorkflow?.status === 'pending') return 2_000;
-      return snapshot !== undefined &&
+      const needsCallUpdates =
+        snapshot !== undefined &&
         isActiveRunStatus(snapshot.run.status) &&
         (snapshot.calls?.some(
           (call) => call.status === 'pending' || call.status === 'accepted',
         ) ??
-          false)
-        ? 2_000
-        : false;
+          false);
+      return needsCallUpdates ? 2_000 : false;
     },
     staleTime: 0,
   });

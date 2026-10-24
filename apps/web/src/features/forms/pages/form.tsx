@@ -162,7 +162,7 @@ function PublishedForm({
       {command.error === undefined ? null : (
         <Notice
           tone={command.uncertain ? 'warning' : 'destructive'}
-          action={formRecoveryAction(command, changed, reload)}
+          action={formRecoveryAction({ command, changed, reload })}
         >
           {command.error}
         </Notice>
@@ -171,11 +171,15 @@ function PublishedForm({
   );
 }
 
-function formRecoveryAction(
-  command: SubmissionCommand,
-  changed: boolean,
-  reload: () => Promise<void>,
-) {
+function formRecoveryAction({
+  command,
+  changed,
+  reload,
+}: Readonly<{
+  command: SubmissionCommand;
+  changed: boolean;
+  reload: () => Promise<void>;
+}>) {
   if (command.uncertain)
     return (
       <Button

@@ -1,4 +1,10 @@
 import {
+  startAnotherImport,
+  chooseImportFile,
+  checkImportPreview,
+  type ImportPhaseContext,
+} from './import-phases';
+import {
   useCallback,
   useEffect,
   useEffectEvent,
@@ -8,6 +14,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import type {
   AccessibleWorkspace,
+  NodeDefinitionCatalogItem,
   WorkflowImportPreviewResponse,
 } from '@pertexo/contracts';
 import type {
@@ -15,26 +22,23 @@ import type {
   WorkflowPortableManifest,
 } from '@pertexo/workflow-model';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
-import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import { workflowNameError } from '../../model/rename';
 import {
   connectionSlotKey,
   optionalConnectionSlots,
-  readPortableWorkflowFile,
 } from '../../model/portability';
 import { authoringCatalogQueryOptions } from '@/features/catalog/queries.public';
-import { previewWorkflowImport } from '../../data/portability/api';
 import { usePortabilityLifetime } from './use-lifetime';
 import { useWorkflowImportCommand } from '../../data/portability/mutations';
 import {
   configureTemplate,
-  setupValueError,
   templateOrigin,
   type CuratedTemplate,
 } from '../../model/templates/curated-setup';
 
 /** Owns source edits, preview validity and the lifetime of a retained import. */
+// eslint-disable-next-line max-lines-per-function -- Keep the single import form and retry owner together; async phases live in import-phases.
 export function useImportDraft(
   apiClient: ApiClient,
   userId: string,
@@ -97,23 +101,42 @@ export function useImportDraft(
     ...authoringCatalogQueryOptions(apiClient, userId),
     enabled: manifest !== undefined,
   });
-  const optionalSlots =
-    manifest === undefined || catalog.data === undefined
-      ? new Set<string>()
-      : optionalConnectionSlots(manifest, catalog.data.definitions.items);
-  const complete =
-    manifest?.connectionSlots.every(
-      (slot) =>
-        optionalSlots.has(connectionSlotKey(slot.nodeId, slot.slot)) ||
-        bindings.some(
-          (binding) =>
-            binding.nodeId === slot.nodeId && binding.slot === slot.slot,
-        ),
-    ) ?? false;
-  const readyPreview =
-    preview?.compatible && !preview.truncated && complete && !previewing
-      ? preview
-      : undefined;
+  const { optionalSlots, complete } = importConnectionSetup(
+    manifest,
+    catalog.data?.definitions.items,
+    bindings,
+  );
+  const previewReady =
+    preview?.compatible && !preview.truncated && complete && !previewing;
+  const readyPreview = previewReady ? preview : undefined;
+  const context: ImportPhaseContext = {
+    apiClient,
+    workspaceId: workspace.id,
+    template,
+    setupValues,
+    configuredManifest,
+    name,
+    bindings,
+    complete,
+    locked,
+    previewing,
+    lifetime,
+    command,
+    validation,
+    intent,
+    resetBusy,
+    clear,
+    invalidate,
+    setManifest,
+    setTemplate,
+    setSetupValues,
+    setBindings,
+    setReading,
+    setPreview,
+    setError,
+    setResetting,
+    setPreviewing,
+  };
   function submitImport() {
     if (lifetime.denied || command.state.kind === 'sending') return;
     if (command.state.kind === 'uncertain') command.retry();
@@ -134,115 +157,15 @@ export function useImportDraft(
       setPreview(undefined);
     }
   }
-  async function startAnother() {
-    if (
-      command.state.kind !== 'confirmed' ||
-      lifetime.denied ||
-      resetBusy.current
-    )
-      return;
-    resetBusy.current = true;
-    setResetting(true);
-    const request = lifetime.begin();
-    try {
-      await lifetime.verify({ signal: request.signal, creating: true });
-      if (!request.current()) return;
-      clear();
-      validation.reset();
-    } catch (failure) {
-      if (request.current() && !lifetime.accessFailure(failure))
-        setError(
-          describeCommandError(
-            failure,
-            'checking access before starting another import',
-          ),
-        );
-    } finally {
-      request.done();
-      resetBusy.current = false;
-      if (request.current()) setResetting(false);
-    }
-  }
+  const startAnother = () => startAnotherImport(context);
   function invalidate() {
     intent.current += 1;
     setPreview(undefined);
     setError(undefined);
   }
-  async function chooseFile(file: File | undefined) {
-    if (locked) return;
-    invalidate();
-    setTemplate(undefined);
-    setSetupValues([]);
-    setManifest(undefined);
-    setBindings([]);
-    setReading(false);
-    validation.reset();
-    if (file === undefined) return;
-    const epoch = intent.current;
-    const request = lifetime.begin();
-    setReading(true);
-    try {
-      const parsed = await readPortableWorkflowFile(file);
-      if (request.current() && epoch === intent.current) setManifest(parsed);
-    } catch (failure) {
-      if (request.current() && epoch === intent.current)
-        setError(
-          failure instanceof Error
-            ? failure.message
-            : 'This file can’t be read. Choose a workflow file exported from Pertexo.',
-        );
-    } finally {
-      request.done();
-      if (request.current() && epoch === intent.current) setReading(false);
-    }
-  }
-  async function checkPreview() {
-    const setupErrors = Object.fromEntries(
-      template?.setupTargets.map((target, index) => [
-        `setup-${String(index)}`,
-        setupValueError(target, setupValues[index] ?? ''),
-      ]) ?? [],
-    );
-    const importSubmissionBlocked =
-      !complete ||
-      locked ||
-      previewing ||
-      !validation.submit({ name: workflowNameError(name), ...setupErrors });
-    if (importSubmissionBlocked) return;
-    if (configuredManifest === undefined) return;
-    const epoch = intent.current;
-    const request = lifetime.begin();
-    setPreview(undefined);
-    setError(undefined);
-    setPreviewing(true);
-    try {
-      await lifetime.verify({ signal: request.signal, creating: true });
-      if (!request.current()) return;
-      const result = await previewWorkflowImport(
-        apiClient,
-        workspace.id,
-        {
-          manifest: configuredManifest,
-          bindings,
-          ...(template === undefined
-            ? {}
-            : { templateOrigin: templateOrigin(template) }),
-        },
-        request.signal,
-      );
-      if (request.current() && epoch === intent.current) setPreview(result);
-    } catch (failure) {
-      if (
-        request.current() &&
-        epoch === intent.current &&
-        !lifetime.accessFailure(failure)
-      )
-        setError(describeCommandError(failure, 'checking this import'));
-    } finally {
-      request.done();
-      if (request.current()) setPreviewing(false);
-    }
-  }
+  const chooseFile = (file: File | undefined) =>
+    chooseImportFile(context, file);
+  const checkPreview = () => checkImportPreview(context);
   function chooseTemplate(next: CuratedTemplate) {
     if (locked) return;
     invalidate();
@@ -318,4 +241,25 @@ export function useImportDraft(
     submitImport,
     startAnother,
   };
+}
+
+function importConnectionSetup(
+  manifest: WorkflowPortableManifest | undefined,
+  definitions: readonly NodeDefinitionCatalogItem[] | undefined,
+  bindings: readonly PortableConnectionBinding[],
+) {
+  const optionalSlots =
+    manifest === undefined || definitions === undefined
+      ? new Set<string>()
+      : optionalConnectionSlots(manifest, definitions);
+  const complete =
+    manifest?.connectionSlots.every(
+      (slot) =>
+        optionalSlots.has(connectionSlotKey(slot.nodeId, slot.slot)) ||
+        bindings.some(
+          (binding) =>
+            binding.nodeId === slot.nodeId && binding.slot === slot.slot,
+        ),
+    ) ?? false;
+  return { optionalSlots, complete };
 }

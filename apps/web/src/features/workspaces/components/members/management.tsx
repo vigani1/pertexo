@@ -75,19 +75,21 @@ function memberActions(
  * confirmation sends it, and an in-flight or unconfirmed command keeps its
  * confirmation on its original member.
  */
+type MemberManagementProps = Readonly<{
+  apiClient: ApiClient;
+  user: UserProfileResponse;
+  workspace: AccessibleWorkspace;
+  members: readonly WorkspaceMember[];
+  onAccessLost: (loss: AccessLoss) => void;
+}>;
+
 export function MemberManagement({
   apiClient,
   user,
   workspace,
   members,
   onAccessLost,
-}: Readonly<{
-  apiClient: ApiClient;
-  user: UserProfileResponse;
-  workspace: AccessibleWorkspace;
-  members: readonly WorkspaceMember[];
-  onAccessLost: (loss: AccessLoss) => void;
-}>) {
+}: MemberManagementProps) {
   const notifications = useNotifications();
   const [proposal, setProposal] = useState<Proposal>();
   const [lastRemoved, setLastRemoved] = useState<WorkspaceMember>();
@@ -110,70 +112,17 @@ export function MemberManagement({
       onAccessLost('permission');
     },
   };
-  const roleCommand = useMemberRoleCommand({
-    ...scope,
-    onChanged: (member, role) => {
-      setProposal(undefined);
-      notifications.success({
-        title: `${member.displayName} is now ${withArticle(role)}`,
-      });
-    },
-    onConflict: () => {
-      setProposal(undefined);
-    },
-    onTargetUnavailable: () => {
-      setProposal(undefined);
-    },
-  });
-  const removal = useMemberRemovalCommand({
-    ...scope,
-    onRemoved: (member) => {
-      setLastRemoved(member);
-      setRemovalTarget(undefined);
-      notifications.success({
-        title: `${member.displayName} was removed from ${workspace.name}`,
-      });
-    },
-    onConflict: () => {
-      setRemovalTarget(undefined);
-    },
-    onTargetUnavailable: (member) => {
-      setRemovalTarget(undefined);
-      gone(member);
-    },
-  });
-  const status = useMemberStatusCommand({
-    ...scope,
-    onChanged: (member, direction) => {
-      setStatusChange(undefined);
-      notifications.success({
-        title: `${member.displayName} was ${statusChangeDone(direction)}`,
-      });
-    },
-    onConflict: () => {
-      setStatusChange(undefined);
-    },
-    onTargetUnavailable: (member) => {
-      setStatusChange(undefined);
-      gone(member);
-    },
-  });
-  const transfer = useOwnershipTransferCommand({
-    ...scope,
-    onTransferred: (member) => {
-      setTransferTarget(undefined);
-      notifications.success({
-        title: `${member.displayName} is now the owner of ${workspace.name}`,
-        description: 'You’re an admin now. Sign in again to keep working.',
-      });
-      onAccessLost('authentication');
-    },
-    onConflict: () => {
-      setTransferTarget(undefined);
-    },
-    onTargetUnavailable: (member) => {
-      setTransferTarget(undefined);
-      gone(member);
+  const { roleCommand, removal, status, transfer } = useMemberCommands({
+    scope,
+    workspaceName: workspace.name,
+    onAccessLost,
+    feedback: { notifications, gone },
+    selection: {
+      setProposal,
+      setLastRemoved,
+      setRemovalTarget,
+      setStatusChange,
+      setTransferTarget,
     },
   });
   const change: Proposal | undefined =
@@ -200,11 +149,14 @@ export function MemberManagement({
     shownRole: (member) =>
       change?.member.userId === member.userId ? change.role : member.role,
     disabled: locked,
-    feedback: (member) =>
-      rowFeedback(roleCommand.feedback, member, change?.member) ??
-      rowFeedback(removal.feedback, member, removing) ??
-      rowFeedback(status.feedback, member, statusShown?.member) ??
-      rowFeedback(transfer.feedback, member, transferring),
+    feedback: (member) => {
+      const memberFeedback =
+        rowFeedback(roleCommand.feedback, member, change?.member) ??
+        rowFeedback(removal.feedback, member, removing) ??
+        rowFeedback(status.feedback, member, statusShown?.member) ??
+        rowFeedback(transfer.feedback, member, transferring);
+      return memberFeedback;
+    },
     onPick: (member, role) => {
       if (!locked && role !== member.role) setProposal({ member, role });
     },
@@ -279,4 +231,112 @@ export function MemberManagement({
       />
     </>
   );
+}
+
+type MemberCommandScope = Pick<
+  Parameters<typeof useMemberRoleCommand>[0],
+  | 'apiClient'
+  | 'actorUserId'
+  | 'workspaceId'
+  | 'onAuthenticationLost'
+  | 'onPermissionLost'
+>;
+type MemberCommandSelection = Readonly<{
+  setProposal: (value: Proposal | undefined) => void;
+  setLastRemoved: (value: WorkspaceMember | undefined) => void;
+  setRemovalTarget: (value: WorkspaceMember | undefined) => void;
+  setStatusChange: (value: StatusChange | undefined) => void;
+  setTransferTarget: (value: WorkspaceMember | undefined) => void;
+}>;
+function useMemberCommands({
+  scope,
+  workspaceName,
+  onAccessLost,
+  feedback,
+  selection,
+}: Readonly<{
+  scope: MemberCommandScope;
+  workspaceName: string;
+  onAccessLost: (loss: AccessLoss) => void;
+  feedback: Readonly<{
+    notifications: ReturnType<typeof useNotifications>;
+    gone: (member: WorkspaceMember) => void;
+  }>;
+  selection: MemberCommandSelection;
+}>) {
+  const { notifications, gone } = feedback;
+  const {
+    setProposal,
+    setLastRemoved,
+    setRemovalTarget,
+    setStatusChange,
+    setTransferTarget,
+  } = selection;
+  const roleCommand = useMemberRoleCommand({
+    ...scope,
+    onChanged: (member, role) => {
+      setProposal(undefined);
+      notifications.success({
+        title: `${member.displayName} is now ${withArticle(role)}`,
+      });
+    },
+    onConflict: () => {
+      setProposal(undefined);
+    },
+    onTargetUnavailable: () => {
+      setProposal(undefined);
+    },
+  });
+  const removal = useMemberRemovalCommand({
+    ...scope,
+    onRemoved: (member) => {
+      setLastRemoved(member);
+      setRemovalTarget(undefined);
+      notifications.success({
+        title: `${member.displayName} was removed from ${workspaceName}`,
+      });
+    },
+    onConflict: () => {
+      setRemovalTarget(undefined);
+    },
+    onTargetUnavailable: (member) => {
+      setRemovalTarget(undefined);
+      gone(member);
+    },
+  });
+  const status = useMemberStatusCommand({
+    ...scope,
+    onChanged: (member, direction) => {
+      setStatusChange(undefined);
+      notifications.success({
+        title: `${member.displayName} was ${statusChangeDone(direction)}`,
+      });
+    },
+    onConflict: () => {
+      setStatusChange(undefined);
+    },
+    onTargetUnavailable: (member) => {
+      setStatusChange(undefined);
+      gone(member);
+    },
+  });
+  const transfer = useOwnershipTransferCommand({
+    ...scope,
+    onTransferred: (member) => {
+      setTransferTarget(undefined);
+      notifications.success({
+        title: `${member.displayName} is now the owner of ${workspaceName}`,
+        description: 'You’re an admin now. Sign in again to keep working.',
+      });
+      onAccessLost('authentication');
+    },
+    onConflict: () => {
+      setTransferTarget(undefined);
+    },
+    onTargetUnavailable: (member) => {
+      setTransferTarget(undefined);
+      gone(member);
+    },
+  });
+  return { roleCommand, removal, status, transfer };
 }

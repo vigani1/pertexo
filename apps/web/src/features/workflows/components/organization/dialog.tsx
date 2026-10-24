@@ -119,13 +119,21 @@ function OrganizationEditForm({
     failedRead,
     confirm,
   } = editor;
+  const organizationUnavailable =
+    command.denied ||
+    !selectionValid ||
+    current.length !== selected.length ||
+    folders.data === undefined ||
+    tags.data === undefined;
+  const organizationChangesBlocked =
+    locked ||
+    reading ||
+    failedRead ||
+    command.error !== undefined ||
+    command.result !== undefined;
   return (
     <>
-      {command.denied ||
-      !selectionValid ||
-      current.length !== selected.length ||
-      folders.data === undefined ||
-      tags.data === undefined ? null : (
+      {organizationUnavailable ? null : (
         <OrganizationFields
           key={formEpoch}
           workspace={workspace}
@@ -133,13 +141,7 @@ function OrganizationEditForm({
           folders={folders.data.items}
           tags={tags.data.pages.flatMap((page) => page.items)}
           pending={preparing || command.pending}
-          locked={
-            locked ||
-            reading ||
-            failedRead ||
-            command.error !== undefined ||
-            command.result !== undefined
-          }
+          locked={organizationChangesBlocked}
           onConfirm={confirm}
         />
       )}

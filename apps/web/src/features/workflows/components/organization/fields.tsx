@@ -117,29 +117,31 @@ export function OrganizationFields({
                 No workspace tags are available.
               </p>
             ) : (
-              visibleTags.map((tag) => (
-                <label
-                  key={tag.id}
-                  className="flex min-w-0 items-center gap-2 text-sm break-words [contain-intrinsic-size:auto_1.25rem] [content-visibility:auto]"
-                >
-                  <Checkbox
-                    checked={selectedTagIds.has(tag.id)}
-                    disabled={
-                      locked ||
-                      !allowed ||
-                      (!selectedTagIds.has(tag.id) && tagIds.length >= 16)
-                    }
-                    onCheckedChange={(checked) => {
-                      setTagIds((current) =>
-                        checked
-                          ? [...current, tag.id].sort()
-                          : current.filter((id) => id !== tag.id),
-                      );
-                    }}
-                  />
-                  {tag.key}
-                </label>
-              ))
+              visibleTags.map((tag) => {
+                const tagSelectionBlocked =
+                  locked ||
+                  !allowed ||
+                  (!selectedTagIds.has(tag.id) && tagIds.length >= 16);
+                return (
+                  <label
+                    key={tag.id}
+                    className="flex min-w-0 items-center gap-2 text-sm break-words [contain-intrinsic-size:auto_1.25rem] [content-visibility:auto]"
+                  >
+                    <Checkbox
+                      checked={selectedTagIds.has(tag.id)}
+                      disabled={tagSelectionBlocked}
+                      onCheckedChange={(checked) => {
+                        setTagIds((current) =>
+                          checked
+                            ? [...current, tag.id].sort()
+                            : current.filter((id) => id !== tag.id),
+                        );
+                      }}
+                    />
+                    {tag.key}
+                  </label>
+                );
+              })
             )}
             {validation.error('tags') === undefined ? null : (
               <Notice tone="destructive">{validation.error('tags')}</Notice>

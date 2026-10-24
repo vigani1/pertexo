@@ -21,16 +21,17 @@ export function runInputAvailability(
     input.workflow !== undefined &&
     (input.workflow.publishedVersionId === null ||
       input.workflow.lifecycleStatus !== 'active');
+  const inputSelectionBlocked =
+    input.cases.locked ||
+    input.cases.editing ||
+    input.cases.accessLost ||
+    input.publicationConflict ||
+    input.review.pending ||
+    input.review.waiting ||
+    (!input.retryAvailable && (input.cases.stale || publicationUnavailable));
   return {
     locked,
     fieldsBlocked: locked || input.retryAvailable || input.review.waiting,
-    confirmDisabled:
-      input.cases.locked ||
-      input.cases.editing ||
-      input.cases.accessLost ||
-      input.publicationConflict ||
-      input.review.pending ||
-      input.review.waiting ||
-      (!input.retryAvailable && (input.cases.stale || publicationUnavailable)),
+    confirmDisabled: inputSelectionBlocked,
   };
 }

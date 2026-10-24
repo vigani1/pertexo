@@ -39,12 +39,11 @@ export function parseWorkflowListSearch(search: unknown): WorkflowListSearch {
   for (const key of ['query', 'tagId', 'folderId', 'favoritesOnly'] as const) {
     const raw = read(key);
     // The router JSON-decodes URL scalars. HTTP inputs remain strict.
-    const value =
+    const isScalarQuery =
       key === 'query' &&
       (typeof raw === 'boolean' ||
-        (typeof raw === 'number' && Number.isFinite(raw)))
-        ? String(raw)
-        : raw;
+        (typeof raw === 'number' && Number.isFinite(raw)));
+    const value = isScalarQuery ? String(raw) : raw;
     const parsed = workflowOrganizationListQuerySchema.shape[key].safeParse(
       key === 'favoritesOnly' && raw === true ? 'true' : (value ?? undefined),
     );
@@ -52,10 +51,10 @@ export function parseWorkflowListSearch(search: unknown): WorkflowListSearch {
       // Preserve typing spaces in URL state; transport normalizes the query.
       filters[key] = key === 'query' ? value : parsed.data;
   }
+  const opensCreation =
+    create === true || create === 'true' || create === 1 || create === '1';
   return {
-    ...(create === true || create === 'true' || create === 1 || create === '1'
-      ? { create: true as const }
-      : {}),
+    ...(opensCreation ? { create: true as const } : {}),
     ...(view === 'archived' || view === 'all' ? { view } : {}),
     ...(sort === 'created' ? { sort } : {}),
     ...filters,

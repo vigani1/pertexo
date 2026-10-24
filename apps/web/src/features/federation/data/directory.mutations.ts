@@ -24,16 +24,15 @@ export function useDirectoryCommand(
     { action: 'updating this directory' },
   );
   const cause = command.cause;
+  const hasDirectoryProblemDetail =
+    !command.uncertain &&
+    isApiError(cause) &&
+    ['workspace.conflict', 'request.invalid', 'auth.forbidden'].includes(
+      cause.problem?.code ?? '',
+    ) &&
+    cause.problem?.detail !== undefined;
   return {
     ...command,
-    error:
-      !command.uncertain &&
-      isApiError(cause) &&
-      ['workspace.conflict', 'request.invalid', 'auth.forbidden'].includes(
-        cause.problem?.code ?? '',
-      ) &&
-      cause.problem?.detail !== undefined
-        ? cause.problem.detail
-        : command.error,
+    error: hasDirectoryProblemDetail ? cause.problem.detail : command.error,
   };
 }

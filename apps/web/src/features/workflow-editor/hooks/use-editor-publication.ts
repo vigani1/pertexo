@@ -67,14 +67,14 @@ export function useEditorPublication({
     ensureSaved,
     isSavedDraftCurrent: (saved) => {
       const current = store.getState();
-      return (
+      const savedDraftIsCurrent =
         !verification.isPaused() &&
         current.saveStatus === 'clean' &&
         !current.inspectorScratch &&
         current.etag === saved.etag &&
         current.generation === saved.generation &&
-        current.revision === saved.revision
-      );
+        current.revision === saved.revision;
+      return savedDraftIsCurrent;
     },
     onRunAccepted,
     onRunCommandAccepted: () => {

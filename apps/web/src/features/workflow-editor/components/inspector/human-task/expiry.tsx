@@ -11,10 +11,12 @@ export function ExpiryField({
     format: (value) => String(value / 3600),
     parse: (text) => {
       const value = Math.round(Number(text) * 3600);
-      return text.trim() === '' ||
+      const invalidExpiry =
+        text.trim() === '' ||
         !Number.isSafeInteger(value) ||
         value < 3600 ||
-        value > 2592000
+        value > 2592000;
+      return invalidExpiry
         ? { ok: false, error: 'Enter from 1 to 720 hours (30 days).' }
         : { ok: true, value };
     },

@@ -1,3 +1,4 @@
+import { TagNameActions, TagNameField } from './name-fields';
 import {
   workflowTagKeyInputSchema,
   type WorkflowTag,
@@ -7,10 +8,7 @@ import { HashIcon } from 'lucide-react';
 import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { Button } from '@/components/ui/button';
-import { LabelledField } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
-import { ProgressButton } from '@/components/ui/progress-button';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { cn } from '@/lib/utils';
 import type { WorkflowOrganizationAttempt } from '../../../model/organization/requests';
@@ -28,17 +26,7 @@ const DONE: Partial<Record<WorkflowOrganizationAttempt['kind'], string>> = {
  * Tags as chips. Choosing one opens its editor below; with none chosen the
  * same field adds a new tag.
  */
-export function TagManagement({
-  tags,
-  ready,
-  locked,
-  scope,
-  start,
-  onCleanup,
-  command,
-  pendingKind,
-  onReload,
-}: Readonly<{
+type TagManagementProps = Readonly<{
   tags: readonly WorkflowTag[];
   ready: boolean;
   locked: boolean;
@@ -49,7 +37,19 @@ export function TagManagement({
   pendingKind: WorkflowOrganizationAttempt['kind'] | undefined;
   /** Reads the current tags again after a refused change. */
   onReload: () => void;
-}>) {
+}>;
+
+export function TagManagement({
+  tags,
+  ready,
+  locked,
+  scope,
+  start,
+  onCleanup,
+  command,
+  pendingKind,
+  onReload,
+}: TagManagementProps) {
   const [selected, setSelected] = useState<string>();
   const [name, setName] = useState('');
   // Deletion stays bound to the tag as it was shown, even if it changes meanwhile.
@@ -59,15 +59,6 @@ export function TagManagement({
     locked || !ready || (selected !== undefined && current === undefined);
   const id = useId();
   const fields = useFieldValidation<'name'>();
-  const nameError = (value: string) => {
-    if (workflowTagKeyInputSchema.safeParse(value).success) {
-      return undefined;
-    }
-    if (value.trim() === '') {
-      return 'Enter a tag.';
-    }
-    return `Use up to 32 characters. ${TAG_HINT}`;
-  };
   const choose = (tag: WorkflowTag | undefined) => {
     setSelected(tag?.id);
     fields.reset();
@@ -102,36 +93,12 @@ export function TagManagement({
   }, [done, message, notifications, command.result]);
   return (
     <section aria-label="Tags" className="flex flex-col gap-4">
-      {tags.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No tags yet. Tags help people find workflows; they never change who
-          can open them.
-        </p>
-      ) : (
-        <ul aria-label="Workspace tags" className="flex flex-wrap gap-1.5">
-          {tags.map((tag) => (
-            <li key={tag.id}>
-              <button
-                type="button"
-                aria-pressed={tag.id === selected}
-                disabled={locked}
-                className={cn(
-                  'inline-flex h-8 max-w-full items-center gap-1 rounded-full border px-3 text-sm transition-colors motion-reduce:transition-none disabled:opacity-60',
-                  tag.id === selected
-                    ? 'border-primary/60 bg-primary/10 text-foreground'
-                    : 'border-border text-muted-foreground hover:border-border-strong hover:text-foreground',
-                )}
-                onClick={() => {
-                  choose(tag.id === selected ? undefined : tag);
-                }}
-              >
-                <HashIcon aria-hidden="true" className="size-3" />
-                <span className="truncate">{tag.key}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <TagChoices
+        tags={tags}
+        selected={selected}
+        disabled={locked}
+        onChoose={choose}
+      />
       <form
         className="flex flex-col gap-3 rounded-lg border border-border bg-card/60 p-4"
         onSubmit={(event) => {
@@ -155,77 +122,30 @@ export function TagManagement({
           );
         }}
       >
-        <LabelledField
+        <TagNameField
           id={id}
-          label={current === undefined ? 'New tag' : `Rename #${current.key}`}
-          error={fields.error('name')}
-          description={TAG_HINT}
-        >
-          {(control) => (
-            <Input
-              {...control}
-              ref={fields.register('name')}
-              name="tag-key"
-              autoComplete="off"
-              spellCheck={false}
-              value={name}
-              disabled={disabled}
-              onChange={(event) => {
-                setName(event.target.value);
-                fields.change('name', nameError(event.target.value));
-              }}
-            />
-          )}
-        </LabelledField>
-        <div className="flex flex-wrap items-center gap-2">
-          <ProgressButton
-            type="submit"
-            variant="primary"
-            disabled={disabled}
-            pending={
-              command.pending &&
-              (pendingKind === 'create-tag' || pendingKind === 'rename-tag')
-            }
-            pendingLabel="Saving…"
-          >
-            {current === undefined ? 'Add tag' : 'Save name'}
-          </ProgressButton>
-          {current === undefined ? null : (
-            <>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={disabled}
-                onClick={() => {
-                  onCleanup(current);
-                }}
-              >
-                See workflows using it
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                disabled={disabled}
-                onClick={() => {
-                  choose(undefined);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                className="ml-auto text-destructive hover:text-destructive"
-                disabled={disabled}
-                onClick={() => {
-                  changeConfirmation({ open: true });
-                }}
-              >
-                Delete tag
-              </Button>
-            </>
-          )}
-        </div>
+          current={current}
+          name={name}
+          disabled={disabled}
+          fields={fields}
+          onChange={(value) => {
+            setName(value);
+            fields.change('name', nameError(value));
+          }}
+        />
+        <TagNameActions
+          current={current}
+          disabled={disabled}
+          command={command}
+          pendingKind={pendingKind}
+          onCleanup={onCleanup}
+          onCancel={() => {
+            choose(undefined);
+          }}
+          onDelete={() => {
+            changeConfirmation({ open: true });
+          }}
+        />
       </form>
       {deleteTarget === undefined ? (
         <TagCommandProblem command={command} onReload={onReload} />
@@ -269,6 +189,12 @@ function TagDeleteConfirmation({
   onOpenChange: (open: boolean) => void;
   onDelete: () => void;
 }>) {
+  const tagDeletionBlocked =
+    command.denied ||
+    (!command.retryAvailable &&
+      (disabled ||
+        command.error !== undefined ||
+        command.result !== undefined));
   return (
     <ConfirmDialog
       open
@@ -279,13 +205,7 @@ function TagDeleteConfirmation({
       pending={command.pending && pendingKind === 'delete-tag'}
       pendingLabel="Deleting…"
       locked={command.pending || command.retryAvailable}
-      confirmDisabled={
-        command.denied ||
-        (!command.retryAvailable &&
-          (disabled ||
-            command.error !== undefined ||
-            command.result !== undefined))
-      }
+      confirmDisabled={tagDeletionBlocked}
       confirmLabel={command.retryAvailable ? 'Try again' : 'Delete tag'}
       error={
         command.retryAvailable
@@ -344,5 +264,58 @@ function TagCommandProblem({
     >
       {command.error}
     </Notice>
+  );
+}
+
+function nameError(value: string) {
+  if (workflowTagKeyInputSchema.safeParse(value).success) {
+    return undefined;
+  }
+  if (value.trim() === '') {
+    return 'Enter a tag.';
+  }
+  return `Use up to 32 characters. ${TAG_HINT}`;
+}
+
+function TagChoices({
+  tags,
+  selected,
+  disabled,
+  onChoose,
+}: Readonly<{
+  tags: readonly WorkflowTag[];
+  selected: string | undefined;
+  disabled: boolean;
+  onChoose: (tag: WorkflowTag | undefined) => void;
+}>) {
+  return tags.length === 0 ? (
+    <p className="text-sm text-muted-foreground">
+      No tags yet. Tags help people find workflows; they never change who can
+      open them.
+    </p>
+  ) : (
+    <ul aria-label="Workspace tags" className="flex flex-wrap gap-1.5">
+      {tags.map((tag) => (
+        <li key={tag.id}>
+          <button
+            type="button"
+            aria-pressed={tag.id === selected}
+            disabled={disabled}
+            className={cn(
+              'inline-flex h-8 max-w-full items-center gap-1 rounded-full border px-3 text-sm transition-colors motion-reduce:transition-none disabled:opacity-60',
+              tag.id === selected
+                ? 'border-primary/60 bg-primary/10 text-foreground'
+                : 'border-border text-muted-foreground hover:border-border-strong hover:text-foreground',
+            )}
+            onClick={() => {
+              onChoose(tag.id === selected ? undefined : tag);
+            }}
+          >
+            <HashIcon aria-hidden="true" className="size-3" />
+            <span className="truncate">{tag.key}</span>
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }

@@ -1,5 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type RefObject,
+  type Dispatch,
+  type SetStateAction,
+} from 'react';
+import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import type { WorkflowDuplicateRequest } from '@pertexo/contracts';
 import { subscribeSessionChanges } from '@/features/auth/session/session-sync.public';
 import { describeCommandError } from '@/lib/api/error-copy';
@@ -58,64 +66,40 @@ export function useWorkflowDuplicate({
   const versionId = source.kind === 'version' ? source.versionId : undefined;
 
   const retire = useCallback(() => {
-    owner.current = undefined;
-    request.current?.abort();
-    attempt.current = undefined;
-    onAccessLost();
-    setState({
-      kind: 'denied',
-      error:
-        'Access changed. Close this dialog and reopen it after checking your account and workspace.',
+    retireDuplicateOwner({
+      owner,
+      request,
+      attempt,
+      onAccessLost,
+      setState,
+      queryClient,
+      userId,
+      workspaceId,
     });
-    const scope = ['identity', userId, 'workspace', workspaceId];
-    void queryClient.cancelQueries({ queryKey: scope });
-    queryClient.removeQueries({ queryKey: scope });
   }, [queryClient, userId, workspaceId, onAccessLost]);
 
-  const verify = useCallback(
-    async (signal: AbortSignal) => {
-      if (
-        !(await verifyDuplicateAuthority(
-          apiClient,
-          userId,
-          workspaceId,
-          signal,
-        ))
-      ) {
-        retire();
-        return false;
-      }
-      return true;
-    },
-    [apiClient, userId, workspaceId, retire],
-  );
+  const verify = useDuplicateAuthority({
+    apiClient,
+    userId,
+    workspaceId,
+    retire,
+  });
 
   const loadDraft = useCallback(
     async (token: symbol) => {
-      request.current?.abort();
-      const controller = new AbortController();
-      request.current = controller;
-      setState({ kind: 'loading' });
-      try {
-        if (!(await verify(controller.signal)) || owner.current !== token)
-          return;
-        const draft = await getWorkflowDuplicateDraft(
+      await loadDuplicateDraft(
+        {
           apiClient,
           workspaceId,
           workflowId,
-          controller.signal,
-        );
-        if (owner.current === token && request.current === controller)
-          setState({ kind: 'ready', draft });
-      } catch (error) {
-        if (owner.current !== token || request.current !== controller) return;
-        if (isDuplicateAccessLoss(error)) retire();
-        else
-          setState({
-            kind: 'failed',
-            error: describeCommandError(error, 'reading the saved source'),
-          });
-      }
+          owner,
+          request,
+          verify,
+          retire,
+          setState,
+        },
+        token,
+      );
     },
     [apiClient, workspaceId, workflowId, verify, retire],
   );
@@ -143,8 +127,7 @@ export function useWorkflowDuplicate({
       unsubscribe();
       unsubscribeCache();
       if (owner.current === token) owner.current = undefined;
-      request.current?.abort();
-      attempt.current = undefined;
+      retireDuplicateRequest({ request, attempt });
     };
   }, [
     apiClient,
@@ -159,57 +142,29 @@ export function useWorkflowDuplicate({
     queryClient,
   ]);
 
-  async function send(command: DuplicateAttempt) {
-    const token = owner.current;
-    if (busy.current || token === undefined || !allowed) return;
-    busy.current = true;
-    const controller = new AbortController();
-    request.current = controller;
-    setState((current) => ({ ...current, kind: 'sending', error: undefined }));
-    let phase: DuplicatePhase =
-      command.result === undefined ? 'authority' : 'accepted';
-    try {
-      if (!(await verify(controller.signal)) || owner.current !== token) return;
-      phase = command.result === undefined ? 'mutation' : 'accepted';
-      const result =
-        command.result ??
-        (await duplicateWorkflow({
-          apiClient,
-          workspaceId,
-          workflowId,
-          attempt: command,
-          signal: controller.signal,
-        }));
-      command.result = result;
-      phase = 'accepted';
-      if (
-        owner.current !== token ||
-        !(await verify(controller.signal)) ||
-        owner.current !== token
-      )
-        return;
-      attempt.current = undefined;
-      void queryClient.invalidateQueries({
-        queryKey: workflowOrganizationKeys.scope(userId, workspaceId),
-      });
-      void queryClient.invalidateQueries({
-        queryKey: workflowKeys.scope(userId, workspaceId),
-      });
-      setState({ kind: 'ready' });
-      onCreated(result.workflowId);
-    } catch (error) {
-      if (owner.current !== token) return;
-      if (isDuplicateAccessLoss(error)) {
-        retire();
-        return;
-      }
-      const next = duplicateFailureState(error, state, phase);
-      attempt.current = next.kind === 'uncertain' ? command : undefined;
-      setState(next);
-    } finally {
-      busy.current = false;
-    }
-  }
+  const send = (command: DuplicateAttempt) =>
+    sendDuplicateCommand(
+      {
+        apiClient,
+        userId,
+        workspaceId,
+        workflowId,
+        source,
+        allowed,
+        onCreated,
+        onAccessLost,
+        queryClient,
+        state,
+        owner,
+        request,
+        attempt,
+        busy,
+        verify,
+        retire,
+        setState,
+      },
+      command,
+    );
 
   return {
     state,
@@ -233,4 +188,207 @@ export function useWorkflowDuplicate({
         void send(attempt.current);
     },
   };
+}
+
+type DuplicateCommandContext = WorkflowDuplicateOptions &
+  Readonly<{
+    queryClient: QueryClient;
+    state: DuplicateState;
+    owner: RefObject<symbol | undefined>;
+    request: RefObject<AbortController | undefined>;
+    attempt: RefObject<DuplicateAttempt | undefined>;
+    busy: RefObject<boolean>;
+    verify: (signal: AbortSignal) => Promise<boolean>;
+    retire: () => void;
+    setState: Dispatch<SetStateAction<DuplicateState>>;
+  }>;
+async function sendDuplicateCommand(
+  {
+    apiClient,
+    userId,
+    workspaceId,
+    workflowId,
+    allowed,
+    onCreated,
+    queryClient,
+    state,
+    owner,
+    request,
+    attempt,
+    busy,
+    verify,
+    retire,
+    setState,
+  }: DuplicateCommandContext,
+  command: DuplicateAttempt,
+) {
+  const token = owner.current;
+  if (busy.current || token === undefined || !allowed) return;
+  busy.current = true;
+  const controller = new AbortController();
+  request.current = controller;
+  setState((current) => ({ ...current, kind: 'sending', error: undefined }));
+  let phase: DuplicatePhase =
+    command.result === undefined ? 'authority' : 'accepted';
+  try {
+    if (!(await verify(controller.signal)) || owner.current !== token) return;
+    phase = command.result === undefined ? 'mutation' : 'accepted';
+    const result =
+      command.result ??
+      (await duplicateWorkflow({
+        apiClient,
+        workspaceId,
+        workflowId,
+        attempt: command,
+        signal: controller.signal,
+      }));
+    command.result = result;
+    phase = 'accepted';
+    if (
+      owner.current !== token ||
+      !(await verify(controller.signal)) ||
+      owner.current !== token
+    )
+      return;
+    attempt.current = undefined;
+    void queryClient.invalidateQueries({
+      queryKey: workflowOrganizationKeys.scope(userId, workspaceId),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: workflowKeys.scope(userId, workspaceId),
+    });
+    setState({ kind: 'ready' });
+    onCreated(result.workflowId);
+  } catch (error) {
+    if (owner.current !== token) return;
+    if (isDuplicateAccessLoss(error)) {
+      retire();
+      return;
+    }
+    const next = duplicateFailureState(error, state, phase);
+    attempt.current = next.kind === 'uncertain' ? command : undefined;
+    setState(next);
+  } finally {
+    busy.current = false;
+  }
+}
+
+async function loadDuplicateDraft(
+  {
+    apiClient,
+    workspaceId,
+    workflowId,
+    owner,
+    request,
+    verify,
+    retire,
+    setState,
+  }: Pick<
+    DuplicateCommandContext,
+    | 'apiClient'
+    | 'workspaceId'
+    | 'workflowId'
+    | 'owner'
+    | 'request'
+    | 'verify'
+    | 'retire'
+    | 'setState'
+  >,
+  token: symbol,
+) {
+  request.current?.abort();
+  const controller = new AbortController();
+  request.current = controller;
+  setState({ kind: 'loading' });
+  try {
+    if (!(await verify(controller.signal)) || owner.current !== token) return;
+    const draft = await getWorkflowDuplicateDraft(
+      apiClient,
+      workspaceId,
+      workflowId,
+      controller.signal,
+    );
+    if (owner.current === token && request.current === controller)
+      setState({ kind: 'ready', draft });
+  } catch (error) {
+    if (owner.current !== token || request.current !== controller) return;
+    if (isDuplicateAccessLoss(error)) retire();
+    else
+      setState({
+        kind: 'failed',
+        error: describeCommandError(error, 'reading the saved source'),
+      });
+  }
+}
+
+function retireDuplicateOwner({
+  owner,
+  request,
+  attempt,
+  onAccessLost,
+  setState,
+  queryClient,
+  userId,
+  workspaceId,
+}: Pick<
+  DuplicateCommandContext,
+  | 'owner'
+  | 'request'
+  | 'attempt'
+  | 'onAccessLost'
+  | 'setState'
+  | 'queryClient'
+  | 'userId'
+  | 'workspaceId'
+>) {
+  owner.current = undefined;
+  request.current?.abort();
+  attempt.current = undefined;
+  onAccessLost();
+  setState({
+    kind: 'denied',
+    error:
+      'Access changed. Close this dialog and reopen it after checking your account and workspace.',
+  });
+  const scope = ['identity', userId, 'workspace', workspaceId];
+  void queryClient.cancelQueries({ queryKey: scope });
+  queryClient.removeQueries({ queryKey: scope });
+}
+
+function retireDuplicateRequest({
+  request,
+  attempt,
+}: Pick<DuplicateCommandContext, 'request' | 'attempt'>) {
+  request.current?.abort();
+  attempt.current = undefined;
+}
+
+function useDuplicateAuthority({
+  apiClient,
+  userId,
+  workspaceId,
+  retire,
+}: Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspaceId: string;
+  retire: () => void;
+}>) {
+  return useCallback(
+    async (signal: AbortSignal) => {
+      if (
+        !(await verifyDuplicateAuthority(
+          apiClient,
+          userId,
+          workspaceId,
+          signal,
+        ))
+      ) {
+        retire();
+        return false;
+      }
+      return true;
+    },
+    [apiClient, userId, workspaceId, retire],
+  );
 }

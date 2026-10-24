@@ -52,11 +52,14 @@ export function observeDuplicateAccessLoss({
     queryClient,
     userId,
     workspaceId,
-    counts: ({ key, error }) =>
-      isCurrent() &&
-      (error.status === 401 ||
-        key[0] === 'workflows' ||
-        (key[0] === 'workflow' && key[1] === workflowId)),
+    counts: ({ key, error }) => {
+      const isDuplicateAuthorityLoss =
+        isCurrent() &&
+        (error.status === 401 ||
+          key[0] === 'workflows' ||
+          (key[0] === 'workflow' && key[1] === workflowId));
+      return isDuplicateAuthorityLoss;
+    },
     denied: retire,
   });
 }

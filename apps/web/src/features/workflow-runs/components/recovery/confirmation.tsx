@@ -52,6 +52,9 @@ export function RecoveryConfirmation({
   const idleConfirmLabel = needsAcknowledgement
     ? 'Retry anyway'
     : 'Retry from this step';
+  const confirmationBlocked =
+    command.expired ||
+    (!command.unconfirmed && needsAcknowledgement && !acknowledged);
   return (
     <ConfirmDialog
       open={open}
@@ -69,10 +72,7 @@ export function RecoveryConfirmation({
       }
       pendingLabel="Checking acceptance…"
       pending={command.pending}
-      confirmDisabled={
-        command.expired ||
-        (!command.unconfirmed && needsAcknowledgement && !acknowledged)
-      }
+      confirmDisabled={confirmationBlocked}
       error={command.error}
       errorTone={command.unconfirmed ? 'warning' : 'destructive'}
       onConfirm={confirm}

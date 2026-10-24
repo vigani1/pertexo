@@ -123,39 +123,43 @@ export function DirectoryPeople({
       >
         {() => (
           <ul className="divide-y divide-border" aria-label="Directory people">
-            {rows.map((person) => (
-              <li
-                key={person.id}
-                className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm"
-              >
-                <div className="min-w-0">
-                  <p className="break-words font-medium">{person.userName}</p>
-                  <p className="break-all text-xs text-muted-foreground">
-                    {person.email}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {personStatus(person)}
-                  </p>
-                </div>
-                {editable &&
+            {rows.map((person) => {
+              const canUnbindPerson =
+                editable &&
                 person.active &&
                 !person.deleted &&
-                person.boundUserId !== null ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setReview({
-                        directoryUserId: person.id,
-                        targetWorkspaceId,
-                      });
-                    }}
-                  >
-                    Review membership for {person.userName}
-                  </Button>
-                ) : null}
-              </li>
-            ))}
+                person.boundUserId !== null;
+              return (
+                <li
+                  key={person.id}
+                  className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm"
+                >
+                  <div className="min-w-0">
+                    <p className="break-words font-medium">{person.userName}</p>
+                    <p className="break-all text-xs text-muted-foreground">
+                      {person.email}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {personStatus(person)}
+                    </p>
+                  </div>
+                  {canUnbindPerson ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setReview({
+                          directoryUserId: person.id,
+                          targetWorkspaceId,
+                        });
+                      }}
+                    >
+                      Review membership for {person.userName}
+                    </Button>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
         )}
       </QueryView>

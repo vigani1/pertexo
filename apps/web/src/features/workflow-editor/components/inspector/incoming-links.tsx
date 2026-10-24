@@ -164,6 +164,8 @@ function LinkStepForm({
   const { sourceId, sourcePort, targetPort } = selection;
   const { setSourceId, setSourcePort, setTargetPort, setWiring, onConnect } =
     commands;
+  const linkIncomplete =
+    sourceId === null || sourcePort === null || targetPort === null;
   return (
     <FieldGroup className="gap-3 rounded-lg border border-surface-ink/7 bg-recess-ink/18 p-3">
       <Field>
@@ -220,12 +222,9 @@ function LinkStepForm({
           type="button"
           size="sm"
           variant="outline"
-          disabled={
-            sourceId === null || sourcePort === null || targetPort === null
-          }
+          disabled={linkIncomplete}
           onClick={() => {
-            if (sourceId === null || sourcePort === null || targetPort === null)
-              return;
+            if (linkIncomplete) return;
             onConnect({
               source: sourceId,
               sourceHandle: sourcePort,

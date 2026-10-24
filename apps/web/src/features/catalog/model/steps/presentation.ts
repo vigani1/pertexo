@@ -118,11 +118,12 @@ export function stepGroupFor(
   family: StepFamily | undefined,
 ): StepGroup | undefined {
   return (
-    stepGroups.find(
-      (group) =>
+    stepGroups.find((group) => {
+      const isInGroup =
         (group.keys?.includes(key) ?? false) ||
-        (group.extras?.includes(key) ?? false),
-    ) ??
+        (group.extras?.includes(key) ?? false);
+      return isInGroup;
+    }) ??
     stepGroups.find((group) => group.family === family && (group.rest ?? false))
   );
 }

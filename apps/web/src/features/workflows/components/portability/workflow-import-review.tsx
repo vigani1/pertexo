@@ -181,62 +181,64 @@ function WorkflowImportConnections({
                 : `${describeConnectionRequirement(slot.authType)}${choices.length === 0 && !connections.isFetching ? '. This workspace has none yet; add one in Connections.' : ''}`
             }
           >
-            {(control) => (
-              <Select
-                value={selected}
-                items={[
-                  ...(optional
-                    ? [{ value: null, label: 'No connection' }]
-                    : []),
-                  ...choices.map((connection) => ({
-                    value: connection.id,
-                    label: connection.name,
-                  })),
-                ]}
-                disabled={
-                  disabled ||
-                  connections.isFetching ||
-                  connections.isError ||
-                  !canRead
-                }
-                onValueChange={(value: string | null) => {
-                  onChange([
-                    ...bindings.filter(
-                      (binding) =>
-                        binding.nodeId !== slot.nodeId ||
-                        binding.slot !== slot.slot,
-                    ),
-                    ...(value === null
-                      ? []
-                      : [
-                          {
-                            nodeId: slot.nodeId,
-                            slot: slot.slot,
-                            connectionId: value,
-                          },
-                        ]),
-                  ]);
-                }}
-              >
-                <SelectTrigger {...control}>
-                  <SelectValue
-                    placeholder={
-                      optional ? 'No connection' : 'Choose a connection'
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {optional ? (
-                    <SelectItem value={null}>No connection</SelectItem>
-                  ) : null}
-                  {choices.map((connection) => (
-                    <SelectItem key={connection.id} value={connection.id}>
-                      {connection.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+            {(control) => {
+              const bindingSelectionBlocked =
+                disabled ||
+                connections.isFetching ||
+                connections.isError ||
+                !canRead;
+              return (
+                <Select
+                  value={selected}
+                  items={[
+                    ...(optional
+                      ? [{ value: null, label: 'No connection' }]
+                      : []),
+                    ...choices.map((connection) => ({
+                      value: connection.id,
+                      label: connection.name,
+                    })),
+                  ]}
+                  disabled={bindingSelectionBlocked}
+                  onValueChange={(value: string | null) => {
+                    onChange([
+                      ...bindings.filter(
+                        (binding) =>
+                          binding.nodeId !== slot.nodeId ||
+                          binding.slot !== slot.slot,
+                      ),
+                      ...(value === null
+                        ? []
+                        : [
+                            {
+                              nodeId: slot.nodeId,
+                              slot: slot.slot,
+                              connectionId: value,
+                            },
+                          ]),
+                    ]);
+                  }}
+                >
+                  <SelectTrigger {...control}>
+                    <SelectValue
+                      placeholder={
+                        optional ? 'No connection' : 'Choose a connection'
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {optional ? (
+                      <SelectItem value={null}>No connection</SelectItem>
+                    ) : null}
+                    {choices.map((connection) => (
+                      <SelectItem key={connection.id} value={connection.id}>
+                        {connection.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              );
+            }}
           </LabelledField>
         );
       })}
