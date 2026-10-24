@@ -1,3 +1,7 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { artifacts } from '../../../schema/transport.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 
 import { CoordinatorRunStateCorruptError } from '../contract.js';
@@ -113,13 +117,19 @@ export async function assertAvailableArtifacts(
     }),
   );
   if (artifactIds.size === 0) return;
-  const available = await client.query<{ id: string }>(
-    `select id from app.artifacts
-     where workspace_id=$1 and id=any($2::uuid[])
-       and status='available' and deleted_at is null`,
-    [workspaceId, [...artifactIds]],
-  );
-  if (available.rows.length !== artifactIds.size)
+  const available = await drizzle(client)
+    .select({ id: artifacts.id })
+    .from(artifacts)
+    .where(
+      and(
+        eq(artifacts.workspaceId, workspaceId),
+        inArray(artifacts.id, [...artifactIds]),
+        eq(artifacts.status, 'available'),
+        isNull(artifacts.deletedAt),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  if (available.length !== artifactIds.size)
     throw new CoordinatorRunStateCorruptError();
 }
 

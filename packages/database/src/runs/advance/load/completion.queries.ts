@@ -1,3 +1,9 @@
+import { and, eq, inArray, isNull, isNotNull, or, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import { nodeRuns, nodeAttempts } from '../../../schema/runs/execution.js';
+import { workflowCalls } from '../../../schema/runs/calls.js';
+import { pendingRunTasks } from '../../../schema/runs/pending-task.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { readVariableSetValues } from '../../../variables/values.queries.js';
 import type { PoolClient } from 'pg';
@@ -19,43 +25,10 @@ export async function readRunCompletionValues(
     input.inputRef === null
       ? undefined
       : parseStoredExecutionValue(input.inputRef);
-  const result =
+  const rows =
     input.nodeIds?.length === 0
-      ? { rows: [] }
-      : await client.query<{
-          node_id: string;
-          invocation_key: string;
-          output_ref: unknown;
-        }>(
-          `select node.node_id, node.invocation_key,
-            case when node.reused_source_run_id is not null
-                   and node.reused_source_node_run_id is not null and node.reused_source_completed_at is not null
-                   and node.current_attempt_id is null and node.current_attempt_number is null
-                   and node.status='succeeded' then node.output_ref
-                 when task.id is not null then task.output_ref
-                 when call.id is not null then call.result_ref
-                 else coalesce(attempt.output_ref, node.output_ref) end output_ref
-       from app.node_runs node
-       left join app.node_attempts attempt
-         on attempt.workspace_id = node.workspace_id
-        and attempt.node_run_id = node.id
-        and attempt.id = node.current_attempt_id
-        and attempt.attempt_number = node.current_attempt_number
-       left join app.workflow_calls call
-         on call.workspace_id=node.workspace_id and call.parent_run_id=node.workflow_run_id
-        and call.invocation_key=node.invocation_key and call.status='succeeded'
-       left join app.pending_run_tasks task
-         on task.workspace_id=node.workspace_id and task.run_id=node.workflow_run_id
-        and task.node_run_id=node.id and task.invocation_key=node.invocation_key
-        and task.status in ('approved','rejected','submitted')
-       where node.workspace_id = $1 and node.workflow_run_id = $2
-         and ($3::varchar[] is null or node.node_id = any($3::varchar[]))
-         and (node.status = 'succeeded' or
-              (node.status in ('running','waiting') and attempt.status = 'succeeded' and node.control_kind is null) or
-              (node.status='waiting' and (task.id is not null or call.id is not null)))
-       order by node.invocation_key`,
-          [input.workspaceId, input.runId, input.nodeIds ?? null],
-        );
+      ? []
+      : await completionRows(client, input).catch(rethrowQueryFailure);
   return {
     variables: await readVariableSetValues(
       drizzle(client),
@@ -63,7 +36,7 @@ export async function readRunCompletionValues(
       input.variableSetRevision,
     ),
     runInput: storedInput?.kind === 'inline' ? storedInput.value : undefined,
-    outputs: result.rows.map((row) => {
+    outputs: rows.map((row) => {
       const stored =
         row.output_ref === null
           ? undefined
@@ -75,4 +48,77 @@ export async function readRunCompletionValues(
       };
     }),
   };
+}
+
+function completionRows(
+  client: PoolClient,
+  input: Parameters<typeof readRunCompletionValues>[1],
+) {
+  const n = nodeRuns,
+    a = nodeAttempts,
+    c = alias(workflowCalls, 'call'),
+    t = alias(pendingRunTasks, 'task');
+  const reused = and(
+    isNotNull(n.reusedSourceRunId),
+    isNotNull(n.reusedSourceNodeRunId),
+    isNotNull(n.reusedSourceCompletedAt),
+    isNull(n.currentAttemptId),
+    isNull(n.currentAttemptNumber),
+    eq(n.status, 'succeeded'),
+  );
+  const completedAttempt = and(
+    inArray(n.status, ['running', 'waiting']),
+    eq(a.status, 'succeeded'),
+    isNull(n.controlKind),
+  );
+  const completedControl = and(
+    eq(n.status, 'waiting'),
+    or(isNotNull(t.id), isNotNull(c.id)),
+  );
+  return drizzle(client)
+    .select({
+      node_id: n.nodeId,
+      invocation_key: n.invocationKey,
+      output_ref: sql<unknown>`case when ${reused} then ${n.outputRef} when ${t.id} is not null then ${t.outputRef} when ${c.id} is not null then ${c.resultRef} else coalesce(${a.outputRef},${n.outputRef}) end`,
+    })
+    .from(n)
+    .leftJoin(
+      a,
+      and(
+        eq(a.workspaceId, n.workspaceId),
+        eq(a.nodeRunId, n.id),
+        eq(a.id, n.currentAttemptId),
+        eq(a.attemptNumber, n.currentAttemptNumber),
+      ),
+    )
+    .leftJoin(
+      c,
+      and(
+        eq(c.workspaceId, n.workspaceId),
+        eq(c.parentRunId, n.workflowRunId),
+        eq(c.invocationKey, n.invocationKey),
+        eq(c.status, 'succeeded'),
+      ),
+    )
+    .leftJoin(
+      t,
+      and(
+        eq(t.workspaceId, n.workspaceId),
+        eq(t.runId, n.workflowRunId),
+        eq(t.nodeRunId, n.id),
+        eq(t.invocationKey, n.invocationKey),
+        inArray(t.status, ['approved', 'rejected', 'submitted']),
+      ),
+    )
+    .where(
+      and(
+        eq(n.workspaceId, input.workspaceId),
+        eq(n.workflowRunId, input.runId),
+        input.nodeIds === undefined
+          ? undefined
+          : inArray(n.nodeId, [...input.nodeIds]),
+        or(eq(n.status, 'succeeded'), completedAttempt, completedControl),
+      ),
+    )
+    .orderBy(n.invocationKey);
 }

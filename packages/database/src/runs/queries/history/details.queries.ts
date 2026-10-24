@@ -1,5 +1,5 @@
 import { workflowVersions } from '../../../schema/authoring/workflows.js';
-import { nodeRuns } from '../../../schema/runs/execution.js';
+import { nodeRuns, nodeAttempts } from '../../../schema/runs/execution.js';
 import { withResourceRunRead } from '../../../tenant-access/resources/transactions.repository.js';
 import {
   retainedTestRunSql,
@@ -9,7 +9,7 @@ import {
 import { codeDiagnosticsSchema, type CodeDiagnostics } from '@pertexo/node-sdk';
 import { readVariableSetValues } from '../../../variables/values.queries.js';
 import type { WorkspaceVariableSnapshot } from '@pertexo/workflow-model';
-import { sql, and, eq } from 'drizzle-orm';
+import { sql, and, eq, desc, exists, inArray } from 'drizzle-orm';
 import { workflowRuns } from '../../../schema/runs/execution.js';
 import { alias } from 'drizzle-orm/pg-core';
 import { workflowGraphStepSql } from '../execution/graph-step.js';
@@ -58,20 +58,6 @@ export type ReadWorkflowRunInputInput = Readonly<
 export type ReadWorkflowNodeRunOutputInput = Readonly<
   z.input<typeof nodeRunDataInputSchema>
 >;
-
-const inputRowSchema = z
-  .object({ input_ref: z.unknown(), past_input_window: z.boolean() })
-  .strict();
-const storedRowSchema = z.object({ stored: z.unknown() }).strict();
-const failedStepRowSchema = z
-  .object({
-    workflow_run_id: z.uuid(),
-    node_id: z.string().min(1).max(256),
-    label: z.string().min(1).max(200).nullable(),
-    definition_key: z.string().min(1).max(256).nullable(),
-    safe_error_code: z.string().min(1).max(128).nullable(),
-  })
-  .strict();
 
 function toRunData(stored: unknown): WorkflowRunData {
   const value = parseStoredExecutionValue(stored);
@@ -130,17 +116,20 @@ export async function runInputInTransaction(
   transaction: WorkspaceTransaction,
   runId: string,
 ): Promise<WorkflowRunData | undefined> {
-  const result = await transaction.db.execute(sql`
-    select
-      case when ${retainedTestRunSql()} then input_ref else null end as input_ref,
-      created_at <= statement_timestamp() - ${runRetentionIntervalSql()}
-        as past_input_window
-    from app.workflow_runs
-    where workspace_id = ${transaction.workspaceId} and id = ${runId}
-    limit 1
-  `);
-  if (result.rows[0] === undefined) return undefined;
-  const row = inputRowSchema.parse(result.rows[0]);
+  const [row] = await transaction.db
+    .select({
+      input_ref: sql<unknown>`case when ${retainedTestRunSql()} then ${workflowRuns.inputRef} else null end`,
+      past_input_window: sql<boolean>`${workflowRuns.createdAt}<=statement_timestamp()-${runRetentionIntervalSql()}`,
+    })
+    .from(workflowRuns)
+    .where(
+      and(
+        eq(workflowRuns.workspaceId, transaction.workspaceId),
+        eq(workflowRuns.id, runId),
+      ),
+    )
+    .limit(1);
+  if (row === undefined) return undefined;
   if (row.input_ref !== null) return toRunData(row.input_ref);
   // Retention clears an input the same way a run without one looks.
   return Object.freeze({ kind: row.past_input_window ? 'expired' : 'none' });
@@ -153,18 +142,32 @@ async function nodeRunValueInTransaction(
   nodeRunId: string,
   value: 'input' | 'output',
 ): Promise<WorkflowRunData | undefined> {
-  const column = sql.raw(value === 'input' ? 'input_ref' : 'output_ref');
-  const result = await transaction.db.execute(sql`
-    select ${column} as stored
-    from app.node_runs
-    where exists(select 1 from app.workflow_runs run where run.workspace_id=app.node_runs.workspace_id and run.id=app.node_runs.workflow_run_id and ${retainedTestRunSql('run')})
-      and workspace_id = ${transaction.workspaceId}
-      and workflow_run_id = ${runId}
-      and id = ${nodeRunId}
-    limit 1
-  `);
-  if (result.rows[0] === undefined) return undefined;
-  const row = storedRowSchema.parse(result.rows[0]);
+  const run = alias(workflowRuns, 'run');
+  const visible = transaction.db
+    .select({ id: run.id })
+    .from(run)
+    .where(
+      and(
+        eq(run.workspaceId, nodeRuns.workspaceId),
+        eq(run.id, nodeRuns.workflowRunId),
+        retainedTestRunSql('run'),
+      ),
+    );
+  const [row] = await transaction.db
+    .select({
+      stored: value === 'input' ? nodeRuns.inputRef : nodeRuns.outputRef,
+    })
+    .from(nodeRuns)
+    .where(
+      and(
+        exists(visible),
+        eq(nodeRuns.workspaceId, transaction.workspaceId),
+        eq(nodeRuns.workflowRunId, runId),
+        eq(nodeRuns.id, nodeRunId),
+      ),
+    )
+    .limit(1);
+  if (row === undefined) return undefined;
   return row.stored === null
     ? Object.freeze({ kind: 'none' })
     : toRunData(row.stored);
@@ -181,34 +184,53 @@ export async function readWorkflowRunFailedSteps(
   runIds: readonly string[],
 ): Promise<ReadonlyMap<string, WorkflowRunFailedStep>> {
   if (runIds.length === 0) return new Map();
-  const ids = `{${runIds.map((id) => z.uuid().parse(id)).join(',')}}`;
-  const result = await transaction.db.execute(sql`
-    select distinct on (node.workflow_run_id)
-      node.workflow_run_id,
-      node.node_id,
-      left(nullif(btrim(graph_node.value ->> 'label'), ''), 200) as label,
-      left(graph_node.value -> 'definition' ->> 'key', 256) as definition_key,
-      node.safe_error_code
-    from app.node_runs node
-    join app.workflow_runs run
-      on run.workspace_id = node.workspace_id
-     and run.id = node.workflow_run_id
-    left join app.workflow_versions version
-      on version.workspace_id = run.workspace_id
-     and version.id = run.workflow_version_id
-    left join lateral (${workflowGraphStepSql(sql`${alias(workflowVersions, 'version').graphJson}`, sql`${alias(nodeRuns, 'node').nodeId}`)}) graph_node on true
-    where node.workspace_id = ${transaction.workspaceId}
-      and node.workflow_run_id = any(${ids}::uuid[])
-      and node.status in ('failed', 'timed_out', 'outcome_unknown')
-      and node.failure_handling is distinct from 'handled'
-    order by
-      node.workflow_run_id,
-      node.completed_at desc nulls last,
-      node.id desc
-  `);
+  const node = alias(nodeRuns, 'node');
+  const run = alias(workflowRuns, 'run');
+  const version = alias(workflowVersions, 'version');
+  const graph = sql`lateral (${workflowGraphStepSql(sql`${version.graphJson}`, sql`${node.nodeId}`)}) graph_node`;
+  const result = await transaction.db
+    .selectDistinctOn([node.workflowRunId], {
+      workflow_run_id: node.workflowRunId,
+      node_id: node.nodeId,
+      label: sql<
+        string | null
+      >`left(nullif(btrim(graph_node.value->>'label'),''),200)`,
+      definition_key: sql<
+        string | null
+      >`left(graph_node.value->'definition'->>'key',256)`,
+      safe_error_code: node.safeErrorCode,
+    })
+    .from(node)
+    .innerJoin(
+      run,
+      and(
+        eq(run.workspaceId, node.workspaceId),
+        eq(run.id, node.workflowRunId),
+      ),
+    )
+    .leftJoin(
+      version,
+      and(
+        eq(version.workspaceId, run.workspaceId),
+        eq(version.id, run.workflowVersionId),
+      ),
+    )
+    .leftJoin(graph, sql`true`)
+    .where(
+      and(
+        eq(node.workspaceId, transaction.workspaceId),
+        inArray(node.workflowRunId, [...runIds]),
+        inArray(node.status, ['failed', 'timed_out', 'outcome_unknown']),
+        sql`${node.failureHandling} is distinct from 'handled'`,
+      ),
+    )
+    .orderBy(
+      node.workflowRunId,
+      sql`${node.completedAt} desc nulls last`,
+      desc(node.id),
+    );
   const steps = new Map<string, WorkflowRunFailedStep>();
-  for (const value of result.rows) {
-    const row = failedStepRowSchema.parse(value);
+  for (const row of result) {
     steps.set(
       row.workflow_run_id,
       Object.freeze({
@@ -263,20 +285,37 @@ export async function readWorkflowNodeRunDiagnostics(
 ): Promise<CodeDiagnostics | null | undefined> {
   const parsed = nodeRunDataInputSchema.parse(input);
   return withResourceRunRead(pool, parsed, async (transaction) => {
-    const result = await transaction.db.execute<{ diagnostics: unknown }>(sql`
-      select case when run.details_purged_at is null
-        and (run.completed_at is null or run.completed_at > statement_timestamp() - ${RUN_DETAILS_RETENTION_SQL})
-        and ${retainedTestRunSql('run')}
-        then attempt.code_diagnostics else null end as diagnostics
-      from app.node_runs node
-      join app.workflow_runs run on run.workspace_id = node.workspace_id and run.id = node.workflow_run_id
-      left join app.node_attempts attempt on attempt.workspace_id = node.workspace_id
-        and attempt.node_run_id = node.id and attempt.id = node.current_attempt_id
-      where node.workspace_id = ${transaction.workspaceId}
-        and node.workflow_run_id = ${parsed.runId} and node.id = ${parsed.nodeRunId}
-      limit 1
-    `);
-    const row = result.rows[0];
+    const node = alias(nodeRuns, 'node');
+    const run = alias(workflowRuns, 'run');
+    const attempt = alias(nodeAttempts, 'attempt');
+    const [row] = await transaction.db
+      .select({
+        diagnostics: sql<unknown>`case when ${run.detailsPurgedAt} is null and (${run.completedAt} is null or ${run.completedAt}>statement_timestamp()-${RUN_DETAILS_RETENTION_SQL}) and ${retainedTestRunSql('run')} then ${attempt.codeDiagnostics} else null end`,
+      })
+      .from(node)
+      .innerJoin(
+        run,
+        and(
+          eq(run.workspaceId, node.workspaceId),
+          eq(run.id, node.workflowRunId),
+        ),
+      )
+      .leftJoin(
+        attempt,
+        and(
+          eq(attempt.workspaceId, node.workspaceId),
+          eq(attempt.nodeRunId, node.id),
+          eq(attempt.id, node.currentAttemptId),
+        ),
+      )
+      .where(
+        and(
+          eq(node.workspaceId, transaction.workspaceId),
+          eq(node.workflowRunId, parsed.runId),
+          eq(node.id, parsed.nodeRunId),
+        ),
+      )
+      .limit(1);
     if (row === undefined) return undefined;
     return row.diagnostics === null
       ? null

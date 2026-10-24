@@ -76,9 +76,7 @@ function executionSourceQuery(db: Pick<NodePgDatabase, 'select'>) {
 }
 type SourceRow = Awaited<ReturnType<typeof executionSourceQuery>>[number];
 // The UNION's test branch selects both fields from the same immutable snapshot.
-function isTestSource(
-  row: SourceRow,
-): row is SourceRow & {
+function isTestSource(row: SourceRow): row is SourceRow & {
   test_dispositions: NonNullable<SourceRow['test_dispositions']>;
   test_expires_at: Date;
 } {

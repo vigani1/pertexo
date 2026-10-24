@@ -459,7 +459,9 @@ export const nodeRuns = appSchema.table(
       mode: 'date',
     }),
     controlKind: varchar('control_kind', { length: 32 }),
-    waitKind: varchar('wait_kind', { length: 32 }),
+    waitKind: varchar('wait_kind', { length: 32 }).$type<
+      'node_wait' | 'retry_backoff'
+    >(),
     safeErrorCode: varchar('safe_error_code', { length: 128 }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()

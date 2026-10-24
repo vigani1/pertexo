@@ -50,7 +50,11 @@ export async function measureObservationLoad<T>(
 }
 
 function coordinatorQueryKind(text: string): string {
-  const normalized = text.replaceAll(/\s+/gu, ' ').trim().toLowerCase();
+  const normalized = text
+    .replaceAll('"', '')
+    .replaceAll(/\s+/gu, ' ')
+    .trim()
+    .toLowerCase();
   if (normalized.includes("current_setting('app.workspace_id'")) {
     return normalized.includes("pg_settings where name='statement_timeout'")
       ? 'verify_workspace_context'
@@ -62,21 +66,8 @@ function coordinatorQueryKind(text: string): string {
     return 'install_workspace_context';
   if (normalized.includes('from app.workflow_runs run'))
     return 'run_checkpoint';
-  if (
-    normalized.includes('count(*)::int as fact_count') &&
-    normalized.includes('from app.run_events')
-  )
-    return 'fact_capacity';
-  if (
-    normalized.includes('select event.sequence, event.type') &&
-    normalized.includes('from app.run_events event')
-  )
-    return 'fact_page';
-  if (
-    normalized.includes('from app.node_attempts attempt') &&
-    normalized.includes('attempt.id=any($2::uuid[])')
-  )
-    return 'fact_physical_attempts';
+  const factKind = factQueryKind(normalized);
+  if (factKind !== undefined) return factKind;
   if (
     normalized.includes("attempt.retry_decision='pending'") &&
     normalized.includes('from app.node_attempts attempt')
@@ -92,6 +83,26 @@ function coordinatorQueryKind(text: string): string {
     return 'due_wakeups';
   if (normalized === 'commit' || normalized === 'rollback') return normalized;
   return 'unexpected';
+}
+
+function factQueryKind(normalized: string): string | undefined {
+  if (
+    normalized.includes('count(*)::int') &&
+    normalized.includes('from app.run_events')
+  )
+    return 'fact_capacity';
+  if (
+    normalized.includes('from app.run_events') &&
+    normalized.includes('order by') &&
+    normalized.includes('limit')
+  )
+    return 'fact_page';
+  if (
+    normalized.includes('from app.node_attempts') &&
+    normalized.includes('inner join app.node_runs')
+  )
+    return 'fact_physical_attempts';
+  return undefined;
 }
 
 export function hasConstraint(expected: string): (error: unknown) => boolean {
@@ -121,14 +132,16 @@ function queryTextAndValues(arguments_: readonly unknown[]): Readonly<{
     request !== null &&
     'text' in request &&
     typeof request.text === 'string'
-  )
+  ) {
+    const embeddedValues =
+      'values' in request && Array.isArray(request.values)
+        ? request.values
+        : [];
     return {
       text: request.text,
-      values:
-        'values' in request && Array.isArray(request.values)
-          ? request.values
-          : [],
+      values: Array.isArray(arguments_[1]) ? arguments_[1] : embeddedValues,
     };
+  }
   throw new Error('Coordinator test observed an unsupported PostgreSQL query');
 }
 

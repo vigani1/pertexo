@@ -1,3 +1,4 @@
+import type { WorkflowCallOutcome } from '@pertexo/workflow-engine';
 import { sql } from 'drizzle-orm';
 import {
   boolean,
@@ -31,7 +32,9 @@ export const workflowCalls = appSchema.table(
     inputRef: json('input_ref'),
     inputChecksum: char('input_checksum', { length: 64 }).notNull(),
     deadlineAt: timestamp('deadline_at', { withTimezone: true, mode: 'date' }),
-    status: varchar('status', { length: 32 }).notNull(),
+    status: varchar('status', { length: 32 })
+      .$type<WorkflowCallOutcome['status'] | 'pending' | 'accepted'>()
+      .notNull(),
     childRunId: uuid('child_run_id'),
     liveChildRunId: uuid('live_child_run_id'),
     resultRef: json('result_ref'),
