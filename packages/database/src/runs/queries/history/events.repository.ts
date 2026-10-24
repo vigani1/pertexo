@@ -162,9 +162,12 @@ export async function readRunEventsAfter(
   const parsed = readRunEventsSchema.parse(input);
   const { snapshot, page } = eventPage(transaction, parsed);
   // Drizzle cannot mark a CTE MATERIALIZED; retain the snapshot barrier around native reads.
-  const result = await transaction.db.execute<
-    (typeof page)['_']['result'][number]
-  >(sql`with run_snapshot as materialized (${snapshot}) ${page}`);
+  type PageRow = (typeof page)['_']['result'][number];
+  type WireRow = Omit<PageRow, 'created_at'> &
+    Readonly<{ created_at: string | null }>;
+  const result = await transaction.db.execute<WireRow>(
+    sql`with run_snapshot as materialized (${snapshot}) ${page}`,
+  );
   const highWaterSequence = result.rows[0]?.high_water;
   if (highWaterSequence === undefined)
     throw new ExecutionStateConflictError('execution.run_not_found');
@@ -172,7 +175,7 @@ export async function readRunEventsAfter(
     (
       row,
     ): row is typeof row & {
-      created_at: Date;
+      created_at: string;
       sequence: number;
       type: RunEventType;
     } => row.created_at !== null && row.sequence !== null && row.type !== null,
