@@ -1,19 +1,25 @@
+import { and, exists, sql, type SQL } from 'drizzle-orm';
+import { QueryBuilder } from 'drizzle-orm/pg-core';
+import { directoryUsers, directoryGroups, directoryMembers } from './tables.js';
 import SCIMMY from 'scimmy';
 import type { AttrExp, Compare, Filter } from 'scim2-parse-filter';
 import { DirectoryError } from '../contract.js';
 
 export type DirectoryKind = 'User' | 'Group';
-type Field = Readonly<{ sql: string; type: string; caseExact: boolean }>;
+type Field = Readonly<{ sql: SQL; type: string; caseExact: boolean }>;
 type Collection = 'emails' | 'members' | 'groups';
-const scalarColumns: Readonly<Record<string, string>> = {
-  id: 'resource.id::text',
-  externalid: 'resource.external_id',
-  'meta.created': 'resource.created_at',
-  'meta.lastmodified': 'resource.updated_at',
-  username: 'resource.user_name',
-  active: 'resource.active',
-  displayname: 'resource.display_name',
-};
+function scalarColumns(kind: DirectoryKind): Readonly<Record<string, SQL>> {
+  const table = kind === 'User' ? directoryUsers : directoryGroups;
+  return {
+    id: sql`${table.id}::text`,
+    externalid: sql`${table.externalId}`,
+    'meta.created': sql`${table.createdAt}`,
+    'meta.lastmodified': sql`${table.updatedAt}`,
+    username: sql`${directoryUsers.userName}`,
+    active: sql`${directoryUsers.active}`,
+    displayname: sql`${directoryGroups.displayName}`,
+  };
+}
 function attributePath(kind: DirectoryKind, path: string): string {
   const prefix = `${(kind === 'User' ? SCIMMY.Schemas.User : SCIMMY.Schemas.Group).id}:`;
   return (
@@ -44,10 +50,10 @@ export function directoryField(
     throw new DirectoryError('invalid_filter');
   }
 }
-const emailColumns: Readonly<Record<string, string>> = {
-  value: "item.value->>'value'",
-  type: "item.value->>'type'",
-  primary: "(item.value->>'primary')::boolean",
+const emailColumns: Readonly<Record<string, SQL>> = {
+  value: sql`item.value->>'value'`,
+  type: sql`item.value->>'type'`,
+  primary: sql`(item.value->>'primary')::boolean`,
 };
 const nameColumns: Readonly<Record<string, string>> = {
   formatted: 'formatted',
@@ -61,83 +67,91 @@ function directoryFieldSql(
   kind: DirectoryKind,
   normalized: string,
   collection: Collection | undefined,
-): string | undefined {
+): SQL | undefined {
   switch (collection) {
     case 'emails':
       return emailColumns[normalized];
     case 'groups':
-      return normalized === 'value' ? 'item.group_id::text' : undefined;
+      return normalized === 'value'
+        ? sql`${directoryMembers.groupId}::text`
+        : undefined;
     case 'members':
       return normalized === 'value'
-        ? 'item.directory_user_id::text'
+        ? sql`${directoryMembers.directoryUserId}::text`
         : undefined;
     case undefined:
       if (kind === 'User') return userFieldSql(normalized);
       if (normalized === 'username' || normalized === 'active')
         return undefined;
-      return scalarColumns[normalized];
+      return scalarColumns(kind)[normalized];
   }
 }
-function userFieldSql(normalized: string): string | undefined {
+function userFieldSql(normalized: string): SQL | undefined {
   switch (normalized) {
     case 'displayname':
-      return "resource.profile->>'displayName'";
+      return sql`${directoryUsers.profile}->>'displayName'`;
     case 'name':
-      return "resource.profile->'name'";
+      return sql`${directoryUsers.profile}->'name'`;
     default:
       if (normalized.startsWith('name.')) {
         const key = nameColumns[normalized.slice(5)];
         return key === undefined
           ? undefined
-          : `resource.profile->'name'->>'${key}'`;
+          : sql`${directoryUsers.profile}->'name'->>${key}`;
       }
-      return scalarColumns[normalized];
+      return scalarColumns('User')[normalized];
   }
 }
 function collectionSource(
   kind: DirectoryKind,
   name: string,
-): Readonly<{ collection: Collection; from: string; scope: string }> {
+): Readonly<{
+  collection: Collection;
+  from: SQL | typeof directoryMembers;
+  scope: SQL;
+}> {
   const normalized = attributePath(kind, name);
   if (kind === 'User' && normalized === 'emails')
     return {
       collection: 'emails',
-      from: "jsonb_array_elements(resource.profile->'emails') item(value)",
-      scope: 'true',
+      from: sql`jsonb_array_elements(${directoryUsers.profile}->'emails') item(value)`,
+      scope: sql`true`,
     };
   if (kind === 'User' && normalized === 'groups')
     return {
       collection: 'groups',
-      from: 'app.auth_directory_group_members item',
-      scope:
-        'item.organization_id=resource.organization_id and item.directory_user_id=resource.id',
+      from: directoryMembers,
+      scope: sql`${directoryMembers.organizationId}=${directoryUsers.organizationId} and ${directoryMembers.directoryUserId}=${directoryUsers.id}`,
     };
   if (kind === 'Group' && normalized === 'members')
     return {
       collection: 'members',
-      from: 'app.auth_directory_group_members item',
-      scope:
-        'item.organization_id=resource.organization_id and item.group_id=resource.id',
+      from: directoryMembers,
+      scope: sql`${directoryMembers.organizationId}=${directoryGroups.organizationId} and ${directoryMembers.groupId}=${directoryGroups.id}`,
     };
   throw new DirectoryError('invalid_filter');
 }
 export function compileDirectoryFilter(
   kind: DirectoryKind,
   filter: Filter | undefined,
-  parameters: unknown[],
-): string {
-  const bind = (value: unknown) => {
-    parameters.push(value);
-    return `$${String(parameters.length)}`;
-  };
-  const compile = (node: Filter, collection?: Collection): string => {
+): SQL {
+  const compile = (node: Filter, collection?: Collection): SQL => {
     if (node.op === 'and' || node.op === 'or')
-      return `(${node.filters.map((child) => compile(child, collection)).join(node.op === 'and' ? ' and ' : ' or ')})`;
-    if (node.op === 'not') return `(not ${compile(node.filter, collection)})`;
+      return sql`(${sql.join(
+        node.filters.map((child) => compile(child, collection)),
+        node.op === 'and' ? sql` and ` : sql` or `,
+      )})`;
+    if (node.op === 'not')
+      return sql`(not ${compile(node.filter, collection)})`;
     if (node.op === '[]') {
       if (collection !== undefined) throw new DirectoryError('invalid_filter');
       const source = collectionSource(kind, node.attrPath);
-      return `exists(select 1 from ${source.from} where ${source.scope} and ${compile(node.valFilter, source.collection)})`;
+      return exists(
+        new QueryBuilder()
+          .select({ one: sql`1` })
+          .from(source.from)
+          .where(and(source.scope, compile(node.valFilter, source.collection))),
+      );
     }
     const path = attributePath(kind, node.attrPath);
     if (
@@ -150,76 +164,78 @@ export function compileDirectoryFilter(
         source = collectionSource(kind, name);
       if (rest.length === 0 && node.op !== 'pr')
         throw new DirectoryError('invalid_filter');
-      return `exists(select 1 from ${source.from} where ${source.scope}${rest.length === 0 ? '' : ` and ${compile({ ...node, attrPath: rest.join('.') }, source.collection)}`})`;
+      const condition =
+        rest.length === 0
+          ? undefined
+          : compile({ ...node, attrPath: rest.join('.') }, source.collection);
+      return exists(
+        new QueryBuilder()
+          .select({ one: sql`1` })
+          .from(source.from)
+          .where(and(source.scope, condition)),
+      );
     }
     return compileAttributeComparison(
       directoryField(kind, node.attrPath, collection),
       node,
-      bind,
     );
   };
   // The public boundary parses and bounds this AST before it enters storage.
-  return filter === undefined ? 'true' : compile(filter);
+  return filter === undefined ? sql`true` : compile(filter);
 }
 
 function comparisonParameter(
-  parameter: string,
+  parameter: SQL,
   {
     date,
     text,
     caseExact,
   }: Readonly<{ date: boolean; text: boolean; caseExact: boolean | undefined }>,
-): string {
+): SQL {
   if (date) {
-    return `${parameter}::timestamptz`;
+    return sql`${parameter}::timestamptz`;
   }
   if (text && !caseExact) {
-    return `lower(${parameter}::text)`;
+    return sql`lower(${parameter}::text)`;
   }
   return parameter;
 }
 
 function substringComparison(
   operator: Filter['op'],
-  left: string,
-  right: string,
-): string {
+  left: SQL,
+  right: SQL,
+): SQL {
   if (operator === 'co') {
-    return `strpos(${left},${right})>0`;
+    return sql`strpos(${left},${right})>0`;
   }
   if (operator === 'sw') {
-    return `left(${left},length(${right}))=${right}`;
+    return sql`left(${left},length(${right}))=${right}`;
   }
-  return `right(${left},length(${right}))=${right}`;
+  return sql`right(${left},length(${right}))=${right}`;
 }
 
-function compileAttributeComparison(
-  field: Field,
-  node: AttrExp,
-  bind: (value: unknown) => string,
-): string {
+function compileAttributeComparison(field: Field, node: AttrExp): SQL {
   if (node.op === 'pr') {
     if (field.type === 'string' || field.type === 'reference')
-      return `(nullif(${field.sql},'') is not null)`;
+      return sql`(nullif(${field.sql},'') is not null)`;
     if (field.type === 'complex')
-      return `(${field.sql} is not null and ${field.sql}<>'{}'::jsonb)`;
-    return `(${field.sql} is not null)`;
+      return sql`(${field.sql} is not null and ${field.sql}<>'{}'::jsonb)`;
+    return sql`(${field.sql} is not null)`;
   }
 
   if (field.type === 'complex') throw new DirectoryError('invalid_filter');
   if (node.compValue === null) {
     if (node.op !== 'eq' && node.op !== 'ne')
       throw new DirectoryError('invalid_filter');
-    return `(${field.sql} is ${node.op === 'ne' ? 'not ' : ''}null)`;
+    return node.op === 'ne'
+      ? sql`(${field.sql} is not null)`
+      : sql`(${field.sql} is null)`;
   }
 
-  return compileValueComparison(field, node, bind);
+  return compileValueComparison(field, node);
 }
-function compileValueComparison(
-  field: Field,
-  node: Compare,
-  bind: (value: unknown) => string,
-): string {
+function comparisonOperands(field: Field, node: Compare) {
   const invalidBooleanComparison =
     field.type === 'boolean' &&
     (typeof node.compValue !== 'boolean' || !['eq', 'ne'].includes(node.op));
@@ -233,26 +249,44 @@ function compileValueComparison(
       !Number.isFinite(Date.parse(node.compValue)));
   if (invalidDateComparison) throw new DirectoryError('invalid_filter');
   const text = field.type !== 'boolean' && !date;
-  const left = text && !field.caseExact ? `lower(${field.sql})` : field.sql;
-  const parameter = bind(node.compValue);
+  const left = text && !field.caseExact ? sql`lower(${field.sql})` : field.sql;
+  const parameter = sql`${node.compValue}`;
   const right = comparisonParameter(parameter, {
     date,
     text,
     caseExact: field.caseExact,
   });
-  if (['co', 'sw', 'ew'].includes(node.op)) {
-    if (!text) throw new DirectoryError('invalid_filter');
-    const comparison = substringComparison(node.op, left, right);
-    return `coalesce((${comparison}),false)`;
+  return { left, right, text };
+}
+function compileValueComparison(field: Field, node: Compare): SQL {
+  const { left, right, text } = comparisonOperands(field, node);
+  let comparison: SQL;
+  switch (node.op) {
+    case 'co':
+    case 'sw':
+    case 'ew':
+      if (!text) throw new DirectoryError('invalid_filter');
+      return sql`coalesce((${substringComparison(node.op, left, right)}),false)`;
+    case 'eq':
+      comparison = sql`${left}=${right}`;
+      break;
+    case 'ne':
+      comparison = sql`${left}<>${right}`;
+      break;
+    case 'gt':
+      comparison = sql`${left}>${right}`;
+      break;
+    case 'lt':
+      comparison = sql`${left}<${right}`;
+      break;
+    case 'ge':
+      comparison = sql`${left}>=${right}`;
+      break;
+    case 'le':
+      comparison = sql`${left}<=${right}`;
+      break;
+    default:
+      throw new DirectoryError('invalid_filter');
   }
-  const operators = {
-    eq: '=',
-    ne: '<>',
-    gt: '>',
-    lt: '<',
-    ge: '>=',
-    le: '<=',
-  };
-  const operator = operators[node.op as keyof typeof operators];
-  return `coalesce((${left}${operator}${right}),false)`;
+  return sql`coalesce((${comparison}),false)`;
 }

@@ -1,3 +1,7 @@
+import { and, desc, eq, isNull } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { authDirectoryUsers } from '../../../schema/identity/federation/directory/users.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 
 export async function directorySessionAllowed(
@@ -5,13 +9,25 @@ export async function directorySessionAllowed(
   organizationId: string,
   userId: string,
 ): Promise<boolean> {
-  const rows = (
-    await client.query<{ active: boolean; deleted_at: Date | null }>(
-      `select active,deleted_at from app.auth_directory_users where organization_id=$1 and user_id=$2
-     order by (deleted_at is null) desc,created_at desc,id desc limit 1`,
-      [organizationId, userId],
+  const rows = await drizzle(client)
+    .select({
+      active: authDirectoryUsers.active,
+      deleted_at: authDirectoryUsers.deletedAt,
+    })
+    .from(authDirectoryUsers)
+    .where(
+      and(
+        eq(authDirectoryUsers.organizationId, organizationId),
+        eq(authDirectoryUsers.userId, userId),
+      ),
     )
-  ).rows;
+    .orderBy(
+      desc(isNull(authDirectoryUsers.deletedAt)),
+      desc(authDirectoryUsers.createdAt),
+      desc(authDirectoryUsers.id),
+    )
+    .limit(1)
+    .catch(rethrowQueryFailure);
   const current = rows[0];
   return (
     current === undefined || (current.active && current.deleted_at === null)

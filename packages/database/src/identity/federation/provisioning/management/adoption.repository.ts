@@ -1,3 +1,9 @@
+import { workspaceMemberships, users } from '../../../../schema/foundation.js';
+import { authDirectoryUsers } from '../../../../schema/identity/federation/directory/users.js';
+import { authDirectoryMemberships } from '../../../../schema/identity/federation/directory/sources.js';
+import { and, eq, exists, isNull, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import { withWorkspaceScope } from '../../../../tenant-access/transactions.js';
 import { DirectoryError } from '../contract.js';
@@ -22,37 +28,64 @@ export async function previewDirectoryAdoption(
     (entry) => entry.workspace_id === query.targetWorkspaceId,
   );
   if (workspace === undefined) throw new DirectoryError('not_found');
-  const directory = (
-    await client.query<{ user_id: string | null; revision: number }>(
-      'select user_id,revision from app.auth_directory_users where organization_id=$1 and id=$2 and active and deleted_at is null',
-      [organization.id, query.directoryUserId],
+  const [directory] = await drizzle(client)
+    .select({
+      user_id: authDirectoryUsers.userId,
+      revision: authDirectoryUsers.revision,
+    })
+    .from(authDirectoryUsers)
+    .where(
+      and(
+        eq(authDirectoryUsers.organizationId, organization.id),
+        eq(authDirectoryUsers.id, query.directoryUserId),
+        eq(authDirectoryUsers.active, true),
+        isNull(authDirectoryUsers.deletedAt),
+      ),
     )
-  ).rows[0];
+    .catch(rethrowQueryFailure);
   if (directory?.user_id === null || directory === undefined)
     return {
       eligible: false,
       reason:
         'This person must complete organization SSO before an existing membership can be adopted.',
     };
+  const userId = directory.user_id;
   const member = await withWorkspaceScope(
     client,
     { workspaceId: workspace.workspace_id },
-    async (scoped) =>
-      (
-        await scoped.query<{
-          role: string;
-          status: string;
-          role_revision: number;
-          managed: boolean;
-          display_name: string;
-        }>(
-          `select member.role,member.status,member.role_revision,person.display_name,
-     exists(select 1 from app.auth_directory_memberships source where source.workspace_id=member.workspace_id and source.user_id=member.user_id) managed
-     from app.workspace_memberships member join app.users person on person.id=member.user_id
-     where member.workspace_id=$1 and member.user_id=$2`,
-          [workspace.workspace_id, directory.user_id],
+    async (scoped) => {
+      const db = drizzle(scoped);
+      const managed = db
+        .select({ one: sql`1` })
+        .from(authDirectoryMemberships)
+        .where(
+          and(
+            eq(
+              authDirectoryMemberships.workspaceId,
+              workspaceMemberships.workspaceId,
+            ),
+            eq(authDirectoryMemberships.userId, workspaceMemberships.userId),
+          ),
+        );
+      const [record] = await db
+        .select({
+          role: workspaceMemberships.role,
+          status: workspaceMemberships.status,
+          role_revision: workspaceMemberships.roleRevision,
+          display_name: users.displayName,
+          managed: sql<boolean>`${exists(managed)}`,
+        })
+        .from(workspaceMemberships)
+        .innerJoin(users, eq(users.id, workspaceMemberships.userId))
+        .where(
+          and(
+            eq(workspaceMemberships.workspaceId, workspace.workspace_id),
+            eq(workspaceMemberships.userId, userId),
+          ),
         )
-      ).rows[0],
+        .catch(rethrowQueryFailure);
+      return record;
+    },
   );
   if (member?.role === 'owner')
     return {

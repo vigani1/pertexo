@@ -1,3 +1,8 @@
+import { and, eq, gt, isNull, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { authSignInAttempts } from '../../schema/identity/sign-in.js';
+import { authAccounts, authSessions } from '../../schema/authentication.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { hasSignInMethodCapacity } from './accounts/limits.queries.js';
 import { resolveVerifiedSignInUser } from './accounts/resolve.repository.js';
 import { canCreateAuthenticationSession } from './sessions/authority.repository.js';
@@ -13,14 +18,22 @@ export async function completeSocialSignIn(
   input: ProvenSocialSignIn,
   sessionTtlSeconds: number,
 ): Promise<SocialSignInResult> {
-  const attempt = (
-    await client.query<{ return_path: string }>(
-      `select return_path from app.auth_sign_in_attempts
-     where id=$1 and provider=$2 and state_digest=$3 and browser_digest=$4
-       and consumed_at is null and expires_at>clock_timestamp() for update`,
-      [input.attemptId, input.provider, input.stateDigest, input.browserDigest],
+  const db = drizzle(client);
+  const [attempt] = await db
+    .select({ return_path: authSignInAttempts.returnPath })
+    .from(authSignInAttempts)
+    .where(
+      and(
+        eq(authSignInAttempts.id, input.attemptId),
+        eq(authSignInAttempts.provider, input.provider),
+        eq(authSignInAttempts.stateDigest, input.stateDigest),
+        eq(authSignInAttempts.browserDigest, input.browserDigest),
+        isNull(authSignInAttempts.consumedAt),
+        gt(authSignInAttempts.expiresAt, sql`clock_timestamp()`),
+      ),
     )
-  ).rows[0];
+    .for('update')
+    .catch(rethrowQueryFailure);
   if (attempt === undefined) return { kind: 'failed' };
   const user = await resolveVerifiedSignInUser(client, input);
   if (user?.status !== 'active' || !user.email_verified)
@@ -32,12 +45,17 @@ export async function completeSocialSignIn(
   )
     return { kind: 'failed' };
   // Membership commands and method removal lock the user before changing sessions.
-  const account = (
-    await client.query<{ user_id: string }>(
-      'select user_id from app.auth_accounts where provider_id=$1 and account_id=$2 for update',
-      [input.provider, input.identity.accountId],
+  const [account] = await db
+    .select({ user_id: authAccounts.userId })
+    .from(authAccounts)
+    .where(
+      and(
+        eq(authAccounts.providerId, input.provider),
+        eq(authAccounts.accountId, input.identity.accountId),
+      ),
     )
-  ).rows[0];
+    .for('update')
+    .catch(rethrowQueryFailure);
   if (account !== undefined && account.user_id !== user.id)
     return { kind: 'failed' };
   if (account === undefined) {
@@ -45,28 +63,34 @@ export async function completeSocialSignIn(
       return { kind: 'failed' };
     if (input.identity.email?.toLowerCase() !== user.email.toLowerCase())
       return { kind: 'failed' };
-    await client.query(
-      'insert into app.auth_accounts(id,user_id,provider_id,account_id) values($1,$2,$3,$4)',
-      [
-        generatePersistedId(),
-        user.id,
-        input.provider,
-        input.identity.accountId,
-      ],
-    );
+    await db
+      .insert(authAccounts)
+      .values({
+        id: generatePersistedId(),
+        userId: user.id,
+        providerId: input.provider,
+        accountId: input.identity.accountId,
+      })
+      .catch(rethrowQueryFailure);
     await revokeUserSessions(client, user.id);
     await recordIdentitySecurityFact(client, user.id, 'method.linked');
   }
   const token = randomBytes(32).toString('base64url');
-  await client.query(
-    `insert into app.auth_sessions(id,user_id,token,expires_at,authentication_method)
-     values($1,$2,$3,clock_timestamp()+($4::integer*interval '1 second'),'social')`,
-    [generatePersistedId(), user.id, token, sessionTtlSeconds],
-  );
+  await db
+    .insert(authSessions)
+    .values({
+      id: generatePersistedId(),
+      userId: user.id,
+      token,
+      expiresAt: sql`clock_timestamp()+(${sessionTtlSeconds}::integer*interval '1 second')`,
+      authenticationMethod: 'social',
+    })
+    .catch(rethrowQueryFailure);
   await recordIdentitySecurityFact(client, user.id, 'session.signed_in');
-  await client.query(
-    'update app.auth_sign_in_attempts set consumed_at=clock_timestamp() where id=$1',
-    [input.attemptId],
-  );
+  await db
+    .update(authSignInAttempts)
+    .set({ consumedAt: sql`clock_timestamp()` })
+    .where(eq(authSignInAttempts.id, input.attemptId))
+    .catch(rethrowQueryFailure);
   return { kind: 'signed_in', token, returnPath: attempt.return_path };
 }

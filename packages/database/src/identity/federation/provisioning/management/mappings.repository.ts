@@ -1,3 +1,11 @@
+import { users, workspaceMemberships } from '../../../../schema/foundation.js';
+import { authDirectoryGroups } from '../../../../schema/identity/federation/directory/groups.js';
+import { authDirectoryGroupMappings } from '../../../../schema/identity/federation/directory/mappings.js';
+import { authDirectoryUsers } from '../../../../schema/identity/federation/directory/users.js';
+import { authDirectoryMemberships } from '../../../../schema/identity/federation/directory/sources.js';
+import { and, eq, isNull, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../../../platform/query-errors.js';
 import { readDirectoryRole } from '../roles.queries.js';
 import type { Pool } from 'pg';
 import type { DirectoryMappings, DirectoryAdopt } from '@pertexo/contracts';
@@ -30,34 +38,32 @@ export async function replaceDirectoryMappings(
         throw new DirectoryError('invalid_value');
       const groups = new Set(
         (
-          await client.query<{ id: string }>(
-            'select id from app.auth_directory_groups where organization_id=$1',
-            [organization.id],
-          )
-        ).rows.map((group) => group.id),
+          await drizzle(client)
+            .select({ id: authDirectoryGroups.id })
+            .from(authDirectoryGroups)
+            .where(eq(authDirectoryGroups.organizationId, organization.id))
+            .catch(rethrowQueryFailure)
+        ).map((group) => group.id),
       );
       if (input.mappings.some((mapping) => !groups.has(mapping.groupId)))
         throw new DirectoryError('invalid_value');
-      await client.query(
-        'delete from app.auth_directory_group_mappings where organization_id=$1',
-        [organization.id],
-      );
+      await drizzle(client)
+        .delete(authDirectoryGroupMappings)
+        .where(eq(authDirectoryGroupMappings.organizationId, organization.id))
+        .catch(rethrowQueryFailure);
       if (input.mappings.length > 0)
-        await client.query(
-          `insert into app.auth_directory_group_mappings(organization_id,workspace_id,group_id,role,priority)
-      select $1,mapping.workspace_id,mapping.group_id,mapping.role,mapping.priority from jsonb_to_recordset($2::jsonb) mapping(workspace_id uuid,group_id uuid,role text,priority integer)`,
-          [
-            organization.id,
-            JSON.stringify(
-              input.mappings.map((mapping) => ({
-                workspace_id: mapping.workspaceId,
-                group_id: mapping.groupId,
-                role: mapping.role,
-                priority: mapping.priority,
-              })),
-            ),
-          ],
-        );
+        await drizzle(client)
+          .insert(authDirectoryGroupMappings)
+          .values(
+            input.mappings.map((mapping) => ({
+              organizationId: organization.id,
+              workspaceId: mapping.workspaceId,
+              groupId: mapping.groupId,
+              role: mapping.role,
+              priority: mapping.priority,
+            })),
+          )
+          .catch(rethrowQueryFailure);
       await projectDirectoryMemberships(client, organization, {
         actorId: input.actorId,
       });
@@ -90,19 +96,32 @@ export async function adoptDirectoryMembership(
         (entry) => entry.workspace_id === input.targetWorkspaceId,
       );
       if (workspace === undefined) throw new DirectoryError('invalid_value');
-      const user = (
-        await client.query<{ user_id: string | null; revision: number }>(
-          'select user_id,revision from app.auth_directory_users where organization_id=$1 and id=$2 and active and deleted_at is null',
-          [organization.id, input.directoryUserId],
+      const [user] = await drizzle(client)
+        .select({
+          user_id: authDirectoryUsers.userId,
+          revision: authDirectoryUsers.revision,
+        })
+        .from(authDirectoryUsers)
+        .where(
+          and(
+            eq(authDirectoryUsers.organizationId, organization.id),
+            eq(authDirectoryUsers.id, input.directoryUserId),
+            eq(authDirectoryUsers.active, true),
+            isNull(authDirectoryUsers.deletedAt),
+          ),
         )
-      ).rows[0];
+        .catch(rethrowQueryFailure);
       if (user?.user_id === null || user === undefined)
         throw new DirectoryError('invalid_value');
       if (user.revision !== input.directoryRevision)
         throw new DirectoryError('stale');
-      await client.query('select id from app.users where id=$1 for update', [
-        user.user_id,
-      ]);
+      const userId = user.user_id;
+      await drizzle(client)
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.id, userId))
+        .for('update')
+        .catch(rethrowQueryFailure);
       const mapped = await readDirectoryRole(client, organization.id, {
         workspaceId: workspace.workspace_id,
         directoryUserId: input.directoryUserId,
@@ -113,16 +132,21 @@ export async function adoptDirectoryMembership(
         client,
         { workspaceId: workspace.workspace_id, actorId: input.actorId },
         async (scoped) => {
-          const member = (
-            await scoped.query<{
-              role: string;
-              status: string;
-              role_revision: number;
-            }>(
-              'select role,status,role_revision from app.workspace_memberships where workspace_id=$1 and user_id=$2 for update',
-              [workspace.workspace_id, user.user_id],
+          const [member] = await drizzle(scoped)
+            .select({
+              role: workspaceMemberships.role,
+              status: workspaceMemberships.status,
+              role_revision: workspaceMemberships.roleRevision,
+            })
+            .from(workspaceMemberships)
+            .where(
+              and(
+                eq(workspaceMemberships.workspaceId, workspace.workspace_id),
+                eq(workspaceMemberships.userId, userId),
+              ),
             )
-          ).rows[0];
+            .for('update')
+            .catch(rethrowQueryFailure);
           if (member?.role === 'owner')
             throw new DirectoryError('owner_protected');
           if (member?.status !== 'active')
@@ -131,22 +155,31 @@ export async function adoptDirectoryMembership(
             throw new DirectoryError('stale');
           if (
             (
-              await scoped.query(
-                'select 1 from app.auth_directory_memberships where workspace_id=$1 and user_id=$2',
-                [workspace.workspace_id, user.user_id],
-              )
-            ).rowCount !== 0
+              await drizzle(scoped)
+                .select({ one: sql`1` })
+                .from(authDirectoryMemberships)
+                .where(
+                  and(
+                    eq(
+                      authDirectoryMemberships.workspaceId,
+                      workspace.workspace_id,
+                    ),
+                    eq(authDirectoryMemberships.userId, userId),
+                  ),
+                )
+                .catch(rethrowQueryFailure)
+            ).length !== 0
           )
             throw new DirectoryError('invalid_value');
-          await scoped.query(
-            'insert into app.auth_directory_memberships(organization_id,workspace_id,user_id,directory_user_id) values($1,$2,$3,$4)',
-            [
-              organization.id,
-              workspace.workspace_id,
-              user.user_id,
-              input.directoryUserId,
-            ],
-          );
+          await drizzle(scoped)
+            .insert(authDirectoryMemberships)
+            .values({
+              organizationId: organization.id,
+              workspaceId: workspace.workspace_id,
+              userId,
+              directoryUserId: input.directoryUserId,
+            })
+            .catch(rethrowQueryFailure);
         },
       );
       await projectDirectoryMemberships(

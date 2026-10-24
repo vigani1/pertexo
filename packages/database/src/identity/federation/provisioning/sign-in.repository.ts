@@ -1,3 +1,21 @@
+import { authAccounts } from '../../../schema/authentication.js';
+import { authDirectoryUsers } from '../../../schema/identity/federation/directory/users.js';
+import { authDirectoryMemberships } from '../../../schema/identity/federation/directory/sources.js';
+import {
+  and,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  or,
+  sql,
+} from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { alias } from 'drizzle-orm/pg-core';
+import { directoryUserRecords } from './resources/records.queries.js';
+import { directoryUsers } from './resources/tables.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import { SignInProofRejectedError } from '../accounts/rejection.js';
 import type { DirectoryUserRow } from './contract.js';
@@ -15,15 +33,32 @@ export async function directorySignInCandidate(
     subject,
   }: Readonly<{ email: string; providerId: string; subject: string }>,
 ): Promise<DirectoryUserRow | undefined> {
-  const rows = (
-    await client.query<DirectoryUserRow>(
-      `select directory.* from app.auth_directory_users directory
-     where organization_id=$1 and (login_email=$2 or user_id in (
-       select user_id from app.auth_accounts where provider_id=$3 and account_id=$4))
-     order by (deleted_at is null) desc,created_at desc,id desc`,
-      [organizationId, email.toLowerCase(), providerId, subject],
+  const db = drizzle(client);
+  const accounts = db
+    .select({ id: authAccounts.userId })
+    .from(authAccounts)
+    .where(
+      and(
+        eq(authAccounts.providerId, providerId),
+        eq(authAccounts.accountId, subject),
+      ),
+    );
+  const rows = await directoryUserRecords(client)
+    .where(
+      and(
+        eq(directoryUsers.organizationId, organizationId),
+        or(
+          eq(directoryUsers.loginEmail, email.toLowerCase()),
+          inArray(directoryUsers.userId, accounts),
+        ),
+      ),
     )
-  ).rows;
+    .orderBy(
+      desc(isNull(directoryUsers.deletedAt)),
+      desc(directoryUsers.createdAt),
+      desc(directoryUsers.id),
+    )
+    .catch(rethrowQueryFailure);
   const live = rows.filter((row) => row.deleted_at === null);
   if (live.length > 1) throw new SignInProofRejectedError();
   const candidate = live[0] ?? rows[0];
@@ -44,22 +79,44 @@ export async function bindDirectorySignIn(
   if (directory.user_id !== null && directory.user_id !== userId)
     throw new SignInProofRejectedError();
   if (directory.user_id === null) {
-    await client.query(
-      'update app.auth_directory_users set user_id=$3,revision=revision+1,updated_at=clock_timestamp() where organization_id=$1 and id=$2',
-      [organization.id, directory.id, userId],
-    );
+    await drizzle(client)
+      .update(authDirectoryUsers)
+      .set({
+        userId,
+        revision: sql`${authDirectoryUsers.revision}+1`,
+        updatedAt: sql`clock_timestamp()`,
+      })
+      .where(
+        and(
+          eq(authDirectoryUsers.organizationId, organization.id),
+          eq(authDirectoryUsers.id, directory.id),
+        ),
+      )
+      .catch(rethrowQueryFailure);
     // A deliberate recreation inherits only its own organization's old managed grants.
     for (const workspace of organization.workspaces)
       await withWorkspaceScope(
         client,
         { workspaceId: workspace.workspace_id },
         async (scoped) => {
-          await scoped.query(
-            `update app.auth_directory_memberships source set directory_user_id=$3
-        from app.auth_directory_users prior where source.organization_id=$1 and source.workspace_id=$2 and source.user_id=$4
-        and prior.id=source.directory_user_id and prior.deleted_at is not null`,
-            [organization.id, workspace.workspace_id, directory.id, userId],
-          );
+          const prior = alias(authDirectoryUsers, 'prior');
+          await drizzle(scoped)
+            .update(authDirectoryMemberships)
+            .set({ directoryUserId: directory.id })
+            .from(prior)
+            .where(
+              and(
+                eq(authDirectoryMemberships.organizationId, organization.id),
+                eq(
+                  authDirectoryMemberships.workspaceId,
+                  workspace.workspace_id,
+                ),
+                eq(authDirectoryMemberships.userId, userId),
+                eq(prior.id, authDirectoryMemberships.directoryUserId),
+                isNotNull(prior.deletedAt),
+              ),
+            )
+            .catch(rethrowQueryFailure);
         },
       );
   }

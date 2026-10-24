@@ -6,7 +6,10 @@ import {
   type DatabaseRuntime,
 } from '../../../platform/pool/runtime.js';
 import type { FederationScope } from '../management/contract.js';
-import { authenticateDirectory, withDirectoryRead } from './authority.repository.js';
+import {
+  authenticateDirectory,
+  withDirectoryRead,
+} from './authority.repository.js';
 import type {
   DirectoryPrincipal,
   DirectoryUserValues,

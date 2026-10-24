@@ -1,3 +1,7 @@
+import { and, eq, gt, isNull, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { authSignInAttempts } from '../../schema/identity/sign-in.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { isUniqueConstraintFailure } from '../../platform/query-errors.js';
 import { SignInProofRejectedError } from './accounts/rejection.js';
 import type { Pool } from 'pg';
@@ -25,37 +29,36 @@ export class SocialSignInCommands {
       returnPath: string;
     }>,
   ): Promise<void> {
-    await this.input.pool.query(
-      `insert into app.auth_sign_in_attempts(id,provider,state_digest,browser_digest,return_path,expires_at)
-       values($1,$2,$3,$4,$5,clock_timestamp()+interval '5 minutes')`,
-      [
-        input.id,
-        input.provider,
-        input.stateDigest,
-        input.browserDigest,
-        input.returnPath,
-      ],
-    );
+    await drizzle(this.input.pool)
+      .insert(authSignInAttempts)
+      .values({
+        ...input,
+        expiresAt: sql`clock_timestamp()+interval '5 minutes'`,
+      })
+      .catch(rethrowQueryFailure);
   }
 
   public async find(
     stateDigest: Buffer,
     browserDigest: Buffer,
   ): Promise<SocialSignInAttempt | undefined> {
-    const row = (
-      await this.input.pool.query<{
-        id: string;
-        provider: string;
-        return_path: string;
-      }>(
-        `select id,provider,return_path from app.auth_sign_in_attempts
-       where state_digest=$1 and browser_digest=$2 and consumed_at is null and expires_at>clock_timestamp()`,
-        [stateDigest, browserDigest],
+    const [row] = await drizzle(this.input.pool)
+      .select({
+        id: authSignInAttempts.id,
+        provider: authSignInAttempts.provider,
+        returnPath: authSignInAttempts.returnPath,
+      })
+      .from(authSignInAttempts)
+      .where(
+        and(
+          eq(authSignInAttempts.stateDigest, stateDigest),
+          eq(authSignInAttempts.browserDigest, browserDigest),
+          isNull(authSignInAttempts.consumedAt),
+          gt(authSignInAttempts.expiresAt, sql`clock_timestamp()`),
+        ),
       )
-    ).rows[0];
-    return row === undefined
-      ? undefined
-      : { id: row.id, provider: row.provider, returnPath: row.return_path };
+      .catch(rethrowQueryFailure);
+    return row;
   }
 
   public complete(input: ProvenSocialSignIn): Promise<SocialSignInResult> {

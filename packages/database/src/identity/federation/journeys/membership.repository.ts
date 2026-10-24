@@ -1,3 +1,10 @@
+import { and, eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  workspaces as workspaceRecords,
+  workspaceMemberships,
+} from '../../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { Role } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 import { withWorkspaceScope } from '../../../tenant-access/transactions.js';
@@ -19,19 +26,23 @@ export async function grantJustInTimeMemberships(
       client,
       { workspaceId: workspace.workspace_id },
       async (scoped) => {
-        const state = (
-          await scoped.query<{ status: string }>(
-            'select status from app.workspaces where id=$1',
-            [workspace.workspace_id],
-          )
-        ).rows[0];
+        const [state] = await drizzle(scoped)
+          .select({ status: workspaceRecords.status })
+          .from(workspaceRecords)
+          .where(eq(workspaceRecords.id, workspace.workspace_id))
+          .catch(rethrowQueryFailure);
         if (state?.status !== 'active') return;
-        const member = (
-          await scoped.query<{ status: string }>(
-            'select status from app.workspace_memberships where workspace_id=$1 and user_id=$2 for update',
-            [workspace.workspace_id, userId],
+        const [member] = await drizzle(scoped)
+          .select({ status: workspaceMemberships.status })
+          .from(workspaceMemberships)
+          .where(
+            and(
+              eq(workspaceMemberships.workspaceId, workspace.workspace_id),
+              eq(workspaceMemberships.userId, userId),
+            ),
           )
-        ).rows[0];
+          .for('update')
+          .catch(rethrowQueryFailure);
         if (member !== undefined) return;
         await createMemberships(
           scoped,

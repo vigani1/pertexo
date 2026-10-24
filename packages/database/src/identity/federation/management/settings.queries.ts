@@ -1,53 +1,70 @@
-import type { DelegatedRole } from '@pertexo/workflow-model';
+import { authOrganizationWorkspaces } from '../../../schema/identity/federation/organizations.js';
+import { workspaces } from '../../../schema/foundation.js';
+import { authDomains } from '../../../schema/identity/federation/domains.js';
+import {
+  authProviders,
+  authProviderChecks,
+} from '../../../schema/identity/federation/providers.js';
+import { asc, eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import type { OidcConfiguration, SamlConfiguration } from '@pertexo/contracts';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import {
+  domainRecords,
+  providerRecords,
+  type ProviderRecord,
+} from './records.queries.js';
+
 import type { PoolClient } from 'pg';
-import type {
-  OrganizationRow,
-  OrganizationSnapshot,
-  ProviderRow,
-  DomainRow,
-} from './contract.js';
+import type { OrganizationRow, OrganizationSnapshot } from './contract.js';
 
 export async function projectOrganization(
   client: PoolClient,
   organization: OrganizationRow,
 ): Promise<OrganizationSnapshot> {
-  const workspaces = await client.query<{
-    workspace_id: string;
-    name: string;
-    default_role: DelegatedRole;
-  }>(
-    `select link.workspace_id,workspace.name,link.default_role from app.auth_organization_workspaces link
-     join app.workspaces workspace on workspace.id=link.workspace_id where link.organization_id=$1 order by workspace.name,link.workspace_id`,
-    [organization.id],
-  );
-  const domains = await client.query<DomainRow>(
-    'select * from app.auth_domains where organization_id=$1 order by domain,id',
-    [organization.id],
-  );
-  const providers = await client.query<ProviderRow>(
-    'select * from app.auth_providers where organization_id=$1 order by name,id',
-    [organization.id],
-  );
-  const checks = await client.query<{
-    domain_id: string;
-    provider_id: string;
-    provider_revision: number;
-    tested_at: Date;
-  }>(
-    'select domain_id,provider_id,provider_revision,tested_at from app.auth_provider_checks where organization_id=$1',
-    [organization.id],
-  );
+  const linkedWorkspaces = await drizzle(client)
+    .select({
+      workspace_id: authOrganizationWorkspaces.workspaceId,
+      name: workspaces.name,
+      default_role: authOrganizationWorkspaces.defaultRole,
+    })
+    .from(authOrganizationWorkspaces)
+    .innerJoin(
+      workspaces,
+      eq(workspaces.id, authOrganizationWorkspaces.workspaceId),
+    )
+    .where(eq(authOrganizationWorkspaces.organizationId, organization.id))
+    .orderBy(asc(workspaces.name), asc(authOrganizationWorkspaces.workspaceId))
+    .catch(rethrowQueryFailure);
+  const domains = await domainRecords(client)
+    .where(eq(authDomains.organizationId, organization.id))
+    .orderBy(asc(authDomains.domain), asc(authDomains.id))
+    .catch(rethrowQueryFailure);
+  const providers = await providerRecords(client)
+    .where(eq(authProviders.organizationId, organization.id))
+    .orderBy(asc(authProviders.name), asc(authProviders.id))
+    .catch(rethrowQueryFailure);
+  const checks = await drizzle(client)
+    .select({
+      domain_id: authProviderChecks.domainId,
+      provider_id: authProviderChecks.providerId,
+      provider_revision: authProviderChecks.providerRevision,
+      tested_at: authProviderChecks.testedAt,
+    })
+    .from(authProviderChecks)
+    .where(eq(authProviderChecks.organizationId, organization.id))
+    .catch(rethrowQueryFailure);
   return {
     id: organization.id,
     name: organization.name,
     revision: organization.revision,
     controlWorkspaceId: organization.control_workspace_id,
-    workspaces: workspaces.rows.map((row) => ({
+    workspaces: linkedWorkspaces.map((row) => ({
       workspaceId: row.workspace_id,
       name: row.name,
       defaultRole: row.default_role,
     })),
-    domains: domains.rows.map((row) => ({
+    domains: domains.map((row) => ({
       id: row.id,
       domain: row.domain,
       revision: row.revision,
@@ -61,7 +78,7 @@ export async function projectOrganization(
               expiresAt: row.challenge_expires_at.toISOString(),
             }
           : null,
-      checks: checks.rows
+      checks: checks
         .filter((check) => check.domain_id === row.id)
         .map((check) => ({
           providerId: check.provider_id,
@@ -69,7 +86,7 @@ export async function projectOrganization(
           testedAt: check.tested_at.toISOString(),
         })),
     })),
-    providers: providers.rows.map((row) => {
+    providers: providers.map((row) => {
       const common = {
         id: row.id,
         name: row.name,
@@ -77,14 +94,27 @@ export async function projectOrganization(
         enabled: row.enabled,
         revision: row.revision,
       };
-      return row.kind === 'oidc'
-        ? {
-            ...common,
-            kind: row.kind,
-            configuration: row.configuration,
-            secretConfigured: row.sealed_secret !== null,
-          }
-        : { ...common, kind: row.kind, configuration: row.configuration };
+      if (providerHasKind(row, 'oidc'))
+        return {
+          ...common,
+          kind: row.kind,
+          configuration: row.configuration,
+          secretConfigured: row.sealed_secret !== null,
+        };
+      if (providerHasKind(row, 'saml'))
+        return { ...common, kind: row.kind, configuration: row.configuration };
+      throw new Error('Unknown stored provider kind');
     }),
   };
+}
+
+// Provider writes validate the configuration for its kind before persisting it.
+function providerHasKind<K extends ProviderRecord['kind']>(
+  row: ProviderRecord,
+  kind: K,
+): row is ProviderRecord & {
+  kind: K;
+  configuration: K extends 'oidc' ? OidcConfiguration : SamlConfiguration;
+} {
+  return row.kind === kind;
 }

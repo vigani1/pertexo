@@ -1,3 +1,13 @@
+import { authProvisioningCredentials } from '../../../../schema/identity/federation/directory/credentials.js';
+import { workspaces } from '../../../../schema/foundation.js';
+import { and, count, eq, isNull, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  credentialRecords,
+  credentialSelection,
+  type CredentialRecord,
+} from './credentials.queries.js';
+import { rethrowQueryFailure } from '../../../../platform/query-errors.js';
 import { createHash, randomBytes } from 'node:crypto';
 import type { Pool } from 'pg';
 import { z } from 'zod';
@@ -18,13 +28,7 @@ import {
   type DirectoryCommand,
 } from './commands.repository.js';
 
-export type CredentialRow = Readonly<{
-  id: string;
-  name: string;
-  created_at: Date;
-  revoked_at: Date | null;
-  last_used_at: Date | null;
-}>;
+type CredentialRow = CredentialRecord;
 export const publicCredential = (row: CredentialRow): DirectoryCredential => ({
   id: row.id,
   name: row.name,
@@ -41,30 +45,31 @@ export async function createDirectoryCredential(
     operation: 'identity.directory.credential.create',
     request: { name: input.name, expectedRevision: input.expectedRevision },
     change: async (client, organization) => {
-      const count =
-        (
-          await client.query<{ count: number }>(
-            'select count(*)::integer count from app.auth_provisioning_credentials where organization_id=$1 and revoked_at is null',
-            [organization.id],
-          )
-        ).rows[0]?.count ?? 0;
-      if (count >= DIRECTORY_LIMITS.credentials)
+      const [countRow] = await drizzle(client)
+        .select({ count: count() })
+        .from(authProvisioningCredentials)
+        .where(
+          and(
+            eq(authProvisioningCredentials.organizationId, organization.id),
+            isNull(authProvisioningCredentials.revokedAt),
+          ),
+        )
+        .catch(rethrowQueryFailure);
+      if ((countRow?.count ?? 0) >= DIRECTORY_LIMITS.credentials)
         throw new DirectoryError('limit');
       const id = generatePersistedId(),
         secret = randomBytes(32).toString('base64url');
-      const row = (
-        await client.query<CredentialRow>(
-          `insert into app.auth_provisioning_credentials(id,organization_id,name,secret_digest,created_by)
-      values($1,$2,$3,$4,$5) returning id,name,created_at,revoked_at,last_used_at`,
-          [
-            id,
-            organization.id,
-            input.name,
-            createHash('sha256').update(secret).digest('hex'),
-            input.actorId,
-          ],
-        )
-      ).rows[0];
+      const [row] = await drizzle(client)
+        .insert(authProvisioningCredentials)
+        .values({
+          id,
+          organizationId: organization.id,
+          name: input.name,
+          secretDigest: createHash('sha256').update(secret).digest('hex'),
+          createdBy: input.actorId,
+        })
+        .returning(credentialSelection)
+        .catch(rethrowQueryFailure);
       if (row === undefined)
         throw new Error('Credential creation returned no row');
       await auditDirectoryManagement(client, input, {
@@ -82,9 +87,12 @@ export async function createDirectoryCredential(
   const { credentialId } = credentialReceipt.parse(result.receipt);
   const credential = await withPlatformTransaction(pool, async (client) => {
     // Authority is rechecked after the receipt transaction, before projecting mutable metadata.
-    await client.query('select id from app.workspaces where id=$1 for update', [
-      input.workspaceId,
-    ]);
+    await drizzle(client)
+      .select({ id: workspaces.id })
+      .from(workspaces)
+      .where(eq(workspaces.id, input.workspaceId))
+      .for('update')
+      .catch(rethrowQueryFailure);
     await withWorkspaceScope(client, input, (scoped) =>
       lockWorkspaceAuthority(scoped, input.workspaceId, input.actorId, [
         'owner',
@@ -96,12 +104,14 @@ export async function createDirectoryCredential(
     );
     if (organization?.control_workspace_id !== input.workspaceId)
       throw new DirectoryError('forbidden');
-    const row = (
-      await client.query<CredentialRow>(
-        'select id,name,created_at,revoked_at,last_used_at from app.auth_provisioning_credentials where organization_id=$1 and id=$2',
-        [organization.id, credentialId],
+    const [row] = await credentialRecords(client)
+      .where(
+        and(
+          eq(authProvisioningCredentials.organizationId, organization.id),
+          eq(authProvisioningCredentials.id, credentialId),
+        ),
       )
-    ).rows[0];
+      .catch(rethrowQueryFailure);
     if (row === undefined) throw new DirectoryError('not_found');
     return publicCredential(row);
   });
@@ -118,11 +128,20 @@ export async function revokeDirectoryCredential(
       expectedRevision: input.expectedRevision,
     },
     change: async (client, organization) => {
-      const result = await client.query(
-        'update app.auth_provisioning_credentials set revoked_at=coalesce(revoked_at,clock_timestamp()) where organization_id=$1 and id=$2 returning id',
-        [organization.id, input.credentialId],
-      );
-      if (result.rowCount !== 1) throw new DirectoryError('not_found');
+      const result = await drizzle(client)
+        .update(authProvisioningCredentials)
+        .set({
+          revokedAt: sql`coalesce(${authProvisioningCredentials.revokedAt},clock_timestamp())`,
+        })
+        .where(
+          and(
+            eq(authProvisioningCredentials.organizationId, organization.id),
+            eq(authProvisioningCredentials.id, input.credentialId),
+          ),
+        )
+        .returning({ id: authProvisioningCredentials.id })
+        .catch(rethrowQueryFailure);
+      if (result.length !== 1) throw new DirectoryError('not_found');
       await auditDirectoryManagement(client, input, {
         organizationId: organization.id,
         action: 'identity.directory_credential_revoked',

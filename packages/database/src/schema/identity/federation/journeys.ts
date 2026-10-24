@@ -21,7 +21,7 @@ export const authFederationAttempts = appSchema.table(
     providerId: uuid('provider_id').notNull(),
     providerRevision: integer('provider_revision').notNull(),
     domainId: uuid('domain_id').notNull(),
-    purpose: text().notNull(),
+    purpose: text().$type<'sign_in' | 'test'>().notNull(),
     ownerUserId: uuid('owner_user_id'),
     ownerSessionId: uuid('owner_session_id'),
     stateDigest: bytea('state_digest').notNull(),

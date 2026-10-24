@@ -1,3 +1,9 @@
+import { authAccounts, authSessions } from '../../../schema/authentication.js';
+import { authFederationAttempts } from '../../../schema/identity/federation/journeys.js';
+import { authProviderChecks } from '../../../schema/identity/federation/providers.js';
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { lockDirectoryOrganization } from '../provisioning/authority.repository.js';
 import {
   bindDirectorySignIn,
@@ -85,12 +91,17 @@ export async function completeFederationJourney(
   } as const;
   if (!(await canCreateAuthenticationSession(client, user.id, proof)))
     throw new SignInProofRejectedError();
-  const linked = (
-    await client.query<{ user_id: string }>(
-      'select user_id from app.auth_accounts where provider_id=$1 and account_id=$2 for update',
-      [attempt.provider.id, input.identity.subject],
+  const [linked] = await drizzle(client)
+    .select({ user_id: authAccounts.userId })
+    .from(authAccounts)
+    .where(
+      and(
+        eq(authAccounts.providerId, attempt.provider.id),
+        eq(authAccounts.accountId, input.identity.subject),
+      ),
     )
-  ).rows[0];
+    .for('update')
+    .catch(rethrowQueryFailure);
   if (linked !== undefined && linked.user_id !== user.id)
     throw new SignInProofRejectedError();
   if (linked === undefined) {
@@ -98,15 +109,15 @@ export async function completeFederationJourney(
       throw new SignInProofRejectedError();
     if (user.email.toLowerCase() !== input.identity.email)
       throw new SignInProofRejectedError();
-    await client.query(
-      'insert into app.auth_accounts(id,user_id,provider_id,account_id) values($1,$2,$3,$4)',
-      [
-        generatePersistedId(),
-        user.id,
-        attempt.provider.id,
-        input.identity.subject,
-      ],
-    );
+    await drizzle(client)
+      .insert(authAccounts)
+      .values({
+        id: generatePersistedId(),
+        userId: user.id,
+        providerId: attempt.provider.id,
+        accountId: input.identity.subject,
+      })
+      .catch(rethrowQueryFailure);
     await revokeUserSessions(client, user.id);
     await recordIdentitySecurityFact(client, user.id, 'method.linked');
   }
@@ -118,18 +129,18 @@ export async function completeFederationJourney(
       attempt.provider.organizationId,
     );
   const token = randomBytes(32).toString('base64url');
-  await client.query(
-    `insert into app.auth_sessions(id,user_id,token,expires_at,authentication_method,federation_provider_id,federation_provider_revision)
- values($1,$2,$3,clock_timestamp()+($4::integer*interval '1 second'),'organization',$5,$6)`,
-    [
-      generatePersistedId(),
-      user.id,
+  await drizzle(client)
+    .insert(authSessions)
+    .values({
+      id: generatePersistedId(),
+      userId: user.id,
       token,
-      ttlSeconds,
-      attempt.provider.id,
-      attempt.provider.revision,
-    ],
-  );
+      expiresAt: sql`clock_timestamp()+(${ttlSeconds}::integer*interval '1 second')`,
+      authenticationMethod: 'organization',
+      federationProviderId: attempt.provider.id,
+      federationProviderRevision: attempt.provider.revision,
+    })
+    .catch(rethrowQueryFailure);
   await recordIdentitySecurityFact(client, user.id, 'session.signed_in');
   await withWorkspaceScope(
     client,
@@ -144,10 +155,11 @@ export async function completeFederationJourney(
         metadata: { providerId: attempt.provider.id },
       }),
   );
-  await client.query(
-    'update app.auth_federation_attempts set consumed_at=clock_timestamp() where id=$1',
-    [attempt.id],
-  );
+  await drizzle(client)
+    .update(authFederationAttempts)
+    .set({ consumedAt: sql`clock_timestamp()` })
+    .where(eq(authFederationAttempts.id, attempt.id))
+    .catch(rethrowQueryFailure);
   return { kind: 'signed_in', token, returnPath: attempt.returnPath };
 }
 
@@ -181,16 +193,26 @@ async function completeProviderTest(
         ['owner'],
       ),
   );
-  await client.query(
-    `insert into app.auth_provider_checks(organization_id,domain_id,provider_id,provider_revision) values($1,$2,$3,$4)
-   on conflict(organization_id,domain_id,provider_id) do update set provider_revision=excluded.provider_revision,tested_at=clock_timestamp()`,
-    [
-      attempt.provider.organizationId,
-      attempt.domainId,
-      attempt.provider.id,
-      attempt.provider.revision,
-    ],
-  );
+  await drizzle(client)
+    .insert(authProviderChecks)
+    .values({
+      organizationId: attempt.provider.organizationId,
+      domainId: attempt.domainId,
+      providerId: attempt.provider.id,
+      providerRevision: attempt.provider.revision,
+    })
+    .onConflictDoUpdate({
+      target: [
+        authProviderChecks.organizationId,
+        authProviderChecks.domainId,
+        authProviderChecks.providerId,
+      ],
+      set: {
+        providerRevision: attempt.provider.revision,
+        testedAt: sql`clock_timestamp()`,
+      },
+    })
+    .catch(rethrowQueryFailure);
   await withWorkspaceScope(
     client,
     { workspaceId: attempt.provider.controlWorkspaceId },
@@ -208,9 +230,10 @@ async function completeProviderTest(
         },
       }),
   );
-  await client.query(
-    'update app.auth_federation_attempts set consumed_at=clock_timestamp() where id=$1',
-    [attempt.id],
-  );
+  await drizzle(client)
+    .update(authFederationAttempts)
+    .set({ consumedAt: sql`clock_timestamp()` })
+    .where(eq(authFederationAttempts.id, attempt.id))
+    .catch(rethrowQueryFailure);
   return { kind: 'tested', returnPath: attempt.returnPath };
 }

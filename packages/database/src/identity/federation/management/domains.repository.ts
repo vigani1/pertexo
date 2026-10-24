@@ -1,3 +1,8 @@
+import { authDomains } from '../../../schema/identity/federation/domains.js';
+import { and, eq, gt, isNotNull, isNull, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import { domainRecords } from './records.queries.js';
 import { randomBytes } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import type { FederationSettings } from '@pertexo/contracts';
@@ -18,12 +23,15 @@ export async function requireOrganizationDomain(
   organizationId: string,
   domainId: string,
 ): Promise<DomainRow> {
-  const domain = (
-    await client.query<DomainRow>(
-      'select * from app.auth_domains where organization_id=$1 and id=$2 for update',
-      [organizationId, domainId],
+  const [domain] = await domainRecords(client)
+    .where(
+      and(
+        eq(authDomains.organizationId, organizationId),
+        eq(authDomains.id, domainId),
+      ),
     )
-  ).rows[0];
+    .for('update')
+    .catch(rethrowQueryFailure);
   if (domain === undefined)
     throw new FederationConflictError(
       'unavailable',
@@ -44,26 +52,33 @@ export function createDomain(
       await requireResourceCapacity(client, organization.id, 'domains');
       if (
         (
-          await client.query(
-            'select id from app.auth_domains where organization_id=$1 and domain=$2',
-            [organization.id, input.domain],
-          )
-        ).rowCount !== 0
+          await drizzle(client)
+            .select({ id: authDomains.id })
+            .from(authDomains)
+            .where(
+              and(
+                eq(authDomains.organizationId, organization.id),
+                eq(authDomains.domain, input.domain),
+              ),
+            )
+            .catch(rethrowQueryFailure)
+        ).length !== 0
       )
         throw new FederationConflictError(
           'unavailable',
           'That domain is already configured.',
         );
       const id = generatePersistedId();
-      await client.query(
-        "insert into app.auth_domains(id,organization_id,domain,challenge,challenge_expires_at) values($1,$2,$3,$4,clock_timestamp()+interval '7 days')",
-        [
+      await drizzle(client)
+        .insert(authDomains)
+        .values({
           id,
-          organization.id,
-          input.domain,
-          randomBytes(32).toString('base64url'),
-        ],
-      );
+          organizationId: organization.id,
+          domain: input.domain,
+          challenge: randomBytes(32).toString('base64url'),
+          challengeExpiresAt: sql`clock_timestamp()+interval '7 days'`,
+        })
+        .catch(rethrowQueryFailure);
       await recordFederationAudit(client, input, {
         action: 'identity.domain_challenge_created',
         targetId: organization.id,
@@ -96,10 +111,15 @@ export function renewDomainChallenge(
           'unavailable',
           'This domain is already verified.',
         );
-      await client.query(
-        "update app.auth_domains set challenge=$2,challenge_expires_at=clock_timestamp()+interval '7 days',revision=revision+1 where id=$1",
-        [domain.id, randomBytes(32).toString('base64url')],
-      );
+      await drizzle(client)
+        .update(authDomains)
+        .set({
+          challenge: randomBytes(32).toString('base64url'),
+          challengeExpiresAt: sql`clock_timestamp()+interval '7 days'`,
+          revision: sql`${authDomains.revision}+1`,
+        })
+        .where(eq(authDomains.id, domain.id))
+        .catch(rethrowQueryFailure);
       await recordFederationAudit(client, input, {
         action: 'identity.domain_challenge_created',
         targetId: organization.id,
@@ -131,36 +151,57 @@ export function verifyDomain(
       );
       const valid =
         (
-          await client.query(
-            'select id from app.auth_domains where id=$1 and challenge=$2 and challenge_expires_at>clock_timestamp() and verified_at is null',
-            [domain.id, input.observedChallenge],
-          )
-        ).rowCount === 1;
+          await drizzle(client)
+            .select({ id: authDomains.id })
+            .from(authDomains)
+            .where(
+              and(
+                eq(authDomains.id, domain.id),
+                eq(authDomains.challenge, input.observedChallenge),
+                gt(authDomains.challengeExpiresAt, sql`clock_timestamp()`),
+                isNull(authDomains.verifiedAt),
+              ),
+            )
+            .catch(rethrowQueryFailure)
+        ).length === 1;
       if (!valid)
         throw new FederationConflictError(
           'dns_unverified',
           'The DNS challenge changed or expired. Check the current TXT record.',
         );
-      await client.query(
-        'select pg_advisory_xact_lock(hashtextextended($1,0))',
-        [`identity-domain:${domain.domain}`],
-      );
+      await drizzle(client)
+        .execute(
+          sql`select pg_advisory_xact_lock(hashtextextended(${`identity-domain:${domain.domain}`},0))`,
+        )
+        .catch(rethrowQueryFailure);
       if (
         (
-          await client.query(
-            'select id from app.auth_domains where domain=$1 and verified_at is not null',
-            [domain.domain],
-          )
-        ).rowCount !== 0
+          await drizzle(client)
+            .select({ id: authDomains.id })
+            .from(authDomains)
+            .where(
+              and(
+                eq(authDomains.domain, domain.domain),
+                isNotNull(authDomains.verifiedAt),
+              ),
+            )
+            .catch(rethrowQueryFailure)
+        ).length !== 0
       )
         throw new FederationConflictError(
           'domain_claimed',
           'This domain is already claimed on this install.',
         );
-      await client.query(
-        'update app.auth_domains set verified_at=clock_timestamp(),challenge=null,challenge_expires_at=null,revision=revision+1 where id=$1',
-        [domain.id],
-      );
+      await drizzle(client)
+        .update(authDomains)
+        .set({
+          verifiedAt: sql`clock_timestamp()`,
+          challenge: null,
+          challengeExpiresAt: null,
+          revision: sql`${authDomains.revision}+1`,
+        })
+        .where(eq(authDomains.id, domain.id))
+        .catch(rethrowQueryFailure);
       await recordFederationAudit(client, input, {
         action: 'identity.domain_verified',
         targetId: organization.id,
@@ -193,9 +234,10 @@ export function removeDomain(
           'unavailable',
           'Turn off required SSO before removing this domain.',
         );
-      await client.query('delete from app.auth_domains where id=$1', [
-        domain.id,
-      ]);
+      await drizzle(client)
+        .delete(authDomains)
+        .where(eq(authDomains.id, domain.id))
+        .catch(rethrowQueryFailure);
       await recordFederationAudit(client, input, {
         action: 'identity.domain_removed',
         targetId: organization.id,

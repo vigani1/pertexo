@@ -1,3 +1,10 @@
+import {
+  authOrganizations,
+  authOrganizationWorkspaces,
+} from '../../../../schema/identity/federation/organizations.js';
+import { asc, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../../../platform/query-errors.js';
 import { ADMINISTRATIVE_ROLES } from '@pertexo/workflow-model';
 import type { Pool, PoolClient } from 'pg';
 import {
@@ -48,18 +55,23 @@ export async function readDirectoryManagement<T>(
       const preview = await organizationForWorkspace(client, scope.workspaceId);
       if (preview === undefined) throw new DirectoryError('not_found');
       // A shared organization lock gives settings one coherent revision without blocking other readers.
-      await client.query(
-        'select id from app.auth_organizations where id=$1 for share',
-        [preview.id],
-      );
+      await drizzle(client)
+        .select({ id: authOrganizations.id })
+        .from(authOrganizations)
+        .where(eq(authOrganizations.id, preview.id))
+        .for('share')
+        .catch(rethrowQueryFailure);
       const row = await organizationForWorkspace(client, scope.workspaceId);
       if (row?.id !== preview.id) throw new DirectoryError('not_found');
-      const workspaces = (
-        await client.query<DirectoryOrganization['workspaces'][number]>(
-          'select workspace_id,default_role from app.auth_organization_workspaces where organization_id=$1 order by workspace_id',
-          [preview.id],
-        )
-      ).rows;
+      const workspaces = await drizzle(client)
+        .select({
+          workspace_id: authOrganizationWorkspaces.workspaceId,
+          default_role: authOrganizationWorkspaces.defaultRole,
+        })
+        .from(authOrganizationWorkspaces)
+        .where(eq(authOrganizationWorkspaces.organizationId, preview.id))
+        .orderBy(asc(authOrganizationWorkspaces.workspaceId))
+        .catch(rethrowQueryFailure);
       return read(
         client,
         { ...row, workspaces },
@@ -126,10 +138,11 @@ export function runDirectoryCommand<T>(
       if (organization.revision !== input.expectedRevision)
         throw new DirectoryError('stale');
       const result = await change(client, organization);
-      await client.query(
-        'update app.auth_organizations set revision=revision+1 where id=$1',
-        [organization.id],
-      );
+      await drizzle(client)
+        .update(authOrganizations)
+        .set({ revision: sql`${authOrganizations.revision}+1` })
+        .where(eq(authOrganizations.id, organization.id))
+        .catch(rethrowQueryFailure);
       await withWorkspaceScope(client, input, (scoped) =>
         completeCommand(scoped, identity, result.receipt),
       );

@@ -99,6 +99,7 @@ export const authSessions = appSchema.table(
     userAgent: text('user_agent'),
     userId: uuid('user_id').notNull(),
     authenticationMethod: text('authentication_method')
+      .$type<'credential' | 'social' | 'organization'>()
       .notNull()
       .default('credential'),
     federationProviderId: uuid('federation_provider_id'),

@@ -1,3 +1,4 @@
+import type { OidcConfiguration, SamlConfiguration } from '@pertexo/contracts';
 import { sql } from 'drizzle-orm';
 import {
   boolean,
@@ -21,10 +22,12 @@ export const authProviders = appSchema.table(
   {
     id: uuid().primaryKey(),
     organizationId: uuid('organization_id').notNull(),
-    kind: text().notNull(),
+    kind: text().$type<'oidc' | 'saml'>().notNull(),
     name: text().notNull(),
     issuer: text().notNull(),
-    configuration: jsonb().$type<Readonly<Record<string, unknown>>>().notNull(),
+    configuration: jsonb()
+      .$type<OidcConfiguration | SamlConfiguration>()
+      .notNull(),
     sealedSecret:
       jsonb('sealed_secret').$type<Readonly<Record<string, unknown>>>(),
     enabled: boolean().notNull().default(false),

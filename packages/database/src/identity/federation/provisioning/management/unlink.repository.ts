@@ -1,3 +1,11 @@
+import { workspaces } from '../../../../schema/foundation.js';
+import {
+  authOrganizationWorkspaces,
+  authOrganizations,
+} from '../../../../schema/identity/federation/organizations.js';
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../../../platform/query-errors.js';
 import { removeDirectoryFolderGrants } from '../../../../tenant-access/resources/revocation.repository.js';
 import type { Pool } from 'pg';
 import {
@@ -32,10 +40,12 @@ export async function unlinkDirectoryWorkspace(
     // Lock the receipt workspace before deciding whether the old link still exists.
     const preview = await organizationForWorkspace(client, input.workspaceId);
     if (preview === undefined) {
-      await client.query(
-        'select id from app.workspaces where id=$1 for update',
-        [input.workspaceId],
-      );
+      await drizzle(client)
+        .select({ id: workspaces.id })
+        .from(workspaces)
+        .where(eq(workspaces.id, input.workspaceId))
+        .for('update')
+        .catch(rethrowQueryFailure);
     }
     const organization =
       preview === undefined
@@ -86,14 +96,20 @@ export async function unlinkDirectoryWorkspace(
     await removeDirectoryFolderGrants(client, organization.id, [
       input.targetWorkspaceId,
     ]);
-    await client.query(
-      'delete from app.auth_organization_workspaces where organization_id=$1 and workspace_id=$2',
-      [organization.id, input.targetWorkspaceId],
-    );
-    await client.query(
-      'update app.auth_organizations set revision=revision+1 where id=$1',
-      [organization.id],
-    );
+    await drizzle(client)
+      .delete(authOrganizationWorkspaces)
+      .where(
+        and(
+          eq(authOrganizationWorkspaces.organizationId, organization.id),
+          eq(authOrganizationWorkspaces.workspaceId, input.targetWorkspaceId),
+        ),
+      )
+      .catch(rethrowQueryFailure);
+    await drizzle(client)
+      .update(authOrganizations)
+      .set({ revision: sql`${authOrganizations.revision}+1` })
+      .where(eq(authOrganizations.id, organization.id))
+      .catch(rethrowQueryFailure);
     for (const workspaceId of [
       organization.control_workspace_id,
       input.targetWorkspaceId,
