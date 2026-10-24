@@ -23,14 +23,18 @@ export function useTwoFactorVerification({
   const [failure, setFailure] = useState<string>();
   const fields = useFieldValues(
     {
-      code: (value) =>
-        method === 'totp'
-          ? /^\d{6}$/u.test(value.replace(/\s/gu, ''))
-            ? undefined
-            : 'Enter a 6-digit code.'
-          : value.trim() === ''
-            ? 'Enter a recovery code.'
-            : undefined,
+      code: (value) => {
+        if (method === 'totp') {
+          if (/^\d{6}$/u.test(value.replace(/\s/gu, ''))) {
+            return undefined;
+          }
+          return 'Enter a 6-digit code.';
+        }
+        if (value.trim() === '') {
+          return 'Enter a recovery code.';
+        }
+        return undefined;
+      },
     },
     { code: '' },
     () => {

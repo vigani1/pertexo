@@ -50,12 +50,15 @@ export function FolderNameDialog({
   const [name, setName] = useState(
     target.kind === 'rename' ? target.folder.name : '',
   );
-  const nameError = (value: string) =>
-    workflowFolderNameInputSchema.safeParse(value).success
-      ? undefined
-      : value.trim() === ''
-        ? 'Enter a folder name.'
-        : 'Use a shorter name, up to 128 characters, on one line.';
+  const nameError = (value: string) => {
+    if (workflowFolderNameInputSchema.safeParse(value).success) {
+      return undefined;
+    }
+    if (value.trim() === '') {
+      return 'Enter a folder name.';
+    }
+    return 'Use a shorter name, up to 128 characters, on one line.';
+  };
   const locked = command.pending || command.retryAvailable;
   const submit = () => {
     if (locked || !fields.submit({ name: nameError(name) })) return;

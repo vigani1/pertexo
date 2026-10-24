@@ -55,9 +55,15 @@ export function groupWorkflowFindings(
   }
   return [...groups.entries()]
     .map(([nodeId, grouped]) => ({ nodeId, issues: grouped }))
-    .sort((left, right) =>
-      left.nodeId === null ? 1 : right.nodeId === null ? -1 : 0,
-    );
+    .sort((left, right) => {
+      if (left.nodeId === null) {
+        return 1;
+      }
+      if (right.nodeId === null) {
+        return -1;
+      }
+      return 0;
+    });
 }
 
 export function issueCountsByNode(

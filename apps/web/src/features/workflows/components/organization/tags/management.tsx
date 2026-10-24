@@ -59,12 +59,15 @@ export function TagManagement({
     locked || !ready || (selected !== undefined && current === undefined);
   const id = useId();
   const fields = useFieldValidation<'name'>();
-  const nameError = (value: string) =>
-    workflowTagKeyInputSchema.safeParse(value).success
-      ? undefined
-      : value.trim() === ''
-        ? 'Enter a tag.'
-        : `Use up to 32 characters. ${TAG_HINT}`;
+  const nameError = (value: string) => {
+    if (workflowTagKeyInputSchema.safeParse(value).success) {
+      return undefined;
+    }
+    if (value.trim() === '') {
+      return 'Enter a tag.';
+    }
+    return `Use up to 32 characters. ${TAG_HINT}`;
+  };
   const choose = (tag: WorkflowTag | undefined) => {
     setSelected(tag?.id);
     fields.reset();

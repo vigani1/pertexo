@@ -76,12 +76,17 @@ function OidcProviderForm({
         oidcConfigurationSchema.shape.clientId.safeParse(value).success
           ? undefined
           : 'Enter the provider client ID.',
-      clientSecret: (value: string) =>
-        provider !== undefined && value === ''
-          ? undefined
-          : oidcProviderCreateSchema.shape.clientSecret.safeParse(value).success
-            ? undefined
-            : 'Enter a client secret of at most 8,192 UTF-8 bytes.',
+      clientSecret: (value: string) => {
+        if (provider !== undefined && value === '') {
+          return undefined;
+        }
+        if (
+          oidcProviderCreateSchema.shape.clientSecret.safeParse(value).success
+        ) {
+          return undefined;
+        }
+        return 'Enter a client secret of at most 8,192 UTF-8 bytes.';
+      },
       emailClaim: (value: string) =>
         oidcConfigurationSchema.shape.emailClaim.safeParse(value).success
           ? undefined

@@ -41,50 +41,62 @@ export function FormFieldControl({
       description={field.help || undefined}
       error={error}
     >
-      {(control) =>
-        field.type === 'boolean' ? (
-          <Checkbox
-            {...control}
-            checked={value === true}
-            disabled={disabled}
-            onCheckedChange={(checked) => {
-              onChange(checked);
-            }}
-          />
-        ) : field.type === 'select' ? (
-          <select
-            {...control}
-            className="h-9 w-full rounded-md border border-input bg-background px-3 text-base focus-visible:outline-2 focus-visible:outline-ring md:text-sm"
-            value={text}
-            onChange={(event) => {
-              onChange(event.target.value);
-            }}
-          >
-            <option value="">Choose…</option>
-            {field.options.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        ) : field.type === 'date' ? (
-          <DateInput
-            control={control}
-            value={text}
-            disabled={disabled}
-            onChange={onChange}
-          />
-        ) : field.type === 'textarea' ? (
-          <Textarea
-            {...control}
-            value={text}
-            maxLength={10000}
-            rows={4}
-            onChange={(event) => {
-              onChange(event.target.value);
-            }}
-          />
-        ) : (
+      {(control) => {
+        if (field.type === 'boolean') {
+          return (
+            <Checkbox
+              {...control}
+              checked={value === true}
+              disabled={disabled}
+              onCheckedChange={(checked) => {
+                onChange(checked);
+              }}
+            />
+          );
+        }
+        if (field.type === 'select') {
+          return (
+            <select
+              {...control}
+              className="h-9 w-full rounded-md border border-input bg-background px-3 text-base focus-visible:outline-2 focus-visible:outline-ring md:text-sm"
+              value={text}
+              onChange={(event) => {
+                onChange(event.target.value);
+              }}
+            >
+              <option value="">Choose…</option>
+              {field.options.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          );
+        }
+        if (field.type === 'date') {
+          return (
+            <DateInput
+              control={control}
+              value={text}
+              disabled={disabled}
+              onChange={onChange}
+            />
+          );
+        }
+        if (field.type === 'textarea') {
+          return (
+            <Textarea
+              {...control}
+              value={text}
+              maxLength={10000}
+              rows={4}
+              onChange={(event) => {
+                onChange(event.target.value);
+              }}
+            />
+          );
+        }
+        return (
           <Input
             {...control}
             type={
@@ -102,8 +114,8 @@ export function FormFieldControl({
               onChange(event.target.value);
             }}
           />
-        )
-      }
+        );
+      }}
     </LabelledField>
   );
 }

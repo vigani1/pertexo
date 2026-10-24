@@ -3,7 +3,15 @@ export function canonicalizeJson(value: unknown): string {
     return `[${value.map((item) => canonicalizeJson(item)).join(',')}]`;
   if (value !== null && typeof value === 'object') {
     return `{${Object.entries(value)
-      .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+      .sort(([left], [right]) => {
+        if (left < right) {
+          return -1;
+        }
+        if (left > right) {
+          return 1;
+        }
+        return 0;
+      })
       .map(([key, item]) => `${JSON.stringify(key)}:${canonicalizeJson(item)}`)
       .join(',')}}`;
   }

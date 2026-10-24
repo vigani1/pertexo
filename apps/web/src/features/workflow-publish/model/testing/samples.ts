@@ -6,11 +6,13 @@ export function currentSampleState(
   binding: string | undefined,
 ): StepSampleMetadata['state'] {
   if (sample.state === 'expired') return 'expired';
-  return binding === undefined
-    ? sample.state
-    : sample.binding === binding
-      ? 'pinned'
-      : 'stale';
+  if (binding === undefined) {
+    return sample.state;
+  }
+  if (sample.binding === binding) {
+    return 'pinned';
+  }
+  return 'stale';
 }
 export const sampleStateLabel: Readonly<
   Record<StepSampleMetadata['state'], string>

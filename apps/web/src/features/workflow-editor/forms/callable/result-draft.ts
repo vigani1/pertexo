@@ -26,11 +26,13 @@ export function editResult(result: ValueSource): ResultDraft {
 
 /** Parsed JSON is validated together with the graph at the Apply boundary. */
 export function declaredResult(result: ResultDraft): unknown {
-  return result.kind === 'literal'
-    ? { kind: 'literal', value: JSON.parse(result.json) as unknown }
-    : result.kind === 'expression'
-      ? { ...result, language: 'jsonata' }
-      : result;
+  if (result.kind === 'literal') {
+    return { kind: 'literal', value: JSON.parse(result.json) as unknown };
+  }
+  if (result.kind === 'expression') {
+    return { ...result, language: 'jsonata' };
+  }
+  return result;
 }
 
 export function emptyResult(kind: ResultDraft['kind']): ResultDraft {
