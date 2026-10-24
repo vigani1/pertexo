@@ -174,21 +174,8 @@ export async function changeWorkspaceLifecycle(
       'Workspace lifecycle actor is not authorized',
     );
 
-  const existing = await client.query(
-    `select ${OPERATION_COLUMNS} from app.workspace_lifecycle_operations
-     where workspace_id = $1 and idempotency_key_hash = $2`,
-    [change.workspaceId, change.idempotencyKeyHash],
-  );
-  if (existing.rows[0] !== undefined) {
-    const prior = operationRowSchema.parse(existing.rows[0]);
-    const commandMismatch =
-      prior.command_type !== change.commandType ||
-      prior.actor_user_id !== change.actorUserId ||
-      prior.reason !== change.reason ||
-      prior.request_hash !== change.requestHash;
-    if (commandMismatch) throw new IdempotencyRequestConflictError();
-    return operation(prior);
-  }
+  const prior = await readExistingOperation(client, change);
+  if (prior !== undefined) return prior;
 
   if (
     change.commandType === 'deletion_requested'
@@ -264,4 +251,26 @@ export async function changeWorkspaceLifecycle(
     commandType: change.commandType,
     submittedAt: occurredAt,
   });
+}
+
+async function readExistingOperation(
+  client: PoolClient,
+  change: WorkspaceLifecycleChange,
+): Promise<WorkspaceLifecycleOperation | undefined> {
+  const existing = await client.query(
+    `select ${OPERATION_COLUMNS} from app.workspace_lifecycle_operations
+     where workspace_id = $1 and idempotency_key_hash = $2`,
+    [change.workspaceId, change.idempotencyKeyHash],
+  );
+  if (existing.rows[0] !== undefined) {
+    const prior = operationRowSchema.parse(existing.rows[0]);
+    const commandMismatch =
+      prior.command_type !== change.commandType ||
+      prior.actor_user_id !== change.actorUserId ||
+      prior.reason !== change.reason ||
+      prior.request_hash !== change.requestHash;
+    if (commandMismatch) throw new IdempotencyRequestConflictError();
+    return operation(prior);
+  }
+  return undefined;
 }
