@@ -1,3 +1,4 @@
+import { runPersistenceSpies } from '../../support/run-ports.js';
 import type { Role } from '@pertexo/workflow-model';
 
 import { vi } from 'vitest';
@@ -8,8 +9,6 @@ import {
   type ReplayWorkflowRunInput,
   type StartWorkflowRunInput,
 } from '../../../src/workflow-runs/use-cases.js';
-
-import type { WorkflowRunPersistence } from '../../../src/workflow-runs/ports.js';
 
 export const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 
@@ -63,65 +62,15 @@ export function run() {
 }
 
 export function persistence() {
-  const start = vi
-    .fn<WorkflowRunPersistence['start']>()
-    .mockResolvedValue({ run: run(), replayed: false });
-  const replay = vi
-    .fn<WorkflowRunPersistence['replay']>()
-    .mockResolvedValue({ run: run(), replayed: false });
-  const get = vi
-    .fn<WorkflowRunPersistence['get']>()
-    .mockResolvedValue({ run: run(), nodes: [] });
-  const list = vi
-    .fn<WorkflowRunPersistence['list']>()
-    .mockResolvedValue({ items: [run()] });
-  const statistics = vi.fn<WorkflowRunPersistence['statistics']>();
-  const cancel = vi
-    .fn<WorkflowRunPersistence['cancel']>()
-    .mockResolvedValue({ run: run(), alreadyRequested: false });
-  const readInput = vi
-    .fn<WorkflowRunPersistence['readInput']>()
-    .mockResolvedValue({ kind: 'expired' });
-  const readNodeRunOutput = vi
-    .fn<WorkflowRunPersistence['readNodeRunOutput']>()
-    .mockResolvedValue(undefined);
-  const readNodeRunInput = vi.fn<WorkflowRunPersistence['readNodeRunInput']>();
-  const stepHealth = vi.fn<WorkflowRunPersistence['stepHealth']>();
-  const stepRuns = vi.fn<WorkflowRunPersistence['stepRuns']>();
-  return {
-    canRead: () => Promise.resolve(true),
-    store: {
-      canRead: () => Promise.resolve(true),
-      start,
-      replay,
-      recovery: vi.fn<WorkflowRunPersistence['recovery']>(),
-      recover: vi.fn<WorkflowRunPersistence['recover']>(),
-      get,
-      list,
-      statistics,
-      usageTrends: vi.fn<WorkflowRunPersistence['usageTrends']>(),
-      usageCapacity: vi.fn<WorkflowRunPersistence['usageCapacity']>(),
-      cancel,
-      readVariables: () => Promise.resolve({ revision: 0, values: {} }),
-      readInput,
-      readNodeRunDiagnostics: () => Promise.resolve(undefined),
-      readNodeRunOutput,
-      readNodeRunInput,
-      stepHealth,
-      stepRuns,
-    } satisfies WorkflowRunPersistence,
-    start,
-    replay,
-    get,
-    list,
-    cancel,
-    readInput,
-    readNodeRunDiagnostics: () => Promise.resolve(undefined),
-    readNodeRunOutput,
-    readNodeRunInput,
-    stepHealth,
-    stepRuns,
-  };
+  const store = runPersistenceSpies();
+  store.start.mockResolvedValue({ run: run(), replayed: false });
+  store.replay.mockResolvedValue({ run: run(), replayed: false });
+  store.get.mockResolvedValue({ run: run(), nodes: [] });
+  store.list.mockResolvedValue({ items: [run()] });
+  store.cancel.mockResolvedValue({ run: run(), alreadyRequested: false });
+  store.readInput.mockResolvedValue({ kind: 'expired' });
+  store.readNodeRunOutput.mockResolvedValue(undefined);
+  return { store, ...store };
 }
 
 function accessFor(selectedActorId: string, selectedWorkspaceId: string) {
