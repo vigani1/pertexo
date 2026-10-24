@@ -1,3 +1,4 @@
+import { commandIsLive } from '../model/testing/ownership';
 import { useTestSuites } from './use-test-suites';
 import { getStepSample } from '../data/samples/api';
 import { useEffect, useRef, useState } from 'react';
@@ -106,7 +107,7 @@ export function useWorkflowTests({
   const start = useRetainedCommand<WorkflowTestStartRequest, { runId: string }>(
     async (body, key) => startWorkflowTest(scope, body, key, await signal()),
     async (result) => {
-      if (lifetime.current?.signal.aborted !== false) return;
+      if (!commandIsLive(lifetime.current)) return;
       selectRun(result.runId);
       setOpen(false);
       setPanel((current) => (current === 'history' ? current : 'summary'));
@@ -140,12 +141,12 @@ export function useWorkflowTests({
     try {
       const saved = await ensureSaved();
       const result = await prepareWorkflowTest(scope, await signal());
-      if (lifetime.current?.signal.aborted !== false) return;
+      if (!commandIsLive(lifetime.current)) return;
       if (result.draftRevision !== saved.revision)
         throw new Error('The saved draft changed. Save and prepare again.');
       setPreparation(result);
     } catch (error) {
-      if (lifetime.current?.signal.aborted === false)
+      if (commandIsLive(lifetime.current))
         setPreparationError(
           isApiError(error)
             ? (error.problem?.detail ??
@@ -153,7 +154,7 @@ export function useWorkflowTests({
             : describeCommandError(error, 'preparing the test'),
         );
     } finally {
-      if (lifetime.current?.signal.aborted === false) setPreparing(false);
+      if (commandIsLive(lifetime.current)) setPreparing(false);
     }
   }
   async function submit({
@@ -176,11 +177,9 @@ export function useWorkflowTests({
   async function loadTriggerInput(nodeId: string) {
     try {
       const sample = await getStepSample(scope, nodeId, await signal());
-      return lifetime.current?.signal.aborted === false
-        ? sample.output
-        : undefined;
+      return commandIsLive(lifetime.current) ? sample.output : undefined;
     } catch (error) {
-      if (lifetime.current?.signal.aborted === false)
+      if (commandIsLive(lifetime.current))
         setPreparationError(
           describeCommandError(error, 'loading the trigger sample'),
         );

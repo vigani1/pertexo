@@ -1,3 +1,4 @@
+import { commandIsLive } from '../model/testing/ownership';
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -113,7 +114,7 @@ export function useTestSuites({
   >(
     async (body, key) => startSuite(scope, body, key, await signal()),
     async (result) => {
-      if (lifetime.current?.signal.aborted !== false) return;
+      if (!commandIsLive(lifetime.current)) return;
       select(result.suiteId);
       setOpen(false);
       onStarted?.();
@@ -136,12 +137,12 @@ export function useTestSuites({
     try {
       const saved = await ensureSaved();
       const value = await prepareSuite(scope, await signal());
-      if (lifetime.current?.signal.aborted !== false) return;
+      if (!commandIsLive(lifetime.current)) return;
       if (saved.revision !== value.draftRevision)
         throw new Error('The saved draft changed. Prepare again.');
       setPreparation(value);
     } catch (cause) {
-      if (lifetime.current?.signal.aborted === false)
+      if (commandIsLive(lifetime.current))
         setError(
           isApiError(cause)
             ? (cause.problem?.detail ??
@@ -149,7 +150,7 @@ export function useTestSuites({
             : describeCommandError(cause, 'preparing the suite'),
         );
     } finally {
-      if (lifetime.current?.signal.aborted === false) setPreparing(false);
+      if (commandIsLive(lifetime.current)) setPreparing(false);
     }
   }
   async function submit({
