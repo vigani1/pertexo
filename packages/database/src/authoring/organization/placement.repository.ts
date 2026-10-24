@@ -1,3 +1,13 @@
+import { and, eq, inArray, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workflows } from '../../schema/authoring/workflows.js';
+import {
+  workflowFolders,
+  workflowTags,
+  workflowOrganizationState,
+  workflowTagAssignments,
+} from '../../schema/authoring/organization.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { isAdministrativeRole } from '@pertexo/workflow-model';
 import type { AudienceReview } from '@pertexo/contracts';
 import { requireMoveAudienceReview } from './sharing/audience.queries.js';
@@ -79,78 +89,71 @@ export async function organizeWorkflow(
       change.audienceReview,
     );
     if (change.folderId !== null) {
-      const folder = await client.query(
-        'select 1 from app.workflow_folders where workspace_id = $1 and id = $2',
-        [scope.workspaceId, change.folderId],
-      );
-      if (folder.rowCount !== 1)
+      const folder = await drizzle(client)
+        .select({ id: workflowFolders.id })
+        .from(workflowFolders)
+        .where(
+          and(
+            eq(workflowFolders.workspaceId, scope.workspaceId),
+            eq(workflowFolders.id, change.folderId),
+          ),
+        )
+        .catch(rethrowQueryFailure);
+      if (folder.length !== 1)
         throw new WorkflowFolderConflictError('not_visible');
     }
   } else {
     const tagIds =
       change.kind === 'replace_tags' ? change.tagIds : [change.tagId];
-    const tags = await client.query<{ count: number }>(
-      `select count(*)::int count from app.workflow_tags
-       where workspace_id = $1 and id = any($2::uuid[])`,
-      [scope.workspaceId, tagIds],
-    );
-    if (tags.rows[0]?.count !== tagIds.length)
+    const [tags] = await drizzle(client)
+      .select({ count: sql<number>`count(*)::int` })
+      .from(workflowTags)
+      .where(
+        and(
+          eq(workflowTags.workspaceId, scope.workspaceId),
+          inArray(workflowTags.id, tagIds),
+        ),
+      )
+      .catch(rethrowQueryFailure);
+    if (tags?.count !== tagIds.length)
       throw new WorkflowNotFoundError('Workflow is not visible');
   }
-  const workflow = await client.query<{ lifecycle_status: string }>(
-    `select lifecycle_status from app.workflows
-     where workspace_id = $1 and id = $2 for update`,
-    [scope.workspaceId, workflowId],
-  );
-  const lifecycleStatus = workflow.rows[0]?.lifecycle_status;
+  const [workflow] = await drizzle(client)
+    .select({ lifecycleStatus: workflows.lifecycleStatus })
+    .from(workflows)
+    .where(
+      and(
+        eq(workflows.workspaceId, scope.workspaceId),
+        eq(workflows.id, workflowId),
+      ),
+    )
+    .for('update')
+    .catch(rethrowQueryFailure);
+  const lifecycleStatus = workflow?.lifecycleStatus;
   if (lifecycleStatus === undefined)
     throw new WorkflowNotFoundError('Workflow is not visible');
   checkLifecycle(access.role, lifecycleStatus, change.kind);
 
-  const state = await client.query<{ revision: string }>(
-    `select revision from app.workflow_organization_state
-     where workspace_id = $1 and workflow_id = $2`,
-    [scope.workspaceId, workflowId],
-  );
+  const [state] = await drizzle(client)
+    .select({ revision: workflowOrganizationState.revision })
+    .from(workflowOrganizationState)
+    .where(
+      and(
+        eq(workflowOrganizationState.workspaceId, scope.workspaceId),
+        eq(workflowOrganizationState.workflowId, workflowId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
   // A workflow without organization state is at revision 1.
-  const revision = Number(state.rows[0]?.revision ?? 1);
+  const revision = state?.revision ?? 1;
   if (revision !== input.expectedOrganizationRevision)
     throw new WorkflowTagConflictError('organization_revision');
 
-  if (change.kind === 'replace_tags') {
-    await client.query(
-      `delete from app.workflow_tag_assignments
-       where workspace_id = $1 and workflow_id = $2`,
-      [scope.workspaceId, workflowId],
-    );
-    await client.query(
-      `insert into app.workflow_tag_assignments (workspace_id, workflow_id, tag_id)
-       select $1, $2, tag_id from unnest($3::uuid[]) tag_id`,
-      [scope.workspaceId, workflowId, change.tagIds],
-    );
-  } else if (change.kind === 'detach_tag') {
-    await client.query(
-      `delete from app.workflow_tag_assignments
-       where workspace_id = $1 and workflow_id = $2 and tag_id = $3`,
-      [scope.workspaceId, workflowId, change.tagId],
-    );
-  }
-  await client.query(
-    `insert into app.workflow_organization_state
-       (workspace_id, workflow_id, revision, folder_id)
-     values ($1, $2, $3, $4)
-     on conflict (workspace_id, workflow_id) do update
-     set revision = excluded.revision,
-         folder_id = case when $5 then excluded.folder_id
-                          else app.workflow_organization_state.folder_id end`,
-    [
-      scope.workspaceId,
-      workflowId,
-      revision + 1,
-      change.kind === 'move' ? change.folderId : null,
-      change.kind === 'move',
-    ],
-  );
+  await persistPlacement(client, scope, {
+    workflowId,
+    change,
+    revision: revision + 1,
+  });
   return revision + 1;
 }
 
@@ -185,13 +188,84 @@ export async function checkOrganizationReplay(
     destinationFolderId !== undefined &&
     !access.permits(destinationFolderId, 'workflow:create');
   if (destinationRefused) throw new WorkflowFolderConflictError('not_visible');
-  const workflow = await client.query<{ lifecycle_status: string }>(
-    `select lifecycle_status from app.workflows
-     where workspace_id = $1 and id = $2 for share`,
-    [scope.workspaceId, workflowId],
-  );
-  const lifecycleStatus = workflow.rows[0]?.lifecycle_status;
+  const [workflow] = await drizzle(client)
+    .select({ lifecycleStatus: workflows.lifecycleStatus })
+    .from(workflows)
+    .where(
+      and(
+        eq(workflows.workspaceId, scope.workspaceId),
+        eq(workflows.id, workflowId),
+      ),
+    )
+    .for('share')
+    .catch(rethrowQueryFailure);
+  const lifecycleStatus = workflow?.lifecycleStatus;
   if (lifecycleStatus === undefined)
     throw new WorkflowNotFoundError('Workflow is not visible');
   if (kind === 'move') checkLifecycle(access.role, lifecycleStatus, kind);
+}
+
+async function persistPlacement(
+  client: PoolClient,
+  scope: OrganizationScope,
+  {
+    workflowId,
+    change,
+    revision,
+  }: Readonly<{
+    workflowId: string;
+    change: OrganizationChange;
+    revision: number;
+  }>,
+): Promise<void> {
+  const db = drizzle(client);
+  const assignmentScope = and(
+    eq(workflowTagAssignments.workspaceId, scope.workspaceId),
+    eq(workflowTagAssignments.workflowId, workflowId),
+  );
+  if (change.kind === 'replace_tags') {
+    await db
+      .delete(workflowTagAssignments)
+      .where(assignmentScope)
+      .catch(rethrowQueryFailure);
+    if (change.tagIds.length > 0)
+      await db
+        .insert(workflowTagAssignments)
+        .values(
+          change.tagIds.map((tagId) => ({
+            workspaceId: scope.workspaceId,
+            workflowId,
+            tagId,
+          })),
+        )
+        .catch(rethrowQueryFailure);
+  } else if (change.kind === 'detach_tag') {
+    await db
+      .delete(workflowTagAssignments)
+      .where(
+        and(assignmentScope, eq(workflowTagAssignments.tagId, change.tagId)),
+      )
+      .catch(rethrowQueryFailure);
+  }
+  await db
+    .insert(workflowOrganizationState)
+    .values({
+      workspaceId: scope.workspaceId,
+      workflowId,
+      revision,
+      folderId: change.kind === 'move' ? change.folderId : null,
+    })
+    .onConflictDoUpdate({
+      target: [
+        workflowOrganizationState.workspaceId,
+        workflowOrganizationState.workflowId,
+      ],
+      set: {
+        revision: sql`excluded.revision`,
+        ...(change.kind === 'move'
+          ? { folderId: sql`excluded.folder_id` }
+          : { folderId: workflowOrganizationState.folderId }),
+      },
+    })
+    .catch(rethrowQueryFailure);
 }

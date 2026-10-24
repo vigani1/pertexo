@@ -56,7 +56,7 @@ export function tagCommand(
           audit: {
             action: `workflow.${operation}`,
             targetId: row.id,
-            metadata: { revision: Number(row.revision) },
+            metadata: { revision: row.revision },
           },
         };
       },

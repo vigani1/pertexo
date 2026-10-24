@@ -1,3 +1,7 @@
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workflowTags } from '../../../schema/authoring/organization.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
@@ -12,12 +16,20 @@ import {
   uuid,
 } from './contract.js';
 
-export type TagRow = Readonly<{ id: string; key: string; revision: string }>;
+export const tagProjection = {
+  id: workflowTags.id,
+  key: workflowTags.key,
+  revision: workflowTags.revision,
+};
+export type TagRow = Pick<
+  typeof workflowTags.$inferSelect,
+  keyof typeof tagProjection
+>;
 
 export const tagRecord = (row: TagRow): WorkflowTagRecord => ({
   id: row.id,
   key: row.key,
-  revision: Number(row.revision),
+  revision: row.revision,
 });
 
 export async function readTag(
@@ -25,11 +37,16 @@ export async function readTag(
   workspaceId: string,
   tagId: string,
 ): Promise<TagRow> {
-  const result = await client.query<TagRow>(
-    'select id, key, revision from app.workflow_tags where workspace_id = $1 and id = $2',
-    [workspaceId, tagId],
-  );
-  const row = result.rows[0];
+  const [row] = await drizzle(client)
+    .select(tagProjection)
+    .from(workflowTags)
+    .where(
+      and(
+        eq(workflowTags.workspaceId, workspaceId),
+        eq(workflowTags.id, tagId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
   if (row === undefined) throw new WorkflowNotFoundError('Tag is not visible');
   return row;
 }
@@ -40,16 +57,22 @@ export async function requireFreeKey(
   tagKey: string,
   tagId: string | null,
 ): Promise<void> {
-  const taken = await client.query(
-    `select 1 from app.workflow_tags
-     where workspace_id = $1 and key = $2 and id is distinct from $3::uuid`,
-    [workspaceId, tagKey, tagId],
-  );
-  if (taken.rowCount !== 0) throw new WorkflowTagConflictError('key');
+  const taken = await drizzle(client)
+    .select({ id: workflowTags.id })
+    .from(workflowTags)
+    .where(
+      and(
+        eq(workflowTags.workspaceId, workspaceId),
+        eq(workflowTags.key, tagKey),
+        sql`${workflowTags.id} is distinct from ${tagId}::uuid`,
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  if (taken.length !== 0) throw new WorkflowTagConflictError('key');
 }
 
 export function requireRevision(row: TagRow, expected: number): void {
-  if (Number(row.revision) !== expected)
+  if (row.revision !== expected)
     throw new WorkflowTagConflictError('tag_revision');
 }
 

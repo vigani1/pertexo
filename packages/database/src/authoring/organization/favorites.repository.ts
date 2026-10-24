@@ -1,3 +1,8 @@
+import { and, eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workflows } from '../../schema/authoring/workflows.js';
+import { workflowFavorites } from '../../schema/authoring/organization.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../../config.js';
@@ -38,20 +43,41 @@ export function createWorkflowFavoriteDatabase(
           roles: ROLES,
           resource: { workflowId, capability: 'workflow:read' },
         });
-        const workflow = await client.query(
-          'select 1 from app.workflows where workspace_id = $1 and id = $2 for share',
-          [scope.workspaceId, workflowId],
-        );
-        if (workflow.rowCount !== 1)
+        const db = drizzle(client);
+        const workflow = await db
+          .select({ id: workflows.id })
+          .from(workflows)
+          .where(
+            and(
+              eq(workflows.workspaceId, scope.workspaceId),
+              eq(workflows.id, workflowId),
+            ),
+          )
+          .for('share')
+          .catch(rethrowQueryFailure);
+        if (workflow.length !== 1)
           throw new WorkflowNotFoundError('Workflow is not visible');
-        await client.query(
-          input.favorite
-            ? `insert into app.workflow_favorites (workspace_id, actor_id, workflow_id)
-               values ($1, $2, $3) on conflict do nothing`
-            : `delete from app.workflow_favorites
-               where workspace_id = $1 and actor_id = $2 and workflow_id = $3`,
-          [scope.workspaceId, scope.actorId, workflowId],
-        );
+        if (input.favorite)
+          await db
+            .insert(workflowFavorites)
+            .values({
+              workspaceId: scope.workspaceId,
+              actorId: scope.actorId,
+              workflowId,
+            })
+            .onConflictDoNothing()
+            .catch(rethrowQueryFailure);
+        else
+          await db
+            .delete(workflowFavorites)
+            .where(
+              and(
+                eq(workflowFavorites.workspaceId, scope.workspaceId),
+                eq(workflowFavorites.actorId, scope.actorId),
+                eq(workflowFavorites.workflowId, workflowId),
+              ),
+            )
+            .catch(rethrowQueryFailure);
         return Object.freeze({ isFavorite: input.favorite });
       });
     },
