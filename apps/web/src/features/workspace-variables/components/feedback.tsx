@@ -33,30 +33,7 @@ export function VariableEditorFeedback({
       {command.error === undefined ? null : (
         <Notice
           tone={command.uncertain ? 'warning' : 'destructive'}
-          action={
-            command.expired ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  window.location.reload();
-                }}
-              >
-                Reload page (discard draft)
-              </Button>
-            ) : command.uncertain ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={command.pending}
-                onClick={command.retry}
-              >
-                Retry same save
-              </Button>
-            ) : undefined
-          }
+          action={recoveryAction(command)}
         >
           {isApiError(command.cause) &&
           command.cause.problem?.code === 'variables.changed'
@@ -73,4 +50,35 @@ export function VariableSaveFeedback({
   return revision === undefined ? null : (
     <Status tone="success">Saved revision {revision} for new runs</Status>
   );
+}
+
+function recoveryAction(command: CommandFeedback) {
+  if (command.expired) {
+    return (
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        onClick={() => {
+          window.location.reload();
+        }}
+      >
+        Reload page (discard draft)
+      </Button>
+    );
+  }
+  if (command.uncertain) {
+    return (
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        disabled={command.pending}
+        onClick={command.retry}
+      >
+        Retry same save
+      </Button>
+    );
+  }
+  return undefined;
 }
