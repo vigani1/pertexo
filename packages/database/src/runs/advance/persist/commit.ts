@@ -1,3 +1,4 @@
+import { persistCallIntents } from '../../calls/intents.repository.js';
 import {
   persistTaskIntents,
   persistConsumedTasks,
@@ -11,10 +12,7 @@ import {
   type CoordinatorAdvanceDelivery,
   type RunAdvanceResult,
 } from '../contract.js';
-import {
-  persistCallIntents,
-  persistConsumedCalls,
-} from '../../calls/persist.repository.js';
+import { persistConsumedCalls } from '../../calls/persist.repository.js';
 import { persistCoordinatorExecutionTransitions } from './node-admissions.js';
 import type { RunTransitionPlan } from '../plan.js';
 import {
