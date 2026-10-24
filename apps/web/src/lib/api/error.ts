@@ -36,3 +36,15 @@ export class ApiError extends Error {
 export function isApiError(error: unknown): error is ApiError {
   return error instanceof ApiError;
 }
+
+export function protocolError(
+  message: string,
+  options: Readonly<{
+    status?: number;
+    requestId?: string | undefined;
+    retryAfterMs?: number | undefined;
+    cause?: unknown;
+  }> = {},
+) {
+  return new ApiError({ kind: 'protocol', message, ...options });
+}
