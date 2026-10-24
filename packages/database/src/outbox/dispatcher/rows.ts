@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import type { LeasedOutboxEvent } from './contracts.js';
+import type { LeasedOutboxEvent } from './contract.js';
 import { sha256HexSchema } from '../../platform/persisted-primitives.js';
 
 const claimedRowSchema = z

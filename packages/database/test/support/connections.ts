@@ -23,7 +23,7 @@ import type { FailureNotificationDestinationDatabase } from '../../src/notificat
 import { createFailureNotificationStore } from '../../src/notifications/repository.js';
 import { parseDatabaseConfig } from '../../src/config.js';
 import { migrateDatabase } from '../../src/migrations.js';
-import { canonicalOutboxPayloadChecksum } from '../../src/outbox/events.js';
+import { canonicalOutboxPayloadChecksum } from '../../src/outbox/events.repository.js';
 import { dropDisconnectedDatabase } from './postgres/disposable-database.js';
 import { checkDatabaseReadiness } from '../../src/platform/readiness.js';
 import { generatePersistedId } from '../../src/platform/persisted-id.js';

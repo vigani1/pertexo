@@ -8,8 +8,8 @@ import type { DatabaseRuntime } from '../platform/pool/runtime.js';
 import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
 import { createWorkspaceDatabase } from '../database.js';
 import { acceptWorkflowRun } from '../runs/commands/acceptance.js';
-import { consumeInboxMessage } from '../outbox/receipts.js';
-import { canonicalOutboxPayloadChecksum } from '../outbox/events.js';
+import { consumeInboxMessage } from '../outbox/receipts.repository.js';
+import { canonicalOutboxPayloadChecksum } from '../outbox/events.repository.js';
 import { parsePublishedWorkflowRow } from '../runs/queries/execution/published.js';
 
 const inputSchema = z

@@ -6,7 +6,7 @@ import { workflowIntegrationUsage } from '@pertexo/workflow-model/server';
 
 import type { PoolClient } from 'pg';
 
-import { canonicalOutboxPayloadChecksum } from '../../outbox/events.js';
+import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
 
 import type { WorkflowVersionRecord } from '../workflows/representation/records.js';
 

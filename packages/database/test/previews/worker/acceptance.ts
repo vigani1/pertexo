@@ -8,7 +8,7 @@ import {
   type PreviewAttemptLease,
   type PreviewDelivery,
 } from '../../../src/previews/repository.js';
-import { canonicalOutboxPayloadChecksum } from '../../../src/outbox/events.js';
+import { canonicalOutboxPayloadChecksum } from '../../../src/outbox/events.repository.js';
 
 import { databaseSchema } from '../../../src/schema.js';
 import {

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { vi } from 'vitest';
-import { canonicalOutboxPayloadChecksum } from '../../../src/outbox/events.js';
+import { canonicalOutboxPayloadChecksum } from '../../../src/outbox/events.repository.js';
 import { createOperatorRunReplayStore } from '../../../src/operator/run-replay.js';
 
 const mocks = vi.hoisted(() => ({
@@ -15,7 +15,7 @@ vi.mock('../../../src/database.js', () => ({
   createWorkspaceDatabase: mocks.createWorkspaceDatabase,
 }));
 
-vi.mock('../../../src/outbox/receipts.js', () => ({
+vi.mock('../../../src/outbox/receipts.repository.js', () => ({
   consumeInboxMessage: mocks.consumeInboxMessage,
 }));
 

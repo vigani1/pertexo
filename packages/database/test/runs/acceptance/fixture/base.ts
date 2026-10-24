@@ -4,7 +4,7 @@ import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, beforeEach, expect } from 'vitest';
 import { parseDatabaseConfig } from '../../../../src/config.js';
 import { createWorkspaceDatabase } from '../../../../src/database.js';
-import { createOutboxDispatcherDatabase } from '../../../../src/outbox/dispatcher/database.js';
+import { createOutboxDispatcherDatabase } from '../../../../src/outbox/dispatcher/repository.js';
 import { migrateDatabase } from '../../../../src/migrations.js';
 
 import { lockRunAcceptanceCommand } from '../../../../src/runs/commands/manual-start.js';

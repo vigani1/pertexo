@@ -3,8 +3,8 @@ import { z } from 'zod';
 import { sha256HexSchema } from '../platform/persisted-primitives.js';
 
 import type { WorkspaceDatabase } from '../database.js';
-import { consumeInboxMessage } from './receipts.js';
-import { canonicalOutboxPayloadChecksum } from './events.js';
+import { consumeInboxMessage } from './receipts.repository.js';
+import { canonicalOutboxPayloadChecksum } from './events.repository.js';
 
 const payloadSchema = z
   .object({

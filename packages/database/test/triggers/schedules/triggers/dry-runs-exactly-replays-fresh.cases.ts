@@ -7,7 +7,7 @@ import {
 } from './fixture.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
-import { canonicalOutboxPayloadChecksum } from '../../../../src/outbox/events.js';
+import { canonicalOutboxPayloadChecksum } from '../../../../src/outbox/events.repository.js';
 
 import { schedule } from './fixture.js';
 

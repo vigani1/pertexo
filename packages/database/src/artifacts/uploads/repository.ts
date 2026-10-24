@@ -21,7 +21,7 @@ import {
   type DatabaseReadiness,
 } from '../../platform/readiness.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
-import { canonicalOutboxPayloadChecksum } from '../../outbox/events.js';
+import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
 import type { ArtifactRecord } from '../contract.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import { artifactMetadataMatches } from '../metadata/validation.js';

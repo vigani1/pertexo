@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg';
-import { canonicalOutboxPayloadChecksum } from '../../outbox/events.js';
+import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 
 async function enqueueWorkflowRun(

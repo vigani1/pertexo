@@ -3,7 +3,7 @@ import type { PoolClient } from 'pg';
 import { CoordinatorRunStateCorruptError } from '../../contract.js';
 
 import type { RunTransitionPlan } from '../../plan.js';
-import { canonicalOutboxPayloadChecksum } from '../../../../outbox/events.js';
+import { canonicalOutboxPayloadChecksum } from '../../../../outbox/events.repository.js';
 import { serializeStoredExecutionJsonValue } from '../../../../platform/stored-execution-value.js';
 import type { ExecutionIdentityMap } from './contract.js';
 

@@ -14,7 +14,7 @@ import { Pool } from 'pg';
 import { expect, it } from 'vitest';
 
 import { OperatorCommandConflictError } from '../../../src/operator/commands.js';
-import { insertOutboxEvent } from '../../../src/outbox/events.js';
+import { insertOutboxEvent } from '../../../src/outbox/events.repository.js';
 import { auditEvents, outboxEvents } from '../../../src/schema.js';
 
 import { enabledJobNames, outboxInput } from './fixture.js';

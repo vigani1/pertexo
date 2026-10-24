@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
-} from '../../outbox/events.js';
+} from '../../outbox/events.repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';

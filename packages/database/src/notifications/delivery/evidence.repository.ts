@@ -7,7 +7,7 @@ import type { PoolClient } from 'pg';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { v5 as uuidv5 } from 'uuid';
 
-import { canonicalOutboxPayloadChecksum } from '../../outbox/events.js';
+import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
 
 export async function insertFailureNotificationDeliveryOutbox(
   client: PoolClient,

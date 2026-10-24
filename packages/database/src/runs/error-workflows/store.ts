@@ -4,7 +4,7 @@ import {
   type DatabaseRuntime,
 } from '../../platform/pool/runtime.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
-import { canonicalOutboxPayloadChecksum } from '../../outbox/events.js';
+import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
 import type { InitialCheckpointFactory } from '../commands/initial-checkpoint.js';
 import {
   errorWorkflowDeliveryInputSchema,

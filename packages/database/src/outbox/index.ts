@@ -1,16 +1,16 @@
-export { createOutboxDispatcherDatabase } from './dispatcher/database.js';
+export { createOutboxDispatcherDatabase } from './dispatcher/repository.js';
 export type {
   LeasedOutboxEvent,
   OutboxDispatcherDatabase,
-} from './dispatcher/database.js';
+} from './dispatcher/repository.js';
 export {
   InboxChecksumMismatchError,
   InboxReceiptUnavailableError,
-} from './receipts.js';
-export { canonicalOutboxPayloadChecksum } from './events.js';
+} from './receipts.repository.js';
+export { canonicalOutboxPayloadChecksum } from './events.repository.js';
 export {
   reconcileUnknownOutcomeEvidence,
   UnknownOutcomeReconciliationMismatchError,
   UnknownOutcomeReconciliationStateError,
-} from './unknown-outcome-reconciliation.js';
-export type { UnknownOutcomeReconciliationResult } from './unknown-outcome-reconciliation.js';
+} from './reconciliation.repository.js';
+export type { UnknownOutcomeReconciliationResult } from './reconciliation.repository.js';

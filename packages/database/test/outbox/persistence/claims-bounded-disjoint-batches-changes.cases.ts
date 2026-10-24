@@ -10,9 +10,9 @@ import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
 import { parseDatabaseConfig } from '../../../src/config.js';
 
-import { createOutboxDispatcherDatabase } from '../../../src/outbox/dispatcher/database.js';
+import { createOutboxDispatcherDatabase } from '../../../src/outbox/dispatcher/repository.js';
 
-import { insertOutboxEvent } from '../../../src/outbox/events.js';
+import { insertOutboxEvent } from '../../../src/outbox/events.repository.js';
 
 import { enabledJobNames, outboxInput } from './fixture.js';
 

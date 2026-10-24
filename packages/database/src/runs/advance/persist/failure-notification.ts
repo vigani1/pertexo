@@ -12,7 +12,7 @@ import {
 
 import { CoordinatorRunStateCorruptError } from '../contract.js';
 import type { RunTransitionPlan } from '../plan.js';
-import { canonicalOutboxPayloadChecksum } from '../../../outbox/events.js';
+import { canonicalOutboxPayloadChecksum } from '../../../outbox/events.repository.js';
 import { serializeStoredExecutionJsonValue } from '../../../platform/stored-execution-value.js';
 
 const failureNotificationNamespace = '9fe280d8-40ca-4a20-930e-1bf77e48c817';

@@ -6,7 +6,7 @@ import type {
   WorkflowMoveReview,
   WorkflowMoveReviewItem,
 } from '@pertexo/contracts';
-import { canonicalOutboxPayloadChecksum } from '../../../outbox/events.js';
+import { canonicalOutboxPayloadChecksum } from '../../../outbox/events.repository.js';
 import { readFolderScope } from '../../../tenant-access/resources/facts.js';
 import {
   RESOURCE_ADMINISTRATORS,
