@@ -190,6 +190,8 @@ export class WorkerModule {
             WORKFLOW_AUTO_PAUSE_RUNTIME,
             RETENTION_RUNTIME,
           ],
+          // Nest pairs these parameters with the ordered inject array below.
+          // eslint-disable-next-line max-params
           useFactory: (
             shutdown: WorkerShutdownCoordinator,
             transport: OutboxDispatcherLifecycle,

@@ -50,6 +50,8 @@ const INVITATION_CSRF_HEADER = 'x-invitation-csrf-token';
 @UseInterceptors(domainErrors(workspaceFailure))
 @Controller('v1/invitation-acceptance')
 export class InvitationAcceptanceController {
+  // Nest resolves these dependencies positionally; grouping them would change DI.
+  // eslint-disable-next-line max-params
   public constructor(
     private readonly acceptance: InvitationAcceptanceUseCase,
     @Inject(SESSION_AUTHORITY)

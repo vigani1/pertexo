@@ -50,6 +50,8 @@ import { connectionFailure } from '../../problems/context/normalize.js';
 @Controller('v1/workspaces/:workspaceId/connections')
 @RateLimit('connection_mutation')
 export class ConnectionsController {
+  // Nest resolves these dependencies positionally; grouping them would change DI.
+  // eslint-disable-next-line max-params
   public constructor(
     private readonly listConnections: ListConnectionsUseCase,
     private readonly getConnection: GetConnectionUseCase,

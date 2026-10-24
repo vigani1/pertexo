@@ -43,6 +43,8 @@ import { runFailure } from '../../problems/context/normalize.js';
 @Controller('v1/workspaces/:workspaceId')
 @RateLimit('authenticated_read')
 export class WorkflowRunDataController {
+  // Nest resolves these dependencies positionally; grouping them would change DI.
+  // eslint-disable-next-line max-params
   public constructor(
     private readonly getRunInput: GetWorkflowRunInputUseCase,
     private readonly getRunVariables: GetWorkflowRunVariablesUseCase,
