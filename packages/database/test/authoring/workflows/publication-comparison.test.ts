@@ -1,3 +1,4 @@
+import { draftWireRow } from '../../support/workflow-authoring/drafts.js';
 import { folderScope } from '../../../src/tenant-access/resources/policy.js';
 import type { PoolClient } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
@@ -41,21 +42,19 @@ async function compare(
       .mockResolvedValueOnce({ rows: [{ id: workflowId }], rowCount: 1 })
       .mockResolvedValueOnce({
         rows: [
-          {
+          draftWireRow({
             workspace_id: workspaceId,
             workflow_id: workflowId,
             revision: 1,
             graph_json: draftGraph,
             updated_by: actorId,
             updated_at: new Date(),
-          },
+          }),
         ],
       })
       .mockResolvedValueOnce({ rows: [{ setting: '30000', unit: 'ms' }] })
       .mockResolvedValueOnce({
-        rows: published
-          ? [{ versionId, versionNumber: 3, checksum, graphJson: liveGraph }]
-          : [],
+        rows: published ? [[versionId, 3, checksum, liveGraph]] : [],
       }),
   } as unknown as PoolClient;
   const compiler = vi.fn(() => ({

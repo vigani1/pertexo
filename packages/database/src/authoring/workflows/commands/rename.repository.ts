@@ -1,3 +1,8 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { and, eq, sql } from 'drizzle-orm';
+import { workflows } from '../../../schema/authoring/workflows.js';
+import { auditEvents } from '../../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
 
 import type { PoolClient } from 'pg';
@@ -19,7 +24,7 @@ import type {
 } from '../contract.js';
 import type { WorkflowAuthoringWriteContext } from '../context.js';
 import type { WorkflowRecord } from '../representation/contract.js';
-import { mapWorkflow, workflowRowSelection } from '../representation/records.queries.js';
+import { workflowProjection } from '../representation/records.queries.js';
 
 const uuidSchema = z.uuid();
 const nameSchema = z.string().trim().min(1).max(128);
@@ -67,16 +72,21 @@ async function lockActiveWorkflow(
   client: PoolClient,
   command: RenameCommand,
 ): Promise<WorkflowRecord> {
-  const locked = await client.query<Record<string, unknown>>(
-    `select ${workflowRowSelection} from app.workflows
-     where workspace_id=$1 and id=$2 and lifecycle_status='active'
-     for update`,
-    [command.workspaceId, command.workflowId],
-  );
-  const row = locked.rows[0];
+  const [row] = await drizzle(client)
+    .select(workflowProjection)
+    .from(workflows)
+    .where(
+      and(
+        eq(workflows.workspaceId, command.workspaceId),
+        eq(workflows.id, command.workflowId),
+        eq(workflows.lifecycleStatus, 'active'),
+      ),
+    )
+    .for('update')
+    .catch(rethrowQueryFailure);
   if (row === undefined)
     throw new WorkflowNotFoundError('Workflow is not visible');
-  const current = mapWorkflow(row);
+  const current = Object.freeze(row);
   if (current.nameRevision !== command.expectedNameRevision)
     throw new WorkflowNameRevisionConflictError(current.nameRevision);
   return current;
@@ -88,43 +98,45 @@ async function applyRename(
   command: RenameCommand,
   current: WorkflowRecord,
 ): Promise<WorkflowRecord> {
-  const updated = await client.query<Record<string, unknown>>(
-    `update app.workflows set name=$3,name_revision=name_revision+1,
-       updated_at=transaction_timestamp()
-     where workspace_id=$1 and id=$2 and name_revision=$4
-       and lifecycle_status='active'
-     returning ${workflowRowSelection}`,
-    [
-      command.workspaceId,
-      command.workflowId,
-      command.name,
-      command.expectedNameRevision,
-    ],
-  );
-  const row = updated.rows[0];
+  const [row] = await drizzle(client)
+    .update(workflows)
+    .set({
+      name: command.name,
+      nameRevision: sql`${workflows.nameRevision}+1`,
+      updatedAt: sql`transaction_timestamp()`,
+    })
+    .where(
+      and(
+        eq(workflows.workspaceId, command.workspaceId),
+        eq(workflows.id, command.workflowId),
+        eq(workflows.nameRevision, command.expectedNameRevision),
+        eq(workflows.lifecycleStatus, 'active'),
+      ),
+    )
+    .returning(workflowProjection)
+    .catch(rethrowQueryFailure);
   if (row === undefined)
     throw new WorkflowNameRevisionConflictError(current.nameRevision);
-  const renamed = mapWorkflow(row);
-  await client.query(
-    `insert into app.audit_events
-       (id,workspace_id,actor_user_id,action,target_type,target_id,request_id,
-        trace_id,metadata)
-     values($1,$2,$3,'workflow.renamed','workflow',$4,$5,$6,$7::jsonb)`,
-    [
-      generatePersistedId(),
-      command.workspaceId,
-      command.actorId,
-      command.workflowId,
-      command.requestId,
-      command.traceId,
-      JSON.stringify({
+  const renamed = Object.freeze(row);
+  await drizzle(client)
+    .insert(auditEvents)
+    .values({
+      id: generatePersistedId(),
+      workspaceId: command.workspaceId,
+      actorUserId: command.actorId,
+      action: 'workflow.renamed',
+      targetType: 'workflow',
+      targetId: command.workflowId,
+      requestId: command.requestId,
+      traceId: command.traceId,
+      metadata: {
         fromName: current.name,
         toName: renamed.name,
         fromNameRevision: current.nameRevision,
         toNameRevision: renamed.nameRevision,
-      }),
-    ],
-  );
+      },
+    })
+    .catch(rethrowQueryFailure);
   return renamed;
 }
 

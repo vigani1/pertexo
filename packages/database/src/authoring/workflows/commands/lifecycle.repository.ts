@@ -1,3 +1,10 @@
+import type { PoolClient } from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { and, eq, sql } from 'drizzle-orm';
+import { workflows } from '../../../schema/authoring/workflows.js';
+import { auditEvents } from '../../../schema/foundation.js';
+import { outboxEvents } from '../../../schema/transport.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
 
 import { canonicalOutboxPayloadChecksum } from '../../../outbox/events.repository.js';
@@ -19,7 +26,7 @@ import type {
   WorkflowAuthoringDatabase,
 } from '../contract.js';
 import type { WorkflowAuthoringWriteContext } from '../context.js';
-import { mapWorkflow, workflowRowSelection } from '../representation/records.queries.js';
+import { workflowProjection } from '../representation/records.queries.js';
 import { reconcileWorkflowTriggersPayload } from '../../publication/trigger-reconciliation.repository.js';
 
 const uuidSchema = z.uuid();
@@ -76,24 +83,36 @@ async function transitionWorkflowLifecycle(
     };
     const replay = await claimWorkflowCommand(client, claim);
     if (replay !== null) {
-      const visible = await client.query(
-        `select 1 from app.workflows where workspace_id=$1 and id=$2 for share`,
-        [workspaceId, workflowId],
-      );
-      if (visible.rowCount !== 1)
+      const visible = await drizzle(client)
+        .select({ id: workflows.id })
+        .from(workflows)
+        .where(
+          and(
+            eq(workflows.workspaceId, workspaceId),
+            eq(workflows.id, workflowId),
+          ),
+        )
+        .for('share')
+        .catch(rethrowQueryFailure);
+      if (visible.length !== 1)
         throw new WorkflowNotFoundError('Workflow is not visible');
       return Object.freeze({ replayed: true, workflow: replay });
     }
 
-    const currentResult = await client.query<Record<string, unknown>>(
-      `select ${workflowRowSelection} from app.workflows
-       where workspace_id=$1 and id=$2 for update`,
-      [workspaceId, workflowId],
-    );
-    const currentRow = currentResult.rows[0];
+    const [currentRow] = await drizzle(client)
+      .select(workflowProjection)
+      .from(workflows)
+      .where(
+        and(
+          eq(workflows.workspaceId, workspaceId),
+          eq(workflows.id, workflowId),
+        ),
+      )
+      .for('update')
+      .catch(rethrowQueryFailure);
     if (currentRow === undefined)
       throw new WorkflowNotFoundError('Workflow is not visible');
-    const current = mapWorkflow(currentRow);
+    const current = Object.freeze(currentRow);
     if (current.lifecycleRevision !== expectedLifecycleRevision)
       throw new WorkflowLifecycleRevisionConflictError(
         current.lifecycleRevision,
@@ -107,70 +126,51 @@ async function transitionWorkflowLifecycle(
     });
     let workflow = current;
     if (decision.changed) {
-      const updatedResult = await client.query<Record<string, unknown>>(
-        `update app.workflows set lifecycle_status=$3,activation_status=$4,
-           lifecycle_revision=lifecycle_revision+1,updated_at=transaction_timestamp()
-         where workspace_id=$1 and id=$2 and lifecycle_revision=$5
-         returning ${workflowRowSelection}`,
-        [
-          workspaceId,
-          workflowId,
-          decision.lifecycleStatus,
-          decision.activationStatus,
-          expectedLifecycleRevision,
-        ],
-      );
-      const updatedRow = updatedResult.rows[0];
+      const [updatedRow] = await drizzle(client)
+        .update(workflows)
+        .set({
+          lifecycleStatus: decision.lifecycleStatus,
+          activationStatus: decision.activationStatus,
+          lifecycleRevision: sql`${workflows.lifecycleRevision}+1`,
+          updatedAt: sql`transaction_timestamp()`,
+        })
+        .where(
+          and(
+            eq(workflows.workspaceId, workspaceId),
+            eq(workflows.id, workflowId),
+            eq(workflows.lifecycleRevision, expectedLifecycleRevision),
+          ),
+        )
+        .returning(workflowProjection)
+        .catch(rethrowQueryFailure);
       if (updatedRow === undefined)
         throw new WorkflowLifecycleRevisionConflictError(
           current.lifecycleRevision,
         );
-      workflow = mapWorkflow(updatedRow);
+      workflow = Object.freeze(updatedRow);
 
       if (decision.reconcileTriggers) {
-        if (current.publishedVersionId === null)
-          throw new Error(
-            'Workflow lifecycle reconciliation requires a published version',
-          );
-        const outboxEventId = generatePersistedId();
-        const payload = reconcileWorkflowTriggersPayload({
-          outboxEventId,
-          publishedVersionId: current.publishedVersionId,
-          ...(input.traceparent === undefined
-            ? {}
-            : { traceparent: input.traceparent }),
-          workflowId,
+        await enqueueLifecycleReconciliation(client, {
           workspaceId,
+          workflowId,
+          publishedVersionId: current.publishedVersionId,
+          traceparent: input.traceparent,
         });
-        await client.query(
-          `insert into app.outbox_events
-             (id,workspace_id,job_name,aggregate_type,aggregate_id,
-              payload,payload_checksum)
-           values($1,$2,'reconcile-workflow-triggers','workflow',$3,$4::jsonb,$5)`,
-          [
-            outboxEventId,
-            workspaceId,
-            workflowId,
-            JSON.stringify(payload),
-            canonicalOutboxPayloadChecksum(payload),
-          ],
-        );
       }
 
-      await client.query(
-        `insert into app.audit_events
-           (id,workspace_id,actor_user_id,action,target_type,target_id,request_id,
-            trace_id,metadata)
-         values($1,$2,$3,$4,'workflow',$5,$6,$7,$8::jsonb)`,
-        [
-          generatePersistedId(),
+      await drizzle(client)
+        .insert(auditEvents)
+        .values({
+          id: generatePersistedId(),
           workspaceId,
-          actorId,
-          command === 'archive' ? 'workflow.archived' : 'workflow.restored',
-          workflowId,
-          requestId ?? null,
-          traceId ?? null,
-          JSON.stringify({
+          actorUserId: actorId,
+          action:
+            command === 'archive' ? 'workflow.archived' : 'workflow.restored',
+          targetType: 'workflow',
+          targetId: workflowId,
+          requestId: requestId ?? null,
+          traceId: traceId ?? null,
+          metadata: {
             activationStatus: workflow.activationStatus,
             lifecycleRevision: workflow.lifecycleRevision,
             lifecycleStatus: workflow.lifecycleStatus,
@@ -178,9 +178,9 @@ async function transitionWorkflowLifecycle(
             previousLifecycleRevision: current.lifecycleRevision,
             previousLifecycleStatus: current.lifecycleStatus,
             publishedVersionId: current.publishedVersionId,
-          }),
-        ],
-      );
+          },
+        })
+        .catch(rethrowQueryFailure);
     }
 
     await completeWorkflowCommand(client, claim, workflow);
@@ -195,4 +195,44 @@ export function createWorkflowAuthoringLifecycleStore(
     transitionWorkflowLifecycle: (input) =>
       transitionWorkflowLifecycle(context, input),
   });
+}
+
+async function enqueueLifecycleReconciliation(
+  client: PoolClient,
+  {
+    workspaceId,
+    workflowId,
+    publishedVersionId,
+    traceparent,
+  }: Readonly<{
+    workspaceId: string;
+    workflowId: string;
+    publishedVersionId: string | null;
+    traceparent: string | undefined;
+  }>,
+) {
+  if (publishedVersionId === null)
+    throw new Error(
+      'Workflow lifecycle reconciliation requires a published version',
+    );
+  const outboxEventId = generatePersistedId();
+  const payload = reconcileWorkflowTriggersPayload({
+    outboxEventId,
+    publishedVersionId: publishedVersionId,
+    ...(traceparent === undefined ? {} : { traceparent: traceparent }),
+    workflowId,
+    workspaceId,
+  });
+  await drizzle(client)
+    .insert(outboxEvents)
+    .values({
+      id: outboxEventId,
+      workspaceId,
+      jobName: 'reconcile-workflow-triggers',
+      aggregateType: 'workflow',
+      aggregateId: workflowId,
+      payload: sql`${JSON.stringify(payload)}::jsonb`,
+      payloadChecksum: canonicalOutboxPayloadChecksum(payload),
+    })
+    .catch(rethrowQueryFailure);
 }
