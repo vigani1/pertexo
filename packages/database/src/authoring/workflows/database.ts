@@ -41,11 +41,9 @@ export type {
   WorkflowRecord,
   WorkflowVersionRecord,
 } from './representation/records.js';
-import {
-  acceptPreviewRun,
-  readPreviewRun,
-  resolvePreviewReplay,
-} from '../../previews/repository.js';
+import { acceptPreviewRun } from '../../previews/runs/acceptance.repository.js';
+import { readPreviewRun } from '../../previews/runs/records.queries.js';
+import { resolvePreviewReplay } from '../../previews/runs/replay.repository.js';
 import {
   withTenantScopedClient,
   withMultiWorkspaceTransaction,

@@ -12,7 +12,7 @@ import {
   acceptWorkflowRun,
   prepareWorkflowRunAcceptance,
 } from '../../runs/commands/acceptance.js';
-import { WorkflowTestError } from './contract.js';
+import { WorkflowTestError } from './errors.js';
 import { testRunSql } from '../../runs/data-policy.js';
 import type { SampleScope } from '../../authoring/step-samples/contract.js';
 

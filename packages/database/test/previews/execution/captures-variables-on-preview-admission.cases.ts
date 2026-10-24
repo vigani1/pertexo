@@ -5,11 +5,9 @@ import { createRetentionDatabase } from '../../../src/lifecycle/retention/reposi
 import { createPreviewRetentionCoordinator } from '../../../src/lifecycle/previews/repository.js';
 import { parseDatabaseConfig } from '../../../src/config.js';
 
-import {
-  acceptPreviewRun,
-  PreviewIdempotencyConflictError,
-  resolvePreviewReplay,
-} from '../../../src/previews/repository.js';
+import { acceptPreviewRun } from '../../../src/previews/runs/acceptance.repository.js';
+import { PreviewIdempotencyConflictError } from '../../../src/previews/errors.js';
+import { resolvePreviewReplay } from '../../../src/previews/runs/replay.repository.js';
 import {
   auditEvents,
   outboxEvents,

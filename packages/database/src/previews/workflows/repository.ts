@@ -17,7 +17,8 @@ import {
   completeCommand,
 } from '../../platform/idempotency/repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
-import { WorkflowTestError, type WorkflowTestStore } from './contract.js';
+import { WorkflowTestError } from './errors.js';
+import type { WorkflowTestStore } from './contract.js';
 import {
   loadTestSnapshot,
   sameTestSamples,

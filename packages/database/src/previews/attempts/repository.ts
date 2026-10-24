@@ -1,3 +1,4 @@
+import type { PreviewAttemptRunStore } from './contract.js';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
@@ -18,21 +19,6 @@ const leaseScopeSchema = z.object({
 
 function leaseAuthority(lease: unknown) {
   return Object.freeze(leaseScopeSchema.parse(lease));
-}
-
-export interface PreviewAttemptRunStore {
-  claim(
-    input: Parameters<typeof claimPreviewDelivery>[1],
-  ): ReturnType<typeof claimPreviewDelivery>;
-  markDispatched(
-    input: Parameters<typeof markPreviewDispatched>[1],
-  ): ReturnType<typeof markPreviewDispatched>;
-  heartbeat(
-    input: Parameters<typeof heartbeatPreviewLease>[1],
-  ): ReturnType<typeof heartbeatPreviewLease>;
-  complete(
-    input: Parameters<typeof completePreviewAttempt>[1],
-  ): ReturnType<typeof completePreviewAttempt>;
 }
 
 /** The store owns its pool lease; injected runtimes retain their own lifetime. */

@@ -13,7 +13,7 @@ import type { AuthoringCatalogs } from '../../authoring/workflows/catalogs.js';
 import type { SampleScope } from '../../authoring/step-samples/contract.js';
 
 import { parseStoredExecutionValue } from '../../platform/stored-execution-value.js';
-import { WorkflowTestError } from './contract.js';
+import { WorkflowTestError } from './errors.js';
 
 export async function loadTestSnapshot(
   client: PoolClient,

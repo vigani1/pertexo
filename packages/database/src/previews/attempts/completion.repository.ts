@@ -1,3 +1,4 @@
+import type { PreviewCompletionResult } from './contract.js';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -10,20 +11,19 @@ import type { Pool, PoolClient } from 'pg';
 
 import { z } from 'zod';
 
-import {
-  PREVIEW_STATUS,
-  type PreviewStatus,
-} from '../runs/acceptance.repository.js';
+import { PREVIEW_STATUS } from '../state.js';
+import type { PreviewStatus } from '../contract.js';
 import { sha256HexSchema } from '../../platform/persisted-primitives.js';
 import {
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
-  optionsFor,
-  previewConsumerName,
-  safeErrorCodeSchema,
-  type PreviewAttemptLease,
-  type PreviewDelivery,
-  type PreviewTerminalOutcome,
+} from '../errors.js';
+import { optionsFor, safeErrorCodeSchema } from '../input.js';
+import { previewConsumerName } from '../delivery.js';
+import type {
+  PreviewAttemptLease,
+  PreviewDelivery,
+  PreviewTerminalOutcome,
 } from '../contract.js';
 import {
   auditPreviewDeliveryMismatch,
@@ -36,10 +36,6 @@ import {
   serializeStoredExecutionValue,
 } from '../../platform/stored-execution-value.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
-
-export type PreviewCompletionResult = Readonly<{
-  kind: 'committed' | 'duplicate';
-}>;
 
 type CanonicalCompletionOutcome =
   | Readonly<{

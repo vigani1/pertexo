@@ -1,13 +1,11 @@
 import { randomUUID } from 'node:crypto';
 
 import { expect, it } from 'vitest';
-import {
-  completePreviewAttempt,
-  heartbeatPreviewLease,
-  markPreviewDispatched,
-  PREVIEW_STATUS,
-  PreviewAttemptStateError,
-} from '../../../src/previews/repository.js';
+import { completePreviewAttempt } from '../../../src/previews/attempts/completion.repository.js';
+import { heartbeatPreviewLease } from '../../../src/previews/attempts/heartbeat.repository.js';
+import { markPreviewDispatched } from '../../../src/previews/attempts/dispatch.repository.js';
+import { PREVIEW_STATUS } from '../../../src/previews/state.js';
+import { PreviewAttemptStateError } from '../../../src/previews/errors.js';
 import {
   acceptFixture,
   actorUserId,

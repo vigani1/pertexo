@@ -5,7 +5,8 @@ import { v7 as uuidv7 } from 'uuid';
 import { previewRuns } from '../../schema/runs/execution.js';
 import { auditEvents, usageEvents } from '../../schema/foundation.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { PreviewAttemptStateError, type PreviewStatus } from '../contract.js';
+import { PreviewAttemptStateError } from '../errors.js';
+import type { PreviewStatus } from '../contract.js';
 
 export async function appendPreviewTerminalFacts(
   client: PoolClient,

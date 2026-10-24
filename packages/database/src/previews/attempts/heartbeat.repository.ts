@@ -1,3 +1,4 @@
+import type { PreviewHeartbeatResult } from './contract.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { previewRuns, previewAttempts } from '../../schema/runs/execution.js';
@@ -5,17 +6,10 @@ import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
-import {
-  PreviewAttemptStateError,
-  optionsFor,
-  type PreviewAttemptLease,
-} from '../contract.js';
+import { PreviewAttemptStateError } from '../errors.js';
+import { optionsFor } from '../input.js';
+import type { PreviewAttemptLease } from '../contract.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
-
-export type PreviewHeartbeatResult = Readonly<{
-  attemptLeaseExpiresAt: Date;
-  runExecutionDeadlineAt: Date;
-}>;
 
 export async function heartbeatPreviewLease(
   pool: Pool,

@@ -2,10 +2,8 @@ import { eq } from 'drizzle-orm';
 
 import { expect, it } from 'vitest';
 
-import {
-  acceptPreviewRun,
-  PriorPreviewInputUnavailableError,
-} from '../../../src/previews/repository.js';
+import { acceptPreviewRun } from '../../../src/previews/runs/acceptance.repository.js';
+import { PriorPreviewInputUnavailableError } from '../../../src/previews/errors.js';
 import { previewAttempts, previewRuns } from '../../../src/schema.js';
 
 import {

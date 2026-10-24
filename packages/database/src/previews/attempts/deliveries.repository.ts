@@ -1,3 +1,4 @@
+import type { PreviewOutboxClient } from './contract.js';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -14,15 +15,13 @@ import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.j
 import {
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
+} from '../errors.js';
+import {
   previewDeliveryPayloadSchema,
   previewReconciliationPayloadSchema,
-  type PreviewDelivery,
-} from '../contract.js';
+} from '../delivery.js';
+import type { PreviewDelivery } from '../contract.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
-
-export type PreviewOutboxClient = Parameters<
-  Parameters<typeof withTenantScopedClient>[2]
->[0];
 
 export async function insertPreviewOutboxDelivery(
   client: PreviewOutboxClient,

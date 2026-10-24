@@ -1,13 +1,13 @@
 import { createHash } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
 
-import {
-  acceptPreviewRun,
-  claimPreviewDelivery,
-  type AcceptPreviewRunInput,
-  type PreviewAttemptLease,
-  type PreviewDelivery,
-} from '../../../src/previews/repository.js';
+import { acceptPreviewRun } from '../../../src/previews/runs/acceptance.repository.js';
+import { claimPreviewDelivery } from '../../../src/previews/attempts/claim.repository.js';
+import type { AcceptPreviewRunInput } from '../../../src/previews/runs/acceptance/contract.js';
+import type {
+  PreviewAttemptLease,
+  PreviewDelivery,
+} from '../../../src/previews/contract.js';
 import { canonicalOutboxPayloadChecksum } from '../../../src/outbox/events.repository.js';
 
 import { databaseSchema } from '../../../src/schema.js';

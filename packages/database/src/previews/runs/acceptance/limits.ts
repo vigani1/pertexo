@@ -1,0 +1,3 @@
+export const PREVIEW_RETENTION_MAX_MS = 7 * 24 * 60 * 60 * 1_000;
+
+export const PREVIEW_EXECUTION_TIMEOUT_MAX_MS = 5 * 60 * 1_000;
