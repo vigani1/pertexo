@@ -1,3 +1,4 @@
+import { readGovernanceSettings } from './policy.queries.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
@@ -14,26 +15,6 @@ import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 import { appendAuditFact } from '../audit/events.repository.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
 import { GovernanceError, type GovernanceStore } from '../contract.js';
-export async function readGovernanceSettings(
-  client: PoolClient,
-  workspaceId: string,
-): Promise<GovernanceSettings> {
-  const [row] = await drizzle(client)
-    .select({
-      revision: workspaces.governanceRevision,
-      auditRetentionDays: workspaces.auditRetentionDays,
-      requirePublishApproval: workspaces.requirePublishApproval,
-    })
-    .from(workspaces)
-    .where(eq(workspaces.id, workspaceId))
-    .catch(rethrowQueryFailure);
-  if (row === undefined)
-    throw new GovernanceError(
-      'conflict',
-      'Workspace settings are unavailable.',
-    );
-  return row;
-}
 export async function configureGovernance(
   client: PoolClient,
   input: Parameters<GovernanceStore['configure']>[0],

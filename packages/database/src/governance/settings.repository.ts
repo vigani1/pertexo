@@ -28,10 +28,8 @@ import {
   projectAuditEvent,
 } from './audit/events.queries.js';
 import { prepareAuditExport } from './audit/export.queries.js';
-import {
-  readGovernanceSettings,
-  configureGovernance,
-} from './settings/policy.repository.js';
+import { configureGovernance } from './settings/policy.repository.js';
+import { readGovernanceSettings } from './settings/policy.queries.js';
 export function createGovernanceStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
