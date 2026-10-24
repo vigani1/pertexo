@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { createEditorStore } from './store';
-import { EditorStoreContext, useEditorStoreApi } from './context';
+import { EditorStoreContext, EditorSessionContext } from './context';
 import type { EditorSession } from './session';
 
 export function EditorProvider({
@@ -11,18 +11,15 @@ export function EditorProvider({
   initial: Parameters<typeof createEditorStore>[0];
 }>) {
   const [store] = useState(() => createEditorStore(initial));
-  return <EditorStoreContext value={{ store }}>{children}</EditorStoreContext>;
+  return <EditorStoreContext value={store}>{children}</EditorStoreContext>;
 }
 
-/** Populate the existing scope after the session's live queries and commands are ready. */
+/** Keep live session references separate from the stable draft-store context. */
 export function EditorSessionProvider({
   children,
   ...session
 }: EditorSession & Readonly<{ children: ReactNode }>) {
-  const store = useEditorStoreApi();
   return (
-    <EditorStoreContext value={{ store, session }}>
-      {children}
-    </EditorStoreContext>
+    <EditorSessionContext value={session}>{children}</EditorSessionContext>
   );
 }
