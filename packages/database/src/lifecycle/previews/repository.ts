@@ -1,4 +1,4 @@
-import type { PoolClient } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../../config.js';
@@ -129,68 +129,14 @@ export function createPreviewRetentionCoordinator(
   const options = optionsSchema.parse(inputOptions);
   const lease = acquireDatabasePool(config, runtime, { role: 'maintenance' });
   const { pool } = lease;
-  const transaction = <T>(
-    signal: AbortSignal | undefined,
-    work: (client: PoolClient) => Promise<T>,
-  ): Promise<T> => inRetentionTransaction(pool, options, signal, work);
-  const inWorkspace = async (client: PoolClient, workspaceId: string) => {
-    // Artifact capacity is charged in the artifact's own workspace.
-    await client.query("select set_config('app.workspace_id', $1, true)", [
-      workspaceId,
-    ]);
-  };
+  const context = { pool, options };
 
   return Object.freeze({
     close: () => lease.close(),
     processNext: async (
       signal?: AbortSignal,
     ): Promise<PreviewRetentionProcessResult> => {
-      const step = await transaction(signal, async (client) => {
-        const due = await client.query(DUE_PREVIEW);
-        if (due.rows[0] === undefined) return undefined;
-        const preview = previewSchema.parse(due.rows[0]);
-        const result = {
-          previewRunId: preview.id,
-          workspaceId: preview.workspace_id,
-        };
-        await inWorkspace(client, preview.workspace_id);
-        const linked = await client.query(
-          `select artifact.id, artifact.status,
-             artifact.updated_at <= clock_timestamp() - make_interval(secs => $3) quiet
-           from app.artifact_links link
-           join app.artifacts artifact
-             on artifact.workspace_id = link.workspace_id and artifact.id = link.artifact_id
-           where link.workspace_id = $1 and link.owner_kind = 'preview_run'
-             and link.owner_id = $2 and artifact.status <> 'deleted'
-           order by artifact.id limit 1 for update of artifact`,
-          [preview.workspace_id, preview.id, options.artifactQuiescenceSeconds],
-        );
-        if (linked.rows[0] === undefined) {
-          await removePreview(client, preview.workspace_id, preview.id);
-          return { ...result, status: 'completed' as const };
-        }
-        const artifact = artifactSchema.parse(linked.rows[0]);
-        if (artifact.status !== 'deleting') {
-          await client.query(
-            `update app.artifacts set status = 'deleting', updated_at = clock_timestamp()
-             where id = $1`,
-            [artifact.id],
-          );
-          return {
-            ...result,
-            artifactId: artifact.id,
-            status: 'waiting' as const,
-          };
-        }
-        // Uploads still in flight must time out before their bytes go.
-        if (!artifact.quiet)
-          return {
-            ...result,
-            artifactId: artifact.id,
-            status: 'waiting' as const,
-          };
-        return { ...result, artifactId: artifact.id, status: 'erase' as const };
-      });
+      const step = await preparePreview(context, signal);
       if (step === undefined) return Object.freeze({ status: 'idle' });
       if (step.status !== 'erase') return Object.freeze(step);
 
@@ -208,27 +154,7 @@ export function createPreviewRetentionCoordinator(
         })) !== null
       )
         return Object.freeze({ ...step, status: 'waiting' });
-      const finished = await transaction(signal, async (client) => {
-        await inWorkspace(client, workspaceId);
-        await client.query(
-          `update app.artifacts
-           set status = 'deleted', deleted_at = clock_timestamp(), updated_at = clock_timestamp()
-           where id = $1 and status = 'deleting'`,
-          [artifactId],
-        );
-        const remaining = await client.query(
-          `select 1 from app.artifact_links link
-           join app.artifacts artifact
-             on artifact.workspace_id = link.workspace_id and artifact.id = link.artifact_id
-           where link.workspace_id = $1 and link.owner_kind = 'preview_run'
-             and link.owner_id = $2 and artifact.status <> 'deleted'
-           limit 1`,
-          [workspaceId, previewRunId],
-        );
-        if (remaining.rowCount !== 0) return false;
-        await removePreview(client, workspaceId, previewRunId);
-        return true;
-      });
+      const finished = await finishPreview(context, step, signal);
       return Object.freeze({
         artifactId,
         previewRunId,
@@ -236,5 +162,104 @@ export function createPreviewRetentionCoordinator(
         workspaceId,
       });
     },
+  });
+}
+
+type PreviewContext = Readonly<{
+  pool: Pool;
+  options: z.output<typeof optionsSchema>;
+}>;
+async function inWorkspace(
+  client: PoolClient,
+  workspaceId: string,
+): Promise<void> {
+  // Artifact capacity is charged in the artifact's own workspace.
+  await client.query("select set_config('app.workspace_id', $1, true)", [
+    workspaceId,
+  ]);
+}
+
+async function preparePreview(
+  { pool, options }: PreviewContext,
+  signal: AbortSignal | undefined,
+) {
+  return inRetentionTransaction(pool, options, signal, async (client) => {
+    const due = await client.query(DUE_PREVIEW);
+    if (due.rows[0] === undefined) return undefined;
+    const preview = previewSchema.parse(due.rows[0]);
+    const result = {
+      previewRunId: preview.id,
+      workspaceId: preview.workspace_id,
+    };
+    await inWorkspace(client, preview.workspace_id);
+    const linked = await client.query(
+      `select artifact.id, artifact.status,
+             artifact.updated_at <= clock_timestamp() - make_interval(secs => $3) quiet
+           from app.artifact_links link
+           join app.artifacts artifact
+             on artifact.workspace_id = link.workspace_id and artifact.id = link.artifact_id
+           where link.workspace_id = $1 and link.owner_kind = 'preview_run'
+             and link.owner_id = $2 and artifact.status <> 'deleted'
+           order by artifact.id limit 1 for update of artifact`,
+      [preview.workspace_id, preview.id, options.artifactQuiescenceSeconds],
+    );
+    if (linked.rows[0] === undefined) {
+      await removePreview(client, preview.workspace_id, preview.id);
+      return { ...result, status: 'completed' as const };
+    }
+    const artifact = artifactSchema.parse(linked.rows[0]);
+    if (artifact.status !== 'deleting') {
+      await client.query(
+        `update app.artifacts set status = 'deleting', updated_at = clock_timestamp()
+             where id = $1`,
+        [artifact.id],
+      );
+      return {
+        ...result,
+        artifactId: artifact.id,
+        status: 'waiting' as const,
+      };
+    }
+    // Uploads still in flight must time out before their bytes go.
+    if (!artifact.quiet)
+      return {
+        ...result,
+        artifactId: artifact.id,
+        status: 'waiting' as const,
+      };
+    return { ...result, artifactId: artifact.id, status: 'erase' as const };
+  });
+}
+
+async function finishPreview(
+  { pool, options }: PreviewContext,
+  step: Readonly<{
+    artifactId: string;
+    previewRunId: string;
+    workspaceId: string;
+  }>,
+  signal: AbortSignal | undefined,
+) {
+  const { artifactId, previewRunId, workspaceId } = step;
+  return inRetentionTransaction(pool, options, signal, async (client) => {
+    await inWorkspace(client, workspaceId);
+    await client.query(
+      `update app.artifacts
+           set status = 'deleted', deleted_at = clock_timestamp(), updated_at = clock_timestamp()
+           where id = $1 and status = 'deleting'`,
+      [artifactId],
+    );
+    const remaining = await client.query(
+      `select 1 from app.artifact_links link
+           join app.artifacts artifact
+             on artifact.workspace_id = link.workspace_id and artifact.id = link.artifact_id
+           where link.workspace_id = $1 and link.owner_kind = 'preview_run'
+             and link.owner_id = $2 and artifact.status <> 'deleted'
+           limit 1`,
+      [workspaceId, previewRunId],
+    );
+    if (remaining.rowCount !== 0) return false;
+    await removePreview(client, workspaceId, previewRunId);
+    return true;
   });
 }
