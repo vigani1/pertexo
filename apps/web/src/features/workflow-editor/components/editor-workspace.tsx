@@ -13,10 +13,7 @@ import type {
   WorkflowValidationTarget,
 } from '@/features/workflow-publish/public';
 import { useQuery } from '@tanstack/react-query';
-import {
-  PinRecordedOutputButton,
-  stepSamplesQueryOptions,
-} from '@/features/workflow-publish/step-samples.public';
+import { stepSamplesQueryOptions } from '@/features/workflow-publish/step-samples.public';
 import type { ApiClient } from '@/lib/api/client';
 import { useEditorStore, useEditorStoreApi } from '../model/state/context';
 import type { useCanvasEffects } from '../hooks/use-canvas-effects';
@@ -32,7 +29,7 @@ import { TestResultBar } from './chrome/test-result-bar';
 import { ValidationSweep } from './canvas/validation-sweep';
 import { WorkflowCanvas } from './canvas/index';
 import { EditorLayout } from './editor-layout';
-import { EditorInspector } from './inspector/editor';
+import { WorkspaceInspector } from './workspace-inspector';
 import { useEditorWorkflowTests } from '../hooks/use-editor-workflow-tests';
 import {
   WorkflowTestButton,
@@ -40,7 +37,6 @@ import {
   WorkflowTestDialog,
   WorkflowTestMenuItems,
 } from '@/features/workflow-publish/workflow-tests.public';
-import { StepHistoryPanel } from '@/features/workflow-runs/step-history.public';
 import { useAddStepFold } from './workspace-canvas';
 import { useCanvasOverlays } from './workspace-canvas';
 import { useStepAdding } from './workspace-canvas';
@@ -139,15 +135,18 @@ export function EditorWorkspace({
     codeSettings?.enabled === false
       ? definitions.filter(({ definition }) => definition.key !== 'core.code')
       : definitions;
-  const { placement, quickAdd, addAfter, addToBody } = useStepAdding({
+  const adding = useStepAdding({
     store,
     definitions,
     canvasRef,
     editable,
   });
 
+  const { placement, quickAdd, addToBody } = adding;
+
+  const selection = useSelectionCommands({ store, request, editable });
   const { selectNodes, removeEdge, deleteSelection, duplicateSelection } =
-    useSelectionCommands({ store, request, editable });
+    selection;
   useEditorShortcuts(
     {
       undo: () => {
@@ -270,62 +269,19 @@ export function EditorWorkspace({
         />
       }
       inspector={
-        <EditorInspector
-          apiClient={apiClient}
-          workspaceId={workspace.id}
-          workspaceName={workspace.name}
-          workflowId={workflowId}
-          definitions={definitions}
-          codeSettings={codeSettings}
-          connections={connections}
-          userId={userId}
-          lookUpChannels={
-            connectionsAvailable &&
-            workspace.capabilities.includes('connection:use')
-          }
-          addConnections={
-            connectionsAvailable &&
-            workspace.capabilities.includes('connection:manage')
-          }
-          editable={editable && !paused}
-          tab={navigation.tab}
-          onTabChange={navigation.setTab}
-          actions={actions}
-          ensureSaved={ensureSaved}
-          testRef={testRef}
-          rememberedTest={lastTest.last}
-          onTestFinished={lastTest.record}
-          onTestPassed={effects.showTestPath}
-          renderStepRuns={(nodeId, stepLabel) => (
-            <StepHistoryPanel
-              apiClient={apiClient}
-              userId={userId}
-              workspace={workspace}
-              workflowId={workflowId}
-              nodeId={nodeId}
-              stepLabel={stepLabel}
-              renderActions={(run) =>
-                editable && !paused && run.status === 'succeeded' ? (
-                  <PinRecordedOutputButton
-                    scope={sampleScope}
-                    nodeId={nodeId}
-                    runId={run.runId}
-                    nodeRunId={run.nodeRunId}
-                    ensureSaved={ensureSaved}
-                  />
-                ) : null
-              }
-            />
-          )}
-          onClose={() => {
-            setMobilePanel('none');
-            request({ kind: 'select', nodeIds: [] });
+        <WorkspaceInspector
+          scope={{ apiClient, userId, workspace, workflowId }}
+          catalog={{
+            definitions,
+            codeSettings,
+            connections,
+            connectionsAvailable,
           }}
-          onAddStepAfter={addAfter}
-          onAddFailureHandler={quickAdd.openFailure}
-          onAddToBody={addToBody}
-          onDuplicateSelection={duplicateSelection}
-          onRemoveEdge={removeEdge}
+          actions={actions}
+          editable={editable && !paused}
+          ensureSaved={ensureSaved}
+          testing={{ testRef, lastTest, onTestPassed: effects.showTestPath }}
+          canvas={{ adding, selection }}
         />
       }
       overlay={
