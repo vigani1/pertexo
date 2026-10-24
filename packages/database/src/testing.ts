@@ -17,7 +17,12 @@ export { createDueNodeWakeupScanner } from './runs/wakeups/due-node-scanner.js';
 export type { DueNodeWakeupScanner } from './runs/wakeups/due-node-scanner.js';
 export { createFailureNotificationStore } from './notifications/repository.js';
 export { FailureNotificationStateError } from './notifications/errors.js';
-export type { FailureNotificationClaimResult, FailureNotificationDelivery, FailureNotificationResolvedDestination, FailureNotificationStore } from './notifications/contract.js';
+export type {
+  FailureNotificationClaimResult,
+  FailureNotificationDelivery,
+  FailureNotificationResolvedDestination,
+  FailureNotificationStore,
+} from './notifications/contract.js';
 export { createDeadlineWakeupScanner } from './runs/wakeups/deadline-scanner.js';
 export type { DeadlineWakeupScanner } from './runs/wakeups/deadline-scanner.js';
 export {
