@@ -6,11 +6,11 @@ import { FailureNotificationStateError } from '../errors.js';
 import {
   auditFailureNotification,
   failureNotificationIdentitySchema,
-} from '../store-support.js';
-import type { FailureNotificationStore } from '../contracts.js';
+} from '../delivery/evidence.repository.js';
+import type { FailureNotificationStore } from '../contract.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import { recordCredentialAccess } from '../../connections/runtime/dispatch.repository.js';
-import { parseFailureNotificationAttemptNumber } from '../input-validation.js';
+import { parseFailureNotificationAttemptNumber } from '../delivery/input-validation.js';
 
 type DestinationStore = Pick<
   FailureNotificationStore,

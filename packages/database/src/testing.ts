@@ -20,13 +20,13 @@ export type { DueNodeWakeupScanner } from './runs/wakeups/due-node-scanner.js';
 export {
   createFailureNotificationStore,
   FailureNotificationStateError,
-} from './notifications/store.js';
+} from './notifications/repository.js';
 export type {
   FailureNotificationClaimResult,
   FailureNotificationDelivery,
   FailureNotificationResolvedDestination,
   FailureNotificationStore,
-} from './notifications/store.js';
+} from './notifications/repository.js';
 export { createDeadlineWakeupScanner } from './runs/wakeups/deadline-scanner.js';
 export type { DeadlineWakeupScanner } from './runs/wakeups/deadline-scanner.js';
 export {

@@ -1,12 +1,12 @@
 import type { PoolClient } from 'pg';
 
-import { generatePersistedId } from '../platform/persisted-id.js';
+import { generatePersistedId } from '../../platform/persisted-id.js';
 import { v5 as uuidv5 } from 'uuid';
 import { z } from 'zod';
 
-import { canonicalOutboxPayloadChecksum } from '../outbox/events.js';
-import { serializeStoredExecutionJsonValue } from '../platform/stored-execution-value.js';
-import { sha256HexSchema } from '../platform/persisted-primitives.js';
+import { canonicalOutboxPayloadChecksum } from '../../outbox/events.js';
+import { serializeStoredExecutionJsonValue } from '../../platform/stored-execution-value.js';
+import { sha256HexSchema } from '../../platform/persisted-primitives.js';
 
 export const failureNotificationIdentitySchema = z.uuid();
 export const failureNotificationChecksumSchema = sha256HexSchema;

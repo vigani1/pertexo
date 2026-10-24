@@ -22,7 +22,7 @@ import {
   FailureNotificationDestinationError,
 } from '../../src/notifications/destinations/repository.js';
 import type { FailureNotificationDestinationDatabase } from '../../src/notifications/destinations/contract.js';
-import { createFailureNotificationStore } from '../../src/notifications/store.js';
+import { createFailureNotificationStore } from '../../src/notifications/repository.js';
 import { parseDatabaseConfig } from '../../src/config.js';
 import { migrateDatabase } from '../../src/migrations.js';
 import { canonicalOutboxPayloadChecksum } from '../../src/outbox/events.js';
