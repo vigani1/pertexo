@@ -1,20 +1,20 @@
 import { sql } from 'drizzle-orm';
-import type { FolderScope } from '../tenant-access/resources/contract.js';
+import type { FolderScope } from '../../tenant-access/resources/contract.js';
 import {
   bindResourcePredicate,
   workflowScopeSql,
-} from '../tenant-access/resources/query-scope.js';
-import { NOTICE_WINDOW_SQL } from './lifetime.js';
+} from '../../tenant-access/resources/query-scope.js';
+import { NOTICE_WINDOW_SQL } from '../lifetime.js';
 import {
   REVIEW_SOURCE_SQL,
   reviewDecisionAllowedSql,
-} from '../authoring/reviews/eligibility.js';
+} from '../../authoring/reviews/eligibility.js';
 import type { WorkspaceNoticeKind } from '@pertexo/contracts';
 import {
   rolesForCapability,
   type AuthorizationCapability,
 } from '@pertexo/workflow-model';
-import { pendingTaskBlockedSql } from '../runs/pending-tasks/responses/eligibility.js';
+import { pendingTaskBlockedSql } from '../../runs/pending-tasks/responses/eligibility.js';
 
 function capabilityAudienceSql(capability: AuthorizationCapability): string {
   const roles = rolesForCapability(capability)

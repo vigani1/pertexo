@@ -1,10 +1,10 @@
-import { readCommentMentionSource } from './mentions.js';
+import { readCommentMentionSource } from './mentions.queries.js';
 import {
   REVIEW_SOURCE_SQL,
   REVIEW_STATE_SQL,
 } from '../../authoring/reviews/eligibility.js';
 import type { PoolClient } from 'pg';
-import { readCapacityWarning } from './capacity.js';
+import { readCapacityWarning } from './capacity.queries.js';
 import type {
   WorkspaceCapacityLimit,
   WorkspaceNoticeKind,

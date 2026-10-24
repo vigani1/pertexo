@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg';
 
-import { generatePersistedId } from '../platform/persisted-id.js';
-import type { RunTransitionPlan } from '../runs/advance/plan.js';
+import { generatePersistedId } from '../../platform/persisted-id.js';
+import type { RunTransitionPlan } from '../../runs/advance/plan.js';
 
 const inboxKinds: ReadonlySet<string> = new Set([
   'failed',

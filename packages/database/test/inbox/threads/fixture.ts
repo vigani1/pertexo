@@ -10,9 +10,9 @@ import {
   parseDatabaseConfig,
   workspaceMemberships,
 } from '../../../src/testing.js';
-import { createWorkspaceInboxFoldStore } from '../../../src/inbox/fold-store.js';
-import { persistWorkspaceInboxEvent } from '../../../src/inbox/producer.js';
-import { createWorkspaceInboxDatabase } from '../../../src/inbox/read-store.js';
+import { createWorkspaceInboxFoldStore } from '../../../src/inbox/folding/processor.repository.js';
+import { persistWorkspaceInboxEvent } from '../../../src/inbox/folding/events.repository.js';
+import { createWorkspaceInboxDatabase } from '../../../src/inbox/threads/reader.repository.js';
 import { createDisposableDatabaseFixture } from '../../support/postgres/disposable-database.js';
 
 type Kind = 'failed' | 'timed_out' | 'outcome_unknown';

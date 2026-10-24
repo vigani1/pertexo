@@ -6,7 +6,7 @@ import { Pool } from 'pg';
 import { expect, it } from 'vitest';
 import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../../src/migrations.js';
 import { parseDatabaseConfig } from '../../src/config.js';
-import { createWorkspaceInboxDatabase } from '../../src/inbox/read-store.js';
+import { createWorkspaceInboxDatabase } from '../../src/inbox/threads/reader.repository.js';
 import { createDisposableDatabaseFixture } from '../support/postgres/disposable-database.js';
 it('upgrades populated workflow threads and private read revisions without changing their cut or precision', async () => {
   const adminUrl =

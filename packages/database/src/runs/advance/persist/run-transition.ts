@@ -13,7 +13,7 @@ import {
   type RunTransitionPlan,
 } from '../plan.js';
 import { persistFailureNotificationIntent } from './failure-notification.js';
-import { persistWorkspaceInboxEvent } from '../../../inbox/producer.js';
+import { persistWorkspaceInboxEvent } from '../../../inbox/folding/events.repository.js';
 import { persistWorkflowTriggerOutcome } from '../../../triggers/pause/outcome-producer.js';
 import { canonicalOutboxPayloadChecksum } from '../../../outbox/events.js';
 import {

@@ -1,15 +1,15 @@
 import { NOTICE_WINDOW_SQL } from '../lifetime.js';
-import { CAPACITY_WARNING_CANDIDATES_SQL } from './capacity.js';
+import { CAPACITY_WARNING_CANDIDATES_SQL } from './capacity.queries.js';
 import type { WorkspaceCapacityLimit } from '@pertexo/contracts';
 import type { Pool, PoolClient } from 'pg';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
-import type { WorkspaceInboxChange } from '../fold-store.js';
+import type { WorkspaceInboxChange } from '../folding/processor.repository.js';
 import {
   readAttentionFact,
   type AttentionSubject,
   type AttentionFact,
-} from './facts.js';
+} from './facts.queries.js';
 type Candidate = Readonly<{
   workspace_id: string;
   subject_id: string;

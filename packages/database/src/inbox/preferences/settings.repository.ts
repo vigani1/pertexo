@@ -27,8 +27,11 @@ import {
   type NoticeReader,
   type NoticeSubject,
 } from './contract.js';
-import { readNoticePreferences } from './read.js';
-import { replacePreference, replaceSubscription } from './commands.js';
+import { readNoticePreferences } from './settings.queries.js';
+import {
+  replacePreference,
+  replaceSubscription,
+} from './commands.repository.js';
 async function subjectExists(
   client: PoolClient,
   input: NoticeReader & NoticeSubject,

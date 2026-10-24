@@ -1,8 +1,8 @@
-import { ordinaryRunSql } from '../runs/data-policy.js';
+import { ordinaryRunSql } from '../../runs/data-policy.js';
 import { and, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import type { databaseSchema } from '../schema.js';
-import { workflowRuns } from '../schema/runs/execution.js';
+import type { databaseSchema } from '../../schema.js';
+import { workflowRuns } from '../../schema/runs/execution.js';
 
 type FailureDay = Readonly<{ day: string; count: number }>;
 
