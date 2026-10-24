@@ -17,13 +17,15 @@ import { Notice } from '@/components/ui/notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 
+interface ListenerAuthenticationProps {
+  pending: boolean;
+  onListen: (authentication: WebhookAuthentication) => void;
+}
+
 export function ListenerAuthentication({
   pending,
   onListen,
-}: {
-  pending: boolean;
-  onListen: (authentication: WebhookAuthentication) => void;
-}) {
+}: ListenerAuthenticationProps) {
   const [mode, setMode] = useState('signed');
   const [headerName, setHeaderName] = useState('authorization');
   const [origins, setOrigins] = useState('');

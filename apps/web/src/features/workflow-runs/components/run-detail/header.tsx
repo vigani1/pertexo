@@ -178,21 +178,7 @@ function RunFacts({
  * The run's Core, a sentence that says where the run is, the facts in mono
  * and the two things you can do: replay it, or stop it while it runs.
  */
-export function RunHeader({
-  apiClient,
-  userId,
-  workspace,
-  run,
-  sentence,
-  nowMs,
-  versionNumber,
-  liveStatus,
-  compact,
-  replayOpen,
-  onReplayOpenChange,
-  onReconnect,
-  onRunAccepted,
-}: Readonly<{
+type RunHeaderProps = Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspace: AccessibleWorkspace;
@@ -208,7 +194,23 @@ export function RunHeader({
   onReplayOpenChange: (open: boolean) => void;
   onReconnect: () => void;
   onRunAccepted: (runId: string) => void;
-}>) {
+}>;
+
+export function RunHeader({
+  apiClient,
+  userId,
+  workspace,
+  run,
+  sentence,
+  nowMs,
+  versionNumber,
+  liveStatus,
+  compact,
+  replayOpen,
+  onReplayOpenChange,
+  onReconnect,
+  onRunAccepted,
+}: RunHeaderProps) {
   const [cancelOpen, setCancelOpen] = useState(false);
   const active = isActiveRunStatus(run.status);
   const can = (capability: AccessibleWorkspace['capabilities'][number]) =>

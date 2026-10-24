@@ -30,13 +30,12 @@ import { boundedNotePosition } from '../../../model/notes/commands';
 import { NoteForm } from './form';
 import { useNoteActions } from './use-actions';
 
-export function NoteTools({
-  editable,
-  containerRef,
-}: Readonly<{
+type NoteToolsProps = Readonly<{
   editable: boolean;
   containerRef: RefObject<HTMLDivElement | null>;
-}>) {
+}>;
+
+export function NoteTools({ editable, containerRef }: NoteToolsProps) {
   const notes = useEditorStore((state) => state.graph.notes);
   const count = notes?.length ?? 0;
   const [candidate, setCandidate] =

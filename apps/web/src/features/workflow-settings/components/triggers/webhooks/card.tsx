@@ -16,18 +16,7 @@ import {
 import { WebhookGuide } from './guide';
 
 /** One webhook trigger: its health, its endpoint and the commands for it. */
-export function WebhookCard({
-  trigger,
-  stepName,
-  editable,
-  blocked,
-  pendingCommand,
-  unresolved,
-  onCommand,
-  onRetryUnresolved,
-  failure,
-  deliveries,
-}: Readonly<{
+type WebhookCardProps = Readonly<{
   trigger: WebhookTriggerHealthResponse;
   stepName: string;
   editable: boolean;
@@ -40,7 +29,20 @@ export function WebhookCard({
   failure?: string | undefined;
   /** The recent delivery log, composed by the section that can read it. */
   deliveries?: ReactNode;
-}>) {
+}>;
+
+export function WebhookCard({
+  trigger,
+  stepName,
+  editable,
+  blocked,
+  pendingCommand,
+  unresolved,
+  onCommand,
+  onRetryUnresolved,
+  failure,
+  deliveries,
+}: WebhookCardProps) {
   const state = describeTriggerState(trigger);
   return (
     <article

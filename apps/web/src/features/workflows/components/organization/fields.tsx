@@ -14,15 +14,7 @@ import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { canEditOrganization, type OrganizationOperation } from './editing';
 import { WorkflowFolderPicker } from './folders/picker';
 
-export function OrganizationFields({
-  workspace,
-  workflows,
-  folders,
-  tags,
-  pending,
-  locked,
-  onConfirm,
-}: Readonly<{
+type OrganizationFieldsProps = Readonly<{
   workspace: AccessibleWorkspace;
   workflows: readonly WorkflowOrganizationProjectionResponse[];
   folders: readonly WorkflowFolder[];
@@ -34,7 +26,17 @@ export function OrganizationFields({
     folderId: string | null,
     tagIds: readonly string[],
   ) => Promise<void>;
-}>) {
+}>;
+
+export function OrganizationFields({
+  workspace,
+  workflows,
+  folders,
+  tags,
+  pending,
+  locked,
+  onConfirm,
+}: OrganizationFieldsProps) {
   const id = useId();
   const [operation, setOperation] = useState<OrganizationOperation>('move');
   const [folderId, setFolderId] = useState<string | null>(() =>
