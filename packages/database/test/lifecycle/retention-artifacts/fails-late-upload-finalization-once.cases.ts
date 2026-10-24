@@ -2,7 +2,7 @@ import { expect, it, vi } from 'vitest';
 import {
   ArtifactUploadNotFoundError,
   createArtifactUploadDatabase,
-} from '../../../src/artifacts/upload.js';
+} from '../../../src/artifacts/uploads/repository.js';
 import {
   createRunArtifactRetentionCoordinator,
   maintenanceUrl,

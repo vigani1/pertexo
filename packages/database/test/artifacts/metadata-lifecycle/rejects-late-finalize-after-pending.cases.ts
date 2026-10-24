@@ -10,7 +10,7 @@ import {
   completeArtifactRemoval,
   createPendingArtifact,
   finalizeArtifactUpload,
-} from '../../../src/artifacts/store.js';
+} from '../../../src/artifacts/repository.js';
 
 import {
   database,

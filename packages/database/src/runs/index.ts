@@ -75,7 +75,7 @@ export {
   ArtifactUploadIdempotencyConflictError,
   ArtifactUploadNotFoundError,
   createArtifactUploadDatabase,
-} from '../artifacts/upload.js';
+} from '../artifacts/uploads/repository.js';
 export type {
   ArtifactUploadActor,
   ArtifactUploadAuthorization,
@@ -84,7 +84,7 @@ export type {
   ArtifactUploadResult,
   BeginArtifactUploadInput,
   FinalizeArtifactUploadInput,
-} from '../artifacts/upload.js';
+} from '../artifacts/uploads/repository.js';
 export {
   artifactStorageKey,
   createPendingArtifact,
@@ -92,10 +92,10 @@ export {
   finalizeArtifactUpload,
   readArtifactCapacity,
   readExecutionStorageCapacity,
-} from '../artifacts/store.js';
-export type { ArtifactCapacityObservation } from '../artifacts/store.js';
-export { requireNodeArtifactReference } from '../artifacts/references.js';
-export { ArtifactMetadataNotFoundError } from '../artifacts/store.js';
+} from '../artifacts/repository.js';
+export type { ArtifactCapacityObservation } from '../artifacts/repository.js';
+export { requireNodeArtifactReference } from '../artifacts/references/repository.js';
+export { ArtifactMetadataNotFoundError } from '../artifacts/repository.js';
 
 export { createWorkflowCallStore } from './calls/store.js';
 export { WorkflowCallRefusedError } from './calls/contract.js';

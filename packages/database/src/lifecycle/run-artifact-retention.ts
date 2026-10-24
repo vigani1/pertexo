@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { bindResourcePredicate } from '../tenant-access/resources/query-scope.js';
-import { artifactReferenceOwnersSql } from '../artifacts/reference-owners.js';
+import { artifactReferenceOwnersSql } from '../artifacts/references/owners.queries.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 

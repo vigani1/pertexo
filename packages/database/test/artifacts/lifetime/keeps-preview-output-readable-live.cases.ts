@@ -3,8 +3,8 @@ import { expect, it } from 'vitest';
 import {
   lockArtifactReferences,
   requireNodeArtifactReference,
-} from '../../../src/artifacts/references.js';
-import { ArtifactMetadataNotFoundError } from '../../../src/artifacts/store.js';
+} from '../../../src/artifacts/references/repository.js';
+import { ArtifactMetadataNotFoundError } from '../../../src/artifacts/repository.js';
 import {
   withTenantScopedClient,
   withWorkspaceTransaction,

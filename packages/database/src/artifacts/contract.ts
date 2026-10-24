@@ -5,7 +5,7 @@ import {
   artifactByteLengthSchema,
   artifactMediaTypeSchema,
   artifactSha256Schema,
-} from './metadata-contract.js';
+} from './metadata/contract.js';
 
 export const ARTIFACT_STATUS = {
   available: 'available',

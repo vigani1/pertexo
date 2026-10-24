@@ -39,7 +39,7 @@ export {
   finalizeArtifactUpload,
   readArtifactCapacity,
   readExecutionStorageCapacity,
-} from './artifacts/store.js';
+} from './artifacts/repository.js';
 export {
   ARTIFACT_UPLOAD_PENDING_MS,
   ARTIFACT_UPLOAD_PURPOSE,
@@ -48,7 +48,7 @@ export {
   ArtifactUploadIdempotencyConflictError,
   ArtifactUploadNotFoundError,
   createArtifactUploadDatabase,
-} from './artifacts/upload.js';
+} from './artifacts/uploads/repository.js';
 export type {
   ArtifactUploadDatabase,
   ArtifactUploadActor,
@@ -57,7 +57,7 @@ export type {
   ArtifactUploadResult,
   BeginArtifactUploadInput,
   FinalizeArtifactUploadInput,
-} from './artifacts/upload.js';
+} from './artifacts/uploads/repository.js';
 export type {
   ArtifactCapacityObservation,
   ExecutionStorageObservation,
@@ -69,7 +69,7 @@ export type {
   CreatePendingArtifactInput,
   CreatePendingPreviewArtifactInput,
   FinalizeArtifactInput,
-} from './artifacts/store.js';
+} from './artifacts/repository.js';
 export {
   acceptWorkflowRun,
   IDEMPOTENCY_STATUS,

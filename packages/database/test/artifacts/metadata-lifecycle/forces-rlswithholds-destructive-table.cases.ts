@@ -7,7 +7,7 @@ import {
   createPendingArtifact,
   finalizeArtifactUpload,
   readArtifactCapacity,
-} from '../../../src/artifacts/store.js';
+} from '../../../src/artifacts/repository.js';
 
 import { artifacts } from '../../../src/schema.js';
 
