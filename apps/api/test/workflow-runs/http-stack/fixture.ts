@@ -1,7 +1,7 @@
+import { runPersistenceSpies } from '../../support/run-ports.js';
 import type { Role } from '@pertexo/workflow-model';
 
 import type { ApiIdentityRuntime } from '../../../src/platform/identity/identity-runtime.module.js';
-import type { WorkflowRunPersistence } from '../../../src/workflow-runs/ports.js';
 
 import { vi } from 'vitest';
 import { createApiApplication } from '../../../src/app.js';
@@ -51,61 +51,8 @@ function identityRuntime(
 }
 
 function persistenceFixture() {
-  const start = vi.fn<WorkflowRunPersistence['start']>();
-  const replay = vi.fn<WorkflowRunPersistence['replay']>();
-  const recovery = vi.fn<WorkflowRunPersistence['recovery']>();
-  const recover = vi.fn<WorkflowRunPersistence['recover']>();
-  const get = vi.fn<WorkflowRunPersistence['get']>();
-  const list = vi.fn<WorkflowRunPersistence['list']>();
-  const statistics = vi.fn<WorkflowRunPersistence['statistics']>();
-  const usageCapacity = vi.fn<WorkflowRunPersistence['usageCapacity']>();
-  const usageTrends = vi.fn<WorkflowRunPersistence['usageTrends']>();
-  const cancel = vi.fn<WorkflowRunPersistence['cancel']>();
-  const readInput = vi.fn<WorkflowRunPersistence['readInput']>();
-  const readNodeRunOutput =
-    vi.fn<WorkflowRunPersistence['readNodeRunOutput']>();
-  const readNodeRunInput = vi.fn<WorkflowRunPersistence['readNodeRunInput']>();
-  const stepHealth = vi.fn<WorkflowRunPersistence['stepHealth']>();
-  const stepRuns = vi.fn<WorkflowRunPersistence['stepRuns']>();
-  return {
-    canRead: () => Promise.resolve(true),
-    persistence: {
-      canRead: () => Promise.resolve(true),
-      start,
-      replay,
-      recovery,
-      recover,
-      get,
-      list,
-      statistics,
-      usageCapacity,
-      usageTrends,
-      cancel,
-      readVariables: () => Promise.resolve({ revision: 0, values: {} }),
-      readInput,
-      readNodeRunDiagnostics: () => Promise.resolve(undefined),
-      readNodeRunOutput,
-      readNodeRunInput,
-      stepHealth,
-      stepRuns,
-    } satisfies WorkflowRunPersistence,
-    start,
-    replay,
-    recovery,
-    recover,
-    get,
-    list,
-    statistics,
-    usageCapacity,
-    usageTrends,
-    cancel,
-    readInput,
-    readNodeRunDiagnostics: () => Promise.resolve(undefined),
-    readNodeRunOutput,
-    readNodeRunInput,
-    stepHealth,
-    stepRuns,
-  };
+  const persistence = runPersistenceSpies();
+  return { persistence, ...persistence };
 }
 
 export const authHeaders = {
