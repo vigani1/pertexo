@@ -187,32 +187,12 @@ export function useWebhookCommand({
     setPending({ triggerId: attempt.triggerId, command: attempt.command });
     setError(undefined);
     try {
-      let input: Parameters<typeof commandWebhook>[0]['input'];
-      if (attempt.command === 'authentication') {
-        if (attempt.authentication === undefined)
-          throw new Error('Webhook authentication intent is missing');
-        input = {
-          command: attempt.command,
-          authentication: attempt.authentication,
-          idempotencyKey: attempt.idempotencyKey,
-        };
-      } else if (attempt.command === 'rotate-secret') {
-        input = {
-          command: attempt.command,
-          endpointKey: attempt.endpointKey,
-          idempotencyKey: attempt.idempotencyKey,
-        };
-      } else
-        input = {
-          command: attempt.command,
-          idempotencyKey: attempt.idempotencyKey,
-        };
       const response = await commandWebhook({
         apiClient,
         workspaceId,
         workflowId,
         triggerId: attempt.triggerId,
-        input,
+        input: webhookCommandInput(attempt),
       });
       commands.complete(scope, attempt.intent);
       unresolvedAttemptRef.current = undefined;
@@ -290,5 +270,30 @@ export function useWebhookCommand({
     execute,
     retryUncertain,
     acknowledgeCredentials,
+  };
+}
+
+function webhookCommandInput(
+  attempt: WebhookCommandAttempt,
+): Parameters<typeof commandWebhook>[0]['input'] {
+  if (attempt.command === 'authentication') {
+    if (attempt.authentication === undefined)
+      throw new Error('Webhook authentication intent is missing');
+    return {
+      command: attempt.command,
+      authentication: attempt.authentication,
+      idempotencyKey: attempt.idempotencyKey,
+    };
+  }
+  if (attempt.command === 'rotate-secret') {
+    return {
+      command: attempt.command,
+      endpointKey: attempt.endpointKey,
+      idempotencyKey: attempt.idempotencyKey,
+    };
+  }
+  return {
+    command: attempt.command,
+    idempotencyKey: attempt.idempotencyKey,
   };
 }

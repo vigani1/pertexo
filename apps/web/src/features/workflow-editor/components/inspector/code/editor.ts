@@ -1,3 +1,4 @@
+import type * as CodeMirrorLanguage from '@codemirror/language';
 import { codeTheme, codeSyntaxStyles } from './theme';
 import {
   CODE_LIMITS,
@@ -51,29 +52,7 @@ export async function createCodeEditor(
   const syntaxFor = (chosen: CodeLanguage) =>
     chosen === 'python' ? python.python() : javascript.javascript();
   const inspect = (document: CodeEditorState, chosen: CodeLanguage) => {
-    const source = document.doc.toString();
-    if (chosen === 'python' && source.length <= CODE_LIMITS.sourceBytes) {
-      // Reuse CodeMirror's incremental grammar and keep typing work bounded.
-      const tree = language.ensureSyntaxTree(document, document.doc.length, 50);
-      const cursor = tree?.cursor();
-      if (cursor === undefined) {
-        reportSyntax(source, undefined);
-        return;
-      }
-      do {
-        if (!cursor.type.isError) continue;
-        const position = Math.min(cursor.from, document.doc.length);
-        const line = document.doc.lineAt(position);
-        reportSyntax(source, {
-          message:
-            'Check Python syntax here. Preview gives the compiler’s precise error.',
-          line: line.number,
-          column: position - line.from + 1,
-        });
-        return;
-      } while (cursor.next());
-    }
-    reportSyntax(source, undefined);
+    inspectCodeSyntax(language, document, chosen, reportSyntax);
   };
   const controlOptions = (props: CodeFieldProps) => [
     EditorState.readOnly.of(!props.editable),
@@ -171,4 +150,35 @@ export async function createCodeEditor(
       current = next;
     },
   };
+}
+
+function inspectCodeSyntax(
+  language: typeof CodeMirrorLanguage,
+  document: CodeEditorState,
+  chosen: CodeLanguage,
+  reportSyntax: (source: string, issue: CodeSyntaxIssue | undefined) => void,
+) {
+  const source = document.doc.toString();
+  if (chosen === 'python' && source.length <= CODE_LIMITS.sourceBytes) {
+    // Reuse CodeMirror's incremental grammar and keep typing work bounded.
+    const tree = language.ensureSyntaxTree(document, document.doc.length, 50);
+    const cursor = tree?.cursor();
+    if (cursor === undefined) {
+      reportSyntax(source, undefined);
+      return;
+    }
+    do {
+      if (!cursor.type.isError) continue;
+      const position = Math.min(cursor.from, document.doc.length);
+      const line = document.doc.lineAt(position);
+      reportSyntax(source, {
+        message:
+          'Check Python syntax here. Preview gives the compiler’s precise error.',
+        line: line.number,
+        column: position - line.from + 1,
+      });
+      return;
+    } while (cursor.next());
+  }
+  reportSyntax(source, undefined);
 }
