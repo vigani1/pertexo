@@ -47,7 +47,6 @@ export function UtilitySetup({
       <Field>
         <FieldLabel htmlFor={id}>Operation</FieldLabel>
         <ChoiceSelect
-          id={id}
           value={typeof config.operation === 'string' ? config.operation : null}
           disabled={!form.editable || hasScratch}
           choices={(fields.operation.options ?? []).map((value) => ({
@@ -63,6 +62,7 @@ export function UtilitySetup({
                 `${form.nodeId}:config:operation:${operation}`,
               );
           }}
+          control={{ id: id }}
         />
         <FieldDescription>{help[definitionKey]}</FieldDescription>
       </Field>

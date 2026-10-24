@@ -43,15 +43,18 @@ export function WorkspaceSurface({
       overlays={overlays}
       samples={samples.isError ? undefined : samples.data?.items}
       containerRef={canvasRef}
-      onSelectNodes={selection.selectNodes}
-      onRemoveEdge={selection.removeEdge}
-      onDropStep={adding.placement.addAt}
-      onPortDrop={adding.quickAdd.openAtDrop}
-      onAddToBody={adding.addToBody}
-      onOpenStep={() => {
-        // The first tap already selected it; this only brings its panel
-        // up where panels fold away, and leaves the tab as it was.
-        onOpenInspector();
+
+      actions={{
+        onSelectNodes: selection.selectNodes,
+        onRemoveEdge: selection.removeEdge,
+        onDropStep: adding.placement.addAt,
+        onPortDrop: adding.quickAdd.openAtDrop,
+        onAddToBody: adding.addToBody,
+        onOpenStep: () => {
+          // The first tap already selected it; this only brings its panel
+          // up where panels fold away, and leaves the tab as it was.
+          onOpenInspector();
+        },
       }}
     >
       <StartPicker

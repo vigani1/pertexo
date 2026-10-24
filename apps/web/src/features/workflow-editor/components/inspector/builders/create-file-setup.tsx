@@ -31,7 +31,6 @@ export function CreateFileSetup({
       <Field>
         <FieldLabel htmlFor={id}>File format</FieldLabel>
         <ChoiceSelect
-          id={id}
           value={typeof config.format === 'string' ? config.format : null}
           disabled={!form.editable || hasScratch}
           choices={[
@@ -63,6 +62,7 @@ export function CreateFileSetup({
               `${form.nodeId}:config:format:${format}`,
             );
           }}
+          control={{ id: id }}
         />
         <FieldDescription>
           {formatGuidance({ hasScratch, inputMode: config.inputMode })}
@@ -74,7 +74,6 @@ export function CreateFileSetup({
             Data source
           </FieldLabel>
           <ChoiceSelect
-            id={fieldControlId(form.nodeId, 'input-mode')}
             value={config.inputMode === 'pages' ? 'pages' : 'inline'}
             disabled={!form.editable || hasScratch}
             choices={[
@@ -94,6 +93,7 @@ export function CreateFileSetup({
                 `${form.nodeId}:config:inputMode`,
               );
             }}
+            control={{ id: fieldControlId(form.nodeId, 'input-mode') }}
           />
           <FieldDescription>
             From pages reads the ordered page references on Inputs. CSV needs

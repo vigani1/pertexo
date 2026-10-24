@@ -173,7 +173,6 @@ function LinkStepForm({
           Link from step
         </FieldLabel>
         <ChoiceSelect
-          id={`link-source-${nodeId}`}
           value={sourceId}
           disabled={false}
           choices={[
@@ -187,13 +186,13 @@ function LinkStepForm({
             setSourceId(next);
             setSourcePort(null);
           }}
+          control={{ id: `link-source-${nodeId}` }}
         />
       </Field>
       <div className="grid grid-cols-2 gap-2">
         <Field>
           <FieldLabel htmlFor={`link-output-${nodeId}`}>From output</FieldLabel>
           <ChoiceSelect
-            id={`link-output-${nodeId}`}
             value={sourcePort}
             disabled={!sourceAvailable}
             choices={[
@@ -201,12 +200,12 @@ function LinkStepForm({
               ...sourcePorts.map((port) => ({ value: port, label: port })),
             ]}
             onChange={setSourcePort}
+            control={{ id: `link-output-${nodeId}` }}
           />
         </Field>
         <Field>
           <FieldLabel htmlFor={`link-input-${nodeId}`}>Into input</FieldLabel>
           <ChoiceSelect
-            id={`link-input-${nodeId}`}
             value={targetPort}
             disabled={false}
             choices={[
@@ -214,6 +213,7 @@ function LinkStepForm({
               ...targetPorts.map((port) => ({ value: port, label: port })),
             ]}
             onChange={setTargetPort}
+            control={{ id: `link-input-${nodeId}` }}
           />
         </Field>
       </div>

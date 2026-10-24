@@ -93,8 +93,6 @@ export function CallTargetField({
         >
           {(control) => (
             <ChoiceSelect
-              {...control}
-              describedBy={control['aria-describedby']}
               value={selectedVersionId}
               disabled={!form.editable || versions.isPending}
               onChange={chooseVersion}
@@ -105,6 +103,7 @@ export function CallTargetField({
                   label: `Version ${String(version.versionNumber)}`,
                 })),
               ]}
+              control={{ ...control, describedBy: control['aria-describedby'] }}
             />
           )}
         </LabelledField>
@@ -212,8 +211,6 @@ function ChildWorkflowField({
       >
         {(control) => (
           <ChoiceSelect
-            {...control}
-            describedBy={control['aria-describedby']}
             value={targetId}
             disabled={!editable || workflows.isPending}
             choices={[
@@ -225,6 +222,7 @@ function ChildWorkflowField({
               })),
             ]}
             onChange={onChange}
+            control={{ ...control, describedBy: control['aria-describedby'] }}
           />
         )}
       </LabelledField>

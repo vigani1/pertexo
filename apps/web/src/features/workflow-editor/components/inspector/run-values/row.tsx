@@ -73,11 +73,8 @@ export function RunValueRow({
         }}
       />
       <MappingValueEditor
-        nodeId={form.nodeId}
         row={row}
-        graph={graph}
-        predecessors={directPredecessorOptions(graph, form.nodeId)}
-        loopPorts={[]}
+
         type="string"
         error={undefined}
         disabled={!form.editable}
@@ -89,6 +86,12 @@ export function RunValueRow({
           'expression',
         ]}
         onChange={onChange}
+        context={{
+          nodeId: form.nodeId,
+          graph: graph,
+          predecessors: directPredecessorOptions(graph, form.nodeId),
+          loopPorts: [],
+        }}
       />
     </section>
   );

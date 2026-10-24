@@ -121,7 +121,6 @@ export function MappingSourceEditor({
         <Field data-invalid={error !== undefined}>
           <FieldLabel htmlFor={controlId}>Safe failure field</FieldLabel>
           <ChoiceSelect
-            id={controlId}
             value={row.path}
             choices={[
               { value: '$', label: 'All safe fields' },
@@ -131,10 +130,14 @@ export function MappingSourceEditor({
               })),
             ]}
             disabled={disabled}
-            invalid={error !== undefined}
-            describedBy={`${controlId}-hint${error === undefined ? '' : ` ${errorId}`}`}
+
             onChange={(path) => {
               if (path !== null) onChange({ ...row, path });
+            }}
+            control={{
+              id: controlId,
+              invalid: error !== undefined,
+              describedBy: `${controlId}-hint${error === undefined ? '' : ` ${errorId}`}`,
             }}
           />
           <FieldDescription id={`${controlId}-hint`}>
@@ -185,10 +188,9 @@ function StepOutputSource({
       <Field data-invalid={stepInvalid}>
         <FieldLabel htmlFor={`${controlId}-node`}>Source step</FieldLabel>
         <ChoiceSelect
-          id={`${controlId}-node`}
           value={row.nodeId === '' ? null : row.nodeId}
           disabled={disabled}
-          invalid={stepInvalid}
+
           {...(stepInvalid ? { describedBy: errorId } : {})}
           choices={[
             { value: null, label: 'Choose a linked step' },
@@ -209,6 +211,7 @@ function StepOutputSource({
           onChange={(nodeId) => {
             onChange({ ...row, nodeId: nodeId ?? '' });
           }}
+          control={{ id: `${controlId}-node`, invalid: stepInvalid }}
         />
         {predecessors.length === 0 ? (
           <FieldDescription>
@@ -262,10 +265,9 @@ function LoopItemSource({
       <Field data-invalid={portInvalid}>
         <FieldLabel htmlFor={`${controlId}-port`}>Read</FieldLabel>
         <ChoiceSelect
-          id={`${controlId}-port`}
           value={row.port}
           disabled={disabled}
-          invalid={portInvalid}
+
           {...(portInvalid ? { describedBy: errorId } : {})}
           choices={ports.map((port) => ({
             value: port,
@@ -274,6 +276,7 @@ function LoopItemSource({
           onChange={(port) => {
             if (port !== null) onChange({ ...row, port });
           }}
+          control={{ id: `${controlId}-port`, invalid: portInvalid }}
         />
         {portInvalid ? <FieldError id={errorId}>{error}</FieldError> : null}
       </Field>

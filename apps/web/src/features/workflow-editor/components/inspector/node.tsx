@@ -79,14 +79,7 @@ export function NodeInspector({
 }: NodeInspectorProps) {
   const { editable, tab, onTabChange, focusTarget } = view;
   const { testPanel, runsPanel, failureSetup } = panels;
-  const {
-    definitions,
-    codeSettings,
-    connections,
-    channelLookup,
-    callScope,
-    workspaceScope,
-  } = useInspectorSession();
+  const { definitions, channelLookup } = useInspectorSession();
   const definition = findDefinition(definitions, node);
   const store = useEditorStoreApi();
   const scratch = useEditorStore((state) => state.inspectorScratch);
@@ -158,12 +151,10 @@ export function NodeInspector({
                 />
               ) : null}
               <SetupTab
-                definitions={definitions}
-                codeSettings={codeSettings}
                 node={node}
-                callScope={callScope}
+
                 definition={definition}
-                connections={connections}
+
                 form={form}
                 graph={graph}
                 onOpenInputs={() => {
@@ -182,12 +173,11 @@ export function NodeInspector({
           </TabsContent>
           <TabsContent value="inputs" keepMounted>
             <InputsTab
-              workspaceScope={workspaceScope}
               node={node}
               graph={graph}
               loopPorts={loopPorts}
               definition={definition}
-              definitions={definitions}
+
               form={form}
               focusTarget={focusTarget}
               onConnect={actions.onConnect}

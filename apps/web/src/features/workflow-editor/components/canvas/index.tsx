@@ -66,15 +66,17 @@ type WorkflowCanvasProps = Readonly<{
   overlays: CanvasOverlays;
   samples?: readonly StepSampleMetadata[] | undefined;
   containerRef: RefObject<HTMLDivElement | null>;
-  onSelectNodes: (nodeIds: readonly string[]) => void;
-  onRemoveEdge: (edgeId: string) => void;
-  onDropStep: (identity: string, position: Position) => void;
-  /** A link from `from` ended over empty canvas at `point`. */
-  onPortDrop: (from: PortRef, point: Position) => void;
-  onAddToBody: (loopId: string, opener: HTMLElement) => void;
-  /** A step was double-clicked or double-tapped: show it in its panel. */
-  onOpenStep: (nodeId: string) => void;
   children?: ReactNode;
+  actions: Readonly<{
+    onSelectNodes: (nodeIds: readonly string[]) => void;
+    onRemoveEdge: (edgeId: string) => void;
+    onDropStep: (identity: string, position: Position) => void;
+    /** A link from `from` ended over empty canvas at `point`. */
+    onPortDrop: (from: PortRef, point: Position) => void;
+    onAddToBody: (loopId: string, opener: HTMLElement) => void;
+    /** A step was double-clicked or double-tapped: show it in its panel. */
+    onOpenStep: (nodeId: string) => void;
+  }>;
 }>;
 
 export function WorkflowCanvas(props: WorkflowCanvasProps) {
@@ -172,14 +174,18 @@ function useCanvasInteraction({
   overlays,
   samples,
   containerRef,
-  onSelectNodes,
-  onRemoveEdge,
-  onDropStep,
-  onPortDrop,
-  onAddToBody,
-  onOpenStep,
   children,
+  actions: commands,
 }: WorkflowCanvasProps) {
+  const {
+    onSelectNodes,
+    onRemoveEdge,
+    onDropStep,
+    onPortDrop,
+    onAddToBody,
+    onOpenStep,
+  } = commands;
+
   // Timed by hand: a phone's double tap doesn't reliably fire dblclick.
   const { theme } = useAppearance();
   const lastTap = useRef<Readonly<{ id: string; at: number }>>(undefined);

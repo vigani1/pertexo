@@ -1,5 +1,5 @@
 import { createRef, useState, type Ref } from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ChoiceSelect } from '@/features/workflow-editor/components/inspector/fields/choice-select';
@@ -19,11 +19,6 @@ function ChoiceHarness({
       <label htmlFor="destination">Destination</label>
       <p id="destination-hint">Choose where the step sends its output.</p>
       <ChoiceSelect
-        id="destination"
-        name="destination"
-        ref={inputRef}
-        invalid
-        describedBy="destination-hint"
         value={value}
         choices={[
           { value: null, label: 'No source' },
@@ -34,6 +29,13 @@ function ChoiceHarness({
         onChange={(next) => {
           setValue(next);
           onChange(next);
+        }}
+        control={{
+          id: 'destination',
+          name: 'destination',
+          ref: inputRef,
+          invalid: true,
+          describedBy: 'destination-hint',
         }}
       />
     </form>
@@ -63,12 +65,25 @@ describe('inspector choice control', () => {
     render(<ChoiceHarness onChange={onChange} />);
     const control = screen.getByRole('combobox', { name: 'Destination' });
     await user.click(control);
-    await user.keyboard('{End}{Enter}');
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: 'Alpha' })).toHaveFocus();
+    });
+    await user.keyboard('{End}');
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: 'Beta' })).toHaveFocus();
+    });
+    await user.keyboard('{Enter}');
     expect(onChange).toHaveBeenLastCalledWith('beta');
     expect(control).toHaveTextContent('Beta');
     await user.keyboard('{ArrowDown}');
-    await screen.findByRole('option', { name: 'No source' });
-    await user.keyboard('{Home}{Enter}');
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: 'Beta' })).toHaveFocus();
+    });
+    await user.keyboard('{Home}');
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: 'No source' })).toHaveFocus();
+    });
+    await user.keyboard('{Enter}');
     expect(onChange).toHaveBeenLastCalledWith(null);
   });
 

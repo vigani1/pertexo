@@ -1,13 +1,11 @@
+import { useInspectorSession } from '../../../hooks/use-inspector-session';
 import { RunValuesSetup } from '../run-values/setup';
 import { useScratchForm } from '../use-draft-field';
 import { StepRetrySetup } from '../retries/setup';
-import type { CodeSettings } from '@pertexo/node-sdk';
+
 import { CallTargetField } from '../fields/call-target';
-import type { CallTargetScope } from '../../../data/call-targets.queries';
-import type {
-  NodeDefinitionCatalogItem,
-  ConnectionResponse,
-} from '@pertexo/contracts';
+
+import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import { BracesIcon, ListIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -27,8 +25,6 @@ import type { NodeFormApi } from '../../../model/inspector/node-form';
 import type { WorkflowNode } from './setup-controls';
 import { SetupControls } from './setup-controls';
 
-const EMPTY_DEFINITIONS: readonly NodeDefinitionCatalogItem[] = [];
-
 const SCHEDULE_KEY = 'core.schedule';
 
 /**
@@ -37,17 +33,13 @@ const SCHEDULE_KEY = 'core.schedule';
  * model. Nothing a schema allows is dropped.
  */
 type SetupTabProps = Readonly<{
-  definitions?: readonly NodeDefinitionCatalogItem[];
-  codeSettings?: CodeSettings | undefined;
   node: WorkflowNode;
   definition: NodeDefinitionCatalogItem | undefined;
-  connections: readonly ConnectionResponse[];
   form: NodeFormApi;
   /** The steps around this one and their links. */
   graph: GraphLevel;
   /** Shows the Inputs tab, where a step with no setup is decided. */
   onOpenInputs: () => void;
-  callScope?: CallTargetScope;
 }>;
 
 export function SetupTab(props: SetupTabProps) {
@@ -60,16 +52,13 @@ export function SetupTab(props: SetupTabProps) {
 }
 
 function CatalogSetupTab({
-  definitions = EMPTY_DEFINITIONS,
-  codeSettings,
   node,
   definition,
-  connections,
   form,
   graph,
   onOpenInputs,
-  callScope,
 }: SetupTabProps) {
+  const { connections } = useInspectorSession();
   const fields = useMemo(
     () =>
       withStepChoices(
@@ -117,14 +106,11 @@ function CatalogSetupTab({
       ))}
       <CatalogFields
         context={{
-          definitions,
-          codeSettings,
           node,
           definition,
           form: setupForm,
           graph,
           onOpenInputs,
-          ...(callScope === undefined ? {} : { callScope }),
         }}
         fields={fields}
         scheduleSchema={scheduleSchema}
@@ -211,26 +197,24 @@ function withStepChoices(
 }
 
 function PrimarySetup(props: SetupTabProps) {
+  const { definitions, callScope } = useInspectorSession();
   if (props.node.definition.key === 'core.run_values')
     return (
       <RunValuesSetup
+        definitions={definitions}
         node={props.node}
         graph={props.graph}
-        definitions={props.definitions ?? EMPTY_DEFINITIONS}
         form={props.form}
-        variableScope={props.callScope}
+        variableScope={callScope}
       />
     );
-  if (
-    props.node.definition.key === 'core.call' &&
-    props.callScope !== undefined
-  )
+  if (props.node.definition.key === 'core.call')
     return (
       <FieldGroup className="gap-4">
         <CallTargetField
           node={props.node}
           form={props.form}
-          scope={props.callScope}
+          scope={callScope}
         />
       </FieldGroup>
     );
@@ -243,21 +227,12 @@ function CatalogFields({
   scheduleSchema,
   mode,
 }: Readonly<{
-  context: Omit<SetupTabProps, 'connections'>;
+  context: SetupTabProps;
   fields: ReturnType<typeof schemaFields>;
   scheduleSchema: ReturnType<typeof readScheduleSchema>;
   mode: Readonly<{ nothingToSet: boolean; showJson: boolean }>;
 }>) {
-  const {
-    definitions = EMPTY_DEFINITIONS,
-    codeSettings,
-    node,
-    definition,
-    form,
-    graph,
-    onOpenInputs,
-    callScope,
-  } = context;
+  const { node, definition, form, graph, onOpenInputs } = context;
   if (mode.nothingToSet)
     return (
       <div className="flex flex-col items-start gap-1.5 text-sm text-muted-foreground">
@@ -283,9 +258,6 @@ function CatalogFields({
     );
   return (
     <SetupControls
-      definitions={definitions}
-      codeSettings={codeSettings}
-      {...(callScope === undefined ? {} : { callScope })}
       node={node}
       graph={graph}
       configSchema={definition.configSchema}

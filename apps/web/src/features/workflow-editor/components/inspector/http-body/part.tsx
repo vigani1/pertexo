@@ -7,40 +7,49 @@ import type {
   FormPartDraft,
   PartErrors,
 } from '../../../model/inspector/http-body';
-import type { GraphLevel } from '../../../model/graph/scopes';
+
 import { directPredecessorOptions } from '../../../model/inspector/input-mappings/draft';
 import { ChoiceSelect } from '../fields/choice-select';
-import { MappingValueEditor } from '../input-mappings/value-editor';
+import {
+  MappingValueEditor,
+  type MappingSources,
+} from '../input-mappings/value-editor';
 
 export function FormPart({
   part,
-  index,
-  count,
-  graph,
-  nodeId,
-  loopPorts,
-  scope,
   editable,
   errors,
-  targetKey,
-  onChange,
-  onMove,
-  onRemove,
+  context,
+  upload,
+  position,
+  actions,
 }: Readonly<{
   part: FormPartDraft;
-  index: number;
-  count: number;
-  graph: GraphLevel;
-  nodeId: string;
-  loopPorts: readonly string[];
-  scope: FileUploadScope | undefined;
   editable: boolean;
   errors: PartErrors | undefined;
-  targetKey: string;
-  onChange: (part: FormPartDraft, field: string) => string | undefined;
-  onMove: (direction: -1 | 1) => void;
-  onRemove: () => void;
+  context: Omit<MappingSources, 'predecessors'>;
+  upload: Readonly<{
+    scope: FileUploadScope | undefined;
+    targetKey: string;
+  }>;
+  position: Readonly<{
+    index: number;
+    count: number;
+  }>;
+  actions: Readonly<{
+    onChange: (part: FormPartDraft, field: string) => string | undefined;
+    onMove: (direction: -1 | 1) => void;
+    onRemove: () => void;
+  }>;
 }>) {
+  const { graph, nodeId, loopPorts } = context;
+
+  const { scope, targetKey } = upload;
+
+  const { index, count } = position;
+
+  const { onChange, onMove, onRemove } = actions;
+
   const prefix = `${nodeId}-${part.inputKey}`;
   return (
     <fieldset className="flex min-w-0 flex-col gap-3 rounded-lg border border-surface-ink/10 bg-recess-ink/15 p-3">
@@ -74,7 +83,7 @@ export function FormPart({
       <LabelledField id={`${prefix}-kind`} label="Part value">
         {(control) => (
           <ChoiceSelect
-            {...control}
+            control={control}
             value={part.kind}
             disabled={!editable}
             choices={[
@@ -101,16 +110,19 @@ export function FormPart({
         )}
       </LabelledField>
       <MappingValueEditor
-        nodeId={nodeId}
         row={part.source}
-        graph={graph}
-        predecessors={directPredecessorOptions(graph, nodeId)}
-        loopPorts={loopPorts}
+
         type={part.kind === 'text' ? 'string' : 'object'}
         error={errors?.source}
         disabled={!editable}
         onChange={(source) => {
           onChange({ ...part, source }, 'source');
+        }}
+        context={{
+          nodeId: nodeId,
+          graph: graph,
+          predecessors: directPredecessorOptions(graph, nodeId),
+          loopPorts: loopPorts,
         }}
       />
       {part.kind === 'file' && scope !== undefined ? (

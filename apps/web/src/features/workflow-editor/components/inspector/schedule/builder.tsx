@@ -124,7 +124,6 @@ export function ScheduleBuilder({
       <LabelledField id={fieldControlId(form.nodeId, 'kind')} label="Runs">
         {(control) => (
           <ChoiceSelect
-            id={control.id}
             value={draft.mode}
             disabled={!form.editable}
             choices={modes.map(({ mode, label }) => ({ value: mode, label }))}
@@ -139,6 +138,7 @@ export function ScheduleBuilder({
                 expression: expression ?? draft.expression,
               });
             }}
+            control={{ id: control.id }}
           />
         )}
       </LabelledField>

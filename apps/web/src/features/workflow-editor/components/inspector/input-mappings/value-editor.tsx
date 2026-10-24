@@ -26,29 +26,32 @@ const loopItemKind: KindOption = {
   label: 'Loop item',
 };
 
+export type MappingSources = Readonly<{
+  nodeId: string;
+  graph: GraphLevel;
+  predecessors: readonly PredecessorOption[];
+  loopPorts: readonly string[];
+}>;
+
 export function MappingValueEditor({
-  nodeId,
   row,
-  graph,
-  predecessors,
-  loopPorts,
   type,
   error,
   disabled,
   onChange,
   allowedKinds,
+  context,
 }: Readonly<{
   allowedKinds?: readonly EditableInputMappingKind[];
-  nodeId: string;
   row: InputMappingDraftRow;
-  graph: GraphLevel;
-  predecessors: readonly PredecessorOption[];
-  loopPorts: readonly string[];
   type: SchemaValueType | undefined;
   error: string | undefined;
   disabled: boolean;
   onChange: (row: InputMappingDraftRow) => void;
+  context: MappingSources;
 }>) {
+  const { nodeId, graph, predecessors, loopPorts } = context;
+
   const failureSource = graph.edges.find(
     (edge) =>
       edge.target.nodeId === nodeId &&

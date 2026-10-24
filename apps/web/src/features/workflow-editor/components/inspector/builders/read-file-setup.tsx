@@ -18,7 +18,6 @@ export function ReadFileSetup({
       <Field>
         <FieldLabel htmlFor={id}>File format</FieldLabel>
         <ChoiceSelect
-          id={id}
           value={typeof config.format === 'string' ? config.format : null}
           disabled={!form.editable}
           choices={[
@@ -49,6 +48,7 @@ export function ReadFileSetup({
               `${form.nodeId}:config:format:${format}`,
             );
           }}
+          control={{ id: id }}
         />
         <FieldDescription>
           CSV or JSON, saved as UTF-8. For files over 1 MB, use pages; split
@@ -60,7 +60,6 @@ export function ReadFileSetup({
           Output
         </FieldLabel>
         <ChoiceSelect
-          id={fieldControlId(form.nodeId, 'output-mode')}
           value={config.outputMode === 'pages' ? 'pages' : 'inline'}
           disabled={!form.editable}
           choices={[
@@ -80,6 +79,7 @@ export function ReadFileSetup({
               `${form.nodeId}:config:outputMode`,
             );
           }}
+          control={{ id: fieldControlId(form.nodeId, 'output-mode') }}
         />
         <FieldDescription>
           {config.outputMode === 'pages'

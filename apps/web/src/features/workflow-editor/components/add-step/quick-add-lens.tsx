@@ -124,7 +124,6 @@ function QuickAddContent({
             Link from
           </FieldLabel>
           <ChoiceSelect
-            id={portId}
             value={request.from.port}
             disabled={false}
             choices={request.outputs.map((port) => ({
@@ -134,6 +133,7 @@ function QuickAddContent({
             onChange={(port) => {
               if (port !== null) onPortChange(port);
             }}
+            control={{ id: portId }}
           />
         </div>
       ) : null}

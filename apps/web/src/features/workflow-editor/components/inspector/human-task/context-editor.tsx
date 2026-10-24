@@ -1,5 +1,5 @@
 import { ContextFieldRow } from './context-row';
-import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
+
 import type { VariablesScope } from '@/features/workspace-variables/picker.public';
 import jsonata from 'jsonata';
 import {
@@ -24,7 +24,6 @@ import {
 import { useInspectorDraftField } from '../use-draft-field';
 
 type Props = Readonly<{
-  definitions: readonly NodeDefinitionCatalogItem[];
   variableScope: VariablesScope;
   node: WorkflowNode;
   graph: GraphLevel;
@@ -76,7 +75,6 @@ function ContextFields(props: ContextFieldsProps) {
             fields={model.fields}
             graph={model.graph}
             form={model.form}
-            definitions={model.definitions}
             variableScope={model.variableScope}
             onChange={model.replace}
             onRemove={() => {
@@ -133,7 +131,6 @@ function useContextMappings({
   fields,
   source,
   initialRows,
-  definitions,
   variableScope,
 }: ContextFieldsProps) {
   const draft = useInspectorDraftField<
@@ -227,7 +224,6 @@ function useContextMappings({
     group,
     fields,
     graph,
-    definitions,
     variableScope,
     replace,
     available,

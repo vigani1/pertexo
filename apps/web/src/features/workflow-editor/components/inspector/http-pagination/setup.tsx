@@ -57,10 +57,9 @@ export function HttpPaginationSetup({
       <Field>
         <FieldLabel htmlFor={id}>Pagination mode</FieldLabel>
         <ChoiceSelect
-          id={id}
           value={mode}
           choices={paginationModes}
-          describedBy={modeHelpId}
+
           disabled={paginationSelectionBlocked}
           onChange={(next) => {
             if (next === null) return;
@@ -75,6 +74,7 @@ export function HttpPaginationSetup({
               `${form.nodeId}:pagination:mode`,
             );
           }}
+          control={{ id: id, describedBy: modeHelpId }}
         />
         <FieldDescription id={modeHelpId}>
           {value === undefined
@@ -136,14 +136,13 @@ function PaginationFields({
             Next link in
           </FieldLabel>
           <ChoiceSelect
-            id={fieldControlId(form.nodeId, 'pagination-source')}
             value={typeof source.kind === 'string' ? source.kind : null}
             choices={[
               { value: 'body', label: 'JSON response' },
               { value: 'link_header', label: 'Link header' },
             ]}
             disabled={!form.editable || hasScratch}
-            describedBy={modeHelpId}
+
             onChange={(kind) => {
               if (kind === null) return;
               form.commit(
@@ -156,6 +155,10 @@ function PaginationFields({
                 }),
                 `${form.nodeId}:pagination:source`,
               );
+            }}
+            control={{
+              id: fieldControlId(form.nodeId, 'pagination-source'),
+              describedBy: modeHelpId,
             }}
           />
         </Field>
@@ -176,7 +179,6 @@ function PaginationFields({
           Results
         </FieldLabel>
         <ChoiceSelect
-          id={fieldControlId(form.nodeId, 'pagination-output')}
           value={value.outputMode === 'pages' ? 'pages' : 'inline'}
           disabled={!form.editable || hasScratch}
           choices={[
@@ -196,6 +198,7 @@ function PaginationFields({
               `${form.nodeId}:pagination:outputMode`,
             );
           }}
+          control={{ id: fieldControlId(form.nodeId, 'pagination-output') }}
         />
         <FieldDescription>
           {value.outputMode === 'pages'
