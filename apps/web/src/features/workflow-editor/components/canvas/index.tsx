@@ -35,7 +35,11 @@ import {
   type WorkflowFlowEdge,
   type WorkflowFlowNode,
 } from '../../model/graph/adapter';
-import { linkWorkflowNodes, moveWorkflowNodes, type PortRef } from '../../model/graph/commands';
+import {
+  linkWorkflowNodes,
+  moveWorkflowNodes,
+  type PortRef,
+} from '../../model/graph/commands';
 import { useEditorStore, useEditorStoreApi } from '../../model/state/context';
 import { canLinkSteps } from '../../model/graph/scopes';
 import { gestureEndPoint, portDropSource } from '../../model/quick-add';

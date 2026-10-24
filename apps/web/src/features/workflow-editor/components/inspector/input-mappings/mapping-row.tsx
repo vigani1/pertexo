@@ -6,11 +6,11 @@ import { StatusGlyph } from '@/components/ui/status';
 import type { GraphLevel } from '../../../model/graph/scopes';
 import {
   inputMappingKeyControlId,
-  type InputKeySuggestion,
   type InputMappingDraftRow,
   type InputMappingRowErrors,
   type PredecessorOption,
 } from '../../../model/inspector/input-mappings/draft';
+import { type InputKeySuggestion } from '../../../model/inspector/input-mappings/schema';
 import { MappingValueEditor } from './value-editor';
 import { MappingSummary } from './mapping-summary';
 
