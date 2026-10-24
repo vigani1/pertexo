@@ -5,7 +5,6 @@ import { createOperatorRunReplayStore } from '../../../src/operator/replay/repos
 
 const mocks = vi.hoisted(() => ({
   acceptWorkflowRun: vi.fn(),
-  parsePublishedWorkflowRow: vi.fn(),
   close: vi.fn(),
   consumeInboxMessage: vi.fn(),
   createWorkspaceDatabase: vi.fn(),
@@ -21,10 +20,6 @@ vi.mock('../../../src/outbox/receipts.repository.js', () => ({
 
 vi.mock('../../../src/runs/commands/acceptance.repository.js', () => ({
   acceptWorkflowRun: mocks.acceptWorkflowRun,
-}));
-
-vi.mock('../../../src/runs/queries/execution/published.queries.js', () => ({
-  parsePublishedWorkflowRow: mocks.parsePublishedWorkflowRow,
 }));
 
 const config = {
@@ -70,6 +65,15 @@ export const evidencePayload = Object.freeze({
 
 const evidencePayloadChecksum = canonicalOutboxPayloadChecksum(evidencePayload);
 
+export const publishedVersion = {
+  id: workflowVersionId,
+  workspaceId,
+  workflowId,
+  versionNumber: 1,
+  checksum: `wf:sha256:${'2'.repeat(64)}`,
+  executableJson: { deliberately: 'shallow projection only' },
+};
+
 export function validResults(): {
   rows: Record<string, unknown>[];
   rowCount?: number;
@@ -99,7 +103,7 @@ export function validResults(): {
         },
       ],
     },
-    { rows: [{ id: workflowVersionId }] },
+    { rows: [publishedVersion] },
     // The request, then its command, settle.
     { rows: [{ commandId }] },
     { rows: [{ commandId }] },
@@ -107,11 +111,15 @@ export function validResults(): {
 }
 
 export function storeWith(results = validResults()) {
-  const query = vi.fn();
+  const query = vi.fn<() => Promise<Record<string, unknown>[]>>();
   for (const result of results) query.mockResolvedValueOnce(result.rows);
+  const where = () => {
+    const result = query();
+    return Object.assign(result, { limit: () => result });
+  };
   const db = {
     select: () => ({
-      from: () => ({ where: query, leftJoin: () => ({ where: query }) }),
+      from: () => ({ where, leftJoin: () => ({ where }) }),
     }),
     update: () => ({ set: () => ({ where: () => ({ returning: query }) }) }),
   };
@@ -206,7 +214,6 @@ export function reconciliationWith(
 export function beforeEachFixture1() {
   vi.clearAllMocks();
   mocks.close.mockResolvedValue(undefined);
-  mocks.parsePublishedWorkflowRow.mockReturnValue({ workflowId });
   mocks.acceptWorkflowRun.mockResolvedValue({ runId: randomUUID() });
 }
 

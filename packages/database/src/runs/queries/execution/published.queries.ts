@@ -19,45 +19,6 @@ const readInputSchema = z
   })
   .strict();
 
-const publishedRowSchema = z
-  .object({
-    checksum: z.string().regex(/^wf:sha256:[0-9a-f]{64}$/u),
-    executable_json: z.custom<Record<string, unknown>>(
-      (value) =>
-        value !== null && typeof value === 'object' && !Array.isArray(value),
-    ),
-    id: z.uuid(),
-    version_number: z.number().int().positive(),
-    workflow_id: z.uuid(),
-    workspace_id: z.uuid(),
-  })
-  .strict();
-
-export class PublishedWorkflowVersionCorruptError extends Error {
-  public override readonly name = 'PublishedWorkflowVersionCorruptError';
-
-  public constructor() {
-    super('Published workflow version violates its persistence invariant');
-  }
-}
-
-/** Reads a `workflow_versions` row; null when there is none. */
-export function parsePublishedWorkflowRow(
-  row: unknown,
-): PublishedWorkflow | null {
-  if (row === undefined) return null;
-  const parsed = publishedRowSchema.safeParse(row);
-  if (!parsed.success) throw new PublishedWorkflowVersionCorruptError();
-  return Object.freeze({
-    checksum: parsed.data.checksum,
-    executableJson: parsed.data.executable_json,
-    id: parsed.data.id,
-    versionNumber: parsed.data.version_number,
-    workflowId: parsed.data.workflow_id,
-    workspaceId: parsed.data.workspace_id,
-  });
-}
-
 export function createPublishedWorkflowReader(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,

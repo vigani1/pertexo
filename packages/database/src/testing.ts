@@ -149,10 +149,7 @@ export {
   RunEventGapError,
 } from './runs/state-errors.js';
 export { requestWorkflowRunCancellation } from './runs/commands/cancel.repository.js';
-export {
-  createPublishedWorkflowReader,
-  PublishedWorkflowVersionCorruptError,
-} from './runs/queries/execution/published.queries.js';
+export { createPublishedWorkflowReader } from './runs/queries/execution/published.queries.js';
 export type {
   PublishedWorkflowReader,
   PublishedWorkflow,
