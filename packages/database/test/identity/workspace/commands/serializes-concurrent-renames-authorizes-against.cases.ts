@@ -19,6 +19,54 @@ import {
 } from '../fixture.js';
 
 export function registerSerializesConcurrentRenamesAuthorizesAgainst(): void {
+  it('keeps stored display text normalization from changing rename revisions', async () => {
+    const user = await identityDatabase.createUser({
+      email: `${randomUUID()}@example.test`,
+      displayName: 'Stored profile',
+    });
+    const target = await identityDatabase.createWorkspaceWithOwner({
+      name: 'Stored workspace',
+      slug: `stored-text-${randomUUID().slice(0, 12)}`,
+      ownerUserId: user.id,
+    });
+    const administrator = new Pool({
+      connectionString: adminDatabaseUrl,
+      max: 1,
+    });
+    try {
+      await administrator.query(
+        'update app.users set display_name=$2 where id=$1',
+        [user.id, '\t Stored profile \u00a0'],
+      );
+      await administrator.query(
+        'update app.workspaces set name=$2 where id=$1',
+        [target.id, '\t Stored workspace \u00a0'],
+      );
+    } finally {
+      await administrator.end();
+    }
+    await expect(identityDatabase.findUserById(user.id)).resolves.toMatchObject(
+      {
+        displayName: 'Stored profile',
+        createdAt: expect.any(Date),
+        updatedAt: expect.any(Date),
+      },
+    );
+    await expect(
+      identityDatabase.renameWorkspace({
+        workspaceId: target.id,
+        actorUserId: user.id,
+        name: 'Stored workspace',
+        expectedRevision: 1,
+        idempotencyKey: randomUUID(),
+      }),
+    ).resolves.toMatchObject({
+      changed: false,
+      replayed: false,
+      workspace: { name: 'Stored workspace', revision: 1 },
+    });
+  });
+
   it('serializes concurrent renames and authorizes against current database state', async () => {
     const target = await identityDatabase.createWorkspaceWithOwner({
       name: 'Concurrent rename target',
