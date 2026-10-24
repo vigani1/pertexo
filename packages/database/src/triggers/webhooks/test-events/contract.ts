@@ -2,7 +2,7 @@ import type { WebhookAuthentication } from '@pertexo/contracts';
 import type {
   WebhookVerificationReference,
   SealedWebhookTriggerSecret,
-} from '../database.js';
+} from '../repository.js';
 
 export type TestEventScope = Readonly<{
   workspaceId: string;

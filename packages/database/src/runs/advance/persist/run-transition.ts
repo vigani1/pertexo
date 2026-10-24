@@ -14,7 +14,7 @@ import {
 } from '../plan.js';
 import { persistFailureNotificationIntent } from './failure-notification.js';
 import { persistWorkspaceInboxEvent } from '../../../inbox/folding/events.repository.js';
-import { persistWorkflowTriggerOutcome } from '../../../triggers/pause/outcome-producer.js';
+import { persistWorkflowTriggerOutcome } from '../../../triggers/pause/outcomes.repository.js';
 import { canonicalOutboxPayloadChecksum } from '../../../outbox/events.repository.js';
 import {
   parseStoredExecutionValue,

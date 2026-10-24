@@ -26,7 +26,7 @@ import { createPublishedWorkflowReader } from '../../src/runs/queries/execution/
 import { createOutboxDispatcherDatabase } from '../../src/outbox/dispatcher/repository.js';
 import { createWorkflowRunDatabase } from '../../src/runs/runs.repository.js';
 import { createScheduleTriggerScanner } from '../../src/triggers/schedules/scanner.js';
-import { createWebhookTriggerDatabase } from '../../src/triggers/webhooks/database.js';
+import { createWebhookTriggerDatabase } from '../../src/triggers/webhooks/repository.js';
 
 const config: DatabaseConfig = {
   connectionString: 'postgresql://runtime:secret@db/pertexo',

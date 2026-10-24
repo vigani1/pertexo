@@ -60,7 +60,7 @@ export function registerLinearizesDuplicateFormSubmissionsRejects(): void {
     });
     if (access.publicId === null) throw new Error('Missing public identity');
     const { revokeRemovedFormAccess } =
-      await import('../../../../src/triggers/forms/publication.js');
+      await import('../../../../src/triggers/forms/publication.repository.js');
     const client = admin;
     try {
       await client.query('begin');

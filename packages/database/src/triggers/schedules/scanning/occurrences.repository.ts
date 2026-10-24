@@ -1,5 +1,5 @@
 import { WorkflowAlreadyRunningError } from '../../../runs/commands/concurrency.js';
-import { recordWorkflowTriggerSkip } from '../../skips.js';
+import { recordWorkflowTriggerSkip } from '../../skips.repository.js';
 import type { InitialCheckpointFactory } from '../../../runs/commands/initial-checkpoint.js';
 import { createHash } from 'node:crypto';
 import { sql } from 'drizzle-orm';
@@ -19,12 +19,12 @@ import {
 import {
   claimedScheduleWorkflowPaused,
   type RecordedScheduleOccurrence,
-} from '../pause.js';
+} from '../pause.queries.js';
 import {
   claimCleanupTimeoutMillis,
   retireInterruptedBatch,
   retireScheduleClaim,
-} from '../claim-retirement.js';
+} from '../retirement.repository.js';
 import {
   withWorkspaceTransaction,
   type WorkspaceTransaction,
@@ -37,7 +37,7 @@ import {
   type ClaimedOccurrence,
   type ScannerResources,
 } from './contract.js';
-import { cancellationFailure } from './leases.js';
+import { cancellationFailure } from './leases.repository.js';
 
 /**
  * Whether the claim still holds its lease and its trigger, workflow and

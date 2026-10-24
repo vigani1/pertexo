@@ -1,12 +1,12 @@
 import { findCommandResult } from '../../platform/idempotency/repository.js';
-import { formSubmissionIdentity } from './submit.js';
+import { formSubmissionIdentity } from './submit.repository.js';
 import type { Pool } from 'pg';
 import {
   parseFormValues,
   FormValuesInvalidError,
 } from '@pertexo/workflow-model';
 import { withTenantScopedReadClient } from '../../tenant-access/transactions.js';
-import { authorizeForm, readFormVersion } from './read.js';
+import { authorizeForm, readFormVersion } from './records.queries.js';
 import type { FormStore, PublicFormGrant } from './contract.js';
 import type { PreparedEventCoordination } from '../coordination/contract.js';
 import type { createEventCoordinationPreparation } from '../coordination/prepare.js';

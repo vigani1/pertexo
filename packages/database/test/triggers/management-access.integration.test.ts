@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../../src/config.js';
 import { ScheduleTriggerError } from '../../src/triggers/schedules/errors.js';
-import { createScheduleTriggerDatabase } from '../../src/triggers/schedules/database.js';
+import { createScheduleTriggerDatabase } from '../../src/triggers/schedules/repository.js';
 import {
   scopedConnectionUrl,
   waitForApplicationLock,

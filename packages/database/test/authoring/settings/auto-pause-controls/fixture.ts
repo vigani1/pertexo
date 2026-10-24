@@ -9,7 +9,7 @@ import {
   parseDatabaseConfig,
 } from '../../../../src/testing.js';
 
-import { createWorkflowTriggerPauseFoldStore } from '../../../../src/triggers/pause/fold-store.js';
+import { createWorkflowTriggerPauseFoldStore } from '../../../../src/triggers/pause/fold.repository.js';
 import { createDisposableDatabaseFixture } from '../../../support/postgres/disposable-database.js';
 
 import { testExecutableCompiler } from '../../../../src/authoring/test-executable-compiler.js';

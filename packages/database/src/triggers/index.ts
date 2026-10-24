@@ -1,17 +1,17 @@
 export {
   createScheduleTriggerDatabase,
   ScheduleTriggerError,
-} from './schedules/database.js';
+} from './schedules/repository.js';
 export type {
   ScheduleTriggerDatabase,
   ScheduleTriggerRecord,
-} from './schedules/database.js';
+} from './schedules/repository.js';
 export type {
   ScheduleFireTimes,
   ScheduleOccurrencePage,
   ScheduleOccurrencePosition,
   ScheduleOccurrenceRecord,
-} from './schedules/reads.js';
+} from './schedules/reads.queries.js';
 export {
   createWebhookTriggerDatabase,
   WebhookDeliveryIneligibleError,
@@ -21,21 +21,21 @@ export {
   WebhookTriggerNotFoundError,
   WebhookTriggerStateError,
   WebhookWorkflowPausedError,
-} from './webhooks/database.js';
+} from './webhooks/repository.js';
 export type {
   WebhookTriggerDatabase,
   WebhookVerificationReference,
-} from './webhooks/database.js';
+} from './webhooks/repository.js';
 export type {
   RejectedWebhookDelivery,
   WebhookDeliveryPage,
   WebhookDeliveryPosition,
   WebhookDeliveryRecord,
-} from './webhooks/deliveries.js';
+} from './webhooks/deliveries.repository.js';
 export type {
   WorkflowTriggerHealth,
   WorkflowTriggerReconciliationDatabase,
-} from './reconciliation/database.js';
+} from './reconciliation/repository.js';
 export { createScheduleTriggerScanner } from './schedules/scanner.js';
 export type {
   ScanDueSchedulesResult,
@@ -45,13 +45,13 @@ export {
   createWorkflowTriggerReconciliationDatabase,
   WorkflowTriggerReconciliationMismatchError,
   WorkflowTriggerStalePublicationError,
-} from './reconciliation/database.js';
-export { createWorkflowTriggerPauseFoldStore } from './pause/fold-store.js';
+} from './reconciliation/repository.js';
+export { createWorkflowTriggerPauseFoldStore } from './pause/fold.repository.js';
 export type {
   WorkflowTriggerPauseDecision,
   WorkflowTriggerPauseFoldStore,
-} from './pause/fold-store.js';
-export { createFormStore } from './forms/store.js';
+} from './pause/fold.repository.js';
+export { createFormStore } from './forms/repository.js';
 export {
   FormUnavailableError,
   FormChangedError,
@@ -60,7 +60,7 @@ export {
   type PublicFormGrant,
 } from './forms/contract.js';
 
-export { createWebhookResponseStore } from './webhooks/responses/write.js';
+export { createWebhookResponseStore } from './webhooks/responses/repository.js';
 export type {
   WebhookResponseStore,
   WebhookResponseScope,
@@ -71,10 +71,10 @@ export type {
 export {
   createTriggerEventScanner,
   type TriggerEventScanner,
-} from './coordination/scanner.js';
+} from './coordination/scanner.repository.js';
 export { EventCoordinationUnavailableError } from './coordination/contract.js';
 
-export { createWebhookTestEventStore } from './webhooks/test-events/store.js';
+export { createWebhookTestEventStore } from './webhooks/test-events/repository.js';
 export { WebhookTestEventError } from './webhooks/test-events/contract.js';
 export type {
   WebhookTestEventStore,

@@ -3,19 +3,19 @@ import {
   closeEventCoordinationStore,
 } from '../coordination/prepare.js';
 
-import { readWebhookResponse } from './responses/read.js';
+import { readWebhookResponse } from './responses/records.queries.js';
 import type { WebhookResponseScope } from './responses/contract.js';
 import { acquireDatabasePool } from '../../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
 
 import type { DatabaseConfig } from '../../config.js';
 
-import { readHealth } from '../reconciliation/database.js';
+import { readHealth } from '../reconciliation/repository.js';
 
 import {
   authorizeWebhookTriggerReader,
   createWebhookDeliveryLog,
-} from './deliveries.js';
+} from './deliveries.repository.js';
 
 import {
   WebhookDeliveryIneligibleError,

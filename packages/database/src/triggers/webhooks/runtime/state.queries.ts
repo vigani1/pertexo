@@ -9,7 +9,7 @@ import {
 import {
   readHealth,
   type WorkflowTriggerHealth,
-} from '../../reconciliation/database.js';
+} from '../../reconciliation/repository.js';
 
 import {
   WebhookDeliveryIneligibleError,

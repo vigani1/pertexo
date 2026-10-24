@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { createTriggerEventScanner } from '../../../src/triggers/coordination/scanner.js';
+import { createTriggerEventScanner } from '../../../src/triggers/coordination/scanner.repository.js';
 import {
   fixture,
   key,

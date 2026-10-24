@@ -8,9 +8,9 @@ import { canonicalOutboxPayloadChecksum } from '../../../src/outbox/events.repos
 import type { WorkflowAuthoringDatabase } from '../../../src/authoring/workflows/database.js';
 import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringDatabase } from '../../support/workflow-authoring-admission.fixture.js';
 
-import { createWebhookTriggerDatabase } from '../../../src/triggers/webhooks/database.js';
-import { createWorkflowTriggerReconciliationDatabase } from '../../../src/triggers/reconciliation/database.js';
-import { createScheduleTriggerDatabase } from '../../../src/triggers/schedules/database.js';
+import { createWebhookTriggerDatabase } from '../../../src/triggers/webhooks/repository.js';
+import { createWorkflowTriggerReconciliationDatabase } from '../../../src/triggers/reconciliation/repository.js';
+import { createScheduleTriggerDatabase } from '../../../src/triggers/schedules/repository.js';
 import { dropDisconnectedDatabase } from '../../support/postgres/disposable-database.js';
 
 import {

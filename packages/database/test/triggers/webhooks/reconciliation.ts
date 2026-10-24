@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { canonicalOutboxPayloadChecksum } from '../../../src/outbox/events.repository.js';
 
 import { withWorkspaceTransaction } from '../../../src/tenant-access/transactions.js';
-import { claimedScheduleWorkflowPaused } from '../../../src/triggers/schedules/pause.js';
+import { claimedScheduleWorkflowPaused } from '../../../src/triggers/schedules/pause.queries.js';
 import { reconciliation, workerPool, ownerQuery } from './base.js';
 import { workspaceId } from './context.js';
 

@@ -1,6 +1,6 @@
 import { WORKFLOW_EDITOR_ROLES } from '@pertexo/workflow-model';
 import type { CoordinatedEvent } from '@pertexo/contracts';
-import { COORDINATED_EVENT_METADATA_SQL } from '../coordination/history.js';
+import { COORDINATED_EVENT_METADATA_SQL } from '../coordination/history.queries.js';
 import { sql } from 'drizzle-orm';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';

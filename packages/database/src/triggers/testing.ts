@@ -4,7 +4,7 @@ export {
   WorkflowTriggerStalePublicationError,
   type WorkflowTriggerHealth,
   type WorkflowTriggerReconciliationDatabase,
-} from './reconciliation/database.js';
+} from './reconciliation/repository.js';
 export {
   createWebhookTriggerDatabase,
   WebhookDeliveryIneligibleError,
@@ -17,18 +17,18 @@ export {
   type SealedWebhookTriggerSecret,
   type WebhookTriggerDatabase,
   type WebhookVerificationReference,
-} from './webhooks/database.js';
+} from './webhooks/repository.js';
 export type {
   WebhookDeliveryPage,
   WebhookDeliveryRecord,
-} from './webhooks/deliveries.js';
+} from './webhooks/deliveries.repository.js';
 export { workflowTriggerProjection } from './reconciliation/projection.js';
 export {
   createScheduleTriggerDatabase,
   type ScheduleTriggerCommandResult,
   type ScheduleTriggerDatabase,
   type ScheduleTriggerRecord,
-} from './schedules/database.js';
+} from './schedules/repository.js';
 export {
   createScheduleTriggerScanner,
   ScheduleClaimLostError,
@@ -41,7 +41,7 @@ export type {
   ScheduleOccurrencePage,
   ScheduleOccurrencePosition,
   ScheduleOccurrenceRecord,
-} from './schedules/reads.js';
+} from './schedules/reads.queries.js';
 export {
   parseScheduleRecurrence,
   resolveScheduleObservation,
@@ -51,7 +51,7 @@ export {
 } from './schedules/recurrence.js';
 export type { WorkflowTriggerProjection } from './reconciliation/projection.js';
 
-export { createWebhookResponseStore } from './webhooks/responses/write.js';
+export { createWebhookResponseStore } from './webhooks/responses/repository.js';
 export type {
   WebhookResponseStore,
   WebhookResponseScope,

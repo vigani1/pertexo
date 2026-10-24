@@ -1,4 +1,4 @@
-import { openWebhookResponse } from '../webhooks/responses/admission.js';
+import { openWebhookResponse } from '../webhooks/responses/admission.repository.js';
 import { createHash } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import {
@@ -17,13 +17,13 @@ import { WorkflowAlreadyRunningError } from '../../runs/commands/concurrency.js'
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
 import { parsePublishedWorkflowRow } from '../../runs/queries/execution/published.js';
 import { parseStoredExecutionValue } from '../../platform/stored-execution-value.js';
-import { recordWorkflowTriggerSkip } from '../skips.js';
-import { finishCoordinatedEvent } from './events.js';
+import { recordWorkflowTriggerSkip } from '../skips.repository.js';
+import { finishCoordinatedEvent } from './events.repository.js';
 import {
   eventDatabaseTime,
   chargeEventWindow,
   lockEventCoordination,
-} from './keys.js';
+} from './keys.repository.js';
 
 type PendingEvent = Readonly<{
   id: string;

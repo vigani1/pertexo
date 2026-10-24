@@ -1,8 +1,8 @@
 import type { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { lockEventCoordination } from '../coordination/keys.js';
-import { readCoordinatedEventHistory } from '../coordination/history.js';
-import { prepareFormEvent } from './prepare.js';
+import { lockEventCoordination } from '../coordination/keys.repository.js';
+import { readCoordinatedEventHistory } from '../coordination/history.queries.js';
+import { prepareFormEvent } from './prepare.repository.js';
 import {
   createEventCoordinationPreparation,
   closeEventCoordinationStore,
@@ -18,9 +18,9 @@ import {
 } from '../../tenant-access/transactions.js';
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
 import { FormUnavailableError, type FormStore } from './contract.js';
-import { authorizeForm, readFormVersion } from './read.js';
-import { capabilityHash, readFormAccess, changeFormAccess } from './access.js';
-import { submitForm } from './submit.js';
+import { authorizeForm, readFormVersion } from './records.queries.js';
+import { capabilityHash, readFormAccess, changeFormAccess } from './access.repository.js';
+import { submitForm } from './submit.repository.js';
 export function createFormStore(
   config: DatabaseConfig,
   prepare: InitialCheckpointFactory,

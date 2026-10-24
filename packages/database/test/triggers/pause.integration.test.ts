@@ -8,8 +8,8 @@ import {
   createIdentityWorkspaceDatabase,
   parseDatabaseConfig,
 } from '../../src/testing.js';
-import { createWorkflowTriggerPauseFoldStore } from '../../src/triggers/pause/fold-store.js';
-import { persistWorkflowTriggerOutcome } from '../../src/triggers/pause/outcome-producer.js';
+import { createWorkflowTriggerPauseFoldStore } from '../../src/triggers/pause/fold.repository.js';
+import { persistWorkflowTriggerOutcome } from '../../src/triggers/pause/outcomes.repository.js';
 import { createDisposableDatabaseFixture } from '../support/postgres/disposable-database.js';
 
 type Status =

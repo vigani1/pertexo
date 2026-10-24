@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { authorizeWorkflowResource } from '../tenant-access/resources/authority.js';
-import { lockActiveTriggerWorkflow } from './reconciliation/activation.js';
+import { lockActiveTriggerWorkflow } from './reconciliation/activation.repository.js';
 
 /** Configuration changes share actor authority and workflow-first lock order. */
 export async function canManageWorkflowTrigger(

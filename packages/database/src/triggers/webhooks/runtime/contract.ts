@@ -12,9 +12,9 @@ import type { InitialCheckpointFactory } from '../../../runs/commands/initial-ch
 
 import { z } from 'zod';
 
-import type { WorkflowTriggerHealth } from '../../reconciliation/database.js';
+import type { WorkflowTriggerHealth } from '../../reconciliation/repository.js';
 
-import type { WebhookDeliveryLog } from '../deliveries.js';
+import type { WebhookDeliveryLog } from '../deliveries.repository.js';
 
 export const uuidSchema = z.uuid();
 

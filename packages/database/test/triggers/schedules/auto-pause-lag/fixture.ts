@@ -10,7 +10,7 @@ import {
   parseWorkspaceId,
   withWorkspaceTransaction,
 } from '../../../../src/tenant-access/transactions.js';
-import { claimedScheduleWorkflowPaused } from '../../../../src/triggers/schedules/pause.js';
+import { claimedScheduleWorkflowPaused } from '../../../../src/triggers/schedules/pause.queries.js';
 import { createScheduleTriggerTestEnvironment } from '../../../support/schedule-triggers.js';
 import { testExecutableCompiler } from '../../../../src/authoring/test-executable-compiler.js';
 

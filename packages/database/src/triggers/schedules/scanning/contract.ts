@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 import type { ScheduleOccurrenceDisposition } from '../misfire.js';
 
-import type { RecordedScheduleOccurrence } from '../pause.js';
+import type { RecordedScheduleOccurrence } from '../pause.queries.js';
 
 export const claimSchema = z.object({
   trigger_id: z.uuid(),

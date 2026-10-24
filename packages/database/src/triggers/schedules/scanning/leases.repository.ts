@@ -2,7 +2,7 @@ import type { Pool } from 'pg';
 import { z } from 'zod';
 import type { acquireDatabasePool } from '../../../platform/pool/runtime.js';
 
-import { retireInterruptedBatch } from '../claim-retirement.js';
+import { retireInterruptedBatch } from '../retirement.repository.js';
 import { withPlatformTransaction } from '../../../tenant-access/transactions.js';
 import {
   claimSchema,

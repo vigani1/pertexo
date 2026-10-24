@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import type { ScheduleTriggerReads } from '../reads.js';
+import type { ScheduleTriggerReads } from '../reads.queries.js';
 
 export const uuidSchema = z.uuid();
 

@@ -11,7 +11,7 @@ import {
 import {
   WebhookDeliveryIneligibleError,
   WebhookTriggerNotFoundError,
-} from '../../../../src/triggers/webhooks/database.js';
+} from '../../../../src/triggers/webhooks/repository.js';
 
 import { ScheduleTriggerError } from '../../../../src/triggers/schedules/errors.js';
 

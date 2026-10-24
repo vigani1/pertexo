@@ -13,7 +13,7 @@ import { parseStoredExecutionValue } from '../../../platform/stored-execution-va
 import { WorkflowStepSampleError } from '../../../authoring/step-samples/contract.js';
 import { WorkflowNotFoundError } from '../../../authoring/workflows/errors.js';
 import { WebhookIngressRateLimitExceededError } from '../errors.js';
-import { testEventDraft } from './authority.js';
+import { testEventDraft } from './authority.queries.js';
 import {
   WebhookTestEventError,
   type TestEventScope,
