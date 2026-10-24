@@ -228,9 +228,7 @@ export function RunHeader({
       <div className="size-16 shrink-0 md:size-28">
         <CoreOrb
           state={runCoreState(run.status)}
-          energy={
-            run.status === 'running' ? 1.1 : active ? 0.6 : CORE_IDLE_ENERGY
-          }
+          energy={runEnergy(run.status)}
           className="size-full"
         />
       </div>
@@ -333,4 +331,10 @@ export function RunHeader({
       ) : null}
     </header>
   );
+}
+
+function runEnergy(status: WorkflowRunReadSummary['status']) {
+  if (status === 'running') return 1.1;
+  if (isActiveRunStatus(status)) return 0.6;
+  return CORE_IDLE_ENERGY;
 }

@@ -66,11 +66,10 @@ export function WorkflowOrganizationRowMenu({
                 favorite.mutate({ favorite: !isFavorite });
               }}
             >
-              {favorite.isPending
-                ? 'Saving favorite…'
-                : isFavorite
-                  ? 'Remove favorite'
-                  : 'Add favorite'}
+              {favoriteLabel({
+                pending: favorite.isPending,
+                favorite: isFavorite,
+              })}
             </DropdownMenuItem>
             {onOrganize === undefined ? null : (
               <DropdownMenuItem disabled={disabled} onClick={onOrganize}>
@@ -87,4 +86,12 @@ export function WorkflowOrganizationRowMenu({
       ) : null}
     </span>
   );
+}
+
+function favoriteLabel(
+  input: Readonly<{ pending: boolean; favorite: boolean }>,
+) {
+  if (input.pending) return 'Saving favorite…';
+  if (input.favorite) return 'Remove favorite';
+  return 'Add favorite';
 }
