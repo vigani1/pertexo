@@ -1,4 +1,4 @@
-import { useInspectorSession } from '../../../hooks/use-inspector-session';
+import { useInspectorSession } from '../use-session';
 import { RunValuesSetup } from '../run-values/setup';
 import { useScratchForm } from '../use-draft-field';
 import { StepRetrySetup } from '../retries/setup';

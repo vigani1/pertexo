@@ -1,4 +1,4 @@
-import { useInspectorSession } from '../../hooks/use-inspector-session';
+import { useInspectorSession } from './use-session';
 import { findDefinition } from '../../model/graph/adapter';
 
 import type { Connection } from '@xyflow/react';

@@ -1,4 +1,4 @@
-import { useInspectorSession } from '../../../hooks/use-inspector-session';
+import { useInspectorSession } from '../use-session';
 import type { ReactNode } from 'react';
 import { HttpBodyInputs } from '../http-body/inputs';
 import { ReadFileUpload } from '../input-mappings/read-file-upload';

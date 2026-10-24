@@ -1,4 +1,4 @@
-import { useInspectorSession } from '../../../hooks/use-inspector-session';
+import { useInspectorSession } from '../use-session';
 import { useState } from 'react';
 
 import type { VariablesScope } from '@/features/workspace-variables/picker.public';
