@@ -93,12 +93,7 @@ export function applyDirectoryCommand(
   command: DirectoryCommand,
   key: string,
 ) {
-  const path =
-    command.kind === 'revoke'
-      ? `/credentials/${encodeURIComponent(command.credentialId)}/revoke`
-      : command.kind === 'unlink'
-        ? `/workspaces/${encodeURIComponent(command.targetWorkspaceId)}/unlink`
-        : `/${command.kind}`;
+  const path = commandPath(command);
   return scope.apiClient.request({
     path: `${base(scope)}${path}`,
     method: command.kind === 'mappings' ? 'PUT' : 'POST',
@@ -109,4 +104,12 @@ export function applyDirectoryCommand(
       decode: (value) => directoryChangedSchema.parse(value),
     },
   });
+}
+
+function commandPath(command: DirectoryCommand): string {
+  if (command.kind === 'revoke')
+    return `/credentials/${encodeURIComponent(command.credentialId)}/revoke`;
+  if (command.kind === 'unlink')
+    return `/workspaces/${encodeURIComponent(command.targetWorkspaceId)}/unlink`;
+  return `/${command.kind}`;
 }

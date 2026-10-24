@@ -168,14 +168,7 @@ export function AccountMethodsSection({
         cancelLabel="Keep method"
         pending={unlink.isPending}
         confirmDisabled={methodToRemove === undefined}
-        error={
-          unlink.error === null
-            ? undefined
-            : isApiError(unlink.error) &&
-                (unlink.error.status === 400 || unlink.error.status === 409)
-              ? 'This method can’t be removed. Keep at least one way to sign in.'
-              : accountCommandFailure(unlink.error, 'removing this method')
-        }
+        error={removalFailure(unlink.error)}
         errorAction={<FreshSignInLink error={unlink.error} />}
         onConfirm={async () => {
           if (methodToRemove === undefined) return;
@@ -187,4 +180,13 @@ export function AccountMethodsSection({
       />
     </AccountSection>
   );
+}
+
+function removalFailure(error: unknown): string | undefined {
+  if (error === null) return undefined;
+  const methodMustRemain =
+    isApiError(error) && (error.status === 400 || error.status === 409);
+  if (methodMustRemain)
+    return 'This method can’t be removed. Keep at least one way to sign in.';
+  return accountCommandFailure(error, 'removing this method');
 }

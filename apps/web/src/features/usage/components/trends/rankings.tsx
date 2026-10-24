@@ -40,14 +40,15 @@ export function WorkflowRankings({
           </span>
           <span className="shrink-0 tabular-nums">
             {item[metric].toLocaleString(FORMAT_LOCALE)}{' '}
-            {item[metric] === 1
-              ? metric === 'runs'
-                ? 'run'
-                : 'failure'
-              : metric}
+            {metricNoun(metric, item[metric])}
           </span>
         </li>
       ))}
     </ol>
   );
+}
+
+function metricNoun(metric: 'runs' | 'failures', count: number): string {
+  if (count !== 1) return metric;
+  return metric === 'runs' ? 'run' : 'failure';
 }
