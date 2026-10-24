@@ -1,59 +1,26 @@
 import { acquireDatabasePool } from '../../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
-import { z } from 'zod';
+import type { z } from 'zod';
+import {
+  leasedEventSchema,
+  releaseInputSchema,
+  observeBacklogInputSchema,
+} from './input.js';
+import type {
+  OutboxDispatcherDatabase,
+  OutboxBacklogSnapshot,
+  ObserveOutboxBacklogInput,
+  ReleaseOutboxResult,
+} from './contract.js';
 
 import type { DatabaseConfig } from '../../config.js';
-export type { LeasedOutboxEvent } from './contract.js';
+
 import {
   claimOutboxBatch,
   type ClaimOutboxBatchInput,
   type ClaimOutboxBatchResult,
 } from './claim.repository.js';
 import { checkDatabaseReadiness } from '../../platform/readiness.js';
-
-export type { ClaimOutboxBatchInput, ClaimOutboxBatchResult } from './claim.repository.js';
-
-const observeBacklogInputSchema = z.object({
-  enabledJobNames: z
-    .array(z.string().regex(/^[a-z][a-z0-9-]{0,127}$/u))
-    .max(64)
-    .refine((values) => new Set(values).size === values.length),
-});
-
-const leasedEventSchema = z.object({
-  id: z.uuid(),
-  leaseToken: z.uuid(),
-});
-
-const releaseInputSchema = leasedEventSchema.extend({
-  errorCode: z.string().regex(/^[a-z][a-z0-9._:-]{0,127}$/u),
-  maxAttempts: z.number().int().min(1).max(1_000),
-  retryAt: z.date(),
-});
-
-export type ObserveOutboxBacklogInput = Readonly<{
-  enabledJobNames: readonly string[];
-}>;
-export type ReleaseOutboxResult = 'retry_scheduled' | 'failed' | 'not_leased';
-
-export type OutboxBacklogSnapshot = Readonly<{
-  backlog: number;
-  /** Age of the oldest due, claimable row. Omitted when the backlog is empty. */
-  oldestAgeSeconds?: number;
-}>;
-
-export interface OutboxDispatcherDatabase {
-  claimBatch(input: ClaimOutboxBatchInput): Promise<ClaimOutboxBatchResult>;
-  markPublished(eventId: string, leaseToken: string): Promise<boolean>;
-  releaseOrFail(
-    input: z.input<typeof releaseInputSchema>,
-  ): Promise<ReleaseOutboxResult>;
-  observeBacklog(
-    input: ObserveOutboxBacklogInput,
-  ): Promise<OutboxBacklogSnapshot>;
-  checkReadiness(): Promise<void>;
-  close(): Promise<void>;
-}
 
 export function createOutboxDispatcherDatabase(
   config: DatabaseConfig,
