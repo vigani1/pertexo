@@ -1,5 +1,12 @@
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
-import { sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
+import { outboxEvents } from '../../schema/transport.js';
+import {
+  operatorCommands,
+  operatorRunReplayRequests,
+} from '../../schema/runs/operator.js';
+import { workflowRuns } from '../../schema/runs/execution.js';
+import { workflowVersions } from '../../schema/authoring/workflows.js';
 import { z } from 'zod';
 import { sha256HexSchema } from '../../platform/persisted-primitives.js';
 
@@ -32,18 +39,6 @@ const payloadSchema = z
     workspaceId: z.uuid(),
   })
   .strict();
-const requestRowSchema = z
-  .object({
-    request_fingerprint: sha256HexSchema,
-    run_input: z.json(),
-    source_run_id: z.uuid(),
-    started_by: z.uuid().nullable(),
-    status: z.enum(['pending', 'completed', 'failed']),
-    workflow_id: z.uuid(),
-    workflow_version_id: z.uuid(),
-  })
-  .strict();
-
 export class OperatorRunReplayMismatchError extends Error {
   public constructor() {
     super('Run replay delivery does not match its durable request');
@@ -65,15 +60,23 @@ async function settleCommand(
   status: 'completed' | 'failed',
   outcome: Readonly<{ outcome: string } & Record<string, string>>,
 ): Promise<void> {
-  const settled = await transaction.db.execute(sql`
-    update app.operator_commands
-    set status = ${status}, outcome = ${outcome.outcome},
-        completed_at = clock_timestamp(),
-        result = result || ${JSON.stringify(outcome)}::jsonb
-    where workspace_id = ${transaction.workspaceId} and id = ${commandId}
-      and status = 'pending'
-  `);
-  if (settled.rowCount !== 1)
+  const settled = await transaction.db
+    .update(operatorCommands)
+    .set({
+      status,
+      outcome: outcome.outcome,
+      completedAt: sql`clock_timestamp()`,
+      result: sql`${operatorCommands.result}||${JSON.stringify(outcome)}::jsonb`,
+    })
+    .where(
+      and(
+        eq(operatorCommands.workspaceId, transaction.workspaceId),
+        eq(operatorCommands.id, commandId),
+        eq(operatorCommands.status, 'pending'),
+      ),
+    )
+    .returning({ id: operatorCommands.id });
+  if (settled.length !== 1)
     throw new Error('Run replay command is no longer pending');
 }
 
@@ -114,85 +117,126 @@ export function createOperatorRunReplayStore(
           payloadChecksum: parsed.delivery.payloadChecksum,
         },
         operation: async (transaction) => {
-          const outbox = await transaction.db.execute<{
-            aggregate_id: string;
-            aggregate_type: string;
-            job_name: string;
-            payload: unknown;
-            payload_checksum: string;
-          }>(sql`
-            select aggregate_id,aggregate_type,job_name,payload,payload_checksum
-            from app.outbox_events
-            where workspace_id=${transaction.workspaceId}
-              and id=${parsed.delivery.outboxEventId}
-          `);
-          const row = outbox.rows[0];
+          const [row] = await transaction.db
+            .select({
+              aggregateId: outboxEvents.aggregateId,
+              aggregateType: outboxEvents.aggregateType,
+              jobName: outboxEvents.jobName,
+              payload: outboxEvents.payload,
+              payloadChecksum: outboxEvents.payloadChecksum,
+            })
+            .from(outboxEvents)
+            .where(
+              and(
+                eq(outboxEvents.workspaceId, transaction.workspaceId),
+                eq(outboxEvents.id, parsed.delivery.outboxEventId),
+              ),
+            );
           const payload = payloadSchema.safeParse(row?.payload);
           const invalidDelivery =
             row === undefined ||
             !payload.success ||
-            row.aggregate_id !== parsed.commandId ||
-            row.aggregate_type !== 'operator-command' ||
-            row.job_name !== 'replay-workflow-run' ||
-            row.payload_checksum !== parsed.delivery.payloadChecksum ||
+            row.aggregateId !== parsed.commandId ||
+            row.aggregateType !== 'operator-command' ||
+            row.jobName !== 'replay-workflow-run' ||
+            row.payloadChecksum !== parsed.delivery.payloadChecksum ||
             canonicalOutboxPayloadChecksum(payload.data) !==
-              row.payload_checksum ||
+              row.payloadChecksum ||
             payload.data.commandId !== parsed.commandId ||
             payload.data.outboxEventId !== parsed.delivery.outboxEventId ||
             payload.data.workspaceId !== transaction.workspaceId;
           if (invalidDelivery) throw new OperatorRunReplayMismatchError();
 
-          const requests = await transaction.db.execute(sql`
-            select request.request_fingerprint,request.run_input,request.source_run_id,request.status,
-              request.workflow_id,request.workflow_version_id,source.started_by
-            from app.operator_run_replay_requests request left join app.workflow_runs source
-              on source.workspace_id=request.workspace_id and source.id=request.source_run_id
-            where request.workspace_id=${transaction.workspaceId}
-              and request.command_id=${parsed.commandId}
-          `);
-          const request = requestRowSchema.safeParse(requests.rows[0]);
-          if (!request.success || request.data.status !== 'pending')
+          const [request] = await transaction.db
+            .select({
+              requestFingerprint: operatorRunReplayRequests.requestFingerprint,
+              runInput: operatorRunReplayRequests.runInput,
+              sourceRunId: operatorRunReplayRequests.sourceRunId,
+              status: operatorRunReplayRequests.status,
+              workflowId: operatorRunReplayRequests.workflowId,
+              workflowVersionId: operatorRunReplayRequests.workflowVersionId,
+              startedBy: workflowRuns.startedBy,
+            })
+            .from(operatorRunReplayRequests)
+            .leftJoin(
+              workflowRuns,
+              and(
+                eq(
+                  workflowRuns.workspaceId,
+                  operatorRunReplayRequests.workspaceId,
+                ),
+                eq(workflowRuns.id, operatorRunReplayRequests.sourceRunId),
+              ),
+            )
+            .where(
+              and(
+                eq(
+                  operatorRunReplayRequests.workspaceId,
+                  transaction.workspaceId,
+                ),
+                eq(operatorRunReplayRequests.commandId, parsed.commandId),
+              ),
+            );
+          if (request?.status !== 'pending')
             throw new OperatorRunReplayMismatchError();
-
-          const versions = await transaction.db.execute(
-            sql<Record<string, unknown>>`
-              select id,workspace_id,workflow_id,version_number,checksum,executable_json
-              from app.workflow_versions
-              where workspace_id=${transaction.workspaceId}
-                and id=${request.data.workflow_version_id}
-            `,
-          );
-          const version = parsePublishedWorkflowRow(versions.rows[0]);
-          if (version?.workflowId !== request.data.workflow_id)
+          const [storedVersion] = await transaction.db
+            .select({
+              id: workflowVersions.id,
+              workspace_id: workflowVersions.workspaceId,
+              workflow_id: workflowVersions.workflowId,
+              version_number: workflowVersions.versionNumber,
+              checksum: workflowVersions.checksum,
+              executable_json: workflowVersions.executableJson,
+            })
+            .from(workflowVersions)
+            .where(
+              and(
+                eq(workflowVersions.workspaceId, transaction.workspaceId),
+                eq(workflowVersions.id, request.workflowVersionId),
+              ),
+            );
+          const version = parsePublishedWorkflowRow(storedVersion);
+          if (version?.workflowId !== request.workflowId)
             throw new OperatorRunReplayNotExecutableError();
           const initial = checkpointFactory(version);
           const accepted = await acceptWorkflowRun(transaction, {
-            ...(request.data.started_by === null
+            ...(request.startedBy === null
               ? {}
-              : { startedBy: request.data.started_by }),
+              : { startedBy: request.startedBy }),
             initialCheckpoint: initial.checkpoint,
             ...(initial.validateInput === undefined
               ? {}
               : { validateInput: initial.validateInput }),
-            keyHash: request.data.request_fingerprint,
+            keyHash: request.requestFingerprint,
             operation: 'workflow.run.accept',
             replayCommandId: parsed.commandId,
-            replaySourceRunId: request.data.source_run_id,
-            requestHash: request.data.request_fingerprint,
-            runInput: request.data.run_input,
+            replaySourceRunId: request.sourceRunId,
+            requestHash: request.requestFingerprint,
+            runInput: request.runInput,
             scope: `operator:${parsed.commandId}`,
             triggerType: 'replay',
-            workflowId: request.data.workflow_id,
-            workflowVersionId: request.data.workflow_version_id,
+            workflowId: request.workflowId,
+            workflowVersionId: request.workflowVersionId,
           });
-          const completed = await transaction.db.execute(sql`
-            update app.operator_run_replay_requests
-            set status = 'completed', result_run_id = ${accepted.runId},
-                completed_at = clock_timestamp()
-            where workspace_id = ${transaction.workspaceId}
-              and command_id = ${parsed.commandId} and status = 'pending'
-          `);
-          if (completed.rowCount !== 1)
+          const completed = await transaction.db
+            .update(operatorRunReplayRequests)
+            .set({
+              status: 'completed',
+              resultRunId: accepted.runId,
+              completedAt: sql`clock_timestamp()`,
+            })
+            .where(
+              and(
+                eq(
+                  operatorRunReplayRequests.workspaceId,
+                  transaction.workspaceId,
+                ),
+                eq(operatorRunReplayRequests.commandId, parsed.commandId),
+                eq(operatorRunReplayRequests.status, 'pending'),
+              ),
+            )
+            .returning({ commandId: operatorRunReplayRequests.commandId });
+          if (completed.length !== 1)
             throw new OperatorRunReplayMismatchError();
           await settleCommand(transaction, parsed.commandId, 'completed', {
             outcome: 'replay_created',
@@ -216,15 +260,26 @@ export function createOperatorRunReplayStore(
         .strict()
         .parse(input);
       await database.withWorkspace(parsed.workspaceId, async (transaction) => {
-        const failed = await transaction.db.execute(sql`
-          update app.operator_run_replay_requests
-          set status = 'failed', safe_error_code = ${parsed.safeErrorCode},
-              completed_at = clock_timestamp()
-          where workspace_id = ${transaction.workspaceId}
-            and command_id = ${parsed.commandId} and status = 'pending'
-        `);
+        const failed = await transaction.db
+          .update(operatorRunReplayRequests)
+          .set({
+            status: 'failed',
+            safeErrorCode: parsed.safeErrorCode,
+            completedAt: sql`clock_timestamp()`,
+          })
+          .where(
+            and(
+              eq(
+                operatorRunReplayRequests.workspaceId,
+                transaction.workspaceId,
+              ),
+              eq(operatorRunReplayRequests.commandId, parsed.commandId),
+              eq(operatorRunReplayRequests.status, 'pending'),
+            ),
+          )
+          .returning({ commandId: operatorRunReplayRequests.commandId });
         // A request already settled keeps its first outcome.
-        if (failed.rowCount === 1)
+        if (failed.length === 1)
           await settleCommand(transaction, parsed.commandId, 'failed', {
             outcome: 'replay_failed',
             safeErrorCode: parsed.safeErrorCode,

@@ -211,7 +211,3 @@ export type CommandRequest = Readonly<{
     requestFingerprint: string,
   ) => Promise<OperatorDecision>;
 }>;
-
-export const statusSchema = z.enum(['completed', 'failed', 'pending']);
-
-export const resultSchema = z.record(z.string(), z.unknown());

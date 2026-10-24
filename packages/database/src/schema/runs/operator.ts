@@ -1,3 +1,7 @@
+import type {
+  GenericOperatorCommandResult,
+  OperatorCommandRecord,
+} from '../../operator/contract.js';
 import {
   boolean,
   char,
@@ -23,10 +27,14 @@ export const operatorCommands = appSchema.table(
   {
     id: uuid().primaryKey().notNull(),
     workspaceId: uuid('workspace_id').notNull(),
-    commandType: varchar('command_type', { length: 64 }).notNull(),
+    commandType: varchar('command_type', { length: 64 })
+      .$type<OperatorCommandRecord['commandType']>()
+      .notNull(),
     dryRun: boolean('dry_run').notNull(),
     requestFingerprint: char('request_fingerprint', { length: 64 }).notNull(),
-    status: varchar({ length: 16 }).notNull(),
+    status: varchar({ length: 16 })
+      .$type<GenericOperatorCommandResult['status']>()
+      .notNull(),
     outcome: varchar({ length: 32 }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
       .default(sql`clock_timestamp()`)
@@ -35,7 +43,7 @@ export const operatorCommands = appSchema.table(
       withTimezone: true,
       mode: 'string',
     }).default(sql`clock_timestamp()`),
-    result: jsonb().notNull(),
+    result: jsonb().$type<GenericOperatorCommandResult['result']>().notNull(),
   },
   (table): PgTableExtraConfigValue[] => [
     check(
@@ -81,7 +89,10 @@ export const operatorRunReplayRequests = appSchema.table(
     workflowVersionId: uuid('workflow_version_id').notNull(),
     runInput: json('run_input').notNull(),
     requestFingerprint: char('request_fingerprint', { length: 64 }).notNull(),
-    status: varchar({ length: 16 }).default('pending').notNull(),
+    status: varchar({ length: 16 })
+      .$type<GenericOperatorCommandResult['status']>()
+      .default('pending')
+      .notNull(),
     resultRunId: uuid('result_run_id'),
     safeErrorCode: varchar('safe_error_code', { length: 64 }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })

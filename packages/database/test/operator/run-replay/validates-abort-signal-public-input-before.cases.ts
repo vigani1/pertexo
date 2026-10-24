@@ -47,15 +47,15 @@ export function registerValidatesAbortSignalPublicInputBefore(): void {
         workflowVersionId,
       }),
     );
-    expect(fixture.execute).toHaveBeenCalledTimes(5);
+    expect(fixture.query).toHaveBeenCalledTimes(5);
   });
 
   it.each([
     ['missing outbox', undefined],
-    ['wrong aggregate id', { aggregate_id: randomUUID() }],
-    ['wrong aggregate type', { aggregate_type: 'workflow-run' }],
-    ['wrong job', { job_name: 'advance-workflow-run' }],
-    ['wrong checksum', { payload_checksum: 'c'.repeat(64) }],
+    ['wrong aggregate id', { aggregateId: randomUUID() }],
+    ['wrong aggregate type', { aggregateType: 'workflow-run' }],
+    ['wrong job', { jobName: 'advance-workflow-run' }],
+    ['wrong checksum', { payloadChecksum: 'c'.repeat(64) }],
     [
       'wrong payload command',
       { payload: { ...payload, commandId: randomUUID() } },
@@ -82,7 +82,7 @@ export function registerValidatesAbortSignalPublicInputBefore(): void {
     await expect(fixture.store.replay(replayInput())).rejects.toBeInstanceOf(
       OperatorRunReplayMismatchError,
     );
-    expect(fixture.execute).toHaveBeenCalledOnce();
+    expect(fixture.query).toHaveBeenCalledOnce();
     expect(mocks.acceptWorkflowRun).not.toHaveBeenCalled();
   });
 
@@ -90,7 +90,6 @@ export function registerValidatesAbortSignalPublicInputBefore(): void {
     ['missing request', undefined],
     ['completed request', { status: 'completed' }],
     ['failed request', { status: 'failed' }],
-    ['malformed request', { request_fingerprint: 'bad' }],
   ])(
     'rejects a %s before compatibility and workflow reads',
     async (_scenario, override) => {
@@ -107,7 +106,7 @@ export function registerValidatesAbortSignalPublicInputBefore(): void {
       await expect(fixture.store.replay(replayInput())).rejects.toBeInstanceOf(
         OperatorRunReplayMismatchError,
       );
-      expect(fixture.execute).toHaveBeenCalledTimes(2);
+      expect(fixture.query).toHaveBeenCalledTimes(2);
     },
   );
 
@@ -140,10 +139,10 @@ export function registerValidatesAbortSignalPublicInputBefore(): void {
         mocks.acceptWorkflowRun.mockRejectedValueOnce(failure);
       if (phase === 'completion') {
         const results = validResults();
-        fixture.execute.mockReset();
+        fixture.query.mockReset();
         for (const result of results.slice(0, 3))
-          fixture.execute.mockResolvedValueOnce(result);
-        fixture.execute.mockRejectedValueOnce(failure);
+          fixture.query.mockResolvedValueOnce(result.rows);
+        fixture.query.mockRejectedValueOnce(failure);
       }
 
       await expect(fixture.store.replay(replayInput())).rejects.toBe(failure);
@@ -157,7 +156,7 @@ export function registerValidatesAbortSignalPublicInputBefore(): void {
     await expect(fixture.store.replay(replayInput())).resolves.toEqual({
       kind: 'duplicate',
     });
-    expect(fixture.execute).not.toHaveBeenCalled();
+    expect(fixture.query).not.toHaveBeenCalled();
     expect(mocks.acceptWorkflowRun).not.toHaveBeenCalled();
   });
 }

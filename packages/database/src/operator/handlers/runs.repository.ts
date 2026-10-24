@@ -1,5 +1,9 @@
-import { sql } from 'drizzle-orm';
-import { z } from 'zod';
+import { and, asc, eq, exists, isNull, lte, or, sql } from 'drizzle-orm';
+import {
+  nodeRuns,
+  runCheckpoints,
+  workflowRuns,
+} from '../../schema/runs/execution.js';
 
 import { requestWorkflowRunCancellation } from '../../runs/commands/cancel.js';
 
@@ -11,11 +15,6 @@ import {
 } from './contract.js';
 import { withoutNulls, enqueueAdvance } from './enqueue.js';
 
-const dueStateSchema = z.object({
-  due_nodes: z.coerce.number().int().nonnegative(),
-  due_wait: z.boolean(),
-});
-
 /**
  * Wakes a run's due node retries and resumes, one page at a time, and its
  * due workflow wait, then asks the run to advance.
@@ -25,12 +24,16 @@ export async function resumeDueWork(
   input: Readonly<{ runId: string; dryRun: boolean }>,
 ): Promise<OperatorDecision> {
   const { runId } = input;
-  const runs = await transaction.db.execute<{ status: string }>(sql`
-    select status from app.workflow_runs
-    where workspace_id = ${transaction.workspaceId} and id = ${runId}
-    for update
-  `);
-  const run = runs.rows[0];
+  const [run] = await transaction.db
+    .select({ status: workflowRuns.status })
+    .from(workflowRuns)
+    .where(
+      and(
+        eq(workflowRuns.workspaceId, transaction.workspaceId),
+        eq(workflowRuns.id, runId),
+      ),
+    )
+    .for('update');
   if (run === undefined)
     return {
       outcome: 'not_found',
@@ -40,72 +43,91 @@ export async function resumeDueWork(
         outcome: 'not_found',
       },
     };
-  const rows = await transaction.db.execute(sql`
-    select
-      (select count(*) from (
-        select 1 from app.node_runs
-        where workspace_id = ${transaction.workspaceId} and workflow_run_id = ${runId}
-          and status = 'waiting' and coalesce(retry_due_at, resume_at) <= clock_timestamp()
-          and due_wakeup_at is distinct from coalesce(retry_due_at, resume_at)
-        limit ${RESUME_PAGE + 1}) due) due_nodes,
-      exists(select 1 from app.run_checkpoints
-        where workspace_id = ${transaction.workspaceId} and workflow_run_id = ${runId}
-          and resume_at <= clock_timestamp()
-          and (resume_lease_expires_at is null
-            or resume_lease_expires_at <= clock_timestamp())) due_wait
-  `);
-  const state = dueStateSchema.parse(rows.rows[0]);
-  const dueNodeCount = Math.min(state.due_nodes, RESUME_PAGE);
+  const db = transaction.db;
+  const dueNodes = db
+    .select({ id: nodeRuns.id })
+    .from(nodeRuns)
+    .where(nodeIsDue(transaction.workspaceId, runId))
+    .limit(RESUME_PAGE + 1)
+    .as('due');
+  const dueNodeCountQuery = db
+    .select({ count: sql<number>`count(*)::integer` })
+    .from(dueNodes);
+  const dueWaitQuery = db
+    .select({ one: sql`1` })
+    .from(runCheckpoints)
+    .where(checkpointIsDue(transaction.workspaceId, runId));
+  const [state] = await db
+    .select({
+      dueNodes: sql<number>`(${dueNodeCountQuery})`,
+      dueWait: sql<boolean>`${exists(dueWaitQuery)}`,
+    })
+    .from(workflowRuns)
+    .where(
+      and(
+        eq(workflowRuns.workspaceId, transaction.workspaceId),
+        eq(workflowRuns.id, runId),
+      ),
+    );
+  if (state === undefined) throw new Error('Locked run disappeared');
+  const dueNodeCount = Math.min(state.dueNodes, RESUME_PAGE);
   const outcome = resumeOutcome(run.status, {
     dueNodeCount,
-    dueWait: state.due_wait,
+    dueWait: state.dueWait,
     dryRun: input.dryRun,
   });
 
   let outboxEventId: string | undefined;
   if (outcome === 'resumed') {
-    await transaction.db.execute(sql`
-      with due as (
-        select id from app.node_runs
-        where workspace_id = ${transaction.workspaceId} and workflow_run_id = ${runId}
-          and status = 'waiting' and coalesce(retry_due_at, resume_at) <= clock_timestamp()
-          and due_wakeup_at is distinct from coalesce(retry_due_at, resume_at)
-        order by coalesce(retry_due_at, resume_at), id
-        for update limit ${RESUME_PAGE}
-      )
-      update app.node_runs node
-      set due_wakeup_at = coalesce(node.retry_due_at, node.resume_at),
-          updated_at = clock_timestamp()
-      from due
-      where node.workspace_id = ${transaction.workspaceId} and node.id = due.id
-    `);
-    await transaction.db.execute(sql`
-      update app.run_checkpoints
-      set resume_at = null, resume_lease_owner = null, resume_lease_token = null,
-          resume_lease_expires_at = null, updated_at = clock_timestamp()
-      where workspace_id = ${transaction.workspaceId} and workflow_run_id = ${runId}
-        and resume_at <= clock_timestamp()
-        and (resume_lease_expires_at is null
-          or resume_lease_expires_at <= clock_timestamp())
-    `);
+    const due = db.$with('due').as(
+      db
+        .select({ id: nodeRuns.id })
+        .from(nodeRuns)
+        .where(nodeIsDue(transaction.workspaceId, runId))
+        .orderBy(
+          asc(sql`coalesce(${nodeRuns.retryDueAt},${nodeRuns.resumeAt})`),
+          asc(nodeRuns.id),
+        )
+        .limit(RESUME_PAGE)
+        .for('update'),
+    );
+    await db
+      .with(due)
+      .update(nodeRuns)
+      .set({
+        dueWakeupAt: sql`coalesce(${nodeRuns.retryDueAt},${nodeRuns.resumeAt})`,
+        updatedAt: sql`clock_timestamp()`,
+      })
+      .from(due)
+      .where(
+        and(
+          eq(nodeRuns.workspaceId, transaction.workspaceId),
+          eq(nodeRuns.id, due.id),
+        ),
+      );
+    await db
+      .update(runCheckpoints)
+      .set({
+        resumeAt: null,
+        resumeLeaseOwner: null,
+        resumeLeaseToken: null,
+        resumeLeaseExpiresAt: null,
+        updatedAt: sql`clock_timestamp()`,
+      })
+      .where(checkpointIsDue(transaction.workspaceId, runId));
     outboxEventId = await enqueueAdvance(transaction, runId);
   }
   return {
     outcome,
     result: withoutNulls({
       dueNodeCount,
-      dueNodesRemaining: state.due_nodes > RESUME_PAGE,
-      dueWorkflowWait: state.due_wait,
+      dueNodesRemaining: state.dueNodes > RESUME_PAGE,
+      dueWorkflowWait: state.dueWait,
       outboxEventId,
       outcome,
     }),
   };
 }
-
-const cancelStateSchema = z.object({
-  cancel_requested: z.boolean(),
-  status: z.string(),
-});
 
 /** Requests cancellation through the same path the API uses. */
 export async function cancelRun(
@@ -117,16 +139,19 @@ export async function cancelRun(
     dryRun: boolean;
   }>,
 ): Promise<OperatorDecision> {
-  const rows = await transaction.db.execute(sql`
-    select status, cancel_requested_at is not null cancel_requested
-    from app.workflow_runs
-    where workspace_id = ${transaction.workspaceId} and id = ${input.runId}
-    for update
-  `);
-  const run =
-    rows.rows[0] === undefined
-      ? undefined
-      : cancelStateSchema.parse(rows.rows[0]);
+  const [run] = await transaction.db
+    .select({
+      status: workflowRuns.status,
+      cancelRequested: sql<boolean>`${workflowRuns.cancelRequestedAt} is not null`,
+    })
+    .from(workflowRuns)
+    .where(
+      and(
+        eq(workflowRuns.workspaceId, transaction.workspaceId),
+        eq(workflowRuns.id, input.runId),
+      ),
+    )
+    .for('update');
   const outcome = cancellationOutcome(run, input);
 
   let eventSequence: number | null = null;
@@ -158,11 +183,32 @@ function resumeOutcome(
   return input.dryRun ? 'would_resume' : 'resumed';
 }
 function cancellationOutcome(
-  run: z.output<typeof cancelStateSchema> | undefined,
+  run: Readonly<{ status: string; cancelRequested: boolean }> | undefined,
   input: Readonly<{ dryRun: boolean }>,
 ): string {
   if (run === undefined) return 'not_found';
   if (TERMINAL_RUN_STATUSES.has(run.status)) return 'terminal';
-  if (run.cancel_requested) return 'already_requested';
+  if (run.cancelRequested) return 'already_requested';
   return input.dryRun ? 'would_cancel' : 'cancel_requested';
+}
+
+function nodeIsDue(workspaceId: string, runId: string) {
+  return and(
+    eq(nodeRuns.workspaceId, workspaceId),
+    eq(nodeRuns.workflowRunId, runId),
+    eq(nodeRuns.status, 'waiting'),
+    sql`coalesce(${nodeRuns.retryDueAt},${nodeRuns.resumeAt})<=clock_timestamp()`,
+    sql`${nodeRuns.dueWakeupAt} is distinct from coalesce(${nodeRuns.retryDueAt},${nodeRuns.resumeAt})`,
+  );
+}
+function checkpointIsDue(workspaceId: string, runId: string) {
+  return and(
+    eq(runCheckpoints.workspaceId, workspaceId),
+    eq(runCheckpoints.workflowRunId, runId),
+    lte(runCheckpoints.resumeAt, sql`clock_timestamp()`),
+    or(
+      isNull(runCheckpoints.resumeLeaseExpiresAt),
+      lte(runCheckpoints.resumeLeaseExpiresAt, sql`clock_timestamp()`),
+    ),
+  );
 }

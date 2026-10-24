@@ -1,4 +1,3 @@
-import { z } from 'zod';
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
@@ -53,10 +52,3 @@ export const enqueueAdvance = (
     aggregateId: runId,
     fields: { runId },
   });
-
-export const optionalDate = z
-  .union([z.date(), z.string()])
-  .nullable()
-  .transform((value) =>
-    value === null ? null : new Date(value).toISOString(),
-  );
