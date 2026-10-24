@@ -17,13 +17,6 @@ import {
   claimDueSchedules,
 } from './scanning/leases.repository.js';
 import { processScheduleClaim } from './scanning/occurrences.repository.js';
-
-export {
-  type ScanDueSchedulesResult,
-  type ScheduleTriggerScanner,
-  ScheduleClaimLostError,
-} from './scanning/contract.js';
-export { isScheduleClaimEligible } from './scanning/occurrences.repository.js';
 async function scanDueSchedules(
   resources: ScannerResources,
   input: ScanDueInput,

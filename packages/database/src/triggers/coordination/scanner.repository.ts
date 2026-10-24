@@ -1,7 +1,8 @@
+import type { TriggerEventScanner } from './contract.js';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
+
 import {
   withPlatformTransaction,
   withWorkspaceTransaction,
@@ -12,24 +13,6 @@ import {
 } from '../../platform/pool/runtime.js';
 import type { DatabaseConfig } from '../../config.js';
 import { releaseCoordinatedEvent } from './release.repository.js';
-export interface TriggerEventScanner {
-  scanDue(
-    input: Readonly<{
-      limit: number;
-      checkpointFactory: InitialCheckpointFactory;
-      signal?: AbortSignal;
-    }>,
-  ): Promise<
-    Readonly<{
-      examined: number;
-      started: number;
-      pending: number;
-      refused: number;
-      idle: number;
-    }>
-  >;
-  close(): Promise<void>;
-}
 export function createTriggerEventScanner(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,

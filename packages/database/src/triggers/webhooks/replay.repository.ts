@@ -1,3 +1,4 @@
+import type { WebhookReplayIdentity } from './contract.js';
 import { alias } from 'drizzle-orm/pg-core';
 import { webhookTriggerReplayRecords } from '../../schema/triggers/deliveries.js';
 import { triggerCoordinatedEvents as events } from '../../schema/event-coordination/records.js';
@@ -15,11 +16,6 @@ import { WebhookDeliveryReplayMismatchError } from './errors.js';
 export type WebhookReplayRecord = NonNullable<
   Awaited<ReturnType<typeof readLockedReplay>>
 >;
-export type WebhookReplayIdentity = Readonly<{
-  endpointId: string;
-  dedupeKind: 'fingerprint' | 'keyed';
-  dedupeKeyHash: string;
-}>;
 export async function lockEndpointDedupeKey(
   transaction: WorkspaceTransaction,
   identity: WebhookReplayIdentity,

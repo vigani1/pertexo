@@ -1,3 +1,5 @@
+import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
+
 import type { PublishedWorkflow } from '../../runs/queries/execution/published.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import type {
@@ -28,6 +30,22 @@ export type StartCoordinatedRun = (
   transaction: WorkspaceTransaction,
   eventId: string,
 ) => Promise<{ runId: string; duplicate: boolean }>;
-export class EventCoordinationUnavailableError extends Error {
-  override readonly name = 'EventCoordinationUnavailableError';
+
+export interface TriggerEventScanner {
+  scanDue(
+    input: Readonly<{
+      limit: number;
+      checkpointFactory: InitialCheckpointFactory;
+      signal?: AbortSignal;
+    }>,
+  ): Promise<
+    Readonly<{
+      examined: number;
+      started: number;
+      pending: number;
+      refused: number;
+      idle: number;
+    }>
+  >;
+  close(): Promise<void>;
 }

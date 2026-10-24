@@ -8,7 +8,7 @@ import {
   FormUnavailableError,
   FormChangedError,
   FormAccessConflictError,
-} from '../../../../src/triggers/forms/contract.js';
+} from '../../../../src/triggers/forms/errors.js';
 
 import { admin } from '../../../lifecycle/calls/fixtures.js';
 

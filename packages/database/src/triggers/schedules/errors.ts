@@ -14,3 +14,7 @@ export class ScheduleTriggerError extends Error {
     super(MESSAGES[code], options);
   }
 }
+
+export class ScheduleClaimLostError extends Error {
+  public override readonly name = 'ScheduleClaimLostError';
+}

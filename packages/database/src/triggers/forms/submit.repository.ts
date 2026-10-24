@@ -3,7 +3,7 @@ import { workflowVersions } from '../../schema/authoring/workflows.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { FormSubmissionResponse } from '@pertexo/contracts';
 import { coordinateEvent } from '../coordination/accept.repository.js';
-import type { PreparedFormEvent } from './prepare.repository.js';
+import type { PreparedFormEvent } from './contract.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 
 import {
@@ -28,11 +28,8 @@ import {
   readWorkflowRunAcceptanceReplay,
 } from '../../runs/commands/acceptance.js';
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
-import {
-  FormChangedError,
-  FormUnavailableError,
-  type FormStore,
-} from './contract.js';
+import { FormChangedError, FormUnavailableError } from './errors.js';
+import type { FormStore } from './contract.js';
 import type { readFormVersion } from './records.queries.js';
 
 export async function submitForm(

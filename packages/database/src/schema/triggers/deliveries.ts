@@ -2,7 +2,7 @@ import type {
   WebhookDeliveryOutcome,
   WebhookSignatureCheck,
   WebhookReplayCheck,
-} from '../../triggers/webhooks/deliveries.repository.js';
+} from '../../triggers/webhooks/contract.js';
 import { triggerCoordinatedEvents } from '../event-coordination/records.js';
 import { workflowTriggers } from '../authoring/workflows.js';
 import { workflowRuns } from '../runs/execution.js';

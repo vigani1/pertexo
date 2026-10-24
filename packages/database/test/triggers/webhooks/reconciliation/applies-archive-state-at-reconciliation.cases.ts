@@ -11,13 +11,13 @@ import {
 import {
   WebhookDeliveryIneligibleError,
   WebhookTriggerNotFoundError,
-} from '../../../../src/triggers/webhooks/repository.js';
+} from '../../../../src/triggers/webhooks/errors.js';
 
 import { ScheduleTriggerError } from '../../../../src/triggers/schedules/errors.js';
 
 import { withWorkspaceTransaction } from '../../../../src/tenant-access/transactions.js';
 
-import { isScheduleClaimEligible } from '../../../../src/triggers/schedules/scanner.js';
+import { isScheduleClaimEligible } from '../../../../src/triggers/schedules/scanning/occurrences.repository.js';
 import {
   actorId,
   workspaceId,

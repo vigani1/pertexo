@@ -25,10 +25,8 @@ import {
   parsePersistedScheduleRecurrence,
   resolveScheduleObservation,
 } from '../recurrence.js';
-import {
-  claimedScheduleWorkflowPaused,
-  type RecordedScheduleOccurrence,
-} from '../pause.queries.js';
+import { claimedScheduleWorkflowPaused } from '../pause.queries.js';
+import type { RecordedScheduleOccurrence } from '../contract.js';
 import {
   claimCleanupTimeoutMillis,
   retireInterruptedBatch,
@@ -38,13 +36,13 @@ import {
   withWorkspaceTransaction,
   type WorkspaceTransaction,
 } from '../../../tenant-access/transactions.js';
-import {
-  ScheduleClaimLostError,
-  type ScheduleClaim,
-  type ScanDueInput,
-  type ClaimOutcome,
-  type ClaimedOccurrence,
-  type ScannerResources,
+import { ScheduleClaimLostError } from '../errors.js';
+import type {
+  ScheduleClaim,
+  ScanDueInput,
+  ClaimOutcome,
+  ClaimedOccurrence,
+  ScannerResources,
 } from './contract.js';
 import { cancellationFailure } from './leases.repository.js';
 

@@ -1,4 +1,10 @@
 import type {
+  parseFormValues,
+  FormValuesInvalidError,
+} from '@pertexo/workflow-model';
+import type { PreparedEventCoordination } from '../coordination/contract.js';
+
+import type {
   FormAccess,
   FormAccessRequest,
   FormSchemaResponse,
@@ -53,12 +59,15 @@ export interface FormStore {
   ): Promise<FormAccess>;
   close(): Promise<void>;
 }
-export class FormUnavailableError extends Error {
-  override readonly name = 'FormUnavailableError';
-}
-export class FormChangedError extends Error {
-  override readonly name = 'FormChangedError';
-}
-export class FormAccessConflictError extends Error {
-  override readonly name = 'FormAccessConflictError';
-}
+
+export type PreparedFormEvent =
+  | Readonly<{ versionId: string; error: FormValuesInvalidError }>
+  | Readonly<{
+      versionId: string;
+      input: Readonly<{
+        values: ReturnType<typeof parseFormValues>;
+        submittedBy: string | null;
+        submittedAt: string;
+      }>;
+      coordination?: PreparedEventCoordination;
+    }>;

@@ -12,11 +12,8 @@ import { rolesForCapability } from '@pertexo/workflow-model';
 import { authorizeWorkflowResource } from '../../tenant-access/resources/authority.js';
 import { readFormDefinition } from './definition.js';
 import type { PoolClient } from 'pg';
-import {
-  FormUnavailableError,
-  type FormScope,
-  type PublicFormGrant,
-} from './contract.js';
+import { FormUnavailableError } from './errors.js';
+import type { FormScope, PublicFormGrant } from './contract.js';
 
 export async function authorizeForm(
   client: PoolClient,

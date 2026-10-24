@@ -1,3 +1,4 @@
+import type { PreparedFormEvent } from './contract.js';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
@@ -11,19 +12,8 @@ import {
 import { withTenantScopedReadClient } from '../../tenant-access/transactions.js';
 import { authorizeForm, readFormVersion } from './records.queries.js';
 import type { FormStore, PublicFormGrant } from './contract.js';
-import type { PreparedEventCoordination } from '../coordination/contract.js';
+
 import type { createEventCoordinationPreparation } from '../coordination/prepare.js';
-export type PreparedFormEvent =
-  | Readonly<{ versionId: string; error: FormValuesInvalidError }>
-  | Readonly<{
-      versionId: string;
-      input: Readonly<{
-        values: ReturnType<typeof parseFormValues>;
-        submittedBy: string | null;
-        submittedAt: string;
-      }>;
-      coordination?: PreparedEventCoordination;
-    }>;
 /** Read an authorized immutable candidate; expression work holds no admission locks. */
 export async function prepareFormEvent(
   pool: Pool,

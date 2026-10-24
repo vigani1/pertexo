@@ -1,3 +1,17 @@
+import type {
+  TriggerRead,
+  ScheduleOccurrencePosition,
+  ScheduleOccurrencePage,
+  ScheduleFireTimes,
+  ScheduleTriggerReads,
+} from './contract.js';
+import {
+  parseTriggerRead,
+  uuidSchema,
+  pageLimitSchema,
+  countSchema,
+  positionSchema,
+} from './input.js';
 import { and, desc, eq, sql, type SQLWrapper } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -9,9 +23,8 @@ import {
   workflows,
 } from '../../schema/authoring/workflows.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import type { RecordedScheduleOccurrence } from './pause.queries.js';
+
 import type { Pool, PoolClient } from 'pg';
-import { z } from 'zod';
 
 import {
   withTenantScopedClient,
@@ -19,7 +32,6 @@ import {
 } from '../../tenant-access/transactions.js';
 import { authorizeWorkflowResource } from '../../tenant-access/resources/authority.js';
 import {
-  MAX_SCHEDULE_PROJECTION,
   parsePersistedScheduleRecurrence,
   parseScheduleRecurrence,
   projectScheduleOccurrences,
@@ -33,67 +45,6 @@ import { ScheduleTriggerError } from './errors.js';
  * scheduler's own recurrence engine from database time. Nothing here writes.
  */
 const DEFAULT_PAGE_LIMIT = 25;
-
-export type ScheduleOccurrenceOutcome = RecordedScheduleOccurrence;
-
-export type ScheduleOccurrenceRecord = Readonly<{
-  id: string;
-  scheduledAt: string;
-  recordedAt: string;
-  outcome: ScheduleOccurrenceOutcome;
-  runId: string | null;
-  skipReason?: 'concurrency_limit';
-}>;
-
-/** Newest-first keyset position: `(scheduled_at desc, id asc)`. */
-export type ScheduleOccurrencePosition = Readonly<{
-  scheduledAt: string;
-  id: string;
-}>;
-
-export type ScheduleOccurrencePage = Readonly<{
-  items: readonly ScheduleOccurrenceRecord[];
-  nextCursor?: ScheduleOccurrencePosition;
-}>;
-
-/** Projected fire instants and the database time they were computed at. */
-export type ScheduleFireTimes = Readonly<{
-  observedAt: Date;
-  items: readonly Date[];
-}>;
-
-type TriggerRead = Readonly<{
-  workspaceId: string;
-  actorId: string;
-  workflowId: string;
-  triggerId: string;
-}>;
-
-export interface ScheduleTriggerReads {
-  listOccurrences(
-    input: TriggerRead &
-      Readonly<{ limit?: number; after?: ScheduleOccurrencePosition }>,
-  ): Promise<ScheduleOccurrencePage>;
-  nextFireTimes(
-    input: TriggerRead & Readonly<{ count: number }>,
-  ): Promise<ScheduleFireTimes>;
-  previewFireTimes(
-    input: Omit<TriggerRead, 'triggerId'> &
-      Readonly<{ recurrence: unknown; count: number }>,
-  ): Promise<ScheduleFireTimes>;
-}
-
-const uuidSchema = z.uuid();
-const pageLimitSchema = z.number().int().positive().max(100);
-const countSchema = z.number().int().min(1).max(MAX_SCHEDULE_PROJECTION);
-const instantSchema = z.iso
-  .datetime({ precision: 6 })
-  .refine((value) => !value.startsWith('0000-'), {
-    message: 'PostgreSQL timestamps do not support year zero',
-  });
-const positionSchema = z
-  .object({ scheduledAt: instantSchema, id: uuidSchema })
-  .strict();
 const utcInstant = (column: SQLWrapper) =>
   sql<string>`to_char(${column} at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
 
@@ -116,15 +67,6 @@ export async function authorizeScheduleReader(
 
 function tenantScope(read: Pick<TriggerRead, 'workspaceId' | 'actorId'>) {
   return { workspaceId: read.workspaceId, actorId: read.actorId };
-}
-
-function parseTriggerRead(input: TriggerRead): TriggerRead {
-  return Object.freeze({
-    workspaceId: uuidSchema.parse(input.workspaceId),
-    actorId: uuidSchema.parse(input.actorId),
-    workflowId: uuidSchema.parse(input.workflowId),
-    triggerId: uuidSchema.parse(input.triggerId),
-  });
 }
 
 async function readOccurrencePage(

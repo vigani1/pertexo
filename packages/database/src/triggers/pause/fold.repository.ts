@@ -1,3 +1,7 @@
+import type {
+  WorkflowTriggerPauseDecision,
+  WorkflowTriggerPauseFoldStore,
+} from './contract.js';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
@@ -10,27 +14,6 @@ import {
 } from '../../platform/pool/runtime.js';
 import { withPlatformTransaction } from '../../tenant-access/transactions.js';
 import { checkDatabaseReadiness } from '../../platform/readiness.queries.js';
-
-/** A workflow whose failure streak reached its threshold in this fold. */
-export type WorkflowTriggerPauseDecision = Readonly<{
-  workspaceId: string;
-  workflowId: string;
-  consecutiveFailures: number;
-}>;
-
-export interface WorkflowTriggerPauseFoldStore {
-  /** Fails unless the fold command is the reviewed one. */
-  checkReadiness(signal?: AbortSignal): Promise<void>;
-  /**
-   * Folds up to `limit` pending run outcomes into their workflows' streaks,
-   * pausing workflows that reach their threshold.
-   */
-  foldPending(
-    limit: number,
-    signal?: AbortSignal,
-  ): Promise<readonly WorkflowTriggerPauseDecision[]>;
-  close(): Promise<void>;
-}
 
 const STATEMENT_TIMEOUT_MILLIS = 5_000;
 const limitSchema = z.number().int().min(1).max(1_000);

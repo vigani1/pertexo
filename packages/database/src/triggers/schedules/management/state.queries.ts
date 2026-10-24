@@ -16,13 +16,13 @@ import {
   resolveScheduleObservation,
 } from '../recurrence.js';
 
-import {
-  scheduleTriggerSchema,
-  type ScheduleTriggerRecord,
-  type SetEnabledInput,
-  type ScheduleCommandIdentity,
-  type ScheduleCommandTarget,
-  type ScheduleHealthTransition,
+import { scheduleTriggerSchema } from './receipt.js';
+import type {
+  ScheduleTriggerRecord,
+  SetEnabledInput,
+  ScheduleCommandIdentity,
+  ScheduleCommandTarget,
+  ScheduleHealthTransition,
 } from './contract.js';
 
 function scheduleQuery(client: PoolClient) {

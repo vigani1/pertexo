@@ -3,7 +3,7 @@ import type {
   WorkflowActivationStatus,
   WorkflowTriggerStatus,
 } from '@pertexo/workflow-model';
-import type { WorkflowTriggerHealth } from '../../triggers/reconciliation/health.repository.js';
+import type { WorkflowTriggerHealth } from '../../triggers/reconciliation/contract.js';
 import { users, workspaces } from '../foundation.js';
 import {
   bigint,

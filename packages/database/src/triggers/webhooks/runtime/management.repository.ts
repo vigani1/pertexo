@@ -10,14 +10,15 @@ import type { Pool } from 'pg';
 
 import { sha256HexSchema as digestSchema } from '../../../platform/persisted-primitives.js';
 
-import { refreshWorkflowActivation } from '../../reconciliation/repository.js';
+import { refreshWorkflowActivation } from '../../reconciliation/health.repository.js';
 
 import {
   WebhookTriggerNotFoundError,
   WebhookTriggerStateError,
 } from '../errors.js';
 
-import { uuidSchema, type WebhookTriggerDatabase } from './contract.js';
+import { uuidSchema } from '../input.js';
+import type { WebhookTriggerDatabase } from './contract.js';
 import {
   claimWebhookCommand,
   completeWebhookCommand,

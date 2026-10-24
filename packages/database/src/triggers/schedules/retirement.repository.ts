@@ -1,3 +1,4 @@
+import type { ClaimRetirement } from './scanning/contract.js';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
@@ -7,9 +8,6 @@ import { withPlatformTransaction } from '../../tenant-access/transactions.js';
 
 /** A schedule claim the scanner holds: the trigger and its lease. */
 type RetirableClaim = Readonly<{ trigger_id: string; lease_token: string }>;
-export type ClaimRetirement =
-  | Readonly<{ kind: 'defer'; retryAfterSeconds: number }>
-  | Readonly<{ kind: 'fail' | 'release' }>;
 
 export const claimCleanupTimeoutMillis = 5_000;
 

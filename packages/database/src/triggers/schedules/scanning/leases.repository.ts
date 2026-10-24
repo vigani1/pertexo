@@ -8,11 +8,8 @@ import type { acquireDatabasePool } from '../../../platform/pool/runtime.js';
 
 import { retireInterruptedBatch } from '../retirement.repository.js';
 import { withPlatformTransaction } from '../../../tenant-access/transactions.js';
-import {
-  claimSchema,
-  type ScheduleClaim,
-  type ScanDueInput,
-} from './contract.js';
+import { claimSchema } from './input.js';
+import type { ScheduleClaim, ScanDueInput } from './contract.js';
 
 function throwableError(value: unknown, fallbackMessage: string): Error {
   return value instanceof Error

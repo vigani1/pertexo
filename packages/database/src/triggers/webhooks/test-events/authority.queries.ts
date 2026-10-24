@@ -3,7 +3,8 @@ import type { PoolClient } from 'pg';
 import { rolesForCapability } from '@pertexo/workflow-model';
 import { lockWorkflowAuthoringAuthority } from '../../../authoring/workflows/authority.js';
 import { sampleDraft } from '../../../authoring/step-samples/records.js';
-import { WebhookTestEventError, type TestEventScope } from './contract.js';
+import { WebhookTestEventError } from './errors.js';
+import type { TestEventScope } from './contract.js';
 
 export async function testEventDraft(
   client: PoolClient,

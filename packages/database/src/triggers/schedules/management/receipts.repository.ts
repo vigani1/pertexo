@@ -15,12 +15,12 @@ import { sha256HexSchema as digestSchema } from '../../../platform/persisted-pri
 
 import { ScheduleTriggerError } from '../errors.js';
 
-import {
-  uuidSchema,
-  type ScheduleTriggerCommandResult,
-  type SetEnabledInput,
-  type ScheduleCommandIdentity,
-  type ScheduleHealthTransition,
+import { uuidSchema } from '../input.js';
+import type {
+  ScheduleTriggerCommandResult,
+  SetEnabledInput,
+  ScheduleCommandIdentity,
+  ScheduleHealthTransition,
 } from './contract.js';
 import { parseStoredScheduleTrigger, readSchedule } from './state.queries.js';
 
