@@ -11,7 +11,11 @@ import { canonicalJson, normalizedJson } from '@pertexo/workflow-model';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { readQuotas, requireTable } from '../definitions.queries.js';
 import { keyValue } from '../rows.repository.js';
-import type { DataTablesStore, DataTableDefinition } from '../contract.js';
+import type {
+  DataTablesStore,
+  DataTableDefinition,
+  DataTableQuotas,
+} from '../contract.js';
 
 function changedDefinition(
   table: DataTableDefinition,
@@ -161,6 +165,54 @@ export async function editTableSchema(
     canonicalJson({ columns: next.columns, keyColumn: next.keyColumn })
   )
     return { revision: table.revision };
+  const bytes = await rewriteTableRows(client, input, { table, next, quota });
+  await client.query(
+    'update app.workspace_data_tables set columns_json=$3::jsonb,key_column=$4,has_removed_columns=$5,stored_bytes=$6,revision=revision+1 where workspace_id=$1 and id=$2',
+    [
+      input.workspaceId,
+      table.id,
+      JSON.stringify(next.columns),
+      next.keyColumn,
+      next.hasRemovedColumns,
+      bytes,
+    ],
+  );
+  await client.query(
+    'update app.workspace_data_table_quotas set stored_bytes=stored_bytes+$2 where workspace_id=$1',
+    [input.workspaceId, bytes - table.storedBytes],
+  );
+  await client.query(
+    `insert into app.audit_events(id,workspace_id,actor_user_id,action,target_type,target_id,metadata)
+    values($1,$2,$3,'data.table_schema_changed','data_table',$4,$5::jsonb)`,
+    [
+      generatePersistedId(),
+      input.workspaceId,
+      input.actorId,
+      table.id,
+      JSON.stringify({
+        operation: input.change.operation,
+        revision: next.revision,
+        columns: next.columns.map(({ id, name }) => ({ id, name })),
+        keyColumn: next.keyColumn,
+      }),
+    ],
+  );
+  return { revision: next.revision };
+}
+
+async function rewriteTableRows(
+  client: PoolClient,
+  input: Parameters<DataTablesStore['editSchema']>[0],
+  {
+    table,
+    next,
+    quota,
+  }: Readonly<{
+    table: DataTableDefinition;
+    next: DataTableDefinition;
+    quota: DataTableQuotas;
+  }>,
+): Promise<number> {
   // Replacing keys in two phases allows valid swaps without transient uniqueness failures.
   if (
     input.change.operation === 'set_key' &&
@@ -211,36 +263,5 @@ export async function editTableSchema(
     );
     after = rows.at(-1)?.id ?? null;
   }
-  await client.query(
-    'update app.workspace_data_tables set columns_json=$3::jsonb,key_column=$4,has_removed_columns=$5,stored_bytes=$6,revision=revision+1 where workspace_id=$1 and id=$2',
-    [
-      input.workspaceId,
-      table.id,
-      JSON.stringify(next.columns),
-      next.keyColumn,
-      next.hasRemovedColumns,
-      bytes,
-    ],
-  );
-  await client.query(
-    'update app.workspace_data_table_quotas set stored_bytes=stored_bytes+$2 where workspace_id=$1',
-    [input.workspaceId, bytes - table.storedBytes],
-  );
-  await client.query(
-    `insert into app.audit_events(id,workspace_id,actor_user_id,action,target_type,target_id,metadata)
-    values($1,$2,$3,'data.table_schema_changed','data_table',$4,$5::jsonb)`,
-    [
-      generatePersistedId(),
-      input.workspaceId,
-      input.actorId,
-      table.id,
-      JSON.stringify({
-        operation: input.change.operation,
-        revision: next.revision,
-        columns: next.columns.map(({ id, name }) => ({ id, name })),
-        keyColumn: next.keyColumn,
-      }),
-    ],
-  );
-  return { revision: next.revision };
+  return bytes;
 }
