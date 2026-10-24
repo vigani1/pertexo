@@ -1,3 +1,4 @@
+import { insertTestMember } from '../../support/user.js';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -281,17 +282,14 @@ describe('workflow rename command persistence (ADR 041)', () => {
     const workflowId = await createNamed('Support');
     for (const role of ['viewer', 'operator'] as const) {
       const memberId = randomUUID();
-      await queryAsOwner(
-        `insert into app.users (id,email,display_name,status)
-         values ($1,$2,$3,'active')`,
-        [memberId, `${memberId}@example.test`, `Rename ${role}`],
-        workspaceId,
-      );
-      await queryAsOwner(
-        `insert into app.workspace_memberships (workspace_id,user_id,role,status)
-         values ($1,$2,$3,'active')`,
-        [workspaceId, memberId, role],
-        workspaceId,
+      await insertTestMember(
+        (text, values) => queryAsOwner(text, values, workspaceId),
+        {
+          userId: memberId,
+          workspaceId,
+          displayName: `Rename ${role}`,
+          role,
+        },
       );
       await expect(
         rename(workflowId, {
