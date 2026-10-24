@@ -10,13 +10,13 @@ import { readDirectoryRole } from '../roles.queries.js';
 import type { Pool } from 'pg';
 import type { DirectoryMappings, DirectoryAdopt } from '@pertexo/contracts';
 import { withWorkspaceScope } from '../../../../tenant-access/transactions.js';
-import { DirectoryError } from '../contract.js';
+import { DirectoryError } from '../errors.js';
 import { projectDirectoryMemberships } from '../projection.repository.js';
 import {
   auditDirectoryManagement,
   runDirectoryCommand,
-  type DirectoryCommand,
 } from './commands.repository.js';
+import type { DirectoryCommand } from '../contract.js';
 
 export async function replaceDirectoryMappings(
   pool: Pool,

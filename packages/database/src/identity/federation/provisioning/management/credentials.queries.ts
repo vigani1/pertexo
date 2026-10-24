@@ -1,3 +1,6 @@
+type CredentialRow = CredentialRecord;
+import type { DirectoryCredential } from '@pertexo/contracts';
+
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { authProvisioningCredentials } from '../../../../schema/identity/federation/directory/credentials.js';
@@ -16,3 +19,11 @@ export function credentialRecords(client: PoolClient) {
 export type CredentialRecord = Awaited<
   ReturnType<typeof credentialRecords>
 >[number];
+
+export const publicCredential = (row: CredentialRow): DirectoryCredential => ({
+  id: row.id,
+  name: row.name,
+  createdAt: row.created_at.toISOString(),
+  revokedAt: row.revoked_at?.toISOString() ?? null,
+  lastUsedAt: row.last_used_at?.toISOString() ?? null,
+});

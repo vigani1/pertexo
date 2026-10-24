@@ -20,24 +20,22 @@ import {
   changeDirectoryUser,
   deleteDirectoryUser,
   readDirectoryUser,
-  type DirectoryUser,
 } from './resources/users.repository.js';
+import type { DirectoryUser } from './contract.js';
 import {
   createDirectoryGroup,
   changeDirectoryGroup,
   deleteDirectoryGroup,
   readDirectoryGroup,
-  type DirectoryGroup,
 } from './resources/groups.repository.js';
+import type { DirectoryGroup } from './contract.js';
 import {
   listDirectoryUsers,
   listDirectoryGroups,
-  type DirectoryQuery,
 } from './resources/records.queries.js';
-import {
-  readDirectoryManagement,
-  type DirectoryCommand,
-} from './management/commands.repository.js';
+import type { DirectoryQuery } from './contract.js';
+import { readDirectoryManagement } from './management/commands.repository.js';
+import type { DirectoryCommand } from './contract.js';
 import {
   createDirectoryCredential,
   revokeDirectoryCredential,
@@ -151,4 +149,3 @@ export function createDirectoryStore(
     ) => unlinkDirectoryWorkspace(pool, input),
   };
 }
-export type DirectoryStore = ReturnType<typeof createDirectoryStore>;

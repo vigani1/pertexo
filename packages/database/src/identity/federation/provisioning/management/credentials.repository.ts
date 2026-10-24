@@ -1,3 +1,5 @@
+import { credentialReceipt } from './receipt.js';
+import { publicCredential } from './credentials.queries.js';
 import { authProvisioningCredentials } from '../../../../schema/identity/federation/directory/credentials.js';
 import { workspaces } from '../../../../schema/foundation.js';
 import { and, count, eq, isNull, sql } from 'drizzle-orm';
@@ -5,38 +7,25 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   credentialRecords,
   credentialSelection,
-  type CredentialRecord,
 } from './credentials.queries.js';
 import { rethrowQueryFailure } from '../../../../platform/query-errors.js';
 import { createHash, randomBytes } from 'node:crypto';
 import type { Pool } from 'pg';
-import { z } from 'zod';
-import type {
-  DirectoryCredential,
-  DirectoryCredentialResult,
-} from '@pertexo/contracts';
+
+import type { DirectoryCredentialResult } from '@pertexo/contracts';
 import { generatePersistedId } from '../../../../platform/persisted-id.js';
 import { withPlatformTransaction } from '../../../../tenant-access/transactions.js';
 import { lockWorkspaceAuthority } from '../../../../tenant-access/workspaces/authority.queries.js';
 import { withWorkspaceScope } from '../../../../tenant-access/transactions.js';
 import { organizationForWorkspace } from '../../management/authority.repository.js';
-import { DirectoryError } from '../contract.js';
+import { DirectoryError } from '../errors.js';
 import { DIRECTORY_LIMITS } from '../limits.js';
 import {
   auditDirectoryManagement,
   runDirectoryCommand,
-  type DirectoryCommand,
 } from './commands.repository.js';
+import type { DirectoryCommand } from '../contract.js';
 
-type CredentialRow = CredentialRecord;
-export const publicCredential = (row: CredentialRow): DirectoryCredential => ({
-  id: row.id,
-  name: row.name,
-  createdAt: row.created_at.toISOString(),
-  revokedAt: row.revoked_at?.toISOString() ?? null,
-  lastUsedAt: row.last_used_at?.toISOString() ?? null,
-});
-const credentialReceipt = z.object({ credentialId: z.uuid() }).strict();
 export async function createDirectoryCredential(
   pool: Pool,
   input: DirectoryCommand & Readonly<{ name: string }>,

@@ -26,9 +26,9 @@ import {
   lockDirectoryOrganization,
   lockDirectoryParticipants,
 } from '../authority.repository.js';
-import { DirectoryError } from '../contract.js';
+import { DirectoryError } from '../errors.js';
 import { DIRECTORY_LIMITS } from '../limits.js';
-import type { DirectoryCommand } from './commands.repository.js';
+import type { DirectoryCommand } from '../contract.js';
 import { detachDirectoryMemberships } from './detach.repository.js';
 
 export async function unlinkDirectoryWorkspace(

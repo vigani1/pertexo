@@ -16,10 +16,8 @@ import {
   lockFederationWorkspace,
   organizationForWorkspace,
 } from '../management/authority.repository.js';
-import {
-  FederationConflictError,
-  type FederationScope,
-} from '../management/contract.js';
+import { FederationConflictError } from '../management/errors.js';
+import type { FederationScope } from '../management/contract.js';
 import { readEligibleAuthenticationSession } from '../sessions/authority.repository.js';
 import { SignInProofRejectedError } from '../accounts/rejection.js';
 import { queryFailure } from '../../../platform/query-errors.js';
@@ -27,10 +25,8 @@ import {
   readFederationProvider,
   findFederationAttempt,
 } from './records.queries.js';
-import {
-  completeFederationJourney,
-  type CompleteFederationJourney,
-} from './complete.repository.js';
+import { completeFederationJourney } from './complete.repository.js';
+import type { CompleteFederationJourney } from './contract.js';
 import type {
   StartFederationJourney,
   FederationCompletion,

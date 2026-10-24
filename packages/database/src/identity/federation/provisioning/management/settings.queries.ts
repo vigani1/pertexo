@@ -12,8 +12,8 @@ import type {
   DirectorySettings,
   DirectoryPeopleQuery,
 } from '@pertexo/contracts';
-import type { DirectoryOrganization } from '../authority.repository.js';
-import { publicCredential } from './credentials.repository.js';
+import type { DirectoryOrganization } from '../contract.js';
+import { publicCredential } from './credentials.queries.js';
 
 export async function projectDirectorySettings(
   client: PoolClient,

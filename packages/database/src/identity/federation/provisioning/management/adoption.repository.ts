@@ -6,8 +6,8 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '../../../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import { withWorkspaceScope } from '../../../../tenant-access/transactions.js';
-import { DirectoryError } from '../contract.js';
-import type { DirectoryOrganization } from '../authority.repository.js';
+import { DirectoryError } from '../errors.js';
+import type { DirectoryOrganization } from '../contract.js';
 import { readDirectoryRole } from '../roles.queries.js';
 import type {
   DirectoryAdoptionQuery,

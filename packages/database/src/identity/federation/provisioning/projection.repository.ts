@@ -24,7 +24,7 @@ import type {
 
 import { withWorkspaceScope } from '../../../tenant-access/transactions.js';
 import { revokeSessionsForUsers } from '../../../tenant-access/users/sessions.repository.js';
-import type { DirectoryOrganization } from './authority.repository.js';
+import type { DirectoryOrganization } from './contract.js';
 
 import { directoryRole } from './roles.queries.js';
 

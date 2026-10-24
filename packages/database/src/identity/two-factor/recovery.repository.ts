@@ -1,3 +1,8 @@
+import type {
+  RecoveryUser,
+  TwoFactorRecoveryResult,
+  TwoFactorRecoveryStore,
+} from './contract.js';
 import { eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { DatabaseConfig } from '../../config.js';
@@ -12,19 +17,6 @@ import { users } from '../../schema/foundation.js';
 import { withPlatformTransaction } from '../../tenant-access/transactions.js';
 import { recordIdentitySecurityFact } from '../facts.repository.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
-
-type RecoveryUser = Readonly<{ email: string; displayName: string }>;
-export type TwoFactorRecoveryResult = Readonly<{
-  status: 'disabled' | 'already_off' | 'not_found';
-  email: string;
-}>;
-export interface TwoFactorRecoveryStore {
-  disable(
-    email: string,
-    prepareNotice: (user: RecoveryUser) => SystemMailInput | undefined,
-  ): Promise<TwoFactorRecoveryResult>;
-  close(): Promise<void>;
-}
 
 /** Global identity recovery uses the existing app login, not tenant or maintenance authority. */
 export function createTwoFactorRecoveryStore(

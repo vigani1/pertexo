@@ -1,3 +1,7 @@
+import type { Filter } from 'scim2-parse-filter';
+import type { createDirectoryStore } from './repository.js';
+import type { FederationScope } from '../management/contract.js';
+
 import type { Role } from '@pertexo/workflow-model';
 
 export type DirectoryRole = Exclude<Role, 'owner'>;
@@ -35,9 +39,9 @@ export type DirectoryPrincipal = Readonly<{
   organizationId: string;
   controlWorkspaceId: string;
 }>;
-export type {
-  DirectoryUserRecord as DirectoryUserRow,
-  DirectoryGroupRecord as DirectoryGroupRow,
+import type {
+  DirectoryUserRow,
+  DirectoryGroupRow,
 } from './resources/records.queries.js';
 export type DirectoryMapping = Readonly<{
   groupId: string;
@@ -45,23 +49,40 @@ export type DirectoryMapping = Readonly<{
   role: DirectoryRole;
   priority: number;
 }>;
-export class DirectoryError extends Error {
-  override readonly name = 'DirectoryError';
-  constructor(
-    readonly reason:
-      | 'unauthorized'
-      | 'forbidden'
-      | 'not_found'
-      | 'stale'
-      | 'limit'
-      | 'invalid_value'
-      | 'invalid_filter'
-      | 'invalid_path'
-      | 'no_target'
-      | 'mutability'
-      | 'uniqueness'
-      | 'owner_protected',
-  ) {
-    super('Directory operation is not permitted');
-  }
-}
+
+export type DirectoryWorkspace = Readonly<{
+  workspace_id: string;
+  default_role: DirectoryRole;
+}>;
+
+export type DirectoryOrganization = Readonly<{
+  id: string;
+  control_workspace_id: string;
+  revision: number;
+  workspaces: readonly DirectoryWorkspace[];
+}>;
+
+export type DirectoryStore = ReturnType<typeof createDirectoryStore>;
+
+export type DirectoryCommand = FederationScope &
+  Readonly<{ idempotencyKey: string; expectedRevision: number }>;
+
+export type DirectoryQuery = Readonly<{
+  filter?: Filter;
+  startIndex: number;
+  count: number;
+  sortBy?: string;
+  sortOrder: 'ascending' | 'descending';
+}>;
+
+export type DirectoryPage<T> = Readonly<{
+  totalResults: number;
+  startIndex: number;
+  Resources: readonly T[];
+}>;
+
+export type DirectoryUser = DirectoryUserRow &
+  Readonly<{ groupIds: readonly string[] }>;
+
+export type DirectoryGroup = DirectoryGroupRow &
+  Readonly<{ memberIds: readonly string[] }>;

@@ -1,3 +1,4 @@
+import { providerHasKind } from '../configuration.js';
 import { authOrganizationWorkspaces } from '../../../schema/identity/federation/organizations.js';
 import { workspaces } from '../../../schema/foundation.js';
 import { authDomains } from '../../../schema/identity/federation/domains.js';
@@ -7,16 +8,12 @@ import {
 } from '../../../schema/identity/federation/providers.js';
 import { asc, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import type { OidcConfiguration, SamlConfiguration } from '@pertexo/contracts';
 import { rethrowQueryFailure } from '../../../platform/query-errors.js';
-import {
-  domainRecords,
-  providerRecords,
-  type ProviderRecord,
-} from './records.queries.js';
+import { domainRecords, providerRecords } from './records.queries.js';
 
 import type { PoolClient } from 'pg';
-import type { OrganizationRow, OrganizationSnapshot } from './contract.js';
+import type { OrganizationRow } from './records.queries.js';
+import type { OrganizationSnapshot } from './contract.js';
 
 export async function projectOrganization(
   client: PoolClient,
@@ -106,15 +103,4 @@ export async function projectOrganization(
       throw new Error('Unknown stored provider kind');
     }),
   };
-}
-
-// Provider writes validate the configuration for its kind before persisting it.
-function providerHasKind<K extends ProviderRecord['kind']>(
-  row: ProviderRecord,
-  kind: K,
-): row is ProviderRecord & {
-  kind: K;
-  configuration: K extends 'oidc' ? OidcConfiguration : SamlConfiguration;
-} {
-  return row.kind === kind;
 }

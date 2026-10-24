@@ -12,7 +12,7 @@ export const organizationSelection = {
 export function organizationRecords(client: PoolClient) {
   return drizzle(client).select(organizationSelection).from(authOrganizations);
 }
-export type OrganizationRecord = Awaited<
+export type OrganizationRow = Awaited<
   ReturnType<typeof organizationRecords>
 >[number];
 export function domainRecords(client: PoolClient) {
@@ -29,7 +29,7 @@ export function domainRecords(client: PoolClient) {
     })
     .from(authDomains);
 }
-export type DomainRecord = Awaited<ReturnType<typeof domainRecords>>[number];
+export type DomainRow = Awaited<ReturnType<typeof domainRecords>>[number];
 export function providerRecords(client: PoolClient) {
   return drizzle(client)
     .select({
@@ -45,6 +45,4 @@ export function providerRecords(client: PoolClient) {
     })
     .from(authProviders);
 }
-export type ProviderRecord = Awaited<
-  ReturnType<typeof providerRecords>
->[number];
+export type ProviderRow = Awaited<ReturnType<typeof providerRecords>>[number];

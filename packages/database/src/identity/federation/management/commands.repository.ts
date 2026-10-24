@@ -15,20 +15,15 @@ import {
   withPlatformTransaction,
   withWorkspaceScope,
 } from '../../../tenant-access/transactions.js';
-import {
-  FederationConflictError,
-  type FederationScope,
-  type OrganizationRow,
-} from './contract.js';
+import { FederationConflictError } from './errors.js';
+import type { FederationScope } from './contract.js';
+import type { OrganizationRow } from './records.queries.js';
 import {
   lockFederationWorkspace,
   organizationForWorkspace,
 } from './authority.repository.js';
 import { projectOrganization } from './settings.queries.js';
 import { lockDirectoryParticipants } from '../provisioning/authority.repository.js';
-
-export type FederationCommand = FederationScope &
-  Readonly<{ idempotencyKey: string; expectedRevision: number }>;
 export async function requireControlOrganization(
   client: PoolClient,
   scope: FederationScope,
