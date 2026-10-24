@@ -25,7 +25,10 @@ export type LockedAttemptRow = Awaited<
 >[number];
 
 export interface CompletionFields {
-  readonly durableStatus: string;
+  readonly durableStatus: Exclude<
+    CompletionInput['outcome']['status'],
+    'suspended' | 'executor_failure'
+  >;
   readonly errorSummary: string | null;
   readonly executorOutcome: ExecutorOutcome | undefined;
   readonly safeErrorCode: string | null;

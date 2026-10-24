@@ -1,18 +1,20 @@
-import { workflowScopeSql } from '../../../tenant-access/resources/scope.queries.js';
 import type { ResourceTransaction } from '../../../tenant-access/resources/contract.js';
 import { withRetainedResourceRead } from '../../../tenant-access/resources/transactions.repository.js';
-import { ordinaryRunSql } from '../../data-policy.js';
-import { sql } from 'drizzle-orm';
+
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
-import { runStatusSchema } from '../../commands/records.repository.js';
+import type { RunStatus } from '@pertexo/workflow-engine';
+import { emptyRunCounts } from '../counts.js';
+import {
+  readStatisticsCounts,
+  readWorkflowBreakdownRows,
+} from './aggregate.queries.js';
 
 // Exact run counts for one workspace snapshot (ADR 044). Every statement
 // reads one bounded index range: the non-terminal statuses, or the runs
 // created inside a fixed window.
 
-type RunStatus = z.output<typeof runStatusSchema>;
 type CurrentStatus = Extract<RunStatus, 'queued' | 'running' | 'waiting'>;
 
 /** Windows are whole hours so daylight-saving changes never skew them. */
@@ -64,36 +66,6 @@ export type WorkflowRunStatisticsRecord = Readonly<{
   }>;
 }>;
 
-const timestampSchema = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/u);
-const countSchema = z.number().int().nonnegative();
-const currentRowSchema = z
-  .object({
-    as_of: timestampSchema,
-    created_at_from: timestampSchema,
-    queued: countSchema,
-    running: countSchema,
-    waiting: countSchema,
-  })
-  .strict();
-const statusRowSchema = z
-  .object({ status: runStatusSchema, run_count: countSchema })
-  .strict();
-const workflowRowSchema = statusRowSchema
-  .extend({
-    workflow_id: z.uuid(),
-    total: countSchema,
-    workflow_name: z.string().min(1).max(128).nullable(),
-  })
-  .strict();
-
-function emptyCounts(): Record<RunStatus, number> {
-  return Object.fromEntries(
-    runStatusSchema.options.map((status) => [status, 0]),
-  ) as Record<RunStatus, number>;
-}
-
 export async function readWorkflowRunStatistics(
   pool: Pool,
   input: WorkflowRunStatisticsDatabaseInput,
@@ -114,51 +86,12 @@ async function readInTransaction(
   const hours = WINDOW_HOURS[input.window];
   // The transaction timestamp is fixed for the whole snapshot, so every
   // statement below shares the same window bounds and asOf.
-  const current = currentRowSchema.parse(
-    (
-      await transaction.db.execute(sql`
-        select
-          to_char(transaction_timestamp() at time zone 'UTC',
-            'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as as_of,
-          to_char(
-            (transaction_timestamp() - make_interval(hours => ${hours}::integer))
-              at time zone 'UTC',
-            'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as created_at_from,
-          (count(*) filter (where status = 'queued'))::integer as queued,
-          (count(*) filter (where status = 'running'))::integer as running,
-          (count(*) filter (where status = 'waiting'))::integer as waiting
-        from app.workflow_runs
-        where ${ordinaryRunSql()} and workspace_id = ${transaction.workspaceId}
-          and ${workflowScopeSql(transaction.resources, sql`workflow_runs.workflow_id`)}
-          and status in ('queued', 'running', 'waiting')
-      `)
-    ).rows[0],
+  const { current, statuses, skipped } = await readStatisticsCounts(
+    transaction,
+    hours,
   );
-  const statusRows = await transaction.db.execute(sql`
-    select status, count(*)::integer as run_count
-    from app.workflow_runs
-    where ${ordinaryRunSql()} and workspace_id = ${transaction.workspaceId}
-          and ${workflowScopeSql(transaction.resources, sql`workflow_runs.workflow_id`)}
-      and created_at >= transaction_timestamp()
-        - make_interval(hours => ${hours}::integer)
-      and created_at < transaction_timestamp()
-    group by status
-  `);
-  const skipped = await transaction.db.execute<{
-    count: number;
-    coordinated: number;
-  }>(sql`
-    select count(*) filter(where category='trigger.skipped')::integer count,count(*) filter(where category='trigger.coordinated')::integer coordinated from app.usage_events
-    where workspace_id=${transaction.workspaceId}
-      and ${workflowScopeSql(transaction.resources, sql`usage_events.resource_id`)} and category in ('trigger.skipped','trigger.coordinated')
-      and occurred_at>=transaction_timestamp()-make_interval(hours=>${hours}::integer)
-      and occurred_at<transaction_timestamp()
-  `);
-  const byStatus = emptyCounts();
-  for (const row of statusRows.rows) {
-    const { status, run_count: count } = statusRowSchema.parse(row);
-    byStatus[status] = count;
-  }
+  const byStatus = emptyRunCounts();
+  for (const row of statuses) byStatus[row.status] = row.run_count;
   return Object.freeze({
     asOf: current.as_of,
     current: Object.freeze({
@@ -170,8 +103,8 @@ async function readInTransaction(
       duration: input.window,
       createdAtFrom: current.created_at_from,
       createdAtBefore: current.as_of,
-      skippedTriggerEvents: countSchema.parse(skipped.rows[0]?.count),
-      coordinatedTriggerEvents: countSchema.parse(skipped.rows[0]?.coordinated),
+      skippedTriggerEvents: skipped.count,
+      coordinatedTriggerEvents: skipped.coordinated,
       total: Object.values(byStatus).reduce((sum, count) => sum + count, 0),
       byStatus: Object.freeze(byStatus),
     }),
@@ -187,36 +120,11 @@ async function readWorkflowBreakdown(
   input: z.output<typeof inputSchema>,
   hours: number,
 ): Promise<NonNullable<WorkflowRunStatisticsRecord['workflows']>> {
-  const result = await transaction.db.execute(sql`
-    with window_counts as (
-      select workflow_id, status, count(*)::integer as run_count
-      from app.workflow_runs
-      where ${ordinaryRunSql()} and workspace_id = ${transaction.workspaceId}
-          and ${workflowScopeSql(transaction.resources, sql`workflow_runs.workflow_id`)}
-        and created_at >= transaction_timestamp()
-          - make_interval(hours => ${hours}::integer)
-        and created_at < transaction_timestamp()
-      group by workflow_id, status
-    ),
-    ranked as (
-      select workflow_id, sum(run_count)::integer as total
-      from window_counts
-      group by workflow_id
-      order by total desc, workflow_id
-      limit ${WORKFLOW_RUN_STATISTICS_WORKFLOW_LIMIT + 1}
-    )
-    select
-      ranked.workflow_id, ranked.total, window_counts.status,
-      window_counts.run_count,
-      case when ${input.includeWorkflowName}::boolean
-        then workflow.name else null end as workflow_name
-    from ranked
-    join window_counts on window_counts.workflow_id = ranked.workflow_id
-    left join app.workflows workflow
-      on workflow.workspace_id = ${transaction.workspaceId}
-     and workflow.id = ranked.workflow_id
-    order by ranked.total desc, ranked.workflow_id, window_counts.status
-  `);
+  const result = await readWorkflowBreakdownRows(transaction, {
+    hours,
+    includeWorkflowName: input.includeWorkflowName,
+    limit: WORKFLOW_RUN_STATISTICS_WORKFLOW_LIMIT + 1,
+  });
   const workflows = new Map<
     string,
     {
@@ -225,12 +133,11 @@ async function readWorkflowBreakdown(
       byStatus: Record<RunStatus, number>;
     }
   >();
-  for (const value of result.rows) {
-    const row = workflowRowSchema.parse(value);
+  for (const row of result) {
     const known = workflows.get(row.workflow_id) ?? {
       workflowName: row.workflow_name,
       total: row.total,
-      byStatus: emptyCounts(),
+      byStatus: emptyRunCounts(),
     };
     known.byStatus[row.status] = row.run_count;
     workflows.set(row.workflow_id, known);

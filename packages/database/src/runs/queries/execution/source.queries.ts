@@ -71,7 +71,7 @@ export const EXECUTION_SOURCE_SQL = sourceBuilder
   )
   .as('version');
 
-export function executionSourceQuery(db: Pick<NodePgDatabase, 'select'>) {
+function executionSourceQuery(db: Pick<NodePgDatabase, 'select'>) {
   return db.select().from(EXECUTION_SOURCE_SQL);
 }
 type SourceRow = Awaited<ReturnType<typeof executionSourceQuery>>[number];
