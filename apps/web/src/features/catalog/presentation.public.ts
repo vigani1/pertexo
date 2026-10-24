@@ -17,7 +17,7 @@ export {
   requiredConnections,
   stepGroupFor,
   stepGroups,
-  type StepFamily,
   type StepGroup,
-  type StepPresentation,
 } from './model/steps/presentation';
+
+export type { StepFamily, StepPresentation } from './model/steps/registry';
