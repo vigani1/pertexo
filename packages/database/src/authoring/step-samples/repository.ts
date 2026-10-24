@@ -17,10 +17,7 @@ import {
   sampleMetadata,
 } from './records.repository.js';
 import { mutateStepSample } from './commands.repository.js';
-import type {
-  SampleTransaction,
-  WorkflowStepSampleStore,
-} from './contract.js';
+import type { SampleTransaction, WorkflowStepSampleStore } from './contract.js';
 
 export function createWorkflowStepSampleStore(
   pool: Pool,

@@ -8,12 +8,8 @@ import {
   organizeWorkflow,
 } from '../../placement.repository.js';
 import type { createOrganizationSession } from '../../session.js';
-import {
-  type WorkflowFolderDatabase,
-  uuid,
-  revision,
-  placementResult,
-} from '../contract.js';
+import type { WorkflowFolderDatabase } from '../contract.js';
+import { uuid, revision, placementResult } from '../input.js';
 
 import { EDITORS } from './receipt.js';
 

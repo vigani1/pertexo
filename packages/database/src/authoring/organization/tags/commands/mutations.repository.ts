@@ -16,10 +16,9 @@ import {
 import { WorkflowTagConflictError } from '../../errors.js';
 
 import type { createOrganizationSession } from '../../session.js';
+import type { WorkflowTagDatabase } from '../contract.js';
+import { TAG_LIMIT, TAG_DELETE_WORKFLOW_LIMIT } from '../../limits.js';
 import {
-  type WorkflowTagDatabase,
-  TAG_LIMIT,
-  TAG_DELETE_WORKFLOW_LIMIT,
   uuid,
   revision,
   key,
@@ -27,7 +26,7 @@ import {
   deleteResult,
   tagIds,
   replaceResult,
-} from '../contract.js';
+} from '../input.js';
 import {
   tagProjection,
   readTag,

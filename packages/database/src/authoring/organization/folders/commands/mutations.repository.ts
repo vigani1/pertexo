@@ -14,14 +14,8 @@ import { runOrganizationCommand } from '../../commands.repository.js';
 import { WorkflowFolderConflictError } from '../../errors.js';
 
 import type { createOrganizationSession } from '../../session.js';
-import {
-  type WorkflowFolderDatabase,
-  uuid,
-  revision,
-  name,
-  deleteResult,
-  nameKey,
-} from '../contract.js';
+import type { WorkflowFolderDatabase } from '../contract.js';
+import { uuid, revision, name, deleteResult, nameKey } from '../input.js';
 import {
   folderProjection,
   readFolder,

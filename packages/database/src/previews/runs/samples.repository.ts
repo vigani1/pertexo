@@ -5,7 +5,7 @@ import {
 } from '@pertexo/workflow-model';
 import { workflowStepSamples } from '../../schema.js';
 import { parseStoredExecutionValue } from '../../platform/stored-execution-value.js';
-import { WorkflowStepSampleError } from '../../authoring/step-samples/contract.js';
+import { WorkflowStepSampleError } from '../../authoring/step-samples/errors.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 
 export async function resolvePreviewSample(

@@ -14,12 +14,8 @@ import {
 } from '../../runs/data-policy.js';
 import type { PoolClient } from 'pg';
 import { inlineSampleOutput } from './records.repository.js';
-import {
-  WorkflowStepSampleError,
-  type SampleCommand,
-  type SampleRow,
-  type SampleSource,
-} from './contract.js';
+import { WorkflowStepSampleError } from './errors.js';
+import type { SampleCommand, SampleRow, SampleSource } from './contract.js';
 
 export async function captureSampleSource(
   client: PoolClient,

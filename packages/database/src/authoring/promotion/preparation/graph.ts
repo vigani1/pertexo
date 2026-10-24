@@ -7,7 +7,7 @@ import {
   type WorkflowNode,
 } from '@pertexo/workflow-model';
 
-import { WorkflowPromotionError } from '../contract.js';
+import { WorkflowPromotionError } from '../errors.js';
 
 export function promotionDigest(value: unknown): string {
   return createHash('sha256').update(canonicalJson(value)).digest('hex');

@@ -10,13 +10,12 @@ import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
 import { WorkflowNotFoundError } from '../workflows/errors.js';
+import type { WorkflowInputCaseMetadata, Scope } from './contract.js';
 import {
-  type WorkflowInputCaseMetadata,
-  type Scope,
   WorkflowInputCaseRevisionConflictError,
   WorkflowInputCaseLimitError,
-  revisionSchema,
-} from './contract.js';
+} from './errors.js';
+import { revisionSchema } from './input.js';
 
 export const metadataProjection = {
   id: workflowInputCases.id,

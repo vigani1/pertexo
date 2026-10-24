@@ -9,7 +9,7 @@ import { workspaces } from '../../schema/foundation.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.queries.js';
 import { recordPromotedPublication } from '../promotion/provenance.repository.js';
-import { PublicationReviewError } from '../reviews/contract.js';
+import { PublicationReviewError } from '../reviews/errors.js';
 import { dataTableReferenceIssues } from '../../data-tables/columns/references.queries.js';
 import { lockWorkspaceVariableNames } from '../../variables/settings.queries.js';
 
@@ -58,18 +58,19 @@ import {
   digestSchema,
   workflowDraftTagSchema,
   executableSchema,
-  type WorkflowPublicationDependencies,
-  type PublicationCandidateInput,
-  type PublicationClaim,
-  type CompiledPublication,
   storedPublicationSchema,
+} from './input.js';
+import type {
+  WorkflowPublicationDependencies,
+  PublicationCandidateInput,
+  PublicationClaim,
+  CompiledPublication,
 } from './contract.js';
 import {
   persistPublicationProjections,
   finalizePublication,
 } from './projections.repository.js';
-export { reconcileWorkflowTriggersPayload } from './trigger-reconciliation.repository.js';
-export { type WorkflowPublicationDependencies } from './contract.js';
+
 async function claimPublication(
   client: PoolClient,
   input: PublishWorkflowInput,

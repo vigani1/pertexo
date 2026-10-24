@@ -11,11 +11,11 @@ import {
 } from '@pertexo/workflow-model';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { WorkflowNotFoundError } from '../workflows/errors.js';
-import {
-  WorkflowCollaborationError,
-  type CollaborationCommand,
-  type CollaborationContext,
-  type WorkflowCollaborationStore,
+import { WorkflowCollaborationError } from './errors.js';
+import type {
+  CollaborationCommand,
+  CollaborationContext,
+  WorkflowCollaborationStore,
 } from './contract.js';
 import { lockCommentThread } from './records.queries.js';
 import { syncCommentMentions } from './mentions.repository.js';

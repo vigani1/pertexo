@@ -13,14 +13,12 @@ import {
   type OrganizationChange,
 } from '../../placement.repository.js';
 import type { createOrganizationSession } from '../../session.js';
-import {
-  type Command,
-  type AssignmentCommand,
-  type WorkflowTagCommandResult,
-  uuid,
-  revision,
-  tagResult,
+import type {
+  Command,
+  AssignmentCommand,
+  WorkflowTagCommandResult,
 } from '../contract.js';
+import { uuid, revision, tagResult } from '../input.js';
 import { type TagRow, tagRecord } from '../state.queries.js';
 
 export const ADMINISTRATORS = ADMINISTRATIVE_ROLES;

@@ -9,7 +9,7 @@ import {
   workflowAccessible,
 } from '../../tenant-access/resources/workflows.queries.js';
 import type { WorkflowAuthoringDatabase } from '../workflows/contract.js';
-import type { WorkflowAuthoringReadContext } from '../workflows/reads.queries.js';
+import type { WorkflowAuthoringReadContext } from '../workflows/reads/contract.js';
 import { WorkflowTemplateOriginUnavailableError } from '../workflows/errors.js';
 import { workflowTemplateOriginSchema } from '@pertexo/workflow-model';
 import { workflowProjection } from '../workflows/representation/records.queries.js';

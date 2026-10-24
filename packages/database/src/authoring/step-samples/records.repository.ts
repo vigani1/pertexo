@@ -15,11 +15,11 @@ import {
   serializeStoredExecutionValue,
 } from '../../platform/stored-execution-value.js';
 import { collectArtifactReferences } from '../../artifacts/references/repository.js';
-import {
-  WorkflowStepSampleError,
-  type SampleMetadata,
-  type SampleMetadataRow,
-  type SampleScope,
+import { WorkflowStepSampleError } from './errors.js';
+import type {
+  SampleMetadata,
+  SampleMetadataRow,
+  SampleScope,
 } from './contract.js';
 
 export const sampleMetadataProjection = {

@@ -18,11 +18,11 @@ import {
 import { generatePersistedId } from '../../../platform/persisted-id.js';
 
 import { WorkflowNotFoundError } from '../../workflows/errors.js';
-import {
-  type WorkflowInputCaseDatabase,
-  payload,
-  type CaseTransaction,
+import type {
+  WorkflowInputCaseDatabase,
+  CaseTransaction,
 } from '../contract.js';
+import { payload } from '../input.js';
 import { quota, lockedCase } from '../metadata.queries.js';
 import { mutate } from './receipt.repository.js';
 

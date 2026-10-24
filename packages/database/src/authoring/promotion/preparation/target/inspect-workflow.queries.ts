@@ -13,12 +13,8 @@ import type { PromotionContext } from '../../contract.js';
 import { promotionDigest } from '../graph.js';
 import type { PromotionSource } from '../source.queries.js';
 
-import type {
-  ReviewedWorkflow,
-  Origin,
-  TargetReviewState,
-  TargetWorkflowRow,
-} from './contract.js';
+import type { ReviewedWorkflow, TargetReviewState } from './contract.js';
+import type { Origin, TargetWorkflowRow } from './records.queries.js';
 import { prepareTargetGraph } from './bind-graph.js';
 
 export async function prepareTargetWorkflow(
