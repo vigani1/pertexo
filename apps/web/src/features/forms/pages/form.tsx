@@ -13,11 +13,23 @@ import { Status } from '@/components/ui/status';
 import { Notice } from '@/components/ui/notice';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { QueryView } from '@/components/patterns/states/query-view';
 import { isApiError } from '@/lib/api/error';
 import { FormResponse } from '../components/response';
 import { sendForm, type FormScope } from '../data/forms.api';
 import { formQueryOptions } from '../data/forms.queries';
 import { useRetainedCommand } from '@/lib/api/commands/use-retained';
+function formUnavailable(error: unknown) {
+  if (!isApiError(error) || error.problem?.code !== 'form.unavailable')
+    return undefined;
+  return (
+    <Notice tone="warning">
+      This form is not available. Its owner may have turned it off or changed
+      the link.
+    </Notice>
+  );
+}
+
 export function FormPage({ scope }: Readonly<{ scope: FormScope }>) {
   const query = useQuery(formQueryOptions(scope));
   const command = useRetainedCommand(
@@ -43,30 +55,22 @@ export function FormPage({ scope }: Readonly<{ scope: FormScope }>) {
       </section>
     );
   }
-  if (query.isPending) return <Skeleton className="h-72 w-full" />;
-  if (query.isError)
-    return (
-      <Notice
-        tone="warning"
-        action={
-          <Button type="button" variant="outline" onClick={() => void reload()}>
-            Try again
-          </Button>
-        }
-      >
-        {isApiError(query.error) &&
-        query.error.problem?.code === 'form.unavailable'
-          ? 'This form is not available. Its owner may have turned it off or changed the link.'
-          : 'The form could not be loaded. Check your connection and try again.'}
-      </Notice>
-    );
   return (
-    <PublishedForm
-      key={query.data.versionId}
-      command={command}
-      schema={query.data}
-      reload={reload}
-    />
+    <QueryView
+      query={query}
+      resource="The form"
+      loading={<Skeleton className="h-72 w-full" />}
+      failure={formUnavailable}
+    >
+      {(schema) => (
+        <PublishedForm
+          key={schema.versionId}
+          command={command}
+          schema={schema}
+          reload={reload}
+        />
+      )}
+    </QueryView>
   );
 }
 function SubmissionReceipt({

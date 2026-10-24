@@ -25,7 +25,8 @@ import { workflowSummaryQueryOptions } from '@/features/workflows/queries.public
 import type { ApiClient } from '@/lib/api/client';
 import { visibleSettingsData } from '../model/settings-query';
 import { SettingsSection } from '@/components/patterns/settings/section';
-import { SettingsQueryState } from '../components/settings-query-state';
+import { QueryView } from '@/components/patterns/states/query-view';
+import { settingsReadFailure } from '../components/settings-read-failure';
 import { RestoreVersionDialog } from '../components/versions/restore-version-dialog';
 import { VersionCompareSheet } from '../components/versions/compare-sheet';
 import { VersionPreviewSheet } from '../components/versions/preview-sheet';
@@ -193,46 +194,52 @@ export function WorkflowVersionsPage({
           />
         }
       >
-        <SettingsQueryState query={versions} resource="Versions" />
-        {items?.length === 0 ? (
-          <NothingPublished
-            workspaceId={workspace.id}
-            workflowId={workflowId}
-          />
-        ) : null}
-        {items === undefined || items.length === 0 ? null : (
-          <VersionList
-            items={items}
-            liveVersionId={liveVersionId}
-            archived={archived}
-            canRestore={canRestore}
-            promotionWorkspaceId={canRestore ? workspace.id : undefined}
-            onCompare={() => {
-              setOverlay({ kind: 'compare' });
-            }}
-            onPreview={(version) => {
-              setOverlay({ kind: 'preview', version });
-            }}
-            onRestore={(version) => {
-              setOverlay({ kind: 'restore', version });
-            }}
-            onExport={
-              workspace.capabilities.includes('workflow:read')
-                ? (version) => {
-                    setOverlay({ kind: 'export', version });
-                  }
-                : undefined
-            }
-            onDuplicate={
-              workflow !== undefined &&
-              canDuplicateWorkflow(workspace, workflow)
-                ? (version) => {
-                    setOverlay({ kind: 'duplicate', version });
-                  }
-                : undefined
-            }
-          />
-        )}
+        <QueryView
+          query={versions}
+          resource="Versions"
+          failure={settingsReadFailure}
+          isEmpty={(listed) => listed.items.length === 0}
+          empty={
+            <NothingPublished
+              workspaceId={workspace.id}
+              workflowId={workflowId}
+            />
+          }
+        >
+          {(listed) => (
+            <VersionList
+              items={listed.items}
+              liveVersionId={liveVersionId}
+              archived={archived}
+              canRestore={canRestore}
+              promotionWorkspaceId={canRestore ? workspace.id : undefined}
+              onCompare={() => {
+                setOverlay({ kind: 'compare' });
+              }}
+              onPreview={(version) => {
+                setOverlay({ kind: 'preview', version });
+              }}
+              onRestore={(version) => {
+                setOverlay({ kind: 'restore', version });
+              }}
+              onExport={
+                workspace.capabilities.includes('workflow:read')
+                  ? (version) => {
+                      setOverlay({ kind: 'export', version });
+                    }
+                  : undefined
+              }
+              onDuplicate={
+                workflow !== undefined &&
+                canDuplicateWorkflow(workspace, workflow)
+                  ? (version) => {
+                      setOverlay({ kind: 'duplicate', version });
+                    }
+                  : undefined
+              }
+            />
+          )}
+        </QueryView>
       </SettingsSection>
       <VersionOverlayContent
         overlay={overlay}

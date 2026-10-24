@@ -8,6 +8,7 @@ import { CopyButton } from '@/components/ui/copy-button';
 import { Input } from '@/components/ui/input';
 import { LabelledField } from '@/components/ui/field';
 import { Notice } from '@/components/ui/notice';
+import { QueryView } from '@/components/patterns/states/query-view';
 import { Status } from '@/components/ui/status';
 import { formAccessQueryOptions } from '../data/forms.queries';
 import { setFormAccess, type MemberFormScope } from '../data/forms.api';
@@ -19,6 +20,12 @@ function newCapability() {
     .replaceAll('/', '_')
     .replace(/=+$/u, '');
 }
+function formNotPublished(error: unknown) {
+  if (!isApiError(error) || error.problem?.code !== 'form.unavailable')
+    return undefined;
+  return <Notice>Publish an enabled Form trigger before sharing it.</Notice>;
+}
+
 export function FormAccessControl({
   scope,
   editable,
@@ -34,30 +41,11 @@ export function FormAccessControl({
         access.
       </Notice>
     );
-  if (query.isPending)
-    return (
-      <p className="text-sm text-muted-foreground">Loading form access…</p>
-    );
-  if (query.isError)
-    return (
-      <Notice
-        action={
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => void query.refetch()}
-          >
-            Check again
-          </Button>
-        }
-      >
-        {isApiError(query.error) &&
-        query.error.problem?.code === 'form.unavailable'
-          ? 'Publish an enabled Form trigger before sharing it.'
-          : 'Form access could not be loaded. Try again.'}
-      </Notice>
-    );
-  return <SharedFormAccess scope={scope} access={query.data} />;
+  return (
+    <QueryView query={query} resource="Form access" failure={formNotPublished}>
+      {(access) => <SharedFormAccess scope={scope} access={access} />}
+    </QueryView>
+  );
 }
 function SharedFormAccess({
   scope,

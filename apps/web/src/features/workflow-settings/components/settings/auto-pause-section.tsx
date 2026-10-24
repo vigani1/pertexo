@@ -20,8 +20,8 @@ import {
   workspaceAutoPauseQueryOptions,
 } from '../../data/auto-pause.queries';
 import { useAutoPauseCommand } from '../../data/mutations/use-auto-pause-command';
-import { visibleSettingsData } from '../../model/settings-query';
-import { SettingsQueryState } from '../settings-query-state';
+import { QueryView } from '@/components/patterns/states/query-view';
+import { settingsReadFailure } from '../settings-read-failure';
 
 type Scope = Readonly<{
   apiClient: ApiClient;
@@ -307,14 +307,13 @@ function WorkspaceDefault({ scope }: Readonly<{ scope: Scope }>) {
       scope.workspace.id,
     ),
   );
-  const settings = visibleSettingsData(query);
   return (
-    <>
-      <SettingsQueryState
-        query={query}
-        resource="The workspace auto-pause default"
-      />
-      {settings === undefined ? null : (
+    <QueryView
+      query={query}
+      resource="The workspace auto-pause default"
+      failure={settingsReadFailure}
+    >
+      {(settings) => (
         <SettingSentence
           summary={
             <>
@@ -335,7 +334,7 @@ function WorkspaceDefault({ scope }: Readonly<{ scope: Scope }>) {
           }
         />
       )}
-    </>
+    </QueryView>
   );
 }
 
@@ -366,59 +365,66 @@ export function AutoPauseSection(scope: Scope) {
       scope.workflowId,
     ),
   );
-  const settings = visibleSettingsData(query);
+  const canManageWorkspace =
+    scope.workspace.capabilities.includes('workspace:manage');
   const canUpdate = scope.workspace.capabilities.includes('workflow:update');
   return (
     <SettingsSection
       title="Automatic pause"
       description="When repeated failures should stop scheduled and webhook runs."
     >
-      <SettingsQueryState query={query} resource="The auto-pause rule" />
-      {settings === undefined ? null : (
-        <SettingSentence
-          summary={
-            <>
-              {ruleSummary(settings)}
-              {canUpdate ? null : ' Your role can’t change this rule.'}
-            </>
-          }
-          editing={editing}
-          onEditingChange={setEditing}
-          {...(canUpdate
-            ? {
-                editor: (
-                  <WorkflowRule
-                    settings={settings}
-                    scope={scope}
-                    onSaved={() => {
-                      setEditing(false);
-                    }}
-                  />
-                ),
+      <QueryView
+        query={query}
+        resource="The auto-pause rule"
+        failure={settingsReadFailure}
+      >
+        {(settings) => (
+          <>
+            <SettingSentence
+              summary={
+                <>
+                  {ruleSummary(settings)}
+                  {canUpdate ? null : ' Your role can’t change this rule.'}
+                </>
               }
-            : {})}
-          rules={
-            <>
-              <p>
-                Runs already going finish, and manual runs and replays still
-                work while triggers are paused.
+              editing={editing}
+              onEditingChange={setEditing}
+              {...(canUpdate
+                ? {
+                    editor: (
+                      <WorkflowRule
+                        settings={settings}
+                        scope={scope}
+                        onSaved={() => {
+                          setEditing(false);
+                        }}
+                      />
+                    ),
+                  }
+                : {})}
+              rules={
+                <>
+                  <p>
+                    Runs already going finish, and manual runs and replays still
+                    work while triggers are paused.
+                  </p>
+                  <p>
+                    A change applies from the next failure, without publishing.
+                    It never resumes a workflow that has already paused.
+                  </p>
+                </>
+              }
+            />
+            {canManageWorkspace ? null : (
+              <p className="text-sm text-muted-foreground">
+                Workspace default: {String(settings.workspaceThreshold)}{' '}
+                failures in a row. Only workspace owners can change it.
               </p>
-              <p>
-                A change applies from the next failure, without publishing. It
-                never resumes a workflow that has already paused.
-              </p>
-            </>
-          }
-        />
-      )}
-      {scope.workspace.capabilities.includes('workspace:manage') ? (
-        <WorkspaceDefault scope={scope} />
-      ) : settings === undefined ? null : (
-        <p className="text-sm text-muted-foreground">
-          Workspace default: {String(settings.workspaceThreshold)} failures in a
-          row. Only workspace owners can change it.
-        </p>
-      )}
+            )}
+          </>
+        )}
+      </QueryView>
+      {canManageWorkspace ? <WorkspaceDefault scope={scope} /> : null}
     </SettingsSection>
   );
 }

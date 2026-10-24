@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Field, FieldLabel, FieldDescription } from '@/components/ui/field';
 import { Button } from '@/components/ui/button';
 import { LoadMore } from '@/components/patterns/lists/load-more';
-import { ReadFailure } from '@/components/patterns/states/read-failure';
+import { QueryView } from '@/components/patterns/states/query-view';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 export function AudienceField({
   scope,
@@ -82,16 +82,7 @@ export function AudienceField({
           publishing.
         </FieldDescription>
       </Field>
-      {members.isError ? (
-        <ReadFailure
-          resource="Members"
-          error={members.error}
-          showing={members.data !== undefined}
-          retrying={members.isFetching}
-          updatedAt={members.dataUpdatedAt}
-          onRetry={() => void members.refetch()}
-        />
-      ) : null}
+      {form.editable ? <QueryView query={members} resource="Members" /> : null}
       <ul className="flex max-h-48 flex-col gap-3 overflow-y-auto">
         {visible.map((member) => (
           <li key={member.userId}>

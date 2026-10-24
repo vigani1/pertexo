@@ -7,6 +7,7 @@ import type {
 import { accessibleWorkspacesQueryOptions } from '@/features/workspaces/queries.public';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
+import { QueryView } from '@/components/patterns/states/query-view';
 import {
   Select,
   SelectTrigger,
@@ -167,18 +168,7 @@ function TargetPicker({
           </SelectContent>
         </Select>
       </label>
-      {choices.isError ? (
-        <Notice tone="warning">
-          Target workspaces could not be loaded.{' '}
-          <Button
-            variant="ghost"
-            type="button"
-            onClick={() => void choices.refetch()}
-          >
-            Retry
-          </Button>
-        </Notice>
-      ) : null}
+      <QueryView query={choices} resource="Target workspaces" loading={null} />
     </>
   );
 }
