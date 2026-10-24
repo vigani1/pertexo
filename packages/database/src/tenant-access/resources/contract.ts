@@ -1,3 +1,4 @@
+import type { WorkspaceTransaction } from '../transactions.js';
 import type { AuthorizationCapability, Role } from '@pertexo/workflow-model';
 
 export type ResourceActor = Readonly<{
@@ -31,3 +32,6 @@ export type FolderScope = Readonly<{
   deniedFolderIds(capability: WorkflowResourceCapability): readonly string[];
   restrictions(folderId: string | null): readonly string[];
 }>;
+
+export type ResourceTransaction = WorkspaceTransaction &
+  Readonly<{ resources: FolderScope }>;

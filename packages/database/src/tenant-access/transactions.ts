@@ -3,13 +3,13 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
 
 import { databaseSchema } from '../schema.js';
-import {
-  actorIdSchema,
-  type WorkspaceTransaction,
-  type WorkspaceTransactionOptions,
-  type TenantTransactionScope,
-  type TransactionScope,
-  type WorkspaceScopeRunner,
+import { actorIdSchema } from './transactions/input.js';
+import type {
+  WorkspaceTransaction,
+  WorkspaceTransactionOptions,
+  TenantTransactionScope,
+  TransactionScope,
+  WorkspaceScopeRunner,
 } from './transactions/contract.js';
 import {
   parseWorkspaceId,

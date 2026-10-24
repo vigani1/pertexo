@@ -37,7 +37,7 @@ import {
   withPlatformTransaction,
   withWorkspaceScope,
 } from '../../transactions.js';
-import { key } from './contract.js';
+import { key } from './input.js';
 import { selectIntent } from './state.queries.js';
 
 export async function completeAcceptance(

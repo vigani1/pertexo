@@ -1,3 +1,5 @@
+import { sealedToken } from './input.js';
+import type { WorkspaceInvitationDeliveryStore } from './delivery/contract.js';
 import { lockDeliveryScope } from './delivery/authority.queries.js';
 import { assertInvitationDeliveryIdentity } from './delivery/identity.queries.js';
 import { and, eq, exists, inArray, isNotNull, sql } from 'drizzle-orm';
@@ -21,66 +23,6 @@ import {
 import { withTenantScopedClient } from '../transactions.js';
 
 const id = z.uuid();
-const sealedToken = z
-  .object({
-    ciphertext: z.string().min(1).max(16_384),
-    nonce: z.string().min(1).max(128),
-    tag: z.string().min(1).max(256),
-    keyVersion: z.string().min(1).max(64),
-  })
-  .strict();
-
-export type WorkspaceInvitationDeliveryClaim =
-  | Readonly<{ kind: 'terminal' }>
-  | Readonly<{
-      kind: 'ready';
-      recoveredUnknown: boolean;
-      email: string;
-      workspaceName: string;
-      role: string;
-      expiresAt: Date;
-      sealedToken: z.output<typeof sealedToken>;
-    }>;
-
-export interface WorkspaceInvitationDeliveryStore {
-  claim(
-    input: Readonly<{
-      workspaceId: string;
-      invitationId: string;
-      deliveryAttemptId: string;
-      outboxEventId: string;
-      signal?: AbortSignal;
-    }>,
-  ): Promise<WorkspaceInvitationDeliveryClaim>;
-  markDispatching(
-    input: Readonly<{
-      workspaceId: string;
-      invitationId: string;
-      deliveryAttemptId: string;
-      signal?: AbortSignal;
-    }>,
-  ): Promise<boolean>;
-  retry(
-    input: Readonly<{
-      workspaceId: string;
-      invitationId: string;
-      deliveryAttemptId: string;
-      signal?: AbortSignal;
-    }>,
-  ): Promise<boolean>;
-  complete(
-    input: Readonly<{
-      workspaceId: string;
-      invitationId: string;
-      deliveryAttemptId: string;
-      status: 'submitted' | 'failed';
-      providerReference?: string;
-      failureCode?: string;
-      signal?: AbortSignal;
-    }>,
-  ): Promise<void>;
-  close(): Promise<void>;
-}
 
 export function createWorkspaceInvitationDeliveryStore(
   config: DatabaseConfig,

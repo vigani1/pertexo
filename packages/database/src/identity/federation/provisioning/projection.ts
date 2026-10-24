@@ -7,9 +7,11 @@ import {
 import {
   createMemberships,
   updateMemberships,
-  type MembershipChange,
-  type MembershipAddition,
 } from '../../../tenant-access/members/records.repository.js';
+import type {
+  MembershipChange,
+  MembershipAddition,
+} from '../../../tenant-access/members/contract.js';
 
 import { withWorkspaceScope } from '../../../tenant-access/transactions.js';
 import { revokeSessionsForUsers } from '../../../tenant-access/users/sessions.repository.js';

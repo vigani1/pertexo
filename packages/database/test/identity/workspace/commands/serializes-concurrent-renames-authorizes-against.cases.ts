@@ -48,8 +48,8 @@ export function registerSerializesConcurrentRenamesAuthorizesAgainst(): void {
     await expect(identityDatabase.findUserById(user.id)).resolves.toMatchObject(
       {
         displayName: 'Stored profile',
-        createdAt: expect.any(Date),
-        updatedAt: expect.any(Date),
+        createdAt: expect.any(Date) as unknown,
+        updatedAt: expect.any(Date) as unknown,
       },
     );
     await expect(

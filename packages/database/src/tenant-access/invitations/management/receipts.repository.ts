@@ -22,9 +22,10 @@ import type {
   WorkspaceInvitationRecord,
 } from '../../contract.js';
 
-import type { sealedToken } from './contract.js';
-import { idempotencyKey, durableResult } from './contract.js';
-import { serializeInvitation, mapDurableInvitation } from './state.queries.js';
+import type { sealedToken } from '../input.js';
+import { idempotencyKey } from '../input.js';
+import { durableResult } from './receipt.js';
+import { serializeInvitation, mapDurableInvitation } from './receipt.js';
 
 function sha256(value: string): string {
   return createHash('sha256').update(value).digest('hex');

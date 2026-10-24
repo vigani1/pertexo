@@ -4,7 +4,7 @@ import { withResourceCommand } from '../../tenant-access/resources/transactions.
 import type { ResourceActor } from '../../tenant-access/resources/contract.js';
 import { sql } from 'drizzle-orm';
 import { WorkflowRunNotFoundError } from '../errors.js';
-import type { ResourceTransaction } from '../../tenant-access/resources/transactions.repository.js';
+import type { ResourceTransaction } from '../../tenant-access/resources/contract.js';
 import { workflowScopeSql } from '../../tenant-access/resources/scope.queries.js';
 import type { WorkflowResourceCapability } from '../../tenant-access/resources/contract.js';
 
