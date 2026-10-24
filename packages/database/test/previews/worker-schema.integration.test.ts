@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {} from '../../src/platform/readiness.js';
+import {} from '../../src/platform/readiness.queries.js';
 import {
   acceptFixture,
   expectPgCode,

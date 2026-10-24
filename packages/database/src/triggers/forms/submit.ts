@@ -3,7 +3,7 @@ import { coordinateEvent } from '../coordination/accept.js';
 import type { PreparedFormEvent } from './prepare.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 
-import { claimCommand, completeCommand } from '../../platform/idempotency.js';
+import { claimCommand, completeCommand } from '../../platform/idempotency/repository.js';
 import { WorkflowAlreadyRunningError } from '../../runs/commands/concurrency.js';
 import { recordWorkflowTriggerSkip } from '../skips.js';
 import { readFormDefinition } from './definition.js';

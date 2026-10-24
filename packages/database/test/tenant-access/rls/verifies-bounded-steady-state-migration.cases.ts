@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 
-import { EXPECTED_MIGRATION_HEAD } from '../../../src/platform/readiness.js';
+import { EXPECTED_MIGRATION_HEAD } from '../../../src/platform/readiness.queries.js';
 
 import { database, executeAsOwner } from './fixture.js';
 

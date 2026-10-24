@@ -13,8 +13,8 @@ export { generatePersistedId } from './persisted-id.js';
 export {
   IdempotencyConflictError,
   credentialCommandScope,
-} from './idempotency.js';
-export type { DatabaseReadiness } from './readiness.js';
+} from './idempotency/repository.js';
+export type { DatabaseReadiness } from './readiness.queries.js';
 export {
   prepareStoredExecutionValue,
   STORED_EXECUTION_VALUE_LIMITS,
@@ -29,7 +29,7 @@ export type { EncryptionKeyRepository } from './encryption/keys.repository.js';
 export {
   createSystemMailDeliveryStore,
   createSystemMailEnqueueStore,
-} from './mail/store.js';
+} from './mail/repository.js';
 
 export type {
   SystemMailDeliveryClaim,
@@ -38,10 +38,10 @@ export type {
   SystemMailInput,
   SystemMailPurpose,
   SealedSystemMailPayload,
-} from './mail/store.js';
+} from './mail/repository.js';
 
 export { authenticationMailAssociatedData } from './mail/payload.js';
 
-export { insertSystemMail } from './mail/store.js';
+export { insertSystemMail } from './mail/repository.js';
 
 export { withPlatformTransaction } from '../tenant-access/transactions.js';

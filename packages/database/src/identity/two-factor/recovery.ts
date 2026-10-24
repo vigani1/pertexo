@@ -8,7 +8,7 @@ import {
 import {
   insertSystemMail,
   type SystemMailInput,
-} from '../../platform/mail/store.js';
+} from '../../platform/mail/repository.js';
 import { authTwoFactors } from '../../schema/authentication.js';
 import { users } from '../../schema/foundation.js';
 import { withPlatformTransaction } from '../../tenant-access/transactions.js';

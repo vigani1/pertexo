@@ -245,8 +245,8 @@ export type { WorkspaceDatabase } from './database.js';
 export {
   EXPECTED_MIGRATION_HEAD,
   checkDatabaseReadiness,
-} from './platform/readiness.js';
-export type { DatabaseReadiness } from './platform/readiness.js';
+} from './platform/readiness.queries.js';
+export type { DatabaseReadiness } from './platform/readiness.queries.js';
 export {
   CoordinatorDeliveryMismatchError,
   CoordinatorRunStateCorruptError,

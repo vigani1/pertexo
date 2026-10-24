@@ -9,7 +9,7 @@ import {
 import type { NoticeCommandResponse } from '@pertexo/contracts';
 import type { PoolClient } from 'pg';
 
-import { claimCommand, completeCommand } from '../../platform/idempotency.js';
+import { claimCommand, completeCommand } from '../../platform/idempotency/repository.js';
 import {
   NoticeConflictError,
   type NoticePreferencesStore,

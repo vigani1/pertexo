@@ -16,7 +16,7 @@ import {
   claimCommand,
   completeCommand,
   findCommandResult,
-} from '../../platform/idempotency.js';
+} from '../../platform/idempotency/repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { pruneStepSamples } from '../step-samples/records.js';

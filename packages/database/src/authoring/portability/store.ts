@@ -15,7 +15,7 @@ import {
   claimCommand,
   completeCommand,
   credentialCommandScope,
-} from '../../platform/idempotency.js';
+} from '../../platform/idempotency/repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
 import type {

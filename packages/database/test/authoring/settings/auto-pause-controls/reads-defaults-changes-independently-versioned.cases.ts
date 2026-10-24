@@ -7,7 +7,7 @@ import {
   WorkspaceAutoPauseSettingsRevisionConflictError,
   WorkflowNotFoundError,
 } from '../../../../src/testing.js';
-import { IdempotencyConflictError } from '../../../../src/platform/idempotency.js';
+import { IdempotencyConflictError } from '../../../../src/platform/idempotency/repository.js';
 
 import {
   identity,

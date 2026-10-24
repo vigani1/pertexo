@@ -12,7 +12,7 @@ import { lockWorkflowAuthoringAuthority } from '../../authoring/workflows/author
 import { rolesForCapability } from '@pertexo/workflow-model';
 import type { AuthoringCatalogs } from '../../authoring/workflows/catalogs.js';
 import type { SampleScope } from '../../authoring/step-samples/contract.js';
-import { claimCommand, completeCommand } from '../../platform/idempotency.js';
+import { claimCommand, completeCommand } from '../../platform/idempotency/repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { WorkflowTestError, type WorkflowTestStore } from './contract.js';
 import {

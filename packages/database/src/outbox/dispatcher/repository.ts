@@ -9,7 +9,7 @@ import {
 } from '../../platform/pool/runtime.js';
 import type { DatabaseConfig } from '../../config.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { checkDatabaseReadiness } from '../../platform/readiness.js';
+import { checkDatabaseReadiness } from '../../platform/readiness.queries.js';
 import { claimOutboxBatch } from './claim.repository.js';
 import type { ClaimOutboxBatchInput } from './contract.js';
 import { leasedEventSchema, releaseInputSchema } from './input.js';

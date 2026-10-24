@@ -18,7 +18,7 @@ import { generatePersistedId } from '../../../platform/persisted-id.js';
 import {
   claimCommand,
   completeCommand,
-} from '../../../platform/idempotency.js';
+} from '../../../platform/idempotency/repository.js';
 import type {
   DuplicateWorkflowInput,
   WorkflowAuthoringDatabase,

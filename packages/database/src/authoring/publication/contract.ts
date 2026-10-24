@@ -1,5 +1,5 @@
 import type { WorkflowAuthoringWriteContext } from '../workflows/context.js';
-import type { CommandIdentity } from '../../platform/idempotency.js';
+import type { CommandIdentity } from '../../platform/idempotency/repository.js';
 
 import type {
   WorkflowGraph,

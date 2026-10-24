@@ -11,7 +11,7 @@ import { withPlatformTransaction } from '../tenant-access/transactions.js';
 import {
   insertSystemMail,
   type SystemMailInput,
-} from '../platform/mail/store.js';
+} from '../platform/mail/repository.js';
 import { rethrowQueryFailure } from '../platform/query-errors.js';
 import { recordIdentitySecurityFact } from './security-facts.js';
 

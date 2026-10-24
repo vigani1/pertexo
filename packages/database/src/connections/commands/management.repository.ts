@@ -36,7 +36,7 @@ import {
   claimCommand,
   completeCommand,
   findCommandResult,
-} from '../../platform/idempotency.js';
+} from '../../platform/idempotency/repository.js';
 import type { ConnectionDatabase } from '../contract.js';
 
 /** Owns atomic creation/idempotency, reads, and revocation transactions. */

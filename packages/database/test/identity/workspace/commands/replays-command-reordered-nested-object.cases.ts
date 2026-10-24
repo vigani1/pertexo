@@ -9,7 +9,7 @@ import {
   completeCommand,
   findCommandResult,
   IdempotencyConflictError,
-} from '../../../../src/platform/idempotency.js';
+} from '../../../../src/platform/idempotency/repository.js';
 import { withTenantScopedClient } from '../../../../src/tenant-access/transactions.js';
 
 import {

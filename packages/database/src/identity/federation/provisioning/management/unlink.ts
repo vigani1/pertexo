@@ -3,7 +3,7 @@ import type { Pool } from 'pg';
 import {
   claimCommand,
   completeCommand,
-} from '../../../../platform/idempotency.js';
+} from '../../../../platform/idempotency/repository.js';
 import { generatePersistedId } from '../../../../platform/persisted-id.js';
 import {
   withPlatformTransaction,

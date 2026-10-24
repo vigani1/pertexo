@@ -14,7 +14,7 @@ import { expect, it } from 'vitest';
 import {
   checkDatabaseReadiness,
   EXPECTED_MIGRATION_HEAD,
-} from '../../../../src/platform/readiness.js';
+} from '../../../../src/platform/readiness.queries.js';
 
 import { schedule } from './fixture.js';
 

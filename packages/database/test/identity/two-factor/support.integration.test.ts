@@ -11,7 +11,7 @@ import {
   createSystemMailDeliveryStore,
   type SystemMailDeliveryStore,
   type SystemMailInput,
-} from '../../../src/platform/mail/store.js';
+} from '../../../src/platform/mail/repository.js';
 import { createDisposableDatabaseFixture } from '../../support/postgres/disposable-database.js';
 
 describe('privileged two-factor recovery with application grants', () => {

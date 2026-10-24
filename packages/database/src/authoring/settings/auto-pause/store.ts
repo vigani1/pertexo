@@ -4,7 +4,7 @@ import { z } from 'zod';
 import {
   claimCommand,
   completeCommand,
-} from '../../../platform/idempotency.js';
+} from '../../../platform/idempotency/repository.js';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
 import { ROLES, type Role } from '@pertexo/workflow-model';
 import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';

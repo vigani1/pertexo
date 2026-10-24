@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 
-import { IdempotencyConflictError } from '../../../../src/platform/idempotency.js';
+import { IdempotencyConflictError } from '../../../../src/platform/idempotency/repository.js';
 import {
   actorId,
   workspaceId,

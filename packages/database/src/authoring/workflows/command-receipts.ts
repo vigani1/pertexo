@@ -9,7 +9,7 @@ import {
   claimCommand,
   completeCommand,
   type CommandIdentity,
-} from '../../platform/idempotency.js';
+} from '../../platform/idempotency/repository.js';
 import type { WorkflowRecord } from './representation/records.js';
 
 const uuidSchema = z.uuid();

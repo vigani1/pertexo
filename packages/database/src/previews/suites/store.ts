@@ -15,7 +15,7 @@ import { lockInputCaseQuota } from '../../authoring/input-cases/store.js';
 import { lockWorkflowAuthoringAuthority } from '../../authoring/workflows/authority.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
 import { lockArtifactReferences } from '../../artifacts/references/repository.js';
-import { claimCommand, completeCommand } from '../../platform/idempotency.js';
+import { claimCommand, completeCommand } from '../../platform/idempotency/repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { cancelInTransaction } from '../../runs/runs.repository.js';
 import { TEST_RUN_RETENTION_MILLIS } from '../../runs/data-policy.js';

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { WorkflowTagConflictError } from '../../../src/authoring/organization/tags/commands.repository.js';
 import { WorkflowNotFoundError } from '../../../src/authoring/workflows/errors.js';
-import { IdempotencyConflictError } from '../../../src/platform/idempotency.js';
+import { IdempotencyConflictError } from '../../../src/platform/idempotency/repository.js';
 import {
   createOrganizationOwnedFixture,
   organizationFixtureEnabled,
