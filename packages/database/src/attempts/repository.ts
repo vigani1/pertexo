@@ -7,53 +7,15 @@ import { completeNodeAttempt } from './completion/complete.repository.js';
 import { markNodeAttemptDispatched } from './dispatch/mark.repository.js';
 import { heartbeatNodeAttempt } from './leases/heartbeat.repository.js';
 import { recordNodeAttemptInput } from './inputs/record.repository.js';
+import { loadNodeAttemptInputs } from './inputs/load.queries.js';
 import {
-  loadNodeAttemptInputs,
   readNodeAttemptLoopDeclaration,
   readNodeAttemptOutputs,
   listNodeRunOutcomes,
   readNodeRunOutputs,
-} from './inputs/load.queries.js';
+} from './queries/outputs.queries.js';
 
-import {
-  NodeAttemptConnectionFenceError,
-  NodeAttemptDeliveryMismatchError,
-  NodeAttemptDispatchBindingMismatchError,
-  NodeAttemptOutputInvalidError,
-  NodeAttemptReconciliationRequiredError,
-  NodeAttemptStateCorruptError,
-  type CompleteNodeAttemptResult,
-  type NodeAttemptClaimResult,
-  type NodeAttemptCompletion,
-  type NodeAttemptLoopDeclaration,
-  type NodeAttemptStoredOutput,
-  type NodeRunOutcome,
-  type NodeRunStoredOutput,
-  type NodeAttemptStoredInputs,
-  type NodeAttemptLease,
-  type NodeAttemptRunStore,
-} from './contract.js';
-
-export {
-  NodeAttemptConnectionFenceError,
-  NodeAttemptDeliveryMismatchError,
-  NodeAttemptDispatchBindingMismatchError,
-  NodeAttemptOutputInvalidError,
-  NodeAttemptReconciliationRequiredError,
-  NodeAttemptStateCorruptError,
-};
-export type {
-  CompleteNodeAttemptResult,
-  NodeAttemptClaimResult,
-  NodeAttemptCompletion,
-  NodeAttemptLoopDeclaration,
-  NodeAttemptStoredOutput,
-  NodeRunOutcome,
-  NodeRunStoredOutput,
-  NodeAttemptStoredInputs,
-  NodeAttemptLease,
-  NodeAttemptRunStore,
-};
+import type { NodeAttemptRunStore } from './contract.js';
 
 export function createNodeAttemptRunStore(
   config: DatabaseConfig,

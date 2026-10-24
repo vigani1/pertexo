@@ -12,11 +12,13 @@ import {
   NodeAttemptDeliveryMismatchError,
   NodeAttemptReconciliationRequiredError,
   NodeAttemptStateCorruptError,
-  branchContextSchema,
-  claimDeliverySchema,
-  type NodeAttemptClaimResult,
-  type NodeAttemptLease,
-  type NodeAttemptRunStore,
+} from '../errors.js';
+import { branchContextSchema } from '../validation/shared.js';
+import { claimDeliverySchema } from '../validation/delivery.js';
+import type {
+  NodeAttemptClaimResult,
+  NodeAttemptLease,
+  NodeAttemptRunStore,
 } from '../contract.js';
 import {
   auditMismatch,

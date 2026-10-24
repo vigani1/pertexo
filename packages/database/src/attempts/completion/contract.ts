@@ -2,7 +2,7 @@ import type { inboxReceipts } from '../../schema/transport.js';
 import type { lockCompletionAttempt } from './records.repository.js';
 import type { z } from 'zod';
 
-import type { completionSchema } from '../contract.js';
+import type { completionSchema } from '../validation/completion.js';
 
 export type CompletionInput = z.output<typeof completionSchema>;
 

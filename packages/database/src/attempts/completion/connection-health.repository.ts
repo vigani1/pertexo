@@ -12,10 +12,8 @@ import type { z } from 'zod';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
 import { serializeStoredExecutionJsonValue } from '../../platform/stored-execution-value.js';
-import {
-  type completionSchema,
-  NodeAttemptStateCorruptError,
-} from '../contract.js';
+import type { completionSchema } from '../validation/completion.js';
+import { NodeAttemptStateCorruptError } from '../errors.js';
 
 type CompletionInput = z.output<typeof completionSchema>;
 

@@ -25,8 +25,8 @@ import { mutateRows, translateTableConstraint } from './rows.repository.js';
 import {
   lockCapabilityExecution,
   assertCapabilityExecution,
-  ExecutionCapabilityExpiredError,
 } from '../attempts/dispatch/fence.repository.js';
+import { ExecutionCapabilityExpiredError } from '../attempts/errors.js';
 export function createWorkerDataTablesStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,

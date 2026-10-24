@@ -8,7 +8,8 @@ import {
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { Pool } from 'pg';
 
-import { recordInputSchema, type NodeAttemptRunStore } from '../contract.js';
+import { recordInputSchema } from '../validation/delivery.js';
+import type { NodeAttemptRunStore } from '../contract.js';
 import { withWorkspaceWriteClient } from '../transactions.repository.js';
 import { serializeStoredExecutionValue } from '../../platform/stored-execution-value.js';
 

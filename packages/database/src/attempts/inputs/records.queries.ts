@@ -2,7 +2,7 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import type { z } from 'zod';
-import type { loadInputsSchema } from '../contract.js';
+import type { loadInputsSchema } from '../validation/delivery.js';
 import {
   nodeRuns,
   nodeAttempts,

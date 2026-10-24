@@ -11,7 +11,7 @@ import type { PoolClient } from 'pg';
 import {
   NodeAttemptReconciliationRequiredError,
   NodeAttemptStateCorruptError,
-} from '../contract.js';
+} from '../errors.js';
 import type { CompleteNodeAttemptResult } from '../contract.js';
 import { completeReceipt } from './receipts.repository.js';
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';

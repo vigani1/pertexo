@@ -10,12 +10,12 @@ import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { Pool } from 'pg';
 import type { z } from 'zod';
 
+import { heartbeatSchema } from '../validation/delivery.js';
 import {
-  heartbeatSchema,
   NodeAttemptReconciliationRequiredError,
   NodeAttemptStateCorruptError,
-  type NodeAttemptRunStore,
-} from '../contract.js';
+} from '../errors.js';
+import type { NodeAttemptRunStore } from '../contract.js';
 import {
   assertNotAborted,
   withWorkspaceWriteClient,

@@ -9,13 +9,15 @@ import {
 import type { Pool } from 'pg';
 import type { z } from 'zod';
 
+import { completionSchema } from '../validation/completion.js';
 import {
-  completionSchema,
   DeliveryMismatch,
   NodeAttemptOutputInvalidError,
   NodeAttemptStateCorruptError,
-  type CompleteNodeAttemptResult,
-  type NodeAttemptRunStore,
+} from '../errors.js';
+import type {
+  CompleteNodeAttemptResult,
+  NodeAttemptRunStore,
 } from '../contract.js';
 import { auditMismatch, validateDelivery } from './receipts.repository.js';
 import { applyNodeAttemptCompletion } from './outcomes.repository.js';

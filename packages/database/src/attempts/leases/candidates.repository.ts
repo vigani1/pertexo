@@ -9,10 +9,8 @@ import {
   workflowRuns,
 } from '../../schema/runs/execution.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import {
-  NodeAttemptStateCorruptError,
-  type claimDeliverySchema,
-} from '../contract.js';
+import { NodeAttemptStateCorruptError } from '../errors.js';
+import type { claimDeliverySchema } from '../validation/delivery.js';
 
 export async function lockClaimCandidate(
   client: PoolClient,

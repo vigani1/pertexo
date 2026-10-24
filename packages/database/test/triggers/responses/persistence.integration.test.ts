@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { Pool } from 'pg';
 import { createWebhookResponseStore } from '../../../src/triggers/webhooks/responses/write.js';
 import { createWebhookTriggerDatabase } from '../../../src/triggers/webhooks/database.js';
-import { NodeAttemptReconciliationRequiredError } from '../../../src/attempts/contract.js';
+import { NodeAttemptReconciliationRequiredError } from '../../../src/attempts/errors.js';
 import { parseDatabaseConfig } from '../../../src/config.js';
 import { RETENTION_RULES } from '../../../src/lifecycle/retention/rules.js';
 import { purgeWorkspace } from '../../support/workspace-purge.js';

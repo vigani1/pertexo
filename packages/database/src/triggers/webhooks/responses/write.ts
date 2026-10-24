@@ -5,7 +5,7 @@ import {
 } from '../../../platform/pool/runtime.js';
 import type { DatabaseConfig } from '../../../config.js';
 import { withWorkspaceWriteClient } from '../../../attempts/transactions.repository.js';
-import { NodeAttemptReconciliationRequiredError } from '../../../attempts/contract.js';
+import { NodeAttemptReconciliationRequiredError } from '../../../attempts/errors.js';
 import type { NodeWebhookResponseReceipt } from '@pertexo/node-sdk';
 import type { WebhookResponseStore, WriteWebhookResponse } from './contract.js';
 
