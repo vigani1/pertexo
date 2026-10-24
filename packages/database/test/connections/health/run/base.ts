@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 
-import { createApiConnectionDatabase } from '../../../../src/connections/repository.js';
+import { createConnectionDatabase } from '../../../../src/connections/repository.js';
 import { generatePersistedId } from '../../../../src/platform/persisted-id.js';
 
 import type {
@@ -35,10 +35,10 @@ export const sealedHealthSecret = (marker = 1) => ({
 
 export async function withHealthApi<T>(
   operation: (
-    api: ReturnType<typeof createApiConnectionDatabase>,
+    api: ReturnType<typeof createConnectionDatabase>,
   ) => Promise<T>,
 ): Promise<T> {
-  const api = createApiConnectionDatabase(
+  const api = createConnectionDatabase(
     parseDatabaseConfig({ connectionString: databaseUrl(apiBaseUrl) }),
   );
   try {

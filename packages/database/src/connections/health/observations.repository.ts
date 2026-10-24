@@ -1,4 +1,12 @@
-import { sql } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, sql } from 'drizzle-orm';
+import {
+  connectionHealthObservations as observations,
+  nodeAttemptConnectionDispatches as dispatches,
+  connections,
+  connectionEvents,
+} from '../../schema/connections.js';
+import { nodeAttempts } from '../../schema/runs/execution.js';
+import { outboxEvents } from '../../schema/transport.js';
 import { z } from 'zod';
 
 import type { WorkspaceDatabase } from '../../database.js';
@@ -50,49 +58,59 @@ async function applyObservation(
   input: z.output<typeof inputSchema>,
 ): Promise<boolean> {
   const workspaceId = transaction.workspaceId;
-  const observations = await transaction.db.execute<{
-    attempt_id: string;
-    kind: string;
-    reason_code: string | null;
-    observed_at: Date;
-    outbox_event_id: string;
-    applied: boolean;
-  }>(sql`
-    select attempt_id, kind, reason_code, observed_at,
-           outbox_event_id, applied_at is not null applied
-    from app.connection_health_observations
-    where workspace_id=${workspaceId} and id=${input.observationId}
-    for update`);
-  const observation = observations.rows[0];
+  const db = transaction.db;
+  const source = and(
+    eq(observations.workspaceId, workspaceId),
+    eq(observations.id, input.observationId),
+  );
+  const [observation] = await db
+    .select({
+      attempt_id: observations.attemptId,
+      kind: observations.kind,
+      reason_code: observations.reasonCode,
+      observed_at: observations.observedAt,
+      outbox_event_id: observations.outboxEventId,
+      applied: sql<boolean>`${observations.appliedAt} is not null`,
+    })
+    .from(observations)
+    .where(source)
+    .for('update');
   if (observation === undefined || observation.applied) return false;
   if (observation.outbox_event_id !== input.delivery.outboxEventId)
     throw new InboxReceiptUnavailableError();
-  const dispatches = await transaction.db.execute<{
-    connection_id: string;
-    secret_version_id: string;
-    health_revision: string;
-  }>(sql`
-    select connection_id, secret_version_id, health_revision::text
-    from app.node_attempt_connection_dispatches
-    where workspace_id=${workspaceId} and attempt_id=${observation.attempt_id}`);
-  const dispatch = dispatches.rows[0];
+  const [dispatch] = await db
+    .select({
+      connection_id: dispatches.connectionId,
+      secret_version_id: dispatches.secretVersionId,
+      health_revision: sql<string>`${dispatches.healthRevision}::text`,
+    })
+    .from(dispatches)
+    .where(
+      and(
+        eq(dispatches.workspaceId, workspaceId),
+        eq(dispatches.attemptId, observation.attempt_id),
+      ),
+    );
   if (dispatch === undefined) return false;
-  await transaction.db.execute(sql`
-    update app.connection_health_observations set applied_at=clock_timestamp()
-    where workspace_id=${workspaceId} and id=${input.observationId}`);
-  const connections = await transaction.db.execute<{
-    status: string;
-    current_secret_version_id: string;
-    health_revision: string;
-    provider_key: string;
-    auth_type: string;
-  }>(sql`
-    select status, current_secret_version_id, health_revision::text,
-           provider_key, auth_type
-    from app.connections
-    where workspace_id=${workspaceId} and id=${dispatch.connection_id}
-    for update`);
-  const connection = connections.rows[0];
+  await db
+    .update(observations)
+    .set({ appliedAt: sql`clock_timestamp()` })
+    .where(source);
+  const predicate = and(
+    eq(connections.workspaceId, workspaceId),
+    eq(connections.id, dispatch.connection_id),
+  );
+  const [connection] = await db
+    .select({
+      status: connections.status,
+      current_secret_version_id: connections.currentSecretVersionId,
+      health_revision: sql<string>`${connections.healthRevision}::text`,
+      provider_key: connections.providerKey,
+      auth_type: connections.authType,
+    })
+    .from(connections)
+    .where(predicate)
+    .for('update');
   const staleObservation =
     connection === undefined ||
     connection.status === 'revoked' ||
@@ -101,38 +119,62 @@ async function applyObservation(
     connection.provider_key !== 'slack' ||
     connection.auth_type !== 'slack_bot_token';
   if (staleObservation) return false;
-  const ended = await transaction.db.execute(sql`
-    select 1 from app.node_attempts
-    where workspace_id=${workspaceId} and id=${observation.attempt_id}
-      and dispatch_marked_at is not null
-      and status in ('succeeded','failed','canceled','timed_out','outcome_unknown')`);
-  if (ended.rows.length !== 1) return false;
+  const ended = await db
+    .select({ id: nodeAttempts.id })
+    .from(nodeAttempts)
+    .where(
+      and(
+        eq(nodeAttempts.workspaceId, workspaceId),
+        eq(nodeAttempts.id, observation.attempt_id),
+        isNotNull(nodeAttempts.dispatchMarkedAt),
+        inArray(nodeAttempts.status, [
+          'succeeded',
+          'failed',
+          'canceled',
+          'timed_out',
+          'outcome_unknown',
+        ]),
+      ),
+    );
+  if (ended.length !== 1) return false;
   if (observation.kind === 'healthy') {
     if (connection.status !== 'active') return false;
-    await transaction.db.execute(sql`
-      update app.connections
-      set last_healthy_at=greatest(last_healthy_at, ${observation.observed_at}),
-          last_run_observed_at=greatest(last_run_observed_at, ${observation.observed_at}),
-          last_error_code=null, updated_at=clock_timestamp()
-      where workspace_id=${workspaceId} and id=${dispatch.connection_id}`);
+    await db
+      .update(connections)
+      .set({
+        lastHealthyAt: sql`greatest(${connections.lastHealthyAt},${observation.observed_at}::timestamptz)`,
+        lastRunObservedAt: sql`greatest(${connections.lastRunObservedAt},${observation.observed_at}::timestamptz)`,
+        lastErrorCode: null,
+        updatedAt: sql`clock_timestamp()`,
+      })
+      .where(predicate);
     return true;
   }
-  await transaction.db.execute(sql`
-    update app.connections
-    set status='reauthorization_required', health_revision=health_revision+1,
-        last_error_code=${observation.reason_code},
-        last_run_observed_at=${observation.observed_at},
-        last_health_transition_at=clock_timestamp(),
-        last_health_transition_source='run', updated_at=clock_timestamp()
-    where workspace_id=${workspaceId} and id=${dispatch.connection_id}`);
-  await transaction.db.execute(sql`
-    insert into app.connection_events
-      (id, workspace_id, connection_id, event_type, actor_kind, actor_id, metadata)
-    values (${input.observationId}, ${workspaceId}, ${dispatch.connection_id},
-            'connection.reauthorization_required', 'worker',
-            'connection-health-worker',
-            jsonb_build_object('source', 'run', 'status', 'reauthorization_required',
-                               'reasonCode', ${observation.reason_code}::text))`);
+  await db
+    .update(connections)
+    .set({
+      status: 'reauthorization_required',
+      healthRevision: sql`${connections.healthRevision}+1`,
+      lastErrorCode: observation.reason_code,
+      lastRunObservedAt: sql`${observation.observed_at}::timestamptz`,
+      lastHealthTransitionAt: sql`clock_timestamp()`,
+      lastHealthTransitionSource: 'run',
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(predicate);
+  await db.insert(connectionEvents).values({
+    id: input.observationId,
+    workspaceId,
+    connectionId: dispatch.connection_id,
+    eventType: 'connection.reauthorization_required',
+    actorKind: 'worker',
+    actorId: 'connection-health-worker',
+    metadata: {
+      source: 'run',
+      status: 'reauthorization_required',
+      reasonCode: observation.reason_code,
+    },
+  });
   return true;
 }
 
@@ -150,22 +192,32 @@ export async function applyConnectionHealthObservation(
       payloadChecksum: parsed.delivery.payloadChecksum,
     },
     operation: async (transaction) => {
-      const outbox = await transaction.db.execute<{
-        aggregate_id: string;
-        aggregate_type: string;
-        job_name: string;
-        payload: unknown;
-        payload_checksum: string;
-      }>(sql`
-      select aggregate_id,aggregate_type,job_name,payload,payload_checksum from app.outbox_events
-      where workspace_id=${transaction.workspaceId} and id=${parsed.delivery.outboxEventId}`);
-      const row = outbox.rows[0];
+      const [row] = await transaction.db
+        .select({
+          aggregate_id: outboxEvents.aggregateId,
+          aggregate_type: outboxEvents.aggregateType,
+          job_name: outboxEvents.jobName,
+          payload: outboxEvents.payload,
+          payload_checksum: outboxEvents.payloadChecksum,
+        })
+        .from(outboxEvents)
+        .where(
+          and(
+            eq(outboxEvents.workspaceId, transaction.workspaceId),
+            eq(outboxEvents.id, parsed.delivery.outboxEventId),
+          ),
+        );
       if (row === undefined) {
         const remaining = await transaction.db
-          .execute(sql`select id from app.connection_health_observations
-        where workspace_id=${transaction.workspaceId} and id=${parsed.observationId}`);
-        if (remaining.rows.length !== 0)
-          throw new InboxReceiptUnavailableError();
+          .select({ id: observations.id })
+          .from(observations)
+          .where(
+            and(
+              eq(observations.workspaceId, transaction.workspaceId),
+              eq(observations.id, parsed.observationId),
+            ),
+          );
+        if (remaining.length !== 0) throw new InboxReceiptUnavailableError();
         // Retention deletes source evidence and its command together. A delayed
         // delivery cannot resurrect either or modify a connection.
         return false;

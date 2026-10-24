@@ -7,7 +7,7 @@ export {
   ConnectionSecretVersionConflictError,
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
-  createApiConnectionDatabase,
+  createConnectionDatabase,
   createWorkerConnectionResolutionDatabase,
 } from './repository.js';
 export type {

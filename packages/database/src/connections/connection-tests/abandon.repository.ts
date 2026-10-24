@@ -1,3 +1,7 @@
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { idempotencyRecords as records } from '../../schema/runs/support.js';
 import type { Pool } from 'pg';
 import {
   uuidSchema,
@@ -23,18 +27,32 @@ export async function abandonPersistedConnectionTest(
   await withConnectionTransaction(pool, input.workspaceId, {
     actorId,
     operation: async (client, workspaceId) => {
-      await client.query(
-        `update app.idempotency_records
-             set status = 'failed',
-                 result_ref = '{"state":"failed"}'::jsonb,
-                 updated_at = transaction_timestamp()
-             where workspace_id = $1 and operation = 'connection.test'
-                and scope = $2 and key_hash = $3 and request_hash = $4
-                and status = 'in_progress'
-                and result_ref->>'dispatchToken' = $5
-                and result_ref->>'state' = 'claimed'`,
-        [workspaceId, scope, digest, requestHash, dispatchToken],
+      const db = drizzle(client);
+      const identity = and(
+        eq(records.workspaceId, workspaceId),
+        eq(records.operation, 'connection.test'),
+        eq(records.scope, scope),
+        eq(records.keyHash, digest),
       );
+      await db
+        .update(records)
+        .set({
+          status: 'failed',
+          resultRef: { state: 'failed' },
+          updatedAt: sql`transaction_timestamp()`,
+        })
+        .where(
+          and(
+            and(
+              identity,
+              eq(records.requestHash, requestHash),
+              eq(records.status, 'in_progress'),
+              sql`${records.resultRef}->>'dispatchToken'=${dispatchToken}`,
+            ),
+            sql`${records.resultRef}->>'state'='claimed'`,
+          ),
+        )
+        .catch(rethrowQueryFailure);
     },
-  });
+  }).catch(rethrowQueryFailure);
 }

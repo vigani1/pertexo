@@ -1,3 +1,9 @@
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { and, eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { connections } from '../../schema/connections.js';
+import { workspaces } from '../../schema/foundation.js';
+import { connectionSecrets } from './credentials.queries.js';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
@@ -11,8 +17,6 @@ import {
   identifierSchema,
   ConnectionUnavailableError,
   safeOptionalIdentifier,
-  mapConnection,
-  mapSealed,
   withConnectionTransaction,
 } from '../records.queries.js';
 import type {
@@ -49,33 +53,24 @@ export function createConnectionResolutionPersistence(
       return withConnectionTransaction(pool, input.workspaceId, {
         actorId: undefined,
         operation: async (client, workspaceId) => {
-          const result = await client.query<Record<string, unknown>>(
-            `select connection.*,
-                    secret.id as secret_id,
-                    secret.kms_key_reference,
-                    secret.encrypted_data_key,
-                    secret.ciphertext,
-                    secret.nonce,
-                    secret.auth_tag
-             from app.connections connection
-             join app.connection_secret_versions secret
-               on secret.workspace_id = connection.workspace_id
-              and secret.connection_id = connection.id
-              and secret.id = connection.current_secret_version_id
-             join app.workspaces workspace on workspace.id = connection.workspace_id
-             where connection.workspace_id = $1 and connection.id = $2
-               and connection.provider_key = $3
-               and connection.status = 'active'
-               and workspace.status = 'active'`,
-            [workspaceId, connectionId, expectedProviderKey],
-          );
-          const row = result.rows[0];
+          const [row] = await connectionSecrets(drizzle(client))
+            .innerJoin(workspaces, eq(workspaces.id, connections.workspaceId))
+            .where(
+              and(
+                eq(connections.workspaceId, workspaceId),
+                eq(connections.id, connectionId),
+                eq(connections.providerKey, expectedProviderKey),
+                eq(connections.status, 'active'),
+                eq(workspaces.status, 'active'),
+              ),
+            )
+            .catch(rethrowQueryFailure);
           if (row === undefined)
             throw new ConnectionUnavailableError(
               'Connection is not available for credential use',
             );
-          const connection = mapConnection(row);
-          const secretVersionId = uuidSchema.parse(row.secret_id);
+          const connection = Object.freeze(row.connection);
+          const secretVersionId = row.secretVersionId;
           if (secretVersionId !== connection.currentSecretVersionId)
             throw new Error('Connection secret pointer is corrupt');
           const current = await isConnectionFenceCurrent(client, workspaceId, {
@@ -99,7 +94,7 @@ export function createConnectionResolutionPersistence(
           return Object.freeze({
             connection,
             secretVersionId,
-            sealed: mapSealed(row),
+            sealed: row.sealed,
           });
         },
         options: input.signal === undefined ? {} : { signal: input.signal },

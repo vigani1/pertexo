@@ -1,3 +1,8 @@
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { connectionEvents } from '../../schema/connections.js';
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { idempotencyRecords as records } from '../../schema/runs/support.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import type { Pool } from 'pg';
 import {
@@ -36,21 +41,31 @@ export async function completePersistedConnectionTest(
   return withConnectionTransaction(pool, input.workspaceId, {
     actorId,
     operation: async (client, workspaceId) => {
-      const claim = await client.query<{ result_ref: unknown }>(
-        `select result_ref from app.idempotency_records
-             where workspace_id = $1 and operation = 'connection.test'
-               and scope = $2 and key_hash = $3 and request_hash = $4
-               and status = 'in_progress'
-               and result_ref->>'dispatchToken' = $5 for update`,
-        [workspaceId, scope, digest, requestHash, dispatchToken],
+      const db = drizzle(client);
+      const identity = and(
+        eq(records.workspaceId, workspaceId),
+        eq(records.operation, 'connection.test'),
+        eq(records.scope, scope),
+        eq(records.keyHash, digest),
       );
-      if (claim.rows[0] === undefined)
+      const [claim] = await db
+        .select({ resultRef: records.resultRef })
+        .from(records)
+        .where(
+          and(
+            identity,
+            eq(records.requestHash, requestHash),
+            eq(records.status, 'in_progress'),
+            sql`${records.resultRef}->>'dispatchToken'=${dispatchToken}`,
+          ),
+        )
+        .for('update')
+        .catch(rethrowQueryFailure);
+      if (claim === undefined)
         throw new ConnectionTestInProgressError(
           'Connection test completion ownership was lost',
         );
-      const claimState = connectionTestClaimSchema.parse(
-        claim.rows[0].result_ref,
-      );
+      const claimState = connectionTestClaimSchema.parse(claim.resultRef);
       if (
         claimState.secretVersionId !== undefined &&
         claimState.secretVersionId !== secretVersionId
@@ -92,38 +107,32 @@ export async function completePersistedConnectionTest(
         actorId,
         ...metadata,
       });
-      await client.query(
-        `insert into app.connection_events
-               (id, workspace_id, connection_id, event_type, actor_kind,
-                actor_id, request_id, trace_id, metadata)
-             values ($1, $2, $3, $4, 'user', $5, $6, $7, $8::jsonb)`,
-        [
-          generatePersistedId(),
+      await db
+        .insert(connectionEvents)
+        .values({
+          id: generatePersistedId(),
           workspaceId,
           connectionId,
-          outcome.ok
+          eventType: outcome.ok
             ? CONNECTION_EVENT_TYPE.testSucceeded
             : CONNECTION_EVENT_TYPE.testFailed,
+          actorKind: 'user',
           actorId,
-          metadata.requestId,
-          metadata.traceId,
-          JSON.stringify(classification.eventMetadata),
-        ],
-      );
+          requestId: metadata.requestId,
+          traceId: metadata.traceId,
+          metadata: classification.eventMetadata,
+        })
+        .catch(rethrowQueryFailure);
       const result = Object.freeze({ connection, outcome });
-      await client.query(
-        `update app.idempotency_records
-             set status = 'completed', result_ref = $1::jsonb,
-                 updated_at = transaction_timestamp()
-             where workspace_id = $2 and operation = 'connection.test'
-               and scope = $3 and key_hash = $4`,
-        [
-          JSON.stringify(serializeConnectionTestResult(result)),
-          workspaceId,
-          scope,
-          digest,
-        ],
-      );
+      await db
+        .update(records)
+        .set({
+          status: 'completed',
+          resultRef: serializeConnectionTestResult(result),
+          updatedAt: sql`transaction_timestamp()`,
+        })
+        .where(identity)
+        .catch(rethrowQueryFailure);
       return result;
     },
   });

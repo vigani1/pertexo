@@ -1,3 +1,12 @@
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { and, eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  connections,
+  connectionSecretVersions,
+  connectionEvents,
+} from '../../schema/connections.js';
+import { workspaces } from '../../schema/foundation.js';
 import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 
@@ -13,7 +22,6 @@ import {
   ConnectionUnavailableError,
   ConnectionSecretVersionConflictError,
   connectionCommand,
-  mapConnection,
   withConnectionTransaction,
   parseRequestMetadata,
   selectConnection,
@@ -136,49 +144,40 @@ async function persistRotatedConnectionSecret(
         throw new ConnectionSecretVersionConflictError(
           'Connection secret version does not match',
         );
-      await client.query(
-        `insert into app.connection_secret_versions
-               (id, workspace_id, connection_id,
-                kms_key_reference, encrypted_data_key, ciphertext, nonce,
-                auth_tag, created_by)
-             values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-        [
-          secretVersionId,
+      await drizzle(client)
+        .insert(connectionSecretVersions)
+        .values({
+          id: secretVersionId,
           workspaceId,
           connectionId,
-          sealed.kmsKeyReference,
-          sealed.encryptedDataKey,
-          sealed.ciphertext,
-          sealed.nonce,
-          sealed.tag,
-          actorId,
-        ],
-      );
+          kmsKeyReference: sealed.kmsKeyReference,
+          encryptedDataKey: sealed.encryptedDataKey,
+          ciphertext: sealed.ciphertext,
+          nonce: sealed.nonce,
+          authTag: sealed.tag,
+          createdBy: actorId,
+        })
+        .catch(rethrowQueryFailure);
       const updated = await rotateConnectionHealth(
         client,
         workspaceId,
         connectionId,
         secretVersionId,
       );
-      await client.query(
-        `insert into app.connection_events
-               (id, workspace_id, connection_id, event_type, actor_kind,
-                actor_id, request_id, trace_id, metadata)
-             values ($1, $2, $3, 'connection.secret_rotated', 'user', $4,
-                     $5, $6, $7::jsonb)`,
-        [
-          generatePersistedId(),
+      await drizzle(client)
+        .insert(connectionEvents)
+        .values({
+          id: generatePersistedId(),
           workspaceId,
           connectionId,
+          eventType: 'connection.secret_rotated',
+          actorKind: 'user',
           actorId,
-          metadata.requestId,
-          metadata.traceId,
-          JSON.stringify({
-            previousSecretVersionId: expected,
-            secretVersionId,
-          }),
-        ],
-      );
+          requestId: metadata.requestId,
+          traceId: metadata.traceId,
+          metadata: { previousSecretVersionId: expected, secretVersionId },
+        })
+        .catch(rethrowQueryFailure);
       await appendAuditFact(client, {
         workspaceId,
         actorId,
@@ -188,10 +187,10 @@ async function persistRotatedConnectionSecret(
         ...metadata,
         metadata: { previousSecretVersionId: expected, secretVersionId },
       });
-      const row = updated.rows[0];
+      const row = updated[0];
       if (row === undefined)
         throw new Error('Connection rotation returned no row');
-      const rotated = mapConnection(row);
+      const rotated = Object.freeze(row);
       await completeCommand(
         client,
         command,
@@ -217,27 +216,27 @@ async function assertPersistedConnectionSecretCurrent(
   await withConnectionTransaction(pool, input.workspaceId, {
     actorId: undefined,
     operation: async (client, workspaceId) => {
-      const result = await client.query(
-        `select 1
-             from app.connections connection
-             join app.workspaces workspace on workspace.id = connection.workspace_id
-             where connection.workspace_id = $1 and connection.id = $2
-               and connection.provider_key = $3 and connection.auth_type = $4
-               and connection.current_secret_version_id = $5
-               and connection.status = 'active' and workspace.status = 'active'`,
-        [
-          workspaceId,
-          connectionId,
-          expectedProviderKey,
-          expectedAuthType,
-          secretVersionId,
-        ],
-      );
-      if (result.rowCount !== 1)
+      const result = await drizzle(client)
+        .select({ id: connections.id })
+        .from(connections)
+        .innerJoin(workspaces, eq(workspaces.id, connections.workspaceId))
+        .where(
+          and(
+            eq(connections.workspaceId, workspaceId),
+            eq(connections.id, connectionId),
+            eq(connections.providerKey, expectedProviderKey),
+            eq(connections.authType, expectedAuthType),
+            eq(connections.currentSecretVersionId, secretVersionId),
+            eq(connections.status, 'active'),
+            eq(workspaces.status, 'active'),
+          ),
+        )
+        .catch(rethrowQueryFailure);
+      if (result.length !== 1)
         throw new ConnectionUnavailableError(
           'Connection is not current for credential use',
         );
     },
     options: input.signal === undefined ? {} : { signal: input.signal },
-  });
+  }).catch(rethrowQueryFailure);
 }

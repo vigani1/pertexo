@@ -1,15 +1,18 @@
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import {
   connectionScope,
   connectionScopeSql,
 } from '../../tenant-access/resources/connections/scope.js';
-import { bindResourcePredicate } from '../../tenant-access/resources/query-scope.js';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { connections } from '../../schema/connections.js';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
 import { requireConnectionReader } from '../authority.queries.js';
 import {
   CONNECTION_STATUS,
-  mapConnection,
+  connectionFields,
   uuidSchema,
   withConnectionTransaction,
   type ConnectionPage,
@@ -55,52 +58,45 @@ export function createConnectionReadPersistence(
             role,
             'connection:read',
           );
-          const parameters: unknown[] = [
-            workspaceId,
-            after?.status ?? null,
-            after?.createdAt ?? null,
-            after?.id ?? null,
-            limit + 1,
-          ];
-          const permitted = bindResourcePredicate(
-            connectionScopeSql(scope),
-            parameters,
-          );
-          const result = await client.query<
-            Record<string, unknown> & { created_at_cursor: string }
-          >(
-            `select id, workspace_id, provider_key, name, auth_type, status,
-                    current_secret_version_id, last_tested_at, last_healthy_at,
-                    last_error_code, last_run_observed_at, last_health_transition_at,
-                    last_health_transition_source, created_by, created_at, updated_at, access_mode,
-                    to_char(created_at at time zone 'UTC',
-                      'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as created_at_cursor
-             from app.connections connection
-             where workspace_id = $1 and ${permitted}
-               and ($2::text is null
-                 or status > $2::text
-                 or (status = $2::text and created_at < $3::timestamptz)
-                 or (status = $2::text and created_at = $3::timestamptz
-                   and id > $4::uuid))
-             order by status asc, created_at desc, id asc
-             limit $5`,
-            parameters,
-          );
-          const hasMore = result.rows.length > limit;
+          const result = await drizzle(client)
+            .select({
+              ...connectionFields,
+              createdAtCursor: sql<string>`to_char(${connections.createdAt} at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`,
+            })
+            .from(connections)
+            .where(
+              and(
+                eq(connections.workspaceId, workspaceId),
+                connectionScopeSql(scope, sql`${connections}`),
+                after === undefined
+                  ? undefined
+                  : sql`(${connections.status}>${after.status}::text or (${connections.status}=${after.status}::text and ${connections.createdAt}<${after.createdAt}::timestamptz) or (${connections.status}=${after.status}::text and ${connections.createdAt}=${after.createdAt}::timestamptz and ${connections.id}>${after.id}::uuid))`,
+              ),
+            )
+            .orderBy(
+              asc(connections.status),
+              desc(connections.createdAt),
+              asc(connections.id),
+            )
+            .limit(limit + 1)
+            .catch(rethrowQueryFailure);
+          const hasMore = result.length > limit;
           const items = Object.freeze(
-            result.rows.slice(0, limit).map((row) => mapConnection(row)),
+            result
+              .slice(0, limit)
+              .map(({ createdAtCursor: _cursor, ...record }) =>
+                Object.freeze(record),
+              ),
           );
-          const last = result.rows.at(limit - 1);
+          const last = result.at(limit - 1);
           return Object.freeze({
             items,
             ...(hasMore && last !== undefined
               ? {
                   nextCursor: Object.freeze({
-                    status: connectionStatusSchema.parse(last.status),
-                    createdAt: connectionCursorTimestamp.parse(
-                      last.created_at_cursor,
-                    ),
-                    id: uuidSchema.parse(last.id),
+                    status: last.status,
+                    createdAt: last.createdAtCursor,
+                    id: last.id,
                   }),
                 }
               : {}),
@@ -123,21 +119,18 @@ export function createConnectionReadPersistence(
             role,
             'connection:read',
           );
-          const parameters: unknown[] = [
-            workspaceId,
-            uuidSchema.parse(input.connectionId),
-          ];
-          const permitted = bindResourcePredicate(
-            connectionScopeSql(scope),
-            parameters,
-          );
-          const row = (
-            await client.query<Record<string, unknown>>(
-              `select * from app.connections connection where workspace_id=$1 and id=$2 and ${permitted}`,
-              parameters,
+          const [row] = await drizzle(client)
+            .select(connectionFields)
+            .from(connections)
+            .where(
+              and(
+                eq(connections.workspaceId, workspaceId),
+                eq(connections.id, uuidSchema.parse(input.connectionId)),
+                connectionScopeSql(scope, sql`${connections}`),
+              ),
             )
-          ).rows[0];
-          return row === undefined ? null : mapConnection(row);
+            .catch(rethrowQueryFailure);
+          return row === undefined ? null : Object.freeze(row);
         },
       });
     },

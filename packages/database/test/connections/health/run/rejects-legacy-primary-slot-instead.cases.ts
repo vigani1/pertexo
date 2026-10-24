@@ -135,7 +135,7 @@ export function registerRejectsLegacyPrimarySlotInstead(): void {
               count: number;
             }>(`select count(*)::int count from pg_stat_activity
           where datname=current_database() and usename='pertexo_app' and wait_event_type='Lock'
-            and query like '%from app.connections%for update%'`);
+            and exists(select 1 from pg_locks held where held.pid=pg_stat_activity.pid and held.granted and held.relation='app.connections'::regclass and held.mode='RowShareLock')`);
             return waiting.rows[0]?.count;
           }),
         )

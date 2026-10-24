@@ -1,6 +1,7 @@
 import { acquireDatabasePool } from '../../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
-import { sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
+import { workflowIntegrationUsage as usage } from '../../schema/authoring/integrations.js';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../../config.js';
@@ -27,28 +28,14 @@ export type WorkflowIntegrationImpactPage = Readonly<{
   nextCursor?: WorkflowIntegrationImpactRecord;
 }>;
 
-type ImpactRow = Readonly<{
-  workflow_version_id: string;
-  provider_key: string;
-  operation_key: string;
-  connection_id: string;
-}>;
-
-function mapImpact(row: ImpactRow): WorkflowIntegrationImpactRecord {
-  return Object.freeze({
-    workflowVersionId: uuidSchema.parse(row.workflow_version_id),
-    providerKey: providerKeySchema.parse(row.provider_key),
-    operationKey: operationKeySchema.parse(row.operation_key),
-    connectionId: uuidSchema.parse(row.connection_id),
-  });
-}
-
 function page(
-  rows: readonly ImpactRow[],
+  rows: readonly WorkflowIntegrationImpactRecord[],
   limit: number,
 ): WorkflowIntegrationImpactPage {
   const hasMore = rows.length > limit;
-  const items = Object.freeze(rows.slice(0, limit).map(mapImpact));
+  const items = Object.freeze(
+    rows.slice(0, limit).map((row) => Object.freeze(row)),
+  );
   const last = items.at(-1);
   return Object.freeze({
     items,
@@ -109,21 +96,26 @@ export function createWorkflowIntegrationUsageDatabase(
         pool,
         input.workspaceId,
         async ({ db }) => {
-          const result = await db.execute<ImpactRow>(sql`
-          select workflow_version_id, provider_key, operation_key, connection_id
-          from app.workflow_integration_usage
-          where provider_key = ${providerKey}
-            and operation_key = ${operationKey}
-            ${
-              after === undefined
-                ? sql``
-                : sql`and (workflow_version_id, connection_id) >
-                    (${after.workflowVersionId}::uuid, ${after.connectionId}::uuid)`
-            }
-          order by workflow_version_id, connection_id
-          limit ${limit + 1}
-        `);
-          return page(result.rows, limit);
+          const result = await db
+            .select({
+              workflowVersionId: usage.workflowVersionId,
+              providerKey: usage.providerKey,
+              operationKey: usage.operationKey,
+              connectionId: usage.connectionId,
+            })
+            .from(usage)
+            .where(
+              and(
+                eq(usage.providerKey, providerKey),
+                eq(usage.operationKey, operationKey),
+                after === undefined
+                  ? undefined
+                  : sql`(${usage.workflowVersionId},${usage.connectionId})>(${after.workflowVersionId}::uuid,${after.connectionId}::uuid)`,
+              ),
+            )
+            .orderBy(usage.workflowVersionId, usage.connectionId)
+            .limit(limit + 1);
+          return page(result, limit);
         },
       );
     },
@@ -144,20 +136,29 @@ export function createWorkflowIntegrationUsageDatabase(
         pool,
         input.workspaceId,
         async ({ db }) => {
-          const result = await db.execute<ImpactRow>(sql`
-          select workflow_version_id, provider_key, operation_key, connection_id
-          from app.workflow_integration_usage
-          where connection_id = ${connectionId}
-            ${
-              after === undefined
-                ? sql``
-                : sql`and (workflow_version_id, provider_key, operation_key) >
-                    (${after.workflowVersionId}::uuid, ${after.providerKey}, ${after.operationKey})`
-            }
-          order by workflow_version_id, provider_key, operation_key
-          limit ${limit + 1}
-        `);
-          return page(result.rows, limit);
+          const result = await db
+            .select({
+              workflowVersionId: usage.workflowVersionId,
+              providerKey: usage.providerKey,
+              operationKey: usage.operationKey,
+              connectionId: usage.connectionId,
+            })
+            .from(usage)
+            .where(
+              and(
+                eq(usage.connectionId, connectionId),
+                after === undefined
+                  ? undefined
+                  : sql`(${usage.workflowVersionId},${usage.providerKey},${usage.operationKey})>(${after.workflowVersionId}::uuid,${after.providerKey},${after.operationKey})`,
+              ),
+            )
+            .orderBy(
+              usage.workflowVersionId,
+              usage.providerKey,
+              usage.operationKey,
+            )
+            .limit(limit + 1);
+          return page(result, limit);
         },
       );
     },

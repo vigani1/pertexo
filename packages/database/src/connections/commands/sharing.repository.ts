@@ -1,3 +1,12 @@
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { and, eq, inArray, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { connections, connectionShares } from '../../schema/connections.js';
+import {
+  workspaces,
+  workspaceMemberships,
+  users,
+} from '../../schema/foundation.js';
 import type { Pool, PoolClient } from 'pg';
 
 import type {
@@ -37,34 +46,52 @@ async function readSharing(
   workspaceId: string,
   connectionId: string,
 ): Promise<ConnectionSharing> {
-  const row = (
-    await client.query<{
-      access_mode: ConnectionSharing['mode'];
-      sharing_revision: string;
-    }>(
-      'select access_mode,sharing_revision from app.connections where workspace_id=$1 and id=$2',
-      [workspaceId, connectionId],
+  const db = drizzle(client);
+  const [row] = await db
+    .select({
+      accessMode: connections.accessMode,
+      sharingRevision: connections.sharingRevision,
+    })
+    .from(connections)
+    .where(
+      and(
+        eq(connections.workspaceId, workspaceId),
+        eq(connections.id, connectionId),
+      ),
     )
-  ).rows[0];
+    .catch(rethrowQueryFailure);
   if (row === undefined)
     throw new ConnectionNotFoundError('Connection is not visible');
-  const members = (
-    await client.query<{ userId: string; label: string; active: boolean }>(
-      `select permission.user_id as "userId", person.display_name label,
-      (membership.status='active' and person.status='active') active
-    from app.connection_shares permission
-    join app.workspace_memberships membership on membership.workspace_id=permission.workspace_id and membership.user_id=permission.user_id
-    join app.users person on person.id=membership.user_id
-    where permission.workspace_id=$1 and permission.connection_id=$2 order by permission.user_id limit 101`,
-      [workspaceId, connectionId],
+  const members = await db
+    .select({
+      userId: connectionShares.userId,
+      label: users.displayName,
+      active: sql<boolean>`(${workspaceMemberships.status}='active' and ${users.status}='active')`,
+    })
+    .from(connectionShares)
+    .innerJoin(
+      workspaceMemberships,
+      and(
+        eq(workspaceMemberships.workspaceId, connectionShares.workspaceId),
+        eq(workspaceMemberships.userId, connectionShares.userId),
+      ),
     )
-  ).rows;
+    .innerJoin(users, eq(users.id, workspaceMemberships.userId))
+    .where(
+      and(
+        eq(connectionShares.workspaceId, workspaceId),
+        eq(connectionShares.connectionId, connectionId),
+      ),
+    )
+    .orderBy(connectionShares.userId)
+    .limit(101)
+    .catch(rethrowQueryFailure);
   if (members.length > 100)
     throw new Error('Connection shares exceed the supported bound');
   return {
     connectionId,
-    mode: row.access_mode,
-    revision: Number(row.sharing_revision),
+    mode: row.accessMode,
+    revision: row.sharingRevision,
     members,
   };
 }
@@ -97,10 +124,13 @@ export function createConnectionSharingPersistence(
       const request = input.request;
       // Take the exclusive workspace fence first; upgrading a shared fence can deadlock concurrent edits.
       return withTenantScopedClient(pool, actor, async (client) => {
-        await client.query(
-          'select id from app.workspaces where id=$1 for update',
-          [actor.workspaceId],
-        );
+        const db = drizzle(client);
+        await db
+          .select({ id: workspaces.id })
+          .from(workspaces)
+          .where(eq(workspaces.id, actor.workspaceId))
+          .for('update')
+          .catch(rethrowQueryFailure);
         await requireConnectionManager(
           client,
           actor.workspaceId,
@@ -131,27 +161,58 @@ export function createConnectionSharingPersistence(
           };
         if (current.revision !== request.expectedSharingRevision)
           throw new ConnectionSharingRevisionConflictError();
-        const members = await client.query(
-          `select membership.user_id from app.workspace_memberships membership
-          join app.users person on person.id=membership.user_id and person.status='active'
-          where membership.workspace_id=$1 and membership.user_id=any($2::uuid[]) and membership.status='active'`,
-          [actor.workspaceId, request.userIds],
-        );
-        if (members.rows.length !== request.userIds.length)
+        const members = await db
+          .select({ userId: workspaceMemberships.userId })
+          .from(workspaceMemberships)
+          .innerJoin(
+            users,
+            and(
+              eq(users.id, workspaceMemberships.userId),
+              eq(users.status, 'active'),
+            ),
+          )
+          .where(
+            and(
+              eq(workspaceMemberships.workspaceId, actor.workspaceId),
+              inArray(workspaceMemberships.userId, [...request.userIds]),
+              eq(workspaceMemberships.status, 'active'),
+            ),
+          )
+          .catch(rethrowQueryFailure);
+        if (members.length !== request.userIds.length)
           throw new ConnectionNotFoundError('A sharing member is unavailable');
-        await client.query(
-          'delete from app.connection_shares where workspace_id=$1 and connection_id=$2',
-          [actor.workspaceId, connectionId],
+        const predicate = and(
+          eq(connectionShares.workspaceId, actor.workspaceId),
+          eq(connectionShares.connectionId, connectionId),
         );
+        await db
+          .delete(connectionShares)
+          .where(predicate)
+          .catch(rethrowQueryFailure);
         if (request.userIds.length > 0)
-          await client.query(
-            'insert into app.connection_shares(workspace_id,connection_id,user_id) select $1,$2,unnest($3::uuid[])',
-            [actor.workspaceId, connectionId, request.userIds],
-          );
-        await client.query(
-          'update app.connections set access_mode=$3,sharing_revision=sharing_revision+1 where workspace_id=$1 and id=$2',
-          [actor.workspaceId, connectionId, request.mode],
-        );
+          await db
+            .insert(connectionShares)
+            .values(
+              request.userIds.map((userId) => ({
+                workspaceId: actor.workspaceId,
+                connectionId,
+                userId,
+              })),
+            )
+            .catch(rethrowQueryFailure);
+        await db
+          .update(connections)
+          .set({
+            accessMode: request.mode,
+            sharingRevision: sql`${connections.sharingRevision}+1`,
+          })
+          .where(
+            and(
+              eq(connections.workspaceId, actor.workspaceId),
+              eq(connections.id, connectionId),
+            ),
+          )
+          .catch(rethrowQueryFailure);
         const result = await readSharing(
           client,
           actor.workspaceId,

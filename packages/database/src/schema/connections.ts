@@ -1,3 +1,8 @@
+import type {
+  ConnectionAuthType,
+  ConnectionStatus,
+  ConnectionRecord,
+} from '../connections/contract.js';
 import { users, workspaces, workspaceMemberships } from './foundation.js';
 import {
   type PgTableExtraConfigValue,
@@ -26,9 +31,14 @@ export const connections = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     providerKey: varchar('provider_key', { length: 64 }).notNull(),
     name: varchar('name', { length: 128 }).notNull(),
-    authType: varchar('auth_type', { length: 64 }).notNull(),
-    status: varchar('status', { length: 32 }).notNull(),
+    authType: varchar('auth_type', { length: 64 })
+      .$type<ConnectionAuthType>()
+      .notNull(),
+    status: varchar('status', { length: 32 })
+      .$type<ConnectionStatus>()
+      .notNull(),
     accessMode: varchar('access_mode', { length: 16 })
+      .$type<ConnectionRecord['accessMode']>()
       .notNull()
       .default('workspace'),
     sharingRevision: bigint('sharing_revision', { mode: 'number' })
@@ -57,7 +67,7 @@ export const connections = appSchema.table(
     }),
     lastHealthTransitionSource: varchar('last_health_transition_source', {
       length: 16,
-    }),
+    }).$type<NonNullable<ConnectionRecord['lastHealthTransitionSource']>>(),
     createdBy: uuid('created_by').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .default(sql`clock_timestamp()`)
@@ -259,7 +269,9 @@ export const nodeAttemptConnectionDispatches = appSchema.table(
     attemptId: uuid('attempt_id').notNull(),
     connectionId: uuid('connection_id').notNull(),
     providerKey: varchar('provider_key', { length: 64 }).notNull(),
-    authType: varchar('auth_type', { length: 64 }).notNull(),
+    authType: varchar('auth_type', { length: 64 })
+      .$type<ConnectionAuthType>()
+      .notNull(),
     secretVersionId: uuid('secret_version_id').notNull(),
     healthRevision: bigint('health_revision', { mode: 'number' }).notNull(),
     workerId: varchar('worker_id', { length: 128 }).notNull(),

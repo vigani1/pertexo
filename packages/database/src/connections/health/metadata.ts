@@ -32,30 +32,3 @@ export function deserializeConnectionHealthMetadata(
     lastHealthTransitionSource: value.lastHealthTransitionSource ?? null,
   };
 }
-
-/** Safe current-credential provenance; no revision or dispatch identity escapes. */
-export function mapConnectionHealthMetadata(
-  row: Readonly<Record<string, unknown>>,
-): Required<
-  Pick<
-    ConnectionRecord,
-    | 'lastRunObservedAt'
-    | 'lastHealthTransitionAt'
-    | 'lastHealthTransitionSource'
-  >
-> {
-  return {
-    lastRunObservedAt:
-      row.last_run_observed_at == null
-        ? null
-        : z.date().parse(row.last_run_observed_at),
-    lastHealthTransitionAt:
-      row.last_health_transition_at == null
-        ? null
-        : z.date().parse(row.last_health_transition_at),
-    lastHealthTransitionSource:
-      row.last_health_transition_source == null
-        ? null
-        : transitionSourceSchema.parse(row.last_health_transition_source),
-  };
-}

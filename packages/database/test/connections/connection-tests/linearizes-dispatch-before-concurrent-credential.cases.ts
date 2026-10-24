@@ -52,6 +52,7 @@ export function registerLinearizesDispatchBeforeConcurrentCredential(): void {
       let gateOpen = false;
       let mark: Promise<void> | undefined;
       let mutate: Promise<unknown> | undefined;
+      let markerPid: number | undefined;
       const apiUser = new URL(databaseUrl(apiBaseUrl)).username;
       try {
         gate = await gatePool.connect();
@@ -73,16 +74,15 @@ export function registerLinearizesDispatchBeforeConcurrentCredential(): void {
         void mark.catch(() => undefined);
         await expect
           .poll(async () => {
-            const result = await observerPool.query<{ blocked: boolean }>(
-              `select exists(
-                 select 1 from pg_stat_activity
-                 where datname = current_database() and usename = $1
-                   and wait_event_type = 'Lock'
-                   and query like '%insert into app.audit_events%'
-               ) as blocked`,
+            const result = await observerPool.query<{ pid: number }>(
+              `select activity.pid from pg_stat_activity activity
+               join pg_locks waiting on waiting.pid=activity.pid and not waiting.granted
+               where activity.datname=current_database() and activity.usename=$1
+                 and waiting.relation='app.audit_events'::regclass limit 1`,
               [apiUser],
             );
-            return result.rows[0]?.blocked;
+            markerPid = result.rows[0]?.pid;
+            return markerPid !== undefined;
           })
           .toBe(true);
 
@@ -111,9 +111,9 @@ export function registerLinearizesDispatchBeforeConcurrentCredential(): void {
                  select 1 from pg_stat_activity
                  where datname = current_database() and usename = $1
                    and wait_event_type = 'Lock'
-                   and query like '%from app.connections%for update%'
+                   and $2::integer=any(pg_blocking_pids(pid))
                ) as blocked`,
-              [apiUser],
+              [apiUser, markerPid],
             );
             return result.rows[0]?.blocked;
           })

@@ -76,7 +76,7 @@ export function registerHoldsActorAuthorityStableUntil(): void {
                select 1 from pg_stat_activity
                where datname=current_database() and usename=$1
                  and wait_event_type='Lock'
-                 and query like '%insert into app.audit_events%'
+                 and exists(select 1 from pg_locks waiting where waiting.pid=pg_stat_activity.pid and not waiting.granted and waiting.relation='app.audit_events'::regclass)
              ) blocked`,
             [new URL(databaseUrl(apiBaseUrl)).username],
           );

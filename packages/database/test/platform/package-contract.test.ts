@@ -1,7 +1,7 @@
 import { Pool } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createApiConnectionDatabase } from '../../src/connections/repository.js';
+import { createConnectionDatabase } from '../../src/connections/repository.js';
 import { createWorkerConnectionResolutionDatabase } from '../../src/connections/repository.js';
 import { createDatabaseRuntime } from '../../src/platform/pool/runtime.js';
 import type {
@@ -26,7 +26,7 @@ describe('@pertexo/database package contract', () => {
     let api: ApiConnectionDatabase | undefined;
     let worker: WorkerConnectionResolutionDatabase | undefined;
     try {
-      api = createApiConnectionDatabase(config, runtime);
+      api = createConnectionDatabase(config, runtime);
       worker = createWorkerConnectionResolutionDatabase(config, runtime);
       expect(connect).not.toHaveBeenCalled();
     } finally {
