@@ -1,3 +1,11 @@
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  nodeRuns,
+  nodeAttempts,
+  workflowRuns,
+} from '../../schema/runs/execution.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { Pool } from 'pg';
 
 import { recordInputSchema, type NodeAttemptRunStore } from '../contract.js';
@@ -37,37 +45,42 @@ export async function recordNodeAttemptInput(
       lease.workspaceId,
       signal,
       async (client) => {
-        const result = await client.query(
-          `update app.node_runs node
-           set input_ref=$11::json,updated_at=clock_timestamp()
-           from app.node_attempts attempt,app.workflow_runs run
-           where node.workspace_id=$1 and node.id=$3
-             and node.current_attempt_id=$2
-             and node.workflow_run_id=$7 and node.node_id=$8
-             and node.invocation_key=$9
-             and attempt.workspace_id=node.workspace_id and attempt.id=$2
-             and attempt.node_run_id=node.id and attempt.attempt_number=$4
-             and attempt.status='running' and attempt.lease_owner=$5
-             and attempt.fence_token=$6
-             and attempt.lease_expires_at > clock_timestamp()
-             and run.workspace_id=node.workspace_id
-             and run.id=node.workflow_run_id
-             and run.workflow_version_id=$10`,
-          [
-            lease.workspaceId,
-            lease.attemptId,
-            lease.nodeRunId,
-            lease.attemptNumber,
-            lease.workerId,
-            lease.fenceToken,
-            lease.runId,
-            lease.nodeId,
-            lease.invocationKey,
-            lease.workflowVersionId,
-            stored,
-          ],
-        );
-        return { recorded: result.rowCount === 1 };
+        const result = await drizzle(client)
+          .update(nodeRuns)
+          .set({
+            inputRef: sql`${stored}::json`,
+            updatedAt: sql`clock_timestamp()`,
+          })
+          .from(nodeAttempts)
+          .innerJoin(
+            workflowRuns,
+            and(
+              eq(workflowRuns.workspaceId, nodeAttempts.workspaceId),
+              eq(workflowRuns.id, lease.runId),
+            ),
+          )
+          .where(
+            and(
+              eq(nodeRuns.workspaceId, lease.workspaceId),
+              eq(nodeRuns.id, lease.nodeRunId),
+              eq(nodeRuns.currentAttemptId, lease.attemptId),
+              eq(nodeRuns.workflowRunId, lease.runId),
+              eq(nodeRuns.nodeId, lease.nodeId),
+              eq(nodeRuns.invocationKey, lease.invocationKey),
+              eq(nodeAttempts.workspaceId, nodeRuns.workspaceId),
+              eq(nodeAttempts.id, lease.attemptId),
+              eq(nodeAttempts.nodeRunId, nodeRuns.id),
+              eq(nodeAttempts.attemptNumber, lease.attemptNumber),
+              eq(nodeAttempts.status, 'running'),
+              eq(nodeAttempts.leaseOwner, lease.workerId),
+              eq(nodeAttempts.fenceToken, lease.fenceToken),
+              sql`${nodeAttempts.leaseExpiresAt}>clock_timestamp()`,
+              eq(workflowRuns.workflowVersionId, lease.workflowVersionId),
+            ),
+          )
+          .returning({ id: nodeRuns.id })
+          .catch(rethrowQueryFailure);
+        return { recorded: result.length === 1 };
       },
     );
   } catch {

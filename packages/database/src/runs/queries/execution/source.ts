@@ -1,3 +1,7 @@
+import { and, eq } from 'drizzle-orm';
+import { QueryBuilder } from 'drizzle-orm/pg-core';
+import { workflowVersions } from '../../../schema/authoring/workflows.js';
+import { workflowTestSnapshots } from '../../../schema/runs/tests.js';
 import type { FrozenWorkflowTestPins } from '../../../schema/runs/tests.js';
 import { parseStoredExecutionValue } from '../../../platform/stored-execution-value.js';
 import { z } from 'zod';
@@ -34,9 +38,38 @@ export interface WorkflowExecutionReader extends Omit<
   ): Promise<WorkflowExecutionProjection | null>;
 }
 /** Both sources are immutable; a test snapshot never enters publication queries. */
-export const EXECUTION_SOURCE_SQL = `select id,workspace_id,workflow_id,version_number,checksum,executable_json,null::jsonb test_dispositions,null::timestamptz test_expires_at from app.workflow_versions
- union all select snapshot.id,snapshot.workspace_id,snapshot.workflow_id,snapshot.draft_revision,snapshot.checksum,snapshot.executable_json,snapshot.dispositions,snapshot.expires_at
- from app.workflow_test_snapshots snapshot`;
+const sourceBuilder = new QueryBuilder();
+export const EXECUTION_SOURCE_SQL = sourceBuilder
+  .select({
+    id: workflowVersions.id,
+    workspace_id: workflowVersions.workspaceId,
+    workflow_id: workflowVersions.workflowId,
+    version_number: workflowVersions.versionNumber,
+    checksum: workflowVersions.checksum,
+    executable_json: workflowVersions.executableJson,
+    test_dispositions: sql<
+      typeof workflowTestSnapshots.$inferSelect.dispositions | null
+    >`null::jsonb`.as('test_dispositions'),
+    test_expires_at: sql<Date | null>`null::timestamptz`
+      .mapWith(workflowTestSnapshots.expiresAt)
+      .as('test_expires_at'),
+  })
+  .from(workflowVersions)
+  .unionAll(
+    sourceBuilder
+      .select({
+        id: workflowTestSnapshots.id,
+        workspace_id: workflowTestSnapshots.workspaceId,
+        workflow_id: workflowTestSnapshots.workflowId,
+        version_number: workflowTestSnapshots.draftRevision,
+        checksum: workflowTestSnapshots.checksum,
+        executable_json: workflowTestSnapshots.executableJson,
+        test_dispositions: workflowTestSnapshots.dispositions,
+        test_expires_at: workflowTestSnapshots.expiresAt,
+      })
+      .from(workflowTestSnapshots),
+  )
+  .as('version');
 
 export function parseExecutionSource(
   row: Record<string, unknown> | undefined,
@@ -74,21 +107,36 @@ export function createWorkflowExecutionReader(
         lease.pool,
         input.workspaceId,
         async (transaction) => {
-          const rows = await transaction.db.execute(
-            sql`select * from (${sql.raw(EXECUTION_SOURCE_SQL)}) source where workspace_id=${input.workspaceId} and id=${input.workflowVersionId} limit 1`,
-          );
-          const projection = parseExecutionSource(rows.rows[0]);
+          const rows = await transaction.db
+            .select()
+            .from(EXECUTION_SOURCE_SQL)
+            .where(
+              and(
+                eq(EXECUTION_SOURCE_SQL.workspace_id, input.workspaceId),
+                eq(EXECUTION_SOURCE_SQL.id, input.workflowVersionId),
+              ),
+            )
+            .limit(1);
+          const projection = parseExecutionSource(rows[0]);
           const sampleUnavailable =
             projection === null ||
             input.nodeId === undefined ||
             !projection.test?.pinnedNodeIds.includes(input.nodeId);
           if (sampleUnavailable) return projection;
-          const pin = await transaction.db.execute<{
-            sample: FrozenWorkflowTestPins[string] | null;
-          }>(
-            sql`select pins -> ${input.nodeId}::text sample from app.workflow_test_snapshots where workspace_id=${input.workspaceId} and id=${input.workflowVersionId}`,
-          );
-          const sample = pin.rows[0]?.sample;
+          const pin = await transaction.db
+            .select({
+              sample: sql<
+                FrozenWorkflowTestPins[string] | null
+              >`${workflowTestSnapshots.pins}->${input.nodeId}::text`,
+            })
+            .from(workflowTestSnapshots)
+            .where(
+              and(
+                eq(workflowTestSnapshots.workspaceId, input.workspaceId),
+                eq(workflowTestSnapshots.id, input.workflowVersionId),
+              ),
+            );
+          const sample = pin[0]?.sample;
           if (sample === undefined || sample === null)
             throw new Error('Frozen test sample is unavailable');
           const output = parseStoredExecutionValue(sample.outputRef);

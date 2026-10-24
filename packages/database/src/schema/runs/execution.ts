@@ -1,3 +1,4 @@
+import type { NodeAttemptLease } from '../../attempts/contract.js';
 import {
   NODE_IDENTITY_KEY_PATTERN,
   type CodeDiagnostics,
@@ -583,7 +584,9 @@ export const nodeAttempts = appSchema.table(
     nodeRunId: uuid('node_run_id').notNull(),
     attemptNumber: integer('attempt_number').notNull(),
     status: varchar('status', { length: 32 }).notNull(),
-    sideEffectClass: varchar('side_effect_class', { length: 32 }).notNull(),
+    sideEffectClass: varchar('side_effect_class', { length: 32 })
+      .$type<NodeAttemptLease['sideEffectClass']>()
+      .notNull(),
     providerIdempotencyKey: varchar('provider_idempotency_key', {
       length: 256,
     }),
@@ -607,6 +610,7 @@ export const nodeAttempts = appSchema.table(
     executorPossiblyDispatched: boolean('executor_possibly_dispatched'),
     retryDecision: varchar('retry_decision', { length: 32 }),
     admissionKind: varchar('admission_kind', { length: 32 })
+      .$type<NodeAttemptLease['admissionKind']>()
       .notNull()
       .default(sql`'execute'::character varying`),
     reconciliationRef: jsonb('reconciliation_ref'),

@@ -1,3 +1,14 @@
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workspaces } from '../../schema/foundation.js';
+import {
+  nodeRuns,
+  nodeAttempts,
+  workflowRuns,
+  previewRuns,
+  previewAttempts,
+} from '../../schema/runs/execution.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 
 export type ExecutionCapabilityScope = Readonly<{
@@ -22,36 +33,74 @@ export async function lockCapabilityExecution(
   client: PoolClient,
   input: ExecutionCapabilityScope,
 ): Promise<void> {
-  const workspace = await client.query<{ status: string }>(
-    'select status from app.workspaces where id=$1 for share',
-    [input.workspaceId],
-  );
-  if (workspace.rows[0]?.status !== 'active')
+  const db = drizzle(client);
+  const workspace = await db
+    .select({ status: workspaces.status })
+    .from(workspaces)
+    .where(eq(workspaces.id, input.workspaceId))
+    .for('share')
+    .catch(rethrowQueryFailure);
+  if (workspace[0]?.status !== 'active')
     throw new ExecutionCapabilityExpiredError('The workspace is not active.');
   if (input.previewRunId !== undefined) {
     if (input.previewRunId !== input.runId)
       throw new ExecutionCapabilityExpiredError();
-    await client.query(
-      'select id from app.preview_runs where workspace_id=$1 and id=$2 for update',
-      [input.workspaceId, input.previewRunId],
-    );
-    await client.query(
-      'select id from app.preview_attempts where workspace_id=$1 and id=$2 for update',
-      [input.workspaceId, input.attemptId],
-    );
+    await db
+      .select({ id: previewRuns.id })
+      .from(previewRuns)
+      .where(
+        and(
+          eq(previewRuns.workspaceId, input.workspaceId),
+          eq(previewRuns.id, input.previewRunId),
+        ),
+      )
+      .for('update')
+      .catch(rethrowQueryFailure);
+    await db
+      .select({ id: previewAttempts.id })
+      .from(previewAttempts)
+      .where(
+        and(
+          eq(previewAttempts.workspaceId, input.workspaceId),
+          eq(previewAttempts.id, input.attemptId),
+        ),
+      )
+      .for('update')
+      .catch(rethrowQueryFailure);
   } else {
-    await client.query(
-      'select id from app.workflow_runs where workspace_id=$1 and id=$2 for update',
-      [input.workspaceId, input.runId],
-    );
-    await client.query(
-      'select id from app.node_runs where workspace_id=$1 and id=$2 for update',
-      [input.workspaceId, input.nodeRunId],
-    );
-    await client.query(
-      'select id from app.node_attempts where workspace_id=$1 and id=$2 for update',
-      [input.workspaceId, input.attemptId],
-    );
+    await db
+      .select({ id: workflowRuns.id })
+      .from(workflowRuns)
+      .where(
+        and(
+          eq(workflowRuns.workspaceId, input.workspaceId),
+          eq(workflowRuns.id, input.runId),
+        ),
+      )
+      .for('update')
+      .catch(rethrowQueryFailure);
+    await db
+      .select({ id: nodeRuns.id })
+      .from(nodeRuns)
+      .where(
+        and(
+          eq(nodeRuns.workspaceId, input.workspaceId),
+          eq(nodeRuns.id, input.nodeRunId),
+        ),
+      )
+      .for('update')
+      .catch(rethrowQueryFailure);
+    await db
+      .select({ id: nodeAttempts.id })
+      .from(nodeAttempts)
+      .where(
+        and(
+          eq(nodeAttempts.workspaceId, input.workspaceId),
+          eq(nodeAttempts.id, input.attemptId),
+        ),
+      )
+      .for('update')
+      .catch(rethrowQueryFailure);
   }
 }
 export async function assertCapabilityExecution(
@@ -61,33 +110,63 @@ export async function assertCapabilityExecution(
     requireDispatch = false,
   }: Readonly<{ requireDispatch?: boolean | undefined }> = {},
 ): Promise<void> {
-  const parameters: unknown[] = [
-    input.workspaceId,
-    input.attemptId,
-    input.runId,
-    input.workerId,
-    input.fenceToken,
-  ];
-  let valid: boolean | undefined;
+  const db = drizzle(client);
+  let valid: boolean | null | undefined;
   if (input.previewRunId !== undefined) {
-    const found = await client.query<{ valid: boolean }>(
-      `select (attempt.status='running' and attempt.lease_owner=$4 and attempt.fence_token=$5 and attempt.lease_expires_at>clock_timestamp() and run.status='running' and run.execution_deadline_at>clock_timestamp() and (not $6::boolean or attempt.dispatch_marked_at is not null)) valid from app.preview_attempts attempt join app.preview_runs run on run.workspace_id=attempt.workspace_id and run.id=attempt.preview_run_id where attempt.workspace_id=$1 and attempt.id=$2 and run.id=$3`,
-      [...parameters, requireDispatch],
-    );
-    valid = found.rows[0]?.valid;
+    const found = await db
+      .select({
+        valid: sql<boolean>`(${previewAttempts.status}='running' and ${previewAttempts.leaseOwner}=${input.workerId} and ${previewAttempts.fenceToken}=${input.fenceToken} and ${previewAttempts.leaseExpiresAt}>clock_timestamp() and ${previewRuns.status}='running' and ${previewRuns.executionDeadlineAt}>clock_timestamp() and (not ${requireDispatch}::boolean or ${previewAttempts.dispatchMarkedAt} is not null))`,
+      })
+      .from(previewAttempts)
+      .innerJoin(
+        previewRuns,
+        and(
+          eq(previewRuns.workspaceId, previewAttempts.workspaceId),
+          eq(previewRuns.id, previewAttempts.previewRunId),
+        ),
+      )
+      .where(
+        and(
+          eq(previewAttempts.workspaceId, input.workspaceId),
+          eq(previewAttempts.id, input.attemptId),
+          eq(previewRuns.id, input.runId),
+        ),
+      )
+      .catch(rethrowQueryFailure);
+    valid = found[0]?.valid;
   } else {
-    parameters.push(
-      input.nodeRunId,
-      input.nodeId,
-      input.invocationKey,
-      input.attemptNumber,
-      requireDispatch,
-    );
-    const found = await client.query<{ valid: boolean }>(
-      `select (attempt.status='running' and attempt.lease_owner=$4 and attempt.fence_token=$5 and attempt.lease_expires_at>clock_timestamp() and node.current_attempt_id=attempt.id and run.status in ('running','waiting') and run.cancel_requested_at is null and (run.deadline_at is null or run.deadline_at>clock_timestamp()) and (not $10::boolean or attempt.dispatch_marked_at is not null)) valid from app.node_attempts attempt join app.node_runs node on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id join app.workflow_runs run on run.workspace_id=node.workspace_id and run.id=node.workflow_run_id where attempt.workspace_id=$1 and attempt.id=$2 and run.id=$3 and node.id=$6 and node.node_id=$7 and node.invocation_key=$8 and attempt.attempt_number=$9`,
-      parameters,
-    );
-    valid = found.rows[0]?.valid;
+    const found = await db
+      .select({
+        valid: sql<boolean>`(${nodeAttempts.status}='running' and ${nodeAttempts.leaseOwner}=${input.workerId} and ${nodeAttempts.fenceToken}=${input.fenceToken} and ${nodeAttempts.leaseExpiresAt}>clock_timestamp() and ${nodeRuns.currentAttemptId}=${nodeAttempts.id} and ${workflowRuns.status} in ('running','waiting') and ${workflowRuns.cancelRequestedAt} is null and (${workflowRuns.deadlineAt} is null or ${workflowRuns.deadlineAt}>clock_timestamp()) and (not ${requireDispatch}::boolean or ${nodeAttempts.dispatchMarkedAt} is not null))`,
+      })
+      .from(nodeAttempts)
+      .innerJoin(
+        nodeRuns,
+        and(
+          eq(nodeRuns.workspaceId, nodeAttempts.workspaceId),
+          eq(nodeRuns.id, nodeAttempts.nodeRunId),
+        ),
+      )
+      .innerJoin(
+        workflowRuns,
+        and(
+          eq(workflowRuns.workspaceId, nodeRuns.workspaceId),
+          eq(workflowRuns.id, nodeRuns.workflowRunId),
+        ),
+      )
+      .where(
+        and(
+          eq(nodeAttempts.workspaceId, input.workspaceId),
+          eq(nodeAttempts.id, input.attemptId),
+          eq(workflowRuns.id, input.runId),
+          eq(nodeRuns.id, input.nodeRunId),
+          eq(nodeRuns.nodeId, input.nodeId),
+          eq(nodeRuns.invocationKey, input.invocationKey),
+          eq(nodeAttempts.attemptNumber, input.attemptNumber),
+        ),
+      )
+      .catch(rethrowQueryFailure);
+    valid = found[0]?.valid;
   }
   if (!(valid ?? false)) throw new ExecutionCapabilityExpiredError();
 }

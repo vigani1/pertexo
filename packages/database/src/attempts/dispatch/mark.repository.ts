@@ -1,5 +1,18 @@
+import { and, eq, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  nodeRuns,
+  nodeAttempts,
+  workflowRuns,
+} from '../../schema/runs/execution.js';
+import {
+  connections,
+  nodeAttemptConnectionDispatches,
+} from '../../schema/connections.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { EXECUTION_SOURCE_SQL } from '../../runs/queries/execution/source.js';
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import type { z } from 'zod';
 
 import {
@@ -42,30 +55,34 @@ export async function markNodeAttemptDispatched(
         );
         if (!current) throw new NodeAttemptConnectionFenceError();
       }
-      const lockedNode = await client.query<{
-        provider_dispatch_binding: string | null;
-      }>(
-        `select node.provider_dispatch_binding
-         from app.node_runs node
-         join app.workflow_runs run
-           on run.workspace_id=node.workspace_id
-          and run.id=node.workflow_run_id
-         where node.workspace_id=$1 and node.id=$2
-           and node.workflow_run_id=$3 and node.node_id=$4
-           and node.invocation_key=$5 and node.current_attempt_id=$6
-           and run.workflow_version_id=$7
-         for update of node`,
-        [
-          input.lease.workspaceId,
-          input.lease.nodeRunId,
-          input.lease.runId,
-          input.lease.nodeId,
-          input.lease.invocationKey,
-          input.lease.attemptId,
-          input.lease.workflowVersionId,
-        ],
-      );
-      const existingBinding = lockedNode.rows[0]?.provider_dispatch_binding;
+      const node = alias(nodeRuns, 'node');
+      const run = alias(workflowRuns, 'run');
+      const db = drizzle(client);
+      const lease = input.lease;
+      const lockedNode = await db
+        .select({ providerDispatchBinding: node.providerDispatchBinding })
+        .from(node)
+        .innerJoin(
+          run,
+          and(
+            eq(run.workspaceId, node.workspaceId),
+            eq(run.id, node.workflowRunId),
+          ),
+        )
+        .where(
+          and(
+            eq(node.workspaceId, lease.workspaceId),
+            eq(node.id, lease.nodeRunId),
+            eq(node.workflowRunId, lease.runId),
+            eq(node.nodeId, lease.nodeId),
+            eq(node.invocationKey, lease.invocationKey),
+            eq(node.currentAttemptId, lease.attemptId),
+            eq(run.workflowVersionId, lease.workflowVersionId),
+          ),
+        )
+        .for('update', { of: node })
+        .catch(rethrowQueryFailure);
+      const existingBinding = lockedNode[0]?.providerDispatchBinding;
       if (existingBinding === undefined)
         throw new NodeAttemptReconciliationRequiredError();
       const dispatchBindingChanged =
@@ -78,90 +95,132 @@ export async function markNodeAttemptDispatched(
         input.providerDispatchBinding !== undefined &&
         existingBinding === null
       )
-        await client.query(
-          `update app.node_runs
-           set provider_dispatch_binding=$3,updated_at=clock_timestamp()
-           where workspace_id=$1 and id=$2`,
-          [
-            input.lease.workspaceId,
-            input.lease.nodeRunId,
-            input.providerDispatchBinding,
-          ],
-        );
-      const result = await client.query<{ dispatch_marked_at: Date }>(
-        `update app.node_attempts attempt
-         set dispatch_marked_at=coalesce(dispatch_marked_at,clock_timestamp()),
-             updated_at=clock_timestamp()
-         from app.node_runs node,app.workflow_runs run
-         where attempt.workspace_id=$1 and attempt.id=$2
-           and attempt.node_run_id=$3 and attempt.attempt_number=$4
-           and attempt.status='running' and attempt.lease_owner=$5
-           and attempt.fence_token=$6
-           and attempt.lease_expires_at > clock_timestamp()
-           and node.workspace_id=attempt.workspace_id
-           and node.id=attempt.node_run_id
-           and node.workflow_run_id=$7 and node.node_id=$8
-           and node.invocation_key=$9 and node.current_attempt_id=attempt.id
-           and run.workspace_id=node.workspace_id and run.id=node.workflow_run_id
-           and run.workflow_version_id=$10
-         returning attempt.dispatch_marked_at`,
-        [
-          input.lease.workspaceId,
-          input.lease.attemptId,
-          input.lease.nodeRunId,
-          input.lease.attemptNumber,
-          input.lease.workerId,
-          input.lease.fenceToken,
-          input.lease.runId,
-          input.lease.nodeId,
-          input.lease.invocationKey,
-          input.lease.workflowVersionId,
-        ],
-      );
-      const dispatchedAt = result.rows[0]?.dispatch_marked_at;
+        await db
+          .update(nodeRuns)
+          .set({
+            providerDispatchBinding: input.providerDispatchBinding,
+            updatedAt: sql`clock_timestamp()`,
+          })
+          .where(
+            and(
+              eq(nodeRuns.workspaceId, lease.workspaceId),
+              eq(nodeRuns.id, lease.nodeRunId),
+            ),
+          )
+          .catch(rethrowQueryFailure);
+      const result = await db
+        .update(nodeAttempts)
+        .set({
+          dispatchMarkedAt: sql`coalesce(${nodeAttempts.dispatchMarkedAt},clock_timestamp())`,
+          updatedAt: sql`clock_timestamp()`,
+        })
+        .from(node)
+        .innerJoin(
+          run,
+          and(
+            eq(run.workspaceId, node.workspaceId),
+            eq(run.id, node.workflowRunId),
+          ),
+        )
+        .where(
+          and(
+            eq(nodeAttempts.workspaceId, lease.workspaceId),
+            eq(nodeAttempts.id, lease.attemptId),
+            eq(nodeAttempts.nodeRunId, lease.nodeRunId),
+            eq(nodeAttempts.attemptNumber, lease.attemptNumber),
+            eq(nodeAttempts.status, 'running'),
+            eq(nodeAttempts.leaseOwner, lease.workerId),
+            eq(nodeAttempts.fenceToken, lease.fenceToken),
+            sql`${nodeAttempts.leaseExpiresAt}>clock_timestamp()`,
+            eq(node.workspaceId, nodeAttempts.workspaceId),
+            eq(node.id, nodeAttempts.nodeRunId),
+            eq(node.workflowRunId, lease.runId),
+            eq(node.nodeId, lease.nodeId),
+            eq(node.invocationKey, lease.invocationKey),
+            eq(node.currentAttemptId, nodeAttempts.id),
+            eq(run.workflowVersionId, lease.workflowVersionId),
+          ),
+        )
+        .returning({
+          dispatchedAt: sql<Date>`${nodeAttempts.dispatchMarkedAt}`.mapWith(
+            nodeAttempts.dispatchMarkedAt,
+          ),
+        })
+        .catch(rethrowQueryFailure);
+      const dispatchedAt = result[0]?.dispatchedAt;
       if (dispatchedAt === undefined)
         throw new NodeAttemptReconciliationRequiredError();
-      // A Slack send remembers the secret and health revision it used, so a
-      // run's later auth failure can mark exactly that connection state. Only
-      // the published node's own bot-token connection is recorded.
-      if (
-        input.connectionFence?.expectedProviderKey === 'slack' &&
-        input.connectionFence.expectedAuthType === 'slack_bot_token'
-      ) {
-        const published = await client.query<{ executable_json: unknown }>(
-          `select executable_json from (${EXECUTION_SOURCE_SQL}) source where workspace_id=$1 and id=$2`,
-          [input.lease.workspaceId, input.lease.workflowVersionId],
-        );
-        if (
-          !publishesSlackBinding(
-            published.rows[0]?.executable_json,
-            input.lease.nodeId,
-            input.connectionFence.connectionId,
-          )
-        )
-          throw new Error('Connection dispatch published binding mismatch');
-        await client.query(
-          `insert into app.node_attempt_connection_dispatches
-             (workspace_id, attempt_id, connection_id, provider_key, auth_type,
-              secret_version_id, health_revision, worker_id, fence_token)
-           select $1, $2, connection.id, 'slack', 'slack_bot_token', $4,
-                  connection.health_revision, $5, $6
-           from app.connections connection
-           where connection.workspace_id=$1 and connection.id=$3
-           on conflict (workspace_id, attempt_id) do nothing`,
-          [
-            input.lease.workspaceId,
-            input.lease.attemptId,
-            input.connectionFence.connectionId,
-            input.connectionFence.secretVersionId,
-            input.lease.workerId,
-            input.lease.fenceToken,
-          ],
-        );
-      }
+      await persistSlackDispatch(client, input);
       return Object.freeze({ dispatchedAt: new Date(dispatchedAt) });
     },
   );
+}
+
+async function persistSlackDispatch(
+  client: PoolClient,
+  input: z.output<typeof dispatchSchema>,
+): Promise<void> {
+  const db = drizzle(client);
+  const lease = input.lease;
+  // A Slack send remembers the secret and health revision it used, so a
+  // run's later auth failure can mark exactly that connection state. Only
+  // the published node's own bot-token connection is recorded.
+  if (
+    input.connectionFence?.expectedProviderKey === 'slack' &&
+    input.connectionFence.expectedAuthType === 'slack_bot_token'
+  ) {
+    const published = await db
+      .select({ executableJson: EXECUTION_SOURCE_SQL.executable_json })
+      .from(EXECUTION_SOURCE_SQL)
+      .where(
+        and(
+          eq(EXECUTION_SOURCE_SQL.workspace_id, lease.workspaceId),
+          eq(EXECUTION_SOURCE_SQL.id, lease.workflowVersionId),
+        ),
+      )
+      .catch(rethrowQueryFailure);
+    if (
+      !publishesSlackBinding(
+        published[0]?.executableJson,
+        input.lease.nodeId,
+        input.connectionFence.connectionId,
+      )
+    )
+      throw new Error('Connection dispatch published binding mismatch');
+    await db
+      .insert(nodeAttemptConnectionDispatches)
+      .select(
+        db
+          .select({
+            workspaceId: connections.workspaceId,
+            attemptId: sql<string>`${lease.attemptId}`.as('attempt_id'),
+            connectionId: connections.id,
+            providerKey: sql<string>`'slack'`.as('provider_key'),
+            authType: sql<string>`'slack_bot_token'`.as('auth_type'),
+            secretVersionId:
+              sql<string>`${input.connectionFence.secretVersionId}`.as(
+                'secret_version_id',
+              ),
+            healthRevision: connections.healthRevision,
+            workerId: sql<string>`${lease.workerId}`.as('worker_id'),
+            fenceToken: sql<number>`${lease.fenceToken}`.as('fence_token'),
+          })
+          .from(connections)
+          .where(
+            and(
+              eq(connections.workspaceId, lease.workspaceId),
+              eq(connections.id, input.connectionFence.connectionId),
+            ),
+          ),
+      )
+      .onConflictDoNothing({
+        target: [
+          nodeAttemptConnectionDispatches.workspaceId,
+          nodeAttemptConnectionDispatches.attemptId,
+        ],
+      })
+      .catch(rethrowQueryFailure);
+  }
 }
 
 type PublishedNode = Readonly<{

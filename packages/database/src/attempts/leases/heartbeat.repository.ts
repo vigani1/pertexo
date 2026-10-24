@@ -1,5 +1,14 @@
+import { runAbortState } from '../queries/control.js';
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  nodeRuns,
+  nodeAttempts,
+  workflowRuns,
+} from '../../schema/runs/execution.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { Pool } from 'pg';
-import { z } from 'zod';
+import type { z } from 'zod';
 
 import {
   heartbeatSchema,
@@ -34,56 +43,53 @@ export async function heartbeatNodeAttempt(
     input.lease.workspaceId,
     input.signal,
     async (client) => {
-      const result = await client.query<{
-        abort_reason: 'canceled' | 'timed_out' | null;
-        abort_requested: boolean;
-        lease_expires_at: Date;
-      }>(
-        `update app.node_attempts attempt
-         set lease_expires_at=clock_timestamp()+make_interval(secs=>$7),
-             updated_at=clock_timestamp()
-         from app.node_runs node,app.workflow_runs run
-         where attempt.workspace_id=$1 and attempt.id=$2
-           and attempt.node_run_id=$3 and attempt.attempt_number=$4
-           and attempt.status='running' and attempt.lease_owner=$5
-           and attempt.fence_token=$6
-           and attempt.lease_expires_at > clock_timestamp()
-           and node.workspace_id=attempt.workspace_id
-           and node.id=attempt.node_run_id and node.workflow_run_id=$8
-           and node.node_id=$9 and node.invocation_key=$10
-           and node.current_attempt_id=attempt.id
-           and run.workspace_id=node.workspace_id and run.id=node.workflow_run_id
-           and run.workflow_version_id=$11
-         returning attempt.lease_expires_at,
-           (run.cancel_requested_at is not null or
-            (run.deadline_at is not null and
-             run.deadline_at <= clock_timestamp())) as abort_requested,
-           case
-             when run.cancel_requested_at is not null then 'canceled'
-             when run.deadline_at is not null and
-                  run.deadline_at <= clock_timestamp() then 'timed_out'
-             else null
-           end as abort_reason`,
-        [
-          input.lease.workspaceId,
-          input.lease.attemptId,
-          input.lease.nodeRunId,
-          input.lease.attemptNumber,
-          input.lease.workerId,
-          input.lease.fenceToken,
-          input.leaseDurationSeconds,
-          input.lease.runId,
-          input.lease.nodeId,
-          input.lease.invocationKey,
-          input.lease.workflowVersionId,
-        ],
-      );
-      const row = result.rows[0];
+      const lease = input.lease;
+      const result = await drizzle(client)
+        .update(nodeAttempts)
+        .set({
+          leaseExpiresAt: sql`clock_timestamp()+make_interval(secs=>${input.leaseDurationSeconds})`,
+          updatedAt: sql`clock_timestamp()`,
+        })
+        .from(nodeRuns)
+        .innerJoin(
+          workflowRuns,
+          and(
+            eq(workflowRuns.workspaceId, nodeRuns.workspaceId),
+            eq(workflowRuns.id, nodeRuns.workflowRunId),
+          ),
+        )
+        .where(
+          and(
+            eq(nodeAttempts.workspaceId, lease.workspaceId),
+            eq(nodeAttempts.id, lease.attemptId),
+            eq(nodeAttempts.nodeRunId, lease.nodeRunId),
+            eq(nodeAttempts.attemptNumber, lease.attemptNumber),
+            eq(nodeAttempts.status, 'running'),
+            eq(nodeAttempts.leaseOwner, lease.workerId),
+            eq(nodeAttempts.fenceToken, lease.fenceToken),
+            sql`${nodeAttempts.leaseExpiresAt}>clock_timestamp()`,
+            eq(nodeRuns.workspaceId, nodeAttempts.workspaceId),
+            eq(nodeRuns.id, nodeAttempts.nodeRunId),
+            eq(nodeRuns.workflowRunId, lease.runId),
+            eq(nodeRuns.nodeId, lease.nodeId),
+            eq(nodeRuns.invocationKey, lease.invocationKey),
+            eq(nodeRuns.currentAttemptId, nodeAttempts.id),
+            eq(workflowRuns.workflowVersionId, lease.workflowVersionId),
+          ),
+        )
+        .returning({
+          leaseExpiresAt: sql<Date>`${nodeAttempts.leaseExpiresAt}`.mapWith(
+            nodeAttempts.leaseExpiresAt,
+          ),
+          ...runAbortState,
+        })
+        .catch(rethrowQueryFailure);
+      const row = result[0];
       if (row === undefined) throw new NodeAttemptReconciliationRequiredError();
       return Object.freeze({
-        leaseExpiresAt: z.coerce.date().parse(row.lease_expires_at),
-        abortRequested: row.abort_requested,
-        ...(row.abort_reason === null ? {} : { abortReason: row.abort_reason }),
+        leaseExpiresAt: row.leaseExpiresAt,
+        abortRequested: row.abortRequested,
+        ...(row.abortReason === null ? {} : { abortReason: row.abortReason }),
       });
     },
   );
