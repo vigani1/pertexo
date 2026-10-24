@@ -1,3 +1,4 @@
+import { expect } from 'vitest';
 import type { Pool, Client } from 'pg';
 
 export function scopedConnectionUrl(
@@ -36,4 +37,29 @@ export async function waitForApplicationLock(
   throw new Error(
     `PostgreSQL application did not enter the expected lock wait: ${JSON.stringify(lastObserved)}`,
   );
+}
+
+/** Observes the lock waiter before a test releases its blocking transaction. */
+export async function waitForBlockedBy(
+  observer: Pool | Client,
+  blockerPid: number,
+  options: Readonly<{ timeout?: number; minimumWaiters?: number }> = {},
+): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        const result = await observer.query<{ waiters: number }>(
+          `with recursive blocked(pid) as (
+             select $1::int
+             union
+             select activity.pid from pg_stat_activity activity
+               join blocked blocker on blocker.pid=any(pg_blocking_pids(activity.pid))
+           ) select (count(*)-1)::int waiters from blocked`,
+          [blockerPid],
+        );
+        return result.rows[0]?.waiters ?? 0;
+      },
+      { timeout: options.timeout ?? 1_000, interval: 5 },
+    )
+    .toBeGreaterThanOrEqual(options.minimumWaiters ?? 1);
 }

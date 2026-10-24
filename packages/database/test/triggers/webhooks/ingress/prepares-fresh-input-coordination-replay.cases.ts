@@ -1,3 +1,4 @@
+import { waitForBlockedBy } from '../../../support/postgres/lock-coordination.js';
 import { webhookRunInput } from '@pertexo/nodes-core';
 
 import { randomUUID } from 'node:crypto';
@@ -5,7 +6,6 @@ import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
 
 import {
-  databaseName,
   workspaceId,
   hash,
   post,
@@ -64,17 +64,7 @@ export function registerPreparesFreshInputCoordinationReplay(): void {
         if (pid === undefined) throw new Error('Admission fence missing');
         replacement = webhook.acceptVerifiedDelivery(input);
         // Observe the blocked write: its preliminary read has seen the live receipt.
-        const deadline = Date.now() + 10_000;
-        for (;;) {
-          const blocked = await workerPool.query<{ found: boolean }>(
-            'select exists(select 1 from pg_stat_activity where datname=$1 and $2::int=any(pg_blocking_pids(pid))) found',
-            [databaseName, pid],
-          );
-          if (blocked.rows[0]?.found === true) break;
-          if (Date.now() >= deadline)
-            throw new Error('Replacement did not reach the admission fence');
-          await new Promise((resolve) => setTimeout(resolve, 10));
-        }
+        await waitForBlockedBy(workerPool, pid, { timeout: 10_000 });
         await fence.query(
           `update app.webhook_trigger_replay_records set created_at=clock_timestamp()-interval '24 hours 2 seconds', expires_at=clock_timestamp()-interval '2 seconds' where workspace_id=$1 and endpoint_id=$2 and dedupe_kind='keyed' and dedupe_key_hash=$3`,
           [workspaceId, resources.endpointId, input.idempotencyKeyHash],

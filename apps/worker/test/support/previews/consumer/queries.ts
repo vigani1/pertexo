@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import type { PoolClient } from 'pg';
 
 import { withTenantScopedClient } from '@pertexo/database/testing';
@@ -10,14 +11,14 @@ export async function waitFor<T>(
   done: (value: T) => boolean,
   timeoutMillis = 15_000,
 ): Promise<T> {
-  const startedAt = Date.now();
-  for (;;) {
-    const value = await poll();
-    if (done(value)) return value;
-    if (Date.now() - startedAt >= timeoutMillis)
-      throw new Error(`condition not met within ${String(timeoutMillis)}ms`);
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
+  const result = await vi.waitUntil(
+    async () => {
+      const value = await poll();
+      return done(value) ? { value } : false;
+    },
+    { timeout: timeoutMillis, interval: 100 },
+  );
+  return result.value;
 }
 
 export function previewState(previewRunId: string) {

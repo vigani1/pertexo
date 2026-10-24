@@ -1,3 +1,4 @@
+import { reserveProcess } from './support/reserve.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DEFAULT_CODE_SETTINGS, type CodeResult } from '@pertexo/node-sdk';
 import { createTaskProcessPool } from '../dist/process/pool.js';
@@ -26,21 +27,11 @@ describe('single-use Python Code processes', () => {
       ).rejects.toThrow('initialize its module policy');
     },
   );
-  async function reserve() {
-    const deadline = Date.now() + 5000;
-    for (;;) {
-      const slot = pool.reserve();
-      if (slot !== undefined) return slot;
-      if (Date.now() > deadline)
-        throw new Error('Python test could not reserve a Code slot');
-      await new Promise((resolve) => setTimeout(resolve, 20));
-    }
-  }
   async function execute(
     code: string,
     timeoutSeconds = 2,
   ): Promise<CodeResult> {
-    const slot = await reserve();
+    const slot = await reserveProcess(pool);
     try {
       return await slot.run(
         {
@@ -225,7 +216,7 @@ return {"total": input["amount"] * _vars["RATE"], "zone": zoneinfo.ZoneInfo("Eur
     expect(healthy).toMatchObject({ kind: 'succeeded', output: 3 });
   });
   it('reaps canceled Python and prevents reuse of a reservation', async () => {
-    const slot = await reserve();
+    const slot = await reserveProcess(pool);
     const controller = new AbortController();
     const pending = slot.run(
       {

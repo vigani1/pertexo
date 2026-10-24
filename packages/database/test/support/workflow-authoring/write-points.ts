@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { Pool, type PoolClient } from 'pg';
 
 import { adminDatabaseUrl } from './base.js';
@@ -102,17 +103,17 @@ export async function holdAtWrite(point: WritePoint): Promise<
   };
   return {
     reached: async () => {
-      const deadline = performance.now() + 5_000;
-      while (performance.now() < deadline) {
-        const waiting = await holder.query(
-          `select 1 from pg_locks where locktype = 'advisory'
+      await vi.waitUntil(
+        async () => {
+          const waiting = await holder.query(
+            `select 1 from pg_locks where locktype = 'advisory'
              and objid = $1 and not granted`,
-          [key],
-        );
-        if (waiting.rowCount !== 0) return;
-        await new Promise<void>((resolve) => setTimeout(resolve, 10));
-      }
-      throw new Error(`No command reached ${point.table} ${point.operation}`);
+            [key],
+          );
+          return waiting.rowCount !== 0;
+        },
+        { timeout: 5_000, interval: 10 },
+      );
     },
     release,
     remove: async () => {

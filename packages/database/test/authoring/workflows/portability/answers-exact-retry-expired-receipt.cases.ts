@@ -1,7 +1,9 @@
+import { waitForBlockedBy } from '../../../support/postgres/lock-coordination.js';
 import { expect, it } from 'vitest';
 
 import {
   workspaceId,
+  ownerPool,
   enforceTestRetention,
   migrationUrl,
   randomUUID,
@@ -44,7 +46,12 @@ export function registerAnswersExactRetryExpiredReceipt(): void {
         [...receipt],
       );
       reaping = enforceTestRetention();
-      await new Promise<void>((resolve) => setTimeout(resolve, 100));
+      const backend = await holder.query<{ pid: number }>(
+        'select pg_backend_pid() pid',
+      );
+      const pid = backend.rows[0]?.pid;
+      if (pid === undefined) throw new Error('Receipt lock holder is missing');
+      await waitForBlockedBy(ownerPool, pid);
       expect(await importReceipts(receipt)).toHaveLength(1);
       await holder.query('commit');
       await reaping;

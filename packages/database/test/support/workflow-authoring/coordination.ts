@@ -1,3 +1,4 @@
+import { expect } from 'vitest';
 import { Pool, type PoolClient } from 'pg';
 
 import { adminUrl, databaseName } from './base.js';
@@ -123,31 +124,28 @@ export async function waitForPostgresLock(
     connectionTimeoutMillis: 1_000,
     max: 1,
   });
-  const deadline = performance.now() + 5_000;
-  let lastObserved: unknown = null;
   try {
-    while (performance.now() < deadline) {
-      const result = await monitor.query<{
-        blockers: number[];
-        pid: number;
-      }>(
-        `select pid, pg_blocking_pids(pid) blockers
+    await expect
+      .poll(
+        async () => {
+          const result = await monitor.query<{
+            blockers: number[];
+            pid: number;
+          }>(
+            `select pid, pg_blocking_pids(pid) blockers
            from pg_stat_activity
           where datname = $1 and application_name = $2
             and wait_event_type = 'Lock'`,
-        [databaseName, applicationName],
-      );
-      lastObserved = result.rows;
-      if (
-        result.rows.length === 1 &&
-        (result.rows[0]?.blockers.length ?? 0) > 0
+            [databaseName, applicationName],
+          );
+          return (
+            result.rows.length === 1 &&
+            (result.rows[0]?.blockers.length ?? 0) > 0
+          );
+        },
+        { timeout: 5_000, interval: 10 },
       )
-        return;
-      await new Promise<void>((resolve) => setTimeout(resolve, 10));
-    }
-    throw new Error(
-      `PostgreSQL application ${applicationName} did not enter the expected lock wait: ${JSON.stringify(lastObserved)}`,
-    );
+      .toBe(true);
   } finally {
     await monitor.end();
   }

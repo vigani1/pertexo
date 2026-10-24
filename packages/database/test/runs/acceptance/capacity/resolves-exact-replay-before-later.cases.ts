@@ -94,26 +94,28 @@ export function registerResolvesExactReplayBeforeLater(): void {
       workspaceA,
       (transaction) => acceptWorkflowRun(transaction, acceptanceInput()),
     );
-    const deadline = Date.now() + 10_000;
-    for (;;) {
-      const timing = await apiDatabase.withWorkspace(workspaceA, ({ db }) =>
-        db.execute<{ expired: boolean; expires_at: Date }>(sql`
+    await expect
+      .poll(
+        async () => {
+          const timing = await apiDatabase.withWorkspace(workspaceA, ({ db }) =>
+            db.execute<{ expired: boolean; expires_at: Date }>(sql`
           select clock_timestamp() >= version.expires_at expired,
                  version.expires_at
           from app.workspace_execution_entitlement_versions version
           where version.workspace_id=${workspaceA} and version.version=9
         `),
-      );
-      const row = timing.rows[0];
-      if (row === undefined) throw new Error('Pinned entitlement is missing');
-      expect(accepted.acceptedAt.getTime()).toBeLessThan(
-        new Date(row.expires_at).getTime(),
-      );
-      if (row.expired) break;
-      if (Date.now() >= deadline)
-        throw new Error('Timed out waiting for pinned entitlement expiry');
-      await new Promise((resolve) => setTimeout(resolve, 20));
-    }
+          );
+          const row = timing.rows[0];
+          if (row === undefined)
+            throw new Error('Pinned entitlement is missing');
+          expect(accepted.acceptedAt.getTime()).toBeLessThan(
+            new Date(row.expires_at).getTime(),
+          );
+          return row.expired;
+        },
+        { timeout: 10_000, interval: 20 },
+      )
+      .toBe(true);
     await expect(
       workerDatabase.withWorkspace(workspaceA, ({ db }) =>
         db.execute(sql`

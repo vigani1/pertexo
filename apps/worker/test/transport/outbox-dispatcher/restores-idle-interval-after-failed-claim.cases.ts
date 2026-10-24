@@ -117,20 +117,23 @@ export function registerRestoresIdleIntervalAfterFailedClaim(): void {
     vi.mocked(selected.database.close).mockRejectedValue(
       new Error('db close failed'),
     );
-    const drainState = {
+    const failingDrain = {
       canAcceptWork: vi
         .fn()
         .mockReturnValueOnce(true)
         .mockImplementation(() => {
           throw new Error('loop failed');
         }),
-    } as unknown as WorkerDrainState;
+    };
+    const drainState = failingDrain as unknown as WorkerDrainState;
     const dispatcher = createDispatcher({
       boundaries: selected,
       drainState: drainState,
     });
     dispatcher.start();
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await vi.waitFor(() => {
+      expect(failingDrain.canAcceptWork).toHaveBeenCalledTimes(2);
+    });
 
     await expect(dispatcher.close()).rejects.toThrow();
     expect(selected.database.close).toHaveBeenCalledOnce();
