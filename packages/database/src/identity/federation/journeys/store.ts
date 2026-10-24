@@ -14,7 +14,7 @@ import {
 } from '../management/contract.js';
 import { readEligibleAuthenticationSession } from '../sessions/authority.js';
 import { SignInProofRejectedError } from '../accounts/rejection.js';
-import { identityQueryFailure } from '../../query-errors.js';
+import { queryFailure } from '../../../platform/query-errors.js';
 import { readFederationProvider, findFederationAttempt } from './queries.js';
 import {
   completeFederationJourney,
@@ -157,7 +157,7 @@ export class OrganizationSignInCommands {
     return withPlatformTransaction(this.input.pool, (client) =>
       completeFederationJourney(client, input, this.input.sessionTtlSeconds),
     ).catch((error: unknown) => {
-      const cause = identityQueryFailure(error);
+      const cause = queryFailure(error);
       const proofRefused =
         error instanceof SignInProofRejectedError ||
         isUniqueConstraintFailure(cause);

@@ -19,7 +19,7 @@ import {
 } from '../schema/authentication.js';
 import { users } from '../schema/foundation.js';
 import { withPlatformTransaction } from '../tenant-access/transactions.js';
-import { rethrowIdentityQueryFailure } from './query-errors.js';
+import { rethrowQueryFailure } from '../platform/query-errors.js';
 import { recordIdentitySecurityFact } from './security-facts.js';
 
 export async function hasCredentialAccount(
@@ -36,7 +36,7 @@ export async function hasCredentialAccount(
       ),
     )
     .limit(1)
-    .catch(rethrowIdentityQueryFailure);
+    .catch(rethrowQueryFailure);
   return accounts.length !== 0;
 }
 
@@ -90,7 +90,7 @@ export async function changePasswordAndRevokeSessions(
     await applySessionChange(client, input.userId, sessionChange);
     await recordIdentitySecurityFact(client, input.userId, 'password.changed');
     return 'changed';
-  }).catch(rethrowIdentityQueryFailure);
+  }).catch(rethrowQueryFailure);
 }
 
 export async function setupPasswordAndRevokeSessions(
@@ -143,7 +143,7 @@ export async function setupPasswordAndRevokeSessions(
       'password.configured',
     );
     return 'configured';
-  }).catch(rethrowIdentityQueryFailure);
+  }).catch(rethrowQueryFailure);
 }
 
 /** A reset token cannot create a credential method or survive a committed reset. */
@@ -189,7 +189,7 @@ export async function resetPasswordAndRevokeSessions(
       .where(eq(authVerifications.id, proof.id));
     await recordIdentitySecurityFact(client, proof.value, 'password.reset');
     return 'reset';
-  }).catch(rethrowIdentityQueryFailure);
+  }).catch(rethrowQueryFailure);
 }
 
 /** The last sign-in method cannot be removed; removal revokes every session. */
@@ -244,5 +244,5 @@ export async function unlinkMethodAndRevokeSessions(
     await applySessionChange(client, input.userId, sessionChange);
     await recordIdentitySecurityFact(client, input.userId, 'method.unlinked');
     return 'unlinked';
-  }).catch(rethrowIdentityQueryFailure);
+  }).catch(rethrowQueryFailure);
 }

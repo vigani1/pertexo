@@ -12,7 +12,7 @@ import {
   insertSystemMail,
   type SystemMailInput,
 } from '../platform/mail/store.js';
-import { rethrowIdentityQueryFailure } from './query-errors.js';
+import { rethrowQueryFailure } from '../platform/query-errors.js';
 import { recordIdentitySecurityFact } from './security-facts.js';
 
 type ProofPurpose = 'initial_verification' | 'change_old' | 'change_new';
@@ -67,7 +67,7 @@ export class EmailProofCommands {
       });
       if (prepared !== undefined) await insertSystemMail(client, prepared);
       return true;
-    }).catch(rethrowIdentityQueryFailure);
+    }).catch(rethrowQueryFailure);
   }
 
   public async inspect(tokenDigest: Buffer) {
@@ -98,7 +98,7 @@ export class EmailProofCommands {
   ): Promise<ProofPurpose | 'invalid'> {
     return withPlatformTransaction(this.pool, (client) =>
       consumeProof(client, tokenDigest, next, nextMail),
-    ).catch(rethrowIdentityQueryFailure);
+    ).catch(rethrowQueryFailure);
   }
 }
 
