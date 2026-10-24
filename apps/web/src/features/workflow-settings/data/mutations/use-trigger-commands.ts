@@ -245,12 +245,10 @@ export function useWebhookCommand({
             'That worked, but the webhook list couldn’t refresh. Reload to see its latest state.',
         });
       }
+      if (awaitingAcknowledgement)
+        return 'credentials' satisfies WebhookCommandOutcome;
       return (
-        awaitingAcknowledgement
-          ? 'credentials'
-          : response.replayed
-            ? 'complete'
-            : 'updated'
+        response.replayed ? 'complete' : 'updated'
       ) satisfies WebhookCommandOutcome;
     } catch (cause) {
       if (isUncertainSettingsCommand(cause)) {

@@ -193,14 +193,7 @@ export function commandWebhook({
         idempotencyKey: string;
       }>;
 }>): Promise<WebhookManagementCommandResponse> {
-  const body =
-    input.command === 'authentication'
-      ? webhookAuthenticationSchema.parse(input.authentication)
-      : input.command === 'rotate-secret'
-        ? webhookRotateSecretRequestSchema.parse({
-            endpointKey: input.endpointKey,
-          })
-        : undefined;
+  const body = webhookCommandBody(input);
   return apiClient.request({
     path: `${workflowPath(workspaceId, workflowId)}/triggers/${encodeURIComponent(triggerId)}/webhook/${input.command}`,
     method: 'POST',
@@ -267,4 +260,16 @@ export function clearFailureNotificationPolicy(
     headers: { 'Idempotency-Key': idempotencyKey },
     response: { kind: 'empty' },
   });
+}
+
+function webhookCommandBody(
+  input: Parameters<typeof commandWebhook>[0]['input'],
+) {
+  if (input.command === 'authentication')
+    return webhookAuthenticationSchema.parse(input.authentication);
+  if (input.command === 'rotate-secret')
+    return webhookRotateSecretRequestSchema.parse({
+      endpointKey: input.endpointKey,
+    });
+  return undefined;
 }

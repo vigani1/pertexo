@@ -69,15 +69,20 @@ export function useTaskResponse(scope: TaskScope, taskId: string) {
       ? 'response'
       : 'decision';
   const uncertain = mutation.isError && isUnconfirmedCommand(mutation.error);
+  function errorMessage(): string | undefined {
+    if (!mutation.isError) return undefined;
+    if (uncertain)
+      return `We couldn’t confirm the ${responseName}. Retry the same ${responseName} to recover the result before changing anything.`;
+    return describeCommandError(
+      mutation.error,
+      `recording this ${responseName}`,
+    );
+  }
   return {
     send,
     pending: mutation.isPending,
     uncertain,
-    error: mutation.isError
-      ? uncertain
-        ? `We couldn’t confirm the ${responseName}. Retry the same ${responseName} to recover the result before changing anything.`
-        : describeCommandError(mutation.error, `recording this ${responseName}`)
-      : undefined,
+    error: errorMessage(),
     retry: () => {
       if (intent.current !== undefined) void send(intent.current.body);
     },

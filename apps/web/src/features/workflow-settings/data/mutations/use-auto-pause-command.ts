@@ -68,11 +68,7 @@ export function useAutoPauseCommand(
       setUnconfirmed(uncertain);
       setConflict(revisionConflict);
       setProblem(
-        revisionConflict
-          ? 'This changed in another session. Your edits are kept. Review the refreshed settings, then save again.'
-          : uncertain
-            ? settingsCommandError(cause, action)
-            : describeCommandError(cause, action),
+        autoPauseFailure({ cause, action, revisionConflict, uncertain }),
       );
       return false;
     } finally {
@@ -109,4 +105,22 @@ export function useAutoPauseCommand(
         ? Promise.resolve(false)
         : send(attempt.current.command),
   };
+}
+
+function autoPauseFailure({
+  cause,
+  action,
+  revisionConflict,
+  uncertain,
+}: Readonly<{
+  cause: unknown;
+  action: string;
+  revisionConflict: boolean;
+  uncertain: boolean;
+}>): string {
+  if (revisionConflict)
+    return 'This changed in another session. Your edits are kept. Review the refreshed settings, then save again.';
+  return uncertain
+    ? settingsCommandError(cause, action)
+    : describeCommandError(cause, action);
 }

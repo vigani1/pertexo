@@ -16,6 +16,7 @@ export function publicationAction({
   emptyReason: string | undefined;
   retry: 'publish' | 'review' | undefined;
 }>) {
+  const reviewRequired = policy?.required ?? false;
   const pendingReviewId =
     policy?.request?.status === 'pending' && savedDraftCurrent
       ? policy.request.id
@@ -26,7 +27,7 @@ export function publicationAction({
       : `No changes since v${String(unchangedVersionNumber)}`;
   let label =
     versionLabel === undefined ? 'Publish' : `Publish ${versionLabel}`;
-  if (policy?.required ?? false) label = 'Request review';
+  if (reviewRequired) label = 'Request review';
   if (unchanged !== undefined) label = unchanged;
   if (pendingReviewId !== undefined) label = 'Review requested';
   return {
@@ -38,7 +39,7 @@ export function publicationAction({
         : undefined,
     blockedReason:
       pendingReviewId === undefined ? (unchanged ?? emptyReason) : undefined,
-    mode: retry ?? ((policy?.required ?? false) ? 'review' : 'publish'),
+    mode: retry ?? (reviewRequired ? 'review' : 'publish'),
     unavailable: policy === undefined && retry === undefined,
   };
 }
