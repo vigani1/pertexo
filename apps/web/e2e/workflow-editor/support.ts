@@ -1,3 +1,4 @@
+import { installPresenceRoutes } from '../../test/support/browser/mock-reads';
 import { createWorkflowNodeFixture } from '../../test/support/fixtures/graph';
 import {
   createUserFixture,
@@ -131,13 +132,7 @@ export async function installEditorRoutes(
     workflowName?: string;
   }> = {},
 ) {
-  await page.route('**/v1/workspaces/*/workflows/*/presence**', (route) => {
-    if (route.request().method() === 'GET')
-      return route.fulfill({ json: { people: [] } });
-    if (route.request().method() === 'PUT')
-      return route.fulfill({ json: { accepted: true } });
-    return route.fallback();
-  });
+  await installPresenceRoutes(page);
 
   await page.route(
     `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/draft/test-suites`,
