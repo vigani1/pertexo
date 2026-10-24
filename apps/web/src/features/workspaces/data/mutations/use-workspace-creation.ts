@@ -1,3 +1,8 @@
+import {
+  isUncertain,
+  creationError,
+  type CreationError,
+} from '../../model/creation-feedback';
 import type {
   AccessibleWorkspace,
   WorkspaceCreateRequest,
@@ -15,7 +20,6 @@ import {
   isSessionIdentityUnverifiedError,
   isUnauthenticated,
 } from '@/features/auth/session/session-identity.public';
-import { isApiError } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
 import {
   accessibleWorkspacesQueryOptions,
@@ -26,11 +30,6 @@ import { createWorkspace } from '../workspaces.api';
 type WorkspaceCreationAttempt = Readonly<{
   body: WorkspaceCreateRequest;
   idempotencyKey: string;
-}>;
-
-type CreationError = Readonly<{
-  field?: 'slug';
-  message: string;
 }>;
 
 type State =
@@ -273,38 +272,4 @@ export function useWorkspaceCreation({
       if (stateRef.current.kind === 'idle') transition({ kind: 'idle' });
     },
   };
-}
-
-function isUncertain(error: unknown) {
-  return (
-    isApiError(error) &&
-    (error.kind === 'network' ||
-      error.kind === 'timeout' ||
-      error.kind === 'protocol')
-  );
-}
-
-function creationError(error: unknown): CreationError {
-  if (isApiError(error)) {
-    if (error.problem?.code === 'workspace.conflict')
-      return {
-        field: 'slug',
-        message: 'That handle is already taken. Choose another one.',
-      };
-    if (error.problem?.code === 'request.idempotency_conflict')
-      return {
-        message:
-          'These details changed since the last attempt. Start over to create the workspace.',
-      };
-    if (error.status === 403)
-      return {
-        message: 'Your account isn’t allowed to create workspaces.',
-      };
-    if (error.status === 400)
-      return {
-        message:
-          'Pertexo didn’t accept these details. Check the name and handle.',
-      };
-  }
-  return { message: 'The workspace couldn’t be created. Try again.' };
 }
