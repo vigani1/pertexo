@@ -17,6 +17,29 @@ import { authorWebhookHttpGraph } from '../support/authoring/webhook-http';
 import { recoverOwnedHttp } from '../support/authoring/recover-http';
 import { invokeOwnedWebhook } from '../support/http-secret-actions';
 
+function assertInvocationReceipt(
+  receipt: unknown,
+): asserts receipt is Readonly<{
+  trueRunId: string;
+  falseRunId: string;
+  senderKey: string;
+  falseKey: string;
+}> {
+  if (
+    typeof receipt !== 'object' ||
+    receipt === null ||
+    !('trueRunId' in receipt) ||
+    typeof receipt.trueRunId !== 'string' ||
+    !('falseRunId' in receipt) ||
+    typeof receipt.falseRunId !== 'string' ||
+    !('senderKey' in receipt) ||
+    typeof receipt.senderKey !== 'string' ||
+    !('falseKey' in receipt) ||
+    typeof receipt.falseKey !== 'string'
+  )
+    throw new Error('Owned invocation receipt invalid');
+}
+
 test('signed acceptance replay produces two immutable runs and one actual controlled HTTP effect', async ({
   page,
   request,
@@ -127,19 +150,7 @@ test('signed acceptance replay produces two immutable runs and one actual contro
   if (invoked.status() !== 200)
     throw new Error('Owned signed invocation failed');
   const receipt: unknown = await invoked.json();
-  if (
-    typeof receipt !== 'object' ||
-    receipt === null ||
-    !('trueRunId' in receipt) ||
-    typeof receipt.trueRunId !== 'string' ||
-    !('falseRunId' in receipt) ||
-    typeof receipt.falseRunId !== 'string' ||
-    !('senderKey' in receipt) ||
-    typeof receipt.senderKey !== 'string' ||
-    !('falseKey' in receipt) ||
-    typeof receipt.falseKey !== 'string'
-  )
-    throw new Error('Owned invocation receipt invalid');
+  assertInvocationReceipt(receipt);
   await reveal
     .getByRole('switch', { name: 'I’ve stored these', exact: true })
     .click();

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 import {
   workflowDraftResponseSchema,
   workflowNodeRunOutputResponseSchema,
@@ -41,6 +41,24 @@ async function setup(page: Page) {
     .getByRole('option', { name: 'Owned HTTP credential', exact: true })
     .click();
   await page.getByRole('tab', { name: 'Inputs', exact: true }).click();
+}
+
+async function addRunInputFileParts(
+  page: Page,
+  part: (index: number) => Locator,
+) {
+  for (const name of ['empty', 'response']) {
+    await page
+      .getByRole('button', { name: 'Add file part', exact: true })
+      .click();
+    const row = part(name === 'empty' ? 4 : 5);
+    await row.getByLabel('Field name', { exact: true }).fill(name);
+    await row.getByRole('button', { name: 'Run input', exact: true }).click();
+    await row.getByLabel('Run input path', { exact: true }).fill('$.file');
+    await row
+      .getByLabel('Content type (optional)', { exact: true })
+      .fill(name === 'empty' ? 'text/plain' : 'application/json');
+  }
 }
 
 test('authors multipart at desktop and phone widths, then sends exact ordered parts from uploaded, run-input and response files', async ({
@@ -105,18 +123,7 @@ test('authors multipart at desktop and phone widths, then sends exact ordered pa
   await part(3)
     .getByLabel('Content type (optional)', { exact: true })
     .fill('text/x-owned');
-  for (const name of ['empty', 'response']) {
-    await page
-      .getByRole('button', { name: 'Add file part', exact: true })
-      .click();
-    const row = part(name === 'empty' ? 4 : 5);
-    await row.getByLabel('Field name', { exact: true }).fill(name);
-    await row.getByRole('button', { name: 'Run input', exact: true }).click();
-    await row.getByLabel('Run input path', { exact: true }).fill('$.file');
-    await row
-      .getByLabel('Content type (optional)', { exact: true })
-      .fill(name === 'empty' ? 'text/plain' : 'application/json');
-  }
+  await addRunInputFileParts(page, part);
   await part(5)
     .getByLabel('Filename (optional)', { exact: true })
     .fill('response.json');
