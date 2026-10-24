@@ -7,8 +7,8 @@ export {
   rolesForCapability,
 } from '@pertexo/workflow-model';
 export type { AuthorizationCapability } from '@pertexo/workflow-model';
+export { createIdentityWorkspaceDatabase } from './repository.js';
 export {
-  createIdentityWorkspaceDatabase,
   IdentityConflictError,
   InvitationAcceptanceConflictError,
   UserProfileCommandConflictError,
@@ -19,7 +19,7 @@ export {
   WorkspaceMemberRoleCommandConflictError,
   WorkspaceMembershipCommandConflictError,
   WorkspaceRenameCommandConflictError,
-} from './repository.js';
+} from './errors.js';
 export type {
   AccessibleWorkspaceRecord,
   AccessibleWorkspacesPage,
@@ -43,22 +43,24 @@ export type {
   WorkspaceInvitationRecord,
   WorkspaceInvitationsPage,
   WorkspaceMemberRecord,
-  WorkspaceMemberRemovalCommandConflictReason,
   WorkspaceMemberRemovalResult,
   WorkspaceMemberRoleChangeResult,
-  WorkspaceMemberRoleCommandConflictReason,
-  WorkspaceMembershipCommandConflictReason,
   WorkspaceMembersPage,
   WorkspaceMemberStatusCommandInput,
   WorkspaceMemberStatusResult,
   WorkspaceOwnershipTransferResult,
   WorkspaceRenameResult,
-} from './repository.js';
+} from './contract.js';
+export type {
+  WorkspaceMemberRemovalCommandConflictReason,
+  WorkspaceMemberRoleCommandConflictReason,
+  WorkspaceMembershipCommandConflictReason,
+} from './errors.js';
 export { createWorkspaceInvitationDeliveryStore } from './invitations/delivery.repository.js';
 export type {
   WorkspaceInvitationDeliveryClaim,
   WorkspaceInvitationDeliveryStore,
-} from './invitations/delivery.repository.js';
+} from './invitations/delivery/contract.js';
 
 export {
   hasCredentialAccount,
@@ -74,7 +76,7 @@ export { SocialSignInCommands } from '../identity/federation/sign-in.js';
 export { EmailProofCommands } from '../identity/email-proofs.js';
 
 export { createApiTokenDatabase } from './tokens/repository.js';
-export { ApiTokenPolicyError } from './tokens/contract.js';
+export { ApiTokenPolicyError } from './tokens/errors.js';
 export type {
   ApiTokenDatabase,
   VerifiedApiToken,

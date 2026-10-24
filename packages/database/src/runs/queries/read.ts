@@ -11,7 +11,7 @@ import { sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
-import type { ResourceTransaction } from '../../tenant-access/resources/transactions.repository.js';
+import type { ResourceTransaction } from '../../tenant-access/resources/contract.js';
 import { WorkflowRunReadCapacityError } from '../errors.js';
 import {
   readWorkflowRunReadRecord,

@@ -1,21 +1,8 @@
+import type { USER_STATUS, WORKSPACE_STATUS } from './state.js';
 import type { Role, DelegatedRole } from '@pertexo/workflow-model';
 import type { DirectoryMembershipSource } from '@pertexo/contracts';
 import type { WorkspaceLifecycleOperation } from '../lifecycle/deletion/contract.js';
-
-export const USER_STATUS = {
-  active: 'active',
-  suspended: 'suspended',
-  deleted: 'deleted',
-} as const;
 export type UserStatus = (typeof USER_STATUS)[keyof typeof USER_STATUS];
-
-export const WORKSPACE_STATUS = {
-  active: 'active',
-  suspended: 'suspended',
-  pendingDeletion: 'pending_deletion',
-  purging: 'purging',
-  deleted: 'deleted',
-} as const;
 export type WorkspaceStatus =
   (typeof WORKSPACE_STATUS)[keyof typeof WORKSPACE_STATUS];
 

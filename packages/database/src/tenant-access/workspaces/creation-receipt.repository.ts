@@ -15,10 +15,10 @@ import {
   IdempotencyRequestConflictError,
 } from '../../runs/commands/acceptance.js';
 
-import {
-  WORKSPACE_STATUS,
-  type WorkspaceCreationResult as PublicWorkspaceCreationResult,
-  type WorkspaceRecord,
+import { WORKSPACE_STATUS } from '../state.js';
+import type {
+  WorkspaceCreationResult as PublicWorkspaceCreationResult,
+  WorkspaceRecord,
 } from '../contract.js';
 
 const idempotencyKeySchema = z

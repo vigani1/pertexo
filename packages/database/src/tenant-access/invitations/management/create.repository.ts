@@ -15,17 +15,10 @@ import {
 } from '../../support.js';
 import { canInviteWorkspaceRole } from '@pertexo/workflow-model';
 import { withTenantScopedClient } from '../../transactions.js';
-import {
-  type InvitationStore,
-  delegatedRole,
-  digest,
-  sealedToken,
-} from './contract.js';
-import {
-  normalizeEmail,
-  lockAuthorizedActor,
-  invitationSelection,
-} from './state.queries.js';
+import type { InvitationStore } from './contract.js';
+import { delegatedRole, digest, sealedToken } from '../input.js';
+import { normalizeEmail } from '../input.js';
+import { lockAuthorizedActor, invitationSelection } from './state.queries.js';
 import {
   invitationKey,
   claimInvitationCommand,

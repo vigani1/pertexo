@@ -1,9 +1,7 @@
 import type { PoolClient } from 'pg';
 import { appendAuditFacts } from '../../../../governance/audit/events.repository.js';
-import {
-  updateMemberships,
-  type MembershipChange,
-} from '../../../../tenant-access/members/records.repository.js';
+import { updateMemberships } from '../../../../tenant-access/members/records.repository.js';
+import type { MembershipChange } from '../../../../tenant-access/members/contract.js';
 import { revokeSessionsForUsers } from '../../../../tenant-access/users/sessions.repository.js';
 import { withWorkspaceScope } from '../../../../tenant-access/transactions.js';
 import type { DirectoryRole } from '../contract.js';

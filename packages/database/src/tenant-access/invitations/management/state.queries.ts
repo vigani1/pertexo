@@ -11,25 +11,8 @@ import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { Role } from '@pertexo/workflow-model';
 
 import type { PoolClient } from 'pg';
-import { z } from 'zod';
 
-import type { WorkspaceInvitationRecord } from '../../contract.js';
 import { WorkspaceInvitationCommandConflictError } from '../../errors.js';
-
-import { durableInvitation } from './contract.js';
-
-export function normalizeEmail(value: string): string {
-  return z.email().max(320).parse(value.trim()).normalize('NFKC').toLowerCase();
-}
-
-export function serializeInvitation(invitation: WorkspaceInvitationRecord) {
-  return durableInvitation.parse({
-    ...invitation,
-    expiresAt: invitation.expiresAt.toISOString(),
-    createdAt: invitation.createdAt.toISOString(),
-    updatedAt: invitation.updatedAt.toISOString(),
-  });
-}
 
 export // Locks always go workspace first, then the actor's user and membership,
 // as the member store does, so no two transactions can wait on each other in
@@ -79,17 +62,6 @@ async function lockAuthorizedActor(
       'The actor is no longer allowed to manage invitations',
     );
   return row.role;
-}
-
-export function mapDurableInvitation(
-  invitation: z.output<typeof durableInvitation>,
-): WorkspaceInvitationRecord {
-  return Object.freeze({
-    ...invitation,
-    expiresAt: new Date(invitation.expiresAt),
-    createdAt: new Date(invitation.createdAt),
-    updatedAt: new Date(invitation.updatedAt),
-  });
 }
 
 export const invitationSelection = {

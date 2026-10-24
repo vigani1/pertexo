@@ -2,7 +2,7 @@ import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { WorkflowRunReadCapacityError } from '../../errors.js';
-import type { ResourceTransaction } from '../../../tenant-access/resources/transactions.repository.js';
+import type { ResourceTransaction } from '../../../tenant-access/resources/contract.js';
 import { workflowScopeSql } from '../../../tenant-access/resources/scope.queries.js';
 
 const callRow = z

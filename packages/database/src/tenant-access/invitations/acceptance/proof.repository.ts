@@ -16,7 +16,8 @@ import {
   withPlatformTransaction,
   withWorkspaceScope,
 } from '../../transactions.js';
-import { type AcceptanceStore, digest } from './contract.js';
+import type { AcceptanceStore } from './contract.js';
+import { digest } from '../input.js';
 import { selectIntent } from './state.queries.js';
 
 export async function readInvitationAcceptance(

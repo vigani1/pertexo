@@ -1,3 +1,4 @@
+import type { AuthenticationReplacement } from './contract.js';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { authSessions } from '../../schema/authentication.js';
@@ -62,9 +63,6 @@ export async function replaceUserSessions(
     })
     .catch(rethrowQueryFailure);
 }
-
-export type AuthenticationReplacement = ReplacementSessionInput &
-  Readonly<{ sourceSessionId: string }>;
 type SessionChange =
   | Readonly<{ kind: 'revoke' }>
   | Readonly<{

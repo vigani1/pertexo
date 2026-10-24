@@ -1,12 +1,7 @@
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
-import { z } from 'zod';
 
 import type { databaseSchema } from '../../schema.js';
-
-export const workspaceIdSchema = z.uuid();
-
-export const actorIdSchema = z.uuid();
 
 export type WorkspaceId = string & { readonly __brand: 'WorkspaceId' };
 

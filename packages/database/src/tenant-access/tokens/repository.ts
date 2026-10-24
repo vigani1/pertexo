@@ -31,11 +31,8 @@ import {
   tokenOwnerAuthority,
 } from './authority.queries.js';
 import { authenticateApiToken } from './authenticate.repository.js';
-import {
-  ApiTokenPolicyError,
-  type ApiTokenCommand,
-  type ApiTokenDatabase,
-} from './contract.js';
+import { ApiTokenPolicyError } from './errors.js';
+import type { ApiTokenCommand, ApiTokenDatabase } from './contract.js';
 
 const receipt = z.object({ tokenId: z.uuid() }).strict();
 const commandIdentity = (

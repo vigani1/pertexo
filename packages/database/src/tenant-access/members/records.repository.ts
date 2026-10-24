@@ -1,3 +1,4 @@
+import type { MembershipAddition, MembershipChange } from './contract.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { workspaceMemberships } from '../../schema/foundation.js';
@@ -8,20 +9,6 @@ import { removeMemberResourceGrants } from '../resources/revocation.repository.j
 import type { PoolClient } from 'pg';
 
 import { appendAuditFacts } from '../../governance/audit/events.repository.js';
-
-export type MembershipAddition = Readonly<
-  { userId: string; role: Role } & (
-    | { source: 'workspace_creation' }
-    | { source: 'invitation'; invitationId: string }
-    | { source: 'jit'; organizationId: string }
-    | {
-        source: 'directory';
-        organizationId: string;
-        directoryUserId: string;
-        credentialId?: string;
-      }
-  )
->;
 
 type MembershipCreationAudit = Readonly<{
   actorId: string | null;
@@ -88,13 +75,6 @@ export async function createMemberships(
     })),
   );
 }
-
-export type MembershipChange = Readonly<{
-  userId: string;
-  role: Role;
-  status: 'active' | 'suspended' | 'removed';
-  roleRevision: number;
-}>;
 
 /** The caller owns unique member IDs and revisions; removal keeps private cleanup atomic. */
 export async function updateMemberships(

@@ -20,7 +20,7 @@ import { expireWorkspaceInvitations } from '../expiration.repository.js';
 import { parseIdentityUuid } from '../../support.js';
 import { canInviteWorkspaceRole } from '@pertexo/workflow-model';
 import { withTenantScopedClient } from '../../transactions.js';
-import { revision, digest, sealedToken } from './contract.js';
+import { revision, digest, sealedToken } from '../input.js';
 import { lockAuthorizedActor, invitationSelection } from './state.queries.js';
 import {
   invitationKey,

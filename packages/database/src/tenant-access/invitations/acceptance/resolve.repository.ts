@@ -12,7 +12,8 @@ import type { Pool, PoolClient } from 'pg';
 import { expireWorkspaceInvitations } from '../expiration.repository.js';
 import { parseIdentityUuid } from '../../support.js';
 import { withTenantScopedClient } from '../../transactions.js';
-import { type AcceptanceStore, digest } from './contract.js';
+import type { AcceptanceStore } from './contract.js';
+import { digest } from '../input.js';
 import {
   selectIntent,
   replacementLineageIsLive,
