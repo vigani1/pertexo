@@ -118,7 +118,7 @@ export function QueryView<Data>({
   }
   const showEmpty = empty !== undefined && (isEmpty?.(data) ?? false);
   const content = showEmpty ? empty : children?.(data);
-  const refreshFailed = query.isError && !(query.isFetchNextPageError ?? false);
+  const refreshFailed = query.isError && !query.isFetchNextPageError;
   // One shape either way, so a failed refresh never remounts the content
   // and its unsaved edits.
   return (
