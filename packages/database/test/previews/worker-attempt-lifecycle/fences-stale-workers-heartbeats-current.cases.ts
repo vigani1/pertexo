@@ -196,6 +196,33 @@ export function registerFencesStaleWorkersHeartbeatsCurrent(): void {
     ).rejects.toMatchObject({ code: 'connection_fence_failed' });
   });
 
+  it('caps a renewed lease at its immutable execution deadline', async () => {
+    const claimed = await claimFixture(
+      await acceptFixture(),
+      'worker-deadline-cap',
+    );
+    const deadline = await withAdmin(async (client) => {
+      const result = await client.query<{ execution_deadline_at: Date }>(
+        `update app.preview_runs
+         set execution_deadline_at=clock_timestamp()+interval '30 seconds'
+         where workspace_id=$1 and id=$2 returning execution_deadline_at`,
+        [workspaceId, claimed.lease.previewRunId],
+      );
+      return result.rows[0]?.execution_deadline_at;
+    });
+    expect(deadline).toBeInstanceOf(Date);
+    await expect(
+      heartbeatPreviewLease(workerPool, {
+        lease: claimed.lease,
+        leaseDurationSeconds: 3_600,
+        workerId: claimed.workerId,
+      }),
+    ).resolves.toEqual({
+      attemptLeaseExpiresAt: deadline,
+      runExecutionDeadlineAt: deadline,
+    });
+  });
+
   it('separates lease expiry from fence replacement for truthful completion', async () => {
     const claimed = await claimFixture(
       await acceptFixture(),
