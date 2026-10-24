@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { workflowRuns } from '../../schema/runs/execution.js';
 import { workflowTestSuites } from '../../schema/runs/suites.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';

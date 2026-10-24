@@ -188,7 +188,10 @@ export {
 export { isValidStoredExecutionOutput } from './previews/reconciliation/deliveries.repository.js';
 export { PREVIEW_RETENTION_MAX_MS } from './previews/runs/acceptance/limits.js';
 export { PREVIEW_STATUS } from './previews/state.js';
-export type { InsertedOutboxEvent, OutboxEventInput } from './outbox/events.repository.js';
+export type {
+  InsertedOutboxEvent,
+  OutboxEventInput,
+} from './outbox/events.repository.js';
 export { createNodeAttemptRunStore } from './attempts/repository.js';
 export {
   NodeAttemptConnectionFenceError,
