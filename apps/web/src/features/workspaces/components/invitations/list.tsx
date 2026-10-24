@@ -40,15 +40,7 @@ function InvitationRow({
         <p className="truncate text-sm font-semibold" title={invitation.email}>
           {invitation.email}
         </p>
-        <MembershipThread
-          state={
-            invitation.status === 'pending'
-              ? 'pending'
-              : invitation.status === 'accepted'
-                ? 'accepted'
-                : 'removed'
-          }
-        />
+        <MembershipThread state={invitationThreadState(invitation.status)} />
         <p className="text-xs text-muted-foreground sm:hidden">
           {ROLE_NAMES[invitation.role]} · {status.label}
         </p>
@@ -134,4 +126,10 @@ export function InvitationList({
       ))}
     </ul>
   );
+}
+
+function invitationThreadState(status: WorkspaceInvitation['status']) {
+  if (status === 'pending') return 'pending';
+  if (status === 'accepted') return 'accepted';
+  return 'removed';
 }
