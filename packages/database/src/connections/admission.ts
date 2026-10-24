@@ -41,7 +41,7 @@ export const identifierSchema = z
 
 const requestIdentifierSchema = z.string().min(1).max(128);
 
-export const errorCodeSchema = z
+const errorCodeSchema = z
   .string()
   .min(1)
   .max(128)
