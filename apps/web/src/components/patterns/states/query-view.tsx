@@ -35,10 +35,10 @@ export type ReadQuery<Data> = Readonly<{
  * The one owner of a read's states. Before data arrives it shows `loading`
  * or a failure notice with Retry; once data is on screen a failed refresh
  * keeps it and adds the amber stale line, unless the answer says access is
- * gone (signed out, forbidden, not found), which hides it. `empty` replaces the content when
- * `isEmpty` says the data has nothing in it. Without `children` it renders
- * only the states, for data the caller already shows elsewhere, such as the
- * options of a select.
+ * gone (signed out, forbidden, not found), which hides it. `empty` replaces
+ * the content when `isEmpty` says the data has nothing in it. Without
+ * `children` it renders only the states, for data the caller already shows
+ * elsewhere, such as the options of a select.
  */
 export function QueryView<Data>({
   query,
