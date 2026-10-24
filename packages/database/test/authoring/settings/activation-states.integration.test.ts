@@ -1,23 +1,12 @@
 import { describe, expect, it } from 'vitest';
-
-import { mapWorkflow } from '../../../src/authoring/workflows/representation/records.queries.js';
-
-function storedWorkflow(activationStatus: unknown) {
-  return {
-    id: '11111111-1111-4111-8111-111111111111',
-    workspace_id: '22222222-2222-4222-8222-222222222222',
-    name: 'Trigger health',
-    name_revision: 1,
-    lifecycle_status: 'active',
-    lifecycle_revision: 1,
-    activation_status: activationStatus,
-    webhook_setup_required: false,
-    published_version_id: '33333333-3333-4333-8333-333333333333',
-    created_by: '44444444-4444-4444-8444-444444444444',
-    created_at: new Date('2026-09-06T00:00:00.000Z'),
-    updated_at: new Date('2026-09-06T01:00:00.000Z'),
-  };
-}
+import {
+  actorId,
+  authoring,
+  emptyGraph,
+  queryAsOwner,
+  randomUUID,
+  workspaceId,
+} from '../../support/workflow-authoring.js';
 
 describe('workflow activation projection', () => {
   it.each([
@@ -27,26 +16,45 @@ describe('workflow activation projection', () => {
     'deactivating',
     'degraded',
     'error',
-  ])('preserves persisted %s health independently of lifecycle', (status) => {
-    const row = storedWorkflow(status);
-    expect(mapWorkflow(row)).toMatchObject({
-      activationStatus: status,
-      lifecycleStatus: 'active',
-      publishedVersionId: row.published_version_id,
-    });
-    expect(mapWorkflow({ ...row, lifecycle_status: 'archived' })).toMatchObject(
-      {
-        activationStatus: status,
-        lifecycleStatus: 'archived',
-      },
-    );
-    expect(row.activation_status).toBe(status);
-  });
-
+  ] as const)(
+    'preserves persisted %s health independently of lifecycle',
+    async (status) => {
+      const { workflowId } = await authoring.createWorkflow({
+        actorId,
+        emptyGraph,
+        idempotencyKey: randomUUID(),
+        name: 'Trigger health',
+        workspaceId,
+      });
+      for (const lifecycleStatus of ['active', 'archived'] as const) {
+        await queryAsOwner(
+          'update app.workflows set activation_status=$1,lifecycle_status=$2 where workspace_id=$3 and id=$4',
+          [status, lifecycleStatus, workspaceId, workflowId],
+          workspaceId,
+        );
+        expect(
+          await authoring.getWorkflow(workspaceId, workflowId, actorId),
+        ).toMatchObject({ activationStatus: status, lifecycleStatus });
+      }
+    },
+  );
   it.each(['enabled', '', null, undefined, 1])(
-    'rejects unknown persisted activation %s instead of fabricating inactive',
-    (status) => {
-      expect(() => mapWorkflow(storedWorkflow(status))).toThrow();
+    'rejects invalid persisted activation %s at storage',
+    async (status) => {
+      const { workflowId } = await authoring.createWorkflow({
+        actorId,
+        emptyGraph,
+        idempotencyKey: randomUUID(),
+        name: 'Invalid trigger health',
+        workspaceId,
+      });
+      await expect(
+        queryAsOwner(
+          'update app.workflows set activation_status=$1 where workspace_id=$2 and id=$3',
+          [status, workspaceId, workflowId],
+          workspaceId,
+        ),
+      ).rejects.toMatchObject({ code: status == null ? '23502' : '23514' });
     },
   );
 });

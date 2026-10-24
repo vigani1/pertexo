@@ -1,3 +1,9 @@
+import { and, eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workflows } from '../../schema/authoring/workflows.js';
+import { workflowOrganizationState } from '../../schema/authoring/organization.js';
+import { workflowTemplateOrigins } from '../../schema/authoring/template-origin.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import {
   workflowActions,
   workflowAccessible,
@@ -6,10 +12,7 @@ import type { WorkflowAuthoringDatabase } from '../workflows/contract.js';
 import type { WorkflowAuthoringReadContext } from '../workflows/reads.queries.js';
 import { WorkflowTemplateOriginUnavailableError } from '../workflows/errors.js';
 import { workflowTemplateOriginSchema } from '@pertexo/workflow-model';
-import {
-  mapWorkflow,
-  workflowRowSelection,
-} from '../workflows/representation/records.queries.js';
+import { workflowProjection } from '../workflows/representation/records.queries.js';
 import { z } from 'zod';
 
 /** One scoped statement keeps summary and immutable origin in the same snapshot. */
@@ -27,17 +30,33 @@ export function createWorkflowTemplateOriginReader(
       )
         return null;
       const id = z.uuid().parse(workflowId);
-      const parameters: unknown[] = [workspaceId, id];
       let result;
       try {
-        result = await client.query<Record<string, unknown>>(
-          `select row_to_json(workflow) workflow, origin.origin template_origin, state.folder_id
-             from (select ${workflowRowSelection} from app.workflows) workflow
-             left join app.workflow_organization_state state on state.workspace_id=workflow.workspace_id and state.workflow_id=workflow.id
-             left join app.workflow_template_origins origin on origin.workspace_id=workflow.workspace_id and origin.workflow_id=workflow.id
-             where workflow.workspace_id=$1 and workflow.id=$2`,
-          parameters,
-        );
+        result = await drizzle(client)
+          .select({
+            workflow: workflowProjection,
+            templateOrigin: workflowTemplateOrigins.origin,
+            folderId: workflowOrganizationState.folderId,
+          })
+          .from(workflows)
+          .leftJoin(
+            workflowOrganizationState,
+            and(
+              eq(workflowOrganizationState.workspaceId, workflows.workspaceId),
+              eq(workflowOrganizationState.workflowId, workflows.id),
+            ),
+          )
+          .leftJoin(
+            workflowTemplateOrigins,
+            and(
+              eq(workflowTemplateOrigins.workspaceId, workflows.workspaceId),
+              eq(workflowTemplateOrigins.workflowId, workflows.id),
+            ),
+          )
+          .where(
+            and(eq(workflows.workspaceId, workspaceId), eq(workflows.id, id)),
+          )
+          .catch(rethrowQueryFailure);
       } catch (error) {
         // Missing/incompatible storage is unsupported projection, never authoritative null.
         const originStorageUnavailable =
@@ -49,19 +68,16 @@ export function createWorkflowTemplateOriginReader(
           throw new WorkflowTemplateOriginUnavailableError();
         throw error;
       }
-      const row = result.rows[0];
+      const row = result[0];
       if (row === undefined) return null;
       const origin = workflowTemplateOriginSchema
         .nullable()
-        .safeParse(row.template_origin);
+        .safeParse(row.templateOrigin);
       if (!origin.success) throw new WorkflowTemplateOriginUnavailableError();
       return Object.freeze({
         workflow: {
-          ...mapWorkflow(row.workflow as Record<string, unknown>),
-          resourceAccess: workflowActions(
-            access,
-            z.uuid().nullable().parse(row.folder_id),
-          ),
+          ...row.workflow,
+          resourceAccess: workflowActions(access, row.folderId),
         },
         templateOrigin: origin.data,
       });
