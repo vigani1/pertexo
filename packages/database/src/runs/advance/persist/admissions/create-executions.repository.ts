@@ -6,7 +6,7 @@ import { outboxEvents } from '../../../../schema/transport.js';
 import { rethrowQueryFailure } from '../../../../platform/query-errors.js';
 import { generatePersistedId } from '../../../../platform/persisted-id.js';
 import type { PoolClient } from 'pg';
-import { CoordinatorRunStateCorruptError } from '../../contract.js';
+import { CoordinatorRunStateCorruptError } from '../../../state-errors.js';
 
 import type { RunTransitionPlan } from '../../plan.js';
 import { canonicalOutboxPayloadChecksum } from '../../../../outbox/events.repository.js';

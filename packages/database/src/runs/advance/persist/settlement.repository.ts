@@ -6,7 +6,7 @@ import type { PoolClient } from 'pg';
 
 import type { WorkflowCheckpoint } from '@pertexo/workflow-engine';
 
-import { CoordinatorRunStateCorruptError } from '../contract.js';
+import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
 import type { RunTransitionPlan } from '../plan.js';
 
 /**

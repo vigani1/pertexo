@@ -7,7 +7,7 @@ import type {
 import type { RecoveryNode } from '@pertexo/workflow-engine';
 import type { WorkflowRecoveryEffectRisk } from '@pertexo/workflow-model';
 import type { z } from 'zod';
-import type { acceptWorkflowRunInputSchema } from '../../runs/commands/acceptance/contract.js';
+import type { acceptWorkflowRunInputSchema } from '../../runs/commands/acceptance/input.js';
 import {
   NODE_IDENTITY_KEY_PATTERN,
   type CodeDiagnostics,

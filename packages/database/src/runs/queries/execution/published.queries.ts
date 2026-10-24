@@ -1,3 +1,6 @@
+import type { PublishedWorkflow } from './contract.js';
+import type { ReadPublishedWorkflowForExecutionInput } from './contract.js';
+import type { PublishedWorkflowReader } from './contract.js';
 import { workflowVersions } from '../../../schema/authoring/workflows.js';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { acquireDatabasePool } from '../../../platform/pool/runtime.js';
@@ -29,30 +32,6 @@ const publishedRowSchema = z
     workspace_id: z.uuid(),
   })
   .strict();
-
-/** A published workflow version with the executable a run follows. */
-export type PublishedWorkflow = Readonly<{
-  checksum: string;
-  executableJson: unknown;
-  id: string;
-  versionNumber: number;
-  workflowId: string;
-  workspaceId: string;
-}>;
-
-export type ReadPublishedWorkflowForExecutionInput = Readonly<{
-  signal?: AbortSignal;
-  workflowVersionId: string;
-  workspaceId: string;
-}>;
-
-export interface PublishedWorkflowReader {
-  /** The published version, or null when it is not visible. */
-  readForExecution(
-    input: ReadPublishedWorkflowForExecutionInput,
-  ): Promise<PublishedWorkflow | null>;
-  close(): Promise<void>;
-}
 
 export class PublishedWorkflowVersionCorruptError extends Error {
   public override readonly name = 'PublishedWorkflowVersionCorruptError';

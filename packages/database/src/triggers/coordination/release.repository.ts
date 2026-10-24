@@ -18,12 +18,12 @@ import {
   type EventCoordinationReason,
 } from '@pertexo/workflow-model';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
+import { acceptWorkflowRun } from '../../runs/commands/acceptance.repository.js';
 import {
-  acceptWorkflowRun,
   WorkspaceRunQuotaExceededError,
   WorkspaceRunAdmissionDeniedError,
-} from '../../runs/commands/acceptance.repository.js';
-import { WorkflowAlreadyRunningError } from '../../runs/commands/concurrency.queries.js';
+} from '../../runs/commands/acceptance/errors.js';
+import { WorkflowAlreadyRunningError } from '../../runs/commands/acceptance/errors.js';
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
 import { parseStoredExecutionValue } from '../../platform/stored-execution-value.js';
 import { recordWorkflowTriggerSkip } from '../skips.repository.js';

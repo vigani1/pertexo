@@ -1,3 +1,5 @@
+import { acceptanceReplayInputSchema } from './input.js';
+import type { WorkflowRunAcceptanceReplayInput } from './contract.js';
 import { and, eq } from 'drizzle-orm';
 
 import type { z } from 'zod';
@@ -6,14 +8,14 @@ import { idempotencyRecords, workflowRuns } from '../../../schema.js';
 
 import type { WorkspaceTransaction } from '../../../tenant-access/transactions.js';
 
+import type { acceptWorkflowRunInputSchema } from './input.js';
+import { resultRefSchema } from './receipt.js';
+import { IDEMPOTENCY_STATUS } from './vocabulary.js';
+import type { AcceptedWorkflowRun } from './contract.js';
 import {
-  acceptWorkflowRunInputSchema,
-  resultRefSchema,
-  IDEMPOTENCY_STATUS,
-  type AcceptedWorkflowRun,
   IdempotencyRequestConflictError,
   IdempotencyRecordCorruptError,
-} from './contract.js';
+} from './errors.js';
 
 type ReplayValidation =
   | Readonly<{ kind: 'request_only' }>
@@ -86,17 +88,6 @@ export async function readExistingAcceptance(
     status: runStatus,
   });
 }
-
-const acceptanceReplayInputSchema = acceptWorkflowRunInputSchema.pick({
-  keyHash: true,
-  operation: true,
-  requestHash: true,
-  scope: true,
-});
-
-export type WorkflowRunAcceptanceReplayInput = Readonly<
-  z.input<typeof acceptanceReplayInputSchema>
->;
 
 /** Resolve a completed exact request replay before reading current workflow state. */
 export async function readWorkflowRunAcceptanceReplay(

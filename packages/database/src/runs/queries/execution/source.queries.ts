@@ -1,3 +1,5 @@
+import type { WorkflowExecutionProjection } from './contract.js';
+import type { WorkflowExecutionReader } from './contract.js';
 import { and, eq } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
@@ -13,30 +15,6 @@ import {
 import type { DatabaseConfig } from '../../../config.js';
 import { withWorkspaceReadTransaction } from '../../../tenant-access/transactions.js';
 import { sql } from 'drizzle-orm';
-import type {
-  WorkflowTestPolicy,
-  WorkflowTestPins,
-} from '@pertexo/workflow-engine';
-import type {
-  PublishedWorkflowReader,
-  PublishedWorkflow,
-} from './published.queries.js';
-
-export type WorkflowExecutionProjection = PublishedWorkflow &
-  Readonly<{
-    testExpiresAt?: Date;
-    testSample?: WorkflowTestPins[string];
-    test?: WorkflowTestPolicy;
-  }>;
-export interface WorkflowExecutionReader extends Omit<
-  PublishedWorkflowReader,
-  'readForExecution'
-> {
-  readForExecution(
-    input: Parameters<PublishedWorkflowReader['readForExecution']>[0] &
-      Readonly<{ nodeId?: string }>,
-  ): Promise<WorkflowExecutionProjection | null>;
-}
 /** Both sources are immutable; a test snapshot never enters publication queries. */
 const sourceBuilder = new QueryBuilder();
 export const EXECUTION_SOURCE_SQL = sourceBuilder

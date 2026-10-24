@@ -2,12 +2,12 @@ import { randomUUID } from 'node:crypto';
 
 import { expect, it } from 'vitest';
 
-import { IdempotencyRequestConflictError } from '../../../src/runs/commands/acceptance.repository.js';
+import { IdempotencyRequestConflictError } from '../../../src/runs/commands/acceptance/errors.js';
 
 import {
   WorkflowRunNotFoundError,
   WorkflowRunNotExecutableError,
-} from '../../../src/runs/runs.repository.js';
+} from '../../../src/runs/errors.js';
 import type { ExecutionStateConflictError } from '../../../src/runs/state-errors.js';
 
 import {

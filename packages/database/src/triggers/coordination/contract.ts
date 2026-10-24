@@ -1,6 +1,6 @@
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
 
-import type { PublishedWorkflow } from '../../runs/queries/execution/published.queries.js';
+import type { PublishedWorkflow } from '../../runs/queries/execution/contract.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import type {
   EventCoordinationPolicy,

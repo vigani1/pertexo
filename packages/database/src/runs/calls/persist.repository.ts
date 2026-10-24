@@ -4,7 +4,7 @@ import { workflowCalls } from '../../schema/runs/calls.js';
 import { nodeRuns } from '../../schema/runs/execution.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
-import { CoordinatorRunStateCorruptError } from '../advance/contract.js';
+import { CoordinatorRunStateCorruptError } from '../state-errors.js';
 import {
   terminalRunStatuses,
   type RunTransitionPlan,

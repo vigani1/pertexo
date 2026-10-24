@@ -2,7 +2,7 @@
 export * from './authoring/testing.js';
 export * from './authoring/settings/auto-pause/store.js';
 export * from './connections/testing.js';
-export { lockRunAcceptanceCommand } from './runs/commands/manual-start.repository.js';
+export { lockRunAcceptanceCommand } from './runs/commands/lock-acceptance.repository.js';
 export {
   reconcileUnknownOutcomeEvidence,
   UnknownOutcomeReconciliationMismatchError,
@@ -14,7 +14,7 @@ export { FailureNotificationDestinationError } from './notifications/destination
 export { type FailureNotificationDestinationRecord } from './notifications/destinations/contract.js';
 export type { FailureNotificationDestinationDatabase } from './notifications/destinations/contract.js';
 export { createDueNodeWakeupScanner } from './runs/wakeups/due-node-scanner.repository.js';
-export type { DueNodeWakeupScanner } from './runs/wakeups/due-node-scanner.repository.js';
+export type { DueNodeWakeupScanner } from './runs/wakeups/contract.js';
 export { createFailureNotificationStore } from './notifications/repository.js';
 export { FailureNotificationStateError } from './notifications/errors.js';
 export type {
@@ -24,7 +24,7 @@ export type {
   FailureNotificationStore,
 } from './notifications/contract.js';
 export { createDeadlineWakeupScanner } from './runs/wakeups/deadline-scanner.repository.js';
-export type { DeadlineWakeupScanner } from './runs/wakeups/deadline-scanner.repository.js';
+export type { DeadlineWakeupScanner } from './runs/wakeups/contract.js';
 export {
   ARTIFACT_STATUS,
   ArtifactFinalizeConflictError,
@@ -77,16 +77,17 @@ export type {
   FinalizeArtifactInput,
 } from './artifacts/contract.js';
 export {
-  acceptWorkflowRun,
   IDEMPOTENCY_STATUS,
   IDEMPOTENCY_STATUS_VALUES,
-  IdempotencyRecordCorruptError,
-  IdempotencyRequestConflictError,
   RUN_STATUS,
   RUN_STATUS_VALUES,
+} from './runs/commands/acceptance/vocabulary.js';
+export {
+  IdempotencyRecordCorruptError,
+  IdempotencyRequestConflictError,
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
-} from './runs/commands/acceptance.repository.js';
+} from './runs/commands/acceptance/errors.js';
 export { acceptPreviewRun } from './previews/runs/acceptance.repository.js';
 export { readPreviewRun } from './previews/runs/records.queries.js';
 export { resolvePreviewReplay } from './previews/runs/replay.repository.js';
@@ -127,10 +128,12 @@ export type { PreviewDeliveryReconciliationResult } from './previews/reconciliat
 export type {
   AcceptedWorkflowRun,
   AcceptWorkflowRunInput,
+  WorkflowRunAcceptanceReplayInput,
+} from './runs/commands/acceptance/contract.js';
+export type {
   IdempotencyStatus,
   RunStatus,
-  WorkflowRunAcceptanceReplayInput,
-} from './runs/commands/acceptance.repository.js';
+} from './runs/commands/acceptance/vocabulary.js';
 export {
   appendRunEvent,
   readRunEventsAfter,
@@ -154,7 +157,7 @@ export type {
   PublishedWorkflowReader,
   PublishedWorkflow,
   ReadPublishedWorkflowForExecutionInput,
-} from './runs/queries/execution/published.queries.js';
+} from './runs/queries/execution/contract.js';
 export { createOutboxDispatcherDatabase } from './outbox/dispatcher/repository.js';
 export type {
   ClaimOutboxBatchInput,
@@ -211,21 +214,22 @@ export type {
   NodeAttemptRunStore,
 } from './attempts/contract.js';
 export {
-  createWorkflowRunDatabase,
   WorkflowRunNotExecutableError,
   WorkflowRunNotFoundError,
   WorkflowRunReadCapacityError,
-} from './runs/runs.repository.js';
+} from './runs/errors.js';
 export type { InitialCheckpointFactory } from './runs/commands/initial-checkpoint.js';
 export type {
   CancelWorkflowRunInput,
-  GetWorkflowRunInput,
   StartPublishedWorkflowRunInput,
-  WorkflowNodeRunRecord as ApiWorkflowNodeRunRecord,
   WorkflowRunDatabase,
+} from './runs/commands/contract.js';
+export type {
+  GetWorkflowRunInput,
+  WorkflowNodeRunRecord as ApiWorkflowNodeRunRecord,
   WorkflowRunReadModel as ApiWorkflowRunReadModel,
-  WorkflowRunRecord as ApiWorkflowRunRecord,
-} from './runs/runs.repository.js';
+} from './runs/queries/read.queries.js';
+export type { WorkflowRunRecord as ApiWorkflowRunRecord } from './runs/commands/records.repository.js';
 export * from './lifecycle/testing.js';
 export * from './operator/testing.js';
 export * from './tenant-access/testing.js';
@@ -254,7 +258,7 @@ export type { DatabaseReadiness } from './platform/contract.js';
 export {
   CoordinatorDeliveryMismatchError,
   CoordinatorRunStateCorruptError,
-} from './runs/advance/contract.js';
+} from './runs/state-errors.js';
 export type {
   CoordinatorAdvanceDelivery,
   RunAdvanceResult,
@@ -296,3 +300,6 @@ export {
   webhookTriggerSecretVersions,
 } from './schema.js';
 export { migrateDatabase, MIGRATIONS_DIRECTORY } from './migrations.js';
+
+export { acceptWorkflowRun } from './runs/commands/acceptance.repository.js';
+export { createWorkflowRunDatabase } from './runs/runs.repository.js';

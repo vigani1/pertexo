@@ -6,7 +6,7 @@ import {
   type TrendDay,
   type TrendRanking,
 } from './trends/records.queries.js';
-import { RUN_STATUS_VALUES } from '../commands/acceptance.repository.js';
+import { RUN_STATUS_VALUES } from '../commands/acceptance/vocabulary.js';
 import { RETAINED_RESOURCE_WORKSPACE_STATUSES } from '../../tenant-access/resources/policy.js';
 
 import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';

@@ -10,7 +10,7 @@ import {
   FailureNotificationContextSchema,
 } from '@pertexo/workflow-model';
 
-import { CoordinatorRunStateCorruptError } from '../contract.js';
+import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
 import type { RunTransitionPlan } from '../plan.js';
 import { canonicalOutboxPayloadChecksum } from '../../../outbox/events.repository.js';
 import { serializeStoredExecutionJsonValue } from '../../../platform/stored-execution-value.js';

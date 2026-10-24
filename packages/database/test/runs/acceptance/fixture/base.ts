@@ -7,7 +7,7 @@ import { createWorkspaceDatabase } from '../../../../src/database.js';
 import { createOutboxDispatcherDatabase } from '../../../../src/outbox/dispatcher/repository.js';
 import { migrateDatabase } from '../../../../src/migrations.js';
 
-import { lockRunAcceptanceCommand } from '../../../../src/runs/commands/manual-start.repository.js';
+import { lockRunAcceptanceCommand } from '../../../../src/runs/commands/lock-acceptance.repository.js';
 import {
   idempotencyRecords,
   outboxEvents,

@@ -4,7 +4,7 @@ import type { WorkspaceTransaction } from '../../../tenant-access/transactions.j
 import { lockEventCoordination } from '../../coordination/keys.repository.js';
 import { coordinateVerifiedWebhook } from '../coordinate.repository.js';
 import type { createEventCoordinationPreparation } from '../../coordination/prepare.js';
-import { WorkflowAlreadyRunningError } from '../../../runs/commands/concurrency.queries.js';
+import { WorkflowAlreadyRunningError } from '../../../runs/commands/acceptance/errors.js';
 import { recordWorkflowTriggerSkip } from '../../skips.repository.js';
 
 import {

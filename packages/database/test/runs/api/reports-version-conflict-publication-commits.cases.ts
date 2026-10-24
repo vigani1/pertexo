@@ -2,12 +2,12 @@ import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 
 import { expect, it, vi } from 'vitest';
 
-import { IdempotencyRequestConflictError } from '../../../src/runs/commands/acceptance.repository.js';
+import { IdempotencyRequestConflictError } from '../../../src/runs/commands/acceptance/errors.js';
 
 import {
   WorkflowRunReadCapacityError,
   WorkflowPublishedVersionConflictError,
-} from '../../../src/runs/runs.repository.js';
+} from '../../../src/runs/errors.js';
 
 import {
   workspaceId,

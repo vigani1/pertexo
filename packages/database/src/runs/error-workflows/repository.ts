@@ -10,17 +10,10 @@ import {
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
 import type { InitialCheckpointFactory } from '../commands/initial-checkpoint.js';
-import {
-  errorWorkflowDeliveryInputSchema,
-  ErrorWorkflowDeliveryMismatchError,
-  type ErrorWorkflowStore,
-} from './contract.js';
+import { errorWorkflowDeliveryInputSchema } from './input.js';
+import { ErrorWorkflowDeliveryMismatchError } from './errors.js';
+import type { ErrorWorkflowStore } from './contract.js';
 import { acceptErrorWorkflow } from './accept.repository.js';
-export {
-  ErrorWorkflowDeliveryMismatchError,
-  ErrorWorkflowVersionUnavailableError,
-  type ErrorWorkflowStore,
-} from './contract.js';
 
 /** Admission, intent resolution and transport receipt share one commit. */
 export function createErrorWorkflowStore(

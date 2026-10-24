@@ -12,7 +12,7 @@ import { callbackScopeHash } from '../callbacks/identity.repository.js';
 import type { PoolClient } from 'pg';
 import type { RunTransitionPlan } from '../../advance/plan.js';
 import { terminalRunStatuses } from '../../advance/plan.js';
-import { CoordinatorRunStateCorruptError } from '../../advance/contract.js';
+import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
 import { wakeWorkflowRun } from '../../calls/wakeup.repository.js';
 

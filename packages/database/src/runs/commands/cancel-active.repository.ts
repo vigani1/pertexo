@@ -17,7 +17,7 @@ import {
 } from './records.repository.js';
 import type { WorkflowRunRecord } from './records.repository.js';
 
-import type { cancelInputSchema } from './contract.js';
+import type { cancelInputSchema } from './input.js';
 
 /**
  * Requests cancellation of every run in the workspace that has not finished

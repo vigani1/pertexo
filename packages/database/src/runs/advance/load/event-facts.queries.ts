@@ -5,7 +5,7 @@ import { artifacts } from '../../../schema/transport.js';
 import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 
-import { CoordinatorRunStateCorruptError } from '../contract.js';
+import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
 import {
   parseStoredExecutionValue,
   storedExecutionValuesEqual,

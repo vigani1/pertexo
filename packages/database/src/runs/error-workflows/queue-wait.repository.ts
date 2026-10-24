@@ -6,10 +6,8 @@ import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
-import {
-  ErrorWorkflowDeliveryMismatchError,
-  type ErrorWorkflowDeliveryInput,
-} from './contract.js';
+import { ErrorWorkflowDeliveryMismatchError } from './errors.js';
+import { type ErrorWorkflowDeliveryInput } from './contract.js';
 
 const waitSeconds = 15 * 60;
 

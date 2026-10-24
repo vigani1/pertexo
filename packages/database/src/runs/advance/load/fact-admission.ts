@@ -2,7 +2,7 @@ import { utf8ByteLength } from '@pertexo/workflow-model';
 import { UUID_PATTERN } from '@pertexo/workflow-model';
 
 import { WORKFLOW_OBSERVATION_WINDOW_LIMITS } from '@pertexo/workflow-model';
-import { CoordinatorRunStateCorruptError } from '../contract.js';
+import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
 import { serializeStoredExecutionJsonValue } from '../../../platform/stored-execution-value.js';
 
 const maximumCanonicalEventPayloadBytes =

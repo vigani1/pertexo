@@ -15,7 +15,7 @@ import { rolesForCapability } from '@pertexo/workflow-model';
 import {
   WorkspaceRunQuotaExceededError,
   WorkspaceRunAdmissionDeniedError,
-} from '../../runs/commands/acceptance.repository.js';
+} from '../../runs/commands/acceptance/errors.js';
 import { lockTestAuthority } from '../workflows/authority.queries.js';
 import type { SuiteRow, SuiteCaseRow } from './contract.js';
 import { admitSuiteCase } from './admit.repository.js';

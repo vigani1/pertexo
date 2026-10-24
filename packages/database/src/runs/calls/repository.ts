@@ -14,8 +14,8 @@ import {
 import {
   coordinatorDeliverySchema,
   coordinatorIdentitySchema,
-  type RunAdvanceInput,
-} from '../advance/contract.js';
+} from '../advance/input.js';
+import type { RunAdvanceInput } from '../advance/contract.js';
 import {
   auditCoordinatorDeliveryMismatch,
   DeliveryMismatch,

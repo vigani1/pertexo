@@ -2,7 +2,7 @@ import { runErrorWorkflowIntents } from '../../schema/runs/completion/error-work
 import { workflows } from '../../schema/authoring/workflows.js';
 import { and, eq, lte, sql } from 'drizzle-orm';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { WorkflowAlreadyRunningError } from '../commands/concurrency.queries.js';
+import { WorkflowAlreadyRunningError } from '../commands/acceptance/errors.js';
 import { recordWorkflowTriggerSkip } from '../../triggers/skips.repository.js';
 import { createHash } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -19,16 +19,18 @@ import { parseWorkspaceId } from '../../tenant-access/transactions.js';
 import {
   acceptWorkflowRun,
   prepareWorkflowRunAcceptance,
+} from '../commands/acceptance.repository.js';
+import {
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
-} from '../commands/acceptance.repository.js';
+} from '../commands/acceptance/errors.js';
 import { findPublishedWorkflow } from '../queries/execution/published.queries.js';
 import type { InitialCheckpointFactory } from '../commands/initial-checkpoint.js';
 import {
   ErrorWorkflowDeliveryMismatchError,
   ErrorWorkflowVersionUnavailableError,
-  type ErrorWorkflowDeliveryInput,
-} from './contract.js';
+} from './errors.js';
+import type { ErrorWorkflowDeliveryInput } from './contract.js';
 import { deferErrorWorkflowForQueue } from './queue-wait.repository.js';
 
 export async function acceptErrorWorkflow(

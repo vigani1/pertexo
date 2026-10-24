@@ -15,8 +15,10 @@ import type { Pool, PoolClient } from 'pg';
 import {
   CoordinatorDeliveryMismatchError,
   CoordinatorRunStateCorruptError,
-  type CoordinatorAdvanceDelivery,
-  type RunAdvanceResult,
+} from '../state-errors.js';
+import type {
+  CoordinatorAdvanceDelivery,
+  RunAdvanceResult,
 } from './contract.js';
 import { withCoordinatorWriteClient } from './transactions.repository.js';
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';

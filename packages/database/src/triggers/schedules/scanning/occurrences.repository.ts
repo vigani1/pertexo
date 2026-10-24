@@ -8,7 +8,7 @@ import {
   workflowTriggers,
 } from '../../../schema/authoring/workflows.js';
 import { workspaces } from '../../../schema/foundation.js';
-import { WorkflowAlreadyRunningError } from '../../../runs/commands/concurrency.queries.js';
+import { WorkflowAlreadyRunningError } from '../../../runs/commands/acceptance/errors.js';
 import { recordWorkflowTriggerSkip } from '../../skips.repository.js';
 import type { InitialCheckpointFactory } from '../../../runs/commands/initial-checkpoint.js';
 import { createHash } from 'node:crypto';
@@ -16,10 +16,8 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 
 import { generatePersistedId } from '../../../platform/persisted-id.js';
 
-import {
-  acceptWorkflowRun,
-  WorkspaceRunQuotaExceededError,
-} from '../../../runs/commands/acceptance.repository.js';
+import { acceptWorkflowRun } from '../../../runs/commands/acceptance.repository.js';
+import { WorkspaceRunQuotaExceededError } from '../../../runs/commands/acceptance/errors.js';
 import { scheduleOccurrenceDisposition } from '../misfire.js';
 import {
   parsePersistedScheduleRecurrence,
