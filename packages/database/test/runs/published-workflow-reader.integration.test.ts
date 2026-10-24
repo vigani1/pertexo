@@ -216,6 +216,41 @@ describe('PublishedWorkflowReader', () => {
     ).resolves.toBeNull();
   });
 
+  it('preserves executable metadata and freezes the published record', async () => {
+    const id = randomUUID();
+    const executableJson = {
+      nodes: [],
+      edges: [],
+      metadata: { label: 'Équipe 🧵', optional: null },
+    };
+    const checksum = `wf:sha256:${'f'.repeat(64)}`;
+    await executeAsOwner(
+      `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,graph_json,checksum,executable_json,published_by)
+       values($1,$2,$3,3,'{}',$4,$5::jsonb,$6)`,
+      [
+        id,
+        workspaceId,
+        workflowId,
+        checksum,
+        JSON.stringify(executableJson),
+        actorId,
+      ],
+    );
+    const record = await workerReader.readForExecution({
+      workspaceId,
+      workflowVersionId: id,
+    });
+    expect(record).toEqual({
+      id,
+      workspaceId,
+      workflowId,
+      versionNumber: 3,
+      checksum,
+      executableJson,
+    });
+    expect(Object.isFrozen(record)).toBe(true);
+  });
+
   it('enforces forced RLS and denies version updates and deletes', async () => {
     await expect(
       queryAsWorker(
