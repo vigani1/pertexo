@@ -1,3 +1,4 @@
+import { useInspectorSession } from '../../hooks/use-inspector-session';
 import { findDefinition } from '../../model/graph/adapter';
 
 import type { Connection } from '@xyflow/react';
@@ -6,11 +7,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  useEditorStore,
-  useEditorStoreApi,
-  useEditorSession,
-} from '../../model/state/context';
+import { useEditorStore, useEditorStoreApi } from '../../model/state/context';
 import type { EditorFocusTarget } from '../../hooks/use-editor-actions';
 import type { InspectorTab } from '../../hooks/use-inspector-navigation';
 import { updateWorkflowNode } from '../../model/graph/commands';
@@ -302,25 +299,4 @@ function inspectorField(
       ? `node-label-${target.nodeId}`
       : fieldControlId(target.nodeId, target.fieldKey);
   return document.getElementById(id);
-}
-
-function useInspectorSession() {
-  const { scope, catalog } = useEditorSession();
-  const { apiClient, userId, workspace, workflowId } = scope;
-  const enabled =
-    catalog.connectionsAvailable &&
-    workspace.capabilities.includes('connection:use');
-  const workspaceScope = useMemo(
-    () => ({ apiClient, userId, workspaceId: workspace.id }),
-    [apiClient, userId, workspace.id],
-  );
-  const callScope = useMemo(
-    () => ({ ...workspaceScope, workflowId }),
-    [workspaceScope, workflowId],
-  );
-  const channelLookup = useMemo(
-    () => ({ ...workspaceScope, enabled }),
-    [workspaceScope, enabled],
-  );
-  return { ...catalog, workspaceScope, callScope, channelLookup };
 }
