@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ComponentProps } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -10,11 +10,25 @@ function Harness({
   error,
   unconfirmed,
   onConfirm,
+  options,
 }: Readonly<{
   pending?: boolean;
   error?: string;
   unconfirmed?: { onRetry: () => void; onDismiss: () => void };
   onConfirm: () => unknown;
+  options?: Partial<
+    Pick<
+      ComponentProps<typeof ConfirmDialog>,
+      | 'locked'
+      | 'confirmDisabled'
+      | 'onCancel'
+      | 'children'
+      | 'secondaryAction'
+      | 'consequences'
+      | 'errorTone'
+      | 'errorAction'
+    >
+  >;
 }>) {
   const [open, setOpen] = useState(false);
   return (
@@ -31,6 +45,7 @@ function Harness({
       error={error}
       unconfirmed={unconfirmed}
       onConfirm={onConfirm}
+      {...options}
     />
   );
 }
@@ -120,8 +135,144 @@ describe('ConfirmDialog', () => {
     render(<Harness onConfirm={() => Promise.reject(new Error('nope'))} />);
     await user.click(screen.getByRole('button', { name: 'Revoke' }));
     await user.click(screen.getByRole('button', { name: 'Revoke connection' }));
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeVisible();
+    });
     expect(rejection).not.toHaveBeenCalled();
     window.removeEventListener('unhandledrejection', rejection);
+  });
+
+  it('submits from an input with Enter and blocks disabled and pending submits', async () => {
+    const confirm = vi.fn();
+    const user = userEvent.setup();
+    const input = <input aria-label="Confirmation text" />;
+    const { rerender } = render(
+      <Harness onConfirm={confirm} options={{ children: input }} />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Revoke' }));
+    await user.type(screen.getByRole('textbox'), 'yes{Enter}');
+    expect(confirm).toHaveBeenCalledOnce();
+    rerender(
+      <Harness
+        onConfirm={confirm}
+        options={{ children: input, confirmDisabled: true }}
+      />,
+    );
+    await user.type(screen.getByRole('textbox'), '{Enter}');
+    expect(
+      screen.getByRole('button', { name: 'Revoke connection' }),
+    ).toBeDisabled();
+    expect(confirm).toHaveBeenCalledOnce();
+    rerender(
+      <Harness pending onConfirm={confirm} options={{ children: input }} />,
+    );
+    await user.type(screen.getByRole('textbox'), '{Enter}');
+    expect(confirm).toHaveBeenCalledOnce();
+  });
+
+  it('locks dismissal independently of submission', async () => {
+    const confirm = vi.fn();
+    const user = userEvent.setup();
+    render(<Harness onConfirm={confirm} options={{ locked: true }} />);
+    await user.click(screen.getByRole('button', { name: 'Revoke' }));
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('dialog')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: 'Revoke connection' }));
+    expect(confirm).toHaveBeenCalledOnce();
+  });
+
+  it('keeps a custom cancel active while locked and leaves closing to its caller', async () => {
+    const cancel = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <Harness pending onConfirm={vi.fn()} options={{ onCancel: cancel }} />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Revoke' }));
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(screen.getByRole('dialog')).toBeVisible();
+  });
+
+  it('renders consequences, inputs, error actions and a separate secondary command', async () => {
+    const secondary = vi.fn();
+    const action = vi.fn();
+    const confirm = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <Harness
+        error="Check this first"
+        onConfirm={confirm}
+        options={{
+          consequences: ['Existing steps retain their history.'],
+          children: <input aria-label="Reason" />,
+          errorTone: 'warning',
+          errorAction: (
+            <button type="button" onClick={action}>
+              Review
+            </button>
+          ),
+          secondaryAction: (
+            <button type="button" onClick={secondary}>
+              Leave anyway
+            </button>
+          ),
+        }}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Revoke' }));
+    expect(screen.getByRole('dialog')).toHaveTextContent(
+      'Existing steps retain their history.',
+    );
+    expect(screen.getByRole('textbox', { name: 'Reason' })).toBeVisible();
+    expect(screen.getByRole('alert')).toHaveTextContent('Check this first');
+    await user.click(screen.getByRole('button', { name: 'Review' }));
+    await user.click(screen.getByRole('button', { name: 'Leave anyway' }));
+    expect(action).toHaveBeenCalledOnce();
+    expect(secondary).toHaveBeenCalledOnce();
+    expect(confirm).not.toHaveBeenCalled();
+  });
+
+  it('honors an explicit unlocked state even when a command is pending', async () => {
+    const user = userEvent.setup();
+    render(<Harness pending onConfirm={vi.fn()} options={{ locked: false }} />);
+    await user.click(screen.getByRole('button', { name: 'Revoke' }));
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled();
+    await user.keyboard('{Escape}');
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+  });
+
+  it('uses exact retry for Enter and keeps unconfirmed dismissal active while pending', async () => {
+    const retry = vi.fn();
+    const dismiss = vi.fn();
+    const confirm = vi.fn();
+    const user = userEvent.setup();
+    const input = <input aria-label="Confirmation text" />;
+    const { rerender } = render(
+      <Harness
+        onConfirm={confirm}
+        unconfirmed={{ onRetry: retry, onDismiss: dismiss }}
+        options={{ children: input }}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Revoke' }));
+    await user.type(screen.getByRole('textbox'), 'yes{Enter}');
+    expect(retry).toHaveBeenCalledOnce();
+    expect(confirm).not.toHaveBeenCalled();
+    rerender(
+      <Harness
+        pending
+        onConfirm={confirm}
+        unconfirmed={{ onRetry: retry, onDismiss: dismiss }}
+        options={{ children: input }}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+    expect(dismiss).toHaveBeenCalledOnce();
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
   });
 });
