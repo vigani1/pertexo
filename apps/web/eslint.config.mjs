@@ -1,7 +1,7 @@
 import tseslint from 'typescript-eslint';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
-import rootConfig from '../../eslint.config.mjs';
+import rootConfig, { readabilityRules } from '../../eslint.config.mjs';
 
 // Lazy code loads through one module, so a chunk that a deployment removed
 // shows the update notice instead of reloading the page or crashing it.
@@ -48,6 +48,7 @@ const sharedLayerPatterns = [
 
 export default tseslint.config(
   ...rootConfig,
+  { files: ['src/**/*.{ts,tsx}'], rules: readabilityRules },
   { ignores: ['playwright-report/**', 'test-results/**'] },
   {
     files: ['**/*.{ts,tsx}'],
