@@ -1,5 +1,10 @@
 import { ordinaryRunSql } from '../../runs/data-policy.js';
-import { sql } from 'drizzle-orm';
+import { and, eq, isNotNull, sql } from 'drizzle-orm';
+import {
+  workflows,
+  workflowVersions,
+} from '../../schema/authoring/workflows.js';
+import { workflowRuns } from '../../schema/runs/execution.js';
 
 import { operatorRunReplayRequests } from '../../schema/runs/operator.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
@@ -11,16 +16,18 @@ export async function retryTriggerReconciliation(
   transaction: WorkspaceTransaction,
   input: Readonly<{ workflowId: string; dryRun: boolean }>,
 ): Promise<OperatorDecision> {
-  const rows = await transaction.db.execute<{
-    published_version_id: string | null;
-  }>(sql`
-    select published_version_id from app.workflows
-    where workspace_id = ${transaction.workspaceId} and id = ${input.workflowId}
-      and lifecycle_status = 'active'
-    for share
-  `);
-  const workflow = rows.rows[0];
-  const publishedVersionId = workflow?.published_version_id ?? null;
+  const [workflow] = await transaction.db
+    .select({ publishedVersionId: workflows.publishedVersionId })
+    .from(workflows)
+    .where(
+      and(
+        eq(workflows.workspaceId, transaction.workspaceId),
+        eq(workflows.id, input.workflowId),
+        eq(workflows.lifecycleStatus, 'active'),
+      ),
+    )
+    .for('share');
+  const publishedVersionId = workflow?.publishedVersionId ?? null;
   const outcome = triggerReconciliationOutcome(
     workflow,
     publishedVersionId,
@@ -60,19 +67,29 @@ export async function requestRunReplay(
     dryRun: boolean;
   }>,
 ): Promise<OperatorDecision> {
-  const rows = await transaction.db.execute<{
-    source_workflow_id: string;
-    target_workflow_id: string | null;
-  }>(sql`
-    select run.workflow_id source_workflow_id,
-      (select version.workflow_id from app.workflow_versions version
-        where version.workspace_id = run.workspace_id
-          and version.id = ${input.workflowVersionId}
-          and version.executable_json is not null) target_workflow_id
-    from app.workflow_runs run
-    where run.workspace_id = ${transaction.workspaceId} and run.id = ${input.sourceRunId} and ${ordinaryRunSql('run')}
-  `);
-  const found = rows.rows[0];
+  const target = transaction.db
+    .select({ workflowId: workflowVersions.workflowId })
+    .from(workflowVersions)
+    .where(
+      and(
+        eq(workflowVersions.workspaceId, workflowRuns.workspaceId),
+        eq(workflowVersions.id, input.workflowVersionId),
+        isNotNull(workflowVersions.executableJson),
+      ),
+    );
+  const [found] = await transaction.db
+    .select({
+      sourceWorkflowId: workflowRuns.workflowId,
+      targetWorkflowId: sql<string | null>`(${target})`,
+    })
+    .from(workflowRuns)
+    .where(
+      and(
+        eq(workflowRuns.workspaceId, transaction.workspaceId),
+        eq(workflowRuns.id, input.sourceRunId),
+        ordinaryRunSql('workflow_runs'),
+      ),
+    );
   const outcome = runReplayOutcome(found, input);
 
   let outboxEventId: string | undefined;
@@ -81,7 +98,7 @@ export async function requestRunReplay(
       commandId: input.commandId,
       workspaceId: transaction.workspaceId,
       sourceRunId: input.sourceRunId,
-      workflowId: found.source_workflow_id,
+      workflowId: found.sourceWorkflowId,
       workflowVersionId: input.workflowVersionId,
       runInput: sql`${input.runInput}::json`,
       requestFingerprint: input.requestFingerprint,
@@ -106,7 +123,7 @@ export async function requestRunReplay(
 }
 
 function triggerReconciliationOutcome(
-  workflow: Readonly<{ published_version_id: string | null }> | undefined,
+  workflow: Readonly<{ publishedVersionId: string | null }> | undefined,
   publishedVersionId: string | null,
   input: Readonly<{ dryRun: boolean }>,
 ): string {
@@ -117,15 +134,15 @@ function triggerReconciliationOutcome(
 function runReplayOutcome(
   source:
     | Readonly<{
-        source_workflow_id: string;
-        target_workflow_id: string | null;
+        sourceWorkflowId: string;
+        targetWorkflowId: string | null;
       }>
     | undefined,
   input: Readonly<{ dryRun: boolean }>,
 ): string {
   if (source === undefined) return 'source_not_found';
-  if (source.target_workflow_id === null) return 'version_not_executable';
-  if (source.target_workflow_id !== source.source_workflow_id)
+  if (source.targetWorkflowId === null) return 'version_not_executable';
+  if (source.targetWorkflowId !== source.sourceWorkflowId)
     return 'workflow_mismatch';
   return input.dryRun ? 'would_request' : 'replay_requested';
 }

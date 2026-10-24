@@ -1,5 +1,10 @@
-import { sql } from 'drizzle-orm';
-import { z } from 'zod';
+import { and, eq, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import {
+  nodeAttempts,
+  nodeRuns,
+  workflowRuns,
+} from '../../schema/runs/execution.js';
 
 import {
   appendLockedRunEvent,
@@ -9,16 +14,6 @@ import { operatorUnknownOutcomeEvidence } from '../../schema/runs/operator.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import type { OperatorDecision } from './contract.js';
 import { withoutNulls, enqueue, enqueueAdvance } from './enqueue.js';
-
-const attemptRowSchema = z.object({
-  dispatch_marked_at: z.unknown(),
-  fence_token: z.coerce.number().int(),
-  lease_expired: z.boolean().nullable(),
-  node_run_id: z.uuid(),
-  run_id: z.uuid(),
-  side_effect_class: z.string(),
-  status: z.string(),
-});
 
 /**
  * Settles a running attempt whose lease expired: either back to ready for
@@ -36,48 +31,40 @@ export async function reconcileAttempt(
   }>,
 ): Promise<OperatorDecision> {
   const { attemptId, action, expectedFenceToken: fence } = input;
-  // The run lock comes first, as it does for every run writer.
-  await transaction.db.execute(sql`
-    select 1 from app.workflow_runs
-    where workspace_id = ${transaction.workspaceId}
-      and id = (select node.workflow_run_id from app.node_attempts attempt
-        join app.node_runs node on node.workspace_id = attempt.workspace_id
-          and node.id = attempt.node_run_id
-        where attempt.workspace_id = ${transaction.workspaceId}
-          and attempt.id = ${attemptId})
-    for update
-  `);
-  const rows = await transaction.db.execute(sql`
-    select attempt.status, attempt.fence_token, attempt.dispatch_marked_at,
-      attempt.side_effect_class, node.id node_run_id, node.workflow_run_id run_id,
-      attempt.lease_expires_at <= clock_timestamp() lease_expired
-    from app.node_attempts attempt
-    join app.node_runs node on node.workspace_id = attempt.workspace_id
-      and node.id = attempt.node_run_id
-    where attempt.workspace_id = ${transaction.workspaceId} and attempt.id = ${attemptId}
-    for update of attempt, node
-  `);
-  const attempt =
-    rows.rows[0] === undefined
-      ? undefined
-      : attemptRowSchema.parse(rows.rows[0]);
+  const attempt = await readLockedAttempt(transaction, attemptId);
   const outcome = attemptReconciliationOutcome(attempt, input);
 
   let outboxEventId: string | undefined;
   if (attempt !== undefined && outcome === 'reclaimed') {
-    await transaction.db.execute(sql`
-      update app.node_attempts
-      set status = 'ready', fence_token = ${fence + 1}, lease_owner = null,
-          lease_expires_at = null, completed_at = null, updated_at = clock_timestamp()
-      where workspace_id = ${transaction.workspaceId} and id = ${attemptId}
-    `);
-    const node = await transaction.db.execute(sql`
-      update app.node_runs
-      set status = 'ready', updated_at = clock_timestamp()
-      where workspace_id = ${transaction.workspaceId} and id = ${attempt.node_run_id}
-        and current_attempt_id = ${attemptId} and status = 'running'
-    `);
-    if (node.rowCount !== 1)
+    await transaction.db
+      .update(nodeAttempts)
+      .set({
+        status: 'ready',
+        fenceToken: fence + 1,
+        leaseOwner: null,
+        leaseExpiresAt: null,
+        completedAt: null,
+        updatedAt: sql`clock_timestamp()`,
+      })
+      .where(
+        and(
+          eq(nodeAttempts.workspaceId, transaction.workspaceId),
+          eq(nodeAttempts.id, attemptId),
+        ),
+      );
+    const node = await transaction.db
+      .update(nodeRuns)
+      .set({ status: 'ready', updatedAt: sql`clock_timestamp()` })
+      .where(
+        and(
+          eq(nodeRuns.workspaceId, transaction.workspaceId),
+          eq(nodeRuns.id, attempt.nodeRunId),
+          eq(nodeRuns.currentAttemptId, attemptId),
+          eq(nodeRuns.status, 'running'),
+        ),
+      )
+      .returning({ id: nodeRuns.id });
+    if (node.length !== 1)
       throw new Error('Reclaimed attempt does not own a running node');
     outboxEventId = await enqueue(transaction, {
       jobName: 'execute-node-attempt',
@@ -85,36 +72,52 @@ export async function reconcileAttempt(
       aggregateId: attemptId,
       fields: {
         attemptId,
-        nodeRunId: attempt.node_run_id,
-        runId: attempt.run_id,
+        nodeRunId: attempt.nodeRunId,
+        runId: attempt.runId,
       },
     });
   } else if (attempt !== undefined && outcome === 'marked_unknown') {
-    await transaction.db.execute(sql`
-      update app.node_attempts
-      set status = 'outcome_unknown', fence_token = ${fence + 1}, lease_owner = null,
-          lease_expires_at = null,
-          reconciliation_ref = jsonb_build_object('operatorCommandId', ${input.commandId}::uuid),
-          completed_at = clock_timestamp(), updated_at = clock_timestamp()
-      where workspace_id = ${transaction.workspaceId} and id = ${attemptId}
-    `);
-    await transaction.db.execute(sql`
-      update app.node_runs
-      set status = 'outcome_unknown', completed_at = clock_timestamp(),
-          updated_at = clock_timestamp()
-      where workspace_id = ${transaction.workspaceId} and id = ${attempt.node_run_id}
-        and current_attempt_id = ${attemptId}
-    `);
-    await appendLockedRunEvent(transaction, attempt.run_id, {
+    await transaction.db
+      .update(nodeAttempts)
+      .set({
+        status: 'outcome_unknown',
+        fenceToken: fence + 1,
+        leaseOwner: null,
+        leaseExpiresAt: null,
+        reconciliationRef: sql`jsonb_build_object('operatorCommandId',${input.commandId}::uuid)`,
+        completedAt: sql`clock_timestamp()`,
+        updatedAt: sql`clock_timestamp()`,
+      })
+      .where(
+        and(
+          eq(nodeAttempts.workspaceId, transaction.workspaceId),
+          eq(nodeAttempts.id, attemptId),
+        ),
+      );
+    await transaction.db
+      .update(nodeRuns)
+      .set({
+        status: 'outcome_unknown',
+        completedAt: sql`clock_timestamp()`,
+        updatedAt: sql`clock_timestamp()`,
+      })
+      .where(
+        and(
+          eq(nodeRuns.workspaceId, transaction.workspaceId),
+          eq(nodeRuns.id, attempt.nodeRunId),
+          eq(nodeRuns.currentAttemptId, attemptId),
+        ),
+      );
+    await appendLockedRunEvent(transaction, attempt.runId, {
       type: RUN_EVENT_TYPE.nodeOutcomeUnknown,
       payload: {
         attemptId,
-        nodeRunId: attempt.node_run_id,
+        nodeRunId: attempt.nodeRunId,
         operatorCommandId: input.commandId,
         reconciliation: true,
       },
     });
-    outboxEventId = await enqueueAdvance(transaction, attempt.run_id);
+    outboxEventId = await enqueueAdvance(transaction, attempt.runId);
   }
   const changed = outcome === 'reclaimed' || outcome === 'marked_unknown';
   return {
@@ -138,12 +141,17 @@ export async function recordUnknownOutcomeEvidence(
     evidenceRef: string;
   }>,
 ): Promise<OperatorDecision> {
-  const rows = await transaction.db.execute<{ status: string }>(sql`
-    select status from app.node_attempts
-    where workspace_id = ${transaction.workspaceId} and id = ${input.attemptId}
-    for update
-  `);
-  const status = rows.rows[0]?.status;
+  const [attempt] = await transaction.db
+    .select({ status: nodeAttempts.status })
+    .from(nodeAttempts)
+    .where(
+      and(
+        eq(nodeAttempts.workspaceId, transaction.workspaceId),
+        eq(nodeAttempts.id, input.attemptId),
+      ),
+    )
+    .for('update');
+  const status = attempt?.status;
   const outcome = evidenceOutcome(status);
 
   let outboxEventId: string | null = null;
@@ -176,7 +184,7 @@ export async function recordUnknownOutcomeEvidence(
 }
 
 function attemptReconciliationOutcome(
-  attempt: z.output<typeof attemptRowSchema> | undefined,
+  attempt: Awaited<ReturnType<typeof readLockedAttempt>>,
   input: Readonly<{
     expectedFenceToken: number;
     action: 'reclaim' | 'outcome_unknown';
@@ -185,12 +193,12 @@ function attemptReconciliationOutcome(
 ): string {
   if (attempt === undefined) return 'not_found';
   if (attempt.status !== 'running') return 'not_running';
-  if (attempt.fence_token !== input.expectedFenceToken) return 'fence_conflict';
-  if (!(attempt.lease_expired ?? false)) return 'lease_active';
+  if (attempt.fenceToken !== input.expectedFenceToken) return 'fence_conflict';
+  if (!(attempt.leaseExpired ?? false)) return 'lease_active';
   const unsafeReclaim =
     input.action === 'reclaim' &&
-    attempt.dispatch_marked_at !== null &&
-    attempt.side_effect_class === 'unsafe';
+    attempt.dispatchMarkedAt !== null &&
+    attempt.sideEffectClass === 'unsafe';
   if (unsafeReclaim) return 'reclaim_unsafe';
   if (input.dryRun)
     return input.action === 'reclaim' ? 'would_reclaim' : 'would_mark_unknown';
@@ -200,4 +208,68 @@ function evidenceOutcome(status: string | undefined): string {
   if (status === undefined) return 'not_found';
   if (status !== 'outcome_unknown') return 'not_unknown';
   return 'evidence_recorded';
+}
+
+async function readLockedAttempt(
+  transaction: WorkspaceTransaction,
+  attemptId: string,
+) {
+  const db = transaction.db;
+  const attempt = alias(nodeAttempts, 'attempt'),
+    node = alias(nodeRuns, 'node');
+  const owner = db
+    .select({ runId: node.workflowRunId })
+    .from(attempt)
+    .innerJoin(
+      node,
+      and(
+        eq(node.workspaceId, attempt.workspaceId),
+        eq(node.id, attempt.nodeRunId),
+      ),
+    )
+    .where(
+      and(
+        eq(attempt.workspaceId, transaction.workspaceId),
+        eq(attempt.id, attemptId),
+      ),
+    );
+  // Every run writer locks the run before its attempt and node.
+  await db
+    .select({ id: workflowRuns.id })
+    .from(workflowRuns)
+    .where(
+      and(
+        eq(workflowRuns.workspaceId, transaction.workspaceId),
+        eq(workflowRuns.id, owner),
+      ),
+    )
+    .for('update');
+  const [row] = await db
+    .select({
+      status: attempt.status,
+      fenceToken: attempt.fenceToken,
+      dispatchMarkedAt: attempt.dispatchMarkedAt,
+      sideEffectClass: attempt.sideEffectClass,
+      nodeRunId: node.id,
+      runId: node.workflowRunId,
+      leaseExpired: sql<
+        boolean | null
+      >`${attempt.leaseExpiresAt}<=clock_timestamp()`,
+    })
+    .from(attempt)
+    .innerJoin(
+      node,
+      and(
+        eq(node.workspaceId, attempt.workspaceId),
+        eq(node.id, attempt.nodeRunId),
+      ),
+    )
+    .where(
+      and(
+        eq(attempt.workspaceId, transaction.workspaceId),
+        eq(attempt.id, attemptId),
+      ),
+    )
+    .for('update', { of: [attempt, node] });
+  return row;
 }

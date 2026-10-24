@@ -78,38 +78,44 @@ export function validResults(): {
     {
       rows: [
         {
-          aggregate_id: commandId,
-          aggregate_type: 'operator-command',
-          job_name: 'replay-workflow-run',
+          aggregateId: commandId,
+          aggregateType: 'operator-command',
+          jobName: 'replay-workflow-run',
           payload,
-          payload_checksum: payloadChecksum,
+          payloadChecksum: payloadChecksum,
         },
       ],
     },
     {
       rows: [
         {
-          request_fingerprint: 'a'.repeat(64),
-          run_input: { retained: true },
-          source_run_id: sourceRunId,
-          started_by: workflowId,
+          requestFingerprint: 'a'.repeat(64),
+          runInput: { retained: true },
+          sourceRunId: sourceRunId,
+          startedBy: workflowId,
           status: 'pending',
-          workflow_id: workflowId,
-          workflow_version_id: workflowVersionId,
+          workflowId: workflowId,
+          workflowVersionId: workflowVersionId,
         },
       ],
     },
     { rows: [{ id: workflowVersionId }] },
     // The request, then its command, settle.
-    { rows: [], rowCount: 1 },
-    { rows: [], rowCount: 1 },
+    { rows: [{ commandId }] },
+    { rows: [{ commandId }] },
   ];
 }
 
 export function storeWith(results = validResults()) {
-  const execute = vi.fn();
-  for (const result of results) execute.mockResolvedValueOnce(result);
-  const transaction = { db: { execute }, workspaceId };
+  const query = vi.fn();
+  for (const result of results) query.mockResolvedValueOnce(result.rows);
+  const db = {
+    select: () => ({
+      from: () => ({ where: query, leftJoin: () => ({ where: query }) }),
+    }),
+    update: () => ({ set: () => ({ where: () => ({ returning: query }) }) }),
+  };
+  const transaction = { db, workspaceId };
   const database = {
     checkReadiness: vi.fn(),
     close: mocks.close,
@@ -133,7 +139,7 @@ export function storeWith(results = validResults()) {
   return {
     checkpointFactory,
     database,
-    execute,
+    query,
     store: createOperatorRunReplayStore(config, checkpointFactory),
   };
 }

@@ -44,8 +44,6 @@ import {
   type OperatorCommandOutcome,
   type OperatorCommandDatabase,
   type CommandRequest,
-  statusSchema,
-  resultSchema,
 } from './contract.js';
 import { commandRecord } from './commands.queries.js';
 import { requestFingerprint } from './fingerprint.js';
@@ -190,8 +188,8 @@ async function runOperatorCommand(
           commandId: request.commandId,
           outcome: existing.outcome,
           replayed: true,
-          result: Object.freeze(resultSchema.parse(existing.result)),
-          status: statusSchema.parse(existing.status),
+          result: Object.freeze(existing.result),
+          status: existing.status,
         });
       }
 
