@@ -10,7 +10,7 @@ import {
   ADMINISTRATIVE_ROLES,
   WORKFLOW_EDITOR_ROLES,
 } from '@pertexo/workflow-model';
-import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority.js';
+import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority.queries.js';
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
 import type { Role } from '@pertexo/workflow-model';
 import { generatePersistedId } from '../../platform/persisted-id.js';

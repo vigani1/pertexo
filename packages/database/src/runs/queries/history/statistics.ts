@@ -1,6 +1,6 @@
-import { workflowScopeSql } from '../../../tenant-access/resources/query-scope.js';
-import type { ResourceTransaction } from '../../../tenant-access/resources/transactions.js';
-import { withRetainedResourceRead } from '../../../tenant-access/resources/transactions.js';
+import { workflowScopeSql } from '../../../tenant-access/resources/scope.queries.js';
+import type { ResourceTransaction } from '../../../tenant-access/resources/transactions.repository.js';
+import { withRetainedResourceRead } from '../../../tenant-access/resources/transactions.repository.js';
 import { ordinaryRunSql } from '../../data-policy.js';
 import { sql } from 'drizzle-orm';
 import type { Pool } from 'pg';

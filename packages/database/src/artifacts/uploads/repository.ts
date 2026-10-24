@@ -3,7 +3,7 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { artifacts } from '../../schema/transport.js';
 import { artifactStorageKey } from '../repository.js';
-import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority.js';
+import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority.queries.js';
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
 import { visibleArtifactIds } from '../references/access.queries.js';
 import type { Pool, PoolClient } from 'pg';

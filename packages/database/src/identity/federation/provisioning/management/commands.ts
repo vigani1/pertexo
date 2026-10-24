@@ -12,7 +12,7 @@ import {
 import {
   lockWorkspaceAuthority,
   readWorkspaceAuthority,
-} from '../../../../tenant-access/workspaces/authority.js';
+} from '../../../../tenant-access/workspaces/authority.queries.js';
 import {
   organizationForWorkspace,
   recordFederationAudit,

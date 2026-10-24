@@ -5,9 +5,9 @@ import type {
   WorkspaceInboxSummary,
 } from './contract.js';
 import type { PoolClient } from 'pg';
-import { readFolderScope } from '../../tenant-access/resources/facts.js';
+import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
 import { folderScope } from '../../tenant-access/resources/policy.js';
-import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority.js';
+import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority.queries.js';
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
 import { ROLES } from '@pertexo/workflow-model';
 

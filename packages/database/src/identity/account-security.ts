@@ -3,7 +3,7 @@ import {
   prepareSessionChange,
   applySessionChange,
   type AuthenticationReplacement,
-} from '../tenant-access/users/sessions.js';
+} from '../tenant-access/users/sessions.repository.js';
 import { isProtectedRecoveryOwner } from './federation/sessions/recovery.js';
 import { randomUUID } from 'node:crypto';
 

@@ -1,7 +1,7 @@
 import type { FolderScope } from '../../tenant-access/resources/contract.js';
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
-import { readFolderScope } from '../../tenant-access/resources/facts.js';
-import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority.js';
+import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
+import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority.queries.js';
 import { ROLES } from '@pertexo/workflow-model';
 import { createWorkflowCollaborationStore } from '../collaboration/store.js';
 import { createWorkflowPromotionStore } from '../promotion/store.js';

@@ -13,7 +13,7 @@ import {
 import {
   lockWorkspaceAuthority,
   readWorkspaceAuthority,
-} from '../tenant-access/workspaces/authority.js';
+} from '../tenant-access/workspaces/authority.queries.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
 import { readWorkspaceVariables } from './settings.queries.js';
 import { replaceWorkspaceVariables } from './sets.repository.js';

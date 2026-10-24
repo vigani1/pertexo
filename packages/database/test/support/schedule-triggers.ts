@@ -6,7 +6,7 @@ import { Pool, type QueryResultRow } from 'pg';
 import { parseDatabaseConfig } from '../../src/config.js';
 import { createWorkspaceDatabase } from '../../src/database.js';
 import { acceptWorkflowRun } from '../../src/runs/commands/acceptance.js';
-import { createIdentityWorkspaceDatabase } from '../../src/tenant-access/database.js';
+import { createIdentityWorkspaceDatabase } from '../../src/tenant-access/repository.js';
 import { migrateDatabase } from '../../src/migrations.js';
 import { createOperatorCommandDatabase } from '../../src/operator/repository.js';
 import { createOperatorRunReplayStore } from '../../src/operator/replay/repository.js';

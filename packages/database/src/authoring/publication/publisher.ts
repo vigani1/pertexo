@@ -1,4 +1,4 @@
-import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.js';
+import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.queries.js';
 import { recordPromotedPublication } from '../promotion/provenance.js';
 import { PublicationReviewError } from '../reviews/contract.js';
 import { dataTableReferenceIssues } from '../../data-tables/columns/references.queries.js';

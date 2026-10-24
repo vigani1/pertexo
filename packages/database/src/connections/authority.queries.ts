@@ -1,7 +1,7 @@
 import { rethrowQueryFailure } from '../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import { rolesForCapability, type Role } from '@pertexo/workflow-model';
-import { lockWorkspaceAuthority } from '../tenant-access/workspaces/authority.js';
+import { lockWorkspaceAuthority } from '../tenant-access/workspaces/authority.queries.js';
 import { WorkspaceAccessDeniedError } from '../tenant-access/errors.js';
 import {
   connectionScope,

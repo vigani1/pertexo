@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg';
 
-import { cancelOpenInvitationDeliveries } from './delivery-cancellation.js';
+import { cancelOpenInvitationDeliveries } from './delivery-cancellation.repository.js';
 
 type ExpirationScope = Readonly<
   | { workspaceId: string; invitationId: string; normalizedEmail?: never }

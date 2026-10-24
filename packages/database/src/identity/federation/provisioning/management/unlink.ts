@@ -1,4 +1,4 @@
-import { removeDirectoryFolderGrants } from '../../../../tenant-access/resources/revocation.js';
+import { removeDirectoryFolderGrants } from '../../../../tenant-access/resources/revocation.repository.js';
 import type { Pool } from 'pg';
 import {
   claimCommand,
@@ -9,7 +9,7 @@ import {
   withPlatformTransaction,
   withWorkspaceScope,
 } from '../../../../tenant-access/transactions.js';
-import { lockWorkspaceAuthority } from '../../../../tenant-access/workspaces/authority.js';
+import { lockWorkspaceAuthority } from '../../../../tenant-access/workspaces/authority.queries.js';
 import {
   organizationForWorkspace,
   recordFederationAudit,

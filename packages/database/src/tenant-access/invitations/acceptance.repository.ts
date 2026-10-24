@@ -3,17 +3,17 @@ import type { Pool } from 'pg';
 import type {
   CompleteInvitationAcceptanceInput,
   ResolveInvitationAcceptanceInput,
-} from '../contracts.js';
+} from '../contract.js';
 
 import type { AcceptanceStore } from './acceptance/contract.js';
 
-import { completeAcceptance } from './acceptance/complete.js';
-import { resolveInvitationAcceptance } from './acceptance/resolve.js';
+import { completeAcceptance } from './acceptance/complete.repository.js';
+import { resolveInvitationAcceptance } from './acceptance/resolve.repository.js';
 import {
   readInvitationAcceptance,
   recordInvitationAcceptanceProof,
   abandonInvitationAcceptance,
-} from './acceptance/proof.js';
+} from './acceptance/proof.repository.js';
 
 export function createIdentityWorkspaceInvitationAcceptanceStore(
   pool: Pool,

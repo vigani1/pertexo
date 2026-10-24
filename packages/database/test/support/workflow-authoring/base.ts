@@ -4,7 +4,7 @@ import { afterAll, beforeAll } from 'vitest';
 
 import { parseDatabaseConfig } from '../../../src/config.js';
 
-import { createIdentityWorkspaceDatabase } from '../../../src/tenant-access/database.js';
+import { createIdentityWorkspaceDatabase } from '../../../src/tenant-access/repository.js';
 import { migrateDatabase } from '../../../src/migrations.js';
 
 import type { WorkflowAuthoringDatabase } from '../../../src/authoring/workflows/database.js';

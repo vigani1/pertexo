@@ -1,4 +1,4 @@
-import { bindResourcePredicate } from '../../tenant-access/resources/query-scope.js';
+import { bindResourcePredicate } from '../../tenant-access/resources/scope.queries.js';
 import {
   retainedTestRunSql,
   runRetentionIntervalSql,

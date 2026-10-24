@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg';
 import type { WorkflowComment } from '@pertexo/contracts';
 import { WorkflowNotFoundError } from '../workflows/errors.js';
-import { readWorkspacePeople } from '../../tenant-access/members/discovery.js';
+import { readWorkspacePeople } from '../../tenant-access/members/discovery.queries.js';
 import { projectCommentThread, type StoredCommentThread } from './records.js';
 import { requireCollaborationAuthority } from './authority.js';
 import type {

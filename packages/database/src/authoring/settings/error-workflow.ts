@@ -1,10 +1,10 @@
 import { sql } from 'drizzle-orm';
-import { readFolderScope } from '../../tenant-access/resources/facts.js';
-import { workflowAccessible } from '../../tenant-access/resources/workflows.js';
+import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
+import { workflowAccessible } from '../../tenant-access/resources/workflows.queries.js';
 import {
   bindResourcePredicate,
   workflowScopeSql,
-} from '../../tenant-access/resources/query-scope.js';
+} from '../../tenant-access/resources/scope.queries.js';
 import type { FolderScope } from '../../tenant-access/resources/contract.js';
 import type { PoolClient } from 'pg';
 import { isWorkflowErrorTarget } from '@pertexo/workflow-model';

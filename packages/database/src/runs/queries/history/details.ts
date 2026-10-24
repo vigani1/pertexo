@@ -1,4 +1,4 @@
-import { withResourceRunRead } from '../../../tenant-access/resources/transactions.js';
+import { withResourceRunRead } from '../../../tenant-access/resources/transactions.repository.js';
 import {
   retainedTestRunSql,
   runRetentionIntervalSql,

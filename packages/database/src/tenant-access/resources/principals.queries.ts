@@ -3,7 +3,7 @@ import type {
   SharingPrincipalsQuery,
   SharingPrincipals,
 } from '@pertexo/contracts';
-import { lockWorkspaceAuthority } from '../workspaces/authority.js';
+import { lockWorkspaceAuthority } from '../workspaces/authority.queries.js';
 import { RESOURCE_ADMINISTRATORS } from './policy.js';
 import type { ResourceActor } from './contract.js';
 import type { Role } from '@pertexo/workflow-model';

@@ -1,4 +1,4 @@
-import { readFolderScope } from '../../../tenant-access/resources/facts.js';
+import { readFolderScope } from '../../../tenant-access/resources/facts.queries.js';
 import { FOLDER_LIMIT } from '../limits.js';
 
 import { z } from 'zod';

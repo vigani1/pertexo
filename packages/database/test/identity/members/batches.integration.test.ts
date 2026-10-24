@@ -5,8 +5,8 @@ import { withTenantScopedClient } from '../../../src/tenant-access/transactions.
 import {
   updateMemberships,
   type MembershipChange,
-} from '../../../src/tenant-access/members/storage.js';
-import { revokeSessionsForUsers } from '../../../src/tenant-access/users/sessions.js';
+} from '../../../src/tenant-access/members/records.repository.js';
+import { revokeSessionsForUsers } from '../../../src/tenant-access/users/sessions.repository.js';
 import {
   appendAuditFacts,
   type AuditFact,

@@ -7,7 +7,7 @@ import type {
 } from '@pertexo/contracts';
 import { generatePersistedId } from '../../../../platform/persisted-id.js';
 import { withPlatformTransaction } from '../../../../tenant-access/transactions.js';
-import { lockWorkspaceAuthority } from '../../../../tenant-access/workspaces/authority.js';
+import { lockWorkspaceAuthority } from '../../../../tenant-access/workspaces/authority.queries.js';
 import { withWorkspaceScope } from '../../../../tenant-access/transactions.js';
 import { organizationForWorkspace } from '../../management/authority.js';
 import { DirectoryError } from '../contract.js';

@@ -1,4 +1,4 @@
-import { withResourceWorkflowRead } from '../../../tenant-access/resources/transactions.js';
+import { withResourceWorkflowRead } from '../../../tenant-access/resources/transactions.repository.js';
 import { ordinaryRunSql } from '../../data-policy.js';
 import { sql, type SQL } from 'drizzle-orm';
 import type { Pool } from 'pg';

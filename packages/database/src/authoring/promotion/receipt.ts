@@ -2,11 +2,11 @@ import type { WorkflowPromotionResult } from '@pertexo/contracts';
 import { PROMOTION_LIMITS } from '@pertexo/workflow-model';
 import { sql } from 'drizzle-orm';
 import type { WorkspaceScopeRunner } from '../../tenant-access/transactions.js';
-import { readFolderScope } from '../../tenant-access/resources/facts.js';
+import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
 import {
   bindResourcePredicate,
   workflowScopeSql,
-} from '../../tenant-access/resources/query-scope.js';
+} from '../../tenant-access/resources/scope.queries.js';
 import type { PromotionScope } from './contract.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';

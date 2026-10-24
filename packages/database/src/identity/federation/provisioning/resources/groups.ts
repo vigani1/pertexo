@@ -1,4 +1,4 @@
-import { removeDirectoryFolderGrants } from '../../../../tenant-access/resources/revocation.js';
+import { removeDirectoryFolderGrants } from '../../../../tenant-access/resources/revocation.repository.js';
 import type { Pool, PoolClient } from 'pg';
 import { generatePersistedId } from '../../../../platform/persisted-id.js';
 import { withDirectoryTransaction } from '../authority.js';

@@ -9,14 +9,14 @@ import {
   withTenantScopedClient,
 } from '../transactions.js';
 import { parseIdentityUuid } from '../support.js';
-import { lockWorkspaceAuthority } from '../workspaces/authority.js';
+import { lockWorkspaceAuthority } from '../workspaces/authority.queries.js';
 import type {
   IdentityWorkspaceDatabase,
   AccessibleWorkspacesPage,
   WorkspaceAccessRecord,
   WorkspaceMembersPage,
   WorkspaceStatus,
-} from '../contracts.js';
+} from '../contract.js';
 
 type MemberStore = Pick<
   IdentityWorkspaceDatabase,

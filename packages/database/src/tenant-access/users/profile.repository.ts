@@ -14,7 +14,7 @@ import type {
   UpdateUserProfileInput,
   UserProfileUpdateResult,
   UserRecord,
-} from '../contracts.js';
+} from '../contract.js';
 import { UserProfileCommandConflictError } from '../errors.js';
 import { mapUser } from '../rows.js';
 import { parseIdentityUuid } from '../support.js';

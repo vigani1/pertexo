@@ -1,7 +1,7 @@
 import type { Role } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 import { withWorkspaceScope } from '../../../tenant-access/transactions.js';
-import { createMemberships } from '../../../tenant-access/members/storage.js';
+import { createMemberships } from '../../../tenant-access/members/records.repository.js';
 
 export type LinkedWorkspace = Readonly<{
   workspace_id: string;

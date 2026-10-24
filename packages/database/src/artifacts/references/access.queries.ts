@@ -3,8 +3,8 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, inArray, or, sql } from 'drizzle-orm';
 import { artifacts } from '../../schema/transport.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
-import { readTransactionFolderScope } from '../../tenant-access/resources/facts.js';
-import { workflowScopeSql } from '../../tenant-access/resources/query-scope.js';
+import { readTransactionFolderScope } from '../../tenant-access/resources/facts.queries.js';
+import { workflowScopeSql } from '../../tenant-access/resources/scope.queries.js';
 import type { ResourceActor } from '../../tenant-access/resources/contract.js';
 import { artifactReferenceOwnersSql } from './owners.queries.js';
 

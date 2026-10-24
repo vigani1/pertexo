@@ -12,7 +12,7 @@ export {
   WorkspaceMembershipCommandConflictError,
   WorkspaceRenameCommandConflictError,
   UserProfileCommandConflictError,
-} from './database.js';
+} from './repository.js';
 export type {
   CreateUserInput,
   IdentityWorkspaceDatabase,
@@ -30,7 +30,7 @@ export type {
   WorkspaceRecord,
   WorkspaceStatus,
   WorkspaceWithOwnerInput,
-} from './database.js';
+} from './repository.js';
 export {
   parseWorkspaceId,
   withActorScopedClient,

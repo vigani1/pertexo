@@ -8,8 +8,8 @@ import {
 import { workspaceMemberships } from '../../schema/foundation.js';
 import { workflows } from '../../schema/authoring/workflows.js';
 import { connections } from '../../schema/connections.js';
-import { readFolderScope } from '../../tenant-access/resources/facts.js';
-import { workflowScopeSql } from '../../tenant-access/resources/query-scope.js';
+import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
+import { workflowScopeSql } from '../../tenant-access/resources/scope.queries.js';
 import type { Pool, PoolClient } from 'pg';
 
 import type { DatabaseConfig } from '../../config.js';
@@ -24,7 +24,7 @@ import {
 import {
   lockWorkspaceAuthority,
   readWorkspaceAuthority,
-} from '../../tenant-access/workspaces/authority.js';
+} from '../../tenant-access/workspaces/authority.queries.js';
 import { hasCapability, rolesForCapability } from '@pertexo/workflow-model';
 import {
   NoticeUnavailableError,

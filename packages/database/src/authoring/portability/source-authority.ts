@@ -2,7 +2,7 @@ import {
   readConnectionScope,
   connectionScopeSql,
 } from '../../tenant-access/resources/connections/scope.js';
-import { bindResourcePredicate } from '../../tenant-access/resources/query-scope.js';
+import { bindResourcePredicate } from '../../tenant-access/resources/scope.queries.js';
 import { authorizeWorkflowResource } from '../../tenant-access/resources/authority.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';

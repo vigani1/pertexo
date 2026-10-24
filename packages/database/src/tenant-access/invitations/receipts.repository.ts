@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { completeCommand } from '../../platform/idempotency/repository.js';
 import type { CommandIdentity } from '../../platform/idempotency/contract.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
-import type { InvitationAcceptanceResult } from '../contracts.js';
+import type { InvitationAcceptanceResult } from '../contract.js';
 
 /** Durable acceptance receipt stored on the intent and as the command's result. */
 export const acceptanceReceiptSchema = z

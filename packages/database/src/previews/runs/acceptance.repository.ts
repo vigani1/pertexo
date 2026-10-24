@@ -1,4 +1,4 @@
-import { requireTransactionConnectionBindings } from '../../tenant-access/resources/connections/bindings.js';
+import { requireTransactionConnectionBindings } from '../../tenant-access/resources/connections/bindings.queries.js';
 import { connectionScope } from '../../tenant-access/resources/connections/scope.js';
 
 import { resolvePreviewSample } from './samples.repository.js';

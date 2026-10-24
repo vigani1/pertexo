@@ -1,4 +1,4 @@
-import { readFolderScope } from '../../../src/tenant-access/resources/facts.js';
+import { readFolderScope } from '../../../src/tenant-access/resources/facts.queries.js';
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
 import { Pool } from 'pg';

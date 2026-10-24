@@ -1,10 +1,10 @@
 import { connectionScope } from '../../../../src/tenant-access/resources/connections/scope.js';
 import { inspectPromotionCallDependencies } from '../../../../src/authoring/promotion/preparation/calls.js';
 import { PromotionGraphBudget } from '../../../../src/authoring/promotion/preparation/graph.js';
-import { readFolderScope } from '../../../../src/tenant-access/resources/facts.js';
+import { readFolderScope } from '../../../../src/tenant-access/resources/facts.queries.js';
 import type { WorkflowPromotionRequirement } from '@pertexo/contracts';
 import { InvalidWorkflowGraphError } from '@pertexo/workflow-model';
-import { requireWorkflowCallTargets } from '../../../../src/tenant-access/resources/bindings.js';
+import { requireWorkflowCallTargets } from '../../../../src/tenant-access/resources/bindings.queries.js';
 import { createWorkspaceVariablesStore } from '../../../../src/variables/settings.repository.js';
 import { createConnectionDatabase } from '../../../../src/connections/repository.js';
 import { CONNECTION_AUTH_TYPE } from '../../../../src/connections/contract.js';

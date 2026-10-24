@@ -15,7 +15,7 @@ import {
   WORKSPACE_STATUS,
   type WorkspaceCreationResult as PublicWorkspaceCreationResult,
   type WorkspaceRecord,
-} from '../contracts.js';
+} from '../contract.js';
 
 const idempotencyKeySchema = z
   .string()

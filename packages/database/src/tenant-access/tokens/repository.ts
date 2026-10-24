@@ -21,13 +21,16 @@ import { withTenantScopedClient } from '../transactions.js';
 import { hasCapability } from '@pertexo/workflow-model';
 import { issueApiTokenCredential } from './credential.js';
 import { apiTokenMetadata, type ApiTokenRow } from './metadata.js';
-import { availableApiTokenScopes, tokenOwnerAuthority } from './authority.js';
-import { authenticateApiToken } from './authenticate.js';
+import {
+  availableApiTokenScopes,
+  tokenOwnerAuthority,
+} from './authority.queries.js';
+import { authenticateApiToken } from './authenticate.repository.js';
 import {
   ApiTokenPolicyError,
   type ApiTokenCommand,
   type ApiTokenDatabase,
-} from './types.js';
+} from './contract.js';
 
 const receipt = z.object({ tokenId: z.uuid() }).strict();
 const commandIdentity = (

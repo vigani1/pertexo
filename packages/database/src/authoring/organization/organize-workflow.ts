@@ -1,8 +1,8 @@
 import { isAdministrativeRole } from '@pertexo/workflow-model';
 import type { AudienceReview } from '@pertexo/contracts';
 import { requireMoveAudienceReview } from './sharing/audience.js';
-import { readFolderScope } from '../../tenant-access/resources/facts.js';
-import { workflowAccessible } from '../../tenant-access/resources/workflows.js';
+import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
+import { workflowAccessible } from '../../tenant-access/resources/workflows.queries.js';
 import type { PoolClient } from 'pg';
 import type { Role } from '@pertexo/workflow-model';
 

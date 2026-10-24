@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm';
 import type { PoolClient } from 'pg';
 import type { FolderScope, WorkflowResourceCapability } from './contract.js';
-import { bindResourcePredicate, workflowScopeSql } from './query-scope.js';
+import { bindResourcePredicate, workflowScopeSql } from './scope.queries.js';
 
 /** Reuse the caller's scope for a direct read or command, including idempotent replay. */
 export async function workflowAccessible(

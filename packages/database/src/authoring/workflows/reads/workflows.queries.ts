@@ -3,11 +3,11 @@ import { sql } from 'drizzle-orm';
 import {
   workflowActions,
   workflowAccessible,
-} from '../../../tenant-access/resources/workflows.js';
+} from '../../../tenant-access/resources/workflows.queries.js';
 import {
   bindResourcePredicate,
   workflowScopeSql,
-} from '../../../tenant-access/resources/query-scope.js';
+} from '../../../tenant-access/resources/scope.queries.js';
 
 import { z } from 'zod';
 

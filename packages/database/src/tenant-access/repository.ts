@@ -7,7 +7,7 @@ import type { DatabaseConfig } from '../config.js';
 
 import { changeWorkspaceLifecycle } from '../lifecycle/deletion/repository.js';
 import { mapWorkspace } from './rows.js';
-import { createUserStore } from './users/store.js';
+import { createUserStore } from './users/repository.js';
 import {
   parseIdentityMetadata,
   parseIdentityUuid,
@@ -15,28 +15,28 @@ import {
   throwWorkspaceLifecycleError,
 } from './support.js';
 import { withTenantScopedClient } from './transactions.js';
-import { createIdentityWorkspaceMemberStore } from './members/store.js';
-import { createMemberships } from './members/storage.js';
-import { createIdentityWorkspaceRoleCommandStore } from './members/roles.js';
-import { createIdentityWorkspaceMemberRemovalStore } from './members/removal.js';
-import { createIdentityWorkspaceMembershipLifecycleStore } from './members/lifecycle.js';
-import { createIdentityWorkspaceProfileStore } from './users/profile.js';
-import { createIdentityWorkspaceRenameStore } from './workspaces/rename.js';
-import { createIdentityWorkspaceInvitationStore } from './invitations/store.js';
-import { createIdentityWorkspaceInvitationAcceptanceStore } from './invitations/acceptance.js';
+import { createIdentityWorkspaceMemberStore } from './members/repository.js';
+import { createMemberships } from './members/records.repository.js';
+import { createIdentityWorkspaceRoleCommandStore } from './members/roles.repository.js';
+import { createIdentityWorkspaceMemberRemovalStore } from './members/removal.repository.js';
+import { createIdentityWorkspaceMembershipLifecycleStore } from './members/lifecycle.repository.js';
+import { createIdentityWorkspaceProfileStore } from './users/profile.repository.js';
+import { createIdentityWorkspaceRenameStore } from './workspaces/rename.repository.js';
+import { createIdentityWorkspaceInvitationStore } from './invitations/repository.js';
+import { createIdentityWorkspaceInvitationAcceptanceStore } from './invitations/acceptance.repository.js';
 import type {
   IdentityWorkspaceDatabase,
   RequestWorkspaceLifecycleOperationInput,
   WorkspaceLifecycleOperation,
   WorkspaceRecord,
   WorkspaceWithOwnerInput,
-} from './contracts.js';
+} from './contract.js';
 import {
   commandRequestHash,
   commandKeyHash,
   claimWorkspaceCreationCommand,
   completeWorkspaceCreationCommand,
-} from './workspaces/creation-receipt.js';
+} from './workspaces/creation-receipt.repository.js';
 export type { Role, DelegatedRole } from '@pertexo/workflow-model';
 export {
   IdentityConflictError,
@@ -97,7 +97,7 @@ export {
   type WorkspaceWithOwnerInput,
   type RenameWorkspaceInput,
   type WorkspaceRenameResult,
-} from './contracts.js';
+} from './contract.js';
 
 export function createIdentityWorkspaceDatabase(
   config: DatabaseConfig,

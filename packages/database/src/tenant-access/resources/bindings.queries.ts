@@ -7,8 +7,8 @@ import {
   workflowCallConfigSchema,
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
-import { readFolderScope } from './facts.js';
-import { bindResourcePredicate, workflowScopeSql } from './query-scope.js';
+import { readFolderScope } from './facts.queries.js';
+import { bindResourcePredicate, workflowScopeSql } from './scope.queries.js';
 import type { ResourceActor } from './contract.js';
 
 function callTargets(graph: WorkflowGraph): Map<string, string> {

@@ -6,10 +6,10 @@ import type {
   ChangeWorkspaceInvitationInput,
   CreateWorkspaceInvitationInput,
   WorkspaceInvitationCommandResult,
-} from '../contracts.js';
+} from '../contract.js';
 import { WorkspaceInvitationCommandConflictError } from '../errors.js';
-import { cancelOpenInvitationDeliveries } from './delivery-cancellation.js';
-import { expireWorkspaceInvitations } from './expiration.js';
+import { cancelOpenInvitationDeliveries } from './delivery-cancellation.repository.js';
+import { expireWorkspaceInvitations } from './expiration.repository.js';
 import {
   parseIdentityUuid,
   readIdentityDatabaseErrorCode,
@@ -36,7 +36,7 @@ import {
   completeInvitationCommand,
   insertDelivery,
   recordAudit,
-} from './management/receipts.js';
+} from './management/receipts.repository.js';
 
 export function createIdentityWorkspaceInvitationStore(
   pool: Pool,

@@ -1,4 +1,4 @@
-import { bindResourcePredicate } from '../../../tenant-access/resources/query-scope.js';
+import { bindResourcePredicate } from '../../../tenant-access/resources/scope.queries.js';
 import { RUN_DETAILS_RETENTION_SQL } from '../../../runs/data-policy.js';
 import type { Pool } from 'pg';
 import type { NodeWebhookResponse } from '@pertexo/node-sdk';

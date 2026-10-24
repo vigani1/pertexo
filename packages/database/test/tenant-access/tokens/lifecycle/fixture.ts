@@ -6,7 +6,7 @@ import {
   createApiTokenDatabase,
   parseApiTokenCredential,
 } from '../../../../src/tenant-access/index.js';
-import { createIdentityWorkspaceDatabase } from '../../../../src/tenant-access/database.js';
+import { createIdentityWorkspaceDatabase } from '../../../../src/tenant-access/repository.js';
 import { parseDatabaseConfig } from '../../../../src/config.js';
 import { migrateDatabase } from '../../../../src/migrations.js';
 import { createDisposableDatabaseFixture } from '../../../support/postgres/disposable-database.js';

@@ -1,7 +1,7 @@
 import {
   workflowActions,
   workflowAccessible,
-} from '../../tenant-access/resources/workflows.js';
+} from '../../tenant-access/resources/workflows.queries.js';
 import type { WorkflowAuthoringDatabase } from '../workflows/contracts.js';
 import type { WorkflowAuthoringReadContext } from '../workflows/reads.js';
 import { WorkflowTemplateOriginUnavailableError } from '../workflows/errors.js';

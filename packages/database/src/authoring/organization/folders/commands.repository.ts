@@ -1,4 +1,4 @@
-import { readSharingPrincipals } from '../../../tenant-access/resources/principals.js';
+import { readSharingPrincipals } from '../../../tenant-access/resources/principals.queries.js';
 import { readFolderSharing, replaceFolderSharing } from '../sharing/grants.js';
 
 import type { DatabaseConfig } from '../../../config.js';

@@ -6,7 +6,7 @@ import {
   type Role,
 } from '@pertexo/workflow-model';
 import { WorkspaceAccessDeniedError } from '../../errors.js';
-import { readWorkspaceAuthority } from '../../workspaces/authority.js';
+import { readWorkspaceAuthority } from '../../workspaces/authority.queries.js';
 import type { ResourceActor } from '../contract.js';
 import { RESOURCE_ADMINISTRATORS } from '../policy.js';
 

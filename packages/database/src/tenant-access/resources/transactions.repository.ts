@@ -1,6 +1,6 @@
 import { RETAINED_RESOURCE_WORKSPACE_STATUSES } from './policy.js';
 import { sql } from 'drizzle-orm';
-import { workflowScopeSql } from './query-scope.js';
+import { workflowScopeSql } from './scope.queries.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
 import { databaseSchema } from '../../schema.js';
@@ -10,14 +10,14 @@ import {
   withTenantScopedClient,
   type WorkspaceTransaction,
 } from '../transactions.js';
-import { lockWorkspaceAuthority } from '../workspaces/authority.js';
+import { lockWorkspaceAuthority } from '../workspaces/authority.queries.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
 import type {
   FolderScope,
   ResourceActor,
   WorkflowResourceCapability,
 } from './contract.js';
-import { readFolderScope } from './facts.js';
+import { readFolderScope } from './facts.queries.js';
 
 export type ResourceTransaction = WorkspaceTransaction &
   Readonly<{ resources: FolderScope }>;

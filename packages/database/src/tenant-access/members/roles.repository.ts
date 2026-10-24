@@ -1,5 +1,5 @@
 import { DELEGATED_ROLES } from '@pertexo/workflow-model';
-import { updateMembership } from './storage.js';
+import { updateMembership } from './records.repository.js';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
@@ -7,15 +7,15 @@ import type {
   ChangeWorkspaceMemberRoleInput,
   IdentityWorkspaceDatabase,
   WorkspaceMemberRoleChangeResult,
-} from '../contracts.js';
+} from '../contract.js';
 import { WorkspaceMemberRoleCommandConflictError } from '../errors.js';
 import { commandRevisionSchema } from '../command-keys.js';
 import {
   executeMemberCommand,
   isActiveMemberManager,
   recordMemberCommandAudit,
-} from './command.js';
-import { revokeUserSessions } from '../users/sessions.js';
+} from './commands.repository.js';
+import { revokeUserSessions } from '../users/sessions.repository.js';
 import { canChangeWorkspaceMemberRole } from '@pertexo/workflow-model';
 
 type RoleCommandStore = Pick<

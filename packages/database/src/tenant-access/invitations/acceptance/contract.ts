@@ -2,7 +2,7 @@ import { DELEGATED_ROLES } from '@pertexo/workflow-model';
 
 import { z } from 'zod';
 
-import type { IdentityWorkspaceDatabase } from '../../contracts.js';
+import type { IdentityWorkspaceDatabase } from '../../contract.js';
 
 export type AcceptanceStore = Pick<
   IdentityWorkspaceDatabase,
