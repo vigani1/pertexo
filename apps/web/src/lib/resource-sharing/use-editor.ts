@@ -64,6 +64,7 @@ export function useSharingEditor<
     snapshot.revision !== reader.data.revision;
   const canChangeSharing =
     snapshot !== undefined && !locked && !stale && reader.isSuccess;
+  // Reading the current grants does not create an edit to save.
   const canSaveChanges = canChangeSharing && snapshot !== reader.data;
   return {
     reader,

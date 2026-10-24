@@ -178,14 +178,12 @@ async function reconcileRemoteSave(
         );
       return;
     }
-    store
-      .getState()
-      .reportConflict({
-        local: store.getState().graph,
-        remote: remote.draft.graph,
-        remoteEtag: remote.etag,
-        remoteRevision: remote.draft.revision,
-      });
+    store.getState().reportConflict({
+      local: store.getState().graph,
+      remote: remote.draft.graph,
+      remoteEtag: remote.etag,
+      remoteRevision: remote.draft.revision,
+    });
   } catch (error) {
     if (isDestroyed()) return;
     store.getState().reportFailure(failureMessage(error), true);
