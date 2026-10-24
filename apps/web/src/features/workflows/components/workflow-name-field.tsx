@@ -1,7 +1,7 @@
 import { PencilIcon } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
-import { InlineRename } from '@/components/patterns/actions/inline-rename';
+import { InlineRename } from '@/components/patterns/actions/rename/inline';
 import { Button } from '@/components/ui/button';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';

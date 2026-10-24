@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type {
   InlineRenameCommand,
   InlineRenameError,
-} from '@/components/patterns/actions/inline-rename';
+} from '@/components/patterns/actions/rename/inline';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError } from '@/lib/api/error-copy';
