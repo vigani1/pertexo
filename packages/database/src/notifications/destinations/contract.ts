@@ -1,7 +1,10 @@
 import type { FailureNotificationDestinationConfig } from '@pertexo/workflow-model';
 
-import type { CommandMetadata, IdempotentCommandMetadata } from './commands.js';
-import type { FailureNotificationDestinationRecord } from './records.js';
+import type {
+  CommandMetadata,
+  IdempotentCommandMetadata,
+} from './commands.repository.js';
+import type { FailureNotificationDestinationRecord } from './records.queries.js';
 
 export type DestinationConfig = FailureNotificationDestinationConfig;
 

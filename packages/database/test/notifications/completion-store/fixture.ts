@@ -1,7 +1,7 @@
 import type { Pool } from 'pg';
 import { vi } from 'vitest';
-import type * as FailureNotificationStoreSupport from '../../../src/notifications/store-support.js';
-import { createFailureNotificationCompletionStore } from '../../../src/notifications/completion-store.js';
+import type * as FailureNotificationStoreSupport from '../../../src/notifications/delivery/evidence.repository.js';
+import { createFailureNotificationCompletionStore } from '../../../src/notifications/delivery/completion.repository.js';
 
 const tenantState = vi.hoisted<{ client: unknown }>(() => ({
   client: undefined,
@@ -18,7 +18,7 @@ vi.mock('../../../src/tenant-access/transactions.js', () => ({
 }));
 
 vi.mock(
-  '../../../src/notifications/store-support.js',
+  '../../../src/notifications/delivery/evidence.repository.js',
   async (importOriginal) => ({
     ...(await importOriginal<typeof FailureNotificationStoreSupport>()),
     auditFailureNotification,

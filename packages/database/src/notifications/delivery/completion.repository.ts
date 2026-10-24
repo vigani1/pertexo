@@ -1,14 +1,14 @@
 import type { Pool } from 'pg';
 import { FailureNotificationDeliveryResultSchema } from '@pertexo/workflow-model';
 
-import { FailureNotificationStateError } from './errors.js';
+import { FailureNotificationStateError } from '../errors.js';
 import {
   auditFailureNotification,
   failureNotificationIdentitySchema,
   insertFailureNotificationDeliveryOutbox,
-} from './store-support.js';
-import type { FailureNotificationStore } from './contracts.js';
-import { withTenantScopedClient } from '../tenant-access/transactions.js';
+} from './evidence.repository.js';
+import type { FailureNotificationStore } from '../contract.js';
+import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import {
   parseFailureNotificationAttemptNumber,
   parseFailureNotificationMaximumAttempts,

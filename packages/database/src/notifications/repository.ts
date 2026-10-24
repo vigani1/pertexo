@@ -14,21 +14,21 @@ import {
   withTenantScopedClient,
 } from '../tenant-access/transactions.js';
 import { FailureNotificationStateError } from './errors.js';
-import { createFailureNotificationDestinationStore } from './destinations/store.js';
-import { createFailureNotificationCompletionStore } from './completion-store.js';
-import { parseFailureNotificationMaximumAttempts } from './input-validation.js';
-import type { FailureNotificationStore } from './contracts.js';
+import { createFailureNotificationDestinationStore } from './destinations/dispatch.repository.js';
+import { createFailureNotificationCompletionStore } from './delivery/completion.repository.js';
+import { parseFailureNotificationMaximumAttempts } from './delivery/input-validation.js';
+import type { FailureNotificationStore } from './contract.js';
 export type {
   FailureNotificationClaimResult,
   FailureNotificationDelivery,
   FailureNotificationResolvedDestination,
   FailureNotificationStore,
-} from './contracts.js';
+} from './contract.js';
 import {
   auditFailureNotification as audit,
   failureNotificationChecksumSchema as checksumSchema,
   failureNotificationIdentitySchema as identitySchema,
-} from './store-support.js';
+} from './delivery/evidence.repository.js';
 
 export { FailureNotificationStateError } from './errors.js';
 

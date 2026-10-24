@@ -15,26 +15,26 @@ import {
   destinationError,
   type CommandMetadata,
   type DestinationTransaction,
-} from './commands.js';
+} from './commands.repository.js';
 import {
   decodeFailureNotificationDestinationReplay,
   mapFailureNotificationDestinationRecord,
   readFailureNotificationDestination,
   serializeFailureNotificationDestinationRecord,
   type FailureNotificationDestinationRecord,
-} from './records.js';
+} from './records.queries.js';
 import {
   clearWorkflowFailureNotificationPolicy,
   readWorkflowFailureNotificationPolicy,
   setWorkflowFailureNotificationPolicy,
-} from '../workflow-policies.js';
+} from '../policies/settings.repository.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import type {
   DestinationConfig,
   FailureNotificationDestinationDatabase,
 } from './contract.js';
 export { FailureNotificationDestinationError } from './errors.js';
-export type { FailureNotificationDestinationRecord } from './records.js';
+export type { FailureNotificationDestinationRecord } from './records.queries.js';
 
 async function assertConnection(
   client: PoolClient,

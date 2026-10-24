@@ -1,5 +1,5 @@
-import { isIntegerInRange } from '../platform/persisted-primitives.js';
-import { FailureNotificationStateError } from './errors.js';
+import { isIntegerInRange } from '../../platform/persisted-primitives.js';
+import { FailureNotificationStateError } from '../errors.js';
 
 const MAX_DELIVERY_ATTEMPTS = 10;
 const MAX_RETRY_DELAY_SECONDS = 3_600;

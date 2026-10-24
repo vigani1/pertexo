@@ -1,4 +1,4 @@
-import { authorizeWorkflowResource } from '../tenant-access/resources/authority.js';
+import { authorizeWorkflowResource } from '../../tenant-access/resources/authority.js';
 import { z } from 'zod';
 
 import {
@@ -10,11 +10,11 @@ import {
   type CommandMetadata,
   type DestinationTransaction,
   type IdempotentCommandMetadata,
-} from './destinations/commands.js';
+} from '../destinations/commands.repository.js';
 import {
   readFailureNotificationDestination,
   type FailureNotificationDestinationRecord,
-} from './destinations/records.js';
+} from '../destinations/records.queries.js';
 
 type WorkflowPolicyScope = Readonly<{ workflowId: string }>;
 

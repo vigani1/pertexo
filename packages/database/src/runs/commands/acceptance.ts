@@ -20,7 +20,7 @@ import {
 } from '../../schema.js';
 import { prepareStoredExecutionValue } from '../../platform/stored-execution-value.js';
 
-import { resolveWorkflowFailureNotificationPolicy } from '../../notifications/policy.js';
+import { resolveWorkflowFailureNotificationPolicy } from '../../notifications/policies/admission.queries.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 
 import { prepareWorkflowRunAcceptanceInput } from './acceptance-input.js';

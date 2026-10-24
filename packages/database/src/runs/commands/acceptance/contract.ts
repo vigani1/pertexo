@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import type { RunInputValidator } from '../initial-checkpoint.js';
-import type { resolveWorkflowFailureNotificationPolicy } from '../../../notifications/policy.js';
+import type { resolveWorkflowFailureNotificationPolicy } from '../../../notifications/policies/admission.queries.js';
 
 import { sha256HexSchema as sha256Schema } from '../../../platform/persisted-primitives.js';
 

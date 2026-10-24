@@ -6,11 +6,11 @@ export type { FailureNotificationDestinationDatabase } from './destinations/cont
 export {
   createFailureNotificationStore,
   FailureNotificationStateError,
-} from './store.js';
+} from './repository.js';
 export type {
   FailureNotificationResolvedDestination,
   FailureNotificationStore,
-} from './store.js';
+} from './repository.js';
 
 export { createWorkspaceInboxDatabase } from '../inbox/threads/reader.repository.js';
 export type {
