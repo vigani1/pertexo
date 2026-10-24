@@ -1,3 +1,4 @@
+import { waitForBlockedBy } from '../../../../support/postgres/lock-coordination.js';
 import { createHash, randomUUID } from 'node:crypto';
 
 import { Pool } from 'pg';
@@ -9,7 +10,6 @@ import {
   adminUrl,
   fixture,
   migrationUrl,
-  apiUrl,
   identityDatabase,
   tenantDatabase,
   ownerUserId,
@@ -73,6 +73,12 @@ export function registerRechecksActiveUserStatusUnder(): void {
     let completion: Promise<unknown> | undefined;
     try {
       await owner.query('begin');
+      const blocker = await owner.query<{ pid: number }>(
+        'select pg_backend_pid() as pid',
+      );
+      const blockerPid = blocker.rows[0]?.pid;
+      if (blockerPid === undefined)
+        throw new Error('Blocker PID is unavailable');
       await owner.query('set local role pertexo_owner');
       await owner.query(`update app.users set status='suspended' where id=$1`, [
         recipient.id,
@@ -90,23 +96,7 @@ export function registerRechecksActiveUserStatusUnder(): void {
         },
       });
       void completion.catch(() => undefined);
-      await expect
-        .poll(
-          async () => {
-            const blocked = await observer.query<{ blocked: boolean }>(
-              `select exists(
-                 select 1 from pg_stat_activity
-                  where datname=current_database()
-                    and usename=$1 and wait_event_type='Lock'
-                    and query like '%select status from app.users%'
-               ) blocked`,
-              [new URL(apiUrl).username],
-            );
-            return blocked.rows[0]?.blocked;
-          },
-          { timeout: 5_000 },
-        )
-        .toBe(true);
+      await waitForBlockedBy(observer, blockerPid);
       await owner.query('commit');
     } finally {
       await owner.query('rollback').catch(() => undefined);

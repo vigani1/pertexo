@@ -1,3 +1,11 @@
+import { alias } from 'drizzle-orm/pg-core';
+import { and, eq, getTableName, inArray, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  workspaceInvitationAcceptanceIntents as intents,
+  workspaceInvitations as invitations,
+} from '../../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { readEligibleAuthenticationSession } from '../../../identity/federation/sessions/authority.js';
 import type { Pool } from 'pg';
 import { z } from 'zod';
@@ -24,8 +32,7 @@ export async function readInvitationAcceptance(
     const intent = await withWorkspaceScope(client, { workspaceId }, (scoped) =>
       selectIntent(
         scoped,
-        'intent.workspace_id=$1 and intent.binding_digest=$2',
-        [workspaceId, bindingDigest],
+        sql`${and(eq(intents.workspaceId, workspaceId), eq(intents.bindingDigest, bindingDigest))}`,
       ),
     );
     if (intent?.status !== 'verified') return intent;
@@ -64,21 +71,26 @@ export async function recordInvitationAcceptanceProof(
     );
     if (source?.userId !== userId) return null;
     return withWorkspaceScope(client, { workspaceId }, async (client) => {
-      const locked = await client.query<{
-        accepted_user_id: string | null;
-        recipient_email: string;
-        expires_at: Date;
-        status: string;
-      }>(
-        `select invitation.recipient_email,intent.expires_at,intent.status,
-                  intent.accepted_user_id
-             from app.workspace_invitation_acceptance_intents intent
-             join app.workspace_invitations invitation on invitation.id=intent.invitation_id
-            where intent.workspace_id=$1 and intent.id=$2 and intent.binding_digest=$3
-            for update of intent`,
-        [workspaceId, intentId, bindingDigest],
-      );
-      const current = locked.rows[0];
+      const db = drizzle(client);
+      const locked = await db
+        .select({
+          accepted_user_id: intents.acceptedUserId,
+          recipient_email: invitations.recipientEmail,
+          expires_at: intents.expiresAt,
+          status: intents.status,
+        })
+        .from(intents)
+        .innerJoin(invitations, eq(invitations.id, intents.invitationId))
+        .where(
+          and(
+            eq(intents.workspaceId, workspaceId),
+            eq(intents.id, intentId),
+            eq(intents.bindingDigest, bindingDigest),
+          ),
+        )
+        .for('update', { of: alias(intents, getTableName(intents)) })
+        .catch(rethrowQueryFailure);
+      const current = locked[0];
       if (
         current === undefined ||
         current.expires_at.getTime() <= raw.verifiedAt.getTime()
@@ -86,30 +98,32 @@ export async function recordInvitationAcceptanceProof(
         return null;
       if (current.status === 'completed')
         return current.accepted_user_id === userId
-          ? selectIntent(client, 'intent.id=$1', [intentId])
+          ? selectIntent(client, eq(intents.id, intentId))
           : null;
       if (!['pending', 'verified', 'wrong_account'].includes(current.status))
         return null;
       const matches =
         current.recipient_email.normalize('NFKC').toLowerCase() ===
         normalizedEmail;
-      await client.query(
-        `update app.workspace_invitation_acceptance_intents
-              set status=$4,verified_user_id=$5,verified_email=$6,verified_at=$7,verified_session_id=$8,
-                  updated_at=clock_timestamp()
-            where workspace_id=$1 and id=$2 and binding_digest=$3`,
-        [
-          workspaceId,
-          intentId,
-          bindingDigest,
-          matches ? 'verified' : 'wrong_account',
-          userId,
-          normalizedEmail,
-          raw.verifiedAt,
-          raw.sessionId,
-        ],
-      );
-      return selectIntent(client, 'intent.id=$1', [intentId]);
+      await db
+        .update(intents)
+        .set({
+          status: matches ? 'verified' : 'wrong_account',
+          verifiedUserId: userId,
+          verifiedEmail: normalizedEmail,
+          verifiedAt: raw.verifiedAt,
+          verifiedSessionId: raw.sessionId,
+          updatedAt: sql`clock_timestamp()`,
+        })
+        .where(
+          and(
+            eq(intents.workspaceId, workspaceId),
+            eq(intents.id, intentId),
+            eq(intents.bindingDigest, bindingDigest),
+          ),
+        )
+        .catch(rethrowQueryFailure);
+      return selectIntent(client, eq(intents.id, intentId));
     });
   });
 }
@@ -128,13 +142,23 @@ export async function abandonInvitationAcceptance(
   const intentId = parseIdentityUuid(intentIdInput);
   const bindingDigest = digest.parse(bindingDigestInput);
   return withTenantScopedClient(pool, { workspaceId }, async (client) => {
-    const updated = await client.query(
-      `update app.workspace_invitation_acceptance_intents
-              set status='abandoned',abandoned_at=clock_timestamp(),updated_at=clock_timestamp()
-            where workspace_id=$1 and id=$2 and binding_digest=$3
-              and status in ('pending','verified','wrong_account')`,
-      [workspaceId, intentId, bindingDigest],
-    );
-    return updated.rowCount === 1;
+    const updated = await drizzle(client)
+      .update(intents)
+      .set({
+        status: 'abandoned',
+        abandonedAt: sql`clock_timestamp()`,
+        updatedAt: sql`clock_timestamp()`,
+      })
+      .where(
+        and(
+          eq(intents.workspaceId, workspaceId),
+          eq(intents.id, intentId),
+          eq(intents.bindingDigest, bindingDigest),
+          inArray(intents.status, ['pending', 'verified', 'wrong_account']),
+        ),
+      )
+      .returning({ id: intents.id })
+      .catch(rethrowQueryFailure);
+    return updated.length === 1;
   });
 }

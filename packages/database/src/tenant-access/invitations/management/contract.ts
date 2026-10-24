@@ -52,17 +52,3 @@ export const durableInvitation = z
 export const durableResult = z
   .object({ invitation: durableInvitation })
   .strict();
-
-export type InvitationRow = Readonly<{
-  id: string;
-  workspace_id: string;
-  recipient_email: string;
-  role: string;
-  status: string;
-  revision: number;
-  delivery_status: string;
-  expires_at: Date;
-  created_at: Date;
-  updated_at: Date;
-  created_at_cursor?: string;
-}>;

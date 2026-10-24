@@ -1,3 +1,13 @@
+import { and, eq } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  users,
+  workspaces,
+  workspaceMemberships,
+  workspaceInvitations,
+} from '../../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { Role } from '@pertexo/workflow-model';
 
 import type { PoolClient } from 'pg';
@@ -6,34 +16,10 @@ import { z } from 'zod';
 import type { WorkspaceInvitationRecord } from '../../contract.js';
 import { WorkspaceInvitationCommandConflictError } from '../../errors.js';
 
-import {
-  delegatedRole,
-  revision,
-  durableInvitation,
-  type InvitationRow,
-} from './contract.js';
+import { durableInvitation } from './contract.js';
 
 export function normalizeEmail(value: string): string {
   return z.email().max(320).parse(value.trim()).normalize('NFKC').toLowerCase();
-}
-
-export function mapInvitation(row: InvitationRow): WorkspaceInvitationRecord {
-  return Object.freeze({
-    id: z.uuid().parse(row.id),
-    workspaceId: z.uuid().parse(row.workspace_id),
-    email: z.email().parse(row.recipient_email),
-    role: delegatedRole.parse(row.role),
-    status: z
-      .enum(['pending', 'accepted', 'revoked', 'expired'])
-      .parse(row.status),
-    revision: revision.parse(row.revision),
-    deliveryStatus: z
-      .enum(['queued', 'submitted', 'failed', 'canceled'])
-      .parse(row.delivery_status),
-    expiresAt: z.coerce.date().parse(row.expires_at),
-    createdAt: z.coerce.date().parse(row.created_at),
-    updatedAt: z.coerce.date().parse(row.updated_at),
-  });
 }
 
 export function serializeInvitation(invitation: WorkspaceInvitationRecord) {
@@ -55,28 +41,34 @@ async function lockAuthorizedActor(
   actorUserId: string,
   strength: 'update' | 'share' = 'update',
 ): Promise<Role> {
-  const workspace = await client.query<{ status: string }>(
-    `select status from app.workspaces where id=$1 for ${strength}`,
-    [workspaceId],
-  );
-  if (workspace.rows[0]?.status !== 'active')
+  const db = drizzle(client);
+  const workspace = await db
+    .select({ status: workspaces.status })
+    .from(workspaces)
+    .where(eq(workspaces.id, workspaceId))
+    .for(strength)
+    .catch(rethrowQueryFailure);
+  if (workspace[0]?.status !== 'active')
     throw new WorkspaceInvitationCommandConflictError(
       'actor_inactive',
       'The workspace is not active',
     );
-  const actor = await client.query<{
-    role: Role;
-    membership_status: string;
-    user_status: string;
-  }>(
-    `select membership.role,membership.status membership_status,users.status user_status
-       from app.users users
-       join app.workspace_memberships membership on membership.user_id=users.id
-      where users.id=$1 and membership.workspace_id=$2
-      for ${strength} of users,membership`,
-    [actorUserId, workspaceId],
-  );
-  const row = actor.rows[0];
+  const person = alias(users, 'users');
+  const membership = alias(workspaceMemberships, 'membership');
+  const actor = await db
+    .select({
+      role: membership.role,
+      membership_status: membership.status,
+      user_status: person.status,
+    })
+    .from(person)
+    .innerJoin(membership, eq(membership.userId, person.id))
+    .where(
+      and(eq(person.id, actorUserId), eq(membership.workspaceId, workspaceId)),
+    )
+    .for(strength, { of: [person, membership] })
+    .catch(rethrowQueryFailure);
+  const row = actor[0];
   const managerUnavailable =
     row?.user_status !== 'active' ||
     row.membership_status !== 'active' ||
@@ -100,5 +92,15 @@ export function mapDurableInvitation(
   });
 }
 
-export const invitationSelection = `id,workspace_id,recipient_email,role,status,revision,
-  delivery_status,expires_at,created_at,updated_at`;
+export const invitationSelection = {
+  id: workspaceInvitations.id,
+  workspaceId: workspaceInvitations.workspaceId,
+  email: workspaceInvitations.recipientEmail,
+  role: workspaceInvitations.role,
+  status: workspaceInvitations.status,
+  revision: workspaceInvitations.revision,
+  deliveryStatus: workspaceInvitations.deliveryStatus,
+  expiresAt: workspaceInvitations.expiresAt,
+  createdAt: workspaceInvitations.createdAt,
+  updatedAt: workspaceInvitations.updatedAt,
+};

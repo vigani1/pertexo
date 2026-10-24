@@ -80,42 +80,56 @@ describe('snapshot validation and publication ordering', () => {
       rollbackEntered = resolve;
     });
     const release = vi.fn();
-    const query = vi.fn((statement: string | { text: string }) => {
-      const sql = (
-        typeof statement === 'string' ? statement : statement.text
-      ).replaceAll('"', '');
-      if (sql === 'begin') transaction = true;
-      if (sql === 'rollback') {
-        rollbackEntered();
-        return rollback.then(() => {
-          transaction = false;
-          return { rows: [] };
-        });
-      }
-      if (sql.startsWith("select current_setting('app.workspace_id'"))
-        return Promise.resolve({
-          rows: [
-            {
-              workspace_id: transaction ? workspaceId : null,
-              actor_id: transaction ? actorId : null,
-              discovery_scope: null,
-              statement_timeout_millis: 30000,
-            },
-          ],
-        });
-      if (
-        sql.startsWith('select 1 from app.workspaces') ||
-        sql.startsWith('select 1 from app.users') ||
-        sql.startsWith('select 1 from app.workflows workflow')
-      )
-        return Promise.resolve({ rows: [{}], rowCount: 1 });
-      if (sql.startsWith('select role from app.workspace_memberships'))
-        return Promise.resolve({ rows: [{ role: 'owner' }], rowCount: 1 });
-      if (sql.includes('select * from app.workflow_drafts'))
-        return Promise.resolve({ rows: [row] });
-      if (sql.includes('pg_settings')) return Promise.resolve(budget);
-      return Promise.resolve({ rows: [] });
-    });
+    const query = vi.fn(
+      (statement: string | { text: string; rowMode?: 'array' }) => {
+        const sql = (
+          typeof statement === 'string' ? statement : statement.text
+        ).replaceAll('"', '');
+        if (sql === 'begin') transaction = true;
+        if (sql === 'rollback') {
+          rollbackEntered();
+          return rollback.then(() => {
+            transaction = false;
+            return { rows: [] };
+          });
+        }
+        if (
+          typeof statement !== 'string' &&
+          statement.rowMode === 'array' &&
+          /from app\.(workspaces|users|workspace_memberships|workflow_folders|workflows)\b/u.test(
+            sql,
+          )
+        ) {
+          const rows = sql.includes('workflow_folders')
+            ? []
+            : [sql.includes('workspace_memberships') ? ['owner'] : [1]];
+          return Promise.resolve({ rows, rowCount: rows.length });
+        }
+        if (sql.startsWith("select current_setting('app.workspace_id'"))
+          return Promise.resolve({
+            rows: [
+              {
+                workspace_id: transaction ? workspaceId : null,
+                actor_id: transaction ? actorId : null,
+                discovery_scope: null,
+                statement_timeout_millis: 30000,
+              },
+            ],
+          });
+        if (
+          sql.startsWith('select 1 from app.workspaces') ||
+          sql.startsWith('select 1 from app.users') ||
+          sql.startsWith('select 1 from app.workflows workflow')
+        )
+          return Promise.resolve({ rows: [{}], rowCount: 1 });
+        if (sql.startsWith('select role from app.workspace_memberships'))
+          return Promise.resolve({ rows: [{ role: 'owner' }], rowCount: 1 });
+        if (sql.includes('select * from app.workflow_drafts'))
+          return Promise.resolve({ rows: [row] });
+        if (sql.includes('pg_settings')) return Promise.resolve(budget);
+        return Promise.resolve({ rows: [] });
+      },
+    );
     // This test exercises the promise-only checkout used by tenant transactions,
     // not pg's separate callback overload.
     const checkout = Pool.prototype as unknown as {
@@ -219,44 +233,46 @@ describe('snapshot validation and publication ordering', () => {
       .update(JSON.stringify(command.requestHash))
       .digest('hex'),
   ) {
-    const query = vi.fn((statement: string | { text: string }) => {
-      const sql = (
-        typeof statement === 'string' ? statement : statement.text
-      ).replaceAll('"', '');
-      // A new command inserts its claim; a retry finds it completed.
-      if (sql.includes('insert into app.idempotency_records'))
-        return Promise.resolve({
-          rows: status === 'completed' ? [] : [[workflowId]],
-          rowCount: status === 'completed' ? 0 : 1,
-        });
-      if (sql.includes('from app.idempotency_records'))
-        return Promise.resolve({
-          rows: [
-            [requestHash, status, { versionId: workflowId, reused: false }],
-          ],
-        });
-      if (sql.includes('from app.workflow_versions'))
-        return Promise.resolve({
-          rows: [
-            {
-              id: workflowId,
-              workspace_id: workspaceId,
-              workflow_id: workflowId,
-              version_number: 1,
-              graph_json: graph,
-              checksum: `wf:sha256:${'a'.repeat(64)}`,
-              published_by: actorId,
-              published_at: row.updated_at,
-            },
-          ],
-        });
-      if (sql.includes('select id from app.workflows'))
-        return Promise.resolve({ rows: [{ id: workflowId }] });
-      if (sql.includes('select * from app.workflow_drafts'))
-        return Promise.resolve({ rows: [row] });
-      if (sql.includes('pg_settings')) return Promise.resolve(budget);
-      return Promise.resolve({ rows: [] });
-    });
+    const query = vi.fn(
+      (statement: string | { text: string; rowMode?: 'array' }) => {
+        const sql = (
+          typeof statement === 'string' ? statement : statement.text
+        ).replaceAll('"', '');
+        // A new command inserts its claim; a retry finds it completed.
+        if (sql.includes('insert into app.idempotency_records'))
+          return Promise.resolve({
+            rows: status === 'completed' ? [] : [[workflowId]],
+            rowCount: status === 'completed' ? 0 : 1,
+          });
+        if (sql.includes('from app.idempotency_records'))
+          return Promise.resolve({
+            rows: [
+              [requestHash, status, { versionId: workflowId, reused: false }],
+            ],
+          });
+        if (sql.includes('from app.workflow_versions'))
+          return Promise.resolve({
+            rows: [
+              {
+                id: workflowId,
+                workspace_id: workspaceId,
+                workflow_id: workflowId,
+                version_number: 1,
+                graph_json: graph,
+                checksum: `wf:sha256:${'a'.repeat(64)}`,
+                published_by: actorId,
+                published_at: row.updated_at,
+              },
+            ],
+          });
+        if (sql.includes('select id from app.workflows'))
+          return Promise.resolve({ rows: [{ id: workflowId }] });
+        if (sql.includes('select * from app.workflow_drafts'))
+          return Promise.resolve({ rows: [row] });
+        if (sql.includes('pg_settings')) return Promise.resolve(budget);
+        return Promise.resolve({ rows: [] });
+      },
+    );
     const client = { query } as unknown as PoolClient;
     const validator = vi.fn().mockResolvedValue(invalid);
     const executableCompiler = vi.fn();

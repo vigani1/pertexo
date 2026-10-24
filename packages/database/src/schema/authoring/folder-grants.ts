@@ -1,3 +1,4 @@
+import type { FolderAccess } from '../../tenant-access/resources/contract.js';
 import { sql } from 'drizzle-orm';
 import {
   check,
@@ -22,7 +23,7 @@ export const workflowFolderGrants = appSchema.table(
     userId: uuid('user_id'),
     organizationId: uuid('organization_id'),
     groupId: uuid('group_id'),
-    access: varchar({ length: 16 }).notNull(),
+    access: varchar({ length: 16 }).$type<FolderAccess>().notNull(),
   },
   (table) => [
     check(

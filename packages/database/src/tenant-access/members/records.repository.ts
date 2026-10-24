@@ -1,3 +1,8 @@
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workspaceMemberships } from '../../schema/foundation.js';
+import { workflowFavorites } from '../../schema/authoring/organization.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { Role } from '@pertexo/workflow-model';
 import { removeMemberResourceGrants } from '../resources/revocation.repository.js';
 import type { PoolClient } from 'pg';
@@ -31,15 +36,25 @@ export async function createMemberships(
   additions: readonly MembershipAddition[],
   audit: MembershipCreationAudit,
 ): Promise<void> {
-  await client.query(
-    `insert into app.workspace_memberships(workspace_id,user_id,role,status)
-        select $1,member.user_id,member.role,'active' from unnest($2::uuid[],$3::text[]) as member(user_id,role)`,
-    [
-      workspaceId,
-      additions.map((member) => member.userId),
-      additions.map((member) => member.role),
-    ],
-  );
+  const db = drizzle(client);
+  const records = sql`unnest(${sql.param(additions.map((member) => member.userId))}::uuid[],
+    ${sql.param(additions.map((member) => member.role))}::text[]) as member(user_id,role)`;
+  await db
+    .insert(workspaceMemberships)
+    .select(
+      db
+        .select({
+          workspaceId: sql<string>`${workspaceId}::uuid`.as('workspace_id'),
+          userId: sql<string>`member.user_id`.as('user_id'),
+          role: sql<Role>`member.role`.as('role'),
+          roleRevision: sql<number>`1`.as('role_revision'),
+          status: sql<'active'>`'active'`.as('status'),
+          createdAt: sql<Date>`now()`.as('created_at'),
+          updatedAt: sql<Date>`now()`.as('updated_at'),
+        })
+        .from(records),
+    )
+    .catch(rethrowQueryFailure);
   await appendAuditFacts(
     client,
     additions.map((member) => ({
@@ -88,37 +103,48 @@ export async function updateMemberships(
   changes: readonly MembershipChange[],
 ): Promise<void> {
   if (changes.length === 0) return;
-  await client.query(
-    `update app.workspace_memberships member
-     set role=change.role,status=change.status,role_revision=change.revision,
-         updated_at=clock_timestamp()
-     from unnest($2::uuid[],$3::text[],$4::text[],$5::integer[])
-       as change(user_id,role,status,revision)
-     where member.workspace_id=$1 and member.user_id=change.user_id`,
-    [
-      workspaceId,
-      changes.map((change) => change.userId),
-      changes.map((change) => change.role),
-      changes.map((change) => change.status),
-      changes.map((change) => change.roleRevision),
-    ],
-  );
+  const db = drizzle(client);
+  const records = sql`unnest(${sql.param(changes.map((change) => change.userId))}::uuid[],
+    ${sql.param(changes.map((change) => change.role))}::text[], ${sql.param(changes.map((change) => change.status))}::text[],
+    ${sql.param(changes.map((change) => change.roleRevision))}::integer[]) as change(user_id,role,status,revision)`;
+  await db
+    .update(workspaceMemberships)
+    .set({
+      role: sql`change.role`,
+      status: sql`change.status`,
+      roleRevision: sql`change.revision`,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .from(records)
+    .where(
+      and(
+        eq(workspaceMemberships.workspaceId, workspaceId),
+        eq(workspaceMemberships.userId, sql`change.user_id`),
+      ),
+    )
+    .catch(rethrowQueryFailure);
   const removed = changes
     .filter((change) => change.status === 'removed')
     .map((change) => change.userId);
   if (removed.length === 0) return;
   // Private notice rows remain actor-fenced. This narrow storage bridge checks
   // removal and workspace scope instead of granting cross-user read/delete access.
-  await client.query(
-    `select app.clear_removed_member_notices($1,removed.user_id)
-     from unnest($2::uuid[]) as removed(user_id)`,
-    [workspaceId, removed],
-  );
+  await db
+    .execute(
+      sql`select app.clear_removed_member_notices(${workspaceId},removed.user_id)
+    from unnest(${sql.param(removed)}::uuid[]) as removed(user_id)`,
+    )
+    .catch(rethrowQueryFailure);
   await removeMemberResourceGrants(client, workspaceId, removed);
-  await client.query(
-    'delete from app.workflow_favorites where workspace_id=$1 and actor_id=any($2::uuid[])',
-    [workspaceId, removed],
-  );
+  await db
+    .delete(workflowFavorites)
+    .where(
+      and(
+        eq(workflowFavorites.workspaceId, workspaceId),
+        sql`${workflowFavorites.actorId}=any(${sql.param(removed)}::uuid[])`,
+      ),
+    )
+    .catch(rethrowQueryFailure);
 }
 export function updateMembership(
   client: PoolClient,

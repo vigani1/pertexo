@@ -1,3 +1,11 @@
+import { and, eq, exists, inArray, isNotNull, lte, or, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  workspaceInvitations as invitations,
+  workspaceInvitationDeliveryAttempts as attempts,
+  workspaceInvitationAcceptanceIntents as intents,
+} from '../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 
 import { cancelOpenInvitationDeliveries } from './delivery-cancellation.repository.js';
@@ -13,73 +21,92 @@ export async function expireWorkspaceInvitations(
   client: PoolClient,
   scope: ExpirationScope,
 ): Promise<number> {
-  const column = invitationExpirationColumn(scope);
-  const filter = column === undefined ? '' : `and ${column}=$2`;
-  const qualifiedFilter =
-    column === undefined ? '' : `and invitation.${column}=$2`;
-  const values =
-    scope.invitationId === undefined && scope.normalizedEmail === undefined
-      ? [scope.workspaceId]
-      : [scope.workspaceId, scope.invitationId ?? scope.normalizedEmail];
-  const newlyExpired = await client.query<{ id: string }>(
-    `update app.workspace_invitations
-        set status='expired',delivery_status='canceled',updated_at=clock_timestamp()
-      where workspace_id=$1 ${filter}
-        and status='pending' and expires_at<=clock_timestamp()
-      returning id`,
-    values,
+  const db = drizzle(client);
+  const scopeFilter = and(
+    eq(invitations.workspaceId, scope.workspaceId),
+    scope.invitationId === undefined
+      ? undefined
+      : eq(invitations.id, scope.invitationId),
+    scope.normalizedEmail === undefined
+      ? undefined
+      : eq(invitations.normalizedEmail, scope.normalizedEmail),
   );
+  const newlyExpired = await db
+    .update(invitations)
+    .set({
+      status: 'expired',
+      deliveryStatus: 'canceled',
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        scopeFilter,
+        eq(invitations.status, 'pending'),
+        lte(invitations.expiresAt, sql`clock_timestamp()`),
+      ),
+    )
+    .returning({ id: invitations.id })
+    .catch(rethrowQueryFailure);
   // Earlier expiration paths could leave open evidence behind. Retire that
   // evidence idempotently too, without rewriting terminal delivery history.
-  const outstanding = await client.query<{ id: string }>(
-    `select invitation.id
-       from app.workspace_invitations invitation
-      where invitation.workspace_id=$1 ${qualifiedFilter}
-        and invitation.status='expired'
-        and (
-          exists (
-            select 1 from app.workspace_invitation_delivery_attempts attempt
-             where attempt.workspace_id=invitation.workspace_id
-               and attempt.invitation_id=invitation.id
-               and (attempt.status in ('queued','failed')
-                 or (attempt.status='unknown' and attempt.token_ciphertext is not null))
-          ) or exists (
-            select 1 from app.workspace_invitation_acceptance_intents intent
-             where intent.workspace_id=invitation.workspace_id
-               and intent.invitation_id=invitation.id
-               and intent.status in ('pending','verified','wrong_account')
-          )
-        )
-      order by invitation.id for update of invitation`,
-    values,
-  );
+  const openAttempt = db
+    .select({ one: sql`1` })
+    .from(attempts)
+    .where(
+      and(
+        eq(attempts.workspaceId, invitations.workspaceId),
+        eq(attempts.invitationId, invitations.id),
+        or(
+          inArray(attempts.status, ['queued', 'failed']),
+          and(
+            eq(attempts.status, 'unknown'),
+            isNotNull(attempts.tokenCiphertext),
+          ),
+        ),
+      ),
+    );
+  const openIntent = db
+    .select({ one: sql`1` })
+    .from(intents)
+    .where(
+      and(
+        eq(intents.workspaceId, invitations.workspaceId),
+        eq(intents.invitationId, invitations.id),
+        inArray(intents.status, ['pending', 'verified', 'wrong_account']),
+      ),
+    );
+  const outstanding = await db
+    .select({ id: invitations.id })
+    .from(invitations)
+    .where(
+      and(
+        scopeFilter,
+        eq(invitations.status, 'expired'),
+        or(exists(openAttempt), exists(openIntent)),
+      ),
+    )
+    .orderBy(invitations.id)
+    .for('update')
+    .catch(rethrowQueryFailure);
   for (const invitationId of new Set(
-    [...newlyExpired.rows, ...outstanding.rows].map(({ id }) => id).sort(),
+    [...newlyExpired, ...outstanding].map(({ id }) => id).sort(),
   )) {
     await cancelOpenInvitationDeliveries(
       client,
       scope.workspaceId,
       invitationId,
     );
-    await client.query(
-      `update app.workspace_invitation_acceptance_intents
-          set status='superseded',updated_at=clock_timestamp()
-        where workspace_id=$1 and invitation_id=$2
-          and status in ('pending','verified','wrong_account')`,
-      [scope.workspaceId, invitationId],
-    );
+    await db
+      .update(intents)
+      .set({ status: 'superseded', updatedAt: sql`clock_timestamp()` })
+      .where(
+        and(
+          eq(intents.workspaceId, scope.workspaceId),
+          eq(intents.invitationId, invitationId),
+          inArray(intents.status, ['pending', 'verified', 'wrong_account']),
+        ),
+      )
+      .catch(rethrowQueryFailure);
   }
-  return newlyExpired.rowCount ?? 0;
-}
-
-function invitationExpirationColumn(
-  scope: ExpirationScope,
-): 'id' | 'normalized_email' | undefined {
-  if (scope.invitationId !== undefined) {
-    return 'id';
-  }
-  if (scope.normalizedEmail !== undefined) {
-    return 'normalized_email';
-  }
-  return undefined;
+  return newlyExpired.length;
 }

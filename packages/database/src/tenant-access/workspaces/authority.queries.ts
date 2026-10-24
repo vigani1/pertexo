@@ -1,3 +1,11 @@
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  workspaces,
+  users,
+  workspaceMemberships,
+} from '../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import type { Role } from '@pertexo/workflow-model';
 import { WorkspaceAccessDeniedError } from '../errors.js';
@@ -18,26 +26,45 @@ async function workspaceAuthority(
     allowedStatuses?: readonly string[] | undefined;
   }>,
 ): Promise<Role> {
-  const lock = locking ? 'for share' : '';
-  const workspace = await client.query(
-    `select 1 from app.workspaces where id=$1 and status=any($2::text[]) ${lock}`,
-    [workspaceId, [...allowedStatuses]],
-  );
-  if (workspace.rowCount !== 1)
+  const db = drizzle(client);
+  const workspaceQuery = db
+    .select({ one: sql`1` })
+    .from(workspaces)
+    .where(
+      and(
+        eq(workspaces.id, workspaceId),
+        sql`${workspaces.status}=any(${sql.param(allowedStatuses)}::text[])`,
+      ),
+    );
+  const workspace = await (
+    locking ? workspaceQuery.for('share') : workspaceQuery
+  ).catch(rethrowQueryFailure);
+  if (workspace.length !== 1)
     throw new WorkspaceAccessDeniedError('Workspace access is unavailable');
-  const actor = await client.query(
-    `select 1 from app.users where id=$1 and status='active' ${lock}`,
-    [actorId],
+  const actorQuery = db
+    .select({ one: sql`1` })
+    .from(users)
+    .where(and(eq(users.id, actorId), eq(users.status, 'active')));
+  const actor = await (locking ? actorQuery.for('share') : actorQuery).catch(
+    rethrowQueryFailure,
   );
-  if (actor.rowCount !== 1)
+  if (actor.length !== 1)
     throw new WorkspaceAccessDeniedError('Workspace access is unavailable');
-  const membership = await client.query<{ role: Role }>(
-    `select role from app.workspace_memberships
-     where workspace_id=$1 and user_id=$2 and status='active'
-       and role=any($3::text[]) ${lock}`,
-    [workspaceId, actorId, [...roles]],
-  );
-  const role = membership.rows[0]?.role;
+  const memberQuery = db
+    .select({ role: workspaceMemberships.role })
+    .from(workspaceMemberships)
+    .where(
+      and(
+        eq(workspaceMemberships.workspaceId, workspaceId),
+        eq(workspaceMemberships.userId, actorId),
+        eq(workspaceMemberships.status, 'active'),
+        sql`${workspaceMemberships.role}=any(${sql.param(roles)}::text[])`,
+      ),
+    );
+  const membership = await (
+    locking ? memberQuery.for('share') : memberQuery
+  ).catch(rethrowQueryFailure);
+  const role = membership[0]?.role;
   if (role === undefined)
     throw new WorkspaceAccessDeniedError('Workspace access is unavailable');
   return role;

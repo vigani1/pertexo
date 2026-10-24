@@ -1,3 +1,8 @@
+import { and, desc, eq, gt, isNull, lt, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { apiTokens } from '../../schema/identity/api-tokens.js';
+import { auditEvents } from '../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { API_TOKEN_ACTIVE_LIMIT } from '@pertexo/workflow-model';
 import { serializeStoredExecutionJsonValue } from '../../platform/stored-execution-value.js';
 import { createHash } from 'node:crypto';
@@ -55,18 +60,27 @@ async function tokenRow(
   input: ApiTokenCommand,
   tokenId: string,
 ): Promise<ApiTokenRow> {
-  const rows = await client.query<ApiTokenRow>(
-    'select * from app.api_tokens where workspace_id=$1 and owner_user_id=$2 and id=$3',
-    [input.workspaceId, input.ownerUserId, tokenId],
-  );
-  if (rows.rows[0] === undefined) throw new ApiTokenPolicyError('not_found');
-  return rows.rows[0];
+  const rows = await drizzle(client)
+    .select()
+    .from(apiTokens)
+    .where(
+      and(
+        eq(apiTokens.workspaceId, input.workspaceId),
+        eq(apiTokens.ownerUserId, input.ownerUserId),
+        eq(apiTokens.id, tokenId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  if (rows[0] === undefined) throw new ApiTokenPolicyError('not_found');
+  return rows[0];
 }
 async function databaseNow(client: PoolClient): Promise<Date> {
-  const rows = await client.query<{ now: Date }>(
-    "select date_trunc('milliseconds',clock_timestamp()) now",
-  );
-  return singleRow(rows.rows).now;
+  const rows = await drizzle(client)
+    .execute<{ now: string }>(
+      sql`select date_trunc('milliseconds',clock_timestamp()) now`,
+    )
+    .catch(rethrowQueryFailure);
+  return new Date(singleRow(rows.rows).now);
 }
 async function recordTokenAudit(
   client: PoolClient,
@@ -74,19 +88,20 @@ async function recordTokenAudit(
   tokenId: string,
   action: string,
 ): Promise<void> {
-  await client.query(
-    `insert into app.audit_events(id,workspace_id,actor_user_id,action,target_type,target_id,request_id,trace_id,metadata)
-    values($1,$2,$3,$4,'api_token',$5,$6,$7,'{}'::jsonb)`,
-    [
-      generatePersistedId(),
-      input.workspaceId,
-      input.ownerUserId,
+  await drizzle(client)
+    .insert(auditEvents)
+    .values({
+      id: generatePersistedId(),
+      workspaceId: input.workspaceId,
+      actorUserId: input.ownerUserId,
       action,
-      tokenId,
-      input.requestId ?? null,
-      input.traceId ?? null,
-    ],
-  );
+      targetType: 'api_token',
+      targetId: tokenId,
+      requestId: input.requestId ?? null,
+      traceId: input.traceId ?? null,
+      metadata: sql`'{}'::jsonb`,
+    })
+    .catch(rethrowQueryFailure);
 }
 
 export function createApiTokenDatabase(
@@ -116,22 +131,27 @@ function listApiTokens(
     async (client) => {
       const authority = await tokenOwnerAuthority(client, input, 'read');
       const now = await databaseNow(client);
-      const rows = await client.query<ApiTokenRow>(
-        `select * from app.api_tokens where workspace_id=$1 and owner_user_id=$2 and ($3::uuid is null or id<$3) order by id desc limit $4`,
-        [
-          input.workspaceId,
-          input.ownerUserId,
-          input.after ?? null,
-          input.limit + 1,
-        ],
-      );
-      const items = rows.rows
+      const after = input.after ?? null;
+      const rows = await drizzle(client)
+        .select()
+        .from(apiTokens)
+        .where(
+          and(
+            eq(apiTokens.workspaceId, input.workspaceId),
+            eq(apiTokens.ownerUserId, input.ownerUserId),
+            after === null ? undefined : lt(apiTokens.id, after),
+          ),
+        )
+        .orderBy(desc(apiTokens.id))
+        .limit(input.limit + 1)
+        .catch(rethrowQueryFailure);
+      const items = rows
         .slice(0, input.limit)
         .map((row) => apiTokenMetadata(row, authority.revision, now));
       return {
         items,
         nextCursor:
-          rows.rows.length > input.limit ? (items.at(-1)?.id ?? null) : null,
+          rows.length > input.limit ? (items.at(-1)?.id ?? null) : null,
         availableScopes: availableApiTokenScopes(authority.role),
       };
     },
@@ -174,32 +194,41 @@ function createApiToken(
           ),
           replayed: true as const,
         };
-      const count = await client.query<{ count: number }>(
-        'select count(*)::int count from app.api_tokens where workspace_id=$1 and owner_user_id=$2 and membership_revision=$3 and revoked_at is null and expires_at>$4',
-        [input.workspaceId, input.ownerUserId, authority.revision, now],
-      );
-      if (singleRow(count.rows).count >= API_TOKEN_ACTIVE_LIMIT)
+      const count = await drizzle(client)
+        .select({ count: sql<number>`count(*)::int` })
+        .from(apiTokens)
+        .where(
+          and(
+            eq(apiTokens.workspaceId, input.workspaceId),
+            eq(apiTokens.ownerUserId, input.ownerUserId),
+            eq(apiTokens.membershipRevision, authority.revision),
+            isNull(apiTokens.revokedAt),
+            gt(apiTokens.expiresAt, now),
+          ),
+        )
+        .catch(rethrowQueryFailure);
+      if (singleRow(count).count >= API_TOKEN_ACTIVE_LIMIT)
         throw new ApiTokenPolicyError('token_limit');
       const credential = issueApiTokenCredential(input.workspaceId, tokenId);
-      const rows = await client.query<ApiTokenRow>(
-        `insert into app.api_tokens(id,workspace_id,owner_user_id,name,secret_digest,scopes,membership_revision,created_at,expires_at)
-        values($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$9) returning *`,
-        [
-          tokenId,
-          input.workspaceId,
-          input.ownerUserId,
-          input.name,
-          credential.digest,
-          serializeStoredExecutionJsonValue(input.scopes),
-          authority.revision,
-          now,
-          new Date(now.getTime() + input.expiresInDays * 86_400_000),
-        ],
-      );
+      const rows = await drizzle(client)
+        .insert(apiTokens)
+        .values({
+          id: tokenId,
+          workspaceId: input.workspaceId,
+          ownerUserId: input.ownerUserId,
+          name: input.name,
+          secretDigest: credential.digest,
+          scopes: sql`${serializeStoredExecutionJsonValue(input.scopes)}::jsonb`,
+          membershipRevision: authority.revision,
+          createdAt: now,
+          expiresAt: new Date(now.getTime() + input.expiresInDays * 86_400_000),
+        })
+        .returning()
+        .catch(rethrowQueryFailure);
       await completeCommand(client, identity, { tokenId });
       await recordTokenAudit(client, input, tokenId, 'api.token.created');
       return {
-        token: apiTokenMetadata(singleRow(rows.rows), authority.revision, now),
+        token: apiTokenMetadata(singleRow(rows), authority.revision, now),
         secret: credential.secret,
         replayed: false as const,
       };
@@ -229,12 +258,21 @@ function revokeApiToken(
       let row = await tokenRow(client, input, input.tokenId);
       const now = await databaseNow(client);
       if (replay === null) {
-        if (row.revoked_at === null) {
-          const rows = await client.query<ApiTokenRow>(
-            'update app.api_tokens set revoked_at=$4 where workspace_id=$1 and owner_user_id=$2 and id=$3 and revoked_at is null returning *',
-            [input.workspaceId, input.ownerUserId, input.tokenId, now],
-          );
-          row = singleRow(rows.rows);
+        if (row.revokedAt === null) {
+          const rows = await drizzle(client)
+            .update(apiTokens)
+            .set({ revokedAt: now })
+            .where(
+              and(
+                eq(apiTokens.workspaceId, input.workspaceId),
+                eq(apiTokens.ownerUserId, input.ownerUserId),
+                eq(apiTokens.id, input.tokenId),
+                isNull(apiTokens.revokedAt),
+              ),
+            )
+            .returning()
+            .catch(rethrowQueryFailure);
+          row = singleRow(rows);
           await recordTokenAudit(
             client,
             input,

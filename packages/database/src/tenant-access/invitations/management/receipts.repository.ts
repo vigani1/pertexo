@@ -1,3 +1,12 @@
+import { eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  workspaceInvitationDeliveryAttempts as attempts,
+  workspaces,
+  auditEvents,
+} from '../../../schema/foundation.js';
+import { outboxEvents } from '../../../schema/transport.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
@@ -76,23 +85,43 @@ export async function insertDelivery(
     sealed: z.output<typeof sealedToken>;
   }>,
 ): Promise<void> {
-  await client.query(
-    `insert into app.workspace_invitation_delivery_attempts
-       (id,workspace_id,invitation_id,invitation_revision,status,
-        token_ciphertext,token_nonce,token_tag,token_key_version,workspace_name)
-     select $1,$2,$3,$4,'queued',$5,$6,$7,$8,workspace.name
-       from app.workspaces workspace where workspace.id=$2`,
-    [
-      input.deliveryAttemptId,
-      input.workspaceId,
-      input.invitationId,
-      input.revision,
-      input.sealed.ciphertext,
-      input.sealed.nonce,
-      input.sealed.tag,
-      input.sealed.keyVersion,
-    ],
-  );
+  const db = drizzle(client);
+  await db
+    .insert(attempts)
+    .select(
+      db
+        .select({
+          id: sql<string>`${input.deliveryAttemptId}::uuid`.as('id'),
+          workspaceId: sql<string>`${input.workspaceId}::uuid`.as(
+            'workspace_id',
+          ),
+          invitationId: sql<string>`${input.invitationId}::uuid`.as(
+            'invitation_id',
+          ),
+          invitationRevision: sql<number>`${input.revision}::integer`.as(
+            'invitation_revision',
+          ),
+          status: sql<string>`'queued'`.as('status'),
+          tokenCiphertext: sql<string>`${input.sealed.ciphertext}::text`.as(
+            'token_ciphertext',
+          ),
+          tokenNonce: sql<string>`${input.sealed.nonce}::text`.as(
+            'token_nonce',
+          ),
+          tokenTag: sql<string>`${input.sealed.tag}::text`.as('token_tag'),
+          tokenKeyVersion: sql<string>`${input.sealed.keyVersion}::text`.as(
+            'token_key_version',
+          ),
+          workspaceName: workspaces.name,
+          providerReference: sql<null>`null`.as('provider_reference'),
+          failureCode: sql<null>`null`.as('failure_code'),
+          createdAt: sql<Date>`clock_timestamp()`.as('created_at'),
+          updatedAt: sql<Date>`clock_timestamp()`.as('updated_at'),
+        })
+        .from(workspaces)
+        .where(eq(workspaces.id, input.workspaceId)),
+    )
+    .catch(rethrowQueryFailure);
   const outboxEventId = generatePersistedId();
   const payload = {
     deliveryAttemptId: input.deliveryAttemptId,
@@ -101,19 +130,18 @@ export async function insertDelivery(
     workspaceId: input.workspaceId,
   };
   const payloadJson = canonicalJson(payload);
-  await client.query(
-    `insert into app.outbox_events
-       (id,workspace_id,job_name,aggregate_type,aggregate_id,
-        payload,payload_checksum)
-     values($1,$2,'deliver-workspace-invitation','workspace-invitation',$3,$4::jsonb,$5)`,
-    [
-      outboxEventId,
-      input.workspaceId,
-      input.invitationId,
-      payloadJson,
-      sha256(payloadJson),
-    ],
-  );
+  await db
+    .insert(outboxEvents)
+    .values({
+      id: outboxEventId,
+      workspaceId: input.workspaceId,
+      jobName: 'deliver-workspace-invitation',
+      aggregateType: 'workspace-invitation',
+      aggregateId: input.invitationId,
+      payload: sql`${payloadJson}::jsonb`,
+      payloadChecksum: sha256(payloadJson),
+    })
+    .catch(rethrowQueryFailure);
 }
 
 export async function recordAudit(
@@ -129,19 +157,18 @@ export async function recordAudit(
     traceId?: string;
   }>,
 ): Promise<void> {
-  await client.query(
-    `insert into app.audit_events
-       (id,workspace_id,actor_user_id,action,target_type,target_id,request_id,trace_id,metadata)
-     values($1,$2,$3,$4,'workspace_invitation',$5,$6,$7,$8::jsonb)`,
-    [
-      generatePersistedId(),
-      input.workspaceId,
-      input.actorUserId,
-      input.action,
-      input.invitationId,
-      input.requestId ?? null,
-      input.traceId ?? null,
-      JSON.stringify({ revision: input.revision, role: input.role }),
-    ],
-  );
+  await drizzle(client)
+    .insert(auditEvents)
+    .values({
+      id: generatePersistedId(),
+      workspaceId: input.workspaceId,
+      actorUserId: input.actorUserId,
+      action: input.action,
+      targetType: 'workspace_invitation',
+      targetId: input.invitationId,
+      requestId: input.requestId ?? null,
+      traceId: input.traceId ?? null,
+      metadata: { revision: input.revision, role: input.role },
+    })
+    .catch(rethrowQueryFailure);
 }

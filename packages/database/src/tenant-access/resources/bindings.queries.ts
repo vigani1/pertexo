@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg';
-import { sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import {
   canonicalJson,
   InvalidWorkflowGraphError,
@@ -7,8 +7,11 @@ import {
   workflowCallConfigSchema,
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workflows } from '../../schema/authoring/workflows.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { readFolderScope } from './facts.queries.js';
-import { bindResourcePredicate, workflowScopeSql } from './scope.queries.js';
+import { workflowScopeSql } from './scope.queries.js';
 import type { ResourceActor } from './contract.js';
 
 function callTargets(graph: WorkflowGraph): Map<string, string> {
@@ -60,18 +63,19 @@ export async function requireWorkflowCallTargets(
     ),
   ];
   if (targets.length === 0) return;
-  const parameters: unknown[] = [actor.workspaceId, targets];
   const scope = await readFolderScope(client, actor);
-  const visible = bindResourcePredicate(
-    workflowScopeSql(scope, sql`workflow.id`),
-    parameters,
-  );
-  const found = await client.query(
-    `select workflow.id from app.workflows workflow
-    where workflow.workspace_id=$1 and workflow.id=any($2::uuid[]) and ${visible}`,
-    parameters,
-  );
-  if (found.rows.length !== targets.length)
+  const found = await drizzle(client)
+    .select({ id: workflows.id })
+    .from(workflows)
+    .where(
+      and(
+        eq(workflows.workspaceId, actor.workspaceId),
+        sql`${workflows.id}=any(${sql.param(targets)}::uuid[])`,
+        workflowScopeSql(scope, sql`${workflows.id}`),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  if (found.length !== targets.length)
     throw new InvalidWorkflowGraphError([
       {
         code: 'invalid_graph',

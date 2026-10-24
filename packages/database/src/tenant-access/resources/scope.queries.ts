@@ -1,6 +1,7 @@
-import { sql, type SQL } from 'drizzle-orm';
+import { and, eq, notExists, sql, type SQL } from 'drizzle-orm';
 import { CasingCache } from 'drizzle-orm/casing';
-import { PgDialect } from 'drizzle-orm/pg-core';
+import { workflowOrganizationState } from '../../schema/authoring/organization.js';
+import { PgDialect, QueryBuilder, alias } from 'drizzle-orm/pg-core';
 import type { FolderScope, WorkflowResourceCapability } from './contract.js';
 
 /** The policy supplies folder IDs; SQL only filters those already-decided facts. */
@@ -13,10 +14,21 @@ export function workflowScopeSql(
   const workspace = sql`${scope.workspaceId}::uuid=current_setting('app.workspace_id')::uuid`;
   const denied = scope.deniedFolderIds(capability);
   if (denied.length === 0) return workspace;
-  return sql`(${workspace}) and not exists(select 1 from app.workflow_organization_state resource_folder
-    where resource_folder.workspace_id=current_setting('app.workspace_id')::uuid
-      and resource_folder.workflow_id=${workflowId}
-      and resource_folder.folder_id=any(${sql.param(denied)}::uuid[]))`;
+  const resourceFolder = alias(workflowOrganizationState, 'resource_folder');
+  const deniedPlacement = new QueryBuilder()
+    .select({ one: sql`1` })
+    .from(resourceFolder)
+    .where(
+      and(
+        eq(
+          resourceFolder.workspaceId,
+          sql`current_setting('app.workspace_id')::uuid`,
+        ),
+        eq(resourceFolder.workflowId, workflowId),
+        sql`${resourceFolder.folderId}=any(${sql.param(denied)}::uuid[])`,
+      ),
+    );
+  return sql`(${workspace}) and ${notExists(deniedPlacement)}`;
 }
 
 /** Bind the same predicate in an existing pg query without interpolating identities. */

@@ -12,6 +12,7 @@ import {
 import { sql } from 'drizzle-orm';
 
 import { appSchema, textC } from '../namespace.js';
+import type { FolderFact } from '../../tenant-access/resources/contract.js';
 import { workflows } from './workflows.js';
 import { workspaces } from '../foundation.js';
 
@@ -22,6 +23,7 @@ export const workflowFolders = appSchema.table(
     id: uuid().notNull(),
     parentId: uuid('parent_id'),
     accessMode: varchar('access_mode', { length: 16 })
+      .$type<FolderFact['accessMode']>()
       .notNull()
       .default('workspace'),
     name: textC('name').notNull(),

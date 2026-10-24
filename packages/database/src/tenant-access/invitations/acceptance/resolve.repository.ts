@@ -1,15 +1,25 @@
+import { installTransactionScope } from '../../transactions/scope.js';
+import { workspaceInvitationBindingReplacementClaims as claims } from '../../../schema/foundation.js';
+import { and, eq, inArray, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  workspaceInvitationAcceptanceIntents as intents,
+  workspaceInvitations as invitations,
+} from '../../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { Pool, PoolClient } from 'pg';
 
 import { expireWorkspaceInvitations } from '../expiration.repository.js';
 import { parseIdentityUuid } from '../../support.js';
 import { withTenantScopedClient } from '../../transactions.js';
+import { type AcceptanceStore, digest } from './contract.js';
 import {
-  type AcceptanceStore,
-  digest,
+  selectIntent,
+  replacementLineageIsLive,
+  selectReplacementClaim,
+  selectReplacementIntent,
   type ReplacementClaimRow,
-  type ReplacementIntentRow,
-} from './contract.js';
-import { selectIntent, replacementLineageIsLive } from './state.queries.js';
+} from './state.queries.js';
 
 export async function resolveInvitationAcceptance(
   pool: Pool,
@@ -37,16 +47,24 @@ export async function resolveInvitationAcceptance(
     csrfDigest,
   };
   return withTenantScopedClient(pool, { workspaceId }, async (client) => {
-    const invitation = await client.query<{
-      revision: number;
-      expires_at: Date;
-      status: string;
-    }>(
-      `select revision,expires_at,status from app.workspace_invitations
-            where workspace_id=$1 and id=$2 and token_digest=$3 for update`,
-      [workspaceId, invitationId, tokenDigest],
-    );
-    const current = invitation.rows[0];
+    const db = drizzle(client);
+    const invitation = await db
+      .select({
+        revision: invitations.revision,
+        expires_at: invitations.expiresAt,
+        status: invitations.status,
+      })
+      .from(invitations)
+      .where(
+        and(
+          eq(invitations.workspaceId, workspaceId),
+          eq(invitations.id, invitationId),
+          eq(invitations.tokenDigest, tokenDigest),
+        ),
+      )
+      .for('update')
+      .catch(rethrowQueryFailure);
+    const current = invitation[0];
     if (current?.status !== 'pending') return null;
     const now = new Date();
     if (current.expires_at.getTime() <= now.getTime()) {
@@ -60,10 +78,11 @@ export async function resolveInvitationAcceptance(
       Math.min(raw.expiresAt.getTime(), current.expires_at.getTime()),
     );
     if (priorBinding !== undefined) {
-      await client.query(
-        'select pg_advisory_xact_lock(hashtextextended($1,0))',
-        [priorBinding.bindingDigest],
-      );
+      await db
+        .execute(
+          sql`select pg_advisory_xact_lock(hashtextextended(${priorBinding.bindingDigest},0))`,
+        )
+        .catch(rethrowQueryFailure);
     }
 
     if (priorBinding !== undefined) {
@@ -78,27 +97,30 @@ export async function resolveInvitationAcceptance(
       revision: current.revision,
       expiresAt,
     });
-    if (inserted.rowCount !== 1) return null;
+    if (inserted.length !== 1) return null;
     if (priorBinding !== undefined) {
-      await client.query("select set_config('app.workspace_id',$1,true)", [
-        priorBinding.workspaceId,
-      ]);
-      await client.query(
-        `update app.workspace_invitation_acceptance_intents
-                set status='abandoned',abandoned_at=clock_timestamp(),updated_at=clock_timestamp()
-              where workspace_id=$1 and id=$2 and binding_digest=$3
-                and status in ('pending','verified','wrong_account')`,
-        [
-          priorBinding.workspaceId,
-          priorBinding.intentId,
-          priorBinding.bindingDigest,
-        ],
-      );
-      await client.query("select set_config('app.workspace_id',$1,true)", [
-        workspaceId,
-      ]);
+      await installTransactionScope(client, {
+        workspaceId: priorBinding.workspaceId,
+      });
+      await db
+        .update(intents)
+        .set({
+          status: 'abandoned',
+          abandonedAt: sql`clock_timestamp()`,
+          updatedAt: sql`clock_timestamp()`,
+        })
+        .where(
+          and(
+            eq(intents.workspaceId, priorBinding.workspaceId),
+            eq(intents.id, priorBinding.intentId),
+            eq(intents.bindingDigest, priorBinding.bindingDigest),
+            inArray(intents.status, ['pending', 'verified', 'wrong_account']),
+          ),
+        )
+        .catch(rethrowQueryFailure);
+      await installTransactionScope(client, { workspaceId: workspaceId });
     }
-    return selectIntent(client, 'intent.id=$1', [intentId]);
+    return selectIntent(client, eq(intents.id, intentId));
   });
 }
 
@@ -129,23 +151,21 @@ function insertAcceptanceIntent(
   }: InvitationBindingIdentity,
   { revision, expiresAt }: Readonly<{ revision: number; expiresAt: Date }>,
 ) {
-  return client.query<{ id: string }>(
-    `insert into app.workspace_invitation_acceptance_intents
-             (id,workspace_id,invitation_id,invitation_revision,binding_digest,
-              csrf_digest,status,expires_at)
-           values($1,$2,$3,$4,$5,$6,'pending',$7)
-           on conflict(id) do nothing
-           returning id`,
-    [
-      intentId,
+  return drizzle(client)
+    .insert(intents)
+    .values({
+      id: intentId,
       workspaceId,
       invitationId,
-      revision,
+      invitationRevision: revision,
       bindingDigest,
       csrfDigest,
+      status: 'pending',
       expiresAt,
-    ],
-  );
+    })
+    .onConflictDoNothing({ target: intents.id })
+    .returning({ id: intents.id })
+    .catch(rethrowQueryFailure);
 }
 async function resolveReplacementBinding(
   client: PoolClient,
@@ -159,66 +179,53 @@ async function resolveReplacementBinding(
   const { workspaceId, invitationId, intentId, bindingDigest, csrfDigest } =
     identity;
 
-  await client.query("select set_config('app.workspace_id',$1,true)", [
-    priorBinding.workspaceId,
-  ]);
-  const claimInsert = await client.query(
-    `insert into app.workspace_invitation_binding_replacement_claims
-             (prior_workspace_id,prior_intent_id,prior_binding_digest,
-              successor_workspace_id,successor_intent_id,successor_invitation_id,
-              successor_invitation_revision,successor_binding_digest,successor_csrf_digest)
-             values($1,$2,$3,$4,$5,$6,$7,$8,$9)
-             on conflict(prior_workspace_id,prior_intent_id,prior_binding_digest)
-             do nothing`,
-    [
-      priorBinding.workspaceId,
-      priorBinding.intentId,
-      priorBinding.bindingDigest,
-      workspaceId,
-      intentId,
-      invitationId,
-      revision,
-      bindingDigest,
-      csrfDigest,
-    ],
-  );
-  if (claimInsert.rowCount === 1) {
-    await client.query("select set_config('app.workspace_id',$1,true)", [
-      workspaceId,
-    ]);
+  await installTransactionScope(client, {
+    workspaceId: priorBinding.workspaceId,
+  });
+  const db = drizzle(client);
+  const claimInsert = await db
+    .insert(claims)
+    .values({
+      priorWorkspaceId: priorBinding.workspaceId,
+      priorIntentId: priorBinding.intentId,
+      priorBindingDigest: priorBinding.bindingDigest,
+      successorWorkspaceId: workspaceId,
+      successorIntentId: intentId,
+      successorInvitationId: invitationId,
+      successorInvitationRevision: revision,
+      successorBindingDigest: bindingDigest,
+      successorCsrfDigest: csrfDigest,
+    })
+    .onConflictDoNothing({
+      target: [
+        claims.priorWorkspaceId,
+        claims.priorIntentId,
+        claims.priorBindingDigest,
+      ],
+    })
+    .returning({ id: claims.priorIntentId })
+    .catch(rethrowQueryFailure);
+  if (claimInsert.length === 1) {
+    await installTransactionScope(client, { workspaceId: workspaceId });
     return { kind: 'insert' };
   }
 
-  const claimed = await client.query<ReplacementClaimRow>(
-    `select successor_workspace_id,successor_intent_id,
-                    successor_invitation_id,successor_invitation_revision,
-                    successor_binding_digest,successor_csrf_digest
-               from app.workspace_invitation_binding_replacement_claims
-              where prior_workspace_id=$1 and prior_intent_id=$2
-                and prior_binding_digest=$3
-              for update`,
-    [
-      priorBinding.workspaceId,
-      priorBinding.intentId,
-      priorBinding.bindingDigest,
-    ],
-  );
-  const claim = claimed.rows[0];
+  const claimed = await selectReplacementClaim(client, priorBinding, {
+    lock: true,
+  });
+  const claim = claimed[0];
   if (claim === undefined) return { kind: 'resolved', intent: null };
   const exactClaim = replacementClaimMatches(claim, identity, revision);
 
-  await client.query("select set_config('app.workspace_id',$1,true)", [
+  await installTransactionScope(client, {
+    workspaceId: claim.successor_workspace_id,
+  });
+  const claimedIntent = await selectReplacementIntent(
+    client,
     claim.successor_workspace_id,
-  ]);
-  const claimedIntent = await client.query<ReplacementIntentRow>(
-    `select id,invitation_id,invitation_revision,binding_digest,
-                    csrf_digest,status,expires_at
-               from app.workspace_invitation_acceptance_intents
-              where workspace_id=$1 and id=$2
-              for update`,
-    [claim.successor_workspace_id, claim.successor_intent_id],
+    claim.successor_intent_id,
   );
-  const successor = claimedIntent.rows[0];
+  const successor = claimedIntent[0];
   if (exactClaim) {
     const successorUnavailable =
       successor === undefined ||
@@ -228,7 +235,7 @@ async function resolveReplacementBinding(
     if (successorUnavailable) return { kind: 'resolved', intent: null };
     return {
       kind: 'resolved',
-      intent: await selectIntent(client, 'intent.id=$1', [intentId]),
+      intent: await selectIntent(client, eq(intents.id, intentId)),
     };
   }
   if (
@@ -245,42 +252,37 @@ async function resolveReplacementBinding(
   )
     return { kind: 'resolved', intent: null };
 
-  await client.query("select set_config('app.workspace_id',$1,true)", [
-    workspaceId,
-  ]);
-  const staleCandidate = await client.query<{ id: string }>(
-    `select id from app.workspace_invitation_acceptance_intents
-              where workspace_id=$1 and id=$2`,
-    [workspaceId, intentId],
-  );
-  if (staleCandidate.rowCount !== 0) return { kind: 'resolved', intent: null };
+  await installTransactionScope(client, { workspaceId: workspaceId });
+  const staleCandidate = await db
+    .select({ id: intents.id })
+    .from(intents)
+    .where(and(eq(intents.workspaceId, workspaceId), eq(intents.id, intentId)))
+    .catch(rethrowQueryFailure);
+  if (staleCandidate.length !== 0) return { kind: 'resolved', intent: null };
 
-  await client.query("select set_config('app.workspace_id',$1,true)", [
-    priorBinding.workspaceId,
-  ]);
-  await client.query(
-    `update app.workspace_invitation_binding_replacement_claims
-                set successor_workspace_id=$4,successor_intent_id=$5,
-                    successor_invitation_id=$6,successor_invitation_revision=$7,
-                    successor_binding_digest=$8,successor_csrf_digest=$9,
-                    updated_at=clock_timestamp()
-              where prior_workspace_id=$1 and prior_intent_id=$2
-                and prior_binding_digest=$3`,
-    [
-      priorBinding.workspaceId,
-      priorBinding.intentId,
-      priorBinding.bindingDigest,
-      workspaceId,
-      intentId,
-      invitationId,
-      revision,
-      bindingDigest,
-      csrfDigest,
-    ],
-  );
-  await client.query("select set_config('app.workspace_id',$1,true)", [
-    workspaceId,
-  ]);
+  await installTransactionScope(client, {
+    workspaceId: priorBinding.workspaceId,
+  });
+  await db
+    .update(claims)
+    .set({
+      successorWorkspaceId: workspaceId,
+      successorIntentId: intentId,
+      successorInvitationId: invitationId,
+      successorInvitationRevision: revision,
+      successorBindingDigest: bindingDigest,
+      successorCsrfDigest: csrfDigest,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(claims.priorWorkspaceId, priorBinding.workspaceId),
+        eq(claims.priorIntentId, priorBinding.intentId),
+        eq(claims.priorBindingDigest, priorBinding.bindingDigest),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  await installTransactionScope(client, { workspaceId: workspaceId });
   return { kind: 'insert' };
 }
 function replacementClaimMatches(

@@ -67,7 +67,7 @@ export function createConnectionReadPersistence(
             .where(
               and(
                 eq(connections.workspaceId, workspaceId),
-                connectionScopeSql(scope, sql`${connections}`),
+                connectionScopeSql(scope, connections),
                 after === undefined
                   ? undefined
                   : sql`(${connections.status}>${after.status}::text or (${connections.status}=${after.status}::text and ${connections.createdAt}<${after.createdAt}::timestamptz) or (${connections.status}=${after.status}::text and ${connections.createdAt}=${after.createdAt}::timestamptz and ${connections.id}>${after.id}::uuid))`,
@@ -126,7 +126,7 @@ export function createConnectionReadPersistence(
               and(
                 eq(connections.workspaceId, workspaceId),
                 eq(connections.id, uuidSchema.parse(input.connectionId)),
-                connectionScopeSql(scope, sql`${connections}`),
+                connectionScopeSql(scope, connections),
               ),
             )
             .catch(rethrowQueryFailure);

@@ -1,3 +1,10 @@
+import type { Role, DelegatedRole } from '@pertexo/workflow-model';
+import type {
+  UserRecord,
+  WorkspaceRecord,
+  WorkspaceInvitationRecord,
+  InvitationAcceptanceIntentRecord,
+} from '../tenant-access/contract.js';
 import {
   type PgTableExtraConfigValue,
   bigint,
@@ -31,6 +38,7 @@ export const users = appSchema.table(
     twoFactorEnabled: boolean('two_factor_enabled').default(false).notNull(),
     image: text('image'),
     status: varchar('status', { length: 32 })
+      .$type<UserRecord['status']>()
       .notNull()
       .default(sql`'active'::character varying`),
     profileRevision: integer('profile_revision').notNull().default(1),
@@ -61,6 +69,7 @@ export const workspaces = appSchema.table(
     name: varchar('name', { length: 128 }).notNull(),
     slug: varchar('slug', { length: 64 }).notNull(),
     status: varchar('status', { length: 32 })
+      .$type<WorkspaceRecord['status']>()
       .notNull()
       .default(sql`'active'::character varying`),
     revision: integer('revision').notNull().default(1),
@@ -139,9 +148,10 @@ export const workspaceMemberships = appSchema.table(
   {
     workspaceId: uuid('workspace_id').notNull(),
     userId: uuid('user_id').notNull(),
-    role: varchar('role', { length: 32 }).notNull(),
+    role: varchar('role', { length: 32 }).$type<Role>().notNull(),
     roleRevision: integer('role_revision').notNull().default(1),
     status: varchar('status', { length: 32 })
+      .$type<'active' | 'suspended' | 'removed'>()
       .notNull()
       .default(sql`'active'::character varying`),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
@@ -204,11 +214,15 @@ export const workspaceInvitations = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     recipientEmail: varchar('recipient_email', { length: 320 }).notNull(),
     normalizedEmail: varchar('normalized_email', { length: 320 }).notNull(),
-    role: varchar('role', { length: 32 }).notNull(),
-    status: varchar('status', { length: 32 }).notNull().default('pending'),
+    role: varchar('role', { length: 32 }).$type<DelegatedRole>().notNull(),
+    status: varchar('status', { length: 32 })
+      .$type<WorkspaceInvitationRecord['status']>()
+      .notNull()
+      .default('pending'),
     revision: integer('revision').notNull().default(1),
     tokenDigest: char('token_digest', { length: 64 }).notNull(),
     deliveryStatus: varchar('delivery_status', { length: 32 })
+      .$type<WorkspaceInvitationRecord['deliveryStatus']>()
       .notNull()
       .default('queued'),
     createdBy: uuid('created_by').notNull(),
@@ -352,7 +366,10 @@ export const workspaceInvitationAcceptanceIntents = appSchema.table(
     invitationRevision: integer('invitation_revision').notNull(),
     bindingDigest: char('binding_digest', { length: 64 }).notNull(),
     csrfDigest: char('csrf_digest', { length: 64 }).notNull(),
-    status: varchar('status', { length: 32 }).notNull().default('pending'),
+    status: varchar('status', { length: 32 })
+      .$type<InvitationAcceptanceIntentRecord['status']>()
+      .notNull()
+      .default('pending'),
     verifiedUserId: uuid('verified_user_id'),
     verifiedSessionId: uuid('verified_session_id'),
     verifiedEmail: varchar('verified_email', { length: 320 }),

@@ -1,3 +1,7 @@
+import { sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workspaces, auditEvents } from '../schema/foundation.js';
+import { rethrowQueryFailure } from '../platform/query-errors.js';
 import type { Pool } from 'pg';
 import { acquireDatabasePool } from '../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../platform/pool/runtime.js';
@@ -7,7 +11,10 @@ import { z } from 'zod';
 import type { DatabaseConfig } from '../config.js';
 
 import { changeWorkspaceLifecycle } from '../lifecycle/deletion/repository.js';
-import { mapWorkspace } from './rows.js';
+import {
+  workspaceRecord,
+  workspaceSelection,
+} from './workspaces/projection.js';
 import { createUserStore } from './users/repository.js';
 import {
   parseIdentityMetadata,
@@ -166,15 +173,12 @@ async function createWorkspaceWithOwner(
         );
         if (!claim.claimed) return claim.result.workspace;
 
-        const workspaceResult = await client.query(
-          `insert into app.workspaces (id, name, slug, status, created_by)
-             values ($1, $2, $3, 'active', $4)
-             returning id, name, slug, status, revision, created_by,
-                       deletion_requested_at, deletion_requested_by, deletion_reason,
-                       purge_after,
-                       created_at, updated_at`,
-          [id, name, slug, ownerUserId],
-        );
+        const db = drizzle(client);
+        const workspaceResult = await db
+          .insert(workspaces)
+          .values({ id, name, slug, status: 'active', createdBy: ownerUserId })
+          .returning(workspaceSelection)
+          .catch(rethrowQueryFailure);
         await createMemberships(
           client,
           id,
@@ -191,23 +195,24 @@ async function createWorkspaceWithOwner(
             traceId: input.traceId ?? null,
           },
         );
-        await client.query(
-          `insert into app.audit_events
-               (id, workspace_id, actor_user_id, action, target_type, target_id,
-                request_id, trace_id, metadata)
-             values ($1, $2, $3, 'workspace.created', 'workspace', $2, $4, $5, $6::jsonb)`,
-          [
-            generatePersistedId(),
-            id,
-            ownerUserId,
-            input.requestId ?? null,
-            input.traceId ?? null,
-            JSON.stringify(metadata),
-          ],
-        );
-        const workspace = mapWorkspace(
-          workspaceResult.rows[0] as Record<string, unknown>,
-        );
+        await db
+          .insert(auditEvents)
+          .values({
+            id: generatePersistedId(),
+            workspaceId: id,
+            actorUserId: ownerUserId,
+            action: 'workspace.created',
+            targetType: 'workspace',
+            targetId: id,
+            requestId: input.requestId ?? null,
+            traceId: input.traceId ?? null,
+            metadata: sql`${JSON.stringify(metadata)}::jsonb`,
+          })
+          .catch(rethrowQueryFailure);
+        const insertedWorkspace = workspaceResult[0];
+        if (insertedWorkspace === undefined)
+          throw new Error('Workspace creation returned no record');
+        const workspace = workspaceRecord(insertedWorkspace);
         await completeWorkspaceCreationCommand(client, claim.id, {
           workspace,
         });

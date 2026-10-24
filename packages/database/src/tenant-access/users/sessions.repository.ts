@@ -1,3 +1,7 @@
+import { sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { authSessions } from '../../schema/authentication.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { readEligibleAuthenticationSession } from '../../identity/federation/sessions/authority.js';
 import type { SessionAuthenticationProof } from '../../identity/federation/sessions/policy.js';
 import type { PoolClient } from 'pg';
@@ -21,10 +25,10 @@ export async function revokeSessionsForUsers(
   userIds: readonly string[],
 ): Promise<void> {
   if (userIds.length === 0) return;
-  await client.query(
-    'delete from app.auth_sessions where user_id=any($1::uuid[])',
-    [userIds],
-  );
+  await drizzle(client)
+    .delete(authSessions)
+    .where(sql`${authSessions.userId}=any(${sql.param(userIds)}::uuid[])`)
+    .catch(rethrowQueryFailure);
 }
 
 /**
@@ -39,22 +43,24 @@ export async function replaceUserSessions(
   proof: SessionAuthenticationProof,
 ): Promise<void> {
   await revokeUserSessions(client, userId);
-  await client.query(
-    `insert into app.auth_sessions
-       (id,user_id,token,expires_at,user_agent,ip_address,authentication_method,federation_provider_id,federation_provider_revision,created_at,updated_at)
-     values($1,$2,$3,$4,$5,$6,$7,$8,$9,clock_timestamp(),clock_timestamp())`,
-    [
-      replacement.id,
+  await drizzle(client)
+    .insert(authSessions)
+    .values({
+      id: replacement.id,
       userId,
-      replacement.token,
-      replacement.expiresAt,
-      replacement.userAgent ?? null,
-      replacement.ipAddress ?? null,
-      proof.method,
-      proof.method === 'organization' ? proof.providerId : null,
-      proof.method === 'organization' ? proof.providerRevision : null,
-    ],
-  );
+      token: replacement.token,
+      expiresAt: replacement.expiresAt,
+      userAgent: replacement.userAgent ?? null,
+      ipAddress: replacement.ipAddress ?? null,
+      authenticationMethod: proof.method,
+      federationProviderId:
+        proof.method === 'organization' ? proof.providerId : null,
+      federationProviderRevision:
+        proof.method === 'organization' ? proof.providerRevision : null,
+      createdAt: sql`clock_timestamp()`,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .catch(rethrowQueryFailure);
 }
 
 export type AuthenticationReplacement = ReplacementSessionInput &
