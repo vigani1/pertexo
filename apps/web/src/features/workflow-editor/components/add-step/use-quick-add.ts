@@ -72,32 +72,6 @@ export function useQuickAdd({
     useReactFlow();
   const [request, setRequest] = useState<QuickAddRequest>();
 
-  function outputsOf(nodeId: string): readonly string[] {
-    const graph = store.getState().graph;
-    const level = shownLevel(graph, scopeOf(graph, nodeId) ?? []);
-    const node = level?.nodes.find(({ id }) => id === nodeId);
-    if (node === undefined || level === undefined) return [];
-    return shownPorts(
-      node,
-      findDefinition(definitions, node),
-      level,
-      'outputs',
-    );
-  }
-
-  /** A step on its level as drawn now, and its card's size. */
-  function shownStep(level: GraphLevel, nodeId: string) {
-    const node = level.nodes.find(({ id }) => id === nodeId);
-    const measured = getInternalNode(nodeId)?.measured;
-    return node === undefined
-      ? undefined
-      : {
-          node,
-          width: measured?.width ?? cardSize(node).width,
-          height: measured?.height ?? cardSize(node).height,
-        };
-  }
-
   function openAtDrop(from: PortRef, point: Point) {
     const flow = screenToFlowPosition(point);
     const corner = { x: flow.x, y: flow.y - STEP_CARD.height / 2 };
@@ -108,7 +82,7 @@ export function useQuickAdd({
         : getInternalNode(loopId)?.internals.positionAbsolute;
     setRequest({
       from,
-      outputs: outputsOf(from.nodeId),
+      outputs: outputsOf({ store, definitions, nodeId: from.nodeId }),
       loopId: undefined,
       position:
         container === undefined
@@ -125,8 +99,11 @@ export function useQuickAdd({
   function openAfter(nodeId: string, returnFocus: HTMLElement | null) {
     const graph = store.getState().graph;
     const level = shownLevel(graph, scopeOf(graph, nodeId) ?? []);
-    const outputs = outputsOf(nodeId);
-    const step = level === undefined ? undefined : shownStep(level, nodeId);
+    const outputs = outputsOf({ store, definitions, nodeId });
+    const step =
+      level === undefined
+        ? undefined
+        : shownStep({ level, nodeId, getInternalNode });
     const port =
       level === undefined ? undefined : openOutputPort(level, nodeId, outputs);
     if (step === undefined || port === undefined) return;
@@ -145,25 +122,6 @@ export function useQuickAdd({
     });
   }
 
-  /** A body's one last step, when it has an output a new step can follow. */
-  function afterLastStep(body: GraphLevel) {
-    const [last, ...others] = levelSinks(body);
-    const step =
-      last === undefined || others.length > 0
-        ? undefined
-        : shownStep(body, last);
-    if (step === undefined) return undefined;
-    const outputs = outputsOf(step.node.id);
-    const port = openOutputPort(body, step.node.id, outputs);
-    return port === undefined
-      ? undefined
-      : {
-          from: { nodeId: step.node.id, port },
-          outputs,
-          position: positionAfter(step.node, step.width),
-        };
-  }
-
   function openFailure(nodeId: string, returnFocus: HTMLElement) {
     const graph = store.getState().graph;
     if (
@@ -171,7 +129,7 @@ export function useQuickAdd({
       failureLink(graph, nodeId) !== undefined
     )
       return;
-    const step = shownStep(graph, nodeId);
+    const step = shownStep({ level: graph, nodeId, getInternalNode });
     if (step === undefined) return;
     const absolute =
       getInternalNode(nodeId)?.internals.positionAbsolute ?? step.node.position;
@@ -196,7 +154,10 @@ export function useQuickAdd({
     const loop = findStep(graph, loopId);
     if (loop === undefined || !isForEach(loop)) return;
     const body = shownLevel(graph, [...(scopeOf(graph, loopId) ?? []), loopId]);
-    const after = body === undefined ? undefined : afterLastStep(body);
+    const after =
+      body === undefined
+        ? undefined
+        : afterLastStep({ body, store, definitions, getInternalNode });
     const rect = returnFocus.getBoundingClientRect();
     setRequest({
       from: after?.from,
@@ -237,4 +198,70 @@ export function useQuickAdd({
       setRequest(undefined);
     },
   } as const;
+}
+
+function outputsOf({
+  store,
+  definitions,
+  nodeId,
+}: Readonly<{
+  store: EditorStore;
+  definitions: readonly NodeDefinitionCatalogItem[];
+  nodeId: string;
+}>): readonly string[] {
+  const graph = store.getState().graph;
+  const level = shownLevel(graph, scopeOf(graph, nodeId) ?? []);
+  const node = level?.nodes.find(({ id }) => id === nodeId);
+  if (node === undefined || level === undefined) return [];
+  return shownPorts(node, findDefinition(definitions, node), level, 'outputs');
+}
+
+/** A step on its level as drawn now, and its card's size. */
+function shownStep({
+  level,
+  nodeId,
+  getInternalNode,
+}: Readonly<{
+  level: GraphLevel;
+  nodeId: string;
+  getInternalNode: ReturnType<typeof useReactFlow>['getInternalNode'];
+}>) {
+  const node = level.nodes.find(({ id }) => id === nodeId);
+  const measured = getInternalNode(nodeId)?.measured;
+  return node === undefined
+    ? undefined
+    : {
+        node,
+        width: measured?.width ?? cardSize(node).width,
+        height: measured?.height ?? cardSize(node).height,
+      };
+}
+
+/** A body's one last step, when it has an output a new step can follow. */
+function afterLastStep({
+  body,
+  store,
+  definitions,
+  getInternalNode,
+}: Readonly<{
+  body: GraphLevel;
+  store: EditorStore;
+  definitions: readonly NodeDefinitionCatalogItem[];
+  getInternalNode: ReturnType<typeof useReactFlow>['getInternalNode'];
+}>) {
+  const [last, ...others] = levelSinks(body);
+  const step =
+    last === undefined || others.length > 0
+      ? undefined
+      : shownStep({ level: body, nodeId: last, getInternalNode });
+  if (step === undefined) return undefined;
+  const outputs = outputsOf({ store, definitions, nodeId: step.node.id });
+  const port = openOutputPort(body, step.node.id, outputs);
+  return port === undefined
+    ? undefined
+    : {
+        from: { nodeId: step.node.id, port },
+        outputs,
+        position: positionAfter(step.node, step.width),
+      };
 }

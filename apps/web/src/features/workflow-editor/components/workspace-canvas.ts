@@ -1,3 +1,4 @@
+import type { CodeSettings } from '@pertexo/node-sdk';
 import type {
   NodeDefinitionCatalogItem,
   WorkflowNodeRunSummary,
@@ -5,7 +6,9 @@ import type {
 import { useCallback, useMemo, useRef, useState, type RefObject } from 'react';
 import { flushSync } from 'react-dom';
 import type { WorkflowIssuesView } from '@/features/workflow-publish/public';
-import type { useEditorStoreApi } from '../model/state/context';
+import { useEditorStore, useEditorStoreApi } from '../model/state/context';
+import { useEditorShortcuts } from '../hooks/use-editor-shortcuts';
+import type { NodeTestHandle } from '@/features/workflow-publish/public';
 import type { useCanvasEffects } from '../hooks/use-canvas-effects';
 import type { useEditorActions } from '../hooks/use-editor-actions';
 import type { MobilePanel } from '../hooks/use-inspector-navigation';
@@ -146,4 +149,65 @@ export function useSelectionCommands({
       request({ kind: 'duplicate', nodeIds: store.getState().selectedNodeIds });
   }
   return { selectNodes, removeEdge, deleteSelection, duplicateSelection };
+}
+
+/** Keeps canvas commands and keyboard commands on the same guarded path. */
+export function useCanvasEditing({
+  definitions,
+  codeSettings,
+  canUpdate,
+  paused,
+  actions,
+  testRef,
+  flushSave,
+  onShortcuts,
+}: Readonly<{
+  definitions: readonly NodeDefinitionCatalogItem[];
+  codeSettings: CodeSettings | undefined;
+  canUpdate: boolean;
+  paused: boolean;
+  actions: ReturnType<typeof useEditorActions>;
+  testRef: RefObject<NodeTestHandle | null>;
+  flushSave: () => Promise<void>;
+  onShortcuts: () => void;
+}>) {
+  const store = useEditorStoreApi();
+  const inConflict = useEditorStore((state) => state.saveStatus === 'conflict');
+  const editable = canUpdate && !inConflict;
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const { request, navigation } = actions;
+  const addStep = useAddStepFold({
+    editable,
+    setMobilePanel: navigation.setMobilePanel,
+  });
+  const adding = useStepAdding({ store, definitions, canvasRef, editable });
+  const selection = useSelectionCommands({ store, request, editable });
+  useEditorShortcuts(
+    {
+      undo: () => {
+        request({ kind: 'undo' });
+      },
+      redo: () => {
+        request({ kind: 'redo' });
+      },
+      deleteSelection: selection.deleteSelection,
+      duplicateSelection: selection.duplicateSelection,
+      focusAddStep: addStep.focus,
+      toggleAddStep: addStep.toggle,
+      testSelectedStep: () => {
+        if (store.getState().selectedNodeId === null) return;
+        navigation.openTab('test');
+        testRef.current?.runTest();
+      },
+      save: () => void flushSave(),
+      showShortcuts: onShortcuts,
+    },
+    () => paused,
+  );
+  // Existing Code steps remain visible when this instance disables new ones.
+  const placeable =
+    codeSettings?.enabled === false
+      ? definitions.filter(({ definition }) => definition.key !== 'core.code')
+      : definitions;
+  return { editable, canvasRef, addStep, adding, selection, placeable };
 }

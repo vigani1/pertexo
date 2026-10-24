@@ -1,3 +1,4 @@
+import { WorkflowTestHistory } from '@/features/workflow-publish/workflow-tests.public';
 import type { CodeSettings } from '@pertexo/node-sdk';
 import type {
   NodeDefinitionCatalogItem,
@@ -5,42 +6,28 @@ import type {
   ConnectionResponse,
   AccessibleWorkspace,
 } from '@pertexo/contracts';
-import { useRef, useState, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
+import { useRef, type ReactNode } from 'react';
 import type {
   NodeTestHandle,
   WorkflowIssuesView,
   WorkflowValidationTarget,
 } from '@/features/workflow-publish/public';
-import { useQuery } from '@tanstack/react-query';
-import { stepSamplesQueryOptions } from '@/features/workflow-publish/step-samples.public';
 import type { ApiClient } from '@/lib/api/client';
-import { useEditorStore, useEditorStoreApi } from '../model/state/context';
+import { useEditorStore } from '../model/state/context';
 import type { useCanvasEffects } from '../hooks/use-canvas-effects';
 import type { useEditorActions } from '../hooks/use-editor-actions';
-import { useEditorShortcuts } from '../hooks/use-editor-shortcuts';
 import { useLastTest } from '../hooks/use-last-test';
 import { AddStepLens } from './add-step/lens';
-import { QuickAddLens } from './add-step/quick-add-lens';
 import { NoteTools } from './canvas/notes/tools';
-import { SelectionToolbar } from './canvas/selection-toolbar';
-import { StartPicker } from './canvas/start-picker';
 import { TestResultBar } from './chrome/test-result-bar';
-import { ValidationSweep } from './canvas/validation-sweep';
-import { WorkflowCanvas } from './canvas/index';
 import { EditorLayout } from './editor-layout';
+import { WorkspaceSurface, WorkspaceOverlay } from './workspace-surfaces';
 import { WorkspaceInspector } from './workspace-inspector';
 import { useEditorWorkflowTests } from '../hooks/use-editor-workflow-tests';
-import {
-  WorkflowTestButton,
-  WorkflowTestHistory,
-  WorkflowTestDialog,
-  WorkflowTestMenuItems,
-} from '@/features/workflow-publish/workflow-tests.public';
-import { useAddStepFold } from './workspace-canvas';
+import {} from '@/features/workflow-publish/workflow-tests.public';
 import { useCanvasOverlays } from './workspace-canvas';
-import { useStepAdding } from './workspace-canvas';
-import { useSelectionCommands } from './workspace-canvas';
+import { useWorkspaceChrome } from '../hooks/use-workspace-chrome';
+import { useCanvasEditing } from './workspace-canvas';
 
 export type EditorChrome = Readonly<{
   workflowTestAction: ReactNode;
@@ -60,29 +47,7 @@ export type EditorChrome = Readonly<{
  * inspector, keyboard shortcuts and small-screen panels. Every change goes
  * through the editor store or the session's guarded actions.
  */
-export function EditorWorkspace({
-  apiClient,
-  userId,
-  workspace,
-  workflowId,
-  definitions,
-  codeSettings,
-  connections,
-  connectionsAvailable,
-  canUpdate,
-  paused,
-  issues,
-  checking,
-  actions,
-  ensureSaved,
-  flushSave,
-  effects,
-  bar,
-  banner,
-  bottomLens,
-  workflow,
-  verifyIdentity,
-}: Readonly<{
+type EditorWorkspaceProps = Readonly<{
   workflow: WorkflowSummary | undefined;
   verifyIdentity: () => Promise<void>;
   apiClient: ApiClient;
@@ -106,8 +71,31 @@ export function EditorWorkspace({
   banner: ReactNode;
   /** The bottom lens: the issues the command bar's chip opens. */
   bottomLens: (chrome: EditorChrome) => ReactNode;
-}>) {
-  const store = useEditorStoreApi();
+}>;
+
+export function EditorWorkspace({
+  apiClient,
+  userId,
+  workspace,
+  workflowId,
+  definitions,
+  codeSettings,
+  connections,
+  connectionsAvailable,
+  canUpdate,
+  paused,
+  issues,
+  checking,
+  actions,
+  ensureSaved,
+  flushSave,
+  effects,
+  bar,
+  banner,
+  bottomLens,
+  workflow,
+  verifyIdentity,
+}: EditorWorkspaceProps) {
   const { tests, testStatuses, revision, graph } = useEditorWorkflowTests({
     apiClient,
     userId,
@@ -117,88 +105,31 @@ export function EditorWorkspace({
     ensureSaved,
     verifyIdentity,
   });
-  const inConflict = useEditorStore((state) => state.saveStatus === 'conflict');
   const inspectorOpen = useEditorStore(
     (state) => state.selectedNodeIds.length > 0,
   );
-  const editable = canUpdate && !inConflict;
-  const canvasRef = useRef<HTMLDivElement>(null);
   const testRef = useRef<NodeTestHandle>(null);
-  const [shortcutsOpen, setShortcutsOpen] = useState(false);
-  const [issuesOpen, setIssuesOpen] = useState(false);
-  const { request, navigation } = actions;
+  const { navigation } = actions;
   const lastTest = useLastTest();
-  const { setMobilePanel } = navigation;
-  const addStep = useAddStepFold({ editable, setMobilePanel });
-  // An instance with Code steps off doesn't offer them; existing ones explain.
-  const placeable =
-    codeSettings?.enabled === false
-      ? definitions.filter(({ definition }) => definition.key !== 'core.code')
-      : definitions;
-  const adding = useStepAdding({
-    store,
-    definitions,
-    canvasRef,
-    editable,
+  const { chrome, setFeedbackTarget } = useWorkspaceChrome({
+    tests,
+    onFix: navigation.fix,
   });
-
-  const { placement, quickAdd, addToBody } = adding;
-
-  const selection = useSelectionCommands({ store, request, editable });
-  const { selectNodes, removeEdge, deleteSelection, duplicateSelection } =
-    selection;
-  useEditorShortcuts(
-    {
-      undo: () => {
-        request({ kind: 'undo' });
-      },
-      redo: () => {
-        request({ kind: 'redo' });
-      },
-      deleteSelection,
-      duplicateSelection,
-      focusAddStep: addStep.focus,
-      toggleAddStep: addStep.toggle,
-      testSelectedStep: () => {
-        if (store.getState().selectedNodeId === null) return;
-        navigation.openTab('test');
-        testRef.current?.runTest();
-      },
-      save: () => void flushSave(),
-      showShortcuts: () => {
+  const { issuesOpen, onShortcutsOpenChange: setShortcutsOpen } = chrome;
+  const { editable, canvasRef, addStep, adding, selection, placeable } =
+    useCanvasEditing({
+      definitions,
+      codeSettings,
+      canUpdate,
+      paused,
+      actions,
+      testRef,
+      flushSave,
+      onShortcuts: () => {
         setShortcutsOpen(true);
       },
-    },
-    () => paused,
-  );
-
-  const sampleScope = {
-    apiClient,
-    userId,
-    workspaceId: workspace.id,
-    workflowId,
-  };
-  const samples = useQuery({
-    ...stepSamplesQueryOptions(sampleScope),
-    enabled: !paused && workspace.capabilities.includes('run:read'),
-  });
+    });
   const overlays = useCanvasOverlays(issues, effects, testStatuses);
-  const [feedbackTarget, setFeedbackTarget] = useState<HTMLDivElement | null>(
-    null,
-  );
-  const chrome: EditorChrome = {
-    renderFeedback: (feedback) =>
-      feedbackTarget === null ? null : createPortal(feedback, feedbackTarget),
-    workflowTestAction: (
-      <WorkflowTestButton tests={tests} className="hidden sm:inline-flex" />
-    ),
-    workflowTestMenuItems: <WorkflowTestMenuItems tests={tests} />,
-    shortcutsOpen,
-    onShortcutsOpenChange: setShortcutsOpen,
-    issuesOpen,
-    onIssuesOpenChange: setIssuesOpen,
-    onFix: navigation.fix,
-  };
   return (
     <EditorLayout
       bar={bar(chrome)}
@@ -228,33 +159,26 @@ export function EditorWorkspace({
       editable={canUpdate}
       addStepCollapsed={addStep.collapsed}
       mobilePanel={navigation.mobilePanel}
-      onMobilePanelChange={setMobilePanel}
+      onMobilePanelChange={navigation.setMobilePanel}
       inspectorOpen={inspectorOpen}
       canvas={
-        <WorkflowCanvas
+        <WorkspaceSurface
           definitions={definitions}
           editable={editable}
           overlays={overlays}
-          samples={samples.isError ? undefined : samples.data?.items}
-          containerRef={canvasRef}
-          onSelectNodes={selectNodes}
-          onRemoveEdge={removeEdge}
-          onDropStep={placement.addAt}
-          onPortDrop={quickAdd.openAtDrop}
-          onAddToBody={addToBody}
-          onOpenStep={() => {
-            // The first tap already selected it; this only brings its panel
-            // up where panels fold away, and leaves the tab as it was.
-            setMobilePanel('inspector');
+          sampleScope={{
+            apiClient,
+            userId,
+            workspaceId: workspace.id,
+            workflowId,
           }}
-        >
-          <StartPicker
-            definitions={definitions}
-            editable={editable}
-            onPick={placement.addAtCentre}
-          />
-          <ValidationSweep active={checking} />
-        </WorkflowCanvas>
+          readSamples={!paused && workspace.capabilities.includes('run:read')}
+          canvas={{ canvasRef, adding, selection }}
+          checking={checking}
+          onOpenInspector={() => {
+            navigation.setMobilePanel('inspector');
+          }}
+        />
       }
       addStep={
         <AddStepLens
@@ -263,8 +187,8 @@ export function EditorWorkspace({
           searchRef={addStep.searchRef}
           onToggleCollapsed={addStep.toggle}
           onAdd={(choice) => {
-            placement.addAtCentre(choice.definition);
-            setMobilePanel('none');
+            adding.placement.addAtCentre(choice.definition);
+            navigation.setMobilePanel('none');
           }}
         />
       }
@@ -285,34 +209,16 @@ export function EditorWorkspace({
         />
       }
       overlay={
-        <>
-          <div
-            ref={setFeedbackTarget}
-            className="pointer-events-none absolute inset-0 z-40"
-          />
-          {paused || !tests.open ? null : (
-            <WorkflowTestDialog
-              tests={tests}
-              workspace={workspace}
-              workflow={workflow}
-              graph={graph}
-            />
-          )}
-          <SelectionToolbar
-            editable={editable}
-            onDuplicate={duplicateSelection}
-            onDelete={deleteSelection}
-          />
-          <QuickAddLens
-            // It renders in a portal, outside the workspace a pause makes inert.
-            request={editable && !paused ? quickAdd.request : undefined}
-            definitions={placeable}
-            fallbackFocus={canvasRef}
-            onPortChange={quickAdd.choosePort}
-            onChoose={quickAdd.choose}
-            onClose={quickAdd.close}
-          />
-        </>
+        <WorkspaceOverlay
+          feedbackTarget={setFeedbackTarget}
+          editable={editable}
+          paused={paused}
+          testing={{ tests, workspace, workflow, graph }}
+          selection={selection}
+          adding={adding}
+          definitions={placeable}
+          canvasRef={canvasRef}
+        />
       }
     />
   );

@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/popover';
 import { describeStep, StepTile } from '@/features/catalog/presentation.public';
 import { findDefinition, stepTitle } from '../../../model/graph/adapter';
-import type { GraphLevel } from '../../../model/graph/scopes';
+import type { WorkflowNode, GraphLevel } from '../../../model/graph/scopes';
 import {
   outputFieldsOf,
   type OutputField,
@@ -118,40 +118,7 @@ export function InsertDataPicker({
             : 'Steps linked right before this one, and the run’s input.'}
         </PopoverDescription>
         <ul className="mt-3 flex max-h-72 flex-col gap-3 overflow-y-auto">
-          {loopPorts.length > 0 ? (
-            <li>
-              <p className="flex items-center gap-2 text-[0.8rem] font-semibold">
-                <RepeatIcon
-                  aria-hidden="true"
-                  className="size-3.5 text-secondary"
-                />
-                This item
-              </p>
-              <ul className="mt-1 ml-3 flex flex-col border-l border-surface-ink/8 pl-2">
-                {loopPorts.map((port) => {
-                  const field = loopFields[port] ?? {
-                    label: port,
-                    type: 'any',
-                    name: port,
-                  };
-                  return (
-                    <li key={port}>
-                      <PickButton
-                        label={field.label}
-                        type={field.type}
-                        onClick={() => {
-                          pick(
-                            { kind: 'structured_input', port, path: '$' },
-                            field.name,
-                          );
-                        }}
-                      />
-                    </li>
-                  );
-                })}
-              </ul>
-            </li>
-          ) : null}
+          <LoopInputChoices loopPorts={loopPorts} onPick={pick} />
           {failureSource === undefined ? null : (
             <li>
               <p className="flex items-center gap-2 text-[0.8rem] font-semibold">
@@ -171,70 +138,20 @@ export function InsertDataPicker({
             </li>
           )}
           {callbackTargets.map((target) => (
-            <li key={`callback:${target.id}`}>
-              <p className="text-[0.8rem] font-semibold">
-                {stepTitle(target)} · callback
-              </p>
-              <ul className="mt-1 ml-3 flex flex-col border-l border-surface-ink/8 pl-2">
-                {(callbackWaitConfigSchema.parse(target.config).authentication
-                  .mode === 'secret_url'
-                  ? (['url'] as const)
-                  : (['url', 'secret'] as const)
-                ).map((field) => (
-                  <li key={field}>
-                    <PickButton
-                      label={
-                        field === 'url'
-                          ? 'Callback URL'
-                          : 'Authentication secret'
-                      }
-                      type="credential"
-                      onClick={() => {
-                        pick(
-                          {
-                            kind: 'expression',
-                            expression: callbackMappingExpression(
-                              target.id,
-                              field,
-                            ),
-                          },
-                          field === 'url' ? 'callbackUrl' : 'callbackSecret',
-                        );
-                      }}
-                    />
-                  </li>
-                ))}
-              </ul>
-            </li>
+            <CallbackInputChoices
+              key={`callback:${target.id}`}
+              target={target}
+              onPick={pick}
+            />
           ))}
-          {sources.map((source) => {
-            const definition = findDefinition(definitions, source);
-            const step = describeStep(
-              source.definition.key,
-              definition?.family,
-            );
-            return (
-              <li key={source.id}>
-                <p className="flex items-center gap-2 text-[0.8rem] font-semibold">
-                  <StepTile step={step} size="sm" />
-                  {stepTitle(source)}
-                </p>
-                <FieldList
-                  fields={outputFieldsOf(
-                    definition?.outputSchema,
-                    source,
-                    definition?.outputVariant,
-                  )}
-                  onPick={(path, name) => {
-                    pick(
-                      { kind: 'node_output', nodeId: source.id, path },
-                      name,
-                    );
-                  }}
-                />
-              </li>
-            );
-          })}
+          {sources.map((source) => (
+            <NodeOutputChoices
+              key={source.id}
+              source={source}
+              definitions={definitions}
+              onPick={pick}
+            />
+          ))}
           {variableScope === undefined ? null : (
             <li>
               <VariablePicker
@@ -322,5 +239,115 @@ function PickButton({
         </span>
       )}
     </button>
+  );
+}
+
+function LoopInputChoices({
+  loopPorts,
+  onPick: pick,
+}: Readonly<{
+  loopPorts: readonly string[];
+  onPick: (source: InsertedSource, fieldName: string) => void;
+}>) {
+  return loopPorts.length > 0 ? (
+    <li>
+      <p className="flex items-center gap-2 text-[0.8rem] font-semibold">
+        <RepeatIcon aria-hidden="true" className="size-3.5 text-secondary" />
+        This item
+      </p>
+      <ul className="mt-1 ml-3 flex flex-col border-l border-surface-ink/8 pl-2">
+        {loopPorts.map((port) => {
+          const field = loopFields[port] ?? {
+            label: port,
+            type: 'any',
+            name: port,
+          };
+          return (
+            <li key={port}>
+              <PickButton
+                label={field.label}
+                type={field.type}
+                onClick={() => {
+                  pick(
+                    { kind: 'structured_input', port, path: '$' },
+                    field.name,
+                  );
+                }}
+              />
+            </li>
+          );
+        })}
+      </ul>
+    </li>
+  ) : null;
+}
+
+function CallbackInputChoices({
+  target,
+  onPick: pick,
+}: Readonly<{
+  target: WorkflowNode;
+  onPick: (source: InsertedSource, fieldName: string) => void;
+}>) {
+  return (
+    <li>
+      <p className="text-[0.8rem] font-semibold">
+        {stepTitle(target)} · callback
+      </p>
+      <ul className="mt-1 ml-3 flex flex-col border-l border-surface-ink/8 pl-2">
+        {(callbackWaitConfigSchema.parse(target.config).authentication.mode ===
+        'secret_url'
+          ? (['url'] as const)
+          : (['url', 'secret'] as const)
+        ).map((field) => (
+          <li key={field}>
+            <PickButton
+              label={field === 'url' ? 'Callback URL' : 'Authentication secret'}
+              type="credential"
+              onClick={() => {
+                pick(
+                  {
+                    kind: 'expression',
+                    expression: callbackMappingExpression(target.id, field),
+                  },
+                  field === 'url' ? 'callbackUrl' : 'callbackSecret',
+                );
+              }}
+            />
+          </li>
+        ))}
+      </ul>
+    </li>
+  );
+}
+
+function NodeOutputChoices({
+  source,
+  definitions,
+  onPick: pick,
+}: Readonly<{
+  source: WorkflowNode;
+  definitions: readonly NodeDefinitionCatalogItem[];
+  onPick: (source: InsertedSource, fieldName: string) => void;
+}>) {
+  const definition = findDefinition(definitions, source);
+  const step = describeStep(source.definition.key, definition?.family);
+  return (
+    <li>
+      <p className="flex items-center gap-2 text-[0.8rem] font-semibold">
+        <StepTile step={step} size="sm" />
+        {stepTitle(source)}
+      </p>
+      <FieldList
+        fields={outputFieldsOf(
+          definition?.outputSchema,
+          source,
+          definition?.outputVariant,
+        )}
+        onPick={(path, name) => {
+          pick({ kind: 'node_output', nodeId: source.id, path }, name);
+        }}
+      />
+    </li>
   );
 }

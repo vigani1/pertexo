@@ -1,5 +1,10 @@
 import { failureRemoval } from '../model/failure-routing/commands';
-import { useCallback, useState } from 'react';
+import {
+  useCallback,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from 'react';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { EditorStore } from '../model/state/store';
 import { stepTitle } from '../model/graph/adapter';
@@ -71,96 +76,25 @@ export function useEditorActions({
   const notifications = useNotifications();
   const { focusStep, ...navigation } = useInspectorNavigation();
   const [pendingAction, setPendingAction] = useState<EditorAction>();
-  const [pendingRemoval, setPendingRemoval] = useState<
-    Readonly<{
-      action: Extract<EditorAction, { kind: 'delete' }>;
-      generation: number;
-      labels: readonly string[];
-    }>
-  >();
+  const [pendingRemoval, setPendingRemoval] = useState<PendingRemoval>();
   const [scratchVersion, setScratchVersion] = useState(0);
   const [focusTarget, setFocusTarget] = useState<
     EditorFocusTarget & Readonly<{ requestId: number }>
   >();
 
-  const removeSelection = useCallback(
-    (action: Extract<EditorAction, { kind: 'delete' }>) => {
-      const state = store.getState();
-      const result = removeWorkflowElements(state.graph, action);
-      if (result.graph === state.graph) return;
-      state.transact(result.graph);
-      const generation = store.getState().generation;
-      const toast = notifications.undo({
-        title: removalTitle(result.removed),
-        onUndo: () => {
-          const latest = store.getState();
-          if (latest.generation === generation) latest.undo();
-          else
-            latest.transact(
-              restoreWorkflowElements(latest.graph, result.removed),
-            );
-        },
-      });
-      // Undone another way (⌘Z): the toast's offer no longer applies.
-      const stop = store.subscribe((latest) => {
-        if (!isRestored(latest.graph, result.removed)) return;
-        notifications.dismiss(toast);
-        stop();
-      });
-      window.setTimeout(stop, UNDO_WATCH_MS);
-    },
-    [notifications, store],
-  );
+  const removeSelection = useRemovalUndo({ store, notifications });
 
   const perform = useCallback(
     (action: EditorAction) => {
-      const state = store.getState();
-      switch (action.kind) {
-        case 'select':
-          state.selectNodes(action.nodeIds);
-          if (action.focusTarget !== undefined) {
-            const target = action.focusTarget;
-            focusStep(target);
-            setFocusTarget((current) => ({
-              ...target,
-              requestId: (current?.requestId ?? 0) + 1,
-            }));
-          }
-          return;
-        case 'undo':
-          state.undo();
-          return;
-        case 'redo':
-          state.redo();
-          return;
-        case 'duplicate': {
-          const result = duplicateWorkflowNodes(state.graph, action.nodeIds);
-          if (result.nodeIds.length === 0) return;
-          state.transact(result.graph);
-          if (!state.inspectorScratch) state.selectNodes(result.nodeIds);
-          return;
-        }
-        case 'delete': {
-          const removal = failureRemoval(state.graph, action);
-          if (removal.kind === 'blocked') {
-            notifications.error({
-              title: 'Cannot remove this failure path',
-              description: removal.reason,
-            });
-            return;
-          }
-          if (removal.kind === 'handler') {
-            setPendingRemoval({
-              action: { kind: 'delete', ...removal.selection },
-              generation: state.generation,
-              labels: removal.labels,
-            });
-            return;
-          }
-          removeSelection(action);
-          return;
-        }
-      }
+      performEditorAction({
+        action,
+        store,
+        focusStep,
+        setFocusTarget,
+        notifications,
+        setPendingRemoval,
+        removeSelection,
+      });
     },
     [focusStep, notifications, removeSelection, store],
   );
@@ -305,4 +239,118 @@ function removalTitle(removed: RemovedElements): string {
   return removed.edges.length === 1
     ? 'Link removed'
     : `Removed ${String(removed.edges.length)} links`;
+}
+
+function useRemovalUndo({
+  store,
+  notifications,
+}: Readonly<{
+  store: EditorStore;
+  notifications: ReturnType<typeof useNotifications>;
+}>) {
+  const removeSelection = useCallback(
+    (action: Extract<EditorAction, { kind: 'delete' }>) => {
+      const state = store.getState();
+      const result = removeWorkflowElements(state.graph, action);
+      if (result.graph === state.graph) return;
+      state.transact(result.graph);
+      const generation = store.getState().generation;
+      const toast = notifications.undo({
+        title: removalTitle(result.removed),
+        onUndo: () => {
+          const latest = store.getState();
+          if (latest.generation === generation) latest.undo();
+          else
+            latest.transact(
+              restoreWorkflowElements(latest.graph, result.removed),
+            );
+        },
+      });
+      // Undone another way (⌘Z): the toast's offer no longer applies.
+      const stop = store.subscribe((latest) => {
+        if (!isRestored(latest.graph, result.removed)) return;
+        notifications.dismiss(toast);
+        stop();
+      });
+      window.setTimeout(stop, UNDO_WATCH_MS);
+    },
+    [notifications, store],
+  );
+
+  return removeSelection;
+}
+
+type PendingRemoval = Readonly<{
+  action: Extract<EditorAction, { kind: 'delete' }>;
+  generation: number;
+  labels: readonly string[];
+}>;
+function performEditorAction({
+  action,
+  store,
+  focusStep,
+  setFocusTarget,
+  notifications,
+  setPendingRemoval,
+  removeSelection,
+}: Readonly<{
+  action: EditorAction;
+  store: EditorStore;
+  focusStep: ReturnType<typeof useInspectorNavigation>['focusStep'];
+  setFocusTarget: Dispatch<
+    SetStateAction<
+      (EditorFocusTarget & Readonly<{ requestId: number }>) | undefined
+    >
+  >;
+  notifications: ReturnType<typeof useNotifications>;
+  setPendingRemoval: Dispatch<SetStateAction<PendingRemoval | undefined>>;
+  removeSelection: (action: Extract<EditorAction, { kind: 'delete' }>) => void;
+}>) {
+  const state = store.getState();
+  switch (action.kind) {
+    case 'select':
+      state.selectNodes(action.nodeIds);
+      if (action.focusTarget !== undefined) {
+        const target = action.focusTarget;
+        focusStep(target);
+        setFocusTarget((current) => ({
+          ...target,
+          requestId: (current?.requestId ?? 0) + 1,
+        }));
+      }
+      return;
+    case 'undo':
+      state.undo();
+      return;
+    case 'redo':
+      state.redo();
+      return;
+    case 'duplicate': {
+      const result = duplicateWorkflowNodes(state.graph, action.nodeIds);
+      if (result.nodeIds.length === 0) return;
+      state.transact(result.graph);
+      if (!state.inspectorScratch) state.selectNodes(result.nodeIds);
+      return;
+    }
+    case 'delete': {
+      const removal = failureRemoval(state.graph, action);
+      if (removal.kind === 'blocked') {
+        notifications.error({
+          title: 'Cannot remove this failure path',
+          description: removal.reason,
+        });
+        return;
+      }
+      if (removal.kind === 'handler') {
+        setPendingRemoval({
+          action: { kind: 'delete', ...removal.selection },
+          generation: state.generation,
+          labels: removal.labels,
+        });
+        return;
+      }
+      removeSelection(action);
+      return;
+    }
+  }
 }
