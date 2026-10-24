@@ -1,6 +1,6 @@
 import { readErrorWorkflow } from '../../../../src/runs/error-workflows/read.js';
 
-import { createWorkspacePurgeCoordinator } from '../../../../src/lifecycle/workspace-purge.js';
+import { createWorkspacePurgeCoordinator } from '../../../../src/lifecycle/purge/repository.js';
 import { maintenanceUrl } from '../../../lifecycle/retention.support.js';
 
 import { withWorkspaceTransaction } from '../../../../src/tenant-access/transactions.js';

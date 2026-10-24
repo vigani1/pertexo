@@ -1,4 +1,4 @@
-import { createRetentionDatabase } from '../../../src/lifecycle/retention.js';
+import { createRetentionDatabase } from '../../../src/lifecycle/retention/repository.js';
 import { parseDatabaseConfig } from '../../../src/config.js';
 
 import { expect, it } from 'vitest';

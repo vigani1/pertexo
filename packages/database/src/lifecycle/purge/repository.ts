@@ -1,11 +1,11 @@
-import { claimPurgeWorkspace } from './identity/directory.js';
+import { claimPurgeWorkspace } from '../identity/directory.repository.js';
 
 import type { PoolClient } from 'pg';
 
-import type { DatabaseConfig } from '../config.js';
-import { acquireDatabasePool } from '../platform/pool/runtime.js';
-import type { DatabaseRuntime } from '../platform/pool/runtime.js';
-import { inRetentionTransaction } from './retention-transaction.js';
+import type { DatabaseConfig } from '../../config.js';
+import { acquireDatabasePool } from '../../platform/pool/runtime.js';
+import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
+import { inRetentionTransaction } from '../retention/transactions.repository.js';
 import {
   type WorkspacePurgeObjectStore,
   type WorkspacePurgeProcessResult,
@@ -13,16 +13,16 @@ import {
   optionsSchema,
   type WorkspacePurgeOptions,
   candidateSchema,
-} from './purge/contract.js';
-import { PURGE_PRESERVED_TABLES, PURGE_STEPS } from './purge/steps.js';
+} from './contract.js';
+import { PURGE_PRESERVED_TABLES, PURGE_STEPS } from './steps.repository.js';
 
 export {
   type WorkspacePurgeObjectStore,
   type WorkspacePurgeProcessResult,
   type WorkspacePurgeCoordinator,
   type WorkspacePurgeOptions,
-} from './purge/contract.js';
-export { PURGE_PRESERVED_TABLES, PURGE_STEPS } from './purge/steps.js';
+} from './contract.js';
+export { PURGE_PRESERVED_TABLES, PURGE_STEPS } from './steps.repository.js';
 /** Fails if a workspace table still holds the purged workspace's rows. */
 async function assertNothingLeft(
   client: PoolClient,

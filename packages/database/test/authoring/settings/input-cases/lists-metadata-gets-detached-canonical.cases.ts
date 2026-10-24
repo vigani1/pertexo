@@ -5,7 +5,7 @@ import {
 } from '../../../../src/authoring/input-cases/store.js';
 import { WorkflowNotFoundError } from '../../../../src/authoring/workflows/errors.js';
 import { IdempotencyConflictError } from '../../../../src/platform/idempotency/repository.js';
-import { createRetentionDatabase } from '../../../../src/lifecycle/retention.js';
+import { createRetentionDatabase } from '../../../../src/lifecycle/retention/repository.js';
 import {
   workspaceId,
   dispatcherUrl,

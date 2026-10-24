@@ -5,7 +5,7 @@ import type { PoolClient } from 'pg';
 import {
   workspaceInvitationAcceptanceIntents as intents,
   workspaceInvitationBindingReplacementClaims as claims,
-} from '../schema/foundation.js';
+} from '../../schema/foundation.js';
 
 type Claim = typeof claims.$inferSelect;
 type Binding = Readonly<{

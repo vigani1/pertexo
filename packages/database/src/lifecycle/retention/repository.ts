@@ -1,12 +1,12 @@
 import { z } from 'zod';
 
-import type { DatabaseConfig } from '../config.js';
-import { acquireDatabasePool } from '../platform/pool/runtime.js';
-import type { DatabaseRuntime } from '../platform/pool/runtime.js';
-import { checkDatabaseReadiness } from '../platform/readiness.queries.js';
-import { RETENTION_RULES, type RetentionRuleName } from './retention-rules.js';
-import { inRetentionTransaction } from './retention-transaction.js';
-export type { RetentionRuleName } from './retention-rules.js';
+import type { DatabaseConfig } from '../../config.js';
+import { acquireDatabasePool } from '../../platform/pool/runtime.js';
+import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
+import { checkDatabaseReadiness } from '../../platform/readiness.queries.js';
+import { RETENTION_RULES, type RetentionRuleName } from './rules.js';
+import { inRetentionTransaction } from './transactions.repository.js';
+export type { RetentionRuleName } from './rules.js';
 
 /** Advisory lock class for the rules; the rule's index is the second key. */
 const RETENTION_LOCK_CLASS = 1_934_781_128;

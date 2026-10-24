@@ -4,7 +4,7 @@ import { Pool } from 'pg';
 import {
   changeWorkspaceLifecycle,
   type WorkspaceLifecycleChange,
-} from '../../../src/lifecycle/workspace-deletion.js';
+} from '../../../src/lifecycle/deletion/repository.js';
 import { migrateDatabase } from '../../../src/migrations.js';
 
 import { withTenantScopedClient } from '../../../src/tenant-access/transactions.js';

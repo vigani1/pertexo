@@ -1,6 +1,6 @@
 import { Client } from 'pg';
 import { expect, it } from 'vitest';
-import { RETENTION_RULES } from '../../../src/lifecycle/retention-rules.js';
+import { RETENTION_RULES } from '../../../src/lifecycle/retention/rules.js';
 import {
   adminUrl,
   maintenanceUrl,

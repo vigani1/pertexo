@@ -1,35 +1,35 @@
 export {
   changeWorkspaceLifecycle,
   WORKSPACE_RECOVERY_DAYS,
-} from './workspace-deletion.js';
-export { createRetentionDatabase } from './retention.js';
-export { RETENTION_RULES } from './retention-rules.js';
-export { createRunArtifactRetentionCoordinator } from './run-artifact-retention.js';
+} from './deletion/repository.js';
+export { createRetentionDatabase } from './retention/repository.js';
+export { RETENTION_RULES } from './retention/rules.js';
+export { createRunArtifactRetentionCoordinator } from './artifacts/repository.js';
 export {
   createWorkspacePurgeCoordinator,
   PURGE_PRESERVED_TABLES,
   PURGE_STEPS,
-} from './workspace-purge.js';
+} from './purge/repository.js';
 export type {
   WorkspacePurgeCoordinator,
   WorkspacePurgeObjectStore,
   WorkspacePurgeProcessResult,
-} from './workspace-purge.js';
+} from './purge/repository.js';
 export type {
   RunArtifactRetentionCoordinator,
   RunArtifactRetentionCoordinatorOptions,
   RunArtifactRetentionProcessResult,
   RunArtifactRetentionStore,
-} from './run-artifact-retention.js';
+} from './artifacts/repository.js';
 export type {
   RetentionDatabase,
   RetentionDatabaseOptions,
   RetentionPassResult,
-} from './retention.js';
-export { createPreviewRetentionCoordinator } from './preview-retention.js';
+} from './retention/repository.js';
+export { createPreviewRetentionCoordinator } from './previews/repository.js';
 export type {
   PreviewRetentionArtifactStore,
   PreviewRetentionCoordinator,
   PreviewRetentionCoordinatorOptions,
   PreviewRetentionProcessResult,
-} from './preview-retention.js';
+} from './previews/repository.js';

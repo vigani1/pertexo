@@ -3,8 +3,8 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../../../src/config.js';
-import { createRetentionDatabase } from '../../../src/lifecycle/retention.js';
-import { changeWorkspaceLifecycle } from '../../../src/lifecycle/workspace-deletion.js';
+import { createRetentionDatabase } from '../../../src/lifecycle/retention/repository.js';
+import { changeWorkspaceLifecycle } from '../../../src/lifecycle/deletion/repository.js';
 import { withTenantScopedClient } from '../../../src/tenant-access/transactions.js';
 import { checkDatabaseReadiness } from '../../../src/platform/readiness.queries.js';
 import {

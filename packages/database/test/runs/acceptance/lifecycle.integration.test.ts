@@ -7,7 +7,7 @@ import {
   acceptWorkflowRun,
   WorkspaceRunAdmissionDeniedError,
 } from '../../../src/runs/commands/acceptance.js';
-import { changeWorkspaceLifecycle } from '../../../src/lifecycle/workspace-deletion.js';
+import { changeWorkspaceLifecycle } from '../../../src/lifecycle/deletion/repository.js';
 import { runEvents } from '../../../src/schema.js';
 import {
   acceptanceInput,

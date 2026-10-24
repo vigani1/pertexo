@@ -13,7 +13,7 @@ import {
   completePreviewAttempt,
   PREVIEW_STATUS,
 } from '../../src/previews/repository.js';
-import { createPreviewRetentionCoordinator } from '../../src/lifecycle/preview-retention.js';
+import { createPreviewRetentionCoordinator } from '../../src/lifecycle/previews/repository.js';
 import { databaseSchema } from '../../src/schema.js';
 import {
   parseWorkspaceId,

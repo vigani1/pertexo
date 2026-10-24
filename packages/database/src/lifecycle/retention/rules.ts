@@ -1,23 +1,23 @@
-import { bindResourcePredicate } from '../tenant-access/resources/query-scope.js';
+import { bindResourcePredicate } from '../../tenant-access/resources/query-scope.js';
 import { AUDIT_RETENTION_MIN_DAYS } from '@pertexo/workflow-model';
-import { CALLBACK_TASK_RETENTION_RULE } from '../runs/pending-tasks/callbacks/retention.js';
-import { RUN_VALUES_RETENTION_RULE } from '../runs/values/retention.js';
+import { CALLBACK_TASK_RETENTION_RULE } from '../../runs/pending-tasks/callbacks/retention.js';
+import { RUN_VALUES_RETENTION_RULE } from '../../runs/values/retention.js';
 
-import { INBOX_RETENTION_RULE } from '../inbox/retention.repository.js';
+import { INBOX_RETENTION_RULE } from '../../inbox/retention.repository.js';
 import {
   expiredRunSql,
   retainedTestRunSql,
   testRunSql,
   RUN_DETAILS_RETENTION_SQL,
   RUN_SUMMARY_RETENTION_SQL,
-} from '../runs/data-policy.js';
-import { VARIABLE_SET_RETENTION_RULE } from '../variables/retention.repository.js';
-import { API_TOKEN_RETENTION_RULE } from './identity/api-tokens.js';
-import { reapInvitationReplacementClaims } from './invitation-claims.js';
+} from '../../runs/data-policy.js';
+import { VARIABLE_SET_RETENTION_RULE } from '../../variables/retention.repository.js';
+import { API_TOKEN_RETENTION_RULE } from '../identity/tokens.repository.js';
+import { reapInvitationReplacementClaims } from '../invitations/claims.repository.js';
 import {
   CALL_CHILD_REFERENCES_RETENTION_RULE,
   CALL_DETAILS_RETENTION_RULE,
-} from './calls/retention.js';
+} from '../calls/retention.repository.js';
 
 /**
  * What retention removes and when. Each rule clears or deletes at most one page
