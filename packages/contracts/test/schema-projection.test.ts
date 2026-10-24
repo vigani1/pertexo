@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
+import { dataTableValueSchema, dataTableValuesSchema } from '@pertexo/node-sdk';
+import { boundedNodeTestJsonInputSchema } from '../src/schemas/shared/bounded-json-input.js';
 
 import {
   nodeTestingClientContract,
@@ -33,6 +35,51 @@ function resolves(document: unknown, reference: string): boolean {
 }
 
 describe('contract schema projection', () => {
+  it.each(['client', 'openapi'] as const)(
+    'retains distinct bounded value projections for %s consumers',
+    (target) => {
+      const scalar = projectContractSchema(
+        'Value',
+        dataTableValueSchema,
+        'input',
+        target,
+      );
+      const values = projectContractSchema(
+        'Values',
+        dataTableValuesSchema,
+        'input',
+        target,
+      );
+      const input = projectContractSchema(
+        'Input',
+        boundedNodeTestJsonInputSchema,
+        'input',
+        target,
+      );
+      expect(scalar).toMatchObject({
+        anyOf: expect.any(Array),
+        description: expect.stringContaining('64 KiB'),
+      });
+      expect(values).toMatchObject({
+        type: 'object',
+        additionalProperties: expect.any(Object),
+        description: expect.stringContaining('64 KiB'),
+      });
+      expect(input).toMatchObject({ 'x-pertexo-runtime-max-depth': 256 });
+      for (const [name, projected] of Object.entries({
+        Value: scalar,
+        Values: values,
+        Input: input,
+      })) {
+        const document =
+          target === 'client'
+            ? { schemas: { [name]: projected } }
+            : { components: { schemas: { [name]: projected } } };
+        for (const reference of references(projected))
+          expect(resolves(document, reference), reference).toBe(true);
+      }
+    },
+  );
   it('retains portable manifest structural graph bounds and explicit runtime marker', () => {
     const manifest = workflowPortabilityClientContract.schemas
       .WorkflowPortableManifest as {
