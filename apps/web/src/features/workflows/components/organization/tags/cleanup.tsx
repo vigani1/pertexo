@@ -97,25 +97,29 @@ export function WorkflowTagCleanup({
                     checked={checked}
                     disabled={disabled || (!checked && selection.length >= 50)}
                     onCheckedChange={(next) => {
-                      setSelection((previous) =>
-                        next
-                          ? previous.length >= 50 ||
+                      setSelection((previous) => {
+                        if (next) {
+                          if (
+                            previous.length >= 50 ||
                             previous.some(
                               (item) => item.workflowId === row.workflowId,
                             )
-                            ? previous
-                            : [
-                                ...previous,
-                                {
-                                  workflowId: row.workflowId,
-                                  expectedOrganizationRevision:
-                                    row.organizationRevision,
-                                },
-                              ]
-                          : previous.filter(
-                              (item) => item.workflowId !== row.workflowId,
-                            ),
-                      );
+                          ) {
+                            return previous;
+                          }
+                          return [
+                            ...previous,
+                            {
+                              workflowId: row.workflowId,
+                              expectedOrganizationRevision:
+                                row.organizationRevision,
+                            },
+                          ];
+                        }
+                        return previous.filter(
+                          (item) => item.workflowId !== row.workflowId,
+                        );
+                      });
                     }}
                   />
                 )}

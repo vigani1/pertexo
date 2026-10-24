@@ -33,8 +33,15 @@ export function initializeAppearance(): void {
     }
   };
   let preference = read();
-  const theme = (): 'light' | 'dark' =>
-    preference === 'system' ? (system.matches ? 'dark' : 'light') : preference;
+  const theme = (): 'light' | 'dark' => {
+    if (preference === 'system') {
+      if (system.matches) {
+        return 'dark';
+      }
+      return 'light';
+    }
+    return preference;
+  };
   let snapshot: AppearanceSnapshot = { preference, theme: theme(), persistent };
   const apply = () => {
     const resolved = theme();

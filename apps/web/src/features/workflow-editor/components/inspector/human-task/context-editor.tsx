@@ -211,11 +211,14 @@ function ContextFields({
 }
 
 function defaultPrefill(field: FormField | undefined): string {
-  return field?.type === 'number'
-    ? '0'
-    : field?.type === 'boolean'
-      ? 'false'
-      : field?.type === 'multi_select'
-        ? '[]'
-        : '""';
+  if (field?.type === 'number') {
+    return '0';
+  }
+  if (field?.type === 'boolean') {
+    return 'false';
+  }
+  if (field?.type === 'multi_select') {
+    return '[]';
+  }
+  return '""';
 }

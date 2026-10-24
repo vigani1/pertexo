@@ -152,27 +152,35 @@ function literalType(
 ): 'null' | 'list' | 'string' | 'number' | 'boolean' | undefined {
   try {
     const value: unknown = JSON.parse(text);
-    return value === null
-      ? 'null'
-      : Array.isArray(value)
-        ? 'list'
-        : typeof value === 'string' ||
-            typeof value === 'number' ||
-            typeof value === 'boolean'
-          ? (typeof value as 'string' | 'number' | 'boolean')
-          : undefined;
+    if (value === null) {
+      return 'null';
+    }
+    if (Array.isArray(value)) {
+      return 'list';
+    }
+    if (
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean'
+    ) {
+      return typeof value as 'string' | 'number' | 'boolean';
+    }
+    return undefined;
   } catch {
     return undefined;
   }
 }
 function fieldType(field: FormField): SchemaValueType {
-  return field.type === 'number'
-    ? 'number'
-    : field.type === 'boolean'
-      ? 'boolean'
-      : field.type === 'multi_select'
-        ? 'array'
-        : 'string';
+  if (field.type === 'number') {
+    return 'number';
+  }
+  if (field.type === 'boolean') {
+    return 'boolean';
+  }
+  if (field.type === 'multi_select') {
+    return 'array';
+  }
+  return 'string';
 }
 
 const detailTypes = [

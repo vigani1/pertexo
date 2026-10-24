@@ -80,41 +80,47 @@ export function PasswordResetPage({
           loadingLabel="Checking password reset…"
           unavailable="Password reset is not available right now."
         >
-          {(capabilities) =>
-            linkInvalid ? (
-              <OutcomeLens
-                id="reset-expired"
-                title="This reset link has expired"
-                action={
-                  <Link to="/forgot-password" className={primaryLink}>
-                    Request a new link
-                  </Link>
-                }
-                footer={backToSignIn}
-              >
-                A reset link works once and only for a while. Request a new one
-                and open the latest email.
-              </OutcomeLens>
-            ) : changed ? (
-              <OutcomeLens
-                id="reset-done"
-                glyph={
-                  <StatusGlyph
-                    tone="success"
-                    className="mb-4 size-6 text-success motion-safe:animate-knot [&_svg]:size-6"
-                  />
-                }
-                title="Password changed"
-                action={
-                  <Link to="/login" className={primaryLink}>
-                    Sign in
-                  </Link>
-                }
-              >
-                We signed you out on every other device. Sign in with your new
-                password.
-              </OutcomeLens>
-            ) : (
+          {(capabilities) => {
+            if (linkInvalid) {
+              return (
+                <OutcomeLens
+                  id="reset-expired"
+                  title="This reset link has expired"
+                  action={
+                    <Link to="/forgot-password" className={primaryLink}>
+                      Request a new link
+                    </Link>
+                  }
+                  footer={backToSignIn}
+                >
+                  A reset link works once and only for a while. Request a new
+                  one and open the latest email.
+                </OutcomeLens>
+              );
+            }
+            if (changed) {
+              return (
+                <OutcomeLens
+                  id="reset-done"
+                  glyph={
+                    <StatusGlyph
+                      tone="success"
+                      className="mb-4 size-6 text-success motion-safe:animate-knot [&_svg]:size-6"
+                    />
+                  }
+                  title="Password changed"
+                  action={
+                    <Link to="/login" className={primaryLink}>
+                      Sign in
+                    </Link>
+                  }
+                >
+                  We signed you out on every other device. Sign in with your new
+                  password.
+                </OutcomeLens>
+              );
+            }
+            return (
               <ResetPasswordLens
                 apiClient={apiClient}
                 token={token}
@@ -126,8 +132,8 @@ export function PasswordResetPage({
                   setLinkInvalid(true);
                 }}
               />
-            )
-          }
+            );
+          }}
         </PasswordCapabilityGate>
       )}
     </>

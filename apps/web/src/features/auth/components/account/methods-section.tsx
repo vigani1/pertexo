@@ -16,11 +16,13 @@ import { LinkProviderDialog } from './link-provider-dialog';
 type Method = AccountSecurityResponse['methods'][number];
 
 function methodName(method: Method): string {
-  return method.kind === 'password'
-    ? 'Password'
-    : method.kind === 'organization'
-      ? (method.label ?? 'Organization SSO')
-      : providerName(method.provider ?? 'Provider');
+  if (method.kind === 'password') {
+    return 'Password';
+  }
+  if (method.kind === 'organization') {
+    return method.label ?? 'Organization SSO';
+  }
+  return providerName(method.provider ?? 'Provider');
 }
 
 function MethodMark({ method }: Readonly<{ method: Method }>) {

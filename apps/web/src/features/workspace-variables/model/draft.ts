@@ -24,11 +24,13 @@ export function variableRows(
 }
 
 function variableType(value: string | number | boolean): VariableRow['type'] {
-  return typeof value === 'number'
-    ? 'number'
-    : typeof value === 'boolean'
-      ? 'boolean'
-      : 'text';
+  if (typeof value === 'number') {
+    return 'number';
+  }
+  if (typeof value === 'boolean') {
+    return 'boolean';
+  }
+  return 'text';
 }
 export function readVariableRows(rows: readonly VariableRow[]):
   | Readonly<{

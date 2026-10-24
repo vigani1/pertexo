@@ -18,11 +18,13 @@ export const retryModes = Object.entries(retryPolicyLabels).map(
   ([value, label]) => ({ value, label }),
 );
 export function stepRetryMode(settings: StepRetrySettings | undefined) {
-  return settings === undefined
-    ? 'default'
-    : settings.maximumAttempts === 1
-      ? 'none'
-      : 'custom';
+  if (settings === undefined) {
+    return 'default';
+  }
+  if (settings.maximumAttempts === 1) {
+    return 'none';
+  }
+  return 'custom';
 }
 export function retrySettingsForMode(
   mode: string,
