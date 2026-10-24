@@ -6,7 +6,7 @@ import type {
   WorkflowPromotionRequirement,
 } from '@pertexo/contracts';
 
-import type { projectTable } from '../../../../data-tables/definitions.queries.js';
+import type { DataTableDefinition } from '../../../../data-tables/contract.js';
 
 import type { PromotionScope } from '../../contract.js';
 import type { PromotionGraphBudget } from '../graph.js';
@@ -30,7 +30,7 @@ export type TargetReviewState = Readonly<{
   budget: PromotionGraphBudget;
   scope: Awaited<ReturnType<typeof readFolderScope>>;
   connections: ReturnType<typeof connectionScope>;
-  tables: ReturnType<typeof projectTable>[];
+  tables: DataTableDefinition[];
   requirements: WorkflowPromotionRequirement[];
   report: (requirement: WorkflowPromotionRequirement) => void;
 }>;

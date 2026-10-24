@@ -1,4 +1,5 @@
 import type { PoolClient } from 'pg';
+import { and, eq, sql } from 'drizzle-orm';
 import {
   DataTableError,
   isDataTableResultBounded,
@@ -8,15 +9,24 @@ import {
   type DataTableResult,
   type DataTableValues,
 } from '@pertexo/node-sdk';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workspaceDataTableRows as rows } from '../schema/data-tables.js';
+import { rethrowQueryFailure } from '../platform/query-errors.js';
 import type { DataTableDefinition } from './contract.js';
-export interface StoredRow {
-  id: string;
-  revision: number;
-  values_json: string;
-}
-/** A row's values in column order, whichever order they were stored in. */
+
+export type StoredRow = Pick<
+  typeof rows.$inferSelect,
+  'id' | 'revision' | 'values'
+>;
+export const rowFields = {
+  id: rows.id,
+  revision: rows.revision,
+  values: rows.values,
+};
+
+/** Text values retain their stored format; output follows the table's column order. */
 function projectRow(table: DataTableDefinition, row: StoredRow): DataTableRow {
-  const stored = JSON.parse(row.values_json) as DataTableValues;
+  const stored = JSON.parse(row.values) as DataTableValues;
   return {
     id: row.id,
     revision: row.revision,
@@ -27,39 +37,30 @@ function projectRow(table: DataTableDefinition, row: StoredRow): DataTableRow {
     ),
   };
 }
-export function queryClause(
-  table: DataTableDefinition,
-  query: DataTableQuery,
-  parameters: unknown[],
-): string {
+
+export function queryClause(table: DataTableDefinition, query: DataTableQuery) {
   validateDataTableQuery(table.columns, query);
-  const parameter = (value: unknown) => {
-    parameters.push(value);
-    return `$${String(parameters.length)}`;
-  };
-  return (
-    query.filters
-      .map((filter) => {
-        const column = parameter(filter.column);
-        const value = parameter(JSON.stringify(filter.value));
-        const cell = `(values_json::jsonb -> ${column}::text)`;
-        switch (filter.operator) {
-          case 'equals':
-            return `${cell} = ${value}::jsonb`;
-          case 'not_equals':
-            return `${cell} is distinct from ${value}::jsonb`;
-          // ASCII letters fold, as workflow search does (ADR 064).
-          case 'contains':
-            return `strpos(lower((values_json::jsonb ->> ${column}::text) collate "C"),lower((${value}::jsonb #>> '{}') collate "C"))>0`;
-          case 'greater_than':
-            return `${cell} > ${value}::jsonb`;
-          case 'less_than':
-            return `${cell} < ${value}::jsonb`;
-        }
-      })
-      .join(' and ') || 'true'
+  return and(
+    ...query.filters.map((filter) => {
+      const cell = sql`(${rows.values}::jsonb -> ${filter.column}::text)`;
+      const value = sql`${JSON.stringify(filter.value)}::jsonb`;
+      switch (filter.operator) {
+        case 'equals':
+          return sql`${cell} = ${value}`;
+        case 'not_equals':
+          return sql`${cell} is distinct from ${value}`;
+        // ASCII letters fold, as workflow search does (ADR 064).
+        case 'contains':
+          return sql`strpos(lower((${rows.values}::jsonb ->> ${filter.column}::text) collate "C"),lower((${value} #>> '{}') collate "C"))>0`;
+        case 'greater_than':
+          return sql`${cell} > ${value}`;
+        case 'less_than':
+          return sql`${cell} < ${value}`;
+      }
+    }),
   );
 }
+
 export function boundedResult(
   rows: readonly DataTableRow[],
   affected: number,
@@ -73,10 +74,13 @@ export function boundedResult(
     );
   return result;
 }
-function rowOrderClause(query: DataTableQuery, parameters: unknown[]): string {
-  if (query.sort === undefined) return 'id';
-  parameters.push(query.sort.column);
-  return `values_json::jsonb -> $${String(parameters.length)}::text ${query.sort.direction === 'desc' ? 'desc' : 'asc'} nulls last,id`;
+function rowOrderClause(query: DataTableQuery) {
+  if (query.sort === undefined) return [rows.id];
+  const direction = query.sort.direction === 'desc' ? sql`desc` : sql`asc`;
+  return [
+    sql`${rows.values}::jsonb -> ${query.sort.column}::text ${direction} nulls last`,
+    rows.id,
+  ];
 }
 
 export async function findRows(
@@ -85,17 +89,23 @@ export async function findRows(
   table: DataTableDefinition,
   query: DataTableQuery,
 ): Promise<DataTableResult> {
-  const parameters: unknown[] = [workspaceId, table.id];
-  const where = queryClause(table, query, parameters);
-  const order = rowOrderClause(query, parameters);
-  parameters.push(query.limit + 1, query.offset);
-  const result = await client.query<StoredRow>(
-    `select id,revision,values_json from app.workspace_data_table_rows where workspace_id=$1 and table_id=$2 and ${where} order by ${order} limit $${String(parameters.length - 1)} offset $${String(parameters.length)}`,
-    parameters,
-  );
+  const found = await drizzle(client)
+    .select(rowFields)
+    .from(rows)
+    .where(
+      and(
+        eq(rows.workspaceId, workspaceId),
+        eq(rows.tableId, table.id),
+        queryClause(table, query),
+      ),
+    )
+    .orderBy(...rowOrderClause(query))
+    .limit(query.limit + 1)
+    .offset(query.offset)
+    .catch(rethrowQueryFailure);
   return boundedResult(
-    result.rows.slice(0, query.limit).map((row) => projectRow(table, row)),
-    Math.min(result.rows.length, query.limit),
-    { hasMore: result.rows.length > query.limit },
+    found.slice(0, query.limit).map((row) => projectRow(table, row)),
+    Math.min(found.length, query.limit),
+    { hasMore: found.length > query.limit },
   );
 }

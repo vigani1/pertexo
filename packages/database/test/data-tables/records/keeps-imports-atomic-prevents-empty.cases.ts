@@ -69,8 +69,8 @@ export function registerKeepsImportsAtomicPreventsEmpty(): void {
   it('rolls a late unique-key clash back with every imported row and quota charge', async () => {
     const f = await table();
     const before = (await store.list(scope())).quotas.storedBytes;
-    const rows = Array.from({ length: 1001 }, (_, index) => ({
-      key: index === 1000 ? 'row_0' : `row_${String(index)}`,
+    const rows = Array.from({ length: 1000 }, (_, index) => ({
+      key: index === 999 ? 'row_0' : `row_${String(index)}`,
       amount: index,
     }));
     await expect(

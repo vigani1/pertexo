@@ -1,3 +1,10 @@
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  workspaceDataTables as tables,
+  workspaceDataTableQuotas as quotas,
+} from '../../schema/data-tables.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { DataTableError } from '@pertexo/node-sdk';
 import type { Pool } from 'pg';
 
@@ -54,25 +61,25 @@ export function createTable(
             'The unique key must be a required text, number or date column.',
           );
         const id = generatePersistedId();
-        await client.query(
-          'insert into app.workspace_data_tables(workspace_id,id,name,columns_json,key_column) values($1,$2,$3,$4::jsonb,$5)',
-          [
-            input.workspaceId,
+        const db = drizzle(client);
+        await db
+          .insert(tables)
+          .values({
+            workspaceId: input.workspaceId,
             id,
-            input.name,
-            JSON.stringify(
-              input.columns.map((column) => ({
-                ...column,
-                id: column.name,
-              })),
-            ),
-            input.keyColumn ?? null,
-          ],
-        );
-        await client.query(
-          'update app.workspace_data_table_quotas set table_count=table_count+1 where workspace_id=$1',
-          [input.workspaceId],
-        );
+            name: input.name,
+            columns: input.columns.map((column) => ({
+              ...column,
+              id: column.name,
+            })),
+            keyColumn: input.keyColumn ?? null,
+          })
+          .catch(rethrowQueryFailure);
+        await db
+          .update(quotas)
+          .set({ tableCount: sql`${quotas.tableCount}+1` })
+          .where(eq(quotas.workspaceId, input.workspaceId))
+          .catch(rethrowQueryFailure);
         return { id };
       },
     }),
@@ -122,14 +129,24 @@ export function removeTable(
             'conflict',
             'This table changed. Reload before deleting.',
           );
-        await client.query(
-          'delete from app.workspace_data_tables where workspace_id=$1 and id=$2',
-          [input.workspaceId, table.id],
-        );
-        await client.query(
-          'update app.workspace_data_table_quotas set table_count=table_count-1,stored_bytes=stored_bytes-$2 where workspace_id=$1',
-          [input.workspaceId, table.storedBytes],
-        );
+        const db = drizzle(client);
+        await db
+          .delete(tables)
+          .where(
+            and(
+              eq(tables.workspaceId, input.workspaceId),
+              eq(tables.id, table.id),
+            ),
+          )
+          .catch(rethrowQueryFailure);
+        await db
+          .update(quotas)
+          .set({
+            tableCount: sql`${quotas.tableCount}-1`,
+            storedBytes: sql`${quotas.storedBytes}-${table.storedBytes}`,
+          })
+          .where(eq(quotas.workspaceId, input.workspaceId))
+          .catch(rethrowQueryFailure);
         return { removed: true as const };
       },
     }),
@@ -166,12 +183,15 @@ export function configureTables(
           const current = await readQuotas(client, input.workspaceId, {
             lock: true,
           });
-          const max = (
-            await client.query<{ columns: number; rows: number }>(
-              'select coalesce(max(jsonb_array_length(columns_json)),0)::int columns,coalesce(max(row_count),0)::int rows from app.workspace_data_tables where workspace_id=$1',
-              [input.workspaceId],
-            )
-          ).rows[0];
+          const db = drizzle(client);
+          const [max] = await db
+            .select({
+              columns: sql<number>`coalesce(max(jsonb_array_length(${tables.columns})),0)::int`,
+              rows: sql<number>`coalesce(max(${tables.rowCount}),0)::int`,
+            })
+            .from(tables)
+            .where(eq(tables.workspaceId, input.workspaceId))
+            .catch(rethrowQueryFailure);
           const quotasBelowCurrentUsage =
             current.tableCount > input.tableLimit ||
             current.storedBytes > input.byteLimit ||
@@ -182,16 +202,16 @@ export function configureTables(
               'quota_exceeded',
               'Limits cannot be lower than current table use.',
             );
-          await client.query(
-            'update app.workspace_data_table_quotas set table_limit=$2,column_limit=$3,row_limit=$4,byte_limit=$5 where workspace_id=$1',
-            [
-              input.workspaceId,
-              input.tableLimit,
-              input.columnLimit,
-              input.rowLimit,
-              input.byteLimit,
-            ],
-          );
+          await db
+            .update(quotas)
+            .set({
+              tableLimit: input.tableLimit,
+              columnLimit: input.columnLimit,
+              rowLimit: input.rowLimit,
+              byteLimit: input.byteLimit,
+            })
+            .where(eq(quotas.workspaceId, input.workspaceId))
+            .catch(rethrowQueryFailure);
           return readQuotas(client, input.workspaceId);
         },
       }),

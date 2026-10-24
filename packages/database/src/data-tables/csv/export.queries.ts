@@ -1,3 +1,7 @@
+import { and, eq, gt, lte, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workspaceDataTableRows as rows } from '../../schema/data-tables.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import type {
   DataTableExportQuery,
@@ -29,14 +33,8 @@ export function exportTableCsv(
     signal?: AbortSignal | undefined;
   }>,
 ): AsyncGenerator<string> {
-  const parameters: unknown[] = [workspaceId, table.id];
   // Reject stale filters before the consumer starts a download.
-  const where = queryClause(
-    table,
-    { ...query, limit: 1, offset: 0 },
-    parameters,
-  );
-  const afterParameter = parameters.length + 1;
+  const where = queryClause(table, { ...query, limit: 1, offset: 0 });
   const columns = JSON.stringify(table.columns);
   return encodeRows();
 
@@ -58,25 +56,46 @@ export function exportTableCsv(
           );
         // The candidate set is bounded on the server; only the byte-bounded prefix
         // crosses the wire. Even a maximum-size row fits this prefix.
-        return (
-          await client.query<{ id: string; values_json: string }>(
-            `with candidates as materialized (
-            select id,values_json from app.workspace_data_table_rows
-            where workspace_id=$1 and table_id=$2 and ${where}
-              and ($${String(afterParameter)}::uuid is null or id>$${String(afterParameter)}::uuid)
-            order by id limit ${String(BATCH_ROWS)}
-          ), sized as (
-            select id,values_json,sum(octet_length(values_json)) over (order by id) as bytes
-            from candidates
-          ) select id,values_json from sized where bytes<=${String(BATCH_BYTES)} order by id`,
-            [...parameters, after],
-          )
-        ).rows;
+        const db = drizzle(client);
+        const candidates = db.$with('candidates').as(
+          db
+            .select({ id: rows.id, valuesText: rows.values })
+            .from(rows)
+            .where(
+              and(
+                eq(rows.workspaceId, workspaceId),
+                eq(rows.tableId, table.id),
+                where,
+                after === null ? undefined : gt(rows.id, after),
+              ),
+            )
+            .orderBy(rows.id)
+            .limit(BATCH_ROWS),
+        );
+        const sized = db.$with('sized').as(
+          db
+            .select({
+              id: candidates.id,
+              valuesText: candidates.valuesText,
+              bytes:
+                sql<number>`sum(octet_length(${candidates.valuesText})) over (order by ${candidates.id})`.as(
+                  'bytes',
+                ),
+            })
+            .from(candidates),
+        );
+        return db
+          .with(candidates, sized)
+          .select({ id: sized.id, valuesText: sized.valuesText })
+          .from(sized)
+          .where(lte(sized.bytes, BATCH_BYTES))
+          .orderBy(sized.id)
+          .catch(rethrowQueryFailure);
       });
       if (batch.length === 0) return;
       for (const row of batch) {
         signal?.throwIfAborted();
-        const values = JSON.parse(row.values_json) as DataTableValues;
+        const values = JSON.parse(row.valuesText) as DataTableValues;
         yield table.columns
           .map((column) => escapeCsvValue(values[column.name] ?? null))
           .join(',') + '\r\n';
