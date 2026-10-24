@@ -1,7 +1,11 @@
+import { QueryView } from '@/components/patterns/states/query-view';
 import { useQuery } from '@tanstack/react-query';
 import { Notice } from '@/components/ui/notice';
 import type { WorkflowTestScope } from '../../data/workflow-tests/api';
+import type { listSuites } from '../../data/test-suites/api';
 import { suitesQueryOptions } from '../../data/test-suites/queries';
+
+type SuiteList = Awaited<ReturnType<typeof listSuites>>;
 export function SuitePublishNotice({
   scope,
   savedDraftCurrent,
@@ -20,21 +24,33 @@ export function SuitePublishNotice({
     );
   const query = useQuery({ ...suitesQueryOptions(scope), enabled: allowed });
   if (!allowed) return null;
-  if (query.isPending)
-    return (
-      <p className="text-xs text-muted-foreground" role="status">
-        Checking latest test suite…
-      </p>
-    );
-  if (query.isError)
-    return (
-      <Notice tone="warning">
-        The latest suite result couldn’t be checked. You can still publish.
-      </Notice>
-    );
-  const latest = query.data.items.reduce<
-    (typeof query.data.items)[number] | undefined
-  >(
+  return (
+    <QueryView
+      query={query}
+      resource="The latest suite result"
+      loading={
+        <p className="text-xs text-muted-foreground" role="status">
+          Checking latest test suite…
+        </p>
+      }
+      error={() => (
+        <Notice tone="warning">
+          The latest suite result couldn’t be checked. You can still publish.
+        </Notice>
+      )}
+    >
+      {(suites) => (
+        <LatestSuite suites={suites} savedDraftCurrent={savedDraftCurrent} />
+      )}
+    </QueryView>
+  );
+}
+
+function LatestSuite({
+  suites,
+  savedDraftCurrent,
+}: Readonly<{ suites: SuiteList; savedDraftCurrent: boolean }>) {
+  const latest = suites.items.reduce<(typeof suites.items)[number] | undefined>(
     (best, item) =>
       best === undefined || item.createdAt > best.createdAt ? item : best,
     undefined,
@@ -42,7 +58,7 @@ export function SuitePublishNotice({
   if (latest === undefined)
     return <Notice>No suite has been run. You can still publish.</Notice>;
   const outdated =
-    !savedDraftCurrent || latest.signature !== query.data.current.signature;
+    !savedDraftCurrent || latest.signature !== suites.current.signature;
   return (
     <Notice
       tone={outdated || latest.status !== 'passed' ? 'warning' : 'success'}

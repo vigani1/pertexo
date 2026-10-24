@@ -7,7 +7,6 @@ import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { ApiClient } from '@/lib/api/client';
-import { isApiError } from '@/lib/api/error';
 import { accountSecurityQueryOptions } from '../data/account-security.queries';
 import { AccountEmailSection } from '../components/account/email-section';
 import { AccountFactsSection } from '../components/account/facts-section';
@@ -17,7 +16,6 @@ import { AccountProfileSection } from '../components/account/profile/section';
 import { AccountSessionsSection } from '../components/account/sessions-section';
 import { Notice } from '@/components/ui/notice';
 import { QueryView } from '@/components/patterns/states/query-view';
-import { describeReadError } from '@/lib/api/error-copy';
 
 type LinkOutcome = 'returned' | 'failed';
 
@@ -37,17 +35,6 @@ function LinkOutcomeLine({ outcome }: Readonly<{ outcome: LinkOutcome }>) {
  * Your identity across workspaces: profile, how you sign in, and where you
  * are signed in. Rendered in the workspace shell and on its own page.
  */
-/** A signed-out or refused answer hides sign-in methods loaded earlier. */
-function signInMethodsHidden(error: unknown) {
-  if (!isApiError(error) || (error.status !== 401 && error.status !== 403))
-    return undefined;
-  return (
-    <Notice tone="destructive">
-      {describeReadError(error, 'Your sign-in methods')}
-    </Notice>
-  );
-}
-
 function twoFactorReadState(
   security: Readonly<{ isFetching: boolean; isError: boolean }>,
 ) {
@@ -109,7 +96,6 @@ export function AccountSecurityPage({
             loading={
               <SkeletonRows label="Loading your sign-in methods" rows={2} />
             }
-            failure={signInMethodsHidden}
           >
             {(snapshot) => (
               <>

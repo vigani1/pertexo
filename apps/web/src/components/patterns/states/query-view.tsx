@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { RotateCcwIcon } from 'lucide-react';
+import { RefreshCwIcon, RotateCcwIcon } from 'lucide-react';
 import { StaleLine } from '@/components/patterns/states/stale-line';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,7 +12,11 @@ import {
 import { Notice } from '@/components/ui/notice';
 import { SkeletonLines } from '@/components/ui/skeleton';
 import { StatusGlyph } from '@/components/ui/status';
-import { describeReadError, readFailureReason } from '@/lib/api/error-copy';
+import {
+  describeReadError,
+  isAccessLost,
+  readFailureReason,
+} from '@/lib/api/error-copy';
 
 /** The part of a TanStack query result that decides what a read shows. */
 export type ReadQuery<Data> = Readonly<{
@@ -22,7 +26,7 @@ export type ReadQuery<Data> = Readonly<{
   isFetching: boolean;
   error: unknown;
   dataUpdatedAt: number;
-  refetch: () => Promise<unknown>;
+  refetch: () => unknown;
   /** Infinite queries: a failed next page belongs to `LoadMore`, not here. */
   isFetchNextPageError?: boolean;
 }>;
@@ -30,7 +34,8 @@ export type ReadQuery<Data> = Readonly<{
 /**
  * The one owner of a read's states. Before data arrives it shows `loading`
  * or a failure notice with Retry; once data is on screen a failed refresh
- * keeps it and adds the amber stale line. `empty` replaces the content when
+ * keeps it and adds the amber stale line, unless the answer says access is
+ * gone (signed out, forbidden, not found), which hides it. `empty` replaces the content when
  * `isEmpty` says the data has nothing in it. Without `children` it renders
  * only the states, for data the caller already shows elsewhere, such as the
  * options of a select.
@@ -71,7 +76,10 @@ export function QueryView<Data>({
     const explained = failure?.(query.error);
     if (explained !== undefined && explained !== null) return explained;
   }
-  if (query.data === undefined) {
+  // An authoritative "you can't see this" hides data loaded earlier.
+  const data =
+    query.isError && isAccessLost(query.error) ? undefined : query.data;
+  if (data === undefined) {
     if (query.isPending)
       return (
         loading ?? (
@@ -108,17 +116,20 @@ export function QueryView<Data>({
       </Notice>
     );
   }
-  const showEmpty = empty !== undefined && (isEmpty?.(query.data) ?? false);
-  const content = showEmpty ? empty : children?.(query.data);
+  const showEmpty = empty !== undefined && (isEmpty?.(data) ?? false);
+  const content = showEmpty ? empty : children?.(data);
   const refreshFailed = query.isError && !(query.isFetchNextPageError ?? false);
-  if (!refreshFailed) return content;
+  // One shape either way, so a failed refresh never remounts the content
+  // and its unsaved edits.
   return (
     <>
-      <StaleLine
-        updatedAt={query.dataUpdatedAt}
-        retrying={query.isFetching}
-        onRetry={retry}
-      />
+      {refreshFailed ? (
+        <StaleLine
+          updatedAt={query.dataUpdatedAt}
+          retrying={query.isFetching}
+          onRetry={retry}
+        />
+      ) : null}
       {content}
     </>
   );
@@ -158,5 +169,39 @@ export function FailedReadState({
         </Button>
       </EmptyActions>
     </Empty>
+  );
+}
+
+/**
+ * A small value's failed first read, for `QueryView`'s `error` where a
+ * notice would outweigh the value, such as one field of a run.
+ */
+export function InlineFailedRead({
+  text,
+  retrying,
+  retry,
+}: Readonly<{
+  /** "Couldn’t load Code diagnostics." */
+  text: string;
+  retrying: boolean;
+  retry: () => void;
+}>) {
+  return (
+    <div
+      role="alert"
+      className="flex flex-wrap items-center gap-2 text-[0.8rem] text-muted-foreground"
+    >
+      <span>{text}</span>
+      <Button
+        type="button"
+        size="xs"
+        variant="ghost"
+        disabled={retrying}
+        onClick={retry}
+      >
+        <RefreshCwIcon aria-hidden="true" />
+        Try again
+      </Button>
+    </div>
   );
 }

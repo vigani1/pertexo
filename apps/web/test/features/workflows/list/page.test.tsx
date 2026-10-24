@@ -418,16 +418,14 @@ describe('workflow list', () => {
     });
     expect(
       await within(dialog).findByText(
-        'Published parents could not be checked.',
+        'Published parents couldn’t be loaded. Try again.',
       ),
     ).toBeVisible();
     expect(
       within(dialog).getByRole('button', { name: 'Archive' }),
     ).toBeDisabled();
     allowRead = true;
-    await event.click(
-      within(dialog).getByRole('button', { name: 'Try again' }),
-    );
+    await event.click(within(dialog).getByRole('button', { name: 'Retry' }));
     expect(
       await within(dialog).findByText('Published invoice parent'),
     ).toBeVisible();

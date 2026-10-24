@@ -1,3 +1,4 @@
+import { QueryView } from '@/components/patterns/states/query-view';
 import { TwoFactorSignInLens } from '../components/two-factor/sign-in-lens';
 import { OrganizationSignInForm } from '@/features/federation/sign-in.public';
 import {
@@ -68,28 +69,16 @@ export function LoginPage({
     </AuthLensFooter>
   );
 
-  if (capabilities.isPending)
-    return (
-      <LensLoading
-        title="Sign in to continue"
-        label="Checking how you can sign in…"
-      />
-    );
-  if (
-    capabilities.isError ||
-    (!capabilities.data.password.enabled &&
-      capabilities.data.socialProviders.length === 0)
-  )
-    return (
-      <LensUnavailable
-        id="login-unavailable"
-        title="Sign in to continue"
-        retrying={capabilities.isFetching}
-        onRetry={() => void capabilities.refetch()}
-      >
-        Sign-in isn’t available right now. Try again in a moment.
-      </LensUnavailable>
-    );
+  const unavailableLens = (retrying: boolean, retry: () => void) => (
+    <LensUnavailable
+      id="login-unavailable"
+      title="Sign in to continue"
+      retrying={retrying}
+      onRetry={retry}
+    >
+      Sign-in isn’t available right now. Try again in a moment.
+    </LensUnavailable>
+  );
   switch (view.kind) {
     case 'two-factor':
       return (
@@ -160,26 +149,48 @@ export function LoginPage({
       );
     case 'sign-in':
       return (
-        <SignInLens
-          apiClient={apiClient}
-          capabilities={capabilities.data}
-          notice={notice}
-          navigateToProvider={navigateToProvider}
-          onAuthenticated={onAuthenticated}
-          onTwoFactor={() => {
-            setView({ kind: 'two-factor' });
-          }}
-          onUnverified={(email) => {
-            setView({ kind: 'verify', email });
-          }}
-          onOrganizationSignIn={() => {
-            setView({ kind: 'organization' });
-          }}
-          onRequestVerificationLink={() => {
-            setView({ kind: 'request-verification' });
-          }}
-          returnTo={returnTo}
-        />
+        <QueryView
+          query={capabilities}
+          resource="Sign-in options"
+          loading={
+            <LensLoading
+              title="Sign in to continue"
+              label="Checking how you can sign in…"
+            />
+          }
+          error={({ retrying, retry }) => unavailableLens(retrying, retry)}
+        >
+          {(options) =>
+            !options.password.enabled &&
+            options.socialProviders.length === 0 ? (
+              unavailableLens(
+                capabilities.isFetching,
+                () => void capabilities.refetch(),
+              )
+            ) : (
+              <SignInLens
+                apiClient={apiClient}
+                capabilities={options}
+                notice={notice}
+                navigateToProvider={navigateToProvider}
+                onAuthenticated={onAuthenticated}
+                onTwoFactor={() => {
+                  setView({ kind: 'two-factor' });
+                }}
+                onUnverified={(email) => {
+                  setView({ kind: 'verify', email });
+                }}
+                onOrganizationSignIn={() => {
+                  setView({ kind: 'organization' });
+                }}
+                onRequestVerificationLink={() => {
+                  setView({ kind: 'request-verification' });
+                }}
+                returnTo={returnTo}
+              />
+            )
+          }
+        </QueryView>
       );
   }
 }

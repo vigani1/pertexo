@@ -1,38 +1,34 @@
 import { RefreshCwIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { SettingsSection } from '@/components/patterns/settings/section';
-import { StaleLine } from '@/components/patterns/states/stale-line';
+import {
+  QueryView,
+  type ReadQuery,
+} from '@/components/patterns/states/query-view';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Notice } from '@/components/ui/notice';
 import { SkeletonThread } from '@/components/ui/skeleton';
 import { describeReadError } from '@/lib/api/error-copy';
+import { accessLost } from '../model/usage-access';
 
 /**
  * One section of the Usage page, laid out like every settings section, with
  * its own refresh so a failed capacity read never hides run counts. The page
- * header says how fresh they are.
+ * header says how fresh they are. Losing access hides figures read earlier.
  */
-export function UsageSnapshot({
+export function UsageSnapshot<Data>({
   title,
   description,
   controls,
-  snapshotAt,
-  error,
-  pending,
-  retrying,
-  onRetry,
+  query,
   children,
 }: Readonly<{
   title: string;
   description: string;
   /** Controls that stay usable even when the read fails, such as a window. */
   controls?: ReactNode;
-  snapshotAt: string | undefined;
-  error: unknown;
-  pending: boolean;
-  retrying: boolean;
-  onRetry: () => void;
-  children: ReactNode;
+  query: ReadQuery<Data>;
+  children: (data: Data) => ReactNode;
 }>) {
   return (
     <SettingsSection
@@ -44,36 +40,34 @@ export function UsageSnapshot({
           size="sm"
           aria-label={`Refresh ${title.toLowerCase()}`}
           className="-ml-2.5"
-          pending={retrying}
+          pending={query.isFetching}
           pendingLabel="Refreshing…"
           icon={<RefreshCwIcon data-icon="inline-start" aria-hidden="true" />}
-          onClick={onRetry}
+          onClick={() => void query.refetch()}
         >
           Refresh
         </ProgressButton>
       }
     >
       {controls}
-      {snapshotAt === undefined ? (
-        pending ? (
+      <QueryView
+        query={query}
+        resource={title}
+        loading={
           <div role="status" aria-label={`Loading ${title.toLowerCase()}`}>
             <SkeletonThread order={0} />
           </div>
-        ) : (
-          <Notice tone="destructive">{describeReadError(error, title)}</Notice>
-        )
-      ) : (
-        <>
-          {error === null || error === undefined ? null : (
-            <StaleLine
-              updatedAt={Date.parse(snapshotAt)}
-              retrying={retrying}
-              onRetry={onRetry}
-            />
-          )}
-          {children}
-        </>
-      )}
+        }
+        failure={(error) =>
+          accessLost(error) ? (
+            <Notice tone="destructive">
+              {describeReadError(error, title)}
+            </Notice>
+          ) : undefined
+        }
+      >
+        {children}
+      </QueryView>
     </SettingsSection>
   );
 }

@@ -111,11 +111,7 @@ export function ApiTokensPage({
             them here.
           </Notice>
         )}
-        <TokenResults
-          query={query}
-          onRefresh={refresh}
-          onRevoke={setRevoking}
-        />
+        <TokenResults query={query} onRevoke={setRevoking} />
       </div>
       {!creating || first === undefined ? null : (
         <CreateTokenDialog
