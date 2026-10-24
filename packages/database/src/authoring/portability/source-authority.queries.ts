@@ -2,7 +2,16 @@ import {
   readConnectionScope,
   connectionScopeSql,
 } from '../../tenant-access/resources/connections/scope.js';
-import { bindResourcePredicate } from '../../tenant-access/resources/scope.queries.js';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { alias } from 'drizzle-orm/pg-core';
+import {
+  workflows,
+  workflowDrafts,
+  workflowVersions,
+} from '../../schema/authoring/workflows.js';
+import { connections } from '../../schema/connections.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { authorizeWorkflowResource } from '../../tenant-access/resources/authority.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
@@ -18,7 +27,10 @@ import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
 } from '../workflows/errors.js';
-import { mapDraft } from '../workflows/representation/records.queries.js';
+import {
+  projectDraft,
+  draftProjection,
+} from '../workflows/representation/records.queries.js';
 import type { AuthoringCatalogs } from '../workflows/catalogs.js';
 
 /** Lock workflow before its selected source; select catalog only after source. */
@@ -33,41 +45,62 @@ export async function lockPortableSource(
     }))
   )
     throw new WorkflowNotFoundError('Workflow source is not visible');
-  const workflow = await client.query(
-    "select id from app.workflows where workspace_id=$1 and id=$2 and lifecycle_status='active' for share",
-    [input.workspaceId, input.workflowId],
-  );
-  if (workflow.rowCount !== 1)
+  const db = drizzle(client);
+  const workflow = await db
+    .select({ id: workflows.id })
+    .from(workflows)
+    .where(
+      and(
+        eq(workflows.workspaceId, input.workspaceId),
+        eq(workflows.id, input.workflowId),
+        eq(workflows.lifecycleStatus, 'active'),
+      ),
+    )
+    .for('share')
+    .catch(rethrowQueryFailure);
+  if (workflow.length !== 1)
     throw new WorkflowNotFoundError('Workflow source is not visible');
-  const selected =
-    input.source.kind === 'draft'
-      ? await client.query<Record<string, unknown>>(
-          'select * from app.workflow_drafts where workspace_id=$1 and workflow_id=$2 for share',
-          [input.workspaceId, input.workflowId],
-        )
-      : // A version never changes; the workflow lock keeps it from being purged.
-        await client.query<Record<string, unknown>>(
-          'select graph_json from app.workflow_versions where workspace_id=$1 and workflow_id=$2 and id=$3',
-          [
-            input.workspaceId,
-            input.workflowId,
-            z.uuid().parse(input.source.versionId),
-          ],
-        );
-  const row = selected.rows[0];
-  if (row === undefined || row.graph_json === null)
+  if (input.source.kind === 'draft') {
+    const [row] = await db
+      .select(draftProjection)
+      .from(workflowDrafts)
+      .where(
+        and(
+          eq(workflowDrafts.workspaceId, input.workspaceId),
+          eq(workflowDrafts.workflowId, input.workflowId),
+        ),
+      )
+      .for('share')
+      .catch(rethrowQueryFailure);
+    if (row === undefined || row.graphJson === null)
+      throw new WorkflowNotFoundError('Workflow source is not visible');
+    return { kind: 'draft' as const, row };
+  }
+  // Immutable versions need only the workflow share lock to prevent purging.
+  const [row] = await db
+    .select({ graphJson: workflowVersions.graphJson })
+    .from(workflowVersions)
+    .where(
+      and(
+        eq(workflowVersions.workspaceId, input.workspaceId),
+        eq(workflowVersions.workflowId, input.workflowId),
+        eq(workflowVersions.id, z.uuid().parse(input.source.versionId)),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  if (row === undefined || row.graphJson === null)
     throw new WorkflowNotFoundError('Workflow source is not visible');
-  return row;
+  return { kind: 'version' as const, row };
 }
 
 export function reviewedSourceGraph(
   input: ExportWorkflowInput,
-  row: Record<string, unknown>,
+  source: Awaited<ReturnType<typeof lockPortableSource>>,
   selection: AuthoringCatalogs,
 ): WorkflowGraph {
-  if (input.source.kind === 'version')
-    return parseWorkflowGraphDraft(row.graph_json);
-  const draft = mapDraft(row, selection.definitionCatalog);
+  if (source.kind === 'version')
+    return parseWorkflowGraphDraft(source.row.graphJson);
+  const draft = projectDraft(source.row, selection.definitionCatalog);
   const tag = workflowDraftRepresentationTag({
     workflowId: input.workflowId,
     revision: draft.revision,
@@ -99,27 +132,34 @@ export async function inspectPortableConnections(
     ),
   ].sort();
   if (ids.length === 0) return [];
-  const parameters: unknown[] = [workspaceId, ids];
-  const permitted = bindResourcePredicate(
-    connectionScopeSql(
-      await readConnectionScope(
-        client,
-        { workspaceId, actorId },
-        'connection:use',
-      ),
+  const connection = alias(connections, 'connection');
+  const permitted = connectionScopeSql(
+    await readConnectionScope(
+      client,
+      { workspaceId, actorId },
+      'connection:use',
     ),
-    parameters,
+    sql`${connection}`,
   );
-  const result = await client.query<{
-    id: string;
-    provider_key: string;
-    auth_type: string;
-    status: string;
-  }>(
-    `select id,provider_key,auth_type,status from app.connections connection where workspace_id=$1 and id=any($2::uuid[]) and ${permitted} order by id for share`,
-    parameters,
-  );
-  const rows = new Map(result.rows.map((row) => [row.id, row]));
+  const result = await drizzle(client)
+    .select({
+      id: connection.id,
+      providerKey: connection.providerKey,
+      authType: connection.authType,
+      status: connection.status,
+    })
+    .from(connection)
+    .where(
+      and(
+        eq(connection.workspaceId, workspaceId),
+        inArray(connection.id, ids),
+        permitted,
+      ),
+    )
+    .orderBy(asc(connection.id))
+    .for('share')
+    .catch(rethrowQueryFailure);
+  const rows = new Map(result.map((row) => [row.id, row]));
   const slots = new Map(
     manifest.connectionSlots.map((slot) => [
       `${slot.nodeId}\u0000${slot.slot}`,
@@ -133,8 +173,8 @@ export async function inspectPortableConnections(
       row === undefined ||
       slot === undefined ||
       row.status !== 'active' ||
-      row.provider_key !== slot.providerKey ||
-      row.auth_type !== slot.authType;
+      row.providerKey !== slot.providerKey ||
+      row.authType !== slot.authType;
     if (connectionUnavailable)
       return [
         {

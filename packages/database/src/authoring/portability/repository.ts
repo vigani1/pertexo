@@ -1,3 +1,11 @@
+import { and, eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import type { PoolClient } from 'pg';
+import type { WorkflowGraph } from '@pertexo/workflow-model';
+import { workflows, workflowDrafts } from '../../schema/authoring/workflows.js';
+import { workflowTemplateOrigins } from '../../schema/authoring/template-origin.js';
+import { auditEvents } from '../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { requireConnectionBindings } from '../../tenant-access/resources/connections/bindings.queries.js';
 import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.queries.js';
 import { lockArtifactReferences } from '../../artifacts/references/repository.js';
@@ -34,7 +42,10 @@ import {
 } from '../workflows/errors.js';
 import { admitWorkflowAuthoring } from '../workflows/admission.queries.js';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
-import { lockPortableSource, reviewedSourceGraph } from './source-authority.queries.js';
+import {
+  lockPortableSource,
+  reviewedSourceGraph,
+} from './source-authority.queries.js';
 
 import {
   previewInput,
@@ -222,11 +233,18 @@ function importPortableWorkflow(
       });
       if (stored !== null) {
         const replay = importResultSchema.parse(stored);
-        const destination = await client.query(
-          'select id from app.workflows where workspace_id=$1 and id=$2 for share',
-          [input.workspaceId, replay.workflowId],
-        );
-        if (destination.rowCount !== 1)
+        const destination = await drizzle(client)
+          .select({ id: workflows.id })
+          .from(workflows)
+          .where(
+            and(
+              eq(workflows.workspaceId, input.workspaceId),
+              eq(workflows.id, replay.workflowId),
+            ),
+          )
+          .for('share')
+          .catch(rethrowQueryFailure);
+        if (destination.length !== 1)
           throw new WorkflowNotFoundError(
             'Workflow destination is not visible',
           );
@@ -263,49 +281,11 @@ function importPortableWorkflow(
         graph,
         input.actorId,
       );
-      await client.query(
-        `insert into app.workflows
-           (id, workspace_id, name, lifecycle_status, activation_status, created_by)
-         values ($1, $2, $3, 'active', 'inactive', $4)`,
-        [destinationId, input.workspaceId, input.name, input.actorId],
-      );
-      await client.query(
-        `insert into app.workflow_drafts
-           (workflow_id, workspace_id, revision, graph_json, updated_by)
-         values ($1, $2, 1, $3::json, $4)`,
-        [
-          destinationId,
-          input.workspaceId,
-          JSON.stringify(graph),
-          input.actorId,
-        ],
-      );
-      if (input.templateOrigin !== undefined)
-        await client.query(
-          `insert into app.workflow_template_origins (workspace_id, workflow_id, origin)
-           values ($1, $2, $3::jsonb)`,
-          [
-            input.workspaceId,
-            destinationId,
-            JSON.stringify({
-              ...input.templateOrigin,
-              creationCommandDigest: commandDigest,
-              derivation: 'direct',
-            }),
-          ],
-        );
-      await client.query(
-        `insert into app.audit_events(id,workspace_id,actor_user_id,action,target_type,target_id,request_id,trace_id,metadata)
-      values($1,$2,$3,'workflow.imported','workflow',$4,$5,$6,'{"revision":1}'::jsonb)`,
-        [
-          generatePersistedId(),
-          input.workspaceId,
-          input.actorId,
-          destinationId,
-          input.requestId ?? null,
-          input.traceId ?? null,
-        ],
-      );
+      await persistImportedWorkflow(client, input, {
+        destinationId,
+        graph,
+        commandDigest,
+      });
       const result = Object.freeze({ workflowId: destinationId });
       await completeCommand(client, command, result);
       return result;
@@ -325,4 +305,68 @@ export function createWorkflowPortabilityStore(
     previewWorkflowImport: (input) => previewPortableWorkflow(context, input),
     importWorkflow: (input) => importPortableWorkflow(context, input),
   };
+}
+
+async function persistImportedWorkflow(
+  client: PoolClient,
+  input: ImportWorkflowInput,
+  {
+    destinationId,
+    graph,
+    commandDigest,
+  }: Readonly<{
+    destinationId: string;
+    graph: WorkflowGraph;
+    commandDigest: string;
+  }>,
+): Promise<void> {
+  const db = drizzle(client);
+  await db
+    .insert(workflows)
+    .values({
+      id: destinationId,
+      workspaceId: input.workspaceId,
+      name: input.name,
+      lifecycleStatus: 'active',
+      activationStatus: 'inactive',
+      createdBy: input.actorId,
+    })
+    .catch(rethrowQueryFailure);
+  await db
+    .insert(workflowDrafts)
+    .values({
+      workflowId: destinationId,
+      workspaceId: input.workspaceId,
+      revision: 1,
+      graphJson: graph,
+      updatedBy: input.actorId,
+    })
+    .catch(rethrowQueryFailure);
+  if (input.templateOrigin !== undefined)
+    await db
+      .insert(workflowTemplateOrigins)
+      .values({
+        workspaceId: input.workspaceId,
+        workflowId: destinationId,
+        origin: {
+          ...input.templateOrigin,
+          creationCommandDigest: commandDigest,
+          derivation: 'direct',
+        },
+      })
+      .catch(rethrowQueryFailure);
+  await db
+    .insert(auditEvents)
+    .values({
+      id: generatePersistedId(),
+      workspaceId: input.workspaceId,
+      actorUserId: input.actorId,
+      action: 'workflow.imported',
+      targetType: 'workflow',
+      targetId: destinationId,
+      requestId: input.requestId ?? null,
+      traceId: input.traceId ?? null,
+      metadata: { revision: 1 },
+    })
+    .catch(rethrowQueryFailure);
 }
