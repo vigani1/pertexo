@@ -52,7 +52,7 @@ import {
   importInput,
   importResultSchema,
   exportInput,
-} from './contract.js';
+} from './input.js';
 import { selectedPolicy, inspectImport, portableFailure } from './admission.js';
 
 async function requirePortabilityAuthority(
