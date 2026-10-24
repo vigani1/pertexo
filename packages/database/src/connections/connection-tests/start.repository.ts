@@ -11,13 +11,13 @@ import {
   withConnectionTransaction,
   selectConnection,
   parseConnectionTestResult,
-} from '../records.js';
+} from '../records.queries.js';
 import {
   connectionTestClaim,
   connectionTestClaimSchema,
   connectionTestScope,
 } from './claim.js';
-import { requireConnectionUser } from '../authority.js';
+import { requireConnectionUser } from '../authority.queries.js';
 
 import { sha256HexSchema as digestSchema } from '../../platform/persisted-primitives.js';
 

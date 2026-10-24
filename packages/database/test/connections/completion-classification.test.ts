@@ -4,7 +4,7 @@ import { classifyConnectionTestCompletion } from '../../src/connections/connecti
 import {
   databaseConstraint,
   decodeDurableConnectionReplay,
-} from '../../src/connections/records.js';
+} from '../../src/connections/records.queries.js';
 
 const secretVersionId = '11111111-1111-4111-8111-111111111111';
 const outcomes = [

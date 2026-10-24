@@ -14,7 +14,7 @@ vi.mock('../../src/tenant-access/transactions.js', () => ({
 }));
 
 import { createConnectionUsagePersistence } from '../../src/connections/discovery/usage.queries.js';
-import { ConnectionNotFoundError } from '../../src/connections/records.js';
+import { ConnectionNotFoundError } from '../../src/connections/records.queries.js';
 
 const workspaceId = '11111111-1111-4111-8111-111111111111';
 const actorId = '22222222-2222-4222-8222-222222222222';

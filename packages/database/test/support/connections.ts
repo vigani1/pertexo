@@ -16,7 +16,7 @@ import {
   type ConnectionDatabase,
   type ConnectionLookupDatabase,
   type CreateConnectionInput,
-} from '../../src/connections/database.js';
+} from '../../src/connections/repository.js';
 import {
   createFailureNotificationDestinationDatabase,
   FailureNotificationDestinationError,

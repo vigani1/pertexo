@@ -21,7 +21,7 @@ import {
   CONNECTION_AUTH_TYPE,
   ConnectionNotFoundError,
   ConnectionSharingRevisionConflictError,
-} from '../../../src/connections/database.js';
+} from '../../../src/connections/repository.js';
 
 const builder = randomUUID(),
   viewer = randomUUID(),

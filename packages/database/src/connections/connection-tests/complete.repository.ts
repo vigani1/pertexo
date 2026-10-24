@@ -11,10 +11,10 @@ import {
   selectConnection,
   connectionTestOutcomeSchema,
   serializeConnectionTestResult,
-} from '../records.js';
+} from '../records.queries.js';
 import { connectionTestClaimSchema, connectionTestScope } from './claim.js';
 
-import { applyCurrentConnectionTestHealth } from '../health/transitions.js';
+import { applyCurrentConnectionTestHealth } from '../health/transitions.repository.js';
 import { sha256HexSchema as digestSchema } from '../../platform/persisted-primitives.js';
 
 import { classifyConnectionTestCompletion } from './classify-completion.js';

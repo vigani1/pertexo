@@ -14,7 +14,7 @@ import { createWorkspaceInboxFoldStore } from '../../src/inbox/folding/processor
 import { createWorkspaceInboxDatabase } from '../../src/inbox/threads/reader.repository.js';
 import { createNoticePreferencesStore } from '../../src/inbox/preferences/settings.repository.js';
 import { createNoticeMailStore } from '../../src/inbox/mail/delivery.repository.js';
-import { createConnectionDatabase } from '../../src/connections/database.js';
+import { createConnectionDatabase } from '../../src/connections/repository.js';
 import type { NoticeMailToSeal } from '../../src/inbox/mail/contract.js';
 const resources: { close(): Promise<void> }[] = [];
 export const own = <T extends { close(): Promise<void> }>(resource: T): T => {

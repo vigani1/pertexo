@@ -20,15 +20,15 @@ import {
   databaseConstraint,
   decodeDurableConnectionReplay,
   serializeConnectionSnapshot,
-} from '../records.js';
-import { requireConnectionManager } from '../authority.js';
-import { revokeConnectionHealth } from '../health/transitions.js';
+} from '../records.queries.js';
+import { requireConnectionManager } from '../authority.queries.js';
+import { revokeConnectionHealth } from '../health/transitions.repository.js';
 import {
   claimCommand,
   completeCommand,
   findCommandResult,
 } from '../../platform/idempotency.js';
-import type { ConnectionDatabase } from '../records.js';
+import type { ConnectionDatabase } from '../records.queries.js';
 
 /** Owns atomic creation/idempotency, reads, and revocation transactions. */
 

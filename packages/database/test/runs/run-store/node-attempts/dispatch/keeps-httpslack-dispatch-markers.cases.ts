@@ -1,6 +1,6 @@
 import { it, expect } from 'vitest';
 
-import { isConnectionFenceCurrent } from '../../../../../src/connections/runtime/dispatch-fence.js';
+import { isConnectionFenceCurrent } from '../../../../../src/connections/runtime/dispatch.repository.js';
 
 import {
   NodeAttemptConnectionFenceError,

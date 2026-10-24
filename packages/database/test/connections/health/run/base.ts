@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 
-import { createApiConnectionDatabase } from '../../../../src/connections/database.js';
+import { createApiConnectionDatabase } from '../../../../src/connections/repository.js';
 import { generatePersistedId } from '../../../../src/platform/persisted-id.js';
 
 import type {

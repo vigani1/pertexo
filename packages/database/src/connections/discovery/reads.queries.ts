@@ -6,7 +6,7 @@ import { bindResourcePredicate } from '../../tenant-access/resources/query-scope
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
-import { requireConnectionReader } from '../authority.js';
+import { requireConnectionReader } from '../authority.queries.js';
 import {
   CONNECTION_STATUS,
   mapConnection,
@@ -15,7 +15,7 @@ import {
   type ConnectionPage,
   type ConnectionReadDatabase,
   type ListConnectionsInput,
-} from '../records.js';
+} from '../records.queries.js';
 
 const pageLimitSchema = z.number().int().positive().max(100);
 const connectionStatusSchema = z.enum(CONNECTION_STATUS);
