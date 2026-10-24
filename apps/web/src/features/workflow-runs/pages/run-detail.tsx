@@ -1,57 +1,55 @@
-import { RunBusinessValues } from '../components/run-detail/business-values';
-import { RunVariables } from '../components/run-detail/variables';
-import { PendingTasks } from '@/features/pending-tasks/public';
-import { ErrorWorkflowStatus } from '../components/error-workflow-status';
+import { PhoneFailureNotice } from "../components/run-detail/execution-history";
+import { RunBusinessValues } from "../components/run-detail/business-values";
+import { RunVariables } from "../components/run-detail/variables";
+import { PendingTasks } from "@/features/pending-tasks/public";
+import { ErrorWorkflowStatus } from "../components/error-workflow-status";
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
   WorkflowRunEvent,
-} from '@pertexo/contracts';
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
-import { useMemo, useRef, useState } from 'react';
+} from "@pertexo/contracts";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { useMemo, useRef, useState } from "react";
 import {
   Sheet,
   SheetBody,
   SheetContent,
   SheetHeader,
   SheetTitle,
-} from '@/components/ui/sheet';
-import type { ApiClient } from '@/lib/api/client';
-import { OutcomeUnknownCard } from '../components/run-detail/outcome-unknown-card';
-import { RunDetailTabs } from '../components/run-detail/tabs';
-import { CallHistory } from '../components/run-detail/call-history';
-import { RunHeader } from '../components/run-detail/header';
-import {
-  StepError,
-  RunStepDetails,
-} from '../components/run-detail/step-details';
+} from "@/components/ui/sheet";
+import type { ApiClient } from "@/lib/api/client";
+import { OutcomeUnknownCard } from "../components/run-detail/outcome-unknown-card";
+import { RunDetailTabs } from "../components/run-detail/tabs";
+import { CallHistory } from "../components/run-detail/call-history";
+import { RunHeader } from "../components/run-detail/header";
+import { RunStepDetails } from "../components/run-detail/step-details";
 import {
   describeRunSentence,
   runEnding,
-} from '../model/presentation/run-sentence';
-import { isActiveRunStatus } from '../model/presentation/run-status';
-import { upstreamSteps } from '../model/step-inspection/step-inputs';
-import { buildRunTimeline, type RunTimelineRow } from '../model/timeline/runs';
-import { useMediaQuery } from '@/lib/hooks/use-media-query';
-import { useNow } from '@/lib/hooks/use-now';
-import { useRunEvents } from '../hooks/use-run-events';
+} from "../model/presentation/run-sentence";
+import { isActiveRunStatus } from "../model/presentation/run-status";
+import { upstreamSteps } from "../model/step-inspection/step-inputs";
+import { buildRunTimeline, type RunTimelineRow } from "../model/timeline/runs";
+import { useMediaQuery } from "@/lib/hooks/use-media-query";
+import { useNow } from "@/lib/hooks/use-now";
+import { useRunEvents } from "../hooks/use-run-events";
 import {
   workflowRunQueryOptions,
   workflowRunVersionQueryOptions,
-} from '../data/detail.queries';
+} from "../data/detail.queries";
 
 // From a tablet up the step lens is on the page: beside the run on a wide
 // screen, under the tabs below that. Only phones open it as a sheet.
-const PHONE_MEDIA_QUERY = '(max-width: 47.999rem)';
+const PHONE_MEDIA_QUERY = "(max-width: 47.999rem)";
 
 /** The step worth opening first: what's running, waiting or went wrong. */
 function focusRow(rows: readonly RunTimelineRow[]): RunTimelineRow | undefined {
   const order = [
-    'running',
-    'waiting',
-    'outcome_unknown',
-    'failed',
-    'timed_out',
+    "running",
+    "waiting",
+    "outcome_unknown",
+    "failed",
+    "timed_out",
   ];
   const firstByStatus = new Map<string, RunTimelineRow>();
   for (const row of rows)
@@ -62,25 +60,9 @@ function focusRow(rows: readonly RunTimelineRow[]): RunTimelineRow | undefined {
   }
   for (let index = rows.length - 1; index >= 0; index -= 1) {
     const row = rows[index];
-    if (row !== undefined && row.status !== 'not_started') return row;
+    if (row !== undefined && row.status !== "not_started") return row;
   }
   return rows[0];
-}
-
-/** The step whose error explains a failed run, for the phone's notice. */
-function failureRow(
-  status: string,
-  rows: readonly RunTimelineRow[],
-): (RunTimelineRow & { safeErrorCode: string }) | undefined {
-  if (status !== 'failed' && status !== 'timed_out') return undefined;
-  const explained = rows.filter(
-    (row): row is RunTimelineRow & { safeErrorCode: string } =>
-      row.safeErrorCode !== undefined,
-  );
-  const failed = explained.filter(
-    (row) => row.status === 'failed' || row.status === 'timed_out',
-  );
-  return failed.at(-1) ?? explained.at(-1);
 }
 
 /**
@@ -114,7 +96,7 @@ export function RunDetailPage({
   );
   const events = useRunEvents(apiClient, user.id, workspace.id, runId);
   const { run } = snapshot;
-  const canViewWorkflow = workspace.capabilities.includes('workflow:read');
+  const canViewWorkflow = workspace.capabilities.includes("workflow:read");
   const version = useQuery({
     ...workflowRunVersionQueryOptions({
       apiClient,
@@ -249,16 +231,16 @@ export function RunDetailPage({
               workspace={workspace}
             />
           ) : null}
-          {run.status === 'outcome_unknown' ? (
+          {run.status === "outcome_unknown" ? (
             <OutcomeUnknownCard
               stepLabel={
-                view.rows.find((row) => row.status === 'outcome_unknown')?.label
+                view.rows.find((row) => row.status === "outcome_unknown")?.label
               }
             />
           ) : null}
           <RunDetailTabs
             scope={dataScope}
-            canReplay={workspace.capabilities.includes('run:replay')}
+            canReplay={workspace.capabilities.includes("run:replay")}
             onReplay={() => {
               setReplayOpen(true);
             }}
@@ -270,10 +252,10 @@ export function RunDetailPage({
             graph={version.data?.graph}
             graphState={
               !canViewWorkflow
-                ? 'forbidden'
+                ? "forbidden"
                 : version.isError
-                  ? 'error'
-                  : 'loading'
+                  ? "error"
+                  : "loading"
             }
             events={events.timeline}
             truncatedCount={events.truncatedCount}
@@ -300,40 +282,14 @@ export function RunDetailPage({
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           {/* On a phone the step rises from the bottom, only as tall as it
             needs; wider screens keep the side sheet. */}
-          <SheetContent side={compact ? 'bottom' : 'right'}>
+          <SheetContent side={compact ? "bottom" : "right"}>
             <SheetHeader>
-              <SheetTitle>{selected?.label ?? 'Step'}</SheetTitle>
+              <SheetTitle>{selected?.label ?? "Step"}</SheetTitle>
             </SheetHeader>
             <SheetBody>{lens}</SheetBody>
           </SheetContent>
         </Sheet>
       </div>
     </div>
-  );
-}
-
-/**
- * Phones: why a failed run failed, right under the header, since the step
- * lens only opens on tap there.
- */
-function PhoneFailureNotice({
-  run,
-  rows,
-  workspace,
-}: Readonly<{
-  run: Readonly<{ status: string }>;
-  rows: readonly RunTimelineRow[];
-  workspace: AccessibleWorkspace;
-}>) {
-  const row = failureRow(run.status, rows);
-  if (row === undefined) return null;
-  return (
-    <section aria-label={`Why ${row.label} failed`} className="-mt-3">
-      <StepError
-        code={row.safeErrorCode}
-        workspace={workspace}
-        definitionKey={row.definitionKey}
-      />
-    </section>
   );
 }
