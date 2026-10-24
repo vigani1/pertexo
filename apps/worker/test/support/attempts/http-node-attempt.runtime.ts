@@ -1,6 +1,5 @@
 import { createTestArtifactScratch } from '../infrastructure/artifact-scratch.js';
 import { randomUUID } from 'node:crypto';
-
 import {
   createArtifactStore,
   parseArtifactStoreConfig,
@@ -14,23 +13,14 @@ import {
   type WorkerConnectionResolutionDatabase,
 } from '@pertexo/database/connections';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import {
-  SecureHttpClient,
-  type ConnectionEnvelopeEncryption,
-  type ResendClient,
-  type SecureHttpTransportRequest,
-  type SecureHttpTransportResponse,
-  type SlackClient,
-} from '@pertexo/integrations/server';
-import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
-import type { NodeConnectionRuntime } from '@pertexo/node-sdk/server';
+import type { ConnectionEnvelopeEncryption } from '@pertexo/integrations/server';
+
 import { createQueueProducer, QUEUE_NAME } from '@pertexo/queue';
-import type { Attributes, Meter, Span, Tracer } from '@opentelemetry/api';
+
 import { Queue } from 'bullmq';
-import type { NodeExecutionRegistry } from '@pertexo/workflow-engine';
 
 import { createCoordinatorRuntime } from '../../../src/runs/runtime.js';
-import { createHttpProviderTelemetry } from '../../../src/providers/telemetry.js';
+
 import { createNodeAttemptRuntime } from '../../../src/attempts/delivery/runtime.js';
 import { createWorkerNodeRuntimeCapabilities } from '../../../src/attempts/execution/runtime-capabilities.js';
 import {
@@ -40,47 +30,11 @@ import {
   redisUrl,
   workerUrl,
 } from './http-node-attempt.js';
+import type { HttpNodeAttemptProofRuntimeOptions } from './http-node-attempt/runtime/contract.js';
+import { createHttpProofProviders } from './http-node-attempt/runtime/providers.js';
+import { createHttpProofResourceOwners } from './http-node-attempt/runtime/ownership.js';
 
-type ConnectionAssertCurrentInput = Parameters<
-  NonNullable<NodeConnectionRuntime['assertCurrent']>
->[0];
-
-export type HttpNodeAttemptProofRuntimeOptions = Readonly<{
-  afterConnectionAssertCurrent?: (
-    input: Omit<ConnectionAssertCurrentInput, 'signal'>,
-  ) => Promise<void>;
-  afterAttemptClaimed?: (
-    result: Awaited<ReturnType<NodeAttemptRunStore['claimDelivery']>>,
-  ) => Promise<void>;
-  afterHeartbeat?: (
-    result: Awaited<ReturnType<NodeAttemptRunStore['heartbeat']>>,
-  ) => Promise<void>;
-  beforeHeartbeat?: (
-    input: Parameters<NodeAttemptRunStore['heartbeat']>[0],
-  ) => Promise<void>;
-  beforeConnectionResolve?: (
-    input: Parameters<
-      WorkerConnectionResolutionDatabase['resolveConnectionSecret']
-    >[0],
-  ) => Promise<void>;
-  beforeMarkDispatched?: (
-    input: Parameters<NodeAttemptRunStore['markDispatched']>[0],
-  ) => Promise<void>;
-  beforeRegistryExecute?: (
-    request: Parameters<NodeExecutionRegistry['execute']>[0],
-  ) => Promise<void>;
-  dispatchHttp?: (
-    request: SecureHttpTransportRequest,
-  ) => Promise<SecureHttpTransportResponse>;
-  emailResponseScript?: readonly Awaited<
-    ReturnType<ResendClient['sendNotification']>
-  >[];
-  sendSlackMessage?: SlackClient['sendMessage'];
-  sendEmailNotification?: ResendClient['sendNotification'];
-  heartbeatIntervalMillis?: number;
-  leaseDurationSeconds?: number;
-}>;
-
+export { type HttpNodeAttemptProofRuntimeOptions } from './http-node-attempt/runtime/contract.js';
 export async function createHttpNodeAttemptProofRuntime(
   encryption: ConnectionEnvelopeEncryption,
   options: HttpNodeAttemptProofRuntimeOptions = {},
@@ -345,198 +299,4 @@ export async function createHttpNodeAttemptProofRuntime(
       'HTTP attempt proof runtime startup failed',
     );
   }
-}
-
-function createHttpProofResourceOwners() {
-  const owners: {
-    close: () => unknown;
-    label: string;
-    resource: object;
-  }[] = [];
-  const own = <Resource extends object>(
-    label: string,
-    resource: Resource,
-    close: (resource: Resource) => unknown,
-  ): Resource => {
-    let closePromise: Promise<void> | undefined;
-    owners.push({
-      label,
-      resource,
-      close: () => {
-        closePromise ??= Promise.resolve()
-          .then(() => close(resource))
-          .then(() => undefined);
-        return closePromise;
-      },
-    });
-    return resource;
-  };
-  const transfer = (resource: object): void => {
-    const index = owners.findIndex((owner) => owner.resource === resource);
-    if (index === -1)
-      throw new Error('HTTP attempt proof runtime owner is missing');
-    owners.splice(index, 1);
-  };
-
-  return { owners, own, transfer };
-}
-function createHttpProofProviders(options: HttpNodeAttemptProofRuntimeOptions) {
-  const transportRequests: SecureHttpTransportRequest[] = [];
-  const slackRequests: {
-    botToken: string;
-    channelId: string;
-    text: string;
-  }[] = [];
-  const emailRequests: {
-    apiKey: string;
-    fromEmail: string;
-    toEmail: string;
-    subject: string;
-    text: string;
-    idempotencyKey: string;
-  }[] = [];
-  const telemetry: {
-    kind: 'count' | 'duration' | 'span';
-    name: string;
-    attributes?: Attributes;
-  }[] = [];
-  const meter = {
-    createCounter: (name: string) => ({
-      add: (_value: number, attributes?: Attributes) =>
-        telemetry.push({
-          kind: 'count',
-          name,
-          ...(attributes === undefined ? {} : { attributes }),
-        }),
-    }),
-    createHistogram: (name: string) => ({
-      record: (_value: number, attributes?: Attributes) =>
-        telemetry.push({
-          kind: 'duration',
-          name,
-          ...(attributes === undefined ? {} : { attributes }),
-        }),
-    }),
-  } as unknown as Meter;
-  const tracer = {
-    startActiveSpan: async <T>(
-      name: string,
-      work: (span: Span) => Promise<T>,
-    ): Promise<T> => {
-      const attributes: Attributes = {};
-      const span = {
-        setAttributes: (values: Attributes) => {
-          Object.assign(attributes, values);
-          return span;
-        },
-        setStatus: () => span,
-        end: () => telemetry.push({ kind: 'span', name, attributes }),
-      } as unknown as Span;
-      return work(span);
-    },
-  } as unknown as Tracer;
-  const httpClient = new SecureHttpClient(
-    {
-      resolve: () =>
-        Promise.resolve([{ address: '8.8.8.8', family: 4 as const }]),
-    },
-    {
-      dispatch: async (request) => {
-        transportRequests.push(request);
-        if (options.dispatchHttp !== undefined)
-          return options.dispatchHttp(request);
-        return {
-          status: 200,
-          headers: { 'content-type': 'application/octet-stream' },
-          body: (async function* () {
-            await Promise.resolve();
-            yield new Uint8Array(35_000).fill(7);
-            yield new Uint8Array(35_000).fill(9);
-          })(),
-          close: () => undefined,
-        };
-      },
-    },
-  );
-  const registry = createPlatformNodeRegistry({
-    httpRequest: { httpClient },
-    httpRequestTelemetry: createHttpProviderTelemetry({
-      meter,
-      tracer,
-    }),
-    slackSendMessage: {
-      client: {
-        sendMessage: async (input) => {
-          await input.beforeDispatch();
-          slackRequests.push({
-            botToken: input.botToken,
-            channelId: input.channelId,
-            text: input.text,
-          });
-          if (options.sendSlackMessage !== undefined)
-            return options.sendSlackMessage({
-              ...input,
-              beforeDispatch: () => Promise.resolve(),
-            });
-          return {
-            kind: 'succeeded',
-            channelId: input.channelId,
-            messageTs: '1724412345.000100',
-          };
-        },
-      },
-    },
-    emailSendNotification: {
-      client: {
-        sendNotification: async (input) => {
-          await input.beforeDispatch();
-          emailRequests.push({
-            apiKey: input.apiKey,
-            fromEmail: input.fromEmail,
-            toEmail: input.toEmail,
-            subject: input.subject,
-            text: input.text,
-            idempotencyKey: input.idempotencyKey,
-          });
-          if (options.sendEmailNotification !== undefined)
-            return options.sendEmailNotification({
-              ...input,
-              beforeDispatch: () => Promise.resolve(),
-            });
-          const scripted =
-            options.emailResponseScript?.[emailRequests.length - 1];
-          if (scripted !== undefined) return scripted;
-          if (
-            options.emailResponseScript !== undefined &&
-            emailRequests.length > options.emailResponseScript.length
-          )
-            throw new Error('Email response script was exhausted');
-          return {
-            kind: 'succeeded',
-            emailId: '49b9a1e5-3f0c-4e68-882d-fbc91c0d4ec2',
-          };
-        },
-      },
-    },
-  });
-  const executionRegistry: NodeExecutionRegistry =
-    options.beforeRegistryExecute === undefined
-      ? registry
-      : Object.freeze({
-          dispatchMode: registry.dispatchMode,
-          execute: async (
-            request: Parameters<NodeExecutionRegistry['execute']>[0],
-          ) => {
-            await options.beforeRegistryExecute?.(request);
-            return registry.execute(request);
-          },
-        });
-
-  return {
-    transportRequests,
-    slackRequests,
-    emailRequests,
-    telemetry,
-    executionRegistry,
-  };
 }
