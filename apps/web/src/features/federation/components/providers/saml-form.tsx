@@ -1,3 +1,4 @@
+import { SamlIdentityFields, SamlClaimFields } from './fields/saml';
 import { useId, useState } from 'react';
 import {
   samlProviderCreateSchema,
@@ -5,8 +6,6 @@ import {
   type FederationSettings,
 } from '@pertexo/contracts';
 import { LabelledField } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
@@ -17,7 +16,6 @@ import {
   ProviderFooter,
   type ProviderEditorProps,
 } from './editor';
-import { Disclosure } from '@/components/ui/disclosure';
 type Provider = Extract<
   NonNullable<FederationSettings['organization']>['providers'][number],
   { kind: 'saml' }
@@ -44,42 +42,7 @@ export function SamlProviderForm({
   const [baseRevision, setBaseRevision] = useState(organization.revision),
     [enabled, setEnabled] = useState(provider?.enabled ?? false),
     [jit, setJit] = useState(provider?.configuration.jitEnabled ?? false);
-  const fields = useFieldValues(
-    {
-      name: (value: string) =>
-        samlProviderCreateSchema.shape.name.safeParse(value).success
-          ? undefined
-          : 'Enter a name of up to 128 characters.',
-      issuer: (value: string) =>
-        samlProviderCreateSchema.shape.issuer.safeParse(value).success
-          ? undefined
-          : 'Copy the exact IdP entity ID (HTTP, HTTPS or URN).',
-      signInUrl: (value: string) =>
-        samlConfigurationSchema.shape.signInUrl.safeParse(value).success
-          ? undefined
-          : 'Enter the HTTPS sign-in URL without credentials or a fragment.',
-      certificate: (value: string) =>
-        samlConfigurationSchema.shape.certificates.element.safeParse(value)
-          .success
-          ? undefined
-          : 'Paste a PEM signing certificate of at most 16,384 characters.',
-      nextCertificate: (value: string) =>
-        value.trim() === '' ||
-        samlConfigurationSchema.shape.certificates.element.safeParse(value)
-          .success
-          ? undefined
-          : 'Paste one PEM certificate or leave this empty.',
-      emailAttribute: (value: string) =>
-        samlConfigurationSchema.shape.emailAttribute.safeParse(value).success
-          ? undefined
-          : 'Enter one email attribute name.',
-      nameAttribute: (value: string) =>
-        samlConfigurationSchema.shape.nameAttribute.safeParse(value).success
-          ? undefined
-          : 'Enter one display name attribute name.',
-    },
-    initial(provider),
-  );
+  const fields = useFieldValues(SAML_FIELD_RULES, initial(provider));
   const command = useFederationCommand(scope, onClose),
     locked = command.pending || command.uncertain,
     stale = organization.revision !== baseRevision;
@@ -135,69 +98,12 @@ export function SamlProviderForm({
           );
         }}
       >
-        <LabelledField
-          id={`${id}-name`}
-          label="Provider name"
-          {...fields.field('name')}
-        >
-          {(control) => (
-            <Input {...control} {...fields.control('name')} disabled={locked} />
-          )}
-        </LabelledField>
-        <LabelledField
-          id={`${id}-issuer`}
-          label="IdP entity ID"
-          {...fields.field('issuer')}
-          description={
-            provider === undefined
-              ? 'Copy the identifier exactly. It is not a navigation address.'
-              : 'The entity ID is fixed. Add another provider to change it.'
-          }
-        >
-          {(control) => (
-            <Input
-              {...control}
-              {...fields.control('issuer')}
-              autoCapitalize="none"
-              autoCorrect="off"
-              disabled={locked || provider !== undefined}
-            />
-          )}
-        </LabelledField>
-        <LabelledField
-          id={`${id}-url`}
-          label="SSO sign-in URL"
-          {...fields.field('signInUrl')}
-        >
-          {(control) => (
-            <Input
-              {...control}
-              {...fields.control('signInUrl')}
-              type="url"
-              autoCapitalize="none"
-              autoCorrect="off"
-              disabled={locked}
-            />
-          )}
-        </LabelledField>
-        <LabelledField
-          id={`${id}-certificate`}
-          label="Signing certificate"
-          {...fields.field('certificate')}
-          description="Public RSA certificate, at least 2,048 bits. Enable SHA-256 or SHA-512 signatures and digests at the IdP."
-        >
-          {(control) => (
-            <Textarea
-              {...control}
-              {...fields.control('certificate')}
-              className="min-h-40 font-mono text-base md:text-xs"
-              spellCheck={false}
-              autoCapitalize="none"
-              autoCorrect="off"
-              disabled={locked}
-            />
-          )}
-        </LabelledField>
+        <SamlIdentityFields
+          id={id}
+          fields={fields}
+          locked={locked}
+          existing={provider !== undefined}
+        />
         <LabelledField id={`${id}-enabled`} label="Allow sign-in">
           {(control) => (
             <Checkbox
@@ -222,55 +128,7 @@ export function SamlProviderForm({
             />
           )}
         </LabelledField>
-        <Disclosure summary="Certificate rotation and attributes" tone="strong">
-          <div className="space-y-3">
-            <LabelledField
-              id={`${id}-next`}
-              label="Additional signing certificate"
-              {...fields.field('nextCertificate')}
-              description="Optional overlap during certificate rotation. At least one certificate must be currently valid; only currently valid pinned certificates are accepted."
-            >
-              {(control) => (
-                <Textarea
-                  {...control}
-                  {...fields.control('nextCertificate')}
-                  className="min-h-32 font-mono text-base md:text-xs"
-                  spellCheck={false}
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  disabled={locked}
-                />
-              )}
-            </LabelledField>
-            <LabelledField
-              id={`${id}-email`}
-              label="Email attribute"
-              {...fields.field('emailAttribute')}
-              description="One scalar value in the signed assertion, from an exact verified domain."
-            >
-              {(control) => (
-                <Input
-                  {...control}
-                  {...fields.control('emailAttribute')}
-                  disabled={locked}
-                />
-              )}
-            </LabelledField>
-            <LabelledField
-              id={`${id}-display`}
-              label="Display name attribute"
-              {...fields.field('nameAttribute')}
-            >
-              {(control) => (
-                <Input
-                  {...control}
-                  {...fields.control('nameAttribute')}
-                  disabled={locked}
-                />
-              )}
-            </LabelledField>
-          </div>
-        </Disclosure>
+        <SamlClaimFields id={id} fields={fields} locked={locked} />
         {stale ? (
           <Notice
             tone="warning"
@@ -304,3 +162,35 @@ export function SamlProviderForm({
     </ProviderDialog>
   );
 }
+
+const SAML_FIELD_RULES = {
+  name: (value: string) =>
+    samlProviderCreateSchema.shape.name.safeParse(value).success
+      ? undefined
+      : 'Enter a name of up to 128 characters.',
+  issuer: (value: string) =>
+    samlProviderCreateSchema.shape.issuer.safeParse(value).success
+      ? undefined
+      : 'Copy the exact IdP entity ID (HTTP, HTTPS or URN).',
+  signInUrl: (value: string) =>
+    samlConfigurationSchema.shape.signInUrl.safeParse(value).success
+      ? undefined
+      : 'Enter the HTTPS sign-in URL without credentials or a fragment.',
+  certificate: (value: string) =>
+    samlConfigurationSchema.shape.certificates.element.safeParse(value).success
+      ? undefined
+      : 'Paste a PEM signing certificate of at most 16,384 characters.',
+  nextCertificate: (value: string) =>
+    value.trim() === '' ||
+    samlConfigurationSchema.shape.certificates.element.safeParse(value).success
+      ? undefined
+      : 'Paste one PEM certificate or leave this empty.',
+  emailAttribute: (value: string) =>
+    samlConfigurationSchema.shape.emailAttribute.safeParse(value).success
+      ? undefined
+      : 'Enter one email attribute name.',
+  nameAttribute: (value: string) =>
+    samlConfigurationSchema.shape.nameAttribute.safeParse(value).success
+      ? undefined
+      : 'Enter one display name attribute name.',
+};
