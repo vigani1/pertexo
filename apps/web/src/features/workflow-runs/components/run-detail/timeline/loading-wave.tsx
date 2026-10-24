@@ -8,7 +8,10 @@ import { LoadingWaveRenderer } from './loading-wave-renderer';
  */
 export function RunLoadingWave() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  useCanvasRenderer(canvasRef, (canvas) => new LoadingWaveRenderer(canvas));
+  useCanvasRenderer({
+    canvasRef,
+    createRenderer: (canvas) => new LoadingWaveRenderer(canvas),
+  });
   return (
     <div
       aria-hidden="true"

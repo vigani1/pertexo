@@ -45,7 +45,7 @@ export function useWorkflowImportCommand(
     let phase: 'authority' | 'mutation' | 'accepted' =
       command.workflowId === undefined ? 'authority' : 'accepted';
     try {
-      await lifetime.verify(request.signal, true);
+      await lifetime.verify({ signal: request.signal, creating: true });
       if (!request.current()) return;
       if (command.workflowId === undefined) {
         phase = 'mutation';
@@ -60,7 +60,7 @@ export function useWorkflowImportCommand(
       }
       phase = 'accepted';
       if (!request.current()) return;
-      await lifetime.verify(request.signal, true);
+      await lifetime.verify({ signal: request.signal, creating: true });
       if (!request.current()) return;
       await Promise.all([
         queryClient.invalidateQueries({

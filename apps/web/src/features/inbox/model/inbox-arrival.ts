@@ -112,7 +112,7 @@ export function describeInboxArrival(
   ],
 ): InboxArrivalView {
   const [newest] = threads;
-  const look = describeRunStatus(newest.kind);
+  const look = describeRunStatus({ status: newest.kind });
   if (threads.length === 1) {
     const view = describeInboxThread(newest);
     return {
@@ -138,7 +138,7 @@ export function describeInboxArrival(
     detail: listNames(threads),
     marks: threads
       .slice(0, MAX_MARKS)
-      .map((thread) => describeRunStatus(thread.kind).tone),
+      .map((thread) => describeRunStatus({ status: thread.kind }).tone),
     more: Math.max(0, threads.length - MAX_MARKS),
   };
 }

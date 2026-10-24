@@ -62,7 +62,10 @@ export function useCanvasFraming(containerRef: RefObject<HTMLElement | null>) {
   // Opening frames at a readable zoom, starting from the left when the
   // workflow is too wide; Fit shows every step, however small that makes them.
   const fit = useCallback(
-    (animate: boolean, readable = false) => {
+    ({
+      animate,
+      readable = false,
+    }: Readonly<{ animate: boolean; readable?: boolean | undefined }>) => {
       const area = visibleArea();
       const nodes = flow
         .getNodes()
@@ -101,7 +104,7 @@ export function useCanvasFraming(containerRef: RefObject<HTMLElement | null>) {
   useLayoutEffect(() => {
     if (!nodesInitialized || framed.current) return;
     framed.current = true;
-    fit(false, true);
+    fit({ animate: false, readable: true });
   }, [fit, nodesInitialized]);
 
   const reveal = useCallback(

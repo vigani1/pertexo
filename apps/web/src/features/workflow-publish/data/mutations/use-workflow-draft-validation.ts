@@ -51,11 +51,11 @@ export function useWorkflowDraftValidation({
   // Imperative dispatch must see deadlines established by concurrent actions,
   // even before React renders or after this callback crosses an await.
   const validationDeadline = useRef(0);
-  const now = useNow(
-    250,
-    validationBlockedUntil !== undefined,
-    validationBlockedUntil,
-  );
+  const now = useNow({
+    intervalMs: 250,
+    enabled: validationBlockedUntil !== undefined,
+    untilMs: validationBlockedUntil,
+  });
   const validationInFlight =
     useRef<Promise<ValidationResult | undefined>>(undefined);
   const validationOwner = useRef<symbol | undefined>(undefined);

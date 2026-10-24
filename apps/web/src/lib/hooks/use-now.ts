@@ -6,11 +6,15 @@ import { useEffect, useState } from 'react';
  * up the moment it is shown again, so elapsed times and countdowns only move
  * while someone can see them, and nothing ticks when nothing needs it.
  */
-export function useNow(
-  intervalMs: number,
+export function useNow({
+  intervalMs,
   enabled = true,
   untilMs = Number.POSITIVE_INFINITY,
-): number {
+}: Readonly<{
+  intervalMs: number;
+  enabled?: boolean | undefined;
+  untilMs?: number | undefined;
+}>): number {
   const [now, setNow] = useState(Date.now);
 
   useEffect(() => {

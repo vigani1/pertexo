@@ -70,7 +70,10 @@ export function usePortabilityLifetime(
     };
   }, []);
   const verify = useCallback(
-    async (signal: AbortSignal, creating: boolean) => {
+    async ({
+      signal,
+      creating,
+    }: Readonly<{ signal: AbortSignal; creating: boolean }>) => {
       await assertSessionIdentity(apiClient, userId, signal);
       const workspace = (
         await getAllAccessibleWorkspaces(apiClient, signal)

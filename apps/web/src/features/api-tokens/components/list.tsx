@@ -19,7 +19,7 @@ export function TokenList({
   tokens: readonly ApiTokenMetadata[];
   onRevoke: (token: ApiTokenMetadata) => void;
 }>) {
-  const nowMs = useNow(60_000);
+  const nowMs = useNow({ intervalMs: 60_000 });
   return (
     <ul aria-label="Your API tokens" className="grid gap-3">
       {tokens.map((token) => {

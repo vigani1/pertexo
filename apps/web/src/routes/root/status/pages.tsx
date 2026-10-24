@@ -307,7 +307,11 @@ function RateLimited({
   onRetry,
 }: Readonly<{ seconds: number; onRetry: () => void }>) {
   const [deadline] = useState(() => Date.now() + seconds * 1_000);
-  const now = useNow(250, seconds > 0, deadline);
+  const now = useNow({
+    intervalMs: 250,
+    enabled: seconds > 0,
+    untilMs: deadline,
+  });
   const waitSeconds = Math.max(0, Math.ceil((deadline - now) / 1_000));
   return (
     <FullScreen>

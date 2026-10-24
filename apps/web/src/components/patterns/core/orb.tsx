@@ -30,14 +30,14 @@ export function CoreOrb({
 }>) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const deviceStill = useStillCanvases();
-  const { renderer: sceneRef, refresh } = useCanvasRenderer(
+  const { renderer: sceneRef, refresh } = useCanvasRenderer({
     canvasRef,
-    (canvas) => {
+    createRenderer: (canvas) => {
       const scene = new CoreOrbScene(canvas, state);
       scene.setEnergy(energy);
       return scene;
     },
-  );
+  });
 
   useEffect(() => {
     sceneRef.current?.setState(state);

@@ -32,11 +32,11 @@ export function WorkflowOrganizationRowMenu({
 }>) {
   const queryClient = useQueryClient();
   const favorite = useMutation({
-    mutationFn: (value: boolean) =>
+    mutationFn: ({ favorite }: Readonly<{ favorite: boolean }>) =>
       setWorkflowFavorite(apiClient, {
         workspaceId: workspace.id,
         workflowId: workflow.workflow.id,
-        favorite: value,
+        favorite,
       }),
     onSettled: () =>
       queryClient.invalidateQueries({
@@ -44,7 +44,7 @@ export function WorkflowOrganizationRowMenu({
       }),
   });
   const isFavorite = favorite.isPending
-    ? favorite.variables
+    ? favorite.variables.favorite
     : workflow.organization.isFavorite;
   return (
     <span className="inline-flex items-center gap-2">
@@ -63,7 +63,7 @@ export function WorkflowOrganizationRowMenu({
                 !workspace.capabilities.includes('workflow:read')
               }
               onClick={() => {
-                favorite.mutate(!isFavorite);
+                favorite.mutate({ favorite: !isFavorite });
               }}
             >
               {favorite.isPending

@@ -55,10 +55,13 @@ export function isProofExpired(error: unknown): boolean {
  * `uncertain` marks a command whose result may already be applied: it is
  * retried with the same intent and key, never re-issued.
  */
-export function acceptanceFailure(
-  error: unknown,
+export function acceptanceFailure({
+  error,
   uncertain = false,
-): AcceptanceFailure {
+}: Readonly<{
+  error: unknown;
+  uncertain?: boolean | undefined;
+}>): AcceptanceFailure {
   if (isUncertainOutcome(error))
     return uncertain
       ? UNCERTAIN_ACCEPTANCE

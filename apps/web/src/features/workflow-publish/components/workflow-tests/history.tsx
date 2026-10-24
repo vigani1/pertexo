@@ -131,7 +131,9 @@ function WorkflowTestRunControls({
   const snapshot = tests.snapshot.data;
   const progress = tests.progress.data;
   const look =
-    progress === undefined ? undefined : describeRunStatus(progress.run.status);
+    progress === undefined
+      ? undefined
+      : describeRunStatus({ status: progress.run.status });
   return (
     <>
       <div className="flex flex-wrap items-center gap-3">
@@ -222,7 +224,7 @@ function WorkflowTestPicker({
       : retained;
   const choices = items.map((item) => ({
     value: item.runId,
-    label: `Draft ${String(item.draftRevision)} · ${describeRunStatus(item.runId === progress?.run.id ? progress.run.status : item.status).label} · ${formatDate(item.createdAt)} · ${formatClock(item.createdAt)}`,
+    label: `Draft ${String(item.draftRevision)} · ${describeRunStatus({ status: item.runId === progress?.run.id ? progress.run.status : item.status }).label} · ${formatDate(item.createdAt)} · ${formatClock(item.createdAt)}`,
   }));
   if (choices.length === 0) return null;
   return (

@@ -126,7 +126,7 @@ export function RunDetailPage({
     enabled: canViewWorkflow,
   });
   const active = isActiveRunStatus(run.status);
-  const nowMs = useNow(1_000, active);
+  const nowMs = useNow({ intervalMs: 1_000, enabled: active });
   const view = useMemo(
     () =>
       buildRunTimeline({

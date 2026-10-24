@@ -129,7 +129,7 @@ function RunsLoomView({
   search: RunSearch;
   workspaceId: string;
 }>) {
-  const nowMs = useNow(60_000, true);
+  const nowMs = useNow({ intervalMs: 60_000, enabled: true });
   let earliest = nowMs - HOUR_MS;
   for (const run of runs)
     earliest = Math.min(earliest, Date.parse(run.startedAt ?? run.createdAt));

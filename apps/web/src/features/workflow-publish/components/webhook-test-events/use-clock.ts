@@ -15,7 +15,11 @@ export function useListenerClock({
       ? undefined
       : Date.parse(snapshot?.expiresAt ?? listener.expiresAt);
   const now = Math.max(
-    useNow(1000, active && listener !== undefined, expiresAt),
+    useNow({
+      intervalMs: 1000,
+      enabled: active && listener !== undefined,
+      untilMs: expiresAt,
+    }),
     listener?.openedAtMillis ?? 0,
   );
   return { now, expiresAt };

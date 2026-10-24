@@ -78,10 +78,10 @@ export function RetainedActivity({
             return count === 0 ? null : (
               <span
                 key={status}
-                title={`${describeRunStatus(status).label}: ${count.toLocaleString(FORMAT_LOCALE)}`}
+                title={`${describeRunStatus({ status }).label}: ${count.toLocaleString(FORMAT_LOCALE)}`}
                 className={cn(
                   'h-full border-r border-background bg-current last:border-r-0',
-                  statusToneText[describeRunStatus(status).tone],
+                  statusToneText[describeRunStatus({ status }).tone],
                 )}
                 style={{ width: `${String((count / total) * 100)}%` }}
               />
@@ -94,7 +94,7 @@ export function RetainedActivity({
         aria-label="Activity by current run status"
       >
         {statuses.map((status) => {
-          const look = describeRunStatus(status);
+          const look = describeRunStatus({ status });
           const count = snapshot.window.byStatus[status];
           return (
             <li key={status}>

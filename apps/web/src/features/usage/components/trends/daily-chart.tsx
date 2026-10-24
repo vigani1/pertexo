@@ -70,7 +70,9 @@ export function DailyChart({
                   strokeLinecap="round"
                   vectorEffect="non-scaling-stroke"
                   className={
-                    statusToneText[describeRunStatus(segment.status).tone]
+                    statusToneText[
+                      describeRunStatus({ status: segment.status }).tone
+                    ]
                   }
                 />
               ))}
@@ -97,8 +99,8 @@ export function DailyChart({
         {workflowRunStatusSchema.options
           .filter((status) => snapshot.byStatus[status] > 0)
           .map((status) => (
-            <Status key={status} tone={describeRunStatus(status).tone}>
-              {describeRunStatus(status).label}
+            <Status key={status} tone={describeRunStatus({ status }).tone}>
+              {describeRunStatus({ status }).label}
             </Status>
           ))}
       </figcaption>
@@ -120,7 +122,7 @@ export function DailyChart({
                 </th>
                 {workflowRunStatusSchema.options.map((status) => (
                   <th key={status} scope="col" className="px-2 py-2">
-                    {describeRunStatus(status).label}
+                    {describeRunStatus({ status }).label}
                   </th>
                 ))}
                 <th scope="col" className="px-2">

@@ -59,7 +59,7 @@ function toLoomRun(run: WorkflowRunReadSummary): LoomRun {
     workflowId: run.workflowId,
     workflowName: workflowLabel(run),
     status: run.status,
-    tone: describeRunStatus(run.status).tone,
+    tone: describeRunStatus({ status: run.status }).tone,
     startMs: Date.parse(run.startedAt ?? run.createdAt),
     endMs: active ? null : Date.parse(run.completedAt ?? run.updatedAt),
     createdAt: run.createdAt,

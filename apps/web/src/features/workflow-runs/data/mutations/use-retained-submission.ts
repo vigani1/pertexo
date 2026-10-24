@@ -42,7 +42,11 @@ export function useRetainedSubmission<Intent>({
   const [error, setError] = useState<string>();
   const [unconfirmed, setUnconfirmed] = useState(false);
   const [expiresAt, setExpiresAt] = useState<number>();
-  const now = useNow(1_000, unconfirmed, expiresAt);
+  const now = useNow({
+    intervalMs: 1_000,
+    enabled: unconfirmed,
+    untilMs: expiresAt,
+  });
   const expired = unconfirmed && expiresAt !== undefined && now >= expiresAt;
   useEffect(() => {
     const current = Symbol('run-command');

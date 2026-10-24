@@ -40,7 +40,7 @@ export function RunLoom({
   /** Exact runs per workflow in the window, when the statistics read has them. */
   laneTotals?: ReadonlyMap<string, number> | undefined;
 }>) {
-  const nowMs = useNow(15_000, true);
+  const nowMs = useNow({ intervalMs: 15_000, enabled: true });
   const model = useMemo(
     () =>
       shapeLoom(runs, {
@@ -107,11 +107,11 @@ function LoomCanvas({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // Without live runs the threads only drift with the clock, which the
   // model's own 15-second refresh redraws.
-  const { renderer: rendererRef, refresh } = useCanvasRenderer(
+  const { renderer: rendererRef, refresh } = useCanvasRenderer({
     canvasRef,
-    (canvas) => new LoomRenderer(canvas, model),
-    model.liveCount > 0,
-  );
+    createRenderer: (canvas) => new LoomRenderer(canvas, model),
+    animate: model.liveCount > 0,
+  });
 
   useEffect(() => {
     rendererRef.current?.setModel(model);

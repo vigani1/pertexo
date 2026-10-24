@@ -66,11 +66,11 @@ export function RunRow({
   share: number;
   nowMs: number;
 }>) {
-  const look = describeRunStatus(
-    run.status,
-    run.handledFailureCount,
-    run.cancelRequestedAt !== null,
-  );
+  const look = describeRunStatus({
+    status: run.status,
+    handledFailureCount: run.handledFailureCount,
+    stopRequested: run.cancelRequestedAt !== null,
+  });
   const layout = RUN_ROW_LAYOUT[variant];
   const inWorkflow = variant === 'workflow';
   const failure = describeListedFailure(run.failedStep);

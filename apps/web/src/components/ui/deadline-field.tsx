@@ -194,7 +194,7 @@ function DeadlineHint({ value }: Readonly<{ value: string }>) {
   const parsed = value === '' ? undefined : new Date(value);
   const at =
     parsed === undefined || Number.isNaN(parsed.getTime()) ? undefined : parsed;
-  const now = useNow(30_000, at !== undefined);
+  const now = useNow({ intervalMs: 30_000, enabled: at !== undefined });
   const offset = `In your time zone (${localUtcOffset()}).`;
   if (at === undefined)
     return (
