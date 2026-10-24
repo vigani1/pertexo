@@ -7,13 +7,18 @@ export {
   ConnectionSecretVersionConflictError,
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
+} from './contract.js';
+export {
   createConnectionDatabase,
   createWorkerConnectionResolutionDatabase,
 } from './repository.js';
+export type { ConnectionSharingDatabase } from './commands/contract.js';
 export type {
-  ConnectionSharingDatabase,
   ApiConnectionDatabase,
   ConnectionLookupDatabase,
+  WorkerConnectionResolutionDatabase,
+} from './runtime/contract.js';
+export type {
   ConnectionManagementDatabase,
   ConnectionPage,
   ConnectionReadDatabase,
@@ -22,15 +27,16 @@ export type {
   ConnectionTestDatabase,
   ConnectionTestOutcome,
   ConnectionTestResult,
+  ListConnectionsInput,
+  ReadConnectionInput,
+  ResolvedConnectionSecretRecord,
+} from './contract.js';
+export type {
   ConnectionUsageCursor,
   ConnectionUsageDatabase,
   ConnectionUsagePage,
   ConnectionUsageRecord,
-  ListConnectionsInput,
   ListConnectionUsageInput,
-  ReadConnectionInput,
-  ResolvedConnectionSecretRecord,
-  WorkerConnectionResolutionDatabase,
-} from './repository.js';
+} from './discovery/contract.js';
 export { applyConnectionHealthObservation } from './health/observations.repository.js';
-export type { ConnectionHealthApplicationResult } from './health/observations.repository.js';
+export type { ConnectionHealthApplicationResult } from './health/contract.js';

@@ -1,3 +1,4 @@
+import type { ConnectionSharingDatabase } from './contract.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -9,37 +10,18 @@ import {
 } from '../../schema/foundation.js';
 import type { Pool, PoolClient } from 'pg';
 
-import type {
-  ConnectionSharing,
-  ConnectionSharingRequest,
-} from '@pertexo/contracts';
+import type { ConnectionSharing } from '@pertexo/contracts';
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.js';
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
-import type { ResourceActor } from '../../tenant-access/resources/contract.js';
+
 import { requireConnectionManager } from '../authority.queries.js';
 import {
   ConnectionNotFoundError,
   ConnectionSharingRevisionConflictError,
-  connectionCommand,
-  uuidSchema,
-} from '../records.queries.js';
-
-export type ConnectionSharingDatabase = Readonly<{
-  readConnectionSharing(
-    input: ResourceActor & { connectionId: string },
-  ): Promise<ConnectionSharing>;
-  replaceConnectionSharing(
-    input: ResourceActor & {
-      connectionId: string;
-      request: ConnectionSharingRequest;
-      idempotencyKey: string;
-      requestId?: string;
-      traceId?: string;
-    },
-  ): Promise<ConnectionSharing & { replayed: boolean }>;
-}>;
+} from '../contract.js';
+import { connectionCommand, uuidSchema } from '../admission.js';
 
 async function readSharing(
   client: PoolClient,

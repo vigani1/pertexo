@@ -1,3 +1,4 @@
+import type { ConnectionFence } from './contract.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -7,14 +8,6 @@ import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import type { PoolClient } from 'pg';
 
 import { generatePersistedId } from '../../platform/persisted-id.js';
-
-/** The connection secret a run or preview was given to use. */
-export type ConnectionFence = Readonly<{
-  connectionId: string;
-  providerKey: string;
-  authType: string;
-  secretVersionId: string;
-}>;
 
 /**
  * Whether the secret may still be used: the workspace and the connection are

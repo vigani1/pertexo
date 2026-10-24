@@ -7,23 +7,25 @@ import { generatePersistedId } from '../../platform/persisted-id.js';
 import type { Pool } from 'pg';
 import {
   uuidSchema,
+  keyDigest,
+  parseRequestMetadata,
+  connectionTestOutcomeSchema,
+  serializeConnectionTestResult,
+} from '../admission.js';
+import {
   CONNECTION_EVENT_TYPE,
   ConnectionNotFoundError,
   ConnectionTestInProgressError,
-  keyDigest,
-  withConnectionTransaction,
-  parseRequestMetadata,
-  selectConnection,
-  connectionTestOutcomeSchema,
-  serializeConnectionTestResult,
-} from '../records.queries.js';
+} from '../contract.js';
+import { withConnectionTransaction } from '../transactions.repository.js';
+import { selectConnection } from '../records.queries.js';
 import { connectionTestClaimSchema, connectionTestScope } from './claim.js';
 
 import { applyCurrentConnectionTestHealth } from '../health/transitions.repository.js';
 import { sha256HexSchema as digestSchema } from '../../platform/persisted-primitives.js';
 
 import { classifyConnectionTestCompletion } from './classify-completion.js';
-import type { ConnectionTestPersistence } from './results.repository.js';
+import type { ConnectionTestPersistence } from './contract.js';
 
 export async function completePersistedConnectionTest(
   pool: Pool,

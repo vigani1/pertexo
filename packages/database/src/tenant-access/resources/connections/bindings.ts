@@ -6,7 +6,7 @@ import {
   InvalidWorkflowGraphError,
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
-import { uuidSchema } from '../../../connections/records.queries.js';
+import { uuidSchema } from '../../../connections/admission.js';
 import type { WorkspaceTransaction } from '../../transactions.js';
 import type { ResourceActor } from '../contract.js';
 import {

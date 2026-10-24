@@ -12,13 +12,13 @@ import { z } from 'zod';
 import { requireConnectionReader } from '../authority.queries.js';
 import {
   CONNECTION_STATUS,
-  connectionFields,
-  uuidSchema,
-  withConnectionTransaction,
   type ConnectionPage,
   type ConnectionReadDatabase,
   type ListConnectionsInput,
-} from '../records.queries.js';
+} from '../contract.js';
+import { connectionFields } from '../records.queries.js';
+import { uuidSchema } from '../admission.js';
+import { withConnectionTransaction } from '../transactions.repository.js';
 
 const pageLimitSchema = z.number().int().positive().max(100);
 const connectionStatusSchema = z.enum(CONNECTION_STATUS);

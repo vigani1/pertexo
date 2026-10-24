@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { uuidSchema } from '../records.queries.js';
+import { uuidSchema } from '../admission.js';
 
 export function connectionTestScope(
   actorId: string,

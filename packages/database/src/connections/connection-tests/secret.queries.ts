@@ -11,18 +11,20 @@ import type { Pool } from 'pg';
 import {
   uuidSchema,
   providerKeySchema,
+  keyDigest,
+  parseRequestMetadata,
+} from '../admission.js';
+import {
   ConnectionUnavailableError,
   ConnectionTestInProgressError,
-  keyDigest,
-  withConnectionTransaction,
-  parseRequestMetadata,
-} from '../records.queries.js';
+} from '../contract.js';
+import { withConnectionTransaction } from '../transactions.repository.js';
 import { connectionTestClaim, connectionTestScope } from './claim.js';
 import { requireConnectionUser } from '../authority.queries.js';
 
 import { sha256HexSchema as digestSchema } from '../../platform/persisted-primitives.js';
 
-import type { ConnectionTestPersistence } from './results.repository.js';
+import type { ConnectionTestPersistence } from './contract.js';
 
 export async function resolvePersistedConnectionTestSecret(
   pool: Pool,

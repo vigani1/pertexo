@@ -15,14 +15,14 @@ import {
   uuidSchema,
   providerKeySchema,
   identifierSchema,
-  ConnectionUnavailableError,
   safeOptionalIdentifier,
-  withConnectionTransaction,
-} from '../records.queries.js';
+} from '../admission.js';
+import { ConnectionUnavailableError } from '../contract.js';
+import { withConnectionTransaction } from '../transactions.repository.js';
 import type {
   ConnectionDatabase,
   ResolvedConnectionSecretRecord,
-} from '../records.queries.js';
+} from '../contract.js';
 
 /** Owns worker credential resolution and its access audit fact. */
 

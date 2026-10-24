@@ -16,12 +16,12 @@ import {
   workspaceId,
 } from '../../support/workflow-authoring.js';
 import { parseDatabaseConfig } from '../../../src/config.js';
+import { createConnectionDatabase } from '../../../src/connections/repository.js';
 import {
-  createConnectionDatabase,
   CONNECTION_AUTH_TYPE,
   ConnectionNotFoundError,
   ConnectionSharingRevisionConflictError,
-} from '../../../src/connections/repository.js';
+} from '../../../src/connections/contract.js';
 
 const builder = randomUUID(),
   viewer = randomUUID(),

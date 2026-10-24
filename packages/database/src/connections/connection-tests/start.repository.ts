@@ -7,15 +7,17 @@ import type { Pool } from 'pg';
 import {
   uuidSchema,
   providerKeySchema,
+  keyDigest,
+  parseConnectionTestResult,
+} from '../admission.js';
+import {
   CONNECTION_STATUS,
   ConnectionIdempotencyConflictError,
   ConnectionUnavailableError,
   ConnectionTestInProgressError,
-  keyDigest,
-  withConnectionTransaction,
-  selectConnection,
-  parseConnectionTestResult,
-} from '../records.queries.js';
+} from '../contract.js';
+import { withConnectionTransaction } from '../transactions.repository.js';
+import { selectConnection } from '../records.queries.js';
 import {
   connectionTestClaim,
   connectionTestClaimSchema,
@@ -25,7 +27,7 @@ import { requireConnectionUser } from '../authority.queries.js';
 
 import { sha256HexSchema as digestSchema } from '../../platform/persisted-primitives.js';
 
-import type { ConnectionTestPersistence } from './results.repository.js';
+import type { ConnectionTestPersistence } from './contract.js';
 
 export async function startPersistedConnectionTest(
   pool: Pool,

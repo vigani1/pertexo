@@ -8,18 +8,18 @@ export {
   ConnectionSecretVersionConflictError,
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
+} from './contract.js';
+export {
   createConnectionDatabase,
   createWorkerConnectionResolutionDatabase,
 } from './repository.js';
 export type {
   ConnectionAuthType,
   ConnectionDatabase,
-  ApiConnectionDatabase,
   ConnectionManagementDatabase,
   ConnectionReadDatabase,
   ConnectionResolutionDatabase,
   ConnectionTestDatabase,
-  WorkerConnectionResolutionDatabase,
   ConnectionRecord,
   ConnectionPage,
   ConnectionStatus,
@@ -42,7 +42,11 @@ export type {
   RevokeConnectionInput,
   RotateConnectionSecretInput,
   SealedConnectionSecretRecord,
-} from './repository.js';
+} from './contract.js';
+export type {
+  ApiConnectionDatabase,
+  WorkerConnectionResolutionDatabase,
+} from './runtime/contract.js';
 export { createWorkflowIntegrationUsageDatabase } from './discovery/integration-usage.queries.js';
 export type {
   FindConnectionImpactInput,
@@ -50,4 +54,4 @@ export type {
   WorkflowIntegrationImpactPage,
   WorkflowIntegrationImpactRecord,
   WorkflowIntegrationUsageDatabase,
-} from './discovery/integration-usage.queries.js';
+} from './discovery/contract.js';

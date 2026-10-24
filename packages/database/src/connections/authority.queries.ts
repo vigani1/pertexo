@@ -10,7 +10,7 @@ import {
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { connections } from '../schema/connections.js';
-import { ConnectionNotFoundError } from './records.queries.js';
+import { ConnectionNotFoundError } from './contract.js';
 
 async function requireConnectionCapability(
   client: PoolClient,

@@ -6,10 +6,8 @@ import type { WorkflowPromotionRequirement } from '@pertexo/contracts';
 import { InvalidWorkflowGraphError } from '@pertexo/workflow-model';
 import { requireWorkflowCallTargets } from '../../../../src/tenant-access/resources/bindings.js';
 import { createWorkspaceVariablesStore } from '../../../../src/variables/settings.repository.js';
-import {
-  createConnectionDatabase,
-  CONNECTION_AUTH_TYPE,
-} from '../../../../src/connections/repository.js';
+import { createConnectionDatabase } from '../../../../src/connections/repository.js';
+import { CONNECTION_AUTH_TYPE } from '../../../../src/connections/contract.js';
 
 import { withTenantScopedClient } from '../../../../src/tenant-access/transactions.js';
 import { randomUUID } from 'node:crypto';

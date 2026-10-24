@@ -3,16 +3,13 @@ import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { idempotencyRecords as records } from '../../schema/runs/support.js';
 import type { Pool } from 'pg';
-import {
-  uuidSchema,
-  keyDigest,
-  withConnectionTransaction,
-} from '../records.queries.js';
+import { uuidSchema, keyDigest } from '../admission.js';
+import { withConnectionTransaction } from '../transactions.repository.js';
 import { connectionTestScope } from './claim.js';
 
 import { sha256HexSchema as digestSchema } from '../../platform/persisted-primitives.js';
 
-import type { ConnectionTestPersistence } from './results.repository.js';
+import type { ConnectionTestPersistence } from './contract.js';
 
 export async function abandonPersistedConnectionTest(
   pool: Pool,

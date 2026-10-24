@@ -1,3 +1,4 @@
+import type { ConnectionHealthApplicationResult } from './contract.js';
 import { and, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import {
   connectionHealthObservations as observations,
@@ -38,10 +39,6 @@ const inputSchema = z
     signal: z.instanceof(AbortSignal).optional(),
   })
   .strict();
-
-export type ConnectionHealthApplicationResult = Readonly<{
-  kind: 'applied' | 'stale' | 'duplicate';
-}>;
 
 type Transaction = Parameters<
   Parameters<typeof consumeInboxMessage>[2]['operation']

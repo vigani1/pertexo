@@ -1,96 +1,20 @@
-import {
-  createConnectionSharingPersistence,
-  type ConnectionSharingDatabase,
-} from './commands/sharing.repository.js';
-export type { ConnectionSharingDatabase } from './commands/sharing.repository.js';
+import type { WorkerConnectionResolutionDatabase } from './runtime/contract.js';
+import { createConnectionSharingPersistence } from './commands/sharing.repository.js';
+import type { ConnectionSharingDatabase } from './commands/contract.js';
 import { acquireDatabasePool } from '../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../platform/pool/runtime.js';
 
 import type { DatabaseConfig } from '../config.js';
-import {
-  createConnectionLookupPersistence,
-  type ConnectionLookupDatabase,
-} from './runtime/lookup.repository.js';
+import { createConnectionLookupPersistence } from './runtime/lookup.repository.js';
+import type { ConnectionLookupDatabase } from './runtime/contract.js';
 import { createConnectionManagementPersistence } from './commands/management.repository.js';
 import { createConnectionResolutionPersistence } from './runtime/secrets.repository.js';
 import { createConnectionReadPersistence } from './discovery/reads.queries.js';
-import {
-  createConnectionUsagePersistence,
-  type ConnectionUsageDatabase,
-} from './discovery/usage.queries.js';
+import { createConnectionUsagePersistence } from './discovery/usage.queries.js';
+import type { ConnectionUsageDatabase } from './discovery/contract.js';
 import { createConnectionSecretPersistence } from './commands/secrets.repository.js';
 import { createConnectionTestPersistence } from './connection-tests/results.repository.js';
-import type {
-  ConnectionDatabase,
-  ConnectionManagementDatabase,
-  ConnectionReadDatabase,
-  ConnectionResolutionDatabase,
-  ConnectionTestDatabase,
-} from './records.queries.js';
-
-/** API capability plus the lifecycle operation owned by its runtime factory. */
-export type ApiConnectionDatabase = ConnectionSharingDatabase &
-  ConnectionManagementDatabase &
-  ConnectionReadDatabase &
-  ConnectionTestDatabase &
-  ConnectionLookupDatabase &
-  ConnectionUsageDatabase &
-  Pick<ConnectionDatabase, 'close'>;
-
-/** Worker resolution capability plus the lifecycle operation owned by its runtime factory. */
-export type WorkerConnectionResolutionDatabase = ConnectionResolutionDatabase &
-  Pick<ConnectionDatabase, 'close'>;
-
-export {
-  CONNECTION_AUTH_TYPE,
-  CONNECTION_EVENT_TYPE,
-  CONNECTION_STATUS,
-  ConnectionConflictError,
-  ConnectionIdempotencyConflictError,
-  ConnectionNotFoundError,
-  ConnectionSharingRevisionConflictError,
-  ConnectionSecretVersionConflictError,
-  ConnectionTestInProgressError,
-  ConnectionUnavailableError,
-} from './records.queries.js';
-export type { ConnectionLookupDatabase } from './runtime/lookup.repository.js';
-export type {
-  ConnectionUsageDatabase,
-  ConnectionUsageRecord,
-  ConnectionUsageCursor,
-  ConnectionUsagePage,
-  ListConnectionUsageInput,
-} from './discovery/usage.queries.js';
-export type {
-  AbandonConnectionTestInput,
-  AssertConnectionSecretCurrentInput,
-  CompleteConnectionTestInput,
-  ConnectionAuthType,
-  ConnectionDatabase,
-  ConnectionManagementDatabase,
-  ConnectionPage,
-  ConnectionReadDatabase,
-  ConnectionRecord,
-  ConnectionResolutionDatabase,
-  ConnectionStatus,
-  ConnectionTestDatabase,
-  ConnectionTestOutcome,
-  ConnectionTestResult,
-  CreateConnectionInput,
-  FindConnectionCreateReplayInput,
-  FindConnectionRotateReplayInput,
-  ListConnectionsInput,
-  MarkConnectionTestDispatchedInput,
-  ReadConnectionInput,
-  ResolvedConnectionSecretRecord,
-  ResolveConnectionSecretInput,
-  ResolveConnectionTestSecretInput,
-  RevokeConnectionInput,
-  RotateConnectionSecretInput,
-  SealedConnectionSecretRecord,
-  StartConnectionTestInput,
-  StartConnectionTestResult,
-} from './records.queries.js';
+import type { ConnectionDatabase } from './contract.js';
 
 export function createConnectionDatabase(
   config: DatabaseConfig,

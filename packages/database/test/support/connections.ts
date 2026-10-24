@@ -12,11 +12,11 @@ import {
   ConnectionSecretVersionConflictError,
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
-  createConnectionDatabase,
   type ConnectionDatabase,
-  type ConnectionLookupDatabase,
   type CreateConnectionInput,
-} from '../../src/connections/repository.js';
+} from '../../src/connections/contract.js';
+import { createConnectionDatabase } from '../../src/connections/repository.js';
+import { type ConnectionLookupDatabase } from '../../src/connections/runtime/contract.js';
 import {
   createFailureNotificationDestinationDatabase,
   FailureNotificationDestinationError,
