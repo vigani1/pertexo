@@ -1,4 +1,8 @@
-import type { WorkflowRunsDependencies } from '../../src/workflow-runs/index.js';
+import { vi } from 'vitest';
+import type {
+  WorkflowRunPersistence,
+  WorkflowRunsDependencies,
+} from '../../src/workflow-runs/index.js';
 
 export function runPorts() {
   const persistence = {
@@ -33,4 +37,27 @@ export function runPorts() {
     streamer,
     authorization: { findAccess: () => Promise.resolve(undefined) },
   } satisfies WorkflowRunsDependencies;
+}
+
+export function runPersistenceSpies() {
+  return {
+    canRead: () => Promise.resolve(true),
+    readVariables: () => Promise.resolve({ revision: 0, values: {} }),
+    readNodeRunDiagnostics: () => Promise.resolve(undefined),
+    start: vi.fn<WorkflowRunPersistence['start']>(),
+    replay: vi.fn<WorkflowRunPersistence['replay']>(),
+    recovery: vi.fn<WorkflowRunPersistence['recovery']>(),
+    recover: vi.fn<WorkflowRunPersistence['recover']>(),
+    get: vi.fn<WorkflowRunPersistence['get']>(),
+    list: vi.fn<WorkflowRunPersistence['list']>(),
+    statistics: vi.fn<WorkflowRunPersistence['statistics']>(),
+    usageCapacity: vi.fn<WorkflowRunPersistence['usageCapacity']>(),
+    usageTrends: vi.fn<WorkflowRunPersistence['usageTrends']>(),
+    cancel: vi.fn<WorkflowRunPersistence['cancel']>(),
+    readInput: vi.fn<WorkflowRunPersistence['readInput']>(),
+    readNodeRunOutput: vi.fn<WorkflowRunPersistence['readNodeRunOutput']>(),
+    readNodeRunInput: vi.fn<WorkflowRunPersistence['readNodeRunInput']>(),
+    stepHealth: vi.fn<WorkflowRunPersistence['stepHealth']>(),
+    stepRuns: vi.fn<WorkflowRunPersistence['stepRuns']>(),
+  } satisfies WorkflowRunPersistence;
 }
