@@ -3,12 +3,14 @@ import { Activity } from 'react';
 import { HttpResponse, http } from 'msw';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { InvitationAcceptancePage } from '@/features/workspace-invitations/pages/invitation-acceptance';
 import { createApiClient } from '@/lib/api/client';
 
 import { mockServer } from '../../support/mock-server';
 import { renderApp } from '../../support/render-app';
+
+afterEach(() => vi.useRealTimers());
 
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const intentId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
@@ -1142,6 +1144,7 @@ describe('invitation acceptance', () => {
     });
     automatic.unmount();
 
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     const stayed = vi.fn();
     render(
       <InvitationAcceptancePage
@@ -1156,9 +1159,9 @@ describe('invitation acceptance', () => {
       />,
     );
     await userEvent
-      .setup()
+      .setup({ advanceTimers: vi.advanceTimersByTime })
       .click(await screen.findByRole('button', { name: 'Stay here' }));
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    await act(() => vi.advanceTimersByTimeAsync(300));
     expect(stayed).not.toHaveBeenCalled();
     expect(screen.queryByText('Opening Control Operations…')).toBeNull();
     expect(

@@ -1,7 +1,7 @@
 import { HttpResponse, http } from 'msw';
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mockServer } from '../../support/mock-server';
 import { renderApp } from '../../support/render-app';
 import {
@@ -25,6 +25,8 @@ import {
 } from '../../support/fixtures/workflow-editor';
 
 // The lazy editor route and React Flow are slow to start on a busy machine.
+
+afterEach(() => vi.useRealTimers());
 
 describe('workflow editor identity fencing', { timeout: 30_000 }, () => {
   it('closes portaled pinned-data dialogs when the signed-in account changes', async () => {
@@ -62,6 +64,7 @@ describe('workflow editor identity fencing', { timeout: 30_000 }, () => {
   });
 
   it('freezes saving and checks when the signed-in account changes', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     let currentUser = user;
     let saveCalls = 0;
     let validationCalls = 0;
@@ -77,13 +80,13 @@ describe('workflow editor identity fencing', { timeout: 30_000 }, () => {
       }),
     );
     renderApp(editorPath, { strict: true });
-    const event = userEvent.setup();
+    const event = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     await findCanvas();
     currentUser = otherUser;
     await event.click(addStepButton(/Set fields/u));
     pressSave();
     expect(await findPaused()).toBeVisible();
-    await new Promise((resolve) => window.setTimeout(resolve, 900));
+    await act(() => vi.advanceTimersByTimeAsync(900));
     expect(saveCalls).toBe(0);
     expect(validationCalls).toBe(0);
 

@@ -1,8 +1,8 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createQueryClient } from '@/app/query-client';
 import { NotificationsProvider } from '@/components/ui/toast';
 import { StepInputData } from '@/features/workflow-runs/components/run-detail/data/inputs';
@@ -117,6 +117,10 @@ const dataIn = () =>
     },
   );
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 describe('recorded step input', () => {
   it.each([false, true])(
     'does not claim skipped steps received input (uses connection: %s)',
@@ -166,23 +170,25 @@ describe('recorded step input', () => {
   }
 
   it('keeps the empty answer, stops polling and offers Retry after an HTTP 500 refresh', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     const { server, recover } = failAfterEmptyRead(500);
     renderStep(row(sendRunId, 'send-receipt', 'Send receipt', 'running'));
     expect(await screen.findByText('Not recorded yet.')).toBeVisible();
     const problem = await screen.findByRole('alert', {}, { timeout: 3_000 });
     expect(problem).toHaveTextContent(/Couldn’t refresh/u);
     expect(screen.getByText('Not recorded yet.')).toBeVisible();
-    await new Promise((resolve) => setTimeout(resolve, 1_500));
+    await act(() => vi.advanceTimersByTimeAsync(1_500));
     expect(server.reads()).toBe(2);
     recover();
     await userEvent
-      .setup()
+      .setup({ advanceTimers: vi.advanceTimersByTime })
       .click(within(problem).getByRole('button', { name: 'Retry' }));
     expect(await dataIn()).toHaveTextContent(/recovered: true/u);
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it('hides the empty answer, stops polling and offers recovery after an HTTP 403 refresh', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     const { server, recover } = failAfterEmptyRead(403);
     renderStep(row(sendRunId, 'send-receipt', 'Send receipt', 'running'));
     expect(await screen.findByText('Not recorded yet.')).toBeVisible();
@@ -191,22 +197,23 @@ describe('recorded step input', () => {
       'Couldn’t load exactly what this step received.',
     );
     expect(screen.queryByText('Not recorded yet.')).not.toBeInTheDocument();
-    await new Promise((resolve) => setTimeout(resolve, 1_500));
+    await act(() => vi.advanceTimersByTimeAsync(1_500));
     expect(server.reads()).toBe(2);
     recover();
     await userEvent
-      .setup()
+      .setup({ advanceTimers: vi.advanceTimersByTime })
       .click(within(problem).getByRole('button', { name: 'Try again' }));
     expect(await dataIn()).toHaveTextContent(/recovered: true/u);
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it('stops after five empty reads instead of polling indefinitely', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     const server = serve(none);
     renderStep(row(sendRunId, 'send-receipt', 'Send receipt', 'running'));
     expect(await screen.findByText('Not recorded yet.')).toBeVisible();
-    // Reads occur immediately, then after 1, 2, 4 and 8 seconds.
-    await new Promise((resolve) => setTimeout(resolve, 18_000));
+    // Advancing beyond the polling window also catches an unwanted sixth read.
+    await act(() => vi.advanceTimersByTimeAsync(60_000));
     expect(server.reads()).toBe(5);
   }, 25_000);
 
@@ -245,10 +252,11 @@ describe('recorded step input', () => {
   });
 
   it('keeps a finished step’s recorded input without reading it again', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     const server = serve(() => recorded({ attempt: 1 }));
     renderStep(row(sendRunId, 'send-receipt', 'Send receipt', 'succeeded'));
     expect(await dataIn()).toHaveTextContent(/attempt: 1/u);
-    await new Promise((resolve) => setTimeout(resolve, 1_500));
+    await act(() => vi.advanceTimersByTimeAsync(1_500));
     expect(server.reads()).toBe(1);
   });
 

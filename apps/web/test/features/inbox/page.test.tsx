@@ -452,7 +452,7 @@ describe('new failure notice', () => {
   it('stays quiet on the inbox page, whose list shows the failure', async () => {
     const state = { threads: [] as ReturnType<typeof thread>[], revision: '7' };
     const { stream, unreadLists } = inboxApi(state);
-    renderApp(`/w/${workspaceId}/inbox`);
+    const { queryClient } = renderApp(`/w/${workspaceId}/inbox`);
 
     await screen.findByRole('heading', { name: 'Inbox' });
     state.threads = [thread(importId, { revision: '8' })];
@@ -465,7 +465,9 @@ describe('new failure notice', () => {
     await waitFor(() => {
       expect(unreadLists.count).toBeGreaterThan(0);
     });
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await waitFor(() => {
+      expect(queryClient.isFetching()).toBe(0);
+    });
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 });

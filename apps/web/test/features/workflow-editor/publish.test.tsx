@@ -1,7 +1,13 @@
 import { HttpResponse, http } from 'msw';
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mockServer } from '../../support/mock-server';
 import { renderApp } from '../../support/render-app';
 import {
@@ -36,6 +42,8 @@ import {
 } from '../../support/fixtures/workflow-editor';
 
 // The lazy editor route and React Flow are slow to start on a busy machine.
+
+afterEach(() => vi.useRealTimers());
 
 describe('workflow editor publishing', { timeout: 30_000 }, () => {
   it('keeps a different server snapshot readable and stale without publishing it', async () => {
@@ -493,6 +501,7 @@ describe('workflow editor issues and checks', { timeout: 30_000 }, () => {
   });
 
   it('checks the saved draft automatically once editing pauses', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     let validations = 0;
     mockServer.use(...editorHandlers(() => undefined));
     mockServer.use(
@@ -501,7 +510,7 @@ describe('workflow editor issues and checks', { timeout: 30_000 }, () => {
       }),
     );
     renderApp(editorPath);
-    const event = userEvent.setup();
+    const event = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     await findCanvas();
     await event.click(addStepButton(/Set fields/u));
     await waitFor(
@@ -513,7 +522,7 @@ describe('workflow editor issues and checks', { timeout: 30_000 }, () => {
     expect(
       await screen.findByRole('button', { name: 'No issues' }),
     ).toBeVisible();
-    await new Promise((resolve) => window.setTimeout(resolve, 1_800));
+    await act(() => vi.advanceTimersByTimeAsync(1_800));
     expect(validations).toBe(1);
   });
 });

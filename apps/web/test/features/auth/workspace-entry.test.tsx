@@ -3,7 +3,7 @@ import {
   createWorkspaceFixture,
 } from '../../support/fixtures/identity';
 import { HttpResponse, http } from 'msw';
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { createQueryClient } from '@/app/query-client';
@@ -243,13 +243,15 @@ describe('authentication and workspace entry', () => {
         await screen.findByRole('button', { name: 'Continue with Google' }),
       );
     page.unmount();
-    release?.(
-      Response.json({
-        url: 'https://identity.example.test/authorize',
-        redirect: true,
-      }),
-    );
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await act(async () => {
+      release?.(
+        Response.json({
+          url: 'https://identity.example.test/authorize',
+          redirect: true,
+        }),
+      );
+      await delayed;
+    });
     expect(navigate).not.toHaveBeenCalled();
   });
 
@@ -321,8 +323,12 @@ describe('authentication and workspace entry', () => {
       }),
     );
     page.unmount();
-    release?.({ authorizationUrl: 'https://identity.example.test/authorize' });
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await act(async () => {
+      release?.({
+        authorizationUrl: 'https://identity.example.test/authorize',
+      });
+      await delayed;
+    });
     expect(navigate).not.toHaveBeenCalled();
   });
 
