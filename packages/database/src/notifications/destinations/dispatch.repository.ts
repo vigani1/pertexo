@@ -11,10 +11,8 @@ import type { Pool } from 'pg';
 import { z } from 'zod';
 
 import { FailureNotificationStateError } from '../errors.js';
-import {
-  auditFailureNotification,
-  failureNotificationIdentitySchema,
-} from '../delivery/evidence.repository.js';
+import { auditFailureNotification } from '../delivery/evidence.repository.js';
+import { failureNotificationIdentitySchema } from '../delivery/input-validation.js';
 import type { FailureNotificationStore } from '../contract.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import { recordCredentialAccess } from '../../connections/runtime/dispatch.repository.js';

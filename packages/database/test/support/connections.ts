@@ -17,10 +17,8 @@ import {
 } from '../../src/connections/contract.js';
 import { createConnectionDatabase } from '../../src/connections/repository.js';
 import type { ConnectionLookupDatabase } from '../../src/connections/runtime/contract.js';
-import {
-  createFailureNotificationDestinationDatabase,
-  FailureNotificationDestinationError,
-} from '../../src/notifications/destinations/repository.js';
+import { createFailureNotificationDestinationDatabase } from '../../src/notifications/destinations/repository.js';
+import { FailureNotificationDestinationError } from '../../src/notifications/destinations/errors.js';
 import type { FailureNotificationDestinationDatabase } from '../../src/notifications/destinations/contract.js';
 import { createFailureNotificationStore } from '../../src/notifications/repository.js';
 import { parseDatabaseConfig } from '../../src/config.js';

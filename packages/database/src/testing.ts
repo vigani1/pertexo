@@ -9,24 +9,15 @@ export {
   UnknownOutcomeReconciliationStateError,
   type UnknownOutcomeReconciliationResult,
 } from './outbox/unknown-outcome-reconciliation.js';
-export {
-  createFailureNotificationDestinationDatabase,
-  FailureNotificationDestinationError,
-  type FailureNotificationDestinationRecord,
-} from './notifications/destinations/repository.js';
+export { createFailureNotificationDestinationDatabase } from './notifications/destinations/repository.js';
+export { FailureNotificationDestinationError } from './notifications/destinations/errors.js';
+export { type FailureNotificationDestinationRecord } from './notifications/destinations/contract.js';
 export type { FailureNotificationDestinationDatabase } from './notifications/destinations/contract.js';
 export { createDueNodeWakeupScanner } from './runs/wakeups/due-node-scanner.js';
 export type { DueNodeWakeupScanner } from './runs/wakeups/due-node-scanner.js';
-export {
-  createFailureNotificationStore,
-  FailureNotificationStateError,
-} from './notifications/repository.js';
-export type {
-  FailureNotificationClaimResult,
-  FailureNotificationDelivery,
-  FailureNotificationResolvedDestination,
-  FailureNotificationStore,
-} from './notifications/repository.js';
+export { createFailureNotificationStore } from './notifications/repository.js';
+export { FailureNotificationStateError } from './notifications/errors.js';
+export type { FailureNotificationClaimResult, FailureNotificationDelivery, FailureNotificationResolvedDestination, FailureNotificationStore } from './notifications/contract.js';
 export { createDeadlineWakeupScanner } from './runs/wakeups/deadline-scanner.js';
 export type { DeadlineWakeupScanner } from './runs/wakeups/deadline-scanner.js';
 export {

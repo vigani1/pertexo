@@ -16,14 +16,14 @@ import {
   claimNotificationCommand,
   completeNotificationCommand,
   destinationError,
-  type CommandMetadata,
-  type DestinationTransaction,
-  type IdempotentCommandMetadata,
 } from '../destinations/commands.repository.js';
-import {
-  readFailureNotificationDestination,
-  type FailureNotificationDestinationRecord,
-} from '../destinations/records.queries.js';
+import type {
+  CommandMetadata,
+  DestinationTransaction,
+  IdempotentCommandMetadata,
+} from '../destinations/contract.js';
+import { readFailureNotificationDestination } from '../destinations/records.queries.js';
+import type { FailureNotificationDestinationRecord } from '../destinations/contract.js';
 
 type WorkflowPolicyScope = Readonly<{ workflowId: string }>;
 
