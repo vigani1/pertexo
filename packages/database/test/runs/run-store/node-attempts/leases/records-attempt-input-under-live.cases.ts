@@ -66,6 +66,35 @@ export function registerRecordsAttemptInputUnderLive(): void {
     await expect(storedInput()).resolves.toEqual(recorded);
   });
 
+  it('records no input when a live lease identifies a different run or step', async () => {
+    const lease = await claimDispatchAttempt(`record-identity-${randomUUID()}`);
+    const signal = new AbortController().signal;
+    for (const changed of [
+      { workflowVersionId: randomUUID() },
+      { runId: randomUUID() },
+      { nodeRunId: randomUUID() },
+      { nodeId: `${lease.nodeId}-other` },
+      { invocationKey: `${lease.invocationKey}-other` },
+      { attemptNumber: lease.attemptNumber + 1 },
+    ]) {
+      await expect(
+        nodeAttemptStore.recordInput?.({
+          lease: { ...lease, ...changed },
+          input: { unaccepted: true },
+          signal,
+        }),
+      ).resolves.toEqual({ recorded: false });
+    }
+    await expect(storedNodeRunInput(lease.nodeRunId)).resolves.toBeNull();
+    await expect(
+      nodeAttemptStore.recordInput?.({
+        lease,
+        input: { accepted: true },
+        signal,
+      }),
+    ).resolves.toEqual({ recorded: true });
+  });
+
   it('rejects independently stale lease ownership without terminal side effects', async () => {
     for (const mutation of [
       {
