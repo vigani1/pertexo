@@ -40,7 +40,16 @@ export type ReadQuery<Data> = Readonly<{
  * `children` it renders only the states, for data the caller already shows
  * elsewhere, such as the options of a select.
  */
-type QueryViewProps<Data> = Readonly<{
+export function QueryView<Data>({
+  query,
+  resource,
+  loading,
+  error,
+  isEmpty,
+  empty,
+  failure,
+  children,
+}: Readonly<{
   query: ReadQuery<Data>;
   /** What is being read, for the sentences: "Recent deliveries". */
   resource: string;
@@ -61,18 +70,7 @@ type QueryViewProps<Data> = Readonly<{
    */
   failure?: (error: unknown) => ReactNode;
   children?: (data: Data) => ReactNode;
-}>;
-
-export function QueryView<Data>({
-  query,
-  resource,
-  loading,
-  error,
-  isEmpty,
-  empty,
-  failure,
-  children,
-}: QueryViewProps<Data>) {
+}>) {
   const retry = () => void query.refetch();
   if (query.isError) {
     const explained = failure?.(query.error);
@@ -81,17 +79,43 @@ export function QueryView<Data>({
   // An authoritative "you can't see this" hides data loaded earlier.
   const data =
     query.isError && isAccessLost(query.error) ? undefined : query.data;
-  if (data === undefined)
+  if (data === undefined) {
+    if (query.isPending)
+      return (
+        loading ?? (
+          <SkeletonLines
+            label={`Loading ${resource.toLowerCase()}`}
+            lines={2}
+          />
+        )
+      );
+    if (!query.isError) return null;
+    if (error !== undefined)
+      return error({
+        error: query.error,
+        retrying: query.isFetching,
+        retry,
+      });
     return (
-      <FirstRead
-        query={query}
-        resource={resource}
-        loading={loading}
-        error={error}
-        retry={retry}
-      />
+      <Notice
+        tone="destructive"
+        action={
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={query.isFetching}
+            onClick={retry}
+          >
+            <RotateCcwIcon aria-hidden="true" data-icon="inline-start" />
+            {query.isFetching ? 'Trying again…' : 'Retry'}
+          </Button>
+        }
+      >
+        {describeReadError(query.error, resource)}
+      </Notice>
     );
-
+  }
   const showEmpty = empty !== undefined && (isEmpty?.(data) ?? false);
   const content = showEmpty ? empty : children?.(data);
   const refreshFailed = query.isError && !(query.isFetchNextPageError ?? false);
@@ -108,53 +132,6 @@ export function QueryView<Data>({
       ) : null}
       {content}
     </>
-  );
-}
-
-function FirstRead({
-  query,
-  resource,
-  loading,
-  error,
-  retry,
-}: Readonly<{
-  query: ReadQuery<unknown>;
-  resource: string;
-  loading: ReactNode;
-  error: QueryViewProps<unknown>['error'];
-  retry: () => void;
-}>) {
-  if (query.isPending)
-    return (
-      loading ?? (
-        <SkeletonLines label={`Loading ${resource.toLowerCase()}`} lines={2} />
-      )
-    );
-  if (!query.isError) return null;
-  if (error !== undefined)
-    return error({
-      error: query.error,
-      retrying: query.isFetching,
-      retry,
-    });
-  return (
-    <Notice
-      tone="destructive"
-      action={
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={query.isFetching}
-          onClick={retry}
-        >
-          <RotateCcwIcon aria-hidden="true" data-icon="inline-start" />
-          {query.isFetching ? 'Trying again…' : 'Retry'}
-        </Button>
-      }
-    >
-      {describeReadError(query.error, resource)}
-    </Notice>
   );
 }
 
