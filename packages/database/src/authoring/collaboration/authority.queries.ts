@@ -1,3 +1,7 @@
+import { and, eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workflows } from '../../schema/authoring/workflows.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import { rolesForCapability } from '@pertexo/workflow-model';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
@@ -17,10 +21,17 @@ export async function requireCollaborationAuthority(
       capability: editing ? 'workflow:update' : 'workflow:read',
     },
   });
-  const row = await client.query(
-    'select id from app.workflows where workspace_id=$1 and id=$2 for ' + lock,
-    [input.workspaceId, input.workflowId],
-  );
-  if (row.rowCount !== 1)
+  const row = await drizzle(client)
+    .select({ id: workflows.id })
+    .from(workflows)
+    .where(
+      and(
+        eq(workflows.workspaceId, input.workspaceId),
+        eq(workflows.id, input.workflowId),
+      ),
+    )
+    .for(lock)
+    .catch(rethrowQueryFailure);
+  if (row.length !== 1)
     throw new WorkflowNotFoundError('Workflow is not visible');
 }
