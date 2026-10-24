@@ -1,6 +1,7 @@
+import { useSuiteHistory } from './use-suite-history';
 import { commandIsLive } from '../model/testing/ownership';
 import { useEffect, useRef, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   workflowTestSuiteStartRequestSchema,
   type WorkflowTestSuitePreparation,
@@ -13,11 +14,7 @@ import { commandErrorMessage } from '../data/mutations/command-utils';
 import type { WorkflowTestScope } from '../data/workflow-tests/api';
 import { workflowTestsKey } from '../data/workflow-tests/queries';
 import { prepareSuite, startSuite, cancelSuite } from '../data/test-suites/api';
-import {
-  suitesKey,
-  suitesQueryOptions,
-  suiteQueryOptions,
-} from '../data/test-suites/queries';
+import { suitesKey } from '../data/test-suites/queries';
 export function useTestSuites({
   scope,
   enabled,
@@ -52,49 +49,10 @@ export function useTestSuites({
     useState<WorkflowTestSuitePreparation>();
   const [preparing, setPreparing] = useState(false);
   const [error, setError] = useState<string>();
-  const [selectedId, select] = useState<string>();
-  const history = useQuery({
-    ...suitesQueryOptions(scope),
+  const { history, detail, activeId, select, blocked } = useSuiteHistory({
+    scope,
     enabled,
-    refetchInterval: (query) =>
-      (query.state.data?.items.some((item) => item.status === 'running') ??
-      false)
-        ? 2000
-        : false,
   });
-  const activeId = selectedId ?? history.data?.items[0]?.suiteId;
-  const detail = useQuery({
-    ...suiteQueryOptions(scope, activeId ?? ''),
-    enabled: enabled && activeId !== undefined,
-    refetchInterval: (query) =>
-      query.state.data?.status === 'running' ? 1000 : false,
-  });
-  const latestRunId = detail.data?.cases.reduce<string | null>(
-    (last, entry) => entry.runId ?? last,
-    null,
-  );
-  useEffect(() => {
-    if (latestRunId !== undefined && latestRunId !== null)
-      void cache.invalidateQueries({
-        queryKey: [
-          ...workflowTestsKey({
-            userId: scope.userId,
-            workspaceId: scope.workspaceId,
-            workflowId: scope.workflowId,
-          }),
-          'list',
-        ],
-        exact: true,
-      });
-  }, [cache, latestRunId, scope.userId, scope.workspaceId, scope.workflowId]);
-  const blocked =
-    history.data?.items.some(
-      (item) =>
-        item.startedBy === scope.userId &&
-        (item.suiteId === detail.data?.suiteId
-          ? detail.data.status
-          : item.status) === 'running',
-    ) ?? false;
   async function signal() {
     const controller = lifetime.current;
     if (!enabled || controller === undefined || controller.signal.aborted)

@@ -1,15 +1,14 @@
+import { useTestHistory } from './use-test-history';
 import { commandIsLive } from '../model/testing/ownership';
 import { useTestSuites } from './use-test-suites';
 import { getStepSample } from '../data/samples/api';
-import { useEffect, useRef, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   workflowTestStartRequestSchema,
   type WorkflowTestPreparation,
   type WorkflowTestStartRequest,
 } from '@pertexo/contracts';
-import { workflowRunQueryOptions } from '@/features/workflow-runs/queries.public';
-import { isActiveRunStatus } from '@/features/workflow-runs/run-labels.public';
 import { useRetainedCommand } from '@/lib/api/commands/use-retained';
 import { describeCommandError } from '@/lib/api/error-copy';
 import { isApiError } from '@/lib/api/error';
@@ -19,11 +18,7 @@ import {
   cancelWorkflowTest,
   type WorkflowTestScope,
 } from '../data/workflow-tests/api';
-import {
-  workflowTestsKey,
-  workflowTestsQueryOptions,
-  workflowTestQueryOptions,
-} from '../data/workflow-tests/queries';
+import { workflowTestsKey } from '../data/workflow-tests/queries';
 
 export function useWorkflowTests({
   scope,
@@ -36,19 +31,13 @@ export function useWorkflowTests({
   ensureSaved: () => Promise<{ revision: number }>;
   verifyIdentity: () => Promise<void>;
 }>) {
-  // The tests bar shows only for test activity: a test or suite started here,
-  // or history the person asked for. A running test shows it regardless.
-  const [panel, setPanel] = useState<'hidden' | 'summary' | 'history'>(
-    'hidden',
-  );
+  const display = useTestPanel();
   const suites = useTestSuites({
     scope,
     enabled,
     ensureSaved,
     verifyIdentity,
-    onStarted: () => {
-      setPanel('history');
-    },
+    onStarted: display.showHistory,
   });
   const queryClient = useQueryClient();
   const lifetime = useRef<AbortController | undefined>(undefined);
@@ -63,40 +52,8 @@ export function useWorkflowTests({
   const [preparation, setPreparation] = useState<WorkflowTestPreparation>();
   const [preparing, setPreparing] = useState(false);
   const [preparationError, setPreparationError] = useState<string>();
-  const [selectedRunId, selectRun] = useState<string>();
-  const history = useQuery({
-    ...workflowTestsQueryOptions(scope),
-    enabled,
-    refetchInterval: (query) =>
-      (query.state.data?.items.some((item) => isActiveRunStatus(item.status)) ??
-      false)
-        ? 2000
-        : false,
-  });
-  const activeId = selectedRunId ?? history.data?.items[0]?.runId;
-  const snapshot = useQuery({
-    ...workflowTestQueryOptions(scope, activeId ?? ''),
-    enabled: enabled && activeId !== undefined,
-  });
-  const progress = useQuery({
-    ...workflowRunQueryOptions(
-      scope.apiClient,
-      scope.userId,
-      scope.workspaceId,
-      activeId ?? '',
-    ),
-    enabled: enabled && activeId !== undefined,
-  });
-  const blocked =
-    history.data?.items.some(
-      (item) =>
-        item.startedBy === scope.userId &&
-        isActiveRunStatus(
-          item.runId === progress.data?.run.id
-            ? progress.data.run.status
-            : item.status,
-        ),
-    ) ?? false;
+  const { history, snapshot, progress, activeId, selectRun, blocked } =
+    useTestHistory({ scope, enabled });
   async function signal() {
     const controller = lifetime.current;
     if (controller === undefined || controller.signal.aborted || !enabled)
@@ -110,7 +67,7 @@ export function useWorkflowTests({
       if (!commandIsLive(lifetime.current)) return;
       selectRun(result.runId);
       setOpen(false);
-      setPanel((current) => (current === 'history' ? current : 'summary'));
+      display.showStartedRun();
       await queryClient.invalidateQueries({
         queryKey: [...workflowTestsKey(scope), 'list'],
         exact: true,
@@ -174,21 +131,13 @@ export function useWorkflowTests({
       }),
     );
   }
-  async function loadTriggerInput(nodeId: string) {
-    try {
-      const sample = await getStepSample(scope, nodeId, await signal());
-      return commandIsLive(lifetime.current) ? sample.output : undefined;
-    } catch (error) {
-      if (commandIsLive(lifetime.current))
-        setPreparationError(
-          describeCommandError(error, 'loading the trigger sample'),
-        );
-      return undefined;
-    }
-  }
   return {
     suites,
-    loadTriggerInput,
+    loadTriggerInput: (nodeId: string) =>
+      loadTriggerSample(
+        { scope, lifetime, signal, onError: setPreparationError },
+        nodeId,
+      ),
     scope,
     open,
     setOpen,
@@ -206,6 +155,45 @@ export function useWorkflowTests({
     selectRun,
     blocked: blocked || suites.blocked,
     enabled,
+    panel: display.panel,
+    showHistory: display.showHistory,
+    showSummary: display.showSummary,
+    hidePanel: display.hidePanel,
+  };
+}
+export type WorkflowTests = ReturnType<typeof useWorkflowTests>;
+
+async function loadTriggerSample(
+  {
+    scope,
+    lifetime,
+    signal,
+    onError,
+  }: Readonly<{
+    scope: WorkflowTestScope;
+    lifetime: RefObject<AbortController | undefined>;
+    signal: () => Promise<AbortSignal>;
+    onError: (message: string) => void;
+  }>,
+  nodeId: string,
+) {
+  try {
+    const sample = await getStepSample(scope, nodeId, await signal());
+    return commandIsLive(lifetime.current) ? sample.output : undefined;
+  } catch (error) {
+    if (commandIsLive(lifetime.current))
+      onError(describeCommandError(error, 'loading the trigger sample'));
+    return undefined;
+  }
+}
+
+function useTestPanel() {
+  // The tests bar shows only for test activity: a test or suite started here,
+  // or history the person asked for. A running test shows it regardless.
+  const [panel, setPanel] = useState<'hidden' | 'summary' | 'history'>(
+    'hidden',
+  );
+  return {
     panel,
     showHistory: () => {
       setPanel('history');
@@ -216,6 +204,8 @@ export function useWorkflowTests({
     hidePanel: () => {
       setPanel('hidden');
     },
+    showStartedRun: () => {
+      setPanel((current) => (current === 'history' ? current : 'summary'));
+    },
   };
 }
-export type WorkflowTests = ReturnType<typeof useWorkflowTests>;
