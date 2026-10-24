@@ -1,5 +1,5 @@
 import { HttpResponse, http } from 'msw';
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
@@ -244,13 +244,15 @@ describe(
         queryKey: ['identity', 'current-user'],
       });
       expect(await findPaused()).toBeVisible();
-      accepted.resolve(
-        HttpResponse.json({
-          run: runSummary(runId, versionId, 'queued'),
-          replayed: false,
-        }),
-      );
-      await new Promise((resolve) => window.setTimeout(resolve, 0));
+      await act(async () => {
+        accepted.resolve(
+          HttpResponse.json({
+            run: runSummary(runId, versionId, 'queued'),
+            replayed: false,
+          }),
+        );
+        await accepted.promise;
+      });
       expect(
         screen.getByRole('heading', { name: 'Editor paused' }),
       ).toBeVisible();
@@ -319,13 +321,15 @@ describe(
         queryKey: ['identity', 'current-user'],
       });
       expect(await findPaused()).toBeVisible();
-      accepted.resolve(
-        HttpResponse.json({
-          version: versionBody(versionId, emptyGraph),
-          reused: false,
-        }),
-      );
-      await new Promise((resolve) => window.setTimeout(resolve, 0));
+      await act(async () => {
+        accepted.resolve(
+          HttpResponse.json({
+            version: versionBody(versionId, emptyGraph),
+            reused: false,
+          }),
+        );
+        await accepted.promise;
+      });
       expect(
         screen.getByRole('heading', { name: 'Editor paused' }),
       ).toBeVisible();

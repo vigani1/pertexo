@@ -1,5 +1,5 @@
 import { HttpResponse, http } from 'msw';
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
@@ -665,7 +665,6 @@ describe('team: members', () => {
     ).toBeVisible();
     expect(screen.queryByText('Alice Member')).not.toBeInTheDocument();
     expect(confirmation()).not.toBeInTheDocument();
-    await new Promise((resolve) => setTimeout(resolve, 0));
     expect(commandCount).toBe(1);
   });
 
@@ -889,13 +888,15 @@ describe('team: members', () => {
     expect(
       await screen.findByRole('heading', { name: 'Workspaces' }),
     ).toBeVisible();
-    refreshedMembers.resolve(
-      Response.json({
-        items: [member(firstMemberId, 'Alice Member', 'operator', 2)],
-        nextCursor: null,
-      }),
-    );
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await act(async () => {
+      refreshedMembers.resolve(
+        Response.json({
+          items: [member(firstMemberId, 'Alice Member', 'operator', 2)],
+          nextCursor: null,
+        }),
+      );
+      await refreshedMembers.promise;
+    });
     expect(router.state.location.pathname).toBe('/workspaces');
     expect(confirmation()).not.toBeInTheDocument();
   });
