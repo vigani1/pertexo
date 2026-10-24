@@ -251,28 +251,29 @@ describe('snapshot validation and publication ordering', () => {
               [requestHash, status, { versionId: workflowId, reused: false }],
             ],
           });
-      if (sql.includes('from app.workflow_versions'))
-        return Promise.resolve({
-          rows: [
-            [
-              workflowId,
-              workspaceId,
-              workflowId,
-              1,
-              graph,
-              `wf:sha256:${'a'.repeat(64)}`,
-              actorId,
-              row.updated_at,
+        if (sql.includes('from app.workflow_versions'))
+          return Promise.resolve({
+            rows: [
+              [
+                workflowId,
+                workspaceId,
+                workflowId,
+                1,
+                graph,
+                `wf:sha256:${'a'.repeat(64)}`,
+                actorId,
+                row.updated_at,
+              ],
             ],
-          ],
-        });
-      if (sql.includes('from app.workflows'))
-        return Promise.resolve({ rows: [[workflowId]] });
-      if (sql.includes('from app.workflow_drafts'))
-        return Promise.resolve({ rows: [draftWireRow(row)] });
-      if (sql.includes('pg_settings')) return Promise.resolve(budget);
-      return Promise.resolve({ rows: [] });
-    });
+          });
+        if (sql.includes('from app.workflows'))
+          return Promise.resolve({ rows: [[workflowId]] });
+        if (sql.includes('from app.workflow_drafts'))
+          return Promise.resolve({ rows: [draftWireRow(row)] });
+        if (sql.includes('pg_settings')) return Promise.resolve(budget);
+        return Promise.resolve({ rows: [] });
+      },
+    );
     const client = { query } as unknown as PoolClient;
     const validator = vi.fn().mockResolvedValue(invalid);
     const executableCompiler = vi.fn();
