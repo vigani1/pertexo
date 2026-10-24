@@ -1,13 +1,13 @@
 import { readFolderScope } from '../../tenant-access/resources/facts.js';
 import { NOTICE_WINDOW_SQL } from '../lifetime.js';
 import type { PoolClient } from 'pg';
-import { CAPACITY_LIMIT_LABELS } from '../observations/capacity.js';
+import { CAPACITY_LIMIT_LABELS } from '../observations/capacity.queries.js';
 import type {
   WorkspaceCapacityLimit,
   WorkspaceNoticeKind,
 } from '@pertexo/contracts';
-import { noticeVisibilitySql } from '../eligibility.js';
-import { readAttentionFact } from '../observations/facts.js';
+import { noticeVisibilitySql } from '../threads/eligibility.queries.js';
+import { readAttentionFact } from '../observations/facts.queries.js';
 import type { NoticeMailItem } from './contract.js';
 export type MailSubjectRow = Readonly<{
   id: string;

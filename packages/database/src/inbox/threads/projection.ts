@@ -5,10 +5,10 @@ import type {
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import type { WorkspaceInboxThread } from '@pertexo/contracts';
-import { databaseSchema } from '../schema.js';
-import { parseWorkspaceId } from '../tenant-access/transactions.js';
-import { readWorkflowRunFailedSteps } from '../runs/queries/history/details.js';
-import { readFailureDays } from './failure-days.js';
+import { databaseSchema } from '../../schema.js';
+import { parseWorkspaceId } from '../../tenant-access/transactions.js';
+import { readWorkflowRunFailedSteps } from '../../runs/queries/history/details.js';
+import { readFailureDays } from './failure-days.queries.js';
 type Attention = Exclude<
   WorkspaceInboxThread,
   { noticeKind: 'workflow_failure' }

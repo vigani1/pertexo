@@ -12,7 +12,7 @@ export type {
   FailureNotificationStore,
 } from './store.js';
 
-export { createWorkspaceInboxDatabase } from '../inbox/read-store.js';
+export { createWorkspaceInboxDatabase } from '../inbox/threads/reader.repository.js';
 export type {
   WorkspaceInboxCursor,
   WorkspaceInboxDatabase,
@@ -20,21 +20,21 @@ export type {
   WorkspaceInboxSummary,
   WorkspaceInboxThreadPage,
   WorkspaceInboxThreadRecord,
-} from '../inbox/read-store.js';
-export { createWorkspaceInboxFoldStore } from '../inbox/fold-store.js';
+} from '../inbox/threads/reader.repository.js';
+export { createWorkspaceInboxFoldStore } from '../inbox/folding/processor.repository.js';
 export type {
   WorkspaceInboxChange,
   WorkspaceInboxFoldStore,
-} from '../inbox/fold-store.js';
+} from '../inbox/folding/processor.repository.js';
 
-export { createNoticePreferencesStore } from '../inbox/preferences/store.js';
+export { createNoticePreferencesStore } from '../inbox/preferences/settings.repository.js';
 export {
   NoticeConflictError,
   NoticeUnavailableError,
   type NoticePreferencesStore,
 } from '../inbox/preferences/contract.js';
 
-export { createNoticeMailStore } from '../inbox/mail/store.js';
+export { createNoticeMailStore } from '../inbox/mail/delivery.repository.js';
 export type {
   NoticeMailStore,
   NoticeMailSealer,

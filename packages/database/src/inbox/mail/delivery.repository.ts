@@ -15,9 +15,9 @@ import {
   projectNoticePreferences,
   type DefaultsRow,
   type PreferenceRow,
-} from '../preferences/read.js';
+} from '../preferences/settings.queries.js';
 import { noticeWindow, nextNoticeDue } from './schedule.js';
-import { readMailSubjects, mailItem } from './subjects.js';
+import { readMailSubjects, mailItem } from './subjects.queries.js';
 import type { NoticeMailStore, NoticeMailSealer } from './contract.js';
 type Person = Readonly<{ workspace_id: string; user_id: string }>;
 type Recipient = Readonly<{

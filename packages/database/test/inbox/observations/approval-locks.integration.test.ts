@@ -4,7 +4,7 @@ import { expect, it } from 'vitest';
 import { Pool } from 'pg';
 import { apiUrl } from '../../support/workflow-authoring.js';
 import { withTenantScopedClient } from '../../../src/tenant-access/transactions.js';
-import { readAttentionFact } from '../../../src/inbox/observations/facts.js';
+import { readAttentionFact } from '../../../src/inbox/observations/facts.queries.js';
 import { respondToTask } from '../../../src/runs/pending-tasks/responses/respond.js';
 import { seedApproval, seedNoticeWorkspace } from '../notices.fixture.js';
 

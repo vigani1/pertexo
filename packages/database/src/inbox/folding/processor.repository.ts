@@ -1,13 +1,13 @@
-import { createAttentionObserver } from './observations/store.js';
+import { createAttentionObserver } from '../observations/state.repository.js';
 import { z } from 'zod';
 
-import type { DatabaseConfig } from '../config.js';
+import type { DatabaseConfig } from '../../config.js';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
-} from '../platform/pool/runtime.js';
-import { withPlatformTransaction } from '../tenant-access/transactions.js';
-import { checkDatabaseReadiness } from '../platform/readiness.js';
+} from '../../platform/pool/runtime.js';
+import { withPlatformTransaction } from '../../tenant-access/transactions.js';
+import { checkDatabaseReadiness } from '../../platform/readiness.js';
 
 /** A workspace whose inbox changed, with its newest thread revision. */
 export type WorkspaceInboxChange = Readonly<{
