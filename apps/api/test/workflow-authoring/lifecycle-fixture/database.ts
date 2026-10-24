@@ -1,4 +1,4 @@
-import type { Pool} from 'pg';
+import type { Pool } from 'pg';
 import type { PoolClient } from 'pg';
 
 import { ownerRole, workflowLifecycleDatabaseConfig } from './environment.js';

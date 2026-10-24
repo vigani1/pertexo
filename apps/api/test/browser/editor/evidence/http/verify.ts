@@ -4,9 +4,7 @@ import type { z } from 'zod';
 import { workflowGraphSchema } from '@pertexo/contracts';
 
 import { verifyWorkflowExecutable } from '@pertexo/workflow-engine';
-import type {
-  httpEvidenceSchema,
-  httpEffectsSchema} from './scope.js';
+import type { httpEvidenceSchema, httpEffectsSchema } from './scope.js';
 import {
   executable,
   httpActionBody,
