@@ -26,17 +26,19 @@ import type { FederationScope } from '../../data/settings.api';
 import { CommandFeedback } from '../command-feedback';
 
 type Organization = NonNullable<FederationSettings['organization']>;
+type DirectoryMappingsEditorProps = Readonly<{
+  scope: FederationScope;
+  settings: DirectorySettings;
+  organization: Organization;
+  editable: boolean;
+}>;
+
 export function DirectoryMappingsEditor({
   scope,
   settings,
   organization,
   editable,
-}: Readonly<{
-  scope: FederationScope;
-  settings: DirectorySettings;
-  organization: Organization;
-  editable: boolean;
-}>) {
+}: DirectoryMappingsEditorProps) {
   const id = useId();
   const [edit, setEdit] = useState<{
       mappings: DirectoryMappings['mappings'];
@@ -84,38 +86,16 @@ export function DirectoryMappingsEditor({
       title="Group roles"
       description="The first matching group wins. A person outside these groups receives the linked workspace’s default role. Builder and operator are separate roles; they are not ranked."
     >
-      <LabelledField id={`${id}-workspace`} label="Workspace">
-        {(control) => (
-          <Select
-            value={workspaceId}
-            items={organization.workspaces.map((workspace) => ({
-              value: workspace.workspaceId,
-              label: workspace.name,
-            }))}
-            onValueChange={(value) => {
-              if (value !== null) {
-                setWorkspaceId(value);
-                setGroupId(null);
-              }
-            }}
-            disabled={command.pending || command.uncertain}
-          >
-            <SelectTrigger {...control}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {organization.workspaces.map((workspace) => (
-                <SelectItem
-                  key={workspace.workspaceId}
-                  value={workspace.workspaceId}
-                >
-                  {workspace.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-      </LabelledField>
+      <MappingWorkspaceChoice
+        id={id}
+        workspaceId={workspaceId}
+        organization={organization}
+        disabled={command.pending || command.uncertain}
+        onChange={(value) => {
+          setWorkspaceId(value);
+          setGroupId(null);
+        }}
+      />
       {revision === settings.revision ? null : (
         <Notice
           tone="warning"
@@ -156,11 +136,17 @@ export function DirectoryMappingsEditor({
         </p>
       ) : null}
       {editable ? (
-        <form
-          noValidate
-          className="space-y-4"
-          onSubmit={(event) => {
-            event.preventDefault();
+        <AddGroupMapping
+          id={id}
+          choices={choices}
+          locked={locked}
+          selection={{ groupId, role }}
+          full={rows.length >= DIRECTORY_LIMITS.mappingsPerWorkspace}
+          onChange={(next) => {
+            setGroupId(next.groupId);
+            setRole(next.role);
+          }}
+          onAdd={() => {
             if (
               groupId === null ||
               locked ||
@@ -173,80 +159,7 @@ export function DirectoryMappingsEditor({
             ]);
             setGroupId(null);
           }}
-        >
-          <div className="grid gap-4 sm:grid-cols-2">
-            <LabelledField id={`${id}-group`} label="Directory group">
-              {(control) => (
-                <Select
-                  value={groupId}
-                  items={choices.map((group) => ({
-                    value: group.id,
-                    label: group.displayName,
-                  }))}
-                  onValueChange={setGroupId}
-                  disabled={locked || choices.length === 0}
-                >
-                  <SelectTrigger {...control}>
-                    <SelectValue
-                      placeholder={
-                        choices.length === 0
-                          ? 'No unmapped groups'
-                          : 'Choose a group'
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {choices.map((group) => (
-                      <SelectItem key={group.id} value={group.id}>
-                        {group.displayName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </LabelledField>
-            <LabelledField id={`${id}-role`} label="Role">
-              {(control) => (
-                <Select
-                  value={role}
-                  onValueChange={(value) => {
-                    const parsed =
-                      delegatedWorkspaceRoleSchema.safeParse(value);
-                    if (parsed.success) setRole(parsed.data);
-                  }}
-                  disabled={locked}
-                >
-                  <SelectTrigger {...control}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {delegatedWorkspaceRoleSchema.options.map((value) => (
-                      <SelectItem key={value} value={value}>
-                        {value}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </LabelledField>
-          </div>
-          <Button
-            type="submit"
-            variant="outline"
-            disabled={
-              locked ||
-              groupId === null ||
-              rows.length >= DIRECTORY_LIMITS.mappingsPerWorkspace
-            }
-          >
-            Add group mapping
-          </Button>
-          <p className="text-xs text-muted-foreground">
-            Up to {DIRECTORY_LIMITS.mappingsPerWorkspace} mappings per
-            workspace. New groups appear after your identity provider provisions
-            them.
-          </p>
-        </form>
+        />
       ) : null}
       <CommandFeedback command={command} />
       {saved ? <Status tone="success">Group mappings saved.</Status> : null}
@@ -268,5 +181,154 @@ export function DirectoryMappingsEditor({
         </ProgressButton>
       ) : null}
     </SettingsSection>
+  );
+}
+
+type MappingSelection = Readonly<{
+  groupId: string | null;
+  role: DelegatedRole;
+}>;
+function AddGroupMapping({
+  id,
+  choices,
+  locked,
+  selection,
+  full,
+  onChange,
+  onAdd,
+}: Readonly<{
+  id: string;
+  choices: DirectorySettings['groups'];
+  locked: boolean;
+  selection: MappingSelection;
+  full: boolean;
+  onChange: (selection: MappingSelection) => void;
+  onAdd: () => void;
+}>) {
+  return (
+    <form
+      noValidate
+      className="space-y-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onAdd();
+      }}
+    >
+      <div className="grid gap-4 sm:grid-cols-2">
+        <LabelledField id={`${id}-group`} label="Directory group">
+          {(control) => (
+            <Select
+              value={selection.groupId}
+              items={choices.map((group) => ({
+                value: group.id,
+                label: group.displayName,
+              }))}
+              onValueChange={(groupId) => {
+                onChange({ ...selection, groupId });
+              }}
+              disabled={locked || choices.length === 0}
+            >
+              <SelectTrigger {...control}>
+                <SelectValue
+                  placeholder={
+                    choices.length === 0
+                      ? 'No unmapped groups'
+                      : 'Choose a group'
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {choices.map((group) => (
+                  <SelectItem key={group.id} value={group.id}>
+                    {group.displayName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </LabelledField>
+        <LabelledField id={`${id}-role`} label="Role">
+          {(control) => (
+            <Select
+              value={selection.role}
+              onValueChange={(value) => {
+                const parsed = delegatedWorkspaceRoleSchema.safeParse(value);
+                if (parsed.success)
+                  onChange({ ...selection, role: parsed.data });
+              }}
+              disabled={locked}
+            >
+              <SelectTrigger {...control}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {delegatedWorkspaceRoleSchema.options.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {value}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </LabelledField>
+      </div>
+      <Button
+        type="submit"
+        variant="outline"
+        disabled={locked || selection.groupId === null || full}
+      >
+        Add group mapping
+      </Button>
+      <p className="text-xs text-muted-foreground">
+        Up to {DIRECTORY_LIMITS.mappingsPerWorkspace} mappings per workspace.
+        New groups appear after your identity provider provisions them.
+      </p>
+    </form>
+  );
+}
+
+function MappingWorkspaceChoice({
+  id,
+  workspaceId,
+  organization,
+  disabled,
+  onChange,
+}: Readonly<{
+  id: string;
+  workspaceId: string;
+  organization: Organization;
+  disabled: boolean;
+  onChange: (workspaceId: string) => void;
+}>) {
+  return (
+    <LabelledField id={`${id}-workspace`} label="Workspace">
+      {(control) => (
+        <Select
+          value={workspaceId}
+          items={organization.workspaces.map((workspace) => ({
+            value: workspace.workspaceId,
+            label: workspace.name,
+          }))}
+          onValueChange={(value) => {
+            if (value !== null) onChange(value);
+          }}
+          disabled={disabled}
+        >
+          <SelectTrigger {...control}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {organization.workspaces.map((workspace) => (
+              <SelectItem
+                key={workspace.workspaceId}
+                value={workspace.workspaceId}
+              >
+                {workspace.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+    </LabelledField>
   );
 }

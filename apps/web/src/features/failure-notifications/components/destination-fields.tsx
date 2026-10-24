@@ -37,18 +37,7 @@ const KIND_WORDS: Readonly<Record<DestinationKind, string>> = {
 };
 
 /** Type, connection and channel or recipient — the whole destination form. */
-export function DestinationFields({
-  id,
-  workspaceId,
-  values,
-  editing,
-  disabled,
-  connections,
-  channelHint,
-  validation,
-  errorsFor,
-  onChange,
-}: Readonly<{
+type DestinationFieldsProps = Readonly<{
   id: string;
   workspaceId: string;
   values: DestinationValues;
@@ -62,7 +51,20 @@ export function DestinationFields({
     values: DestinationValues,
   ) => Readonly<Partial<Record<DestinationField, string | undefined>>>;
   onChange: (values: DestinationValues) => void;
-}>) {
+}>;
+
+export function DestinationFields({
+  id,
+  workspaceId,
+  values,
+  editing,
+  disabled,
+  connections,
+  channelHint,
+  validation,
+  errorsFor,
+  onChange,
+}: DestinationFieldsProps) {
   const usable = usableConnections(connections, values.kind);
   const update = (next: DestinationValues, field?: DestinationField) => {
     onChange(next);
@@ -100,24 +102,10 @@ export function DestinationFields({
       {/* Nothing to choose yet: one way on instead of fields that can't be
           filled in. */}
       {usable.length === 0 && !editing ? (
-        <Notice
-          tone="info"
-          action={
-            <Link
-              to="/w/$workspaceId/connections"
-              params={{ workspaceId }}
-              search={{ add: values.kind }}
-              className={buttonVariants({ variant: 'default', size: 'sm' })}
-            >
-              <PlusIcon data-icon="inline-start" aria-hidden="true" />
-              Connect {KIND_WORDS[values.kind]}
-            </Link>
-          }
-        >
-          Alerts go through a {KIND_WORDS[values.kind]} connection, and there
-          isn’t a working one yet. Connect {KIND_WORDS[values.kind]}, then come
-          back to choose it here.
-        </Notice>
+        <MissingDestinationConnection
+          workspaceId={workspaceId}
+          kind={values.kind}
+        />
       ) : (
         <>
           <LabelledField
@@ -203,5 +191,31 @@ export function DestinationFields({
         </>
       )}
     </>
+  );
+}
+
+function MissingDestinationConnection({
+  workspaceId,
+  kind,
+}: Readonly<{ workspaceId: string; kind: DestinationKind }>) {
+  return (
+    <Notice
+      tone="info"
+      action={
+        <Link
+          to="/w/$workspaceId/connections"
+          params={{ workspaceId }}
+          search={{ add: kind }}
+          className={buttonVariants({ variant: 'default', size: 'sm' })}
+        >
+          <PlusIcon data-icon="inline-start" aria-hidden="true" />
+          Connect {KIND_WORDS[kind]}
+        </Link>
+      }
+    >
+      Alerts go through a {KIND_WORDS[kind]} connection, and there isn’t a
+      working one yet. Connect {KIND_WORDS[kind]}, then come back to choose it
+      here.
+    </Notice>
   );
 }
