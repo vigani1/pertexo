@@ -7,15 +7,16 @@ import { randomBytes } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import type { FederationSettings } from '@pertexo/contracts';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
-import { FederationConflictError, type DomainRow } from './contract.js';
+import { FederationConflictError } from './errors.js';
+import type { DomainRow } from './records.queries.js';
 import { recordFederationAudit } from './authority.repository.js';
 import {
   advanceOrganization,
   assertOrganizationRevision,
   requireControlOrganization,
   runFederationCommand,
-  type FederationCommand,
 } from './commands.repository.js';
+import type { FederationCommand } from './contract.js';
 import { requireResourceCapacity } from './organizations.repository.js';
 
 export async function requireOrganizationDomain(

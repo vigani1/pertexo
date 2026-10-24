@@ -1,3 +1,4 @@
+import type { DirectoryQuery, DirectoryPage } from '../contract.js';
 import { authDirectoryGroupMembers } from '../../../../schema/identity/federation/directory/members.js';
 import { and, asc, count, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { rethrowQueryFailure } from '../../../../platform/query-errors.js';
@@ -5,28 +6,15 @@ import { directoryUsers, directoryGroups } from './tables.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 
 import type { PoolClient } from 'pg';
-import type { Filter } from 'scim2-parse-filter';
+
 import {
   compileDirectoryFilter,
   directoryField,
   type DirectoryKind,
 } from './filter.js';
-import type { DirectoryGroupRow, DirectoryUserRow } from '../contract.js';
-import type { DirectoryUser } from './users.repository.js';
-import type { DirectoryGroup } from './groups.repository.js';
 
-export type DirectoryQuery = Readonly<{
-  filter?: Filter;
-  startIndex: number;
-  count: number;
-  sortBy?: string;
-  sortOrder: 'ascending' | 'descending';
-}>;
-export type DirectoryPage<T> = Readonly<{
-  totalResults: number;
-  startIndex: number;
-  Resources: readonly T[];
-}>;
+import type { DirectoryUser } from '../contract.js';
+import type { DirectoryGroup } from '../contract.js';
 async function listRows(
   client: PoolClient,
   organizationId: string,
@@ -173,7 +161,7 @@ export function directoryUserRecords(client: PoolClient) {
     })
     .from(directoryUsers);
 }
-export type DirectoryUserRecord = Awaited<
+export type DirectoryUserRow = Awaited<
   ReturnType<typeof directoryUserRecords>
 >[number];
 export function directoryGroupRecords(client: PoolClient) {
@@ -189,6 +177,6 @@ export function directoryGroupRecords(client: PoolClient) {
     })
     .from(directoryGroups);
 }
-export type DirectoryGroupRecord = Awaited<
+export type DirectoryGroupRow = Awaited<
   ReturnType<typeof directoryGroupRecords>
 >[number];

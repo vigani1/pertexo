@@ -2,7 +2,8 @@ import { isUniqueConstraintFailure } from '../../../../platform/query-errors.js'
 import type { PoolClient } from 'pg';
 import { appendAuditFact } from '../../../../governance/audit/events.repository.js';
 import { withWorkspaceScope } from '../../../../tenant-access/transactions.js';
-import { DirectoryError, type DirectoryPrincipal } from '../contract.js';
+import { DirectoryError } from '../errors.js';
+import type { DirectoryPrincipal } from '../contract.js';
 
 export function assertDirectoryRevision(
   actual: number,

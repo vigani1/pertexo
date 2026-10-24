@@ -1,3 +1,4 @@
+import type { DirectoryCommand } from '../contract.js';
 import {
   authOrganizations,
   authOrganizationWorkspaces,
@@ -25,15 +26,12 @@ import {
   recordFederationAudit,
 } from '../../management/authority.repository.js';
 import type { FederationScope } from '../../management/contract.js';
-import { DirectoryError } from '../contract.js';
+import { DirectoryError } from '../errors.js';
 import {
   lockDirectoryOrganization,
   lockDirectoryParticipants,
-  type DirectoryOrganization,
 } from '../authority.repository.js';
-
-export type DirectoryCommand = FederationScope &
-  Readonly<{ idempotencyKey: string; expectedRevision: number }>;
+import type { DirectoryOrganization } from '../contract.js';
 export async function readDirectoryManagement<T>(
   pool: Pool,
   scope: FederationScope,

@@ -1,3 +1,5 @@
+import type { Role } from '@pertexo/workflow-model';
+
 import type { OidcConfiguration, SamlConfiguration } from '@pertexo/contracts';
 export type OrganizationProvider = Readonly<{
   id: string;
@@ -43,4 +45,17 @@ export type StartFederationJourney = Readonly<{
   stateDigest: Buffer;
   browserDigest: Buffer;
   returnPath: string;
+}>;
+
+export type CompleteFederationJourney = Readonly<{
+  attemptId: string;
+  stateDigest: Buffer;
+  browserDigest: Buffer;
+  identity: FederationIdentity;
+  ownerSessionId?: string;
+}>;
+
+export type LinkedWorkspace = Readonly<{
+  workspace_id: string;
+  default_role: Role;
 }>;

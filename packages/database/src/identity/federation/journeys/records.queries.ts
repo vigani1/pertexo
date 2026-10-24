@@ -1,9 +1,9 @@
+import { providerHasKind } from '../configuration.js';
 import { and, eq, gt, inArray, isNotNull, isNull, or } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import type { Pool, PoolClient } from 'pg';
-import type { OidcConfiguration, SamlConfiguration } from '@pertexo/contracts';
 import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { workspaces } from '../../../schema/foundation.js';
 import { authDomains } from '../../../schema/identity/federation/domains.js';
@@ -49,18 +49,8 @@ function providerQuery(client: PoolClient | Pool) {
       ),
     );
 }
-type ProviderRecord = Awaited<ReturnType<typeof providerQuery>>[number];
-// Provider writes validate the configuration for its kind before persisting it.
-function providerHasKind<K extends ProviderRecord['kind']>(
-  row: ProviderRecord,
-  kind: K,
-): row is ProviderRecord & {
-  kind: K;
-  configuration: K extends 'oidc' ? OidcConfiguration : SamlConfiguration;
-} {
-  return row.kind === kind;
-}
-function projectMaterial(row: ProviderRecord) {
+type ProviderRow = Awaited<ReturnType<typeof providerQuery>>[number];
+function projectMaterial(row: ProviderRow) {
   const shared = {
     id: row.provider_id,
     organizationId: row.organization_id,

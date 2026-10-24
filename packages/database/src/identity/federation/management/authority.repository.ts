@@ -14,11 +14,9 @@ import type { PoolClient } from 'pg';
 import { withWorkspaceScope } from '../../../tenant-access/transactions.js';
 import { lockWorkspaceAuthority } from '../../../tenant-access/workspaces/authority.queries.js';
 import { appendAuditFact } from '../../../governance/audit/events.repository.js';
-import {
-  FederationConflictError,
-  type FederationScope,
-  type OrganizationRow,
-} from './contract.js';
+import { FederationConflictError } from './errors.js';
+import type { FederationScope } from './contract.js';
+import type { OrganizationRow } from './records.queries.js';
 
 export async function lockFederationWorkspace(
   client: PoolClient,

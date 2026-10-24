@@ -3,7 +3,7 @@ import { QueryBuilder } from 'drizzle-orm/pg-core';
 import { directoryUsers, directoryGroups, directoryMembers } from './tables.js';
 import SCIMMY from 'scimmy';
 import type { AttrExp, Compare, Filter } from 'scim2-parse-filter';
-import { DirectoryError } from '../contract.js';
+import { DirectoryError } from '../errors.js';
 
 export type DirectoryKind = 'User' | 'Group';
 type Field = Readonly<{ sql: SQL; type: string; caseExact: boolean }>;

@@ -9,7 +9,7 @@ import { ADMINISTRATIVE_ROLES } from '@pertexo/workflow-model';
 import type { Pool, PoolClient } from 'pg';
 import { findCommandResult } from '../../../platform/idempotency/repository.js';
 
-import type { FederationCommand } from './commands.repository.js';
+import type { FederationCommand } from './contract.js';
 import type { DatabaseConfig } from '../../../config.js';
 import {
   acquireDatabasePool,
@@ -20,7 +20,8 @@ import {
   withWorkspaceScope,
 } from '../../../tenant-access/transactions.js';
 import { readWorkspaceAuthority } from '../../../tenant-access/workspaces/authority.queries.js';
-import { FederationConflictError, type FederationScope } from './contract.js';
+import { FederationConflictError } from './errors.js';
+import type { FederationScope } from './contract.js';
 import { organizationForWorkspace } from './authority.repository.js';
 import { projectOrganization } from './settings.queries.js';
 import {
@@ -83,9 +84,6 @@ export function createFederationManagementStore(
     ) => configureDomainEnforcement(lease.pool, input),
   };
 }
-export type FederationManagementStore = ReturnType<
-  typeof createFederationManagementStore
->;
 
 function read<T>(
   pool: Pool,

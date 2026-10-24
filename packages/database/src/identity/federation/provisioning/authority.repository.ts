@@ -1,3 +1,4 @@
+import type { DirectoryOrganization } from './contract.js';
 import { workspaces, users } from '../../../schema/foundation.js';
 import {
   authOrganizations,
@@ -10,22 +11,8 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { Pool, PoolClient } from 'pg';
 import { withPlatformTransaction } from '../../../tenant-access/transactions.js';
-import {
-  DirectoryError,
-  type DirectoryPrincipal,
-  type DirectoryRole,
-} from './contract.js';
-
-export type DirectoryWorkspace = Readonly<{
-  workspace_id: string;
-  default_role: DirectoryRole;
-}>;
-export type DirectoryOrganization = Readonly<{
-  id: string;
-  control_workspace_id: string;
-  revision: number;
-  workspaces: readonly DirectoryWorkspace[];
-}>;
+import { DirectoryError } from './errors.js';
+import type { DirectoryPrincipal } from './contract.js';
 
 /** Workspace locks precede organization and member locks in every identity writer. */
 export async function lockDirectoryOrganization(

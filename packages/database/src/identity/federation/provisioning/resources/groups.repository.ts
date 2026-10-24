@@ -1,3 +1,4 @@
+import type { DirectoryGroup } from '../contract.js';
 import { authDirectoryGroupMembers } from '../../../../schema/identity/federation/directory/members.js';
 import { authDirectoryUsers } from '../../../../schema/identity/federation/directory/users.js';
 import { authDirectoryGroups } from '../../../../schema/identity/federation/directory/groups.js';
@@ -12,12 +13,9 @@ import { removeDirectoryFolderGrants } from '../../../../tenant-access/resources
 import type { Pool, PoolClient } from 'pg';
 import { generatePersistedId } from '../../../../platform/persisted-id.js';
 import { withDirectoryTransaction } from '../authority.repository.js';
-import {
-  DirectoryError,
-  type DirectoryPrincipal,
-  type DirectoryGroupRow,
-  type DirectoryGroupValues,
-} from '../contract.js';
+import { DirectoryError } from '../errors.js';
+import type { DirectoryPrincipal, DirectoryGroupValues } from '../contract.js';
+
 import { DIRECTORY_LIMITS } from '../limits.js';
 import { projectDirectoryMemberships } from '../projection.repository.js';
 import {
@@ -25,9 +23,6 @@ import {
   directoryAudit,
   withDirectoryConstraintErrors,
 } from './shared.js';
-
-export type DirectoryGroup = DirectoryGroupRow &
-  Readonly<{ memberIds: readonly string[] }>;
 export async function readDirectoryGroup(
   client: PoolClient,
   organizationId: string,

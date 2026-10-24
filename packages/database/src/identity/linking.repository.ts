@@ -1,9 +1,7 @@
 import { isUniqueConstraintFailure } from '../platform/query-errors.js';
 import { hasSignInMethodCapacity } from './federation/accounts/limits.queries.js';
-import {
-  readEligibleAuthenticationSession,
-  type AuthenticationSession,
-} from './federation/sessions/authority.repository.js';
+import { readEligibleAuthenticationSession } from './federation/sessions/authority.repository.js';
+import type { AuthenticationSession } from './federation/sessions/contract.js';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
 import { and, eq, gt, sql } from 'drizzle-orm';

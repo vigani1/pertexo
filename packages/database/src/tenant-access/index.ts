@@ -86,11 +86,9 @@ export type {
 export { parseApiTokenCredential } from './tokens/credential.js';
 export type { ParsedApiTokenCredential } from './tokens/credential.js';
 
-export {
-  createFederationManagementStore,
-  type FederationManagementStore,
-} from '../identity/federation/management/repository.js';
-export { FederationConflictError } from '../identity/federation/management/contract.js';
+export { createFederationManagementStore } from '../identity/federation/management/repository.js';
+export { type FederationManagementStore } from '../identity/federation/management/contract.js';
+export { FederationConflictError } from '../identity/federation/management/errors.js';
 
 export {
   identityEmailChangeEligibility,
@@ -99,7 +97,7 @@ export {
 
 export { OrganizationSignInCommands } from '../identity/federation/journeys/repository.js';
 
-export { DirectoryError } from '../identity/federation/provisioning/contract.js';
+export { DirectoryError } from '../identity/federation/provisioning/errors.js';
 export type {
   DirectoryPrincipal,
   DirectoryUserValues,
@@ -107,15 +105,13 @@ export type {
   DirectoryGroupValues,
   DirectoryRole,
 } from '../identity/federation/provisioning/contract.js';
-export type { DirectoryUser } from '../identity/federation/provisioning/resources/users.repository.js';
-export type { DirectoryGroup } from '../identity/federation/provisioning/resources/groups.repository.js';
+export type { DirectoryUser } from '../identity/federation/provisioning/contract.js';
+export type { DirectoryGroup } from '../identity/federation/provisioning/contract.js';
 export { DIRECTORY_LIMITS } from '../identity/federation/provisioning/limits.js';
 
-export {
-  createDirectoryStore,
-  type DirectoryStore,
-} from '../identity/federation/provisioning/repository.js';
-export type { DirectoryQuery } from '../identity/federation/provisioning/resources/records.queries.js';
+export { createDirectoryStore } from '../identity/federation/provisioning/repository.js';
+export { type DirectoryStore } from '../identity/federation/provisioning/contract.js';
+export type { DirectoryQuery } from '../identity/federation/provisioning/contract.js';
 
 export { DirectoryManagedMembershipError } from './errors.js';
 
@@ -126,4 +122,4 @@ export { recordIdentitySecurityFact } from '../identity/facts.repository.js';
 export type {
   TwoFactorRecoveryStore,
   TwoFactorRecoveryResult,
-} from '../identity/two-factor/recovery.repository.js';
+} from '../identity/two-factor/contract.js';

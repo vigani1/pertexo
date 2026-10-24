@@ -1,3 +1,7 @@
+import type {
+  AuthenticationSession,
+  IdentityEmailChangeEligibility,
+} from './contract.js';
 import {
   users,
   workspaceMemberships,
@@ -160,11 +164,6 @@ export async function canCreateAuthenticationSession(
   }
   return authenticationAllowed(policy, proof, provider);
 }
-export type AuthenticationSession = Readonly<{
-  id: string;
-  userId: string;
-  proof: SessionAuthenticationProof;
-}>;
 export async function readEligibleAuthenticationSession(
   client: PoolClient,
   sessionId: string,
@@ -230,9 +229,6 @@ export function authorizeCredentialSignIn(
     ? withPlatformTransaction(pool, authorize)
     : authorize(transaction);
 }
-
-export type IdentityEmailChangeEligibility =
-  'allowed' | 'managed' | 'alternative_required';
 /** Organization-only accounts need a usable method if their primary address leaves the verified domain. */
 export async function readIdentityEmailChangeEligibility(
   client: PoolClient,

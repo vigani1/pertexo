@@ -3,10 +3,8 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { migrateDatabase } from '../../../src/migrations.js';
 import { parseDatabaseConfig } from '../../../src/config.js';
-import {
-  createTwoFactorRecoveryStore,
-  type TwoFactorRecoveryStore,
-} from '../../../src/identity/two-factor/recovery.repository.js';
+import { createTwoFactorRecoveryStore } from '../../../src/identity/two-factor/recovery.repository.js';
+import type { TwoFactorRecoveryStore } from '../../../src/identity/two-factor/contract.js';
 import { createSystemMailDeliveryStore } from '../../../src/platform/mail/repository.js';
 import type {
   SystemMailDeliveryStore,

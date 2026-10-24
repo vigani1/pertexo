@@ -14,7 +14,8 @@ import { projectDirectoryMemberships } from '../provisioning/projection.reposito
 import type { Pool, PoolClient } from 'pg';
 import type { FederationSettings } from '@pertexo/contracts';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
-import { FederationConflictError, type FederationScope } from './contract.js';
+import { FederationConflictError } from './errors.js';
+import type { FederationScope } from './contract.js';
 import {
   organizationForWorkspace,
   recordFederationAudit,
@@ -24,8 +25,8 @@ import {
   assertOrganizationRevision,
   requireControlOrganization,
   runFederationCommand,
-  type FederationCommand,
 } from './commands.repository.js';
+import type { FederationCommand } from './contract.js';
 
 export function createOrganization(
   pool: Pool,

@@ -1,3 +1,4 @@
+import type { CompleteFederationJourney } from './contract.js';
 import { authAccounts, authSessions } from '../../../schema/authentication.js';
 import { authFederationAttempts } from '../../../schema/identity/federation/journeys.js';
 import { authProviderChecks } from '../../../schema/identity/federation/providers.js';
@@ -26,15 +27,7 @@ import {
 } from '../sessions/authority.repository.js';
 import { findFederationAttempt } from './records.queries.js';
 import { grantJustInTimeMemberships } from './membership.repository.js';
-import type { FederationIdentity, FederationCompletion } from './contract.js';
-
-export type CompleteFederationJourney = Readonly<{
-  attemptId: string;
-  stateDigest: Buffer;
-  browserDigest: Buffer;
-  identity: FederationIdentity;
-  ownerSessionId?: string;
-}>;
+import type { FederationCompletion } from './contract.js';
 export async function completeFederationJourney(
   client: PoolClient,
   input: CompleteFederationJourney,

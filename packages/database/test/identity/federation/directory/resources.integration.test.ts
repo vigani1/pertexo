@@ -23,10 +23,8 @@ import {
 } from '../../../../src/identity/federation/provisioning/sign-in.repository.js';
 import { directorySessionAllowed } from '../../../../src/identity/federation/provisioning/session.queries.js';
 import { withPlatformTransaction } from '../../../../src/tenant-access/transactions.js';
-import type {
-  DirectoryUserValues,
-  DirectoryUserRow,
-} from '../../../../src/identity/federation/provisioning/contract.js';
+import type { DirectoryUserValues } from '../../../../src/identity/federation/provisioning/contract.js';
+import type { DirectoryUserRow } from '../../../../src/identity/federation/provisioning/resources/records.queries.js';
 
 const db = useIdentityCommandDatabase('scim_resources');
 const values = (
