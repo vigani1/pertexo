@@ -56,15 +56,11 @@ describe('contract schema projection', () => {
         'input',
         target,
       );
-      expect(scalar).toMatchObject({
-        anyOf: expect.any(Array),
-        description: expect.stringContaining('64 KiB'),
-      });
-      expect(values).toMatchObject({
-        type: 'object',
-        additionalProperties: expect.any(Object),
-        description: expect.stringContaining('64 KiB'),
-      });
+      expect(Array.isArray(scalar.anyOf)).toBe(true);
+      expect(scalar.description).toContain('64 KiB');
+      expect(values.type).toBe('object');
+      expect(typeof values.additionalProperties).toBe('object');
+      expect(values.description).toContain('64 KiB');
       expect(input).toMatchObject({ 'x-pertexo-runtime-max-depth': 256 });
       for (const [name, projected] of Object.entries({
         Value: scalar,

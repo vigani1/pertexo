@@ -119,10 +119,7 @@ export function projectContractSchema(
     reused: 'inline',
     unrepresentable: 'any',
     override: ({ zodSchema, jsonSchema }) => {
-      if (
-        zodSchema ===
-        (workflowPortableManifestSchema as unknown as typeof zodSchema)
-      ) {
+      if (Object.is(zodSchema, workflowPortableManifestSchema)) {
         replaceObject(
           jsonSchema,
           z.toJSONSchema(workflowPortableManifestStructuralSchema, {
@@ -133,16 +130,16 @@ export function projectContractSchema(
         );
         jsonSchema['x-pertexo-runtime-bounds'] = true;
       }
-      if (zodSchema === (workflowGraphSchema as unknown as typeof zodSchema))
+      if (Object.is(zodSchema, workflowGraphSchema))
         replaceWorkflowGraph(jsonSchema);
       if (
-        zodSchema === (dataTableValueSchema as unknown as typeof zodSchema) ||
-        zodSchema === (dataTableValuesSchema as unknown as typeof zodSchema)
+        Object.is(zodSchema, dataTableValueSchema) ||
+        Object.is(zodSchema, dataTableValuesSchema)
       ) {
         replaceObject(
           jsonSchema,
           z.toJSONSchema(
-            zodSchema === (dataTableValuesSchema as unknown as typeof zodSchema)
+            Object.is(zodSchema, dataTableValuesSchema)
               ? dataTableValuesStructuralSchema
               : dataTableValueStructuralSchema,
             { target: 'draft-2020-12', reused: 'inline' },
@@ -151,10 +148,7 @@ export function projectContractSchema(
         jsonSchema.description =
           'Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KiB) before recursive parsing.';
       }
-      if (
-        zodSchema ===
-        (boundedNodeTestJsonInputSchema as unknown as typeof zodSchema)
-      )
+      if (Object.is(zodSchema, boundedNodeTestJsonInputSchema))
         replaceObject(jsonSchema, boundedJsonInputProjection);
     },
   }) as JsonSchema;

@@ -31,6 +31,8 @@ function requestWireCancellation(client: PoolClientWithStream): void {
   });
   // CancelRequest is a separate unauthenticated PostgreSQL protocol message.
   // The server closes this short-lived socket after consuming it.
+  // pg exposes these wire methods at runtime but omits them from Connection
+  // declarations. Keep this assertion local to the pinned driver boundary.
   const connection = canceler.connection as unknown as {
     cancel(processId: number, secretKey: number): void;
     connect(portOrPath: number | string, host?: string): void;
