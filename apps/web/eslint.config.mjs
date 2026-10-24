@@ -48,6 +48,7 @@ const sharedLayerPatterns = [
 
 export default tseslint.config(
   ...rootConfig,
+  // Root globs do not match paths relative to this local configuration.
   { files: ['src/**/*.{ts,tsx}'], rules: readabilityRules },
   { ignores: ['playwright-report/**', 'test-results/**'] },
   {
