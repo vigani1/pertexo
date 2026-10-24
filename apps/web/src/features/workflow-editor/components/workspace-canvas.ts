@@ -16,7 +16,7 @@ import { useQuickAdd } from './add-step/use-quick-add';
 import { useStepPlacement } from './add-step/use-step-placement';
 
 /** The add-step lens's fold and its search field, which "/" focuses. */
-export function useAddStepFold({
+function useAddStepFold({
   editable,
   setMobilePanel,
 }: Readonly<{
