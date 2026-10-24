@@ -184,7 +184,10 @@ export {
   PREVIEW_RETENTION_MAX_MS,
   PREVIEW_STATUS,
 } from './previews/repository.js';
-export type { InsertedOutboxEvent, OutboxEventInput } from './outbox/events.repository.js';
+export type {
+  InsertedOutboxEvent,
+  OutboxEventInput,
+} from './outbox/events.repository.js';
 export { createNodeAttemptRunStore } from './attempts/repository.js';
 export {
   NodeAttemptConnectionFenceError,
