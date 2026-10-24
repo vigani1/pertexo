@@ -15,15 +15,18 @@ import { EXECUTION_SOURCE_SQL } from '../../runs/queries/execution/source.js';
 import type { Pool, PoolClient } from 'pg';
 import type { z } from 'zod';
 
+import { dispatchSchema } from '../validation/delivery.js';
 import {
-  dispatchSchema,
   NodeAttemptConnectionFenceError,
   NodeAttemptDispatchBindingMismatchError,
   NodeAttemptReconciliationRequiredError,
   NodeAttemptStateCorruptError,
-  type NodeAttemptRunStore,
-} from '../contract.js';
-import { assertNotAborted, withWorkspaceWriteClient } from '../transactions.repository.js';
+} from '../errors.js';
+import type { NodeAttemptRunStore } from '../contract.js';
+import {
+  assertNotAborted,
+  withWorkspaceWriteClient,
+} from '../transactions.repository.js';
 import { isConnectionFenceCurrent } from '../../connections/runtime/dispatch.repository.js';
 
 export async function markNodeAttemptDispatched(

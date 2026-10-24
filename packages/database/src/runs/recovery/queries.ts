@@ -9,11 +9,11 @@ import type {
   RecoveryRefused,
   RecoveryValues,
 } from '@pertexo/workflow-engine';
+import { branchContextSchema } from '../../attempts/validation/shared.js';
 import {
-  branchContextSchema,
   executorErrorKindSchema,
   executorFailureKindSchema,
-} from '../../attempts/contract.js';
+} from '../../attempts/validation/completion.js';
 import {
   StoredExecutionValueInvalidError,
   type StoredExecutionValue,

@@ -17,10 +17,12 @@ import {
   DeliveryMismatch,
   NodeAttemptDeliveryMismatchError,
   NodeAttemptStateCorruptError,
+} from '../errors.js';
+import {
   attemptJobPayloadSchema,
   type claimDeliverySchema,
-  type NodeAttemptDelivery,
-} from '../contract.js';
+} from '../validation/delivery.js';
+import type { NodeAttemptDelivery } from '../contract.js';
 import { withWorkspaceWriteClient } from '../transactions.repository.js';
 import { serializeStoredExecutionJsonValue } from '../../platform/stored-execution-value.js';
 

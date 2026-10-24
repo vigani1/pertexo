@@ -1,3 +1,5 @@
+import type { ExecutionCapabilityScope } from './contract.js';
+import { ExecutionCapabilityExpiredError } from '../errors.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { workspaces } from '../../schema/foundation.js';
@@ -10,25 +12,6 @@ import {
 } from '../../schema/runs/execution.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
-
-export type ExecutionCapabilityScope = Readonly<{
-  workspaceId: string;
-  runId: string;
-  nodeRunId: string;
-  attemptId: string;
-  attemptNumber: number;
-  workerId: string;
-  fenceToken: number;
-  previewRunId?: string;
-  nodeId: string;
-  invocationKey: string;
-}>;
-export class ExecutionCapabilityExpiredError extends Error {
-  override readonly name = 'ExecutionCapabilityExpiredError';
-  constructor(message = 'This execution attempt is no longer current.') {
-    super(message);
-  }
-}
 export async function lockCapabilityExecution(
   client: PoolClient,
   input: ExecutionCapabilityScope,

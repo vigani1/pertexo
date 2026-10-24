@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import { workflowRunValues } from '../../../src/schema.js';
 import { expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
-import { ExecutionCapabilityExpiredError } from '../../../src/attempts/dispatch/fence.repository.js';
+import { ExecutionCapabilityExpiredError } from '../../../src/attempts/errors.js';
 import { RunValuesLimitError } from '../../../src/runs/values/records.js';
 import { copyRecoveryRunValues } from '../../../src/runs/values/queries.js';
 import { readWorkflowRunListPage } from '../../../src/runs/queries/history/list.js';

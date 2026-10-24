@@ -4,13 +4,13 @@ import { nodeRuns, nodeAttempts } from '../../schema/runs/execution.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { Pool } from 'pg';
 
-import {
-  NodeAttemptStateCorruptError,
-  type NodeAttemptLoopDeclaration,
-  type NodeAttemptStoredOutput,
-  type NodeRunOutcome,
-  type NodeRunStoredOutput,
-  type NodeAttemptRunStore,
+import { NodeAttemptStateCorruptError } from '../errors.js';
+import type {
+  NodeAttemptLoopDeclaration,
+  NodeAttemptStoredOutput,
+  NodeRunOutcome,
+  NodeRunStoredOutput,
+  NodeAttemptRunStore,
 } from '../contract.js';
 import {
   assertNotAborted,

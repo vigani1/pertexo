@@ -4,7 +4,7 @@ import type { PoolClient } from 'pg';
 import { runEvents } from '../schema/runs/execution.js';
 import { rethrowQueryFailure } from '../platform/query-errors.js';
 import { serializeStoredExecutionJsonValue } from '../platform/stored-execution-value.js';
-import { NodeAttemptStateCorruptError } from './contract.js';
+import { NodeAttemptStateCorruptError } from './errors.js';
 
 /** The caller holds the run lock, so its next event sequence cannot race. */
 export async function appendAttemptEvent(

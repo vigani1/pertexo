@@ -1,5 +1,5 @@
 import type { CallbackWaitConfig } from '@pertexo/workflow-model';
-import type { ExecutionCapabilityScope } from '../../../attempts/dispatch/fence.repository.js';
+import type { ExecutionCapabilityScope } from '../../../attempts/dispatch/contract.js';
 export type CallbackIdentity = Readonly<{
   id: string;
   workspaceId: string;

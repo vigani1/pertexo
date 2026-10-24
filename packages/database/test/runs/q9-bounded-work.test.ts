@@ -5,7 +5,7 @@ import { invocationKey } from '@pertexo/workflow-engine';
 import type { Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
 
-import { NODE_ATTEMPT_INPUT_LIMITS } from '../../src/attempts/contract.js';
+import { NODE_ATTEMPT_INPUT_LIMITS } from '../../src/attempts/validation/shared.js';
 import { loadNodeAttemptInputs } from '../../src/attempts/inputs/load.queries.js';
 
 const inline = (value: unknown) => ({
