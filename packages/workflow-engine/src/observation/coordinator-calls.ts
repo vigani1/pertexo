@@ -63,6 +63,8 @@ export function callDeclarationObservations(
     if (declarations.has(owner.invocationKey))
       operationError('observation_invalid', 'Call declaration conflicts');
     declarations.add(owner.invocationKey);
+    // Executable compilation validated core.call config; the generic node type
+    // cannot express that its definition selects WorkflowCallConfig.
     intents.push({
       invocationKey: owner.invocationKey,
       target: (node.config as unknown as WorkflowCallConfig).target,

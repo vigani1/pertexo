@@ -56,8 +56,7 @@ export function createPollingRuntime(
         await cycle();
         latestCycleFailed = false;
       } catch {
-        // The signal can change while the cycle awaits I/O.
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- The signal can change while the cycle awaits I/O.
         if (signal.aborted) break;
         latestCycleFailed = true;
         reportDiagnostic(definition.cycleFailed);

@@ -130,8 +130,7 @@ export function createFailureNotificationHandler(
             trackPending(deliveryPromise);
             return;
           }
-          // Queue cancellation can arrive while provider work is awaiting I/O.
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Queue cancellation can arrive while provider work awaits I/O.
           if (queueContext.signal.aborted) return;
           result = settlement.value;
         } catch {
