@@ -1,3 +1,8 @@
+import { eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workspaces } from '../../schema/foundation.js';
+import { workspacePromotionTargets } from '../../schema/authoring/promotions/targets.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import type { WorkspaceScopeRunner } from '../../tenant-access/transactions.js';
 import {
@@ -16,14 +21,15 @@ export async function readPromotionLink(
   workspaceId: string,
 ): Promise<PromotionLink> {
   const row = (
-    await client.query<{
-      revision: number;
-      target_workspace_id: string | null;
-    }>(
-      'select revision,target_workspace_id from app.workspace_promotion_targets where workspace_id=$1',
-      [workspaceId],
-    )
-  ).rows[0];
+    await drizzle(client)
+      .select({
+        revision: workspacePromotionTargets.revision,
+        target_workspace_id: workspacePromotionTargets.targetWorkspaceId,
+      })
+      .from(workspacePromotionTargets)
+      .where(eq(workspacePromotionTargets.workspaceId, workspaceId))
+      .catch(rethrowQueryFailure)
+  )[0];
   return {
     revision: row?.revision ?? 0,
     targetWorkspaceId: row?.target_workspace_id ?? null,
@@ -54,10 +60,12 @@ export async function lockPromotionWorkspaces(
     await inWorkspace(
       { workspaceId, actorId: input.actorId },
       async (client) => {
-        await client.query(
-          'select id from app.workspaces where id=$1 for update',
-          [workspaceId],
-        );
+        await drizzle(client)
+          .select({ id: workspaces.id })
+          .from(workspaces)
+          .where(eq(workspaces.id, workspaceId))
+          .for('update')
+          .catch(rethrowQueryFailure);
       },
     );
   }
@@ -83,11 +91,12 @@ export async function linkedPromotionTarget(
         'The promotion target changed. Review again.',
       );
     const row = (
-      await client.query<{ name: string }>(
-        'select name from app.workspaces where id=$1',
-        [input.workspaceId],
-      )
-    ).rows[0];
+      await drizzle(client)
+        .select({ name: workspaces.name })
+        .from(workspaces)
+        .where(eq(workspaces.id, input.workspaceId))
+        .catch(rethrowQueryFailure)
+    )[0];
     if (row === undefined)
       throw new WorkflowPromotionError(
         'unavailable',
@@ -114,11 +123,15 @@ export async function linkedPromotionTarget(
         workspaceId: targetWorkspaceId,
       });
       const row = (
-        await client.query<{ name: string; require_publish_approval: boolean }>(
-          'select name,require_publish_approval from app.workspaces where id=$1',
-          [targetWorkspaceId],
-        )
-      ).rows[0];
+        await drizzle(client)
+          .select({
+            name: workspaces.name,
+            require_publish_approval: workspaces.requirePublishApproval,
+          })
+          .from(workspaces)
+          .where(eq(workspaces.id, targetWorkspaceId))
+          .catch(rethrowQueryFailure)
+      )[0];
       if (row === undefined)
         throw new WorkflowPromotionError(
           'unavailable',
