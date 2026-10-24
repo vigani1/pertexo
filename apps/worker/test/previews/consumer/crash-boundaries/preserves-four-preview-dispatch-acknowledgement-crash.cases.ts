@@ -3,7 +3,6 @@ import { createDatabasePreviewAttemptRunStore } from '@pertexo/database/previews
 import {
   createOutboxDispatcherDatabase,
   parseDatabaseConfig,
-  parseStoredExecutionValue,
 } from '@pertexo/database/testing';
 import { createQueueProducer, JOB_NAME, parseQueueJob } from '@pertexo/queue';
 import { Queue } from 'bullmq';
@@ -11,23 +10,21 @@ import { Redis } from 'ioredis';
 import { expect, it } from 'vitest';
 import { createNodeAttemptRuntime } from '../../../../src/attempts/delivery/runtime.js';
 import { createMaintenanceRuntime } from '../../../../src/maintenance/runtime.js';
-import { spawnPreviewCrashChild } from '../../../support/previews/crash-process.js';
+
 import {
-  acceptDelivery,
   databaseUrl,
   dispatcherUrl,
   previewState,
   previewTerminalFacts,
   providerEffectCount,
   redisUrl,
-  validTraceparent,
   waitFor,
   withTenantScopedWorker,
   workerUrl,
-  workspaceId,
-  type AcceptedDelivery,
 } from '../../../support/previews/consumer.js';
 import { runWithCleanup } from '../../../support/infrastructure/test-operation.js';
+import { previewCrashCases, type PreviewCrashFixture } from './scenarios.js';
+import { preparePreviewCrashFixtures } from './preparation.js';
 
 export function registerPreservesFourPreviewDispatchAcknowledgementCrash(): void {
   it('preserves the four preview dispatch and acknowledgement crash boundaries', async () => {
@@ -320,159 +317,4 @@ export function registerPreservesFourPreviewDispatchAcknowledgementCrash(): void
       'Preview crash-boundary fixture',
     );
   }, 90_000);
-}
-
-function previewCrashCases() {
-  return [
-    {
-      barrierAttemptStatus: 'running',
-      barrierInboxCompletedCount: '0',
-      barrierRunStatus: 'running',
-      expectedAuditCount: '0',
-      expectedBarrier: 'preview.before_dispatch_marker_commit',
-      expectedDispatch: false,
-      expectedFinalFence: '2',
-      expectedProviderCount: 0,
-      expectedReconciledStatus: 'queued',
-      expectedUsageCount: '0',
-      mode: 'before-dispatch-commit',
-      terminalCommitted: false,
-    },
-    {
-      barrierAttemptStatus: 'running',
-      barrierInboxCompletedCount: '0',
-      barrierRunStatus: 'running',
-      expectedAuditCount: '1',
-      expectedBarrier: 'preview.dispatch_marker_committed_before_provider',
-      expectedDispatch: true,
-      expectedFinalFence: '2',
-      expectedProviderCount: 0,
-      expectedReconciledStatus: 'outcome_unknown',
-      expectedUsageCount: '1',
-      mode: 'after-dispatch-before-provider',
-      terminalCommitted: false,
-    },
-    {
-      barrierAttemptStatus: 'running',
-      barrierInboxCompletedCount: '0',
-      barrierRunStatus: 'running',
-      expectedAuditCount: '1',
-      expectedBarrier: 'preview.provider_completed_before_outcome_commit',
-      expectedDispatch: true,
-      expectedFinalFence: '2',
-      expectedProviderCount: 1,
-      expectedReconciledStatus: 'outcome_unknown',
-      expectedUsageCount: '1',
-      mode: 'after-provider-before-outcome',
-      terminalCommitted: false,
-    },
-    {
-      barrierAttemptStatus: 'succeeded',
-      barrierInboxCompletedCount: '1',
-      barrierRunStatus: 'succeeded',
-      expectedAuditCount: '1',
-      expectedBarrier: 'preview.outcome_committed_before_queue_ack',
-      expectedDispatch: true,
-      expectedFinalFence: '1',
-      expectedProviderCount: 1,
-      expectedReconciledStatus: 'succeeded',
-      expectedUsageCount: '1',
-      mode: 'after-outcome-before-ack',
-      terminalCommitted: true,
-    },
-  ] as const;
-}
-interface PreviewCrashFixture {
-  delivery: AcceptedDelivery;
-  effectKey: string;
-  jobId: string;
-  selected: ReturnType<typeof previewCrashCases>[number];
-}
-async function preparePreviewCrashFixtures(
-  context: Readonly<{
-    cases: ReturnType<typeof previewCrashCases>;
-    fixtures: PreviewCrashFixture[];
-    producer: ReturnType<typeof createQueueProducer>;
-    queue: Queue;
-  }>,
-) {
-  const { cases, fixtures, producer, queue } = context;
-  for (const [index, selected] of cases.entries()) {
-    const delivery = await acceptDelivery(validTraceparent, {
-      mayContactProvider: true,
-      mayCauseExternalSideEffect: true,
-      sideEffectClass: 'unsafe',
-    });
-    const effectKey = `preview-process-${selected.mode}-${randomUUID()}`;
-    const child = spawnPreviewCrashChild({
-      leaseDurationSeconds: 1,
-      mode: selected.mode,
-      providerEffectKey: effectKey,
-      redisUrl,
-      workerId: `preview-process-${String(index)}-${randomUUID().slice(0, 8)}`,
-      workerUrl: databaseUrl(workerUrl),
-      workspaceId,
-    });
-    try {
-      await expect(child.evidence).resolves.toMatchObject({
-        injectionPoint: 'preview.consumer_ready',
-      });
-      const job = await producer.publish({
-        data: delivery.job.data,
-        name: delivery.job.name,
-      });
-      const evidence = await child.next(
-        (message) => message.injectionPoint === selected.expectedBarrier,
-      );
-      expect(evidence.injectionPoint).toBe(selected.expectedBarrier);
-      await expect(queue.getJob(job.jobId)).resolves.not.toBeUndefined();
-      await expect(
-        queue.getJob(job.jobId).then((published) => published?.getState()),
-      ).resolves.toBe('active');
-
-      const atBarrier = await previewState(delivery.accepted.previewRunId);
-      expect(atBarrier).toMatchObject({
-        attempt_fence: '1',
-        attempt_status: selected.barrierAttemptStatus,
-        inbox_completed_count: selected.barrierInboxCompletedCount,
-        inbox_count: '1',
-        run_status: selected.barrierRunStatus,
-      });
-      expect(
-        await previewTerminalFacts(delivery.accepted.previewRunId),
-      ).toEqual({
-        audit_count: selected.terminalCommitted
-          ? selected.expectedAuditCount
-          : '0',
-        usage_count: selected.terminalCommitted
-          ? selected.expectedUsageCount
-          : '0',
-      });
-      expect(atBarrier?.dispatch_marked_at === null).toBe(
-        !selected.expectedDispatch,
-      );
-      expect(await providerEffectCount(effectKey)).toBe(
-        selected.expectedProviderCount,
-      );
-      if (selected.terminalCommitted) {
-        expect(parseStoredExecutionValue(atBarrier?.output_ref)).toMatchObject({
-          value: { executed: true, providerEffectKey: effectKey },
-        });
-      } else {
-        expect(atBarrier?.output_ref).toBeNull();
-      }
-      expect(await child.kill()).toBe('SIGKILL');
-      fixtures.push({ delivery, effectKey, jobId: job.jobId, selected });
-    } catch (scenarioFailure: unknown) {
-      let childCleanupFailure: unknown;
-      await child.kill().catch((error: unknown) => {
-        childCleanupFailure = error;
-      });
-      if (childCleanupFailure === undefined) throw scenarioFailure;
-      throw new AggregateError(
-        [scenarioFailure, childCleanupFailure],
-        `Preview crash child cleanup failed for ${selected.mode}`,
-      );
-    }
-  }
 }
