@@ -65,9 +65,6 @@ export function useRunEvents(
       workspaceId,
       runId,
     );
-    let cursor = 0;
-    let failures = 0;
-    let snapshotRetryNotBefore = 0;
     let refreshTimer: number | undefined;
     let activeStream:
       Awaited<ReturnType<typeof openWorkflowRunEvents>> | undefined;
@@ -118,100 +115,30 @@ export function useRunEvents(
       return isTerminalRunStatus(snapshot.run.status);
     };
 
-    const run = async () => {
-      while (!controller.signal.aborted) {
-        let stream:
-          Awaited<ReturnType<typeof openWorkflowRunEvents>> | undefined;
-        let openedAt: number | undefined;
-        let delivered = false;
-        try {
-          setConnectionStatus(
-            failures === 0
-              ? 'connecting'
-              : failures >= 3
-                ? 'degraded'
-                : 'reconnecting',
-          );
-          stream = await openWorkflowRunEvents({
-            apiClient,
-            workspaceId,
-            runId,
-            lastEventId: cursor,
-            signal: controller.signal,
-          });
-          activeStream = stream;
-          openedAt = Date.now();
-          if (!isCurrent()) return;
-          setConnectionStatus('live');
-          for await (const message of decodeSseMessages(stream.body)) {
-            if (!isCurrent()) return;
-            const event = decodeRunEvent(message);
-            if (classifyRunEvent(cursor, event) === 'duplicate') continue;
-            cursor = event.sequence;
-            delivered = true;
-            updateCurrent((current) => {
-              const appended = appendRunEvent(current.timeline, event);
-              return {
-                ...current,
-                timeline: appended.timeline,
-                truncatedCount: current.truncatedCount + appended.truncated,
-              };
-            });
-            scheduleSnapshotRefresh();
-            if (isTerminalRunEvent(event)) {
-              await refreshSnapshot();
-              setConnectionStatus('stopped');
-              return;
-            }
-          }
-          throw new TransientStreamDisconnect(
-            'The run event stream closed before the run completed.',
-          );
-        } catch (error) {
-          if (!isCurrent()) return;
-          if (streamWasHealthy({ delivered, openedAt })) failures = 0;
-          const recovery = classifyStreamFailure(error, failures + 1);
-          if (recovery.kind === 'stop') {
-            setRecovery(recovery.status, recovery.message);
-            return;
-          }
-          failures += 1;
-          setRecovery(recovery.status, recovery.message);
-          if (failures >= 3 && Date.now() >= snapshotRetryNotBefore) {
-            try {
-              if (await refreshSnapshot()) {
-                setConnectionStatus('stopped');
-                return;
-              }
-              snapshotRetryNotBefore = 0;
-            } catch (snapshotError) {
-              const snapshotRecovery = classifyStreamFailure(
-                snapshotError,
-                failures,
-              );
-              if (snapshotRecovery.kind === 'stop') {
-                setRecovery(snapshotRecovery.status, snapshotRecovery.message);
-                return;
-              }
-              snapshotRetryNotBefore = Date.now() + snapshotRecovery.delayMs;
-              setRecovery(snapshotRecovery.status, snapshotRecovery.message);
-            }
-          }
-          const snapshotWait = snapshotRetryNotBefore - Date.now();
-          await delay(
-            snapshotWait > 0
-              ? Math.max(recovery.delayMs, snapshotWait)
-              : recovery.delayMs,
-            controller.signal,
-          );
-        } finally {
-          stream?.close();
-          if (activeStream === stream) activeStream = undefined;
-        }
-      }
-    };
-
-    void run();
+    void followRunEvents({
+      signal: controller.signal,
+      isCurrent,
+      updateCurrent,
+      setConnectionStatus,
+      setRecovery,
+      scheduleSnapshotRefresh,
+      refreshSnapshot,
+      open: async (cursor) => {
+        const stream = await openWorkflowRunEvents({
+          apiClient,
+          workspaceId,
+          runId,
+          lastEventId: cursor,
+          signal: controller.signal,
+        });
+        activeStream = stream;
+        return stream;
+      },
+      close: (stream) => {
+        stream?.close();
+        if (activeStream === stream) activeStream = undefined;
+      },
+    });
     return () => {
       if (lifecycle.current === lifecycleId) lifecycle.current += 1;
       controller.abort();
@@ -232,4 +159,112 @@ export function useRunEvents(
       setGeneration((current) => current + 1);
     },
   } as const;
+}
+
+type RunEventStream = Awaited<ReturnType<typeof openWorkflowRunEvents>>;
+type RunEventSession = Readonly<{
+  signal: AbortSignal;
+  isCurrent: () => boolean;
+  open: (cursor: number) => Promise<RunEventStream>;
+  close: (stream: RunEventStream | undefined) => void;
+  updateCurrent: (update: (current: RunEventState) => RunEventState) => void;
+  setConnectionStatus: (status: ConnectionStatus) => void;
+  setRecovery: (status: ConnectionStatus, message: string) => void;
+  scheduleSnapshotRefresh: () => void;
+  refreshSnapshot: () => Promise<boolean>;
+}>;
+
+async function followRunEvents(options: RunEventSession) {
+  let cursor = 0,
+    failures = 0,
+    snapshotRetryNotBefore = 0;
+
+  while (!options.signal.aborted) {
+    let stream: Awaited<ReturnType<typeof openWorkflowRunEvents>> | undefined;
+    let openedAt: number | undefined;
+    let delivered = false;
+    try {
+      options.setConnectionStatus(reconnectStatus(failures));
+      stream = await options.open(cursor);
+      openedAt = Date.now();
+      if (!options.isCurrent()) return;
+      options.setConnectionStatus('live');
+      for await (const message of decodeSseMessages(stream.body)) {
+        if (!options.isCurrent()) return;
+        const event = decodeRunEvent(message);
+        if (classifyRunEvent(cursor, event) === 'duplicate') continue;
+        cursor = event.sequence;
+        delivered = true;
+        options.updateCurrent((current) => {
+          const appended = appendRunEvent(current.timeline, event);
+          return {
+            ...current,
+            timeline: appended.timeline,
+            truncatedCount: current.truncatedCount + appended.truncated,
+          };
+        });
+        options.scheduleSnapshotRefresh();
+        if (isTerminalRunEvent(event)) {
+          await options.refreshSnapshot();
+          options.setConnectionStatus('stopped');
+          return;
+        }
+      }
+      throw new TransientStreamDisconnect(
+        'The run event stream closed before the run completed.',
+      );
+    } catch (error) {
+      if (!options.isCurrent()) return;
+      if (streamWasHealthy({ delivered, openedAt })) failures = 0;
+      const recovery = classifyStreamFailure(error, failures + 1);
+      if (recovery.kind === 'stop') {
+        options.setRecovery(recovery.status, recovery.message);
+        return;
+      }
+      failures += 1;
+      options.setRecovery(recovery.status, recovery.message);
+      if (failures >= 3 && Date.now() >= snapshotRetryNotBefore) {
+        const nextSnapshotRetry = await refreshAfterFailures(options, failures);
+        if (nextSnapshotRetry === undefined) return;
+        snapshotRetryNotBefore = nextSnapshotRetry;
+      }
+      const snapshotWait = snapshotRetryNotBefore - Date.now();
+      await delay(
+        snapshotWait > 0
+          ? Math.max(recovery.delayMs, snapshotWait)
+          : recovery.delayMs,
+        options.signal,
+      );
+    } finally {
+      options.close(stream);
+    }
+  }
+}
+
+function reconnectStatus(failures: number): ConnectionStatus {
+  if (failures === 0) return 'connecting';
+  if (failures >= 3) return 'degraded';
+  return 'reconnecting';
+}
+
+async function refreshAfterFailures(
+  options: RunEventSession,
+  failures: number,
+): Promise<number | undefined> {
+  try {
+    if (await options.refreshSnapshot()) {
+      options.setConnectionStatus('stopped');
+      return undefined;
+    }
+    return 0;
+  } catch (error) {
+    const recovery = classifyStreamFailure(error, failures);
+    if (recovery.kind === 'stop') {
+      options.setRecovery(recovery.status, recovery.message);
+      return undefined;
+    }
+    const nextRetry = Date.now() + recovery.delayMs;
+    options.setRecovery(recovery.status, recovery.message);
+    return nextRetry;
+  }
 }
