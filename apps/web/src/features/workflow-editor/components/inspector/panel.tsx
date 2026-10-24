@@ -1,19 +1,14 @@
-import type { CodeSettings } from '@pertexo/node-sdk';
-import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
-import type { CallTargetScope } from '../../data/call-targets.queries';
-import type {
-  NodeDefinitionCatalogItem,
-  ConnectionResponse,
-} from '@pertexo/contracts';
 import type { ReactNode } from 'react';
 import { describeStep } from '@/features/catalog/presentation.public';
 import { useEditorStore } from '../../model/state/context';
-import { findDefinition } from '../../model/graph/adapter';
+
 import { locateStep } from '../../model/graph/scopes';
-import type { EditorFocusTarget } from '../../hooks/use-editor-actions';
-import type { InspectorTab } from '../../hooks/use-inspector-navigation';
-import { NodeInspector, type NodeInspectorActions } from './node';
-import type { ChannelLookupScope } from './fields/slack-channel-field';
+
+import {
+  NodeInspector,
+  type NodeInspectorActions,
+  type NodeInspectorView,
+} from './node';
 
 function stepName(
   node: Readonly<{ label?: string | undefined; definition: { key: string } }>,
@@ -29,42 +24,21 @@ function stepName(
  * inspector, a summary for several steps, or a hint when nothing is picked.
  */
 export function InspectorPanel({
-  definitions,
-  codeSettings,
-  connections,
-  channelLookup,
-  callScope,
-  workspaceScope,
-  editable,
-  scratchVersion,
-  tab,
-  onTabChange,
-  focusTarget,
+  view,
   renderTest,
   renderFailureSetup,
   renderRuns,
   actions,
 }: Readonly<{
-  definitions: readonly NodeDefinitionCatalogItem[];
-  codeSettings?: CodeSettings | undefined;
-  connections: readonly ConnectionResponse[];
-  channelLookup: ChannelLookupScope;
-  callScope?: CallTargetScope;
-  workspaceScope?: WorkspaceApiScope;
-  editable: boolean;
-  scratchVersion: number;
-  tab: InspectorTab;
-  onTabChange: (tab: InspectorTab) => void;
-  focusTarget:
-    (EditorFocusTarget & Readonly<{ requestId: number }>) | undefined;
+  view: NodeInspectorView & Readonly<{ scratchVersion: number }>;
   renderFailureSetup?: (
     node: Parameters<typeof NodeInspector>[0]['node'],
   ) => ReactNode;
   renderTest: (nodeId: string, stepSideEffect: string | undefined) => ReactNode;
-  /** A step's record in real runs, when the editor can show one. */
   renderRuns?: (nodeId: string, stepLabel: string) => ReactNode;
   actions: NodeInspectorActions;
 }>) {
+  const { scratchVersion } = view;
   const graph = useEditorStore((state) => state.graph);
   const selectedNodeId = useEditorStore((state) => state.selectedNodeId);
   const selectedCount = useEditorStore((state) => state.selectedNodeIds.length);
@@ -72,32 +46,21 @@ export function InspectorPanel({
     selectedNodeId === null ? undefined : locateStep(graph, selectedNodeId);
   if (step !== undefined) {
     const { node } = step;
-    const definition = findDefinition(definitions, node);
     return (
       <NodeInspector
         key={`${node.id}:${String(scratchVersion)}`}
         node={node}
-        failureSetup={renderFailureSetup?.(node)}
         graph={step.level}
         loopPorts={step.loopPorts}
-        definition={definition}
-        definitions={definitions}
-        codeSettings={codeSettings}
-        connections={connections}
-        channelLookup={channelLookup}
-        {...(workspaceScope === undefined ? {} : { workspaceScope })}
-        {...(callScope === undefined ? {} : { callScope })}
-        editable={editable}
-        tab={tab}
-        onTabChange={onTabChange}
-        focusTarget={focusTarget}
-        testPanel={renderTest(
-          node.id,
-          describeStep(node.definition.key).sideEffect,
-        )}
-        {...(renderRuns === undefined
-          ? {}
-          : { runsPanel: renderRuns(node.id, stepName(node)) })}
+        view={view}
+        panels={{
+          testPanel: renderTest(
+            node.id,
+            describeStep(node.definition.key).sideEffect,
+          ),
+          runsPanel: renderRuns?.(node.id, stepName(node)),
+          failureSetup: renderFailureSetup?.(node),
+        }}
         actions={actions}
       />
     );

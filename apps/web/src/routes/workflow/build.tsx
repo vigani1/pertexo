@@ -38,10 +38,6 @@ export function WorkflowBuildRoute() {
     );
   return (
     <WorkflowEditorPage
-      apiClient={apiClient}
-      user={user}
-      workspace={workspace}
-      workflowId={workflowId}
       stepDiscussions={stepDiscussions}
       headerPresence={<WorkflowPresenceSummary />}
       renderEditingPresence={(source) => (
@@ -75,6 +71,12 @@ export function WorkflowBuildRoute() {
             workflowId,
           ),
         });
+      }}
+      scope={{
+        apiClient: apiClient,
+        user: user,
+        workspace: workspace,
+        workflowId: workflowId,
       }}
     />
   );

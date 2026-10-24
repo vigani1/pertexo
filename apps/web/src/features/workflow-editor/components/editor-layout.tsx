@@ -17,35 +17,40 @@ const covers = { [CANVAS_COVER_ATTRIBUTE]: '' };
  * survive switching panels.
  */
 export function EditorLayout({
-  bar,
-  canvasTools,
-  banner,
+  header,
   canvas,
   addStep,
   inspector,
-  inspectorOpen,
   overlay,
   bottomLens,
-  addStepCollapsed,
-  editable,
-  mobilePanel,
-  onMobilePanelChange,
+  panels,
 }: Readonly<{
-  bar: ReactNode;
-  canvasTools: ReactNode;
-  banner: ReactNode;
+  header: Readonly<{
+    bar: ReactNode;
+    canvasTools: ReactNode;
+    banner: ReactNode;
+  }>;
   canvas: ReactNode;
   addStep: ReactNode;
   inspector: ReactNode;
-  inspectorOpen: boolean;
   overlay: ReactNode;
-  /** A lens at the bottom, between the zoom controls and the inspector. */
   bottomLens: ReactNode;
-  addStepCollapsed: boolean;
-  editable: boolean;
-  mobilePanel: MobilePanel;
-  onMobilePanelChange: (panel: MobilePanel) => void;
+  panels: Readonly<{
+    inspectorOpen: boolean;
+    addStepCollapsed: boolean;
+    editable: boolean;
+    mobilePanel: MobilePanel;
+    onMobilePanelChange: (panel: MobilePanel) => void;
+  }>;
 }>) {
+  const { bar, canvasTools, banner } = header;
+  const {
+    inspectorOpen,
+    addStepCollapsed,
+    editable,
+    mobilePanel,
+    onMobilePanelChange,
+  } = panels;
   const leftInset = addStepInset({ editable, addStepCollapsed });
   return (
     <div
