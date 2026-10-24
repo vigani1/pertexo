@@ -58,16 +58,18 @@ export function useRenameDraft({
 
   const accepted = command.accepted ?? false;
   const conflict = command.error?.kind === 'conflict';
+  const latestLoaded =
+    conflict &&
+    submittedRevision !== undefined &&
+    revision !== submittedRevision;
+  const locked = command.pending || command.retryAvailable || accepted;
   return {
     draft,
     validation,
     accepted,
     conflict,
-    latestLoaded:
-      conflict &&
-      submittedRevision !== undefined &&
-      revision !== submittedRevision,
-    locked: command.pending || command.retryAvailable || accepted,
+    latestLoaded,
+    locked,
     startedAs,
     close,
     change: (next: string) => {

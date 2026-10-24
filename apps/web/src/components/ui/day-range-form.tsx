@@ -85,11 +85,14 @@ export function DayRangeForm({
 }
 
 function rangeCaption(from: LocalDate, to: LocalDate): string {
-  return from === ''
-    ? 'Pick the first day.'
-    : to === ''
-      ? `From ${dayWords(from)}. Now pick the last day.`
-      : from === to
-        ? dayWords(from)
-        : `${dayWords(from)} to ${dayWords(to)}`;
+  if (from === '') {
+    return 'Pick the first day.';
+  }
+  if (to === '') {
+    return `From ${dayWords(from)}. Now pick the last day.`;
+  }
+  if (from === to) {
+    return dayWords(from);
+  }
+  return `${dayWords(from)} to ${dayWords(to)}`;
 }
