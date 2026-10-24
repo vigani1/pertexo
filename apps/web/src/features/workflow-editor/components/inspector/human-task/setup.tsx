@@ -155,14 +155,18 @@ export function HumanFormSetup({
         />
       ) : null}
       <Notice glyph="waiting">
-        {kind === 'core.approval'
-          ? (captured.allowStarterToDecide ?? false)
-            ? 'One eligible person approves or rejects, including the starter if they belong to the audience.'
-            : 'One eligible person approves or rejects. The person who started the run cannot decide.'
-          : 'One eligible member fills in this form. The person who started the run may respond.'}{' '}
-        Human waiting releases the active slot and pauses the execution budget;
-        an explicit absolute deadline still applies.
+        {decisionGuidance(parsed)} Human waiting releases the active slot and
+        pauses the execution budget; an explicit absolute deadline still
+        applies.
       </Notice>
     </>
   );
+}
+
+function decisionGuidance(input: Setup) {
+  if (input.definitionKey !== 'core.approval')
+    return 'One eligible member fills in this form. The person who started the run may respond.';
+  if (input.config.allowStarterToDecide ?? false)
+    return 'One eligible person approves or rejects, including the starter if they belong to the audience.';
+  return 'One eligible person approves or rejects. The person who started the run cannot decide.';
 }

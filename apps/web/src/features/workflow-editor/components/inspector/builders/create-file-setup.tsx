@@ -65,11 +65,7 @@ export function CreateFileSetup({
           }}
         />
         <FieldDescription>
-          {hasScratch
-            ? 'Finish or clear the column names before changing format.'
-            : config.inputMode === 'pages'
-              ? 'Stream pages into a file up to 10 MB, including CSV headers and quoting.'
-              : 'Create a file up to 1 MB from inline data. Choose From pages for larger CSV or JSON files.'}
+          {formatGuidance({ hasScratch, inputMode: config.inputMode })}
         </FieldDescription>
       </Field>
       {config.format === 'text' ? null : (
@@ -212,4 +208,14 @@ function ColumnNames({
       )}
     </Field>
   );
+}
+
+function formatGuidance(
+  input: Readonly<{ hasScratch: boolean; inputMode: unknown }>,
+) {
+  if (input.hasScratch)
+    return 'Finish or clear the column names before changing format.';
+  if (input.inputMode === 'pages')
+    return 'Stream pages into a file up to 10 MB, including CSV headers and quoting.';
+  return 'Create a file up to 1 MB from inline data. Choose From pages for larger CSV or JSON files.';
 }

@@ -30,17 +30,7 @@ export function PublicationReviewPage({
         <div className="flex min-w-0 max-w-4xl flex-col gap-6">
           <PageHeader>
             <PageHeaderTitle>Publication review</PageHeaderTitle>
-            <Status
-              tone={
-                request.status === 'pending'
-                  ? 'waiting'
-                  : request.status === 'approved'
-                    ? 'success'
-                    : 'attention'
-              }
-            >
-              {request.status}
-            </Status>
+            <Status tone={reviewTone(request.status)}>{request.status}</Status>
           </PageHeader>
           <section className="flex flex-col gap-3 rounded-xl border border-border p-5">
             <h2 className="font-semibold [overflow-wrap:anywhere]">
@@ -95,4 +85,10 @@ export function PublicationReviewPage({
       )}
     </QueryView>
   );
+}
+
+function reviewTone(status: string) {
+  if (status === 'pending') return 'waiting';
+  if (status === 'approved') return 'success';
+  return 'attention';
 }

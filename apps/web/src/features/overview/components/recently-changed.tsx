@@ -46,11 +46,7 @@ function VersionLine({
         {state.label}
       </Status>
       <span className="min-w-0 truncate font-mono text-[0.7rem] leading-none text-subtle-foreground">
-        {published === null
-          ? '· never published'
-          : live === undefined
-            ? null
-            : `v${String(live.versionNumber)} · published ${formatRelativeTime(live.publishedAt)}`}
+        {publicationLabel(published, live)}
       </span>
     </p>
   );
@@ -130,4 +126,13 @@ export function RecentlyChanged({
       )}
     </HomeBlock>
   );
+}
+
+function publicationLabel(
+  published: string | null,
+  live: Readonly<{ versionNumber: number; publishedAt: string }> | undefined,
+) {
+  if (published === null) return '· never published';
+  if (live === undefined) return null;
+  return `v${String(live.versionNumber)} · published ${formatRelativeTime(live.publishedAt)}`;
 }
