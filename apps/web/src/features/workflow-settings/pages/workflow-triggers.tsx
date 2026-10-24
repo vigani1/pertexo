@@ -210,8 +210,8 @@ function TriggersSession({
     versions.data?.items,
     summary.data?.publishedVersionId,
   );
-  const form = kinds?.includes('core.form') === true;
-  const onFailure = kinds?.includes('core.workflow_error') === true;
+  const form = kinds?.includes('core.form') ?? false;
+  const onFailure = kinds?.includes('core.workflow_error') ?? false;
 
   // Only someone who can read webhooks knows the version has none.
   if (

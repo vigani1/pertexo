@@ -34,7 +34,7 @@ export function CanvasZoomLens({ onFit }: Readonly<{ onFit: () => void }>) {
         node.type === 'note' ? 'var(--secondary)' : familyFill[node.data.family]
       }
       nodeStrokeColor={(node) =>
-        node.selected === true ? 'var(--primary)' : 'transparent'
+        (node.selected ?? false) ? 'var(--primary)' : 'transparent'
       }
       onFit={onFit}
       className="lg:!left-[var(--editor-left-inset,0.75rem)]"

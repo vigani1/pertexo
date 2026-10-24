@@ -120,10 +120,10 @@ export function stepGroupFor(
   return (
     stepGroups.find(
       (group) =>
-        group.keys?.includes(key) === true ||
-        group.extras?.includes(key) === true,
+        (group.keys?.includes(key) ?? false) ||
+        (group.extras?.includes(key) ?? false),
     ) ??
-    stepGroups.find((group) => group.family === family && group.rest === true)
+    stepGroups.find((group) => group.family === family && (group.rest ?? false))
   );
 }
 

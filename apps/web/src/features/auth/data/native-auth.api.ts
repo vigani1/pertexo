@@ -49,7 +49,7 @@ async function postAuthentication<Value>(
       response: { kind: 'json', decode: (value) => value as Value },
     });
   } catch (error) {
-    if (input.signal?.aborted === true) throw error;
+    if (input.signal?.aborted ?? false) throw error;
     if (isApiError(error))
       throw new NativeAuthenticationError(error.message, {
         status: error.status,

@@ -97,7 +97,7 @@ export function SignInLens({
           glyph={notice.glyph}
           className="mt-5"
           action={
-            notice.offersNewVerificationLink === true && passwordEnabled ? (
+            (notice.offersNewVerificationLink ?? false) && passwordEnabled ? (
               <Button
                 type="button"
                 variant="link"

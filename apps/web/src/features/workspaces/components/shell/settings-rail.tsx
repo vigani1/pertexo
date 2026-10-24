@@ -94,11 +94,13 @@ function SectionSwitcher({
   const [open, setOpen] = useState(false);
   const matchRoute = useMatchRoute();
   const isOpen = (destination: SettingsDestination) =>
-    matchRoute({
-      to: destination.to,
-      params: { workspaceId: workspace.id },
-      fuzzy: !(destination.exact ?? false),
-    }) !== false;
+    Boolean(
+      matchRoute({
+        to: destination.to,
+        params: { workspaceId: workspace.id },
+        fuzzy: !(destination.exact ?? false),
+      }),
+    );
   const current = groups
     .flatMap((group) => group.destinations)
     .find((destination) => isOpen(destination));

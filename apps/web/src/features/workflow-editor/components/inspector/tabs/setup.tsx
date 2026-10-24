@@ -157,7 +157,7 @@ function CatalogSetupTab({
           key={requirement}
           requirement={requirement}
           optional={
-            definition?.optionalConnections?.includes(requirement) === true
+            definition?.optionalConnections?.includes(requirement) ?? false
           }
           selectedId={node.connectionRefs[requirement]}
           connections={connections}

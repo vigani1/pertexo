@@ -122,7 +122,7 @@ export function useWorkflowLifecycleCommand({
   return {
     pending,
     error: error?.message,
-    exactRetry: error?.exactRetry === true,
+    exactRetry: error?.exactRetry ?? false,
     reset: () => {
       commandRef.current = undefined;
       setError(undefined);

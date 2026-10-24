@@ -74,7 +74,7 @@ function describeInvitationAvailability({
   failed,
 }: Readonly<{ available: boolean | undefined; failed: boolean }>) {
   const message =
-    available === true
+    (available ?? false)
       ? undefined
       : available === false
         ? 'Invitations are unavailable on this server. Ask the operator to configure invitations.'
@@ -251,7 +251,7 @@ export function WorkspaceMembersPage({
           value={tab}
           onValueChange={(next) => {
             onSearchChange({
-              ...(search.invite === true ? { invite: true } : {}),
+              ...((search.invite ?? false) ? { invite: true } : {}),
               ...(next === 'invitations' ? { tab: 'invitations' } : {}),
             });
           }}
@@ -295,10 +295,10 @@ export function WorkspaceMembersPage({
         <RolesMatrix yourRole={workspace.role} />
       </div>
 
-      {canManage && issuanceAvailable === true ? (
+      {canManage && (issuanceAvailable ?? false) ? (
         <InvitePeopleSheet
           open={
-            search.invite === true || command.activeAttempt?.kind === 'create'
+            (search.invite ?? false) || command.activeAttempt?.kind === 'create'
           }
           roles={assignableRoles(workspace.role)}
           command={command}

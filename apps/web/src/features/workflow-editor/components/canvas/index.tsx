@@ -355,7 +355,7 @@ function useCanvasProjection({
         } else if (change.type === 'position' && editable) {
           const position = change.position ?? dragPositions.get(change.id);
           if (position === undefined) continue;
-          if (change.dragging === true) moving.set(change.id, position);
+          if (change.dragging ?? false) moving.set(change.id, position);
           else settled.set(change.id, position);
         }
       }

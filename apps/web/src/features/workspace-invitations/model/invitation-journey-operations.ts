@@ -45,7 +45,7 @@ function stillOwned(
   owned: number,
   signal?: AbortSignal,
 ): boolean {
-  return signal?.aborted !== true && runtime.ownership.current === owned;
+  return !(signal?.aborted ?? false) && runtime.ownership.current === owned;
 }
 
 function replaceController(

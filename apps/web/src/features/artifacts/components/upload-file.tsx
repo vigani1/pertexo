@@ -46,7 +46,7 @@ export function UploadFile(props: Props) {
 
 function ScopedUpload(props: Props) {
   const [openedFor, setOpenedFor] = useState<string>();
-  const open = openedFor === props.targetKey && props.disabled !== true;
+  const open = openedFor === props.targetKey && !(props.disabled ?? false);
   if (openedFor !== undefined && !open) setOpenedFor(undefined);
   return (
     <Dialog

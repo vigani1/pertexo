@@ -49,7 +49,7 @@ export function useRunDurationChange({
     const conflict = isApiError(cause) && cause.status === 412;
     if (conflict || isUnconfirmedCommand(cause)) {
       const applied = await draftHas(durationMs).catch(() => undefined);
-      if (applied === true) return true;
+      if (applied ?? false) return true;
       setProblem({
         message: conflict
           ? 'The draft changed while this was saving, so nothing changed. Apply it to the draft as it is now?'

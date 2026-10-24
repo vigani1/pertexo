@@ -114,7 +114,7 @@ export function useIncludedPage(
   destination: SpineDestination,
 ): boolean {
   const matchRoute = useMatchRoute();
-  return (destination.includes ?? []).some(
-    (to) => matchRoute({ to, params: { workspaceId }, fuzzy: true }) !== false,
+  return (destination.includes ?? []).some((to) =>
+    Boolean(matchRoute({ to, params: { workspaceId }, fuzzy: true })),
   );
 }

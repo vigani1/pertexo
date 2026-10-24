@@ -33,8 +33,8 @@ export function useRunRecovery({
         workflowVersionId: intent.workflowVersionId,
         nodeRunId: intent.nodeRunId,
         deadlineAt: intent.deadlineAt ?? null,
-        acknowledgePossibleEffects: intent.acknowledgePossibleEffects === true,
-        acknowledgeUnknownOutcome: intent.acknowledgeUnknownOutcome === true,
+        acknowledgePossibleEffects: intent.acknowledgePossibleEffects ?? false,
+        acknowledgeUnknownOutcome: intent.acknowledgeUnknownOutcome ?? false,
       }),
     send: async (intent, key) => {
       try {

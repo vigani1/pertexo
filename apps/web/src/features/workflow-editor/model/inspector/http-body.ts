@@ -256,7 +256,7 @@ export function workflowPlaceholderIssues(
   return level.nodes.flatMap((node): WorkflowIssue[] => {
     const body = node.structured?.body;
     const nested = body === undefined ? [] : workflowPlaceholderIssues(body);
-    if (node.disabled === true) return [...nested];
+    if (node.disabled ?? false) return [...nested];
     return [
       ...httpRequestPlaceholders(node)
         .filter((name) => node.inputMappings[name] === undefined)

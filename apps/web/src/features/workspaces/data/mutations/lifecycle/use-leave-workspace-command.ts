@@ -102,9 +102,9 @@ export function useLeaveWorkspaceCommand({
   return {
     pending: mutation.isPending,
     error: failure?.message,
-    retryAvailable: failure?.uncertain === true,
+    retryAvailable: failure?.uncertain ?? false,
     start: () =>
-      failure?.uncertain === true
+      (failure?.uncertain ?? false)
         ? Promise.resolve(false)
         : send(crypto.randomUUID()),
     retry: () =>

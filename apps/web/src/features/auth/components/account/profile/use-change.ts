@@ -70,7 +70,7 @@ export function useDisplayNameChange(
   return {
     pending: state.kind === 'saving',
     unconfirmed: state.kind === 'unconfirmed',
-    conflict: state.kind === 'idle' && state.conflict === true,
+    conflict: state.kind === 'idle' && (state.conflict ?? false),
     failure: state.kind === 'idle' ? state.failure : undefined,
     save: (displayName: string, expectedRevision: number) => {
       if (state.kind !== 'idle') return;

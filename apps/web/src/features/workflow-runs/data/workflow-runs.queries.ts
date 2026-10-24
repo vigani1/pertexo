@@ -405,9 +405,10 @@ export function workflowRunQueryOptions(
       if (snapshot?.errorWorkflow?.status === 'pending') return 2_000;
       return snapshot !== undefined &&
         isActiveRunStatus(snapshot.run.status) &&
-        snapshot.calls?.some(
+        (snapshot.calls?.some(
           (call) => call.status === 'pending' || call.status === 'accepted',
-        ) === true
+        ) ??
+          false)
         ? 2_000
         : false;
     },

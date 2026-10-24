@@ -323,7 +323,7 @@ function projectNode({
         parent === undefined &&
         isWorkflowFailureSource(node.definition, node.config) &&
         !projection.handlerNodeIds.has(node.id),
-      disabled: node.disabled === true,
+      disabled: node.disabled ?? false,
       unsupported: definition === undefined,
       loop: loopSummary(node),
       body:

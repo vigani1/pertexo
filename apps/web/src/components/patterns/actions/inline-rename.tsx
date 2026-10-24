@@ -106,7 +106,7 @@ function useRenameDraft({
     settle(onSave(trimmed, expectedRevision));
   }
 
-  const accepted = command.accepted === true;
+  const accepted = command.accepted ?? false;
   const conflict = command.error?.kind === 'conflict';
   return {
     draft,
@@ -196,7 +196,7 @@ export function RenameForm({
         <SaveActions
           accepted={rename.accepted}
           pending={command.pending}
-          refreshPending={command.refreshPending === true}
+          refreshPending={command.refreshPending ?? false}
           retryAvailable={command.retryAvailable}
           onCancel={rename.close}
         />
@@ -277,7 +277,7 @@ function RenameInPlace({
   const id = useId();
   const rename = useRenameDraft({ name, command, onClose, ...rest });
   const error = rename.validation.error('name');
-  const busy = command.pending || command.refreshPending === true;
+  const busy = command.pending || (command.refreshPending ?? false);
   let saveLabel = 'Save';
   if (command.retryAvailable) saveLabel = 'Try again';
   else if (rename.accepted) saveLabel = 'Refresh';

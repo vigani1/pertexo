@@ -49,7 +49,7 @@ function usePublishedFormEntry({
     liveVersion.data?.graph.nodes.some(
       (node) =>
         node.definition.key === 'core.form' && node.definition.version === 1,
-    ) === true;
+    ) ?? false;
   async function openForm(versionId: string | undefined) {
     if (
       !liveIsForm ||

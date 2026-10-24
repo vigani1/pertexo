@@ -128,7 +128,7 @@ export function NodeInspector({
   useEffect(() => {
     if (focusTarget?.nodeId !== node.id) return;
     const panel = panelRef.current;
-    if (focusTarget.testOutput === true) {
+    if (focusTarget.testOutput ?? false) {
       panel?.querySelector<HTMLElement>('[data-slot="test-result"]')?.focus();
       return;
     }

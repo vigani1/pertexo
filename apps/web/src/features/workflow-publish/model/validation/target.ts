@@ -50,7 +50,7 @@ function targetIn(
       path === nodePrefix ? undefined : path.slice(nodePrefix.length + 1);
     const body = node.structured?.body;
     const inBody =
-      body !== undefined && remainder?.startsWith(`${BODY_SEGMENT}.`) === true
+      body !== undefined && (remainder?.startsWith(`${BODY_SEGMENT}.`) ?? false)
         ? targetIn(body, `${nodePrefix}.${BODY_SEGMENT}`, path)
         : undefined;
     return inBody ?? targetForRemainder(node.id, remainder);

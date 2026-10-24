@@ -54,7 +54,7 @@ export function diffWorkflowGraphs(
       continue;
     }
     const aspects = changedAspects(previous, node).filter(
-      (aspect) => options.ignoreLayout !== true || aspect !== 'position',
+      (aspect) => !(options.ignoreLayout ?? false) || aspect !== 'position',
     );
     if (aspects.length > 0)
       changed.push({ before: previous, after: node, aspects });

@@ -48,7 +48,7 @@ function edgeExists(
   scope: ScopePath,
 ): boolean {
   return (
-    levelAt(graph, scope)?.edges.some((edge) => edge.id === edgeId) === true
+    levelAt(graph, scope)?.edges.some((edge) => edge.id === edgeId) ?? false
   );
 }
 

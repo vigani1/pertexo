@@ -57,7 +57,7 @@ export function promotionCanApply(
     completed: boolean;
   }>,
 ): boolean {
-  if (input.completed || !input.current || input.review?.compatible !== true)
+  if (input.completed || !input.current || !input.review?.compatible)
     return false;
   if (input.mode === 'request_approval' && input.note.trim().length === 0)
     return false;

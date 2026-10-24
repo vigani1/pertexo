@@ -111,10 +111,7 @@ export function useImportDraft(
         ),
     ) ?? false;
   const readyPreview =
-    preview?.compatible === true &&
-    !preview.truncated &&
-    complete &&
-    !previewing
+    preview?.compatible && !preview.truncated && complete && !previewing
       ? preview
       : undefined;
   function submitImport() {

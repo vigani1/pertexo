@@ -67,8 +67,8 @@ export function useWorkflowTests({
     ...workflowTestsQueryOptions(scope),
     enabled,
     refetchInterval: (query) =>
-      query.state.data?.items.some((item) => isActiveRunStatus(item.status)) ===
-      true
+      (query.state.data?.items.some((item) => isActiveRunStatus(item.status)) ??
+      false)
         ? 2000
         : false,
   });
@@ -95,7 +95,7 @@ export function useWorkflowTests({
             ? progress.data.run.status
             : item.status,
         ),
-    ) === true;
+    ) ?? false;
   async function signal() {
     const controller = lifetime.current;
     if (controller === undefined || controller.signal.aborted || !enabled)

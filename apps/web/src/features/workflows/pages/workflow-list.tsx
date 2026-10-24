@@ -279,7 +279,7 @@ function WorkflowListContent({
   }
 
   function chooseExample(templateId: string, name = '') {
-    if (search.create === true)
+    if (search.create ?? false)
       void onSearchChange(updateWorkflowListSearch(search, { create: false }));
     openImport(templateId, name);
   }
@@ -383,7 +383,7 @@ function WorkflowListContent({
           apiClient={apiClient}
           userId={user.id}
           workspaceId={workspace.id}
-          open={search.create === true}
+          open={search.create ?? false}
           onOpenChange={(open) => {
             void onSearchChange(
               updateWorkflowListSearch(search, { create: open }),

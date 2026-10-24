@@ -93,7 +93,7 @@ export function InsertDataPicker({
   const definition =
     current === undefined ? undefined : findDefinition(definitions, current);
   const callbackTargets =
-    definition?.capabilities.includes('external_http') === true
+    (definition?.capabilities.includes('external_http') ?? false)
       ? callbackTargetNodes(graph, nodeId)
       : [];
   const sources = graph.nodes.filter((node) => sourceIds.has(node.id));

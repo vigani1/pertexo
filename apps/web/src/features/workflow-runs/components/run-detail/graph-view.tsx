@@ -357,7 +357,7 @@ function WorkflowRunEdge({
         className={cn(
           '!stroke-[1.5]',
           // A path the run didn't take is dashed and quiet.
-          data?.skipped === true
+          (data?.skipped ?? false)
             ? '![stroke-dasharray:4_5] !stroke-graph-link'
             : (edgeStrokeClass[tone] ?? '!stroke-graph-link'),
         )}
@@ -372,7 +372,7 @@ function WorkflowRunEdge({
           {data.branch}
         </text>
       )}
-      {data?.active === true ? (
+      {(data?.active ?? false) ? (
         <circle
           r="2.5"
           className="workflow-transfer-marker fill-accent-foreground [filter:drop-shadow(0_0_5px_color-mix(in_srgb,var(--primary)_70%,transparent))] motion-reduce:hidden"

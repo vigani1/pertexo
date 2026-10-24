@@ -281,7 +281,7 @@ export function FormFieldsEditor({
               {(control) => (
                 <Checkbox
                   {...control}
-                  checked={field.mustBeTicked === true}
+                  checked={field.mustBeTicked ?? false}
                   onCheckedChange={(ticked) => {
                     update(index, (current) => {
                       if (current.type !== 'boolean') return current;

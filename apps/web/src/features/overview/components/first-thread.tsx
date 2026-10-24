@@ -33,7 +33,7 @@ function StepLink({
         <Link
           to="/w/$workspaceId/workflows"
           params={{ workspaceId }}
-          search={destination.create === true ? { create: true } : {}}
+          search={(destination.create ?? false) ? { create: true } : {}}
           className={linkClass}
         >
           {label}

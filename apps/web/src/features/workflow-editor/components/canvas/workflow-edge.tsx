@@ -72,13 +72,13 @@ export function WorkflowEdge({
         interactionWidth={18}
         className={cn(
           '!stroke-[1.6] transition-[stroke] duration-150 motion-reduce:transition-none',
-          data?.intoIssue === true
+          (data?.intoIssue ?? false)
             ? '!stroke-destructive [stroke-dasharray:4_5]'
             : '!stroke-graph-link',
-          data?.failure === true &&
+          (data?.failure ?? false) &&
             '!stroke-destructive [stroke-dasharray:1_4_7_4]',
           hovered && '!stroke-accent-foreground/75',
-          selected === true && '!stroke-primary !stroke-2',
+          (selected ?? false) && '!stroke-primary !stroke-2',
           FOCUSED_THREAD,
         )}
       />
@@ -90,7 +90,7 @@ export function WorkflowEdge({
         onMouseEnter={show}
         onMouseLeave={hideSoon}
       />
-      {data?.flowing === true ? (
+      {(data?.flowing ?? false) ? (
         <path
           d={path}
           fill="none"
@@ -112,7 +112,7 @@ export function WorkflowEdge({
           className="pointer-events-none stroke-accent-foreground [stroke-dasharray:1] [stroke-dashoffset:1] [stroke-width:2.4] drop-shadow-[0_0_6px_var(--primary)] motion-safe:animate-[editor-weave_0.55s_var(--ease-unspool)_var(--weave-delay)_forwards] motion-reduce:hidden"
         />
       )}
-      {data?.failure === true ? (
+      {(data?.failure ?? false) ? (
         <EdgeLabelRenderer>
           <span
             className="pointer-events-none absolute rounded bg-card/90 px-1.5 text-[0.7rem] text-destructive"
@@ -124,7 +124,7 @@ export function WorkflowEdge({
           </span>
         </EdgeLabelRenderer>
       ) : null}
-      {editable && (hovered || selected === true) ? (
+      {editable && (hovered || (selected ?? false)) ? (
         <EdgeLabelRenderer>
           <button
             type="button"
