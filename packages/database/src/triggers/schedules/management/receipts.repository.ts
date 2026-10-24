@@ -1,3 +1,9 @@
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { triggerSchedules } from '../../../schema/triggers/schedules.js';
+import { workflowTriggers } from '../../../schema/authoring/workflows.js';
+import { auditEvents } from '../../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
 import {
   claimCommand,
@@ -69,33 +75,42 @@ export async function applyScheduleHealthTransition(
   triggerId: string,
   transition: ScheduleHealthTransition,
 ): Promise<void> {
-  await client.query(
-    `update app.trigger_schedules set status=$3,health_status=$4,
-       last_error_code=$5,next_fire_at=$6,
-       lease_owner=null,lease_token=null,lease_acquired_at=null,
-       lease_expires_at=null,updated_at=clock_timestamp()
-      where workspace_id=$1 and trigger_id=$2`,
-    [
-      workspaceId,
-      triggerId,
-      transition.scheduleStatus,
-      transition.healthStatus,
-      transition.lastErrorCode,
-      transition.nextFireAt,
-    ],
-  );
-  await client.query(
-    `update app.workflow_triggers set status=$3,health_status=$4,
-       last_error_code=$5,updated_at=clock_timestamp()
-      where workspace_id=$1 and id=$2`,
-    [
-      workspaceId,
-      triggerId,
-      transition.triggerStatus,
-      transition.healthStatus,
-      transition.lastErrorCode,
-    ],
-  );
+  const db = drizzle(client);
+  await db
+    .update(triggerSchedules)
+    .set({
+      status: transition.scheduleStatus,
+      healthStatus: transition.healthStatus,
+      lastErrorCode: transition.lastErrorCode,
+      nextFireAt: transition.nextFireAt,
+      leaseOwner: null,
+      leaseToken: null,
+      leaseAcquiredAt: null,
+      leaseExpiresAt: null,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(triggerSchedules.workspaceId, workspaceId),
+        eq(triggerSchedules.triggerId, triggerId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  await db
+    .update(workflowTriggers)
+    .set({
+      status: transition.triggerStatus,
+      healthStatus: transition.healthStatus,
+      lastErrorCode: transition.lastErrorCode,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(workflowTriggers.workspaceId, workspaceId),
+        eq(workflowTriggers.id, triggerId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
 }
 
 export async function recordScheduleCommandAudit(
@@ -103,21 +118,22 @@ export async function recordScheduleCommandAudit(
   input: SetEnabledInput,
   identity: ScheduleCommandIdentity,
 ): Promise<void> {
-  await client.query(
-    `insert into app.audit_events
-      (id,workspace_id,actor_user_id,action,target_type,target_id,request_id,trace_id,metadata)
-     values($1,$2,$3,$4,'schedule_trigger',$5,$6,$7,$8::jsonb)`,
-    [
-      generatePersistedId(),
-      input.workspaceId,
-      input.actorId,
-      input.enabled ? 'schedule_trigger.enabled' : 'schedule_trigger.disabled',
-      identity.triggerId,
-      input.requestId ?? null,
-      input.traceId ?? null,
-      JSON.stringify({ workflowId: identity.workflowId }),
-    ],
-  );
+  await drizzle(client)
+    .insert(auditEvents)
+    .values({
+      id: generatePersistedId(),
+      workspaceId: input.workspaceId,
+      actorUserId: input.actorId,
+      action: input.enabled
+        ? 'schedule_trigger.enabled'
+        : 'schedule_trigger.disabled',
+      targetType: 'schedule_trigger',
+      targetId: identity.triggerId,
+      requestId: input.requestId ?? null,
+      traceId: input.traceId ?? null,
+      metadata: { workflowId: identity.workflowId },
+    })
+    .catch(rethrowQueryFailure);
 }
 
 export async function completeScheduleCommand(

@@ -1,3 +1,8 @@
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workflowForms } from '../../schema/triggers/forms.js';
+import { auditEvents } from '../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import type { FormAccess } from '@pertexo/contracts';
@@ -9,15 +14,26 @@ import { generatePersistedId } from '../../platform/persisted-id.js';
 import { FormAccessConflictError, type FormStore } from './contract.js';
 export const capabilityHash = (value: string) =>
   createHash('sha256').update(value).digest('hex');
+const accessSelection = {
+  access: workflowForms.access,
+  publicId: workflowForms.publicId,
+  revision: workflowForms.revision,
+};
 export async function readFormAccess(
   client: PoolClient,
   input: Readonly<{ workspaceId: string; workflowId: string }>,
 ): Promise<FormAccess> {
-  const result = await client.query<FormAccess>(
-    `select access,public_id "publicId",revision from app.workflow_forms where workspace_id=$1 and workflow_id=$2`,
-    [input.workspaceId, input.workflowId],
-  );
-  return result.rows[0] ?? { access: 'members', publicId: null, revision: 0 };
+  const rows = await drizzle(client)
+    .select(accessSelection)
+    .from(workflowForms)
+    .where(
+      and(
+        eq(workflowForms.workspaceId, input.workspaceId),
+        eq(workflowForms.workflowId, input.workflowId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  return rows[0] ?? { access: 'members', publicId: null, revision: 0 };
 }
 export async function changeFormAccess(
   client: PoolClient,
@@ -32,7 +48,7 @@ export async function changeFormAccess(
   };
   const digest =
     input.access === 'public' ? capabilityHash(input.capability) : null;
-  const replay = await claimCommand(client, {
+  const replay = await claimCommand<FormAccess>(client, {
     ...command,
     request: {
       access: input.access,
@@ -41,37 +57,50 @@ export async function changeFormAccess(
     },
     resourceId: input.workflowId,
   });
-  if (replay !== null) return replay as FormAccess;
+  if (replay !== null) return replay;
   const current = await readFormAccess(client, input);
   if (current.revision !== input.expectedRevision)
     throw new FormAccessConflictError();
-  const result = await client.query<FormAccess>(
-    `insert into app.workflow_forms(workspace_id,workflow_id,public_id,access,capability_hash,revision,node_id) values($1,$2,$3,$4,$5,1,$6)
-    on conflict(workspace_id,workflow_id) do update set access=excluded.access,capability_hash=excluded.capability_hash,node_id=excluded.node_id,revision=workflow_forms.revision+1,updated_at=clock_timestamp()
-    returning access,public_id "publicId",revision`,
-    [
-      input.workspaceId,
-      input.workflowId,
-      generatePersistedId(),
-      input.access,
-      digest,
+  const db = drizzle(client);
+  const result = await db
+    .insert(workflowForms)
+    .values({
+      workspaceId: input.workspaceId,
+      workflowId: input.workflowId,
+      publicId: generatePersistedId(),
+      access: input.access,
+      capabilityHash: digest,
+      revision: 1,
       nodeId,
-    ],
-  );
-  const changed = result.rows[0];
+    })
+    .onConflictDoUpdate({
+      target: [workflowForms.workspaceId, workflowForms.workflowId],
+      set: {
+        access: input.access,
+        capabilityHash: digest,
+        nodeId,
+        revision: sql`${workflowForms.revision}+1`,
+        updatedAt: sql`clock_timestamp()`,
+      },
+    })
+    .returning(accessSelection)
+    .catch(rethrowQueryFailure);
+  const changed = result[0];
   if (changed === undefined) throw new Error('Form access write missing');
-  await client.query(
-    `insert into app.audit_events(id,workspace_id,actor_user_id,action,target_type,target_id,request_id,trace_id,metadata) values($1,$2,$3,'form.access_changed','workflow',$4,$5,$6,$7::jsonb)`,
-    [
-      generatePersistedId(),
-      input.workspaceId,
-      input.actorId,
-      input.workflowId,
-      input.requestId ?? null,
-      input.traceId ?? null,
-      JSON.stringify({ access: changed.access, revision: changed.revision }),
-    ],
-  );
+  await db
+    .insert(auditEvents)
+    .values({
+      id: generatePersistedId(),
+      workspaceId: input.workspaceId,
+      actorUserId: input.actorId,
+      action: 'form.access_changed',
+      targetType: 'workflow',
+      targetId: input.workflowId,
+      requestId: input.requestId ?? null,
+      traceId: input.traceId ?? null,
+      metadata: { access: changed.access, revision: changed.revision },
+    })
+    .catch(rethrowQueryFailure);
   await completeCommand(client, command, changed);
   return changed;
 }

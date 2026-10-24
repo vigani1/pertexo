@@ -1,8 +1,17 @@
+import { and, eq, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workflowForms } from '../../schema/triggers/forms.js';
+import {
+  workflows,
+  workflowVersions,
+} from '../../schema/authoring/workflows.js';
+import { workspaces } from '../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
 import { authorizeWorkflowResource } from '../../tenant-access/resources/authority.js';
 import { readFormDefinition } from './definition.js';
 import type { PoolClient } from 'pg';
-import { parsePublishedWorkflowRow } from '../../runs/queries/execution/published.js';
 import {
   FormUnavailableError,
   type FormScope,
@@ -28,17 +37,23 @@ export async function authorizeForm(
       input.workflowId !== grant.workflowId
     )
       throw new FormUnavailableError();
-    const current = await client.query(
-      `select 1 from app.workflow_forms where workspace_id=$1 and workflow_id=$2 and public_id=$3 and access='public' and capability_hash=$4 and node_id=$5 ${write ? 'for share' : ''}`,
-      [
-        input.workspaceId,
-        input.workflowId,
-        grant.publicId,
-        grant.capabilityHash,
-        grant.nodeId,
-      ],
+    const query = drizzle(client)
+      .select({ one: sql`1` })
+      .from(workflowForms)
+      .where(
+        and(
+          eq(workflowForms.workspaceId, input.workspaceId),
+          eq(workflowForms.workflowId, input.workflowId),
+          eq(workflowForms.publicId, grant.publicId),
+          eq(workflowForms.access, 'public'),
+          eq(workflowForms.capabilityHash, grant.capabilityHash),
+          eq(workflowForms.nodeId, grant.nodeId),
+        ),
+      );
+    const current = await (write ? query.for('share') : query).catch(
+      rethrowQueryFailure,
     );
-    if (current.rowCount !== 1) throw new FormUnavailableError();
+    if (current.length !== 1) throw new FormUnavailableError();
   } else {
     if (input.actorId === undefined) throw new FormUnavailableError();
     if (
@@ -65,32 +80,57 @@ export async function readFormVersion(
 ) {
   // Lock before reading the version: a locked join waiting on a concurrent
   // publication re-checks against the old version row and finds no form.
-  const workflow = await client.query<{ published_version_id: string | null }>(
-    `select workflow.published_version_id
-    from app.workflows workflow join app.workspaces workspace on workspace.id=workflow.workspace_id and workspace.status='active'
-    where workflow.workspace_id=$1 and workflow.id=$2 and workflow.lifecycle_status='active' and ($3::boolean or workflow.trigger_pause_state='none') ${locking === 'read' ? '' : `for ${locking} of workflow`}`,
-    [input.workspaceId, input.workflowId, allowPaused],
-  );
-  const publishedVersionId = workflow.rows[0]?.published_version_id;
+  const db = drizzle(client);
+  const workflow = alias(workflows, 'workflow');
+  const query = db
+    .select({ publishedVersionId: workflow.publishedVersionId })
+    .from(workflow)
+    .innerJoin(
+      workspaces,
+      and(
+        eq(workspaces.id, workflow.workspaceId),
+        eq(workspaces.status, 'active'),
+      ),
+    )
+    .where(
+      and(
+        eq(workflow.workspaceId, input.workspaceId),
+        eq(workflow.id, input.workflowId),
+        eq(workflow.lifecycleStatus, 'active'),
+        sql`(${allowPaused}::boolean or ${workflow.triggerPauseState}='none')`,
+      ),
+    );
+  const locked = await (
+    locking === 'read' ? query : query.for(locking, { of: workflow })
+  ).catch(rethrowQueryFailure);
+  const publishedVersionId = locked[0]?.publishedVersionId;
   if (publishedVersionId === undefined || publishedVersionId === null)
     throw new FormUnavailableError();
-  const result = await client.query<{
-    id: string;
-    workspace_id: string;
-    workflow_id: string;
-    version_number: number;
-    checksum: string;
-    executable_json: unknown;
-    graph_json: unknown;
-  }>(
-    `select graph_json,id,workspace_id,workflow_id,version_number,checksum,executable_json
-    from app.workflow_versions where workspace_id=$1 and workflow_id=$2 and id=$3`,
-    [input.workspaceId, input.workflowId, publishedVersionId],
-  );
-  const row = result.rows[0];
+  const rows = await db
+    .select({
+      graphJson: workflowVersions.graphJson,
+      version: {
+        id: workflowVersions.id,
+        workspaceId: workflowVersions.workspaceId,
+        workflowId: workflowVersions.workflowId,
+        versionNumber: workflowVersions.versionNumber,
+        checksum: workflowVersions.checksum,
+        executableJson: workflowVersions.executableJson,
+      },
+    })
+    .from(workflowVersions)
+    .where(
+      and(
+        eq(workflowVersions.workspaceId, input.workspaceId),
+        eq(workflowVersions.workflowId, input.workflowId),
+        eq(workflowVersions.id, publishedVersionId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  const row = rows[0];
   if (row === undefined) throw new FormUnavailableError();
-  const { graph_json, ...projection } = row;
-  const version = parsePublishedWorkflowRow(projection);
-  if (version === null) throw new FormUnavailableError();
-  return { version, ...readFormDefinition(graph_json) };
+  return {
+    version: Object.freeze(row.version),
+    ...readFormDefinition(row.graphJson),
+  };
 }

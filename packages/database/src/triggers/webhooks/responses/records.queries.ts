@@ -1,20 +1,16 @@
-import { bindResourcePredicate } from '../../../tenant-access/resources/scope.queries.js';
+import { and, eq, isNull, or, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { webhookRunResponses as responses } from '../../../schema/triggers/responses.js';
+import { workflowRuns } from '../../../schema/runs/execution.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { RUN_DETAILS_RETENTION_SQL } from '../../../runs/data-policy.js';
 import type { Pool } from 'pg';
-import type { NodeWebhookResponse } from '@pertexo/node-sdk';
 import { withTenantScopedReadClient } from '../../../tenant-access/transactions.js';
 import type {
   WebhookResponseScope,
   WebhookResponseSnapshot,
 } from './contract.js';
 
-type ResponseRow = Readonly<{
-  status: string;
-  status_code: number | null;
-  content_type: NodeWebhookResponse['contentType'] | null;
-  headers: NodeWebhookResponse['headers'] | null;
-  body: string | null;
-}>;
 export function readWebhookResponse(
   pool: Pool,
   input: WebhookResponseScope,
@@ -23,28 +19,55 @@ export function readWebhookResponse(
     pool,
     { workspaceId: input.workspaceId },
     async (client) => {
-      const result = await client.query<ResponseRow>(
-        `select run.status,response.status_code,response.content_type,response.headers,response.body
-      from app.webhook_run_responses response join app.workflow_runs run on run.workspace_id=response.workspace_id and run.id=response.run_id
-      where response.workspace_id=$1 and response.run_id=$2 and run.details_purged_at IS NULL
-        and (run.completed_at IS NULL or run.completed_at>clock_timestamp()-${bindResourcePredicate(RUN_DETAILS_RETENTION_SQL.inlineParams(), [])})`,
-        [input.workspaceId, input.runId],
-      );
-      const row = result.rows[0];
+      const result = await drizzle(client)
+        .select({
+          status: workflowRuns.status,
+          status_code: responses.statusCode,
+          content_type: responses.contentType,
+          headers: responses.headers,
+          body: responses.body,
+        })
+        .from(responses)
+        .innerJoin(
+          workflowRuns,
+          and(
+            eq(workflowRuns.workspaceId, responses.workspaceId),
+            eq(workflowRuns.id, responses.runId),
+          ),
+        )
+        .where(
+          and(
+            eq(responses.workspaceId, input.workspaceId),
+            eq(responses.runId, input.runId),
+            isNull(workflowRuns.detailsPurgedAt),
+            or(
+              isNull(workflowRuns.completedAt),
+              sql`${workflowRuns.completedAt}>clock_timestamp()-${RUN_DETAILS_RETENTION_SQL}`,
+            ),
+          ),
+        )
+        .catch(rethrowQueryFailure);
+      const row = result[0];
       if (row === undefined) return { state: 'finished' };
+      const {
+        status_code: statusCode,
+        content_type: contentType,
+        headers,
+        body,
+      } = row;
       const responseAvailable =
-        row.status_code !== null &&
-        row.content_type !== null &&
-        row.headers !== null &&
-        row.body !== null;
+        statusCode !== null &&
+        contentType !== null &&
+        headers !== null &&
+        body !== null;
       if (responseAvailable)
         return {
           state: 'responded',
           response: {
-            statusCode: row.status_code,
-            contentType: row.content_type,
-            headers: row.headers,
-            body: row.body,
+            statusCode,
+            contentType,
+            headers,
+            body,
           },
         };
       if (['failed', 'timed_out', 'outcome_unknown'].includes(row.status))

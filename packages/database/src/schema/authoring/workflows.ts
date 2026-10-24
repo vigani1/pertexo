@@ -1,3 +1,9 @@
+import type {
+  WorkflowLifecycleStatus,
+  WorkflowActivationStatus,
+  WorkflowTriggerStatus,
+} from '@pertexo/workflow-model';
+import type { WorkflowTriggerHealth } from '../../triggers/reconciliation/health.repository.js';
 import { users, workspaces } from '../foundation.js';
 import {
   bigint,
@@ -27,10 +33,12 @@ export const workflows = appSchema.table(
     name: varchar('name', { length: 128 }).notNull(),
     nameRevision: integer('name_revision').default(1).notNull(),
     lifecycleStatus: varchar('lifecycle_status', { length: 32 })
+      .$type<WorkflowLifecycleStatus>()
       .default('active')
       .notNull(),
     lifecycleRevision: integer('lifecycle_revision').default(1).notNull(),
     activationStatus: varchar('activation_status', { length: 32 })
+      .$type<WorkflowActivationStatus>()
       .default('inactive')
       .notNull(),
     publishedVersionId: uuid('published_version_id'),
@@ -253,13 +261,17 @@ export const workflowTriggers = appSchema.table(
     workflowId: uuid('workflow_id').notNull(),
     workflowVersionId: uuid('workflow_version_id').notNull(),
     nodeId: varchar('node_id', { length: 128 }).notNull(),
-    kind: varchar('kind', { length: 16 }).notNull(),
+    kind: varchar('kind', { length: 16 })
+      .$type<WorkflowTriggerHealth['kind']>()
+      .notNull(),
     status: varchar('status', { length: 32 })
+      .$type<WorkflowTriggerStatus>()
       .notNull()
       .default(sql`'desired'::character varying`),
     desiredConfig: jsonb('desired_config').notNull(),
     configFingerprint: varchar('config_fingerprint', { length: 79 }).notNull(),
     healthStatus: varchar('health_status', { length: 32 })
+      .$type<WorkflowTriggerHealth['healthStatus']>()
       .notNull()
       .default(sql`'pending'::character varying`),
     lastErrorCode: varchar('last_error_code', { length: 128 }),

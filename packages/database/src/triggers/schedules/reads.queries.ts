@@ -1,3 +1,15 @@
+import { and, desc, eq, sql, type SQLWrapper } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  triggerSchedules as schedules,
+  triggerScheduleOccurrences as occurrences,
+} from '../../schema/triggers/schedules.js';
+import {
+  workflowTriggers as triggers,
+  workflows,
+} from '../../schema/authoring/workflows.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import type { RecordedScheduleOccurrence } from './pause.queries.js';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
@@ -20,10 +32,9 @@ import { ScheduleTriggerError } from './errors.js';
  * the metadata the scanner already records; fire times are projected by the
  * scheduler's own recurrence engine from database time. Nothing here writes.
  */
-const OUTCOMES = ['accepted', 'skipped', 'paused'] as const;
 const DEFAULT_PAGE_LIMIT = 25;
 
-export type ScheduleOccurrenceOutcome = (typeof OUTCOMES)[number];
+export type ScheduleOccurrenceOutcome = RecordedScheduleOccurrence;
 
 export type ScheduleOccurrenceRecord = Readonly<{
   id: string;
@@ -83,8 +94,8 @@ const instantSchema = z.iso
 const positionSchema = z
   .object({ scheduledAt: instantSchema, id: uuidSchema })
   .strict();
-const utcInstant = (column: string) =>
-  `to_char(${column} at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
+const utcInstant = (column: SQLWrapper) =>
+  sql<string>`to_char(${column} at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
 
 /** Every active member of an active workspace may read schedule state. */
 export async function authorizeScheduleReader(
@@ -116,23 +127,6 @@ function parseTriggerRead(input: TriggerRead): TriggerRead {
   });
 }
 
-function mapOccurrence(row: Record<string, unknown>): ScheduleOccurrenceRecord {
-  const outcome = z.enum(OUTCOMES).parse(row.disposition);
-  const runId = uuidSchema.nullable().parse(row.workflow_run_id);
-  if ((outcome === 'accepted') !== (runId !== null))
-    throw new TypeError('Schedule occurrence outcome and run disagree');
-  return Object.freeze({
-    id: uuidSchema.parse(row.id),
-    scheduledAt: instantSchema.parse(row.scheduled_at_cursor),
-    recordedAt: instantSchema.parse(row.recorded_at),
-    outcome,
-    runId,
-    ...(row.skip_reason == null
-      ? {}
-      : { skipReason: z.literal('concurrency_limit').parse(row.skip_reason) }),
-  });
-}
-
 async function readOccurrencePage(
   client: PoolClient,
   read: TriggerRead,
@@ -141,28 +135,38 @@ async function readOccurrencePage(
 ): Promise<ScheduleOccurrencePage> {
   // Occurrences past ADR 013's 90-day trigger-summary cutoff are never
   // served, even before the bounded retention stage removes them.
-  const result = await client.query<Record<string, unknown>>(
-    `select id,disposition,workflow_run_id,skip_reason,
-            ${utcInstant('scheduled_at')} scheduled_at_cursor,
-            ${utcInstant('created_at')} recorded_at
-       from app.trigger_schedule_occurrences
-      where workspace_id=$1 and trigger_id=$2
-        and scheduled_at>clock_timestamp()-interval '90 days'
-        and ($3::timestamptz is null or scheduled_at<$3::timestamptz
-          or (scheduled_at=$3::timestamptz and id>$4::uuid))
-      order by scheduled_at desc,id asc
-      limit $5`,
-    [
-      read.workspaceId,
-      read.triggerId,
-      after?.scheduledAt ?? null,
-      after?.id ?? null,
-      limit + 1,
-    ],
+  const result = await drizzle(client)
+    .select({
+      id: occurrences.id,
+      outcome: occurrences.disposition,
+      runId: occurrences.workflowRunId,
+      skipReason: occurrences.skipReason,
+      scheduledAt: utcInstant(occurrences.scheduledAt),
+      recordedAt: utcInstant(occurrences.createdAt),
+    })
+    .from(occurrences)
+    .where(
+      and(
+        eq(occurrences.workspaceId, read.workspaceId),
+        eq(occurrences.triggerId, read.triggerId),
+        sql`${occurrences.scheduledAt}>clock_timestamp()-interval '90 days'`,
+        sql`(${after?.scheduledAt ?? null}::timestamptz is null or ${occurrences.scheduledAt}<${after?.scheduledAt ?? null}::timestamptz or
+        (${occurrences.scheduledAt}=${after?.scheduledAt ?? null}::timestamptz and ${occurrences.id}>${after?.id ?? null}::uuid))`,
+      ),
+    )
+    .orderBy(desc(occurrences.scheduledAt), occurrences.id)
+    .limit(limit + 1)
+    .catch(rethrowQueryFailure);
+  const items = Object.freeze(
+    result.slice(0, limit).map(({ skipReason, ...row }) =>
+      Object.freeze({
+        ...row,
+        ...(skipReason === null ? {} : { skipReason }),
+      }),
+    ),
   );
-  const items = Object.freeze(result.rows.slice(0, limit).map(mapOccurrence));
   const last = items.at(-1);
-  if (result.rows.length <= limit || last === undefined)
+  if (result.length <= limit || last === undefined)
     return Object.freeze({ items });
   return Object.freeze({
     items,
@@ -170,39 +174,60 @@ async function readOccurrencePage(
   });
 }
 
-type ScheduleState = Record<string, unknown> & { fires: boolean | null };
+type ScheduleState = Awaited<ReturnType<typeof readScheduleState>>;
 
-async function readScheduleState(
-  client: PoolClient,
-  read: TriggerRead,
-): Promise<ScheduleState> {
-  const result = await client.query<ScheduleState>(
-    `select schedule.recurrence_kind,schedule.cron_expression,schedule.timezone,
-            schedule.interval_minutes,schedule.anchor_at,schedule.next_fire_at,
-            clock_timestamp() observed_at,
-            (schedule.status='enabled' and trigger.status='active'
-              and workflow.lifecycle_status='active'
-              and workflow.activation_status in ('active','degraded')
-              and workflow.published_version_id=trigger.workflow_version_id) fires
-       from app.trigger_schedules schedule
-       join app.workflow_triggers trigger on trigger.workspace_id=schedule.workspace_id
-        and trigger.id=schedule.trigger_id
-       join app.workflows workflow on workflow.workspace_id=trigger.workspace_id
-        and workflow.id=trigger.workflow_id
-      where schedule.workspace_id=$1 and trigger.workflow_id=$2
-        and trigger.id=$3 and trigger.kind='schedule'`,
-    [read.workspaceId, read.workflowId, read.triggerId],
-  );
-  const row = result.rows[0];
+async function readScheduleState(client: PoolClient, read: TriggerRead) {
+  const result = await drizzle(client)
+    .select({
+      recurrence_kind: schedules.recurrenceKind,
+      cron_expression: schedules.cronExpression,
+      timezone: schedules.timezone,
+      interval_minutes: schedules.intervalMinutes,
+      anchor_at: schedules.anchorAt,
+      next_fire_at: schedules.nextFireAt,
+      observed_at: sql<Date>`clock_timestamp()`.mapWith(schedules.createdAt),
+      fires: sql<
+        boolean | null
+      >`(${schedules.status}='enabled' and ${triggers.status}='active' and ${workflows.lifecycleStatus}='active'
+      and ${workflows.activationStatus} in ('active','degraded') and ${workflows.publishedVersionId}=${triggers.workflowVersionId})`,
+    })
+    .from(schedules)
+    .innerJoin(
+      triggers,
+      and(
+        eq(triggers.workspaceId, schedules.workspaceId),
+        eq(triggers.id, schedules.triggerId),
+      ),
+    )
+    .innerJoin(
+      workflows,
+      and(
+        eq(workflows.workspaceId, triggers.workspaceId),
+        eq(workflows.id, triggers.workflowId),
+      ),
+    )
+    .where(
+      and(
+        eq(schedules.workspaceId, read.workspaceId),
+        eq(triggers.workflowId, read.workflowId),
+        eq(triggers.id, read.triggerId),
+        eq(triggers.kind, 'schedule'),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  const row = result[0];
   if (row === undefined) throw new ScheduleTriggerError('not_found');
   return row;
 }
 
 async function readDatabaseTime(client: PoolClient): Promise<Date> {
-  const result = await client.query<{ observed_at: Date }>(
-    'select clock_timestamp() observed_at',
-  );
-  return z.date().parse(result.rows[0]?.observed_at);
+  const result = await drizzle(client)
+    .execute<{ observedAt: string }>(sql`select clock_timestamp() "observedAt"`)
+    .catch(rethrowQueryFailure);
+  const at = result.rows[0]?.observedAt;
+  if (at === undefined)
+    throw new Error('Schedule database observation is unavailable');
+  return new Date(at);
 }
 
 /** Computed after the read transaction ends, so no connection waits on it. */
@@ -210,17 +235,12 @@ function projectPersistedSchedule(
   row: ScheduleState,
   count: number,
 ): ScheduleFireTimes {
-  const observedAt = z.date().parse(row.observed_at);
+  const observedAt = row.observed_at;
   // A schedule the scanner would not claim has no upcoming fire times.
   if (!(row.fires ?? false))
     return Object.freeze({ observedAt, items: Object.freeze([]) });
-  const nextFireAt = z.date().parse(row.next_fire_at);
-  const recurrence = parsePersistedScheduleRecurrence({
-    recurrence_kind: z.enum(['cron', 'interval']).parse(row.recurrence_kind),
-    cron_expression: z.string().nullable().parse(row.cron_expression),
-    timezone: z.string().nullable().parse(row.timezone),
-    interval_minutes: z.number().int().nullable().parse(row.interval_minutes),
-  });
+  const nextFireAt = row.next_fire_at;
+  const recurrence = parsePersistedScheduleRecurrence(row);
   // The persisted next fire comes first, even while it waits for a scanner;
   // after it, each instant is what the scanner persists when it claims.
   const later =
@@ -228,7 +248,7 @@ function projectPersistedSchedule(
       ? []
       : projectScheduleOccurrences(
           recurrence,
-          z.date().parse(row.anchor_at),
+          row.anchor_at,
           nextFireAt > observedAt ? nextFireAt : observedAt,
           count - 1,
         );
@@ -264,13 +284,19 @@ export function createScheduleTriggerReads(pool: Pool): ScheduleTriggerReads {
           read.actorId,
           read.workflowId,
         );
-        const trigger = await client.query(
-          `select 1 from app.workflow_triggers
-            where workspace_id=$1 and id=$2 and workflow_id=$3
-              and kind='schedule'`,
-          [read.workspaceId, read.triggerId, read.workflowId],
-        );
-        if (trigger.rowCount !== 1) throw new ScheduleTriggerError('not_found');
+        const trigger = await drizzle(client)
+          .select({ one: sql`1` })
+          .from(triggers)
+          .where(
+            and(
+              eq(triggers.workspaceId, read.workspaceId),
+              eq(triggers.id, read.triggerId),
+              eq(triggers.workflowId, read.workflowId),
+              eq(triggers.kind, 'schedule'),
+            ),
+          )
+          .catch(rethrowQueryFailure);
+        if (trigger.length !== 1) throw new ScheduleTriggerError('not_found');
         return readOccurrencePage(client, read, limit, after);
       });
     },

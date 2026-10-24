@@ -1,3 +1,8 @@
+import type {
+  WebhookDeliveryOutcome,
+  WebhookSignatureCheck,
+  WebhookReplayCheck,
+} from '../../triggers/webhooks/deliveries.repository.js';
 import { triggerCoordinatedEvents } from '../event-coordination/records.js';
 import { workflowTriggers } from '../authoring/workflows.js';
 import { workflowRuns } from '../runs/execution.js';
@@ -36,12 +41,17 @@ export const webhookTriggerDeliveries = appSchema.table(
     expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' })
       .default(sql`clock_timestamp()+interval '90 days'`)
       .notNull(),
-    outcome: varchar('outcome', { length: 32 }).default('accepted').notNull(),
+    outcome: varchar('outcome', { length: 32 })
+      .$type<WebhookDeliveryOutcome>()
+      .default('accepted')
+      .notNull(),
     httpStatus: smallint('http_status').default(202).notNull(),
     signatureCheck: varchar('signature_check', { length: 16 })
+      .$type<WebhookSignatureCheck>()
       .default('verified')
       .notNull(),
     replayCheck: varchar('replay_check', { length: 16 })
+      .$type<WebhookReplayCheck>()
       .default('new')
       .notNull(),
     bodyBytes: integer('body_bytes'),

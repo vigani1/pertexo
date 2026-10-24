@@ -1,3 +1,6 @@
+import { sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { Pool } from 'pg';
 
 import { withPlatformTransaction } from '../../tenant-access/transactions.js';
@@ -20,18 +23,20 @@ export async function retireScheduleClaim(
     pool,
     async (client) => {
       if (retirement.kind === 'defer') {
-        await client.query(
-          'select app.defer_trigger_schedule_claim($1,$2,$3)',
-          [claim.trigger_id, claim.lease_token, retirement.retryAfterSeconds],
-        );
+        await drizzle(client)
+          .execute(
+            sql`select app.defer_trigger_schedule_claim(${claim.trigger_id},${claim.lease_token},${retirement.retryAfterSeconds})`,
+          )
+          .catch(rethrowQueryFailure);
         return;
       }
-      await client.query(
-        retirement.kind === 'fail'
-          ? 'select app.fail_trigger_schedule_claim($1,$2)'
-          : 'select app.release_trigger_schedule_claim($1,$2)',
-        [claim.trigger_id, claim.lease_token],
-      );
+      await drizzle(client)
+        .execute(
+          retirement.kind === 'fail'
+            ? sql`select app.fail_trigger_schedule_claim(${claim.trigger_id},${claim.lease_token})`
+            : sql`select app.release_trigger_schedule_claim(${claim.trigger_id},${claim.lease_token})`,
+        )
+        .catch(rethrowQueryFailure);
     },
     { signal },
   );

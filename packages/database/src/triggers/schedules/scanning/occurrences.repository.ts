@@ -1,8 +1,18 @@
+import {
+  triggerSchedules as schedules,
+  triggerScheduleOccurrences as occurrences,
+} from '../../../schema/triggers/schedules.js';
+import {
+  workflows,
+  workflowVersions,
+  workflowTriggers,
+} from '../../../schema/authoring/workflows.js';
+import { workspaces } from '../../../schema/foundation.js';
 import { WorkflowAlreadyRunningError } from '../../../runs/commands/concurrency.js';
 import { recordWorkflowTriggerSkip } from '../../skips.repository.js';
 import type { InitialCheckpointFactory } from '../../../runs/commands/initial-checkpoint.js';
 import { createHash } from 'node:crypto';
-import { sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 
 import { generatePersistedId } from '../../../platform/persisted-id.js';
 
@@ -10,7 +20,6 @@ import {
   acceptWorkflowRun,
   WorkspaceRunQuotaExceededError,
 } from '../../../runs/commands/acceptance.js';
-import { parsePublishedWorkflowRow } from '../../../runs/queries/execution/published.js';
 import { scheduleOccurrenceDisposition } from '../misfire.js';
 import {
   parsePersistedScheduleRecurrence,
@@ -47,20 +56,26 @@ export async function isScheduleClaimEligible(
   transaction: WorkspaceTransaction,
   claim: Readonly<{ trigger_id: string; lease_token: string }>,
 ): Promise<boolean> {
-  const eligible = await transaction.db.execute(sql`
-    select 1 from app.trigger_schedules schedule
-    join app.workflow_triggers trigger on trigger.id=schedule.trigger_id
-    join app.workflows workflow on workflow.id=trigger.workflow_id
-    join app.workspaces workspace on workspace.id=trigger.workspace_id
-    where schedule.trigger_id=${claim.trigger_id}
-      and schedule.lease_token=${claim.lease_token}
-      and schedule.lease_expires_at>clock_timestamp()
-      and schedule.status='enabled' and trigger.status='active'
-      and workflow.lifecycle_status='active'
-      and workflow.activation_status in ('active','degraded')
-      and workflow.published_version_id=trigger.workflow_version_id
-      and workspace.status='active'`);
-  return eligible.rows.length === 1;
+  const eligible = await transaction.db
+    .select({ one: sql`1` })
+    .from(schedules)
+    .innerJoin(workflowTriggers, eq(workflowTriggers.id, schedules.triggerId))
+    .innerJoin(workflows, eq(workflows.id, workflowTriggers.workflowId))
+    .innerJoin(workspaces, eq(workspaces.id, workflowTriggers.workspaceId))
+    .where(
+      and(
+        eq(schedules.triggerId, claim.trigger_id),
+        eq(schedules.leaseToken, claim.lease_token),
+        sql`${schedules.leaseExpiresAt}>clock_timestamp()`,
+        eq(schedules.status, 'enabled'),
+        eq(workflowTriggers.status, 'active'),
+        eq(workflows.lifecycleStatus, 'active'),
+        inArray(workflows.activationStatus, ['active', 'degraded']),
+        eq(workflows.publishedVersionId, workflowTriggers.workflowVersionId),
+        eq(workspaces.status, 'active'),
+      ),
+    );
+  return eligible.length === 1;
 }
 
 /**
@@ -75,15 +90,24 @@ async function admitScheduledRun(
 ): Promise<string> {
   if (!(await isScheduleClaimEligible(transaction, claim)))
     throw new ScheduleClaimLostError('Schedule is no longer eligible');
-  const version = await transaction.db.execute(sql<Record<string, unknown>>`
-    select id,workspace_id,workflow_id,version_number,checksum,
-           executable_json
-      from app.workflow_versions
-     where workspace_id=${claim.workspace_id}
-       and id=${claim.workflow_version_id}
-  `);
-  const published = parsePublishedWorkflowRow(version.rows[0]);
-  if (published === null)
+  const version = await transaction.db
+    .select({
+      id: workflowVersions.id,
+      workspaceId: workflowVersions.workspaceId,
+      workflowId: workflowVersions.workflowId,
+      versionNumber: workflowVersions.versionNumber,
+      checksum: workflowVersions.checksum,
+      executableJson: workflowVersions.executableJson,
+    })
+    .from(workflowVersions)
+    .where(
+      and(
+        eq(workflowVersions.workspaceId, claim.workspace_id),
+        eq(workflowVersions.id, claim.workflow_version_id),
+      ),
+    );
+  const published = version[0];
+  if (published === undefined)
     throw new ScheduleClaimLostError('Schedule is no longer eligible');
   const initial = checkpointFactory(published);
   const identity = `${claim.trigger_id}:${scheduledAt.toISOString()}`;
@@ -146,36 +170,69 @@ async function persistClaimedOccurrence(
     await transaction.db.execute(sql`release savepoint schedule_run_admission`);
   }
   // Record the occurrence once, move the schedule on and release the lease.
-  const schedule = await transaction.db.execute(sql`
-    select 1 from app.trigger_schedules
-    where trigger_id=${claim.trigger_id} and lease_token=${claim.lease_token}
-      and lease_expires_at>clock_timestamp()
-    for update`);
-  if (schedule.rows.length !== 1)
+  const schedule = await transaction.db
+    .select({ one: sql`1` })
+    .from(schedules)
+    .where(
+      and(
+        eq(schedules.triggerId, claim.trigger_id),
+        eq(schedules.leaseToken, claim.lease_token),
+        sql`${schedules.leaseExpiresAt}>clock_timestamp()`,
+      ),
+    )
+    .for('update');
+  if (schedule.length !== 1)
     throw new ScheduleClaimLostError('Schedule claim expired');
-  const recorded = await transaction.db.execute(sql`
-    insert into app.trigger_schedule_occurrences
-      (id, workspace_id, trigger_id, scheduled_at, disposition, workflow_run_id, skip_reason)
-    values (${generatePersistedId()}, ${transaction.workspaceId},
-            ${claim.trigger_id}, ${occurrence.scheduledAt}, ${disposition},
-            ${runId},${skipReason})
-    on conflict (trigger_id, scheduled_at) do nothing returning id`);
-  if (skipReason !== null && recorded.rows.length === 1)
+  const recorded = await transaction.db
+    .insert(occurrences)
+    .values({
+      id: generatePersistedId(),
+      workspaceId: transaction.workspaceId,
+      triggerId: claim.trigger_id,
+      scheduledAt: occurrence.scheduledAt,
+      disposition,
+      workflowRunId: runId,
+      skipReason,
+    })
+    .onConflictDoNothing({
+      target: [occurrences.triggerId, occurrences.scheduledAt],
+    })
+    .returning({ id: occurrences.id });
+  if (skipReason !== null && recorded.length === 1)
     await recordWorkflowTriggerSkip(transaction, claim.workflow_id, 'schedule');
-  await transaction.db.execute(sql`
-    update app.trigger_schedules
-    set last_fire_at=${occurrence.scheduledAt},
-        next_fire_at=${occurrence.nextAt},
-        lease_owner=null, lease_token=null, lease_acquired_at=null,
-        lease_expires_at=null, admission_deferred_until=null,
-        health_status='healthy', last_error_code=null,
-        updated_at=clock_timestamp()
-    where trigger_id=${claim.trigger_id} and lease_token=${claim.lease_token}`);
-  await transaction.db.execute(sql`
-    update app.workflow_triggers
-    set health_status='healthy', last_error_code=null,
-        updated_at=clock_timestamp()
-    where id=${claim.trigger_id} and workspace_id=${transaction.workspaceId}`);
+  await transaction.db
+    .update(schedules)
+    .set({
+      lastFireAt: occurrence.scheduledAt,
+      nextFireAt: occurrence.nextAt,
+      leaseOwner: null,
+      leaseToken: null,
+      leaseAcquiredAt: null,
+      leaseExpiresAt: null,
+      admissionDeferredUntil: null,
+      healthStatus: 'healthy',
+      lastErrorCode: null,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(schedules.triggerId, claim.trigger_id),
+        eq(schedules.leaseToken, claim.lease_token),
+      ),
+    );
+  await transaction.db
+    .update(workflowTriggers)
+    .set({
+      healthStatus: 'healthy',
+      lastErrorCode: null,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(workflowTriggers.id, claim.trigger_id),
+        eq(workflowTriggers.workspaceId, transaction.workspaceId),
+      ),
+    );
   return disposition;
 }
 

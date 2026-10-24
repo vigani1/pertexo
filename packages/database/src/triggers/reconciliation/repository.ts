@@ -1,12 +1,26 @@
+import { uuidSchema, safeReasonSchema } from './input.js';
+import {
+  readReconciliationEvent,
+  assertDeliveryIdentity,
+} from './identity.queries.js';
+import { and, eq, inArray, not, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  inboxReceipts,
+  transportSecurityAuditFacts,
+} from '../../schema/transport.js';
+import {
+  workflows,
+  workflowTriggers,
+} from '../../schema/authoring/workflows.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { acquireDatabasePool } from '../../platform/pool/runtime.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
 import type { Pool, PoolClient } from 'pg';
-import { z } from 'zod';
-import { sha256HexSchema as digestSchema } from '../../platform/persisted-primitives.js';
 
 import type { DatabaseConfig } from '../../config.js';
-import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
+
 import { reconcileActiveWorkflowTriggers } from './materialization.repository.js';
 import {
   WorkflowTriggerReconciliationMismatchError,
@@ -20,18 +34,6 @@ import {
   type WorkflowTriggerHealth,
 } from './health.repository.js';
 export type { WorkflowTriggerHealth } from './health.repository.js';
-
-const uuidSchema = z.uuid();
-const reconciliationPayloadSchema = z
-  .object({
-    workspaceId: z.uuid(),
-    outboxEventId: z.uuid(),
-    workflowId: z.uuid(),
-    publishedVersionId: z.uuid(),
-    traceparent: z.string().optional(),
-  })
-  .strict();
-const safeReasonSchema = z.string().regex(/^[a-z][a-z0-9_.-]{0,63}$/u);
 
 export interface WorkflowTriggerReconciliationDatabase {
   reconcile(
@@ -65,107 +67,27 @@ export {
 const reconciliationConsumerName = 'trigger-runtime.reconciliation';
 const transportChecksumMismatch = Symbol('transport-checksum-mismatch');
 
-type ReconciliationEvent = Readonly<{
-  payload: z.output<typeof reconciliationPayloadSchema>;
-  payloadChecksum: string;
-}>;
-
-async function readReconciliationEvent(
-  client: PoolClient,
-  input: Parameters<WorkflowTriggerReconciliationDatabase['reconcile']>[0],
-  identity: Readonly<{
-    outboxEventId: string;
-    versionId: string;
-    workflowId: string;
-  }>,
-): Promise<ReconciliationEvent> {
-  const event = await client.query<{
-    aggregate_id: string;
-    aggregate_type: string;
-    job_name: string;
-    payload: unknown;
-    payload_checksum: string;
-  }>(
-    `select aggregate_id,aggregate_type,job_name,payload,payload_checksum
-       from app.outbox_events where workspace_id=$1 and id=$2`,
-    [input.workspaceId, identity.outboxEventId],
-  );
-  const eventRow = event.rows[0];
-  if (eventRow === undefined)
-    throw new WorkflowTriggerReconciliationMismatchError(
-      'Reconciliation outbox event is unavailable',
-    );
-  let payload: z.output<typeof reconciliationPayloadSchema>;
-  try {
-    payload = reconciliationPayloadSchema.parse(eventRow.payload);
-  } catch {
-    throw new WorkflowTriggerReconciliationMismatchError(
-      'Reconciliation outbox payload is invalid',
-    );
-  }
-  assertStoredReconciliationIdentity(input, eventRow, payload, identity);
-  return { payload, payloadChecksum: eventRow.payload_checksum };
-}
-
-function assertStoredReconciliationIdentity(
-  input: Parameters<WorkflowTriggerReconciliationDatabase['reconcile']>[0],
-  eventRow: Readonly<{
-    aggregate_id: string;
-    aggregate_type: string;
-    job_name: string;
-    payload_checksum: string;
-  }>,
-  payload: z.output<typeof reconciliationPayloadSchema>,
-  identity: Readonly<{
-    outboxEventId: string;
-    versionId: string;
-    workflowId: string;
-  }>,
-): void {
-  const invalidDelivery =
-    eventRow.aggregate_id !== identity.workflowId ||
-    eventRow.aggregate_type !== 'workflow' ||
-    eventRow.job_name !== 'reconcile-workflow-triggers' ||
-    payload.workspaceId !== input.workspaceId ||
-    payload.workflowId !== identity.workflowId ||
-    payload.publishedVersionId !== identity.versionId ||
-    payload.outboxEventId !== identity.outboxEventId ||
-    canonicalOutboxPayloadChecksum(payload) !== eventRow.payload_checksum;
-  if (invalidDelivery)
-    throw new WorkflowTriggerReconciliationMismatchError(
-      'Reconciliation durable event identity is inconsistent',
-    );
-}
-
-function assertDeliveryIdentity(
-  delivery: NonNullable<
-    Parameters<
-      WorkflowTriggerReconciliationDatabase['reconcile']
-    >[0]['delivery']
-  >,
-  event: ReconciliationEvent,
-  outboxEventId: string,
-): boolean {
-  return (
-    uuidSchema.safeParse(delivery.outboxEventId).data === outboxEventId &&
-    digestSchema.safeParse(delivery.payloadChecksum).data ===
-      event.payloadChecksum
-  );
-}
-
 async function completeReceipt(
   client: PoolClient,
   workspaceId: string,
   outboxEventId: string,
   payloadChecksum: string,
 ): Promise<void> {
-  const result = await client.query(
-    `update app.inbox_receipts set completed_at=clock_timestamp()
-      where consumer_name=$1 and message_id=$2 and workspace_id=$3
-        and payload_checksum=$4 and completed_at is null`,
-    [reconciliationConsumerName, outboxEventId, workspaceId, payloadChecksum],
-  );
-  if (result.rowCount !== 1)
+  const result = await drizzle(client)
+    .update(inboxReceipts)
+    .set({ completedAt: sql`clock_timestamp()` })
+    .where(
+      and(
+        eq(inboxReceipts.consumerName, reconciliationConsumerName),
+        eq(inboxReceipts.messageId, outboxEventId),
+        eq(inboxReceipts.workspaceId, workspaceId),
+        eq(inboxReceipts.payloadChecksum, payloadChecksum),
+        sql`${inboxReceipts.completedAt} is null`,
+      ),
+    )
+    .returning({ id: inboxReceipts.messageId })
+    .catch(rethrowQueryFailure);
+  if (result.length !== 1)
     throw new WorkflowTriggerReconciliationMismatchError(
       'Reconciliation inbox receipt completion was lost',
     );
@@ -215,50 +137,30 @@ async function reconcileWorkflowTriggers(
         return transportChecksumMismatch;
 
       if (input.delivery !== undefined) {
-        const inserted = await client.query(
-          `insert into app.inbox_receipts
-                 (consumer_name,message_id,workspace_id,payload_checksum)
-               values($1,$2,$3,$4) on conflict(consumer_name,message_id) do nothing
-               returning message_id`,
-          [
-            reconciliationConsumerName,
-            outboxEventId,
-            input.workspaceId,
-            verifiedEvent.payloadChecksum,
-          ],
+        const receipt = await claimReconciliationReceipt(
+          client,
+          input.workspaceId,
+          outboxEventId,
+          verifiedEvent.payloadChecksum,
         );
-        if (inserted.rowCount !== 1) {
-          const existing = await client.query<{
-            completed_at: Date | null;
-            payload_checksum: string;
-            workspace_id: string;
-          }>(
-            `select workspace_id,payload_checksum,completed_at from app.inbox_receipts
-                  where consumer_name=$1 and message_id=$2 for update`,
-            [reconciliationConsumerName, outboxEventId],
-          );
-          const receipt = existing.rows[0];
-          if (
-            receipt?.workspace_id !== input.workspaceId ||
-            receipt.completed_at === null
-          )
-            throw new WorkflowTriggerReconciliationMismatchError(
-              'Reconciliation inbox receipt is inconsistent',
-            );
-          if (receipt.payload_checksum !== verifiedEvent.payloadChecksum)
-            return transportChecksumMismatch;
-          return { kind: 'duplicate' as const };
-        }
+        if (receipt === 'checksum_mismatch') return transportChecksumMismatch;
+        if (receipt === 'duplicate') return { kind: 'duplicate' as const };
       }
 
-      const authority = await client.query<{ lifecycle_status: string }>(
-        `select lifecycle_status from app.workflows workflow
-              where workflow.workspace_id=$1 and workflow.id=$2
-                and workflow.published_version_id=$3
-              for update`,
-        [input.workspaceId, workflowId, versionId],
-      );
-      if (authority.rowCount !== 1) {
+      const db = drizzle(client);
+      const authority = await db
+        .select({ lifecycleStatus: workflows.lifecycleStatus })
+        .from(workflows)
+        .where(
+          and(
+            eq(workflows.workspaceId, input.workspaceId),
+            eq(workflows.id, workflowId),
+            eq(workflows.publishedVersionId, versionId),
+          ),
+        )
+        .for('update')
+        .catch(rethrowQueryFailure);
+      if (authority.length !== 1) {
         if (input.delivery !== undefined)
           await completeReceipt(
             client,
@@ -269,7 +171,7 @@ async function reconcileWorkflowTriggers(
         return { kind: 'stale' as const };
       }
 
-      if (authority.rows[0]?.lifecycle_status === 'archived') {
+      if (authority[0]?.lifecycleStatus === 'archived') {
         await deactivateArchivedWorkflowTriggers(
           client,
           input.workspaceId,
@@ -299,16 +201,10 @@ async function reconcileWorkflowTriggers(
       pool,
       { workspaceId: uuidSchema.parse(input.workspaceId) },
       async (client) => {
-        await client.query(
-          `insert into app.transport_security_audit_facts (
-                 id,workspace_id,fact_type,consumer_name,message_id
-               ) values ($1,$2,'inbox_checksum_mismatch',$3,$4)`,
-          [
-            generatePersistedId(),
-            input.workspaceId,
-            reconciliationConsumerName,
-            input.outboxEventId,
-          ],
+        await recordTransportMismatch(
+          client,
+          input.workspaceId,
+          input.outboxEventId,
         );
       },
     );
@@ -335,24 +231,102 @@ async function recordTriggerReconciliationFailure(
       const workflowId = uuidSchema.parse(input.workflowId);
       const versionId = uuidSchema.parse(input.publishedVersionId);
       const reason = safeReasonSchema.parse(input.reason);
-      const authority = await client.query(
-        `select id from app.workflows where workspace_id=$1 and id=$2
-              and published_version_id=$3 for update`,
-        [input.workspaceId, workflowId, versionId],
-      );
-      if (authority.rowCount !== 1) return;
-      await client.query(
-        `update app.workflow_triggers trigger
-                set status='error',health_status='unhealthy',last_error_code=$4,
-                    reconciled_at=clock_timestamp(),updated_at=clock_timestamp()
-              where trigger.workspace_id=$1 and trigger.workflow_id=$2
-                and trigger.workflow_version_id=$3
-                and trigger.status not in ('active','disabled')`,
-        [input.workspaceId, workflowId, versionId, reason],
-      );
+      const db = drizzle(client);
+      const authority = await db
+        .select({ id: workflows.id })
+        .from(workflows)
+        .where(
+          and(
+            eq(workflows.workspaceId, input.workspaceId),
+            eq(workflows.id, workflowId),
+            eq(workflows.publishedVersionId, versionId),
+          ),
+        )
+        .for('update')
+        .catch(rethrowQueryFailure);
+      if (authority.length !== 1) return;
+      await db
+        .update(workflowTriggers)
+        .set({
+          status: 'error',
+          healthStatus: 'unhealthy',
+          lastErrorCode: reason,
+          reconciledAt: sql`clock_timestamp()`,
+          updatedAt: sql`clock_timestamp()`,
+        })
+        .where(
+          and(
+            eq(workflowTriggers.workspaceId, input.workspaceId),
+            eq(workflowTriggers.workflowId, workflowId),
+            eq(workflowTriggers.workflowVersionId, versionId),
+            not(inArray(workflowTriggers.status, ['active', 'disabled'])),
+          ),
+        )
+        .catch(rethrowQueryFailure);
       await refreshWorkflowActivation(client, input.workspaceId, workflowId, {
         failed: true,
       });
     },
   );
+}
+async function claimReconciliationReceipt(
+  client: PoolClient,
+  workspaceId: string,
+  outboxEventId: string,
+  payloadChecksum: string,
+) {
+  const db = drizzle(client);
+  const inserted = await db
+    .insert(inboxReceipts)
+    .values({
+      consumerName: reconciliationConsumerName,
+      messageId: outboxEventId,
+      workspaceId,
+      payloadChecksum,
+    })
+    .onConflictDoNothing({
+      target: [inboxReceipts.consumerName, inboxReceipts.messageId],
+    })
+    .returning({ id: inboxReceipts.messageId })
+    .catch(rethrowQueryFailure);
+  if (inserted.length === 1) return 'claimed';
+  const existing = await db
+    .select({
+      workspaceId: inboxReceipts.workspaceId,
+      payloadChecksum: inboxReceipts.payloadChecksum,
+      completedAt: inboxReceipts.completedAt,
+    })
+    .from(inboxReceipts)
+    .where(
+      and(
+        eq(inboxReceipts.consumerName, reconciliationConsumerName),
+        eq(inboxReceipts.messageId, outboxEventId),
+      ),
+    )
+    .for('update')
+    .catch(rethrowQueryFailure);
+  const receipt = existing[0];
+  if (receipt?.workspaceId !== workspaceId || receipt.completedAt === null)
+    throw new WorkflowTriggerReconciliationMismatchError(
+      'Reconciliation inbox receipt is inconsistent',
+    );
+  return receipt.payloadChecksum === payloadChecksum
+    ? 'duplicate'
+    : 'checksum_mismatch';
+}
+async function recordTransportMismatch(
+  client: PoolClient,
+  workspaceId: string,
+  messageId: string,
+): Promise<void> {
+  await drizzle(client)
+    .insert(transportSecurityAuditFacts)
+    .values({
+      id: generatePersistedId(),
+      workspaceId,
+      factType: 'inbox_checksum_mismatch',
+      consumerName: reconciliationConsumerName,
+      messageId,
+    })
+    .catch(rethrowQueryFailure);
 }

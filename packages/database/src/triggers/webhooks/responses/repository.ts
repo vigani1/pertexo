@@ -1,4 +1,14 @@
-import type { Pool } from 'pg';
+import { and, eq, exists, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { webhookRunResponses as responses } from '../../../schema/triggers/responses.js';
+import {
+  workflowRuns,
+  nodeAttempts,
+  nodeRuns,
+} from '../../../schema/runs/execution.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import type { Pool, PoolClient } from 'pg';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
@@ -29,58 +39,69 @@ function writeWebhookResponse(
     input.signal,
     async (client) => {
       // Run → node/attempt → response is also completion's lock order.
-      const run = await client.query<{ status: string }>(
-        `select status from app.workflow_runs where workspace_id=$1 and id=$2 for update`,
-        [input.workspaceId, input.runId],
-      );
+      const db = drizzle(client);
+      const run = await db
+        .select({ status: workflowRuns.status })
+        .from(workflowRuns)
+        .where(
+          and(
+            eq(workflowRuns.workspaceId, input.workspaceId),
+            eq(workflowRuns.id, input.runId),
+          ),
+        )
+        .for('update')
+        .catch(rethrowQueryFailure);
       if (
-        run.rows[0] === undefined ||
-        !['running', 'waiting'].includes(run.rows[0].status)
+        run[0] === undefined ||
+        !['running', 'waiting'].includes(run[0].status)
       )
         throw new NodeAttemptReconciliationRequiredError();
-      const attempt = await client.query<{ id: string }>(
-        `select attempt.id
-      from app.node_attempts attempt join app.node_runs node on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id
-      where attempt.workspace_id=$1 and attempt.id=$2 and attempt.node_run_id=$3 and attempt.attempt_number=$4
-        and node.workflow_run_id=$5 and node.node_id=$6 and node.invocation_key=$7
-      for update of node,attempt`,
-        [
-          input.workspaceId,
-          input.attemptId,
-          input.nodeRunId,
-          input.attemptNumber,
-          input.runId,
-          input.nodeId,
-          input.invocationKey,
-        ],
-      );
-      if (attempt.rows[0] === undefined)
+      const attemptRecord = alias(nodeAttempts, 'attempt');
+      const node = alias(nodeRuns, 'node');
+      const attempt = await db
+        .select({ id: attemptRecord.id })
+        .from(attemptRecord)
+        .innerJoin(
+          node,
+          and(
+            eq(node.workspaceId, attemptRecord.workspaceId),
+            eq(node.id, attemptRecord.nodeRunId),
+          ),
+        )
+        .where(
+          and(
+            eq(attemptRecord.workspaceId, input.workspaceId),
+            eq(attemptRecord.id, input.attemptId),
+            eq(attemptRecord.nodeRunId, input.nodeRunId),
+            eq(attemptRecord.attemptNumber, input.attemptNumber),
+            eq(node.workflowRunId, input.runId),
+            eq(node.nodeId, input.nodeId),
+            eq(node.invocationKey, input.invocationKey),
+          ),
+        )
+        .for('update', { of: [node, attemptRecord] })
+        .catch(rethrowQueryFailure);
+      if (attempt[0] === undefined)
         throw new NodeAttemptReconciliationRequiredError();
-      const current = await client.query<{
-        node_run_id: string | null;
-        invocation_key: string | null;
-        status_code: number | null;
-      }>(
-        `select node_run_id,invocation_key,status_code from app.webhook_run_responses where workspace_id=$1 and run_id=$2 for update`,
-        [input.workspaceId, input.runId],
-      );
+      const current = await db
+        .select({
+          node_run_id: responses.nodeRunId,
+          invocation_key: responses.invocationKey,
+          status_code: responses.statusCode,
+        })
+        .from(responses)
+        .where(
+          and(
+            eq(responses.workspaceId, input.workspaceId),
+            eq(responses.runId, input.runId),
+          ),
+        )
+        .for('update')
+        .catch(rethrowQueryFailure);
       // Evaluate time after every lock wait, not in the locking SELECT's snapshot.
-      const fence = await client.query<{ valid: boolean }>(
-        `select (attempt.status='running' and attempt.lease_owner=$4 and attempt.fence_token=$5 and attempt.lease_expires_at>clock_timestamp() and attempt.dispatch_marked_at is not null and node.current_attempt_id=attempt.id and run.cancel_requested_at is null and (run.deadline_at is null or run.deadline_at>clock_timestamp())) valid
-      from app.node_attempts attempt join app.node_runs node on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id
-      join app.workflow_runs run on run.workspace_id=node.workspace_id and run.id=node.workflow_run_id
-      where attempt.workspace_id=$1 and attempt.id=$2 and run.id=$3`,
-        [
-          input.workspaceId,
-          input.attemptId,
-          input.runId,
-          input.workerId,
-          input.fenceToken,
-        ],
-      );
-      if (!(fence.rows[0]?.valid ?? false))
+      if (!(await responseAttemptIsLive(client, input)))
         throw new NodeAttemptReconciliationRequiredError();
-      const row = current.rows[0];
+      const row = current[0];
       if (row === undefined)
         return { outcome: 'not_waiting', statusCode: null };
       if (row.status_code !== null)
@@ -93,25 +114,91 @@ function writeWebhookResponse(
           statusCode: row.status_code,
         };
       const response = input.response;
-      const written = await client.query(
-        `update app.webhook_run_responses response set status_code=$3,content_type=$4,headers=$5::jsonb,body=$6,node_run_id=$7,invocation_key=$8,responded_at=clock_timestamp() where workspace_id=$1 and run_id=$2
-          and exists(select 1 from app.node_attempts attempt where attempt.workspace_id=$1 and attempt.id=$9 and attempt.lease_expires_at>clock_timestamp())
-          and exists(select 1 from app.workflow_runs run where run.workspace_id=$1 and run.id=$2 and (run.deadline_at is null or run.deadline_at>clock_timestamp()))`,
-        [
-          input.workspaceId,
-          input.runId,
-          response.statusCode,
-          response.contentType,
-          JSON.stringify(response.headers),
-          response.body,
-          input.nodeRunId,
-          input.invocationKey,
-          input.attemptId,
-        ],
-      );
-      if (written.rowCount !== 1)
+      const liveAttempt = db
+        .select({ one: sql`1` })
+        .from(nodeAttempts)
+        .where(
+          and(
+            eq(nodeAttempts.workspaceId, input.workspaceId),
+            eq(nodeAttempts.id, input.attemptId),
+            sql`${nodeAttempts.leaseExpiresAt}>clock_timestamp()`,
+          ),
+        );
+      const liveRun = db
+        .select({ one: sql`1` })
+        .from(workflowRuns)
+        .where(
+          and(
+            eq(workflowRuns.workspaceId, input.workspaceId),
+            eq(workflowRuns.id, input.runId),
+            sql`(${workflowRuns.deadlineAt} is null or ${workflowRuns.deadlineAt}>clock_timestamp())`,
+          ),
+        );
+      const written = await db
+        .update(responses)
+        .set({
+          statusCode: response.statusCode,
+          contentType: response.contentType,
+          headers: response.headers,
+          body: response.body,
+          nodeRunId: input.nodeRunId,
+          invocationKey: input.invocationKey,
+          respondedAt: sql`clock_timestamp()`,
+        })
+        .where(
+          and(
+            eq(responses.workspaceId, input.workspaceId),
+            eq(responses.runId, input.runId),
+            exists(liveAttempt),
+            exists(liveRun),
+          ),
+        )
+        .returning({ id: responses.runId })
+        .catch(rethrowQueryFailure);
+      if (written.length !== 1)
         throw new NodeAttemptReconciliationRequiredError();
       return { outcome: 'responded', statusCode: response.statusCode };
     },
   );
+}
+
+async function responseAttemptIsLive(
+  client: PoolClient,
+  input: WriteWebhookResponse,
+): Promise<boolean> {
+  const db = drizzle(client);
+  const fence = await db
+    .select({
+      valid: sql<
+        boolean | null
+      >`(${nodeAttempts.status}='running' and ${nodeAttempts.leaseOwner}=${input.workerId}
+        and ${nodeAttempts.fenceToken}=${input.fenceToken} and ${nodeAttempts.leaseExpiresAt}>clock_timestamp() and ${nodeAttempts.dispatchMarkedAt} is not null
+        and ${nodeRuns.currentAttemptId}=${nodeAttempts.id} and ${workflowRuns.cancelRequestedAt} is null
+        and (${workflowRuns.deadlineAt} is null or ${workflowRuns.deadlineAt}>clock_timestamp()))`,
+    })
+    .from(nodeAttempts)
+    .innerJoin(
+      nodeRuns,
+      and(
+        eq(nodeRuns.workspaceId, nodeAttempts.workspaceId),
+        eq(nodeRuns.id, nodeAttempts.nodeRunId),
+      ),
+    )
+    .innerJoin(
+      workflowRuns,
+      and(
+        eq(workflowRuns.workspaceId, nodeRuns.workspaceId),
+        eq(workflowRuns.id, nodeRuns.workflowRunId),
+      ),
+    )
+    .where(
+      and(
+        eq(nodeAttempts.workspaceId, input.workspaceId),
+        eq(nodeAttempts.id, input.attemptId),
+        eq(workflowRuns.id, input.runId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+
+  return fence[0]?.valid ?? false;
 }

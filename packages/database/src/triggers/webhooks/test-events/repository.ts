@@ -1,4 +1,7 @@
-import type { WebhookAuthentication } from '@pertexo/contracts';
+import { and, eq, getTableColumns, isNull, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { webhookTestEvents as listeners } from '../../../schema/triggers/test-events.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { appendAuditFact } from '../../../governance/audit/events.repository.js';
 import type { Pool, PoolClient } from 'pg';
 
@@ -20,32 +23,17 @@ import {
   type WebhookTestEventStore,
 } from './contract.js';
 
-interface Row {
-  id: string;
-  workspace_id: string;
-  workflow_id: string;
-  node_id: string;
-  created_by: string;
-  endpoint_key_hash: string;
-  binding: string;
-  authentication: WebhookAuthentication;
-  kms_key_reference: string;
-  encrypted_data_key: string;
-  ciphertext: string;
-  nonce: string;
-  auth_tag: string;
-  output_ref: string | null;
-  expires_at: Date;
-  expired: boolean;
-  database_time: Date;
-}
-const columns =
-  '*,expires_at<=clock_timestamp() expired,clock_timestamp() database_time';
+const selection = {
+  ...getTableColumns(listeners),
+  expired: sql<boolean>`${listeners.expiresAt}<=clock_timestamp()`,
+  databaseTime: sql<Date>`clock_timestamp()`.mapWith(listeners.createdAt),
+};
+type Row = NonNullable<Awaited<ReturnType<typeof find>>>;
 const scopeOf = (r: Row): TestEventScope => ({
-  workspaceId: r.workspace_id,
-  workflowId: r.workflow_id,
-  nodeId: r.node_id,
-  actorId: r.created_by,
+  workspaceId: r.workspaceId,
+  workflowId: r.workflowId,
+  nodeId: r.nodeId,
+  actorId: r.createdBy,
 });
 
 export function createWebhookTestEventStore(
@@ -79,12 +67,21 @@ function transact<T>(
   );
 }
 async function find(client: PoolClient, scope: TestEventScope, id: string) {
-  return (
-    await client.query<Row>(
-      `select ${columns} from app.webhook_test_events where workspace_id=$1 and workflow_id=$2 and node_id=$3 and created_by=$4 and id=$5 for update`,
-      [scope.workspaceId, scope.workflowId, scope.nodeId, scope.actorId, id],
+  const result = await drizzle(client)
+    .select(selection)
+    .from(listeners)
+    .where(
+      and(
+        eq(listeners.workspaceId, scope.workspaceId),
+        eq(listeners.workflowId, scope.workflowId),
+        eq(listeners.nodeId, scope.nodeId),
+        eq(listeners.createdBy, scope.actorId),
+        eq(listeners.id, id),
+      ),
     )
-  ).rows[0];
+    .for('update')
+    .catch(rethrowQueryFailure);
+  return result[0];
 }
 function startTestEventListener(
   pool: Pool,
@@ -94,39 +91,50 @@ function startTestEventListener(
     const draft = await testEventDraft(client, input);
     if (draft.revision !== input.expectedDraftRevision)
       throw new WebhookTestEventError('changed');
-    await client.query('select pg_advisory_xact_lock(hashtextextended($1,0))', [
-      `webhook-test-events:${input.workspaceId}`,
-    ]);
-    await client.query(
-      'delete from app.webhook_test_events where workspace_id=$1 and (workflow_id=$2 or expires_at<=clock_timestamp())',
-      [input.workspaceId, input.workflowId],
-    );
-    const quota = await client.query<{ count: string }>(
-      'select count(*)::text count from app.webhook_test_events where workspace_id=$1',
-      [input.workspaceId],
-    );
-    if (Number(quota.rows[0]?.count) >= 10)
+    const db = drizzle(client);
+    await db
+      .execute(
+        sql`select pg_advisory_xact_lock(hashtextextended(${`webhook-test-events:${input.workspaceId}`},0))`,
+      )
+      .catch(rethrowQueryFailure);
+    await db
+      .delete(listeners)
+      .where(
+        and(
+          eq(listeners.workspaceId, input.workspaceId),
+          sql`(${listeners.workflowId}=${input.workflowId} or ${listeners.expiresAt}<=clock_timestamp())`,
+        ),
+      )
+      .catch(rethrowQueryFailure);
+    const quota = await db
+      .select({ count: sql<string>`count(*)::text` })
+      .from(listeners)
+      .where(eq(listeners.workspaceId, input.workspaceId))
+      .catch(rethrowQueryFailure);
+    if (Number(quota[0]?.count) >= 10)
       throw new WebhookTestEventError('limit_reached');
     const s = input.secret;
-    const result = await client.query<{ expires_at: Date }>(
-      `insert into app.webhook_test_events(id,workspace_id,workflow_id,node_id,created_by,endpoint_key_hash,binding,authentication,kms_key_reference,encrypted_data_key,ciphertext,nonce,auth_tag,expires_at) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,clock_timestamp()+interval '120 seconds') returning expires_at`,
-      [
-        input.id,
-        input.workspaceId,
-        input.workflowId,
-        input.nodeId,
-        input.actorId,
-        input.endpointKeyHash,
-        draft.binding,
-        JSON.stringify(input.authentication),
-        s.kmsKeyReference,
-        s.encryptedDataKey,
-        s.ciphertext,
-        s.nonce,
-        s.authTag,
-      ],
-    );
-    const row = result.rows[0];
+    const result = await db
+      .insert(listeners)
+      .values({
+        id: input.id,
+        workspaceId: input.workspaceId,
+        workflowId: input.workflowId,
+        nodeId: input.nodeId,
+        createdBy: input.actorId,
+        endpointKeyHash: input.endpointKeyHash,
+        binding: draft.binding,
+        authentication: input.authentication,
+        kmsKeyReference: s.kmsKeyReference,
+        encryptedDataKey: s.encryptedDataKey,
+        ciphertext: s.ciphertext,
+        nonce: s.nonce,
+        authTag: s.authTag,
+        expiresAt: sql`clock_timestamp()+interval '120 seconds'`,
+      })
+      .returning({ expiresAt: listeners.expiresAt })
+      .catch(rethrowQueryFailure);
+    const row = result[0];
     if (row === undefined) throw new Error('Test listener was not created');
     await appendAuditFact(client, {
       workspaceId: input.workspaceId,
@@ -139,7 +147,7 @@ function startTestEventListener(
         authenticationMode: input.authentication.mode,
       },
     });
-    return { expiresAt: row.expires_at.toISOString() };
+    return { expiresAt: row.expiresAt.toISOString() };
   });
 }
 
@@ -155,16 +163,16 @@ function readTestEventListener(
     if (row.binding !== draft.binding)
       return {
         state: 'changed',
-        expiresAt: row.expires_at.toISOString(),
+        expiresAt: row.expiresAt.toISOString(),
         output: null,
       };
     return {
-      state: row.output_ref === null ? 'waiting' : 'captured',
-      expiresAt: row.expires_at.toISOString(),
+      state: row.outputRef === null ? 'waiting' : 'captured',
+      expiresAt: row.expiresAt.toISOString(),
       output:
-        row.output_ref === null
+        row.outputRef === null
           ? null
-          : parseStoredExecutionValue(row.output_ref),
+          : parseStoredExecutionValue(row.outputRef),
     };
   });
 }
@@ -175,16 +183,18 @@ function stopTestEventListener(
 ): ReturnType<WebhookTestEventStore['stop']> {
   return transact(pool, input, async (client) => {
     await testEventDraft(client, input);
-    await client.query(
-      'delete from app.webhook_test_events where workspace_id=$1 and workflow_id=$2 and node_id=$3 and created_by=$4 and id=$5',
-      [
-        input.workspaceId,
-        input.workflowId,
-        input.nodeId,
-        input.actorId,
-        input.id,
-      ],
-    );
+    await drizzle(client)
+      .delete(listeners)
+      .where(
+        and(
+          eq(listeners.workspaceId, input.workspaceId),
+          eq(listeners.workflowId, input.workflowId),
+          eq(listeners.nodeId, input.nodeId),
+          eq(listeners.createdBy, input.actorId),
+          eq(listeners.id, input.id),
+        ),
+      )
+      .catch(rethrowQueryFailure);
   });
 }
 
@@ -192,10 +202,11 @@ async function resolveTestEventListener(
   pool: Pool,
   hash: Parameters<WebhookTestEventStore['resolve']>[0],
 ): ReturnType<WebhookTestEventStore['resolve']> {
-  const resolution = await pool.query<{
-    workspace_id: string;
-    id: string;
-  }>('select * from app.resolve_webhook_test_event($1::char(64))', [hash]);
+  const resolution = await drizzle(pool)
+    .execute<{ workspace_id: string; id: string }>(
+      sql`select * from app.resolve_webhook_test_event(${hash}::char(64))`,
+    )
+    .catch(rethrowQueryFailure);
   const resolved = resolution.rows[0];
   if (resolved === undefined) return null;
   try {
@@ -203,34 +214,41 @@ async function resolveTestEventListener(
       pool,
       { workspaceId: resolved.workspace_id },
       async (client) => {
-        const row = (
-          await client.query<Row>(
-            `select ${columns} from app.webhook_test_events where workspace_id=$1 and id=$2 and endpoint_key_hash=$3 and output_ref is null`,
-            [resolved.workspace_id, resolved.id, hash],
+        const result = await drizzle(client)
+          .select(selection)
+          .from(listeners)
+          .where(
+            and(
+              eq(listeners.workspaceId, resolved.workspace_id),
+              eq(listeners.id, resolved.id),
+              eq(listeners.endpointKeyHash, hash),
+              isNull(listeners.outputRef),
+            ),
           )
-        ).rows[0];
+          .catch(rethrowQueryFailure);
+        const row = result[0];
         if (row === undefined || row.expired) return null;
         const draft = await testEventDraft(client, scopeOf(row));
         if (draft.binding !== row.binding) return null;
         return {
           endpointId: row.id,
           endpointKeyHash: hash,
-          workspaceId: row.workspace_id,
+          workspaceId: row.workspaceId,
           triggerId: row.id,
-          workflowId: row.workflow_id,
-          nodeId: row.node_id,
-          databaseTime: row.database_time,
+          workflowId: row.workflowId,
+          nodeId: row.nodeId,
+          databaseTime: row.databaseTime,
           authentication: row.authentication,
           ...(draft.config.runInput === undefined
             ? {}
             : { runInputMode: draft.config.runInput }),
           currentSecret: {
             id: row.id,
-            kmsKeyReference: row.kms_key_reference,
-            encryptedDataKey: row.encrypted_data_key,
+            kmsKeyReference: row.kmsKeyReference,
+            encryptedDataKey: row.encryptedDataKey,
             ciphertext: row.ciphertext,
             nonce: row.nonce,
-            authTag: row.auth_tag,
+            authTag: row.authTag,
           },
         };
       },
@@ -253,22 +271,41 @@ async function consumeTestEventLimit(
     pool,
     { workspaceId: reference.workspaceId },
     (client) =>
-      client.query(
-        `update app.webhook_test_events set attempts=attempts+1 where workspace_id=$1 and id=$2 and attempts<60 and expires_at>clock_timestamp() and output_ref is null returning id`,
-        [reference.workspaceId, reference.endpointId],
-      ),
+      drizzle(client)
+        .update(listeners)
+        .set({ attempts: sql`${listeners.attempts}+1` })
+        .where(
+          and(
+            eq(listeners.workspaceId, reference.workspaceId),
+            eq(listeners.id, reference.endpointId),
+            sql`${listeners.attempts}<60`,
+            sql`${listeners.expiresAt}>clock_timestamp()`,
+            isNull(listeners.outputRef),
+          ),
+        )
+        .returning({ id: listeners.id })
+        .catch(rethrowQueryFailure),
   );
-  if (allowed.rowCount !== 1) {
+  if (allowed.length !== 1) {
     const limited = await withTenantScopedClient(
       pool,
       { workspaceId: reference.workspaceId },
       (client) =>
-        client.query(
-          'select 1 from app.webhook_test_events where workspace_id=$1 and id=$2 and attempts>=60 and expires_at>clock_timestamp() and output_ref is null',
-          [reference.workspaceId, reference.endpointId],
-        ),
+        drizzle(client)
+          .select({ one: sql`1` })
+          .from(listeners)
+          .where(
+            and(
+              eq(listeners.workspaceId, reference.workspaceId),
+              eq(listeners.id, reference.endpointId),
+              sql`${listeners.attempts}>=60`,
+              sql`${listeners.expiresAt}>clock_timestamp()`,
+              isNull(listeners.outputRef),
+            ),
+          )
+          .catch(rethrowQueryFailure),
     );
-    if (limited.rowCount === 1)
+    if (limited.length === 1)
       throw new WebhookIngressRateLimitExceededError(60);
     throw new WebhookTestEventError('unavailable');
   }
@@ -284,12 +321,17 @@ async function captureTestEvent(
     { workspaceId: reference.workspaceId },
     async (client) => {
       // Read authority before the row lock, matching management's lock order.
-      const candidate = (
-        await client.query<Row>(
-          `select ${columns} from app.webhook_test_events where workspace_id=$1 and id=$2`,
-          [reference.workspaceId, reference.endpointId],
+      const result = await drizzle(client)
+        .select(selection)
+        .from(listeners)
+        .where(
+          and(
+            eq(listeners.workspaceId, reference.workspaceId),
+            eq(listeners.id, reference.endpointId),
+          ),
         )
-      ).rows[0];
+        .catch(rethrowQueryFailure);
+      const candidate = result[0];
       if (candidate === undefined) return false;
       let draft;
       try {
@@ -306,7 +348,7 @@ async function captureTestEvent(
       const listenerUnavailable =
         row === undefined ||
         row.expired ||
-        row.output_ref !== null ||
+        row.outputRef !== null ||
         row.binding !== draft.binding;
       if (listenerUnavailable) return false;
       let output;
@@ -320,10 +362,20 @@ async function captureTestEvent(
           throw new WebhookTestEventError('value_invalid');
         throw error;
       }
-      await client.query(
-        `update app.webhook_test_events set output_ref=$3,received_at=clock_timestamp(),expires_at=clock_timestamp()+interval '10 minutes' where workspace_id=$1 and id=$2`,
-        [reference.workspaceId, reference.endpointId, output],
-      );
+      await drizzle(client)
+        .update(listeners)
+        .set({
+          outputRef: output,
+          receivedAt: sql`clock_timestamp()`,
+          expiresAt: sql`clock_timestamp()+interval '10 minutes'`,
+        })
+        .where(
+          and(
+            eq(listeners.workspaceId, reference.workspaceId),
+            eq(listeners.id, reference.endpointId),
+          ),
+        )
+        .catch(rethrowQueryFailure);
       return true;
     },
   );

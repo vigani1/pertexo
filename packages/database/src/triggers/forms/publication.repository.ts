@@ -1,8 +1,12 @@
-import type { PoolClient } from 'pg';
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workflowForms } from '../../schema/triggers/forms.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import type { Client, PoolClient } from 'pg';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 /** Publication cannot silently transfer a public grant to a replacement entry. */
 export async function revokeRemovedFormAccess(
-  client: Pick<PoolClient, 'query'>,
+  client: Client | PoolClient,
   workspaceId: string,
   workflowId: string,
   graph: WorkflowGraph,
@@ -13,9 +17,21 @@ export async function revokeRemovedFormAccess(
       node.definition.version === 1 &&
       !(node.disabled ?? false),
   );
-  await client.query(
-    `update app.workflow_forms set access='members',capability_hash=null,revision=revision+1,updated_at=clock_timestamp()
-    where workspace_id=$1 and workflow_id=$2 and access='public' and node_id is distinct from $3::varchar`,
-    [workspaceId, workflowId, entry?.id ?? null],
-  );
+  await drizzle(client)
+    .update(workflowForms)
+    .set({
+      access: 'members',
+      capabilityHash: null,
+      revision: sql`${workflowForms.revision}+1`,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(workflowForms.workspaceId, workspaceId),
+        eq(workflowForms.workflowId, workflowId),
+        eq(workflowForms.access, 'public'),
+        sql`${workflowForms.nodeId} is distinct from ${entry?.id ?? null}::varchar`,
+      ),
+    )
+    .catch(rethrowQueryFailure);
 }

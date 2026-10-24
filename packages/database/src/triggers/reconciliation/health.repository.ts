@@ -1,11 +1,16 @@
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  workflows,
+  workflowTriggers,
+} from '../../schema/authoring/workflows.js';
+import { webhookTriggerEndpoints as endpoints } from '../../schema/triggers/endpoints.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { WebhookAuthentication } from '@pertexo/contracts';
 import type { PoolClient } from 'pg';
-import { z } from 'zod';
 import {
   workflowActivationAfterReconciliation,
-  workflowLifecycleStatusSchema,
   type WorkflowTriggerStatus,
-  workflowTriggerStatusSchema,
 } from '@pertexo/workflow-model';
 
 export type WorkflowTriggerHealth = Readonly<{
@@ -22,77 +27,53 @@ export type WorkflowTriggerHealth = Readonly<{
   reconciledAt: Date | null;
 }>;
 
-function mapHealth(
-  row: Record<string, unknown> & {
-    authentication: WebhookAuthentication | null;
-  },
-): WorkflowTriggerHealth {
-  return Object.freeze({
-    id: z.uuid().parse(row.id),
-    workflowId: z.uuid().parse(row.workflow_id),
-    workflowVersionId: z.uuid().parse(row.workflow_version_id),
-    nodeId: z.string().parse(row.node_id),
-    kind: z.enum(['webhook', 'schedule']).parse(row.kind),
-    status: workflowTriggerStatusSchema.parse(row.status),
-    healthStatus: z
-      .enum(['pending', 'healthy', 'degraded', 'unhealthy', 'disabled'])
-      .parse(row.health_status),
-    lastErrorCode: z.string().nullable().parse(row.last_error_code),
-    endpointReady: z.boolean().parse(row.endpoint_ready),
-    ...(row.kind === 'webhook'
-      ? {
-          authentication:
-            row.authentication ??
-            ({
-              mode: 'signed',
-              allowedOrigins: [],
-            } satisfies WebhookAuthentication),
-        }
-      : {}),
-    reconciledAt: z.date().nullable().parse(row.reconciled_at),
-  });
-}
-
 export async function refreshWorkflowActivation(
   client: PoolClient,
   workspaceId: string,
   workflowId: string,
   { failed = false }: Readonly<{ failed?: boolean | undefined }> = {},
 ): Promise<void> {
-  const authority = await client.query<{
-    lifecycle_status: unknown;
-    published_version_id: unknown;
-  }>(
-    `select lifecycle_status,published_version_id from app.workflows
-      where workspace_id=$1 and id=$2 for update`,
-    [workspaceId, workflowId],
-  );
-  const workflow = authority.rows[0];
+  const db = drizzle(client);
+  const authority = await db
+    .select({
+      lifecycleStatus: workflows.lifecycleStatus,
+      publishedVersionId: workflows.publishedVersionId,
+    })
+    .from(workflows)
+    .where(
+      and(eq(workflows.workspaceId, workspaceId), eq(workflows.id, workflowId)),
+    )
+    .for('update')
+    .catch(rethrowQueryFailure);
+  const workflow = authority[0];
   if (workflow === undefined) return;
-  const publishedVersionId = z
-    .uuid()
-    .nullable()
-    .parse(workflow.published_version_id);
-  const triggers = await client.query<{ status: unknown }>(
-    `select status from app.workflow_triggers
-      where workspace_id=$1 and workflow_id=$2 and workflow_version_id=$3`,
-    [workspaceId, workflowId, publishedVersionId],
-  );
+  const triggers = await db
+    .select({ status: workflowTriggers.status })
+    .from(workflowTriggers)
+    .where(
+      and(
+        eq(workflowTriggers.workspaceId, workspaceId),
+        eq(workflowTriggers.workflowId, workflowId),
+        eq(
+          workflowTriggers.workflowVersionId,
+          sql`${workflow.publishedVersionId}`,
+        ),
+      ),
+    )
+    .catch(rethrowQueryFailure);
   const activation = workflowActivationAfterReconciliation({
-    lifecycleStatus: workflowLifecycleStatusSchema.parse(
-      workflow.lifecycle_status,
-    ),
-    hasPublishedVersion: publishedVersionId !== null,
-    triggerStatuses: triggers.rows.map(({ status }) =>
-      workflowTriggerStatusSchema.parse(status),
-    ),
+    lifecycleStatus: workflow.lifecycleStatus,
+    hasPublishedVersion: workflow.publishedVersionId !== null,
+    triggerStatuses: triggers.map(({ status }) => status),
     failed,
   });
-  await client.query(
-    `update app.workflows set activation_status=$3,updated_at=clock_timestamp()
-      where workspace_id=$1 and id=$2`,
-    [workspaceId, workflowId, activation],
-  );
+  await db
+    .update(workflows)
+    .set({ activationStatus: activation, updatedAt: sql`clock_timestamp()` })
+    .where(
+      and(eq(workflows.workspaceId, workspaceId), eq(workflows.id, workflowId)),
+    )
+    .catch(rethrowQueryFailure);
 }
 
 export async function readHealth(
@@ -100,22 +81,59 @@ export async function readHealth(
   workspaceId: string,
   workflowId: string,
 ): Promise<readonly WorkflowTriggerHealth[]> {
-  const result = await client.query<
-    Record<string, unknown> & { authentication: WebhookAuthentication | null }
-  >(
-    `select trigger.id,trigger.workflow_id,trigger.workflow_version_id,
-            trigger.node_id,trigger.kind,trigger.status,trigger.health_status,
-            trigger.last_error_code,trigger.reconciled_at,
-            endpoint.authentication,
-            (endpoint.id is not null and endpoint.status='active') endpoint_ready
-       from app.workflow_triggers trigger
-       left join app.webhook_trigger_endpoints endpoint
-         on endpoint.workspace_id=trigger.workspace_id and endpoint.trigger_id=trigger.id
-      where trigger.workspace_id=$1 and trigger.workflow_id=$2
-        and trigger.workflow_version_id=(select published_version_id from app.workflows
-          where workspace_id=$1 and id=$2)
-      order by trigger.node_id`,
-    [workspaceId, workflowId],
+  const db = drizzle(client);
+  const published = db
+    .select({ id: workflows.publishedVersionId })
+    .from(workflows)
+    .where(
+      and(eq(workflows.workspaceId, workspaceId), eq(workflows.id, workflowId)),
+    );
+  const rows = await db
+    .select({
+      id: workflowTriggers.id,
+      workflowId: workflowTriggers.workflowId,
+      workflowVersionId: workflowTriggers.workflowVersionId,
+      nodeId: workflowTriggers.nodeId,
+      kind: workflowTriggers.kind,
+      status: workflowTriggers.status,
+      healthStatus: workflowTriggers.healthStatus,
+      lastErrorCode: workflowTriggers.lastErrorCode,
+      reconciledAt: workflowTriggers.reconciledAt,
+      authentication: endpoints.authentication,
+      endpointReady: sql<boolean>`(${endpoints.id} is not null and ${endpoints.status}='active')`,
+    })
+    .from(workflowTriggers)
+    .leftJoin(
+      endpoints,
+      and(
+        eq(endpoints.workspaceId, workflowTriggers.workspaceId),
+        eq(endpoints.triggerId, workflowTriggers.id),
+      ),
+    )
+    .where(
+      and(
+        eq(workflowTriggers.workspaceId, workspaceId),
+        eq(workflowTriggers.workflowId, workflowId),
+        eq(workflowTriggers.workflowVersionId, published),
+      ),
+    )
+    .orderBy(workflowTriggers.nodeId)
+    .catch(rethrowQueryFailure);
+  return Object.freeze(
+    rows.map(({ authentication, ...row }) =>
+      Object.freeze({
+        ...row,
+        ...(row.kind === 'webhook'
+          ? {
+              authentication:
+                authentication ??
+                ({
+                  mode: 'signed',
+                  allowedOrigins: [],
+                } satisfies WebhookAuthentication),
+            }
+          : {}),
+      }),
+    ),
   );
-  return Object.freeze(result.rows.map(mapHealth));
 }

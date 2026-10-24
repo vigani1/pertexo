@@ -1,3 +1,7 @@
+import { sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { triggerSchedules } from '../../../schema/triggers/schedules.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 import type { acquireDatabasePool } from '../../../platform/pool/runtime.js';
@@ -56,15 +60,40 @@ export async function claimDueSchedules(
   const result = await withPlatformTransaction(
     claimPool,
     (client) =>
-      client.query<Record<string, unknown>>(
-        'select * from app.claim_due_trigger_schedules($1,$2,$3)',
-        [leaseOwner, limit, leaseSeconds],
-      ),
+      drizzle(client)
+        .select({
+          trigger_id: sql<string>`claim.trigger_id`,
+          workspace_id: sql<string>`claim.workspace_id`,
+          workflow_id: sql<string>`claim.workflow_id`,
+          workflow_version_id: sql<string>`claim.workflow_version_id`,
+          node_id: sql<string>`claim.node_id`,
+          recurrence_kind: sql<'cron' | 'interval'>`claim.recurrence_kind`,
+          cron_expression: sql<string | null>`claim.cron_expression`,
+          timezone: sql<string | null>`claim.timezone`,
+          interval_minutes: sql<number | null>`claim.interval_minutes`,
+          misfire_policy: sql<'catch_up_once' | 'skip'>`claim.misfire_policy`,
+          config_fingerprint: sql<string>`claim.config_fingerprint`,
+          anchor_at: sql<Date>`claim.anchor_at`.mapWith(
+            triggerSchedules.anchorAt,
+          ),
+          next_fire_at: sql<Date>`claim.next_fire_at`.mapWith(
+            triggerSchedules.nextFireAt,
+          ),
+          lease_token: sql<string>`claim.lease_token`,
+          observed_at: sql<Date>`claim.observed_at`.mapWith(
+            triggerSchedules.createdAt,
+          ),
+        })
+        .from(
+          sql`app.claim_due_trigger_schedules(${leaseOwner},${limit},${leaseSeconds}) as claim`,
+        )
+        .catch(rethrowQueryFailure),
+
     input.signal === undefined ? {} : { signal: input.signal },
   );
   const claims: ScheduleClaim[] = [];
   let invalidClaim: Error | undefined;
-  for (const raw of result.rows) {
+  for (const raw of result) {
     const parsed = claimSchema.safeParse(raw);
     if (parsed.success) claims.push(parsed.data);
     else invalidClaim ??= parsed.error;
@@ -74,7 +103,7 @@ export async function claimDueSchedules(
     throw invalidClaim;
   }
   return Object.freeze({
-    claimed: result.rowCount ?? result.rows.length,
+    claimed: result.length,
     claims: Object.freeze(claims),
   });
 }

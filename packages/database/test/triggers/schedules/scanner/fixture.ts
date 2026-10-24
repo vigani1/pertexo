@@ -1,5 +1,7 @@
-import type { SQL } from 'drizzle-orm';
-import { PgDialect } from 'drizzle-orm/pg-core';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Client } from 'pg';
+import { requestText } from '../../../support/postgres/query-text.js';
+import { claimSchema } from '../../../../src/triggers/schedules/scanning/contract.js';
 import { expect, vi } from 'vitest';
 import type { DatabaseConfig } from '../../../../src/config.js';
 import { createScheduleTriggerScanner } from '../../../../src/triggers/schedules/scanner.js';
@@ -21,16 +23,6 @@ vi.mock(
     ...(await importOriginal<object>()),
     acceptWorkflowRun: (...arguments_: unknown[]) =>
       seams.acceptWorkflowRun(...arguments_) as Promise<unknown>,
-  }),
-);
-
-vi.mock(
-  '../../../../src/runs/queries/execution/published.js',
-  async (importOriginal) => ({
-    ...(await importOriginal<object>()),
-    parsePublishedWorkflowRow: () => ({
-      id: '00000000-0000-4000-8000-000000000005',
-    }),
   }),
 );
 
@@ -118,10 +110,15 @@ export function scannerWithClaims(
     close: vi.fn(() => Promise.resolve()),
     query: vi.fn(
       async (statement: unknown, parameters?: readonly unknown[]) => {
-        const text = String(statement);
+        const text = requestText(statement);
         queries.push([text, parameters]);
         if (text.includes('claim_due_trigger_schedules'))
-          return { rowCount: rows.length, rows };
+          return {
+            rowCount: rows.length,
+            rows: rows.map((row) =>
+              Object.keys(claimSchema.shape).map((key) => row[key]),
+            ),
+          };
         if (cleanup !== undefined) return cleanup(text, parameters);
         return {
           rowCount: 1,
@@ -150,8 +147,6 @@ export const scanInput = {
 
 type RecordedStatement = Readonly<{ sql: string; params: unknown[] }>;
 
-const dialect = new PgDialect();
-
 export const runId = '00000000-0000-4000-8000-000000000008';
 
 /** A workspace transaction that admits every eligible occurrence. */
@@ -165,13 +160,36 @@ export function recordAdmissionTransactions(): RecordedStatement[] {
     ) =>
       operation({
         workspaceId,
-        db: {
-          execute: (statement: SQL) => {
-            const query = dialect.sqlToQuery(statement);
-            statements.push(query);
-            return Promise.resolve({ rows: [{}] });
-          },
-        },
+        db: drizzle(
+          Object.assign(new Client(), {
+            query: (request: unknown, params: unknown[] = []) => {
+              const text = requestText(request).replaceAll('"', '');
+              statements.push({ sql: text, params });
+              if (text.includes('for share of workflow'))
+                return Promise.resolve({
+                  rows: [[ids.workflow, false]],
+                  rowCount: 1,
+                });
+              if (text.includes('from app.workflow_trigger_pause_periods'))
+                return Promise.resolve({ rows: [[false]], rowCount: 1 });
+              if (text.includes('from app.workflow_versions'))
+                return Promise.resolve({
+                  rows: [
+                    [
+                      ids.version,
+                      ids.workspace,
+                      ids.workflow,
+                      1,
+                      'wf:sha256:' + '0'.repeat(64),
+                      {},
+                    ],
+                  ],
+                  rowCount: 1,
+                });
+              return Promise.resolve({ rows: [[1]], rowCount: 1 });
+            },
+          }),
+        ),
       }),
   );
   return statements;
@@ -187,14 +205,18 @@ export function completion(statements: readonly RecordedStatement[]) {
   );
   expect(recorded).toHaveLength(1);
   expect(moved).toHaveLength(1);
-  const [, , , scheduledAt, disposition, completedRunId] =
+  const [, , , scheduledAt, disposition, , completedRunId] =
     recorded[0]?.params ?? [];
-  const [, nextAt] = moved[0]?.params ?? [];
-  return { scheduledAt, disposition, runId: completedRunId, nextAt };
+  const [nextAt] = moved[0]?.params ?? [];
+  return {
+    scheduledAt: parameterDate(scheduledAt),
+    disposition,
+    runId: completedRunId,
+    nextAt: parameterDate(nextAt),
+  };
 }
 
-export const eligibilityCheck =
-  'published_version_id=trigger.workflow_version_id';
+export const eligibilityCheck = 'published_version_id';
 
 export function hourlyClaim(
   policy: 'catch_up_once' | 'skip',
@@ -222,3 +244,10 @@ export function beforeEachFixture2() {
 }
 
 export { seams };
+
+// The builder encodes timestamps before handing parameters to the pg driver.
+function parameterDate(value: unknown): Date {
+  if (typeof value !== 'string' && !(value instanceof Date))
+    throw new Error('Expected a timestamp parameter');
+  return new Date(value);
+}
