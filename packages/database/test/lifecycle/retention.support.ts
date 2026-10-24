@@ -5,8 +5,8 @@ import { afterAll, beforeAll } from 'vitest';
 
 import { parseDatabaseConfig } from '../../src/config.js';
 import { migrateDatabase } from '../../src/migrations.js';
-import { createRetentionDatabase } from '../../src/lifecycle/retention.js';
-import { createRunArtifactRetentionCoordinator } from '../../src/lifecycle/run-artifact-retention.js';
+import { createRetentionDatabase } from '../../src/lifecycle/retention/repository.js';
+import { createRunArtifactRetentionCoordinator } from '../../src/lifecycle/artifacts/repository.js';
 import { createDisposableDatabaseFixture } from '../support/postgres/disposable-database.js';
 
 export const adminUrl =

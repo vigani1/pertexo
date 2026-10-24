@@ -9,7 +9,7 @@ import { parseDatabaseConfig } from '../../../src/config.js';
 
 import { RunVariableSnapshotUnavailableError } from '../../../src/runs/commands/variables.js';
 import { createWorkflowRunDatabase } from '../../../src/runs/runs.repository.js';
-import { createRetentionDatabase } from '../../../src/lifecycle/retention.js';
+import { createRetentionDatabase } from '../../../src/lifecycle/retention/repository.js';
 import { admin } from '../../lifecycle/calls/fixtures.js';
 import { maintenanceUrl, userId } from '../../lifecycle/retention.support.js';
 import {

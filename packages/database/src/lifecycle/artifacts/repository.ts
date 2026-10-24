@@ -1,16 +1,16 @@
-import { rethrowQueryFailure } from '../platform/query-errors.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { artifacts as artifactRecords } from '../schema/transport.js';
+import { artifacts as artifactRecords } from '../../schema/transport.js';
 import { sql } from 'drizzle-orm';
-import { artifactReferenceOwnersSql } from '../artifacts/references/owners.queries.js';
+import { artifactReferenceOwnersSql } from '../../artifacts/references/owners.queries.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
-import type { DatabaseConfig } from '../config.js';
-import { acquireDatabasePool } from '../platform/pool/runtime.js';
-import type { DatabaseRuntime } from '../platform/pool/runtime.js';
-import { inRetentionTransaction } from './retention-transaction.js';
+import type { DatabaseConfig } from '../../config.js';
+import { acquireDatabasePool } from '../../platform/pool/runtime.js';
+import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
+import { inRetentionTransaction } from '../retention/transactions.repository.js';
 
 export interface RunArtifactRetentionStore {
   delete(input: {

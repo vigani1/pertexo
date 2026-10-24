@@ -1,8 +1,8 @@
 import { and, count, eq } from 'drizzle-orm';
 
 import { expect, it } from 'vitest';
-import { createRetentionDatabase } from '../../../src/lifecycle/retention.js';
-import { createPreviewRetentionCoordinator } from '../../../src/lifecycle/preview-retention.js';
+import { createRetentionDatabase } from '../../../src/lifecycle/retention/repository.js';
+import { createPreviewRetentionCoordinator } from '../../../src/lifecycle/previews/repository.js';
 import { parseDatabaseConfig } from '../../../src/config.js';
 
 import {

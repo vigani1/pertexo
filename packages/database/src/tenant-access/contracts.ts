@@ -1,6 +1,6 @@
 import type { Role, DelegatedRole } from '@pertexo/workflow-model';
 import type { DirectoryMembershipSource } from '@pertexo/contracts';
-import type { WorkspaceLifecycleOperation } from '../lifecycle/workspace-deletion.js';
+import type { WorkspaceLifecycleOperation } from '../lifecycle/deletion/repository.js';
 
 export const USER_STATUS = {
   active: 'active',
@@ -292,7 +292,7 @@ export type WorkspaceRenameResult = Readonly<{
   changed: boolean;
   replayed: boolean;
 }>;
-export type { WorkspaceLifecycleOperation } from '../lifecycle/workspace-deletion.js';
+export type { WorkspaceLifecycleOperation } from '../lifecycle/deletion/repository.js';
 export type RequestWorkspaceLifecycleOperationInput = Readonly<{
   workspaceId: string;
   actorUserId: string;

@@ -2,12 +2,12 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
-import { requestActiveRunCancellations } from '../runs/runs.repository.js';
-import { IdempotencyRequestConflictError } from '../runs/commands/acceptance.js';
-import { databaseSchema } from '../schema.js';
-import { workspaceLifecycleOperations } from '../schema/foundation.js';
-import { WorkspaceLifecycleConflictError } from '../tenant-access/errors.js';
-import { parseWorkspaceId } from '../tenant-access/transactions.js';
+import { requestActiveRunCancellations } from '../../runs/runs.repository.js';
+import { IdempotencyRequestConflictError } from '../../runs/commands/acceptance.js';
+import { databaseSchema } from '../../schema.js';
+import { workspaceLifecycleOperations } from '../../schema/foundation.js';
+import { WorkspaceLifecycleConflictError } from '../../tenant-access/errors.js';
+import { parseWorkspaceId } from '../../tenant-access/transactions.js';
 
 /** How long a workspace waits for restore before it is purged. */
 export const WORKSPACE_RECOVERY_DAYS = 30;

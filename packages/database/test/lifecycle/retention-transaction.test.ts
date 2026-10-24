@@ -1,7 +1,7 @@
 import type { Pool } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
-import { inRetentionTransaction } from '../../src/lifecycle/retention-transaction.js';
+import { inRetentionTransaction } from '../../src/lifecycle/retention/transactions.repository.js';
 
 describe('retention transaction admission', () => {
   it.each([0, -1, 1.5, Number.NaN, 2_147_483_648])(

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Client, Pool } from 'pg';
 import { parseDatabaseConfig } from '../../../src/config.js';
 import { migrateDatabase } from '../../../src/migrations.js';
-import { createWorkspacePurgeCoordinator } from '../../../src/lifecycle/workspace-purge.js';
+import { createWorkspacePurgeCoordinator } from '../../../src/lifecycle/purge/repository.js';
 import { dropDisconnectedDatabase } from '../../support/postgres/disposable-database.js';
 import { emptyObjectStore } from '../../support/workspace-purge.js';
 import { seedPurgeRelationships } from './seed/relations.js';

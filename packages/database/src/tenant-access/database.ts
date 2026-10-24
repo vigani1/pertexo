@@ -5,7 +5,7 @@ import { generatePersistedId } from '../platform/persisted-id.js';
 import { z } from 'zod';
 import type { DatabaseConfig } from '../config.js';
 
-import { changeWorkspaceLifecycle } from '../lifecycle/workspace-deletion.js';
+import { changeWorkspaceLifecycle } from '../lifecycle/deletion/repository.js';
 import { mapWorkspace } from './rows.js';
 import { createUserStore } from './users/store.js';
 import {

@@ -694,7 +694,7 @@ export default tseslint.config(
   {
     // Declarative protocol, schema, retention and OpenAPI tables stay together.
     files: [
-      'packages/database/src/lifecycle/retention-rules.ts',
+      'packages/database/src/lifecycle/retention/rules.ts',
       'packages/database/src/schema/foundation.ts',
       'packages/database/src/schema/runs/execution.ts',
       'packages/contracts/src/errors/api-problem.ts',

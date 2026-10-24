@@ -1,5 +1,5 @@
-import { purgeDirectoryMemberships } from '../identity/directory.js';
-import { reapInvitationReplacementClaims } from '../invitation-claims.js';
+import { purgeDirectoryMemberships } from '../identity/directory.repository.js';
+import { reapInvitationReplacementClaims } from '../invitations/claims.repository.js';
 
 import type { PurgeStep } from './contract.js';
 

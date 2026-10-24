@@ -1,6 +1,6 @@
 import { parseDatabaseConfig } from '../../src/config.js';
-import { createRetentionDatabase } from '../../src/lifecycle/retention.js';
-import type { RetentionRuleName } from '../../src/lifecycle/retention-rules.js';
+import { createRetentionDatabase } from '../../src/lifecycle/retention/repository.js';
+import type { RetentionRuleName } from '../../src/lifecycle/retention/rules.js';
 
 /**
  * Runs retention passes through the maintenance role until nothing more is

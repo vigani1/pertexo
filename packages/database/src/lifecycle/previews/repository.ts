@@ -1,10 +1,10 @@
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
-import type { DatabaseConfig } from '../config.js';
-import { acquireDatabasePool } from '../platform/pool/runtime.js';
-import type { DatabaseRuntime } from '../platform/pool/runtime.js';
-import { inRetentionTransaction } from './retention-transaction.js';
+import type { DatabaseConfig } from '../../config.js';
+import { acquireDatabasePool } from '../../platform/pool/runtime.js';
+import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
+import { inRetentionTransaction } from '../retention/transactions.repository.js';
 
 export interface PreviewRetentionArtifactStore {
   delete(

@@ -1,8 +1,8 @@
 import { Client } from 'pg';
 
 import { parseDatabaseConfig } from '../../src/config.js';
-import { createWorkspacePurgeCoordinator } from '../../src/lifecycle/workspace-purge.js';
-import type { WorkspacePurgeObjectStore } from '../../src/lifecycle/workspace-purge.js';
+import { createWorkspacePurgeCoordinator } from '../../src/lifecycle/purge/repository.js';
+import type { WorkspacePurgeObjectStore } from '../../src/lifecycle/purge/repository.js';
 
 /** An object store with nothing in it. */
 export const emptyObjectStore: WorkspacePurgeObjectStore = Object.freeze({

@@ -4,7 +4,7 @@ import { createWebhookResponseStore } from '../../../src/triggers/webhooks/respo
 import { createWebhookTriggerDatabase } from '../../../src/triggers/webhooks/database.js';
 import { NodeAttemptReconciliationRequiredError } from '../../../src/attempts/contract.js';
 import { parseDatabaseConfig } from '../../../src/config.js';
-import { RETENTION_RULES } from '../../../src/lifecycle/retention-rules.js';
+import { RETENTION_RULES } from '../../../src/lifecycle/retention/rules.js';
 import { purgeWorkspace } from '../../support/workspace-purge.js';
 import {
   workspaceA,
