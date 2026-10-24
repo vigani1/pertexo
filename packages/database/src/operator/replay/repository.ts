@@ -8,7 +8,6 @@ import {
   operatorRunReplayRequests,
 } from '../../schema/runs/operator.js';
 import { workflowRuns } from '../../schema/runs/execution.js';
-import { workflowVersions } from '../../schema/authoring/workflows.js';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../../config.js';
@@ -21,7 +20,7 @@ import {
 import { acceptWorkflowRun } from '../../runs/commands/acceptance.repository.js';
 import { consumeInboxMessage } from '../../outbox/receipts.repository.js';
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
-import { parsePublishedWorkflowRow } from '../../runs/queries/execution/published.queries.js';
+import { findPublishedWorkflow } from '../../runs/queries/execution/published.queries.js';
 export class OperatorRunReplayMismatchError extends Error {
   public constructor() {
     super('Run replay delivery does not match its durable request');
@@ -188,23 +187,10 @@ async function replayRequest(
         );
       if (request?.status !== 'pending')
         throw new OperatorRunReplayMismatchError();
-      const [storedVersion] = await transaction.db
-        .select({
-          id: workflowVersions.id,
-          workspace_id: workflowVersions.workspaceId,
-          workflow_id: workflowVersions.workflowId,
-          version_number: workflowVersions.versionNumber,
-          checksum: workflowVersions.checksum,
-          executable_json: workflowVersions.executableJson,
-        })
-        .from(workflowVersions)
-        .where(
-          and(
-            eq(workflowVersions.workspaceId, transaction.workspaceId),
-            eq(workflowVersions.id, request.workflowVersionId),
-          ),
-        );
-      const version = parsePublishedWorkflowRow(storedVersion);
+      const version = await findPublishedWorkflow(transaction.db, {
+        workspaceId: transaction.workspaceId,
+        id: request.workflowVersionId,
+      });
       if (version?.workflowId !== request.workflowId)
         throw new OperatorRunReplayNotExecutableError();
       const initial = checkpointFactory(version);

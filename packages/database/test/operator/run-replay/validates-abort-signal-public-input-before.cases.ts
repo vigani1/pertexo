@@ -14,6 +14,7 @@ import {
   workflowVersionId,
   payload,
   validResults,
+  publishedVersion,
   storeWith,
   replayInput,
 } from './fixture.js';
@@ -111,16 +112,18 @@ export function registerValidatesAbortSignalPublicInputBefore(): void {
   );
 
   it('rejects an unavailable or workflow-mismatched version', async () => {
-    const unavailable = storeWith();
-    mocks.parsePublishedWorkflowRow.mockReturnValueOnce(null);
+    const unavailableResults = validResults();
+    unavailableResults[2] = { rows: [] };
+    const unavailable = storeWith(unavailableResults);
     await expect(
       unavailable.store.replay(replayInput()),
     ).rejects.toBeInstanceOf(OperatorRunReplayNotExecutableError);
 
-    const mismatched = storeWith();
-    mocks.parsePublishedWorkflowRow.mockReturnValueOnce({
-      workflowId: randomUUID(),
-    });
+    const mismatchedResults = validResults();
+    mismatchedResults[2] = {
+      rows: [{ ...publishedVersion, workflowId: randomUUID() }],
+    };
+    const mismatched = storeWith(mismatchedResults);
     await expect(mismatched.store.replay(replayInput())).rejects.toBeInstanceOf(
       OperatorRunReplayNotExecutableError,
     );
