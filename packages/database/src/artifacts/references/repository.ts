@@ -1,9 +1,24 @@
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import {
   visibleArtifactIds,
   visibleTransactionArtifactIds,
 } from './access.queries.js';
 import type { PoolClient } from 'pg';
-import { sql } from 'drizzle-orm';
+import {
+  and,
+  eq,
+  exists,
+  getTableName,
+  inArray,
+  isNull,
+  or,
+  sql,
+} from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { artifacts } from '../../schema/transport.js';
+import { artifactLinks } from '../../schema/runs/support.js';
+import { previewRuns } from '../../schema/runs/execution.js';
 import {
   nodeArtifactReferenceSchema,
   type NodeArtifactReference,
@@ -13,15 +28,26 @@ import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { artifactMetadataMatches } from '../metadata/contract.js';
 import { ArtifactMetadataNotFoundError } from '../repository.js';
 
-type ArtifactRow = Record<string, unknown> & {
-  id: string;
-  byte_length: number | string;
-  media_type: string;
-  sha256: string;
-  preview_run_id: string | null;
-  purpose: string;
-};
-
+type ArtifactRow = Awaited<ReturnType<typeof referenceRows>>[number];
+function referenceRows(db: Pick<NodePgDatabase, 'select'>) {
+  return db
+    .select({
+      id: artifacts.id,
+      byteLength: artifacts.byteLength,
+      mediaType: artifacts.mediaType,
+      sha256: artifacts.sha256,
+      purpose: artifacts.purpose,
+      previewRunId: artifactLinks.ownerId,
+    })
+    .from(artifacts)
+    .leftJoin(
+      artifactLinks,
+      and(
+        eq(artifactLinks.workspaceId, artifacts.workspaceId),
+        eq(artifactLinks.artifactId, artifacts.id),
+      ),
+    );
+}
 /** JSON is already bounded and validated by its owning persistence boundary. */
 export function collectArtifactReferences(
   value: unknown,
@@ -59,11 +85,11 @@ function assertRows(
     const row = byId.get(reference.artifactId.toLowerCase());
     const invalidArtifactAuthority =
       row === undefined ||
-      (row.preview_run_id !== null && previewRunId === undefined) ||
+      (row.previewRunId !== null && previewRunId === undefined) ||
       !artifactMetadataMatches(
         {
-          byteLength: Number(row.byte_length),
-          mediaType: row.media_type,
+          byteLength: row.byteLength,
+          mediaType: row.mediaType,
           sha256: row.sha256,
         },
         reference,
@@ -81,27 +107,26 @@ export async function lockArtifactReferences(
   const references = collectArtifactReferences(value);
   if (references.length === 0) return;
   const ids = [...new Set(references.map((ref) => ref.artifactId))].sort();
-  const result = await client.query<ArtifactRow>(
-    `select artifact.id, artifact.byte_length, artifact.media_type, artifact.sha256, artifact.purpose,
-      link.owner_id as preview_run_id
-     from app.artifacts artifact
-     left join app.artifact_links link
-       on link.workspace_id=artifact.workspace_id and link.artifact_id=artifact.id
-     where artifact.workspace_id=$1 and artifact.id=any($2::uuid[])
-       and artifact.status='available' and artifact.deleted_at is null
-     order by artifact.id for share of artifact`,
-    [workspaceId, ids],
-  );
+  const result = await referenceRows(drizzle(client))
+    .where(
+      and(
+        eq(artifacts.workspaceId, workspaceId),
+        inArray(artifacts.id, ids),
+        eq(artifacts.status, 'available'),
+        isNull(artifacts.deletedAt),
+      ),
+    )
+    .orderBy(artifacts.id)
+    .for('share', { of: alias(artifacts, getTableName(artifacts)) })
+    .catch(rethrowQueryFailure);
   const visible = await visibleArtifactIds(
     client,
     { workspaceId, actorId },
-    result.rows
-      .filter((row) => row.purpose !== 'user-upload')
-      .map((row) => row.id),
+    result.filter((row) => row.purpose !== 'user-upload').map((row) => row.id),
   );
   assertRows(
     references,
-    result.rows.filter(
+    result.filter(
       (row) => row.purpose === 'user-upload' || visible.has(row.id),
     ),
   );
@@ -131,31 +156,48 @@ async function lockExecutionReferences(
   previewRunId?: string,
 ): Promise<void> {
   const ids = [...new Set(references.map((ref) => ref.artifactId))].sort();
-  const result = await transaction.db.execute<ArtifactRow>(sql`
-    select artifact.id, artifact.byte_length, artifact.media_type, artifact.sha256, artifact.purpose,
-      link.owner_id as preview_run_id
-    from app.artifacts artifact
-    left join app.artifact_links link
-      on link.workspace_id=artifact.workspace_id and link.artifact_id=artifact.id
-    left join app.preview_runs producer
-      on producer.workspace_id=link.workspace_id and producer.id=link.owner_id
-    where artifact.workspace_id=${transaction.workspaceId}
-      and artifact.id in (${sql.join(
-        ids.map((id) => sql`${id}::uuid`),
-        sql`, `,
-      )})
-      and artifact.status='available' and artifact.deleted_at is null
-      and (link.owner_id is null or (
-        producer.expires_at > clock_timestamp() and exists (
-          select 1 from app.preview_runs consumer
-          where consumer.workspace_id=${transaction.workspaceId}
-            and consumer.id=${previewRunId ?? null}::uuid
-            and consumer.expires_at > clock_timestamp()
-        )
-      ))
-    order by artifact.id for share of artifact
-  `);
-  assertRows(references, result.rows, previewRunId);
+  const db = transaction.db;
+  const producer = alias(previewRuns, 'producer');
+  const consumer = alias(previewRuns, 'consumer');
+  const result = await referenceRows(db)
+    .leftJoin(
+      producer,
+      and(
+        eq(producer.workspaceId, artifactLinks.workspaceId),
+        eq(producer.id, artifactLinks.ownerId),
+      ),
+    )
+    .where(
+      and(
+        eq(artifacts.workspaceId, transaction.workspaceId),
+        inArray(artifacts.id, ids),
+        eq(artifacts.status, 'available'),
+        isNull(artifacts.deletedAt),
+        or(
+          isNull(artifactLinks.ownerId),
+          and(
+            sql`${producer.expiresAt}>clock_timestamp()`,
+            exists(
+              db
+                .select({ id: consumer.id })
+                .from(consumer)
+                .where(
+                  and(
+                    eq(consumer.workspaceId, transaction.workspaceId),
+                    previewRunId === undefined
+                      ? sql`false`
+                      : eq(consumer.id, previewRunId),
+                    sql`${consumer.expiresAt}>clock_timestamp()`,
+                  ),
+                ),
+            ),
+          ),
+        ),
+      ),
+    )
+    .orderBy(artifacts.id)
+    .for('share', { of: alias(artifacts, getTableName(artifacts)) });
+  assertRows(references, result, previewRunId);
 }
 
 /** Authored inputs need source access; accepted immutable execution keeps its binding. */

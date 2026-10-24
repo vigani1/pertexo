@@ -1,3 +1,4 @@
+import { bindResourcePredicate } from '../../tenant-access/resources/query-scope.js';
 import { testRunSql } from '../../runs/data-policy.js';
 import type { PoolClient } from 'pg';
 import {
@@ -101,7 +102,7 @@ export async function readSuiteRunOutcome(
   }>(
     `select run.status,run.output_ref,snapshot.dispositions from app.workflow_runs run
  join app.workflow_test_snapshots snapshot on snapshot.workspace_id=run.workspace_id and snapshot.id=run.workflow_version_id
- where run.workspace_id=$1 and run.id=$2 and snapshot.id=$3 and ${testRunSql('run')}`,
+ where run.workspace_id=$1 and run.id=$2 and snapshot.id=$3 and ${bindResourcePredicate(testRunSql('run').inlineParams(), [])}`,
     [workspaceId, runId, snapshotId],
   );
   const row = found.rows[0];

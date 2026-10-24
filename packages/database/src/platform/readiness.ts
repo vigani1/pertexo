@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0052_publication_reuse_candidates.sql';
+export const EXPECTED_MIGRATION_HEAD = '0053_remove_artifact_lookup.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{

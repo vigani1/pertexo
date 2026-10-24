@@ -70,7 +70,7 @@ export async function requestRunReplay(
           and version.id = ${input.workflowVersionId}
           and version.executable_json is not null) target_workflow_id
     from app.workflow_runs run
-    where run.workspace_id = ${transaction.workspaceId} and run.id = ${input.sourceRunId} and ${sql.raw(ordinaryRunSql('run'))}
+    where run.workspace_id = ${transaction.workspaceId} and run.id = ${input.sourceRunId} and ${ordinaryRunSql('run')}
   `);
   const found = rows.rows[0];
   const outcome = runReplayOutcome(found, input);

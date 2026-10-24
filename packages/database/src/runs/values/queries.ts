@@ -25,7 +25,7 @@ export async function runValuesInTransaction(
       and(
         eq(workflowRunValues.workspaceId, transaction.workspaceId),
         eq(workflowRunValues.workflowRunId, runId),
-        sql.raw(`not (${expiredRunSql('workflow_runs')})`),
+        sql`not (${expiredRunSql('workflow_runs')})`,
       ),
     )
     .orderBy(workflowRunValues.key)

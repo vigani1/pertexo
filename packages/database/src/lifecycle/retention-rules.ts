@@ -1,3 +1,4 @@
+import { bindResourcePredicate } from '../tenant-access/resources/query-scope.js';
 import { AUDIT_RETENTION_MIN_DAYS } from '@pertexo/workflow-model';
 import { CALLBACK_TASK_RETENTION_RULE } from '../runs/pending-tasks/callbacks/retention.js';
 import { RUN_VALUES_RETENTION_RULE } from '../runs/values/retention.js';
@@ -45,11 +46,11 @@ export const RETENTION_RULES = Object.freeze([
   },
   {
     name: 'data_table_write_receipts',
-    statement: `with page as(select receipt.workspace_id,receipt.execution_id,receipt.invocation_id from app.data_table_write_receipts receipt join app.workflow_runs run on run.workspace_id=receipt.workspace_id and run.id=receipt.run_id where ${expiredRunSql('run')} order by receipt.execution_id,receipt.invocation_id limit $1) delete from app.data_table_write_receipts receipt using page where receipt.workspace_id=page.workspace_id and receipt.execution_id=page.execution_id and receipt.invocation_id=page.invocation_id`,
+    statement: `with page as(select receipt.workspace_id,receipt.execution_id,receipt.invocation_id from app.data_table_write_receipts receipt join app.workflow_runs run on run.workspace_id=receipt.workspace_id and run.id=receipt.run_id where ${bindResourcePredicate(expiredRunSql('run').inlineParams(), [])} order by receipt.execution_id,receipt.invocation_id limit $1) delete from app.data_table_write_receipts receipt using page where receipt.workspace_id=page.workspace_id and receipt.execution_id=page.execution_id and receipt.invocation_id=page.invocation_id`,
   },
   {
     name: 'trigger_skips',
-    statement: `with page as (select id from app.usage_events where category in ('trigger.skipped','trigger.coordinated') and occurred_at<=clock_timestamp()-${RUN_SUMMARY_RETENTION_SQL} order by occurred_at,id limit $1) delete from app.usage_events event using page where event.id=page.id and event.category in ('trigger.skipped','trigger.coordinated') and event.occurred_at<=clock_timestamp()-${RUN_SUMMARY_RETENTION_SQL}`,
+    statement: `with page as (select id from app.usage_events where category in ('trigger.skipped','trigger.coordinated') and occurred_at<=clock_timestamp()-${bindResourcePredicate(RUN_SUMMARY_RETENTION_SQL.inlineParams(), [])} order by occurred_at,id limit $1) delete from app.usage_events event using page where event.id=page.id and event.category in ('trigger.skipped','trigger.coordinated') and event.occurred_at<=clock_timestamp()-${bindResourcePredicate(RUN_SUMMARY_RETENTION_SQL.inlineParams(), [])}`,
   },
   {
     name: 'workflow_test_suites',
@@ -60,17 +61,17 @@ export const RETENTION_RULES = Object.freeze([
     name: 'workflow_test_snapshots',
     statement: `with page as(select snapshot.id from app.workflow_test_snapshots snapshot
      where snapshot.expires_at<=clock_timestamp() and not exists(select 1 from app.workflow_test_suites suite where suite.workspace_id=snapshot.workspace_id and suite.snapshot_id=snapshot.id)
-     and not exists(select 1 from app.workflow_runs run where run.workspace_id=snapshot.workspace_id and run.workflow_version_id=snapshot.id and ${testRunSql('run')} and (run.status in ('queued','running','waiting') or ${retainedTestRunSql('run')}))
+     and not exists(select 1 from app.workflow_runs run where run.workspace_id=snapshot.workspace_id and run.workflow_version_id=snapshot.id and ${bindResourcePredicate(testRunSql('run').inlineParams(), [])} and (run.status in ('queued','running','waiting') or ${bindResourcePredicate(retainedTestRunSql('run').inlineParams(), [])}))
      order by snapshot.expires_at,snapshot.id limit $1)
      delete from app.workflow_test_snapshots snapshot using page where snapshot.id=page.id and snapshot.expires_at<=clock_timestamp()
-      and not exists(select 1 from app.workflow_runs run where run.workspace_id=snapshot.workspace_id and run.workflow_version_id=snapshot.id and ${testRunSql('run')} and (run.status in ('queued','running','waiting') or ${retainedTestRunSql('run')}))`,
+      and not exists(select 1 from app.workflow_runs run where run.workspace_id=snapshot.workspace_id and run.workflow_version_id=snapshot.id and ${bindResourcePredicate(testRunSql('run').inlineParams(), [])} and (run.status in ('queued','running','waiting') or ${bindResourcePredicate(retainedTestRunSql('run').inlineParams(), [])}))`,
   },
   {
     name: 'webhook_responses',
     statement: `with page as (
       select response.run_id from app.webhook_run_responses response
       join app.workflow_runs run on run.workspace_id=response.workspace_id and run.id=response.run_id
-      where run.completed_at<=clock_timestamp()-${RUN_DETAILS_RETENTION_SQL} order by response.run_id limit $1
+      where run.completed_at<=clock_timestamp()-${bindResourcePredicate(RUN_DETAILS_RETENTION_SQL.inlineParams(), [])} order by response.run_id limit $1
     ) delete from app.webhook_run_responses response using page where response.run_id=page.run_id`,
   },
   {
@@ -98,7 +99,7 @@ export const RETENTION_RULES = Object.freeze([
         from app.node_runs node
         join app.workflow_runs run
           on run.workspace_id = node.workspace_id and run.id = node.workflow_run_id
-        where ${expiredRunSql('run')}
+        where ${bindResourcePredicate(expiredRunSql('run').inlineParams(), [])}
         order by node.id limit $1
       )
       delete from app.node_runs node using page
@@ -112,7 +113,7 @@ export const RETENTION_RULES = Object.freeze([
         from app.run_events event
         join app.workflow_runs run
           on run.workspace_id = event.workspace_id and run.id = event.workflow_run_id
-        where ${expiredRunSql('run')}
+        where ${bindResourcePredicate(expiredRunSql('run').inlineParams(), [])}
         order by event.workflow_run_id, event.sequence limit $1
       )
       delete from app.run_events event using page
@@ -128,7 +129,7 @@ export const RETENTION_RULES = Object.freeze([
         join app.workflow_runs run
           on run.workspace_id = checkpoint.workspace_id
          and run.id = checkpoint.workflow_run_id
-        where ${expiredRunSql('run')}
+        where ${bindResourcePredicate(expiredRunSql('run').inlineParams(), [])}
         order by checkpoint.workflow_run_id limit $1
       )
       delete from app.run_checkpoints checkpoint using page
@@ -143,7 +144,7 @@ export const RETENTION_RULES = Object.freeze([
       with page as (
         select run.id from app.workflow_runs run
         where run.details_purged_at is null
-          and ${expiredRunSql('run')}
+          and ${bindResourcePredicate(expiredRunSql('run').inlineParams(), [])}
           and not exists (select 1 from app.workflow_run_values value
             where value.workspace_id = run.workspace_id and value.workflow_run_id = run.id)
           and not exists (select 1 from app.pending_run_tasks task
@@ -217,7 +218,7 @@ export const RETENTION_RULES = Object.freeze([
     statement: `
       with page as (
         select run.id from app.workflow_runs run
-        where ${expiredRunSql('run', 'summary')}
+        where ${bindResourcePredicate(expiredRunSql('run', 'summary').inlineParams(), [])}
           and run.details_purged_at is not null
           and not exists (select 1 from app.workflow_calls call
             where call.workspace_id = run.workspace_id

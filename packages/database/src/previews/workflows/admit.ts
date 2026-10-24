@@ -1,3 +1,4 @@
+import { bindResourcePredicate } from '../../tenant-access/resources/query-scope.js';
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -17,7 +18,7 @@ export async function requireNoActiveTest(
   input: SampleScope,
 ): Promise<void> {
   const active = await client.query(
-    `select id from app.workflow_runs where workspace_id=$1 and workflow_id=$2 and started_by=$3 and ${testRunSql()} and status in ('queued','running','waiting') limit 1`,
+    `select id from app.workflow_runs where workspace_id=$1 and workflow_id=$2 and started_by=$3 and ${bindResourcePredicate(testRunSql().inlineParams(), [])} and status in ('queued','running','waiting') limit 1`,
     [input.workspaceId, input.workflowId, input.actorId],
   );
   if (active.rowCount !== 0) throw new WorkflowTestError('already_running');

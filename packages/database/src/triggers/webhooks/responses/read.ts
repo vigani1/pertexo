@@ -1,3 +1,4 @@
+import { bindResourcePredicate } from '../../../tenant-access/resources/query-scope.js';
 import { RUN_DETAILS_RETENTION_SQL } from '../../../runs/data-policy.js';
 import type { Pool } from 'pg';
 import type { NodeWebhookResponse } from '@pertexo/node-sdk';
@@ -26,7 +27,7 @@ export function readWebhookResponse(
         `select run.status,response.status_code,response.content_type,response.headers,response.body
       from app.webhook_run_responses response join app.workflow_runs run on run.workspace_id=response.workspace_id and run.id=response.run_id
       where response.workspace_id=$1 and response.run_id=$2 and run.details_purged_at IS NULL
-        and (run.completed_at IS NULL or run.completed_at>clock_timestamp()-${RUN_DETAILS_RETENTION_SQL})`,
+        and (run.completed_at IS NULL or run.completed_at>clock_timestamp()-${bindResourcePredicate(RUN_DETAILS_RETENTION_SQL.inlineParams(), [])})`,
         [input.workspaceId, input.runId],
       );
       const row = result.rows[0];

@@ -1,5 +1,8 @@
+import { rethrowQueryFailure } from '../platform/query-errors.js';
+import { and, eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { artifacts as artifactRecords } from '../schema/transport.js';
 import { sql } from 'drizzle-orm';
-import { bindResourcePredicate } from '../tenant-access/resources/query-scope.js';
 import { artifactReferenceOwnersSql } from '../artifacts/references/owners.queries.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
@@ -134,19 +137,22 @@ export function createRunArtifactRetentionCoordinator(
         await client.query("select set_config('app.workspace_id', $1, true)", [
           artifact.workspace_id,
         ]);
-        const parameters: unknown[] = [];
-        const query = bindResourcePredicate(
-          artifactReferenceOwnersSql(
-            sql`${artifact.workspace_id}`,
-            sql`${artifact.id}`,
-          ),
-          parameters,
-        );
-        const referenced = await client.query<{ referenced: boolean }>(
-          query,
-          parameters,
-        );
-        if (referenced.rows[0]?.referenced ?? false) {
+        const [referenced] = await drizzle(client)
+          .select({
+            referenced: artifactReferenceOwnersSql(
+              sql`${artifact.workspace_id}`,
+              sql`${artifact.id}`,
+            ),
+          })
+          .from(artifactRecords)
+          .where(
+            and(
+              eq(artifactRecords.workspaceId, artifact.workspace_id),
+              eq(artifactRecords.id, artifact.id),
+            ),
+          )
+          .catch(rethrowQueryFailure);
+        if (referenced?.referenced ?? false) {
           await retryLater(client, artifact.id, '1 day');
           return { ...artifact, referenced: true };
         }

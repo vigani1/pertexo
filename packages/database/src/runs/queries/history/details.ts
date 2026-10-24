@@ -130,8 +130,8 @@ export async function runInputInTransaction(
 ): Promise<WorkflowRunData | undefined> {
   const result = await transaction.db.execute(sql`
     select
-      case when ${sql.raw(retainedTestRunSql())} then input_ref else null end as input_ref,
-      created_at <= statement_timestamp() - ${sql.raw(runRetentionIntervalSql())}
+      case when ${retainedTestRunSql()} then input_ref else null end as input_ref,
+      created_at <= statement_timestamp() - ${runRetentionIntervalSql()}
         as past_input_window
     from app.workflow_runs
     where workspace_id = ${transaction.workspaceId} and id = ${runId}
@@ -155,7 +155,7 @@ async function nodeRunValueInTransaction(
   const result = await transaction.db.execute(sql`
     select ${column} as stored
     from app.node_runs
-    where exists(select 1 from app.workflow_runs run where run.workspace_id=app.node_runs.workspace_id and run.id=app.node_runs.workflow_run_id and ${sql.raw(retainedTestRunSql('run'))})
+    where exists(select 1 from app.workflow_runs run where run.workspace_id=app.node_runs.workspace_id and run.id=app.node_runs.workflow_run_id and ${retainedTestRunSql('run')})
       and workspace_id = ${transaction.workspaceId}
       and workflow_run_id = ${runId}
       and id = ${nodeRunId}
@@ -231,7 +231,7 @@ export async function readWorkflowRunVariables(
     const [row] = await transaction.db
       .select({
         revision: run.variableSetRevision,
-        retained: sql<boolean>`(${run.detailsPurgedAt} IS NULL AND (${run.completedAt} IS NULL OR ${run.completedAt}>clock_timestamp()-${sql.raw(RUN_DETAILS_RETENTION_SQL)}) AND ${sql.raw(retainedTestRunSql('run', 'clock_timestamp()'))})`,
+        retained: sql<boolean>`(${run.detailsPurgedAt} IS NULL AND (${run.completedAt} IS NULL OR ${run.completedAt}>clock_timestamp()-${RUN_DETAILS_RETENTION_SQL}) AND ${retainedTestRunSql('run', 'clock_timestamp()')})`,
       })
       .from(run)
       .where(
@@ -240,6 +240,7 @@ export async function readWorkflowRunVariables(
           eq(run.id, parsed.runId),
         ),
       );
+
     if (row === undefined) return undefined;
     if (!row.retained) return null;
     return {
@@ -262,8 +263,8 @@ export async function readWorkflowNodeRunDiagnostics(
   return withResourceRunRead(pool, parsed, async (transaction) => {
     const result = await transaction.db.execute<{ diagnostics: unknown }>(sql`
       select case when run.details_purged_at is null
-        and (run.completed_at is null or run.completed_at > statement_timestamp() - ${sql.raw(RUN_DETAILS_RETENTION_SQL)})
-        and ${sql.raw(retainedTestRunSql('run'))}
+        and (run.completed_at is null or run.completed_at > statement_timestamp() - ${RUN_DETAILS_RETENTION_SQL})
+        and ${retainedTestRunSql('run')}
         then attempt.code_diagnostics else null end as diagnostics
       from app.node_runs node
       join app.workflow_runs run on run.workspace_id = node.workspace_id and run.id = node.workflow_run_id

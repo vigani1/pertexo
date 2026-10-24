@@ -1,3 +1,4 @@
+import { bindResourcePredicate } from '../../tenant-access/resources/query-scope.js';
 import { WORKFLOW_EDITOR_ROLES } from '@pertexo/workflow-model';
 import type { WorkflowConcurrencySettings as ConcurrencySettings } from '@pertexo/contracts';
 import type { PoolClient } from 'pg';
@@ -193,7 +194,7 @@ async function readConcurrencySettings(
         `select id,to_char(occurred_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') at,
                     metadata->>'triggerType' trigger_type,metadata->>'reason' reason
              from app.usage_events where workspace_id=$1 and resource_type='workflow' and resource_id=$2
-               and category='trigger.skipped' and occurred_at>statement_timestamp()-${RUN_SUMMARY_RETENTION_SQL}
+               and category='trigger.skipped' and occurred_at>statement_timestamp()-${bindResourcePredicate(RUN_SUMMARY_RETENTION_SQL.inlineParams(), [])}
              order by occurred_at desc nulls last,id limit 20`,
         [workspaceId, workflowId],
       );
