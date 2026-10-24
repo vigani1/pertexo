@@ -91,3 +91,10 @@ function schemaValueType(
     ? type
     : undefined;
 }
+
+/** A JSON path for one top-level property: `$.amount` or `$['a-b']`. */
+export function propertyPath(key: string): string {
+  return /^[A-Za-z_][A-Za-z0-9_]*$/u.test(key)
+    ? `$.${key}`
+    : `$['${key.replaceAll('\\', '\\\\').replaceAll("'", "\\'")}']`;
+}
