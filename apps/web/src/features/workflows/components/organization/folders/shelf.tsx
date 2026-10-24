@@ -282,11 +282,7 @@ function FolderMenu({
               onAction({ kind, folder });
             }}
           >
-            {kind === 'rename'
-              ? 'Rename…'
-              : kind === 'move'
-                ? 'Move to…'
-                : 'Share…'}
+            {FOLDER_ACTION_LABEL[kind]}
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator />
@@ -302,3 +298,9 @@ function FolderMenu({
     </DropdownMenu>
   );
 }
+
+const FOLDER_ACTION_LABEL = {
+  rename: 'Rename…',
+  move: 'Move to…',
+  share: 'Share…',
+} as const;
