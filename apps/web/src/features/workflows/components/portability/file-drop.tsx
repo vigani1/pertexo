@@ -159,9 +159,7 @@ type FileSelection = Readonly<{
   manifest: WorkflowPortableManifest | undefined;
 }>;
 
-function isReadSelection(
-  selection: FileSelection,
-): selection is Readonly<{
+function isReadSelection(selection: FileSelection): selection is Readonly<{
   file: SelectedFile;
   manifest: WorkflowPortableManifest;
 }> {
