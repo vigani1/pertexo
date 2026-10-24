@@ -1,3 +1,8 @@
+import type {
+  WorkflowIntegrationImpactRecord,
+  WorkflowIntegrationImpactPage,
+  WorkflowIntegrationUsageDatabase,
+} from './contract.js';
 import { acquireDatabasePool } from '../../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
 import { and, eq, sql } from 'drizzle-orm';
@@ -16,18 +21,6 @@ const providerKeySchema = integrationKeySchema.max(64);
 const operationKeySchema = integrationKeySchema.max(128);
 const limitSchema = z.number().int().positive().max(1_000).default(100);
 
-export type WorkflowIntegrationImpactRecord = Readonly<{
-  workflowVersionId: string;
-  providerKey: string;
-  operationKey: string;
-  connectionId: string;
-}>;
-
-export type WorkflowIntegrationImpactPage = Readonly<{
-  items: readonly WorkflowIntegrationImpactRecord[];
-  nextCursor?: WorkflowIntegrationImpactRecord;
-}>;
-
 function page(
   rows: readonly WorkflowIntegrationImpactRecord[],
   limit: number,
@@ -42,35 +35,6 @@ function page(
     ...(hasMore && last !== undefined ? { nextCursor: last } : {}),
   });
 }
-
-export type FindProviderOperationImpactInput = Readonly<{
-  workspaceId: string;
-  providerKey: string;
-  operationKey: string;
-  limit?: number;
-  after?: Readonly<{ workflowVersionId: string; connectionId: string }>;
-}>;
-
-export type FindConnectionImpactInput = Readonly<{
-  workspaceId: string;
-  connectionId: string;
-  limit?: number;
-  after?: Readonly<{
-    workflowVersionId: string;
-    providerKey: string;
-    operationKey: string;
-  }>;
-}>;
-
-export type WorkflowIntegrationUsageDatabase = Readonly<{
-  findProviderOperationImpact(
-    input: FindProviderOperationImpactInput,
-  ): Promise<WorkflowIntegrationImpactPage>;
-  findConnectionImpact(
-    input: FindConnectionImpactInput,
-  ): Promise<WorkflowIntegrationImpactPage>;
-  close(): Promise<void>;
-}>;
 
 export function createWorkflowIntegrationUsageDatabase(
   config: DatabaseConfig,

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import type { ConnectionRecord } from '../records.queries.js';
+import type { ConnectionRecord } from '../contract.js';
 
 const transitionSourceSchema = z.enum(['run', 'test', 'rotation', 'revoke']);
 export const connectionHealthSnapshotSchema = z.object({

@@ -7,7 +7,7 @@ import { createDatabaseRuntime } from '../../src/platform/pool/runtime.js';
 import type {
   ApiConnectionDatabase,
   WorkerConnectionResolutionDatabase,
-} from '../../src/connections/repository.js';
+} from '../../src/connections/runtime/contract.js';
 
 describe('@pertexo/database package contract', () => {
   it('runtime factories do not check out a connection before an operation', async () => {

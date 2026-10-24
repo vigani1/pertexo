@@ -6,10 +6,7 @@ import { connectionFields } from '../records.queries.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { connections, connectionEvents } from '../../schema/connections.js';
-import type {
-  ConnectionRecord,
-  ConnectionTestOutcome,
-} from '../records.queries.js';
+import type { ConnectionRecord, ConnectionTestOutcome } from '../contract.js';
 
 /** Transaction-private revision transitions; callers already own the connection lock. */
 export async function revokeConnectionHealth(

@@ -16,19 +16,20 @@ import {
   providerKeySchema,
   connectionNameSchema,
   sealedSecretSchema,
+  connectionCommand,
+  parseRequestMetadata,
+  databaseConstraint,
+  decodeDurableConnectionReplay,
+  serializeConnectionSnapshot,
+} from '../admission.js';
+import {
   CONNECTION_STATUS,
   CONNECTION_AUTH_TYPE,
   ConnectionNotFoundError,
   ConnectionConflictError,
-  connectionCommand,
-  connectionFields,
-  withConnectionTransaction,
-  parseRequestMetadata,
-  selectConnection,
-  databaseConstraint,
-  decodeDurableConnectionReplay,
-  serializeConnectionSnapshot,
-} from '../records.queries.js';
+} from '../contract.js';
+import { connectionFields, selectConnection } from '../records.queries.js';
+import { withConnectionTransaction } from '../transactions.repository.js';
 import { requireConnectionManager } from '../authority.queries.js';
 import { revokeConnectionHealth } from '../health/transitions.repository.js';
 import {
@@ -36,7 +37,7 @@ import {
   completeCommand,
   findCommandResult,
 } from '../../platform/idempotency.js';
-import type { ConnectionDatabase } from '../records.queries.js';
+import type { ConnectionDatabase } from '../contract.js';
 
 /** Owns atomic creation/idempotency, reads, and revocation transactions. */
 

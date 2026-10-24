@@ -1,3 +1,4 @@
+import type { ConnectionLookupDatabase } from './contract.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -16,36 +17,15 @@ import {
   CONNECTION_STATUS,
   ConnectionNotFoundError,
   ConnectionUnavailableError,
+} from '../contract.js';
+import {
   parseRequestMetadata,
   providerKeySchema,
-  selectConnection,
   uuidSchema,
-  withConnectionTransaction,
-  type RequestMetadata,
-  type ResolvedConnectionSecretRecord,
-} from '../records.queries.js';
+} from '../admission.js';
+import { selectConnection } from '../records.queries.js';
+import { withConnectionTransaction } from '../transactions.repository.js';
 import { requireConnectionUser } from '../authority.queries.js';
-
-/**
- * Owns API credential resolution for ADR 046 read-only provider lookups and
- * its access audit fact. A lookup never changes connection health.
- */
-
-export type ResolveConnectionLookupSecretInput = RequestMetadata &
-  Readonly<{
-    workspaceId: string;
-    actorId: string;
-    connectionId: string;
-    expectedProviderKey: string;
-    purpose: string;
-    signal?: AbortSignal;
-  }>;
-
-export type ConnectionLookupDatabase = Readonly<{
-  resolveConnectionLookupSecret(
-    input: ResolveConnectionLookupSecretInput,
-  ): Promise<ResolvedConnectionSecretRecord>;
-}>;
 
 const lookupPurposeSchema = z
   .string()

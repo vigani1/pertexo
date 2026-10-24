@@ -16,18 +16,20 @@ import {
   uuidSchema,
   providerKeySchema,
   sealedSecretSchema,
+  connectionCommand,
+  parseRequestMetadata,
+  decodeDurableConnectionReplay,
+  serializeConnectionSnapshot,
+} from '../admission.js';
+import {
   CONNECTION_STATUS,
   CONNECTION_AUTH_TYPE,
   ConnectionNotFoundError,
   ConnectionUnavailableError,
   ConnectionSecretVersionConflictError,
-  connectionCommand,
-  withConnectionTransaction,
-  parseRequestMetadata,
-  selectConnection,
-  decodeDurableConnectionReplay,
-  serializeConnectionSnapshot,
-} from '../records.queries.js';
+} from '../contract.js';
+import { withConnectionTransaction } from '../transactions.repository.js';
+import { selectConnection } from '../records.queries.js';
 import { requireConnectionManager } from '../authority.queries.js';
 import { rotateConnectionHealth } from '../health/transitions.repository.js';
 import {
@@ -35,7 +37,7 @@ import {
   completeCommand,
   findCommandResult,
 } from '../../platform/idempotency.js';
-import type { ConnectionDatabase } from '../records.queries.js';
+import type { ConnectionDatabase } from '../contract.js';
 
 /** Owns secret rotation idempotency and current-version fencing. */
 

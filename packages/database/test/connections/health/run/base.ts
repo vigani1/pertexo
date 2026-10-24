@@ -34,9 +34,7 @@ export const sealedHealthSecret = (marker = 1) => ({
 });
 
 export async function withHealthApi<T>(
-  operation: (
-    api: ReturnType<typeof createConnectionDatabase>,
-  ) => Promise<T>,
+  operation: (api: ReturnType<typeof createConnectionDatabase>) => Promise<T>,
 ): Promise<T> {
   const api = createConnectionDatabase(
     parseDatabaseConfig({ connectionString: databaseUrl(apiBaseUrl) }),

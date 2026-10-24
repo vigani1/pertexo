@@ -18,13 +18,11 @@ import {
   CONNECTION_STATUS,
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
-  keyDigest,
-  parseRequestMetadata,
-  selectConnection,
-  uuidSchema,
-  withConnectionTransaction,
-} from '../records.queries.js';
-import type { MarkConnectionTestDispatchedInput } from '../records.queries.js';
+} from '../contract.js';
+import { keyDigest, parseRequestMetadata, uuidSchema } from '../admission.js';
+import { selectConnection } from '../records.queries.js';
+import { withConnectionTransaction } from '../transactions.repository.js';
+import type { MarkConnectionTestDispatchedInput } from '../contract.js';
 
 export async function markConnectionTestDispatched(
   pool: Pool,
