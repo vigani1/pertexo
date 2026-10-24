@@ -36,13 +36,7 @@ export function TasksPage({
       <PageHeader>
         <div className="flex flex-col gap-4">
           <PageHeaderTitle>
-            {views !== undefined
-              ? 'Inbox'
-              : filters.kind === 'approval'
-                ? 'Approvals'
-                : filters.kind === 'input_request'
-                  ? 'Input requests'
-                  : 'Requests'}
+            {views !== undefined ? 'Inbox' : requestTitle(filters.kind)}
           </PageHeaderTitle>
           {views}
         </div>
@@ -143,4 +137,10 @@ function FilterChoice({
       {children}
     </div>
   );
+}
+
+function requestTitle(kind: TaskFilters['kind']): string {
+  if (kind === 'approval') return 'Approvals';
+  if (kind === 'input_request') return 'Input requests';
+  return 'Requests';
 }

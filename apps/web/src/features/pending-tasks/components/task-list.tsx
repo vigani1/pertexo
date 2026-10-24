@@ -123,11 +123,7 @@ export function PendingTasks({
     >
       <h2 className="font-medium">Requests</h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        {runId === undefined
-          ? kind === 'input_request'
-            ? 'Input waiting for your response.'
-            : 'Approvals and input waiting for your response.'
-          : 'Approvals and requested input for this run.'}
+        {requestCaption({ runId, kind })}
       </p>
       <TaskList
         scope={scope}
@@ -144,4 +140,17 @@ export function PendingTasks({
       />
     </section>
   );
+}
+
+function requestCaption({
+  runId,
+  kind,
+}: Readonly<{
+  runId: string | undefined;
+  kind: 'approval' | 'input_request' | undefined;
+}>): string {
+  if (runId !== undefined) return 'Approvals and requested input for this run.';
+  return kind === 'input_request'
+    ? 'Input waiting for your response.'
+    : 'Approvals and input waiting for your response.';
 }

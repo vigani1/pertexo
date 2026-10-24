@@ -103,24 +103,10 @@ export function sendDiscussion(
   command: DiscussionCommand,
   key: string,
 ) {
-  const suffix =
-    command.kind === 'create'
-      ? ''
-      : '/' +
-        command.threadId +
-        (command.kind === 'reply'
-          ? '/replies'
-          : command.kind === 'status'
-            ? '/status'
-            : '/comments/' + command.commentId);
+  const suffix = discussionSuffix(command);
   return scope.apiClient.request({
     path: path(scope, 'comments' + suffix),
-    method:
-      command.kind === 'create' || command.kind === 'reply'
-        ? 'POST'
-        : command.kind === 'remove'
-          ? 'DELETE'
-          : 'PUT',
+    method: DISCUSSION_METHODS[command.kind],
     body: command.body,
     headers: { 'Idempotency-Key': key },
     response: {
@@ -159,4 +145,19 @@ export function heartbeatPresence(
       decode: (value) => workflowPresenceHeartbeatResultSchema.parse(value),
     },
   });
+}
+
+const DISCUSSION_METHODS = {
+  create: 'POST',
+  reply: 'POST',
+  remove: 'DELETE',
+  edit: 'PUT',
+  status: 'PUT',
+} as const;
+
+function discussionSuffix(command: DiscussionCommand): string {
+  if (command.kind === 'create') return '';
+  if (command.kind === 'reply') return '/' + command.threadId + '/replies';
+  if (command.kind === 'status') return '/' + command.threadId + '/status';
+  return '/' + command.threadId + '/comments/' + command.commentId;
 }
