@@ -50,12 +50,11 @@ export function useSharingEditor<
     reader.isError &&
     isApiError(reader.error) &&
     [401, 403, 404].includes(reader.error.status ?? 0);
-  const snapshot =
-    denied || resourceId === undefined
-      ? undefined
-      : edited?.resourceId === resourceId
-        ? edited.snapshot
-        : reader.data;
+  function currentSnapshot(): Snapshot | undefined {
+    if (denied || resourceId === undefined) return undefined;
+    return edited?.resourceId === resourceId ? edited.snapshot : reader.data;
+  }
+  const snapshot = currentSnapshot();
   const locked = command.pending || command.uncertain || command.expired;
   const closeLocked =
     command.pending || (command.uncertain && !command.expired);

@@ -151,22 +151,20 @@ function OrganizationEditResult({
   editor,
 }: Readonly<{ editor: ReturnType<typeof useOrganizationEdit> }>) {
   const { command, selected } = editor;
+  if (command.result === undefined) return null;
+  if ('items' in command.result)
+    return (
+      <WorkflowOrganizationOutcomes
+        items={command.result.items.filter(
+          (item) => item.status !== 'detached',
+        )}
+        workflows={command.denied ? [] : selected}
+      />
+    );
   return (
-    <>
-      {command.result === undefined ? null : 'items' in command.result ? (
-        <WorkflowOrganizationOutcomes
-          items={command.result.items.filter(
-            (item) => item.status !== 'detached',
-          )}
-          workflows={command.denied ? [] : selected}
-        />
-      ) : (
-        <Notice tone="success">
-          Organization command accepted. Current metadata is refreshed
-          separately.
-        </Notice>
-      )}
-    </>
+    <Notice tone="success">
+      Organization command accepted. Current metadata is refreshed separately.
+    </Notice>
   );
 }
 
