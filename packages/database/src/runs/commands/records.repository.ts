@@ -12,7 +12,8 @@ import {
   workflowRunReadQuery,
   runAdmissionBlockers,
 } from '../queries/admission.queries.js';
-import { and, eq, sql } from 'drizzle-orm';
+import type { sql } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
