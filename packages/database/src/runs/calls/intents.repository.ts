@@ -1,3 +1,13 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { and, eq, sql } from 'drizzle-orm';
+import { workflowVersions } from '../../schema/authoring/workflows.js';
+import {
+  nodeRuns,
+  nodeAttempts,
+  workflowRuns,
+} from '../../schema/runs/execution.js';
+import { workflowCalls } from '../../schema/runs/calls.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
@@ -21,17 +31,31 @@ async function preparedInput(
 ): Promise<
   Readonly<{ json: string | null; checksum: string; refusal?: string }>
 > {
-  const result = await client.query<{ id: string; output_ref: unknown }>(
-    `select attempt.id,attempt.output_ref
-     from app.node_runs node join app.node_attempts attempt
-       on attempt.workspace_id=node.workspace_id and attempt.node_run_id=node.id
-       and attempt.id=node.current_attempt_id and attempt.attempt_number=node.current_attempt_number
-     where node.workspace_id=$1 and node.workflow_run_id=$2 and node.invocation_key=$3
-       and node.status='succeeded' and attempt.status='succeeded'
-       and node.output_ref::jsonb=attempt.output_ref::jsonb`,
-    [workspaceId, runId, intent.invocationKey],
-  );
-  const row = result.rows[0];
+  const n = nodeRuns,
+    a = nodeAttempts;
+  const [row] = await drizzle(client)
+    .select({ id: a.id, output_ref: a.outputRef })
+    .from(n)
+    .innerJoin(
+      a,
+      and(
+        eq(a.workspaceId, n.workspaceId),
+        eq(a.nodeRunId, n.id),
+        eq(a.id, n.currentAttemptId),
+        eq(a.attemptNumber, n.currentAttemptNumber),
+      ),
+    )
+    .where(
+      and(
+        eq(n.workspaceId, workspaceId),
+        eq(n.workflowRunId, runId),
+        eq(n.invocationKey, intent.invocationKey),
+        eq(n.status, 'succeeded'),
+        eq(a.status, 'succeeded'),
+        sql`${n.outputRef}::jsonb=${a.outputRef}::jsonb`,
+      ),
+    )
+    .catch(rethrowQueryFailure);
   if (row === undefined) throw new CoordinatorRunStateCorruptError();
   const prepared = prepareStoredExecutionValue(row.output_ref);
   const inputMismatch =
@@ -66,43 +90,39 @@ export async function persistCallIntents(
   for (const intent of plan.callIntents ?? []) {
     const prepared = await preparedInput(client, workspaceId, runId, intent);
     const refusal = closed ? 'call_parent_closed' : prepared.refusal;
-    const result = await client.query<{ id: string }>(
-      `insert into app.workflow_calls
-       (id,workspace_id,parent_run_id,invocation_key,target_workflow_id,target_version_id,
-        target_checksum,input_ref,input_checksum,deadline_at,status,safe_error_code,completed_at)
-       select $1,$2,$3,$4,$5,$6,$7::varchar,$8::json,$9,
-         least(run.deadline_at,clock_timestamp() +
-           (version.executable_json #>> '{graph,settings,maxRunDurationMs}')::integer * interval '1 millisecond'),
-         $10,$11,case when $11::varchar is null then null else clock_timestamp() end
-       from app.workflow_runs run join app.workflow_versions version
-         on version.workspace_id=run.workspace_id and version.workflow_id=$5 and version.id=$6
-       where run.workspace_id=$2 and run.id=$3 and version.checksum=$7::varchar
-       on conflict(workspace_id,parent_run_id,invocation_key) do nothing
-       returning id`,
-      [
-        generatePersistedId(),
-        workspaceId,
-        runId,
-        intent.invocationKey,
-        intent.target.workflowId,
-        intent.target.workflowVersionId,
-        intent.target.executableChecksum,
-        prepared.json,
-        prepared.checksum,
-        refusal === undefined ? 'pending' : 'refused',
-        refusal ?? null,
-      ],
-    );
-    if (result.rowCount !== 1) throw new CoordinatorRunStateCorruptError();
+    const result = await insertCallIntent(client, {
+      workspaceId,
+      runId,
+      intent,
+      prepared,
+      refusal,
+    });
+    if (result.length !== 1) throw new CoordinatorRunStateCorruptError();
     // A declaration may settle in the same transition as parent cancellation.
     // The ordinary event writer still requires a waiting logical node first.
-    const wait = await client.query(
-      `update app.node_runs set status='waiting',control_kind='workflow_call',output_ref=null,
-         completed_at=null,resume_at=null,retry_due_at=null,due_wakeup_at=null,wait_kind=null,
-         updated_at=clock_timestamp()
-       where workspace_id=$1 and workflow_run_id=$2 and invocation_key=$3 and status='succeeded'`,
-      [workspaceId, runId, intent.invocationKey],
-    );
+    const n = nodeRuns;
+    const wait = await drizzle(client)
+      .update(n)
+      .set({
+        status: 'waiting',
+        controlKind: 'workflow_call',
+        outputRef: null,
+        completedAt: null,
+        resumeAt: null,
+        retryDueAt: null,
+        dueWakeupAt: null,
+        waitKind: null,
+        updatedAt: sql`clock_timestamp()`,
+      })
+      .where(
+        and(
+          eq(n.workspaceId, workspaceId),
+          eq(n.workflowRunId, runId),
+          eq(n.invocationKey, intent.invocationKey),
+          eq(n.status, 'succeeded'),
+        ),
+      )
+      .catch(rethrowQueryFailure);
     if (wait.rowCount !== 1) throw new CoordinatorRunStateCorruptError();
   }
 }
@@ -119,4 +139,87 @@ function callInputRefusal(
     return 'call_input_too_large';
   }
   return undefined;
+}
+
+function insertCallIntent(
+  client: PoolClient,
+  input: Readonly<{
+    workspaceId: string;
+    runId: string;
+    intent: WorkflowCallIntent;
+    prepared: Awaited<ReturnType<typeof preparedInput>>;
+    refusal: string | undefined;
+  }>,
+) {
+  const { workspaceId, runId, intent, prepared, refusal } = input;
+  const db = drizzle(client),
+    r = workflowRuns,
+    v = workflowVersions,
+    c = workflowCalls;
+  const declaration = db
+    .select({
+      id: sql<string>`${generatePersistedId()}::uuid`.as('id'),
+      workspaceId: sql<string>`${workspaceId}::uuid`.as('workspace_id'),
+      parentRunId: sql<string>`${runId}::uuid`.as('parent_run_id'),
+      invocationKey: sql<string>`${intent.invocationKey}`.as('invocation_key'),
+      targetWorkflowId: sql<string>`${intent.target.workflowId}::uuid`.as(
+        'target_workflow_id',
+      ),
+      targetVersionId: sql<string>`${intent.target.workflowVersionId}::uuid`.as(
+        'target_version_id',
+      ),
+      targetChecksum:
+        sql<string>`${intent.target.executableChecksum}::varchar`.as(
+          'target_checksum',
+        ),
+      inputRef: sql`${prepared.json}::json`.as('input_ref'),
+      inputChecksum: sql<string>`${prepared.checksum}`.as('input_checksum'),
+      deadlineAt:
+        sql<Date | null>`least(${r.deadlineAt},clock_timestamp()+(${v.executableJson}#>>'{graph,settings,maxRunDurationMs}')::integer*interval '1 millisecond')`.as(
+          'deadline_at',
+        ),
+      status: sql<string>`${refusal === undefined ? 'pending' : 'refused'}`.as(
+        'status',
+      ),
+      childRunId: sql`null`.as('child_run_id'),
+      liveChildRunId: sql`null`.as('live_child_run_id'),
+      resultRef: sql`null`.as('result_ref'),
+      safeErrorCode: sql<string | null>`${refusal ?? null}::varchar`.as(
+        'safe_error_code',
+      ),
+      slotLent: sql<boolean>`false`.as('slot_lent'),
+      consumedAt: sql`null`.as('consumed_at'),
+      detailsPurgedAt: sql`null`.as('details_purged_at'),
+      cancelRequestedAt: sql`null`.as('cancel_requested_at'),
+      cancelAppliedAt: sql`null`.as('cancel_applied_at'),
+      createdAt: sql<Date>`clock_timestamp()`.as('created_at'),
+      completedAt:
+        sql<Date | null>`case when ${refusal ?? null}::varchar is null then null else clock_timestamp() end`.as(
+          'completed_at',
+        ),
+    })
+    .from(r)
+    .innerJoin(
+      v,
+      and(
+        eq(v.workspaceId, r.workspaceId),
+        eq(v.workflowId, intent.target.workflowId),
+        eq(v.id, intent.target.workflowVersionId),
+      ),
+    )
+    .where(
+      and(
+        eq(r.workspaceId, workspaceId),
+        eq(r.id, runId),
+        eq(v.checksum, intent.target.executableChecksum),
+      ),
+    );
+  return db
+    .insert(c)
+    .select(declaration)
+    .onConflictDoNothing({
+      target: [c.workspaceId, c.parentRunId, c.invocationKey],
+    })
+    .returning({ id: c.id })
+    .catch(rethrowQueryFailure);
 }

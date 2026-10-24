@@ -1,3 +1,4 @@
+import type { PgInsertValue } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { nodeRuns, runEvents } from '../../../../schema/runs/execution.js';
@@ -111,14 +112,7 @@ export async function persistRunEvents(
       createdAt: sql`${event.occurredAt}::timestamptz`,
     };
   });
-  if (persistedEvents.length > 0) {
-    const inserted = await drizzle(client)
-      .insert(runEvents)
-      .values(persistedEvents)
-      .catch(rethrowQueryFailure);
-    if (inserted.rowCount !== persistedEvents.length)
-      throw new CoordinatorRunStateCorruptError();
-  }
+  await insertEvents(client, persistedEvents);
   for (const event of plan.events) {
     const terminalNodeStatus = terminalStatus(event.name);
     const settlesInvocation =
@@ -153,5 +147,22 @@ export async function persistRunEvents(
       if (updatedNode.rowCount !== 1)
         throw new CoordinatorRunStateCorruptError();
     }
+  }
+}
+
+async function insertEvents(
+  client: PoolClient,
+  events: readonly PgInsertValue<typeof runEvents>[],
+) {
+  // A transition can emit several events per expanded node. Bound statements below PostgreSQL's bind-parameter limit.
+  const rowsPerStatement = 1_000;
+  for (let offset = 0; offset < events.length; offset += rowsPerStatement) {
+    const rows = events.slice(offset, offset + rowsPerStatement);
+    const inserted = await drizzle(client)
+      .insert(runEvents)
+      .values(rows)
+      .catch(rethrowQueryFailure);
+    if (inserted.rowCount !== rows.length)
+      throw new CoordinatorRunStateCorruptError();
   }
 }

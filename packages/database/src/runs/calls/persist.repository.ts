@@ -1,3 +1,8 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { and, eq, inArray, isNull, notInArray, sql } from 'drizzle-orm';
+import { workflowCalls } from '../../schema/runs/calls.js';
+import { nodeRuns } from '../../schema/runs/execution.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import { CoordinatorRunStateCorruptError } from '../advance/contract.js';
 import {
@@ -26,26 +31,31 @@ export async function persistCallCompletion(
   const failure = input.plan.events.find(
     ({ name }) => name === `run.${input.plan.checkpoint.runStatus}`,
   )?.reasonCode;
-  const rows = await client.query<{ parent_run_id: string }>(
-    `update app.workflow_calls set status=$3,result_ref=$4::json,safe_error_code=$5,completed_at=clock_timestamp()
-     where workspace_id=$1 and child_run_id=$2 and status='accepted'
-     returning parent_run_id`,
-    [
-      input.workspaceId,
-      input.runId,
-      input.plan.checkpoint.runStatus,
-      input.plan.runResult === undefined
-        ? null
-        : JSON.stringify({ kind: 'inline', value: input.plan.runResult }),
-      failure ?? null,
-    ],
-  );
+  const c = workflowCalls;
+  // The terminal run event guards this assignment; the original table CHECK still rejects inconsistent plans.
+  const rows = await drizzle(client)
+    .update(c)
+    .set({
+      status: sql`${input.plan.checkpoint.runStatus}`,
+      resultRef: sql`${input.plan.runResult === undefined ? null : JSON.stringify({ kind: 'inline', value: input.plan.runResult })}::json`,
+      safeErrorCode: failure ?? null,
+      completedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(c.workspaceId, input.workspaceId),
+        eq(c.childRunId, input.runId),
+        eq(c.status, 'accepted'),
+      ),
+    )
+    .returning({ parent_run_id: c.parentRunId })
+    .catch(rethrowQueryFailure);
   const missingCallResult =
-    rows.rows.length > 0 &&
+    rows.length > 0 &&
     input.plan.checkpoint.runStatus === 'succeeded' &&
     input.plan.runResult === undefined;
   if (missingCallResult) throw new CoordinatorRunStateCorruptError();
-  for (const row of rows.rows)
+  for (const row of rows)
     await wakeWorkflowRun(
       client,
       input.workspaceId,
@@ -82,48 +92,75 @@ export async function persistConsumedCalls(
       !settledKeys.includes(invocation.invocationKey)
     )
       continue;
-    const updated = await client.query(
-      `update app.node_runs node set output_ref=call.result_ref
-       from app.workflow_calls call
-       where call.workspace_id=$1 and call.parent_run_id=$2 and call.id=$3
-         and call.invocation_key=$4 and call.status='succeeded' and call.result_ref is not null
-         and node.workspace_id=call.workspace_id and node.workflow_run_id=call.parent_run_id
-         and node.invocation_key=call.invocation_key and node.status='succeeded'`,
-      [workspaceId, runId, invocation.output.callId, invocation.invocationKey],
-    );
+    const n = nodeRuns,
+      c = workflowCalls;
+    const updated = await drizzle(client)
+      .update(n)
+      .set({ outputRef: c.resultRef })
+      .from(c)
+      .where(
+        and(
+          eq(c.workspaceId, workspaceId),
+          eq(c.parentRunId, runId),
+          eq(c.id, invocation.output.callId),
+          eq(c.invocationKey, invocation.invocationKey),
+          eq(c.status, 'succeeded'),
+          sql`${c.resultRef} is not null`,
+          eq(n.workspaceId, c.workspaceId),
+          eq(n.workflowRunId, c.parentRunId),
+          eq(n.invocationKey, c.invocationKey),
+          eq(n.status, 'succeeded'),
+        ),
+      )
+      .catch(rethrowQueryFailure);
     if (updated.rowCount !== 1) throw new CoordinatorRunStateCorruptError();
   }
-  await client.query(
-    `update app.workflow_calls set consumed_at=coalesce(consumed_at,clock_timestamp())
-     where workspace_id=$1 and parent_run_id=$2 and invocation_key=any($3::varchar[])
-       and status not in ('pending','accepted')`,
-    [workspaceId, runId, settledKeys],
-  );
+  const c = workflowCalls;
+  await drizzle(client)
+    .update(c)
+    .set({ consumedAt: sql`coalesce(${c.consumedAt},clock_timestamp())` })
+    .where(
+      and(
+        eq(c.workspaceId, workspaceId),
+        eq(c.parentRunId, runId),
+        inArray(c.invocationKey, settledKeys),
+        notInArray(c.status, ['pending', 'accepted']),
+      ),
+    )
+    .catch(rethrowQueryFailure);
   if (terminalRunStatuses.has(plan.checkpoint.runStatus)) {
-    const controls = await client.query<{ child_run_id: string | null }>(
-      `update app.workflow_calls set
-         status=case when status='pending' then 'refused' else status end,
-         safe_error_code=case when status='pending' then 'call_parent_closed' else safe_error_code end,
-         completed_at=case when status='pending' then clock_timestamp() else completed_at end,
-         consumed_at=coalesce(consumed_at,clock_timestamp()),
-         cancel_requested_at=case when status='accepted' then coalesce(cancel_requested_at,clock_timestamp()) else cancel_requested_at end
-       where workspace_id=$1 and parent_run_id=$2 and consumed_at is null
-       returning child_run_id`,
-      [workspaceId, runId],
-    );
-    for (const row of controls.rows)
+    const controls = await drizzle(client)
+      .update(c)
+      .set({
+        status: sql`case when ${c.status}='pending' then 'refused' else ${c.status} end`,
+        safeErrorCode: sql`case when ${c.status}='pending' then 'call_parent_closed' else ${c.safeErrorCode} end`,
+        completedAt: sql`case when ${c.status}='pending' then clock_timestamp() else ${c.completedAt} end`,
+        consumedAt: sql`coalesce(${c.consumedAt},clock_timestamp())`,
+        cancelRequestedAt: sql`case when ${c.status}='accepted' then coalesce(${c.cancelRequestedAt},clock_timestamp()) else ${c.cancelRequestedAt} end`,
+      })
+      .where(
+        and(
+          eq(c.workspaceId, workspaceId),
+          eq(c.parentRunId, runId),
+          isNull(c.consumedAt),
+        ),
+      )
+      .returning({ child_run_id: c.childRunId })
+      .catch(rethrowQueryFailure);
+    for (const row of controls)
       if (row.child_run_id !== null)
         await wakeWorkflowRun(client, workspaceId, row.child_run_id);
     return;
   }
   if (plan.checkpoint.invocations.some(({ status }) => status === 'running'))
     return;
-  const continuation = await client.query<{ needed: boolean }>(
-    `select exists(select 1 from app.workflow_calls where workspace_id=$1 and parent_run_id=$2
-       and (status='pending' or (status='refused' and consumed_at is null)))
-       and not exists(select 1 from app.workflow_calls where workspace_id=$1 and parent_run_id=$2 and slot_lent) as needed`,
-    [workspaceId, runId],
-  );
-  if (continuation.rows[0]?.needed ?? false)
+  const [continuation] = await drizzle(client)
+    .select({
+      needed: sql<boolean>`count(*) filter(where ${c.status}='pending' or (${c.status}='refused' and ${c.consumedAt} is null))>0 and count(*) filter(where ${c.slotLent})=0`,
+    })
+    .from(c)
+    .where(and(eq(c.workspaceId, workspaceId), eq(c.parentRunId, runId)))
+    .catch(rethrowQueryFailure);
+  if (continuation?.needed ?? false)
     await wakeWorkflowRun(client, workspaceId, runId);
 }
