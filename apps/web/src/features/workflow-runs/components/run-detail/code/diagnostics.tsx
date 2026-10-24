@@ -1,6 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { CodeDiagnostics } from '@/components/patterns/code/diagnostics';
-import { Button } from '@/components/ui/button';
+import {
+  InlineFailedRead,
+  QueryView,
+} from '@/components/patterns/states/query-view';
 import { SkeletonLines } from '@/components/ui/skeleton';
 import { nodeRunDiagnosticsQueryOptions } from '../../../data/stored-values.queries';
 import type { RunTimelineRow } from '../../../model/timeline/runs';
@@ -41,29 +44,25 @@ export function StepCodeDiagnostics({
         Console output appears when this Code attempt finishes.
       </p>
     );
-  if (query.data !== undefined)
-    return query.data === null ? (
-      <p className="text-xs text-muted-foreground">
-        No Code diagnostics were kept for this attempt. Run details expire after
-        30 days.
-      </p>
-    ) : (
-      <CodeDiagnostics diagnostics={query.data} />
-    );
-  if (query.isError)
-    return (
-      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-        Couldn’t load Code diagnostics.
-        <Button
-          type="button"
-          variant="ghost"
-          size="xs"
-          disabled={query.isFetching}
-          onClick={() => void query.refetch()}
-        >
-          Try again
-        </Button>
-      </div>
-    );
-  return <SkeletonLines label="Loading Code diagnostics" />;
+  return (
+    <QueryView
+      query={query}
+      resource="Code diagnostics"
+      loading={<SkeletonLines label="Loading Code diagnostics" />}
+      error={(failed) => (
+        <InlineFailedRead text="Couldn’t load Code diagnostics." {...failed} />
+      )}
+    >
+      {(diagnostics) =>
+        diagnostics === null ? (
+          <p className="text-xs text-muted-foreground">
+            No Code diagnostics were kept for this attempt. Run details expire
+            after 30 days.
+          </p>
+        ) : (
+          <CodeDiagnostics diagnostics={diagnostics} />
+        )
+      }
+    </QueryView>
+  );
 }

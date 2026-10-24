@@ -1,6 +1,10 @@
+import {
+  InlineFailedRead,
+  QueryView,
+} from '@/components/patterns/states/query-view';
 import type { AccessibleWorkspace, WorkflowRunData } from '@pertexo/contracts';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-import { Maximize2Icon, RefreshCwIcon } from 'lucide-react';
+import { Maximize2Icon } from 'lucide-react';
 import { useId, useState, type ReactNode } from 'react';
 import { JsonTree } from '@/components/patterns/code/json-tree';
 import { Button } from '@/components/ui/button';
@@ -153,32 +157,25 @@ function RunDataRead({
   emptyText: string;
   scope: RunDataScope;
 }>) {
-  if (query.data !== undefined)
-    return (
-      <RunDataValue
-        data={query.data}
-        title={title}
-        emptyText={emptyText}
-        scope={scope}
-      />
-    );
-  if (query.isError)
-    return (
-      <div className="flex flex-wrap items-center gap-2 text-[0.8rem] text-muted-foreground">
-        <span>Couldn’t load this.</span>
-        <Button
-          type="button"
-          size="xs"
-          variant="ghost"
-          disabled={query.isFetching}
-          onClick={() => void query.refetch()}
-        >
-          <RefreshCwIcon aria-hidden="true" />
-          Try again
-        </Button>
-      </div>
-    );
-  return <SkeletonLines label={`Loading ${title}`} />;
+  return (
+    <QueryView
+      query={query}
+      resource={title}
+      loading={<SkeletonLines label={`Loading ${title}`} />}
+      error={(failed) => (
+        <InlineFailedRead text="Couldn’t load this." {...failed} />
+      )}
+    >
+      {(data) => (
+        <RunDataValue
+          data={data}
+          title={title}
+          emptyText={emptyText}
+          scope={scope}
+        />
+      )}
+    </QueryView>
+  );
 }
 
 /** The run's own input, as the trigger handed it over. */
@@ -358,55 +355,55 @@ function RecordedStepInput({
       },
     ),
   });
-  const data = recorded.data;
-  if (data === undefined && !recorded.isError)
-    return <SkeletonLines label={`Loading Data in of ${row.label}`} />;
-  if (data?.kind === 'inline' || data?.kind === 'artifact')
-    return (
-      <div className="flex flex-col gap-3">
-        {row.attempts > 1 ? (
-          <Muted>What the latest attempt received.</Muted>
-        ) : null}
-        <RunDataValue
-          data={data}
-          title={`Data in of ${row.label}`}
-          emptyText="This step received nothing."
-          scope={scope}
-        />
-        <SourcesDisclosure>{children}</SourcesDisclosure>
-      </div>
-    );
   return (
-    <div className="flex flex-col gap-4">
-      {recorded.isError || data === undefined ? (
-        <div
-          role="alert"
-          className="flex flex-wrap items-center gap-2 text-[0.8rem] text-muted-foreground"
-        >
-          <span>Couldn’t load exactly what this step received.</span>
-          <Button
-            type="button"
-            size="xs"
-            variant="ghost"
-            disabled={recorded.isFetching}
-            onClick={() => void recorded.refetch()}
-          >
-            <RefreshCwIcon aria-hidden="true" />
-            Try again
-          </Button>
+    <QueryView
+      query={recorded}
+      resource={`Data in of ${row.label}`}
+      loading={<SkeletonLines label={`Loading Data in of ${row.label}`} />}
+      error={(failed) => (
+        <div className="flex flex-col gap-4">
+          <InlineFailedRead
+            text="Couldn’t load exactly what this step received."
+            {...failed}
+          />
+          <SourceData>{children}</SourceData>
         </div>
-      ) : (
-        <Muted>
-          {data.kind === 'expired'
-            ? 'No longer kept. Pertexo keeps run data for 30 days.'
-            : RECORDING.has(row.status)
-              ? 'Not recorded yet.'
-              : 'Pertexo didn’t keep exactly what this step received, for example because it was over 256 KB.'}
-        </Muted>
       )}
-      <SourceData>{children}</SourceData>
-    </div>
+    >
+      {(data) =>
+        data.kind === 'inline' || data.kind === 'artifact' ? (
+          <div className="flex flex-col gap-3">
+            {row.attempts > 1 ? (
+              <Muted>What the latest attempt received.</Muted>
+            ) : null}
+            <RunDataValue
+              data={data}
+              title={`Data in of ${row.label}`}
+              emptyText="This step received nothing."
+              scope={scope}
+            />
+            <SourcesDisclosure>{children}</SourcesDisclosure>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <Muted>{unrecordedInput(data.kind, row.status)}</Muted>
+            <SourceData>{children}</SourceData>
+          </div>
+        )
+      }
+    </QueryView>
   );
+}
+
+/** Why the exact input isn't shown. */
+function unrecordedInput(
+  kind: string,
+  status: RunTimelineRow['status'],
+): string {
+  if (kind === 'expired')
+    return 'No longer kept. Pertexo keeps run data for 30 days.';
+  if (RECORDING.has(status)) return 'Not recorded yet.';
+  return 'Pertexo didn’t keep exactly what this step received, for example because it was over 256 KB.';
 }
 
 /** Names where the input came from for what it is: not the exact input. */

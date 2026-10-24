@@ -327,7 +327,7 @@ describe('two-factor account controls', () => {
         });
         return;
       }
-      await screen.findByRole('button', { name: 'Try again' });
+      await screen.findByText(/Couldn’t refresh\. Showing results from/u);
       expect(
         screen.getByRole('list', { name: 'Recovery codes' }),
       ).toBeVisible();
@@ -342,7 +342,7 @@ describe('two-factor account controls', () => {
         screen.getByRole('button', { name: 'Turn on two-factor sign-in' }),
       ).toBeDisabled();
       refuseRead = false;
-      await actor.click(screen.getByRole('button', { name: 'Try again' }));
+      await actor.click(screen.getByRole('button', { name: 'Retry' }));
       expect(
         await screen.findByRole('button', {
           name: 'Turn off two-factor sign-in',

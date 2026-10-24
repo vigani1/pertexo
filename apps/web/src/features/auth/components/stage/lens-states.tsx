@@ -1,3 +1,4 @@
+import { QueryView } from '@/components/patterns/states/query-view';
 import type { AuthenticationCapabilitiesResponse } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -104,25 +105,33 @@ export function PasswordCapabilityGate({
   const capabilities = useQuery(
     authenticationCapabilitiesQueryOptions(apiClient),
   );
-  if (capabilities.isPending)
-    return <LensLoading title={title} label={loadingLabel} />;
-  if (capabilities.isError || !capabilities.data.password.enabled)
-    return (
-      <LensUnavailable
-        id={id}
-        title={title}
-        retrying={capabilities.isFetching}
-        {...(capabilities.isError
-          ? { onRetry: () => void capabilities.refetch() }
-          : {})}
-        footer={
-          <AuthLensFooter>
-            <Link to="/login">Back to sign in</Link>
-          </AuthLensFooter>
-        }
-      >
-        {unavailable}
-      </LensUnavailable>
-    );
-  return children(capabilities.data);
+  const unavailableLens = (
+    retry?: Readonly<{ retrying: boolean; retry: () => void }>,
+  ) => (
+    <LensUnavailable
+      id={id}
+      title={title}
+      retrying={retry?.retrying ?? false}
+      {...(retry === undefined ? {} : { onRetry: retry.retry })}
+      footer={
+        <AuthLensFooter>
+          <Link to="/login">Back to sign in</Link>
+        </AuthLensFooter>
+      }
+    >
+      {unavailable}
+    </LensUnavailable>
+  );
+  return (
+    <QueryView
+      query={capabilities}
+      resource="Sign-in options"
+      loading={<LensLoading title={title} label={loadingLabel} />}
+      error={(failed) => unavailableLens(failed)}
+    >
+      {(options) =>
+        options.password.enabled ? children(options) : unavailableLens()
+      }
+    </QueryView>
+  );
 }

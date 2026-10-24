@@ -75,15 +75,9 @@ export function UsageTrendsPage({
                 <ToggleGroupItem value="90d">90 days</ToggleGroupItem>
               </ToggleGroup>
             }
-            snapshotAt={data?.asOf}
-            error={query.error}
-            pending={query.isPending}
-            retrying={query.isFetching}
-            onRetry={() => {
-              void query.refetch();
-            }}
+            query={query}
           >
-            {data === undefined ? null : (
+            {(data) => (
               <div className="space-y-6">
                 <p className="text-lg tabular-nums">
                   {data.total.toLocaleString(FORMAT_LOCALE)} runs

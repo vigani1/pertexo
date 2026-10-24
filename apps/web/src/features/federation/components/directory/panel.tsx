@@ -1,5 +1,4 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { describeReadError, isAccessLost } from '@/lib/api/error-copy';
 import { QueryView } from '@/components/patterns/states/query-view';
 import type {
   AccessibleWorkspace,
@@ -15,16 +14,6 @@ import { DirectoryMappingsEditor } from './mappings';
 import { DirectoryPeople } from './people';
 import { DirectoryWorkspaceLinks } from './unlink';
 
-/** Losing access hides the directory instead of showing it as stale. */
-function directoryHidden(error: unknown) {
-  if (!isAccessLost(error)) return undefined;
-  return (
-    <Notice tone="warning">
-      {describeReadError(error, 'Directory settings')}
-    </Notice>
-  );
-}
-
 export function DirectoryPanel({
   scope,
   organization,
@@ -39,11 +28,7 @@ export function DirectoryPanel({
   const editableFor = (settings: DirectorySettings) =>
     settings.canManage && workspace.status === 'active' && !query.isError;
   return (
-    <QueryView
-      query={query}
-      resource="Directory settings"
-      failure={directoryHidden}
-    >
+    <QueryView query={query} resource="Directory settings">
       {(settings) => (
         <div className="space-y-6">
           <p className="text-sm text-muted-foreground">

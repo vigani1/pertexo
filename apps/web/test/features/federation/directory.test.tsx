@@ -153,7 +153,7 @@ describe('directory management and reviewed commands', () => {
       'Refresh-safe directory',
     );
     await user.click(screen.getByRole('button', { name: 'Create credential' }));
-    await screen.findByText('Directory settings could not be loaded.');
+    await screen.findByText(/Couldn’t refresh\. Showing results from/u);
     expect(screen.getByLabelText('Provisioning bearer credential')).toHaveValue(
       'shown-once-during-a-refresh-failure',
     );

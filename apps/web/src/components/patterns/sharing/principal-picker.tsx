@@ -1,3 +1,5 @@
+import { LoadMore } from '@/components/patterns/lists/load-more';
+import { QueryView } from '@/components/patterns/states/query-view';
 import { isAdministrativeRole } from '@pertexo/contracts';
 import { useDeferredValue, useId, useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
@@ -6,10 +8,8 @@ import type { SharingPrincipals } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import { sharingPrincipalsQueryOptions } from '@/lib/resource-sharing/principals.queries';
 import { principalIdentifier } from '@/lib/resource-sharing/principal';
-import { describeReadError } from '@/lib/api/error-copy';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Notice } from '@/components/ui/notice';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { SharingEntry } from './entry';
 
@@ -106,73 +106,60 @@ export function SharingPrincipalPicker({
           }}
         />
       </div>
-      {principals.isError ? (
-        <Notice
-          tone="warning"
-          action={
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={principals.isFetching}
-              onClick={() => {
-                void principals.refetch();
-              }}
-            >
-              Try again
-            </Button>
-          }
-        >
-          {describeReadError(principals.error, 'People')}
-        </Notice>
-      ) : (
-        <ul
-          className="flex max-h-56 flex-col divide-y divide-border overflow-y-auto rounded-lg border border-border px-3"
-          aria-label={kind === 'member' ? 'People to add' : 'Groups to add'}
-          aria-busy={principals.isFetching}
-        >
-          {items.map((principal) => (
-            <PrincipalChoice
-              key={principalIdentifier(principal)}
-              principal={principal}
-              roleNames={roleNames}
-              added={selectedIds.has(principalIdentifier(principal))}
-              unavailable={unavailable(principal)}
-              disabled={disabled || full}
-              onAdd={onAdd}
-            />
-          ))}
-          {principals.isPending ? (
-            <li role="status" className="py-3 text-sm text-muted-foreground">
-              Looking for {noun}…
-            </li>
-          ) : items.length === 0 ? (
-            <li className="py-3 text-sm text-muted-foreground">
-              {deferred === ''
-                ? kind === 'member'
-                  ? 'No other active members yet.'
-                  : 'No directory groups. Groups appear after single sign-on syncs them.'
-                : `No ${noun} match “${deferred}”.`}
-            </li>
-          ) : null}
-        </ul>
-      )}
-      {principals.hasNextPage ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="self-start"
-          disabled={disabled || principals.isFetchingNextPage}
-          onClick={() => {
-            void principals.fetchNextPage();
-          }}
-        >
-          Show more {noun}
-        </Button>
-      ) : null}
+      <QueryView
+        query={principals}
+        resource={kind === 'member' ? 'People' : 'Groups'}
+        loading={
+          <p role="status" className="py-3 text-sm text-muted-foreground">
+            Looking for {noun}…
+          </p>
+        }
+        isEmpty={() => items.length === 0}
+        empty={
+          <p className="py-3 text-sm text-muted-foreground">
+            {noMatchSentence(kind, deferred)}
+          </p>
+        }
+      >
+        {() => (
+          <ul
+            className="flex max-h-56 flex-col divide-y divide-border overflow-y-auto rounded-lg border border-border px-3"
+            aria-label={kind === 'member' ? 'People to add' : 'Groups to add'}
+            aria-busy={principals.isFetching}
+          >
+            {items.map((principal) => (
+              <PrincipalChoice
+                key={principalIdentifier(principal)}
+                principal={principal}
+                roleNames={roleNames}
+                added={selectedIds.has(principalIdentifier(principal))}
+                unavailable={unavailable(principal)}
+                disabled={disabled || full}
+                onAdd={onAdd}
+              />
+            ))}
+          </ul>
+        )}
+      </QueryView>
+      <LoadMore
+        subject={noun}
+        label={`Show more ${noun}`}
+        hasNextPage={principals.hasNextPage}
+        loading={principals.isFetchingNextPage}
+        failed={principals.isFetchNextPageError}
+        onLoadMore={() => {
+          if (!disabled) void principals.fetchNextPage();
+        }}
+      />
     </section>
   );
+}
+
+function noMatchSentence(kind: Kind, search: string): string {
+  if (search !== '')
+    return `No ${kind === 'member' ? 'people' : 'groups'} match “${search}”.`;
+  if (kind === 'member') return 'No other active members yet.';
+  return 'No directory groups. Groups appear after single sign-on syncs them.';
 }
 
 function PrincipalChoice({

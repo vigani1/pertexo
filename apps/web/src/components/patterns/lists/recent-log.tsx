@@ -1,6 +1,6 @@
 import { useId, type ReactNode } from 'react';
 import { LoadMore } from '@/components/patterns/lists/load-more';
-import { ReadFailure } from '@/components/patterns/states/read-failure';
+import { QueryView } from '@/components/patterns/states/query-view';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import { StatusGlyph, type StatusTone } from '@/components/ui/status';
 import { statusToneText } from '@/components/ui/status-tone';
@@ -90,42 +90,19 @@ export function RecentLog<Item>({
           </span>
         )}
       </div>
-      {query.isPending ? (
-        <SkeletonRows label={`Loading ${title.toLowerCase()}`} rows={2} />
-      ) : null}
-      {query.isError && (items === undefined || !query.isFetchNextPageError) ? (
-        <ReadFailure
-          resource={title}
-          error={query.error}
-          showing={items !== undefined}
-          retrying={items === undefined ? query.isFetching : query.isRefetching}
-          updatedAt={query.dataUpdatedAt}
-          onRetry={() => void query.refetch()}
-        />
-      ) : null}
-      {items?.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{empty}</p>
-      ) : null}
-      {items === undefined || items.length === 0 ? null : dayOf ===
-        undefined ? (
-        <ul aria-labelledby={headingId} className="flex flex-col">
-          {items.map((item) => (
-            <li
-              key={itemKey(item)}
-              className="border-t border-border py-2.5 first:border-t-0"
-            >
-              {renderItem(item)}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        byDay(items, dayOf).map((day) => (
-          <div key={day.heading} className="flex flex-col">
-            <p className="pt-3 pb-1 text-xs font-medium text-subtle-foreground">
-              {day.heading}
-            </p>
-            <ul aria-label={day.heading} className="flex flex-col">
-              {day.items.map((item) => (
+      <QueryView
+        query={{ ...query, data: items }}
+        resource={title}
+        loading={
+          <SkeletonRows label={`Loading ${title.toLowerCase()}`} rows={2} />
+        }
+        isEmpty={(shown) => shown.length === 0}
+        empty={<p className="text-sm text-muted-foreground">{empty}</p>}
+      >
+        {(shown) =>
+          dayOf === undefined ? (
+            <ul aria-labelledby={headingId} className="flex flex-col">
+              {shown.map((item) => (
                 <li
                   key={itemKey(item)}
                   className="border-t border-border py-2.5 first:border-t-0"
@@ -134,9 +111,27 @@ export function RecentLog<Item>({
                 </li>
               ))}
             </ul>
-          </div>
-        ))
-      )}
+          ) : (
+            byDay(shown, dayOf).map((day) => (
+              <div key={day.heading} className="flex flex-col">
+                <p className="pt-3 pb-1 text-xs font-medium text-subtle-foreground">
+                  {day.heading}
+                </p>
+                <ul aria-label={day.heading} className="flex flex-col">
+                  {day.items.map((item) => (
+                    <li
+                      key={itemKey(item)}
+                      className="border-t border-border py-2.5 first:border-t-0"
+                    >
+                      {renderItem(item)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))
+          )
+        }
+      </QueryView>
       <LoadMore
         subject={subject}
         label={loadMoreLabel}

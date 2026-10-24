@@ -149,38 +149,62 @@ describe('recorded step input', () => {
     },
   );
 
-  it.each([500, 403])(
-    'stops polling and offers recovery after an empty read then HTTP %s',
-    async (status) => {
-      let calls = 0;
-      let recovered = false;
-      const server = serve(() => {
-        calls += 1;
-        if (recovered) return recorded({ recovered: true });
-        return calls === 1
-          ? none()
-          : HttpResponse.json(
-              { code: 'internal', message: 'Unavailable' },
-              { status },
-            );
-      });
-      renderStep(row(sendRunId, 'send-receipt', 'Send receipt', 'running'));
-      expect(await screen.findByText('Not recorded yet.')).toBeVisible();
-      const problem = await screen.findByRole('alert', {}, { timeout: 3_000 });
-      expect(problem).toHaveTextContent(
-        'Couldn’t load exactly what this step received.',
-      );
-      expect(screen.queryByText('Not recorded yet.')).not.toBeInTheDocument();
-      await new Promise((resolve) => setTimeout(resolve, 1_500));
-      expect(server.reads()).toBe(2);
-      recovered = true;
-      await userEvent
-        .setup()
-        .click(within(problem).getByRole('button', { name: 'Try again' }));
-      expect(await dataIn()).toHaveTextContent(/recovered: true/u);
-      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-    },
-  );
+  function failAfterEmptyRead(status: number) {
+    let calls = 0;
+    let recovered = false;
+    const server = serve(() => {
+      calls += 1;
+      if (recovered) return recorded({ recovered: true });
+      return calls === 1
+        ? none()
+        : HttpResponse.json(
+            { code: 'internal', message: 'Unavailable' },
+            { status },
+          );
+    });
+    return {
+      server,
+      recover: () => {
+        recovered = true;
+      },
+    };
+  }
+
+  it('keeps the empty answer, stops polling and offers Retry after an HTTP 500 refresh', async () => {
+    const { server, recover } = failAfterEmptyRead(500);
+    renderStep(row(sendRunId, 'send-receipt', 'Send receipt', 'running'));
+    expect(await screen.findByText('Not recorded yet.')).toBeVisible();
+    const problem = await screen.findByRole('alert', {}, { timeout: 3_000 });
+    expect(problem).toHaveTextContent(/Couldn’t refresh/u);
+    expect(screen.getByText('Not recorded yet.')).toBeVisible();
+    await new Promise((resolve) => setTimeout(resolve, 1_500));
+    expect(server.reads()).toBe(2);
+    recover();
+    await userEvent
+      .setup()
+      .click(within(problem).getByRole('button', { name: 'Retry' }));
+    expect(await dataIn()).toHaveTextContent(/recovered: true/u);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('hides the empty answer, stops polling and offers recovery after an HTTP 403 refresh', async () => {
+    const { server, recover } = failAfterEmptyRead(403);
+    renderStep(row(sendRunId, 'send-receipt', 'Send receipt', 'running'));
+    expect(await screen.findByText('Not recorded yet.')).toBeVisible();
+    const problem = await screen.findByRole('alert', {}, { timeout: 3_000 });
+    expect(problem).toHaveTextContent(
+      'Couldn’t load exactly what this step received.',
+    );
+    expect(screen.queryByText('Not recorded yet.')).not.toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 1_500));
+    expect(server.reads()).toBe(2);
+    recover();
+    await userEvent
+      .setup()
+      .click(within(problem).getByRole('button', { name: 'Try again' }));
+    expect(await dataIn()).toHaveTextContent(/recovered: true/u);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
 
   it('stops after five empty reads instead of polling indefinitely', async () => {
     const server = serve(none);

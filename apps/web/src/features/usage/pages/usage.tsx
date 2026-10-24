@@ -121,17 +121,9 @@ export function UsagePage({
           <UsageSnapshot
             title="Current capacity"
             description="What’s running, waiting to start and stored right now."
-            snapshotAt={capacityData?.asOf}
-            error={capacity.error}
-            pending={capacity.isPending}
-            retrying={capacity.isFetching}
-            onRetry={() => {
-              void capacity.refetch();
-            }}
+            query={capacity}
           >
-            {capacityData === undefined ? null : (
-              <CurrentCapacity snapshot={capacityData} />
-            )}
+            {(snapshot) => <CurrentCapacity snapshot={snapshot} />}
           </UsageSnapshot>
         ) : (
           <SettingsSection title="Current capacity">
@@ -162,17 +154,11 @@ export function UsagePage({
                 ))}
               </ToggleGroup>
             }
-            snapshotAt={activityData?.asOf}
-            error={activity.error}
-            pending={activity.isPending}
-            retrying={activity.isFetching}
-            onRetry={() => {
-              void activity.refetch();
-            }}
+            query={activity}
           >
-            {activityData === undefined ? null : (
+            {(snapshot) => (
               <RetainedActivity
-                snapshot={activityData}
+                snapshot={snapshot}
                 windowPhrase={windowPhrases[search.window]}
                 workspaceId={workspace.id}
                 canReadWorkflowNames={workspace.capabilities.includes(
