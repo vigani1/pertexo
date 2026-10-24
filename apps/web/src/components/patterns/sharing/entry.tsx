@@ -18,13 +18,7 @@ function SharingAvatar({
           : 'bg-primary/10 text-primary ring-primary/30',
       )}
     >
-      {kind === 'member' ? (
-        formatInitials(label)
-      ) : kind === 'group' ? (
-        <UsersRoundIcon className="size-3.5" />
-      ) : (
-        <ShieldCheckIcon className="size-3.5" />
-      )}
+      <SharingAvatarMark kind={kind} label={label} />
     </span>
   );
 }
@@ -67,5 +61,18 @@ export function SharingAdministratorsEntry() {
       label="Workspace owners and admins"
       detail="Always have access"
     />
+  );
+}
+
+function SharingAvatarMark({
+  kind,
+  label,
+}: Readonly<{ kind: 'member' | 'group' | 'administrators'; label: string }>) {
+  return kind === 'member' ? (
+    formatInitials(label)
+  ) : kind === 'group' ? (
+    <UsersRoundIcon className="size-3.5" />
+  ) : (
+    <ShieldCheckIcon className="size-3.5" />
   );
 }

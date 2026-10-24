@@ -114,21 +114,11 @@ export function RenameInPlace({
                 'border-action/40 bg-action/[0.08] text-action hover:border-action/70',
               )}
             >
-              {busy ? (
-                <LoadingOrb />
-              ) : command.retryAvailable || rename.accepted ? (
-                <RotateCwIcon aria-hidden="true" />
-              ) : (
-                <>
-                  <span aria-hidden="true" className="pointer-coarse:hidden">
-                    ↵
-                  </span>
-                  <CheckIcon
-                    aria-hidden="true"
-                    className="hidden pointer-coarse:block"
-                  />
-                </>
-              )}
+              <RenameSaveIcon
+                pending={busy}
+                retryAvailable={command.retryAvailable}
+                accepted={rename.accepted}
+              />
             </button>
             {rename.accepted ? null : (
               <button
@@ -166,5 +156,24 @@ export function RenameInPlace({
         rename={rename}
       />
     </form>
+  );
+}
+
+function RenameSaveIcon({
+  pending,
+  retryAvailable,
+  accepted,
+}: Readonly<{ pending: boolean; retryAvailable: boolean; accepted: boolean }>) {
+  return pending ? (
+    <LoadingOrb />
+  ) : retryAvailable || accepted ? (
+    <RotateCwIcon aria-hidden="true" />
+  ) : (
+    <>
+      <span aria-hidden="true" className="pointer-coarse:hidden">
+        ↵
+      </span>
+      <CheckIcon aria-hidden="true" className="hidden pointer-coarse:block" />
+    </>
   );
 }
