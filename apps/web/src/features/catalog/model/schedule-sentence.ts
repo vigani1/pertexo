@@ -88,8 +88,9 @@ function parseField(
           ? start
           : max
         : toNumber(endText, aliases);
-    if (start === undefined || end === undefined || start < min || end > max)
-      return undefined;
+    const invalidScheduleRange =
+      start === undefined || end === undefined || start < min || end > max;
+    if (invalidScheduleRange) return undefined;
     for (let value = start; value <= end; value += size) values.add(value);
     if (range === '*' && stepText !== undefined) step = size;
   }
@@ -186,7 +187,9 @@ export function describeCron(expression: string): string {
     parseField(fields[3] ?? '', 1, 12, MONTH_ALIASES),
     parseField(fields[4] ?? '', 0, 7, DAY_ALIASES),
   ];
-  if (!minute || !hour || !dayOfMonth || !month || !weekday) return fallback;
+  const incompleteSchedule =
+    !minute || !hour || !dayOfMonth || !month || !weekday;
+  if (incompleteSchedule) return fallback;
   const times = describeTimes(minute, hour);
   const days = describeDays(dayOfMonth, month, weekday);
   if (times === undefined || days === undefined) return fallback;

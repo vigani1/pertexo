@@ -107,10 +107,10 @@ export function NoteForm({
               onApply(appliedNote(note, fields));
           }}
           onKeyDown={(event) => {
-            if (
+            const noteSaveRequested =
               (event.metaKey || event.ctrlKey) &&
-              (event.key === 'Enter' || event.key.toLowerCase() === 's')
-            ) {
+              (event.key === 'Enter' || event.key.toLowerCase() === 's');
+            if (noteSaveRequested) {
               event.preventDefault();
               event.stopPropagation();
               event.currentTarget.requestSubmit();

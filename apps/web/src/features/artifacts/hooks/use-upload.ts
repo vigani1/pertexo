@@ -60,14 +60,14 @@ export function useUpload(apiClient: ApiClient, workspaceId: string) {
       const expected = current.metadata;
       function ready(metadata: ArtifactMetadataResponse) {
         if (!request.isCurrent()) return;
-        if (
+        const artifactMetadataMismatch =
           metadata.id !== pendingIntent.artifactId ||
           metadata.status !== 'available' ||
           metadata.workspaceId !== workspaceId ||
           metadata.byteLength !== expected.byteLength ||
           metadata.mediaType !== expected.mediaType ||
-          metadata.sha256 !== expected.sha256
-        )
+          metadata.sha256 !== expected.sha256;
+        if (artifactMetadataMismatch)
           throw new UploadValidationError(
             'The finalized file did not match the selected file. Choose it again.',
           );

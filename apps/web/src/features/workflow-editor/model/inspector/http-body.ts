@@ -126,10 +126,10 @@ export function validateBodyDraft(
       const index = issue.path[1];
       const field = issue.path[2];
       const part = typeof index === 'number' ? draft.parts[index] : undefined;
-      if (
+      const editablePartMetadata =
         part !== undefined &&
-        (field === 'name' || field === 'filename' || field === 'contentType')
-      )
+        (field === 'name' || field === 'filename' || field === 'contentType');
+      if (editablePartMetadata)
         parts[part.inputKey] = {
           ...parts[part.inputKey],
           [field]:

@@ -297,13 +297,12 @@ export function useWorkspaceRename({
   async function reloadLatest() {
     const current = stateRef.current;
     const scope = owner.current;
-    if (
+    const renameReloadBlocked =
       current.kind !== 'idle' ||
       current.error?.kind !== 'conflict' ||
       scope === undefined ||
-      inFlight.current
-    )
-      return false;
+      inFlight.current;
+    if (renameReloadBlocked) return false;
     inFlight.current = true;
     try {
       await queryClient.invalidateQueries({

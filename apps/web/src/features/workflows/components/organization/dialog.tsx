@@ -155,14 +155,13 @@ function useOrganizationEdit({
     folderId: string | null,
     tagIds: readonly string[],
   ) {
-    if (
+    const organizationPreparationBlocked =
       locked ||
       preparingRef.current ||
       command.denied ||
       command.error !== undefined ||
-      command.result !== undefined
-    )
-      return;
+      command.result !== undefined;
+    if (organizationPreparationBlocked) return;
     preparingRef.current = true;
     setPreparing(true);
     setReadError(undefined);

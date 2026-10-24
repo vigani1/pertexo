@@ -147,13 +147,12 @@ export function useWorkflowOrganizationCommand({
 
   async function send(frozen: WorkflowOrganizationAttempt) {
     const token = owner.current;
-    if (
+    const organizationRequestBlocked =
       token === undefined ||
       request.current !== undefined ||
       denied.current ||
-      !currentAllowed
-    )
-      return;
+      !currentAllowed;
+    if (organizationRequestBlocked) return;
     const controller = new AbortController();
     request.current = controller;
     const current = () =>
@@ -231,14 +230,13 @@ export function useWorkflowOrganizationCommand({
   return {
     ...state,
     start: async (input) => {
-      if (
+      const organizationRetryBlocked =
         request.current !== undefined ||
         attempt.current !== undefined ||
         denied.current ||
         !currentAllowed ||
-        owner.current === undefined
-      )
-        return;
+        owner.current === undefined;
+      if (organizationRetryBlocked) return;
       if (input.workspaceId !== workspaceId) {
         setState({
           ...idle,
@@ -349,7 +347,9 @@ function observeAuthority({
       event.action.type === 'error'
         ? event.action.error
         : event.query.state.error;
-    if ((relatedRead || discovery || identity) && accessLost(failure)) retire();
+    const requiredReadAccessLost =
+      (relatedRead || discovery || identity) && accessLost(failure);
+    if (requiredReadAccessLost) retire();
     else if (inScope && isApiError(failure) && failure.status === 401) retire();
     if (discovery && event.query.state.status === 'success') {
       const parsed = accessibleWorkspaceSchema
@@ -365,15 +365,14 @@ function observeAuthority({
         retire();
     }
     const data: unknown = event.query.state.data;
-    if (
+    const identityChanged =
       identity &&
       typeof data === 'object' &&
       data !== null &&
       'id' in data &&
       typeof data.id === 'string' &&
-      data.id !== userId
-    )
-      retire();
+      data.id !== userId;
+    if (identityChanged) retire();
   });
 }
 

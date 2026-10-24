@@ -206,7 +206,7 @@ function runShortcut(
   event: KeyboardEvent<HTMLElement>,
   run: (() => void) | undefined,
 ) {
-  if (
+  const runShortcutBlocked =
     run === undefined ||
     event.key.toLowerCase() !== 'r' ||
     event.metaKey ||
@@ -214,9 +214,8 @@ function runShortcut(
     event.altKey ||
     event.shiftKey ||
     (event.target instanceof HTMLElement &&
-      event.target.closest('input, textarea, [role="menu"]') !== null)
-  )
-    return;
+      event.target.closest('input, textarea, [role="menu"]') !== null);
+  if (runShortcutBlocked) return;
   event.preventDefault();
   run();
 }

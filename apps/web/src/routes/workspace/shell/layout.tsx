@@ -29,11 +29,11 @@ function useCommandShortcut(onOpen: () => void) {
   const open = useEffectEvent(onOpen);
   useEffect(() => {
     function listen(event: KeyboardEvent) {
-      if (
+      const paletteShortcutRequested =
         event.key.toLowerCase() === 'k' &&
         (event.metaKey || event.ctrlKey) &&
-        !event.altKey
-      ) {
+        !event.altKey;
+      if (paletteShortcutRequested) {
         event.preventDefault();
         open();
       }

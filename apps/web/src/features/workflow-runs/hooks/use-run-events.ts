@@ -301,27 +301,29 @@ function classifyStreamFailure(
         status: 'stopped',
         message: 'Live updates were stopped.',
       };
-    if (
+    const terminalStreamFailure =
       error.kind !== 'network' &&
       error.kind !== 'timeout' &&
-      (error.status === undefined || error.status < 500)
-    )
+      (error.status === undefined || error.status < 500);
+    if (terminalStreamFailure)
       return {
         kind: 'stop',
         status: 'failed',
         message:
           'Live updates paused because Pertexo sent an update this page couldn’t read.',
       };
-  } else if (
-    !(error instanceof TransientStreamDisconnect) &&
-    !(error instanceof TypeError) &&
-    !(error instanceof DOMException && error.name === 'NetworkError')
-  ) {
-    return {
-      kind: 'stop',
-      status: 'failed',
-      message: 'Live updates paused because an update couldn’t be read.',
-    };
+  } else {
+    const unsupportedStreamDisconnect =
+      !(error instanceof TransientStreamDisconnect) &&
+      !(error instanceof TypeError) &&
+      !(error instanceof DOMException && error.name === 'NetworkError');
+    if (unsupportedStreamDisconnect) {
+      return {
+        kind: 'stop',
+        status: 'failed',
+        message: 'Live updates paused because an update couldn’t be read.',
+      };
+    }
   }
   return {
     kind: 'retry',

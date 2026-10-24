@@ -79,12 +79,12 @@ export function useWorkflowImportCommand(
         isApiError(error) &&
         error.kind === 'problem' &&
         [400, 409, 412, 422, 428].includes(error.status ?? 0);
-      if (
+      const requiresIntentRecovery =
         phase === 'accepted' ||
         (!rejected &&
           (state.kind === 'uncertain' ||
-            (phase === 'mutation' && isUnconfirmedCommand(error))))
-      ) {
+            (phase === 'mutation' && isUnconfirmedCommand(error))));
+      if (requiresIntentRecovery) {
         setState({
           kind: 'uncertain',
           error:

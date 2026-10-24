@@ -280,13 +280,12 @@ function InspectorFooter({
 }
 
 function pulse(element: Element | null | undefined) {
-  if (
+  const motionUnavailable =
     element === null ||
     element === undefined ||
     typeof element.animate !== 'function' ||
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  )
-    return;
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (motionUnavailable) return;
   element.animate(
     [
       {

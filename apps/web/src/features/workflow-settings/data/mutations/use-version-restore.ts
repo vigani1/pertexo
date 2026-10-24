@@ -146,10 +146,10 @@ export function useWorkflowVersionRestore({
     } catch (cause) {
       const uncertain = isUnconfirmedCommand(cause);
       const attempt = attemptRef.current;
-      if (
+      const keepRestoreAttempt =
         attempt !== undefined &&
-        (uncertain || (isApiError(cause) && cause.status === 412))
-      ) {
+        (uncertain || (isApiError(cause) && cause.status === 412));
+      if (keepRestoreAttempt) {
         attempt.uncertain = uncertain;
         attempt.mode = 'check-outcome';
         return await reconcile();

@@ -87,12 +87,11 @@ export function useWorkflowDraftValidation({
 
   async function validate() {
     const checkOwner = owner.current;
-    if (
+    const validationUnavailable =
       validationInFlight.current !== undefined ||
       checkOwner === undefined ||
-      (validationBlockedUntil ?? 0) > now
-    )
-      return;
+      (validationBlockedUntil ?? 0) > now;
+    if (validationUnavailable) return;
     setChecking(checkOwner);
     setValidationError(undefined);
     const request = ensureSaved().then((saved) =>
@@ -125,15 +124,14 @@ export function useWorkflowDraftValidation({
     if (owner.current !== publishOwner) return undefined;
     assertValidationAvailable();
     const known = inFlight ?? validation;
-    if (
+    const validationStillCurrent =
       known?.generation === saved.generation &&
       validationOwner.current === publishOwner &&
       known.revision === saved.revision &&
       known.etag === saved.etag &&
       known.requestedEtag === saved.etag &&
-      isSavedDraftCurrent(saved)
-    )
-      return known;
+      isSavedDraftCurrent(saved);
+    if (validationStillCurrent) return known;
     onChecking();
     return checkSavedDraft(saved, publishOwner);
   }

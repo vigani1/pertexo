@@ -113,13 +113,12 @@ export function useCanvasFraming(containerRef: RefObject<HTMLElement | null>) {
       const area = visibleArea();
       const width = node?.measured.width;
       const height = node?.measured.height;
-      if (
+      const missingFrameGeometry =
         node === undefined ||
         area === undefined ||
         width === undefined ||
-        height === undefined
-      )
-        return;
+        height === undefined;
+      if (missingFrameGeometry) return;
       const next = revealedViewport(
         { ...node.internals.positionAbsolute, width, height },
         inset(area, REVEAL_MARGIN),

@@ -153,13 +153,12 @@ function WorkflowExportSession({
     readAttempt,
   ]);
   async function download() {
-    if (
+    const exportConfirmationBlocked =
       review === undefined ||
       acknowledgedDigest !== review.digest ||
       activeRequest.current !== undefined ||
-      denied
-    )
-      return;
+      denied;
+    if (exportConfirmationBlocked) return;
     const request = begin();
     activeRequest.current = request;
     setPending(true);

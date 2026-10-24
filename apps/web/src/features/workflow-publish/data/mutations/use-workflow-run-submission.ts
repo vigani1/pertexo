@@ -92,26 +92,22 @@ export function useWorkflowRunSubmission({
   }, [apiClient, userId, workspaceId, workflowId]);
 
   async function startNew(intent: RunIntent) {
-    if (
+    const runSubmissionBlocked =
       pending ||
       publicationConflict ||
       attempt.current !== undefined ||
       acceptedRunId !== undefined ||
-      isSessionPaused()
-    )
-      return false;
+      isSessionPaused();
+    if (runSubmissionBlocked) return false;
     const command = createRunAttempt(intent);
     return submitAttempt({ command, needsSaveBarrier: true });
   }
 
   async function retry() {
-    if (
-      pending ||
-      acceptedRunId !== undefined ||
-      attempt.current === undefined ||
-      isSessionPaused()
-    )
-      return false;
+    const retryBlockedByCommand = pending || acceptedRunId !== undefined;
+    if (retryBlockedByCommand) return false;
+    if (attempt.current === undefined) return false;
+    if (isSessionPaused()) return false;
     if (runRecoveryClock() >= attempt.current.recoveryUntil) {
       setError(
         'The 24-hour recovery window has ended. Check run history before deciding whether to start another run; retrying can no longer guarantee the original result.',
