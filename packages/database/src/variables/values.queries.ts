@@ -1,3 +1,4 @@
+import { rethrowQueryFailure } from '../platform/query-errors.js';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { EMPTY_VARIABLE_SNAPSHOT } from '@pertexo/workflow-model';
 import { and, eq } from 'drizzle-orm';
@@ -18,7 +19,8 @@ export async function readVariableSetValues(
         eq(workspaceVariableSetRevisions.workspaceId, workspaceId),
         eq(workspaceVariableSetRevisions.revision, revision),
       ),
-    );
+    )
+    .catch(rethrowQueryFailure);
   if (stored === undefined)
     throw new Error('Workspace variable revision is missing');
   return stored.values;

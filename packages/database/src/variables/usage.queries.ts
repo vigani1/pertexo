@@ -1,3 +1,4 @@
+import { rethrowQueryFailure } from '../platform/query-errors.js';
 import { and, eq, exists, gt, gte, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
@@ -95,7 +96,8 @@ async function readUsageWorkflow(
       ),
     )
     .orderBy(workflows.id)
-    .limit(1);
+    .limit(1)
+    .catch(rethrowQueryFailure);
   return workflow;
 }
 type VariableUsageRow = NonNullable<

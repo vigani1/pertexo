@@ -1,3 +1,4 @@
+import { rethrowQueryFailure } from '../platform/query-errors.js';
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
@@ -80,7 +81,8 @@ export async function replaceWorkspaceVariables(
         descriptions,
       })
       .onConflictDoNothing()
-      .returning({ revision: workspaceVariableSetRevisions.revision });
+      .returning({ revision: workspaceVariableSetRevisions.revision })
+      .catch(rethrowQueryFailure);
     if (inserted.length !== 1) throw new WorkspaceVariablesConflictError();
     const saved = await db
       .insert(workspaceVariables)
@@ -90,25 +92,29 @@ export async function replaceWorkspaceVariables(
         set: { revision, updatedAt: sql`clock_timestamp()` },
         setWhere: eq(workspaceVariables.revision, input.expectedRevision),
       })
-      .returning({ revision: workspaceVariables.revision });
+      .returning({ revision: workspaceVariables.revision })
+      .catch(rethrowQueryFailure);
     if (saved.length !== 1) throw new WorkspaceVariablesConflictError();
-    await db.insert(auditEvents).values({
-      id: generatePersistedId(),
-      workspaceId: input.workspaceId,
-      actorUserId: input.actorId,
-      action: 'workspace.variables_changed',
-      targetType: 'workspace_variables',
-      targetId: input.workspaceId,
-      requestId: input.requestId ?? null,
-      traceId: input.traceId ?? null,
-      metadata: {
-        revision,
-        changedNames: names.slice(0, WORKSPACE_VARIABLE_LIMITS.count),
-        ...(names.length > WORKSPACE_VARIABLE_LIMITS.count
-          ? { changedCount: names.length, changedNamesTruncated: true }
-          : {}),
-      },
-    });
+    await db
+      .insert(auditEvents)
+      .values({
+        id: generatePersistedId(),
+        workspaceId: input.workspaceId,
+        actorUserId: input.actorId,
+        action: 'workspace.variables_changed',
+        targetType: 'workspace_variables',
+        targetId: input.workspaceId,
+        requestId: input.requestId ?? null,
+        traceId: input.traceId ?? null,
+        metadata: {
+          revision,
+          changedNames: names.slice(0, WORKSPACE_VARIABLE_LIMITS.count),
+          ...(names.length > WORKSPACE_VARIABLE_LIMITS.count
+            ? { changedCount: names.length, changedNamesTruncated: true }
+            : {}),
+        },
+      })
+      .catch(rethrowQueryFailure);
   }
   const accepted = { revision, changed: names.length > 0 };
   await completeCommand(client, identity, accepted);
@@ -124,7 +130,8 @@ async function readCurrentVariableRevision(
     .select({ revision: workspaceVariables.revision })
     .from(workspaceVariables)
     .where(eq(workspaceVariables.workspaceId, workspaceId))
-    .for('update');
+    .for('update')
+    .catch(rethrowQueryFailure);
   const stored =
     head === undefined
       ? undefined
@@ -141,6 +148,7 @@ async function readCurrentVariableRevision(
                 eq(workspaceVariableSetRevisions.revision, head.revision),
               ),
             )
+            .catch(rethrowQueryFailure)
         )[0];
   if (head !== undefined && stored === undefined)
     throw new Error('Workspace variable revision is missing');
