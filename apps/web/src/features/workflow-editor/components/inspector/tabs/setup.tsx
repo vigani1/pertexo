@@ -27,6 +27,8 @@ import type { NodeFormApi } from '../../../model/inspector/node-form';
 import type { WorkflowNode } from './setup-controls';
 import { SetupControls } from './setup-controls';
 
+const EMPTY_DEFINITIONS: readonly NodeDefinitionCatalogItem[] = [];
+
 const SCHEDULE_KEY = 'core.schedule';
 
 /**
@@ -51,33 +53,14 @@ type SetupTabProps = Readonly<{
 export function SetupTab(props: SetupTabProps) {
   return (
     <>
-      {props.node.definition.key === 'core.run_values' ? (
-        <RunValuesSetup
-          node={props.node}
-          graph={props.graph}
-          definitions={props.definitions ?? []}
-          form={props.form}
-          variableScope={props.callScope}
-        />
-      ) : props.node.definition.key === 'core.call' &&
-        props.callScope !== undefined ? (
-        <FieldGroup className="gap-4">
-          <CallTargetField
-            node={props.node}
-            form={props.form}
-            scope={props.callScope}
-          />
-        </FieldGroup>
-      ) : (
-        <CatalogSetupTab {...props} />
-      )}
+      <PrimarySetup {...props} />
       <StepRetrySetup node={props.node} form={props.form} />
     </>
   );
 }
 
 function CatalogSetupTab({
-  definitions = [],
+  definitions = EMPTY_DEFINITIONS,
   codeSettings,
   node,
   definition,
@@ -132,38 +115,21 @@ function CatalogSetupTab({
           form={form}
         />
       ))}
-      {nothingToSet ? (
-        <div className="flex flex-col items-start gap-1.5 text-sm text-muted-foreground">
-          <p>
-            Nothing to set up here. What this step does comes from its inputs.
-          </p>
-          <Button type="button" variant="link" onClick={onOpenInputs}>
-            Go to Inputs
-          </Button>
-        </div>
-      ) : showJson ? (
-        <ConfigJsonEditor
-          config={node.config}
-          form={setupForm}
-          description={
-            onlyJson
-              ? 'This step type isn’t in the catalog, so its setup is kept exactly as it is.'
-              : 'Every property is kept, including ones the fields above don’t show.'
-          }
-        />
-      ) : (
-        <SetupControls
-          definitions={definitions}
-          codeSettings={codeSettings}
-          {...(callScope === undefined ? {} : { callScope })}
-          node={node}
-          graph={graph}
-          configSchema={definition.configSchema}
-          fields={fields}
-          scheduleSchema={scheduleSchema}
-          form={setupForm}
-        />
-      )}
+      <CatalogFields
+        context={{
+          definitions,
+          codeSettings,
+          node,
+          definition,
+          form: setupForm,
+          graph,
+          onOpenInputs,
+          ...(callScope === undefined ? {} : { callScope }),
+        }}
+        fields={fields}
+        scheduleSchema={scheduleSchema}
+        mode={{ nothingToSet, showJson }}
+      />
       {onlyJson || nothingToSet ? null : (
         <JsonModeToggle
           jsonMode={jsonMode}
@@ -241,5 +207,91 @@ function withStepChoices(
               : 'The Parallel step whose branches this step waits for.',
         }
       : field,
+  );
+}
+
+function PrimarySetup(props: SetupTabProps) {
+  if (props.node.definition.key === 'core.run_values')
+    return (
+      <RunValuesSetup
+        node={props.node}
+        graph={props.graph}
+        definitions={props.definitions ?? EMPTY_DEFINITIONS}
+        form={props.form}
+        variableScope={props.callScope}
+      />
+    );
+  if (
+    props.node.definition.key === 'core.call' &&
+    props.callScope !== undefined
+  )
+    return (
+      <FieldGroup className="gap-4">
+        <CallTargetField
+          node={props.node}
+          form={props.form}
+          scope={props.callScope}
+        />
+      </FieldGroup>
+    );
+  return <CatalogSetupTab {...props} />;
+}
+
+function CatalogFields({
+  context,
+  fields,
+  scheduleSchema,
+  mode,
+}: Readonly<{
+  context: Omit<SetupTabProps, 'connections'>;
+  fields: ReturnType<typeof schemaFields>;
+  scheduleSchema: ReturnType<typeof readScheduleSchema>;
+  mode: Readonly<{ nothingToSet: boolean; showJson: boolean }>;
+}>) {
+  const {
+    definitions = EMPTY_DEFINITIONS,
+    codeSettings,
+    node,
+    definition,
+    form,
+    graph,
+    onOpenInputs,
+    callScope,
+  } = context;
+  if (mode.nothingToSet)
+    return (
+      <div className="flex flex-col items-start gap-1.5 text-sm text-muted-foreground">
+        <p>
+          Nothing to set up here. What this step does comes from its inputs.
+        </p>
+        <Button type="button" variant="link" onClick={onOpenInputs}>
+          Go to Inputs
+        </Button>
+      </div>
+    );
+  if (definition === undefined || mode.showJson)
+    return (
+      <ConfigJsonEditor
+        config={node.config}
+        form={form}
+        description={
+          definition === undefined
+            ? 'This step type isn’t in the catalog, so its setup is kept exactly as it is.'
+            : 'Every property is kept, including ones the fields above don’t show.'
+        }
+      />
+    );
+  return (
+    <SetupControls
+      definitions={definitions}
+      codeSettings={codeSettings}
+      {...(callScope === undefined ? {} : { callScope })}
+      node={node}
+      graph={graph}
+      configSchema={definition.configSchema}
+      fields={fields}
+      scheduleSchema={scheduleSchema}
+      form={form}
+    />
   );
 }
