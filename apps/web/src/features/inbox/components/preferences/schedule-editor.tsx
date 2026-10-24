@@ -1,3 +1,7 @@
+import {
+  acceptedNotificationSchedule,
+  type ScheduleTarget as Target,
+} from '../../model/email-schedule';
 import { useId, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -26,7 +30,6 @@ import {
 import { notificationPreferencesQueryOptions } from '../../data/preferences.queries';
 import { inboxKeys } from '../../data/inbox.queries';
 import { NotificationSaveFeedback } from './feedback';
-type Target = 'personal' | 'defaults';
 function initial(snapshot: NoticePreferencesResponse, target: Target) {
   const value = target === 'personal' ? snapshot : snapshot.defaults;
   return {
@@ -63,57 +66,8 @@ export function NotificationScheduleEditor({
     async (result, body) => {
       cache.setQueryData(
         notificationPreferencesQueryOptions(scope).queryKey,
-        (current) => {
-          if (current === undefined) return current;
-          const previous =
-            target === 'personal'
-              ? current.revision
-              : current.defaults.revision;
-          if (previous > result.revision) return current;
-          if (target === 'personal') {
-            const personal = {
-              mode: body.mode,
-              hour: body.hour,
-              timeZone: body.timeZone,
-              revision: result.revision,
-            };
-            return {
-              ...current,
-              ...personal,
-              effective:
-                body.mode === null
-                  ? {
-                      mode: current.defaults.mode,
-                      hour: current.defaults.hour,
-                      timeZone: current.defaults.timeZone,
-                    }
-                  : {
-                      mode: body.mode,
-                      hour: body.hour,
-                      timeZone: body.timeZone,
-                    },
-            };
-          }
-          const accepted = noticeDefaultsRequestSchema.parse(body);
-          const defaults = {
-            mode: accepted.mode,
-            hour: accepted.hour,
-            timeZone: accepted.timeZone,
-            revision: result.revision,
-          };
-          return {
-            ...current,
-            defaults,
-            effective:
-              current.mode === null
-                ? {
-                    mode: defaults.mode,
-                    hour: defaults.hour,
-                    timeZone: defaults.timeZone,
-                  }
-                : current.effective,
-          };
-        },
+        (current) =>
+          acceptedNotificationSchedule(current, { target, body, result }),
       );
       setDraft((current) => ({ ...current, baseRevision: result.revision }));
       setSaved(true);
