@@ -90,11 +90,7 @@ export function VersionPreviewSheet({
                       {/* The type only when the name doesn't already say it. */}
                       {step.label === step.kind && !step.trigger ? null : (
                         <span className="shrink-0 text-xs text-subtle-foreground">
-                          {step.trigger
-                            ? step.label === step.kind
-                              ? 'Trigger'
-                              : `Trigger · ${step.kind}`
-                            : step.kind}
+                          {stepTypeLabel(step)}
                         </span>
                       )}
                     </li>
@@ -142,4 +138,9 @@ export function VersionPreviewSheet({
       </SheetContent>
     </Sheet>
   );
+}
+
+function stepTypeLabel(step: ReturnType<typeof versionSteps>[number]): string {
+  if (!step.trigger) return step.kind;
+  return step.label === step.kind ? 'Trigger' : `Trigger · ${step.kind}`;
 }

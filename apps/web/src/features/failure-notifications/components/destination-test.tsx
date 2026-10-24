@@ -30,6 +30,7 @@ export function DestinationTest({
   const test = useDestinationTest(scope, destination);
   const uncertain = test.phase === 'unsure';
   const pending = test.phase === 'running';
+  const idleSendLabel = uncertain ? 'Check result' : 'Send test';
   const send = () => {
     setConfirming(false);
     test.run();
@@ -55,7 +56,7 @@ export function DestinationTest({
             else setConfirming(true);
           }}
         >
-          {pending ? 'Sending…' : uncertain ? 'Check result' : 'Send test'}
+          {pending ? 'Sending…' : idleSendLabel}
         </Button>
       </div>
       <TestThread
