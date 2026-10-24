@@ -1,3 +1,4 @@
+import type { WorkflowRunErrorWorkflow } from '@pertexo/contracts';
 import { sql } from 'drizzle-orm';
 import {
   check,
@@ -22,9 +23,14 @@ export const runErrorWorkflowIntents = appSchema.table(
     targetVersionId: uuid('target_version_id'),
     context: jsonb().notNull(),
     outboxEventId: uuid('outbox_event_id'),
-    status: varchar({ length: 16 }).notNull().default('pending'),
+    status: varchar({ length: 16 })
+      .$type<WorkflowRunErrorWorkflow['status']>()
+      .notNull()
+      .default('pending'),
     acceptedRunId: uuid('accepted_run_id'),
-    refusalCode: varchar('refusal_code', { length: 64 }),
+    refusalCode: varchar('refusal_code', { length: 64 }).$type<
+      NonNullable<WorkflowRunErrorWorkflow['refusalCode']>
+    >(),
     queueWaitExpiresAt: timestamp('queue_wait_expires_at', {
       withTimezone: true,
       mode: 'date',

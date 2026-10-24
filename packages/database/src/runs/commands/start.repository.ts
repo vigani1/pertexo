@@ -1,4 +1,5 @@
-import { sql } from 'drizzle-orm';
+import { workflows } from '../../schema/authoring/workflows.js';
+import { and, eq, sql } from 'drizzle-orm';
 import type { z } from 'zod';
 
 import { readWorkflowRunAcceptanceReplay } from './acceptance.repository.js';
@@ -10,7 +11,7 @@ import {
 } from './manual-start.repository.js';
 
 import {
-  parsePublishedWorkflowRow,
+  findPublishedWorkflow,
   type PublishedWorkflow,
 } from '../queries/execution/published.queries.js';
 
@@ -102,26 +103,25 @@ async function lockPublishedExecution(
   // Lock the workflow on its own. A locked join that waits on a concurrent
   // publication re-checks the new workflow row against the old version row,
   // finds nothing and would report an executable workflow as unavailable.
-  const locked = await transaction.db.execute(sql<Record<string, unknown>>`
-    select published_version_id
-    from app.workflows
-    where workspace_id = ${transaction.workspaceId}
-      and id = ${workflowId}
-      and lifecycle_status = 'active'
-    for share
-  `);
-  const publishedVersionId = locked.rows[0]?.published_version_id;
-  // No published version (or an archived workflow) leaves nothing to run.
-  if (typeof publishedVersionId !== 'string')
+  const [locked] = await transaction.db
+    .select({ publishedVersionId: workflows.publishedVersionId })
+    .from(workflows)
+    .where(
+      and(
+        eq(workflows.workspaceId, transaction.workspaceId),
+        eq(workflows.id, workflowId),
+        eq(workflows.lifecycleStatus, 'active'),
+      ),
+    )
+    .for('share');
+  const publishedVersionId = locked?.publishedVersionId;
+  if (publishedVersionId === undefined || publishedVersionId === null)
     throw new WorkflowRunNotExecutableError();
-  const result = await transaction.db.execute(sql<Record<string, unknown>>`
-    select id, workspace_id, workflow_id, version_number, checksum, executable_json
-    from app.workflow_versions
-    where workspace_id = ${transaction.workspaceId}
-      and workflow_id = ${workflowId}
-      and id = ${publishedVersionId}
-  `);
-  const version = parsePublishedWorkflowRow(result.rows[0]);
+  const version = await findPublishedWorkflow(transaction.db, {
+    workspaceId: transaction.workspaceId,
+    workflowId,
+    id: publishedVersionId,
+  });
   if (
     version?.workflowId !== workflowId ||
     version.workspaceId !== transaction.workspaceId

@@ -1,10 +1,11 @@
 import { and, eq } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { workflowVersions } from '../../../schema/authoring/workflows.js';
 import { workflowTestSnapshots } from '../../../schema/runs/tests.js';
 import type { FrozenWorkflowTestPins } from '../../../schema/runs/tests.js';
 import { parseStoredExecutionValue } from '../../../platform/stored-execution-value.js';
-import { z } from 'zod';
+
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
@@ -16,10 +17,9 @@ import type {
   WorkflowTestPolicy,
   WorkflowTestPins,
 } from '@pertexo/workflow-engine';
-import {
-  parsePublishedWorkflowRow,
-  type PublishedWorkflowReader,
-  type PublishedWorkflow,
+import type {
+  PublishedWorkflowReader,
+  PublishedWorkflow,
 } from './published.queries.js';
 
 export type WorkflowExecutionProjection = PublishedWorkflow &
@@ -71,29 +71,41 @@ export const EXECUTION_SOURCE_SQL = sourceBuilder
   )
   .as('version');
 
-export function parseExecutionSource(
-  row: Record<string, unknown> | undefined,
+export function executionSourceQuery(db: Pick<NodePgDatabase, 'select'>) {
+  return db.select().from(EXECUTION_SOURCE_SQL);
+}
+type SourceRow = Awaited<ReturnType<typeof executionSourceQuery>>[number];
+// The UNION's test branch selects both fields from the same immutable snapshot.
+function isTestSource(
+  row: SourceRow,
+): row is SourceRow & {
+  test_dispositions: NonNullable<SourceRow['test_dispositions']>;
+  test_expires_at: Date;
+} {
+  return row.test_dispositions !== null;
+}
+export function projectExecutionSource(
+  row: SourceRow | undefined,
 ): WorkflowExecutionProjection | null {
   if (row === undefined) return null;
-  const { test_dispositions, test_expires_at, ...version } = row;
-  const parsed = parsePublishedWorkflowRow(version);
-  return parsed === null
-    ? null
-    : {
-        ...parsed,
-        ...(test_dispositions === null || test_dispositions === undefined
-          ? {}
-          : {
-              testExpiresAt: z.coerce.date().parse(test_expires_at),
-              test: {
-                pinnedNodeIds: Object.entries(
-                  test_dispositions as Record<string, string>,
-                )
-                  .filter(([, kind]) => kind === 'pinned')
-                  .map(([nodeId]) => nodeId),
-              },
-            }),
-      };
+  const version = {
+    checksum: row.checksum,
+    executableJson: row.executable_json,
+    id: row.id,
+    versionNumber: row.version_number,
+    workflowId: row.workflow_id,
+    workspaceId: row.workspace_id,
+  };
+  if (!isTestSource(row)) return version;
+  return {
+    ...version,
+    testExpiresAt: row.test_expires_at,
+    test: {
+      pinnedNodeIds: Object.entries(row.test_dispositions)
+        .filter(([, kind]) => kind === 'pinned')
+        .map(([nodeId]) => nodeId),
+    },
+  };
 }
 export function createWorkflowExecutionReader(
   config: DatabaseConfig,
@@ -107,9 +119,7 @@ export function createWorkflowExecutionReader(
         lease.pool,
         input.workspaceId,
         async (transaction) => {
-          const rows = await transaction.db
-            .select()
-            .from(EXECUTION_SOURCE_SQL)
+          const rows = await executionSourceQuery(transaction.db)
             .where(
               and(
                 eq(EXECUTION_SOURCE_SQL.workspace_id, input.workspaceId),
@@ -117,13 +127,13 @@ export function createWorkflowExecutionReader(
               ),
             )
             .limit(1);
-          const projection = parseExecutionSource(rows[0]);
+          const projection = projectExecutionSource(rows[0]);
           const sampleUnavailable =
             projection === null ||
             input.nodeId === undefined ||
             !projection.test?.pinnedNodeIds.includes(input.nodeId);
           if (sampleUnavailable) return projection;
-          const pin = await transaction.db
+          const [pin] = await transaction.db
             .select({
               sample: sql<
                 FrozenWorkflowTestPins[string] | null
@@ -136,7 +146,7 @@ export function createWorkflowExecutionReader(
                 eq(workflowTestSnapshots.id, input.workflowVersionId),
               ),
             );
-          const sample = pin[0]?.sample;
+          const sample = pin?.sample;
           if (sample === undefined || sample === null)
             throw new Error('Frozen test sample is unavailable');
           const output = parseStoredExecutionValue(sample.outputRef);

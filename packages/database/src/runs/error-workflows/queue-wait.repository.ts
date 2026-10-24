@@ -1,3 +1,8 @@
+import { runErrorWorkflowIntents } from '../../schema/runs/completion/error-workflow.js';
+import { outboxEvents } from '../../schema/transport.js';
+import { and, asc, eq, gt, isNull, lte, or, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
@@ -13,13 +18,30 @@ export async function deferErrorWorkflowForQueue(
   client: PoolClient,
   input: ErrorWorkflowDeliveryInput,
 ): Promise<boolean> {
-  const saved = await client.query<{ expires_at: Date; now: Date }>(
-    `update app.run_error_workflow_intents set queue_wait_expires_at=coalesce(queue_wait_expires_at,clock_timestamp()+make_interval(secs=>$3))
-    where workspace_id=$1 and source_run_id=$2 and status='pending'
-    returning queue_wait_expires_at expires_at,clock_timestamp() now`,
-    [input.workspaceId, input.sourceRunId, waitSeconds],
-  );
-  const observation = saved.rows[0];
+  const db = drizzle(client);
+  // The update sets a non-null expiry; the column decoder preserves the public Date values.
+  const [observation] = await db
+    .update(runErrorWorkflowIntents)
+    .set({
+      queueWaitExpiresAt: sql`coalesce(${runErrorWorkflowIntents.queueWaitExpiresAt},clock_timestamp()+make_interval(secs=>${waitSeconds}))`,
+    })
+    .where(
+      and(
+        eq(runErrorWorkflowIntents.workspaceId, input.workspaceId),
+        eq(runErrorWorkflowIntents.sourceRunId, input.sourceRunId),
+        eq(runErrorWorkflowIntents.status, 'pending'),
+      ),
+    )
+    .returning({
+      expires_at:
+        sql<Date>`${runErrorWorkflowIntents.queueWaitExpiresAt}`.mapWith(
+          runErrorWorkflowIntents.queueWaitExpiresAt,
+        ),
+      now: sql<Date>`clock_timestamp()`.mapWith(
+        runErrorWorkflowIntents.queueWaitExpiresAt,
+      ),
+    })
+    .catch(rethrowQueryFailure);
   if (observation === undefined) throw new ErrorWorkflowDeliveryMismatchError();
   if (observation.expires_at <= observation.now) return false;
   const outboxEventId = generatePersistedId();
@@ -31,23 +53,32 @@ export async function deferErrorWorkflowForQueue(
       ? {}
       : { traceparent: input.traceparent }),
   };
-  await client.query(
-    `insert into app.outbox_events(id,workspace_id,job_name,aggregate_type,aggregate_id,payload,payload_checksum,available_at)
-    values($1,$2,'start-error-workflow','workflow-run',$3,$4::jsonb,$5,$6::timestamptz)`,
-    [
-      outboxEventId,
-      input.workspaceId,
-      input.sourceRunId,
-      JSON.stringify(payload),
-      canonicalOutboxPayloadChecksum(payload),
-      observation.expires_at,
-    ],
-  );
-  const updated = await client.query(
-    'update app.run_error_workflow_intents set outbox_event_id=$3 where workspace_id=$1 and source_run_id=$2 and outbox_event_id=$4',
-    [input.workspaceId, input.sourceRunId, outboxEventId, input.outboxEventId],
-  );
-  if (updated.rowCount !== 1) throw new ErrorWorkflowDeliveryMismatchError();
+  await db
+    .insert(outboxEvents)
+    .values({
+      id: outboxEventId,
+      workspaceId: input.workspaceId,
+      jobName: 'start-error-workflow',
+      aggregateType: 'workflow-run',
+      aggregateId: input.sourceRunId,
+      payload,
+      payloadChecksum: canonicalOutboxPayloadChecksum(payload),
+      availableAt: observation.expires_at,
+    })
+    .catch(rethrowQueryFailure);
+  const updated = await db
+    .update(runErrorWorkflowIntents)
+    .set({ outboxEventId })
+    .where(
+      and(
+        eq(runErrorWorkflowIntents.workspaceId, input.workspaceId),
+        eq(runErrorWorkflowIntents.sourceRunId, input.sourceRunId),
+        eq(runErrorWorkflowIntents.outboxEventId, input.outboxEventId),
+      ),
+    )
+    .returning({ id: runErrorWorkflowIntents.sourceRunId })
+    .catch(rethrowQueryFailure);
+  if (updated.length !== 1) throw new ErrorWorkflowDeliveryMismatchError();
   return true;
 }
 
@@ -56,17 +87,54 @@ export async function wakeErrorWorkflowsForCapacity(
   client: PoolClient,
   workspaceId: string,
 ): Promise<void> {
-  await client.query(
-    `with ready as (
-    select event.id from app.outbox_events event
-    join app.run_error_workflow_intents intent on intent.workspace_id=event.workspace_id and intent.outbox_event_id=event.id
-    where intent.workspace_id=$1 and intent.status='pending'
-      and intent.queue_wait_expires_at > clock_timestamp()
-      and event.available_at > clock_timestamp() and event.published_at is null and event.failed_at is null
-      and (event.lease_expires_at is null or event.lease_expires_at <= clock_timestamp())
-    order by intent.created_at,intent.source_run_id limit 100
-  ) update app.outbox_events event set available_at=clock_timestamp(),updated_at=clock_timestamp()
-    from ready where event.workspace_id=$1 and event.id=ready.id`,
-    [workspaceId],
+  const db = drizzle(client);
+  const ready = db.$with('ready').as(
+    db
+      .select({ id: outboxEvents.id })
+      .from(outboxEvents)
+      .innerJoin(
+        runErrorWorkflowIntents,
+        and(
+          eq(runErrorWorkflowIntents.workspaceId, outboxEvents.workspaceId),
+          eq(runErrorWorkflowIntents.outboxEventId, outboxEvents.id),
+        ),
+      )
+      .where(
+        and(
+          eq(runErrorWorkflowIntents.workspaceId, workspaceId),
+          eq(runErrorWorkflowIntents.status, 'pending'),
+          gt(
+            runErrorWorkflowIntents.queueWaitExpiresAt,
+            sql`clock_timestamp()`,
+          ),
+          gt(outboxEvents.availableAt, sql`clock_timestamp()`),
+          isNull(outboxEvents.publishedAt),
+          isNull(outboxEvents.failedAt),
+          or(
+            isNull(outboxEvents.leaseExpiresAt),
+            lte(outboxEvents.leaseExpiresAt, sql`clock_timestamp()`),
+          ),
+        ),
+      )
+      .orderBy(
+        asc(runErrorWorkflowIntents.createdAt),
+        asc(runErrorWorkflowIntents.sourceRunId),
+      )
+      .limit(100),
   );
+  await db
+    .with(ready)
+    .update(outboxEvents)
+    .set({
+      availableAt: sql`clock_timestamp()`,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .from(ready)
+    .where(
+      and(
+        eq(outboxEvents.workspaceId, workspaceId),
+        eq(outboxEvents.id, ready.id),
+      ),
+    )
+    .catch(rethrowQueryFailure);
 }

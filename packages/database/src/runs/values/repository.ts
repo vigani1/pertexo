@@ -1,3 +1,7 @@
+import { workflowRunValues } from '../../schema/runs/values.js';
+import { and, asc, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { RUN_VALUE_LIMITS, type RunValues } from '@pertexo/node-sdk';
 import type { DatabaseConfig } from '../../config.js';
 import {
@@ -29,45 +33,56 @@ export function createRunValuesStore(
           await assertCapabilityExecution(client, input);
           const ownerColumn =
             input.previewRunId === undefined
-              ? 'workflow_run_id'
-              : 'preview_run_id';
+              ? workflowRunValues.workflowRunId
+              : workflowRunValues.previewRunId;
           const ownerId = input.previewRunId ?? input.runId;
-          const existing = await client.query<{ key: string; value: string }>(
-            `select key,value from app.workflow_run_values where workspace_id=$1 and ${ownerColumn}=$2 order by key limit ${String(RUN_VALUE_LIMITS.pairs + 1)}`,
-            [input.workspaceId, ownerId],
-          );
-          const values = new Map(
-            existing.rows.map((row) => [row.key, row.value]),
-          );
+          const db = drizzle(client);
+          const existing = await db
+            .select({
+              key: workflowRunValues.key,
+              value: workflowRunValues.value,
+            })
+            .from(workflowRunValues)
+            .where(
+              and(
+                eq(workflowRunValues.workspaceId, input.workspaceId),
+                eq(ownerColumn, ownerId),
+              ),
+            )
+            .orderBy(asc(workflowRunValues.key))
+            .limit(RUN_VALUE_LIMITS.pairs + 1)
+            .catch(rethrowQueryFailure);
+          const values = new Map(existing.map((row) => [row.key, row.value]));
           const pairs = Object.entries(input.values);
           for (const [key, value] of pairs) values.set(key, value);
           if (values.size > RUN_VALUE_LIMITS.pairs)
             throw new RunValuesLimitError();
           if (pairs.length > 0) {
-            const parameters: (string | null)[] = [];
-            const rows = pairs.map(([key, value]) => {
-              const first = parameters.length;
-              parameters.push(
-                generatePersistedId(),
-                input.workspaceId,
-                input.previewRunId === undefined ? input.runId : null,
-                input.previewRunId ?? null,
-                key,
-                value,
-              );
-              return (
-                '(' +
-                Array.from(
-                  { length: 6 },
-                  (_, index) => '$' + String(first + index + 1),
-                ).join(',') +
-                ')'
-              );
-            });
-            await client.query(
-              `insert into app.workflow_run_values(id,workspace_id,workflow_run_id,preview_run_id,key,value) values ${rows.join(',')} on conflict(workspace_id,${ownerColumn},key) do update set value=excluded.value,updated_at=clock_timestamp()`,
-              parameters,
-            );
+            await db
+              .insert(workflowRunValues)
+              .values(
+                pairs.map(([key, value]) => ({
+                  id: generatePersistedId(),
+                  workspaceId: input.workspaceId,
+                  workflowRunId:
+                    input.previewRunId === undefined ? input.runId : null,
+                  previewRunId: input.previewRunId ?? null,
+                  key,
+                  value,
+                })),
+              )
+              .onConflictDoUpdate({
+                target: [
+                  workflowRunValues.workspaceId,
+                  ownerColumn,
+                  workflowRunValues.key,
+                ],
+                set: {
+                  value: sql`excluded.${sql.identifier(workflowRunValues.value.name)}`,
+                  updatedAt: sql`clock_timestamp()`,
+                },
+              })
+              .catch(rethrowQueryFailure);
           }
           await assertCapabilityExecution(client, input);
           return Object.freeze(Object.fromEntries(values));

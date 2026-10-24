@@ -1,3 +1,5 @@
+import { workflowVersions } from '../../../schema/authoring/workflows.js';
+import { nodeRuns } from '../../../schema/runs/execution.js';
 import { withResourceRunRead } from '../../../tenant-access/resources/transactions.repository.js';
 import {
   retainedTestRunSql,
@@ -194,7 +196,7 @@ export async function readWorkflowRunFailedSteps(
     left join app.workflow_versions version
       on version.workspace_id = run.workspace_id
      and version.id = run.workflow_version_id
-    left join lateral (${sql.raw(workflowGraphStepSql('version.graph_json', 'node.node_id'))}) graph_node on true
+    left join lateral (${workflowGraphStepSql(sql`${alias(workflowVersions, 'version').graphJson}`, sql`${alias(nodeRuns, 'node').nodeId}`)}) graph_node on true
     where node.workspace_id = ${transaction.workspaceId}
       and node.workflow_run_id = any(${ids}::uuid[])
       and node.status in ('failed', 'timed_out', 'outcome_unknown')

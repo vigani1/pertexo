@@ -1,3 +1,12 @@
+import { workflows } from '../../schema/authoring/workflows.js';
+import { workflowErrorPolicies } from '../../schema/authoring/error-workflow.js';
+import { workflowRuns } from '../../schema/runs/execution.js';
+import { runErrorWorkflowIntents } from '../../schema/runs/completion/error-workflow.js';
+import { outboxEvents } from '../../schema/transport.js';
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { alias } from 'drizzle-orm/pg-core';
 import type { PoolClient } from 'pg';
 import type { RunTransitionPlan } from '../advance/plan.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
@@ -27,19 +36,44 @@ export async function persistErrorWorkflowIntent(
     )
   )
     return;
-  const policy = await client.query<{
-    target_workflow_id: string;
-    target_version_id: string | null;
-    workflow_name: string;
-  }>(
-    `select policy.target_workflow_id,target.published_version_id target_version_id,source.name workflow_name
-    from app.workflow_error_policies policy join app.workflows source on source.workspace_id=policy.workspace_id and source.id=policy.workflow_id
-    join app.workflows target on target.workspace_id=policy.workspace_id and target.id=policy.target_workflow_id
-    join app.workflow_runs run on run.workspace_id=policy.workspace_id and run.id=$3
-    where policy.workspace_id=$1 and policy.workflow_id=$2 and not run.error_workflow_origin`,
-    [input.workspaceId, input.workflowId, input.runId],
-  );
-  const row = policy.rows[0];
+  const source = alias(workflows, 'source'),
+    target = alias(workflows, 'target');
+  const [row] = await drizzle(client)
+    .select({
+      target_workflow_id: target.id,
+      target_version_id: target.publishedVersionId,
+      workflow_name: source.name,
+    })
+    .from(workflowErrorPolicies)
+    .innerJoin(
+      source,
+      and(
+        eq(source.workspaceId, workflowErrorPolicies.workspaceId),
+        eq(source.id, workflowErrorPolicies.workflowId),
+      ),
+    )
+    .innerJoin(
+      target,
+      and(
+        eq(target.workspaceId, workflowErrorPolicies.workspaceId),
+        eq(target.id, workflowErrorPolicies.targetWorkflowId),
+      ),
+    )
+    .innerJoin(
+      workflowRuns,
+      and(
+        eq(workflowRuns.workspaceId, workflowErrorPolicies.workspaceId),
+        eq(workflowRuns.id, input.runId),
+      ),
+    )
+    .where(
+      and(
+        eq(workflowErrorPolicies.workspaceId, input.workspaceId),
+        eq(workflowErrorPolicies.workflowId, input.workflowId),
+        eq(workflowRuns.errorWorkflowOrigin, false),
+      ),
+    )
+    .catch(rethrowQueryFailure);
   if (row === undefined) return;
   const failed = errorWorkflowFailure(input.plan);
   const context = errorWorkflowInput({
@@ -56,32 +90,48 @@ export async function persistErrorWorkflowIntent(
         }),
   });
   if (row.target_version_id === null) {
-    await client.query(
-      `insert into app.run_error_workflow_intents(workspace_id,source_run_id,target_workflow_id,target_version_id,context,outbox_event_id,status,refusal_code,completed_at)
-      values($1,$2,$3,null,$4::jsonb,null,'refused','target_not_published',clock_timestamp())
-      on conflict(workspace_id,source_run_id) do nothing`,
-      [
-        input.workspaceId,
-        input.runId,
-        row.target_workflow_id,
-        JSON.stringify(context),
-      ],
-    );
+    await drizzle(client)
+      .insert(runErrorWorkflowIntents)
+      .values({
+        workspaceId: input.workspaceId,
+        sourceRunId: input.runId,
+        targetWorkflowId: row.target_workflow_id,
+        targetVersionId: null,
+        context,
+        outboxEventId: null,
+        status: 'refused',
+        refusalCode: 'target_not_published',
+        completedAt: sql`clock_timestamp()`,
+      })
+      .onConflictDoNothing({
+        target: [
+          runErrorWorkflowIntents.workspaceId,
+          runErrorWorkflowIntents.sourceRunId,
+        ],
+      })
+      .catch(rethrowQueryFailure);
     return;
   }
   const outboxEventId = generatePersistedId();
-  const inserted = await client.query(
-    `insert into app.run_error_workflow_intents(workspace_id,source_run_id,target_workflow_id,target_version_id,context,outbox_event_id) values($1,$2,$3,$4,$5::jsonb,$6) on conflict(workspace_id,source_run_id) do nothing`,
-    [
-      input.workspaceId,
-      input.runId,
-      row.target_workflow_id,
-      row.target_version_id,
-      JSON.stringify(context),
+  const inserted = await drizzle(client)
+    .insert(runErrorWorkflowIntents)
+    .values({
+      workspaceId: input.workspaceId,
+      sourceRunId: input.runId,
+      targetWorkflowId: row.target_workflow_id,
+      targetVersionId: row.target_version_id,
+      context,
       outboxEventId,
-    ],
-  );
-  if (inserted.rowCount !== 1) return;
+    })
+    .onConflictDoNothing({
+      target: [
+        runErrorWorkflowIntents.workspaceId,
+        runErrorWorkflowIntents.sourceRunId,
+      ],
+    })
+    .returning({ id: runErrorWorkflowIntents.sourceRunId })
+    .catch(rethrowQueryFailure);
+  if (inserted.length !== 1) return;
   const payload = {
     workspaceId: input.workspaceId,
     sourceRunId: input.runId,
@@ -90,14 +140,16 @@ export async function persistErrorWorkflowIntent(
       ? {}
       : { traceparent: input.traceparent }),
   };
-  await client.query(
-    `insert into app.outbox_events(id,workspace_id,job_name,aggregate_type,aggregate_id,payload,payload_checksum) values($1,$2,'start-error-workflow','workflow-run',$3,$4::jsonb,$5)`,
-    [
-      outboxEventId,
-      input.workspaceId,
-      input.runId,
-      JSON.stringify(payload),
-      canonicalOutboxPayloadChecksum(payload),
-    ],
-  );
+  await drizzle(client)
+    .insert(outboxEvents)
+    .values({
+      id: outboxEventId,
+      workspaceId: input.workspaceId,
+      jobName: 'start-error-workflow',
+      aggregateType: 'workflow-run',
+      aggregateId: input.runId,
+      payload,
+      payloadChecksum: canonicalOutboxPayloadChecksum(payload),
+    })
+    .catch(rethrowQueryFailure);
 }

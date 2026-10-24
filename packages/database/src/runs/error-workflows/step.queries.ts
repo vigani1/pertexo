@@ -1,3 +1,8 @@
+import { workflowVersions } from '../../schema/authoring/workflows.js';
+import { nodeAttempts, nodeRuns } from '../../schema/runs/execution.js';
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import { workflowGraphStepSql } from '../queries/execution/graph-step.js';
 import {
@@ -16,28 +21,40 @@ export async function readErrorWorkflowStep(
     nodeId: string;
   }>,
 ): Promise<Omit<NonNullable<WorkflowErrorInput['failedStep']>, 'id'>> {
-  const found = await client.query<{
-    name: string | null;
-    node_type: string | null;
-    error_kind: string | null;
-    safe_error_code: string | null;
-  }>(
-    `select graph_node.value->>'label' name,graph_node.value->'definition'->>'key' node_type,
-    attempt.executor_error_kind error_kind,node.safe_error_code
-    from app.workflow_versions version
-    left join lateral (${workflowGraphStepSql('version.graph_json', '$5::text')}) graph_node on true
-    left join app.node_runs node on node.workspace_id=version.workspace_id and node.workflow_run_id=$3 and node.invocation_key=$4
-    left join app.node_attempts attempt on attempt.workspace_id=node.workspace_id and attempt.node_run_id=node.id and attempt.attempt_number=node.current_attempt_number
-    where version.workspace_id=$1 and version.id=$2`,
-    [
-      input.workspaceId,
-      input.workflowVersionId,
-      input.runId,
-      input.invocationKey,
-      input.nodeId,
-    ],
-  );
-  const row = found.rows[0];
+  const db = drizzle(client);
+  const graph = sql`(${workflowGraphStepSql(sql`${workflowVersions.graphJson}`, sql`${input.nodeId}::text`)}) as graph_node`;
+  const [row] = await db
+    .select({
+      name: sql<string | null>`graph_node.value->>'label'`,
+      node_type: sql<string | null>`graph_node.value->'definition'->>'key'`,
+      error_kind: nodeAttempts.executorErrorKind,
+      safe_error_code: nodeRuns.safeErrorCode,
+    })
+    .from(workflowVersions)
+    .leftJoinLateral(graph, sql`true`)
+    .leftJoin(
+      nodeRuns,
+      and(
+        eq(nodeRuns.workspaceId, workflowVersions.workspaceId),
+        eq(nodeRuns.workflowRunId, input.runId),
+        eq(nodeRuns.invocationKey, input.invocationKey),
+      ),
+    )
+    .leftJoin(
+      nodeAttempts,
+      and(
+        eq(nodeAttempts.workspaceId, nodeRuns.workspaceId),
+        eq(nodeAttempts.nodeRunId, nodeRuns.id),
+        eq(nodeAttempts.attemptNumber, nodeRuns.currentAttemptNumber),
+      ),
+    )
+    .where(
+      and(
+        eq(workflowVersions.workspaceId, input.workspaceId),
+        eq(workflowVersions.id, input.workflowVersionId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
   const classification = workflowFailureClassificationSchema.safeParse({
     errorKind: row?.error_kind ?? 'human_task',
     safeErrorCode: row?.safe_error_code,

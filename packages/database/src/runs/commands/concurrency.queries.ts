@@ -1,4 +1,5 @@
-import { sql } from 'drizzle-orm';
+import { workflowConcurrencyPolicies } from '../../schema/authoring/concurrency.js';
+import { and, eq, sql } from 'drizzle-orm';
 import { isTestRun } from '../data-policy.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 
@@ -24,14 +25,18 @@ export async function requireWorkflowConcurrency(
   await transaction.db.execute(
     sql`select app.lock_workspace_admission(${transaction.workspaceId}),set_config('app.workflow_concurrency_skip_protocol','1',true)`,
   );
-  const policies = await transaction.db.execute<{
-    active_run_limit: number | null;
-    overflow: string;
-  }>(sql`
-    select active_run_limit, overflow from app.workflow_concurrency_policies
-    where workspace_id=${transaction.workspaceId} and workflow_id=${workflowId}
-  `);
-  const policy = policies.rows[0];
+  const [policy] = await transaction.db
+    .select({
+      active_run_limit: workflowConcurrencyPolicies.activeRunLimit,
+      overflow: workflowConcurrencyPolicies.overflow,
+    })
+    .from(workflowConcurrencyPolicies)
+    .where(
+      and(
+        eq(workflowConcurrencyPolicies.workspaceId, transaction.workspaceId),
+        eq(workflowConcurrencyPolicies.workflowId, workflowId),
+      ),
+    );
   if (policy?.overflow === 'skip' && policy.active_run_limit !== null) {
     // Reservations are a subset of queued runs here; adding them would count twice.
     const occupancy = await transaction.db.execute<{

@@ -1,4 +1,5 @@
-import { sql } from 'drizzle-orm';
+import { workflowRuns } from '../../schema/runs/execution.js';
+import { and, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { ExecutionStateConflictError } from '../state-errors.js';
@@ -35,18 +36,21 @@ export async function requestWorkflowRunCancellation(
   }>
 > {
   const parsed = cancellationSchema.parse(input);
-  const result = await transaction.db.execute<{
-    cancel_reason: string | null;
-    cancel_requested_at: Date | null;
-    cancel_requested_by: string | null;
-    status: string;
-  }>(sql`
-    select status, cancel_requested_at, cancel_requested_by, cancel_reason
-    from app.workflow_runs
-    where workspace_id = ${transaction.workspaceId} and id = ${parsed.runId}
-    for update
-  `);
-  const row = result.rows[0];
+  const [row] = await transaction.db
+    .select({
+      cancel_reason: workflowRuns.cancelReason,
+      cancel_requested_at: workflowRuns.cancelRequestedAt,
+      cancel_requested_by: workflowRuns.cancelRequestedBy,
+      status: workflowRuns.status,
+    })
+    .from(workflowRuns)
+    .where(
+      and(
+        eq(workflowRuns.workspaceId, transaction.workspaceId),
+        eq(workflowRuns.id, parsed.runId),
+      ),
+    )
+    .for('update');
   if (row === undefined)
     throw new ExecutionStateConflictError('execution.run_not_found');
   if (terminalRunStatuses.has(row.status))
@@ -62,19 +66,30 @@ export async function requestWorkflowRunCancellation(
     return Object.freeze({
       duplicate: true,
       eventSequence: null,
-      requestedAt: z.coerce.date().parse(row.cancel_requested_at),
+      requestedAt: row.cancel_requested_at,
     });
   }
 
-  const updated = await transaction.db.execute<{
-    cancel_requested_at: Date;
-  }>(sql`
-    update app.workflow_runs
-    set cancel_requested_at = clock_timestamp(), cancel_requested_by = ${parsed.actor},
-        cancel_reason = ${parsed.reason ?? null}, updated_at = clock_timestamp()
-    where workspace_id = ${transaction.workspaceId} and id = ${parsed.runId}
-    returning cancel_requested_at
-  `);
+  // This write always sets the returned timestamp; the schema supplies its Date decoder.
+  const updated = await transaction.db
+    .update(workflowRuns)
+    .set({
+      cancelRequestedAt: sql`clock_timestamp()`,
+      cancelRequestedBy: parsed.actor,
+      cancelReason: parsed.reason ?? null,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(workflowRuns.workspaceId, transaction.workspaceId),
+        eq(workflowRuns.id, parsed.runId),
+      ),
+    )
+    .returning({
+      cancel_requested_at: sql<Date>`${workflowRuns.cancelRequestedAt}`.mapWith(
+        workflowRuns.cancelRequestedAt,
+      ),
+    });
   const eventSequence = await appendLockedRunEvent(transaction, parsed.runId, {
     type: RUN_EVENT_TYPE.cancelRequested,
     payload: {
@@ -82,7 +97,7 @@ export async function requestWorkflowRunCancellation(
       ...(parsed.reason == null ? {} : { reason: parsed.reason }),
     },
   });
-  const cancellation = updated.rows[0];
+  const cancellation = updated[0];
   if (cancellation === undefined)
     throw new ExecutionStateConflictError('execution.cancel_update_lost');
   return Object.freeze({

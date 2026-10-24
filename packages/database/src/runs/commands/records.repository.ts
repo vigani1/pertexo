@@ -1,3 +1,8 @@
+import { auditEvents } from '../../schema/foundation.js';
+import {
+  workflowRunRecords,
+  type WorkflowRunRow,
+} from '../queries/records.queries.js';
 import type { RunValues } from '@pertexo/node-sdk';
 import { runValuesInTransaction } from '../values/records.queries.js';
 import { retainedTestRunSql } from '../data-policy.js';
@@ -28,74 +33,7 @@ export const runStatusSchema = z.enum([
   'timed_out',
   'outcome_unknown',
 ]);
-const triggerTypeSchema = z.enum([
-  'test',
-  'api',
-  'manual',
-  'replay',
-  'schedule',
-  'webhook',
-  'workflow_call',
-  'workflow_error',
-  'form',
-]);
-const runRowSchema = z
-  .object({
-    id: z.uuid(),
-    workspace_id: z.uuid(),
-    workflow_id: z.uuid(),
-    workflow_version_id: z.uuid(),
-    status: runStatusSchema,
-    trigger_type: triggerTypeSchema,
-    created_at: z.coerce.date(),
-    updated_at: z.coerce.date(),
-    started_at: z.coerce.date().nullable(),
-    completed_at: z.coerce.date().nullable(),
-    deadline_at: z.coerce.date().nullable(),
-    cancel_requested_at: z.coerce.date().nullable(),
-  })
-  .strict();
-const runReadRowSchema = runRowSchema.extend({
-  has_human_tasks: z.boolean(),
-  human_wait_started_at: z.coerce.date().nullable(),
-  remaining_execution_ms: z.number().int().positive().nullable(),
-  absolute_deadline_at: z.coerce.date().nullable(),
-  handled_failure_count: z.number().int().min(0).max(200),
-  admission_blockers: z
-    .object({
-      asOf: z.iso.datetime({ precision: 6 }),
-      reasons: z.array(
-        z.enum(['workspace_capacity', 'workflow_capacity', 'workflow_order']),
-      ),
-    })
-    .strict()
-    .nullable()
-    .optional(),
-  workflow_name: z.string().min(1).max(128).nullable(),
-  replay_source_run_id: z.uuid().nullable(),
-  recovery_target_node_run_id: z.uuid().nullable(),
-  recovery_target_node_id: z.string().nullable(),
-  recovery_reused_count: z.number().int().nonnegative().nullable(),
-  recovery_effect_risk: z
-    .enum(['ordinary', 'possible_effects', 'unknown_outcome'])
-    .nullable(),
-  recovery_effects_acknowledged: z.boolean().nullable(),
-});
-
-export type WorkflowRunRecord = Readonly<{
-  id: string;
-  workspaceId: string;
-  workflowId: string;
-  workflowVersionId: string;
-  status: z.output<typeof runStatusSchema>;
-  triggerType: z.output<typeof triggerTypeSchema>;
-  createdAt: Date;
-  updatedAt: Date;
-  startedAt: Date | null;
-  completedAt: Date | null;
-  deadlineAt: Date | null;
-  cancelRequestedAt: Date | null;
-}>;
+export type WorkflowRunRecord = Readonly<WorkflowRunRow>;
 
 export type WorkflowRunReadRecord = WorkflowRunRecord &
   Readonly<{
@@ -122,26 +60,15 @@ export async function readWorkflowRunRecord(
   transaction: WorkspaceTransaction,
   runId: string,
 ): Promise<WorkflowRunRecord | undefined> {
-  const result = await transaction.db.execute(sql`
-    select
-      id,
-      workspace_id,
-      workflow_id,
-      workflow_version_id,
-      status,
-      trigger_type,
-      created_at,
-      updated_at,
-      started_at,
-      completed_at,
-      deadline_at,
-      cancel_requested_at
-    from app.workflow_runs
-    where workspace_id = ${transaction.workspaceId} and id = ${runId}
-    limit 1
-  `);
-  const row = result.rows[0];
-  return row === undefined ? undefined : toWorkflowRunRecord(row);
+  const [row] = await workflowRunRecords(transaction.db)
+    .where(
+      and(
+        eq(workflowRuns.workspaceId, transaction.workspaceId),
+        eq(workflowRuns.id, runId),
+      ),
+    )
+    .limit(1);
+  return row === undefined ? undefined : Object.freeze(row);
 }
 
 export async function readWorkflowRunReadRecord(
@@ -220,37 +147,28 @@ export async function insertWorkflowRunAudit(
     metadata: ReturnType<typeof sql>;
   }>,
 ): Promise<void> {
-  await transaction.db.execute(sql`
-    insert into app.audit_events
-      (id, workspace_id, actor_user_id, action, target_type, target_id,
-       request_id, trace_id, metadata)
-    values
-      (${generatePersistedId()}, ${transaction.workspaceId}, ${input.actorId},
-       ${input.action}, 'workflow_run', ${input.runId},
-       ${input.requestId ?? null}, ${input.traceId ?? null}, ${input.metadata})
-  `);
+  await transaction.db
+    .insert(auditEvents)
+    .values({
+      id: generatePersistedId(),
+      workspaceId: transaction.workspaceId,
+      actorUserId: input.actorId,
+      action: input.action,
+      targetType: 'workflow_run',
+      targetId: input.runId,
+      requestId: input.requestId ?? null,
+      traceId: input.traceId ?? null,
+      metadata: input.metadata,
+    });
 }
 
-function toWorkflowRunRecord(value: unknown): WorkflowRunRecord {
-  const row = runRowSchema.parse(value);
-  return Object.freeze({
-    id: row.id,
-    workspaceId: row.workspace_id,
-    workflowId: row.workflow_id,
-    workflowVersionId: row.workflow_version_id,
-    status: row.status,
-    triggerType: row.trigger_type,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-    startedAt: row.started_at,
-    completedAt: row.completed_at,
-    deadlineAt: row.deadline_at,
-    cancelRequestedAt: row.cancel_requested_at,
-  });
-}
-
-export function toWorkflowRunReadRecord(value: unknown): WorkflowRunReadRecord {
-  const row = runReadRowSchema.parse(value);
+type ReadRow = Awaited<
+  ReturnType<typeof workflowRunReadQuery>
+>[number]['run'] & {
+  workflow_name: string | null;
+  admission_blockers: ReturnType<typeof runAdmissionBlockers>;
+};
+export function toWorkflowRunReadRecord(row: ReadRow): WorkflowRunReadRecord {
   const {
     has_human_tasks: hasHumanTasks,
     human_wait_started_at: humanWaitStartedAt,
@@ -274,7 +192,7 @@ export function toWorkflowRunReadRecord(value: unknown): WorkflowRunReadRecord {
     effectRisk === null ||
     effectsAcknowledged === null;
   return Object.freeze({
-    ...toWorkflowRunRecord(runRow),
+    ...runRow,
     workflowName,
     ...(hasHumanTasks ? { hasHumanTasks: true } : {}),
     ...(humanWaitStartedAt === null || row.status !== 'waiting'

@@ -4,6 +4,9 @@ import type {
   PreviewAttemptLease,
   PreviewStatus,
 } from '../../previews/contract.js';
+import type { WorkflowRecoveryEffectRisk } from '@pertexo/workflow-model';
+import type { z } from 'zod';
+import type { acceptWorkflowRunInputSchema } from '../../runs/commands/acceptance/contract.js';
 import {
   NODE_IDENTITY_KEY_PATTERN,
   type CodeDiagnostics,
@@ -48,7 +51,9 @@ export const workflowRuns = appSchema.table(
     recoveryTargetNodeRunId: uuid('recovery_target_node_run_id'),
     recoveryTargetNodeId: varchar('recovery_target_node_id', { length: 128 }),
     recoveryReusedCount: integer('recovery_reused_count'),
-    recoveryEffectRisk: varchar('recovery_effect_risk', { length: 32 }),
+    recoveryEffectRisk: varchar('recovery_effect_risk', {
+      length: 32,
+    }).$type<WorkflowRecoveryEffectRisk>(),
     recoveryEffectsAcknowledged: boolean('recovery_effects_acknowledged'),
     errorWorkflowOrigin: boolean('error_workflow_origin')
       .notNull()
@@ -63,7 +68,9 @@ export const workflowRuns = appSchema.table(
       mode: 'date',
     }),
     remainingExecutionMs: integer('remaining_execution_ms'),
-    triggerType: varchar('trigger_type', { length: 32 }).notNull(),
+    triggerType: varchar('trigger_type', { length: 32 })
+      .$type<z.output<typeof acceptWorkflowRunInputSchema>['triggerType']>()
+      .notNull(),
     failureNotificationDestinationId: uuid(
       'failure_notification_destination_id',
     ),

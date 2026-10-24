@@ -1,6 +1,8 @@
+import { sql, type SQL } from 'drizzle-orm';
+
 /** Follow only declared graph structure; configuration and mapping values are data. */
-export function workflowGraphStepSql(graph: string, nodeId: string): string {
-  return `with recursive graph_nodes(value) as (
+export function workflowGraphStepSql(graph: SQL, nodeId: SQL): SQL {
+  return sql`with recursive graph_nodes(value) as (
     select value from jsonb_array_elements((${graph})::jsonb->'nodes') entry(value)
     union all
     select child.value from graph_nodes parent

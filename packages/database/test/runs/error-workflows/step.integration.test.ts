@@ -1,3 +1,5 @@
+import { sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import { expect, it } from 'vitest';
 import { apiPool } from '../../support/workflow-authoring.js';
 import { workflowGraphStepSql } from '../../../src/runs/queries/execution/graph-step.js';
@@ -41,11 +43,15 @@ it('reads only declared steps, including structured bodies, without interpreting
     ['nested', [{ name: 'Nested published step', type: 'http.request' }]],
     ['absent', []],
   ] as const) {
-    const found = await apiPool.query<{ name: string; type: string }>(
-      `select value->>'label' name,value->'definition'->>'key' type from (${workflowGraphStepSql('$1::jsonb', '$2::text')}) metadata`,
-      [JSON.stringify(graph), id],
-    );
-    expect(found.rows).toEqual(expected);
-    expect(JSON.stringify(found.rows)).not.toContain('sensitive-password');
+    const found = await drizzle(apiPool)
+      .select({
+        name: sql<string>`value->>'label'`,
+        type: sql<string>`value->'definition'->>'key'`,
+      })
+      .from(
+        sql`(${workflowGraphStepSql(sql`${JSON.stringify(graph)}::jsonb`, sql`${id}::text`)}) metadata`,
+      );
+    expect(found).toEqual(expected);
+    expect(JSON.stringify(found)).not.toContain('sensitive-password');
   }
 });
