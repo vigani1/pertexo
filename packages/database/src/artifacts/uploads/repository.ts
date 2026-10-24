@@ -22,9 +22,9 @@ import {
 } from '../../platform/readiness.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.js';
-import type { ArtifactRecord } from '../repository.js';
+import type { ArtifactRecord } from '../contract.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
-import { artifactMetadataMatches } from '../metadata/contract.js';
+import { artifactMetadataMatches } from '../metadata/validation.js';
 
 import {
   ARTIFACT_UPLOAD_PENDING_MS,
@@ -35,30 +35,14 @@ import {
   normalizeBeginInput,
   normalizeFinalizeInput,
   normalizeIdentity,
-  type ArtifactUploadAuthorization,
-  type ArtifactUploadDatabase,
-  type ArtifactUploadResult,
-  type BeginArtifactUploadInput,
-  type FinalizeArtifactUploadInput,
-  type NormalizedBeginArtifactUploadInput,
-} from './contract.js';
-
-export {
-  ARTIFACT_UPLOAD_PENDING_MS,
-  ARTIFACT_UPLOAD_PURPOSE,
-  ArtifactQuotaExceededError,
-  ArtifactUploadConflictError,
-  ArtifactUploadIdempotencyConflictError,
-  ArtifactUploadNotFoundError,
-} from './contract.js';
-export type {
-  ArtifactUploadActor,
+} from './input.js';
+import type {
   ArtifactUploadAuthorization,
   ArtifactUploadDatabase,
-  ArtifactUploadIdentity,
   ArtifactUploadResult,
   BeginArtifactUploadInput,
   FinalizeArtifactUploadInput,
+  NormalizedBeginArtifactUploadInput,
 } from './contract.js';
 
 function isDatabaseError(

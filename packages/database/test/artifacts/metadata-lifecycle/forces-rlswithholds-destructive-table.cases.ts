@@ -2,12 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
-import {
-  ArtifactFinalizeConflictError,
-  createPendingArtifact,
-  finalizeArtifactUpload,
-  readArtifactCapacity,
-} from '../../../src/artifacts/repository.js';
+import {ArtifactFinalizeConflictError} from '../../../src/artifacts/input.js';
+import {createPendingArtifact, finalizeArtifactUpload} from '../../../src/artifacts/repository.js';
+import {readArtifactCapacity} from '../../../src/artifacts/capacity.queries.js';
 
 import { artifacts } from '../../../src/schema.js';
 
