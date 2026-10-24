@@ -1,3 +1,4 @@
+import { waitForBlockedBy } from '../../../support/postgres/lock-coordination.js';
 import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { Pool } from 'pg';
@@ -38,12 +39,18 @@ export function registerSerializesRoleChangeBehindDeletion(): void {
         status: 'active',
       });
     });
-    const blockerPool = new Pool({ connectionString: migrationUrl, max: 1 });
+    const blockerPool = new Pool({ connectionString: migrationUrl, max: 2 });
     const blocker = await blockerPool.connect();
     let lifecycle: Promise<unknown> | undefined;
     let roleChange: Promise<unknown> | undefined;
     try {
       await blocker.query('begin');
+      const holding = await blocker.query<{ pid: number }>(
+        'select pg_backend_pid() pid',
+      );
+      const blockerPid = holding.rows[0]?.pid;
+      if (blockerPid === undefined)
+        throw new Error('Membership lock holder is missing');
       await blocker.query('set local role pertexo_owner');
       await blocker.query(
         'select id from app.workspaces where id=$1 for update',
@@ -57,7 +64,7 @@ export function registerSerializesRoleChangeBehindDeletion(): void {
         idempotencyKey: randomUUID(),
       });
       void lifecycle.catch(() => undefined);
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await waitForBlockedBy(blockerPool, blockerPid);
       roleChange = identityDatabase.changeWorkspaceMemberRole({
         workspaceId: commandWorkspace.id,
         actorUserId: ownerUserId,
@@ -67,7 +74,7 @@ export function registerSerializesRoleChangeBehindDeletion(): void {
         idempotencyKey: randomUUID(),
       });
       void roleChange.catch(() => undefined);
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await waitForBlockedBy(blockerPool, blockerPid, { minimumWaiters: 2 });
       await blocker.query('commit');
       await expect(lifecycle).resolves.toMatchObject({
         commandType: 'deletion_requested',

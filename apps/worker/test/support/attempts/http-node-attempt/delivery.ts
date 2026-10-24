@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import {
   workspaceId,
   connectionId,
@@ -14,15 +15,14 @@ export async function waitFor<T>(
   predicate: (value: T) => boolean,
   timeoutMillis = 15_000,
 ): Promise<T> {
-  const deadline = Date.now() + timeoutMillis;
-  let value = await operation();
-  while (!predicate(value) && Date.now() < deadline) {
-    await new Promise<void>((resolve) => setTimeout(resolve, 50));
-    value = await operation();
-  }
-  if (!predicate(value))
-    throw new Error(`HTTP attempt proof timed out: ${JSON.stringify(value)}`);
-  return value;
+  const result = await vi.waitUntil(
+    async () => {
+      const value = await operation();
+      return predicate(value) ? { value } : false;
+    },
+    { timeout: timeoutMillis, interval: 50 },
+  );
+  return result.value;
 }
 
 /**

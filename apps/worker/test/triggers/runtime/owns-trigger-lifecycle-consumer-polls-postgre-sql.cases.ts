@@ -38,54 +38,59 @@ export function registerOwnsTriggerLifecycleConsumerPollsPostgreSQL(): void {
   });
 
   it('recovers a transient PostgreSQL scan failure and makes no claims after drain', async () => {
-    const selected = dependencies();
-    selected.telemetry.scanCompleted.mockImplementation(() => {
-      throw new Error('scan completion metrics unavailable');
-    });
-    selected.telemetry.scanFailed.mockImplementation(() => {
-      throw new Error('scan failure metrics unavailable');
-    });
-    vi.mocked(selected.scanner.scanDue)
-      .mockRejectedValueOnce(new Error('database unavailable'))
-      .mockResolvedValue({
-        claimed: 1,
-        accepted: 0,
-        skipped: 1,
-        paused: 0,
-        deferred: 0,
-        maxLagSeconds: 3,
+    vi.useFakeTimers();
+    try {
+      const selected = dependencies();
+      selected.telemetry.scanCompleted.mockImplementation(() => {
+        throw new Error('scan completion metrics unavailable');
       });
-    const runtime = await createTriggerRuntime(options, {
-      ...selected,
-      checkpointFactory: () => ({ checkpoint: {} }),
-    });
+      selected.telemetry.scanFailed.mockImplementation(() => {
+        throw new Error('scan failure metrics unavailable');
+      });
+      vi.mocked(selected.scanner.scanDue)
+        .mockRejectedValueOnce(new Error('database unavailable'))
+        .mockResolvedValue({
+          claimed: 1,
+          accepted: 0,
+          skipped: 1,
+          paused: 0,
+          deferred: 0,
+          maxLagSeconds: 3,
+        });
+      const runtime = await createTriggerRuntime(options, {
+        ...selected,
+        checkpointFactory: () => ({ checkpoint: {} }),
+      });
 
-    await vi.waitFor(() =>
-      expect(runtime.checkReadiness()).rejects.toThrow(/latest scan/u),
-    );
-    expect(selected.logger.error).toHaveBeenCalledWith(
-      'trigger.scan_failed',
-      { safeErrorCode: 'trigger.scan_failed' },
-      expect.any(Error) as unknown,
-    );
-    expect(selected.telemetry.scanFailed).toHaveBeenCalledWith(
-      expect.any(Number) as unknown,
-    );
+      await vi.waitFor(() =>
+        expect(runtime.checkReadiness()).rejects.toThrow(/latest scan/u),
+      );
+      expect(selected.logger.error).toHaveBeenCalledWith(
+        'trigger.scan_failed',
+        { safeErrorCode: 'trigger.scan_failed' },
+        expect.any(Error) as unknown,
+      );
+      expect(selected.telemetry.scanFailed).toHaveBeenCalledWith(
+        expect.any(Number) as unknown,
+      );
 
-    await vi.waitFor(() => {
-      expect(
-        vi.mocked(selected.scanner.scanDue).mock.calls.length,
-      ).toBeGreaterThanOrEqual(2);
-    });
-    await expect(runtime.checkReadiness()).resolves.toBeUndefined();
-    await runtime.close();
-    const callsAfterClose = vi.mocked(selected.scanner.scanDue).mock.calls
-      .length;
-    await new Promise((resolve) => setTimeout(resolve, 40));
-    expect(selected.scanner.scanDue).toHaveBeenCalledTimes(callsAfterClose);
-    expect(selected.consumer.close).toHaveBeenCalledOnce();
-    expect(selected.scanner.close).toHaveBeenCalledOnce();
-    expect(selected.reconciliation.close).toHaveBeenCalledOnce();
+      await vi.waitFor(() => {
+        expect(
+          vi.mocked(selected.scanner.scanDue).mock.calls.length,
+        ).toBeGreaterThanOrEqual(2);
+      });
+      await expect(runtime.checkReadiness()).resolves.toBeUndefined();
+      await runtime.close();
+      const callsAfterClose = vi.mocked(selected.scanner.scanDue).mock.calls
+        .length;
+      await vi.advanceTimersByTimeAsync(40);
+      expect(selected.scanner.scanDue).toHaveBeenCalledTimes(callsAfterClose);
+      expect(selected.consumer.close).toHaveBeenCalledOnce();
+      expect(selected.scanner.close).toHaveBeenCalledOnce();
+      expect(selected.reconciliation.close).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('routes only reconciliation jobs and closes constructed stores after consumer setup fails', async () => {

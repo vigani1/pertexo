@@ -78,12 +78,7 @@ function telemetryMeter(): {
 }
 
 async function waitFor(predicate: () => boolean): Promise<void> {
-  const deadline = Date.now() + 5_000;
-  while (!predicate()) {
-    if (Date.now() >= deadline)
-      throw new Error('PostgreSQL telemetry observation timed out');
-    await new Promise((resolve) => setTimeout(resolve, 25));
-  }
+  await expect.poll(predicate, { timeout: 5_000, interval: 25 }).toBe(true);
 }
 
 it('observes a real repository-owned PostgreSQL lock wait and completion', async () => {

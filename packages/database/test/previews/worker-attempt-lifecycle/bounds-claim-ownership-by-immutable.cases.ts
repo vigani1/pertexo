@@ -42,17 +42,18 @@ export function registerBoundsClaimOwnershipByImmutable(): void {
       executionDeadlineAt,
       expiresAt: new Date(Date.now() + 60_000),
     });
-    let deadlineReached = false;
-    for (let attempt = 0; attempt < 150; attempt += 1) {
-      const clock = await scopedQuery<{ reached: boolean }>(
-        `select clock_timestamp() >= $1::timestamptz reached`,
-        [executionDeadlineAt],
-      );
-      deadlineReached = clock.rows[0]?.reached === true;
-      if (deadlineReached) break;
-      await new Promise<void>((resolve) => setTimeout(resolve, 20));
-    }
-    expect(deadlineReached).toBe(true);
+    await expect
+      .poll(
+        async () => {
+          const clock = await scopedQuery<{ reached: boolean }>(
+            `select clock_timestamp() >= $1::timestamptz reached`,
+            [executionDeadlineAt],
+          );
+          return clock.rows[0]?.reached ?? false;
+        },
+        { timeout: 3_000, interval: 20 },
+      )
+      .toBe(true);
 
     await expect(
       claimPreviewDelivery(workerPool, {

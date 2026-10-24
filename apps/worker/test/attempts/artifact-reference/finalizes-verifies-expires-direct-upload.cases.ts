@@ -18,7 +18,7 @@ import {
 } from '@pertexo/database/testing';
 
 import { eq } from 'drizzle-orm';
-import { expect, it, vi } from 'vitest';
+import { expect, it } from 'vitest';
 import { observeWorkspaceArtifactCapacity } from '../../../src/runtime/health/artifact-metrics.js';
 
 import { runWithCleanup } from '../../support/infrastructure/test-operation.js';

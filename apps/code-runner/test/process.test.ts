@@ -1,3 +1,4 @@
+import { reserveProcess } from './support/reserve.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DEFAULT_CODE_SETTINGS, type CodeResult } from '@pertexo/node-sdk';
 import { createTaskProcessPool } from '../dist/process/pool.js';
@@ -14,22 +15,11 @@ describe('single-use Code processes', () => {
   afterAll(async () => {
     await pool.close();
   });
-  async function reserve() {
-    let slot = pool.reserve();
-    const deadline = Date.now() + 5000;
-    while (slot === undefined && Date.now() < deadline) {
-      await new Promise((resolve) => setTimeout(resolve, 20));
-      slot = pool.reserve();
-    }
-    if (slot === undefined)
-      throw new Error('Test could not reserve a Code process');
-    return slot;
-  }
   async function execute(
     code: string,
     timeoutSeconds = 2,
   ): Promise<CodeResult> {
-    const slot = await reserve();
+    const slot = await reserveProcess(pool);
     try {
       return await slot.run(
         { code, timeoutSeconds, input: { amount: 3 }, variables: { RATE: 2 } },
@@ -196,7 +186,7 @@ describe('single-use Code processes', () => {
     });
   });
   it('kills cancellation and reuses the slot only after exit', async () => {
-    const slot = await reserve();
+    const slot = await reserveProcess(pool);
     const cancel = new AbortController();
     const task = slot.run(
       {

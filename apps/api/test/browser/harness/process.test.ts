@@ -1,5 +1,4 @@
 import { spawn } from 'node:child_process';
-import { setTimeout as delay } from 'node:timers/promises';
 import { describe, expect, it, vi } from 'vitest';
 import { ownEditorBrowserProcess } from './process.js';
 
@@ -49,7 +48,6 @@ describe('editor browser process shutdown proof', () => {
       });
     } finally {
       probe.mockRestore();
-      await delay(100);
       if (child.exitCode === null && child.signalCode === null) {
         child.kill('SIGKILL');
         await new Promise<void>((resolve) =>
@@ -145,7 +143,6 @@ describe('editor browser process shutdown proof', () => {
       });
     } finally {
       probe.mockRestore();
-      await delay(100);
       if (child.exitCode === null && child.signalCode === null) {
         child.kill('SIGKILL');
         await new Promise<void>((resolve) =>
@@ -314,8 +311,16 @@ describe('editor browser process shutdown proof', () => {
     } finally {
       // Only the PID explicitly issued by this fault fixture, never ps guesses.
       process.kill(detachedPid, 'SIGTERM');
-      await delay(100);
-      expect(() => process.kill(detachedPid, 0)).toThrow();
+      await expect
+        .poll(() => {
+          try {
+            process.kill(detachedPid, 0);
+            return true;
+          } catch {
+            return false;
+          }
+        })
+        .toBe(false);
     }
   });
   it('accepts an explicit browser-disposal receipt instead of inferring closure', async () => {
