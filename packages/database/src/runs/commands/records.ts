@@ -156,7 +156,7 @@ export async function readWorkflowRunReadRecord(
       and(
         eq(workflowRuns.workspaceId, transaction.workspaceId),
         eq(workflowRuns.id, runId),
-        sql.raw(retainedTestRunSql('workflow_runs')),
+        retainedTestRunSql('workflow_runs'),
       ),
     )
     .limit(1);

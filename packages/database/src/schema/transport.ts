@@ -1,3 +1,4 @@
+import type { ArtifactStatus } from '../artifacts/contract.js';
 import {
   type PgTableExtraConfigValue,
   bigint,
@@ -29,6 +30,7 @@ export const artifacts = appSchema.table(
     byteLength: bigint('byte_length', { mode: 'number' }).notNull(),
     sha256: char('sha256', { length: 64 }).notNull(),
     status: varchar('status', { length: 32 })
+      .$type<ArtifactStatus>()
       .notNull()
       .default(sql`'pending'::character varying`),
     expiresAt: timestamp('expires_at', {

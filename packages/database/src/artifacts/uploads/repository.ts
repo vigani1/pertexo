@@ -1,3 +1,8 @@
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { and, eq, inArray, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { artifacts } from '../../schema/transport.js';
+import { artifactStorageKey } from '../repository.js';
 import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority.js';
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
 import { visibleArtifactIds } from '../references/access.queries.js';
@@ -22,11 +27,11 @@ import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import { artifactMetadataMatches } from '../metadata/contract.js';
 
 import {
+  ARTIFACT_UPLOAD_PENDING_MS,
   ArtifactQuotaExceededError,
   ArtifactUploadConflictError,
   ArtifactUploadIdempotencyConflictError,
   ArtifactUploadNotFoundError,
-  mapArtifact,
   normalizeBeginInput,
   normalizeFinalizeInput,
   normalizeIdentity,
@@ -92,22 +97,24 @@ async function requireWorkspaceAccess(
 }
 
 async function loadArtifact(
-  client: Pick<PoolClient, 'query'>,
+  client: PoolClient,
   workspaceId: string,
   artifactId: string,
-  statuses: readonly string[],
+  statuses: readonly ArtifactRecord['status'][],
 ): Promise<ArtifactRecord> {
-  const result = await client.query<Record<string, unknown>>(
-    `select id,workspace_id,purpose,storage_key,media_type,byte_length,
-            sha256,status,expires_at,finalized_at,deleted_at,retention_retry_at,
-            created_at,updated_at
-       from app.artifacts
-      where workspace_id=$1 and id=$2 and status=any($3::text[])`,
-    [workspaceId, artifactId, statuses],
-  );
-  const row = result.rows[0];
+  const [row] = await drizzle(client)
+    .select()
+    .from(artifacts)
+    .where(
+      and(
+        eq(artifacts.workspaceId, workspaceId),
+        eq(artifacts.id, artifactId),
+        inArray(artifacts.status, [...statuses]),
+      ),
+    )
+    .catch(rethrowQueryFailure);
   if (row === undefined) throw new ArtifactUploadNotFoundError();
-  return mapArtifact(row);
+  return Object.freeze(row);
 }
 
 const storedUploadSchema = z.object({ artifactId: z.uuid() }).strict();
@@ -163,28 +170,27 @@ async function beginUpload(
 
       let artifact: ArtifactRecord;
       try {
-        const inserted = await client.query<Record<string, unknown>>(
-          `insert into app.artifacts
-             (id,workspace_id,purpose,storage_key,media_type,byte_length,sha256,
-              status,expires_at)
-           values($1,$2,'user-upload',
-              'workspaces/'||$2::uuid::text||'/artifacts/'||$1::uuid::text,
-              $3,$4,$5,'pending',clock_timestamp()+interval '15 minutes')
-           returning id,workspace_id,purpose,storage_key,media_type,byte_length,
-                     sha256,status,expires_at,finalized_at,deleted_at,
-                     retention_retry_at,created_at,updated_at`,
-          [
-            artifactId,
-            parsed.workspaceId,
-            parsed.mediaType,
-            parsed.byteLength,
-            parsed.sha256,
-          ],
-        );
-        const row = inserted.rows[0];
+        const [row] = await drizzle(client)
+          .insert(artifacts)
+          .values({
+            id: artifactId,
+            workspaceId: parsed.workspaceId,
+            purpose: 'user-upload',
+            storageKey: artifactStorageKey(
+              parsed.workspaceId.toLowerCase(),
+              artifactId,
+            ),
+            mediaType: parsed.mediaType,
+            byteLength: parsed.byteLength,
+            sha256: parsed.sha256,
+            status: 'pending',
+            expiresAt: sql`clock_timestamp()+make_interval(secs=>${ARTIFACT_UPLOAD_PENDING_MS / 1000})`,
+          })
+          .returning()
+          .catch(rethrowQueryFailure);
         if (row === undefined)
           throw new Error('Artifact upload insert returned no row');
-        artifact = mapArtifact(row);
+        artifact = Object.freeze(row);
       } catch (error: unknown) {
         if (isDatabaseError(error, 'P0001', 'artifact_capacity_exceeded'))
           throw new ArtifactQuotaExceededError();
@@ -261,16 +267,17 @@ async function completeUploadFinalization(
         parsed.actorId,
         'upload',
       );
-      const result = await client.query<Record<string, unknown>>(
-        `select id,workspace_id,purpose,storage_key,media_type,byte_length,
-                sha256,status,expires_at,finalized_at,deleted_at,
-                retention_retry_at,created_at,updated_at
-           from app.artifacts
-          where workspace_id=$1 and id=$2 and purpose='user-upload'
-          for update`,
-        [parsed.workspaceId, parsed.artifactId],
+      const db = drizzle(client);
+      const predicate = and(
+        eq(artifacts.workspaceId, parsed.workspaceId),
+        eq(artifacts.id, parsed.artifactId),
       );
-      const row = result.rows[0];
+      const [row] = await db
+        .select()
+        .from(artifacts)
+        .where(and(predicate, eq(artifacts.purpose, 'user-upload')))
+        .for('update')
+        .catch(rethrowQueryFailure);
       if (row === undefined) throw new ArtifactUploadNotFoundError();
       if (
         !(await visibleArtifactIds(client, parsed, [parsed.artifactId])).has(
@@ -278,7 +285,7 @@ async function completeUploadFinalization(
         )
       )
         throw new ArtifactUploadNotFoundError();
-      const artifact = mapArtifact(row);
+      const artifact = Object.freeze(row);
       const expected = parsed.expectedMetadata;
       if (!artifactMetadataMatches(artifact, expected))
         throw new ArtifactUploadConflictError(
@@ -287,22 +294,26 @@ async function completeUploadFinalization(
       if (artifact.status === 'available') return artifact;
       if (artifact.status !== 'pending')
         throw new ArtifactUploadConflictError('Artifact upload is not pending');
-      const finalized = await client.query<Record<string, unknown>>(
-        `update app.artifacts
-            set status='available',finalized_at=clock_timestamp(),
-                expires_at=clock_timestamp()+interval '30 days',
-                updated_at=clock_timestamp()
-          where workspace_id=$1 and id=$2 and status='pending'
-            and expires_at>clock_timestamp()
-          returning id,workspace_id,purpose,storage_key,media_type,byte_length,
-                    sha256,status,expires_at,finalized_at,deleted_at,
-                    retention_retry_at,created_at,updated_at`,
-        [parsed.workspaceId, parsed.artifactId],
-      );
-      const finalizedRow = finalized.rows[0];
+      const [finalizedRow] = await db
+        .update(artifacts)
+        .set({
+          status: 'available',
+          finalizedAt: sql`clock_timestamp()`,
+          expiresAt: sql`clock_timestamp()+interval '30 days'`,
+          updatedAt: sql`clock_timestamp()`,
+        })
+        .where(
+          and(
+            predicate,
+            eq(artifacts.status, 'pending'),
+            sql`${artifacts.expiresAt}>clock_timestamp()`,
+          ),
+        )
+        .returning()
+        .catch(rethrowQueryFailure);
       if (finalizedRow === undefined)
         throw new ArtifactUploadConflictError('Artifact upload has expired');
-      return mapArtifact(finalizedRow);
+      return Object.freeze(finalizedRow);
     },
     signal === undefined ? {} : { signal },
   );

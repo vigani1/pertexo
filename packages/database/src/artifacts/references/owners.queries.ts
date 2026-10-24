@@ -1,133 +1,277 @@
 import { expiredRunSql, retainedTestRunSql } from '../../runs/data-policy.js';
-import { sql, type SQL } from 'drizzle-orm';
+import { and, eq, exists, sql, type SQL, type SQLWrapper } from 'drizzle-orm';
+import { alias, QueryBuilder } from 'drizzle-orm/pg-core';
+import { workflowTestSnapshots } from '../../schema/runs/tests.js';
+import {
+  workflowTestSuiteCases,
+  workflowTestSuites,
+} from '../../schema/runs/suites.js';
+import {
+  workflowDrafts,
+  workflowVersions,
+} from '../../schema/authoring/workflows.js';
+import {
+  workflowInputCases,
+  workflowInputCasePayloads,
+} from '../../schema/authoring/input-cases.js';
+import { workflowStepSamples } from '../../schema/authoring/step-samples.js';
+import {
+  previewRuns,
+  workflowRuns,
+  nodeRuns,
+  nodeAttempts,
+} from '../../schema/runs/execution.js';
+import { runEvents, runCheckpoints } from '../../schema/runs/execution.js';
+const snapshot = alias(workflowTestSnapshots, 'snapshot');
+const entry = alias(workflowTestSuiteCases, 'entry');
+const suite = alias(workflowTestSuites, 'suite');
+const draft = alias(workflowDrafts, 'draft');
+const version = alias(workflowVersions, 'version');
+const payload = alias(workflowInputCasePayloads, 'payload');
+const inputCase = alias(workflowInputCases, 'input_case');
+const sample = alias(workflowStepSamples, 'sample');
+const preview = alias(previewRuns, 'preview');
+const run = alias(workflowRuns, 'run');
+const node = alias(nodeRuns, 'node');
+const attempt = alias(nodeAttempts, 'attempt');
+const event = alias(runEvents, 'event');
+const checkpoint = alias(runCheckpoints, 'checkpoint');
+const db = new QueryBuilder();
 type ReferenceOwner = Readonly<{
-  from: string;
-  alias: string;
-  workflow: string;
-  retained?: string;
-  accessibleWhen?: string;
-  accessibleValues?: readonly string[];
-  values: readonly string[];
+  build(where: SQL | undefined): SQLWrapper;
+  workspace: SQLWrapper;
+  workflow: SQLWrapper;
+  retained?: SQL;
+  accessibleWhen?: SQL;
+  accessibleValues?: readonly SQL[];
+  values: readonly SQL[];
 }>;
-
-const LIVE_RUN_VALUES = `run.details_purged_at is null and ${retainedTestRunSql('run', 'clock_timestamp()')} and not (${expiredRunSql('run', 'details')})`;
-
-/** Retention and access use the same existing reference facts, including deliberate sharing through a readable owner. */
+const liveRunValues = sql`${run.detailsPurgedAt} is null and ${retainedTestRunSql('run', 'clock_timestamp()')} and not (${expiredRunSql('run', 'details')})`;
+/** Retention and access share existing reference facts, including sharing through a readable owner. */
 const OWNERS: readonly ReferenceOwner[] = [
   {
-    from: 'app.workflow_test_snapshots snapshot',
-    alias: 'snapshot',
-    workflow: 'snapshot.workflow_id',
-    retained: 'snapshot.expires_at>clock_timestamp()',
-    values: ['snapshot.graph_json::jsonb'],
+    build: (where) =>
+      db
+        .select({ one: sql`1` })
+        .from(snapshot)
+        .where(where),
+    workspace: snapshot.workspaceId,
+    workflow: snapshot.workflowId,
+    retained: sql`${snapshot.expiresAt}>clock_timestamp()`,
+    values: [sql`${snapshot.graphJson}::jsonb`],
   },
   {
-    from: 'app.workflow_test_suite_cases entry join app.workflow_test_suites suite on suite.workspace_id=entry.workspace_id and suite.id=entry.suite_id',
-    alias: 'entry',
-    workflow: 'suite.workflow_id',
-    retained: 'suite.expires_at>clock_timestamp()',
-    values: ['entry.input::jsonb'],
+    build: (where) =>
+      db
+        .select({ one: sql`1` })
+        .from(entry)
+        .innerJoin(
+          suite,
+          and(
+            eq(suite.workspaceId, entry.workspaceId),
+            eq(suite.id, entry.suiteId),
+          ),
+        )
+        .where(where),
+    workspace: entry.workspaceId,
+    workflow: suite.workflowId,
+    retained: sql`${suite.expiresAt}>clock_timestamp()`,
+    values: [sql`${entry.input}::jsonb`],
   },
   {
-    from: 'app.workflow_drafts draft',
-    alias: 'draft',
-    workflow: 'draft.workflow_id',
-    values: ['draft.graph_json::jsonb'],
+    build: (where) =>
+      db
+        .select({ one: sql`1` })
+        .from(draft)
+        .where(where),
+    workspace: draft.workspaceId,
+    workflow: draft.workflowId,
+    values: [sql`${draft.graphJson}::jsonb`],
   },
   {
-    from: 'app.workflow_versions version',
-    alias: 'version',
-    workflow: 'version.workflow_id',
-    values: ['version.graph_json::jsonb'],
+    build: (where) =>
+      db
+        .select({ one: sql`1` })
+        .from(version)
+        .where(where),
+    workspace: version.workspaceId,
+    workflow: version.workflowId,
+    values: [sql`${version.graphJson}::jsonb`],
   },
   {
-    from: 'app.workflow_input_case_payloads payload join app.workflow_input_cases input_case on input_case.workspace_id=payload.workspace_id and input_case.id=payload.case_id',
-    alias: 'payload',
-    workflow: 'input_case.workflow_id',
-    accessibleWhen:
-      'input_case.deleted_at is null and input_case.revision=payload.revision',
-    values: ['payload.input::jsonb'],
+    build: (where) =>
+      db
+        .select({ one: sql`1` })
+        .from(payload)
+        .innerJoin(
+          inputCase,
+          and(
+            eq(inputCase.workspaceId, payload.workspaceId),
+            eq(inputCase.id, payload.caseId),
+          ),
+        )
+        .where(where),
+    workspace: payload.workspaceId,
+    workflow: inputCase.workflowId,
+    accessibleWhen: sql`${inputCase.deletedAt} is null and ${inputCase.revision}=${payload.revision}`,
+    values: [sql`${payload.input}::jsonb`],
   },
   {
-    from: 'app.workflow_step_samples sample',
-    alias: 'sample',
-    workflow: 'sample.workflow_id',
-    retained: 'sample.expires_at>clock_timestamp()',
-    values: ['sample.output_ref::jsonb'],
+    build: (where) =>
+      db
+        .select({ one: sql`1` })
+        .from(sample)
+        .where(where),
+    workspace: sample.workspaceId,
+    workflow: sample.workflowId,
+    retained: sql`${sample.expiresAt}>clock_timestamp()`,
+    values: [sql`${sample.outputRef}::jsonb`],
   },
   {
-    from: 'app.preview_runs preview',
-    alias: 'preview',
-    workflow: 'preview.workflow_id',
-    retained: 'preview.expires_at>clock_timestamp()',
+    build: (where) =>
+      db
+        .select({ one: sql`1` })
+        .from(preview)
+        .where(where),
+    workspace: preview.workspaceId,
+    workflow: preview.workflowId,
+    retained: sql`${preview.expiresAt}>clock_timestamp()`,
     values: [
-      'preview.input_ref::jsonb',
-      'preview.executable_node_json::jsonb',
-      'preview.output_ref::jsonb',
+      sql`${preview.inputRef}::jsonb`,
+      sql`${preview.executableNodeJson}::jsonb`,
+      sql`${preview.outputRef}::jsonb`,
     ],
   },
   {
-    from: 'app.workflow_runs run',
-    alias: 'run',
-    workflow: 'run.workflow_id',
+    build: (where) =>
+      db
+        .select({ one: sql`1` })
+        .from(run)
+        .where(where),
+    workspace: run.workspaceId,
+    workflow: run.workflowId,
     accessibleValues: [
-      `case when run.input_ref_expires_at>clock_timestamp() then run.input_ref::jsonb end`,
-      `case when ${LIVE_RUN_VALUES} then run.output_ref::jsonb end`,
+      sql`case when ${run.inputRefExpiresAt}>clock_timestamp() then ${run.inputRef}::jsonb end`,
+      sql`case when ${liveRunValues} then ${run.outputRef}::jsonb end`,
     ],
-    values: ['run.input_ref::jsonb', 'run.output_ref::jsonb'],
+    values: [sql`${run.inputRef}::jsonb`, sql`${run.outputRef}::jsonb`],
   },
   {
-    from: 'app.node_runs node join app.workflow_runs run on run.workspace_id=node.workspace_id and run.id=node.workflow_run_id',
-    alias: 'node',
-    workflow: 'run.workflow_id',
-    accessibleWhen: LIVE_RUN_VALUES,
-    values: ['node.input_ref::jsonb', 'node.output_ref::jsonb'],
+    build: (where) =>
+      db
+        .select({ one: sql`1` })
+        .from(node)
+        .innerJoin(
+          run,
+          and(
+            eq(run.workspaceId, node.workspaceId),
+            eq(run.id, node.workflowRunId),
+          ),
+        )
+        .where(where),
+    workspace: node.workspaceId,
+    workflow: run.workflowId,
+    accessibleWhen: liveRunValues,
+    values: [sql`${node.inputRef}::jsonb`, sql`${node.outputRef}::jsonb`],
   },
   {
-    from: 'app.node_attempts attempt join app.node_runs node on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id join app.workflow_runs run on run.workspace_id=node.workspace_id and run.id=node.workflow_run_id',
-    alias: 'attempt',
-    workflow: 'run.workflow_id',
-    accessibleWhen: LIVE_RUN_VALUES,
-    values: ['attempt.output_ref::jsonb', 'attempt.reconciliation_ref'],
+    build: (where) =>
+      db
+        .select({ one: sql`1` })
+        .from(attempt)
+        .innerJoin(
+          node,
+          and(
+            eq(node.workspaceId, attempt.workspaceId),
+            eq(node.id, attempt.nodeRunId),
+          ),
+        )
+        .innerJoin(
+          run,
+          and(
+            eq(run.workspaceId, node.workspaceId),
+            eq(run.id, node.workflowRunId),
+          ),
+        )
+        .where(where),
+    workspace: attempt.workspaceId,
+    workflow: run.workflowId,
+    accessibleWhen: liveRunValues,
+    values: [
+      sql`${attempt.outputRef}::jsonb`,
+      sql`${attempt.reconciliationRef}`,
+    ],
   },
   {
-    from: 'app.run_events event join app.workflow_runs run on run.workspace_id=event.workspace_id and run.id=event.workflow_run_id',
-    alias: 'event',
-    workflow: 'run.workflow_id',
-    accessibleWhen: LIVE_RUN_VALUES,
-    values: ['event.payload'],
+    build: (where) =>
+      db
+        .select({ one: sql`1` })
+        .from(event)
+        .innerJoin(
+          run,
+          and(
+            eq(run.workspaceId, event.workspaceId),
+            eq(run.id, event.workflowRunId),
+          ),
+        )
+        .where(where),
+    workspace: event.workspaceId,
+    workflow: run.workflowId,
+    accessibleWhen: liveRunValues,
+    values: [sql`${event.payload}`],
   },
   {
-    from: 'app.run_checkpoints checkpoint join app.workflow_runs run on run.workspace_id=checkpoint.workspace_id and run.id=checkpoint.workflow_run_id',
-    alias: 'checkpoint',
-    workflow: 'run.workflow_id',
-    accessibleWhen: LIVE_RUN_VALUES,
-    values: ['checkpoint.scheduler_state'],
+    build: (where) =>
+      db
+        .select({ one: sql`1` })
+        .from(checkpoint)
+        .innerJoin(
+          run,
+          and(
+            eq(run.workspaceId, checkpoint.workspaceId),
+            eq(run.id, checkpoint.workflowRunId),
+          ),
+        )
+        .where(where),
+    workspace: checkpoint.workspaceId,
+    workflow: run.workflowId,
+    accessibleWhen: liveRunValues,
+    values: [sql`${checkpoint.schedulerState}`],
   },
 ];
-
-/** SQL filters the existing reference facts using an already-decided resource scope. */
+function referencesArtifact(value: SQL, artifact: SQL): SQL {
+  return exists(
+    db
+      .select({ one: sql`1` })
+      .from(sql`jsonb_path_query(${value},'lax $.**.artifactId') reference`)
+      .where(sql`reference=to_jsonb(${artifact}::uuid::text)`),
+  );
+}
+/** SQL filters existing reference facts using an already-decided resource scope. */
 export function artifactReferenceOwnersSql(
   workspace: SQL,
   artifact: SQL,
   visible?: (workflow: SQL) => SQL,
-): SQL {
-  const owners = OWNERS.map(
-    (owner) => sql`exists(select 1 from ${sql.raw(owner.from)}
-    where ${sql.identifier(owner.alias)}.workspace_id=${workspace}
-      ${owner.retained === undefined ? sql`` : sql`and ${sql.raw(owner.retained)}`}
-      ${visible === undefined || owner.accessibleWhen === undefined ? sql`` : sql`and (${sql.raw(owner.accessibleWhen)})`}
-      and (${sql.join(
-        (visible !== undefined && owner.accessibleValues !== undefined
-          ? owner.accessibleValues
-          : owner.values
-        ).map(
-          (value) =>
-            sql`app.jsonb_references_artifact(${sql.raw(value)},${artifact})`,
+): SQL<boolean> {
+  const owners = OWNERS.map((owner) => {
+    const values =
+      visible !== undefined && owner.accessibleValues !== undefined
+        ? owner.accessibleValues
+        : owner.values;
+    return exists(
+      owner.build(
+        and(
+          sql`${owner.workspace}=${workspace}::uuid`,
+          owner.retained,
+          visible === undefined ? undefined : owner.accessibleWhen,
+          sql`(${sql.join(
+            values.map((value) => referencesArtifact(value, artifact)),
+            sql` or `,
+          )})`,
+          visible === undefined ? undefined : visible(sql`${owner.workflow}`),
         ),
-        sql` or `,
-      )})
-      ${visible === undefined ? sql`` : sql`and (${visible(sql.raw(owner.workflow))})`})`,
-  );
-  return sql`select (${sql.join(owners, sql` or `)}) referenced`;
+      ),
+    );
+  });
+  return sql`(${sql.join(owners, sql` or `)})`;
 }

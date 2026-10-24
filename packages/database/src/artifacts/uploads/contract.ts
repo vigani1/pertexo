@@ -60,25 +60,6 @@ const finalizeArtifactUploadSchema = artifactUploadIdentitySchema
   })
   .strict();
 
-const artifactRowSchema = z
-  .object({
-    id: uuidSchema,
-    workspace_id: uuidSchema,
-    purpose: z.string().min(1).max(64),
-    storage_key: z.string().min(1).max(512),
-    media_type: artifactMediaTypeSchema,
-    byte_length: z.union([z.number(), z.string()]),
-    sha256: artifactSha256Schema,
-    status: z.enum(['pending', 'available', 'deleting', 'deleted']),
-    expires_at: z.coerce.date(),
-    finalized_at: z.coerce.date().nullable(),
-    deleted_at: z.coerce.date().nullable(),
-    retention_retry_at: z.coerce.date().nullable(),
-    created_at: z.coerce.date(),
-    updated_at: z.coerce.date(),
-  })
-  .strict();
-
 export type ArtifactUploadActor = Readonly<z.input<typeof actorInputSchema>>;
 export type ArtifactUploadIdentity = z.input<typeof artifactIdentitySchema>;
 export type ArtifactUploadAuthorization = Readonly<
@@ -167,29 +148,6 @@ export type ArtifactUploadDatabase = Readonly<{
   checkReadiness(): Promise<DatabaseReadiness>;
   close(): Promise<void>;
 }>;
-
-export function mapArtifact(row: Record<string, unknown>): ArtifactRecord {
-  const parsed = artifactRowSchema.parse(row);
-  const byteLength = Number(parsed.byte_length);
-  if (!Number.isSafeInteger(byteLength) || byteLength < 0)
-    throw new Error('Artifact byte length is outside the safe integer range');
-  return Object.freeze({
-    id: parsed.id,
-    workspaceId: parsed.workspace_id,
-    purpose: parsed.purpose,
-    storageKey: parsed.storage_key,
-    mediaType: parsed.media_type,
-    byteLength,
-    sha256: parsed.sha256,
-    status: parsed.status,
-    expiresAt: parsed.expires_at,
-    finalizedAt: parsed.finalized_at,
-    deletedAt: parsed.deleted_at,
-    retentionRetryAt: parsed.retention_retry_at,
-    createdAt: parsed.created_at,
-    updatedAt: parsed.updated_at,
-  });
-}
 
 export function normalizeBeginInput(
   input: BeginArtifactUploadInput,

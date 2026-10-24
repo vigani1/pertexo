@@ -1,3 +1,4 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
 import { describe, expect, it, vi } from 'vitest';
 import {
   collectArtifactReferences,
@@ -14,7 +15,7 @@ const reference = {
 };
 const descriptor = { kind: 'artifact', ...reference };
 function row(patch: Record<string, unknown> = {}) {
-  return {
+  const record = {
     id: reference.artifactId,
     purpose: 'user-upload',
     byte_length: 4,
@@ -23,6 +24,14 @@ function row(patch: Record<string, unknown> = {}) {
     preview_run_id: null,
     ...patch,
   };
+  return [
+    record.id,
+    record.byte_length,
+    record.media_type,
+    record.sha256,
+    record.purpose,
+    record.preview_run_id,
+  ];
 }
 describe('durable artifact references', () => {
   it('collects descriptors inside literal mappings, loops and arrays', () => {
@@ -99,17 +108,17 @@ describe('durable artifact references', () => {
     ).rejects.toBeInstanceOf(ArtifactMetadataNotFoundError);
   });
   it('checks the complete reference before handing a worker storage authority', async () => {
-    const execute = vi.fn().mockResolvedValue({ rows: [row()] });
+    const query = vi.fn().mockResolvedValue({ rows: [row()] });
     await expect(
       requireNodeArtifactReference(
-        { workspaceId, db: { execute } } as never,
+        { workspaceId, db: drizzle({ query } as never) } as never,
         reference,
       ),
     ).resolves.toBeUndefined();
-    execute.mockResolvedValue({ rows: [] });
+    query.mockResolvedValue({ rows: [] });
     await expect(
       requireNodeArtifactReference(
-        { workspaceId, db: { execute } } as never,
+        { workspaceId, db: drizzle({ query } as never) } as never,
         reference,
       ),
     ).rejects.toBeInstanceOf(ArtifactMetadataNotFoundError);

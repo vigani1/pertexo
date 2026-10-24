@@ -44,7 +44,7 @@ const elapsedSql =
 // Status names and SQL expressions come from shared definitions, never request text.
 const countsSql = `jsonb_build_object(${RUN_STATUS_VALUES.map((status) => `'${status}',(count(*) filter(where run.status='${status}'))::integer`).join(',')})`;
 const windowRowsSql = `select id,workflow_id,status,created_at,started_at,completed_at from app.workflow_runs
- where workspace_id=$1 and ${ordinaryRunSql()} and created_at>=$2::timestamptz and created_at<$3::timestamptz`;
+ where workspace_id=$1 and ${bindResourcePredicate(ordinaryRunSql().inlineParams(), [])} and created_at>=$2::timestamptz and created_at<$3::timestamptz`;
 function emptyCounts(): Counts {
   return Object.fromEntries(
     RUN_STATUS_VALUES.map((status) => [status, 0]),

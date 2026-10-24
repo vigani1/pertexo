@@ -129,7 +129,7 @@ function recentRuns(
   return sql`
     select id, status, created_at, workflow_version_id
     from app.workflow_runs
-    where ${sql.raw(ordinaryRunSql())} and workspace_id = ${transaction.workspaceId}
+    where ${ordinaryRunSql()} and workspace_id = ${transaction.workspaceId}
       and workflow_id = ${workflowId}
     order by created_at desc, id desc
     limit ${STEP_HISTORY_RUN_WINDOW}
