@@ -120,11 +120,7 @@ function Lifetime({
         <span
           className={cn(
             'absolute inset-y-0 left-0 rounded-full',
-            ended
-              ? 'bg-surface-ink/20'
-              : closing
-                ? 'bg-warning'
-                : 'bg-action/70',
+            lifetimeClass({ ended, closing }),
           )}
           style={{ width: `${String(share * 100)}%` }}
         />
@@ -137,25 +133,7 @@ function Lifetime({
       </div>
       {/* Each phrase is one element, so it reads (and matches) whole. */}
       <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 text-muted-foreground">
-        {token.status === 'revoked' ? (
-          token.revokedAt === null ? (
-            <span>No longer usable</span>
-          ) : (
-            <time
-              dateTime={token.revokedAt}
-              title={formatDateTime(token.revokedAt)}
-            >
-              {`Revoked ${formatRelativeTime(token.revokedAt, nowMs)}`}
-            </time>
-          )
-        ) : (
-          <time
-            dateTime={token.expiresAt}
-            title={formatDateTime(token.expiresAt)}
-          >
-            {`${nowMs >= end ? 'Expired' : 'Expires'} ${formatRelativeTime(token.expiresAt, nowMs)}`}
-          </time>
-        )}
+        <TokenEnd token={token} end={end} nowMs={nowMs} />
         {token.lastUsedAt === null ? (
           <span>Not used yet</span>
         ) : (
@@ -168,5 +146,32 @@ function Lifetime({
         )}
       </div>
     </div>
+  );
+}
+
+function lifetimeClass({
+  ended,
+  closing,
+}: Readonly<{ ended: boolean; closing: boolean }>): string {
+  if (ended) return 'bg-surface-ink/20';
+  return closing ? 'bg-warning' : 'bg-action/70';
+}
+
+function TokenEnd({
+  token,
+  end,
+  nowMs,
+}: Readonly<{ token: ApiTokenMetadata; end: number; nowMs: number }>) {
+  if (token.status !== 'revoked')
+    return (
+      <time dateTime={token.expiresAt} title={formatDateTime(token.expiresAt)}>
+        {`${nowMs >= end ? 'Expired' : 'Expires'} ${formatRelativeTime(token.expiresAt, nowMs)}`}
+      </time>
+    );
+  if (token.revokedAt === null) return <span>No longer usable</span>;
+  return (
+    <time dateTime={token.revokedAt} title={formatDateTime(token.revokedAt)}>
+      {`Revoked ${formatRelativeTime(token.revokedAt, nowMs)}`}
+    </time>
   );
 }
