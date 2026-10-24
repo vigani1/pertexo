@@ -4,7 +4,7 @@ import { expect, it } from 'vitest';
 import {
   OperatorRunReplayMismatchError,
   OperatorRunReplayNotExecutableError,
-} from '../../../src/operator/run-replay.js';
+} from '../../../src/operator/replay/repository.js';
 
 import {
   mocks,

@@ -3,7 +3,7 @@ export {
   OperatorRunReplayMismatchError,
   OperatorRunReplayNotExecutableError,
   type OperatorRunReplayStore,
-} from './run-replay.js';
+} from './replay/repository.js';
 export {
   createOperatorCommandDatabase,
   OperatorCommandConflictError,
@@ -20,4 +20,4 @@ export {
   type ReconcileOperatorAttemptInput,
   type RecordUnknownOutcomeEvidenceInput,
   type RedispatchFailedOutboxInput,
-} from './commands.js';
+} from './repository.js';

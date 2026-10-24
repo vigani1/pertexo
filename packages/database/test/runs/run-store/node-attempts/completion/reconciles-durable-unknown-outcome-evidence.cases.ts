@@ -1,7 +1,7 @@
 import { it, expect } from 'vitest';
 import { NodeAttemptReconciliationRequiredError } from '../../../../../src/testing.js';
 
-import { createOperatorCommandDatabase } from '../../../../../src/operator/commands.js';
+import { createOperatorCommandDatabase } from '../../../../../src/operator/repository.js';
 import {
   UnknownOutcomeReconciliationMismatchError,
   UnknownOutcomeReconciliationStateError,
