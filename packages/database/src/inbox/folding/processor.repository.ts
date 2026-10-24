@@ -1,3 +1,4 @@
+import type { WorkspaceInboxFoldStore } from './contract.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { sql } from 'drizzle-orm';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
@@ -11,26 +12,6 @@ import {
 } from '../../platform/pool/runtime.js';
 import { withPlatformTransaction } from '../../tenant-access/transactions.js';
 import { checkDatabaseReadiness } from '../../platform/readiness.js';
-
-/** A workspace whose inbox changed, with its newest thread revision. */
-export type WorkspaceInboxChange = Readonly<{
-  workspaceId: string;
-  revision: string;
-}>;
-
-export interface WorkspaceInboxFoldStore {
-  /** Fails unless the database is at the expected migration. */
-  checkReadiness(signal?: AbortSignal): Promise<void>;
-  /** Folds up to `limit` pending failures into their workflows' threads. */
-  foldPending(
-    limit: number,
-    signal?: AbortSignal,
-  ): Promise<readonly WorkspaceInboxChange[]>;
-  observeCurrent?(
-    signal?: AbortSignal,
-  ): Promise<readonly WorkspaceInboxChange[]>;
-  close(): Promise<void>;
-}
 
 const STATEMENT_TIMEOUT_MILLIS = 5_000;
 const limitSchema = z.number().int().min(1).max(1_000);
