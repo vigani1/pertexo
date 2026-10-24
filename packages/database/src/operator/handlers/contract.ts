@@ -8,14 +8,3 @@ export type OperatorDecision = Readonly<{
   pending?: boolean;
   auditMetadata?: Readonly<Record<string, unknown>>;
 }>;
-
-export const TERMINAL_RUN_STATUSES = new Set([
-  'succeeded',
-  'failed',
-  'canceled',
-  'timed_out',
-  'outcome_unknown',
-]);
-
-export /** Due nodes one resume marks; the result says when more remain. */
-const RESUME_PAGE = 100;
