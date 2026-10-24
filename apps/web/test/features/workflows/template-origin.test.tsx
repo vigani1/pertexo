@@ -135,16 +135,17 @@ describe('Scoped historical template origin projection', () => {
           );
           return;
         }
-        const queryKey =
-          scope === 'workspace'
-            ? ['identity', userId, 'workspace', workspaceId]
-            : scope === 'workflow'
-              ? workflowKeys.detail(userId, workspaceId, workflowId)
-              : scope === 'origin'
-                ? workflowTemplateOriginKey(userId, workspaceId, workflowId)
-                : scope === 'other-workflow'
-                  ? workflowKeys.detail(userId, workspaceId, secondWorkflowId)
-                  : ['identity', userId, 'workspace', workspaceId, 'inbox'];
+        const queryKey = {
+          workspace: ['identity', userId, 'workspace', workspaceId],
+          workflow: workflowKeys.detail(userId, workspaceId, workflowId),
+          origin: workflowTemplateOriginKey(userId, workspaceId, workflowId),
+          'other-workflow': workflowKeys.detail(
+            userId,
+            workspaceId,
+            secondWorkflowId,
+          ),
+          inbox: ['identity', userId, 'workspace', workspaceId, 'inbox'],
+        }[scope];
         // Inject the same cache notification as a failed scoped read, without
         // replacing the live origin query's authority-checked request function.
         const query = queryClient

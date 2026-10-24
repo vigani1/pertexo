@@ -96,12 +96,11 @@ async function configure(
   await page.getByLabel('Policy', { exact: true }).click();
   await page
     .getByRole('option', {
-      name:
-        mode === 'deduplicate'
-          ? 'Deduplicate'
-          : mode === 'debounce'
-            ? 'Debounce'
-            : 'Throttle',
+      name: {
+        deduplicate: 'Deduplicate',
+        debounce: 'Debounce',
+        throttle: 'Throttle',
+      }[mode],
       exact: true,
     })
     .click();
@@ -275,12 +274,11 @@ test('coordinates all three real signed webhook policies with visible history', 
     expect(next.status).toBe(202);
     expect(next.body).toMatchObject({
       coordinated: true,
-      outcome:
-        mode === 'deduplicate'
-          ? 'deduplicated'
-          : mode === 'debounce'
-            ? 'debounced'
-            : 'throttled',
+      outcome: {
+        deduplicate: 'deduplicated',
+        debounce: 'debounced',
+        throttle: 'throttled',
+      }[mode],
     });
     const read = async () => {
       const result = await page.request.get(
@@ -312,7 +310,7 @@ test('coordinates all three real signed webhook policies with visible history', 
     await expect(
       page.getByText(
         new RegExp(
-          `${mode === 'deduplicate' ? '2' : mode === 'debounce' ? '4' : '6'} events matched up by trigger coordination`,
+          `${{ deduplicate: '2', debounce: '4', throttle: '6' }[mode]} events matched up by trigger coordination`,
           'u',
         ),
       ),

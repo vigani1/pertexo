@@ -127,29 +127,27 @@ for (const theme of ['light', 'dark'] as const)
             .click();
         await expect(
           page.getByRole('combobox', {
-            name:
-              kind === 'read_file'
-                ? 'Output'
-                : kind === 'create_file'
-                  ? 'Data source'
-                  : 'Results',
+            name: {
+              read_file: 'Output',
+              create_file: 'Data source',
+              http: 'Results',
+            }[kind],
             exact: true,
           }),
         ).toHaveText(
-          kind === 'read_file'
-            ? 'Output pages'
-            : kind === 'create_file'
-              ? 'From pages'
-              : 'Save items as pages',
+          {
+            read_file: 'Output pages',
+            create_file: 'From pages',
+            http: 'Save items as pages',
+          }[kind],
         );
         await page
           .getByRole('combobox', {
-            name:
-              kind === 'read_file'
-                ? 'Output'
-                : kind === 'create_file'
-                  ? 'Data source'
-                  : 'Results',
+            name: {
+              read_file: 'Output',
+              create_file: 'Data source',
+              http: 'Results',
+            }[kind],
             exact: true,
           })
           .scrollIntoViewIfNeeded();

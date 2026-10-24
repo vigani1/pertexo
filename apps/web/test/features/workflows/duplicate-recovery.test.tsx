@@ -132,13 +132,12 @@ describe('Duplicate command lifecycle recovery', () => {
     'keeps an unresolved command exact when a POST %s has malformed problem details',
     async (status) => {
       const { event, onCreated } = open();
-      const requests = captureCopies((count) =>
-        count === 1
-          ? HttpResponse.error()
-          : count === 2
-            ? HttpResponse.json({ malformed: true }, { status })
-            : created(),
-      );
+      const requests = captureCopies((count) => {
+        if (count === 1) return HttpResponse.error();
+        if (count === 2)
+          return HttpResponse.json({ malformed: true }, { status });
+        return created();
+      });
       await screen.findByText(/last saved, revision 1/u);
       await event.click(
         screen.getByRole('button', { name: 'Duplicate workflow' }),
@@ -163,13 +162,11 @@ describe('Duplicate command lifecycle recovery', () => {
 
   it('retains ordinary name intent rather than replaying a definitively conflicted unresolved command', async () => {
     const { event, onCreated } = open();
-    const requests = captureCopies((count) =>
-      count === 1
-        ? HttpResponse.error()
-        : count === 2
-          ? problem(409, 'request.idempotency_conflict')
-          : created(),
-    );
+    const requests = captureCopies((count) => {
+      if (count === 1) return HttpResponse.error();
+      if (count === 2) return problem(409, 'request.idempotency_conflict');
+      return created();
+    });
     await screen.findByText(/last saved, revision 1/u);
     await event.click(
       screen.getByRole('button', { name: 'Duplicate workflow' }),
@@ -192,13 +189,11 @@ describe('Duplicate command lifecycle recovery', () => {
 
   it('recovers an unresolved stale command only through refetch and new explicit confirmation', async () => {
     const { event, onCreated } = open();
-    const requests = captureCopies((count) =>
-      count === 1
-        ? HttpResponse.error()
-        : count === 2
-          ? staleResponse()
-          : created(),
-    );
+    const requests = captureCopies((count) => {
+      if (count === 1) return HttpResponse.error();
+      if (count === 2) return staleResponse();
+      return created();
+    });
     await screen.findByText(/last saved, revision 1/u);
     await event.click(
       screen.getByRole('button', { name: 'Duplicate workflow' }),
@@ -322,13 +317,11 @@ describe('Duplicate command lifecycle recovery', () => {
     'keeps a lost POST across recovery POST %s',
     async (status) => {
       const { event, onCreated } = open();
-      const requests = captureCopies((count) =>
-        count === 1
-          ? HttpResponse.error()
-          : count === 2
-            ? transient(status)
-            : created(),
-      );
+      const requests = captureCopies((count) => {
+        if (count === 1) return HttpResponse.error();
+        if (count === 2) return transient(status);
+        return created();
+      });
       await screen.findByText(/last saved, revision 1/u);
       await event.click(
         screen.getByRole('button', { name: 'Duplicate workflow' }),

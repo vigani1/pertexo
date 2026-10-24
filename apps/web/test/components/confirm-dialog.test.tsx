@@ -16,7 +16,7 @@ function Harness({
   error,
   unconfirmed,
   onConfirm,
-  options,
+  options = {},
 }: Readonly<{
   pending?: boolean;
   error?: string;
@@ -34,7 +34,7 @@ function Harness({
   };
 }>) {
   const [open, setOpen] = useState(false);
-  const locked = options?.locked ?? pending;
+  const locked = options.locked ?? pending;
   let cancelButton: ReactNode;
   if (unconfirmed !== undefined) {
     cancelButton = (
@@ -49,7 +49,7 @@ function Harness({
         Close
       </Button>
     );
-  } else if (options?.onCancel !== undefined) {
+  } else if (options.onCancel !== undefined) {
     cancelButton = (
       <Button type="button" variant="ghost" onClick={options.onCancel}>
         Cancel
@@ -72,17 +72,17 @@ function Harness({
       title="Revoke Slack?"
       description="Steps that use it stop working."
       onSubmit={unconfirmed?.onRetry ?? onConfirm}
-      submitDisabled={pending || (options?.confirmDisabled ?? false)}
+      submitDisabled={pending || (options.confirmDisabled ?? false)}
       footer={
         <ConfirmationFooter>
           {cancelButton}
-          {options?.secondaryAction}
+          {options.secondaryAction}
           <ProgressButton
             type="submit"
             variant="destructive"
             pending={pending}
             pendingLabel="Revoking…"
-            disabled={options?.confirmDisabled}
+            disabled={options.confirmDisabled}
           >
             {unconfirmed === undefined ? 'Revoke connection' : 'Try again'}
           </ProgressButton>
@@ -90,16 +90,16 @@ function Harness({
       }
     >
       <ConfirmationDetails
-        consequences={options?.consequences}
+        consequences={options.consequences}
         error={error}
         tone={
           unconfirmed === undefined
-            ? (options?.errorTone ?? 'destructive')
+            ? (options.errorTone ?? 'destructive')
             : 'warning'
         }
-        errorAction={options?.errorAction}
+        errorAction={options.errorAction}
       >
-        {options?.children}
+        {options.children}
       </ConfirmationDetails>
     </ConfirmDialog>
   );

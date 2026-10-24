@@ -11,16 +11,19 @@ const unprotectedSnapshotProbe =
 if (unprotectedSnapshotProbe) delete process.env.PLAYWRIGHT_NO_COPY_PROMPT;
 else process.env.PLAYWRIGHT_NO_COPY_PROMPT = '1';
 
+function testMatch() {
+  if (process.env.PERTEXO_BROWSER_LIFETIME_PROBE !== undefined)
+    return '**/*.lifetime-probe.ts';
+  if (process.env.PERTEXO_HTTP_REDACTION_PROBE === 'true')
+    return '**/http-secret-actions.probe.ts';
+  if (process.env.PERTEXO_VERIFICATION_REDACTION_PROBE === 'true')
+    return '**/verification-navigation.probe.ts';
+  return '**/*.spec.ts';
+}
+
 export default defineConfig({
   testDir: './e2e-live',
-  testMatch:
-    process.env.PERTEXO_BROWSER_LIFETIME_PROBE !== undefined
-      ? '**/*.lifetime-probe.ts'
-      : process.env.PERTEXO_HTTP_REDACTION_PROBE === 'true'
-        ? '**/http-secret-actions.probe.ts'
-        : process.env.PERTEXO_VERIFICATION_REDACTION_PROBE === 'true'
-          ? '**/verification-navigation.probe.ts'
-          : '**/*.spec.ts',
+  testMatch: testMatch(),
   forbidOnly: true,
   retries: 0,
   workers: 1,
