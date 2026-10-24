@@ -1,3 +1,11 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { and, eq, sql } from 'drizzle-orm';
+import {
+  workflowRuns,
+  runCheckpoints,
+} from '../../../schema/runs/execution.js';
+import { outboxEvents } from '../../../schema/transport.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { isTestRun } from '../../data-policy.js';
 import { wakeErrorWorkflowsForCapacity } from '../../error-workflows/queue-wait.repository.js';
 import { synchronizeHumanWait } from '../../pending-tasks/lifecycle/time-capacity.queries.js';
@@ -48,19 +56,18 @@ async function persistDerivedContinuation(
       ? {}
       : { traceparent: input.traceparent }),
   };
-  await client.query(
-    `insert into app.outbox_events (
-       id,workspace_id,job_name,aggregate_type,
-       aggregate_id,payload,payload_checksum
-     ) values ($1,$2,'advance-workflow-run','workflow-run',$3,$4::jsonb,$5)`,
-    [
-      outboxEventId,
-      input.workspaceId,
-      input.runId,
-      serializeStoredExecutionJsonValue(payload),
-      canonicalOutboxPayloadChecksum(payload),
-    ],
-  );
+  await drizzle(client)
+    .insert(outboxEvents)
+    .values({
+      id: outboxEventId,
+      workspaceId: input.workspaceId,
+      jobName: 'advance-workflow-run',
+      aggregateType: 'workflow-run',
+      aggregateId: input.runId,
+      payload: sql`${serializeStoredExecutionJsonValue(payload)}::jsonb`,
+      payloadChecksum: canonicalOutboxPayloadChecksum(payload),
+    })
+    .catch(rethrowQueryFailure);
 }
 
 function scheduledOccurrence(
@@ -94,21 +101,25 @@ export async function persistCoordinatorRunTransition(
 ): Promise<Readonly<{ scheduleDueAt?: string }>> {
   const { plan, row, runId, workspaceId } = input;
   await persistRunNotices(client, input);
-  const checkpointUpdate = await client.query(
-    `update app.run_checkpoints
-       set revision=$1,  scheduler_state=$2::jsonb,
-           resume_at=null, resume_lease_owner=null,
-           resume_lease_token=null, resume_lease_expires_at=null,
-           updated_at=clock_timestamp()
-       where workspace_id=$3 and workflow_run_id=$4 and revision=$5`,
-    [
-      plan.checkpoint.revision,
-      serializeStoredExecutionJsonValue(plan.checkpoint),
-      workspaceId,
-      runId,
-      plan.expectedRevision,
-    ],
-  );
+  const checkpointUpdate = await drizzle(client)
+    .update(runCheckpoints)
+    .set({
+      revision: plan.checkpoint.revision,
+      schedulerState: sql`${serializeStoredExecutionJsonValue(plan.checkpoint)}::jsonb`,
+      resumeAt: null,
+      resumeLeaseOwner: null,
+      resumeLeaseToken: null,
+      resumeLeaseExpiresAt: null,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(runCheckpoints.workspaceId, workspaceId),
+        eq(runCheckpoints.workflowRunId, runId),
+        eq(runCheckpoints.revision, plan.expectedRevision),
+      ),
+    )
+    .catch(rethrowQueryFailure);
   if (checkpointUpdate.rowCount !== 1)
     throw new CoordinatorRunStateCorruptError();
 
@@ -122,31 +133,32 @@ export async function persistCoordinatorRunTransition(
   const runFailure = plan.events.find(
     ({ name }) => name === 'run.failed',
   )?.reasonCode;
-  await client.query(
-    `update app.workflow_runs
-       set status=$1, handled_failure_count=$8,
-           started_at=coalesce(started_at,$2::timestamptz),
-           completed_at=case when $3::timestamptz is null
-             then completed_at else $3::timestamptz end,
-           output_ref=case when $6::json is null then output_ref else $6::json end,
-           error_summary=coalesce($7::varchar,error_summary),
-           updated_at=clock_timestamp()
-       where workspace_id=$4 and id=$5`,
-    [
-      plan.checkpoint.runStatus,
-      startedAt ?? null,
-      completedAt ?? null,
-      workspaceId,
-      runId,
-      plan.runResult === undefined
-        ? null
-        : JSON.stringify({ kind: 'inline', value: plan.runResult }),
-      runFailure ?? null,
-      plan.checkpoint.invocations.filter(
+  await drizzle(client)
+    .update(workflowRuns)
+    .set({
+      status: plan.checkpoint.runStatus,
+      handledFailureCount: plan.checkpoint.invocations.filter(
         ({ failureHandling }) => failureHandling?.disposition === 'handled',
       ).length,
-    ],
-  );
+      startedAt: sql`coalesce(${workflowRuns.startedAt},${startedAt ?? null}::timestamptz)`,
+      completedAt:
+        completedAt === undefined
+          ? undefined
+          : sql`${completedAt}::timestamptz`,
+      outputRef:
+        plan.runResult === undefined
+          ? undefined
+          : sql`${JSON.stringify({ kind: 'inline', value: plan.runResult })}::json`,
+      errorSummary: sql`coalesce(${runFailure ?? null}::varchar,${workflowRuns.errorSummary})`,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(workflowRuns.workspaceId, workspaceId),
+        eq(workflowRuns.id, runId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
   const hasHumanWait =
     row.human_wait_started_at !== null ||
     row.has_unconsumed_tasks ||

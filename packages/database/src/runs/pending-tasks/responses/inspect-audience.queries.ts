@@ -1,5 +1,7 @@
-import { sql } from 'drizzle-orm';
-import { bindResourcePredicate } from '../../../tenant-access/resources/scope.queries.js';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workspaceMemberships, users } from '../../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { PoolClient } from 'pg';
 import type {
   ApprovalAudienceInspectionRequest,
@@ -14,19 +16,30 @@ export async function inspectAudience(
   client: PoolClient,
   input: PendingTaskScope & ApprovalAudienceInspectionRequest,
 ): Promise<ApprovalAudienceInspectionResponse> {
-  const found = await client.query<ApprovalAudienceInspectionResponse>(
-    `select count(*)::int "matchingMemberCount",coalesce(bool_or(member.user_id=$2::uuid),false) "actorMatchesAudience"
-      from app.workspace_memberships member join app.users actor on actor.id=member.user_id and actor.status='active'
-      where member.workspace_id=$1 and member.status='active' and member.role=any($3::text[])
-        and ${bindResourcePredicate(taskAudienceSelectionSql(sql`$4::jsonb`, sql`member.user_id`, sql`member.role`), [])}`,
-    [
-      input.workspaceId,
-      input.actorId,
-      rolesForCapability('run:read'),
-      JSON.stringify(input.audience),
-    ],
-  );
-  const row = found.rows[0];
+  const member = workspaceMemberships;
+  const [row] = await drizzle(client)
+    .select({
+      matchingMemberCount: sql<number>`count(*)::int`,
+      actorMatchesAudience: sql<boolean>`coalesce(bool_or(${member.userId}=${input.actorId}::uuid),false)`,
+    })
+    .from(member)
+    .innerJoin(
+      users,
+      and(eq(users.id, member.userId), eq(users.status, 'active')),
+    )
+    .where(
+      and(
+        eq(member.workspaceId, input.workspaceId),
+        eq(member.status, 'active'),
+        inArray(member.role, [...rolesForCapability('run:read')]),
+        taskAudienceSelectionSql(
+          sql`${JSON.stringify(input.audience)}::jsonb`,
+          sql`${member.userId}`,
+          sql`${member.role}`,
+        ),
+      ),
+    )
+    .catch(rethrowQueryFailure);
   if (row === undefined)
     throw new Error('Approval audience inspection is unavailable');
   return row;

@@ -1,3 +1,7 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { nodeRuns } from '../../../schema/runs/execution.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 
 import type { WorkflowCheckpoint } from '@pertexo/workflow-engine';
@@ -23,15 +27,29 @@ export async function settleRejectedForEachDeclarations(
       event.reasonCode !== 'loop_limit_exceeded' ||
       event.invocationKey === undefined;
     if (ignoresIterationFailure) continue;
-    const updated = await client.query(
-      `update app.node_runs
-       set status='failed',output_ref=null,safe_error_code='loop_limit_exceeded',
-           completed_at=clock_timestamp(),resume_at=null,retry_due_at=null,
-           due_wakeup_at=null,wait_kind=null,updated_at=clock_timestamp()
-       where workspace_id=$1 and workflow_run_id=$2 and invocation_key=$3
-         and status='succeeded' and control_kind is null`,
-      [workspaceId, runId, event.invocationKey],
-    );
+    const updated = await drizzle(client)
+      .update(nodeRuns)
+      .set({
+        status: 'failed',
+        outputRef: null,
+        safeErrorCode: 'loop_limit_exceeded',
+        completedAt: sql`clock_timestamp()`,
+        resumeAt: null,
+        retryDueAt: null,
+        dueWakeupAt: null,
+        waitKind: null,
+        updatedAt: sql`clock_timestamp()`,
+      })
+      .where(
+        and(
+          eq(nodeRuns.workspaceId, workspaceId),
+          eq(nodeRuns.workflowRunId, runId),
+          eq(nodeRuns.invocationKey, event.invocationKey),
+          eq(nodeRuns.status, 'succeeded'),
+          isNull(nodeRuns.controlKind),
+        ),
+      )
+      .catch(rethrowQueryFailure);
     if (updated.rowCount === 1) settled.add(event.invocationKey);
   }
   return settled;
@@ -57,19 +75,29 @@ export async function persistLoopBarrierTransitions(
     ({ controlInvocationKey }) => !currentLoops.has(controlInvocationKey),
   );
   if (barriers.length === 0) return;
-  const updated = await client.query(
-    `update app.node_runs
-     set status='waiting', control_kind='for_each_barrier', completed_at=null,
-         resume_at=null, retry_due_at=null, due_wakeup_at=null,
-         updated_at=clock_timestamp()
-     where workspace_id=$1 and workflow_run_id=$2
-       and invocation_key=any($3::varchar[]) and status='succeeded'`,
-    [
-      workspaceId,
-      runId,
-      barriers.map(({ controlInvocationKey }) => controlInvocationKey),
-    ],
-  );
+  const updated = await drizzle(client)
+    .update(nodeRuns)
+    .set({
+      status: 'waiting',
+      controlKind: 'for_each_barrier',
+      completedAt: null,
+      resumeAt: null,
+      retryDueAt: null,
+      dueWakeupAt: null,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(nodeRuns.workspaceId, workspaceId),
+        eq(nodeRuns.workflowRunId, runId),
+        inArray(
+          nodeRuns.invocationKey,
+          barriers.map(({ controlInvocationKey }) => controlInvocationKey),
+        ),
+        eq(nodeRuns.status, 'succeeded'),
+      ),
+    )
+    .catch(rethrowQueryFailure);
   if (updated.rowCount !== barriers.length)
     throw new CoordinatorRunStateCorruptError();
 }
@@ -99,15 +127,28 @@ export async function persistDueReadyTransitions(
       currentInvocations.get(invocation.invocationKey)?.status === 'waiting',
   );
   if (transitions.length === 0) return;
-  const updated = await client.query(
-    `update app.node_runs
-     set status='ready', resume_at=null, retry_due_at=null, due_wakeup_at=null,
-         wait_kind=null,
-         updated_at=clock_timestamp()
-     where workspace_id=$1 and workflow_run_id=$2
-       and invocation_key=any($3::varchar[]) and status='waiting'`,
-    [workspaceId, runId, transitions.map(({ invocationKey }) => invocationKey)],
-  );
+  const updated = await drizzle(client)
+    .update(nodeRuns)
+    .set({
+      status: 'ready',
+      resumeAt: null,
+      retryDueAt: null,
+      dueWakeupAt: null,
+      waitKind: null,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(nodeRuns.workspaceId, workspaceId),
+        eq(nodeRuns.workflowRunId, runId),
+        inArray(
+          nodeRuns.invocationKey,
+          transitions.map(({ invocationKey }) => invocationKey),
+        ),
+        eq(nodeRuns.status, 'waiting'),
+      ),
+    )
+    .catch(rethrowQueryFailure);
   if (updated.rowCount !== transitions.length)
     throw new CoordinatorRunStateCorruptError();
 }
