@@ -47,12 +47,12 @@ export function PagePending() {
 /** The hub tab a workflow path opens, from its last segment. */
 function hubTabOf(pathname: string): WorkflowHubTab {
   const tab = /\/workflows\/[^/]+\/([a-z]+)\/?$/u.exec(pathname)?.[1];
-  return tab === 'runs' ||
+  const hasWorkflowSubpage =
+    tab === 'runs' ||
     tab === 'triggers' ||
     tab === 'versions' ||
-    tab === 'settings'
-    ? tab
-    : 'build';
+    tab === 'settings';
+  return hasWorkflowSubpage ? tab : 'build';
 }
 
 /**

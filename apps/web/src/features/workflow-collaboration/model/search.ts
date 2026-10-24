@@ -7,13 +7,13 @@ export function parseCollaborationSearch(search: Record<string, unknown>): {
 } {
   const thread = workflowIdentifierSchema.safeParse(search.thread);
   const comment = workflowIdentifierSchema.safeParse(search.comment);
-  const step =
-    typeof search.step === 'string' &&
-    search.step.length > 0 &&
-    search.step.length <= 128 &&
-    isStorageText(search.step)
-      ? search.step
-      : undefined;
+  const rawStep = search.step;
+  const hasValidStep =
+    typeof rawStep === 'string' &&
+    rawStep.length > 0 &&
+    rawStep.length <= 128 &&
+    isStorageText(rawStep);
+  const step = hasValidStep ? rawStep : undefined;
   return {
     ...(thread.success
       ? {

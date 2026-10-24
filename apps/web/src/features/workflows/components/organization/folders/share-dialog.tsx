@@ -292,6 +292,7 @@ function FolderShareFooter({
   editor,
   onClose,
 }: Readonly<{ editor: Editor; onClose: () => void }>) {
+  const sharingSaveBlocked = !editor.canSaveChanges;
   return (
     <>
       <Button
@@ -321,14 +322,7 @@ function FolderShareFooter({
           variant="primary"
           pending={editor.command.pending}
           pendingLabel="Saving…"
-          disabled={
-            editor.snapshot === undefined ||
-            // Nothing changed yet: the snapshot is still the read itself.
-            editor.snapshot === editor.reader.data ||
-            editor.locked ||
-            editor.stale ||
-            !editor.reader.isSuccess
-          }
+          disabled={sharingSaveBlocked}
           onClick={() => {
             void editor.submit();
           }}

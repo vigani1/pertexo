@@ -141,14 +141,16 @@ function InputCaseToolbar({
   locked: boolean;
   onCreate: () => void;
 }>) {
+  const canCreateInputCase =
+    writable &&
+    cases.query.isSuccess &&
+    !editing &&
+    workflow.publishedVersionId !== null;
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-heading text-sm">Input cases</h3>
-        {writable &&
-        cases.query.isSuccess &&
-        !editing &&
-        workflow.publishedVersionId !== null ? (
+        {canCreateInputCase ? (
           <Button
             type="button"
             size="sm"

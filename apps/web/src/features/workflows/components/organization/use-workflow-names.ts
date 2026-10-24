@@ -53,12 +53,13 @@ export function useOrganizationWorkflowNames({
   return new Map(
     ids.flatMap((id, index) => {
       const read = reads[index];
-      return !denied &&
+      const name = read?.data;
+      const hasCurrentName =
+        !denied &&
         read?.isSuccess &&
         read.isFetchedAfterMount &&
-        typeof read.data === 'string'
-        ? [[id, read.data] as const]
-        : [];
+        typeof name === 'string';
+      return hasCurrentName ? [[id, name] as const] : [];
     }),
   );
 }

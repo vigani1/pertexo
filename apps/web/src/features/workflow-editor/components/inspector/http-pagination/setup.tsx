@@ -43,6 +43,10 @@ export function HttpPaginationSetup({
     'Check setup';
   const id = fieldControlId(form.nodeId, 'pagination-mode');
   const modeHelpId = `${id}-help`;
+  const paginationSelectionBlocked =
+    !form.editable ||
+    hasScratch ||
+    (config.method !== 'GET' && value === undefined);
   return (
     <Disclosure
       summary={`Pagination · ${label}`}
@@ -57,11 +61,7 @@ export function HttpPaginationSetup({
           value={mode}
           choices={paginationModes}
           describedBy={modeHelpId}
-          disabled={
-            !form.editable ||
-            hasScratch ||
-            (config.method !== 'GET' && value === undefined)
-          }
+          disabled={paginationSelectionBlocked}
           onChange={(next) => {
             if (next === null) return;
             form.commit(

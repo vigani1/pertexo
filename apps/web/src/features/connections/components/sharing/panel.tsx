@@ -43,6 +43,8 @@ export function ConnectionSharingPanel({
       </>
     );
   const inactive = snapshot.members.some((member) => !member.active);
+  const sharingSaveBlocked =
+    !editor.canSaveChanges || (snapshot.mode === 'restricted' && inactive);
   return (
     <section
       aria-label="Who can use this connection"
@@ -121,11 +123,7 @@ export function ConnectionSharingPanel({
             pendingLabel="Saving…"
             disabled={
               // Nothing changed yet: the snapshot is still the read itself.
-              snapshot === editor.reader.data ||
-              editor.locked ||
-              editor.stale ||
-              !editor.reader.isSuccess ||
-              (snapshot.mode === 'restricted' && inactive)
+              sharingSaveBlocked
             }
             onClick={() => {
               void editor.submit();

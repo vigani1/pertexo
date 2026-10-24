@@ -50,7 +50,7 @@ export function WorkflowReadBoundary({
     });
     const predicate = (query: { queryKey: readonly unknown[] }) => {
       const key = query.queryKey;
-      return (
+      const isWorkflowPrivateRead =
         key[0] === 'identity' &&
         key[1] === userId &&
         key[2] === 'workspace' &&
@@ -63,8 +63,8 @@ export function WorkflowReadBoundary({
             'inbox',
             'pending-tasks',
             'trends',
-          ].includes(String(key[4])))
-      );
+          ].includes(String(key[4])));
+      return isWorkflowPrivateRead;
     };
     // Preserve the rejecting read's error while canceled siblings lose their snapshots.
     void cache

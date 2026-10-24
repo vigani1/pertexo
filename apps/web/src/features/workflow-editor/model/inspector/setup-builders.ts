@@ -279,13 +279,14 @@ export function withRuleType(
   type: ValidateType | undefined,
 ): ValidateRule {
   const kept = Object.fromEntries(
-    Object.entries(rule).filter(
-      ([key]) =>
+    Object.entries(rule).filter(([key]) => {
+      const isValidateRuleField =
         key === 'id' ||
         key === 'path' ||
         key === 'required' ||
-        (type !== undefined && (VALIDATE_BOUNDS[type]?.includes(key) ?? false)),
-    ),
+        (type !== undefined && (VALIDATE_BOUNDS[type]?.includes(key) ?? false));
+      return isValidateRuleField;
+    }),
   );
   return {
     ...(kept as ValidateRule),

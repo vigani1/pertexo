@@ -62,36 +62,13 @@ export function useOrganizationEdit({
     command.start(attempt),
   );
   const enabled = selectionValid && !command.denied;
-  const reads = useQueries({
-    queries: selected.map(({ workflow }) => ({
-      ...workflowOrganizationProjectionQueryOptions({
-        api: apiClient,
-        userId,
-        workspaceId: workspace.id,
-        workflowId: workflow.id,
-        input: { include: 'organization' },
-      }),
-      staleTime: 0,
-      enabled,
-    })),
-  });
-  const folders = useQuery({
-    ...workflowFoldersQueryOptions(apiClient, userId, workspace.id),
+  const organization = useOrganizationReads({
+    apiClient,
+    userId,
+    workspaceId: workspace.id,
+    selected,
     enabled,
   });
-  const tags = useInfiniteQuery({
-    ...workflowTagsInfiniteQueryOptions(apiClient, userId, workspace.id),
-    enabled,
-  });
-  const current = reads.flatMap((read) =>
-    read.data === undefined ? [] : [read.data],
-  );
-  const reading =
-    reads.some((read) => read.isPending || read.isFetching) ||
-    folders.isPending ||
-    tags.isPending;
-  const failedRead =
-    reads.some((read) => read.isError) || folders.isError || tags.isError;
   const locked =
     preparing ||
     command.pending ||
@@ -101,7 +78,7 @@ export function useOrganizationEdit({
   const feedback =
     command.error ??
     readError ??
-    (failedRead
+    (organization.failedRead
       ? 'Current organization could not be loaded. Refresh before confirming a change.'
       : undefined);
 
@@ -113,9 +90,11 @@ export function useOrganizationEdit({
     preparingRef.current = true;
     try {
       await Promise.all([
-        ...reads.map((read) => read.refetch({ throwOnError: true })),
-        folders.refetch({ throwOnError: true }),
-        tags.refetch({ throwOnError: true }),
+        ...organization.reads.map((read) =>
+          read.refetch({ throwOnError: true }),
+        ),
+        organization.folders.refetch({ throwOnError: true }),
+        organization.tags.refetch({ throwOnError: true }),
       ]);
       if (alive.current) setFormEpoch((epoch) => epoch + 1);
     } catch {
@@ -190,14 +169,10 @@ export function useOrganizationEdit({
   }
 
   return {
+    ...organization,
     selected,
     selectionValid,
     command,
-    current,
-    folders,
-    tags,
-    reading,
-    failedRead,
     locked,
     feedback,
     preparing,
@@ -206,4 +181,50 @@ export function useOrganizationEdit({
     confirm,
     audience,
   };
+}
+
+function useOrganizationReads({
+  apiClient,
+  userId,
+  workspaceId,
+  selected,
+  enabled,
+}: Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspaceId: string;
+  selected: readonly WorkflowOrganizationProjectionResponse[];
+  enabled: boolean;
+}>) {
+  const reads = useQueries({
+    queries: selected.map(({ workflow }) => ({
+      ...workflowOrganizationProjectionQueryOptions({
+        api: apiClient,
+        userId,
+        workspaceId: workspaceId,
+        workflowId: workflow.id,
+        input: { include: 'organization' },
+      }),
+      staleTime: 0,
+      enabled,
+    })),
+  });
+  const folders = useQuery({
+    ...workflowFoldersQueryOptions(apiClient, userId, workspaceId),
+    enabled,
+  });
+  const tags = useInfiniteQuery({
+    ...workflowTagsInfiniteQueryOptions(apiClient, userId, workspaceId),
+    enabled,
+  });
+  const current = reads.flatMap((read) =>
+    read.data === undefined ? [] : [read.data],
+  );
+  const reading =
+    reads.some((read) => read.isPending || read.isFetching) ||
+    folders.isPending ||
+    tags.isPending;
+  const failedRead =
+    reads.some((read) => read.isError) || folders.isError || tags.isError;
+  return { reads, folders, tags, current, reading, failedRead };
 }

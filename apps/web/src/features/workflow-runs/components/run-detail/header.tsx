@@ -221,6 +221,10 @@ export function RunHeader({
   const versionLabel =
     versionNumber === undefined ? undefined : `v${String(versionNumber)}`;
 
+  const canReplayRun =
+    can('run:replay') &&
+    (run.status === 'failed' || run.status === 'outcome_unknown') &&
+    workspace.status === 'active';
   return (
     // The actions wrap under the story when the column is narrow (beside
     // the step lens) instead of squeezing the title into a ribbon.
@@ -277,9 +281,7 @@ export function RunHeader({
         workspaceId={workspace.id}
         workflowId={run.workflowId}
         recoveryAction={
-          can('run:replay') &&
-          (run.status === 'failed' || run.status === 'outcome_unknown') &&
-          workspace.status === 'active' ? (
+          canReplayRun ? (
             <RunRecoveryAction
               key={`${userId}:${workspace.id}:${run.id}`}
               apiClient={apiClient}

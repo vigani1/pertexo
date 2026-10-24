@@ -75,6 +75,11 @@ export function AttentionSection({
   });
   const [main, ...others] = reads;
   if (main === undefined) return null;
+  const hasMoreFailedRuns =
+    runs.data !== undefined &&
+    (runs.data.failed.more ||
+      runs.data.timedOut.more ||
+      runs.data.outcomeUnknown.more);
   return (
     <NeedsAttention
       workspace={workspace}
@@ -84,12 +89,7 @@ export function AttentionSection({
           : item,
       )}
       state={mergedBlockState(main, others)}
-      moreFailedRuns={
-        runs.data !== undefined &&
-        (runs.data.failed.more ||
-          runs.data.timedOut.more ||
-          runs.data.outcomeUnknown.more)
-      }
+      moreFailedRuns={hasMoreFailedRuns}
     />
   );
 }

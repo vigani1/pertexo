@@ -33,6 +33,11 @@ export function IssuesChip({
   const count =
     state.groups === undefined ? undefined : countIssues(state.groups);
   const hint = count !== undefined && count > 0 ? undefined : emptyHint;
+  const successClass =
+    count === 0 &&
+    !state.stale &&
+    hint === undefined &&
+    'text-success hover:text-success';
   return (
     <button
       id={ISSUES_CHIP_ID}
@@ -42,10 +47,7 @@ export function IssuesChip({
       className={cn(
         buttonVariants({ variant: 'ghost', size: 'sm' }),
         'w-24 shrink-0 gap-1 px-1.5 sm:w-40 sm:gap-2 sm:px-2.5',
-        count === 0 &&
-          !state.stale &&
-          hint === undefined &&
-          'text-success hover:text-success',
+        successClass,
         count !== undefined &&
           count > 0 &&
           'text-destructive hover:text-destructive',

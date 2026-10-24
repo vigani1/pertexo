@@ -63,12 +63,12 @@ export function workflowSummaryQueryOptions(
     staleTime: 30_000,
     refetchInterval: (query) => {
       const workflow = query.state.data;
-      return workflow?.lifecycleStatus === 'active' &&
+      const activationIsChanging =
+        workflow?.lifecycleStatus === 'active' &&
         (workflow.activationStatus === 'deactivating' ||
           (workflow.activationStatus === 'activating' &&
-            !workflow.webhookSetupRequired))
-        ? 5000
-        : false;
+            !workflow.webhookSetupRequired));
+      return activationIsChanging ? 5000 : false;
     },
   });
 }

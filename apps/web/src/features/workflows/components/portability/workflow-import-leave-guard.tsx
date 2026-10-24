@@ -19,11 +19,14 @@ export function WorkflowImportLeaveGuard({
   onReopen: () => void;
 }>) {
   const blocker = useBlocker({
-    shouldBlockFn: ({ current, next }) =>
-      unresolved &&
-      current.pathname !== next.pathname &&
-      (next.pathname === `/w/${workspaceId}` ||
-        next.pathname.startsWith(`/w/${workspaceId}/`)),
+    shouldBlockFn: ({ current, next }) => {
+      const leavesUnresolvedImport =
+        unresolved &&
+        current.pathname !== next.pathname &&
+        (next.pathname === `/w/${workspaceId}` ||
+          next.pathname.startsWith(`/w/${workspaceId}/`));
+      return leavesUnresolvedImport;
+    },
     enableBeforeUnload: unresolved,
     withResolver: true,
   });

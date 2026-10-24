@@ -67,16 +67,19 @@ export function useCaseOwner({
       queryClient: cache,
       userId,
       workspaceId,
-      counts: ({ key: read, error }) =>
-        ownerRef.current === token &&
-        (error.status === 401 ||
-          read.length === 0 ||
-          (read[0] === 'workflows' &&
-            read[1] === 'detail' &&
-            read[2] === workflowId &&
-            (error.status === 403 ||
-              read.length === 3 ||
-              read[3] === 'input-cases'))),
+      counts: ({ key: read, error }) => {
+        const isCaseAuthorityLoss =
+          ownerRef.current === token &&
+          (error.status === 401 ||
+            read.length === 0 ||
+            (read[0] === 'workflows' &&
+              read[1] === 'detail' &&
+              read[2] === workflowId &&
+              (error.status === 403 ||
+                read.length === 3 ||
+                read[3] === 'input-cases')));
+        return isCaseAuthorityLoss;
+      },
       denied: retire,
     });
     return () => {

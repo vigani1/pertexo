@@ -57,12 +57,12 @@ export function Calendar({
 }>) {
   const headingId = useId();
   const today = localDateOf(new Date());
-  const [focused, setFocused] = useState<LocalDate>(
+  const initialDay =
     value ??
-      range?.from ??
-      min ??
-      (max !== undefined && max < today ? max : today),
-  );
+    range?.from ??
+    min ??
+    (max !== undefined && max < today ? max : today);
+  const [focused, setFocused] = useState<LocalDate>(initialDay);
   const moveFocus = useRef(false);
   const days = useRef(new Map<LocalDate, HTMLButtonElement>());
   const visible = dateOf(focused) ?? new Date();

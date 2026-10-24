@@ -214,12 +214,13 @@ function TriggersSession({
   const onFailure = kinds?.includes('core.workflow_error') ?? false;
 
   // Only someone who can read webhooks knows the version has none.
-  const needsFirstTrigger =
-    editable &&
-    webhookItems?.length === 0 &&
-    scheduleItems?.length === 0 &&
-    !form &&
-    !onFailure;
+  const needsFirstTrigger = hasNoPublishedTriggers({
+    editable,
+    webhookCount: webhookItems?.length,
+    scheduleCount: scheduleItems?.length,
+    form,
+    onFailure,
+  });
   if (needsFirstTrigger)
     return (
       <NoTriggers
@@ -298,5 +299,23 @@ function TriggersSession({
         />
       </SettingsSection>
     </div>
+  );
+}
+
+function hasNoPublishedTriggers({
+  editable,
+  webhookCount,
+  scheduleCount,
+  form,
+  onFailure,
+}: Readonly<{
+  editable: boolean;
+  webhookCount: number | undefined;
+  scheduleCount: number | undefined;
+  form: boolean;
+  onFailure: boolean;
+}>) {
+  return (
+    editable && webhookCount === 0 && scheduleCount === 0 && !form && !onFailure
   );
 }
