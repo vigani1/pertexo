@@ -1,5 +1,5 @@
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { readFolderScope } from '../../tenant-access/resources/facts.js';
+import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
 import { NOTICE_WINDOW_SQL } from '../lifetime.js';
 import { and, eq, gt, inArray, isNull, notExists, or, sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';

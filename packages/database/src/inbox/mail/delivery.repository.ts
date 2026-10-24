@@ -26,7 +26,7 @@ import {
   type DatabaseRuntime,
 } from '../../platform/pool/runtime.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
-import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority.js';
+import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority.queries.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
 import { noticeWindow } from './schedule.js';
 import { readMailSubjects } from './subjects.queries.js';

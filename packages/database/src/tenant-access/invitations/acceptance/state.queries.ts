@@ -1,9 +1,9 @@
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
-import type { InvitationAcceptanceIntentRecord } from '../../contracts.js';
+import type { InvitationAcceptanceIntentRecord } from '../../contract.js';
 
-import { acceptanceReceiptSchema } from '../acceptance-receipts.js';
+import { acceptanceReceiptSchema } from '../receipts.repository.js';
 
 import {
   delegatedRole,

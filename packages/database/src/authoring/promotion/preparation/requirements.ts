@@ -2,7 +2,7 @@ import {
   connectionScopeSql,
   type ConnectionScope,
 } from '../../../tenant-access/resources/connections/scope.js';
-import { bindResourcePredicate } from '../../../tenant-access/resources/query-scope.js';
+import { bindResourcePredicate } from '../../../tenant-access/resources/scope.queries.js';
 import type { PoolClient } from 'pg';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import {

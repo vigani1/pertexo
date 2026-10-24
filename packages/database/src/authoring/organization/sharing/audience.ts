@@ -7,7 +7,7 @@ import type {
   WorkflowMoveReviewItem,
 } from '@pertexo/contracts';
 import { canonicalOutboxPayloadChecksum } from '../../../outbox/events.repository.js';
-import { readFolderScope } from '../../../tenant-access/resources/facts.js';
+import { readFolderScope } from '../../../tenant-access/resources/facts.queries.js';
 import {
   RESOURCE_ADMINISTRATORS,
   removesFolderRestriction,
@@ -15,7 +15,7 @@ import {
 import {
   bindResourcePredicate,
   workflowScopeSql,
-} from '../../../tenant-access/resources/query-scope.js';
+} from '../../../tenant-access/resources/scope.queries.js';
 import { WorkflowNotFoundError } from '../../workflows/errors.js';
 import { WorkflowFolderConflictError } from '../errors.js';
 import type { OrganizationScope } from '../command.js';

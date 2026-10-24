@@ -5,7 +5,7 @@ import {
   type ParsedApiTokenCredential,
 } from './credential.js';
 import { apiTokenStatus, type ApiTokenRow } from './metadata.js';
-import type { VerifiedApiToken } from './types.js';
+import type { VerifiedApiToken } from './contract.js';
 
 type CredentialRow = ApiTokenRow &
   Readonly<{

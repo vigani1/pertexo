@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { bindResourcePredicate } from '../../../tenant-access/resources/query-scope.js';
+import { bindResourcePredicate } from '../../../tenant-access/resources/scope.queries.js';
 import type { PoolClient } from 'pg';
 import type {
   ApprovalAudienceInspectionRequest,

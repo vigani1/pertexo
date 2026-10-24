@@ -6,8 +6,8 @@ import {
 
 import { WorkflowRunNotFoundError } from '../../runs/errors.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { requireConnectionBindings } from '../../tenant-access/resources/connections/bindings.js';
-import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.js';
+import { requireConnectionBindings } from '../../tenant-access/resources/connections/bindings.queries.js';
+import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.queries.js';
 import type { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {

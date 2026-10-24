@@ -9,8 +9,8 @@ import {
   MIGRATIONS_DIRECTORY,
 } from '../../../src/migrations.js';
 import { withTenantScopedClient } from '../../../src/tenant-access/transactions.js';
-import { readFolderScope } from '../../../src/tenant-access/resources/facts.js';
-import { workflowAccessible } from '../../../src/tenant-access/resources/workflows.js';
+import { readFolderScope } from '../../../src/tenant-access/resources/facts.queries.js';
+import { workflowAccessible } from '../../../src/tenant-access/resources/workflows.queries.js';
 import { createDisposableDatabaseFixture } from '../../support/postgres/disposable-database.js';
 
 it('keeps populated folders workspace-shared and forces isolation on grant rows after upgrading', async () => {

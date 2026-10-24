@@ -12,7 +12,7 @@ import {
   withPlatformTransaction,
   withWorkspaceScope,
 } from '../../../tenant-access/transactions.js';
-import { readWorkspaceAuthority } from '../../../tenant-access/workspaces/authority.js';
+import { readWorkspaceAuthority } from '../../../tenant-access/workspaces/authority.queries.js';
 import { FederationConflictError, type FederationScope } from './contract.js';
 import { organizationForWorkspace } from './authority.js';
 import { projectOrganization } from './settings.js';

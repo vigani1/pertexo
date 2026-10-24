@@ -17,8 +17,8 @@ import {
 } from '../../schema/authoring/workflows.js';
 import type { FolderScope } from '../../tenant-access/resources/contract.js';
 import { requireConnectionReader } from '../authority.queries.js';
-import { readFolderScope } from '../../tenant-access/resources/facts.js';
-import { workflowScopeSql } from '../../tenant-access/resources/query-scope.js';
+import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
+import { workflowScopeSql } from '../../tenant-access/resources/scope.queries.js';
 
 import type { Pool } from 'pg';
 import { z } from 'zod';

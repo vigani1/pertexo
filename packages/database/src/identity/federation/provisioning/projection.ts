@@ -9,10 +9,10 @@ import {
   updateMemberships,
   type MembershipChange,
   type MembershipAddition,
-} from '../../../tenant-access/members/storage.js';
+} from '../../../tenant-access/members/records.repository.js';
 
 import { withWorkspaceScope } from '../../../tenant-access/transactions.js';
-import { revokeSessionsForUsers } from '../../../tenant-access/users/sessions.js';
+import { revokeSessionsForUsers } from '../../../tenant-access/users/sessions.repository.js';
 import type { DirectoryOrganization } from './authority.js';
 import type { DirectoryMapping } from './contract.js';
 import { directoryRole } from './roles.js';

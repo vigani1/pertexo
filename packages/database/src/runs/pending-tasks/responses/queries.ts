@@ -3,7 +3,7 @@ import type { FolderScope } from '../../../tenant-access/resources/contract.js';
 import {
   bindResourcePredicate,
   workflowScopeSql,
-} from '../../../tenant-access/resources/query-scope.js';
+} from '../../../tenant-access/resources/scope.queries.js';
 import type { PoolClient } from 'pg';
 import type {
   PendingTaskDetail,

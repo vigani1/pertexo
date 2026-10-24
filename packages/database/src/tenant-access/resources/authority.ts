@@ -4,10 +4,10 @@ import { rolesForCapability, type Role } from '@pertexo/workflow-model';
 import {
   lockWorkspaceAuthority,
   readWorkspaceAuthority,
-} from '../workspaces/authority.js';
+} from '../workspaces/authority.queries.js';
 import type { ResourceActor, WorkflowResourceCapability } from './contract.js';
-import { readFolderScope } from './facts.js';
-import { workflowAccessible } from './workflows.js';
+import { readFolderScope } from './facts.queries.js';
+import { workflowAccessible } from './workflows.queries.js';
 
 /** Commands stabilize current grants through the workspace-first authority fence. */
 export async function authorizeWorkflowResource(

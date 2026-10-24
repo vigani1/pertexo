@@ -3,7 +3,7 @@ import type { Role } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
-import type { WorkspaceInvitationRecord } from '../../contracts.js';
+import type { WorkspaceInvitationRecord } from '../../contract.js';
 import { WorkspaceInvitationCommandConflictError } from '../../errors.js';
 
 import {

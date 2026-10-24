@@ -1,5 +1,5 @@
-import { readFolderScope } from '../../tenant-access/resources/facts.js';
-import { workflowAccessible } from '../../tenant-access/resources/workflows.js';
+import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
+import { workflowAccessible } from '../../tenant-access/resources/workflows.queries.js';
 import type { Pool, PoolClient } from 'pg';
 import {
   withTenantScopedClient,
@@ -7,7 +7,7 @@ import {
 } from '../../tenant-access/transactions.js';
 import { lockWorkflowAuthoringAuthority } from '../../authoring/workflows/authority.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
-import { readWorkspaceAuthority } from '../../tenant-access/workspaces/authority.js';
+import { readWorkspaceAuthority } from '../../tenant-access/workspaces/authority.queries.js';
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
 import { WorkflowNotFoundError } from '../../authoring/workflows/errors.js';
 import type { SampleScope } from '../../authoring/step-samples/contract.js';

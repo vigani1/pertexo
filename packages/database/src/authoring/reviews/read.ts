@@ -1,14 +1,14 @@
 import { sql } from 'drizzle-orm';
-import { bindResourcePredicate } from '../../tenant-access/resources/query-scope.js';
+import { bindResourcePredicate } from '../../tenant-access/resources/scope.queries.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import {
   connectionUseIssues,
   workflowConnectionReferences,
-} from '../../tenant-access/resources/connections/bindings.js';
+} from '../../tenant-access/resources/connections/bindings.queries.js';
 import { connectionScope } from '../../tenant-access/resources/connections/scope.js';
-import { readFolderScope } from '../../tenant-access/resources/facts.js';
-import { workflowAccessible } from '../../tenant-access/resources/workflows.js';
+import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
+import { workflowAccessible } from '../../tenant-access/resources/workflows.queries.js';
 import type { PoolClient } from 'pg';
 import type { PublicationReview } from '@pertexo/contracts';
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';

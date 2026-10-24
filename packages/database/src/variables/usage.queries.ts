@@ -7,8 +7,8 @@ import {
   workflowDrafts,
   workflowVersions,
 } from '../schema/authoring/workflows.js';
-import { readFolderScope } from '../tenant-access/resources/facts.js';
-import { workflowScopeSql } from '../tenant-access/resources/query-scope.js';
+import { readFolderScope } from '../tenant-access/resources/facts.queries.js';
+import { workflowScopeSql } from '../tenant-access/resources/scope.queries.js';
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';

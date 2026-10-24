@@ -1,11 +1,11 @@
 import { RUN_STATUS_VALUES } from '../commands/acceptance.js';
 import { RETAINED_RESOURCE_WORKSPACE_STATUSES } from '../../tenant-access/resources/policy.js';
 import { sql } from 'drizzle-orm';
-import { readFolderScope } from '../../tenant-access/resources/facts.js';
+import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
 import {
   bindResourcePredicate,
   workflowScopeSql,
-} from '../../tenant-access/resources/query-scope.js';
+} from '../../tenant-access/resources/scope.queries.js';
 import type { Pool } from 'pg';
 import type { UsageTrendPeriod, UsageTrendsResponse } from '@pertexo/contracts';
 import { withTenantScopedReadClient } from '../../tenant-access/transactions.js';

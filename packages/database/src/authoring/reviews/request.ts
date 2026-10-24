@@ -1,5 +1,5 @@
-import { bindResourcePredicate } from '../../tenant-access/resources/query-scope.js';
-import { requireConnectionBindings } from '../../tenant-access/resources/connections/bindings.js';
+import { bindResourcePredicate } from '../../tenant-access/resources/scope.queries.js';
+import { requireConnectionBindings } from '../../tenant-access/resources/connections/bindings.queries.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import {

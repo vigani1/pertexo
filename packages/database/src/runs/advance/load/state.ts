@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { bindResourcePredicate } from '../../../tenant-access/resources/query-scope.js';
+import { bindResourcePredicate } from '../../../tenant-access/resources/scope.queries.js';
 import { synchronizeHumanWait } from '../../pending-tasks/lifecycle/time-capacity.js';
 import { readPendingTaskFacts } from '../../pending-tasks/lifecycle/facts.js';
 import type { PoolClient } from 'pg';

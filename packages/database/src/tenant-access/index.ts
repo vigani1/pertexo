@@ -19,7 +19,7 @@ export {
   WorkspaceMemberRoleCommandConflictError,
   WorkspaceMembershipCommandConflictError,
   WorkspaceRenameCommandConflictError,
-} from './database.js';
+} from './repository.js';
 export type {
   AccessibleWorkspaceRecord,
   AccessibleWorkspacesPage,
@@ -53,12 +53,12 @@ export type {
   WorkspaceMemberStatusResult,
   WorkspaceOwnershipTransferResult,
   WorkspaceRenameResult,
-} from './database.js';
-export { createWorkspaceInvitationDeliveryStore } from './invitations/delivery.js';
+} from './repository.js';
+export { createWorkspaceInvitationDeliveryStore } from './invitations/delivery.repository.js';
 export type {
   WorkspaceInvitationDeliveryClaim,
   WorkspaceInvitationDeliveryStore,
-} from './invitations/delivery.js';
+} from './invitations/delivery.repository.js';
 
 export {
   hasCredentialAccount,
@@ -73,14 +73,14 @@ export { SocialSignInCommands } from '../identity/federation/sign-in.js';
 
 export { EmailProofCommands } from '../identity/email-proofs.js';
 
-export { createApiTokenDatabase } from './tokens/store.js';
-export { ApiTokenPolicyError } from './tokens/types.js';
+export { createApiTokenDatabase } from './tokens/repository.js';
+export { ApiTokenPolicyError } from './tokens/contract.js';
 export type {
   ApiTokenDatabase,
   VerifiedApiToken,
   ApiTokenOwner,
   ApiTokenCommand,
-} from './tokens/types.js';
+} from './tokens/contract.js';
 export { parseApiTokenCredential } from './tokens/credential.js';
 export type { ParsedApiTokenCredential } from './tokens/credential.js';
 

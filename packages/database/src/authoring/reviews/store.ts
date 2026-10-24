@@ -1,8 +1,8 @@
-import { readFolderScope } from '../../tenant-access/resources/facts.js';
+import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
 import {
   bindResourcePredicate,
   workflowScopeSql,
-} from '../../tenant-access/resources/query-scope.js';
+} from '../../tenant-access/resources/scope.queries.js';
 import { sql } from 'drizzle-orm';
 import type { PoolClient } from 'pg';
 import { rolesForCapability } from '@pertexo/workflow-model';

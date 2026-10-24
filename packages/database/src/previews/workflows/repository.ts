@@ -1,5 +1,5 @@
-import { requireConnectionBindings } from '../../tenant-access/resources/connections/bindings.js';
-import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.js';
+import { requireConnectionBindings } from '../../tenant-access/resources/connections/bindings.queries.js';
+import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.queries.js';
 import { TEST_RUN_RETENTION_MILLIS } from '../../runs/data-policy.js';
 import { lockArtifactReferences } from '../../artifacts/references/repository.js';
 import type { Pool, PoolClient } from 'pg';

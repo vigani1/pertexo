@@ -13,7 +13,7 @@ import {
   readConnectionScope,
   connectionScopeSql,
 } from '../../../src/tenant-access/resources/connections/scope.js';
-import { bindResourcePredicate } from '../../../src/tenant-access/resources/query-scope.js';
+import { bindResourcePredicate } from '../../../src/tenant-access/resources/scope.queries.js';
 import { createDisposableDatabaseFixture } from '../../support/postgres/disposable-database.js';
 
 it('keeps populated connections workspace-shared and forces isolation on shares after upgrading', async () => {

@@ -2,7 +2,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { PROMOTION_LIMITS } from '@pertexo/workflow-model';
 import { connectionScope } from '../../../tenant-access/resources/connections/scope.js';
-import { readFolderScope } from '../../../tenant-access/resources/facts.js';
+import { readFolderScope } from '../../../tenant-access/resources/facts.queries.js';
 
 import type { PoolClient } from 'pg';
 import type { WorkflowPromotionRequirement } from '@pertexo/contracts';

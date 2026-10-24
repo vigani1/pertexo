@@ -7,12 +7,12 @@ import { CONNECTION_STATUS } from '../../connections/contract.js';
 import {
   workflowConnectionReferences,
   connectionReferenceIds,
-} from '../../tenant-access/resources/connections/bindings.js';
+} from '../../tenant-access/resources/connections/bindings.queries.js';
 import {
   readConnectionScope,
   connectionScopeSql,
 } from '../../tenant-access/resources/connections/scope.js';
-import { bindResourcePredicate } from '../../tenant-access/resources/query-scope.js';
+import { bindResourcePredicate } from '../../tenant-access/resources/scope.queries.js';
 import type { ResourceActor } from '../../tenant-access/resources/contract.js';
 
 /** Permission applies to every binding; only enabled steps require a non-revoked secret. */

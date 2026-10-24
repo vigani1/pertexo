@@ -10,16 +10,19 @@ import type { CommandIdentity } from '../../../platform/idempotency/contract.js'
 import type {
   CompleteInvitationAcceptanceInput,
   InvitationAcceptanceResult,
-} from '../../contracts.js';
+} from '../../contract.js';
 import { InvitationAcceptanceConflictError } from '../../errors.js';
 import {
   acceptanceReceiptSchema,
   recordAcceptedInvitation,
   replayedAcceptance,
-} from '../acceptance-receipts.js';
+} from '../receipts.repository.js';
 
-import { replaceUserSessions } from '../../users/sessions.js';
-import { createMemberships, updateMembership } from '../../members/storage.js';
+import { replaceUserSessions } from '../../users/sessions.repository.js';
+import {
+  createMemberships,
+  updateMembership,
+} from '../../members/records.repository.js';
 import { parseIdentityUuid } from '../../support.js';
 import {
   withPlatformTransaction,

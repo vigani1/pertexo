@@ -1,4 +1,4 @@
-import { withResourceRunRead } from '../../tenant-access/resources/transactions.js';
+import { withResourceRunRead } from '../../tenant-access/resources/transactions.repository.js';
 import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 import type { WorkflowRunErrorWorkflow } from '@pertexo/contracts';
 import { readErrorWorkflow } from '../error-workflows/read.js';
@@ -11,7 +11,7 @@ import { sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
-import type { ResourceTransaction } from '../../tenant-access/resources/transactions.js';
+import type { ResourceTransaction } from '../../tenant-access/resources/transactions.repository.js';
 import { WorkflowRunReadCapacityError } from '../errors.js';
 import {
   readWorkflowRunReadRecord,

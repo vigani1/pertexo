@@ -2,7 +2,7 @@ import { readEligibleAuthenticationSession } from '../../identity/federation/ses
 import type { SessionAuthenticationProof } from '../../identity/federation/sessions/policy.js';
 import type { PoolClient } from 'pg';
 
-import type { ReplacementSessionInput } from '../contracts.js';
+import type { ReplacementSessionInput } from '../contract.js';
 
 /**
  * Ends every Better Auth session of a user inside the caller's transaction,

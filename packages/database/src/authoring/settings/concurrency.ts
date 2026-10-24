@@ -1,4 +1,4 @@
-import { bindResourcePredicate } from '../../tenant-access/resources/query-scope.js';
+import { bindResourcePredicate } from '../../tenant-access/resources/scope.queries.js';
 import { WORKFLOW_EDITOR_ROLES } from '@pertexo/workflow-model';
 import type { WorkflowConcurrencySettings as ConcurrencySettings } from '@pertexo/contracts';
 import type { PoolClient } from 'pg';

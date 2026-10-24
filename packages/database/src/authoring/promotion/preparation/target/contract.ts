@@ -1,5 +1,5 @@
 import type { connectionScope } from '../../../../tenant-access/resources/connections/scope.js';
-import type { readFolderScope } from '../../../../tenant-access/resources/facts.js';
+import type { readFolderScope } from '../../../../tenant-access/resources/facts.queries.js';
 
 import type {
   WorkflowPromotionPreview,

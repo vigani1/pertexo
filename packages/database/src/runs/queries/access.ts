@@ -1,11 +1,11 @@
 import type { Pool } from 'pg';
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
-import { withResourceCommand } from '../../tenant-access/resources/transactions.js';
+import { withResourceCommand } from '../../tenant-access/resources/transactions.repository.js';
 import type { ResourceActor } from '../../tenant-access/resources/contract.js';
 import { sql } from 'drizzle-orm';
 import { WorkflowRunNotFoundError } from '../errors.js';
-import type { ResourceTransaction } from '../../tenant-access/resources/transactions.js';
-import { workflowScopeSql } from '../../tenant-access/resources/query-scope.js';
+import type { ResourceTransaction } from '../../tenant-access/resources/transactions.repository.js';
+import { workflowScopeSql } from '../../tenant-access/resources/scope.queries.js';
 import type { WorkflowResourceCapability } from '../../tenant-access/resources/contract.js';
 
 /** The command already holds the workspace authority fence before touching run rows. */

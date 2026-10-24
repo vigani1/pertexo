@@ -1,5 +1,5 @@
-import { readFolderScope } from '../../../tenant-access/resources/facts.js';
-import { readWorkspacePeople } from '../../../tenant-access/members/discovery.js';
+import { readFolderScope } from '../../../tenant-access/resources/facts.queries.js';
+import { readWorkspacePeople } from '../../../tenant-access/members/discovery.queries.js';
 import type { DatabaseConfig } from '../../../config.js';
 import {
   acquireDatabasePool,
@@ -12,7 +12,7 @@ import {
 import {
   lockWorkspaceAuthority,
   readWorkspaceAuthority,
-} from '../../../tenant-access/workspaces/authority.js';
+} from '../../../tenant-access/workspaces/authority.queries.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
 import { respondToTask } from './respond.js';
 import { inspectAudience } from './inspect-audience.js';

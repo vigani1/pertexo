@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 import { Pool, type QueryResultRow } from 'pg';
 
-import { createIdentityWorkspaceDatabase } from '../../../src/tenant-access/database.js';
+import { createIdentityWorkspaceDatabase } from '../../../src/tenant-access/repository.js';
 import { migrateDatabase } from '../../../src/migrations.js';
 import { canonicalOutboxPayloadChecksum } from '../../../src/outbox/events.repository.js';
 import type { WorkflowAuthoringDatabase } from '../../../src/authoring/workflows/database.js';

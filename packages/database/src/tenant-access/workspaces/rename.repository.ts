@@ -12,7 +12,7 @@ import type {
   IdentityWorkspaceDatabase,
   RenameWorkspaceInput,
   WorkspaceRenameResult,
-} from '../contracts.js';
+} from '../contract.js';
 import { WorkspaceRenameCommandConflictError } from '../errors.js';
 import { mapWorkspace } from '../rows.js';
 import { parseIdentityUuid } from '../support.js';

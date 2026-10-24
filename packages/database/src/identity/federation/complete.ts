@@ -4,7 +4,7 @@ import { canCreateAuthenticationSession } from './sessions/authority.js';
 import { randomBytes } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { generatePersistedId } from '../../platform/persisted-id.js';
-import { revokeUserSessions } from '../../tenant-access/users/sessions.js';
+import { revokeUserSessions } from '../../tenant-access/users/sessions.repository.js';
 import { recordIdentitySecurityFact } from '../security-facts.js';
 import type { ProvenSocialSignIn, SocialSignInResult } from './contract.js';
 

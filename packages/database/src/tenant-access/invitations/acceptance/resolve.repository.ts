@@ -1,6 +1,6 @@
 import type { Pool, PoolClient } from 'pg';
 
-import { expireWorkspaceInvitations } from '../expiration.js';
+import { expireWorkspaceInvitations } from '../expiration.repository.js';
 import { parseIdentityUuid } from '../../support.js';
 import { withTenantScopedClient } from '../../transactions.js';
 import {

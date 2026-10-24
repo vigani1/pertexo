@@ -1,4 +1,4 @@
-import { workflowAccessible } from '../../../tenant-access/resources/workflows.js';
+import { workflowAccessible } from '../../../tenant-access/resources/workflows.queries.js';
 
 import type { PoolClient } from 'pg';
 import { z } from 'zod';

@@ -1,4 +1,4 @@
-import { updateMembership } from './storage.js';
+import { updateMembership } from './records.repository.js';
 import { canTransferRecoveryOwnership } from '../../identity/federation/sessions/recovery.js';
 import type { Pool } from 'pg';
 import { z } from 'zod';
@@ -8,7 +8,7 @@ import type {
   LeaveWorkspaceInput,
   TransferWorkspaceOwnershipInput,
   WorkspaceMemberStatusCommandInput,
-} from '../contracts.js';
+} from '../contract.js';
 import {
   WorkspaceMembershipCommandConflictError,
   type WorkspaceMembershipCommandConflictReason,
@@ -20,8 +20,8 @@ import {
   recordMemberCommandAudit,
   type AdmittedMemberCommand,
   type LockedMember,
-} from './command.js';
-import { revokeUserSessions } from '../users/sessions.js';
+} from './commands.repository.js';
+import { revokeUserSessions } from '../users/sessions.repository.js';
 import {
   canLeaveWorkspace,
   canSuspendWorkspaceMember,

@@ -1,7 +1,7 @@
 import type { Pool } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createUserStore } from '../../src/tenant-access/users/store.js';
+import { createUserStore } from '../../src/tenant-access/users/repository.js';
 import {
   parseIdentityMetadata,
   readIdentityDatabaseErrorCode,

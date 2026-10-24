@@ -1,11 +1,11 @@
 import { utf8ByteLength } from '@pertexo/workflow-model';
-import { workflowActions } from '../../tenant-access/resources/workflows.js';
+import { workflowActions } from '../../tenant-access/resources/workflows.queries.js';
 import { sql } from 'drizzle-orm';
-import { readFolderScope } from '../../tenant-access/resources/facts.js';
+import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
 import {
   bindResourcePredicate,
   workflowScopeSql,
-} from '../../tenant-access/resources/query-scope.js';
+} from '../../tenant-access/resources/scope.queries.js';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 import type { DatabaseConfig } from '../../config.js';

@@ -1,5 +1,5 @@
 import type { Role } from '@pertexo/workflow-model';
-import { removeMemberResourceGrants } from '../resources/revocation.js';
+import { removeMemberResourceGrants } from '../resources/revocation.repository.js';
 import type { PoolClient } from 'pg';
 
 import { appendAuditFacts } from '../../governance/audit/events.repository.js';

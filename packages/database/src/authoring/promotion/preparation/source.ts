@@ -1,12 +1,12 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '../../../platform/query-errors.js';
-import { bindResourcePredicate } from '../../../tenant-access/resources/query-scope.js';
+import { bindResourcePredicate } from '../../../tenant-access/resources/scope.queries.js';
 import {
   connectionScope,
   connectionScopeSql,
 } from '../../../tenant-access/resources/connections/scope.js';
-import { readFolderScope } from '../../../tenant-access/resources/facts.js';
-import { workflowAccessible } from '../../../tenant-access/resources/workflows.js';
+import { readFolderScope } from '../../../tenant-access/resources/facts.queries.js';
+import { workflowAccessible } from '../../../tenant-access/resources/workflows.queries.js';
 import type { PoolClient } from 'pg';
 import type { WorkflowPromotionPreviewRequest } from '@pertexo/contracts';
 import {

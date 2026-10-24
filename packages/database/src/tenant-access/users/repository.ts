@@ -12,7 +12,7 @@ import type {
   CreateUserInput,
   IdentityWorkspaceDatabase,
   UserRecord,
-} from '../contracts.js';
+} from '../contract.js';
 
 const userIdentityFieldsSchema = z.object({
   email: z.string().trim().min(3).max(320),

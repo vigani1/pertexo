@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import type { UserRecord, WorkspaceRecord } from './contracts.js';
+import type { UserRecord, WorkspaceRecord } from './contract.js';
 
 const uuidSchema = z.uuid();
 const userRowSchema = z

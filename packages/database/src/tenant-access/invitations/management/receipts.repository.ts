@@ -11,7 +11,7 @@ import { generatePersistedId } from '../../../platform/persisted-id.js';
 import type {
   WorkspaceInvitationCommandResult,
   WorkspaceInvitationRecord,
-} from '../../contracts.js';
+} from '../../contract.js';
 
 import type { sealedToken } from './contract.js';
 import { idempotencyKey, durableResult } from './contract.js';
