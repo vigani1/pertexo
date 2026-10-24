@@ -25,19 +25,19 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
 import { cn } from '@/lib/utils';
 import { useRetainedCommand } from '@/lib/api/commands/use-retained';
-import { ExportTableRows } from './transfer/export';
+import { ExportTableRows } from '../transfer/export';
 import {
   sendTableCommand,
   type TableScope,
   type TableCommand,
-} from '../data/tables.api';
-import { tableRowsQuery, tableKeys } from '../data/tables.queries';
-import { TableRowEditor } from './row-editor';
-import { ImportTableCsv } from './import';
-import { DataTableFilters, DataTableSort } from './filters';
-import { TableCommandFeedback } from './command-feedback';
-import { tableCellText } from '../model/values';
-import { COLUMN_TYPES } from '../model/column-types';
+} from '../../data/tables.api';
+import { tableRowsQuery, tableKeys } from '../../data/tables.queries';
+import { TableRowEditor } from '../row-editor';
+import { ImportTableCsv } from '../import';
+import { DataTableFilters, DataTableSort } from '../filters';
+import { TableCommandFeedback } from '../command-feedback';
+import { tableCellText } from '../../model/values';
+import { COLUMN_TYPES } from '../../model/column-types';
 export function DataTableRows({
   scope,
   table,
