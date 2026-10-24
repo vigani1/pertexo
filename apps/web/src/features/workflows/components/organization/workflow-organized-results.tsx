@@ -28,14 +28,7 @@ import { WorkflowOrganizationDialog } from './dialog';
 import { WorkflowOrganizationRowMenu } from './row-menu';
 
 /** Selection is explicit, ordered and bounded to loaded rows in one URL scope. */
-export function WorkflowOrganizedResults({
-  apiClient,
-  userId,
-  workspace,
-  items,
-  workflows,
-  actions,
-}: Readonly<{
+type WorkflowOrganizedResultsProps = Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspace: AccessibleWorkspace;
@@ -52,7 +45,16 @@ export function WorkflowOrganizedResults({
     | 'fetchNextPage'
   >;
   actions: WorkflowRowActions;
-}>) {
+}>;
+
+export function WorkflowOrganizedResults({
+  apiClient,
+  userId,
+  workspace,
+  items,
+  workflows,
+  actions,
+}: WorkflowOrganizedResultsProps) {
   const [selected, setSelected] = useState<readonly string[]>([]);
   const [editing, setEditing] =
     useState<readonly WorkflowOrganizationProjectionResponse[]>();
@@ -105,78 +107,17 @@ export function WorkflowOrganizedResults({
       {/* Floats above the list instead of pushing it down, so picking the
           first workflow never moves the row under the pointer. */}
       {canEdit && currentSelected.length > 0 ? (
-        <div
-          role="toolbar"
-          aria-label="Selected workflows"
-          className="lens fixed bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.75rem)] left-1/2 z-40 flex -translate-x-1/2 items-center gap-1 rounded-xl py-1.5 pr-1.5 pl-3.5 motion-safe:animate-[rise_0.25s_var(--ease-unspool)] md:bottom-6"
-        >
-          <span
-            aria-hidden="true"
-            className="mr-1 size-2.5 shrink-0 rounded-full bg-action shadow-[0_0_0_3px_color-mix(in_srgb,var(--action)_18%,transparent)]"
-          />
-          <span
-            className="mr-2 text-sm whitespace-nowrap text-foreground"
-            aria-live="polite"
-          >
-            {String(currentSelected.length)} selected
-            {currentSelected.length >= 50 ? (
-              <span className="text-muted-foreground"> · the most at once</span>
-            ) : null}
-          </span>
-          <Button
-            variant="default"
-            size="sm"
-            aria-label="Organize selected…"
-            disabled={editing !== undefined}
-            onClick={() => {
-              setEditing(currentSelected);
-            }}
-          >
-            Organize…
-          </Button>
-          {workspace.capabilities.includes('workflow:update') &&
-          currentSelected.length <= PROMOTION_LIMITS.workflows &&
-          currentSelected.every(
-            (item) => item.workflow.publishedVersionId !== null,
-          ) ? (
-            <Button
-              variant="outline"
-              size="sm"
-              render={
-                <Link
-                  to="/w/$workspaceId/settings/promotion"
-                  params={{ workspaceId: workspace.id }}
-                  search={promotionSearch(
-                    currentSelected.flatMap((item) =>
-                      item.workflow.publishedVersionId === null
-                        ? []
-                        : [
-                            {
-                              workflowId: item.workflow.id,
-                              versionId: item.workflow.publishedVersionId,
-                            },
-                          ],
-                    ),
-                  )}
-                />
-              }
-            >
-              Promote…
-            </Button>
-          ) : null}
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Clear selection"
-            title="Clear selection"
-            disabled={editing !== undefined}
-            onClick={() => {
-              setSelected([]);
-            }}
-          >
-            <XIcon aria-hidden="true" />
-          </Button>
-        </div>
+        <SelectedWorkflowTools
+          workspace={workspace}
+          selected={currentSelected}
+          disabled={editing !== undefined}
+          onOrganize={() => {
+            setEditing(currentSelected);
+          }}
+          onClear={() => {
+            setSelected([]);
+          }}
+        />
       ) : null}
       {workflows.isRefetchError ? (
         <StaleLine
@@ -248,5 +189,92 @@ export function WorkflowOrganizedResults({
         />
       )}
     </section>
+  );
+}
+
+function SelectedWorkflowTools({
+  workspace,
+  selected,
+  disabled,
+  onOrganize,
+  onClear,
+}: Readonly<{
+  workspace: AccessibleWorkspace;
+  selected: readonly WorkflowOrganizationProjectionResponse[];
+  disabled: boolean;
+  onOrganize: () => void;
+  onClear: () => void;
+}>) {
+  return (
+    <div
+      role="toolbar"
+      aria-label="Selected workflows"
+      className="lens fixed bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.75rem)] left-1/2 z-40 flex -translate-x-1/2 items-center gap-1 rounded-xl py-1.5 pr-1.5 pl-3.5 motion-safe:animate-[rise_0.25s_var(--ease-unspool)] md:bottom-6"
+    >
+      <span
+        aria-hidden="true"
+        className="mr-1 size-2.5 shrink-0 rounded-full bg-action shadow-[0_0_0_3px_color-mix(in_srgb,var(--action)_18%,transparent)]"
+      />
+      <span
+        className="mr-2 text-sm whitespace-nowrap text-foreground"
+        aria-live="polite"
+      >
+        {String(selected.length)} selected
+        {selected.length >= 50 ? (
+          <span className="text-muted-foreground"> · the most at once</span>
+        ) : null}
+      </span>
+      <Button
+        variant="default"
+        size="sm"
+        aria-label="Organize selected…"
+        disabled={disabled}
+        onClick={() => {
+          onOrganize();
+        }}
+      >
+        Organize…
+      </Button>
+      {workspace.capabilities.includes('workflow:update') &&
+      selected.length <= PROMOTION_LIMITS.workflows &&
+      selected.every((item) => item.workflow.publishedVersionId !== null) ? (
+        <Button
+          variant="outline"
+          size="sm"
+          render={
+            <Link
+              to="/w/$workspaceId/settings/promotion"
+              params={{ workspaceId: workspace.id }}
+              search={promotionSearch(
+                selected.flatMap((item) =>
+                  item.workflow.publishedVersionId === null
+                    ? []
+                    : [
+                        {
+                          workflowId: item.workflow.id,
+                          versionId: item.workflow.publishedVersionId,
+                        },
+                      ],
+                ),
+              )}
+            />
+          }
+        >
+          Promote…
+        </Button>
+      ) : null}
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        aria-label="Clear selection"
+        title="Clear selection"
+        disabled={disabled}
+        onClick={() => {
+          onClear();
+        }}
+      >
+        <XIcon aria-hidden="true" />
+      </Button>
+    </div>
   );
 }

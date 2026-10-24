@@ -76,91 +76,31 @@ function WorkflowExportSession({
   onClose,
   finalFocus,
 }: WorkflowExportDialogProps) {
-  const [review, setReview] = useState<ReviewedSource>();
-  const [acknowledgedDigest, setAcknowledgedDigest] = useState<string>();
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string>();
-  const [readAttempt, setReadAttempt] = useState(0);
-  const activeRequest = useRef<
-    ReturnType<ReturnType<typeof usePortabilityLifetime>['begin']> | undefined
-  >(undefined);
-  const clear = useCallback(() => {
-    setReview(undefined);
-    setAcknowledgedDigest(undefined);
-    setError(undefined);
-    setPending(false);
-  }, []);
-  const { denied, begin, verify, accessFailure } = usePortabilityLifetime(
+  const model = useExportSource({
     apiClient,
     userId,
-    workspace.id,
-    clear,
-  );
-  const versionId = source.kind === 'version' ? source.versionId : undefined;
-  useEffect(() => {
-    if (denied) return;
-    const request = begin();
-    activeRequest.current = request;
-    async function readSource(): Promise<ReviewedSource> {
-      clear();
-      setPending(true);
-      await verify({ signal: request.signal, creating: false });
-      request.signal.throwIfAborted();
-      const saved = await readWorkflowExportSource({
-        apiClient,
-        workspaceId: workspace.id,
-        workflowId: workflow.id,
-        source:
-          versionId === undefined
-            ? { kind: 'draft' }
-            : { kind: 'version', versionId },
-        signal: request.signal,
-      });
-      return { ...saved, digest: await portableGraphDigest(saved.graph) };
-    }
-    void readSource()
-      .then(
-        (saved) => {
-          if (request.current()) setReview(saved);
-        },
-        (failure: unknown) => {
-          if (request.current() && !accessFailure(failure))
-            setError(describeCommandError(failure, 'reading the saved source'));
-        },
-      )
-      .finally(() => {
-        request.done();
-        if (activeRequest.current === request) {
-          activeRequest.current = undefined;
-          if (request.current()) setPending(false);
-        }
-      });
-    return () => {
-      request.cancel();
-      activeRequest.current?.cancel();
-      activeRequest.current = undefined;
-    };
-  }, [
-    apiClient,
-    workspace.id,
-    workflow.id,
-    versionId,
-    denied,
-    begin,
-    verify,
-    accessFailure,
-    clear,
-    readAttempt,
-  ]);
+    workspace,
+    workflow,
+    source,
+  });
+  const { review, acknowledgedDigest, pending, error, denied } = model.state;
+  const { activeRequestRef, begin, verify, accessFailure } = model.requests;
+  const {
+    setPending,
+    setError,
+    setAcknowledgedDigest,
+    setReview,
+    setReadAttempt,
+  } = model.controls;
   async function download() {
     const exportConfirmationBlocked =
       review === undefined ||
       acknowledgedDigest !== review.digest ||
-      activeRequest.current !== undefined ||
+      activeRequestRef.current !== undefined ||
       denied;
     if (exportConfirmationBlocked) return;
     const request = begin();
-    activeRequest.current = request;
+    activeRequestRef.current = request;
     setPending(true);
     setError(undefined);
     try {
@@ -189,8 +129,8 @@ function WorkflowExportSession({
       }
     } finally {
       request.done();
-      if (activeRequest.current === request) {
-        activeRequest.current = undefined;
+      if (activeRequestRef.current === request) {
+        activeRequestRef.current = undefined;
         if (request.current()) setPending(false);
       }
     }
@@ -213,39 +153,12 @@ function WorkflowExportSession({
             : `Review the exact saved source of “${workflow.name}” before downloading it.`}
         </DialogDescription>
         {denied ? null : (
-          <div className="mt-5 flex flex-col gap-4">
-            <Notice tone="warning">
-              Credentials and workspace connection references are excluded.
-              Configuration, literals, labels and expressions may still contain
-              secrets or private information. Nothing is automatically scrubbed.
-              Inspect every value before sharing the file.
-            </Notice>
-            {review === undefined ? null : (
-              <>
-                <p className="text-xs text-muted-foreground">
-                  {review.label}. Edits that aren’t saved yet stay out.
-                </p>
-                <PortableGraphReview
-                  graph={review.graph}
-                  label="Complete saved source graph"
-                />
-                <label className="flex items-start gap-3 text-sm">
-                  <Checkbox
-                    checked={acknowledgedDigest === review.digest}
-                    disabled={pending}
-                    onCheckedChange={(checked) => {
-                      setAcknowledgedDigest(
-                        checked ? review.digest : undefined,
-                      );
-                    }}
-                  />
-                  I reviewed this exact graph, including configuration and
-                  expressions, and understand that private values may remain in
-                  the download.
-                </label>
-              </>
-            )}
-          </div>
+          <ExportSourceReview
+            review={review}
+            acknowledgedDigest={acknowledgedDigest}
+            pending={pending}
+            onAcknowledge={setAcknowledgedDigest}
+          />
         )}
         {error === undefined ? null : (
           <Notice tone="destructive" className="mt-4">
@@ -285,5 +198,149 @@ function WorkflowExportSession({
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function useExportSource({
+  apiClient,
+  userId,
+  workspace,
+  workflow,
+  source,
+}: Pick<
+  WorkflowExportDialogProps,
+  'apiClient' | 'userId' | 'workspace' | 'workflow' | 'source'
+>) {
+  const [review, setReview] = useState<ReviewedSource>();
+  const [acknowledgedDigest, setAcknowledgedDigest] = useState<string>();
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string>();
+  const [readAttempt, setReadAttempt] = useState(0);
+  const activeRequestRef = useRef<
+    ReturnType<ReturnType<typeof usePortabilityLifetime>['begin']> | undefined
+  >(undefined);
+  const clear = useCallback(() => {
+    setReview(undefined);
+    setAcknowledgedDigest(undefined);
+    setError(undefined);
+    setPending(false);
+  }, []);
+  const { denied, begin, verify, accessFailure } = usePortabilityLifetime(
+    apiClient,
+    userId,
+    workspace.id,
+    clear,
+  );
+  const versionId = source.kind === 'version' ? source.versionId : undefined;
+  useEffect(() => {
+    if (denied) return;
+    const request = begin();
+    activeRequestRef.current = request;
+    async function readSource(): Promise<ReviewedSource> {
+      clear();
+      setPending(true);
+      await verify({ signal: request.signal, creating: false });
+      request.signal.throwIfAborted();
+      const saved = await readWorkflowExportSource({
+        apiClient,
+        workspaceId: workspace.id,
+        workflowId: workflow.id,
+        source:
+          versionId === undefined
+            ? { kind: 'draft' }
+            : { kind: 'version', versionId },
+        signal: request.signal,
+      });
+      return { ...saved, digest: await portableGraphDigest(saved.graph) };
+    }
+    void readSource()
+      .then(
+        (saved) => {
+          if (request.current()) setReview(saved);
+        },
+        (failure: unknown) => {
+          if (request.current() && !accessFailure(failure))
+            setError(describeCommandError(failure, 'reading the saved source'));
+        },
+      )
+      .finally(() => {
+        request.done();
+        if (activeRequestRef.current === request) {
+          activeRequestRef.current = undefined;
+          if (request.current()) setPending(false);
+        }
+      });
+    return () => {
+      request.cancel();
+      activeRequestRef.current?.cancel();
+      activeRequestRef.current = undefined;
+    };
+  }, [
+    apiClient,
+    workspace.id,
+    workflow.id,
+    versionId,
+    denied,
+    begin,
+    verify,
+    accessFailure,
+    clear,
+    readAttempt,
+  ]);
+  return {
+    state: { review, acknowledgedDigest, pending, error, denied },
+    requests: { activeRequestRef, begin, verify, accessFailure },
+    controls: {
+      setPending,
+      setError,
+      setAcknowledgedDigest,
+      setReview,
+      setReadAttempt,
+    },
+  };
+}
+function ExportSourceReview({
+  review,
+  acknowledgedDigest,
+  pending,
+  onAcknowledge,
+}: Readonly<{
+  review: ReviewedSource | undefined;
+  acknowledgedDigest: string | undefined;
+  pending: boolean;
+  onAcknowledge: (value: string | undefined) => void;
+}>) {
+  return (
+    <div className="mt-5 flex flex-col gap-4">
+      <Notice tone="warning">
+        Credentials and workspace connection references are excluded.
+        Configuration, literals, labels and expressions may still contain
+        secrets or private information. Nothing is automatically scrubbed.
+        Inspect every value before sharing the file.
+      </Notice>
+      {review === undefined ? null : (
+        <>
+          <p className="text-xs text-muted-foreground">
+            {review.label}. Edits that aren’t saved yet stay out.
+          </p>
+          <PortableGraphReview
+            graph={review.graph}
+            label="Complete saved source graph"
+          />
+          <label className="flex items-start gap-3 text-sm">
+            <Checkbox
+              checked={acknowledgedDigest === review.digest}
+              disabled={pending}
+              onCheckedChange={(checked) => {
+                onAcknowledge(checked ? review.digest : undefined);
+              }}
+            />
+            I reviewed this exact graph, including configuration and
+            expressions, and understand that private values may remain in the
+            download.
+          </label>
+        </>
+      )}
+    </div>
   );
 }

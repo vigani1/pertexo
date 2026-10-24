@@ -61,6 +61,11 @@ export function WorkflowTestMenuItems({
   withTest = true,
 }: Readonly<{ tests: WorkflowTests; withTest?: boolean }>) {
   if (!tests.enabled) return null;
+  const suiteActionsBlocked =
+    tests.blocked ||
+    tests.suites.preparing ||
+    tests.suites.start.pending ||
+    tests.start.pending;
   return (
     <>
       {withTest ? (
@@ -72,12 +77,7 @@ export function WorkflowTestMenuItems({
         </DropdownMenuItem>
       ) : null}
       <DropdownMenuItem
-        disabled={
-          tests.blocked ||
-          tests.suites.preparing ||
-          tests.suites.start.pending ||
-          tests.start.pending
-        }
+        disabled={suiteActionsBlocked}
         onClick={() => void tests.suites.prepare()}
       >
         Run all tests
@@ -104,6 +104,11 @@ export function WorkflowTestActions({
   onPrepare: () => void;
 }>) {
   const locked = tests.start.pending || tests.start.uncertain;
+  const testStartBlocked =
+    tests.preparation === undefined ||
+    locked ||
+    inputBlocked ||
+    (tests.preparation.effectfulSteps.length > 0 && !acknowledged);
   return (
     <>
       {(tests.preparationError !== undefined ||
@@ -131,15 +136,7 @@ export function WorkflowTestActions({
             Retry same test request
           </Button>
         ) : (
-          <Button
-            disabled={
-              tests.preparation === undefined ||
-              locked ||
-              inputBlocked ||
-              (tests.preparation.effectfulSteps.length > 0 && !acknowledged)
-            }
-            onClick={onSubmit}
-          >
+          <Button disabled={testStartBlocked} onClick={onSubmit}>
             {tests.start.pending ? 'Starting…' : 'Start test'}
           </Button>
         )}

@@ -7,10 +7,11 @@ export function workflowWorkspaceAccess(
   if (access === undefined) return workspace;
   return {
     ...workspace,
-    capabilities: workspace.capabilities.filter(
-      (capability) =>
+    capabilities: workspace.capabilities.filter((capability) => {
+      const resourceAllowsCapability =
         (capability !== 'workflow:update' || access.canEdit) &&
-        (capability !== 'workflow:publish' || access.canPublish),
-    ),
+        (capability !== 'workflow:publish' || access.canPublish);
+      return resourceAllowsCapability;
+    }),
   };
 }

@@ -13,15 +13,16 @@ export function WorkflowListRoute() {
       workspace={workspace}
       search={search}
       onSearchChange={(next) => {
+        const replacesCurrentSearch =
+          typeof next === 'function' ||
+          !(next.create ?? false) ||
+          (search.create ?? false);
         return navigate({
           to: '/w/$workspaceId/workflows',
           params: { workspaceId: workspace.id },
           search: next,
           // Opening the lens is a step Back can undo; filters just replace.
-          replace:
-            typeof next === 'function' ||
-            !(next.create ?? false) ||
-            (search.create ?? false),
+          replace: replacesCurrentSearch,
         });
       }}
       onCreated={(workflowId) => {

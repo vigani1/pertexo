@@ -225,6 +225,11 @@ function ConfigNumberField(props: LiveFieldProps) {
     );
     live.change(String(bounded));
   }
+  const isNonnegativeInteger =
+    field.kind === 'integer' &&
+    field.unit === undefined &&
+    field.minimum !== undefined &&
+    field.minimum >= 0;
   return (
     <Field data-invalid={live.error !== undefined}>
       <FieldLabel htmlFor={id}>
@@ -241,14 +246,7 @@ function ConfigNumberField(props: LiveFieldProps) {
             autoComplete="off"
             // The digit pad has no minus or "." key on every phone, so only
             // whole counts from 0 in their own unit get it.
-            inputMode={
-              field.kind === 'integer' &&
-              field.unit === undefined &&
-              field.minimum !== undefined &&
-              field.minimum >= 0
-                ? 'numeric'
-                : undefined
-            }
+            inputMode={isNonnegativeInteger ? 'numeric' : undefined}
             className={cn('font-mono', unitPadding(unit))}
             value={live.text}
             disabled={!form.editable}

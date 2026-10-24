@@ -52,6 +52,10 @@ type ContextFieldsProps = Props &
 
 function ContextFields(props: ContextFieldsProps) {
   const model = useContextMappings(props);
+  const addingContextBlocked =
+    !model.form.editable ||
+    model.draft.text.length >= 20 ||
+    (model.group === 'prefill' && model.available.length === 0);
   return (
     <fieldset
       className="flex min-w-0 flex-col gap-3"
@@ -87,11 +91,7 @@ function ContextFields(props: ContextFieldsProps) {
         type="button"
         variant="outline"
         className="self-start"
-        disabled={
-          !model.form.editable ||
-          model.draft.text.length >= 20 ||
-          (model.group === 'prefill' && model.available.length === 0)
-        }
+        disabled={addingContextBlocked}
         onClick={() => {
           model.draft.change([
             ...model.draft.text,

@@ -112,13 +112,14 @@ function copyStep(
   levelNodes: readonly WorkflowNode[],
 ): WorkflowNode {
   const parallelId = node.config.parallelNodeId;
-  const parallel =
+  const hasCopiedParallel =
     node.definition.key === 'core.merge' &&
     node.definition.version === 1 &&
     typeof parallelId === 'string' &&
-    idMap.has(parallelId)
-      ? levelNodes.find((candidate) => candidate.id === parallelId)
-      : undefined;
+    idMap.has(parallelId);
+  const parallel = hasCopiedParallel
+    ? levelNodes.find((candidate) => candidate.id === parallelId)
+    : undefined;
   const remapParallel =
     parallel?.definition.key === 'core.parallel' &&
     parallel.definition.version === 1 &&
@@ -197,13 +198,14 @@ export function adoptStepFrom(
     : [...graph.nodes, node];
   const nodeIds = new Set(nodes.map((candidate) => candidate.id));
   const edgeIds = new Set(graph.edges.map((edge) => edge.id));
-  const edges = source.edges.filter(
-    (edge) =>
+  const edges = source.edges.filter((edge) => {
+    const isCopiedIncidentEdge =
       (edge.source.nodeId === nodeId || edge.target.nodeId === nodeId) &&
       !edgeIds.has(edge.id) &&
       nodeIds.has(edge.source.nodeId) &&
-      nodeIds.has(edge.target.nodeId),
-  );
+      nodeIds.has(edge.target.nodeId);
+    return isCopiedIncidentEdge;
+  });
   return { ...graph, nodes, edges: [...graph.edges, ...edges] };
 }
 

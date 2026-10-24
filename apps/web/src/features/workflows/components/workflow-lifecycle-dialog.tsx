@@ -83,6 +83,8 @@ export function WorkflowLifecycleDialog({
     onClose();
   }
 
+  const pinCheckUnavailable =
+    checkingPins && (pins.isPending || pins.isError || pins.isFetching);
   return (
     <ConfirmDialog
       open={intent !== undefined}
@@ -102,9 +104,7 @@ export function WorkflowLifecycleDialog({
       pending={lifecycle.pending}
       error={lifecycle.error}
       errorTone={lifecycle.exactRetry ? 'warning' : 'destructive'}
-      confirmDisabled={
-        checkingPins && (pins.isPending || pins.isError || pins.isFetching)
-      }
+      confirmDisabled={pinCheckUnavailable}
       onConfirm={confirm}
     >
       {intent?.command === 'archive' ? (

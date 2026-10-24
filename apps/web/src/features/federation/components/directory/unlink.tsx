@@ -44,39 +44,43 @@ export function DirectoryWorkspaceLinks({
       description="Either workspace owner can revoke a non-control link. Unlinking removes directory-managed grants in that workspace; manual memberships and accounts stay intact."
     >
       <ul className="divide-y divide-border">
-        {organization.workspaces.map((linked) => (
-          <li
-            key={linked.workspaceId}
-            className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm"
-          >
-            <span className="min-w-0 break-words">
-              {linked.name}
-              {linked.workspaceId === settings.controlWorkspaceId
-                ? ' · Control workspace'
-                : ''}
-            </span>
-            {workspace.status === 'active' &&
+        {organization.workspaces.map((linked) => {
+          const canUnlinkWorkspace =
+            workspace.status === 'active' &&
             linked.workspaceId !== settings.controlWorkspaceId &&
             (settings.canManage ||
               (linked.workspaceId === workspace.id &&
-                workspace.role === 'owner')) ? (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={command.pending || command.uncertain}
-                onClick={() => {
-                  setReview({
-                    targetWorkspaceId: linked.workspaceId,
-                    name: linked.name,
-                    expectedRevision: settings.revision,
-                  });
-                }}
-              >
-                Unlink {linked.name}
-              </Button>
-            ) : null}
-          </li>
-        ))}
+                workspace.role === 'owner'));
+          return (
+            <li
+              key={linked.workspaceId}
+              className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm"
+            >
+              <span className="min-w-0 break-words">
+                {linked.name}
+                {linked.workspaceId === settings.controlWorkspaceId
+                  ? ' · Control workspace'
+                  : ''}
+              </span>
+              {canUnlinkWorkspace ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={command.pending || command.uncertain}
+                  onClick={() => {
+                    setReview({
+                      targetWorkspaceId: linked.workspaceId,
+                      name: linked.name,
+                      expectedRevision: settings.revision,
+                    });
+                  }}
+                >
+                  Unlink {linked.name}
+                </Button>
+              ) : null}
+            </li>
+          );
+        })}
       </ul>
       {review === undefined ? null : (
         <Dialog

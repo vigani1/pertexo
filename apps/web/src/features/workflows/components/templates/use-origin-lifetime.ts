@@ -46,12 +46,15 @@ export function useTemplateOriginLifetime({
       queryClient,
       userId,
       workspaceId,
-      counts: ({ key, error }) =>
-        error.status === 401 ||
-        key.length === 0 ||
-        exact(key, scopeKey) ||
-        exact(key, detailKey) ||
-        exact(key, originKey),
+      counts: ({ key, error }) => {
+        const isTemplateAuthorityRead =
+          error.status === 401 ||
+          key.length === 0 ||
+          exact(key, scopeKey) ||
+          exact(key, detailKey) ||
+          exact(key, originKey);
+        return isTemplateAuthorityRead;
+      },
       denied: retire,
     });
     if (!allowed) queueMicrotask(retire);

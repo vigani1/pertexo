@@ -40,6 +40,7 @@ type InputCaseEditorProps = Readonly<{
 
 export function InputCaseEditor(props: InputCaseEditorProps) {
   const model = useInputCaseForm(props);
+  const fieldsDisabled = model.locked || model.deleting || !model.writable;
   return (
     <>
       <p className="text-xs text-muted-foreground">
@@ -59,24 +60,28 @@ export function InputCaseEditor(props: InputCaseEditorProps) {
           label="Case name"
           error={model.validation.error('name')}
         >
-          {(control) => (
-            <Input
-              {...control}
-              ref={model.validation.register('name')}
-              name="case-name"
-              autoComplete="off"
-              value={model.name}
-              disabled={model.locked || model.deleting || !model.writable}
-              maxLength={128}
-              onChange={(event) => {
-                model.setName(event.target.value);
-                model.validation.change(
-                  'name',
-                  event.target.value.trim() ? undefined : 'Enter a case name.',
-                );
-              }}
-            />
-          )}
+          {(control) => {
+            return (
+              <Input
+                {...control}
+                ref={model.validation.register('name')}
+                name="case-name"
+                autoComplete="off"
+                value={model.name}
+                disabled={fieldsDisabled}
+                maxLength={128}
+                onChange={(event) => {
+                  model.setName(event.target.value);
+                  model.validation.change(
+                    'name',
+                    event.target.value.trim()
+                      ? undefined
+                      : 'Enter a case name.',
+                  );
+                }}
+              />
+            );
+          }}
         </LabelledField>
         <LabelledField
           id={`${model.id}-input`}
@@ -89,7 +94,7 @@ export function InputCaseEditor(props: InputCaseEditorProps) {
               ref={model.validation.register('input')}
               name="case-input"
               value={model.input}
-              disabled={model.locked || model.deleting || !model.writable}
+              disabled={fieldsDisabled}
               autoComplete="off"
               spellCheck={false}
               className="min-h-32 font-mono"
@@ -111,7 +116,7 @@ export function InputCaseEditor(props: InputCaseEditorProps) {
         value={model.expectations}
         onChange={model.setExpectations}
         scope={model.cases.scope}
-        disabled={model.locked || model.deleting || !model.writable}
+        disabled={fieldsDisabled}
         error={model.expectationError}
       />
       {model.cases.conflict && model.cases.selected !== undefined ? (

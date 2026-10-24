@@ -268,13 +268,14 @@ export function linkWorkflowNodes(
   if (sourceHandle === null || targetHandle === null) return null;
   const scope = scopeOf(graph, source);
   if (scope === undefined || !canLinkSteps(graph, source, target)) return null;
-  const duplicate = levelAt(graph, scope)?.edges.some(
-    (edge) =>
+  const duplicate = levelAt(graph, scope)?.edges.some((edge) => {
+    const isSameLink =
       edge.source.nodeId === source &&
       edge.source.port === sourceHandle &&
       edge.target.nodeId === target &&
-      edge.target.port === targetHandle,
-  );
+      edge.target.port === targetHandle;
+    return isSameLink;
+  });
   if (duplicate !== false) return null;
   const edge = {
     id,

@@ -46,6 +46,11 @@ export function WorkflowOrganizationRowMenu({
   const isFavorite = favorite.isPending
     ? favorite.variables.favorite
     : workflow.organization.isFavorite;
+  const favoriteChangeBlocked =
+    disabled ||
+    favorite.isPending ||
+    workspace.status !== 'active' ||
+    !workspace.capabilities.includes('workflow:read');
   return (
     <span className="inline-flex items-center gap-2">
       <WorkflowRowMenu
@@ -56,12 +61,7 @@ export function WorkflowOrganizationRowMenu({
         organizationActions={
           <>
             <DropdownMenuItem
-              disabled={
-                disabled ||
-                favorite.isPending ||
-                workspace.status !== 'active' ||
-                !workspace.capabilities.includes('workflow:read')
-              }
+              disabled={favoriteChangeBlocked}
               onClick={() => {
                 favorite.mutate({ favorite: !isFavorite });
               }}

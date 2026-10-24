@@ -95,118 +95,23 @@ export function CaseExpectations({
       </LabelledField>
       <QueryView query={graph} resource="Step choices" loading={null} />
       {value.assertions.map((item, index) => (
-        <fieldset
+        <ExpectationRow
           key={item.id}
-          className="min-w-0 space-y-2 rounded-md border p-3"
-        >
-          <legend className="text-xs">Check {index + 1}</legend>
-          <LabelledField id={`${item.id}-source`} label="Output">
-            {(control) => (
-              <Select
-                value={item.source}
-                items={
-                  choices.some((choice) => choice.value === item.source)
-                    ? choices
-                    : [
-                        ...choices,
-                        {
-                          value: item.source,
-                          label: `Missing step (${item.source})`,
-                        },
-                      ]
-                }
-                onValueChange={(source) => {
-                  if (source !== null) update(item.id, { source });
-                }}
-              >
-                <SelectTrigger {...control}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {choices.map((choice) => (
-                    <SelectItem key={choice.value} value={choice.value}>
-                      {choice.label}
-                    </SelectItem>
-                  ))}
-                  {item.source !== '' &&
-                  !choices.some((choice) => choice.value === item.source) ? (
-                    <SelectItem value={item.source}>
-                      Missing step ({item.source})
-                    </SelectItem>
-                  ) : null}
-                </SelectContent>
-              </Select>
-            )}
-          </LabelledField>
-          <LabelledField id={`${item.id}-path`} label="JSON path">
-            {(control) => (
-              <Input
-                {...control}
-                value={item.path}
-                maxLength={512}
-                placeholder="$.total"
-                autoComplete="off"
-                onChange={(event) => {
-                  update(item.id, { path: event.target.value });
-                }}
-              />
-            )}
-          </LabelledField>
-          <LabelledField id={`${item.id}-operator`} label="Compare">
-            {(control) => (
-              <Select
-                value={item.operator}
-                items={[
-                  { value: 'equals', label: 'Equals' },
-                  { value: 'contains', label: 'Contains' },
-                ]}
-                onValueChange={(operator) => {
-                  if (operator !== null) update(item.id, { operator });
-                }}
-              >
-                <SelectTrigger {...control}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="equals">Equals</SelectItem>
-                  <SelectItem value="contains">Contains</SelectItem>
-                </SelectContent>
-              </Select>
-            )}
-          </LabelledField>
-          <LabelledField
-            id={`${item.id}-expected`}
-            label="Expected value (JSON)"
-          >
-            {(control) => (
-              <Textarea
-                {...control}
-                value={item.expected}
-                autoComplete="off"
-                spellCheck={false}
-                className="min-h-16 font-mono"
-                onChange={(event) => {
-                  update(item.id, { expected: event.target.value });
-                }}
-              />
-            )}
-          </LabelledField>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              onChange({
-                ...value,
-                assertions: value.assertions.filter(
-                  (entry) => entry.id !== item.id,
-                ),
-              });
-            }}
-          >
-            Remove check {index + 1}
-          </Button>
-        </fieldset>
+          item={item}
+          index={index}
+          choices={choices}
+          onChange={(change) => {
+            update(item.id, change);
+          }}
+          onRemove={() => {
+            onChange({
+              ...value,
+              assertions: value.assertions.filter(
+                (entry) => entry.id !== item.id,
+              ),
+            });
+          }}
+        />
       ))}
       <Button
         type="button"
@@ -236,6 +141,127 @@ export function CaseExpectations({
           {error}
         </p>
       )}
+    </fieldset>
+  );
+}
+
+type ExpectationRowProps = Readonly<{
+  item: CaseExpectationDraft['assertions'][number];
+  index: number;
+  choices: readonly Readonly<{ value: string; label: string }>[];
+  onChange: (
+    change: Partial<CaseExpectationDraft['assertions'][number]>,
+  ) => void;
+  onRemove: () => void;
+}>;
+function ExpectationRow({
+  item,
+  index,
+  choices,
+  onChange,
+  onRemove,
+}: ExpectationRowProps) {
+  return (
+    <fieldset className="min-w-0 space-y-2 rounded-md border p-3">
+      <legend className="text-xs">Check {index + 1}</legend>
+      <LabelledField id={`${item.id}-source`} label="Output">
+        {(control) => (
+          <Select
+            value={item.source}
+            items={
+              choices.some((choice) => choice.value === item.source)
+                ? choices
+                : [
+                    ...choices,
+                    {
+                      value: item.source,
+                      label: `Missing step (${item.source})`,
+                    },
+                  ]
+            }
+            onValueChange={(source) => {
+              if (source !== null) onChange({ source });
+            }}
+          >
+            <SelectTrigger {...control}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {choices.map((choice) => (
+                <SelectItem key={choice.value} value={choice.value}>
+                  {choice.label}
+                </SelectItem>
+              ))}
+              {item.source !== '' &&
+              !choices.some((choice) => choice.value === item.source) ? (
+                <SelectItem value={item.source}>
+                  Missing step ({item.source})
+                </SelectItem>
+              ) : null}
+            </SelectContent>
+          </Select>
+        )}
+      </LabelledField>
+      <LabelledField id={`${item.id}-path`} label="JSON path">
+        {(control) => (
+          <Input
+            {...control}
+            value={item.path}
+            maxLength={512}
+            placeholder="$.total"
+            autoComplete="off"
+            onChange={(event) => {
+              onChange({ path: event.target.value });
+            }}
+          />
+        )}
+      </LabelledField>
+      <LabelledField id={`${item.id}-operator`} label="Compare">
+        {(control) => (
+          <Select
+            value={item.operator}
+            items={[
+              { value: 'equals', label: 'Equals' },
+              { value: 'contains', label: 'Contains' },
+            ]}
+            onValueChange={(operator) => {
+              if (operator !== null) onChange({ operator });
+            }}
+          >
+            <SelectTrigger {...control}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="equals">Equals</SelectItem>
+              <SelectItem value="contains">Contains</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+      </LabelledField>
+      <LabelledField id={`${item.id}-expected`} label="Expected value (JSON)">
+        {(control) => (
+          <Textarea
+            {...control}
+            value={item.expected}
+            autoComplete="off"
+            spellCheck={false}
+            className="min-h-16 font-mono"
+            onChange={(event) => {
+              onChange({ expected: event.target.value });
+            }}
+          />
+        )}
+      </LabelledField>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={() => {
+          onRemove();
+        }}
+      >
+        Remove check {index + 1}
+      </Button>
     </fieldset>
   );
 }

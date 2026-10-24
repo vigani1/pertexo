@@ -1,5 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type RefObject,
+  type Dispatch,
+  type SetStateAction,
+} from 'react';
+import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { subscribeSessionChanges } from '@/features/auth/session/session-sync.public';
 import { isApiError } from '@/lib/api/error';
@@ -127,87 +135,24 @@ export function useWorkflowOrganizationCommand({
     retire,
   ]);
 
-  async function send(frozen: WorkflowOrganizationAttempt) {
-    const token = owner.current;
-    const organizationRequestBlocked =
-      token === undefined ||
-      request.current !== undefined ||
-      denied.current ||
-      !currentAllowed;
-    if (organizationRequestBlocked) return;
-    const controller = new AbortController();
-    request.current = controller;
-    const current = () =>
-      owner.current === token &&
-      request.current === controller &&
-      !controller.signal.aborted;
-    const verify = () =>
-      verifyCurrentAuthority({
+  const send = (frozen: WorkflowOrganizationAttempt) =>
+    sendOrganizationCommand(
+      {
         apiClient,
         userId,
         workspaceId,
         requiredRole,
-        signal: controller.signal,
-        current,
+        queryClient,
+        owner,
+        request,
+        attempt,
+        denied,
+        currentAllowed,
         retire,
-      });
-    setState((previous) => ({
-      ...previous,
-      pending: true,
-      retryAvailable: false,
-      error: undefined,
-    }));
-    try {
-      if (!(await verify())) return;
-      const result = await sendWorkflowOrganizationCommand(
-        apiClient,
-        frozen,
-        controller.signal,
-      );
-      if (!current() || !(await verify()) || !current()) return;
-      const authorityLost =
-        'items' in result &&
-        result.items.some((item) => item.status === 'forbidden');
-      const retryAvailable =
-        'items' in result &&
-        !authorityLost &&
-        result.items.some((item) => item.status === 'outcome_unknown');
-      attempt.current = retryAvailable ? frozen : undefined;
-      denied.current = authorityLost;
-      if (authorityLost)
-        clearOrganizationQueries(queryClient, userId, workspaceId);
-      setState({
-        pending: false,
-        retryAvailable,
-        denied: authorityLost,
-        result,
-      });
-      void queryClient.invalidateQueries({
-        queryKey: workflowOrganizationKeys.scope(userId, workspaceId),
-      });
-      void queryClient.invalidateQueries({
-        queryKey: workflowKeys.scope(userId, workspaceId),
-      });
-    } catch (error) {
-      if (!current()) return;
-      if (accessLost(error)) {
-        retire();
-        return;
-      }
-      const retryAvailable = uncertain(error);
-      attempt.current = retryAvailable ? frozen : undefined;
-      setState({
-        pending: false,
-        retryAvailable,
-        denied: false,
-        error: retryAvailable
-          ? 'The outcome could not be confirmed. Retry this exact command; refreshing current state preserves its recovery identity.'
-          : definitiveMessage(error),
-      });
-    } finally {
-      if (request.current === controller) request.current = undefined;
-    }
-  }
+        setState,
+      },
+      frozen,
+    );
 
   return {
     ...state,
@@ -279,4 +224,116 @@ function definitiveMessage(error: unknown) {
   return code !== undefined && Object.hasOwn(messages, code)
     ? (messages[code] ?? 'The command was not accepted.')
     : 'The command was not accepted. Refresh current metadata before starting a new command.';
+}
+
+type OrganizationCommandContext = Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspaceId: string;
+  requiredRole: RequiredRole;
+  queryClient: QueryClient;
+  owner: RefObject<symbol | undefined>;
+  request: RefObject<AbortController | undefined>;
+  attempt: RefObject<WorkflowOrganizationAttempt | undefined>;
+  denied: RefObject<boolean>;
+  currentAllowed: boolean;
+  retire: () => void;
+  setState: Dispatch<SetStateAction<State>>;
+}>;
+async function sendOrganizationCommand(
+  {
+    apiClient,
+    userId,
+    workspaceId,
+    requiredRole,
+    queryClient,
+    owner,
+    request,
+    attempt,
+    denied,
+    currentAllowed,
+    retire,
+    setState,
+  }: OrganizationCommandContext,
+  frozen: WorkflowOrganizationAttempt,
+) {
+  const token = owner.current;
+  const organizationRequestBlocked =
+    token === undefined ||
+    request.current !== undefined ||
+    denied.current ||
+    !currentAllowed;
+  if (organizationRequestBlocked) return;
+  const controller = new AbortController();
+  request.current = controller;
+  const current = () =>
+    owner.current === token &&
+    request.current === controller &&
+    !controller.signal.aborted;
+  const verify = () =>
+    verifyCurrentAuthority({
+      apiClient,
+      userId,
+      workspaceId,
+      requiredRole,
+      signal: controller.signal,
+      current,
+      retire,
+    });
+  setState((previous) => ({
+    ...previous,
+    pending: true,
+    retryAvailable: false,
+    error: undefined,
+  }));
+  try {
+    if (!(await verify())) return;
+    const result = await sendWorkflowOrganizationCommand(
+      apiClient,
+      frozen,
+      controller.signal,
+    );
+    if (!current() || !(await verify()) || !current()) return;
+    const authorityLost =
+      'items' in result &&
+      result.items.some((item) => item.status === 'forbidden');
+    const retryAvailable =
+      'items' in result &&
+      !authorityLost &&
+      result.items.some((item) => item.status === 'outcome_unknown');
+    attempt.current = retryAvailable ? frozen : undefined;
+    denied.current = authorityLost;
+    if (authorityLost)
+      clearOrganizationQueries(queryClient, userId, workspaceId);
+    setState({
+      pending: false,
+      retryAvailable,
+      denied: authorityLost,
+      result,
+    });
+    void queryClient.invalidateQueries({
+      queryKey: workflowOrganizationKeys.scope(userId, workspaceId),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: workflowKeys.scope(userId, workspaceId),
+    });
+  } catch (error) {
+    if (!current()) return;
+    if (accessLost(error)) {
+      retire();
+      return;
+    }
+    const retryAvailable = uncertain(error);
+    attempt.current = retryAvailable ? frozen : undefined;
+    setState({
+      pending: false,
+      retryAvailable,
+      denied: false,
+      error: retryAvailable
+        ? 'The outcome could not be confirmed. Retry this exact command; refreshing current state preserves its recovery identity.'
+        : definitiveMessage(error),
+    });
+  } finally {
+    if (request.current === controller) request.current = undefined;
+  }
 }

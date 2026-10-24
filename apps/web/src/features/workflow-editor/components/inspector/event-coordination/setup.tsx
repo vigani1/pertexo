@@ -272,10 +272,12 @@ function NumberSetting({
     format: String,
     parse: (text) => {
       const number = Number(text);
-      return text.trim() !== '' &&
+      const validDelay =
+        text.trim() !== '' &&
         Number.isInteger(number) &&
         number >= 1 &&
-        number <= maximum
+        number <= maximum;
+      return validDelay
         ? { ok: true, value: number }
         : {
             ok: false,

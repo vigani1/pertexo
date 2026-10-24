@@ -67,6 +67,11 @@ function SuiteStartActions({
 }>) {
   const locked = suites.start.pending || suites.start.uncertain,
     preparation = suites.preparation;
+  const suiteStartBlocked =
+    locked ||
+    preparation === undefined ||
+    preparation.cases.length === 0 ||
+    (preparation.effectfulSteps.length > 0 && !acknowledged);
   return (
     <div className="flex flex-wrap justify-end gap-2">
       <Button
@@ -95,12 +100,7 @@ function SuiteStartActions({
             Prepare again
           </Button>
           <Button
-            disabled={
-              locked ||
-              preparation === undefined ||
-              preparation.cases.length === 0 ||
-              (preparation.effectfulSteps.length > 0 && !acknowledged)
-            }
+            disabled={suiteStartBlocked}
             onClick={() =>
               void suites.submit({ acknowledgeSideEffects: acknowledged })
             }

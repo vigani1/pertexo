@@ -273,17 +273,16 @@ function callVersionSelection(
         : current,
     undefined,
   );
+  const hasNewerVersion =
+    sameTarget &&
+    selected !== undefined &&
+    latest !== undefined &&
+    latest.versionNumber > selected.versionNumber;
   return {
     targets,
     selected,
     selectedVersionId: sameTarget ? pin.workflowVersionId : null,
-    upgrade:
-      sameTarget &&
-      selected !== undefined &&
-      latest !== undefined &&
-      latest.versionNumber > selected.versionNumber
-        ? latest
-        : undefined,
+    upgrade: hasNewerVersion ? latest : undefined,
   };
 }
 

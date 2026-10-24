@@ -312,6 +312,11 @@ function InputFileActions({
   editable: boolean;
   hasScratch: boolean;
 }>) {
+  const canUploadHttpBody =
+    scope !== undefined &&
+    node.definition.key === 'http.request' &&
+    node.config.method !== 'GET' &&
+    node.config.method !== 'HEAD';
   return (
     <>
       {scope !== undefined && node.definition.key === 'core.read_file' ? (
@@ -322,10 +327,7 @@ function InputFileActions({
           hasScratch={hasScratch}
         />
       ) : null}
-      {scope !== undefined &&
-      node.definition.key === 'http.request' &&
-      node.config.method !== 'GET' &&
-      node.config.method !== 'HEAD' ? (
+      {canUploadHttpBody ? (
         <UploadFile
           targetKey={JSON.stringify(node.inputMappings)}
           scope={scope}

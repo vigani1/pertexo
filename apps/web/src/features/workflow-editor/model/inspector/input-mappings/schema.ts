@@ -84,14 +84,14 @@ function schemaValueType(
   candidate: Readonly<Record<string, unknown>>,
 ): SchemaValueType | undefined {
   const type = Reflect.get(candidate, 'type');
-  return type === 'string' ||
+  const isSchemaType =
+    type === 'string' ||
     type === 'number' ||
     type === 'integer' ||
     type === 'boolean' ||
     type === 'object' ||
-    type === 'array'
-    ? type
-    : undefined;
+    type === 'array';
+  return isSchemaType ? type : undefined;
 }
 
 /** A JSON path for one top-level property: `$.amount` or `$['a-b']`. */

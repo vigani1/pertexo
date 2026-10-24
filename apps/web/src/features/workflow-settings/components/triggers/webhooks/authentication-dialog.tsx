@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type Dispatch, type SetStateAction } from 'react';
 import {
   webhookAuthenticationSchema,
   type WebhookAuthentication,
@@ -37,7 +37,7 @@ export function WebhookAuthenticationDialog({
   onSave: (value: WebhookAuthentication) => Promise<unknown>;
   onClose: () => void;
 }>) {
-  const [draft, setDraft] = useState({
+  const [draft, setDraft] = useState<AuthenticationDraft>({
     mode: authentication.mode,
     headerName:
       authentication.mode === 'header_secret'
@@ -125,6 +125,58 @@ export function WebhookAuthenticationDialog({
       <p className="text-sm text-muted-foreground">
         {AUTHENTICATION_COPY[draft.mode]}
       </p>
+      <WebhookCredentialFields
+        draft={draft}
+        setDraft={setDraft}
+        validation={validation}
+        pending={pending}
+        value={value}
+      />
+      {changesCredential ? (
+        <p className="text-sm text-muted-foreground">
+          This immediately replaces the URL and secret. Existing senders stop
+          working until updated. Store the new credentials when they appear.
+        </p>
+      ) : null}
+    </ConfirmDialog>
+  );
+}
+
+const AUTHENTICATION_COPY: Readonly<
+  Record<WebhookAuthentication['mode'], string>
+> = {
+  signed:
+    'Signs the exact request bytes and checks a five-minute timestamp. Recommended when the sender supports it.',
+  secret_url:
+    'The URL is the only credential. Anyone who obtains it can start runs. Keep it private and rotate it if shared accidentally.',
+  header_secret:
+    'Send the generated secret in Authorization: Bearer, or a header used only for this credential. Use HTTPS.',
+};
+
+interface AuthenticationDraft {
+  mode: WebhookAuthentication['mode'];
+  headerName: string;
+  origins: string;
+}
+function WebhookCredentialFields({
+  draft,
+  setDraft,
+  validation,
+  pending,
+  value,
+}: Readonly<{
+  draft: AuthenticationDraft;
+  setDraft: Dispatch<SetStateAction<AuthenticationDraft>>;
+  validation: ReturnType<typeof useFieldValidation<FormFields>>;
+  pending: boolean;
+  value: () => {
+    mode: WebhookAuthentication['mode'];
+    headerName?: string;
+    allowedOrigins: string[];
+  };
+}>) {
+  return (
+    <>
       {draft.mode === 'header_secret' ? (
         <LabelledField
           id="webhook-header"
@@ -194,23 +246,6 @@ export function WebhookAuthenticationDialog({
           )}
         </LabelledField>
       )}
-      {changesCredential ? (
-        <p className="text-sm text-muted-foreground">
-          This immediately replaces the URL and secret. Existing senders stop
-          working until updated. Store the new credentials when they appear.
-        </p>
-      ) : null}
-    </ConfirmDialog>
+    </>
   );
 }
-
-const AUTHENTICATION_COPY: Readonly<
-  Record<WebhookAuthentication['mode'], string>
-> = {
-  signed:
-    'Signs the exact request bytes and checks a five-minute timestamp. Recommended when the sender supports it.',
-  secret_url:
-    'The URL is the only credential. Anyone who obtains it can start runs. Keep it private and rotate it if shared accidentally.',
-  header_secret:
-    'Send the generated secret in Authorization: Bearer, or a header used only for this credential. Use HTTPS.',
-};
