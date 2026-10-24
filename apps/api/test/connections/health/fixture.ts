@@ -128,12 +128,7 @@ function abandonPublication(child: ChildProcess, signal: AbortSignal) {
 
 export function useConnectionHealthFixture(
   suite: string,
-  options: Readonly<{
-    webOrigin?: string;
-    abandonPublicationBeforeRestart?: boolean;
-    beforeClose?: () => Promise<void>;
-    browserLifetime?: (path: string, instanceId: string) => void;
-  }> = {},
+  options: ConnectionHealthFixtureOptions = {},
 ) {
   const owner = new FixtureResourceOwner(),
     scope = new AbortController();
@@ -166,117 +161,84 @@ export function useConnectionHealthFixture(
     response.setHeader('cache-control', 'no-store');
     response.end(JSON.stringify(value));
   };
-  const control = createServer((request, response) => {
-    const path = new URL(request.url ?? '/', 'http://127.0.0.1').pathname;
-    if (path === '/api/auth.test') {
-      json(response, { ok: true });
-      return;
-    }
-    if (path === '/api/chat.postMessage') {
-      sends++;
-      const action = nextResponse;
-      nextResponse = 'reject';
-      if (action === 'hold') {
-        held.add(response);
-        response.once('close', () => held.delete(response));
-        return;
-      }
-      json(
-        response,
-        action === 'healthy'
-          ? { ok: true, channel: 'C123ABC', ts: '1710000000.000001' }
-          : { ok: false, error: 'token_revoked' },
-      );
-      return;
-    }
-    if (request.method === 'GET' && path === '/connection-health-seed') {
-      json(response, {
-        workspaceId,
-        connectionId,
-        workflowId,
-        token,
-        replacementToken,
-        cookies: [
-          {
-            name: 'pertexo_session',
-            value: browser.session,
-            url: options.webOrigin,
-          },
-          {
-            name: 'pertexo_csrf',
-            value: encodeURIComponent(browser.csrf),
-            url: options.webOrigin,
-          },
-        ],
-      });
-      return;
-    }
-    if (request.method !== 'POST') {
-      response.writeHead(404).end();
-      return;
-    }
-    if (path === '/browser-opened' || path === '/browser-disposed') {
-      let body = '';
-      request.on('data', (chunk: Buffer) => {
-        body += chunk.toString();
-        if (body.length > 512) request.destroy();
-      });
-      request.on('end', () => {
-        try {
-          const parsed = z
-            .object({ instanceId: z.uuid() })
-            .strict()
-            .parse(JSON.parse(body));
-          options.browserLifetime?.(path, parsed.instanceId);
-          response.writeHead(204).end();
-        } catch {
-          response.writeHead(400).end();
-        }
-      });
-      return;
-    }
-    const command = Promise.resolve()
-      .then(() => commandFor(path))
-      .then(
-        (value) => {
-          json(response, value);
-        },
-        async () => {
-          const runs = await api
-            .database()
-            .query<{ status: string }>(
-              'select status from app.workflow_runs where workspace_id=$1',
-              [workspaceId],
-            );
-          const attempts = await api
-            .database()
-            .query<{ status: string }>(
-              'select status from app.node_attempts where workspace_id=$1',
-              [workspaceId],
-            );
-          const outbox = await api
-            .database()
-            .query<{ job_name: string; published: boolean; failed: boolean }>(
-              'select job_name,published_at is not null published,failed_at is not null failed from app.outbox_events where workspace_id=$1',
-              [workspaceId],
-            );
-          console.info(
-            'Owned health command diagnostics',
-            JSON.stringify({
-              stage: commandStage,
-              providerCalls: sends,
-              runs: runs.rows,
-              attempts: attempts.rows,
-              outbox: outbox.rows,
-            }),
-          );
-          response
-            .writeHead(500)
-            .end('Owned connection health evidence failed');
-        },
-      );
-    pending.add(command);
-    void command.finally(() => pending.delete(command));
+  const state: ConnectionHealthFixtureState = {
+    get worker() {
+      return worker;
+    },
+    set worker(value: ChildProcess) {
+      worker = value;
+    },
+    get browser() {
+      return browser;
+    },
+    set browser(value: Browser) {
+      browser = value;
+    },
+    get workspaceId() {
+      return workspaceId;
+    },
+    set workspaceId(value: string) {
+      workspaceId = value;
+    },
+    get connectionId() {
+      return connectionId;
+    },
+    set connectionId(value: string) {
+      connectionId = value;
+    },
+    get workflowId() {
+      return workflowId;
+    },
+    set workflowId(value: string) {
+      workflowId = value;
+    },
+    get actorId() {
+      return actorId;
+    },
+    set actorId(value: string) {
+      actorId = value;
+    },
+    get staleRun() {
+      return staleRun;
+    },
+    set staleRun(value: string) {
+      staleRun = value;
+    },
+    get rotationRun() {
+      return rotationRun;
+    },
+    set rotationRun(value: string) {
+      rotationRun = value;
+    },
+    get sends() {
+      return sends;
+    },
+    set sends(value: number) {
+      sends = value;
+    },
+    get nextResponse() {
+      return nextResponse;
+    },
+    set nextResponse(value: 'hold' | 'reject' | 'healthy') {
+      nextResponse = value;
+    },
+    get commandStage() {
+      return commandStage;
+    },
+    set commandStage(value: string) {
+      commandStage = value;
+    },
+  };
+  const control = createConnectionHealthControl({
+    state,
+    held,
+    pending,
+    json,
+    options,
+    commandFor,
+    readApi: () => api,
+    token,
+    replacementToken,
   });
   owner.acquire('controlled Slack server', control, async () => {
     for (const response of held) response.writeHead(503).end();
@@ -474,285 +436,24 @@ export function useConnectionHealthFixture(
       (count) => count === 1,
     );
   }
-  async function commandFor(path: string) {
-    scope.signal.throwIfAborted();
-    if (path === '/reject-run') {
-      commandStage = 'reject-provider-outcome';
-      nextResponse = 'reject';
-      const runId = await startRun();
-      await wait(
-        () => readRun(runId),
-        (status) => status === 'failed',
-      );
-      expect((await readConnection()).status).toBe('active');
-      const evidence = await api
-        .database()
-        .query<{ count: number }>(
-          `select count(*)::int count from app.connection_health_observations where workspace_id=$1 and applied_at is null`,
-          [workspaceId],
-        );
-      expect(evidence.rows[0]?.count).toBe(1);
-      const callsBeforeRestart = sends;
-      const accepted = async () =>
-        (
-          await api.database().query<{ run: unknown; attempts: unknown }>(
-            `select row_to_json(run) run,(select json_agg(attempt order by attempt.id)
-        from app.node_attempts attempt join app.node_runs node on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id
-        where attempt.workspace_id=$1 and node.workflow_run_id=run.id) attempts
-        from app.workflow_runs run where run.workspace_id=$1 and run.id=$2`,
-            [workspaceId, runId],
-          )
-        ).rows;
-      const before = await accepted();
-      const claim =
-        options.abandonPublicationBeforeRestart === true
-          ? await abandonPublication(worker, scope.signal)
-          : undefined;
-      const assertAbandoned = async () => {
-        if (claim === undefined) return;
-        const result = await api.database().query<{
-          lease_token: string;
-          lease_owner: string;
-          future: boolean;
-          publish_attempts: number;
-          pending: boolean;
-          observation_pending: boolean;
-        }>(
-          `select event.lease_token,event.lease_owner,event.lease_expires_at>clock_timestamp() future,
-          event.publish_attempts,event.published_at is null and event.failed_at is null pending,
-          observation.applied_at is null observation_pending
-          from app.outbox_events event join app.connection_health_observations observation
-          on observation.workspace_id=event.workspace_id and observation.id::text=event.payload->>'observationId'
-          join app.node_attempts attempt on attempt.workspace_id=observation.workspace_id and attempt.id=observation.attempt_id
-          join app.node_runs node on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id
-          where event.workspace_id=$1 and event.id=$2 and node.workflow_run_id=$3`,
-          [workspaceId, claim.outboxEventId, runId],
-        );
-        expect(result.rows).toEqual([
-          {
-            lease_token: claim.leaseToken,
-            lease_owner: claim.leaseOwner,
-            future: true,
-            publish_attempts: 1,
-            pending: true,
-            observation_pending: true,
-          },
-        ]);
-        expect((await readConnection()).status).toBe('active');
-        expect(sends).toBe(callsBeforeRestart);
-      };
-      await assertAbandoned();
-      commandStage = 'restart-before-health-delivery';
-      await restartEditorBrowserWorker(
-        worker as Parameters<typeof restartEditorBrowserWorker>[0],
-        randomUUID(),
-        scope.signal,
-      );
-      await assertAbandoned();
-      await wait(
-        readConnection,
-        (connection) => connection.status === 'reauthorization_required',
-        claim === undefined ? 20000 : 45000,
-      );
-      if (claim !== undefined) {
-        const recovered = await api.database().query<{
-          published_after_expiry: boolean;
-          publish_attempts: number;
-          unleased: boolean;
-          applied: boolean;
-          receipts: number;
-          transitions: number;
-        }>(
-          `select event.published_at >= $3::timestamptz published_after_expiry,event.publish_attempts,
-          event.lease_token is null and event.lease_owner is null unleased,observation.applied_at is not null applied,
-          (select count(*)::int from app.inbox_receipts where workspace_id=$1 and consumer_name='connection-health-worker'
-          and message_id=event.id and completed_at is not null) receipts,
-          (select count(*)::int from app.connection_events where workspace_id=$1 and connection_id=$4
-          and event_type='connection.reauthorization_required' and metadata->>'source'='run') transitions
-          from app.outbox_events event join app.connection_health_observations observation
-          on observation.workspace_id=event.workspace_id and observation.id::text=event.payload->>'observationId'
-          where event.workspace_id=$1 and event.id=$2`,
-          [
-            workspaceId,
-            claim.outboxEventId,
-            claim.leaseExpiresAt,
-            connectionId,
-          ],
-        );
-        expect(recovered.rows).toEqual([
-          {
-            published_after_expiry: true,
-            publish_attempts: 2,
-            unleased: true,
-            applied: true,
-            receipts: 1,
-            transitions: 1,
-          },
-        ]);
-        expect(await accepted()).toEqual(before);
-      }
-      expect(sends).toBe(callsBeforeRestart);
-      return {
-        restarted: true,
-        abandonedPublicationRecovered: claim !== undefined,
-        providerCalls: sends,
-      };
-    }
-    if (path === '/hold-and-reject') {
-      nextResponse = 'hold';
-      staleRun = await startRun();
-      await wait(
-        () => Promise.resolve(held.size),
-        (count) => count === 1,
-      );
-      nextResponse = 'reject';
-      const runId = await startRun();
-      await wait(
-        () => readRun(runId),
-        (status) => status === 'failed',
-      );
-      await wait(
-        readConnection,
-        (connection) => connection.status === 'reauthorization_required',
-      );
-      return { held: true };
-    }
-    if (path === '/release-stale-after-test') {
-      expect((await readConnection()).status).toBe('active');
-      await completeHeld(staleRun);
-      expect((await readConnection()).status).toBe('active');
-      return { healthy: true };
-    }
-    if (path === '/hold-before-rotation') {
-      nextResponse = 'hold';
-      rotationRun = await startRun();
-      await wait(
-        () => Promise.resolve(held.size),
-        (count) => count === 1,
-      );
-      return { held: true };
-    }
-    if (path === '/release-stale-after-rotation') {
-      await completeHeld(rotationRun);
-      const connection = await readConnection();
-      expect(connection.status).toBe('active');
-      expect(connection.health.lastHealthyAt).toBeNull();
-      return { unknown: true };
-    }
-    if (path === '/deny-membership') {
-      await api
-        .database()
-        .query(
-          "update app.workspace_memberships set status='removed' where workspace_id=$1 and user_id=$2",
-          [workspaceId, actorId],
-        );
-      return { denied: true };
-    }
-    throw new Error('Unknown health command');
-  }
-  async function seed() {
-    const email = `${randomUUID()}@example.test`;
-    await api.signUp(email, '/login?verified=true');
-    browser = await api.signIn(email);
-    const created = await api.send('POST', '/v1/workspaces', {
-      browser,
-      headers: { 'idempotency-key': randomUUID() },
-      payload: {
-        name: 'Health qualification',
-        slug: `health-${randomUUID().slice(0, 8)}`,
-      },
-    });
-    expect(created.statusCode, created.payload).toBe(201);
-    workspaceId = created.json<{ id: string }>().id;
-    actorId =
-      (
-        await api
-          .database()
-          .query<{ id: string }>('select id from app.users where email=$1', [
-            email,
-          ])
-      ).rows[0]?.id ?? '';
-    const connection = await api.send(
-      'POST',
-      `/v1/workspaces/${workspaceId}/connections`,
+  function commandFor(path: string) {
+    return executeConnectionHealthCommand(
       {
-        browser,
-        headers: { 'idempotency-key': randomUUID() },
-        payload: {
-          providerKey: 'slack',
-          name: 'Incident Slack',
-          credential: {
-            type: 'slack_bot_token',
-            botToken: token,
-          },
-        },
+        api,
+        state,
+        options,
+        scope,
+        held,
+        wait,
+        readConnection,
+        readRun,
+        startRun,
+        completeHeld,
       },
+      path,
     );
-    expect(connection.statusCode, connection.payload).toBe(201);
-    connectionId = connectionResponseSchema.parse(connection.json()).id;
-    const workflow = await api.send(
-      'POST',
-      `/v1/workspaces/${workspaceId}/workflows`,
-      {
-        browser,
-        headers: { 'idempotency-key': randomUUID() },
-        payload: { name: 'Health sender' },
-      },
-    );
-    expect(workflow.statusCode, workflow.payload).toBe(201);
-    workflowId = workflow.json<{ workflow: { id: string } }>().workflow.id;
-    const route = `/v1/workspaces/${workspaceId}/workflows/${workflowId}`,
-      nodeId = randomUUID();
-    for (let version = 1; version <= 2; version++) {
-      const draft = await api.send('GET', `${route}/draft`, { browser });
-      const saved = await api.send('PUT', `${route}/draft`, {
-        browser,
-        headers: { 'if-match': String(draft.headers.etag) },
-        payload: {
-          graph: {
-            nodes: [
-              {
-                id: nodeId,
-                definition: { key: 'slack.send_message', version: 1 },
-                label: 'Controlled Slack send',
-                position: { x: version, y: 0 },
-                configVersion: 1,
-                config: { timeoutMillis: 30000 },
-                inputMappings: {
-                  channelId: { kind: 'literal', value: 'C123ABC' },
-                  text: {
-                    kind: 'literal',
-                    value: `Owned health ${String(version)}`,
-                  },
-                },
-                connectionRefs: { slack_bot_token: connectionId },
-              },
-            ],
-            edges: [],
-            settings: {},
-          },
-        },
-      });
-      expect(saved.statusCode, saved.payload).toBe(200);
-      const published = await api.send('POST', `${route}/publish`, {
-        browser,
-        headers: {
-          'if-match': String(saved.headers.etag),
-          'idempotency-key': randomUUID(),
-        },
-      });
-      expect(published.statusCode, published.payload).toBe(200);
-    }
-    const usage = await api.send(
-      'GET',
-      `/v1/workspaces/${workspaceId}/connections/${connectionId}/usage`,
-      { browser },
-    );
-    expect(
-      connectionUsageResponseSchema.parse(usage.json()).items,
-    ).toHaveLength(2);
-    return { workspaceId, connectionId, workflowId, browser };
   }
+  const seed = () => seedConnectionHealthFixture({ api, token, state });
   return {
     api,
     seed,
@@ -765,4 +466,488 @@ export function useConnectionHealthFixture(
       return sends;
     },
   };
+}
+
+type ConnectionHealthFixtureOptions = Readonly<{
+  webOrigin?: string;
+  abandonPublicationBeforeRestart?: boolean;
+  beforeClose?: () => Promise<void>;
+  browserLifetime?: (path: string, instanceId: string) => void;
+}>;
+interface ConnectionHealthFixtureState {
+  worker: ChildProcess;
+  browser: Browser;
+  workspaceId: string;
+  connectionId: string;
+  workflowId: string;
+  actorId: string;
+  staleRun: string;
+  rotationRun: string;
+  sends: number;
+  nextResponse: 'hold' | 'reject' | 'healthy';
+  commandStage: string;
+}
+type ConnectionHealthApi = ReturnType<typeof useBetterAuthRealApi>;
+interface ConnectionHealthCommandContext {
+  api: ConnectionHealthApi;
+  state: ConnectionHealthFixtureState;
+  options: ConnectionHealthFixtureOptions;
+  scope: AbortController;
+  held: Set<ServerResponse>;
+  wait: <T>(
+    read: () => Promise<T>,
+    matches: (value: T) => boolean,
+    timeoutMillis?: number,
+  ) => Promise<T>;
+  readConnection: () => Promise<z.output<typeof connectionResponseSchema>>;
+  readRun: (runId: string) => Promise<string>;
+  startRun: () => Promise<string>;
+  completeHeld: (runId: string) => Promise<void>;
+}
+function createConnectionHealthControl(
+  input: Readonly<{
+    state: ConnectionHealthFixtureState;
+    held: Set<ServerResponse>;
+    pending: Set<Promise<void>>;
+    json: (response: ServerResponse, value: unknown) => void;
+    options: ConnectionHealthFixtureOptions;
+    commandFor: (path: string) => Promise<unknown>;
+    readApi: () => ConnectionHealthApi;
+    token: string;
+    replacementToken: string;
+  }>,
+) {
+  const {
+    state,
+    held,
+    pending,
+    json,
+    options,
+    commandFor,
+    readApi,
+    token,
+    replacementToken,
+  } = input;
+  return createServer((request, response) => {
+    const path = new URL(request.url ?? '/', 'http://127.0.0.1').pathname;
+    if (path === '/api/auth.test') {
+      json(response, { ok: true });
+      return;
+    }
+    if (path === '/api/chat.postMessage') {
+      state.sends++;
+      const action = state.nextResponse;
+      state.nextResponse = 'reject';
+      if (action === 'hold') {
+        held.add(response);
+        response.once('close', () => held.delete(response));
+        return;
+      }
+      json(
+        response,
+        action === 'healthy'
+          ? { ok: true, channel: 'C123ABC', ts: '1710000000.000001' }
+          : { ok: false, error: 'token_revoked' },
+      );
+      return;
+    }
+    if (request.method === 'GET' && path === '/connection-health-seed') {
+      json(response, {
+        workspaceId: state.workspaceId,
+        connectionId: state.connectionId,
+        workflowId: state.workflowId,
+        token,
+        replacementToken,
+        cookies: [
+          {
+            name: 'pertexo_session',
+            value: state.browser.session,
+            url: options.webOrigin,
+          },
+          {
+            name: 'pertexo_csrf',
+            value: encodeURIComponent(state.browser.csrf),
+            url: options.webOrigin,
+          },
+        ],
+      });
+      return;
+    }
+    if (request.method !== 'POST') {
+      response.writeHead(404).end();
+      return;
+    }
+    if (path === '/browser-opened' || path === '/browser-disposed') {
+      let body = '';
+      request.on('data', (chunk: Buffer) => {
+        body += chunk.toString();
+        if (body.length > 512) request.destroy();
+      });
+      request.on('end', () => {
+        try {
+          const parsed = z
+            .object({ instanceId: z.uuid() })
+            .strict()
+            .parse(JSON.parse(body));
+          options.browserLifetime?.(path, parsed.instanceId);
+          response.writeHead(204).end();
+        } catch {
+          response.writeHead(400).end();
+        }
+      });
+      return;
+    }
+    const command = Promise.resolve()
+      .then(() => commandFor(path))
+      .then(
+        (value) => {
+          json(response, value);
+        },
+        async () => {
+          const runs = await readApi()
+            .database()
+            .query<{ status: string }>(
+              'select status from app.workflow_runs where workspace_id=$1',
+              [state.workspaceId],
+            );
+          const attempts = await readApi()
+            .database()
+            .query<{ status: string }>(
+              'select status from app.node_attempts where workspace_id=$1',
+              [state.workspaceId],
+            );
+          const outbox = await readApi()
+            .database()
+            .query<{ job_name: string; published: boolean; failed: boolean }>(
+              'select job_name,published_at is not null published,failed_at is not null failed from app.outbox_events where workspace_id=$1',
+              [state.workspaceId],
+            );
+          console.info(
+            'Owned health command diagnostics',
+            JSON.stringify({
+              stage: state.commandStage,
+              providerCalls: state.sends,
+              runs: runs.rows,
+              attempts: attempts.rows,
+              outbox: outbox.rows,
+            }),
+          );
+          response
+            .writeHead(500)
+            .end('Owned connection health evidence failed');
+        },
+      );
+    pending.add(command);
+    void command.finally(() => pending.delete(command));
+  });
+}
+async function seedConnectionHealthFixture(
+  input: Readonly<{
+    api: ConnectionHealthApi;
+    token: string;
+    state: ConnectionHealthFixtureState;
+  }>,
+) {
+  const { api, token, state } = input;
+
+  const email = `${randomUUID()}@example.test`;
+  await api.signUp(email, '/login?verified=true');
+  state.browser = await api.signIn(email);
+  const created = await api.send('POST', '/v1/workspaces', {
+    browser: state.browser,
+    headers: { 'idempotency-key': randomUUID() },
+    payload: {
+      name: 'Health qualification',
+      slug: `health-${randomUUID().slice(0, 8)}`,
+    },
+  });
+  expect(created.statusCode, created.payload).toBe(201);
+  state.workspaceId = created.json<{ id: string }>().id;
+  state.actorId =
+    (
+      await api
+        .database()
+        .query<{ id: string }>('select id from app.users where email=$1', [
+          email,
+        ])
+    ).rows[0]?.id ?? '';
+  const connection = await api.send(
+    'POST',
+    `/v1/workspaces/${state.workspaceId}/connections`,
+    {
+      browser: state.browser,
+      headers: { 'idempotency-key': randomUUID() },
+      payload: {
+        providerKey: 'slack',
+        name: 'Incident Slack',
+        credential: {
+          type: 'slack_bot_token',
+          botToken: token,
+        },
+      },
+    },
+  );
+  expect(connection.statusCode, connection.payload).toBe(201);
+  state.connectionId = connectionResponseSchema.parse(connection.json()).id;
+  const workflow = await api.send(
+    'POST',
+    `/v1/workspaces/${state.workspaceId}/workflows`,
+    {
+      browser: state.browser,
+      headers: { 'idempotency-key': randomUUID() },
+      payload: { name: 'Health sender' },
+    },
+  );
+  expect(workflow.statusCode, workflow.payload).toBe(201);
+  state.workflowId = workflow.json<{ workflow: { id: string } }>().workflow.id;
+  const route = `/v1/workspaces/${state.workspaceId}/workflows/${state.workflowId}`,
+    nodeId = randomUUID();
+  for (let version = 1; version <= 2; version++) {
+    const draft = await api.send('GET', `${route}/draft`, {
+      browser: state.browser,
+    });
+    const saved = await api.send('PUT', `${route}/draft`, {
+      browser: state.browser,
+      headers: { 'if-match': String(draft.headers.etag) },
+      payload: {
+        graph: {
+          nodes: [
+            {
+              id: nodeId,
+              definition: { key: 'slack.send_message', version: 1 },
+              label: 'Controlled Slack send',
+              position: { x: version, y: 0 },
+              configVersion: 1,
+              config: { timeoutMillis: 30000 },
+              inputMappings: {
+                channelId: { kind: 'literal', value: 'C123ABC' },
+                text: {
+                  kind: 'literal',
+                  value: `Owned health ${String(version)}`,
+                },
+              },
+              connectionRefs: { slack_bot_token: state.connectionId },
+            },
+          ],
+          edges: [],
+          settings: {},
+        },
+      },
+    });
+    expect(saved.statusCode, saved.payload).toBe(200);
+    const published = await api.send('POST', `${route}/publish`, {
+      browser: state.browser,
+      headers: {
+        'if-match': String(saved.headers.etag),
+        'idempotency-key': randomUUID(),
+      },
+    });
+    expect(published.statusCode, published.payload).toBe(200);
+  }
+  const usage = await api.send(
+    'GET',
+    `/v1/workspaces/${state.workspaceId}/connections/${state.connectionId}/usage`,
+    { browser: state.browser },
+  );
+  expect(connectionUsageResponseSchema.parse(usage.json()).items).toHaveLength(
+    2,
+  );
+  return {
+    workspaceId: state.workspaceId,
+    connectionId: state.connectionId,
+    workflowId: state.workflowId,
+    browser: state.browser,
+  };
+}
+async function executeConnectionHealthCommand(
+  input: ConnectionHealthCommandContext,
+  path: string,
+) {
+  const {
+    api,
+    state,
+    options,
+    scope,
+    held,
+    wait,
+    readConnection,
+    readRun,
+    startRun,
+    completeHeld,
+  } = input;
+
+  scope.signal.throwIfAborted();
+  if (path === '/reject-run') {
+    state.commandStage = 'reject-provider-outcome';
+    state.nextResponse = 'reject';
+    const runId = await startRun();
+    await wait(
+      () => readRun(runId),
+      (status) => status === 'failed',
+    );
+    expect((await readConnection()).status).toBe('active');
+    const evidence = await api
+      .database()
+      .query<{ count: number }>(
+        `select count(*)::int count from app.connection_health_observations where workspace_id=$1 and applied_at is null`,
+        [state.workspaceId],
+      );
+    expect(evidence.rows[0]?.count).toBe(1);
+    const callsBeforeRestart = state.sends;
+    const accepted = async () =>
+      (
+        await api.database().query<{ run: unknown; attempts: unknown }>(
+          `select row_to_json(run) run,(select json_agg(attempt order by attempt.id)
+        from app.node_attempts attempt join app.node_runs node on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id
+        where attempt.workspace_id=$1 and node.workflow_run_id=run.id) attempts
+        from app.workflow_runs run where run.workspace_id=$1 and run.id=$2`,
+          [state.workspaceId, runId],
+        )
+      ).rows;
+    const before = await accepted();
+    const claim =
+      options.abandonPublicationBeforeRestart === true
+        ? await abandonPublication(state.worker, scope.signal)
+        : undefined;
+    const assertAbandoned = async () => {
+      if (claim === undefined) return;
+      const result = await api.database().query<{
+        lease_token: string;
+        lease_owner: string;
+        future: boolean;
+        publish_attempts: number;
+        pending: boolean;
+        observation_pending: boolean;
+      }>(
+        `select event.lease_token,event.lease_owner,event.lease_expires_at>clock_timestamp() future,
+          event.publish_attempts,event.published_at is null and event.failed_at is null pending,
+          observation.applied_at is null observation_pending
+          from app.outbox_events event join app.connection_health_observations observation
+          on observation.workspace_id=event.workspace_id and observation.id::text=event.payload->>'observationId'
+          join app.node_attempts attempt on attempt.workspace_id=observation.workspace_id and attempt.id=observation.attempt_id
+          join app.node_runs node on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id
+          where event.workspace_id=$1 and event.id=$2 and node.workflow_run_id=$3`,
+        [state.workspaceId, claim.outboxEventId, runId],
+      );
+      expect(result.rows).toEqual([
+        {
+          lease_token: claim.leaseToken,
+          lease_owner: claim.leaseOwner,
+          future: true,
+          publish_attempts: 1,
+          pending: true,
+          observation_pending: true,
+        },
+      ]);
+      expect((await readConnection()).status).toBe('active');
+      expect(state.sends).toBe(callsBeforeRestart);
+    };
+    await assertAbandoned();
+    state.commandStage = 'restart-before-health-delivery';
+    await restartEditorBrowserWorker(
+      state.worker as Parameters<typeof restartEditorBrowserWorker>[0],
+      randomUUID(),
+      scope.signal,
+    );
+    await assertAbandoned();
+    await wait(
+      readConnection,
+      (connection) => connection.status === 'reauthorization_required',
+      claim === undefined ? 20000 : 45000,
+    );
+    if (claim !== undefined) {
+      const recovered = await api.database().query<{
+        published_after_expiry: boolean;
+        publish_attempts: number;
+        unleased: boolean;
+        applied: boolean;
+        receipts: number;
+        transitions: number;
+      }>(
+        `select event.published_at >= $3::timestamptz published_after_expiry,event.publish_attempts,
+          event.lease_token is null and event.lease_owner is null unleased,observation.applied_at is not null applied,
+          (select count(*)::int from app.inbox_receipts where workspace_id=$1 and consumer_name='connection-health-worker'
+          and message_id=event.id and completed_at is not null) receipts,
+          (select count(*)::int from app.connection_events where workspace_id=$1 and connection_id=$4
+          and event_type='connection.reauthorization_required' and metadata->>'source'='run') transitions
+          from app.outbox_events event join app.connection_health_observations observation
+          on observation.workspace_id=event.workspace_id and observation.id::text=event.payload->>'observationId'
+          where event.workspace_id=$1 and event.id=$2`,
+        [
+          state.workspaceId,
+          claim.outboxEventId,
+          claim.leaseExpiresAt,
+          state.connectionId,
+        ],
+      );
+      expect(recovered.rows).toEqual([
+        {
+          published_after_expiry: true,
+          publish_attempts: 2,
+          unleased: true,
+          applied: true,
+          receipts: 1,
+          transitions: 1,
+        },
+      ]);
+      expect(await accepted()).toEqual(before);
+    }
+    expect(state.sends).toBe(callsBeforeRestart);
+    return {
+      restarted: true,
+      abandonedPublicationRecovered: claim !== undefined,
+      providerCalls: state.sends,
+    };
+  }
+  if (path === '/hold-and-reject') {
+    state.nextResponse = 'hold';
+    state.staleRun = await startRun();
+    await wait(
+      () => Promise.resolve(held.size),
+      (count) => count === 1,
+    );
+    state.nextResponse = 'reject';
+    const runId = await startRun();
+    await wait(
+      () => readRun(runId),
+      (status) => status === 'failed',
+    );
+    await wait(
+      readConnection,
+      (connection) => connection.status === 'reauthorization_required',
+    );
+    return { held: true };
+  }
+  if (path === '/release-stale-after-test') {
+    expect((await readConnection()).status).toBe('active');
+    await completeHeld(state.staleRun);
+    expect((await readConnection()).status).toBe('active');
+    return { healthy: true };
+  }
+  if (path === '/hold-before-rotation') {
+    state.nextResponse = 'hold';
+    state.rotationRun = await startRun();
+    await wait(
+      () => Promise.resolve(held.size),
+      (count) => count === 1,
+    );
+    return { held: true };
+  }
+  if (path === '/release-stale-after-rotation') {
+    await completeHeld(state.rotationRun);
+    const connection = await readConnection();
+    expect(connection.status).toBe('active');
+    expect(connection.health.lastHealthyAt).toBeNull();
+    return { unknown: true };
+  }
+  if (path === '/deny-membership') {
+    await api
+      .database()
+      .query(
+        "update app.workspace_memberships set status='removed' where workspace_id=$1 and user_id=$2",
+        [state.workspaceId, state.actorId],
+      );
+    return { denied: true };
+  }
+  throw new Error('Unknown health command');
 }
