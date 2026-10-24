@@ -1,3 +1,8 @@
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { alias } from 'drizzle-orm/pg-core';
+import { connections } from '../../schema/connections.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import type {
   GraphValidationIssue,
@@ -12,7 +17,6 @@ import {
   readConnectionScope,
   connectionScopeSql,
 } from '../../tenant-access/resources/connections/scope.js';
-import { bindResourcePredicate } from '../../tenant-access/resources/scope.queries.js';
 import type { ResourceActor } from '../../tenant-access/resources/contract.js';
 
 /** Permission applies to every binding; only enabled steps require a non-revoked secret. */
@@ -24,22 +28,27 @@ export async function connectionReferenceIssues(
   const references = workflowConnectionReferences(graph);
   if (references.length === 0) return [];
   const ids = connectionReferenceIds(references);
-  const parameters: unknown[] = [actor.workspaceId, ids];
-  const permitted = bindResourcePredicate(
-    connectionScopeSql(
-      await readConnectionScope(client, actor, 'connection:use'),
-    ),
-    parameters,
+  const connection = alias(connections, 'connection');
+  const permitted = connectionScopeSql(
+    await readConnectionScope(client, actor, 'connection:use'),
+    sql`${connection}`,
   );
   const rows =
     ids.length === 0
       ? []
-      : (
-          await client.query<{ id: string; status: string }>(
-            `select connection.id,connection.status from app.connections connection where connection.workspace_id=$1 and connection.id=any($2::uuid[]) and ${permitted} order by connection.id for share`,
-            parameters,
+      : await drizzle(client)
+          .select({ id: connection.id, status: connection.status })
+          .from(connection)
+          .where(
+            and(
+              eq(connection.workspaceId, actor.workspaceId),
+              inArray(connection.id, ids),
+              permitted,
+            ),
           )
-        ).rows;
+          .orderBy(asc(connection.id))
+          .for('share')
+          .catch(rethrowQueryFailure);
   const available = new Map(rows.map((row) => [row.id, row.status]));
   return references
     .filter((reference) => {
