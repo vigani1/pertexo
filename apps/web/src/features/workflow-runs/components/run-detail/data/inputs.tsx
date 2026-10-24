@@ -7,7 +7,7 @@ import { useId, type ReactNode } from 'react';
 import { Disclosure } from '@/components/ui/disclosure';
 import { SkeletonLines } from '@/components/ui/skeleton';
 import { nodeRunInputQueryOptions } from '../../../data/stored-values.queries';
-import { feedingRows } from '../../../model/step-inspection/step-inputs';
+import { feedingRows } from '../../../model/step-inspection/inputs';
 import type { RunTimelineRow } from '../../../model/timeline/runs';
 import type { RunDataScope } from './value';
 import { Muted } from './value';

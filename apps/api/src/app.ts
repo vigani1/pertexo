@@ -16,16 +16,16 @@ import {
 import { AppModule } from './app.module.js';
 import { configuredSocialProviders } from './authentication/index.js';
 import type { ApiConfig } from './platform/config/api.js';
-import { WORKSPACE_DATABASE } from './platform/database/database.module.js';
+import { WORKSPACE_DATABASE } from './platform/database/module.js';
 import { ApiShutdownCoordinator } from './platform/health/drain-state.js';
-import { NestLoggerAdapter } from './platform/observability/observability.module.js';
+import { NestLoggerAdapter } from './platform/observability/module.js';
 import { registerApiMetrics } from './platform/observability/api-metrics.js';
 import { registerWebhookIngress } from './webhooks/ingress/register.js';
 import { registerDataTableExportTransport } from './data-tables/export/transport.js';
 import { registerNoticeUnsubscribeTransport } from './notifications/preferences/transport.js';
 import { registerWorkflowPortabilityJsonParser } from './workflow-authoring/portability/json-parser.js';
 import type { RateLimitConsumer } from './platform/rate-limit/interceptor.js';
-import { RATE_LIMIT_CONSUMER } from './platform/rate-limit/rate-limit.module.js';
+import { RATE_LIMIT_CONSUMER } from './platform/rate-limit/module.js';
 import {
   registerAuthenticationCapabilities,
   registerBetterAuthHandler,

@@ -1,5 +1,5 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { WorkspaceMembersPage } from '@/features/workspaces/workspace-members.public';
+import { WorkspaceMembersPage } from '@/features/workspaces/members.public';
 import { useWorkspaceScope } from './shell/use-workspace-scope';
 
 export function TeamRoute() {

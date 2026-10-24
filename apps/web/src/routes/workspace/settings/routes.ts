@@ -1,13 +1,13 @@
 import { parsePromotionSearch } from '@/features/workflow-promotions/search.public';
 import { parseFederationSearch } from '@/features/federation/search.public';
 import { parseAuditSearch } from '@/features/governance/search.public';
-import { parseUsageTrendsSearch } from '@/features/usage/usage-search.public';
+import { parseUsageTrendsSearch } from '@/features/usage/search.public';
 import { createRoute } from '@tanstack/react-router';
 import { lazyRoute } from '@/components/patterns/app-update/lazy';
 import { connectionDiscoveryQueryOptions } from '@/features/connections/queries.public';
 import { failureNotificationDestinationsQueryOptions } from '@/features/failure-notifications/queries.public';
 import { pageTitle } from '../../root/page-title';
-import { parseUsageSearch } from '@/features/usage/usage-search.public';
+import { parseUsageSearch } from '@/features/usage/search.public';
 import { warmPrefetches } from '../../root/route-context';
 import { workspaceShellRoute } from '../routes';
 

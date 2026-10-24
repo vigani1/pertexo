@@ -2,7 +2,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import {
   assertSessionIdentity,
   isSessionIdentityChangedError,
-} from '@/features/auth/session/session-identity.public';
+} from '@/features/auth/session/identity.public';
 import { getAllAccessibleWorkspaces } from '@/features/workspaces/queries.public';
 import { isApiError } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';

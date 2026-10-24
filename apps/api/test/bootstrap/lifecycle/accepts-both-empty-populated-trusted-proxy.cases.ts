@@ -4,7 +4,7 @@ import {
   type ApiApplicationDependencies,
 } from '../../../src/app.js';
 
-import type { ApiConnectionRuntime } from '../../../src/platform/connections/connection-runtime.module.js';
+import type { ApiConnectionRuntime } from '../../../src/platform/connections/runtime.module.js';
 
 import { createStubApiWorkflowRuntime } from '../../support/api-platform.fixture.js';
 import {

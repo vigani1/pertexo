@@ -1,5 +1,5 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { ConnectionsPage } from '@/features/connections/connections-page.public';
+import { ConnectionsPage } from '@/features/connections/page.public';
 import { useWorkspaceScope } from './shell/use-workspace-scope';
 
 export function ConnectionsRoute() {

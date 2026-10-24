@@ -7,7 +7,7 @@ import { describeConnectionRequirement } from '@/features/catalog/presentation.p
 import {
   AddConnectionSheet,
   providerForCredential,
-} from '@/features/connections/add-connection.public';
+} from '@/features/connections/add.public';
 import { isUsableConnection } from '@/features/connections/queries.public';
 import { AddConnectionContext } from '../../../model/add-connection-context';
 import type { NodeFormApi } from '../../../model/inspector/node-form';

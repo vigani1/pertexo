@@ -18,7 +18,7 @@ import {
   type IdentitySessionAuthority,
 } from '../../../src/workspaces/index.js';
 
-import { createApiIdentityRuntime } from '../../../src/platform/identity/identity-runtime.module.js';
+import { createApiIdentityRuntime } from '../../../src/platform/identity/runtime.module.js';
 
 import {
   FixtureResourceOwner,

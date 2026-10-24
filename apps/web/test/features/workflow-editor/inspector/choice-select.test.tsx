@@ -2,7 +2,7 @@ import { createRef, useState, type Ref } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { MappingSourceEditor } from '@/features/workflow-editor/components/inspector/input-mappings/mapping-source-editor';
+import { MappingSourceEditor } from '@/features/workflow-editor/components/inspector/input-mappings/source-editor';
 import { ChoiceSelect } from '@/features/workflow-editor/components/inspector/fields/choice-select';
 
 function ChoiceHarness({

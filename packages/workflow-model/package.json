@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "sideEffects": [
-    "./dist/authoring/validation/validation-thread.js",
+    "./dist/authoring/validation/thread.js",
     "./dist/values/expressions/evaluation-thread.js"
   ],
   "exports": {

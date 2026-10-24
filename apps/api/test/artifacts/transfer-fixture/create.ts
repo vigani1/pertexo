@@ -8,11 +8,11 @@ import {
 import { Pool, type PoolClient } from 'pg';
 
 import { createApiApplication } from '../../../src/app.js';
-import { createApiIdentityRuntime } from '../../../src/platform/identity/identity-runtime.module.js';
+import { createApiIdentityRuntime } from '../../../src/platform/identity/runtime.module.js';
 import {
   createApiArtifactRuntime,
   type ApiArtifactRuntime,
-} from '../../../src/platform/artifacts/artifact-runtime.module.js';
+} from '../../../src/platform/artifacts/runtime.module.js';
 
 import { issueBrowserSession } from '../../webhooks/support/browser-session.fixture.js';
 import {

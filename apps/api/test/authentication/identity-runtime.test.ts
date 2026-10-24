@@ -3,7 +3,7 @@ import type { IdentityWorkspaceDatabase } from '@pertexo/database/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ApiIdentityConfig } from '../../src/platform/config/identity.js';
-import { createApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
+import { createApiIdentityRuntime } from '../../src/platform/identity/runtime.module.js';
 
 const identityConfig: ApiIdentityConfig = {
   publicWebOrigin: 'https://app.example.test',

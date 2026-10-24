@@ -3,7 +3,7 @@ import { StepExecutionHistory } from './execution-history';
 export { StepError } from './execution-history';
 import type { ReactNode } from 'react';
 import { Status } from '@/components/ui/status';
-import { stepTag } from '../../model/step-inspection/step-copy';
+import { stepTag } from '../../model/step-inspection/copy';
 import type { RunTimelineRow } from '../../model/timeline/runs';
 import { shortRunId } from '../../model/list/runs';
 import { CopyButton } from '@/components/ui/copy-button';

@@ -26,7 +26,7 @@ export {
   workflowErrorSettingsResponseSchema,
   type WorkflowErrorSettings,
   type WorkflowErrorSettingsRequest,
-} from './schemas/workflows/error-workflow.js';
+} from './schemas/workflows/error.js';
 
 export { type WorkflowRunErrorWorkflow } from './schemas/execution/runs.js';
 
@@ -34,7 +34,7 @@ export {
   workflowErrorTargetsQuerySchema,
   workflowErrorTargetsPageSchema,
   type WorkflowErrorTargetsPage,
-} from './schemas/workflows/error-workflow.js';
+} from './schemas/workflows/error.js';
 
 export {
   pendingTaskParamsSchema,

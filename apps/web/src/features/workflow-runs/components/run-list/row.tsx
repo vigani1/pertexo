@@ -15,10 +15,10 @@ import { shortRunId, workflowLabel } from '../../model/list/runs';
 import { describeListedFailure } from '../../model/presentation/run-failure';
 import { describeRunStatus } from '../../model/presentation/run-status';
 import { CopyButton } from '@/components/ui/copy-button';
-import { RunRowMenu } from '../run-actions/run-row-menu';
+import { RunRowMenu } from '../run-actions/row-menu';
 import { RunDurationBar } from '../run-duration-bar';
 import { TriggerLabel } from '../trigger-label';
-import { RUN_ROW_LAYOUT, type RunListVariant } from './run-row-layout';
+import { RUN_ROW_LAYOUT, type RunListVariant } from './row-layout';
 import { RunAdmissionBlockers } from '../run-admission-blockers';
 
 /** When a run started: relative, in mono, with the exact time on hover. */

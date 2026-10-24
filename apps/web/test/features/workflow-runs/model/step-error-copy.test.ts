@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   describeStepError,
   shortStepError,
-} from '@/features/workflow-runs/model/step-inspection/step-error-copy';
+} from '@/features/workflow-runs/model/step-inspection/error-copy';
 
 const fallback = describeStepError('nothing.known');
 

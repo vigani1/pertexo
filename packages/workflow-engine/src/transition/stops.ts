@@ -2,7 +2,7 @@ import { WorkflowEngineError } from '../errors.js';
 import { compareOrdinal } from '@pertexo/workflow-model';
 import { sameIterationPath } from '../scope.js';
 import { completeLoopIteration } from './scheduling/loops.js';
-import { assertNodeTransition } from './status-transitions.js';
+import { assertNodeTransition } from './status.js';
 import type { InvocationState, LoopState, EngineEventName } from '../types.js';
 import {
   isTerminalNodeStatus,

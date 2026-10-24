@@ -4,7 +4,7 @@ import {
   accessibleWorkspaceSchema,
   workflowRunListItemSchema,
 } from '@pertexo/contracts';
-import { RunList } from '@/features/workflow-runs/components/run-list/list';
+import { RunList } from '@/features/workflow-runs/components/run-list/view';
 import { createApiClient } from '@/lib/api/client';
 import {
   fixtureIds,

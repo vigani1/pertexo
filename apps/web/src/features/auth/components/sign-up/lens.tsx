@@ -15,7 +15,7 @@ import {
   AuthLensFooter,
   AuthLensTitle,
 } from '../stage/auth-lens';
-import { AuthForm } from '../../forms/auth-form';
+import { AuthForm } from '../../forms/submission';
 
 function nameProblem(value: string): string | undefined {
   if (value.trim().length === 0)

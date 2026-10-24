@@ -27,7 +27,7 @@ import { visibleSettingsData } from '../model/settings-query';
 import { SettingsSection } from '@/components/patterns/settings/section';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { settingsReadFailure } from '../components/settings-read-failure';
-import { RestoreVersionDialog } from '../components/versions/restore-version-dialog';
+import { RestoreVersionDialog } from '../components/versions/restore-dialog';
 import { VersionCompareSheet } from '../components/versions/compare-sheet';
 import { VersionPreviewSheet } from '../components/versions/preview-sheet';
 import { VersionTimeline } from '../components/versions/timeline';

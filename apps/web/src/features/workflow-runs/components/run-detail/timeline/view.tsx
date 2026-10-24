@@ -1,6 +1,6 @@
 import { StatusGlyph } from '@/components/ui/status';
 import { cn } from '@/lib/utils';
-import { stepTag } from '../../../model/step-inspection/step-copy';
+import { stepTag } from '../../../model/step-inspection/copy';
 import type { RunTimelineModel } from '../../../model/timeline/runs';
 import { toneBorderClass } from '../../../model/presentation/tone-styles';
 import { RunLoadingWave } from './loading-wave';

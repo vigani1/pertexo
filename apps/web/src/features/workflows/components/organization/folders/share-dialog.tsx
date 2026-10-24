@@ -10,7 +10,7 @@ import {
 } from '@/components/patterns/sharing/entry';
 import { SharingPrincipalPicker } from '@/components/patterns/sharing/principal-picker';
 import { principalIdentifier } from '@/lib/resource-sharing/principal';
-import { ActionDialog } from '@/components/patterns/actions/action-dialog';
+import { ActionDialog } from '@/components/patterns/actions/dialog';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { ProgressButton } from '@/components/ui/progress-button';

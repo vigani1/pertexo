@@ -1,7 +1,7 @@
 import { expect, it, vi } from 'vitest';
 import { createApiApplication } from '../../../src/app.js';
 
-import type { ApiScheduleRuntime } from '../../../src/platform/schedules/schedule-runtime.module.js';
+import type { ApiScheduleRuntime } from '../../../src/platform/schedules/runtime.module.js';
 
 import { ScheduleManagementService } from '../../../src/schedules/service.js';
 

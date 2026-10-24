@@ -18,8 +18,8 @@ import {
 
 const runtimeUrl = new URL(
   import.meta.url.endsWith('.ts')
-    ? '../../../dist/authoring/validation/validation-thread.js'
-    : './validation-thread.js',
+    ? '../../../dist/authoring/validation/thread.js'
+    : './thread.js',
   import.meta.url,
 );
 

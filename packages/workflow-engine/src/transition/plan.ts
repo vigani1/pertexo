@@ -6,10 +6,7 @@ import { WorkflowEngineError } from '../errors.js';
 import { pruneFinishedIterations } from './prune.js';
 import { deriveReadyNodes } from './scheduling/readiness.js';
 import { compareOrdinal } from '@pertexo/workflow-model';
-import {
-  assertNodeTransition,
-  assertRunTransition,
-} from './status-transitions.js';
+import { assertNodeTransition, assertRunTransition } from './status.js';
 import {
   boundedReadyAdmissions,
   deriveTerminalRunStatus,

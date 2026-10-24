@@ -10,11 +10,11 @@ import {
   describeRunSentence,
   runEnding,
 } from '@/features/workflow-runs/model/presentation/run-sentence';
-import { describeStepError } from '@/features/workflow-runs/model/step-inspection/step-error-copy';
+import { describeStepError } from '@/features/workflow-runs/model/step-inspection/error-copy';
 import {
   stepTag,
   storyEntryReason,
-} from '@/features/workflow-runs/model/step-inspection/step-copy';
+} from '@/features/workflow-runs/model/step-inspection/copy';
 import { replayStep } from '@/features/workflow-runs/model/timeline/step-replay';
 import { buildRunTimeline } from '@/features/workflow-runs/model/timeline/runs';
 import { segmentPlacement } from '@/features/workflow-runs/model/timeline/geometry';

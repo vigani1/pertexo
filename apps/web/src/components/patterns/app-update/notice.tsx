@@ -15,7 +15,7 @@ import {
   SystemStateArt,
   SystemStateDescription,
   SystemStateTitle,
-} from '../states/system-state';
+} from '../states/system';
 
 // The person decides when to reload. A page with unsaved work keeps its
 // beforeunload guard, so the browser asks before that work is dropped.

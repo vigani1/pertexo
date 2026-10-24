@@ -1,4 +1,4 @@
-import { assertSessionIdentity } from '@/features/auth/session/session-identity.public';
+import { assertSessionIdentity } from '@/features/auth/session/identity.public';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import {
   folderSharingResponseSchema,

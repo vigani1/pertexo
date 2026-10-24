@@ -7,8 +7,8 @@ import type { StructuredLogger } from '@pertexo/observability';
 import type { createApiApplication } from '../../../../src/app.js';
 import type { ApiConfig } from '../../../../src/platform/config/api.js';
 
-import type { ApiConnectionRuntimeOverrides } from '../../../../src/platform/connections/connection-runtime.module.js';
-import type { ApiWebhookRuntime } from '../../../../src/platform/webhooks/webhook-runtime.module.js';
+import type { ApiConnectionRuntimeOverrides } from '../../../../src/platform/connections/runtime.module.js';
+import type { ApiWebhookRuntime } from '../../../../src/platform/webhooks/runtime.module.js';
 
 export type Browser = Readonly<{
   session: string;

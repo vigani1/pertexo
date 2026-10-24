@@ -1,5 +1,5 @@
 import { queryOptions } from '@tanstack/react-query';
-import { assertSessionIdentity } from '@/features/auth/session/session-identity.public';
+import { assertSessionIdentity } from '@/features/auth/session/identity.public';
 import { getAllAccessibleWorkspaces } from '@/features/workspaces/queries.public';
 import { ApiError } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';

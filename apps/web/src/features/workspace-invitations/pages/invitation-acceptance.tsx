@@ -5,7 +5,7 @@ import {
   AuthLensTitle,
   AuthStage,
   LensLoading,
-} from '@/features/auth/auth-stage.public';
+} from '@/features/auth/stage.public';
 import type { ApiClient } from '@/lib/api/client';
 import { AcceptanceFailureLine } from '../components/acceptance-failure-line';
 import { CompletedJourney } from '../components/completed-journey';

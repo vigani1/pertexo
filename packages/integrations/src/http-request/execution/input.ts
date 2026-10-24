@@ -18,7 +18,7 @@ import {
   type HttpPlaceholderValue,
 } from '../placeholders.js';
 
-import { mergeHeaders } from '../request-material.js';
+import { mergeHeaders } from '../material.js';
 
 import { artifactContentType } from '../read-body.js';
 import { failedConfiguration } from './contract.js';

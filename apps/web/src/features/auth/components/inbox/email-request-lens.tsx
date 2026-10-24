@@ -9,7 +9,7 @@ import {
   AuthLensDescription,
   AuthLensTitle,
 } from '../stage/auth-lens';
-import { AuthForm } from '../../forms/auth-form';
+import { AuthForm } from '../../forms/submission';
 
 /**
  * One email field that asks Pertexo to send something (a reset link, a new

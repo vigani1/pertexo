@@ -9,8 +9,8 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createApiConnectionRuntime,
   type ApiConnectionRuntimeOverrides,
-} from '../../src/platform/connections/connection-runtime.module.js';
-import type { ApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
+} from '../../src/platform/connections/runtime.module.js';
+import type { ApiIdentityRuntime } from '../../src/platform/identity/runtime.module.js';
 import type {
   ConnectionEmailClient,
   ConnectionHttpClient,

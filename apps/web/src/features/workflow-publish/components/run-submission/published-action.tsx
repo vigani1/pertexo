@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { buttonVariants } from '@/components/ui/button-variants';
 import type { WorkflowCommandSession } from '../../hooks/use-workflow-command-session';
-import { RunMenu } from './run-menu';
+import { RunMenu } from './menu';
 export function PublishedRunAction({
   form,
   canRun,

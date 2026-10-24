@@ -3,7 +3,7 @@ import {
   type WebhookTriggerSecretContext,
 } from '@pertexo/integrations/server';
 import type { ApiConfig } from '../../../src/platform/config/api.js';
-import { createApiWebhookRuntime } from '../../../src/platform/webhooks/webhook-runtime.module.js';
+import { createApiWebhookRuntime } from '../../../src/platform/webhooks/runtime.module.js';
 import { createEditorBrowserEnvelopeKeys } from '../../../../../infrastructure/testing/editor-browser-envelope-keys.mjs';
 
 /** Actual runtime, with test-owned authenticated wrapping instead of AWS KMS. */

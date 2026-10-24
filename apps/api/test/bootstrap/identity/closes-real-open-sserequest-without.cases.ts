@@ -5,7 +5,7 @@ import { createApiApplication } from '../../../src/app.js';
 
 import { ApiDrainState } from '../../../src/platform/health/drain-state.js';
 
-import type { ApiWorkflowRuntime } from '../../../src/platform/workflow/workflow-runtime.module.js';
+import type { ApiWorkflowRuntime } from '../../../src/platform/workflow/runtime.module.js';
 
 import { createStubApiWorkflowRuntime } from '../../support/api-platform.fixture.js';
 import {

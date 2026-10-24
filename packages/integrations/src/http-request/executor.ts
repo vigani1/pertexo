@@ -20,7 +20,7 @@ import {
   createProviderBeforeDispatch,
   createUnauthenticatedBeforeDispatch,
 } from '../provider-dispatch-fence.js';
-import { decodeCredential } from './request-material.js';
+import { decodeCredential } from './material.js';
 
 import {
   HttpRequestExecutorError,

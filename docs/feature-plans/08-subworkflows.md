@@ -48,7 +48,7 @@ Inspected current seams:
   expression and authoring validation.
 - `packages/workflow-engine/src/transition/` and `checkpoint/`: pure decisions,
   loop state and completed-output references.
-- `packages/execution/src/runs/advance-run.ts`, `initial-checkpoint.ts` and
+- `packages/execution/src/runs/advance.ts`, `initial-checkpoint.ts` and
   `attempts/load-inputs.ts`: orchestration and input projection.
 - `packages/database/src/runs/commands/acceptance.ts`, `advance/store.ts`,
   `advance/persist/` and `outbox/`: run/receipt persistence and transport.

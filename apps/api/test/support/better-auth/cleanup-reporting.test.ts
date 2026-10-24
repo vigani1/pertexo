@@ -43,7 +43,7 @@ vi.mock('@pertexo/database/testing', () => ({
 vi.mock('../../../src/authentication/index.js', () => ({
   LocalAuthenticationMailSink: vi.fn(),
 }));
-vi.mock('../../../src/platform/identity/identity-runtime.module.js', () => ({
+vi.mock('../../../src/platform/identity/runtime.module.js', () => ({
   createApiIdentityRuntime: () => ({ close: () => close('identity runtime') }),
 }));
 vi.mock('../../../src/platform/workflow/compatibility.js', () => ({

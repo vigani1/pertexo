@@ -23,7 +23,7 @@ import {
   sendWorkflowOrganizationCommand,
 } from '@/features/workflows/data/organization/api';
 import { useWorkflowOrganizationCommand } from '@/features/workflows/hooks/use-workflow-organization-command';
-import { assertSessionIdentity } from '@/features/auth/session/session-identity.public';
+import { assertSessionIdentity } from '@/features/auth/session/identity.public';
 import { getAllAccessibleWorkspaces } from '@/features/workspaces/queries.public';
 import { ApiError } from '@/lib/api/error';
 import { createApiClient } from '@/lib/api/client';
@@ -44,13 +44,10 @@ vi.mock('@/features/workflows/data/organization/api', async (original) => ({
   getWorkflowTagsPage: vi.fn(),
   sendWorkflowOrganizationCommand: vi.fn(),
 }));
-vi.mock(
-  '@/features/auth/session/session-identity.public',
-  async (original) => ({
-    ...(await original<object>()),
-    assertSessionIdentity: vi.fn(),
-  }),
-);
+vi.mock('@/features/auth/session/identity.public', async (original) => ({
+  ...(await original<object>()),
+  assertSessionIdentity: vi.fn(),
+}));
 vi.mock('@/features/workspaces/queries.public', async (original) => ({
   ...(await original<object>()),
   getAllAccessibleWorkspaces: vi.fn(),

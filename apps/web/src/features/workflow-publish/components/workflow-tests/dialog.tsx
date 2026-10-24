@@ -1,4 +1,4 @@
-import { useRunInput } from '@/features/workflow-runs/run-input.public';
+import { useRunInput } from '@/features/workflow-runs/input.public';
 import { WorkflowTestActions } from './controls';
 import { useState } from 'react';
 import type {

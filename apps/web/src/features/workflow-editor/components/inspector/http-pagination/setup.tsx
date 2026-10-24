@@ -5,7 +5,7 @@ import { isRecord } from '@pertexo/workflow-model';
 import { Field, FieldLabel, FieldDescription } from '@/components/ui/field';
 import { Disclosure } from '@/components/ui/disclosure';
 import { ChoiceSelect } from '../fields/choice-select';
-import { SchemaField } from '../fields/schema-field';
+import { SchemaField } from '../fields/schema';
 import {
   fieldControlId,
   type NodeFormApi,

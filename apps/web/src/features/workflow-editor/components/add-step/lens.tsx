@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
 import type { StepChoice } from '../../model/step-catalog';
 import { firstStepChoice } from '../../model/step-catalog';
-import { StepChoiceList, StepSearch } from './step-picker';
+import { StepChoiceList, StepSearch } from './picker';
 
 /**
  * The add-step lens: search with "/", steps under human group names, click

@@ -17,7 +17,7 @@ import {
 } from '../../../model/inspector/transforms/file-columns';
 import { useInspectorDraftField, useScratchForm } from '../use-draft-field';
 import { ChoiceSelect } from '../fields/choice-select';
-import { SchemaField } from '../fields/schema-field';
+import { SchemaField } from '../fields/schema';
 
 export function CreateFileSetup({
   schema,

@@ -20,7 +20,7 @@ import { ArtifactsModule } from './artifacts/index.js';
 import {
   DatabaseModule,
   WORKSPACE_DATABASE,
-} from './platform/database/database.module.js';
+} from './platform/database/module.js';
 import { LiveController } from './platform/health/live.controller.js';
 import {
   API_RUNTIME_READINESS,
@@ -30,38 +30,38 @@ import {
   ApiLifecycleModule,
   ApiShutdownCoordinator,
 } from './platform/health/drain-state.js';
-import { HttpPlatformModule } from './platform/http/http.module.js';
+import { HttpPlatformModule } from './platform/http/module.js';
 import type {
   HttpErrorLogEntry,
   HttpErrorLogger,
 } from './platform/http/problem-details.filter.js';
-import { ObservabilityModule } from './platform/observability/observability.module.js';
+import { ObservabilityModule } from './platform/observability/module.js';
 import {
   ConnectionRuntimeModule,
   type ApiConnectionRuntime,
-} from './platform/connections/connection-runtime.module.js';
+} from './platform/connections/runtime.module.js';
 import {
   IdentityRuntimeModule,
   type ApiIdentityRuntime,
-} from './platform/identity/identity-runtime.module.js';
+} from './platform/identity/runtime.module.js';
 import {
   WorkflowRuntimeModule,
   type ApiWorkflowRuntime,
-} from './platform/workflow/workflow-runtime.module.js';
-import type { ApiWebhookRuntime } from './platform/webhooks/webhook-runtime.module.js';
+} from './platform/workflow/runtime.module.js';
+import type { ApiWebhookRuntime } from './platform/webhooks/runtime.module.js';
 import { WebhookModule } from './webhooks/module.js';
-import type { ApiScheduleRuntime } from './platform/schedules/schedule-runtime.module.js';
+import type { ApiScheduleRuntime } from './platform/schedules/runtime.module.js';
 import { ScheduleModule } from './schedules/module.js';
-import type { ApiNotificationRuntime } from './platform/notifications/notification-runtime.module.js';
+import type { ApiNotificationRuntime } from './platform/notifications/runtime.module.js';
 import { NotificationsModule } from './notifications/module.js';
 import type { RateLimitConsumer } from './platform/rate-limit/interceptor.js';
-import { RateLimitModule } from './platform/rate-limit/rate-limit.module.js';
+import { RateLimitModule } from './platform/rate-limit/module.js';
 import { APPLICATION_ERROR_MAPPERS } from './application-errors.js';
 import {
   ArtifactRuntimeModule,
   DEFAULT_ARTIFACT_MAX_OBJECT_BYTES,
   type ApiArtifactRuntime,
-} from './platform/artifacts/artifact-runtime.module.js';
+} from './platform/artifacts/runtime.module.js';
 
 export type ApiModuleDependencies = Readonly<{
   database?: WorkspaceDatabase;

@@ -8,8 +8,8 @@ import type {
   CredentialDraft,
   SavedCredential,
 } from '../../model/credential-draft';
-import type { useConnectionTest } from '../connection-test/use-test';
-import type { ConnectionTest } from '../connection-test/use-test';
+import type { useConnectionTest } from '../connection-test/use-command';
+import type { ConnectionTest } from '../connection-test/use-command';
 import { CredentialFields } from '../credential/fields';
 import { createHeaderRowId, type CredentialForm } from '../credential/use-form';
 import { ProviderSockets } from '../provider-sockets';

@@ -1,6 +1,6 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { UsagePage } from '@/features/usage/public';
-import { parseUsageSearch } from '@/features/usage/usage-search.public';
+import { parseUsageSearch } from '@/features/usage/search.public';
 import { useWorkspaceScope } from './shell/use-workspace-scope';
 
 export function UsageRoute() {

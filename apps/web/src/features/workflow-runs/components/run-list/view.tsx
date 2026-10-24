@@ -12,8 +12,8 @@ import { isActiveRunStatus } from '../../model/presentation/run-status';
 import { useNow } from '@/lib/hooks/use-now';
 import { cn } from '@/lib/utils';
 import { admissionBlockerWords } from '../../model/presentation/admission';
-import { RunRow } from './run-row';
-import { RUN_ROW_LAYOUT, type RunListVariant } from './run-row-layout';
+import { RunRow } from './row';
+import { RUN_ROW_LAYOUT, type RunListVariant } from './row-layout';
 
 /**
  * The operator's log: runs grouped under local days, with durations that

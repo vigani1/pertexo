@@ -4,7 +4,7 @@ import {
   workflowFolderNameInputSchema,
   type WorkflowFolder,
 } from '@pertexo/contracts';
-import { ActionDialog } from '@/components/patterns/actions/action-dialog';
+import { ActionDialog } from '@/components/patterns/actions/dialog';
 import {
   ConfirmDialog,
   ConfirmationFooter,

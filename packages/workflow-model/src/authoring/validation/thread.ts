@@ -4,7 +4,7 @@ import {
   AuthoringValidationUnavailableError,
   type WorkflowExpressionPolicyProjection,
 } from './contracts.js';
-import { validateAuthoringBatch } from './validation.js';
+import { validateAuthoringBatch } from './graph.js';
 
 const port = parentPort;
 if (port === null)

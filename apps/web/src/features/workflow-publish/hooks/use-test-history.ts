@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { workflowRunQueryOptions } from '@/features/workflow-runs/queries.public';
-import { isActiveRunStatus } from '@/features/workflow-runs/run-labels.public';
+import { isActiveRunStatus } from '@/features/workflow-runs/labels.public';
 import type { WorkflowTestScope } from '../data/workflow-tests/api';
 import {
   workflowTestsQueryOptions,

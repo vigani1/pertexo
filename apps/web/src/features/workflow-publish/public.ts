@@ -3,7 +3,7 @@ export { IssuesLens } from './components/validation/issues-lens';
 export {
   NodeTestPanel,
   type NodeTestHandle,
-} from './components/node-preview/node-test-panel';
+} from './components/node-preview/panel';
 export { describePreviewStatus } from './model/testing/preview-observation';
 export {
   workflowIssuesView,

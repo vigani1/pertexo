@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import type { WorkspaceDatabase } from '@pertexo/database/platform';
 
-import { WORKSPACE_DATABASE } from '../database/database.module.js';
+import { WORKSPACE_DATABASE } from '../database/module.js';
 import { RateLimitExempt } from '../rate-limit/metadata.js';
 import { ApiDrainState } from './drain-state.js';
 

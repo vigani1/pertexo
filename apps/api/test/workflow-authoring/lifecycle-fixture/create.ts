@@ -6,7 +6,7 @@ import {
 } from '@pertexo/database/testing';
 
 import { createApiApplication } from '../../../src/app.js';
-import { createApiIdentityRuntime } from '../../../src/platform/identity/identity-runtime.module.js';
+import { createApiIdentityRuntime } from '../../../src/platform/identity/runtime.module.js';
 import { Pool, type PoolClient } from 'pg';
 
 import { issueBrowserSession } from '../../webhooks/support/browser-session.fixture.js';

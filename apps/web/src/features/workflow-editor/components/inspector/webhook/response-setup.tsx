@@ -1,6 +1,6 @@
 import type { NodeConfig } from '../../../model/inspector/draft';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
-import { SchemaField } from '../fields/schema-field';
+import { SchemaField } from '../fields/schema';
 
 export function WebhookResponseSetup({
   config,

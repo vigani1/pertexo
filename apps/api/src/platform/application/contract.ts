@@ -11,23 +11,23 @@ import type {
 import type {
   ApiConnectionRuntime,
   ApiConnectionRuntimeOverrides,
-} from '../connections/connection-runtime.module.js';
+} from '../connections/runtime.module.js';
 import type {
   ApiIdentityRuntime,
   ApiIdentityRuntimeOverrides,
-} from '../identity/identity-runtime.module.js';
+} from '../identity/runtime.module.js';
 import type {
   ApiWorkflowRuntime,
   ApiWorkflowRuntimeOverrides,
-} from '../workflow/workflow-runtime.module.js';
-import type { ApiWebhookRuntime } from '../webhooks/webhook-runtime.module.js';
-import type { ApiScheduleRuntime } from '../schedules/schedule-runtime.module.js';
-import type { ApiNotificationRuntime } from '../notifications/notification-runtime.module.js';
+} from '../workflow/runtime.module.js';
+import type { ApiWebhookRuntime } from '../webhooks/runtime.module.js';
+import type { ApiScheduleRuntime } from '../schedules/runtime.module.js';
+import type { ApiNotificationRuntime } from '../notifications/runtime.module.js';
 import type { RateLimitConsumer } from '../rate-limit/interceptor.js';
 import type {
   ApiArtifactRuntime,
   ApiArtifactRuntimeOverrides,
-} from '../artifacts/artifact-runtime.module.js';
+} from '../artifacts/runtime.module.js';
 
 export /*
  * The feature runtimes an API process owns: which to create from

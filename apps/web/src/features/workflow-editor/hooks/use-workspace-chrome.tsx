@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   WorkflowTestButton,
   WorkflowTestMenuItems,
-} from '@/features/workflow-publish/workflow-tests.public';
+} from '@/features/workflow-publish/tests.public';
 import type { ComponentProps } from 'react';
 import type { EditorChrome } from '../components/editor-workspace';
 

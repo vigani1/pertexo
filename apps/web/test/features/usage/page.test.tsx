@@ -13,7 +13,7 @@ import {
   identityHandlers,
   statisticsHandler,
 } from '../../support/fixtures/run';
-import { parseUsageSearch } from '@/features/usage/usage-search.public';
+import { parseUsageSearch } from '@/features/usage/search.public';
 import { usageCapacityQueryOptions } from '@/features/usage/data/usage.queries';
 import { createApiClient } from '@/lib/api/client';
 

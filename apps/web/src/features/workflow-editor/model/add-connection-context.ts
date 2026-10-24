@@ -1,5 +1,5 @@
 import { createContext } from 'react';
-import type { ConnectionMutationScope } from '@/features/connections/add-connection.public';
+import type { ConnectionMutationScope } from '@/features/connections/add.public';
 
 /**
  * Where a step's connection slot creates a new connection in place: the

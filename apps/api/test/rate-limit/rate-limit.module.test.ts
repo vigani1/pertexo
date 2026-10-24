@@ -4,7 +4,7 @@ import {
   RATE_LIMIT_CONSUMER,
   RATE_LIMIT_CONCURRENCY,
   RateLimitModule,
-} from '../../src/platform/rate-limit/rate-limit.module.js';
+} from '../../src/platform/rate-limit/module.js';
 import type { ApiShutdownCoordinator } from '../../src/platform/health/drain-state.js';
 
 describe('rate-limit module wiring', () => {

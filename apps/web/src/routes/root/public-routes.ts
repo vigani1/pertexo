@@ -5,7 +5,7 @@ import {
   returnToSearch,
 } from '@/features/auth/return-path.public';
 import { SigningOut } from '@/features/auth/sign-out.public';
-import { landingWorkspace } from '@/features/workspaces/last-workspace.public';
+import { landingWorkspace } from '@/features/workspaces/last.public';
 import { pageTitle } from './page-title';
 import {
   findCurrentUser,

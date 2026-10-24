@@ -24,7 +24,7 @@ import type {
   DatabaseRuntime,
 } from '@pertexo/database/platform';
 import type { WorkflowAuthoringDependencies } from '../../workflow-authoring/index.js';
-import type { ApiWorkflowRuntimeOverrides } from './workflow-runtime.module.js';
+import type { ApiWorkflowRuntimeOverrides } from './runtime.module.js';
 
 export type ApiWorkflowMetadataRuntime = Readonly<{
   inputCases?: WorkflowInputCaseDatabase;

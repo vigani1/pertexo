@@ -6,7 +6,7 @@ import { useWorkflowTests } from '@/features/workflow-publish/hooks/use-workflow
 import {
   WorkflowTestButton,
   WorkflowTestHistory,
-} from '@/features/workflow-publish/workflow-tests.public';
+} from '@/features/workflow-publish/tests.public';
 import { createApiClient } from '@/lib/api/client';
 import { renderInRouter } from '../../support/render-in-router';
 import { mockServer } from '../../support/mock-server';

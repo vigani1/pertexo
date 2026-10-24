@@ -1,5 +1,5 @@
 import { RunRecoveryAction } from '../recovery/action';
-import { RunDetailActions } from '../run-actions/detail-actions';
+import { RunDetailActions } from '../run-actions/detail';
 import type {
   AccessibleWorkspace,
   WorkflowRunReadSummary,
@@ -37,8 +37,8 @@ import {
   runCoreState,
 } from '../../model/presentation/run-status';
 import { CopyButton } from '@/components/ui/copy-button';
-import { CancelRunDialog } from '../run-actions/cancel-run-dialog';
-import { ReplayRunDialog } from '../run-actions/replay-run-dialog';
+import { CancelRunDialog } from '../run-actions/cancel-dialog';
+import { ReplayRunDialog } from '../run-actions/replay-dialog';
 import { RunAdmissionBlockers } from '../run-admission-blockers';
 
 function MetaFact({ children }: Readonly<{ children: ReactNode }>) {

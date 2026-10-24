@@ -5,7 +5,7 @@ export {
   throwApplicationError,
 } from './application-error.js';
 export type { ApplicationError } from './application-error.js';
-export { HttpPlatformModule } from './http.module.js';
+export { HttpPlatformModule } from './module.js';
 export { ProblemDetailsFilter } from './problem-details.filter.js';
 export type { HttpApplicationErrorMapper } from './problem-details.filter.js';
 export {

@@ -13,7 +13,7 @@ import {
   WORKFLOW_AUTO_PAUSE_RUNTIME,
   type WorkflowAutoPauseRuntime,
 } from '../../workflows/auto-pause-runtime.js';
-import { WORKSPACE_DATABASE } from '../../platform/database/database.module.js';
+import { WORKSPACE_DATABASE } from '../../platform/database/module.js';
 import {
   RETENTION_RUNTIME,
   type RetentionRuntime,

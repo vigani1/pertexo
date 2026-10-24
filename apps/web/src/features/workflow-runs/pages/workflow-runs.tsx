@@ -4,20 +4,20 @@ import type {
 } from '@pertexo/contracts';
 import { useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
-import { RunFilters } from '../components/run-filters/filters';
+import { RunFilters } from '../components/run-filters/controls';
 import {
   NoWorkflowRunsYet,
   RunsForbidden,
 } from '../components/run-list/states';
-import { RunResults } from '../components/run-list/run-results';
-import { RunsToolbar } from '../components/run-list/runs-toolbar';
+import { RunResults } from '../components/run-list/results';
+import { RunsToolbar } from '../components/run-list/toolbar';
 import {
   filtersFromSearch,
   withRunView,
   type WorkflowRunSearch,
 } from '../model/list/run-search';
 import { useRunHistory } from '../hooks/use-run-history';
-import { WorkflowStepHealth } from '../components/step-history/workflow-steps';
+import { WorkflowStepHealth } from '../components/step-history/workflow';
 
 /**
  * A workflow's Runs tab: the same list as the Runs page, fixed to this

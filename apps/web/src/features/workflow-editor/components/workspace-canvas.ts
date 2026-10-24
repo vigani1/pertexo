@@ -12,8 +12,8 @@ import type { NodeTestHandle } from '@/features/workflow-publish/public';
 import type { useCanvasEffects } from '../hooks/use-canvas-effects';
 import type { useEditorActions } from '../hooks/use-editor-actions';
 import type { MobilePanel } from '../hooks/use-inspector-navigation';
-import { useQuickAdd } from './add-step/use-quick-add';
-import { useStepPlacement } from './add-step/use-step-placement';
+import { useQuickAdd } from './add-step/use-quick';
+import { useStepPlacement } from './add-step/use-placement';
 
 /** The add-step lens's fold and its search field, which "/" focuses. */
 function useAddStepFold({

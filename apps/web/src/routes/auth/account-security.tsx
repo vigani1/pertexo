@@ -8,8 +8,8 @@ import {
 import { ArrowLeftIcon } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { AccountSecurityPage } from '@/features/auth/account-security.public';
-import { AccountWorkspacesSection } from '@/features/workspaces/account-workspaces.public';
-import { Wordmark } from '@/features/auth/auth-stage.public';
+import { AccountWorkspacesSection } from '@/features/workspaces/account.public';
+import { Wordmark } from '@/features/auth/stage.public';
 
 // Standalone account page: the target of sign-in method callbacks and the
 // workspace picker's account menu, outside any workspace.
