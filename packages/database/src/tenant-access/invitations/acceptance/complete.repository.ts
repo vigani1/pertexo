@@ -8,7 +8,7 @@ import {
   workspaceMemberships,
 } from '../../../schema/foundation.js';
 import { rethrowQueryFailure } from '../../../platform/query-errors.js';
-import { readEligibleAuthenticationSession } from '../../../identity/federation/sessions/authority.js';
+import { readEligibleAuthenticationSession } from '../../../identity/federation/sessions/authority.repository.js';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 import {

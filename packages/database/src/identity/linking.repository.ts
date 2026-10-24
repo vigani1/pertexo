@@ -1,9 +1,9 @@
 import { isUniqueConstraintFailure } from '../platform/query-errors.js';
-import { hasSignInMethodCapacity } from './federation/accounts/limits.js';
+import { hasSignInMethodCapacity } from './federation/accounts/limits.queries.js';
 import {
   readEligibleAuthenticationSession,
   type AuthenticationSession,
-} from './federation/sessions/authority.js';
+} from './federation/sessions/authority.repository.js';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
 import { and, eq, gt, sql } from 'drizzle-orm';
@@ -18,7 +18,7 @@ import {
 import { users } from '../schema/foundation.js';
 import { withPlatformTransaction } from '../tenant-access/transactions.js';
 import { queryFailure } from '../platform/query-errors.js';
-import { recordIdentitySecurityFact } from './security-facts.js';
+import { recordIdentitySecurityFact } from './facts.repository.js';
 
 type ProviderName = 'google' | 'github' | 'microsoft' | 'apple';
 type ProviderIdentity = Readonly<{

@@ -1,14 +1,14 @@
-import { readDirectoryRole } from '../roles.js';
+import { readDirectoryRole } from '../roles.queries.js';
 import type { Pool } from 'pg';
 import type { DirectoryMappings, DirectoryAdopt } from '@pertexo/contracts';
 import { withWorkspaceScope } from '../../../../tenant-access/transactions.js';
 import { DirectoryError } from '../contract.js';
-import { projectDirectoryMemberships } from '../projection.js';
+import { projectDirectoryMemberships } from '../projection.repository.js';
 import {
   auditDirectoryManagement,
   runDirectoryCommand,
   type DirectoryCommand,
-} from './commands.js';
+} from './commands.repository.js';
 
 export async function replaceDirectoryMappings(
   pool: Pool,

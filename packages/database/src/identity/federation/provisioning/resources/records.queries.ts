@@ -6,8 +6,8 @@ import {
   type DirectoryKind,
 } from './filter.js';
 import type { DirectoryGroupRow, DirectoryUserRow } from '../contract.js';
-import type { DirectoryUser } from './users.js';
-import type { DirectoryGroup } from './groups.js';
+import type { DirectoryUser } from './users.repository.js';
+import type { DirectoryGroup } from './groups.repository.js';
 
 export type DirectoryQuery = Readonly<{
   filter?: Filter;

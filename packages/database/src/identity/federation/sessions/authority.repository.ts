@@ -1,4 +1,4 @@
-import { directorySessionAllowed } from '../provisioning/session.js';
+import { directorySessionAllowed } from '../provisioning/session.queries.js';
 import { AUTHENTICATION_PROVIDERS } from '@pertexo/workflow-model';
 import type { Pool, PoolClient } from 'pg';
 import { appendAuditFact } from '../../../governance/audit/events.repository.js';

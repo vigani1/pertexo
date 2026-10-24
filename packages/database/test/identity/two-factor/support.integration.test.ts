@@ -6,7 +6,7 @@ import { parseDatabaseConfig } from '../../../src/config.js';
 import {
   createTwoFactorRecoveryStore,
   type TwoFactorRecoveryStore,
-} from '../../../src/identity/two-factor/recovery.js';
+} from '../../../src/identity/two-factor/recovery.repository.js';
 import { createSystemMailDeliveryStore } from '../../../src/platform/mail/repository.js';
 import type {
   SystemMailDeliveryStore,

@@ -17,9 +17,9 @@ import {
 import {
   lockFederationWorkspace,
   organizationForWorkspace,
-} from './authority.js';
-import { projectOrganization } from './settings.js';
-import { lockDirectoryParticipants } from '../provisioning/authority.js';
+} from './authority.repository.js';
+import { projectOrganization } from './settings.queries.js';
+import { lockDirectoryParticipants } from '../provisioning/authority.repository.js';
 
 export type FederationCommand = FederationScope &
   Readonly<{ idempotencyKey: string; expectedRevision: number }>;

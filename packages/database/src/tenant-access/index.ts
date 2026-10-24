@@ -68,12 +68,12 @@ export {
   setupPasswordAndRevokeSessions,
   resetPasswordAndRevokeSessions,
   unlinkMethodAndRevokeSessions,
-} from '../identity/account-security.js';
+} from '../identity/security.repository.js';
 
-export { AccountLinkingCommands } from '../identity/account-linking.js';
-export { SocialSignInCommands } from '../identity/federation/sign-in.js';
+export { AccountLinkingCommands } from '../identity/linking.repository.js';
+export { SocialSignInCommands } from '../identity/federation/social.repository.js';
 
-export { EmailProofCommands } from '../identity/email-proofs.js';
+export { EmailProofCommands } from '../identity/email.repository.js';
 
 export { createApiTokenDatabase } from './tokens/repository.js';
 export { ApiTokenPolicyError } from './tokens/errors.js';
@@ -89,15 +89,15 @@ export type { ParsedApiTokenCredential } from './tokens/credential.js';
 export {
   createFederationManagementStore,
   type FederationManagementStore,
-} from '../identity/federation/management/store.js';
+} from '../identity/federation/management/repository.js';
 export { FederationConflictError } from '../identity/federation/management/contract.js';
 
 export {
   identityEmailChangeEligibility,
   authorizeCredentialSignIn,
-} from '../identity/federation/sessions/authority.js';
+} from '../identity/federation/sessions/authority.repository.js';
 
-export { OrganizationSignInCommands } from '../identity/federation/journeys/store.js';
+export { OrganizationSignInCommands } from '../identity/federation/journeys/repository.js';
 
 export { DirectoryError } from '../identity/federation/provisioning/contract.js';
 export type {
@@ -107,23 +107,23 @@ export type {
   DirectoryGroupValues,
   DirectoryRole,
 } from '../identity/federation/provisioning/contract.js';
-export type { DirectoryUser } from '../identity/federation/provisioning/resources/users.js';
-export type { DirectoryGroup } from '../identity/federation/provisioning/resources/groups.js';
+export type { DirectoryUser } from '../identity/federation/provisioning/resources/users.repository.js';
+export type { DirectoryGroup } from '../identity/federation/provisioning/resources/groups.repository.js';
 export { DIRECTORY_LIMITS } from '../identity/federation/provisioning/limits.js';
 
 export {
   createDirectoryStore,
   type DirectoryStore,
-} from '../identity/federation/provisioning/store.js';
-export type { DirectoryQuery } from '../identity/federation/provisioning/resources/queries.js';
+} from '../identity/federation/provisioning/repository.js';
+export type { DirectoryQuery } from '../identity/federation/provisioning/resources/records.queries.js';
 
 export { DirectoryManagedMembershipError } from './errors.js';
 
-export { isAuthenticationSessionAllowed } from '../identity/federation/sessions/lookup.js';
+export { isAuthenticationSessionAllowed } from '../identity/federation/sessions/lookup.queries.js';
 
-export { createTwoFactorRecoveryStore } from '../identity/two-factor/recovery.js';
-export { recordIdentitySecurityFact } from '../identity/security-facts.js';
+export { createTwoFactorRecoveryStore } from '../identity/two-factor/recovery.repository.js';
+export { recordIdentitySecurityFact } from '../identity/facts.repository.js';
 export type {
   TwoFactorRecoveryStore,
   TwoFactorRecoveryResult,
-} from '../identity/two-factor/recovery.js';
+} from '../identity/two-factor/recovery.repository.js';

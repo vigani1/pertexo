@@ -1,4 +1,4 @@
-import { readIdentityEmailChangeEligibility } from './federation/sessions/authority.js';
+import { readIdentityEmailChangeEligibility } from './federation/sessions/authority.repository.js';
 import { randomUUID } from 'node:crypto';
 
 import { and, eq, gt, isNull, sql } from 'drizzle-orm';
@@ -11,7 +11,7 @@ import { withPlatformTransaction } from '../tenant-access/transactions.js';
 import { insertSystemMail } from '../platform/mail/repository.js';
 import type { SystemMailInput } from '../platform/mail/contract.js';
 import { rethrowQueryFailure } from '../platform/query-errors.js';
-import { recordIdentitySecurityFact } from './security-facts.js';
+import { recordIdentitySecurityFact } from './facts.repository.js';
 
 type ProofPurpose = 'initial_verification' | 'change_old' | 'change_new';
 type ProofUser = Readonly<{ id: string; email: string; name: string }>;

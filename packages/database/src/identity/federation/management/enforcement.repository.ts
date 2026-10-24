@@ -2,15 +2,15 @@ import type { Pool, PoolClient } from 'pg';
 import type { FederationSettings } from '@pertexo/contracts';
 import { withWorkspaceScope } from '../../../tenant-access/transactions.js';
 import { FederationConflictError } from './contract.js';
-import { recordFederationAudit } from './authority.js';
+import { recordFederationAudit } from './authority.repository.js';
 import {
   advanceOrganization,
   assertOrganizationRevision,
   requireControlOrganization,
   runFederationCommand,
   type FederationCommand,
-} from './commands.js';
-import { requireOrganizationDomain } from './domains.js';
+} from './commands.repository.js';
+import { requireOrganizationDomain } from './domains.repository.js';
 
 async function requireRecoveryCredential(
   client: PoolClient,

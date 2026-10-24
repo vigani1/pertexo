@@ -1,6 +1,6 @@
 import type { Pool, PoolClient } from 'pg';
 import { generatePersistedId } from '../../../../platform/persisted-id.js';
-import { withDirectoryTransaction } from '../authority.js';
+import { withDirectoryTransaction } from '../authority.repository.js';
 import {
   DirectoryError,
   type DirectoryPrincipal,
@@ -8,7 +8,7 @@ import {
   type DirectoryUserValues,
 } from '../contract.js';
 import { DIRECTORY_LIMITS } from '../limits.js';
-import { projectDirectoryMemberships } from '../projection.js';
+import { projectDirectoryMemberships } from '../projection.repository.js';
 import {
   assertDirectoryRevision,
   directoryAudit,

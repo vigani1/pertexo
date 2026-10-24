@@ -9,14 +9,14 @@ import { generatePersistedId } from '../../../../platform/persisted-id.js';
 import { withPlatformTransaction } from '../../../../tenant-access/transactions.js';
 import { lockWorkspaceAuthority } from '../../../../tenant-access/workspaces/authority.queries.js';
 import { withWorkspaceScope } from '../../../../tenant-access/transactions.js';
-import { organizationForWorkspace } from '../../management/authority.js';
+import { organizationForWorkspace } from '../../management/authority.repository.js';
 import { DirectoryError } from '../contract.js';
 import { DIRECTORY_LIMITS } from '../limits.js';
 import {
   auditDirectoryManagement,
   runDirectoryCommand,
   type DirectoryCommand,
-} from './commands.js';
+} from './commands.repository.js';
 
 export type CredentialRow = Readonly<{
   id: string;

@@ -10,7 +10,7 @@ import type { SystemMailInput } from '../../platform/mail/contract.js';
 import { authTwoFactors } from '../../schema/authentication.js';
 import { users } from '../../schema/foundation.js';
 import { withPlatformTransaction } from '../../tenant-access/transactions.js';
-import { recordIdentitySecurityFact } from '../security-facts.js';
+import { recordIdentitySecurityFact } from '../facts.repository.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 
 type RecoveryUser = Readonly<{ email: string; displayName: string }>;

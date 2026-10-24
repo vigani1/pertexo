@@ -1,9 +1,9 @@
-import { lockDirectoryOrganization } from '../provisioning/authority.js';
+import { lockDirectoryOrganization } from '../provisioning/authority.repository.js';
 import {
   bindDirectorySignIn,
   directorySignInCandidate,
-} from '../provisioning/sign-in.js';
-import { hasSignInMethodCapacity } from '../accounts/limits.js';
+} from '../provisioning/sign-in.repository.js';
+import { hasSignInMethodCapacity } from '../accounts/limits.queries.js';
 import { randomBytes } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
@@ -11,15 +11,15 @@ import { withWorkspaceScope } from '../../../tenant-access/transactions.js';
 import { lockWorkspaceAuthority } from '../../../tenant-access/workspaces/authority.queries.js';
 import { revokeUserSessions } from '../../../tenant-access/users/sessions.repository.js';
 import { appendAuditFact } from '../../../governance/audit/events.repository.js';
-import { recordIdentitySecurityFact } from '../../security-facts.js';
-import { resolveVerifiedSignInUser } from '../accounts/resolve.js';
+import { recordIdentitySecurityFact } from '../../facts.repository.js';
+import { resolveVerifiedSignInUser } from '../accounts/resolve.repository.js';
 import { SignInProofRejectedError } from '../accounts/rejection.js';
 import {
   canCreateAuthenticationSession,
   readEligibleAuthenticationSession,
-} from '../sessions/authority.js';
-import { findFederationAttempt } from './queries.js';
-import { grantJustInTimeMemberships } from './membership.js';
+} from '../sessions/authority.repository.js';
+import { findFederationAttempt } from './records.queries.js';
+import { grantJustInTimeMemberships } from './membership.repository.js';
 import type { FederationIdentity, FederationCompletion } from './contract.js';
 
 export type CompleteFederationJourney = Readonly<{

@@ -3,8 +3,8 @@ import type {
   DirectorySettings,
   DirectoryPeopleQuery,
 } from '@pertexo/contracts';
-import type { DirectoryOrganization } from '../authority.js';
-import { publicCredential, type CredentialRow } from './credentials.js';
+import type { DirectoryOrganization } from '../authority.repository.js';
+import { publicCredential, type CredentialRow } from './credentials.repository.js';
 import type { DirectoryMapping } from '../contract.js';
 
 export async function projectDirectorySettings(

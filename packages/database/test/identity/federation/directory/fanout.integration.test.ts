@@ -3,13 +3,13 @@ import { writeFile } from 'node:fs/promises';
 import { expect, it, vi } from 'vitest';
 import type { QueryResult } from 'pg';
 import { useIdentityCommandDatabase } from '../../command.support.js';
-import { createDirectoryCredential } from '../../../../src/identity/federation/provisioning/management/credentials.js';
-import { replaceDirectoryMappings } from '../../../../src/identity/federation/provisioning/management/mappings.js';
+import { createDirectoryCredential } from '../../../../src/identity/federation/provisioning/management/credentials.repository.js';
+import { replaceDirectoryMappings } from '../../../../src/identity/federation/provisioning/management/mappings.repository.js';
 import {
   authenticateDirectory,
   withDirectoryTransaction,
-} from '../../../../src/identity/federation/provisioning/authority.js';
-import { projectDirectoryMemberships } from '../../../../src/identity/federation/provisioning/projection.js';
+} from '../../../../src/identity/federation/provisioning/authority.repository.js';
+import { projectDirectoryMemberships } from '../../../../src/identity/federation/provisioning/projection.repository.js';
 import { DIRECTORY_LIMITS } from '../../../../src/identity/federation/provisioning/limits.js';
 
 const db = useIdentityCommandDatabase('scim_fanout');

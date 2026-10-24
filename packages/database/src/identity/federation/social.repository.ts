@@ -3,7 +3,7 @@ import { SignInProofRejectedError } from './accounts/rejection.js';
 import type { Pool } from 'pg';
 import { withPlatformTransaction } from '../../tenant-access/transactions.js';
 import { queryFailure } from '../../platform/query-errors.js';
-import { completeSocialSignIn } from './complete.js';
+import { completeSocialSignIn } from './complete.repository.js';
 import type {
   ProvenSocialSignIn,
   SocialSignInAttempt,
