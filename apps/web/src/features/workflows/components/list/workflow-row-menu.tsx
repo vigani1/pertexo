@@ -94,60 +94,7 @@ export function WorkflowRowMenu({
             <DropdownMenuSeparator />
           </>
         ) : null}
-        <DropdownMenuLinkItem
-          render={
-            <Link to="/w/$workspaceId/workflows/$workflowId" params={params} />
-          }
-        >
-          <PencilRulerIcon aria-hidden="true" />
-          Open in Build
-        </DropdownMenuLinkItem>
-        {can('run:read') ? (
-          <DropdownMenuLinkItem
-            render={
-              <Link
-                to="/w/$workspaceId/workflows/$workflowId/runs"
-                params={params}
-              />
-            }
-          >
-            <CirclePlayIcon aria-hidden="true" />
-            Runs
-          </DropdownMenuLinkItem>
-        ) : null}
-        <DropdownMenuLinkItem
-          render={
-            <Link
-              to="/w/$workspaceId/workflows/$workflowId/triggers"
-              params={params}
-            />
-          }
-        >
-          <ZapIcon aria-hidden="true" />
-          Triggers
-        </DropdownMenuLinkItem>
-        <DropdownMenuLinkItem
-          render={
-            <Link
-              to="/w/$workspaceId/workflows/$workflowId/versions"
-              params={params}
-            />
-          }
-        >
-          <HistoryIcon aria-hidden="true" />
-          Versions
-        </DropdownMenuLinkItem>
-        <DropdownMenuLinkItem
-          render={
-            <Link
-              to="/w/$workspaceId/workflows/$workflowId/settings"
-              params={params}
-            />
-          }
-        >
-          <SettingsIcon aria-hidden="true" />
-          Settings
-        </DropdownMenuLinkItem>
+        <WorkflowHubLinks params={params} canReadRuns={can('run:read')} />
         <DropdownMenuSeparator />
         {can('workflow:read') && actions.onExport !== undefined ? (
           <DropdownMenuItem onClick={() => actions.onExport?.(workflow)}>
@@ -199,5 +146,73 @@ export function WorkflowRowMenu({
         ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+function WorkflowHubLinks({
+  params,
+  canReadRuns,
+}: Readonly<{
+  params: Readonly<{ workspaceId: string; workflowId: string }>;
+  canReadRuns: boolean;
+}>) {
+  return (
+    <>
+      {' '}
+      <DropdownMenuLinkItem
+        render={
+          <Link to="/w/$workspaceId/workflows/$workflowId" params={params} />
+        }
+      >
+        <PencilRulerIcon aria-hidden="true" />
+        Open in Build
+      </DropdownMenuLinkItem>
+      {canReadRuns ? (
+        <DropdownMenuLinkItem
+          render={
+            <Link
+              to="/w/$workspaceId/workflows/$workflowId/runs"
+              params={params}
+            />
+          }
+        >
+          <CirclePlayIcon aria-hidden="true" />
+          Runs
+        </DropdownMenuLinkItem>
+      ) : null}
+      <DropdownMenuLinkItem
+        render={
+          <Link
+            to="/w/$workspaceId/workflows/$workflowId/triggers"
+            params={params}
+          />
+        }
+      >
+        <ZapIcon aria-hidden="true" />
+        Triggers
+      </DropdownMenuLinkItem>
+      <DropdownMenuLinkItem
+        render={
+          <Link
+            to="/w/$workspaceId/workflows/$workflowId/versions"
+            params={params}
+          />
+        }
+      >
+        <HistoryIcon aria-hidden="true" />
+        Versions
+      </DropdownMenuLinkItem>
+      <DropdownMenuLinkItem
+        render={
+          <Link
+            to="/w/$workspaceId/workflows/$workflowId/settings"
+            params={params}
+          />
+        }
+      >
+        <SettingsIcon aria-hidden="true" />
+        Settings
+      </DropdownMenuLinkItem>
+    </>
   );
 }
