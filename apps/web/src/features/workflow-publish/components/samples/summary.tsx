@@ -40,16 +40,26 @@ export function SampleSummary({
           {formatRelativeTime(sample.expiresAt)}.
         </p>
       )}
-      {state === 'stale' ? (
-        <Notice>
-          Setup changed. Review and confirm the sample, replace it, or remove it
-          before testing.
-        </Notice>
-      ) : state === 'expired' ? (
-        <Notice>
-          This sample expired. Pin fresh data or remove it before testing.
-        </Notice>
-      ) : null}
+      <SampleStateNotice state={state} />
     </>
   );
+}
+
+function SampleStateNotice({
+  state,
+}: Readonly<{ state: StepSampleMetadata['state'] | undefined }>) {
+  if (state === 'stale')
+    return (
+      <Notice>
+        Setup changed. Review and confirm the sample, replace it, or remove it
+        before testing.
+      </Notice>
+    );
+  if (state === 'expired')
+    return (
+      <Notice>
+        This sample expired. Pin fresh data or remove it before testing.
+      </Notice>
+    );
+  return null;
 }

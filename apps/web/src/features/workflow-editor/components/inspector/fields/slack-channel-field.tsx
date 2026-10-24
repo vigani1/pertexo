@@ -158,11 +158,13 @@ function ChannelIdField({
             aria-live="polite"
             className="max-w-[45%] shrink-0 truncate font-mono text-xs text-muted-foreground"
           >
-            {name?.status === 'resolved' ? (
-              <span className="text-foreground">{shown?.target}</span>
-            ) : pending ? (
-              'Looking up…'
-            ) : null}
+            {
+              <ChannelName
+                resolved={name?.status === 'resolved'}
+                target={shown?.target}
+                pending={pending}
+              />
+            }
           </span>
         </div>
       )}
@@ -183,4 +185,17 @@ function ChannelNote({
   return note === undefined ? null : (
     <p className="text-xs text-muted-foreground">{note}</p>
   );
+}
+
+function ChannelName({
+  resolved,
+  target,
+  pending,
+}: Readonly<{
+  resolved: boolean;
+  target: string | undefined;
+  pending: boolean;
+}>) {
+  if (resolved) return <span className="text-foreground">{target}</span>;
+  return pending ? 'Looking up…' : null;
 }

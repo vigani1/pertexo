@@ -78,13 +78,20 @@ export function AccountProfileSection({
         <dt className="text-[0.8rem] text-subtle-foreground">Email</dt>
         <dd className="flex flex-wrap items-center gap-2 text-sm">
           <span className="[overflow-wrap:anywhere]">{email}</span>
-          {security === undefined ? null : security.emailVerified ? (
-            <Badge variant="success">Verified</Badge>
-          ) : (
-            <Badge variant="warning">Not verified</Badge>
-          )}
+          {<EmailVerification security={security} />}
         </dd>
       </dl>
     </AccountSection>
+  );
+}
+
+function EmailVerification({
+  security,
+}: Readonly<{ security: AccountSecurityResponse | undefined }>) {
+  if (security === undefined) return null;
+  return security.emailVerified ? (
+    <Badge variant="success">Verified</Badge>
+  ) : (
+    <Badge variant="warning">Not verified</Badge>
   );
 }
