@@ -1,3 +1,4 @@
+import { runPorts } from '../support/run-ports.js';
 import type {
   DatabaseConfig,
   WorkspaceDatabase,
@@ -13,10 +14,6 @@ import type { RunEventNotificationPublisher } from '../../src/workflow-runs/even
 import type { ApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
 import { createApiWorkflowRuntime } from '../../src/platform/workflow/workflow-runtime.module.js';
 import type { WorkflowAuthoringTelemetry } from '../../src/workflow-authoring/index.js';
-import type {
-  WorkflowRunEventStreamer,
-  WorkflowRunPersistence,
-} from '../../src/workflow-runs/index.js';
 
 const databaseConfig: DatabaseConfig = {
   connectionString: 'postgresql://api:secret@localhost:5432/pertexo',
@@ -32,33 +29,8 @@ const authorization = {
 const identityRuntime = {
   dependencies: { authorization },
 } as unknown as ApiIdentityRuntime;
-const persistence = {
-  canRead: () => Promise.resolve(true),
-  start: () => Promise.reject(new Error('not exercised')),
-  recovery: () => Promise.reject(new Error('not exercised')),
-  recover: () => Promise.reject(new Error('not exercised')),
-  replay: () => Promise.reject(new Error('not exercised')),
-  get: () => Promise.resolve(undefined),
-  list: () => Promise.resolve({ items: [] }),
-  statistics: () => Promise.reject(new Error('not exercised')),
-  usageTrends: () => Promise.reject(new Error('not exercised')),
-  usageCapacity: () => Promise.reject(new Error('not exercised')),
-  cancel: () => Promise.reject(new Error('not exercised')),
-  readVariables: () => Promise.resolve({ revision: 0, values: {} }),
-  readInput: () => Promise.resolve(undefined),
-  readNodeRunDiagnostics: () => Promise.resolve(undefined),
-  readNodeRunOutput: () => Promise.resolve(undefined),
-  readNodeRunInput: () => Promise.resolve(undefined),
-  stepHealth: () => Promise.resolve(undefined),
-  stepRuns: () => Promise.resolve(undefined),
-} satisfies WorkflowRunPersistence;
-const streamer = {
-  stream: () => ({
-    [Symbol.asyncIterator]: () => ({
-      next: () => Promise.resolve({ done: true as const, value: undefined }),
-    }),
-  }),
-} satisfies WorkflowRunEventStreamer;
+const { persistence, streamer } = runPorts();
+
 const telemetry: WorkflowAuthoringTelemetry = {
   measure: <T>(_operation: never, work: () => Promise<T>): Promise<T> => work(),
 };
