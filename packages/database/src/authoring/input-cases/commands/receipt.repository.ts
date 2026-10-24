@@ -1,3 +1,6 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { auditEvents } from '../../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 
 import {
@@ -48,22 +51,20 @@ export async function mutate(
       await workflow(client, input, { write: true });
       await lockInputCaseQuota(client, input.workspaceId);
       const result = await work(client);
-      await client.query(
-        "insert into app.audit_events(id,workspace_id,actor_user_id,action,target_type,target_id,request_id,trace_id,metadata) values($1,$2,$3,$4,'workflow_input_case',$5,$6,$7,$8::jsonb)",
-        [
-          generatePersistedId(),
-          input.workspaceId,
-          input.actorId,
-          `workflow.input_case.${kind}`,
-          result.caseId,
-          input.requestId ?? null,
-          input.traceId ?? null,
-          JSON.stringify({
-            workflowId: input.workflowId,
-            revision: result.revision,
-          }),
-        ],
-      );
+      await drizzle(client)
+        .insert(auditEvents)
+        .values({
+          id: generatePersistedId(),
+          workspaceId: input.workspaceId,
+          actorUserId: input.actorId,
+          action: `workflow.input_case.${kind}`,
+          targetType: 'workflow_input_case',
+          targetId: result.caseId,
+          requestId: input.requestId ?? null,
+          traceId: input.traceId ?? null,
+          metadata: { workflowId: input.workflowId, revision: result.revision },
+        })
+        .catch(rethrowQueryFailure);
       await completeCommand(client, command, result);
       return Object.freeze({ ...result, replayed: false });
     },

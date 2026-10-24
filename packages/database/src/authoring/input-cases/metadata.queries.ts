@@ -1,3 +1,11 @@
+import { and, eq, isNull, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workflows } from '../../schema/authoring/workflows.js';
+import {
+  workflowInputCases,
+  workflowInputCasePayloads,
+} from '../../schema/authoring/input-cases.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
@@ -10,36 +18,36 @@ import {
   revisionSchema,
 } from './contract.js';
 
-export const metadataColumns =
-  'id,workspace_id,workflow_id,workflow_version_id,version_checksum,name,revision,created_at,updated_at';
-
-export function metadata(
-  row: Record<string, unknown>,
-): WorkflowInputCaseMetadata {
-  return Object.freeze({
-    id: z.uuid().parse(row.id),
-    workspaceId: z.uuid().parse(row.workspace_id),
-    workflowId: z.uuid().parse(row.workflow_id),
-    workflowVersionId: z.uuid().parse(row.workflow_version_id),
-    versionChecksum: z.string().parse(row.version_checksum),
-    name: z.string().parse(row.name),
-    revision: revisionSchema.parse(row.revision),
-    createdAt: z.coerce.date().parse(row.created_at),
-    updatedAt: z.coerce.date().parse(row.updated_at),
-  });
-}
+export const metadataProjection = {
+  id: workflowInputCases.id,
+  workspaceId: workflowInputCases.workspaceId,
+  workflowId: workflowInputCases.workflowId,
+  workflowVersionId: workflowInputCases.workflowVersionId,
+  versionChecksum: workflowInputCases.versionChecksum,
+  name: workflowInputCases.name,
+  revision: workflowInputCases.revision,
+  createdAt: workflowInputCases.createdAt,
+  updatedAt: workflowInputCases.updatedAt,
+};
 
 export async function workflow(
   client: PoolClient,
   input: Scope,
   { write }: Readonly<{ write: boolean }>,
 ): Promise<void> {
-  const row = await client.query<{ lifecycle_status: string }>(
-    'select lifecycle_status from app.workflows where workspace_id=$1 and id=$2 for share',
-    [input.workspaceId, input.workflowId],
-  );
+  const row = await drizzle(client)
+    .select({ lifecycleStatus: workflows.lifecycleStatus })
+    .from(workflows)
+    .where(
+      and(
+        eq(workflows.workspaceId, input.workspaceId),
+        eq(workflows.id, input.workflowId),
+      ),
+    )
+    .for('share')
+    .catch(rethrowQueryFailure);
   const workflowUnavailable =
-    row.rowCount !== 1 || (write && row.rows[0]?.lifecycle_status !== 'active');
+    row.length !== 1 || (write && row[0]?.lifecycleStatus !== 'active');
   if (workflowUnavailable)
     throw new WorkflowNotFoundError('Workflow is not visible');
 }
@@ -50,21 +58,33 @@ export async function quota(
   bytes: number,
   { create }: Readonly<{ create: boolean }>,
 ): Promise<void> {
-  const result = await client.query<{
-    workflow_count: string;
-    workspace_count: string;
-    retained_bytes: string;
-  }>(
-    `select (select count(*) from app.workflow_input_cases where workspace_id=$1 and workflow_id=$2 and deleted_at is null) workflow_count,(select count(*) from app.workflow_input_cases where workspace_id=$1 and deleted_at is null) workspace_count,(select coalesce(sum(canonical_bytes),0) from app.workflow_input_case_payloads where workspace_id=$1) retained_bytes`,
-    [input.workspaceId, input.workflowId],
-  );
-  const row = result.rows[0];
+  const db = drizzle(client);
+  const retained = db
+    .select({
+      bytes: sql<number>`coalesce(sum(${workflowInputCasePayloads.canonicalBytes}),0)::float8`,
+    })
+    .from(workflowInputCasePayloads)
+    .where(eq(workflowInputCasePayloads.workspaceId, input.workspaceId));
+  const [row] = await db
+    .select({
+      workflowCount: sql<number>`count(*) filter(where ${workflowInputCases.workflowId}=${input.workflowId})::int`,
+      workspaceCount: sql<number>`count(*)::int`,
+      retainedBytes: sql<number>`(${retained})`,
+    })
+    .from(workflowInputCases)
+    .where(
+      and(
+        eq(workflowInputCases.workspaceId, input.workspaceId),
+        isNull(workflowInputCases.deletedAt),
+      ),
+    )
+    .catch(rethrowQueryFailure);
   if (!row) throw new Error('Case quota authority unavailable');
-  if (create && Number(row.workflow_count) >= 50)
+  if (create && row.workflowCount >= 50)
     throw new WorkflowInputCaseLimitError('workflow_count');
-  if (create && Number(row.workspace_count) >= 200)
+  if (create && row.workspaceCount >= 200)
     throw new WorkflowInputCaseLimitError('workspace_count');
-  if (Number(row.retained_bytes) + bytes > 4_194_304)
+  if (row.retainedBytes + bytes > 4_194_304)
     throw new WorkflowInputCaseLimitError('retained_bytes');
 }
 
@@ -74,13 +94,21 @@ export async function lockedCase(
 ): Promise<WorkflowInputCaseMetadata> {
   z.uuid().parse(input.caseId);
   revisionSchema.parse(input.expectedRevision);
-  const result = await client.query<Record<string, unknown>>(
-    `select ${metadataColumns} from app.workflow_input_cases where workspace_id=$1 and workflow_id=$2 and id=$3 and deleted_at is null for update`,
-    [input.workspaceId, input.workflowId, input.caseId],
-  );
-  if (!result.rows[0])
-    throw new WorkflowNotFoundError('Run-input case is not visible');
-  const item = metadata(result.rows[0]);
+  const [row] = await drizzle(client)
+    .select(metadataProjection)
+    .from(workflowInputCases)
+    .where(
+      and(
+        eq(workflowInputCases.workspaceId, input.workspaceId),
+        eq(workflowInputCases.workflowId, input.workflowId),
+        eq(workflowInputCases.id, input.caseId),
+        isNull(workflowInputCases.deletedAt),
+      ),
+    )
+    .for('update')
+    .catch(rethrowQueryFailure);
+  if (!row) throw new WorkflowNotFoundError('Run-input case is not visible');
+  const item = Object.freeze(row);
   if (item.revision !== input.expectedRevision)
     throw new WorkflowInputCaseRevisionConflictError(item.revision);
   return item;
