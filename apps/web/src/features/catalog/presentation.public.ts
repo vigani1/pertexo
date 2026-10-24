@@ -20,4 +20,4 @@ export {
   type StepFamily,
   type StepGroup,
   type StepPresentation,
-} from './model/step-presentation';
+} from './model/steps/presentation';
