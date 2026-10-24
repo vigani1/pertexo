@@ -1,11 +1,11 @@
+import { readPolicy } from './error-policy.queries.js';
 import { sql } from 'drizzle-orm';
 import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
 import { workflowAccessible } from '../../tenant-access/resources/workflows.queries.js';
 import {
   bindResourcePredicate,
   workflowScopeSql,
-} from '../../tenant-access/resources/scope.queries.js';
-import type { FolderScope } from '../../tenant-access/resources/contract.js';
+} from '../../tenant-access/resources/query-scope.js';
 import type { PoolClient } from 'pg';
 import { isWorkflowErrorTarget } from '@pertexo/workflow-model';
 import type {
@@ -61,32 +61,6 @@ export class WorkflowErrorTargetUnavailableError extends Error {
     );
   }
 }
-async function readPolicy(
-  client: PoolClient,
-  workspaceId: string,
-  workflowId: string,
-  access: FolderScope,
-): Promise<WorkflowErrorSettings> {
-  const parameters: unknown[] = [workspaceId, workflowId];
-  const visible = bindResourcePredicate(
-    workflowScopeSql(access, sql`target.id`),
-    parameters,
-  );
-  const found = await client.query<{
-    target_workflow_id: string | null;
-    target_name: string | null;
-    revision: number;
-  }>(
-    `select policy.target_workflow_id,policy.revision,case when ${visible} then target.name else null end target_name from app.workflow_error_policies policy left join app.workflows target on target.workspace_id=policy.workspace_id and target.id=policy.target_workflow_id where policy.workspace_id=$1 and policy.workflow_id=$2`,
-    parameters,
-  );
-  return {
-    targetWorkflowId: found.rows[0]?.target_workflow_id ?? null,
-    revision: found.rows[0]?.revision ?? 1,
-    targetWorkflowName: found.rows[0]?.target_name ?? null,
-  };
-}
-
 /** Operational Settings share the authoring transaction and current authority fence. */
 export function createWorkflowErrorStore(
   transact: Transact,
