@@ -30,7 +30,7 @@ export function WorkflowFileDrop({
   onChoose: (file: File | undefined) => void;
 }>) {
   const id = useId();
-  const [file, setFile] = useState<Readonly<{ name: string; size: number }>>();
+  const [file, setFile] = useState<SelectedFile>();
   const [dragging, setDragging] = useState(false);
 
   function choose(next: File | undefined) {
@@ -46,7 +46,9 @@ export function WorkflowFileDrop({
     if (!locked) choose(event.dataTransfer.files[0]);
   }
 
-  const read = manifest !== undefined && file !== undefined;
+  const selection = { manifest, file };
+  const read = isReadSelection(selection);
+  const showSolidBorder = read && !dragging;
   const steps = manifest?.graph.nodes.length ?? 0;
   // Steps that run without a connection don't count as needing one.
   const slots =
@@ -67,52 +69,28 @@ export function WorkflowFileDrop({
         onDrop={drop}
         className={cn(
           'relative flex items-center gap-4 rounded-xl border border-dashed px-4 py-4 transition-colors motion-reduce:transition-none',
-          dragging
-            ? 'border-action bg-action/[0.06]'
-            : error === undefined
-              ? 'border-border-strong bg-surface-ink/[0.015]'
-              : 'border-destructive/70 bg-destructive/[0.04]',
-          read && !dragging && 'border-solid border-border',
+          dropClass({ dragging, error }),
+          showSolidBorder && 'border-solid border-border',
         )}
       >
         <span
           aria-hidden="true"
           className="grid h-12 w-[8.25rem] shrink-0 place-items-center rounded-md bg-recess-ink/25"
         >
-          {read ? <PatternGlyph graph={manifest.graph} /> : <UnwovenThread />}
+          {read ? (
+            <PatternGlyph graph={selection.manifest.graph} />
+          ) : (
+            <UnwovenThread />
+          )}
         </span>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          {reading ? (
-            <>
-              <p className="text-sm text-foreground" role="status">
-                Reading {file?.name ?? 'the file'}…
-              </p>
-              <SkeletonThread className="w-40" />
-            </>
-          ) : read ? (
-            <>
-              <p className="truncate text-sm font-semibold text-foreground">
-                {file.name}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {steps === 1 ? '1 step' : `${String(steps)} steps`}
-                {slots === 0
-                  ? ''
-                  : ` · needs ${slots === 1 ? 'a connection' : `${String(slots)} connections`}`}
-                {' · '}
-                <span className="font-mono">{formatByteLength(file.size)}</span>
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="text-sm text-foreground">
-                {dragging ? 'Release to read it' : 'Drop a workflow file here'}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                A JSON file exported from Pertexo, up to 2 MB.
-              </p>
-            </>
-          )}
+          <FileSummary
+            selection={selection}
+            reading={reading}
+            dragging={dragging}
+            steps={steps}
+            slots={slots}
+          />
         </div>
         <input
           ref={inputRef}
@@ -172,5 +150,82 @@ function UnwovenThread() {
         className="stroke-subtle-foreground"
       />
     </svg>
+  );
+}
+
+type SelectedFile = Readonly<Pick<File, 'name' | 'size'>>;
+type FileSelection = Readonly<{
+  file: SelectedFile | undefined;
+  manifest: WorkflowPortableManifest | undefined;
+}>;
+
+function isReadSelection(
+  selection: FileSelection,
+): selection is Readonly<{
+  file: SelectedFile;
+  manifest: WorkflowPortableManifest;
+}> {
+  return selection.manifest !== undefined && selection.file !== undefined;
+}
+
+function dropClass({
+  dragging,
+  error,
+}: Readonly<{ dragging: boolean; error: string | undefined }>): string {
+  if (dragging) return 'border-action bg-action/[0.06]';
+  return error === undefined
+    ? 'border-border-strong bg-surface-ink/[0.015]'
+    : 'border-destructive/70 bg-destructive/[0.04]';
+}
+
+function FileSummary({
+  selection,
+  reading,
+  dragging,
+  steps,
+  slots,
+}: Readonly<{
+  selection: FileSelection;
+  reading: boolean;
+  dragging: boolean;
+  steps: number;
+  slots: number;
+}>) {
+  if (reading)
+    return (
+      <>
+        <p className="text-sm text-foreground" role="status">
+          Reading {selection.file?.name ?? 'the file'}…
+        </p>
+        <SkeletonThread className="w-40" />
+      </>
+    );
+  if (isReadSelection(selection))
+    return (
+      <>
+        <p className="truncate text-sm font-semibold text-foreground">
+          {selection.file.name}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {steps === 1 ? '1 step' : `${String(steps)} steps`}
+          {slots === 0
+            ? ''
+            : ` · needs ${slots === 1 ? 'a connection' : `${String(slots)} connections`}`}
+          {' · '}
+          <span className="font-mono">
+            {formatByteLength(selection.file.size)}
+          </span>
+        </p>
+      </>
+    );
+  return (
+    <>
+      <p className="text-sm text-foreground">
+        {dragging ? 'Release to read it' : 'Drop a workflow file here'}
+      </p>
+      <p className="text-xs text-muted-foreground">
+        A JSON file exported from Pertexo, up to 2 MB.
+      </p>
+    </>
   );
 }

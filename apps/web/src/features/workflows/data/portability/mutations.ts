@@ -74,16 +74,11 @@ export function useWorkflowImportCommand(
       setState({ kind: 'confirmed', workflowId: command.workflowId });
     } catch (error) {
       if (!request.current() || lifetime.accessFailure(error)) return;
-      const rejected =
-        phase === 'mutation' &&
-        isApiError(error) &&
-        error.kind === 'problem' &&
-        [400, 409, 412, 422, 428].includes(error.status ?? 0);
-      const requiresIntentRecovery =
-        phase === 'accepted' ||
-        (!rejected &&
-          (state.kind === 'uncertain' ||
-            (phase === 'mutation' && isUnconfirmedCommand(error))));
+      const requiresIntentRecovery = importNeedsRecovery({
+        phase,
+        state,
+        error,
+      });
       if (requiresIntentRecovery) {
         setState({
           kind: 'uncertain',
@@ -118,4 +113,26 @@ export function useWorkflowImportCommand(
         void send(attempt.current);
     },
   };
+}
+
+function importNeedsRecovery({
+  phase,
+  state,
+  error,
+}: Readonly<{
+  phase: 'authority' | 'mutation' | 'accepted';
+  state: WorkflowImportCommandState;
+  error: unknown;
+}>): boolean {
+  const rejected =
+    phase === 'mutation' &&
+    isApiError(error) &&
+    error.kind === 'problem' &&
+    [400, 409, 412, 422, 428].includes(error.status ?? 0);
+  return (
+    phase === 'accepted' ||
+    (!rejected &&
+      (state.kind === 'uncertain' ||
+        (phase === 'mutation' && isUnconfirmedCommand(error))))
+  );
 }
