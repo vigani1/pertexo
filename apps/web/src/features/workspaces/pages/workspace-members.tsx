@@ -151,10 +151,14 @@ function TeamHeader({
 }
 
 function lossOf({
-  error,
+  query,
   notFoundIsLoss,
-}: Readonly<{ error: unknown; notFoundIsLoss: boolean }>):
-  AccessLoss | undefined {
+}: Readonly<{
+  query: Readonly<{ isError: boolean; error: unknown }>;
+  notFoundIsLoss: boolean;
+}>): AccessLoss | undefined {
+  if (!query.isError) return undefined;
+  const error = query.error;
   if (isUnauthenticated(error)) return 'authentication';
   if (!isApiError(error)) return undefined;
   if (error.status === 403 || (notFoundIsLoss && error.status === 404))
@@ -218,12 +222,8 @@ export function WorkspaceMembersPage({
   ).length;
   const losses = [
     commandLoss,
-    members.isError
-      ? lossOf({ error: members.error, notFoundIsLoss: false })
-      : undefined,
-    invitations.isError
-      ? lossOf({ error: invitations.error, notFoundIsLoss: true })
-      : undefined,
+    lossOf({ query: members, notFoundIsLoss: false }),
+    lossOf({ query: invitations, notFoundIsLoss: true }),
   ];
 
   const blocked = blockedCopy({ role: workspace.role, canRead, losses });
