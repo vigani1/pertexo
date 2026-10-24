@@ -43,13 +43,13 @@ export function ConvergingThreads({
   className?: string;
 }>) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  useCanvasRenderer(
+  useCanvasRenderer({
     canvasRef,
-    (canvas) =>
+    createRenderer: (canvas) =>
       new ConvergingThreadsScene(canvas, (width, height) =>
         locateCore(canvas, coreRef.current, width, height),
       ),
-  );
+  });
   return (
     <canvas
       ref={canvasRef}

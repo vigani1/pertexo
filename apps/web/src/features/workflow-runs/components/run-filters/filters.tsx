@@ -31,7 +31,7 @@ const statusItems = [
   { value: null, label: 'Any status' },
   ...runStatuses.map((status) => ({
     value: status,
-    label: describeRunStatus(status).label,
+    label: describeRunStatus({ status }).label,
   })),
 ];
 
@@ -79,7 +79,9 @@ export function RunFilters({
             {statusItems.map((item) => (
               <SelectItem key={item.value ?? 'any'} value={item.value}>
                 {item.value === null ? null : (
-                  <StatusGlyph tone={describeRunStatus(item.value).tone} />
+                  <StatusGlyph
+                    tone={describeRunStatus({ status: item.value }).tone}
+                  />
                 )}
                 {item.label}
               </SelectItem>

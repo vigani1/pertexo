@@ -49,11 +49,15 @@ export type CanvasHandle<Renderer> = Readonly<{
  * frame. Window focus doesn't matter: a page beside the window in use (the
  * in-app browser next to its chat) is still being looked at. The renderer is created once per mount.
  */
-export function useCanvasRenderer<Renderer extends CanvasRenderer>(
-  canvasRef: RefObject<HTMLCanvasElement | null>,
-  createRenderer: (canvas: HTMLCanvasElement) => Renderer,
+export function useCanvasRenderer<Renderer extends CanvasRenderer>({
+  canvasRef,
+  createRenderer,
   animate = true,
-): CanvasHandle<Renderer> {
+}: Readonly<{
+  canvasRef: RefObject<HTMLCanvasElement | null>;
+  createRenderer: (canvas: HTMLCanvasElement) => Renderer;
+  animate?: boolean | undefined;
+}>): CanvasHandle<Renderer> {
   const { theme } = useAppearance();
   const rendererRef = useRef<Renderer | null>(null);
   const loopRef = useRef<Readonly<{

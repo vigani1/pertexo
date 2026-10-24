@@ -148,7 +148,7 @@ export function useImportDraft(
     setResetting(true);
     const request = lifetime.begin();
     try {
-      await lifetime.verify(request.signal, true);
+      await lifetime.verify({ signal: request.signal, creating: true });
       if (!request.current()) return;
       clear();
       validation.reset();
@@ -220,7 +220,7 @@ export function useImportDraft(
     setError(undefined);
     setPreviewing(true);
     try {
-      await lifetime.verify(request.signal, true);
+      await lifetime.verify({ signal: request.signal, creating: true });
       if (!request.current()) return;
       const result = await previewWorkflowImport(
         apiClient,

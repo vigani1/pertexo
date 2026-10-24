@@ -44,10 +44,10 @@ export function LoomRunList({
             )}
             <ul className="mt-1.5 flex flex-col">
               {[...lane.runs].reverse().map((run) => {
-                const look = describeRunStatus(
-                  run.status,
-                  run.handledFailureCount,
-                );
+                const look = describeRunStatus({
+                  status: run.status,
+                  handledFailureCount: run.handledFailureCount,
+                });
                 return (
                   <li key={run.id}>
                     <Link

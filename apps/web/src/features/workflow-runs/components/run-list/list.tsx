@@ -33,7 +33,7 @@ export function RunList({
   variant: RunListVariant;
 }>) {
   const ticking = runs.some((run) => isActiveRunStatus(run.status));
-  const nowMs = useNow(1_000, ticking);
+  const nowMs = useNow({ intervalMs: 1_000, enabled: ticking });
   const durations = new Map(
     runs.map((run) => [run.id, runDurationMs(run, nowMs)] as const),
   );

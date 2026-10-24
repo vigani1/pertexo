@@ -256,7 +256,7 @@ export function WorkflowCanvas({
         >
           <CanvasZoomLens
             onFit={() => {
-              fit(true);
+              fit({ animate: true });
             }}
           />
         </ReactFlow>

@@ -104,7 +104,7 @@ function WorkflowExportSession({
     async function readSource(): Promise<ReviewedSource> {
       clear();
       setPending(true);
-      await verify(request.signal, false);
+      await verify({ signal: request.signal, creating: false });
       request.signal.throwIfAborted();
       const saved = await readWorkflowExportSource({
         apiClient,
@@ -165,7 +165,7 @@ function WorkflowExportSession({
     setPending(true);
     setError(undefined);
     try {
-      await verify(request.signal, false);
+      await verify({ signal: request.signal, creating: false });
       if (!request.current()) return;
       const manifest = await exportWorkflow({
         apiClient,
@@ -176,7 +176,7 @@ function WorkflowExportSession({
         signal: request.signal,
       });
       if (!request.current()) return;
-      await verify(request.signal, false);
+      await verify({ signal: request.signal, creating: false });
       if (!request.current()) return;
       downloadPortableWorkflow(manifest);
       onClose();

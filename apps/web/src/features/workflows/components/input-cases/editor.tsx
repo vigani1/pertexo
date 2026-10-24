@@ -123,7 +123,7 @@ export function InputCaseEditor({
         }),
       };
     }
-    if (await cases.send(command)) {
+    if (await cases.send({ command })) {
       onClose();
       notifications.success({ title: 'Input case saved' });
     }
@@ -294,10 +294,12 @@ function InputCaseActions({
                   if (record !== undefined)
                     void cases
                       .send({
-                        kind: 'delete',
-                        caseId: record.id,
-                        tag: record.representationTag,
-                        key: crypto.randomUUID(),
+                        command: {
+                          kind: 'delete',
+                          caseId: record.id,
+                          tag: record.representationTag,
+                          key: crypto.randomUUID(),
+                        },
                       })
                       .then((ok) => {
                         if (ok) {

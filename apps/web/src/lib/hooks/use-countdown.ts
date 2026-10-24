@@ -21,7 +21,11 @@ export type Countdown = Readonly<{
  */
 export function useCountdown(): Countdown {
   const [span, setSpan] = useState<Span>();
-  const now = useNow(TICK_MS, span !== undefined, span?.deadline);
+  const now = useNow({
+    intervalMs: TICK_MS,
+    enabled: span !== undefined,
+    untilMs: span?.deadline,
+  });
   // A countdown started after the clock last ticked counts from its own start.
   const remainingSeconds =
     span === undefined

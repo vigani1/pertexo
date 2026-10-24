@@ -55,7 +55,7 @@ export function TaskList({
 }>) {
   const query = useInfiniteQuery(tasksQueryOptions(scope, filters));
   // Expiry reads "expires in 12 minutes"; a minute's tick keeps it honest.
-  const nowMs = useNow(60_000);
+  const nowMs = useNow({ intervalMs: 60_000 });
   return (
     <QueryView
       query={query}

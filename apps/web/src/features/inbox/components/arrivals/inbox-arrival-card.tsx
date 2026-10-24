@@ -95,7 +95,7 @@ export function InboxArrivalCard({
   onOpenRun: (thread: WorkspaceInboxFailureThread) => void;
   onOpenInbox: () => void;
 }>) {
-  const nowMs = useNow(30_000);
+  const nowMs = useNow({ intervalMs: 30_000 });
   const { close } = Toast.useToastManager();
   const data = toast.data;
   const swipe = useArrivalSwipe(

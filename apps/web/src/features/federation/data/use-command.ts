@@ -35,7 +35,11 @@ export function useFederationCommand(
     uncertainSince === undefined
       ? undefined
       : uncertainSince + COMMAND_RETRY_WINDOW_MS;
-  const now = useNow(1000, uncertainSince !== undefined, until),
+  const now = useNow({
+      intervalMs: 1000,
+      enabled: uncertainSince !== undefined,
+      untilMs: until,
+    }),
     expired = until !== undefined && now >= until;
   async function execute(command: Intent): Promise<boolean> {
     if (

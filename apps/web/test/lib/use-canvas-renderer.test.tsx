@@ -20,7 +20,11 @@ function mountCanvas(animate = true) {
   const canvasRef = { current: document.createElement('canvas') };
   const hook = renderHook(
     ({ moving }: { moving: boolean }) =>
-      useCanvasRenderer(canvasRef, () => recorder, moving),
+      useCanvasRenderer({
+        canvasRef,
+        createRenderer: () => recorder,
+        animate: moving,
+      }),
     { initialProps: { moving: animate } },
   );
   return { recorder, hook };

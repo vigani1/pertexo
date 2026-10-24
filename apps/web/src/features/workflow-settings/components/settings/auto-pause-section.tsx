@@ -30,7 +30,11 @@ type Scope = Readonly<{
   workflowId: string;
 }>;
 
-function thresholdError(value: string, optional = false): string | undefined {
+function thresholdError({
+  value,
+  optional = false,
+}: Readonly<{ value: string; optional?: boolean | undefined }>):
+  string | undefined {
   if (optional && value.trim() === '') return undefined;
   return /^\d+$/u.test(value) && Number(value) >= 3 && Number(value) <= 100
     ? undefined
@@ -102,7 +106,9 @@ function WorkflowRule({
   const notifications = useNotifications();
   async function save() {
     if (
-      !validation.submit({ threshold: thresholdError(current.threshold, true) })
+      !validation.submit({
+        threshold: thresholdError({ value: current.threshold, optional: true }),
+      })
     )
       return;
     const saved = await command.send({
@@ -171,7 +177,7 @@ function WorkflowRule({
               setDraft({ ...current, threshold: event.target.value });
               validation.change(
                 'threshold',
-                thresholdError(event.target.value, true),
+                thresholdError({ value: event.target.value, optional: true }),
               );
             }}
           />
@@ -223,7 +229,11 @@ function WorkspaceDefaultForm({
   );
   const notifications = useNotifications();
   async function save() {
-    if (!validation.submit({ threshold: thresholdError(current.threshold) }))
+    if (
+      !validation.submit({
+        threshold: thresholdError({ value: current.threshold }),
+      })
+    )
       return;
     if (
       await command.send({
@@ -268,7 +278,7 @@ function WorkspaceDefaultForm({
               setDraft({ ...current, threshold: event.target.value });
               validation.change(
                 'threshold',
-                thresholdError(event.target.value),
+                thresholdError({ value: event.target.value }),
               );
             }}
           />

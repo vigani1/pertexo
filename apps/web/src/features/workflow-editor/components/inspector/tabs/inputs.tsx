@@ -139,7 +139,7 @@ function MappedInputsTab({
     focusKey,
   }: Readonly<{ rowId: string; focusKey: boolean }>) {
     activeRowId.current = rowId;
-    rowsShown.openRow(rowId, focusKey);
+    rowsShown.openRow({ rowId, focusKey });
   }
 
   /** Fills the open row you were editing, or adds one named after the field. */
@@ -332,7 +332,10 @@ function useRowDisclosure(
   return {
     open: shown.open,
     focusKeyOf: shown.focusKeyOf,
-    openRow: (rowId: string, focusKey: boolean) => {
+    openRow: ({
+      rowId,
+      focusKey,
+    }: Readonly<{ rowId: string; focusKey: boolean }>) => {
       setDisclosure((current) => ({
         ...current,
         open: new Set(current.open).add(rowId),

@@ -30,7 +30,8 @@ describe('useNow', () => {
   it('ticks only while enabled', () => {
     const start = Date.now();
     const { result, rerender } = renderHook(
-      ({ enabled }: { enabled: boolean }) => useNow(1_000, enabled),
+      ({ enabled }: { enabled: boolean }) =>
+        useNow({ intervalMs: 1_000, enabled }),
       { initialProps: { enabled: false } },
     );
     act(() => {
@@ -47,7 +48,7 @@ describe('useNow', () => {
 
   it('pauses while the tab is hidden and catches up when shown', () => {
     const start = Date.now();
-    const { result } = renderHook(() => useNow(1_000));
+    const { result } = renderHook(() => useNow({ intervalMs: 1_000 }));
     act(() => {
       setHidden(true);
       vi.advanceTimersByTime(5_000);
@@ -64,7 +65,9 @@ describe('useNow', () => {
 
   it('stops once `untilMs` has passed', () => {
     const until = Date.now() + 2_000;
-    const { result } = renderHook(() => useNow(1_000, true, until));
+    const { result } = renderHook(() =>
+      useNow({ intervalMs: 1_000, enabled: true, untilMs: until }),
+    );
     act(() => {
       vi.advanceTimersByTime(5_000);
     });

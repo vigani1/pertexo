@@ -64,7 +64,7 @@ export function runFilterChips(
   if (search.status !== undefined)
     chips.push({
       key: 'status',
-      label: `Status: ${describeRunStatus(search.status).label}`,
+      label: `Status: ${describeRunStatus({ status: search.status }).label}`,
     });
   if (search.runValueKey !== undefined)
     chips.push({

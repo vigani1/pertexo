@@ -227,7 +227,10 @@ export function useInputCases({
     }
   }
 
-  async function send(command: InputCaseCommand, retry = false) {
+  async function send({
+    command,
+    retry = false,
+  }: Readonly<{ command: InputCaseCommand; retry?: boolean | undefined }>) {
     if (
       controllerRef.current !== undefined ||
       !canWrite ||
@@ -315,6 +318,6 @@ export function useInputCases({
     retry: () =>
       retainedRef.current === undefined
         ? Promise.resolve(false)
-        : send(retainedRef.current.command, true),
+        : send({ command: retainedRef.current.command, retry: true }),
   };
 }

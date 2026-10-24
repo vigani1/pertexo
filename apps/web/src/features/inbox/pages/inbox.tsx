@@ -266,7 +266,7 @@ function InboxThreadResults({
   markAllFailed: boolean;
 }>) {
   const markRead = useMarkThreadReadMutation(scope);
-  const nowMs = useNow(60_000);
+  const nowMs = useNow({ intervalMs: 60_000 });
   return (
     <>
       {markRead.isError || markAllFailed ? (

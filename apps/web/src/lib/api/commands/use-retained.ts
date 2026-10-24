@@ -24,7 +24,7 @@ export function useRetainedCommand<Input, Output>(
     uncertainSince === undefined
       ? undefined
       : uncertainSince + COMMAND_RETRY_WINDOW_MS;
-  const now = useNow(1000, uncertain, until);
+  const now = useNow({ intervalMs: 1000, enabled: uncertain, untilMs: until });
   const expired = until !== undefined && now >= until;
   const mutation = useMutation({
     mutationFn: (command: Command<Input>) => execute(command.body, command.key),

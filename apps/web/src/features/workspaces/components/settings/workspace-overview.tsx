@@ -39,12 +39,17 @@ function figure({
   return `${String(count)}${more ? '+' : ''}`;
 }
 
-function counted(
-  count: number,
-  one: string,
-  many: string,
+function counted({
+  count,
+  one,
+  many,
   more = false,
-): string {
+}: Readonly<{
+  count: number;
+  one: string;
+  many: string;
+  more?: boolean | undefined;
+}>): string {
   return `${figure({ count, more })} ${count === 1 && !more ? one : many}`;
 }
 
@@ -172,12 +177,12 @@ function MembersTile({
     return count === 0
       ? []
       : [
-          counted(
+          counted({
             count,
-            ROLE_NAMES[role],
-            `${ROLE_NAMES[role]}s`,
-            query.hasNextPage,
-          ),
+            one: ROLE_NAMES[role],
+            many: `${ROLE_NAMES[role]}s`,
+            more: query.hasNextPage,
+          }),
         ];
   });
   const suspended = members.filter(
@@ -247,7 +252,12 @@ function ConnectionsTile({
           {facts(providers)}
           {needsAttention === 0 ? null : (
             <Status tone="attention" className="mt-1 text-xs font-normal">
-              {counted(needsAttention, 'needs', 'need', query.hasNextPage)}{' '}
+              {counted({
+                count: needsAttention,
+                one: 'needs',
+                many: 'need',
+                more: query.hasNextPage,
+              })}{' '}
               reconnecting
             </Status>
           )}

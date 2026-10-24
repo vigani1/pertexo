@@ -113,7 +113,7 @@ async function bootstrapJourney(
       runtime.completion.current = undefined;
     runtime.setJourney(state);
   } catch (cause) {
-    if (owned()) runtime.setError(acceptanceFailure(cause));
+    if (owned()) runtime.setError(acceptanceFailure({ error: cause }));
   } finally {
     if (owned()) runtime.setPending(false);
   }
@@ -151,7 +151,7 @@ export async function verifyJourneySession(
     if (!stillOwned(runtime, owned, controller.signal)) return;
     if (isUnauthenticated(cause)) navigate.signIn();
     else if (isProofExpired(cause)) navigate.signInAgain();
-    else runtime.setError(acceptanceFailure(cause));
+    else runtime.setError(acceptanceFailure({ error: cause }));
   } finally {
     if (stillOwned(runtime, owned, controller.signal))
       runtime.setPending(false);
@@ -193,7 +193,7 @@ export async function reconcileJourney(runtime: JourneyRuntime) {
     runtime.setError(reconciledFailure({ state, retained, sameIntent }));
   } catch (cause) {
     if (stillOwned(runtime, owned, controller.signal))
-      runtime.setError(acceptanceFailure(cause, true));
+      runtime.setError(acceptanceFailure({ error: cause, uncertain: true }));
   } finally {
     if (stillOwned(runtime, owned, controller.signal))
       runtime.setPending(false);
@@ -231,7 +231,7 @@ export async function acceptJourney(
     });
   } catch (cause) {
     if (stillOwned(runtime, owned))
-      runtime.setError(acceptanceFailure(cause, true));
+      runtime.setError(acceptanceFailure({ error: cause, uncertain: true }));
   } finally {
     if (stillOwned(runtime, owned)) runtime.setPending(false);
   }

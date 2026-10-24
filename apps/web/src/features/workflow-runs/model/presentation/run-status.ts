@@ -73,12 +73,15 @@ export const runStatuses: readonly RunStatus[] = [
 
 const activeRunStatuses = new Set<RunStatus>(['queued', 'running', 'waiting']);
 
-export function describeRunStatus(
-  status: RunStatus,
+export function describeRunStatus({
+  status,
   handledFailureCount = 0,
-  /** A stop was asked for; the run's status changes once it has stopped. */
   stopRequested = false,
-): StatusLook {
+}: Readonly<{
+  status: RunStatus;
+  handledFailureCount?: number | undefined;
+  stopRequested?: boolean | undefined;
+}>): StatusLook {
   if (stopRequested && activeRunStatuses.has(status))
     return { tone: 'waiting', label: 'Stopping…' };
   if (status === 'succeeded' && handledFailureCount > 0)

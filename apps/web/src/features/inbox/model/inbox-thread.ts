@@ -19,7 +19,7 @@ export function describeInboxThread(
 ): InboxThreadView {
   const failure = describeListedFailure(thread.latestFailedStep);
   return {
-    look: describeRunStatus(thread.kind),
+    look: describeRunStatus({ status: thread.kind }),
     occurrences:
       thread.occurrenceCount === 1
         ? 'Failed once'

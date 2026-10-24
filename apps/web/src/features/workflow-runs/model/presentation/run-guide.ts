@@ -36,7 +36,7 @@ const RUN_ORDER: readonly RunStatus[] = [
 ];
 
 function runEntry(status: RunStatus): GuideEntry {
-  const look = describeRunStatus(status);
+  const look = describeRunStatus({ status });
   return { label: look.label, tone: look.tone, meaning: runMeanings[status] };
 }
 
