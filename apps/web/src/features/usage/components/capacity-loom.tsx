@@ -86,8 +86,7 @@ export function StorageArc({
 }: Readonly<{ chargedBytes: string; byteLimit: string }>) {
   const limit = BigInt(byteLimit);
   const used = BigInt(chargedBytes);
-  const filled =
-    limit === 0n ? (used > 0n ? 1000n : 0n) : (used * 1000n) / limit;
+  const filled = storageThousandths({ used, limit });
   const share = Math.min(1, Number(filled) / 1000);
   const shown = used > 0n ? Math.max(share, 0.015) : 0;
   const radius = 44;
@@ -132,11 +131,7 @@ export function StorageArc({
         className="absolute inset-0 grid place-content-center text-center"
       >
         <span className="font-display text-xl leading-none [--display-optical-size:28]">
-          {limit === 0n
-            ? '—'
-            : used > 0n && share < 0.01
-              ? '<1%'
-              : `${String(Math.round(share * 100))}%`}
+          {storageShareLabel({ used, limit, share })}
         </span>
         <span className="mt-1 font-mono text-[0.62rem] text-subtle-foreground">
           full
@@ -144,4 +139,22 @@ export function StorageArc({
       </figcaption>
     </figure>
   );
+}
+
+function storageThousandths({
+  used,
+  limit,
+}: Readonly<{ used: bigint; limit: bigint }>): bigint {
+  if (limit === 0n) return used > 0n ? 1000n : 0n;
+  return (used * 1000n) / limit;
+}
+
+function storageShareLabel({
+  used,
+  limit,
+  share,
+}: Readonly<{ used: bigint; limit: bigint; share: number }>): string {
+  if (limit === 0n) return '—';
+  if (used > 0n && share < 0.01) return '<1%';
+  return `${String(Math.round(share * 100))}%`;
 }
