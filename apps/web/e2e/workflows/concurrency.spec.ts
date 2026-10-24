@@ -1,3 +1,4 @@
+import { installWorkflowSettingsReads } from '../../test/support/browser/mock-reads';
 import { test, expect } from '../support/fixtures';
 import {
   installEditorRoutes,
@@ -8,23 +9,6 @@ import {
   editorUrl,
 } from '../workflow-editor/support';
 import { defaultConcurrencySettings } from '../../test/support/fixtures/concurrency';
-
-async function settingsReads(page: Parameters<typeof installEditorRoutes>[0]) {
-  await page.route('**/step-health', (route) =>
-    route.fulfill({
-      json: { runsConsidered: 0, oldestRunAt: null, items: [] },
-    }),
-  );
-  await page.route('**/failure-notification-destinations', (route) =>
-    route.fulfill({ json: { items: [] } }),
-  );
-  await page.route('**/failure-notification-policy', (route) =>
-    route.fulfill({ json: { destination: null } }),
-  );
-  await page.route('**/versions?**', (route) =>
-    route.fulfill({ json: { items: [], nextCursor: null } }),
-  );
-}
 
 test('workflow concurrency preserves conflict edits, exact retries and Queue/Skip settings on a narrow screen', async ({
   page,
@@ -41,7 +25,7 @@ test('workflow concurrency preserves conflict edits, exact retries and Queue/Ski
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await installEditorRoutes(page, remoteDraft());
-  await settingsReads(page);
+  await installWorkflowSettingsReads(page);
   let settings = defaultConcurrencySettings;
   const writes: { body: unknown; key: string | undefined }[] = [];
   await page.route(
@@ -148,7 +132,7 @@ test('workflow concurrency is readable but not editable by a viewer', async ({
       capabilities: ['workspace:read', 'workflow:read'],
     },
   });
-  await settingsReads(page);
+  await installWorkflowSettingsReads(page);
   await page.goto(`${editorUrl}/settings`);
   const section = page.getByRole('region', { name: 'Concurrency' });
   await expect(section.getByText(/^No limit of its own\./u)).toBeVisible();

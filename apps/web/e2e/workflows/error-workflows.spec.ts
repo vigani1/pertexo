@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '../support/fixtures';
+import { installWorkflowSettingsReads } from '../../test/support/browser/mock-reads';
+import { test, expect } from '../support/fixtures';
 import {
   installEditorRoutes,
   remoteDraft,
@@ -9,22 +10,7 @@ import {
 } from '../workflow-editor/support';
 
 const target = '99999999-9999-4999-8999-999999999999';
-async function settingsReads(page: Page) {
-  await page.route('**/step-health', (route) =>
-    route.fulfill({
-      json: { runsConsidered: 0, oldestRunAt: null, items: [] },
-    }),
-  );
-  await page.route('**/failure-notification-destinations', (route) =>
-    route.fulfill({ json: { items: [] } }),
-  );
-  await page.route('**/failure-notification-policy', (route) =>
-    route.fulfill({ json: { destination: null } }),
-  );
-  await page.route('**/versions?**', (route) =>
-    route.fulfill({ json: { items: [], nextCursor: null } }),
-  );
-}
+
 for (const width of [1280, 375])
   test(`error workflow settings preserve an uncertain change on ${String(width)}px`, async ({
     page,
@@ -40,7 +26,7 @@ for (const width of [1280, 375])
       },
     ]);
     await installEditorRoutes(page, remoteDraft());
-    await settingsReads(page);
+    await installWorkflowSettingsReads(page);
     let settings: {
       targetWorkflowId: string | null;
       targetWorkflowName?: string | null;
@@ -133,7 +119,7 @@ test('a viewer reads the selected policy without receiving edit target discovery
       capabilities: ['workspace:read', 'workflow:read'],
     },
   });
-  await settingsReads(page);
+  await installWorkflowSettingsReads(page);
   let discovery = 0;
   await page.route('**/error-workflow/targets', (route) => {
     discovery++;
