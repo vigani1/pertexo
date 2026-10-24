@@ -14,7 +14,7 @@ import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
 import type { Role } from '@pertexo/workflow-model';
 import { generatePersistedId } from '../../platform/persisted-id.js';
-import { claimCommand, completeCommand } from '../../platform/idempotency.js';
+import { claimCommand, completeCommand } from '../../platform/idempotency/repository.js';
 
 import type { PoolClient } from 'pg';
 import { z } from 'zod';

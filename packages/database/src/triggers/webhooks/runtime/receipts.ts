@@ -7,7 +7,7 @@ import { sha256HexSchema as digestSchema } from '../../../platform/persisted-pri
 import {
   claimCommand,
   completeCommand,
-} from '../../../platform/idempotency.js';
+} from '../../../platform/idempotency/repository.js';
 
 import { WebhookTriggerIdempotencyConflictError } from '../errors.js';
 

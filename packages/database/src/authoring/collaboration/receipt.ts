@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg';
 import type { WorkflowCommentCommandResult } from '@pertexo/contracts';
-import { claimCommand, completeCommand } from '../../platform/idempotency.js';
+import { claimCommand, completeCommand } from '../../platform/idempotency/repository.js';
 import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { requireCollaborationAuthority } from './authority.js';
 import type { CollaborationCommand, CollaborationContext } from './contract.js';

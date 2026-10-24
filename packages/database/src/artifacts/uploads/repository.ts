@@ -15,11 +15,11 @@ import {
   type DatabaseRuntime,
 } from '../../platform/pool/runtime.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
-import { claimCommand, completeCommand } from '../../platform/idempotency.js';
+import { claimCommand, completeCommand } from '../../platform/idempotency/repository.js';
 import {
   checkDatabaseReadiness,
   type DatabaseReadiness,
-} from '../../platform/readiness.js';
+} from '../../platform/readiness.queries.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
 import type { ArtifactRecord } from '../contract.js';

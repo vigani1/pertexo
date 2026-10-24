@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 
 import type { PoolClient } from 'pg';
 
-import { generatePersistedId } from './persisted-id.js';
+import { generatePersistedId } from '../persisted-id.js';
 
 /** A command key was reused for a different request. */
 export class IdempotencyConflictError extends Error {

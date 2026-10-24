@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm';
 import { expect, it } from 'vitest';
 import { auditEvents, workspaceMemberships } from '../../../../src/testing.js';
 
-import { IdempotencyConflictError } from '../../../../src/platform/idempotency.js';
+import { IdempotencyConflictError } from '../../../../src/platform/idempotency/repository.js';
 
 import {
   identityDatabase,

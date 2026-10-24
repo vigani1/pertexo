@@ -36,7 +36,7 @@ import {
   claimCommand,
   completeCommand,
   findCommandResult,
-} from '../../platform/idempotency.js';
+} from '../../platform/idempotency/repository.js';
 import type { ConnectionDatabase } from '../contract.js';
 
 /** Owns secret rotation idempotency and current-version fencing. */

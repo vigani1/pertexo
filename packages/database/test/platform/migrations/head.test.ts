@@ -2,7 +2,7 @@ import { readdir } from 'node:fs/promises';
 
 import { expect, it } from 'vitest';
 
-import { EXPECTED_MIGRATION_HEAD } from '../../../src/platform/readiness.js';
+import { EXPECTED_MIGRATION_HEAD } from '../../../src/platform/readiness.queries.js';
 
 it('expects the newest migration as the database head', async () => {
   const migrations = (

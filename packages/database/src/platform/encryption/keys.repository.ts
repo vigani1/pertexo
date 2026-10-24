@@ -3,7 +3,7 @@ import type { DatabaseConfig } from '../../config.js';
 import { acquireDatabasePool, type DatabaseRuntime } from '../pool/runtime.js';
 import { acquireAbortablePoolClient } from '../pool/abortable-checkout.js';
 import { destroyCanceledPoolClient } from '../pool/client-disposal.js';
-import { checkDatabaseReadiness } from '../readiness.js';
+import { checkDatabaseReadiness } from '../readiness.queries.js';
 
 export type StoredEncryptionKey = Readonly<{
   kind: 'connection' | 'webhook';

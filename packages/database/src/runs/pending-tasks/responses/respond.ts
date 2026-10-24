@@ -14,7 +14,7 @@ import {
 import {
   claimCommand,
   completeCommand,
-} from '../../../platform/idempotency.js';
+} from '../../../platform/idempotency/repository.js';
 import { serializeStoredExecutionValue } from '../../../platform/stored-execution-value.js';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
 import { wakeWorkflowRun } from '../../calls/wakeup.js';

@@ -5,7 +5,7 @@ import { z } from 'zod';
 import {
   completeCommand,
   type CommandIdentity,
-} from '../../platform/idempotency.js';
+} from '../../platform/idempotency/repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import type { InvitationAcceptanceResult } from '../contracts.js';
 
