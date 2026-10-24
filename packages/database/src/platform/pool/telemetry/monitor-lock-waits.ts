@@ -1,3 +1,5 @@
+import { sql } from 'drizzle-orm';
+import { QueryBuilder } from 'drizzle-orm/pg-core';
 import { Pool, type PoolConfig } from 'pg';
 import type { DatabasePoolRole } from '../policy.js';
 
@@ -52,15 +54,16 @@ function startLockWaitMonitor(
     sampling = true;
     samplePromise = (async (): Promise<void> => {
       try {
-        const result = await monitorPool.query<{ pid: number }>(
-          `select pid
-           from pg_catalog.pg_stat_activity
-          where datname = current_database()
-            and backend_type = 'client backend'
-            and pid = any($1::integer[])
-            and wait_event_type = 'Lock'`,
-          [[...backendPids]],
-        );
+        const query = new QueryBuilder()
+          .select({ pid: sql<number>`pid`.as('pid') })
+          .from(sql`pg_catalog.pg_stat_activity`)
+          .where(
+            sql`datname = current_database() and backend_type = 'client backend' and pid = any(${sql.param([...backendPids])}::integer[]) and wait_event_type = 'Lock'`,
+          );
+        const statement = query.toSQL();
+        const result = await monitorPool.query<
+          (typeof query)['_']['result'][number]
+        >(statement.sql, statement.params);
         const sampledAt = performance.now();
         const active = new Set(result.rows.map((row) => row.pid));
         monitor.active = active.size;

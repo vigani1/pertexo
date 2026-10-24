@@ -1,3 +1,4 @@
+import type { SystemMailPurpose } from '../../platform/mail/repository.js';
 import {
   type PgTableExtraConfigValue,
   bigint,
@@ -16,7 +17,7 @@ export const systemMailDeliveries = appSchema.table(
   'system_mail_deliveries',
   {
     id: uuid().primaryKey().notNull(),
-    purpose: varchar({ length: 32 }).notNull(),
+    purpose: varchar({ length: 32 }).$type<SystemMailPurpose>().notNull(),
     status: varchar({ length: 32 }).default('queued').notNull(),
     expiresAt: timestamp('expires_at', {
       withTimezone: true,

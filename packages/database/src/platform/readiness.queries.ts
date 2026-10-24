@@ -1,3 +1,5 @@
+import { sql } from 'drizzle-orm';
+import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 
 export const EXPECTED_MIGRATION_HEAD = '0053_remove_artifact_lookup.sql';
@@ -16,16 +18,21 @@ export type DatabaseReadiness = Readonly<{
 export async function checkDatabaseReadiness(
   pool: Pick<Pool, 'query'>,
 ): Promise<DatabaseReadiness> {
-  const result = await pool.query<{
-    current_user: string;
-    migration_head: string | null;
-    postgres_major: number;
-  }>(`
-    select current_user,
-      current_setting('server_version_num')::integer / 10000 as postgres_major,
-      (select name from pertexo_internal.schema_migrations
-        order by name desc limit 1) as migration_head
-  `);
+  const query = new QueryBuilder()
+    .select({
+      current_user: sql<string>`current_user`.as('current_user'),
+      migration_head: sql<string | null>`max(name)`.as('migration_head'),
+      postgres_major:
+        sql<number>`current_setting('server_version_num')::integer / 10000`.as(
+          'postgres_major',
+        ),
+    })
+    .from(sql`pertexo_internal.schema_migrations`);
+  const statement = query.toSQL();
+  const result = await pool.query<(typeof query)['_']['result'][number]>(
+    statement.sql,
+    statement.params,
+  );
   const row = result.rows[0];
   if (row === undefined)
     throw new Error('Database readiness metadata is unavailable');
