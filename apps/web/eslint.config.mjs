@@ -54,6 +54,15 @@ export default tseslint.config(
     files: ['test/**/*.{ts,tsx}', 'e2e/**/*.ts', 'e2e-live/**/*.ts'],
     rules: { 'max-params': ['error', 4] },
   },
+  {
+    files: [
+      'test/**/*.{ts,tsx}',
+      'e2e/**/*.ts',
+      'e2e-live/**/*.ts',
+      'playwright*.config.ts',
+    ],
+    rules: { 'no-nested-ternary': 'error' },
+  },
   { ignores: ['playwright-report/**', 'test-results/**'] },
   {
     files: ['**/*.{ts,tsx}'],
