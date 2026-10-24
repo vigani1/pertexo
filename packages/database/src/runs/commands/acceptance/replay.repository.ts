@@ -10,7 +10,6 @@ import {
   acceptWorkflowRunInputSchema,
   resultRefSchema,
   IDEMPOTENCY_STATUS,
-  workflowRunStatusSchema,
   type AcceptedWorkflowRun,
   IdempotencyRequestConflictError,
   IdempotencyRecordCorruptError,
@@ -63,13 +62,12 @@ export async function readExistingAcceptance(
     throw new IdempotencyRequestConflictError();
   }
   const resultRef = resultRefSchema.safeParse(row.resultRef);
-  const runStatus = workflowRunStatusSchema.safeParse(row.runStatus);
-  const { acceptedAt } = row;
+  const { acceptedAt, runStatus } = row;
   const incompleteReceipt =
     row.idempotencyStatus !== IDEMPOTENCY_STATUS.completed ||
     acceptedAt === null ||
     !resultRef.success ||
-    !runStatus.success;
+    runStatus === null;
   if (incompleteReceipt) {
     throw new IdempotencyRecordCorruptError();
   }
@@ -85,7 +83,7 @@ export async function readExistingAcceptance(
     duplicate: true,
     outboxEventId: resultRef.data.outboxEventId,
     runId: row.resourceId,
-    status: runStatus.data,
+    status: runStatus,
   });
 }
 
