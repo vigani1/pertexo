@@ -26,14 +26,16 @@ export function absorbAddresses(
     if (!isAddress(token)) {
       rejected.push(token);
       error ??= `“${token}” isn’t a complete email address, like name@company.com.`;
-    } else if (
-      next.some((email) => email.toLowerCase() === token.toLowerCase())
-    ) {
       continue;
-    } else if (next.length >= MAX_INVITES_AT_ONCE) {
+    }
+    if (next.some((email) => email.toLowerCase() === token.toLowerCase()))
+      continue;
+    if (next.length >= MAX_INVITES_AT_ONCE) {
       rejected.push(token);
       error ??= `Invite up to ${String(MAX_INVITES_AT_ONCE)} people at a time.`;
-    } else next.push(token);
+      continue;
+    }
+    next.push(token);
   }
   return { emails: next, rest: rejected.join(', '), error };
 }

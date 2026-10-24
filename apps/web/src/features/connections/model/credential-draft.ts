@@ -163,15 +163,19 @@ function headerIssueErrors(
     if (row === undefined) {
       errors.headers =
         'These headers are too large together. Remove some or shorten their values.';
-    } else if (issue.message.includes('transport')) {
+      continue;
+    }
+    if (issue.message.includes('transport')) {
       errors[`header-name:${row.id}`] =
         'Pertexo sets this header itself. Use a different one.';
-    } else if (issue.message.includes('unique')) {
-      errors[`header-name:${row.id}`] = 'This header is already listed.';
-    } else {
-      errors[`header-value:${row.id}`] =
-        'This value has characters HTTP can’t send.';
+      continue;
     }
+    if (issue.message.includes('unique')) {
+      errors[`header-name:${row.id}`] = 'This header is already listed.';
+      continue;
+    }
+    errors[`header-value:${row.id}`] =
+      'This value has characters HTTP can’t send.';
   }
   return errors;
 }
@@ -271,22 +275,31 @@ export function credentialServerErrors(
     const path = issue.path.split('.');
     if (path[0] !== 'credential') continue;
     const field = path[1];
-    if (draft.provider === 'signing' && field === 'signingKey')
-      errors.signingKey = 'Use valid Unicode text of 1–4,096 UTF-8 bytes.';
-    else if (draft.provider === 'slack' && field === 'botToken')
-      errors.botToken = SLACK_TOKEN_FORMAT;
-    else if (draft.provider === 'email' && field === 'apiKey')
-      errors.apiKey = 'Resend didn’t accept this API key format.';
-    else if (draft.provider === 'email' && field === 'fromEmail')
-      errors.fromEmail =
-        'Use a complete email address, like alerts@yourdomain.com.';
-    else if (draft.provider === 'http' && field === 'headers')
-      Object.assign(
-        errors,
-        headerIssueErrors(filledRows(draft.headers), [
-          { path: path.slice(1), message: issue.message },
-        ]),
-      );
+    switch (draft.provider) {
+      case 'signing':
+        if (field === 'signingKey')
+          errors.signingKey = 'Use valid Unicode text of 1–4,096 UTF-8 bytes.';
+        break;
+      case 'slack':
+        if (field === 'botToken') errors.botToken = SLACK_TOKEN_FORMAT;
+        break;
+      case 'email':
+        if (field === 'apiKey')
+          errors.apiKey = 'Resend didn’t accept this API key format.';
+        else if (field === 'fromEmail')
+          errors.fromEmail =
+            'Use a complete email address, like alerts@yourdomain.com.';
+        break;
+      case 'http':
+        if (field === 'headers')
+          Object.assign(
+            errors,
+            headerIssueErrors(filledRows(draft.headers), [
+              { path: path.slice(1), message: issue.message },
+            ]),
+          );
+        break;
+    }
   }
   return errors;
 }

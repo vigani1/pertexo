@@ -127,32 +127,41 @@ export function tableColumnReferences(
           input,
           detail: `Receives fields whose names change: ${source.path}`,
         });
-    } else if (downstream && source.kind === 'expression') {
-      result.push({
-        nodeId: consumerId,
-        step,
-        input,
-        detail: 'Expression: review computed output paths manually.',
-      });
-    } else if (downstream && source.kind === 'literal') {
-      for (const path of new Set(embeddedPaths(source.value, aliases)))
+      return;
+    }
+    if (!downstream) return;
+    switch (source.kind) {
+      case 'expression':
         result.push({
           nodeId: consumerId,
           step,
           input,
-          detail: `Embedded path: ${path} — check which data it reads.`,
+          detail: 'Expression: review computed output paths manually.',
         });
-    } else if (
-      downstream &&
-      (source.kind === 'node_output' || source.kind === 'structured_input') &&
-      mentionsColumn(source.path, aliases)
-    ) {
-      result.push({
-        nodeId: consumerId,
-        step,
-        input,
-        detail: `Later path: ${source.path} — check whether it carries these fields.`,
-      });
+        break;
+      case 'literal':
+        for (const path of new Set(embeddedPaths(source.value, aliases)))
+          result.push({
+            nodeId: consumerId,
+            step,
+            input,
+            detail: `Embedded path: ${path} — check which data it reads.`,
+          });
+        break;
+      case 'node_output':
+      case 'structured_input':
+        if (mentionsColumn(source.path, aliases))
+          result.push({
+            nodeId: consumerId,
+            step,
+            input,
+            detail: `Later path: ${source.path} — check whether it carries these fields.`,
+          });
+        break;
+      case 'run_input':
+      case 'workspace_variable':
+      case 'node_failure':
+        break;
     }
   }
   for (const { item: node } of indexGraph(graph).nodes.values()) {

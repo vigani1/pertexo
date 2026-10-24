@@ -246,12 +246,20 @@ export function useWorkspaceRename({
       const failure = classifyFailure(error);
       if (owner.current !== scope)
         return { receipt: undefined, conflict: false };
-      if (failure.kind === 'signed-out') await loseAccess(scope, ['identity']);
-      else if (failure.kind === 'forbidden')
-        await loseAccess(scope, workspaceKeys.accessible(userId));
-      else if (failure.kind === 'uncertain')
-        transition({ kind: 'uncertain', attempt, error: UNCERTAIN });
-      else transition({ kind: 'idle', error: failure.error });
+      switch (failure.kind) {
+        case 'signed-out':
+          await loseAccess(scope, ['identity']);
+          break;
+        case 'forbidden':
+          await loseAccess(scope, workspaceKeys.accessible(userId));
+          break;
+        case 'uncertain':
+          transition({ kind: 'uncertain', attempt, error: UNCERTAIN });
+          break;
+        case 'rejected':
+          transition({ kind: 'idle', error: failure.error });
+          break;
+      }
       return {
         receipt: undefined,
         conflict: failure.kind === 'rejected' && failure.error === CONFLICT,

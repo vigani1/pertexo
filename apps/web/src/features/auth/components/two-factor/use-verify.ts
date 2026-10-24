@@ -67,30 +67,34 @@ export function useTwoFactorVerification({
     } catch (error) {
       if (!request.isCurrent()) return;
       fields.reset();
-      if (
-        isApiError(error) &&
-        error.problem?.code === 'auth.two_factor_locked'
-      ) {
+      const apiError = isApiError(error) ? error : undefined;
+      if (apiError?.problem?.code === 'auth.two_factor_locked') {
         setFailure('Too many wrong codes. Try again in 15 minutes.');
-      } else if (isApiError(error) && error.status === 429) {
-        if (error.retryAfterMs !== undefined)
-          cooldown.startSeconds(Math.ceil(error.retryAfterMs / 1000));
-        setFailure('Too many attempts. Wait a moment, then try again.');
-      } else if (isApiError(error) && error.status === 409) {
-        setFailure(
-          'Sign-in settings changed. Go back and sign in again, or use organization sign-in.',
-        );
-      } else if (
-        isApiError(error) &&
-        (error.status === 401 || error.status === 400)
-      ) {
-        setFailure(
-          'That code wasn’t accepted. Check it and try again. If the sign-in expired, go back and sign in again.',
-        );
-      } else {
-        setFailure(
-          'We couldn’t confirm the code. Reload to check whether you’re signed in before trying again.',
-        );
+        return;
+      }
+      switch (apiError?.status) {
+        case 429: {
+          const retryAfterMs = apiError.retryAfterMs;
+          if (retryAfterMs !== undefined)
+            cooldown.startSeconds(Math.ceil(retryAfterMs / 1000));
+          setFailure('Too many attempts. Wait a moment, then try again.');
+          break;
+        }
+        case 409:
+          setFailure(
+            'Sign-in settings changed. Go back and sign in again, or use organization sign-in.',
+          );
+          break;
+        case 401:
+        case 400:
+          setFailure(
+            'That code wasn’t accepted. Check it and try again. If the sign-in expired, go back and sign in again.',
+          );
+          break;
+        default:
+          setFailure(
+            'We couldn’t confirm the code. Reload to check whether you’re signed in before trying again.',
+          );
       }
     } finally {
       request.finish();
