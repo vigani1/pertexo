@@ -134,16 +134,7 @@ function presetFor(draft: ScheduleDraft): Partial<ScheduleDraft> {
   const [, minute = '', hour = '', weekday = ''] =
     PRESET.exec(draft.expression) ?? [];
   const time = `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
-  const preset: Partial<ScheduleDraft> =
-    weekday === '*'
-      ? { mode: 'daily', time }
-      : weekday === '1-5'
-        ? { mode: 'weekdays', time }
-        : {
-            mode: 'weekly',
-            time,
-            days: [...new Set(weekday.split(',').map((day) => +day % 7))],
-          };
+  const preset = presetAt(time, weekday);
   // Only when the builder writes the very same rule back; otherwise the
   // expression stays exactly as stored.
   return cronFor({ ...draft, ...preset }) === draft.expression
@@ -158,12 +149,7 @@ export function cronFor(draft: ScheduleDraft): string | undefined {
     return draft.expression.trim().split(/\s+/u).join(' ');
   const time = /^([01]\d|2[0-3]):([0-5]\d)$/u.exec(draft.time);
   if (time === null) return undefined;
-  const days =
-    draft.mode === 'daily'
-      ? '*'
-      : draft.mode === 'weekdays'
-        ? '1-5'
-        : [...new Set(draft.days)].sort((a, b) => a - b).join(',');
+  const days = cronDays(draft);
   return `${String(Number(time[2]))} ${String(Number(time[1]))} * * ${days}`;
 }
 
@@ -243,12 +229,7 @@ function cronTextIssue(
 }
 
 function spanWords(minutes: number): string {
-  const [count, unit] =
-    minutes % 1_440 === 0
-      ? [minutes / 1_440, 'day']
-      : minutes % 60 === 0
-        ? [minutes / 60, 'hour']
-        : [minutes, 'minute'];
+  const [count, unit] = durationUnits(minutes);
   return `${String(count)} ${unit}${count === 1 ? '' : 's'}`;
 }
 
@@ -321,4 +302,26 @@ function recordOf(value: unknown) {
 
 function numberOr(value: unknown, fallback: number): number {
   return typeof value === 'number' ? value : fallback;
+}
+
+function presetAt(time: string, weekday: string): Partial<ScheduleDraft> {
+  if (weekday === '*') return { mode: 'daily', time };
+  if (weekday === '1-5') return { mode: 'weekdays', time };
+  return {
+    mode: 'weekly',
+    time,
+    days: [...new Set(weekday.split(',').map((day) => +day % 7))],
+  };
+}
+
+function cronDays(draft: ScheduleDraft): string {
+  if (draft.mode === 'daily') return '*';
+  if (draft.mode === 'weekdays') return '1-5';
+  return [...new Set(draft.days)].sort((a, b) => a - b).join(',');
+}
+
+function durationUnits(minutes: number): readonly [number, string] {
+  if (minutes % 1440 === 0) return [minutes / 1440, 'day'];
+  if (minutes % 60 === 0) return [minutes / 60, 'hour'];
+  return [minutes, 'minute'];
 }
