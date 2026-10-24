@@ -153,7 +153,7 @@ it('restores ordinary picker sources after reload instead of turning them into a
 });
 it('preserves singleton/empty list mappings and safely quotes picker property names', async () => {
   const { propertyPath } =
-    await import('@/features/workflow-editor/model/inspector/input-mappings/draft');
+    await import('@/features/workflow-editor/model/inspector/input-mappings/schema');
   const key = `Customer's "name"\\code`;
   const path = propertyPath(key);
   const mapping = contextMapping({
