@@ -1,4 +1,9 @@
-import type { Pool, PoolClient, QueryResult } from 'pg';
+import { and, asc, gt, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { webhookTestEvents } from '../../schema/triggers/test-events.js';
+import { webhookTriggerSecretVersions } from '../../schema/triggers/endpoints.js';
+import { connectionSecretVersions } from '../../schema/connections.js';
+import type { Pool, PoolClient } from 'pg';
 import type { DatabaseConfig } from '../../config.js';
 import { acquireDatabasePool, type DatabaseRuntime } from '../pool/runtime.js';
 import { acquireAbortablePoolClient } from '../pool/abortable-checkout.js';
@@ -17,31 +22,24 @@ export type EncryptionKeyRepository = Readonly<{
   read(signal: AbortSignal): AsyncIterable<StoredEncryptionKey>;
   close(): Promise<void>;
 }>;
-interface KeyRow {
-  id: string;
-  workspace_id: string;
-  resource_id: string;
-  kms_key_reference: string;
-  encrypted_data_key: string;
-}
 const inventories = [
   {
     kind: 'webhook',
-    table: 'webhook_test_events',
-    resource: 'id',
-    retained: 'expires_at>clock_timestamp()',
+    table: webhookTestEvents,
+    resource: webhookTestEvents.id,
+    retained: gt(webhookTestEvents.expiresAt, sql`clock_timestamp()`),
   },
   {
     kind: 'connection',
-    table: 'connection_secret_versions',
-    resource: 'connection_id',
-    retained: 'true',
+    table: connectionSecretVersions,
+    resource: connectionSecretVersions.connectionId,
+    retained: undefined,
   },
   {
     kind: 'webhook',
-    table: 'webhook_trigger_secret_versions',
-    resource: 'trigger_id',
-    retained: 'true',
+    table: webhookTriggerSecretVersions,
+    resource: webhookTriggerSecretVersions.triggerId,
+    retained: undefined,
   },
 ] as const;
 
@@ -117,27 +115,30 @@ async function* readKeys(
       let after: string | null = null;
       for (;;) {
         signal.throwIfAborted();
-        const page: QueryResult<KeyRow> = await client.query<KeyRow>(
-          `select id, workspace_id, ${inventory.resource} as resource_id, kms_key_reference, encrypted_data_key
-             from app.${inventory.table}
-            where ${inventory.retained} and ($1::uuid is null or id > $1::uuid)
-            order by id limit 250`,
-          [after],
-        );
+        const page: Omit<StoredEncryptionKey, 'kind'>[] = await drizzle(client)
+          .select({
+            secretVersionId: inventory.table.id,
+            workspaceId: inventory.table.workspaceId,
+            resourceId: inventory.resource,
+            keyReference: inventory.table.kmsKeyReference,
+            encryptedDataKey: inventory.table.encryptedDataKey,
+          })
+          .from(inventory.table)
+          .where(
+            and(
+              inventory.retained,
+              after === null ? undefined : gt(inventory.table.id, after),
+            ),
+          )
+          .orderBy(asc(inventory.table.id))
+          .limit(250);
         signal.throwIfAborted();
-        for (const row of page.rows) {
+        for (const row of page) {
           signal.throwIfAborted();
-          after = row.id;
-          yield Object.freeze({
-            kind: inventory.kind,
-            workspaceId: row.workspace_id,
-            resourceId: row.resource_id,
-            secretVersionId: row.id,
-            keyReference: row.kms_key_reference,
-            encryptedDataKey: row.encrypted_data_key,
-          });
+          after = row.secretVersionId;
+          yield Object.freeze({ kind: inventory.kind, ...row });
         }
-        if (page.rows.length < 250) break;
+        if (page.length < 250) break;
       }
     }
     signal.throwIfAborted();

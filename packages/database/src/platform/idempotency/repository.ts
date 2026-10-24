@@ -1,3 +1,7 @@
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { idempotencyRecords } from '../../schema/runs/support.js';
+import { rethrowQueryFailure } from '../query-errors.js';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { createHash } from 'node:crypto';
 
@@ -71,40 +75,46 @@ export async function claimCommand<Result = unknown>(
 ): Promise<Result | null> {
   const keyHash = sha256(command.idempotencyKey);
   const requestHash = requestDigest(command);
-  const inserted = await client.query(
-    `insert into app.idempotency_records
-       (id, workspace_id, operation, scope, key_hash, request_hash, status,
-        resource_id, result_ref)
-     values ($1, $2, $3, $4, $5, $6, 'in_progress', $7, '{}'::jsonb)
-     on conflict (workspace_id, operation, scope, key_hash) do nothing`,
-    [
-      generatePersistedId(),
-      command.workspaceId,
-      command.operation,
-      command.scope,
+  const db = drizzle(client);
+  const inserted = await db
+    .insert(idempotencyRecords)
+    .values({
+      id: generatePersistedId(),
+      workspaceId: command.workspaceId,
+      operation: command.operation,
+      scope: command.scope,
       keyHash,
       requestHash,
-      command.resourceId,
-    ],
-  );
-  const claimed = await client.query<{
-    request_hash: string;
-    result_ref: Result;
-    status: string;
-  }>(
-    `select request_hash, status, result_ref from app.idempotency_records
-     where workspace_id = $1 and operation = $2 and scope = $3 and key_hash = $4
-     for update`,
-    [command.workspaceId, command.operation, command.scope, keyHash],
-  );
-  const row = claimed.rows[0];
+      status: 'in_progress',
+      resourceId: command.resourceId,
+      resultRef: {},
+    })
+    .onConflictDoNothing({
+      target: [
+        idempotencyRecords.workspaceId,
+        idempotencyRecords.operation,
+        idempotencyRecords.scope,
+        idempotencyRecords.keyHash,
+      ],
+    })
+    .returning({ id: idempotencyRecords.id })
+    .catch(rethrowQueryFailure);
+  const [row] = await db
+    .select({
+      requestHash: idempotencyRecords.requestHash,
+      status: idempotencyRecords.status,
+      resultRef: sql<Result>`${idempotencyRecords.resultRef}`,
+    })
+    .from(idempotencyRecords)
+    .where(commandPredicate(command, keyHash))
+    .for('update')
+    .catch(rethrowQueryFailure);
   if (row === undefined) throw new Error('Command claim is missing');
-  if (row.request_hash !== requestHash) throw conflict(command);
-  if (row.status === 'completed') return row.result_ref;
+  if (row.requestHash !== requestHash) throw conflict(command);
+  if (row.status === 'completed') return row.resultRef;
   // A claim completes in the transaction that made it, so any other state
   // another transaction left behind is damage, not a command to resume.
-  if (inserted.rowCount !== 1)
-    throw new Error('Command claim is not resumable');
+  if (inserted.length !== 1) throw new Error('Command claim is not resumable');
   return null;
 }
 
@@ -117,24 +127,18 @@ export async function findCommandResult<Result = unknown>(
   client: PoolClient,
   command: CommandLookup,
 ): Promise<Result | null> {
-  const found = await client.query<{
-    request_hash: string;
-    result_ref: Result;
-    status: string;
-  }>(
-    `select request_hash, status, result_ref from app.idempotency_records
-     where workspace_id = $1 and operation = $2 and scope = $3 and key_hash = $4`,
-    [
-      command.workspaceId,
-      command.operation,
-      command.scope,
-      sha256(command.idempotencyKey),
-    ],
-  );
-  const row = found.rows[0];
+  const [row] = await drizzle(client)
+    .select({
+      requestHash: idempotencyRecords.requestHash,
+      status: idempotencyRecords.status,
+      resultRef: sql<Result>`${idempotencyRecords.resultRef}`,
+    })
+    .from(idempotencyRecords)
+    .where(commandPredicate(command, sha256(command.idempotencyKey)))
+    .catch(rethrowQueryFailure);
   if (row === undefined) return null;
-  if (row.request_hash !== requestDigest(command)) throw conflict(command);
-  return row.status === 'completed' ? row.result_ref : null;
+  if (row.requestHash !== requestDigest(command)) throw conflict(command);
+  return row.status === 'completed' ? row.resultRef : null;
 }
 
 /** Stores a command's result so an exact retry gets it back. */
@@ -143,17 +147,24 @@ export async function completeCommand(
   command: CommandIdentity,
   result: unknown,
 ): Promise<void> {
-  const completed = await client.query(
-    `update app.idempotency_records
-     set status = 'completed', result_ref = $5::jsonb, updated_at = clock_timestamp()
-     where workspace_id = $1 and operation = $2 and scope = $3 and key_hash = $4`,
-    [
-      command.workspaceId,
-      command.operation,
-      command.scope,
-      sha256(command.idempotencyKey),
-      JSON.stringify(result),
-    ],
+  const completed = await drizzle(client)
+    .update(idempotencyRecords)
+    .set({
+      status: 'completed',
+      resultRef: sql`${JSON.stringify(result)}::jsonb`,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(commandPredicate(command, sha256(command.idempotencyKey)))
+    .returning({ id: idempotencyRecords.id })
+    .catch(rethrowQueryFailure);
+  if (completed.length !== 1) throw new Error('Command claim is missing');
+}
+
+function commandPredicate(command: CommandIdentity, keyHash: string) {
+  return and(
+    eq(idempotencyRecords.workspaceId, command.workspaceId),
+    eq(idempotencyRecords.operation, command.operation),
+    eq(idempotencyRecords.scope, command.scope),
+    eq(idempotencyRecords.keyHash, keyHash),
   );
-  if (completed.rowCount !== 1) throw new Error('Command claim is missing');
 }

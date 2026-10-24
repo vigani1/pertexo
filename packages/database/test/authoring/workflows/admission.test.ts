@@ -81,7 +81,9 @@ describe('snapshot validation and publication ordering', () => {
     });
     const release = vi.fn();
     const query = vi.fn((statement: string | { text: string }) => {
-      const sql = typeof statement === 'string' ? statement : statement.text;
+      const sql = (
+        typeof statement === 'string' ? statement : statement.text
+      ).replaceAll('"', '');
       if (sql === 'begin') transaction = true;
       if (sql === 'rollback') {
         rollbackEntered();
@@ -218,21 +220,19 @@ describe('snapshot validation and publication ordering', () => {
       .digest('hex'),
   ) {
     const query = vi.fn((statement: string | { text: string }) => {
-      const sql = typeof statement === 'string' ? statement : statement.text;
+      const sql = (
+        typeof statement === 'string' ? statement : statement.text
+      ).replaceAll('"', '');
       // A new command inserts its claim; a retry finds it completed.
       if (sql.includes('insert into app.idempotency_records'))
         return Promise.resolve({
-          rows: [],
+          rows: status === 'completed' ? [] : [[workflowId]],
           rowCount: status === 'completed' ? 0 : 1,
         });
-      if (sql.includes('select request_hash'))
+      if (sql.includes('from app.idempotency_records'))
         return Promise.resolve({
           rows: [
-            {
-              request_hash: requestHash,
-              status,
-              result_ref: { versionId: workflowId, reused: false },
-            },
+            [requestHash, status, { versionId: workflowId, reused: false }],
           ],
         });
       if (sql.includes('from app.workflow_versions'))

@@ -82,7 +82,10 @@ describe('failure notification destination decoding', () => {
       .current_config_version;
     delete (replay as { created_at?: unknown }).created_at;
     delete (replay as { updated_at?: unknown }).updated_at;
-    const query = vi.fn((text: string) => {
+    const query = vi.fn((statement: string | { text: string }) => {
+      const text = (
+        typeof statement === 'string' ? statement : statement.text
+      ).replaceAll('"', '');
       if (text.includes('workspace_memberships'))
         return Promise.resolve(result([{ role: 'owner' }]));
       if (
@@ -92,15 +95,9 @@ describe('failure notification destination decoding', () => {
         return Promise.resolve(result([{}]));
       if (text.includes('insert into app.idempotency_records'))
         return Promise.resolve(result([], 1));
-      if (text.includes('select request_hash, status, result_ref'))
+      if (text.includes('from app.idempotency_records'))
         return Promise.resolve(
-          result([
-            {
-              request_hash: 'a'.repeat(64),
-              status: 'completed',
-              result_ref: { result: replay },
-            },
-          ]),
+          result([['a'.repeat(64), 'completed', { result: replay }]]),
         );
       throw new Error(`Unexpected query: ${text}`);
     });
