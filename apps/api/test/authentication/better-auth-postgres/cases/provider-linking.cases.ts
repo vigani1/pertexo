@@ -181,8 +181,12 @@ export function registerLinksFixtureProviderAfterFreshExisting(): void {
         [databaseName],
       );
       expect(ended.rowCount).toBeGreaterThan(0);
-      await new Promise((resolve) => setTimeout(resolve, 250));
-      expect((await signUp()).statusCode).toBe(200);
+      await expect
+        .poll(async () => (await signUp()).statusCode, {
+          timeout: 250,
+          interval: 10,
+        })
+        .toBe(200);
     } finally {
       await admin.end();
       await application.close();
