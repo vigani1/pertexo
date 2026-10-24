@@ -100,13 +100,7 @@ export function PatternGlyph({
           cx={node.x}
           cy={node.y}
           r={node.trigger ? layout.radius + 0.6 : layout.radius}
-          className={cn(
-            muted
-              ? 'fill-subtle-foreground'
-              : node.trigger
-                ? 'fill-primary drop-shadow-[0_0_3px_var(--primary)]'
-                : 'fill-accent-foreground',
-          )}
+          className={cn(nodeFill({ muted, trigger: node.trigger }))}
         />
       ))}
     </svg>
@@ -153,4 +147,14 @@ export function PatternGlyphPlaceholder({
       />
     </svg>
   );
+}
+
+function nodeFill({
+  muted,
+  trigger,
+}: Readonly<{ muted: boolean; trigger: boolean }>): string {
+  if (muted) return 'fill-subtle-foreground';
+  return trigger
+    ? 'fill-primary drop-shadow-[0_0_3px_var(--primary)]'
+    : 'fill-accent-foreground';
 }

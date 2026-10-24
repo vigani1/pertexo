@@ -32,12 +32,7 @@ export function noteFieldErrors(
     errors.text = `Keep the note within ${String(limits.textLength)} characters.`;
   for (const key of ['x', 'y', 'width', 'height'] as const) {
     const value = Number(fields[key]);
-    const minimum =
-      key === 'width'
-        ? limits.minWidth
-        : key === 'height'
-          ? limits.minHeight
-          : -limits.coordinate;
+    const minimum = MINIMUMS[key];
     const maximum =
       key === 'width' || key === 'height' ? limits.maxSize : limits.coordinate;
     const invalidSizeField =
@@ -74,3 +69,10 @@ export function appliedNote(
 function kept(field: string, stored: number): number {
   return field === shown(stored) ? stored : Number(field);
 }
+
+const MINIMUMS = {
+  width: limits.minWidth,
+  height: limits.minHeight,
+  x: -limits.coordinate,
+  y: -limits.coordinate,
+};
