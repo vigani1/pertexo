@@ -12,7 +12,7 @@ import type { PromotionScope } from './contract.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
-import { WorkflowPromotionError } from './contract.js';
+import { WorkflowPromotionError } from './errors.js';
 
 /** Audit facts outlive the command's 24-hour retry window (minimum retention: 30 days). */
 export const promotionReceiptSchema = z

@@ -8,11 +8,11 @@ import { rolesForCapability } from '@pertexo/workflow-model';
 import type { WorkflowPresence } from '@pertexo/contracts';
 import type { PoolClient } from 'pg';
 import { requireCollaborationAuthority } from './authority.queries.js';
-import {
-  WorkflowCollaborationError,
-  type CollaborationContext,
-  type CollaborationScope,
-  type WorkflowCollaborationStore,
+import { WorkflowCollaborationError } from './errors.js';
+import type {
+  CollaborationContext,
+  CollaborationScope,
+  WorkflowCollaborationStore,
 } from './contract.js';
 async function readPresence(
   client: PoolClient,

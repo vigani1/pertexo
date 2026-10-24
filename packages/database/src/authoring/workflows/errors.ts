@@ -1,3 +1,4 @@
+import type { WorkflowDefinitionPlacementIssue } from '@pertexo/workflow-model';
 export class WorkflowNotFoundError extends Error {
   public override readonly name = 'WorkflowNotFoundError';
 }
@@ -59,5 +60,15 @@ export class WorkflowPortabilityValidationError extends Error {
   ) {
     super('Workflow portability input is not compatible');
     this.truncated = truncated;
+  }
+}
+
+export class WorkflowDefinitionPlacementError extends Error {
+  public override readonly name = 'WorkflowDefinitionPlacementError';
+
+  public constructor(
+    public readonly issues: readonly WorkflowDefinitionPlacementIssue[],
+  ) {
+    super('Workflow draft adds a definition that is not placeable');
   }
 }

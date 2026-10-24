@@ -12,11 +12,8 @@ import {
 } from '../../platform/idempotency/repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { appendAuditFact } from '../../governance/audit/events.repository.js';
-import {
-  PublicationReviewError,
-  type PublicationReviewStore,
-  type ReviewDependencies,
-} from './contract.js';
+import { PublicationReviewError } from './errors.js';
+import type { PublicationReviewStore, ReviewDependencies } from './contract.js';
 import {
   readReviewDraft,
   readReviewSummary,

@@ -9,12 +9,8 @@ import { WorkflowNotFoundError } from '../../workflows/errors.js';
 
 import { WorkflowTagConflictError } from '../errors.js';
 
-import {
-  type PageInput,
-  type WorkflowTagRecord,
-  type Page,
-  uuid,
-} from './contract.js';
+import type { PageInput, WorkflowTagRecord, Page } from './contract.js';
+import { uuid } from './input.js';
 
 export const tagProjection = {
   id: workflowTags.id,

@@ -22,7 +22,6 @@ import {
   listAuthoringWorkflows,
 } from './reads/workflows.queries.js';
 
-export { type WorkflowAuthoringReadContext } from './reads/contract.js';
 export function createWorkflowAuthoringReadStore(
   context: WorkflowAuthoringReadContext,
 ): ReadStore {

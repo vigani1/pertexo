@@ -1,5 +1,4 @@
 import type { PoolClient } from 'pg';
-import { z } from 'zod';
 
 export type WorkflowAutoPauseSettings = Readonly<{
   enabled: boolean;
@@ -60,56 +59,6 @@ export interface WorkflowAutoPauseDatabase {
       Readonly<{ threshold: number; expectedRevision: number }>,
   ): Promise<AutoPauseCommandResult<WorkspaceAutoPauseSettings>>;
 }
-
-export class WorkflowPauseRevisionConflictError extends Error {
-  public override readonly name = 'WorkflowPauseRevisionConflictError';
-  public constructor(public readonly currentRevision: string) {
-    super('Workflow pause revision does not match');
-  }
-}
-
-export class WorkflowAutoPauseSettingsRevisionConflictError extends Error {
-  public override readonly name =
-    'WorkflowAutoPauseSettingsRevisionConflictError';
-  public constructor(public readonly currentRevision: number) {
-    super('Workflow auto pause settings revision does not match');
-  }
-}
-
-export class WorkspaceAutoPauseSettingsRevisionConflictError extends Error {
-  public override readonly name =
-    'WorkspaceAutoPauseSettingsRevisionConflictError';
-  public constructor(public readonly currentRevision: number) {
-    super('Workspace auto pause settings revision does not match');
-  }
-}
-
-export const revision = z.number().int().positive().max(2_147_483_647);
-
-export const pauseRevision = z
-  .string()
-  .regex(/^[1-9][0-9]{0,18}$/u)
-  .refine((value) => BigInt(value) <= 9_223_372_036_854_775_807n);
-
-export const threshold = z.number().int().min(3).max(100);
-
-export const workflowSettings = z
-  .object({
-    enabled: z.boolean(),
-    thresholdOverride: threshold.nullable(),
-    workspaceThreshold: threshold,
-    effectiveThreshold: threshold,
-    settingsRevision: revision,
-    pauseState: z.enum(['none', 'paused']),
-    pauseRevision,
-    pausedAt: z.iso.datetime({ precision: 6 }).nullable(),
-    pauseReason: z.literal('consecutive_failures').nullable(),
-    pausedFailures: z.number().int().positive().nullable(),
-    pausedLastRunId: z.uuid().nullable(),
-  })
-  .strict();
-
-export const workspaceSettings = z.object({ threshold, revision }).strict();
 
 export type Transact = <T>(
   workspaceId: string,

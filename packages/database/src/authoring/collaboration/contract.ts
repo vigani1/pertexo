@@ -15,17 +15,22 @@ import type {
   WorkspacePeoplePage,
 } from '@pertexo/contracts';
 import type { WorkflowAuthoringWriteContext } from '../workflows/context.js';
+
 export type CollaborationScope = Readonly<{
   workspaceId: string;
   workflowId: string;
   actorId: string;
   signal?: AbortSignal;
 }>;
+
 export type CollaborationCommand = CollaborationScope &
   Readonly<{ idempotencyKey: string; requestId?: string; traceId?: string }>;
+
 export type ThreadScope = CollaborationScope & Readonly<{ threadId: string }>;
+
 export type ThreadCommand = CollaborationCommand &
   Readonly<{ threadId: string }>;
+
 export interface WorkflowCollaborationStore {
   list(
     input: CollaborationScope & WorkflowCommentListQuery,
@@ -59,16 +64,8 @@ export interface WorkflowCollaborationStore {
   ): Promise<{ accepted: boolean }>;
   leave(input: CollaborationScope & { tabId: string }): Promise<void>;
 }
+
 export type CollaborationContext = Pick<
   WorkflowAuthoringWriteContext,
   'transact'
 >;
-export class WorkflowCollaborationError extends Error {
-  override readonly name = 'WorkflowCollaborationError';
-  constructor(
-    readonly reason: 'conflict' | 'forbidden' | 'limit' | 'unavailable',
-    message: string,
-  ) {
-    super(message);
-  }
-}

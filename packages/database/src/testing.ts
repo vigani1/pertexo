@@ -1,6 +1,46 @@
 // Broad test and migration-fixture surface; production code must use role-owned package subpaths instead.
-export * from './authoring/testing.js';
-export * from './authoring/settings/auto-pause/repository.js';
+export { testExecutableCompiler } from './authoring/test-executable-compiler.js';
+export { createWorkflowAuthoringDatabase } from './authoring/workflows/repository.js';
+export { WorkflowDefinitionPlacementError } from './authoring/workflows/errors.js';
+export { reconcileWorkflowTriggersPayload } from './authoring/publication/trigger-reconciliation.repository.js';
+export {
+  WorkflowNotFoundError,
+  WorkflowRevisionConflictError,
+} from './authoring/workflows/errors.js';
+export type {
+  CreateWorkflowInput,
+  CreateWorkflowResult,
+  DuplicateWorkflowInput,
+  DuplicateWorkflowResult,
+  ListWorkflowVersionsInput,
+  ListWorkflowsInput,
+  PublishWorkflowInput,
+  PublishWorkflowResult,
+  RestoreWorkflowVersionInput,
+  SaveWorkflowDraftInput,
+  WorkflowAuthoringDatabase,
+  WorkflowPage,
+  WorkflowVersionPage,
+} from './authoring/workflows/contract.js';
+export type { WorkflowAuthoringDatabaseOptions } from './authoring/workflows/types.js';
+export type { WorkflowDefinitionPlacementIssue } from '@pertexo/workflow-model';
+export type {
+  WorkflowDraftRecord,
+  WorkflowRecord,
+  WorkflowVersionRecord,
+} from './authoring/workflows/representation/contract.js';
+export { createWorkflowAutoPauseStore } from './authoring/settings/auto-pause/repository.js';
+export type {
+  WorkflowAutoPauseSettings,
+  WorkspaceAutoPauseSettings,
+  AutoPauseCommandResult,
+  WorkflowAutoPauseDatabase,
+} from './authoring/settings/auto-pause/contract.js';
+export {
+  WorkflowPauseRevisionConflictError,
+  WorkflowAutoPauseSettingsRevisionConflictError,
+  WorkspaceAutoPauseSettingsRevisionConflictError,
+} from './authoring/settings/auto-pause/errors.js';
 export * from './connections/testing.js';
 export { lockRunAcceptanceCommand } from './runs/commands/lock-acceptance.repository.js';
 export {

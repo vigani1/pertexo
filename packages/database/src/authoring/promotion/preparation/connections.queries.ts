@@ -18,7 +18,7 @@ import {
 } from '@pertexo/workflow-model';
 import type { WorkflowPromotionRequirement } from '@pertexo/contracts';
 import type { AuthoringCatalogs } from '../../workflows/catalogs.js';
-import { WorkflowPromotionError } from '../contract.js';
+import { WorkflowPromotionError } from '../errors.js';
 import type { PromotionSource, PromotionSourceSet } from './source.queries.js';
 import { promotionNodes } from './graph.js';
 

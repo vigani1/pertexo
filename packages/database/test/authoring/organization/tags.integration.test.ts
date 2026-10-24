@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { WorkflowTagConflictError } from '../../../src/authoring/organization/tags/commands.repository.js';
+import type { WorkflowTagConflictError } from '../../../src/authoring/organization/errors.js';
 import { WorkflowNotFoundError } from '../../../src/authoring/workflows/errors.js';
 import { IdempotencyConflictError } from '../../../src/platform/idempotency/repository.js';
 import {

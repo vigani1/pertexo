@@ -12,19 +12,6 @@ import {
   detachTag,
 } from './commands/mutations.repository.js';
 import { listTags, listTagAssignments } from './list.queries.js';
-export {
-  WorkflowTagConflictError,
-  type WorkflowTagConflictKind,
-} from '../errors.js';
-export {
-  type WorkflowTagRecord,
-  type WorkflowTagAssignment,
-  type WorkflowTagCommandResult,
-  type WorkflowTagDeleteResult,
-  type WorkflowTagAssignmentResult,
-  type WorkflowTagReplaceResult,
-  type WorkflowTagDatabase,
-} from './contract.js';
 
 export function createWorkflowTagDatabase(
   config: DatabaseConfig,

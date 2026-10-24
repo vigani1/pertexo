@@ -1,5 +1,8 @@
 import { readSharingPrincipals } from '../../../tenant-access/resources/principals.queries.js';
-import { readFolderSharing, replaceFolderSharing } from '../sharing/grants.repository.js';
+import {
+  readFolderSharing,
+  replaceFolderSharing,
+} from '../sharing/grants.repository.js';
 
 import type { DatabaseConfig } from '../../../config.js';
 import type { DatabaseRuntime } from '../../../platform/pool/runtime.js';
@@ -8,7 +11,8 @@ import {
   createOrganizationSession,
   type OrganizationRequestScope,
 } from '../session.js';
-import { type WorkflowFolderDatabase, uuid } from './contract.js';
+import type { WorkflowFolderDatabase } from './contract.js';
+import { uuid } from './input.js';
 
 import {
   createFolder,
@@ -21,17 +25,6 @@ import {
   placeWorkflow,
 } from './commands/placement.repository.js';
 import { listFolders } from './list.queries.js';
-export {
-  WorkflowFolderConflictError,
-  type WorkflowFolderConflictKind,
-} from '../errors.js';
-export {
-  type WorkflowFolderRecord,
-  type WorkflowFolderCommandResult,
-  type WorkflowFolderDeleteResult,
-  type WorkflowFolderPlacementResult,
-  type WorkflowFolderDatabase,
-} from './contract.js';
 
 export function createWorkflowFolderDatabase(
   config: DatabaseConfig,

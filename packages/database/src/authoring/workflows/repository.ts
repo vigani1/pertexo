@@ -1,3 +1,4 @@
+import { WorkflowDefinitionPlacementError } from './errors.js';
 import type { FolderScope } from '../../tenant-access/resources/contract.js';
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
 import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
@@ -15,7 +16,6 @@ import { acquireDatabasePool } from '../../platform/pool/runtime.js';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 import {
-  type WorkflowDefinitionPlacementIssue,
   workflowDefinitionPlacementIssues,
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
@@ -36,11 +36,6 @@ import { createWorkflowAuthoringLifecycleStore } from './commands/lifecycle.repo
 import { createWorkflowAuthoringRenameStore } from './commands/rename.repository.js';
 import { createWorkflowAutoPauseStore } from '../settings/auto-pause/repository.js';
 import { createWorkflowConcurrencyStore } from '../settings/concurrency.repository.js';
-export type {
-  WorkflowDraftRecord,
-  WorkflowRecord,
-  WorkflowVersionRecord,
-} from './representation/contract.js';
 import { acceptPreviewRun } from '../../previews/runs/acceptance.repository.js';
 import { readPreviewRun } from '../../previews/runs/records.queries.js';
 import { resolvePreviewReplay } from '../../previews/runs/replay.repository.js';
@@ -52,62 +47,10 @@ import {
 } from '../../tenant-access/transactions.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
 import type { WorkflowAuthoringDatabaseOptions } from './types.js';
-export type { WorkflowAuthoringDatabaseOptions } from './types.js';
 
 const uuidSchema = z.uuid();
 
-export {
-  WorkflowNotFoundError,
-  WorkflowRevisionConflictError,
-  WorkflowLifecycleRevisionConflictError,
-  WorkflowNameRevisionConflictError,
-  WorkflowPortabilityUnavailableError,
-  WorkflowTemplateOriginUnavailableError,
-  WorkflowPortabilityCompatibilityConflictError,
-  WorkflowPortabilityReviewConflictError,
-  WorkflowPortabilityValidationError,
-} from './errors.js';
-export type {
-  TransitionWorkflowLifecycleInput,
-  TransitionWorkflowLifecycleResult,
-  WorkflowLifecycleCommand,
-} from './contract.js';
 import type { WorkflowAuthoringDatabase } from './contract.js';
-
-export type { WorkflowDefinitionPlacementIssue } from '@pertexo/workflow-model';
-
-export class WorkflowDefinitionPlacementError extends Error {
-  public override readonly name = 'WorkflowDefinitionPlacementError';
-
-  public constructor(
-    public readonly issues: readonly WorkflowDefinitionPlacementIssue[],
-  ) {
-    super('Workflow draft adds a definition that is not placeable');
-  }
-}
-
-export type {
-  CreateWorkflowInput,
-  CreateWorkflowResult,
-  DuplicateWorkflowInput,
-  DuplicateWorkflowResult,
-  ExportWorkflowInput,
-  PreviewWorkflowImportInput,
-  PreviewWorkflowImportResult,
-  ImportWorkflowInput,
-  ImportWorkflowResult,
-  ListWorkflowsInput,
-  ListWorkflowVersionsInput,
-  PublishWorkflowInput,
-  PublishWorkflowResult,
-  RestoreWorkflowVersionInput,
-  SaveWorkflowDraftInput,
-  WorkflowAuthoringDatabase,
-  WorkflowPage,
-  WorkflowVersionPage,
-} from './contract.js';
-
-export { reconcileWorkflowTriggersPayload } from '../publication/publisher.repository.js';
 
 function requirePlaceableDefinitionAdditions(
   previous: WorkflowGraph,

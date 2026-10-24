@@ -19,11 +19,8 @@ import {
   requirePromotionAuthority,
   lockPromotionWorkspaces,
 } from './authority.queries.js';
-import {
-  WorkflowPromotionError,
-  type PromotionContext,
-  type WorkflowPromotionStore,
-} from './contract.js';
+import { WorkflowPromotionError } from './errors.js';
+import type { PromotionContext, WorkflowPromotionStore } from './contract.js';
 import { preparePromotion } from './preview.js';
 
 export async function applyPromotion(

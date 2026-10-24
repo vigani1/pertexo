@@ -15,7 +15,7 @@ import { checkDatabaseReadiness } from '../../src/platform/readiness.queries.js'
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
-} from '../../src/authoring/workflows/repository.js';
+} from '../../src/authoring/workflows/errors.js';
 import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringDatabase } from './workflow-authoring-admission.fixture.js';
 import { createWorkflowIntegrationUsageDatabase } from '../../src/connections/discovery/integration-usage.queries.js';
 

@@ -21,7 +21,8 @@ import {
   inspectPromotionCallDependencies,
 } from '../calls.queries.js';
 import { inspectPromotionRequirements } from '../requirements.queries.js';
-import type { Origin, TargetReviewState } from './contract.js';
+import type { Origin } from './records.queries.js';
+import type { TargetReviewState } from './contract.js';
 
 export async function prepareTargetGraph(
   client: PoolClient,

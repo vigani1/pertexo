@@ -19,6 +19,7 @@ export type PromotionScope = Readonly<{
   actorId: string;
   signal?: AbortSignal;
 }>;
+
 export type PromotionCommand = PromotionScope &
   Readonly<{
     idempotencyKey: string;
@@ -26,6 +27,7 @@ export type PromotionCommand = PromotionScope &
     traceId?: string;
     traceparent?: string;
   }>;
+
 export interface WorkflowPromotionStore {
   settings(input: PromotionScope): Promise<WorkflowPromotionSettings>;
   setTarget(
@@ -44,6 +46,7 @@ export interface WorkflowPromotionStore {
     input: PromotionScope & WorkflowPromotionPageQuery,
   ): Promise<WorkflowPromotionHistory>;
 }
+
 export type PromotionContext = WorkflowAuthoringWriteContext &
   Readonly<{
     transactScopes<T>(
@@ -51,13 +54,3 @@ export type PromotionContext = WorkflowAuthoringWriteContext &
       signal?: AbortSignal,
     ): Promise<T>;
   }>;
-export class WorkflowPromotionError extends Error {
-  override readonly name = 'WorkflowPromotionError';
-  constructor(
-    readonly reason:
-      'unavailable' | 'stale' | 'incompatible' | 'limit' | 'conflict',
-    message: string,
-  ) {
-    super(message);
-  }
-}
