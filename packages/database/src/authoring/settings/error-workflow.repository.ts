@@ -10,7 +10,7 @@ import { auditEvents } from '../../schema/foundation.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
 import { workflowAccessible } from '../../tenant-access/resources/workflows.queries.js';
-import { workflowScopeSql } from '../../tenant-access/resources/query-scope.js';
+import { workflowScopeSql } from '../../tenant-access/resources/scope.queries.js';
 import type { PoolClient } from 'pg';
 import { isWorkflowErrorTarget } from '@pertexo/workflow-model';
 import type {

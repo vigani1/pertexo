@@ -7,7 +7,7 @@ import type { Role } from '@pertexo/workflow-model';
 import {
   claimCommand,
   completeCommand,
-} from '../../../platform/idempotency.js';
+} from '../../../platform/idempotency/repository.js';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
 import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
 import type {

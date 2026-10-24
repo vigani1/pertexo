@@ -20,7 +20,7 @@ import {
   RESOURCE_ADMINISTRATORS,
   removesFolderRestriction,
 } from '../../../tenant-access/resources/policy.js';
-import { workflowScopeSql } from '../../../tenant-access/resources/query-scope.js';
+import { workflowScopeSql } from '../../../tenant-access/resources/scope.queries.js';
 import { WorkflowNotFoundError } from '../../workflows/errors.js';
 import { WorkflowFolderConflictError } from '../errors.js';
 import type { OrganizationScope } from '../commands.repository.js';

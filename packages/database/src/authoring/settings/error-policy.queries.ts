@@ -7,7 +7,7 @@ import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import type { WorkflowErrorSettings } from '@pertexo/contracts';
 import type { FolderScope } from '../../tenant-access/resources/contract.js';
-import { workflowScopeSql } from '../../tenant-access/resources/query-scope.js';
+import { workflowScopeSql } from '../../tenant-access/resources/scope.queries.js';
 export async function readPolicy(
   client: PoolClient,
   workspaceId: string,

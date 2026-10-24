@@ -71,7 +71,7 @@ export async function persistPublishedWorkflowTriggers(
           kind: trigger.kind,
           desiredConfig: trigger.config,
           configFingerprint: trigger.configFingerprint,
-          status: 'desired',
+          status: 'desired' as const,
         })),
       )
       .onConflictDoUpdate({

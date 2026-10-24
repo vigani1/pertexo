@@ -11,7 +11,7 @@ import {
   workflowAccessible,
 } from '../../../tenant-access/resources/workflows.queries.js';
 import type { FolderScope } from '../../../tenant-access/resources/contract.js';
-import { workflowScopeSql } from '../../../tenant-access/resources/query-scope.js';
+import { workflowScopeSql } from '../../../tenant-access/resources/scope.queries.js';
 import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { workflowProjection } from '../representation/records.queries.js';
 import type { ReadStore, WorkflowAuthoringReadContext } from './contract.js';

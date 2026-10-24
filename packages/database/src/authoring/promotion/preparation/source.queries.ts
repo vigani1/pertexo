@@ -173,7 +173,7 @@ function readSourceConnections(
       and(
         eq(promotionConnection.workspaceId, workspaceId),
         inArray(promotionConnection.id, connectionIds),
-        connectionScopeSql(scope, sql`${promotionConnection}`),
+        connectionScopeSql(scope, promotionConnection),
       ),
     )
     .orderBy(asc(promotionConnection.id))

@@ -139,7 +139,7 @@ export async function inspectPortableConnections(
       { workspaceId, actorId },
       'connection:use',
     ),
-    sql`${connection}`,
+    connection,
   );
   const result = await drizzle(client)
     .select({

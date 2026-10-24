@@ -72,7 +72,7 @@ export async function inspectPromotionRequirements(
     ),
   ].sort();
   if (ids.length > 0) {
-    const visible = connectionScopeSql(scope, sql`${promotionConnection}`);
+    const visible = connectionScopeSql(scope, promotionConnection);
     const rows = await drizzle(client)
       .select({
         id: promotionConnection.id,
