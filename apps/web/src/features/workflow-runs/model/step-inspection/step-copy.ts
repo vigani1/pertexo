@@ -24,33 +24,17 @@ function lastAttempt(row: RunTimelineRow): StepStoryEntry | undefined {
 /** The short note beside a step's thread: "attempt 2", "retry in 24 s". */
 export function stepTag(row: RunTimelineRow, nowMs: number): string {
   if (row.reused !== undefined) return 'saved result · no execution';
-  const retrying = row.story.at(-1)?.kind === 'retry';
   switch (row.status) {
-    case 'running': {
-      if (row.attempts > 1) return `attempt ${String(row.attempts)}`;
-      const started = lastAttempt(row)?.startedAt ?? row.startedAt;
-      return started === undefined
-        ? 'running'
-        : formatDurationMs(nowMs - Date.parse(started));
-    }
-    case 'waiting': {
-      const left =
-        row.resumeAt === undefined ? undefined : countdown(row.resumeAt, nowMs);
-      if (left === undefined) return retrying ? 'retrying soon' : 'waiting';
-      return retrying ? `retry in ${left}` : `resumes in ${left}`;
-    }
-    case 'succeeded': {
-      const attempt = lastAttempt(row);
-      const took = attempt === undefined ? undefined : spanMs(attempt);
-      return took === undefined ? 'done' : formatDurationMs(took);
-    }
-    case 'failed': {
+    case 'running':
+      return runningTag(row, nowMs);
+    case 'waiting':
+      return waitingTag(row, nowMs);
+    case 'succeeded':
+      return attemptDuration(row) ?? 'done';
+    case 'failed':
       // The status beside it already says failed: how long, or how often.
       if (row.attempts > 1) return `after ${String(row.attempts)} attempts`;
-      const attempt = lastAttempt(row);
-      const took = attempt === undefined ? undefined : spanMs(attempt);
-      return took === undefined ? '' : formatDurationMs(took);
-    }
+      return attemptDuration(row) ?? '';
     case 'skipped':
       return 'skipped · not taken';
     case 'pending':
@@ -63,6 +47,28 @@ export function stepTag(row: RunTimelineRow, nowMs: number): string {
     default:
       return row.statusLabel.toLocaleLowerCase();
   }
+}
+
+function runningTag(row: RunTimelineRow, nowMs: number): string {
+  if (row.attempts > 1) return `attempt ${String(row.attempts)}`;
+  const started = lastAttempt(row)?.startedAt ?? row.startedAt;
+  return started === undefined
+    ? 'running'
+    : formatDurationMs(nowMs - Date.parse(started));
+}
+
+function waitingTag(row: RunTimelineRow, nowMs: number): string {
+  const retrying = row.story.at(-1)?.kind === 'retry';
+  const left =
+    row.resumeAt === undefined ? undefined : countdown(row.resumeAt, nowMs);
+  if (left === undefined) return retrying ? 'retrying soon' : 'waiting';
+  return retrying ? `retry in ${left}` : `resumes in ${left}`;
+}
+
+function attemptDuration(row: RunTimelineRow): string | undefined {
+  const attempt = lastAttempt(row);
+  const took = attempt === undefined ? undefined : spanMs(attempt);
+  return took === undefined ? undefined : formatDurationMs(took);
 }
 
 const outcomeWords: Readonly<Record<StepStoryEntry['outcome'], string>> = {

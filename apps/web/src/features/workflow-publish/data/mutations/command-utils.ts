@@ -2,7 +2,7 @@ import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import { runAdmissionError } from '@/features/workflow-runs/commands.public';
 import { describeCommandError } from '@/lib/api/error-copy';
 import { sampleErrorDetail } from '../../model/testing/samples';
-import { isApiError } from '@/lib/api/error';
+import { isApiError, type ApiError } from '@/lib/api/error';
 
 export function parseCommandJson(value: string, message: string): unknown {
   try {
@@ -36,22 +36,25 @@ export function commandErrorMessage(error: unknown, action: string): string {
     return 'The published version changed. No run started. Review the current publication and create or load a new input case, then explicitly confirm a new run. The old case has not been rebound.';
   if (isApiError(error) && (error.status === 409 || error.status === 412))
     return 'The draft changed after it was saved. Check the latest changes and try again.';
-  if (isApiError(error) && error.status === 422) {
-    // A setup problem only compiling finds comes with its own sentence.
-    const setup = error.problem?.errors?.find(
-      (issue) => issue.code === 'executable_invalid',
-    );
-    return (
-      setup?.message ??
-      (error.problem?.code === 'workflow.invalid'
-        ? error.problem.errors?.[0]?.message
-        : undefined) ??
-      `${capitalize(action)} was stopped by issues in the workflow. Fix them and try again.`
-    );
-  }
+  if (isApiError(error) && error.status === 422)
+    return workflowIssueFailure(error, action);
   return describeCommandError(error, action);
 }
 
 function capitalize(text: string): string {
   return `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
+}
+
+function workflowIssueFailure(error: ApiError, action: string): string {
+  // A setup problem only compiling finds comes with its own sentence.
+  const setup = error.problem?.errors?.find(
+    (issue) => issue.code === 'executable_invalid',
+  );
+  const message =
+    setup?.message ??
+    (error.problem?.code === 'workflow.invalid'
+      ? error.problem.errors?.[0]?.message
+      : undefined) ??
+    `${capitalize(action)} was stopped by issues in the workflow. Fix them and try again.`;
+  return message;
 }

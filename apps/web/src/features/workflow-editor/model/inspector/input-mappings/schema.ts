@@ -64,16 +64,18 @@ function schemaProperties(schema: unknown): [string, unknown][] {
     const variants = schema[key];
     if (!Array.isArray(variants)) continue;
     for (const variant of variants as unknown[])
-      for (const [name, value] of schemaProperties(variant))
-        if (!properties.has(name)) properties.set(name, value);
-        else {
-          const previous = properties.get(name);
-          const previousType = isRecord(previous)
-            ? schemaValueType(previous)
-            : undefined;
-          const nextType = isRecord(value) ? schemaValueType(value) : undefined;
-          if (previousType !== nextType) properties.set(name, {});
+      for (const [name, value] of schemaProperties(variant)) {
+        if (!properties.has(name)) {
+          properties.set(name, value);
+          continue;
         }
+        const previous = properties.get(name);
+        const previousType = isRecord(previous)
+          ? schemaValueType(previous)
+          : undefined;
+        const nextType = isRecord(value) ? schemaValueType(value) : undefined;
+        if (previousType !== nextType) properties.set(name, {});
+      }
   }
   return [...properties];
 }
