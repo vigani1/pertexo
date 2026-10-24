@@ -293,13 +293,7 @@ function FieldChoices({
                   min={key === 'minSelections' ? 0 : 1}
                   max={field.options.length}
                   value={field[key] ?? ''}
-                  placeholder={
-                    key === 'minSelections'
-                      ? field.required
-                        ? '1'
-                        : '0'
-                      : String(field.options.length)
-                  }
+                  placeholder={selectionPlaceholder(field, key)}
                   onChange={(event) => {
                     const text = event.currentTarget.value;
                     onUpdate((current) => {
@@ -319,4 +313,12 @@ function FieldChoices({
       ) : null}
     </>
   );
+}
+
+function selectionPlaceholder(
+  field: Extract<FormField, { type: 'multi_select' }>,
+  key: 'minSelections' | 'maxSelections',
+): string {
+  if (key === 'maxSelections') return String(field.options.length);
+  return field.required ? '1' : '0';
 }

@@ -76,24 +76,46 @@ function parseField(
   const values = new Set<number>();
   let step: number | undefined;
   for (const part of source.split(',')) {
-    const [range = '', stepText] = part.split('/');
-    const size = stepText === undefined ? 1 : toNumber(stepText, {});
-    if (size === undefined || size < 1) return undefined;
-    const [startText = '', endText] =
-      range === '*' ? [String(min), String(max)] : range.split('-');
-    const start = toNumber(startText, aliases);
-    const omittedEnd = stepText === undefined ? start : max;
-    const end = endText === undefined ? omittedEnd : toNumber(endText, aliases);
-    const invalidScheduleRange =
-      start === undefined || end === undefined || start < min || end > max;
-    if (invalidScheduleRange) return undefined;
-    for (let value = start; value <= end; value += size) values.add(value);
-    if (range === '*' && stepText !== undefined) step = size;
+    const range = parseFieldRange({ part, min, max, aliases });
+    if (range === undefined) return undefined;
+    for (let value = range.start; value <= range.end; value += range.size)
+      values.add(value);
+    if (range.step !== undefined) step = range.step;
   }
   return {
     any: false,
     ...(step === undefined || source.includes(',') ? {} : { step }),
     values: [...values].sort((a, b) => a - b),
+  };
+}
+
+function parseFieldRange({
+  part,
+  min,
+  max,
+  aliases,
+}: Readonly<{
+  part: string;
+  min: number;
+  max: number;
+  aliases: Readonly<Record<string, number>>;
+}>) {
+  const [range = '', stepText] = part.split('/');
+  const size = stepText === undefined ? 1 : toNumber(stepText, {});
+  if (size === undefined || size < 1) return undefined;
+  const [startText = '', endText] =
+    range === '*' ? [String(min), String(max)] : range.split('-');
+  const start = toNumber(startText, aliases);
+  const omittedEnd = stepText === undefined ? start : max;
+  const end = endText === undefined ? omittedEnd : toNumber(endText, aliases);
+  const invalidScheduleRange =
+    start === undefined || end === undefined || start < min || end > max;
+  if (invalidScheduleRange) return undefined;
+  return {
+    start,
+    end,
+    size,
+    step: range === '*' && stepText !== undefined ? size : undefined,
   };
 }
 

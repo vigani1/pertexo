@@ -53,6 +53,9 @@ function toneColor(palette: Palette, tone: StatusTone): Rgb {
       return palette.pending;
     case 'attention':
       return palette.warning;
+    case 'canceled':
+    case 'neutral':
+    case 'skipped':
     default:
       return palette.muted;
   }
@@ -347,6 +350,11 @@ export class LoomRenderer extends CanvasScene {
       case 'canceled':
         context.clearRect(x - 5, y - 3, 3, 6);
         return;
+      case 'attention':
+      case 'live':
+      case 'neutral':
+      case 'queued':
+      case 'skipped':
       default:
         return;
     }
