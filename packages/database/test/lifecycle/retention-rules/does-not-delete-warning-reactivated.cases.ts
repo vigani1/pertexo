@@ -47,7 +47,9 @@ export function registerDoesNotDeleteWarningReactivated(): void {
         [id],
       );
       const client = await cleaner.connect();
-      const pending = rule.run(client, 1000).finally(() => client.release());
+      const pending = rule.run(client, 1000).finally(() => {
+        client.release();
+      });
       outcome = pending.catch((error: unknown) => error);
       await waitForPostgresLock(applicationName);
       await blocker.query('commit');
