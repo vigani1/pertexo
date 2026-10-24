@@ -65,9 +65,8 @@ function OverviewTile({
   label,
   count,
   more = false,
-  loading,
-  failed,
   children,
+  query,
 }: Readonly<{
   workspaceId: string;
   to: OverviewTarget;
@@ -76,10 +75,11 @@ function OverviewTile({
   count: number | undefined;
   /** More exist than were read: the figure is a floor, shown with "+". */
   more?: boolean;
-  loading: boolean;
-  failed: boolean;
   children?: ReactNode;
+  query: Readonly<{ loading: boolean; failed: boolean }>;
 }>) {
+  const { loading, failed } = query;
+
   return (
     <Link
       to={to}
@@ -134,8 +134,10 @@ function WorkflowsTile({
       }
       count={active.length}
       more={query.hasNextPage}
-      loading={query.isPending}
-      failed={query.isError && query.data === undefined}
+      query={{
+        loading: query.isPending,
+        failed: query.isError && query.data === undefined,
+      }}
     >
       {states.length === 0 && archived === 0 ? (
         'None yet. Build the first one from Workflows.'
@@ -196,8 +198,10 @@ function MembersTile({
       label={members.length === 1 && !query.hasNextPage ? 'member' : 'members'}
       count={members.length}
       more={query.hasNextPage}
-      loading={query.isPending}
-      failed={query.isError && query.data === undefined}
+      query={{
+        loading: query.isPending,
+        failed: query.isError && query.data === undefined,
+      }}
     >
       {facts([
         ...byRole,
@@ -242,8 +246,10 @@ function ConnectionsTile({
       }
       count={connections.length}
       more={query.hasNextPage}
-      loading={query.isPending}
-      failed={query.isError && query.data === undefined}
+      query={{
+        loading: query.isPending,
+        failed: query.isError && query.data === undefined,
+      }}
     >
       {connections.length === 0 ? (
         'Nothing connected yet. Slack, HTTP APIs and email are ready to add.'
@@ -289,8 +295,10 @@ function AlertsTile({
         destinations.length === 1 ? 'alert destination' : 'alert destinations'
       }
       count={destinations.length}
-      loading={query.isPending}
-      failed={query.isError && query.data === undefined}
+      query={{
+        loading: query.isPending,
+        failed: query.isError && query.data === undefined,
+      }}
     >
       {destinations.length === 0
         ? 'Failed runs aren’t announced anywhere yet.'

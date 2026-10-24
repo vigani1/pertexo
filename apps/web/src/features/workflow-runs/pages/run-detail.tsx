@@ -121,9 +121,6 @@ export function RunDetailPage(props: RunDetailPageProps) {
       <div className="grid gap-8 @3xl:grid-cols-[minmax(0,1fr)_19rem] @3xl:gap-7 @5xl:grid-cols-[minmax(0,1fr)_22rem] @5xl:gap-8">
         <div className="flex min-w-0 flex-col gap-7">
           <RunHeader
-            apiClient={apiClient}
-            userId={user.id}
-            workspace={workspace}
             run={run}
             sentence={describeRunSentence(
               run,
@@ -133,17 +130,22 @@ export function RunDetailPage(props: RunDetailPageProps) {
             )}
             nowMs={nowMs}
             versionNumber={version.data?.versionNumber}
-            liveStatus={events.connectionStatus}
             compact={compact}
-            replayOpen={replayOpen}
-            onReplayOpenChange={setReplayOpen}
-            onReconnect={events.reconnect}
-            onRunAccepted={onRunAccepted}
+            live={{
+              liveStatus: events.connectionStatus,
+              onReconnect: events.reconnect,
+            }}
+            replay={{
+              replayOpen,
+              onReplayOpenChange: setReplayOpen,
+              onRunAccepted,
+            }}
+            scope={{ apiClient, userId: user.id, workspace }}
           />
           {run.hasHumanTasks ? (
             <PendingTasks
               scope={{
-                apiClient: apiClient,
+                apiClient,
                 userId: user.id,
                 workspaceId: workspace.id,
               }}
@@ -157,10 +159,10 @@ export function RunDetailPage(props: RunDetailPageProps) {
           <RunBusinessValues values={run.runValues} />
           <RunVariables
             scope={{
-              apiClient: apiClient,
+              apiClient,
               userId: user.id,
               workspaceId: workspace.id,
-              runId: runId,
+              runId,
             }}
           />
           <CallHistory
@@ -185,51 +187,81 @@ export function RunDetailPage(props: RunDetailPageProps) {
           ) : null}
           <RunDetailTabs
             scope={dataScope}
-            canReplay={workspace.capabilities.includes('run:replay')}
-            onReplay={() => {
-              setReplayOpen(true);
-            }}
-            view={view}
-            nowMs={nowMs}
-            active={active}
-            selectedKey={selected?.key}
-            onSelectStep={selectStep}
-            graph={version.data?.graph}
-            graphState={graphState}
-            events={events.timeline}
-            truncatedCount={events.truncatedCount}
-            recoveryMessage={events.recoveryMessage}
-            stepLabel={stepLabel}
-            runStartMs={view.startMs}
             compact={compact}
+            replay={{
+              canReplay: workspace.capabilities.includes('run:replay'),
+              onReplay: () => {
+                setReplayOpen(true);
+              },
+            }}
+            eventStream={{
+              events: events.timeline,
+              truncatedCount: events.truncatedCount,
+              recoveryMessage: events.recoveryMessage,
+              stepLabel,
+              runStartMs: view.startMs,
+            }}
+            graphSource={{ graph: version.data?.graph, graphState }}
+            thread={{
+              view,
+              nowMs,
+              active,
+              selectedKey: selected?.key,
+              onSelectStep: selectStep,
+            }}
           />
           {/* Room for the phone's action bar above the bottom navigation. */}
           {compact ? <div aria-hidden="true" className="h-14" /> : null}
         </div>
-        <aside
-          ref={lensRef}
-          aria-label="Step details"
-          className="lens hidden self-start rounded-xl p-5 md:block @3xl:sticky @3xl:top-6 @3xl:max-h-[calc(100svh-3rem)] @3xl:overflow-y-auto"
-        >
-          {selected === undefined ? null : (
-            <h2 className="mb-1 font-display text-xl leading-tight [--display-optical-size:24] [--display-width:84%]">
-              {selected.label}
-            </h2>
-          )}
-          {lens}
-        </aside>
-        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-          {/* On a phone the step rises from the bottom, only as tall as it
-            needs; wider screens keep the side sheet. */}
-          <SheetContent side={compact ? 'bottom' : 'right'}>
-            <SheetHeader>
-              <SheetTitle>{selected?.label ?? 'Step'}</SheetTitle>
-            </SheetHeader>
-            <SheetBody>{lens}</SheetBody>
-          </SheetContent>
-        </Sheet>
+        <RunInspection
+          selected={selected}
+          lensRef={lensRef}
+          lens={lens}
+          sheetOpen={sheetOpen}
+          setSheetOpen={setSheetOpen}
+          compact={compact}
+        />
       </div>
     </div>
+  );
+}
+
+function RunInspection({
+  selected,
+  lensRef,
+  lens,
+  sheetOpen,
+  setSheetOpen,
+  compact,
+}: Pick<
+  ReturnType<typeof useRunDetail>,
+  'selected' | 'lensRef' | 'lens' | 'sheetOpen' | 'setSheetOpen' | 'compact'
+>) {
+  return (
+    <>
+      <aside
+        ref={lensRef}
+        aria-label="Step details"
+        className="lens hidden self-start rounded-xl p-5 md:block @3xl:sticky @3xl:top-6 @3xl:max-h-[calc(100svh-3rem)] @3xl:overflow-y-auto"
+      >
+        {selected === undefined ? null : (
+          <h2 className="mb-1 font-display text-xl leading-tight [--display-optical-size:24] [--display-width:84%]">
+            {selected.label}
+          </h2>
+        )}
+        {lens}
+      </aside>
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        {/* On a phone the step rises from the bottom, only as tall as it
+            needs; wider screens keep the side sheet. */}
+        <SheetContent side={compact ? 'bottom' : 'right'}>
+          <SheetHeader>
+            <SheetTitle>{selected?.label ?? 'Step'}</SheetTitle>
+          </SheetHeader>
+          <SheetBody>{lens}</SheetBody>
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }
 

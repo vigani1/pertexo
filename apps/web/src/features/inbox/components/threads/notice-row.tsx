@@ -143,8 +143,6 @@ export function NoticeThreadRow(
   return (
     <NoticeFrame
       unread={thread.unread}
-      tone={waiting ? 'waiting' : 'attention'}
-      word={labels[thread.noticeKind]}
       occurredAt={thread.latestOccurredAt}
       nowMs={props.nowMs}
       title={
@@ -190,6 +188,10 @@ export function NoticeThreadRow(
           ) : null}
         </>
       }
+      status={{
+        tone: waiting ? 'waiting' : 'attention',
+        word: labels[thread.noticeKind],
+      }}
     />
   );
 }

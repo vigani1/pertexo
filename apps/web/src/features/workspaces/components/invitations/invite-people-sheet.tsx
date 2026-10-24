@@ -63,20 +63,22 @@ export function InvitePeopleSheet(props: InvitePeopleSheetProps) {
                 <EmailChipsField
                   id={`${model.id}-emails`}
                   emails={model.emails}
-                  draft={model.draft}
                   disabled={model.command.locked}
                   error={model.validation.error('emails')}
                   inputRef={model.validation.register('emails')}
-                  onDraftChange={(next) => {
-                    model.setDraft(next);
-                    if (model.validation.error('emails') !== undefined)
-                      model.validation.change('emails', undefined);
-                  }}
-                  onCommit={model.commit}
                   onRemove={(email) => {
                     model.setEmails(
                       model.emails.filter((candidate) => candidate !== email),
                     );
+                  }}
+                  editing={{
+                    draft: model.draft,
+                    onDraftChange: (next) => {
+                      model.setDraft(next);
+                      if (model.validation.error('emails') !== undefined)
+                        model.validation.change('emails', undefined);
+                    },
+                    onCommit: model.commit,
                   }}
                 />
                 <LabelledField

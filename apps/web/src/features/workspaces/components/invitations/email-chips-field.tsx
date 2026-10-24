@@ -10,25 +10,27 @@ import { cn } from '@/lib/utils';
 export function EmailChipsField({
   id,
   emails,
-  draft,
   disabled,
   error,
   inputRef,
-  onDraftChange,
-  onCommit,
   onRemove,
+  editing,
 }: Readonly<{
   id: string;
   emails: readonly string[];
-  draft: string;
   disabled: boolean;
   error: string | undefined;
   inputRef: (element: HTMLElement | null) => void;
-  onDraftChange: (draft: string) => void;
-  /** Turns the given text into chips, keeping anything that isn’t an address. */
-  onCommit: (text: string) => void;
   onRemove: (email: string) => void;
+  editing: Readonly<{
+    draft: string;
+    onDraftChange: (draft: string) => void;
+    /** Turns the given text into chips, keeping anything that isn’t an address. */
+    onCommit: (text: string) => void;
+  }>;
 }>) {
+  const { draft, onDraftChange, onCommit } = editing;
+
   return (
     <LabelledField
       id={id}

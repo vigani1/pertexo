@@ -179,38 +179,42 @@ function RunFacts({
  * and the two things you can do: replay it, or stop it while it runs.
  */
 type RunHeaderProps = Readonly<{
-  apiClient: ApiClient;
-  userId: string;
-  workspace: AccessibleWorkspace;
   run: WorkflowRunReadSummary;
   sentence: string;
   nowMs: number;
   versionNumber: number | undefined;
-  liveStatus: LiveConnectionStatus;
   /** Phone layout: Core beside the sentence, actions in a bottom bar. */
   compact: boolean;
-  /** Replay opens from here and from the run's input, so the page owns it. */
-  replayOpen: boolean;
-  onReplayOpenChange: (open: boolean) => void;
-  onReconnect: () => void;
-  onRunAccepted: (runId: string) => void;
+  scope: Readonly<{
+    apiClient: ApiClient;
+    userId: string;
+    workspace: AccessibleWorkspace;
+  }>;
+  replay: Readonly<{
+    /** Replay opens from here and from the run's input, so the page owns it. */
+    replayOpen: boolean;
+    onReplayOpenChange: (open: boolean) => void;
+    onRunAccepted: (runId: string) => void;
+  }>;
+  live: Readonly<{ liveStatus: LiveConnectionStatus; onReconnect: () => void }>;
 }>;
 
 export function RunHeader({
-  apiClient,
-  userId,
-  workspace,
   run,
   sentence,
   nowMs,
   versionNumber,
-  liveStatus,
   compact,
-  replayOpen,
-  onReplayOpenChange,
-  onReconnect,
-  onRunAccepted,
+  scope,
+  replay,
+  live,
 }: RunHeaderProps) {
+  const { apiClient, userId, workspace } = scope;
+
+  const { replayOpen, onReplayOpenChange, onRunAccepted } = replay;
+
+  const { liveStatus, onReconnect } = live;
+
   const [cancelOpen, setCancelOpen] = useState(false);
   const active = isActiveRunStatus(run.status);
   const can = (capability: AccessibleWorkspace['capabilities'][number]) =>
@@ -278,8 +282,6 @@ export function RunHeader({
       </div>
       <RunDetailActions
         compact={compact}
-        workspaceId={workspace.id}
-        workflowId={run.workflowId}
         recoveryAction={
           canReplayRun ? (
             <RunRecoveryAction
@@ -306,6 +308,7 @@ export function RunHeader({
         onCancel={() => {
           setCancelOpen(true);
         }}
+        scope={{ workspaceId: workspace.id, workflowId: run.workflowId }}
       />
       {can('run:replay') ? (
         <ReplayRunDialog

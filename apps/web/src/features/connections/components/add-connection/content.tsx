@@ -20,36 +20,41 @@ export function StepBody({
   id,
   step,
   provider,
-  created,
-  savedCredential,
-  credential,
-  name,
-  nameValidation,
-  disabled,
-  uncertain,
-  createError,
-  test,
   onChoose,
-  onCredentialChange,
-  onNameChange,
+  fields,
+  result,
+  command,
 }: Readonly<{
   id: string;
   step: AddStep;
   provider: ProviderKey | undefined;
-  created: ConnectionResponse | undefined;
-  savedCredential: SavedCredential | undefined;
-  credential: CredentialForm;
-  name: string;
-  nameValidation: FieldValidation<'name'>;
-  disabled: boolean;
-  uncertain: boolean;
-  /** A failed save that isn't about one field. */
-  createError: unknown;
-  test: ConnectionTest;
   onChoose: (provider: ProviderKey) => void;
-  onCredentialChange: (draft: CredentialDraft) => void;
-  onNameChange: (name: string) => void;
+  fields: Readonly<{
+    credential: CredentialForm;
+    name: string;
+    nameValidation: FieldValidation<'name'>;
+    onCredentialChange: (draft: CredentialDraft) => void;
+    onNameChange: (name: string) => void;
+  }>;
+  result: Readonly<{
+    created: ConnectionResponse | undefined;
+    savedCredential: SavedCredential | undefined;
+    test: ConnectionTest;
+  }>;
+  command: Readonly<{
+    disabled: boolean;
+    uncertain: boolean;
+    /** A failed save that isn't about one field. */
+    createError: unknown;
+  }>;
 }>) {
+  const { credential, name, nameValidation, onCredentialChange, onNameChange } =
+    fields;
+
+  const { created, savedCredential, test } = result;
+
+  const { disabled, uncertain, createError } = command;
+
   if (step === 'provider')
     return <ProviderSockets layout="stack" onConnect={onChoose} />;
   if (step === 'test')

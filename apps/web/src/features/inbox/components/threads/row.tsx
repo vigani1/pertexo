@@ -28,8 +28,6 @@ export function InboxThreadRow({
   return (
     <NoticeFrame
       unread={thread.unread}
-      tone={view.look.tone}
-      word={view.look.label}
       occurredAt={thread.latestOccurredAt}
       nowMs={nowMs}
       title={
@@ -85,6 +83,7 @@ export function InboxThreadRow({
           ) : null}
         </>
       }
+      status={{ tone: view.look.tone, word: view.look.label }}
     />
   );
 }

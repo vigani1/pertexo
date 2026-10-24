@@ -27,8 +27,8 @@ type SecretFieldProps = Readonly<{
   secret: boolean;
   description?: string;
   update: (value: string) => CredentialDraft;
-}> &
-  Pick<FieldsProps, 'idPrefix' | 'disabled' | 'validation' | 'onChange'>;
+  form: Pick<FieldsProps, 'idPrefix' | 'disabled' | 'validation' | 'onChange'>;
+}>;
 
 function CredentialInput({
   field,
@@ -38,11 +38,9 @@ function CredentialInput({
   secret,
   description,
   update,
-  idPrefix,
-  disabled,
-  validation,
-  onChange,
+  form,
 }: SecretFieldProps) {
+  const { idPrefix, disabled, validation, onChange } = form;
   return (
     <LabelledField
       id={`${idPrefix}-${field}`}
@@ -91,7 +89,7 @@ export function CredentialFields(props: FieldsProps) {
     return (
       <FieldGroup>
         <CredentialInput
-          {...props}
+          form={props}
           field="signingKey"
           label="Signing key"
           value={draft.signingKey}
@@ -106,7 +104,7 @@ export function CredentialFields(props: FieldsProps) {
     return (
       <FieldGroup>
         <CredentialInput
-          {...props}
+          form={props}
           field="botToken"
           label="Slack bot token"
           value={draft.botToken}
@@ -121,7 +119,7 @@ export function CredentialFields(props: FieldsProps) {
   return (
     <FieldGroup>
       <CredentialInput
-        {...props}
+        form={props}
         field="apiKey"
         label="Resend API key"
         value={draft.apiKey}
@@ -132,7 +130,7 @@ export function CredentialFields(props: FieldsProps) {
       />
       <CredentialHelp steps={CREDENTIAL_STEPS.email} />
       <CredentialInput
-        {...props}
+        form={props}
         field="fromEmail"
         label="From address"
         value={draft.fromEmail}

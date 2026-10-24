@@ -34,11 +34,10 @@ export function VersionTimeline({
   liveLabel,
   canRestore,
   promotionWorkspaceId,
-  onPreview,
-  onRestore,
-  onDuplicate,
-  onExport,
+  actions,
 }: VersionTimelineProps) {
+  const { onPreview, onRestore, onDuplicate, onExport } = actions;
+
   return (
     <ol
       aria-label="Published versions"
@@ -109,10 +108,12 @@ type VersionTimelineProps = Readonly<{
   liveLabel: string;
   canRestore: boolean;
   promotionWorkspaceId?: string;
-  onPreview: (version: WorkflowVersionResponse) => void;
-  onRestore: (version: WorkflowVersionResponse) => void;
-  onDuplicate?: ((version: WorkflowVersionResponse) => void) | undefined;
-  onExport?: ((version: WorkflowVersionResponse) => void) | undefined;
+  actions: Readonly<{
+    onPreview: (version: WorkflowVersionResponse) => void;
+    onRestore: (version: WorkflowVersionResponse) => void;
+    onDuplicate?: ((version: WorkflowVersionResponse) => void) | undefined;
+    onExport?: ((version: WorkflowVersionResponse) => void) | undefined;
+  }>;
 }>;
 
 function VersionActions({
@@ -129,10 +130,8 @@ function VersionActions({
   label: string;
   promotionWorkspaceId: string | undefined;
 }> &
-  Pick<
-    VersionTimelineProps,
-    'canRestore' | 'onPreview' | 'onRestore' | 'onDuplicate' | 'onExport'
-  >) {
+  Pick<VersionTimelineProps, 'canRestore'> &
+  VersionTimelineProps['actions']) {
   const menuUnavailable =
     promotionWorkspaceId === undefined &&
     onExport === undefined &&

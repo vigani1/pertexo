@@ -65,9 +65,6 @@ export function WorkflowRunsPage({
       </div>
       <RunFilters search={search} onSearchChange={onSearchChange} />
       <RunResults
-        apiClient={apiClient}
-        userId={user.id}
-        workspace={workspace}
         search={search}
         onSearchChange={onSearchChange}
         query={query}
@@ -79,6 +76,7 @@ export function WorkflowRunsPage({
             workflowId={workflowId}
           />
         }
+        scope={{ apiClient, userId: user.id, workspace }}
       />
       <WorkflowStepHealth
         apiClient={apiClient}

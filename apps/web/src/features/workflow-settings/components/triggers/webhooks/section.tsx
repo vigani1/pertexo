@@ -56,28 +56,6 @@ export function WebhooksSection(props: WebhooksSectionProps) {
           stepName={model.stepNameFor(trigger)}
           editable={model.editable}
           blocked={model.webhook.blocked}
-          pendingCommand={
-            model.webhook.pending?.triggerId === trigger.id
-              ? model.webhook.pending.command
-              : undefined
-          }
-          unresolved={
-            model.webhook.unresolvedAttempt?.triggerId === trigger.id
-              ? model.webhook.unresolvedAttempt
-              : undefined
-          }
-          onCommand={(command) => {
-            if (command === 'authentication') model.setConfiguring(trigger);
-            else if (command === 'provision')
-              void model.run(trigger.id, command);
-            else model.setConfirming({ triggerId: trigger.id, command });
-          }}
-          onRetryUnresolved={() => void model.retry()}
-          failure={
-            model.webhook.error?.triggerId === trigger.id
-              ? model.webhook.error.message
-              : undefined
-          }
           deliveries={
             <WebhookDeliveries
               apiClient={model.apiClient}
@@ -88,6 +66,27 @@ export function WebhooksSection(props: WebhooksSectionProps) {
               endpointReady={trigger.endpointReady}
             />
           }
+          command={{
+            pendingCommand:
+              model.webhook.pending?.triggerId === trigger.id
+                ? model.webhook.pending.command
+                : undefined,
+            unresolved:
+              model.webhook.unresolvedAttempt?.triggerId === trigger.id
+                ? model.webhook.unresolvedAttempt
+                : undefined,
+            onCommand: (command) => {
+              if (command === 'authentication') model.setConfiguring(trigger);
+              else if (command === 'provision')
+                void model.run(trigger.id, command);
+              else model.setConfirming({ triggerId: trigger.id, command });
+            },
+            onRetryUnresolved: () => void model.retry(),
+            failure:
+              model.webhook.error?.triggerId === trigger.id
+                ? model.webhook.error.message
+                : undefined,
+          }}
         />
       ))}
       {configuring === undefined ? null : (

@@ -40,31 +40,32 @@ const KIND_WORDS: Readonly<Record<DestinationKind, string>> = {
 type DestinationFieldsProps = Readonly<{
   id: string;
   workspaceId: string;
-  values: DestinationValues;
   editing: boolean;
   disabled: boolean;
   connections: readonly ConnectionResponse[];
   /** The saved channel's name, or why it isn't shown. */
   channelHint?: string | undefined;
-  validation: FieldValidation<DestinationField>;
-  errorsFor: (
-    values: DestinationValues,
-  ) => Readonly<Partial<Record<DestinationField, string | undefined>>>;
-  onChange: (values: DestinationValues) => void;
+  form: Readonly<{
+    values: DestinationValues;
+    validation: FieldValidation<DestinationField>;
+    errorsFor: (
+      values: DestinationValues,
+    ) => Readonly<Partial<Record<DestinationField, string | undefined>>>;
+    onChange: (values: DestinationValues) => void;
+  }>;
 }>;
 
 export function DestinationFields({
   id,
   workspaceId,
-  values,
   editing,
   disabled,
   connections,
   channelHint,
-  validation,
-  errorsFor,
-  onChange,
+  form,
 }: DestinationFieldsProps) {
+  const { values, validation, errorsFor, onChange } = form;
+
   const usable = usableConnections(connections, values.kind);
   const update = (next: DestinationValues, field?: DestinationField) => {
     onChange(next);

@@ -100,26 +100,34 @@ export function AddConnectionSheet(props: AddConnectionSheetProps) {
               id={model.id}
               step={model.step}
               provider={model.provider}
-              created={model.created}
-              savedCredential={model.savedCredential}
-              credential={model.credential}
-              name={model.name}
-              nameValidation={model.nameValidation}
-              disabled={model.create.isPending}
-              uncertain={model.uncertain}
-              createError={model.createFailed ? model.create.error : undefined}
-              test={model.test}
               onChoose={(next) => {
                 model.setChosen(next);
                 model.setStep('credential');
               }}
-              onCredentialChange={(next) => {
-                model.credential.setDraft(next);
-                if (model.create.isError) model.clearSensitiveState();
+              command={{
+                disabled: model.create.isPending,
+                uncertain: model.uncertain,
+                createError: model.createFailed
+                  ? model.create.error
+                  : undefined,
               }}
-              onNameChange={(next) => {
-                model.setNameInput(next);
-                if (model.create.isError) model.clearSensitiveState();
+              result={{
+                created: model.created,
+                savedCredential: model.savedCredential,
+                test: model.test,
+              }}
+              fields={{
+                credential: model.credential,
+                name: model.name,
+                nameValidation: model.nameValidation,
+                onCredentialChange: (next) => {
+                  model.credential.setDraft(next);
+                  if (model.create.isError) model.clearSensitiveState();
+                },
+                onNameChange: (next) => {
+                  model.setNameInput(next);
+                  if (model.create.isError) model.clearSensitiveState();
+                },
               }}
             />
           </form>

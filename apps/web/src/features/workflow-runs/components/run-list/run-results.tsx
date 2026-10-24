@@ -38,19 +38,14 @@ function runsUnavailable(error: unknown) {
 }
 
 export function RunResults({
-  apiClient,
-  userId,
-  workspace,
   search,
   onSearchChange,
   query,
   runs,
   variant,
   noRuns,
+  scope,
 }: Readonly<{
-  apiClient: ApiClient;
-  userId: string;
-  workspace: AccessibleWorkspace;
   search: RunSearch;
   onSearchChange: (search: RunSearch) => void;
   query: RunHistoryQuery;
@@ -58,7 +53,14 @@ export function RunResults({
   variant: RunListVariant;
   /** What to say, and where to go, before anything has run here. */
   noRuns: ReactNode;
+  scope: Readonly<{
+    apiClient: ApiClient;
+    userId: string;
+    workspace: AccessibleWorkspace;
+  }>;
 }>) {
+  const { apiClient, userId, workspace } = scope;
+
   const visible = filterRunsByTrigger(runs, search.trigger);
   const refreshing = query.isRefetching && !query.isFetchingNextPage;
   const empty = hasRunFilters(search) ? (
