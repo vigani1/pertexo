@@ -1,5 +1,11 @@
+import { ProgressButton } from '@/components/ui/progress-button';
+import { DialogClose } from '@/components/ui/dialog';
 import { useState } from 'react';
-import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
+import {
+  ConfirmDialog,
+  ConfirmationFooter,
+  ConfirmationDetails,
+} from '@/components/patterns/actions/confirm-dialog';
 import { Button } from '@/components/ui/button';
 
 /** Restoring cancels the deletion; the dialog says what stays off afterwards. */
@@ -26,28 +32,63 @@ export function WorkspaceRestoreDialog({
     if (await command()) setOpen(false);
   }
 
+  const confirmationRetry = retryAvailable
+    ? { onRetry: () => send(onRetry), onDismiss: onDismissUncertain }
+    : undefined;
   return (
     <ConfirmDialog
-      open={open}
-      onOpenChange={setOpen}
-      locked={pending || retryAvailable}
+      state={{
+        open: open,
+        onOpenChange: setOpen,
+        locked: pending || retryAvailable,
+      }}
+      title={`Restore ${workspaceName}?`}
+      description="This cancels the deletion. The workspace comes back suspended: people can sign in and look around, but triggers and integrations stay off until their connections are reconnected."
       trigger={
         <Button type="button" variant="default">
           Restore workspace
         </Button>
       }
-      title={`Restore ${workspaceName}?`}
-      description="This cancels the deletion. The workspace comes back suspended: people can sign in and look around, but triggers and integrations stay off until their connections are reconnected."
-      confirmLabel="Restore workspace"
-      pendingLabel="Restoring…"
-      pending={pending}
-      error={error}
-      onConfirm={() => send(onRestore)}
-      unconfirmed={
-        retryAvailable
-          ? { onRetry: () => send(onRetry), onDismiss: onDismissUncertain }
-          : undefined
+      onSubmit={confirmationRetry?.onRetry ?? (() => send(onRestore))}
+      submitDisabled={pending}
+      footer={
+        <ConfirmationFooter>
+          {confirmationRetry === undefined ? (
+            <DialogClose
+              disabled={pending || retryAvailable}
+              render={<Button type="button" variant="ghost" />}
+            >
+              Cancel
+            </DialogClose>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                confirmationRetry.onDismiss();
+                setOpen(false);
+              }}
+            >
+              Close
+            </Button>
+          )}
+          <ProgressButton
+            type="submit"
+            variant="primary"
+            pending={pending}
+            pendingLabel="Restoring…"
+          >
+            {confirmationRetry === undefined
+              ? 'Restore workspace'
+              : 'Try again'}
+          </ProgressButton>
+        </ConfirmationFooter>
       }
-    />
+    >
+      <ConfirmationDetails
+        error={error}
+        tone={confirmationRetry === undefined ? 'destructive' : 'warning'}
+      />
+    </ConfirmDialog>
   );
 }

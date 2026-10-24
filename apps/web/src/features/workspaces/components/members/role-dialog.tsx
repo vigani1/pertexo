@@ -27,12 +27,15 @@ export function MemberRoleDialog(
       command={props.command}
       onClose={props.onClose}
       onConfirm={props.onConfirm}
-      title={`Make ${change?.member.displayName ?? 'this member'} ${
-        change === undefined ? 'a new role' : withArticle(change.role)
-      }?`}
-      description={`${change === undefined ? '' : ROLE_SUMMARIES[change.role]} ${firstNameOf(change?.member)} will be signed out everywhere and signs in again with the new role.`}
-      confirmLabel="Change role"
-      pendingLabel="Changing…"
+
+      content={{
+        title: `Make ${change?.member.displayName ?? 'this member'} ${
+          change === undefined ? 'a new role' : withArticle(change.role)
+        }?`,
+        description: `${change === undefined ? '' : ROLE_SUMMARIES[change.role]} ${firstNameOf(change?.member)} will be signed out everywhere and signs in again with the new role.`,
+        confirmLabel: 'Change role',
+        pendingLabel: 'Changing…',
+      }}
     />
   );
 }

@@ -1,5 +1,12 @@
+import { ProgressButton } from '@/components/ui/progress-button';
+import { DialogClose } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { useState } from 'react';
-import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
+import {
+  ConfirmDialog,
+  ConfirmationFooter,
+  ConfirmationDetails,
+} from '@/components/patterns/actions/confirm-dialog';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
@@ -38,52 +45,73 @@ export function RotateSecretDialog({
 
   return (
     <ConfirmDialog
-      open={open}
-      onOpenChange={(next) => {
-        if (next) return;
-        clear();
-        onClose();
+      state={{
+        open: open,
+        onOpenChange: (next) => {
+          if (next) return;
+          clear();
+          onClose();
+        },
+        locked: pending,
       }}
       title={
         headerSecret ? 'Rotate the header secret' : 'Rotate the signing secret'
       }
       description="Senders using the current secret keep working for 5 more minutes, then need the new one."
-      confirmLabel="Rotate secret"
-      pendingLabel="Rotating…"
-      pending={pending}
-      onConfirm={async () => {
+      onSubmit={async () => {
         if (!validation.submit({ endpoint: endpointProblem(pasted) })) return;
         const endpointKey = extractEndpointKey(pasted);
         if (endpointKey !== undefined)
           await onRotate(endpointKey).finally(clear);
       }}
-    >
-      <LabelledField
-        id="current-endpoint"
-        label="Current address or endpoint key"
-        description="Pertexo uses it to confirm which endpoint you mean. It isn’t stored here."
-        error={validation.error('endpoint')}
-      >
-        {(control) => (
-          <Input
-            {...control}
-            ref={validation.register('endpoint')}
-            name="currentEndpoint"
-            type="password"
-            autoComplete="off"
-            autoFocus
+      submitDisabled={pending}
+      footer={
+        <ConfirmationFooter>
+          <DialogClose
             disabled={pending}
-            value={pasted}
-            onChange={(event) => {
-              setPasted(event.target.value);
-              validation.change(
-                'endpoint',
-                endpointProblem(event.target.value),
-              );
-            }}
-          />
-        )}
-      </LabelledField>
+            render={<Button type="button" variant="ghost" />}
+          >
+            Cancel
+          </DialogClose>
+          <ProgressButton
+            type="submit"
+            variant="primary"
+            pending={pending}
+            pendingLabel="Rotating…"
+          >
+            Rotate secret
+          </ProgressButton>
+        </ConfirmationFooter>
+      }
+    >
+      <ConfirmationDetails>
+        <LabelledField
+          id="current-endpoint"
+          label="Current address or endpoint key"
+          description="Pertexo uses it to confirm which endpoint you mean. It isn’t stored here."
+          error={validation.error('endpoint')}
+        >
+          {(control) => (
+            <Input
+              {...control}
+              ref={validation.register('endpoint')}
+              name="currentEndpoint"
+              type="password"
+              autoComplete="off"
+              autoFocus
+              disabled={pending}
+              value={pasted}
+              onChange={(event) => {
+                setPasted(event.target.value);
+                validation.change(
+                  'endpoint',
+                  endpointProblem(event.target.value),
+                );
+              }}
+            />
+          )}
+        </LabelledField>
+      </ConfirmationDetails>
     </ConfirmDialog>
   );
 }

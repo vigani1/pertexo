@@ -1,3 +1,6 @@
+import { ProgressButton } from '@/components/ui/progress-button';
+import { DialogClose } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { Link } from '@tanstack/react-router';
 import { Notice } from '@/components/ui/notice';
 import { workflowRunVersionQueryOptions } from '../../data/detail.queries';
@@ -8,7 +11,11 @@ import type {
 } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
+import {
+  ConfirmDialog,
+  ConfirmationFooter,
+  ConfirmationDetails,
+} from '@/components/patterns/actions/confirm-dialog';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
 import { useRunReplay } from '../../data/mutations/use-run-replay';
@@ -159,7 +166,6 @@ export function ReplayRunDialog({
     open,
     unconfirmed: replay.unconfirmed,
   });
-
   async function submit() {
     const intent = runInput.read();
     if (intent === undefined) return;
@@ -182,53 +188,75 @@ export function ReplayRunDialog({
     originalText,
     versionLabel,
   );
+  const confirmBlocked =
+    replay.pending ||
+    replay.expired ||
+    (formReplay && originalText === undefined);
   return (
     <ConfirmDialog
-      open={open}
-      onOpenChange={changeOpen}
+      state={{ open: open, onOpenChange: changeOpen, locked: replay.pending }}
       title="Replay this run"
       description={
         formReplay
           ? 'Replay repeats the exact captured form response. Steps that call other services run again. Use the published form to send a new response.'
           : description
       }
-      confirmLabel={replay.retryAvailable ? 'Retry same replay' : 'Replay run'}
-      pendingLabel="Replaying…"
-      pending={replay.pending}
-      confirmDisabled={
-        replay.expired || (formReplay && originalText === undefined)
+      onSubmit={submit}
+      submitDisabled={confirmBlocked}
+      footer={
+        <ConfirmationFooter>
+          <DialogClose
+            disabled={replay.pending}
+            render={<Button type="button" variant="ghost" />}
+          >
+            Cancel
+          </DialogClose>
+          <ProgressButton
+            type="submit"
+            variant="primary"
+            pending={replay.pending}
+            pendingLabel="Replaying…"
+            disabled={
+              replay.expired || (formReplay && originalText === undefined)
+            }
+          >
+            {replay.retryAvailable ? 'Retry same replay' : 'Replay run'}
+          </ProgressButton>
+        </ConfirmationFooter>
       }
-      error={replay.error}
-      errorTone={replay.retryAvailable ? 'warning' : 'destructive'}
-      onConfirm={submit}
     >
-      <p className="text-sm text-muted-foreground">
-        Replay keeps the source run’s workspace variables. Start a new run to
-        use current values.
-      </p>
-      <RunInputFields
-        idPrefix="replay-run"
-        inputLabel="Replay input (JSON)"
-        runInput={runInput}
-        disabled={replay.pending || replay.unconfirmed}
-        inputReadOnly={formReplay}
-      />
-      {formReplay ? (
-        <Notice
-          action={
-            <Link
-              to="/w/$workspaceId/forms/$workflowId"
-              params={{ workspaceId, workflowId }}
-              className="underline underline-offset-4"
-            >
-              Open workflow form
-            </Link>
-          }
-        >
-          The original fields, submitter and submission time stay fixed. If the
-          captured input expired, send a new response.
-        </Notice>
-      ) : null}
+      <ConfirmationDetails
+        error={replay.error}
+        tone={replay.retryAvailable ? 'warning' : 'destructive'}
+      >
+        <p className="text-sm text-muted-foreground">
+          Replay keeps the source run’s workspace variables. Start a new run to
+          use current values.
+        </p>
+        <RunInputFields
+          idPrefix="replay-run"
+          inputLabel="Replay input (JSON)"
+          runInput={runInput}
+          disabled={replay.pending || replay.unconfirmed}
+          inputReadOnly={formReplay}
+        />
+        {formReplay ? (
+          <Notice
+            action={
+              <Link
+                to="/w/$workspaceId/forms/$workflowId"
+                params={{ workspaceId, workflowId }}
+                className="underline underline-offset-4"
+              >
+                Open workflow form
+              </Link>
+            }
+          >
+            The original fields, submitter and submission time stay fixed. If
+            the captured input expired, send a new response.
+          </Notice>
+        ) : null}
+      </ConfirmationDetails>
     </ConfirmDialog>
   );
 }

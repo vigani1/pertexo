@@ -1,9 +1,15 @@
+import { ProgressButton } from '@/components/ui/progress-button';
+import { DialogClose } from '@/components/ui/dialog';
 import type { AccountSecuritySessionsResponse } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { LaptopIcon, SmartphoneIcon } from 'lucide-react';
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
+import {
+  ConfirmDialog,
+  ConfirmationFooter,
+  ConfirmationDetails,
+} from '@/components/patterns/actions/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import type { ApiClient } from '@/lib/api/client';
@@ -149,9 +155,12 @@ function EndSessionDialog({
 }>) {
   return (
     <ConfirmDialog
-      open={ending !== undefined}
-      onOpenChange={(open) => {
-        if (!open) onCancel();
+      state={{
+        open: ending !== undefined,
+        onOpenChange: (open) => {
+          if (!open) onCancel();
+        },
+        locked: busy,
       }}
       title={
         ending?.kind === 'others'
@@ -163,16 +172,36 @@ function EndSessionDialog({
           ? `${ending.label} will need to sign in again.`
           : 'Every other browser and device will need to sign in again. This one stays signed in.'
       }
-      tone="destructive"
-      confirmLabel="Sign out"
-      pendingLabel="Signing out…"
-      pending={busy}
-      error={
-        error === null ? undefined : accountCommandFailure(error, 'signing out')
+      onSubmit={onConfirm}
+      submitDisabled={busy}
+      footer={
+        <ConfirmationFooter>
+          <DialogClose
+            disabled={busy}
+            render={<Button type="button" variant="ghost" />}
+          >
+            Cancel
+          </DialogClose>
+          <ProgressButton
+            type="submit"
+            variant="destructive"
+            pending={busy}
+            pendingLabel="Signing out…"
+          >
+            Sign out
+          </ProgressButton>
+        </ConfirmationFooter>
       }
-      errorAction={<FreshSignInLink error={error} />}
-      onConfirm={onConfirm}
-    />
+    >
+      <ConfirmationDetails
+        error={
+          error === null
+            ? undefined
+            : accountCommandFailure(error, 'signing out')
+        }
+        errorAction={<FreshSignInLink error={error} />}
+      />
+    </ConfirmDialog>
   );
 }
 

@@ -1,10 +1,16 @@
+import { ProgressButton } from '@/components/ui/progress-button';
+import { DialogClose } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { WebhookAuthenticationDialog } from './authentication-dialog';
 import { useState } from 'react';
 import type {
   WebhookTriggerHealthResponse,
   WebhookAuthentication,
 } from '@pertexo/contracts';
-import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
+import {
+  ConfirmDialog,
+  ConfirmationFooter,
+} from '@/components/patterns/actions/confirm-dialog';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
 import {
@@ -104,22 +110,40 @@ export function WebhooksSection(props: WebhooksSectionProps) {
         />
       )}
       <ConfirmDialog
-        open={model.confirming?.command === 'rotate-endpoint'}
-        onOpenChange={(open) => {
-          if (!open) model.setConfirming(undefined);
+        state={{
+          open: model.confirming?.command === 'rotate-endpoint',
+          onOpenChange: (open) => {
+            if (!open) model.setConfirming(undefined);
+          },
+          locked: model.webhook.pending?.command === 'rotate-endpoint',
         }}
         title="Rotate this webhook’s URL?"
         description="Senders using the current address stop being accepted right away. You’ll get a new endpoint key to give them."
-        tone="destructive"
-        confirmLabel="Rotate URL"
-        pendingLabel="Rotating…"
-        pending={model.webhook.pending?.command === 'rotate-endpoint'}
-        onConfirm={() =>
+        onSubmit={() =>
           model.confirming === undefined
             ? undefined
             : model.run(model.confirming.triggerId, 'rotate-endpoint')
         }
-      />
+        submitDisabled={model.webhook.pending?.command === 'rotate-endpoint'}
+        footer={
+          <ConfirmationFooter>
+            <DialogClose
+              disabled={model.webhook.pending?.command === 'rotate-endpoint'}
+              render={<Button type="button" variant="ghost" />}
+            >
+              Cancel
+            </DialogClose>
+            <ProgressButton
+              type="submit"
+              variant="destructive"
+              pending={model.webhook.pending?.command === 'rotate-endpoint'}
+              pendingLabel="Rotating…"
+            >
+              Rotate URL
+            </ProgressButton>
+          </ConfirmationFooter>
+        }
+      ></ConfirmDialog>
       <RotateSecretDialog
         open={model.confirming?.command === 'rotate-secret'}
         headerSecret={

@@ -1,9 +1,16 @@
+import { ProgressButton } from '@/components/ui/progress-button';
+import { DialogClose } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { useState, type Dispatch, type SetStateAction } from 'react';
 import {
   webhookAuthenticationSchema,
   type WebhookAuthentication,
 } from '@pertexo/contracts';
-import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
+import {
+  ConfirmDialog,
+  ConfirmationFooter,
+  ConfirmationDetails,
+} from '@/components/patterns/actions/confirm-dialog';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -63,24 +70,19 @@ export function WebhookAuthenticationDialog({
     draft.mode !== authentication.mode ||
     (authentication.mode === 'header_secret' &&
       draft.headerName.trim().toLowerCase() !== authentication.headerName);
+  const confirmBlocked = pending || (blocked && !pending);
   return (
     <ConfirmDialog
-      open
-      onOpenChange={(open) => {
-        if (!open) onClose();
+      state={{
+        open: true,
+        onOpenChange: (open) => {
+          if (!open) onClose();
+        },
+        locked: pending,
       }}
       title="Webhook authentication"
       description="Choose how senders prove they may start this workflow."
-      error={error}
-      confirmDisabled={blocked && !pending}
-      confirmLabel={
-        changesCredential
-          ? 'Save and rotate credentials'
-          : 'Save authentication'
-      }
-      pendingLabel="Saving…"
-      pending={pending}
-      onConfirm={async () => {
+      onSubmit={async () => {
         const parsed = webhookAuthenticationSchema.safeParse(value());
         const issues = parsed.success ? [] : parsed.error.issues;
         if (
@@ -95,49 +97,73 @@ export function WebhookAuthenticationDialog({
         )
           await onSave(parsed.data);
       }}
-    >
-      <LabelledField id="webhook-mode" label="Authentication mode">
-        {(control) => (
-          <Select
-            value={draft.mode}
-            items={MODES}
+      submitDisabled={confirmBlocked}
+      footer={
+        <ConfirmationFooter>
+          <DialogClose
             disabled={pending}
-            onValueChange={(mode) => {
-              if (mode !== null) {
-                setDraft((current) => ({ ...current, mode }));
-                validation.reset();
-              }
-            }}
+            render={<Button type="button" variant="ghost" />}
           >
-            <SelectTrigger {...control}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {MODES.map((mode) => (
-                <SelectItem key={mode.value} value={mode.value}>
-                  {mode.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-      </LabelledField>
-      <p className="text-sm text-muted-foreground">
-        {AUTHENTICATION_COPY[draft.mode]}
-      </p>
-      <WebhookCredentialFields
-        draft={draft}
-        setDraft={setDraft}
-        validation={validation}
-        pending={pending}
-        value={value}
-      />
-      {changesCredential ? (
+            Cancel
+          </DialogClose>
+          <ProgressButton
+            type="submit"
+            variant="primary"
+            pending={pending}
+            pendingLabel="Saving…"
+            disabled={blocked && !pending}
+          >
+            {changesCredential
+              ? 'Save and rotate credentials'
+              : 'Save authentication'}
+          </ProgressButton>
+        </ConfirmationFooter>
+      }
+    >
+      <ConfirmationDetails error={error}>
+        <LabelledField id="webhook-mode" label="Authentication mode">
+          {(control) => (
+            <Select
+              value={draft.mode}
+              items={MODES}
+              disabled={pending}
+              onValueChange={(mode) => {
+                if (mode !== null) {
+                  setDraft((current) => ({ ...current, mode }));
+                  validation.reset();
+                }
+              }}
+            >
+              <SelectTrigger {...control}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {MODES.map((mode) => (
+                  <SelectItem key={mode.value} value={mode.value}>
+                    {mode.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </LabelledField>
         <p className="text-sm text-muted-foreground">
-          This immediately replaces the URL and secret. Existing senders stop
-          working until updated. Store the new credentials when they appear.
+          {AUTHENTICATION_COPY[draft.mode]}
         </p>
-      ) : null}
+        <WebhookCredentialFields
+          draft={draft}
+          setDraft={setDraft}
+          validation={validation}
+          pending={pending}
+          value={value}
+        />
+        {changesCredential ? (
+          <p className="text-sm text-muted-foreground">
+            This immediately replaces the URL and secret. Existing senders stop
+            working until updated. Store the new credentials when they appear.
+          </p>
+        ) : null}
+      </ConfirmationDetails>
     </ConfirmDialog>
   );
 }

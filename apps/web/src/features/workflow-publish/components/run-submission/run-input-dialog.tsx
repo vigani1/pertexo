@@ -1,7 +1,14 @@
+import { ProgressButton } from '@/components/ui/progress-button';
+import { DialogClose } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { RunPublicationReview } from './publication-review';
 import { usePublicationReview } from './use-publication-review';
 import { RunInputUpload } from './file-input';
-import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
+import {
+  ConfirmDialog,
+  ConfirmationFooter,
+  ConfirmationDetails,
+} from '@/components/patterns/actions/confirm-dialog';
 import { useCallback, useState } from 'react';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import {
@@ -81,95 +88,116 @@ function RunInputDialogContent(props: RunInputDialogContentProps) {
   const model = useRunInputDialog(props);
   return (
     <ConfirmDialog
-      open={model.open}
-      onOpenChange={model.onOpenChange}
+      state={{
+        open: model.open,
+        onOpenChange: model.onOpenChange,
+        locked: model.availability.locked,
+      }}
       title="Run with input"
       description={
         model.retryAvailable
           ? 'Retry sends the original input, deadline and version precondition (if any) within 24 hours of the first attempt. A replacement run is blocked until this outcome is resolved.'
           : 'This starts a real run of the published version. It can send messages and call other services.'
       }
-      confirmLabel={
-        model.retryAvailable ? 'Retry same run' : 'Start published version'
-      }
-      pendingLabel="Starting…"
-      pending={model.pending}
-      locked={model.availability.locked}
-      confirmDisabled={model.availability.confirmDisabled}
-      error={model.review.error ?? model.error}
-      errorTone={model.retryAvailable ? 'warning' : 'destructive'}
-      onConfirm={model.submit}
-    >
-      <RunPublicationReview
-        expectedVersion={model.expectedVersion}
-        loadedName={model.loaded?.name}
-        staleCase={model.staleCase}
-        retryAvailable={model.retryAvailable}
-        review={model.review}
-        publicationConflict={model.publicationConflict}
-        canReview={model.onReviewPublication !== undefined}
-        locked={model.availability.locked}
-      />
-      {model.open &&
-      model.caseScope !== undefined &&
-      model.cases !== undefined ? (
-        <InputCasesPanel
-          workspace={model.caseScope.workspace}
-          workflow={model.caseScope.workflow}
-          cases={model.cases}
-          disabled={model.availability.fieldsBlocked}
-          editing={model.caseEditing}
-          onEditingChange={model.setCaseEditing}
-          onAccessLost={model.hideCaseInput}
-          onLoad={(value) => {
-            model.review.clear();
-            model.setLoaded(value);
-            model.runInput.reset(JSON.stringify(value.input, null, 2));
-          }}
-        />
-      ) : null}
-      {model.caseAccessLost ? null : (
-        <FieldGroup>
-          <LabelledField
-            id="run-input"
-            label="Run input (JSON)"
-            description="Use {} if the workflow doesn’t read any input."
-            error={model.runInput.validation.error('input')}
+      onSubmit={model.submit}
+      submitDisabled={model.pending || model.availability.confirmDisabled}
+      footer={
+        <ConfirmationFooter>
+          <DialogClose
+            disabled={model.availability.locked}
+            render={<Button type="button" variant="ghost" />}
           >
-            {(control) => (
-              <Textarea
-                {...control}
-                ref={model.runInput.validation.register('input')}
-                name="run-input"
-                autoComplete="off"
-                spellCheck={false}
-                className="min-h-32 font-mono text-base md:text-[0.8rem]"
-                disabled={model.availability.fieldsBlocked}
-                value={model.runInput.input}
-                onChange={(event) => {
-                  model.runInput.changeInput(event.currentTarget.value);
-                }}
-              />
-            )}
-          </LabelledField>
-          {model.open ? (
-            <RunInputUpload
-              scope={model.caseScope}
-              versionId={model.expectedVersion}
-              input={model.runInput.input}
-              disabled={model.availability.fieldsBlocked || model.caseEditing}
-              onChange={model.runInput.changeInput}
-            />
-          ) : null}
-          <DeadlineField
-            value={model.runInput.deadline}
-            error={model.runInput.validation.error('deadline')}
+            Cancel
+          </DialogClose>
+          <ProgressButton
+            type="submit"
+            variant="primary"
+            pending={model.pending}
+            pendingLabel="Starting…"
+            disabled={model.availability.confirmDisabled}
+          >
+            {model.retryAvailable
+              ? 'Retry same run'
+              : 'Start published version'}
+          </ProgressButton>
+        </ConfirmationFooter>
+      }
+    >
+      <ConfirmationDetails
+        error={model.review.error ?? model.error}
+        tone={model.retryAvailable ? 'warning' : 'destructive'}
+      >
+        <RunPublicationReview
+          expectedVersion={model.expectedVersion}
+          loadedName={model.loaded?.name}
+          staleCase={model.staleCase}
+          retryAvailable={model.retryAvailable}
+          review={model.review}
+          publicationConflict={model.publicationConflict}
+          canReview={model.onReviewPublication !== undefined}
+          locked={model.availability.locked}
+        />
+        {model.open &&
+        model.caseScope !== undefined &&
+        model.cases !== undefined ? (
+          <InputCasesPanel
+            workspace={model.caseScope.workspace}
+            workflow={model.caseScope.workflow}
+            cases={model.cases}
             disabled={model.availability.fieldsBlocked}
-            register={model.runInput.validation.register('deadline')}
-            onChange={model.runInput.changeDeadline}
+            editing={model.caseEditing}
+            onEditingChange={model.setCaseEditing}
+            onAccessLost={model.hideCaseInput}
+            onLoad={(value) => {
+              model.review.clear();
+              model.setLoaded(value);
+              model.runInput.reset(JSON.stringify(value.input, null, 2));
+            }}
           />
-        </FieldGroup>
-      )}
+        ) : null}
+        {model.caseAccessLost ? null : (
+          <FieldGroup>
+            <LabelledField
+              id="run-input"
+              label="Run input (JSON)"
+              description="Use {} if the workflow doesn’t read any input."
+              error={model.runInput.validation.error('input')}
+            >
+              {(control) => (
+                <Textarea
+                  {...control}
+                  ref={model.runInput.validation.register('input')}
+                  name="run-input"
+                  autoComplete="off"
+                  spellCheck={false}
+                  className="min-h-32 font-mono text-base md:text-[0.8rem]"
+                  disabled={model.availability.fieldsBlocked}
+                  value={model.runInput.input}
+                  onChange={(event) => {
+                    model.runInput.changeInput(event.currentTarget.value);
+                  }}
+                />
+              )}
+            </LabelledField>
+            {model.open ? (
+              <RunInputUpload
+                scope={model.caseScope}
+                versionId={model.expectedVersion}
+                input={model.runInput.input}
+                disabled={model.availability.fieldsBlocked || model.caseEditing}
+                onChange={model.runInput.changeInput}
+              />
+            ) : null}
+            <DeadlineField
+              value={model.runInput.deadline}
+              error={model.runInput.validation.error('deadline')}
+              disabled={model.availability.fieldsBlocked}
+              register={model.runInput.validation.register('deadline')}
+              onChange={model.runInput.changeDeadline}
+            />
+          </FieldGroup>
+        )}
+      </ConfirmationDetails>
     </ConfirmDialog>
   );
 }

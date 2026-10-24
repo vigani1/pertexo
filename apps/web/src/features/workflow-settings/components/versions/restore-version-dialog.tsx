@@ -1,5 +1,12 @@
+import { ProgressButton } from '@/components/ui/progress-button';
+import { DialogClose } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import type { WorkflowVersionResponse } from '@pertexo/contracts';
-import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
+import {
+  ConfirmDialog,
+  ConfirmationFooter,
+  ConfirmationDetails,
+} from '@/components/patterns/actions/confirm-dialog';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
 import {
@@ -53,23 +60,48 @@ export function RestoreVersionDialog({
 
   return (
     <ConfirmDialog
-      open
-      onOpenChange={(open) => {
-        if (open) return;
-        restore.dismiss();
-        onClose();
+      state={{
+        open: true,
+        onOpenChange: (open) => {
+          if (open) return;
+          restore.dismiss();
+          onClose();
+        },
+        locked: restore.pending,
       }}
       title={`Restore ${label} to the draft?`}
       description={`Your draft will be replaced by ${label}. Published versions don’t change.`}
-      tone={
-        restore.recovery === 'confirm-replacement' ? 'destructive' : 'default'
+      onSubmit={confirm}
+      submitDisabled={restore.pending}
+      footer={
+        <ConfirmationFooter>
+          <DialogClose
+            disabled={restore.pending}
+            render={<Button type="button" variant="ghost" />}
+          >
+            Cancel
+          </DialogClose>
+          <ProgressButton
+            type="submit"
+            variant={
+              (restore.recovery === 'confirm-replacement'
+                ? 'destructive'
+                : 'default') === 'destructive'
+                ? 'destructive'
+                : 'primary'
+            }
+            pending={restore.pending}
+            pendingLabel="Restoring…"
+          >
+            {CONFIRM[restore.recovery ?? 'start']}
+          </ProgressButton>
+        </ConfirmationFooter>
       }
-      confirmLabel={CONFIRM[restore.recovery ?? 'start']}
-      pendingLabel="Restoring…"
-      pending={restore.pending}
-      error={restore.error}
-      errorTone={restore.recovery === undefined ? 'destructive' : 'warning'}
-      onConfirm={confirm}
-    />
+    >
+      <ConfirmationDetails
+        error={restore.error}
+        tone={restore.recovery === undefined ? 'destructive' : 'warning'}
+      />
+    </ConfirmDialog>
   );
 }

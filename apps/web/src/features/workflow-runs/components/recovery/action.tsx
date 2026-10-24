@@ -1,9 +1,15 @@
+import { ProgressButton } from '@/components/ui/progress-button';
+import { DialogClose } from '@/components/ui/dialog';
 import type { WorkflowRecoveryPreview } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { CornerDownRightIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
+import {
+  ConfirmDialog,
+  ConfirmationFooter,
+  ConfirmationDetails,
+} from '@/components/patterns/actions/confirm-dialog';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
 import { describeReadError } from '@/lib/api/error-copy';
@@ -66,22 +72,37 @@ export function RunRecoveryAction({
       </Button>
       {command.unconfirmed ? (
         <ConfirmDialog
-          open={open}
-          onOpenChange={setOpen}
+          state={{ open: open, onOpenChange: setOpen, locked: command.pending }}
           title="Retry same request"
           description="Check whether the original recovery request was accepted. The same version, step, deadline and acknowledgement are retained; this does not request a second run."
-          confirmLabel="Retry same request"
-          pendingLabel="Checking acceptance…"
-          pending={command.pending}
-          confirmDisabled={command.expired}
-          error={command.error}
-          errorTone="warning"
-          onConfirm={() => command.retry()}
+          onSubmit={() => command.retry()}
+          submitDisabled={command.pending || command.expired}
+          footer={
+            <ConfirmationFooter>
+              <DialogClose
+                disabled={command.pending}
+                render={<Button type="button" variant="ghost" />}
+              >
+                Cancel
+              </DialogClose>
+              <ProgressButton
+                type="submit"
+                variant="primary"
+                pending={command.pending}
+                pendingLabel="Checking acceptance…"
+                disabled={command.expired}
+              >
+                Retry same request
+              </ProgressButton>
+            </ConfirmationFooter>
+          }
         >
-          <p className="text-sm text-muted-foreground">
-            The request stays in memory while this run page remains open. Check
-            run history before leaving or reloading.
-          </p>
+          <ConfirmationDetails error={command.error} tone="warning">
+            <p className="text-sm text-muted-foreground">
+              The request stays in memory while this run page remains open.
+              Check run history before leaving or reloading.
+            </p>
+          </ConfirmationDetails>
         </ConfirmDialog>
       ) : null}
       {!command.unconfirmed && preview.data?.kind === 'eligible' ? (
@@ -96,20 +117,40 @@ export function RunRecoveryAction({
       ) : null}
       {!command.unconfirmed && preview.data?.kind !== 'eligible' ? (
         <ConfirmDialog
-          open={open}
-          onOpenChange={setOpen}
+          state={{
+            open: open,
+            onOpenChange: setOpen,
+            locked: preview.isFetching,
+          }}
           title="Retry from this step"
           description={recoveryDescription(preview.data, preview.error)}
-          confirmLabel={unavailable ? 'Use full replay…' : 'Check again'}
-          pending={preview.isFetching}
-          confirmDisabled={preview.isFetching}
-          onConfirm={() => {
+          onSubmit={() => {
             if (unavailable) {
               setOpen(false);
               onReplay();
             } else void preview.refetch();
           }}
-        />
+          submitDisabled={preview.isFetching || preview.isFetching}
+          footer={
+            <ConfirmationFooter>
+              <DialogClose
+                disabled={preview.isFetching}
+                render={<Button type="button" variant="ghost" />}
+              >
+                Cancel
+              </DialogClose>
+              <ProgressButton
+                type="submit"
+                variant="primary"
+                pending={preview.isFetching}
+                pendingLabel={unavailable ? 'Use full replay…' : 'Check again'}
+                disabled={preview.isFetching}
+              >
+                {unavailable ? 'Use full replay…' : 'Check again'}
+              </ProgressButton>
+            </ConfirmationFooter>
+          }
+        ></ConfirmDialog>
       ) : null}
     </>
   );

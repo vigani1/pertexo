@@ -1,9 +1,16 @@
+import { ProgressButton } from '@/components/ui/progress-button';
+import { DialogClose } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { QueryView } from '@/components/patterns/states/query-view';
 import type { WorkflowSummary } from '@pertexo/contracts';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { Notice } from '@/components/ui/notice';
 import { pinnedParentsQueryOptions } from '../data/pins/queries';
-import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
+import {
+  ConfirmDialog,
+  ConfirmationFooter,
+  ConfirmationDetails,
+} from '@/components/patterns/actions/confirm-dialog';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
 import {
@@ -87,29 +94,55 @@ export function WorkflowLifecycleDialog({
     checkingPins && (pins.isPending || pins.isError || pins.isFetching);
   return (
     <ConfirmDialog
-      open={intent !== undefined}
-      onOpenChange={(open) => {
-        if (open) return;
-        lifecycle.reset();
-        onClose();
+      state={{
+        open: intent !== undefined,
+        onOpenChange: (open) => {
+          if (open) return;
+          lifecycle.reset();
+          onClose();
+        },
+        locked: lifecycle.pending,
       }}
       title={copy.title}
       description={
         <span className="font-medium text-foreground">{workflowName}</span>
       }
-      consequences={LIFECYCLE_CONSEQUENCES[action]}
-      tone={action === 'restore' ? 'default' : 'destructive'}
-      confirmLabel={lifecycle.exactRetry ? 'Retry safely' : copy.confirm}
-      pendingLabel={copy.pending}
-      pending={lifecycle.pending}
-      error={lifecycle.error}
-      errorTone={lifecycle.exactRetry ? 'warning' : 'destructive'}
-      confirmDisabled={pinCheckUnavailable}
-      onConfirm={confirm}
+      onSubmit={confirm}
+      submitDisabled={lifecycle.pending || pinCheckUnavailable}
+      footer={
+        <ConfirmationFooter>
+          <DialogClose
+            disabled={lifecycle.pending}
+            render={<Button type="button" variant="ghost" />}
+          >
+            Cancel
+          </DialogClose>
+          <ProgressButton
+            type="submit"
+            variant={
+              (action === 'restore' ? 'default' : 'destructive') ===
+              'destructive'
+                ? 'destructive'
+                : 'primary'
+            }
+            pending={lifecycle.pending}
+            pendingLabel={copy.pending}
+            disabled={pinCheckUnavailable}
+          >
+            {lifecycle.exactRetry ? 'Retry safely' : copy.confirm}
+          </ProgressButton>
+        </ConfirmationFooter>
+      }
     >
-      {intent?.command === 'archive' ? (
-        <PublishedParentNotice query={pins} />
-      ) : null}
+      <ConfirmationDetails
+        consequences={LIFECYCLE_CONSEQUENCES[action]}
+        error={lifecycle.error}
+        tone={lifecycle.exactRetry ? 'warning' : 'destructive'}
+      >
+        {intent?.command === 'archive' ? (
+          <PublishedParentNotice query={pins} />
+        ) : null}
+      </ConfirmationDetails>
     </ConfirmDialog>
   );
 }

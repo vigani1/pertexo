@@ -1,9 +1,15 @@
-import { useState, type ComponentProps } from 'react';
+import { useState, type ReactNode } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { ConfirmDialog } from '../../src/components/patterns/actions/confirm-dialog';
+import {
+  ConfirmDialog,
+  ConfirmationDetails,
+  ConfirmationFooter,
+} from '../../src/components/patterns/actions/confirm-dialog';
 import { Button } from '../../src/components/ui/button';
+import { DialogClose } from '../../src/components/ui/dialog';
+import { ProgressButton } from '../../src/components/ui/progress-button';
 
 function Harness({
   pending = false,
@@ -16,37 +22,86 @@ function Harness({
   error?: string;
   unconfirmed?: { onRetry: () => void; onDismiss: () => void };
   onConfirm: () => unknown;
-  options?: Partial<
-    Pick<
-      ComponentProps<typeof ConfirmDialog>,
-      | 'locked'
-      | 'confirmDisabled'
-      | 'onCancel'
-      | 'children'
-      | 'secondaryAction'
-      | 'consequences'
-      | 'errorTone'
-      | 'errorAction'
-    >
-  >;
+  options?: {
+    locked?: boolean;
+    confirmDisabled?: boolean;
+    onCancel?: () => void;
+    children?: ReactNode;
+    secondaryAction?: ReactNode;
+    consequences?: readonly string[];
+    errorTone?: 'destructive' | 'warning';
+    errorAction?: ReactNode;
+  };
 }>) {
   const [open, setOpen] = useState(false);
+  const locked = options?.locked ?? pending;
+  let cancelButton: ReactNode;
+  if (unconfirmed !== undefined) {
+    cancelButton = (
+      <Button
+        type="button"
+        variant="ghost"
+        onClick={() => {
+          unconfirmed.onDismiss();
+          setOpen(false);
+        }}
+      >
+        Close
+      </Button>
+    );
+  } else if (options?.onCancel !== undefined) {
+    cancelButton = (
+      <Button type="button" variant="ghost" onClick={options.onCancel}>
+        Cancel
+      </Button>
+    );
+  } else {
+    cancelButton = (
+      <DialogClose
+        disabled={locked}
+        render={<Button type="button" variant="ghost" />}
+      >
+        Cancel
+      </DialogClose>
+    );
+  }
   return (
     <ConfirmDialog
-      open={open}
-      onOpenChange={setOpen}
+      state={{ open, onOpenChange: setOpen, locked }}
       trigger={<Button type="button">Revoke</Button>}
       title="Revoke Slack?"
       description="Steps that use it stop working."
-      tone="destructive"
-      confirmLabel="Revoke connection"
-      pendingLabel="Revoking…"
-      pending={pending}
-      error={error}
-      unconfirmed={unconfirmed}
-      onConfirm={onConfirm}
-      {...options}
-    />
+      onSubmit={unconfirmed?.onRetry ?? onConfirm}
+      submitDisabled={pending || (options?.confirmDisabled ?? false)}
+      footer={
+        <ConfirmationFooter>
+          {cancelButton}
+          {options?.secondaryAction}
+          <ProgressButton
+            type="submit"
+            variant="destructive"
+            pending={pending}
+            pendingLabel="Revoking…"
+            disabled={options?.confirmDisabled}
+          >
+            {unconfirmed === undefined ? 'Revoke connection' : 'Try again'}
+          </ProgressButton>
+        </ConfirmationFooter>
+      }
+    >
+      <ConfirmationDetails
+        consequences={options?.consequences}
+        error={error}
+        tone={
+          unconfirmed === undefined
+            ? (options?.errorTone ?? 'destructive')
+            : 'warning'
+        }
+        errorAction={options?.errorAction}
+      >
+        {options?.children}
+      </ConfirmationDetails>
+    </ConfirmDialog>
   );
 }
 

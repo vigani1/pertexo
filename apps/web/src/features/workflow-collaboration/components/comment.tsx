@@ -1,7 +1,13 @@
+import { ProgressButton } from '@/components/ui/progress-button';
+import { DialogClose } from '@/components/ui/dialog';
 import { useState } from 'react';
 import type { WorkflowComment } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
-import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
+import {
+  ConfirmDialog,
+  ConfirmationFooter,
+  ConfirmationDetails,
+} from '@/components/patterns/actions/confirm-dialog';
 import { formatDateTime } from '@/lib/format/time';
 import type { CollaborationScope } from '../data/collaboration.api';
 import { useDiscussionCommand } from '../data/collaboration.mutations';
@@ -25,6 +31,10 @@ export function DiscussionComment({
     setDeleting(false);
     onDeleted();
   });
+  const confirmBlocked =
+    command.pending ||
+    command.uncertain ||
+    deletionRevision !== comment.revision;
   return (
     <li
       id={'comment-' + comment.id}
@@ -95,17 +105,14 @@ export function DiscussionComment({
         </>
       )}
       <ConfirmDialog
-        open={deleting}
-        onOpenChange={setDeleting}
+        state={{
+          open: deleting,
+          onOpenChange: setDeleting,
+          locked: command.pending || command.uncertain,
+        }}
         title="Delete this comment?"
         description="The text and its mentions will be deleted. Other people's replies stay."
-        confirmLabel="Delete comment"
-        pending={command.pending}
-        locked={command.pending || command.uncertain}
-        confirmDisabled={
-          command.uncertain || deletionRevision !== comment.revision
-        }
-        onConfirm={() =>
+        onSubmit={() =>
           void command.send({
             kind: 'remove',
             threadId: comment.threadId,
@@ -113,13 +120,37 @@ export function DiscussionComment({
             body: { expectedRevision: deletionRevision },
           })
         }
+        submitDisabled={confirmBlocked}
+        footer={
+          <ConfirmationFooter>
+            <DialogClose
+              disabled={command.pending || command.uncertain}
+              render={<Button type="button" variant="ghost" />}
+            >
+              Cancel
+            </DialogClose>
+            <ProgressButton
+              type="submit"
+              variant="primary"
+              pending={command.pending}
+              pendingLabel="Delete comment"
+              disabled={
+                command.uncertain || deletionRevision !== comment.revision
+              }
+            >
+              Delete comment
+            </ProgressButton>
+          </ConfirmationFooter>
+        }
       >
-        {deletionRevision === comment.revision ? null : (
-          <p role="alert">
-            This comment changed. Close and review it before deleting.
-          </p>
-        )}
-        <DiscussionFeedback command={command} />
+        <ConfirmationDetails>
+          {deletionRevision === comment.revision ? null : (
+            <p role="alert">
+              This comment changed. Close and review it before deleting.
+            </p>
+          )}
+          <DiscussionFeedback command={command} />
+        </ConfirmationDetails>
       </ConfirmDialog>
     </li>
   );

@@ -1,7 +1,13 @@
+import { ProgressButton } from '@/components/ui/progress-button';
+import { DialogClose } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { useScratchForm } from '../use-draft-field';
 import { useState, type ReactNode } from 'react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
+import {
+  ConfirmDialog,
+  ConfirmationFooter,
+} from '@/components/patterns/actions/confirm-dialog';
 import type { FileUploadScope } from '@/features/artifacts/public';
 import type { GraphLevel, WorkflowNode } from '../../../model/graph/scopes';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
@@ -118,14 +124,16 @@ function BodyInputs(props: BodyInputsProps) {
         </>
       )}
       <ConfirmDialog
-        open={model.pending !== undefined}
-        onOpenChange={(open) => {
-          if (!open) model.setConfirmation(undefined);
+        state={{
+          open: model.pending !== undefined,
+          onOpenChange: (open) => {
+            if (!open) model.setConfirmation(undefined);
+          },
+          locked: false,
         }}
         title={model.pending?.title ?? 'Replace body'}
         description={model.pending?.description}
-        confirmLabel={model.pending?.confirmLabel ?? 'Replace'}
-        onConfirm={() => {
+        onSubmit={() => {
           const current = findStep(model.store.getState().graph, model.node.id);
           if (
             current !== undefined &&
@@ -134,7 +142,21 @@ function BodyInputs(props: BodyInputsProps) {
             model.pending?.apply();
           model.setConfirmation(undefined);
         }}
-      />
+        footer={
+          <ConfirmationFooter>
+            <DialogClose render={<Button type="button" variant="ghost" />}>
+              Cancel
+            </DialogClose>
+            <ProgressButton
+              type="submit"
+              variant="primary"
+              pendingLabel={model.pending?.confirmLabel ?? 'Replace'}
+            >
+              {model.pending?.confirmLabel ?? 'Replace'}
+            </ProgressButton>
+          </ConfirmationFooter>
+        }
+      ></ConfirmDialog>
     </div>
   );
 }

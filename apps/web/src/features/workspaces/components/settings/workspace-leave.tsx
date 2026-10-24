@@ -1,8 +1,14 @@
+import { ProgressButton } from '@/components/ui/progress-button';
+import { DialogClose } from '@/components/ui/dialog';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import { LogOutIcon } from 'lucide-react';
 import { useState } from 'react';
-import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
+import {
+  ConfirmDialog,
+  ConfirmationFooter,
+  ConfirmationDetails,
+} from '@/components/patterns/actions/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { useNotifications } from '@/components/ui/use-notifications';
@@ -41,6 +47,9 @@ export function WorkspaceLeave({
   });
   const isOwner = !canLeaveWorkspace(workspace.role);
 
+  const confirmationRetry = command.retryAvailable
+    ? { onRetry: () => command.retry(), onDismiss: command.dismiss }
+    : undefined;
   return (
     <DangerAction
       title="Leave workspace"
@@ -71,28 +80,59 @@ export function WorkspaceLeave({
         </Button>
       )}
       <ConfirmDialog
-        open={confirming && !isOwner}
-        onOpenChange={setConfirming}
-        locked={command.pending || command.retryAvailable}
-        tone="destructive"
+        state={{
+          open: confirming && !isOwner,
+          onOpenChange: setConfirming,
+          locked: command.pending || command.retryAvailable,
+        }}
         title={`Leave ${workspace.name}?`}
-        consequences={[
-          'You lose access to its workflows, runs and connections straight away.',
-          'You’re signed out everywhere, including here, and sign in again to reach your other workspaces.',
-          'Runs you already started keep going, and invitations you sent stay pending.',
-          'To come back, an owner or admin has to invite you again.',
-        ]}
-        confirmLabel="Leave workspace"
-        pendingLabel="Leaving…"
-        pending={command.pending}
-        error={command.error}
-        onConfirm={() => command.start()}
-        unconfirmed={
-          command.retryAvailable
-            ? { onRetry: () => command.retry(), onDismiss: command.dismiss }
-            : undefined
+        onSubmit={confirmationRetry?.onRetry ?? (() => command.start())}
+        submitDisabled={command.pending}
+        footer={
+          <ConfirmationFooter>
+            {confirmationRetry === undefined ? (
+              <DialogClose
+                disabled={command.pending || command.retryAvailable}
+                render={<Button type="button" variant="ghost" />}
+              >
+                Cancel
+              </DialogClose>
+            ) : (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  confirmationRetry.onDismiss();
+                  setConfirming(false);
+                }}
+              >
+                Close
+              </Button>
+            )}
+            <ProgressButton
+              type="submit"
+              variant="destructive"
+              pending={command.pending}
+              pendingLabel="Leaving…"
+            >
+              {confirmationRetry === undefined
+                ? 'Leave workspace'
+                : 'Try again'}
+            </ProgressButton>
+          </ConfirmationFooter>
         }
-      />
+      >
+        <ConfirmationDetails
+          consequences={[
+            'You lose access to its workflows, runs and connections straight away.',
+            'You’re signed out everywhere, including here, and sign in again to reach your other workspaces.',
+            'Runs you already started keep going, and invitations you sent stay pending.',
+            'To come back, an owner or admin has to invite you again.',
+          ]}
+          error={command.error}
+          tone={confirmationRetry === undefined ? 'destructive' : 'warning'}
+        />
+      </ConfirmDialog>
     </DangerAction>
   );
 }
