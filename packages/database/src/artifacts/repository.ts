@@ -2,7 +2,7 @@ import { and, asc, eq, lte, sql } from 'drizzle-orm';
 import type { z } from 'zod';
 import { artifactLinks, artifacts, previewRuns } from '../schema.js';
 import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
-import { artifactMetadataMatches } from './metadata-contract.js';
+import { artifactMetadataMatches } from './metadata/contract.js';
 import {
   ARTIFACT_STATUS,
   type ArtifactRecord,
@@ -42,7 +42,7 @@ export {
   type ExecutionStorageObservation,
   readArtifactCapacity,
   readExecutionStorageCapacity,
-} from './capacity.js';
+} from './capacity.queries.js';
 export function artifactStorageKey(
   workspaceId: string,
   artifactId: string,

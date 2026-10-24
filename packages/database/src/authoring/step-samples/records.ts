@@ -9,7 +9,7 @@ import {
   parseStoredExecutionValue,
   serializeStoredExecutionValue,
 } from '../../platform/stored-execution-value.js';
-import { collectArtifactReferences } from '../../artifacts/references.js';
+import { collectArtifactReferences } from '../../artifacts/references/repository.js';
 import {
   WorkflowStepSampleError,
   type SampleMetadata,

@@ -14,7 +14,7 @@ import { captureWorkspaceVariableRevision } from '../../variables/settings.queri
 import { lockInputCaseQuota } from '../../authoring/input-cases/store.js';
 import { lockWorkflowAuthoringAuthority } from '../../authoring/workflows/authority.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
-import { lockArtifactReferences } from '../../artifacts/references.js';
+import { lockArtifactReferences } from '../../artifacts/references/repository.js';
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { cancelInTransaction } from '../../runs/runs.repository.js';

@@ -1,25 +1,25 @@
-import { lockWorkspaceAuthority } from '../tenant-access/workspaces/authority.js';
-import { WorkspaceAccessDeniedError } from '../tenant-access/errors.js';
-import { visibleArtifactIds } from './access.js';
+import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority.js';
+import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
+import { visibleArtifactIds } from '../references/access.queries.js';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
-import type { DatabaseConfig } from '../config.js';
+import type { DatabaseConfig } from '../../config.js';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
-} from '../platform/pool/runtime.js';
-import { generatePersistedId } from '../platform/persisted-id.js';
-import { claimCommand, completeCommand } from '../platform/idempotency.js';
+} from '../../platform/pool/runtime.js';
+import { generatePersistedId } from '../../platform/persisted-id.js';
+import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 import {
   checkDatabaseReadiness,
   type DatabaseReadiness,
-} from '../platform/readiness.js';
+} from '../../platform/readiness.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
-import { canonicalOutboxPayloadChecksum } from '../outbox/events.js';
-import type { ArtifactRecord } from './store.js';
-import { withTenantScopedClient } from '../tenant-access/transactions.js';
-import { artifactMetadataMatches } from './metadata-contract.js';
+import { canonicalOutboxPayloadChecksum } from '../../outbox/events.js';
+import type { ArtifactRecord } from '../repository.js';
+import { withTenantScopedClient } from '../../tenant-access/transactions.js';
+import { artifactMetadataMatches } from '../metadata/contract.js';
 
 import {
   ArtifactQuotaExceededError,
@@ -36,7 +36,7 @@ import {
   type BeginArtifactUploadInput,
   type FinalizeArtifactUploadInput,
   type NormalizedBeginArtifactUploadInput,
-} from './upload-contract.js';
+} from './contract.js';
 
 export {
   ARTIFACT_UPLOAD_PENDING_MS,
@@ -45,7 +45,7 @@ export {
   ArtifactUploadConflictError,
   ArtifactUploadIdempotencyConflictError,
   ArtifactUploadNotFoundError,
-} from './upload-contract.js';
+} from './contract.js';
 export type {
   ArtifactUploadActor,
   ArtifactUploadAuthorization,
@@ -54,7 +54,7 @@ export type {
   ArtifactUploadResult,
   BeginArtifactUploadInput,
   FinalizeArtifactUploadInput,
-} from './upload-contract.js';
+} from './contract.js';
 
 function isDatabaseError(
   error: unknown,

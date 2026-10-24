@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 
-import { lockArtifactReferences } from '../../../src/artifacts/references.js';
-import { ArtifactMetadataNotFoundError } from '../../../src/artifacts/store.js';
+import { lockArtifactReferences } from '../../../src/artifacts/references/repository.js';
+import { ArtifactMetadataNotFoundError } from '../../../src/artifacts/repository.js';
 import { withTenantScopedClient } from '../../../src/tenant-access/transactions.js';
 import {
   workspaceId,

@@ -1,11 +1,11 @@
 import type { PoolClient } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { sql } from 'drizzle-orm';
-import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
-import { readTransactionFolderScope } from '../tenant-access/resources/facts.js';
-import { workflowScopeSql } from '../tenant-access/resources/query-scope.js';
-import type { ResourceActor } from '../tenant-access/resources/contract.js';
-import { artifactReferenceOwnersSql } from './reference-owners.js';
+import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
+import { readTransactionFolderScope } from '../../tenant-access/resources/facts.js';
+import { workflowScopeSql } from '../../tenant-access/resources/query-scope.js';
+import type { ResourceActor } from '../../tenant-access/resources/contract.js';
+import { artifactReferenceOwnersSql } from './owners.queries.js';
 
 /** Check stored sources before the caller persists a new reference. */
 export async function visibleTransactionArtifactIds(

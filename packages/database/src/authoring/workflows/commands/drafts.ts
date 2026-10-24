@@ -2,7 +2,7 @@ import { requireConnectionBindings } from '../../../tenant-access/resources/conn
 import { readFolderScope } from '../../../tenant-access/resources/facts.js';
 import { requireWorkflowCallTargets } from '../../../tenant-access/resources/bindings.js';
 import { pruneStepSamples } from '../../step-samples/records.js';
-import { lockArtifactReferences } from '../../../artifacts/references.js';
+import { lockArtifactReferences } from '../../../artifacts/references/repository.js';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
 
 import { z } from 'zod';

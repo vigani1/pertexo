@@ -1,4 +1,4 @@
-import { expiredRunSql, retainedTestRunSql } from '../runs/data-policy.js';
+import { expiredRunSql, retainedTestRunSql } from '../../runs/data-policy.js';
 import { sql, type SQL } from 'drizzle-orm';
 type ReferenceOwner = Readonly<{
   from: string;

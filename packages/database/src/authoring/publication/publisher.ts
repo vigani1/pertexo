@@ -5,7 +5,7 @@ import { dataTableReferenceIssues } from '../../data-tables/columns/references.q
 import { lockWorkspaceVariableNames } from '../../variables/settings.queries.js';
 
 import { validateApprovalAudience } from './pending-tasks.js';
-import { lockArtifactReferences } from '../../artifacts/references.js';
+import { lockArtifactReferences } from '../../artifacts/references/repository.js';
 import {
   claimCommand,
   credentialCommandScope,

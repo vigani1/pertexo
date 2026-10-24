@@ -1,5 +1,5 @@
 import { utf8ByteLength } from '@pertexo/workflow-model';
-import { lockArtifactReferences } from '../../../artifacts/references.js';
+import { lockArtifactReferences } from '../../../artifacts/references/repository.js';
 
 import { z } from 'zod';
 import {

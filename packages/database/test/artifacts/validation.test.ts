@@ -5,7 +5,7 @@ import {
   createPendingArtifact,
   readArtifactCapacity,
   readExecutionStorageCapacity,
-} from '../../src/artifacts/store.js';
+} from '../../src/artifacts/repository.js';
 
 const workspaceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const artifactId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
