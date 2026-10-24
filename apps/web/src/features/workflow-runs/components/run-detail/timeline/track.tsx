@@ -1,8 +1,8 @@
 import type { StatusTone } from '@/components/ui/status';
 import { StatusGlyph } from '@/components/ui/status';
 import { cn } from '@/lib/utils';
+import { segmentPlacement } from '../../../model/timeline/geometry';
 import {
-  segmentPlacement,
   type RunTimelineSegment,
   type RunTimelineModel,
 } from '../../../model/timeline/runs';

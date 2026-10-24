@@ -16,10 +16,8 @@ import {
   storyEntryReason,
 } from '@/features/workflow-runs/model/step-inspection/step-copy';
 import { replayStep } from '@/features/workflow-runs/model/timeline/step-replay';
-import {
-  buildRunTimeline,
-  segmentPlacement,
-} from '@/features/workflow-runs/model/timeline/runs';
+import { buildRunTimeline } from '@/features/workflow-runs/model/timeline/runs';
+import { segmentPlacement } from '@/features/workflow-runs/model/timeline/geometry';
 
 const start = Date.parse('2026-09-24T14:31:00.000Z');
 
