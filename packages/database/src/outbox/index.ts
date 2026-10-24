@@ -2,7 +2,7 @@ export { createOutboxDispatcherDatabase } from './dispatcher/repository.js';
 export type {
   LeasedOutboxEvent,
   OutboxDispatcherDatabase,
-} from './dispatcher/repository.js';
+} from './dispatcher/contract.js';
 export {
   InboxChecksumMismatchError,
   InboxReceiptUnavailableError,
