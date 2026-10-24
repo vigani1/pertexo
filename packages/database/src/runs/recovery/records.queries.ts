@@ -5,8 +5,11 @@ import {
   recoveryOutputs,
   recoverySize,
 } from './snapshot.queries.js';
-import { workflows } from '../../schema/authoring/workflows.js';
-import { and, eq, sql } from 'drizzle-orm';
+import {
+  workflows,
+  workflowVersions,
+} from '../../schema/authoring/workflows.js';
+import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import {
   WORKFLOW_GRAPH_LIMITS,
@@ -33,7 +36,6 @@ import {
   lockReplaySource,
   lockReplayVersion,
 } from '../commands/replay.repository.js';
-import { findPublishedWorkflow } from '../queries/execution/published.queries.js';
 import type { WorkflowRecoveryMetadata } from './contract.js';
 import {
   readWorkflowRunFailedSteps,
@@ -161,24 +163,36 @@ async function readVersion(
   workflowId: string,
   versionId: string,
 ) {
-  const [workflow] = await transaction.db
-    .select({ status: workflows.lifecycleStatus })
-    .from(workflows)
+  const [row] = await transaction.db
+    .select({
+      status: workflows.lifecycleStatus,
+      workflow: {
+        checksum: workflowVersions.checksum,
+        executableJson: workflowVersions.executableJson,
+        id: workflowVersions.id,
+        versionNumber: workflowVersions.versionNumber,
+        workflowId: workflowVersions.workflowId,
+        workspaceId: workflowVersions.workspaceId,
+      },
+    })
+    .from(workflowVersions)
+    .innerJoin(
+      workflows,
+      and(
+        eq(workflows.workspaceId, workflowVersions.workspaceId),
+        eq(workflows.id, workflowVersions.workflowId),
+      ),
+    )
     .where(
       and(
-        eq(workflows.workspaceId, transaction.workspaceId),
-        eq(workflows.id, workflowId),
+        eq(workflowVersions.workspaceId, transaction.workspaceId),
+        eq(workflowVersions.workflowId, workflowId),
+        eq(workflowVersions.id, versionId),
       ),
     );
-  if (workflow === undefined) throw new WorkflowRunNotFoundError();
-  if (workflow.status !== 'active') throw new WorkflowRunNotExecutableError();
-  const projection = await findPublishedWorkflow(transaction.db, {
-    workspaceId: transaction.workspaceId,
-    workflowId,
-    id: versionId,
-  });
-  if (projection === null) throw new WorkflowRunNotFoundError();
-  return projection;
+  if (row === undefined) throw new WorkflowRunNotFoundError();
+  if (row.status !== 'active') throw new WorkflowRunNotExecutableError();
+  return Object.freeze(row.workflow);
 }
 
 export async function readRecoveryValues(
