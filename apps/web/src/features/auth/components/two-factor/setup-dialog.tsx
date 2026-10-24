@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { encode } from 'uqr';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
@@ -167,74 +167,122 @@ export function TwoFactorSetupDialog({
           {stage.kind === 'codes' ? 'Save your recovery codes' : title}
         </DialogTitle>
         <DialogDescription>{description}</DialogDescription>
-        {stage.kind === 'password' ? (
-          <form
-            noValidate
-            className="mt-6 flex flex-col gap-4"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void submit();
-            }}
-          >
-            <PasswordField
-              id="two-factor-password"
-              label="Current password"
-              autoComplete="current-password"
-              disabled={busy}
-              {...fields.field('password')}
-              {...fields.control('password')}
+        <SetupStage
+          stage={stage}
+          password={
+            <PasswordSetup
+              fields={fields}
+              busy={busy}
+              closing={closing}
+              action={action}
+              failure={failure}
+              onSubmit={submit}
+              onClose={onClose}
             />
-            {failure === undefined ? null : (
-              <AccountCommandFailure
-                error={failure}
-                action="changing two-factor sign-in"
-                message={
-                  isApiError(failure) && failure.status === 400
-                    ? 'Your current password wasn’t accepted. Check it and try again.'
-                    : undefined
-                }
-              />
-            )}
-            <div className="flex flex-wrap justify-end gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                disabled={busy}
-                onClick={onClose}
-              >
-                Cancel
-              </Button>
-              <ProgressButton
-                type="submit"
-                variant={action === 'disable' ? 'destructive' : 'primary'}
-                pending={busy}
-                pendingLabel={closing ? 'Finishing…' : 'Confirming…'}
-              >
-                {action === 'enable' ? 'Continue' : title}
-              </ProgressButton>
-            </div>
-          </form>
-        ) : stage.kind === 'verify' ? (
-          <div className="mt-6 flex flex-col gap-5">
-            <EnrollmentKey uri={stage.uri} />
-            <TwoFactorCodeForm verification={verification} />
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={busy}
-              onClick={onClose}
-            >
-              Cancel setup
-            </Button>
-          </div>
-        ) : (
-          <RecoveryCodes
-            codes={stage.codes}
-            onDone={onComplete}
-            pending={closing}
-          />
-        )}
+          }
+          verification={verification}
+          busy={busy}
+          onClose={onClose}
+          onComplete={onComplete}
+          closing={closing}
+        />
       </DialogContent>
     </Dialog>
+  );
+}
+
+function PasswordSetup({
+  fields,
+  busy,
+  closing,
+  action,
+  failure,
+  onSubmit,
+  onClose,
+}: Readonly<{
+  fields: ReturnType<typeof useFieldValues<'password'>>;
+  busy: boolean;
+  closing: boolean;
+  action: TwoFactorAction;
+  failure: unknown;
+  onSubmit: () => Promise<void>;
+  onClose: () => void;
+}>) {
+  const { title } = ACTION_COPY[action];
+  return (
+    <form
+      noValidate
+      className="mt-6 flex flex-col gap-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void onSubmit();
+      }}
+    >
+      <PasswordField
+        id="two-factor-password"
+        label="Current password"
+        autoComplete="current-password"
+        disabled={busy}
+        {...fields.field('password')}
+        {...fields.control('password')}
+      />
+      {failure === undefined ? null : (
+        <AccountCommandFailure
+          error={failure}
+          action="changing two-factor sign-in"
+          message={
+            isApiError(failure) && failure.status === 400
+              ? 'Your current password wasn’t accepted. Check it and try again.'
+              : undefined
+          }
+        />
+      )}
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button type="button" variant="ghost" disabled={busy} onClick={onClose}>
+          Cancel
+        </Button>
+        <ProgressButton
+          type="submit"
+          variant={action === 'disable' ? 'destructive' : 'primary'}
+          pending={busy}
+          pendingLabel={closing ? 'Finishing…' : 'Confirming…'}
+        >
+          {action === 'enable' ? 'Continue' : title}
+        </ProgressButton>
+      </div>
+    </form>
+  );
+}
+
+function SetupStage({
+  stage,
+  password,
+  verification,
+  busy,
+  onClose,
+  onComplete,
+  closing,
+}: Readonly<{
+  stage: Stage;
+  password: ReactNode;
+  verification: ReturnType<typeof useTwoFactorVerification>;
+  busy: boolean;
+  onClose: () => void;
+  onComplete: () => void;
+  closing: boolean;
+}>) {
+  if (stage.kind === 'password') return password;
+  if (stage.kind === 'verify')
+    return (
+      <div className="mt-6 flex flex-col gap-5">
+        <EnrollmentKey uri={stage.uri} />
+        <TwoFactorCodeForm verification={verification} />
+        <Button type="button" variant="ghost" disabled={busy} onClick={onClose}>
+          Cancel setup
+        </Button>
+      </div>
+    );
+  return (
+    <RecoveryCodes codes={stage.codes} onDone={onComplete} pending={closing} />
   );
 }
