@@ -1,3 +1,5 @@
+import { pendingRunTasks } from '../../schema/runs/pending-task.js';
+import { workflowRunSelection } from './records.queries.js';
 import { and, eq, exists, isNull, lt, notExists, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 
@@ -53,22 +55,21 @@ export function workflowRunReadQuery(
   return db
     .select({
       run: {
-        id: workflowRuns.id,
-        workspace_id: workflowRuns.workspaceId,
-        workflow_id: workflowRuns.workflowId,
-        workflow_version_id: workflowRuns.workflowVersionId,
-        status: workflowRuns.status,
-        trigger_type: workflowRuns.triggerType,
-        created_at: workflowRuns.createdAt,
-        updated_at: workflowRuns.updatedAt,
-        started_at: workflowRuns.startedAt,
-        completed_at: workflowRuns.completedAt,
-        deadline_at: workflowRuns.deadlineAt,
-        has_human_tasks: sql<boolean>`exists(select 1 from app.pending_run_tasks task where task.workspace_id=${workflowRuns.workspaceId} and task.run_id=${workflowRuns.id})`,
+        ...workflowRunSelection,
+        has_human_tasks: sql<boolean>`${exists(
+          db
+            .select({ one: sql`1` })
+            .from(pendingRunTasks)
+            .where(
+              and(
+                eq(pendingRunTasks.workspaceId, workflowRuns.workspaceId),
+                eq(pendingRunTasks.runId, workflowRuns.id),
+              ),
+            ),
+        )}`,
         human_wait_started_at: workflowRuns.humanWaitStartedAt,
         remaining_execution_ms: workflowRuns.remainingExecutionMs,
         absolute_deadline_at: workflowRuns.absoluteDeadlineAt,
-        cancel_requested_at: workflowRuns.cancelRequestedAt,
         replay_source_run_id: workflowRuns.replaySourceRunId,
         recovery_target_node_run_id: workflowRuns.recoveryTargetNodeRunId,
         recovery_target_node_id: workflowRuns.recoveryTargetNodeId,

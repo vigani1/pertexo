@@ -1,6 +1,8 @@
+import { workflowVersions } from '../../../schema/authoring/workflows.js';
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { acquireDatabasePool } from '../../../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../../../platform/pool/runtime.js';
-import { sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../../../config.js';
@@ -97,26 +99,45 @@ export function createPublishedWorkflowReader(
         pool,
         parsedInput.workspaceId,
         async (transaction) => {
-          const result = await transaction.db.execute(
-            sql<Record<string, unknown>>`
-              select
-                id,
-                workspace_id,
-                workflow_id,
-                version_number,
-                checksum,
-                executable_json
-              from app.workflow_versions
-              where workspace_id = ${transaction.workspaceId}
-                and id = ${parsedInput.workflowVersionId}
-              limit 1
-            `,
-          );
-          return parsePublishedWorkflowRow(result.rows[0]);
+          return findPublishedWorkflow(transaction.db, {
+            workspaceId: transaction.workspaceId,
+            id: parsedInput.workflowVersionId,
+          });
         },
         transactionOptions,
       );
     },
     close: () => lease.close(),
   });
+}
+
+export async function findPublishedWorkflow(
+  db: Pick<NodePgDatabase, 'select'>,
+  {
+    workspaceId,
+    id,
+    workflowId,
+  }: Readonly<{ workspaceId: string; id: string | null; workflowId?: string }>,
+): Promise<PublishedWorkflow | null> {
+  const [row] = await db
+    .select({
+      checksum: workflowVersions.checksum,
+      executableJson: workflowVersions.executableJson,
+      id: workflowVersions.id,
+      versionNumber: workflowVersions.versionNumber,
+      workflowId: workflowVersions.workflowId,
+      workspaceId: workflowVersions.workspaceId,
+    })
+    .from(workflowVersions)
+    .where(
+      and(
+        eq(workflowVersions.workspaceId, workspaceId),
+        eq(workflowVersions.id, sql`${id}::uuid`),
+        workflowId === undefined
+          ? undefined
+          : eq(workflowVersions.workflowId, workflowId),
+      ),
+    )
+    .limit(1);
+  return row === undefined ? null : Object.freeze(row);
 }

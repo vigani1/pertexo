@@ -1,4 +1,5 @@
-import { sql } from 'drizzle-orm';
+import { workflowRuns } from '../../schema/runs/execution.js';
+import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { z } from 'zod';
 
 import {
@@ -10,7 +11,10 @@ import { generatePersistedId } from '../../platform/persisted-id.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { requestWorkflowRunCancellation } from './cancel.repository.js';
 import { WorkflowRunNotFoundError } from '../errors.js';
-import { insertWorkflowRunAudit, readWorkflowRunRecord } from './records.repository.js';
+import {
+  insertWorkflowRunAudit,
+  readWorkflowRunRecord,
+} from './records.repository.js';
 import type { WorkflowRunRecord } from './records.repository.js';
 
 import type { cancelInputSchema } from './contract.js';
@@ -23,22 +27,26 @@ export async function requestActiveRunCancellations(
   transaction: WorkspaceTransaction,
   input: Readonly<{ actorId: string; reason: string }>,
 ): Promise<number> {
-  const active = await transaction.db.execute<{ id: string }>(sql`
-    select id from app.workflow_runs
-    where workspace_id = ${transaction.workspaceId}
-      and status in ('queued', 'running', 'waiting')
-      and cancel_requested_at is null
-    order by id
-    for update
-  `);
-  for (const { id } of active.rows)
+  const active = await transaction.db
+    .select({ id: workflowRuns.id })
+    .from(workflowRuns)
+    .where(
+      and(
+        eq(workflowRuns.workspaceId, transaction.workspaceId),
+        inArray(workflowRuns.status, ['queued', 'running', 'waiting']),
+        isNull(workflowRuns.cancelRequestedAt),
+      ),
+    )
+    .orderBy(asc(workflowRuns.id))
+    .for('update');
+  for (const { id } of active)
     await cancelInTransaction(transaction, {
       actorId: input.actorId,
       workspaceId: transaction.workspaceId,
       runId: id,
       reason: input.reason,
     });
-  return active.rows.length;
+  return active.length;
 }
 
 export async function cancelInTransaction(

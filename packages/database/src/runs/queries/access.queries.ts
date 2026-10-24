@@ -1,8 +1,10 @@
+import { workflowRuns } from '../../schema/runs/execution.js';
+import { workflows } from '../../schema/authoring/workflows.js';
 import type { Pool } from 'pg';
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
 import { withResourceCommand } from '../../tenant-access/resources/transactions.repository.js';
 import type { ResourceActor } from '../../tenant-access/resources/contract.js';
-import { sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { WorkflowRunNotFoundError } from '../errors.js';
 import type { ResourceTransaction } from '../../tenant-access/resources/contract.js';
 import { workflowScopeSql } from '../../tenant-access/resources/scope.queries.js';
@@ -15,10 +17,20 @@ export async function requireRunAccess(
   capability: WorkflowResourceCapability,
 ): Promise<void> {
   const found = await transaction.db
-    .execute(sql`select 1 from app.workflow_runs resource_run
-    where resource_run.workspace_id=${transaction.workspaceId} and resource_run.id=${runId}
-      and ${workflowScopeSql(transaction.resources, sql`resource_run.workflow_id`, capability)}`);
-  if (found.rows.length === 0) throw new WorkflowRunNotFoundError();
+    .select({ one: sql`1` })
+    .from(workflowRuns)
+    .where(
+      and(
+        eq(workflowRuns.workspaceId, transaction.workspaceId),
+        eq(workflowRuns.id, runId),
+        workflowScopeSql(
+          transaction.resources,
+          sql`${workflowRuns.workflowId}`,
+          capability,
+        ),
+      ),
+    );
+  if (found.length === 0) throw new WorkflowRunNotFoundError();
 }
 
 export async function requireWorkflowAccess(
@@ -27,10 +39,20 @@ export async function requireWorkflowAccess(
   capability: WorkflowResourceCapability,
 ): Promise<void> {
   const found = await transaction.db
-    .execute(sql`select 1 from app.workflows resource_workflow
-    where resource_workflow.workspace_id=${transaction.workspaceId} and resource_workflow.id=${workflowId}
-      and ${workflowScopeSql(transaction.resources, sql`resource_workflow.id`, capability)}`);
-  if (found.rows.length === 0) throw new WorkflowRunNotFoundError();
+    .select({ one: sql`1` })
+    .from(workflows)
+    .where(
+      and(
+        eq(workflows.workspaceId, transaction.workspaceId),
+        eq(workflows.id, workflowId),
+        workflowScopeSql(
+          transaction.resources,
+          sql`${workflows.id}`,
+          capability,
+        ),
+      ),
+    );
+  if (found.length === 0) throw new WorkflowRunNotFoundError();
 }
 
 export async function withRunCommand<T>(

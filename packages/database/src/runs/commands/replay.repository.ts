@@ -1,12 +1,9 @@
+import { workflowRuns } from '../../schema/runs/execution.js';
 import { isTestRun } from '../data-policy.js';
-import { sql } from 'drizzle-orm';
-import { z } from 'zod';
+import { and, eq, sql } from 'drizzle-orm';
 
 import { readWorkflowRunAcceptanceReplay } from './acceptance.repository.js';
-import {
-  parsePublishedWorkflowRow,
-  type PublishedWorkflow,
-} from '../queries/execution/published.queries.js';
+import type { PublishedWorkflow } from '../queries/execution/published.queries.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import {
@@ -78,25 +75,28 @@ export async function lockReplaySource(
   transaction: WorkspaceTransaction,
   sourceRunId: string,
 ): Promise<Readonly<{ workflowId: string }>> {
-  const result = await transaction.db.execute<{
-    workflow_id: string;
-    lifecycle_status: string;
-  }>(sql`
-    select workflow_id, lifecycle_status
-    from app.lock_workflow_run_replay_source(
-      ${transaction.workspaceId}, ${sourceRunId}
-    )
-  `);
-  const run = await transaction.db.execute<{ trigger_type: string }>(
-    sql`select trigger_type from app.workflow_runs where workspace_id=${transaction.workspaceId} and id=${sourceRunId}`,
-  );
-  if (isTestRun(run.rows[0]?.trigger_type))
-    throw new WorkflowRunNotExecutableError();
-  const source = result.rows[0];
+  const [source] = await transaction.db
+    .select({
+      workflow_id: sql<string>`source.workflow_id`,
+      lifecycle_status: sql<string>`source.lifecycle_status`,
+    })
+    .from(
+      sql`app.lock_workflow_run_replay_source(${transaction.workspaceId},${sourceRunId}) as source`,
+    );
+  const [run] = await transaction.db
+    .select({ trigger_type: workflowRuns.triggerType })
+    .from(workflowRuns)
+    .where(
+      and(
+        eq(workflowRuns.workspaceId, transaction.workspaceId),
+        eq(workflowRuns.id, sourceRunId),
+      ),
+    );
+  if (isTestRun(run?.trigger_type)) throw new WorkflowRunNotExecutableError();
   if (source === undefined) throw new WorkflowRunNotFoundError();
   if (source.lifecycle_status !== 'active')
     throw new WorkflowRunNotExecutableError();
-  return Object.freeze({ workflowId: z.uuid().parse(source.workflow_id) });
+  return Object.freeze({ workflowId: source.workflow_id });
 }
 
 export async function lockReplayVersion(
@@ -104,19 +104,20 @@ export async function lockReplayVersion(
   workflowId: string,
   workflowVersionId: string,
 ): Promise<PublishedWorkflow> {
-  const result = await transaction.db.execute(sql<Record<string, unknown>>`
-    select
-      id,
-      workspace_id,
-      workflow_id,
-      version_number,
-      checksum,
-      executable_json
-    from app.lock_workflow_run_replay_version(
-      ${transaction.workspaceId}, ${workflowId}, ${workflowVersionId}
-    )
-  `);
-  const version = parsePublishedWorkflowRow(result.rows[0]);
+  // The app cannot update immutable version rows; this retained guard owns their share lock.
+  const [row] = await transaction.db
+    .select({
+      id: sql<string>`version.id`,
+      workspaceId: sql<string>`version.workspace_id`,
+      workflowId: sql<string>`version.workflow_id`,
+      versionNumber: sql<number>`version.version_number`,
+      checksum: sql<string>`version.checksum`,
+      executableJson: sql<unknown>`version.executable_json`,
+    })
+    .from(
+      sql`app.lock_workflow_run_replay_version(${transaction.workspaceId},${workflowId},${workflowVersionId}) as version`,
+    );
+  const version = row === undefined ? null : Object.freeze(row);
   if (
     version?.workflowId !== workflowId ||
     version.workspaceId !== transaction.workspaceId
