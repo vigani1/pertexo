@@ -2,7 +2,7 @@ import { AUDIT_RETENTION_MIN_DAYS } from '@pertexo/workflow-model';
 import { CALLBACK_TASK_RETENTION_RULE } from '../runs/pending-tasks/callbacks/retention.js';
 import { RUN_VALUES_RETENTION_RULE } from '../runs/values/retention.js';
 
-import { expiredNoticeSql } from '../inbox/lifetime.js';
+import { INBOX_RETENTION_RULE } from '../inbox/retention.repository.js';
 import {
   expiredRunSql,
   retainedTestRunSql,
@@ -352,20 +352,7 @@ export const RETENTION_RULES = Object.freeze([
       delete from app.auth_email_proofs proof using page
       where proof.id = page.id`,
   },
-  {
-    // Recheck after row-lock waits so retention cannot erase a reactivated episode.
-    name: 'workspace_inbox_threads',
-    statement: `
-      with page as (
-        select workspace_id, id from app.workspace_inbox_threads thread
-        where ${expiredNoticeSql('thread')}
-        order by latest_occurred_at, workspace_id, id limit $1
-      )
-      delete from app.workspace_inbox_threads thread using page
-      where (thread.workspace_id, thread.id)
-        = (page.workspace_id, page.id)
-        and ${expiredNoticeSql('thread')}`,
-  },
+  INBOX_RETENTION_RULE,
   {
     name: 'identity_security_audit_facts',
     statement: `

@@ -1,3 +1,7 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { sql } from 'drizzle-orm';
+import { workspaceInboxEvents } from '../../schema/inbox/core.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 
 import { generatePersistedId } from '../../platform/persisted-id.js';
@@ -31,19 +35,17 @@ export async function persistWorkspaceInboxEvent(
     ({ name }) => name === `run.${status}`,
   );
   if (terminalEvent === undefined) return;
-  await client.query(
-    `insert into app.workspace_inbox_events (
-       id,workspace_id,workflow_id,run_id,terminal_event_sequence,kind,occurred_at
-     ) values ($1,$2,$3,$4,$5,$6,$7::timestamptz)
-     on conflict do nothing`,
-    [
-      generatePersistedId(),
-      input.workspaceId,
-      input.workflowId,
-      input.runId,
-      terminalEvent.sequence,
-      status,
-      terminalEvent.occurredAt,
-    ],
-  );
+  await drizzle(client)
+    .insert(workspaceInboxEvents)
+    .values({
+      id: generatePersistedId(),
+      workspaceId: input.workspaceId,
+      workflowId: input.workflowId,
+      runId: input.runId,
+      terminalEventSequence: BigInt(terminalEvent.sequence),
+      kind: status,
+      occurredAt: sql`${terminalEvent.occurredAt}::timestamptz`,
+    })
+    .onConflictDoNothing()
+    .catch(rethrowQueryFailure);
 }

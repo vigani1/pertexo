@@ -25,8 +25,14 @@ import {
   pendingTaskAudienceSql,
   pendingTaskBlockedSql,
 } from './eligibility.js';
-const audience = pendingTaskAudienceSql('$2', '$3');
-const blocked = pendingTaskBlockedSql('$2', '$3');
+const audience = bindResourcePredicate(
+  pendingTaskAudienceSql(sql`$2`, sql`$3`),
+  [],
+);
+const blocked = bindResourcePredicate(
+  pendingTaskBlockedSql(sql`$2`, sql`$3`),
+  [],
+);
 const columns = `task.*,node.node_id,run.workflow_id,workflow.name workflow_name,
   decider.display_name decided_by_name,node.branch_context,${blocked} blocked_reason`;
 const from = `from app.pending_run_tasks task join app.workflow_runs run

@@ -1,3 +1,4 @@
+import type { NoticeEmailMode } from '@pertexo/contracts';
 import { sql } from 'drizzle-orm';
 import {
   check,
@@ -19,7 +20,10 @@ export const noticeWorkspaceSettings = appSchema.table(
   {
     workspaceId: uuid('workspace_id').primaryKey(),
     revision: integer('revision').notNull().default(0),
-    mode: varchar('mode', { length: 16 }).notNull().default('off'),
+    mode: varchar('mode', { length: 16 })
+      .$type<NoticeEmailMode>()
+      .notNull()
+      .default('off'),
     hour: integer('hour').notNull().default(9),
     timeZone: varchar('time_zone', { length: 128 }).notNull().default('UTC'),
     changedAt: timestamp('changed_at', { withTimezone: true, mode: 'date' })
@@ -44,7 +48,7 @@ export const noticePreferences = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     userId: uuid('user_id').notNull(),
     revision: integer('revision').notNull().default(0),
-    mode: varchar('mode', { length: 16 }),
+    mode: varchar('mode', { length: 16 }).$type<NoticeEmailMode>(),
     hour: integer('hour').notNull().default(9),
     timeZone: varchar('time_zone', { length: 128 }).notNull().default('UTC'),
     changedAt: timestamp('changed_at', { withTimezone: true, mode: 'date' })

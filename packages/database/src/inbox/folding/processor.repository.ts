@@ -1,3 +1,6 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { sql } from 'drizzle-orm';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { createAttentionObserver } from '../observations/state.repository.js';
 import { z } from 'zod';
 
@@ -31,13 +34,6 @@ export interface WorkspaceInboxFoldStore {
 
 const STATEMENT_TIMEOUT_MILLIS = 5_000;
 const limitSchema = z.number().int().min(1).max(1_000);
-const changeRowSchema = z
-  .object({
-    workspace_id: z.uuid(),
-    revision: z.string().regex(/^[1-9][0-9]{0,18}$/u),
-  })
-  .strict();
-
 /** ADR 055: the worker's fold command, run across workspaces. */
 export function createWorkspaceInboxFoldStore(
   config: DatabaseConfig,
@@ -69,18 +65,19 @@ export function createWorkspaceInboxFoldStore(
       return withPlatformTransaction(
         pool,
         async (client) => {
-          const result = await client.query(
-            'select workspace_id,revision::text from app.fold_workspace_inbox_events($1)',
-            [bounded],
-          );
+          // The cross-workspace fold function owns queue claiming and revision allocation.
+          const result = await drizzle(client)
+            .execute<{ workspace_id: string; revision: string }>(
+              sql`select workspace_id,revision::text from app.fold_workspace_inbox_events(${bounded})`,
+            )
+            .catch(rethrowQueryFailure);
           return Object.freeze(
-            result.rows.map((value) => {
-              const row = changeRowSchema.parse(value);
-              return Object.freeze({
+            result.rows.map((row) =>
+              Object.freeze({
                 workspaceId: row.workspace_id,
                 revision: row.revision,
-              });
-            }),
+              }),
+            ),
           );
         },
         options(signal),

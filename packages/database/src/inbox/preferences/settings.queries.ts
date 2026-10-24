@@ -1,24 +1,14 @@
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
-import type {
-  NoticePreferencesResponse,
-  NoticeEmailMode,
-} from '@pertexo/contracts';
-export type PreferenceRow = Readonly<{
-  revision: number;
-  mode: NoticeEmailMode | null;
-  hour: number;
-  time_zone: string;
-  changed_at: Date;
-  next_due_at: Date | null;
-  schedule_default_revision: number;
-}>;
-export type DefaultsRow = Readonly<{
-  revision: number;
-  mode: NoticeEmailMode;
-  hour: number;
-  time_zone: string;
-  changed_at: Date;
-}>;
+import type { NoticePreferencesResponse } from '@pertexo/contracts';
+import { and, eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  noticePreferences,
+  noticeWorkspaceSettings,
+} from '../../schema/inbox/preferences.js';
+export type PreferenceRow = typeof noticePreferences.$inferSelect;
+export type DefaultsRow = typeof noticeWorkspaceSettings.$inferSelect;
 export async function readNoticePreferences(
   client: PoolClient,
   workspaceId: string,
@@ -32,15 +22,23 @@ export async function readNoticePreferences(
     emailAvailable: boolean;
   }>,
 ): Promise<NoticePreferencesResponse> {
-  const pref = await client.query<PreferenceRow>(
-    'select * from app.notice_preferences where workspace_id=$1 and user_id=$2',
-    [workspaceId, actorId],
-  );
-  const defs = await client.query<DefaultsRow>(
-    'select * from app.notice_workspace_settings where workspace_id=$1',
-    [workspaceId],
-  );
-  return projectNoticePreferences(pref.rows[0], defs.rows[0], {
+  const db = drizzle(client);
+  const pref = await db
+    .select()
+    .from(noticePreferences)
+    .where(
+      and(
+        eq(noticePreferences.workspaceId, workspaceId),
+        eq(noticePreferences.userId, actorId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  const defs = await db
+    .select()
+    .from(noticeWorkspaceSettings)
+    .where(eq(noticeWorkspaceSettings.workspaceId, workspaceId))
+    .catch(rethrowQueryFailure);
+  return projectNoticePreferences(pref[0], defs[0], {
     canManageDefaults,
     emailAvailable,
   });
@@ -57,13 +55,13 @@ export function projectNoticePreferences(
     revision: defs?.revision ?? 0,
     mode: defs?.mode ?? 'off',
     hour: defs?.hour ?? 9,
-    timeZone: defs?.time_zone ?? 'UTC',
+    timeZone: defs?.timeZone ?? 'UTC',
   };
   const personal = {
     revision: pref?.revision ?? 0,
     mode: pref?.mode ?? null,
     hour: pref?.hour ?? 9,
-    timeZone: pref?.time_zone ?? 'UTC',
+    timeZone: pref?.timeZone ?? 'UTC',
   };
   return {
     ...personal,

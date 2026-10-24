@@ -1,5 +1,5 @@
-import { ordinaryRunSql } from '../../runs/data-policy.js';
-import { and, eq, gte, inArray, lte, sql } from 'drizzle-orm';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { and, eq, gte, inArray, lte, ne, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { databaseSchema } from '../../schema.js';
 import { workflowRuns } from '../../schema/runs/execution.js';
@@ -24,7 +24,7 @@ export async function readFailureDays(
     .where(
       and(
         eq(workflowRuns.workspaceId, workspaceId),
-        sql.raw(ordinaryRunSql('workflow_runs')),
+        ne(workflowRuns.triggerType, 'test'),
         inArray(workflowRuns.workflowId, [...workflowIds]),
         inArray(workflowRuns.status, [
           'failed',
@@ -39,7 +39,8 @@ export async function readFailureDays(
       ),
     )
     .groupBy(workflowRuns.workflowId, day)
-    .orderBy(day);
+    .orderBy(day)
+    .catch(rethrowQueryFailure);
   const grouped = new Map<string, FailureDay[]>();
   for (const row of rows) {
     const days = grouped.get(row.workflowId) ?? [];
