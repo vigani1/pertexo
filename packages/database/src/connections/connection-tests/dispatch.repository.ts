@@ -1,3 +1,9 @@
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { connections } from '../../schema/connections.js';
+import { auditEvents } from '../../schema/foundation.js';
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { idempotencyRecords as records } from '../../schema/runs/support.js';
 import type { Pool } from 'pg';
 
 import { generatePersistedId } from '../../platform/persisted-id.js';
@@ -35,22 +41,32 @@ export async function markConnectionTestDispatched(
   await withConnectionTransaction(pool, input.workspaceId, {
     actorId,
     operation: async (client, workspaceId) => {
-      await requireConnectionUser(client, workspaceId, actorId, connectionId);
-      const claim = await client.query<{ result_ref: unknown }>(
-        `select result_ref from app.idempotency_records
-         where workspace_id = $1 and operation = 'connection.test'
-           and scope = $2 and key_hash = $3 and request_hash = $4
-           and status = 'in_progress'
-           and result_ref->>'dispatchToken' = $5 for update`,
-        [workspaceId, scope, digest, requestHash, dispatchToken],
+      const db = drizzle(client);
+      const identity = and(
+        eq(records.workspaceId, workspaceId),
+        eq(records.operation, 'connection.test'),
+        eq(records.scope, scope),
+        eq(records.keyHash, digest),
       );
-      const claimRow = claim.rows[0];
+      await requireConnectionUser(client, workspaceId, actorId, connectionId);
+      const ownership = and(
+        identity,
+        eq(records.requestHash, requestHash),
+        eq(records.status, 'in_progress'),
+        sql`${records.resultRef}->>'dispatchToken'=${dispatchToken}`,
+      );
+      const [claimRow] = await db
+        .select({ resultRef: records.resultRef })
+        .from(records)
+        .where(ownership)
+        .for('update')
+        .catch(rethrowQueryFailure);
       if (claimRow === undefined)
         throw new ConnectionTestInProgressError(
           'Connection test dispatch ownership was lost',
         );
       if (
-        connectionTestClaimSchema.parse(claimRow.result_ref).state !== 'claimed'
+        connectionTestClaimSchema.parse(claimRow.resultRef).state !== 'claimed'
       )
         throw new ConnectionTestInProgressError(
           'Connection test already has durable dispatch evidence',
@@ -69,59 +85,55 @@ export async function markConnectionTestDispatched(
         throw new ConnectionUnavailableError(
           'Connection changed before test dispatch',
         );
-      const revision = await client.query<{ health_revision: string }>(
-        'select health_revision::text from app.connections where workspace_id=$1 and id=$2',
-        [workspaceId, connectionId],
-      );
-      const healthRevision = revision.rows[0]?.health_revision;
+      const [revision] = await db
+        .select({
+          healthRevision: sql<string>`${connections.healthRevision}::text`,
+        })
+        .from(connections)
+        .where(
+          and(
+            eq(connections.workspaceId, workspaceId),
+            eq(connections.id, connectionId),
+          ),
+        )
+        .catch(rethrowQueryFailure);
+      const healthRevision = revision?.healthRevision;
       if (healthRevision === undefined)
         throw new ConnectionUnavailableError(
           'Connection health revision is unavailable',
         );
-      const marked = await client.query(
-        `update app.idempotency_records
-         set result_ref = $1::jsonb, updated_at = transaction_timestamp()
-         where workspace_id = $2 and operation = 'connection.test'
-           and scope = $3 and key_hash = $4 and request_hash = $5
-           and status = 'in_progress'
-           and result_ref->>'dispatchToken' = $6
-           and result_ref->>'state' = 'claimed'`,
-        [
-          JSON.stringify(
-            connectionTestClaim(
-              dispatchToken,
-              'dispatched',
-              secretVersionId,
-              healthRevision,
-            ),
+      const marked = await db
+        .update(records)
+        .set({
+          resultRef: connectionTestClaim(
+            dispatchToken,
+            'dispatched',
+            secretVersionId,
+            healthRevision,
           ),
-          workspaceId,
-          scope,
-          digest,
-          requestHash,
-          dispatchToken,
-        ],
-      );
-      if (marked.rowCount !== 1)
+          updatedAt: sql`transaction_timestamp()`,
+        })
+        .where(and(ownership, sql`${records.resultRef}->>'state'='claimed'`))
+        .returning({ id: records.id })
+        .catch(rethrowQueryFailure);
+      if (marked.length !== 1)
         throw new ConnectionTestInProgressError(
           'Connection test dispatch ownership was lost',
         );
-      await client.query(
-        `insert into app.audit_events
-           (id, workspace_id, actor_user_id, action, target_type,
-            target_id, request_id, trace_id, metadata)
-         values ($1, $2, $3, 'connection.test_dispatched', 'connection',
-                 $4, $5, $6, $7::jsonb)`,
-        [
-          generatePersistedId(),
+      await db
+        .insert(auditEvents)
+        .values({
+          id: generatePersistedId(),
           workspaceId,
-          actorId,
-          connectionId,
-          metadata.requestId,
-          metadata.traceId,
-          JSON.stringify({ secretVersionId }),
-        ],
-      );
+          actorUserId: actorId,
+          action: 'connection.test_dispatched',
+          targetType: 'connection',
+          targetId: connectionId,
+          requestId: metadata.requestId,
+          traceId: metadata.traceId,
+          metadata: { secretVersionId },
+        })
+        .catch(rethrowQueryFailure);
     },
-  });
+  }).catch(rethrowQueryFailure);
 }

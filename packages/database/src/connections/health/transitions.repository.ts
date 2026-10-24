@@ -1,7 +1,11 @@
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 
 import { generatePersistedId } from '../../platform/persisted-id.js';
-import { mapConnection } from '../records.queries.js';
+import { connectionFields } from '../records.queries.js';
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { connections, connectionEvents } from '../../schema/connections.js';
 import type {
   ConnectionRecord,
   ConnectionTestOutcome,
@@ -13,13 +17,22 @@ export async function revokeConnectionHealth(
   workspaceId: string,
   connectionId: string,
 ) {
-  return client.query<Record<string, unknown>>(
-    `update app.connections
-    set status='revoked',health_revision=health_revision+1,
-      last_health_transition_at=transaction_timestamp(),last_health_transition_source='revoke',updated_at=transaction_timestamp()
-    where workspace_id=$1 and id=$2 returning *`,
-    [workspaceId, connectionId],
-  );
+  return drizzle(client)
+    .update(connections)
+    .set({
+      status: 'revoked',
+      healthRevision: sql`${connections.healthRevision}+1`,
+      lastHealthTransitionAt: sql`transaction_timestamp()`,
+      lastHealthTransitionSource: 'revoke',
+      updatedAt: sql`transaction_timestamp()`,
+    })
+    .where(
+      and(
+        eq(connections.workspaceId, workspaceId),
+        eq(connections.id, connectionId),
+      ),
+    )
+    .returning(connectionFields);
 }
 
 export async function rotateConnectionHealth(
@@ -28,14 +41,27 @@ export async function rotateConnectionHealth(
   connectionId: string,
   secretVersionId: string,
 ) {
-  return client.query<Record<string, unknown>>(
-    `update app.connections
-    set current_secret_version_id=$1,status='active',last_error_code=null,last_tested_at=null,last_healthy_at=null,
-      last_run_observed_at=null,health_revision=health_revision+1,
-      last_health_transition_at=transaction_timestamp(),last_health_transition_source='rotation',updated_at=transaction_timestamp()
-    where workspace_id=$2 and id=$3 returning *`,
-    [secretVersionId, workspaceId, connectionId],
-  );
+  return drizzle(client)
+    .update(connections)
+    .set({
+      currentSecretVersionId: secretVersionId,
+      status: 'active',
+      lastErrorCode: null,
+      lastTestedAt: null,
+      lastHealthyAt: null,
+      lastRunObservedAt: null,
+      healthRevision: sql`${connections.healthRevision}+1`,
+      lastHealthTransitionAt: sql`transaction_timestamp()`,
+      lastHealthTransitionSource: 'rotation',
+      updatedAt: sql`transaction_timestamp()`,
+    })
+    .where(
+      and(
+        eq(connections.workspaceId, workspaceId),
+        eq(connections.id, connectionId),
+      ),
+    )
+    .returning(connectionFields);
 }
 
 export async function applyCurrentConnectionTestHealth(
@@ -56,59 +82,61 @@ export async function applyCurrentConnectionTestHealth(
     current.currentSecretVersionId !== input.secretVersionId ||
     input.healthRevision === undefined;
   if (staleObservation) return current;
-  const revision = await client.query<{ health_revision: string }>(
-    'select health_revision::text from app.connections where workspace_id=$1 and id=$2',
-    [current.workspaceId, current.id],
+  const db = drizzle(client);
+  const predicate = and(
+    eq(connections.workspaceId, current.workspaceId),
+    eq(connections.id, current.id),
   );
-  if (revision.rows[0]?.health_revision !== input.healthRevision)
-    return current;
+  const [revision] = await db
+    .select({
+      healthRevision: sql<string>`${connections.healthRevision}::text`,
+    })
+    .from(connections)
+    .where(predicate)
+    .catch(rethrowQueryFailure);
+  if (revision?.healthRevision !== input.healthRevision) return current;
   const definitive = !outcome.ok && outcome.reauthorizationRequired;
   const nextStatus = connectionTestStatus(current, { outcome, definitive });
-  const updated = await client.query<Record<string, unknown>>(
-    `update app.connections
-    set status=$1::varchar,last_tested_at=transaction_timestamp(),
-      last_healthy_at=case when $2 then transaction_timestamp() else last_healthy_at end,
-      last_error_code=case when status='reauthorization_required' and not $2 and not $6 then last_error_code else $3 end,
-      health_revision=health_revision+case when $2 or (status<>'reauthorization_required' and $1::varchar='reauthorization_required') then 1 else 0 end,
-      last_health_transition_at=case when $2 or status<>$1::varchar then transaction_timestamp() else last_health_transition_at end,
-      last_health_transition_source=case when $2 or status<>$1::varchar then 'test' else last_health_transition_source end,
-      updated_at=transaction_timestamp()
-    where workspace_id=$4 and id=$5 returning *`,
-    [
-      nextStatus,
-      outcome.ok,
-      outcome.ok ? null : outcome.errorCode,
-      current.workspaceId,
-      current.id,
-      definitive,
-    ],
-  );
-  const row = updated.rows[0];
+  const [row] = await db
+    .update(connections)
+    .set({
+      status: nextStatus,
+      lastTestedAt: sql`transaction_timestamp()`,
+      lastHealthyAt: sql`case when ${outcome.ok} then transaction_timestamp() else ${connections.lastHealthyAt} end`,
+      lastErrorCode: sql`case when ${connections.status}='reauthorization_required' and not ${outcome.ok} and not ${definitive} then ${connections.lastErrorCode} else ${outcome.ok ? null : outcome.errorCode} end`,
+      healthRevision: sql`${connections.healthRevision}+case when ${outcome.ok} or (${connections.status}<>'reauthorization_required' and ${nextStatus}::varchar='reauthorization_required') then 1 else 0 end`,
+      lastHealthTransitionAt: sql`case when ${outcome.ok} or ${connections.status}<>${nextStatus}::varchar then transaction_timestamp() else ${connections.lastHealthTransitionAt} end`,
+      lastHealthTransitionSource: sql`case when ${outcome.ok} or ${connections.status}<>${nextStatus}::varchar then 'test' else ${connections.lastHealthTransitionSource} end`,
+      updatedAt: sql`transaction_timestamp()`,
+    })
+    .where(predicate)
+    .returning(connectionFields)
+    .catch(rethrowQueryFailure);
   if (row === undefined)
     throw new Error('Connection test health update returned no row');
   if (outcome.ok || current.status !== nextStatus) {
-    await client.query(
-      `insert into app.connection_events(id,workspace_id,connection_id,event_type,actor_kind,actor_id,request_id,trace_id,metadata)
-      values($1,$2,$3,$4,'user',$5,$6,$7,$8::jsonb)`,
-      [
-        generatePersistedId(),
-        current.workspaceId,
-        current.id,
-        outcome.ok
+    await db
+      .insert(connectionEvents)
+      .values({
+        id: generatePersistedId(),
+        workspaceId: current.workspaceId,
+        connectionId: current.id,
+        eventType: outcome.ok
           ? 'connection.health_changed'
           : 'connection.reauthorization_required',
-        input.actorId,
-        input.requestId,
-        input.traceId,
-        JSON.stringify({
+        actorKind: 'user',
+        actorId: input.actorId,
+        requestId: input.requestId,
+        traceId: input.traceId,
+        metadata: {
           source: 'test',
           status: nextStatus,
           ...(outcome.ok ? {} : { reasonCode: outcome.errorCode }),
-        }),
-      ],
-    );
+        },
+      })
+      .catch(rethrowQueryFailure);
   }
-  return mapConnection(row);
+  return Object.freeze(row);
 }
 
 function connectionTestStatus(

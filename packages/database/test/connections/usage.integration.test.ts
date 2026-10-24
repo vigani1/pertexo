@@ -1,6 +1,8 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { folderScope } from '../../src/tenant-access/resources/policy.js';
 import { describe, expect, it } from 'vitest';
 import {
-  CONNECTION_USAGE_PAGE_SQL,
+  connectionUsagePage,
   createConnectionUsagePersistence,
 } from '../../src/connections/discovery/usage.queries.js';
 import {
@@ -204,9 +206,16 @@ describe('authorized published connection usage', () => {
           workspaceA,
         ]);
         await client.query('set local enable_seqscan = off');
+        const query = connectionUsagePage(drizzle(client), {
+          workspaceId: workspaceA,
+          connectionId: input.connectionId,
+          after: versionIds[0],
+          limit: 2,
+          resources: folderScope(workspaceA, 'owner', [], []),
+        }).toSQL();
         const plan = await client.query(
-          `explain (format json) ${CONNECTION_USAGE_PAGE_SQL}`,
-          [workspaceA, input.connectionId, versionIds[0], 2],
+          `explain (format json) ${query.sql}`,
+          query.params,
         );
         const serialized = JSON.stringify(plan.rows);
         expect(serialized).toContain(

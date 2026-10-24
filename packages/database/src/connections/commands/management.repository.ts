@@ -1,3 +1,11 @@
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  connections,
+  connectionSecretVersions,
+  connectionEvents,
+} from '../../schema/connections.js';
+import { auditEvents } from '../../schema/foundation.js';
 import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 
@@ -13,7 +21,7 @@ import {
   ConnectionNotFoundError,
   ConnectionConflictError,
   connectionCommand,
-  mapConnection,
+  connectionFields,
   withConnectionTransaction,
   parseRequestMetadata,
   selectConnection,
@@ -94,80 +102,66 @@ async function persistCreatedConnection(
             throw new Error('Connection idempotency result is corrupt');
           return replay;
         }
-        const inserted = await client.query<Record<string, unknown>>(
-          `insert into app.connections
-                 (id, workspace_id, provider_key, name, auth_type, status,
-                  current_secret_version_id, created_by)
-               values ($1, $2, $3, $4, $5, 'active', $6, $7)
-               returning *`,
-          [
-            connectionId,
+        const db = drizzle(client);
+        const [row] = await db
+          .insert(connections)
+          .values({
+            id: connectionId,
             workspaceId,
             providerKey,
             name,
             authType,
-            secretVersionId,
-            actorId,
-          ],
-        );
-        const row = inserted.rows[0];
+            status: 'active',
+            currentSecretVersionId: secretVersionId,
+            createdBy: actorId,
+          })
+          .returning(connectionFields)
+          .catch(rethrowQueryFailure);
         if (row === undefined)
           throw new Error('Connection insert returned no row');
-        const connection = mapConnection(row);
-        await client.query(
-          `insert into app.connection_secret_versions
-                 (id, workspace_id, connection_id,
-                  kms_key_reference, encrypted_data_key, ciphertext, nonce,
-                  auth_tag, created_by)
-               values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-          [
-            secretVersionId,
+        const connection = Object.freeze(row);
+        await db
+          .insert(connectionSecretVersions)
+          .values({
+            id: secretVersionId,
             workspaceId,
             connectionId,
-            sealed.kmsKeyReference,
-            sealed.encryptedDataKey,
-            sealed.ciphertext,
-            sealed.nonce,
-            sealed.tag,
-            actorId,
-          ],
-        );
-        await client.query(
-          `insert into app.connection_events
-                 (id, workspace_id, connection_id, event_type, actor_kind,
-                  actor_id, request_id, trace_id, metadata)
-               values ($1, $2, $3, 'connection.created', 'user', $4, $5, $6,
-                       $7::jsonb)`,
-          [
-            generatePersistedId(),
+            kmsKeyReference: sealed.kmsKeyReference,
+            encryptedDataKey: sealed.encryptedDataKey,
+            ciphertext: sealed.ciphertext,
+            nonce: sealed.nonce,
+            authTag: sealed.tag,
+            createdBy: actorId,
+          })
+          .catch(rethrowQueryFailure);
+        await db
+          .insert(connectionEvents)
+          .values({
+            id: generatePersistedId(),
             workspaceId,
             connectionId,
+            eventType: 'connection.created',
+            actorKind: 'user',
             actorId,
-            metadata.requestId,
-            metadata.traceId,
-            JSON.stringify({
-              providerKey,
-              authType,
-              secretVersionId,
-            }),
-          ],
-        );
-        await client.query(
-          `insert into app.audit_events
-                 (id, workspace_id, actor_user_id, action, target_type,
-                  target_id, request_id, trace_id, metadata)
-               values ($1, $2, $3, 'connection.created', 'connection', $4,
-                       $5, $6, $7::jsonb)`,
-          [
-            generatePersistedId(),
+            requestId: metadata.requestId,
+            traceId: metadata.traceId,
+            metadata: { providerKey, authType, secretVersionId },
+          })
+          .catch(rethrowQueryFailure);
+        await db
+          .insert(auditEvents)
+          .values({
+            id: generatePersistedId(),
             workspaceId,
-            actorId,
-            connectionId,
-            metadata.requestId,
-            metadata.traceId,
-            JSON.stringify({ providerKey, authType, secretVersionId }),
-          ],
-        );
+            actorUserId: actorId,
+            action: 'connection.created',
+            targetType: 'connection',
+            targetId: connectionId,
+            requestId: metadata.requestId,
+            traceId: metadata.traceId,
+            metadata: { providerKey, authType, secretVersionId },
+          })
+          .catch(rethrowQueryFailure);
         await completeCommand(
           client,
           command,
@@ -175,7 +169,7 @@ async function persistCreatedConnection(
         );
         return connection;
       },
-    });
+    }).catch(rethrowQueryFailure);
   } catch (error: unknown) {
     if (databaseConstraint(error, 'connections_active_name_provider_unique'))
       throw new ConnectionConflictError(
@@ -234,21 +228,20 @@ async function persistRevokedConnection(
         workspaceId,
         connectionId,
       );
-      await client.query(
-        `insert into app.connection_events
-               (id, workspace_id, connection_id, event_type, actor_kind,
-                actor_id, request_id, trace_id, metadata)
-             values ($1, $2, $3, 'connection.revoked', 'user', $4, $5, $6,
-                     '{}'::jsonb)`,
-        [
-          generatePersistedId(),
+      await drizzle(client)
+        .insert(connectionEvents)
+        .values({
+          id: generatePersistedId(),
           workspaceId,
           connectionId,
+          eventType: 'connection.revoked',
+          actorKind: 'user',
           actorId,
-          metadata.requestId,
-          metadata.traceId,
-        ],
-      );
+          requestId: metadata.requestId,
+          traceId: metadata.traceId,
+          metadata: {},
+        })
+        .catch(rethrowQueryFailure);
       await appendAuditFact(client, {
         workspaceId,
         actorId,
@@ -258,10 +251,10 @@ async function persistRevokedConnection(
         ...metadata,
         metadata: {},
       });
-      const row = updated.rows[0];
+      const row = updated[0];
       if (row === undefined)
         throw new Error('Connection revocation returned no row');
-      return mapConnection(row);
+      return Object.freeze(row);
     },
   });
 }

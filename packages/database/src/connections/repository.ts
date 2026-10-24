@@ -114,37 +114,6 @@ export function createConnectionDatabase(
   });
 }
 
-export function createApiConnectionDatabase(
-  config: DatabaseConfig,
-  runtime?: DatabaseRuntime,
-): ApiConnectionDatabase {
-  const database = createConnectionDatabase(config, runtime);
-  return Object.freeze({
-    readConnectionSharing: database.readConnectionSharing.bind(database),
-    replaceConnectionSharing: database.replaceConnectionSharing.bind(database),
-    listConnections: database.listConnections.bind(database),
-    readConnection: database.readConnection.bind(database),
-    listConnectionUsage: database.listConnectionUsage.bind(database),
-    createConnection: database.createConnection.bind(database),
-    findConnectionCreateReplay:
-      database.findConnectionCreateReplay.bind(database),
-    findConnectionRotateReplay:
-      database.findConnectionRotateReplay.bind(database),
-    rotateConnectionSecret: database.rotateConnectionSecret.bind(database),
-    revokeConnection: database.revokeConnection.bind(database),
-    startConnectionTest: database.startConnectionTest.bind(database),
-    resolveConnectionTestSecret:
-      database.resolveConnectionTestSecret.bind(database),
-    markConnectionTestDispatched:
-      database.markConnectionTestDispatched.bind(database),
-    completeConnectionTest: database.completeConnectionTest.bind(database),
-    abandonConnectionTest: database.abandonConnectionTest.bind(database),
-    resolveConnectionLookupSecret:
-      database.resolveConnectionLookupSecret.bind(database),
-    close: database.close.bind(database),
-  });
-}
-
 export function createWorkerConnectionResolutionDatabase(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,

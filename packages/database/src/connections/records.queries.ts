@@ -1,22 +1,16 @@
-import { mapConnectionHealthMetadata } from './health/metadata.js';
 import type { Pool, PoolClient } from 'pg';
-import { z } from 'zod';
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  connections,
+  connectionSecretVersions,
+} from '../schema/connections.js';
+import { rethrowQueryFailure } from '../platform/query-errors.js';
 
 import { withTenantScopedClient } from '../tenant-access/transactions.js';
 import type { WorkspaceTransactionOptions } from '../tenant-access/transactions.js';
-import {
-  CONNECTION_STATUS,
-  CONNECTION_AUTH_TYPE,
-  type ConnectionRecord,
-} from './contract.js';
-import {
-  uuidSchema,
-  providerKeySchema,
-  connectionNameSchema,
-  identifierSchema,
-  errorCodeSchema,
-  sealedSecretSchema,
-} from './admission.js';
+import type { ConnectionRecord } from './contract.js';
+import { uuidSchema, identifierSchema } from './admission.js';
 
 export {
   CONNECTION_STATUS,
@@ -76,42 +70,32 @@ export {
   parseConnectionTestResult,
   serializeConnectionTestResult,
 } from './admission.js';
-export function mapConnection(
-  row: Readonly<Record<string, unknown>>,
-): ConnectionRecord {
-  return Object.freeze({
-    id: uuidSchema.parse(row.id),
-    workspaceId: uuidSchema.parse(row.workspace_id),
-    providerKey: providerKeySchema.parse(row.provider_key),
-    name: connectionNameSchema.parse(row.name),
-    authType: z.enum(CONNECTION_AUTH_TYPE).parse(row.auth_type),
-    status: z.enum(CONNECTION_STATUS).parse(row.status),
-    currentSecretVersionId: uuidSchema.parse(row.current_secret_version_id),
-    lastTestedAt:
-      row.last_tested_at === null ? null : z.date().parse(row.last_tested_at),
-    lastHealthyAt:
-      row.last_healthy_at === null ? null : z.date().parse(row.last_healthy_at),
-    lastErrorCode:
-      row.last_error_code === null
-        ? null
-        : errorCodeSchema.parse(row.last_error_code),
-    ...mapConnectionHealthMetadata(row),
-    createdBy: uuidSchema.parse(row.created_by),
-    createdAt: z.date().parse(row.created_at),
-    updatedAt: z.date().parse(row.updated_at),
-    accessMode: z.enum(['workspace', 'restricted']).parse(row.access_mode),
-  });
-}
-
-export function mapSealed(row: Readonly<Record<string, unknown>>) {
-  return sealedSecretSchema.parse({
-    kmsKeyReference: row.kms_key_reference,
-    encryptedDataKey: row.encrypted_data_key,
-    ciphertext: row.ciphertext,
-    nonce: row.nonce,
-    tag: row.auth_tag,
-  });
-}
+export const connectionFields = {
+  id: connections.id,
+  workspaceId: connections.workspaceId,
+  providerKey: connections.providerKey,
+  name: connections.name,
+  authType: connections.authType,
+  status: connections.status,
+  currentSecretVersionId: connections.currentSecretVersionId,
+  lastTestedAt: connections.lastTestedAt,
+  lastHealthyAt: connections.lastHealthyAt,
+  lastErrorCode: connections.lastErrorCode,
+  lastRunObservedAt: connections.lastRunObservedAt,
+  lastHealthTransitionAt: connections.lastHealthTransitionAt,
+  lastHealthTransitionSource: connections.lastHealthTransitionSource,
+  createdBy: connections.createdBy,
+  createdAt: connections.createdAt,
+  updatedAt: connections.updatedAt,
+  accessMode: connections.accessMode,
+};
+export const sealedFields = {
+  kmsKeyReference: connectionSecretVersions.kmsKeyReference,
+  encryptedDataKey: connectionSecretVersions.encryptedDataKey,
+  ciphertext: connectionSecretVersions.ciphertext,
+  nonce: connectionSecretVersions.nonce,
+  tag: connectionSecretVersions.authTag,
+};
 
 export async function withConnectionTransaction<T>(
   pool: Pool,
@@ -133,9 +117,9 @@ export async function withConnectionTransaction<T>(
       ? { workspaceId }
       : { workspaceId, actorId: identifierSchema.parse(actorId) },
     async (client) => {
-      await client.query('select app.lock_workspace_run_admission($1)', [
-        workspaceId,
-      ]);
+      await drizzle(client)
+        .execute(sql`select app.lock_workspace_run_admission(${workspaceId})`)
+        .catch(rethrowQueryFailure);
       return operation(client, workspaceId);
     },
     options,
@@ -148,10 +132,18 @@ export async function selectConnection(
   connectionId: string,
   { lock = false }: Readonly<{ lock?: boolean | undefined }> = {},
 ): Promise<ConnectionRecord | null> {
-  const result = await client.query<Record<string, unknown>>(
-    `select * from app.connections
-     where workspace_id = $1 and id = $2${lock ? ' for update' : ''}`,
-    [workspaceId, uuidSchema.parse(connectionId)],
+  const query = drizzle(client)
+    .select(connectionFields)
+    .from(connections)
+    .where(
+      and(
+        eq(connections.workspaceId, workspaceId),
+        eq(connections.id, uuidSchema.parse(connectionId)),
+      ),
+    )
+    .$dynamic();
+  const [row] = await (lock ? query.for('update') : query).catch(
+    rethrowQueryFailure,
   );
-  return result.rows[0] === undefined ? null : mapConnection(result.rows[0]);
+  return row === undefined ? null : Object.freeze(row);
 }

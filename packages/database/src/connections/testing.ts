@@ -9,7 +9,6 @@ export {
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
   createConnectionDatabase,
-  createApiConnectionDatabase,
   createWorkerConnectionResolutionDatabase,
 } from './repository.js';
 export type {

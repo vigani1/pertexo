@@ -14,120 +14,23 @@ vi.mock('../../src/tenant-access/transactions.js', () => ({
 }));
 
 import { createConnectionUsagePersistence } from '../../src/connections/discovery/usage.queries.js';
-import { ConnectionNotFoundError } from '../../src/connections/records.queries.js';
 
 const workspaceId = '11111111-1111-4111-8111-111111111111';
 const actorId = '22222222-2222-4222-8222-222222222222';
 const connectionId = '33333333-3333-4333-8333-333333333333';
-const versionId = '44444444-4444-4444-8444-444444444444';
 const input = { workspaceId, actorId, connectionId };
-const row = {
-  workflow_id: actorId,
-  workflow_name: 'Published',
-  lifecycle_status: 'active',
-  workflow_version_id: versionId,
-  version_number: 1,
-  is_current_publication: true,
-  operation_keys: ['send_message'],
-};
-
-function fixture(
-  rows: unknown[] = [],
-  absent?: 'authority' | 'connection' | 'anchor',
-) {
-  const query = vi.fn((statement: string | { text: string }) => {
-    const sql = typeof statement === 'string' ? statement : statement.text;
-    const missing =
-      (absent === 'authority' && sql.includes('workspace_memberships')) ||
-      (absent === 'connection' && sql.startsWith('select id')) ||
-      (absent === 'anchor' &&
-        sql.startsWith('select 1 from app.workflow_integration_usage'));
-    let queryRows: unknown[];
-    if (missing || sql.includes('from app.workflow_folders')) {
-      queryRows = [];
-    } else {
-      if (sql.includes('workspace_memberships')) {
-        queryRows = [{ role: 'owner' }];
-      } else {
-        if (sql.startsWith('with page')) {
-          queryRows = rows;
-        } else {
-          queryRows = [{}];
-        }
-      }
-    }
-    return Promise.resolve({
-      rows: queryRows,
-      rowCount: missing ? 0 : 1,
-    });
-  });
+function fixture() {
+  const query = vi.fn();
   tenant.client = { query } as unknown as PoolClient;
   return { query, database: createConnectionUsagePersistence({} as Pool) };
 }
-
-describe('connection usage bounded persistence contract', () => {
-  it('defaults to fifty and limits before metadata joins', async () => {
-    const { query, database } = fixture([row]);
-    expect(
-      (await database.listConnectionUsage(input)).items[0]?.workflowVersionId,
-    ).toBe(versionId);
-    expect(query).toHaveBeenLastCalledWith(
-      expect.stringContaining('limit $4'),
-      [workspaceId, connectionId, null, 51, workspaceId],
-    );
-  });
-  it('uses a version cursor and reports more only with a sentinel row', async () => {
-    const { database } = fixture([
-      row,
-      { ...row, workflow_version_id: workspaceId },
-    ]);
-    expect(
-      await database.listConnectionUsage({
-        ...input,
-        limit: 1,
-        after: { workflowVersionId: actorId },
-      }),
-    ).toMatchObject({ nextCursor: { workflowVersionId: versionId } });
-  });
-  it('handles empty pages and an unpublished current pointer', async () => {
-    expect(await fixture().database.listConnectionUsage(input)).toEqual({
-      items: [],
-    });
-    expect(
-      (
-        await fixture([
-          { ...row, is_current_publication: null },
-        ]).database.listConnectionUsage(input)
-      ).items[0]?.isCurrentPublication,
-    ).toBe(false);
-  });
-  it.each(['authority', 'connection', 'anchor'] as const)(
-    'nondiscloses absent %s before paging',
-    async (absent) => {
-      const { query, database } = fixture([], absent);
-      await expect(
-        database.listConnectionUsage({
-          ...input,
-          after: { workflowVersionId: versionId },
-        }),
-      ).rejects.toThrow(ConnectionNotFoundError);
-      expect(
-        query.mock.calls.some(([sql]) =>
-          (typeof sql === 'string' ? sql : sql.text).startsWith('with page'),
-        ),
-      ).toBe(false);
+describe('connection usage input boundary', () => {
+  it.each([0, 101, 1.5])(
+    'rejects limit %s before accessing storage',
+    (limit) => {
+      const { query, database } = fixture();
+      expect(() => database.listConnectionUsage({ ...input, limit })).toThrow();
+      expect(query).not.toHaveBeenCalled();
     },
   );
-  it.each([0, 101, 1.5])('rejects limit %s', (limit) => {
-    expect(() =>
-      fixture().database.listConnectionUsage({ ...input, limit }),
-    ).toThrow();
-  });
-  it('rejects corrupt persisted metadata', async () => {
-    await expect(
-      fixture([{ ...row, version_number: 0 }]).database.listConnectionUsage(
-        input,
-      ),
-    ).rejects.toThrow();
-  });
 });

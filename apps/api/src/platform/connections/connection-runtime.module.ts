@@ -2,7 +2,7 @@ import type { DynamicModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 import { metrics, trace } from '@opentelemetry/api';
 import {
-  createApiConnectionDatabase,
+  createConnectionDatabase,
   type ApiConnectionDatabase,
 } from '@pertexo/database/connections';
 import { createFailureNotificationDestinationDatabase } from '@pertexo/database/notifications';
@@ -51,7 +51,10 @@ export type ApiConnectionRuntimeOverrides = Readonly<{
   }>;
   persistence?: Readonly<{
     database?: ApiConnectionDatabase;
-    databaseFactory?: typeof createApiConnectionDatabase;
+    databaseFactory?: (
+      config: DatabaseConfig,
+      runtime?: DatabaseRuntime,
+    ) => ApiConnectionDatabase;
     destinationDatabaseFactory?: typeof createFailureNotificationDestinationDatabase;
   }>;
   telemetry?: Readonly<{
@@ -86,7 +89,7 @@ export async function createApiConnectionRuntime(
   try {
     database =
       persistenceOverrides.database ??
-      (persistenceOverrides.databaseFactory ?? createApiConnectionDatabase)(
+      (persistenceOverrides.databaseFactory ?? createConnectionDatabase)(
         databaseConfig,
         runtime,
       );

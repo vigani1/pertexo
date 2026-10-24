@@ -1,3 +1,11 @@
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { and, eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  connectionSecretVersions,
+  connectionEvents,
+} from '../../schema/connections.js';
+import { sealedFields } from '../records.queries.js';
 import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 
@@ -8,7 +16,6 @@ import {
   CONNECTION_STATUS,
   ConnectionNotFoundError,
   ConnectionUnavailableError,
-  mapSealed,
   parseRequestMetadata,
   providerKeySchema,
   selectConnection,
@@ -80,35 +87,40 @@ export function createConnectionLookupPersistence(
             throw new ConnectionUnavailableError(
               'Connection is not available for lookups',
             );
-          const secret = await client.query<Record<string, unknown>>(
-            `select kms_key_reference, encrypted_data_key,
-                    ciphertext, nonce, auth_tag
-               from app.connection_secret_versions
-              where workspace_id = $1 and connection_id = $2 and id = $3`,
-            [workspaceId, connectionId, connection.currentSecretVersionId],
-          );
-          const row = secret.rows[0];
+          const db = drizzle(client);
+          const [row] = await db
+            .select(sealedFields)
+            .from(connectionSecretVersions)
+            .where(
+              and(
+                eq(connectionSecretVersions.workspaceId, workspaceId),
+                eq(connectionSecretVersions.connectionId, connectionId),
+                eq(
+                  connectionSecretVersions.id,
+                  connection.currentSecretVersionId,
+                ),
+              ),
+            )
+            .catch(rethrowQueryFailure);
           if (row === undefined)
             throw new Error('Connection secret pointer is corrupt');
-          await client.query(
-            `insert into app.connection_events
-               (id, workspace_id, connection_id, event_type, actor_kind,
-                actor_id, request_id, trace_id, metadata)
-             values ($1, $2, $3, $4, 'user', $5, $6, $7, $8::jsonb)`,
-            [
-              generatePersistedId(),
+          await db
+            .insert(connectionEvents)
+            .values({
+              id: generatePersistedId(),
               workspaceId,
               connectionId,
-              CONNECTION_EVENT_TYPE.credentialAccessed,
+              eventType: CONNECTION_EVENT_TYPE.credentialAccessed,
+              actorKind: 'user',
               actorId,
-              metadata.requestId,
-              metadata.traceId,
-              JSON.stringify({
+              requestId: metadata.requestId,
+              traceId: metadata.traceId,
+              metadata: {
                 purpose,
                 secretVersionId: connection.currentSecretVersionId,
-              }),
-            ],
-          );
+              },
+            })
+            .catch(rethrowQueryFailure);
           await appendAuditFact(client, {
             workspaceId,
             actorId,
@@ -124,7 +136,7 @@ export function createConnectionLookupPersistence(
           return Object.freeze({
             connection,
             secretVersionId: connection.currentSecretVersionId,
-            sealed: mapSealed(row),
+            sealed: row,
           });
         },
         options: input.signal === undefined ? {} : { signal: input.signal },

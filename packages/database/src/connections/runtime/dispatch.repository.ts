@@ -1,3 +1,8 @@
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workspaces } from '../../schema/foundation.js';
+import { connections, connectionEvents } from '../../schema/connections.js';
 import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import type { PoolClient } from 'pg';
 
@@ -17,29 +22,34 @@ export type ConnectionFence = Readonly<{
  * secret. Holds both rows until the transaction ends.
  */
 export async function isConnectionFenceCurrent(
-  client: Pick<PoolClient, 'query'>,
+  client: PoolClient,
   workspaceId: string,
   fence: ConnectionFence,
 ): Promise<boolean> {
-  const workspace = await client.query(
-    "select 1 from app.workspaces where id=$1 and status='active' for share",
-    [workspaceId],
-  );
-  if (workspace.rowCount !== 1) return false;
-  const connection = await client.query(
-    `select 1 from app.connections
-     where workspace_id=$1 and id=$2 and provider_key=$3 and auth_type=$4
-       and current_secret_version_id=$5 and status='active'
-     for share`,
-    [
-      workspaceId,
-      fence.connectionId,
-      fence.providerKey,
-      fence.authType,
-      fence.secretVersionId,
-    ],
-  );
-  return connection.rowCount === 1;
+  const db = drizzle(client);
+  const workspace = await db
+    .select({ id: workspaces.id })
+    .from(workspaces)
+    .where(and(eq(workspaces.id, workspaceId), eq(workspaces.status, 'active')))
+    .for('share')
+    .catch(rethrowQueryFailure);
+  if (workspace.length !== 1) return false;
+  const connection = await db
+    .select({ id: connections.id })
+    .from(connections)
+    .where(
+      and(
+        eq(connections.workspaceId, workspaceId),
+        eq(connections.id, fence.connectionId),
+        eq(connections.providerKey, fence.providerKey),
+        sql`${connections.authType}=${fence.authType}`,
+        eq(connections.currentSecretVersionId, fence.secretVersionId),
+        eq(connections.status, 'active'),
+      ),
+    )
+    .for('share')
+    .catch(rethrowQueryFailure);
+  return connection.length === 1;
 }
 
 /** Records that a worker read a connection's secret, and why. */
@@ -66,20 +76,20 @@ export async function recordCredentialAccess(
       secretVersionId: input.secretVersionId,
     },
   });
-  await client.query(
-    `insert into app.connection_events
-       (id, workspace_id, connection_id, event_type, actor_kind, actor_id,
-        trace_id, metadata)
-     values ($1, $2, $3, 'connection.credential_accessed', 'worker', $4, $5,
-             jsonb_build_object('purpose', $6::text, 'secretVersionId', $7::text))`,
-    [
-      generatePersistedId(),
-      input.workspaceId,
-      input.connectionId,
-      input.workerId,
-      input.traceId,
-      input.purpose,
-      input.secretVersionId,
-    ],
-  );
+  await drizzle(client)
+    .insert(connectionEvents)
+    .values({
+      id: generatePersistedId(),
+      workspaceId: input.workspaceId,
+      connectionId: input.connectionId,
+      eventType: 'connection.credential_accessed',
+      actorKind: 'worker',
+      actorId: input.workerId,
+      traceId: input.traceId,
+      metadata: {
+        purpose: input.purpose,
+        secretVersionId: input.secretVersionId,
+      },
+    })
+    .catch(rethrowQueryFailure);
 }
