@@ -1,8 +1,8 @@
-import { requireMoveAudienceReview } from '../../sharing/audience.js';
+import { requireMoveAudienceReview } from '../../sharing/audience.queries.js';
 
 import { FOLDER_LIMIT, FOLDER_DEPTH_LIMIT } from '../../limits.js';
 
-import { runOrganizationCommand } from '../../command.js';
+import { runOrganizationCommand } from '../../commands.repository.js';
 import { WorkflowFolderConflictError } from '../../errors.js';
 
 import type { createOrganizationSession } from '../../session.js';

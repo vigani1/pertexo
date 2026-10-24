@@ -1,6 +1,6 @@
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { readCommentMentionSource } from './mentions.queries.js';
-import { review, reviewRecords } from '../../authoring/reviews/eligibility.js';
+import { review, reviewRecords } from '../../authoring/reviews/eligibility.queries.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { workflows } from '../../schema/authoring/workflows.js';

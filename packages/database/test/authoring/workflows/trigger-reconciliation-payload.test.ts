@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { reconcileWorkflowTriggersPayload } from '../../../src/authoring/workflows/database.js';
+import { reconcileWorkflowTriggersPayload } from '../../../src/authoring/workflows/repository.js';
 
 describe('workflow trigger reconciliation payload', () => {
   it('emits the identifier-only trigger-reconciliation payload', () => {

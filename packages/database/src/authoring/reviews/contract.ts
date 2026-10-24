@@ -4,7 +4,7 @@ import type {
   PublicationReviewDetail,
   PublicationReviewDecision,
 } from '@pertexo/contracts';
-import type { WorkflowPublicationDependencies } from '../publication/publisher.js';
+import type { WorkflowPublicationDependencies } from '../publication/publisher.repository.js';
 
 export type ReviewScope = Readonly<{
   workspaceId: string;

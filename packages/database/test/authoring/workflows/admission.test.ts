@@ -6,11 +6,11 @@ import { Pool } from 'pg';
 import { InvalidWorkflowGraphError } from '@pertexo/workflow-model';
 import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/server';
 
-import { createWorkflowAuthoringReadStore } from '../../../src/authoring/workflows/reads.js';
-import { createWorkflowPublisher } from '../../../src/authoring/publication/publisher.js';
+import { createWorkflowAuthoringReadStore } from '../../../src/authoring/workflows/reads.queries.js';
+import { createWorkflowPublisher } from '../../../src/authoring/publication/publisher.repository.js';
 import { WorkflowRevisionConflictError } from '../../../src/authoring/workflows/errors.js';
 import { IdempotencyConflictError } from '../../../src/platform/idempotency/repository.js';
-import { createWorkflowAuthoringDatabase } from '../../../src/authoring/workflows/database.js';
+import { createWorkflowAuthoringDatabase } from '../../../src/authoring/workflows/repository.js';
 import { createDatabaseRuntime } from '../../../src/platform/pool/runtime.js';
 import { testExecutableCompiler } from '../../../src/authoring/test-executable-compiler.js';
 import {

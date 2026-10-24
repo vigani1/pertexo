@@ -5,7 +5,7 @@ import {
   completeCommand,
 } from '../../platform/idempotency/repository.js';
 import { appendAuditFact } from '../../governance/audit/events.repository.js';
-import { requireCollaborationAuthority } from './authority.js';
+import { requireCollaborationAuthority } from './authority.queries.js';
 import type { CollaborationCommand, CollaborationContext } from './contract.js';
 export function runCommentCommand(
   context: CollaborationContext,

@@ -10,7 +10,7 @@ import type { DataTableDefinition } from '../../../../data-tables/contract.js';
 
 import type { PromotionScope } from '../../contract.js';
 import type { PromotionGraphBudget } from '../graph.js';
-import type { PromotionSourceSet } from '../source.js';
+import type { PromotionSourceSet } from '../source.queries.js';
 
 export type ReviewedWorkflow = WorkflowPromotionPreview['workflows'][number];
 

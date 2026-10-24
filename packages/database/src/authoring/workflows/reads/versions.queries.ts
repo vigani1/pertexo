@@ -4,7 +4,7 @@ import { WorkflowNotFoundError } from '../errors.js';
 import {
   mapVersion,
   workflowVersionRowSelection,
-} from '../representation/rows.js';
+} from '../representation/records.queries.js';
 
 import type { ReadStore, WorkflowAuthoringReadContext } from './contract.js';
 import { uuidSchema, canReadWorkflow } from './authority.js';

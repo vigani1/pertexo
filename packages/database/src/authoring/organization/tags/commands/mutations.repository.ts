@@ -3,7 +3,7 @@ import type { PoolClient } from 'pg';
 import {
   runOrganizationCommand,
   type OrganizationScope,
-} from '../../command.js';
+} from '../../commands.repository.js';
 import { WorkflowTagConflictError } from '../../errors.js';
 
 import type { createOrganizationSession } from '../../session.js';

@@ -12,13 +12,13 @@ import {
 } from '../../platform/idempotency/repository.js';
 import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
-import { runOrganizationCommand } from './command.js';
+import { runOrganizationCommand } from './commands.repository.js';
 import { WorkflowOrganizationValidationError } from './errors.js';
 import {
   checkOrganizationReplay,
   organizeWorkflow,
   type OrganizationChange,
-} from './organize-workflow.js';
+} from './placement.repository.js';
 import {
   createOrganizationSession,
   type OrganizationRequestScope,

@@ -6,7 +6,7 @@ import {
   type GraphValidationResult,
 } from '@pertexo/workflow-model';
 import { EMPTY_DEFINITION_CATALOG } from '@pertexo/workflow-model/server';
-import { createWorkflowAuthoringReadStore } from '../../../src/authoring/workflows/reads.js';
+import { createWorkflowAuthoringReadStore } from '../../../src/authoring/workflows/reads.queries.js';
 import { testExecutableCompiler } from '../../../src/authoring/test-executable-compiler.js';
 
 const workspaceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';

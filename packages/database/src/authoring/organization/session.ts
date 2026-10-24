@@ -7,7 +7,7 @@ import {
   type DatabaseRuntime,
 } from '../../platform/pool/runtime.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
-import type { OrganizationScope } from './command.js';
+import type { OrganizationScope } from './commands.repository.js';
 
 export type OrganizationRequestScope = OrganizationScope &
   Readonly<{ signal?: AbortSignal }>;

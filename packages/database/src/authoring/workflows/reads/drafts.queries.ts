@@ -1,12 +1,12 @@
 import { dataTableReferenceIssues } from '../../../data-tables/columns/references.queries.js';
 
-import { mapDraft } from '../representation/rows.js';
+import { mapDraft } from '../representation/records.queries.js';
 
 import {
   sameWorkflowNotes,
   parseWorkflowGraphDraft,
 } from '@pertexo/workflow-model';
-import { admitWorkflowAuthoring } from '../admission.js';
+import { admitWorkflowAuthoring } from '../admission.queries.js';
 
 import { parseWorkflowGraphForPublish } from '@pertexo/workflow-model/server';
 import type { ReadStore, WorkflowAuthoringReadContext } from './contract.js';

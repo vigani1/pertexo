@@ -15,8 +15,8 @@ import {
   payload,
   type CaseTransaction,
 } from '../contract.js';
-import { quota, lockedCase } from '../records.js';
-import { mutate } from './receipt.js';
+import { quota, lockedCase } from '../metadata.queries.js';
+import { mutate } from './receipt.repository.js';
 
 export async function createInputCase(
   transact: CaseTransaction,

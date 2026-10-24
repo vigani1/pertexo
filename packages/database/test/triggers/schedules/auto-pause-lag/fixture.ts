@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool, type PoolClient } from 'pg';
 
-import { createWorkflowAuthoringDatabase } from '../../../../src/authoring/workflows/database.js';
+import { createWorkflowAuthoringDatabase } from '../../../../src/authoring/workflows/repository.js';
 import { parseDatabaseConfig } from '../../../../src/config.js';
 import { databaseSchema } from '../../../../src/schema.js';
 import {

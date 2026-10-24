@@ -5,7 +5,7 @@ import {
   type WorkflowDefinitionCatalog,
 } from '@pertexo/workflow-model/server';
 import type { DatabaseConfig } from '../../src/config.js';
-import { createWorkflowAuthoringDatabase } from '../../src/authoring/workflows/database.js';
+import { createWorkflowAuthoringDatabase } from '../../src/authoring/workflows/repository.js';
 import { testExecutableCompiler } from '../../src/authoring/test-executable-compiler.js';
 import type {
   WorkflowAuthoringDatabaseOptions,
