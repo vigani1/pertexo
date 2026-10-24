@@ -2,7 +2,7 @@ import type { Pool } from 'pg';
 import { expect } from 'vitest';
 import type { z } from 'zod';
 
-import type { httpEvidenceSchema} from './scope.js';
+import type { httpEvidenceSchema } from './scope.js';
 import { hash } from './scope.js';
 
 export async function verifyFailedStepRecovery(
