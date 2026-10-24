@@ -1,5 +1,10 @@
-import { sql } from 'drizzle-orm';
-import { bindResourcePredicate } from '../../tenant-access/resources/scope.queries.js';
+import { and, eq } from 'drizzle-orm';
+import {
+  workflowDrafts,
+  workflowVersions,
+  workflows,
+} from '../../schema/authoring/workflows.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import {
@@ -13,94 +18,54 @@ import type { PoolClient } from 'pg';
 import type { PublicationReview } from '@pertexo/contracts';
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
 import {
-  mapDraft,
-  mapVersion,
-  workflowVersionRowSelection,
+  projectDraft,
+  projectVersion,
+  draftProjection,
+  versionProjection,
 } from '../workflows/representation/records.queries.js';
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
 } from '../workflows/errors.js';
 import type { ReviewDependencies, ReviewScope } from './contract.js';
-import {
-  REVIEW_SOURCE_SQL,
-  reviewStateSql,
-  reviewDecisionAllowedSql,
-} from './eligibility.queries.js';
-
-interface ReviewRow {
-  draft_graph: unknown;
-  id: string;
-  workflow_id: string;
-  workflow_name: string;
-  requested_by: string;
-  requester_name: string;
-  draft_revision: number;
-  representation_tag: string;
-  note: string;
-  state: PublicationReview['status'];
-  created_at: Date;
-  expires_at: Date;
-  decided_by: string | null;
-  decider_name: string | null;
-  decided_at: Date | null;
-  comment: string | null;
-  published_version_id: string | null;
-  version_number: number | null;
-  can_decide: boolean;
-}
+import { review, reviewDetails } from './eligibility.queries.js';
+type ReviewRow = Awaited<ReturnType<typeof reviewDetails>>[number]['record'];
 export async function readReviewRow(
   client: PoolClient,
   input: ReviewScope & { reviewId: string },
 ): Promise<ReviewRow> {
-  const parameters: unknown[] = [
-    input.workspaceId,
-    input.reviewId,
-    input.actorId,
-  ];
-  const state = bindResourcePredicate(reviewStateSql, parameters);
-  const allowed = bindResourcePredicate(
-    reviewDecisionAllowedSql(sql`$3`, sql`actor.role`),
-    parameters,
-  );
-  const row = (
-    await client.query<ReviewRow>(
-      `select review.*,draft.graph_json draft_graph,workflow.name workflow_name,requester_user.display_name requester_name,
-    decider.display_name decider_name,version.version_number,(${state}) state,
-    ${allowed} can_decide
-    ${REVIEW_SOURCE_SQL}
-    left join app.users decider on decider.id=review.decided_by
-    left join app.workflow_versions version on version.workspace_id=review.workspace_id and version.id=review.published_version_id
-    join app.workspace_memberships actor on actor.workspace_id=review.workspace_id and actor.user_id=$3 and actor.status='active'
-    where review.workspace_id=$1 and review.id=$2`,
-      parameters,
+  const [selected] = await reviewDetails(drizzle(client), input.actorId)
+    .where(
+      and(
+        eq(review.workspaceId, input.workspaceId),
+        eq(review.id, input.reviewId),
+      ),
     )
-  ).rows[0];
+    .catch(rethrowQueryFailure);
+  const row = selected?.record;
   if (row === undefined)
     throw new WorkflowNotFoundError('Publication request is not visible');
   if (row.state === 'pending') {
     const requester = {
       workspaceId: input.workspaceId,
-      actorId: row.requested_by,
+      actorId: row.requestedBy,
     };
     const resources = await readFolderScope(client, requester);
     const canPublish = await workflowAccessible(client, resources, {
       workspaceId: input.workspaceId,
-      workflowId: row.workflow_id,
+      workflowId: row.workflowId,
       capability: 'workflow:publish',
     });
     const issues = canPublish
       ? await connectionUseIssues(
           { db: drizzle(client) },
           connectionScope(requester, resources.role, 'connection:use'),
-          workflowConnectionReferences(
-            parseWorkflowGraphDraft(row.draft_graph),
-          ),
+          workflowConnectionReferences(parseWorkflowGraphDraft(row.draftGraph)),
         )
       : [];
     if (!canPublish || issues.length > 0) {
       row.state = 'stale';
-      row.can_decide = false;
+      row.canDecide = false;
     }
   }
   return row;
@@ -108,22 +73,22 @@ export async function readReviewRow(
 export function projectReview(row: ReviewRow): PublicationReview {
   return {
     id: row.id,
-    workflowId: row.workflow_id,
-    workflowName: row.workflow_name,
-    requestedBy: row.requested_by,
-    requesterName: row.requester_name,
-    draftRevision: row.draft_revision,
+    workflowId: row.workflowId,
+    workflowName: row.workflowName,
+    requestedBy: row.requestedBy,
+    requesterName: row.requesterName,
+    draftRevision: row.draftRevision,
     note: row.note,
     status: row.state,
-    createdAt: row.created_at.toISOString(),
-    expiresAt: row.expires_at.toISOString(),
-    decidedBy: row.decided_by,
-    deciderName: row.decider_name,
-    decidedAt: row.decided_at?.toISOString() ?? null,
+    createdAt: row.createdAt.toISOString(),
+    expiresAt: row.expiresAt.toISOString(),
+    decidedBy: row.decidedBy,
+    deciderName: row.deciderName,
+    decidedAt: row.decidedAt?.toISOString() ?? null,
     comment: row.comment,
-    publishedVersionId: row.published_version_id,
-    versionNumber: row.version_number,
-    canDecide: row.can_decide,
+    publishedVersionId: row.publishedVersionId,
+    versionNumber: row.versionNumber,
+    canDecide: row.canDecide,
   };
 }
 export async function readReviewDraft(
@@ -139,15 +104,20 @@ export async function readReviewDraft(
     lock?: ('share' | 'update') | undefined;
   }>,
 ) {
-  const row = (
-    await client.query<Record<string, unknown>>(
-      `select * from app.workflow_drafts where workspace_id=$1 and workflow_id=$2 for ${lock}`,
-      [input.workspaceId, input.workflowId],
+  const [row] = await drizzle(client)
+    .select(draftProjection)
+    .from(workflowDrafts)
+    .where(
+      and(
+        eq(workflowDrafts.workspaceId, input.workspaceId),
+        eq(workflowDrafts.workflowId, input.workflowId),
+      ),
     )
-  ).rows[0];
+    .for(lock)
+    .catch(rethrowQueryFailure);
   if (row === undefined)
     throw new WorkflowNotFoundError('Workflow draft is not visible');
-  const draft = mapDraft(row, dependencies.catalogs.definitionCatalog);
+  const draft = projectDraft(row, dependencies.catalogs.definitionCatalog);
   const tag = workflowDraftRepresentationTag({
     workflowId: input.workflowId,
     revision: draft.revision,
@@ -167,15 +137,15 @@ async function readReviewedCandidate(
   let graph = null;
   if (row.state === 'pending') {
     const candidate = await readReviewDraft(client, dependencies, {
-      input: { ...input, workflowId: row.workflow_id },
+      input: { ...input, workflowId: row.workflowId },
       expectedTag: undefined,
       lock: 'share',
     });
-    if (candidate.tag === row.representation_tag)
+    if (candidate.tag === row.representationTag)
       graph = candidate.draft.graphJson;
     else {
       row.state = 'stale';
-      row.can_decide = false;
+      row.canDecide = false;
     }
   }
   return { row, graph };
@@ -201,20 +171,26 @@ export async function readReviewDetail(
   );
   if (graph === null)
     return { request: projectReview(row), graph: null, liveGraph: null };
-  const live = (
-    await client.query<Record<string, unknown>>(
-      `select ${workflowVersionRowSelection
-        .split(',')
-        .map((column) => `version.${column}`)
-        .join(',')} from app.workflow_versions version
-     join app.workflows workflow on workflow.workspace_id=version.workspace_id and workflow.published_version_id=version.id
-     where workflow.workspace_id=$1 and workflow.id=$2`,
-      [input.workspaceId, row.workflow_id],
+  const [live] = await drizzle(client)
+    .select(versionProjection)
+    .from(workflowVersions)
+    .innerJoin(
+      workflows,
+      and(
+        eq(workflows.workspaceId, workflowVersions.workspaceId),
+        eq(workflows.publishedVersionId, workflowVersions.id),
+      ),
     )
-  ).rows[0];
+    .where(
+      and(
+        eq(workflows.workspaceId, input.workspaceId),
+        eq(workflows.id, row.workflowId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
   return {
     request: projectReview(row),
     graph,
-    liveGraph: live === undefined ? null : mapVersion(live).graphJson,
+    liveGraph: live === undefined ? null : projectVersion(live).graphJson,
   };
 }
