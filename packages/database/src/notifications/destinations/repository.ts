@@ -22,16 +22,17 @@ import {
   claimNotificationCommand,
   completeNotificationCommand,
   destinationError,
-  type CommandMetadata,
-  type DestinationTransaction,
 } from './commands.repository.js';
+import type { CommandMetadata, DestinationTransaction } from './contract.js';
 import {
   decodeFailureNotificationDestinationReplay,
+  serializeFailureNotificationDestinationRecord,
+} from './replay.js';
+import {
   destinationRecords,
   readFailureNotificationDestination,
-  serializeFailureNotificationDestinationRecord,
-  type FailureNotificationDestinationRecord,
 } from './records.queries.js';
+import type { FailureNotificationDestinationRecord } from './contract.js';
 import {
   clearWorkflowFailureNotificationPolicy,
   readWorkflowFailureNotificationPolicy,
@@ -42,8 +43,6 @@ import type {
   DestinationConfig,
   FailureNotificationDestinationDatabase,
 } from './contract.js';
-export { FailureNotificationDestinationError } from './errors.js';
-export type { FailureNotificationDestinationRecord } from './records.queries.js';
 
 async function assertConnection(
   client: PoolClient,

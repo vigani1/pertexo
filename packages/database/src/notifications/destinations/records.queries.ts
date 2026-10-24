@@ -1,3 +1,4 @@
+import type { FailureNotificationDestinationRecord } from './contract.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
@@ -7,67 +8,15 @@ import {
 } from '../../schema/notifications.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import {
-  type FailureNotificationDestinationConfig,
-  FailureNotificationDestinationConfigSchema,
-} from '@pertexo/workflow-model';
+import type { FailureNotificationDestinationConfig } from '@pertexo/workflow-model';
 
 import { FailureNotificationDestinationError } from './errors.js';
-
-export type FailureNotificationDestinationRecord = Readonly<{
-  id: string;
-  workspaceId: string;
-  kind: 'slack' | 'email';
-  status: 'enabled' | 'disabled';
-  currentVersion: number;
-  config: FailureNotificationDestinationConfig;
-  createdAt: Date;
-  updatedAt: Date;
-}>;
-
-const destinationReplaySchema = z
-  .object({
-    id: z.uuid(),
-    workspaceId: z.uuid(),
-    kind: z.enum(['slack', 'email']),
-    status: z.enum(['enabled', 'disabled']),
-    currentVersion: z.number().int().positive(),
-    config: FailureNotificationDestinationConfigSchema,
-    createdAt: z.iso.datetime(),
-    updatedAt: z.iso.datetime(),
-  })
-  .strict()
-  .refine((record) => record.kind === record.config.kind, {
-    message: 'Destination kind does not match replayed configuration',
-    path: ['config', 'kind'],
-  });
 
 function destinationNotFound(): FailureNotificationDestinationError {
   return new FailureNotificationDestinationError(
     'not_found',
     'Destination is not visible',
   );
-}
-
-export function serializeFailureNotificationDestinationRecord(
-  record: FailureNotificationDestinationRecord,
-) {
-  return {
-    ...record,
-    createdAt: record.createdAt.toISOString(),
-    updatedAt: record.updatedAt.toISOString(),
-  };
-}
-
-export function decodeFailureNotificationDestinationReplay(
-  value: unknown,
-): FailureNotificationDestinationRecord {
-  const parsed = destinationReplaySchema.parse(value);
-  return Object.freeze({
-    ...parsed,
-    createdAt: new Date(parsed.createdAt),
-    updatedAt: new Date(parsed.updatedAt),
-  });
 }
 
 /** The FK and strict JSON check correlate the canonical kind with its config. */

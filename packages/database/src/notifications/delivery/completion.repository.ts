@@ -8,9 +8,9 @@ import { FailureNotificationDeliveryResultSchema } from '@pertexo/workflow-model
 import { FailureNotificationStateError } from '../errors.js';
 import {
   auditFailureNotification,
-  failureNotificationIdentitySchema,
   insertFailureNotificationDeliveryOutbox,
 } from './evidence.repository.js';
+import { failureNotificationIdentitySchema } from './input-validation.js';
 import type { FailureNotificationStore } from '../contract.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import {

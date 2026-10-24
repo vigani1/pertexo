@@ -1,16 +1,12 @@
-export {
-  createFailureNotificationDestinationDatabase,
-  FailureNotificationDestinationError,
-} from './destinations/repository.js';
+export { createFailureNotificationDestinationDatabase } from './destinations/repository.js';
+export { FailureNotificationDestinationError } from './destinations/errors.js';
 export type { FailureNotificationDestinationDatabase } from './destinations/contract.js';
-export {
-  createFailureNotificationStore,
-  FailureNotificationStateError,
-} from './repository.js';
+export { createFailureNotificationStore } from './repository.js';
+export { FailureNotificationStateError } from './errors.js';
 export type {
   FailureNotificationResolvedDestination,
   FailureNotificationStore,
-} from './repository.js';
+} from './contract.js';
 
 export { createWorkspaceInboxDatabase } from '../inbox/threads/reader.repository.js';
 export type {

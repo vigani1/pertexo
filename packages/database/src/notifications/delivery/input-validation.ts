@@ -1,4 +1,8 @@
-import { isIntegerInRange } from '../../platform/persisted-primitives.js';
+import { z } from 'zod';
+import {
+  isIntegerInRange,
+  sha256HexSchema,
+} from '../../platform/persisted-primitives.js';
 import { FailureNotificationStateError } from '../errors.js';
 
 const MAX_DELIVERY_ATTEMPTS = 10;
@@ -39,3 +43,6 @@ export function parseFailureNotificationRetryDelaySeconds(
     throw new FailureNotificationStateError('Invalid retry delay');
   return value;
 }
+
+export const failureNotificationIdentitySchema = z.uuid();
+export const failureNotificationChecksumSchema = sha256HexSchema;

@@ -1,3 +1,8 @@
+import type {
+  CommandMetadata,
+  IdempotentCommandMetadata,
+  DestinationAuditTarget,
+} from './contract.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { auditEvents } from '../../schema/foundation.js';
@@ -24,29 +29,6 @@ import { sha256HexSchema as digestSchema } from '../../platform/persisted-primit
  * Transaction, idempotency, authorization and audit steps shared by the
  * destination commands and the workflow failure-notification policy.
  */
-
-export type CommandMetadata = Readonly<{
-  workspaceId: string;
-  actorId: string;
-  requestId?: string;
-  traceId?: string;
-}>;
-
-export type IdempotentCommandMetadata = CommandMetadata &
-  Readonly<{
-    idempotencyKey: string;
-    requestHash: string;
-  }>;
-
-type DestinationAuditTarget = Readonly<{
-  id: string;
-  type: 'failure_notification_destination' | 'workflow';
-}>;
-
-export type DestinationTransaction = <T>(
-  input: CommandMetadata,
-  work: (client: PoolClient) => Promise<T>,
-) => Promise<T>;
 
 export function destinationError(
   code: FailureNotificationDestinationErrorCode,

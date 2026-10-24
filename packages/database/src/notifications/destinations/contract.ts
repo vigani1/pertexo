@@ -1,10 +1,5 @@
+import type { PoolClient } from 'pg';
 import type { FailureNotificationDestinationConfig } from '@pertexo/workflow-model';
-
-import type {
-  CommandMetadata,
-  IdempotentCommandMetadata,
-} from './commands.repository.js';
-import type { FailureNotificationDestinationRecord } from './records.queries.js';
 
 export type DestinationConfig = FailureNotificationDestinationConfig;
 
@@ -56,3 +51,37 @@ export interface FailureNotificationDestinationDatabase {
 export type StoredDestinationConfig =
   | Omit<Extract<DestinationConfig, { kind: 'email' }>, 'kind'>
   | Omit<Extract<DestinationConfig, { kind: 'slack' }>, 'kind'>;
+
+export type FailureNotificationDestinationRecord = Readonly<{
+  id: string;
+  workspaceId: string;
+  kind: 'slack' | 'email';
+  status: 'enabled' | 'disabled';
+  currentVersion: number;
+  config: FailureNotificationDestinationConfig;
+  createdAt: Date;
+  updatedAt: Date;
+}>;
+
+export type CommandMetadata = Readonly<{
+  workspaceId: string;
+  actorId: string;
+  requestId?: string;
+  traceId?: string;
+}>;
+
+export type IdempotentCommandMetadata = CommandMetadata &
+  Readonly<{
+    idempotencyKey: string;
+    requestHash: string;
+  }>;
+
+export type DestinationAuditTarget = Readonly<{
+  id: string;
+  type: 'failure_notification_destination' | 'workflow';
+}>;
+
+export type DestinationTransaction = <T>(
+  input: CommandMetadata,
+  work: (client: PoolClient) => Promise<T>,
+) => Promise<T>;

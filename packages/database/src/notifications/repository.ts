@@ -23,19 +23,11 @@ import { createFailureNotificationDestinationStore } from './destinations/dispat
 import { createFailureNotificationCompletionStore } from './delivery/completion.repository.js';
 import { parseFailureNotificationMaximumAttempts } from './delivery/input-validation.js';
 import type { FailureNotificationStore } from './contract.js';
-export type {
-  FailureNotificationClaimResult,
-  FailureNotificationDelivery,
-  FailureNotificationResolvedDestination,
-  FailureNotificationStore,
-} from './contract.js';
+import { auditFailureNotification as audit } from './delivery/evidence.repository.js';
 import {
-  auditFailureNotification as audit,
   failureNotificationChecksumSchema as checksumSchema,
   failureNotificationIdentitySchema as identitySchema,
-} from './delivery/evidence.repository.js';
-
-export { FailureNotificationStateError } from './errors.js';
+} from './delivery/input-validation.js';
 
 type FailureNotificationTransaction = Readonly<{
   pool: Pool;
