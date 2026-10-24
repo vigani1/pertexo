@@ -20,31 +20,13 @@ export async function resolveRunResult(
   evaluator?: ExpressionEvaluator,
 ): Promise<CallableResultDecision> {
   const source = callable.result;
-  const inputs = await state.readCompletionValues(
-    source.kind === 'node_output'
-      ? [source.nodeId]
-      : source.kind === 'expression'
-        ? undefined
-        : [],
-  );
+  const inputs = await state.readCompletionValues(resultOutputIds(source));
   signal.throwIfAborted();
   const groups = new Map<string, typeof inputs.outputs>();
   for (const output of inputs.outputs)
     groups.set(output.nodeId, [...(groups.get(output.nodeId) ?? []), output]);
-  if (source.kind === 'node_output') {
-    const outputs = groups.get(source.nodeId) ?? [];
-    if (outputs.length === 0)
-      return { kind: 'invalid', reasonCode: 'callable_result_missing' };
-    if (outputs.length !== 1)
-      return { kind: 'invalid', reasonCode: 'callable_result_ambiguous' };
-    if (outputs[0]?.value === undefined)
-      return { kind: 'invalid', reasonCode: 'callable_result_invalid' };
-  }
-  if (
-    (source.kind === 'run_input' || source.kind === 'expression') &&
-    inputs.runInput === undefined
-  )
-    return { kind: 'invalid', reasonCode: 'callable_result_missing' };
+  const invalidInputs = validateResultInputs(source, inputs, groups);
+  if (invalidInputs !== undefined) return invalidInputs;
   const nodeOutputs = Object.fromEntries(
     [...groups.entries()].flatMap(([nodeId, outputs]) =>
       outputs.length === 1 && outputs[0]?.value !== undefined
@@ -66,17 +48,7 @@ export async function resolveRunResult(
   );
   signal.throwIfAborted();
   if (resolution.kind !== 'value')
-    return {
-      kind: 'invalid',
-      reasonCode:
-        resolution.kind === 'error' &&
-        (resolution.code === 'variable_missing' ||
-          resolution.expression?.code === 'variable_missing')
-          ? 'callable_result_variable_missing'
-          : resolution.kind === 'missing'
-            ? 'callable_result_missing'
-            : 'callable_result_invalid',
-    };
+    return { kind: 'invalid', reasonCode: resultResolutionFailure(resolution) };
   let prepared: ReturnType<typeof prepareStoredExecutionValue>;
   try {
     prepared = prepareStoredExecutionValue({
@@ -99,4 +71,50 @@ export async function resolveRunResult(
   )
     return { kind: 'invalid', reasonCode: 'callable_result_invalid' };
   return { kind: 'valid', value: prepared.value.value };
+}
+
+type CompletionValues = Awaited<
+  ReturnType<RunAdvanceState['readCompletionValues']>
+>;
+function resultOutputIds(
+  source: CallableDeclaration['result'],
+): readonly string[] | undefined {
+  if (source.kind === 'node_output') return [source.nodeId];
+  if (source.kind === 'expression') return undefined;
+  return [];
+}
+function validateResultInputs(
+  source: CallableDeclaration['result'],
+  inputs: CompletionValues,
+  groups: ReadonlyMap<string, CompletionValues['outputs']>,
+): Extract<CallableResultDecision, { kind: 'invalid' }> | undefined {
+  if (source.kind === 'node_output') {
+    const outputs = groups.get(source.nodeId) ?? [];
+    if (outputs.length === 0)
+      return { kind: 'invalid', reasonCode: 'callable_result_missing' };
+    if (outputs.length !== 1)
+      return { kind: 'invalid', reasonCode: 'callable_result_ambiguous' };
+    if (outputs[0]?.value === undefined)
+      return { kind: 'invalid', reasonCode: 'callable_result_invalid' };
+  }
+  if (
+    (source.kind === 'run_input' || source.kind === 'expression') &&
+    inputs.runInput === undefined
+  )
+    return { kind: 'invalid', reasonCode: 'callable_result_missing' };
+  return undefined;
+}
+function resultResolutionFailure(
+  resolution: Exclude<
+    Awaited<ReturnType<typeof resolveValueSource>>,
+    { kind: 'value' }
+  >,
+): Extract<CallableResultDecision, { kind: 'invalid' }>['reasonCode'] {
+  const variableMissing =
+    resolution.kind === 'error' &&
+    (resolution.code === 'variable_missing' ||
+      resolution.expression?.code === 'variable_missing');
+  if (variableMissing) return 'callable_result_variable_missing';
+  if (resolution.kind === 'missing') return 'callable_result_missing';
+  return 'callable_result_invalid';
 }
