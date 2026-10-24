@@ -1,6 +1,6 @@
 import { it, expect } from 'vitest';
 
-import { createOperatorCommandDatabase } from '../../../../../src/operator/commands.js';
+import { createOperatorCommandDatabase } from '../../../../../src/operator/repository.js';
 
 import {
   apiBaseUrl,

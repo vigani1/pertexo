@@ -47,7 +47,7 @@ import {
   statusSchema,
   resultSchema,
 } from './contract.js';
-import { commandRecord } from './records.js';
+import { commandRecord } from './commands.queries.js';
 import { requestFingerprint } from './fingerprint.js';
 
 export {

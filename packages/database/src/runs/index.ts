@@ -55,9 +55,9 @@ export {
   createOperatorRunReplayStore,
   OperatorRunReplayMismatchError,
   OperatorRunReplayNotExecutableError,
-} from '../operator/run-replay.js';
-export type { OperatorRunReplayStore } from '../operator/run-replay.js';
-export { createOperatorCommandDatabase } from '../operator/commands.js';
+} from '../operator/replay/repository.js';
+export type { OperatorRunReplayStore } from '../operator/replay/repository.js';
+export { createOperatorCommandDatabase } from '../operator/repository.js';
 export type {
   GenericOperatorCommandResult,
   OperatorCommandDatabase,
@@ -65,7 +65,7 @@ export type {
   OperatorCommandResult,
   RedispatchFailedOutboxInput,
   ReplayOperatorRunInput,
-} from '../operator/commands.js';
+} from '../operator/repository.js';
 
 export {
   ARTIFACT_UPLOAD_PENDING_MS,
