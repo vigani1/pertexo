@@ -149,9 +149,17 @@ export type {
   PublishedWorkflow,
   ReadPublishedWorkflowForExecutionInput,
 } from './runs/queries/execution/published.js';
-export {createOutboxDispatcherDatabase} from './outbox/dispatcher/repository.js';
-export type {ClaimOutboxBatchInput, ClaimOutboxBatchResult} from './outbox/dispatcher/contract.js';
-export type {LeasedOutboxEvent, OutboxBacklogSnapshot, OutboxDispatcherDatabase, ReleaseOutboxResult} from './outbox/dispatcher/contract.js';
+export { createOutboxDispatcherDatabase } from './outbox/dispatcher/repository.js';
+export type {
+  ClaimOutboxBatchInput,
+  ClaimOutboxBatchResult,
+} from './outbox/dispatcher/contract.js';
+export type {
+  LeasedOutboxEvent,
+  OutboxBacklogSnapshot,
+  OutboxDispatcherDatabase,
+  ReleaseOutboxResult,
+} from './outbox/dispatcher/contract.js';
 export {
   consumeInboxMessage,
   InboxChecksumMismatchError,
@@ -176,7 +184,10 @@ export {
   PREVIEW_RETENTION_MAX_MS,
   PREVIEW_STATUS,
 } from './previews/repository.js';
-export type { InsertedOutboxEvent, OutboxEventInput } from './outbox/events.repository.js';
+export type {
+  InsertedOutboxEvent,
+  OutboxEventInput,
+} from './outbox/events.repository.js';
 export {
   createNodeAttemptRunStore,
   NodeAttemptConnectionFenceError,

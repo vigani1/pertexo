@@ -4,7 +4,7 @@ import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
 } from '../../src/outbox/events.repository.js';
-import {createOutboxDispatcherDatabase} from '../../src/outbox/dispatcher/repository.js';
+import { createOutboxDispatcherDatabase } from '../../src/outbox/dispatcher/repository.js';
 import { parseDatabaseConfig } from '../../src/config.js';
 
 const checksum = 'a'.repeat(64);
