@@ -109,7 +109,6 @@ export function validateBodyDraft(
       knownBytes: 0,
       unknownSize: false,
     };
-  const parts: Record<string, PartErrors> = {};
   const metadata = httpMultipartConfigSchema.safeParse({
     parts: draft.parts.map(
       ({ inputKey, name, kind, filename, contentType }) => ({
@@ -121,25 +120,7 @@ export function validateBodyDraft(
       }),
     ),
   });
-  if (!metadata.success)
-    for (const issue of metadata.error.issues) {
-      const index = issue.path[1];
-      const field = issue.path[2];
-      const part = typeof index === 'number' ? draft.parts[index] : undefined;
-      const editablePartMetadata =
-        part !== undefined &&
-        (field === 'name' || field === 'filename' || field === 'contentType');
-      if (editablePartMetadata)
-        parts[part.inputKey] = {
-          ...parts[part.inputKey],
-          [field]:
-            field === 'name'
-              ? 'Use a field name up to 128 UTF-8 bytes without control characters.'
-              : field === 'filename'
-                ? 'Use a filename up to 255 UTF-8 bytes, without paths or control characters.'
-                : 'Use a MIME type such as application/pdf, without line breaks.',
-        };
-    }
+  const parts = metadataErrors(draft.parts, metadata);
   const mappings = validateInputMappingRows(
     draft.parts.map((part) => part.source),
     graph,
@@ -268,4 +249,33 @@ export function workflowPlaceholderIssues(
       ...nested,
     ];
   });
+}
+
+const METADATA_ERRORS = {
+  name: 'Use a field name up to 128 UTF-8 bytes without control characters.',
+  filename:
+    'Use a filename up to 255 UTF-8 bytes, without paths or control characters.',
+  contentType: 'Use a MIME type such as application/pdf, without line breaks.',
+};
+
+function metadataErrors(
+  drafts: readonly FormPartDraft[],
+  metadata: ReturnType<typeof httpMultipartConfigSchema.safeParse>,
+): Record<string, PartErrors> {
+  const errors: Record<string, PartErrors> = {};
+  if (!metadata.success)
+    for (const issue of metadata.error.issues) {
+      const index = issue.path[1];
+      const field = issue.path[2];
+      const part = typeof index === 'number' ? drafts[index] : undefined;
+      const editablePartMetadata =
+        part !== undefined &&
+        (field === 'name' || field === 'filename' || field === 'contentType');
+      if (editablePartMetadata)
+        errors[part.inputKey] = {
+          ...errors[part.inputKey],
+          [field]: METADATA_ERRORS[field],
+        };
+    }
+  return errors;
 }

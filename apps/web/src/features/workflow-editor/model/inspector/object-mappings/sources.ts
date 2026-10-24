@@ -48,6 +48,13 @@ export function sourceFromExpression(
   if (!isRecord(ast)) return undefined;
   const steps: unknown[] =
     ast.type === 'path' && Array.isArray(ast.steps) ? ast.steps : [ast];
+  const source = sourceFromSteps(steps);
+  // More elaborate paths, predicates, blocks and comments remain expressions.
+  return source !== undefined && valueExpression(source) === expression
+    ? source
+    : undefined;
+}
+function sourceFromSteps(steps: readonly unknown[]): ValueSource | undefined {
   const root = steps[0],
     second = steps[1];
   if (!isRecord(root)) return undefined;
@@ -76,11 +83,9 @@ export function sourceFromExpression(
         source = { kind: 'node_output', nodeId: second.value, path };
     }
   }
-  // More elaborate paths, predicates, blocks and comments remain expressions.
-  return source !== undefined && valueExpression(source) === expression
-    ? source
-    : undefined;
+  return source;
 }
+
 function readPath(steps: readonly unknown[]): string | undefined {
   let path = '$';
   for (const [index, step] of steps.entries()) {

@@ -280,19 +280,11 @@ function projectNode({
   const definition = projection.definitions.get(
     definitionIdentity(node.definition.key, node.definition.version),
   );
-  const shown =
-    parent === undefined
-      ? node.position
-      : fromBodyPosition(parent.frame.positions.get(node.id) ?? node.position);
-  const measured = decorations.measuredSizes?.get(node.id);
+
   return {
     id: node.id,
     type: isForEach(node) ? 'forEach' : 'workflow',
-    position: decorations.dragPositions.get(node.id) ?? shown,
-    ...(measured === undefined ? {} : { measured }),
-    ...(parent === undefined
-      ? {}
-      : { parentId: parent.id, extent: BODY_EXTENT }),
+    ...nodeGeometry(node, parent, decorations),
     selected: projection.selectedNodes.has(node.id),
     data: {
       label: node.label,
@@ -383,4 +375,23 @@ export function loopSummary(
 /** A step's label, or the human name of its type when it has none. */
 export function stepTitle(node: Pick<WorkflowNode, 'label' | 'definition'>) {
   return node.label ?? describeStep(node.definition.key).name;
+}
+
+function nodeGeometry(
+  node: WorkflowNode,
+  parent: Parent | undefined,
+  decorations: CanvasDecorations,
+) {
+  const shown =
+    parent === undefined
+      ? node.position
+      : fromBodyPosition(parent.frame.positions.get(node.id) ?? node.position);
+  const measured = decorations.measuredSizes?.get(node.id);
+  return {
+    position: decorations.dragPositions.get(node.id) ?? shown,
+    ...(measured === undefined ? {} : { measured }),
+    ...(parent === undefined
+      ? {}
+      : { parentId: parent.id, extent: BODY_EXTENT }),
+  };
 }
