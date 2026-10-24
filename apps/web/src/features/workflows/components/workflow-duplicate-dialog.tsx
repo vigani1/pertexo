@@ -190,15 +190,22 @@ function DuplicateSourceReview({
     <p className="text-sm text-muted-foreground">
       {state.kind === 'denied' ? null : (
         <>
-          {source.kind === 'version'
-            ? `Copies v${String(versionNumber ?? '?')} exactly as it was published.`
-            : state.draft === undefined
-              ? 'Reading the saved draft…'
-              : `Copies the draft as last saved, revision ${String(state.draft.revision)}.`}{' '}
-          Edits that aren’t saved yet stay out. The copy uses the same
-          connections, and its run history starts empty.
+          {duplicateSourceLabel(source, versionNumber, state.draft)} Edits that
+          aren’t saved yet stay out. The copy uses the same connections, and its
+          run history starts empty.
         </>
       )}
     </p>
   );
+}
+
+function duplicateSourceLabel(
+  source: WorkflowDuplicateRequest['source'],
+  versionNumber: number | undefined,
+  draft: Readonly<{ revision: number }> | undefined,
+) {
+  if (source.kind === 'version')
+    return `Copies v${String(versionNumber ?? '?')} exactly as it was published.`;
+  if (draft === undefined) return 'Reading the saved draft…';
+  return `Copies the draft as last saved, revision ${String(draft.revision)}.`;
 }

@@ -133,15 +133,7 @@ export function useNodeTest({
       nodeId,
       expectedRevision: revision,
       expectedSampleId,
-      source:
-        expectedSampleId !== null
-          ? { kind: 'manual', value: {} }
-          : input.priorPreviewId === undefined
-            ? {
-                kind: 'manual',
-                value: parseCommandJson(input.text, INPUT_ERROR),
-              }
-            : { kind: 'prior_preview', previewRunId: input.priorPreviewId },
+      source: readTestSource(expectedSampleId, input),
     };
   }
 
@@ -247,4 +239,14 @@ function observationErrorMessage(error: unknown): string {
   if (isUnconfirmedCommand(error))
     return 'The test was accepted, but its status couldn’t be refreshed. Check its status again.';
   return commandErrorMessage(error, 'checking the test status');
+}
+
+function readTestSource(
+  sampleId: string | null,
+  input: Readonly<{ text: string; priorPreviewId?: string }>,
+): NodeTestInputSource {
+  if (sampleId !== null) return { kind: 'manual', value: {} };
+  if (input.priorPreviewId !== undefined)
+    return { kind: 'prior_preview', previewRunId: input.priorPreviewId };
+  return { kind: 'manual', value: parseCommandJson(input.text, INPUT_ERROR) };
 }

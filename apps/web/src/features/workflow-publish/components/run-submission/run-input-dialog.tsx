@@ -72,11 +72,7 @@ function RunVersionNotice({
   if (expectedVersion === undefined) return null;
   return (
     <p className="text-sm text-muted-foreground">
-      {recovering
-        ? 'Retrying uses the version the first attempt was sent to, never a newer one.'
-        : stale
-          ? `${loadedName === undefined ? 'This case' : `“${loadedName}”`} was saved for an older version. Create or load a case for the version that’s live now.`
-          : `Runs the version that’s live now${loadedName === undefined ? '' : `, with “${loadedName}”`}. If a newer version is published first, nothing starts.`}
+      {runVersionDescription({ recovering, stale, loadedName })}
     </p>
   );
 }
@@ -394,4 +390,19 @@ function RunPublicationReview({
       ) : null}
     </>
   );
+}
+
+function runVersionDescription(
+  input: Readonly<{
+    recovering: boolean;
+    stale: boolean;
+    loadedName: string | undefined;
+  }>,
+) {
+  const { recovering, stale, loadedName } = input;
+  if (recovering)
+    return 'Retrying uses the version the first attempt was sent to, never a newer one.';
+  if (stale)
+    return `${loadedName === undefined ? 'This case' : `“${loadedName}”`} was saved for an older version. Create or load a case for the version that’s live now.`;
+  return `Runs the version that’s live now${loadedName === undefined ? '' : `, with “${loadedName}”`}. If a newer version is published first, nothing starts.`;
 }
