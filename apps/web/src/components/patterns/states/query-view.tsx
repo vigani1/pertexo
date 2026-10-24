@@ -31,6 +31,7 @@ export function QueryView<Data>({
   query,
   resource,
   loading,
+  error,
   isEmpty,
   empty,
   failure,
@@ -41,6 +42,13 @@ export function QueryView<Data>({
   resource: string;
   /** Defaults to two spooling lines announced as "Loading <resource>". */
   loading?: ReactNode;
+  /**
+   * Replaces the failure notice shown before any data arrived, for a page
+   * with its own designed failure state.
+   */
+  error?: (
+    failed: Readonly<{ error: unknown; retrying: boolean; retry: () => void }>,
+  ) => ReactNode;
   isEmpty?: (data: Data) => boolean;
   empty?: ReactNode;
   /**
@@ -66,6 +74,12 @@ export function QueryView<Data>({
         )
       );
     if (!query.isError) return null;
+    if (error !== undefined)
+      return error({
+        error: query.error,
+        retrying: query.isFetching,
+        retry,
+      });
     return (
       <Notice
         tone="destructive"

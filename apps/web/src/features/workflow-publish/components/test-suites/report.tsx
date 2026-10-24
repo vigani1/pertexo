@@ -1,8 +1,9 @@
 import { canonicalJson } from '@pertexo/workflow-model';
 import { useQuery } from '@tanstack/react-query';
-import { Button } from '@/components/ui/button';
+import { QueryView } from '@/components/patterns/states/query-view';
 import { Notice } from '@/components/ui/notice';
 import type { WorkflowTestScope } from '../../data/workflow-tests/api';
+import type { getCaseReport } from '../../data/test-suites/api';
 import { suiteReportQueryOptions } from '../../data/test-suites/queries';
 export function TestCaseReport({
   scope,
@@ -10,18 +11,17 @@ export function TestCaseReport({
   ordinal,
 }: Readonly<{ scope: WorkflowTestScope; suiteId: string; ordinal: number }>) {
   const query = useQuery(suiteReportQueryOptions(scope, suiteId, ordinal));
-  if (query.isPending)
-    return <p role="status">Loading expected and actual values…</p>;
-  if (query.isError)
-    return (
-      <Notice tone="destructive">
-        This report couldn’t be loaded.{' '}
-        <Button variant="ghost" onClick={() => void query.refetch()}>
-          Retry
-        </Button>
-      </Notice>
-    );
-  const report = query.data.report;
+  return (
+    <QueryView query={query} resource="This report">
+      {(data) => <CaseReport found={data} />}
+    </QueryView>
+  );
+}
+
+type CaseReportResponse = Awaited<ReturnType<typeof getCaseReport>>;
+
+function CaseReport({ found }: Readonly<{ found: CaseReportResponse }>) {
+  const report = found.report;
   if (report === null)
     return <p className="text-sm">No report is available for this case.</p>;
   return (
@@ -42,7 +42,7 @@ export function TestCaseReport({
             {item.actual.matched ? 'Passed' : 'Failed'} ·{' '}
             {item.assertion.source.kind === 'final'
               ? 'Final output'
-              : `Step ${query.data.stepLabels[item.assertion.source.nodeId] ?? item.assertion.source.nodeId}`}{' '}
+              : `Step ${found.stepLabels[item.assertion.source.nodeId] ?? item.assertion.source.nodeId}`}{' '}
             · {item.assertion.path} · {item.assertion.operator}
           </p>
           <p className="mt-2 text-xs text-muted-foreground">Expected</p>

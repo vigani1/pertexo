@@ -1,4 +1,5 @@
 import type { WorkflowTestSuiteDetail } from '@pertexo/contracts';
+import { QueryView } from '@/components/patterns/states/query-view';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
@@ -42,47 +43,40 @@ export function TestSuiteHistory({
   return (
     <section aria-label="Test suites" className="space-y-3 border-t pt-3">
       <h3 className="text-sm font-medium">Suites</h3>
-      {suites.history.isError ? (
-        <Notice tone="destructive">
-          Suites couldn’t be loaded.{' '}
-          <Button variant="ghost" onClick={() => void suites.history.refetch()}>
-            Retry
-          </Button>
-        </Notice>
-      ) : choices.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No suite runs yet. Saved input cases form your suite.
-        </p>
-      ) : (
-        <Select
-          items={choices}
-          value={suites.activeId ?? null}
-          onValueChange={(value) => {
-            if (value !== null) {
-              suites.select(value);
-            }
-          }}
-        >
-          <SelectTrigger aria-label="Retained test suite">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {choices.map((item) => (
-              <SelectItem key={item.value} value={item.value}>
-                {item.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
-      {suites.detail.isError ? (
-        <Notice tone="destructive">
-          This suite couldn’t be read.{' '}
-          <Button variant="ghost" onClick={() => void suites.detail.refetch()}>
-            Retry
-          </Button>
-        </Notice>
-      ) : null}
+      <QueryView
+        query={suites.history}
+        resource="Suites"
+        isEmpty={(history) => history.items.length === 0}
+        empty={
+          <p className="text-sm text-muted-foreground">
+            No suite runs yet. Saved input cases form your suite.
+          </p>
+        }
+      >
+        {() => (
+          <Select
+            items={choices}
+            value={suites.activeId ?? null}
+            onValueChange={(value) => {
+              if (value !== null) {
+                suites.select(value);
+              }
+            }}
+          >
+            <SelectTrigger aria-label="Retained test suite">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {choices.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </QueryView>
+      <QueryView query={suites.detail} resource="This suite" loading={null} />
       {detail === undefined ? null : (
         <SuiteResult
           key={detail.suiteId}

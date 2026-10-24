@@ -1,8 +1,10 @@
 import type {
   AccessibleWorkspace,
   WorkflowStepHealth,
+  WorkflowStepHealthResponse,
 } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
+import { QueryView } from '@/components/patterns/states/query-view';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import { StatusGlyph } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
@@ -56,15 +58,25 @@ export function StepHealthList({
         Your role can’t see runs, so step health is hidden.
       </p>
     );
-  if (health.isError)
-    return (
-      <p className="text-sm text-muted-foreground">
-        Step health couldn’t be loaded. Try again in a moment.
-      </p>
-    );
-  if (health.data === undefined)
-    return <SkeletonRows label="Loading step health" />;
-  const { runsConsidered, oldestRunAt } = health.data;
+  return (
+    <QueryView
+      query={health}
+      resource="Step health"
+      loading={<SkeletonRows label="Loading step health" />}
+    >
+      {(data) => <StepHealthTable health={data} labelOf={labelOf} />}
+    </QueryView>
+  );
+}
+
+function StepHealthTable({
+  health,
+  labelOf,
+}: Readonly<{
+  health: WorkflowStepHealthResponse;
+  labelOf: (nodeId: string) => string | undefined;
+}>) {
+  const { runsConsidered, oldestRunAt } = health;
   if (runsConsidered === 0)
     return (
       <p className="text-sm text-muted-foreground">
@@ -72,7 +84,7 @@ export function StepHealthList({
         here.
       </p>
     );
-  const items = [...health.data.items].sort(worstFirst);
+  const items = [...health.items].sort(worstFirst);
   return (
     <div className="flex flex-col gap-2">
       <p className="font-mono text-xs text-subtle-foreground">

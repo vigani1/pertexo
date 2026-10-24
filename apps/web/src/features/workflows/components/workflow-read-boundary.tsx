@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
+import { isAccessLost } from '@/lib/api/error-copy';
 import {
   workflowKeys,
   workflowSummaryQueryOptions,
@@ -26,10 +27,7 @@ export function WorkflowReadBoundary({
   const own = useQuery(
     workflowSummaryQueryOptions(apiClient, userId, workspaceId, workflowId),
   );
-  const denied =
-    own.isError &&
-    isApiError(own.error) &&
-    [401, 403, 404].includes(own.error.status ?? 0);
+  const denied = own.isError && isAccessLost(own.error);
   useEffect(
     () =>
       cache.getMutationCache().subscribe((event) => {

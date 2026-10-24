@@ -1,3 +1,4 @@
+import { QueryView } from '@/components/patterns/states/query-view';
 import {
   webhookListenerState,
   WEBHOOK_LISTENER_STATUS,
@@ -111,18 +112,7 @@ export function WebhookTestEventPanel({
       {test.error !== undefined ? (
         <Notice tone="destructive">{test.error}</Notice>
       ) : null}
-      {query.isError ? (
-        <Notice tone="destructive">
-          The listener could not be checked.
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => void query.refetch()}
-          >
-            Check again
-          </Button>
-        </Notice>
-      ) : null}
+      <QueryView query={query} resource="The listener" loading={null} />
     </section>
   );
 }

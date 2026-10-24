@@ -1,3 +1,4 @@
+import { QueryView } from '@/components/patterns/states/query-view';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type {
@@ -47,37 +48,24 @@ export function DirectoryAdoptionDialog({
           to the organization directory. The recovery owner stays manual.
         </DialogDescription>
         <div className="mt-5 space-y-4">
-          {preview.isPending ? (
-            <p role="status">Loading membership review…</p>
-          ) : preview.isError ? (
-            <Notice
-              tone="warning"
-              action={
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => void preview.refetch()}
-                >
-                  Retry review
-                </Button>
-              }
-            >
-              This membership could not be reviewed.
-            </Notice>
-          ) : preview.data.eligible ? (
-            <AdoptionReview
-              command={command}
-              preview={preview.data}
-              onClose={onClose}
-            />
-          ) : (
-            <>
-              <Notice>{preview.data.reason}</Notice>
-              <Button type="button" onClick={onClose}>
-                Close
-              </Button>
-            </>
-          )}
+          <QueryView query={preview} resource="This membership review">
+            {(review) =>
+              review.eligible ? (
+                <AdoptionReview
+                  command={command}
+                  preview={review}
+                  onClose={onClose}
+                />
+              ) : (
+                <>
+                  <Notice>{review.reason}</Notice>
+                  <Button type="button" onClick={onClose}>
+                    Close
+                  </Button>
+                </>
+              )
+            }
+          </QueryView>
         </div>
       </DialogContent>
     </Dialog>

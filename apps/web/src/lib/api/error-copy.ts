@@ -21,6 +21,15 @@ export function isNotFound(error: unknown): boolean {
   return isApiError(error) && error.status === 404;
 }
 
+/**
+ * Signed out, forbidden, or not found under the API's non-disclosing
+ * policy: an authoritative "you can't see this" that hides data loaded
+ * earlier instead of showing it as stale.
+ */
+export function isAccessLost(error: unknown): boolean {
+  return isApiError(error) && [401, 403, 404].includes(error.status ?? 0);
+}
+
 /** Whole seconds to wait before retrying a rate-limited request. */
 export function retryAfterSeconds(error: unknown): number | undefined {
   if (!isApiError(error) || error.retryAfterMs === undefined) return undefined;

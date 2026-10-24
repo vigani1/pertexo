@@ -1,3 +1,4 @@
+import { QueryView } from '@/components/patterns/states/query-view';
 import { workflowTestStepChoices } from '@pertexo/workflow-model';
 import type { CaseExpectationDraft } from '../../model/input-cases/expectations';
 import { useQuery } from '@tanstack/react-query';
@@ -92,19 +93,7 @@ export function CaseExpectations({
           </Select>
         )}
       </LabelledField>
-      {graph.isError ? (
-        <p className="text-xs text-muted-foreground">
-          Step choices couldn’t be loaded. Existing expectations are kept.{' '}
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            onClick={() => void graph.refetch()}
-          >
-            Retry step choices
-          </Button>
-        </p>
-      ) : null}
+      <QueryView query={graph} resource="Step choices" loading={null} />
       {value.assertions.map((item, index) => (
         <fieldset
           key={item.id}

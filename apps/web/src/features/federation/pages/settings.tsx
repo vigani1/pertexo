@@ -1,3 +1,4 @@
+import { QueryView } from '@/components/patterns/states/query-view';
 import type { FederationSection } from '../search.public';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -38,11 +39,8 @@ export function FederationSettingsPage({
         Only workspace owners and admins can read organization sign-in settings.
       </Notice>
     );
-  const snapshot = settings.data,
-    editable =
-      snapshot?.canManage === true &&
-      snapshot.configured &&
-      workspace.status === 'active';
+  const editableFor = (snapshot: FederationSettings) =>
+    snapshot.canManage && snapshot.configured && workspace.status === 'active';
   return (
     <div className="flex min-w-0 max-w-5xl flex-col gap-6">
       <PageHeader>
@@ -53,28 +51,6 @@ export function FederationSettingsPage({
         domain decides how its addresses sign in; keep the owner’s recovery
         password safe for the day the provider is down.
       </p>
-      {settings.isPending ? (
-        <p role="status">Loading sign-in settings…</p>
-      ) : null}
-      {settings.isError ? (
-        <Notice
-          tone="warning"
-          action={
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => void settings.refetch()}
-            >
-              Retry settings
-            </Button>
-          }
-        >
-          Sign-in settings could not be loaded.
-        </Notice>
-      ) : null}
-      {snapshot?.reason === null || snapshot?.reason === undefined ? null : (
-        <Notice tone="warning">{snapshot.reason}</Notice>
-      )}
       {testResult === undefined ? null : (
         <Notice tone={testResult === 'passed' ? 'success' : 'warning'}>
           {testResult === 'passed'
@@ -82,26 +58,34 @@ export function FederationSettingsPage({
             : 'Provider test did not finish. Check the provider configuration, callback address and verified domain, then try again.'}
         </Notice>
       )}
-      {snapshot === undefined ? null : (
-        <>
-          <OrganizationAccessNotice
-            settings={snapshot}
-            workspaceId={workspace.id}
-          />
-          {snapshot.organization === null ? (
-            <CreateOrganization scope={scope} editable={editable} />
-          ) : (
-            <OrganizationPanel
-              scope={scope}
-              organization={snapshot.organization}
-              editable={editable}
-              navigateToProvider={navigateToProvider}
-              workspace={workspace}
-              section={section}
+      <QueryView query={settings} resource="Sign-in settings">
+        {(snapshot) => (
+          <>
+            {snapshot.reason === null ? null : (
+              <Notice tone="warning">{snapshot.reason}</Notice>
+            )}
+            <OrganizationAccessNotice
+              settings={snapshot}
+              workspaceId={workspace.id}
             />
-          )}
-        </>
-      )}
+            {snapshot.organization === null ? (
+              <CreateOrganization
+                scope={scope}
+                editable={editableFor(snapshot)}
+              />
+            ) : (
+              <OrganizationPanel
+                scope={scope}
+                organization={snapshot.organization}
+                editable={editableFor(snapshot)}
+                navigateToProvider={navigateToProvider}
+                workspace={workspace}
+                section={section}
+              />
+            )}
+          </>
+        )}
+      </QueryView>
     </div>
   );
 }

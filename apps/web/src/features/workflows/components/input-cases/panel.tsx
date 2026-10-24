@@ -3,8 +3,8 @@ import type { AccessibleWorkspace } from '@pertexo/contracts';
 import type { WorkflowInputCase, WorkflowSummary } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
-import { SkeletonLines } from '@/components/ui/skeleton';
-import { ReadFailure } from '@/components/patterns/states/read-failure';
+import { LoadMore } from '@/components/patterns/lists/load-more';
+import { QueryView } from '@/components/patterns/states/query-view';
 import type { useInputCases } from '../../hooks/use-input-cases';
 import { InputCaseEditor } from './editor';
 
@@ -187,50 +187,45 @@ function InputCaseList({
 }: CaseListProps) {
   return (
     <>
-      {query.isPending ? (
-        <SkeletonLines label="Loading input cases" lines={2} />
-      ) : null}
-      {query.error ? (
-        <ReadFailure
-          resource="Input cases"
-          error={query.error}
-          updatedAt={query.dataUpdatedAt}
-          showing={query.data !== undefined}
-          retrying={query.isFetching}
-          onRetry={() => void query.refetch()}
-        />
-      ) : null}
-      {query.data?.pages
-        .flatMap((page) => page.items)
-        .map((record) => (
-          <InputCaseRow
-            key={record.id}
-            record={record}
-            publishedVersionId={publishedVersionId}
-            writable={writable}
-            locked={locked}
-            onLoad={onLoad}
-            onEdit={onEdit}
-          />
-        ))}
-      {query.data?.pages[0]?.items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No input cases yet.{' '}
-          {writable
-            ? 'Create one from synthetic JSON after publishing.'
-            : 'A workflow editor can create a shared case.'}
-        </p>
-      ) : null}
-      {query.hasNextPage ? (
-        <Button
-          type="button"
-          variant="ghost"
-          disabled={locked || query.isFetchingNextPage}
-          onClick={() => void query.fetchNextPage()}
-        >
-          Load more input cases
-        </Button>
-      ) : null}
+      <QueryView
+        query={query}
+        resource="Input cases"
+        isEmpty={(data) => data.pages.every((page) => page.items.length === 0)}
+        empty={
+          <p className="text-sm text-muted-foreground">
+            No input cases yet.{' '}
+            {writable
+              ? 'Create one from synthetic JSON after publishing.'
+              : 'A workflow editor can create a shared case.'}
+          </p>
+        }
+      >
+        {(data) =>
+          data.pages
+            .flatMap((page) => page.items)
+            .map((record) => (
+              <InputCaseRow
+                key={record.id}
+                record={record}
+                publishedVersionId={publishedVersionId}
+                writable={writable}
+                locked={locked}
+                onLoad={onLoad}
+                onEdit={onEdit}
+              />
+            ))
+        }
+      </QueryView>
+      <LoadMore
+        subject="input cases"
+        label="Load more input cases"
+        hasNextPage={query.hasNextPage}
+        loading={query.isFetchingNextPage}
+        failed={query.isFetchNextPageError}
+        onLoadMore={() => {
+          if (!locked) void query.fetchNextPage();
+        }}
+      />
     </>
   );
 }

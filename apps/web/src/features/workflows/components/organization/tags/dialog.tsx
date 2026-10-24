@@ -7,6 +7,7 @@ import { ActionDialog } from '@/components/patterns/actions/action-dialog';
 import { LoadMore } from '@/components/patterns/lists/load-more';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
+import { QueryView } from '@/components/patterns/states/query-view';
 import { workflowTagsInfiniteQueryOptions } from '../../../data/organization/queries';
 import {
   freezeWorkflowOrganizationAttempt,
@@ -115,24 +116,7 @@ function TagsDialogContent({ apiClient, userId, workspace, onClose }: Props) {
           characters.
         </Notice>
       ) : null}
-      {tags.isError ? (
-        <Notice
-          tone="destructive"
-          action={
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={tags.isFetching}
-              onClick={() => void tags.refetch()}
-            >
-              Try again
-            </Button>
-          }
-        >
-          Tags couldn’t be loaded.
-        </Notice>
-      ) : null}
+      <QueryView query={tags} resource="Tags" loading={null} />
       {command.denied ? null : cleanup === undefined ? (
         <>
           <TagManagement
