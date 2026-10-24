@@ -73,20 +73,22 @@ function describeInvitationAvailability({
   available,
   failed,
 }: Readonly<{ available: boolean | undefined; failed: boolean }>) {
-  const message =
-    (available ?? false)
-      ? undefined
-      : available === false
-        ? 'Invitations are unavailable on this server. Ask the operator to configure invitations.'
-        : failed
-          ? 'Invitation availability couldn’t be checked. Retry on the Invitations tab.'
-          : 'Checking invitation availability…';
+  if (available) return { message: undefined, tone: 'warning' as const };
+  if (available === false)
+    return {
+      message:
+        'Invitations are unavailable on this server. Ask the operator to configure invitations.',
+      tone: 'warning' as const,
+    };
+  if (failed)
+    return {
+      message:
+        'Invitation availability couldn’t be checked. Retry on the Invitations tab.',
+      tone: 'warning' as const,
+    };
   return {
-    message,
-    tone:
-      available === undefined && !failed
-        ? ('info' as const)
-        : ('warning' as const),
+    message: 'Checking invitation availability…',
+    tone: 'info' as const,
   };
 }
 
