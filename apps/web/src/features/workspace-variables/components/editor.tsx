@@ -170,18 +170,11 @@ export function VariablesEditor({
       >
         <fieldset disabled={locked} className="min-w-0 border-0 p-0">
           <legend className="sr-only">Workspace variables</legend>
-          {draft.rows.length === 0 ? (
-            <p className="py-5 text-sm text-muted-foreground">
-              No variables yet. Add a reusable non-secret value, such as
-              CURRENCY or BASE_URL.
-            </p>
-          ) : visible.length === 0 ? (
-            <p className="py-5 text-sm text-muted-foreground">
-              No variables match “{filter.trim()}”.
-            </p>
-          ) : (
-            <VariableColumns />
-          )}
+          <VariableListHeading
+            total={draft.rows.length}
+            visible={visible.length}
+            filter={filter}
+          />
           {visible.map((row) => (
             <VariableRow
               key={row.id}
@@ -281,4 +274,25 @@ export function VariablesEditor({
       )}
     </>
   );
+}
+
+function VariableListHeading({
+  total,
+  visible,
+  filter,
+}: Readonly<{ total: number; visible: number; filter: string }>) {
+  if (total === 0)
+    return (
+      <p className="py-5 text-sm text-muted-foreground">
+        No variables yet. Add a reusable non-secret value, such as CURRENCY or
+        BASE_URL.
+      </p>
+    );
+  if (visible === 0)
+    return (
+      <p className="py-5 text-sm text-muted-foreground">
+        No variables match “{filter.trim()}”.
+      </p>
+    );
+  return <VariableColumns />;
 }
