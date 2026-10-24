@@ -139,70 +139,16 @@ export function useWorkspaceRename({
     setState(next);
   }
 
-  async function loseAccess(scope: symbol, queryKey: readonly unknown[]) {
-    await queryClient.cancelQueries({ queryKey });
-    if (owner.current !== scope) return;
-    queryClient.removeQueries({ queryKey });
-    transition({ kind: 'idle' });
-    onAccessLost();
-  }
-
-  async function refresh(
-    scope: symbol,
-    attempt: WorkspaceRenameAttempt,
-    receipt: WorkspaceRenameResponse,
-  ) {
-    transition({ kind: 'accepted', attempt, receipt, refreshing: true });
-    const caughtUp = await catchUpDiscovery(
-      queryClient,
-      apiClient,
-      userId,
-      receipt,
-    ).catch(() => false);
-    if (owner.current !== scope) return false;
-    if (!caughtUp) {
-      transition({
-        kind: 'accepted',
-        attempt,
-        receipt,
-        refreshing: false,
-        error: NOT_CAUGHT_UP,
-      });
-      return false;
-    }
-    transition({ kind: 'idle' });
-    onChanged(receipt.workspace.name);
-    return true;
-  }
-
-  /** Sends the rename; on failure settles the state and says whether it conflicted. */
-  async function send(scope: symbol, attempt: WorkspaceRenameAttempt) {
-    try {
-      return { receipt: await mutation.mutateAsync(attempt), conflict: false };
-    } catch (error) {
-      const failure = classifyFailure(error);
-      if (owner.current !== scope)
-        return { receipt: undefined, conflict: false };
-      switch (failure.kind) {
-        case 'signed-out':
-          await loseAccess(scope, ['identity']);
-          break;
-        case 'forbidden':
-          await loseAccess(scope, workspaceKeys.accessible(userId));
-          break;
-        case 'uncertain':
-          transition({ kind: 'uncertain', attempt, error: UNCERTAIN });
-          break;
-        case 'rejected':
-          transition({ kind: 'idle', error: failure.error });
-          break;
-      }
-      return {
-        receipt: undefined,
-        conflict: failure.kind === 'rejected' && failure.error === CONFLICT,
-      };
-    }
-  }
+  const context: RenameContext = {
+    queryClient,
+    apiClient,
+    userId,
+    owner,
+    mutation,
+    transition,
+    onChanged,
+    onAccessLost,
+  };
 
   async function execute(attempt: WorkspaceRenameAttempt) {
     const scope = owner.current;
@@ -214,17 +160,21 @@ export function useWorkspaceRename({
       const session = await checkSession(apiClient, userId);
       if (owner.current !== scope) return false;
       if (session === 'changed') {
-        await loseAccess(scope, ['identity']);
+        await loseRenameAccess(context, scope, ['identity']);
         return false;
       }
       if (session === 'unverified') {
         transition({ kind: 'uncertain', attempt, error: UNVERIFIED });
         return false;
       }
-      const sent = await send(scope, attempt);
+      const sent = await sendRename(context, scope, attempt);
       conflicted = sent.conflict;
       if (sent.receipt === undefined || owner.current !== scope) return false;
-      return await refresh(scope, attempt, sent.receipt);
+      return await refreshRename(context, {
+        scope,
+        attempt,
+        receipt: sent.receipt,
+      });
     } finally {
       inFlight.current = false;
       if (conflicted) void reloadLatest();
@@ -268,7 +218,11 @@ export function useWorkspaceRename({
       return false;
     inFlight.current = true;
     try {
-      return await refresh(scope, current.attempt, current.receipt);
+      return await refreshRename(context, {
+        scope,
+        attempt: current.attempt,
+        receipt: current.receipt,
+      });
     } finally {
       inFlight.current = false;
     }
@@ -299,4 +253,109 @@ export function useWorkspaceRename({
       if (stateRef.current.kind === 'idle') transition({ kind: 'idle' });
     },
   };
+}
+
+type RenameContext = Readonly<{
+  queryClient: QueryClient;
+  apiClient: ApiClient;
+  userId: string;
+  owner: Readonly<{ current: symbol | undefined }>;
+  mutation: Readonly<{
+    mutateAsync: (
+      attempt: WorkspaceRenameAttempt,
+    ) => Promise<WorkspaceRenameResponse>;
+  }>;
+  transition: (state: State) => void;
+  onChanged: (name: string) => void;
+  onAccessLost: () => void;
+}>;
+async function loseRenameAccess(
+  { queryClient, owner, transition, onAccessLost }: RenameContext,
+  scope: symbol,
+  queryKey: readonly unknown[],
+) {
+  await queryClient.cancelQueries({ queryKey });
+  if (owner.current !== scope) return;
+  queryClient.removeQueries({ queryKey });
+  transition({ kind: 'idle' });
+  onAccessLost();
+}
+
+async function refreshRename(
+  {
+    queryClient,
+    apiClient,
+    userId,
+    owner,
+    transition,
+    onChanged,
+  }: RenameContext,
+  {
+    scope,
+    attempt,
+    receipt,
+  }: Readonly<{
+    scope: symbol;
+    attempt: WorkspaceRenameAttempt;
+    receipt: WorkspaceRenameResponse;
+  }>,
+) {
+  transition({ kind: 'accepted', attempt, receipt, refreshing: true });
+  const caughtUp = await catchUpDiscovery(
+    queryClient,
+    apiClient,
+    userId,
+    receipt,
+  ).catch(() => false);
+  if (owner.current !== scope) return false;
+  if (!caughtUp) {
+    transition({
+      kind: 'accepted',
+      attempt,
+      receipt,
+      refreshing: false,
+      error: NOT_CAUGHT_UP,
+    });
+    return false;
+  }
+  transition({ kind: 'idle' });
+  onChanged(receipt.workspace.name);
+  return true;
+}
+
+/** Sends the rename; on failure settles the state and says whether it conflicted. */
+async function sendRename(
+  context: RenameContext,
+  scope: symbol,
+  attempt: WorkspaceRenameAttempt,
+) {
+  const { mutation, owner, transition, userId } = context;
+  try {
+    return { receipt: await mutation.mutateAsync(attempt), conflict: false };
+  } catch (error) {
+    const failure = classifyFailure(error);
+    if (owner.current !== scope) return { receipt: undefined, conflict: false };
+    switch (failure.kind) {
+      case 'signed-out':
+        await loseRenameAccess(context, scope, ['identity']);
+        break;
+      case 'forbidden':
+        await loseRenameAccess(
+          context,
+          scope,
+          workspaceKeys.accessible(userId),
+        );
+        break;
+      case 'uncertain':
+        transition({ kind: 'uncertain', attempt, error: UNCERTAIN });
+        break;
+      case 'rejected':
+        transition({ kind: 'idle', error: failure.error });
+        break;
+    }
+    return {
+      receipt: undefined,
+      conflict: failure.kind === 'rejected' && failure.error === CONFLICT,
+    };
+  }
 }
