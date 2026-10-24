@@ -216,4 +216,65 @@ export function registerAdmitsMemberFormOnceTrusted(): void {
       ).rowCount,
     ).toBe(0);
   });
+  it('keeps the public identity and exact access receipt across disable and re-enable', async () => {
+    const f = await fixture();
+    const firstCapability = randomBytes(32).toString('base64url');
+    const firstCommand = {
+      ...f,
+      access: 'public' as const,
+      expectedRevision: 0,
+      capability: firstCapability,
+      idempotencyKey: 'initial-access',
+    };
+    const initial = await store.setAccess(firstCommand);
+    expect(initial).toEqual({
+      access: 'public',
+      publicId: expect.any(String),
+      revision: 1,
+    });
+    const disabled = await store.setAccess({
+      ...f,
+      access: 'members',
+      expectedRevision: initial.revision,
+      idempotencyKey: 'disable-access',
+    });
+    expect(disabled).toEqual({
+      access: 'members',
+      publicId: initial.publicId,
+      revision: 2,
+    });
+    const secondCapability = randomBytes(32).toString('base64url');
+    const enabled = await store.setAccess({
+      ...f,
+      access: 'public',
+      expectedRevision: disabled.revision,
+      capability: secondCapability,
+      idempotencyKey: 'enable-access',
+    });
+    expect(enabled).toEqual({
+      access: 'public',
+      publicId: initial.publicId,
+      revision: 3,
+    });
+    await expect(store.setAccess(firstCommand)).resolves.toEqual(initial);
+    await expect(store.access(f)).resolves.toEqual(enabled);
+    if (initial.publicId === null)
+      throw new Error('Public identity is unavailable');
+    await expect(
+      store.discover({
+        publicId: initial.publicId,
+        capability: firstCapability,
+      }),
+    ).rejects.toBeInstanceOf(FormUnavailableError);
+    await expect(
+      store.discover({
+        publicId: initial.publicId,
+        capability: secondCapability,
+      }),
+    ).resolves.toMatchObject({
+      workspaceId: f.workspaceId,
+      workflowId: f.workflowId,
+      publicId: initial.publicId,
+    });
+  });
 }
