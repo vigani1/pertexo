@@ -130,7 +130,7 @@ export class LoomRenderer extends CanvasScene {
         if (run.tone === 'live') {
           this.#drawLive(span.x0, span.x1, y);
           tips.push([span.x1, y]);
-        } else this.#drawRun(run, span.x0, span.x1, y, timeSeconds);
+        } else this.#drawRun({ run, x0: span.x0, x1: span.x1, y, timeSeconds });
       }
     });
     this.#drawTips(layout, tips, timeSeconds);
@@ -253,13 +253,19 @@ export class LoomRenderer extends CanvasScene {
     context.shadowBlur = 0;
   }
 
-  #drawRun(
-    run: LoomRun,
-    x0: number,
-    x1: number,
-    y: number,
-    timeSeconds: number,
-  ): void {
+  #drawRun({
+    run,
+    x0,
+    x1,
+    y,
+    timeSeconds,
+  }: Readonly<{
+    run: LoomRun;
+    x0: number;
+    x1: number;
+    y: number;
+    timeSeconds: number;
+  }>): void {
     const context = this.context;
     const color = toneColor(this.#palette, run.tone);
     const dashed = run.tone === 'waiting' || run.tone === 'queued';
@@ -277,16 +283,22 @@ export class LoomRenderer extends CanvasScene {
     context.lineTo(x1, y);
     context.stroke();
     context.setLineDash([]);
-    this.#drawEnd(run, color, x1, y, timeSeconds);
+    this.#drawEnd({ run, color, x: x1, y, timeSeconds });
   }
 
-  #drawEnd(
-    run: LoomRun,
-    color: Rgb,
-    x: number,
-    y: number,
-    timeSeconds: number,
-  ): void {
+  #drawEnd({
+    run,
+    color,
+    x,
+    y,
+    timeSeconds,
+  }: Readonly<{
+    run: LoomRun;
+    color: Rgb;
+    x: number;
+    y: number;
+    timeSeconds: number;
+  }>): void {
     const context = this.context;
     switch (run.tone) {
       case 'success': {

@@ -19,17 +19,17 @@ export function StepCodeDiagnostics({
     row.status === 'canceled' ||
     row.status === 'outcome_unknown';
   const query = useQuery({
-    ...nodeRunDiagnosticsQueryOptions(
-      scope.apiClient,
-      scope.userId,
-      scope.workspace.id,
-      scope.runId,
-      {
+    ...nodeRunDiagnosticsQueryOptions({
+      apiClient: scope.apiClient,
+      userId: scope.userId,
+      workspaceId: scope.workspace.id,
+      runId: scope.runId,
+      step: {
         nodeRunId: row.nodeRunId ?? '',
         attemptNumber: row.currentAttemptNumber,
         status: row.status,
       },
-    ),
+    }),
     enabled: row.nodeRunId !== undefined && row.reused === undefined && settled,
   });
   if (row.reused !== undefined)

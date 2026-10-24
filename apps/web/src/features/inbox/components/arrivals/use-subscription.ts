@@ -44,12 +44,12 @@ export function useInboxArrivals(
     let current = true;
     queryClient
       .infiniteQuery({
-        ...inboxThreadsInfiniteQueryOptions(
+        ...inboxThreadsInfiniteQueryOptions({
           apiClient,
           userId,
           workspaceId,
-          'unread',
-        ),
+          filter: 'unread',
+        }),
         // The cached list can predate the summary that announced the change.
         staleTime: 0,
       })

@@ -51,13 +51,13 @@ export function FilePropertyUpload({
       ...(parsed as Readonly<Record<string, JsonValue>>),
       [property]: reference,
     };
-    const version = await findWorkflowVersion(
-      scope.apiClient,
-      scope.workspaceId,
+    const version = await findWorkflowVersion({
+      apiClient: scope.apiClient,
+      workspaceId: scope.workspaceId,
       workflowId,
       versionId,
       signal,
-    );
+    });
     if (signal.aborted)
       return 'The input changed. Open the file control again.';
     if (version.graph.callable !== undefined) {

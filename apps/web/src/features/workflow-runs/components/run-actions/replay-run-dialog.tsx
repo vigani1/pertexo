@@ -16,24 +16,30 @@ import { useRunInput } from '../../hooks/use-run-input';
 import { workflowRunInputQueryOptions } from '../../data/stored-values.queries';
 import { RunInputFields } from '../run-input-fields';
 
-function useFormReplay(
-  apiClient: ApiClient,
-  userId: string,
-  workspace: Pick<AccessibleWorkspace, 'id' | 'capabilities'>,
+function useFormReplay({
+  apiClient,
+  userId,
+  workspace,
+  source,
+  open,
+}: Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspace: Pick<AccessibleWorkspace, 'id' | 'capabilities'>;
   source: Pick<
     WorkflowRunReadSummary,
     'id' | 'workflowId' | 'workflowVersionId' | 'triggerType'
-  >,
-  open: boolean,
-) {
+  >;
+  open: boolean;
+}>) {
   const version = useQuery({
-    ...workflowRunVersionQueryOptions(
+    ...workflowRunVersionQueryOptions({
       apiClient,
       userId,
-      workspace.id,
-      source.workflowId,
-      source.workflowVersionId,
-    ),
+      workspaceId: workspace.id,
+      workflowId: source.workflowId,
+      versionId: source.workflowVersionId,
+    }),
     enabled: open && workspace.capabilities.includes('workflow:read'),
   });
   return (
@@ -118,7 +124,13 @@ export function ReplayRunDialog({
   const { id: workspaceId } = workspace;
   const { id: sourceRunId, workflowId, workflowVersionId } = source;
   const notifications = useNotifications();
-  const formReplay = useFormReplay(apiClient, userId, workspace, source, open);
+  const formReplay = useFormReplay({
+    apiClient,
+    userId,
+    workspace,
+    source,
+    open,
+  });
   const original = useQuery(
     workflowRunInputQueryOptions(apiClient, userId, workspaceId, sourceRunId),
   );

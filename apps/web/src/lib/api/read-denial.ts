@@ -13,13 +13,19 @@ export type WorkspaceReadDenial = Readonly<{
  * 403 or 404, and calls `denied` when `counts` says that read ends this
  * feature's access. Returns the unsubscribe.
  */
-export function watchWorkspaceReadDenial(
-  queryClient: QueryClient,
-  userId: string,
-  workspaceId: string,
-  counts: (denial: WorkspaceReadDenial) => boolean,
-  denied: (error: ApiError) => void,
-): () => void {
+export function watchWorkspaceReadDenial({
+  queryClient,
+  userId,
+  workspaceId,
+  counts,
+  denied,
+}: Readonly<{
+  queryClient: QueryClient;
+  userId: string;
+  workspaceId: string;
+  counts: (denial: WorkspaceReadDenial) => boolean;
+  denied: (error: ApiError) => void;
+}>): () => void {
   return queryClient.getQueryCache().subscribe((event) => {
     if (event.type !== 'updated') return;
     const key = event.query.queryKey as readonly unknown[];

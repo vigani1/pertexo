@@ -7,13 +7,19 @@ import {
 import type { ApiClient } from '@/lib/api/client';
 import type { UploadMetadata } from '../model/upload';
 
-export function beginUpload(
-  apiClient: ApiClient,
-  workspaceId: string,
-  metadata: UploadMetadata,
-  key: string,
-  signal: AbortSignal,
-): Promise<ArtifactUploadResponse> {
+export function beginUpload({
+  apiClient,
+  workspaceId,
+  metadata,
+  key,
+  signal,
+}: Readonly<{
+  apiClient: ApiClient;
+  workspaceId: string;
+  metadata: UploadMetadata;
+  key: string;
+  signal: AbortSignal;
+}>): Promise<ArtifactUploadResponse> {
   return apiClient.request({
     path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/artifacts/uploads`,
     method: 'POST',

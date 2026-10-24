@@ -22,13 +22,13 @@ export function RevokeTokenDialog({
   const [feedback, setFeedback] = useState<string>();
   const [uncertain, setUncertain] = useState(false);
   const inFlight = useRef(false);
-  const mutation = useTokenRevocation(
+  const mutation = useTokenRevocation({
     apiClient,
     userId,
     workspaceId,
-    token.id,
+    tokenId: token.id,
     key,
-  );
+  });
   async function revoke() {
     if (inFlight.current) return;
     inFlight.current = true;

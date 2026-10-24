@@ -115,13 +115,13 @@ export function useUpload(apiClient: ApiClient, workspaceId: string) {
         }
       }
       show('reserving');
-      const reservation = await beginUpload(
+      const reservation = await beginUpload({
         apiClient,
         workspaceId,
-        current.metadata,
-        current.key,
-        request.signal,
-      );
+        metadata: current.metadata,
+        key: current.key,
+        signal: request.signal,
+      });
       if (!request.isCurrent()) return;
       current.artifactId = reservation.artifact.id;
       show('uploading');

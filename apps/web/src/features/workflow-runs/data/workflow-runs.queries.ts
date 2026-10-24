@@ -136,13 +136,19 @@ function sample(page: WorkflowRunListResponse): StatusSample {
   };
 }
 
-function statusPages(
-  apiClient: ApiClient,
-  workspaceId: string,
-  statuses: readonly RunStatus[],
-  filters: RunHistoryFilters,
-  signal: AbortSignal,
-): Promise<StatusSample[]> {
+function statusPages({
+  apiClient,
+  workspaceId,
+  statuses,
+  filters,
+  signal,
+}: Readonly<{
+  apiClient: ApiClient;
+  workspaceId: string;
+  statuses: readonly RunStatus[];
+  filters: RunHistoryFilters;
+  signal: AbortSignal;
+}>): Promise<StatusSample[]> {
   return Promise.all(
     statuses.map(async (status) =>
       sample(
@@ -261,13 +267,13 @@ export function attentionRunsQueryOptions(
     queryFn: async ({ signal }): Promise<AttentionRuns> => {
       const asOf = Date.now();
       const createdAtFrom = new Date(asOf - DAY_MS).toISOString();
-      const [failed, timedOut, outcomeUnknown] = await statusPages(
+      const [failed, timedOut, outcomeUnknown] = await statusPages({
         apiClient,
         workspaceId,
-        ['failed', 'timed_out', 'outcome_unknown'],
-        { createdAtFrom },
+        statuses: ['failed', 'timed_out', 'outcome_unknown'],
+        filters: { createdAtFrom },
         signal,
-      );
+      });
       if (
         failed === undefined ||
         timedOut === undefined ||
@@ -302,13 +308,13 @@ export function runLoomQueryOptions(
           cap: LOOM_RUN_CAP,
           signal,
         }),
-        statusPages(
+        statusPages({
           apiClient,
           workspaceId,
-          ACTIVE_RUN_STATUSES,
-          { createdAtBefore: windowStart },
+          statuses: ACTIVE_RUN_STATUSES,
+          filters: { createdAtBefore: windowStart },
           signal,
-        ),
+        }),
       ]);
       return {
         asOf,
@@ -326,13 +332,19 @@ export function runLoomQueryOptions(
  * One workflow's latest runs, newest first: its strip in the Workflows list,
  * whatever else the workspace has been running.
  */
-export function workflowLatestRunsQueryOptions(
-  apiClient: ApiClient,
-  userId: string,
-  workspaceId: string,
-  workflowId: string,
-  limit: number,
-) {
+export function workflowLatestRunsQueryOptions({
+  apiClient,
+  userId,
+  workspaceId,
+  workflowId,
+  limit,
+}: Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspaceId: string;
+  workflowId: string;
+  limit: number;
+}>) {
   return queryOptions({
     queryKey: workflowRunKeys.latestOf(userId, workspaceId, workflowId, limit),
     queryFn: async ({ signal }) =>
@@ -438,25 +450,31 @@ export function stepRunsQueryOptions(
       step.limit,
     ],
     queryFn: ({ signal }) =>
-      getWorkflowStepRuns(
+      getWorkflowStepRuns({
         apiClient,
         workspaceId,
-        step.workflowId,
-        step.nodeId,
-        step.limit,
+        workflowId: step.workflowId,
+        nodeId: step.nodeId,
+        limit: step.limit,
         signal,
-      ),
+      }),
     staleTime: 30_000,
   });
 }
 
-export function workflowRunVersionQueryOptions(
-  apiClient: ApiClient,
-  userId: string,
-  workspaceId: string,
-  workflowId: string,
-  versionId: string,
-) {
+export function workflowRunVersionQueryOptions({
+  apiClient,
+  userId,
+  workspaceId,
+  workflowId,
+  versionId,
+}: Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspaceId: string;
+  workflowId: string;
+  versionId: string;
+}>) {
   return queryOptions({
     queryKey: [
       'identity',
@@ -469,13 +487,13 @@ export function workflowRunVersionQueryOptions(
       versionId,
     ] as const,
     queryFn: ({ signal }) =>
-      findWorkflowVersion(
+      findWorkflowVersion({
         apiClient,
         workspaceId,
         workflowId,
         versionId,
         signal,
-      ),
+      }),
     staleTime: Number.POSITIVE_INFINITY,
   });
 }

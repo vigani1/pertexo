@@ -34,26 +34,32 @@ export function workflowDraftQueryOptions(
  * The published version a workflow runs, for "Live v4" in the command bar.
  * Versions never change, so one read is enough.
  */
-export function liveVersionQueryOptions(
-  apiClient: ApiClient,
-  userId: string,
-  workspaceId: string,
-  workflowId: string,
-  versionId: string,
-) {
+export function liveVersionQueryOptions({
+  apiClient,
+  userId,
+  workspaceId,
+  workflowId,
+  versionId,
+}: Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspaceId: string;
+  workflowId: string;
+  versionId: string;
+}>) {
   const workflowKey = workflowDraftKeys
     .detail(userId, workspaceId, workflowId)
     .slice(0, -1);
   return queryOptions({
     queryKey: [...workflowKey, 'version', versionId] as const,
     queryFn: ({ signal }) =>
-      findWorkflowVersion(
+      findWorkflowVersion({
         apiClient,
         workspaceId,
         workflowId,
         versionId,
         signal,
-      ),
+      }),
     staleTime: Number.POSITIVE_INFINITY,
   });
 }

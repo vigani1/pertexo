@@ -53,16 +53,17 @@ function InputCasesDialog({
   triggerClassName,
   finalFocus,
 }: InputCasesActionProps) {
-  const cases = useInputCases(
-    apiClient,
+  const cases = useInputCases({
+    api: apiClient,
     userId,
-    workspace.id,
-    workflow.id,
-    workspace.status === 'active' &&
+    workspaceId: workspace.id,
+    workflowId: workflow.id,
+    canWrite:
+      workspace.status === 'active' &&
       workflow.lifecycleStatus === 'active' &&
       workspace.capabilities.includes('workflow:update'),
-    open,
-  );
+    enabled: open,
+  });
   const popupRef = useRef<HTMLDivElement>(null);
   const locked = cases.pending || cases.uncertain;
   const [loaded, setLoaded] = useState<LoadedInputCase>();

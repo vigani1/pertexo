@@ -62,13 +62,13 @@ export function useConcurrencyCommand(
     setProblem(undefined);
     setConflict(false);
     try {
-      await putWorkflowConcurrency(
-        apiClient,
+      await putWorkflowConcurrency({
+        client: apiClient,
         workspaceId,
         workflowId,
-        request.body,
-        request.key,
-      );
+        body: request.body,
+        key: request.key,
+      });
       attempt.current = undefined;
       setUnconfirmed(false);
       return true;

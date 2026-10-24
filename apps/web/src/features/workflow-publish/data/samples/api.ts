@@ -51,13 +51,19 @@ export function getStepSample(
 export type SampleCommand =
   | Readonly<{ kind: 'put'; body: StepSampleWriteRequest }>
   | Readonly<{ kind: 'remove'; body: StepSampleDeleteRequest }>;
-export function changeStepSample(
-  scope: SampleScope,
-  nodeId: string,
-  command: SampleCommand,
-  key: string,
-  signal: AbortSignal,
-): Promise<StepSampleCommandResponse> {
+export function changeStepSample({
+  scope,
+  nodeId,
+  command,
+  key,
+  signal,
+}: Readonly<{
+  scope: SampleScope;
+  nodeId: string;
+  command: SampleCommand;
+  key: string;
+  signal: AbortSignal;
+}>): Promise<StepSampleCommandResponse> {
   return scope.apiClient.request({
     path: samplePath(scope, nodeId),
     method: command.kind === 'put' ? 'PUT' : 'DELETE',

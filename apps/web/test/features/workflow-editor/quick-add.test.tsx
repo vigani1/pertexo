@@ -80,13 +80,13 @@ function dropState(
 
 describe('quick add graph commands', () => {
   it('adds a step and its connection from the chosen output as one change', () => {
-    const next = addStepAfter(
+    const next = addStepAfter({
       graph,
-      mappingDefinition,
-      { x: 600, y: 80 },
-      { nodeId: 'target', port: 'out' },
-      { nodeId: 'added', edgeId: 'target-added' },
-    );
+      definition: mappingDefinition,
+      position: { x: 600, y: 80 },
+      from: { nodeId: 'target', port: 'out' },
+      ids: { nodeId: 'added', edgeId: 'target-added' },
+    });
     expect(next?.nodes.at(-1)).toMatchObject({
       id: 'added',
       definition: { key: 'core.set', version: 1 },
@@ -106,38 +106,38 @@ describe('quick add graph commands', () => {
   });
 
   it('matches a same-named input, and refuses steps it can’t connect', () => {
-    const fromBranch = addStepAfter(
+    const fromBranch = addStepAfter({
       graph,
-      mergeDefinition,
-      { x: 0, y: 0 },
-      { nodeId: 'target', port: 'branch-02' },
-      { nodeId: 'merge', edgeId: 'edge' },
-    );
+      definition: mergeDefinition,
+      position: { x: 0, y: 0 },
+      from: { nodeId: 'target', port: 'branch-02' },
+      ids: { nodeId: 'merge', edgeId: 'edge' },
+    });
     expect(fromBranch?.edges.at(-1)?.target).toEqual({
       nodeId: 'merge',
       port: 'branch-02',
     });
     expect(
-      addStepAfter(
+      addStepAfter({
         graph,
-        manualDefinition,
-        { x: 0, y: 0 },
-        {
+        definition: manualDefinition,
+        position: { x: 0, y: 0 },
+        from: {
           nodeId: 'target',
           port: 'out',
         },
-      ),
+      }),
     ).toBeNull();
     expect(
-      addStepAfter(
+      addStepAfter({
         graph,
-        mappingDefinition,
-        { x: 0, y: 0 },
-        {
+        definition: mappingDefinition,
+        position: { x: 0, y: 0 },
+        from: {
           nodeId: 'missing',
           port: 'out',
         },
-      ),
+      }),
     ).toBeNull();
     expect(followingSteps([manualDefinition, mappingDefinition])).toEqual([
       mappingDefinition,

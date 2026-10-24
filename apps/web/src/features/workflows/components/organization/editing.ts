@@ -40,14 +40,21 @@ export function canEditOrganization(
     !archived || (operation === 'move' && isAdministrativeRole(workspace.role))
   );
 }
-export function organizationEditAttempt(
-  workspaceId: string,
-  workflows: readonly WorkflowOrganizationProjectionResponse[],
-  operation: OrganizationOperation,
-  folderId: string | null,
-  tagIds: readonly string[],
-  idempotencyKey: string,
-): WorkflowOrganizationAttempt {
+export function organizationEditAttempt({
+  workspaceId,
+  workflows,
+  operation,
+  folderId,
+  tagIds,
+  idempotencyKey,
+}: Readonly<{
+  workspaceId: string;
+  workflows: readonly WorkflowOrganizationProjectionResponse[];
+  operation: OrganizationOperation;
+  folderId: string | null;
+  tagIds: readonly string[];
+  idempotencyKey: string;
+}>): WorkflowOrganizationAttempt {
   if (!validOrganizationSelection(workflows))
     throw new Error('Select 1–50 distinct workflows.');
   const items = workflows.map(({ workflow, organization }) => ({

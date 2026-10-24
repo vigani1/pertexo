@@ -40,13 +40,19 @@ export function readThreads(
     },
   });
 }
-export function readDiscussion(
-  scope: CollaborationScope,
-  threadId: string,
-  before: string | null,
-  anchor: string | undefined,
-  signal: AbortSignal,
-) {
+export function readDiscussion({
+  scope,
+  threadId,
+  before,
+  anchor,
+  signal,
+}: Readonly<{
+  scope: CollaborationScope;
+  threadId: string;
+  before: string | null;
+  anchor: string | undefined;
+  signal: AbortSignal;
+}>) {
   const query = new URLSearchParams({ limit: '20' });
   if (before !== null) query.set('before', before);
   else if (anchor !== undefined) query.set('anchor', anchor);

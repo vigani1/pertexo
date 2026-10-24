@@ -55,13 +55,19 @@ export async function getWorkflowDuplicateDraft(
   });
 }
 
-export function duplicateWorkflow(
-  apiClient: ApiClient,
-  workspaceId: string,
-  workflowId: string,
-  attempt: WorkflowDuplicateAttempt,
-  signal: AbortSignal,
-) {
+export function duplicateWorkflow({
+  apiClient,
+  workspaceId,
+  workflowId,
+  attempt,
+  signal,
+}: Readonly<{
+  apiClient: ApiClient;
+  workspaceId: string;
+  workflowId: string;
+  attempt: WorkflowDuplicateAttempt;
+  signal: AbortSignal;
+}>) {
   const body = workflowDuplicateRequestSchema.parse(attempt.body);
   return apiClient.request({
     path: `${workflowPath(workspaceId, workflowId)}/duplicate`,

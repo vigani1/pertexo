@@ -22,13 +22,13 @@ export function useErrorWorkflowCommand(
   const queryKey = errorWorkflowKey(userId, workspaceId, workflowId);
   const mutation = useMutation({
     mutationFn: (request: NonNullable<typeof intent.current>) =>
-      putErrorWorkflow(
-        apiClient,
+      putErrorWorkflow({
+        client: apiClient,
         workspaceId,
         workflowId,
-        request.body,
-        request.key,
-      ),
+        body: request.body,
+        key: request.key,
+      }),
     onSuccess: () => {
       intent.current = undefined;
     },

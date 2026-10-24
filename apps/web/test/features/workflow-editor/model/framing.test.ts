@@ -59,20 +59,26 @@ describe('editor canvas framing', () => {
     // A phone: 310px at 0.75 ends at 413, through the second step. Taking
     // it in whole needs 310 / 524 ≈ 0.59, too small to read, so the view
     // ends just before it instead.
-    expect(cleanEdgeZoom(steps, 0, 310, 0.75, limits)).toBeCloseTo(1);
+    expect(
+      cleanEdgeZoom({ steps, startX: 0, areaWidth: 310, zoom: 0.75, limits }),
+    ).toBeCloseTo(1);
     // A little wider: the second step fits whole above the floor.
-    expect(cleanEdgeZoom(steps, 0, 340, 0.75, limits)).toBeCloseTo(340 / 524);
+    expect(
+      cleanEdgeZoom({ steps, startX: 0, areaWidth: 340, zoom: 0.75, limits }),
+    ).toBeCloseTo(340 / 524);
     // An edge that already falls in a gap is left alone.
-    expect(cleanEdgeZoom(steps, 0, 400, 0.75, limits)).toBe(0.75);
+    expect(
+      cleanEdgeZoom({ steps, startX: 0, areaWidth: 400, zoom: 0.75, limits }),
+    ).toBe(0.75);
     // A first step wider than the area can't be helped.
     expect(
-      cleanEdgeZoom(
-        [{ x: 0, y: 0, width: 600, height: 64 }],
-        0,
-        310,
-        0.75,
+      cleanEdgeZoom({
+        steps: [{ x: 0, y: 0, width: 600, height: 64 }],
+        startX: 0,
+        areaWidth: 310,
+        zoom: 0.75,
         limits,
-      ),
+      }),
     ).toBe(0.75);
   });
 

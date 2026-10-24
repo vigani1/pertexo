@@ -172,13 +172,19 @@ export async function getWorkflowRunInput(
 }
 
 /** What one step run produced, as stored (ADR 050). */
-export async function getWorkflowNodeRunOutput(
-  apiClient: ApiClient,
-  workspaceId: string,
-  runId: string,
-  nodeRunId: string,
-  signal?: AbortSignal,
-): Promise<WorkflowRunData> {
+export async function getWorkflowNodeRunOutput({
+  apiClient,
+  workspaceId,
+  runId,
+  nodeRunId,
+  signal,
+}: Readonly<{
+  apiClient: ApiClient;
+  workspaceId: string;
+  runId: string;
+  nodeRunId: string;
+  signal?: AbortSignal | undefined;
+}>): Promise<WorkflowRunData> {
   const response = await apiClient.request({
     path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/runs/${encodeURIComponent(runId)}/node-runs/${encodeURIComponent(nodeRunId)}/output`,
     ...(signal === undefined ? {} : { signal }),
@@ -191,13 +197,19 @@ export async function getWorkflowNodeRunOutput(
 }
 
 /** What one step run received, when it was recorded (ADR 052). */
-export async function getWorkflowNodeRunInput(
-  apiClient: ApiClient,
-  workspaceId: string,
-  runId: string,
-  nodeRunId: string,
-  signal?: AbortSignal,
-): Promise<WorkflowRunData> {
+export async function getWorkflowNodeRunInput({
+  apiClient,
+  workspaceId,
+  runId,
+  nodeRunId,
+  signal,
+}: Readonly<{
+  apiClient: ApiClient;
+  workspaceId: string;
+  runId: string;
+  nodeRunId: string;
+  signal?: AbortSignal | undefined;
+}>): Promise<WorkflowRunData> {
   const response = await apiClient.request({
     path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/runs/${encodeURIComponent(runId)}/node-runs/${encodeURIComponent(nodeRunId)}/input`,
     ...(signal === undefined ? {} : { signal }),
@@ -227,14 +239,21 @@ export function getWorkflowStepHealth(
 }
 
 /** One step's runs in the workflow's last 100 runs, newest first. */
-export function getWorkflowStepRuns(
-  apiClient: ApiClient,
-  workspaceId: string,
-  workflowId: string,
-  nodeId: string,
-  limit: number,
-  signal?: AbortSignal,
-): Promise<WorkflowStepRunsResponse> {
+export function getWorkflowStepRuns({
+  apiClient,
+  workspaceId,
+  workflowId,
+  nodeId,
+  limit,
+  signal,
+}: Readonly<{
+  apiClient: ApiClient;
+  workspaceId: string;
+  workflowId: string;
+  nodeId: string;
+  limit: number;
+  signal?: AbortSignal | undefined;
+}>): Promise<WorkflowStepRunsResponse> {
   return apiClient.request({
     path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/workflows/${encodeURIComponent(workflowId)}/steps/${encodeURIComponent(nodeId)}/runs?limit=${String(limit)}`,
     ...(signal === undefined ? {} : { signal }),
@@ -245,13 +264,19 @@ export function getWorkflowStepRuns(
   });
 }
 
-export function openWorkflowRunEvents(
-  apiClient: ApiClient,
-  workspaceId: string,
-  runId: string,
-  lastEventId: number,
-  signal: AbortSignal,
-): Promise<ApiByteStream> {
+export function openWorkflowRunEvents({
+  apiClient,
+  workspaceId,
+  runId,
+  lastEventId,
+  signal,
+}: Readonly<{
+  apiClient: ApiClient;
+  workspaceId: string;
+  runId: string;
+  lastEventId: number;
+  signal: AbortSignal;
+}>): Promise<ApiByteStream> {
   return apiClient.stream({
     path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/runs/${encodeURIComponent(runId)}/events`,
     headers: { 'Last-Event-ID': String(lastEventId) },
@@ -324,13 +349,19 @@ export function getWorkflowRunVariables(
   });
 }
 
-export async function getWorkflowNodeRunDiagnostics(
-  apiClient: ApiClient,
-  workspaceId: string,
-  runId: string,
-  nodeRunId: string,
-  signal?: AbortSignal,
-) {
+export async function getWorkflowNodeRunDiagnostics({
+  apiClient,
+  workspaceId,
+  runId,
+  nodeRunId,
+  signal,
+}: Readonly<{
+  apiClient: ApiClient;
+  workspaceId: string;
+  runId: string;
+  nodeRunId: string;
+  signal?: AbortSignal | undefined;
+}>) {
   const response = await apiClient.request({
     path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/runs/${encodeURIComponent(runId)}/node-runs/${encodeURIComponent(nodeRunId)}/diagnostics`,
     ...(signal === undefined ? {} : { signal }),

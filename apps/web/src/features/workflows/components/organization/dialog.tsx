@@ -85,13 +85,13 @@ function useOrganizationEdit({
   const enabled = selectionValid && !command.denied;
   const reads = useQueries({
     queries: selected.map(({ workflow }) => ({
-      ...workflowOrganizationProjectionQueryOptions(
-        apiClient,
+      ...workflowOrganizationProjectionQueryOptions({
+        api: apiClient,
         userId,
-        workspace.id,
-        workflow.id,
-        { include: 'organization' },
-      ),
+        workspaceId: workspace.id,
+        workflowId: workflow.id,
+        input: { include: 'organization' },
+      }),
       staleTime: 0,
       enabled,
     })),
@@ -170,13 +170,13 @@ function useOrganizationEdit({
       const latest = await Promise.all(
         selected.map(({ workflow }) =>
           queryClient.query({
-            ...workflowOrganizationProjectionQueryOptions(
-              apiClient,
+            ...workflowOrganizationProjectionQueryOptions({
+              api: apiClient,
               userId,
-              workspace.id,
-              workflow.id,
-              { include: 'organization' },
-            ),
+              workspaceId: workspace.id,
+              workflowId: workflow.id,
+              input: { include: 'organization' },
+            }),
             staleTime: 0,
           }),
         ),
@@ -191,14 +191,14 @@ function useOrganizationEdit({
         return;
       }
       await audience.begin(
-        organizationEditAttempt(
-          workspace.id,
-          latest,
+        organizationEditAttempt({
+          workspaceId: workspace.id,
+          workflows: latest,
           operation,
           folderId,
           tagIds,
-          crypto.randomUUID(),
-        ),
+          idempotencyKey: crypto.randomUUID(),
+        }),
       );
     } catch {
       if (alive.current)

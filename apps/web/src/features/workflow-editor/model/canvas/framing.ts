@@ -116,13 +116,19 @@ export const EDGE_STEP_MIN_ZOOM = 0.6;
  * stay readable; otherwise in, to end just before it. On a phone that means
  * the first steps whole, rather than one step and a sliver of the next.
  */
-export function cleanEdgeZoom(
-  steps: readonly Box[],
-  startX: number,
-  areaWidth: number,
-  zoom: number,
-  limits: Readonly<{ minZoom: number; maxZoom: number }>,
-): number {
+export function cleanEdgeZoom({
+  steps,
+  startX,
+  areaWidth,
+  zoom,
+  limits,
+}: Readonly<{
+  steps: readonly Box[];
+  startX: number;
+  areaWidth: number;
+  zoom: number;
+  limits: Readonly<{ minZoom: number; maxZoom: number }>;
+}>): number {
   let current = zoom;
   // Taking in one step can bring the edge into the next; a few rounds settle.
   for (let round = 0; round < 4; round += 1) {

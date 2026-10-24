@@ -30,13 +30,13 @@ function VersionLine({
   const state = describeWorkflowState(workflow);
   const published = workflow.publishedVersionId;
   const version = useQuery({
-    ...workflowRunVersionQueryOptions(
+    ...workflowRunVersionQueryOptions({
       apiClient,
       userId,
       workspaceId,
-      workflow.id,
-      published ?? '',
-    ),
+      workflowId: workflow.id,
+      versionId: published ?? '',
+    }),
     enabled: published !== null,
   });
   const live = version.data;

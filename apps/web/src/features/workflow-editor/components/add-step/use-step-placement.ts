@@ -80,9 +80,16 @@ export function useStepPlacement({
     const ids = { nodeId: crypto.randomUUID(), edgeId: crypto.randomUUID() };
     let next;
     if (loopId !== undefined)
-      next = addBodyStep(graph, loopId, definition, at, ids, from);
+      next = addBodyStep({
+        graph,
+        loopId,
+        definition,
+        position: at,
+        ids,
+        from,
+      });
     else if (from !== undefined)
-      next = addStepAfter(graph, definition, at, from, ids);
+      next = addStepAfter({ graph, definition, position: at, from, ids });
     else next = addDefinitionNode(graph, definition, at, ids.nodeId);
     if (next === null) return;
     const failureCheck = inspectWorkflowFailureRoutes(next);

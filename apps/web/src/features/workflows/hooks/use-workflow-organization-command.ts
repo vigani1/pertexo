@@ -117,14 +117,14 @@ export function useWorkflowOrganizationCommand({
       else if (request.current === undefined) setState(idle);
     });
     const unsubscribeSession = subscribeSessionChanges(retire);
-    const unsubscribeCache = observeAuthority(
+    const unsubscribeCache = observeAuthority({
       queryClient,
       userId,
       workspaceId,
       requiredRole,
-      () => owner.current === token,
+      current: () => owner.current === token,
       retire,
-    );
+    });
     return () => {
       unsubscribeSession();
       unsubscribeCache();
@@ -161,15 +161,15 @@ export function useWorkflowOrganizationCommand({
       request.current === controller &&
       !controller.signal.aborted;
     const verify = () =>
-      verifyCurrentAuthority(
+      verifyCurrentAuthority({
         apiClient,
         userId,
         workspaceId,
         requiredRole,
-        controller.signal,
+        signal: controller.signal,
         current,
         retire,
-      );
+      });
     setState((previous) => ({
       ...previous,
       pending: true,
@@ -280,15 +280,23 @@ function clearOrganizationQueries(
   queryClient.removeQueries({ queryKey });
 }
 
-async function verifyCurrentAuthority(
-  apiClient: ApiClient,
-  userId: string,
-  workspaceId: string,
-  requiredRole: RequiredRole,
-  signal: AbortSignal,
-  current: () => boolean,
-  retire: () => void,
-) {
+async function verifyCurrentAuthority({
+  apiClient,
+  userId,
+  workspaceId,
+  requiredRole,
+  signal,
+  current,
+  retire,
+}: Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspaceId: string;
+  requiredRole: RequiredRole;
+  signal: AbortSignal;
+  current: () => boolean;
+  retire: () => void;
+}>) {
   await assertSessionIdentity(apiClient, userId, signal);
   if (!current()) return false;
   const accessible = await getAllAccessibleWorkspaces(apiClient, signal);
@@ -305,14 +313,21 @@ async function verifyCurrentAuthority(
   return true;
 }
 
-function observeAuthority(
-  queryClient: QueryClient,
-  userId: string,
-  workspaceId: string,
-  requiredRole: RequiredRole,
-  current: () => boolean,
-  retire: () => void,
-) {
+function observeAuthority({
+  queryClient,
+  userId,
+  workspaceId,
+  requiredRole,
+  current,
+  retire,
+}: Readonly<{
+  queryClient: QueryClient;
+  userId: string;
+  workspaceId: string;
+  requiredRole: RequiredRole;
+  current: () => boolean;
+  retire: () => void;
+}>) {
   return queryClient.getQueryCache().subscribe((event) => {
     if (!current() || event.type !== 'updated') return;
     const key = event.query.queryKey as readonly unknown[];

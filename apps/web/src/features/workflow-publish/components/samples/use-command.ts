@@ -34,13 +34,13 @@ export function useSampleCommand(
       if (controller === undefined || controller.signal.aborted)
         throw new DOMException('Aborted', 'AbortError');
       try {
-        return await changeStepSample(
+        return await changeStepSample({
           scope,
           nodeId,
-          body,
+          command: body,
           key,
-          controller.signal,
-        );
+          signal: controller.signal,
+        });
       } catch (cause) {
         if (isApiError(cause) && (cause.status === 409 || cause.status === 412))
           await client.invalidateQueries({ queryKey: stepSamplesKey(scope) });

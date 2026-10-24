@@ -58,13 +58,19 @@ export type AutoPauseCommand =
   | Readonly<{ kind: 'workspace'; body: WorkspaceAutoPauseSettingsRequest }>
   | Readonly<{ kind: 'resume'; body: WorkflowResumeRequest }>;
 
-export async function commandAutoPause(
-  apiClient: ApiClient,
-  workspaceId: string,
-  workflowId: string,
-  command: AutoPauseCommand,
-  key: string,
-): Promise<void> {
+export async function commandAutoPause({
+  apiClient,
+  workspaceId,
+  workflowId,
+  command,
+  key,
+}: Readonly<{
+  apiClient: ApiClient;
+  workspaceId: string;
+  workflowId: string;
+  command: AutoPauseCommand;
+  key: string;
+}>): Promise<void> {
   if (command.kind === 'workspace') {
     await apiClient.request({
       path: `${workspacePath(workspaceId)}/auto-pause`,

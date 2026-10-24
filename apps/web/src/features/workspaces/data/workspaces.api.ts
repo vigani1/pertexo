@@ -136,13 +136,19 @@ export function createWorkspaceInvitation(
   );
 }
 
-export function changeWorkspaceInvitation(
-  apiClient: ApiClient,
-  workspaceId: string,
-  invitationId: string,
-  operation: 'resend' | 'revoke',
-  input: Readonly<{ expectedRevision: number; idempotencyKey: string }>,
-): Promise<WorkspaceInvitationCommandResponse> {
+export function changeWorkspaceInvitation({
+  apiClient,
+  workspaceId,
+  invitationId,
+  operation,
+  input,
+}: Readonly<{
+  apiClient: ApiClient;
+  workspaceId: string;
+  invitationId: string;
+  operation: 'resend' | 'revoke';
+  input: Readonly<{ expectedRevision: number; idempotencyKey: string }>;
+}>): Promise<WorkspaceInvitationCommandResponse> {
   return invitationCommand(
     apiClient,
     `/v1/workspaces/${encodeURIComponent(workspaceId)}/invitations/${encodeURIComponent(invitationId)}/${operation}`,

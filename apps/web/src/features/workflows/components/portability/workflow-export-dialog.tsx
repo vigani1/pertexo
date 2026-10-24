@@ -106,15 +106,16 @@ function WorkflowExportSession({
       setPending(true);
       await verify(request.signal, false);
       request.signal.throwIfAborted();
-      const saved = await readWorkflowExportSource(
+      const saved = await readWorkflowExportSource({
         apiClient,
-        workspace.id,
-        workflow.id,
-        versionId === undefined
-          ? { kind: 'draft' }
-          : { kind: 'version', versionId },
-        request.signal,
-      );
+        workspaceId: workspace.id,
+        workflowId: workflow.id,
+        source:
+          versionId === undefined
+            ? { kind: 'draft' }
+            : { kind: 'version', versionId },
+        signal: request.signal,
+      });
       return { ...saved, digest: await portableGraphDigest(saved.graph) };
     }
     void readSource()
@@ -166,14 +167,14 @@ function WorkflowExportSession({
     try {
       await verify(request.signal, false);
       if (!request.current()) return;
-      const manifest = await exportWorkflow(
+      const manifest = await exportWorkflow({
         apiClient,
-        workspace.id,
-        workflow.id,
-        { source, reviewedGraphDigest: review.digest },
-        'etag' in review ? review.etag : undefined,
-        request.signal,
-      );
+        workspaceId: workspace.id,
+        workflowId: workflow.id,
+        body: { source, reviewedGraphDigest: review.digest },
+        etag: 'etag' in review ? review.etag : undefined,
+        signal: request.signal,
+      });
       if (!request.current()) return;
       await verify(request.signal, false);
       if (!request.current()) return;

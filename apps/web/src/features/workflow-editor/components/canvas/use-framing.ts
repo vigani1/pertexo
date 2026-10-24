@@ -76,13 +76,13 @@ export function useCanvasFraming(containerRef: RefObject<HTMLElement | null>) {
       });
       // Too wide to open whole: end the view between steps, not through one.
       if (readable && bounds.width * viewport.zoom > frame.width) {
-        const zoom = cleanEdgeZoom(
-          nodes.map((node) => flow.getNodesBounds([node])),
-          bounds.x,
-          frame.width,
-          viewport.zoom,
-          { minZoom: EDGE_STEP_MIN_ZOOM, maxZoom: 1 },
-        );
+        const zoom = cleanEdgeZoom({
+          steps: nodes.map((node) => flow.getNodesBounds([node])),
+          startX: bounds.x,
+          areaWidth: frame.width,
+          zoom: viewport.zoom,
+          limits: { minZoom: EDGE_STEP_MIN_ZOOM, maxZoom: 1 },
+        });
         viewport = framedViewport(bounds, frame, {
           minZoom: zoom,
           maxZoom: zoom,

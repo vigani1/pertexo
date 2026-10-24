@@ -28,13 +28,19 @@ export function getWorkflowConcurrency(
   });
 }
 
-export function putWorkflowConcurrency(
-  client: ApiClient,
-  workspaceId: string,
-  workflowId: string,
-  body: WorkflowConcurrencySettingsRequest,
-  key: string,
-) {
+export function putWorkflowConcurrency({
+  client,
+  workspaceId,
+  workflowId,
+  body,
+  key,
+}: Readonly<{
+  client: ApiClient;
+  workspaceId: string;
+  workflowId: string;
+  body: WorkflowConcurrencySettingsRequest;
+  key: string;
+}>) {
   return client.request({
     path: path(workspaceId, workflowId),
     method: 'PUT',
