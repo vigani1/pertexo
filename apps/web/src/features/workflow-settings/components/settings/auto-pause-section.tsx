@@ -14,7 +14,7 @@ import { useAutoPauseCommand } from '../../data/mutations/use-auto-pause-command
 import { QueryView } from '@/components/patterns/states/query-view';
 import { settingsReadFailure } from '../settings-read-failure';
 import type { Scope } from './auto-pause-fields';
-import { thresholdError } from './auto-pause-fields';
+import { thresholdError } from './auto-pause-input';
 import { CommandProblem } from './auto-pause-fields';
 import { WorkspaceDefault } from './workspace-default';
 
