@@ -1,3 +1,11 @@
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workflowVersions } from '../../../schema/authoring/workflows.js';
+import {
+  workflowInputCases,
+  workflowInputCasePayloads,
+} from '../../../schema/authoring/input-cases.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { lockArtifactReferences } from '../../../artifacts/references/repository.js';
 
@@ -42,11 +50,19 @@ export async function createInputCase(
         : { expectations: input.expectations }),
     },
     work: async (client) => {
-      const version = await client.query<{ checksum: string }>(
-        'select checksum from app.workflow_versions where workspace_id=$1 and workflow_id=$2 and id=$3',
-        [input.workspaceId, input.workflowId, input.workflowVersionId],
-      );
-      if (!version.rows[0])
+      const db = drizzle(client);
+      const [version] = await db
+        .select({ checksum: workflowVersions.checksum })
+        .from(workflowVersions)
+        .where(
+          and(
+            eq(workflowVersions.workspaceId, input.workspaceId),
+            eq(workflowVersions.workflowId, input.workflowId),
+            eq(workflowVersions.id, input.workflowVersionId),
+          ),
+        )
+        .catch(rethrowQueryFailure);
+      if (!version)
         throw new WorkflowNotFoundError('Workflow version is not visible');
       await quota(
         client,
@@ -60,28 +76,30 @@ export async function createInputCase(
         input.input,
         input.actorId,
       );
-      await client.query(
-        'insert into app.workflow_input_cases(id,workspace_id,workflow_id,workflow_version_id,version_checksum,name) values($1,$2,$3,$4,$5,$6)',
-        [
-          caseId,
-          input.workspaceId,
-          input.workflowId,
-          input.workflowVersionId,
-          version.rows[0].checksum,
+      await db
+        .insert(workflowInputCases)
+        .values({
+          id: caseId,
+          workspaceId: input.workspaceId,
+          workflowId: input.workflowId,
+          workflowVersionId: input.workflowVersionId,
+          versionChecksum: version.checksum,
           name,
-        ],
-      );
-      await client.query(
-        'insert into app.workflow_input_case_payloads(workspace_id,case_id,revision,input,canonical_bytes,expectations) values($1,$2,1,$3,$4,$5)',
-        [
-          input.workspaceId,
+        })
+        .catch(rethrowQueryFailure);
+      await db
+        .insert(workflowInputCasePayloads)
+        .values({
+          workspaceId: input.workspaceId,
           caseId,
-          json.text,
-          json.bytes +
+          revision: 1,
+          input: json.text,
+          canonicalBytes:
+            json.bytes +
             (expectations === null ? 0 : utf8ByteLength(expectations)),
           expectations,
-        ],
-      );
+        })
+        .catch(rethrowQueryFailure);
       return { caseId, revision: 1 };
     },
   });
@@ -107,13 +125,21 @@ export async function updateInputCase(
     },
     work: async (client) => {
       const item = await lockedCase(client, input);
-      const previous = await client.query<{ expectations: string | null }>(
-        'select expectations from app.workflow_input_case_payloads where workspace_id=$1 and case_id=$2 and revision=$3',
-        [input.workspaceId, input.caseId, item.revision],
-      );
+      const db = drizzle(client);
+      const [previous] = await db
+        .select({ expectations: workflowInputCasePayloads.expectations })
+        .from(workflowInputCasePayloads)
+        .where(
+          and(
+            eq(workflowInputCasePayloads.workspaceId, input.workspaceId),
+            eq(workflowInputCasePayloads.caseId, input.caseId),
+            eq(workflowInputCasePayloads.revision, item.revision),
+          ),
+        )
+        .catch(rethrowQueryFailure);
       const expectations =
         input.expectations === undefined
-          ? (previous.rows[0]?.expectations ?? null)
+          ? (previous?.expectations ?? null)
           : canonicalJson(
               workflowTestExpectationsSchema.parse(input.expectations),
             );
@@ -127,21 +153,27 @@ export async function updateInputCase(
         input.actorId,
       );
       const revision = item.revision + 1;
-      await client.query(
-        'insert into app.workflow_input_case_payloads(workspace_id,case_id,revision,input,canonical_bytes,expectations) values($1,$2,$3,$4,$5,$6)',
-        [
-          input.workspaceId,
-          input.caseId,
+      await db
+        .insert(workflowInputCasePayloads)
+        .values({
+          workspaceId: input.workspaceId,
+          caseId: input.caseId,
           revision,
-          json.text,
-          bytes,
+          input: json.text,
+          canonicalBytes: bytes,
           expectations,
-        ],
-      );
-      await client.query(
-        'update app.workflow_input_cases set name=$1,revision=$2,updated_at=clock_timestamp() where workspace_id=$3 and id=$4',
-        [name, revision, input.workspaceId, input.caseId],
-      );
+        })
+        .catch(rethrowQueryFailure);
+      await db
+        .update(workflowInputCases)
+        .set({ name, revision, updatedAt: sql`clock_timestamp()` })
+        .where(
+          and(
+            eq(workflowInputCases.workspaceId, input.workspaceId),
+            eq(workflowInputCases.id, input.caseId),
+          ),
+        )
+        .catch(rethrowQueryFailure);
       return { caseId: input.caseId, revision };
     },
   });
@@ -158,10 +190,20 @@ export async function deleteInputCase(
     work: async (client) => {
       const item = await lockedCase(client, input);
       const revision = item.revision + 1;
-      await client.query(
-        'update app.workflow_input_cases set deleted_at=clock_timestamp(),revision=$1,updated_at=clock_timestamp() where workspace_id=$2 and id=$3',
-        [revision, input.workspaceId, input.caseId],
-      );
+      await drizzle(client)
+        .update(workflowInputCases)
+        .set({
+          deletedAt: sql`clock_timestamp()`,
+          revision,
+          updatedAt: sql`clock_timestamp()`,
+        })
+        .where(
+          and(
+            eq(workflowInputCases.workspaceId, input.workspaceId),
+            eq(workflowInputCases.id, input.caseId),
+          ),
+        )
+        .catch(rethrowQueryFailure);
       return { caseId: input.caseId, revision };
     },
   });
