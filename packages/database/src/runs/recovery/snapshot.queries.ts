@@ -91,8 +91,12 @@ export function recoveryOutputs(
   return db
     .select({
       id: nodeRuns.id,
-      node_output: nodeRuns.outputRef,
-      attempt_output: nodeAttempts.outputRef,
+      node_output: sql<
+        typeof nodeRuns.$inferSelect.outputRef
+      >`${nodeRuns.outputRef}`.as('node_output'),
+      attempt_output: sql<
+        typeof nodeAttempts.$inferSelect.outputRef
+      >`${nodeAttempts.outputRef}`.as('attempt_output'),
     })
     .from(nodeRuns)
     .leftJoin(
