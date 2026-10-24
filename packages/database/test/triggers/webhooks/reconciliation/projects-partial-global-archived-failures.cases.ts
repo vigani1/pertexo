@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 
-import { WorkflowTriggerStalePublicationError } from '../../../../src/triggers/reconciliation/repository.js';
+import { WorkflowTriggerStalePublicationError } from '../../../../src/triggers/reconciliation/errors.js';
 
 import {
   actorId,

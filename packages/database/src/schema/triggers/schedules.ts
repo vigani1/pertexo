@@ -1,4 +1,4 @@
-import type { RecordedScheduleOccurrence } from '../../triggers/schedules/pause.queries.js';
+import type { RecordedScheduleOccurrence } from '../../triggers/schedules/contract.js';
 import type { ScheduleTriggerRecord } from '../../triggers/schedules/management/contract.js';
 import { workflowTriggers } from '../authoring/workflows.js';
 import { workflowRuns } from '../runs/execution.js';

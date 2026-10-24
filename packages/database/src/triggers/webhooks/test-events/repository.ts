@@ -17,11 +17,8 @@ import { WorkflowStepSampleError } from '../../../authoring/step-samples/contrac
 import { WorkflowNotFoundError } from '../../../authoring/workflows/errors.js';
 import { WebhookIngressRateLimitExceededError } from '../errors.js';
 import { testEventDraft } from './authority.queries.js';
-import {
-  WebhookTestEventError,
-  type TestEventScope,
-  type WebhookTestEventStore,
-} from './contract.js';
+import { WebhookTestEventError } from './errors.js';
+import type { TestEventScope, WebhookTestEventStore } from './contract.js';
 
 const selection = {
   ...getTableColumns(listeners),

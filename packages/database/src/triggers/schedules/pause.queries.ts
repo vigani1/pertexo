@@ -9,11 +9,6 @@ import { workflowTriggerPausePeriods } from '../../schema/trigger-pause.js';
 import { and, desc, eq, sql } from 'drizzle-orm';
 
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
-import type { ScheduleOccurrenceDisposition } from './misfire.js';
-
-/** ADR 056: a paused workflow's occurrence is recorded without a run. */
-export type RecordedScheduleOccurrence =
-  ScheduleOccurrenceDisposition | 'paused';
 
 /**
  * Whether the due instant falls in a pause, including a completed pause. It locks the

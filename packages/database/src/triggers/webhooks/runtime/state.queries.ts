@@ -12,10 +12,8 @@ import { and, eq, inArray, or, sql } from 'drizzle-orm';
 import type { PoolClient } from 'pg';
 
 import type { PublishedWorkflow } from '../../../runs/queries/execution/published.js';
-import {
-  readHealth,
-  type WorkflowTriggerHealth,
-} from '../../reconciliation/repository.js';
+import { readHealth } from '../../reconciliation/health.repository.js';
+import type { WorkflowTriggerHealth } from '../../reconciliation/contract.js';
 
 import {
   WebhookDeliveryIneligibleError,

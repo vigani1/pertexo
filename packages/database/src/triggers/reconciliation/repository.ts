@@ -1,3 +1,4 @@
+import type { WorkflowTriggerReconciliationDatabase } from './contract.js';
 import { uuidSchema, safeReasonSchema } from './input.js';
 import {
   readReconciliationEvent,
@@ -28,41 +29,7 @@ import {
 } from './errors.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import { deactivateArchivedWorkflowTriggers } from './activation.repository.js';
-import {
-  readHealth,
-  refreshWorkflowActivation,
-  type WorkflowTriggerHealth,
-} from './health.repository.js';
-export type { WorkflowTriggerHealth } from './health.repository.js';
-
-export interface WorkflowTriggerReconciliationDatabase {
-  reconcile(
-    input: Readonly<{
-      workspaceId: string;
-      workflowId: string;
-      publishedVersionId: string;
-      outboxEventId: string;
-      delivery?: Readonly<{
-        outboxEventId: string;
-        payloadChecksum: string;
-      }>;
-    }>,
-  ): Promise<readonly WorkflowTriggerHealth[]>;
-  recordFailure(
-    input: Readonly<{
-      workspaceId: string;
-      workflowId: string;
-      publishedVersionId: string;
-      reason: string;
-    }>,
-  ): Promise<void>;
-  close(): Promise<void>;
-}
-
-export {
-  WorkflowTriggerReconciliationMismatchError,
-  WorkflowTriggerStalePublicationError,
-} from './errors.js';
+import { readHealth, refreshWorkflowActivation } from './health.repository.js';
 
 const reconciliationConsumerName = 'trigger-runtime.reconciliation';
 const transportChecksumMismatch = Symbol('transport-checksum-mismatch');
@@ -111,8 +78,6 @@ export function createWorkflowTriggerReconciliationDatabase(
     close: () => lease.close(),
   });
 }
-
-export { refreshWorkflowActivation, readHealth };
 
 async function reconcileWorkflowTriggers(
   pool: Pool,

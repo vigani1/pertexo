@@ -7,7 +7,7 @@ import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { sha256HexSchema as digestSchema } from '../../platform/persisted-primitives.js';
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
 import { WorkflowTriggerReconciliationMismatchError } from './errors.js';
-import type { WorkflowTriggerReconciliationDatabase } from './repository.js';
+import type { WorkflowTriggerReconciliationDatabase } from './contract.js';
 import { uuidSchema, reconciliationPayloadSchema } from './input.js';
 
 type ReconciliationEvent = Readonly<{

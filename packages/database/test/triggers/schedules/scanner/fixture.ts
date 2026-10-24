@@ -1,7 +1,7 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Client } from 'pg';
 import { requestText } from '../../../support/postgres/query-text.js';
-import { claimSchema } from '../../../../src/triggers/schedules/scanning/contract.js';
+import { claimSchema } from '../../../../src/triggers/schedules/scanning/input.js';
 import { expect, vi } from 'vitest';
 import type { DatabaseConfig } from '../../../../src/config.js';
 import { createScheduleTriggerScanner } from '../../../../src/triggers/schedules/scanner.js';

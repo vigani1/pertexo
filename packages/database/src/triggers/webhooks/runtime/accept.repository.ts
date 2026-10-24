@@ -27,18 +27,15 @@ import {
   lockEndpointDedupeKey,
   readLockedReplay,
   resolveExactReplay,
-  type WebhookReplayIdentity,
 } from '../replay.repository.js';
+import type { WebhookReplayIdentity } from '../contract.js';
 
 import {
   withWorkspaceTransaction,
   withWorkspaceReadTransaction,
 } from '../../../tenant-access/transactions.js';
-import {
-  uuidSchema,
-  type WebhookConfig,
-  type WebhookTriggerDatabase,
-} from './contract.js';
+import { uuidSchema } from '../input.js';
+import type { WebhookConfig, WebhookTriggerDatabase } from './contract.js';
 
 import { executableProjection, lockEligibleEndpoint } from './state.queries.js';
 

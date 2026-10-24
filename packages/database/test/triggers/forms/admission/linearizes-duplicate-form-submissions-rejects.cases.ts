@@ -10,7 +10,7 @@ import { FormValuesInvalidError } from '@pertexo/workflow-model';
 import {
   FormUnavailableError,
   FormChangedError,
-} from '../../../../src/triggers/forms/contract.js';
+} from '../../../../src/triggers/forms/errors.js';
 import { parseDatabaseConfig } from '../../../../src/config.js';
 import { admin } from '../../../lifecycle/calls/fixtures.js';
 import {

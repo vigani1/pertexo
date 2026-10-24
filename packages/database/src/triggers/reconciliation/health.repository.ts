@@ -1,3 +1,4 @@
+import type { WorkflowTriggerHealth } from './contract.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -8,24 +9,7 @@ import { webhookTriggerEndpoints as endpoints } from '../../schema/triggers/endp
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { WebhookAuthentication } from '@pertexo/contracts';
 import type { PoolClient } from 'pg';
-import {
-  workflowActivationAfterReconciliation,
-  type WorkflowTriggerStatus,
-} from '@pertexo/workflow-model';
-
-export type WorkflowTriggerHealth = Readonly<{
-  id: string;
-  workflowId: string;
-  workflowVersionId: string;
-  nodeId: string;
-  kind: 'webhook' | 'schedule';
-  status: WorkflowTriggerStatus;
-  healthStatus: 'pending' | 'healthy' | 'degraded' | 'unhealthy' | 'disabled';
-  lastErrorCode: string | null;
-  endpointReady: boolean;
-  authentication?: WebhookAuthentication;
-  reconciledAt: Date | null;
-}>;
+import { workflowActivationAfterReconciliation } from '@pertexo/workflow-model';
 
 export async function refreshWorkflowActivation(
   client: PoolClient,

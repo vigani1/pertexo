@@ -19,7 +19,8 @@ import {
   withTenantScopedReadClient,
 } from '../../tenant-access/transactions.js';
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
-import { FormUnavailableError, type FormStore } from './contract.js';
+import { FormUnavailableError } from './errors.js';
+import type { FormStore } from './contract.js';
 import { authorizeForm, readFormVersion } from './records.queries.js';
 import {
   capabilityHash,

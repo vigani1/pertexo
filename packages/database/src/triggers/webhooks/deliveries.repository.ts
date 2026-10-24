@@ -1,3 +1,24 @@
+import type {
+  WebhookDeliveryLog,
+  WebhookDeliveryEndpoint,
+  WebhookDeliveryOutcome,
+  WebhookSignatureCheck,
+  WebhookReplayCheck,
+  WebhookDeliveryPosition,
+  WebhookDeliveryPage,
+  RejectedWebhookDelivery,
+  ListWebhookDeliveriesInput,
+} from './contract.js';
+import { HTTP_STATUS } from './delivery.js';
+import {
+  SIGNATURE_CHECKS,
+  REPLAY_CHECKS,
+  uuidSchema,
+  bodyBytesSchema,
+  pageLimitSchema,
+  positionSchema,
+  rejectedOutcomeSchema,
+} from './input.js';
 import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { webhookTriggerDeliveries as deliveries } from '../../schema/triggers/deliveries.js';
@@ -19,117 +40,7 @@ import {
 } from '../../tenant-access/transactions.js';
 import { authorizeWorkflowResource } from '../../tenant-access/resources/authority.js';
 import { WebhookTriggerNotFoundError } from './errors.js';
-
-/**
- * ADR 045: one metadata-only row per attributed webhook attempt. Each outcome
- * fixes the HTTP status the ingress returned; the migration's check
- * constraint binds the same pairs.
- */
-const HTTP_STATUS = Object.freeze({
-  accepted: 202,
-  coordinated: 202,
-  skipped: 202,
-  replayed: 202,
-  authentication_failed: 401,
-  invalid_request: 400,
-  conflict: 409,
-  rate_limited: 429,
-  paused: 423,
-} as const);
-const SIGNATURE_CHECKS = ['verified', 'mismatch', 'not_checked'] as const;
-const REPLAY_CHECKS = [
-  'new',
-  'duplicate',
-  'conflict',
-  'stale_timestamp',
-  'not_checked',
-] as const;
 const DEFAULT_PAGE_LIMIT = 25;
-
-export type WebhookDeliveryOutcome = keyof typeof HTTP_STATUS;
-export type WebhookSignatureCheck = (typeof SIGNATURE_CHECKS)[number];
-export type WebhookReplayCheck = (typeof REPLAY_CHECKS)[number];
-
-/** The resolved endpoint an attempt is attributed to. */
-export type WebhookDeliveryEndpoint = Readonly<{
-  workspaceId: string;
-  triggerId: string;
-  endpointId: string;
-}>;
-
-export type RejectedWebhookDelivery = Readonly<{
-  endpoint: WebhookDeliveryEndpoint;
-  outcome: Exclude<
-    WebhookDeliveryOutcome,
-    'accepted' | 'replayed' | 'skipped' | 'coordinated'
-  >;
-  signatureCheck: WebhookSignatureCheck;
-  replayCheck: WebhookReplayCheck;
-  bodyBytes: number;
-}>;
-
-export type WebhookDeliveryRecord = Readonly<{
-  id: string;
-  receivedAt: string;
-  outcome: WebhookDeliveryOutcome;
-  httpStatus: number;
-  signatureCheck: WebhookSignatureCheck;
-  replayCheck: WebhookReplayCheck;
-  bodyBytes: number | null;
-  runId: string | null;
-  skipReason?: 'concurrency_limit';
-  coordination?: CoordinatedEvent;
-}>;
-
-/** Newest-first keyset position: `(received_at desc, id asc)`. */
-export type WebhookDeliveryPosition = Readonly<{
-  receivedAt: string;
-  id: string;
-}>;
-
-export type WebhookDeliveryPage = Readonly<{
-  items: readonly WebhookDeliveryRecord[];
-  nextCursor?: WebhookDeliveryPosition;
-}>;
-
-export type ListWebhookDeliveriesInput = Readonly<{
-  workspaceId: string;
-  actorId: string;
-  workflowId: string;
-  triggerId: string;
-  limit?: number;
-  after?: WebhookDeliveryPosition;
-}>;
-
-export interface WebhookDeliveryLog {
-  listDeliveries(
-    input: ListWebhookDeliveriesInput,
-  ): Promise<WebhookDeliveryPage>;
-  recordRejectedDelivery(input: RejectedWebhookDelivery): Promise<void>;
-}
-
-const uuidSchema = z.uuid();
-const bodyBytesSchema = z
-  .number()
-  .int()
-  .min(0)
-  .max(256 * 1024);
-const pageLimitSchema = z.number().int().positive().max(100);
-const receivedAtSchema = z.iso
-  .datetime({ precision: 6 })
-  .refine((value) => !value.startsWith('0000-'), {
-    message: 'PostgreSQL timestamps do not support year zero',
-  });
-const positionSchema = z
-  .object({ receivedAt: receivedAtSchema, id: uuidSchema })
-  .strict();
-const rejectedOutcomeSchema = z.enum([
-  'authentication_failed',
-  'invalid_request',
-  'conflict',
-  'rate_limited',
-  'paused',
-]);
 
 /** Owners, admins and builders of an active workspace read trigger state. */
 export async function authorizeWebhookTriggerReader(

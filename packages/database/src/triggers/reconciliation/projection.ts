@@ -1,3 +1,4 @@
+import type { WorkflowTriggerProjection } from './contract.js';
 import { CORE_WEBHOOK_CONFIG_SCHEMA } from '@pertexo/workflow-model';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { createHash } from 'node:crypto';
@@ -30,13 +31,6 @@ const graphSchema = z
     ),
   })
   .loose();
-
-export type WorkflowTriggerProjection = Readonly<{
-  nodeId: string;
-  kind: 'schedule' | 'webhook';
-  config: Readonly<Record<string, unknown>>;
-  configFingerprint: string;
-}>;
 
 export function workflowTriggerProjection(
   graphInput: unknown,

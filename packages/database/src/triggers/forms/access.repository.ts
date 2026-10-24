@@ -11,7 +11,8 @@ import {
   completeCommand,
 } from '../../platform/idempotency/repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
-import { FormAccessConflictError, type FormStore } from './contract.js';
+import { FormAccessConflictError } from './errors.js';
+import type { FormStore } from './contract.js';
 export const capabilityHash = (value: string) =>
   createHash('sha256').update(value).digest('hex');
 const accessSelection = {

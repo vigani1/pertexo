@@ -1,3 +1,4 @@
+import type { sealedSchema } from './input.js';
 import type { CORE_WEBHOOK_CONFIG_SCHEMA } from '@pertexo/workflow-model';
 
 import type { EventCoordinationReceipt } from '@pertexo/workflow-model';
@@ -10,24 +11,11 @@ import type {
 } from '../responses/contract.js';
 import type { InitialCheckpointFactory } from '../../../runs/commands/initial-checkpoint.js';
 
-import { z } from 'zod';
+import type { z } from 'zod';
 
-import type { WorkflowTriggerHealth } from '../../reconciliation/repository.js';
+import type { WorkflowTriggerHealth } from '../../reconciliation/contract.js';
 
-import type { WebhookDeliveryLog } from '../deliveries.repository.js';
-
-export const uuidSchema = z.uuid();
-
-export const sealedSchema = z
-  .object({
-    id: z.uuid(),
-    kmsKeyReference: z.string().min(1).max(2048),
-    encryptedDataKey: z.string().min(1),
-    ciphertext: z.string().min(1),
-    nonce: z.string().min(1).max(64),
-    authTag: z.string().min(1).max(64),
-  })
-  .strict();
+import type { WebhookDeliveryLog } from '../contract.js';
 
 export type SealedWebhookTriggerSecret = Readonly<z.input<typeof sealedSchema>>;
 

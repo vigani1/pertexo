@@ -4,7 +4,8 @@ import { canManageWorkflowTrigger } from '../../management.queries.js';
 
 import { WebhookTriggerNotFoundError } from '../errors.js';
 import { withTenantScopedClient } from '../../../tenant-access/transactions.js';
-import { uuidSchema, type Command } from './contract.js';
+import { uuidSchema } from '../input.js';
+import type { Command } from './contract.js';
 
 export function command<T>(
   pool: Pool,

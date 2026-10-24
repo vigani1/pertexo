@@ -14,11 +14,8 @@ import {
 
 import { WebhookTriggerIdempotencyConflictError } from '../errors.js';
 
-import {
-  sealedSchema,
-  type SealedWebhookTriggerSecret,
-  type Command,
-} from './contract.js';
+import { sealedSchema } from './input.js';
+import type { SealedWebhookTriggerSecret, Command } from './contract.js';
 
 function webhookCommand(input: Command, operation: string) {
   return {

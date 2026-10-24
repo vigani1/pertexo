@@ -14,13 +14,11 @@ import {
   authorizeScheduleReader,
   createScheduleTriggerReads,
 } from './reads.queries.js';
-import { refreshWorkflowActivation } from '../reconciliation/repository.js';
+import { refreshWorkflowActivation } from '../reconciliation/health.repository.js';
 import { canManageWorkflowTrigger } from '../management.queries.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
-import {
-  uuidSchema,
-  type ScheduleTriggerDatabase,
-} from './management/contract.js';
+import { uuidSchema } from './input.js';
+import type { ScheduleTriggerDatabase } from './management/contract.js';
 import {
   readSchedules,
   readScheduleCommandTarget,
@@ -33,12 +31,6 @@ import {
   recordScheduleCommandAudit,
   completeScheduleCommand,
 } from './management/receipts.repository.js';
-export { ScheduleTriggerError } from './errors.js';
-export {
-  type ScheduleTriggerRecord,
-  type ScheduleTriggerCommandResult,
-  type ScheduleTriggerDatabase,
-} from './management/contract.js';
 export function createScheduleTriggerDatabase(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,

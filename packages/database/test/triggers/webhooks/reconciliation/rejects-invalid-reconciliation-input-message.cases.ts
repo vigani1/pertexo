@@ -4,7 +4,7 @@ import { expect, it } from 'vitest';
 
 import { canonicalOutboxPayloadChecksum } from '../../../../src/outbox/events.repository.js';
 
-import { WorkflowTriggerReconciliationMismatchError } from '../../../../src/triggers/reconciliation/repository.js';
+import { WorkflowTriggerReconciliationMismatchError } from '../../../../src/triggers/reconciliation/errors.js';
 
 import {
   workspaceId,

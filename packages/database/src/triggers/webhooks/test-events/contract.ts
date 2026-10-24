@@ -2,7 +2,7 @@ import type { WebhookAuthentication } from '@pertexo/contracts';
 import type {
   WebhookVerificationReference,
   SealedWebhookTriggerSecret,
-} from '../repository.js';
+} from '../runtime/contract.js';
 
 export type TestEventScope = Readonly<{
   workspaceId: string;
@@ -39,13 +39,4 @@ export interface WebhookTestEventStore {
   consume(reference: TestEventReference): Promise<void>;
   capture(reference: TestEventReference, runInput: unknown): Promise<boolean>;
   close(): Promise<void>;
-}
-export class WebhookTestEventError extends Error {
-  override readonly name = 'WebhookTestEventError';
-  constructor(
-    readonly reason:
-      'changed' | 'limit_reached' | 'unavailable' | 'value_invalid',
-  ) {
-    super(`webhook.test_${reason}`);
-  }
 }

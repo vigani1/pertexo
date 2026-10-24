@@ -8,7 +8,7 @@ import {
   WebhookDeliveryIneligibleError,
   WebhookIngressRateLimitExceededError,
   WebhookTriggerNotFoundError,
-} from '../../../../src/triggers/webhooks/repository.js';
+} from '../../../../src/triggers/webhooks/errors.js';
 
 import {
   actorId,
