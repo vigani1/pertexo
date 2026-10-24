@@ -66,16 +66,20 @@ export function useErrorWorkflowCommand(
     isApiError(mutation.error) &&
     mutation.error.problem?.code === 'workflow.error_policy_conflict';
   const unconfirmed = mutation.isError && isUnconfirmedCommand(mutation.error);
-  const problem = !mutation.isError
-    ? undefined
-    : conflict
-      ? 'This changed in another session. Review the refreshed setting and save again.'
-      : isApiError(mutation.error) &&
-          mutation.error.problem?.code === 'workflow.error_target_unavailable'
-        ? 'Choose an active workflow published with When a workflow fails.'
-        : unconfirmed
-          ? 'The change could not be confirmed. Retry the same change before editing it.'
-          : describeCommandError(mutation.error, 'saving the error workflow');
+  function errorMessage(): string | undefined {
+    if (!mutation.isError) return undefined;
+    if (conflict)
+      return 'This changed in another session. Review the refreshed setting and save again.';
+    const targetUnavailable =
+      isApiError(mutation.error) &&
+      mutation.error.problem?.code === 'workflow.error_target_unavailable';
+    if (targetUnavailable)
+      return 'Choose an active workflow published with When a workflow fails.';
+    if (unconfirmed)
+      return 'The change could not be confirmed. Retry the same change before editing it.';
+    return describeCommandError(mutation.error, 'saving the error workflow');
+  }
+  const problem = errorMessage();
   return {
     send,
     pending: mutation.isPending,

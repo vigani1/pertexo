@@ -78,6 +78,8 @@ export function EditTableColumns({
       );
     }
   }
+  const idleSubmitLabel =
+    intent.kind === 'remove' ? 'Confirm delete column' : 'Save column changes';
   return (
     <Dialog
       open
@@ -92,66 +94,7 @@ export function EditTableColumns({
           stored cells and makes bound workflow steps require review.
         </DialogDescription>
         <div className="mt-5 grid gap-5">
-          <ul className="divide-y divide-border">
-            {base.columns.map((column) => (
-              <li
-                key={column.id}
-                className="flex flex-wrap items-center justify-between gap-2 py-2"
-              >
-                <span className="min-w-0 break-words text-sm">
-                  {column.name} · {column.type}
-                  {column.required ? ' · required' : ''}
-                  {base.keyColumn === column.name ? ' · unique key' : ''}
-                </span>
-                <div className="flex gap-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={locked}
-                    onClick={() => {
-                      choose({ kind: 'rename', id: column.id });
-                    }}
-                  >
-                    Rename {column.name}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={locked || base.columns.length === 1}
-                    onClick={() => {
-                      choose({ kind: 'remove', id: column.id });
-                    }}
-                  >
-                    Delete {column.name}
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={locked}
-              onClick={() => {
-                choose({ kind: 'add' });
-              }}
-            >
-              Add column
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={locked}
-              onClick={() => {
-                choose({ kind: 'key' });
-              }}
-            >
-              Change unique key
-            </Button>
-          </div>
+          <ColumnChoices base={base} locked={locked} onChoose={choose} />
           <form
             className="grid gap-4"
             onSubmit={(event) => {
@@ -174,11 +117,7 @@ export function EditTableColumns({
             <TableCommandFeedback command={command} />
             <div className="flex flex-wrap gap-2">
               <Button type="submit" variant="primary" disabled={locked}>
-                {command.pending
-                  ? 'Saving…'
-                  : intent.kind === 'remove'
-                    ? 'Confirm delete column'
-                    : 'Save column changes'}
+                {command.pending ? 'Saving…' : idleSubmitLabel}
               </Button>
               <Button
                 type="button"
@@ -193,5 +132,81 @@ export function EditTableColumns({
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ColumnChoices({
+  base,
+  locked,
+  onChoose,
+}: Readonly<{
+  base: DataTableDefinition;
+  locked: boolean;
+  onChoose: (intent: ColumnEditIntent) => void;
+}>) {
+  return (
+    <>
+      {' '}
+      <ul className="divide-y divide-border">
+        {base.columns.map((column) => (
+          <li
+            key={column.id}
+            className="flex flex-wrap items-center justify-between gap-2 py-2"
+          >
+            <span className="min-w-0 break-words text-sm">
+              {column.name} · {column.type}
+              {column.required ? ' · required' : ''}
+              {base.keyColumn === column.name ? ' · unique key' : ''}
+            </span>
+            <div className="flex gap-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={locked}
+                onClick={() => {
+                  onChoose({ kind: 'rename', id: column.id });
+                }}
+              >
+                Rename {column.name}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={locked || base.columns.length === 1}
+                onClick={() => {
+                  onChoose({ kind: 'remove', id: column.id });
+                }}
+              >
+                Delete {column.name}
+              </Button>
+            </div>
+          </li>
+        ))}
+      </ul>
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={locked}
+          onClick={() => {
+            onChoose({ kind: 'add' });
+          }}
+        >
+          Add column
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={locked}
+          onClick={() => {
+            onChoose({ kind: 'key' });
+          }}
+        >
+          Change unique key
+        </Button>
+      </div>
+    </>
   );
 }

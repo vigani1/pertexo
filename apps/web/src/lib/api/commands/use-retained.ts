@@ -66,6 +66,21 @@ export function useRetainedCommand<Input, Output>(
       busy.current = false;
     }
   }
+  function errorMessage(): string | undefined {
+    if (expired)
+      return (
+        options.expiredMessage ??
+        'This request’s 24-hour retry window has ended. Check its result before starting again.'
+      );
+    if (uncertain)
+      return 'We couldn’t confirm the result. Retry the same action before changing anything.';
+    if (mutation.isError)
+      return describeCommandError(
+        mutation.error,
+        options.action ?? 'sending this response',
+      );
+    return undefined;
+  }
   return {
     send,
     pending: mutation.isPending,
@@ -73,17 +88,7 @@ export function useRetainedCommand<Input, Output>(
     expired,
     data: mutation.data,
     cause: mutation.error,
-    error: expired
-      ? (options.expiredMessage ??
-        'This request’s 24-hour retry window has ended. Check its result before starting again.')
-      : uncertain
-        ? 'We couldn’t confirm the result. Retry the same action before changing anything.'
-        : mutation.isError
-          ? describeCommandError(
-              mutation.error,
-              options.action ?? 'sending this response',
-            )
-          : undefined,
+    error: errorMessage(),
     retry: () => {
       if (intent.current !== undefined) void send(intent.current.body);
     },

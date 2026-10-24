@@ -30,32 +30,7 @@ export function OrganizationCommandFeedback({
       {command.error === undefined ? null : (
         <Notice tone="destructive">{command.error}</Notice>
       )}
-      {command.result === undefined ? null : 'items' in command.result ? (
-        <Notice title="Cleanup outcomes">
-          <ol className="flex flex-col gap-2">
-            {command.result.items.map((item, index) => (
-              <li key={item.workflowId}>
-                <span className="break-words">
-                  {command.denied
-                    ? `Workflow name unavailable (${String(index + 1)})`
-                    : (names.get(item.workflowId) ??
-                      `Workflow name unavailable (${String(index + 1)})`)}
-                </span>
-                : {outcomeLabels[item.status]}
-                {'replayed' in item && item.replayed
-                  ? ' (previously completed)'
-                  : ''}
-              </li>
-            ))}
-          </ol>
-          Historical outcomes do not replace current assignments. Reload before
-          a new selection or deletion.
-        </Notice>
-      ) : (
-        <Notice tone="success">
-          Command completed. Current organization is being reloaded.
-        </Notice>
-      )}
+      <OrganizationResult command={command} names={names} />
       {command.retryAvailable ? (
         <ProgressButton
           type="button"
@@ -76,5 +51,43 @@ export function OrganizationCommandFeedback({
         </Button>
       ) : null}
     </>
+  );
+}
+
+function OrganizationResult({
+  command,
+  names,
+}: Readonly<{
+  command: OrganizationCommand;
+  names: ReadonlyMap<string, string>;
+}>) {
+  if (command.result === undefined) return null;
+  if ('items' in command.result)
+    return (
+      <Notice title="Cleanup outcomes">
+        <ol className="flex flex-col gap-2">
+          {command.result.items.map((item, index) => (
+            <li key={item.workflowId}>
+              <span className="break-words">
+                {command.denied
+                  ? `Workflow name unavailable (${String(index + 1)})`
+                  : (names.get(item.workflowId) ??
+                    `Workflow name unavailable (${String(index + 1)})`)}
+              </span>
+              : {outcomeLabels[item.status]}
+              {'replayed' in item && item.replayed
+                ? ' (previously completed)'
+                : ''}
+            </li>
+          ))}
+        </ol>
+        Historical outcomes do not replace current assignments. Reload before a
+        new selection or deletion.
+      </Notice>
+    );
+  return (
+    <Notice tone="success">
+      Command completed. Current organization is being reloaded.
+    </Notice>
   );
 }
