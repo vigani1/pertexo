@@ -81,15 +81,15 @@ function commandError(error: unknown, attempt: Attempt): string {
  * command stays locked with its exact body and key until it is retried or
  * dismissed; everything else resolves to a worded outcome.
  */
-export function useInvitationCommand(
-  input: Readonly<{
-    apiClient: ApiClient;
-    userId: string;
-    workspaceId: string;
-    onAuthenticationLost: () => void;
-    onPermissionLost: () => void;
-  }>,
-) {
+type InvitationCommandInput = Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspaceId: string;
+  onAuthenticationLost: () => void;
+  onPermissionLost: () => void;
+}>;
+
+export function useInvitationCommand(input: InvitationCommandInput) {
   const queryClient = useQueryClient();
   const [state, setState] = useState<State>({ kind: 'idle' });
   const stateRef = useRef(state);
@@ -120,29 +120,7 @@ export function useInvitationCommand(
     setState(next);
   }, []);
 
-  async function verifySession(
-    scope: symbol,
-    attempt: Attempt,
-  ): Promise<InvitationOutcome | undefined> {
-    try {
-      await assertSessionIdentity(input.apiClient, input.userId);
-      return owner.current === scope ? undefined : STOPPED;
-    } catch (error) {
-      if (owner.current !== scope) return STOPPED;
-      if (isSessionIdentityChangedError(error) || isUnauthenticated(error)) {
-        transition({ kind: 'idle' });
-        input.onAuthenticationLost();
-        return STOPPED;
-      }
-      if (isSessionIdentityUnverifiedError(error)) {
-        const message =
-          'We couldn’t check your session. Try again — the same invitation command is kept.';
-        transition({ kind: 'uncertain', attempt, message });
-        return { kind: 'uncertain', message };
-      }
-      throw error;
-    }
-  }
+  const context: InvitationContext = { input, owner, transition };
 
   async function settleFailure(
     scope: symbol,
@@ -182,7 +160,7 @@ export function useInvitationCommand(
     inFlight.current = true;
     transition({ kind: 'executing', attempt });
     try {
-      const blocked = await verifySession(scope, attempt);
+      const blocked = await verifyInvitationSession(context, scope, attempt);
       if (blocked !== undefined) return blocked;
       await mutation.mutateAsync(attempt);
       if (owner.current !== scope) return STOPPED;
@@ -250,4 +228,34 @@ export function useInvitationCommand(
       void queryClient.invalidateQueries({ queryKey: invitationsKey });
     },
   };
+}
+
+type InvitationContext = Readonly<{
+  input: InvitationCommandInput;
+  owner: Readonly<{ current: symbol | undefined }>;
+  transition: (state: State) => void;
+}>;
+async function verifyInvitationSession(
+  { input, owner, transition }: InvitationContext,
+  scope: symbol,
+  attempt: Attempt,
+): Promise<InvitationOutcome | undefined> {
+  try {
+    await assertSessionIdentity(input.apiClient, input.userId);
+    return owner.current === scope ? undefined : STOPPED;
+  } catch (error) {
+    if (owner.current !== scope) return STOPPED;
+    if (isSessionIdentityChangedError(error) || isUnauthenticated(error)) {
+      transition({ kind: 'idle' });
+      input.onAuthenticationLost();
+      return STOPPED;
+    }
+    if (isSessionIdentityUnverifiedError(error)) {
+      const message =
+        'We couldn’t check your session. Try again — the same invitation command is kept.';
+      transition({ kind: 'uncertain', attempt, message });
+      return { kind: 'uncertain', message };
+    }
+    throw error;
+  }
 }

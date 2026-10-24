@@ -1,6 +1,10 @@
 import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import type { WorkspaceMember } from '@pertexo/contracts';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { isUnauthenticated } from '@/features/auth/session/session-identity.public';
 import { isApiError } from '@/lib/api/error';
@@ -68,19 +72,21 @@ function isTargetGone(cause: unknown): boolean {
  * unconfirmed command keeps its exact attempt for a retry; a stale revision
  * refreshes the list and asks for a new decision.
  */
+type MemberCommandInput<Attempt extends MemberCommandAttempt> = Readonly<{
+  apiClient: ApiClient;
+  actorUserId: string;
+  workspaceId: string;
+  send: (attempt: Attempt) => Promise<unknown>;
+  copy: MemberCommandCopy;
+  onDone: (attempt: Attempt) => void;
+  onConflict: () => void;
+  onAuthenticationLost: () => void;
+  onPermissionLost: () => void;
+  onTargetUnavailable: (member: WorkspaceMember) => void;
+}>;
+
 export function useMemberCommand<Attempt extends MemberCommandAttempt>(
-  input: Readonly<{
-    apiClient: ApiClient;
-    actorUserId: string;
-    workspaceId: string;
-    send: (attempt: Attempt) => Promise<unknown>;
-    copy: MemberCommandCopy;
-    onDone: (attempt: Attempt) => void;
-    onConflict: () => void;
-    onAuthenticationLost: () => void;
-    onPermissionLost: () => void;
-    onTargetUnavailable: (member: WorkspaceMember) => void;
-  }>,
+  input: MemberCommandInput<Attempt>,
 ) {
   const queryClient = useQueryClient();
   const owner = useRef<symbol | undefined>(undefined);
@@ -120,81 +126,13 @@ export function useMemberCommand<Attempt extends MemberCommandAttempt>(
     },
   });
 
-  async function settleFailure(
-    scope: symbol,
-    attempt: Attempt,
-    cause: unknown,
-  ) {
-    if (isUnconfirmedCommand(cause)) {
-      transition({
-        kind: 'uncertain',
-        attempt,
-        message: input.copy.uncertain(attempt.member),
-      });
-      return;
-    }
-    if (isUnauthenticated(cause)) {
-      transition({ kind: 'idle' });
-      input.onAuthenticationLost();
-      return;
-    }
-    if (needsFreshSignIn(cause)) {
-      transition({
-        kind: 'idle',
-        feedback: {
-          targetUserId: attempt.targetUserId,
-          message:
-            'For your security, sign in again, then confirm within five minutes.',
-          freshSignIn: true,
-        },
-      });
-      return;
-    }
-    const directoryFeedback = directoryMembershipFeedback(cause);
-    if (directoryFeedback !== undefined) {
-      await queryClient.invalidateQueries({ queryKey: membersKey });
-      if (owner.current !== scope) return;
-      transition({
-        kind: 'idle',
-        feedback: {
-          targetUserId: attempt.targetUserId,
-          message: directoryFeedback,
-        },
-      });
-      input.onConflict();
-      return;
-    }
-    if (isApiError(cause) && cause.status === 403) {
-      transition({ kind: 'idle' });
-      input.onPermissionLost();
-      return;
-    }
-    if (isApiError(cause) && (cause.status === 409 || cause.status === 404)) {
-      await queryClient.invalidateQueries({ queryKey: membersKey });
-      if (owner.current !== scope) return;
-      transition(
-        isTargetGone(cause)
-          ? { kind: 'idle' }
-          : {
-              kind: 'idle',
-              feedback: {
-                targetUserId: attempt.targetUserId,
-                message: input.copy.conflict(attempt.member),
-              },
-            },
-      );
-      if (isTargetGone(cause)) input.onTargetUnavailable(attempt.member);
-      else input.onConflict();
-      return;
-    }
-    transition({
-      kind: 'idle',
-      feedback: {
-        targetUserId: attempt.targetUserId,
-        message: describeCommandError(cause, input.copy.action),
-      },
-    });
-  }
+  const context: MemberFailureContext<Attempt> = {
+    input,
+    queryClient,
+    owner,
+    transition,
+    membersKey,
+  };
 
   async function execute(attempt: Attempt) {
     const scope = owner.current;
@@ -208,7 +146,8 @@ export function useMemberCommand<Attempt extends MemberCommandAttempt>(
       input.onDone(attempt);
       return true;
     } catch (cause) {
-      if (owner.current === scope) await settleFailure(scope, attempt, cause);
+      if (owner.current === scope)
+        await settleMemberFailure<Attempt>(context, { scope, attempt, cause });
       return false;
     } finally {
       inFlight.current = false;
@@ -243,4 +182,96 @@ export function useMemberCommand<Attempt extends MemberCommandAttempt>(
       void queryClient.invalidateQueries({ queryKey: membersKey });
     },
   };
+}
+
+type MemberFailureContext<Attempt extends MemberCommandAttempt> = Readonly<{
+  input: MemberCommandInput<Attempt>;
+  queryClient: QueryClient;
+  owner: Readonly<{ current: symbol | undefined }>;
+  transition: (state: CommandState<Attempt>) => void;
+  membersKey: readonly unknown[];
+}>;
+async function settleMemberFailure<Attempt extends MemberCommandAttempt>(
+  {
+    input,
+    queryClient,
+    owner,
+    transition,
+    membersKey,
+  }: MemberFailureContext<Attempt>,
+  {
+    scope,
+    attempt,
+    cause,
+  }: Readonly<{ scope: symbol; attempt: Attempt; cause: unknown }>,
+) {
+  if (isUnconfirmedCommand(cause)) {
+    transition({
+      kind: 'uncertain',
+      attempt,
+      message: input.copy.uncertain(attempt.member),
+    });
+    return;
+  }
+  if (isUnauthenticated(cause)) {
+    transition({ kind: 'idle' });
+    input.onAuthenticationLost();
+    return;
+  }
+  if (needsFreshSignIn(cause)) {
+    transition({
+      kind: 'idle',
+      feedback: {
+        targetUserId: attempt.targetUserId,
+        message:
+          'For your security, sign in again, then confirm within five minutes.',
+        freshSignIn: true,
+      },
+    });
+    return;
+  }
+  const directoryFeedback = directoryMembershipFeedback(cause);
+  if (directoryFeedback !== undefined) {
+    await queryClient.invalidateQueries({ queryKey: membersKey });
+    if (owner.current !== scope) return;
+    transition({
+      kind: 'idle',
+      feedback: {
+        targetUserId: attempt.targetUserId,
+        message: directoryFeedback,
+      },
+    });
+    input.onConflict();
+    return;
+  }
+  if (isApiError(cause) && cause.status === 403) {
+    transition({ kind: 'idle' });
+    input.onPermissionLost();
+    return;
+  }
+  if (isApiError(cause) && (cause.status === 409 || cause.status === 404)) {
+    await queryClient.invalidateQueries({ queryKey: membersKey });
+    if (owner.current !== scope) return;
+    transition(
+      isTargetGone(cause)
+        ? { kind: 'idle' }
+        : {
+            kind: 'idle',
+            feedback: {
+              targetUserId: attempt.targetUserId,
+              message: input.copy.conflict(attempt.member),
+            },
+          },
+    );
+    if (isTargetGone(cause)) input.onTargetUnavailable(attempt.member);
+    else input.onConflict();
+    return;
+  }
+  transition({
+    kind: 'idle',
+    feedback: {
+      targetUserId: attempt.targetUserId,
+      message: describeCommandError(cause, input.copy.action),
+    },
+  });
 }
