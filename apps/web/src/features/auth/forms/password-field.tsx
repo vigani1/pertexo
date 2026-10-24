@@ -31,38 +31,39 @@ export function PasswordField({
     <LabelledField
       id={id}
       label={label}
-      labelAction={labelAction}
       error={error}
       describedBy={minimumLength === undefined ? undefined : meterId}
-      trailing={
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label={visible ? 'Hide password' : 'Show password'}
-          aria-pressed={visible}
-          aria-controls={id}
-          onClick={() => {
-            setVisible((current) => !current);
-          }}
-        >
-          {visible ? (
-            <EyeOffIcon aria-hidden="true" />
-          ) : (
-            <EyeIcon aria-hidden="true" />
-          )}
-        </Button>
-      }
-      feedback={
-        minimumLength === undefined ? undefined : (
-          <PasswordMeter
-            id={meterId}
-            length={typeof value === 'string' ? value.length : 0}
-            minimumLength={minimumLength}
-            quiet={error !== undefined}
-          />
-        )
-      }
+      slots={{
+        labelAction,
+        trailing: (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={visible ? 'Hide password' : 'Show password'}
+            aria-pressed={visible}
+            aria-controls={id}
+            onClick={() => {
+              setVisible((current) => !current);
+            }}
+          >
+            {visible ? (
+              <EyeOffIcon aria-hidden="true" />
+            ) : (
+              <EyeIcon aria-hidden="true" />
+            )}
+          </Button>
+        ),
+        feedback:
+          minimumLength === undefined ? undefined : (
+            <PasswordMeter
+              id={meterId}
+              length={typeof value === 'string' ? value.length : 0}
+              minimumLength={minimumLength}
+              quiet={error !== undefined}
+            />
+          ),
+      }}
     >
       {(control) => (
         <Input

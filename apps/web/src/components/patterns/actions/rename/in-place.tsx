@@ -18,9 +18,8 @@ const KEYCAP =
  * failure or a conflict adds a line below.
  */
 export function RenameInPlace({
-  name,
-  subject,
-  label,
+  value,
+  field,
   command,
   onClose,
   onDraftChange,
@@ -33,8 +32,16 @@ export function RenameInPlace({
     onDraftChange?: ((draft: string) => void) | undefined;
     textClassName?: string | undefined;
   }>) {
+  const { name } = value;
+  const { subject, label } = field;
   const id = useId();
-  const rename = useRenameDraft({ name, command, onClose, ...rest });
+  const rename = useRenameDraft({
+    ...value,
+    validate: field.validate,
+    command,
+    onClose,
+    ...rest,
+  });
   const error = rename.validation.error('name');
   const busy = command.pending || (command.refreshPending ?? false);
   let saveLabel = 'Save';

@@ -10,7 +10,11 @@ export function ExpressionExamples({
   onChoose: (expression: string) => void;
 }>) {
   return (
-    <Disclosure summary="Expression examples" size="xs" className="text-xs">
+    <Disclosure
+      summary="Expression examples"
+      className="text-xs"
+      appearance={{ size: 'xs' }}
+    >
       <p className="mb-3 text-muted-foreground">
         Choosing an example replaces this expression. Review the{' '}
         <code translate="no">runInput</code> path for your data, then use Test

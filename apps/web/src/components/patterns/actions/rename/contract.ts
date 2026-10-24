@@ -23,13 +23,6 @@ export type InlineRenameCommand = Readonly<{
 }>;
 
 export type RenameFormProps = Readonly<{
-  name: string;
-  revision: number;
-  /** What is renamed, e.g. "workflow": "Rename workflow", "This workflow changed…". */
-  subject: string;
-  label: string;
-  /** The message for an invalid name, e.g. its length. */
-  validate: (name: string) => string | undefined;
   command: InlineRenameCommand;
   /**
    * Sends the rename and resolves `true` once it is confirmed; the command
@@ -38,4 +31,12 @@ export type RenameFormProps = Readonly<{
   onSave: (name: string, expectedRevision: number) => Promise<boolean>;
   /** Layout of the form, e.g. a row in a bar. */
   className?: string;
+  value: Readonly<{ name: string; revision: number }>;
+  field: Readonly<{
+    /** What is renamed, e.g. "workflow": "Rename workflow", "This workflow changed…". */
+    subject: string;
+    label: string;
+    /** The message for an invalid name, e.g. its length. */
+    validate: (name: string) => string | undefined;
+  }>;
 }>;

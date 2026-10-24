@@ -130,7 +130,11 @@ export function RunStepDetails({
           <StepCodeDiagnostics row={row} scope={scope} />
         </StepDetailsSection>
       ) : null}
-      <Disclosure summary="Details" size="xs" className="mt-6">
+      <Disclosure
+        summary="Details"
+        className="mt-6"
+        appearance={{ size: 'xs' }}
+      >
         <dl className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-xs">
           <dt className="text-subtle-foreground">Step ID</dt>
           <dd className="min-w-0">

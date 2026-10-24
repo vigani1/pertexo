@@ -23,7 +23,11 @@ type Scope = Readonly<{
  */
 export function RunVariables({ scope }: Readonly<{ scope: Scope }>) {
   return (
-    <Disclosure summary="Workspace variables this run used" look="framed" lazy>
+    <Disclosure
+      summary="Workspace variables this run used"
+      lazy
+      appearance={{ look: 'framed' }}
+    >
       <CapturedVariables scope={scope} />
     </Disclosure>
   );

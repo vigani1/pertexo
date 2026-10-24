@@ -94,30 +94,32 @@ export type LabelledControlProps = Readonly<{
 export function LabelledField({
   id,
   label,
-  labelAction,
   description,
   error,
-  trailing,
-  feedback,
   describedBy,
   className,
   children,
+  slots = {},
 }: Readonly<{
   id: string;
   label: ReactNode;
-  /** A small action on the label row, e.g. "Forgot?". */
-  labelAction?: ReactNode;
   description?: ReactNode;
   error?: string | undefined;
-  /** A control inside the input's right edge, e.g. show/hide. */
-  trailing?: ReactNode;
-  /** Live feedback between the control and its hint, e.g. a strength meter. */
-  feedback?: ReactNode;
   /** Extra element IDs that describe the control, e.g. the meter's. */
   describedBy?: string | undefined;
   className?: string;
   children: (control: LabelledControlProps) => ReactNode;
+  slots?: Readonly<{
+    /** A small action on the label row, e.g. "Forgot?". */
+    labelAction?: ReactNode;
+    /** A control inside the input's right edge, e.g. show/hide. */
+    trailing?: ReactNode;
+    /** Live feedback between the control and its hint, e.g. a strength meter. */
+    feedback?: ReactNode;
+  }>;
 }>) {
+  const { labelAction, trailing, feedback } = slots;
+
   const descriptionId =
     description === undefined ? undefined : `${id}-description`;
   const errorId = error === undefined ? undefined : `${id}-error`;

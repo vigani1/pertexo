@@ -103,7 +103,10 @@ export function SamlClaimFields({
   locked,
 }: Readonly<{ id: string; fields: TextFields; locked: boolean }>) {
   return (
-    <Disclosure summary="Certificate rotation and attributes" tone="strong">
+    <Disclosure
+      summary="Certificate rotation and attributes"
+      appearance={{ tone: 'strong' }}
+    >
       <div className="space-y-3">
         <LabelledField
           id={`${id}-next`}

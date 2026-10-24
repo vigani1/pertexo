@@ -60,16 +60,15 @@ function ActionRetries({ node, form }: Props) {
   return (
     <Disclosure
       summary={`Retries · ${label}`}
-      tone="strong"
       className="mt-4 border-t border-border pt-3"
       contentClassName="flex flex-col gap-4"
+      appearance={{ tone: 'strong' }}
     >
       <Field>
         <FieldLabel htmlFor={id}>Retry policy</FieldLabel>
         <ChoiceSelect
           value={mode}
           choices={retryModes}
-
           disabled={!form.editable || hasScratch}
           onChange={(next) => {
             if (next !== null)
@@ -78,7 +77,7 @@ function ActionRetries({ node, form }: Props) {
                 `${form.nodeId}:retry:mode`,
               );
           }}
-          control={{ id: id, describedBy: helpId }}
+          control={{ id, describedBy: helpId }}
         />
         <FieldDescription id={helpId}>
           {describeStepRetrySettings(node.retry)}{' '}

@@ -22,9 +22,6 @@ type Role = Extract<Principal, { kind: 'member' }>['role'];
  * admins already have access, so they're shown but can't be added.
  */
 export function SharingPrincipalPicker({
-  apiClient,
-  userId,
-  workspaceId,
   kinds,
   roleNames,
   selected,
@@ -32,10 +29,8 @@ export function SharingPrincipalPicker({
   disabled,
   unavailable = () => undefined,
   onAdd,
+  scope,
 }: Readonly<{
-  apiClient: ApiClient;
-  userId: string;
-  workspaceId: string;
   kinds: readonly Kind[];
   roleNames: Readonly<Record<Role, string>>;
   selected: readonly string[];
@@ -45,7 +40,14 @@ export function SharingPrincipalPicker({
   /** Why someone can't be added here, e.g. a role that can't use it. */
   unavailable?: (principal: Principal) => string | undefined;
   onAdd: (principal: Principal) => void;
+  scope: Readonly<{
+    apiClient: ApiClient;
+    userId: string;
+    workspaceId: string;
+  }>;
 }>) {
+  const { apiClient, userId, workspaceId } = scope;
+
   const id = useId();
   const [kind, setKind] = useState<Kind>(kinds[0] ?? 'member');
   const [search, setSearch] = useState('');

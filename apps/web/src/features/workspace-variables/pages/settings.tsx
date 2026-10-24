@@ -135,7 +135,11 @@ export function WorkspaceVariablesPage({
           <p>
             Use <code translate="no">$vars.NAME</code> in a step’s mappings.
           </p>
-          <Disclosure summary="Limits" size="xs" className="text-xs">
+          <Disclosure
+            summary="Limits"
+            className="text-xs"
+            appearance={{ size: 'xs' }}
+          >
             <p className="max-w-lg leading-relaxed">
               Up to 100 names, 4,096 characters per text value and 32 KB in all.
               A replay, a recovery or a child workflow keeps the values its run

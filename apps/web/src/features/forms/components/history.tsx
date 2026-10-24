@@ -16,11 +16,6 @@ export function FormEventHistory({
   return (
     <div className="flex flex-col gap-2">
       <RecentLog
-        title="Coordinated form events"
-        note="Kept for 90 days"
-        subject="events"
-        loadMoreLabel="Load older events"
-        empty="Coordinated submissions will appear here. Inputs and keys are never shown."
         query={query}
         items={query.data?.pages.flatMap((page) => page.items)}
         itemKey={(event) => event.id}
@@ -48,6 +43,14 @@ export function FormEventHistory({
               }
             />
           );
+        }}
+        copy={{
+          title: 'Coordinated form events',
+          note: 'Kept for 90 days',
+          subject: 'events',
+          loadMoreLabel: 'Load older events',
+          empty:
+            'Coordinated submissions will appear here. Inputs and keys are never shown.',
         }}
       />
       <Button

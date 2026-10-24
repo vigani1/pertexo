@@ -123,14 +123,16 @@ function ChannelIdField({
       description="The channel the message is posted to, like C0123456789. Find it in the channel’s details in Slack."
       error={live.error}
       describedBy={nameId}
-      feedback={
-        <ChannelNote
-          note={shown?.note}
-          needsConnection={
-            channelId !== undefined && connectionId === undefined && !editing
-          }
-        />
-      }
+      slots={{
+        feedback: (
+          <ChannelNote
+            note={shown?.note}
+            needsConnection={
+              channelId !== undefined && connectionId === undefined && !editing
+            }
+          />
+        ),
+      }}
     >
       {(control) => (
         <div className="flex items-center gap-2">

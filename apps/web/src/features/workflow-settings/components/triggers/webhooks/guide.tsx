@@ -39,8 +39,7 @@ export function WebhookGuide({
   return (
     <Disclosure
       summary="How to send events to this webhook"
-      look="framed"
-      tone="strong"
+      appearance={{ look: 'framed', tone: 'strong' }}
     >
       <div className="flex flex-col gap-4 border-t border-border px-3 py-4 text-sm">
         <p className="text-muted-foreground">

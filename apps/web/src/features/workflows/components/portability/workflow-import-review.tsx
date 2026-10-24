@@ -82,8 +82,8 @@ function ImportContents({
       </ol>
       <Disclosure
         summary="Everything in the file"
-        size="xs"
         className="text-xs text-muted-foreground"
+        appearance={{ size: 'xs' }}
       >
         <div className="mt-2">
           <PortableGraphReview

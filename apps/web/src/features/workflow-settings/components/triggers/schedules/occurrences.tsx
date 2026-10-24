@@ -59,17 +59,20 @@ export function ScheduleOccurrences({
   );
   return (
     <RecentLog
-      title="Recent runs of this schedule"
-      note="Kept for 90 days"
-      subject="run times"
-      loadMoreLabel="Load older run times"
-      empty="No run times yet. Each time this schedule comes due, it shows up here with the run it started."
       query={occurrences}
       items={occurrences.data?.pages.flatMap(({ items }) => items)}
       itemKey={(occurrence) => occurrence.id}
       renderItem={(occurrence) => (
         <OccurrenceEntry occurrence={occurrence} workspaceId={workspaceId} />
       )}
+      copy={{
+        title: 'Recent runs of this schedule',
+        note: 'Kept for 90 days',
+        subject: 'run times',
+        loadMoreLabel: 'Load older run times',
+        empty:
+          'No run times yet. Each time this schedule comes due, it shows up here with the run it started.',
+      }}
     />
   );
 }

@@ -170,9 +170,9 @@ function SourcesDisclosure({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <Disclosure
       summary="Where it came from"
-      size="xs"
       lazy
       contentClassName="flex flex-col gap-2"
+      appearance={{ size: 'xs' }}
     >
       <SourceNote />
       {children}

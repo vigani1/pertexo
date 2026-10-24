@@ -43,15 +43,16 @@ function EditableWorkflowName({
   });
   return (
     <InlineRename
-      name={workflow.name}
-      revision={workflow.nameRevision}
-      subject="workflow"
-      label="Workflow name"
-      validate={workflowNameError}
       command={command}
       onSave={command.start}
       {...(className === undefined ? {} : { className })}
       {...(textClassName === undefined ? {} : { textClassName })}
+      field={{
+        subject: 'workflow',
+        label: 'Workflow name',
+        validate: workflowNameError,
+      }}
+      value={{ name: workflow.name, revision: workflow.nameRevision }}
     >
       {children}
     </InlineRename>

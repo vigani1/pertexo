@@ -47,36 +47,36 @@ function byDay<Item>(
  * an empty sentence that says what will appear, and "Load older".
  */
 export function RecentLog<Item>({
-  title,
-  note,
-  subject,
-  loadMoreLabel,
-  empty,
   query,
   items,
   itemKey,
   renderItem,
   dayOf,
   headingLevel: Heading = 'h4',
+  copy,
 }: Readonly<{
-  /** The list's heading, e.g. "Recent deliveries". */
-  title: string;
   /** Where the log sits in the page outline; a page's main log is an h2. */
   headingLevel?: 'h2' | 'h3' | 'h4';
   /** When an entry happened; given, entries are grouped under their day. */
   dayOf?: (item: Item) => string;
-  /** A short mono note beside the heading, e.g. how long entries are kept. */
-  note?: string;
-  /** What the list holds, in the plural: "deliveries". */
-  subject: string;
-  loadMoreLabel: string;
-  /** Shown when the log is known to be empty. */
-  empty: ReactNode;
   query: RecentLogQuery;
   items: readonly Item[] | undefined;
   itemKey: (item: Item) => string;
   renderItem: (item: Item) => ReactNode;
+  copy: Readonly<{
+    /** The list's heading, e.g. "Recent deliveries". */
+    title: string;
+    /** A short mono note beside the heading, e.g. how long entries are kept. */
+    note?: string;
+    /** What the list holds, in the plural: "deliveries". */
+    subject: string;
+    loadMoreLabel: string;
+    /** Shown when the log is known to be empty. */
+    empty: ReactNode;
+  }>;
 }>) {
+  const { title, note, subject, loadMoreLabel, empty } = copy;
+
   const headingId = useId();
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-2">

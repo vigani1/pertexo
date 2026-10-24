@@ -60,12 +60,7 @@ export function PromotionHistory({ scope }: { scope: PromotionScope }) {
   const history = useInfiniteQuery(promotionHistoryQuery(scope));
   return (
     <RecentLog
-      title="Promotion history"
       headingLevel="h2"
-      note="kept as long as the audit log"
-      subject="promotions"
-      loadMoreLabel="Load older promotions"
-      empty="No promotions yet. Each one you send or receive appears here."
       query={history}
       items={history.data?.pages.flatMap((page) => page.items)}
       itemKey={(item) => item.id}
@@ -73,6 +68,13 @@ export function PromotionHistory({ scope }: { scope: PromotionScope }) {
       renderItem={(item) => (
         <PromotionEntry workspaceId={scope.workspaceId} item={item} />
       )}
+      copy={{
+        title: 'Promotion history',
+        note: 'kept as long as the audit log',
+        subject: 'promotions',
+        loadMoreLabel: 'Load older promotions',
+        empty: 'No promotions yet. Each one you send or receive appears here.',
+      }}
     />
   );
 }

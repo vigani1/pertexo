@@ -57,7 +57,10 @@ export function SamlMetadata({
     }
   }
   return (
-    <Disclosure summary="SAML setup and metadata" tone="strong">
+    <Disclosure
+      summary="SAML setup and metadata"
+      appearance={{ tone: 'strong' }}
+    >
       <div className="space-y-3">
         <p className="text-xs text-muted-foreground">
           Configure your IdP with these values before adding a SAML provider.

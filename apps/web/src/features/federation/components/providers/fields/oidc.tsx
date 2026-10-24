@@ -103,7 +103,7 @@ export function OidcClaimFields({
   locked,
 }: Readonly<{ id: string; fields: TextFields; locked: boolean }>) {
   return (
-    <Disclosure summary="Claim names" tone="strong">
+    <Disclosure summary="Claim names" appearance={{ tone: 'strong' }}>
       <div className="space-y-3">
         <LabelledField
           id={`${id}-email`}
