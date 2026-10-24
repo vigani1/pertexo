@@ -75,19 +75,26 @@ export function EventCoordinationSetup({
                   ? '$.values.orderId'
                   : '$.orderId',
             };
-            if (mode === 'off') commit(undefined);
-            else if (mode === 'deduplicate')
-              commit({ mode, key, windowSeconds: 86400 });
-            else if (mode === 'debounce')
-              commit({ mode, key, quietSeconds: 5 });
-            else if (mode === 'throttle')
-              commit({
-                mode,
-                key,
-                windowSeconds: 60,
-                limit: 1,
-                onExcess: 'skip',
-              });
+            switch (mode) {
+              case 'off':
+                commit(undefined);
+                break;
+              case 'deduplicate':
+                commit({ mode, key, windowSeconds: 86400 });
+                break;
+              case 'debounce':
+                commit({ mode, key, quietSeconds: 5 });
+                break;
+              case 'throttle':
+                commit({
+                  mode,
+                  key,
+                  windowSeconds: 60,
+                  limit: 1,
+                  onExcess: 'skip',
+                });
+                break;
+            }
           }}
         />
         <FieldDescription>
