@@ -29,24 +29,32 @@ export type NodeTestHandle = Readonly<{ runTest: () => void }>;
  * its original intent while the sample controls follow the shared snapshot.
  */
 type NodeTestPanelProps = Readonly<{
-  apiClient: ApiClient;
-  userId: string;
   editable: boolean;
   children?: ReactNode;
-  stepBinding?: string | undefined;
-  liveTestUnavailable?: string | undefined;
-  workspaceId: string;
-  workflowId: string;
-  nodeId: string;
-  stepSideEffect: string | undefined;
-  /** A passed test of the step right before this one. */
-  priorPreview: Readonly<{ id: string; stepName: string }> | undefined;
-  /** This step's last finished test, shown again when the panel reopens. */
-  rememberedPreview?: PreviewRunSummary | undefined;
   ensureSaved: () => Promise<Readonly<{ revision: number }>>;
-  onFinished?: (preview: PreviewRunSummary) => void;
-  onSucceeded?: (preview: PreviewRunSummary) => void;
   actionRef?: Ref<NodeTestHandle>;
+  scope: Readonly<{
+    apiClient: ApiClient;
+    userId: string;
+    workspaceId: string;
+    workflowId: string;
+  }>;
+  step: Readonly<{
+    stepBinding?: string | undefined;
+    liveTestUnavailable?: string | undefined;
+    nodeId: string;
+    stepSideEffect: string | undefined;
+  }>;
+  previews: Readonly<{
+    /** A passed test of the step right before this one. */
+    priorPreview: Readonly<{ id: string; stepName: string }> | undefined;
+    /** This step's last finished test, shown again when the panel reopens. */
+    rememberedPreview?: PreviewRunSummary | undefined;
+  }>;
+  events?: Readonly<{
+    onFinished?: (preview: PreviewRunSummary) => void;
+    onSucceeded?: (preview: PreviewRunSummary) => void;
+  }>;
 }>;
 
 export function NodeTestPanel(props: NodeTestPanelProps) {
@@ -138,27 +146,26 @@ export function NodeTestPanel(props: NodeTestPanelProps) {
 }
 
 function useNodeTestPanel({
-  apiClient,
-  userId,
   editable,
   children,
-  stepBinding,
-  liveTestUnavailable,
-  workspaceId,
-  workflowId,
-  nodeId,
-  stepSideEffect,
-  priorPreview,
-  rememberedPreview,
   ensureSaved,
-  onFinished,
-  onSucceeded,
   actionRef,
+  scope,
+  step,
+  previews,
+  events = {},
 }: NodeTestPanelProps) {
+  const { apiClient, workspaceId, workflowId } = scope;
+
+  const { stepBinding, liveTestUnavailable, nodeId, stepSideEffect } = step;
+
+  const { priorPreview, rememberedPreview } = previews;
+
+  const { onFinished, onSucceeded } = events;
+
   const [input, setInput] = useState('{}');
   const [usePrior, setUsePrior] = useState(false);
   const [acknowledgedContext, setAcknowledgedContext] = useState<string>();
-  const scope = { apiClient, userId, workspaceId, workflowId };
   const {
     query: sampleQuery,
     sample,

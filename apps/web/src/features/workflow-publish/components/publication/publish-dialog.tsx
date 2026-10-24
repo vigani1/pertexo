@@ -37,43 +37,43 @@ const stages: readonly Readonly<{ stage: PublishStage; label: string }>[] = [
  * runs already in progress. Confirming shows the real steps as they run.
  */
 type PublishDialogProps = Readonly<{
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  versionLabel: string;
-  summary: PublishSummary | undefined;
-  summaryState: 'loading' | 'error' | 'ready';
-  graph: WorkflowGraphContract;
-  stage: PublishStage | undefined;
-  error: string | undefined;
-  recoveryPending: boolean;
-  blockingGroups: readonly WorkflowIssueGroup[];
-  unchangedVersionNumber: number | undefined;
-  suiteNotice?: ReactNode;
   mode?: 'publish' | 'review';
   unavailable?: boolean;
-  policyNotice?: ReactNode;
-  onPublish: (note?: string) => void;
-  onFix: (target: WorkflowValidationTarget) => void;
+  state: Readonly<{ open: boolean; onOpenChange: (open: boolean) => void }>;
+  preview: Readonly<{
+    versionLabel: string;
+    summary: PublishSummary | undefined;
+    summaryState: 'loading' | 'error' | 'ready';
+    graph: WorkflowGraphContract;
+    unchangedVersionNumber: number | undefined;
+  }>;
+  command: Readonly<{
+    stage: PublishStage | undefined;
+    error: string | undefined;
+    recoveryPending: boolean;
+    onPublish: (note?: string) => void;
+  }>;
+  issues: Readonly<{
+    blockingGroups: readonly WorkflowIssueGroup[];
+    onFix: (target: WorkflowValidationTarget) => void;
+  }>;
+  slots?: Readonly<{ suiteNotice?: ReactNode; policyNotice?: ReactNode }>;
 }>;
 
 export function PublishDialog({
-  open,
-  onOpenChange,
-  versionLabel,
-  summary,
-  summaryState,
-  graph,
-  stage,
-  error,
-  recoveryPending,
-  blockingGroups,
-  unchangedVersionNumber,
-  suiteNotice,
+  state: { open, onOpenChange },
+  preview: {
+    versionLabel,
+    summary,
+    summaryState,
+    graph,
+    unchangedVersionNumber,
+  },
+  command: { stage, error, recoveryPending, onPublish },
+  issues: { blockingGroups, onFix },
+  slots: { suiteNotice, policyNotice } = {},
   mode = 'publish',
   unavailable = false,
-  policyNotice,
-  onPublish,
-  onFix,
 }: PublishDialogProps) {
   const pending = stage !== undefined;
   const noteId = useId();

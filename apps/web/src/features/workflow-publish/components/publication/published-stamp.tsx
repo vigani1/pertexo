@@ -15,8 +15,6 @@ const WEAVE_IN_MS = 1_450;
  * version, with the next useful steps. Reduced motion shows it at once, without motion.
  */
 export function PublishedStamp({
-  workspaceId,
-  workflowId,
   versionNumber,
   reused,
   liveAgain,
@@ -24,9 +22,8 @@ export function PublishedStamp({
   canRun,
   onRunNow,
   onDismiss,
+  scope,
 }: Readonly<{
-  workspaceId: string;
-  workflowId: string;
   versionNumber: number;
   reused: boolean;
   liveAgain: boolean;
@@ -34,7 +31,10 @@ export function PublishedStamp({
   canRun: boolean;
   onRunNow: () => void;
   onDismiss: () => void;
+  scope: Readonly<{ workspaceId: string; workflowId: string }>;
 }>) {
+  const { workspaceId, workflowId } = scope;
+
   const reducedMotion = usePrefersReducedMotion();
   const [shown, setShown] = useState(reducedMotion);
   useEffect(() => {

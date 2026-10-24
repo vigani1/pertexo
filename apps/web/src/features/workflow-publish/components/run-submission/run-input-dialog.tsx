@@ -26,21 +26,24 @@ import { runInputAvailability } from '../../model/run-input/availability';
 import { expectedRunVersion } from '../../model/run-input/version';
 
 type RunInputDialogProps = Readonly<{
-  open: boolean;
-  pending: boolean;
-  error: string | undefined;
-  retryAvailable: boolean;
-  onOpenChange: (open: boolean) => void;
-  onStartNew: (intent: RunIntent) => Promise<boolean>;
-  onRetry: () => Promise<boolean>;
-  publicationConflict?: boolean;
-  onReviewPublication?: () => Promise<string>;
-  recoveryIntent?: RunIntent | undefined;
   caseScope?: Readonly<{
     apiClient: ApiClient;
     userId: string;
     workspace: AccessibleWorkspace;
     workflow: WorkflowSummary;
+  }>;
+  state: Readonly<{ open: boolean; onOpenChange: (open: boolean) => void }>;
+  command: Readonly<{
+    pending: boolean;
+    error: string | undefined;
+    retryAvailable: boolean;
+    onStartNew: (intent: RunIntent) => Promise<boolean>;
+    onRetry: () => Promise<boolean>;
+    recoveryIntent?: RunIntent | undefined;
+  }>;
+  publication?: Readonly<{
+    publicationConflict?: boolean;
+    onReviewPublication?: () => Promise<string>;
   }>;
 }>;
 
@@ -76,7 +79,7 @@ function CaseRunInputDialog(
       workspace.status === 'active' &&
       workflow.lifecycleStatus === 'active' &&
       workspace.capabilities.includes('workflow:update'),
-    enabled: props.open,
+    enabled: props.state.open,
   });
   return <RunInputDialogContent {...props} cases={cases} />;
 }
@@ -205,19 +208,25 @@ function RunInputDialogContent(props: RunInputDialogContentProps) {
 }
 
 function useRunInputDialog({
-  open,
-  pending,
-  error,
-  retryAvailable,
-  onOpenChange,
-  onStartNew,
-  onRetry,
   caseScope,
-  publicationConflict = false,
-  onReviewPublication,
-  recoveryIntent,
   cases,
+  state,
+  command,
+  publication = {},
 }: RunInputDialogContentProps) {
+  const { open, onOpenChange } = state;
+
+  const {
+    pending,
+    error,
+    retryAvailable,
+    onStartNew,
+    onRetry,
+    recoveryIntent,
+  } = command;
+
+  const { publicationConflict = false, onReviewPublication } = publication;
+
   const runInput = useRunInput();
   const [loaded, setLoaded] = useState<LoadedInputCase>();
   const caseLocked = cases !== undefined && (cases.pending || cases.uncertain);

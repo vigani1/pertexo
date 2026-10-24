@@ -61,13 +61,6 @@ function open() {
     const [opened, setOpened] = useState(true);
     return (
       <RunInputDialog
-        open={opened}
-        pending={false}
-        error={undefined}
-        retryAvailable={false}
-        onOpenChange={setOpened}
-        onStartNew={start}
-        onRetry={vi.fn().mockResolvedValue(false)}
         caseScope={{
           apiClient,
           userId,
@@ -80,6 +73,14 @@ function open() {
             }),
           ),
         }}
+        command={{
+          pending: false,
+          error: undefined,
+          retryAvailable: false,
+          onStartNew: start,
+          onRetry: vi.fn().mockResolvedValue(false),
+        }}
+        state={{ open: opened, onOpenChange: setOpened }}
       />
     );
   }

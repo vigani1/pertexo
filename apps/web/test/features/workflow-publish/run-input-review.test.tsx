@@ -87,28 +87,6 @@ it('blocks new case and run commands until a reviewed publication is actually di
     displayPublication = setDisplayedId;
     return (
       <RunInputDialog
-        open
-        pending={false}
-        error="No run started."
-        retryAvailable={recovering}
-        recoveryIntent={
-          recovering
-            ? { value: {}, expectedPublishedVersionId: reviewedId }
-            : undefined
-        }
-        publicationConflict={conflict}
-        onOpenChange={vi.fn()}
-        onStartNew={async (intent) => {
-          await start(intent);
-          setRecovering(true);
-          return false;
-        }}
-        onRetry={retry}
-        onReviewPublication={async () => {
-          const id = await heldReview;
-          setConflict(false);
-          return id;
-        }}
         caseScope={{
           apiClient,
           userId,
@@ -121,6 +99,29 @@ it('blocks new case and run commands until a reviewed publication is actually di
             }),
           ),
         }}
+        publication={{
+          publicationConflict: conflict,
+          onReviewPublication: async () => {
+            const id = await heldReview;
+            setConflict(false);
+            return id;
+          },
+        }}
+        command={{
+          pending: false,
+          error: 'No run started.',
+          retryAvailable: recovering,
+          recoveryIntent: recovering
+            ? { value: {}, expectedPublishedVersionId: reviewedId }
+            : undefined,
+          onStartNew: async (intent) => {
+            await start(intent);
+            setRecovering(true);
+            return false;
+          },
+          onRetry: retry,
+        }}
+        state={{ open: true, onOpenChange: vi.fn() }}
       />
     );
   }
