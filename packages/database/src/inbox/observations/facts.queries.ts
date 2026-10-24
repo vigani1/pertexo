@@ -1,6 +1,9 @@
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { readCommentMentionSource } from './mentions.queries.js';
-import { review, reviewRecords } from '../../authoring/reviews/eligibility.queries.js';
+import {
+  review,
+  reviewRecords,
+} from '../../authoring/reviews/eligibility.queries.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { workflows } from '../../schema/authoring/workflows.js';
@@ -167,9 +170,9 @@ async function readPublicationReviewFact(
     .catch(rethrowQueryFailure);
   return {
     ...base,
-    workflowId: row?.workflowId ?? null,
+    workflowId: row?.record.workflowId ?? null,
     publicationRequestId: subject.subjectId,
-    active: row?.active ?? false,
+    active: row?.record.active ?? false,
     sourceRevision: subject.subjectId,
   };
 }

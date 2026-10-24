@@ -1,9 +1,14 @@
 import { rolesForCapability } from '@pertexo/workflow-model';
-import { and, eq, sql, type SQL } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
+import { and, eq, sql, getTableColumns, type SQL } from 'drizzle-orm';
+import { alias, type SelectedFieldsFlat } from 'drizzle-orm/pg-core';
+import type { PublicationReview } from '@pertexo/contracts';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { workflowPublicationRequests } from '../../schema/authoring/publication-requests.js';
-import { workflows, workflowDrafts } from '../../schema/authoring/workflows.js';
+import {
+  workflows,
+  workflowDrafts,
+  workflowVersions,
+} from '../../schema/authoring/workflows.js';
 import {
   workspaces,
   users,
@@ -15,15 +20,9 @@ const workflow = alias(workflows, 'workflow');
 const draft = alias(workflowDrafts, 'draft');
 const requesterUser = alias(users, 'requester_user');
 const requester = alias(workspaceMemberships, 'requester');
-/** Fixed source aliases are shared by review reads, decisions and inbox audiences. */
-export const REVIEW_SOURCE_SQL = `from app.workflow_publication_requests review
- join app.workspaces workspace on workspace.id=review.workspace_id
- join app.workflows workflow on workflow.workspace_id=review.workspace_id and workflow.id=review.workflow_id
- join app.workflow_drafts draft on draft.workspace_id=review.workspace_id and draft.workflow_id=review.workflow_id
- join app.users requester_user on requester_user.id=review.requested_by
- left join app.workspace_memberships requester on requester.workspace_id=review.workspace_id and requester.user_id=review.requested_by`;
-
-export const reviewStateSql = sql`case when ${review.status}<>'pending' then ${review.status}
+export const reviewStateSql = sql<
+  PublicationReview['status']
+>`case when ${review.status}<>'pending' then ${review.status}
  when ${review.expiresAt}<=clock_timestamp() then 'expired'
  when not ${workspace.requirePublishApproval} or ${workspace.status}<>'active' or ${workflow.lifecycleStatus}<>'active'
    or ${draft.revision}<>${review.draftRevision} or ${requesterUser.status}<>'active'
@@ -39,14 +38,19 @@ export function reviewDecisionAllowedSql(actor: SQL, role: SQL): SQL {
   )}))`;
 }
 export function reviewRecords(db: Pick<NodePgDatabase, 'select'>) {
+  return reviewSource(db, {
+    id: review.id,
+    workflowId: review.workflowId,
+    active: sql<boolean>`((${reviewStateSql})='pending')`,
+  });
+}
+export function reviewSource<T extends SelectedFieldsFlat>(
+  db: Pick<NodePgDatabase, 'select'>,
+  selection: T,
+) {
   return db
-    .select({
-      id: review.id,
-      workflowId: review.workflowId,
-      active: sql<boolean>`((${reviewStateSql})='pending')`,
-    })
+    .select({ record: selection })
     .from(review)
-    .$dynamic()
     .innerJoin(workspace, eq(workspace.id, review.workspaceId))
     .innerJoin(
       workflow,
@@ -68,6 +72,42 @@ export function reviewRecords(db: Pick<NodePgDatabase, 'select'>) {
       and(
         eq(requester.workspaceId, review.workspaceId),
         eq(requester.userId, review.requestedBy),
+      ),
+    )
+    .$dynamic();
+}
+
+export function reviewDetails(
+  db: Pick<NodePgDatabase, 'select'>,
+  actorId: string,
+) {
+  const actor = alias(workspaceMemberships, 'actor'),
+    decider = alias(users, 'decider'),
+    version = alias(workflowVersions, 'version');
+  return reviewSource(db, {
+    ...getTableColumns(review),
+    draftGraph: draft.graphJson,
+    workflowName: workflow.name,
+    requesterName: requesterUser.displayName,
+    deciderName: decider.displayName,
+    versionNumber: version.versionNumber,
+    state: reviewStateSql,
+    canDecide: sql<boolean>`${reviewDecisionAllowedSql(sql`${actorId}`, sql`${actor.role}`)}`,
+  })
+    .leftJoin(decider, eq(decider.id, review.decidedBy))
+    .leftJoin(
+      version,
+      and(
+        eq(version.workspaceId, review.workspaceId),
+        eq(version.id, review.publishedVersionId),
+      ),
+    )
+    .innerJoin(
+      actor,
+      and(
+        eq(actor.workspaceId, review.workspaceId),
+        eq(actor.userId, actorId),
+        eq(actor.status, 'active'),
       ),
     );
 }
