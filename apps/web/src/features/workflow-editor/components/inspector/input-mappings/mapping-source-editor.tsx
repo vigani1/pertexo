@@ -96,43 +96,14 @@ export function MappingSourceEditor({
       );
     case 'expression':
       return (
-        <Field data-invalid={error !== undefined}>
-          <FieldLabel htmlFor={controlId}>Expression</FieldLabel>
-          <Textarea
-            id={controlId}
-            name={`inputMapping.${row.id}.expression`}
-            autoComplete="off"
-            spellCheck={false}
-            placeholder={
-              loopPorts.length > 0
-                ? 'loop.item.amount > 5000'
-                : 'runInput.amount > 5000'
-            }
-            className="min-h-16 border-primary/30 font-mono text-base md:text-[0.8rem]"
-            value={row.expression}
-            disabled={disabled}
-            aria-invalid={error !== undefined}
-            aria-describedby={`${controlId}-hint${error === undefined ? '' : ` ${errorId}`}`}
-            onChange={(event) => {
-              onChange({ ...row, expression: event.currentTarget.value });
-            }}
-          />
-          <FieldDescription id={`${controlId}-hint`}>
-            {loopPorts.length > 0
-              ? 'JSONata reads loop.item (the item this pass runs for), loop.ordinal, runInput, available nodeOutputs and captured $vars, not this step’s mapped input.'
-              : 'JSONata reads runInput, available nodeOutputs and captured $vars, not this step’s mapped input.'}{' '}
-            The server validates and evaluates it when the step runs.
-          </FieldDescription>
-          {error === undefined ? null : (
-            <FieldError id={errorId}>{error}</FieldError>
-          )}
-          <ExpressionExamples
-            disabled={disabled}
-            onChoose={(expression) => {
-              onChange({ ...row, expression });
-            }}
-          />
-        </Field>
+        <ExpressionSource
+          row={row}
+          controlId={controlId}
+          loopPorts={loopPorts}
+          error={error}
+          disabled={disabled}
+          onChange={onChange}
+        />
       );
     case 'structured_input':
       return (
@@ -358,6 +329,63 @@ function PathField({
       {error === undefined ? null : (
         <FieldError id={errorId}>{error}</FieldError>
       )}
+    </Field>
+  );
+}
+
+function ExpressionSource({
+  row,
+  controlId,
+  loopPorts,
+  error,
+  disabled,
+  onChange,
+}: Readonly<{
+  row: Extract<InputMappingDraftRow, { kind: 'expression' }>;
+  controlId: string;
+  loopPorts: readonly string[];
+  error: string | undefined;
+  disabled: boolean;
+  onChange: (row: InputMappingDraftRow) => void;
+}>) {
+  const errorId = `${controlId}-error`;
+  return (
+    <Field data-invalid={error !== undefined}>
+      <FieldLabel htmlFor={controlId}>Expression</FieldLabel>
+      <Textarea
+        id={controlId}
+        name={`inputMapping.${row.id}.expression`}
+        autoComplete="off"
+        spellCheck={false}
+        placeholder={
+          loopPorts.length > 0
+            ? 'loop.item.amount > 5000'
+            : 'runInput.amount > 5000'
+        }
+        className="min-h-16 border-primary/30 font-mono text-base md:text-[0.8rem]"
+        value={row.expression}
+        disabled={disabled}
+        aria-invalid={error !== undefined}
+        aria-describedby={`${controlId}-hint${error === undefined ? '' : ` ${errorId}`}`}
+        onChange={(event) => {
+          onChange({ ...row, expression: event.currentTarget.value });
+        }}
+      />
+      <FieldDescription id={`${controlId}-hint`}>
+        {loopPorts.length > 0
+          ? 'JSONata reads loop.item (the item this pass runs for), loop.ordinal, runInput, available nodeOutputs and captured $vars, not this step’s mapped input.'
+          : 'JSONata reads runInput, available nodeOutputs and captured $vars, not this step’s mapped input.'}{' '}
+        The server validates and evaluates it when the step runs.
+      </FieldDescription>
+      {error === undefined ? null : (
+        <FieldError id={errorId}>{error}</FieldError>
+      )}
+      <ExpressionExamples
+        disabled={disabled}
+        onChoose={(expression) => {
+          onChange({ ...row, expression });
+        }}
+      />
     </Field>
   );
 }
