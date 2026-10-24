@@ -24,13 +24,13 @@ import {
   nodeRunInputQueryOptions,
   nodeRunOutputQueryOptions,
   workflowRunInputQueryOptions,
-} from '../../data/stored-values.queries';
+} from '../../../data/stored-values.queries';
 import {
   describeValue,
   isEmptyValue,
-} from '../../model/step-inspection/run-data-summary';
-import { feedingRows } from '../../model/step-inspection/step-inputs';
-import type { RunTimelineRow } from '../../model/timeline/runs';
+} from '../../../model/step-inspection/run-data-summary';
+import { feedingRows } from '../../../model/step-inspection/step-inputs';
+import type { RunTimelineRow } from '../../../model/timeline/runs';
 
 export type RunDataScope = Readonly<{
   apiClient: ApiClient;

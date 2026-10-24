@@ -22,7 +22,7 @@ import {
   stepHealthQueryOptions,
   stepRunsQueryOptions,
 } from '../../data/detail.queries';
-import { StepRunOutput } from '../run-detail/data';
+import { StepRunOutput } from '../run-detail/data/outputs';
 
 const RECENT_RUNS = 10;
 

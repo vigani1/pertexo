@@ -10,7 +10,7 @@ import {
   describeValue,
   isEmptyValue,
 } from '../../model/step-inspection/run-data-summary';
-import { RunInputData, type RunDataScope } from './data';
+import { RunInputData, type RunDataScope } from './data/outputs';
 
 /** Past this many steps the list names each step's status, not its data. */
 const SUMMARISED_STEPS = 25;
