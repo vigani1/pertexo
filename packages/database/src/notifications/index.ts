@@ -20,12 +20,12 @@ export type {
   WorkspaceInboxSummary,
   WorkspaceInboxThreadPage,
   WorkspaceInboxThreadRecord,
-} from '../inbox/threads/reader.repository.js';
+} from '../inbox/threads/contract.js';
 export { createWorkspaceInboxFoldStore } from '../inbox/folding/processor.repository.js';
 export type {
   WorkspaceInboxChange,
   WorkspaceInboxFoldStore,
-} from '../inbox/folding/processor.repository.js';
+} from '../inbox/folding/contract.js';
 
 export { createNoticePreferencesStore } from '../inbox/preferences/settings.repository.js';
 export {

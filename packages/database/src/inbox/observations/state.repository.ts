@@ -14,7 +14,7 @@ import {
 import type { Pool, PoolClient } from 'pg';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
-import type { WorkspaceInboxChange } from '../folding/processor.repository.js';
+import type { WorkspaceInboxChange } from '../folding/contract.js';
 import { readAttentionFact, type AttentionFact } from './facts.queries.js';
 /** Keyset progress lives only in this scan; authoritative facts make restart safe. */
 export function createAttentionObserver(pool: Pool, maintenance: Pool) {

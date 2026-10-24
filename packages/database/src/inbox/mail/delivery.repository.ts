@@ -1,5 +1,14 @@
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { alias } from 'drizzle-orm/pg-core';
+import { workspaceMemberships as membershipsTable } from '../../schema/foundation.js';
+import { createNoticeMailBatch } from './batches.repository.js';
+import {
+  recipient,
+  settings,
+  advance,
+  nextPersonNoticeDue,
+  type Person,
+} from './recipients.repository.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { and, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -8,140 +17,21 @@ import {
 } from '../../schema/inbox/preferences.js';
 import { noticeMailBatches, noticeMailItems } from '../../schema/inbox/mail.js';
 import { systemMailDeliveries } from '../../schema/mail/deliveries.js';
-import {
-  users as usersTable,
-  workspaceMemberships as membershipsTable,
-  workspaces,
-} from '../../schema/foundation.js';
+import { workspaces } from '../../schema/foundation.js';
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
 import type { PoolClient } from 'pg';
-import type { NoticeSchedule } from '@pertexo/contracts';
 import type { DatabaseConfig } from '../../config.js';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '../../platform/pool/runtime.js';
-import { insertSystemMail } from '../../platform/mail/store.js';
-import { generatePersistedId } from '../../platform/persisted-id.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
-import {
-  projectNoticePreferences,
-  type PreferenceRow,
-} from '../preferences/settings.queries.js';
-import { noticeWindow, nextNoticeDue } from './schedule.js';
-import { readMailSubjects, mailItem } from './subjects.queries.js';
+import { noticeWindow } from './schedule.js';
+import { readMailSubjects } from './subjects.queries.js';
 import type { NoticeMailStore, NoticeMailSealer } from './contract.js';
-const users = alias(usersTable, 'person');
 const workspaceMemberships = alias(membershipsTable, 'member');
-type Person = Readonly<{ workspace_id: string; user_id: string }>;
-async function recipient(
-  client: PoolClient,
-  workspaceId: string,
-  actorId: string,
-) {
-  const [found] = await drizzle(client)
-    .select({
-      email: users.email,
-      workspace_name: workspaces.name,
-      email_verified: users.emailVerified,
-      role_revision: workspaceMemberships.roleRevision,
-      created_at: workspaceMemberships.createdAt,
-      now: sql<Date>`clock_timestamp()`.mapWith(workspaceMemberships.createdAt),
-    })
-    .from(users)
-    .innerJoin(workspaceMemberships, eq(workspaceMemberships.userId, users.id))
-    .innerJoin(workspaces, eq(workspaces.id, workspaceMemberships.workspaceId))
-    .where(
-      and(
-        eq(workspaceMemberships.workspaceId, workspaceId),
-        eq(workspaceMemberships.userId, actorId),
-        eq(workspaceMemberships.status, 'active'),
-        eq(users.status, 'active'),
-      ),
-    )
-    .for('share', { of: [users, workspaceMemberships] })
-    .catch(rethrowQueryFailure);
-  return found;
-}
-async function settings(
-  client: PoolClient,
-  workspaceId: string,
-  actorId: string,
-  { create }: Readonly<{ create: boolean }>,
-) {
-  const db = drizzle(client);
-  const [defaults] = await db
-    .select()
-    .from(noticeWorkspaceSettings)
-    .where(eq(noticeWorkspaceSettings.workspaceId, workspaceId))
-    .for('share')
-    .catch(rethrowQueryFailure);
-  if (create)
-    await db
-      .insert(noticePreferences)
-      .values({ workspaceId, userId: actorId })
-      .onConflictDoNothing()
-      .catch(rethrowQueryFailure);
-  const [pref] = await db
-    .select()
-    .from(noticePreferences)
-    .where(
-      and(
-        eq(noticePreferences.workspaceId, workspaceId),
-        eq(noticePreferences.userId, actorId),
-      ),
-    )
-    .for('update')
-    .catch(rethrowQueryFailure);
-  const projected = projectNoticePreferences(pref, defaults, {
-    canManageDefaults: false,
-    emailAvailable: true,
-  });
-  const cut = new Date(
-    Math.max(
-      pref?.revision === 0 ? 0 : (pref?.changedAt.getTime() ?? 0),
-      pref?.mode === null ? (defaults?.changedAt.getTime() ?? 0) : 0,
-    ),
-  );
-  return {
-    pref,
-    defaults,
-    effective: projected.effective,
-    cut,
-    defaultRevision: pref?.mode === null ? projected.defaults.revision : 0,
-  };
-}
-async function advance(
-  client: PoolClient,
-  workspaceId: string,
-  {
-    actorId,
-    schedule,
-    now,
-    defaultRevision,
-  }: Readonly<{
-    actorId: string;
-    schedule: NoticeSchedule;
-    now: Date;
-    defaultRevision: number;
-  }>,
-) {
-  await drizzle(client)
-    .update(noticePreferences)
-    .set({
-      nextDueAt: nextNoticeDue(schedule, now),
-      scheduleDefaultRevision: defaultRevision,
-    })
-    .where(
-      and(
-        eq(noticePreferences.workspaceId, workspaceId),
-        eq(noticePreferences.userId, actorId),
-      ),
-    )
-    .catch(rethrowQueryFailure);
-}
 async function preparePerson(
   client: PoolClient,
   person: Person,
@@ -256,51 +146,15 @@ async function preparePerson(
     defaultRevision: current.defaultRevision,
   });
   if (subjects.length === 0) return 0;
-  const id = generatePersistedId();
-  const expiresAt = new Date(to.now.getTime() + 24 * 3_600_000);
-  const sealedPayload = seal({
-    id,
-    expiresAt,
-    toEmail: to.email,
-    workspaceName: to.workspace_name,
-    workspaceId: person.workspace_id,
-    actorId: person.user_id,
-    revision: pref.revision,
-    memberRevision: to.role_revision,
-    items: subjects.map(mailItem),
+  return createNoticeMailBatch(client, {
+    person,
+    to,
+    current,
+    pref,
+    subjects,
+    window,
+    seal,
   });
-  await insertSystemMail(client, {
-    id,
-    purpose: 'workspace_notice',
-    expiresAt,
-    sealedPayload,
-  });
-  await db
-    .insert(noticeMailBatches)
-    .values({
-      id,
-      workspaceId: person.workspace_id,
-      userId: person.user_id,
-      preferenceRevision: pref.revision,
-      defaultRevision: current.defaultRevision,
-      memberRevision: to.role_revision,
-      recipient: to.email,
-      windowKey: window,
-      itemCount: subjects.length,
-    })
-    .catch(rethrowQueryFailure);
-  await db
-    .insert(noticeMailItems)
-    .values(
-      subjects.map((row) => ({
-        workspaceId: person.workspace_id,
-        batchId: id,
-        threadId: row.id,
-        revision: BigInt(row.revision),
-      })),
-    )
-    .catch(rethrowQueryFailure);
-  return 1;
 }
 async function authorizeBatch(
   client: PoolClient,
@@ -469,20 +323,4 @@ export function createNoticeMailStore(
       }
     },
   };
-}
-
-function nextPersonNoticeDue(
-  pref: PreferenceRow,
-  current: Awaited<ReturnType<typeof settings>>,
-): Date | null {
-  if (
-    pref.nextDueAt !== null &&
-    pref.scheduleDefaultRevision === current.defaultRevision
-  ) {
-    return pref.nextDueAt;
-  }
-  if (current.effective.mode === 'immediate') {
-    return current.cut;
-  }
-  return nextNoticeDue(current.effective, current.cut);
 }

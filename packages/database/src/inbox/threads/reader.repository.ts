@@ -1,13 +1,16 @@
+import type {
+  ReaderScope,
+  WorkspaceInboxDatabase,
+  WorkspaceInboxThreadPage,
+  WorkspaceInboxSummary,
+} from './contract.js';
 import type { PoolClient } from 'pg';
 import { readFolderScope } from '../../tenant-access/resources/facts.js';
 import { folderScope } from '../../tenant-access/resources/policy.js';
 import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority.js';
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
 import { ROLES } from '@pertexo/workflow-model';
-import type {
-  WorkspaceInboxThread,
-  WorkspaceNoticeKind,
-} from '@pertexo/contracts';
+
 import type { DatabaseConfig } from '../../config.js';
 import { noticeVisibilitySql } from './eligibility.queries.js';
 import {
@@ -25,46 +28,6 @@ import { workspaceInboxReads } from '../../schema/inbox/core.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { noticeRecords, thread, seen, unreadSql } from './records.queries.js';
 import { projectNotices } from './projection.js';
-export type WorkspaceInboxFailureKind =
-  'failed' | 'timed_out' | 'outcome_unknown';
-export type WorkspaceInboxThreadRecord = WorkspaceInboxThread;
-export type WorkspaceInboxCursor = Readonly<{
-  latestOccurredAt: string;
-  threadId: string;
-}>;
-export type WorkspaceInboxThreadPage = Readonly<{
-  items: readonly WorkspaceInboxThread[];
-  next: WorkspaceInboxCursor | null;
-  revision: string;
-}>;
-export type WorkspaceInboxSummary = Readonly<{
-  unreadCount: number;
-  revision: string;
-}>;
-type ReaderScope = Readonly<{
-  workspaceId: string;
-  actorId: string;
-  signal?: AbortSignal;
-}>;
-export interface WorkspaceInboxDatabase {
-  listThreads(
-    input: ReaderScope &
-      Readonly<{
-        filter: 'all' | 'unread';
-        noticeKind?: WorkspaceNoticeKind;
-        limit: number;
-        after?: WorkspaceInboxCursor;
-      }>,
-  ): Promise<WorkspaceInboxThreadPage>;
-  readSummary(input: ReaderScope): Promise<WorkspaceInboxSummary>;
-  markThreadRead(
-    input: ReaderScope & Readonly<{ threadId: string; revision: string }>,
-  ): Promise<Readonly<{ unread: boolean; revision: string }> | undefined>;
-  markAllRead(
-    input: ReaderScope & Readonly<{ revision: string }>,
-  ): Promise<Readonly<{ marked: number }>>;
-  close(): Promise<void>;
-}
 async function noticeAccess(
   client: PoolClient,
   input: ReaderScope,
