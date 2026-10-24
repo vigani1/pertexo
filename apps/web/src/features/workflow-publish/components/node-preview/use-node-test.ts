@@ -35,19 +35,7 @@ const INPUT_ERROR = 'Sample input must be valid JSON, like {"amount": 1240}.';
  * once; after an uncertain answer the same run is retried, and an accepted
  * run that couldn't be observed is resumed rather than sent again.
  */
-export function useNodeTest({
-  apiClient,
-  workspaceId,
-  workflowId,
-  nodeId,
-  ensureSaved,
-  expectedSampleId,
-  checkContext,
-  initialPreview,
-  onFinished,
-  onSucceeded,
-  onSampleConflict,
-}: Readonly<{
+type NodeTestOptions = Readonly<{
   apiClient: ApiClient;
   workspaceId: string;
   workflowId: string;
@@ -61,7 +49,17 @@ export function useNodeTest({
   onFinished?: ((preview: PreviewRunSummary) => void) | undefined;
   onSucceeded?: ((preview: PreviewRunSummary) => void) | undefined;
   onSampleConflict?: () => void;
-}>) {
+}>;
+
+export function useNodeTest(options: NodeTestOptions) {
+  const {
+    apiClient,
+    workspaceId,
+    workflowId,
+    checkContext,
+    initialPreview,
+    onSampleConflict,
+  } = options;
   const [pending, setPending] = useState<'check' | 'run'>();
   const [checked, setChecked] =
     useState<Readonly<{ context: string; result: NodeValidationResponse }>>();
@@ -100,56 +98,14 @@ export function useNodeTest({
       setError(message);
   }
 
-  async function checkSetup(inputText: string) {
-    const { controller, isCurrent } = begin('check');
-    try {
-      const { revision } = await ensureSaved();
-      if (!isCurrent()) return;
-      const response = await validateWorkflowNode(
-        apiClient,
-        workspaceId,
-        workflowId,
-        {
-          nodeId,
-          expectedRevision: revision,
-          sampleInput: parseCommandJson(inputText, INPUT_ERROR),
-          signal: controller.signal,
-        },
-      );
-      if (isCurrent()) setChecked({ context: checkContext, result: response });
-    } catch (cause) {
-      fail(isCurrent, cause, commandErrorMessage(cause, 'the check'));
-    } finally {
-      if (isCurrent()) setPending(undefined);
-    }
-  }
-
-  async function newAttempt(
-    input: Readonly<{ text: string; priorPreviewId?: string }>,
-  ): Promise<TestAttempt> {
-    const { revision } = await ensureSaved();
-    return {
-      idempotencyKey: crypto.randomUUID(),
-      nodeId,
-      expectedRevision: revision,
-      expectedSampleId,
-      source: readTestSource(expectedSampleId, input),
-    };
-  }
-
-  async function finish(
-    accepted: PreviewRunSummary,
-    signal: AbortSignal,
-    isCurrent: () => boolean,
-  ) {
-    const observed = previewTerminalStatuses.has(accepted.status)
-      ? accepted
-      : await observePreview(apiClient, workspaceId, accepted.id, signal);
-    if (!isCurrent()) return;
-    setPreview(observed);
-    onFinished?.(observed);
-    if (observed.status === 'succeeded') onSucceeded?.(observed);
-  }
+  const context: NodeTestContext = {
+    ...options,
+    begin,
+    fail,
+    setChecked,
+    setPending,
+    setPreview,
+  };
 
   async function runTest(
     input: Readonly<{ text: string; priorPreviewId?: string }>,
@@ -158,7 +114,8 @@ export function useNodeTest({
     let accepted = false;
     try {
       if (attempt.current === undefined) setRecoveryPending(false);
-      const command = attempt.current ?? (await newAttempt(input));
+      const command =
+        attempt.current ?? (await newNodeTestAttempt(context, input));
       if (!isCurrent()) return;
       attempt.current = command;
       const response = await executeWorkflowNodePreview(
@@ -172,7 +129,10 @@ export function useNodeTest({
       setRecoveryPending(false);
       setPreview(response.preview);
       accepted = true;
-      await finish(response.preview, controller.signal, isCurrent);
+      await finishNodeTest(context, response.preview, {
+        signal: controller.signal,
+        isCurrent,
+      });
     } catch (cause) {
       if (
         isCurrent() &&
@@ -201,7 +161,10 @@ export function useNodeTest({
       return;
     const { controller, isCurrent } = begin('run');
     try {
-      await finish(preview, controller.signal, isCurrent);
+      await finishNodeTest(context, preview, {
+        signal: controller.signal,
+        isCurrent,
+      });
     } catch (cause) {
       fail(isCurrent, cause, observationErrorMessage(cause));
     } finally {
@@ -228,7 +191,7 @@ export function useNodeTest({
     recoveryPending,
     observing:
       preview !== undefined && !previewTerminalStatuses.has(preview.status),
-    checkSetup,
+    checkSetup: (inputText: string) => checkNodeSetup(context, inputText),
     runTest,
     resume,
     inputChanged,
@@ -249,4 +212,87 @@ function readTestSource(
   if (input.priorPreviewId !== undefined)
     return { kind: 'prior_preview', previewRunId: input.priorPreviewId };
   return { kind: 'manual', value: parseCommandJson(input.text, INPUT_ERROR) };
+}
+
+type NodeTestContext = NodeTestOptions &
+  Readonly<{
+    begin: (
+      kind: 'check' | 'run',
+    ) => Readonly<{ controller: AbortController; isCurrent: () => boolean }>;
+    fail: (isCurrent: () => boolean, cause: unknown, message: string) => void;
+    setChecked: (
+      value: Readonly<{ context: string; result: NodeValidationResponse }>,
+    ) => void;
+    setPending: (pending: 'check' | 'run' | undefined) => void;
+    setPreview: (preview: PreviewRunSummary) => void;
+  }>;
+async function checkNodeSetup(context: NodeTestContext, inputText: string) {
+  const {
+    begin,
+    ensureSaved,
+    apiClient,
+    workspaceId,
+    workflowId,
+    nodeId,
+    setChecked,
+    checkContext,
+    fail,
+    setPending,
+  } = context;
+  const { controller, isCurrent } = begin('check');
+  try {
+    const { revision } = await ensureSaved();
+    if (!isCurrent()) return;
+    const response = await validateWorkflowNode(
+      apiClient,
+      workspaceId,
+      workflowId,
+      {
+        nodeId,
+        expectedRevision: revision,
+        sampleInput: parseCommandJson(inputText, INPUT_ERROR),
+        signal: controller.signal,
+      },
+    );
+    if (isCurrent()) setChecked({ context: checkContext, result: response });
+  } catch (cause) {
+    fail(isCurrent, cause, commandErrorMessage(cause, 'the check'));
+  } finally {
+    if (isCurrent()) setPending(undefined);
+  }
+}
+async function newNodeTestAttempt(
+  { ensureSaved, nodeId, expectedSampleId }: NodeTestContext,
+  input: Readonly<{ text: string; priorPreviewId?: string }>,
+): Promise<TestAttempt> {
+  const { revision } = await ensureSaved();
+  return {
+    idempotencyKey: crypto.randomUUID(),
+    nodeId,
+    expectedRevision: revision,
+    expectedSampleId,
+    source: readTestSource(expectedSampleId, input),
+  };
+}
+async function finishNodeTest(
+  {
+    apiClient,
+    workspaceId,
+    setPreview,
+    onFinished,
+    onSucceeded,
+  }: NodeTestContext,
+  accepted: PreviewRunSummary,
+  {
+    signal,
+    isCurrent,
+  }: Readonly<{ signal: AbortSignal; isCurrent: () => boolean }>,
+) {
+  const observed = previewTerminalStatuses.has(accepted.status)
+    ? accepted
+    : await observePreview(apiClient, workspaceId, accepted.id, signal);
+  if (!isCurrent()) return;
+  setPreview(observed);
+  onFinished?.(observed);
+  if (observed.status === 'succeeded') onSucceeded?.(observed);
 }
