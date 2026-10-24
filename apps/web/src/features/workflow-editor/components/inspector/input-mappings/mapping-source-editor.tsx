@@ -191,7 +191,6 @@ function StepOutputSource({
           value={row.nodeId === '' ? null : row.nodeId}
           disabled={disabled}
 
-          {...(stepInvalid ? { describedBy: errorId } : {})}
           choices={[
             { value: null, label: 'Choose a linked step' },
             ...predecessors.map((option) => ({
@@ -211,7 +210,11 @@ function StepOutputSource({
           onChange={(nodeId) => {
             onChange({ ...row, nodeId: nodeId ?? '' });
           }}
-          control={{ id: `${controlId}-node`, invalid: stepInvalid }}
+          control={{
+            id: `${controlId}-node`,
+            invalid: stepInvalid,
+            ...(stepInvalid ? { describedBy: errorId } : {}),
+          }}
         />
         {predecessors.length === 0 ? (
           <FieldDescription>
@@ -268,7 +271,6 @@ function LoopItemSource({
           value={row.port}
           disabled={disabled}
 
-          {...(portInvalid ? { describedBy: errorId } : {})}
           choices={ports.map((port) => ({
             value: port,
             label: loopPortLabels[port] ?? port,
@@ -276,7 +278,11 @@ function LoopItemSource({
           onChange={(port) => {
             if (port !== null) onChange({ ...row, port });
           }}
-          control={{ id: `${controlId}-port`, invalid: portInvalid }}
+          control={{
+            id: `${controlId}-port`,
+            invalid: portInvalid,
+            ...(portInvalid ? { describedBy: errorId } : {}),
+          }}
         />
         {portInvalid ? <FieldError id={errorId}>{error}</FieldError> : null}
       </Field>
