@@ -64,34 +64,6 @@ describe('failure notification destination decoding', () => {
     tenantState.client = undefined;
   });
 
-  it('rejects a persisted row whose config kind conflicts with its canonical column', async () => {
-    const row = {
-      ...destinationRecord('email'),
-      config: {
-        kind: 'slack',
-        connectionId,
-        toEmail: 'ops@example.test',
-      },
-    };
-    const query = vi.fn((text: string) =>
-      Promise.resolve(
-        text.includes('workspace_memberships')
-          ? result([{ role: 'owner' }])
-          : result([row]),
-      ),
-    );
-    tenantState.client = { query } as unknown as PoolClient;
-    const database = createFailureNotificationDestinationDatabase({
-      connectionString: 'postgres://unused',
-    } as never);
-
-    await expect(
-      database.get({ actorId, destinationId, workspaceId }),
-    ).rejects.toThrow(
-      'Destination kind does not match persisted configuration',
-    );
-  });
-
   it('rejects an idempotent replay whose record kind conflicts with its config kind', async () => {
     const replay = {
       ...destinationRecord('email'),

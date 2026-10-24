@@ -1,3 +1,12 @@
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { and, eq, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workflows } from '../../schema/authoring/workflows.js';
+import {
+  failureNotificationDestinations as destination,
+  workflowFailureNotificationPolicies as policy,
+} from '../../schema/notifications.js';
 import { authorizeWorkflowResource } from '../../tenant-access/resources/authority.js';
 import { z } from 'zod';
 
@@ -54,18 +63,46 @@ export function setWorkflowFailureNotificationPolicy(
       input.workspaceId,
       input.destinationId,
     );
-    const result = await client.query(
-      `insert into app.workflow_failure_notification_policies
-           (workspace_id,workflow_id,destination_id,updated_by)
-         select $1,workflow.id,$3,$4 from app.workflows workflow
-          join app.failure_notification_destinations destination
-            on destination.workspace_id=workflow.workspace_id and destination.id=$3
-         where workflow.workspace_id=$1 and workflow.id=$2 and destination.status='enabled'
-         on conflict (workflow_id) do update set destination_id=excluded.destination_id,
-           updated_by=excluded.updated_by,updated_at=clock_timestamp()`,
-      [input.workspaceId, workflowId, input.destinationId, input.actorId],
-    );
-    if (result.rowCount !== 1)
+    const db = drizzle(client);
+    const excluded = alias(policy, 'excluded');
+    const result = await db
+      .insert(policy)
+      .select(
+        db
+          .select({
+            workspaceId: workflows.workspaceId,
+            workflowId: workflows.id,
+            destinationId: destination.id,
+            updatedBy: sql<string>`${input.actorId}::uuid`.as('updated_by'),
+            updatedAt: sql`clock_timestamp()`.as('updated_at'),
+          })
+          .from(workflows)
+          .innerJoin(
+            destination,
+            and(
+              eq(destination.workspaceId, workflows.workspaceId),
+              eq(destination.id, input.destinationId),
+            ),
+          )
+          .where(
+            and(
+              eq(workflows.workspaceId, input.workspaceId),
+              eq(workflows.id, workflowId),
+              eq(destination.status, 'enabled'),
+            ),
+          ),
+      )
+      .onConflictDoUpdate({
+        target: policy.workflowId,
+        set: {
+          destinationId: sql`${excluded.destinationId}`,
+          updatedBy: sql`${excluded.updatedBy}`,
+          updatedAt: sql`clock_timestamp()`,
+        },
+      })
+      .returning({ id: policy.workflowId })
+      .catch(rethrowQueryFailure);
+    if (result.length !== 1)
       throw destinationError(
         'not_found',
         'Workflow or destination is not visible',
@@ -92,13 +129,21 @@ export function clearWorkflowFailureNotificationPolicy(
       manage: false,
     });
     const workflowId = z.uuid().parse(input.workflowId);
-    const existing = await client.query(
-      'select id from app.workflows where workspace_id=$1 and id=$2 for share',
-      [input.workspaceId, workflowId],
-    );
+    const db = drizzle(client);
+    const existing = await db
+      .select({ id: workflows.id })
+      .from(workflows)
+      .where(
+        and(
+          eq(workflows.workspaceId, input.workspaceId),
+          eq(workflows.id, workflowId),
+        ),
+      )
+      .for('share')
+      .catch(rethrowQueryFailure);
     // A deleted workflow has no remaining authority to resurrect; only its null receipt may replay.
     if (
-      existing.rowCount === 1 &&
+      existing.length === 1 &&
       !(await authorizeWorkflowResource(
         client,
         { ...input, workflowId },
@@ -114,13 +159,19 @@ export function clearWorkflowFailureNotificationPolicy(
       resourceId: workflowId,
     });
     if (replay.kind === 'replay') return;
-    if (existing.rowCount !== 1)
+    if (existing.length !== 1)
       throw destinationError('not_found', 'Workflow is not visible');
-    const result = await client.query(
-      `delete from app.workflow_failure_notification_policies where workspace_id=$1 and workflow_id=$2`,
-      [input.workspaceId, workflowId],
-    );
-    if (result.rowCount === 1)
+    const result = await db
+      .delete(policy)
+      .where(
+        and(
+          eq(policy.workspaceId, input.workspaceId),
+          eq(policy.workflowId, workflowId),
+        ),
+      )
+      .returning({ id: policy.workflowId })
+      .catch(rethrowQueryFailure);
+    if (result.length === 1)
       await audit(client, input, {
         action: 'workflow.failure_notification_policy_cleared',
         target: { id: workflowId, type: 'workflow' },
@@ -156,18 +207,26 @@ export function readWorkflowFailureNotificationPolicy(
       ))
     )
       throw destinationError('not_found', 'Workflow is not visible');
-    const result = await client.query<{ destination_id: unknown }>(
-      `select policy.destination_id from app.workflows workflow
-         left join app.workflow_failure_notification_policies policy
-           on policy.workspace_id=workflow.workspace_id
-          and policy.workflow_id=workflow.id
-        where workflow.workspace_id=$1 and workflow.id=$2`,
-      [input.workspaceId, workflowId],
-    );
-    const row = result.rows[0];
+    const [row] = await drizzle(client)
+      .select({ destinationId: policy.destinationId })
+      .from(workflows)
+      .leftJoin(
+        policy,
+        and(
+          eq(policy.workspaceId, workflows.workspaceId),
+          eq(policy.workflowId, workflows.id),
+        ),
+      )
+      .where(
+        and(
+          eq(workflows.workspaceId, input.workspaceId),
+          eq(workflows.id, workflowId),
+        ),
+      )
+      .catch(rethrowQueryFailure);
     if (row === undefined)
       throw destinationError('not_found', 'Workflow is not visible');
-    const destinationId = z.uuid().nullable().parse(row.destination_id);
+    const destinationId = row.destinationId;
     return destinationId === null
       ? null
       : readFailureNotificationDestination(

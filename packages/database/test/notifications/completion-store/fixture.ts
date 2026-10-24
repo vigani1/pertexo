@@ -38,32 +38,27 @@ export type LockedIntent = Readonly<{
 }>;
 
 export function completionHarness(row: LockedIntent | undefined) {
-  const query = vi.fn<
-    (
-      text: string,
-      parameters?: readonly unknown[],
-    ) => Promise<{ rows: readonly unknown[] }>
-  >((text) => {
-    let queryRows: unknown[];
-    if (text.includes('for update')) {
-      if (row === undefined) {
-        queryRows = [];
-      } else {
-        queryRows = [row];
-      }
-    } else {
-      if (text.includes("set status='retry'")) {
-        queryRows = [
-          { next_delivery_at: new Date('2026-09-11T00:00:00.000Z') },
-        ];
-      } else {
-        queryRows = [];
-      }
-    }
-    return Promise.resolve({
-      rows: queryRows,
-    });
-  });
+  const query = vi
+    .fn<
+      (
+        statement: string | { text: string; rowMode?: string },
+        parameters?: readonly unknown[],
+      ) => Promise<{ rows: readonly unknown[] }>
+    >()
+    .mockResolvedValueOnce({
+      rows:
+        row === undefined
+          ? []
+          : [
+              [
+                row.status,
+                row.delivery_attempts,
+                row.side_effect_class,
+                row.possibly_dispatched,
+              ],
+            ],
+    })
+    .mockResolvedValue({ rows: [['2026-09-11T00:00:00.000Z']] });
   tenantState.client = { query };
   return {
     complete: createFailureNotificationCompletionStore({} as Pool)

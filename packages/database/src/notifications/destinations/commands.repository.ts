@@ -1,3 +1,6 @@
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { auditEvents } from '../../schema/foundation.js';
 import {
   ADMINISTRATIVE_ROLES,
   WORKFLOW_EDITOR_ROLES,
@@ -145,20 +148,18 @@ export async function audit(
     metadata: Readonly<Record<string, unknown>>;
   }>,
 ): Promise<void> {
-  await client.query(
-    `insert into app.audit_events
-       (id,workspace_id,actor_user_id,action,target_type,target_id,request_id,trace_id,metadata)
-     values ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb)`,
-    [
-      generatePersistedId(),
-      input.workspaceId,
-      input.actorId,
+  await drizzle(client)
+    .insert(auditEvents)
+    .values({
+      id: generatePersistedId(),
+      workspaceId: input.workspaceId,
+      actorUserId: input.actorId,
       action,
-      target.type,
-      target.id,
-      input.requestId ?? null,
-      input.traceId ?? null,
-      JSON.stringify(metadata),
-    ],
-  );
+      targetType: target.type,
+      targetId: target.id,
+      requestId: input.requestId ?? null,
+      traceId: input.traceId ?? null,
+      metadata,
+    })
+    .catch(rethrowQueryFailure);
 }

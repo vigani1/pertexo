@@ -1,3 +1,7 @@
+import type {
+  DestinationConfig,
+  StoredDestinationConfig,
+} from '../notifications/destinations/contract.js';
 import {
   type PgTableExtraConfigValue,
   check,
@@ -22,8 +26,11 @@ export const failureNotificationDestinations = appSchema.table(
   {
     id: uuid().primaryKey().notNull(),
     workspaceId: uuid('workspace_id').notNull(),
-    kind: varchar({ length: 16 }).notNull(),
-    status: varchar({ length: 16 }).default('enabled').notNull(),
+    kind: varchar({ length: 16 }).$type<DestinationConfig['kind']>().notNull(),
+    status: varchar({ length: 16 })
+      .$type<'enabled' | 'disabled'>()
+      .default('enabled')
+      .notNull(),
     currentConfigVersion: integer('current_config_version')
       .default(1)
       .notNull(),
@@ -92,9 +99,11 @@ export const failureNotificationDestinationVersions = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     destinationId: uuid('destination_id').notNull(),
     version: integer().notNull(),
-    kind: varchar({ length: 16 }).notNull(),
-    sideEffectClass: varchar('side_effect_class', { length: 32 }).notNull(),
-    config: jsonb().notNull(),
+    kind: varchar({ length: 16 }).$type<DestinationConfig['kind']>().notNull(),
+    sideEffectClass: varchar('side_effect_class', { length: 32 })
+      .$type<'idempotent_with_key' | 'unsafe'>()
+      .notNull(),
+    config: jsonb().$type<StoredDestinationConfig>().notNull(),
     createdBy: uuid('created_by').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
       .default(sql`clock_timestamp()`)

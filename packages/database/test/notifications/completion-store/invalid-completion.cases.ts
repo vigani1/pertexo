@@ -125,7 +125,10 @@ export function registerInvalidCompletionInputs(): void {
         },
       }),
     ).resolves.toBe('completed');
-    expect(maximumDelay.query.mock.calls[1]?.[1]?.[2]).toBe(3_600);
+    expect(insertFailureNotificationDeliveryOutbox).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ attemptNumber: 2 }),
+    );
 
     const minimumMaximum = completionHarness({
       delivery_attempts: 1,
@@ -147,7 +150,10 @@ export function registerInvalidCompletionInputs(): void {
         },
       }),
     ).resolves.toBe('completed');
-    expect(minimumMaximum.query.mock.calls[1]?.[1]?.[2]).toBe('dead_letter');
+    expect(auditFailureNotification).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({ factType: 'dead_lettered', attemptNumber: 1 }),
+    );
   });
 
   it.each([

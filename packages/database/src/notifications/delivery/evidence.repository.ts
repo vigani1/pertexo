@@ -1,3 +1,7 @@
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { outboxEvents } from '../../schema/transport.js';
+import { runFailureNotificationAuditFacts } from '../../schema/runs/completion/notifications.js';
 import type { PoolClient } from 'pg';
 
 import { generatePersistedId } from '../../platform/persisted-id.js';
@@ -5,7 +9,6 @@ import { v5 as uuidv5 } from 'uuid';
 import { z } from 'zod';
 
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.js';
-import { serializeStoredExecutionJsonValue } from '../../platform/stored-execution-value.js';
 import { sha256HexSchema } from '../../platform/persisted-primitives.js';
 
 export const failureNotificationIdentitySchema = z.uuid();
@@ -29,22 +32,20 @@ export async function insertFailureNotificationDeliveryOutbox(
     notificationIntentId: input.intentId,
     outboxEventId,
   } as const;
-  await client.query(
-    `insert into app.outbox_events (
-       id,workspace_id,job_name,aggregate_type,aggregate_id,
-       payload,payload_checksum,available_at
-     ) values ($1,$2,'deliver-run-failure-notification',
-       'run-failure-notification',$3,$4::jsonb,$5,$6)
-     on conflict (id) do nothing`,
-    [
-      outboxEventId,
-      input.workspaceId,
-      input.intentId,
-      serializeStoredExecutionJsonValue(payload),
-      canonicalOutboxPayloadChecksum(payload),
-      input.availableAt,
-    ],
-  );
+  await drizzle(client)
+    .insert(outboxEvents)
+    .values({
+      id: outboxEventId,
+      workspaceId: input.workspaceId,
+      jobName: 'deliver-run-failure-notification',
+      aggregateType: 'run-failure-notification',
+      aggregateId: input.intentId,
+      payload,
+      payloadChecksum: canonicalOutboxPayloadChecksum(payload),
+      availableAt: input.availableAt,
+    })
+    .onConflictDoNothing({ target: outboxEvents.id })
+    .catch(rethrowQueryFailure);
 }
 
 export async function auditFailureNotification(
@@ -58,19 +59,16 @@ export async function auditFailureNotification(
     possiblyDispatched: boolean;
   }>,
 ): Promise<void> {
-  await client.query(
-    `insert into app.run_failure_notification_audit_facts (
-       id,workspace_id,notification_intent_id,fact_type,attempt_number,
-       safe_error_code,possibly_dispatched
-     ) values ($1,$2,$3,$4,$5,$6,$7)`,
-    [
-      generatePersistedId(),
-      input.workspaceId,
-      input.intentId,
-      input.factType,
-      input.attemptNumber,
-      input.safeErrorCode ?? null,
-      input.possiblyDispatched,
-    ],
-  );
+  await drizzle(client)
+    .insert(runFailureNotificationAuditFacts)
+    .values({
+      id: generatePersistedId(),
+      workspaceId: input.workspaceId,
+      notificationIntentId: input.intentId,
+      factType: input.factType,
+      attemptNumber: input.attemptNumber,
+      safeErrorCode: input.safeErrorCode ?? null,
+      possiblyDispatched: input.possiblyDispatched,
+    })
+    .catch(rethrowQueryFailure);
 }
