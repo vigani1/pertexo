@@ -35,15 +35,123 @@ type Scope = Readonly<{
   workspace: AccessibleWorkspace;
   workflowId: string;
 }>;
-function ErrorWorkflowEditor({
-  scope,
-  settings,
-  onSaved,
-}: Readonly<{
+type ErrorWorkflowEditorProps = Readonly<{
   scope: Scope;
   settings: WorkflowErrorSettings;
   onSaved: () => void;
-}>) {
+}>;
+
+function ErrorWorkflowEditor(props: ErrorWorkflowEditorProps) {
+  const model = useErrorWorkflowForm(props);
+  return (
+    <form
+      className="flex max-w-lg flex-col gap-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void model.submit();
+      }}
+    >
+      <FieldGroup>
+        <LabelledField
+          id="error-workflow-target"
+          label="When this workflow fails, run …"
+          description="Published workflows that start with When a workflow fails."
+        >
+          {(control) => (
+            <Select
+              items={model.options}
+              value={model.current.target ?? 'none'}
+              onValueChange={(value) => {
+                if (typeof value === 'string')
+                  model.setDraft({
+                    target: value === 'none' ? null : value,
+                    revision: model.current.revision,
+                  });
+              }}
+              disabled={model.command.pending || model.command.unconfirmed}
+            >
+              <SelectTrigger {...control}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {model.options.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          )}
+        </LabelledField>
+      </FieldGroup>
+      <QueryView
+        query={model.targets}
+        resource="Error workflow choices"
+        failure={settingsReadFailure}
+      />
+      <LoadMore
+        subject="workflows"
+        label="More workflows"
+        hasNextPage={model.targets.hasNextPage}
+        loading={model.targets.isFetchingNextPage}
+        failed={model.targets.isFetchNextPageError}
+        onLoadMore={() => void model.targets.fetchNextPage()}
+      />
+      {model.available.length === 0 &&
+      !model.targets.isPending &&
+      !model.targets.isError ? (
+        <p className="text-sm text-muted-foreground">
+          Publish a workflow with When a workflow fails to make it available
+          here.
+        </p>
+      ) : null}
+      {model.command.problem === undefined ? null : (
+        <Notice
+          tone={model.command.unconfirmed ? 'warning' : 'destructive'}
+          action={
+            model.command.unconfirmed ? (
+              <ProgressButton
+                type="button"
+                variant="outline"
+                pending={model.command.pending}
+                pendingLabel="Retrying…"
+                onClick={() => {
+                  void model.command.retry().then((success) => {
+                    if (success) model.saved();
+                  });
+                }}
+              >
+                Retry same change
+              </ProgressButton>
+            ) : undefined
+          }
+        >
+          {model.command.problem}
+        </Notice>
+      )}
+      <ProgressButton
+        type="submit"
+        className="self-start"
+        pending={model.command.pending}
+        pendingLabel="Saving…"
+        disabled={
+          model.command.unconfirmed ||
+          model.current.target === model.settings.targetWorkflowId
+        }
+      >
+        Save error workflow
+      </ProgressButton>
+    </form>
+  );
+}
+
+function useErrorWorkflowForm({
+  scope,
+  settings,
+  onSaved,
+}: ErrorWorkflowEditorProps) {
   const [draft, setDraft] =
     useState<Readonly<{ target: string | null; revision: number }>>();
   const current = draft ?? {
@@ -95,105 +203,18 @@ function ErrorWorkflowEditor({
     )
       saved();
   }
-  return (
-    <form
-      className="flex max-w-lg flex-col gap-4"
-      onSubmit={(event) => {
-        event.preventDefault();
-        void submit();
-      }}
-    >
-      <FieldGroup>
-        <LabelledField
-          id="error-workflow-target"
-          label="When this workflow fails, run …"
-          description="Published workflows that start with When a workflow fails."
-        >
-          {(control) => (
-            <Select
-              items={options}
-              value={current.target ?? 'none'}
-              onValueChange={(value) => {
-                if (typeof value === 'string')
-                  setDraft({
-                    target: value === 'none' ? null : value,
-                    revision: current.revision,
-                  });
-              }}
-              disabled={command.pending || command.unconfirmed}
-            >
-              <SelectTrigger {...control}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {options.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          )}
-        </LabelledField>
-      </FieldGroup>
-      <QueryView
-        query={targets}
-        resource="Error workflow choices"
-        failure={settingsReadFailure}
-      />
-      <LoadMore
-        subject="workflows"
-        label="More workflows"
-        hasNextPage={targets.hasNextPage}
-        loading={targets.isFetchingNextPage}
-        failed={targets.isFetchNextPageError}
-        onLoadMore={() => void targets.fetchNextPage()}
-      />
-      {available.length === 0 && !targets.isPending && !targets.isError ? (
-        <p className="text-sm text-muted-foreground">
-          Publish a workflow with When a workflow fails to make it available
-          here.
-        </p>
-      ) : null}
-      {command.problem === undefined ? null : (
-        <Notice
-          tone={command.unconfirmed ? 'warning' : 'destructive'}
-          action={
-            command.unconfirmed ? (
-              <ProgressButton
-                type="button"
-                variant="outline"
-                pending={command.pending}
-                pendingLabel="Retrying…"
-                onClick={() => {
-                  void command.retry().then((success) => {
-                    if (success) saved();
-                  });
-                }}
-              >
-                Retry same change
-              </ProgressButton>
-            ) : undefined
-          }
-        >
-          {command.problem}
-        </Notice>
-      )}
-      <ProgressButton
-        type="submit"
-        className="self-start"
-        pending={command.pending}
-        pendingLabel="Saving…"
-        disabled={
-          command.unconfirmed || current.target === settings.targetWorkflowId
-        }
-      >
-        Save error workflow
-      </ProgressButton>
-    </form>
-  );
+
+  return {
+    submit,
+    options,
+    current,
+    setDraft,
+    command,
+    targets,
+    available,
+    saved,
+    settings,
+  } as const;
 }
 export function ErrorWorkflowSection(scope: Scope) {
   const [editing, setEditing] = useState(false);

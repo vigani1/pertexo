@@ -28,24 +28,7 @@ export type NodeTestHandle = Readonly<{ runTest: () => void }>;
  * Keep one command owner across pin changes, so an uncertain test retries
  * its original intent while the sample controls follow the shared snapshot.
  */
-export function NodeTestPanel({
-  apiClient,
-  userId,
-  editable,
-  children,
-  stepBinding,
-  liveTestUnavailable,
-  workspaceId,
-  workflowId,
-  nodeId,
-  stepSideEffect,
-  priorPreview,
-  rememberedPreview,
-  ensureSaved,
-  onFinished,
-  onSucceeded,
-  actionRef,
-}: Readonly<{
+type NodeTestPanelProps = Readonly<{
   apiClient: ApiClient;
   userId: string;
   editable: boolean;
@@ -64,7 +47,114 @@ export function NodeTestPanel({
   onFinished?: (preview: PreviewRunSummary) => void;
   onSucceeded?: (preview: PreviewRunSummary) => void;
   actionRef?: Ref<NodeTestHandle>;
-}>) {
+}>;
+
+export function NodeTestPanel(props: NodeTestPanelProps) {
+  const model = useNodeTestPanel(props);
+  return (
+    <div
+      className={cn(
+        'flex flex-col gap-4 rounded-lg',
+        model.test.pending === 'run' && 'live-edge',
+      )}
+    >
+      {model.children}
+      {!model.editable ? null : (
+        <SampleAvailability
+          query={model.sampleQuery}
+          sample={model.sample}
+          scope={model.scope}
+          nodeId={model.nodeId}
+          state={model.sampleState}
+          preview={model.test.preview}
+          ensureSaved={model.ensureSaved}
+          disabled={
+            model.test.pending !== undefined ||
+            model.test.observing ||
+            model.test.recoveryPending
+          }
+        />
+      )}
+      {model.realBlocked ? <Notice>{model.liveTestUnavailable}</Notice> : null}
+      {model.pinned ? null : (
+        <PreviewInputFields
+          nodeId={model.nodeId}
+          priorPreview={model.priorPreview}
+          usePrior={model.usePrior}
+          onUsePriorChange={model.setUsePrior}
+          input={model.input}
+          onInputChange={(text) => {
+            model.setInput(text);
+            model.setAcknowledgedContext(undefined);
+            model.test.inputChanged();
+          }}
+        />
+      )}
+      <div className="flex flex-wrap gap-2">
+        <ProgressButton
+          type="button"
+          size="sm"
+          variant="outline"
+          pending={model.test.pending === 'check'}
+          pendingLabel="Checking…"
+          icon={<ListChecksIcon data-icon="inline-start" />}
+          disabled={model.test.pending !== undefined}
+          onClick={() => void model.test.checkSetup(model.input)}
+        >
+          Check setup
+        </ProgressButton>
+      </div>
+      <SetupCheck check={model.test.check} />
+      {model.pinned ? null : (
+        <RealTestPermission
+          stepSideEffect={model.stepSideEffect}
+          check={model.test.check}
+          acknowledged={model.acknowledged}
+          onAcknowledgedChange={(checked) => {
+            model.setAcknowledgedContext(
+              checked ? model.checkContext : undefined,
+            );
+          }}
+        />
+      )}
+      <Button type="button" disabled={!model.canRun} onClick={model.run}>
+        {model.test.pending === 'run' ? (
+          <LoadingOrb />
+        ) : (
+          <FlaskConicalIcon data-icon="inline-start" />
+        )}
+        {runLabel({ test: model.test, pinned: model.pinned })}
+      </Button>
+      <TestResult
+        preview={model.test.preview}
+        apiClient={model.apiClient}
+        workspaceId={model.workspaceId}
+      />
+      {model.test.error === undefined ? null : (
+        <Notice tone="destructive">{model.test.error}</Notice>
+      )}
+    </div>
+  );
+}
+
+function useNodeTestPanel({
+  apiClient,
+  userId,
+  editable,
+  children,
+  stepBinding,
+  liveTestUnavailable,
+  workspaceId,
+  workflowId,
+  nodeId,
+  stepSideEffect,
+  priorPreview,
+  rememberedPreview,
+  ensureSaved,
+  onFinished,
+  onSucceeded,
+  actionRef,
+}: NodeTestPanelProps) {
   const [input, setInput] = useState('{}');
   const [usePrior, setUsePrior] = useState(false);
   const [acknowledgedContext, setAcknowledgedContext] = useState<string>();
@@ -117,86 +207,33 @@ export function NodeTestPanel({
   }
   useImperativeHandle(actionRef, () => ({ runTest: run }));
 
-  return (
-    <div
-      className={cn(
-        'flex flex-col gap-4 rounded-lg',
-        test.pending === 'run' && 'live-edge',
-      )}
-    >
-      {children}
-      {!editable ? null : (
-        <SampleAvailability
-          query={sampleQuery}
-          sample={sample}
-          scope={scope}
-          nodeId={nodeId}
-          state={sampleState}
-          preview={test.preview}
-          ensureSaved={ensureSaved}
-          disabled={
-            test.pending !== undefined || test.observing || test.recoveryPending
-          }
-        />
-      )}
-      {realBlocked ? <Notice>{liveTestUnavailable}</Notice> : null}
-      {pinned ? null : (
-        <PreviewInputFields
-          nodeId={nodeId}
-          priorPreview={priorPreview}
-          usePrior={usePrior}
-          onUsePriorChange={setUsePrior}
-          input={input}
-          onInputChange={(text) => {
-            setInput(text);
-            setAcknowledgedContext(undefined);
-            test.inputChanged();
-          }}
-        />
-      )}
-      <div className="flex flex-wrap gap-2">
-        <ProgressButton
-          type="button"
-          size="sm"
-          variant="outline"
-          pending={test.pending === 'check'}
-          pendingLabel="Checking…"
-          icon={<ListChecksIcon data-icon="inline-start" />}
-          disabled={test.pending !== undefined}
-          onClick={() => void test.checkSetup(input)}
-        >
-          Check setup
-        </ProgressButton>
-      </div>
-      <SetupCheck check={test.check} />
-      {pinned ? null : (
-        <RealTestPermission
-          stepSideEffect={stepSideEffect}
-          check={test.check}
-          acknowledged={acknowledged}
-          onAcknowledgedChange={(checked) => {
-            setAcknowledgedContext(checked ? checkContext : undefined);
-          }}
-        />
-      )}
-      <Button type="button" disabled={!canRun} onClick={run}>
-        {test.pending === 'run' ? (
-          <LoadingOrb />
-        ) : (
-          <FlaskConicalIcon data-icon="inline-start" />
-        )}
-        {runLabel({ test, pinned })}
-      </Button>
-      <TestResult
-        preview={test.preview}
-        apiClient={apiClient}
-        workspaceId={workspaceId}
-      />
-      {test.error === undefined ? null : (
-        <Notice tone="destructive">{test.error}</Notice>
-      )}
-    </div>
-  );
+  return {
+    test,
+    children,
+    editable,
+    sampleQuery,
+    sample,
+    scope,
+    nodeId,
+    sampleState,
+    ensureSaved,
+    realBlocked,
+    liveTestUnavailable,
+    pinned,
+    priorPreview,
+    usePrior,
+    setUsePrior,
+    input,
+    setInput,
+    setAcknowledgedContext,
+    stepSideEffect,
+    acknowledged,
+    checkContext,
+    canRun,
+    run,
+    apiClient,
+    workspaceId,
+  } as const;
 }
 
 function runLabel({
