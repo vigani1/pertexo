@@ -179,12 +179,7 @@ export function validateInputMappingRows(
   };
   const inputMappings = Object.create(null) as Record<string, InputMapping>;
   for (const row of rows) {
-    const destinationKey =
-      row.destinationKey.trim() === ''
-        ? 'Destination key is required.'
-        : (keyCounts.get(row.destinationKey) ?? 0) > 1
-          ? 'Another input already uses this field.'
-          : undefined;
+    const destinationKey = destinationKeyError(row.destinationKey, keyCounts);
     const source = rowSource(row, check);
     if (destinationKey !== undefined || source.error !== undefined) {
       errors[row.id] = {
@@ -199,6 +194,16 @@ export function validateInputMappingRows(
   return Object.keys(errors).length === 0
     ? { inputMappings, errors: {} }
     : { errors };
+}
+
+function destinationKeyError(
+  key: string,
+  counts: ReadonlyMap<string, number>,
+): string | undefined {
+  if (key.trim() === '') return 'Destination key is required.';
+  if ((counts.get(key) ?? 0) > 1)
+    return 'Another input already uses this field.';
+  return undefined;
 }
 
 type SourceCheck = Readonly<{

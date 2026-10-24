@@ -186,8 +186,6 @@ function rowFor(
       : replayStep(ordered, invocation.summary, bounds.endMs);
   const status = replay.status ?? 'pending';
   const look = describeNodeStatus(status);
-  const startedAt = invocation.summary?.startedAt ?? undefined;
-  const completedAt = invocation.summary?.completedAt ?? undefined;
   return {
     key: invocation.key,
     nodeId: invocation.nodeId,
@@ -198,33 +196,9 @@ function rowFor(
     ...label,
     status,
     tone: look.tone,
-    statusLabel:
-      invocation.summary?.reused !== undefined
-        ? 'Reused'
-        : invocation.summary?.failureHandling === undefined
-          ? look.label
-          : invocation.summary.failureHandling.disposition === 'handled'
-            ? 'Failed · failure handled'
-            : bounds.endMs === null
-              ? 'Failed · handling failure…'
-              : 'Failed · not handled',
-    ...(invocation.summary?.failureHandling?.disposition === 'pending' &&
-    bounds.endMs === null
-      ? { handlingInProgress: true as const }
-      : {}),
-    ...(invocation.summary?.failureHandling === undefined
-      ? {}
-      : { failureHandling: invocation.summary.failureHandling }),
-    ...(invocation.summary?.reused === undefined
-      ? {}
-      : { reused: invocation.summary.reused }),
-    ...(invocation.summary?.errorSummary == null
-      ? {}
-      : { errorSummary: invocation.summary.errorSummary }),
+    statusLabel: rowStatusLabel(invocation.summary, look.label, bounds.endMs),
+    ...summaryFields(invocation.summary, bounds.endMs),
     attempts: replay.attempts,
-    ...(invocation.summary === undefined
-      ? {}
-      : { currentAttemptNumber: invocation.summary.currentAttemptNumber }),
     segments: replay.segments,
     story: replay.story,
     outputs: replay.outputs,
@@ -232,9 +206,43 @@ function rowFor(
       ? {}
       : { safeErrorCode: replay.safeErrorCode }),
     ...(replay.resumeAt === undefined ? {} : { resumeAt: replay.resumeAt }),
+    firstActivityMs: replay.firstActivityMs ?? Number.POSITIVE_INFINITY,
+  };
+}
+
+function rowStatusLabel(
+  summary: WorkflowNodeRunSummary | undefined,
+  label: string,
+  endMs: number | null,
+): string {
+  if (summary?.reused !== undefined) return 'Reused';
+  if (summary?.failureHandling === undefined) return label;
+  if (summary.failureHandling.disposition === 'handled')
+    return 'Failed · failure handled';
+  return endMs === null ? 'Failed · handling failure…' : 'Failed · not handled';
+}
+
+function summaryFields(
+  summary: WorkflowNodeRunSummary | undefined,
+  endMs: number | null,
+) {
+  if (summary === undefined) return {};
+  const startedAt = summary.startedAt ?? undefined;
+  const completedAt = summary.completedAt ?? undefined;
+  return {
+    ...(summary.failureHandling?.disposition === 'pending' && endMs === null
+      ? { handlingInProgress: true as const }
+      : {}),
+    ...(summary.failureHandling === undefined
+      ? {}
+      : { failureHandling: summary.failureHandling }),
+    ...(summary.reused === undefined ? {} : { reused: summary.reused }),
+    ...(summary.errorSummary == null
+      ? {}
+      : { errorSummary: summary.errorSummary }),
+    currentAttemptNumber: summary.currentAttemptNumber,
     ...(startedAt === undefined ? {} : { startedAt }),
     ...(completedAt === undefined ? {} : { completedAt }),
-    firstActivityMs: replay.firstActivityMs ?? Number.POSITIVE_INFINITY,
   };
 }
 
