@@ -1,3 +1,7 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { sql } from 'drizzle-orm';
+import { outboxEvents } from '../../schema/transport.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
@@ -22,19 +26,19 @@ async function enqueueWorkflowRun(
     outboxEventId: id,
     ...(traceparent === undefined ? {} : { traceparent }),
   };
-  await client.query(
-    `insert into app.outbox_events
-     (id,workspace_id,job_name,aggregate_type,aggregate_id,payload,payload_checksum,available_at)
-     values($1,$2,'advance-workflow-run','workflow-run',$3,$4::jsonb,$5,clock_timestamp()+make_interval(secs=>$6))`,
-    [
+  await drizzle(client)
+    .insert(outboxEvents)
+    .values({
       id,
       workspaceId,
-      runId,
-      JSON.stringify(payload),
-      canonicalOutboxPayloadChecksum(payload),
-      delaySeconds,
-    ],
-  );
+      jobName: 'advance-workflow-run',
+      aggregateType: 'workflow-run',
+      aggregateId: runId,
+      payload: sql`${JSON.stringify(payload)}::jsonb`,
+      payloadChecksum: canonicalOutboxPayloadChecksum(payload),
+      availableAt: sql`clock_timestamp()+make_interval(secs=>${delaySeconds})`,
+    })
+    .catch(rethrowQueryFailure);
   return id;
 }
 

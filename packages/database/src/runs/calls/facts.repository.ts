@@ -1,3 +1,9 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { and, eq, isNull, or, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import { workflowCalls } from '../../schema/runs/calls.js';
+import { nodeRuns, workflowRuns } from '../../schema/runs/execution.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import type { WorkflowCallOutcome } from '@pertexo/workflow-engine';
 
@@ -13,32 +19,49 @@ export async function readCallFacts(
     callOutcomes: readonly WorkflowCallOutcome[];
   }>
 > {
-  const rows = await client.query<{
-    id: string;
-    invocation_key: string;
-    node_id: string;
-    branch_context: Pick<WorkflowCallOutcome, 'branchPath' | 'iterationPath'>;
-    status: WorkflowCallOutcome['status'] | 'pending' | 'accepted';
-    safe_error_code: string | null;
-    slot_lent: boolean;
-    consumed_at: Date | null;
-    child_wait: Date | null;
-  }>(
-    `select call.id,call.invocation_key,call.status,call.safe_error_code,
-            call.slot_lent,call.consumed_at,node.node_id,node.branch_context,child.human_wait_started_at child_wait
-     from app.workflow_calls call
-     join app.node_runs node on node.workspace_id=call.workspace_id
-       and node.workflow_run_id=call.parent_run_id and node.invocation_key=call.invocation_key
-     left join app.workflow_runs child on child.workspace_id=call.workspace_id and child.id=call.child_run_id
-     where call.workspace_id=$1 and call.parent_run_id=$2
-       and (call.slot_lent or call.consumed_at is null)
-     order by call.invocation_key`,
-    [workspaceId, runId],
-  );
+  const c = workflowCalls,
+    n = nodeRuns,
+    child = alias(workflowRuns, 'child');
+  const rows = await drizzle(client)
+    .select({
+      id: c.id,
+      invocation_key: c.invocationKey,
+      status: c.status,
+      safe_error_code: c.safeErrorCode,
+      slot_lent: c.slotLent,
+      consumed_at: c.consumedAt,
+      node_id: n.nodeId,
+      branch_context: sql<
+        Pick<WorkflowCallOutcome, 'branchPath' | 'iterationPath'>
+      >`${n.branchContext}`,
+      child_wait: child.humanWaitStartedAt,
+    })
+    .from(c)
+    .innerJoin(
+      n,
+      and(
+        eq(n.workspaceId, c.workspaceId),
+        eq(n.workflowRunId, c.parentRunId),
+        eq(n.invocationKey, c.invocationKey),
+      ),
+    )
+    .leftJoin(
+      child,
+      and(eq(child.workspaceId, c.workspaceId), eq(child.id, c.childRunId)),
+    )
+    .where(
+      and(
+        eq(c.workspaceId, workspaceId),
+        eq(c.parentRunId, runId),
+        or(eq(c.slotLent, true), isNull(c.consumedAt)),
+      ),
+    )
+    .orderBy(c.invocationKey)
+    .catch(rethrowQueryFailure);
   return {
-    hasExecutionSlot: !rows.rows.some(({ slot_lent }) => slot_lent),
-    hasHumanChild: rows.rows.some(({ child_wait }) => child_wait !== null),
-    callOutcomes: rows.rows.flatMap((row) => {
+    hasExecutionSlot: !rows.some(({ slot_lent }) => slot_lent),
+    hasHumanChild: rows.some(({ child_wait }) => child_wait !== null),
+    callOutcomes: rows.flatMap((row) => {
       const status = row.status;
       const ignoresCallOutcome =
         row.consumed_at !== null ||
