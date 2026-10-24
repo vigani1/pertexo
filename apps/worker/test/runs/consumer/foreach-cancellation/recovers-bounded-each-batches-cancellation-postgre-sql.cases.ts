@@ -230,840 +230,13 @@ export function registerRecoversBoundedEachBatchesCancellationPostgreSQL(): void
         workers = await startWorkers();
       };
 
-      const runFixture = async (
-        mode:
-          | 'complete'
-          | 'serial_complete'
-          | 'condition_complete'
-          | 'switch_complete'
-          | 'nested_complete'
-          | 'cancel_between_batches'
-          | 'cancel_running'
-          | 'deadline_running',
-      ) => {
-        let structuredKind:
-          Parameters<typeof acceptStructuredForEachRun>[0] | undefined;
-        if (mode === 'condition_complete') {
-          structuredKind = 'condition';
-        } else if (mode === 'switch_complete') {
-          structuredKind = 'switch';
-        } else if (mode === 'nested_complete') {
-          structuredKind = 'nested';
-        } else {
-          structuredKind = undefined;
-        }
-        const accepted = await acceptScenarioRun({ structuredKind, mode });
-        const coordinatorOutboxes = [accepted.outboxEventId];
-        const attemptOutboxes: string[] = [];
-        const publishCoordinator = async (
-          outboxEventId: string,
-          expectedRevision: number,
-        ) => {
-          const published = await ownedProducer.publish({
-            name: JOB_NAME.advanceWorkflowRun,
-            data: {
-              workspaceId,
-              runId: accepted.runId,
-              outboxEventId,
-            },
-          });
-          const result = await waitFor(
-            async () => {
-              const [rows, job] = await Promise.all([
-                workerQuery<{ revision: number }>(
-                  `select revision from app.run_checkpoints
-                   where workspace_id=$1 and workflow_run_id=$2`,
-                  [workspaceId, accepted.runId],
-                ),
-                ownedCoordinatorQueue.getJob(published.jobId),
-              ]);
-              return {
-                failedReason: job?.failedReason,
-                stacktrace: job?.stacktrace,
-                revision: rows[0]?.revision,
-                state: await job?.getState(),
-              };
-            },
-            ({ revision, state }) =>
-              state === 'failed' ||
-              (revision === expectedRevision &&
-                (state === undefined || state === 'completed')),
-          );
-          if (result.state === 'failed' || result.revision !== expectedRevision)
-            throw new Error(
-              `For Each coordinator failed: ${result.failedReason ?? 'unknown'} ${JSON.stringify(result.stacktrace)}`,
-            );
-        };
-        const continueAfter = async (expectedRevision: number) => {
-          const outbox = await waitForCoordinatorOutbox(
-            accepted.runId,
-            coordinatorOutboxes,
-          );
-          coordinatorOutboxes.push(outbox);
-          await publishCoordinator(outbox, expectedRevision);
-          return outbox;
-        };
-        const findAttempt = async (nodeId: string, ordinal?: number) => {
-          const rows = await waitFor(
-            () =>
-              workerQuery<{
-                attempt_id: string;
-                node_run_id: string;
-                outbox_id: string;
-                payload_checksum: string;
-              }>(
-                `select attempt.id attempt_id,node.id node_run_id,outbox.id outbox_id,
-                        outbox.payload_checksum
-                   from app.outbox_events outbox
-                   join app.node_attempts attempt on attempt.id=outbox.aggregate_id
-                   join app.node_runs node on node.id=attempt.node_run_id
-                  where node.workspace_id=$1 and node.workflow_run_id=$2
-                    and node.node_id=$3 and outbox.job_name='execute-node-attempt'
-                    and not (outbox.id=any($4::uuid[]))
-                    and ($5::int is null or
-                      (node.branch_context->'iterationPath'->0->>'ordinal')::int=$5)
-                  order by outbox.created_at,outbox.id`,
-                [
-                  workspaceId,
-                  accepted.runId,
-                  nodeId,
-                  attemptOutboxes,
-                  ordinal ?? null,
-                ],
-              ),
-            (value) => value.length === 1,
-          );
-          const attempt = rows[0];
-          if (attempt === undefined)
-            throw new Error('For Each attempt missing');
-          attemptOutboxes.push(attempt.outbox_id);
-          return attempt;
-        };
-        const execute = async (nodeId: string, ordinal?: number) => {
-          const attempt = await findAttempt(nodeId, ordinal);
-          const published = await ownedProducer.publish({
-            name: JOB_NAME.executeNodeAttempt,
-            data: {
-              workspaceId,
-              runId: accepted.runId,
-              nodeRunId: attempt.node_run_id,
-              attemptId: attempt.attempt_id,
-              outboxEventId: attempt.outbox_id,
-            },
-          });
-          const result = await waitFor(
-            async () => {
-              const [nodeRows, job] = await Promise.all([
-                workerQuery<{ status: string }>(
-                  `select status from app.node_runs where workspace_id=$1 and id=$2`,
-                  [workspaceId, attempt.node_run_id],
-                ),
-                ownedAttemptQueue.getJob(published.jobId),
-              ]);
-              return {
-                failedReason: job?.failedReason,
-                state: await job?.getState(),
-                status: nodeRows[0]?.status,
-              };
-            },
-            ({ state, status }) =>
-              state === 'failed' ||
-              (status === 'succeeded' &&
-                (state === undefined || state === 'completed')),
-          );
-          if (result.state === 'failed' || result.status !== 'succeeded')
-            throw new Error(
-              `For Each attempt failed: ${result.failedReason ?? 'unknown'}`,
-            );
-          return attempt;
-        };
-        const executeDuplicateAttempt = async (attempt: {
-          attempt_id: string;
-          node_run_id: string;
-          outbox_id: string;
-        }) => {
-          const published = await ownedProducer.publish({
-            name: JOB_NAME.executeNodeAttempt,
-            data: {
-              workspaceId,
-              runId: accepted.runId,
-              nodeRunId: attempt.node_run_id,
-              attemptId: attempt.attempt_id,
-              outboxEventId: attempt.outbox_id,
-            },
-          });
-          const job = await waitFor(
-            () => ownedAttemptQueue.getJob(published.jobId),
-            (value) => value !== undefined,
-          );
-          if (job === undefined)
-            throw new Error('duplicate attempt disappeared');
-          await waitFor(
-            () => job.getState(),
-            (state) => state === 'completed' || state === 'failed',
-          );
-          await expect(job.getState()).resolves.toBe('completed');
-        };
-
-        await publishCoordinator(accepted.outboxEventId, 1);
-        await execute('manual');
-        await continueAfter(2);
-        const declaration = await execute('for-each');
-
-        const declarationJob = await ownedAttemptQueue.getJob(
-          `outbox-${declaration.outbox_id}`,
-        );
-        await declarationJob?.remove();
-        await executeDuplicateAttempt(declaration);
-
-        // The declaration outcome is durable before any coordinator consumes it.
-        await eraseRedisAndRestart();
-        const declarationContinuation = await waitForCoordinatorOutbox(
-          accepted.runId,
-          coordinatorOutboxes,
-        );
-        coordinatorOutboxes.push(declarationContinuation);
-        await publishCoordinator(declarationContinuation, 3);
-        const declarationCoordinatorJob = await ownedCoordinatorQueue.getJob(
-          `outbox-${declarationContinuation}`,
-        );
-        await declarationCoordinatorJob?.remove();
-        await publishCoordinator(declarationContinuation, 3);
-        await eraseRedisAndRestart();
-
-        if (mode === 'serial_complete' || structuredKind !== undefined) {
-          let revision = 3;
-          let lastFinishedAttempt:
-            Awaited<ReturnType<typeof execute>> | undefined;
-          for (const ordinal of [0, 1, 2]) {
-            await execute('body-map', ordinal);
-            await continueAfter(++revision);
-            const finishedAttempt = await execute(
-              structuredKind === 'nested' ? 'nested-body' : 'body-sink',
-              ordinal,
-            );
-            lastFinishedAttempt = finishedAttempt;
-            await continueAfter(++revision);
-            if (structuredKind === 'nested') {
-              const pendingContinuations = await workerQuery<{ id: string }>(
-                `select id from app.outbox_events
-                  where workspace_id=$1 and aggregate_id=$2
-                    and job_name='advance-workflow-run'
-                    and not (id=any($3::uuid[]))`,
-                [workspaceId, accepted.runId, coordinatorOutboxes],
-              );
-              if (pendingContinuations.length > 0)
-                await continueAfter(++revision);
-            }
-            const pruned = await workerQuery<{ scheduler_state: unknown }>(
-              `select scheduler_state from app.run_checkpoints
-                where workspace_id=$1 and workflow_run_id=$2`,
-              [workspaceId, accepted.runId],
-            );
-            const recovered = parseCheckpoint(pruned[0]?.scheduler_state);
-            expect(recovered.loops).toHaveLength(1);
-            expect(recovered.loops[0]).toMatchObject({
-              completedPrefix: ordinal + 1,
-              terminalOrdinals: [],
-            });
-            expect(
-              recovered.invocations.every(
-                ({ iterationPath }) => iterationPath?.[0]?.ordinal !== ordinal,
-              ),
-            ).toBe(true);
-            if (structuredKind === 'nested')
-              expect(recovered.retiredIterationBudget).toBe(ordinal + 1);
-            const readHistory = () =>
-              workerQuery<{
-                attempts: string;
-                events: string;
-                outputs: string;
-              }>(
-                `select
-                 (select count(*)::text from app.node_attempts attempt
-                   join app.node_runs node on node.id=attempt.node_run_id
-                   where node.workspace_id=$1 and node.workflow_run_id=$2) attempts,
-                 (select count(*)::text from app.run_events
-                   where workspace_id=$1 and workflow_run_id=$2) events,
-                 (select count(*)::text from app.node_runs
-                   where workspace_id=$1 and workflow_run_id=$2
-                     and output_ref is not null) outputs`,
-                [workspaceId, accepted.runId],
-              );
-            const history = await readHistory();
-            expect(Number(history[0]?.outputs)).toBeGreaterThan(ordinal + 2);
-            if (mode === 'serial_complete' && ordinal === 0) {
-              const retention = createRetentionDatabase(
-                parseDatabaseConfig({
-                  connectionString: databaseUrl(dispatcherUrl),
-                  max: 1,
-                }),
-              );
-              try {
-                const pass = await retention.enforce();
-                expect(pass.removed.node_runs).toBe(0);
-                expect(pass.removed.run_events).toBe(0);
-                expect(pass.removed.run_checkpoints).toBe(0);
-                await expect(readHistory()).resolves.toEqual(history);
-              } finally {
-                await retention.close();
-              }
-            }
-            await eraseRedisAndRestart();
-            await executeDuplicateAttempt(finishedAttempt);
-            await expect(readHistory()).resolves.toEqual(history);
-          }
-          if (structuredKind !== undefined) {
-            const scopedChildren = await workerQuery<{
-              branch_context: {
-                branchPath: { nodeId: string; outputPort: string }[];
-                iterationPath: { loopNodeId: string; ordinal: number }[];
-              };
-              node_id: string;
-            }>(
-              `select node_id,branch_context from app.node_runs
-                where workspace_id=$1 and workflow_run_id=$2 and node_id=$3
-                order by (branch_context->'iterationPath'->0->>'ordinal')::int`,
-              [
-                workspaceId,
-                accepted.runId,
-                structuredKind === 'nested' ? 'nested-body' : 'body-sink',
-              ],
-            );
-            expect(scopedChildren).toHaveLength(3);
-            for (const [ordinal, child] of scopedChildren.entries()) {
-              expect(child.branch_context.iterationPath).toEqual(
-                structuredKind === 'nested'
-                  ? [
-                      { loopNodeId: 'for-each', ordinal },
-                      { loopNodeId: 'body-map', ordinal: 0 },
-                    ]
-                  : [{ loopNodeId: 'for-each', ordinal }],
-              );
-              expect(child.branch_context.branchPath).toEqual(
-                structuredKind === 'nested'
-                  ? []
-                  : [
-                      {
-                        nodeId: 'body-map',
-                        outputPort:
-                          structuredKind === 'condition' ? 'true' : 'case-01',
-                      },
-                    ],
-              );
-            }
-            await expect(
-              workerQuery<{ node_id: string; attempts: string }>(
-                `select node.node_id,count(attempt.id)::text attempts
-                   from app.node_runs node
-                   join app.node_attempts attempt on attempt.node_run_id=node.id
-                  where node.workspace_id=$1 and node.workflow_run_id=$2
-                    and node.node_id=$3
-                  group by node.node_id`,
-                [workspaceId, accepted.runId, scopedChildren[0]?.node_id],
-              ),
-            ).resolves.toEqual([
-              { node_id: scopedChildren[0]?.node_id, attempts: '3' },
-            ]);
-          }
-          const beforeSuccessor = await workerQuery<{
-            node_id: string;
-            status: string;
-          }>(
-            `select node_id,status from app.node_runs
-              where workspace_id=$1 and workflow_run_id=$2
-                and node_id in ('for-each','outer-successor') order by node_id`,
-            [workspaceId, accepted.runId],
-          );
-          expect(beforeSuccessor).toEqual([
-            { node_id: 'for-each', status: 'succeeded' },
-          ]);
-          // Serial outcomes leave no spare completion wakeup. The coordinator
-          // must persist its own continuation when it completes the loop.
-          const readContinuations = () =>
-            workerQuery<{ id: string }>(
-              `select id from app.outbox_events
-              where workspace_id=$1 and aggregate_id=$2
-                and job_name='advance-workflow-run'
-                and not (id=any($3::uuid[]))`,
-              [workspaceId, accepted.runId, coordinatorOutboxes],
-            );
-          const continuations = await readContinuations();
-          expect(continuations).toHaveLength(1);
-          const loopCompletion = coordinatorOutboxes.at(-1);
-          if (loopCompletion === undefined)
-            throw new Error('Serial loop completion delivery missing');
-          await eraseRedisAndRestart();
-          // Redelivery after Redis loss must replay the receipt, not enqueue
-          // another continuation or move the checkpoint a second time.
-          await publishCoordinator(loopCompletion, revision);
-          await expect(readContinuations()).resolves.toEqual(continuations);
-          await expect(
-            workerQuery<{ completed: boolean; receipts: string }>(
-              `select count(*)::text receipts,
-                      bool_and(completed_at is not null) completed
-                 from app.inbox_receipts
-                where workspace_id=$1 and message_id=$2`,
-              [workspaceId, loopCompletion],
-            ),
-          ).resolves.toEqual([{ completed: true, receipts: '1' }]);
-          await continueAfter(++revision);
-          await execute('outer-successor');
-          await continueAfter(++revision);
-          await expect(
-            workerQuery<{ status: string }>(
-              `select status from app.workflow_runs where workspace_id=$1 and id=$2`,
-              [workspaceId, accepted.runId],
-            ),
-          ).resolves.toEqual([{ status: 'succeeded' }]);
-          await expect(readContinuations()).resolves.toEqual([]);
-          if (mode === 'serial_complete') {
-            await ownerQuery(
-              `update app.workflow_runs set completed_at=clock_timestamp()-interval '31 days'
-                where workspace_id=$1 and id=$2`,
-              [workspaceId, accepted.runId],
-            );
-            const retention = createRetentionDatabase(
-              parseDatabaseConfig({
-                connectionString: databaseUrl(dispatcherUrl),
-                max: 1,
-              }),
-            );
-            try {
-              await retention.enforce();
-            } finally {
-              await retention.close();
-            }
-            await expect(
-              workerQuery<{
-                nodes: string;
-                checkpoints: string;
-                events: string;
-                status: string;
-              }>(
-                `select run.status,
-                 (select count(*)::text from app.node_runs where workflow_run_id=run.id) nodes,
-                 (select count(*)::text from app.run_events where workflow_run_id=run.id) events,
-                 (select count(*)::text from app.run_checkpoints where workflow_run_id=run.id) checkpoints
-                 from app.workflow_runs run where workspace_id=$1 and id=$2`,
-                [workspaceId, accepted.runId],
-              ),
-            ).resolves.toEqual([
-              {
-                status: 'succeeded',
-                nodes: '0',
-                events: '0',
-                checkpoints: '0',
-              },
-            ]);
-            if (lastFinishedAttempt === undefined)
-              throw new Error('finished iteration attempt missing');
-            await eraseRedisAndRestart();
-            await executeDuplicateAttempt(lastFinishedAttempt);
-            await expect(
-              workerQuery<{
-                nodes: string;
-                checkpoints: string;
-                events: string;
-              }>(
-                `select
-                 (select count(*)::text from app.node_runs where workspace_id=$1 and workflow_run_id=$2) nodes,
-                 (select count(*)::text from app.run_checkpoints where workspace_id=$1 and workflow_run_id=$2) checkpoints,
-                 (select count(*)::text from app.run_events where workspace_id=$1 and workflow_run_id=$2) events`,
-                [workspaceId, accepted.runId],
-              ),
-            ).resolves.toEqual([{ nodes: '0', checkpoints: '0', events: '0' }]);
-          }
-          return;
-        }
-
-        const reserved = await workerQuery<{
-          scheduler_state: unknown;
-        }>(
-          `select scheduler_state from app.run_checkpoints
-            where workspace_id=$1 and workflow_run_id=$2`,
-          [workspaceId, accepted.runId],
-        );
-        expect(parseCheckpoint(reserved[0]?.scheduler_state)).toMatchObject({
-          remainingIterationBudget: 997,
-          loops: [
-            {
-              activeOrdinals: [0, 1],
-              nextOrdinal: 2,
-              terminalOrdinals: [],
-            },
-          ],
-        });
-
-        if (mode !== 'cancel_running' && mode !== 'deadline_running') {
-          for (const ordinal of [0, 1]) {
-            await execute('body-map', ordinal);
-            await continueAfter(4 + ordinal);
-          }
-          await execute('body-sink', 0);
-          await execute('body-sink', 1);
-        }
-
-        if (mode === 'cancel_between_batches') {
-          await cancelFixtureRun(
-            accepted.runId,
-            'cancel between canonical batches',
-          );
-          await eraseRedisAndRestart();
-          await continueAfter(6);
-          const canceled = await waitFor(
-            () =>
-              workerQuery<{ scheduler_state: unknown; status: string }>(
-                `select run.status,checkpoint.scheduler_state
-                   from app.workflow_runs run
-                   join app.run_checkpoints checkpoint
-                     on checkpoint.workflow_run_id=run.id
-                  where run.workspace_id=$1 and run.id=$2`,
-                [workspaceId, accepted.runId],
-              ),
-            (rows) => rows[0]?.status === 'canceled',
-          );
-          expect(parseCheckpoint(canceled[0]?.scheduler_state)).toMatchObject({
-            cancelRequested: true,
-            remainingIterationBudget: 997,
-            runStatus: 'canceled',
-          });
-          await expect(
-            workerQuery<{ count: string }>(
-              `select count(*)::text count from app.node_runs
-                where workspace_id=$1 and workflow_run_id=$2
-                  and branch_context->'iterationPath' @> '[{"loopNodeId":"for-each","ordinal":2}]'::jsonb`,
-              [workspaceId, accepted.runId],
-            ),
-          ).resolves.toEqual([{ count: '0' }]);
-          return;
-        }
-
-        if (mode === 'cancel_running' || mode === 'deadline_running') {
-          const attempts = await Promise.all(
-            [0, 1].map((ordinal) => findAttempt('body-map', ordinal)),
-          );
-          const store = createNodeAttemptRunStore(
-            parseDatabaseConfig({
-              connectionString: databaseUrl(workerUrl),
-              max: 2,
-            }),
-          );
-          try {
-            const claimed = await Promise.all(
-              attempts.map(async (attempt, ordinal) => {
-                const result = await store.claimDelivery({
-                  workspaceId,
-                  runId: accepted.runId,
-                  nodeRunId: attempt.node_run_id,
-                  attemptId: attempt.attempt_id,
-                  delivery: {
-                    outboxEventId: attempt.outbox_id,
-                    payloadChecksum: attempt.payload_checksum,
-                  },
-                  leaseDurationSeconds: 30,
-                  workerId: `for-each-${mode}-${String(ordinal)}`,
-                  signal: new AbortController().signal,
-                });
-                if (result.kind !== 'claimed')
-                  throw new Error(
-                    `For Each attempt was not claimed: ${result.kind}`,
-                  );
-                return result;
-              }),
-            );
-            const firstClaim = claimed[0];
-            const secondClaim = claimed[1];
-            if (firstClaim === undefined || secondClaim === undefined)
-              throw new Error('For Each running claims are incomplete');
-
-            if (mode === 'cancel_running') {
-              await cancelFixtureRun(
-                accepted.runId,
-                'cancel while canonical body attempt is running',
-              );
-            } else {
-              // The child also scans deadlines; stop it before asserting this scanner owns the wakeup.
-              await stopWorkers();
-              // Already passed, yet after creation: the run may be under a second old.
-              await ownerQuery(
-                `update app.workflow_runs
-                    set deadline_at=created_at+interval '1 millisecond',
-                        deadline_wakeup_at=null,
-                        updated_at=clock_timestamp()
-                  where workspace_id=$1 and id=$2`,
-                [workspaceId, accepted.runId],
-              );
-              const scanner = createDeadlineWakeupScanner(
-                parseDatabaseConfig({
-                  connectionString: databaseUrl(workerUrl),
-                  max: 1,
-                }),
-              );
-              try {
-                await expect(scanner.claimDueWakeups(10)).resolves.toBe(1);
-              } finally {
-                await scanner.close();
-              }
-            }
-
-            await eraseRedisAndRestart();
-            await continueAfter(4);
-            const stopped = await workerQuery<{
-              scheduler_state: unknown;
-              node_id: string;
-              status: string;
-            }>(
-              `select node.node_id,node.status,checkpoint.scheduler_state
-                 from app.node_runs node
-                 join app.run_checkpoints checkpoint
-                   on checkpoint.workflow_run_id=node.workflow_run_id
-                where node.workspace_id=$1 and node.workflow_run_id=$2
-                  and node.node_id='body-map'
-                order by (node.branch_context->'iterationPath'->0->>'ordinal')::int`,
-              [workspaceId, accepted.runId],
-            );
-            expect(stopped.map(({ status }) => status)).toEqual([
-              'running',
-              'running',
-            ]);
-            expect(parseCheckpoint(stopped[0]?.scheduler_state)).toMatchObject({
-              cancelRequested: mode === 'cancel_running',
-              deadlineExpired: mode === 'deadline_running',
-              remainingIterationBudget: 997,
-              runStatus: 'running',
-              loops: [
-                {
-                  activeOrdinals: [0, 1],
-                  nextOrdinal: 2,
-                  terminalOrdinals: [],
-                },
-              ],
-            });
-            await expect(
-              workerQuery<{ attempts: string; new_work: string }>(
-                `select
-                   count(*)::text attempts,
-                   count(*) filter (
-                     where node.node_id='body-sink'
-                        or node.branch_context->'iterationPath'
-                           @> '[{"loopNodeId":"for-each","ordinal":2}]'::jsonb
-                   )::text new_work
-                   from app.node_attempts attempt
-                   join app.node_runs node on node.id=attempt.node_run_id
-                  where node.workspace_id=$1 and node.workflow_run_id=$2`,
-                [workspaceId, accepted.runId],
-              ),
-            ).resolves.toEqual([{ attempts: '4', new_work: '0' }]);
-
-            const firstCompletion = await store.complete({
-              lease: firstClaim.lease,
-              outcome: {
-                status: 'succeeded',
-                output: {
-                  item: { id: 'alpha', value: 11 },
-                  ordinal: 0,
-                },
-              },
-              signal: new AbortController().signal,
-            });
-            expect(firstCompletion.kind).toBe('committed');
-            await continueAfter(5);
-            const secondCompletion = await store.complete({
-              lease: secondClaim.lease,
-              outcome:
-                mode === 'cancel_running'
-                  ? {
-                      status: 'canceled',
-                      safeErrorCode: 'execution.canceled',
-                    }
-                  : {
-                      status: 'outcome_unknown',
-                      safeErrorCode: 'execution.outcome_unknown',
-                    },
-              signal: new AbortController().signal,
-            });
-            expect(secondCompletion.kind).toBe('committed');
-            await continueAfter(6);
-            const terminal = await workerQuery<{
-              scheduler_state: unknown;
-              status: string;
-            }>(
-              `select run.status,checkpoint.scheduler_state
-                 from app.workflow_runs run
-                 join app.run_checkpoints checkpoint
-                   on checkpoint.workflow_run_id=run.id
-                where run.workspace_id=$1 and run.id=$2`,
-              [workspaceId, accepted.runId],
-            );
-            expect(terminal[0]?.status).toBe(
-              mode === 'cancel_running' ? 'canceled' : 'outcome_unknown',
-            );
-            expect(parseCheckpoint(terminal[0]?.scheduler_state)).toMatchObject(
-              {
-                remainingIterationBudget: 997,
-                runStatus:
-                  mode === 'cancel_running' ? 'canceled' : 'outcome_unknown',
-                loops: [
-                  {
-                    activeOrdinals: [],
-                    nextOrdinal: 2,
-                    completedPrefix: 2,
-                    terminalOrdinals: [],
-                  },
-                ],
-              },
-            );
-            await expect(
-              workerQuery<{ attempts: string; new_work: string }>(
-                `select
-                   count(*)::text attempts,
-                   count(*) filter (
-                     where node.node_id='body-sink'
-                        or node.branch_context->'iterationPath'
-                           @> '[{"loopNodeId":"for-each","ordinal":2}]'::jsonb
-                   )::text new_work
-                   from app.node_attempts attempt
-                   join app.node_runs node on node.id=attempt.node_run_id
-                  where node.workspace_id=$1 and node.workflow_run_id=$2`,
-                [workspaceId, accepted.runId],
-              ),
-            ).resolves.toEqual([{ attempts: '4', new_work: '0' }]);
-          } finally {
-            await store.close();
-          }
-          return;
-        }
-
-        // A sink outcome survives worker/Redis loss before coordinator consumption.
-        await eraseRedisAndRestart();
-        await continueAfter(6);
-        const laterBatch = await workerQuery<{ scheduler_state: unknown }>(
-          `select scheduler_state from app.run_checkpoints
-            where workspace_id=$1 and workflow_run_id=$2`,
-          [workspaceId, accepted.runId],
-        );
-        expect(parseCheckpoint(laterBatch[0]?.scheduler_state)).toMatchObject({
-          remainingIterationBudget: 997,
-          loops: [
-            {
-              activeOrdinals: [2],
-              nextOrdinal: 3,
-              completedPrefix: 2,
-              terminalOrdinals: [],
-            },
-          ],
-        });
-        await eraseRedisAndRestart();
-        await execute('body-map', 2);
-        await continueAfter(7);
-        await execute('body-sink', 2);
-        await continueAfter(8);
-        await continueAfter(9);
-        await execute('outer-successor');
-        await continueAfter(10);
-
-        const facts = await workerQuery<{
-          branch_context: unknown;
-          node_id: string;
-          output_ref: unknown;
-          scheduler_state: unknown;
-          status: string;
-        }>(
-          `select node.node_id,node.status,node.branch_context,node.output_ref,
-                  checkpoint.scheduler_state
-             from app.node_runs node
-             join app.run_checkpoints checkpoint
-               on checkpoint.workflow_run_id=node.workflow_run_id
-            where node.workspace_id=$1 and node.workflow_run_id=$2
-            order by node.node_id,node.invocation_key`,
-          [workspaceId, accepted.runId],
-        );
-        expect(parseCheckpoint(facts[0]?.scheduler_state)).toMatchObject({
-          remainingIterationBudget: 997,
-          runStatus: 'succeeded',
-          loops: [
-            {
-              activeOrdinals: [],
-              nextOrdinal: 3,
-              completedPrefix: 3,
-              terminalOrdinals: [],
-            },
-          ],
-        });
-        expect(
-          facts
-            .filter(({ node_id }) => node_id === 'body-map')
-            .map(({ branch_context, output_ref }) => ({
-              branch_context,
-              output_ref,
-            })),
-        ).toEqual(
-          [
-            { id: 'alpha', value: 11 },
-            { id: 'beta', value: 22 },
-            { id: 'gamma', value: 33 },
-          ].map((item, ordinal) => ({
-            branch_context: {
-              branchPath: [],
-              iterationPath: [{ loopNodeId: 'for-each', ordinal }],
-            },
-            output_ref: {
-              kind: 'inline',
-              value: { item, ordinal },
-            },
-          })),
-        );
-        expect(
-          facts
-            .filter(({ node_id }) => node_id === 'body-sink')
-            .map(({ output_ref }) => output_ref),
-        ).toEqual(
-          [
-            { id: 'alpha', value: 11 },
-            { id: 'beta', value: 22 },
-            { id: 'gamma', value: 33 },
-          ].map((item, ordinal) => ({
-            kind: 'inline',
-            value: { result: { item, ordinal } },
-          })),
-        );
-        // The step after the loop also gets each pass's result, in order.
-        const items = [
-          { id: 'alpha', value: 11 },
-          { id: 'beta', value: 22 },
-          { id: 'gamma', value: 33 },
-        ];
-        expect(
-          facts.find(({ node_id }) => node_id === 'outer-successor')
-            ?.output_ref,
-        ).toEqual({
-          kind: 'inline',
-          value: {
-            result: {
-              items,
-              iterationCount: 3,
-              results: items.map((item, ordinal) => ({
-                result: { item, ordinal },
-              })),
-            },
-          },
-        });
-        expect(
-          facts.filter(({ node_id }) => node_id === 'for-each'),
-        ).toHaveLength(1);
-        await expect(
-          workerQuery<{ attempts: string; controls: string }>(
-            `select
-               count(*)::text attempts,
-               count(*) filter (where node.node_id='for-each')::text controls
-               from app.node_attempts attempt
-               join app.node_runs node on node.id=attempt.node_run_id
-              where node.workspace_id=$1 and node.workflow_run_id=$2`,
-            [workspaceId, accepted.runId],
-          ),
-        ).resolves.toEqual([{ attempts: '9', controls: '1' }]);
-      };
+      const runFixture = createForEachScenario({
+        ownedProducer,
+        ownedCoordinatorQueue,
+        ownedAttemptQueue,
+        stopWorkers,
+        eraseRedisAndRestart,
+      });
 
       await ownedProducer.waitUntilReady(5_000);
       await runFixture('serial_complete');
@@ -1109,4 +282,950 @@ function acceptScenarioRun(
     return acceptStructuredForEachRun(input.structuredKind);
   if (input.mode === 'serial_complete') return acceptSerialForEachRun();
   return acceptForEachRun();
+}
+
+type ForEachScenarioMode =
+  | 'complete'
+  | 'serial_complete'
+  | 'condition_complete'
+  | 'switch_complete'
+  | 'nested_complete'
+  | 'cancel_between_batches'
+  | 'cancel_running'
+  | 'deadline_running';
+type AcceptedForEachScenario = Awaited<ReturnType<typeof acceptScenarioRun>>;
+type ForEachScenarioContext = Readonly<{
+  ownedProducer: ReturnType<typeof createQueueProducer>;
+  ownedCoordinatorQueue: Queue;
+  ownedAttemptQueue: Queue;
+  stopWorkers: () => Promise<void>;
+  eraseRedisAndRestart: () => Promise<void>;
+}>;
+type ForEachPhaseContext = Pick<
+  ForEachScenarioContext,
+  'stopWorkers' | 'eraseRedisAndRestart'
+> &
+  Readonly<{
+    accepted: AcceptedForEachScenario;
+    mode: ForEachScenarioMode;
+    structuredKind:
+      Parameters<typeof acceptStructuredForEachRun>[0] | undefined;
+    delivery: ReturnType<typeof createForEachDelivery>;
+  }>;
+function createForEachDelivery(
+  context: Pick<
+    ForEachScenarioContext,
+    'ownedProducer' | 'ownedCoordinatorQueue' | 'ownedAttemptQueue'
+  > &
+    Readonly<{ accepted: AcceptedForEachScenario }>,
+) {
+  const { accepted, ownedProducer, ownedCoordinatorQueue, ownedAttemptQueue } =
+    context;
+  const coordinatorOutboxes = [accepted.outboxEventId];
+  const attemptOutboxes: string[] = [];
+  const publishCoordinator = async (
+    outboxEventId: string,
+    expectedRevision: number,
+  ) => {
+    const published = await ownedProducer.publish({
+      name: JOB_NAME.advanceWorkflowRun,
+      data: {
+        workspaceId,
+        runId: accepted.runId,
+        outboxEventId,
+      },
+    });
+    const result = await waitFor(
+      async () => {
+        const [rows, job] = await Promise.all([
+          workerQuery<{ revision: number }>(
+            `select revision from app.run_checkpoints
+                   where workspace_id=$1 and workflow_run_id=$2`,
+            [workspaceId, accepted.runId],
+          ),
+          ownedCoordinatorQueue.getJob(published.jobId),
+        ]);
+        return {
+          failedReason: job?.failedReason,
+          stacktrace: job?.stacktrace,
+          revision: rows[0]?.revision,
+          state: await job?.getState(),
+        };
+      },
+      ({ revision, state }) =>
+        state === 'failed' ||
+        (revision === expectedRevision &&
+          (state === undefined || state === 'completed')),
+    );
+    if (result.state === 'failed' || result.revision !== expectedRevision)
+      throw new Error(
+        `For Each coordinator failed: ${result.failedReason ?? 'unknown'} ${JSON.stringify(result.stacktrace)}`,
+      );
+  };
+  const continueAfter = async (expectedRevision: number) => {
+    const outbox = await waitForCoordinatorOutbox(
+      accepted.runId,
+      coordinatorOutboxes,
+    );
+    coordinatorOutboxes.push(outbox);
+    await publishCoordinator(outbox, expectedRevision);
+    return outbox;
+  };
+  const findAttempt = async (nodeId: string, ordinal?: number) => {
+    const rows = await waitFor(
+      () =>
+        workerQuery<{
+          attempt_id: string;
+          node_run_id: string;
+          outbox_id: string;
+          payload_checksum: string;
+        }>(
+          `select attempt.id attempt_id,node.id node_run_id,outbox.id outbox_id,
+                        outbox.payload_checksum
+                   from app.outbox_events outbox
+                   join app.node_attempts attempt on attempt.id=outbox.aggregate_id
+                   join app.node_runs node on node.id=attempt.node_run_id
+                  where node.workspace_id=$1 and node.workflow_run_id=$2
+                    and node.node_id=$3 and outbox.job_name='execute-node-attempt'
+                    and not (outbox.id=any($4::uuid[]))
+                    and ($5::int is null or
+                      (node.branch_context->'iterationPath'->0->>'ordinal')::int=$5)
+                  order by outbox.created_at,outbox.id`,
+          [
+            workspaceId,
+            accepted.runId,
+            nodeId,
+            attemptOutboxes,
+            ordinal ?? null,
+          ],
+        ),
+      (value) => value.length === 1,
+    );
+    const attempt = rows[0];
+    if (attempt === undefined) throw new Error('For Each attempt missing');
+    attemptOutboxes.push(attempt.outbox_id);
+    return attempt;
+  };
+  const execute = async (nodeId: string, ordinal?: number) => {
+    const attempt = await findAttempt(nodeId, ordinal);
+    const published = await ownedProducer.publish({
+      name: JOB_NAME.executeNodeAttempt,
+      data: {
+        workspaceId,
+        runId: accepted.runId,
+        nodeRunId: attempt.node_run_id,
+        attemptId: attempt.attempt_id,
+        outboxEventId: attempt.outbox_id,
+      },
+    });
+    const result = await waitFor(
+      async () => {
+        const [nodeRows, job] = await Promise.all([
+          workerQuery<{ status: string }>(
+            `select status from app.node_runs where workspace_id=$1 and id=$2`,
+            [workspaceId, attempt.node_run_id],
+          ),
+          ownedAttemptQueue.getJob(published.jobId),
+        ]);
+        return {
+          failedReason: job?.failedReason,
+          state: await job?.getState(),
+          status: nodeRows[0]?.status,
+        };
+      },
+      ({ state, status }) =>
+        state === 'failed' ||
+        (status === 'succeeded' &&
+          (state === undefined || state === 'completed')),
+    );
+    if (result.state === 'failed' || result.status !== 'succeeded')
+      throw new Error(
+        `For Each attempt failed: ${result.failedReason ?? 'unknown'}`,
+      );
+    return attempt;
+  };
+  const executeDuplicateAttempt = async (attempt: {
+    attempt_id: string;
+    node_run_id: string;
+    outbox_id: string;
+  }) => {
+    const published = await ownedProducer.publish({
+      name: JOB_NAME.executeNodeAttempt,
+      data: {
+        workspaceId,
+        runId: accepted.runId,
+        nodeRunId: attempt.node_run_id,
+        attemptId: attempt.attempt_id,
+        outboxEventId: attempt.outbox_id,
+      },
+    });
+    const job = await waitFor(
+      () => ownedAttemptQueue.getJob(published.jobId),
+      (value) => value !== undefined,
+    );
+    if (job === undefined) throw new Error('duplicate attempt disappeared');
+    await waitFor(
+      () => job.getState(),
+      (state) => state === 'completed' || state === 'failed',
+    );
+    await expect(job.getState()).resolves.toBe('completed');
+  };
+
+  return {
+    coordinatorOutboxes,
+    publishCoordinator,
+    continueAfter,
+    findAttempt,
+    execute,
+    executeDuplicateAttempt,
+  };
+}
+
+async function assertSerialLoopRecovery(context: ForEachPhaseContext) {
+  const { accepted, mode, structuredKind, eraseRedisAndRestart } = context;
+  const {
+    coordinatorOutboxes,
+    publishCoordinator,
+    continueAfter,
+    execute,
+    executeDuplicateAttempt,
+  } = context.delivery;
+
+  let revision = 3;
+  let lastFinishedAttempt: Awaited<ReturnType<typeof execute>> | undefined;
+  for (const ordinal of [0, 1, 2]) {
+    await execute('body-map', ordinal);
+    await continueAfter(++revision);
+    const finishedAttempt = await execute(
+      structuredKind === 'nested' ? 'nested-body' : 'body-sink',
+      ordinal,
+    );
+    lastFinishedAttempt = finishedAttempt;
+    await continueAfter(++revision);
+    if (structuredKind === 'nested') {
+      const pendingContinuations = await workerQuery<{ id: string }>(
+        `select id from app.outbox_events
+                  where workspace_id=$1 and aggregate_id=$2
+                    and job_name='advance-workflow-run'
+                    and not (id=any($3::uuid[]))`,
+        [workspaceId, accepted.runId, coordinatorOutboxes],
+      );
+      if (pendingContinuations.length > 0) await continueAfter(++revision);
+    }
+    const pruned = await workerQuery<{ scheduler_state: unknown }>(
+      `select scheduler_state from app.run_checkpoints
+                where workspace_id=$1 and workflow_run_id=$2`,
+      [workspaceId, accepted.runId],
+    );
+    const recovered = parseCheckpoint(pruned[0]?.scheduler_state);
+    expect(recovered.loops).toHaveLength(1);
+    expect(recovered.loops[0]).toMatchObject({
+      completedPrefix: ordinal + 1,
+      terminalOrdinals: [],
+    });
+    expect(
+      recovered.invocations.every(
+        ({ iterationPath }) => iterationPath?.[0]?.ordinal !== ordinal,
+      ),
+    ).toBe(true);
+    if (structuredKind === 'nested')
+      expect(recovered.retiredIterationBudget).toBe(ordinal + 1);
+    const readHistory = () =>
+      workerQuery<{
+        attempts: string;
+        events: string;
+        outputs: string;
+      }>(
+        `select
+                 (select count(*)::text from app.node_attempts attempt
+                   join app.node_runs node on node.id=attempt.node_run_id
+                   where node.workspace_id=$1 and node.workflow_run_id=$2) attempts,
+                 (select count(*)::text from app.run_events
+                   where workspace_id=$1 and workflow_run_id=$2) events,
+                 (select count(*)::text from app.node_runs
+                   where workspace_id=$1 and workflow_run_id=$2
+                     and output_ref is not null) outputs`,
+        [workspaceId, accepted.runId],
+      );
+    const history = await readHistory();
+    expect(Number(history[0]?.outputs)).toBeGreaterThan(ordinal + 2);
+    if (mode === 'serial_complete' && ordinal === 0) {
+      const retention = createRetentionDatabase(
+        parseDatabaseConfig({
+          connectionString: databaseUrl(dispatcherUrl),
+          max: 1,
+        }),
+      );
+      try {
+        const pass = await retention.enforce();
+        expect(pass.removed.node_runs).toBe(0);
+        expect(pass.removed.run_events).toBe(0);
+        expect(pass.removed.run_checkpoints).toBe(0);
+        await expect(readHistory()).resolves.toEqual(history);
+      } finally {
+        await retention.close();
+      }
+    }
+    await eraseRedisAndRestart();
+    await executeDuplicateAttempt(finishedAttempt);
+    await expect(readHistory()).resolves.toEqual(history);
+  }
+  if (structuredKind !== undefined) {
+    await assertStructuredLoopChildren({ accepted, structuredKind });
+  }
+  const beforeSuccessor = await workerQuery<{
+    node_id: string;
+    status: string;
+  }>(
+    `select node_id,status from app.node_runs
+              where workspace_id=$1 and workflow_run_id=$2
+                and node_id in ('for-each','outer-successor') order by node_id`,
+    [workspaceId, accepted.runId],
+  );
+  expect(beforeSuccessor).toEqual([
+    { node_id: 'for-each', status: 'succeeded' },
+  ]);
+  // Serial outcomes leave no spare completion wakeup. The coordinator
+  // must persist its own continuation when it completes the loop.
+  const readContinuations = () =>
+    workerQuery<{ id: string }>(
+      `select id from app.outbox_events
+              where workspace_id=$1 and aggregate_id=$2
+                and job_name='advance-workflow-run'
+                and not (id=any($3::uuid[]))`,
+      [workspaceId, accepted.runId, coordinatorOutboxes],
+    );
+  const continuations = await readContinuations();
+  expect(continuations).toHaveLength(1);
+  const loopCompletion = coordinatorOutboxes.at(-1);
+  if (loopCompletion === undefined)
+    throw new Error('Serial loop completion delivery missing');
+  await eraseRedisAndRestart();
+  // Redelivery after Redis loss must replay the receipt, not enqueue
+  // another continuation or move the checkpoint a second time.
+  await publishCoordinator(loopCompletion, revision);
+  await expect(readContinuations()).resolves.toEqual(continuations);
+  await expect(
+    workerQuery<{ completed: boolean; receipts: string }>(
+      `select count(*)::text receipts,
+                      bool_and(completed_at is not null) completed
+                 from app.inbox_receipts
+                where workspace_id=$1 and message_id=$2`,
+      [workspaceId, loopCompletion],
+    ),
+  ).resolves.toEqual([{ completed: true, receipts: '1' }]);
+  await continueAfter(++revision);
+  await execute('outer-successor');
+  await continueAfter(++revision);
+  await expect(
+    workerQuery<{ status: string }>(
+      `select status from app.workflow_runs where workspace_id=$1 and id=$2`,
+      [workspaceId, accepted.runId],
+    ),
+  ).resolves.toEqual([{ status: 'succeeded' }]);
+  await expect(readContinuations()).resolves.toEqual([]);
+  if (mode === 'serial_complete') {
+    await ownerQuery(
+      `update app.workflow_runs set completed_at=clock_timestamp()-interval '31 days'
+                where workspace_id=$1 and id=$2`,
+      [workspaceId, accepted.runId],
+    );
+    const retention = createRetentionDatabase(
+      parseDatabaseConfig({
+        connectionString: databaseUrl(dispatcherUrl),
+        max: 1,
+      }),
+    );
+    try {
+      await retention.enforce();
+    } finally {
+      await retention.close();
+    }
+    await expect(
+      workerQuery<{
+        nodes: string;
+        checkpoints: string;
+        events: string;
+        status: string;
+      }>(
+        `select run.status,
+                 (select count(*)::text from app.node_runs where workflow_run_id=run.id) nodes,
+                 (select count(*)::text from app.run_events where workflow_run_id=run.id) events,
+                 (select count(*)::text from app.run_checkpoints where workflow_run_id=run.id) checkpoints
+                 from app.workflow_runs run where workspace_id=$1 and id=$2`,
+        [workspaceId, accepted.runId],
+      ),
+    ).resolves.toEqual([
+      {
+        status: 'succeeded',
+        nodes: '0',
+        events: '0',
+        checkpoints: '0',
+      },
+    ]);
+    if (lastFinishedAttempt === undefined)
+      throw new Error('finished iteration attempt missing');
+    await eraseRedisAndRestart();
+    await executeDuplicateAttempt(lastFinishedAttempt);
+    await expect(
+      workerQuery<{
+        nodes: string;
+        checkpoints: string;
+        events: string;
+      }>(
+        `select
+                 (select count(*)::text from app.node_runs where workspace_id=$1 and workflow_run_id=$2) nodes,
+                 (select count(*)::text from app.run_checkpoints where workspace_id=$1 and workflow_run_id=$2) checkpoints,
+                 (select count(*)::text from app.run_events where workspace_id=$1 and workflow_run_id=$2) events`,
+        [workspaceId, accepted.runId],
+      ),
+    ).resolves.toEqual([{ nodes: '0', checkpoints: '0', events: '0' }]);
+  }
+  return;
+}
+
+async function assertBetweenBatchCancellation(context: ForEachPhaseContext) {
+  const { accepted, eraseRedisAndRestart } = context;
+  const { continueAfter } = context.delivery;
+
+  await cancelFixtureRun(accepted.runId, 'cancel between canonical batches');
+  await eraseRedisAndRestart();
+  await continueAfter(6);
+  const canceled = await waitFor(
+    () =>
+      workerQuery<{ scheduler_state: unknown; status: string }>(
+        `select run.status,checkpoint.scheduler_state
+                   from app.workflow_runs run
+                   join app.run_checkpoints checkpoint
+                     on checkpoint.workflow_run_id=run.id
+                  where run.workspace_id=$1 and run.id=$2`,
+        [workspaceId, accepted.runId],
+      ),
+    (rows) => rows[0]?.status === 'canceled',
+  );
+  expect(parseCheckpoint(canceled[0]?.scheduler_state)).toMatchObject({
+    cancelRequested: true,
+    remainingIterationBudget: 997,
+    runStatus: 'canceled',
+  });
+  await expect(
+    workerQuery<{ count: string }>(
+      `select count(*)::text count from app.node_runs
+                where workspace_id=$1 and workflow_run_id=$2
+                  and branch_context->'iterationPath' @> '[{"loopNodeId":"for-each","ordinal":2}]'::jsonb`,
+      [workspaceId, accepted.runId],
+    ),
+  ).resolves.toEqual([{ count: '0' }]);
+  return;
+}
+
+async function assertRunningLoopControl(context: ForEachPhaseContext) {
+  const { accepted, mode, stopWorkers, eraseRedisAndRestart } = context;
+  const { continueAfter, findAttempt } = context.delivery;
+
+  const attempts = await Promise.all(
+    [0, 1].map((ordinal) => findAttempt('body-map', ordinal)),
+  );
+  const store = createNodeAttemptRunStore(
+    parseDatabaseConfig({
+      connectionString: databaseUrl(workerUrl),
+      max: 2,
+    }),
+  );
+  try {
+    const claimed = await Promise.all(
+      attempts.map(async (attempt, ordinal) => {
+        const result = await store.claimDelivery({
+          workspaceId,
+          runId: accepted.runId,
+          nodeRunId: attempt.node_run_id,
+          attemptId: attempt.attempt_id,
+          delivery: {
+            outboxEventId: attempt.outbox_id,
+            payloadChecksum: attempt.payload_checksum,
+          },
+          leaseDurationSeconds: 30,
+          workerId: `for-each-${mode}-${String(ordinal)}`,
+          signal: new AbortController().signal,
+        });
+        if (result.kind !== 'claimed')
+          throw new Error(`For Each attempt was not claimed: ${result.kind}`);
+        return result;
+      }),
+    );
+    const firstClaim = claimed[0];
+    const secondClaim = claimed[1];
+    if (firstClaim === undefined || secondClaim === undefined)
+      throw new Error('For Each running claims are incomplete');
+
+    if (mode === 'cancel_running') {
+      await cancelFixtureRun(
+        accepted.runId,
+        'cancel while canonical body attempt is running',
+      );
+    } else {
+      // The child also scans deadlines; stop it before asserting this scanner owns the wakeup.
+      await stopWorkers();
+      // Already passed, yet after creation: the run may be under a second old.
+      await ownerQuery(
+        `update app.workflow_runs
+                    set deadline_at=created_at+interval '1 millisecond',
+                        deadline_wakeup_at=null,
+                        updated_at=clock_timestamp()
+                  where workspace_id=$1 and id=$2`,
+        [workspaceId, accepted.runId],
+      );
+      const scanner = createDeadlineWakeupScanner(
+        parseDatabaseConfig({
+          connectionString: databaseUrl(workerUrl),
+          max: 1,
+        }),
+      );
+      try {
+        await expect(scanner.claimDueWakeups(10)).resolves.toBe(1);
+      } finally {
+        await scanner.close();
+      }
+    }
+
+    await eraseRedisAndRestart();
+    await continueAfter(4);
+    const stopped = await workerQuery<{
+      scheduler_state: unknown;
+      node_id: string;
+      status: string;
+    }>(
+      `select node.node_id,node.status,checkpoint.scheduler_state
+                 from app.node_runs node
+                 join app.run_checkpoints checkpoint
+                   on checkpoint.workflow_run_id=node.workflow_run_id
+                where node.workspace_id=$1 and node.workflow_run_id=$2
+                  and node.node_id='body-map'
+                order by (node.branch_context->'iterationPath'->0->>'ordinal')::int`,
+      [workspaceId, accepted.runId],
+    );
+    expect(stopped.map(({ status }) => status)).toEqual(['running', 'running']);
+    expect(parseCheckpoint(stopped[0]?.scheduler_state)).toMatchObject({
+      cancelRequested: mode === 'cancel_running',
+      deadlineExpired: mode === 'deadline_running',
+      remainingIterationBudget: 997,
+      runStatus: 'running',
+      loops: [
+        {
+          activeOrdinals: [0, 1],
+          nextOrdinal: 2,
+          terminalOrdinals: [],
+        },
+      ],
+    });
+    await expect(
+      workerQuery<{ attempts: string; new_work: string }>(
+        `select
+                   count(*)::text attempts,
+                   count(*) filter (
+                     where node.node_id='body-sink'
+                        or node.branch_context->'iterationPath'
+                           @> '[{"loopNodeId":"for-each","ordinal":2}]'::jsonb
+                   )::text new_work
+                   from app.node_attempts attempt
+                   join app.node_runs node on node.id=attempt.node_run_id
+                  where node.workspace_id=$1 and node.workflow_run_id=$2`,
+        [workspaceId, accepted.runId],
+      ),
+    ).resolves.toEqual([{ attempts: '4', new_work: '0' }]);
+
+    const firstCompletion = await store.complete({
+      lease: firstClaim.lease,
+      outcome: {
+        status: 'succeeded',
+        output: {
+          item: { id: 'alpha', value: 11 },
+          ordinal: 0,
+        },
+      },
+      signal: new AbortController().signal,
+    });
+    expect(firstCompletion.kind).toBe('committed');
+    await continueAfter(5);
+    const secondCompletion = await store.complete({
+      lease: secondClaim.lease,
+      outcome:
+        mode === 'cancel_running'
+          ? {
+              status: 'canceled',
+              safeErrorCode: 'execution.canceled',
+            }
+          : {
+              status: 'outcome_unknown',
+              safeErrorCode: 'execution.outcome_unknown',
+            },
+      signal: new AbortController().signal,
+    });
+    expect(secondCompletion.kind).toBe('committed');
+    await continueAfter(6);
+    const terminal = await workerQuery<{
+      scheduler_state: unknown;
+      status: string;
+    }>(
+      `select run.status,checkpoint.scheduler_state
+                 from app.workflow_runs run
+                 join app.run_checkpoints checkpoint
+                   on checkpoint.workflow_run_id=run.id
+                where run.workspace_id=$1 and run.id=$2`,
+      [workspaceId, accepted.runId],
+    );
+    expect(terminal[0]?.status).toBe(
+      mode === 'cancel_running' ? 'canceled' : 'outcome_unknown',
+    );
+    expect(parseCheckpoint(terminal[0]?.scheduler_state)).toMatchObject({
+      remainingIterationBudget: 997,
+      runStatus: mode === 'cancel_running' ? 'canceled' : 'outcome_unknown',
+      loops: [
+        {
+          activeOrdinals: [],
+          nextOrdinal: 2,
+          completedPrefix: 2,
+          terminalOrdinals: [],
+        },
+      ],
+    });
+    await expect(
+      workerQuery<{ attempts: string; new_work: string }>(
+        `select
+                   count(*)::text attempts,
+                   count(*) filter (
+                     where node.node_id='body-sink'
+                        or node.branch_context->'iterationPath'
+                           @> '[{"loopNodeId":"for-each","ordinal":2}]'::jsonb
+                   )::text new_work
+                   from app.node_attempts attempt
+                   join app.node_runs node on node.id=attempt.node_run_id
+                  where node.workspace_id=$1 and node.workflow_run_id=$2`,
+        [workspaceId, accepted.runId],
+      ),
+    ).resolves.toEqual([{ attempts: '4', new_work: '0' }]);
+  } finally {
+    await store.close();
+  }
+  return;
+}
+
+async function assertParallelLoopCompletion(context: ForEachPhaseContext) {
+  const { accepted, eraseRedisAndRestart } = context;
+  const { continueAfter, execute } = context.delivery;
+  // A sink outcome survives worker/Redis loss before coordinator consumption.
+  await eraseRedisAndRestart();
+  await continueAfter(6);
+  const laterBatch = await workerQuery<{ scheduler_state: unknown }>(
+    `select scheduler_state from app.run_checkpoints
+            where workspace_id=$1 and workflow_run_id=$2`,
+    [workspaceId, accepted.runId],
+  );
+  expect(parseCheckpoint(laterBatch[0]?.scheduler_state)).toMatchObject({
+    remainingIterationBudget: 997,
+    loops: [
+      {
+        activeOrdinals: [2],
+        nextOrdinal: 3,
+        completedPrefix: 2,
+        terminalOrdinals: [],
+      },
+    ],
+  });
+  await eraseRedisAndRestart();
+  await execute('body-map', 2);
+  await continueAfter(7);
+  await execute('body-sink', 2);
+  await continueAfter(8);
+  await continueAfter(9);
+  await execute('outer-successor');
+  await continueAfter(10);
+
+  const facts = await workerQuery<{
+    branch_context: unknown;
+    node_id: string;
+    output_ref: unknown;
+    scheduler_state: unknown;
+    status: string;
+  }>(
+    `select node.node_id,node.status,node.branch_context,node.output_ref,
+                  checkpoint.scheduler_state
+             from app.node_runs node
+             join app.run_checkpoints checkpoint
+               on checkpoint.workflow_run_id=node.workflow_run_id
+            where node.workspace_id=$1 and node.workflow_run_id=$2
+            order by node.node_id,node.invocation_key`,
+    [workspaceId, accepted.runId],
+  );
+  expect(parseCheckpoint(facts[0]?.scheduler_state)).toMatchObject({
+    remainingIterationBudget: 997,
+    runStatus: 'succeeded',
+    loops: [
+      {
+        activeOrdinals: [],
+        nextOrdinal: 3,
+        completedPrefix: 3,
+        terminalOrdinals: [],
+      },
+    ],
+  });
+  expect(
+    facts
+      .filter(({ node_id }) => node_id === 'body-map')
+      .map(({ branch_context, output_ref }) => ({
+        branch_context,
+        output_ref,
+      })),
+  ).toEqual(
+    [
+      { id: 'alpha', value: 11 },
+      { id: 'beta', value: 22 },
+      { id: 'gamma', value: 33 },
+    ].map((item, ordinal) => ({
+      branch_context: {
+        branchPath: [],
+        iterationPath: [{ loopNodeId: 'for-each', ordinal }],
+      },
+      output_ref: {
+        kind: 'inline',
+        value: { item, ordinal },
+      },
+    })),
+  );
+  expect(
+    facts
+      .filter(({ node_id }) => node_id === 'body-sink')
+      .map(({ output_ref }) => output_ref),
+  ).toEqual(
+    [
+      { id: 'alpha', value: 11 },
+      { id: 'beta', value: 22 },
+      { id: 'gamma', value: 33 },
+    ].map((item, ordinal) => ({
+      kind: 'inline',
+      value: { result: { item, ordinal } },
+    })),
+  );
+  // The step after the loop also gets each pass's result, in order.
+  const items = [
+    { id: 'alpha', value: 11 },
+    { id: 'beta', value: 22 },
+    { id: 'gamma', value: 33 },
+  ];
+  expect(
+    facts.find(({ node_id }) => node_id === 'outer-successor')?.output_ref,
+  ).toEqual({
+    kind: 'inline',
+    value: {
+      result: {
+        items,
+        iterationCount: 3,
+        results: items.map((item, ordinal) => ({
+          result: { item, ordinal },
+        })),
+      },
+    },
+  });
+  expect(facts.filter(({ node_id }) => node_id === 'for-each')).toHaveLength(1);
+  await expect(
+    workerQuery<{ attempts: string; controls: string }>(
+      `select
+               count(*)::text attempts,
+               count(*) filter (where node.node_id='for-each')::text controls
+               from app.node_attempts attempt
+               join app.node_runs node on node.id=attempt.node_run_id
+              where node.workspace_id=$1 and node.workflow_run_id=$2`,
+      [workspaceId, accepted.runId],
+    ),
+  ).resolves.toEqual([{ attempts: '9', controls: '1' }]);
+}
+
+function createForEachScenario(options: ForEachScenarioContext) {
+  const {
+    ownedProducer,
+    ownedCoordinatorQueue,
+    ownedAttemptQueue,
+    stopWorkers,
+    eraseRedisAndRestart,
+  } = options;
+  const runFixture = async (mode: ForEachScenarioMode) => {
+    let structuredKind:
+      Parameters<typeof acceptStructuredForEachRun>[0] | undefined;
+    if (mode === 'condition_complete') {
+      structuredKind = 'condition';
+    } else if (mode === 'switch_complete') {
+      structuredKind = 'switch';
+    } else if (mode === 'nested_complete') {
+      structuredKind = 'nested';
+    } else {
+      structuredKind = undefined;
+    }
+    const accepted = await acceptScenarioRun({ structuredKind, mode });
+    const delivery = createForEachDelivery({
+      accepted,
+      ownedProducer,
+      ownedCoordinatorQueue,
+      ownedAttemptQueue,
+    });
+    const {
+      coordinatorOutboxes,
+      publishCoordinator,
+      continueAfter,
+      execute,
+      executeDuplicateAttempt,
+    } = delivery;
+    await publishCoordinator(accepted.outboxEventId, 1);
+    await execute('manual');
+    await continueAfter(2);
+    const declaration = await execute('for-each');
+
+    const declarationJob = await ownedAttemptQueue.getJob(
+      `outbox-${declaration.outbox_id}`,
+    );
+    await declarationJob?.remove();
+    await executeDuplicateAttempt(declaration);
+
+    // The declaration outcome is durable before any coordinator consumes it.
+    await eraseRedisAndRestart();
+    const declarationContinuation = await waitForCoordinatorOutbox(
+      accepted.runId,
+      coordinatorOutboxes,
+    );
+    coordinatorOutboxes.push(declarationContinuation);
+    await publishCoordinator(declarationContinuation, 3);
+    const declarationCoordinatorJob = await ownedCoordinatorQueue.getJob(
+      `outbox-${declarationContinuation}`,
+    );
+    await declarationCoordinatorJob?.remove();
+    await publishCoordinator(declarationContinuation, 3);
+    await eraseRedisAndRestart();
+
+    if (mode === 'serial_complete' || structuredKind !== undefined) {
+      await assertSerialLoopRecovery({
+        accepted,
+        mode,
+        structuredKind,
+        delivery,
+        stopWorkers,
+        eraseRedisAndRestart,
+      });
+      return;
+    }
+
+    const reserved = await workerQuery<{
+      scheduler_state: unknown;
+    }>(
+      `select scheduler_state from app.run_checkpoints
+            where workspace_id=$1 and workflow_run_id=$2`,
+      [workspaceId, accepted.runId],
+    );
+    expect(parseCheckpoint(reserved[0]?.scheduler_state)).toMatchObject({
+      remainingIterationBudget: 997,
+      loops: [
+        {
+          activeOrdinals: [0, 1],
+          nextOrdinal: 2,
+          terminalOrdinals: [],
+        },
+      ],
+    });
+
+    if (mode !== 'cancel_running' && mode !== 'deadline_running') {
+      for (const ordinal of [0, 1]) {
+        await execute('body-map', ordinal);
+        await continueAfter(4 + ordinal);
+      }
+      await execute('body-sink', 0);
+      await execute('body-sink', 1);
+    }
+
+    if (mode === 'cancel_between_batches') {
+      await assertBetweenBatchCancellation({
+        accepted,
+        mode,
+        structuredKind,
+        delivery,
+        stopWorkers,
+        eraseRedisAndRestart,
+      });
+      return;
+    }
+
+    if (mode === 'cancel_running' || mode === 'deadline_running') {
+      await assertRunningLoopControl({
+        accepted,
+        mode,
+        structuredKind,
+        delivery,
+        stopWorkers,
+        eraseRedisAndRestart,
+      });
+      return;
+    }
+
+    await assertParallelLoopCompletion({
+      accepted,
+      mode,
+      structuredKind,
+      delivery,
+      stopWorkers,
+      eraseRedisAndRestart,
+    });
+  };
+  return runFixture;
+}
+
+async function assertStructuredLoopChildren(
+  context: Pick<ForEachPhaseContext, 'accepted' | 'structuredKind'>,
+) {
+  const { accepted, structuredKind } = context;
+
+  const scopedChildren = await workerQuery<{
+    branch_context: {
+      branchPath: { nodeId: string; outputPort: string }[];
+      iterationPath: { loopNodeId: string; ordinal: number }[];
+    };
+    node_id: string;
+  }>(
+    `select node_id,branch_context from app.node_runs
+                where workspace_id=$1 and workflow_run_id=$2 and node_id=$3
+                order by (branch_context->'iterationPath'->0->>'ordinal')::int`,
+    [
+      workspaceId,
+      accepted.runId,
+      structuredKind === 'nested' ? 'nested-body' : 'body-sink',
+    ],
+  );
+  expect(scopedChildren).toHaveLength(3);
+  for (const [ordinal, child] of scopedChildren.entries()) {
+    expect(child.branch_context.iterationPath).toEqual(
+      structuredKind === 'nested'
+        ? [
+            { loopNodeId: 'for-each', ordinal },
+            { loopNodeId: 'body-map', ordinal: 0 },
+          ]
+        : [{ loopNodeId: 'for-each', ordinal }],
+    );
+    expect(child.branch_context.branchPath).toEqual(
+      structuredKind === 'nested'
+        ? []
+        : [
+            {
+              nodeId: 'body-map',
+              outputPort: structuredKind === 'condition' ? 'true' : 'case-01',
+            },
+          ],
+    );
+  }
+  await expect(
+    workerQuery<{ node_id: string; attempts: string }>(
+      `select node.node_id,count(attempt.id)::text attempts
+                   from app.node_runs node
+                   join app.node_attempts attempt on attempt.node_run_id=node.id
+                  where node.workspace_id=$1 and node.workflow_run_id=$2
+                    and node.node_id=$3
+                  group by node.node_id`,
+      [workspaceId, accepted.runId, scopedChildren[0]?.node_id],
+    ),
+  ).resolves.toEqual([{ node_id: scopedChildren[0]?.node_id, attempts: '3' }]);
 }
