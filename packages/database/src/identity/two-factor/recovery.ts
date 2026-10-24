@@ -5,7 +5,7 @@ import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '../../platform/pool/runtime.js';
-import {insertSystemMail} from '../../platform/mail/repository.js';
+import { insertSystemMail } from '../../platform/mail/repository.js';
 import type { SystemMailInput } from '../../platform/mail/contract.js';
 import { authTwoFactors } from '../../schema/authentication.js';
 import { users } from '../../schema/foundation.js';

@@ -2,7 +2,10 @@ import { randomUUID } from 'node:crypto';
 
 import { expect, it } from 'vitest';
 
-import {checkDatabaseReadiness, EXPECTED_MIGRATION_HEAD} from '../../../src/platform/readiness.queries.js';
+import {
+  checkDatabaseReadiness,
+  EXPECTED_MIGRATION_HEAD,
+} from '../../../src/platform/readiness.queries.js';
 import { WorkspaceAccessDeniedError } from '../../../src/tenant-access/errors.js';
 
 import {

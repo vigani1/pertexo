@@ -1,6 +1,9 @@
 import { removeDirectoryFolderGrants } from '../../../../tenant-access/resources/revocation.js';
 import type { Pool } from 'pg';
-import {claimCommand, completeCommand} from '../../../../platform/idempotency/repository.js';
+import {
+  claimCommand,
+  completeCommand,
+} from '../../../../platform/idempotency/repository.js';
 import { generatePersistedId } from '../../../../platform/persisted-id.js';
 import {
   withPlatformTransaction,

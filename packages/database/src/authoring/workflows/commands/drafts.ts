@@ -12,7 +12,10 @@ import {
 } from '@pertexo/workflow-model';
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
 
-import {claimCommand, completeCommand} from '../../../platform/idempotency/repository.js';
+import {
+  claimCommand,
+  completeCommand,
+} from '../../../platform/idempotency/repository.js';
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,

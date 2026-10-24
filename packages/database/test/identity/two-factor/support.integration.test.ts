@@ -7,7 +7,7 @@ import {
   createTwoFactorRecoveryStore,
   type TwoFactorRecoveryStore,
 } from '../../../src/identity/two-factor/recovery.js';
-import {createSystemMailDeliveryStore} from '../../../src/platform/mail/repository.js';
+import { createSystemMailDeliveryStore } from '../../../src/platform/mail/repository.js';
 import type {
   SystemMailDeliveryStore,
   SystemMailInput,

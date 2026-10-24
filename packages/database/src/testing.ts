@@ -242,7 +242,10 @@ export {
 } from './platform/pool/telemetry/create-pool.js';
 export { createWorkspaceDatabase } from './database.js';
 export type { WorkspaceDatabase } from './database.js';
-export {EXPECTED_MIGRATION_HEAD, checkDatabaseReadiness} from './platform/readiness.queries.js';
+export {
+  EXPECTED_MIGRATION_HEAD,
+  checkDatabaseReadiness,
+} from './platform/readiness.queries.js';
 export type { DatabaseReadiness } from './platform/contract.js';
 export {
   CoordinatorDeliveryMismatchError,

@@ -1,5 +1,8 @@
 import { generatePersistedId } from '../../../platform/persisted-id.js';
-import {claimCommand, completeCommand} from '../../../platform/idempotency/repository.js';
+import {
+  claimCommand,
+  completeCommand,
+} from '../../../platform/idempotency/repository.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { sha256HexSchema as digestSchema } from '../../../platform/persisted-primitives.js';

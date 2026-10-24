@@ -19,7 +19,7 @@ import {
   workspaceA,
   workspaceB,
 } from '../../support/connections.js';
-import {EXPECTED_MIGRATION_HEAD} from '../../../src/platform/readiness.queries.js';
+import { EXPECTED_MIGRATION_HEAD } from '../../../src/platform/readiness.queries.js';
 import { connections } from './fixture.js';
 
 export function registerSerializesConcurrentSameNameCreations(): void {

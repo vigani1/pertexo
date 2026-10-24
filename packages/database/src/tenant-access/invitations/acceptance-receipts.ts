@@ -2,7 +2,7 @@ import { ROLES } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
-import {completeCommand} from '../../platform/idempotency/repository.js';
+import { completeCommand } from '../../platform/idempotency/repository.js';
 import type { CommandIdentity } from '../../platform/idempotency/contract.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import type { InvitationAcceptanceResult } from '../contracts.js';

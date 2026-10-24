@@ -4,7 +4,7 @@ import { Pool } from 'pg';
 
 import { expect, it } from 'vitest';
 
-import {IdempotencyConflictError} from '../../../../../src/platform/idempotency/repository.js';
+import { IdempotencyConflictError } from '../../../../../src/platform/idempotency/repository.js';
 
 import {
   adminDatabaseUrl,

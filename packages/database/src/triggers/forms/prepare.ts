@@ -1,4 +1,4 @@
-import {findCommandResult} from '../../platform/idempotency/repository.js';
+import { findCommandResult } from '../../platform/idempotency/repository.js';
 import { formSubmissionIdentity } from './submit.js';
 import type { Pool } from 'pg';
 import {

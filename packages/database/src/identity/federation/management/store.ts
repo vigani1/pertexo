@@ -1,6 +1,6 @@
 import { ADMINISTRATIVE_ROLES } from '@pertexo/workflow-model';
 import type { Pool, PoolClient, QueryResult } from 'pg';
-import {findCommandResult} from '../../../platform/idempotency/repository.js';
+import { findCommandResult } from '../../../platform/idempotency/repository.js';
 
 import type { FederationCommand } from './commands.js';
 import type { DatabaseConfig } from '../../../config.js';

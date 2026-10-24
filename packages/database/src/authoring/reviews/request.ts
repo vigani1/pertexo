@@ -2,7 +2,10 @@ import { bindResourcePredicate } from '../../tenant-access/resources/query-scope
 import { requireConnectionBindings } from '../../tenant-access/resources/connections/bindings.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import {claimCommand, completeCommand} from '../../platform/idempotency/repository.js';
+import {
+  claimCommand,
+  completeCommand,
+} from '../../platform/idempotency/repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import {

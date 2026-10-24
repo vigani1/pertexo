@@ -11,7 +11,11 @@ import {
   WORKFLOW_PORTABILITY_LIMITS,
 } from '@pertexo/workflow-model';
 import { workflowDefinitionCatalogFingerprint } from '@pertexo/workflow-model/server';
-import {claimCommand, completeCommand, credentialCommandScope} from '../../platform/idempotency/repository.js';
+import {
+  claimCommand,
+  completeCommand,
+  credentialCommandScope,
+} from '../../platform/idempotency/repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
 import type {
