@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { recoverRun } from '../recovery.api';
 import { recoveryQueryOptions } from '../recovery.queries';
-import { workflowRunKeys } from '../history.queries';
+import { workflowRunKeys } from '../query-cache';
 import { recoveryError } from '../../model/commands/recovery';
 import { useRetainedSubmission } from './use-retained-submission';
 export function useRunRecovery({
