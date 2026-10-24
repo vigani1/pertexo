@@ -105,6 +105,7 @@ export function HomePage({
       </div>
     );
 
+  const newWorkspace = isNewWorkspace(facts);
   return (
     <div className="flex flex-col gap-10">
       <HomeHeader
@@ -114,14 +115,15 @@ export function HomePage({
         onRefresh={refresh}
         onOpenSearch={onOpenSearch}
       />
-      {isNewWorkspace(facts) ? (
+      {newWorkspace ? (
         <FirstThreadSection
           apiClient={apiClient}
           userId={user.id}
           workspace={workspace}
           facts={facts}
         />
-      ) : canReadRuns ? (
+      ) : null}
+      {!newWorkspace && canReadRuns ? (
         <HomeLoom
           apiClient={apiClient}
           userId={user.id}

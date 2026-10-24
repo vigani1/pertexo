@@ -217,12 +217,8 @@ export function LinkProviderDialog({
                 {...fields.field('password')}
                 {...fields.control('password')}
               />
-            ) : source === undefined ? null : (
-              <p className="text-sm text-muted-foreground">
-                You’ll sign in with {methodLabel(source)} first to confirm it’s
-                you.
-              </p>
-            )}
+            ) : null}
+            <MethodConfirmationHint source={source} />
             {failure === undefined ? null : (
               <Notice tone="destructive">{failure}</Notice>
             )}
@@ -244,5 +240,16 @@ export function LinkProviderDialog({
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function MethodConfirmationHint({
+  source,
+}: Readonly<{ source: Method | undefined }>) {
+  if (source === undefined || source.kind === 'password') return null;
+  return (
+    <p className="text-sm text-muted-foreground">
+      You’ll sign in with {methodLabel(source)} first to confirm it’s you.
+    </p>
   );
 }

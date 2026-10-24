@@ -117,7 +117,7 @@ function TagsDialogContent({ apiClient, userId, workspace, onClose }: Props) {
         </Notice>
       ) : null}
       <QueryView query={tags} resource="Tags" loading={null} />
-      {command.denied ? null : cleanup === undefined ? (
+      {!command.denied && cleanup === undefined ? (
         <>
           <TagManagement
             tags={items}
@@ -144,7 +144,8 @@ function TagsDialogContent({ apiClient, userId, workspace, onClose }: Props) {
             }}
           />
         </>
-      ) : (
+      ) : null}
+      {!command.denied && cleanup !== undefined ? (
         <WorkflowTagCleanup
           apiClient={apiClient}
           userId={userId}
@@ -158,7 +159,7 @@ function TagsDialogContent({ apiClient, userId, workspace, onClose }: Props) {
             setCleanup(undefined);
           }}
         />
-      )}
+      ) : null}
     </ActionDialog>
   );
 }

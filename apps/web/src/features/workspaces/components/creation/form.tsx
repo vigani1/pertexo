@@ -89,7 +89,8 @@ function CreationActions({
         >
           Start over
         </Button>
-      ) : onCancel === undefined || command.created ? null : (
+      ) : null}
+      {!command.retryAvailable && onCancel !== undefined && !command.created ? (
         <Button
           type="button"
           variant="ghost"
@@ -98,7 +99,7 @@ function CreationActions({
         >
           Cancel
         </Button>
-      )}
+      ) : null}
       <ProgressButton
         type="submit"
         variant="primary"
@@ -140,8 +141,6 @@ export function WorkspaceCreationForm({
   const slugError =
     validation.error('slug') ??
     (command.error?.field === 'slug' ? command.error.message : undefined);
-  const generalError =
-    command.error?.field === undefined ? command.error?.message : undefined;
   const slugVisible = editingSlug || slugError !== undefined;
 
   useEffect(() => {
@@ -255,23 +254,30 @@ export function WorkspaceCreationForm({
           />
         )}
       </FieldGroup>
-      {generalError === undefined ? null : (
-        <Notice
-          role="alert"
-          tone={
-            command.retryAvailable || command.created
-              ? 'warning'
-              : 'destructive'
-          }
-        >
-          {generalError}
-        </Notice>
-      )}
+      <CreationFailure command={command} />
       <CreationActions
         command={command}
         onStartOver={onStartOver}
         onCancel={onCancel}
       />
     </form>
+  );
+}
+
+function CreationFailure({
+  command,
+}: Readonly<{ command: WorkspaceCreationCommand }>) {
+  const message =
+    command.error?.field === undefined ? command.error?.message : undefined;
+  if (message === undefined) return null;
+  return (
+    <Notice
+      role="alert"
+      tone={
+        command.retryAvailable || command.created ? 'warning' : 'destructive'
+      }
+    >
+      {message}
+    </Notice>
   );
 }

@@ -42,8 +42,7 @@ export function DirectoryCredentialDialog({
     busy = useRef(false),
     nameInput = useRef<HTMLInputElement>(null);
   const [view, setView] = useState<View>({ kind: 'form' }),
-    [name, setName] = useState(''),
-    [saved, setSaved] = useState(false);
+    [name, setName] = useState('');
   async function create() {
     if (busy.current || view.kind !== 'form') return;
     const input = directoryCredentialCreateSchema.safeParse({
@@ -102,69 +101,26 @@ export function DirectoryCredentialDialog({
       }}
     >
       <DialogContent>
-        <DialogTitle>
-          {view.kind === 'secret'
-            ? 'Save this credential now'
-            : view.kind === 'unconfirmed'
-              ? 'Check your credentials'
-              : 'Create provisioning credential'}
-        </DialogTitle>
+        <DialogTitle>{credentialTitle[view.kind]}</DialogTitle>
         <DialogDescription>
           {view.kind === 'form'
             ? 'This credential can provision users and groups across the linked workspaces. Keep it in your identity provider’s secret settings.'
             : 'Pertexo shows the bearer secret once. It cannot be retrieved later.'}
         </DialogDescription>
         {view.kind === 'secret' ? (
-          <div className="mt-5 space-y-5">
-            <Status tone="success">Provisioning credential created</Status>
-            <div className="flex items-center justify-between gap-3">
-              <label htmlFor={`${id}-secret`} className="text-sm font-medium">
-                Provisioning bearer credential
-              </label>
-              <CopyButton
-                value={view.secret}
-                label="Copy provisioning credential"
-              />
-            </div>
-            <Textarea
-              id={`${id}-secret`}
-              readOnly
-              value={view.secret}
-              autoComplete="off"
-              spellCheck={false}
-              className="font-mono text-base break-all md:text-xs"
-            />
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox checked={saved} onCheckedChange={setSaved} />
-              I’ve saved this credential
-            </label>
-            <Button
-              type="button"
-              variant="primary"
-              disabled={!saved}
-              onClick={onClose}
-            >
-              Done
-            </Button>
-          </div>
-        ) : view.kind === 'unconfirmed' ? (
-          <div className="mt-5 space-y-4">
-            <Notice tone="warning">
-              Creation could not be confirmed, or its one-time secret is no
-              longer available. Check the list and revoke the credential you
-              cannot use before creating a replacement.
-            </Notice>
-            <Button
-              type="button"
-              onClick={() => {
-                onRefresh();
-                onClose();
-              }}
-            >
-              Close and check credentials
-            </Button>
-          </div>
-        ) : (
+          <DirectoryCredentialReceipt
+            id={id}
+            secret={view.secret}
+            onClose={onClose}
+          />
+        ) : null}
+        {view.kind === 'unconfirmed' ? (
+          <UnconfirmedCredentialNotice
+            onRefresh={onRefresh}
+            onClose={onClose}
+          />
+        ) : null}
+        {view.kind === 'form' ? (
           <form
             noValidate
             className="mt-5 space-y-4"
@@ -212,8 +168,77 @@ export function DirectoryCredentialDialog({
               </Button>
             </div>
           </form>
-        )}
+        ) : null}
       </DialogContent>
     </Dialog>
+  );
+}
+
+const credentialTitle = {
+  secret: 'Save this credential now',
+  unconfirmed: 'Check your credentials',
+  form: 'Create provisioning credential',
+} satisfies Record<View['kind'], string>;
+
+function DirectoryCredentialReceipt({
+  id,
+  secret,
+  onClose,
+}: Readonly<{ id: string; secret: string; onClose: () => void }>) {
+  const [saved, setSaved] = useState(false);
+  return (
+    <div className="mt-5 space-y-5">
+      <Status tone="success">Provisioning credential created</Status>
+      <div className="flex items-center justify-between gap-3">
+        <label htmlFor={`${id}-secret`} className="text-sm font-medium">
+          Provisioning bearer credential
+        </label>
+        <CopyButton value={secret} label="Copy provisioning credential" />
+      </div>
+      <Textarea
+        id={`${id}-secret`}
+        readOnly
+        value={secret}
+        autoComplete="off"
+        spellCheck={false}
+        className="font-mono text-base break-all md:text-xs"
+      />
+      <label className="flex items-center gap-2 text-sm">
+        <Checkbox checked={saved} onCheckedChange={setSaved} />
+        I’ve saved this credential
+      </label>
+      <Button
+        type="button"
+        variant="primary"
+        disabled={!saved}
+        onClick={onClose}
+      >
+        Done
+      </Button>
+    </div>
+  );
+}
+
+function UnconfirmedCredentialNotice({
+  onRefresh,
+  onClose,
+}: Readonly<{ onRefresh: () => void; onClose: () => void }>) {
+  return (
+    <div className="mt-5 space-y-4">
+      <Notice tone="warning">
+        Creation could not be confirmed, or its one-time secret is no longer
+        available. Check the list and revoke the credential you cannot use
+        before creating a replacement.
+      </Notice>
+      <Button
+        type="button"
+        onClick={() => {
+          onRefresh();
+          onClose();
+        }}
+      >
+        Close and check credentials
+      </Button>
+    </div>
   );
 }
