@@ -54,106 +54,30 @@ export function HttpHeaderEditor({
         <span className="w-9 pointer-coarse:w-10" />
       </div>
       <ol className="flex flex-col gap-3">
-        {draft.headers.map((row, index) => {
-          const nameField: CredentialField = `header-name:${row.id}`;
-          const valueField: CredentialField = `header-value:${row.id}`;
-          const nameError = validation.error(nameField);
-          const valueError = validation.error(valueField);
-          const nameId = `${idPrefix}-header-${row.id}-name`;
-          const valueId = `${idPrefix}-header-${row.id}-value`;
-          return (
-            <li
-              key={row.id}
-              className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)_auto] items-start gap-2"
-            >
-              <FieldControl>
-                <Input
-                  ref={validation.register(nameField)}
-                  id={nameId}
-                  aria-label={`Header ${String(index + 1)} name`}
-                  placeholder="Authorization"
-                  autoComplete="off"
-                  spellCheck={false}
-                  maxLength={128}
-                  disabled={disabled}
-                  value={row.name}
-                  aria-invalid={nameError !== undefined}
-                  aria-describedby={
-                    nameError === undefined ? undefined : `${nameId}-error`
-                  }
-                  onChange={(event) => {
-                    const name = event.currentTarget.value;
-                    update(
-                      draft.headers.map((candidate) =>
-                        candidate.id === row.id
-                          ? { ...candidate, name }
-                          : candidate,
-                      ),
-                      nameField,
-                    );
-                  }}
-                />
-              </FieldControl>
-              <FieldControl>
-                <Input
-                  ref={validation.register(valueField)}
-                  id={valueId}
-                  type="password"
-                  aria-label={`Header ${String(index + 1)} value`}
-                  placeholder="Bearer …"
-                  autoComplete="new-password"
-                  spellCheck={false}
-                  maxLength={8_192}
-                  disabled={disabled}
-                  value={row.value}
-                  aria-invalid={valueError !== undefined}
-                  aria-describedby={
-                    valueError === undefined ? undefined : `${valueId}-error`
-                  }
-                  onChange={(event) => {
-                    const value = event.currentTarget.value;
-                    update(
-                      draft.headers.map((candidate) =>
-                        candidate.id === row.id
-                          ? { ...candidate, value }
-                          : candidate,
-                      ),
-                      valueField,
-                    );
-                  }}
-                />
-              </FieldControl>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                aria-label={`Remove header ${String(index + 1)}`}
-                // A lone row can't go, so it has no Remove to press.
-                className={draft.headers.length === 1 ? 'invisible' : undefined}
-                disabled={disabled || draft.headers.length === 1}
-                onClick={() => {
-                  update(
-                    draft.headers.filter(
-                      (candidate) => candidate.id !== row.id,
-                    ),
-                  );
-                }}
-              >
-                <XIcon aria-hidden="true" />
-              </Button>
-              {nameError === undefined ? null : (
-                <FieldError id={`${nameId}-error`} className="col-span-3">
-                  {nameError}
-                </FieldError>
-              )}
-              {valueError === undefined ? null : (
-                <FieldError id={`${valueId}-error`} className="col-span-3">
-                  {valueError}
-                </FieldError>
-              )}
-            </li>
-          );
-        })}
+        {draft.headers.map((row, index) => (
+          <HttpHeaderRow
+            key={row.id}
+            row={row}
+            index={index}
+            idPrefix={idPrefix}
+            disabled={disabled}
+            validation={validation}
+            removable={draft.headers.length > 1}
+            onChange={(next, field) => {
+              update(
+                draft.headers.map((candidate) =>
+                  candidate.id === row.id ? next : candidate,
+                ),
+                field,
+              );
+            }}
+            onRemove={() => {
+              update(
+                draft.headers.filter((candidate) => candidate.id !== row.id),
+              );
+            }}
+          />
+        ))}
       </ol>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Button
@@ -176,5 +100,101 @@ export function HttpHeaderEditor({
       </div>
       {formError === undefined ? null : <FieldError>{formError}</FieldError>}
     </fieldset>
+  );
+}
+
+function HttpHeaderRow({
+  row,
+  index,
+  idPrefix,
+  disabled,
+  validation,
+  removable,
+  onChange,
+  onRemove,
+}: Readonly<{
+  row: HeaderRow;
+  index: number;
+  idPrefix: string;
+  disabled: boolean;
+  validation: FieldValidation<CredentialField>;
+  removable: boolean;
+  onChange: (row: HeaderRow, field: CredentialField) => void;
+  onRemove: () => void;
+}>) {
+  const nameField: CredentialField = `header-name:${row.id}`;
+  const valueField: CredentialField = `header-value:${row.id}`;
+  const nameError = validation.error(nameField);
+  const valueError = validation.error(valueField);
+  const nameId = `${idPrefix}-header-${row.id}-name`;
+  const valueId = `${idPrefix}-header-${row.id}-value`;
+  return (
+    <li className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)_auto] items-start gap-2">
+      <FieldControl>
+        <Input
+          ref={validation.register(nameField)}
+          id={nameId}
+          aria-label={`Header ${String(index + 1)} name`}
+          placeholder="Authorization"
+          autoComplete="off"
+          spellCheck={false}
+          maxLength={128}
+          disabled={disabled}
+          value={row.name}
+          aria-invalid={nameError !== undefined}
+          aria-describedby={
+            nameError === undefined ? undefined : `${nameId}-error`
+          }
+          onChange={(event) => {
+            const name = event.currentTarget.value;
+            onChange({ ...row, name }, nameField);
+          }}
+        />
+      </FieldControl>
+      <FieldControl>
+        <Input
+          ref={validation.register(valueField)}
+          id={valueId}
+          type="password"
+          aria-label={`Header ${String(index + 1)} value`}
+          placeholder="Bearer …"
+          autoComplete="new-password"
+          spellCheck={false}
+          maxLength={8_192}
+          disabled={disabled}
+          value={row.value}
+          aria-invalid={valueError !== undefined}
+          aria-describedby={
+            valueError === undefined ? undefined : `${valueId}-error`
+          }
+          onChange={(event) => {
+            const value = event.currentTarget.value;
+            onChange({ ...row, value }, valueField);
+          }}
+        />
+      </FieldControl>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        aria-label={`Remove header ${String(index + 1)}`}
+        // A lone row can't go, so it has no Remove to press.
+        className={!removable ? 'invisible' : undefined}
+        disabled={disabled || !removable}
+        onClick={onRemove}
+      >
+        <XIcon aria-hidden="true" />
+      </Button>
+      {nameError === undefined ? null : (
+        <FieldError id={`${nameId}-error`} className="col-span-3">
+          {nameError}
+        </FieldError>
+      )}
+      {valueError === undefined ? null : (
+        <FieldError id={`${valueId}-error`} className="col-span-3">
+          {valueError}
+        </FieldError>
+      )}
+    </li>
   );
 }

@@ -50,40 +50,6 @@ export function createSaveCoordinator(
     timer = undefined;
   }
 
-  async function reconcileUncertain(
-    snapshot: Readonly<{
-      graph: WorkflowGraphContract;
-      generation: number;
-    }>,
-    error: unknown,
-    signal: AbortSignal,
-  ) {
-    try {
-      const remote = await transport.reload(signal);
-      if (isDestroyed()) return;
-      if (graphsEqual(remote.draft.graph, snapshot.graph)) {
-        store
-          .getState()
-          .acceptSave(
-            remote.etag,
-            remote.draft.revision,
-            snapshot.generation,
-            remote.draft.updatedAt,
-          );
-        return;
-      }
-      store.getState().reportConflict({
-        local: store.getState().graph,
-        remote: remote.draft.graph,
-        remoteEtag: remote.etag,
-        remoteRevision: remote.draft.revision,
-      });
-    } catch {
-      if (isDestroyed()) return;
-      store.getState().reportFailure(transport.message(error), true);
-    }
-  }
-
   async function performSave() {
     const current = store.getState();
     if (
@@ -118,33 +84,19 @@ export function createSaveCoordinator(
     } catch (error) {
       if (isDestroyed()) return;
       if (transport.isConflict(error)) {
-        try {
-          const remote = await transport.reload(request.signal);
-          if (isDestroyed()) return;
-          // A retried save whose first attempt landed after all.
-          if (graphsEqual(remote.draft.graph, snapshot.graph)) {
-            store
-              .getState()
-              .acceptSave(
-                remote.etag,
-                remote.draft.revision,
-                snapshot.generation,
-                remote.draft.updatedAt,
-              );
-            return;
-          }
-          store.getState().reportConflict({
-            local: store.getState().graph,
-            remote: remote.draft.graph,
-            remoteEtag: remote.etag,
-            remoteRevision: remote.draft.revision,
-          });
-        } catch (reloadError) {
-          if (isDestroyed()) return;
-          store.getState().reportFailure(transport.message(reloadError), true);
-        }
+        await reconcileRemoteSave(store, transport, {
+          snapshot,
+          signal: request.signal,
+          isDestroyed,
+          failureMessage: (error) => transport.message(error),
+        });
       } else if (transport.isUncertain(error)) {
-        await reconcileUncertain(snapshot, error, request.signal);
+        await reconcileRemoteSave(store, transport, {
+          snapshot,
+          signal: request.signal,
+          isDestroyed,
+          failureMessage: () => transport.message(error),
+        });
       } else {
         store.getState().reportFailure(transport.message(error), false);
         // A rate limit says when to come back, so saving resumes by itself.
@@ -198,4 +150,44 @@ function graphsEqual(
   right: WorkflowGraphContract,
 ): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
+}
+
+/** Reloading resolves a lost acknowledgement and an explicit version conflict alike. */
+async function reconcileRemoteSave(
+  store: EditorStore,
+  transport: SaveCoordinatorTransport,
+  options: Readonly<{
+    snapshot: Readonly<{ graph: WorkflowGraphContract; generation: number }>;
+    signal: AbortSignal;
+    isDestroyed: () => boolean;
+    failureMessage: (error: unknown) => string;
+  }>,
+) {
+  const { snapshot, signal, isDestroyed, failureMessage } = options;
+  try {
+    const remote = await transport.reload(signal);
+    if (isDestroyed()) return;
+    if (graphsEqual(remote.draft.graph, snapshot.graph)) {
+      store
+        .getState()
+        .acceptSave(
+          remote.etag,
+          remote.draft.revision,
+          snapshot.generation,
+          remote.draft.updatedAt,
+        );
+      return;
+    }
+    store
+      .getState()
+      .reportConflict({
+        local: store.getState().graph,
+        remote: remote.draft.graph,
+        remoteEtag: remote.etag,
+        remoteRevision: remote.draft.revision,
+      });
+  } catch (error) {
+    if (isDestroyed()) return;
+    store.getState().reportFailure(failureMessage(error), true);
+  }
 }
