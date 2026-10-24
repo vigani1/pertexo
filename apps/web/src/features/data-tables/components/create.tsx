@@ -111,64 +111,19 @@ export function CreateDataTable({
             </div>
             <div className="flex flex-col gap-4">
               {columns.map((column) => (
-                <div
+                <NewTableColumn
                   key={column.id}
-                  className="grid grid-cols-[minmax(0,1fr)_7rem] gap-2 rounded-md border border-border p-3"
-                >
-                  <Label className="sr-only" htmlFor={`column-${column.id}`}>
-                    Column name
-                  </Label>
-                  <Input
-                    id={`column-${column.id}`}
-                    aria-label="Column name"
-                    value={column.name}
-                    onChange={(event) => {
-                      change(column.id, { name: event.target.value });
-                    }}
-                    placeholder="order_id"
-                    required
-                  />
-                  <Label className="sr-only" htmlFor={`type-${column.id}`}>
-                    Column type
-                  </Label>
-                  <TableChoice
-                    id={`type-${column.id}`}
-                    value={column.type}
-                    choices={types.map((type) => ({
-                      value: type,
-                      label: type === 'boolean' ? 'True / false' : type,
-                    }))}
-                    onChange={(value) => {
-                      change(column.id, {
-                        type: value as DataTableNewColumn['type'],
-                      });
-                    }}
-                  />
-                  <div className="col-span-2 flex items-center justify-between gap-3">
-                    <Label className="flex items-center gap-2">
-                      <Switch
-                        checked={column.required}
-                        onCheckedChange={(required) => {
-                          change(column.id, { required });
-                        }}
-                      />
-                      Required
-                    </Label>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={columns.length === 1}
-                      onClick={() => {
-                        setColumns((current) =>
-                          current.filter((item) => item.id !== column.id),
-                        );
-                      }}
-                    >
-                      Remove column
-                    </Button>
-                  </div>
-                </div>
+                  column={column}
+                  removable={columns.length > 1}
+                  onChange={(patch) => {
+                    change(column.id, patch);
+                  }}
+                  onRemove={() => {
+                    setColumns((current) =>
+                      current.filter((item) => item.id !== column.id),
+                    );
+                  }}
+                />
               ))}
             </div>
             <Button
@@ -181,31 +136,11 @@ export function CreateDataTable({
             >
               Add column
             </Button>
-            <div className="grid gap-2">
-              <Label htmlFor="table-key">Unique key (optional)</Label>
-              <TableChoice
-                id="table-key"
-                value={keyColumn}
-                choices={[
-                  { value: '', label: 'No unique key' },
-                  ...columns
-                    .filter(
-                      (column) =>
-                        column.required &&
-                        column.name !== '' &&
-                        ['text', 'number', 'date'].includes(column.type),
-                    )
-                    .map((column) => ({
-                      value: column.name,
-                      label: column.name,
-                    })),
-                ]}
-                onChange={setKeyColumn}
-              />
-              <p className="text-xs text-muted-foreground">
-                Upsert uses this required column. Key values must fit 1 KB.
-              </p>
-            </div>
+            <NewTableKey
+              columns={columns}
+              value={keyColumn}
+              onChange={setKeyColumn}
+            />
           </fieldset>
           {error === undefined ? null : <Notice tone="warning">{error}</Notice>}
           <TableCommandFeedback command={command} />
@@ -225,5 +160,109 @@ export function CreateDataTable({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function NewTableColumn({
+  column,
+  removable,
+  onChange,
+  onRemove,
+}: Readonly<{
+  column: Column;
+  removable: boolean;
+  onChange: (patch: Partial<DataTableNewColumn>) => void;
+  onRemove: () => void;
+}>) {
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_7rem] gap-2 rounded-md border border-border p-3">
+      <Label className="sr-only" htmlFor={`column-${column.id}`}>
+        Column name
+      </Label>
+      <Input
+        id={`column-${column.id}`}
+        aria-label="Column name"
+        value={column.name}
+        onChange={(event) => {
+          onChange({ name: event.target.value });
+        }}
+        placeholder="order_id"
+        required
+      />
+      <Label className="sr-only" htmlFor={`type-${column.id}`}>
+        Column type
+      </Label>
+      <TableChoice
+        id={`type-${column.id}`}
+        value={column.type}
+        choices={types.map((type) => ({
+          value: type,
+          label: type === 'boolean' ? 'True / false' : type,
+        }))}
+        onChange={(value) => {
+          onChange({
+            type: value as DataTableNewColumn['type'],
+          });
+        }}
+      />
+      <div className="col-span-2 flex items-center justify-between gap-3">
+        <Label className="flex items-center gap-2">
+          <Switch
+            checked={column.required}
+            onCheckedChange={(required) => {
+              onChange({ required });
+            }}
+          />
+          Required
+        </Label>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={!removable}
+          onClick={onRemove}
+        >
+          Remove column
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function NewTableKey({
+  columns,
+  value,
+  onChange,
+}: Readonly<{
+  columns: readonly Column[];
+  value: string;
+  onChange: (value: string) => void;
+}>) {
+  return (
+    <div className="grid gap-2">
+      <Label htmlFor="table-key">Unique key (optional)</Label>
+      <TableChoice
+        id="table-key"
+        value={value}
+        choices={[
+          { value: '', label: 'No unique key' },
+          ...columns
+            .filter(
+              (column) =>
+                column.required &&
+                column.name !== '' &&
+                ['text', 'number', 'date'].includes(column.type),
+            )
+            .map((column) => ({
+              value: column.name,
+              label: column.name,
+            })),
+        ]}
+        onChange={onChange}
+      />
+      <p className="text-xs text-muted-foreground">
+        Upsert uses this required column. Key values must fit 1 KB.
+      </p>
+    </div>
   );
 }
