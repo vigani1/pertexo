@@ -1,7 +1,6 @@
 import { and, eq, notExists, sql, type SQL } from 'drizzle-orm';
-import { CasingCache } from 'drizzle-orm/casing';
 import { workflowOrganizationState } from '../../schema/authoring/organization.js';
-import { PgDialect, QueryBuilder, alias } from 'drizzle-orm/pg-core';
+import { QueryBuilder, alias } from 'drizzle-orm/pg-core';
 import type { FolderScope, WorkflowResourceCapability } from './contract.js';
 
 /** The policy supplies folder IDs; SQL only filters those already-decided facts. */
@@ -29,21 +28,4 @@ export function workflowScopeSql(
       ),
     );
   return sql`(${workspace}) and ${notExists(deniedPlacement)}`;
-}
-
-/** Bind the same predicate in an existing pg query without interpolating identities. */
-export function bindResourcePredicate(
-  predicate: SQL,
-  parameters: unknown[],
-): string {
-  const offset = parameters.length;
-  const dialect = new PgDialect();
-  const query = predicate.toQuery({
-    casing: new CasingCache(),
-    escapeName: (name) => dialect.escapeName(name),
-    escapeString: (value) => dialect.escapeString(value),
-    escapeParam: (index) => dialect.escapeParam(index + offset),
-  });
-  parameters.push(...query.params);
-  return query.sql;
 }
