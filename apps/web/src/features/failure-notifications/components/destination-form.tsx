@@ -166,15 +166,7 @@ function SaveFailure({
  * Add or edit one destination. Editing appends a new version on top of the
  * version the form opened with, so a concurrent edit is refused, not lost.
  */
-export function DestinationForm({
-  scope,
-  destination,
-  connections,
-  channelNames,
-  listRefresh,
-  onDone,
-  onCancel,
-}: Readonly<{
+type DestinationFormProps = Readonly<{
   scope: DestinationMutationScope;
   destination: FailureNotificationDestinationResponse | undefined;
   connections: readonly ConnectionResponse[];
@@ -182,7 +174,111 @@ export function DestinationForm({
   listRefresh: ListRefresh;
   onDone: () => void;
   onCancel: () => void;
-}>) {
+}>;
+
+export function DestinationForm(props: DestinationFormProps) {
+  const model = useDestinationForm(props);
+  return (
+    <form
+      noValidate
+      className="flex min-h-0 flex-1 flex-col"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void model.submit();
+      }}
+    >
+      <SheetHeader>
+        <SheetTitle>
+          {model.editing ? 'Edit destination' : 'Add destination'}
+        </SheetTitle>
+        <SheetDescription>
+          Pertexo posts here when a run fails, times out or ends with an unknown
+          outcome.
+        </SheetDescription>
+      </SheetHeader>
+      <SheetBody className="flex flex-col gap-5">
+        {model.listRefresh.failed ? (
+          <StaleLine
+            updatedAt={model.listRefresh.updatedAt}
+            retrying={model.listRefresh.pending}
+            onRetry={() => void model.listRefresh.reload()}
+          >
+            Your edits here are kept.
+          </StaleLine>
+        ) : null}
+        <FieldGroup>
+          <DestinationFields
+            id={model.id}
+            workspaceId={model.scope.workspaceId}
+            values={model.values}
+            editing={model.editing}
+            disabled={model.mutation.isPending}
+            connections={model.connections}
+            channelHint={savedChannelHint(
+              model.destination,
+              model.values,
+              model.channelNames,
+            )}
+            validation={model.validation}
+            errorsFor={model.errorsFor}
+            onChange={(next) => {
+              model.setValues(next);
+              if (model.mutation.isError && !model.conflict)
+                model.mutation.reset();
+            }}
+          />
+        </FieldGroup>
+        {model.mutation.isError ? (
+          <SaveFailure
+            error={model.mutation.error}
+            editing={model.editing}
+            refreshing={model.listRefresh.pending}
+            onLoadLatest={() => void model.rebaseOnLatest()}
+          />
+        ) : null}
+        {model.destination === undefined ||
+        model.expectedVersion === undefined ? null : (
+          <DestinationDetails
+            destinationId={model.destination.id}
+            version={model.expectedVersion}
+          />
+        )}
+      </SheetBody>
+      <SheetFooter>
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={model.mutation.isPending}
+          onClick={model.onCancel}
+        >
+          Cancel
+        </Button>
+        <ProgressButton
+          type="submit"
+          variant="primary"
+          pending={model.mutation.isPending}
+          pendingLabel="Saving…"
+          disabled={
+            !model.editing &&
+            usableConnections(model.connections, model.values.kind).length === 0
+          }
+        >
+          {submitLabel({ uncertain: model.uncertain, editing: model.editing })}
+        </ProgressButton>
+      </SheetFooter>
+    </form>
+  );
+}
+
+function useDestinationForm({
+  scope,
+  destination,
+  connections,
+  channelNames,
+  listRefresh,
+  onDone,
+  onCancel,
+}: DestinationFormProps) {
   const id = useId();
   const notifications = useNotifications();
   const editing = destination !== undefined;
@@ -260,87 +356,24 @@ export function DestinationForm({
     editing && mutation.isError && isDestinationConflict(mutation.error);
   const uncertain = mutation.isError && isUnconfirmedCommand(mutation.error);
 
-  return (
-    <form
-      noValidate
-      className="flex min-h-0 flex-1 flex-col"
-      onSubmit={(event) => {
-        event.preventDefault();
-        void submit();
-      }}
-    >
-      <SheetHeader>
-        <SheetTitle>
-          {editing ? 'Edit destination' : 'Add destination'}
-        </SheetTitle>
-        <SheetDescription>
-          Pertexo posts here when a run fails, times out or ends with an unknown
-          outcome.
-        </SheetDescription>
-      </SheetHeader>
-      <SheetBody className="flex flex-col gap-5">
-        {listRefresh.failed ? (
-          <StaleLine
-            updatedAt={listRefresh.updatedAt}
-            retrying={listRefresh.pending}
-            onRetry={() => void listRefresh.reload()}
-          >
-            Your edits here are kept.
-          </StaleLine>
-        ) : null}
-        <FieldGroup>
-          <DestinationFields
-            id={id}
-            workspaceId={scope.workspaceId}
-            values={values}
-            editing={editing}
-            disabled={mutation.isPending}
-            connections={connections}
-            channelHint={savedChannelHint(destination, values, channelNames)}
-            validation={validation}
-            errorsFor={errorsFor}
-            onChange={(next) => {
-              setValues(next);
-              if (mutation.isError && !conflict) mutation.reset();
-            }}
-          />
-        </FieldGroup>
-        {mutation.isError ? (
-          <SaveFailure
-            error={mutation.error}
-            editing={editing}
-            refreshing={listRefresh.pending}
-            onLoadLatest={() => void rebaseOnLatest()}
-          />
-        ) : null}
-        {destination === undefined || expectedVersion === undefined ? null : (
-          <DestinationDetails
-            destinationId={destination.id}
-            version={expectedVersion}
-          />
-        )}
-      </SheetBody>
-      <SheetFooter>
-        <Button
-          type="button"
-          variant="ghost"
-          disabled={mutation.isPending}
-          onClick={onCancel}
-        >
-          Cancel
-        </Button>
-        <ProgressButton
-          type="submit"
-          variant="primary"
-          pending={mutation.isPending}
-          pendingLabel="Saving…"
-          disabled={
-            !editing && usableConnections(connections, values.kind).length === 0
-          }
-        >
-          {submitLabel({ uncertain, editing })}
-        </ProgressButton>
-      </SheetFooter>
-    </form>
-  );
+  return {
+    uncertain,
+    submit,
+    editing,
+    listRefresh,
+    id,
+    scope,
+    values,
+    mutation,
+    connections,
+    destination,
+    channelNames,
+    validation,
+    errorsFor,
+    setValues,
+    conflict,
+    rebaseOnLatest,
+    expectedVersion,
+    onCancel,
+  } as const;
 }

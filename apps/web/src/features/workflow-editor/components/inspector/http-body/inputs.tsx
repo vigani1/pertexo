@@ -42,7 +42,104 @@ export function HttpBodyInputs(props: Props) {
     );
   return <BodyInputs {...props} value={value} />;
 }
-function BodyInputs({
+type BodyInputsProps = Props & Readonly<{ value: HttpBodyValue }>;
+
+function BodyInputs(props: BodyInputsProps) {
+  const model = useBodyInputs(props);
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-2">
+        <ToggleGroup
+          aria-label="Body type"
+          value={[model.draft.text.mode]}
+          disabled={!model.form.editable || model.rawScratch}
+          onValueChange={(values) => {
+            const next = values[0];
+            if (next === 'raw' || next === 'multipart') model.mode(next);
+          }}
+        >
+          <ToggleGroupItem value="raw">Raw body</ToggleGroupItem>
+          <ToggleGroupItem value="multipart" disabled={!model.bodyAllowed}>
+            Form parts
+          </ToggleGroupItem>
+        </ToggleGroup>
+        {!model.bodyAllowed ? (
+          <p className="text-xs text-muted-foreground">
+            GET and HEAD cannot send a body. Choose another method to use form
+            parts.
+          </p>
+        ) : null}
+      </div>
+      {model.draft.text.mode === 'raw' ? (
+        model.rawInputs(model.rawForm)
+      ) : (
+        <>
+          <MultipartParts
+            parts={model.parts}
+            validation={model.draft.validation}
+            nodeId={model.node.id}
+            graph={model.graph}
+            loopPorts={model.loopPorts}
+            scope={model.fileScope}
+            editable={model.form.editable}
+            targetKey={model.signature}
+            change={model.change}
+            onChangePart={model.changePart}
+            onRemove={(part) => {
+              model.request({
+                apply: () => {
+                  const index = model.parts.findIndex(
+                    ({ inputKey }) => inputKey === part.inputKey,
+                  );
+                  model.change(
+                    {
+                      mode: 'multipart',
+                      parts: model.parts.filter(
+                        ({ inputKey }) => inputKey !== part.inputKey,
+                      ),
+                    },
+                    `remove:${crypto.randomUUID()}`,
+                  );
+                  focusFormPart(
+                    model.node.id,
+                    model.parts[index + 1]?.inputKey ??
+                      model.parts[index - 1]?.inputKey,
+                  );
+                },
+                destructive: populatedSource(part.source),
+                title: 'Remove this form part?',
+                description:
+                  'This removes the part and its mapping. Shared file bytes are kept. Undo restores the part.',
+                confirmLabel: 'Remove',
+              });
+            }}
+          />
+          {model.links}
+        </>
+      )}
+      <ConfirmDialog
+        open={model.pending !== undefined}
+        onOpenChange={(open) => {
+          if (!open) model.setConfirmation(undefined);
+        }}
+        title={model.pending?.title ?? 'Replace body'}
+        description={model.pending?.description}
+        confirmLabel={model.pending?.confirmLabel ?? 'Replace'}
+        onConfirm={() => {
+          const current = findStep(model.store.getState().graph, model.node.id);
+          if (
+            current !== undefined &&
+            JSON.stringify(bodyValue(current)) === JSON.stringify(model.value)
+          )
+            model.pending?.apply();
+          model.setConfirmation(undefined);
+        }}
+      />
+    </div>
+  );
+}
+
+function useBodyInputs({
   node,
   graph,
   form,
@@ -51,7 +148,7 @@ function BodyInputs({
   links,
   rawInputs,
   value,
-}: Props & Readonly<{ value: HttpBodyValue }>) {
+}: BodyInputsProps) {
   const draft = useHttpBodyDraft(value, graph, form);
   const store = useEditorStoreApi();
   function change(next: HttpBodyDraft, key: string) {
@@ -153,94 +250,28 @@ function BodyInputs({
     });
     return undefined;
   }
-  return (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-2">
-        <ToggleGroup
-          aria-label="Body type"
-          value={[draft.text.mode]}
-          disabled={!form.editable || rawScratch}
-          onValueChange={(values) => {
-            const next = values[0];
-            if (next === 'raw' || next === 'multipart') mode(next);
-          }}
-        >
-          <ToggleGroupItem value="raw">Raw body</ToggleGroupItem>
-          <ToggleGroupItem value="multipart" disabled={!bodyAllowed}>
-            Form parts
-          </ToggleGroupItem>
-        </ToggleGroup>
-        {!bodyAllowed ? (
-          <p className="text-xs text-muted-foreground">
-            GET and HEAD cannot send a body. Choose another method to use form
-            parts.
-          </p>
-        ) : null}
-      </div>
-      {draft.text.mode === 'raw' ? (
-        rawInputs(rawForm)
-      ) : (
-        <>
-          <MultipartParts
-            parts={parts}
-            validation={draft.validation}
-            nodeId={node.id}
-            graph={graph}
-            loopPorts={loopPorts}
-            scope={fileScope}
-            editable={form.editable}
-            targetKey={signature}
-            change={change}
-            onChangePart={changePart}
-            onRemove={(part) => {
-              request({
-                apply: () => {
-                  const index = parts.findIndex(
-                    ({ inputKey }) => inputKey === part.inputKey,
-                  );
-                  change(
-                    {
-                      mode: 'multipart',
-                      parts: parts.filter(
-                        ({ inputKey }) => inputKey !== part.inputKey,
-                      ),
-                    },
-                    `remove:${crypto.randomUUID()}`,
-                  );
-                  focusFormPart(
-                    node.id,
-                    parts[index + 1]?.inputKey ?? parts[index - 1]?.inputKey,
-                  );
-                },
-                destructive: populatedSource(part.source),
-                title: 'Remove this form part?',
-                description:
-                  'This removes the part and its mapping. Shared file bytes are kept. Undo restores the part.',
-                confirmLabel: 'Remove',
-              });
-            }}
-          />
-          {links}
-        </>
-      )}
-      <ConfirmDialog
-        open={pending !== undefined}
-        onOpenChange={(open) => {
-          if (!open) setConfirmation(undefined);
-        }}
-        title={pending?.title ?? 'Replace body'}
-        description={pending?.description}
-        confirmLabel={pending?.confirmLabel ?? 'Replace'}
-        onConfirm={() => {
-          const current = findStep(store.getState().graph, node.id);
-          if (
-            current !== undefined &&
-            JSON.stringify(bodyValue(current)) === JSON.stringify(value)
-          )
-            pending?.apply();
-          setConfirmation(undefined);
-        }}
-      />
-    </div>
-  );
+
+  return {
+    draft,
+    form,
+    rawScratch,
+    mode,
+    bodyAllowed,
+    rawInputs,
+    rawForm,
+    parts,
+    node,
+    graph,
+    loopPorts,
+    fileScope,
+    signature,
+    change,
+    changePart,
+    request,
+    links,
+    pending,
+    setConfirmation,
+    store,
+    value,
+  } as const;
 }

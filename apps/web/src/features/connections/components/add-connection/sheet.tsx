@@ -52,19 +52,112 @@ const DESCRIPTIONS: Readonly<Record<AddStep, string>> = {
  * A lens opened from elsewhere (a step's connection slot) hears about the
  * saved connection through `onCreated` as it closes, to select it.
  */
-export function AddConnectionSheet({
-  scope,
-  workspaceName,
-  request,
-  onClose,
-  onCreated,
-}: Readonly<{
+type AddConnectionSheetProps = Readonly<{
   scope: ConnectionMutationScope;
   workspaceName: string;
   request: AddConnectionRequest | undefined;
   onClose: () => void;
   onCreated?: (connection: ConnectionResponse) => void;
-}>) {
+}>;
+
+export function AddConnectionSheet(props: AddConnectionSheetProps) {
+  const model = useAddConnectionForm(props);
+  return (
+    <Sheet
+      open={model.request !== undefined}
+      onOpenChange={(open) => {
+        if (!open) model.requestClose();
+      }}
+    >
+      <SheetContent className="w-[min(28rem,calc(100vw-1.5rem))]">
+        <SheetHeader className="gap-3">
+          <SheetTitle>
+            {model.provider === undefined
+              ? 'Add a connection'
+              : PROVIDERS[model.provider].connectTitle}
+          </SheetTitle>
+          <SheetDescription>{DESCRIPTIONS[model.step]}</SheetDescription>
+          <StepIndicator step={model.step} />
+        </SheetHeader>
+        <SheetBody>
+          <form
+            id={`${model.id}-form`}
+            noValidate
+            className="contents"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (model.step === 'credential') model.continueToName();
+              else if (model.step === 'name') void model.save();
+            }}
+          >
+            <StepBody
+              id={model.id}
+              step={model.step}
+              provider={model.provider}
+              created={model.created}
+              savedCredential={model.savedCredential}
+              credential={model.credential}
+              name={model.name}
+              nameValidation={model.nameValidation}
+              disabled={model.create.isPending}
+              uncertain={model.uncertain}
+              createError={model.createFailed ? model.create.error : undefined}
+              test={model.test}
+              onChoose={(next) => {
+                model.setChosen(next);
+                model.setStep('credential');
+              }}
+              onCredentialChange={(next) => {
+                model.credential.setDraft(next);
+                if (model.create.isError) model.clearSensitiveState();
+              }}
+              onNameChange={(next) => {
+                model.setNameInput(next);
+                if (model.create.isError) model.clearSensitiveState();
+              }}
+            />
+          </form>
+        </SheetBody>
+        <SheetFooter>
+          <AddConnectionFooter
+            formId={`${model.id}-form`}
+            step={model.step}
+            canGoBack={model.request === 'any'}
+            saving={model.create.isPending}
+            retrying={model.uncertain}
+            tested={model.test.phase}
+            onBack={() => {
+              model.setStep(model.step === 'name' ? 'credential' : 'provider');
+              if (model.step === 'credential') model.setChosen(undefined);
+            }}
+            onCancel={model.requestClose}
+          />
+        </SheetFooter>
+      </SheetContent>
+      <ConfirmDialog
+        open={model.confirmingDiscard}
+        onOpenChange={model.setConfirmingDiscard}
+        tone="destructive"
+        title="Discard this connection?"
+        description="The credential you pasted isn’t saved yet, so it’s lost if you leave now."
+        cancelLabel="Keep editing"
+        confirmLabel="Discard"
+        onConfirm={() => {
+          model.setConfirmingDiscard(false);
+          model.close();
+        }}
+      />
+    </Sheet>
+  );
+}
+
+function useAddConnectionForm({
+  scope,
+  workspaceName,
+  request,
+  onClose,
+  onCreated,
+}: AddConnectionSheetProps) {
   const id = useId();
   const notifications = useNotifications();
   const [chosen, setChosen] = useState<ProviderKey>();
@@ -174,93 +267,31 @@ export function AddConnectionSheet({
   const createFailed = create.isError && !isFieldProblem(create.error);
   const uncertain = create.isError && isUnconfirmedCommand(create.error);
 
-  return (
-    <Sheet
-      open={request !== undefined}
-      onOpenChange={(open) => {
-        if (!open) requestClose();
-      }}
-    >
-      <SheetContent className="w-[min(28rem,calc(100vw-1.5rem))]">
-        <SheetHeader className="gap-3">
-          <SheetTitle>
-            {provider === undefined
-              ? 'Add a connection'
-              : PROVIDERS[provider].connectTitle}
-          </SheetTitle>
-          <SheetDescription>{DESCRIPTIONS[step]}</SheetDescription>
-          <StepIndicator step={step} />
-        </SheetHeader>
-        <SheetBody>
-          <form
-            id={`${id}-form`}
-            noValidate
-            className="contents"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (step === 'credential') continueToName();
-              else if (step === 'name') void save();
-            }}
-          >
-            <StepBody
-              id={id}
-              step={step}
-              provider={provider}
-              created={created}
-              savedCredential={savedCredential}
-              credential={credential}
-              name={name}
-              nameValidation={nameValidation}
-              disabled={create.isPending}
-              uncertain={uncertain}
-              createError={createFailed ? create.error : undefined}
-              test={test}
-              onChoose={(next) => {
-                setChosen(next);
-                setStep('credential');
-              }}
-              onCredentialChange={(next) => {
-                credential.setDraft(next);
-                if (create.isError) clearSensitiveState();
-              }}
-              onNameChange={(next) => {
-                setNameInput(next);
-                if (create.isError) clearSensitiveState();
-              }}
-            />
-          </form>
-        </SheetBody>
-        <SheetFooter>
-          <AddConnectionFooter
-            formId={`${id}-form`}
-            step={step}
-            canGoBack={request === 'any'}
-            saving={create.isPending}
-            retrying={uncertain}
-            tested={test.phase}
-            onBack={() => {
-              setStep(step === 'name' ? 'credential' : 'provider');
-              if (step === 'credential') setChosen(undefined);
-            }}
-            onCancel={requestClose}
-          />
-        </SheetFooter>
-      </SheetContent>
-      <ConfirmDialog
-        open={confirmingDiscard}
-        onOpenChange={setConfirmingDiscard}
-        tone="destructive"
-        title="Discard this connection?"
-        description="The credential you pasted isn’t saved yet, so it’s lost if you leave now."
-        cancelLabel="Keep editing"
-        confirmLabel="Discard"
-        onConfirm={() => {
-          setConfirmingDiscard(false);
-          close();
-        }}
-      />
-    </Sheet>
-  );
+  return {
+    request,
+    requestClose,
+    provider,
+    step,
+    id,
+    continueToName,
+    save,
+    created,
+    savedCredential,
+    credential,
+    name,
+    nameValidation,
+    create,
+    uncertain,
+    createFailed,
+    test,
+    setChosen,
+    setStep,
+    clearSensitiveState,
+    setNameInput,
+    confirmingDiscard,
+    setConfirmingDiscard,
+    close,
+  } as const;
 }
 
 function savedMessage({
