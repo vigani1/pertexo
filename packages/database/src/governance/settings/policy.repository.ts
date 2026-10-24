@@ -11,7 +11,10 @@ import {
 } from '../../schema/foundation.js';
 import { workflowPublicationRequests } from '../../schema/authoring/publication-requests.js';
 import type { GovernanceSettings } from '@pertexo/contracts';
-import {claimCommand, completeCommand} from '../../platform/idempotency/repository.js';
+import {
+  claimCommand,
+  completeCommand,
+} from '../../platform/idempotency/repository.js';
 import { appendAuditFact } from '../audit/events.repository.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
 import { GovernanceError, type GovernanceStore } from '../contract.js';

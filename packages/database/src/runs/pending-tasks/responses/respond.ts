@@ -11,7 +11,10 @@ import {
   inputRequestConfigSchema,
   parseFormValues,
 } from '@pertexo/workflow-model';
-import {claimCommand, completeCommand} from '../../../platform/idempotency/repository.js';
+import {
+  claimCommand,
+  completeCommand,
+} from '../../../platform/idempotency/repository.js';
 import { serializeStoredExecutionValue } from '../../../platform/stored-execution-value.js';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
 import { wakeWorkflowRun } from '../../calls/wakeup.js';

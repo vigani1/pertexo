@@ -1,7 +1,10 @@
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
-import {claimCommand, completeCommand} from '../../platform/idempotency/repository.js';
+import {
+  claimCommand,
+  completeCommand,
+} from '../../platform/idempotency/repository.js';
 import type { CommandIdentity } from '../../platform/idempotency/contract.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { commandKeySchema, commandRevisionSchema } from '../command-keys.js';

@@ -11,7 +11,7 @@ import {
   type DatabaseRuntime,
 } from '../../platform/pool/runtime.js';
 import { withPlatformTransaction } from '../../tenant-access/transactions.js';
-import {checkDatabaseReadiness} from '../../platform/readiness.queries.js';
+import { checkDatabaseReadiness } from '../../platform/readiness.queries.js';
 
 const STATEMENT_TIMEOUT_MILLIS = 5_000;
 const limitSchema = z.number().int().min(1).max(1_000);

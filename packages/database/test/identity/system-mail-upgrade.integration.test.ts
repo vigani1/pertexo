@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
 import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../../src/migrations.js';
-import {createSystemMailDeliveryStore} from '../../src/platform/mail/repository.js';
+import { createSystemMailDeliveryStore } from '../../src/platform/mail/repository.js';
 import { parseDatabaseConfig } from '../../src/config.js';
 import { createDisposableDatabaseFixture } from '../support/postgres/disposable-database.js';
 

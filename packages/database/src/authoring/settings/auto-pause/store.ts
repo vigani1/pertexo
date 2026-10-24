@@ -1,7 +1,10 @@
 import { WORKFLOW_EDITOR_ROLES } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import {claimCommand, completeCommand} from '../../../platform/idempotency/repository.js';
+import {
+  claimCommand,
+  completeCommand,
+} from '../../../platform/idempotency/repository.js';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
 import { ROLES, type Role } from '@pertexo/workflow-model';
 import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';

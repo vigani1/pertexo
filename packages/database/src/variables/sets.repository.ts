@@ -14,7 +14,10 @@ import {
   WORKSPACE_VARIABLE_LIMITS,
 } from '@pertexo/workflow-model';
 
-import {claimCommand, completeCommand} from '../platform/idempotency/repository.js';
+import {
+  claimCommand,
+  completeCommand,
+} from '../platform/idempotency/repository.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
 import {
   WorkspaceVariablesConflictError,

@@ -4,7 +4,12 @@ import { Pool } from 'pg';
 
 import { expect, it } from 'vitest';
 
-import {claimCommand, completeCommand, findCommandResult, IdempotencyConflictError} from '../../../../src/platform/idempotency/repository.js';
+import {
+  claimCommand,
+  completeCommand,
+  findCommandResult,
+  IdempotencyConflictError,
+} from '../../../../src/platform/idempotency/repository.js';
 import { withTenantScopedClient } from '../../../../src/tenant-access/transactions.js';
 
 import {

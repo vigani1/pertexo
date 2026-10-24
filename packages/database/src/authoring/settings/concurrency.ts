@@ -4,7 +4,10 @@ import type { WorkflowConcurrencySettings as ConcurrencySettings } from '@pertex
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
-import {claimCommand, completeCommand} from '../../platform/idempotency/repository.js';
+import {
+  claimCommand,
+  completeCommand,
+} from '../../platform/idempotency/repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { RUN_SUMMARY_RETENTION_SQL } from '../../runs/data-policy.js';
 import { ROLES, type Role } from '@pertexo/workflow-model';

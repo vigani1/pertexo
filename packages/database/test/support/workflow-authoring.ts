@@ -10,8 +10,8 @@ import { parseDatabaseConfig } from '../../src/config.js';
 import { CONNECTION_AUTH_TYPE } from '../../src/connections/contract.js';
 import { createConnectionDatabase } from '../../src/connections/repository.js';
 
-import {IdempotencyConflictError} from '../../src/platform/idempotency/repository.js';
-import {checkDatabaseReadiness} from '../../src/platform/readiness.queries.js';
+import { IdempotencyConflictError } from '../../src/platform/idempotency/repository.js';
+import { checkDatabaseReadiness } from '../../src/platform/readiness.queries.js';
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,

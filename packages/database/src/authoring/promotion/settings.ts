@@ -1,7 +1,10 @@
 import type { WorkflowPromotionTargetResult } from '@pertexo/contracts';
 import { hasCapability, type Role } from '@pertexo/workflow-model';
 import type { WorkflowPromotionSettings } from '@pertexo/contracts';
-import {claimCommand, completeCommand} from '../../platform/idempotency/repository.js';
+import {
+  claimCommand,
+  completeCommand,
+} from '../../platform/idempotency/repository.js';
 import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { WorkflowNotFoundError } from '../workflows/errors.js';
 import {

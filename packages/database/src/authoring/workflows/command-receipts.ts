@@ -5,7 +5,10 @@ import {
   workflowLifecycleStatusSchema,
 } from '@pertexo/workflow-model';
 
-import {claimCommand, completeCommand} from '../../platform/idempotency/repository.js';
+import {
+  claimCommand,
+  completeCommand,
+} from '../../platform/idempotency/repository.js';
 import type { CommandIdentity } from '../../platform/idempotency/contract.js';
 import type { WorkflowRecord } from './representation/records.js';
 

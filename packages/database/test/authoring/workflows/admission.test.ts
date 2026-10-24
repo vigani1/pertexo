@@ -9,7 +9,7 @@ import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/ser
 import { createWorkflowAuthoringReadStore } from '../../../src/authoring/workflows/reads.js';
 import { createWorkflowPublisher } from '../../../src/authoring/publication/publisher.js';
 import { WorkflowRevisionConflictError } from '../../../src/authoring/workflows/errors.js';
-import {IdempotencyConflictError} from '../../../src/platform/idempotency/repository.js';
+import { IdempotencyConflictError } from '../../../src/platform/idempotency/repository.js';
 import { createWorkflowAuthoringDatabase } from '../../../src/authoring/workflows/database.js';
 import { createDatabaseRuntime } from '../../../src/platform/pool/runtime.js';
 import { testExecutableCompiler } from '../../../src/authoring/test-executable-compiler.js';

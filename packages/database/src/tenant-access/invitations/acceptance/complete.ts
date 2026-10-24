@@ -2,7 +2,10 @@ import type { Role } from '@pertexo/workflow-model';
 import { readEligibleAuthenticationSession } from '../../../identity/federation/sessions/authority.js';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
-import {claimCommand, completeCommand} from '../../../platform/idempotency/repository.js';
+import {
+  claimCommand,
+  completeCommand,
+} from '../../../platform/idempotency/repository.js';
 import type { CommandIdentity } from '../../../platform/idempotency/contract.js';
 import type {
   CompleteInvitationAcceptanceInput,

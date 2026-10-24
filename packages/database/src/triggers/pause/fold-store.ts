@@ -6,7 +6,7 @@ import {
   type DatabaseRuntime,
 } from '../../platform/pool/runtime.js';
 import { withPlatformTransaction } from '../../tenant-access/transactions.js';
-import {checkDatabaseReadiness} from '../../platform/readiness.queries.js';
+import { checkDatabaseReadiness } from '../../platform/readiness.queries.js';
 
 /** A workflow whose failure streak reached its threshold in this fold. */
 export type WorkflowTriggerPauseDecision = Readonly<{

@@ -12,7 +12,10 @@ import type { Pool, PoolClient } from 'pg';
 
 import type { ConnectionSharing } from '@pertexo/contracts';
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
-import {claimCommand, completeCommand} from '../../platform/idempotency/repository.js';
+import {
+  claimCommand,
+  completeCommand,
+} from '../../platform/idempotency/repository.js';
 import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 

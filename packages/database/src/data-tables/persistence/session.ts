@@ -15,7 +15,10 @@ import {
 } from '../../tenant-access/workspaces/authority.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
 
-import {claimCommand, completeCommand} from '../../platform/idempotency/repository.js';
+import {
+  claimCommand,
+  completeCommand,
+} from '../../platform/idempotency/repository.js';
 import type { DataTableScope } from '../contract.js';
 
 import { translateTableConstraint } from '../rows.repository.js';

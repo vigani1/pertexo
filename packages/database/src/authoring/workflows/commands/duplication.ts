@@ -15,7 +15,10 @@ import {
 } from '@pertexo/workflow-model/server';
 
 import { generatePersistedId } from '../../../platform/persisted-id.js';
-import {claimCommand, completeCommand} from '../../../platform/idempotency/repository.js';
+import {
+  claimCommand,
+  completeCommand,
+} from '../../../platform/idempotency/repository.js';
 import type {
   DuplicateWorkflowInput,
   WorkflowAuthoringDatabase,
