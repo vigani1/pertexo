@@ -7,8 +7,6 @@ import type {
   UseInfiniteQueryResult,
 } from '@tanstack/react-query';
 import { LoadMore } from '@/components/patterns/lists/load-more';
-import { StaleLine } from '@/components/patterns/states/stale-line';
-import { SkeletonRows } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ConnectionList } from './connection-list';
 
@@ -65,16 +63,7 @@ export function ConnectionCollection({
           </ToggleGroup>
         ) : null}
       </div>
-      {query.isError && items.length > 0 && !query.isFetchNextPageError ? (
-        <StaleLine
-          updatedAt={query.dataUpdatedAt}
-          retrying={query.isRefetching}
-          onRetry={() => void query.refetch()}
-        />
-      ) : null}
-      {query.isPending ? (
-        <SkeletonRows label="Loading connections" />
-      ) : visible.length === 0 ? (
+      {visible.length === 0 ? (
         <p className="border-t border-border py-8 text-sm text-muted-foreground">
           {view === 'revoked'
             ? 'No revoked connections.'

@@ -1,7 +1,7 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { LoadMore } from '@/components/patterns/lists/load-more';
-import { ReadFailure } from '@/components/patterns/states/read-failure';
+import { QueryView } from '@/components/patterns/states/query-view';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import { describeStep } from '@/features/catalog/presentation.public';
 import type { ConnectionMutationScope } from '../../data/connections.mutations';
@@ -27,7 +27,6 @@ export function ConnectionUsage({
     ),
     enabled: canRead,
   });
-  const items = usage.data?.pages.flatMap((page) => page.items) ?? [];
   return (
     <section aria-label="Used by" className="flex flex-col gap-3">
       <div>
@@ -43,48 +42,48 @@ export function ConnectionUsage({
         </p>
       ) : (
         <>
-          {usage.isError && !usage.isFetchNextPageError ? (
-            <ReadFailure
-              resource="Connection usage"
-              error={usage.error}
-              showing={items.length > 0}
-              updatedAt={usage.dataUpdatedAt}
-              retrying={usage.isRefetching}
-              onRetry={() => void usage.refetch()}
-            />
-          ) : null}
-          {usage.isPending ? (
-            <SkeletonRows label="Loading connection usage" />
-          ) : null}
-          {usage.isSuccess && items.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No retained published versions use this connection.
-            </p>
-          ) : null}
-          <ul className="flex flex-col gap-3">
-            {usedByWorkflow(items).map((workflow) => (
-              <li key={workflow.workflowId} className="min-w-0 text-sm">
-                <Link
-                  to="/w/$workspaceId/workflows/$workflowId/settings"
-                  params={{
-                    workspaceId: scope.workspaceId,
-                    workflowId: workflow.workflowId,
-                  }}
-                  className="block truncate rounded-sm text-action underline-offset-4 hover:underline focus-ring"
-                >
-                  {workflow.workflowName}
-                </Link>
-                <p className="text-xs text-muted-foreground">
-                  {describeVersions(workflow)}
-                </p>
-                <p className="text-xs text-subtle-foreground">
-                  {workflow.operationKeys
-                    .map((key) => describeStep(key).name)
-                    .join(', ')}
-                </p>
-              </li>
-            ))}
-          </ul>
+          <QueryView
+            query={usage}
+            resource="Connection usage"
+            loading={<SkeletonRows label="Loading connection usage" />}
+            isEmpty={(data) =>
+              data.pages.every((page) => page.items.length === 0)
+            }
+            empty={
+              <p className="text-sm text-muted-foreground">
+                No retained published versions use this connection.
+              </p>
+            }
+          >
+            {(data) => (
+              <ul className="flex flex-col gap-3">
+                {usedByWorkflow(data.pages.flatMap((page) => page.items)).map(
+                  (workflow) => (
+                    <li key={workflow.workflowId} className="min-w-0 text-sm">
+                      <Link
+                        to="/w/$workspaceId/workflows/$workflowId/settings"
+                        params={{
+                          workspaceId: scope.workspaceId,
+                          workflowId: workflow.workflowId,
+                        }}
+                        className="block truncate rounded-sm text-action underline-offset-4 hover:underline focus-ring"
+                      >
+                        {workflow.workflowName}
+                      </Link>
+                      <p className="text-xs text-muted-foreground">
+                        {describeVersions(workflow)}
+                      </p>
+                      <p className="text-xs text-subtle-foreground">
+                        {workflow.operationKeys
+                          .map((key) => describeStep(key).name)
+                          .join(', ')}
+                      </p>
+                    </li>
+                  ),
+                )}
+              </ul>
+            )}
+          </QueryView>
           <LoadMore
             subject="published versions"
             hasNextPage={usage.hasNextPage}

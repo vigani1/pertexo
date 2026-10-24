@@ -1,3 +1,8 @@
+import {
+  FailedReadState,
+  QueryView,
+} from '@/components/patterns/states/query-view';
+import { SkeletonRows } from '@/components/ui/skeleton';
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
@@ -15,16 +20,10 @@ import {
 import { HowItWorks } from '@/components/patterns/guidance/how-it-works';
 import { UnavailablePage } from '@/components/patterns/states/unavailable-page';
 import { Button } from '@/components/ui/button';
-import {
-  Empty,
-  EmptyActions,
-  EmptyDescription,
-  EmptyTitle,
-} from '@/components/ui/empty';
+import { Empty, EmptyDescription, EmptyTitle } from '@/components/ui/empty';
 import { Status } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
-import { readFailureReason } from '@/lib/api/error-copy';
 import { AddConnectionSheet } from '../components/add-connection/sheet';
 import { ConnectionCollection } from '../components/connection-collection';
 import { ConnectionDetailSheet } from '../components/detail/sheet';
@@ -102,37 +101,34 @@ function ConnectionsBody({
     canManage: boolean;
   }
 >) {
-  if (connections.isError && items.length === 0)
-    return (
-      <Empty>
-        <EmptyTitle>Connections couldn’t be loaded</EmptyTitle>
-        <EmptyDescription>
-          {readFailureReason(connections.error)}
-        </EmptyDescription>
-        <EmptyActions>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => void connections.refetch()}
-          >
-            Try again
-          </Button>
-        </EmptyActions>
-      </Empty>
-    );
-  if (connections.isSuccess && items.length === 0)
-    return (
-      <Empty>
-        <EmptyTitle>Nothing connected yet</EmptyTitle>
-        <EmptyDescription>
-          {canManage
-            ? 'Pick a service above. Workflows can use a connection as soon as it’s saved.'
-            : 'Admins and owners can connect Slack, HTTPS APIs and email here.'}
-        </EmptyDescription>
-      </Empty>
-    );
   return (
-    <ConnectionCollection query={connections} items={items} {...collection} />
+    <QueryView
+      query={connections}
+      resource="Connections"
+      loading={<SkeletonRows label="Loading connections" />}
+      error={(failed) => (
+        <FailedReadState title="Connections couldn’t be loaded" {...failed} />
+      )}
+      isEmpty={() => items.length === 0}
+      empty={
+        <Empty>
+          <EmptyTitle>Nothing connected yet</EmptyTitle>
+          <EmptyDescription>
+            {canManage
+              ? 'Pick a service above. Workflows can use a connection as soon as it’s saved.'
+              : 'Admins and owners can connect Slack, HTTPS APIs and email here.'}
+          </EmptyDescription>
+        </Empty>
+      }
+    >
+      {() => (
+        <ConnectionCollection
+          query={connections}
+          items={items}
+          {...collection}
+        />
+      )}
+    </QueryView>
   );
 }
 

@@ -9,17 +9,13 @@ import type {
   UseInfiniteQueryResult,
 } from '@tanstack/react-query';
 import { LoadMore } from '@/components/patterns/lists/load-more';
-import { StaleLine } from '@/components/patterns/states/stale-line';
-import { Button } from '@/components/ui/button';
 import {
-  Empty,
-  EmptyActions,
-  EmptyDescription,
-  EmptyTitle,
-} from '@/components/ui/empty';
+  FailedReadState,
+  QueryView,
+} from '@/components/patterns/states/query-view';
+import { Empty, EmptyDescription, EmptyTitle } from '@/components/ui/empty';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import type { ApiClient } from '@/lib/api/client';
-import { readFailureReason } from '@/lib/api/error-copy';
 import { MemberManagement } from './management';
 
 type MembersQuery = UseInfiniteQueryResult<
@@ -42,50 +38,36 @@ export function MembersPanel({
   members: readonly WorkspaceMember[];
   onAccessLost: (loss: 'authentication' | 'permission') => void;
 }>) {
-  if (query.isPending)
-    return <SkeletonRows label="Loading members" mark="avatar" />;
-  if (query.isError && members.length === 0)
-    return (
-      <Empty>
-        <EmptyTitle>Members couldn’t be loaded</EmptyTitle>
-        <EmptyDescription>{readFailureReason(query.error)}</EmptyDescription>
-        <EmptyActions>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => void query.refetch()}
-          >
-            Try again
-          </Button>
-        </EmptyActions>
-      </Empty>
-    );
-  if (members.length === 0)
-    return (
-      <Empty>
-        <EmptyTitle>No members to show</EmptyTitle>
-        <EmptyDescription>
-          Nobody else can see this workspace yet. Owners and admins can invite
-          people from here.
-        </EmptyDescription>
-      </Empty>
-    );
   return (
     <div className="flex flex-col gap-3">
-      {query.isError && !query.isFetchNextPageError ? (
-        <StaleLine
-          updatedAt={query.dataUpdatedAt}
-          retrying={query.isRefetching}
-          onRetry={() => void query.refetch()}
-        />
-      ) : null}
-      <MemberManagement
-        apiClient={apiClient}
-        user={user}
-        workspace={workspace}
-        members={members}
-        onAccessLost={onAccessLost}
-      />
+      <QueryView
+        query={query}
+        resource="Members"
+        loading={<SkeletonRows label="Loading members" mark="avatar" />}
+        error={(failed) => (
+          <FailedReadState title="Members couldn’t be loaded" {...failed} />
+        )}
+        isEmpty={() => members.length === 0}
+        empty={
+          <Empty>
+            <EmptyTitle>No members to show</EmptyTitle>
+            <EmptyDescription>
+              Nobody else can see this workspace yet. Owners and admins can
+              invite people from here.
+            </EmptyDescription>
+          </Empty>
+        }
+      >
+        {() => (
+          <MemberManagement
+            apiClient={apiClient}
+            user={user}
+            workspace={workspace}
+            members={members}
+            onAccessLost={onAccessLost}
+          />
+        )}
+      </QueryView>
       <LoadMore
         subject="members"
         hasNextPage={query.hasNextPage}

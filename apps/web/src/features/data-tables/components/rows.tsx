@@ -1,3 +1,4 @@
+import { QueryView } from '@/components/patterns/states/query-view';
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { DataTableDefinition } from '@pertexo/contracts';
@@ -23,7 +24,6 @@ import { LoadingOrb } from '@/components/ui/loading-orb';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
 import { cn } from '@/lib/utils';
-import { Notice } from '@/components/ui/notice';
 import { useRetainedCommand } from '@/lib/api/commands/use-retained';
 import { ExportTableRows } from './transfer/export';
 import {
@@ -118,11 +118,7 @@ export function DataTableRows({
         </div>
       </div>
       <TableCommandFeedback command={command} />
-      {rows.isError ? (
-        <Notice tone="warning">
-          Rows could not be loaded. Narrow the filter or refresh to try again.
-        </Notice>
-      ) : null}
+      <QueryView query={rows} resource="Rows" loading={null} />
       <div className="min-w-0 overflow-hidden rounded-xl border border-surface-ink/8 bg-surface-ink/[0.015]">
         {/* Relative keeps hidden labels inside the scroller, not past the page. */}
         <div className="relative max-w-full overflow-x-auto">

@@ -1,3 +1,4 @@
+import { QueryView } from '@/components/patterns/states/query-view';
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
@@ -286,11 +287,31 @@ export function FailureNotificationDestinationsPage({
         className="border-t border-border pt-8"
         steps={HOW_ALERTS_WORK}
       />
-      {canManage && connections.isError ? (
-        <Notice role="alert" tone="warning">
-          Connections couldn’t be loaded, so destinations can’t be added or
-          edited right now. Alerts keep being sent.
-        </Notice>
+      {canManage ? (
+        <QueryView
+          query={connections}
+          resource="Connections"
+          loading={null}
+          error={({ retrying, retry }) => (
+            <Notice
+              tone="warning"
+              action={
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={retrying}
+                  onClick={retry}
+                >
+                  Retry
+                </Button>
+              }
+            >
+              Connections couldn’t be loaded, so destinations can’t be added or
+              edited right now. Alerts keep being sent.
+            </Notice>
+          )}
+        />
       ) : null}
 
       <DestinationSheet

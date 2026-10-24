@@ -15,7 +15,6 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty';
 import { Skeleton, SkeletonThread } from '@/components/ui/skeleton';
-import { StatusGlyph } from '@/components/ui/status';
 
 /** Spooling rows in the list's own shape while the first page loads. */
 export function RunListSkeleton() {
@@ -33,32 +32,6 @@ export function RunListSkeleton() {
         </div>
       ))}
     </div>
-  );
-}
-
-export function RunsLoadError({
-  description,
-  retrying,
-  onRetry,
-}: Readonly<{ description: string; retrying: boolean; onRetry: () => void }>) {
-  return (
-    <Empty>
-      <EmptyMedia>
-        <StatusGlyph tone="failure" className="size-6" />
-      </EmptyMedia>
-      <EmptyTitle>Runs couldn’t be loaded</EmptyTitle>
-      <EmptyDescription>{description}</EmptyDescription>
-      <EmptyActions>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={retrying}
-          onClick={onRetry}
-        >
-          {retrying ? 'Trying again…' : 'Try again'}
-        </Button>
-      </EmptyActions>
-    </Empty>
   );
 }
 

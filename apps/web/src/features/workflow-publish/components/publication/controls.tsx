@@ -9,8 +9,6 @@ import type {
   WorkflowSummary,
 } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
-import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
 import { SuitePublishNotice } from '../test-suites/publish-notice';
 import { PublishButton } from './publish-button';
 import { PublishDialog } from './publish-dialog';

@@ -8,17 +8,13 @@ import type {
 } from '@tanstack/react-query';
 import { useState } from 'react';
 import { LoadMore } from '@/components/patterns/lists/load-more';
-import { StaleLine } from '@/components/patterns/states/stale-line';
-import { Button } from '@/components/ui/button';
-import { SkeletonRows } from '@/components/ui/skeleton';
 import {
-  Empty,
-  EmptyActions,
-  EmptyDescription,
-  EmptyTitle,
-} from '@/components/ui/empty';
+  FailedReadState,
+  QueryView,
+} from '@/components/patterns/states/query-view';
+import { SkeletonRows } from '@/components/ui/skeleton';
+import { Empty, EmptyDescription, EmptyTitle } from '@/components/ui/empty';
 import { useNotifications } from '@/components/ui/use-notifications';
-import { readFailureReason } from '@/lib/api/error-copy';
 import type { InvitationCommand } from '../../data/mutations/use-invitation-command';
 import {
   InvitationActionDialog,
@@ -64,56 +60,41 @@ export function InvitationsPanel({
     setSelected(undefined);
   }
 
-  if (query.isPending)
-    return <SkeletonRows label="Loading invitations" mark="avatar" />;
-  if (query.isError && invitations.length === 0)
-    return (
-      <Empty>
-        <EmptyTitle>Invitations couldn’t be loaded</EmptyTitle>
-        <EmptyDescription>{readFailureReason(query.error)}</EmptyDescription>
-        <EmptyActions>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => void query.refetch()}
-          >
-            Try again
-          </Button>
-        </EmptyActions>
-      </Empty>
-    );
-
   return (
     <div className="flex flex-col gap-3">
-      {query.isError && !query.isFetchNextPageError ? (
-        <StaleLine
-          updatedAt={query.dataUpdatedAt}
-          retrying={query.isRefetching}
-          onRetry={() => void query.refetch()}
-        />
-      ) : null}
-      {invitations.length === 0 ? (
-        <Empty>
-          <EmptyTitle>No invitations yet</EmptyTitle>
-          {/* Invite people sits in the page header already. */}
-          <EmptyDescription>
-            {query.data?.pages[0]?.issuanceAvailable === false
-              ? 'Invitations will appear here when this server is configured to issue them.'
-              : 'Invite people by email and pick the role they start with.'}
-          </EmptyDescription>
-        </Empty>
-      ) : (
-        <InvitationList
-          invitations={invitations}
-          disabled={command.locked}
-          issuanceAvailable={query.data?.pages[0]?.issuanceAvailable === true}
-          onAction={(invitation, action) => {
-            if (command.locked) return;
-            setFailure(undefined);
-            setSelected({ invitation, action });
-          }}
-        />
-      )}
+      <QueryView
+        query={query}
+        resource="Invitations"
+        loading={<SkeletonRows label="Loading invitations" mark="avatar" />}
+        error={(failed) => (
+          <FailedReadState title="Invitations couldn’t be loaded" {...failed} />
+        )}
+      >
+        {(data) =>
+          invitations.length === 0 ? (
+            <Empty>
+              <EmptyTitle>No invitations yet</EmptyTitle>
+              {/* Invite people sits in the page header already. */}
+              <EmptyDescription>
+                {data.pages[0]?.issuanceAvailable === false
+                  ? 'Invitations will appear here when this server is configured to issue them.'
+                  : 'Invite people by email and pick the role they start with.'}
+              </EmptyDescription>
+            </Empty>
+          ) : (
+            <InvitationList
+              invitations={invitations}
+              disabled={command.locked}
+              issuanceAvailable={data.pages[0]?.issuanceAvailable === true}
+              onAction={(invitation, action) => {
+                if (command.locked) return;
+                setFailure(undefined);
+                setSelected({ invitation, action });
+              }}
+            />
+          )
+        }
+      </QueryView>
       <LoadMore
         subject="invitations"
         label="Load more invitations"

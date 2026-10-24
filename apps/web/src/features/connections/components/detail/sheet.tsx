@@ -21,7 +21,7 @@ import { Skeleton, SkeletonLines } from '@/components/ui/skeleton';
 import { Status } from '@/components/ui/status';
 import { describeReadError, isNotFound } from '@/lib/api/error-copy';
 import { cn } from '@/lib/utils';
-import { ReadFailure } from '@/components/patterns/states/read-failure';
+import { QueryView } from '@/components/patterns/states/query-view';
 import { connectionAccessLost } from '../../model/connection-access';
 import type { ConnectionMutationScope } from '../../data/connections.mutations';
 import { connectionDetailQueryOptions } from '../../data/connections.queries';
@@ -43,43 +43,48 @@ import { ConnectionUsage } from './connection-usage';
 
 type Mode = 'overview' | 'test' | 'replace' | 'sharing';
 
-function ConnectionReadState({
+/** The loaded header's shape, so the connection lands without a jump. */
+function ConnectionLoading() {
+  return (
+    <>
+      <SheetHeader className="flex-row items-center gap-3">
+        <Skeleton className="size-10 shrink-0 rounded-lg" />
+        <div className="min-w-0">
+          <SheetTitle>Connection</SheetTitle>
+          <Skeleton className="my-[3px] h-3.5 w-32" />
+        </div>
+      </SheetHeader>
+      <SheetBody className="flex flex-col gap-3">
+        <SkeletonLines label="Loading this connection" lines={4} />
+      </SheetBody>
+    </>
+  );
+}
+
+function ConnectionUnreadable({
   error,
-  failed,
   retrying,
   onRetry,
 }: Readonly<{
   error: unknown;
-  failed: boolean;
-  retrying: boolean;
-  onRetry: () => void;
+  retrying?: boolean;
+  onRetry?: () => void;
 }>) {
-  const missing = failed && isNotFound(error);
+  const missing = isNotFound(error);
   return (
     <>
-      {failed ? (
-        <SheetHeader>
-          <SheetTitle>
-            {missing ? 'Connection not found' : 'Connection'}
-          </SheetTitle>
-          <SheetDescription>
-            {missing
-              ? 'This connection doesn’t exist, or you don’t have access to it.'
-              : describeReadError(error, 'This connection')}
-          </SheetDescription>
-        </SheetHeader>
-      ) : (
-        // The loaded header's shape, so the connection lands without a jump.
-        <SheetHeader className="flex-row items-center gap-3">
-          <Skeleton className="size-10 shrink-0 rounded-lg" />
-          <div className="min-w-0">
-            <SheetTitle>Connection</SheetTitle>
-            <Skeleton className="my-[3px] h-3.5 w-32" />
-          </div>
-        </SheetHeader>
-      )}
-      <SheetBody className="flex flex-col gap-3">
-        {failed ? (
+      <SheetHeader>
+        <SheetTitle>
+          {missing ? 'Connection not found' : 'Connection'}
+        </SheetTitle>
+        <SheetDescription>
+          {missing
+            ? 'This connection doesn’t exist, or you don’t have access to it.'
+            : describeReadError(error, 'This connection')}
+        </SheetDescription>
+      </SheetHeader>
+      {onRetry === undefined ? null : (
+        <SheetBody className="flex flex-col gap-3">
           <Button
             type="button"
             variant="outline"
@@ -89,10 +94,8 @@ function ConnectionReadState({
           >
             Retry
           </Button>
-        ) : (
-          <SkeletonLines label="Loading this connection" lines={4} />
-        )}
-      </SheetBody>
+        </SheetBody>
+      )}
     </>
   );
 }
@@ -320,12 +323,6 @@ function ConnectionDetailSession({
     enabled: connectionId !== undefined,
     ...(placeholder === undefined ? {} : { placeholderData: placeholder }),
   });
-  const connection =
-    connectionId === undefined ||
-    (detail.isError && connectionAccessLost(detail.error))
-      ? undefined
-      : detail.data;
-
   return (
     <Sheet
       open={connectionId !== undefined}
@@ -334,52 +331,55 @@ function ConnectionDetailSession({
       }}
     >
       <SheetContent className="w-[min(28rem,calc(100vw-1.5rem))]">
-        {connection === undefined ? (
-          <ConnectionReadState
-            error={detail.error}
-            failed={detail.isError}
-            retrying={detail.isFetching}
-            onRetry={() => void detail.refetch()}
-          />
-        ) : (
-          <>
-            <SheetHeader className="flex-row items-center gap-3">
-              <ProviderTile provider={connection.providerKey} size="lg" />
-              <div className="min-w-0">
-                <SheetTitle className="truncate">{connection.name}</SheetTitle>
-                <SheetDescription>
-                  {describeConnectionKind(connection.providerKey)}
-                </SheetDescription>
-                {connection.accessMode === 'restricted' ? (
-                  <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <LockIcon aria-hidden="true" className="size-3" />
-                    Only chosen people can use it
-                  </p>
-                ) : null}
-              </div>
-            </SheetHeader>
-            <DetailBody
-              key={connection.id}
-              scope={scope}
-              connection={connection}
-              permissions={permissions}
-              sharing={sharing}
-              mode={mode}
-              onMode={setMode}
-            />
-            {detail.isError ? (
-              <SheetBody>
-                <ReadFailure
-                  resource="This connection"
-                  error={detail.error}
-                  showing={true}
-                  updatedAt={detail.dataUpdatedAt}
-                  retrying={detail.isRefetching}
-                  onRetry={() => void detail.refetch()}
+        {connectionId === undefined ? null : (
+          <QueryView
+            query={detail}
+            resource="This connection"
+            loading={<ConnectionLoading />}
+            failure={(error) =>
+              connectionAccessLost(error) ? (
+                <ConnectionUnreadable error={error} />
+              ) : undefined
+            }
+            error={({ error, retrying, retry }) => (
+              <ConnectionUnreadable
+                error={error}
+                retrying={retrying}
+                onRetry={retry}
+              />
+            )}
+          >
+            {(connection) => (
+              <>
+                <SheetHeader className="flex-row items-center gap-3">
+                  <ProviderTile provider={connection.providerKey} size="lg" />
+                  <div className="min-w-0">
+                    <SheetTitle className="truncate">
+                      {connection.name}
+                    </SheetTitle>
+                    <SheetDescription>
+                      {describeConnectionKind(connection.providerKey)}
+                    </SheetDescription>
+                    {connection.accessMode === 'restricted' ? (
+                      <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <LockIcon aria-hidden="true" className="size-3" />
+                        Only chosen people can use it
+                      </p>
+                    ) : null}
+                  </div>
+                </SheetHeader>
+                <DetailBody
+                  key={connection.id}
+                  scope={scope}
+                  connection={connection}
+                  permissions={permissions}
+                  sharing={sharing}
+                  mode={mode}
+                  onMode={setMode}
                 />
-              </SheetBody>
-            ) : null}
-          </>
+              </>
+            )}
+          </QueryView>
         )}
       </SheetContent>
     </Sheet>
