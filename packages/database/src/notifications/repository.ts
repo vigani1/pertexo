@@ -9,7 +9,6 @@ import type { DatabaseRuntime } from '../platform/pool/runtime.js';
 import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 
-import { z } from 'zod';
 import { FailureNotificationContextSchema } from '@pertexo/workflow-model';
 
 import type { DatabaseConfig } from '../config.js';
@@ -277,9 +276,10 @@ function prepareNotificationClaim(row: FailureIntentRow) {
   if (checksum !== row.context_checksum)
     throw new FailureNotificationStateError('Intent checksum mismatch');
   const attemptNumber = row.delivery_attempts + 1;
-  const connectionSecretVersionId = identitySchema.parse(
-    row.connection_secret_version_id,
-  );
+  const connectionSecretVersionId = row.connection_secret_version_id;
+  // Missing persisted evidence must retain the worker's retry behavior.
+  if (connectionSecretVersionId === null)
+    throw new Error('Intent credential pin is missing');
 
   return { context, attemptNumber, connectionSecretVersionId };
 }
@@ -308,10 +308,7 @@ function readyNotificationClaim(
     ...(row.delivery_binding === null
       ? {}
       : {
-          deliveryBinding: z
-            .string()
-            .regex(/^email:sha256:[0-9a-f]{64}$/u)
-            .parse(row.delivery_binding),
+          deliveryBinding: row.delivery_binding,
         }),
   });
 }
