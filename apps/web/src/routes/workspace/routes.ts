@@ -173,7 +173,7 @@ export const homeRoute = createRoute({
   head: ({ match }) => ({
     meta: [{ title: pageTitle(match.context.workspace.name) }],
   }),
-  component: lazyRoute(() => import('./home'), 'HomeRoute'),
+  component: lazyRoute(() => import('./home/page'), 'HomeRoute'),
 });
 
 export const workflowsRoute = createRoute({
