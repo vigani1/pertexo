@@ -37,12 +37,7 @@ export function HttpPaginationSetup({
     [nested],
   );
   const value = paginationValue(config);
-  const mode =
-    typeof value?.mode === 'string'
-      ? value.mode
-      : config.pagination === undefined
-        ? 'off'
-        : 'custom';
+  const mode = readMode(value, config);
   const label =
     paginationModes.find((choice) => choice.value === mode)?.label ??
     'Check setup';
@@ -212,4 +207,12 @@ function PaginationFields({
       </Field>
     </>
   );
+}
+
+function readMode(
+  value: ReturnType<typeof paginationValue>,
+  config: NodeConfig,
+): string {
+  if (typeof value?.mode === 'string') return value.mode;
+  return config.pagination === undefined ? 'off' : 'custom';
 }
