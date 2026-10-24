@@ -1,4 +1,4 @@
-import { createWorkspaceVariablesStore } from '../../../../src/variables/store.js';
+import { createWorkspaceVariablesStore } from '../../../../src/variables/settings.repository.js';
 import { randomUUID } from 'node:crypto';
 import { it, expect } from 'vitest';
 

@@ -1,4 +1,4 @@
-export { createWorkspaceVariablesStore } from './store.js';
+export { createWorkspaceVariablesStore } from './settings.repository.js';
 export {
   WorkspaceVariablesConflictError,
   WorkspaceVariableUsageChangedError,

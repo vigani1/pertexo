@@ -10,7 +10,7 @@ import {
 import { collectArtifactReferences } from '../../../../artifacts/references.js';
 
 import { admitWorkflowAuthoring } from '../../../workflows/admission.js';
-import { lockWorkspaceVariableNames } from '../../../../variables/read.js';
+import { lockWorkspaceVariableNames } from '../../../../variables/settings.queries.js';
 import type { PromotionContext } from '../../contract.js';
 import { mapPromotionNodes } from '../graph.js';
 import type { PromotionSource } from '../source.js';

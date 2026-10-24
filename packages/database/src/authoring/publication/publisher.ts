@@ -2,7 +2,7 @@ import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindin
 import { recordPromotedPublication } from '../promotion/provenance.js';
 import { PublicationReviewError } from '../reviews/contract.js';
 import { dataTableReferenceIssues } from '../../data-tables/columns/references.js';
-import { lockWorkspaceVariableNames } from '../../variables/read.js';
+import { lockWorkspaceVariableNames } from '../../variables/settings.queries.js';
 
 import { validateApprovalAudience } from './pending-tasks.js';
 import { lockArtifactReferences } from '../../artifacts/references.js';

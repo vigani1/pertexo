@@ -10,7 +10,7 @@ import {
   RUN_DETAILS_RETENTION_SQL,
   RUN_SUMMARY_RETENTION_SQL,
 } from '../runs/data-policy.js';
-import { VARIABLE_SET_RETENTION_RULE } from '../variables/retention.js';
+import { VARIABLE_SET_RETENTION_RULE } from '../variables/retention.repository.js';
 import { API_TOKEN_RETENTION_RULE } from './identity/api-tokens.js';
 import { reapInvitationReplacementClaims } from './invitation-claims.js';
 import {

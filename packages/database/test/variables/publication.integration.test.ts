@@ -17,7 +17,7 @@ import {
   saveCurrentDraft,
   currentRepresentationTag,
 } from '../support/workflow-authoring.js';
-import { createWorkspaceVariablesStore } from '../../src/variables/store.js';
+import { createWorkspaceVariablesStore } from '../../src/variables/settings.repository.js';
 let variables: ReturnType<typeof createWorkspaceVariablesStore>;
 let authoring: ReturnType<typeof createWorkflowAuthoringDatabase>;
 beforeAll(() => {

@@ -1,4 +1,4 @@
-import { readVariableSetValues } from '../../../variables/values.js';
+import { readVariableSetValues } from '../../../variables/values.queries.js';
 import type { PoolClient } from 'pg';
 import type { RunAdvanceState } from '../contract.js';
 import { parseStoredExecutionValue } from '../../../platform/stored-execution-value.js';

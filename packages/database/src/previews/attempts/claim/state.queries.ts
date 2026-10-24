@@ -1,4 +1,4 @@
-import { variableSetValuesSql } from '../../../variables/values.js';
+import { variableSetValuesSql } from '../../../variables/values.queries.js';
 import { workspaceVariableValuesSchema } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
