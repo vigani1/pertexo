@@ -44,7 +44,88 @@ export function TaskContextEditor(props: Props) {
     );
   return <ContextFields {...props} source={source} initialRows={rows} />;
 }
-function ContextFields({
+type ContextFieldsProps = Props &
+  Readonly<{
+    source: ValueSource | undefined;
+    initialRows: readonly InputMappingDraftRow[];
+  }>;
+
+function ContextFields(props: ContextFieldsProps) {
+  const model = useContextMappings(props);
+  return (
+    <fieldset
+      className="flex min-w-0 flex-col gap-3"
+      onBlurCapture={model.draft.blur}
+      disabled={!model.form.editable}
+    >
+      <legend className="mb-3 font-medium">
+        {model.group === 'details'
+          ? 'Details for the person responding'
+          : 'Prefill fields'}
+      </legend>
+      {model.draft.text.map((row) => {
+        return (
+          <ContextFieldRow
+            key={row.id}
+            row={row}
+            group={model.group}
+            fields={model.fields}
+            graph={model.graph}
+            form={model.form}
+            definitions={model.definitions}
+            variableScope={model.variableScope}
+            onChange={model.replace}
+            onRemove={() => {
+              model.draft.change(
+                model.draft.text.filter((item) => item.id !== row.id),
+              );
+            }}
+          />
+        );
+      })}
+      <Button
+        type="button"
+        variant="outline"
+        className="self-start"
+        disabled={
+          !model.form.editable ||
+          model.draft.text.length >= 20 ||
+          (model.group === 'prefill' && model.available.length === 0)
+        }
+        onClick={() => {
+          model.draft.change([
+            ...model.draft.text,
+            {
+              id: crypto.randomUUID(),
+              destinationKey:
+                model.group === 'prefill'
+                  ? (model.available[0]?.name ?? '')
+                  : '',
+              kind: 'literal',
+              literalJson:
+                model.group === 'prefill'
+                  ? defaultPrefill(model.available[0])
+                  : '""',
+            },
+          ]);
+        }}
+      >
+        Add {model.group === 'details' ? 'detail' : 'prefill'}
+      </Button>
+      <p className="text-xs text-muted-foreground">
+        Values are saved once when the task opens.
+        {model.group === 'prefill'
+          ? ' The person can edit them before responding.'
+          : ' Up to 20 details within 8 KB; each list has up to 20 plain values.'}
+      </p>
+      {model.draft.error === undefined ? null : (
+        <Notice tone="destructive">{model.draft.error}</Notice>
+      )}
+    </fieldset>
+  );
+}
+
+function useContextMappings({
   node,
   graph,
   form,
@@ -54,11 +135,7 @@ function ContextFields({
   initialRows,
   definitions,
   variableScope,
-}: Props &
-  Readonly<{
-    source: ValueSource | undefined;
-    initialRows: readonly InputMappingDraftRow[];
-  }>) {
+}: ContextFieldsProps) {
   const draft = useInspectorDraftField<
     ValueSource | undefined,
     readonly InputMappingDraftRow[]
@@ -143,71 +220,18 @@ function ContextFields({
       draft.text.map((current) => (current.id === row.id ? row : current)),
     );
   }
-  return (
-    <fieldset
-      className="flex min-w-0 flex-col gap-3"
-      onBlurCapture={draft.blur}
-      disabled={!form.editable}
-    >
-      <legend className="mb-3 font-medium">
-        {group === 'details'
-          ? 'Details for the person responding'
-          : 'Prefill fields'}
-      </legend>
-      {draft.text.map((row) => {
-        return (
-          <ContextFieldRow
-            key={row.id}
-            row={row}
-            group={group}
-            fields={fields}
-            graph={graph}
-            form={form}
-            definitions={definitions}
-            variableScope={variableScope}
-            onChange={replace}
-            onRemove={() => {
-              draft.change(draft.text.filter((item) => item.id !== row.id));
-            }}
-          />
-        );
-      })}
-      <Button
-        type="button"
-        variant="outline"
-        className="self-start"
-        disabled={
-          !form.editable ||
-          draft.text.length >= 20 ||
-          (group === 'prefill' && available.length === 0)
-        }
-        onClick={() => {
-          draft.change([
-            ...draft.text,
-            {
-              id: crypto.randomUUID(),
-              destinationKey:
-                group === 'prefill' ? (available[0]?.name ?? '') : '',
-              kind: 'literal',
-              literalJson:
-                group === 'prefill' ? defaultPrefill(available[0]) : '""',
-            },
-          ]);
-        }}
-      >
-        Add {group === 'details' ? 'detail' : 'prefill'}
-      </Button>
-      <p className="text-xs text-muted-foreground">
-        Values are saved once when the task opens.
-        {group === 'prefill'
-          ? ' The person can edit them before responding.'
-          : ' Up to 20 details within 8 KB; each list has up to 20 plain values.'}
-      </p>
-      {draft.error === undefined ? null : (
-        <Notice tone="destructive">{draft.error}</Notice>
-      )}
-    </fieldset>
-  );
+
+  return {
+    draft,
+    form,
+    group,
+    fields,
+    graph,
+    definitions,
+    variableScope,
+    replace,
+    available,
+  } as const;
 }
 
 function defaultPrefill(field: FormField | undefined): string {

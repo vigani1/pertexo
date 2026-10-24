@@ -11,17 +11,140 @@ import type { FederationScope } from '../../data/settings.api';
 import { useFederationCommand } from '../../data/use-command';
 import { CommandFeedback } from '../command-feedback';
 type Organization = NonNullable<FederationSettings['organization']>;
-export function DomainEntry({
-  scope,
-  organization,
-  domain,
-  editable,
-}: Readonly<{
+type DomainEntryProps = Readonly<{
   scope: FederationScope;
   organization: Organization;
   domain: Organization['domains'][number];
   editable: boolean;
-}>) {
+}>;
+
+export function DomainEntry(props: DomainEntryProps) {
+  const model = useDomainCommands(props);
+  return (
+    <li className="min-w-0 space-y-4 border-b border-border py-5 first:pt-0">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="min-w-0 break-all text-sm font-semibold">
+          {model.domain.domain}
+        </h3>
+        <Status tone={model.status.tone}>{model.status.label}</Status>
+      </div>
+      <DomainChallenge challenge={model.domain.challenge} />
+      <div className="flex flex-wrap gap-2">
+        {model.domain.verifiedAt === null ? (
+          <>
+            <ProgressButton
+              type="button"
+              variant="outline"
+              pending={model.command.pending}
+              pendingLabel="Checking DNS…"
+              disabled={model.locked}
+              onClick={() =>
+                void model.command.send({
+                  kind: 'verifyDomain',
+                  domainId: model.domain.id,
+                  input: { expectedRevision: model.organization.revision },
+                })
+              }
+            >
+              Verify DNS
+            </ProgressButton>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={model.locked}
+              onClick={() =>
+                void model.command.send({
+                  kind: 'renewDomain',
+                  domainId: model.domain.id,
+                  input: { expectedRevision: model.organization.revision },
+                })
+              }
+            >
+              New challenge
+            </Button>
+          </>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            disabled={
+              model.locked || (!model.domain.requireSso && !model.ready)
+            }
+            onClick={() => {
+              model.openConfirmation('enforce');
+            }}
+          >
+            {model.domain.requireSso ? 'Make SSO optional' : 'Require SSO'}
+          </Button>
+        )}
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={model.locked || model.domain.requireSso}
+          onClick={() => {
+            model.openConfirmation('remove');
+          }}
+        >
+          Remove domain
+        </Button>
+      </div>
+      {model.domain.verifiedAt !== null &&
+      !model.domain.requireSso &&
+      !model.ready ? (
+        <p className="text-xs text-muted-foreground">
+          Enable a provider and complete a test sign-in for this domain before
+          requiring SSO.
+        </p>
+      ) : null}
+      {!model.confirmation.open ? (
+        <CommandFeedback command={model.command} />
+      ) : null}
+      <ConfirmDialog
+        open={model.confirmation.open}
+        onOpenChange={(open) => {
+          if (!open && !model.command.pending) model.closeConfirmation();
+        }}
+        title={model.confirmationCopy.title}
+        description={model.confirmationCopy.description}
+        confirmLabel={model.confirmationCopy.confirmLabel}
+        pending={model.command.pending}
+        locked={model.command.pending}
+        confirmDisabled={!model.editable || model.command.expired}
+        error={model.command.error}
+        unconfirmed={
+          model.command.uncertain
+            ? { onRetry: model.command.retry, onDismiss: () => undefined }
+            : undefined
+        }
+        onConfirm={() =>
+          model.command.send(
+            model.confirmation.action === 'remove'
+              ? {
+                  kind: 'removeDomain',
+                  domainId: model.domain.id,
+                  input: { expectedRevision: model.confirmation.revision },
+                }
+              : {
+                  kind: 'enforcement',
+                  domainId: model.domain.id,
+                  input: {
+                    required: !model.confirmation.required,
+                    expectedRevision: model.confirmation.revision,
+                  },
+                },
+          )
+        }
+      />
+    </li>
+  );
+}
+
+function useDomainCommands({
+  scope,
+  organization,
+  domain,
+  editable,
+}: DomainEntryProps) {
   const [confirmation, setConfirmation] = useState<{
     open: boolean;
     action: 'enforce' | 'remove';
@@ -62,148 +185,54 @@ export function DomainEntry({
       required: confirmation.required,
     }),
     status = domainStatus(domain);
+
+  return {
+    domain,
+    status,
+    command,
+    locked,
+    organization,
+    ready,
+    openConfirmation,
+    confirmation,
+    closeConfirmation,
+    confirmationCopy,
+    editable,
+  } as const;
+}
+
+function DomainChallenge({
+  challenge,
+}: Readonly<{ challenge: Organization['domains'][number]['challenge'] }>) {
+  if (challenge === null) return null;
   return (
-    <li className="min-w-0 space-y-4 border-b border-border py-5 first:pt-0">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="min-w-0 break-all text-sm font-semibold">
-          {domain.domain}
-        </h3>
-        <Status tone={status.tone}>{status.label}</Status>
-      </div>
-      {domain.challenge === null ? null : (
-        <div className="space-y-2 text-sm">
-          <p>Add this TXT record at your DNS provider:</p>
-          <dl className="space-y-2">
-            <div>
-              <dt className="text-xs text-muted-foreground">Record name</dt>
-              <dd className="flex min-w-0 items-start gap-2">
-                <code className="min-w-0 break-all">
-                  {domain.challenge.recordName}
-                </code>
-                <CopyButton
-                  value={domain.challenge.recordName}
-                  label="Copy DNS record name"
-                />
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted-foreground">TXT value</dt>
-              <dd className="flex min-w-0 items-start gap-2">
-                <code className="min-w-0 break-all">
-                  {domain.challenge.value}
-                </code>
-                <CopyButton
-                  value={domain.challenge.value}
-                  label="Copy DNS verification value"
-                />
-              </dd>
-            </div>
-          </dl>
-          <p className="text-xs text-muted-foreground">
-            Challenge expires {formatDateTime(domain.challenge.expiresAt)}.
-          </p>
+    <div className="space-y-2 text-sm">
+      <p>Add this TXT record at your DNS provider:</p>
+      <dl className="space-y-2">
+        <div>
+          <dt className="text-xs text-muted-foreground">Record name</dt>
+          <dd className="flex min-w-0 items-start gap-2">
+            <code className="min-w-0 break-all">{challenge.recordName}</code>
+            <CopyButton
+              value={challenge.recordName}
+              label="Copy DNS record name"
+            />
+          </dd>
         </div>
-      )}
-      <div className="flex flex-wrap gap-2">
-        {domain.verifiedAt === null ? (
-          <>
-            <ProgressButton
-              type="button"
-              variant="outline"
-              pending={command.pending}
-              pendingLabel="Checking DNS…"
-              disabled={locked}
-              onClick={() =>
-                void command.send({
-                  kind: 'verifyDomain',
-                  domainId: domain.id,
-                  input: { expectedRevision: organization.revision },
-                })
-              }
-            >
-              Verify DNS
-            </ProgressButton>
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={locked}
-              onClick={() =>
-                void command.send({
-                  kind: 'renewDomain',
-                  domainId: domain.id,
-                  input: { expectedRevision: organization.revision },
-                })
-              }
-            >
-              New challenge
-            </Button>
-          </>
-        ) : (
-          <Button
-            type="button"
-            variant="outline"
-            disabled={locked || (!domain.requireSso && !ready)}
-            onClick={() => {
-              openConfirmation('enforce');
-            }}
-          >
-            {domain.requireSso ? 'Make SSO optional' : 'Require SSO'}
-          </Button>
-        )}
-        <Button
-          type="button"
-          variant="ghost"
-          disabled={locked || domain.requireSso}
-          onClick={() => {
-            openConfirmation('remove');
-          }}
-        >
-          Remove domain
-        </Button>
-      </div>
-      {domain.verifiedAt !== null && !domain.requireSso && !ready ? (
-        <p className="text-xs text-muted-foreground">
-          Enable a provider and complete a test sign-in for this domain before
-          requiring SSO.
-        </p>
-      ) : null}
-      {!confirmation.open ? <CommandFeedback command={command} /> : null}
-      <ConfirmDialog
-        open={confirmation.open}
-        onOpenChange={(open) => {
-          if (!open && !command.pending) closeConfirmation();
-        }}
-        title={confirmationCopy.title}
-        description={confirmationCopy.description}
-        confirmLabel={confirmationCopy.confirmLabel}
-        pending={command.pending}
-        locked={command.pending}
-        confirmDisabled={!editable || command.expired}
-        error={command.error}
-        unconfirmed={
-          command.uncertain
-            ? { onRetry: command.retry, onDismiss: () => undefined }
-            : undefined
-        }
-        onConfirm={() =>
-          command.send(
-            confirmation.action === 'remove'
-              ? {
-                  kind: 'removeDomain',
-                  domainId: domain.id,
-                  input: { expectedRevision: confirmation.revision },
-                }
-              : {
-                  kind: 'enforcement',
-                  domainId: domain.id,
-                  input: {
-                    required: !confirmation.required,
-                    expectedRevision: confirmation.revision,
-                  },
-                },
-          )
-        }
-      />
-    </li>
+        <div>
+          <dt className="text-xs text-muted-foreground">TXT value</dt>
+          <dd className="flex min-w-0 items-start gap-2">
+            <code className="min-w-0 break-all">{challenge.value}</code>
+            <CopyButton
+              value={challenge.value}
+              label="Copy DNS verification value"
+            />
+          </dd>
+        </div>
+      </dl>
+      <p className="text-xs text-muted-foreground">
+        Challenge expires {formatDateTime(challenge.expiresAt)}.
+      </p>
+    </div>
   );
 }
