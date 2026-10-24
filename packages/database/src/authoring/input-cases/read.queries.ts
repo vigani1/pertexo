@@ -1,3 +1,10 @@
+import { and, asc, eq, isNull, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  workflowInputCases,
+  workflowInputCasePayloads,
+} from '../../schema/authoring/input-cases.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { z } from 'zod';
 import {
   DEFAULT_TEST_EXPECTATIONS,
@@ -6,7 +13,7 @@ import {
 
 import { WorkflowNotFoundError } from '../workflows/errors.js';
 import type { WorkflowInputCaseDatabase, CaseTransaction } from './contract.js';
-import { metadataColumns, metadata, workflow } from './metadata.queries.js';
+import { metadataProjection, workflow } from './metadata.queries.js';
 
 export function listInputCases(
   transact: CaseTransaction,
@@ -17,21 +24,27 @@ export function listInputCases(
     work: async (client) => {
       const limit = z.number().int().min(1).max(100).parse(input.limit);
       await workflow(client, input, { write: false });
-      const result = await client.query<Record<string, unknown>>(
-        `select ${metadataColumns} from app.workflow_input_cases where workspace_id=$1 and workflow_id=$2 and deleted_at is null and ($3::timestamptz is null or (created_at,id)>($3,$4::uuid)) order by created_at,id limit $5`,
-        [
-          input.workspaceId,
-          input.workflowId,
-          input.cursor?.createdAt ?? null,
-          input.cursor?.id ?? null,
-          limit + 1,
-        ],
-      );
-      const items = result.rows.slice(0, limit).map(metadata);
+      const rows = await drizzle(client)
+        .select(metadataProjection)
+        .from(workflowInputCases)
+        .where(
+          and(
+            eq(workflowInputCases.workspaceId, input.workspaceId),
+            eq(workflowInputCases.workflowId, input.workflowId),
+            isNull(workflowInputCases.deletedAt),
+            input.cursor === undefined
+              ? undefined
+              : sql`(${workflowInputCases.createdAt},${workflowInputCases.id})>(${input.cursor.createdAt}::timestamptz,${input.cursor.id}::uuid)`,
+          ),
+        )
+        .orderBy(asc(workflowInputCases.createdAt), asc(workflowInputCases.id))
+        .limit(limit + 1)
+        .catch(rethrowQueryFailure);
+      const items = rows.slice(0, limit).map((row) => Object.freeze(row));
       const last = items.at(-1);
       return {
         items,
-        ...(result.rows.length > limit && last
+        ...(rows.length > limit && last
           ? { nextCursor: { createdAt: last.createdAt, id: last.id } }
           : {}),
       };
@@ -48,24 +61,43 @@ export function getInputCase(
     work: async (client) => {
       z.uuid().parse(input.caseId);
       await workflow(client, input, { write: false });
-      const result = await client.query<
-        Record<string, unknown> & { expectations: string | null }
-      >(
-        `select c.*,p.input,p.expectations from app.workflow_input_cases c join app.workflow_input_case_payloads p on p.workspace_id=c.workspace_id and p.case_id=c.id and p.revision=c.revision where c.workspace_id=$1 and c.workflow_id=$2 and c.id=$3 and c.deleted_at is null`,
-        [input.workspaceId, input.workflowId, input.caseId],
-      );
-      if (!result.rows[0])
+      const [row] = await drizzle(client)
+        .select({
+          metadata: metadataProjection,
+          input: workflowInputCasePayloads.input,
+          expectations: workflowInputCasePayloads.expectations,
+        })
+        .from(workflowInputCases)
+        .innerJoin(
+          workflowInputCasePayloads,
+          and(
+            eq(
+              workflowInputCasePayloads.workspaceId,
+              workflowInputCases.workspaceId,
+            ),
+            eq(workflowInputCasePayloads.caseId, workflowInputCases.id),
+            eq(workflowInputCasePayloads.revision, workflowInputCases.revision),
+          ),
+        )
+        .where(
+          and(
+            eq(workflowInputCases.workspaceId, input.workspaceId),
+            eq(workflowInputCases.workflowId, input.workflowId),
+            eq(workflowInputCases.id, input.caseId),
+            isNull(workflowInputCases.deletedAt),
+          ),
+        )
+        .catch(rethrowQueryFailure);
+      if (!row)
         throw new WorkflowNotFoundError('Run-input case is not visible');
       return {
         case: {
-          ...metadata(result.rows[0]),
+          ...Object.freeze(row.metadata),
           expectations:
-            result.rows[0].expectations === null
+            row.expectations === null
               ? DEFAULT_TEST_EXPECTATIONS
-              : (JSON.parse(
-                  result.rows[0].expectations,
-                ) as WorkflowTestExpectations),
-          input: JSON.parse(z.string().parse(result.rows[0].input)) as unknown,
+              : (JSON.parse(row.expectations) as WorkflowTestExpectations),
+          input: JSON.parse(row.input) as unknown,
         },
       };
     },
