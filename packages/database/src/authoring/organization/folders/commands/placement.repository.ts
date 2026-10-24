@@ -1,12 +1,12 @@
-import { reviewMoveAudience } from '../../sharing/audience.js';
+import { reviewMoveAudience } from '../../sharing/audience.queries.js';
 
 import { lockWorkflowAuthoringAuthority } from '../../../workflows/authority.js';
-import { runOrganizationCommand } from '../../command.js';
+import { runOrganizationCommand } from '../../commands.repository.js';
 
 import {
   checkOrganizationReplay,
   organizeWorkflow,
-} from '../../organize-workflow.js';
+} from '../../placement.repository.js';
 import type { createOrganizationSession } from '../../session.js';
 import {
   type WorkflowFolderDatabase,

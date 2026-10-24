@@ -11,7 +11,7 @@ import {
   type DatabaseRuntime,
 } from '../../../platform/pool/runtime.js';
 import { withTenantScopedClient } from '../../../tenant-access/transactions.js';
-import { inlineSampleOutput } from '../../../authoring/step-samples/records.js';
+import { inlineSampleOutput } from '../../../authoring/step-samples/records.repository.js';
 import { parseStoredExecutionValue } from '../../../platform/stored-execution-value.js';
 import { WorkflowStepSampleError } from '../../../authoring/step-samples/contract.js';
 import { WorkflowNotFoundError } from '../../../authoring/workflows/errors.js';

@@ -5,7 +5,7 @@ import {
 
 import type { PoolClient } from 'pg';
 
-import { runOrganizationCommand } from '../../command.js';
+import { runOrganizationCommand } from '../../commands.repository.js';
 
 import type { createOrganizationSession } from '../../session.js';
 import {

@@ -9,18 +9,18 @@ import {
 
 import { collectArtifactReferences } from '../../../../artifacts/references/repository.js';
 
-import { admitWorkflowAuthoring } from '../../../workflows/admission.js';
+import { admitWorkflowAuthoring } from '../../../workflows/admission.queries.js';
 import { lockWorkspaceVariableNames } from '../../../../variables/settings.queries.js';
 import type { PromotionContext } from '../../contract.js';
 import { mapPromotionNodes } from '../graph.js';
-import type { PromotionSource } from '../source.js';
+import type { PromotionSource } from '../source.queries.js';
 import { rebindPromotionTable } from '../tables.js';
-import { rebindPromotionConnections } from '../connections.js';
+import { rebindPromotionConnections } from '../connections.queries.js';
 import {
   rebindPromotionCalls,
   inspectPromotionCallDependencies,
-} from '../calls.js';
-import { inspectPromotionRequirements } from '../requirements.js';
+} from '../calls.queries.js';
+import { inspectPromotionRequirements } from '../requirements.queries.js';
 import type { Origin, TargetReviewState } from './contract.js';
 
 export async function prepareTargetGraph(

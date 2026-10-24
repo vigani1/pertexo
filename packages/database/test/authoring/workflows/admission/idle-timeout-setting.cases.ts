@@ -3,7 +3,7 @@ import { expect, it, vi } from 'vitest';
 import {
   admitWorkflowAuthoring,
   authoringIdleBudgetIsSafe,
-} from '../../../../src/authoring/workflows/admission.js';
+} from '../../../../src/authoring/workflows/admission.queries.js';
 
 import { graph, valid, budget } from './fixture.js';
 

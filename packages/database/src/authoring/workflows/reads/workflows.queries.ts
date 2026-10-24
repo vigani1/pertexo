@@ -11,7 +11,7 @@ import {
 
 import { z } from 'zod';
 
-import { mapWorkflow, workflowSetupSelection } from '../representation/rows.js';
+import { mapWorkflow, workflowSetupSelection } from '../representation/records.queries.js';
 
 import type { ReadStore, WorkflowAuthoringReadContext } from './contract.js';
 import { uuidSchema } from './authority.js';

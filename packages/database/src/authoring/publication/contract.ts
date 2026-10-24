@@ -13,7 +13,7 @@ import { sha256HexSchema } from '../../platform/persisted-primitives.js';
 import type {
   PublishWorkflowInput,
   PublishWorkflowResult,
-} from '../workflows/contracts.js';
+} from '../workflows/contract.js';
 
 export const uuidSchema = z.uuid();
 

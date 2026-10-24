@@ -5,7 +5,7 @@ import { workflowTestSnapshots } from '../../schema/runs/tests.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { workflowTestStepChoices } from '@pertexo/workflow-model';
 import type { FrozenWorkflowTestPins } from '../../schema/runs/tests.js';
-import { sampleDraft } from '../../authoring/step-samples/records.js';
+import { sampleDraft } from '../../authoring/step-samples/records.repository.js';
 import type { PoolClient } from 'pg';
 import { canonicalJson, normalizedJson } from '@pertexo/workflow-model';
 import type { WorkflowTestPins } from '@pertexo/workflow-engine';
