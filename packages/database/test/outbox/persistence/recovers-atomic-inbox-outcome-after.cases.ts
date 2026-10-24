@@ -14,7 +14,7 @@ import { createWorkspaceDatabase } from '../../../src/database.js';
 
 import { consumeInboxMessage } from '../../../src/testing.js';
 
-import { insertOutboxEvent } from '../../../src/outbox/events.js';
+import { insertOutboxEvent } from '../../../src/outbox/events.repository.js';
 import { outboxEvents } from '../../../src/schema.js';
 import { createPostgresCommitAckProxy } from '../../support/postgres/commit-ack-proxy.js';
 

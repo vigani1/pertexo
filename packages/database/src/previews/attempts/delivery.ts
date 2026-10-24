@@ -2,7 +2,7 @@ import type { Pool } from 'pg';
 import { v7 as uuidv7 } from 'uuid';
 import type { z } from 'zod';
 
-import { canonicalOutboxPayloadChecksum } from '../../outbox/events.js';
+import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
 import {
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,

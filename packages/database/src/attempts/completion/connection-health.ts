@@ -2,7 +2,7 @@ import type { PoolClient } from 'pg';
 import type { z } from 'zod';
 
 import { generatePersistedId } from '../../platform/persisted-id.js';
-import { canonicalOutboxPayloadChecksum } from '../../outbox/events.js';
+import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
 import { serializeStoredExecutionJsonValue } from '../../platform/stored-execution-value.js';
 import {
   type completionSchema,

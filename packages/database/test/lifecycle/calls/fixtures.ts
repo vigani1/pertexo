@@ -1,6 +1,6 @@
 import { Client } from 'pg';
 import { afterAll, beforeAll } from 'vitest';
-import { canonicalOutboxPayloadChecksum } from '../../../src/outbox/events.js';
+import { canonicalOutboxPayloadChecksum } from '../../../src/outbox/events.repository.js';
 import {
   adminUrl,
   randomUUID,

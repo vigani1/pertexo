@@ -3,15 +3,15 @@ import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../../config.js';
-export type { LeasedOutboxEvent } from './contracts.js';
+export type { LeasedOutboxEvent } from './contract.js';
 import {
   claimOutboxBatch,
   type ClaimOutboxBatchInput,
   type ClaimOutboxBatchResult,
-} from './claim.js';
+} from './claim.repository.js';
 import { checkDatabaseReadiness } from '../../platform/readiness.js';
 
-export type { ClaimOutboxBatchInput, ClaimOutboxBatchResult } from './claim.js';
+export type { ClaimOutboxBatchInput, ClaimOutboxBatchResult } from './claim.repository.js';
 
 const observeBacklogInputSchema = z.object({
   enabledJobNames: z

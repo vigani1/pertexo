@@ -1,5 +1,5 @@
 import { createTestRunStore } from '../../../support/run-advance-store.js';
-import { canonicalOutboxPayloadChecksum } from '../../../../src/outbox/events.js';
+import { canonicalOutboxPayloadChecksum } from '../../../../src/outbox/events.repository.js';
 
 import { Pool } from 'pg';
 import { expect } from 'vitest';

@@ -11,7 +11,7 @@ import {
   type RunAdvanceResult,
 } from './contract.js';
 import { withCoordinatorWriteClient } from './transactions.js';
-import { canonicalOutboxPayloadChecksum } from '../../outbox/events.js';
+import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
 import { serializeStoredExecutionJsonValue } from '../../platform/stored-execution-value.js';
 
 const coordinatorConsumerName = 'workflow-coordinator';

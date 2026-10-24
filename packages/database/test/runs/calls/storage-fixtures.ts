@@ -2,7 +2,7 @@ import {
   createCheckpoint,
   type WorkflowTransitionPlan,
 } from '../../../../workflow-engine/dist/index.js';
-import { canonicalOutboxPayloadChecksum } from '../../../src/outbox/events.js';
+import { canonicalOutboxPayloadChecksum } from '../../../src/outbox/events.repository.js';
 import {
   admin,
   checksum,

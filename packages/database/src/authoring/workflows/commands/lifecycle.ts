@@ -1,6 +1,6 @@
 import { generatePersistedId } from '../../../platform/persisted-id.js';
 
-import { canonicalOutboxPayloadChecksum } from '../../../outbox/events.js';
+import { canonicalOutboxPayloadChecksum } from '../../../outbox/events.repository.js';
 import { z } from 'zod';
 import { planWorkflowLifecycleCommand } from '@pertexo/workflow-model';
 

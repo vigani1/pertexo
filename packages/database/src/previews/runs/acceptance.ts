@@ -11,7 +11,7 @@ import { v7 as uuidv7 } from 'uuid';
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
-} from '../../outbox/events.js';
+} from '../../outbox/events.repository.js';
 
 import { PREVIEW_STATUS } from '../contract.js';
 import {

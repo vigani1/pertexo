@@ -15,8 +15,8 @@ import { sha256HexSchema } from '../../platform/persisted-primitives.js';
 import {
   consumeInboxMessage,
   InboxReceiptUnavailableError,
-} from '../../outbox/receipts.js';
-import { canonicalOutboxPayloadChecksum } from '../../outbox/events.js';
+} from '../../outbox/receipts.repository.js';
+import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
 
 const payloadSchema = z
   .object({

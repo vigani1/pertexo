@@ -2,7 +2,7 @@ import { ownerQuery, workflowId, workspaceId } from './fixture.js';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
-import { canonicalOutboxPayloadChecksum } from '../../../../src/outbox/events.js';
+import { canonicalOutboxPayloadChecksum } from '../../../../src/outbox/events.repository.js';
 
 import { schedule } from './fixture.js';
 

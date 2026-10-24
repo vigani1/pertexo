@@ -2,7 +2,7 @@ import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
 import { claimQueryResultSchema, toLeasedEvent } from './rows.js';
-import type { LeasedOutboxEvent } from './contracts.js';
+import type { LeasedOutboxEvent } from './contract.js';
 
 const claimInputSchema = z.object({
   enabledJobNames: z

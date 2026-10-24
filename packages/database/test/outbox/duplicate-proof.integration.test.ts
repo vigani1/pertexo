@@ -8,11 +8,11 @@ import {
   consumeInboxMessage,
   InboxChecksumMismatchError,
   InboxReceiptUnavailableError,
-} from '../../src/outbox/receipts.js';
+} from '../../src/outbox/receipts.repository.js';
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
-} from '../../src/outbox/events.js';
+} from '../../src/outbox/events.repository.js';
 import {
   inboxReceipts,
   transportSecurityAuditFacts,

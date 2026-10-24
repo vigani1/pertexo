@@ -2,7 +2,7 @@ import type { Pool } from 'pg';
 import { and, eq, sql } from 'drizzle-orm';
 
 import type { DatabaseConfig } from '../config.js';
-import { serializeBoundedPlainJson } from '../outbox/events.js';
+import { serializeBoundedPlainJson } from '../outbox/events.repository.js';
 import { acquireDatabasePool } from '../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../platform/pool/runtime.js';
 import { generatePersistedId } from '../platform/persisted-id.js';

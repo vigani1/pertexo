@@ -1,4 +1,4 @@
-import { canonicalOutboxPayloadChecksum } from '../../../outbox/events.js';
+import { canonicalOutboxPayloadChecksum } from '../../../outbox/events.repository.js';
 import type { PoolClient } from 'pg';
 import type {
   FolderSharing,

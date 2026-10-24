@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { canonicalOutboxPayloadChecksum } from '../../../src/outbox/events.js';
+import { canonicalOutboxPayloadChecksum } from '../../../src/outbox/events.repository.js';
 
 import { withWorkspaceTransaction } from '../../../src/tenant-access/transactions.js';
 import { claimedScheduleWorkflowPaused } from '../../../src/triggers/schedules/pause.js';

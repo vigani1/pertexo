@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { serializeBoundedPlainJson } from '../outbox/events.js';
+import { serializeBoundedPlainJson } from '../outbox/events.repository.js';
 
 import type { CommandRequest } from './contract.js';
 

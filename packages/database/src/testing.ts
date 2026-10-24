@@ -8,7 +8,7 @@ export {
   UnknownOutcomeReconciliationMismatchError,
   UnknownOutcomeReconciliationStateError,
   type UnknownOutcomeReconciliationResult,
-} from './outbox/unknown-outcome-reconciliation.js';
+} from './outbox/reconciliation.repository.js';
 export { createFailureNotificationDestinationDatabase } from './notifications/destinations/repository.js';
 export { FailureNotificationDestinationError } from './notifications/destinations/errors.js';
 export { type FailureNotificationDestinationRecord } from './notifications/destinations/contract.js';
@@ -149,7 +149,7 @@ export type {
   PublishedWorkflow,
   ReadPublishedWorkflowForExecutionInput,
 } from './runs/queries/execution/published.js';
-export { createOutboxDispatcherDatabase } from './outbox/dispatcher/database.js';
+export { createOutboxDispatcherDatabase } from './outbox/dispatcher/repository.js';
 export type {
   ClaimOutboxBatchInput,
   ClaimOutboxBatchResult,
@@ -157,22 +157,22 @@ export type {
   OutboxBacklogSnapshot,
   OutboxDispatcherDatabase,
   ReleaseOutboxResult,
-} from './outbox/dispatcher/database.js';
+} from './outbox/dispatcher/repository.js';
 export {
   consumeInboxMessage,
   InboxChecksumMismatchError,
   InboxReceiptUnavailableError,
-} from './outbox/receipts.js';
+} from './outbox/receipts.repository.js';
 export type {
   InboxConsumeOptions,
   InboxConsumeResult,
   InboxMessage,
-} from './outbox/receipts.js';
+} from './outbox/receipts.repository.js';
 export {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
   outboxChecksumSchema,
-} from './outbox/events.js';
+} from './outbox/events.repository.js';
 export {
   parseStoredExecutionValue,
   serializeStoredExecutionValue,
@@ -182,7 +182,7 @@ export {
   PREVIEW_RETENTION_MAX_MS,
   PREVIEW_STATUS,
 } from './previews/repository.js';
-export type { InsertedOutboxEvent, OutboxEventInput } from './outbox/events.js';
+export type { InsertedOutboxEvent, OutboxEventInput } from './outbox/events.repository.js';
 export {
   createNodeAttemptRunStore,
   NodeAttemptConnectionFenceError,

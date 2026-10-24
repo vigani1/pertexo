@@ -1,7 +1,7 @@
 import { ownerQuery, versionId, workerQuery, workspaceId } from './fixture.js';
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
-import { canonicalOutboxPayloadChecksum } from '../../../../src/outbox/events.js';
+import { canonicalOutboxPayloadChecksum } from '../../../../src/outbox/events.repository.js';
 
 import { schedule, replaySourceRunId } from './fixture.js';
 

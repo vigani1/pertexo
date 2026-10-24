@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { withTenantScopedClient } from '../../../../src/tenant-access/transactions.js';
 
-import { canonicalOutboxPayloadChecksum } from '../../../../src/outbox/events.js';
+import { canonicalOutboxPayloadChecksum } from '../../../../src/outbox/events.repository.js';
 import { randomUUID } from '../../../lifecycle/retention.support.js';
 import {
   admin,

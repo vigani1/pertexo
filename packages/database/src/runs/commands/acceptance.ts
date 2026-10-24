@@ -10,7 +10,7 @@ import { lockExecutionArtifactReferences } from '../../artifacts/references/repo
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
-} from '../../outbox/events.js';
+} from '../../outbox/events.repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import {
   idempotencyRecords,
