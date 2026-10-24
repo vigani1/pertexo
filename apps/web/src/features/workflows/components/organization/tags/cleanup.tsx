@@ -20,16 +20,7 @@ import {
 } from '../command-feedback';
 import { useOrganizationWorkflowNames } from '../use-workflow-names';
 
-export function WorkflowTagCleanup({
-  apiClient,
-  userId,
-  workspaceId,
-  tag,
-  locked,
-  command,
-  start,
-  onBack,
-}: Readonly<{
+type WorkflowTagCleanupProps = Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspaceId: string;
@@ -38,66 +29,48 @@ export function WorkflowTagCleanup({
   command: OrganizationCommand;
   start: (attempt: WorkflowOrganizationAttempt) => void;
   onBack: () => void;
-}>) {
-  const assignments = useInfiniteQuery(
-    workflowTagAssignmentsInfiniteQueryOptions({
-      api: apiClient,
-      userId,
-      workspaceId,
-      tagId: tag.id,
-      input: { limit: 25 },
-    }),
-  );
-  const [selection, setSelection] = useState<WorkflowOrganizationBulkItem[]>(
-    [],
-  );
-  const id = useId();
-  const rows = assignments.data?.pages.flatMap((page) => page.items) ?? [];
-  const names = useOrganizationWorkflowNames({
-    apiClient,
-    userId,
-    workspaceId,
-    workflowIds: [
-      ...selection.map((item) => item.workflowId),
-      ...rows.map((row) => row.workflowId),
-    ],
-    denied: command.denied,
-  });
-  const settled = command.result !== undefined;
-  const disabled =
-    locked || settled || !assignments.isSuccess || assignments.isFetching;
+}>;
+
+export function WorkflowTagCleanup(props: WorkflowTagCleanupProps) {
+  const model = useTagCleanupSelection(props);
   return (
     <section aria-label="Tag cleanup" className="flex flex-col gap-4">
-      <h2 className="font-display text-lg">Clean up {tag.key}</h2>
+      <h2 className="font-display text-lg">Clean up {model.tag.key}</h2>
       <p>
         Choose up to 50 workflows from the loaded pages, including archived
         assignments. There is no select-all. Selection order is the order you
         check them.
       </p>
-      <OrganizationCommandFeedback command={command} names={names} />
-      <QueryView query={assignments} resource="Assignments" />
-      <fieldset disabled={disabled} className="flex flex-col gap-4">
+      <OrganizationCommandFeedback
+        command={model.command}
+        names={model.names}
+      />
+      <QueryView query={model.assignments} resource="Assignments" />
+      <fieldset disabled={model.disabled} className="flex flex-col gap-4">
         <legend className="text-sm">
-          Workflows with this tag ({selection.length}/50 selected)
+          Workflows with this tag ({model.selection.length}/50 selected)
         </legend>
         <FieldGroup>
-          {rows.map((row, index) => {
-            const checked = selection.some(
+          {model.rows.map((row, index) => {
+            const checked = model.selection.some(
               (item) => item.workflowId === row.workflowId,
             );
             return (
               <LabelledField
                 key={row.workflowId}
-                id={`${id}-${row.workflowId}`}
-                label={`Select ${names.get(row.workflowId) ?? `workflow name unavailable (${String(index + 1)})`}`}
+                id={`${model.id}-${row.workflowId}`}
+                label={`Select ${model.names.get(row.workflowId) ?? `workflow name unavailable (${String(index + 1)})`}`}
               >
                 {(control) => (
                   <Checkbox
                     {...control}
                     checked={checked}
-                    disabled={disabled || (!checked && selection.length >= 50)}
+                    disabled={
+                      model.disabled ||
+                      (!checked && model.selection.length >= 50)
+                    }
                     onCheckedChange={(next) => {
-                      setSelection((previous) => {
+                      model.setSelection((previous) => {
                         if (next) {
                           if (
                             previous.length >= 50 ||
@@ -128,7 +101,7 @@ export function WorkflowTagCleanup({
           })}
         </FieldGroup>
       </fieldset>
-      {assignments.isSuccess && rows.length === 0 ? (
+      {model.assignments.isSuccess && model.rows.length === 0 ? (
         <Notice>
           No loaded assignments remain. Return to tags and explicitly confirm
           deletion with its current revision.
@@ -136,39 +109,42 @@ export function WorkflowTagCleanup({
       ) : null}
       <LoadMore
         subject="tag assignments"
-        hasNextPage={assignments.hasNextPage}
-        loading={assignments.isFetchingNextPage || locked || settled}
-        failed={assignments.isFetchNextPageError}
+        hasNextPage={model.assignments.hasNextPage}
+        loading={
+          model.assignments.isFetchingNextPage || model.locked || model.settled
+        }
+        failed={model.assignments.isFetchNextPageError}
         label="Load more assignments"
         onLoadMore={() => {
-          if (!locked && !settled) void assignments.fetchNextPage();
+          if (!model.locked && !model.settled)
+            void model.assignments.fetchNextPage();
         }}
       />
       <ProgressButton
         type="button"
         variant="destructive"
-        disabled={disabled || selection.length === 0}
-        pending={command.pending}
+        disabled={model.disabled || model.selection.length === 0}
+        pending={model.command.pending}
         pendingLabel="Detaching…"
         onClick={() => {
-          start({
+          model.start({
             kind: 'tag-cleanup',
-            workspaceId,
+            workspaceId: model.workspaceId,
             idempotencyKey: crypto.randomUUID(),
-            body: { tagId: tag.id, items: selection },
+            body: { tagId: model.tag.id, items: model.selection },
           });
         }}
       >
-        Detach tag from {selection.length} selected workflows
+        Detach tag from {model.selection.length} selected workflows
       </ProgressButton>
       <Button
         type="button"
         variant="outline"
-        disabled={locked || assignments.isFetching}
+        disabled={model.locked || model.assignments.isFetching}
         onClick={() => {
-          command.reset();
-          setSelection([]);
-          void assignments.refetch();
+          model.command.reset();
+          model.setSelection([]);
+          void model.assignments.refetch();
         }}
       >
         Reload assignments and clear selection
@@ -176,11 +152,67 @@ export function WorkflowTagCleanup({
       <Button
         type="button"
         variant="outline"
-        disabled={locked}
-        onClick={onBack}
+        disabled={model.locked}
+        onClick={model.onBack}
       >
         Back to tags
       </Button>
     </section>
   );
+}
+
+function useTagCleanupSelection({
+  apiClient,
+  userId,
+  workspaceId,
+  tag,
+  locked,
+  command,
+  start,
+  onBack,
+}: WorkflowTagCleanupProps) {
+  const assignments = useInfiniteQuery(
+    workflowTagAssignmentsInfiniteQueryOptions({
+      api: apiClient,
+      userId,
+      workspaceId,
+      tagId: tag.id,
+      input: { limit: 25 },
+    }),
+  );
+  const [selection, setSelection] = useState<WorkflowOrganizationBulkItem[]>(
+    [],
+  );
+  const id = useId();
+  const rows = assignments.data?.pages.flatMap((page) => page.items) ?? [];
+  const names = useOrganizationWorkflowNames({
+    apiClient,
+    userId,
+    workspaceId,
+    workflowIds: [
+      ...selection.map((item) => item.workflowId),
+      ...rows.map((row) => row.workflowId),
+    ],
+    denied: command.denied,
+  });
+  const settled = command.result !== undefined;
+  const disabled =
+    locked || settled || !assignments.isSuccess || assignments.isFetching;
+
+  return {
+    tag,
+    command,
+    names,
+    assignments,
+    disabled,
+    selection,
+    rows,
+    id,
+    setSelection,
+    locked,
+    settled,
+    start,
+    workspaceId,
+    onBack,
+  } as const;
 }

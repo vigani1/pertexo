@@ -26,56 +26,29 @@ const barLinkClass =
   "flex min-w-0 flex-1 flex-col items-center gap-1 py-1.5 text-[0.68rem] text-subtle-foreground outline-none aria-[current=page]:text-accent-foreground data-[active=true]:text-accent-foreground focus-visible:text-foreground [&_svg:not([class*='size-'])]:size-5";
 
 /** Bottom navigation for phones: Home, Workflows, Runs, Inbox and More. */
-export function WorkspaceMobileBar({
-  workspace,
-  liveRunCount,
-  unreadNoticeCount,
-  inboxRef,
-  more,
-}: Readonly<{
+type WorkspaceMobileBarProps = Readonly<{
   workspace: AccessibleWorkspace;
   liveRunCount: number | undefined;
   unreadNoticeCount: number | undefined;
   /** The Inbox destination, which new-failure notices hang from. */
   inboxRef?: Ref<HTMLAnchorElement> | undefined;
   more: ReactNode;
-}>) {
-  const [moreOpen, setMoreOpen] = useState(false);
-  const destinations = spineDestinations(
+}>;
+
+export function WorkspaceMobileBar(props: WorkspaceMobileBarProps) {
+  const {
     workspace,
-    liveRunCount,
-    unreadNoticeCount,
-  );
-  const secondary = [
-    ...destinations.primary.filter(
-      (destination) =>
-        destination.to !== '/w/$workspaceId/workflows' &&
-        destination.to !== '/w/$workspaceId/runs' &&
-        destination.to !== '/w/$workspaceId/inbox',
-    ),
-    ...destinations.workspace,
-  ];
-  const inbox = destinations.primary.find(
-    (destination) => destination.to === '/w/$workspaceId/inbox',
-  );
-  const inboxIncluded = useIncludedPage(
-    workspace.id,
-    inbox ?? { to: '/w/$workspaceId/inbox', label: 'Inbox', icon: null },
-  );
-  const canReadRuns = workspace.capabilities.includes('run:read');
-  const canReadInbox = workspace.capabilities.includes('workspace:read');
-  const unread = unreadNoticeCount ?? 0;
-  // Pages that live under More light More, so a page always shows where it is.
-  const matchRoute = useMatchRoute();
-  const moreActive = secondary.some((destination) =>
-    Boolean(
-      matchRoute({
-        to: destination.to,
-        params: { workspaceId: workspace.id },
-        fuzzy: true,
-      }),
-    ),
-  );
+    canReadRuns,
+    canReadInbox,
+    inboxRef,
+    inboxIncluded,
+    unread,
+    moreOpen,
+    setMoreOpen,
+    moreActive,
+    secondary,
+    more,
+  } = useMobileDestinations(props);
   return (
     <>
       {/* Content fades out under the floating bar instead of showing
@@ -193,4 +166,63 @@ export function WorkspaceMobileBar({
       </nav>
     </>
   );
+}
+
+function useMobileDestinations({
+  workspace,
+  liveRunCount,
+  unreadNoticeCount,
+  inboxRef,
+  more,
+}: WorkspaceMobileBarProps) {
+  const [moreOpen, setMoreOpen] = useState(false);
+  const destinations = spineDestinations(
+    workspace,
+    liveRunCount,
+    unreadNoticeCount,
+  );
+  const secondary = [
+    ...destinations.primary.filter(
+      (destination) =>
+        destination.to !== '/w/$workspaceId/workflows' &&
+        destination.to !== '/w/$workspaceId/runs' &&
+        destination.to !== '/w/$workspaceId/inbox',
+    ),
+    ...destinations.workspace,
+  ];
+  const inbox = destinations.primary.find(
+    (destination) => destination.to === '/w/$workspaceId/inbox',
+  );
+  const inboxIncluded = useIncludedPage(
+    workspace.id,
+    inbox ?? { to: '/w/$workspaceId/inbox', label: 'Inbox', icon: null },
+  );
+  const canReadRuns = workspace.capabilities.includes('run:read');
+  const canReadInbox = workspace.capabilities.includes('workspace:read');
+  const unread = unreadNoticeCount ?? 0;
+  // Pages that live under More light More, so a page always shows where it is.
+  const matchRoute = useMatchRoute();
+  const moreActive = secondary.some((destination) =>
+    Boolean(
+      matchRoute({
+        to: destination.to,
+        params: { workspaceId: workspace.id },
+        fuzzy: true,
+      }),
+    ),
+  );
+
+  return {
+    workspace,
+    canReadRuns,
+    canReadInbox,
+    inboxRef,
+    inboxIncluded,
+    unread,
+    moreOpen,
+    setMoreOpen,
+    moreActive,
+    secondary,
+    more,
+  } as const;
 }

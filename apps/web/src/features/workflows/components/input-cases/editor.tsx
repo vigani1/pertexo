@@ -30,19 +30,118 @@ type CaseCommands = Pick<
 >;
 
 /** A local draft survives revision conflicts and current-case reads. */
-export function InputCaseEditor({
-  cases,
-  workflow,
-  locked,
-  writable,
-  onClose,
-}: Readonly<{
+type InputCaseEditorProps = Readonly<{
   cases: CaseCommands;
   workflow: WorkflowSummary;
   locked: boolean;
   writable: boolean;
   onClose: () => void;
-}>) {
+}>;
+
+export function InputCaseEditor(props: InputCaseEditorProps) {
+  const model = useInputCaseForm(props);
+  return (
+    <>
+      <p className="text-xs text-muted-foreground">
+        {model.cases.selected === undefined
+          ? 'New case for the current published version.'
+          : 'Editing does not change the case’s published version.'}
+        {model.cases.selected === undefined &&
+        model.creatingVersionId !== undefined ? (
+          <span className="block break-all font-mono">
+            Bound version: {model.creatingVersionId}
+          </span>
+        ) : null}
+      </p>
+      <FieldGroup>
+        <LabelledField
+          id={`${model.id}-name`}
+          label="Case name"
+          error={model.validation.error('name')}
+        >
+          {(control) => (
+            <Input
+              {...control}
+              ref={model.validation.register('name')}
+              name="case-name"
+              autoComplete="off"
+              value={model.name}
+              disabled={model.locked || model.deleting || !model.writable}
+              maxLength={128}
+              onChange={(event) => {
+                model.setName(event.target.value);
+                model.validation.change(
+                  'name',
+                  event.target.value.trim() ? undefined : 'Enter a case name.',
+                );
+              }}
+            />
+          )}
+        </LabelledField>
+        <LabelledField
+          id={`${model.id}-input`}
+          label="Case input (JSON)"
+          error={model.validation.error('input')}
+        >
+          {(control) => (
+            <Textarea
+              {...control}
+              ref={model.validation.register('input')}
+              name="case-input"
+              value={model.input}
+              disabled={model.locked || model.deleting || !model.writable}
+              autoComplete="off"
+              spellCheck={false}
+              className="min-h-32 font-mono"
+              onChange={(event) => {
+                model.setInput(event.target.value);
+                let problem: string | undefined;
+                try {
+                  JSON.parse(event.target.value);
+                } catch {
+                  problem = 'Enter valid JSON.';
+                }
+                model.validation.change('input', problem);
+              }}
+            />
+          )}
+        </LabelledField>
+      </FieldGroup>
+      <CaseExpectations
+        value={model.expectations}
+        onChange={model.setExpectations}
+        scope={model.cases.scope}
+        disabled={model.locked || model.deleting || !model.writable}
+        error={model.expectationError}
+      />
+      {model.cases.conflict && model.cases.selected !== undefined ? (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => void model.cases.read(model.cases.selected?.id ?? '')}
+        >
+          Read current case; keep my edits
+        </Button>
+      ) : null}
+      <InputCaseActions
+        cases={model.cases}
+        locked={model.locked}
+        deleting={model.deleting}
+        onDeletingChange={model.setDeleting}
+        onClose={model.onClose}
+        onSave={() => void model.save()}
+      />
+    </>
+  );
+}
+
+function useInputCaseForm({
+  cases,
+  workflow,
+  locked,
+  writable,
+  onClose,
+}: InputCaseEditorProps) {
   const [name, setName] = useState(cases.selected?.name ?? '');
   const [input, setInput] = useState(() =>
     JSON.stringify(cases.selected?.input ?? {}, null, 2),
@@ -131,98 +230,25 @@ export function InputCaseEditor({
     }
   }
 
-  return (
-    <>
-      <p className="text-xs text-muted-foreground">
-        {cases.selected === undefined
-          ? 'New case for the current published version.'
-          : 'Editing does not change the case’s published version.'}
-        {cases.selected === undefined && creatingVersionId !== undefined ? (
-          <span className="block break-all font-mono">
-            Bound version: {creatingVersionId}
-          </span>
-        ) : null}
-      </p>
-      <FieldGroup>
-        <LabelledField
-          id={`${id}-name`}
-          label="Case name"
-          error={validation.error('name')}
-        >
-          {(control) => (
-            <Input
-              {...control}
-              ref={validation.register('name')}
-              name="case-name"
-              autoComplete="off"
-              value={name}
-              disabled={locked || deleting || !writable}
-              maxLength={128}
-              onChange={(event) => {
-                setName(event.target.value);
-                validation.change(
-                  'name',
-                  event.target.value.trim() ? undefined : 'Enter a case name.',
-                );
-              }}
-            />
-          )}
-        </LabelledField>
-        <LabelledField
-          id={`${id}-input`}
-          label="Case input (JSON)"
-          error={validation.error('input')}
-        >
-          {(control) => (
-            <Textarea
-              {...control}
-              ref={validation.register('input')}
-              name="case-input"
-              value={input}
-              disabled={locked || deleting || !writable}
-              autoComplete="off"
-              spellCheck={false}
-              className="min-h-32 font-mono"
-              onChange={(event) => {
-                setInput(event.target.value);
-                let problem: string | undefined;
-                try {
-                  JSON.parse(event.target.value);
-                } catch {
-                  problem = 'Enter valid JSON.';
-                }
-                validation.change('input', problem);
-              }}
-            />
-          )}
-        </LabelledField>
-      </FieldGroup>
-      <CaseExpectations
-        value={expectations}
-        onChange={setExpectations}
-        scope={cases.scope}
-        disabled={locked || deleting || !writable}
-        error={expectationError}
-      />
-      {cases.conflict && cases.selected !== undefined ? (
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => void cases.read(cases.selected?.id ?? '')}
-        >
-          Read current case; keep my edits
-        </Button>
-      ) : null}
-      <InputCaseActions
-        cases={cases}
-        locked={locked}
-        deleting={deleting}
-        onDeletingChange={setDeleting}
-        onClose={onClose}
-        onSave={() => void save()}
-      />
-    </>
-  );
+  return {
+    cases,
+    creatingVersionId,
+    id,
+    validation,
+    name,
+    locked,
+    deleting,
+    writable,
+    setName,
+    input,
+    setInput,
+    expectations,
+    setExpectations,
+    expectationError,
+    setDeleting,
+    onClose,
+    save,
+  } as const;
 }
 
 function InputCaseActions({
