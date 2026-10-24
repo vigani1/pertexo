@@ -15,7 +15,7 @@ import { tablesQuery } from '../data/tables.queries';
 import type { TableScope } from '../data/tables.api';
 import { CreateDataTable } from '../components/create';
 import { DataTableLimits } from '../components/limits';
-import { DataTableRows } from '../components/rows';
+import { DataTableRows } from '../components/rows/view';
 import { EditTableColumns } from '../components/columns/dialog';
 import { RemoveDataTable } from '../components/remove';
 import {
