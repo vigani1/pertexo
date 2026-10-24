@@ -157,7 +157,7 @@ function mockPool(input: {
               abort_requested: false,
               deadline_at: null,
               input_ref: inline(null),
-              variable_values: {},
+              variable_set_revision: null,
               scheduler_state: input.checkpoint,
             },
           ],
