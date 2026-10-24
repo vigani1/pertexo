@@ -28,7 +28,7 @@
     "@pertexo/node-sdk": "workspace:*",
     "@smithy/node-http-handler": "4.12.1",
     "form-data": "4.0.6",
-    "nodemailer": "10.1.2",
+    "nodemailer": "10.1.4",
     "zod": "4.6.7",
     "@pertexo/workflow-model": "workspace:*"
   },
