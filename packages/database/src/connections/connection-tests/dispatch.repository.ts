@@ -2,7 +2,7 @@ import type { Pool } from 'pg';
 
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { sha256HexSchema as digestSchema } from '../../platform/persisted-primitives.js';
-import { requireConnectionUser } from '../authority.js';
+import { requireConnectionUser } from '../authority.queries.js';
 import {
   connectionTestClaim,
   connectionTestClaimSchema,
@@ -17,8 +17,8 @@ import {
   selectConnection,
   uuidSchema,
   withConnectionTransaction,
-} from '../records.js';
-import type { MarkConnectionTestDispatchedInput } from '../records.js';
+} from '../records.queries.js';
+import type { MarkConnectionTestDispatchedInput } from '../records.queries.js';
 
 export async function markConnectionTestDispatched(
   pool: Pool,

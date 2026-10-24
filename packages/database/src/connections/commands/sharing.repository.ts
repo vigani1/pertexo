@@ -9,13 +9,13 @@ import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import type { ResourceActor } from '../../tenant-access/resources/contract.js';
-import { requireConnectionManager } from '../authority.js';
+import { requireConnectionManager } from '../authority.queries.js';
 import {
   ConnectionNotFoundError,
   ConnectionSharingRevisionConflictError,
   connectionCommand,
   uuidSchema,
-} from '../records.js';
+} from '../records.queries.js';
 
 export type ConnectionSharingDatabase = Readonly<{
   readConnectionSharing(

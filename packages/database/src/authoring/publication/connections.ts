@@ -3,7 +3,7 @@ import type {
   GraphValidationIssue,
   WorkflowGraph,
 } from '@pertexo/workflow-model';
-import { CONNECTION_STATUS } from '../../connections/records.js';
+import { CONNECTION_STATUS } from '../../connections/records.queries.js';
 import {
   workflowConnectionReferences,
   connectionReferenceIds,

@@ -10,7 +10,7 @@ import { parseDatabaseConfig } from '../../src/config.js';
 import {
   CONNECTION_AUTH_TYPE,
   createConnectionDatabase,
-} from '../../src/connections/database.js';
+} from '../../src/connections/repository.js';
 
 import { IdempotencyConflictError } from '../../src/platform/idempotency.js';
 import { checkDatabaseReadiness } from '../../src/platform/readiness.js';

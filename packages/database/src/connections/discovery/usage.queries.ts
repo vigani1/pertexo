@@ -18,7 +18,7 @@ import {
   ConnectionNotFoundError,
   uuidSchema,
   withConnectionTransaction,
-} from '../records.js';
+} from '../records.queries.js';
 
 export type ConnectionUsageRecord = Readonly<{
   workflowId: string;

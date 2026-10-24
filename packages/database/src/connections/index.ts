@@ -9,7 +9,7 @@ export {
   ConnectionUnavailableError,
   createApiConnectionDatabase,
   createWorkerConnectionResolutionDatabase,
-} from './database.js';
+} from './repository.js';
 export type {
   ConnectionSharingDatabase,
   ApiConnectionDatabase,
@@ -31,6 +31,6 @@ export type {
   ReadConnectionInput,
   ResolvedConnectionSecretRecord,
   WorkerConnectionResolutionDatabase,
-} from './database.js';
-export { applyConnectionHealthObservation } from './health/observations.js';
-export type { ConnectionHealthApplicationResult } from './health/observations.js';
+} from './repository.js';
+export { applyConnectionHealthObservation } from './health/observations.repository.js';
+export type { ConnectionHealthApplicationResult } from './health/observations.repository.js';

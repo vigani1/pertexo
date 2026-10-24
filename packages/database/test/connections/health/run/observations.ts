@@ -1,5 +1,5 @@
 import { createWorkspaceDatabase } from '../../../../src/database.js';
-import { applyConnectionHealthObservation } from '../../../../src/connections/health/observations.js';
+import { applyConnectionHealthObservation } from '../../../../src/connections/health/observations.repository.js';
 import type { NodeAttemptLease } from '../../../../src/attempts/contract.js';
 import {
   asOwner,

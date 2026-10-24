@@ -1,8 +1,8 @@
 import type { Pool } from 'pg';
 
-import { markConnectionTestDispatched } from './dispatch.js';
+import { markConnectionTestDispatched } from './dispatch.repository.js';
 
-import type { ConnectionDatabase } from '../records.js';
+import type { ConnectionDatabase } from '../records.queries.js';
 
 import { startPersistedConnectionTest } from './start.repository.js';
 import { resolvePersistedConnectionTestSecret } from './secret.queries.js';

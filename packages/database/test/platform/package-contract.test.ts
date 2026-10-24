@@ -1,13 +1,13 @@
 import { Pool } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createApiConnectionDatabase } from '../../src/connections/database.js';
-import { createWorkerConnectionResolutionDatabase } from '../../src/connections/database.js';
+import { createApiConnectionDatabase } from '../../src/connections/repository.js';
+import { createWorkerConnectionResolutionDatabase } from '../../src/connections/repository.js';
 import { createDatabaseRuntime } from '../../src/platform/pool/runtime.js';
 import type {
   ApiConnectionDatabase,
   WorkerConnectionResolutionDatabase,
-} from '../../src/connections/database.js';
+} from '../../src/connections/repository.js';
 
 describe('@pertexo/database package contract', () => {
   it('runtime factories do not check out a connection before an operation', async () => {

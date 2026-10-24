@@ -9,7 +9,7 @@ import {
 } from '../store-support.js';
 import type { FailureNotificationStore } from '../contracts.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
-import { recordCredentialAccess } from '../../connections/runtime/dispatch-fence.js';
+import { recordCredentialAccess } from '../../connections/runtime/dispatch.repository.js';
 import { parseFailureNotificationAttemptNumber } from '../input-validation.js';
 
 type DestinationStore = Pick<

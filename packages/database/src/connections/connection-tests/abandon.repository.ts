@@ -3,7 +3,7 @@ import {
   uuidSchema,
   keyDigest,
   withConnectionTransaction,
-} from '../records.js';
+} from '../records.queries.js';
 import { connectionTestScope } from './claim.js';
 
 import { sha256HexSchema as digestSchema } from '../../platform/persisted-primitives.js';

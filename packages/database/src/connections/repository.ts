@@ -10,9 +10,9 @@ import type { DatabaseConfig } from '../config.js';
 import {
   createConnectionLookupPersistence,
   type ConnectionLookupDatabase,
-} from './runtime/lookup.js';
+} from './runtime/lookup.repository.js';
 import { createConnectionManagementPersistence } from './commands/management.repository.js';
-import { createConnectionResolutionPersistence } from './runtime/resolution.js';
+import { createConnectionResolutionPersistence } from './runtime/secrets.repository.js';
 import { createConnectionReadPersistence } from './discovery/reads.queries.js';
 import {
   createConnectionUsagePersistence,
@@ -26,7 +26,7 @@ import type {
   ConnectionReadDatabase,
   ConnectionResolutionDatabase,
   ConnectionTestDatabase,
-} from './records.js';
+} from './records.queries.js';
 
 /** API capability plus the lifecycle operation owned by its runtime factory. */
 export type ApiConnectionDatabase = ConnectionSharingDatabase &
@@ -52,8 +52,8 @@ export {
   ConnectionSecretVersionConflictError,
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
-} from './records.js';
-export type { ConnectionLookupDatabase } from './runtime/lookup.js';
+} from './records.queries.js';
+export type { ConnectionLookupDatabase } from './runtime/lookup.repository.js';
 export type {
   ConnectionUsageDatabase,
   ConnectionUsageRecord,
@@ -90,7 +90,7 @@ export type {
   SealedConnectionSecretRecord,
   StartConnectionTestInput,
   StartConnectionTestResult,
-} from './records.js';
+} from './records.queries.js';
 
 export function createConnectionDatabase(
   config: DatabaseConfig,

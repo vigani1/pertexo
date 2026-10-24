@@ -9,7 +9,7 @@ import { createWorkspaceVariablesStore } from '../../../../src/variables/setting
 import {
   createConnectionDatabase,
   CONNECTION_AUTH_TYPE,
-} from '../../../../src/connections/database.js';
+} from '../../../../src/connections/repository.js';
 
 import { withTenantScopedClient } from '../../../../src/tenant-access/transactions.js';
 import { randomUUID } from 'node:crypto';

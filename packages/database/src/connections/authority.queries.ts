@@ -7,7 +7,7 @@ import {
   connectionScopeSql,
 } from '../tenant-access/resources/connections/scope.js';
 import { bindResourcePredicate } from '../tenant-access/resources/query-scope.js';
-import { ConnectionNotFoundError } from './records.js';
+import { ConnectionNotFoundError } from './records.queries.js';
 
 async function requireConnectionCapability(
   client: PoolClient,

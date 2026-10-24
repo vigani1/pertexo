@@ -1,6 +1,12 @@
-import { CONNECTION_STATUS, CONNECTION_EVENT_TYPE } from '../records.js';
+import {
+  CONNECTION_STATUS,
+  CONNECTION_EVENT_TYPE,
+} from '../records.queries.js';
 
-import type { ConnectionRecord, ConnectionTestResult } from '../records.js';
+import type {
+  ConnectionRecord,
+  ConnectionTestResult,
+} from '../records.queries.js';
 
 export function classifyConnectionTestCompletion(
   currentStatus: ConnectionRecord['status'],

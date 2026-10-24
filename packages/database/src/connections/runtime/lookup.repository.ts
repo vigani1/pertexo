@@ -16,8 +16,8 @@ import {
   withConnectionTransaction,
   type RequestMetadata,
   type ResolvedConnectionSecretRecord,
-} from '../records.js';
-import { requireConnectionUser } from '../authority.js';
+} from '../records.queries.js';
+import { requireConnectionUser } from '../authority.queries.js';
 
 /**
  * Owns API credential resolution for ADR 046 read-only provider lookups and

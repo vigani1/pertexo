@@ -4,7 +4,7 @@ import { z } from 'zod';
 import {
   isConnectionFenceCurrent,
   recordCredentialAccess,
-} from './dispatch-fence.js';
+} from './dispatch.repository.js';
 import {
   uuidSchema,
   providerKeySchema,
@@ -14,11 +14,11 @@ import {
   mapConnection,
   mapSealed,
   withConnectionTransaction,
-} from '../records.js';
+} from '../records.queries.js';
 import type {
   ConnectionDatabase,
   ResolvedConnectionSecretRecord,
-} from '../records.js';
+} from '../records.queries.js';
 
 /** Owns worker credential resolution and its access audit fact. */
 
