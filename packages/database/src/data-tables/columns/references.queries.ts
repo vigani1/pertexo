@@ -13,7 +13,7 @@ import {
   type GraphValidationIssue,
 } from '@pertexo/workflow-model';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
-import { TABLE_COLUMNS, projectTable, type StoredTable } from '../read.js';
+import { TABLE_COLUMNS, projectTable, type StoredTable } from '../definitions.queries.js';
 import type { DataTableDefinition } from '../contract.js';
 
 type ReferenceNode = Pick<

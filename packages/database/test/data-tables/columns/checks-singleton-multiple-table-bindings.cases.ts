@@ -15,7 +15,7 @@ import {
 import {
   dataTableReferenceIssues,
   requireRunTableReferences,
-} from '../../../src/data-tables/columns/references.js';
+} from '../../../src/data-tables/columns/references.queries.js';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import { store, scope, create, current, edit } from './fixture.js';
 

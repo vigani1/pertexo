@@ -15,9 +15,9 @@ import {
 } from '../platform/pool/runtime.js';
 import { withWorkspaceWriteClient } from '../attempts/transactions.js';
 import type { WorkerDataTablesStore } from './contract.js';
-import { readQuotas, requireTable } from './read.js';
-import { findRows } from './queries.js';
-import { mutateRows, translateTableConstraint } from './mutate.js';
+import { readQuotas, requireTable } from './definitions.queries.js';
+import { findRows } from './rows.queries.js';
+import { mutateRows, translateTableConstraint } from './rows.repository.js';
 import {
   lockCapabilityExecution,
   assertCapabilityExecution,

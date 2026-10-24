@@ -12,7 +12,7 @@ import {
 } from '@pertexo/node-sdk';
 import { generatePersistedId } from '../platform/persisted-id.js';
 import type { DataTableDefinition, DataTableQuotas } from './contract.js';
-import { boundedResult, queryClause, type StoredRow } from './queries.js';
+import { boundedResult, queryClause, type StoredRow } from './rows.queries.js';
 export function keyValue(
   table: DataTableDefinition,
   values: DataTableValues,

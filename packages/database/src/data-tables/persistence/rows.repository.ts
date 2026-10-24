@@ -2,9 +2,9 @@ import { DataTableError } from '@pertexo/node-sdk';
 import type { Pool } from 'pg';
 
 import type { DataTablesStore } from '../contract.js';
-import { readQuotas, requireTable } from '../read.js';
+import { readQuotas, requireTable } from '../definitions.queries.js';
 
-import { mutateRows, insertTableBatch } from '../mutate.js';
+import { mutateRows, insertTableBatch } from '../rows.repository.js';
 import { write, command } from './session.js';
 
 export function writeTableRows(

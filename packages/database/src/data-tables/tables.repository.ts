@@ -6,7 +6,7 @@ import {
 
 import type { DataTablesStore } from './contract.js';
 
-import { listTables, exportCsv, findTableRows } from './persistence/queries.js';
+import { listTables, exportCsv, findTableRows } from './persistence/definitions.queries.js';
 import {
   createTable,
   editSchema,

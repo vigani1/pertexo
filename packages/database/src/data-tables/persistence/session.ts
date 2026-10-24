@@ -18,7 +18,7 @@ import { rolesForCapability } from '@pertexo/workflow-model';
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 import type { DataTableScope } from '../contract.js';
 
-import { translateTableConstraint } from '../mutate.js';
+import { translateTableConstraint } from '../rows.repository.js';
 
 export function read<T>(
   pool: Pool,

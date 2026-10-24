@@ -7,10 +7,10 @@ import {
   projectTable,
   TABLE_COLUMNS,
   type StoredTable,
-} from '../read.js';
-import { findRows } from '../queries.js';
+} from '../definitions.queries.js';
+import { findRows } from '../rows.queries.js';
 
-import { exportTableCsv } from '../csv/export.js';
+import { exportTableCsv } from '../csv/export.queries.js';
 
 import { read } from './session.js';
 

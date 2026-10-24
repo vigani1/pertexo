@@ -1,4 +1,4 @@
-import { dataTableReferenceIssues } from '../../../data-tables/columns/references.js';
+import { dataTableReferenceIssues } from '../../../data-tables/columns/references.queries.js';
 
 import { mapDraft } from '../representation/rows.js';
 
