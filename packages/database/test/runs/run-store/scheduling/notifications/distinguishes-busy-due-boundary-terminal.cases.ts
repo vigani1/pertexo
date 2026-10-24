@@ -1,3 +1,4 @@
+import { FailureNotificationStateError } from '../../../../../src/notifications/errors.js';
 import { it, expect } from 'vitest';
 
 import {
@@ -15,6 +16,46 @@ import {
 } from '../fixture.js';
 
 export function registerDistinguishesBusyDueBoundaryTerminal(): void {
+  it('rejects an unpinned intent without claiming or advancing its attempt', async () => {
+    const run = await commitPinnedFailureNotificationRun();
+    const identity = await failureNotificationIdentity(run.runId);
+    await asOwner(workspaceA, (client) =>
+      client.query(
+        'update app.run_failure_notification_intents set connection_secret_version_id=null where workspace_id=$1 and id=$2',
+        [workspaceA, identity.intent_id],
+      ),
+    );
+    const { store } = createTestFailureNotificationStore();
+    try {
+      const claim = store.claimDelivery({
+        workspaceId: workspaceA,
+        intentId: identity.intent_id,
+        delivery: {
+          outboxEventId: identity.outbox_id,
+          payloadChecksum: identity.payload_checksum,
+        },
+        recoverySeconds: 30,
+        maxAttempts: 3,
+      });
+      await expect(claim).rejects.toThrow();
+      await expect(claim).rejects.not.toBeInstanceOf(
+        FailureNotificationStateError,
+      );
+      await expect(
+        asRuntime(workerBaseUrl, workspaceA, (client) =>
+          client.query(
+            'select status,delivery_attempts from app.run_failure_notification_intents where workspace_id=$1 and id=$2',
+            [workspaceA, identity.intent_id],
+          ),
+        ),
+      ).resolves.toMatchObject({
+        rows: [{ status: 'pending', delivery_attempts: 0 }],
+      });
+    } finally {
+      await closeFailureNotificationFixture(store);
+    }
+  });
+
   it('distinguishes busy, due-boundary, terminal, and lowered attempt-ceiling claims', async () => {
     const firstRun = await commitPinnedFailureNotificationRun();
     const first = await failureNotificationIdentity(firstRun.runId);
