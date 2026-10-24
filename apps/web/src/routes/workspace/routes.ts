@@ -1,7 +1,3 @@
-import { parsePromotionSearch } from '@/features/workflow-promotions/search.public';
-import { parseFederationSearch } from '@/features/federation/search.public';
-import { parseAuditSearch } from '@/features/governance/search.public';
-import { parseUsageTrendsSearch } from '@/features/usage/usage-search.public';
 import { parseTaskSearch } from '@/features/pending-tasks/queries.public';
 import { createRoute, notFound, redirect } from '@tanstack/react-router';
 import { lazyRoute } from '@/components/patterns/app-update/lazy';
@@ -42,7 +38,6 @@ import {
   workspaceMembersInfiniteQueryOptions,
 } from '@/features/workspaces/queries.public';
 import { pageTitle } from '../root/page-title';
-import { parseUsageSearch } from '@/features/usage/usage-search.public';
 import {
   findWorkspace,
   authoringPrefetches,
@@ -347,13 +342,6 @@ export const teamRoute = createRoute({
   component: lazyRoute(() => import('./team'), 'TeamRoute'),
 });
 
-/** Pathless layout: every Settings page beside the Settings rail. */
-export const settingsHubRoute = createRoute({
-  getParentRoute: () => workspaceShellRoute,
-  id: 'settings-hub',
-  component: lazyRoute(() => import('./settings/hub'), 'SettingsHubRoute'),
-});
-
 /** Alerts moved into Settings; older links still arrive there. */
 export const alertsRedirectRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
@@ -366,117 +354,6 @@ export const alertsRedirectRoute = createRoute({
       throw: true,
     });
   },
-});
-
-export const alertsRoute = createRoute({
-  getParentRoute: () => settingsHubRoute,
-  path: 'settings/alerts',
-  staticData: { crumb: 'Alerts' },
-  loader: ({ context }) => {
-    const { apiClient, queryClient, user, workspace } = context;
-    const can = (capability: (typeof workspace.capabilities)[number]) =>
-      workspace.capabilities.includes(capability);
-    if (!can('workflow:update')) return;
-    warmPrefetches(context, [
-      queryClient.query(
-        failureNotificationDestinationsQueryOptions(
-          apiClient,
-          user.id,
-          workspace.id,
-        ),
-      ),
-      ...(can('connection:manage') && can('connection:read')
-        ? [
-            queryClient.query(
-              connectionDiscoveryQueryOptions(apiClient, user.id, workspace.id),
-            ),
-          ]
-        : []),
-    ]);
-  },
-  head: ({ match }) => ({
-    meta: [{ title: pageTitle('Alerts', match.context.workspace.name) }],
-  }),
-  component: lazyRoute(() => import('./alerts'), 'AlertsRoute'),
-});
-
-export const workspaceSettingsRoute = createRoute({
-  getParentRoute: () => settingsHubRoute,
-  path: 'settings',
-  staticData: { crumb: 'Settings' },
-  head: ({ match }) => ({
-    meta: [{ title: pageTitle('Settings', match.context.workspace.name) }],
-  }),
-  component: lazyRoute(() => import('./settings'), 'WorkspaceSettingsRoute'),
-});
-
-export const usageTrendsRoute = createRoute({
-  getParentRoute: () => settingsHubRoute,
-  path: 'settings/usage/trends',
-  staticData: { crumb: 'Trends' },
-  validateSearch: parseUsageTrendsSearch,
-  head: ({ match }) => ({
-    meta: [{ title: pageTitle('Trends', match.context.workspace.name) }],
-  }),
-  component: lazyRoute(() => import('./usage-trends'), 'UsageTrendsRoute'),
-});
-
-export const usageRoute = createRoute({
-  getParentRoute: () => settingsHubRoute,
-  path: 'settings/usage',
-  staticData: { crumb: 'Usage' },
-  validateSearch: parseUsageSearch,
-  head: ({ match }) => ({
-    meta: [{ title: pageTitle('Usage', match.context.workspace.name) }],
-  }),
-  component: lazyRoute(() => import('./usage'), 'UsageRoute'),
-});
-
-export const federationSettingsRoute = createRoute({
-  getParentRoute: () => settingsHubRoute,
-  path: 'settings/sso',
-  staticData: { crumb: 'Single sign-on' },
-  validateSearch: parseFederationSearch,
-  head: ({ match }) => ({
-    meta: [
-      { title: pageTitle('Single sign-on', match.context.workspace.name) },
-    ],
-  }),
-  component: lazyRoute(
-    () => import('./settings/sso'),
-    'FederationSettingsRoute',
-  ),
-});
-
-export const auditRoute = createRoute({
-  getParentRoute: () => settingsHubRoute,
-  path: 'settings/audit',
-  staticData: { crumb: 'Audit log' },
-  validateSearch: parseAuditSearch,
-  head: ({ match }) => ({
-    meta: [{ title: pageTitle('Audit log', match.context.workspace.name) }],
-  }),
-  component: lazyRoute(() => import('./audit'), 'AuditRoute'),
-});
-
-export const workspaceVariablesRoute = createRoute({
-  getParentRoute: () => settingsHubRoute,
-  path: 'settings/variables',
-  staticData: { crumb: 'Variables' },
-  head: ({ match }) => ({
-    meta: [{ title: pageTitle('Variables', match.context.workspace.name) }],
-  }),
-  component: lazyRoute(() => import('./variables'), 'WorkspaceVariablesRoute'),
-});
-
-export const apiTokensRoute = createRoute({
-  getParentRoute: () => settingsHubRoute,
-  path: 'settings/api-tokens',
-  staticData: { crumb: 'API tokens' },
-  head: ({ match }) => ({
-    meta: [{ title: pageTitle('API tokens', match.context.workspace.name) }],
-  }),
-  component: lazyRoute(() => import('./api-tokens'), 'ApiTokensRoute'),
 });
 
 export const workspaceAccountRoute = createRoute({
@@ -501,6 +378,7 @@ export const approvalsRoute = createRoute({
   }),
   component: lazyRoute(() => import('./approvals/list'), 'ApprovalsRoute'),
 });
+
 export const approvalDetailRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'approvals/$taskId',
@@ -528,24 +406,12 @@ export const requestsRoute = createRoute({
   }),
   component: lazyRoute(() => import('./requests/list'), 'RequestsRoute'),
 });
+
 export const requestDetailRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'requests/$taskId',
   staticData: { crumb: 'Request' },
   component: lazyRoute(() => import('./requests/detail'), 'RequestDetailRoute'),
-});
-
-export const notificationPreferencesRoute = createRoute({
-  getParentRoute: () => settingsHubRoute,
-  path: 'settings/notifications',
-  staticData: { crumb: 'Notifications' },
-  head: ({ match }) => ({
-    meta: [{ title: pageTitle('Notifications', match.context.workspace.name) }],
-  }),
-  component: lazyRoute(
-    () => import('./settings/notifications'),
-    'NotificationPreferencesRoute',
-  ),
 });
 
 export const dataTablesRoute = createRoute({
@@ -557,6 +423,7 @@ export const dataTablesRoute = createRoute({
   }),
   component: lazyRoute(() => import('./data-tables'), 'DataTablesRoute'),
 });
+
 export const dataTableDetailRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'data-tables/$tableId',
@@ -569,18 +436,4 @@ export const publicationReviewRoute = createRoute({
   path: 'publish-reviews/$requestId',
   staticData: { crumb: 'Publication review' },
   component: lazyRoute(() => import('./review'), 'PublicationReviewRoute'),
-});
-
-export const workflowPromotionRoute = createRoute({
-  getParentRoute: () => settingsHubRoute,
-  path: 'settings/promotion',
-  staticData: { crumb: 'Promotion' },
-  validateSearch: parsePromotionSearch,
-  head: ({ match }) => ({
-    meta: [{ title: pageTitle('Promotion', match.context.workspace.name) }],
-  }),
-  component: lazyRoute(
-    () => import('./settings/promotion'),
-    'WorkflowPromotionRoute',
-  ),
 });
