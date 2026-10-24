@@ -7,7 +7,7 @@ import {
   getWorkflowRunInput,
   getWorkflowRunVariables,
 } from './workflow-runs.api';
-import { workflowRunKeys } from './history.queries';
+import { workflowRunKeys } from './query-cache';
 
 /*
  * Stored run data (ADR 050, 052): a run's input and each step run's input

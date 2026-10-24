@@ -2,10 +2,8 @@ import { QueryClient } from '@tanstack/react-query';
 import { HttpResponse, http } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { createApiClient } from '@/lib/api/client';
-import {
-  workflowRunQueryOptions,
-  workflowRunsInfiniteQueryOptions,
-} from '@/features/workflow-runs/data/history.queries';
+import { workflowRunQueryOptions } from '@/features/workflow-runs/data/detail.queries';
+import { workflowRunsInfiniteQueryOptions } from '@/features/workflow-runs/data/history.queries';
 import { mockServer } from '../../../support/mock-server';
 import { testFetch } from '../../../support/render-app';
 import { apiBase, fixtureIds, fixtureRun } from '../../../support/fixtures/run';

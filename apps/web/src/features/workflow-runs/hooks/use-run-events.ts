@@ -5,7 +5,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
 import { decodeSseMessages } from '@/lib/api/sse';
 import { openWorkflowRunEvents } from '../data/workflow-runs.api';
-import { workflowRunQueryOptions } from '../data/history.queries';
+import { workflowRunQueryOptions } from '../data/detail.queries';
 import {
   appendRunEvent,
   classifyRunEvent,

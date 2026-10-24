@@ -29,7 +29,7 @@ import {
   type RunSearch,
 } from '../model/list/run-search';
 import { useRunHistory } from '../hooks/use-run-history';
-import { runStatisticsQueryOptions } from '../data/history.queries';
+import { runStatisticsQueryOptions } from '../data/statistics.queries';
 
 /** Pick one workflow, or filter by the start of a name. */
 function WorkflowFilter({

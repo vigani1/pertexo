@@ -11,7 +11,7 @@ import {
   type RunIntent,
 } from '../../model/commands/run-intent';
 import { replayWorkflowRun } from '../workflow-runs.api';
-import { workflowRunKeys } from '../history.queries';
+import { workflowRunKeys } from '../query-cache';
 import { useRetainedSubmission } from './use-retained-submission';
 export function useRunReplay({
   apiClient,

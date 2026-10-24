@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import { Notice } from '@/components/ui/notice';
-import { workflowRunVersionQueryOptions } from '../../data/history.queries';
+import { workflowRunVersionQueryOptions } from '../../data/detail.queries';
 import type {
   WorkflowRunData,
   AccessibleWorkspace,

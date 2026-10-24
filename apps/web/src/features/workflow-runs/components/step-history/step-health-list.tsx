@@ -11,7 +11,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { formatDurationMs, formatRelativeTime } from '@/lib/format/time';
 import { cn } from '@/lib/utils';
 import { describeNodeStatus } from '../../model/presentation/run-status';
-import { stepHealthQueryOptions } from '../../data/history.queries';
+import { stepHealthQueryOptions } from '../../data/detail.queries';
 
 /** The steps that fail most come first, then the slowest. */
 function worstFirst(

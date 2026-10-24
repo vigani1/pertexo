@@ -1,18 +1,22 @@
 export {
   anyRunQueryOptions,
+  workflowLatestRunsQueryOptions,
+  workflowRunsInfiniteQueryOptions,
+} from './data/history.queries';
+export {
   attentionRunsQueryOptions,
   liveRunCountQueryOptions,
   loomStatisticsQueryOptions,
   runLoomQueryOptions,
   runStatisticsQueryOptions,
+  type RunStatistics,
+} from './data/statistics.queries';
+export {
   stepHealthQueryOptions,
-  workflowLatestRunsQueryOptions,
-  workflowRunKeys,
   workflowRunQueryOptions,
   workflowRunVersionQueryOptions,
-  workflowRunsInfiniteQueryOptions,
-  type RunStatistics,
-} from './data/history.queries';
+} from './data/detail.queries';
+export { workflowRunKeys } from './data/query-cache';
 export {
   filtersFromSearch,
   sanitizeRunSearch,
