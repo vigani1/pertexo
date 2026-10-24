@@ -1,8 +1,8 @@
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
-import { PREVIEW_STATUS } from '../runs/acceptance.js';
-import { appendPreviewTerminalFacts } from '../attempts/completion.js';
+import { PREVIEW_STATUS } from '../runs/acceptance.repository.js';
+import { appendPreviewTerminalFacts } from '../attempts/completion.repository.js';
 import {
   TERMINAL_PREVIEW_STATUSES,
   PreviewAttemptStateError,
@@ -18,7 +18,7 @@ import {
   completePreviewReceipt,
   insertPreviewOutboxDelivery,
   validatePreviewReconciliationDelivery,
-} from '../attempts/delivery.js';
+} from '../attempts/deliveries.repository.js';
 import {
   parseStoredExecutionValue,
   serializeStoredExecutionValue,

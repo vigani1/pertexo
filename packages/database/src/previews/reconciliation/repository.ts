@@ -3,7 +3,7 @@ import {
   type DatabaseRuntime,
 } from '../../platform/pool/runtime.js';
 import type { DatabaseConfig } from '../../config.js';
-import { reconcilePreviewDelivery } from './deliveries.js';
+import { reconcilePreviewDelivery } from './deliveries.repository.js';
 
 export interface PreviewReconciliationStore {
   reconcile(

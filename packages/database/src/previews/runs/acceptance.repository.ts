@@ -1,7 +1,7 @@
 import { requireTransactionConnectionBindings } from '../../tenant-access/resources/connections/bindings.js';
 import { connectionScope } from '../../tenant-access/resources/connections/scope.js';
 
-import { resolvePreviewSample } from './samples.js';
+import { resolvePreviewSample } from './samples.repository.js';
 
 import { captureWorkspaceVariableRevision } from '../../variables/settings.queries.js';
 import { lockActorArtifactReferences } from '../../artifacts/references/repository.js';
@@ -32,12 +32,15 @@ import {
   PreviewAcceptanceCorruptError,
   PreviewAdmissionDeniedError,
 } from './acceptance/contract.js';
-import { readExistingAcceptance, resolveInput } from './acceptance/replay.js';
+import {
+  readExistingAcceptance,
+  resolveInput,
+} from './acceptance/replay.queries.js';
 import {
   assertAdmission,
   assertPreviewActor,
   assertPreviewWorkflow,
-} from './acceptance/authority.js';
+} from './acceptance/authority.queries.js';
 export { PREVIEW_STATUS } from '../contract.js';
 export type { PreviewStatus } from '../contract.js';
 export {
@@ -50,11 +53,11 @@ export {
   PreviewAdmissionDeniedError,
   PriorPreviewInputUnavailableError,
 } from './acceptance/contract.js';
-export { readExistingAcceptance } from './acceptance/replay.js';
+export { readExistingAcceptance } from './acceptance/replay.queries.js';
 export {
   assertPreviewActor,
   previewWorkflowVisible,
-} from './acceptance/authority.js';
+} from './acceptance/authority.queries.js';
 export async function acceptPreviewRun(
   transaction: WorkspaceTransaction,
   input: AcceptPreviewRunInput,

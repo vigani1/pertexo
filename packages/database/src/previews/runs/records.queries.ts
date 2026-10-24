@@ -10,7 +10,7 @@ import {
   PREVIEW_STATUS,
   type PreviewRunRecord,
   type PreviewStatus,
-} from './acceptance.js';
+} from './acceptance.repository.js';
 import { parseStoredExecutionValue } from '../../platform/stored-execution-value.js';
 import { previewRuns, previewAttempts } from '../../schema.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';

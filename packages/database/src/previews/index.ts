@@ -10,10 +10,10 @@ export {
   PriorPreviewInputUnavailableError,
   reconcilePreviewDelivery,
 } from './repository.js';
-export { createDatabasePreviewAttemptRunStore } from './attempts/store.js';
-export type { PreviewAttemptRunStore } from './attempts/store.js';
-export { createDatabasePreviewReconciliationStore } from './reconciliation/store.js';
-export type { PreviewReconciliationStore } from './reconciliation/store.js';
+export { createDatabasePreviewAttemptRunStore } from './attempts/repository.js';
+export type { PreviewAttemptRunStore } from './attempts/repository.js';
+export { createDatabasePreviewReconciliationStore } from './reconciliation/repository.js';
+export type { PreviewReconciliationStore } from './reconciliation/repository.js';
 export type {
   PreviewAttemptLease,
   PreviewClaimResult,
@@ -24,5 +24,5 @@ export type {
   PreviewStatus,
   PreviewTerminalOutcome,
 } from './repository.js';
-export { createWorkflowTestSuiteScanner } from './suites/scanner.js';
+export { createWorkflowTestSuiteScanner } from './suites/scanner.repository.js';
 export type { WorkflowTestSuiteScanner } from './suites/contract.js';

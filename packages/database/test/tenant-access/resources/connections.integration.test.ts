@@ -1,5 +1,5 @@
 import { createWorkspaceDatabase } from '../../../src/database.js';
-import { acceptPreviewRun } from '../../../src/previews/runs/acceptance.js';
+import { acceptPreviewRun } from '../../../src/previews/runs/acceptance.repository.js';
 import { createWorkflowAuthoringFixtureDatabase } from '../../support/workflow-authoring-admission.fixture.js';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, expect, it } from 'vitest';

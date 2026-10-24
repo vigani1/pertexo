@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { TEST_RUN_RETENTION_MILLIS } from '../../runs/data-policy.js';
-import { admitTestRun } from '../workflows/admit.js';
+import { admitTestRun } from '../workflows/admit.repository.js';
 import type { SuiteRow, SuiteCaseRow } from './contract.js';
 export async function admitSuiteCase(
   client: PoolClient,
