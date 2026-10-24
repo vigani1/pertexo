@@ -44,16 +44,27 @@ export function registerListsReadsActorScopedMetadata(): void {
       after: page.nextCursor,
     });
     expect(nextPage.items[0]?.id).not.toBe(page.items[0]?.id);
-    await expect(
-      connections.api.readConnection({
-        workspaceId: workspaceA,
-        actorId: ownerA,
-        connectionId: first.connectionId,
-      }),
-    ).resolves.toMatchObject({
+    const stored = await connections.api.readConnection({
+      workspaceId: workspaceA,
+      actorId: ownerA,
+      connectionId: first.connectionId,
+    });
+    expect(stored).toMatchObject({
       id: first.connectionId,
       workspaceId: workspaceA,
+      lastRunObservedAt: null,
+      lastHealthTransitionAt: null,
+      lastHealthTransitionSource: null,
     });
+    expect(stored?.createdAt).toBeInstanceOf(Date);
+    expect(Object.isFrozen(stored)).toBe(true);
+    for (const privateField of [
+      'sealed',
+      'healthRevision',
+      'sharingRevision',
+      'ciphertext',
+    ])
+      expect(stored).not.toHaveProperty(privateField);
     await expect(
       connections.api.readConnection({
         workspaceId: workspaceB,
