@@ -55,26 +55,7 @@ export type NodeInspectorActions = StepMenuActions &
  * step inside a For each body sees only its body: its siblings to link
  * and map from, and the item the body runs for.
  */
-export function NodeInspector({
-  node,
-  graph,
-  loopPorts,
-  definition,
-  definitions,
-  codeSettings,
-  connections,
-  channelLookup,
-  callScope,
-  workspaceScope,
-  editable,
-  tab,
-  onTabChange,
-  focusTarget,
-  testPanel,
-  runsPanel,
-  failureSetup,
-  actions,
-}: Readonly<{
+type NodeInspectorProps = Readonly<{
   node: WorkflowNode;
   /** The level the step is on: the workflow, or the body it's in. */
   graph: GraphLevel;
@@ -97,7 +78,28 @@ export function NodeInspector({
   runsPanel?: ReactNode;
   failureSetup?: ReactNode;
   actions: NodeInspectorActions;
-}>) {
+}>;
+
+export function NodeInspector({
+  node,
+  graph,
+  loopPorts,
+  definition,
+  definitions,
+  codeSettings,
+  connections,
+  channelLookup,
+  callScope,
+  workspaceScope,
+  editable,
+  tab,
+  onTabChange,
+  focusTarget,
+  testPanel,
+  runsPanel,
+  failureSetup,
+  actions,
+}: NodeInspectorProps) {
   const store = useEditorStoreApi();
   const scratch = useEditorStore((state) => state.inspectorScratch);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -127,25 +129,7 @@ export function NodeInspector({
 
   useEffect(() => {
     if (focusTarget?.nodeId !== node.id) return;
-    const panel = panelRef.current;
-    if (focusTarget.testOutput ?? false) {
-      panel?.querySelector<HTMLElement>('[data-slot="test-result"]')?.focus();
-      return;
-    }
-    const element =
-      focusTarget.mappingKey === undefined
-        ? document.getElementById(
-            focusTarget.fieldKey === undefined
-              ? `node-label-${node.id}`
-              : fieldControlId(node.id, focusTarget.fieldKey),
-          )
-        : [
-            ...(panel?.querySelectorAll<HTMLInputElement>(
-              'input[name$=".key"]',
-            ) ?? []),
-          ].find((input) => input.value === focusTarget.mappingKey);
-    element?.focus();
-    pulse(element?.closest('[data-slot="field"]') ?? element);
+    focusInspectorField(panelRef.current, focusTarget);
   }, [focusTarget, node.id]);
 
   return (
@@ -299,4 +283,32 @@ function pulse(element: Element | null | undefined) {
     ],
     { duration: 700, iterations: 2, easing: 'ease-out' },
   );
+}
+
+function focusInspectorField(
+  panel: HTMLDivElement | null,
+  focusTarget: NonNullable<NodeInspectorProps['focusTarget']>,
+) {
+  if (focusTarget.testOutput ?? false) {
+    panel?.querySelector<HTMLElement>('[data-slot="test-result"]')?.focus();
+    return;
+  }
+  const element = inspectorField(panel, focusTarget);
+  element?.focus();
+  pulse(element?.closest('[data-slot="field"]') ?? element);
+}
+function inspectorField(
+  panel: HTMLDivElement | null,
+  target: NonNullable<NodeInspectorProps['focusTarget']>,
+) {
+  if (target.mappingKey !== undefined)
+    return [
+      ...(panel?.querySelectorAll<HTMLInputElement>('input[name$=".key"]') ??
+        []),
+    ].find((input) => input.value === target.mappingKey);
+  const id =
+    target.fieldKey === undefined
+      ? `node-label-${target.nodeId}`
+      : fieldControlId(target.nodeId, target.fieldKey);
+  return document.getElementById(id);
 }

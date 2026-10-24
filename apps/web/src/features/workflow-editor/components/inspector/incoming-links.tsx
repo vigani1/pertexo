@@ -109,102 +109,148 @@ export function IncomingLinks({
         </Button>
       ) : null}
       {editable && others.length > 0 && wiring ? (
-        <FieldGroup className="gap-3 rounded-lg border border-surface-ink/7 bg-recess-ink/18 p-3">
-          <Field>
-            <FieldLabel htmlFor={`link-source-${node.id}`}>
-              Link from step
-            </FieldLabel>
-            <ChoiceSelect
-              id={`link-source-${node.id}`}
-              value={sourceId}
-              disabled={false}
-              choices={[
-                { value: null, label: 'Choose a step' },
-                ...others.map((candidate) => ({
-                  value: candidate.id,
-                  label: titles.get(candidate.id) ?? candidate.id,
-                })),
-              ]}
-              onChange={(next) => {
-                setSourceId(next);
-                setSourcePort(null);
-              }}
-            />
-          </Field>
-          <div className="grid grid-cols-2 gap-2">
-            <Field>
-              <FieldLabel htmlFor={`link-output-${node.id}`}>
-                From output
-              </FieldLabel>
-              <ChoiceSelect
-                id={`link-output-${node.id}`}
-                value={sourcePort}
-                disabled={source === undefined}
-                choices={[
-                  { value: null, label: 'Choose' },
-                  ...sourcePorts.map((port) => ({ value: port, label: port })),
-                ]}
-                onChange={setSourcePort}
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor={`link-input-${node.id}`}>
-                Into input
-              </FieldLabel>
-              <ChoiceSelect
-                id={`link-input-${node.id}`}
-                value={targetPort}
-                disabled={false}
-                choices={[
-                  { value: null, label: 'Choose' },
-                  ...targetPorts.map((port) => ({ value: port, label: port })),
-                ]}
-                onChange={setTargetPort}
-              />
-            </Field>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={
-                sourceId === null || sourcePort === null || targetPort === null
-              }
-              onClick={() => {
-                if (
-                  sourceId === null ||
-                  sourcePort === null ||
-                  targetPort === null
-                )
-                  return;
-                onConnect({
-                  source: sourceId,
-                  sourceHandle: sourcePort,
-                  target: node.id,
-                  targetHandle: targetPort,
-                });
-                setSourceId(null);
-                setSourcePort(null);
-                setWiring(false);
-              }}
-            >
-              <LinkIcon data-icon="inline-start" />
-              Link
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                setWiring(false);
-              }}
-            >
-              Cancel
-            </Button>
-          </div>
-        </FieldGroup>
+        <LinkStepForm
+          nodeId={node.id}
+          choices={{
+            others,
+            titles,
+            sourcePorts,
+            targetPorts,
+            sourceAvailable: source !== undefined,
+          }}
+          selection={{ sourceId, sourcePort, targetPort }}
+          commands={{
+            setSourceId,
+            setSourcePort,
+            setTargetPort,
+            setWiring,
+            onConnect,
+          }}
+        />
       ) : null}
     </section>
+  );
+}
+
+type LinkStepFormProps = Readonly<{
+  nodeId: string;
+  choices: Readonly<{
+    others: readonly WorkflowNode[];
+    titles: ReadonlyMap<string, string>;
+    sourcePorts: readonly string[];
+    targetPorts: readonly string[];
+    sourceAvailable: boolean;
+  }>;
+  selection: Readonly<{
+    sourceId: string | null;
+    sourcePort: string | null;
+    targetPort: string | null;
+  }>;
+  commands: Readonly<{
+    setSourceId: (value: string | null) => void;
+    setSourcePort: (value: string | null) => void;
+    setTargetPort: (value: string | null) => void;
+    setWiring: (value: boolean) => void;
+    onConnect: (link: Connection) => void;
+  }>;
+}>;
+function LinkStepForm({
+  nodeId,
+  choices,
+  selection,
+  commands,
+}: LinkStepFormProps) {
+  const { others, titles, sourcePorts, targetPorts, sourceAvailable } = choices;
+  const { sourceId, sourcePort, targetPort } = selection;
+  const { setSourceId, setSourcePort, setTargetPort, setWiring, onConnect } =
+    commands;
+  return (
+    <FieldGroup className="gap-3 rounded-lg border border-surface-ink/7 bg-recess-ink/18 p-3">
+      <Field>
+        <FieldLabel htmlFor={`link-source-${nodeId}`}>
+          Link from step
+        </FieldLabel>
+        <ChoiceSelect
+          id={`link-source-${nodeId}`}
+          value={sourceId}
+          disabled={false}
+          choices={[
+            { value: null, label: 'Choose a step' },
+            ...others.map((candidate) => ({
+              value: candidate.id,
+              label: titles.get(candidate.id) ?? candidate.id,
+            })),
+          ]}
+          onChange={(next) => {
+            setSourceId(next);
+            setSourcePort(null);
+          }}
+        />
+      </Field>
+      <div className="grid grid-cols-2 gap-2">
+        <Field>
+          <FieldLabel htmlFor={`link-output-${nodeId}`}>From output</FieldLabel>
+          <ChoiceSelect
+            id={`link-output-${nodeId}`}
+            value={sourcePort}
+            disabled={!sourceAvailable}
+            choices={[
+              { value: null, label: 'Choose' },
+              ...sourcePorts.map((port) => ({ value: port, label: port })),
+            ]}
+            onChange={setSourcePort}
+          />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor={`link-input-${nodeId}`}>Into input</FieldLabel>
+          <ChoiceSelect
+            id={`link-input-${nodeId}`}
+            value={targetPort}
+            disabled={false}
+            choices={[
+              { value: null, label: 'Choose' },
+              ...targetPorts.map((port) => ({ value: port, label: port })),
+            ]}
+            onChange={setTargetPort}
+          />
+        </Field>
+      </div>
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={
+            sourceId === null || sourcePort === null || targetPort === null
+          }
+          onClick={() => {
+            if (sourceId === null || sourcePort === null || targetPort === null)
+              return;
+            onConnect({
+              source: sourceId,
+              sourceHandle: sourcePort,
+              target: nodeId,
+              targetHandle: targetPort,
+            });
+            setSourceId(null);
+            setSourcePort(null);
+            setWiring(false);
+          }}
+        >
+          <LinkIcon data-icon="inline-start" />
+          Link
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          onClick={() => {
+            setWiring(false);
+          }}
+        >
+          Cancel
+        </Button>
+      </div>
+    </FieldGroup>
   );
 }
