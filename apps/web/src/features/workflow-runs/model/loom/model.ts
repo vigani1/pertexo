@@ -218,7 +218,7 @@ export function loomLayout(
     core: {
       x: width - coreSpace / 2,
       y: (top + bottom) / 2,
-      radius: compact ? 18 : height >= LOOM_TALL_HEIGHT ? 52 : 40,
+      radius: coreRadius({ compact, height }),
     },
   };
 }
@@ -254,4 +254,12 @@ export function loomRunSpan(
     loomX(layout, model.windowMs, nowMs, run.endMs ?? nowMs),
   );
   return { x0, x1: Math.max(x1, x0 + 3) };
+}
+
+function coreRadius({
+  compact,
+  height,
+}: Readonly<{ compact: boolean; height: number }>): number {
+  if (compact) return 18;
+  return height >= LOOM_TALL_HEIGHT ? 52 : 40;
 }

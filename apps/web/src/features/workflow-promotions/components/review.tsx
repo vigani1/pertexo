@@ -69,12 +69,7 @@ export function PromotionReview({
               <ul className="list-inside list-disc text-sm">
                 {diff.lines.map((line) => (
                   <li key={`${line.target}:${line.id}`}>
-                    {line.kind === 'added'
-                      ? 'Add'
-                      : line.kind === 'removed'
-                        ? 'Remove'
-                        : 'Change'}{' '}
-                    {line.label}
+                    {CHANGE_LABELS[line.kind]} {line.label}
                     {line.detail === undefined ? '' : ` · ${line.detail}`}
                   </li>
                 ))}
@@ -123,20 +118,8 @@ export function PromotionReview({
                 key={canonicalJson(requirement)}
                 className="grid gap-2 py-3 sm:grid-cols-[7rem_1fr]"
               >
-                <Status
-                  tone={
-                    requirement.status === 'ready'
-                      ? 'success'
-                      : requirement.status === 'warning'
-                        ? 'attention'
-                        : 'failure'
-                  }
-                >
-                  {requirement.status === 'ready'
-                    ? 'Ready'
-                    : requirement.status === 'warning'
-                      ? 'Review'
-                      : 'Needs setup'}
+                <Status tone={REQUIREMENT_STATUS[requirement.status].tone}>
+                  {REQUIREMENT_STATUS[requirement.status].label}
                 </Status>
                 <div className="min-w-0 break-words text-sm">
                   <p className="font-medium">
@@ -152,3 +135,15 @@ export function PromotionReview({
     </div>
   );
 }
+
+const CHANGE_LABELS = {
+  added: 'Add',
+  removed: 'Remove',
+  changed: 'Change',
+} as const;
+const REQUIREMENT_STATUS = {
+  ready: { tone: 'success', label: 'Ready' },
+  warning: { tone: 'attention', label: 'Review' },
+  missing: { tone: 'failure', label: 'Needs setup' },
+  incompatible: { tone: 'failure', label: 'Needs setup' },
+} as const;

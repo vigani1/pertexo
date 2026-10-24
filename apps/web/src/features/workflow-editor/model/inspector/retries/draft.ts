@@ -34,12 +34,7 @@ export function retrySettingsForMode(
   const previous = node.retry ?? DEFAULT_STEP_RETRY_SETTINGS;
   return {
     ...previous,
-    maximumAttempts:
-      mode === 'none'
-        ? 1
-        : previous.maximumAttempts === 1
-          ? DEFAULT_STEP_RETRY_SETTINGS.maximumAttempts
-          : previous.maximumAttempts,
+    maximumAttempts: attemptsForMode(mode, previous),
   };
 }
 export function shownRetrySettings(node: WorkflowNode) {
@@ -110,4 +105,11 @@ export function describeStepRetrySettings(
     return 'One try. Temporary failures are not retried.';
   const seconds = settings.delayMillis / 1_000;
   return `Up to ${String(settings.maximumAttempts)} total tries for eligible failures, waiting ${String(seconds)} ${seconds === 1 ? 'second' : 'seconds'} between tries.`;
+}
+
+function attemptsForMode(mode: string, previous: StepRetrySettings): number {
+  if (mode === 'none') return 1;
+  return previous.maximumAttempts === 1
+    ? DEFAULT_STEP_RETRY_SETTINGS.maximumAttempts
+    : previous.maximumAttempts;
 }
