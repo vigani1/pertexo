@@ -189,32 +189,66 @@ function PrincipalChoice({
           : 'Directory group'
       }
     >
-      {administrator ? (
-        <span className="text-xs text-muted-foreground">Always has access</span>
-      ) : unavailable !== undefined ? (
-        <span className="text-right text-xs text-muted-foreground">
-          {unavailable}
-        </span>
-      ) : added ? (
-        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-          <CheckIcon aria-hidden="true" className="size-3.5" />
-          Added
-        </span>
-      ) : (
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={disabled}
-          aria-label={`Add ${principal.label}`}
-          onClick={() => {
-            onAdd(principal);
-          }}
-        >
-          <PlusIcon aria-hidden="true" />
-          Add
-        </Button>
-      )}
+      <PrincipalAction
+        administrator={administrator}
+        principal={principal}
+        added={added}
+        unavailable={unavailable}
+        disabled={disabled}
+        onAdd={onAdd}
+      />
     </SharingEntry>
+  );
+}
+
+function PrincipalAction({
+  administrator,
+  principal,
+  added,
+  unavailable,
+  disabled,
+  onAdd,
+}: Readonly<{
+  administrator: boolean;
+  principal: Principal;
+  added: boolean;
+  unavailable: string | undefined;
+  disabled: boolean;
+  onAdd: (principal: Principal) => void;
+}>) {
+  if (administrator) {
+    return (
+      <span className="text-xs text-muted-foreground">Always has access</span>
+    );
+  }
+  if (unavailable !== undefined) {
+    return (
+      <span className="text-right text-xs text-muted-foreground">
+        {unavailable}
+      </span>
+    );
+  }
+  if (added) {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+        <CheckIcon aria-hidden="true" className="size-3.5" />
+        Added
+      </span>
+    );
+  }
+  return (
+    <Button
+      type="button"
+      size="sm"
+      variant="outline"
+      disabled={disabled}
+      aria-label={`Add ${principal.label}`}
+      onClick={() => {
+        onAdd(principal);
+      }}
+    >
+      <PlusIcon aria-hidden="true" />
+      Add
+    </Button>
   );
 }

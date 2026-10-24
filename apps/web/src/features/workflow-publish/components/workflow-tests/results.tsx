@@ -37,19 +37,7 @@ export function WorkflowTestResults({
                 {labels.get(step.nodeId) ?? step.nodeId}
               </span>
               <Status tone={state.tone}>{state.label}</Status>
-              {disposition === 'pinned' ? (
-                <span className="text-xs text-muted-foreground">
-                  Pinned · step not called
-                </span>
-              ) : disposition === 'wait_skipped' ? (
-                <span className="text-xs text-muted-foreground">
-                  Wait skipped in test
-                </span>
-              ) : disposition === 'response_skipped' ? (
-                <span className="text-xs text-muted-foreground">
-                  Webhook response skipped in test
-                </span>
-              ) : null}
+              <DispositionLabel disposition={disposition} />
               {step.status === 'succeeded' && tests.activeId !== undefined ? (
                 <>
                   <TestOutput
@@ -68,15 +56,7 @@ export function WorkflowTestResults({
                 </>
               ) : null}
             </div>
-            {step.safeErrorCode === 'test.pin_required' ? (
-              <p className="text-sm text-warning">
-                Pin this step to continue the test.
-              </p>
-            ) : step.safeErrorCode === null ? null : (
-              <p className="font-mono text-xs text-muted-foreground">
-                {step.safeErrorCode}
-              </p>
-            )}
+            <StepFailure step={step} />
           </section>
         );
       })}
@@ -128,5 +108,56 @@ function TestOutputValue({
         )
       }
     </QueryView>
+  );
+}
+
+function DispositionLabel({
+  disposition,
+}: Readonly<{
+  disposition:
+    | NonNullable<WorkflowTests['snapshot']['data']>['dispositions'][string]
+    | undefined;
+}>) {
+  if (disposition === 'pinned') {
+    return (
+      <span className="text-xs text-muted-foreground">
+        Pinned · step not called
+      </span>
+    );
+  }
+  if (disposition === 'wait_skipped') {
+    return (
+      <span className="text-xs text-muted-foreground">
+        Wait skipped in test
+      </span>
+    );
+  }
+  if (disposition === 'response_skipped') {
+    return (
+      <span className="text-xs text-muted-foreground">
+        Webhook response skipped in test
+      </span>
+    );
+  }
+  return null;
+}
+
+function StepFailure({
+  step,
+}: Readonly<{ step: { safeErrorCode: string | null } }>) {
+  if (step.safeErrorCode === 'test.pin_required') {
+    return (
+      <p className="text-sm text-warning">
+        Pin this step to continue the test.
+      </p>
+    );
+  }
+  if (step.safeErrorCode === null) {
+    return null;
+  }
+  return (
+    <p className="font-mono text-xs text-muted-foreground">
+      {step.safeErrorCode}
+    </p>
   );
 }

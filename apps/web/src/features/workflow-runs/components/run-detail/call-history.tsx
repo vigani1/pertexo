@@ -50,37 +50,9 @@ export function CallHistory({
                     `Call ${String(history.start + index + 1)}`}
                 </p>
                 <p className="mt-1 text-muted-foreground">
-                  {call.status === 'pending'
-                    ? 'Waiting to start the child.'
-                    : call.status === 'accepted'
-                      ? 'Waiting for the child to return its result.'
-                      : call.status === 'succeeded'
-                        ? 'Child result received.'
-                        : `Call ${call.status.replaceAll('_', ' ')}.`}
+                  {callStatusLabel(call.status)}
                 </p>
-                {call.childHistory === 'retained' &&
-                call.childRunId !== null ? (
-                  <Link
-                    to="/w/$workspaceId/runs/$runId"
-                    params={{
-                      workspaceId: workspace.id,
-                      runId: call.childRunId,
-                    }}
-                    className="mt-2 inline-block underline underline-offset-4"
-                  >
-                    Open child run
-                  </Link>
-                ) : call.childHistory === 'unavailable' ? (
-                  <Notice tone="info">
-                    Child history is unavailable with your current access. The
-                    parent’s Call outcome remains visible.
-                  </Notice>
-                ) : call.childHistory === 'expired' ? (
-                  <Notice tone="info">
-                    Child history expired. The Call’s identity and outcome
-                    remain retained.
-                  </Notice>
-                ) : null}
+                <ChildHistory call={call} workspace={workspace} />
                 {call.detailsRetired ? (
                   <p className="mt-2 text-muted-foreground">
                     Call input and result details expired.
@@ -97,4 +69,52 @@ export function CallHistory({
       )}
     </section>
   );
+}
+
+function ChildHistory({
+  call,
+  workspace,
+}: Readonly<{ call: WorkflowCallSummary; workspace: AccessibleWorkspace }>) {
+  if (call.childHistory === 'retained' && call.childRunId !== null) {
+    return (
+      <Link
+        to="/w/$workspaceId/runs/$runId"
+        params={{
+          workspaceId: workspace.id,
+          runId: call.childRunId,
+        }}
+        className="mt-2 inline-block underline underline-offset-4"
+      >
+        Open child run
+      </Link>
+    );
+  }
+  if (call.childHistory === 'unavailable') {
+    return (
+      <Notice tone="info">
+        Child history is unavailable with your current access. The parent’s Call
+        outcome remains visible.
+      </Notice>
+    );
+  }
+  if (call.childHistory === 'expired') {
+    return (
+      <Notice tone="info">
+        Child history expired. The Call’s identity and outcome remain retained.
+      </Notice>
+    );
+  }
+  return null;
+}
+
+const CALL_STATUS_COPY: Readonly<
+  Partial<Record<WorkflowCallSummary['status'], string>>
+> = {
+  pending: 'Waiting to start the child.',
+  accepted: 'Waiting for the child to return its result.',
+  succeeded: 'Child result received.',
+};
+
+function callStatusLabel(status: WorkflowCallSummary['status']): string {
+  return CALL_STATUS_COPY[status] ?? `Call ${status.replaceAll('_', ' ')}.`;
 }
