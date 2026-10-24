@@ -67,7 +67,7 @@ export function PublishedStamp({
             <Status tone="success">
               <span className="font-heading text-[0.95rem] font-semibold text-foreground">
                 v{versionNumber} is{' '}
-                {reused ? (liveAgain ? 'live again' : 'still live') : 'live'}
+                {publicationStateLabel({ reused, liveAgain })}
               </span>
             </Status>
             <Button
@@ -102,4 +102,11 @@ export function PublishedStamp({
       ) : null}
     </div>
   );
+}
+
+function publicationStateLabel(
+  input: Readonly<{ reused: boolean; liveAgain: boolean }>,
+) {
+  if (!input.reused) return 'live';
+  return input.liveAgain ? 'live again' : 'still live';
 }

@@ -130,11 +130,7 @@ export function StepExecutionHistory({
     <>
       {row.failureHandling === undefined ? null : (
         <p className="mb-3 text-[0.8rem] text-muted-foreground">
-          {row.failureHandling.disposition === 'handled'
-            ? 'The selected handler finished successfully. This source step remains failed.'
-            : (row.handlingInProgress ?? false)
-              ? 'The selected failure handler is still running. This source step remains failed.'
-              : 'The selected handler did not finish successfully. This failure is unhandled.'}
+          {failureHandlingLabel(row)}
         </p>
       )}
       {row.story.length === 0 ? (
@@ -216,4 +212,12 @@ export function PhoneFailureNotice({
       />
     </section>
   );
+}
+
+function failureHandlingLabel(row: RunTimelineRow) {
+  if (row.failureHandling?.disposition === 'handled')
+    return 'The selected handler finished successfully. This source step remains failed.';
+  if (row.handlingInProgress ?? false)
+    return 'The selected failure handler is still running. This source step remains failed.';
+  return 'The selected handler did not finish successfully. This failure is unhandled.';
 }

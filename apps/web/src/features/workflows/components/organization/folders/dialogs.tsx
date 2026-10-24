@@ -84,13 +84,7 @@ export function FolderNameDialog({
       title={
         target.kind === 'create' ? 'New folder' : `Rename ${target.folder.name}`
       }
-      description={
-        target.kind === 'rename'
-          ? 'Workflows inside keep their place.'
-          : target.parent === null
-            ? 'It appears at the top of your workflows.'
-            : `It appears inside ${target.parent.name}, with the same access.`
-      }
+      description={folderPlacementDescription(target)}
       locked={command.pending}
       onClose={onClose}
       footer={
@@ -118,11 +112,10 @@ export function FolderNameDialog({
                 : undefined
             }
           >
-            {command.retryAvailable
-              ? 'Try again'
-              : target.kind === 'create'
-                ? 'Create folder'
-                : 'Save name'}
+            {folderSubmitLabel({
+              retryAvailable: command.retryAvailable,
+              kind: target.kind,
+            })}
           </ProgressButton>
         </>
       }
@@ -299,4 +292,20 @@ export function FolderDeleteDialog({
       }
     />
   );
+}
+
+function folderPlacementDescription(
+  target:
+    | Readonly<{ kind: 'create'; parent: WorkflowFolder | null }>
+    | Readonly<{ kind: 'rename'; folder: WorkflowFolder }>,
+) {
+  if (target.kind === 'rename') return 'Workflows inside keep their place.';
+  if (target.parent === null) return 'It appears at the top of your workflows.';
+  return `It appears inside ${target.parent.name}, with the same access.`;
+}
+function folderSubmitLabel(
+  input: Readonly<{ retryAvailable: boolean; kind: 'create' | 'rename' }>,
+) {
+  if (input.retryAvailable) return 'Try again';
+  return input.kind === 'create' ? 'Create folder' : 'Save name';
 }

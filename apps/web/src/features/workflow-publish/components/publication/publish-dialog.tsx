@@ -224,12 +224,7 @@ function PublishProgress({
   return (
     <ol className="mt-5 flex flex-col gap-2.5" aria-label="Publishing steps">
       {stages.map((step, index) => {
-        const tone: StatusTone =
-          index < activeIndex
-            ? 'success'
-            : index === activeIndex
-              ? 'live'
-              : 'queued';
+        const tone: StatusTone = progressTone(index, activeIndex);
         return (
           <li
             key={step.stage}
@@ -278,4 +273,10 @@ function WhatHappens({
 function joinNames(names: readonly string[]): string {
   if (names.length <= 1) return names[0] ?? '';
   return `${names.slice(0, -1).join(', ')} and ${names.at(-1) ?? ''}`;
+}
+
+function progressTone(index: number, activeIndex: number): StatusTone {
+  if (index < activeIndex) return 'success';
+  if (index === activeIndex) return 'live';
+  return 'queued';
 }

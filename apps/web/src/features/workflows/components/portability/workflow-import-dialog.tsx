@@ -89,11 +89,11 @@ function WorkflowImportSession({
               : 'Start from an example'}
           </DialogTitle>
           <DialogDescription>
-            {draft.denied
-              ? 'Access changed. The file, preview and retained command have been cleared.'
-              : example === undefined
-                ? `Bring a workflow into “${workspace.name}” as an unpublished draft. Nothing runs until you publish it.`
-                : `Set up a ready-made workflow in “${workspace.name}” as an unpublished draft. Nothing runs until you publish it.`}
+            {importDescription({
+              denied: draft.denied,
+              fromExample: example !== undefined,
+              workspaceName: workspace.name,
+            })}
           </DialogDescription>
           {draft.denied ? null : (
             <div className="mt-5 flex flex-col gap-5">
@@ -170,4 +170,18 @@ function WorkflowImportSession({
       </Dialog>
     </>
   );
+}
+
+function importDescription(
+  input: Readonly<{
+    denied: boolean;
+    fromExample: boolean;
+    workspaceName: string;
+  }>,
+) {
+  if (input.denied)
+    return 'Access changed. The file, preview and retained command have been cleared.';
+  if (input.fromExample)
+    return `Set up a ready-made workflow in “${input.workspaceName}” as an unpublished draft. Nothing runs until you publish it.`;
+  return `Bring a workflow into “${input.workspaceName}” as an unpublished draft. Nothing runs until you publish it.`;
 }
