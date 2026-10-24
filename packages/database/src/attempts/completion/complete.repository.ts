@@ -13,10 +13,13 @@ import {
   auditMismatch,
   nodeAttemptConsumerName as consumerName,
   validateDelivery,
-} from './receipts.js';
-import { applyNodeAttemptCompletion } from './outcomes.js';
+} from './receipts.repository.js';
+import { applyNodeAttemptCompletion } from './outcomes.repository.js';
 import type { CompletionReceiptRow, LockedAttemptRow } from './contract.js';
-import { assertNotAborted, withWorkspaceWriteClient } from '../transactions.js';
+import {
+  assertNotAborted,
+  withWorkspaceWriteClient,
+} from '../transactions.repository.js';
 import { serializeStoredExecutionValue } from '../../platform/stored-execution-value.js';
 
 export async function completeNodeAttempt(

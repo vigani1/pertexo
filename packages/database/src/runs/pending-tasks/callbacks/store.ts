@@ -5,7 +5,7 @@ import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '../../../platform/pool/runtime.js';
-import { withWorkspaceWriteClient } from '../../../attempts/transactions.js';
+import { withWorkspaceWriteClient } from '../../../attempts/transactions.repository.js';
 import { serializeStoredExecutionValue } from '../../../platform/stored-execution-value.js';
 import { wakeWorkflowRun } from '../../calls/wakeup.js';
 import { wakeTaskAncestors } from '../responses/respond.js';

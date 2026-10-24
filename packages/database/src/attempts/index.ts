@@ -5,7 +5,7 @@ export {
   NodeAttemptDispatchBindingMismatchError,
   NodeAttemptOutputInvalidError,
   NodeAttemptStateCorruptError,
-} from './store.js';
+} from './repository.js';
 export type {
   NodeAttemptLease,
   NodeAttemptLoopDeclaration,
@@ -14,4 +14,4 @@ export type {
   NodeRunStoredOutput,
   NodeAttemptRunStore,
   NodeAttemptStoredInputs,
-} from './store.js';
+} from './repository.js';

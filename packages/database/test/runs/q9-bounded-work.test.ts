@@ -6,7 +6,7 @@ import type { Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
 
 import { NODE_ATTEMPT_INPUT_LIMITS } from '../../src/attempts/contract.js';
-import { loadNodeAttemptInputs } from '../../src/attempts/inputs/load.js';
+import { loadNodeAttemptInputs } from '../../src/attempts/inputs/load.queries.js';
 
 const inline = (value: unknown) => ({
   kind: 'inline',

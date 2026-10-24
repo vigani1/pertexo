@@ -17,8 +17,11 @@ import {
   claimReceipt,
   completeReceipt,
   validateDelivery,
-} from '../completion/receipts.js';
-import { assertNotAborted, withWorkspaceWriteClient } from '../transactions.js';
+} from '../completion/receipts.repository.js';
+import {
+  assertNotAborted,
+  withWorkspaceWriteClient,
+} from '../transactions.repository.js';
 import { serializeStoredExecutionJsonValue } from '../../platform/stored-execution-value.js';
 
 async function appendStartedEvent(

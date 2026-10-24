@@ -8,7 +8,10 @@ import {
   type NodeRunStoredOutput,
   type NodeAttemptRunStore,
 } from '../contract.js';
-import { assertNotAborted, withWorkspaceReadClient } from '../transactions.js';
+import {
+  assertNotAborted,
+  withWorkspaceReadClient,
+} from '../transactions.repository.js';
 import {
   parseStoredExecutionValue,
   storedExecutionValuesEqual,

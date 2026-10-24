@@ -1,4 +1,4 @@
-import type { ExecutionCapabilityScope } from '../attempts/dispatch/fence.js';
+import type { ExecutionCapabilityScope } from '../attempts/dispatch/fence.repository.js';
 import type {
   DataTableWriteReceipt,
   DataTableSchemaEdit,

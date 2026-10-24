@@ -142,7 +142,7 @@ export type { UsageTrendsInput } from './queries/usage-trends.js';
 export { createRunValuesStore } from './values/store.js';
 export { RunValuesLimitError } from './values/records.js';
 export type { RunValuesStore } from './values/records.js';
-export { ExecutionCapabilityExpiredError } from '../attempts/dispatch/fence.js';
+export { ExecutionCapabilityExpiredError } from '../attempts/dispatch/fence.repository.js';
 
 export { createCallbackStore } from './pending-tasks/callbacks/store.js';
 export {

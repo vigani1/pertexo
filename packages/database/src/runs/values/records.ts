@@ -1,5 +1,5 @@
 import type { RunValues } from '@pertexo/node-sdk';
-import type { ExecutionCapabilityScope } from '../../attempts/dispatch/fence.js';
+import type { ExecutionCapabilityScope } from '../../attempts/dispatch/fence.repository.js';
 export type RunValuesSaveInput = ExecutionCapabilityScope &
   Readonly<{ values: RunValues; signal: AbortSignal }>;
 export interface RunValuesStore {

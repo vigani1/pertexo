@@ -10,7 +10,7 @@ import {
   NodeAttemptStateCorruptError,
   type NodeAttemptRunStore,
 } from '../contract.js';
-import { assertNotAborted, withWorkspaceWriteClient } from '../transactions.js';
+import { assertNotAborted, withWorkspaceWriteClient } from '../transactions.repository.js';
 import { isConnectionFenceCurrent } from '../../connections/runtime/dispatch.repository.js';
 
 export async function markNodeAttemptDispatched(
