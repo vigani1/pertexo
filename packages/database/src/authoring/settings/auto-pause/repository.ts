@@ -1,3 +1,12 @@
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workflows } from '../../../schema/authoring/workflows.js';
+import { workspaces } from '../../../schema/foundation.js';
+import {
+  workflowTriggerPausePeriods,
+  workflowFailureStreaks,
+} from '../../../schema/trigger-pause.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { command } from './command.repository.js';
 import { WORKFLOW_EDITOR_ROLES } from '@pertexo/workflow-model';
 import { z } from 'zod';
@@ -17,10 +26,9 @@ import {
   type Transact,
 } from './contract.js';
 import {
-  type WorkspaceRow,
-  type WorkflowRow,
   lockWorkspace,
-  WORKFLOW_COLUMNS,
+  workflowProjection,
+  workspaceProjection,
   lockWorkflow,
   workflowSettingsOf,
 } from './state.queries.js';
@@ -98,10 +106,10 @@ async function readWorkspacePauseSettings(
       actorId,
       roles: ROLES,
     });
-    return workspaceSettings.parse({
-      threshold: workspace.auto_pause_threshold,
+    return {
+      threshold: workspace.autoPauseThreshold,
       revision: workspace.revision,
-    });
+    };
   });
 }
 
@@ -123,50 +131,75 @@ async function resumePausedWorkflow(
     exclusive: false,
     apply: async (client, workspace) => {
       const current = await lockWorkflow(client, input.workspaceId, workflowId);
-      if (current.trigger_pause_revision !== request.expectedPauseRevision)
+      if (current.triggerPauseRevision !== request.expectedPauseRevision)
         throw new WorkflowPauseRevisionConflictError(
-          current.trigger_pause_revision,
+          current.triggerPauseRevision,
         );
-      if (current.trigger_pause_state !== 'paused')
+      if (current.triggerPauseState !== 'paused')
         return { settings: workflowSettingsOf(current, workspace) };
       // Outcomes that ended before the resume no longer count.
-      const now = await client.query<{ resumed_at: Date }>(
-        'select clock_timestamp() resumed_at',
-      );
-      const resumedAt = now.rows[0]?.resumed_at;
-      await client.query(
-        `insert into app.workflow_trigger_pause_periods
-               (workspace_id, workflow_id, pause_revision, paused_at, resumed_at)
-             values ($1, $2, $3, $4, $5)`,
-        [
-          input.workspaceId,
+      const db = drizzle(client);
+      const now = await db
+        .execute<{ resumed_at: string }>(
+          sql`select clock_timestamp() resumed_at`,
+        )
+        .catch(rethrowQueryFailure);
+      const clock = now.rows[0]?.resumed_at;
+      if (clock === undefined) throw new Error('Resume time is unavailable');
+      const resumedAt = new Date(clock).toISOString();
+      // The paused-state CHECK guarantees the retained pause start is present.
+      await db
+        .insert(workflowTriggerPausePeriods)
+        .values({
+          workspaceId: input.workspaceId,
           workflowId,
-          current.trigger_pause_revision,
-          current.trigger_paused_at,
+          pauseRevision: BigInt(current.triggerPauseRevision),
+          pausedAt: sql<string>`${current.triggerPausedAt}::timestamptz`,
           resumedAt,
-        ],
-      );
-      await client.query(
-        `insert into app.workflow_failure_streaks
-               (workspace_id, workflow_id, consecutive_failures, resumed_after)
-             values ($1, $2, 0, $3)
-             on conflict on constraint workflow_failure_streaks_pkey do update
-             set consecutive_failures = 0, last_run_id = null, last_ended_at = null,
-                 resumed_after = $3, updated_at = clock_timestamp()`,
-        [input.workspaceId, workflowId, resumedAt],
-      );
-      const updated = await client.query<WorkflowRow>(
-        `update app.workflows
-             set trigger_pause_state = 'none', trigger_paused_at = null,
-                 trigger_pause_reason = null, trigger_pause_failures = null,
-                 trigger_pause_last_run_id = null,
-                 trigger_pause_revision = trigger_pause_revision + 1
-             where workspace_id = $1 and id = $2
-             returning ${WORKFLOW_COLUMNS}`,
-        [input.workspaceId, workflowId],
-      );
+        })
+        .catch(rethrowQueryFailure);
+      await db
+        .insert(workflowFailureStreaks)
+        .values({
+          workspaceId: input.workspaceId,
+          workflowId,
+          consecutiveFailures: 0,
+          resumedAfter: resumedAt,
+        })
+        .onConflictDoUpdate({
+          target: [
+            workflowFailureStreaks.workspaceId,
+            workflowFailureStreaks.workflowId,
+          ],
+          set: {
+            consecutiveFailures: 0,
+            lastRunId: null,
+            lastEndedAt: null,
+            resumedAfter: resumedAt,
+            updatedAt: sql`clock_timestamp()`,
+          },
+        })
+        .catch(rethrowQueryFailure);
+      const [updated] = await db
+        .update(workflows)
+        .set({
+          triggerPauseState: 'none',
+          triggerPausedAt: null,
+          triggerPauseReason: null,
+          triggerPauseFailures: null,
+          triggerPauseLastRunId: null,
+          triggerPauseRevision: sql`${workflows.triggerPauseRevision}+1`,
+        })
+        .where(
+          and(
+            eq(workflows.workspaceId, input.workspaceId),
+            eq(workflows.id, workflowId),
+          ),
+        )
+        .returning(workflowProjection)
+        .catch(rethrowQueryFailure);
       return {
-        settings: workflowSettingsOf(updated.rows[0] ?? current, workspace),
+        settings: workflowSettingsOf(updated ?? current, workspace),
         audit: {
           action: 'workflow.triggers_resumed',
           targetType: 'workflow',
@@ -197,32 +230,33 @@ async function updateWorkflowPauseSettings(
     apply: async (client, workspace) => {
       const current = await lockWorkflow(client, input.workspaceId, workflowId);
       if (
-        current.auto_pause_settings_revision !==
-        request.expectedSettingsRevision
+        current.autoPauseSettingsRevision !== request.expectedSettingsRevision
       )
         throw new WorkflowAutoPauseSettingsRevisionConflictError(
-          current.auto_pause_settings_revision,
+          current.autoPauseSettingsRevision,
         );
       if (
-        current.auto_pause_enabled === request.enabled &&
-        current.auto_pause_threshold === request.thresholdOverride
+        current.autoPauseEnabled === request.enabled &&
+        current.autoPauseThreshold === request.thresholdOverride
       )
         return { settings: workflowSettingsOf(current, workspace) };
-      const updated = await client.query<WorkflowRow>(
-        `update app.workflows
-             set auto_pause_enabled = $3, auto_pause_threshold = $4,
-                 auto_pause_settings_revision = auto_pause_settings_revision + 1
-             where workspace_id = $1 and id = $2
-             returning ${WORKFLOW_COLUMNS}`,
-        [
-          input.workspaceId,
-          workflowId,
-          request.enabled,
-          request.thresholdOverride,
-        ],
-      );
+      const [updated] = await drizzle(client)
+        .update(workflows)
+        .set({
+          autoPauseEnabled: request.enabled,
+          autoPauseThreshold: request.thresholdOverride,
+          autoPauseSettingsRevision: sql`${workflows.autoPauseSettingsRevision}+1`,
+        })
+        .where(
+          and(
+            eq(workflows.workspaceId, input.workspaceId),
+            eq(workflows.id, workflowId),
+          ),
+        )
+        .returning(workflowProjection)
+        .catch(rethrowQueryFailure);
       return {
-        settings: workflowSettingsOf(updated.rows[0] ?? current, workspace),
+        settings: workflowSettingsOf(updated ?? current, workspace),
         audit: {
           action: 'workflow.auto_pause_settings_changed',
           targetType: 'workflow',
@@ -254,27 +288,29 @@ async function updateWorkspacePauseSettings(
         throw new WorkspaceAutoPauseSettingsRevisionConflictError(
           current.revision,
         );
-      if (current.auto_pause_threshold === request.threshold)
+      if (current.autoPauseThreshold === request.threshold)
         return {
-          settings: workspaceSettings.parse({
-            threshold: current.auto_pause_threshold,
+          settings: {
+            threshold: current.autoPauseThreshold,
             revision: current.revision,
-          }),
+          },
         };
-      const updated = await client.query<WorkspaceRow>(
-        `update app.workspaces
-             set auto_pause_threshold = $2, revision = revision + 1,
-                 updated_at = clock_timestamp()
-             where id = $1
-             returning auto_pause_threshold, revision`,
-        [workspaceId, request.threshold],
-      );
-      const row = updated.rows[0] ?? current;
+      const [updated] = await drizzle(client)
+        .update(workspaces)
+        .set({
+          autoPauseThreshold: request.threshold,
+          revision: sql`${workspaces.revision}+1`,
+          updatedAt: sql`clock_timestamp()`,
+        })
+        .where(eq(workspaces.id, workspaceId))
+        .returning(workspaceProjection)
+        .catch(rethrowQueryFailure);
+      const row = updated ?? current;
       return {
-        settings: workspaceSettings.parse({
-          threshold: row.auto_pause_threshold,
+        settings: {
+          threshold: row.autoPauseThreshold,
           revision: row.revision,
-        }),
+        },
         audit: {
           action: 'workspace.auto_pause_settings_changed',
           targetType: 'workspace',
