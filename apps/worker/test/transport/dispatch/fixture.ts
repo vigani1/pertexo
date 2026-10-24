@@ -1,4 +1,4 @@
-import { transportMetrics } from '../../support/transport/metrics.js';
+import type { transportMetrics } from '../../support/transport/metrics.js';
 import { randomUUID } from 'node:crypto';
 
 import type { createOutboxDispatcherDatabase } from '@pertexo/database/testing';
@@ -70,31 +70,31 @@ export async function waitForRemovableJob(
   queue: Queue,
   id: string,
 ): Promise<void> {
-  const deadline = Date.now() + 10_000;
-  while (Date.now() < deadline) {
-    const job = await queue.getJob(id);
-    const state = await job?.getState();
-    if (state === 'delayed' || state === 'failed') return;
-    await new Promise((resolve) => setTimeout(resolve, 20));
-  }
-  throw new Error(`Timed out waiting for removable job ${id}`);
+  await vi.waitUntil(
+    async () => {
+      const job = await queue.getJob(id);
+      const state = await job?.getState();
+      return state === 'delayed' || state === 'failed';
+    },
+    { timeout: 10_000, interval: 20 },
+  );
 }
 
 export async function waitForBalancedConsumerMetrics(
   metrics: ReturnType<typeof transportMetrics>,
   minimumHandlers: number,
 ): Promise<void> {
-  const deadline = Date.now() + 5_000;
-  while (Date.now() < deadline) {
-    const deltas = vi
-      .mocked(metrics.addActiveConcurrency)
-      .mock.calls.map(([measurement]) => measurement.delta);
-    const started = deltas.filter((delta) => delta === 1).length;
-    const finished = deltas.filter((delta) => delta === -1).length;
-    if (started >= minimumHandlers && finished === started) return;
-    await new Promise((resolve) => setTimeout(resolve, 10));
-  }
-  throw new Error('Timed out waiting for balanced consumer metrics');
+  await vi.waitUntil(
+    () => {
+      const deltas = metrics.addActiveConcurrency.mock.calls.map(
+        ([measurement]) => measurement.delta,
+      );
+      const started = deltas.filter((delta) => delta === 1).length;
+      const finished = deltas.filter((delta) => delta === -1).length;
+      return started >= minimumHandlers && finished === started;
+    },
+    { timeout: 5_000, interval: 10 },
+  );
 }
 
 export async function prepareWorkerPostgreSQLRedisTransportProofFixture() {

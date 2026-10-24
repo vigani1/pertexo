@@ -1,3 +1,4 @@
+import { waitForBlockedBy } from '../../../support/postgres/lock-coordination.js';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { expect } from 'vitest';
@@ -180,15 +181,7 @@ export async function pausePeriodCount(scope: Scope) {
 }
 
 export async function waitForBlocked(pid: number) {
-  for (let attempt = 0; attempt < 200; attempt++) {
-    const result = await admin.query<{ waiting: boolean }>(
-      'select exists(select 1 from pg_stat_activity where $1=any(pg_blocking_pids(pid))) as waiting',
-      [pid],
-    );
-    if (result.rows[0]?.waiting === true) return;
-    await new Promise((resolve) => setTimeout(resolve, 5));
-  }
-  throw new Error('Expected database lock waiter');
+  await waitForBlockedBy(admin, pid);
 }
 
 export async function beforeAllFixture1() {

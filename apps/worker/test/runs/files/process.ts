@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { fork } from 'node:child_process';
-import { setTimeout } from 'node:timers/promises';
+import { vi } from 'vitest';
 import type { fileEnvironment } from './environment.js';
 
 const measurementSchema = z.object({
@@ -73,12 +73,14 @@ export async function measuredWorker(
     if (message.phase === 'closed') result = measurementSchema.parse(message);
   });
   async function until(check: () => boolean) {
-    const deadline = Date.now() + 15000;
-    while (!check()) {
-      if (child.exitCode !== null || Date.now() > deadline)
-        throw new Error(`Measured worker unavailable: ${errors}`);
-      await setTimeout(25);
-    }
+    await vi.waitUntil(
+      () => {
+        if (child.exitCode !== null)
+          throw new Error(`Measured worker unavailable: ${errors}`);
+        return check();
+      },
+      { timeout: 15_000, interval: 25 },
+    );
   }
   await until(() => ready);
   return {

@@ -80,56 +80,61 @@ export function registerRollsBackOwnersAcquiredBeforeS(): void {
   );
 
   it('waits for its first scan, never overlaps scans, and stays closed', async () => {
-    const selected = dependencies();
-    const firstScan = Promise.withResolvers<{
-      claimed: number;
-      accepted: number;
-      skipped: number;
-      paused: number;
-      deferred: number;
-      maxLagSeconds: number;
-    }>();
-    let active = 0;
-    let maximumActive = 0;
-    vi.mocked(selected.scanner.scanDue).mockImplementation(async () => {
-      active += 1;
-      maximumActive = Math.max(maximumActive, active);
-      try {
-        return await firstScan.promise;
-      } finally {
-        active -= 1;
-      }
-    });
-    const runtime = await createTriggerRuntime(
-      { ...options, pollIntervalMillis: 10 },
-      {
-        ...selected,
-        checkpointFactory: () => ({ checkpoint: {} }),
-      },
-    );
-    let readinessSettled = false;
-    const readiness = runtime.checkReadiness().finally(() => {
-      readinessSettled = true;
-    });
-    await vi.waitFor(() => {
+    vi.useFakeTimers();
+    try {
+      const selected = dependencies();
+      const firstScan = Promise.withResolvers<{
+        claimed: number;
+        accepted: number;
+        skipped: number;
+        paused: number;
+        deferred: number;
+        maxLagSeconds: number;
+      }>();
+      let active = 0;
+      let maximumActive = 0;
+      vi.mocked(selected.scanner.scanDue).mockImplementation(async () => {
+        active += 1;
+        maximumActive = Math.max(maximumActive, active);
+        try {
+          return await firstScan.promise;
+        } finally {
+          active -= 1;
+        }
+      });
+      const runtime = await createTriggerRuntime(
+        { ...options, pollIntervalMillis: 10 },
+        {
+          ...selected,
+          checkpointFactory: () => ({ checkpoint: {} }),
+        },
+      );
+      let readinessSettled = false;
+      const readiness = runtime.checkReadiness().finally(() => {
+        readinessSettled = true;
+      });
+      await vi.waitFor(() => {
+        expect(selected.scanner.scanDue).toHaveBeenCalledOnce();
+      });
+      await vi.advanceTimersByTimeAsync(25);
+      expect(readinessSettled).toBe(false);
       expect(selected.scanner.scanDue).toHaveBeenCalledOnce();
-    });
-    await new Promise((resolve) => setTimeout(resolve, 25));
-    expect(readinessSettled).toBe(false);
-    expect(selected.scanner.scanDue).toHaveBeenCalledOnce();
-    expect(maximumActive).toBe(1);
+      expect(maximumActive).toBe(1);
 
-    firstScan.resolve({
-      claimed: 0,
-      accepted: 0,
-      skipped: 0,
-      paused: 0,
-      deferred: 0,
-      maxLagSeconds: 0,
-    });
-    await readiness;
-    await runtime.close();
-    await expect(runtime.checkReadiness()).rejects.toThrow(/closed/u);
+      firstScan.resolve({
+        claimed: 0,
+        accepted: 0,
+        skipped: 0,
+        paused: 0,
+        deferred: 0,
+        maxLagSeconds: 0,
+      });
+      await readiness;
+      await runtime.close();
+      await expect(runtime.checkReadiness()).rejects.toThrow(/closed/u);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('continues after hostile failure logging and recovers readiness', async () => {

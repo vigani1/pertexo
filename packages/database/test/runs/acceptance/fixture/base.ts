@@ -185,24 +185,24 @@ export async function waitForDatabaseLock(
   relationship: 'blocker' | 'waiter' = 'blocker',
 ): Promise<void> {
   const observer = new Pool({ connectionString: migrationUrl, max: 1 });
-  const deadline = Date.now() + 2_000;
   try {
-    while (Date.now() < deadline) {
-      const result = await observer.query<{ blocked: boolean }>(
-        `select exists (
+    await expect
+      .poll(
+        async () => {
+          const result = await observer.query<{ blocked: boolean }>(
+            `select exists (
            select 1 from pg_stat_activity
             where ($2::text='blocker' and $1::int=any(pg_blocking_pids(pid)))
                or ($2::text='waiter' and pid=$1::int
                    and cardinality(pg_blocking_pids(pid)) > 0)
          ) blocked`,
-        [processId, relationship],
-      );
-      if (result.rows[0]?.blocked === true) return;
-      await new Promise((resolve) => setTimeout(resolve, 10));
-    }
-    throw new Error(
-      `Timed out waiting for ${relationship} database process ${String(processId)}`,
-    );
+            [processId, relationship],
+          );
+          return result.rows[0]?.blocked ?? false;
+        },
+        { timeout: 2_000, interval: 10 },
+      )
+      .toBe(true);
   } finally {
     await observer.end();
   }

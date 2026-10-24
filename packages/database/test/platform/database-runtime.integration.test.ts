@@ -52,13 +52,9 @@ async function sessionCount(): Promise<number> {
 }
 
 async function waitForSessionCount(expected: number): Promise<void> {
-  for (let attempt = 0; attempt < 50; attempt += 1) {
-    if ((await sessionCount()) === expected) return;
-    await new Promise((resolve) => setTimeout(resolve, 20));
-  }
-  throw new Error(
-    `database runtime retained ${String(await sessionCount())} sessions`,
-  );
+  await expect
+    .poll(sessionCount, { timeout: 1_000, interval: 20 })
+    .toBe(expected);
 }
 
 beforeAll(async () => {

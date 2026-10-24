@@ -1,3 +1,4 @@
+import { waitForBlockedBy } from '../../../support/postgres/lock-coordination.js';
 import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { Pool } from 'pg';
@@ -150,12 +151,18 @@ export function registerRollsBackRoleSessionAudit(): void {
         },
       ]);
     });
-    const blockerPool = new Pool({ connectionString: migrationUrl, max: 1 });
+    const blockerPool = new Pool({ connectionString: migrationUrl, max: 2 });
     const blocker = await blockerPool.connect();
     let demotion: Promise<unknown> | undefined;
     let staleManagerCommand: Promise<unknown> | undefined;
     try {
       await blocker.query('begin');
+      const holding = await blocker.query<{ pid: number }>(
+        'select pg_backend_pid() pid',
+      );
+      const blockerPid = holding.rows[0]?.pid;
+      if (blockerPid === undefined)
+        throw new Error('Membership lock holder is missing');
       await blocker.query('set local role pertexo_owner');
       await blocker.query(
         'select id from app.workspaces where id=$1 for update',
@@ -170,7 +177,7 @@ export function registerRollsBackRoleSessionAudit(): void {
         idempotencyKey: randomUUID(),
       });
       void demotion.catch(() => undefined);
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await waitForBlockedBy(blockerPool, blockerPid);
       staleManagerCommand = identityDatabase.changeWorkspaceMemberRole({
         workspaceId: commandWorkspace.id,
         actorUserId: manager.id,
@@ -180,7 +187,7 @@ export function registerRollsBackRoleSessionAudit(): void {
         idempotencyKey: randomUUID(),
       });
       void staleManagerCommand.catch(() => undefined);
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await waitForBlockedBy(blockerPool, blockerPid, { minimumWaiters: 2 });
       await blocker.query('commit');
       await expect(demotion).resolves.toMatchObject({ role: 'viewer' });
       await expect(staleManagerCommand).rejects.toMatchObject({

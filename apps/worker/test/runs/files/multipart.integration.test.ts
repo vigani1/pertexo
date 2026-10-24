@@ -1,7 +1,6 @@
 import { reportFileQualification } from './report.js';
 import { createHash } from 'node:crypto';
 import { readdir } from 'node:fs/promises';
-import { setTimeout } from 'node:timers/promises';
 import { describe, expect, it } from 'vitest';
 import { fileEnvironment } from './environment.js';
 import { fileGraph, quietFileGraph } from './graphs.js';
@@ -38,9 +37,9 @@ const enabled = process.env.F45_RELEASE_QUALIFICATION === 'true';
         }
         receiver.hold();
         worker = await measuredWorker(environment);
-        const deadline = Date.now() + 25000;
-        while (receiver.pending < 32 && Date.now() < deadline)
-          await setTimeout(25);
+        await expect
+          .poll(() => receiver.pending, { timeout: 25_000, interval: 25 })
+          .toBe(32);
         expect(receiver.pending).toBe(32);
         const quietStarted = Date.now();
         for (const workspaceId of [

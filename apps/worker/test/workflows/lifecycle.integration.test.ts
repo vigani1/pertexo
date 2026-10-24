@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
   createWorkflowLifecycleWorkerEnvironment,
@@ -328,16 +328,9 @@ async function poll(
   label: string,
   assertion: () => Promise<void>,
 ): Promise<void> {
-  const deadline = Date.now() + 10_000;
-  let lastError: unknown;
-  while (Date.now() < deadline) {
-    try {
-      await assertion();
-      return;
-    } catch (error: unknown) {
-      lastError = error;
-      await new Promise((resolve) => setTimeout(resolve, 25));
-    }
+  try {
+    await vi.waitFor(assertion, { timeout: 10_000, interval: 25 });
+  } catch (error: unknown) {
+    throw new Error(`${label} did not converge`, { cause: error });
   }
-  throw new Error(`${label} did not converge`, { cause: lastError });
 }

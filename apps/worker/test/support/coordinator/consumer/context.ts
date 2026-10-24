@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import {
   enabled,
   adminUrl,
@@ -45,18 +46,14 @@ export async function waitFor<T>(
   predicate: (value: T) => boolean,
   timeoutMs = 10_000,
 ): Promise<T> {
-  const deadline = Date.now() + timeoutMs;
-  let value = await operation();
-  while (!predicate(value) && Date.now() < deadline) {
-    await new Promise<void>((resolve) => setTimeout(resolve, 25));
-    value = await operation();
-  }
-  if (!predicate(value)) {
-    throw new Error(
-      `coordinator proof timed out with ${JSON.stringify(value)}`,
-    );
-  }
-  return value;
+  const result = await vi.waitUntil(
+    async () => {
+      const value = await operation();
+      return predicate(value) ? { value } : false;
+    },
+    { timeout: timeoutMs, interval: 25 },
+  );
+  return result.value;
 }
 
 export const coordinatorFixture: CoordinatorIntegrationFixture = Object.freeze({

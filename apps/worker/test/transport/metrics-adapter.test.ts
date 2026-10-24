@@ -2,8 +2,6 @@ import { transportMetrics } from '../support/transport/metrics.js';
 import { JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
 import { describe, expect, it, vi } from 'vitest';
 
-/* eslint-disable @typescript-eslint/unbound-method -- assertions target injected metric boundary fakes */
-
 import { createQueueMetricsObserver } from '../../src/transport/metrics-adapter.js';
 
 describe('queue transport metrics adapter', () => {

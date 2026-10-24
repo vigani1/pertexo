@@ -1,3 +1,4 @@
+import { waitForBlockedBy } from '../../../support/postgres/lock-coordination.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool, type PoolClient } from 'pg';
@@ -212,15 +213,7 @@ export async function release(value: {
 }
 
 export async function waitBlocked(blockerPid: number) {
-  for (let attempt = 0; attempt < 200; attempt++) {
-    const result = await observer.query<{ waiting: boolean }>(
-      'select exists(select 1 from pg_stat_activity where $1=any(pg_blocking_pids(pid))) waiting',
-      [blockerPid],
-    );
-    if (result.rows[0]?.waiting === true) return;
-    await new Promise((resolve) => setTimeout(resolve, 5));
-  }
-  throw new Error('Expected command to wait for the admission lock');
+  await waitForBlockedBy(observer, blockerPid);
 }
 
 export async function beforeAllFixture1() {
