@@ -1,3 +1,7 @@
+import { eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workspaces, auditEvents } from '../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 
 import {
@@ -57,9 +61,12 @@ export async function runOrganizationCommand<T>(
   scope: OrganizationScope,
   command: OrganizationCommand<T>,
 ): Promise<Readonly<{ result: T; replayed: boolean }>> {
-  await client.query('select id from app.workspaces where id=$1 for update', [
-    scope.workspaceId,
-  ]);
+  await drizzle(client)
+    .select({ id: workspaces.id })
+    .from(workspaces)
+    .where(eq(workspaces.id, scope.workspaceId))
+    .for('update')
+    .catch(rethrowQueryFailure);
   await lockWorkflowAuthoringAuthority(client, scope.workspaceId, {
     actorId: scope.actorId,
     roles: command.roles,
@@ -81,19 +88,18 @@ export async function runOrganizationCommand<T>(
   }
   await lockOrganization(client, scope.workspaceId);
   const { result, audit } = await command.apply();
-  await client.query(
-    `insert into app.audit_events
-       (id, workspace_id, actor_user_id, action, target_type, target_id, metadata)
-     values ($1, $2, $3, $4, 'workflow_organization', $5, $6::jsonb)`,
-    [
-      generatePersistedId(),
-      scope.workspaceId,
-      scope.actorId,
-      audit.action,
-      audit.targetId,
-      JSON.stringify(audit.metadata ?? {}),
-    ],
-  );
+  await drizzle(client)
+    .insert(auditEvents)
+    .values({
+      id: generatePersistedId(),
+      workspaceId: scope.workspaceId,
+      actorUserId: scope.actorId,
+      action: audit.action,
+      targetType: 'workflow_organization',
+      targetId: audit.targetId,
+      metadata: audit.metadata ?? {},
+    })
+    .catch(rethrowQueryFailure);
   await completeCommand(client, identity, result);
   return { result, replayed: false };
 }

@@ -1,3 +1,12 @@
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  workflowTags,
+  workflowTagAssignments,
+  workflowOrganizationState,
+} from '../../../../schema/authoring/organization.js';
+import { workflows } from '../../../../schema/authoring/workflows.js';
+import { rethrowQueryFailure } from '../../../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 
 import {
@@ -20,7 +29,7 @@ import {
   replaceResult,
 } from '../contract.js';
 import {
-  type TagRow,
+  tagProjection,
   readTag,
   requireFreeKey,
   requireRevision,
@@ -33,34 +42,70 @@ async function deleteTag(
   scope: OrganizationScope,
   tagId: string,
 ): Promise<number> {
-  const assigned = await client.query<{ workflow_id: string }>(
-    `select workflow_id from app.workflow_tag_assignments
-     where workspace_id = $1 and tag_id = $2 order by workflow_id limit $3`,
-    [scope.workspaceId, tagId, TAG_DELETE_WORKFLOW_LIMIT + 1],
-  );
-  if (assigned.rows.length > TAG_DELETE_WORKFLOW_LIMIT)
+  const db = drizzle(client);
+  const assigned = await db
+    .select({ workflowId: workflowTagAssignments.workflowId })
+    .from(workflowTagAssignments)
+    .where(
+      and(
+        eq(workflowTagAssignments.workspaceId, scope.workspaceId),
+        eq(workflowTagAssignments.tagId, tagId),
+      ),
+    )
+    .orderBy(asc(workflowTagAssignments.workflowId))
+    .limit(TAG_DELETE_WORKFLOW_LIMIT + 1)
+    .catch(rethrowQueryFailure);
+  if (assigned.length > TAG_DELETE_WORKFLOW_LIMIT)
     throw new WorkflowTagConflictError('delete_overflow');
-  const workflowIds = assigned.rows.map((row) => row.workflow_id);
-  await client.query(
-    `select 1 from app.workflows
-     where workspace_id = $1 and id = any($2::uuid[]) order by id for update`,
-    [scope.workspaceId, workflowIds],
-  );
-  await client.query(
-    `insert into app.workflow_organization_state (workspace_id, workflow_id, revision)
-     select $1, workflow_id, 2 from unnest($2::uuid[]) workflow_id
-     on conflict (workspace_id, workflow_id) do update
-     set revision = app.workflow_organization_state.revision + 1`,
-    [scope.workspaceId, workflowIds],
-  );
-  await client.query(
-    'delete from app.workflow_tag_assignments where workspace_id = $1 and tag_id = $2',
-    [scope.workspaceId, tagId],
-  );
-  await client.query(
-    'delete from app.workflow_tags where workspace_id = $1 and id = $2',
-    [scope.workspaceId, tagId],
-  );
+  const workflowIds = assigned.map((row) => row.workflowId);
+  await db
+    .select({ id: workflows.id })
+    .from(workflows)
+    .where(
+      and(
+        eq(workflows.workspaceId, scope.workspaceId),
+        inArray(workflows.id, workflowIds),
+      ),
+    )
+    .orderBy(asc(workflows.id))
+    .for('update')
+    .catch(rethrowQueryFailure);
+  if (workflowIds.length > 0)
+    await db
+      .insert(workflowOrganizationState)
+      .values(
+        workflowIds.map((workflowId) => ({
+          workspaceId: scope.workspaceId,
+          workflowId,
+          revision: 2,
+        })),
+      )
+      .onConflictDoUpdate({
+        target: [
+          workflowOrganizationState.workspaceId,
+          workflowOrganizationState.workflowId,
+        ],
+        set: { revision: sql`${workflowOrganizationState.revision}+1` },
+      })
+      .catch(rethrowQueryFailure);
+  await db
+    .delete(workflowTagAssignments)
+    .where(
+      and(
+        eq(workflowTagAssignments.workspaceId, scope.workspaceId),
+        eq(workflowTagAssignments.tagId, tagId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  await db
+    .delete(workflowTags)
+    .where(
+      and(
+        eq(workflowTags.workspaceId, scope.workspaceId),
+        eq(workflowTags.id, tagId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
   return workflowIds.length;
 }
 
@@ -75,18 +120,19 @@ export async function createTag(
     request,
     apply: async (client, workspaceId) => {
       await requireFreeKey(client, workspaceId, request.key, null);
-      const count = await client.query<{ count: number }>(
-        'select count(*)::int count from app.workflow_tags where workspace_id = $1',
-        [workspaceId],
-      );
-      if ((count.rows[0]?.count ?? 0) >= TAG_LIMIT)
+      const db = drizzle(client);
+      const [count] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(workflowTags)
+        .where(eq(workflowTags.workspaceId, workspaceId))
+        .catch(rethrowQueryFailure);
+      if ((count?.count ?? 0) >= TAG_LIMIT)
         throw new WorkflowTagConflictError('limit');
-      const created = await client.query<TagRow>(
-        `insert into app.workflow_tags (workspace_id, id, key)
-             values ($1, uuidv7(), $2) returning id, key, revision`,
-        [workspaceId, request.key],
-      );
-      const row = created.rows[0];
+      const [row] = await db
+        .insert(workflowTags)
+        .values({ workspaceId, id: sql`uuidv7()`, key: request.key })
+        .returning(tagProjection)
+        .catch(rethrowQueryFailure);
       if (row === undefined) throw new Error('Tag was not created');
       return row;
     },
@@ -110,12 +156,18 @@ export async function renameTag(
       const current = await readTag(client, workspaceId, tagId);
       requireRevision(current, request.expectedTagRevision);
       await requireFreeKey(client, workspaceId, request.key, tagId);
-      const renamed = await client.query<TagRow>(
-        `update app.workflow_tags set key = $3, revision = revision + 1
-             where workspace_id = $1 and id = $2 returning id, key, revision`,
-        [workspaceId, tagId, request.key],
-      );
-      return renamed.rows[0] ?? current;
+      const [renamed] = await drizzle(client)
+        .update(workflowTags)
+        .set({ key: request.key, revision: sql`${workflowTags.revision}+1` })
+        .where(
+          and(
+            eq(workflowTags.workspaceId, workspaceId),
+            eq(workflowTags.id, tagId),
+          ),
+        )
+        .returning(tagProjection)
+        .catch(rethrowQueryFailure);
+      return renamed ?? current;
     },
   });
 }
