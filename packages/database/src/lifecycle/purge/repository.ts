@@ -1,6 +1,7 @@
+import type { z } from 'zod';
 import { claimPurgeWorkspace } from '../identity/directory.repository.js';
 
-import type { PoolClient } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 
 import type { DatabaseConfig } from '../../config.js';
 import { acquireDatabasePool } from '../../platform/pool/runtime.js';
@@ -65,78 +66,10 @@ export function createWorkspacePurgeCoordinator(
   const options = optionsSchema.parse(inputOptions);
   const lease = acquireDatabasePool(config, runtime, { role: 'maintenance' });
   const { pool } = lease;
-  const transaction = <T>(
-    signal: AbortSignal | undefined,
-    work: (client: PoolClient) => Promise<T>,
-  ): Promise<T> => inRetentionTransaction(pool, options, signal, work);
-
-  const purgeRows = (
-    signal: AbortSignal | undefined,
-  ): Promise<WorkspacePurgeProcessResult | Readonly<{ rowsPurged: string }>> =>
-    transaction(signal, async (client) => {
-      const candidate = await claimPurgeWorkspace(client);
-      if (candidate === undefined) return { status: 'idle' as const };
-      const workspace = candidateSchema.parse(candidate);
-      if (workspace.status === 'pending_deletion') {
-        await client.query(
-          `update app.workspaces set status = 'purging', updated_at = clock_timestamp()
-           where id = $1`,
-          [workspace.id],
-        );
-        return { status: 'started' as const, workspaceId: workspace.id };
-      }
-      await client.query("select set_config('app.workspace_id', $1, true)", [
-        workspace.id,
-      ]);
-      for (const step of PURGE_STEPS) {
-        const changed =
-          'run' in step
-            ? await step.run(client, workspace.id, options.pageSize)
-            : ((
-                await client.query(step.statement, [
-                  workspace.id,
-                  options.pageSize,
-                ])
-              ).rowCount ?? 0);
-        if (changed > 0)
-          return {
-            status: 'progressed' as const,
-            workspaceId: workspace.id,
-            step: step.name,
-          };
-      }
-      return { rowsPurged: workspace.id };
-    });
-
-  const finish = (
-    workspaceId: string,
-    signal: AbortSignal | undefined,
-  ): Promise<WorkspacePurgeProcessResult> =>
-    transaction(signal, async (client) => {
-      const locked = await client.query(
-        `select 1 from app.workspaces where id = $1 and status = 'purging'
-         for update skip locked`,
-        [workspaceId],
-      );
-      // Another worker is on it, or already finished it.
-      if (locked.rowCount !== 1) return { status: 'idle' as const };
-      await assertNothingLeft(client, workspaceId);
-      await client.query(
-        `update app.workspaces
-         set status = 'deleted', name = 'Deleted workspace',
-             slug = 'deleted-' || id::text, created_by = null,
-             deletion_requested_by = null, deletion_reason = 'purged',
-             updated_at = clock_timestamp()
-         where id = $1`,
-        [workspaceId],
-      );
-      return { status: 'completed' as const, workspaceId };
-    });
-
   return Object.freeze({
     close: () => lease.close(),
     processNext: async (signal?: AbortSignal) => {
-      const rows = await purgeRows(signal);
+      const rows = await purgeRows({ pool, options }, signal);
       if (!('rowsPurged' in rows)) return rows;
       const workspaceId = rows.rowsPurged;
       // Stored objects go after rows and outside any transaction.
@@ -154,7 +87,77 @@ export function createWorkspacePurgeCoordinator(
           workspaceId,
           step: 'objects',
         });
-      return finish(workspaceId, signal);
+      return finishPurge({ pool, options }, workspaceId, signal);
     },
+  });
+}
+
+type PurgeContext = Readonly<{
+  pool: Pool;
+  options: z.output<typeof optionsSchema>;
+}>;
+async function purgeRows(
+  { pool, options }: PurgeContext,
+  signal: AbortSignal | undefined,
+): Promise<WorkspacePurgeProcessResult | Readonly<{ rowsPurged: string }>> {
+  return inRetentionTransaction(pool, options, signal, async (client) => {
+    const candidate = await claimPurgeWorkspace(client);
+    if (candidate === undefined) return { status: 'idle' as const };
+    const workspace = candidateSchema.parse(candidate);
+    if (workspace.status === 'pending_deletion') {
+      await client.query(
+        `update app.workspaces set status = 'purging', updated_at = clock_timestamp()
+           where id = $1`,
+        [workspace.id],
+      );
+      return { status: 'started' as const, workspaceId: workspace.id };
+    }
+    await client.query("select set_config('app.workspace_id', $1, true)", [
+      workspace.id,
+    ]);
+    for (const step of PURGE_STEPS) {
+      const changed =
+        'run' in step
+          ? await step.run(client, workspace.id, options.pageSize)
+          : ((
+              await client.query(step.statement, [
+                workspace.id,
+                options.pageSize,
+              ])
+            ).rowCount ?? 0);
+      if (changed > 0)
+        return {
+          status: 'progressed' as const,
+          workspaceId: workspace.id,
+          step: step.name,
+        };
+    }
+    return { rowsPurged: workspace.id };
+  });
+}
+async function finishPurge(
+  { pool, options }: PurgeContext,
+  workspaceId: string,
+  signal: AbortSignal | undefined,
+): Promise<WorkspacePurgeProcessResult> {
+  return inRetentionTransaction(pool, options, signal, async (client) => {
+    const locked = await client.query(
+      `select 1 from app.workspaces where id = $1 and status = 'purging'
+         for update skip locked`,
+      [workspaceId],
+    );
+    // Another worker is on it, or already finished it.
+    if (locked.rowCount !== 1) return { status: 'idle' as const };
+    await assertNothingLeft(client, workspaceId);
+    await client.query(
+      `update app.workspaces
+         set status = 'deleted', name = 'Deleted workspace',
+             slug = 'deleted-' || id::text, created_by = null,
+             deletion_requested_by = null, deletion_reason = 'purged',
+             updated_at = clock_timestamp()
+         where id = $1`,
+      [workspaceId],
+    );
+    return { status: 'completed' as const, workspaceId };
   });
 }
