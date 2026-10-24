@@ -1,10 +1,7 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
-import type {
-  AccessibleWorkspace,
-  WorkflowPromotionPreview,
-} from '@pertexo/contracts';
+import type { WorkflowPromotionPreview } from '@pertexo/contracts';
 import { WorkflowPromotionPage } from '@/features/workflow-promotions/public';
 import { promotionSettingsQuery } from '@/features/workflow-promotions/data/promotions.queries';
 import { createApiClient } from '@/lib/api/client';
@@ -119,12 +116,7 @@ it('keeps the exact reviewed command through a lost response and preserves targe
   const rendered = renderInRouter(
     <WorkflowPromotionPage
       scope={scope}
-      workspace={
-        workspaceWith([
-          'workflow:update',
-          'workflow:publish',
-        ]) as AccessibleWorkspace
-      }
+      workspace={workspaceWith(['workflow:update', 'workflow:publish'])}
       selected={`${workflowId}:${versionId}`}
       onSelect={select}
     />,
@@ -225,12 +217,7 @@ it('clears the protected review when apply loses workspace access', async () => 
   renderInRouter(
     <WorkflowPromotionPage
       scope={{ apiClient, userId, workspaceId }}
-      workspace={
-        workspaceWith([
-          'workflow:update',
-          'workflow:publish',
-        ]) as AccessibleWorkspace
-      }
+      workspace={workspaceWith(['workflow:update', 'workflow:publish'])}
       selected={`${workflowId}:${versionId}`}
       onSelect={vi.fn()}
     />,
@@ -271,7 +258,7 @@ it('tells a viewer promotion needs edit access without asking for its settings',
   renderInRouter(
     <WorkflowPromotionPage
       scope={scope}
-      workspace={workspaceWith([]) as AccessibleWorkspace}
+      workspace={workspaceWith([])}
       onSelect={vi.fn()}
     />,
   );

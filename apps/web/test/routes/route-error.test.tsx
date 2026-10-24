@@ -1,18 +1,14 @@
+import { createUserFixture } from '../support/fixtures/identity';
 import { HttpResponse, http } from 'msw';
 import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../support/mock-server';
 import { renderApp } from '../support/render-app';
 
-const user = {
-  id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-  email: 'operator@example.test',
-  displayName: 'Pertexo Operator',
-  status: 'active',
-  revision: 1,
+const user = createUserFixture({
   createdAt: '2026-09-14T10:00:00.000Z',
   updatedAt: '2026-09-14T10:00:00.000Z',
-};
+});
 
 function problem(
   status: number,

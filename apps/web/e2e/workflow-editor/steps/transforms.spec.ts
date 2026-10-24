@@ -1,3 +1,4 @@
+import { createWorkspaceFixture } from '../../../test/support/fixtures/identity';
 import { expect, test } from '../../support/fixtures';
 import { platformBrowserNodeDefinitionCatalog } from '../../../../../packages/node-catalog/dist/index.js';
 import {
@@ -124,17 +125,13 @@ for (const editable of [true, false]) {
       ...(editable
         ? {}
         : {
-            accessibleWorkspace: {
+            accessibleWorkspace: createWorkspaceFixture({
               id: workspaceId,
-              name: 'Control Operations',
-              slug: 'control-operations',
-              status: 'active',
-              revision: 1,
               role: 'viewer',
               capabilities: ['workspace:read', 'workflow:read'],
               createdAt: user.createdAt,
               updatedAt: user.updatedAt,
-            },
+            }),
           }),
     });
     await page.goto(editorUrl);

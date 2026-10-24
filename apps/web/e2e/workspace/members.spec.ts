@@ -1,3 +1,7 @@
+import {
+  createUserFixture,
+  createWorkspaceFixture,
+} from '../../test/support/fixtures/identity';
 import { expect, test, type Page } from '../support/fixtures';
 
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -22,32 +26,24 @@ function member(userIdValue: string, displayName: string, role: string) {
 async function installRoutes(page: Page) {
   await page.route('**/v1/users/me', (route) =>
     route.fulfill({
-      json: {
+      json: createUserFixture({
         id: userId,
-        email: 'operator@example.test',
-        displayName: 'Pertexo Operator',
-        status: 'active',
-        revision: 1,
         createdAt: timestamp,
         updatedAt: timestamp,
-      },
+      }),
     }),
   );
   await page.route('**/v1/workspaces?**', (route) =>
     route.fulfill({
       json: {
         items: [
-          {
+          createWorkspaceFixture({
             id: workspaceId,
-            name: 'Control Operations',
-            slug: 'control-operations',
-            status: 'active',
-            revision: 1,
             role: 'viewer',
             capabilities: ['workspace:read', 'member:read'],
             createdAt: timestamp,
             updatedAt: timestamp,
-          },
+          }),
         ],
         nextCursor: null,
       },
@@ -147,17 +143,12 @@ test('confirms a role change and sends its exact revision and command key', asyn
     route.fulfill({
       json: {
         items: [
-          {
+          createWorkspaceFixture({
             id: workspaceId,
-            name: 'Control Operations',
-            slug: 'control-operations',
-            status: 'active',
-            revision: 1,
-            role: 'owner',
             capabilities: ['workspace:read', 'member:read', 'member:manage'],
             createdAt: timestamp,
             updatedAt: timestamp,
-          },
+          }),
         ],
         nextCursor: null,
       },
@@ -231,17 +222,12 @@ test('creates an invitation and refreshes the authoritative pending list', async
     route.fulfill({
       json: {
         items: [
-          {
+          createWorkspaceFixture({
             id: workspaceId,
-            name: 'Control Operations',
-            slug: 'control-operations',
-            status: 'active',
-            revision: 1,
-            role: 'owner',
             capabilities: ['workspace:read', 'member:read', 'member:manage'],
             createdAt: timestamp,
             updatedAt: timestamp,
-          },
+          }),
         ],
         nextCursor: null,
       },
@@ -316,17 +302,12 @@ for (const width of [390, 1280]) {
       route.fulfill({
         json: {
           items: [
-            {
+            createWorkspaceFixture({
               id: workspaceId,
-              name: 'Control Operations',
-              slug: 'control-operations',
-              status: 'active',
-              revision: 1,
-              role: 'owner',
               capabilities: ['workspace:read', 'member:read', 'member:manage'],
               createdAt: timestamp,
               updatedAt: timestamp,
-            },
+            }),
           ],
           nextCursor: null,
         },

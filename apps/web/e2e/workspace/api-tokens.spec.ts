@@ -1,3 +1,7 @@
+import {
+  createUserFixture,
+  createWorkspaceFixture,
+} from '../../test/support/fixtures/identity';
 import { expect, test, type Page } from '../support/fixtures';
 import { API_TOKEN_SCOPES, type ApiTokenMetadata } from '@pertexo/contracts';
 
@@ -34,32 +38,26 @@ async function install(
     ]);
   await page.route('**/v1/users/me', (route) =>
     route.fulfill({
-      json: {
-        id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      json: createUserFixture({
         email: 'owner@example.test',
         displayName: 'Workspace Owner',
-        status: 'active',
-        revision: 1,
         createdAt: timestamp,
         updatedAt: timestamp,
-      },
+      }),
     }),
   );
   await page.route('**/v1/workspaces?**', (route) =>
     route.fulfill({
       json: {
         items: [
-          {
+          createWorkspaceFixture({
             id: workspaceId,
             name: 'Automation workspace',
             slug: 'automation',
-            status: 'active',
-            revision: 1,
-            role: 'owner',
             capabilities: ['workspace:read'],
             createdAt: timestamp,
             updatedAt: timestamp,
-          },
+          }),
         ],
         nextCursor: null,
       },

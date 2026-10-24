@@ -1,3 +1,4 @@
+import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { HttpResponse, http } from 'msw';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -91,7 +92,11 @@ function workflowHandlers(
   );
 }
 
-const readerCapabilities = ['workspace:read', 'workflow:read', 'run:read'];
+const readerCapabilities: AccessibleWorkspace['capabilities'] = [
+  'workspace:read',
+  'workflow:read',
+  'run:read',
+];
 
 describe('workspace home', () => {
   it('makes bounded, capability-scoped reads and links to runs and workflows', async () => {

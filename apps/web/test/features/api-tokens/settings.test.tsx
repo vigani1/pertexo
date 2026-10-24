@@ -1,3 +1,7 @@
+import {
+  createUserFixture,
+  createWorkspaceFixture,
+} from '../../support/fixtures/identity';
 import { HttpResponse, http } from 'msw';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -31,30 +35,27 @@ function fixtures(
   let items = options.items ?? [];
   mockServer.use(
     http.get('http://pertexo.test/v1/users/me', () =>
-      HttpResponse.json({
-        id: userId,
-        email: 'owner@example.test',
-        displayName: 'Workspace Owner',
-        status: 'active',
-        revision: 1,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      }),
+      HttpResponse.json(
+        createUserFixture({
+          id: userId,
+          email: 'owner@example.test',
+          displayName: 'Workspace Owner',
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        }),
+      ),
     ),
     http.get('http://pertexo.test/v1/workspaces', () =>
       HttpResponse.json({
         items: [
-          {
+          createWorkspaceFixture({
             id: workspaceId,
             name: 'Automation workspace',
             slug: 'automation',
-            status: 'active',
-            revision: 1,
-            role: 'owner',
             capabilities: ['workspace:read'],
             createdAt: timestamp,
             updatedAt: timestamp,
-          },
+          }),
         ],
         nextCursor: null,
       }),

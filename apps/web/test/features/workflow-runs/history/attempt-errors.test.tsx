@@ -1,14 +1,10 @@
-import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { screen, within } from '@testing-library/react';
 import { expect, it } from 'vitest';
 import { StepExecutionHistory } from '@/features/workflow-runs/components/run-detail/execution-history';
 import type { RunTimelineRow } from '@/features/workflow-runs/model/timeline/runs';
 import { renderInRouter } from '../../../support/render-in-router';
 import { fixtureWorkspace } from '../../../support/fixtures/run';
-const workspace = fixtureWorkspace([
-  'workspace:read',
-  'run:read',
-]) as AccessibleWorkspace;
+const workspace = fixtureWorkspace(['workspace:read', 'run:read']);
 const now = Date.now();
 const at = new Date(now - 2000).toISOString();
 const endedAt = new Date(now - 1000).toISOString();

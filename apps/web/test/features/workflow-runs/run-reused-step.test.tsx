@@ -1,4 +1,3 @@
-import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { screen } from '@testing-library/react';
 import { HttpResponse, http } from 'msw';
 import { expect, it } from 'vitest';
@@ -64,10 +63,7 @@ it('reads the new run’s owned saved output without fetching expired source dat
           readCsrfToken: () => undefined,
         }),
         userId: fixtureIds.user,
-        workspace: fixtureWorkspace([
-          'workspace:read',
-          'run:read',
-        ]) as AccessibleWorkspace,
+        workspace: fixtureWorkspace(['workspace:read', 'run:read']),
         runId: fixtureIds.replayRun,
       }}
     />,

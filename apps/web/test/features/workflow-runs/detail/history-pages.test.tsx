@@ -1,4 +1,3 @@
-import type { AccessibleWorkspace } from '@pertexo/contracts';
 import type { ComponentProps } from 'react';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -30,10 +29,7 @@ it('pages maximum-size histories and follows a newly inspected step without losi
         readCsrfToken: () => undefined,
       }),
       userId: fixtureIds.user,
-      workspace: fixtureWorkspace([
-        'workspace:read',
-        'run:read',
-      ]) as AccessibleWorkspace,
+      workspace: fixtureWorkspace(['workspace:read', 'run:read']),
       runId: fixtureIds.firstRun,
     },
     replay: { canReplay: false, onReplay: vi.fn() },

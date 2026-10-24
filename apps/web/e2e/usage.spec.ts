@@ -1,3 +1,8 @@
+import type { AccessibleWorkspace } from '@pertexo/contracts';
+import {
+  createUserFixture,
+  createWorkspaceFixture,
+} from '../test/support/fixtures/identity';
 import { expect, test, type Page } from './support/fixtures';
 
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -17,8 +22,8 @@ const counts = {
 async function install(
   page: Page,
   options: Readonly<{
-    capabilities?: string[];
-    state?: string;
+    capabilities?: AccessibleWorkspace['capabilities'];
+    state?: AccessibleWorkspace['status'];
     policy?: string;
   }> = {},
 ) {
@@ -32,26 +37,22 @@ async function install(
     requests.push(url.pathname + url.search);
     if (url.pathname === '/v1/users/me')
       return route.fulfill({
-        json: {
-          id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        json: createUserFixture({
           email: 'reader@example.test',
           displayName: 'Usage Reader',
-          status: 'active',
-          revision: 1,
           createdAt: timestamp,
           updatedAt: timestamp,
-        },
+        }),
       });
     if (url.pathname === '/v1/workspaces')
       return route.fulfill({
         json: {
           items: [
-            {
+            createWorkspaceFixture({
               id: workspaceId,
               name: 'Usage workshop',
               slug: 'usage-workshop',
               status: options.state ?? 'active',
-              revision: 1,
               role: 'operator',
               capabilities: options.capabilities ?? [
                 'workspace:read',
@@ -61,7 +62,7 @@ async function install(
               ],
               createdAt: timestamp,
               updatedAt: timestamp,
-            },
+            }),
           ],
           nextCursor: null,
         },

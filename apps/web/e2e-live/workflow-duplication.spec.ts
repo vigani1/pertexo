@@ -1,3 +1,4 @@
+import { csrfHeaders } from '../test/support/browser/csrf';
 import { randomUUID } from 'node:crypto';
 import { expect, type Page } from '@playwright/test';
 import {
@@ -18,15 +19,6 @@ import {
 } from './support/ordinary-editor-session';
 import { readTaggedExpressionDraft } from './support/authoring/expression';
 import { waitForRun } from './support/authoring/single-step';
-
-async function csrf(page: Page) {
-  const cookie = (await page.context().cookies()).find(
-    (item) => item.name === 'pertexo_csrf',
-  );
-  if (cookie === undefined)
-    throw new Error('Ordinary authenticated CSRF cookie missing');
-  return { 'x-csrf-token': decodeURIComponent(cookie.value) };
-}
 
 /** Real authenticated authoring API setup; no database graph/cookie seeding. */
 async function sourceGraph(page: Page) {
@@ -133,7 +125,7 @@ async function sourceGraph(page: Page) {
 
 async function publish(page: Page, path: string) {
   const checked = await page.request.post(`${path}/validate`, {
-    headers: await csrf(page),
+    headers: await csrfHeaders(page),
     data: {},
   });
   expect(checked.status()).toBe(200);
@@ -144,7 +136,7 @@ async function publish(page: Page, path: string) {
   if (tag === undefined) throw new Error('Checked source tag missing');
   const response = await page.request.post(`${path}/publish`, {
     headers: {
-      ...(await csrf(page)),
+      ...(await csrfHeaders(page)),
       'If-Match': tag,
       'Idempotency-Key': randomUUID(),
     },
@@ -177,7 +169,7 @@ test('real same-workspace draft and selected-version copies preserve graph IDs a
   );
   const root = `/v1/workspaces/${workspaceId}/workflows`;
   const created = await page.request.post(root, {
-    headers: { ...(await csrf(page)), 'Idempotency-Key': randomUUID() },
+    headers: { ...(await csrfHeaders(page)), 'Idempotency-Key': randomUUID() },
     data: { name: 'Shared graph source' },
   });
   expect(created.status()).toBe(201);
@@ -188,7 +180,7 @@ test('real same-workspace draft and selected-version copies preserve graph IDs a
   const baseline = await readTaggedExpressionDraft(page, sourcePath);
   const authored = await sourceGraph(page);
   const saved = await page.request.put(`${sourcePath}/draft`, {
-    headers: { ...(await csrf(page)), 'If-Match': baseline.etag },
+    headers: { ...(await csrfHeaders(page)), 'If-Match': baseline.etag },
     data: { graph: authored.graph },
   });
   expect(saved.status()).toBe(200);
@@ -285,7 +277,10 @@ test('real same-workspace draft and selected-version copies preserve graph IDs a
     )
       throw new Error('Run proof tuple missing');
     const started = await page.request.post(`${root}/${workflowId}/runs`, {
-      headers: { ...(await csrf(page)), 'Idempotency-Key': randomUUID() },
+      headers: {
+        ...(await csrfHeaders(page)),
+        'Idempotency-Key': randomUUID(),
+      },
       data: {
         input: { value: marker, stepId: authored.producerId },
         deadlineAt: new Date(Date.now() + 60_000).toISOString(),
@@ -322,7 +317,7 @@ test('real same-workspace draft and selected-version copies preserve graph IDs a
     ),
   };
   const edited = await page.request.put(`${root}/${draftCopyId}/draft`, {
-    headers: { ...(await csrf(page)), 'If-Match': firstCopy.etag },
+    headers: { ...(await csrfHeaders(page)), 'If-Match': firstCopy.etag },
     data: { graph: changedGraph },
   });
   expect(edited.status()).toBe(200);

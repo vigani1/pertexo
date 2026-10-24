@@ -1,3 +1,4 @@
+import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { HttpResponse, http } from 'msw';
 import { screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -26,7 +27,11 @@ const {
   firstRun: runId,
   workflow: workflowId,
 } = fixtureIds;
-const readerCapabilities = ['workspace:read', 'run:read', 'workflow:read'];
+const readerCapabilities: AccessibleWorkspace['capabilities'] = [
+  'workspace:read',
+  'run:read',
+  'workflow:read',
+];
 const editorWorkspaceId = '01a0e3bb-aac9-75b8-845e-fa98f0e3e6c5';
 const editorWorkflowId = '01a0e3bb-dca6-725a-9467-b223a018bc1a';
 const editorApi = `http://pertexo.test/v1/workspaces/${editorWorkspaceId}/workflows/${editorWorkflowId}`;

@@ -1,3 +1,4 @@
+import { csrfHeaders } from '../test/support/browser/csrf';
 import { randomUUID } from 'node:crypto';
 import { expect, type Page } from '@playwright/test';
 import {
@@ -33,14 +34,6 @@ test.afterEach(async ({ page }, info) => {
   }
 });
 
-async function csrf(page: Page) {
-  const cookie = (await page.context().cookies()).find(
-    (item) => item.name === 'pertexo_csrf',
-  );
-  if (cookie === undefined) throw new Error('Ordinary CSRF cookie missing');
-  return { 'x-csrf-token': decodeURIComponent(cookie.value) };
-}
-
 async function openWorkflowList(page: Page) {
   // SPA navigation preserves the browser session and app lifetime. The feature
   // still owns case-query eviction when its panel closes.
@@ -72,7 +65,10 @@ async function publish(page: Page, path: string, label: string) {
   // Presentation-only labels deduplicate; each revision changes executable identity.
   const nodeId = randomUUID();
   const saved = await page.request.put(`${path}/draft`, {
-    headers: { ...(await csrf(page)), 'If-Match': draft.headers().etag ?? '' },
+    headers: {
+      ...(await csrfHeaders(page)),
+      'If-Match': draft.headers().etag ?? '',
+    },
     data: {
       graph: {
         nodes: [
@@ -94,7 +90,7 @@ async function publish(page: Page, path: string, label: string) {
   });
   expect(saved.status()).toBe(200);
   const checked = await page.request.post(`${path}/validate`, {
-    headers: await csrf(page),
+    headers: await csrfHeaders(page),
     data: {},
   });
   expect(checked.status()).toBe(200);
@@ -103,7 +99,7 @@ async function publish(page: Page, path: string, label: string) {
   );
   const published = await page.request.post(`${path}/publish`, {
     headers: {
-      ...(await csrf(page)),
+      ...(await csrfHeaders(page)),
       'If-Match': checked.headers().etag ?? '',
       'Idempotency-Key': randomUUID(),
     },

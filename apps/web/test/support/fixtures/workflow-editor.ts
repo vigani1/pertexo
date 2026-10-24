@@ -1,3 +1,4 @@
+import { createUserFixture, createWorkspaceFixture } from './identity';
 import { HttpResponse, http } from 'msw';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import {
@@ -23,26 +24,19 @@ export const compatibility = {
   fingerprint: `wf-compat:sha256:${'a'.repeat(64)}`,
   issues: [],
 };
-export const user = {
+export const user = createUserFixture({
   id: userId,
   email: 'owner@example.test',
   displayName: 'Workspace Owner',
-  status: 'active',
-  revision: 1,
   createdAt: '2026-09-14T10:00:00.000Z',
   updatedAt: '2026-09-14T10:00:00.000Z',
-};
+});
 export const otherUser = {
   ...user,
   id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
 };
-export const workspace = {
+export const workspace = createWorkspaceFixture({
   id: workspaceId,
-  name: 'Control Operations',
-  slug: 'control-operations',
-  status: 'active',
-  revision: 1,
-  role: 'owner',
   capabilities: [
     'workspace:read',
     'workflow:read',
@@ -55,7 +49,7 @@ export const workspace = {
   ],
   createdAt: '2026-09-14T10:00:00.000Z',
   updatedAt: '2026-09-14T10:00:00.000Z',
-};
+});
 export const emptyGraph: WorkflowGraphContract = {
   nodes: [],
   edges: [],

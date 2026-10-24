@@ -1,6 +1,7 @@
+import { readCsrfToken } from '../../../test/support/browser/csrf';
 import { mkdir } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
-import { expect, type Page } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { publicationReviewDetailSchema } from '@pertexo/contracts';
 import { test } from '../../support/browser-fixture';
 import {
@@ -10,13 +11,6 @@ import {
 } from '../../support/ordinary-editor-session';
 import { createEditorWorkflow } from '../../support/authoring/single-step';
 
-async function csrf(page: Page) {
-  const cookie = (await page.context().cookies()).find(
-    (value) => value.name === 'pertexo_csrf',
-  );
-  if (cookie === undefined) throw new Error('CSRF missing');
-  return decodeURIComponent(cookie.value);
-}
 const step = (id: string, key: string, x: number) => ({
   id,
   definition: { key, version: 1 },
@@ -96,7 +90,7 @@ test('a builder requests an exact draft on a phone, an owner reviews it, and an 
       `/v1/workspaces/${workspaceId}/members/${viewerId}/role`,
       {
         headers: {
-          'x-csrf-token': await csrf(page),
+          'x-csrf-token': await readCsrfToken(page),
           'Idempotency-Key': randomUUID(),
         },
         data: { role: 'admin', expectedRoleRevision: 1 },
@@ -124,7 +118,7 @@ test('a builder requests an exact draft on a phone, an owner reviews it, and an 
     const saved = await page.request.put(`${workflowPath}/draft`, {
       headers: {
         'If-Match': draft.headers().etag ?? '',
-        'x-csrf-token': await csrf(page),
+        'x-csrf-token': await readCsrfToken(page),
       },
       data: { graph },
     });
@@ -144,7 +138,7 @@ test('a builder requests an exact draft on a phone, an owner reviews it, and an 
       `/v1/workspaces/${workspaceId}/members/${viewerId}/role`,
       {
         headers: {
-          'x-csrf-token': await csrf(page),
+          'x-csrf-token': await readCsrfToken(page),
           'Idempotency-Key': randomUUID(),
         },
         data: { role: 'builder', expectedRoleRevision: 2 },
@@ -233,7 +227,7 @@ test('a builder requests an exact draft on a phone, an owner reviews it, and an 
     const changed = await builder.request.put(`${workflowPath}/draft`, {
       headers: {
         'If-Match': nextDraft.headers().etag ?? '',
-        'x-csrf-token': await csrf(builder),
+        'x-csrf-token': await readCsrfToken(builder),
       },
       data: { graph: { ...graph, settings: { maxRunDurationMs: 60000 } } },
     });
@@ -255,7 +249,7 @@ test('a builder requests an exact draft on a phone, an owner reviews it, and an 
     const edited = await builder.request.put(`${workflowPath}/draft`, {
       headers: {
         'If-Match': changing.headers().etag ?? '',
-        'x-csrf-token': await csrf(builder),
+        'x-csrf-token': await readCsrfToken(builder),
       },
       data: { graph: { ...graph, settings: { maxRunDurationMs: 90000 } } },
     });

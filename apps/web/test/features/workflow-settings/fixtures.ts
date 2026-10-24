@@ -1,3 +1,4 @@
+import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { HttpResponse, http } from 'msw';
 import { mockServer } from '../../support/mock-server';
 import {
@@ -27,7 +28,7 @@ export const etagC = `"draft.${'c'.repeat(43)}"`;
 export const workflowApi = `${api}/workflows/${workflowId}`;
 
 /** Beyond reading the workspace and its workflows. */
-export const defaultCapabilities = [
+export const defaultCapabilities: AccessibleWorkspace['capabilities'] = [
   'workflow:update',
   'workflow:publish',
   'connection:manage',
@@ -175,7 +176,9 @@ export function draftResponse(currentGraph: unknown, currentEtag: string) {
 
 /** Every read the three tabs make, answering with the fixtures above. */
 export function installQueries(
-  capabilities: readonly string[] = defaultCapabilities,
+  capabilities: Readonly<
+    AccessibleWorkspace['capabilities']
+  > = defaultCapabilities,
 ) {
   mockServer.use(
     http.get(`${api}/workflows`, () =>

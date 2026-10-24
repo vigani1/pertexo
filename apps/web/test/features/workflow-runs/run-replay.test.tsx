@@ -1,3 +1,4 @@
+import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { HttpResponse, http } from 'msw';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -21,7 +22,11 @@ const {
   firstRun: sourceRunId,
   replayRun: replayRunId,
 } = fixtureIds;
-const operator = ['workspace:read', 'run:read', 'run:replay'];
+const operator: AccessibleWorkspace['capabilities'] = [
+  'workspace:read',
+  'run:read',
+  'run:replay',
+];
 
 function run(id: string) {
   return fixtureRun(id, 'failed', {
@@ -38,7 +43,7 @@ function acceptedRun(id: string) {
 }
 
 function installRunHandlers(
-  capabilities: readonly string[] = operator,
+  capabilities: Readonly<AccessibleWorkspace['capabilities']> = operator,
   input: unknown = { kind: 'none' },
 ) {
   mockServer.use(

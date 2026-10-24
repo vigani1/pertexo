@@ -1,3 +1,8 @@
+import type { AccessibleWorkspace } from '@pertexo/contracts';
+import {
+  createUserFixture,
+  createWorkspaceFixture,
+} from '../../support/fixtures/identity';
 import { HttpResponse, http } from 'msw';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -12,28 +17,23 @@ const billingId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const runId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 const timestamp = '2026-09-15T10:00:00.000Z';
 const api = `http://pertexo.test/v1/workspaces/${workspaceId}`;
-const user = {
+const user = createUserFixture({
   id: userId,
-  email: 'operator@example.test',
   displayName: 'Workspace Operator',
-  status: 'active',
-  revision: 1,
   createdAt: timestamp,
   updatedAt: timestamp,
-};
+});
 
-function workspace(capabilities: readonly string[]) {
-  return {
+function workspace(
+  capabilities: Readonly<AccessibleWorkspace['capabilities']>,
+) {
+  return createWorkspaceFixture({
     id: workspaceId,
-    name: 'Control Operations',
-    slug: 'control-operations',
-    status: 'active',
-    revision: 1,
     role: 'operator',
     capabilities: ['workspace:read', 'workflow:read', ...capabilities],
     createdAt: timestamp,
     updatedAt: timestamp,
-  };
+  });
 }
 
 function thread(

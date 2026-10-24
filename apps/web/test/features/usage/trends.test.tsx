@@ -1,3 +1,4 @@
+import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { HttpResponse, http } from 'msw';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -14,7 +15,11 @@ import {
 } from '../../support/fixtures/run';
 import { fixtureUsageTrends } from '../../support/fixtures/usage-trends';
 const path = `/w/${fixtureIds.workspace}/settings/usage/trends`;
-const caps = ['workspace:read', 'run:read', 'workflow:read'];
+const caps: AccessibleWorkspace['capabilities'] = [
+  'workspace:read',
+  'run:read',
+  'workflow:read',
+];
 function install() {
   let status = 200;
   const periods: string[] = [];

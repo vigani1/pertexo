@@ -1,4 +1,3 @@
-import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -30,11 +29,7 @@ const scope = {
     readCsrfToken: () => 'csrf-token-for-component-tests-12345678901234567890',
   }),
   userId,
-  workspace: fixtureWorkspace([
-    'workspace:read',
-    'run:read',
-    'artifact:read',
-  ]) as AccessibleWorkspace,
+  workspace: fixtureWorkspace(['workspace:read', 'run:read', 'artifact:read']),
   runId,
 };
 

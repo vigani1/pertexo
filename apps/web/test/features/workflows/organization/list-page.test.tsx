@@ -1,3 +1,4 @@
+import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
@@ -27,7 +28,7 @@ const organization = {
 };
 function install(
   read: (url: URL) => Record<string, unknown>,
-  capabilities: readonly string[] = [
+  capabilities: Readonly<AccessibleWorkspace['capabilities']> = [
     'workflow:create',
     'workflow:update',
     'connection:read',

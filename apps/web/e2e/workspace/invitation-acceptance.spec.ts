@@ -1,3 +1,7 @@
+import {
+  createUserFixture,
+  createWorkspaceFixture,
+} from '../../test/support/fixtures/identity';
 import { expect, test } from '../support/fixtures';
 
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -347,32 +351,25 @@ test('keeps ordinary workspace discovery available when a replacement binding re
   });
   await page.route('**/v1/users/me', async (route) => {
     await route.fulfill({
-      json: {
-        id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      json: createUserFixture({
         email: 'builder@example.test',
         displayName: 'Pertexo Builder',
-        status: 'active',
-        revision: 1,
         createdAt: '2026-09-19T10:00:00.000Z',
         updatedAt: '2026-09-19T10:00:00.000Z',
-      },
+      }),
     });
   });
   await page.route('**/v1/workspaces?**', async (route) => {
     await route.fulfill({
       json: {
         items: [
-          {
+          createWorkspaceFixture({
             id: workspaceId,
-            name: 'Control Operations',
-            slug: 'control-operations',
-            status: 'active',
-            revision: 1,
             role: 'builder',
             capabilities: ['workspace:read', 'workflow:read'],
             createdAt: '2026-09-19T10:00:00.000Z',
             updatedAt: '2026-09-19T10:00:00.000Z',
-          },
+          }),
         ],
         nextCursor: null,
       },

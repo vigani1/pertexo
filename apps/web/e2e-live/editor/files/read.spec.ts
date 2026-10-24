@@ -1,3 +1,4 @@
+import { csrfHeaders } from '../../../test/support/browser/csrf';
 import { mkdir } from 'node:fs/promises';
 import { expect, type Page } from '@playwright/test';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
@@ -23,13 +24,6 @@ async function upload(page: Page, buffer: Buffer) {
     .setInputFiles({ name: 'export.csv', mimeType: 'text/csv', buffer });
   await expect(page.getByText('File ready', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Use file', exact: true }).click();
-}
-async function csrf(page: Page) {
-  const cookie = (await page.context().cookies()).find(
-    (item) => item.name === 'pertexo_csrf',
-  );
-  if (cookie === undefined) throw new Error('CSRF missing');
-  return { 'x-csrf-token': decodeURIComponent(cookie.value) };
 }
 
 test('uploads CSV in the editor, reads default-converted values and runs Filter → Summarize → Stop', async ({
@@ -135,7 +129,7 @@ test('uploads CSV in the editor, reads default-converted values and runs Filter 
     (
       await page.request.put(`${path}/draft`, {
         headers: {
-          ...(await csrf(page)),
+          ...(await csrfHeaders(page)),
           'If-Match': response.headers().etag ?? '',
         },
         data: { graph: { ...graph, nodes, edges } },
@@ -273,7 +267,7 @@ test('reads an earlier HTTP response file and automatically retries only that sa
     (
       await page.request.put(`${path}/draft`, {
         headers: {
-          ...(await csrf(page)),
+          ...(await csrfHeaders(page)),
           'If-Match': draft.headers().etag ?? '',
         },
         data: { graph },
@@ -326,7 +320,7 @@ test('reads a JSON file supplied through manual run input', async ({
     (
       await page.request.put(`${path}/draft`, {
         headers: {
-          ...(await csrf(page)),
+          ...(await csrfHeaders(page)),
           'If-Match': response.headers().etag ?? '',
         },
         data: {

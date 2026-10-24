@@ -1,3 +1,7 @@
+import {
+  createUserFixture,
+  createWorkspaceFixture,
+} from '../test/support/fixtures/identity';
 import { expect, test, type Page } from './support/fixtures';
 import {
   routeEmptyWorkflowOrganization,
@@ -12,22 +16,13 @@ const secretVersionId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 const csrfToken = 'csrf-token-for-connections-tests-123456789012345678';
 const botToken = 'xoxb-1234567890-browser-secret';
 const timestamp = '2026-09-15T10:00:00.000Z';
-const user = {
+const user = createUserFixture({
   id: userId,
-  email: 'operator@example.test',
-  displayName: 'Pertexo Operator',
-  status: 'active',
-  revision: 1,
   createdAt: timestamp,
   updatedAt: timestamp,
-};
-const workspace = {
+});
+const workspace = createWorkspaceFixture({
   id: workspaceId,
-  name: 'Control Operations',
-  slug: 'control-operations',
-  status: 'active',
-  revision: 1,
-  role: 'owner',
   capabilities: [
     'workspace:read',
     'workflow:read',
@@ -38,7 +33,7 @@ const workspace = {
   ],
   createdAt: timestamp,
   updatedAt: timestamp,
-};
+});
 const workflow = {
   id: workflowId,
   workspaceId,

@@ -1,5 +1,12 @@
+import {
+  createUserFixture,
+  createWorkspaceFixture,
+} from '../../../support/fixtures/identity';
 import { HttpResponse, http } from 'msw';
-import type { NodeDefinitionListResponse } from '@pertexo/contracts';
+import type {
+  AccessibleWorkspace,
+  NodeDefinitionListResponse,
+} from '@pertexo/contracts';
 import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
 
 // Contract-valid fixtures shared by the workflow list and New workflow tests.
@@ -13,28 +20,23 @@ export const versionId = '12121212-1212-4121-8121-121212121212';
 export const etag = `"draft.${'a'.repeat(43)}"`;
 export const api = `http://pertexo.test/v1/workspaces/${workspaceId}`;
 
-export const user = {
+export const user = createUserFixture({
   id: userId,
   email: 'owner@example.test',
   displayName: 'Workspace Owner',
-  status: 'active',
-  revision: 1,
   createdAt: '2026-09-14T10:00:00.000Z',
   updatedAt: '2026-09-14T10:00:00.000Z',
-};
+});
 
-export function workspaceWith(capabilities: readonly string[]) {
-  return {
+export function workspaceWith(
+  capabilities: Readonly<AccessibleWorkspace['capabilities']>,
+) {
+  return createWorkspaceFixture({
     id: workspaceId,
-    name: 'Control Operations',
-    slug: 'control-operations',
-    status: 'active',
-    revision: 1,
-    role: 'owner',
     capabilities: ['workspace:read', 'workflow:read', ...capabilities],
     createdAt: '2026-09-14T10:00:00.000Z',
     updatedAt: '2026-09-14T10:00:00.000Z',
-  };
+  });
 }
 
 export function summary(
@@ -110,7 +112,10 @@ export function createdResponse(id: string, name: string) {
 
 /** Identity, catalog and connection reads every workflows page makes. */
 export function discoveryHandlers(
-  capabilities: readonly string[] = ['workflow:create', 'connection:read'],
+  capabilities: Readonly<AccessibleWorkspace['capabilities']> = [
+    'workflow:create',
+    'connection:read',
+  ],
 ) {
   return [
     http.get('http://pertexo.test/v1/users/me', () => HttpResponse.json(user)),

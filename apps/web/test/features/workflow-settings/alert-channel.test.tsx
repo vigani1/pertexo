@@ -1,3 +1,4 @@
+import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { HttpResponse, http } from 'msw';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -41,7 +42,7 @@ const privateRoom = slackDestination(
 
 function installSlackAlerts(
   current: ReturnType<typeof slackDestination>,
-  capabilities: readonly string[],
+  capabilities: Readonly<AccessibleWorkspace['capabilities']>,
   lookups: string[] = [],
 ) {
   installQueries(capabilities);
@@ -69,7 +70,11 @@ function installSlackAlerts(
   );
 }
 
-const withLookups = ['workflow:update', 'connection:read', 'connection:use'];
+const withLookups: AccessibleWorkspace['capabilities'] = [
+  'workflow:update',
+  'connection:read',
+  'connection:use',
+];
 
 describe('Slack channel names in failure alerts', { timeout: 30_000 }, () => {
   it('names a destination by channel once its name is known', () => {

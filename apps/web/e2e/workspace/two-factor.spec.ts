@@ -1,13 +1,11 @@
+import { createUserFixture } from '../../test/support/fixtures/identity';
 import { test, expect } from '../support/fixtures';
-const profile = {
-  id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+const profile = createUserFixture({
   email: 'factor@example.test',
   displayName: 'Factor owner',
-  status: 'active',
-  revision: 1,
   createdAt: '2026-10-20T00:00:00.000Z',
   updatedAt: '2026-10-20T00:00:00.000Z',
-};
+});
 const codes = Array.from(
   { length: 10 },
   (_, i) => `code-${String(i).padStart(5, '0')}`,
