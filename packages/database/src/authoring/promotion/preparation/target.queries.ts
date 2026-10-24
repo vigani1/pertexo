@@ -1,3 +1,6 @@
+import { asc, eq } from 'drizzle-orm';
+import { workspaceDataTables } from '../../../schema/data-tables.js';
+import { workspaceVariables } from '../../../schema/variables.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { PROMOTION_LIMITS } from '@pertexo/workflow-model';
@@ -76,26 +79,27 @@ export async function preparePromotionTarget(
     origins.push(result.origin);
     workflows.push(result.workflow);
   }
-  const tableSchemas = (
-    await client.query<{
-      id: string;
-      name: string;
-      columns_json: unknown;
-      key_column: string | null;
-      revision: number;
-      has_removed_columns: boolean;
-    }>(
-      'select id,name,columns_json,key_column,revision,has_removed_columns from app.workspace_data_tables where workspace_id=$1 order by id for share',
-      [input.workspaceId],
-    )
-  ).rows;
-  const variableHead =
-    (
-      await client.query<{ revision: number }>(
-        'select revision from app.workspace_variables where workspace_id=$1',
-        [input.workspaceId],
-      )
-    ).rows[0]?.revision ?? 0;
+  const db = drizzle(client);
+  const tableSchemas = await db
+    .select({
+      id: workspaceDataTables.id,
+      name: workspaceDataTables.name,
+      columns_json: workspaceDataTables.columns,
+      key_column: workspaceDataTables.keyColumn,
+      revision: workspaceDataTables.revision,
+      has_removed_columns: workspaceDataTables.hasRemovedColumns,
+    })
+    .from(workspaceDataTables)
+    .where(eq(workspaceDataTables.workspaceId, input.workspaceId))
+    .orderBy(asc(workspaceDataTables.id))
+    .for('share')
+    .catch(rethrowQueryFailure);
+  const [variables] = await db
+    .select({ revision: workspaceVariables.revision })
+    .from(workspaceVariables)
+    .where(eq(workspaceVariables.workspaceId, input.workspaceId))
+    .catch(rethrowQueryFailure);
+  const variableHead = variables?.revision ?? 0;
   return {
     workflows,
     requirements,

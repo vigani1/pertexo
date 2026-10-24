@@ -14,14 +14,7 @@ import type { PromotionSourceSet } from '../source.queries.js';
 
 export type ReviewedWorkflow = WorkflowPromotionPreview['workflows'][number];
 
-export interface Origin {
-  workflow_id: string;
-  graph_digest: string;
-  target_name: string;
-  draft_revision: number;
-  published_version_id: string | null;
-  promotion_id: string;
-}
+export type { Origin, TargetWorkflowRow } from './records.queries.js';
 
 export type TargetReviewState = Readonly<{
   input: PromotionScope;
@@ -34,11 +27,3 @@ export type TargetReviewState = Readonly<{
   requirements: WorkflowPromotionRequirement[];
   report: (requirement: WorkflowPromotionRequirement) => void;
 }>;
-
-export interface TargetWorkflowRow {
-  name: string;
-  revision: number;
-  graph_json: unknown;
-  published_version_id: string | null;
-  lifecycle_status: string;
-}
