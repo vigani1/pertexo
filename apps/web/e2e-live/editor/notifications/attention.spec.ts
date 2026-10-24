@@ -1,3 +1,7 @@
+import {
+  createWorkflowNodeFixture,
+  createWorkflowEdgeFixture,
+} from '../../../test/support/fixtures/graph';
 import { readCsrfToken } from '../../../test/support/browser/csrf';
 import { mkdir } from 'node:fs/promises';
 import { expect } from '@playwright/test';
@@ -17,20 +21,6 @@ import {
   waitForRun,
 } from '../../support/authoring/single-step';
 
-const node = (id: string, key: string, x: number) => ({
-  id,
-  definition: { key, version: 1 },
-  configVersion: 1,
-  config: {},
-  inputMappings: {},
-  connectionRefs: {},
-  position: { x, y: 0 },
-});
-const edge = (source: string, target: string) => ({
-  id: `${source}-${target}`,
-  source: { nodeId: source, port: 'out' },
-  target: { nodeId: target, port: 'in' },
-});
 test('personal schedules survive exact retry, real failures reach Inbox and SMTP, and private mute/unsubscribe leave runs alone', async ({
   page,
   browser,
@@ -123,15 +113,30 @@ test('personal schedules survive exact retry, real failures reach Inbox and SMTP
   const graph = {
     settings: { maxRunDurationMs: 60000 },
     nodes: [
-      node('manual', 'core.manual', 0),
+      createWorkflowNodeFixture({
+        id: 'manual',
+        definition: { key: 'core.manual', version: 1 },
+        position: { x: 0, y: 0 },
+      }),
       {
-        ...node('summary', 'core.summarize', 260),
+        ...createWorkflowNodeFixture({
+          id: 'summary',
+          definition: { key: 'core.summarize', version: 1 },
+          position: { x: 260, y: 0 },
+        }),
         config: { valuePath: '$', missing: 'error' },
         inputMappings: { items: { kind: 'literal', value: ['not a number'] } },
       },
-      node('finish', 'core.terminate', 520),
+      createWorkflowNodeFixture({
+        id: 'finish',
+        definition: { key: 'core.terminate', version: 1 },
+        position: { x: 520, y: 0 },
+      }),
     ],
-    edges: [edge('manual', 'summary'), edge('summary', 'finish')],
+    edges: [
+      createWorkflowEdgeFixture({ source: 'manual', target: 'summary' }),
+      createWorkflowEdgeFixture({ source: 'summary', target: 'finish' }),
+    ],
   };
   const saved = await page.request.put(`${workflowPath}/draft`, {
     headers: {

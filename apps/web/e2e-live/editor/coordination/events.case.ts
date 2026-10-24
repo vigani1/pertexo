@@ -1,3 +1,4 @@
+import { createWorkflowNodeFixture } from '../../../test/support/fixtures/graph';
 import { readCsrfToken } from '../../../test/support/browser/csrf';
 import { createHmac, randomUUID } from 'node:crypto';
 import { expect, type Page } from '@playwright/test';
@@ -21,23 +22,22 @@ import {
   publishSingleStep,
   waitForRun,
 } from '../../support/authoring/single-step';
-const node = (id: string, key: string, x: number) => ({
-  id,
-  definition: { key, version: 1 },
-  configVersion: 1,
-  config: {},
-  position: { x, y: 0 },
-  inputMappings: {},
-  connectionRefs: {},
-});
 
 async function save(
   page: Page,
   path: string,
   trigger: 'core.webhook' | 'core.form',
 ) {
-  const first = node('entry', trigger, 0);
-  const finish = node('finish', 'core.terminate', 280);
+  const first = createWorkflowNodeFixture({
+    id: 'entry',
+    definition: { key: trigger, version: 1 },
+    position: { x: 0, y: 0 },
+  });
+  const finish = createWorkflowNodeFixture({
+    id: 'finish',
+    definition: { key: 'core.terminate', version: 1 },
+    position: { x: 280, y: 0 },
+  });
   const graph = {
     settings: {},
     nodes: [

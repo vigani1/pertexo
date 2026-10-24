@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '../../support/fixtures';
+import { openStepSetup } from '../../../test/support/browser/steps';
+import { expect, test } from '../../support/fixtures';
 import { platformBrowserNodeDefinitionCatalog } from '../../../../../packages/node-catalog/dist/index.js';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import { nodeDefinitionListResponseSchema } from '@pertexo/contracts';
@@ -11,15 +12,7 @@ import {
 const definitions = nodeDefinitionListResponseSchema.parse({
   items: platformBrowserNodeDefinitionCatalog().definitions,
 }).items;
-async function open(page: Page, width: number) {
-  await page.getByTestId('rf__node-create').click();
-  if (width < 1024)
-    await page
-      .getByRole('navigation', { name: 'Editor panels' })
-      .getByRole('button', { name: 'Step', exact: true })
-      .click();
-  await page.getByRole('tab', { name: 'Setup', exact: true }).click();
-}
+
 for (const theme of ['light', 'dark'] as const)
   for (const width of [375, 990, 1440])
     test(`authors Create file in ${theme} at ${String(width)}px`, async ({
@@ -51,7 +44,7 @@ for (const theme of ['light', 'dark'] as const)
       const saved = () => parseWorkflowGraphDraft(remote.graph).nodes[0];
       await installEditorRoutes(page, remote, { definitions });
       await page.goto(editorUrl);
-      await open(page, width);
+      await openStepSetup(page, { nodeId: 'create', width: width });
       const columns = page.getByRole('textbox', {
         name: 'Columns, in output order',
       });
@@ -88,7 +81,7 @@ for (const theme of ['light', 'dark'] as const)
           columns: ['currency', 'amount'],
         });
       await page.reload();
-      await open(page, width);
+      await openStepSetup(page, { nodeId: 'create', width: width });
       await expect(columns).toHaveValue('currency\namount');
       await page.screenshot({
         path: info.outputPath(`create-file-${theme}-${String(width)}.png`),

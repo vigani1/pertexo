@@ -1,3 +1,4 @@
+import { addRunInputMapping } from '../../test/support/browser/steps';
 import { expect } from '@playwright/test';
 import {
   workflowNodeRunInputResponseSchema,
@@ -42,16 +43,7 @@ test('inspects a real failed Condition, replays its version and cancels a waitin
     /Condition/u,
     'Replay gate',
   );
-  await page.getByRole('tab', { name: 'Inputs', exact: true }).click();
-  await page.getByRole('button', { name: 'Add input', exact: true }).click();
-  const row = page
-    .getByRole('region', { name: 'Inputs', exact: true })
-    .locator('ol > li')
-    .last();
-  await row.getByLabel('Field', { exact: true }).fill('condition');
-  await row.getByRole('button', { name: 'Run input', exact: true }).click();
-  await row.getByLabel('Run input path', { exact: true }).fill('$.condition');
-  await page.keyboard.press('Tab');
+  await addRunInputMapping(page, { field: 'condition', path: '$.condition' });
   await expect
     .poll(
       async () =>

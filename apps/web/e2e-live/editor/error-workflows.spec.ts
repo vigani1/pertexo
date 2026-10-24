@@ -1,3 +1,4 @@
+import { createWorkflowNodeFixture } from '../../test/support/fixtures/graph';
 import { mkdir } from 'node:fs/promises';
 import { expect, type Page } from '@playwright/test';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
@@ -37,15 +38,6 @@ async function saveGraph(
   expect(saved.status(), await saved.text()).toBe(200);
   await page.reload();
 }
-const node = (id: string, key: string, x: number) => ({
-  id,
-  definition: { key, version: 1 },
-  configVersion: 1,
-  config: {},
-  position: { x, y: 0 },
-  inputMappings: {},
-  connectionRefs: {},
-});
 
 test('selects a published error workflow, starts it with safe data, and follows the error run on desktop and phone', async ({
   page,
@@ -73,14 +65,26 @@ test('selects a published error workflow, starts it with safe data, and follows 
   await saveGraph(page, targetPath, {
     settings: {},
     nodes: [
-      node('error', 'core.workflow_error', 0),
+      createWorkflowNodeFixture({
+        id: 'error',
+        definition: { key: 'core.workflow_error', version: 1 },
+        position: { x: 0, y: 0 },
+      }),
       {
-        ...node('summary', 'core.set', 250),
+        ...createWorkflowNodeFixture({
+          id: 'summary',
+          definition: { key: 'core.set', version: 1 },
+          position: { x: 250, y: 0 },
+        }),
         inputMappings: {
           failure: { kind: 'node_output', nodeId: 'error', path: '$' },
         },
       },
-      node('stop', 'core.terminate', 500),
+      createWorkflowNodeFixture({
+        id: 'stop',
+        definition: { key: 'core.terminate', version: 1 },
+        position: { x: 500, y: 0 },
+      }),
     ],
     edges: [
       {
@@ -104,15 +108,27 @@ test('selects a published error workflow, starts it with safe data, and follows 
   await saveGraph(page, sourcePath, {
     settings: {},
     nodes: [
-      node('manual', 'core.manual', 0),
+      createWorkflowNodeFixture({
+        id: 'manual',
+        definition: { key: 'core.manual', version: 1 },
+        position: { x: 0, y: 0 },
+      }),
       {
-        ...node('summarize', 'core.summarize', 250),
+        ...createWorkflowNodeFixture({
+          id: 'summarize',
+          definition: { key: 'core.summarize', version: 1 },
+          position: { x: 250, y: 0 },
+        }),
         config: { valuePath: '$.amount', missing: 'error' },
         inputMappings: {
           items: { kind: 'literal', value: [{ amount: 'not-a-number' }] },
         },
       },
-      node('stop', 'core.terminate', 500),
+      createWorkflowNodeFixture({
+        id: 'stop',
+        definition: { key: 'core.terminate', version: 1 },
+        position: { x: 500, y: 0 },
+      }),
     ],
     edges: [
       {
