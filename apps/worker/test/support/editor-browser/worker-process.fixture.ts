@@ -1,78 +1,65 @@
-import type { CallbackKeyConfig } from '@pertexo/integrations/server';
-import { z } from 'zod';
-import { createTestArtifactScratch } from '../infrastructure/artifact-scratch.js';
-import { createEditorCodeRuntime } from './code/runtime.js';
-import { createEditorNotifications } from './notifications/runtime.js';
-import { createMaintenanceRuntime } from '../../../src/maintenance/runtime.js';
-import { withArtifactReadOutage } from './artifact-read-retry.js';
-import { createArtifactDestination } from '../../attempts/artifacts/http-destination.js';
-import { parseArtifactStoreConfig } from '@pertexo/artifact-store';
+import type { createArtifactDestination } from '../../attempts/artifacts/http-destination.js';
+
 import { createEditorPreview } from './previews.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { createOutboxDispatcherDatabase } from '@pertexo/database/outbox';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
-import { createCoordinatorRuntime } from '../../../src/runs/runtime.js';
+
 import { createNodeAttemptRuntime } from '../../../src/attempts/delivery/runtime.js';
-import { createWorkerNodeRuntimeCapabilities } from '../../../src/attempts/execution/runtime-capabilities.js';
+
 import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
-import {
-  ConnectionEnvelopeEncryption,
-  type ConnectionSecretContext,
-} from '@pertexo/integrations/server';
-import { createEditorBrowserEnvelopeKeys } from '../../../../../infrastructure/testing/editor-browser-envelope-keys.mjs';
-import { createCuratedTemplateEnvelopeContext } from '../../../../../infrastructure/testing/curated-template-envelope-context.mjs';
-import { createCuratedTemplateQualificationTransports } from '../curated-templates/controlled-transports.js';
-import { curatedCoordinatorConsumerFactory } from '../curated-templates/coordinator-diagnostic.js';
-import { createEditorControlledHttpTarget } from './controlled-http.js';
+
+import type { createCuratedTemplateQualificationTransports } from '../curated-templates/controlled-transports.js';
+
+import type { createEditorControlledHttpTarget } from './controlled-http.js';
 import {
   createTriggerRuntime,
   type TriggerRuntime,
 } from '../../../src/triggers/runtime.js';
 import { OutboxDispatcher } from '../../../src/transport/outbox/dispatch/runtime.js';
 import { createTransportMetrics } from '@pertexo/observability';
-import { createRedisTestNamespace } from '../infrastructure/redis-test-namespace.js';
+
 import { EditorBrowserWorkerShutdownError } from './cleanup.js';
 import {
   createEditorBrowserWorkerLifetime,
   type EditorBrowserRuntimeConstruction,
 } from './lifetime.js';
+import type {
+  EditorBrowserWorkerConfiguration,
+  EditorBrowserWorkerState,
+} from './execution/contract.js';
+import {
+  scheduleCase,
+  errorWorkflowCase,
+  webhookResponseCase,
+  previewCase,
+  controlledHttp,
+  curatedTemplates,
+  createEditorWorkerNamespace,
+} from './execution/environment.js';
+import { configureEditorWorker } from './execution/configuration.js';
+import { startEditorCoordinator } from './execution/coordinator.js';
+import { createEditorCapabilities } from './execution/capabilities.js';
+import { editorAttemptDependencies } from './execution/attempt-dependencies.js';
 
-const redisUrl = process.env.REDIS_URL;
+export const redisUrl = process.env.REDIS_URL;
+
 if (redisUrl === undefined || process.send === undefined)
   throw new Error('Owned browser worker needs Redis configuration and IPC');
 
-const namespace = createEditorWorkerNamespace(redisUrl);
-const codeCase = ['code', 'pinned-samples'].includes(
-  process.env.EDITOR_BROWSER_CASE ?? '',
-);
-const scheduleCase = process.env.EDITOR_BROWSER_CASE === 'schedule';
-const errorWorkflowCase = process.env.EDITOR_BROWSER_CASE === 'error-workflows';
-const webhookResponseCase =
-  process.env.EDITOR_BROWSER_CASE === 'webhook-responses';
-const paginationCase = process.env.EDITOR_BROWSER_CASE === 'http-pagination';
-const previewCase =
-  process.env.EDITOR_BROWSER_CASE === 'artifact-inputs' ||
-  process.env.EDITOR_BROWSER_CASE === 'variables' ||
-  process.env.EDITOR_BROWSER_CASE === 'transforms' ||
-  process.env.EDITOR_BROWSER_CASE === 'pinned-samples' ||
-  webhookResponseCase ||
-  paginationCase ||
-  codeCase;
-const artifactInputs = process.env.EDITOR_BROWSER_CASE === 'artifact-inputs';
-let artifactTarget:
+export const namespace = createEditorWorkerNamespace(redisUrl);
+
+export let artifactTarget:
   Awaited<ReturnType<typeof createArtifactDestination>> | undefined;
-const controlledHttp =
-  process.env.EDITOR_BROWSER_CASE === 'webhook-controlled-http' ||
-  process.env.EDITOR_BROWSER_CASE === 'failure-routing' ||
-  artifactInputs ||
-  paginationCase;
-const curatedTemplates =
-  process.env.EDITOR_BROWSER_CASE === 'curated-templates';
-let curatedTarget:
+
+export let curatedTarget:
   ReturnType<typeof createCuratedTemplateQualificationTransports> | undefined;
-let httpTarget: ReturnType<typeof createEditorControlledHttpTarget> | undefined;
-function sendHttpEffects() {
+
+export let httpTarget:
+  ReturnType<typeof createEditorControlledHttpTarget> | undefined;
+
+export function sendHttpEffects() {
   const files = artifactTarget?.observe();
   const http = httpTarget?.observe();
   if (!process.connected || (files === undefined && http === undefined)) return;
@@ -100,21 +87,29 @@ function sendHttpEffects() {
     stop();
   }
 }
+
 const lifecycle = { stopping: false };
-let configuration: EditorBrowserWorkerConfiguration | undefined;
+
+export let configuration: EditorBrowserWorkerConfiguration | undefined;
+
 const runtimeOwner = createEditorBrowserWorkerLifetime(
   namespace,
   constructRuntimes,
 );
+
 function disconnect(): void {
   if (process.connected) process.disconnect();
 }
-let cancelConfiguration: (() => void) | undefined;
+
+export let cancelConfiguration: (() => void) | undefined;
+
 let finishing: Promise<void> | undefined;
+
 function finishShutdown(setupFailure?: unknown): Promise<void> {
   finishing ??= performShutdown(setupFailure);
   return finishing;
 }
+
 async function performShutdown(setupFailure?: unknown): Promise<void> {
   const phases: string[] = setupFailure === undefined ? [] : ['startup'];
   try {
@@ -161,15 +156,20 @@ async function performShutdown(setupFailure?: unknown): Promise<void> {
     disconnect();
   }
 }
+
 const stop = (): void => {
   lifecycle.stopping = true;
   cancelConfiguration?.();
   // The runtime owner fences setup/restart synchronously and awaits its activity.
   void finishShutdown();
 };
+
 process.once('SIGTERM', stop);
+
 process.once('SIGINT', stop);
+
 process.once('disconnect', stop);
+
 process.on('message', (message: unknown) => {
   if (
     typeof message !== 'object' ||
@@ -211,7 +211,8 @@ process.on('message', (message: unknown) => {
       },
     );
 });
-const state: EditorBrowserWorkerState = {
+
+export const state: EditorBrowserWorkerState = {
   get configuration() {
     return configuration;
   },
@@ -362,433 +363,4 @@ try {
   });
 } catch (error: unknown) {
   await finishShutdown(lifecycle.stopping ? undefined : error);
-}
-
-interface EditorBrowserWorkerConfiguration {
-  workerUrl: string;
-  dispatcherUrl: string;
-  apiUrl: string;
-  migrationUrl: string;
-  connectionMasterKey?: string;
-  authorizationValue?: string;
-  callbackConfig?: CallbackKeyConfig;
-}
-interface EditorBrowserWorkerState {
-  configuration: EditorBrowserWorkerConfiguration | undefined;
-  cancelConfiguration: (() => void) | undefined;
-  artifactTarget:
-    Awaited<ReturnType<typeof createArtifactDestination>> | undefined;
-  curatedTarget:
-    ReturnType<typeof createCuratedTemplateQualificationTransports> | undefined;
-  httpTarget: ReturnType<typeof createEditorControlledHttpTarget> | undefined;
-}
-type EditorWorkerCapabilities = Awaited<
-  ReturnType<typeof createWorkerNodeRuntimeCapabilities>
->;
-type EditorWorkerHttpClient = ReturnType<
-  typeof createEditorControlledHttpTarget
->['httpClient'];
-type EditorWorkerSetup = Readonly<{
-  state: EditorBrowserWorkerState;
-  namespace: ReturnType<typeof createRedisTestNamespace>;
-  resources: EditorBrowserRuntimeConstruction;
-  assertSetupActive: () => void;
-}>;
-type EditorWorkerExecution = EditorWorkerSetup &
-  Readonly<{
-    raw: EditorBrowserWorkerConfiguration;
-    database: ReturnType<typeof parseDatabaseConfig>;
-    sendHttpEffects: () => void;
-  }>;
-type EditorWorkerAttemptContext = Readonly<{
-  controlledCapabilities: EditorWorkerCapabilities | undefined;
-  controlledHttpClient: EditorWorkerHttpClient | undefined;
-  state: EditorBrowserWorkerState;
-}>;
-
-function createEditorWorkerNamespace(redisUrl: string) {
-  const namespace = createRedisTestNamespace(
-    redisUrl,
-    11,
-    'editor-browser-pure-core',
-    {
-      beforeCleanup: async () => {
-        if (!process.connected || process.send === undefined)
-          throw new Error('Cleanup ownership cannot be verified');
-        await new Promise<void>((resolve, reject) => {
-          const finish = (error?: Error) => {
-            clearTimeout(timer);
-            process.off('message', message);
-            if (error === undefined) resolve();
-            else reject(error);
-          };
-          const message = (value: unknown) => {
-            if (
-              typeof value !== 'object' ||
-              value === null ||
-              !('phase' in value)
-            )
-              return;
-            if (value.phase === 'namespace-cleanup-approved') finish();
-            else if (value.phase === 'namespace-cleanup-denied')
-              finish(
-                new Error('Cleanup ownership changed; preserve namespace'),
-              );
-          };
-          const timer = setTimeout(() => {
-            finish(new Error('Cleanup ownership verification timed out'));
-          }, 5_000);
-          process.on('message', message);
-          process.send?.({ phase: 'namespace-cleanup-request' });
-        });
-      },
-    },
-  );
-  return namespace;
-}
-async function configureEditorWorker(context: EditorWorkerSetup) {
-  const { state, namespace, assertSetupActive } = context;
-  if (state.configuration === undefined) {
-    // Ownership is established before the parent API can write to this Redis DB.
-    await namespace.acquire();
-    assertSetupActive();
-    const pendingConfiguration = new Promise<unknown>((resolve, reject) => {
-      process.once('message', resolve);
-      state.cancelConfiguration = () => {
-        reject(new Error('Worker configuration wait canceled'));
-      };
-    });
-    process.send?.({ phase: 'namespace-ready', database: namespace.database });
-    const raw = await pendingConfiguration;
-    state.cancelConfiguration = undefined;
-    state.configuration = parseEditorWorkerConfiguration(
-      raw,
-      assertSetupActive,
-    );
-  }
-  return state.configuration;
-}
-function parseEditorWorkerConfiguration(
-  raw: unknown,
-  assertSetupActive: () => void,
-) {
-  if (
-    typeof raw !== 'object' ||
-    raw === null ||
-    !('workerUrl' in raw) ||
-    !('dispatcherUrl' in raw) ||
-    !('apiUrl' in raw) ||
-    !('migrationUrl' in raw) ||
-    typeof raw.workerUrl !== 'string' ||
-    typeof raw.dispatcherUrl !== 'string' ||
-    typeof raw.apiUrl !== 'string' ||
-    typeof raw.migrationUrl !== 'string'
-  )
-    throw new Error(
-      'Owned browser worker database configuration is incomplete',
-    );
-  assertSetupActive();
-  return {
-    workerUrl: raw.workerUrl,
-    dispatcherUrl: raw.dispatcherUrl,
-    apiUrl: raw.apiUrl,
-    migrationUrl: raw.migrationUrl,
-    ...('callbackConfig' in raw
-      ? {
-          callbackConfig: z
-            .object({
-              origin: z.string(),
-              keys: z.object({
-                current: z.object({ key: z.string(), version: z.string() }),
-                previous: z.array(
-                  z.object({ key: z.string(), version: z.string() }),
-                ),
-              }),
-            })
-            .parse(raw.callbackConfig),
-        }
-      : {}),
-    ...(!controlledHttp && !curatedTemplates
-      ? {}
-      : editorHttpConfiguration(raw)),
-  };
-}
-function editorHttpConfiguration(raw: object) {
-  if (
-    !('connectionMasterKey' in raw) ||
-    typeof raw.connectionMasterKey !== 'string' ||
-    !/^[a-f0-9]{64}$/u.test(raw.connectionMasterKey) ||
-    (controlledHttp &&
-      (!('authorizationValue' in raw) ||
-        typeof raw.authorizationValue !== 'string' ||
-        raw.authorizationValue.length > 128))
-  )
-    throw new Error('Owned HTTP configuration incomplete');
-  return {
-    connectionMasterKey: raw.connectionMasterKey,
-    ...(controlledHttp &&
-    'authorizationValue' in raw &&
-    typeof raw.authorizationValue === 'string'
-      ? { authorizationValue: raw.authorizationValue }
-      : {}),
-  };
-}
-async function startEditorCoordinator(context: EditorWorkerExecution) {
-  const { raw, database, namespace, resources, assertSetupActive } = context;
-  if (
-    [
-      'approvals',
-      'forms',
-      'variables',
-      'notifications',
-      'collaboration',
-    ].includes(process.env.EDITOR_BROWSER_CASE ?? '')
-  ) {
-    const notifications = await createEditorNotifications(
-      database,
-      parseDatabaseConfig({ connectionString: raw.dispatcherUrl, max: 1 }),
-      namespace.redisUrl,
-      process.env.EDITOR_BROWSER_CASE === 'notifications'
-        ? {
-            key: process.env.EDITOR_BROWSER_NOTICE_MAIL_KEY ?? '',
-            publicWebOrigin:
-              process.env.EDITOR_BROWSER_NOTICE_PUBLIC_ORIGIN ?? '',
-          }
-        : undefined,
-    );
-    resources.notifications = notifications;
-    notifications.start();
-    await notifications.checkReadiness();
-    assertSetupActive();
-  }
-  const coordinator = await createCoordinatorRuntime(
-    {
-      maintenanceDatabase: parseDatabaseConfig({
-        connectionString: raw.dispatcherUrl,
-        max: 2,
-      }),
-      database,
-      maximumAdmissions: 10,
-      redisUrl: namespace.redisUrl,
-    },
-    curatedTemplates
-      ? {
-          consumerFactory: curatedCoordinatorConsumerFactory((value) => {
-            process.stderr.write(
-              `Owned curated coordinator failure ${JSON.stringify(value)}\n`,
-            );
-          }),
-        }
-      : {},
-  );
-  resources.coordinator = coordinator;
-  if (errorWorkflowCase) {
-    const maintenance = await createMaintenanceRuntime({
-      database,
-      redisUrl: namespace.redisUrl,
-    });
-    resources.maintenance = maintenance;
-    await maintenance.consumer.waitUntilReady(5_000);
-    assertSetupActive();
-  }
-  assertSetupActive();
-
-  return coordinator;
-}
-async function createEditorCapabilities(context: EditorWorkerExecution) {
-  const {
-    state,
-    raw,
-    database,
-    namespace,
-    resources,
-    assertSetupActive,
-    sendHttpEffects,
-  } = context;
-  let controlledCapabilities:
-    Awaited<ReturnType<typeof createWorkerNodeRuntimeCapabilities>> | undefined;
-  if (controlledHttp || curatedTemplates) {
-    if (
-      raw.connectionMasterKey === undefined ||
-      (controlledHttp && raw.authorizationValue === undefined)
-    )
-      throw new Error('Owned HTTP configuration incomplete');
-    const master = Buffer.from(raw.connectionMasterKey, 'hex');
-    const keys = curatedTemplates
-      ? createCuratedTemplateEnvelopeContext<ConnectionSecretContext>(
-          raw.connectionMasterKey,
-        )
-      : createEditorBrowserEnvelopeKeys<ConnectionSecretContext>(
-          master,
-          'connection',
-        );
-    master.fill(0);
-    resources.envelopeKeys = {
-      close: () => {
-        keys.close();
-        return Promise.resolve();
-      },
-    };
-    if (curatedTemplates) {
-      state.curatedTarget = createCuratedTemplateQualificationTransports();
-      resources.controlledHttp = state.curatedTarget;
-    } else if (artifactInputs) {
-      state.artifactTarget = await createArtifactDestination(sendHttpEffects);
-      resources.controlledHttp = state.artifactTarget;
-      sendHttpEffects();
-    } else {
-      if (raw.authorizationValue === undefined)
-        throw new Error('Owned HTTP authorization missing');
-      state.httpTarget = createEditorControlledHttpTarget(
-        raw.authorizationValue,
-        undefined,
-        sendHttpEffects,
-      );
-      resources.controlledHttp = state.httpTarget;
-      await state.httpTarget.start();
-    }
-    assertSetupActive();
-    const scratch = artifactInputs
-      ? await createTestArtifactScratch()
-      : undefined;
-    resources.artifactScratch = scratch;
-    controlledCapabilities = await createWorkerNodeRuntimeCapabilities(
-      {
-        ...(scratch === undefined
-          ? {}
-          : { artifactScratchDirectory: scratch.directory }),
-        database,
-        redisUrl: namespace.redisUrl,
-        ...(artifactInputs
-          ? { artifactStore: parseArtifactStoreConfig() }
-          : {}),
-      },
-      { connectionEncryption: new ConnectionEnvelopeEncryption(keys) },
-    );
-    resources.capabilities = controlledCapabilities;
-    assertSetupActive();
-    await controlledCapabilities.checkReadiness();
-    assertSetupActive();
-  }
-  if (codeCase) {
-    const code = await createEditorCodeRuntime(database);
-    resources.codeRunner = code;
-    controlledCapabilities = code.capabilities;
-    resources.capabilities = controlledCapabilities;
-    assertSetupActive();
-  }
-  if (
-    webhookResponseCase ||
-    ['variables', 'run-values', 'approvals'].includes(
-      process.env.EDITOR_BROWSER_CASE ?? '',
-    )
-  ) {
-    controlledCapabilities = await createWorkerNodeRuntimeCapabilities({
-      database,
-      ...(raw.callbackConfig === undefined
-        ? {}
-        : { callbacks: raw.callbackConfig }),
-    });
-    resources.capabilities = controlledCapabilities;
-    await controlledCapabilities.checkReadiness();
-    assertSetupActive();
-  }
-
-  return controlledCapabilities;
-}
-function editorAttemptDependencies(context: EditorWorkerAttemptContext) {
-  const { controlledCapabilities, controlledHttpClient, state } = context;
-  if (
-    controlledCapabilities === undefined ||
-    controlledHttpClient === undefined
-  )
-    return pureEditorDependencies(controlledCapabilities);
-  return controlledEditorDependencies({
-    controlledCapabilities,
-    controlledHttpClient,
-    state,
-  });
-}
-function pureEditorDependencies(
-  controlledCapabilities: EditorWorkerCapabilities | undefined,
-) {
-  return {
-    runtimeCapabilities: {
-      ...(controlledCapabilities?.factories.callbacks === undefined
-        ? {}
-        : { callbacks: controlledCapabilities.factories.callbacks }),
-      ...(controlledCapabilities?.factories.runValues === undefined
-        ? {}
-        : { runValues: controlledCapabilities.factories.runValues }),
-      ...(controlledCapabilities?.factories.dataTables === undefined
-        ? {}
-        : { dataTables: controlledCapabilities.factories.dataTables }),
-      ...(controlledCapabilities?.factories.webhookResponse === undefined
-        ? {}
-        : {
-            webhookResponse: controlledCapabilities.factories.webhookResponse,
-          }),
-      ...(controlledCapabilities?.factories.code === undefined
-        ? {}
-        : { code: controlledCapabilities.factories.code }),
-      connections: () => ({
-        resolve: () =>
-          Promise.reject(
-            new Error('Provider access is outside this pure-node fixture'),
-          ),
-      }),
-      artifacts: () => ({
-        write: () =>
-          Promise.reject(
-            new Error('Artifacts are outside this pure-node fixture'),
-          ),
-      }),
-    },
-  };
-}
-function controlledEditorDependencies(
-  context: Readonly<{
-    controlledCapabilities: EditorWorkerCapabilities;
-    controlledHttpClient: EditorWorkerHttpClient;
-    state: EditorBrowserWorkerState;
-  }>,
-) {
-  const { controlledCapabilities, controlledHttpClient, state } = context;
-  return {
-    registry: createPlatformNodeRegistry({
-      httpRequest: { httpClient: controlledHttpClient },
-      // Never allow unused provider executors to fall back to real networking.
-      slackSendMessage: {
-        client: state.curatedTarget?.slackClient ?? {
-          sendMessage: () =>
-            Promise.reject(
-              new Error('Provider outside controlled HTTP fixture'),
-            ),
-        },
-      },
-      emailSendNotification: {
-        client: {
-          sendNotification: () =>
-            Promise.reject(
-              new Error('Provider outside controlled HTTP fixture'),
-            ),
-        },
-      },
-    }),
-    runtimeCapabilities: {
-      ...(artifactInputs
-        ? withArtifactReadOutage(controlledCapabilities.factories)
-        : controlledCapabilities.factories),
-      ...(artifactInputs
-        ? {}
-        : {
-            artifacts: () => ({
-              write: () =>
-                Promise.reject(
-                  new Error('Artifacts outside inline HTTP fixture'),
-                ),
-            }),
-          }),
-    },
-  };
 }

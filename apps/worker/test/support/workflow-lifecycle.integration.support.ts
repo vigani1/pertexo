@@ -18,7 +18,6 @@ import {
 import { Queue } from 'bullmq';
 import { Pool, type QueryResult, type QueryResultRow } from 'pg';
 import { dropDisconnectedDatabase } from './infrastructure/disposable-database.js';
-
 import { createRedisTestNamespace } from './infrastructure/redis-test-namespace.js';
 import {
   ownerRole,
