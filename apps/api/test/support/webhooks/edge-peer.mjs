@@ -17,9 +17,7 @@ export async function startWebhookPeer(transport) {
     'webhooks/authentication/preflight.controller.js',
   );
   const { WEBHOOK_PREFLIGHT } = await api('webhooks/tokens.js');
-  const { RateLimitModule } = await api(
-    'platform/rate-limit/rate-limit.module.js',
-  );
+  const { RateLimitModule } = await api('platform/rate-limit/module.js');
   const adapter = new FastifyAdapter();
   const server = adapter.getInstance();
   const hash = (value) => createHash('sha256').update(value).digest('hex');

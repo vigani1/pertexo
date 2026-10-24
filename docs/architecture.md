@@ -112,7 +112,7 @@ PostgreSQL owns durable state. Redis/BullMQ transports identifiers and provides
 live hints; losing transport state does not replace accepted database facts.
 Published workflow versions contain their immutable graph, executable and
 checksums. The engine selects the next transition from the executable,
-checkpoint and facts. `execution/src/runs/advance-run.ts` verifies the stored
+checkpoint and facts. `execution/src/runs/advance.ts` verifies the stored
 projection and calls the pure engine through the run store's decision callback.
 `database/src/runs/advance/` locks and loads state, checks deliveries, persists
 transitions and completes receipts in a transaction.
