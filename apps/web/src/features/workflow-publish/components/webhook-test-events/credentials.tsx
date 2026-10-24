@@ -29,12 +29,18 @@ export function ListenerCredentials({
         </div>
       )}
       <p className="text-xs text-muted-foreground">
-        {policy.mode === 'signed'
-          ? 'Use the normal Pertexo timestamp and HMAC signature headers.'
-          : policy.mode === 'header_secret'
-            ? `Send ${policy.headerName}${policy.headerName === 'authorization' ? ': Bearer <secret>' : ': <secret>'}.`
-            : 'Send a request to this secret URL.'}
+        {credentialInstructions(policy)}
       </p>
     </>
   );
+}
+
+function credentialInstructions(
+  policy: WebhookTestEventStarted['authentication'],
+): string {
+  if (policy.mode === 'signed')
+    return 'Use the normal Pertexo timestamp and HMAC signature headers.';
+  if (policy.mode === 'header_secret')
+    return `Send ${policy.headerName}${policy.headerName === 'authorization' ? ': Bearer <secret>' : ': <secret>'}.`;
+  return 'Send a request to this secret URL.';
 }

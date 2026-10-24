@@ -123,11 +123,7 @@ export function WebhookAuthenticationDialog({
         )}
       </LabelledField>
       <p className="text-sm text-muted-foreground">
-        {draft.mode === 'signed'
-          ? 'Signs the exact request bytes and checks a five-minute timestamp. Recommended when the sender supports it.'
-          : draft.mode === 'secret_url'
-            ? 'The URL is the only credential. Anyone who obtains it can start runs. Keep it private and rotate it if shared accidentally.'
-            : 'Send the generated secret in Authorization: Bearer, or a header used only for this credential. Use HTTPS.'}
+        {AUTHENTICATION_COPY[draft.mode]}
       </p>
       {draft.mode === 'header_secret' ? (
         <LabelledField
@@ -207,3 +203,14 @@ export function WebhookAuthenticationDialog({
     </ConfirmDialog>
   );
 }
+
+const AUTHENTICATION_COPY: Readonly<
+  Record<WebhookAuthentication['mode'], string>
+> = {
+  signed:
+    'Signs the exact request bytes and checks a five-minute timestamp. Recommended when the sender supports it.',
+  secret_url:
+    'The URL is the only credential. Anyone who obtains it can start runs. Keep it private and rotate it if shared accidentally.',
+  header_secret:
+    'Send the generated secret in Authorization: Bearer, or a header used only for this credential. Use HTTPS.',
+};
