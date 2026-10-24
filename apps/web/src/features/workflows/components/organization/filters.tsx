@@ -26,7 +26,7 @@ import {
 } from '../../model/list-view';
 import { WorkflowTagsDialog } from './tags/dialog';
 import { OrganizationNameFilter } from './vocabulary';
-import { useWorkflowFilterVocabulary } from './vocabulary';
+import { useWorkflowFilterVocabulary } from './use-filter-vocabulary';
 import { WorkflowFilterChoices } from './vocabulary';
 import { OrganizationVocabularyReadFailure } from './vocabulary';
 
